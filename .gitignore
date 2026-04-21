@@ -95,10 +95,9 @@ ipython_config.py
 #Pipfile.lock
 
 # UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#uv.lock
+#   For this application project we DO commit uv.lock for reproducibility.
+#   Leave uv.lock tracked; ignore uv's caches only.
+.uv-cache/
 
 # poetry
 #   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
@@ -205,3 +204,63 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ---------------------------------------------------------------------------
+# CreditPFN project-specific ignores
+# ---------------------------------------------------------------------------
+
+# Datasets — credit-risk data is sensitive and large; never commit.
+data/
+!data/.gitkeep
+!data/README.md
+
+# Model checkpoints — TabPFN base weights and fine-tuned outputs.
+checkpoints/
+!checkpoints/.gitkeep
+!checkpoints/README.md
+*.ckpt
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Experiment tracking
+wandb/
+mlruns/
+lightning_logs/
+tb_logs/
+tensorboard/
+outputs/
+multirun/
+
+# SLURM / VSC logs
+slurm-*.out
+slurm-*.err
+*.slurm.log
+logs/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Large-file guards (catch accidental commits of big artefacts)
+*.parquet
+*.feather
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.arrow
+*.pkl
+*.pickle
+*.joblib
+*.onnx

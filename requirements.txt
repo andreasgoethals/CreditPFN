@@ -1,0 +1,21 @@
+# Core deep-learning stack
+torch>=2.2,<3.0
+
+# TabPFN (v2 API; classifier + regressor checkpoints)
+tabpfn>=2.0,<3.0
+
+# Scientific / tabular stack
+numpy>=1.26,<3.0
+pandas>=2.1,<3.0
+scikit-learn>=1.4,<2.0
+
+# Experiment tracking
+wandb>=0.16,<1.0
+
+# Configuration management
+hydra-core>=1.3,<2.0
+omegaconf>=2.3,<3.0
+
+# Utilities
+tqdm>=4.66,<5.0
+pyyaml>=6.0,<7.0
