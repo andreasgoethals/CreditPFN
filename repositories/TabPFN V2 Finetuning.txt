@@ -1,0 +1,3697 @@
+Directory structure:
+└── lennartpurucker-finetune_tabpfn_v2/
+    ├── README.md
+    ├── LICENSE
+    ├── pyproject.toml
+    ├── requirements.txt
+    ├── custom_libs/
+    │   └── README.md
+    ├── examples/
+    │   ├── minimal_example.py
+    │   ├── minimal_example_no_preprocessing.py
+    │   └── toy_example/
+    │       ├── dummy_data_utils.py
+    │       ├── finetuning_hps.yaml
+    │       └── toy_data_run.py
+    └── finetuning_scripts/
+        ├── constant_utils.py
+        ├── data_classes.py
+        ├── finetune_tabpfn_main.py
+        ├── metric_utils/
+        │   ├── __init__.py
+        │   ├── ag_classification_metrics.py
+        │   └── ag_metrics.py
+        └── training_utils/
+            ├── __init__.py
+            ├── ag_early_stopping.py
+            ├── data_utils.py
+            ├── model_utils.py
+            ├── training_loss.py
+            └── validation_utils.py
+
+================================================
+FILE: README.md
+================================================
+# ⚠️ This Code is Outdated and not Maintained
+
+This repository contains code to finetune TabPFNv2 and its package `tabpfn<2.1`. 
+It is not actively maintained or updated. Please check for an alternative source to fine-tune the newest version of TabPFN.
+
+The code and scripts can still be used to fine-tune TabPFN, but you may need to address compatibility issues with the TabPFN package. 
+
+# Finetuning TabPFN 
+
+Heyho, this is code I use for finetuning [TabPFN(v2)](https://github.com/PriorLabs/TabPFN) on **ONE** downstream 
+tabular dataset.
+
+The code is optimized for usage in a larger data science pipeline (i.e., for the usage in AutoML systems such 
+as [AutoGluon](https://github.com/autogluon/autogluon)). As a result, it is surprisingly complex. 
+
+**Key Features:**
+* Minimal hyperparameter for tuning required, focuses only on learning rate and batch size.
+* Adaptive early stopping based on validation loss & early stopping based on a time limit
+* Logging, basic wandb support, and offline training curve plots. 
+* Support for binary classification, multiclass classification, and regression.
+* Mixed precision training, gradient scaling + clipping, gradient accumulation.
+* Semi-well-written and docstring-documented code. 
+
+**Key Limitations:**
+* A lot of code overhead for finetuning, simply because I want to use it in larger data science pipelines.
+* No general-purpose solution so far. It is often tricky to get better by finetuning, and the implementation made  
+a lot of assumptions for design decisions that require more research (e.g., data loader design, learning HPs, ...)
+* Generally, the finetuning on one dataset is very sensitive to the learning rate, batch size, and overfitting. 
+
+## Examples
+See `examples/toy_example` for an example of how to run the code for classification and regression.
+
+Minimal Example:
+```python
+from finetuning_scripts.finetune_tabpfn_main import fine_tune_tabpfn
+from sklearn.datasets import load_iris
+from sklearn.metrics import log_loss
+from sklearn.model_selection import train_test_split
+from tabpfn import TabPFNClassifier
+
+# Load data
+X, y = load_iris(return_X_y=True, as_frame=True)
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.33,
+    random_state=42,
+)
+
+# Finetune
+save_path_to_fine_tuned_model = "./fine_tuned_model.ckpt"
+fine_tune_tabpfn(
+    path_to_base_model="auto",
+    save_path_to_fine_tuned_model=save_path_to_fine_tuned_model,
+    # Finetuning HPs
+    time_limit=60,
+    finetuning_config={"learning_rate": 0.00001, "batch_size": 20},
+    validation_metric="log_loss",
+    # Input Data
+    X_train=X_train,
+    y_train=y_train,
+    categorical_features_index=None,
+    device="cuda",  # use "cpu" if you don't have a GPU
+    task_type="multiclass",
+    # Optional
+    show_training_curve=True,  # Shows a final report after finetuning.
+    logger_level=0,  # Shows all logs, higher values shows less
+    use_wandb=False,  # Init wandb yourself, and set to True
+)
+
+# Evaluate on Test Data
+clf = TabPFNClassifier(model_path=save_path_to_fine_tuned_model).fit(X_train, y_train)
+print("Log Loss (Finetuned):", log_loss(y_test, clf.predict_proba(X_test)))
+clf = TabPFNClassifier().fit(X_train, y_train)
+print("Log Loss (Default):", log_loss(y_test, clf.predict_proba(X_test)))
+```
+
+## Install
+After cloning the repo, do the following:
+
+This code base requires at least Python 3.10. 
+
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install uv
+uv pip install -r requirements.txt
+```
+
+### Do you want to edit the model (for adapters)?
+
+To edit the model, I suggest using a local installation of the TabPFN package. 
+```bash
+# Local TabPFN install so we can change the model without reinstalling the package (e.g. for adapters)
+cd custom_libs && git clone --branch finetune_tabpfn --single-branch https://github.com/LennartPurucker/TabPFN.git
+# Install dependencies
+uv pip install -e TabPFN && cd .. && uv pip install -r requirements.txt
+```
+
+### Do you want faster training on old GPUs?
+Use the following to install flash attention 1 if you have a GPU like RTX2080 or T4.
+Unsure if this still works, so be careful. 
+```bash
+uv pip uninstall torch torchvision torchaudio && uv pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
+```
+
+To test if flash attention is working, put the following code before you run TabPFN
+```python
+import torch.backends.cuda
+torch.backends.cuda.enable_math_sdp(False)
+torch.backends.cuda.enable_flash_sdp(True)
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+```
+
+## Developer Docs
+
+* Add requirements to `requirements.txt`
+* Change mypy and ruff settings in `pyproject.toml`
+* Make sure the toy example runs without errors.  
+
+
+
+================================================
+FILE: LICENSE
+================================================
+BSD 3-Clause License
+
+Copyright (c) 2025, Lennart Purucker
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+================================================
+FILE: pyproject.toml
+================================================
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+src = ["src", "tests", "examples"]
+
+[tool.ruff.lint]
+extend-safe-fixes = ["ALL"]
+
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+select = [
+  "A",
+  "ARG",
+  "B",
+  "BLE",
+  "COM",
+  "C4",
+  "D",
+  "E",
+  "ERA",
+  "F",
+  "FBT",
+  "I",
+  "INP",
+  "N",
+  "NPY",
+  "PD",
+  "PLC",
+  "PLE",
+  "PLR",
+  "PLW",
+  "PIE",
+  "PT",
+  "PTH",
+  "Q",
+  "PGH004",
+  "RET",
+  "RUF",
+  "C90",
+  "S",
+  "SIM",
+  "T10",
+  "T20",
+  "TID",
+  "TCH",
+  "UP",
+  "N",
+  "W",
+  "YTT",
+]
+
+ignore = [
+    "N803",
+    "C408",
+    "D101",
+    "D103", # Missing docstring in public function
+    "D102", # Missing docstring in public method
+    # -- old
+    "D104",
+    "D105",
+    "D203",
+    "D205",
+    "D401",
+    "N806",
+    "E731",
+    "A003",
+    "S101",
+    "W292",
+    "PLC1901",
+    "TCH003",
+    "B010",
+    "PD011",
+    "T201"
+]
+
+exclude = [
+  ".bzr",
+  ".direnv",
+  ".eggs",
+  ".git",
+  ".hg",
+  ".mypy_cache",
+  ".nox",
+  ".pants.d",
+  ".ruff_cache",
+  ".svn",
+  ".tox",
+  ".venv",
+  "__pypackages__",
+  "_build",
+  "buck-out",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+  "docs",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["finer"]
+no-lines-before = ["future"]
+required-imports = ["from __future__ import annotations"]
+combine-as-imports = true
+extra-standard-library = ["typing_extensions"]
+force-wrap-aliases = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.pylint]
+max-args = 10
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["src/finer", "tests"]
+
+show_error_codes = true
+
+warn_unused_configs = true
+
+follow_imports = "normal"
+ignore_missing_imports = false
+
+disallow_untyped_defs = true
+disallow_untyped_decorators = true
+disallow_incomplete_defs = true
+
+no_implicit_optional = true
+check_untyped_defs = true
+
+warn_return_any = true
+
+
+
+================================================
+FILE: requirements.txt
+================================================
+tabpfn<2.1 
+ruff
+lightgbm
+pynvml
+wandb
+schedulefree
+seaborn
+
+
+
+================================================
+FILE: custom_libs/README.md
+================================================
+# Placeholder
+
+
+================================================
+FILE: examples/minimal_example.py
+================================================
+from __future__ import annotations
+
+from finetuning_scripts.finetune_tabpfn_main import fine_tune_tabpfn
+from sklearn.datasets import load_iris
+from sklearn.metrics import log_loss
+from sklearn.model_selection import train_test_split
+from tabpfn import TabPFNClassifier
+
+# Load data
+X, y = load_iris(return_X_y=True, as_frame=True)
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.33,
+    random_state=42,
+)
+
+save_path_to_fine_tuned_model = "./fine_tuned_model.ckpt"
+fine_tune_tabpfn(
+    path_to_base_model="auto",
+    save_path_to_fine_tuned_model=save_path_to_fine_tuned_model,
+    # Finetuning HPs
+    time_limit=60,
+    finetuning_config={"learning_rate": 0.00001, "batch_size": 20},
+    validation_metric="log_loss",
+    # Input Data
+    X_train=X_train,
+    y_train=y_train,
+    categorical_features_index=None,
+    device="cuda",  # use "cpu" if you don't have a GPU
+    task_type="multiclass",
+    # Optional
+    show_training_curve=True,  # Shows a final report after finetuning.
+    logger_level=0,  # Shows all logs, higher values shows less
+    use_wandb=False,  # Init wandb yourself, and set to True
+)
+
+# Evaluate on Test Data
+clf = TabPFNClassifier(model_path=save_path_to_fine_tuned_model).fit(X_train, y_train)
+print("Log Loss (Finetuned):", log_loss(y_test, clf.predict_proba(X_test)))
+
+# Compare to the default model
+clf = TabPFNClassifier().fit(X_train, y_train)
+print("Log Loss (Default):", log_loss(y_test, clf.predict_proba(X_test)))
+
+
+
+================================================
+FILE: examples/minimal_example_no_preprocessing.py
+================================================
+from __future__ import annotations
+
+from finetuning_scripts.finetune_tabpfn_main import fine_tune_tabpfn
+from sklearn.datasets import load_iris
+from sklearn.metrics import log_loss
+from sklearn.model_selection import train_test_split
+from tabpfn import TabPFNClassifier
+from tabpfn.config import ModelInterfaceConfig, PreprocessorConfig
+
+# Load data
+X, y = load_iris(return_X_y=True, as_frame=True)
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.33,
+    random_state=42,
+)
+
+save_path_to_fine_tuned_model = "./fine_tuned_model.ckpt"
+fine_tune_tabpfn(
+    path_to_base_model="auto",
+    save_path_to_fine_tuned_model=save_path_to_fine_tuned_model,
+    # Finetuning HPs
+    time_limit=60,
+    finetuning_config={"learning_rate": 0.00001, "batch_size": 20},
+    validation_metric="log_loss",
+    # Input Data
+    X_train=X_train,
+    y_train=y_train,
+    categorical_features_index=None,
+    device="cuda",  # use "cpu" if you don't have a GPU
+    task_type="multiclass",
+    # Optional
+    show_training_curve=True,  # Shows a final report after finetuning.
+    logger_level=0,  # Shows all logs, higher values shows less
+    use_wandb=False,  # Init wandb yourself, and set to True
+)
+
+# disables preprocessing at inference time to match fine-tuning
+no_preprocessing_inference_config = ModelInterfaceConfig(
+    FINGERPRINT_FEATURE=False,
+    PREPROCESS_TRANSFORMS=[PreprocessorConfig(name='none')]
+)
+
+# Evaluate on Test Data
+clf = TabPFNClassifier(
+    model_path=save_path_to_fine_tuned_model,
+    inference_config=no_preprocessing_inference_config,
+).fit(X_train, y_train)
+print("Log Loss (Finetuned):", log_loss(y_test, clf.predict_proba(X_test)))
+
+# Compare to the default model
+clf = TabPFNClassifier().fit(X_train, y_train)
+print("Log Loss (Default):", log_loss(y_test, clf.predict_proba(X_test)))
+
+
+
+================================================
+FILE: examples/toy_example/dummy_data_utils.py
+================================================
+"""Credit to Eddie Bergman for these functions."""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+from sklearn.datasets import make_classification, make_regression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+
+
+def toy_classification(
+    *,
+    has_cat_features: bool = True,
+    cat_has_nan: bool = True,
+    num_has_nan: bool = True,
+    cols: int = 20,
+    n_classes: int = 2,
+    seed: int = 42,
+) -> tuple[pd.DataFrame, pd.Series]:
+    X, y = make_classification(
+        n_samples=500,
+        n_features=cols,
+        n_informative=10,
+        n_classes=n_classes,
+        random_state=seed,
+    )
+    _x = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(cols)])
+    _y = pd.Series(y)
+
+    if has_cat_features:
+        cats_1 = ["a"] * 25 * 5 + ["b"] * 25 * 5 + ["c"] * 25 * 5 + ["d"] * 25 * 5
+        cats_2 = ["x"] * 34 * 5 + ["y"] * 33 * 5 + ["z"] * 33 * 5
+        if cat_has_nan:
+            cats_1[0] = np.nan
+            cats_1[49] = np.nan
+
+        _x = _x.assign(cat_1=pd.Categorical(cats_1), cat_2=pd.Categorical(cats_2))
+
+    if num_has_nan:
+        _x.iloc[0, 2] = np.nan
+        _x.iloc[0, 3] = np.nan
+
+    return _x, _y
+
+
+def toy_regression(
+    *,
+    has_cat_features: bool = False,
+    cat_has_nan: bool = False,
+    num_has_nan: bool = False,
+    cols: int = 20,
+    seed: int = 42,
+) -> tuple[pd.DataFrame, pd.Series]:
+    X, y = make_regression(  # type: ignore
+        n_samples=500,
+        n_features=cols,
+        n_informative=10,
+        random_state=seed,
+    )
+    _x = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(cols)])
+    _y = pd.Series(y)
+
+    if has_cat_features:
+        cats_1 = ["a"] * 25 * 5 + ["b"] * 25 * 5 + ["c"] * 25 * 5 + ["d"] * 25 * 5
+        cats_2 = ["x"] * 34 * 5 + ["y"] * 33 * 5 + ["z"] * 33 * 5
+        if cat_has_nan:
+            cats_1[0] = np.nan
+            cats_1[49] = np.nan
+        _x = _x.assign(cat_1=pd.Categorical(cats_1), cat_2=pd.Categorical(cats_2))
+
+    if num_has_nan:
+        _x.iloc[0, 2] = np.nan
+        _x.iloc[0, 3] = np.nan
+
+    return _x, _y
+
+
+def preprocess_dummy_data(
+    *,
+    X,
+    y,
+    seed,
+    stratify,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, list, list]:
+    """Preprocess dummy data for classification/regression."""
+    categorical_features = X.select_dtypes(
+        include=["category", "object"],
+    ).columns.tolist()
+    categorical_features_index = [
+        X.columns.get_loc(col) for col in categorical_features
+    ]
+    test_size = 0.33
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=seed,
+        stratify=y if stratify else None,
+    )
+
+    # -- Preprocess X_train/X_test
+    oe = OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
+    X_train[categorical_features] = oe.fit_transform(X_train[categorical_features])
+    X_test[categorical_features] = oe.transform(X_test[categorical_features])
+    X_train[categorical_features] = X_train[categorical_features].astype("category")
+    X_test[categorical_features] = X_test[categorical_features].astype("category")
+    X_train = X_train.replace([np.inf, -np.inf], np.nan)
+    X_test = X_test.replace([np.inf, -np.inf], np.nan)
+    X_train = X_train.reset_index(drop=True)
+    X_test = X_test.reset_index(drop=True)
+
+    if stratify:
+        le = LabelEncoder()
+        y_train = pd.Series(le.fit_transform(y_train)).reset_index(drop=True)
+        y_test = pd.Series(le.transform(y_test)).reset_index(drop=True)
+
+    return (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        categorical_features,
+        categorical_features_index,
+    )
+
+
+
+================================================
+FILE: examples/toy_example/finetuning_hps.yaml
+================================================
+# Learning Hyperparameters for finetuning
+learning_rate: 0.00001 # 1e-5 (yaml does not support scientific notation)
+batch_size: 10
+# Less important Hyperparameters
+update_every_n_steps: 1
+validate_every_n_steps: 1
+max_steps: 10000
+adaptive_rate: 0.2
+adaptive_offset: 5
+min_patience: 20
+max_patience: 100
+
+
+================================================
+FILE: examples/toy_example/toy_data_run.py
+================================================
+from __future__ import annotations
+
+import warnings
+from pathlib import Path
+
+import yaml
+from examples.toy_example.dummy_data_utils import (
+    preprocess_dummy_data,
+    toy_classification,
+    toy_regression,
+)
+from lightgbm import LGBMClassifier, LGBMRegressor
+from sklearn.metrics import log_loss, roc_auc_score, root_mean_squared_error
+from tabpfn import TabPFNClassifier, TabPFNRegressor
+
+# Suppress specific FutureWarnings from sklearn
+warnings.filterwarnings(
+    "ignore",
+    message=r".*BaseEstimator.*is deprecated.*",
+    category=FutureWarning,
+)
+warnings.filterwarnings(
+    "ignore",
+    message=r".*'force_all_finite' was renamed to 'ensure_all_finite'.*",
+    category=FutureWarning,
+)
+
+
+def run_modelling(
+    *,
+    time_limit: int,
+    finetuning_config: dict,
+    X,
+    y,
+    seed,
+    task_type,
+    device="cuda",
+):
+    """Run a dummy experiment to compare TabPFN and LGBM models.
+
+    Parameter
+    ---------
+    time_limit: int
+        Time limit for fine-tuning TabPFN model.
+    X: pd.DataFrame
+        Features
+    y: pd.Series
+        Target
+    seed: int
+        Random seed
+    task_type: str
+        Task type: binary, multiclass or regression
+    device: str
+        Device to run the experiment
+    """
+    print(f"Start Dummy Experiment for {task_type}")
+
+    match task_type:
+        case "binary":
+            val_metric = "roc_auc"
+            tabpfn_model = TabPFNClassifier
+            lgbm_model = LGBMClassifier
+            test_metric = lambda y_test, y_pred: roc_auc_score(y_test, y_pred[:, 1])
+            predict_func = lambda model, X: model.predict_proba(X)
+            lower_is_better = False
+        case "multiclass":
+            val_metric = "log_loss"
+            tabpfn_model = TabPFNClassifier
+            lgbm_model = LGBMClassifier
+            # FIXME: internally, we always use predict_proba for retrieval!
+            test_metric = log_loss
+            predict_func = lambda model, X: model.predict_proba(X)
+            lower_is_better = True
+        case "regression":
+            val_metric = "rmse"
+            tabpfn_model = TabPFNRegressor
+            lgbm_model = LGBMRegressor
+            test_metric = root_mean_squared_error
+            predict_func = lambda model, X: model.predict(X)
+            lower_is_better = True
+        case _:
+            raise ValueError(f"Invalid task_type: {task_type}")
+
+    (
+        X_train,
+        X_test,
+        y_train,
+        y_test,
+        categorical_features,
+        categorical_features_index,
+    ) = preprocess_dummy_data(
+        X=X,
+        y=y,
+        seed=seed,
+        stratify=task_type != "regression",
+    )
+
+    from finetuning_scripts.finetune_tabpfn_main import fine_tune_tabpfn
+    use_wandb = False
+
+    if use_wandb:
+        import wandb
+        wandb.init(
+            reinit=True,
+            # set the wandb project where this run will be logged
+            project="LA-TabPFN",
+            entity="lennartpurucker",
+            # track hyperparameters and run metadata
+            config={"version": "0.0.1", "finetuning_config": finetuning_config},
+        )
+    save_path_to_fine_tuned_model = (
+        Path(__file__).parent / f"finetuned_tabpfn_model_{task_type}.ckpt"
+    )
+    fine_tune_tabpfn(
+        path_to_base_model="auto",
+        save_path_to_fine_tuned_model=save_path_to_fine_tuned_model,
+        # Finetuning HPs
+        time_limit=time_limit,
+        finetuning_config=finetuning_config,
+        validation_metric=val_metric,
+        # Input Data
+        X_train=X_train,
+        y_train=y_train,
+        categorical_features_index=categorical_features_index,
+        device=device,
+        task_type=task_type,
+        # Optional
+        show_training_curve=True,
+        logger_level=0,
+        use_wandb=use_wandb,
+    )
+
+    # -- Run Models
+    results = {}
+    for model_name, model in [
+        (
+            "Finetuned-TabPFN",
+            tabpfn_model(
+                model_path=save_path_to_fine_tuned_model,
+                random_state=seed,
+                device=device,
+                categorical_features_indices=categorical_features_index,
+            ),
+        ),
+        ("LGBM", lgbm_model(seed=seed, verbosity=-1)),
+        (
+            "Default-TabPFN",
+            tabpfn_model(
+                random_state=seed,
+                device=device,
+                categorical_features_indices=categorical_features_index,
+            ),
+        ),
+    ]:
+        model.fit(X_train, y_train)
+        results[model_name] = test_metric(y_test, predict_func(model, X_test))
+
+    metric_txt = "↑" if not lower_is_better else "↓"
+    report = f"""Experiment Results for [{task_type} ({metric_txt})]:
+    - LGBM            : {results["LGBM"]:.4f}
+    - Default TabPFN  : {results["Default-TabPFN"]:.4f}
+    - Finetuned TabPFN: {results["Finetuned-TabPFN"]:.4f}
+    """
+    print(report)
+
+
+if __name__ == "__main__":
+    import torch
+
+    with (Path(__file__).parent / "finetuning_hps.yaml").open("r") as file:
+        finetuning_config = yaml.safe_load(file)
+
+    x_y_task_type = []
+    for n_classes, task_type in [
+        (2, "binary"),
+        (5, "multiclass"),
+    ]:
+        x, y = toy_classification(
+            n_classes=n_classes,
+            has_cat_features=True,
+            cat_has_nan=True,
+            num_has_nan=True,
+            seed=42,
+            cols=20,
+        )
+        x_y_task_type.append((x, y, task_type))
+
+    x, y = toy_regression(
+        has_cat_features=True,
+        cat_has_nan=True,
+        num_has_nan=True,
+        seed=42,
+        cols=30,
+    )
+    x_y_task_type.append((x, y, "regression"))
+
+    for x, y, task_type in x_y_task_type:
+        run_modelling(
+            time_limit=int(60 * 2),
+            finetuning_config=finetuning_config,
+            X=x,
+            y=y,
+            seed=48,
+            task_type=task_type,
+            device="cuda" if torch.cuda.is_available() else "cpu",
+        )
+
+
+
+================================================
+FILE: finetuning_scripts/constant_utils.py
+================================================
+from __future__ import annotations
+
+from enum import Enum
+
+
+class TaskType(str, Enum):
+    """Task type of the data for fine-tuning."""
+
+    REGRESSION = "regression"
+    BINARY_CLASSIFICATION = "binary"
+    MULTICLASS_CLASSIFICATION = "multiclass"
+
+
+class SupportedValidationMetric(str, Enum):
+    """Supported validation metrics for fine-tuning."""
+
+    RMSE = "rmse"
+    R2 = "r2"
+
+    ROC_AUC = "roc_auc"
+    ROC_AUC_MULTICLASS = "roc_auc_ovo_macro"
+    ACCURACY = "accuracy"
+    BALANCED_ACC = "balanced_accuracy"
+
+    MCC = "mcc"
+
+
+class SupportedDevice(str, Enum):
+    """Supported device for fine-tuning."""
+
+    CPU = "cpu"
+    GPU = "cuda"
+
+
+
+================================================
+FILE: finetuning_scripts/data_classes.py
+================================================
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from finetuning_scripts.training_utils.ag_early_stopping import AdaptiveES
+    from torch.optim.optimizer import Optimizer
+
+
+@dataclass
+class FineTuneStepResults:
+    """Dataclass to store the results of a fine-tuning step."""
+
+    # Minimal step results
+    training_loss: float
+    """The training loss of the current step."""
+    device_utilization: float
+    """The device utilization after the current step."""
+    step_with_update: bool
+    """Whether the optimizer, lr scheduler, and loss made a step."""
+    optimizer_step_skipped: bool
+    """Whether the optimizer step was skipped due to NaNs before grad scaling."""
+    grad_norm_before_clip: float
+    """The gradient norm before clipping."""
+
+    # Optionally set by the loop
+    step_index: int | None = None
+    """The index of the current step."""
+    best_validation_loss: float | None = None
+    """The best validation loss seen so far."""
+    best_validation_score: float | None = None
+    """The best validation score seen so far."""
+    patience_left: int | None = None
+    """The remaining patience left for early stopping."""
+    time_left: float | None = None
+    """The remaining time left for fine-tuning."""
+    validation_loss: float | None = None
+    """The validation loss of the current step."""
+
+    def register_meta_state(
+        self,
+        *,
+        step_index: int,
+        best_validation_loss: float,
+        best_validation_score: float,
+        patience_left: int,
+        time_left: float,
+        validation_loss: float,
+    ) -> FineTuneStepResults:
+        self.step_index = step_index
+        self.best_validation_loss = best_validation_loss
+        self.best_validation_score = best_validation_score
+        self.patience_left = patience_left
+        self.time_left = time_left
+        self.validation_loss = validation_loss
+        return self
+
+    def to_results_dict(self) -> dict:
+        return {
+            "Best Val. Loss": self.best_validation_loss,
+            "Best Val. Score": self.best_validation_score,
+            "Training Loss": self.training_loss,
+            "Val. Loss": self.validation_loss,
+            "Patience": self.patience_left,
+            "Time": self.time_left,
+            "Utilization": self.device_utilization,
+            "Grad Norm": self.grad_norm_before_clip,
+        }
+
+
+@dataclass
+class FineTuneSetup:
+    """Configuration for fine-tuning a model."""
+
+    optimizer: Optimizer
+    """The optimizer object."""
+    loss_fn: callable
+    """The loss function used to compute the training loss."""
+
+    batch_size: int
+    """The batch size of the fine-tuning."""
+    max_steps: int
+    """The maximum number of steps for the fine-tuning."""
+
+    adaptive_es: AdaptiveES
+    """The configured adaptive early stopping object."""
+
+    update_every_n_steps: int
+    """The number of steps to update the model before validation"""
+    validate_every_n_steps: int
+    """The number of steps to validate the model"""
+
+    data_loader_workers: int
+    """The number of workers for the data loader."""
+
+    @property
+    def report_str(self):
+        return f"""
+        === Learning HPs ===
+            \tBatch Size: {self.batch_size}
+            \tLr: {self.optimizer.defaults["lr"]} | Weight Decay: {self.optimizer.defaults["weight_decay"]}
+            \tMax Steps: {self.max_steps}
+            \tAdaptiveES: Adaptive Rate {self.adaptive_es.adaptive_rate} | Min Patience {self.adaptive_es.min_patience} | Max Patience {self.adaptive_es.max_patience}
+            \tUpdate Every N Steps: {self.update_every_n_steps} | Validate Every N Steps: {self.validate_every_n_steps}
+        """
+
+
+
+================================================
+FILE: finetuning_scripts/finetune_tabpfn_main.py
+================================================
+from __future__ import annotations
+
+import logging
+import random
+import time
+import warnings
+from collections.abc import Callable
+from copy import deepcopy
+from functools import partial
+from pathlib import Path
+from typing import TYPE_CHECKING, Literal, Union, Sequence
+
+import numpy as np
+import pandas as pd
+import torch
+import wandb
+
+from finetuning_scripts.constant_utils import (
+    SupportedDevice,
+    SupportedValidationMetric,
+    TaskType,
+)
+from finetuning_scripts.data_classes import FineTuneSetup, FineTuneStepResults
+from finetuning_scripts.metric_utils.ag_metrics import get_metric
+from finetuning_scripts.training_utils.ag_early_stopping import AdaptiveES
+from finetuning_scripts.training_utils.data_utils import get_data_loader
+from finetuning_scripts.training_utils.model_utils import save_model
+from finetuning_scripts.training_utils.training_loss import compute_loss, get_loss
+from finetuning_scripts.training_utils.validation_utils import validate_tabpfn
+from schedulefree import AdamWScheduleFree
+from tabpfn import TabPFNClassifier, TabPFNRegressor
+from tabpfn.base import load_model_criterion_config
+from torch import autocast
+from torch.cuda.amp import GradScaler
+from torch.nn import DataParallel
+from tqdm import tqdm
+
+if TYPE_CHECKING:
+    from tabpfn.model.transformer import PerFeatureTransformer
+    from torch.nn.modules.loss import _Loss
+    from torch.optim.optimizer import Optimizer
+
+logger = logging.getLogger(__name__)
+
+warnings.filterwarnings("ignore", category=FutureWarning)
+warnings.filterwarnings(
+    "ignore",
+    category=UserWarning,
+    message=".*input value tensor is non-contiguous.*",
+)
+
+
+def fine_tune_tabpfn(
+    *,
+    path_to_base_model: Path | Literal["auto"] = "auto",
+    save_path_to_fine_tuned_model: Path,
+    # Finetuning HPs
+    time_limit: int,
+    finetuning_config: dict,
+    validation_metric: SupportedValidationMetric,
+    # Input Data
+    X_train: pd.DataFrame | np.ndarray,
+    y_train: pd.Series | np.ndarray,
+    categorical_features_index: list[int] | None,
+    task_type: TaskType,
+    device: SupportedDevice,
+    use_multiple_gpus: bool = False,
+    multiple_device_ids: Sequence[Union[int, torch.device]] | None  = None,
+    X_val: pd.DataFrame | np.ndarray | None = None,
+    y_val: pd.Series | np.ndarray | None = None,
+    random_seed: int = 42,
+    # Other
+    logger_level: int = 20,
+    show_training_curve: bool = False,
+    use_wandb: bool = False,
+    use_sklearn_interface_for_validation: bool = False,
+    model_for_validation: TabPFNClassifier | TabPFNRegressor = None
+) -> None:
+    """Fine-tune a TabPFN model.
+
+    Run a simple fine-tuning loop for a TabPFN model on one dataset.
+    Saves the best model based on the validation loss to disk under `save_path_to_fine_tuned_model`.
+
+    Arguments:
+    ----------
+    time_limit: int
+        The maximum time limit in seconds for the fine-tuning.
+    finetuning_config: dict
+        The configuration for the fine-tuning such as learning rate, batch size, etc.
+        See _setup_tuning for possible learning HPs.
+    X_train: pd.DataFrame | np.ndarray
+        The training features.
+    y_train: pd.Series | np.ndarray
+        The training target.
+    categorical_features_index: list[int] | None
+        The indices of the categorical features.
+    path_to_base_model: Path | Literal["auto"]
+        Path to the base model that shall be fine-tuned. Same logic as for the TabPFN
+        model loading.
+    save_path_to_fine_tuned_model: Path
+        Output path to save the fine-tuned model.
+    validation_metric: SupportedValidationMetric
+        The validation metric to use for early stopping and validation.
+    task_type: TaskType
+        The task type of the problem.
+    device: SupportedDevice
+        The device to use for fine-tuning.
+    use_multiple_gpus: bool
+        If True, will use multiple GPUs for fine-tuning.
+    multiple_device_ids: Sequence[Union[int, torch.device]] | None
+        GPU ids to use when use_multiple_gpus is True.
+        Will use all available GPUs if None.
+    X_val: pd.DataFrame | np.ndarray | None
+        Optional validation features. If not provided, will be split from the training set.
+    y_val: pd.Series | np.ndarray | None
+        Optional validation target. If not provided, will be split from the training set.
+    random_seed: int
+        The random seed to control the randomness.
+    logger_level: int
+        The logger level to use for output during fine-tuning.
+    show_training_curve: bool
+        If True, show a training curve plot after fine-tuning.
+    use_wandb: bool
+        If True, log the fine-tuning process to Weights & Biases.
+        Log in via the CLI if not already done: `wandb login`.
+    use_sklearn_interface_for_validation: bool
+        If True, will create and run TabPFN default sklearn preprocessing pipeline
+        for validation metric calculation.
+    model_for_validation: TabPFNClassifier | TabPFNRegressor
+        Optional TabPFN model which will be used for validation if use_sklearn_interface_for_validation is True.
+        The passed model should not be fitted, it is used to configure the
+        preprocessing pipeline.
+    """
+    st_time = time.time()
+
+    # Coerce input data into pandas structures
+    if not isinstance(X_train, pd.DataFrame):
+        X_train = pd.DataFrame(X_train)
+
+    if not isinstance(y_train, pd.Series):
+        y_train = pd.Series(y_train)
+
+    if X_val is not None and not isinstance(X_val, pd.DataFrame):
+        X_val = pd.DataFrame(X_val)
+
+    if y_val is not None and not isinstance(y_val, pd.Series):
+        y_val = pd.Series(y_val)
+
+    # Control logging
+    logger.setLevel(logger_level)
+    disable_progress_bar = logger_level >= 20
+
+    # Control randomness
+    rng = np.random.RandomState(random_seed)
+    torch.manual_seed(random_seed)
+    random.seed(random_seed)
+    np.random.seed(random_seed)
+    torch_rng = torch.Generator()
+    torch_rng.manual_seed(random_seed)
+
+    # Meta
+    is_classification = task_type != TaskType.REGRESSION
+    use_autocast = False
+    if device == SupportedDevice.GPU:
+        # Autocast on CPU too slow for unsupported hardware + env: https://github.com/pytorch/pytorch/issues/118499
+        use_autocast = True
+    # If True, it is likely that the first ~5 steps will have NaNs and no change
+    #   The code below compensates for this fact.
+    use_grad_scaler = use_autocast
+
+    # Load base model
+    if isinstance(path_to_base_model, str) and path_to_base_model == "auto":
+        model_path = None  # type: ignore
+    else:
+        model_path = path_to_base_model
+    model, criterion, checkpoint_config = load_model_criterion_config(
+        model_path=model_path,
+        check_bar_distribution_criterion=False,
+        cache_trainset_representation=False,
+        which="classifier" if is_classification else "regressor",
+        version="v2",
+        download=True,
+        model_seed=random_seed,
+    )
+    model.criterion = criterion
+    checkpoint_config = checkpoint_config.__dict__
+    is_data_parallel = False
+    if device == 'cuda' and use_multiple_gpus and torch.cuda.device_count() > 1:
+        model = DataParallel(model, device_ids=multiple_device_ids)
+        is_data_parallel = True
+    model.to(device)
+    if use_wandb:
+        wandb.watch(model, log_freq=1, log="all")
+
+    # Setup validation
+    create_val_data = (X_val is None) and (y_val is None)
+    n_classes = len(np.unique(y_train)) if is_classification else None
+    n_samples = len(X_train)
+    if not create_val_data:
+        n_samples += len(X_val)
+    else:
+        from finetuning_scripts.training_utils.validation_utils import create_val_data
+
+        X_train, X_val, y_train, y_val = create_val_data(
+            X_train=X_train,
+            y_train=y_train,
+            rng=rng,
+            n_samples=n_samples,
+            is_classification=is_classification,
+        )
+    val_report = f"""
+    === Basic / Validation State ===
+        \tTime Limit: {time_limit}
+        \tEarly Stopping Metric: {validation_metric}
+        \tVal Samples: {len(X_val) if X_val is not None else 0} | Total Samples: {n_samples}
+        \tModel #parameter: {sum(p.numel() for p in model.parameters())}
+    """
+    logger.debug(val_report)
+
+    # Setup learning HPs
+    fts = _setup_tuning(
+        **finetuning_config,
+        model=model,
+        task_type=task_type,
+        is_classification=is_classification,
+        is_data_parallel=is_data_parallel,
+    )
+    logger.debug(fts.report_str)
+
+    # Setup Forward Pass Function
+    categorical_features_index = (
+        [int(i) for i in categorical_features_index]
+        if categorical_features_index is not None
+        else None
+    )
+    scaler = GradScaler(
+        enabled=use_grad_scaler,
+        growth_interval=100,
+    )
+    model_forward_fn = partial(
+        _model_forward,
+        n_classes=n_classes,
+        categorical_features_index=categorical_features_index,
+        use_autocast=use_autocast,
+        device=device,
+        is_data_parallel=is_data_parallel,
+    )
+
+    # Setup validation function
+    adaptive_es, optimizer = fts.adaptive_es, fts.optimizer
+    validation_metric = get_metric(metric=validation_metric, problem_type=task_type)
+    if use_sklearn_interface_for_validation:
+        if model_for_validation is not None:
+            if hasattr(model_for_validation, 'executor_'):
+                raise ValueError(f"model_for_validation must NOT be fitted")
+        else:
+            model_for_validation = TabPFNRegressor() if task_type == TaskType.REGRESSION else TabPFNClassifier()
+        # this is required as memory_saving_mode can not be used during training
+        model_for_validation.memory_saving_mode = False
+    validate_tabpfn_fn = partial(
+        validate_tabpfn,
+        X_train=torch.tensor(X_train.values)
+        .reshape(X_train.shape[0], 1, X_train.shape[1])
+        .float(),
+        y_train=torch.tensor(y_train.values).reshape(y_train.shape[0], 1, 1).float(),
+        X_val=torch.tensor(X_val.values)
+        .reshape(X_val.shape[0], 1, X_val.shape[1])
+        .float(),
+        y_val=torch.tensor(y_val.values).reshape(y_val.shape[0], 1, 1).float(),
+        validation_metric=validation_metric,
+        model_forward_fn=model_forward_fn,
+        task_type=task_type,
+        device=device,
+        use_sklearn_interface_for_validation=use_sklearn_interface_for_validation,
+        model_for_validation=model_for_validation
+    )
+    model.eval()
+    optimizer.eval()
+    with torch.no_grad():
+        best_validation_loss = validate_tabpfn_fn(
+            model=model,
+        )  # Initial validation loss
+    adaptive_es.update(cur_round=0, is_best=True)
+
+    # Setup step results trace
+    step_results_over_time = []
+    step_results_over_time.append(
+        FineTuneStepResults(
+            step_index=0,
+            best_validation_loss=best_validation_loss,
+            best_validation_score=validation_metric.convert_error_to_score(
+                best_validation_loss,
+            ),
+            training_loss=0.0,
+            validation_loss=best_validation_loss,
+            patience_left=adaptive_es.remaining_patience(cur_round=0),
+            time_left=time_limit,
+            device_utilization=torch.cuda.utilization(device=device)
+            if device == SupportedDevice.GPU
+            else 0.0,
+            step_with_update=False,
+            optimizer_step_skipped=False,
+            grad_norm_before_clip=-1,
+        ),
+    )
+    torch.save(
+        dict(
+            state_dict=model.module.state_dict() if is_data_parallel else model.state_dict(),
+            config=checkpoint_config),
+        str(save_path_to_fine_tuned_model),
+    )
+    logger.debug(f"Initial validation loss: {best_validation_loss}")
+
+    # Setup data loader
+    data_loader = get_data_loader(
+        X_train=X_train,
+        y_train=y_train,
+        batch_size=fts.batch_size,
+        max_steps=fts.max_steps,
+        torch_rng=torch_rng,
+        is_classification=is_classification,
+        num_workers=fts.data_loader_workers,
+    )
+    # Setup progress bar
+    iter_steps_pbar = tqdm(
+        enumerate(data_loader, start=1),
+        desc="Fine-tuning Steps",
+        total=fts.max_steps,
+        initial=1,
+        disable=disable_progress_bar,
+    )
+
+    # Fine-Tuning Loop
+    early_stop_no_imp = False
+    early_stop_no_time = False
+    gradient_accumulation_steps = (
+        fts.update_every_n_steps if fts.update_every_n_steps > 1 else None
+    )
+    optimizer.zero_grad()
+    skipped_steps = 0
+    for step_i, batch_data in iter_steps_pbar:
+        # Check for updating
+        update_now = (step_i + 1) % fts.update_every_n_steps == 0
+        validate_now = (step_i + 1) % fts.validate_every_n_steps == 0
+
+        model.train()
+        optimizer.train()
+        step_results = _fine_tune_step(
+            batch_X_train=batch_data["X_train"],
+            batch_X_test=batch_data["X_test"],
+            batch_y_train=batch_data["y_train"],
+            batch_y_test=batch_data["y_test"],
+            device=device,
+            optimizer=optimizer,
+            model_forward_fn=model_forward_fn,
+            loss_fn=fts.loss_fn,
+            gradient_accumulation_steps=gradient_accumulation_steps,
+            # Updated by the loop
+            model=model,
+            scaler=scaler,
+            step_with_update=update_now,
+        )
+
+        if step_results.optimizer_step_skipped:
+            logger.info("\nOptimizer step skipped due to NaNs/infs in grad scaling.")
+            validate_now = False
+            skipped_steps += 1
+
+        # -- Validate & save model
+        if validate_now:
+            model.eval()
+            optimizer.eval()
+            with torch.no_grad():
+                validation_loss = validate_tabpfn_fn(model=model)
+
+            # -- Check tuning state
+            is_best = validation_loss < best_validation_loss
+            early_stop_no_imp = adaptive_es.update(
+                cur_round=(step_i - skipped_steps) // fts.update_every_n_steps,
+                is_best=is_best,
+            )
+            if is_best:
+                best_validation_loss = validation_loss
+                torch.save(
+                    dict(
+                        state_dict=model.module.state_dict() if is_data_parallel else model.state_dict(),
+                        config=checkpoint_config),
+                    str(save_path_to_fine_tuned_model),
+                )
+        else:
+            validation_loss = step_results_over_time[-1].validation_loss
+            early_stop_no_imp = False
+
+        time_spent = time.time() - st_time
+        time_left = time_limit - time_spent
+        early_stop_no_time = (time_left <= 0) or (
+            time_left <= ((time_spent / step_i) * 1.1)
+        )
+
+        # -- Track Progress
+        step_results = step_results.register_meta_state(
+            step_index=step_i,
+            validation_loss=validation_loss,
+            best_validation_loss=best_validation_loss,
+            best_validation_score=validation_metric.convert_error_to_score(
+                best_validation_loss,
+            ),
+            patience_left=adaptive_es.remaining_patience(
+                cur_round=(step_i - skipped_steps) // fts.update_every_n_steps,
+            ),
+            time_left=time_left,
+        )
+        if use_wandb:
+            wandb.log(
+                {
+                    "train_loss": step_results.training_loss,
+                    "val_loss": step_results.validation_loss,
+                    "grad_norm": step_results.grad_norm_before_clip,
+                },
+            )
+        iter_steps_pbar.set_postfix(step_results.to_results_dict())
+        step_results_over_time.append(step_results)
+
+        # Fix Initial training loss
+        if step_i == 1:
+            step_results_over_time[0].training_loss = step_results.training_loss
+
+        # -- Early Stopping
+        # Break from adaptive early stopping
+        # Break if not enough time for another epoch
+        if early_stop_no_imp or early_stop_no_time:
+            break
+
+    _tore_down_tuning(
+        task_type=task_type,
+        step_results_over_time=step_results_over_time,
+        fts=fts,
+        early_stop_no_imp=early_stop_no_imp,
+        early_stop_no_time=early_stop_no_time,
+        show_training_curve=show_training_curve,
+        st_time=st_time,
+    )
+
+
+def _model_forward(
+    *,
+    model: PerFeatureTransformer,
+    X_train: torch.Tensor,  # (n_samples, batch_size, n_features)
+    y_train: torch.Tensor,  # (n_samples, batch_size, 1)
+    X_test: torch.Tensor,  # (n_samples, batch_size, n_features)
+    n_classes: int | None,
+    softmax_temperature: torch.Tensor | None = None,
+    categorical_features_index: list[torch.Tensor] | None,
+    use_autocast: bool = True,
+    forward_for_validation: bool = False,
+    device: SupportedDevice,
+    outer_loop_autocast: bool = False,
+    is_data_parallel: bool,
+) -> torch.Tensor:
+    """Wrapper function to perform a forward pass with a TabPFN model.
+
+    Arguments:
+    ----------
+    model: PerFeatureTransformer
+        The model to use for the forward pass.
+    X_train: torch.Tensor
+        The training features.
+    y_train: torch.Tensor
+        The training target.
+    X_test: torch.Tensor
+        The test features.
+    n_classes: int | None
+        The number of classes for classification tasks, otherwise None.
+    softmax_temperature: torch.Tensor | None
+        The softmax temperature for the model, used to scale the logits.
+        If None, no scaling is applied.
+    categorical_features_index: list[int] | None
+        The indices of the categorical features.
+    use_autocast: bool
+        Whether to use FP16 precision for the forward pass.
+        This is required for flash attention!
+    forward_for_validation: boo
+        If True, this indicates that this is a forward pass for a validation score.
+        This means that a regression model will return predictions instead of logits for the bar distribution.
+    device: SupportedDevice
+        The device to use for autocasting in the forward pass.
+
+    Returns:
+    --------
+    pred_logits: torch.Tensor
+        The predicted logits of the model. Logits are softmax scaled and selected down to:
+            - classification: (n_samples, batch_size, n_classes)
+            - regression: (n_samples, batch_size)
+    """
+    is_classification = n_classes is not None
+    if not is_classification:
+        # TabPFN model assumes z-normalized inputs.
+        mean = y_train.mean(dim=0)
+        std = y_train.std(dim=0)
+        y_train = (y_train - mean) / std
+
+    forward_kwargs = dict(
+        train_x=X_train,
+        train_y=y_train,
+        test_x=X_test,
+        categorical_inds=categorical_features_index,
+    )
+
+    if outer_loop_autocast:
+        pred_logits = model(**forward_kwargs)
+    else:
+        with autocast(device_type=device, enabled=use_autocast):
+            pred_logits = model(**forward_kwargs)
+
+    if is_classification:
+        pred_logits = pred_logits[:, :, :n_classes].float()
+
+        if softmax_temperature is not None:
+            pred_logits = pred_logits / softmax_temperature
+    else:
+        # Need to go step-wise over batch size as bar_dist.mean() does not support batched output.
+        pred_logits = pred_logits.float()
+
+        if softmax_temperature is not None:
+            pred_logits = pred_logits / softmax_temperature
+
+        if forward_for_validation:
+            new_pred_logits = []
+            for batch_i in range(pred_logits.shape[1]):
+                bar_dist = deepcopy(model.module.criterion if is_data_parallel else model.criterion)
+                bar_dist.borders = (
+                    bar_dist.borders * std[batch_i] + mean[batch_i]
+                ).float()
+                new_pred_logits.append(bar_dist.mean(pred_logits[:, batch_i, :]))
+            pred_logits = torch.stack(new_pred_logits, dim=-1)
+
+    return pred_logits
+
+
+def _fine_tune_step(
+    *,
+    batch_X_train: torch.Tensor,
+    batch_X_test: torch.Tensor,
+    batch_y_train: torch.Tensor,
+    batch_y_test: torch.Tensor,
+    device: SupportedDevice,
+    model: PerFeatureTransformer,
+    optimizer: Optimizer,
+    model_forward_fn: Callable,
+    loss_fn: _Loss,
+    scaler: GradScaler,
+    step_with_update: bool,
+    gradient_accumulation_steps: int | None = None,
+) -> FineTuneStepResults:
+    """Perform one fine-tuning step for a TabPFN model.
+
+    Arguments:
+    ----------
+    batch_X_train: torch.Tensor
+        The training features.
+    batch_X_test: torch.Tensor
+        The test features.
+    batch_y_train: torch.Tensor
+        The training target.
+    batch_y_test: torch.Tensor
+        The test target.
+    device: SupportedDevice
+        The device to use for fine-tuning.
+    model: PerFeatureTransformer
+        The model to fine-tune.
+    optimizer: torch.optim.Optimizer
+        The optimizer to use for fine-tuning.
+    model_forward_fn: Callable
+        The forward pass function for the model.
+    loss_fn: _Loss
+        The loss function to use.
+    scaler: GradScaler
+        The gradient scaler to use for FP16 precision.
+    step_with_update: bool
+        Whether the optimizer, lr scheduler, and grad scaler shall be updated in this step.
+    gradient_accumulation_steps: int
+        The number of steps to accumulate gradients before updating the model.
+
+    Returns:
+    --------
+    model: PerFeatureTransformer
+        The fine-tuned model.
+    step_results: FineTuneStepResults
+        The results of the fine-tuning step.
+    """
+    # Move batch dimensions
+    batch_X_train = torch.movedim(batch_X_train, 0, 1).to(device)
+    batch_X_test = torch.movedim(batch_X_test, 0, 1).to(device)
+    batch_y_train = torch.movedim(batch_y_train, 0, 1).to(device)
+    batch_y_test = torch.movedim(batch_y_test, 0, 1).to(device)
+
+    # Forward Mixed Precision
+    with autocast(device_type=device, enabled=scaler.is_enabled()):
+        pred_logits = model_forward_fn(  # autocast in model_forward_fn
+            model=model,
+            X_train=batch_X_train,
+            y_train=batch_y_train,
+            X_test=batch_X_test,
+            outer_loop_autocast=True,
+        )
+        loss = compute_loss(loss_fn=loss_fn, logits=pred_logits, target=batch_y_test)
+
+        if gradient_accumulation_steps is not None:
+            loss = loss / gradient_accumulation_steps
+
+    # Backward, Scaled for Mixed Precision
+    scaler.scale(loss).backward()
+
+    # Update
+    optimizer_step_skipped = False
+    grad_norm = -1
+    if step_with_update:
+        # Clip grads
+        scaler.unscale_(optimizer)
+        grad_norm = torch.nn.utils.clip_grad_norm_(
+            model.parameters(),
+            max_norm=1.0,
+            error_if_nonfinite=False,
+        ).item()
+
+        # Step optimizer and scaler
+        org_scale = scaler.get_scale()
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer_step_skipped = org_scale > scaler.get_scale()
+
+        # Zero grad here due to gradient accumulation
+        optimizer.zero_grad()
+
+    return FineTuneStepResults(
+        training_loss=loss.item()
+        if gradient_accumulation_steps is None
+        else loss.item() * gradient_accumulation_steps,
+        device_utilization=torch.cuda.utilization(device=device)
+        if device == SupportedDevice.GPU
+        else 0.0,
+        step_with_update=step_with_update,
+        optimizer_step_skipped=optimizer_step_skipped,
+        grad_norm_before_clip=grad_norm,
+    )
+
+
+def _setup_tuning(
+    *,
+    # Learning HPs
+    learning_rate: float = 1e-8,
+    batch_size: int = 1,
+    update_every_n_steps: int = 1,
+    validate_every_n_steps: int = 1,
+    max_steps: int = 10000,
+    adaptive_rate: float = 0.2,
+    adaptive_offset: int = 5,
+    min_patience: int = 20,
+    max_patience: int = 100,
+    data_loader_workers: int = 1,
+    # Metadata
+    model: PerFeatureTransformer,
+    task_type: TaskType,
+    is_classification: bool,
+    is_data_parallel: bool,
+) -> FineTuneSetup:
+    return FineTuneSetup(
+        optimizer=AdamWScheduleFree(model.parameters(), lr=learning_rate),
+        max_steps=max_steps,
+        adaptive_es=AdaptiveES(
+            adaptive_rate=adaptive_rate,
+            adaptive_offset=adaptive_offset,
+            min_patience=min_patience,
+            max_patience=max_patience,
+        ),
+        update_every_n_steps=update_every_n_steps,
+        batch_size=batch_size,
+        validate_every_n_steps=validate_every_n_steps,
+        data_loader_workers=data_loader_workers,
+        loss_fn=get_loss(
+            task_type=task_type,
+            borders=None if is_classification else
+                    (model.module.criterion.borders if is_data_parallel else model.criterion.borders),
+        ),
+    )
+
+
+def _tore_down_tuning(
+    *,
+    early_stop_no_imp: bool,
+    early_stop_no_time: bool,
+    show_training_curve: bool,
+    st_time: float,
+    step_results_over_time: list[FineTuneStepResults],
+    fts: FineTuneSetup,
+    task_type: TaskType,
+) -> None:
+    # -- Early Stopping reason (after tqdm finished)
+    es_reason = None
+    if early_stop_no_imp:
+        es_reason = "Early stopping due to no improvement (AdaptiveES)."
+    if early_stop_no_time:
+        es_reason = "Early stopping due no time."
+    if es_reason is not None:
+        logger.log(10, es_reason)
+
+    # -- Final Report
+    best_step = np.argmin([x.validation_loss for x in step_results_over_time])
+    fine_tuning_report = f"""=== Fine-Tuning Report for TabPFN ===
+        \tTotal Time Spent: {time.time() - st_time}
+        \tInitial Validation Loss: \t {step_results_over_time[0].validation_loss}
+        \tBest Validation Loss: \t {step_results_over_time[-1].best_validation_loss}
+        \tTotal Steps: {len(step_results_over_time)}
+        \tBest Step: {best_step}
+        \tEarly Stopping Reason: {es_reason}
+        \tAvg. Time per Step: {(time.time() - st_time) / len(step_results_over_time)}
+        \tAvg. Device Utilization: {np.mean([step.device_utilization for step in step_results_over_time])}
+        """
+    logger.info(fine_tuning_report)
+
+    if show_training_curve:
+        # --- Short Plot Hack
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+
+        train_loss_over_time = [step.training_loss for step in step_results_over_time]
+        raw_train_loss_over_time = train_loss_over_time[:]
+        for i in range(1, len(train_loss_over_time) + 1):
+            train_loss_over_time[i - 1] = np.mean(
+                raw_train_loss_over_time[max(0, i - fts.update_every_n_steps) : i],
+            )
+        validation_loss_over_time = [
+            step.validation_loss for step in step_results_over_time
+        ]
+        plot_df = pd.DataFrame(
+            {
+                "train_loss": train_loss_over_time,
+                "raw_train_loss": raw_train_loss_over_time,
+                "validation_loss": validation_loss_over_time,
+                "step": range(len(train_loss_over_time)),
+            },
+        )
+        sns_plot_df = plot_df.melt(
+            id_vars="step",
+            value_vars=["train_loss", "validation_loss"],
+            var_name="loss_type",
+            value_name="loss",
+        )
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax = sns.lineplot(
+            data=sns_plot_df,
+            x="step",
+            y="loss",
+            hue="loss_type",
+            ax=ax,
+            linewidth=3,
+        )
+        ax.axvline(
+            x=best_step,
+            color="red",
+            linestyle="--",
+            linewidth=2,
+            label="Best Step",
+        )
+        ax.legend(title="Legend")
+
+        if fts.update_every_n_steps > 1:
+            sns_plot_df = plot_df.melt(
+                id_vars="step",
+                value_vars=["raw_train_loss"],
+                var_name="loss_type",
+                value_name="loss",
+            )
+            sns.lineplot(
+                data=sns_plot_df,
+                x="step",
+                y="loss",
+                hue="loss_type",
+                ax=ax,
+                c="blue",
+                alpha=0.5,
+                linewidth=3,
+            )
+
+        plt.savefig(f"fine_tuning_loss_plot_{task_type}.png")
+        plt.show()
+
+
+
+================================================
+FILE: finetuning_scripts/metric_utils/__init__.py
+================================================
+[Empty file]
+
+
+================================================
+FILE: finetuning_scripts/metric_utils/ag_classification_metrics.py
+================================================
+"""Classification metrics code from AutoGluon!
+
+Ref: https://github.com/autogluon/autogluon/blob/master/core/src/autogluon/core/metrics/classification_metrics.py
+"""
+
+from __future__ import annotations
+
+import logging
+
+import numpy as np
+import pandas as pd
+import sklearn
+from scipy.sparse import coo_matrix
+from sklearn.metrics import cohen_kappa_score
+from sklearn.utils import check_consistent_length
+from sklearn.utils.multiclass import unique_labels
+
+try:
+    from sklearn.metrics._classification import _check_targets, type_of_target
+except:
+    from sklearn.metrics.classification import _check_targets, type_of_target
+
+logger = logging.getLogger(__name__)
+
+
+def balanced_accuracy(solution, prediction):
+    y_type, solution, prediction = _check_targets(solution, prediction)
+
+    if y_type not in ["binary", "multiclass", "multilabel-indicator"]:
+        raise ValueError(f"{y_type} is not supported")
+
+    if y_type == "binary":
+        # Do not transform into any multiclass representation
+        pass
+
+    elif y_type == "multiclass":
+        n = len(solution)
+        unique_sol, encoded_sol = np.unique(solution, return_inverse=True)
+        unique_pred, encoded_pred = np.unique(prediction, return_inverse=True)
+        classes = np.unique(np.concatenate((unique_sol, unique_pred)))
+        map_sol = np.array([np.where(classes == c)[0][0] for c in unique_sol])
+        map_pred = np.array([np.where(classes == c)[0][0] for c in unique_pred])
+        # one hot encoding
+        sol_ohe = np.zeros((n, len(classes)))
+        pred_ohe = np.zeros((n, len(classes)))
+        sol_ohe[np.arange(n), map_sol[encoded_sol]] = 1
+        pred_ohe[np.arange(n), map_pred[encoded_pred]] = 1
+        solution = sol_ohe
+        prediction = pred_ohe
+
+    elif y_type == "multilabel-indicator":
+        solution = solution.toarray()
+        prediction = prediction.toarray()
+    else:
+        raise NotImplementedError(f"bac_metric does not support task type {y_type}")
+
+    fn = np.sum(np.multiply(solution, (1 - prediction)), axis=0, dtype=float)
+    tp = np.sum(np.multiply(solution, prediction), axis=0, dtype=float)
+    # Bounding to avoid division by 0
+    eps = 1e-15
+    tp = np.maximum(eps, tp)
+    pos_num = np.maximum(eps, tp + fn)
+    tpr = tp / pos_num  # true positive rate (sensitivity)
+
+    if y_type in ("binary", "multilabel-indicator"):
+        tn = np.sum(np.multiply((1 - solution), (1 - prediction)), axis=0, dtype=float)
+        fp = np.sum(np.multiply((1 - solution), prediction), axis=0, dtype=float)
+        tn = np.maximum(eps, tn)
+        neg_num = np.maximum(eps, tn + fp)
+        tnr = tn / neg_num  # true negative rate (specificity)
+        bac = 0.5 * (tpr + tnr)
+    elif y_type == "multiclass":
+        bac = tpr
+    else:
+        raise ValueError(y_type)
+
+    return np.mean(bac)  # average over all classes
+
+
+def pac(solution, prediction):
+    """Probabilistic Accuracy based on log_loss metric.
+    We assume the solution is in {0, 1} and prediction in [0, 1].
+    Otherwise, run normalize_array.
+    :param solution:
+    :param prediction:
+    :param task:
+    :return:
+    """
+
+    def normalize_array(solution, prediction):
+        """Use min and max of solution as scaling factors to normalize prediction,
+        then threshold it to [0, 1].
+        Binarize solution to {0, 1}. This allows applying classification
+        scores to all cases. In principle, this should not do anything to
+        properly formatted classification inputs and outputs.
+        :param solution:
+        :param prediction:
+        :return:
+        """
+        # Binarize solution
+        sol = np.ravel(solution)  # convert to 1-d array
+        maxi = np.nanmax(sol[np.isfinite(sol)])
+        mini = np.nanmin(sol[np.isfinite(sol)])
+        if maxi == mini:
+            logger.debug("Warning: cannot normalize array")
+            return [solution, prediction]
+        diff = maxi - mini
+        mid = (maxi + mini) / 2.0
+
+        solution[solution >= mid] = 1
+        solution[solution < mid] = 0
+        # Normalize and threshold predictions (takes effect only if solution not
+        # in {0, 1})
+
+        prediction -= float(mini)
+        prediction /= float(diff)
+
+        # and if predictions exceed the bounds [0, 1]
+        prediction[prediction > 1] = 1
+        prediction[prediction < 0] = 0
+        # Make probabilities smoother
+        # new_prediction = np.power(new_prediction, (1./10))
+
+        return [solution, prediction]
+
+    def log_loss(solution, prediction, task):
+        """Log loss for binary and multiclass."""
+        [sample_num, label_num] = solution.shape
+        # Lower gives problems with float32!
+        eps = 0.00000003
+
+        if (task == "multiclass") and (label_num > 1):
+            # Make sure the lines add up to one for multi-class classification
+            norma = np.sum(prediction, axis=1)
+            for k in range(sample_num):
+                prediction[k, :] /= np.maximum(norma[k], eps)
+
+            sample_num = solution.shape[0]
+            for i in range(sample_num):
+                j = np.argmax(solution[i, :])
+                solution[i, :] = 0
+                solution[i, j] = 1
+
+            solution = solution.astype(np.int32, copy=False)
+            # For the base prediction, this solution is ridiculous in the
+            # multi-label case
+
+            # Bounding of predictions to avoid log(0),1/0,...
+        prediction = np.minimum(1 - eps, np.maximum(eps, prediction))
+        # Compute the log loss
+        pos_class_log_loss = -np.mean(solution * np.log(prediction), axis=0)
+        if (task != "multiclass") or (label_num == 1):
+            # The multi-label case is a bunch of binary problems.
+            # The second class is the negative class for each column.
+            neg_class_log_loss = -np.mean(
+                (1 - solution) * np.log(1 - prediction),
+                axis=0,
+            )
+            log_loss = pos_class_log_loss + neg_class_log_loss
+            # Each column is an independent problem, so we average.
+            # The probabilities in one line do not add up to one.
+            # log_loss = mvmean(log_loss)
+            # print('binary {}'.format(log_loss))
+            # In the multilabel case, the right thing i to AVERAGE not sum
+            # We return all the scores so we can normalize correctly later on
+        else:
+            # For the multiclass case the probabilities in one line add up one.
+            log_loss = pos_class_log_loss
+            # We sum the contributions of the columns.
+            log_loss = np.sum(log_loss)
+            # print('multiclass {}'.format(log_loss))
+        return log_loss
+
+    def prior_log_loss(frac_pos, task):
+        """Baseline log loss.
+        For multiple classes or labels return the values for each column.
+        """
+        eps = 1e-15
+        frac_pos_ = np.maximum(eps, frac_pos)
+        if task != "multiclass":  # binary case
+            frac_neg = 1 - frac_pos
+            frac_neg_ = np.maximum(eps, frac_neg)
+            pos_class_log_loss_ = -frac_pos * np.log(frac_pos_)
+            neg_class_log_loss_ = -frac_neg * np.log(frac_neg_)
+            base_log_loss = pos_class_log_loss_ + neg_class_log_loss_
+            # base_log_loss = mvmean(base_log_loss)
+            # print('binary {}'.format(base_log_loss))
+            # In the multilabel case, the right thing i to AVERAGE not sum
+            # We return all the scores so we can normalize correctly later on
+        else:  # multiclass case
+            fp = frac_pos_ / sum(
+                frac_pos_,
+            )  # Need to renormalize the lines in multiclass case
+            # Only ONE label is 1 in the multiclass case active for each line
+            pos_class_log_loss_ = -frac_pos * np.log(fp)
+            base_log_loss = np.sum(pos_class_log_loss_)
+        return base_log_loss
+
+    y_type = type_of_target(solution)
+
+    if isinstance(solution, pd.Series):
+        solution = solution.values
+    if isinstance(prediction, pd.Series):
+        prediction = prediction.values
+
+    if y_type == "binary":
+        if len(solution.shape) == 1:
+            solution = solution.reshape((-1, 1))
+        if len(prediction.shape) == 1:
+            prediction = prediction.reshape((-1, 1))
+        if len(prediction.shape) == 2:
+            if prediction.shape[1] > 2:
+                raise ValueError(
+                    f"A prediction array with probability values "
+                    f"for {prediction.shape[1]} classes is not a binary "
+                    f"classification problem",
+                )
+            # Prediction will be copied into a new binary array - no copy
+            prediction = prediction.reshape((-1, 1))
+        else:
+            raise ValueError(f"Invalid prediction shape {prediction.shape}")
+
+    elif y_type == "multiclass":
+        if len(solution.shape) == 2:
+            if solution.shape[1] > 1:
+                raise ValueError(
+                    f"Solution array must only contain one class "
+                    f"label, but contains {solution.shape[1]}",
+                )
+        elif len(solution.shape) == 1:
+            pass
+        else:
+            raise ValueError(f"Solution.shape {solution.shape}")
+
+        # Need to create a multiclass solution and a multiclass predictions
+        max_class = prediction.shape[1] - 1
+        solution_binary = np.zeros((len(solution), max_class + 1))
+        for i in range(len(solution)):
+            solution_binary[i, int(solution[i])] = 1
+        solution = solution_binary
+
+    elif y_type == "multilabel-indicator":
+        solution = solution.copy()
+
+    else:
+        raise NotImplementedError(f"pac_score does not support task {y_type}")
+
+    solution, prediction = normalize_array(solution, prediction.copy())
+
+    sample_num, _ = solution.shape
+
+    eps = 1e-7
+    # Compute the base log loss (using the prior probabilities)
+    pos_num = 1.0 * np.sum(solution, axis=0, dtype=float)  # float conversion!
+    frac_pos = pos_num / sample_num  # prior proba of positive class
+    the_base_log_loss = prior_log_loss(frac_pos, y_type)
+    the_log_loss = log_loss(solution, prediction, y_type)
+
+    # Exponentiate to turn into an accuracy-like score.
+    # In the multi-label case, we need to average AFTER taking the exp
+    # because it is an NL operation
+    pac = np.mean(np.exp(-the_log_loss))
+    base_pac = np.mean(np.exp(-the_base_log_loss))
+    # Normalize: 0 for random, 1 for perfect
+    return (pac - base_pac) / np.maximum(eps, (1 - base_pac))
+
+
+def confusion_matrix(
+    solution,
+    prediction,
+    labels=None,
+    weights=None,
+    normalize=None,
+    output_format="numpy_array",
+):
+    """Computes confusion matrix for a given true and predicted targets
+    Parameters:
+        solution - true targets
+        prediction - predicted targets
+        labels - list of labels for which confusion matrix should be calculated
+        weights - list of weights of each target
+        normalize - should the output be normalized. Can take values {'true', 'pred', 'all'}
+        output_format - output format of the matrix. Can take values {'python_list', 'numpy_array', 'pandas_dataframe'}
+    TODO : Add dedicated confusion_matrix function to AbstractLearner.
+    """
+    y_type, solution, prediction = _check_targets(solution, prediction)
+    # Only binary and multiclass data is supported
+    if y_type not in ("binary", "multiclass"):
+        raise ValueError(f"{y_type} dataset is not currently supported")
+
+    if labels is None:
+        labels = unique_labels(solution, prediction)
+    else:
+        # Ensure that label contains only 1-D binary or multi-class array
+        labels_type = type_of_target(labels)
+        if labels_type not in ("binary", "multiclass"):
+            raise ValueError(f"{labels_type} labels are not supported")
+        labels = np.array(labels)
+
+    if weights is None:
+        weights = np.ones(solution.size, dtype=int)
+    else:
+        # Ensure that weights contains only 1-D integer or float array
+        weights_type = type_of_target(weights)
+        if weights_type not in ("binary", "multiclass", "continuous"):
+            raise ValueError(f"{weights_type} weights are not supported")
+        weights = np.array(weights)
+
+    n_labels = labels.size
+    if n_labels == 0:
+        raise ValueError("Labels cannot be empty")
+    if (np.unique(labels)).size != n_labels:
+        raise ValueError("Labels cannot have duplicates")
+
+    if solution.size == 0 or prediction.size == 0:
+        return np.zeros((n_labels, n_labels), dtype=int)
+
+    label_to_index = {y: x for x, y in enumerate(labels)}
+
+    check_consistent_length(solution, prediction, weights)
+
+    # Invalidate indexes with target labels outside the accepted set of labels
+    valid_indexes = np.logical_and(
+        np.isin(solution, labels),
+        np.isin(prediction, labels),
+    )
+    solution = np.array([label_to_index.get(i) for i in solution[valid_indexes]])
+    prediction = np.array([label_to_index.get(i) for i in prediction[valid_indexes]])
+    weights = weights[valid_indexes]
+    # For high precision
+    matrix_dtype = np.int64 if weights.dtype.kind in {"i", "u", "b"} else np.float64
+    cm = coo_matrix(
+        (weights, (solution, prediction)),
+        shape=(n_labels, n_labels),
+        dtype=matrix_dtype,
+    ).toarray()
+    with np.errstate(all="ignore"):
+        if normalize == "true":
+            cm = cm / cm.sum(axis=1, keepdims=True)
+        elif normalize == "pred":
+            cm = cm / cm.sum(axis=0, keepdims=True)
+        elif normalize == "all":
+            cm = cm / cm.sum()
+        cm = np.nan_to_num(cm)
+    if output_format == "python_list":
+        return cm.tolist()
+    if output_format == "numpy_array":
+        return cm
+    if output_format == "pandas_dataframe":
+        return pd.DataFrame(data=cm, index=labels, columns=labels)
+    return cm
+
+
+# TODO Add the "labels" option to metrics that will require the label map.
+#  We will need to update how we use those metrics accordingly.
+def quadratic_kappa(y_true, y_pred):
+    """Calculate the cohen kappa score with quadratic weighting scheme.
+
+    This is also known as "quadratic kappa" in the Kaggle competitions
+    such as petfinder: https://www.kaggle.com/c/petfinder-adoption-prediction/overview/evaluation
+
+    We will also support probabilistic input to ensure that the function knows
+    the number of possible classes.
+
+    Parameters
+    ----------
+    y_true
+        Shape (#samples,)
+    y_pred
+        Shape (#samples, #class) or (#samples,)
+
+    Returns:
+    -------
+    score
+        scalar score
+    """
+    labels = None
+    if y_pred.ndim > 1:
+        if labels is not None:
+            assert len(labels) == y_pred.shape[1]
+        else:
+            labels = np.arange(y_pred.shape[1])
+        y_pred = np.argmax(y_pred, axis=-1)
+    return cohen_kappa_score(y_true, y_pred, labels=labels, weights="quadratic")
+
+
+# Refer to https://github.com/scikit-learn/scikit-learn/blame/f3f51f9b611bf873bd5836748647221480071a87/sklearn/metrics/_ranking.py#L985-L1000
+#  for the original logic and full explanation of what this does. This number has no impact on the score calculated, and is purely for speed.
+#  This value was chosen as having a lower value simply slows down the majority of function calls more than it speeds them up.
+#  It was observed that function calls were sped up by 25% by increasing this from 2 to 100000.
+#  Values greater than this were not tested but would be marginal difference as large samples get less speed up.
+_OPTIMIZE_INDICES_THRESHOLD = 100000
+
+
+def customized_binary_roc_auc_score(
+    y_true: np.array | pd.Series,
+    y_score: np.array | pd.Series,
+    **kwargs,
+) -> float:
+    """Functionally identical to sklearn.metrics.roc_auc_score for binary classification.
+    Streamlined for binary classification to be faster by ~5x by avoiding validation checks of the inputs.
+    We can do this in AutoGluon because we guarantee the data is of proper form when entering this logic.
+
+    Parameters
+    ----------
+    y_true : Union[np.array, pd.Series] of type int
+        Ground truth (correct) labels for n_samples samples. shape = (n_samples,)
+        Valid sample values are 1 and 0.
+    y_score : Union[np.array, pd.Series] of type float
+        The prediction probabilities. shape = (n_samples,)
+    **kwargs :
+        Any additional arguments. If not empty, will fall back to sklearn's implementation
+
+    Returns:
+    -------
+    roc_auc_score : float
+        The roc_auc_score in higher_is_better format.
+    """
+    if isinstance(y_true, pd.Series):
+        y_true = y_true.values
+    if isinstance(y_score, pd.Series):
+        y_score = y_score.values
+    if y_true.size == 0 or y_score.size == 0:
+        raise ValueError(
+            "Found array with 0 sample(s) (shape=(0,)) while a minimum of 1 is required.",
+        )
+    if kwargs:
+        return sklearn.metrics.roc_auc_score(y_true, y_score, **kwargs)
+
+    desc_score_indices = np.argsort(y_score, kind="mergesort")[::-1]
+    y_score = y_score[desc_score_indices]
+    y_true = y_true[desc_score_indices]
+
+    # keep only indices that have different values to speed up future computation
+    distinct_value_indices = np.where(np.diff(y_score))[0]
+    # np.r_ is an optimized way to merge two or more arrays and/or singular values into one array
+    threshold_idxs = np.r_[distinct_value_indices, y_true.size - 1]
+
+    # keep track of how many true positives and false positives have occurred at each threshold
+    tps = np.cumsum(y_true)[threshold_idxs]
+    fps = 1 + threshold_idxs - tps
+
+    if tps.size > _OPTIMIZE_INDICES_THRESHOLD:
+        # optimize indices only when there is enough size to justify
+        # this has no impact on the final score
+        optimal_idxs = np.where(
+            np.r_[True, np.logical_or(np.diff(fps, 2), np.diff(tps, 2)), True],
+        )[0]
+        fps = fps[optimal_idxs]
+        tps = tps[optimal_idxs]
+
+    # Add an extra threshold position
+    # to make sure that the curve starts at (0, 0)
+    tps = np.r_[0, tps]
+    fps = np.r_[0, fps]
+    if fps[-1] <= 0 or tps[-1] <= 0:
+        raise ValueError(
+            "Only one class present in y_true. ROC AUC score is not defined in that case.",
+        )
+    fpr = fps / fps[-1]
+    tpr = tps / tps[-1]
+    return np.trapezoid(tpr, fpr)
+
+
+
+================================================
+FILE: finetuning_scripts/metric_utils/ag_metrics.py
+================================================
+"""Code for metric functions copied from AutoGluon.
+
+Minor modifications by removing some task types and moving some logic inside the functions.
+
+Ref: https://github.com/autogluon/autogluon/blob/master/core/src/autogluon/core/metrics/__init__.py
+"""
+
+from __future__ import annotations
+
+import json
+from abc import ABCMeta, abstractmethod
+from functools import partial
+
+import numpy as np
+import scipy
+import scipy.stats
+import sklearn.metrics
+
+try:
+    from sklearn.metrics._classification import type_of_target
+except:
+    from sklearn.metrics.classification import type_of_target
+
+from finetuning_scripts.constant_utils import TaskType
+from finetuning_scripts.metric_utils import (
+    ag_classification_metrics as classification_metrics,
+)
+
+BINARY = TaskType.BINARY_CLASSIFICATION
+MULTICLASS = TaskType.MULTICLASS_CLASSIFICATION
+REGRESSION = TaskType.REGRESSION
+
+
+class Scorer(metaclass=ABCMeta):
+    """Scorer wraps an external or custom metric function to align it with AutoGluon's metric logic and API.
+    Scorer will alter the returned metric output to ensure higher_is_better and to allow computing metric error. This greatly simplifies downstream logic.
+    All metric logic within AutoGluon should use Scorer to ensure consistency whenever possible.
+
+    Parameters
+    ----------
+    name : str
+        Name of the metric. Used in logs and as a key in dictionaries when multiple metric outputs are computed.
+    score_func : callable
+        Scoring metric function that will be called internally to score.
+        Required to be a callable with the first two arguments corresponding to y_true, y_pred that returns a float indicating the metric value.
+    optimum : float
+        The highest/best value the metric can return. For example, optimal=1 for accuracy, optimal=0 for mean_squared_error.
+        This is used to calculate regret / error. For example, a score of 1 for accuracy would have an error of 0.
+        NOTE: This value should be for the original score_func prior to changing the sign of the metric output.
+            For example, if score_func is lower_is_better with an optimum of -2 (aka a value of 0.5 has an error of 2.5),
+            then you should specify `optimum=-2, sign=-1`.
+    sign : int
+        Valid values are 1 and -1.
+        The sign of the metric to ensure greater_is_better.
+        For score metrics such as accuracy and r2, the sign should be 1.
+        For error metrics such as log_loss and mean_squared_error, the sign should be -1.
+    kwargs : dict, optional
+        kwargs to pass to score_func when called.
+        For example, kwargs = {"beta": 2} when using sklearn.metrics.fbeta_score where beta is a required argument.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        score_func: callable,
+        optimum: float,
+        sign: int,
+        kwargs: dict | None = None,
+    ):
+        self.name = name
+        if kwargs is None:
+            kwargs = dict()
+        self._kwargs = kwargs
+        self._score_func = score_func
+        self._optimum = optimum
+        if sign not in (1, -1):
+            raise ValueError(f"sign must be one of [1, -1], but was instead {sign}")
+        self._sign = sign
+        self.alias = set()
+
+    def __call__(self, y_true, y_pred, sample_weight=None, **kwargs) -> float:
+        """Evaluate predicted target values for X relative to y_true.
+
+        Parameters
+        ----------
+        y_true : array-like
+            Gold standard target values for X.
+        y_pred : array-like, [n_samples x n_classes]
+            Model predictions
+        sample_weight : array-like, optional (default=None)
+            Sample weights.
+        **kwargs :
+            Keyword arguments passed to the inner metric __call__ method.
+            If keys are shared with kwargs in Scorer.__init__, this will take priority.
+
+        Returns:
+        -------
+        score : float
+            Score function applied to prediction of estimator on X.
+        """
+        if kwargs is None:
+            k = self._kwargs.copy()
+        elif self._kwargs is None:
+            k = kwargs
+        else:
+            k = self._kwargs.copy()
+            k.update(kwargs)
+        if k is None:
+            k = dict()
+        if sample_weight is not None:
+            k["sample_weight"] = sample_weight
+
+        return self._score(y_true=y_true, y_pred=y_pred, **k)
+
+    def error(self, *args, **kwargs) -> float:
+        """Returns error in lower_is_better format.
+        An error of 0 indicates a perfect score.
+
+        Equivalent to `scorer.convert_score_to_error(scorer(*args, **kwargs))`
+        """
+        score = self(*args, **kwargs)
+        return self.convert_score_to_error(score)
+
+    def convert_score_to_error(self, score: float) -> float:
+        """Converts score in higher_is_better format to error in lower_is_better format.
+
+        An error of 0 indicates a perfect score.
+        """
+        return self.optimum - score
+
+    def convert_error_to_score(self, error: float) -> float:
+        """Converts error in lower_is_better format to score in higher_is_better format.
+
+        An error of 0 indicates a perfect score.
+        """
+        return self.optimum - error
+
+    @property
+    def optimum(self) -> float:
+        """The highest/best value the metric can return in higher_is_better format. For example, optimal=1 for accuracy, optimal=0 for mean_squared_error.
+        This is used to calculate regret / error. For example, a score of 1 for accuracy would have an error of 0.
+        """
+        return self.convert_score_to_original(self._optimum)
+
+    def _score(self, y_true, y_pred, **kwargs) -> float:
+        y_true, y_pred, kwargs = self._preprocess(
+            y_true=y_true,
+            y_pred=y_pred,
+            **kwargs,
+        )
+        return self._sign * self._score_func(y_true, y_pred, **kwargs)
+
+    def add_alias(self, alias):
+        if alias == self.name:
+            raise ValueError(
+                f'The alias "{alias}" is the same as the original name "{self.name}". '
+                f"This is not allowed.",
+            )
+        self.alias.add(alias)
+
+    @property
+    def greater_is_better(self) -> bool:
+        """Return whether the score returned by scorer(...) is in greater_is_better format.
+        By default, all Scorers are in greater_is_better format.
+
+        Returns:
+        -------
+        flag :
+            The "greater_is_better" flag.
+        """
+        return True
+
+    @property
+    def greater_is_better_internal(self) -> bool:
+        """Return whether the inner self.score_func returns metric values in greater_is_better format.
+
+        We use the stored `sign` variable to decide the property.
+        Users should not need to access this property during normal usage.
+
+        Returns:
+        -------
+        flag :
+            The "greater_is_better_internal" flag.
+        """
+        return self._sign > 0
+
+    def convert_score_to_original(self, score: float) -> float:
+        """Scores are always greater_is_better, this flips the sign of metrics who were originally lower_is_better."""
+        return self._sign * score
+
+    @abstractmethod
+    def _preprocess(self, y_true, y_pred, **kwargs):
+        raise NotImplementedError
+
+    def __repr__(self) -> str:
+        return self.name
+
+    @property
+    @abstractmethod
+    def needs_pred(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def needs_proba(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def needs_class(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def needs_threshold(self) -> bool:
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def needs_quantile(self) -> bool:
+        raise NotImplementedError
+
+    score = __call__
+
+
+class _PredictScorer(Scorer):
+    def _preprocess(self, y_true, y_pred, **kwargs):
+        if isinstance(y_true, list):
+            y_true = np.array(y_true)
+        if isinstance(y_pred, list):
+            y_pred = np.array(y_pred)
+
+        if len(y_pred.shape) == 1 or y_pred.shape[1] == 1:
+            pass  # must be regression, all other task types would return at least two probabilities
+        else:
+            type_true = type_of_target(y_true)
+            if type_true == "continuous":
+                pass
+            elif type_true in ["binary", "multiclass"]:
+                y_pred = np.argmax(y_pred, axis=1)
+            elif type_true == "multilabel-indicator":
+                y_pred[y_pred > 0.5] = 1.0
+                y_pred[y_pred <= 0.5] = 0.0
+            else:
+                raise ValueError(type_true)
+        return y_true, y_pred, kwargs
+
+    @property
+    def needs_pred(self):
+        return True
+
+    @property
+    def needs_proba(self):
+        return False
+
+    @property
+    def needs_class(self) -> bool:
+        return False
+
+    @property
+    def needs_threshold(self):
+        return False
+
+    @property
+    def needs_quantile(self):
+        return False
+
+
+class _ClassScorer(Scorer):
+    def _preprocess(self, y_true, y_pred, **kwargs):
+        if isinstance(y_true, list):
+            y_true = np.array(y_true)
+        if isinstance(y_pred, list):
+            y_pred = np.array(y_pred)
+
+        if len(y_pred.shape) == 1 or y_pred.shape[1] == 1:
+            pass  # FIXME
+        else:
+            type_true = type_of_target(y_true)
+            if type_true in ["binary", "multiclass"]:
+                y_pred = np.argmax(y_pred, axis=1)
+            elif type_true == "multilabel-indicator":
+                y_pred[y_pred > 0.5] = 1.0
+                y_pred[y_pred <= 0.5] = 0.0
+            else:
+                raise ValueError(type_true)
+        return y_true, y_pred, kwargs
+
+    @property
+    def needs_pred(self):
+        return True
+
+    @property
+    def needs_proba(self):
+        return False
+
+    @property
+    def needs_class(self) -> bool:
+        return True
+
+    @property
+    def needs_threshold(self):
+        return False
+
+    @property
+    def needs_quantile(self):
+        return False
+
+
+class _ProbaScorer(Scorer):
+    def _preprocess(self, y_true, y_pred, **kwargs):
+        return y_true, y_pred, kwargs
+
+    @property
+    def needs_pred(self):
+        return False
+
+    @property
+    def needs_proba(self):
+        return True
+
+    @property
+    def needs_class(self) -> bool:
+        return False
+
+    @property
+    def needs_threshold(self):
+        return False
+
+    @property
+    def needs_quantile(self):
+        return False
+
+
+class _ThresholdScorer(Scorer):
+    def _preprocess(self, y_true, y_pred, **kwargs):
+        if isinstance(y_true, list):
+            y_true = np.array(y_true)
+        if isinstance(y_pred, list):
+            y_pred = np.array(y_pred)
+        y_type = type_of_target(y_true)
+        if y_type not in ("binary", "multilabel-indicator"):
+            raise ValueError(
+                f"{y_type} format is not supported in metric '{self.name}'",
+            )
+
+        if y_type == "binary":
+            pass
+            # y_pred = y_pred[:, 1]
+        elif isinstance(y_pred, list):
+            y_pred = np.vstack([p[:, -1] for p in y_pred]).T
+        return y_true, y_pred, kwargs
+
+    @property
+    def needs_pred(self):
+        return False
+
+    @property
+    def needs_proba(self):
+        return False
+
+    @property
+    def needs_class(self) -> bool:
+        return False
+
+    @property
+    def needs_threshold(self):
+        return True
+
+    @property
+    def needs_quantile(self):
+        return False
+
+
+class _QuantileScorer(Scorer):
+    def _preprocess(self, y_true, y_pred, **kwargs):
+        if isinstance(y_true, list):
+            y_true = np.array(y_true)
+        if isinstance(y_pred, list):
+            y_pred = np.array(y_pred)
+        if "quantile_levels" not in kwargs:
+            raise AssertionError(
+                "quantile_levels is required to score quantile metrics",
+            )
+        if isinstance(kwargs["quantile_levels"], list):
+            kwargs["quantile_levels"] = np.array(kwargs["quantile_levels"])
+
+        type_true = type_of_target(y_true)
+
+        if len(y_pred.shape) == 2 or y_pred.shape[1] >= 1 or type_true == "continuous":
+            pass  # must be quantile regression, all other task types would return at least two probabilities
+        else:
+            raise ValueError(type_true)
+        return y_true, y_pred, kwargs
+
+    @property
+    def needs_pred(self):
+        return False
+
+    @property
+    def needs_proba(self):
+        return False
+
+    @property
+    def needs_class(self) -> bool:
+        return False
+
+    @property
+    def needs_threshold(self):
+        return False
+
+    @property
+    def needs_quantile(self):
+        return True
+
+
+def _add_scorer_to_metric_dict(metric_dict, scorer):
+    if scorer.name in metric_dict:
+        raise ValueError(
+            f"Duplicated score name found! scorer={scorer}, name={scorer.name}. "
+            f"Consider to register with a different name.",
+        )
+    metric_dict[scorer.name] = scorer
+    for alias in scorer.alias:
+        if alias in metric_dict:
+            raise ValueError(
+                f"Duplicated alias found! scorer={scorer}, alias={alias}. "
+                f"Consider to use a different alias.",
+            )
+        metric_dict[alias] = scorer
+
+
+def make_scorer(
+    name: str,
+    score_func: callable,
+    *,
+    optimum: int | float = 1,
+    greater_is_better: bool = True,
+    needs_pred: bool | str = "auto",
+    needs_proba: bool = False,
+    needs_class: bool = False,
+    needs_threshold: bool = False,
+    needs_quantile: bool = False,
+    metric_kwargs: dict | None = None,
+    **kwargs,
+) -> Scorer:
+    """Make a scorer from a performance metric or loss function.
+
+    Factory inspired by scikit-learn which wraps scikit-learn scoring functions
+    to be used in auto-sklearn.
+
+    Parameters
+    ----------
+    name : str
+        The name of the Scorer.
+        Accessible via `scorer.name`
+
+    score_func : callable
+        Score function (or loss function) with signature
+        ``score_func(y, y_pred, **kwargs)``.
+
+    optimum : int | float, default=1
+        The best score achievable by the score function, i.e. maximum in case of
+        scorer function and minimum in case of loss function.
+
+    greater_is_better : boolean, default=True
+        Whether score_func is a score function (default), meaning high is good,
+        or a loss function, meaning low is good. In the latter case, the
+        scorer object will sign-flip the outcome of the score_func.
+
+    needs_pred : bool | str, default="auto"
+        Whether score_func requires the predict model method output as input to scoring.
+        If "auto", will be inferred based on the values of the other `needs_*` arguments.
+        Defaults to True if all other `needs_*` are False.
+        Examples: ["root_mean_squared_error", "mean_squared_error", "r2", "mean_absolute_error", "median_absolute_error", "spearmanr", "pearsonr"]
+
+    needs_proba : bool, default=False
+        Whether score_func requires predict_proba to get probability estimates out of a classifier.
+        These scorers can benefit from calibration methods such as temperature scaling.
+        Examples: ["log_loss", "roc_auc_ovo", "roc_auc_ovr", "pac"]
+
+    needs_class : bool, default=False
+        Whether score_func requires class predictions (classification only).
+        This is required to determine if the scorer is impacted by a decision threshold.
+        These scorers can benefit from decision threshold calibration methods such as via `predictor.calibrate_decision_threshold()`.
+        Examples: ["accuracy", "balanced_accuracy", "f1", "precision", "recall", "mcc", "quadratic_kappa", "f1_micro", "f1_macro", "f1_weighted"]
+
+    needs_threshold : bool, default=False
+        Whether score_func takes a continuous decision certainty.
+        This only works for binary classification.
+        These scorers care about the rank order of the prediction probabilities to calculate their scores, and are undefined if given a single sample to score.
+        Examples: ["roc_auc", "average_precision"]
+
+    needs_quantile : bool, default=False
+        Whether score_func is based on quantile predictions.
+        This only works for quantile regression.
+        Examples: ["pinball_loss"]
+
+    metric_kwargs : dict
+        Additional parameters to be passed to score_func, merged with kwargs if both are present.
+        metric_kwargs keys will override kwargs keys if keys are shared between them.
+
+    **kwargs : additional arguments
+        Additional parameters to be passed to score_func.
+
+    Returns:
+    -------
+    scorer
+        Callable object that returns a scalar score; greater is better.
+    """
+    num_true = sum(
+        [
+            1 if needs else 0
+            for needs in [needs_class, needs_proba, needs_threshold, needs_quantile]
+        ],
+    )
+    if num_true > 1:
+        raise ValueError(
+            f"When creating a Scorer, at most one can be True, found {num_true}: "
+            f"(needs_class={needs_class}, needs_proba={needs_proba}, needs_threshold={needs_threshold}, needs_quantile={needs_quantile})",
+        )
+
+    if num_true == 0 and not needs_pred:
+        raise ValueError(
+            f"When creating a Scorer, at least one must be True: "
+            f"(needs_pred={needs_pred}, needs_class={needs_class}, "
+            f"needs_proba={needs_proba}, needs_threshold={needs_threshold}, needs_quantile={needs_quantile})",
+        )
+
+    sign = 1 if greater_is_better else -1
+    if needs_class:
+        cls = _ClassScorer
+    elif needs_proba:
+        cls = _ProbaScorer
+    elif needs_threshold:
+        cls = _ThresholdScorer
+    elif needs_quantile:
+        cls = _QuantileScorer
+    else:
+        cls = _PredictScorer
+
+    if metric_kwargs is not None:
+        kwargs.update(metric_kwargs)
+    scorer = cls(
+        name=name,
+        score_func=score_func,
+        optimum=optimum,
+        sign=sign,
+        kwargs=kwargs,
+    )
+
+    if isinstance(needs_pred, bool) and needs_pred != scorer.needs_pred:
+        raise ValueError(
+            f"needs_pred specified by user does not match the required needs_pred value for {scorer.__class__.__name__}. (name={scorer.name}, "
+            f"actual_needs_pred={needs_pred}, expected_needs_pred={needs_pred})",
+        )
+
+    return scorer
+
+
+# Standard regression scores
+r2 = make_scorer("r2", sklearn.metrics.r2_score)
+mean_squared_error = make_scorer(
+    "mean_squared_error",
+    sklearn.metrics.mean_squared_error,
+    optimum=0,
+    greater_is_better=False,
+)
+mean_squared_error.add_alias("mse")
+
+mean_absolute_error = make_scorer(
+    "mean_absolute_error",
+    sklearn.metrics.mean_absolute_error,
+    optimum=0,
+    greater_is_better=False,
+)
+mean_absolute_error.add_alias("mae")
+
+median_absolute_error = make_scorer(
+    "median_absolute_error",
+    sklearn.metrics.median_absolute_error,
+    optimum=0,
+    greater_is_better=False,
+)
+
+mean_absolute_percentage_error = make_scorer(
+    "mean_absolute_percentage_error",
+    sklearn.metrics.mean_absolute_percentage_error,
+    optimum=0,
+    greater_is_better=False,
+)
+mean_absolute_percentage_error.add_alias("mape")
+
+
+def smape_func(y_true, y_pred) -> float:
+    epsilon = np.finfo(np.float64).eps
+    return np.average(
+        np.abs(y_pred - y_true) / np.maximum(np.abs(y_true) + np.abs(y_pred), epsilon),
+    )
+
+
+symmetric_mean_absolute_percentage_error = make_scorer(
+    "symmetric_mean_absolute_percentage_error",
+    smape_func,
+    optimum=0.0,
+    greater_is_better=False,
+)
+symmetric_mean_absolute_percentage_error.add_alias("smape")
+
+
+def local_spearmanr(y_true, y_pred):
+    return float(scipy.stats.spearmanr(y_true, y_pred)[0])
+
+
+spearmanr = make_scorer(
+    "spearmanr",
+    local_spearmanr,
+    optimum=1.0,
+    greater_is_better=True,
+)
+
+
+def local_pearsonr(y_true, y_pred):
+    return float(scipy.stats.pearsonr(y_true, y_pred)[0])
+
+
+pearsonr = make_scorer("pearsonr", local_pearsonr, optimum=1.0, greater_is_better=True)
+
+
+def rmse_func(y_true, y_pred, **kwargs):
+    if kwargs:
+        return sklearn.metrics.mean_squared_error(
+            y_true,
+            y_pred,
+            squared=False,
+            **kwargs,
+        )
+    return np.sqrt(((y_true - y_pred) ** 2).mean())
+
+
+root_mean_squared_error = make_scorer(
+    "root_mean_squared_error",
+    rmse_func,
+    optimum=0,
+    greater_is_better=False,
+)
+root_mean_squared_error.add_alias("rmse")
+
+
+# Standard Classification Scores
+accuracy = make_scorer("accuracy", sklearn.metrics.accuracy_score, needs_class=True)
+accuracy.add_alias("acc")
+
+balanced_accuracy = make_scorer(
+    "balanced_accuracy",
+    classification_metrics.balanced_accuracy,
+    needs_class=True,
+)
+f1 = make_scorer("f1", sklearn.metrics.f1_score, needs_class=True)
+mcc = make_scorer("mcc", sklearn.metrics.matthews_corrcoef, needs_class=True)
+
+# Score functions that need decision values
+roc_auc = make_scorer(
+    "roc_auc",
+    classification_metrics.customized_binary_roc_auc_score,
+    greater_is_better=True,
+    needs_threshold=True,
+)
+
+average_precision = make_scorer(
+    "average_precision",
+    sklearn.metrics.average_precision_score,
+    needs_threshold=True,
+)
+precision = make_scorer("precision", sklearn.metrics.precision_score, needs_class=True)
+recall = make_scorer("recall", sklearn.metrics.recall_score, needs_class=True)
+
+# Register other metrics
+quadratic_kappa = make_scorer(
+    "quadratic_kappa",
+    classification_metrics.quadratic_kappa,
+    needs_class=True,
+)
+
+
+def customized_log_loss(y_true, y_pred, eps=1e-15):
+    """Parameters
+    ----------
+    y_true : array-like or label indicator matrix
+        Ground truth (correct) labels for n_samples samples.
+
+    y_pred : array-like of float
+        The predictions. shape = (n_samples, n_classes) or (n_samples,)
+
+    eps : float
+        The epsilon
+
+    Returns:
+    -------
+    loss
+        The negative log-likelihood
+    """
+    assert y_true.ndim == 1
+    if y_pred.ndim == 1:
+        # First clip the y_pred which is also used in sklearn
+        # Convert to float64 to avoid rounding error on the clip operation with epsilon
+        y_pred = np.clip(y_pred.astype(float), eps, 1 - eps)
+        return -(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred)).mean()
+    assert y_pred.ndim == 2, "Only ndim=2 is supported"
+    labels = np.arange(y_pred.shape[1], dtype=np.int32)
+    return sklearn.metrics.log_loss(y_true.astype(np.int32), y_pred, labels=labels)
+
+
+def customized_roc_auc(y_true, y_pred, **kwargs):
+    assert y_true.ndim == 1
+    if y_pred.ndim == 1 or "labels" in kwargs:
+        return sklearn.metrics.roc_auc_score(y_true, y_pred, **kwargs)
+    # Avoid exception if not all classes are present in y_true
+    assert y_pred.ndim == 2, "Only ndim=2 is supported"
+    labels = np.arange(y_pred.shape[1], dtype=np.int32)
+    return sklearn.metrics.roc_auc_score(
+        y_true.astype(np.int32),
+        y_pred,
+        labels=labels,
+        **kwargs,
+    )
+
+
+# Score function for probabilistic classification
+log_loss = make_scorer(
+    "log_loss",
+    customized_log_loss,
+    optimum=0,
+    greater_is_better=False,
+    needs_proba=True,
+)
+log_loss.add_alias("nll")
+
+pac = make_scorer(
+    "pac",
+    classification_metrics.pac,
+    greater_is_better=True,
+    needs_proba=True,
+)
+pac.add_alias("pac_score")
+
+REGRESSION_METRICS = dict()
+for scorer in [
+    r2,
+    mean_squared_error,
+    root_mean_squared_error,
+    mean_absolute_error,
+    median_absolute_error,
+    mean_absolute_percentage_error,
+    symmetric_mean_absolute_percentage_error,
+    spearmanr,
+    pearsonr,
+]:
+    _add_scorer_to_metric_dict(metric_dict=REGRESSION_METRICS, scorer=scorer)
+
+BINARY_METRICS = dict()
+MULTICLASS_METRICS = dict()
+for scorer in [
+    accuracy,
+    balanced_accuracy,
+    mcc,
+    log_loss,
+    pac,
+    quadratic_kappa,
+]:
+    for metric_dict in [BINARY_METRICS, MULTICLASS_METRICS]:
+        _add_scorer_to_metric_dict(metric_dict=metric_dict, scorer=scorer)
+
+for scorer in [
+    roc_auc,
+    average_precision,
+]:
+    _add_scorer_to_metric_dict(metric_dict=BINARY_METRICS, scorer=scorer)
+
+
+for name, metric in [
+    ("precision", sklearn.metrics.precision_score),
+    ("recall", sklearn.metrics.recall_score),
+    ("f1", sklearn.metrics.f1_score),
+]:
+    globals()[name] = make_scorer(name, metric, needs_class=True)
+    _add_scorer_to_metric_dict(metric_dict=BINARY_METRICS, scorer=globals()[name])
+    for average in ["macro", "micro", "weighted"]:
+        qualified_name = f"{name}_{average}"
+        globals()[qualified_name] = make_scorer(
+            qualified_name,
+            partial(metric, pos_label=None, average=average),
+            needs_class=True,
+        )
+        _add_scorer_to_metric_dict(
+            metric_dict=BINARY_METRICS,
+            scorer=globals()[qualified_name],
+        )
+        _add_scorer_to_metric_dict(
+            metric_dict=MULTICLASS_METRICS,
+            scorer=globals()[qualified_name],
+        )
+
+
+for name, metric, kwargs in [
+    ("roc_auc_ovo", customized_roc_auc, dict(multi_class="ovo")),
+    ("roc_auc_ovr", customized_roc_auc, dict(multi_class="ovr")),
+]:
+    scorer_kwargs = dict(
+        greater_is_better=True,
+        needs_proba=True,
+        needs_threshold=False,
+    )
+    globals()[name] = make_scorer(
+        name,
+        partial(metric, average="macro", **kwargs),
+        **scorer_kwargs,
+    )
+    macro_name = "{}_{}".format(name, "macro")
+    globals()[name].add_alias(macro_name)
+    _add_scorer_to_metric_dict(metric_dict=MULTICLASS_METRICS, scorer=globals()[name])
+    averages = ["weighted"] if name == "roc_auc_ovo" else ["micro", "weighted"]
+    for average in averages:
+        qualified_name = f"{name}_{average}"
+        globals()[qualified_name] = make_scorer(
+            qualified_name,
+            partial(metric, average=average, **kwargs),
+            **scorer_kwargs,
+        )
+        _add_scorer_to_metric_dict(
+            metric_dict=MULTICLASS_METRICS,
+            scorer=globals()[qualified_name],
+        )
+
+
+METRICS = {
+    BINARY: BINARY_METRICS,
+    MULTICLASS: MULTICLASS_METRICS,
+    REGRESSION: REGRESSION_METRICS,
+}
+
+
+def _get_valid_metric_problem_types(metric: str):
+    problem_types_valid = []
+    for problem_type in METRICS:
+        if metric in METRICS[problem_type]:
+            problem_types_valid.append(problem_type)
+    return problem_types_valid
+
+
+def get_metric(metric, problem_type=None, metric_type=None) -> Scorer:
+    """Returns metric function by using its name if the metric is str.
+    Performs basic check for metric compatibility with given problem type.
+    """
+    if metric is not None and isinstance(metric, str):
+        if problem_type is not None:
+            if problem_type not in METRICS:
+                raise ValueError(
+                    f"Invalid problem_type '{problem_type}'. Valid problem types: {list(METRICS.keys())}",
+                )
+            if metric not in METRICS[problem_type]:
+                valid_problem_types = _get_valid_metric_problem_types(metric)
+                if valid_problem_types:
+                    raise ValueError(
+                        f"{metric_type}='{metric}' is not a valid metric for problem_type='{problem_type}'. "
+                        f"Valid problem_types for this metric: {valid_problem_types}"
+                        f"\nValid metrics for problem_type='{problem_type}':\n{list(METRICS[problem_type].keys())}",
+                    )
+                raise ValueError(
+                    f"Unknown {metric_type} '{metric}'. Valid metrics for problem_type='{problem_type}':\n{list(METRICS[problem_type].keys())}",
+                )
+            return METRICS[problem_type][metric]
+        for pt in METRICS:
+            if metric in METRICS[pt]:
+                return METRICS[pt][metric]
+        all_available_metrics = dict()
+        for pt in METRICS:
+            all_available_metrics[pt] = list(METRICS[pt].keys())
+
+        raise ValueError(
+            f"{metric_type}='{metric}' is an unknown metric, all available metrics by problem_type are:\n"
+            f"{json.dumps(all_available_metrics, indent=2)}\n"
+            f"You can also refer to "
+            f"autogluon.core.metrics to see how to define your own {metric_type} function",
+        )
+    return metric
+
+
+
+================================================
+FILE: finetuning_scripts/training_utils/__init__.py
+================================================
+[Empty file]
+
+
+================================================
+FILE: finetuning_scripts/training_utils/ag_early_stopping.py
+================================================
+"""Copy the adaptive early stopping code from AutoGluon.
+
+Ref: https://github.com/autogluon/autogluon/blob/master/core/src/autogluon/core/utils/early_stopping.py#L13
+"""
+
+from __future__ import annotations
+
+
+class AdaptiveES:
+    """Implements early stopping with adaptive patience.
+
+    Patience is adaptively adjusted across training instead of being a fixed value.
+    This generally outperforms fixed patience strategies. Examples below:
+    1. If the current best_round is 10000, it is reasonable to assume that it could take more than 100 rounds before finding a new best.
+    2. If the current best_round is 3, it is unlikely that there will be 100 rounds before finding a new best at round 103.
+    In the above examples, a fixed patience of 100 would be too little for round 10000, but too large for round 3.
+    However, with `adaptive_rate=0.2`, `adaptive_offset=10`, round 3 would have a patience of ~10, while round 10000 would have a patience of ~2000.
+
+    Parameters
+    ----------
+    adaptive_rate : float, default 0.3
+        The rate of increase in patience.
+        Set to 0 to disable, or negative to shrink patience during training.
+    adaptive_offset : int, default 10
+        The initial patience when cur_round is 0.
+    min_patience : int, default 10
+        The minimum value of patience.
+    max_patience : int, default 10000
+        The maximum value of patience.
+
+    Attributes:
+    ----------
+    best_round : int
+        The most recent round passed to self.update with `is_best=True`.
+        Dictates patience and is used to determine if self.early_stop() returns True.
+    patience : int
+        If no improvement occurs in `patience` rounds or greater, self.early_stop will return True.
+        patience is dictated by the following formula:
+        patience = min(self.max_patience, (max(self.min_patience, round(self.best_round * self.adaptive_rate + self.adaptive_offset))))
+        Effectively, patience = self.best_round * self.adaptive_rate + self.adaptive_offset, bound by min_patience and max_patience
+    """
+
+    def __init__(self, adaptive_rate=0.3, adaptive_offset=10, min_patience=10, max_patience=10000):
+        self.adaptive_rate = adaptive_rate
+        self.adaptive_offset = adaptive_offset
+        self.min_patience = min_patience
+        self.max_patience = max_patience
+        self.best_round = 0
+        self.patience = self._update_patience(self.best_round)
+
+    def update(self, cur_round, is_best=False):
+        """Updates the state of the object. Identical to calling self.early_stop, but if `is_best=True`, it will set `self.best_round=cur_round`.
+        If cur_round achieved a new best score, set `is_best=True`.
+        Ideally, this should be called every round during training, with the output used to determine if the model should stop training.
+        """
+        if is_best:
+            self.best_round = cur_round
+            self.patience = self._update_patience(self.best_round)
+        return self.early_stop(cur_round, is_best=is_best)
+
+    def remaining_patience(self, cur_round):
+        """Returns the number of rounds remaining before early stopping will be triggered.
+        If the return value is 0, early stopping has been triggered.
+        """
+        return self.patience - (cur_round - self.best_round)
+
+    def early_stop(self, cur_round, is_best=False):
+        """Returns True if (cur_round - self.best_round) equals or exceeds self.patience, otherwise returns False.
+        This can be used to indicate if training should stop.
+        """
+        if is_best:
+            return False
+        return cur_round - self.best_round >= self.patience
+
+    def _update_patience(self, best_round):
+        return min(
+            self.max_patience,
+            (
+                max(
+                    self.min_patience,
+                    round(best_round * self.adaptive_rate + self.adaptive_offset),
+                )
+            ),
+        )
+
+
+
+================================================
+FILE: finetuning_scripts/training_utils/data_utils.py
+================================================
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import numpy as np
+import torch
+from sklearn.model_selection import KFold, StratifiedKFold
+from torch.utils.data import DataLoader, Dataset
+
+RANDOM_SEED = 4213
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+
+class TabularDataset(Dataset):
+    """Tabular dataset.
+
+    This class is used to load tabular data.
+
+    Here one sample is equal to one split of the data.
+
+    Arguments:
+    ----------
+    X_train: torch.Tensor (n_samples, n_features)
+        Input features.
+    y_train: torch.Tensor (n_samples, 1)
+        Target labels.
+    max_steps: int
+        Maximum number of steps (splits of the data).
+    stratify_split: bool
+        Whether the task is classification or regression.
+    cross_val_splits: int
+        Number of cross-validation splits.
+    """
+
+    def __init__(
+        self,
+        *,
+        X_train: torch.Tensor,
+        y_train: torch.Tensor,
+        max_steps: int,
+        is_classification: bool,
+        cross_val_splits: int | None = 10,
+    ):
+        self.X_train = X_train
+        self.y_train = y_train
+        self.max_steps = max_steps
+        self.cross_val_splits = cross_val_splits
+        self.is_classification = is_classification
+        self._splits_generator = self.splits_generator(
+            X_train=X_train,
+            y_train=y_train,
+            cross_val_splits=cross_val_splits,
+            stratify_split=is_classification,
+            seed=RANDOM_SEED,
+        )
+        self._rng = np.random.RandomState(RANDOM_SEED)
+
+    @staticmethod
+    def splits_generator(
+        *,
+        X_train: torch.Tensor,
+        y_train: torch.Tensor,
+        cross_val_splits: int,
+        stratify_split: bool,
+        seed: int,
+    ):
+        """Endless generator for splits to perform repeated cross-validation."""
+        rng = np.random.RandomState(seed)
+        splitter = StratifiedKFold if stratify_split else KFold
+
+        while True:
+            splits = splitter(
+                n_splits=cross_val_splits,
+                random_state=rng.random_integers(0, int(np.iinfo(np.int32).max)),
+                shuffle=True,
+            ).split(
+                X=X_train,
+                y=y_train.cpu().detach().numpy() if stratify_split else None,
+            )
+            yield from splits
+
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["_splits_generator"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._splits_generator = self.splits_generator(
+            X_train=self.X_train,
+            y_train=self.y_train,
+            cross_val_splits=self.cross_val_splits,
+            stratify_split=self.is_classification,
+            seed=RANDOM_SEED,
+        )
+
+    def __len__(self):
+        return self.max_steps
+
+    def get_splits(self) -> tuple[np.ndarray, np.ndarray]:
+        """Get train and test indices for next batch."""
+        train_idx, test_idx = next(self._splits_generator)
+        return train_idx, test_idx
+
+    def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
+        train_idx, test_idx = self.get_splits()
+
+        # Correct for equal batch size
+        expected_test_size = len(self.X_train) // self.cross_val_splits
+        if len(test_idx) != expected_test_size:
+            train_idx = np.concatenate(
+                [train_idx, test_idx[: len(test_idx) - expected_test_size]],
+            )
+            test_idx = test_idx[len(test_idx) - expected_test_size :]
+
+        return dict(
+            X_train=self.X_train[train_idx],
+            X_test=self.X_train[test_idx],
+            y_train=self.y_train[train_idx],
+            y_test=self.y_train[test_idx],
+        )
+
+
+def get_data_loader(
+    *,
+    X_train: pd.DataFrame,
+    y_train: pd.Series,
+    max_steps: int,
+    torch_rng: torch.Generator,
+    batch_size: int,
+    is_classification: bool,
+    num_workers: int,
+) -> DataLoader:
+    """Get data loader.
+
+    This function is used to get data loader.
+
+    Arguments:
+    ----------
+    X_train: pd.DataFrame
+        Input features.
+    y_train: pd.Series
+        Target labels.
+    max_steps: int
+        Maximum number of steps (splits of the data).
+    torch_rng: torch.Generator
+        Torch random number generator for splits and similar.
+    batch_size: int
+        Batch size. How many splits to load at a time.
+    is_classification: bool
+        Whether the task is classification or regression.
+    num_workers: int
+        Number of workers for data loader.
+
+    Returns:
+    --------
+    DataLoader
+        Data loader.
+    """
+    X_train = torch.tensor(X_train.copy().values).float()
+    y_train = torch.tensor(y_train.copy().values).reshape(-1, 1).float()
+    dataset = TabularDataset(
+        X_train=X_train,
+        y_train=y_train,
+        max_steps=max_steps * batch_size,
+        is_classification=is_classification,
+    )
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=False,
+        drop_last=True,
+        generator=torch_rng,
+        persistent_workers=False,
+    )
+
+
+
+================================================
+FILE: finetuning_scripts/training_utils/model_utils.py
+================================================
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+import torch
+if TYPE_CHECKING:
+    from tabpfn.model.transformer import PerFeatureTransformer
+    from torch.serialization import FILE_LIKE
+
+
+def save_model(
+    *,
+    model: PerFeatureTransformer,
+    save_path_to_fine_tuned_model: FILE_LIKE,
+    checkpoint_config: dict,
+    is_data_parallel: bool = False,
+) -> None:
+    """Save the fine-tuned model to disk in a TabPFN-readable checkpoint format."""
+    # -- Save fine-tuned model
+    torch.save(
+        dict(
+            state_dict=model.module.state_dict() if is_data_parallel else model.state_dict(),
+            config=checkpoint_config),
+        f=save_path_to_fine_tuned_model,
+    )
+
+
+
+================================================
+FILE: finetuning_scripts/training_utils/training_loss.py
+================================================
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import torch
+from finetuning_scripts.constant_utils import TaskType
+from tabpfn.model.bar_distribution import FullSupportBarDistribution
+
+if TYPE_CHECKING:
+    from torch.nn.modules.loss import _Loss
+
+
+def get_loss(*, task_type: TaskType, borders: torch.Tensor) -> _Loss:
+    """Get the trainings loss function based on the task type.
+
+    Arguments:
+    ----------
+    task_type: TaskType
+        The task type of the competition.
+    borders: int
+        The buckets for the regression task (from the model).
+
+    Returns:
+    --------
+    loss: _Loss
+        The loss function to use.
+
+    """
+    match task_type:
+        case TaskType.REGRESSION:
+            loss = FullSupportBarDistribution(
+                borders=borders,
+                ignore_nan_targets=True,
+            )
+        case TaskType.BINARY_CLASSIFICATION:
+            loss = torch.nn.BCEWithLogitsLoss()
+        case TaskType.MULTICLASS_CLASSIFICATION:
+            loss = torch.nn.CrossEntropyLoss()
+        case _:
+            raise ValueError(f"Loss for task type {task_type} not supported.")
+
+    return loss
+
+
+def compute_loss(
+    *,
+    loss_fn: _Loss,
+    logits: torch.Tensor,
+    target: torch.Tensor,
+) -> torch.Tensor:
+    """Compute the loss of the model.
+
+    This methods selects the correct elements from the logits and target tensors based on the loss function.
+    This is essentially an adaptor for the output of the TabPFN model.
+
+    Arguments:
+    ----------
+    loss_fn: _Loss
+        The loss function to use.
+    logits: torch.Tensor
+        The logits of the model.
+            * For classification: (n_samples, batch_size, n_classes)
+            * For regression: (n_samples, batch_size, ?TODO?)
+    target: torch.Tensor (n_samples, batch_size, 1)
+        The target values.
+
+    Returns:
+    --------
+    loss: torch.Tensor
+
+        The loss tensor.
+    """
+    match loss_fn:
+        case torch.nn.modules.BCEWithLogitsLoss():
+            logits = logits[:, :, 1]  # select positive class logits only
+            target = target[:, :, 0]
+        case torch.nn.modules.CrossEntropyLoss():
+            logits = logits.reshape(-1, logits.shape[-1])
+            target = target.long().flatten()
+        case _ if isinstance(loss_fn, FullSupportBarDistribution):
+            return loss_fn(logits=logits, y=target[:, :, 0]).mean()
+        case _:
+            raise ValueError(f"Loss of type {type(loss_fn)} not supported.")
+
+    return loss_fn(input=logits, target=target)
+
+
+
+================================================
+FILE: finetuning_scripts/training_utils/validation_utils.py
+================================================
+from __future__ import annotations
+
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
+import torch
+from finetuning_scripts.constant_utils import SupportedDevice, TaskType
+from sklearn.model_selection import train_test_split
+
+if TYPE_CHECKING:
+    import numpy as np
+    import pandas as pd
+    from finetuning_scripts.metric_utils.ag_metrics import Scorer
+    from tabpfn.model.transformer import PerFeatureTransformer
+    from tabpfn import TabPFNClassifier, TabPFNRegressor
+
+
+def create_val_data(
+    *,
+    X_train: pd.DataFrame | np.ndarray,
+    y_train: pd.Series | np.ndarray,
+    rng: np.random.RandomState,
+    n_samples: int,
+    is_classification: bool,
+) -> tuple[
+    pd.DataFrame | np.ndarray,
+    pd.DataFrame | np.ndarray,
+    pd.Series | np.ndarray,
+    pd.Series | np.ndarray,
+]:
+    # Split data ourselves
+    if n_samples < 10000:
+        test_size = 0.33
+    elif n_samples < 500000:
+        test_size = 0.2
+    elif n_samples < 1000000:
+        test_size = 0.1
+    else:
+        test_size = 0.05
+
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_train,
+        y_train,
+        test_size=test_size,
+        random_state=rng,
+        stratify=y_train if is_classification else None,
+    )
+    return X_train, X_val, y_train, y_val
+
+
+def validate_tabpfn(
+    *,
+    X_train: torch.Tensor,  # (n_samples, batch_size, n_features)
+    y_train: torch.Tensor,  # (n_samples, batch_size, 1)
+    X_val: torch.Tensor,  # (n_samples, batch_size, 1)
+    y_val: torch.Tensor,  # (n_samples, batch_size, 1)
+    validation_metric: Scorer,
+    model: PerFeatureTransformer,
+    model_forward_fn: Callable,
+    task_type: TaskType,
+    device: SupportedDevice,
+    use_sklearn_interface_for_validation: bool = False,
+    model_for_validation: TabPFNClassifier | TabPFNRegressor = None,
+) -> float:
+    """Validate the TabPFN model and return a loss (lower is better).
+
+    This code assumes that batch_size for validation is 1. Otherwise,
+    need to write a loop, I guess?
+    """
+    if use_sklearn_interface_for_validation:
+        if model_for_validation is None:
+            raise ValueError(
+                f"Model for validation is required when validating with full TabPFN preprocessing.")
+        if not model_for_validation.fit_mode == 'fit_preprocessors':
+            raise ValueError(
+                f"fit_mode for model_for_validation must be 'fit_preprocessors' when validating with full TabPFN preprocessing.")
+        if model_for_validation.memory_saving_mode:
+            raise ValueError(
+                f"memory_saving_mode for model_for_validation must be False when validating with full TabPFN preprocessing.")
+
+        estimator_type = model_for_validation.__sklearn_tags__().estimator_type
+        if task_type == TaskType.REGRESSION and not estimator_type == 'regressor':
+            raise ValueError(
+                f"model_for_validation must be TabPFNRegressor but is: {type(model_for_validation)}")
+        if task_type in {TaskType.MULTICLASS_CLASSIFICATION,
+                           TaskType.BINARY_CLASSIFICATION} and not estimator_type == 'classifier':
+            raise ValueError(
+                f"model_for_validation must be TabPFNClassifier but is: {type(model_for_validation)}")
+
+        from tabpfn import TabPFNClassifier, TabPFNRegressor
+
+        X_val = X_val.cpu().detach().numpy()[:, 0, :]
+        y_true = y_val.flatten().cpu().detach().numpy()
+
+        if not hasattr(model_for_validation, 'executor_'):
+            X_train = X_train.cpu().detach().numpy()[:, 0, :]
+            y_train = y_train.flatten().cpu().detach().numpy()
+            model_for_validation.fit(X_train, y_train)
+
+        model_for_validation.model_ = model
+        model_for_validation.executor_.model = model
+
+        if task_type == TaskType.REGRESSION:
+            y_pred = model_for_validation.predict(X_val, output_type="mean")
+        else:
+            y_pred = model_for_validation.predict_proba(X_val)
+
+        # model is moved to cpu after inference by the TabPFN* models
+        model.to(device)
+    else:
+        X_train = X_train.to(device)
+        y_train = y_train.to(device)
+        X_val = X_val.to(device)
+        y_val = y_val.to(device)
+
+        pred_logits = model_forward_fn(
+            model=model,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_val,
+            forward_for_validation=True,
+        )
+
+        match task_type:
+            case TaskType.REGRESSION:
+                y_pred = pred_logits.float().flatten().cpu().detach().numpy()
+                y_true = y_val.float().flatten().cpu().detach().numpy()
+            case TaskType.BINARY_CLASSIFICATION:
+                # TODO: check that this works / is exhaustive.
+                if validation_metric.needs_threshold or validation_metric.needs_proba:
+                    y_pred = (
+                        torch.nn.functional.sigmoid(pred_logits[:, 0, 1])
+                        .cpu()
+                        .detach()
+                        .numpy()
+                    )
+                else:
+                    # Required to get the correct classes for the metrics
+                    y_pred = (
+                        torch.nn.functional.softmax(pred_logits[:, 0, :],
+                                                    dim=-1)
+                        .cpu()
+                        .detach()
+                        .numpy()
+                    )
+                y_true = y_val.long().flatten().cpu().detach().numpy()
+            case TaskType.MULTICLASS_CLASSIFICATION:
+                y_pred = (
+                    torch.nn.functional.softmax(pred_logits[:, 0, :], dim=-1)
+                    .cpu()
+                    .detach()
+                    .numpy()
+                )
+                y_true = y_val.long().flatten().cpu().detach().numpy()
+            case _:
+                raise ValueError(f"Task type {task_type} not supported.")
+
+        X_train.cpu()
+        y_train.cpu()
+        X_val.cpu()
+        y_val.cpu()
+
+    score = validation_metric(y_true=y_true, y_pred=y_pred)
+
+    return validation_metric.convert_score_to_error(score=score)
+
+

@@ -1,0 +1,2388 @@
+Directory structure:
+└── pfeiferai-tabpfn-wide/
+    ├── README.md
+    ├── pyproject.toml
+    ├── requirements.txt
+    ├── setup.py
+    ├── tabpfn_wide_attention.ipynb
+    ├── tabpfn_wide_example.ipynb
+    ├── analysis/
+    │   ├── extract_multi_omics_attention.py
+    │   ├── extract_widening_attention.py
+    │   ├── multiomics_feature_reduction.py
+    │   ├── openml_benchmark.py
+    │   └── openml_widening.py
+    ├── multiomics_benchmark_data/
+    │   └── README.md
+    ├── shamir_data/
+    │   └── README.md
+    └── tabpfnwide/
+        ├── __init__.py
+        ├── data.py
+        ├── load_mm_data.py
+        ├── patches.py
+        ├── train.py
+        ├── train.sh
+        ├── training_parser.py
+        └── utils.py
+
+================================================
+FILE: README.md
+================================================
+# TabPFN-Wide
+
+> **Deprecated:** This repository is deprecated. Please use the new repository: https://github.com/not-a-feature/TabPFN-Wide
+
+This repository provides code and utilities for training and evaluating wide TabPFN-Wide models on multi-omics and tabular datasets. It includes scripts, reusable modules, analysis tools, and pretrained models.
+
+## Repository Structure
+
+- `tabpfnwide/`  
+   Core package with training scripts, data loaders, utility functions, and patches.
+   - `train.py`, `data.py`, `utils.py`, etc.: Main codebase.
+   - `patches.py`: Contains patches for TabPFN.
+- `analysis/`  
+   Scripts for analyzing results and comparing model performance.
+    - `multiomics_feature_reduction.py`: Benchmarking on multi-omics datasets.
+    - `openml_benchmark.py`: Benchmarking on OpenML datasets.
+    - `openml_widening.py`: Code for feature-smearing and needle-in-a-haystack experiments.
+    - `extract_widened_attention.py`: Script for extracting attention of feature-smearing and needle-in-a-haystack datasets.
+    - `extract_multi_omics_attention.py`: Script for extracting attention of a multi-omics dataset to apply biological interpretation.
+- `models/`  
+   Pretrained model checkpoints.
+- `multiomics_benchmark_data/`, `shamir_data/`  
+   Placeholder directories for datasets.
+- `tabpfn_wide_example.ipynb`, `tabpfn_wide_attention.ipynb`  
+   Example Jupyter notebooks. 
+- `requirements.txt`  
+   List of required Python packages.
+- `setup.py`, `pyproject.toml`  
+   Packaging and installation files.
+
+## Patching and API Stability
+
+This project uses patches (see `tabpfnwide/patches.py`) to extend or modify the behavior of external libraries such as TabPFN. This approach makes it easy to share and inject new functionality without modifying the original source code.
+
+**However, please note:**
+The APIs of the TabPFN package and related dependencies have changed and are actively changing. Patches may break unexpectedly with new releases, leading to subtle bugs or runtime errors. The current implementation is tested with the versions specified in `requirements.txt`. However, we note that the patches are not necessary for training and using TabPFN-Wide models, but only for the analysis scripts as well as extracting attention weights.
+
+## Setup
+1. Create and activate a Python environment (e.g., with conda or venv).
+2. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3. Install the package:
+    ```bash
+    pip install -e .
+    ```
+
+## Usage
+
+- To train a model, run the `train.sh`script with the desired parameters.
+- See the example notebooks for usage demonstrations of the pre-trained models.
+
+## Data
+
+- Place the datasets in the appropriate folders (`multiomics_benchmark_data/`, `shamir_data/`).
+- Data loading utilities are provided in `tabpfnwide/data.py` and `tabpfnwide/load_mm_data.py`.
+
+## Pretrained Models
+
+Pretrained model checkpoints are available in the `models/` directory.
+
+## Comparison with TabPFNv2
+For comparison with TabPFNv2, we used the original TabPFNv2 model available at `https://huggingface.co/Prior-Labs/TabPFN-v2-clf/blob/main/tabpfn-v2-classifier.ckpt`. From package version 2.1.0 the `tabpfn` package per default uses the Real-TabPFN model. To replicate our results, please download the original TabPFNv2 model and load it explicitly in the code using the `model_path` argument of the `TabPFNClassifier`.
+
+
+
+================================================
+FILE: pyproject.toml
+================================================
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tabpfnwide"
+version = "0.1.0"
+
+
+================================================
+FILE: requirements.txt
+================================================
+numpy
+pandas
+scikit-learn
+torch
+tqdm
+wandb
+joblib
+tabpfn==2.1.0
+tabicl
+openml
+
+
+================================================
+FILE: setup.py
+================================================
+from setuptools import setup, find_packages
+
+setup(
+    name="tabpfnwide",
+    version="0.1.0",
+    packages=find_packages(),
+    install_requires=[],
+)
+
+
+================================================
+FILE: tabpfn_wide_attention.ipynb
+================================================
+# Jupyter notebook converted to Python script.
+
+from tabpfnwide.patches import compute_attention_heads, _compute
+from tabpfn.model.attention.full_attention import MultiHeadAttention
+setattr(MultiHeadAttention, "compute_attention_heads", compute_attention_heads)
+setattr(MultiHeadAttention, "_compute", _compute)
+import torch
+import numpy as np
+from sklearn.model_selection import train_test_split
+from tabpfn.model.loading import load_model_criterion_config
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+"""
+### Load model
+"""
+
+
+model_name = "TabPFN-Wide-8k" 
+assert model_name in ["TabPFN-Wide-1.5k", "TabPFN-Wide-5k", "TabPFN-Wide-8k", "TabPFNv2"], f"Model name {model_name} not recognized."
+checkpoint_path = f"./models/{model_name}_submission.pt"
+model, _, _ = load_model_criterion_config(
+    model_path=None,
+    check_bar_distribution_criterion=False,
+    cache_trainset_representation=False,
+    which='classifier',
+    version='v2',
+    download=True,
+)
+if model_name != "TabPFNv2":
+    model.features_per_group = 1
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    model.load_state_dict(checkpoint)
+
+"""
+### Generate dataset and add noise features
+"""
+
+from sklearn.datasets import make_classification
+
+X, y = make_classification(
+    n_samples=100,
+    n_features=3,
+    n_informative=3,
+    n_redundant=0,
+    n_classes=2,
+    random_state=42
+)
+
+# Widen X with noise
+noise = np.random.normal(0, 1, (X.shape[0], 18))
+X_new = np.hstack((noise, X))
+# Permuute columns randomly
+permutation = np.random.permutation(X_new.shape[1])
+X_new = X_new[:, permutation]
+
+X, y = torch.tensor(X_new, dtype=torch.float32), torch.tensor(y, dtype=torch.int8)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train_tensor = X_train.unsqueeze(1).to(device)
+X_test_tensor = X_test.unsqueeze(1).to(device)
+y_train_tensor = torch.tensor(y_train, dtype=torch.int8).unsqueeze(1).to(device)
+y_test_tensor = torch.tensor(y_test, dtype=torch.int8).unsqueeze(1).to(device)
+# Activate attention map saving
+for layer in model.transformer_encoder.layers:
+    layer.self_attn_between_features.attention_map = None
+    layer.self_attn_between_features.save_att_map = True
+    layer.self_attn_between_features.number_of_samples = X_train_tensor.shape[0]
+
+with torch.inference_mode():
+    with torch.autocast(device_type="cuda", dtype=torch.float16):
+        pred_logits = model(
+            train_x=X_train_tensor,
+            train_y=y_train_tensor,
+            test_x=X_test_tensor,
+        )
+        n_classes = len(np.unique(y_train_tensor.cpu()))
+        pred_logits = pred_logits[..., :n_classes].float()  
+        pred_probs = torch.softmax(pred_logits, dim=-1)[:, 0, :].detach().cpu().numpy()
+
+"""
+### Retrieve attention maps
+"""
+
+atts = [getattr(layer.get_submodule("self_attn_between_features"), "attention_map") for layer in model.transformer_encoder.layers]
+atts = torch.stack(atts, dim=0)
+att_to_last_column = atts.mean(dim=0)[-1, :-1]
+
+print("Indices of the 10 most important features (according to attention to the last column):")
+print(np.argsort(att_to_last_column.cpu().numpy())[-10:])
+original_feature_indices = np.where(np.isin(permutation, [18, 19, 20]))[0]
+print("Indices of the original features in the permuted array:", original_feature_indices)
+# Output:
+#   Indices of the 10 most important features (according to attention to the last column):
+
+#   [ 1  0 10 14  2 11 17 20  9 18]
+
+#   Indices of the original features in the permuted array: [ 9 18 20]
+
+
+"""
+### The 3 most important features according to the attention score are the original features.
+"""
+
+
+
+================================================
+FILE: tabpfn_wide_example.ipynb
+================================================
+# Jupyter notebook converted to Python script.
+
+import torch
+from tabpfn.model.loading import load_model_criterion_config
+from tabpfn import TabPFNClassifier
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+"""
+---
+### PyTorch interface
+"""
+
+model_name = "TabPFN-Wide-8k" 
+assert model_name in ["TabPFN-Wide-1.5k", "TabPFN-Wide-5k", "TabPFN-Wide-8k", "TabPFNv2"], f"Model name {model_name} not recognized."
+checkpoint_path = f"./models/{model_name}_submission.pt"
+
+model, _, _ = load_model_criterion_config(
+            model_path=None,
+            check_bar_distribution_criterion=False,
+            cache_trainset_representation=False,
+            which='classifier',
+            version='v2',
+            download=True,
+        )
+if model_name != "TabPFNv2":
+    model.features_per_group = 1
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    model.load_state_dict(checkpoint)
+
+"""
+---
+### Sklearn interface (requires PyTorch model to be loaded)
+"""
+
+from tabpfnwide.patches import fit
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+tabpfn_classifier = TabPFNClassifier(n_estimators=1, device=device, ignore_pretraining_limits=True) # Turn off ensembling 
+# Patch the fit method to implement an easy way to fit TabPFN-Wide while using the sklearn interface
+setattr(TabPFNClassifier, 'fit', fit)
+
+# Example data
+X, y = make_classification(n_samples=50, n_features=10, n_informative=2, n_redundant=2, n_classes=2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+tabpfn_classifier.fit(X_train, y_train, model=model)
+tabpfn_classifier.score(X_test, y_test)
+# Output:
+#   0.9
+
+
+
+================================================
+FILE: analysis/extract_multi_omics_attention.py
+================================================
+import numpy as np
+import warnings
+import torch
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from tabpfnwide.load_mm_data import load_multiomics
+from tabpfn.model.loading import load_model_criterion_config
+from tabpfn.model.memory import MemoryUsageEstimator
+import warnings
+warnings.filterwarnings("ignore")
+import argparse
+
+
+def main(dataset_name, output_file, checkpoint_path, device="cuda:0", omic="mrna"):
+    """
+    Extracts and saves attention maps from a trained transformer-based model on multi-omics data.
+    Parameters:
+        dataset_name (str): Name of the multi-omics dataset to use.
+        output_file (str): Path to save the extracted attention maps (as a torch file).
+        checkpoint_path (str): Path to the model checkpoint to load weights from.
+        device (str, optional): Device to run the model on (default: "cuda:0").
+        omic (str, optional): Omics data type to use from the dataset (default: "mrna").
+    Description:
+        - Loads multi-omics data and encodes labels.
+        - Loads a TabPFN-Wide model.
+        - Configures the model to save attention maps during inference.
+        - Runs inference to obtain predictions and attention maps.
+        - Saves the extracted attention maps to the specified output file.
+    """
+    
+    ds_dict, labels = load_multiomics(dataset_name)
+    mrna = ds_dict[omic]
+    X, y = mrna.values, labels
+    y = LabelEncoder().fit_transform(y)
+    print(X.shape)
+
+    model, _, _ = load_model_criterion_config(
+            model_path=None,
+            check_bar_distribution_criterion=False,
+            cache_trainset_representation=False,
+            which='classifier',
+            version='v2',
+            download=True,
+    )
+    # Disable feature grouping
+    model.features_per_group = 1
+
+    checkpoint_path = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    state_dict = checkpoint_path["state_dict"]
+    model.load_state_dict(state_dict)
+    model.to(device)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    X_train_tensor = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1).to(device)
+    X_test_tensor = torch.tensor(X_test, dtype=torch.float32).unsqueeze(1).to(device)
+    y_train_tensor = torch.tensor(y_train, dtype=torch.int8).unsqueeze(1).to(device)
+    y_test_tensor = torch.tensor(y_test, dtype=torch.int8).unsqueeze(1).to(device)
+
+    for layer in model.transformer_encoder.layers:
+        layer.self_attn_between_features.save_att_map = True
+        layer.self_attn_between_features.number_of_samples = X_train_tensor.shape[0]
+
+    MemoryUsageEstimator.SAVE_PEAK_MEM_FACTOR = 4 # Increase if less memory is available
+    MemoryUsageEstimator.reset_peak_memory_if_required(
+        save_peak_mem=True,
+        model=model,
+        X=torch.cat([X_train_tensor, X_test_tensor], dim=0),
+        cache_kv=False,
+        dtype_byte_size=2,
+        device=torch.device(device),
+    )
+
+    with torch.inference_mode():
+        with torch.autocast(device_type="cuda", dtype=torch.float16):
+            pred_logits = model(
+                train_x=X_train_tensor,
+                train_y=y_train_tensor,
+                test_x=X_test_tensor,
+            )
+            n_classes = len(np.unique(y_train_tensor.cpu()))
+            pred_logits = pred_logits[..., :n_classes].float()  
+            pred_probs = torch.softmax(pred_logits, dim=-1)[:, 0, :].detach().cpu().numpy()
+
+
+    atts = [getattr(layer.get_submodule("self_attn_between_features"), "attention_map") for layer in model.transformer_encoder.layers]
+    atts = torch.stack(atts, dim=0)
+    torch.save(atts, f"{output_file}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset_name", type=str, required=True, help="Name of the dataset to use")
+    parser.add_argument("--output_file", type=str, required=True, help="Path to save the attention maps")
+    parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to the model checkpoint")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to run the model on")
+    parser.add_argument("--omic", type=str, default="mrna", help="Omic type to use (default: mRNA)")
+    
+    args = parser.parse_args()
+    main(args.dataset_name, args.output_file, args.checkpoint_path, args.device, args.omic)
+    
+
+
+
+
+
+================================================
+FILE: analysis/extract_widening_attention.py
+================================================
+import numpy as np
+import torch
+from tabpfnwide.utils import get_new_features
+from tabpfn.model.loading import load_model_criterion_config
+import matplotlib.pyplot as plt 
+import openml
+import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.utils import shuffle
+import argparse
+import pickle
+
+def main(device, openml_id, checkpoint_path, output):
+    """
+    Runs an analysis pipeline to evaluate attention patterns in a transformer-based model on tabular data with added noise and sparsity.
+
+    Parameters:
+        device (str): The device to run computations on (e.g., 'cpu' or 'cuda').
+        openml_id (int): The OpenML dataset ID to load.
+        checkpoint_path (str): Path to the model checkpoint file.
+        output (str): Path to save the output pickle file.
+    Description:
+        - Loads the specified OpenML dataset and preprocesses it (encoding, shuffling).
+        - Adds new features using either feature smearing or needle-in-a-haystack approach.
+        - Saves attention maps from the model during inference to an output pickle file.
+    """
+    dataset = openml.datasets.get_dataset(openml_id)
+    X, y, categorical_indicator, _ = dataset.get_data(target=dataset.default_target_attribute)
+    X, y = shuffle(X, y, random_state=42)
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+    X = X[X.columns[np.array(categorical_indicator) == False]]
+    X = torch.tensor(X.values, dtype=torch.float32)
+    X_new_noise = get_new_features(X, features_to_be_added=2000 - X.shape[-1], sparsity=0, noise_std=1, include_original=False)
+    X_new_sparse = get_new_features(X, features_to_be_added=2000, sparsity=0.02, noise_std=1, include_original=False)
+
+    model, _, _ = load_model_criterion_config(
+        model_path=None,
+        check_bar_distribution_criterion=False,
+        cache_trainset_representation=False,
+        which='classifier',
+        version='v2',
+        download=True,
+    )
+    model.features_per_group = 1
+
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+    state_dict = checkpoint["state_dict"]
+    model.load_state_dict(state_dict)
+    model.to(device)
+
+    permutation = None
+    attentions_to_last_column = {}
+
+    for X_new, name in zip([X_new_noise, X_new_sparse], ["noise", "sparse"]):
+        if name == "noise":
+            X_new = torch.cat((X, X_new), dim=1)
+            permuted_indices = np.random.permutation(X_new.shape[1])
+            permutation = permuted_indices
+            X_new = X_new[:, permuted_indices]
+
+        X_train, X_test, y_train, y_test = train_test_split(X_new, y, test_size=0.2, random_state=42)
+        X_train_tensor = X_train.unsqueeze(1).to(device)
+        X_test_tensor = X_test.unsqueeze(1).to(device)
+        y_train_tensor = torch.tensor(y_train, dtype=torch.int8).unsqueeze(1).to(device)
+        y_test_tensor = torch.tensor(y_test, dtype=torch.int8).unsqueeze(1).to(device)
+        for layer in model.transformer_encoder.layers:
+            layer.self_attn_between_features.attention_map = None
+            layer.self_attn_between_features.save_att_map = True
+            layer.self_attn_between_features.number_of_samples = X_train_tensor.shape[0]
+
+        with torch.inference_mode():
+            with torch.autocast(device_type="cuda", dtype=torch.float16):
+                pred_logits = model(
+                    train_x=X_train_tensor,
+                    train_y=y_train_tensor,
+                    test_x=X_test_tensor,
+                )
+                n_classes = len(np.unique(y_train_tensor.cpu()))
+                pred_logits = pred_logits[..., :n_classes].float()
+                pred_probs = torch.softmax(pred_logits, dim=-1)[:, 0, :].detach().cpu().numpy()
+
+        try:
+            print("Accuracy:", (pred_probs.argmax(axis=-1) == y_test).mean())
+        except Exception as e:
+            print(e)
+
+        atts = [getattr(layer.get_submodule("self_attn_between_features"), "attention_map") for layer in model.transformer_encoder.layers]
+        atts = torch.stack(atts, dim=0)
+        att_to_last_column = atts.mean(dim=0)[-1, :-1]
+
+        attentions_to_last_column[name] = att_to_last_column.cpu().numpy()
+
+    with open(output, "wb") as f:
+        pickle.dump([attentions_to_last_column, permutation, X_new_noise, X_new_sparse], f)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", type=str, default="cuda:1", help="Device to use for torch")
+    parser.add_argument("--openml_id", type=int, default=1494, help="OpenML dataset ID")
+    parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to model checkpoint")
+    parser.add_argument("--output", type=str, default="attentions_to_last_column_model_2000.pkl", help="Output pickle file")
+    args = parser.parse_args()
+    main(args.device, args.openml_id, args.checkpoint_path, args.output)
+
+
+================================================
+FILE: analysis/multiomics_feature_reduction.py
+================================================
+import pandas as pd
+import numpy as np
+import warnings
+import wandb
+import os
+import torch
+import matplotlib.pyplot as plt
+from tabpfnwide.utils import PredictionResults
+from tabpfnwide.data import get_wide_validation_datasets
+from tabpfn.model.loading import load_model_criterion_config
+from tabpfn.model.memory import MemoryUsageEstimator
+import warnings
+warnings.filterwarnings("ignore")
+import argparse
+
+
+
+def main(dataset_name, checkpoint_paths, output_file, device="cuda:0", omics_list=None):
+    """
+    Runs feature reduction experiments on multi-omics datasets using a specified model and checkpoints.
+    Parameters:
+        dataset_name (str): Name of the dataset to evaluate.
+        checkpoint_paths (list of str): List of paths to model checkpoints. Use "default" for the base model.
+        output_file (str): Path to the CSV file where results will be saved.
+        device (str, optional): Device to run the model on (e.g., "cuda:0" or "cpu"). Defaults to "cuda:0".
+        omics_list (list of str, optional): List of omics types to include. If None, defaults to "mRNA".
+    For each checkpoint and a range of feature counts, the function:
+    - Loads the model and checkpoint.
+    - Iterates over validation splits of the dataset with reduced features.
+    - Evaluates the model, collects predictions, and computes accuracy and weighted F1 score.
+    - Appends results to a CSV file, skipping experiments that have already been run.
+    """
+    
+    api = wandb.Api()
+    results = pd.DataFrame(columns=[
+        'Dataset', 'Omic', 'Checkpoint', 'n_features', 'Fold', 'Model',
+        'Max_finetune', 'Accuracy', 'f1_weighted', 'prediction_probas', 'ground_truth'
+    ])
+    if os.path.exists(output_file):
+        results = pd.read_csv(output_file)
+    for checkpoint_path in checkpoint_paths:
+        model, _, _ = load_model_criterion_config(
+            model_path=None,
+            check_bar_distribution_criterion=False,
+            cache_trainset_representation=False,
+            which='classifier',
+            version='v2',
+            download=True,
+        )
+        if checkpoint_path != "default":
+            model.features_per_group = 1
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            model.load_state_dict(checkpoint)
+            name = checkpoint_path.split("/")[-1]
+        else:
+            name = "default"
+            
+
+        for n_features in [200, 500, 2000, 5000, 7500, 10000, 15000, 20000, 25000, 30000, 40000, 50000, 60000, 0]:
+            exists = ((results['n_features'] == n_features) & (results['Checkpoint'] == checkpoint_path.split("/")[-1]) & (results['Dataset'] == dataset_name)).any()
+            if exists:
+                print(f"Skipping {dataset_name} with {n_features} features, already exists")
+                continue
+            print(f"Validating {dataset_name} with {n_features} features")
+            model.to(device)
+            model.eval()
+            for i, dataset in enumerate(get_wide_validation_datasets(device, dataset_name=dataset_name, n_splits=5, n_repeats=1, reduced_features=n_features, omics=omics_list)):
+                X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = dataset
+                exists = ((results['n_features'] == X_train_tensor.shape[-1]) & (results['Checkpoint'] == checkpoint_path.split("/")[-1]) & (results['Dataset'] == dataset_name)).any()
+                if exists and i == 0:
+                    print(f"Skipping {dataset_name} with {X_train_tensor.shape[-1]} features, already exists")
+                    break
+                MemoryUsageEstimator.reset_peak_memory_if_required(
+                    save_peak_mem=True,
+                    model=model,
+                    X=torch.cat([X_train_tensor, X_test_tensor], dim=0),
+                    cache_kv=False,
+                    dtype_byte_size= 2,
+                    device=torch.device(device),
+                    safety_factor=4, 
+                )
+
+                with torch.inference_mode():
+                    with torch.autocast(device_type="cuda", dtype=torch.float16):
+                        pred_logits = model(
+                            train_x=X_train_tensor,
+                            train_y=y_train_tensor,
+                            test_x=X_test_tensor,
+                        )
+                        n_classes = len(np.unique(y_train_tensor.cpu()))
+                        pred_logits = pred_logits[..., :n_classes].float()  
+                        pred_probs = torch.softmax(pred_logits, dim=-1)[:, 0, :].detach().cpu().numpy()
+                pred_res = PredictionResults(y_test_tensor.flatten().cpu().numpy(), pred_probs)
+                accuracy = pred_res.get_classification_report(print_report=False)['accuracy']
+                f1_weighted = pred_res.get_f1_score(average='weighted')
+                results = pd.concat([
+                    results,
+                    pd.DataFrame({
+                        'Dataset': dataset_name,
+                        'Omic': "+".join(omics_list) if omics_list else "mRNA",
+                        'Checkpoint': checkpoint_path.split("/")[-1],
+                        'n_features': X_train_tensor.shape[-1],
+                        'Fold': i,
+                        'Model': name,
+                        'Accuracy': accuracy,
+                        'f1_weighted': f1_weighted,
+                        'prediction_probas': [" ".join(map(str, pred_res.prediction_probas))],
+                        'ground_truth': [" ".join(map(str, pred_res.ground_truth))],
+                    })
+                ], ignore_index=True)
+            model.to("cpu")
+            results.to_csv(output_file, index=False)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("dataset_name", type=str)
+    parser.add_argument("checkpoints_dir",  type=str)
+    parser.add_argument("output_file", type=str)
+    parser.add_argument("omics_list", type=str, nargs='+')
+    parser.add_argument("--device", type=str, default="cuda:0")
+    args = parser.parse_args()
+    dataset_name = args.dataset_name
+    checkpoints_dir = args.checkpoints_dir
+    output_file = args.output_file
+    checkpoint_paths = [os.path.join(checkpoints_dir, cp) for cp in os.listdir(checkpoints_dir) if cp.endswith('.pt')]
+    checkpoint_paths += ["default"]
+    omics_list = args.omics_list
+    device = args.device
+    main(dataset_name, checkpoint_paths, output_file, device, omics_list)
+
+
+
+================================================
+FILE: analysis/openml_benchmark.py
+================================================
+import pandas as pd
+import numpy as np
+import os
+from sklearn.utils import shuffle
+import torch
+import openml
+from openml import tasks
+import warnings
+warnings.filterwarnings("ignore")
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.metrics import roc_auc_score
+from tabpfnwide.utils import PredictionResults
+from tabpfnwide.patches import fit
+from tabpfn.model.loading import load_model_criterion_config
+from tabpfn import TabPFNClassifier
+setattr(TabPFNClassifier, 'fit', fit)
+import argparse
+
+def main(suite_id, output_file, max_features=500, min_features=0, max_instances=10000, checkpoints=[], device="cuda:0"):
+    """
+    Runs classification experiments on a suite of OpenML tasks, evaluating different model checkpoints and the default model (TabPFNv2).
+    Parameters:
+        suite_id (int): The OpenML suite ID specifying the collection of tasks to evaluate.
+        output_file (str): Path to the CSV file where results will be saved or appended.
+        max_features (int, optional): Maximum number of features allowed in a dataset. Defaults to 500.
+        min_features (int, optional): Minimum number of features required in a dataset. Defaults to 0.
+        max_instances (int, optional): Maximum number of instances allowed in a dataset. Defaults to 10,000.
+        checkpoints (list, optional): List of checkpoint file paths to evaluate. Use "default" for the base model. Defaults to [].
+        device (str, optional): Device identifier for model computation (e.g., "cuda:0" or "cpu"). Defaults to "cuda:0".
+    Description:
+        - Filters OpenML tasks based on classification type, feature/instance/class count
+        - Evaluates TabPFNClassifier on each task using repeated stratified k-fold cross-validation.
+        - Results are saved to the specified output CSV file
+    """
+    suite = openml.study.get_suite(suite_id=suite_id)
+    openml_df = tasks.list_tasks(output_format="dataframe", task_id=suite.tasks)
+    
+    if "task_type" in openml_df.columns:
+        openml_df = openml_df[openml_df["task_type"] == "Supervised Classification"]
+    
+    openml_df = openml_df[openml_df["NumberOfFeatures"] >= min_features]
+    openml_df = openml_df[openml_df["NumberOfFeatures"] <= max_features]
+    openml_df = openml_df[openml_df["NumberOfInstances"] <= max_instances]
+    # TabPFN is not suitable for datasets with more than 10 classes
+    openml_df = openml_df[openml_df["NumberOfClasses"] < 10]
+    openml_df = openml_df[openml_df["NumberOfClasses"] > 1]
+    
+    
+    for checkpoint_path in checkpoints:
+        if checkpoint_path != "default":
+            model, _, _ = load_model_criterion_config(
+                model_path=None,
+                check_bar_distribution_criterion=False,
+                cache_trainset_representation=False,
+                which='classifier',
+                version='v2',
+                download=True,
+            )
+            model.features_per_group = 1
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            model.load_state_dict(checkpoint)
+
+        res_df = pd.DataFrame(columns=[
+            'task_id', 'fold', 'checkpoint', 'accuracy', 'f1_weighted', 'roc_auc_score',
+            'prediction_probas', 'ground_truth'
+        ])
+        if os.path.exists(output_file):
+            res_df = pd.read_csv(output_file)   
+
+        for task_id in openml_df['tid'].values:
+
+            if (
+                (res_df['task_id'] == task_id) &
+                (res_df['checkpoint'] == checkpoint_path.split("/")[-1])
+            ).any():
+                print(f"Skipping task ID {task_id}, already processed")
+                continue
+            try:
+                task = openml.tasks.get_task(int(task_id))
+                dataset = task.get_dataset()
+                X, y, _, _ = dataset.get_data(target=task.target_name)
+                X, y = shuffle(X, y, random_state=42)
+                X = X.values
+                le = LabelEncoder()
+                y = le.fit_transform(y)
+
+                clf = TabPFNClassifier(device=device, n_estimators=1, ignore_pretraining_limits=True)
+                skf = RepeatedStratifiedKFold(n_splits=3, n_repeats=10 if X.shape[0] < 2500 else 3, random_state=42)
+
+                for fold, (train_idx, test_idx) in enumerate(skf.split(X, y)):
+                    X_train, X_test = X[train_idx], X[test_idx]
+                    y_train, y_test = y[train_idx], y[test_idx]
+                    clf.fit(X_train, y_train, model=model if checkpoint_path != "default" else None)
+                    pred_probs = clf.predict_proba(X_test)
+
+                    pred_res = PredictionResults(y_test, pred_probs)
+                    accuracy = pred_res.get_classification_report(print_report=False)['accuracy']
+                    f1_weighted = pred_res.get_f1_score(average='weighted')
+                    if pred_probs.shape[-1] == 2:
+                        roc_auc = roc_auc_score(pred_res.ground_truth, pred_res.prediction_probas[:, 1])
+                    else:
+                        roc_auc = roc_auc_score(
+                            pred_res.ground_truth, pred_res.prediction_probas, 
+                            multi_class='ovr', average='macro', labels=np.arange(pred_probs.shape[-1])
+                        )
+                    res_df = pd.concat([
+                        res_df,
+                        pd.DataFrame({
+                            'task_id': task_id,
+                            'fold': fold,
+                            'checkpoint': checkpoint_path.split("/")[-1],
+                            'accuracy': accuracy,
+                            'f1_weighted': f1_weighted,
+                            'roc_auc_score': roc_auc,
+                            'prediction_probas': [" ".join(map(str, pred_res.prediction_probas))],
+                            'ground_truth': [" ".join(map(str, pred_res.ground_truth))],
+                        })
+                    ], ignore_index=True)
+                print(f"Task ID {task_id} processed successfully.")
+                res_df.to_csv(output_file, index=False)
+
+            except Exception as e:
+                print(f"Error with ID {task_id}: {e.with_traceback()}")
+            
+            
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("suite_id", type=int, help="OpenML suite ID to process")
+    parser.add_argument("max_features", type=int, default=50000, help="Maximum number of features to consider")
+    parser.add_argument("min_features", type=int, default=500, help="Minimum number of features to consider")
+    parser.add_argument("max_instances", type=int, default=10000, help="Maximum number of instances to consider")
+    parser.add_argument("output_file", type=str)
+    parser.add_argument("--checkpoint_dir", type=str, required=True)
+    parser.add_argument("--device", type=str, default="cuda:0")
+    args = parser.parse_args()
+    checkpoints = [os.path.join(args.checkpoint_dir, f) for f in os.listdir(args.checkpoint_dir) if f.endswith('.pt')]
+    checkpoints += ["default"]
+    main(
+        suite_id=args.suite_id,
+        output_file=args.output_file,
+        max_features=args.max_features,
+        min_features=args.min_features,
+        max_instances=args.max_instances,
+        checkpoints=checkpoints,
+        device=args.device,
+    )
+
+
+================================================
+FILE: analysis/openml_widening.py
+================================================
+from sklearn.impute import SimpleImputer
+import torch
+import pandas as pd
+import numpy as np
+import os
+import warnings
+warnings.filterwarnings("ignore")
+import openml
+from tabicl import TabICLClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import RepeatedStratifiedKFold
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import roc_auc_score
+from sklearn.utils import shuffle
+from tabpfn.model.loading import load_model_criterion_config
+from tabpfn import TabPFNClassifier
+from tabpfnwide.utils import PredictionResults, get_new_features
+from tabpfnwide.patches import fit
+setattr(TabPFNClassifier, 'fit', fit)
+import argparse
+
+def main(did, output_file, device, checkpoints, sparsity=0.01, feature_numbers=[0, 50, 500, 2000, 5000, 10000, 20000, 30000]):
+    """
+    Runs feature widening experiments on an OpenML dataset using various classifiers and checkpoints.
+    Parameters:
+        did (int): OpenML dataset ID to load.
+        output_file (str): Path to the CSV file where results will be saved.
+        device (str or torch.device): Device to use for model inference (e.g., 'cpu' or 'cuda').
+        checkpoints (list of str): List of checkpoint paths or classifier names to evaluate.
+        sparsity (float, optional): Sparsity level for added features. Default is 0.01.
+        feature_numbers (list of int, optional): List of target feature counts for widening. Default is [0, 50, 500, 2000, 5000, 10000, 20000, 30000].
+    Description:
+        - Loads the specified OpenML dataset and preprocesses it (encoding, imputation, etc.).
+        - For each checkpoint/classifier and each specified feature count:
+            - Widens the dataset by adding new features with given sparsity.
+            - Trains and evaluates the classifier using 5-fold cross-validation.
+            - Computes accuracy, weighted F1, and ROC AUC scores.
+            - Saves results (including predictions and ground truth) to the output CSV file.
+    """
+    
+    dataset = openml.datasets.get_dataset(did)
+    X, y, categorical_indicator, _ = dataset.get_data(target=dataset.default_target_attribute)
+    X, y = shuffle(X, y, random_state=42)
+    le = LabelEncoder()
+    y = le.fit_transform(y)
+    if sparsity != 0:
+        X = X[X.columns[np.array(categorical_indicator) == False]]
+        if did == 46940: # Date column causing issues
+            X = X.drop(columns=["Dt_Customer"])
+        if X.isnull().values.any():
+            simple_imputer = SimpleImputer(strategy="mean")
+            X = pd.DataFrame(simple_imputer.fit_transform(X), columns=X.columns)
+    
+    if os.path.exists(output_file):
+        results = pd.read_csv(output_file)
+    else:
+        results = pd.DataFrame(columns=[
+            'dataset_id', 'fold', 'checkpoint', 'features', 'features_added', 'accuracy', 
+            'f1_weighted', 'roc_auc_score', 'prediction_probas', 'ground_truth'
+        ])
+
+    other_classifiers = ["default", "tabicl", "random_forest"]
+    for checkpoint_path in checkpoints:
+        if checkpoint_path not in other_classifiers:
+            model, _, _ = load_model_criterion_config(
+                model_path=None,
+                check_bar_distribution_criterion=False,
+                cache_trainset_representation=False,
+                which='classifier',
+                version='v2',
+                download=True,
+            )
+            model.features_per_group = 1
+            checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
+            model.load_state_dict(checkpoint)
+
+        if checkpoint_path in ["tabicl", "random_forest"]:
+            if X.isnull().values.any():
+                simple_imputer = SimpleImputer(strategy="most_frequent")
+                X = pd.DataFrame(simple_imputer.fit_transform(X), columns=X.columns)
+                print(X.isnull().values.any())
+                
+            for col in X.columns:
+                if X[col].dtype == object or X[col].dtype.name == "category":
+                    X[col] = LabelEncoder().fit_transform(X[col].astype(str))
+
+        for feature_number in feature_numbers:
+            feature_number = int(feature_number)
+            print(f"Validating {dataset.name} ({dataset.id}) with {feature_number} features and checkpoint {checkpoint_path}")
+            match checkpoint_path:
+                case "tabicl":
+                    clf = TabICLClassifier(device=device, n_estimators=1)
+                case "random_forest":
+                    clf = RandomForestClassifier(n_jobs=4)
+                case _:
+                    clf = TabPFNClassifier(device=device, ignore_pretraining_limits=True, n_estimators=1)
+                    
+            if feature_number != 0 and feature_number < X.shape[1]:
+                print(f"Feature number {feature_number} is less than the original number of features {X.shape[1]}, skipping widening.")
+                continue
+            # Widen the dataset
+            if sparsity == 0 and feature_number != 0:
+                features_added = feature_number - X.shape[1]
+            else:
+                features_added = feature_number
+            tensor = torch.Tensor(X.values) if sparsity != 0 else torch.zeros(X.shape)
+            X_increase = get_new_features(tensor, features_added, sparsity, 1, False).numpy()
+            if sparsity == 0 or feature_number == 0:
+                X_new = np.concatenate((X.values, X_increase), axis=1)
+            else:
+                X_new = X_increase
+            permuted_indices = np.random.permutation(X_new.shape[1])
+            X_new = X_new[:, permuted_indices]
+            
+            assert X_new.shape[1] == (X.shape[1] if feature_number == 0 else feature_number), f"Expected {feature_number} features, got {X_new.shape[1]}"
+            check_feature_number = feature_number if feature_number != 0 else X.shape[1]
+            exists = ((results['features'] == check_feature_number) & 
+                      (results['checkpoint'].apply(lambda x: x in (checkpoint_path.split("/")[-1] if not (checkpoint_path in ["default", "tabicl", "random_forest"]) else checkpoint_path))) &  
+                      (results['dataset_id'] == did)).any()
+            if exists:
+                print(f"Skipping dataset ID {did} with {X_new.shape[1]} features, already exists")
+                continue
+
+            for fold, (train_idx, test_idx) in enumerate(RepeatedStratifiedKFold(n_repeats=1, n_splits=5, random_state=42).split(X_new, y)):
+                X_train, X_test = X_new[train_idx], X_new[test_idx]
+                y_train, y_test = y[train_idx], y[test_idx]
+                if checkpoint_path in other_classifiers:
+                    clf.fit(X_train, y_train)
+                else:
+                    clf.fit(X_train, y_train, model=model)
+                pred_probs = clf.predict_proba(X_test)
+                pred_res = PredictionResults(y_test, pred_probs)
+                accuracy = pred_res.get_classification_report(print_report=False)['accuracy']
+                f1_weighted = pred_res.get_f1_score(average='weighted')
+                if pred_probs.shape[-1] == 2:
+                    roc_auc = roc_auc_score(pred_res.ground_truth, pred_res.prediction_probas[:, 1])
+                else:
+                    roc_auc = roc_auc_score(
+                        pred_res.ground_truth, pred_res.prediction_probas, 
+                        multi_class='ovr', average='macro', labels=np.arange(pred_probs.shape[-1])
+                    )
+                results = pd.concat([
+                    results,
+                    pd.DataFrame({
+                        'dataset_id': did,
+                        'fold': fold,
+                        'checkpoint': checkpoint_path.split("/")[-1][:-3] if checkpoint_path not in other_classifiers else checkpoint_path,
+                        'features': X_new.shape[1],
+                        'features_added': features_added,
+                        'accuracy': accuracy,
+                        'f1_weighted': f1_weighted,
+                        'roc_auc_score': roc_auc,
+                        'prediction_probas': [" ".join(map(str, pred_res.prediction_probas))],
+                        'ground_truth': [" ".join(map(str, pred_res.ground_truth))],
+                    })
+                ], ignore_index=True)
+
+            results.to_csv(output_file, index=False)
+
+
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("dataset_ids", type=int, nargs='+', help="List of OpenML dataset IDs to process.")
+    parser.add_argument("--output_folder", type=str, required=True, help="Path to save the results.")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to use for training.")
+    parser.add_argument("--checkpoints_dir", type=str, default=None, help="Path to the model checkpoints.")
+    parser.add_argument("--sparsity", type=float, default=0.01, help="Sparsity level for feature addition. If 0 only noise is added.")
+    parser.add_argument("--feature_numbers", nargs='+', default=[0, 50, 500, 2000, 5000, 10000, 20000, 30000])
+
+    args = parser.parse_args()
+    checkpoint_paths = [os.path.join(args.checkpoints_dir, cp) for cp in os.listdir(args.checkpoints_dir) if cp.endswith('.pt')]
+    checkpoint_paths += ["default"]
+    checkpoint_paths += ["tabicl"]
+    checkpoint_paths += ["random_forest"]
+    
+    for dataset_id in args.dataset_ids:
+        args.dataset_id = dataset_id
+        args.output_file = os.path.join(args.output_folder, f"{dataset_id}.csv")
+        if not os.path.exists(args.output_folder):
+            os.makedirs(args.output_folder)
+        try:
+            main(args.dataset_id, args.output_file, args.device, checkpoint_paths, args.sparsity, args.feature_numbers)
+        except Exception as e:
+            print(f"Error processing dataset {dataset_id}: {e}")
+            continue
+
+
+
+
+================================================
+FILE: multiomics_benchmark_data/README.md
+================================================
+Use `git clone https://github.com/chenzRG/Cancer-Multi-Omics-Benchmark.git` to clone the repository here containing the `download.sh` script to download the multi-omics benchmark datasets. If completed, the directory structure should look like this:
+
+```
+multiomics_benchmark_data/Cancer-Multi-Omics-Benchmark/Main_Dataset/Classification_datasets/GS-<dataset_name>/<preprocessing>/
+```
+
+
+================================================
+FILE: shamir_data/README.md
+================================================
+Go to `https://acgt.cs.tau.ac.il/multi_omic_benchmark/download.html` to download the multi-omics benchmark datasets. Place the downloaded datasets in this `shamir_data` folder. The directory structure should look like this:
+```
+shamir_data/Multi_Omics_Cancer_Benchmark_TCGA_Shamir/<dataset_name>/
+```
+
+Furthermore, to map the methylation probe IDs to gene symbols, download the file from `https://webdata.illumina.com/downloads/productfiles/humanmethylation450/humanmethylation450_15017482_v1-2.csv` and place it in the `shamir_data` folder named as `methylation_gene_mapping.csv`.
+
+
+
+
+
+================================================
+FILE: tabpfnwide/__init__.py
+================================================
+[Empty file]
+
+
+================================================
+FILE: tabpfnwide/data.py
+================================================
+from sklearn.model_selection import RepeatedStratifiedKFold
+from tabicl.prior.dataset import PriorDataset
+import numpy as np
+import pandas as pd
+import torch
+from sklearn.preprocessing import LabelEncoder
+from dataclasses import dataclass
+from load_mm_data import load_multiomics_benchmark_shamir, load_multiomics_benchmark_ds, ALL_MULTIOMICS_DATASETS, ALL_MULTIOMICS_DATASETS_SHAMIR
+from torch.utils.data import DataLoader
+from sklearn.datasets import fetch_openml
+
+from utils import feature_reduction_agglomeration
+
+@dataclass
+class PriorDatasetConfig:
+    batch_size: int = 8
+    batch_size_per_gp: int = 8  # Number of datasets per group, sharing similar characteristics
+    device: str = "cpu"
+    min_features: int = 10
+    max_features: int = 100
+    max_classes: int = 10
+    min_seq_len: int = 40
+    max_seq_len: int = 400
+    log_seq_len: bool = False
+    seq_len_per_gp: bool = False
+    min_train_size: float = 0.3
+    max_train_size: float = 0.9
+    replay_small: bool = False
+    prior_type: str = "mlp_scm"  # default
+    n_jobs: int = 1  # Set to 1 to avoid nested parallelism
+    
+    
+@dataclass
+class PriorDataLoaderConfig:
+    batch_size: int = None
+    shuffle: bool = False
+    num_workers: int = 1
+    prefetch_factor: int = 4
+    pin_memory: bool = True
+    pin_memory_device: str = "cuda"  # Device to pin memory to, typically the training device
+
+
+def load_prior_dataloader(
+    dataset: PriorDataset,
+    config_dataset : PriorDatasetConfig,
+    config_dataloader: PriorDataLoaderConfig
+):
+    return DataLoader(dataset(**config_dataset.__dict__), **config_dataloader.__dict__)
+
+            
+            
+def get_wide_validation_datasets(device, dataset_name="gbm", n_splits=5, n_repeats=1, reduced_features=0, omics=["mrna"]):
+    """
+    Returns a generator that yields validation datasets the specified dataset.
+    """
+    if dataset_name in ALL_MULTIOMICS_DATASETS:
+        ds = load_multiomics_benchmark_ds(dataset_name, preprocessing="Original")
+    elif dataset_name in ALL_MULTIOMICS_DATASETS_SHAMIR:
+        ds = load_multiomics_benchmark_shamir(dataset_name, normalize=True, subtype_labels=True)
+    else:
+        raise ValueError(f"Dataset {dataset_name} not found in multiomics datasets.")
+
+    x_list = [ds[omic] for omic in omics]
+    X, y = pd.concat(x_list, axis=1), ds["labels"]
+
+    if reduced_features > X.shape[-1]:
+        print(f"Skipping {dataset_name} with {reduced_features} features, not enough features in dataset")
+        yield from ()
+    else:
+        if reduced_features > 0:
+            X = feature_reduction_agglomeration(X, n_features=reduced_features).values
+        else:
+            X = X.values
+
+        X = X.astype(np.float32)
+        label_encoder = LabelEncoder()
+        y = label_encoder.fit_transform(y)
+        yield from generate_tensor_folds(X, y, device, n_splits=n_splits, n_repeats=n_repeats)
+
+
+def generate_tensor_folds(X, y, device, n_splits=5, n_repeats=1):
+    for train_idx, test_idx in RepeatedStratifiedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=42).split(X, y):
+        X_train, X_test = X[train_idx], X[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        X_train_tensor = torch.tensor(X_train, dtype=torch.float32).unsqueeze(1).to(device)
+        X_test_tensor = torch.tensor(X_test, dtype=torch.float32).unsqueeze(1).to(device)
+        y_train_tensor = torch.tensor(y_train, dtype=torch.int8).unsqueeze(1).to(device)
+        y_test_tensor = torch.tensor(y_test, dtype=torch.int8).unsqueeze(1).to(device)
+        yield X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor
+
+
+
+def get_wide_validation_data(device, validation_datasets, omics_combinations):
+    for dataset_name in validation_datasets:
+        for omic_list in omics_combinations:
+            print(f"Using omics: {omic_list} for dataset {dataset_name}")
+            yield from get_wide_validation_datasets(device, dataset_name=dataset_name, omics=omic_list)
+
+
+
+================================================
+FILE: tabpfnwide/load_mm_data.py
+================================================
+import os
+import pandas as pd
+import joblib
+from sklearn.decomposition import SparsePCA
+from sklearn.preprocessing import scale
+from functools import lru_cache
+
+ALL_MULTIOMICS_DATASETS = set(['BRCA', 'COAD', 'GBM', 'LGG', 'OV'])
+ALL_MULTIOMICS_DATASETS_SHAMIR = set(['aml', 'breast', 'colon', 'gbm', 'kidney', 'liver', 'lung', 'melanoma', 'ovarian', 'sarcoma'])
+
+@lru_cache(maxsize=1)
+def load_multiomics_benchmark_ds(dataset, preprocessing, dir_path=None):
+    assert dataset in ALL_MULTIOMICS_DATASETS, f"Dataset {dataset} not in {ALL_MULTIOMICS_DATASETS}"
+    assert preprocessing in ['Aligned', 'Original'], f"Preprocessing {preprocessing} not in ['Aligned', 'Original']"
+    file_appendix = f"_{preprocessing.lower()}" if preprocessing != "Original" else ""
+    
+    if dir_path is None:
+        dir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'multiomics_benchmark_data')
+    path_to_benchmark_ds_pre = os.path.join(dir_path, "Cancer-Multi-Omics-Benchmark", "Main_Dataset", 
+                                        "Classification_datasets", f"GS-{dataset}", preprocessing)
+
+    cnv_data = pd.read_csv(os.path.join(path_to_benchmark_ds_pre, f"{dataset}_CNV{file_appendix}.csv"), index_col=0)
+    # Remove rows with all zeros
+    cnv_data = cnv_data.loc[~(cnv_data == 0).all(axis=1)]
+    # Remove duplicated rows and keep the first occurrence
+    cnv_data = cnv_data[~cnv_data.index.duplicated(keep='first')]
+    cnv_data = cnv_data.T
+    # Fill NaN values with the mean of each column
+    cnv_data.fillna(cnv_data.mean(), inplace=True)
+    cnv_data.columns = cnv_data.columns.astype(str)
+
+    methylation_data = pd.read_csv(os.path.join(path_to_benchmark_ds_pre, f"{dataset}_Methy{file_appendix}.csv"), index_col=0)
+    methylation_data = methylation_data.loc[~(methylation_data == 0).all(axis=1)]
+    methylation_data = methylation_data[~methylation_data.index.duplicated(keep='first')]
+    methylation_data = methylation_data.T
+    methylation_data.fillna(methylation_data.mean(), inplace=True)
+    methylation_data.columns = methylation_data.columns.astype(str)
+
+    rna_data = pd.read_csv(os.path.join(path_to_benchmark_ds_pre, f"{dataset}_mRNA{file_appendix}.csv"), index_col=0)
+    rna_data = rna_data.loc[~(rna_data == 0).all(axis=1)]
+    rna_data = rna_data[~rna_data.index.duplicated(keep='first')]
+    rna_data = rna_data.T
+    rna_data.fillna(rna_data.mean(), inplace=True)
+    rna_data.columns = rna_data.columns.astype(str)
+
+    # For miRNA, we use the original data as there is no high-dimensional version
+    mirna_data = pd.read_csv(os.path.join(path_to_benchmark_ds_pre, f"{dataset}_miRNA{file_appendix}.csv"), index_col=0)
+    mirna_data = mirna_data.loc[~(mirna_data == 0).all(axis=1)]    
+    mirna_data = mirna_data[~mirna_data.index.duplicated(keep='first')]
+    mirna_data = mirna_data.T
+    mirna_data.fillna(mirna_data.mean(), inplace=True)
+    mirna_data.columns = mirna_data.columns.astype(str)
+
+    labels = pd.read_csv(os.path.join(path_to_benchmark_ds_pre, f"{dataset}_label_num.csv"))
+    
+    return {
+        'cnv': cnv_data,
+        'methylation': methylation_data,
+        'mrna': rna_data,
+        'mirna': mirna_data,
+        # Leave these for compatibility with existing code
+        'original_cnv': cnv_data,
+        'original_methylation': methylation_data,
+        'original_mrna': rna_data,
+        'original_mirna': mirna_data,
+        'labels' : labels.values.flatten(),
+    }
+    
+
+@lru_cache(maxsize=1)
+def load_multiomics_benchmark_shamir(dataset, normalize, aligned=True, subtype_labels=False):
+    assert dataset in ALL_MULTIOMICS_DATASETS_SHAMIR, f"Dataset {dataset} not in {ALL_MULTIOMICS_DATASETS_SHAMIR}"
+    shamir_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'shamir_data', 'Multi_Omics_Cancer_Benchmark_TCGA_Shamir')
+    dir_path = os.path.join(shamir_path, dataset)
+    
+    mrna_data = pd.read_table(os.path.join(dir_path, "exp"), header=0, index_col=0, sep=r"\s+")
+    mrna_data = mrna_data.T
+    mrna_data = mrna_data[~mrna_data.index.duplicated(keep='first')]
+    assert pd.isna(mrna_data).sum().sum() == 0
+    if normalize:
+        # Normalize the data
+        mrna_data[:] = scale(mrna_data)
+        
+    methylation_data = pd.read_table(os.path.join(dir_path, "methy"), header=0, index_col=0, sep=r"\s+")
+    methylation_data = methylation_data.T
+    methylation_data = methylation_data[~methylation_data.index.duplicated(keep='first')]
+    illumina_mapping = pd.read_csv(os.path.join(shamir_path, "methylation_gene_mapping.csv"), skiprows=7, index_col=0, dtype=str)
+    gene_names = illumina_mapping["UCSC_RefGene_Name"].dropna()
+    gene_names = gene_names.str.split(";").apply(lambda x: x[0] if len(x) > 0 else None).to_dict()
+    new_columns = [gene_names.get(col, col) for col in methylation_data.columns]
+    methylation_data.columns = new_columns
+    assert pd.isna(methylation_data).sum().sum() == 0
+    if normalize:
+        # Normalize the data
+        methylation_data[:] = scale(methylation_data)
+        
+    mirna_data = pd.read_table(os.path.join(dir_path, "mirna"), header=0, index_col=0, sep=r"\s+")
+    mirna_data = mirna_data.T
+    mirna_data = mirna_data[~mirna_data.index.duplicated(keep='first')]
+    mirna_data.columns = [col.replace("-", ".") for col in mirna_data.columns]
+    assert pd.isna(mirna_data).sum().sum() == 0
+    if normalize:
+        # Normalize the data
+        mirna_data[:] = scale(mirna_data)
+    
+
+    if subtype_labels and dataset in ["gbm", "breast", "colon", "kidney", "sarcoma"]:
+        if dataset == "colon":
+            st_labels = pd.read_csv(os.path.join(dir_path, "subtype_labels"), index_col=0, skiprows=1)
+            st_labels.index = st_labels.index.str.replace("-", ".")
+            labels = st_labels
+        elif dataset == "kidney":
+            raise ValueError("Kidney dataset only consists of clear cell subtype, no subtype labels available.")
+        else:
+            clinical_data = pd.read_table(os.path.join(dir_path, dataset))
+            clinical_data["sampleID"] = clinical_data["sampleID"].str.replace("-", ".")
+            clinical_data.index = clinical_data["sampleID"]
+            label_column = {
+                "gbm": "GeneExp_Subtype",
+                "breast": "PAM50Call_RNAseq",
+                "sarcoma": "histological_type"
+            }[dataset]
+            labels = clinical_data[label_column]
+            labels.dropna(inplace=True)
+    else:
+        labels = pd.read_table(os.path.join(dir_path, "survival"), header=0, index_col=0, sep=r"\s+")
+        labels = labels[~labels.index.duplicated(keep='first')]
+
+    
+    if aligned:
+        intersection_omic = list(
+            set(mrna_data.index)
+            .intersection(set(methylation_data.index))
+            .intersection(set(mirna_data.index))
+        )
+
+        sample_delimiter_label = "." if "." in labels.index[0] else "-"
+        sample_len_label = len(labels.index[0].split(sample_delimiter_label))
+        for sample in labels.index:
+            assert len(sample.split(sample_delimiter_label)) == sample_len_label, f"Sample {sample} does not have the expected format"
+            
+        sample_delimiter_omic = "." if "." in intersection_omic[0] else "-"
+        sample_len_omic = len(intersection_omic[0].split(sample_delimiter_omic))
+        for sample in intersection_omic:    
+            assert len(sample.split(sample_delimiter_omic)) == sample_len_omic, f"Sample {sample} does not have the expected format"
+
+        match_length = min(sample_len_label, sample_len_omic)
+        standardized_all_omic = { sample_delimiter_omic.join(sample.split(sample_delimiter_omic)[:match_length]).lower(): sample for sample in intersection_omic}
+        standardized_labels = { sample_delimiter_omic.join(sample.split(sample_delimiter_label)[:match_length]).lower(): sample for sample in labels.index}
+
+        intersection = set(standardized_all_omic.keys()).intersection(set(standardized_labels.keys()))
+        intersection_all_omic = [standardized_all_omic[sample] for sample in intersection]
+        intersection_all_labels = [standardized_labels[sample] for sample in intersection]
+
+        assert len(intersection_all_omic) == len(intersection_all_labels), f"Number of samples in omics {len(intersection_all_omic)} and labels {len(intersection_all_labels)} do not match" 
+
+        return {
+            'methylation': methylation_data.loc[intersection_all_omic],
+            'mrna': mrna_data.loc[intersection_all_omic],
+            'mirna': mirna_data.loc[intersection_all_omic],
+            'labels' : labels.loc[intersection_all_labels]["Death"].values if not subtype_labels else labels.loc[intersection_all_labels].values,
+            # Leave these for compatibility with existing code
+            'aligned_methylation': methylation_data.loc[intersection_all_omic],
+            'aligned_mrna': mrna_data.loc[intersection_all_omic],
+            'aligned_mirna': mirna_data.loc[intersection_all_omic],
+            'aligned_labels' : labels.loc[intersection_all_labels]["Death"].values if not subtype_labels else labels.loc[intersection_all_labels].values,
+        }
+    
+    result = {}
+    
+    for omic, data in zip(
+        ['methylation', 'mrna', 'mirna'],
+        [methylation_data, mrna_data, mirna_data]
+    ):
+        intersection_omic = [sample for sample in data.index if ".".join(sample.split(".")[:3]).lower() in labels.index.str.lower()]
+        intersection_labels = [".".join(sample.split(".")[:3]).lower() for sample in intersection_omic]
+        
+        assert len(intersection_omic) == len(intersection_labels), f"Number of samples in omics {len(intersection_omic)} and labels {len(intersection_labels)} do not match"
+        result[f'original_{omic}'] = data.loc[intersection_omic]
+        result[f'labels_{omic}'] = labels.loc[intersection_labels]
+        
+    return result
+
+
+def load_multiomics(dataset, **kwargs):
+    if dataset in ALL_MULTIOMICS_DATASETS:
+        dict_ds = load_multiomics_benchmark_ds(dataset, preprocessing=kwargs.get('preprocessing', 'Original'), **kwargs)
+        labels = dict_ds['labels']
+        return dict_ds, labels
+    if dataset in ALL_MULTIOMICS_DATASETS_SHAMIR:
+        dict_ds = load_multiomics_benchmark_shamir(
+            dataset,
+            normalize=kwargs.get('normalize', True), 
+            subtype_labels=kwargs.get('subtype_labels', True),
+            **kwargs)
+        labels = dict_ds['labels']
+        return dict_ds, labels
+    raise ValueError(f"Dataset {dataset} not recognized. Available datasets: {ALL_MULTIOMICS_DATASETS.union(ALL_MULTIOMICS_DATASETS_SHAMIR)}")
+        
+
+
+================================================
+FILE: tabpfnwide/patches.py
+================================================
+import contextlib
+from tabpfn.constants import XType, YType
+from tabpfn.utils import infer_random_state
+from tabpfn.base import determine_precision, create_inference_engine
+from tabpfn.model.attention.full_attention import MultiHeadAttention, HAVE_FLASH_ATTN
+from tabpfn.model.memory import support_save_peak_mem_factor
+from sklearn import config_context
+from typing import Self
+import torch
+
+@config_context(transform_output="default")  # type: ignore
+def fit(self, X: XType, y: YType, model=None) -> Self:
+    """Fit the model.
+
+    Args:
+        X: The input data.
+        y: The target variable.
+    """
+    if not hasattr(self, "model_") or not self.differentiable_input:
+        byte_size, rng = self._initialize_model_variables()
+        ensemble_configs, X, y = self._initialize_dataset_preprocessing(X, y, rng)
+    else:  # already fitted and prompt_tuning mode: no cat. features
+        _, rng = infer_random_state(self.random_state)
+        _, _, byte_size = determine_precision(
+            self.inference_precision, self.device_
+        )
+
+    if self.fit_mode == "batched":
+        raise ValueError(
+            "The fit() function is currently not supported in the batched fit_mode."
+        )
+        
+    # This line was added to allow a custom model to be passed to fit()
+    if model:
+        self.model_ = model
+
+    # Create the inference engine
+    self.executor_ = create_inference_engine(
+        X_train=X,
+        y_train=y,
+        model=self.model_,
+        ensemble_configs=ensemble_configs,
+        cat_ix=self.inferred_categorical_indices_,
+        fit_mode=self.fit_mode,
+        device_=self.device_,
+        rng=rng,
+        n_jobs=self.n_jobs,
+        byte_size=byte_size,
+        forced_inference_dtype_=self.forced_inference_dtype_,
+        memory_saving_mode=self.memory_saving_mode,
+        use_autocast_=self.use_autocast_,
+        inference_mode=not self.differentiable_input,
+    )
+
+    return self
+
+@support_save_peak_mem_factor  # type: ignore
+def _compute(
+    self,
+    x: torch.Tensor,
+    x_kv: torch.Tensor | None,
+    k_cache: torch.Tensor | None,
+    v_cache: torch.Tensor | None,
+    kv_cache: torch.Tensor | None,
+    *,
+    cache_kv: bool,
+    use_cached_kv: bool,
+    reuse_first_head_kv: bool,
+    use_second_set_of_queries: bool,
+) -> torch.Tensor:
+    """Attention computation.
+    Called by 'forward', potentially on shards, once shapes have been normalized.
+    """
+    q, k, v, kv, qkv = self.compute_qkv(
+        x,
+        x_kv,
+        k_cache,
+        v_cache,
+        kv_cache,
+        cache_kv=cache_kv,
+        use_cached_kv=use_cached_kv,
+        reuse_first_head_kv=reuse_first_head_kv,
+        use_second_set_of_queries=use_second_set_of_queries,
+    )
+    attention_head_outputs = self.compute_attention_heads(
+        q,
+        k,
+        v,
+        kv,
+        qkv,
+        self.dropout_p,
+        self.softmax_scale,
+    )
+    return torch.einsum(
+        "... h d, h d s -> ... s",
+        attention_head_outputs,
+        self._w_out,
+    )
+    
+    
+def compute_attention_heads(  # noqa: C901, PLR0912
+    self,
+    q: torch.Tensor | None,
+    k: torch.Tensor | None,
+    v: torch.Tensor | None,
+    kv: torch.Tensor | None,
+    qkv: torch.Tensor | None,
+    dropout_p: float | None = None,
+    softmax_scale: float | None = None,
+) -> torch.Tensor:
+    """ This function was made a class method by adding 'self' as the first argument to allow access to class attributes"""
+    assert (k is None) == (v is None)
+    assert sum([qkv is None, kv is None, k is None and v is None]) == 2
+    assert (qkv is None) != (q is None)
+
+    if qkv is not None:
+        q, k, v = qkv.unbind(dim=-3)
+    elif kv is not None:
+        k, v = kv.unbind(dim=-3)
+
+    assert q is not None
+    assert k is not None
+    assert v is not None
+    batch_size, seqlen_q, nhead, d_k = q.shape
+    _, seqlen_kv, nhead_kv, d_v = v.shape
+    share_kv_across_n_heads = nhead // nhead_kv
+    if dropout_p is None:
+        dropout_p = 0.0  # TODO: necessary?
+
+    use_flash_attention = (
+        HAVE_FLASH_ATTN
+        and torch.cuda.is_available()
+        and q.dtype == k.dtype == v.dtype == torch.float16
+    )
+
+    # this string comparison is reliable, as it does not compare to a subversion
+    TORCH_2_ATTENTION_POSSIBLE = (
+        torch.__version__ >= "2" and torch.cuda.is_available()
+    )
+    USE_TORCH_2_GQA = False
+    if TORCH_2_ATTENTION_POSSIBLE:
+        with contextlib.suppress(TypeError, RuntimeError):
+            _ = torch.nn.functional.scaled_dot_product_attention(
+                torch.empty(1, 1, 1, 1),
+                torch.empty(1, 1, 1, 1),
+                torch.empty(1, 1, 1, 1),
+                enable_gqa=True,
+            )
+
+    if use_flash_attention:
+
+        def get_seqlen_cumsums(
+            batch_size: int,
+            seqlen: int,
+            device: torch.device,
+        ) -> torch.Tensor:
+            return torch.arange(
+                0,
+                (batch_size + 1) * seqlen,
+                step=seqlen,
+                dtype=torch.int32,
+                device=device,
+            )
+
+        if qkv is not None:
+            attention_head_outputs = flash_attn_unpadded_qkvpacked_func(  # type: ignore
+                qkv.reshape(batch_size * seqlen_q, 3, nhead, d_k),
+                get_seqlen_cumsums(batch_size, seqlen_q, qkv.device),
+                seqlen_q,
+                dropout_p=dropout_p,
+                softmax_scale=softmax_scale,  # defaults to 1/sqrt(d_k) if None
+                causal=False,
+                return_attn_probs=False,
+                deterministic=False,
+            )
+        elif kv is not None:
+            kv = MultiHeadAttention.broadcast_kv_across_heads(
+                kv,
+                share_kv_across_n_heads,
+            )
+            attention_head_outputs = flash_attn_unpadded_kvpacked_func(  # type: ignore
+                q.reshape(batch_size * seqlen_q, nhead, d_k),
+                kv.reshape(batch_size * seqlen_kv, 2, nhead, d_k),
+                get_seqlen_cumsums(batch_size, seqlen_q, q.device),
+                get_seqlen_cumsums(batch_size, seqlen_kv, kv.device),
+                seqlen_q,
+                seqlen_kv,
+                dropout_p=dropout_p,
+                causal=False,
+                return_attn_probs=False,
+                deterministic=False,
+            )
+        else:
+            assert d_k <= d_v, (
+                "This requirement is here for safety but not strictly necessary."
+                "Needs testing/coding to remove."
+            )
+            if d_k < d_v:
+                k = torch.nn.functional.pad(k, d_v - d_k)
+                q = torch.nn.functional.pad(v, d_v - d_k)
+                d_k_ = d_v
+            k = MultiHeadAttention.broadcast_kv_across_heads(
+                k,
+                share_kv_across_n_heads,
+            )
+            v = MultiHeadAttention.broadcast_kv_across_heads(
+                v,
+                share_kv_across_n_heads,
+            )
+            attention_head_outputs = flash_attn_unpadded_func(  # type: ignore
+                q.reshape(batch_size * seqlen_q, nhead, d_k_),  # type: ignore
+                k.reshape(batch_size * seqlen_kv, nhead, d_k_),  # type: ignore
+                v.reshape(batch_size * seqlen_kv, nhead, d_v),
+                get_seqlen_cumsums(batch_size, seqlen_q, q.device),
+                get_seqlen_cumsums(batch_size, seqlen_kv, k.device),
+                seqlen_q,
+                seqlen_kv,
+                dropout_p=dropout_p,
+                softmax_scale=softmax_scale,
+                causal=False,
+                return_attn_probs=False,
+                deterministic=False,
+            )
+    elif TORCH_2_ATTENTION_POSSIBLE:
+        extra_inputs = {}
+        if softmax_scale is not None:
+            extra_inputs["scale"] = (
+                softmax_scale  # defaults to 1/sqrt(d_k) if None or not provided
+            )
+        if not USE_TORCH_2_GQA:
+            k = MultiHeadAttention.broadcast_kv_across_heads(
+                k,
+                share_kv_across_n_heads,
+            )
+            v = MultiHeadAttention.broadcast_kv_across_heads(
+                v,
+                share_kv_across_n_heads,
+            )
+        else:
+            extra_inputs["enable_gqa"] = True
+            
+        ### This part was added to extract attention maps
+        if getattr(self, "save_att_map", False) and self.number_of_samples > 0: 
+            attention_map_cpu = torch.zeros(q.shape[1], k.shape[1])
+            for i in range(0, v.shape[0], 1):
+                q_slice = q[i : i + 1]
+                k_slice = k[i : i + 1]
+                
+                logits = torch.einsum("b q h d, b k h d -> b q k h", q_slice, k_slice)
+                logits *= (
+                    torch.sqrt(torch.tensor(1.0 / d_k)).to(k.device)
+                    if softmax_scale is None
+                    else softmax_scale
+                )
+                attention_map = torch.softmax(logits, dim=2).detach().cpu()
+                
+                attention_map_cpu += attention_map.mean(-1).sum(0) / self.number_of_samples
+                del attention_map
+                del q_slice
+                del k_slice
+                torch.cuda.empty_cache()
+            if self.attention_map is None:
+                self.attention_map = attention_map_cpu
+            else:
+                self.attention_map += attention_map_cpu
+        ### End of added part
+            
+        attention_head_outputs = torch.nn.functional.scaled_dot_product_attention(
+            q.transpose(1, 2),
+            k.transpose(1, 2),
+            v.transpose(1, 2),
+            dropout_p=dropout_p,
+            **extra_inputs,
+        )
+        attention_head_outputs = attention_head_outputs.transpose(1, 2)
+    else:
+        ### This part was added to extract attention maps
+        if getattr(self, "save_att_map", False) and self.number_of_samples > 0: 
+            attention_map_cpu = torch.zeros(q.shape[1], k.shape[1])
+            for i in range(0, v.shape[0]):
+                q_slice = q[i : i + 1]
+                k_slice = k[i : i + 1]
+                
+                logits = torch.einsum("b q h d, b k h d -> b q k h", q_slice, k_slice)
+                logits *= (
+                    torch.sqrt(torch.tensor(1.0 / d_k)).to(k.device)
+                    if softmax_scale is None
+                    else softmax_scale
+                )
+                attention_map = torch.softmax(logits, dim=2).detach().cpu()
+                
+                attention_map_cpu += attention_map.mean(-1).sum(0) / self.number_of_samples
+                del attention_map
+                del q_slice
+                del k_slice
+                torch.cuda.empty_cache()
+            if self.attention_map is None:
+                self.attention_map = attention_map_cpu
+            else:
+                self.attention_map += attention_map_cpu
+        ### End of added part
+                
+        k = MultiHeadAttention.broadcast_kv_across_heads(k, share_kv_across_n_heads)
+        v = MultiHeadAttention.broadcast_kv_across_heads(v, share_kv_across_n_heads)
+        logits = torch.einsum("b q h d, b k h d -> b q k h", q, k)
+        logits *= (
+            torch.sqrt(torch.tensor(1.0 / d_k)).to(k.device)
+            if softmax_scale is None
+            else softmax_scale
+        )
+        ps = torch.softmax(logits, dim=2)
+        ps = torch.dropout(ps, dropout_p, train=True)
+        attention_head_outputs = torch.einsum("b q k h, b k h d -> b q h d", ps, v)
+
+    return attention_head_outputs.reshape(
+        batch_size,
+        seqlen_q,
+        nhead,
+        d_v,
+    )
+
+
+================================================
+FILE: tabpfnwide/train.py
+================================================
+# Partly taken from TabICL run.py script https://github.com/soda-inria/tabicl/blob/main/src/tabicl/train/run.py
+from contextlib import nullcontext
+import datetime
+import os
+from tabpfn.model.loading import load_model_criterion_config
+from tabpfn.model.config import ModelConfig
+from tabpfn.model.memory import MemoryUsageEstimator
+import torch
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim import AdamW
+import numpy as np
+from torch import nn
+from tabicl.prior.dataset import PriorDataset
+from tabicl.train.optim import get_cosine_with_restarts
+from tabicl.train.run import Timer
+from training_parser import parse_args
+from data import get_wide_validation_data, load_prior_dataloader, PriorDataLoaderConfig, PriorDatasetConfig, get_validation_datasets
+from utils import PredictionResults, get_new_features
+import wandb
+import tqdm
+from dataclasses import dataclass, asdict, fields
+from collections import defaultdict
+import warnings
+warnings.filterwarnings("ignore", module="sklearn")
+
+
+@dataclass
+class TrainConfig:
+    batch_size: int = 8
+    learning_rate: float = 1e-4
+    weight_decay: float = 1e-4
+    num_steps: int = 10000
+    use_wandb: bool = False
+    d_type: str = "float16"  # Options: "float16", "float32"
+    warmup_proportion: int = 0.02
+    num_cycles: int = 10
+    gradient_clipping: float = 1.0
+    validation_interval: int = 200
+    validation_interval_wide: int = 200
+    checkpoint_dir: str = "checkpoints"
+    save_interval: int = 100
+    resume_checkpoint: str = None
+    use_original_model: bool = False
+    model_path: str = None
+    validation_datasets = ["COAD", "gbm"]
+    omic_combinations = [["mrna"], ["methylation"], ["mrna", "methylation", "mirna"]]
+    
+    
+@dataclass
+class FeatureAddingConfig:
+    add_features_min: int = 0
+    add_features_max: int = 0
+    warmup_steps: int = 0
+    min_sparsity: float = 0.0
+    max_sparsity: float = 0.2
+    min_noise: float = 0.0
+    max_noise: float = 0.1
+
+
+class Trainer:
+    train_config: TrainConfig = TrainConfig()
+    def __init__(self, parsed_args=defaultdict(dict)):
+        self.train_config = TrainConfig(**parsed_args["train_config"])
+        self.batch_size = self.train_config.batch_size
+        self.model_config = ModelConfig(**parsed_args["model_config"])
+        self.feature_adding_config = FeatureAddingConfig(**parsed_args["feature_adding_config"])
+        self.criterion = nn.CrossEntropyLoss()        
+        self.configure_ddp()
+        self.prior_dataset_config = PriorDatasetConfig(batch_size=self.batch_size, **parsed_args["prior_dataset_config"])
+        self.prior_dataloader_config = PriorDataLoaderConfig(pin_memory_device=self.device, **parsed_args["prior_dataloader_config"])
+        self.load_model()
+        self.configure_amp()
+        self.start_time = datetime.datetime.now()
+        self.curr_step = 0
+        self.dataloader = iter(load_prior_dataloader(PriorDataset, self.prior_dataset_config, self.prior_dataloader_config))
+        if self.train_config.resume_checkpoint:
+            self.load_checkpoint()
+        self.configure_wandb()
+
+    
+    def configure_ddp(self):
+        self.ddp = int(os.environ.get("RANK", -1)) != -1
+        if self.ddp:
+            rank = int(os.environ["RANK"])
+            world_size = int(os.environ["WORLD_SIZE"])
+            dist.init_process_group(
+                backend="nccl",
+                init_method="env://",
+                rank=rank,
+                world_size=world_size,
+                timeout=datetime.timedelta(seconds=1800),
+            )
+            self.device = f"cuda:{rank}"
+            torch.cuda.set_device(self.device)
+            self.is_main_process = rank == 0
+            self.batch_size = self.batch_size // world_size
+        
+        seed_offset = rank if self.ddp else 0
+        np.random.seed(42 + seed_offset)
+        torch.manual_seed(44 + seed_offset)
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        
+    
+    def configure_wandb(self):
+        if self.train_config.use_wandb and self.is_main_process:
+            self.wandb_obj = wandb.init(
+                project="tabpfn", entity="modexta", 
+                config= asdict(self.model_config) | asdict(self.prior_dataset_config) | asdict(self.train_config),
+                resume="allow",
+                id=self.wandb_id if self.train_config.resume_checkpoint else None,
+            )
+            
+    def save_checkpoint(self, name):
+        os.makedirs(self.train_config.checkpoint_dir, exist_ok=True)
+        checkpoint_path = os.path.join(self.train_config.checkpoint_dir, name)
+        checkpoint = {
+            "config": self.model_config,
+            "state_dict": self.model.module.state_dict(),
+            "optimizer_state": self.optimizer.state_dict(),
+            "scheduler_state": self.scheduler.state_dict(),
+            "step": self.curr_step,
+            "wandb_id": self.wandb_obj.id if self.train_config.use_wandb else None,
+        }
+        torch.save(checkpoint, checkpoint_path)
+        
+        
+    def load_checkpoint(self):
+        checkpoint = torch.load(self.train_config.resume_checkpoint, map_location=self.device, weights_only=False)
+        self.model.module.load_state_dict(checkpoint["state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state"])
+        self.scheduler.load_state_dict(checkpoint["scheduler_state"])
+        self.curr_step = checkpoint["step"]
+        self.wandb_id = checkpoint.get("wandb_id", None)
+        
+            
+    def load_model(self):
+        if self.train_config.use_original_model:
+            model, _, config = load_model_criterion_config(
+                model_path=None,
+                check_bar_distribution_criterion=False,
+                cache_trainset_representation=False,
+                which='classifier',
+                version='v2',
+                download=True,
+            )
+            # Disable feature grouping
+            model.features_per_group = 1
+            config.features_per_group = 1
+            # Compare loaded config to self.model_config and assert all fields are equal
+            for field in fields(self.model_config):
+                loaded_value = getattr(config, field.name, None)
+                current_value = getattr(self.model_config, field.name, None)
+                assert loaded_value == current_value, f"Config mismatch in field '{field.name}': loaded={loaded_value}, expected={current_value}"
+        else:
+            raise NotImplementedError("Loading untrained model deprecated.")
+    
+        if self.ddp:
+            model = model.to(self.device)
+            model_ = DDP(model, device_ids=[int(self.device.split(':')[-1])], broadcast_buffers=False)
+        else:
+            model_ = model.to(self.device)
+
+        self.model = model_
+        self.model.train()
+        self.optimizer = AdamW(self.model.parameters(), lr=self.train_config.learning_rate, weight_decay=self.train_config.weight_decay)
+        
+        self.scheduler = get_cosine_with_restarts(
+            self.optimizer, int(self.train_config.num_steps * self.train_config.warmup_proportion), 
+            self.train_config.num_steps, self.train_config.num_cycles
+        )
+        
+        
+    def configure_amp(self):
+        """Configure automatic mixed precision (AMP) for training."""
+
+        self.amp = "cuda" in self.device
+        self.scaler = torch.GradScaler("cuda", enabled=self.amp)
+        if self.amp:
+            self.amp_ctx = torch.autocast(
+                device_type="cuda", dtype=torch.float16 if self.train_config.d_type == "float16" else torch.float32
+            )
+        else:
+            self.amp_ctx = nullcontext()
+            
+            
+    def get_feature_adding_parameters(self):
+        if self.feature_adding_config.warmup_steps > 0 and self.curr_step < self.feature_adding_config.warmup_steps:
+            max_features_add = self.feature_adding_config.add_features_min + \
+            (self.feature_adding_config.add_features_max - self.feature_adding_config.add_features_min) * \
+            (self.curr_step / self.feature_adding_config.warmup_steps)
+        else:
+            max_features_add = self.feature_adding_config.add_features_max
+        new_features = np.random.randint(self.feature_adding_config.add_features_min, max_features_add + 1)
+        sparsity = np.random.uniform(self.feature_adding_config.min_sparsity, self.feature_adding_config.max_sparsity)
+        noise = np.random.uniform(self.feature_adding_config.min_noise, self.feature_adding_config.max_noise)
+        return new_features, sparsity, noise
+    
+        
+    def validate(self):
+        self.model.eval()
+        pred_res = []
+        val_losses = []
+        for dataset in get_wide_validation_data(self.device, self.train_config.validation_datasets, self.train_config.omic_combinations):
+            X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor = dataset
+
+            
+            MemoryUsageEstimator.reset_peak_memory_if_required(
+                save_peak_mem=True,
+                model=self.model.module,
+                X=torch.cat([X_train_tensor, X_test_tensor], dim=0),
+                cache_kv=False,
+                dtype_byte_size= 2 if self.train_config.d_type == "float16" else 4,
+                device=torch.device(self.device),
+                safety_factor=1.2, 
+            )
+            
+            with torch.inference_mode():
+                with self.amp_ctx:
+                    pred_logits = self.model(
+                        train_x=X_train_tensor,
+                        train_y=y_train_tensor,
+                        test_x=X_test_tensor,
+                    )
+                    n_classes = len(np.unique(y_train_tensor.cpu()))
+                    pred_logits = pred_logits[..., :n_classes].float()  
+                    pred_probs = torch.softmax(pred_logits, dim=-1)[:, 0, :].detach().cpu().numpy()
+                val_loss = self.criterion(pred_logits.reshape(-1, n_classes), y_test_tensor.flatten().long())
+                val_losses.append(val_loss.item())
+            pred_res.append(PredictionResults(y_test_tensor.flatten().cpu().numpy(), pred_probs))
+        
+        self.model.module.reset_save_peak_mem_factor(None)
+        
+        if self.train_config.use_wandb:
+            mean_val_loss = np.mean(val_losses)
+            mean_val_accuracy = np.mean([res.get_classification_report(print_report=False)['accuracy'] for res in pred_res])
+            mean_val_f1_weighted = np.mean([res.get_f1_score(average='weighted') for res in pred_res])
+            rocs = []
+            for res in pred_res:
+                try:
+                    rocs.append(res.get_roc_auc_score(multi_class='ovo'))
+                except ValueError:
+                    rocs.append(np.nan)
+            mean_val_roc_auc = np.nanmean(rocs)
+            
+            wandb.log({
+                f"validation_loss_wide": mean_val_loss,
+                f"validation_accuracy_wide": mean_val_accuracy,
+                f"validation_f1_weighted_wide": mean_val_f1_weighted,
+                f"validation_roc_auc_wide": mean_val_roc_auc,
+                "custom_step": self.curr_step,
+            })
+        
+        
+    def train(self):
+        oom_errors = 0
+        
+        step_progress = (tqdm.tqdm(range(self.curr_step, self.train_config.num_steps)) 
+            if self.is_main_process 
+            else range(self.curr_step, self.train_config.num_steps)
+        )
+        
+        for i in step_progress:
+            self.curr_step = i
+            self.model.train()
+            self.optimizer.zero_grad(set_to_none=True)
+            with Timer() as timer:
+                batch = next(self.dataloader)
+            prior_time = timer.elapsed
+            
+            X, y, d, seq_len, trainsizes = batch
+            if not (torch.all(d == d[0]) and torch.all(seq_len == seq_len[0]) and torch.all(trainsizes == trainsizes[0])):
+                continue
+            X = X[:, :, :d[0]]
+            if self.feature_adding_config.add_features_max > 0:
+                new_features, sparsity, noise = self.get_feature_adding_parameters()
+                X = get_new_features(X, new_features, sparsity=sparsity, noise_std=noise)
+                
+                
+            memory_remainder = MemoryUsageEstimator.estimate_memory_remainder_after_batch(
+                X,
+                self.model.module,
+                cache_kv=False,
+                device=torch.device(self.device),
+                dtype_byte_size=2 if self.train_config.d_type == "float16" else 4,
+                safety_factor=4,
+            )
+            should_skip_tensor = torch.tensor(int(memory_remainder < 0), device=self.device)
+            torch.distributed.all_reduce(should_skip_tensor, op=torch.distributed.ReduceOp.SUM)
+            # If any rank wants to skip, all should skip
+            if should_skip_tensor.item() > 0:
+                print(f"Skipping step {self.curr_step} due to memory constraints.")
+                continue
+                    
+            X_train = X[:, :trainsizes[0]].transpose(0, 1).to(self.device)
+            X_test = X[:, trainsizes[0]:].transpose(0, 1).to(self.device)
+            y_train = y[:, :trainsizes[0]].transpose(0, 1).to(self.device)
+            y_test = y[:, trainsizes[0]:].transpose(0, 1).to(self.device)
+
+            try:
+                with Timer() as timer:
+                    with self.amp_ctx:
+                        pred_logits = self.model(
+                            train_x=X_train,
+                            train_y=y_train,
+                            test_x=X_test,
+                        )
+                        pred_logits = pred_logits.float()
+                    loss = self.criterion(pred_logits.reshape(-1, 10), y_test.flatten().long())
+                    self.scaler.scale(loss).backward()
+                forward_time = timer.elapsed
+            except torch.cuda.OutOfMemoryError:
+                oom_errors += 1
+                torch.cuda.empty_cache()
+                if oom_errors / self.curr_step > 0.1:
+                    raise RuntimeError("Too many OOM errors, stopping training.")
+                continue
+            torch.cuda.empty_cache()
+            
+            if self.train_config.gradient_clipping > 0:
+                self.scaler.unscale_(self.optimizer)
+                nn.utils.clip_grad_norm_(self.model.parameters(), self.train_config.gradient_clipping)
+
+            # Update parameters
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+
+            # Update the learning rate
+            self.scheduler.step()
+
+            if self.is_main_process and self.train_config.use_wandb:
+                wandb.log({
+                    "loss": loss.item(), 
+                    "lr": self.optimizer.param_groups[0]['lr'], 
+                    "oom_errors": oom_errors, 
+                    "prior_time": prior_time,
+                    "forward_time": forward_time,
+                    "total_datasets" : self.curr_step * self.train_config.batch_size,
+                    "max_features_added": new_features if self.feature_adding_config.add_features_max > 0 else 0,
+                    "custom_step": self.curr_step,
+                })
+                
+                
+            if self.is_main_process and self.train_config.validation_interval_wide > 0 and self.curr_step % self.train_config.validation_interval_wide == 0:
+                print("Validating wide...")
+                self.validate()
+                
+            if self.is_main_process and self.curr_step % self.train_config.save_interval == 0:
+                self.save_checkpoint(f"{self.start_time.strftime('%Y%m%d_%H%M%S')}_step_{self.curr_step}_{self.wandb_obj.name if self.train_config.use_wandb else 'no_wandb'}.pt")
+                
+        if self.ddp:
+            dist.destroy_process_group()
+
+
+if __name__ == "__main__":
+    args_dict = parse_args()
+    try:
+        trainer = Trainer(args_dict)
+        trainer.train()
+    finally:
+        dist.destroy_process_group()
+    
+    
+
+
+================================================
+FILE: tabpfnwide/train.sh
+================================================
+torchrun /path/to/train.py \
+            --batch_size 16 \
+            --learning_rate 1e-5 \
+            --weight_decay 1e-4 \
+            --num_steps 100000 \
+            --use_wandb \
+            --d_type float16 \
+            --warmup_proportion 0.02 \
+            --num_cycles 10 \
+            --gradient_clipping 1.0 \
+            --validation_interval 200 \
+            --validation_interval_wide 100 \
+            --add_features_min 200 \
+            --add_features_max 1500 \
+	        --max_sparsity_feature_adding 0.05 \
+	        --max_noise_feature_adding 1.0 \
+            --use_original_model \
+\
+            --model_emsize 192 \
+            --model_features_per_group 1 \
+            --model_max_num_classes 10 \
+            --model_nlayers 12 \
+            --model_nhead 6 \
+            --model_num_buckets 1000 \
+            --model_max_num_features 85 \
+            --model_feature_attention_type full \
+\
+            --prior_batch_size_per_gp 4 \
+            --prior_device_prior cpu \
+            --prior_min_features 50 \
+            --prior_max_features 350 \
+            --prior_max_classes 10 \
+            --prior_min_seq_len 40 \
+            --prior_max_seq_len 300 \
+            --prior_log_seq_len \
+            --prior_min_train_size 0.3 \
+            --prior_max_train_size 0.9 \
+            --prior_type mlp_scm \
+            --prior_n_jobs 1 \
+\
+            --prior_dataloader_num_workers 1 \
+            --prior_dataloader_prefetch_factor 4 \
+            --prior_dataloader_pin_memory \
+\
+            --checkpoint_dir  path/to/checkpoint_dir \
+            --save_interval 100 \
+
+
+
+================================================
+FILE: tabpfnwide/training_parser.py
+================================================
+import argparse
+
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    
+    ### Train config
+    parser.add_argument("--batch_size", type=int, default=8, help="Batch size for training.")
+    parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate for the optimizer.")
+    parser.add_argument("--weight_decay", type=float, default=1e-4, help="Weight decay for the optimizer.")
+    parser.add_argument("--num_steps", type=int, default=10000, help="Total number of training steps.")
+    parser.add_argument("--use_wandb", action="store_true", help="Use Weight and Biases for logging.")
+    parser.add_argument("--d_type", type=str, default="float16", choices=["float16", "float32"], help="Data type for training.")
+    parser.add_argument("--warmup_proportion", type=float, default=0.02, help="Proportion of warmup steps for the learning rate scheduler.")
+    parser.add_argument("--num_cycles", type=int, default=10, help="Number of cycles for the cosine learning rate scheduler.")
+    parser.add_argument("--gradient_clipping", type=float, default=1.0, help="Gradient clipping value.")
+    parser.add_argument("--validation_interval", type=int, default=200, help="Interval (in steps) to perform validation.")
+    parser.add_argument("--validation_interval_wide", type=int, default=200, help="Interval (in steps) to perform wide validation.")
+    parser.add_argument("--checkpoint_dir", type=str, default="checkpoints", help="Directory to save model checkpoints.")
+    parser.add_argument("--save_interval", type=int, default=1000, help="Interval (in steps) to save model checkpoints.")
+    parser.add_argument("--resume_checkpoint", type=str, default=None, help="Path to a checkpoint to resume training from.")
+    parser.add_argument("--feature_order", type=str, default=None, help="Order of features to be used during training for causal models. If None, uses the order from the dataset.")
+    parser.add_argument("--use_original_model", action="store_true", help="Use the original pretrained model")
+    parser.add_argument("--model_path", type=str, default=None, help="Path to the original model to be used for finetuning. If None, uses the default model path.")
+    
+    ### Feature adding config
+    parser.add_argument("--add_features_min", type=int, default=0, help="Minimum number of features to add during training using sparse linear projection.")
+    parser.add_argument("--add_features_max", type=int, default=0, help="Maximum number of features to add during training using sparse linear projection.")
+    parser.add_argument("--feature_adding_warmup_steps", type=int, default=0, help="Number of warmup steps for feature adding. If 0, no warmup is applied.")
+    parser.add_argument("--max_sparsity_feature_adding", type=float, default=0.01, help="Sparsity for feature adding during training.")
+    parser.add_argument("--max_noise_feature_adding", type=float, default=0.1, help="Noise level for feature adding during training.")
+    parser.add_argument("--feature_adding_use_mlp", action="store_true", help="Use MLP for feature adding instead of linear projection.")
+    parser.add_argument("--feature_adding_dismiss_original", action="store_true", help="Dismiss original features when adding new features during training.")
+    
+    
+    
+    ### Model config
+    parser.add_argument("--model_emsize", type=int, default=192, help="Embedding size for the model.")
+    parser.add_argument("--model_features_per_group", type=int, default=1, help="Number of features per group.")
+    parser.add_argument("--model_max_num_classes", type=int, default=10, help="Maximum number of classes for classification tasks.")
+    parser.add_argument("--model_nlayers", type=int, default=12, help="Number of layers in the model.")
+    parser.add_argument("--model_nhead", type=int, default=6, help="Number of attention heads in the model.")
+    parser.add_argument("--model_remove_duplicate_features", action="store_true", help="Remove duplicate features from the dataset.")
+    parser.add_argument("--model_num_buckets", type=int, default=1000, help="Number of buckets for feature bucketing.")
+    parser.add_argument("--model_max_num_features", type=int, default=85, help="Maximum number of features in the dataset.")
+    parser.add_argument("--model_feature_attention_type", type=str, default="full", choices=["full", "linear", "mamba"], help="Type of attention to use for features.")
+    
+    
+    ### Prior dataset config
+    parser.add_argument("--prior_batch_size", type=int, default=8, help="Batch size for the prior dataset.")
+    parser.add_argument("--prior_batch_size_per_gp", type=int, default=8, help="Number of datasets per group in the prior dataset.")
+    parser.add_argument("--prior_device_prior", type=str, default="cpu", help="Device for the prior dataset.")
+    parser.add_argument("--prior_min_features", type=int, default=10, help="Minimum number of features in the prior dataset.")
+    parser.add_argument("--prior_max_features", type=int, default=100, help="Maximum number of features in the prior dataset.")
+    parser.add_argument("--prior_max_classes", type=int, default=10, help="Maximum number of classes in the prior dataset.")
+    parser.add_argument("--prior_min_seq_len", type=int, default=40, help="Minimum sequence length in the prior dataset.")
+    parser.add_argument("--prior_max_seq_len", type=int, default=400, help="Maximum sequence length in the prior dataset.")
+    parser.add_argument("--prior_log_seq_len", action="store_true", help="Use logarithmic sampling for sequence lengths in the prior dataset.")
+    parser.add_argument("--prior_seq_len_per_gp", action="store_true", help="Sample sequence length per group in the prior dataset.")
+    parser.add_argument("--prior_min_train_size", type=float, default=0.3, help="Minimum training size as a fraction of the total dataset size in the prior dataset.")
+    parser.add_argument("--prior_max_train_size", type=float, default=0.9, help="Maximum training size as a fraction of the total dataset size in the prior dataset.")
+    parser.add_argument("--prior_replay_small", action="store_true", help="Replay small datasets in the prior dataset.")
+    parser.add_argument("--prior_type", type=str, default="mlp_scm", help="Type of prior dataset to use.")
+    parser.add_argument("--prior_n_jobs", type=int, default=1, help="Number of jobs for loading the prior dataset. Set to 1 to avoid nested parallelism.")
+    
+    
+    ### Prior dataloader config
+    parser.add_argument("--prior_dataloader_num_workers", type=int, default=1, help="Number of workers for the prior dataloader.")
+    parser.add_argument("--prior_dataloader_prefetch_factor", type=int, default=4, help="Prefetch factor for the prior dataloader.")
+    parser.add_argument("--prior_dataloader_pin_memory", action="store_true", help="Pin memory for the prior dataloader.")
+    
+    
+    return parser
+
+
+def parse_args():
+    parser = get_parser()
+    args = parser.parse_args()
+    
+    # Convert the parsed arguments to a dictionary for easier access
+    parsed_args = {
+        "train_config": {
+            "batch_size": args.batch_size,
+            "learning_rate": args.learning_rate,
+            "weight_decay": args.weight_decay,
+            "num_steps": args.num_steps,
+            "use_wandb": args.use_wandb,
+            "d_type": args.d_type,
+            "warmup_proportion": args.warmup_proportion,
+            "num_cycles": args.num_cycles,
+            "gradient_clipping": args.gradient_clipping,
+            "validation_interval": args.validation_interval,
+            "validation_interval_wide": args.validation_interval_wide,
+            "checkpoint_dir": args.checkpoint_dir,
+            "save_interval": args.save_interval,
+            "resume_checkpoint": args.resume_checkpoint,
+            "feature_order" : args.feature_order,
+            "use_original_model": args.use_original_model,
+            "model_path": args.model_path
+        },
+        "feature_adding_config": {
+            "add_features_min": args.add_features_min,
+            "add_features_max": args.add_features_max,
+            "warmup_steps": args.feature_adding_warmup_steps,
+            "max_sparsity": args.max_sparsity_feature_adding,
+            "max_noise": args.max_noise_feature_adding,
+            "use_mlp": args.feature_adding_use_mlp,
+            "include_original": not args.feature_adding_dismiss_original,
+        },  
+        "model_config": {
+            "emsize": args.model_emsize,
+            "features_per_group": args.model_features_per_group,
+            "max_num_classes": args.model_max_num_classes,
+            "nlayers": args.model_nlayers,
+            "nhead": args.model_nhead,
+            "remove_duplicate_features": args.model_remove_duplicate_features,
+            "num_buckets": args.model_num_buckets,
+            "max_num_features": args.model_max_num_features,
+            "feature_attention_type": args.model_feature_attention_type,
+        },
+        "prior_dataset_config": {
+            "batch_size_per_gp": args.prior_batch_size_per_gp,
+            "device": args.prior_device_prior,
+            "min_features": args.prior_min_features,
+            "max_features": args.prior_max_features,
+            "max_classes": args.prior_max_classes,
+            "min_seq_len": args.prior_min_seq_len,
+            "max_seq_len": args.prior_max_seq_len,
+            "log_seq_len": args.prior_log_seq_len,
+            "seq_len_per_gp": args.prior_seq_len_per_gp,
+            "min_train_size": args.prior_min_train_size,
+            "max_train_size": args.prior_max_train_size,
+            "replay_small": args.prior_replay_small,
+            "prior_type": args.prior_type,
+            "n_jobs": args.prior_n_jobs,
+        },
+        "prior_dataloader_config": {
+            "num_workers": args.prior_dataloader_num_workers,
+            "prefetch_factor": args.prior_dataloader_prefetch_factor,
+            "pin_memory": args.prior_dataloader_pin_memory,
+        }
+    }
+    
+    return parsed_args
+    
+    
+    
+
+
+================================================
+FILE: tabpfnwide/utils.py
+================================================
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, roc_auc_score, f1_score, average_precision_score
+from sklearn.cluster import FeatureAgglomeration
+from sklearn.feature_selection import SelectFromModel
+from tabpfn.model.loading import load_model_criterion_config
+import torch
+from torch import nn
+import pickle
+import os
+import numpy as np
+import pandas as pd
+
+
+class PredictionResults:
+    def __init__(self, ground_truth, prediction_probas, target_names=None):
+        self.prediction_probas = prediction_probas
+        self.ground_truth = ground_truth
+        self.target_names = target_names
+
+    def get_classification_report(self, print_report=True, **kwargs):
+        if print_report:
+            print(classification_report(self.ground_truth,
+                  self.prediction_probas.argmax(axis=1), target_names=self.target_names, **kwargs))
+        return classification_report(self.ground_truth, self.prediction_probas.argmax(axis=1), target_names=self.target_names, 
+                                     output_dict=True, **kwargs)
+
+    def get_roc_auc_score(self, **kwargs):
+        return roc_auc_score(self.ground_truth, self.prediction_probas, **kwargs)
+    
+    def get_f1_score(self, average='weighted', **kwargs):
+        return f1_score(self.ground_truth, self.prediction_probas.argmax(axis=1), average=average)
+
+    def save_prediction_results(self, filename='prediction_results.pkl', directory=None):
+        if directory:
+            os.makedirs(directory, exist_ok=True)
+            filepath = os.path.join(directory, filename)
+        else:
+            filepath = filename
+
+        with open(filepath, 'wb') as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def load_prediction_results(cls, filename='prediction_results.pkl', directory=None):
+        filepath = os.path.join(directory, filename) if directory else filename
+        with open(filepath, 'rb') as f:
+            return pickle.load(f)
+
+
+def feature_reduction_agglomeration(X : pd.DataFrame, n_features):
+    if X.shape[1] <= n_features:
+        return X
+    feature_agglomeration = FeatureAgglomeration(n_clusters=n_features)
+    reduced = feature_agglomeration.fit_transform(X)
+
+    # Build a DataFrame with the new feature names
+    columns = X.columns
+    labels = feature_agglomeration.labels_
+    joined_entries = [";".join(columns[labels == i]) for i in range(n_features)]
+    reduced_df = pd.DataFrame(reduced, columns=joined_entries)
+    reduced_df.index = X.index
+
+    return reduced_df
+
+
+def feature_reduction_correlation(X : pd.DataFrame, n_features):
+    corr = np.abs(np.corrcoef(X.T))
+    np.fill_diagonal(corr, 0)
+    np.nan_to_num(corr, copy=False)
+    
+    clustering = FeatureAgglomeration(n_clusters=n_features, metric="precomputed", linkage="complete")
+    clustering.fit(1 - corr)
+    reduced = clustering.transform(X)
+    # Build a DataFrame with the new feature names
+    columns = X.columns
+    labels = clustering.labels_
+    joined_entries = [";".join(columns[labels == i]) for i in range(n_features)]
+    reduced_df = pd.DataFrame(reduced, columns=joined_entries)
+    reduced_df.index = X.index
+    return reduced_df
+
+
+def feature_reduction_from_model(X_train, y_train, X_test, n_features, model=LogisticRegression(max_iter=1000)):
+    if X_train.shape[1] <= n_features:
+        return X_train, X_test
+    fs = SelectFromModel(model, max_features=n_features)
+    fs.fit(X_train, y_train)
+    X_train_reduced = fs.transform(X_train)
+    X_test_reduced = fs.transform(X_test)
+    # Build a DataFrame with the new feature names
+    reduced_df_train = pd.DataFrame(X_train_reduced, columns=fs.get_feature_names_out())
+    reduced_df_train.index = X_train.index
+    reduced_df_test = pd.DataFrame(X_test_reduced, columns=fs.get_feature_names_out())
+    reduced_df_test.index = X_test.index
+    return reduced_df_train, reduced_df_test
+
+    
+
+def load_pytorch_tabpfn(device='cuda:0'):
+    model, _, _ = load_model_criterion_config(
+        model_path=None,
+        check_bar_distribution_criterion=False,
+        cache_trainset_representation=False,
+        which='classifier',
+        version='v2',
+        download=True,
+    )
+    # Disable feature grouping
+    model.features_per_group = 1
+    model = model.to(device)
+    model = model.eval()
+    return model
+
+
+def get_feature_dependent_noise(x_tensor, std):
+    # The noise std is proportional to the standard deviation of each feature
+    stds = x_tensor.std(dim=0, keepdim=True)
+    stds[stds == 0] = 1  # Avoid division by zero
+    noise = torch.randn_like(x_tensor) * (std * stds)
+    return noise
+
+
+def get_linear_added_features(x, features_to_be_added, sparsity, noise_std):
+    """
+    Adds new linear features to the input tensor with controlled sparsity and feature-dependent noise.
+    """
+    W_sparse =  nn.Linear(x.shape[-1], features_to_be_added, bias=False)
+    W_sparse.weight.data *= (torch.rand_like(W_sparse.weight) < sparsity).float()
+    x = W_sparse(x)
+    
+    dependent_noise = get_feature_dependent_noise(x, noise_std)
+    x += dependent_noise
+    return x.detach()
+
+
+
+def get_new_features(x_tensor, features_to_be_added, sparsity=0.01, noise_std=3, include_original=True, include_original_prob=0.5):
+    
+    x_new = get_linear_added_features(x_tensor, features_to_be_added, sparsity=sparsity, noise_std=noise_std)
+    if np.random.rand() < include_original_prob and include_original:
+        x_new = torch.cat([x_tensor, x_new], dim=-1)
+        x_new = x_new[..., torch.randperm(x_new.shape[-1])]
+    return x_new.detach()
+    
+    
+
+
