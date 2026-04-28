@@ -1,0 +1,672 @@
+            Interpretable Machine Learning
+                           for TabPFN
+
+    David Rundel1(B) , Julius Kobialka1 , Constantin von Crailsheim1 ,
+       Matthias Feurer1,2 , Thomas Nagler1,2 , and David Ru¨gamer1,2
+
+                1 Department of Statistics, LMU Munich, Munich, Germany
+    {david.rundel,julius.kobialka,constantin.crailsheim,matthias.feurer,
+
+                  thomas.nagler,david.ruegamer}@stat.uni-muenchen.de
+                  2 Munich Center for Machine Learning, Munich, Germany
+
+         Abstract. The recently developed Prior-Data Fitted Networks (PFNs)
+         have shown very promising results for applications in low-data regimes.
+         The TabPFN model, a special case of PFNs for tabular data, is able to
+         achieve state-of-the-art performance on a variety of classification tasks
+         while producing posterior predictive distributions in mere seconds by
+         in-context learning without the need for learning parameters or hyper-
+         parameter tuning. This makes TabPFN a very attractive option for a
+         wide range of domain applications. However, a major drawback of the
+         method is its lack of interpretability. Therefore, we propose several adap-
+         tations of popular interpretability methods that we specifically design for
+         TabPFN. By taking advantage of the unique properties of the model, our
+         adaptations allow for more efficient computations than existing imple-
+         mentations. In particular, we show how in-context learning facilitates
+         the estimation of Shapley values by avoiding approximate retraining and
+         enables the use of Leave-One-Covariate-Out (LOCO) even when working
+         with large-scale Transformers. In addition, we demonstrate how data val-
+         uation methods can be used to address scalability challenges of TabPFN.
+         Our proposed methods are implemented in a package tabpfn iml and
+         made available at https://github.com/david-rundel/tabpfn iml.
+
+       Keywords: In-Context Learning · Prior-Data Fitted Networks ·
+       Tabular Data · SHAP
+
+1 Introduction
+
+Interpretable machine learning (IML) has become increasingly vital in the field of
+machine learning (ML), especially when applied to real-world tasks requiring an
+understanding of the model's predictions. IML serves both as a debugging tool
+to enhance fairness and ethics, as well as a means to improve social acceptance
+by fostering trust through interpretability [20].
+
+    Recently, Hollmann et al. [14] introduced TabPFN, a prior-data fitted net-
+work (PFN) for tabular data that achieves state-of-the-art performance on a
+diverse range of classification tasks in mere seconds. It approximates probabilis-
+tic inference by in-context learning with a Transformer. For small tabular tasks,
+
+c The Author(s), under exclusive license to Springer Nature Switzerland AG 2024
+L. Longo et al. (Eds.): xAI 2024, CCIS 2154, pp. 465­476, 2024.
+https://doi.org/10.1007/978-3-031-63797-1_23
+466 D. Rundel et al.
+
+TabPFN shows great potential due to its straightforward use without requir-
+ing hyperparameter tuning. This renders TabPFN an appealing choice across
+diverse application domains. TabPFN, like other deep neural networks (DNNs),
+is however a black box and its missing interpretability makes it less attractive
+for applications in some research fields, where understanding the predictions can
+have significant ethical and practical implications [14,22]. IML implementations
+have so far focused on classical supervised ML algorithms and are mostly model-
+agnostic. While there already exist model-specific implementations for certain
+deep learning (DL) and tree-based models that take advantage of their architec-
+tural properties [20], it is not always clear how to apply IML methods to PFNs
+and TabPFN in particular in a meaningful and efficient manner.
+
+Our Contributions: In this work, we close this gap by modifying existing IML
+methods to take advantage of the unique properties of TabPFN and thereby
+enabling efficient computation of IML methods. In particular, these adaptations
+allow for a more accurate calculation of Shapley values through exact retraining
+and the use of LOCO, which is usually not a viable option for Transformers
+[28]. Also, we employ data valuation measures for context optimization, thereby
+mitigating scalability challenges of TabPFNs. Our methodological contribution
+is accompanied by a comprehensive, easy-to-use IML toolbox.
+
+2 Supervised Machine Learning and TabPFN
+
+Consider ntrain independent and identically distributed (iid ) training observa-
+                                                                                      }ntrain
+tions,  gathered  in  a  training   data     set      DP        =  {x(i)     ,  y(i)           where  x(i)    X          Rp
+                                                                                        i=1
+are p-dimensional feature vectors and y(i)  Y  Rg are categorical or contin-
+
+uous targets. In the classical supervised ML setting, the goal is to learn the
+functional relationship between features and targets with a model f^ : X  Y
+
+from a hypothesis space H that is fully determined by its parameters . For most
+
+ML algorithms, given the dataset and a hyperparameter configuration   ,
+
+a learner or inducer I(DP , ) yields such a model by minimizing the empirical
+
+risk  Remp   f^({x(i)  }ntrain  ),  {y  (i)  }ntrain     .  This   is     accomplished            by  optimizing         the
+
+                         i=1                   i=1
+
+parameters  that were either randomly initialized or pre-trained. The resulting
+                                                                 f^({x(i)       }ninf
+model can be   used to perform inference                                               )  on   an unseen inference
+dataset {x(i)                                                                     i=1     we   focus on the binary
+               }ninf
+                         of  size   ninf     [3, 17].       In   the following,
+                 i=1
+classification task, i.e., Y = {0, 1}, and a probabilistic model f^(·)  [0, 1] pre-
+
+dicting the probability of the positive class given features and parameters . To
+highlight that f^ is fitted on the set of all available features P = {1, . . . , p}, we
+
+use f^P with index P . When the model is fitted on a feature subset S  P , giving
+                                             {xS(i)                                               {xS(i), xS(iC) }
+rise  to  a  reduced  dataset   DS      =             ,  y  (i)  }ntrain  ,  where     x(i)    =                    for  all
+
+                                                                   i=1
+
+i = 1, . . . , ntrain, we denote the model as f^S.
+
+For PFNs and TabPFNs [14,21], the training and inference procedure, how-
+
+ever, differs. As opposed to classical supervised ML, where a model is trained
+                                             Interpretable Machine Learning for TabPFN 467
+
+from scratch or fine-tuned on the training subset of a new dataset, PFNs per-
+
+form inference in a single forward pass. In this approach, a pre-trained neu-
+
+ral architecture with fixed parameters is fed with a training set DP and infer-
+                             }ninf
+ence   features  {x(i)               from    a  previously     unseen       task.  The    model   leverages
+                               i=1
+
+the training set, also known as context, to conduct inference on the inference
+
+observations (so-called in-context learning). We denote the PFN model function
+
+as  f^PFN  ({x(i)  }ninf  ,  DP  ),  emphasizing      that     both   the   inference     and     training  data
+
+                     i=1
+
+are supplied during inference, and to highlight that the parameters of PFNs
+
+remain unchanged with the training dataset. To achieve this, the underlying
+
+model has been pre-trained on artificially generated tasks sampled from a prior
+
+distribution. Hence, PFNs are trained in two steps: The first step is the offline
+
+training phase, where the model learns to approximate the posterior predic-
+
+tive distribution (PPD) for an inference observation on many synthetic training
+
+datasets from diverse tasks (about 10 million datasets in the case of TabPFN).
+
+In detail, for every synthetic dataset Dsyn, it is trained to replicate the PPD
+
+on  a  query  tuple  (Ys(ynnsyn      +1)  ,  X (nsyn  +1)  ),  using  Dsyn    (Ys(ynnsyn  +1)  ,  X (nsyn  +1)  )  as
+
+                                                 syn                                                  syn
+
+training input. The second step is the inference phase, where a new training set
+
+and inference features are fed into the pre-trained network with fixed parameters
+
+[14, 22].
+
+    TabPFN specifically uses a Transformer model and a prior over tabular clas-
+
+sification tasks. The tokens in the Transformer represent the observations, with
+
+training observations attending to each other and inference observations only
+
+attending to training observations. In particular, there are                       ntrain         + ntrain · ninf
+                                                                                      2
+
+token connections and the computational cost for a forward pass scales as
+
+O(nt2rain +ntrain ·ninf). Due to the quadratic complexity in the number of training
+observations, the recommended maximum size of the training set is 1024 obser-
+
+vations [14,22]. TabPFN eliminates the need for parameter training or hyperpa-
+
+rameter tuning during the inference stage, enabling almost instantaneous predic-
+
+tions [22]. Moreover, its unique characteristics include the fact that loss gradients
+
+w.r.t. the input data are available in the backward pass, as well as its attention
+
+mechanism. Several studies have demonstrated the model's effectiveness, achiev-
+
+ing state-of-the-art performance across various benchmark datasets, specifically
+
+for moderately large tabular classification tasks [14,19].
+
+3 Interpretable Machine Learning for TabPFN
+
+Existing IML implementations have primarily focused on traditional supervised
+ML algorithms or work for specific DNN architectures not meaningful or applica-
+ble to PFNs. In the following, we describe how to adapt existing IML methods to
+exploit the unique characteristics of TabPFN. This will render the methods more
+efficient while also preserving their conventional usage paradigms. Our method-
+ological contributions and implementations include local and global methods
+for assessing feature effects (FEs), feature importance (FI), and data valuation
+(DV). We have selected the methods according to their popularity, and such
+that they complement each other w.r.t. their limitations as well as benefit from
+468 D. Rundel et al.
+
+TabPFN's computational efficiency. Where sensible, both continuous and cat-
+egorical features are supported. In our package, we have not included model-
+specific Transformer IML methods [2,5], because the available methods either
+produce unsuitable (relevance) scores or cannot be applied to TabPFN due to
+their architecture. Table 1 summarizes the methods and modifications made in
+this paper and implemented in the package tabpfn iml.
+
+Table 1. Overview of methods adapted and modified for TabPFN. In addition to FE,
+FI, and DV, we also include methods for clinical value assessment (CVA), uncertainty
+quantification (UQ), and local explanations (LE).
+
+Method            Type Scope        Modifications
+
+ICE (Sect. 3.1)   FE local          Improved efficiency
+
+PD (Sect. 3.1)    FE global         Improved efficiency
+
+ALE (Sect. 3.1)   FE global         Improved efficiency
+
+Kernel SHAP (Sect. 3.3) FE local & global Exact retraining
+
+SA (Sect. 3.5)    FE local & global ­
+
+LOCO (Sect. 3.2)  FI global         Rendered tractable
+
+SAGE (Sect. 3.6)  FI global         Exact retraining
+
+LOO (Sect. 3.4)   DV global         Rendered tractable
+
+Data Shapley (Sect. 3.4) DV global  Exact retraining
+
+SA (Sect. 3.5)    DV local & global ­
+
+DCA (Sect. 3.6)   CVA global        ­
+
+CP (Sect. 3.6)    UQ local          ­
+
+MOC (Sect. 3.6)   LE local          ­
+
+3.1 ICE, PD and ALE
+
+Individual conditional expectation (ICE) curves [13,20], partial dependence
+(PD) plots [10,20] and accumulated local effect (ALE) plots [1,20] show how
+the predictions of a model change along a feature space of interest by systemati-
+cally varying the respective input values. This necessitates prediction on artificial
+observations, where the feature of interest is varied according to a specified grid
+generated by discretizing the feature space into G grid points. PD approximates
+the expected target response, while ALE addresses the extrapolation issue of
+ICE and PD [20].
+
+    Each TabPFN forward pass involves ntrain((ntrain -1)/2+ninf) token connec-
+tions (cf. Sect. 2) and thus the computational cost per inference sample scales as
+O(n2train/ninf). Consequently, TabPFN yields runtime improvements when pro-
+cessing as many inference samples as possible in a single forward pass. For the PD
+plot, widely used implementations such as the scikit-learn partial dependence
+                                            Interpretable Machine Learning for TabPFN 469
+
+function, execute a prediction step for every point of the grid. Instead, we
+propose a more efficient way to compute the PD plot in just a single for-
+ward pass by constructing a large inference array that contains all artificial
+observations. Compared to the scikit-learn implementation which has computa-
+tional complexity O((nt2rain + ntrain · ninf) · G), our implementation then scales as
+O(n2train + ntrain · ninf · G). Thus, our PD plot implementation implies substan-
+tially lower runtimes. The modifications and implementations of ICE and ALE
+follow the same logic.
+
+3.2 LOCO
+
+Leave-One-Covariate-Out (LOCO) estimates the effect of features on the pre-
+dictive performance of a learner by retraining it on a subset of features without
+the feature of interest [16, 20]. The starting point is a model f^P trained with all
+features. Then, for each feature of interest j, the feature is removed from the
+dataset (DP \{j}), the model is retrained without it (f^P \{j}) and the resulting
+change in empirical risk is tracked. LOCO approximately indicates whether a
+feature contains unique information that no other feature contains [16,20].
+
+    For many DL models, particularly extensive Transformer architectures, cal-
+culating LOCO scores is not feasible due to the high computational cost of
+repeatedly retraining models on different feature subsets. However, we can eas-
+ily compute LOCO for TabPFN. Due to in-context learning, TabPFN enables
+inference on an updated training set through a single forward pass. In particular,
+we propose to calculate LOCO for the j-th feature as
+
+LOCOj     = Remp  f^PFN  ({xP(\i){j  }  }ninf  ,  DP  \{j  }  ),  {y(i)  }ninf
+
+                                          i=1                              i=1
+
+          -Remp   f^PFN  ({xP(i)        }ninf  ,  DP  ),   {y(i)  }ninf  .
+
+                                          i=1                       i=1
+
+3.3 Kernel SHAP
+
+Shapley values [24] have their origin in game theory and aim to fairly attribute
+payouts. In ML, they estimate the local FE for an observation x(i) in a model
+f^P [20]. In detail, the Shapley value for the j-th feature considers the (weighted)
+average marginal contribution of the feature to the model prediction across all
+feature subsets. While Shapley values provide a theoretically sound approach
+to attribution considering feature interactions, their calculation can be costly
+since the learner needs to be retrained for each feature subset S. As retraining
+ML models is in general resource-intensive and given that there are 2p distinct
+feature subsets, this becomes impractical for most learners and datasets.
+
+    To address these challenges, Kernel SHapley Additive exPlanations (Kernel
+SHAP) [17] seeks to provide tractable approximations to Shapley values for a
+more efficient estimation. It employs an additive feature attribution measure
+by fitting a weighted linear model as local surrogate model that regresses model
+predictions on a binary representation of feature subsets, where only the features
+that appear in the subset are used for prediction [17,20]. To make the compu-
+tations tractable, it incorporates the following additional approximations:
+470 D. Rundel et al.
+
+· M feature subsets are randomly sampled, as opposed to exhaustive consider-
+   ation of all 2p subsets. M serves as a hyperparameter that balances compu-
+
+   tational cost and approximation quality [17,26].
+
+· To avoid retraining the learner on every sampled feature subset S, retraining
+   is approximated by using the model trained on all features f^P . This approach
+   involves marginalizing over the features SC that are absent in a subset while
+
+   assuming that all features are independent and approximating an integral by
+   Monte Carlo.1 Specifically, the approximation can be expressed as
+
+                                    f^S(·)  L-1   L     f^P  ( · , xS(Cl)) .                             (1)
+                                                  l=1
+
+The indices (l)  {1, . . . , ntrain} for l  {1, . . . , L} are randomly sampled
+and referred to as imputation samples, used to impute SC [17, 26].
+
+We can exploit the unique characteristics of TabPFN to enhance Kernel SHAP
+by obtaining exact solutions, rather than approximations, for certain terms in the
+Shapley value estimation. First, consider a na¨ive implementation of Kernel SHAP
+coupled with TabPFN. Using Eq. 1, the approximation for retraining TabPFN
+on a feature subset S is given by
+
+       f^PFN  ({xS(i)  }ninf     ,  DS )    L-1   L     f^PFN({(xS(i),  xS(Cl) )}in=in1f  ,  DP  ).
+                                                  l=1
+                         i=1
+
+An approximate retraining implementation could process all ninf inference sam-
+ples and M feature subsets in parallel using L imputation samples, scaling as
+
+                                 O(n2train + ntrain · ninf · M · L).                                     (2)
+
+However, since training and prediction are done jointly in TabPFN's forward
+
+pass,  f^PFN  ({xS(i)  }ninf  ,  DS )  does  not  need  to  be  approximated.  Instead,              we  iter-
+
+                         i=1
+
+ate over M feature subsets, for each restricting the features of both the training
+
+and inference set accordingly, and evaluate the model for all ninf inference sam-
+
+ples. We refer to this approach as exact retraining, scaling as
+
+                                    O((nt2rain + ntrain · ninf) · M ).                                   (3)
+
+Assuming ntrain  ninf and L  2, our method has thus lower computational
+cost. In Eq. 2, we assume that all calculations can be executed in a single forward
+pass. As this is mostly not possible due to memory constraints on commonly used
+hardware, we also provide an approximate retraining implementation, where we
+iterate over M and L, predicting sequentially.
+
+3.4 Data Valuation for Context Optimization
+
+One of the primary limitations of TabPFN is its scalability in ntrain. As a conse-
+quence, its context is restricted to approximately 1000 observations. This limits
+the widespread adoption of TabPFN, especially for larger datasets [9].
+
+1 In this work, we chose not to consider the optional model linearity assumption as it
+   is overly simplistic.
+                                            Interpretable Machine Learning for TabPFN 471
+
+    A straightforward way to use TabPFN with larger datasets involves random
+sketching. This entails selecting a random subset of size nsub  1024 from the
+complete training set as context. In contrast, context optimization involves using
+more advanced strategies to determine appropriate contexts when dealing with
+large datasets. Recently, researchers proposed prompt-tuning strategies to learn
+an optimal context via gradient descent [9,18]. In our work, we pursue a different
+approach to context optimization by selecting a representative training subset
+based on IML methods. Various data valuation techniques, e.g., Data Shap-
+ley, which quantify the contribution of training observations to the predictive
+performance, have been suggested in the literature. Empirical evidence further
+suggests that incorporating training samples based on data values can enhance
+performance of ML models [12].
+
+    In contrast to Shapley values for FEs, Data Shapley considers the marginal
+contributions of training observations ­ as opposed to features ­ to the model
+performance across all training subsets. As retraining is impractical for complex
+learners and datasets, several approximations such as Gradient Shapley [12] have
+been proposed. Gradient Shapley employs simplistic approximations to estimate
+the marginal contributions, such as utilizing stochastic gradient descent with a
+batch size of one. Some advancements exist, but most of these involve additional
+approximations and yet require training multiple models, limiting their applica-
+bility [15,23,29]. We can, however, implement Data Shapley as a modification of
+Kernel SHAP with exact retraining by making use of in-context learning. This
+eliminates the reliance on such simplistic approximations. Consider a training
+dataset of size ntrain > nsub (typically nsub = 1024) where our objective is to
+identify an optimal subset of size nsub. To achieve this, we evaluate M randomly
+sampled training subsets, ranging in size from 256 (for sufficient context) to
+nsub, on a validation set of size nval. The resulting empirical risk values are then
+attributed to the training set observations by fitting a weighted linear model as
+a local surrogate. Subsequently, we select the nsub training observations with
+lowest coefficients in the linear model as the context, expecting that these will
+contribute the least to the increase in empirical risk. Kernel SHAP forgoes the
+need to examine all 2ntrain training subsets. In order to ensure estimation of
+the surrogate model, we, however, require M  ntrain, leading to substantial
+computational expenses.
+
+    Furthermore, TabPFNs architecture facilitates the incorporation of addi-
+tional DV techniques, including Leave-one-out (LOO) testing [6]. Similar to
+LOCO, LOO removes a single training observation from the training procedure
+and computes the change in predictive performance [23,29].
+
+3.5 Sensitivity Analysis
+
+Sensitivity Analysis (SA) is a model-specific IML method that leverages gra-
+dients computed in a backward pass to extract relevance scores for features
+[11]. Computing SA for FE is straightforward for TabPFN and also included in
+our implementation. Leveraging the differentiability of TabPFN w.r.t. training
+472 D. Rundel et al.
+
+observations, we follow a similar approach to adapt SA for data values. For the
+data value of the j-th training observation, we compute the gradient
+
+Rj =   R (x(j),y(j)) emp   f^PFN  ({x(i)  }ninf  ,  DP  ),  {y(i)  }ninf  2
+
+                                            i=1                      i=1
+
+of the empirical risk w.r.t. that observation and aggregate it to a scalar using the
+
+L2-norm. This allows identifying training observations for which the empirical
+
+risk is highly sensitive.
+
+(a) Synthetic datasets            (b) OpenML-CC18 suite datasets
+
+Fig. 1. Runtime comparison of the implementations of tabpfn iml PD vs. scikit-learn
+partial dependence(). (Color figure online)
+
+3.6 Further Methods
+
+In order to complement our toolbox to provide a comprehensive IML tool, we
+include Shapley Additive Global Importances (SAGE) [7] as an additional FI
+method. Our implementation involves utilizing Kernel SHAP with the empirical
+risk as the function to be explained and also benefits from exact retraining. We
+also offer wrappers for decision curve analysis (DCA), a CVA method as imple-
+mented in [25], and conformal prediction (CP), an UQ method as implemented
+in [27]. Last but not least, we implement multi-objective counterfactual explana-
+tions (MOC) from the realm of LE using evolutionary multi-objective algorithms
+(EMOAs) [8]. For more information, we refer to the tabpfn iml repository.
+
+4 Numerical Experiments2
+
+In the following, we provide numerical evidence of the improvement in compu-
+tational efficiency and approximation error obtained with our modifications and
+implementation. Furthermore, we show how DV methods can be employed to
+improve classification performance by context optimization.
+
+2 All experiments were run on a Nvidia GTX A6000 GPU. Furthermore, our
+   experiment code in the repository enables the replication of all results.
+                                            Interpretable Machine Learning for TabPFN 473
+
+4.1 ICE and PD
+
+To show the improved efficiency of our ICE and PD implementation, we con-
+duct a runtime comparison across 25 synthetic datasets with 10 features and 1000
+observations in Fig. 1a and across 7 binary classification datasets with increasing
+size from the OpenML-CC18 suite in Fig. 1b. For the synthetic data, we define a
+complex non-linear relationship between 10 features and a binary target, add a
+random noise term, and discretize the feature of interest to the number of inter-
+vals indicated on the x-axis, as detailed in our GitHub repository. We compare
+our implementation to scikit-learn's partial dependence() across five different
+seeds per feature level, setting the grid size equal to the number of unique
+feature values. In Fig. 1b, we set the grid size to the default value of 100 to
+depict runtimes for different real-world datasets. For both Figures, ntrain com-
+prises 80% of all observations, and ninf the remaining 20%. Our modifications
+to ICE and PD result in much better runtime, with our implementation being
+substantially faster as the grid size or data set size increase.
+
+Fig. 2. Average errors (points) and corresponding standard deviations (error bars)
+across all runs plotted against the token connections for various configurations and
+three datasets (different plots). Exact retraining configurations are red, while approx-
+imate retraining configurations are black. (Color figure online)
+
+4.2 Kernel SHAP
+
+Next, we empirically compare our proposed exact retraining method to the
+
+alternative approximate method. The comparison of the two Kernel SHAP
+
+approaches is done by defining a (stochastic) error metric, which for each cal-
+
+culates the sum of the absolute deviations from the exactly computed Shapley
+values j(f^PFN, x(i)) across features j, averaged over inference observations i:
+
+ 1    ninf       P    |j (f^PFN, x(i)) - ^j,(M,L)(f^PFN, x(i))|.
+ninf  i=1        j=1
+
+^j,(M,L)(f^PFN, x(i)) indicates the estimated Shapley value for the j-th feature
+and i-th inference observation. We further specify M  {1, 2, . . . } and L 
+474 D. Rundel et al.
+
+Fig. 3. Comparison of the ROC AUC of randomly selected TabPFN contexts (black)
+and contexts optimized through Data Shapley coupled with Kernel SHAP (red) across
+five runs and three datasets. (Color figure online)
+
+{-1, 1, 2, . . . } as the number of feature subsets and imputation samples, where
+we denote exact retraining as L = -1. Since the exact computation of Shapley
+values scales exponentially in the number of features, we select three binary
+classification tasks from the OpenML-CC18 suite [4] with six numerical features,
+aligning with the optimal application scenario for TabPFN [14]. For each dataset,
+we randomly sample a training set of size ntrain = 256 and an inference set
+of size ninf = 128 and evaluate a fine-grained grid across all values of M 
+{6, . . . , 160} and L  {1, . . . , 25} for approximate retraining, and across values
+of M  {6, . . . , 1600} for exact retraining. We repeat all experiments 25 times for
+each dataset, with feature subsets and imputation samples randomly sampled in
+each iteration.
+
+    In Fig. 2, we present the mean and one standard deviation of the error across
+all runs, contrasted with the corresponding number of token connections for
+each (M, L) configuration according to Eqs. 2 and 3. The plot shows that exact
+retraining almost exclusively achieves lower approximation error for a fixed com-
+putational budget. In contrast, achieving comparable error values with approx-
+imate retraining often demands a larger number of feature subsets and multi-
+ple imputation samples. Moreover, exact retraining converges at a lower error
+and the standard deviations indicate that its Shapley estimates have lower vari-
+ance. On top, it is important to stress that the number of token connections
+for approximate retraining is a lower bound and approximate retraining con-
+verges even slower in practice. Notably, for the chscase census6 dataset, there
+are configurations with a small number of token connections where approximate
+retraining outperforms the exact equivalent, which might be attributed to the
+cost-effectiveness of approximate retraining for low values of L.
+
+4.3 Data Valuation for Context Optimization
+
+We conduct an empirical evaluation of our Data Shapley implementation for con-
+text optimization by comparing it to random sketching. Our benchmark consists
+of three datasets from the OpenML-CC18 suite [4], chosen in accordance with
+                                            Interpretable Machine Learning for TabPFN 475
+
+[9], suggesting that TabPFN's performance on these datasets can be enhanced
+through context optimization. For each dataset, we create a training set of size
+ntrain = 3072 and aim to identify an optimal context of size nsub = 512 thereof.
+We choose M = 3·ntrain, nval = 512 and ultimately assess the optimized context's
+performance on a previously unseen test set of size ntest = 1024, comparing it to
+the performance of randomly selected contexts of the same size. This procedure
+is repeated 5 times with differently sampled subsets.
+
+    In Fig. 3, we compare the ROC AUC on the test set of both random and
+optimized contexts across all runs and three datasets. The plot indicates that
+our method consistently outperforms random sketching. On the eeg-eye-state
+and albert datasets, we observe an average increase in ROC AUC of 0.57% and
+1.52%, respectively. An even more substantial improvement is obtained for the
+higgs dataset, yielding a difference of 3.3% in ROC AUC. The results suggest
+that our implementation of Data Shapley produces sensible results, indicating
+its potentially meaningful application in domains beyond context optimization.
+However, note that this procedure requires nearly 10,000 TabPFN forward passes
+and is ­ in contrast to our other proposed methods ­ notably more expensive.
+
+5 Discussion and Conclusion
+
+By exploiting the architecture underlying TabPFN and in-context learning, we
+propose tailored modifications and adaptations of IML methods for TabPFN.
+Specifically, we provide efficient implementations of ICE, PD, and ALE. Fur-
+thermore, using similar insights, we make the computation of LOCO and LOO
+possible despite TabPFN's Transformer nature. Moreover, we have shown that
+our exact retraining approach to Kernel SHAP dominates current alternatives
+with respect to both approximation error and runtime. Finally, our implementa-
+tion of Data Shapley yields meaningful results that can be used for context opti-
+mization. Together with further methods in IML, we provide a comprehensive
+and easy-to-use IML package that allows to shed light on TabPFN's predictions.
+The suggested modifications to IML methods also translate to the broader realm
+of in-context learning, especially for tabular data, and exploring their potential
+is a promising direction for future research.
+
+Disclosure of Interests. The authors have no competing interests to declare that
+are relevant to the content of this article
+
+References
+
+ 1. Apley, D.W., Zhu, J.: Visualizing the effects of predictor variables in black box
+     supervised learning models. J. R. Stat. Soc. 82(4), 1059­1086 (2020)
+
+ 2. Bastings, J., Filippova, K.: The elephant in the interpretability room: why use
+     attention as explanation when we have saliency methods? In: EMNLP Workshop
+     BlackboxNLP: Analyzing and Interpreting Neural Networks for NLP (2020)
+
+ 3. Bischl, B., et al.: Hyperparameter optimization: foundations, algorithms, best prac-
+     tices, and open challenges. Data Min. Knowl. Discov. 13(2), e1484 (2023)
+476 D. Rundel et al.
+
+ 4. Bischl, B., et al.: Openml benchmarking suites. In: NeurIPS Datasets and Bench-
+     marks Track, vol. 1 (2021)
+
+ 5. Chefer, H., Gur, S., Wolf, L.: Transformer interpretability beyond attention visu-
+     alization. In: CVPR, pp. 782­791 (2021)
+
+ 6. Cook, R.D.: Detection of influential observation in linear regression. Technometrics
+     19(1), 15­18 (1977)
+
+ 7. Covert, I., Lundberg, S.M., Lee, S.I.: Understanding global feature contributions
+     with additive importance measures. In: NeurIPS, vol. 33, pp. 17212­17223 (2020)
+
+ 8. Dandl, S., Molnar, C., Binder, M., Bischl, B.: Multi-objective counterfactual expla-
+     nations. In: B¨ack, T., et al. (eds.) PPSN 2020. LNCS, vol. 12269, pp. 448­469.
+     Springer, Cham (2020). https://doi.org/10.1007/978-3-030-58112-1 31
+
+ 9. Feuer, B., et al.: Tunetables: context optimization for scalable prior-data fitted
+     networks. arXiv:2402.11137 (2024)
+
+10. Friedman, J.H.: Greedy function approximation: a gradient boosting machine. Ann.
+     Stat. 1189­1232 (2001)
+
+11. Gevrey, M., Dimopoulos, I., Lek, S.: Review and comparison of methods to study
+     the contribution of variables in artificial neural network models. Ecol. Model.
+     160(3), 249­264 (2003)
+
+12. Ghorbani, A., Zou, J.: Data shapley: equitable valuation of data for machine learn-
+     ing. In: ICML, vol. 97, pp. 2242­2251. PMLR (2019)
+
+13. Goldstein, A., Kapelner, A., Bleich, J., Pitkin, E.: Peeking inside the black box:
+     visualizing statistical learning with plots of individual conditional expectation. J.
+     Comput. Graph. Stat. 24(1), 44­65 (2015)
+
+14. Hollmann, N., Mu¨ller, S., Eggensperger, K., Hutter, F.: TabPFN: a transformer
+     that solves small tabular classification problems in a second. In: ICLR (2023)
+
+15. Kwon, Y., Zou, J.: Data-OOB: out-of-bag estimate as a simple and efficient data
+     value. In: ICML, vol. 202, pp. 18135­18152. PMLR (2023)
+
+16. Lei, J., G'Sell, M., Rinaldo, A., Tibshirani, R.J., Wasserman, L.: Distribution-free
+     predictive inference for regression. J. Am. Stat. Assoc. 113(523), 1094­1111 (2018)
+
+17. Lundberg, S.M., Lee, S.I.: A unified approach to interpreting model predictions.
+     In: NeurIPS, vol. 30 (2017)
+
+18. Ma, J., Thomas, V., Yu, G., Caterini, A.: In-context data distillation with TabPFN.
+     arXiv preprint arXiv:2402.06971 (2024)
+
+19. McElfresh, D., et al.: When do neural nets outperform boosted trees on tabular
+     data? In: NeurIPS Datasets and Benchmarks Track, vol. 36 (2024)
+
+20. Molnar, C.: Interpretable machine learning, 2 edn. (2020)
+21. Mu¨ller, S., Hollmann, N., Arango, S.P., Grabocka, J., Hutter, F.: Transformers can
+
+     do bayesian inference. In: ICLR (2022)
+22. Nagler, T.: Statistical foundations of prior-data fitted networks. In: ICML, vol. 202,
+
+     pp. 25660­25676. PMLR (2023)
+23. Rozemberczki, B., et al.: The shapley value in machine learning. In: IJCAI, pp.
+
+     5572­5579 (2022)
+24. Shapley, L.S.: A Value for N-Person Games. RAND Corporation (1952)
+25. Sjoberg, D.D.: dcurves: decision curve analysis for model evaluation (2022)
+26. Strumbelj, E., Kononenko, I.: Explaining prediction models and individual predic-
+
+     tions with feature contributions. Knowl. Inf. Syst. 41, 647­665 (2014)
+27. Taquet, V., Blot, V., Morzadec, T., Lacombe, L., Brunel, N.: MAPIE: an open-
+
+     source library for distribution-free uncertainty quantification. arXiv:2207.12274
+     (2022)
+28. Vaswani, A., et al.: Attention is all you need. In: NeurIPS, vol. 30 (2017)
+29. Wang, J.T., Jia, R.: Data banzhaf: a robust data valuation framework for machine
+     learning. In: AISTATS, vol. 206, pp. 6388­6421. PMLR (2023)
+

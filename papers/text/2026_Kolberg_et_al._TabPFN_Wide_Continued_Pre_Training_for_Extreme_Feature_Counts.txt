@@ -1,0 +1,1348 @@
+arXiv:2510.06162v2 [cs.LG] 29 Mar 2026    Journal Title Here, YEAR, pp. 1­21
+                                          DOI added during production
+                                          Published: Date added during production
+                                          Paper
+
+                                                  TabPFN-Wide: Continued Pre-Training
+                                                          for Extreme Feature Counts
+
+                                                     Christopher Kolberg,1,  Jules Kreuer ,1,  Jonas Huurdeman,1,  Sofiane Ouaari,1
+                                                                          Katharina Eggensperger2,3 and Nico Pfeifer 1,+
+
+                                                       1Institute for Bioinformatics and Medical Informatics, University of Tu¨bingen, Maria-von-Linden-Str. 6, 72076, Baden-Wu¨rttemberg, Germany
+                                                                             2AutoML for Science, University of Tu¨bingen, Maria-von-Linden-Str. 6, 72076, Baden-Wu¨rttemberg, Germany
+
+                                                              3Lamarr Institute for Machine Learning and Artificial Intelligence, TU Dortmund, Joseph-von-Fraunhofer-Straße 25 44227, Germany
+
+                                                                                          These authors contributed equally ; +corresponding author: nico.pfeifer@uni-tuebingen.de
+
+                                                                                                  Abstract
+
+                                      Revealing novel insights from the relationship between molecular measurements and pathology remains a very impactful application of machine
+                                      learning in biomedicine. Data in this domain typically contain only a few observations but thousands of potentially noisy features, posing challenges
+                                      for conventional tabular machine learning approaches. While prior-data fitted networks emerge as foundation models for predictive tabular data
+                                      tasks, they are currently not suited to handle large feature counts (> 500). Although feature reduction enables their application, it hinders
+                                      feature importance analysis. We propose a strategy that extends existing models through continued pre-training on synthetic data sampled
+                                      from a customized prior. The resulting model, TabPFN-Wide, matches or exceeds its base model's performance, while exhibiting improved
+                                      robustness to noise. It seamlessly scales beyond 30,000 categorical and continuous features, regardless of noise levels, while maintaining inherent
+                                      interpretability, which is critical for biomedical applications. Our results demonstrate that prior-informed adaptation is suitable to enhance the
+                                      capability of foundation models for high-dimensional data. On real-world omics datasets, we show that many of the most relevant features
+                                      identified by the model overlap with previous biological findings, while others propose potential starting points for future studies.
+                                      Keywords Tabular Foundation Model, High-Dimensional Low-Sample Size, Feature Widening
+                                      Abbreviations HDLSS: High-Dimensional Low-Sample Size
+
+                                                                  Introduction                                     Foundation models for structured data have emerged, and models
+                                                                                                                like TabPFN and TabICL [Hollmann et al., 2023, 2025, Qu et al.,
+                                      Tabular data are an important data modality used for quantitative         2025] are currently at the forefront of predictive tabular ML
+                                      research in healthcare, finance, natural sciences, and many               benchmark tasks [Erickson et al., 2025]. These models use in-context
+                                      more. Tabular data are relevant for various real-world applications       learning (ICL) [Brown et al., 2020] and are based on transformers
+                                      and offer "uniquely exciting, large, unsolved challenges for              [Vaswani et al., 2017], pre-trained on synthetic or real-world data
+                                      researchers" [Van Breugel and Van Der Schaar, 2024]. One                  to solve tabular regression and classification tasks. As a result, they
+                                      main challenge is high-dimensional, low-sample-size (HDLSS) data,         are highly effective on unseen tasks with characteristics similar to
+                                      common in biomedical applications. Cohort sizes of studies are            those seen during pre-training. While the exact training data are
+                                      small due to cost, time, or disease rarity, while modern biomedical       often unknown, empirical performance on HDLSS data suggests that
+                                      technologies, on the other hand, enable the measurement of                current models have not learned to handle extreme feature counts.
+                                      thousands of features per patient. Collected data can then be
+                                      examined for predictive tasks, for instance, to study interactions           Such limits stem from insufficient exposure during pre-training
+                                      between thousands of biomarkers and cancer types [McLendon et al.,        rather than a lack of model capacity, data, or resources; thus,
+                                      2008, Bell et al., 2011]. Even more importantly, to guide scientific      retraining from scratch using a broader prior could be a solution.
+                                      discovery [Ditz et al., 2023a,b], interpretability is as important        However, re-training from scratch whenever we encounter a new
+                                      as accuracy. Such extreme feature counts in combination with a            task or data characteristic to improve a model's performance would
+                                      low sample size raise a difficulty for real-world machine learning        be extremely resource-intensive and, therefore, often infeasible.
+                                      applications.                                                             It would also contradict the concept of a foundation model,
+                                                                                                                which is pre-trained to serve as the basis for downstream tasks.
+                                      Training code, package and model weights are released on https://github.  Naive solutions, such as subsampling or compressing features
+                                      com/not- a- feature/TabPFN- Wide.                                         to match the dimensionality of the pre-training data, render
+
+                                      Received: Date Month Year. Revised received: Date Month Year. Accepted: Date Month Year
+                                      © The Author(s) YEAR. Copyright and licence statements to be updated by the publisher during production.
+2 Journal Title Here, YEAR, Volume XX, Issue x
+
+methods for quantifying feature importance ineffective. Instead,              Biomedical downstream tasks demand interpretability due
+we aim to enhance the capability of already existing pre-trained           to their sensitive nature. However, for HDLSS data, common post-
+models in a resource-efficient way, while keeping the interpretability     hoc interpretability methods are unreliable [Bordt et al., 2022].
+workflow intact. Concretely, we study the more general question:           For example, traditional permutation-based testing approaches
+"Can continued pre-training extend tabular foundation models to            like SHAP [Lundberg and Lee, 2017] require computing scores
+generalize across diverse task types in high-dimensional, small-sample     for each variable multiple times across multiple permutations,
+data?"                                                                     making it computationally demanding for high-dimensional datasets.
+                                                                           Additionally, the low sample size reduces the stability of the results.
+   To address these constraints, we propose TabPFN-Wide, a model
+built upon TabPFNv2 that seamlessly scales to large feature counts,           Consequently, feature reduction or selection techniques are applied
+thereby handling HDLSS data in biomedicine.                                beforehand to reduce the number of features to a computable
+                                                                           range. Yet, this inherently poses the risk of losing information
+   Specifically, our contributions are:                                    or dropping potentially relevant features, which would be highly
+                                                                           undesirable for applications in the real world. Thus, we avoid feature
+1. We develop a novel prior to efficiently generate synthetic HDLSS        reduction and instead make our model work on all available features.
+     data.                                                                 This allows the model to identify the most predictive features
+                                                                           directly. To gain insights into this internal selection process, we
+2. We propose continued pre-training to extend TabPFNv2,                   sought inherent interpretability methods and chose to use attention
+     resulting in TabPFN-Wide, to handle extreme feature counts            maps computed within the transformer architecture. However, the
+     beyond 30,000 features.                                               role and interpretability of attention maps are controversial in the
+                                                                           literature, with nearly no previous work on attention analysis of
+3. In empirical evaluations on biomedical data and standard                TabPFN (or related models). In the context of large language models
+     tabular benchmark tasks, we show that TabPFN-Wide maintains           (LLMs), studies have shown that while attention maps may provide
+     performance within its original range, while being significantly      a coarse indication of a model's reasoning process, they are often
+     more robust on wide data.                                             noisy and can erroneously emphasize irrelevant tokens [Serrano and
+                                                                           Smith, 2019, Jain and Wallace, 2019]. Nevertheless, there have been
+4. Finally, we study the inherent interpretability of attention maps       successful approaches in biomedicine, where features identified by
+     of TabPFN-Wide and show that attention maps allow us to               studying attention maps overlap with biological knowledge [Ditz
+     identify relevant features.                                           et al., 2023a,b].
+
+                 Materials and Methods                                        For TabPFNv2's attention specifically, earlier research shows that
+                     Problem Description                                   it evolves across layers, shifting from label-focused attention in the
+                                                                           first layers to semantically relevant attribute attention in deeper
+We start by briefly describing our problem setup and the                   layers [Ye et al., 2025]. Additionally, Rubachev et al. [2025] links a
+                                                                           reduced entropy of the attention score distribution to a more focused
+challenges for robustly scaling tabular foundation models, specifically    classification model. Building on these observations, we examine
+                                                                           the attention maps as described, with careful consideration of their
+TabPFNv2 [Hollmann et al., 2025], to thousands of features.                potential shortcomings.
+
+   Tabular data can be described as a dataset D = {(xi, yi)}in=1                Tabular Foundation Models for Predictive ML Tasks
+containing n samples (rows). Each sample consists of a feature
+                                                                           Prevailing models changed from traditional to pre-trained
+vector xi  Rm with m features (columns) and, for classification            models. Traditional ML models, like random forests or multi-
+                                                                           layer perceptrons, must be trained from scratch for each task, with
+tasks, a corresponding label yi  {1, 2, ..., C}. To measure                their predictive quality depending on hyperparameters and encoded
+                                                                           inductive biases. With the rise of transformer models, amortized
+performance of a model f , we split available data into a train            inference as a new learning paradigm for tabular data has emerged.
+                                                                           Such foundation models are trained across many (synthetic) tasks
+dataset Dtrain   =  {(xi(train)  ,  yi(train)  )}ntrain  and a validation  to learn how to do statistical inference via ICL. At inference time,
+                                                                           training samples and query points are fed to the model, which then
+                                                   i=1                     approximates Bayesian inference to predict labels [Mu¨ller et al., 2021,
+                                                                           Mu¨ller et al., 2025].
+dataset Dval = D  Dtrain and compute a loss, e.g., log loss,
+                                                                              The use of ICL for predictive tabular tasks was originally based on
+L = (xi,yi)Dval l (f (xi, Dtrain), yi) to approximate how well             LLMs. Further building on the successes of LLMs, numerous studies
+f would generalize to unseen (test) samples. What distinguishes            have investigated their application to tabular data [Hegselmann et al.,
+                                                                           2023, Zhang et al., 2024, Herzig et al., 2020]. For these approaches,
+tabular data from other modalities are their heterogeneous feature         natural language representations of the tables are used for few- and
+                                                                           zero-shot tabular classification. However, table-to-text-based models
+types (categorical, numerical, missing values), and potentially diverse    are limited by the context window of the underlying LLM; their
+                                                                           predictions could be based on learned world knowledge rather than
+structures with the number of samples and features ranging from a          the table data, and, importantly, they cannot inherently leverage
+
+few to millions [Van Breugel and Van Der Schaar, 2024].
+
+HDLSS data are a specific type of tabular data where the number
+
+of features is much larger than the number of samples, i.e., m  n.
+
+Such data typically occur in the biomedical domain. For example,
+
+cancer data from The Cancer Genome Atlas (TCGA) provide high-
+
+dimensional multi-omics measurements from cancer patients, such
+
+as those with ovarian cancer [Bell et al., 2011]. In this setting, a
+
+typical classification problem is the identification of cancer subtypes.
+
+Improving the accuracy and robustness of predictive machine learning
+
+models supports precise diagnoses and personalized treatments,
+
+ultimately improving patient outcomes. A key difficulty arises from
+
+the high-dimensional feature space of molecular data, where noisy or
+
+irrelevant measurements often obscure subtype-specific signals. This
+
+complexity inhibits the detection of biologically meaningful patterns
+
+and hinders the ability to distinguish molecular differences between
+
+tumor subtypes.
+                                                                                                    Journal Title Here, YEAR, Volume XX, Issue x 3
+
+                                                                                     Algorithm 2 Categorical Feature Widening
+
+Algorithm 1 Continuous Feature Widening                                              Input: Input features Xcat  Rn×mcat , target dimension dcat ,
+
+Input: Input features Xcont  Rn×mcont , target dimension dcont ,                          sparsity p , max categories Kmax
+
+sparsity p  [0, 1] , noise std.                                                      Output: Wide categorical features Xwide cat  Rn×dcat
+
+Output: Wide continuous features Xwide cont  Rn×d                                    1: for j = 1 to dcat do
+
+                        m× dcont                                                     2: k  max(1,  p · mcat)
+
+1: Sample weights W  R              with Wij  N (0, 1)                               3: Sample donor column indices D  {1, . . . , mcat} with |D| = k
+
+                          m× dcont                                                   4: for i = 1 to n do
+
+2: Sample mask M  {0, 1}            with Mij  Bernoulli( p )                         5:   Sample donor column index ds  D using the uniform distribution
+
+3: Compute wide features Xwide cont  Xcont (M  W )                                   6:           Xwide cat[i, j]  Xcat [i, ds]
+
+                                                                                     7: end for
+
+                                m× dcont                                             8: Sample Kj  {3, . . . , Kmax } using the uniform distribution
+4: Sample noise N  R
+                                                                                     9: while unique( Xwide cat [:, j]) > Kj do
+         with Nij  N (0,  j ) and j = std( Xwide cont:,j )
+
+5: Add noise Xwide cont  Xwide cont +N                                               10:  Merge the rarest category into one of the Kj most frequent
+6: return Xwide cont
+                                                                                     11:  categories randomly using the uniform distribution
+
+                                                                                     12: end while
+
+                                                                                     13: end for
+
+                                                                                     14: return Xwide cat
+
+Figure 1 Pseudocode of continuous widening (left) and categorical widening (right).
+
+the structure (columns and rows) of tabular data. While yielding         our requirement of preserving a per-feature resolution throughout its
+impressive results for zero- and few-shot tasks, they perform worse      architecture.
+when more data are available [Hegselmann et al., 2023]. To address
+these weaknesses, while simultaneously keeping the ICL approach,            Fine-tuning and continued pre-training improve performance
+tabular foundation models emerged, with TabPFN [Hollmann et al.,         on downstream tasks. Fine-tuning, i.e., performing gradient
+2022] being one of the earliest representatives. It is entirely trained  updates using data from the target downstream tasks, is commonly
+on synthetic data generated from a prior based on structural             used to adapt LLMs to application domains [Christophe et al., 2024,
+causal models, yielding competitive performance on unseen tabular        Weyssow et al., 2025] and has been proposed as a best practice to
+classification tasks. TabPFNv2 [Hollmann et al., 2025], a follow-up,     compare models [Zhang et al., 2025]. Similarly, fine-tuning TabPFN
+introduced a modified prior and architecture, achieving state-of-the-    in general [den Breejen et al., 2025, Rubachev et al., 2025] or
+art performance on datasets with up to 10,000 samples and 500            specifically performing parameter-efficient fine-tuning for context
+features.                                                                optimization [Feuer et al., 2024] can improve performance on a
+                                                                         single downstream task. However, this requires a sufficient number
+   Current research focuses on extending the applicability               of samples for this task. Continued pre-training, in contrast, does
+regarding the number of samples and computational cost.                  not use data from the target task but leverages tasks with properties
+One prominent example is TabICL [Qu et al., 2025], which uses            similar to the target task. For example, Real-TabPFN [Garg et al.,
+only a fixed number of embedded [CLS] tokens per sample for              2025], further pre-trained on real-world datasets, shows significant
+ICL rather than all the features. Furthermore, TuneTables [Feuer         improvements on real-world tabular benchmarks. We follow this
+et al., 2024] optimizes the context of TabPFN using a learned            direction, but instead of using real-world data, we study how
+compact dataset representation instead of the whole training data.       to continue pre-training with synthetic data to scale TabPFN to
+Additionally, TabFlex [Zeng et al., 2025] uses linear attention          extreme feature counts, far beyond what it has seen during pre-
+instead of standard (quadratic) attention to reduce complexity. Other    training. Because this involves sequential training, it is crucial to
+research directions focus on localization approaches to select relevant  prevent the model from experiencing catastrophic forgetting [French,
+context samples [Ma et al., 2025, Xu et al., 2025, Koshil et al.,        1993, Kemker et al., 2018]. This could cause the model to perform
+2024]. While all these approaches aim to extend the application          significantly worse on tabular data within the original ranges of
+range, they propose new architectures and inference mechanisms,          TabPFNv2.
+often applying feature reduction and compression. In contrast, we
+aim to expand an existing model's capability without impairing                                         Methodology
+interpretability on a per-feature level. For these reasons, we focus on
+TabPFNv2 [Hollmann et al., 2025], currently the only state-of-the-art    We propose a novel approach to extend the capabilities of tabular
+approach that can simply be modified (see Section 2.3.3) to satisfy      foundation models, specifically TabPFNv2, while preserving per-
+                                                                         feature interpretability. We split our method into three components:
+4 Journal Title Here, YEAR, Volume XX, Issue x
+
+First, we develop a prior to efficiently generate synthetic HDLSS                                  Continued Pre-Training
+data. Second, we use this data to continue pre-training, and third,
+we study attention maps for feature-wise interpretability.                For our continued pre-training setup, we start from the original
+                                                                          TabPFNv2 classifier checkpoint1 and updated all parameters during
+          A Prior for Synthetic HDLSS Data Generation                     training. We used AdamW [Loshchilov and Hutter, 2019] (using a
+                                                                          weight decay of 1 × 10-4 and a learning rate of 1 × 10-5) with
+To adapt our model, we need a mechanism to generate training data,        linear warm-up, cosine decay, and gradient norms clipping to 1.0. We
+which (1) works fast and cost-effectively, since we need multiple         used a batch size of 16, reducing it to 8 for training runs with over
+datasets per batch step, and (2) yields realistic data to provide a       5,000 features due to memory constraints. Training and validation
+meaningful and reliable signal during adaptation.                         were performed using cross-entropy loss. The generated datasets
+HDLSS prior. For the first desideratum, we follow prior work and          of the TabICL prior had up to 10 classes (to match TabPFNv2's
+rely on synthetic data obtained from a data-generating mechanism          limitations), 40 to 400 samples, and 50 to 350 features, which we then
+based on structural causal models [Hollmann et al., 2022, 2023].          widened using Algorithm 1 and 2. The target number of features d
+Datasets are therefore drawn from randomly sampled directed acyclic       in was uniformly sampled between 200 and a predefined maximum
+graphs. Specifically, as the TabPFNv2 prior is not publicly available,    dmax, with dmax  {1,500, 5,000, 8,000}. We trained separate models
+we use the open-source prior used to train TabICL [Qu et al., 2025],      for each dmax.
+considering TabICL's strong empirical performance as evidence of
+the prior's similar effectiveness. To satisfy the second desideratum,        With probability 0.5, the original features were appended to
+we exploit the observation that features in HDLSS datasets typically      the final dataset and afterwards the feature order was randomly
+exhibit substantial noise and strong inter-feature correlations [Clarke   permuted. Sparsity and noise level were uniformly sampled with
+et al., 2008].                                                            p  [0, 0.05] and   [0, 1], following the analysis visualized in
+                                                                          the Appendix L. We denote the resulting models as TabPFN-Wide-
+   Based on this assumption, we construct a feature widening prior        *, where * indicates the maximum number of features used during
+that can widen continuous features as formalized in Algorithm 1 as        training.
+well as categorical features as shown in Algorithm 2. During training,
+we first sample a dataset with a moderate number of features m from          We fixed the total training duration to 10,000 optimization steps
+the TabICL prior and subsequently widen it to a target dimension          for all models, as validation ROC-AUC on a set of omics and synthetic
+d  m. Since datasets within a batch do not necessarily share the          SNP datasets plateaued beyond this point. These datasets were used
+same feature semantics, feature widening is applied independently per     exclusively to observe convergence rather than for active checkpoint
+dataset. The widening procedure distinguishes between continuous          selection, with further details provided in Appendix J.
+and categorical features and allocates the target dimensionality
+accordingly. To this end, we first identify the feature types present in           Feature-wise Interpretability via Attention Maps
+the dataset. A feature is considered categorical if it has at most 20
+distinct values; all remaining features are treated as continuous. Let    To gain insights into TabPFNv2's inference, we analyze attention
+rcat denote the resulting categorical ratio, defined as the number        maps, focusing on attention towards the label as a proxy for
+of categorical features divided by the total number of features.          feature importance. This requires that each transformer (token)
+Given a target number of features to be added, we allocate dcat =         column corresponds to a dataset feature. By default, TabPFNv2
+rcat · (d - m) categorical features and dcont = (d - m) - dcat            groups features, adds distribution-dependent features, or may remove
+continuous features. Continuous features are widened as described in      features impairing a token-to-feature mapping. To address this, we
+Algorithm 1. Specifically, we sample a sparse linear transformation       disabled these modifications for training as well as our biomedical
+with sparsity p (lines 1-2) and apply it to the original features to      datasets and interpretability analyses. Attention maps are an
+obtain new features (line 3). Feature-dependent Gaussian noise is         intermediate step of the original dot-product attention computation
+then added to the projected features (lines 4-5), ensuring realistic      [Vaswani et al., 2017] and we refer to the matrix A in Equation (1) as
+variability while preserving correlation structure.                       "attention map", with query matrix Q, key matrix K, value matrix
+                                                                          V , and key vector dimensionality dkey:
+   Categorical features are widened using the complementary
+mechanism in Algorithm 2. New categorical features are generated          Attention(Q, K, V ) = softmax  QK T  V = AV . (1)
+by sparsely sampling dependencies on existing categorical features
+using the same sparsity parameter p as in the continuous widening                                        dkey
+procedure (line 3) and copying feature values on a per-sample basis
+(lines 5-6). To prevent degenerate high-cardinality variables, each       To interpret attention maps as an indicator of feature importance,
+generated feature is constrained to a bounded number of categories        we consider only TabPFNv2's feature-wise attention, disregarding
+via a category reduction step (line 10). The target cardinality of each   the sample-wise attention. Since the embedded labels are appended
+feature is sampled from a discrete exponential distribution, biasing      before the forward pass, the attention value towards the label
+the process towards low-cardinality features while still allowing         corresponds to the attention map's last row excluding the label index.
+higher-cardinality cases. With this procedure, we can generate
+thousands of new features highly correlated to the original feature          Furthermore, we average the attention maps across all samples,
+set, mimicking HDLSS data.                                                heads, and layers (similar to prior work by Ye et al. [2025]). We
+                                                                          acknowledge that attention maps can vary substantially across these
+   Importantly, the sparsity parameter p allows us to control             dimensions. However, this approach aligns with the intuition that
+the induced correlation patterns, matching the dense and sparse           features identified as relevant by the model across numerous samples,
+correlation structures observed in real-world biomedical data (see
+Appendix L for a detailed visual comparison).                             1 See Hugging Face model; Runtime complexity remains unaffected, thus,
+                                                                          to satisfy higher resource demands for continued pre-training we used 4
+                                                                          NVIDIA H100 GPUs with a combined memory of 320GB.
+                                                                               Journal Title Here, YEAR, Volume XX, Issue x 5
+
+heads, or layers are those most indicative of importance (as we also      1.0
+show in our empirical results). In the following, the term "attention                                                                                                        1.0
+score" of a feature refers to its average attention to the label column.
+                                                                          0.9                                                                                                 0.9
+                   Experiments and Results
+                                                                          AUROC0.8                                                                                            0.8
+We now turn to the empirical analysis. First, we study TabPFN-                                                                                                 Average AUROC
+Wide's performance in two settings: (a) real-world HDLSS omics                                                                                                               0.7
+datasets (subsection 3.2) and (b) standard benchmark tasks for            0.7
+predictive tabular machine learning (subsection 3.3) as well as
+a synthetic SNP dataset. Then, we assess its interpretability in                                                                                                                      TabPFN v2
+subsection 3.4.
+                                                                                                                                                                              0.6     TabPFN-Wide (5k)
+                Datasets and Evaluation Protocol.
+                                                                          0.6                                                                                                         TabICL
+We use machine learning­ready TCGA datasets differing from raw                                                                                                                        Random Forest
+TCGA data by already being normalized, quality-checked, and
+otherwise pre-processed. We use five datasets: COAD, LGG, BRCA,                                                                                                               0.5     XGBoost
+GBM and OV published by Yang et al. [2025]. Appendix A
+provides details of the corresponding table structures. Using early                                                                                                                   RealMLP
+integration, we concatenate all omic types (mRNA, methylation,
+CNV (if present), and miRNA) along the feature axis, yielding             0.5                                                                                                      0  2500 5000 7500 10000 12500 15000 17500
+datasets with up to 60,000 features. In addition to these real-world
+datasets, we also evaluate on 21 benchmark tasks (with  10, 000           TaTTbaaPbbRFPPaNFF-nNNd--WiodRXWWmiieeGddaF(leeBo1((.roM855eoLkkksstt)))P                                                     Number of Features
+samples and  500 features) introduced by TabArena [Erickson et al.,                                                                           TabICL
+2025]. We further extended our evaluation to 15 HDLSS datasets
+from [Li et al., 2018] as well as to synthetically generated single                                                                                    TabPFN v2
+nucleotide polymorphism (SNP) datasets produced with HAPNEST
+[Wharrie et al., 2023], which provide an HDLSS setting of up to           Figure 2 Average AUROC                                                                  Figure 3 Average AUROC evaluated
+70,000 categorical features where the predictive signal is very sparse.   (±SD) scores on 5 multiomics                                                            on five multiomics cancer datasets
+                                                                          cancer datasets.                                                                        with feature reduction via agglomerative
+   Unless stated otherwise, all models were evaluated using all                                                                                                   clustering.
+features. If we apply feature reduction, we recursively merge features
+based on the minimal Euclidean distance of pairs of feature vectors       Interestingly, increasing the maximum width of synthetic datasets
+(as demonstrated to be appropriate in preliminary analyses, see           used during continued pre-training from 1,500 to 8,000 exerts only
+Appendix B). We note that our main objective is to retain feature-        a minor influence on cancer subtype classification performance
+wise interpretability and we solely explore it to compare model           (Figure 2 and Appendix D), which is why we chose the 5k variant
+performance across different feature counts.                              for all additional evaluations in the manuscript. Further evaluation is
+                                                                          needed to assess the potential benefits of training on wider data,
+   Alongside the foundation models TabPFNv2 and TabICL, we                especially given the quadratic rise in complexity from increasing
+evaluate other baseline models, including the pre-tuned neural            the number of features during training. Furthermore, we performed
+network RealMLP-TD [Holzmu¨ller et al., 2024] as well as classical        feature reduction to evaluate the performance trend of the models
+tree-based machine learning techniques like random forest and             based on the number of available features. In this setting, TabPFN-
+XGBoost [Chen and Guestrin, 2016]. Importantly, ensembling was            Wide achieves the best overall results across increasing feature counts
+not used for TabPFN-Wide, TabPFNv2, TabICL, and RealMLP-TD                as seen in Figure 3, remaining very stable while the performance of
+to study raw model behaviour.                                             TabPFNv2 decreases significantly.
+
+   We perform 5-fold cross-validation for our biomedical datasets to      Results on Standard Benchmarks and Widened Adaptations
+compute AUROC and accuracy. For the TabArena datasets, we follow
+the original evaluation protocol and compute AUROC using a 3-fold         TabPFN-Wide performs on par with TabPFNv2 on
+cross-validation repeated 3 or 10 times, depending on the dataset         TabArena Benchmark. Figure 4 (a) compares TabPFNv2 and
+size.                                                                     TabPFN-Wide, showing that our continued pre-pretraining on
+                                                                          wider datasets does not negatively impact performance on standard
+                Results on real-world wide datasets                       datasets with  10, 000 samples and  500 features (Spearman
+                                                                          rho=0.9935). This suggests that there is no indication of catastrophic
+TabPFN-Wide shows superior performance across real-                       forgetting.
+world HDLSS datasets. We first evaluated our models on the                Needle in a haystack. We evaluate TabPFN-Wide on a biological
+5 TCGA cancer datasets from Yang et al. on cancer subtype                 noise-filtering task. Using SNP data, we generate binary phenotypes
+classification. The average AUROC scores in Figure 2 highlight            under a polygenic model where only a low fraction (the polygenicity)
+the strong capabilities of TabPFN-Wide. While tree-based methods          of SNPs are causal (See Appendix K for full details). To create a
+exhibit stable performance, our model achieves superior results.          needle in a haystack scenario, we progressively increase the number
+TabPFNv2 and TabICL exhibit inferior performance consistent with          of non-causal SNPs while keeping the set of causal variants fixed.
+the fact that they were not trained for such extreme feature counts.
+                                                                             Figure 4 b) reports the AUROC of the SNP datasets with
+                                                                          polygenicity level of 0.01. As the number of non-causal SNPs
+                                                                          increases, TabPFN-Wide and XGBoost exhibit the smallest
+                                                                          degradation in performance. In contrast, TabICL is unable to
+                                                                          reliably separate signal from noise, quickly converging toward random
+                                                                          guessing (AUROC = 0.5) as the feature dimensionality grows.
+                                                                          HDLSS Benchmark from Li et al. Aggregate win rate analysis
+                                                                          was used to evaluate relative model robustness across 15 HDLSS
+                                                                          datasets. As shown in Figure 4 (c), TabPFN-Wide achieves a
+                                                                          92.0% win rate, substantially outperforming standard baselines
+                                                                          (Random Forest, RealMLP, XGBoost) and Tabular Foundation
+                                                                          Models (TabPFNv2, TabICL). This difference is also significant
+                                                                          according to a paired Wilcoxon signed rank test comparing the AUCs
+                                                                          (p < 0.005; See Appendix H for table of p-values).
+6 Journal Title Here, YEAR, Volume XX, Issue x
+
+1.0                                                                    1.0
+                                                                                                                                                      TabPFN v2
+                                                                                                                                                                                found, possibly reflecting limited prior study rather than lack
+                                                                                                                                            TabPFN-Wide (5k)                    of relevance, though variability in attention cannot be excluded.
+                                                                                                                                                                                Overall, these results suggest that TabPFN-Wide's attention scores
+                                                                                                                      0.9                   TabICL                              capture meaningful feature importance signals and are able to recover
+                                                                                                                                                                                biologically relevant biomarkers in cancer classification tasks.
+0.9                                                                                                                                         Random Forest
+                                                                                                                                                                                                             Conclusion
+                                                                                                                                            XGBoost
+                                                                                                                                                                                We introduce TabPFN-Wide, developed by continuing pre-training
+                                                                                                                                            RealMLP                             of TabPFNv2. To the best of our knowledge, it is the first
+                                                                                                                                                                                tabular foundation model that handles HDLSS data without feature
+TabPFN-Wide (5k)                                                                                                      0.8                                                       reduction and is the first application of continued pre-training to
+                                                                                                                 AUROC                                                          extend tabular foundation model capabilities. It achieves state-
+0.8                                                                                                                                                                             of-the-art performance on real-world and synthetic HDLSS data­
+                                                                                                                                                                                demonstrating statistically significant improvements over standard
+                                                                                                                      0.7                                                       baselines and existing foundation models­while simultaneously
+                                                                                                                                                                                maintaining performance on small datasets. Furthermore, we show
+0.7                                                                                                                   0.6                                                       that attention scores, calculated within the transformer architecture,
+                                                                                                                                                                                are indicative of feature importance and, thus, serve as an inherent
+0.6                                                                    0.5                                                                                                      interpretability method.
+
+0.5       0.7                      0.8  0.9                1.0                                                        0.4
+0.5  0.6                                                                                                                     0 10000 20000 30000 40000 50000 60000 70000
+                                                                                                                                                            Number of Features
+                        TabPFN v2
+                                                                                                                                       (b)
+                        (a)
+
+                        100  92.0%
+
+                        80
+                                                    68.0%
+
+          Win Rate (%)  60                                      56.0%
+
+                                                                                                                        44.0%
+
+                        40                                                                                                     34.7%
+
+                        20
+
+                                                                                                                                      5.3%
+
+                        0
+
+                        TabPFN-Wide (5k)
+                                            Random Forest
+                                                                   RealMLP
+                                                                                     XGBoost
+                                                                                                      TabPFN v2
+                                                                                                                           TabICL
+
+                                                                (c)
+
+Figure 4 (a) AUROC for TabPFN-Wide (5k) vs TabPFNv2 on 21 TabArena                                                                                                                                    Limitations and Outlook
+classification tasks with  10,000 samples and  500 features. (b) Average
+AUROC for the SNP datasets with polygenicity of 0.01 (higher is better). We                                                                                                     Currently, our HDLSS prior is designed and validated only for
+compare TabPFN-Wide, using up to 5k features for continued pre-training to                                                                                                      continued pre-training of TabPFNv2. Initial attempts to train
+TabPFNv2 and other baselines.(c) Aggregate AUROC-based pairwise win rate                                                                                                        TabICL in the same manner were unsuccessful, raising the
+across 15 HDLSS datasets from [Li et al., 2018], defined as the percentage                                                                                                      question of whether an adapted prior could solve this, or whether
+of all pairwise comparisons where a given model achieved a strictly higher                                                                                                      TabICL's architecture is inherently unable to handle HDLSS data
+AUROC than its competitor.                                                                                                                                                      (see Appendix I). Moreover, since the architecture of TabPFNv2
+                                                                                                                                                                                is unchanged, our model is limited by the (Flash-)attention
+                             Interpretability                                                                                                                                   mechanism's complexity and high memory requirements, restricting
+                                                                                                                                                                                increases in the number of samples or features. Additionally, the
+To assess whether attention scores reflect feature importance, we                                                                                                               attention map analysis may have limitations. Although this approach
+used a controlled synthetic signal recovery benchmark with high-                                                                                                                is highly accurate for synthetic problems where the ground truth is
+dimensional datasets containing a known subset of k predictive                                                                                                                  known (i.e., needle-in-a-haystack tasks), its applicability to realistic
+features and compared attention-based rankings to impurity-based                                                                                                                biomedical datasets should be interpreted with caution even though
+importances from a Random Forest. We report Recall@k--the                                                                                                                       our results seem quite promising.
+proportion of truly predictive features among the top k ranked--and
+analyze the mean importance gap between signal and noise features;                                                                                                                 Since our model is currently based solely on the TabPFNv2
+across varying feature counts, numbers of informative features,                                                                                                                 classifier, our approach seeks further validation from continuing pre-
+and random seeds, TabPFN-Wide achieves Recall@k and noise                                                                                                                       training of the regressor model. The prior setup is strongly inspired
+suppression on par with Random Forest (see Appendix F for details                                                                                                               by the type of data faced in the biomedical domain, raising questions
+and plots).                                                                                                                                                                     about whether a more advanced HDLSS prior allows the creation
+                                                                                                                                                                                of an even better TabPFN-Wide. While our findings suggest that
+   Having evidence that attention maps yield useful insights in                                                                                                                 attention scores are a valid approach for inherent interpretability,
+feature importance, we return to our real-world cancer datasets                                                                                                                 a systematic evaluation will be future work. Overall, we show that
+and validate the biological relevance of our model's attention scores                                                                                                           continued pre-training has the potential to extend the capabilities
+by retrieving the features with the highest attention scores for                                                                                                                of pre-trained models, like TabPFNv2, paving the way for resource-
+subtype classification. Since mRNA is the most studied modality                                                                                                                 efficient generation of "patched" model versions for other dataset
+among the different omic types, we focus on the mRNA data. High                                                                                                                 characteristics and that TabPFN-Wide is a promising method for
+correlation between genes complicates the task, since features that                                                                                                             many future studies with tabular data, such as in biomedicine.
+are presumably predictive are not necessarily causal.
+                                                                                                                                                                                                      Competing interests
+   TabPFN-Wide identifies important biomarkers for different
+cancer subtypes. We extracted the 10 genes with the highest                                                                                                                     No competing interest is declared.
+attention scores from each dataset and examined their biological
+relevance according to literature (see Appendix A for details). In                                                                                                                            Author contributions statement
+BRCA, nine genes show direct associations with breast cancer and
+one a general cancer link; in ovarian cancer, six are directly and                                                                                                              C.K., K.E., and N.P. conceived the experiment(s), C.K., J.K., J.H,
+two generally linked; for LGG and sarcoma, fewer direct associations                                                                                                            and S.O. conducted the experiment(s) and analysed the results. K.E.
+(one and three, respectively) but more general cancer links were
+                                                                                     Journal Title Here, YEAR, Volume XX, Issue x 7
+
+and N.P. supervised the experiments and provided additional ideas.   D. Holzmu¨ller, L. Grinsztajn, and I. Steinwart. Better by default:
+All authors wrote and reviewed the manuscript.
+                                                                     Strong pre-tuned mlps and boosted trees on tabular data.
+                        Acknowledgments
+                                                                     NeurIPS, 37, 2024.
+This work was supported by the Deutsche Forschungsgemeinschaft
+(DFG, German Research Foundation) under Germany's Excellence         S. Jain and B. C. Wallace. Attention is not explanation. In
+Strategy--EXC number 2064/1--Project number 390727645.
+                                                                     NAACL, 2019.
+                             References
+                                                                     R. Kemker, M. McClure, A. Abitino, et al. Measuring catastrophic
+D. Bell, A. Berchuck, M. Birrer, et al. Integrated genomic analyses
+    of ovarian carcinoma. Nature, 2011.                              forgetting in neural networks. In AAAI, 2018.
+
+S. Bordt, M. Finck, E. Raidl, et al. Post-hoc explanations fail to   M. Koshil, T. Nagler, M. Feurer, et al. Towards localization via
+    achieve their purpose in adversarial contexts. In FAccT. ACM,
+    Jun 2022.                                                        data embedding for tabPFN. In NeurIPS Table Representation
+
+T. Brown, B. Mann, N. Ryder, et al. Language models are few-shot     Learning Workshop, 2024.
+    learners. NeurIPS, 2020.
+                                                                     J. Li, K. Cheng, S. Wang, et al. Feature selection: A data
+T. Chen and C. Guestrin. Xgboost: A scalable tree boosting
+    system. In KDD, pages 785­794, 2016.                             perspective. ACM Comput. Surv., 50(6):94, 2018.
+
+C. Christophe, P. Kanithi, P. Munjal, et al. Med42 - evaluating      I. Loshchilov and F. Hutter.   Decoupled weight decay
+    fine-tuning strategies for medical LLMs: Full-parameter vs.
+    parameter-efficient approaches. In AAAI Spring Symposium,        regularization. ICLR, 2019.
+    2024.
+                                                                     S. M. Lundberg and S.-I. Lee. A unified approach to interpreting
+R. Clarke, H. W. Ressom, A. Wang, et al. The properties of high-
+    dimensional data spaces: implications for exploring gene and     model predictions. NeurIPS, 30, 2017.
+    protein expression data. Nat. Rev. Cancer, 2008.
+                                                                     J. Ma, V. Thomas, R. Hosseinzadeh, et al. TabDPT: Scaling
+F. den Breejen, S. Bae, S. Cha, et al. Fine-tuned in-context
+    learning transformers are excellent tabular data classifiers.    tabular foundation models on real data. In NeurIPS, 2025.
+    arXiv:2405.13396, 2025.
+                                                                     R. McLendon, A. Friedman, D. Bigner, et al. Comprehensive
+J. C. Ditz, B. Reuter, and N. Pfeifer. Inherently interpretable
+    position-aware convolutional motif kernel networks for           genomic characterization defines human glioblastoma genes and
+    biological sequencing data. Sci. Rep., 2023a.
+                                                                     core pathways. Nature, 2008.
+J. C. Ditz, B. Reuter, and N. Pfeifer. Comic: convolutional kernel
+    networks for interpretable end-to-end learning on (multi-)omics  S. Mu¨ller, N. Hollmann, S. Arango, et al. Transformers can do
+    data. Bioinformatics, 2023b.
+                                                                     Bayesian-inference by meta-learning on prior-data. NeurIPS,
+N. Erickson, L. Purucker, A. Tschalzev, et al. Tabarena: A living
+    benchmark for machine learning on tabular data. In NeurIPS,      2021.
+    2025.
+                                                                     S. Mu¨ller, A. Reuter, N. Hollmann, et al. Position: The future of
+B. Feuer, R. T. Schirrmeister, V. Cherepanova, et al. Tunetables:
+    Context optimization for scalable prior-data fitted networks.    bayesian prediction is prior-fitted. ICML, 2025.
+    NeurIPS, 2024.
+                                                                     J. Qu, D. Holzmu¨ller, G. Varoquaux, et al. Tabicl: A tabular
+R. M. French. Catastrophic interference in connectionist networks:
+    can it be predicted, can it be prevented? In NeurIPS, 1993.      foundation model for in-context learning on large data. ICML,
+
+A. Garg, M. Ali, N. Hollmann, et al. Real-tabpfn: Improving          2025.
+    tabular foundation models via continued pre-training with real-
+    world data. ICML Workshop on Foundation Models for               I. Rubachev, A. Kotelnikov, N. Kartashev, et al. On finetuning
+    Structured Data, 2025.
+                                                                     tabular foundation models. arXiv:2506.08982, 2025.
+S. Hegselmann, A. Buendia, H. Lang, et al. Tabllm: Few-shot
+    classification of tabular data with large language models. In    S. Serrano and N. A. Smith. Is attention interpretable? In
+    AISTATS. PMLR, 2023.
+                                                                     A. Korhonen, D. Traum, and L. Ma`rquez, editors, ACL, pages
+J. Herzig, P. K. Nowak, T. Mu¨ller, et al. TaPas: Weakly supervised
+    table parsing via pre-training. In ACL. ACL, 2020.               2931­2951. ACL, Jul 2019.
+
+N. Hollmann, S. Mu¨ller, K. Eggensperger, et al. Tabpfn: A           B. Van Breugel and M. Van Der Schaar. Why tabular foundation
+    transformer that solves small tabular classification problems
+    in a second. NeurIPS, 2022.                                      models should be a research priority. ICML, 2024.
+
+N. Hollmann, S. Mu¨ller, and F. Hutter. Gpt for semi-automated       A. Vaswani, N. Shazeer, N. Parmar, et al. Attention is all you
+    data science: Introducing caafe for context-aware automated
+    feature engineering. NeurIPS, 2023.                              need. NeurIPS, 30, 2017.
+
+N. Hollmann, S. Mu¨ller, L. Purucker, et al. Accurate predictions    M. Weyssow, X. Zhou, K. Kim, et al. Exploring parameter-efficient
+    on small data with a tabular foundation model. Nature, 2025.
+                                                                     fine-tuning techniques for code generation with large language
+
+                                                                     models. ACM Trans. Softw. Eng. Methodol., 34(7), 2025.
+
+                                                                     S. Wharrie, Z. Yang, V. Raj, et al. Hapnest: efficient, large-scale
+
+                                                                     generation and evaluation of synthetic datasets for genotypes
+
+                                                                     and phenotypes. Bioinformatics, 39(9):btad535, 08 2023.
+
+                                                                     D. Xu, O. Cirit, R. Asadi, et al. Mixture of in-context prompters
+
+                                                                     for tabular PFNs. ICLR, 2025.
+
+                                                                     Z. Yang, R. Kotoge, X. Piao, et al. MLOmics: Cancer multi-omics
+
+                                                                     database for machine learning. Sci. Data, 2025.
+
+                                                                     H.-J. Ye, S.-Y. Liu, and W.-L. Chao. A closer look at TabPFN
+
+                                                                     v2: Understanding its strengths and extending its capabilities.
+
+                                                                     NeurIPS, 2025.
+
+                                                                     Y. Zeng, T. Dinh, W. Kang, et al. Tabflex: Scaling tabular learning
+
+                                                                     to millions with linear attention. In ICML, 2025.
+
+                                                                     G. Zhang, R. Dominguez-Olmedo, and M. Hardt. Train-before-test
+
+                                                                     harmonizes language model rankings. ICLR, 2025.
+
+                                                                     T. Zhang, X. Yue, Y. Li, et al. TableLlama: Towards open large
+
+                                                                     generalist models for tables. In NAACL, 2024.
+8 Journal Title Here, YEAR, Volume XX, Issue x
+
+                                         Appendix A: Data Overview Multiomics Datasets
+                                                                      Data Overview
+
+Table 1 gives an overview of the number of samples and features of the omics datasets. Furthermore, it shows which molecular measurements
+are available for which dataset. Datasets provided by Yang et al. [2025b] (LGG, OV, COAD) have 4 different omics: mRNA gene expression
+data (mRNA), copy number variation data (CNV), methylation data (Methylation) and micro RNA data (miRNA). MRNA, CNV, and
+methylation features are measurements corresponding to human genes. For our usage, we concatenated all different omics resulting in up to
+60,000 features. Datasets provided by Rappoport and Shamir [2018] consist of less features due to missing CNV data and lower number of
+features for methylation data.
+
+                        Patients mRNA CNV Methylation miRNA All
+
+LGG (low grade glioma)  247   14,260 21,104 24,979  321                                                  60,664
+                              14,229 21,104 24,797
+OV (ovarian cancer)     284   17,261 19,551 19,052  313                                                  60,443
+
+COAD (colon adetrcinoma) 260                        375                                                  56,239
+
+BRCA (breast cancer)    440   20,531 N/A 5,000      1,046                                                26,577
+                                                    1,046                                                26,577
+SARC (sarcoma)          259   20,531 N/A 5,000      534                                                  17,576
+
+GBM (glioblastoma)      274   12,042 N/A 5,000
+
+Table 1 Number of samples and features for all used datasets. SARC is only used for attention analysis.
+                                                                                                                    Journal Title Here, YEAR, Volume XX, Issue x 9
+
+                                                         Genes with highest attention scores
+
+As described in the interpretability section, we analyzed the genes with the highest attention scores from our datasets with respect to literature
+connecting the gene with the given cancer type. We classified each gene as (i) directly associated with the specified cancer subtype, (ii) generally
+associated with cancer across multiple types, or (iii) having no known association with cancer. As this analysis was conducted manually, the
+list of citations should not be considered exhaustive. In cases where a PubMed search did not yield relevant literature, no potential associations
+were reported.
+
+Dataset  Direct Connection                      General Connection to Cancer          No Known Connection
+BRCA
+         FOXC1 [Han et al., 2017],              SRSF12 Yang et al. [2025a]            LOC101928075,
+LGG      FOXA1 [Liu et al., 2023],                                                    C4B,
+OV       SFT2D2 [Segaert et al., 2019],         MIR1307 [Sumer et al., 2025]          ZZZ696,
+         ESR1 [Dustin et al., 2019],            CCDC177 [Kumar and Schor, 2018] [Ju   PRKAR1B
+         CENPA [Wu et al., 2024],               et al., 2020]
+         FAM171A1 [Sanawar et al., 2019],       MET [Cheng and Guo, 2019],            CCDC40,
+         TPX2 [Wang et al., 2023a],             MIER1 [Clements et al., 2012],        LOC101928069
+         CCDC170 [Veeraraghavan et al., 2014],  GPN1 [Zhu et al., 2024]
+         GATA3 [Eeckhoute et al., 2007]         PAFAH1B1 [Lo et al., 2012][Majmudar
+         NAPE-PLD [Wu et al., 2012]             and Keri, 2025],
+                                                RAB24 [Ding et al., 2025]
+         CMPK1 [Zhou et al., 2017],
+         PLEKHA5 [Singh et al., 2018],
+         LOC101927151 [Zheng et al., 2020],
+         GATA6.AS1 [Xu et al., 2021],
+         MT1F [Murakami et al., 2008],
+         ETFDH [Wang et al., 2023b],
+
+SARC     COL22A1 [Pan et al., 2022]             TPCN2 [Alharbi and Parrington, 2019]
+
+         GNPNAT1 [Tolwani et al., 2021]         DPEP3 [Hamilton et al., 2020]
+
+         ARHGAP42 [Dermawan et al., 2023] MRPL46 [Wu et al., 2025]
+
+                                                TAS2R19 [Carey et al., 2022]
+
+                                                TCEB3 [Cai et al., 2024]
+
+                                                MON1B [Jiang et al., 2018]
+
+                                                FGFR1OP2 [Yang et al., 2022]
+
+Table 2 Categorization of the top 10 features with the highest attention scores for datasets when performing subtype classification.
+
+                             Appendix B: Comparison of different feature reduction techniques
+
+In preliminary experiments, we tested the performance of TabPFNv2 on our real-world HDLSS datasets reduced with different feature reduction
+methods. Since this is not our main priority, we focused on simple approaches offered by sci-kit learn. Although we tested both supervised
+(label-based) and unsupervised feature reduction methods, our preference was for the unsupervised approaches, as they better mitigate the risk
+of overfitting in HDLSS settings. For biomedical data, a common approach is to cluster by correlation which we compared against clustering
+by lowest Euclidean distance between feature vectors and reduction using the feature importance weights from fitted machine learning models.
+Given that Euclidean distance-based clustering frequently outperforms the correlation-based approach for our data (see Figure 5) and achieves
+performance comparable to supervised methods, we adopted this strategy for our analyses.
+10 Journal Title Here, YEAR, Volume XX, Issue x
+
+                                                      (a)                                                                                      (b)
+
+Figure 5 AUROC of TabPFNv2 evaluated on different datasets reduced to (a) 500 features and (b) 2,000 features using different techniques.
+
+                                                           Appendix C: Detailed results for all multiomics datasets
+
+       1.0                                                                                      1.0
+
+       0.9                                                                                      0.9
+
+       0.8                                                                                      0.8
+
+AUROC                Checkpoint                                                          AUROC                Checkpoint
+
+                     TabPFN v2                                                                                TabPFN v2
+
+       0.7           Wide (1.5k)                                                                0.7           Wide (1.5k)
+
+                     Wide (1.5k, No-Cat)                                                                      Wide (1.5k, No-Cat)
+
+                     Wide (5k)                                                                                Wide (5k)
+
+       0.6           Wide (5k, No-Cat)                                                          0.6           Wide (5k, No-Cat)
+
+                     Wide (8k)                                                                                Wide (8k)
+
+                     Wide (8k, No-Cat)                                                                        Wide (8k, No-Cat)
+
+                     TabICL                                                                                   TabICL
+
+       0.5           Random Forest                                                              0.5           Random Forest
+
+                     XGBoost                                                                                  XGBoost
+
+                     RealMLP                                                                                  RealMLP
+
+       0.4                         2000         4000       6000            8000   10000         0.4                          2000        4000       6000            8000         10000
+                 0                                                                                        0
+
+                                                Number of Features                                                                       Number of Features
+
+                                                (a) LGG                                                                                  (b) OV
+
+       1.0                                                                                      1.0
+
+       0.9                                                                                      0.9
+
+       0.8                                                                                      0.8
+
+AUROC                Checkpoint                                                          AUROC                Checkpoint
+
+                     TabPFN v2                                                                                TabPFN v2
+
+       0.7           Wide (1.5k)                                                                0.7           Wide (1.5k)
+
+                     Wide (1.5k, No-Cat)                                                                      Wide (1.5k, No-Cat)
+
+                     Wide (5k)                                                                                Wide (5k)
+
+       0.6           Wide (5k, No-Cat)                                                          0.6           Wide (5k, No-Cat)
+
+                     Wide (8k)                                                                                Wide (8k)
+
+                     Wide (8k, No-Cat)                                                                        Wide (8k, No-Cat)
+
+                     TabICL                                                                                   TabICL
+
+       0.5           Random Forest                                                              0.5           Random Forest
+
+                     XGBoost                                                                                  XGBoost
+
+                     RealMLP                                                                                  RealMLP
+
+       0.4                   2500         5000  7500       10000    12500  15000  17500         0.4                    2500        5000  7500       10000    12500        15000  17500
+                  0                                                                                        0
+
+                                                Number of Features                                                                       Number of Features
+
+                                                (c) BRCA                                                                                 (d) COAD
+
+Figure 6 Single results for all datasets with feature reduction applied. The axis were chosen such that the differences in feature numbers and AUROC scores
+becomes comparable.
+                                                                                  Journal Title Here, YEAR, Volume XX, Issue x 11
+
+                                     Appendix D: Multiomics
+
+Model                BRCA            COAD            GBM              LGG              OV
+#features            18,206          17,261          18,614          14,260          14,229
+
+TabPFN v2             0.733 ± 0.029   0.710 ± 0.038   0.794 ± 0.054  0.973 ± 0.018    0.836 ± 0.036
+Wide (1.5k)           0.951 ± 0.017   0.925 ± 0.051   0.941 ± 0.017  0.988 ± 0.009   0.987 ± 0.014
+Wide (1.5k, No-Cat)   0.954 ± 0.018   0.933 ± 0.047   0.960 ± 0.018  0.986 ± 0.022    0.977 ± 0.013
+Wide (5k)             0.971 ± 0.012   0.954 ± 0.034   0.962 ± 0.021  0.988 ± 0.022    0.981 ± 0.010
+Wide (5k, No-Cat)     0.973 ± 0.012   0.953 ± 0.032   0.961 ± 0.019  0.988 ± 0.020    0.982 ± 0.012
+Wide (8k)             0.952 ± 0.017  0.959 ± 0.027    0.936 ± 0.021  0.987 ± 0.021    0.982 ± 0.011
+Wide (8k, No-Cat)    0.978 ± 0.009    0.956 ± 0.030  0.965 ± 0.024   0.987 ± 0.021    0.982 ± 0.010
+
+TabICL               0.937 ± 0.013   0.828 ± 0.033   0.898 ± 0.020    0.973 ± 0.021  0.883 ± 0.033
+Random Forest        0.967 ± 0.005   0.911 ± 0.011   0.954 ± 0.025    0.986 ± 0.017  0.974 ± 0.011
+XGBoost              0.967 ± 0.015   0.926 ± 0.043   0.951 ± 0.042    0.987 ± 0.016  0.969 ± 0.020
+RealMLP              0.966 ± 0.007   0.932 ± 0.023   0.960 ± 0.028   0.991 ± 0.008   0.970 ± 0.018
+
+Table 3 Average AUROC (±SEM) scores of 5 multiomics datasets (higher is better). We compare TabPFN-Wide, using up to 8k features for
+continued pre-training, to TabPFNv2 and other baseline methods and boldface the best values for each column.
+
+Model                BRCA            COAD            GBM              LGG              OV
+#features            18,206          17,261          18,614          14,260          14,229
+
+TabPFN v2            0.528 ± 0.006   0.669 ± 0.009    0.303 ± 0.010   0.887 ± 0.048   0.514 ± 0.049
+Wide (1.5k)          0.744 ± 0.022   0.835 ± 0.017    0.717 ± 0.050   0.919 ± 0.020   0.877 ± 0.075
+Wide (1.5k, No-Cat)  0.797 ± 0.025   0.862 ± 0.016    0.771 ± 0.070  0.976 ± 0.026    0.852 ± 0.027
+Wide (5k)            0.852 ± 0.032   0.858 ± 0.017    0.799 ± 0.071   0.964 ± 0.009   0.880 ± 0.049
+Wide (5k, No-Cat)    0.852 ± 0.028   0.873 ± 0.011    0.787 ± 0.088   0.960 ± 0.000   0.877 ± 0.050
+Wide (8k)            0.759 ± 0.017   0.869 ± 0.042    0.737 ± 0.059   0.972 ± 0.011   0.866 ± 0.064
+Wide (8k, No-Cat)    0.864 ± 0.029   0.873 ± 0.017   0.816 ± 0.063    0.964 ± 0.009  0.887 ± 0.034
+
+TabICL                0.767 ± 0.056   0.781 ± 0.073  0.660 ± 0.045   0.911 ± 0.037   0.676 ± 0.063
+Random Forest         0.815 ± 0.014   0.831 ± 0.042  0.779 ± 0.092   0.960 ± 0.014   0.859 ± 0.047
+XGBoost              0.867 ± 0.026    0.862 ± 0.037  0.775 ± 0.087   0.964 ± 0.017   0.838 ± 0.072
+RealMLP               0.845 ± 0.016  0.892 ± 0.022   0.783 ± 0.094   0.955 ± 0.023   0.827 ± 0.041
+
+Table 4 Average accuracy (±SEM) scores of 5 multiomics datasets (higher is better). We compare TabPFN-Wide, using up to 8k features for
+continued pre-training (second column), to TabPFNv2 and other baseline methods and boldface the best values for each column.
+12 Journal Title Here, YEAR, Volume XX, Issue x
+
+                                                     Appendix E: Unlearning Analysis
+
+                                             Forgetting Comparison (Spearman rho=0.9844)                                            Forgetting Comparison (Spearman rho=0.9922)
+                            1.0                                                                                    1.0
+
+                            0.9                                                                                    0.9
+
+          wide-v2-1.5k      0.8                                                                wide-v2-1.5k-nocat  0.8
+
+                            0.7                                                                                    0.7
+
+                            0.6                                                                                    0.6
+
+                            0.5                                                                                    0.5
+
+                                 0.5  0.6  0.7      0.8  0.9                              1.0                                                      0.5  0.6  0.7      0.8  0.9   1.0
+
+                                                v2                                                                                                                v2
+
+          (a) Unlearning Scatter plot TabPFNv2 vs TabPFN Wide                                  (b) Unlearning Scatter TabPFNv2 vs TabPFN Wide 1.5k
+                                            1.5k                                                                          non categorical
+
+                                             Forgetting Comparison (Spearman rho=0.9935)                            Forgetting Comparison (Spearman rho=1.0000)
+                            1.0                                                                    1.0
+
+                                                                                                                                              0.9
+                            0.9
+
+          wide-v2-5k                                                                                                                          0.8wide-v2-5k-nocat
+                            0.8
+
+                                                                                                                                              0.7
+                            0.7
+
+                                                                                                                                              0.6
+                            0.6
+
+                                                                                                                   0.5
+
+                            0.5                                                                                                                    0.5  0.6  0.7      0.8  0.9   1.0
+
+                                 0.5  0.6  0.7      0.8  0.9                              1.0                                                                     v2
+
+                                                v2
+
+          (c) Unlearning Scatter TabPFNv2 vs TabPFN Wide 5k                                    (d) Unlearning Scatter TabPFNv2 vs TabPFN Wide 5k non
+                                                                                                                               categorical
+
+                                             Forgetting Comparison (Spearman rho=0.9948)                                            Forgetting Comparison (Spearman rho=0.9896)
+                            1.0                                                                                    1.0
+
+                                                                                                                                              0.9
+                            0.9
+
+          wide-v2-8k-nocat                                                                                                                    0.8wide-v2-8k
+                            0.8
+
+                                                                                                                                              0.7
+                            0.7
+
+                                                                                                                                              0.6
+                            0.6
+
+                                                                                                                   0.5
+
+                            0.5                                                                                                                    0.5  0.6  0.7      0.8  0.9   1.0
+
+                                 0.5  0.6  0.7      0.8  0.9                              1.0                                                                     v2
+
+                                                v2
+
+          (e) Unlearning Scatter TabPFNv2 vs TabPFN Wide 8k                                    (f) Unlearning Scatter TabPFNv2 vs TabPFN Wide 8k non
+                                                                                                                               categorical
+
+Figure 7
+                                                                                                                  Journal Title Here, YEAR, Volume XX, Issue x 13
+
+                                   Appendix F: Synthetic Benchmark for Feature Importance
+
+To quantitatively evaluate whether the attention scores produced by TabPFN-Wide reliably capture feature importance, we conducted a
+controlled synthetic benchmark. The goal of this experiment is to test the model's ability to isolate a small number of true predictive features
+(signal) from a large pool of uninformative features within a low sample size regime.
+
+   We generated binary classification datasets using scikit-learn's make classification function. To simulate challenging scenarios, we fixed
+the number of samples to 50 and varied the total number of features across {200, 500, 1000, 3000, 5000}. To test different levels of signal
+sparsity, the number of truly informative features, k, was varied across {3, 5, 7}. The classes were generated with a class separation factor of
+1.5, and no redundant or repeated features were included.
+
+   For each combination of feature count and informative features, we generated datasets across 5 independent random seeds to ensure statistical
+robustness. We evaluated TabPFN-Wide (using the 5k model) against a Random Forest baseline configured with 200 estimators.
+
+   We assessed the feature ranking capabilities of both models using two primary approaches:
+
+· Recall@k: We extracted the top k features ranked by attention score (for TabPFN-Wide) or impurity (for Random Forest) and calculated
+    the proportion of true informative features successfully recovered within this top subset (see Figure 8 (a)). Because k exactly matches the
+    number of true informative features in each setting, this serves as a strict recovery metric.
+
+· Signal-to-Noise Separation: We computed the mean importance score assigned to the true signal features versus the uninformative
+    noise features to visualize the noise floor (see Figure 8 (b)).
+
+1.0  RandomForest
+
+     Wide (5k)
+Recall @ k (Higher is better)0.8                                                                                                                        Signal vs Noise Importance (Wide (5k))
+
+                                                                                                                   Mean Importance Score  0.10                                              Signal Features
+                                                                                                                                                                                            Noise Features
+0.6
+                                                                                                                                          0.08
+
+0.4                                                                                                                                       0.06
+
+0.2                                                                                                                                       0.04
+
+0.0                                                                                                                                       0.02
+                          103
+                                                                                                                                          0.00          500Total Num1b0er00of Feature3s000      5000
+               Total Number of Features                                                                                                            200
+
+                                     (a)                                                                                                                (b)
+
+Figure 8 Recall@k for TabPFN-Wide and Random Forest across varying feature dimensions (a) and distribution of mean importance scores for signal versus
+noise features using TabPFN-Wide (b).
+14 Journal Title Here, YEAR, Volume XX, Issue x
+
+                                               Appendix G: Overview Results TabArena
+
+                                                                                                                                                                                                                                                      Checkpoint
+
+               1.0                                                                                                                                                                                                                                    TabPFN v2
+
+                                                                                                                                                                                                                                                      Wide (1.5k)
+
+                                                                                                                                                                                                                                                      Wide (1.5k, No-Cat)
+
+               0.9                                                                                                                                                                                                                                    Wide (5k)
+
+                                                                                                                                                                                                                                                      Wide (5k, No-Cat)
+
+                                                                                                                                                                                                                                                      Wide (8k)
+
+               0.8                                                                                                                                                                                                                                    Wide (8k, No-Cat)
+
+Accuracy                                                                                                                                                                                                                                              TabICL
+
+                                                                                                                                                                                                                                                      Random Forest
+
+               0.7                                                                                                                                                                                                                                    XGBoost
+
+                                                                                                                                                                                                                                                      RealMLP
+
+               0.6
+
+               0.5
+
+Roc Auc Score  0.4                                                                                                                                                                                                                                    Checkpoint
+             Task 363T6a1s4k 363T7a0s6k 363T6a9s4k 363T7a0s2k 363T6a2s3k 363T6a2s4k 363T6a8s9k 363T7a0s0k 363T6a7s4k 363T6a8s2k 363T7a0s7k 363Ta7s11k 363T6a8s4k 363T6a9s6k 363T6a1s9k 363T6a8s5k 363T6a2s1k 363T7a0s4k 363T6a7s1k 363T6a2s9k 363626  TabPFN v2
+                                                                                                                                                                                                                                                      Wide (1.5k)
+                                                                                           Task                                                                                                                                                       Wide (1.5k, No-Cat)
+                                                                                                           (a) Accuracy per Task                                                                                                                      Wide (5k)
+                                                                                                                                                                                                                                                      Wide (5k, No-Cat)
+               1.0                                                                                                                                                                                                                                    Wide (8k)
+                                                                                                                                                                                                                                                      Wide (8k, No-Cat)
+               0.9                                                                                                                                                                                                                                    TabICL
+                                                                                                                                                                                                                                                      Random Forest
+               0.8                                                                                                                                                                                                                                    XGBoost
+                                                                                                                                                                                                                                                      RealMLP
+               0.7
+
+               0.6
+
+               0.5
+
+      0.4
+    Task 363T6a1s4k 363T7a0s2k 363T6a8s9k 363T6a7s4k 363T7a0s7k 363T6a8s5k 363T6a9s4k 363T7a0s6k 363T6a9s6k 363T6a2s3k 363T7a0s4k 363T6a8s4k 363Ta7s11k 363T6a1s9k 363T6a2s9k 363T6a7s1k 363T6a2s6k 363T7a0s0k 363T6a2s1k 363T6a2s4k 363682
+
+                                                                                  Task
+                                                                                                 (b) ROC-AUC per Task
+
+Figure 9 Box plots visualizing the comparison of TabPFNWide in its different variants and other models in terms of Accuracy and ROC-AUC.
+                                                                                                                              Journal Title Here, YEAR, Volume XX, Issue x 15
+
+                                             Appendix H: Overview Results on HDLSS data from [Li et al., 2018]
+
+                                                                                                                                                       Checkpoint
+
+               1.0                                                                                                                                     TabPFN v2
+
+                                                                                                                                                       Wide (1.5k)
+
+                                                                                                                                                       Wide (1.5k, No-Cat)
+
+               0.9                                                                                                                                     Wide (5k)
+
+                                                                                                                                                       Wide (5k, No-Cat)
+
+                                                                                                                                                       Wide (8k)
+
+               0.8                                                                                                                                     Wide (8k, No-Cat)
+
+Accuracy                                                                                                                                               TabICL
+
+                                                                                                                                                       Random Forest
+
+               0.7                                                                                                                                     XGBoost
+
+                                                                                                                                                       RealMLP
+
+               0.6
+
+               0.5
+
+               0.4
+
+                    gisetteBASEHOCK  ALLAML  leukemia  lunPgrostate_GE  PCMAC RELATHE  GLI_85  arcene  colon TOX_171 madeCloLnL_SUB_S1M1K1_CAN_187
+
+                                                                        Dataset
+
+                                                                                       (a) Accuracy per Dataset
+
+               1.0                                                                                                                                     Checkpoint
+                                                                                                                                                       TabPFN v2
+               0.9                                                                                                                                     Wide (1.5k)
+                                                                                                                                                       Wide (1.5k, No-Cat)
+Roc Auc Score  0.8                                                                                                                                     Wide (5k)
+                                                                                                                                                       Wide (5k, No-Cat)
+               0.7                                                                                                                                     Wide (8k)
+                                                                                                                                                       Wide (8k, No-Cat)
+                                                                                                                                                       TabICL
+                                                                                                                                                       Random Forest
+                                                                                                                                                       XGBoost
+                                                                                                                                                       RealMLP
+
+               0.6
+
+               0.5
+
+               0.4                           gisette   lung  PCMAPCrostate_GE TOX_171 RELATHE  GLI_85  arcene    colon  madeCloLnL_SUB_S1M1K1_CAN_187
+                  ALLAML leukemiBaASEHOCK
+
+                                                                        Dataset
+
+                                                                                       (b) ROC-AUC per dataset
+
+Figure 10 Box plots visualizing the comparison of TabPFNWide in its different variants and other models in terms of Accuracy and ROC-AUC.
+16 Journal Title Here, YEAR, Volume XX, Issue x
+
+                                                                  Wilcoxon signed-rank test
+
+We applied a paired Wilcoxon signed-rank test on the auc-performances of the results shown in Figure 9. The p-values can be inspected
+in Table 5.
+
+Table 5 Exact p-values from the paired Wilcoxon signed-rank test comparing TabPFN-Wide (5k) against all evaluated baselines across the 15 HDLSS
+datasets.
+
+Model Comparison                                 p-value
+
+TabPFN-Wide (5k) vs. Random Forest                  0.00427
+TabPFN-Wide (5k) vs. RealMLP                        0.00116
+TabPFN-Wide (5k) vs. XGBoost                        0.00012
+TabPFN-Wide (5k) vs. TabPFN v2                      0.00018
+TabPFN-Wide (5k) vs. TabICL                      6.10 × 10-5
+
+                                         Appendix I: Training of TabICL with HDLSS prior
+
+We tried training TabICL [Qu et al., 2025] with the same training setup as for TabPFN-Wide. However, the model's training performance did
+not improve, suggesting that our HDLSS prior may not be effective for TabICL. Whether this arises from TabICL's architectural setup which
+could make it unsuitable for HDLSS data in general or whether changes to the prior / continued pre-training could mitigate this problem,
+remains open for future research.
+
+Figure 11 Development of validation loss (left) and validation AUROC (right) for TabICL vs. TabPFN-Wide when training with the same HDLSS prior.
+                                                                                                                  Journal Title Here, YEAR, Volume XX, Issue x 17
+
+                                             Appendix J: Monitoring Model Performance
+
+To determine an appropriate stopping point for training, we monitored model performance on a set of HDLSS datasets. Specifically, we
+evaluated performance on two omics datasets and three synthetically generated SNP datasets created with HAPNEST [Wharrie et al., 2023].
+
+   As shown in Figure 12, validation ROC­AUC improved during the early phase of training but plateaued after approximately 10,000
+optimization steps. Beyond this point, no consistent performance gains were observed across the monitored datasets. Based on this behavior,
+we fixed the total training duration to 10,000 steps for all models.
+
+   Importantly, these datasets were used exclusively for monitoring purposes. They were not involved in gradient updates, hyperparameter
+tuning, or checkpoint selection.
+
+0.925Validation ROC AUC                                                                          0.84
+0.900                                                                        Validation ROC AUC
+0.875                                                                                            0.82
+0.850
+0.825                                                                                            0.80
+0.800
+0.775                                                                                            0.78
+
+                                                                                                 0.76
+
+                                                                                                 0.74
+
+                                                                                                 0.72
+
+       2000  6000  10000     14000                                                                     2000  6000  10000     14000
+             Training Steps                                                                                  Training Steps
+
+Figure 12 Validation ROC­AUC over training steps for two omics datasets (left) and three HAPNEST-generated SNP datasets (right). Performance plateaus
+after approximately 10,000 steps.
+18 Journal Title Here, YEAR, Volume XX, Issue x
+
+                                         Appendix K: HAPNEST SNP Simulation Details
+
+For the needle-in-a-haystack noise-filtering task presented in the main text, we utilized HAPNEST [Wharrie et al., 2023] to generate synthetic
+single nucleotide polymorphism (SNP) datasets. Specifically, we simulated genotypes corresponding to human chromosome 1, which contains
+on the order of 105 SNPs.
+Binary phenotypes were generated under a polygenic model where only a small, predefined fraction of the SNPs--referred to as the
+polygenicity--are truly causal for the simulated trait. We evaluated three distinct polygenicity levels: 0.001, 0.01, and 0.05 as shown in Figure 13.
+Because chromosome 1 contains roughly 105 SNPs, a polygenicity of 0.001, for example, results in approximately eight causal SNPs out of
+the total feature pool.
+To systematically construct the high-dimensional, low-signal regime, we fixed the set of causal variants for each polygenicity level and
+progressively introduced non-causal SNPs sampled from the remaining variants on chromosome 1. This controlled approach allowed us to
+isolate the models' robustness to increasing feature dimensionality and extreme signal sparsity without altering the underlying predictive
+signal.
+
+1.0                                                                                  1.0
+
+                                                                                                                                                                    TabPFN v2
+
+                                                                                                                                                    TabPFN-Wide (5k)
+
+                                                                                     0.9                                                            TabICL
+
+0.9                                                                                                                                                 Random Forest
+
+                                                                                                                                                    XGBoost
+
+                                                                                                                                                    RealMLP
+
+0.8                                                                                  0.8
+
+0.7AUROC                                                                                                                    0.7
+
+                                                                                                                       AUROC0.6
+
+0.6
+
+0.5                                                                                  0.5
+0.4
+            10000  20000 30000 40000 50000                         TabPFN v2                                                0.4
+         0                     Number of Features                  TabPFN-Wide (5k)
+                                                                   TabICL                                                          0 10000 20000 30000 40000 50000 60000 70000
+                                                             1.0   Random Forest                                                                                  Number of Features
+                                                                   XGBoost
+                                                                   RealMLP
+
+                                                                  60000 70000
+
+                          0.9
+
+                          0.8
+
+                   AUROC  0.7
+
+                          0.6
+
+                          0.5                                     10000  20000 30000 40000 50000                                  TabPFN v2
+                          0.4                                                        Number of Features                           TabPFN-Wide (5k)
+                                                                                                                                  TabICL
+                                   0                                                                                              Random Forest
+                                                                                                                                  XGBoost
+                                                                                                                                  RealMLP
+
+                                                                                                                                 60000 70000
+
+Figure 13 Average AUROC for the SNP datasets with polygenicity of 0.001 (a), 0.01 (b) and 0.05 (c) (higher is better). We compare TabPFN-Wide, using
+up to 5k features for continued pre-training to TabPFNv2 and other baselines.
+                                                                                                                  Journal Title Here, YEAR, Volume XX, Issue x 19
+
+                                                Appendix L: Feature Correlation Maps
+
+As described in the main text, our feature widening procedure induces structured correlation patterns among the generated features because
+new features only depend on a subset of the original features. The sparsity parameter p controls this structure: small values yield new features
+influenced by few or no originals, resulting in sparse correlation patterns, whereas large values produce new features that are mixtures of many
+originals, leading to dense correlation patterns.
+
+   As an example for continuous features, Figure 14 compares real-world HDLSS biomedical data (a) with synthetic datasets (b-f) generated
+using varying sparsity values. We observe that setting p = 0.02 shows the closest match to the real correlation structure.
+
+real-world  p=0  p = 0.01  p = 0.02  p = 0.1  p = 1.0
+
+(a)         (b)  (c)       (d)       (e)      (f )
+
+Figure 14 Feature correlation maps for (a) mRNA gene expression data and (b-f) synthetically generated datasets with different sparsity values p. We compute
+Pearson correlation for 100 randomly sampled features and sort them by average absolute correlation.
+
+                                                                    References
+
+A. F. Alharbi and J. Parrington. Endolysosomal ca2+ signaling in cancer: the role of tpc2, from tumorigenesis to metastasis. Frontiers
+    in Cell and Developmental Biology, 7:302, 2019.
+
+Y. Cai, Y. Li, Y. Xu, W. Yang, and M. Huang. Tceb3 initiates ovarian cancer apoptosis by mediating ubiquitination and degradation
+    of mcl-1. The FASEB Journal, 38(8):e23625, 2024.
+
+R. M. Carey, D. B. McMahon, Z. A. Miller, T. Kim, K. Rajasekaran, I. Gopallawa, J. G. Newman, D. Basu, K. T. Nead, E. A. White,
+    et al. T2r bitter taste receptors regulate apoptosis and may be associated with survival in head and neck squamous cell carcinoma.
+    Molecular oncology, 16(7):1474­1492, 2022.
+
+F. Cheng and D. Guo. Met in glioma: signaling pathways and targeted therapies. Journal of Experimental & Clinical Cancer Research,
+    38(1):270, 2019.
+
+J. A. Clements, F. C. Mercer, G. D. Paterno, and L. L. Gillespie. Differential splicing alters subcellular localization of the alpha but not
+    beta isoform of the mier1 transcriptional regulator in breast cancer cells. PLoS One, 7(2):e32499, 2012.
+
+J. K. Dermawan, S. E. DiNapoli, P. Sukhadia, K. A. Mullaney, R. Gladdy, J. H. Healey, A. Agaimy, A. H. Cleven, A. J. Suurmeijer,
+    B. C. Dickson, et al. Malignant undifferentiated epithelioid neoplasms with maml2 rearrangements: A clinicopathologic study of
+    seven cases demonstrating a heterogenous entity. Genes, Chromosomes and Cancer, 62(4):191­201, 2023.
+
+H. Ding, Z.-G. Ding, S. Liu, X.-N. Mao, and X.-S. Lu. Ras-related protein rab24 plays a predictive role in hepatocellular carcinoma and
+    enhanced tumor proliferation. World Journal of Gastroenterology, 31(8):101585, 2025.
+
+D. Dustin, G. Gu, and S. A. W. Fuqua. Esr1 mutations in breast cancer. Cancer, 125(21):3714­3728, 2019. ISSN 1097-0142
+    (Electronic) 0008-543X (Print) 0008-543X (Linking). doi: 10.1002/cncr.32345. URL https://www.ncbi.nlm.nih.gov/pubmed/31318440.
+    Dustin, Derek Gu, Guowei Fuqua, Suzanne A W eng R01-CA207270/CA/NCI NIH HHS/ R01-CA72038/CA/NCI NIH HHS/
+    R01 CA207270/CA/NCI NIH HHS/ 5P30 CA125123/CA/NCI NIH HHS/ P30 CA125123/CA/NCI NIH HHS/ RP120732/Cancer
+    Prevention and Research Institute of Texas/International R01 CA072038/CA/NCI NIH HHS/ 18-055/Breast Cancer Research
+    Foundation/International Research Support, N.I.H., Extramural Research Support, Non-U.S. Gov't Review 2019/07/19 Cancer.
+    2019 Nov 1;125(21):3714-3728. doi: 10.1002/cncr.32345. Epub 2019 Jul 18.
+
+J. Eeckhoute, E. K. Keeton, M. Lupien, S. A. Krum, J. S. Carroll, and M. Brown. Positive cross-regulatory loop ties gata-3 to estrogen
+    receptor alpha expression in breast cancer. Cancer Res, 67(13):6477­83, 2007. ISSN 0008-5472 (Print) 0008-5472 (Linking). doi:
+    10.1158/0008-5472.CAN-07-0746. URL https://www.ncbi.nlm.nih.gov/pubmed/17616709. Eeckhoute, Jerome Keeton, Erika Krasnickas
+    Lupien, Mathieu Krum, Susan A Carroll, Jason S Brown, Myles eng R56DK074967/DK/NIDDK NIH HHS/ Research Support,
+    N.I.H., Extramural Research Support, Non-U.S. Gov't Research Support, U.S. Gov't, Non-P.H.S. 2007/07/10 Cancer Res. 2007 Jul
+    1;67(13):6477-83. doi: 10.1158/0008-5472.CAN-07-0746.
+
+E. Hamilton, D. M. O'Malley, R. O'Cearbhaill, M. Cristea, G. F. Fleming, B. Tariq, A. Fong, D. French, M. Rossi, D. Brickman,
+    et al. Tamrintamab pamozirine (sc-003) in patients with platinum-resistant/refractory ovarian cancer: Findings of a phase 1 study.
+    Gynecologic oncology, 158(3):640­645, 2020.
+
+B. Han, N. Bhowmick, Y. Qu, S. Chung, A. E. Giuliano, and X. Cui. FOXC1: an emerging marker and therapeutic target for cancer.
+    Oncogene, 36(28):3957­3963, Jul 2017.
+20 Journal Title Here, YEAR, Volume XX, Issue x
+
+L. Jiang, J. Qian, Y. Yang, and Y. Fan. Knockdown of mon1b exerts anti-tumor effects in colon cancer in vitro. Medical Science
+    Monitor: International Medical Journal of Experimental and Clinical Research, 24:7710, 2018.
+
+Q. Ju, Y.-j. Zhao, S. Ma, X.-m. Li, H. Zhang, S.-q. Zhang, Y.-m. Yang, and S.-x. Yan. Genome-wide analysis of prognostic-related
+    lncrnas, mirnas and mrnas forming a competing endogenous rna network in lung squamous cell carcinoma. Journal of Cancer
+    Research and Clinical Oncology, 146(7):1711­1723, 2020.
+
+R. M. R. Kumar and N. F. Schor. Methylation of dna and chromatin as a mechanism of oncogenesis and therapeutic target in
+    neuroblastoma. Oncotarget, 9(31):22184, 2018.
+
+J. Li, K. Cheng, S. Wang, F. Morstatter, R. P. Trevino, J. Tang, and H. Liu. Feature selection: A data perspective. ACM Computing
+    Surveys (CSUR), 50(6):94, 2018.
+
+Y. Liu, K. Yu, X. Kong, K. Zhang, L. Wang, N. Zhang, Q. Chen, M. Niu, W. Li, X. Zhong, S. Wu, J. Zhang, and Y. Liu. Foxa1
+    o-glcnacylation-mediated transcriptional switch governs metastasis capacity in breast cancer. Sci Adv, 9(33):eadg7112, 2023. ISSN
+    2375-2548 (Electronic) 2375-2548 (Linking). doi: 10.1126/sciadv.adg7112. URL https://www.ncbi.nlm.nih.gov/pubmed/37595040. Liu,
+    Yajie Yu, Kairan Kong, Xiaotian Zhang, Keren Wang, Lingyan Zhang, Nana Chen, Qiushi Niu, Mingshan Li, Wenli Zhong, Xiaomin
+    Wu, Sijin Zhang, Jianing Liu, Yubo eng 2023/08/18 Sci Adv. 2023 Aug 18;9(33):eadg7112. doi: 10.1126/sciadv.adg7112. Epub 2023
+    Aug 18.
+
+F.-Y. Lo, H.-T. Chen, H.-C. Cheng, H.-S. Hsu, and Y.-C. Wang. Overexpression of pafah1b1 is associated with tumor metastasis and
+    poor survival in non-small cell lung cancer. Lung Cancer, 77(3):585­592, 2012.
+
+P. R. Majmudar and R. A. Keri. The neural stem cell gene pafah1b1 controls cell cycle progression, dna integrity, and paclitaxel
+    sensitivity of triple-negative breast cancer cells. Journal of Biological Chemistry, 301(6), 2025.
+
+M. Murakami, R. Kaul, and E. S. Robertson. Mta1 expression is linked to ovarian cancer. Cancer biology & therapy, 7(9):1468­1470,
+    2008.
+
+R. Pan, F. Pan, Z. Zeng, S. Lei, Y. Yang, Y. Yang, C. Hu, H. Chen, and X. Tian. A novel immune cell signature for predicting
+    osteosarcoma prognosis and guiding therapy. Frontiers in immunology, 13:1017120, 2022.
+
+J. Qu, D. HolzmA~ zller, G. Varoquaux, and M. L. Morvan. Tabicl: A tabular foundation model for in-context learning on large data.
+    arXiv preprint arXiv:2502.05564, 2025.
+
+N. Rappoport and R. Shamir. Multi-omic and multi-view clustering algorithms: review and cancer benchmark. Nucleic Acids Research,
+    46(20):10546­10562, Oct 2018. URL https://doi.org/10.1093/nar/gky889.
+
+R. Sanawar, V. Mohan Dan, T. R. Santhoshkumar, R. Kumar, and M. R. Pillai. Estrogen receptor-alpha regulation of microrna-590
+    targets fam171a1-a modifier of breast cancer invasiveness. Oncogenesis, 8(1):5, 2019. ISSN 2157-9024 (Print) 2157-9024 (Electronic)
+    2157-9024 (Linking). doi: 10.1038/s41389-018-0113-z. URL https://www.ncbi.nlm.nih.gov/pubmed/30631046. Sanawar, Rahul Mohan
+    Dan, Vipin Santhoshkumar, Thankayyan R Kumar, Rakesh Pillai, M Radhakrishna eng 2019/01/12 Oncogenesis. 2019 Jan 9;8(1):5.
+    doi: 10.1038/s41389-018-0113-z.
+
+P. Segaert, M. B. Lopes, S. Casimiro, S. Vinga, and P. J. Rousseeuw. Robust identification of target genes and outliers in triple-negative
+    breast cancer data. Stat Methods Med Res, 28(10-11):3042­3056, 2019. ISSN 1477-0334 (Electronic) 0962-2802 (Print) 0962-2802
+    (Linking). doi: 10.1177/0962280218794722. URL https://www.ncbi.nlm.nih.gov/pubmed/30146936. Segaert, Pieter Lopes, Marta B
+    Casimiro, Sandra Vinga, Susana Rousseeuw, Peter J eng Research Support, Non-U.S. Gov't England 2018/08/28 Stat Methods Med
+    Res. 2019 Oct-Nov;28(10-11):3042-3056. doi: 10.1177/0962280218794722. Epub 2018 Aug 27.
+
+G. Singh, J. Roy, P. Rout, and B. Mallick. Genome-wide profiling of the piwi-interacting rna-mrna regulatory networks in epithelial
+    ovarian cancers. PloS one, 13(1):e0190485, 2018.
+
+O. E. Sumer, K. Schelzig, J. Jung, X. Li, J. Moros, L. Schwarzmu¨ller, E. Sen, S. Karolus, A. Wo¨rner, V. R. de Melo Costa, et al.
+    Selective arm-usage of pre-mir-1307 dysregulates angiogenesis and affects breast cancer aggressiveness. BMC biology, 23(1):25, 2025.
+
+A. Tolwani, M. Matusiak, N. Bui, E. Forg´o, S. Varma, L. Baratto, A. Iagaru, A. J. Lazar, M. van de Rijn, and J. Przybyl. Prognostic
+    relevance of the hexosamine biosynthesis pathway activation in leiomyosarcoma. NPJ Genomic Medicine, 6(1):30, 2021.
+
+J. Veeraraghavan, Y. Tan, X. X. Cao, J. A. Kim, X. Wang, G. C. Chamness, S. N. Maiti, L. J. Cooper, D. P. Edwards, A. Contreras,
+    S. G. Hilsenbeck, E. C. Chang, R. Schiff, and X. S. Wang. Recurrent esr1-ccdc170 rearrangements in an aggressive subset of
+    oestrogen receptor-positive breast cancers. Nat Commun, 5:4577, 2014. ISSN 2041-1723 (Electronic) 2041-1723 (Linking). doi:
+    10.1038/ncomms5577. URL https://www.ncbi.nlm.nih.gov/pubmed/25099679. Veeraraghavan, Jamunarani Tan, Ying Cao, Xi-Xi Kim,
+    Jin Ah Wang, Xian Chamness, Gary C Maiti, Sourindra N Cooper, Laurence J N Edwards, Dean P Contreras, Alejandro Hilsenbeck,
+    Susan G Chang, Eric C Schiff, Rachel Wang, Xiao-Song eng P30 CA016672/CA/NCI NIH HHS/ CA183976/CA/NCI NIH HHS/ R01
+    CA183976/CA/NCI NIH HHS/ P30-125123-06/PHS HHS/ P30 CA125123/CA/NCI NIH HHS/ S10RR02950/RR/NCRR NIH HHS/
+    P30-125123/PHS HHS/ Research Support, N.I.H., Extramural Research Support, Non-U.S. Gov't Research Support, U.S. Gov't,
+    Non-P.H.S. England 2014/08/08 Nat Commun. 2014 Aug 7;5:4577. doi: 10.1038/ncomms5577.
+
+T. Wang, F. Zhang, and P. Zhang. Role of the tpx2/ncoa5 axis in regulating proliferation, migration, invasion and angiogenesis of
+    breast cancer cells. Exp Ther Med, 25(6):304, 2023a. ISSN 1792-1015 (Electronic) 1792-0981 (Print) 1792-0981 (Linking). doi:
+    10.3892/etm.2023.12003. URL https://www.ncbi.nlm.nih.gov/pubmed/37229326. Wang, Tian Zhang, Fulin Zhang, Peirong eng Greece
+    2023/05/25 Exp Ther Med. 2023 May 9;25(6):304. doi: 10.3892/etm.2023.12003. eCollection 2023 Jun.
+
+X. Wang, L. Zhou, Z. Dong, and G. Wang. Identification of iron metabolism-related predictive markers of endometriosis and
+    endometriosis-relevant ovarian cancer. Medicine, 102(15):e33478, 2023b.
+
+S. Wharrie, Z. Yang, V. Raj, R. Monti, R. Gupta, Y. Wang, A. Martin, L. J. O'Connor, S. Kaski, P. Marttinen, P. F. Palamara,
+    C. Lippert, and A. Ganna. Hapnest: efficient, large-scale generation and evaluation of synthetic datasets for genotypes and phenotypes.
+    Bioinformatics, 39(9):btad535, 08 2023. ISSN 1367-4811. doi: 10.1093/bioinformatics/btad535. URL https://doi.org/10.1093/
+                                                                                                                  Journal Title Here, YEAR, Volume XX, Issue x 21
+
+    bioinformatics/btad535.
+G. Wu, Z. Fan, and X. Li. Cenpa knockdown restrains cell progression and tumor growth in breast cancer by reducing pla2r1 promoter
+
+    methylation and modulating pla2r1/hhex axis. Cell Mol Life Sci, 81(1):27, 2024. ISSN 1420-9071 (Electronic) 1420-682X (Print) 1420-
+    682X (Linking). doi: 10.1007/s00018-023-05063-5. URL https://www.ncbi.nlm.nih.gov/pubmed/38212546. Wu, Gang Fan, Zhongkai
+    Li, Xin eng 2021-MS-331/Liaoning Provincial Department of Science and Technology/ S202110160024/Liaoning Province College
+    Students Innovation and Entrepreneurship Training Program/ Switzerland 2024/01/12 Cell Mol Life Sci. 2024 Jan 12;81(1):27. doi:
+    10.1007/s00018-023-05063-5.
+H. Wu, X. Zhu, H. Zhou, M. Sha, J. Ye, and H. Yu. Mitochondrial ribosomal proteins and cancer. Medicina, 61(1):96, 2025.
+X. Wu, L. Han, X. Zhang, L. Li, C. Jiang, Y. Qiu, R. Huang, B. Xie, Z. Lin, J. Ren, et al. Alteration of endocannabinoid system in
+    human gliomas. Journal of neurochemistry, 120(5):842­849, 2012.
+H. Xu, X. Wang, Y. Zhang, W. Zheng, and H. Zhang. Gata6-as1 inhibits ovarian cancer cell proliferation and migratory and invasive
+    abilities by sponging mir-19a-5p and upregulating tet2. Oncology Letters, 22(4):718, 2021.
+M. W. Yang, Q. Y. Jia, D. P. Xu, Y. N. Xu, Y. M. Huo, D. J. Liu, J. Y. Yang, X. L. Fu, D. Ma, Z. H. Duan, Y. F. Yin, X. S.
+    Ma, K. Xu, R. Hua, J. F. Zhang, Y. W. Sun, and W. Liu. Srsf12 deficiency enhances tumor innervation and accelerates pancreatic
+    tumorigenesis. Cancer Lett, 616:217563, 2025a. ISSN 1872-7980 (Electronic) 0304-3835 (Linking). doi: 10.1016/j.canlet.2025.217563.
+    URL https://www.ncbi.nlm.nih.gov/pubmed/39986371. Yang, Min-Wei Jia, Qin-Yuan Xu, Da-Peng Xu, Yan-Nan Huo, Yan-Miao Liu,
+    De-Jun Yang, Jian-Yu Fu, Xue-Liang Ma, Ding Duan, Zong-Hao Yin, Yi-Fan Ma, Xue-Shi-Yu Xu, Kan Hua, Rong Zhang, Jun-Feng
+    Sun, Yong-Wei Liu, Wei eng Ireland 2025/02/23 Cancer Lett. 2025 Apr 28;616:217563. doi: 10.1016/j.canlet.2025.217563. Epub 2025
+    Feb 20.
+Y. Yang, E. Zhang, H. Huang, and Z. Cai. Fgfr1op2 promotes proliferation and survival of myeloma cells and is a potential therapeutic
+    target, 2022.
+Z. Yang, R. Kotoge, X. Piao, Z. Chen, L. Zhu, P. Gao, Y. Matsubara, Y. Sakurai, and J. Sun. MLOmics: Cancer multi-omics database
+    for machine learning. Scientific Data, 12(1):1­9, 2025b.
+M. Zheng, Y. Hu, R. Gou, X. Nie, X. Li, J. Liu, and B. Lin. Identification three lncrna prognostic signature of ovarian cancer based on
+    genome-wide copy number variation. Biomedicine & Pharmacotherapy, 124:109810, 2020.
+D. Zhou, L. Zhang, W. Sun, W. Guan, Q. Lin, W. Ren, J. Zhang, and G. Xu. Cytidine monophosphate kinase is inhibited by the tgf-
+    signalling pathway through the upregulation of mir-130b-3p in human epithelial ovarian cancer. Cellular signalling, 35:197­207,
+    2017.
+R. Zhu, S. Zhao, J. Cao, Y. Liu, and R. Liang. Comprehensive analysis of gpn1 in human cancer and its effects on the migration of
+    hepatocellular carcinoma cells. Biomolecules and Biomedicine, 25(5):1111, 2024.
+

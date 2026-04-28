@@ -12,6 +12,25 @@ Listed alphabetically below. Where a repo corresponds to a paper in
 [`papers/`](../papers/), the paper is linked. Where the file is a
 fresh dump of a public GitHub repo, the upstream URL is linked.
 
+## Overview table
+
+| File | Lines | GitHub | Paper | What it gives us |
+|------|-------|--------|-------|------------------|
+| `Huggingface TabPFN.txt` | 494 | [tabpfn_2_5](https://huggingface.co/Prior-Labs/tabpfn_2_5), [tabpfn_2_6](https://huggingface.co/Prior-Labs/tabpfn_2_6) | [Hollmann 2025](../papers/2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf), [Grinsztajn 2026](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) | Primary citation source for checkpoint provenance (synthetic vs. real-finetuned, layer counts, intended limits, licence). |
+| `NanoTabPFN.txt` | 895 | [automl/nanoTabPFN](https://github.com/automl/nanoTabPFN) | [Pfefferle 2025](../papers/2025_Pfefferle_et_al._nanoTabPFN_A_Lightweight_and_Educational_Reimplementation_of_TabPFN.pdf) | Cleanest end-to-end reference of a PFN training loop. Structural template for `src/train/`. |
+| `PFNS.txt` | 20 743 | [automl/PFNs](https://github.com/automl/PFNs) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Implementations of every encoder step that runs *inside* every TabPFN forward pass (NaN handling, normalisation, …). Tells us what `sanitize.py` should *not* duplicate. |
+| `PFNs4BO.txt` | 6 488 | [automl/PFNs4BO](https://github.com/automl/PFNs4BO) | [Müller 2023](../papers/2023_Muller_et_al._PFNs4BO_In_Context_Learning_for_Bayesian_Optimization.pdf) | PFN-as-Bayesian-optimisation surrogate. Tangential to credit-risk; useful only if we wrap a PFN around our own HP search. |
+| `TabDPT.txt` | 2 874 | [layer6ai-labs/TabDPT-inference](https://github.com/layer6ai-labs/TabDPT-inference) | [Ma 2026](../papers/2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf) | Inference code for the real-data-only competitor to TabPFN. Comparison baseline. |
+| `TabPFN .txt` | 63 974 | [PriorLabs/tabPFN](https://github.com/PriorLabs/tabPFN) | [Hollmann 2023](../papers/2023_Hollmann_et_al._TabPFN_A_Transformer_That_Solves_Small_Tabular_Classification_Problems_in_a_Second.pdf), [Hollmann 2025](../papers/2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf), [Grinsztajn 2026](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) | Canonical sklearn-style API, all checkpoint metadata, the multi-table finetuning machinery (`get_preprocessed_dataset_chunks`, `DatasetCollectionWithPreprocessing`, `FinetunedTabPFN*`). Primary code reference for `src/train/`. |
+| `TabPFN Client.txt` | 8 916 | [PriorLabs/tabpfn-client](https://github.com/PriorLabs/tabpfn-client) | — | Hosted-API HTTP client. Not used in our self-hosted pretraining; only for benchmarking against the API. |
+| `TabPFN Docs.txt` | 7 797 | [PriorLabs/tabpfn-docs](https://github.com/PriorLabs/tabpfn-docs) | — | The docs.priorlabs.ai source. Documents *intent* of every config knob; faster to grep than the implementation in `TabPFN .txt`. |
+| `TabPFN Drift-Resilient.txt` | 17 844 | [automl/Drift-Resilient_TabPFN](https://github.com/automl/Drift-Resilient_TabPFN) | [Helli 2024](../papers/2024_Helli_et_al._Drift_Resilient_TabPFN_In_Context_Learning_Temporal_Distribution_Shifts_on_Tabular_Data_1.pdf) | Drift-aware training augmentation. Highly relevant for credit-risk's macro-cycle drift; consider folding into `src/train/`. |
+| `TabPFN Extensions.txt` | 17 415 | [PriorLabs/tabpfn-extensions](https://github.com/PriorLabs/tabpfn-extensions) | — | `AutoTabPFN` post-hoc ensembling, RF-PFN, embeddings, HPO. Source of evaluation baselines. |
+| `TabPFN V2 Finetuning.txt` | 3 697 | [PriorLabs/TabPFN/examples](https://github.com/PriorLabs/TabPFN/tree/main/examples) | [Rubachev 2025](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf) | The `finetune_classifier.py` and `finetune_regressor.py` reference scripts. Canonical "load checkpoint → backward pass → save checkpoint" sequence. |
+| `TabPFN Wide.txt` | 2 388 | [automl/TabPFN-Wide](https://github.com/automl/TabPFN-Wide) | [Kolberg 2026](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) | The continued-pretraining recipe for extreme-feature-count regimes. Source of our `FeatureAgglomeration` design. |
+| `TransformersCanDoBayesianInference.txt` | 6 869 | [automl/PFNs](https://github.com/automl/PFNs) (early) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Code for the original PFN paper. Mostly historical; useful for explaining what a PFN is. |
+| `VSC Documentation.txt` | 39 358 | [hpcleuven/vsc-documentation](https://github.com/hpcleuven/vsc-documentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, A100 partitions, storage tiers, account / VO management. The reference when writing the SLURM scripts under `scripts/`. |
+
 ## Layout
 
 ```
@@ -21,14 +40,16 @@ repositories/
 ├── NanoTabPFN.txt                           (   895 lines)
 ├── PFNS.txt                                 (20 743 lines)
 ├── PFNs4BO.txt                              ( 6 488 lines)
+├── TabDPT.txt                               ( 2 874 lines)
 ├── TabPFN .txt                              (63 974 lines)
 ├── TabPFN Client.txt                        ( 8 916 lines)
 ├── TabPFN Docs.txt                          ( 7 797 lines)
 ├── TabPFN Drift-Resilient.txt               (17 844 lines)
 ├── TabPFN Extensions.txt                    (17 415 lines)
 ├── TabPFN V2 Finetuning.txt                 ( 3 697 lines)
-├── TabPFN Wide.txt                           ( 2 388 lines)
-└── TransformersCanDoBayesianInference.txt   ( 6 869 lines)
+├── TabPFN Wide.txt                          ( 2 388 lines)
+├── TransformersCanDoBayesianInference.txt   ( 6 869 lines)
+└── VSC Documentation.txt                    (39 358 lines)
 ```
 
 ---
@@ -41,8 +62,8 @@ and
 [`Prior-Labs/tabpfn_2_6`](https://huggingface.co/Prior-Labs/tabpfn_2_6).
 
 **Related papers:**
-[2025 — Hollmann et al. — Accurate predictions on small data with a tabular foundation model](../papers/2025%20-%20Hollmann%20et%20al.%20-%20Accurate%20predictions%20on%20small%20data%20with%20a%20tabular%20foundation%20model.pdf),
-[2026 — Grinsztajn et al. — TabPFN-2.5](../papers/2026%20-%20Grinsztajn%20et%20al.%20-%20TabPFN-2.5%20Advancing%20the%20State%20of%20the%20Art%20in%20Tabular%20Foundation%20Models.pdf).
+[2025 — Hollmann et al. — Accurate predictions on small data with a tabular foundation model](../papers/2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf),
+[2026 — Grinsztajn et al. — TabPFN-2.5](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf).
 
 **What it is.** Concatenation of the public HuggingFace model-card
 READMEs for `Prior-Labs/tabpfn_2_5` and `Prior-Labs/tabpfn_2_6` (the
@@ -97,7 +118,7 @@ prose).
 **Upstream:** [github.com/automl/nanoTabPFN](https://github.com/automl/nanoTabPFN).
 
 **Related paper:**
-[2025 — Pfefferle et al. — nanoTabPFN: A Lightweight and Educational Reimplementation of TabPFN](../papers/2025%20-%20Pfefferle%20et%20al.%20-%20nanoTabPFN%20A%20Lightweight%20and%20Educational%20Reimplementation%20of%20TabPFN.pdf).
+[2025 — Pfefferle et al. — nanoTabPFN: A Lightweight and Educational Reimplementation of TabPFN](../papers/2025_Pfefferle_et_al._nanoTabPFN_A_Lightweight_and_Educational_Reimplementation_of_TabPFN.pdf).
 
 **What it is.** A minimal reference implementation of TabPFN — the
 "how-it-works-in-under-1000-lines" educational version, trimmed of
@@ -162,7 +183,7 @@ layout.
 **Upstream:** [github.com/automl/PFNs](https://github.com/automl/PFNs).
 
 **Related papers:**
-[2021 — Müller et al. — Transformers Can Do Bayesian Inference](../papers/2021%20-%20M%C3%BCller%20et%20al.%20-%20Transformers%20Can%20Do%20Bayesian%20Inference.pdf)
+[2021 — Müller et al. — Transformers Can Do Bayesian Inference](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf)
 (the foundational PFN framework that this code implements).
 
 **What it is.** The full Prior-Labs `PFNs` repo — the underlying
@@ -223,7 +244,7 @@ canonical ensemble of preprocessing options at inference.
 [github.com/automl/PFNs4BO](https://github.com/automl/PFNs4BO)).
 
 **Related paper:**
-[2023 — Müller et al. — PFNs4BO: In-Context Learning for Bayesian Optimization](../papers/2023%20-%20M%C3%BCller%20et%20al.%20-%20PFNs4BO%20In-Context%20Learning%20for%20Bayesian%20Optimization.pdf).
+[2023 — Müller et al. — PFNs4BO: In-Context Learning for Bayesian Optimization](../papers/2023_Muller_et_al._PFNs4BO_In_Context_Learning_for_Bayesian_Optimization.pdf).
 
 **What it is.** PFNs adapted to Bayesian optimisation. Implements an
 acquisition function on top of a PFN posterior — useful for
@@ -236,15 +257,58 @@ machinery beyond what's already in `PFNS.txt`.
 
 ---
 
+## `TabDPT.txt`
+
+**Upstream:** [github.com/layer6ai-labs/TabDPT-inference](https://github.com/layer6ai-labs/TabDPT-inference)
+(inference code; full training code is in the sibling repo
+[`layer6ai-labs/TabDPT-training`](https://github.com/layer6ai-labs/TabDPT-training)).
+
+**Related paper:**
+[2026 — Ma et al. — TabDPT: Scaling Tabular Foundation Models on Real Data](../papers/2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf).
+
+**What it is.** TabDPT is the *real-data-only* counterpart to
+TabPFN: a transformer trained on real tables sampled from OpenML
+via retrieval-augmented self-supervision, with no synthetic
+prior. The dump in this folder is the *inference* repo — load
+weights from HuggingFace and predict on a new dataset via a
+sklearn-style API.
+
+**Why it matters.** TabDPT and TabPFN bracket the
+synthetic-vs-real spectrum from opposite ends. Real-TabPFN (and
+hence CreditPFN) sits in the middle. Having TabDPT locally lets
+us include it as an *inference baseline* in the eval harness:
+compare CreditPFN's scores against TabPFN-2.6, TabDPT, TabICL,
+and the published Real-TabPFN-2.5 weights, all in one place.
+
+**Contents in detail.**
+
+* `src/tabdpt/classifier.py`, `regressor.py`, `estimator.py`,
+  `model.py`, `utils.py` — the inference path.
+* `tabdpt_datasets/openml.py` — OpenML dataset loaders that they
+  used at training time and ship for reproducibility.
+* `tabdpt_datasets/data_splits/{cls,reg}_datasets.csv` — the
+  exact CSV manifest of which OpenML datasets they trained on.
+  Useful for *contamination checking* — any dataset on this list
+  must NOT appear in our held-out evaluation set if we want a
+  fair comparison.
+* `tests/cls_example.py`, `reg_example.py` — minimum working
+  example.
+
+**When to grep this file:** when implementing the TabDPT
+baseline in `src/eval/`, or when checking that our credit-risk
+held-out splits don't overlap with TabDPT's training corpus.
+
+---
+
 ## `TabPFN .txt`
 
 **Upstream:** [github.com/PriorLabs/tabPFN](https://github.com/PriorLabs/tabPFN)
 (the main `tabpfn` Python package).
 
 **Related papers:**
-[2023 — Hollmann et al. — TabPFN](../papers/2023%20-%20Hollmann%20et%20al.%20-%20TabPFN%20A%20Transformer%20That%20Solves%20Small%20Tabular%20Classification%20Problems%20in%20a%20Second.pdf),
-[2025 — Hollmann et al. — Accurate predictions on small data](../papers/2025%20-%20Hollmann%20et%20al.%20-%20Accurate%20predictions%20on%20small%20data%20with%20a%20tabular%20foundation%20model.pdf),
-[2026 — Grinsztajn et al. — TabPFN-2.5](../papers/2026%20-%20Grinsztajn%20et%20al.%20-%20TabPFN-2.5%20Advancing%20the%20State%20of%20the%20Art%20in%20Tabular%20Foundation%20Models.pdf).
+[2023 — Hollmann et al. — TabPFN](../papers/2023_Hollmann_et_al._TabPFN_A_Transformer_That_Solves_Small_Tabular_Classification_Problems_in_a_Second.pdf),
+[2025 — Hollmann et al. — Accurate predictions on small data](../papers/2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf),
+[2026 — Grinsztajn et al. — TabPFN-2.5](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf).
 
 **What it is.** The user-facing sklearn-style API
 (`TabPFNClassifier`, `TabPFNRegressor`), the checkpoint-loading
@@ -392,7 +456,7 @@ documented TabPFN configuration option. Faster than grepping
 **Upstream:** [github.com/automl/Drift-Resilient_TabPFN](https://github.com/automl/Drift-Resilient_TabPFN).
 
 **Related paper:**
-[2024 — Helli et al. — Drift-Resilient TabPFN](../papers/2024%20-%20Helli%20et%20al.%20-%20Drift-Resilient%20TabPFN%20In-Context%20Learning%20Temporal%20Distribution%20Shifts%20on%20Tabular%20Data%201.pdf).
+[2024 — Helli et al. — Drift-Resilient TabPFN](../papers/2024_Helli_et_al._Drift_Resilient_TabPFN_In_Context_Learning_Temporal_Distribution_Shifts_on_Tabular_Data_1.pdf).
 
 **What it is.** A research repo that fine-tunes / specialises TabPFN
 for distribution-shift robustness — explicitly modelling "training
@@ -450,7 +514,7 @@ or building strong baselines.
 example scripts).
 
 **Related paper:**
-[2025 — Rubachev et al. — On Finetuning Tabular Foundation Models](../papers/2025%20-%20Rubachev%20et%20al.%20-%20On%20Finetuning%20Tabular%20Foundation%20Models%201.pdf).
+[2025 — Rubachev et al. — On Finetuning Tabular Foundation Models](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf).
 
 **What it is.** Sebastian Pineda's TabPFN-V2-Finetuning recipe — the
 closest public analog of Real-TabPFN's continued-pretraining, but
@@ -494,7 +558,7 @@ sequence for *real* TabPFN-2 weights, not the toy model.
 **Upstream:** [github.com/automl/TabPFN-Wide](https://github.com/automl/TabPFN-Wide).
 
 **Related paper:**
-[2026 — Kolberg et al. — TabPFN-Wide](../papers/2026%20-%20Kolberg%20et%20al.%20-%20TabPFN-Wide%20Continued%20Pre-Training%20for%20Extreme%20Feature%20Counts.pdf).
+[2026 — Kolberg et al. — TabPFN-Wide](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf).
 
 **What it is.** TabPFN-Wide — modifications for high-dimensional
 inputs, e.g. multi-omics or wide credit-bureau datasets with
@@ -534,7 +598,7 @@ checkpoint resumption, anything wide/high-feature.
 (early version, repo since superseded by the modern PFNs framework).
 
 **Related paper:**
-[2021 — Müller et al. — Transformers Can Do Bayesian Inference](../papers/2021%20-%20M%C3%BCller%20et%20al.%20-%20Transformers%20Can%20Do%20Bayesian%20Inference.pdf).
+[2021 — Müller et al. — Transformers Can Do Bayesian Inference](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf).
 
 **What it is.** Code accompanying Müller et al. 2021 — the original
 PFN paper. Mostly historical context for understanding what a
@@ -546,6 +610,54 @@ context → query predictions.
 **When to grep this file:** when you need to write a paragraph
 explaining PFNs in your thesis / a defence / a report. Not relevant
 for pipeline implementation.
+
+---
+
+## `VSC Documentation.txt`
+
+**Upstream:** [github.com/hpcleuven/vsc-documentation](https://github.com/hpcleuven/vsc-documentation)
+(the source of the [VSC documentation site](https://docs.vscentrum.be)).
+
+**Related paper:** none — this is supercomputer infrastructure
+documentation, not a research artefact.
+
+**What it is.** Flat dump of the entire Sphinx-generated VSC
+(Vlaams Supercomputer Centrum / Flemish Supercomputer Centre)
+user documentation. ~39 000 lines of `.rst` source covering
+account management, SSH/MFA setup, Genius / wICE / Tier-1 cluster
+hardware, SLURM job scripting, storage tiers, scientific software
+modules, and the various ways to acknowledge the VSC in
+publications.
+
+**Why it matters here.** Our continued pretraining will run on
+VSC A100 nodes via SLURM. When we write the SLURM job scripts
+under `scripts/` — partitions, GPU allocation, time limits,
+memory, scratch storage — this dump is the canonical reference.
+
+**Sections most relevant to CreditPFN:**
+
+* **`source/leuven/tier_2_hardware/`** — KU Leuven Tier-2 cluster
+  documentation (Genius and wICE). Includes the GPU partitions
+  with NVIDIA A100s and the SLURM partition / QOS names.
+* **`source/jobs/`** — SLURM job submission, partitions, time
+  limits, GPU requests (e.g. `--gres=gpu:1`,
+  `--partition=gpu_a100`), array jobs (useful for the
+  3000-dataset parallel preprocessing case).
+* **`source/software/`** — module-system documentation for
+  loading specific Python / CUDA / cuDNN versions, plus how to
+  build custom virtual environments on the cluster filesystem.
+* **`source/data_storage/`** — `$VSC_DATA`, `$VSC_SCRATCH` and
+  the project storage tiers. Important for deciding where the
+  3000-dataset corpus and the cached `.npz` files live (they
+  shouldn't all be in `$VSC_HOME`).
+* **`source/accounts/`** — initial SSH key setup, MFA, VO
+  membership, requesting more quota.
+
+**When to grep this file:** when writing or updating a SLURM
+script (`scripts/*.slurm`), debugging a job-submission error,
+choosing a partition or GPU type, or sizing storage allocations.
+Less relevant during the data-pipeline implementation since that
+work is done on a laptop.
 
 ---
 

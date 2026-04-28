@@ -1,0 +1,1446 @@
+                                        TabPFN: One Model to Rule Them All?
+
+                                        Qiong Zhang1 , Yan Shuo Tan1, Qinglong Tian1, and Pengfei Li
+
+arXiv:2505.20003v2 [cs.LG] 27 Nov 2025  Abstract. Hollmann et al. (Nature 637 (2025) 319­326) recently intro-
+                                        duced TabPFN, a transformer-based deep learning model for regres-
+                                        sion and classification on tabular data, which they claim "outperforms
+                                        all previous methods on datasets with up to 10,000 samples by a wide
+                                        margin, using substantially less training time." Furthermore, they have
+                                        called TabPFN a "foundation model" for tabular data, as it can sup-
+                                        port "data generation, density estimation, learning reusable embed-
+                                        dings and fine-tuning". In this paper, we provide a tailored explana-
+                                        tion of how TabPFN works for a statistics audience, by emphasizing
+                                        its interpretation as approximate Bayesian inference. We then explore
+                                        the significance of TabPFN to the field of statistics: We show that an
+                                        out-of-the-box application of TabPFN can sometimes outperform spe-
+                                        cialized state-of-the-art methods for semi-supervised parameter estima-
+                                        tion, prediction under covariate shift, and heterogeneous treatment ef-
+                                        fect estimation. As a partial explanation for the predictive effective-
+                                        ness of TabPFN, we show that it can simultaneously adapt to both
+                                        nonparametric structure and parametric structure, for instance, some-
+                                        times outperforming LASSO even when assumptions are correctly spec-
+                                        ified. All experiments can be reproduced using the code provided at
+                                        https://github.com/qinglong-tian/tabpfn_study.
+
+                                        Key words and phrases: Foundation models, in-context learning, meta-
+                                        learning, tabular data, transformers.
+
+                                                            1. INTRODUCTION                             called TabPFN 1, which they claimed "outperforms all
+                                                                                                        previous methods on datasets with up to 10,000 sam-
+                                          Deep learning has achieved remarkable success in              ples by a wide margin, using substantially less training
+                                        modeling unstructured data types such as text and               time." As evidence, they showed that TabPFN signif-
+                                        images. However, for tabular data--arguably the                 icantly outperforms random forests, XGBoost, Light-
+                                        most prevalent and consequential data type across               GBM, and CatBoost on 50+ benchmark classification
+                                        science--ensemble tree methods have remained the                and regression datasets.
+                                        gold standard predictive modeling strategy, consis-
+                                        tently outperforming even deep learning on bench-                 Beyond its impressive predictive accuracy, TabPFN
+                                        mark datasets [11, 19, 24, 40]. This long-held wisdom           is claimed to be robust to outliers and missing data,
+                                        has now been challenged by Hollmann et al. [30], who            and automatically estimates predictive distributions,
+                                        introduced a deep learning method for tabular data,             thereby providing uncertainty quantification. Further-
+                                                                                                        more, it is claimed to support "data generation, den-
+                                        Qiong Zhang is Assistant Professor, Institute of Statistics     sity estimation, learning reusable embeddings and
+                                        & Big Data, Renmin University of China, China (e-mail:          fine-tuning". Because of this wide range of capabil-
+                                        qiong.zhang@ruc.edu.cn). Yan Shuo Tan is Assistant              ities, Hollmann et al. [30] call TabPFN a "tabular
+                                        Professor, Department of Statistics & Data Science,             foundation model" [52], appropriating a term that has
+                                        National University of Singapore, Singapore (e-mail:            been used to describe the transformative role played
+                                        yanshuo@nus.edu.sg). Qinglong Tian is Assistant
+                                        Professor, Department of Statistics & Actuarial Science,            1The version of the TabPFN model used in our study is
+                                        University or Waterloo, Canada (e-mail:                         the one introduced by Hollmann et al. [30], referred to there
+                                        qinglong.tian@uwaterloo.ca). Pengfei Li is Professor,           as TabPFNv2. While our paper was undergoing revision, the
+                                        Department of Statistics & Actuarial Science, University        developers released an updated model, TabPFN-2.5 [25]. For
+                                        or Waterloo, Canada (e-mail: pengfei.li@uwaterloo.ca).          consistency, all experiments and discussion in this paper are
+                                                                                                        based on TabPFNv2.
+                                            1Co-first author.
+
+                                                                                                     1
+2                                                         conventional statistical methodologies across a vari-
+                                                          ety of tasks. This emerging paradigm appears suffi-
+by large language models (LLMs) [7] in natural lan-       ciently promising to merit serious consideration along-
+guage processing. TabPFN shares other similarities        side more established approaches. We define these
+with LLMs: It makes use of the same type of deep          terms and elaborate on their implications in Section 5,
+learning architecture (transformers) [53] and the same    where we also discuss avenues for statisticians to guide
+learning paradigm (in-context learning) [9], which dif-   and influence the field's development.
+fers fundamentally from traditional statistical and ma-
+chine learning approaches.                                           2. AN OVERVIEW OF TABPFN
+
+  Our goal in this paper is not to further test the         TabPFN makes use of in-context learning (ICL),
+claims of Hollmann et al. [30], which have now been       which is a new learning paradigm that differs from
+further validated on other benchmarks and by other        the standard statistical learning approach to regres-
+sources (see for instance Erickson et al. 18). Instead,   sion and classification and has gathered significant in-
+we aim to provide an explanation of how TabPFN            terest in the machine learning community. The mean-
+works that is tailored to a statistics audience (Sec-     ing of ICL has changed over time. In TabPFN, ICL
+tion 2) and, more importantly, to explore the signifi-    takes the form of approximate Bayesian inference; we
+cance of TabPFN to the field of statistics. Towards this  elaborate on this perspective below and defer a discus-
+goal, we first demonstrate the utility of TabPFN in       sion on the historical development of ICL to Section 5.
+handling three currently researched estimation prob-
+lems, namely semi-supervised parameter estimation           The first key idea of TabPFN is to approximate
+(Section 3.1), heterogeneous treatment effects estima-    posterior predictive distributions (PPD) using a trans-
+tion (Section 3.2), and prediction under covariate shift  former model, which is the same deep learning ar-
+(Section 3.3). For each problem, we compare a sim-        chitecture that powers LLMs. More precisely, let 
+ple out-of-the-box application of TabPFN to a "state-     denote the space of joint distributions on covariate-
+of-the-art" method proposed by a selected paper re-       label pairs (X, Y ) and let n be a fixed sample size.
+cently published at a top statistics journal. Using the   Let p be a prior on  and an observed training data
+same simulation set-up described by the paper, aug-       D = {(Xi, Yi)}in=1 is drawn independently identically
+mented with further comparisons on real datasets, we      distributed (IID) from some fixed distribution   ,
+show that TabPFN often achieves better results than       let p(|D) denote the posterior on  given D. With
+the comparator method.                                    slight abuse of notation, the posterior predictive dis-
+                                                          tribution (PPD) for Yn+1 given Xn+1 = x is defined
+  In addition, we investigate how the statistical prin-   as
+ciple of adaptivity [16] can provide a partial expla-
+nation for the predictive effectiveness of TabPFN. In                   p(y|x, D) = (y|x)p(|D)d.
+classical nonparametric statistics, adaptivity refers to
+a procedure's ability to automatically adjust to un-                                                  
+known aspects of the data-generating process, such
+as smoothness, sparsity, or latent structure, achiev-     The TabPFN transformer M is trained to approximate
+ing optimal rates without relying on these properties     the mapping (D, x)  p(y|x, D). Müller et al. [37], who
+being specified in advance. In Section 4, we perform      developed this approach, called the resulting model a
+numerical experiments suggesting that TabPFN, with-       prior-fitted network (PFN).
+out any hyperparameter tuning, can simultaneously
+adapt to both parametric and nonparametric struc-           Approximating the PPD of a Bayesian regression or
+ture: It is competitive with and sometimes even out-      classification model is far from a new idea. Indeed, the
+performs parametric methods (e.g., LASSO and lin-         popular Bayesian Additive Regression Trees (BART)
+ear discriminant analysis) even in settings where the     algorithm does the same job via Markov chain Monte
+parametric assumptions are correct. At the same time,     Carlo (MCMC) [13]. The novelty of the PFN approach
+it outperforms local averaging and smoothing meth-        is that while previous approaches (MCMC, variational
+ods in misspecified settings--for example, classifica-    inference, likelihood-free inference, etc.) attempt to
+tion problems with substantial label noise. Such adap-    approximate the map x  p(y|x, D) for a fixed train-
+tivity properties are beyond the reach of ensemble tree   ing dataset D, PFN tries to approximate the map
+methods and other previous machine learning or non-       jointly over x and D. It has the computational benefit
+parametric methods.                                       of amortizing computation, which is the basis of the
+                                                          "substantially less training time" claim by Hollmann
+  While TabPFN is not a perfect model, its capabili-      et al. [30] regarding TabPFN.2 Such an approximation
+ties indicate that "in-context learning" with a "foun-
+dation model" could become a powerful alternative to          2Similar ideas have been explored in the variational infer-
+                                                          ence community under the name of Neural Processes (NP) [23].
+                           TABPFN: ONE MODEL TO RULE THEM ALL?                                                           3
+
+may also yield statistical benefits via implicit regular-                              3. CASE STUDIES
+ization that are not yet fully understood.
+                                                                    3.1 Study I: parameter estimation in a
+  The second key idea of TabPFN is its choice of                         semi-supervised setting
+prior on the space of joint distribution . The large
+number of parameters of a transformer model ( 7M                      3.1.1 Problem and motivation In regression and
+in the case of TabPFN) means that it could potentially              classification problems, labeled data are often scarce
+approximate PPDs defined in terms of complicated                    or costly to obtain, while unlabeled data are typi-
+priors. TabPFN chooses to define its prior in terms                 cally more abundant. This abundance arises because
+of structural causal models (SCMs) [41]. An SCM de-                 unlabeled data (e.g., medical images, sensor read-
+fines a directed acyclic graph G whose nodes represent              ings, or customer transactions) are often generated
+variables Z1, . . . , Zp and whose edges represent causal           organically during routine operations, whereas the
+relationships. Specifically, each variable Zk is defined            corresponding labels (e.g., diagnoses, system states,
+via the equation Zk = fk(ZPAG(k), k), where fk is a                 or purchase intentions) require expert annotation or
+deterministic function, PAG(k) denotes the parents of               time-consuming measurement. Semi-supervised learn-
+Zk, and 1, . . . , p are independent "exogenous" ran-               ing methods (SSL) [58] attempt to improve the effi-
+dom variables. SCMs have long been used to model                    ciency of statistical analyses on the labeled data by
+causal inference from observational data, in which case             leveraging information contained in unlabeled data,
+f1, . . . , fp are usually defined to be linear functions. In-      usually under the assumption that both sets of data
+stead, TabPFN allows them to be neural networks or                  share the same data-generating distribution.
+decision trees, thereby modeling nonlinear and even
+discontinuous structure.                                              We consider the problem of parameter estimation in
+                                                                    an SSL setting. To formalize this, let X  Rp denote
+  These two key ideas cohere to provide an efficient                the feature vector and Y  R the response variable.
+training strategy for TabPFN. To fit the model's pa-                We observe:
+rameters , a collection D of approximately 130M syn-
+thetic datasets were generated. Each dataset D  D                   · A labeled dataset DL = {(Xi, Yi)}ni=1 with n IID
+contains IID examples from a joint distribution ,                      observations from the joint PX,Y ;
+which is itself drawn uniformly from the SCM prior.
+Note that while  may have a complex density, the                    · An unlabeled dataset DU = {Xi}ni=+nm+1 with m IID
+SCM structure gives a simple way to sample from it.                    observations from the marginal PX .
+
+  Next, D is partitioned into a "pseudo"-training set               The goal is to estimate a parameter  of PX,Y , such
+Dtrain and "pseudo"-test set Dtest. For each (Xtest, Ytest)         as the mean of PY or the regression coefficients of Y
+Dtest, the transformer output M(Xtest, Dtrain) approx-              on X. Generalizing earlier work, Song, Lin and Zhou
+imates the PPD p(·|Xtest, Dtrain). The loss                         [49] and Angelopoulos et al. [1] both considered an M-
+                                                                    estimation framework, in which the parameter   Rq
+ 1                                                                  is defined as the minimizer of the expected loss:
+|D|
+                           log M(Xtest, Dtrain)(Ytest)              (1)   := arg min EPX,Y {l(; X, Y )},
+
+     DD                                                                                
+
+     (Xtest ,Ytest )Dtest
+
+can be showed to be an unbiased estimate of the con-                where l :  × Rp × R  R is a pre-specified loss func-
+ditional KL divergence between the true and approxi-                tion. Examples of such estimands are shown in Table
+mate PPDs, and is minimized via stochastic gradient                 1. Note that these working models do not have to be
+descent. We refer the reader to Hollmann et al. [30]                correctly specified in order for the estimands to be
+for further details on the prior as well as on model                meaningful.
+training.
+
+Both the NP and PFN approaches use a "meta-learning" per-                                              Table 1
+spective to approximate the PPD, but they differ in their im-
+plementation choices. NPs employ an encoder-decoder archi-          Parameters of interest in the three simulation settings. Here
+tecture with a parametric distribution over the latent variable         we define X = [1, X] and   (0, 1) is a given value.
+z, naturally lending itself to variational inference. PFNs, on
+the other hand, adopt a transformer architecture that avoids        Setting            Parameter of Interest: 
+explicit distributional assumptions in its internal representa-     1 (linear reg.)
+tions. As a result, their training objectives differ slightly: NPs  2 (logistic reg.)  E(X X )  -1
+explicitly optimize a variational lower bound, while PFNs frame     3 (quantile reg.)
+learning as a direct optimization problem.                                                          E(X Y )
+
+                                                                                       arg min E log 1 + exp(X ) - Y X 
+                                                                                       arg min E I(Y  X ) -  (Y - X )
+4
+
+  3.1.2 State-of-the-art We describe two recently pro-               · Feature dimensions: p  {4, . . . , 9}
+posed methodologies. To do so, we first define the em-               · Sample sizes: n  {300, 500} (labeled), m 
+pirical risk minimizer with respect to a labeled dataset
+D as:                                                                    {500, 1000, 2000} (unlabeled)
+                                                                     · Quantile levels (Setting 3 only):   {0.25, 0.5}
+(2) ERM(D) = arg min  l(; X, Y ).                                 yielding at least 6 × 2 × 3 = 36 configurations. For each
+                                                                  configuration, we approximate the true  via Monte
+    (X,Y )D                                                       Carlo integration using 107 samples. Using 500 repli-
+                                                                  cates for each configuration, we compute estimates
+· Angelopoulos et al. [1] proposed a simple imputa-               for , and use them to estimate the bias and mean
+   tion and debiasing framework that makes use of an              squared error (MSE). Further experimental details are
+   existing black-box regression or classification model          given in Appendix A.
+   M : (a) Use M to impute labels Y^i on both the                   3.1.4 Results Representative results of our experi-
+   labeled and unlabeled datasets. Denote these im-               ments are shown in Figure 1, with the complete set of
+   puted datasets as DL = {(Xi, Yi)}in=1 and DU =                 results deferred to Appendix A. The first three panels
+   {(Xi, Yi)}in=+nm+1 respectively; (b) Estimate the im-          (from the left) show MSE with respect to linear, logis-
+                                                                  tic, and quantile regression respectively when p = 5,
+   putation bias via:  = ERM(DL) - ERM(DL); (c)                   with various combinations of (n, m). In the last panel,
+                                                                  we show how the results for logistic regression vary
+   Return the estimate ERM(DU ) - .                               with p, observing that SLZ is only able to outperform
+· Song, Lin and Zhou [49] (SLZ) proposed a method                 the TabPFN approaches when p = 4. In general, we
+                                                                  observe that TabPFN-I and TabPFN-D significantly
+   that makes a projection-based correction to the                outperform SLZ in terms of MSE. We also decom-
+   ERM loss (2). They proved that their method                    pose MSE into squared bias (shaded bar) and vari-
+   has optimal asymptotic efficiency under certain                ance (solid bar) for the four methods and observe that
+   assumptions and further showed superior perfor-                while TabPFN-I has larger bias than TabPFN-D (as
+   mance over other methods [4, 12, 31] via numerical             well as other two methods), it has significantly smaller
+   experiments. On the other hand, their method re-               variance, which offsets larger bias and leads to smaller
+   quires hyperparameter tuning such as a choice of               MSE.
+   the projection space.
+                                                                  Fig 1: MSE results for linear (top left), logistic (top
+  3.1.3 Experimental design We repeat Song, Lin and               right), and quantile ( = 0.25, bottom left) regres-
+Zhou [49]'s experiments, but add two comparators                  sions when p = 5. MSE results for the logistic re-
+that make use of TabPFN:                                          gression with various p (bottom right) when (n, m) =
+                                                                  (300, 500).
+   · TabPFN-Debiased (TabPFN-D): Following
+      Angelopoulos et al. [1]'s approach, we impute
+      each label using the posterior predictive mean
+      (for continuous labels) or mode (for discrete la-
+      bels), with PPD approximated by TabPFN sup-
+      plied with DL as a training set.3 However, re-
+      turn the estimate ERM(DL  DU ) -  (i.e. solve
+      ERM on the union of imputed versions of both
+      the labeled and unlabeled datasets).
+
+   · TabPFN-Imputed (TabPFN-I): Follow the
+      same approach as in TabPFN-D, but return the
+      ERM solution without debiasing: ERM(DL 
+
+      DU ).
+
+We use the original authors' implementation for the
+SLZ method. As a further baseline, we consider the
+estimator ERM(DL) that only makes use of labeled
+data (Vanilla).
+
+  We consider three types of estimands, corresponding
+to parameters from linear, logistic, and quantile regres-
+sion working models (Table 1). These are called "work-
+ing models" because the true data-generating process
+differs from the estimation models. We vary:
+
+    3Angelopoulos et al. [1] do not specify how to fit the impu-
+tation model.
+                                   TABPFN: ONE MODEL TO RULE THEM ALL?  5
+
+  3.1.5 Real data comparison To evaluate perfor-                    outperform the Vanilla and SLZ methods. TabPFN-
+mance in real-world scenarios, we test the methods on               D's slight advantage over TabPFN-I suggests a bene-
+ten OpenML datasets [20], comprising five for regres-               fit from debiasing in these presumably more noisy and
+sion and five for binary classification. For each dataset,          complicated settings. For logistic regression, Vanilla
+we first establish a ground truth target parameter by               outperforms SLZ and TabPFN with mode imputa-
+fitting a linear model (for regression) or a logistic re-           tion, whereas TabPFN with mean imputation achieves
+gression model (for classification) on the full dataset.            the best performance. We attribute the weaker per-
+We then create labeled-unlabeled splits by randomly                 formance of mode imputation to its inherent bias: it
+selecting n observations as labeled data--with n set                deterministically assigns a class label even when pre-
+to 10% of the full dataset for regression and 20% for               dictions are uncertain, whereas mean imputation pre-
+classification4--and treating the remainder as unla-                serves uncertainty by weighting labels according to
+beled (using only their features). From these splits,               predicted probabilities, improving stability and accu-
+we compute the Vanilla, TabPFN-I, TabPFN-D, and                     racy [47].
+SLZ estimators. In the logistic regression setting, we
+alternately explore using imputation using the poste-               3.2 Study II: heterogeneous treatment effects
+rior predictive mean for TabPFN-I and TabPFN-D, a                        estimation
+procedure that has also been called fractional imputa-
+tion [47].5 We repeat this process 50 times and report                3.2.1 Problem and motivation While researchers
+the average MSE of the estimated coefficients across                were previously satisfied with estimating the average
+all repetitions. The data-selection criteria and dataset            effect of a treatment­such as a drug, social interven-
+details are provided in Appendix A.3.                               tion, or economic policy­across a population of inter-
+                                                                    est, there has been rising interest in estimating hetero-
+                                    Table 2                         geneous treatment effects (HTE), that is, how differ-
+Real data SSL: Linear regression.Values represent ×10-4 of          ent groups of individuals might benefit differentially
+                                                                    from the same treatment. Accurate HTE estimation
+                               the metric                           enables personalized treatments, which may lead to
+                                                                    better outcomes.
+ID Vanilla TabPFN-I TabPFN-D                                SLZ
+                                                                      HTE is usually quantified via the Neyman­Rubin
+ 189   6.3621            2.3105    1.8860               6.5636      potential outcomes framework [46]. We consider n IID
+ 218   15.2800           4.3926    2.5916           3.1214×1010     samples (Yi(0), Yi(1), Ti, Xi) from a population, where
+ 225   7.0790            1.5684    3.0303                           Xi  Rd is a d-dimensional feature vector, Ti  {0, 1}
+1200   1.9185            0.8884    0.7787               7.0924      is a binary treatment assignment indicator, and Yi(0)
+45052  74.5046          100.3051   64.2511              1.7529      and Yi(1)  R are potential outcomes. The observed
+                                                       80.6998      outcome is Yiobs = Yi(Ti). Define the response func-
+                                                                    tions under control and treatment respectively as
+                                 Table 3
+                Real data SSL: Logistic regression                              µj(x) = E[Y (j) | X = x], j = 0, 1,
+
+  ID   Vanilla  TabPFN-I TabPFN-D  TabPFN-I TabPFN-D         SLZ    and the conditional average treatment effect (CATE)
+                                                                    function as  (x) = µ1(x) - µ0(x). The propensity score
+ 251   0.0195   mode imputation    mean imputation          0.0200  is defined as e(x) = E(T |X = x). Unlike the average
+ 807   0.0036                                               0.0037  treatment effect (ATE)  = E[ (X)], the CATE cap-
+ 816   0.0060   2.6087  0.2679     0.0149           0.0181  0.0060  tures HTE and is hence our estimand of interest.
+1046   0.0025   0.0116  0.0065     0.0020           0.0017  0.0025
+40983  5.5566   0.1081  0.01550    0.0026           0.0044  5.9513    3.2.2 State-of-the-art Many methods have recently
+                0.0030  0.0022     0.0013           0.0011          been proposed to estimate the CATE under the as-
+                2.3351  2.5356     1.2346           1.9884          sumption of ignorability ((Y (1), Y (0))  T |X). Most
+                                                                    but not all of these methods can be subsumed un-
+  The results for linear and logistic regression are pre-           der Künzel et al. [34]'s framework for "meta-learners",
+sented in Table 2 and Table 3, respectively. For linear             which they defined as "the result of combining su-
+regression, both TabPFN-I and TabPFN-D typically                    pervised learning or regression estimators (i.e., base
+                                                                    learners) in a specific manner while allowing the base
+    4For numerical stability, we further constrained n to be at     learners to take any form". These include:
+least 5,000.
+                                                                    · S-Learner: (a) Form an estimate µ^(t, x) for the
+    5Fractional imputation replaces each observation with a            function (t, x)  µt(x) by jointly regressing Yiobs
+missing binary response by the two pseudo-observations with            on Ti and Xi; (b) Set ^S(x) = µ^(1, x) - µ^(0, x).
+responses 1 and 0 and sample weights P (Y = 1 | X = x) and
+P (Y = 0 | X = x). This yields the same contribution to the
+score function as imputing the missing response with the single
+mean value y{0,1} y P (Y = y | X = x) = P (Y = 1 | X = x).
+6
+
+· T-Learner: (a) Form estimates µ^0(x), µ^1(x) for                           by the base learner in parentheses (e.g., `S-Learner
+   µ0(x) and µ1(x) by regressing Yiobs on Xi within                          (TabPFN)').
+   the control and treatment groups respectively; (b)
+                                                                               In each experiment, we generate a dataset accord-
+   Set ^T (x) = µ^1(x) - µ^0(x).                                             ing to the Neyman-Rubin model detailed above, with
+                                                                             Xi  Unif([-.5, .5]6) and Yi(t) = µt(Xi) + i for t =
+· R-Learner [39]: (a) Form estimates e^(x) for e(x)                          0, 1, where i  N (0, 2). We explore 6 different con-
+   and m^ (x) for m(x) = E(Y obs|X = x); (b) Compute                         figurations of the functions e(x),  (x) and b(x) =
+                                                                             (µ0(x)+µ1(x))/2, but due to space limits, present only
+   residuals Yi = Yiobs - m^ (Xi), Ti = Ti - e^(Xi); (c)                     the two representative cases in the main paper:
+   Solve
+                                                                                · Setup A: complicated e(x) and b(x), but a rel-
+   (3)       ^R(·)  =  arg min      1   n   Yi -  (Xi)Ti  2.                        atively simple  (x).
+                                    n  i=1
+                                                                                · Setup E: large b(x) resulting in substantial con-
+                                                                                    founding, discontinuous  (x).
+· DR-Learner [32]: (a) Form estimates µ^0(x) for
+   µ0(x), µ^1(x) for µ1(x), and e^(x) for e(x); (b) Com-                     Complete specifications of the functional forms and
+                                                                             other settings are given in Appendix B. We vary two
+   pute doubly robust pseudo-outcomes Yi using these                         key experimental parameters: the training set size n
+   models6; (c) Form an estimate ^DR(x) for  (x) by                          and noise level 2. For evaluation, we generate a fixed
+                                                                             test set of size 10000 and report the MSE of the esti-
+   regressing Yi on Xi.                                                      mated treatment effect function evaluated on the test
+· X-Learner [34]: (a) Form estimates µ^0(x) for                              set.
+
+   µ0(x) and µ^1(x) for µ1(x); (b) Impute treatment                          Fig 2: Test MSE of various CATE estimators under
+   effects: Di1 = Yiobs - µ^0(Xi) (treatment group) and                      Setup A (top) and Setup E (bottom) over 100 rep-
+   Di0 = µ^1(Xi) - Yiobs (control group); (c) Form pre-                      etitions. The left panels show results for the small-
+   liminary estimates ^j(x) for  (x) by regressing Di0                       sample, high-variance scenario (n = 500, 2 = 2), while
+   on Xi for j = 0, 1; (d) Combine the two estimates                         the right panels display the large-sample, low-variance
+   via ^X (x) = g(x)^0(x) + (1 - g(x))^1(x) (typically                       scenario (n = 2000, 2 = 0.5).
+   g(x) = e^(x)).
+                                                                               3.2.4 Results We display the results for Setup A
+  Foster and Syrgkanis [21] advocated for either the                         and E in Figure 2 and defer the complete set of exper-
+R-Learner or DR-Learner as, unlike the S-, T- and                            imental results to Table 7 in Appendix B. Most strik-
+X-Learners, they satisfy Neyman orthogonality, which                         ingly, across all experimental settings, using TabPFN
+result in theoretically faster estimation rates so long as                   as the base learner in a meta-learner strategy greatly
+the base learners used to estimate the nuisance param-                       improves upon its AutoML counterpart. Second, de-
+eters (e.g. e(x) and m(x)) satisfy certain convergence                       spite its lack of Neyman orthogonality or double ro-
+properties. They used Wang et al. [55]'s AutoML al-                          bustness, S-Learner (TabPFN) achieves the best ac-
+gorithm7 as the base learner in the meta-leaner strate-                      curacy in most settings and is among the top two
+gies detailed above, and showed that the R-Learner or
+DR-Learner indeed achieved better performance.
+
+  3.2.3 Experimental design We repeat Foster and
+Syrgkanis [21]'s experiments, but add TabPFN as a
+choice of base learner. We compare the five meta-
+learner strategies detailed above, together with an "or-
+acle" comprising the R-Learner fitted with the true
+nuisance functions m(x) and e(x). Note that the op-
+timization problem (3) for the R-Learner is solved via
+weighted least squares. Since TabPFN currently does
+not support weighted loss minimization, this means
+that it cannot be used as a base learner for both the
+R-Learner and oracle methods. This results in 10 to-
+tal estimators (2 base learners × 6 methods ­ 2 exclu-
+sions). Each estimator is named by its method followed
+
+   6 Y~i  =  Ti (Yi -µ^1 (Xi ))  -  (1-Ti)(Yi-µ^0(Xi))  + µ^1(Xi) - µ^0(Xi)
+                   e^(Xi)                  1-e^(Xi)
+   7AutoML uses cross-validation (CV) and a smart explo-
+
+ration strategy to select from a collection of the most popular
+
+machine learning models and to tune their hyperparameters.
+TABPFN: ONE MODEL TO RULE THEM ALL?                          7
+
+performers in almost all settings. Our results stand         Fig 3: RMSE of TabPFN-based CATE estimators
+in contrast to those of Foster and Syrgkanis [21] and        against SOTA methods on the ACIC 2017 benchmark.
+most of the current HTE literature, which has tended         Results are shown across panels organized by error
+to de-emphasize the role played by the base learner          type (columns) and selection strength  (rows). Col-
+because the error it accrues when estimating the nui-        ored bars represent meta-learners built on TabPFN:
+sance parameters becomes second-order for the R- and         S-Learner, T-Learner, X-Learner, DR-Learner. The S-
+DR-Learners under what they consider to be rela-             , T-, and X-learners enhanced with a propensity score
+tively mild conditions. The superior performance of S-       covariate are indicated with the same colors but deco-
+Learner (TabPFN) shows that this asymptotic regime           rated with a shaded pattern. Bayesian Causal Forests
+is sometimes not attained even under relatively sim-         is shown as the shaded yellow bar.
+ple simulation settings, and that the choice of base
+learner can be as important as the choice of met-            a TabPFN classifier and then use the fitted score val-
+alearner framework. Indeed, the superior regulariza-         ues as an additional covariate when fitting each base
+tion of TabPFN compared to other regression estima-          learner model.8 Under strong selection strength, the
+tors may have a special synergy with the S-Learner           resulting methods, especially the X-Learner, all en-
+strategy, resulting in its superior accuracy, especially     joy improved performance that is competitive with
+in low sample size and signal-to-noise ratio (SNR) set-      the state-of-the-art. Finally, we note that the DR-
+tings.                                                       learner, despite its semi-parametric optimality guar-
+                                                             antees, again does not have the best performance in
+  3.2.5 Real data comparison We evaluate the TabPFN-         any setting. Full experimental details and per-scenario
+based meta-learners on the semi-synthetic ACIC 2017          results are provided in Appendix B.2.
+competition benchmark based on the IHDP covari-
+ates [8, 17, 26]. The benchmark provides 6,000 datasets      3.3 Study III: prediction under covariate shift
+generated from real covariates under a controlled
+set of data-generating processes (DGPs), varying (i)           3.3.1 Problem and motivation In regression and
+the error structure (IID, non-additive, and group-           classification problems, covariate shift refers to the sce-
+correlated), (ii) the selection strength  (i.e. variability  nario where the marginal covariate distribution p(x)
+of the true propensity score), (iii) the treatment effect
+size, and (iv) the noise level. Each scenario includes           8The variant is not used for the DR-learner since it already
+ground-truth CATEs, allowing performance assess-             makes use of the propensity score to impute pseudo-outcomes.
+ment by RMSE. We compare the four TabPFN-based
+meta-learners (S-, T-, X-, and DR-Learner) against the
+16 methods described in Hahn, Dorie and Murray [26]
+that are reported with complete benchmark results.
+These methods notably include Causal Forests (GRF,
+Athey, Tibshirani and Wager 3), Targeted Learning
+(TL, Coyle et al. 14), various versions of BART, and
+Bayesian Causal Forests (BCF, Hahn, Murray and
+Carvalho 27), all of which are considered in the liter-
+ature to be strong baselines. We do not compare with
+the AutoML-based metal-learners due to the much
+higher computational overhead required in compari-
+son with using TabPFN.
+
+  Figure 3 reports the RMSE of each method aver-
+aged within each error type and selection strength
+level. Under weak selection strength, all TabPFN-
+based estimators match or outperform the baselines.
+Under strong selection strength, their performance de-
+grades somewhat, which we believe is due to the phe-
+nomenon of regularization-induced confounding de-
+scribed in Hahn, Murray and Carvalho [27]--an is-
+sue that BCF was specifically designed to fix. Bor-
+rowing an idea from BCF, we enhanced the S-, T-, X-
+Learners by first fitting a propensity score model using
+8                                                        weights:
+
+differs between training and test datasets, while the              ps =  5  Unif (0,  0.5)  +  1  Unif (0.5,  1),
+predictive distribution p(y|x) remains the same. This                    6                     6
+distributional mismatch frequently arises in real-world
+applications--for instance, due to outdated training               pt =  1  Unif (0,  0.5)  +  5  Unif (0.5,  1).
+data or sampling biases between datasets. Since covari-                  6                     6
+ate shift can substantially degrade model performance,
+it has become an active area of research [42, 43, 56].   The response variable follows Y |X = x  N (f (x), 1),
+                                                         where we investigate five distinct mean functions: (i)
+  More precisely, we observe a training dataset Ds       f (x) = cos(2x) - 1; (ii) f (x) = sin(2x); (iii) f (x) =
+comprising n IID observations from a source distri-      |x - 1/2| - 1/2; (iv) f (x) = f1(x) + f2(x) - 2, f1(x) =
+bution ps(x)p(y|x) and wish to predict the responses     min{1, max{4x - 1, 0}} and f2(x) = min{1, max{4x -
+on a test dataset Dt comprising m IID observations       3, 0}}; (v) f (x) = x sin(4x). In each experiment, we
+from the target distribution pt(x)p(y|x), with accuracy  generate training and test datasets as described above,
+evaluated via prediction MSE. Furthermore, ps(x) and     with the size of the test set fixed at m = 104, while we
+pt(x) are usually unknown.                               vary the training set size n  {500, 600, . . . , 1200}. The
+                                                         results are averaged over 500 replicates.
+  3.3.2 State-of-the-art Classical approaches to ad-
+dress covariate shift make use of importance weight-     Fig 4: Comparison of prediction MSE for different co-
+ing techniques. More recently, the problem has been      variate shift methods across varying sample sizes (n)
+studied under the assumption that the regression func-   and scenarios.
+tion f (x) = E(Y |X = x) has bounded norm in a re-
+producing kernel Hilbert space, in which case kernel       3.3.4 Results Figure 4 shows the prediction MSE
+ridge regression (KRR) with a carefully tuned regu-      as a function of n for all five methods, with respect to
+larization parameter  was shown to achieve optimal       the mean functions (i), (iii), (iv), and (v) (results for
+rates, whereas a naïve, unadjusted estimator is subop-   setting (ii), which shows similar patterns to (i), are
+timal [36]. Wang [54] introduced a method based on       provided in Appendix C). We observe that TabPFN
+"pseudo-labeling" (PL) for selecting , claiming that     consistently outperforms the PL method, even match-
+it improves upon Ma, Pathak and Wainwright [36]'s        ing or exceeding the oracle method's performance at
+work by relaxing certain distributional assumptions.     larger sample sizes (n  800), in all settings apart from
+Specifically, PL fits KRR on the first half of Ds and    (iii). This is despite TabPFN not making use of the
+uses the fitted model to impute labels for an auxiliary  auxiliary information in Dt required by PL and the
+unlabeled dataset Dt drawn from pt(x). It then fits a    oracle method.
+collection of KRR models with different  parameters
+on the second half of Ds and uses Dt with the imputed      3.3.5 Real data comparison To assess performance
+labels to select the best-performing model.              beyond the univariate synthetic setting of Wang [54],
+                                                         we evaluate the methods on two multivariate UCI
+  3.3.3 Experimental design We repeat Wang [54]'s        regression datasets: Airfoil Self-Noise (n = 1503, 5
+experiments, but add a simple comparator approach        covariates) and Concrete Compressive Strength (n =
+which directly fits a model on Ds using TabPFN and
+does not make any adjustment. In addition to PL, the
+following methods were used as comparators:
+
+· Naive: Fit a gradient boosting regression model on
+   Ds, tuned using five-fold CV.
+
+· Importance-Weighted (IW): Fit a gradient
+   boosting model on Ds similarly to the naive ap-
+   proach, but with the loss function weighted by the
+   true density ratio pt(x)/ps(x).
+
+· Wang-Oracle: A variant of PL where the true con-
+   ditional mean E(Y |X = x) is used for Dt instead of
+   imputed values. This serves as an oracle benchmark
+   within Wang [54].
+
+We consider univariate covariate distributions that are
+Gaussian mixtures. The training and test distributions
+have the same components but differ in their mixing
+                                                  TABPFN: ONE MODEL TO RULE THEM ALL?      9
+
+1030, 8 covariates). For each dataset, we perform a                                        4.1 Adaptivity in regression
+70/30 train­test split and resample the test set with
+replacement using weights (x) = exp(x) following                                             To investigate adaptivity in regression, we consider
+the procedure introduced by Tibshirani et al. [51]. Two                                    the problem of sparse linear regression and compare
+shift vectors  are considered per dataset, and results                                     the performance of TabPFN against that of special-
+are averaged over 10 repetitions. Table 4 reports the                                      ized methods, namely LASSO, SCAD, and MCP re-
+mean prediction MSE and standard error across repe-                                        gression, across a range of data-generating settings.
+titions. Across all datasets and shift settings, TabPFN                                    We find that TabPFN can outperform these meth-
+achieves the best predictive accuracy, often by a sub-                                     ods and can even be used to estimate regression pa-
+stantial margin. Full experimental details are provided                                    rameters with smaller bias than LASSO. To comple-
+in Appendix C.2.                                                                           ment this analysis, we also perform a visual compar-
+                                                                                           ison of TabPFN with Gaussian process regression in
+                                  Table 4                                                  Section D, observing that the two methods perform
+ Average PMSE (mean ± standard error) over 10 random                                       similarly, but with subtle differences in their inductive
+splits under covariate shift. Each dataset is evaluated under                              biases.
+
+                              two  settings.                                                 4.1.1 Experimental design We follow the experi-
+                                                                                           mental design of Hastie, Tibshirani and Tibshirani [28]
+Dataset   Setting  Wang-Oracle           PL           Naïve          IW        TabPFN      and generate Y = X + , with two types of   Rp
+Airfoil                                                                                    having sparsity s (i.e., s entries are 1 and the rest are
+             1     13.07 ± 2.09    14.49 ± 2.15   10.25 ± 3.33  21.46 ± 7.07  3.20 ± 0.84  0):
+Concrete     2      8.29 ± 0.72     8.85 ± 0.81   3.73 ± 0.57   3.46 ± 0.90   1.71 ± 0.22
+                                                                                              · Beta-type I:  has s components equal to 1,
+             1     48.72 ± 15.83  109.15 ± 24.72  5.50 ± 1.30   5.36 ± 1.85   2.27 ± 0.45         spaced approximately evenly across the p in-
+             2     63.10 ± 19.42  116.68 ± 26.49  7.72 ± 0.84   7.78 ± 2.02   4.89 ± 0.70         dices, and the rest equal to 0;
+
+               4. TABPFN ADAPTIVITY                                                           · Beta-type II:  has its first s components equal
+                                                                                                  to 1, and the rest equal to 0.
+  In this section, we illustrate the adaptivity of
+TabPFN, which we believe provides a compelling ex-                                         Features corresponding to non-zero (zero) coefficients
+planation for its strong predictive performance across                                     are termed relevant (irrelevant). We fix p = 100 and
+a wide range of tasks, as demonstrated in the previous                                     vary s  {1, 5, 10, 20, 30}. The features {xi : i  [n]}
+sections. By adaptivity, we refer to the ability of a pro-                                 are drawn i.i.d. from Np(0, ), where Np denotes
+cedure to automatically adjust to unknown properties                                       a p-dimensional Gaussian and  is either the iden-
+of the underlying data-generating process while still                                      tity matrix or a matrix with (i, j)-th entry equal
+achieving near-optimal performance. This notion has                                        to 0.35|i-j| (banded correlation). Since beta-type
+deep roots in nonparametric statistics, where it was                                       I and II are equivalent when  is identity, this
+classically studied in the context of regression. Foun-                                    gives 3 distinct experimental scenarios. The response
+dational work by Lepskii [35], and later by Donoho                                         yi is generated with additive Gaussian noise, who
+and Johnstone [16], established estimators that could                                      variance 2 is chosen to meet the desired signal
+adapt to unknown smoothness levels of a target func-                                       to noise ratio (SNR), denoted by . Specifically,
+tion, achieving optimal rates without prior specifica-                                     we set 2 = ()/. We consider SNR values
+tion of regularity.                                                                          {0.05, 0.25, 1.22, 6}, spanning low to high noise
+                                                                                           regimes. Finally, we select n  {50, 500}. This yields
+  However, the form of adaptivity exhibited by TabPFN                                      5 (sparsity) × 3 (beta and design matrix) × 4 (SNR) ×
+appears both different and broader. Unlike traditional                                     2 (sample size) = 120 experimental settings. For each
+methods that adapt within a single nonparametric                                           setting, we evaluate performance on an independent
+framework--typically modulating local smoothness or                                        test set of size 1000, with the results averaged over 100
+bandwidth--TabPFN seems capable of flexibly be-                                            experimental replicates. Regularization parameters for
+having like a highly nonparametric method when                                             comparators is tuned using 5-fold cross-validation.
+the signal is irregular, yet also exploiting parametric
+structure when present. In other words, rather than                                          4.1.2 Prediction performance comparison In Fig-
+committing to either a parametric or nonparamet-                                           ure 5, we plot the relative test MSE (averaged over
+ric regime, TabPFN dynamically adjusts across these                                        100 repetitions) of the comparator methods to that
+regimes, a property that is rare among classical estima-                                   of TabPFN. We focus on the orthogonal feature case,
+tors. We will investigate this property in the context                                     with the results for correlated features deferred to Ap-
+of both regression and classification.                                                     pendix E.2. Compared to LASSO, we observe that
+                                                                                           TabPFN tends to perform better for s  10, with
+10                                                               4.2 Adaptivity in classification
+
+Fig 5: Relative test MSE compared to TabPFN, using                 We examine the classification performance of TabPFN
+a beta-type I orthogonal design. Rows show results               in the presence of label noise, that is, when the ob-
+for n = 50 (top) and n = 500 (bottom); columns show              served labels Y~1, Y~2, . . . , Y~n in our training set are
+increasing SNR.                                                  corrupted from their true values Y1, Y2, . . . , Yn, such
+                                                                 as by coding errors. For simplicity, we consider ho-
+the performance gap increasing for higher sample size            mogeneous noise in a binary class setting: P(Y =
+and SNR. Conversely, compared to SCAD and MCP,                   Y |X = x, Y = y) = , y  {0, 1}, where  is the cor-
+TabPFN tends to perform better for s  5 and for                  ruption fraction. The goal is to train a classifier to
+lower sample size and SNR. In other words, TabPFN                predict the original label, namely, we want to esti-
+seems to achieve a type of middle-ground between the             mate a mapping C : Rd  {0, 1} minimizing the risk
+two classes of methods.                                          R(C) = E[C(X) = Y ].
+
+  4.1.3 Descriptive accuracy Beyond predictive accu-               This problem is especially interesting when the con-
+racy, we also consider the descriptive accuracy of the           ditional distribution of the true label, p(Y |X = x), has
+TabPFN model­how well does it reflect the sparse lin-            a simple parametric form. For example, if X|Y = y
+ear generating model and how it may be used to es-               is Gaussian, the noise-free classification problem can
+timate the true regression coefficients. We can visu-            be solved efficiently via linear discriminant analysis
+ally inspect the fitted TabPFN model using Accumu-               (LDA). On the other hand, the conditional distribu-
+lated Local Effects (ALE) plots, which summarize the             tion of the corrupted label, p(Y~ |X = x), does not have
+dependence of the model on each individual feature               the correct functional form, which makes LDA incon-
+[2].9 Figure 21 in the Appendix exhibits the results             sistent. In comparison, Cannings, Fan and Samworth
+when the features are orthogonal. We observe that for            [10] proved that k-nearest neighbors (kNN) and ker-
+moderate to high SNR ( 1.22), almost all ALE plots               nelized support vector machines (SVM) can be ro-
+of relevant features are roughly linear. In addition,            bust to label noise. However, these methods, which
+when n = 500, the ALE plots for the irrelevant fea-              are based on local averaging, pay a price in terms of
+tures display much less variation, which suggests that           being less efficient when the labels are noise free.
+the TabPFN model is indeed well-approximated by a
+low-dimensional linear surface. For smaller SNR, the               We show that TabPFN is able to break this robustness-
+ALE plots are generally nonlinear and are not shown.             efficiency trade-off. On one hand, it remains consistent
+                                                                 in the presence of label noise. On the other hand, it is
+  The linearity of the ALE plots suggests a two-step             more efficient than kNN, SVM and even LDA across
+pipeline for using TabPFN to estimate the true re-               all simulation settings, including noiseless settings.
+gression coefficients: We first fit a TabPFN model to
+the data and then fit an ordinary least squares model              4.2.1 Experimental design. Following Cannings, Fan
+to the TabPFN fitted values. In Table 5, we com-                 and Samworth [10], we generate data from two models:
+pare the accuracy of this procedure to that of LASSO,
+SCAD, and MCP, further breaking down the error into               M1 P(Y = 1) = 0.9 with X|Y = r  N5(µr, I), where
+squared bias and variance. For smaller values of s, we                  µ1 = (3/2, 0, . . . , 0) = -µ0.
+observe that the TabPFN performs similarly to SCAD
+and MCP: Its coefficients have much smaller bias com-             M2 X  U ([0, 1]5) with P(Y = 1|X = x) = min{4(x1 -
+pared to LASSO while having comparable variance,                        1/2)2 + 4(x2 - 1/2)2, 1}.
+thus avoiding the well-known tendency of LASSO to
+bias its estimates via shrinkage.                                For each model, we generate an IID sample of size
+                                                                 n + 104, reserving the first n observations for training
+    9ALE plots avoid both the confounding associated with con-   and the remaining 104 for testing. For the training set,
+ditional dependence plots and the out-of-sample instability as-  we set   {0.1, . . . , 0.4}. The optimal Bayes classifier
+sociated with marginal dependence plots.
+                                                                 minimizes this risk: CBayes(x) = 1((x) > 0.5), where
+
+                                                                 (x) = P(Y = 1|X = x). For any classifier C, we define
+                                                                 its excess risk as R(C) - R(CBayes).
+
+                                                                   We compare three classifiers: Bayes, k-NN, LDA,
+                                                                 and TabPFN. For each training dataset, each classifier
+                                                                 trained on two versions of the data: a clean training
+                                                                 set and a noise-corrupted version, hence yielding a to-
+                                                                 tal of six classification models to be evaluated. Details
+                                                                 such as hyper-parameter selection are deferred to Ap-
+                                                                 pendix F. This process is repeated 1000 times, with
+                                                                 Figure 6 showing the average excess risk across repe-
+                                                                 titions.
+                                          TABPFN: ONE MODEL TO RULE THEM ALL?                                                       11
+
+                                                                      Table 5
+                                 n = 500, beta-type I, orthogonal design (simple linear regression)
+
+                    TabPFN                                LASSO                            SCAD                            MCP
+
+SNR   s  Relevant             Irrelevant        Relevant       Irrelevant        Relevant       Irrelevant       Relevant     Irrelevant
+1.22                     Bias2 Var        Bias2 Var       Bias2 Var        Bias2 Var       Bias2 Var        Bias2 Var       Bias2 Var
+         Bias2 Var
+  6
+      1 0.0000   0.0012  0.0000  0.0000   0.0058  0.0016  0.0000  0.0000   0.0000  0.0012  0.0000  0.0000   0.0000  0.0012  0.0000  0.0000
+      5 0.0004   0.0081  0.0000  0.0004   0.0172  0.0085  0.0000  0.0006   0.0001  0.0077  0.0000  0.0001   0.0001  0.0077  0.0000  0.0002
+      10 0.0028  0.0196  0.0000  0.0025   0.0244  0.0174  0.0000  0.0020   0.0002  0.0180  0.0000  0.0007   0.0002  0.0179  0.0000  0.0007
+      20 0.0175  0.0500  0.0004  0.0099   0.0303  0.0360  0.0001  0.0079   0.0005  0.0400  0.0001  0.0051   0.0005  0.0407  0.0001  0.0049
+      30 0.0387  0.0783  0.0018  0.0177   0.0301  0.0579  0.0002  0.0166   0.0011  0.0707  0.0002  0.0146   0.0011  0.0719  0.0002  0.0142
+
+      1 0.0000   0.0003  0.0000  0.0000   0.0022  0.0002  0.0000  0.0000   0.0000  0.0002  0.0000  0.0000   0.0000  0.0002  0.0000  0.0000
+      5 0.0000   0.0016  0.0000  0.0001   0.0038  0.0017  0.0000  0.0001   0.0000  0.0015  0.0000  0.0000   0.0000  0.0016  0.0000  0.0000
+      10 0.0004  0.0037  0.0000  0.0006   0.0053  0.0035  0.0000  0.0004   0.0000  0.0033  0.0000  0.0001   0.0000  0.0033  0.0000  0.0001
+      20 0.0022  0.0089  0.0001  0.0028   0.0070  0.0073  0.0000  0.0014   0.0001  0.0067  0.0000  0.0002   0.0001  0.0067  0.0000  0.0002
+      30 0.0055  0.0168  0.0003  0.0061   0.0079  0.0116  0.0000  0.0027   0.0001  0.0110  0.0000  0.0004   0.0001  0.0110  0.0000  0.0004
+
+                                                                           Fig 7: TabPFN (noisy) excess risk for varying  values
+                                                                           under M1 (left) and M2 (right).
+
+Fig 6: Excess risks under Model M1 (top row) and                                                 5. DISCUSSION
+Model M2 (bottom row). The left column shows re-
+sults for  = 0.1, while the right column presents re-                      5.1 Foundation models
+sults for  = 0.3.
+                                                                             In 2021, Bommasani et al. [7] coined the term "foun-
+  4.2.2 Prediction performance comparison. Under                           dation model" to refer to "any model that is trained on
+both generative models, TabPFN (clean) performs as                         broad data (generally using self-supervision at scale)
+well as the optimal Bayes classifier when the train-                       that can be adapted (e.g., fine-tuned) to a wide range
+ing set size is bigger than 2K. TabPFN (noisy) shows                       of downstream tasks". They also noted a paradigm
+slightly worse performance than its clean-data coun-                       shift in artificial intelligence which de-prioritized the
+terpart but demonstrates exceptional robustness to                         development of task-specific models in favor of build-
+label noise in all cases while maintaining high ac-                        ing these foundation models, with LLMs being the
+curacy. Even with noise levels as high as  = 0.3,                          most prominent examples. Until recently, the modal-
+TabPFN (noisy) nearly matches the optimal classifier                       ity of tabular data has resisted this trend, but the
+given a sufficiently large training set ( 5K samples).                     tide may be turning. Hollmann et al. [30] provided
+LDA exhibits no robustness under M1 and performs                           a proof-of-concept that, in addition to regression and
+poorly under M2 due to the nonlinear Bayes decision                        classification, TabPFN can support "data generation,
+boundary. While the k-NN classifier shows some con-                        density estimation, learning reusable embeddings and
+sistency--particularly under M2 with low noise lev-                        fine-tuning", consequently claiming that TabPFN is a
+els--it is less robust than TabPFN in other scenarios.                     tabular foundation model.10 Our investigations sup-
+Moreover, Figure 7 demonstrates that TabPFN re-                            port this claim by showing that simple applications
+mains robust even at  = 0.4. Interestingly, we notice                      of TabPFN can surpass state-of-the-art approaches to
+that there is a significant performance gap between                        some statistical problems.
+ = 0.3 and  = 0.4 for small training set sizes.
+                                                                             These studies are of course preliminary and we do
+                                                                           not suggest that TabPFN is a perfect model--it seems
+                                                                           to struggle with dense regression, cannot handle  500
+
+                                                                               10These capabilities were not fully investigated by Hollmann
+                                                                           et al. [30] and some are not supported by their publicly available
+                                                                           code at the time of writing.
+12                                                              models, factor models, and Gaussian mixture mod-
+                                                                els [45], RNA folding time density estimation [48], and
+features, and has MSE curves which seem to plateau              Poisson mean estimation under empirical Bayes [50].
+for n  10K samples [38]. On the other hand, the evi-            None of these works provide a definition of ICL, but we
+dence suggests that tabular foundation models are not           find that the common denominator is that they train
+only possible, but have the potential to reshape how a          a transformer model using a large number of synthetic
+wide range of statistical tasks are approached. In addi-        datasets to learn a mapping on the space of datasets.
+tion, Van Breugel and Van Der Schaar [52] have a bold           The target of the mapping can be a causal graph, a
+vision of tabular foundational models being able to             posterior distribution on parameter vector, or a Pois-
+perform automatic meta-analyses, out-of-domain sim-             son mean vector estimate. In each problem, the ICL
+ulation, and other tasks for which adequate method-             approach achieves higher accuracy than SOTA meth-
+ology does not yet exist. This line of thinking--that           ods, such as variational inference for posterior approx-
+there may one day be one model to rule them all--               imation, or non-parametric maximum-likelihood esti-
+is of course contrary to mainstream statistical think-          mation in the case of empirical Bayes.
+ing, which has traditionally emphasized bespoke mod-
+els for different problems. Just as AI scientists wrestle       5.3 Future directions
+with the academic and societal consequences of foun-
+dation models, statisticians may also be forced to con-           These advances present both opportunities and chal-
+front profound changes in our field.                            lenges for the statistical community. TabPFN's success
+                                                                stems from a synthesis of ideas across disciplines, cou-
+5.2 In-context learning                                         pled with non-trivial engineering efforts. The current
+                                                                version [30] builds on its predecessor [29], with key im-
+  Another way in which TabPFN challenges current                provements in (1) prior data generation and (2) trans-
+statistical thinking is via its illustration of the power       former architecture--both empirically shown to en-
+of "in-context learning", whose historical development          hance performance. As statisticians, we can contribute
+we now discuss. In a landmark paper, Brown et al.               to this evolving field by addressing critical questions:
+[9] studied the LLM GPT-3 and discovered that it
+could learn how to perform tasks (e.g., language trans-         · Interpretability & theoretical foundations:
+lation) that it was not explicitly trained to do and               Transformers, with millions of parameters, often
+without changing any of the model's parameters, sim-               lack interpretability. Understanding when TabPFN
+ply by providing examples of the task in a prompt                  succeeds or fails--along with its statistical guaran-
+(text input) to the model. They called this ability                tees--remains an open problem.
+"in-context learning" (ICL). Garg et al. [22] later
+framed ICL as a statistical learning problem. Under             · Reliability in practice: While TabPFN and
+their framework, a prompt P is a random sequence                   related methods show promise as off-the-shelf
+(X1, f (X1), . . . , Xn, f (Xn), Xn+1), where X1, . . . , Xn+1     tools for biomedical and other applications, their
+are drawn IID from a covariate distribution DX and                 real-world reliability--particularly for inference
+f is drawn from a distribution Df over a function                  tasks--requires rigorous evaluation.
+class F . A model M is a fixed mapping from prompts
+to the (real-valued) label space and is said to have            · Scalability & limitations: Current implementa-
+learned F in-context (with respect to (DX , Df )) if               tions struggle with dense/high-dimensional regres-
+EP [l(M (P ), f (Xn+1))]   for some tolerance  and                 sion and > 10K samples. Addressing this bottleneck
+loss function l. Garg et al. [22] was able to show via nu-         is essential for broader applicability. Recent work
+merical experiments that a transformer, trained from               [25, 44] offers preliminary solutions, but fundamen-
+scratch on IID prompts generated as described above,               tal constraints remain.
+could successfully learn simple function classes (e.g.
+linear functions) in-context, inspiring a wave of the-                                  REFERENCES
+oretical interest in the problem (see for instance Bai
+et al. [5], Kim, Nakamaki and Suzuki [33], Zhang, Frei           [1] Angelopoulos, A. N., Bates, S., Fannjiang, C., Jor-
+and Bartlett [57]).                                                   dan, M. I. and Zrnic, T. (2023). Prediction-powered in-
+                                                                      ference. Science 382 669­674.
+  On the other hand, it seems that Brown et al. [9]
+and Garg et al. [22]'s definitions of ICL are respec-            [2] Apley, D. W. and Zhu, J. (2020). Visualizing the ef-
+tively too broad and too narrow to capture the scope of               fects of predictor variables in black box supervised learn-
+the learning strategy employed by TabPFN and other                    ing models. Journal of the Royal Statistical Society Series
+recent work claiming to implement ICL to solve sta-                   B: Statistical Methodology 82 1059-1086.
+tistical estimation problems. These include causal dis-
+covery [15], posterior inference for generalized linear          [3] Athey, S., Tibshirani, J. and Wager, S. (2019). Gen-
+                                                                      eralized random forests. The Annals of Statistics 47 1148
+                                                                      ­ 1178. https://doi.org/10.1214/18-AOS1709
+
+                                                                 [4] Azriel, D., Brown, L. D., Sklar, M., Berk, R.,
+                                                                      Buja, A. and Zhao, L. (2022). Semi-supervised linear re-
+                                                                      gression. Journal of the American Statistical Association
+                                                                      117 2238­2251.
+TABPFN: ONE MODEL TO RULE THEM ALL?                                 13
+
+ [5] Bai, Y., Chen, F., Wang, H., Xiong, C. and Mei, S.             [20] Feurer, M., Van Rijn, J. N., Kadra, A., Gijsbers, P.,
+      (2023). Transformers as statisticians: provable in-context          Mallik, N., Ravi, S., Müller, A., Vanschoren, J. and
+      learning with in-context algorithm selection. Advances in           Hutter, F. (2021). Openml-python: an extensible python
+      Neural Information Processing Systems 36 57125­57211.               api for openml. Journal of Machine Learning Research 22
+                                                                          1­5.
+ [6] Battocchi, K., Dillon, E., Hei, M., Lewis, G.,
+      Oka, P., Oprescu, M. and Syrgkanis, V. (2019).                [21] Foster, D. J. and Syrgkanis, V. (2023). Orthogonal
+      EconML: a Python package for ML-based heterogeneous                 statistical learning. The Annals of Statistics 51 879­908.
+      treatment effects estimation. https://github.com/py-
+      why/EconML. Version 0.x.                                      [22] Garg, S., Tsipras, D., Liang, P. S. and Valiant, G.
+                                                                          (2022). What can transformers learn in-context? a case
+ [7] Bommasani, R., Hudson, D. A., Adeli, E., Alt-                        study of simple function classes. Advances in Neural In-
+      man, R., Arora, S., von Arx, S., Bernstein, M. S.,                  formation Processing Systems 35 30583­30598.
+      Bohg, J., Bosselut, A., Brunskill, E. et al. (2021). On
+      the opportunities and risks of foundation models. arXiv       [23] Garnelo, M., Schwarz, J., Rosenbaum, D., Viola, F.,
+      preprint arXiv:2108.07258.                                          Rezende, D. J., Eslami, S. and Teh, Y. W. (2018).
+                                                                          Neural processes. arXiv preprint arXiv:1807.01622.
+ [8] Brooks-Gunn, J., Liaw, F.-r. and Klebanov, P. K.
+      (1992). Effects of early intervention on cognitive function   [24] Grinsztajn, L., Oyallon, E. and Varoquaux, G.
+      of low birth weight preterm infants. The Journal of Pedi-           (2022). Why do tree-based models still outperform deep
+      atrics 120 350­359.                                                 learning on typical tabular data? Advances in Neural In-
+                                                                          formation Processing Systems 35 507­520.
+ [9] Brown, T., Mann, B., Ryder, N., Subbiah, M.,
+      Kaplan, J. D., Dhariwal, P., Neelakantan, A.,                 [25] Grinsztajn, L., Flöge, K., Key, O., Birkel, F.,
+      Shyam, P., Sastry, G., Askell, A. et al. (2020). Lan-               Jund, P., Roof, B., Jäger, B., Safaric, D., Alessi, S.,
+      guage models are few-shot learners. Advances in Neural              Hayler, A. et al. (2025). TabPFN-2.5: Advancing the
+      Information Processing Systems 33 1877­1901.                        State of the Art in Tabular Foundation Models. arXiv
+                                                                          preprint arXiv:2511.08667.
+[10] Cannings, T. I., Fan, Y. and Samworth, R. J. (2020).
+      Classification with imperfect training labels. Biometrika     [26] Hahn, P. R., Dorie, V. and Murray, J. S. (2019). At-
+      107 311­330.                                                        lantic causal inference conference (acic) data analysis chal-
+                                                                          lenge 2017. arXiv preprint arXiv:1905.09515.
+[11] Caruana, R., Karampatziakis, N. and Yesse-
+      nalina, A. (2008). An empirical evaluation of supervised      [27] Hahn, P. R., Murray, J. S. and Carvalho, C. M.
+      learning in high dimensions. In Proceedings of the 25th             (2020). Bayesian Regression Tree Models for Causal Infer-
+      International Conference on Machine learning 96­103.                ence: Regularization, Confounding, and Heterogeneous Ef-
+                                                                          fects (with Discussion). Bayesian Analysis 15 965 ­ 2020.
+[12] Chakrabortty, A. and Cai, T. (2018). Efficient and                   https://doi.org/10.1214/19-BA1195
+      adaptive linear regression in semi-supervised settings. The
+      Annals of Statistics 46 1541 ­ 1572.                          [28] Hastie, T., Tibshirani, R. and Tibshirani, R. (2020).
+                                                                          Best subset, forward stepwise or lasso? Analysis and rec-
+[13] Chipman, H. A., George, E. I. and McCulloch, R. E.                   ommendations based on extensive comparisons. Statistical
+      (2010). BART: Bayesian additive regression trees. The An-           Science 35 579­592.
+      nals of Applied Statistics 4 266­298.
+                                                                    [29] Hollmann, N., Müller, S., Eggensperger, K. and
+[14] Coyle, J. R., Hejazi, N. S., Malenica, I.,                           Hutter, F. (2022). TabPFN: a transformer that solves
+      Phillips, R. V., Arnold, B. F., Mertens, A.,                        small tabular classification problems in a second. In
+      Benjamin-Chung, J., Cai, W., Dayal, S., Col-                        NeurIPS 2022 First Table Representation Workshop.
+      ford Jr, J. M. et al. (2020). Targeting learning:
+      robust statistics for reproducible research. arXiv preprint   [30] Hollmann, N., Müller, S., Purucker, L., Krish-
+      arXiv:2006.07333.                                                   nakumar, A., Körfer, M., Hoo, S. B., Schirrmeis-
+                                                                          ter, R. T. and Hutter, F. (2025). Accurate predictions
+[15] Dhir, A., Ashman, M., Requeima, J. and van der                       on small data with a tabular foundation model. Nature
+      Wilk, M. (2025). A meta-learning approach to Bayesian               637 319­326.
+      causal discovery. In The Thirteenth International Confer-
+      ence on Learning Representations.                             [31] Kawakita, M. and Kanamori, T. (2013). Semi-
+                                                                          supervised learning with density-ratio estimation. Ma-
+[16] Donoho, D. L. and Johnstone, I. M. (1995). Adapt-                    chine Learning 91 189­209.
+      ing to Unknown Smoothness via Wavelet Shrinkage. Jour-
+      nal of the American Statistical Association 90 1200­1224.     [32] Kennedy, E. H. (2023). Towards optimal doubly ro-
+      https://doi.org/10.1080/01621459.1995.10476626                      bust estimation of heterogeneous causal effects. Electronic
+                                                                          Journal of Statistics 17 3008 ­ 3049.
+[17] Dorie, V., Hill, J., Shalit, U., Scott, M. and Cer-
+      vone, D. (2019). Automated versus Do-It-Yourself Meth-        [33] Kim, J., Nakamaki, T. and Suzuki, T. (2024). Trans-
+      ods for Causal Inference: Lessons Learned from a Data               formers are minimax optimal nonparametric in-context
+      Analysis Competition. Statistical Science 34 43 ­ 68.               learners. Advances in Neural Information Processing Sys-
+                                                                          tems 37 106667­106713.
+[18] Erickson, N., Purucker, L., Tschalzev, A.,
+      Holzmüller, D., Desai, P. M., Salinas, D. and                 [34] Künzel, S. R., Sekhon, J. S., Bickel, P. J. and Yu, B.
+      Hutter, F. (2025). TabArena: A living benchmark                     (2019). Metalearners for estimating heterogeneous treat-
+      for machine learning on tabular data. arXiv preprint                ment effects using machine learning. Proceedings of the
+      arXiv:2506.16791.                                                   National Academy of Sciences 116 4156­4165.
+
+[19] Fernández-Delgado, M., Cernadas, E., Barro, S.                 [35] Lepskii, O. V. (1991). On a Problem of Adaptive Es-
+      and Amorim, D. (2014). Do we need hundreds of classi-               timation in Gaussian White Noise. Theory of Probability
+      fiers to solve real world classification problems? The Jour-        & Its Applications 35 454-466. https://doi.org/10.1137/
+      nal of Machine Learning Research 15 3133­3181.                      1135065
+
+                                                                    [36] Ma, C., Pathak, R. and Wainwright, M. J. (2023). Op-
+                                                                          timally tackling covariate shift in RKHS-based nonpara-
+14                                                                   [54] Wang, K. (2025). Pseudo-labeling for kernel ridge regres-
+                                                                           sion under covariate shift. The Annals of Statistics to ap-
+      metric regression. The Annals of Statistics 51 738 ­ 761.            pear.
+      https://doi.org/10.1214/23-AOS2268
+[37] Müller, S., Hollmann, N., Arango, S. P.,                        [55] Wang, C., Wu, Q., Weimer, M. and Zhu, E. (2021).
+      Grabocka, J. and Hutter, F. (2022). Transformers                     FLAML: a fast and lightweight automl library. Proceed-
+      can do Bayesian inference. In International Conference               ings of Machine Learning and Systems 3 434­447.
+      on Learning Representations.
+[38] Nagler, T. (2023). Statistical foundations of prior-data        [56] Yang, Y., Kuchibhotla, A. K. and Tchetgen Tchet-
+      fitted networks. In Proceedings of the 40th International            gen, E. (2024). Doubly robust calibration of prediction
+      Conference on Machine Learning. Proceedings of Machine               sets under covariate shift. Journal of the Royal Statistical
+      Learning Research 202 25660­25676. PMLR.                             Society Series B: Statistical Methodology 86 943­965.
+[39] Nie, X. and Wager, S. (2020). Quasi-oracle estimation of
+      heterogeneous treatment effects. Biometrika 108 299-319.       [57] Zhang, R., Frei, S. and Bartlett, P. L. (2024).
+[40] Olson, R. S., Cava, W. L., Mustahsan, Z., Varik, A.                   Trained transformers learn linear models in-context. Jour-
+      and Moore, J. H. (2018). Data-driven advice for applying             nal of Machine Learning Research 25 1­55.
+      machine learning to bioinformatics problems. In Biocom-
+      puting 2018: Proceedings of the Pacific Symposium 192­         [58] Zhu, X. (2010). Semi-supervised learning. In Encyclopedia
+      203. World Scientific.                                               of Machine Learning 892­897. Springer US, Boston, MA.
+[41] Pearl, J. (2009). Causality. Cambridge university press.
+[42] Qin, J., Liu, Y., Li, M. and and, C.-Y. H. (2025).                APPENDIX A: EXPERIMENT DETAILS FOR
+      Distribution-free prediction intervals under covariate shift,                              STUDY I
+      with an application to causal inference. Journal of the
+      American Statistical Association 120 559­571.                    We adopt the same experimental setup as in Song,
+[43] Qiu, H., Dobriban, E. and Tchetgen Tchetgen, E.                 Lin and Zhou [49]. For completeness, we detail the sim-
+      (2023). Prediction sets adaptive to unknown covariate          ulation settings in Section A.1 and present additional
+      shift. Journal of the Royal Statistical Society Series B:      results in Section A.2.
+      Statistical Methodology 85 1680­1705.
+[44] Qu, J., Holzmüller, D., Varoquaux, G. and Mor-                  A.1 Simulation settings
+      van, M. L. (2025). TabICL: a tabular foundation model
+      for in-context learning on large data. arXiv preprint            In correspondence with the three settings in Table 6,
+      arXiv:2502.05564.                                              we describe the data-generating model for each setting
+[45] Reuter, A., Rudner, T. G., Fortuin, V. and                      respectively.
+      Rügamer, D. (2025). Can transformers learn
+      full Bayesian inference in context? arXiv preprint             · Linear regression working model. In this set-
+      arXiv:2501.16825.                                                 ting, the data is generated from
+[46] Rubin, D. B. (1974). Estimating causal effects of treat-
+      ments in randomized and nonrandomized studies. Journal               Y = 0 + 1X + 2 X3 - X2 + exp(X) + ,
+      of Educational Psychology 66 688.
+[47] Rubin, D. B. (1987). Multiple Imputation for Nonre-                where X  Np(0, I) and   N (0, 4). The power
+      sponse in Surveys. Wiley Series in Probability and Statis-        and exponential operations on the vector X are per-
+      tics. John Wiley & Sons, Inc., New York, NY, USA.                 formed element-wise. We let 0 = 1, with 1 and 2
+      https://doi.org/10.1002/9780470316696                             both being all-ones vectors.
+[48] Scheuer, D., Runge, F., Franke, J. K. H., Wolfin-               · Logistic regression working model. In this set-
+      ger, M. T., Flamm, C. and Hutter, F. (2025). KinPFN:              ting, the data is generated from
+      Bayesian approximation of RNA folding kinetics using
+      prior-data fitted networks. In The Thirteenth Interna-             P(Y = 1 | X) = [1 + exp(-0 - 1X - 2X2)]-1,
+      tional Conference on Learning Representations.
+[49] Song, S., Lin, Y. and Zhou, Y. (2024). A general M-                where X  0.5Np(1, ) + 0.5Np(-1, ), and  is a
+      estimation theory in semi-supervised framework. Journal           matrix with (i, j)-th entry equal to 0.5|i-j|. We set
+      of the American Statistical Association 119 1065­1075.            0 = 11, 1 as a vector of all 1s, and 2 as a vector
+[50] Teh, A., Jabbour, M. and Polyanskiy, Y. (2025).                    of all -1s.
+      Solving empirical Bayes via transformers. arXiv preprint       · Linear quantile regression working model. In
+      arXiv:2502.09844.                                                 this setting, the data is generated from
+[51] Tibshirani, R. J., Foygel Barber, R., Candes, E. and
+      Ramdas, A. (2019). Conformal prediction under covariate                Y = 0 + 1X + 2 xjxk + (1 + 3X),
+      shift. Advances in neural information processing systems
+      32.                                                                                                              j,k
+[52] Van Breugel, B. and Van Der Schaar, M. (2024).
+      Position: why tabular foundation models should be a re-           where X  Np(0, I), and   N (0, 1). We set 0 =
+      search priority. In Proceedings of the 41st International         2 = 1, 1 = 0.51p, and 3 = (0.51p-p/2, 0p/2),
+      Conference on Machine Learning. Proceedings of Machine            where 1d and 0d denote d-dimensional all-ones and
+      Learning Research 235 48976­48993. PMLR.                          all-zeros vectors, respectively.
+[53] Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J.,
+      Jones, L., Gomez, A. N., Kaiser, L. and Polo-
+      sukhin, I. (2017). Attention is all you need. Advances in
+      Neural Information Processing Systems 30.
+                   TABPFN: ONE MODEL TO RULE THEM ALL?                                      15
+
+(a) Linear, p = 4  (b) Logistic, p = 4  (c) Quantile, p = 4,  = 0.5  (d) Quantile, p = 4,  = 0.25
+
+                   Fig 8: MSE and bias results for p = 4 for the semi-supervised settings.
+
+(a) Linear, p = 5  (b) Logistic, p = 5  (c) Quantile, p = 5,  = 0.5  (d) Quantile, p = 5,  = 0.25
+
+                   Fig 9: MSE and bias results for p = 5 for the semi-supervised settings.
+
+(a) Linear, p = 6  (b) Logistic, p = 6  (c) Quantile, p = 6,  = 0.5  (d) Quantile, p = 6,  = 0.25
+
+Fig 10: MSE and bias results for p = 6 for the semi-supervised settings.
+
+(a) Linear, p = 7  (b) Logistic, p = 7  (c) Quantile, p = 7,  = 0.5  (d) Quantile, p = 7,  = 0.25
+
+Fig 11: MSE and bias results for p = 7 for the semi-supervised settings.
+16
+
+    (a) Linear, p = 8  (b) Logistic, p = 8                    (c) Quantile, p = 8,  = 0.5  (d) Quantile, p = 8,  = 0.25
+
+    Fig 12: MSE and bias results for p = 8 for the semi-supervised settings.
+
+    (a) Linear, p = 9  (b) Logistic, p = 9                    (c) Quantile, p = 9,  = 0.5  (d) Quantile, p = 9,  = 0.25
+
+    Fig 13: MSE and bias results for p = 9 for the semi-supervised settings.
+
+A.2 Additional simulation results                             · Regression: kin8nm (ID:189), house_8L (ID:
+                                                                 218), puma8NH (ID: 225), BNG (stock) (ID: 1200),
+  We include all the simulation results in Figures 8             cmc (ID: 45052)
+to 13. With the sole exception of the p = 4 case under
+logistic regression, TabPFN-I consistently outperforms        · Classification: BNG(breast-w) (ID:251), kin8nm
+all competing methods.                                           (ID:807), puma8NH (ID: 816), mozilla4 (ID: 1046),
+                                                                 wilt (ID: 40983)
+A.3 Real data comparison
+                                                                APPENDIX B: EXPERIMENT DETAILS FOR
+  The datasets are obtained from OpenML. We used                                         STUDY II
+the dataset search interface at www.openml.org/, se-
+lecting datasets with fewer than 10 features and more           We provide the details for the causal inference ex-
+than 1,000 instances, and verified that all features are      periment and the full experiment result in this section.
+numerical. We then downloaded datasets from the top
+of this filtered list. The restriction to fewer than 10 fea-  B.1 Simulation settings and additional results
+tures is imposed because the SLZ implementation can
+exhibit numerical instability when the dimensionality           The specification of the feature distribution, propen-
+is large. The requirement of a sufficiently large num-        sity function, base function, and treatment effect func-
+ber of instances ensures that the oracle estimator pro-       tion under all setups are given in Table 6. These func-
+vides a reasonable approximation to the true param-           tions corresponding to the following setting:
+eter values. To maintain computational efficiency, we
+further restricted datasets to have fewer than 50,000            · Setup A: complicated e(x) and b(x), but a rel-
+instances. Even after this filtering, we occasionally en-            atively simple  (x).
+countered matrix-inversion issues in the SLZ imple-
+mentation; when such cases occurred, we skipped the              · Setup B: randomized trial with a complex b(x)
+problematic dataset and selected the next one on the                 and  (x).
+list. This leads to the following datasets for regression
+and classification respectively:                                 · Setup C: complex e(x) and b(x), but a constant
+                                                                      (x).
+
+                                                                 · Setup D: response under treatment is indepen-
+                                                                     dent of the response under control, and hence
+                                                                     there is no statistical benefit of jointly learning
+                                                                     the two responses.
+       TABPFN: ONE MODEL TO RULE THEM ALL?                                          17
+
+                                               Table 6
+       Experimental setups with distributional and functional specifications
+
+Setup  Propensity e(X)                Base b(X)                                     Effect  (X)
+
+A      min{0.8, max{sin(X1X2), 0.2}}  sin(X1X2) + 2(X3 - .5)2 + X4 + .5X5           .2 + (X1 + X2)/2
+       .5
+B      [1 + exp(X2 + X3)]-1           max{0, X1 + X2, X3} + max{0, X4 + X5}         X1 + log[1 + exp(X2)]
+C      [1 + exp(-X1) + exp(-X2)]-1    2 log[1 + exp(X1 + X2 + X3)]                  1
+D      [1 + exp(3X2 + 3X3)]-1         .5 max{0, X1 + X2 + X3} + .5 max{0, X4 + X5}  max{0, X1 + X2 + X3} - max{0, X4 + X5}
+E      [1 + exp(3X2 + 3X3)]-1         5 max{0, X1 + X2}                             2 max{(X1 > .1), (X2 > .1)} - 1
+F                                     5 max{0, X1 + X2}                             X1 + log[1 + exp(X2)]
+
+   · Setup E: large b(x) resulting in substantial con-    · Non-additive: Treatment effects and outcomes
+       founding, discontinuous  (x).                         are generated via nonlinear functions and inter-
+                                                             action terms, inducing complex, non-additive re-
+   · Setup F: similar to setup E, but with a smooth          sponse surfaces.
+        (x).
+                                                          · Group Corr: The error terms include intra-
+  Our experiments are implemented using the econml [6]       group correlation components to mimic unobserved
+package in Python, we use the FLAML package [55] to          group-level dependencies (e.g., hospitals or study
+implement all AutoML-based learners. We use the 5-           sites), introducing residual correlation beyond ob-
+fold cross-validation to choose the optimal algorithms       served covariates and thereby violating the IID as-
+and its corresponding hyperparameters for AutoML-            sumption.
+based learners. We randomly generate data from each
+setting for 100 times and the average test MSE over       A fourth error type, heteroskedastic case, was later
+100 repetitions for CATE is reported in Table 7 and       discovered by Hahn, Dorie and Murray [26] to contain
+Table 8.                                                  inconsistencies and hence omitted from the benchmark
+                                                          comparison.
+B.2 Real data comparison
+                                                            Within each setting, eight distinct DGPs are de-
+  Data. The Infant Health and Development Pro-            fined to explore combinations of three factors that af-
+gram (IHDP) [8] dataset contains n = 4302 subjects        fect causal inference difficulty: the effect magnitude 
+with 8 covariates capturing demographic, prenatal,        (large vs. small), the noise level  (low vs. high), and
+and birth-related characteristics, a binary treatment     the selection strength  (weak vs. strong confound-
+indicating participation in a specialist early-childhood  ing). Overall, these yield 3 settings × 8 scenarios ×
+intervention program, and continuous outcomes repre-      250 replications = 6,000 semi-synthetic datasets de-
+senting cognitive test scores measured at age 3. We use   rived from the IHDP covariates.
+a collection of semi-synthetic versions of the dataset
+that were created for the ACIC 2017 Causal Infer-           Evaluation. We compare four TabPFN-based meta-
+ence Benchmark challenge described in Hahn, Dorie         learners (S-Learner, T-Learner, X-Learner, and DR-
+and Murray [26], where treatment assignments and          Learner) with the 22 estimators reported in the bench-
+potential outcomes are simulated conditional on the       mark challenge. For a fair comparison, we only in-
+real-world covariates. This design ensures access to      clude methods with available results across all 6,000
+the ground-truth treatment effects, allowing quanti-      datasets, resulting in 16 baseline approaches. For all
+tative comparison across estimators via the MSE of        TabPFN-based methods, we use the TabPFN classi-
+the CATE. We accessed the data via Richard Hahn's         fier to estimate the propensity score model and the
+personal website: https://math.la.asu.edu/~prhahn/.       TabPFN regressor to fit the outcome model, as well
+                                                          as any auxiliary models with continuous responses.
+  Each semi-synthetic dataset is generated accord-        The evaluation protocol follows that of Hahn, Dorie
+ing to one of 24 data-generating processes (DGPs)         and Murray [26], and we estimate the RMSE of the
+that were chosen to systematically vary structural and    CATEs based on 250 repetitions under each scenario.
+noise properties to probe robustness of causal estima-    The results for the baseline approaches were taken di-
+tors. Specifically, the DGPs are organized into three     rectly from Richard Hahn's personal website and were
+broad settings for the error structure:                   not recalculated.
+
+· IID: Errors are generated independently across in-        The comparison of different methods across the
+   dividuals, corresponding to the standard assump-       24 scenarios is presented in Figure 14. TabPFN-
+   tion of homogeneous, uncorrelated residuals.           based methods, especially X+PS and X learners shown
+                                                          strong performance in almost all scenarios.
+18
+
+                                                                                Table 7
+The median of test MSE of various CATE estimators over 100 repetitions setup A­C. The smallest test MSE is highlighted in
+
+                                     boldface and the second smallest test MSE is highlighted with underline.
+
+    Setup N 2           DR                  S                  T                  X          R       Oracle
+
+               TabPFN AutoML TabPFN AutoML TabPFN AutoML TabPFN AutoML AutoML AutoML
+
+       500 0.5 0.0353 0.0459 0.0306 0.0451             0.0904     0.2367  0.0445     0.0592  0.0423  0.0527
+                                                       0.1672     0.6091  0.0619     0.0920  0.0681  0.0803
+       1 0.0491 0.0720 0.0393 0.0537                   0.4703     1.6589  0.1520     0.2904  0.1776  0.2072
+                                                       0.0603     0.1395  0.0379     0.0462  0.0408  0.0472
+       2 0.0701 0.2610 0.0647 0.0666                   0.1006     0.2939  0.0444     0.0651  0.0518  0.0559
+                                                       0.2419     0.8325  0.0864     0.1311  0.1145  0.1090
+       1000 0.5 0.0358 0.0417 0.0345 0.0445            0.0545     0.0905  0.0376     0.0420  0.0399  0.0439
+                                                       0.0704     0.1536  0.0364     0.0467  0.0420  0.0473
+    A  1 0.0360 0.0519 0.0298 0.0513                   0.1390     0.4325  0.0499     0.0690  0.0628  0.0699
+
+       2 0.0461 0.0923 0.0509 0.0578
+
+       2000 0.5 0.0379 0.0397 0.0369 0.0446
+
+       1 0.0360 0.0412 0.0308 0.0468
+
+       2 0.0366 0.0593 0.0343 0.0474
+
+       500 0.5 0.9449       0.9726  0.8850     0.9161  1.0594     1.2249  0.9615     1.0196  0.9670  0.9316
+                            1.0338  0.8487     0.9256  1.2281     1.4780  1.0423     1.1467  1.0315  0.9917
+       1 0.9988             1.5120  0.8262     0.9279  1.5869     2.4374  1.2474     1.3836  1.3388  1.2320
+                            0.9601  0.8957     0.9283  1.0003     1.0622  0.9317     0.9494  0.9633  0.9442
+       2 1.1678             1.0354  0.8731     0.9327  1.0961     1.2457  0.9661     1.0426  0.9958  0.9811
+                            1.2884  0.8391     0.9405  1.3271     1.4817  1.0791     1.1271  1.0919  1.1219
+       1000 0.5 0.9236      0.9268  0.9051     0.9155  0.9776     1.0294  0.9240     0.9504  0.9263  0.9338
+                            0.9475  0.8938     0.9226  1.0538     1.0820  0.9399     0.9784  0.9643  0.9552
+    B  1 0.9441             1.0576  0.8542     0.9218  1.1856     1.2973  0.9940     1.0053  1.0489  1.1005
+
+       2 1.0131
+
+       2000 0.5 0.9127
+
+       1 0.9136
+
+       2 0.9298
+
+       500 0.5 0.9880 1.1573 1.0206 1.1170             1.1092     1.6273  1.0315     1.1741  1.1283  1.0428
+                                                       1.3627     2.2214  1.1288     1.3321  1.2393  1.1755
+       1 1.0148 1.3708 1.0550 1.1556                   2.6658     3.5575  1.5984     1.6721  1.8985  1.5429
+                                                       1.0450     1.3988  1.0100     1.1034  1.1083  1.0229
+       2 1.2039 2.0873 1.1602 1.1513                   1.1727     1.7895  1.0555     1.2451  1.1026  1.0677
+                                                       1.6611     2.6587  1.2487     1.3752  1.2119  1.1597
+       1000 0.5 0.9637 1.0413 1.0157 1.0291            0.9863     1.1943  0.9663     1.0306  1.0254  0.9914
+                                                       1.0220     1.4187  0.9542     1.0955  1.0335  0.9766
+    C  1 0.9460 1.1973 1.0287 1.0447                   1.1751     1.9187  0.9667     1.1881  1.0689  1.0376
+
+       2 0.9633 1.4033 1.0803 1.1057
+
+       2000 0.5 0.9340 1.0387 1.0003 1.0182
+
+       1 0.8782 1.0625 0.9930 1.0291
+
+       2 0.7964 1.1085 0.9754 1.0132
+
+                                                                                  Table 8
+The median of test MSE of various CATE estimators over 100 repetitions under setup D­F. The smallest test MSE is highlighted
+
+                                      in boldface and the second smallest test MSE is highlighted with underline.
+
+    Setup N 2           DR                  S                  T                  X          R       Oracle
+
+               TabPFN AutoML TabPFN AutoML TabPFN AutoML TabPFN AutoML AutoML AutoML
+
+       500 0.5 0.3146       0.3325  0.3078     0.3186  0.3194     0.3688  0.3101     0.3119  0.3297  0.3309
+                            0.4091  0.3104     0.3252  0.3811     0.5066  0.3310     0.3577  0.3707  0.4057
+       1 0.3234             0.6602  0.3139     0.3291  0.4476     0.8520  0.3796     0.4848  0.5620  0.6171
+                            0.3281  0.3055     0.3192  0.3033     0.3535  0.3087     0.3218  0.3204  0.3273
+       2 0.3746             0.3387  0.3093     0.3224  0.3235     0.4137  0.3149     0.3412  0.3372  0.3445
+                            0.4274  0.3143     0.3244  0.3837     0.5984  0.3433     0.4147  0.4255  0.4038
+       1000 0.5 0.3144      0.3187  0.3066     0.3142  0.3108     0.3332  0.3102     0.3108  0.3139  0.3217
+                            0.3294  0.3058     0.3153  0.3112     0.3492  0.3086     0.3234  0.3247  0.3297
+    D  1 0.3181             0.3617  0.3092     0.3268  0.3708     0.4832  0.3285     0.3554  0.3702  0.3604
+
+       2 0.3416
+
+       2000 0.5 0.3199
+
+       1 0.3280
+
+       2 0.3601
+
+       500 0.5 0.9974 1.1572 1.0074 1.1970             1.2127     1.9554  1.0603     1.2616  1.1245  1.3844
+                                                       1.5399     2.9947  1.1330     1.5996  1.2971  1.3954
+       1 1.0197 1.4416 1.0125 1.3366                   3.3103     6.6586  1.6092     2.5715  2.3374  2.1096
+                                                       1.1177     1.4992  1.0463     1.1522  1.0671  1.3618
+       2 1.1507 1.9310 1.0358 1.4765                   1.2408     2.0187  1.0758     1.3126  1.1155  1.1570
+                                                       2.0002     3.9269  1.2779     1.7394  1.2873  1.4020
+       1000 0.5 0.9799 1.0975 1.0063 1.1111            1.0880     1.3228  1.0290     1.0962  1.0190  2.5772
+                                                       1.1356     1.6436  1.0302     1.1732  1.0697  1.1482
+    E  1 0.9830 1.1957 1.0086 1.1500                   1.4940     2.7234  1.0977     1.4617  1.2380  1.1930
+
+       2 1.0295 1.4467 1.0200 1.2581
+
+       2000 0.5 0.9727 1.0652 1.0045 1.1386
+
+       1 0.9612 1.1088 1.0018 1.1134
+
+       2 0.9629 1.2134 0.9980 1.1899
+
+       500 0.5 0.9054 1.1490 0.9225 1.1626             1.1541     2.1184  0.9731     1.2382  1.0686  2.2406
+                                                       1.4309     3.3303  1.0477     1.6814  1.3613  1.4709
+       1 0.9285 1.3720 0.9276 1.3698                   3.2448     7.4794  1.5656     2.4827  2.4312  1.8548
+                                                       1.0674     1.5690  0.9577     1.0724  0.9831  4.0442
+       2 1.0800 2.2924 0.9490 1.5328                   1.1392     2.2563  0.9858     1.2539  1.0727  1.1675
+                                                       1.8699     4.3611  1.2044     1.7225  1.4343  1.4565
+       1000 0.5 0.8856 1.0488 0.9227 1.0632            1.0345     1.2813  0.9315     1.0029  0.9412  5.4930
+                                                       1.0342     1.6587  0.9160     1.1017  0.9808  1.2046
+    F  1 0.8831 1.1311 0.9259 1.1132                   1.3191     2.8504  0.9575     1.3335  1.0868  1.1103
+
+       2 0.9289 1.5002 0.9441 1.2673
+
+       2000 0.5 0.8665 0.9958 0.9185 1.0941
+
+       1 0.8353 1.0804 0.9139 1.0236
+
+       2 0.8017 1.2459 0.9002 1.1631
+TABPFN: ONE MODEL TO RULE THEM ALL?                    19
+
+Fig 14: Performance comparison of TabPFN-based CATE estimators against SOTA methods on the ACIC 2017
+benchmark. Results are shown across panels organized by error type, effect magnitude (), noise level (), and
+selection strength (). Colored bars represent meta-learners built on TabPFN: S-Learner, T-Learner, X-Learner,
+DR-Learner, S+PS-Learner, T+PS-Learner, and X+PS-Learner. The BCF is shown for reference as the shaded
+yellow bar.
+
+APPENDIX C: EXPERIMENTAL DETAILS FOR
+                           STUDY III
+
+C.1 Additional simulation results
+
+  Figure 15 shows the Setting (ii) results, where the
+methods maintain their relative performance ordering
+observed in Setting (i).
+
+                                                       Fig 15: Covariate shift experiment under setting (ii).
+20
+
+C.2 Real data comparison                                           APPENDIX D: COMPARISON WITH
+                                                                    GAUSSIAN PROCESS REGRESSION
+Airfoil Self-Noise Dataset. The Airfoil dataset,
+used previously in studies on covariate shift [51], con-      To study the adaptiveness of TabPFN, we evalu-
+tains 1,503 observations with a five-dimensional co-        ate the interpolation and extrapolation behavior of
+variate vector (log frequency, angle of attack, chord       TabPFN trained on data sampled from predefined
+length, free-stream velocity, and suction-side log dis-     functions, comparing its performance to Gaussian pro-
+placement thickness) and a continuous response vari-        cess regression (GPR) as a baseline. Experiments are
+able Y . The data are randomly divided into training        conducted in both one-dimensional (1D) and two-
+and testing subsets with a 7:3 ratio, that is, 70% of the   dimensional (2D) settings.
+observations are used for training and 30% for testing.
+To induce covariate shift, we follow the procedure in       D.1 Training data generation
+Tibshirani et al. [51]: we first split the data as de-
+scribed, and then resample the test set with replace-         1D case. The training set of size n consists of fea-
+ment using importance weights                               tures xi sampled uniformly over [-1, 1]. Responses are
+                                                            generated as:
+
+          (x, y) = exp(xT).                                                yi = f (xi) + i, i i.i.d. N (0, 0.052),
+
+We consider two different shift settings characterized      where f is one of the following:
+by
+                                                              (i) Linear function: f (x) = x,
+    1 = [-1, 1, -1, 1, -1]T, 2 = [-1, 0, 0, 0, 1]T.           (ii) Quadratic function: f (x) = x2,
+
+For each  setting, the data splitting and resampling        (iii) Step function: f (x) = sign(x) with sign(0) = 1,
+procedure is repeated ten times, and the mean squared       (iv) A randomly generated piecewise-linear function
+prediction error (MSE) is averaged over the ten repe-
+                                                                  with 4 pieces on [-1, 1].
+
+titions.                                                    TabPFN is trained on this small dataset and predic-
+
+Concrete Compressive Strength Dataset. The tion is made over the extended interval [-4, 4] to as-
+
+Concrete dataset consists of 1,030 observations with sess both interpolation (x  [-1, 1]) and extrapolation
+
+an eight-dimensional covariate vector (cement, blast (x / [-1, 1]) performance.
+
+furnace slag, fly ash, water, superplasticizer, coarse ag-  2D case. The training set consists of features
+
+gregate, fine aggregate, and age) and the target vari-      {(xi1, xi2) : i = 1, . . . , n}, where xi1 and xi2 are each
+able is the measured compressive strength of concrete.      sampled uniformly from [-1, 1]. These points form a
+
+As with the Airfoil data, the dataset is randomly split mesh grid, resulting in n2 total observations. We ex-
+
+into 70% training and 30% testing observations. Co- amine two cases: n = 11 and n = 31. The responses are
+
+variate shift is then introduced by resampling the test generated as:
+
+set with replacement using                                                 yi = f (xi1, xi2) + i, i i.i.d. N2(0, 0.052I),
+                     (x, y) = exp(xT),
+                                                            where f is analogously defined as in the 1D case:
+and we again consider two distinct settings:
+                                                                      (i)  Linear function: f (x1, x2) = x1 + x2,
+1 = [-1, 1, -1, 1, -1, 1, -1, 1]T,  2 = [-1, 0, 0, 0, 0, 0, 0, 1]T.(ii)    Quadratic function: f (x1, x2) = x12 + x22,
+
+Each  setting is repeated for ten random data splits,       (iii) Step function:
+
+and the average MSE is reported.                                           f (x1, x2) =  -1,  if x1 < 0 and x2 < 0,
+Methods and Evaluation. We compare the pro-                                              1,   otherwise.
+posed TabPFN approach with several baseline meth-
+
+ods (same as in the simulation study), including the        (iv) Piecewise-bilinear function. Given a 2D grid of
+naive gradient boosting regression, its importance-               randomly generated function values {fij} of size
+weighted variant, and the kernel ridge regression                 42. Uniformly divide [-1, 1]2 into 42 cells. For
+(KRR) methods from Wang [54]. Since the code in                   (x1, x2), find which cell it falls into. Suppose it
+Wang [54] was limited to univariate X, we extend it               falls into the (i, j)th cell, compute the local co-
+to the multivariate case using a radial basis function            ordinates:
+(RBF) kernel. For each method and setting, the re-
+ported ± values denote the standard error of the pre-                     xloc,1 = 4xi1 - i, xloc,2 = 4xi2 - j.
+
+diction mean squared error (PMSE) computed across
+
+the ten repetitions.
+TABPFN: ONE MODEL TO RULE THEM ALL?                         21
+
+       and the bilinear function is given as                D.4 Uncertainty quantification
+
+              f (x1, x2) = fi,j · (1 - xloc,1)(1 - xloc,2)    To assess the uncertainty quantification capability
+                                                            of TabPFN in comparison with GPR, we evaluate the
+                            + fi+1,j · xloc,1(1 - xloc,2)   predictive intervals of both methods in terms of their
+                                                            coverage ratio and interval length. For each predefined
+                            + fi,j+1 · (1 - xloc,1)xloc,2   function, we generate 100 independent datasets follow-
+                                                            ing the data generation procedure described above.
+                            + fi+1,j+1 · xloc,1xloc,2.      For each dataset, the model is trained on the corre-
+                                                            sponding training set and evaluated on a dense grid
+TabPFN is trained on this small dataset and predic-         with a step size of 0.1 over the range [-4.5, 4.6], which
+tion is made over the uniform mesh grid over [-4, 4]2       encompasses both the interpolation region ([-1, 1])
+to assess both interpolation (x  [-1, 1]2) and extrap-      and the extrapolation region ([-4.5, 4.6] \ [-1, 1]). At
+olation (x / [-1, 1]2) performance.                         each grid point, we record the predictive mean and
+                                                            the associated 95% prediction interval produced by
+D.2 Baseline for comparison: Gaussian process               the model. For TabPFN, the 95% prediction interval
+      regression                                            is obtained from the empirical 2.5% and 97.5% quan-
+                                                            tiles of the posterior predictive distribution. The cover-
+  For both 1D and 2D cases, we compare TabPFN               age ratio is computed as the proportion of test points
+with Gaussian process regression (GPR). For Gaus-           whose true function values fall within the predicted
+sian process regression, we consider 5 kernels: constant    intervals, averaged over all repetitions. Similarly, the
+kernel × RBF kernel, constant kernel × Matern ker-          interval length is computed as the mean width of the
+nel, constant kernel × RationalQuadratic kernel, con-       predictive intervals, also averaged across all test points
+stant kernel × ExpSineSquared kernel, constant ker-         and repetitions. This evaluation jointly examines the
+nel × RBF kernel + constant kernel × Matern ker-            calibration (via coverage ratio) and sharpness (via in-
+nel. The candidate variance 2 of the measurement            terval length) of the uncertainty estimates provided
+error is over the grid [0.05, 0.1, 0.15, 0.2]. We maxi-     by TabPFN and GPR in both interpolation and ex-
+mize the marginal log-likelihood to select the optimal      trapolation settings. The average coverage ratios and
+kernel and its corresponding optimal parameters, and        interval lengths for interpolation and extrapolation are
+the optimal measurement error variance. The GPR is          reported in Table 9 and Table 10, respectively.
+implemented using the GaussianProcessRegressor in
+scikit-learn package in Python.                               Interpolation performance (Table 9). In the in-
+                                                            terpolation region (x  [-1, 1]), TabPFN consistently
+D.3 Interpolation and extrapolation                         exhibits coverage at around the nominal 95% level
+                                                            across all function types, indicating that it remains
+  The results for n = 31 training data points are shown     well-calibrated within the training distribution. In
+in Figure 16. The results when n = 11 under 1D case         contrast, GPR fails to achieve the desired coverage un-
+are visualized in Figure 17. The results under 2D case      der the step function, suggesting difficulty in handling
+are visualized in Figure 18.                                discontinuities. Regarding interval length, TabPFN
+                                                            generally produces wider intervals than GPR when
+  We observe that in all cases, TabPFN fits a smoothly-     n = 11, particularly for nonlinear functions such as
+varying curve that broadly resembles the GPR curve          the quadratic and piecewise-linear cases, implying
+within the interpolation region. The notable differ-        more conservative uncertainty estimates with limited
+ences are:                                                  data. As the training sample size increases to n = 31,
+                                                            TabPFN's intervals become narrower and compara-
+   · Unlike GPR, TabPFN seems not to suffer from            ble to those of GPR, reflecting sharper and still well-
+       the Gibbs phenomenon (fluctuations at the point      calibrated uncertainty estimates as data availability
+       of discontinuity of a step function).                improves.
+
+   · TabPFN extrapolates at roughly the same level            Extrapolation performance(Table 10). In con-
+       of the last observed response, whereas GPR           trast, the extrapolation region (x / [-1, 1]) reveals a
+       quickly asymptotes to zero (the GPR prior            clear divergence between the two models. TabPFN
+       mean).                                               maintains substantially higher coverage than GPR in
+                                                            nearly all cases. For smooth functions such as the lin-
+   · TabPFN is more conservative than GPR at fit-           ear and quadratic cases, GPR's coverage drops sharply
+       ting a quickly-varying function. GPR is able to      (e.g., below 0.5 for the linear and below 0.1 for the
+       roughly approximate the piecewise-linear func-       quadratic function), indicating severe overconfidence
+       tion with n = 11, whereas TabPFN still outputs
+       a constant model.
+
+   · TabPFN has a more diffuse conditional predic-
+       tive distribution p(y|x) compared to GPR, espe-
+       cially away from the interpolation region.
+22
+
+Fig 16: Interpolation (top) and extrapolation (bottom) performance of TabPFN (red) and Gaussian process
+regression (GPR; blue) regression on synthetic 1D functions, compared to ground truth (green). Columns corre-
+spond to different true functions: (i) linear, (ii) quadratic, (iii) step, and (iv) piecewise-linear. TabPFN shows the
+predicted mean (dash dotted line) with 95% prediction intervals (2.5%­97.5% quantiles; shaded region), while
+GPR displays the mean ± 1.96 SD (dashed lines). SD is the standard-deviation of the predictive distribution.
+
+Fig 17: Interpolation (top) and extrapolation (bottom) performance of TabPFN (red) and Gaussian process
+regression (GPR; blue) regression on synthetic 1D functions, compared to ground truth (green) when n = 11.
+Columns correspond to different true functions: (i) linear, (ii) quadratic, (iii) step, and (iv) piecewise-linear.
+TabPFN shows the predicted mean (dash dotted line) with 95% prediction intervals (2.5%­97.5% quantiles;
+shaded red region), while GPR displays the mean ± 1.96 SD (shaded blue region). SD is the standard-deviation
+of the predictive distribution.
+
+and poor uncertainty calibration outside the training     tervals, implying a more conservative but robust un-
+range. TabPFN, however, achieves much higher cov-         certainty quantification. Overall, TabPFN exhibits
+erage (0.93­0.98 for linear; 0.43­0.68 for quadratic)     markedly better-calibrated uncertainty estimates than
+and adapts its interval width dynamically to reflect      GPR under extrapolation, effectively avoiding the
+function complexity--producing wider intervals in re-     overconfident predictions that GPR commonly pro-
+gions of greater uncertainty (e.g., the quadratic case).  duces outside its training support.
+For discontinuous or piecewise functions (step and
+piecewise-linear), both models attain full coverage,        Summary. These results demonstrate that while
+though TabPFN generally yields slightly longer in-        TabPFN and GPR perform comparably under interpo-
+                                                          lation, TabPFN provides superior extrapolative uncer-
+                    TABPFN: ONE MODEL TO RULE THEM ALL?                                       23
+
+Fig 18: Performance comparison of TabPFN (red) and Gaussian Process (GP; blue) regression on synthetic 2D
+
+functions, evaluated against ground truth (green) using contour plots. Columns represent different true functions:
+
+(i) linear, (ii) quadratic, (iii) step, and (iv) piecewise-linear. Rows 1 & 2: Interpolation and extrapolation perfor-
+mance with a training set size of n = 112. Rows 3 & 4: Interpolation and extrapolation performance with a larger
+training set n = 312.
+
+                                                                               Table 9
+Average coverage ratio and interval length of TabPFN and Gaussian process regression (GPR) under the interpolation setting
+
+                                                       (x  [-1, 1]), averaged over 100 repetitions.
+
+n Method    Linear          Quadratic                         Step            P Linear
+
+            Coverage Length Coverage Length Coverage Length Coverage Length
+
+11  TabPFN  0.9350  0.4656  0.9525                    0.7365  0.9705  1.2301  0.9930  1.8449
+      GPR   0.9455  0.4304  0.9665                    0.5439  0.8635  0.6934  0.9795  0.6977
+            0.9405  0.3924  0.9420                    0.4235  0.9365  0.5501  0.9375  0.4788
+31  TabPFN  0.8775  0.3268  0.9390                    0.4247  0.9050  0.5808  0.9550  0.5268
+      GPR
+
+tainty quantification, maintaining both coverage and  APPENDIX E: SPARSE LINEAR REGRESSION
+adaptive interval width even in regions far from the
+training data.                                        E.1 Hyper-parameter selection
+
+                                                        The LASSO and Ridge regression models are im-
+                                                      plemented using the Lasso and Ridge functions in the
+                                                      scikit-learn package, while the MCP and SCAD
+                                                      estimators are implemented using the pycasso pack-
+24
+
+                                                                              Table 10
+Average coverage ratio and interval length of TabPFN and Gaussian process regression (GPR) under the extrapolation setting
+
+                                                        (x / [-1, 1]), averaged over 100 repetitions.
+
+           n Method                          Linear                Quadratic        Step                       P Linear
+
+                                  Coverage Length Coverage Length Coverage Length Coverage Length
+
+           11      TabPFN             0.9276       5.1478          0.4287  8.4742   0.9996      3.3699    1.0000     2.4744
+                     GPR              0.4856       2.9333          0.0792  2.7310   0.9997      2.4065    1.0000     1.7769
+                                      0.9827       5.9242          0.6817  11.9492  0.9975      3.8227    0.9993     4.9580
+           31      TabPFN             0.6175       2.6130          0.0882  3.2259   0.9999      2.4096    1.0000     1.7710
+                     GPR
+
+age in Python. All four methods involve a regular-                            yielding the LDA classifier:
+ization hyperparameter controlling the strength of
+penalization. For each method, we evaluate 20 can-                                              log    ^    +  x  -  µ^0 +µ^1   ^ -1(µ^1 - µ^0)  0,
+didate values of the tuning parameter and select                              CLDA(x) = 1,           1-^                2
+the optimal one based on the prediction error com-
+puted on an independent validation set of size 1000.                                0, otherwise.
+For LASSO, the regularization grid is chosen over
+the interval [0.001Xtrainytrain, Xtrainytrain]. For                             For k-nearest neighbors (kNN) classification, we se-
+Ridge, SCAD, and MCP, the tuning parameter grids                              lect the optimal number of neighbors k via 5-fold
+are respectively defined as [0.01, 100], [3, 100], and                        cross-validation. The search grid consists of 10 equally
+[1.1, 100]. All grids are generated on a logarithmic scale                    spaced integers between n1/4 and n3/4, with the
+with 20 evenly spaced points within the corresponding                         value maximizing cross-validation accuracy chosen for
+intervals.                                                                    each experimental replication.
+
+E.2 Additional results for sparse linear regression                                                      FUNDING
+
+  The results under non-orthogonal design with beta-                            Qiong Zhang is supported by the National Key R&D
+type 1 and beta-type 2 are given respectively in Fig-                         Program of China Grant 2024YFA1015800 and Na-
+ure 19 and Figure 20.                                                         tional Natural Science Foundation of China Grant
+                                                                              12301391. Yan Shuo Tan is supported by NUS Start-
+E.3 ALE plot for TabPFN                                                       up Grant A-8000448-00-00 and MOE AcRF Tier 1
+                                                                              Grant A-8002498-00-00. Qinglong Tian and Pengfei Li
+  The ALE plots of TabPFN under sparse linear re-                             are supported by the Natural Sciences and Engineer-
+gression are given in this section in Figure 21.                              ing Research Council of Canada (RGPIN-2023-03479
+                                                                              and RGPIN-2020-04964).
+
+APPENDIX F: IMPLEMENTATION DETAILS
+                 FOR LDA AND KNN
+
+  When X|Y = 0  N (µ0, ) and X|Y = 1  N (µ1, ),
+with  = P(Y = 1), the optimal Bayes classifier takes
+the form:
+
+                      log             +      x  -  µ0 +µ1   -1(µ1 - µ0)  0,
+CBayes(x) = 1,               1-                       2
+
+           0, otherwise.
+
+The LDA classifier replaces population parameters
+with their sample estimates. Letting Y~i = Yi for clean
+training data, we compute:
+
+    ^  =   1   n      1(Y~i  =   1),
+           n  i=1
+
+    µ^r =      n      Xi  1(Y~i  =    r)  ,     r  {0, 1}
+               i=1
+
+                   n    1(Y~i  =  r)
+                   i=1
+
+    ^  =   n  1    2   n     1        -      µ^r )(Xi  -  µ^r ) ,
+              -       i=1
+                              (Xi
+
+                           r=0
+TABPFN: ONE MODEL TO RULE THEM ALL?  25
+
+Fig 19: Relative test MSE of various methods compared to TabPFN. Experiments use beta-type 1 with nonorthog-
+onal design. The top and bottom rows display results for n = 50 and n = 500 respectively, while the columns (from
+left to right) correspond to increasing SNR values.
+
+Fig 20: Relative test MSE of various methods compared to TabPFN. Experiments use beta-type 2 with nonorthog-
+onal design. The top and bottom rows display results for n = 50 and n = 500 respectively, while the columns (from
+left to right) correspond to increasing SNR values.
+26
+
+Fig 21: Accumulated Local Effects plot for TabPFN under sparse linear regression when d = 100 under orthogonal
+design. Columns (left to right) correspond to increasing sparsity levels (1, 5, 10, 20, 30). Rows 1­4 show results
+when training set is of size n = 50. First row: Relevant feature; second row: randomly sampled 5 irrelevant features
+(SNR = 1.22). Third row: Relevant feature; fourth row: randomly sampled 5 irrelevant features (SNR = 6). Rows
+5­8 show the same results when training set is of size n = 500.
+

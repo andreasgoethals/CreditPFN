@@ -1,0 +1,920 @@
+                                        Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+                                        Samuel Mu¨ ller 1 2 Arik Reuter 3 Noah Hollmann 4 David Ru¨ gamer 3 5 Frank Hutter 6 1 4
+
+arXiv:2505.23947v1 [cs.LG] 29 May 2025                          Abstract                                                    Train
+                                                                                                                             Test
+                                              Training neural networks on randomly generated
+                                              artificial datasets yields Bayesian models that cap-                           Learn q to
+                                              ture the prior defined by the dataset-generating                               predict test
+                                              distribution. Prior-data Fitted Networks (PFNs)                                from train
+                                              are a class of methods designed to leverage this
+                                              insight. In an era of rapidly increasing computa-                                             Predict with q(y|x, D)
+                                              tional resources for pre-training and a near stag-            ... × millions of times
+                                              nation in the generation of new real-world data
+                                              in many applications, PFNs are poised to play a               (a) Example of prior-fitting and inference on a 1D prior
+                                              more important role across a wide range of ap-                                                 q(·|x4, D)q(·|x5, D)
+                                              plications. They enable the efficient allocation of
+                                              pre-training compute to low-data scenarios. Orig-             (x1, y1)(x2, y2)(x3, y3) x4  x5
+                                              inally applied to small Bayesian modeling tasks,
+                                              the field of PFNs has significantly expanded to ad-           (b) Original architecture (Mu¨ller et al., 2022)
+                                              dress more complex domains and larger datasets.
+                                              This position paper argues that PFNs and other                Figure 1. (a) The PFN learns to approximate the Bayesian predic-
+                                              amortized inference approaches represent the fu-              tion offline by training on datasets sampled from the prior and
+                                              ture of Bayesian inference, leveraging amortized              transfers to real-world data. (b) In a typical PFN architecture train-
+                                              learning to tackle data-scarce problems. We thus              ing samples (xi, yi) can attend only to each other; test positions
+                                              believe they are a fruitful area of research. In              (x4 and x5) attend only to the training positions.
+                                              this position paper, we explore their potential and
+                                              directions to address their current limitations.              of available computational resources for neural network
+                                                                                                            pre-training in these areas.
+                                        1. Introduction
+                                                                                                            Initially, the most prominent application of synthetic data in-
+                                        The computing costs to pre-train neural networks continue           volved modest modifications of real-world datasets through
+                                        to rapidly decrease, especially through improvements in             data augmentation techniques. These techniques have, for
+                                        GPU manufacturing (Epoch AI, 2024a), as well as hardware-           instance, become indispensable in image classification tasks
+                                        utilization, optimization, and neural network architectures         with limited data (Deng et al., 2009; Cubuk et al., 2019;
+                                        (Ho et al., 2024).                                                  Mu¨ller & Hutter, 2021). Since then, the use of completely
+                                                                                                            artificial data, defined by human-designed algorithms, has
+                                        However, the amount of available real-world data does not           expanded to various domains, including tabular supervised
+                                        scale at the same pace as compute in various domains. In this       learning (Hollmann et al., 2023; 2025), symbolic regression
+                                        work, we argue that training on vast quantities of synthetic        (d'Ascoli et al., 2022; Kamienny et al., 2022), geometric
+                                        data is ideally suited to utilize the rapidly increasing amount     reasoning (Trinh et al., 2024), and causal discovery (Lorch
+                                                                                                            et al., 2022). This widespread adoption underscores the
+                                            1University of Freiburg, Freiburg, Germany 2Meta, New York      versatility and effectiveness of pre-training on synthetic data
+                                        (work done at University of Freiburg) 3LMU Munich, Munich, Ger-     to leverage compute in order to improve performance.
+                                        many 4Prior Labs 5Munich Center for Machine Learning (MCML),
+                                        Munich, Germany 6ELLIS Institute Tu¨bingen, Tu¨bingen, Germany.
+                                        Correspondence to: Samuel Mu¨ller <sammuller@meta.com>.
+
+                                        Proceedings of the 42 nd International Conference on Machine
+                                        Learning, Vancouver, Canada. PMLR 267, 2025. Copyright 2025
+                                        by the author(s).
+
+                                                                                                         1
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+In this paper, we advocate for a general approach for ex-            domain where PFNs were first applied: tabular data. The
+ploiting synthetic data in pre-training: Prior-Data Fitted           poster child of PFNs is TabPFN (Hollmann et al., 2023;
+Networks (PFNs, Mu¨ller et al., 2022). PFNs are a Bayesian           2025), a breakthrough in tabular machine learning, as the
+prediction method. They directly approximate the poste-              first deep learning model that consistently outperforms clas-
+rior predictive distribution (PPD), diverging from traditional       sic methods like XGBoost (Chen & Guestrin, 2016) on small
+Bayesian methods that depend on explicit likelihood func-            tabular datasets with up to 10 000 examples, yielding better
+tions, intricate sampling or variational inference techniques.       performance in 5 seconds than any baseline reached with 4
+Instead, PFNs utilize neural networks trained through super-         hours of tuning (Hollmann et al., 2025). Moreover, PFNs
+vised learning to perform Bayesian prediction directly via           have enabled various new applications of Bayesian methods
+in-context learning (ICL). PFNs are thus distinct from other         for predictions in domains as diverse as RNA folding times
+large-scale neural networks: they are solely trained on arti-        (Scheuer et al., 2024), computer-chip latencies (Carstensen
+ficial data, and only conditioned on real-world data. PFNs           et al., 2024), and metagenomics data (Perciballi et al., 2024).
+were shown to be over 200× faster than previous methods              On a fundamental level, PFNs are uniquely positioned to
+at Bayesian prediction on small scale data (Mu¨ller et al.,          leverage abundant pre-training compute in data-scarce en-
+2022) and over 10 000× faster for Bayesian learning curve            vironments. However, realizing their full potential requires
+extrapolation (Adriaensen et al., 2023).                             addressing key open challenges, which we outline to guide
+                                                                     future research.
+PFNs are neural networks, directly optimized to perform
+Bayesian predictions in context: Given a set of observed             2. Background
+data points and a query point, they predict the posterior pre-
+dictive distribution for that query, as exemplified in Figure        In this section, we detail PFNs and place them into context.
+1a. They learn to do this by training on samples from an
+artificial prior distribution over datasets (Figure 1). While        2.1. Prior-data Fitted Networks
+pre-training the PFN for a given prior can be expensive, the
+application to a new dataset is fast: it corresponds only to a       Prior-data Fitted Networks (PFNs) are pre-trained (prior-
+forward pass for the current PFN architectures (Mu¨ller et al.,      fitted) to approximate the posterior predictive distribution
+2022; Hollmann et al., 2025).                                        (PPD) and thus perform Bayesian predictions for a particular
+                                                                     prior. They directly approximate the PPD without instantiat-
+PFNs dramatically expand the space of possible priors that           ing a posterior over latents unlike most generic Bayesian pre-
+can be practically used in Bayesian inference. Traditional           diction methods. During pre-training, we assume that there
+methods typically require priors with, for example, tractable        is a sampling scheme for the prior, such that we can sample
+likelihood functions. In contrast, PFNs only require the             datasets of inputs and outputs: D  p(D). This requirement
+ability to sample from the prior, which can be specified im-         is easily satisfied for a large class of priors. In most cases
+plicitly by a generative process or simulation. This enables         discussed in this paper, we model the prior over datasets us-
+Bayesian modeling based on rich, domain-specific model-              ing a prior p() over latent variables . These variables can
+ing assumptions that would be intractable with conventional          take various forms, such as graphs, finite and infinite vectors,
+approaches.                                                          among others, as well as mixtures of these (Hollmann et al.,
+                                                                     2023; Mu¨ller et al., 2022). We then sample the dataset as
+PFNs are already being applied to domains as diverse as time         D  p(D|), based on a sampled . We repeatedly sample
+series forecasting (Verdenius et al., 2024; Hoo et al., 2025;        synthetic datasets D = {(xi, yi)}i{1,...,n}  p(D) and
+Bhethanabhotla et al., 2024), outlier detection (Shen et al.,        optimize the PFN's parameters  to make predictions for
+2024), Bayesian optimization (Mu¨ller et al., 2023c; Rako-           (xtest, ytest)  D, conditioned on the rest of the dataset
+toarison et al., 2024), tabular regression (Hollmann et al.,         Dtrain = D \ {(xtest, ytest)}. The PFN q can be con-
+2025) and classification (Hollmann et al., 2023; Mu¨ller et al.,     sidered an approximation to the PPD. It accepts a training
+2023a; Xu et al., 2024), learning curve extrapolation (Adri-         set as well as a test input and returns a distribution over
+aensen et al., 2023), biology applications (Scheuer et al.,          outcomes for the test input. The loss in PFN pre-training is
+2024; Ubbens et al., 2023; Czolbe & Dalca, 2023).                    the cross-entropy on the held-out examples
+
+    Position                                                         =  E                       [-log q(ytest|xtest, Dtrain)].
+
+    This paper argues that Prior-Data Fitted Net-                       {(xtest ,ytest)}Dtrain
+    works (PFNs) are a fruitful area of research, as
+    they will dominate most applications of Bayesian                    p(D)
+    prediction and create new ones in the future.
+                                                                     Minimizing this loss approximates the true posterior pre-
+A central reason for this belief is the existing trend in the        dictive distribution (PPD) (Mu¨ller et al., 2022; Goodfellow
+                                                                     et al., 2016), as it is the KL-divergence to the true PPD
+
+                                                                  2
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+across datasets in the prior                                       3. Sample target values yi from the GP defined by the sam-
+                                                                      pled hyperparameters : y  N (0, K), where K is
+         = E [KL(p(·|x, D), q(·|x, D))] + C.                          the kernel matrix.
+                           x,Dtrain
+                              p(D)                                 This process generates diverse datasets, reflecting a wide
+                                                                   range of possible underlying functions one might encounter
+This loss can incorporate Bayesian models with latents             in, e.g., BO.
+easily by sampling the latents   p() first and us-
+ing the data likelihood to sample datasets based on them           The TabPFN Prior While the previous two examples
+p(D)  p(D|). Crucially, this prior-fitting phase is per-           tread close to priors used with other Bayesian methods,
+formed only once for a given prior p(D) as part of algorithm       TabPFN (Hollmann et al., 2023; 2025) employs a highly
+development. It can be viewed as an initial phase to learn         sophisticated prior tailored to PFNs. This prior was build
+how to learn on new data, similar to meta-learning meth-           to perform well for supervised learning on tabular data.
+ods (Finn et al., 2017; Santoro et al., 2016) but trained on       It is a prior over structural causal models (SCM), which
+synthetic instead of real-world data. For technical details of     are computation graphs with linear connections, activation
+the training procedure for the experiments in this position        functions in each node, noise in each node. The features and
+paper, we refer to Appendix A.                                     target are the values read off at random nodes in the graph.
+                                                                   This is a prior unthinkable to approximate the posterior for
+2.2. Examples of PFN Priors                                        with traditional methods, as the latent involves a complex
+                                                                   graph and a large set of possible activation functions. Key
+The crucial aspect of PFNs is the synthetic data generation        characteristics include:
+process, which implicitly defines the prior p(D). Below, we
+detail a few illustrative examples.                                A Learning Curve Prior Adriaensen et al. (2023) de-
+                                                                   signed a prior specifically to mimic learning curves observed
+Bayesian Neural Network Priors Multiple works (Mu¨ller             in machine learning training processes, capturing typical
+et al., 2022; 2023c; Hollmann et al., 2023) explored a             shapes like power laws or sigmoidal functions.
+Bayesian neural network (BNN) prior, using a multi-layer
+perceptron (MLP) architecture. The prior here is defined           A Time Series Prior Dooley et al. (2023) developed
+over the BNN's weights. The PFN trained on this prior              a prior for time-series forecasting that includes common
+will approximate the predictions of a BNN, an MLP with             temporal patterns, such as seasonality (e.g., weekly or yearly
+uncertainty over it's weight and a prior N (0, 2) over its         cycles) and trends.
+weights. Synthetic datasets are generated by:
+                                                                   These examples show how domain knowledge can be en-
+1. Sampling the MLP weights  i.i.d. from a prior distribu-         coded into the data generation process to create specialized
+   tion, e.g., jk  N (0, 2).                                       PFNs, but also broad models applicable to large domains.
+                                                                   The prior is implicitly defined by the algorithm that gener-
+2. Sampling input features xi i.i.d. from a simple distribu-       ates synthetic datasets. This declarative approach allows
+   tion, e.g., U ([0, 1]d).                                        practitioners to tailor the PFN's inductive biases to the prob-
+                                                                   lem domain by controlling the characteristics of the data it
+3. Generating target values yi by passing xi through the           learns from during pre-training.
+   sampled neural network f(xi).
+                                                                   2.3. Relationship of PFNs to Traditional Bayesian
+This prior is very broad, encompassing all functions repre-             Prediction Methods
+sentable by the chosen MLP architecture and weight prior.
+                                                                   Traditionally, Bayesian inference and prediction are con-
+Gaussian Process Priors Mu¨ller et al. (2022) and                  ducted using methods that operate on a per-dataset basis and
+Mu¨ller et al. (2023c) utilized Gaussian Process (GP) pri-         do not amortize across datasets for a particular prior. Promi-
+ors to approximate GPs that are Bayesian over their hyper-         nent methods for supervised learning are the following:
+parameters with PFNs, as they are a popular choice for
+surrogate modeling in BO. This can be particularly useful             i) Markov Chain Monte Carlo (MCMC, Neal, 1996; An-
+for Bayesian optimization (BO), as shown by Mu¨ller et al.               drieu et al., 2003; Welling & Teh, 2011) methods, such
+(2023c). As it is fully Bayesian over hyperparameters, it                as NUTS (Hoffman et al., 2014), provide accurate but
+involves a "meta" prior over the GP hyperparameters (e.g.,               sometimes very slow approximations of the posterior;
+length scales, kernel types, output scale). The generation               and
+of one synthetic dataset D = {(xi, yi)} during pre-training
+proceeds as follows:                                                 ii) Variational Inference (VI, Jordan et al., 1999; Wain-
+                                                                         wright & Jordan, 2008; Hoffman et al., 2013) methods
+1. Sample GP hyperparameters  from their respective                      approximate the posterior using a tractable distribu-
+   hyper-prior distributions (e.g., uniform over a range).
+
+2. Sample input features xi  U ([0, 1]d).
+
+                                                                3
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+      tion, such as a factorized normal distribution, which        lot of different Bayesian predictions.
+      inherently limits the exactness of such methods.
+                                                                   2.4. Relationship of PFNs to Other Amortized Deep
+ iii) Finally, Gaussian processes (GPs, Rasmussen &                     Learning Methods
+      Williams, 2006) are a method to allow predicting with
+      infinite-dimensional latents, namely all smooth func-        While this paper focuses on PFNs, which work on datasets
+      tions.                                                       and make predictions for test samples, PFNs are just part
+                                                                   of a larger development of using deep learning to amortize
+We believe that PFNs hold great promise to supersede these         probabilistic models on simulated data. Other prominent
+methods for (supervised) prediction tasks, as they are not         candidates from this field include the following approaches.
+only the only method that allows defining the prior declar-
+atively as outlined in Section 3, but additionally the only        Amortized Simulation-Based Inference Simulation-
+method that can do all of the following:                           based inference (SBI; Cranmer et al., 2020) performs
+                                                                   Bayesian inference for the latent parameter  that deter-
+Simplicity of implementation MCMC and VI methods can               mines the behavior of scientific simulations. While simula-
+be hard to implement correctly. In contrast, PFNs simply           tors allow sampling from the joint distribution p(, x) of the
+execute a forward pass on a relatively standard neural archi-      latent  and data x, SBI methods aim to obtain insight into
+tecture, a highly standardized procedure that could even be        the typically multivariate posterior p(|x), where typically
+compiled to ONNX (developers, 2021).                               one specific dataset x is considered. Recently, amortized
+                                                                   neural posterior estimation (NPE) methods have substan-
+Handle complex latent distributions PFNs can handle                tially gained importance (Papamakarios & Murray, 2016;
+probabilistic models with very complex latent distributions,       Greenberg et al., 2019), where the goal is to approximate
+as the latents are never modeled explicitly. This contrasts        p(|x) with a model q(|x) for arbitrary x  p(x). In
+with MCMC, which can converge very slowly for large la-            NPE, the objective function is given by
+tent dimensions, and VI, for which one needs to explicitly
+parameterize the latent distribution, including interactions       E(,x)p(,x) [- log q(|x)] .              (1)
+between latent variables. For example, while a Bayesian
+treatment of neural networks typically only aims for a poste-      This is very similar to the PFN objective, but PFNs model
+rior distribution of the weights of a fixed architecture, PFNs     the simple posterior predictive instead of the posterior of
+trivially allow defining a prior over architectures as well.       the latent . Besides using NPE with normalizing flows
+In MCMC, this would require advanced techniques like re-           (Papamakarios, 2019; Wirnsberger et al., 2022), current
+versible jumps (Green, 1995), and in VI parameterizing a           approaches utilize diffusion and flow matching (Gloeckler
+variational posterior over different architectures can incur       et al., 2024; Wildberger et al., 2024) to model the latent's
+various problems (Rudner et al., 2022).                            posterior. Unlike PFNs, SBI methods typically target high-
+                                                                   dimensional complex posterior distributions of parameters
+Approximate a large class of priors Unlike GPs, PFNs,              within scientific simulations and are often closely moti-
+as well as MCMC and VI, can be used for a large class of           vated by specific applications, for example in physics (Geb-
+priors. The prerequisites for PFNs are slightly different;         hard et al., 2025), or neuroscience (Lueckmann et al., 2019;
+they require the ability to sample datasets from the prior,        Manzano-Patro´n et al., 2024).
+whereas MCMC and VI typically necessitate the ability to
+compute both the density of the data p(D|) and the prior           Causal Discovery Beyond posterior distributions arising
+probability p(), where  denotes the latent variables.              from scientific simulations, amortized inference has been ap-
+                                                                   plied to causal structure learning (Lorch et al., 2022), where
+Return Predictions without Sampling Unlike VI and                  an objective analogous to Equation 1 is used to learn the
+MCMC, PFNs and GPs model the predictive distribution               structure of causal graphs based on synthetically generated
+directly and thus do not need to sample latents from the           pairs of causal graphs and observational or interventional
+posterior to approximate it (Blundell et al., 2015).               data.
+
+We further think that PFNs hold great promise to supersede         Amortized Symbolic Regression and Reasoning A dif-
+other methods for (supervised) prediction tasks, as they can       ferent field that models latents by training on randomly
+effectively utilize neural network training compute, which         generated data, like the methods above, are neural symbolic
+we believe to continue to scale exponentially and faster than      regression approaches. Here, the latent is a formula de-
+specialized inference compute due to the intense focus on it       scribing an input-output relation (Kamienny et al., 2022)
+in the industry (Epoch AI, 2024b;a; Liu et al., 2024).             or a recurrence (d'Ascoli et al., 2022). The focus is thus
+                                                                   less on approximating the distribution, but rather on finding
+Further, we believe that the amortization of compute across        a single formula that models the data at hand. Symbolic
+tasks is still underexplored in most applications of Bayesian
+inference: many areas could amortize compute to perform a
+
+                                                                4
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+regression methods typically model the multi-dimensional            No Possibility for Data Leakage As PFNs are pre-trained
+latent distribution using a transformer encoder (Kamienny           on synthetic data, there is no possibility for data leakage to
+et al., 2022; d'Ascoli et al., 2022). Symbolic regression           occur. This can be of high relevance for domains, where
+is of utmost interest in many scientific applications. How-         both PFNs and foundation models trained on real-world
+ever, in practical applications where the prediction quality is     data exist. We can see this advantage already playing out
+the main concern, direct modeling of the simple prediction          for time series forecasting with foundation models, where
+distribution in PFNs is an advantage.                               dataset leakage is a big problem, and a PFN is among the
+                                                                    top-performing models (Hoo et al., 2025).
+Neural Processes Neural processes (NPs, Garnelo et al.,
+2018a;b) are neural networks that function as stochastic            Current Limitations Current PFNs also have downsides
+processes, materializing in a permutation invariance in both        for use in new applications, compared to traditional methods.
+training and testing samples. The neural network architec-          Here, we list currently known shortcomings and references
+tures used for PFNs, as exemplified in Figure 1b, typically         to ideas for how to address them.
+also meet the criteria of conditioned stochastic processes,
+thus of NPs. Additionally, PFNs have, similar to Conditional        1. PFNs can be less interpretable compared to traditional
+NPs (Garnelo et al., 2018a) a fully factorized output distri-          methods, as they hide the latent from the user. See Sec-
+bution treating each output separately, see Figure 1b. The             tions 4.4 and 5.4 for approaches to alleviate this problem.
+architectural similarity is particularly evident when com-
+paring the original PFN architecture (Mu¨ller et al., 2022)         2. The support set of datasets and their generating distribu-
+to the port of the PFN architecture to NP applications, the            tions is typically limited and less well defined for PFNs
+Transformer NP (Nguyen & Grover, 2022).                                compared to other Bayesian methods. Therefore, it is
+                                                                       less clear what data they work well on. This problem can
+While architecturally related to neural processes, PFNs are            be addressed in different ways, detailed in Section 5.
+a method to perform amortized inference with a particular
+focus on designing data generation processes. Rather than           3. Currently, PFNs work best for smaller datasets and are
+learning from fixed real-world datasets, like NPs, PFNs                commonly outperformed on large datasets. While there
+learn-to-learn and thus approximate Bayesian prediction                are potentially fundamental limitations in learning from
+from synthetic data sampled from a prior.                              large-scale data in context, we believe most of the current
+                                                                       reasons are efficiency- and compute-related, which we
+3. Scope and Limitations of PFNs                                       can make progress on as described in Section 6.1.
+
+In this section we outline what PFNs already offer and what         4. PFNs are not well positioned for tasks where fast infer-
+their current limitations are.                                         ence of new test datapoints is crucial. Their inference
+                                                                       times tend to be much slower compared to traditional
+Declarative programming of prediction algorithms                       methods in tabular settings, for example (Hollmann et al.,
+Unlike traditional prediction algorithms, such as random               2025). This is mostly an engineering challenge, though,
+forests (Breiman, 2001), that are defined imperatively, PFNs           and not fundamental as we outline in Section 6.3.
+enable the declarative definition of algorithms by specify-
+ing prior distributions p(D) over datasets. This allows the         5. Current PFN architectures exhibit specific modeling lim-
+direct encoding of assumptions (e.g., Gamma-distributed                itations, which we address in Section 6.5.
+noise, linear relationships, imbalance or missing values) by
+including corresponding examples during pre-training. This          In the following sections, we will explore exciting research
+declarative approach simplifies domain-specific model en-           opportunities with PFNs.
+gineering by allowing practitioners to directly incorporate
+relevant dataset characteristics into the prior.                    4. PFN Extensions
+
+Unlimited data Real-world data tends to run out in many             4.1. Incorporating Extra Inputs
+domains compared to compute, which scales exponentially
+(Epoch AI, 2024b;a). PFNs are thus a timely approach to             PFNs can be extended to accept additional contextual inputs
+use more compute to improve performance without relying             beyond the dataset itself, enabling adaptive behavior based
+on more real-world data. PFNs currently already excel on            on user preferences and domain knowledge. The PFN then
+small data problems, small Bayesian optimization problems           learns to approximate the PPD p(y|x, D, ) conditioned on
+(Mu¨ller et al., 2023c) and tabular supervised learning (Holl-      this extra information . Recent work has already demon-
+mann et al., 2025), but one can expect that the area where          strated the practical value of this approach: Mu¨ller et al.
+these models excels grows as the divide between compute             (2023c) incorporated user beliefs about optima in black-box
+and real-world data availability widens.                            optimization, Helli et al. (2024) used a distribution indicator
+                                                                    to handle distribution shifts, and FairPFN (Robertson et al.,
+                                                                    2024) achieved approximate counterfactual fairness (Kusner
+                                                                    et al., 2017) through protected feature inputs.
+
+                                                                 5
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+Algorithm 1 Latent Prior and Sampling Functions                     with current methods (Garnett, 2023).
+
+ 1: function latent prior()                                         The first work on PFNs for Bayesian optimization (Mu¨ller
+ 2: w  N (0, I)                                                     et al., 2023c) attempted to approximate Bayesian optimiza-
+ 3: return w                                                        tion by stacking lookahead models. However, this approach
+ 4: end function                                                    involves training numerous models, each relying on the
+ 5: function sample single example(w)                               output of the preceding model, which tends to degrade per-
+ 6: x  N (0, I)                                                     formance with an increasing number of steps. We believe
+ 7: y  wx + N (0, 0.1 · I)                                          that there is much to gain by taking inspiration from the
+ 8: return (x, y)                                                   advancements in "reasoning" language models (Kimi et al.,
+ 9: end function                                                    2025; DeepSeek-AI et al., 2025) and trying to use simple
+                                                                    reinforcement learning (Sutton & Barto, 2018) to teach the
+This flexibility opens exciting possibilities for user-friendly     model to trade-off exploration and exploitation on prior
+prediction systems. Promising input types include noise             functions using the goal g summed only over future steps as
+levels, functional constraints (e.g., homogeneity), extrema         reward, after an initial classical PFN training phase.
+characteristics, complexity and smoothness parameters, and
+feature-output relationship specifications.                         4.4. Latent Prediction
+
+4.2. An In-Context Interpreter                                      PFNs, unlike other amortized inference methods, do not
+                                                                    model the latent. This is an advantage for most predic-
+Building upon the additional user inputs presented above,           tion settings, as predictive distributions are commonly one-
+we propose to upgrade PFNs to be in-context interpreters for        dimensional, while the latent is high-dimensional. The draw-
+probabilistic model definitions. Here, users can specify their      back of this direct approach is that one can only access the
+knowledge through code that implicitly defines a prior over         model's internal posterior representation via its predictions.
+datasets p(D). The PFN models the PPD p(y|x, D, ) con-
+ditioned on a program  specified at prediction time. This           While PFNs were already shown to effectively learn poste-
+moves PFNs beyond fixed priors to become in-context in-             rior distributions over latent variables (Reuter et al., 2025),
+terpreters for probabilistic programming languages (PPLs).          there might be positive transfer between both tasks. And
+As a first step, this could be a PPL for supervised learning        users of prediction models could benefit from understanding
+with a latent-based prior, as exemplified in Algorithm 1. A         the model's reasoning better through latents. Most priors
+latent prior() function specifies how global latents are sam-       will have a complex latent, but an auto-regressive model-
+pled, and a sample single example() function describes how          ing approach, as proposed by d'Ascoli et al. (2022) and
+to use the dataset-level latent to generate one sample. In          Kamienny et al. (2022), can still model that. For modeling
+Algorithm 1, we use this format to define a linear regression       graph-based latents, like in TabPFN, or real-valued vector-
+prior. The training process would involve sampling a large          based latents, one can consider the methods proposed by
+set of random programs  along with datasets sampled with            Lorch et al. (2022) and Reuter et al. (2025), respectively.
+them and amortize over different programs.
+                                                                    Average Standard Deviation  0.050  Single Dataset Sample
+Current PFNs simplify the definition of prediction algo-                                               Average Across Datasets
+rithms by specifying them as data generation mechanisms                                         0.025
+and then training on these mechanisms. The proposed ap-
+proach simplifies this further by removing the training step,                                   0.000
+decreasing turnaround times in algorithm development dra-
+matically. This might, for example, allow the definition of a                                   0.025
+new TabPFN (Hollmann et al., 2025) in a single prompt.
+                                                                                      0 10 20 30 40 50 60 70 80
+4.3. Bayesian Optimization via Reinforcement Learning                                                  Number of Rollouts
+
+Bayesian Optimization is a blackbox optimization technique          Figure 2. We show the average standard deviation of 100 datasets
+with the goal to find a maximal point of an unknown function        sampled from our prior, each normalized by its final standard
+f after K queries xk, k < K. The goal commonly is                   deviation. We can see that the standard deviations tend to shrink in
+defined as maximizing g = 0<kK E[f (xk)]. The key                   the first few steps of each roll-out. This should not be the case for
+idea of Bayesian optimization is to assume the function             a Bayesian predictor, but it stabilizes after some steps, as expected.
+was sampled from a known prior p(f ). Even under this               Further, the deviations in standard deviation are small in absolute
+assumption, though, approximating the optimal next query            terms, compared to an average standard deviation of 0.21.
+for queries more than a few steps away from K is infeasible
+
+                                                                 6
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+5. Understanding PFNs                                                challenge.
+
+It was previously shown that PFNs and similar ICL setups             Further of interest is analyzing how the sample-generating
+can perform Bayesian prediction on many priors (Mu¨ller              distribution's support of a specific dataset affects prediction
+et al., 2022; Bai et al., 2024). Still, the behavior of PFNs is      quality. This relates to a broader phenomenon: while exact
+not clear in many circumstances, and understanding their             Bayesian inference converges to a nearby (in KL-div.) but
+behavior in general is crucial for researchers to trust them.        necessarily wrong latent (Burt et al., 2020), neural networks
+                                                                     have demonstrated an ability to gracefully model distribu-
+5.1. Martingale Perspective                                          tions that are similar to, but distinct from, their training
+                                                                     distributions (Lake & Baroni, 2023; Raventos et al., 2023).
+The most relevant question in understanding PFNs, in our
+opinion, is which features of true Bayesian predictions they         5.4. Interpretability of PFNs
+fulfill and which they don't in which circumstances. Re-
+cently, the Martingale property (Falck et al., 2024) was             PFNs present unique interpretability challenges compared
+proposed to do this for in-context learners. The Martingale          to MCMC or VI, or also established domain-specific al-
+property states that the models' posterior prediction distri-        gorithms, such as random forests or linear regression for
+bution approximation q(y|x, D) is roughly equal to the               tabular ML, as they don't explicitly instantiate interpretable
+approximation after sampling from their output distribution          latents. We identify two key dimensions for improving PFN
+n times sequentially, where we condition on the previous             interpretability in future research.
+samples:
+                                                                     Dataset-Level Interpretability focuses on explaining in-
+    q (y|x, D)  Exip(x); yip(yi|xi,D{(xj ,yj )}0<j<i)                dividual predictions by understanding how the prior and
+       [q(y|x, D  {(xj, yj)}0<j<n)].                                 observed data interact. Key approaches include:
+
+Both should approximate the PPD, so both should be                   · Based on the knowledge available about the latent  gen-
+roughly equal. Falck et al. (2024) found that language mod-            erating the dataset, train the PFN to predict the impact of
+els do not fulfill this property well. We started an exploration       features on predictions.
+on this in Figure 2, where we can see that models do on
+average tend to slightly decrease their average standard de-         · Counterfactual analysis through systematic dataset modi-
+viation for the first few steps in violation of the Martingale         fications, e.g., computing Shapley values (Rundel et al.,
+property, but stabilize after that, fulfilling the Martingale          2024; Muschalik et al., 2024).
+property. We show some example trajectories in the Ap-
+pendix in Figure 4. While this is only a very small-scale            · Allowing PFNs to return an approximation of the latent
+experiment, we include it to show the kind of directions one           posterior it uses internally, as outlined in Section 4.4.
+might take to better understand PFNs.
+                                                                     · A gradient-based assessment of the importance of individ-
+5.2. Limit Behavior                                                    ual data points on predictions. While this would be very
+                                                                       costly or not possible for traditional methods, for PFNs
+A crucial question is under what conditions PFNs can learn             a single backpropagation is enough to obtain data point
+from additional data, particularly when it is outside their            importance indicators.
+prior. Nagler (2023) published an initial paper examining
+some PFN architectures at scale, revealing potential for             Mechanistic Interpretability examines how PFNs inter-
+PFN architectures to surpass current large-scale approaches,         nally process priors and datasets not based on approxima-
+warranting further exploration.                                      tions, but by analyzing the model's state on particular inputs.
+                                                                     Directions worth further exploration include:
+5.3. Impact of Prior Density
+                                                                     · Analyzing internal representations of function classes and
+PFNs approximate Bayesian prediction, which fundamen-                  noise models, e.g., the question whether there are neurons
+tally requires the dataset to have support in the prior. While         representing the mean of latent variables or labels.
+PFNs generally inherit this dependency, they sometimes
+can, similar to other neural networks, generalize beyond             · Studying the attention distributions for datasets to under-
+the prior's support (Hollmann et al., 2023). However, this             stand how PFNs gather information.
+generalization capability is complex: PFNs might yield poor
+approximations even within the support, as they only ap-             · Developing architectures with interpretable components.
+proximate Bayesian predictions. Understanding when and               · Creating verification methods for properties like calibra-
+why these approximation failures occur remains an open
+                                                                       tion.
+                                                                     · Finding commonalities and differences in the way PFNs
+
+                                                                       handle data across different priors, seeds, architectures
+                                                                       and training steps.
+
+                                                                  7
+       Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+       Prior Samples      Head                                    0.9
+                             Probability                          0.8
+p=0.5                 /?                                          0.7
+
+p=0.2                 /?                                                 100                               Posterior
+                                                                                                           Model Prediction
+p=0.9                 /?
+                                                                                                  101
+       Test Examples                                                          Number of In-Context Examples
+
+                      /?
+
+                      /?
+
+                      /?
+
+Figure 3. On the left (top), we outline our prior, sampling a probability p for heads (green) and generating samples by coin flips. At test
+time (left, bottom), we condition on varying counts of coins displaying heads. On the right, we can see that the transformer-based PFN
+model is not able to approximate the posterior, as it would need to count the number of examples in the context, which are all identical.
+
+6. Improving PFNs                                                    Ensembling and fine-tuning PFNs post-pre-training offers
+                                                                     further scalability (Thomas et al., 2024; Breejen et al., 2023;
+The previous sections explored how we can extend and                 Feuer et al., 2024a), presenting a promising research avenue.
+understand PFNs. In this section, we want to explore how             Especially, fine-tuning might be a way to combine the gen-
+we can improve current PFNs.                                         erality and stability of PFNs with domain knowledege, in
+                                                                     domains where a lot of related datasets are available, like
+6.1. Scaling to More Samples                                         forecasting or tabular prediction.
+
+Despite the fact that current PFNs already handle up to              6.2. Focus Pre-Training on Hard Datasets
+10,000 examples (Hollmann et al., 2025), scaling to larger
+datasets presents two main challenges.                               Presently, PFNs are trained directly by sampling from the
+                                                                     prior. Most priors (Hollmann et al., 2023; Rasmussen &
+Compute The quadratic scaling of transformer-based                   Williams, 2006) favor simple functions, aligning with Oc-
+architectures with sample size can be mitigated with meth-           cam's razor principles. The probability a latent holds is
+ods such as the Perceiver (Jaegle et al., 2021), state-space         proportional to the compute spent learning the datasets it
+models (Gu & Dao, 2023), or linear attention (Wang et al.,           represents, and thus common trained PFNs focus predomi-
+2020a; Qin et al., 2022), which reduce the scaling to linear.        nantly on simple datasets.
+While training models on more samples likely necessitates
+training on more datasets, TabPFN v2's pre-training effi-            To address this, importance sampling could be employed.
+ciency (2,700 GPU hours) indicates a lot of potential for            PFN training allows precise control over data generation, en-
+further computational scaling (Hollmann et al., 2025).               abling hyperparameter adjustments in a well-defined param-
+                                                                     eter space, unlike when training on real-world data. A sec-
+Prior Larger datasets generally diminish the influence               ondary model that accommodates distribution shifts, such
+of the prior in Bayesian models. This phenomenon occurs              as Drift-resilient TabPFN (Helli et al., 2024), could estimate
+as the the posterior becomes more peaked with more evi-              gradient magnitudes across different prior settings, guiding
+dence, due to the data likelihood dominating the influence           a proposal distribution proportional to these magnitudes.
+of the prior as outlined for PFNs by Mu¨ller et al. (2024).          Another proposal distribution source could be the model's
+Several factors suggest that this won't limit the effectiveness      performance improvements from training on specific prior
+of PFNs soon, though. i) First, the success of ensembles in          regions; regions with greater improvements may yield fur-
+large-scale vision models (Kondratyuk et al., 2020; Wang             ther advancements. Additionally, given that language model-
+et al., 2020b) hints at wider posteriors to yield benefits in        ing faces similar issues, advancements in training efficiency
+large-scale settings. These ensembles approximate a pos-             through data direction could be applicable.
+terior over weights that is not a dirac-delta, but wider. ii)
+Secondly, tree-based methods in large-scale tabular data             6.3. Fast Inference
+(McElfresh et al., 2023) tend to outperform neural networks.
+Even though the neural networks are powerful and very                PFNs face slow inference times due to their architecture
+likely able to fit the training set perfectly. This hints at the     combining dataset fitting with prediction. Three main ac-
+fact that the prior (inductive bias) underlying tree-based           celeration approaches have emerged: caching training set
+methods is better than that of neural networks, thus hint-           states with multi-query attention (Hollmann et al., 2025;
+ing that priors remain important when scaling the number             Shazeer, 2019), distilling datasets into fewer tokens (Feuer
+of samples. For larger PFNs, we recommend using more                 et al., 2024b), and using hypernetworks to predict an infer-
+general priors that support complex functions, enabling mod-         ence network (Mu¨ller et al., 2023b). Notably, caching can
+eling of intricate functions with increased data.                    be viewed as predicting network weights. The caching in
+
+                                                                  8
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+Hollmann et al. (2025), for example, effectively functions        ods, such as MCMC and VI, remain the gold standard for
+as a hypernetwork predicting a transformer with attention         Bayesian inference due to their interpretability, access to the
+across features. In detail, this predicted transformer has an     latent, and theoretical foundations. Furthermore, MCMC is
+additional sublayer per layer, though, which contains a set       correct in the compute limit.
+of two-layer MLPs using attention as activation function,
+whose outputs are concatenated and linearly projected. Fu-        Response: While MCMC and VI still dominate for
+ture work should focus on architectural modifications for         Bayesian inference in general, we do not believe they will
+efficient caching and exploring offline approximation tech-       do so much longer for prediction tasks, for the reasons listed
+niques like sparse attention through nearest neighbor search      in Section 2.3.
+(Johnson et al., 2019).
+                                                                  View 2: PFNs Do Not Scale Critics may argue that PFNs
+6.4. Adaptive Compute Exertion                                    are constrained by their quadratic scaling in sample size.
+                                                                  This could prevent their application in domains requiring
+Not all predictions necessitate equal computational effort.       larger datasets, where methods like neural networks trained
+Recent advancements in language models (Wei et al., 2022;         with stochastic gradient descent (or tree-based methods)
+DeepSeek-AI et al., 2025; Kimi et al., 2025) suggest PFNs         may be more suitable.
+can be enhanced for multi-step reasoning through: (i) iter-
+ative sampling with intermediate points (see Section 5.1)         Response: First, other Bayesian methods typically scale
+ideally situated between the query point and the training         even worse (see Section 2.3), and multiple promising ap-
+set, (ii) pre-training with variable-length causally masked       proaches exist to address PFNs' scaling limitations (see
+tokens (Fan et al., 2019), incorporated as needed during          Section 6.1). We do believe, though, that PFNs will not be
+inference, and (iii) reinforcement learning to optimize the       the solution to all machine learning problems. Large-scale
+computation-accuracy trade-off (DeepSeek-AI et al., 2025).        problems, such as language modeling, will likely always
+This may also involve predicting a discretized "reasoning"        rather profit from a non-Bayesian treatment.
+path, offering insights into discrete "reasoning" processes.
+                                                                  View 3: PFNs Lack Interpretability Critics may ar-
+6.5. Architectural Limitations                                    gue that PFNs sacrifice the interpretability of traditional
+                                                                  Bayesian methods by not explicitly modeling the latent.
+While PFNs aim to model Bayesian predictions (PPDs) for
+any prior, current architectures face two key limitations.        Response: While this poses a challenge for PFNs, Sec-
+                                                                  tion 4.4 outlines possibilities for modeling the latent space,
+First, encoder-only transformers without positional embed-        and Section 5.4 outlines numerous promising approaches
+dings struggle to count identical examples (Barbero et al.,       to enhance PFN interpretability, including dataset-level and
+2024; Yehudai et al., 2024). This limitation is clearly           mechanistic interpretability methods. Moreover, as dis-
+demonstrated in Figure 3, where the original PFN archi-           cussed in Section 3, PFNs' declarative nature allows prac-
+tecture (Mu¨ller et al., 2022) fails to process repeated in-      titioners to explicitly encode domain knowledge through
+puts correctly. While TabPFN v2 (Hollmann et al., 2025)           prior specification, providing a different but valuable form
+offers a workaround using inference-time noise features,          of interpretability.
+more robust architectural solutions remain unexplored. A
+promising first step could be incorporating zero attention        8. Conclusion
+(add zero attn in PyTorch; Paszke et al., 2019).
+                                                                  In this position paper, we argue that PFNs represent a
+Second, PFNs struggle with heterogeneous data distribu-           transformative approach to Bayesian prediction. By en-
+tions. Specifically, they perform poorly when mixing well-        abling declarative programming through prior specifica-
+behaved centered distributions with heavy-tailed features,        tion and synthetic pre-training, PFNs make sophisticated
+requiring prior knowledge of feature distributions for pre-       Bayesian methods both accessible and computationally effi-
+processing. This limitation is particularly problematic for       cient. Their effectiveness across domains, from tabular to ge-
+tabular prediction, where feature scales are often unknown        netics data, and particular strength in data-scarce scenarios
+beforehand. Future generations of (Tab)PFNs would greatly         position them as a robust alternative to traditional Bayesian
+benefit from a novel encoder that automatically adapts to         methods and a promising avenue towards probabilistic foun-
+varying feature distributions.                                    dation models. While challenges remain, promising re-
+                                                                  search directions like in-context interpreters and latent pre-
+7. Alternative Views                                              diction methods suggest that PFNs will become increasingly
+                                                                  central to probabilistic machine learning.
+View 1: Traditional Bayesian Methods are Supe-
+rior Critics may argue that traditional Bayesian meth-
+
+                                                               9
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+Acknowledgements                                                     Barbero, F., Banino, A., Kapturowski, S., Kumaran,
+                                                                        D., Arau´jo, J. G., Vitvitskyi, A., Pascanu, R., and
+We are grateful for the computational resources that were              Velickovic´, P. Transformers need glasses! informa-
+available for this research. Specifically, we acknowledge               tion over-squashing in language tasks. arXiv preprint
+support by the state of Baden-Wu¨rttemberg through bwHPC                arXiv:2406.04267, 2024.
+and the German Research Foundation (DFG) through grant
+no INST 39/963-1 FUGG (bwForCluster NEMO), and by                    Bhethanabhotla, S. K., Swelam, O., Siems, J., Salinas, D.,
+the Deutsche Forschungsgemeinschaft (DFG, German Re-                    and Hutter, F. Mamba4cast: Efficient zero-shot time
+search Foundation) under grant number 417962828. Frank                  series forecasting with state space models. In NeurIPS
+Hutter acknowledges the financial support of the Hector                Workshop on Time Series in the Age of Large Models,
+Foundation.                                                             2024. URL https://openreview.net/forum?
+                                                                        id=YBOQ5HnzI6.
+We acknowledge funding through the European Research
+Council (ERC) Consolidator Grant "Deep Learning 2.0"                 Blundell, C., Cornebise, J., Kavukcuoglu, K., and Wierstra,
+(grant no. 101045765). Funded by the European Union.                    D. Weight uncertainty in neural network. In Bach, F.
+Views and opinions expressed are however those of the                   and Blei, D. (eds.), Proceedings of the 32nd International
+author(s) only and do not necessarily reflect those of the             Conference on Machine Learning (ICML'15), volume 37,
+European Union or the ERC. Neither the European Union                   pp. 1613­1622. Omnipress, 2015.
+nor the ERC can be held responsible for them.
+                                                                     Breejen, F. d., Bae, S., Cha, S., Kim, T.-Y., Koh, S. H.,
+Impact Statement                                                        and Yun, S.-Y. Fine-tuning the retrieval mechanism for
+                                                                        tabular deep learning. arXiv preprint arXiv:2311.07343,
+This paper presents work whose goal is to advance the field             2023.
+of Machine Learning. There are many potential societal
+consequences of our work, but we would like to highlight a           Breiman, L. Random forests. Machine Learning, 45:5­32,
+few. First, we believe that PFNs might (i) reduce the CO2               2001.
+cost for a particular application of Bayesian prediction, but
+(ii) it might also increase the number of applications that use      Burt, D. R., Ober, S. W., Garriga-Alonso, A., and van der
+Bayesian prediction, rather than methods with lower CO2                Wilk, M. Understanding variational inference in function-
+cost.                                                                   space. In Third Symposium on Advances in Approximate
+                                                                       Bayesian Inference, 2020.
+Further, PFNs equip researchers and data scientists with
+more proper, well-calibrated uncertainty estimates, which            Carstensen, T., Elsken, T., and Rapp, M. In-context learn-
+should lead to better decisions downstream. These decisions             ing for latency estimation. In AutoML Conference 2024
+are probably the main contributor to positive and negative             (Workshop Track), 2024.
+effects in the world. We believe that better estimates lead to
+better outcomes in the world for such general methods.               Chen, T. and Guestrin, C. XGBoost: A scalable tree boost-
+                                                                        ing system. In Krishnapuram, B., Shah, M., Smola, A.,
+                                                                       Aggarwal, C., Shen, D., and Rastogi, R. (eds.), Proceed-
+                                                                        ings of the 22nd ACM SIGKDD International Conference
+                                                                        on Knowledge Discovery and Data Mining (KDD'16), pp.
+                                                                       785­794. ACM Press, 2016.
+
+References                                                           Cranmer, K., Brehmer, J., and Louppe, G. The frontier of
+                                                                        simulation-based inference. Proceedings of the National
+Adriaensen, S., Rakotoarison, H., Mu¨ller, S., and Hutter,             Academy of Sciences, 117(48):30055­30062, 2020.
+   F. Efficient bayesian learning curve extrapolation using
+   prior-data fitted networks. In Oh et al. (2023).                  Cubuk, E., Zoph, B., Mane, D., Vasudevan, V., and Le, Q.
+                                                                       Autoaugment: Learning augmentation strategies from
+Andrieu, C., De Freitas, N., Doucet, A., and Jordan, M. I.              data. In Proceedings of the International Conference on
+  An introduction to mcmc for machine learning. Machine                Computer Vision and Pattern Recognition (CVPR'19),
+   learning, 50(1):5­43, 2003.                                          pp. 113­123. Computer Vision Foundation and IEEE
+                                                                        Computer Society, IEEE, 2019.
+
+Bai, Y., Chen, F., Wang, H., Xiong, C., and Mei, S. Trans-           Czolbe, S. and Dalca, A. V. Neuralizer: General neuroim-
+   formers as statisticians: Provable in-context learning with          age analysis without re-training. In Proceedings of the
+   in-context algorithm selection. Advances in neural infor-           International Conference on Computer Vision and Pat-
+   mation processing systems, 36, 2024.                                 tern Recognition (CVPR'23), pp. 6217­6230. Computer
+
+                                                                 10
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+Vision Foundation and IEEE Computer Society, IEEE,                    Epoch AI. Data on machine learning hardware,
+2023.
+                                                                      2024a.       URL https://epoch.ai/data/
+
+d'Ascoli, S., Kamienny, P.-A., Lample, G., and Charton, F.            machine-learning-hardware.  Accessed:
+   Deep symbolic regression for recurrent sequences. arXiv
+   preprint arXiv:2201.04600, 2022.                                   2025-01-27.
+
+DeepSeek-AI, Guo, D., Yang, D., Zhang, H., Song, J.,                  Epoch AI. Data on notable ai models, 2024b. URL https:
+   Zhang, R., Xu, R., Zhu, Q., Ma, S., Wang, P., Bi, X.,                //epoch.ai/data/notable-ai-models. Ac-
+   Zhang, X., Yu, X., Wu, Y., Wu, Z. F., Gou, Z., Shao,                  cessed: 2025-01-27.
+   Z., Li, Z., Gao, Z., Liu, A., Xue, B., Wang, B., Wu, B.,
+   Feng, B., Lu, C., Zhao, C., Deng, C., Zhang, C., Ruan,             Falck, F., Wang, Z., and Holmes, C. C. Is in-context
+   C., Dai, D., Chen, D., Ji, D., Li, E., Lin, F., Dai, F., Luo,         learning in large language models bayesian? a mar-
+   F., Hao, G., Chen, G., Li, G., Zhang, H., Bao, H., Xu,                tingale perspective. In Forty-first International Con-
+   H., Wang, H., Ding, H., Xin, H., Gao, H., Qu, H., Li,                 ference on Machine Learning, 2024. URL https:
+   H., Guo, J., Li, J., Wang, J., Chen, J., Yuan, J., Qiu, J.,          //openreview.net/forum?id=b1YQ5WKY3w.
+   Li, J., Cai, J. L., Ni, J., Liang, J., Chen, J., Dong, K.,
+   Hu, K., Gao, K., Guan, K., Huang, K., Yu, K., Wang, L.,            Fan, A., Grave, E., and Joulin, A. Reducing transformer
+   Zhang, L., Zhao, L., Wang, L., Zhang, L., Xu, L., Xia,                depth on demand with structured dropout. arXiv preprint
+   L., Zhang, M., Zhang, M., Tang, M., Li, M., Wang, M.,                 arXiv:1909.11556, 2019.
+   Li, M., Tian, N., Huang, P., Zhang, P., Wang, Q., Chen,
+   Q., Du, Q., Ge, R., Zhang, R., Pan, R., Wang, R., Chen,            Feuer, B., Schirrmeister, R., Cherepanova, V., Hegde, C.,
+   R. J., Jin, R. L., Chen, R., Lu, S., Zhou, S., Chen, S., Ye,          Hutter, F., Goldblum, M., Cohen, N., and C. White, C.
+   S., Wang, S., Yu, S., Zhou, S., Pan, S., Li, S. S., Zhou,            Tunetables: Context optimization for scalable prior-data
+   S., Wu, S., Ye, S., Yun, T., Pei, T., Sun, T., Wang, T.,              fitted networks. In Globerson, A., Mackey, L., Belgrave,
+   Zeng, W., Zhao, W., Liu, W., Liang, W., Gao, W., Yu, W.,              D., Fan, A., Paquet, U., Tomczak, J., and Zhang, C.
+   Zhang, W., Xiao, W. L., An, W., Liu, X., Wang, X., Chen,             (eds.), Proceedings of the 37th International Conference
+  X., Nie, X., Cheng, X., Liu, X., Xie, X., Liu, X., Yang,               on Advances in Neural Information Processing Systems
+  X., Li, X., Su, X., Lin, X., Li, X. Q., Jin, X., Shen, X.,            (NeurIPS'24). Curran Associates, 2024a.
+   Chen, X., Sun, X., Wang, X., Song, X., Zhou, X., Wang,
+  X., Shan, X., Li, Y. K., Wang, Y. Q., Wei, Y. X., Zhang,            Feuer, B., Schirrmeister, R. T., Cherepanova, V., Hegde,
+  Y., Xu, Y., Li, Y., Zhao, Y., Sun, Y., Wang, Y., Yu, Y.,               C., Hutter, F., Goldblum, M., Cohen, N., and White, C.
+   Zhang, Y., Shi, Y., Xiong, Y., He, Y., Piao, Y., Wang, Y.,           Tunetables: Context optimization for scalable prior-data
+  Tan, Y., Ma, Y., Liu, Y., Guo, Y., Ou, Y., Wang, Y., Gong,             fitted networks. arXiv preprint arXiv:2402.11137, 2024b.
+  Y., Zou, Y., He, Y., Xiong, Y., Luo, Y., You, Y., Liu, Y.,
+   Zhou, Y., Zhu, Y. X., Xu, Y., Huang, Y., Li, Y., Zheng,            Finn, C., Abbeel, P., and Levine, S. Model-agnostic meta-
+  Y., Zhu, Y., Ma, Y., Tang, Y., Zha, Y., Yan, Y., Ren, Z. Z.,           learning for fast adaptation of deep networks. In Precup,
+   Ren, Z., Sha, Z., Fu, Z., Xu, Z., Xie, Z., Zhang, Z., Hao,            D. and Teh, Y. (eds.), Proceedings of the 34th Interna-
+   Z., Ma, Z., Yan, Z., Wu, Z., Gu, Z., Zhu, Z., Liu, Z., Li,            tional Conference on Machine Learning (ICML'17), vol-
+   Z., Xie, Z., Song, Z., Pan, Z., Huang, Z., Xu, Z., Zhang,             ume 70, pp. 1126­1135. Proceedings of Machine Learn-
+   Z., and Zhang, Z. Deepseek-r1: Incentivizing reasoning                ing Research, 2017.
+   capability in llms via reinforcement learning, 2025. URL
+   https://arxiv.org/abs/2501.12948.                                  Garnelo, M., Rosenbaum, D., Maddison, C., Ramalho, T.,
+                                                                         Saxton, D., Shanahan, M., Teh, Y., Rezende, D., and
+Deng, J., Dong, W., Socher, R., Li, L., Li, K., and Fei-                 Eslami, S. Conditional neural processes. In Dy, J. and
+   Fei, L. ImageNet: A Large-Scale Hierarchical Image                    Krause, A. (eds.), Proceedings of the 35th International
+   Database. In Proceedings of the International Conference             Conference on Machine Learning (ICML'18), volume 80,
+   on Computer Vision and Pattern Recognition (CVPR'09),                 pp. 1704­1713. Proceedings of Machine Learning Re-
+   pp. 248­255. ieeecs, IEEE, 2009.                                      search, 2018a.
+
+developers, O. R. Onnx runtime.  https://                             Garnelo, M., Schwarz, J., Rosenbaum, D., Viola, F.,
+   onnxruntime.ai/, 2021.                                                Rezende, D. J., Eslami, S., and Teh, Y. W. Neural pro-
+                                                                         cesses. arXiv preprint arXiv:1807.01622, 2018b.
+
+Dooley, S., Khurana, G. S., Mohapatra, C., Naidu, S. V., and          Garnett, R. Bayesian Optimization. Cambridge University
+  White, C. Forecastpfn: Synthetically-trained zero-shot                 Press, 2023.
+   forecasting. In Oh et al. (2023).
+
+                                                                  11
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+Gebhard, T. D., Wildberger, J., Dax, M., Kofler, A., Anger-         Hoo, S. B., Mu¨ller, S., Salinas, D., and Hutter, F. The tabular
+   hausen, D., Quanz, S. P., and Scho¨lkopf, B. Flow match-            foundation model tabpfn outperforms specialized time
+   ing for atmospheric retrieval of exoplanets: Where reli-            series forecasting models based on simple features. arXiv
+   ability meets adaptive noise levels. Astronomy & Astro-             preprint arXiv:2501.02945, 2025.
+   physics, 693:A42, 2025.
+                                                                    Jaegle, A., Gimeno, F., Brock, A., Vinyals, O., Zisserman,
+Gloeckler, M., Deistler, M., Weilbach, C., Wood, F., and              A., and Carreira, J. Perceiver: General perception with it-
+   Macke, J. H. All-in-one simulation-based inference.                 erative attention. In International conference on machine
+   arXiv preprint arXiv:2404.09636, 2024.                              learning, pp. 4651­4664. PMLR, 2021.
+
+Goodfellow, I., Bengio, Y., and Courville, A. Deep Learning.        Johnson, J., Douze, M., and Je´gou, H. Billion-scale similar-
+   MIT Press, 2016.                                                    ity search with gpus. IEEE Transactions on Big Data, 7
+                                                                      (3):535­547, 2019.
+Green, P. J. Reversible jump markov chain monte carlo com-
+   putation and bayesian model determination. Biometrika,           Jordan, M. I., Ghahramani, Z., Jaakkola, T. S., and Saul,
+   82(4):711­732, 1995.                                                L. K. An introduction to variational methods for graphical
+                                                                       models. Machine learning, 37(2):183­233, 1999.
+Greenberg, D., Nonnenmacher, M., and Macke, J. Auto-
+   matic posterior transformation for likelihood-free infer-        Kamienny, P.-A., d'Ascoli, S., Lample, G., and Charton, F.
+   ence. In International Conference on Machine Learning,              End-to-end symbolic regression with transformers. In
+   pp. 2404­2414. PMLR, 2019.                                         Proceedings of the 36th International Conference on Neu-
+                                                                       ral Information Processing Systems, pp. 10269­10281,
+Gu, A. and Dao, T. Mamba: Linear time sequence modeling                2022.
+  with selective state spaces. arXiv:2312.00752 [cs.LG],
+   2023.                                                            Kimi, T., Du, A., Gao, B., Xing, B., Jiang, C., Chen, C.,
+                                                                       Li, C., Xiao, C., Du, C., Liao, C., et al. Kimi k1. 5:
+Helli, K., Schnurr, D., Hollmann, N., Mu¨ller, S., and Hutter,         Scaling reinforcement learning with llms. arXiv preprint
+   F. Drift-resilient tabPFN: In-context learning temporal             arXiv:2501.12599, 2025.
+   distribution shifts on tabular data. In The Thirty-eighth
+  Annual Conference on Neural Information Processing                Kondratyuk, D., Tan, M., Brown, M., and Gong, B. When
+  Systems, 2024. URL https://openreview.net/                           ensembling smaller models is more efficient than single
+   forum?id=p3tSEFMwpG.                                                large models. arXiv preprint arXiv:2005.00570, 2020.
+
+Ho, A., Besiroglu, T., Erdil, E., Owen, D., Rahman, R.,             Krause, A., Brunskill, E., Cho, K., Engelhardt, B., Sabato,
+   Guo, Z. C., Atkinson, D., Thompson, N., and Sevilla, J.             S., and Scarlett, J. (eds.). Proceedings of the 40th Interna-
+  Algorithmic progress in language models. CoRR, 2024.                 tional Conference on Machine Learning (ICML'23), vol-
+                                                                       ume 202 of Proceedings of Machine Learning Research,
+Hoffman, M. D., Blei, D. M., Wang, C., and Paisley, J.                 2023. PMLR.
+   Stochastic variational inference. Journal of Machine
+  Learning Research, 14(4):1303­1347, 2013. URL http:               Kusner, M. J., Loftus, J., Russell, C., and Silva, R. Counter-
+  //jmlr.org/papers/v14/hoffman13a.html.                               factual fairness. Advances in neural information process-
+                                                                       ing systems, 30, 2017.
+Hoffman, M. D., Gelman, A., et al. The no-u-turn sampler:
+   adaptively setting path lengths in hamiltonian monte carlo.      Lake, B. M. and Baroni, M. Human-like systematic general-
+  J. Mach. Learn. Res., 15(1):1593­1623, 2014.                         ization through a meta-learning neural network. Nature,
+                                                                       623(7985):115­121, 2023.
+Hollmann, N., Mu¨ller, S., Eggensperger, K., and Hutter,
+   F. TabPFN: A transformer that solves small tabular               Liu, A., Feng, B., Xue, B., Wang, B., Wu, B., Lu, C., Zhao,
+   classification problems in a second. In The Eleventh                C., Deng, C., Zhang, C., Ruan, C., et al. Deepseek-v3
+  International Conference on Learning Representations                 technical report. arXiv preprint arXiv:2412.19437, 2024.
+  (ICLR'23). ICLR, 2023. Published online: iclr.cc.
+                                                                    Lorch, L., Sussex, S., Rothfuss, J., Krause, A., and
+Hollmann, N., Mu¨ller, S., Purucker, L., Krishnakumar, A.,             Scho¨lkopf, B. Amortized inference for causal structure
+   Ko¨rfer, M., Hoo, S. B., Schirrmeister, R. T., and Hutter,          learning. Advances in Neural Information Processing
+   F. Accurate predictions on small data with a tabular               Systems, 35, 2022.
+   foundation model. Nature, 637(8045):319­326, 2025.
+                                                                    Lueckmann, J.-M., Bassetto, G., Karaletsos, T., and Macke,
+                                                                      J. H. Likelihood-free inference with emulator networks.
+
+                                                                12
+Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+   In Symposium on Advances in Approximate Bayesian                 Oh, A., Naumann, T., Globerson, A., Saenko, K., Hardt,
+  Inference, pp. 32­53. PMLR, 2019.                                    M., and Levine, S. (eds.). Proceedings of the 36th Inter-
+                                                                       national Conference on Advances in Neural Information
+Manzano-Patro´n, J., Deistler, M., Schro¨der, C., Kypraios,           Processing Systems (NeurIPS'23), 2023. Curran Asso-
+  T., Gonc¸alves, P. J., Macke, J. H., and Sotiropoulos, S. S.         ciates.
+   Uncertainty mapping and probabilistic tractography using
+   simulation-based inference in diffusion mri: A compari-          Papamakarios, G. Neural density estimation and likelihood-
+   son with classical bayes. bioRxiv, pp. 2024­11, 2024.               free inference. arXiv preprint arXiv:1910.13233, 2019.
+
+McElfresh, D., Khandagale, S., Valverde, J., Prasad C, V.,          Papamakarios, G. and Murray, I. Fast -free inference of
+   Ramakrishnan, G., Goldblum, M., and White, C. When                  simulation models with bayesian conditional density es-
+   do neural nets outperform boosted trees on tabular data?            timation. Advances in neural information processing
+   In Oh et al. (2023), pp. 76336­76369.                               systems, 29, 2016.
+
+Mu¨ller, A., Curino, C., and Ramakrishnan, R. Mothernet:            Paszke, A., Gross, S., Massa, F., Lerer, A., et al. PyTorch:
+  A foundational hypernetwork for tabular classification.             An imperative style, high-performance deep learning li-
+   arXiv:2312.08598 [cs.LG], 2023a.                                    brary. In Wallach, H., Larochelle, H., Beygelzimer, A.,
+                                                                       d'Alche Buc, F., Fox, E., and Garnett, R. (eds.), Proceed-
+Mu¨ller, A., Curino, C., and Ramakrishnan, R. Mothernet:               ings of the 32nd International Conference on Advances
+  A foundational hypernetwork for tabular classification.              in Neural Information Processing Systems (NeurIPS'19),
+   arXiv preprint arXiv:2312.08598, 2023b.                             pp. 8024­8035. Curran Associates, 2019.
+
+Mu¨ller, S. and Hutter, F. Trivialaugment: Tuning-free yet          Perciballi, G., Granese, F., Fall, A., Zehraoui, F., Prifti,
+   state-of-the-art data augmentation. In Proceedings of               E., and Zucker, J.-D. Adapting tabpfn for zero-inflated
+   the 24nd IEEE/CVF International Conference on Com-                  metagenomic data. In NeurIPS 2024 Third Table Repre-
+   puter Vision (ICCV'21), pp. 774­782. Computer Vision                sentation Learning Workshop, 2024.
+   Foundation and IEEE Computer Society, IEEE, 2021.
+                                                                    Qin, Z., Han, X., Sun, W., Li, D., Kong, L., Barnes, N., and
+Mu¨ller, S., Hollmann, N., Arango, S., Grabocka, J., and               Zhong, Y. The devil in linear transformer. arXiv preprint
+   Hutter, F. Transformers can do Bayesian inference. In               arXiv:2210.10340, 2022.
+  The Tenth International Conference on Learning Rep-
+   resentations (ICLR'22). ICLR, 2022. Published online:            Rakotoarison, H., Adriaensen, S., Mallik, N., Garibov,
+   iclr.cc.                                                            S., Bergman, E., and Hutter, F. In-context freeze-thaw
+                                                                       bayesian optimization for hyperparameter optimization.
+Mu¨ller, S., Feurer, M., Hollmann, N., and Hutter, F.                  In Salakhutdinov, R., Kolter, Z., Heller, K., Weller, A.,
+   PFNs4BO: In-Context Learning for Bayesian Optimiza-                 Oliver, N., Scarlett, J., and Berkenkamp, F. (eds.), Pro-
+   tion. In Krause et al. (2023).                                      ceedings of the 41st International Conference on Machine
+                                                                      Learning (ICML'24), volume 251 of Proceedings of Ma-
+Mu¨ller, S., Hollmann, N., and Hutter, F. Bayes' power                 chine Learning Research. PMLR, 2024.
+   for explaining in-context learning generalizations. arXiv
+   preprint arXiv:2410.01565, 2024.                                 Rasmussen, C. and Williams, C. Gaussian Processes for
+                                                                      Machine Learning. The MIT Press, 2006.
+Muschalik, M., Baniecki, H., Fumagalli, F., Kolpaczki,
+   P., Hammer, B., and Hu¨llermeier, E. shapiq: Shapley             Raventos, A., Paul, M., Chen, F., and Ganguli, S. Pretrain-
+   interactions for machine learning. In The Thirty-eight              ing task diversity and the emergence of non-bayesian
+  Conference on Neural Information Processing Systems                  in-context learning for regression. In Thirty-seventh
+  Datasets and Benchmarks Track, 2024. URL https:                     Conference on Neural Information Processing Systems,
+  //openreview.net/forum?id=knxGmi6SJi.                                2023. URL https://openreview.net/forum?
+                                                                       id=BtAz4a5xDg.
+Nagler, T. Statistical foundations of prior-data fitted net-
+  works. In Krause et al. (2023), pp. 25660­25676.                  Reuter, A., Rudner, T. G. J., Fortuin, V., and Ru¨gamer,
+                                                                       D. Can transformers learn full bayesian inference in
+Neal, R. Bayesian Learning for Neural Networks. Lecture                context? arXiv preprint arXiv:2501.16825, 2025. doi:
+   Notes in Statistics. Springer, 1996.                               10.48550/arXiv.2501.16825. URL https://arxiv.
+                                                                       org/abs/2501.16825.
+Nguyen, T. and Grover, A. Transformer neural processes:
+   Uncertainty-aware meta learning via sequence modeling.           Robertson, J., Hollmann, N., Awad, N., and Hutter, F.
+   arXiv preprint arXiv:2207.04179, 2022.                              Fairpfn: Transformers can do counterfactual fairness.
+                                                                       arXiv preprint arXiv:2407.05732, 2024.
+
+                                                                13
+                     Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+Rudner, T. G., Chen, Z., Teh, Y. W., and Gal, Y. Tractable        Wang, S., Li, B. Z., Khabsa, M., Fang, H., and Ma, H.
+   function-space variational inference in bayesian neural           Linformer: Self-attention with linear complexity, 2020a.
+   networks. Advances in Neural Information Processing
+  Systems, 35:22686­22698, 2022.                                  Wang, X., Kondratyuk, D., Christiansen, E., Kitani, K. M.,
+                                                                    Alon, Y., and Eban, E. Wisdom of committees: An
+Rundel, D., Kobialka, J., von Crailsheim, C., Feurer, M., Na-        overlooked approach to faster and more accurate models.
+   gler, T., and Ru¨gamer, D. Interpretable machine learning         arXiv preprint arXiv:2012.01988, 2020b.
+   for tabpfn. In World Conference on Explainable Artificial
+  Intelligence, pp. 465­476. Springer, 2024.                      Wei, J., Wang, X., Schuurmans, D., Bosma, M., Xia, F., Chi,
+                                                                     E., Le, Q. V., Zhou, D., et al. Chain-of-thought prompting
+Santoro, A., Bartunov, S., Botvinick, M., Wierstra, D., and          elicits reasoning in large language models. Advances in
+   Lillicrap, T. Meta-learning with memory-augmented neu-            neural information processing systems, 35:24824­24837,
+   ral networks. In Balcan, M. and Weinberger, K. (eds.),            2022.
+  Proceedings of the 33rd International Conference on Ma-
+   chine Learning (ICML'17), volume 48. Proceedings of            Welling, M. and Teh, Y. W. Bayesian learning via stochastic
+   Machine Learning Research, 2016.                                  gradient langevin dynamics. In Proceedings of the 28th
+                                                                     international conference on machine learning (ICML-11),
+Scheuer, D., Runge, F., Franke, J. K., Wolfinger, M. T.,             pp. 681­688. Citeseer, 2011.
+   Flamm, C., and Hutter, F. Kinpfn: Bayesian approx-
+   imation of rna folding kinetics using prior-data fitted        Wildberger, J., Dax, M., Buchholz, S., Green, S., Macke,
+   networks. bioRxiv, pp. 2024­10, 2024.                            J. H., and Scho¨lkopf, B. Flow matching for scalable
+                                                                     simulation-based inference. Advances in Neural Informa-
+Shazeer, N. Fast transformer decoding: One write-head is             tion Processing Systems, 36, 2024.
+   all you need. arXiv preprint arXiv:1911.02150, 2019.
+                                                                  Wirnsberger, P., Papamakarios, G., Ibarz, B., Racaniere, S.,
+Shen, Y., Wen, H., and Akoglu, L. Zero-shot outlier                  Ballard, A. J., Pritzel, A., and Blundell, C. Normalizing
+   detection via prior-data fitted networks: Model selec-            flows for atomic solids. Machine Learning: Science and
+   tion bygone! CoRR, abs/2409.05672, 2024. doi:                    Technology, 3(2):025009, 2022.
+  10.48550/ARXIV.2409.05672. URL https://doi.
+   org/10.48550/arXiv.2409.05672.                                 Xu, D., Cirit, O., Asadi, R., Sun, Y., and Wang,
+                                                                    W. Mixture of in-context prompters for tabular pfns.
+Sutton, R. S. and Barto, A. G. Reinforcement learning:               arXiv:2405.16156 [cs.LG], 2024.
+  An introduction. Adaptive computation and machine
+   learning. MIT Press, 2 edition, 2018.                          Yehudai, G., Kaplan, H., Ghandeharioun, A., Geva, M., and
+                                                                     Globerson, A. When can transformers count to n? arXiv
+Thomas, V., Ma, J., Hosseinzadeh, R., Golestan, K., Yu, G.,          preprint arXiv:2407.15160, 2024.
+  Volkovs, M., and Caterini, A. L. Retrieval & fine-tuning
+   for in-context tabular models. In ICML 2024 Workshop
+   on In-Context Learning, 2024.
+
+Trinh, T., Wu, Y. T., Le, Q., He, H., and Luong,
+
+T. Solving olympiad geometry without human
+
+demonstrations.  Nature, 625:476­482, 2024.
+
+URL https://www.nature.com/articles/
+
+s41586-023-06747-5.
+
+Ubbens, J., Stavness, I., and Sharpe, A. G. Gpfn: Prior-
+   data fitted networks for genomic prediction. bioRxiv, pp.
+   2023­09, 2023.
+
+Verdenius, S., Zerio, A., and Wang, R. L. Lat-pfn: A
+   joint embedding predictive architecture for in-context
+   time-series forecasting. arXiv preprint arXiv:2405.10093,
+   2024.
+
+Wainwright, M. J. and Jordan, M. I. Graphical models,
+   exponential families, and variational inference. Now
+   Publishers Inc, 2008.
+
+                                                              14
+                                            Position: The Future of Bayesian Prediction Is Prior-Fitted
+
+A. Experimental Setup
+
+We conducted all experiments using the original PFN architecture (Mu¨ller et al., 2022). A grid search identified the model
+with the best final training loss. We searched across 4 and 8 layers, batch sizes of 32 and 64, Adam learning rates of 0.0001,
+0.0003, and 0.001, embedding sizes of 128, 256, and 512, and step counts of 100 000, 200 000, and 400 000. Training set
+sizes were uniformly sampled from 1 to 100.
+
+A.1. Priors
+
+GP Prior for Section 5 For the analysis on the Martingale property in Section 5, we utilized the standard GP proposed
+by Mu¨ller et al. (2022) with an RBF-Kernel, length scale of 0.1, output scale of 1.0, and noise standard deviation of 10-4.
+Inputs were uniformly sampled between 0 and 1.
+
+Coin Flipping Prior for Section 6.5 To illustrate the PFN architecture's limitation in counting duplicated samples, we
+trained a PFN on random coin flips in Section 6.5. This simple prior asks the model to predict a coin's probability of landing
+heads, where a coin with a different head probability uniformly chosen from {0.01, 0.02, . . . , 0.99} is sampled to generate
+each dataset. As shown in Figure 3, when feeding only samples that landed heads, the neural network's prediction remains
+static despite the posterior's expected evolution to assume a higher probability of head. This demonstrates the network's
+failure to update its beliefs with new evidence, as it can't count duplicated samples.
+
+B. Martingale Properties of PFNs
+
+y  2.00                             y
+   1.00                                                          y
+   0.00                                                                                        y
+   -1.00
+
+                          0.0  0.5  1.0 0.0  0.5  1.0 0.0                               0.5  1.0 0.0         0.5  1.0
+
+Standard Deviation  0.75
+
+                    0.50
+
+                    0.25
+
+                    0.00  0.0  0.5  1.0 0.0  0.5  1.0 0.0                               0.5  1.0 0.0         0.5  1.0
+
+                    Model prediction                                                    Posterior            Trace of 30 samples
+                    Training points                                                     Trace of 10 samples  Trace of 40 samples
+                    Posterior (10% and 90% quantiles)                                   Trace of 20 samples  Trace of 50 samples
+                    Martingale Posterior Epistemic Uncertainty (10% and 90% quantiles)
+
+Figure 4. We train a model on two distinct classes of functions, sines and sloped lines, only (left). It not only learns fit both function
+classes well (center), but also learns to model slightly sloped sines, when prompted with a data from a sloped sine.
+
+                                                  15
+

@@ -1,0 +1,1443 @@
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Samuel Mu¨ ller 1 2 Matthias Feurer 1 Noah Hollmann 1 2 3 Frank Hutter 1 2
+
+                        Abstract                                                                                                      0.6
+                                                                       10
+      In this paper, we use Prior-data Fitted Networks                 Function Value
+      (PFNs) as a flexible surrogate for Bayesian Op-                                                                                              Acquisition Value (EI)
+      timization (BO). PFNs are neural processes that                                                                                0.4
+      are trained to approximate the posterior predictive              0
+      distribution (PPD) through in-context learning on
+      any prior distribution that can be efficiently sam-              -10     Observation             0.2
+      pled from. We describe how this flexibility can be
+      exploited for surrogate modeling in BO. We use                           GP Ground Truth
+      PFNs to mimic a naive Gaussian process (GP),
+      an advanced GP, and a Bayesian Neural Network                            PFN GP
+      (BNN). In addition, we show how to incorporate
+      further information into the prior, such as allow-                    0               5                          0
+      ing hints about the position of optima (user pri-                                                10
+      ors), ignoring irrelevant dimensions, and perform-
+      ing non-myopic BO by learning the acquisition                                    Function Input
+      function. The flexibility underlying these exten-
+      sions opens up vast possibilities for using PFNs                 Figure 1: Our proposed Prior-data Fitted Network almost ex-
+      for BO. We demonstrate the usefulness of PFNs                    actly approximates a Gaussian Process posterior with fixed
+      for BO in a large-scale evaluation on artificial                 hyperparameters. We plot the exact and approximated GP
+      GP samples and three different hyperparameter                    prediction for (i) the mean and (ii) expected improvement.
+      optimization testbeds: HPO-B, Bayesmark, and                     For the simple GP model approximated here, a ground truth
+      PD1. We publish code alongside trained models                    can be exactly calculated, which is generally not the case,
+      at github.com/automl/PFNs4BO.                                    see Section 4.1. PFNs, however, can be extended to approx-
+                                                                       imate any prior one can sample from.
+1. Introduction
+                                                                       nassi et al., 2011; Snoek et al., 2012; Eriksson & Jankowiak,
+Gaussian processes (GPs) are today's de facto standard                 2021). Instead, GPs are usually fitted using maximum likeli-
+surrogate model in Bayesian Optimization (BO; Frazier,                 hood, often called "Empirical Bayes". This makes Bayesian
+2018; Garnett, 2022). This dominance can be attributed to              optimization less principled from a Bayesian perspective.
+both their strong performance and their mathematical con-
+venience. However, a GP can only model priors that can                 The recently proposed Prior-data Fitted Networks (PFNs,
+be encoded as a valid kernel function and is jointly normal-           Mu¨ller et al., 2022) show that fast approximate Bayesian
+distributed. Moreover, while kernel hyperparameters could              inference is possible by training a neural network, more
+be treated in a Bayesian manner with Markov chain Monte                specifically, a specific type of neural process (Garnelo et al.,
+Carlo, this is typically not done due to the high computa-             2018), to mimic the posterior predictive distribution (PPD)
+tional cost, even though the fully Bayesian treatment was              in a single forward pass using in-context learning. This
+already shown to yield stronger results a decade ago (Be-              is a powerful approach, as it makes approximate Bayesian
+                                                                       inference readily usable in novel applications and allows
+   1University of Freiburg, Germany 2Prior Labs 3Charite´ ­ Berlin     using any prior that we can sample from, e.g. a GP kernel
+University of Medicine, Germany. Correspondence to: Samuel             and its hyperparameters, or also a Bayesian neural network.
+Mu¨ller <muellesa@cs.uni-freiburg.de>.                                 PFNs can be a robust and generalizable PPD approximation
+                                                                       method, e.g. for tabular data using a prior over different neu-
+Proceedings of the 40 th International Conference on Machine           ral architectures and their weights (Hollmann et al., 2023).
+Learning, Honolulu, Hawaii, USA. PMLR 202, 2023. Copyright
+2023 by the author(s).                                                 In this work, we demonstrate the flexibility and effective-
+                                                                       ness of PFNs as a Bayesian drop-in replacement for Gaus-
+                                                                       sian Processes. We perform Bayesian optimization with
+
+                                                                    1
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+three different kinds of priors, which we describe in Sec-          Algorithm 1 Bayesian optimization with GPs or PFNs
+tion 4: a GP-based and a BNN-based prior, as well as a
+prior that mimics the state-of-the-art BO implementation,              Input hyperparameter prior settings , PFN q trained
+HEBO (Cowen-Rivers et al., 2022). In Section 3, we show
+that standard acquisition functions, such as probability of             on a prior distribution over datasets p(D) , initial obser-
+improvement (PI), expected improvement (EI), or upper con-             vations D = {(x1, y1), ..., (xk, yk)}, search space X ,
+fidence bound (UCB), are easy to implement analytically in             number of BO iterations K, black-box function f to opti-
+the PFN framework and that PFNs can produce sensible re-               mize, acquisition function 
+sults for BO, as illustrated in Figure 1 for a PFN trained on a        Output Best observed input x and response y
+simple GP prior for which results closely follow the ground            for i  k + 1 to K do
+truth GP posterior. We also show that PFNs can readily be
+combined with gradient-based optimization techniques to                    Fit GP model f^ to data D
+optimize input warping (Snoek et al., 2014) and acquisition
+functions. In Section 5, we show how our approach can                     Suggest x  arg maxx^X (x^, D, f^ or q(· | D) )
+be extended to allow the user to specify prior beliefs about              Update history with response D  D  {(x, f (x))}
+where optima lie, which in our experiments significantly               end for
+improves performance when accurate prior beliefs exist, as             Return best configuration: arg max(xi,yi)D yi
+well as an extension towards non-myopic optimization.
+                                                                    ever, traditional GPs exhibit a cubic scaling, which limits
+In our experiments, we focus on BO for hyperparameter op-           their application in large-data settings. They also assume a
+timization (HPO, Feurer & Hutter, 2019). HPO is a crucial           joint Gaussian distribution of the data introducing a model
+task for achieving top performance with machine learning            mismatch for long-tailed data. Furthermore, the predomi-
+algorithms and a key application of BO (Brochu et al., 2010;        nant use of stationary kernels renders the optimization of
+Snoek et al., 2012; Garnett, 2022). We show that PFNs               nonstationary and heteroscedastic functions problematic.
+perform strongly across three benchmarks, including tuning          Two further problems come from the kernel that defines
+hyperparameters of large neural networks.                           the GP's covariance matrix. First, the model prior must
+                                                                    be encoded as a valid kernel function, which complicates
+2. Bayesian Optimization                                            representing categorical or hierarchical concepts. Second,
+                                                                    the kernel hyperparameters need to be tuned to the data,
+BO is a popular technique to find maxima of (noisy) black-          which suffers from the curse of dimensionality when using
+box functions in as few evaluations as possible (Garnett,           Empirical Bayes.
+2022). BO is an iterative procedure that switches between
+modeling outcomes based on all observations Dk up to a              The current state-of-the-art BO method using GPs for hy-
+time-step k with a probabilistic model f^(y|x, Dk), and us-         perparameter optimization is HEBO (Cowen-Rivers et al.,
+ing an acquisition function (f^(y|x, Dk)) to decide which           2022). We describe HEBO and extend on it in Section 4.2.
+point to query next. The acquisition function accepts a dis-
+tribution over possible outcomes, typically the predictive          3. Bayesian Optimization with PFNs
+posterior distribution, to trade off exploitation (trying to
+improve solutions in known good areas) and exploration (re-         We will now show how to train and use PFNs, combine
+ducing the posterior uncertainty in unknown areas). In this         common acquisition functions with them, and incorporate
+work, we restrict optimization to real- and integer-valued          gradient-based optimization at suggestion time for acquisi-
+inputs x, but BO has been extended to more complex design           tion function optimization and input warping (Snoek et al.,
+spaces (Hutter et al., 2011; Swersky et al., 2013; Korovina         2014).
+et al., 2020; Ru et al., 2021; Daulton et al., 2022). We show
+pseudocode for the BO loop in Algorithm 1 (purple depicts           3.1. Background on Prior-Data Fitted Networks
+the standard setting, and green PFN-based models, intro-
+duced in Sections 3-5). We refer to Brochu et al. (2010),           Prior-data Fitted Networks (PFNs, Mu¨ller et al., 2022) are
+Frazier (2018) and Garnett (2022) for thorough introduc-            neural networks trained to approximate the Posterior Pre-
+tions to Bayesian optimization. We will now focus on GPs            dictive Distribution p(y|x, D) for supervised learning tasks.
+for BO and briefly review other models in Appendix K.               We visualize their use in Figure 2a.
+
+Gaussian Processes GPs have been widely adopted as                  Prior-fitting Prior-fitting is the training of a PFN to ap-
+probabilistic surrogates in BO due to their flexibility and         proximate the PPD and thus perform Bayesian prediction
+analytic tractability (Rasmussen & Williams, 2006). How-            for a particular, chosen, prior. We assume that there is a
+                                                                    sampling scheme for the prior s.t. we can sample datasets
+                                                                    of inputs and outputs from it: D  p(D). This require-
+
+                                                                 2
+                              PFNs4BO: In-Context Learning for Bayesian Optimization
+
+      Done once, offline      Done per real-world dataset, online     a variable-length query set of feature vectors {x1, . . . , xm}
+                                                                      and return estimates of the PPD for each query. This ar-
+Sample synthetic datasets Di  Real-world training dataset Dreal       chitecture also fulfills all requirements for a neural process
+   from prior: Di  p(D)                and test point xtest           architecture (Nguyen & Grover, 2022b).
+
+Train a PFN q on synthetic    Obtain q(ytest|xtest, Dreal)            Regression Head PFNs do not use a standard regres-
+  datasets {D1, . . . , Dn}    with a single forward pass             sion head, but instead make predictions with a discretized
+                                                                      distribution, the Riemann distribution. Consequently, the
+(a) Prior-fitting and inference                                       approximated PPD q becomes a discrete distribution. This
+                 q(·|x4, D)q(·|x5, D)                                 allows PFNs to treat regression as a classification problem,
+                                                                      shown to be clearly advantageous for PFNs over a classical
+(x1, y1)(x2, y2)(x3, y3) x4   x5                                      regression head (Mu¨ller et al., 2022). Please see Appendix
+                                                                      E.1 for details.
+(b) Architecture and attention mechanism
+                                                                      3.2. PFNs as Models in Bayesian Optimization
+Figure 2: (a) The PFN learns to approximate the PPD of a
+given prior offline to yield predictions on new observations          We contrast Bayesian optimization with surrogates based
+in a single forward pass. (b) The positions representing the          on a PFN and a GP with Empirical Bayes in Algorithm 1;
+training samples (xi, yi) can attend only to each other; test         the standard components colored in purple are replaced
+positions (for x4 and x5) attend only to the training positions.      by the new ones in green. The trained PFN is passed to
+Plots based on Mu¨ller et al. (2022), with permission.                the BO algorithm and used in the acquisition function as a
+                                                                      replacement of the standard GP model.
+ment is easy to satisfy for most priors. For a GP, for ex-
+ample, this can be achieved by sampling outcomes from                 While PFNs have an up-front cost of fitting the prior, Empir-
+the GP prior. We describe our priors in more detail in                ical Bayes incurs the online cost of fitting the hyperparame-
+Section 4. We repeatedly sample synthetic datasets D =                ters in each iteration. Crucially, PFNs incur the training cost
+{(xi, yi)}i{1,...,n} and optimize the PFN's parameters                exactly once per prior, and a single trained PFN can be used
+to make predictions for (xtest, ytest)  D, conditioned on             for BO on different tasks with varying dimensions, since
+the rest of the dataset Dtrain = D \ {(xtest, ytest)}. Our            the data D is passed to the PFN for in-context learning (in a
+PFN q is an approximation to the PPD and thus accepts a               single forward pass). The offline training of the PFN can be
+training set and a test input and returns a distribution over         compared to developing the code base for GP regression and
+outcomes for the test input. The loss of the PFN training is          tuning its hyperparameter spaces: a one-time investment
+the cross-entropy on the held-out examples                            that is then generally applicable. We list important details
+                                                                      for BO with PFNs in Appendix D.
+  E(xtest,ytest)Dtrainp(D)[-log q (ytest|xtest, Dtrain)], (1)
+                                                                      3.3. Prior Work using Transformers as Surrogates
+and minimizing this loss approximates Bayesian predic-
+tion (Mu¨ller et al., 2022). Crucially, this synthetic prior-         Three recent works propose Transformers as surrogates.
+fitting phase is performed only once for a given prior p(D)
+as part of algorithm development. For technical details of            Maraval et al. (2022) investigate the feasibility of using
+our training procedure, we refer to Appendix E.                       PFNs in Bayesian Optimization (BO) on toy functions in
+                                                                      their early work. They demonstrate that using GP priors
+Real-World Inference During inference, the trained                    with a PFN can match or outperform GPs while being an
+model is applied to unseen real-world observations (see               order of magnitude faster. However, their work only eval-
+Figure 2a). For a novel dataset with observations D and test          uates a small set of toy functions and does not leverage
+features x, feeding D, x as an input to the model trained             the flexibility of PFNs to model extensions to a simple
+above yields an approximation to the PPD q(y|x, D)                    GP model. Finally, the authors train one PFN per search
+through in-context learning.                                          space dimensionality, while we share one network across all
+                                                                      search spaces. Their paper reports that (i) models trained on
+Architecture PFNs rely on a Transformer (Vaswani et al.,              uniformly distributed inputs impair predictive accuracy on
+2017) that encodes each feature vector and label as a vector          non-uniform data, and (ii) their PFNs require many novel ob-
+representation, allowing these representations to attend to           servations to adapt posteriors. However, they used extremely
+each other, as depicted in Figure 2b. They accept a variable-         few epochs for training, and we observe that both of these
+length training set D of feature and label vectors (treated as a      issues vanish when increasing the number of epochs for
+set-valued input to exploit permutation invariance) as well as        prior-fitting to the magnitude used by Mu¨ller et al. (2022).
+
+                                                                      Similarly, Nguyen & Grover (2022a) used a Transformer to
+
+                                                                   3
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+do Bayesian Optimization on toy functions. Interestingly,             the likelihood of the observed data, i.e., maximize p(D).
+they did not use a Riemann distribution to predict the output,        While the data likelihood can be computed with a PFN,
+but instead parameterized a normal distribution with the              this is expensive, as one needs to compute the factorization
+outputs of the neural network.                                        p(y1|x1)p(y2|x2, {(x1, y1)}) · · · . Instead, we use the like-
+                                                                      lihood (x,y)D p(y|x, D) of observing the same ys again,
+The only application to real-world data was done with the             which is cheaper to compute. We view this as a measure
+recent Optformer (Chen et al., 2022). Optformer is a Trans-           for the amount of noise a PFN uses to explain the data D.
+former that utilizes transfer learning on previously recorded         E.g., if a prediction p(y1|x1, {(xi, yi)}i{1,...,n}) has a high
+BO optimizations performed by other optimizers. As such,              probability, the network does not assign a lot of probability
+it is not a Bayesian method; instead, the Optformer mod-              to noise changing the value of y when re-evaluating. While
+els full BO trajectories, including observations, rather than         this approximation works well for our prior, it might fail
+acting as a surrogate model. Additionally, the Optformer              in other setups. We ablate the impact of input warping in
+incorporates additional user-provided information, such as            Appendix L.
+the names of the optimization dimensions or of the metric
+to optimize.                                                          4. Priors for Bayesian Optimization
+
+3.4. Acquisition Functions                                            In this work we use a set of three different priors to show
+                                                                      the flexibility of PFNs as a surrogate.
+When we condition a PFN on new observations, we obtain
+an approximation of the PPD in a forward-pass p(y|x, D)               4.1. A Simple Prior Based on a Simple GP (GP)
+q(y|x, D) in the form of a Riemann distribution, that is, a
+piece-wise constant distribution over bins spanning a rea-            We use the prior of a simple GP with fixed hyperparameters
+sonable output range (Mu¨ller et al., 2022). The Riemann              to show-case our method (see Figure 1 and Figures 11 and
+distribution allows us to calculate the utility for different ac-     12), as it allows us to compare against the ground truth pos-
+quisition functions exactly, e.g., EI, PI, or UCB, as described       terior. Here we use an RBF kernel with zero mean. During
+by Chen et al. (2022). To exemplify the general approach,             prior-fitting, we sample N inputs xi uniformly at random
+we outline how to compute PI(y) = -[y > f ]p(y)dy                     from the unit-hypercube. Then we sample all outputs y
+for the unbounded Riemann distribution in Appendix F. We              from the GP prior. We can simply sample y  N (0, K),
+experimented with EI, PI and UCB and found simple EI to               where Ki,j = kRBF(xi, xj ).
+work robustly. We show a comparison in Appendix Table 4.
+                                                                      4.2. A HEBO-inspired Prior (HEBO and HEBO+)
+3.5. Gradient-based Optimization at Inference Time
+                                                                      HEBO (Cowen-Rivers et al., 2022) is a state-of-the-art
+The PFN, being a standard Transformer under the hood,                 BO method that won the NeurIPS black-box competi-
+propagates gradients from its outputs to its inputs. We use           tion (Turner et al., 2021) and demonstrated excellent per-
+gradient ascent to find the acquisition function's maximum            formance in a recent empirical evaluation (Eggensperger
+and to tune our input warping, which we outline below.                et al., 2021). It performs non-linear input and output warp-
+                                                                      ing for robust surrogate modeling and combines it with a
+Acquisition Function Optimization Our acquisition                     well-engineered GP prior. We use it as a starting point for
+functions are optimized with an extensive initial random              our own HEBO-inspired prior for PFN training. Our method
+search followed by a gradient-based optimization of the               considers a set of parameters : the lengthscale per dimen-
+strongest candidates, similar to previous work (Snoek et al.,         sion, the output scale and the noise. These are modeled as
+2012). We refer to Appendix C for more details.                       independent random variables subject to some distribution
+                                                                      p(; ) that depends on hyperparameters .
+Input Warping To improve performance on search spaces
+with misspecified scales, e.g., a log scale that is not declared      To sample functions, we perform the following four steps
+as such, we warp features before passing them to the PFN.             per dataset: i) Sample all x from a uniform distribution, ii)
+This can be necessary as missing log scaling can result in            sample the parameters   p(; ), iii) draw the outputs for
+almost all values lying in a range that is difficult for the          our dataset y  N (0, K(x; )), where K is the covariance
+PFN to handle numerically (e.g., in the lowest percentile of          matrix defined by the 3/2 Mate´rn kernel, that uses the sam-
+the search space). We follow Cowen-Rivers et al. (2022)               pled outputscale, lengthscale and noise. For additional
+and use the CDF of a Kumaraswamy distribution w(·; a, b),             details on , we refer to Appendix B.
+where a and b are tuned per feature, to warp features to
+                                                                      We use this prior in a form that is as close to the original
+w(x; a, b) = 1 - (1 - xa)b.                         (2)               HEBO as possible and a variant we dub HEBO+ that ex-
+                                                                      tends on HEBO (see Section 5.2) and is tuned to work well
+Traditionally, the parameters a and b are tuned to maximize
+
+                                                                   4
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+with PFNs (see Section 7.1).                                       p
+
+4.3. Bayesian Neural Network Prior (BNN Prior)                        Feature  Feature
+
+We follow previous work (Mu¨ller et al., 2022; Hollmann            Figure 3: An example of the impact of the user prior on the
+et al., 2023) in building our Bayesian Neural Network              prior belief about the position of the optimum.
+(BNN) prior. To sample datasets from this prior, we (i)
+first sample one network architecture, i.e., the number of         5.3. User Priors
+layers, the number of hidden nodes, the sparseness, the
+amount of Gaussian noise added per unit, and the standard          The ability to incorporate practitioner's knowledge is piv-
+deviation with which to sample weights (ii) sample the net-        otal in order to improve the usefulness of automated HPO
+work's weights from a normal distribution. For each dataset,       approaches for Machine Learning as well as in other BO
+we first sample a BNN and then sample inputs to the BNN            applications. Previous work has shown that user knowledge
+x uniformly at random from the unit hypercube, feed these          can improve BO performance tremendously (Ramachandran
+through the network, and use the output values as the target       et al., 2020; Li et al., 2020; Souza et al., 2021; Hvarfner
+y. Additionally, we employed input warping as described in         et al., 2022). One way to incorporate explicit user knowl-
+Section 5.1. For more details, see Appendix B.                     edge is through a user's belief about the location of the
+                                                                   optimum in the search space. While previous work relies on
+5. Prior Extensions                                                warping the space (Ramachandran et al., 2020), reweighting
+                                                                   the posterior (Souza et al., 2021) or reweighting the acqui-
+PFNs offer versatility, making it simple to explore new pri-       sition function (Hvarfner et al., 2022), PFNs, can integrate
+ors for BO, such as the above BNN prior, which incorporates        these priors in a more direct and sound way.
+a distribution over architectures. In this section, we discuss
+modifications that can easily be combined with priors, but         In this work we let the user define an interval I  I, in which
+would be harder to incorporate in traditional GPs.                 they belief the optimum lies, and a weighting   [0, 1],
+                                                                   indicating their confidence. This yields a prior:
+5.1. Input Warping
+                                                                   p(D|, I) =  · p(D|m  I) + (1 - ) · p(D), (3)
+In addition to using input warping after prior-fitting (see
+Section 3.5), we can include a Bayesian formulation of             where m is the maximum of the function underlying the
+input warping in the prior directly and include it in prior-       dataset D; y  f (x) for all x, y  D. Figure 3 shows an
+fitting. That is, (i) we sample warping hyperparameters            exemplary change to the density of the optimum in the prior.
+hwarp randomly from a predefined distribution and then (ii)
+warp inputs of a synthetic prior dataset with an exponential       We train a single PFN that can accept any interval I  I
+transform and hyperparameters hwarp. While we found this           and confidence   [0, 1] and adapt its prior on the fly to
+to be beneficial, it was not powerful enough to remove the         be p(D|, I). The extra inputs,  and I, are fed to the PFN
+need for feature warping after prior-fitting completely.           using an extra position with its own linear encoder similar
+                                                                   to style embeddings for language models (Dai et al., 2019).
+5.2. Spurious Dimensions
+                                                                   In Appendix G, we detail how we build a PFN prior
+Many real-world tuning tasks contain irrelevant features,          p(D, , I) that is cheap to sample and allows the neural
+which do not influence the output (Bergstra & Bengio, 2012).       network to adapt to any interval I out of a set of |I| = 15
+While it would be hard with traditional GPs and Empirical          different intervals per search space dimension.
+Bayes to encode a specific chance of a feature being spurious
+in the prior, for PFNs, we can do this easily by adding            5.4. Non-Myopic Acquisition Function Approximation
+irrelevant features at random during prior-fitting. These
+features are simply not fed to the GP/NN which generates           Non-myopic acquisition functions provide an optimal ex-
+the outcomes for the dataset. In our final HEBO+ prior we          ploration and exploitation strategy, optimizing sampling
+use 30% irrelevant features. We found that this improves           policies over a rolling horizon. Though promising, comput-
+performance, especially for large search spaces, and show          ing them is computationally expensive and thus rarely used
+a steep improvement on the three largest search spaces in          in practice. We demonstrate how to use PFNs to enable an
+HPO-B in Table 3 of the Appendix.                                  effective approximation. The Knowledge Gradient (Frazier,
+                                                                   2018) measures the predicted improvement in the maximum
+                                                                   value of the black-box function by obtaining an additional
+                                                                   observation at the candidate point x:
+
+                                                                     KG(x; D) = Ep(y|x,D)[ (D  {(x, y)}) -  (D)], (4)
+
+                                                                5
+            PFNs4BO: In-Context Learning for Bayesian Optimization
+
+# Features  1 2 10                                                 7. HPO Experiments
+
+# Wins Empirical Bayes 206 144 169                                 We conduct a large-scale evaluation of PFNs as surrogates
+                                                                   for Hyperparameter Optimization (HPO). We present results
+# Wins PFN  239 154 171                                            on three diverse benchmarks: HPO-B (Pineda Arango et al.,
+                                                                   2021), a discrete benchmark with a focus on tree-based
+# Ties      555 702 660                                            ML models including XGBoost (Chen & Guestrin, 2016),
+                                                                   Bayesmark, a continuous HPO benchmark which was used
+Table 1: BO performance with minimal confounding factors           in the evaluation of the baseline HEBO (Cowen-Rivers et al.,
+after 50 evaluations. The majority of runs yielded ties,           2022), and PD1 (Wang et al., 2021), a discrete large neural
+showing PFNs are a strong alternative to Empirical Bayes.          network tuning benchmark. We run every optimizer for 50
+                                                                   function evaluations per problem. HPO-B provides baseline
+where  (D) = maxxX E[y|x, D]. Knowledge gradient                   results for 5 repetitions, and we therefore also conduct 5
+is the optimal acquisition function choice when optimizing         repetitions, except for Bayesmark, where we conduct 10
+for the mean in the following step. It is thus an approxima-       repetitions because it is considerably more noisy. In total
+tion for the non-myopic setting with a one step look-ahead.        we evaluated 105 tasks from a total of 19 search spaces. We
+Traditionally one can approximate KG with a Monte Carlo            describe a set of ablation studies in Appendix L, in which we
+estimate. For this, one needs to sample a set of N outcomes        analyse our HEBO-inspired model against a set of HEBO
+y at the current position and an additional set of M positions     variations to find the changes that improve performance.
+x at which to evaluate the mean per y. This incurs costs of        Moreover, we study the handling of spurious features and
+M · N . Alternatively, this can be solved by a two-level opti-     different acquisition functions.
+mization of random batches (Wu & Frazier, 2016; Wu et al.,
+2017). With a PFN, we can get away without any prediction          Model selection Our HEBO and BNN priors contain meta
+time optimization, though. The PFN can directly learn to           hyperparameters, which we chose once upfront. This is
+approximate the KG. In Appendix H we detail this method            similar to the GP meta hyperparameters which are chosen
+and in Appendix H.1 show results, with this non-myopic             once and fixed across tasks, e.g. the length scale prior for
+method outperforming standard EI on four search spaces             HEBO. To determine our global prior hyperparameters, we
+with few dimensions.                                               split off a set of 7 validation search spaces from our largest
+                                                                   benchmark, HPO-B, as validation search spaces. On these
+6. Bayesian optimization experiments                               we performed one random search for each prior and picked
+                                                                   the strongest hyperparameters based on average rank. We
+In this section we analyze the performance of PFNs on prior        list our search space split in Appendix A.
+samples with as few as possible confounding factors. First,
+we verify that the PFN predictions match the true GP poste-        7.1. HPO-B Benchmark
+rior without Empirical Bayes; as shown in Figures 11 and 12
+in the appendix. This is not the case when training the PFN        We perform experiments on the 9 test search spaces of the
+on very few (100k) prior samples but the approximation             HPO-B benchmark (Pineda Arango et al., 2021), which con-
+becomes tighter with enough samples ( 20M).                        tain a total of 51 different tasks spread across the search
+                                                                   spaces. HPO-B is a discrete benchmark in which the BO
+Next, we consider prediction performance with the original         tool can only query recorded function evaluations and con-
+HEBO prior, following their hyper-prior setup as close as          tains search spaces for Decision trees, SVMs, linear models,
+possible. We evaluate the HEBO with Empirical Bayes with           random forests and XGBoost.
+our reimplementation of the HEBO model in GPyTorch
+(Gardner et al., 2018), which has some slight adaptions            We compare our method to the following baselines (us-
+which we detail in Appendix I. Table 8 shows that both,            ing the results provided by HPO-B for 1-4): 1) Ran-
+PFNs and Empirical Bayes, can approximate the posterior            dom Search (RS; Bergstra & Bengio, 2012), 2) Gaussian
+similarly well in terms of likelihood on prior samples.            Processes (GP; (Jones et al., 1998; Snoek et al., 2012)
+                                                                   3) DNGO (Snoek et al., 2015), 4) Deep Kernel Gaus-
+Finally, we compare BO performance on samples from the             sian Processes (DGP; Wistuba & Grabocka, 2021), 5)
+HEBO prior. We create a discrete benchmark with 1 000 dif-         HEBO (Cowen-Rivers et al., 2022).
+ferent datasets per number of dimensions, each containing
+1 000 evaluations sampled uniformly at random in [0.0, 1.0].       We evaluate both PFN priors in Figure 4 (top). We can see
+Table 1 shows that across dimensionalities, the GP with            that the BNN prior performs similar to the best baseline,
+empirical Bayes and our PFN approximation perform on               while the HEBO+ prior outperforms the baselines. Addi-
+par, most of the time they find the same maxima. We refer          tionally, in Figure 9 of the Appendix, we study the impact of
+to Appendix I for a more detailed comparison.                      input warping on the PFN model and also compare against
+
+                                                                6
+                                      PFNs4BO: In-Context Learning for Bayesian Optimization
+
+              6                                                                               Random
+                                                                                              GP
+Average Rank  5                       Average Regret  10-1                                    HEBO
+                                                                                              DNGO
+              4                                       10-1.5                                  DGP
+                                                                                              PFN (HEBO+)
+                                                                                              PFN (BNN)
+
+Average Rank  8                       Average Regret                                          Random
+                                                                                              Random (User Prior)
+              6                                       10-2.0                                  HEBO
+                                                                                              PFN (BNN)
+              4                                                                               PFN (HEBO+)
+                                                                                              PFN (HEBO+) + User-
+                                                                                              Prior
+
+                 0  20  40                                    0     20  40
+
+                    Number of trials                             Number of trials
+
+Figure 4: Aggregated average rank and average regret over time on the HPO-B (top) and PD1 (bottom) benchmarks. Shading
+indicates 95% confidence intervals. (Top) Aggregate over all HPO-B test search spaces. We can see that both priors seem to
+yield advantages for the PFN, yielding top performance. We provide per-search-space results in Figure 18 in the Appendix.
+(Bottom) Aggreate over all PD1 tasks, including user priors. We can see that user priors clearly improve performance.
+
+a BNN baseline and two Optformers (Chen et al., 2022).              different datasets with accuracy as evaluation metric. This
+                                                                    yields a total of 36 different tasks. We compare our PFNs
+Early on we found that HPO-B has many instances of                  to the following baselines: 1) HEBO's competition version
+wrongly scaled hyperparameters, where a log transforma-             for BayesMark (Turner et al., 2021), 2) HyperOpt (Bergstra
+tion is missing. We found that approximately 10% of the             et al., 2013), 3) PySOT (Eriksson et al., 2019), and 4) Ran-
+hyperparameters are missing log scaling in HPO-B using              dom Search. For this benchmark, the question of initial de-
+a heuristic. We show one example of such a parameter in             sign arises. First we used d standard Sobol samples, where
+the appendix in Figure 15. While this likely is a bug in            d is the dimensionality of the search space. In this setting,
+the original development of the benchmark, we still include         we can see that the PFN with a BNN prior is outperformed
+this benchmark as it is a very important real-world setting.        by HEBO, while outperforming all other baselines, while
+Users, like the creators of HPO-B, could very well miss to          the HEBO+ prior helps the PFN to perform comparable or
+specify a log scaling. However it is very distinct from the         slightly worse than HEBO.
+standard BO setting, where user knowledge is used to apply
+logarithms where needed. Thus, we used this benchmark to            Since our PFN is fully Bayesian, there should be no need
+show-case our inference time input warping, as described            for an initial design, as the model will never overfit the data.
+in Section 3.5, that can find the right transformation for          We thus experimented with two more initial designs of size
+extremely mis-specified parameters.                                 one as the PPD cannot be used without a single training
+                                                                    point: We initialize i) at the middle of the search space and
+7.2. Continuous HPO on BayesMark                                    ii) in the lower corner of the search space. The first turned
+                                                                    out to be slightly better than standard Sobol sampling, while
+We use Bayesmark1 to test the PFN's ability to optimize hy-         the second was clearly superior to all other approaches.
+perparameters in continuous search spaces, i.e. give the PFN        These results are surprising, especially considering the bad
+the ability to propose any hyperparameter, not only previ-          performance these initializations seem to have at step 0.
+ously queried hyperparameters and show results in Figure 4.
+We evaluated 10 seeds on 9 methods from scikit-learn (Pe-           7.3. Neural Network HPO with PD1 and User Priors
+dregosa et al., 2011), i.e. 9 search spaces, training on 4
+                                                                    While the focus of the previous benchmarks was HPO
+    1https://github.com/uber/bayesmark                              for traditional machine learning methods, the PD1 bench-
+
+                                                                 7
+                        PFNs4BO: In-Context Learning for Bayesian Optimization
+
+                                                                10-0.5                       Random
+                                                                                             HyperOpt
+6Average Rank                                                                                PySOT
+                                                Average Regret                               HEBO
+5                                                                                            PFN (HEBO+, sobol)
+                                                                                             PFN (BNN, sobol)
+                                                                10-1                         PFN (HEBO+, init min)
+                                                                                             PFN (HEBO+, init mid)
+4
+
+   0  20  40                                                            0     20  40
+
+      Number of trials                                                     Number of trials
+
+Figure 5: Average rank and average regret over time on the BayesMark Benchmark, where tasks were optimized for accuracy.
+Shading indicates 95% confidence intervals. Using a single initial data point works well for the PFN.
+
+mark Wang et al. (2021) focuses on real-world large neural                    First, PFNs tend to work worse for data that has a very
+network setups. PD1 is a discrete benchmark, considering                      low likelihood in the prior distribution, which is not such a
+different relevant tuning tasks e.g. of ResNets (He et al.,                   big problem for GPs. Second, we could not find a setting
+2016) or Transformer language models (Vaswani et al.,                         that recovers mislabeled log dimensions, but still performs
+2017). All tasks in PD1 share the same five dimensional                       very strong on correctly specified search spaces. That is
+search space, which is given in Table 2 of the Appendix.                      why we use input-warping only for HPO-B, but not for the
+For each task we ran 5 seeds with a different (shared) sin-                   other benchmarks. Third, compared to GPs, we cannot draw
+gle initial given evaluation. We do not perform any further                   joint samples from multiple data points, which prohibits the
+initial design for our PFNs. Figure 4 (bottom) shows that                     straight-forward adaptation of some acquisition functions
+this time the PFN with BNN prior is clearly outperformed                      such as the noisy EI (Letham et al., 2018). Fourth, we have a
+by the HEBO baseline, but that the PFN with the HEBO+                         strong focus on accuracy as evaluation metric in HPO tasks,
+prior performs better.                                                        with only PD-1 having non-accuracy tasks. Our method
+                                                                              seems to work worse for non-accuracy based tasks, as they
+User Prior Since PD1 only has a single search space,                          typically have very different dynamics, even when using a
+we used it to evaluated the performance of a simple user                      power transformation. Fourth, PFNs were only shown to
+prior. As we lacked experience with the optimizer setup                       perform well up to around 1000 data points (Hollmann et al.,
+used in PD1, we defined a single generic user prior for                       2023) so far, but we are hopeful for future improvements.
+the benchmark based on the location of optima across all
+18 tasks. We did not choose to make it a very strong prior,                   Furthermore, we plan to extend our work to contain
+though, as in the most extreme case it places half of the prior               more elaborate priors that can handle non-stationary func-
+weight on optima in one-fourth of the transformed search                      tions (Assael et al., 2014; Martinez-Cantin, 2015; Waber-
+space. This generic user prior does not reveal the exact                      sich & Toussaint, 2016), heteroscedastic noise (Griffiths
+location of optima, but rather provides hints towards them.                   et al., 2022), discrete and categorical variables (Daulton
+The definition can be found in Table 2 of the Appendix.                       et al., 2022), discontinuous functions (Jenatton et al., 2017;
+                                                                              Le´vesque et al., 2017) and 100s or 1000s of irrelevant fea-
+In Figure 4 (bottom), we can see that the user prior yields                   tures (Wang et al., 2016). In addition, we expect that it will
+strong improvements over our HEBO+ prior. We contrast                         be easier to use other random processes such as student-t
+our method to a quasi-random search that samples randomly                     processes (Shah et al., 2014) or other non-Gaussian output
+from the user prior. Although this approach improves upon                     distributions, like log-normals (Eggensperger et al., 2018).
+random search, it is not competitive with any BO method,
+thus the prior clearly does not make the BO problem trivial.                  We have demonstrated how user priors can be added into the
+                                                                              model, and we plan to extend this to allow more flexible user
+8. Conclusion & Limitations                                                   priors that allow specifying details about the behavior of the
+                                                                              black-box function. Following up on this, a great addition
+We showed that PFNs can be trained in a way that they can                     will be learning user priors via transfer learning (Wistuba
+be powerful BO surrogates and incorporate function priors                     et al., 2016; van Rijn & Hutter, 2018; Vanschoren, 2019;
+that would be complicated to model otherwise.                                 Feurer et al., 2022) or allowing simpler user priors based on
+                                                                              just a few good starting points.
+Still, we believe that there is a lot of room to improve upon
+our work. Unfortunately, our work has several limitations.                    We would like to end this paper by once again highlighting
+
+                                                                           8
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+the potential of PFNs as surrogate in BO as they can be            Bergstra, J., Yamins, D., and Cox, D. Making a science of
+easily adapted to model any efficient to sample prior.                model search: Hyperparameter Optimization in hundreds
+                                                                      of dimensions for vision architectures. In Dasgupta, S.
+Acknowledgements                                                      and McAllester, D. (eds.), Proceedings of the 30th Inter-
+                                                                      national Conference on Machine Learning (ICML'13),
+Robert Bosch GmbH is acknowledged for financial support.              pp. 115­123. Omnipress, 2013.
+This research was supported by the Deutsche Forschungs-
+gemeinschaft (DFG, German Research Foundation) un-                 Brochu, E., Cora, V., and de Freitas, N. A tutorial on
+der grant number 417962828 and by the state of Baden-                 Bayesian optimization of expensive cost functions, with
+Wu¨rttemberg through bwHPC and the German Research                    application to active user modeling and hierarchical rein-
+Foundation (DFG) through grant no INST 39/963-1 FUGG.                 forcement learning. arXiv:1012.2599v1 [cs.LG], 2010.
+The authors acknowledge funding through the research net-
+work "Responsive and Scalable Learning for Robots Assist-          Calandra, R., Peters, J., Rasmussen, C., and Deisenroth,
+ing Humans" (ReScaLe) of the University of Freiburg. The              M. Manifold Gaussian processes for regression. In
+ReScaLe project is funded by the Carl Zeiss Foundation. We           2016 International Joint Conference on Neural Networks
+acknowledge funding through the European Research Coun-              (IJCNN'16), pp. 3338­3345. International Neural Net-
+cil (ERC) Consolidator Grant "Deep Learning 2.0" (grant              work Society and IEEE Computational Intelligence Soci-
+no. 101045765). Funded by the European Union. Views and               ety, IEEE, 2016.
+opinions expressed are however those of the author(s) only
+and do not necessarily reflect those of the European Union         Chen, T. and Guestrin, C. Xgboost: A scalable tree boosting
+or the ERC. Neither the European Union nor the ERC can                system. In Krishnapuram, B., Shah, M., Smola, A., Ag-
+be held responsible for them.                                         garwal, C., Shen, D., and Rastogi, R. (eds.), Proceedings
+                                                                      of the 22nd ACM SIGKDD International Conference on
+References                                                           Knowledge Discovery and Data Mining (KDD'16), pp.
+                                                                     785­794. ACM Press, 2016.
+Assael, J., Wang, Z., and Freitas, N. Heteroscedastic treed
+   Bayesian optimisation. arXiv:1410.7172 [cs.LG], 2014.           Chen, T., Fox, E., and Guestrin, C. Stochastic gradient
+                                                                      Hamiltonian Monte Carlo. In Xing, E. and Jebara, T.
+Bellemare, M. G., Dabney, W., and Munos, R. A distribu-              (eds.), Proceedings of the 31th International Conference
+   tional perspective on reinforcement learning. In Interna-          on Machine Learning, (ICML'14). Omnipress, 2014.
+   tional Conference on Machine Learning, pp. 449­458.
+   PMLR, 2017.                                                     Chen, Y., Song, X., Lee, C., Wang, Z., Zhang, Q., Dohan, D.,
+                                                                      Kawakami, K., Kochanski, G., Doucet, A., Ranzato, M.,
+Benassi, R., Bect, J., and Vazquez, E. Robust Gaussian                Perel, S., and de Freitas, N. Towards learning universal
+   process-based global optimization using a fully Bayesian           hyperparameter optimizers with transformers. In Proceed-
+   expected improvement criterion. In Coello, C. (ed.),               ings of the 36th International Conference on Advances
+   Proceedings of the Fifth International Conference on               in Neural Information Processing Systems (NeurIPS'22),
+   Learning and Intelligent Optimization (LION'11), vol-              2022.
+   ume 6683 of Lecture Notes in Computer Science, pp.
+  176­190. Springer, 2011.                                         Cowen-Rivers, A., Lyu, W., Tutunov, R., Wang, Z., Gros-
+                                                                      nit, A., Griffiths, R., Maraval, A., Jianye, H., Wang, J.,
+Bergstra, J. and Bengio, Y. Random search for hyper-                  Peters, J., and Ammar, H. HEBO: Pushing the limits of
+   parameter optimization. Journal of Machine Learning                sample-efficient hyper-parameter optimisation. Journal
+   Research, 13:281­305, 2012.                                        of Artificial Intelligence Research, 74:1269­1349, 2022.
+
+Bergstra, J., Bardenet, R., Bengio, Y., and Ke´gl, B. Al-          Dai, N., Liang, J., Qiu, X., and Huang, X. Style transformer:
+   gorithms for hyper-parameter optimization. In Shawe-               Unpaired text style transfer without disentangled latent
+   Taylor, J., Zemel, R., Bartlett, P., Pereira, F., and Wein-        representation. In Proceedings of the 57th Annual Meet-
+   berger, K. (eds.), Proceedings of the 24th International           ing of the Association for Computational Linguistics, pp.
+   Conference on Advances in Neural Information Process-              5997­6007. Association for Computational Linguistics,
+   ing Systems (NeurIPS'11), pp. 2546­2554. Curran Asso-              2019.
+   ciates, 2011.
+                                                                   Daulton, S., Wan, X., , Eriksson, D., Balandat, M., Os-
+                                                                      borne, M., and Bakshy, E. Bayesian optimization over
+                                                                      discrete and mixed spaces via probabilistic reparameter-
+                                                                      ization. In Proceedings of the 36th International Con-
+                                                                      ference on Advances in Neural Information Processing
+                                                                     Systems (NeurIPS'22), 2022.
+
+                                                                9
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Eggensperger, K., Lindauer, M., and Hutter, F. Neural              Garnett, R. Bayesian Optimization. Cambridge University
+   networks for predicting algorithm runtime distributions.           Press, 2022. in preparation.
+   In Lang, J. (ed.), Proceedings of the 27th International
+  Joint Conference on Artificial Intelligence (IJCAI'18), pp.      Griffiths, R.-R., Aldrick, A., Garcia-Ortegon, M., Lalchand,
+  1442­1448, 2018.                                                   V., and Lee, A. Achieving robustness to aleatoric uncer-
+                                                                      tainty with heteroscedastic Bayesian optimisation. Ma-
+Eggensperger, K., Haase, K., Mu¨ller, P., Lindauer, M., and           chine Learning: Science and Technology, 3, 2022.
+   Hutter, F. Neural model-based optimization with right-
+   censored observations. arXiv:2009:13828 [cs.AI], 2020.          He, K., Zhang, X., Ren, S., and Sun, J. Deep residual
+                                                                      learning for image recognition. In Proceedings of the
+Eggensperger, K., Mu¨ller, P., Mallik, N., Feurer, M., Sass,         International Conference on Computer Vision and Pattern
+   R., Klein, A., Awad, N., Lindauer, M., and Hutter, F.             Recognition (CVPR'16), pp. 770­778. Computer Vision
+   HPOBench: A collection of reproducible multi-fidelity              Foundation and IEEE Computer Society, IEEE, 2016.
+   benchmark problems for HPO. In Vanschoren, J. and
+  Yeung, S. (eds.), Proceedings of the Neural Information          Hebbal, A., Brevault, L., Balesdent, M., Taibi, E.-G., and
+  Processing Systems Track on Datasets and Benchmarks.                Melab, N. Efficient global optimization using deep Gaus-
+   Curran Associates, 2021.                                           sian processes. In 2018 IEEE Congress on Evolutionary
+                                                                     Computation (CEC), 2018.
+Eriksson, D. and Jankowiak, M. High-dimensional bayesian
+   optimization with sparse axis-aligned subspaces. In Un-         Hollmann, N., Mu¨ller, S., Eggensperger, K., and Hutter, F.
+   certainty in Artificial Intelligence, pp. 493­503. PMLR,          TabPFN: A transformer that solves small tabular classifi-
+   2021.                                                              cation problems in a second. In International Conference
+                                                                      on Learning Representations (ICLR'23), 2023. Published
+Eriksson, D., Bindel, D., and Shoemaker, C. pySOT and                 online: iclr.cc.
+   POAP: an event-driven asynchronous framework for sur-
+   rogate optimization. arXiv:1908.00420 [math.OC], 2019.          Hutter, F., Hoos, H., and Leyton-Brown, K. Sequential
+                                                                      model-based optimization for general algorithm config-
+Feurer, M. and Hutter, F. Hyperparameter Optimization. In             uration. In Coello, C. (ed.), Proceedings of the Fifth
+   Hutter, F., Kotthoff, L., and Vanschoren, J. (eds.), Auto-        International Conference on Learning and Intelligent Op-
+   mated Machine Learning: Methods, Systems, Challenges,              timization (LION'11), volume 6683 of Lecture Notes in
+   chapter 1, pp. 3 ­ 38. Springer, 2019. Available for free         Computer Science, pp. 507­523. Springer, 2011.
+   at http://automl.org/book.
+                                                                   Hvarfner, C., Stoll, D., Souza, A., Nardi, L., Lindauer,
+Feurer, M., Letham, B., Hutter, F., and Bakshy, E.                    M., and Hutter, F. BO: Augmenting Acquisition Func-
+   Practical transfer learning for bayesian optimization.             tions with User Beliefs for Bayesian Optimization. In
+   arXiv:1802.02219v4 [stat.ML], 2022.                               Proceedings of the International Conference on Learn-
+                                                                      ing Representations (ICLR'22), 2022. Published online:
+Frazier, P. A tutorial on Bayesian optimization.                      iclr.cc.
+   arXiv:1807.02811 [stat.ML], 2018.
+                                                                   Jenatton, R., Archambeau, C., Gonza´lez, J., and Seeger, M.
+Gardner, J., Pleiss, G., Weinberger, Q., Bindel, D., and              Bayesian Optimization with Tree-structured Dependen-
+  Wilson, A. Gpytorch: Blackbox matrix-matrix gaussian                cies. In Precup, D. and Teh, Y. (eds.), Proceedings of
+   process inference with gpu acceleration. In Bengio, S.,            the 34th International Conference on Machine Learning
+  Wallach, H., Larochelle, H., Grauman, K., Cesa-Bianchi,            (ICML'17), volume 70, pp. 1655­1664. Proceedings of
+   N., and Garnett, R. (eds.), Proceedings of the 31st Inter-         Machine Learning Research, 2017.
+   national Conference on Advances in Neural Information
+  Processing Systems (NeurIPS'18), pp. 7576­7586. Cur-             Jones, D., Schonlau, M., and Welch, W. Efficient global
+   ran Associates, 2018.                                              optimization of expensive black box functions. Journal
+                                                                      of Global Optimization, 13:455­492, 1998.
+Garnelo, M., Rosenbaum, D., Maddison, C., Ramalho, T.,
+   Saxton, D., Shanahan, M., Teh, Y., Rezende, D., and             Kingma, D. and Ba, J. Adam: A method for stochastic opti-
+   Eslami, S. Conditional neural processes. In Dy, J. and             mization. In Proceedings of the International Conference
+   Krause, A. (eds.), Proceedings of the 35th International           on Learning Representations (ICLR'15), 2015. Published
+  Conference on Machine Learning (ICML'18), volume 80,                online: iclr.cc.
+   pp. 1704­1713. Proceedings of Machine Learning Re-
+   search, 2018.                                                   Korovina, K., Xu, S., Kandasamy, K., Neiswanger, W., Poc-
+                                                                      zos, B., Schneider, J., and Xing, E. Chembo: Bayesian
+
+                                                               10
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+   optimization of small organic molecules with synthesiz-            volume 162 of Proceedings of Machine Learning Re-
+   able recommendations. In Chiappa, S. and Calandra, R.               search, pp. 16569­16594. PMLR, 2022b.
+  (eds.), Proceedings of the 23rd International Conference
+   on Artificial Intelligence and Statistics (AISTATS'20), pp.      Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V.,
+   3393­3403. Proceedings of Machine Learning Research,               Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P.,
+   2020.                                                              Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cour-
+                                                                       napeau, D., Brucher, M., Perrot, M., and Duchesnay, E.
+Letham, B., Karrer, B., Ottoni, G., and Bakshy, E. Con-                Scikit-learn: Machine learning in Python. Journal of
+   strained Bayesian optimization with noisy experiments.             Machine Learning Research, 12:2825­2830, 2011.
+  Bayesian Analysis, 2018.
+                                                                    Perrone, V., Jenatton, R., Seeger, M., and Archambeau, C.
+Li, J., Liu, Y., Liu, J., and Wang, W. Neural architecture             Scalable hyperparameter transfer learning. In Bengio, S.,
+   optimization with graph VAE. arXiv:2006.10310 [cs.LG],             Wallach, H., Larochelle, H., Grauman, K., Cesa-Bianchi,
+   2020.                                                               N., and Garnett, R. (eds.), Proceedings of the 31st Inter-
+                                                                       national Conference on Advances in Neural Information
+Loshchilov, I. and Hutter, F. SGDR: Stochastic gradi-                 Processing Systems (NeurIPS'18), pp. 6845­6855. Cur-
+   ent descent with warm restarts. In Proceedings of the               ran Associates, 2018.
+  International Conference on Learning Representations
+  (ICLR'17), 2017. Published online: iclr.cc.                       Pineda Arango, S., Jomaa, H., Wistuba, M., and Grabocka,
+                                                                      J. HPO-B: A large-scale reproducible benchmark for
+Le´vesque, J., Durand, A., Gagne´, C., and Sabourin, R.                black-box HPO based on OpenML. In Vanschoren, J. and
+   Bayesian optimization for conditional hyperparameter               Yeung, S. (eds.), Proceedings of the Neural Information
+   spaces. In Howell, B. (ed.), 2017 International Joint Con-         Processing Systems Track on Datasets and Benchmarks.
+   ference on Neural Networks (IJCNN'17), pp. 286­293.                 Curran Associates, 2021.
+   International Neural Network Society and IEEE Compu-
+   tational Intelligence Society, IEEE, 2017.                       Ramachandran, A., Gupta, S., Rana, S., Li, C., and
+                                                                      Venkatesh, S. Incorporating expert prior in Bayesian
+Maraval, A., Zimmer, M., Grosnit, A., Tutunov, R., Wang,               optimisation via space warping. Knowledge-Based Sys-
+  J., and Ammar, H. Sample-efficient optimisation with                 tems, 195, 2020.
+   probabilistic transformer surrogates. arXiv:2205.13902
+   [cs.LG], 2022.                                                   Rasmussen, C. and Williams, C. Gaussian Processes for
+                                                                      Machine Learning. The MIT Press, 2006.
+Martinez-Cantin, R. Locally-biased Bayesian optimization
+   using nonstationary Gaussian processes. In de Freitas,           Ru, B., Wan, X., Dong, X., and Osborne, M. Interpretable
+   N., Adams, R., Shahriari, B., Calandra, R., and Shah, A.            Neural Architecture Search via Bayesian optimisation
+  (eds.), NeurIPS Workshop on Bayesian Optimization in                with weisfeiler-lehman kernels. In Proceedings of the
+  Theory and Practice (BayesOpt'15), 2015.                            International Conference on Learning Representations
+                                                                      (ICLR'21), 2021. Published online: iclr.cc.
+Mu¨ller, S., Hollmann, N., Arango, S., Grabocka, J., and
+   Hutter, F. Transformers can do Bayesian inference. In            Schilling, N., Wistuba, M., Drumond, L., and Schmidt-
+  Proceedings of the International Conference on Learn-               Thieme, L. Joint model choice and hyperparameter opti-
+   ing Representations (ICLR'22), 2022. Published online:              mization with factorized multilayer perceptrons. In Pro-
+   iclr.cc.                                                            ceedings of the 27th IEEE International Conference on
+                                                                      Tools with Artificial Intelligence (ICTAI'15), pp. 72­79.
+Nguyen, T. and Grover, A. Transformer neural processes:                IEEE Computer Society, IEEE, 2015.
+   Uncertainty-aware meta learning via sequence modeling.
+   In Chaudhuri, K., Jegelka, S., Song, L., Szepesva´ri, C.,        Scikit-Optimize. Scikit-Optimize. https://github.
+   Niu, G., and Sabato, S. (eds.), Proceedings of the 39th In-         com/scikit-optimize/scikit-optimize,
+   ternational Conference on Machine Learning (ICML'22),               2018.
+  volume 162 of Proceedings of Machine Learning Re-
+   search, pp. 16569­16594. PMLR, 2022a.                            Shah, A., Wilson, A., and Ghahramani, Z. Student-t pro-
+                                                                       cesses as alternatives to Gaussian processes. In Kaski, S.
+Nguyen, T. and Grover, A. Transformer neural processes:                and Corander, J. (eds.), Proceedings of the Seventeenth
+   Uncertainty-aware meta learning via sequence modeling.             International Conference on Artificial Intelligence and
+   In Chaudhuri, K., Jegelka, S., Song, L., Szepesva´ri, C.,          Statistics (AISTATS'14), volume 33, pp. 877­885. Pro-
+   Niu, G., and Sabato, S. (eds.), Proceedings of the 39th In-         ceedings of Machine Learning Research, 2014.
+   ternational Conference on Machine Learning (ICML'22),
+
+                                                                11
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Snoek, J., Larochelle, H., and Adams, R. Practical Bayesian          Vanschoren, J. Meta-learning. In Hutter, F., Kot-
+   optimization of machine learning algorithms. In Bartlett,            thoff, L., and Vanschoren, J. (eds.), Automated Ma-
+   P., Pereira, F., Burges, C., Bottou, L., and Weinberger, K.          chine Learning: Methods, Systems, Challenges, chap-
+  (eds.), Proceedings of the 25th International Conference              ter 2, pp. 35­61. Springer, 2019. Available for free at
+   on Advances in Neural Information Processing Systems                 http://automl.org/book.
+  (NeurIPS'12), pp. 2960­2968. Curran Associates, 2012.
+                                                                     Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones,
+Snoek, J., Swersky, K., Zemel, R., and Adams, R. Input                  L., Gomez, A., Kaiser, L., and Polosukhin, I. Attention is
+  warping for Bayesian optimization of non-stationary func-             all you need. In Guyon, I., von Luxburg, U., Bengio, S.,
+   tions. In Xing, E. and Jebara, T. (eds.), Proceedings of            Wallach, H., Fergus, R., Vishwanathan, S., and Garnett, R.
+   the 31th International Conference on Machine Learning,              (eds.), Proceedings of the 30th International Conference
+  (ICML'14), pp. 1674­1682. Omnipress, 2014.                            on Advances in Neural Information Processing Systems
+                                                                       (NeurIPS'17). Curran Associates, Inc., 2017.
+Snoek, J., Rippel, O., Swersky, K., Kiros, R., Satish, N.,
+   Sundaram, N., Patwary, M., Prabhat, and Adams, R. Scal-           Virtanen, P., Gommers, R., Oliphant, T., Haberland, M.,
+   able Bayesian optimization using deep neural networks.               Reddy, T., Cournapeau, D., Burovski, E., Peterson, P.,
+   In Bach, F. and Blei, D. (eds.), Proceedings of the 32nd In-        Weckesser, W., Bright, J., van der Walt, S., Brett, M., Wil-
+   ternational Conference on Machine Learning (ICML'15),                son, J., Millman, K., Mayorov, N., Nelson, A., Jones, E.,
+  volume 37, pp. 2171­2180. Omnipress, 2015.                            Kern, R., Larson, E., Carey, C., Polat, I., Feng, Y., Moore,
+                                                                        E., VanderPlas, J., Laxalde, D., Perktold, J., Cimrman,
+Souza, A., Nardi, L., Oliveira, L., Olukotun, K., Lindauer,             R., Henriksen, I., Quintero, E., Harris, C., Archibald, A.,
+   M., and Hutter, F. Bayesian optimization with a prior                Ribeiro, A., Pedregosa, F., van Mulbregt, P., Vijaykumar,
+   for the optimum. In Machine Learning and Knowledge                  A., Bardelli, A., Rothberg, A., Hilboll, A., Kloeckner, A.,
+  Discovery in Databases. Research Track, Lecture Notes                 Scopatz, A., Lee, A., Rokem, A., Woods, C., Fulton, C.,
+   in Artificial Intelligence, pp. 265­296. Springer-Verlag,            Masson, C., Ha¨ggstro¨m, C., Fitzgerald, C., Nicholson,
+   2021.                                                                D., Hagen, D., Pasechnik, D., Olivetti, E., Martin, E.,
+                                                                       Wieser, E., Silva, F., Lenders, F., Wilhelm, F., Young,
+Springenberg, J., Klein, A., Falkner, S., and Hutter, F.                G., Price, G., Ingold, G.-L., Allen, G., Lee, G., Audren,
+   Bayesian optimization with robust Bayesian neural net-               H., Probst, I., Dietrich, J., Silterra, J., Webber, J., Slavic,
+  works. In Lee, D., Sugiyama, M., von Luxburg, U.,                    J., Nothman, J., Buchner, J., Kulick, J., Scho¨nberger,
+   Guyon, I., and Garnett, R. (eds.), Proceedings of the               J., de Miranda Cardoso, J., Reimer, J., Harrington, J.,
+  29th International Conference on Advances in Neural                   Rodr´iguez, J., Nunez-Iglesias, J., Kuczynski, J., Tritz, K.,
+  Information Processing Systems (NeurIPS'16). Curran                  Thoma, M., Newville, M., Ku¨mmerer, M., Bolingbroke,
+  Associates, 2016.                                                     M., Tartre, M., Pak, M., Smith, N., Nowaczyk, N., She-
+                                                                        banov, N., Pavlyk, O., Brodtkorb, P., Lee, P., McGibbon,
+Swersky, K., Duvenaud, D., Snoek, J., Hutter, F., and Os-               R., Feldbauer, R., Lewis, S., Tygier, S., Sievert, S., Vigna,
+   borne, M. Raiders of the lost architecture: Kernels for              S., Peterson, S., More, S., Pudlik, T., Oshima, T., Pingel,
+   Bayesian optimization in conditional parameter spaces.              T., Robitaille, T., Spura, T., Jones, T., Cera, T., Leslie,
+   In Hoffman, M., Snoek, J., de Freitas, N., and Osborne,             T., Zito, T., Krauss, T., Upadhyay, U., Halchenko, Y.,
+   M. (eds.), NeurIPS Workshop on Bayesian Optimization                Va´zquez-Baeza, Y., and SciPy 1.0 Contributors. SciPy
+   in Theory and Practice (BayesOpt'13), 2013.                         1.0: fundamental algorithms for scientific computing in
+                                                                        Python. Nature Methods, 17(3):261­272, 2020.
+Turner, R., Eriksson, D., McCourt, M., Kiili, J., Laakso-
+   nen, E., Xu, Z., and Guyon, I. Bayesian optimization is           Wabersich, K. and Toussaint, M. Advancing bayesian
+   superior to random search for machine learning hyperpa-              optimization: The mixed-global-local (mgl) kernel and
+   rameter tuning: Analysis of the Black-Box Optimization               length-scale cool down. In Calandra, R., Shahriari, B.,
+   Challenge 2020. In Escalante, H. and Hofmann, K. (eds.),             Gonzalez, J., Hutter, F., and Adams, R. (eds.), NeurIPS
+  Proceedings of the Neural Information Processing Sys-                Workshop on Bayesian Optimization: Black-box Opti-
+   tems Track Competition and Demonstration, pp. 3­26.                  mization and Beyond, 2016.
+   Curran Associates, 2021.
+                                                                     Wang, Z., Hutter, F., Zoghi, M., Matheson, D., and de Feitas,
+van Rijn, J. and Hutter, F. Hyperparameter importance                   N. Bayesian optimization in a billion dimensions via
+   across datasets. In Guo, Y. and Farooq, F. (eds.), Proceed-          random embeddings. Journal of Artificial Intelligence
+   ings of the 24th ACM SIGKDD International Conference                Research, 55:361­387, 2016.
+   on Knowledge Discovery and Data Mining (KDD'18), pp.
+   2367­2376. ACM Press, 2018.                                       Wang, Z., Dahl, G., Swersky, K., Lee, C., Mariet, Z.,
+
+                                                                 12
+                                           PFNs4BO: In-Context Learning for Bayesian Optimization
+   Nado, Z., Gilmer, J., Snoek, J., and Ghahramani, Z. Pre-
+   trained Gaussian processes for Bayesian optimization.
+   arXiv:2207.03084v4 [cs.LG], 2021.
+Wistuba, M. and Grabocka, J. Few-shot bayesian optimiza-
+   tion with deep kernel surrogates. In Proceedings of the
+  International Conference on Learning Representations
+  (ICLR'21), 2021. Published online: iclr.cc.
+Wistuba, M., Schilling, N., and Schmidt-Thieme, L. Two-
+   stage transfer surrogate model for automatic Hyperparam-
+   eter Optimization. In Paolo, F., Landwehr, N., Manco,
+   G., and Vreeken, J. (eds.), Machine Learning and Knowl-
+   edge Discovery in Databases (ECML/PKDD'16), Lecture
+   Notes in Computer Science, pp. 199­214. Springer, 2016.
+Wu, J. and Frazier, P. The parallel knowledge gradient
+   method for batch Bayesian optimization. In Lee, D.,
+   Sugiyama, M., von Luxburg, U., Guyon, I., and Garnett,
+   R. (eds.), Advances in Neural Information Processing
+  Systems. Curran Associates, 2016.
+Wu, J., Poloczek, M., Wilson, A., and Frazier, P. Bayesian
+   optimization with gradients. In Guyon, I., von Luxburg,
+   U., Bengio, S., Wallach, H., Fergus, R., Vishwanathan, S.,
+   and Garnett, R. (eds.), Proceedings of the 30th Interna-
+   tional Conference on Advances in Neural Information
+  Processing Systems (NeurIPS'17). Curran Associates,
+   2017.
+Zhu, C., Byrd, R., and Nocedal, J. L-BFGS-B: Algorithm
+  778: L-BFGS-B, FORTRAN routines for large scale
+   bound constrained optimization. ACM Transactions on
+  Mathematical Software, 23(4):550­560, 1997.
+
+                                                                        13
+                                            PFNs4BO: In-Context Learning for Bayesian Optimization
+
+A. Search spaces split
+
+For the HPO-B Benchmark, we split search spaces into test, validation, and training search spaces. We make sure to group
+similar algorithms into the same split. As validation search spaces, we use HPO-B IDs: 5527, 5891, 5906, 5971, 6767, 6766,
+and 5860. As test search spaces, we use HPO-B IDs: 5965, 7609, 5889, 6794, 5859, 4796, 7607, 5636, and 5970.
+
+B. Details on Our Priors
+
+Below we explain implementation details and the hyperparameters used in our priors. We found all hyperparameters using
+random search on the distinct validation search spaces of HPO-B, which ensures that we have an unbiased performance on
+the test set.
+
+B.1. Our HEBO-inspired Prior
+
+For our final model, not the one used for the direct comparison with HEBO on artificial data shown in Figure 10, we made
+some adaptions to the HEBO prior. We do not use a linear kernel and use the following priors, found by using BO on the
+validation search spaces of HPO-B, as described in Section 7.1. We use Gamma(concentration, rate) distributions for
+length- and outputscale hyperparameters: For the outputscale we use Gamma(0.8452, 0.3993) and for the lengthscale we
+use Gamma(1.2107, 1.5212). For the noise we follow the original kernel exactly with log()  N (-4.63, 0.5).
+
+B.2. Our BNN prior
+
+We generate the inputs for the BNN via a uniform random sampling scheme from the unit hypercube, akin to the inputs
+to our GP priors. We employ a multi-layer perceptron (MLP) for the BNN with a tanh activation function. To account
+for model complexity, the number of layers in the MLP is sampled uniformly from the range of 8 to 15. Additionally, the
+number of hidden units per layer is uniformly sampled between 36 and 150. The weights of the network are sampled from a
+Normal distribution with 0 mean, and a standard deviation sampled uniformly at random from [0.089, 0.193]. Every weight
+is zeroed with a probability of 14.5%, and the remaining weights are rescaled by a factor of 1/(1. - .145)  (1/2) to
+counteract the changed distribution.
+
+Before any activation, we add a 0-mean Gaussian noise with a standard deviation uniformly sampled between 0.0003 and
+0.0014. We add a noise uniformly at random sampled between 0.0004 and 0.0013.
+
+We used a zero-mean Gaussian for sampling the input warping parameter C1 (C2) with a standard deviation of 0.976
+(0.8003).
+
+To be more efficient, we sampled the hyperparameters (the standard deviation of the distributions and the architecture) 16
+times per batch, but used a batch size of 128. This is more efficient than sampling these per example, but adds correlation to
+the gradients inside a batch.
+
+C. Acquisition Function Optimization
+
+Acquisition functions are used in Bayesian optimization to determine the next point to sample in the optimization process.
+These functions take into account the current model of the objective function and the uncertainty of the model to determine
+the most promising points to sample.
+
+As the PFNs are standard neural networks, they are fully differentiable. Thus, we can compute derivatives of the acquisition
+function with respect to the input x via backpropagation. We can then apply gradient-based optimization techniques to find
+the candidate x that maximize the acquisition function given a PFN. Here we use standard techniques proposed by Snoek
+et al. (2012).
+
+We first create a set of candidates for x by sampling random candidate positions (N=100,000) and combine them with all
+observations {x1, . . . , xk}. Then, we use the 100 candidates with the highest acquisition function values as candidates for a
+gradient-based search with scipy's (Virtanen et al., 2020) L-BFGS-B (Zhu et al., 1997). Finally, we used the candidate with
+maximum EI after optimization as our proposal.
+
+In the case of integers or boolean hyperparameters we treat the value between the two next legal solutions as the probability
+of a coin flip and round in a probabilistic fashion. Furthermore, we skip candidates that we had already evaluated to ensure
+
+                                                                        14
+                                           PFNs4BO: In-Context Learning for Bayesian Optimization
+that we do not evaluate the same candidate twice.
+
+D. BO Tricks
+
+We found that the following tricks improve the performance of our PFNs considerably and use them for all our experiments:
+
+   · We use a power transform to transform the observed outputs to a distribution more similar to a standard-normal,
+     as proposed by Cowen-Rivers et al. (2022). They introduce this to handle heteroscedasticity, which might be the
+     way it is helping the model. We additionally saw that it led to flattening outliers on the non-optimal end of the
+     spectrum, while increasing the differences between points in magnitude close to the optimum, leading to a different
+     exploration/exploitation trade-off.
+
+   · We found that training on datasets with inputs from the unit hypercube, i.e. X = [0, 1]d, and transforming all observation
+     values into a unit hypercube based on their min/max and scaling leads to improved consistency.
+
+E. Training Details
+
+We train a single PFN which is shared across search spaces for one particular prior. This PFN is flexible across datasets with
+
+a varying number of features. To do this, we sample datasets with a number of dimensions sampled uniformly at random in
+
+{1, . . . , 18} during PFN training. Following Hollmann et al. (2023), we zero-pad the features when the number of features
+
+k  is  smaller  than  the  maximum  number  of  features      K.  We  also  linearly  scale  the  features  by  K  to  make  sure  the  magnitude
+                                                                                                                k
+
+of the inputs is similar across different numbers of features.
+
+Our PFNs were trained with the standard PFN settings used by Mu¨ller et al. (2022): We use an embedding size of 512 and
+six layers in the transformer. Our models were trained with Adam (Kingma & Ba, 2015) and cosine-annealing (Loshchilov
+& Hutter, 2017) without any special tricks. The lr was chosen based on simple grid searches for minimal training loss in
+{1e - 3, 3e - 4, 1e - 4, 5e - 5}. We found that other hyperparameters did not have a large impact on final performance.
+
+Our final models, besides studies on smaller budgets like in Figure 11, trained for less than 24 hours on a cluster node with
+eight RTX 2080 Ti GPUs.
+
+E.1. Regression Heads
+
+                                                         0.4
+
+                                                Density
+
+                                                         0.2
+
+                                                         0
+
+                                                              -3 -1 0 1               3
+
+                                                                      yq
+
+       Figure 6: A visualisation of the Riemann distribution, with unbounded support. Plot based on (Mu¨ller et al., 2022)
+
+Mu¨ller et al. (2022) employ a Riemann distribution to model the output of the PFN architecture for regression tasks. Modeling
+continuous distributions with neural networks is challenging. In order to achieve robust performance in modeling PPDs,
+they utilized a distribution that is particularly compatible with neural networks. Drawing from the understanding that neural
+networks excel in classification tasks and taking inspiration from discretizations in distributional reinforcement learning
+(Bellemare et al., 2017), they employed a discretized continuous distribution named Riemann Distribution. It discretizes the
+space into buckets B, which are selected such that each bucket has equal probability in prior-data: p(y  b) = 1/|B|, b  B.
+A Riemann distribution with unbounded support is utilized, as suggested by Mu¨ller et al. (2022), which replaces the final bar
+on each side with a suitably scaled half-normal distribution, as shown in Figure 6. For a more precise definition, we direct
+the reader to Mu¨ller et al. (2022).
+
+                                                                      15
+                                            PFNs4BO: In-Context Learning for Bayesian Optimization
+
+F. Riemann Distribution and Acquisition Function
+
+We outline how to compute the P I(f ) = -[y > f ]p(y)dy for the unbounded Riemann distribution.
+
+                    
+
+                      [y > f ]p(y)dy                                                                                                                  (5)
+
+                 -
+
+                      y1                              M               yi+1                                
+
+                 = [y > f ]p(y)dy +                                         [y > f ]p(y)dy +                     [y > f ]p(y)dy                       (6)
+
+                    -                             i=1 yi                                                  yM +1
+
+                                                            M   (yi+1     -  f     )    p(bi )     , if yi < f  < yi+1
+                                                                                      yi+1 -yi     , else
+                 = (1 - Fl(y1 - f )) +                                                                                        + Fr(f  - yM+1)         (7)
+                                                                [yi  f ]p(bi)
+                                                           i=1
+
+                 =  (1 -  Fl(y1  -   f )) +  M                        -   min(yi+1,       max(f    ,      yi)))    p(bi)  yi  + Fr(f   - yM+1),       (8)
+                                                                                                                 yi+1 -
+                                                 (yi+1
+
+                                             i=1
+
+where Fl (Fr) is the CDF of the half-normal distribution used for the left (right) side. The acquisition function is divided
+into three terms: (1) a term that governs the probability mass for values lower than interval b1 and that goes up to values of
+y1, (2) a term that summarizes over all intervals b1, . . . , bM , and (3) a term that governs the probability mass for values
+larger than the interval bM and that start from values of yM + 1.
+
+G. User Prior Distribution
+
+We will describe our method for a one dimensional search space with a fixed discretization I into intervals I  I.
+Nevertheless, the method can be extended to more dimensions and intervals of varying size. As an approximation to the
+prior, we will use the estimated maximum m, my = arg max(x,y)D y. We will thus from now on assume to be able to
+sample from a joint distribution of the dataset D and its maximum input m: p(D, m).
+
+An example of the effect of the form of the prior over the optimum is given in Figure 3. We train a single PFN that can be
+conditioned on arbitrary  and I on a prior of the form p(D, , I). This yields the training objective:
+
+                                         E{(x,y)}D,,Ip(D,,I)[-log q(y|x, D, , I)].                                                                    (9)
+
+The extra inputs,  and I, are fed to the PFN using an extra position with its own linear encoder similar to style embeddings
+for language models (Dai et al., 2019). During training we need p(D, , I) to cover many  and I, preserve Equation 3, and
+be fast to sample from. To achieve this we actually sample the dataset D first and then a possible interval I. We actually
+condition the interval I on our maximum m and not the other way around. We first sample D, m  p(D, m) and   U (0, 1)
+independently at random. Next we sample I using p(I|, f ) = [m  I] + (1 - )p(I), where p(I) = ED,mp(D,m)[m  I].
+It is easy to see that this distribution has a good coverage of both I and .
+
+We can now show, rather easily, that this sampling scheme actually models our definition of p(D, m|I):
+
+                                         p(D, m|I) =                  p(I|D, m)p(D, m)                                                                (10)
+
+                                                                                 p(I )
+
+                                                                =     p(I|m)p(D, m)                                                                   (11)
+
+                                                                            p(I )
+
+                                                                =     ([m  I] + (1 - )p(I))p(D, m)                                                    (12)
+
+                                                                                            p(I )
+
+                                                                      [m  I]p(D, m)                         p(I)p(D, m)
+                                                                =                               + (1 - )                                              (13)
+                                                                            p(I )                                p(I )
+
+                                                                = p(D, m|m  I) + (1 - )p(D, m),                                                       (14)
+
+where we assume a dependence on the independently distributed confidence  everywhere. We used p(D, m|m  I) =
+
+[mI ]p(D,m)   ,  which  is  trivial  to  derive,  as            well  as  p(I )  =    Ef  [[m      I ]],  which  was  introduced  in   Section  5.3.
+       p(I )
+
+                                                                                        16
+                     PFNs4BO: In-Context Learning for Bayesian Optimization
+
+5Average Rank                                                   10-1                    Random
+                                                Average Regret                          HEBO
+4                                                                                       GP
+                                                                                        DNGO
+3                                                               10-2                    DGP
+                                                                                        PFN (HEBO+, EI)
+   20  40                                                             20  40            PFN (HEBO+, EI+KG)
+
+   Number of trials                                                   Number of trials
+
+Figure 7: Performance over number of trials for the four search spaces of HPO-B with three or less dimensions. Figure 18
+shows per-search-space results.
+
+In our experiments we approximate p(I) with a simple uniform distribution, as we saw Em[m  I] to be close to a
+uniform distribution, and use the maximum example in the training set with maximal value as an approximation to the true
+maximum of the underlying function generating the dataset. We choose the set of intervals to be I = {[i/k, (i + 1)/k]|k 
+{1, . . . , 5}, i  {0, . . . , k - 1}}. In Figure 16 of the Appendix one can see the impact of our user prior on the optimization
+behaviour.
+
+H. Non-Myopic Acquisition Function Approximation
+
+In the following we explain how PFNs can learn to directly in one forward pass approximate KG as defined in Section 5.4.
+To do this, we first learn an approximation to the PPD q(y|x, D). Based on which we can learn an approximation of the
+distribution of means with the following loss
+
+                     E{(x,y)}Dp(D)[q(µ)(Eq(y|x,D)[y]|D)],                                                   (15)
+
+which yields a q(µ) that is an approximation to the distribution of the random variable Ep(y|x,D)[y] with x  p(x|D). We
+approximate the maximal mean  (D) with the upper 1 per mille interval of q(µ)(·|D).
+
+Based on this in turn, we can finally approximate (x; D) by training a second PFN to approximate the new target
+y = icdf(q(µ)(·|{(x, y)}  D), .999) in the usual manner
+
+                     E{(x,y)}Dp(D) - log qlevel1,(y|x, D).                                                  (16)
+
+In practice we use the same PFN for both steps and add a style embedding, like for the user priors in Section 5.3. This style
+embedding indicates in which mode the PFN should operate, the standard, myopic, setting or the non-myopic setting.
+
+It would be very interesting for future work to generalize this to larger search spaces and multi-step look ahead.
+
+H.1. A Study on Our Knowledge Gradient Approximation
+
+We found that the PFN with the strong GP prior does not perform very well on very small (three or less dimensions) search
+spaces. Additionally, we saw that we could train our Knowledge Gradient (KG) models more successfully to approximate
+KG for few dimensions. Thus, we decided to show the impact of Knowledge Gradient for these kinds of search spaces. In
+Figure 7 we show the impact of KG for the four search spaces with 3 or less dimensions in HPO-B. We ablated how to
+exactly use KG for these search spaces on all other search spaces and found that a mixture of KG and EI worked best. That
+means, at every step it is a random coin flip whether to use KG or EI.
+
+We can see that this improves performance for small search spaces considerably over plain EI.
+
+I. Approximation Quality on Prior Data
+
+Our Adapted HEBO Prior We stayed as close as possible to HEBO, but had to make some adaptions as one cannot
+sample from the HEBO model as it is. Specifically, we had to introduce simple priors for the hyperparameters of both
+
+                                                                        17
+                                          PFNs4BO: In-Context Learning for Bayesian Optimization
+
+   # Training Examples  0.053 0.71        0.77                  0.8                       # Features       1       2     10
+        40 30 20 10                                                                       Approx.
+                        0.02  0.53        0.9                   0.6     Mean Regret                   0.057   0.059   0.110
+                                                                        # Wins            Emp. Bay.   0.054   0.052   0.124
+                        0.005 0.43        0.94                  0.4     Mean Rank         PFN
+                                                                                          Emp. Bay.     206     144     169
+                        0.001 0.36        0.91                  0.2                       PFN           239     154     171
+                                                                                          Emp. Bay.   1.517   1.506   1.501
+                        1     2           10                                              PFN         1.483   1.494   1.499
+
+                              # Features
+
+Figure 8: Left: For the HEBO prior, fraction of cases in which the PFN gives a higher likelihood to unseen examples than
+the original Empirical Bayes approximation by Cowen-Rivers et al. (2022). We aggregate across 1 000 datasets drawn from
+the prior. The optimization of the original Empirical Bayes approximation failed in 4.5% of cases. We ignored these cases
+to be as fair as possible. Right: BO performance after 50 evaluations on the prior with EI over 1 000 sampled datasets. The
+majority of runs yielded ties.
+
+Average Rank5                                                    10-1                                 Random
+                                                Average Regret  10-1.5                                HEBO
+4                                                                                                     Optformer-B EI
+                                                                                                      Optformer-R EI
+3                                                                                                     BOHAMIANN
+                                                                                                      PFN (HEBO+)
+                        20    40                                        20  40                        PFN (BNN)
+
+                        Number of trials                                Number of trials
+
+Figure 9: Average Regret and Rank on the HPO-B Benchmark. We plot a different set of baselines that includes the meta
+learned Optformer baseline which was trained on real world data. While for few samples the Optformer baselines performs
+strongly (likely due to prior knowledge of the names of optimized parameters, which is only revealed to the Optformer), this
+advantage drops quickly.
+
+the kernels used in HEBO (Mate´rn and linear kernel), as they did not have a prior attached. We introduce uniform priors
+(U(0, 1)) for the lengthscale of both the Mate´rn and the Linear kernel and for the variance of the linear kernel. Next, we
+trained a PFN using the HEBO prior with probabilistic distributions over the hyperparameters (see Section 4.2) enabling
+PFNs to approximate hyperpriors.
+
+Comparison of the Likelihood of Prior Data For the HEBO prior, we compare the resulting PFN's fit vs. the Empirical
+Bayes approximation, as used in the original HEBO work. Figure 8 shows that the likelihood assigned to held-out outputs is
+higher for the PFN in many cases and across a varying number of optimized features; We hypothesize that this is because
+HEBO's empirical Bayes approximation becomes too greedy in high dimensions.
+BO comparison To assess our method qualitatively, we provide optimization trajectories of the HEBO+ on 1d samples
+from the prior in Figure 10 and on a 2d Branin function without initial design in Figures 13 (initialization at lower corner)
+and 14 (initialization at middle point).
+
+Additionally, we show comparisons of a PFN approximating a simple RBF-kernel GP, for which we thus have the ground
+truth posterior. Figure 11 shows an optimization of a 1d Ackley function and Figure 12 shows an optimization of a
+non-continuous function that is chosen to show out-of-distribution performance, as RBF-kernel functions are smooth.
+
+J. User Prior Details
+
+We list the user prior used for PD1 in Table 2. We use this one user prior for all different tasks in PD1. Our PFN, though,
+supports specifying any user prior at prediction time, i.e. you can use the weights we share with your specific user prior.
+
+                                                                        18
+             PFNs4BO: In-Context Learning for Bayesian Optimization
+
+1
+
+                            0                           0
+
+0.5
+
+                -0.5                              -0.5
+
+     0  0.5  1                 0       0.5     1                     0  0.5  1
+
+                PFN HEBO Model Re-implementation
+
+Figure 10: Examples of optimization trajectories on functions sampled from the our HEBO prior. We compare to our
+re-implementation of HEBO
+
+             hyper parameter  encoded min encoded max
+
+             lr decay factor .5        0.74       0.99
+
+                lr initial        .25  .01        .31
+
+                lr power          .1   1.5        2.
+
+                epoch             .5   235        299
+
+                activation fn .5            1     1
+
+Table 2:  defines what percentage of datasets in the prior should be sampled to explicitly have their maximum between the
+specified minimum and maximum. The rest is sampled as usually.
+
+K. Other BO Surrogates
+
+Another popular model class is Bayesian neural networks (BNNs) or approximations of them (Snoek et al., 2015; Schilling
+et al., 2015; Springenberg et al., 2016; Perrone et al., 2018; Eggensperger et al., 2020) because they promise better scaling to
+large numbers of observations. Two popular approaches, that we also compare against in our experiments, are DNGO (Snoek
+et al., 2015) and BOHAMIANN (Springenberg et al., 2016). DNGO trains a standard neural network and then replaces the
+output layer by a Bayesian linear regression, while BOHAMIANN adapts a mini-batch Monte Carlo method (Chen et al.,
+2014) for a fully Bayesian treatment of the network weights.
+
+Other models that have been investigated aim to strike a middle ground between GPs and BNNs, for example, Deep
+GPs (Hebbal et al., 2018), Deep Kernel GPs (Wistuba & Grabocka, 2021), or Manifold GPs (Calandra et al., 2016). However,
+these models suffer from the need to adapt hyperparameters online and, similar to the GP, make a parametric assumption
+about the distribution of the targets.
+
+Last but not least, trees and ensembles of trees have been used, which despite relying on frequentist uncertainty predictions,
+yielded strong results and overcame many of the drawbacks of the GPs (Hutter et al., 2011; Bergstra et al., 2011; Scikit-
+Optimize, 2018).
+
+L. Ablation Studies
+
+In this Section we describe additional ablation studies we performed to further the understanding of our method.
+
+HEBO Variants In Section 6 we already showed that two variants of HEBO, one with a PFN as posterior approximation
+and one using MLE-II and a traditional GP, perform very similar on data in the prior. The original HEBO prior is slightly
+different, though, compared to the prior used there, e.g. there is no prior weighting on the lengthscale and it is unbounded.
+
+To further the understanding in comparison to the full HEBO method, we provide an ablation on HPO-B in Figure 17. Here,
+we additionally show the impact of the acquisition function of HEBO, which is mixture of EI, UCB and PI with added
+noise, and the initial design. The default initial design on HPO-B is five steps, but for search spaces with more than five
+
+                                                                        19
+                         PFNs4BO: In-Context Learning for Bayesian Optimization
+
+5 Mean (Step 1)          5 Mean (Step 2)                   5 Mean (Step 3)          5 Mean (Step 4)
+
+0                        0                                 0                        0
+
+5 10               0     10 5 10            0          10 5 10             0        10 5 10            0         10
+      EI (Step 1)              EI (Step 2)                    EI (Step 3)                 EI (Step 4)
+
+5.0                      2                                 2                        2
+
+2.5
+
+                         0                                 0               0        0
+      10           0     10 10              0          10 10                        10 10              0         10
+5 Mean (Step 5)          5 Mean (Step 6)                   5 Mean (Step 7)          5 Mean (Step 8)
+
+0                        0                                 0                        0
+
+5 10               0     10 5 10            0          10 5 10             0        10 5 10            0         10
+      EI (Step 5)              EI (Step 6)                    EI (Step 7)                 EI (Step 8)
+
+2                        2                                 2                        2
+
+0                        0                                 0               0        0
+      10           0     10 10              0          10 10                        10 10              0         10
+5 Mean (Step 21)         5 Mean (Step 22)                  5 Mean (Step 23)         5 Mean (Step 24)
+
+0                        0                                 0                        0
+
+5                        5                                 5                        5
+      10           0     10 10              0          10 10               0        10 10              0         10
+      EI (Step 21)             EI (Step 22)                   EI (Step 23)                EI (Step 24)
+
+0.4                      0.4                           0.50                         0.50
+
+0.2                      0.2                           0.25                         0.25
+
+0.0   10                 0.0                           0.00                         0.00               0
+                   0     10 10              0          10 10               0        10 10                        10
+      Mean (Step 29)           Mean (Step 30)                 Mean (Step 31)              Mean (Step 32)
+5                        5                                 5                        5
+
+0                        0                                 0                        0
+
+5     10           0     5                                 5                        5                  0
+                         10 10              0          10 10               0        10 10                        10
+      EI (Step 29)             EI (Step 30)                   EI (Step 31)                EI (Step 32)
+
+0.50                     0.50                          0.50                         0.50
+
+0.25                     0.25                          0.25                         0.25
+
+0.00  10                 0.00                          0.00                         0.00
+                   0     10 10              0          10 10               0        10 10              0         10
+
+          True Function  Exact GP                      PFN (1M training datasets)   PFN (40M training datasets)
+
+          Observations   PFN (100K training datasets)  PFN (20M training datasets)  PFN (80M training datasets)
+
+Figure 11: In this figure, we compare models trained on a simple GP prior (with fixed hyper-parameters), thus we can
+compare to the exact posterior of the GP. We show how PFNs behave differently depending on how much they were trained.
+Vertical lines mark the maximum of the acquisition function.
+
+                                                       20
+            PFNs4BO: In-Context Learning for Bayesian Optimization
+
+5 Mean (Step 1)         5 Mean (Step 2)               5 Mean (Step 3)        5 Mean (Step 4)
+0                       0                             0                      0
+55                      55 0                   5 55                          55
+         0           5                                     0              5           0             5
+      EI (Step 1)               EI (Step 2)                EI (Step 3)               EI (Step 4)
+123                     321                           213                    2.5
+
+   50 5                         50 5                       50 5              0.0 5    0             5
+                                Mean (Step 6)              Mean (Step 7)             Mean (Step 8)
+  Mean (Step 5)         5                             5                      5
+                        0                             0                      0
+5
+0
+55                      55 0                   5 55                          55
+         0           5                                     0              5           0             5
+      EI (Step 5)               EI (Step 6)                EI (Step 7)               EI (Step 8)
+2.5                     2
+                                                      1                      1
+
+0.0 5    0           5  05       0             5 05        0              5  05       0             5
+5 Mean (Step 9)         5 Mean (Step 10) 5 Mean (Step 11)                    5 Mean (Step 12)
+0                       0                             0                      0
+55                      55                     5 55                          55
+         0           5           0                         0              5           0             5
+      EI (Step 9)           EI (Step 10)          0.25 EI (Step 11)                  EI (Step 12)
+0.5                                                                          0.2
+                        0.25
+
+0.0 5    0           5  0.00 5   0             5 0.00 5    0              5  0.0 5    0             5
+5 Mean (Step 13)        5 Mean (Step 14) 5 Mean (Step 15)                    5 Mean (Step 16)
+0                       0                             0                      0
+55                      55                     5 55                          55
+         0           5           0                         0              5           0             5
+0.2 EI (Step 13)        0.2 EI (Step 14)                   EI (Step 15)              EI (Step 16)
+
+                                                  0.1                        0.1
+0.0 5                   0.0 5                  5 0.0 5                       0.0 5
+         0           5           0                         0              5           0             5
+5 Mean (Step 17)        5 Mean (Step 18) 5 Mean (Step 19)                    5 Mean (Step 20)
+0                       0                             0                      0
+55                      55                     5 55                          55
+         0           5           0                         0              5           0             5
+      EI (Step 17)              EI (Step 18)               EI (Step 19)              EI (Step 20)
+
+0.1                     0.1                       0.1                        0.1
+
+0.0 5    0           5 0.0 5     0             5 0.0 5     0              5 0.0 5     0             5
+5 Mean (Step 21)        5 Mean (Step 22) 5 Mean (Step 23)                    5 Mean (Step 24)
+0                       0                             0                      0
+55                      5                             5                      5
+         0           5                         5           50             5          50             5
+      EI (Step 21)         50                              EI (Step 23)              EI (Step 24)
+                                EI (Step 22)
+0.05                    0.0025                    0.001                      0.0025
+
+0.00 5   0           5 0.0000 5  0             5 0.000 5   0              5 0.0000 5  0             5
+      Mean (Step 25)            Mean (Step 26) Mean (Step 27)                        Mean (Step 28)
+05                      05                            50                     05
+5                       5                             5                      5
+      50 5                      50 5                       50 5                      50 5
+0.005 EI (Step 25)           EI (Step 26)              EI (Step 27)               EI (Step 28)
+
+                        0.005                     0.005                      0.005
+
+0.000 5  0           5 0.000 5   0             5 0.000 5   0              5 0.000 5   0             5
+
+      True Function     PFN-based Approximation of GP      Groundtruth GP             Observations
+
+Figure 12: This figure show cases the approximation quality of a PFN on out-of-distribution functions: the to-be-maximized
+function is discontinuous, while the RBF kernel consists of continuous functions only. We show the suggested next
+evaluation point (horizontal line), the mean and the EI for a RBF-kernel GP and its PFN approximation. This is a special
+case, where we can actually compute the exact posterior with the GP. We can see that the mean and EI of the PFN are good
+approximations. The EI diverges in some of the later steps, though, but not the suggested next evaluation point.
+
+                                                  21
+                                           PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Figure 13: This figure showcases the optimization trajectory of a PFN with HEBO+ prior to minimize a Branin function
+starting from the lower corner of the search space. The newly queries point is white in all plots. Figure 14 shows the same
+experiment, but starting from the center. We can find that for a deterministic, smooth test function both trajectories converge
+to similar queries fast.
+
+                                                                        22
+                                           PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Figure 14: This figure showcases the optimization trajectory of a PFN with HEBO+ prior to minimize a Branin function
+starting from the center of the search space. The newly queries point is white in all plots. Figure 13 shows the same
+experiment, but starting from the lower corner. We can find that for a deterministic, smooth test function both trajectories
+converge to similar queries fast.
+
+                                                                        23
+                    PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Figure 15: In this figure we show a typical search space with a missing log encoding in HPO-B. This is the search space
+6766, which has two input dimension. The first dimension has almost almost no impact on the outcome (y), thus we plot only
+the second dimension (x). One can see that this hyperparameter clearly lives on a log scale, with all interesting curvature
+happening in the lowest 1% of the interval, a minimum (worst outcome) close to 10-6 and a maximum (best outcome)
+around 10-7.
+
+0.5 Mean (Step 2)   0.5 Mean (Step 3)          0.5 Mean (Step 6)            0.5 Mean (Step 7)
+
+0.0                 0.0                        0.0                          0.0
+
+0.5                 0.5                        0.5                     0.5  0.5
+     0.0       0.5  1.0 0.0           0.5  1.0 0.0                          1.0 0.0                0.5           1.0
+0.2 EI (Step 2)            EI (Step 3)              EI (Step 6)                   EI (Step 7)
+
+                    0.075                  0.04                             0.02
+
+0.1                 0.050                  0.02
+
+                    0.025                  0.00                             0.00
+
+     0.0  0.5       1.0 0.0  0.5           1.0 0.0                     0.5  1.0 0.0                0.5           1.0
+
+     True Function  PFN (GP, user prior: 50% chance opt in (0.75,1.))  PFN (GP, user prior: none)  Observations
+
+Figure 16: Impact of a user prior on the mean prediction and acquisition function. We can see that adding the user prior for
+a maximum in the right-most quarter, increases EI and mean in that region. The important point we can see here is that the
+user-prior can be overwritten by the data. The algorithm samples much more outside of the specified interval than inside,
+because the actual curve is higher there.
+
+                                           24
+   PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Average Rank8                                                   10-1
+                                                Average Regret
+6                                                               10-1.5
+
+   20  40                                                                         20  40
+
+   Number of trials                                                     Number of trials
+
+Random                                                                  GP
+DNGO                                                                    DGP
+HEBO                                                                    HEBO (EI)
+HEBO (EI, no initial design)                                            HEBO (EI, no initial design, no acq noise)
+HEBO (BoTorch, EI, no init design, no acq                               PFN (HEBO+)
+noise)                                                                  PFN (HEBO+, no input warping)
+
+Figure 17: Ablation on HPO-B test spaces of different features of the HEBO baseline. Additionally, we show the performance
+of the PFN (HEBO+) without input warping on HPO-B. We can see that PFN (HEBO+) performs worse without input
+
+warping. We can also see that most ablations on HEBO have little impact on the performance, but removing the initial
+
+design, but for the default 5 seeds of HPO-B, in addition to using EI without any noise improves performance of the standard
+HEBO implementation to be more competitive with the PFN (HEBO+).
+
+   Method                                                           Rank Mean     Regret Mean
+
+   Random                                                                  2.765          0.076
+   HEBO                                                                    2.406          0.070
+   PFN (HEBO+, no ignored feat's)                                          2.639          0.103
+   PFN (HEBO+, 30% ignored feat's)                                         2.189          0.091
+
+Table 3: Mean rank and mean regret over time on the three search spaces of HPO-B with the most hyperparameters, which
+all have XGBoost as method. We can see that for large search spaces it considerably helps to allow the PFN to ignore certain
+features.
+
+dimensions, HEBO draws more random samples. While we can see that most of the ablations on HEBO have little impact
+on performance, we can improve its performance by removing all initial design on top of the standard HPO-B design and
+replacing the acquisition function with simple EI only.
+In Figure 17, we also show the impact of disabling input warping for our PFN (HEBO+). While this does make performance
+worse, the only non-HEBO baseline that can beat the PFN after 50 trials is DGP, even though the search spaces of HPO-B
+contain many ill-conditioned dimensions with missing log transforms.
+
+Ignoring features In Table 3 we show the impact of adding meaningless features to the prior, as described in Section 5.2,
+for search spaces with many dimensions. We can see that performance is improved on average. At the same time, we found
+no impact on smaller search spaces.
+
+Ablation of the Acquisition Function Table 4 shows a simple ablation of acquisition functions on the test search spaces
+of HPO-B. We can see that all EI variants and UCB perform similarly well, while PI seems to be worse choice.
+
+                                                                25
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+   Random   HEBO       GP
+    DNGO     DGP  HEBO (GP)
+HEBO (BNN)
+
+Figure 18: Average Ranks across search spaces. We can see that the PFN generally works well, but also has clear failure
+modes for some search spaces, which need further investigation.
+
+            26
+PFNs4BO: In-Context Learning for Bayesian Optimization
+
+Method                 Rank Mean     Regret Mean
+
+Random                        7.658          0.125
+HEBO                          5.467          0.092
+GP                            5.539          0.075
+DNGO                          5.332          0.057
+DGP                           5.604          0.059
+
+EI                            4.969          0.053
+EI(predict mean)              4.883          0.059
+PI                            5.227          0.071
+PI (predicted mean)           5.385          0.071
+UCB (0.95 percentile)         4.932          0.053
+
+Table 4: Ablation of different acq functions on HPO-B. We see that we actually did not make the best choice for the test set
+(but it is the best on the validation search spaces, so we stuck with it).
+
+M. Software Versions
+
+In this section we list the versions of the optimizers that we benchmarked:
+
+   · HEBO: we use the archived submission to the NeurIPS 2020 Black-Box optimization challenge
+      that is available at https://github.com/huawei-noah/HEBO/tree/master/HEBO/archived_
+      submissions/hebo for BayesMark (HEBO 0.0.8 a376313), as it is optmized for the challenge, and adapted
+      the public release to support discrete benchmarks as well as our ablations. We publish our adapted HEBO implementa-
+      tion with the supplementary material. It is branched off from https://github.com/huawei-noah/HEBO/
+      tree/405dc4ceb93a79f0d1f0eaa24f5458dd26de1d05.
+
+   · GP: We used the results from Pineda Arango et al. (2021) that are available at https://github.com/
+      releaunifreiburg/HPO-B/tree/main/results.
+
+   · DNGO: We used the results from Pineda Arango et al. (2021) that are available at https://github.com/
+      releaunifreiburg/HPO-B/tree/main/results.
+
+   · DGP: We used the results from Pineda Arango et al. (2021) that are available at https://github.com/
+      releaunifreiburg/HPO-B/tree/main/results.
+
+   · HyperOpt: We used the implementation coming with BayesMark (https://github.com/uber/bayesmark/
+      tree/8c420e935718f0d6867153b781e58943ecaf2338), which is HyperOpt 0.2.7 a376313.
+
+   · PySOT: We used the implementation coming with BayesMark (https://github.com/uber/bayesmark/
+      tree/8c420e935718f0d6867153b781e58943ecaf2338), which is PySOT 0.3.3 a376313.
+
+Moreover, we used the following versions of the benchmark platforms:
+
+   · HPO-B: https://github.com/releaunifreiburg/HPO-B/tree/f5d415e45012544c61b0e334a42aa69f6aae5d7f with
+      mode="v3"
+
+   · BayesMark: https://github.com/uber/bayesmark/tree/8c420e935718f0d6867153b781e58943ecaf2338
+
+                       27
+

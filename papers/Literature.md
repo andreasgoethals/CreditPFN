@@ -1,456 +1,1196 @@
 # Literature on Tabular Foundation Models
 
-A chronological tour of the 26 PDFs in this folder. The arc is:
+A chronological tour of the 26 PDFs in this folder. The arc:
 PFNs (in-context Bayesian inference for arbitrary priors) → TabPFN
-(PFNs with a tabular prior) → TabPFNv2 (production-grade, the model
-we build on) → a Cambrian explosion of variants (continued
-pretraining, drift, fairness, causal inference, time-series,
-many-classes, scalability) → TabPFN-2.5 (the unified successor that
-itself ships continued-pretraining as the default).
+(PFNs with a tabular prior) → TabPFNv2 (production-grade — the
+model we build on) → a Cambrian explosion of variants (continued
+pretraining, drift, fairness, causal inference, time series, many
+classes, scalability) → TabPFN-2.5 / 2.6 (the unified successors
+that themselves ship continued-pretraining as default).
 
 For every paper:
 
 * **Where it fits** in the picture above.
 * **What it actually contains** — methods, datasets, headline result.
-* **What it means for CreditPFN.**
+* **For CreditPFN** — concrete relevance to this project.
 
-The most directly relevant papers for our project are
-[Garg 2025 (Real-TabPFN)](#2025--garg-et-al--real-tabpfn),
-[Hollmann 2025 (TabPFNv2)](#2025--hollmann-et-al--accurate-predictions-on-small-data),
-[Grinsztajn 2026 (TabPFN-2.5)](#2026--grinsztajn-et-al--tabpfn-25),
-[Rubachev 2025 (Finetuning)](#2025--rubachev-et-al--on-finetuning-tabular-foundation-models),
-[Helli 2024 (Drift-Resilient TabPFN)](#2024--helli-et-al--drift-resilient-tabpfn), and
-[Kolberg 2026 (TabPFN-Wide)](#2026--kolberg-et-al--tabpfn-wide).
+The four most directly relevant papers for CreditPFN are
+[Garg 2025 — Real-TabPFN](#real-tabpfn),
+[Hollmann 2025 — Accurate predictions on small data](#tabpfn-v2-nature),
+[Grinsztajn 2026 — TabPFN-2.5](#tabpfn-25), and
+[Rubachev 2025 — On Finetuning Tabular Foundation Models](#on-finetuning).
+
+## Overview table
+
+| Year | Authors | Title | One-line contribution | PDF |
+|------|---------|-------|-----------------------|-----|
+| 2021 | Müller et al. | Transformers Can Do Bayesian Inference | Foundational PFN paper: a transformer trained on synthetic samples from a prior approximates the prior's posterior in-context. | [pdf](2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) |
+| 2023 | Hollmann et al. | TabPFN — A Transformer That Solves Small Tabular Classification Problems in a Second | First TabPFN: PFN trained on a tabular SCM prior, beats AutoML baselines on small datasets. | [pdf](2023_Hollmann_et_al._TabPFN_A_Transformer_That_Solves_Small_Tabular_Classification_Problems_in_a_Second.pdf) |
+| 2023 | Müller et al. | PFNs4BO — In-Context Learning for Bayesian Optimization | PFN as a drop-in surrogate for Gaussian-Process BO. | [pdf](2023_Muller_et_al._PFNs4BO_In_Context_Learning_for_Bayesian_Optimization.pdf) |
+| 2024 | Breugel and Schaar | Why Tabular Foundation Models Should Be a Research Priority | Position paper: tabular FMs are an under-invested high-leverage area. | [pdf](2024_Breugel_and_Schaar_Why_Tabular_Foundation_Models_Should_Be_a_Research_Priority.pdf) |
+| 2024 | Helli et al. | Drift-Resilient TabPFN | Trains TabPFN with a drift-injecting synthetic prior, generalises better under distribution shift. | [pdf](2024_Helli_et_al._Drift_Resilient_TabPFN_In_Context_Learning_Temporal_Distribution_Shifts_on_Tabular_Data_1.pdf) |
+| 2024 | Hoo et al. | The Tabular Foundation Model TabPFN Outperforms Specialized Time Series Forecasting Models | Show that TabPFN beats ARIMA / classical TS baselines when forecasting is framed as tabular regression on lag-features. | [pdf](2024_Hoo_et_al._The_Tabular_Foundation_Model_TabPFN_Outperforms_Specialized_Time_Series_Forecasting_Models_Based_on.pdf) |
+| 2024 | Rundel et al. | Interpretable Machine Learning for TabPFN | Adapts SHAP / partial-dependence / interaction analysis to TabPFN's in-context inference path. | [pdf](2024_Rundel_et_al._Interpretable_Machine_Learning_for_TabPFN.pdf) |
+| 2025 | Garg et al. | **Real-TabPFN** — Improving Tabular Foundation Models via Continued Pre-training With Real-World Data | **The recipe we follow.** Continue-pretrains TabPFNv2 on 71 curated real datasets; +0.022 ROC-AUC on the OpenML AutoML benchmark. | [pdf](2025_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.pdf) |
+| 2025 | Hollmann et al. | Accurate predictions on small data with a tabular foundation model | The TabPFNv2 paper (Nature). Production-grade architecture with alternating-attention, NaN handling, ensemble preprocessing. | [pdf](2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf) |
+| 2025 | Liu and Ye | TabPFN Unleashed — A Scalable and Effective Solution to Tabular Classification Problems | Inference-time tricks (stratified context, bootstrap, query subsampling) that push v2 past its 10k-row limit. | [pdf](2025_Liu_and_Ye_TabPFN_Unleashed_A_Scalable_and_Effective_Solution_to_Tabular_Classification_Problems.pdf) |
+| 2025 | Müller et al. | Position — The Future of Bayesian Prediction Is Prior-Fitted | Position paper: PFNs as a unifying framework for approximate Bayesian inference. | [pdf](2025_Muller_et_al._Position_The_Future_of_Bayesian_Prediction_Is_Prior_Fitted.pdf) |
+| 2025 | Pfefferle et al. | nanoTabPFN — A Lightweight and Educational Reimplementation of TabPFN | TabPFN training loop in <900 lines; the cleanest reference implementation publicly available. | [pdf](2025_Pfefferle_et_al._nanoTabPFN_A_Lightweight_and_Educational_Reimplementation_of_TabPFN.pdf) |
+| 2025 | Qu et al. | TabICL — A Tabular Foundation Model for In-Context Learning on Large Data | Hierarchical attention TabPFN-competitor scaling to 500 k-row tables. | [pdf](2025_Qu_et_al._TabICL_A_Tabular_Foundation_Model_for_In_Context_Learning_on_Large_Data.pdf) |
+| 2025 | Robertson et al. | Do-PFN — In-Context Learning for Causal Effect Estimation | PFN trained to predict ``do``-interventions; in-context causal effect estimation. | [pdf](2025_Robertson_et_al._Do_PFN_In_Context_Learning_for_Causal_Effect_Estimation.pdf) |
+| 2025 | Robertson et al. | FairPFN — A Tabular Foundation Model for Causal Fairness | PFN with explicit protected-attribute structure for counterfactual fairness audits. | [pdf](2025_Robertson_et_al._FairPFN_A_Tabular_Foundation_Model_for_Causal_Fairness.pdf) |
+| 2025 | Rubachev et al. | **On Finetuning Tabular Foundation Models** | Empirical study: fine-tuning TabPFN with full / LoRA / prefix-tuning. Hyperparameter ranges that work. | [pdf](2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf) |
+| 2025 | Tanna et al. | TabTune — A Unified Library for Inference and Fine-Tuning Tabular Foundation Models | Common API across TabPFN, TabICL, TabDPT for fair head-to-head comparison. | [pdf](2025_Tanna_et_al._TabTune_A_Unified_Library_for_Inference_and_Fine_Tuning_Tabular_Foundation_Models.pdf) |
+| 2025 | Ye et al. | A Closer Look at TabPFN v2 — Understanding Its Strengths and Extending Its Capabilities | Empirical analysis identifying v2 weaknesses and proposing patches that became v2.5 specialist checkpoints. | [pdf](2025_Ye_et_al._A_Closer_Look_at_TabPFN_v2_Understanding_Its_Strengths_and_Extending_Its_Capabilities.pdf) |
+| 2025 | Zhang et al. | Mitra — Mixed Synthetic Priors for Enhancing Tabular Foundation Models | A "mixed" synthetic prior interpolating between TabPFN's and ForestPFN's priors. | [pdf](2025_Zhang_et_al._Mitra_Mixed_Synthetic_Priors_for_Enhancing_Tabular_Foundation_Models.pdf) |
+| 2025 | Zhang et al. | TabPFN — One Model to Rule Them All | Survey-style win aggregation across many domains. | [pdf](2025_Zhang_et_al._TabPFN_One_Model_to_Rule_Them_All.pdf) |
+| 2026 | Grinsztajn et al. | **TabPFN-2.5** — Advancing the State of the Art in Tabular Foundation Models | Successor architecture (18–24 layers, 50 k×2000 limit) and the family of v2.5 checkpoints. | [pdf](2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) |
+| 2026 | Hoo et al. | From Tables to Time — Extending TabPFN-v2 to Time Series Forecasting | Native time-axis attention version of TabPFN. | [pdf](2026_Hoo_et_al._From_Tables_to_Time_Extending_TabPFN_v2_to_Time_Series_Forecasting.pdf) |
+| 2026 | Kolberg et al. | **TabPFN-Wide** — Continued Pre-Training for Extreme Feature Counts | Continued-pretraining recipe for high-dim datasets; FeatureAgglomeration template. | [pdf](2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) |
+| 2026 | Ma et al. | Foundation Models for Causal Inference via Prior-Data Fitted Networks | Unified causal-PFN framework; Do-PFN + FairPFN at scale. | [pdf](2026_Ma_et_al._Foundation_Models_for_Causal_Inference_via_Prior_Data_Fitted_Networks.pdf) |
+| 2026 | Ma et al. | TabDPT — Scaling Tabular Foundation Models on Real Data | Real-data-only TabPFN competitor; retrieval-based self-supervision on OpenML. | [pdf](2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf) |
+| 2026 | Qu et al. | TabICLv2 — A better, faster, scalable, and open tabular foundation model | Improved TabICL with bigger context limit and open weights. | [pdf](2026_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.pdf) |
 
 ---
 
 ## 2021 — Müller et al. — Transformers Can Do Bayesian Inference
 
-**Where it fits:** the bedrock paper. Introduces *Prior-Fitted
-Networks* (PFNs): train a transformer on synthetic tasks sampled
-from a prior and the network learns to do approximate Bayesian
-posterior inference *in-context*, in a single forward pass.
+**arXiv:** [2112.10510](https://arxiv.org/abs/2112.10510) ·
+**PDF:** [open](2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf)
 
-**What it contains.** Defines the meta-learning recipe: at training
-time, sample a dataset from a Bayesian prior, give the transformer
-the labelled context plus an unlabelled query point, and train it to
-predict the query label. At inference time, the network never trains
-on real data — it just consumes the new dataset as context. The
-authors prove that with enough capacity and prior coverage, the
-trained network's posterior approaches the true Bayesian posterior.
+**Where it fits.** The bedrock of the entire PFN / TabPFN line.
+Müller and colleagues introduce *Prior-Fitted Networks* (PFNs):
+transformers that, after a single training phase on synthetic
+datasets sampled from a Bayesian prior, perform approximate
+posterior inference *in context* on any new dataset drawn from
+that prior — without any parameter update.
 
-**For CreditPFN.** This is *why* TabPFN works at all. Continued
-pretraining doesn't change the PFN inference paradigm; it shifts the
-implicit prior from "abstract synthetic SCMs" toward "real
-credit-risk data-generating processes". Read this paper before
-arguing about identifiability or statistical guarantees with a
-reviewer.
+**What it contains.** The training recipe: at each step, sample a
+prior dataset (an arbitrary stochastic process specified by the
+researcher), give the transformer the labelled context plus an
+unlabelled query point, and use cross-entropy loss to push the
+network's prediction toward the true label sampled from the
+prior. The authors prove (under capacity and prior-coverage
+assumptions) that the trained network's predictive distribution
+converges to the true Bayesian posterior of the underlying prior.
+They demonstrate this on synthetic Gaussian-Process regression,
+on Bayesian neural-network regression, and on small classification
+problems sampled from a structured-causal-model prior — the
+beginnings of what would become TabPFN.
 
-## 2023 — Hollmann et al. — TabPFN: A Transformer That Solves Small Tabular Classification Problems in a Second
+The crucial conceptual contribution: there is no learning at
+*inference* time. Once trained, the network is a fixed function;
+calling it on a new dataset is one forward pass. This sidesteps
+both the brittleness of MCMC sampling for non-conjugate priors
+and the slowness of variational fitting for every new task.
 
-**Where it fits:** the original TabPFN — applies the PFN recipe to
-tabular classification with a structured-causal-model prior.
+**For CreditPFN.** This paper is *why* TabPFN works at all and
+*why* continued pretraining changes the implicit prior rather
+than the inference algorithm. When we continue-pretrain on
+credit-risk data, we are not running a new inference algorithm;
+we are nudging the synthetic prior the network has internalised
+toward credit-risk-flavoured DGPs. Cite this paper when an
+external reviewer asks "but is this still Bayesian?". Yes —
+it is approximate posterior inference under a learned prior.
 
-**What it contains.** A transformer that takes (X_context, y_context,
-X_query) → ŷ_query in one forward pass. Pretrained on millions of
-synthetic tabular datasets sampled from a prior over Bayesian neural
-networks and small SCMs. Beats well-tuned XGBoost / Random Forest /
-AutoGluon on the OpenML-CC18 benchmark for small datasets (≤ 1k
-rows, ≤ 100 features, ≤ 10 classes), in a *second* of inference.
+---
 
-**For CreditPFN.** v1 of the model family. Architecture is the
-direct ancestor of v2 / v2.5 / v2.6. The 1k-row / 100-feature
-limits of v1 are why we use v2.6 instead.
+## 2023 — Hollmann et al. — TabPFN
 
-## 2023 — Müller et al. — PFNs4BO: In-Context Learning for Bayesian Optimization
+**arXiv:** [2207.01848](https://arxiv.org/abs/2207.01848) ·
+**PDF:** [open](2023_Hollmann_et_al._TabPFN_A_Transformer_That_Solves_Small_Tabular_Classification_Problems_in_a_Second.pdf)
 
-**Where it fits:** sibling of TabPFN — applies PFNs to a different
-domain (Bayesian optimisation surrogate models) instead of tabular
-classification.
+**Where it fits.** The first TabPFN. Applies the PFN recipe to
+small tabular classification with a structured-causal-model
+prior tailored for tabular data.
 
-**What it contains.** Trains a PFN to predict objective values given
-a context of (configuration, value) pairs. Used as a drop-in
-replacement for Gaussian-Process surrogates in BO.
+**What it contains.** A transformer takes
+``(X_context, y_context, X_query) → ŷ_query`` in one forward
+pass. The prior generator samples small structural causal models
+that specify a joint distribution over features and a target;
+millions of these are sampled and the transformer is trained to
+predict held-out targets given context. At inference time, no
+gradient updates: a held-out test set is just appended to the
+training set in the input, the transformer marginalises over its
+implicit prior, and predictions come out one forward pass later.
 
-**For CreditPFN.** Tangential. Useful only if we later use a PFN as
-the surrogate inside our own hyperparameter search.
+Empirical headline: on the OpenML-CC18 benchmark restricted to
+small datasets (≤ 1k rows, ≤ 100 features, ≤ 10 classes),
+TabPFN beats well-tuned XGBoost, Random Forest, and a tuned
+AutoGluon stack — in a *second* of inference where AutoGluon
+takes minutes. The paper also discusses calibration (TabPFN's
+predictive probabilities are sharp and well-calibrated) and
+robustness to small-sample noise.
+
+**For CreditPFN.** The architectural ancestor of v2 / v2.5 / v2.6.
+The 1k-row / 100-feature limits of v1 are why the field needed v2;
+those limits would not have allowed our PD/LGD datasets (some are
+hundreds of thousands of rows, some are thousands of features).
+Read the prior-generator section of this paper for the
+intuition about *what* the synthetic prior is — that's the
+distribution we're nudging during continued pretraining.
+
+---
+
+## 2023 — Müller et al. — PFNs4BO
+
+**arXiv:** [2305.17535](https://arxiv.org/abs/2305.17535) ·
+**PDF:** [open](2023_Muller_et_al._PFNs4BO_In_Context_Learning_for_Bayesian_Optimization.pdf)
+
+**Where it fits.** Sister paper to TabPFN — applies PFNs to a
+different domain (Bayesian-optimisation surrogate models).
+
+**What it contains.** A PFN trained on synthetic
+(configuration, value) pairs from a hyperparameter-search-style
+prior. At inference time, given a few past evaluations of an
+unknown objective, the PFN predicts the expected value at
+unseen configurations. Used as a drop-in replacement for
+Gaussian-Process surrogates inside an acquisition-function loop.
+The advantages over GPs: no kernel choice, no quadratic-time
+fitting, and the ability to encode arbitrary prior knowledge by
+designing the prior generator.
+
+**For CreditPFN.** Tangential. Useful only if we later wrap a
+PFN around our own hyperparameter search for the
+continued-pretraining loop (e.g. searching over learning rate,
+number of epochs, and choice of base checkpoint).
+
+---
 
 ## 2024 — Breugel and Schaar — Why Tabular Foundation Models Should Be a Research Priority
 
-**Where it fits:** position paper arguing the field needs tabular
-analogues of GPT/CLIP. Pre-dates TabPFN-2.5 / Real-TabPFN.
+**arXiv:** [2405.01147](https://arxiv.org/abs/2405.01147) ·
+**PDF:** [open](2024_Breugel_and_Schaar_Why_Tabular_Foundation_Models_Should_Be_a_Research_Priority.pdf)
 
-**What it contains.** Surveys the gap between LLM/CV foundation
-models (which dominate their fields) and tabular ML (still ruled by
-GBDTs). Identifies five obstacles: heterogeneity, no-pretraining
-norm, no big benchmark, no public real-data corpus, no commercial
-push. Argues that solving these is high-leverage research.
+**Where it fits.** Position / agenda paper. Pre-dates Real-TabPFN
+and TabPFN-2.5; argues that tabular ML is an under-invested
+research area despite tabular data being economically dominant.
 
-**For CreditPFN.** Useful framing for the introduction of a thesis
-or paper. The "no public real-data corpus" point specifically
-motivates buying / curating the 3000-dataset corpus we will work on.
+**What it contains.** A diagnosis of why tabular ML lags behind
+NLP and computer vision in foundation-model adoption. Five
+proposed obstacles: (1) data heterogeneity (every tabular
+dataset has its own schema), (2) the no-pretraining norm
+(researchers train models from scratch per dataset), (3) the
+absence of a TabArena-equivalent that the field treats as
+canonical, (4) the absence of a public, large, high-quality
+real-data corpus comparable to ImageNet or LAION, (5) the
+absence of a commercial player whose interests align with
+publishing such a corpus. The paper sketches research
+directions for each.
 
-## 2024 — Helli et al. — Drift-Resilient TabPFN: In-Context Learning Temporal Distribution Shifts on Tabular Data
+**For CreditPFN.** Useful framing for the introduction of a
+thesis or paper. The "no public real-data corpus" point is the
+exact gap our 3000-dataset purchase will close in the credit-risk
+sub-domain.
 
-**Where it fits:** TabPFN variant trained for distribution shift —
-realistic temporal evolution rather than i.i.d. test data.
+---
 
-**What it contains.** Modifies TabPFN's synthetic-data generator to
-inject temporal drift into the context-vs-query split (e.g. shifting
-covariates, changing label functions). The resulting model
-generalises better when the test distribution differs from the
-training distribution by a continuous shift.
+## 2024 — Helli et al. — Drift-Resilient TabPFN
+
+**arXiv:** [2411.10634](https://arxiv.org/abs/2411.10634) ·
+**PDF:** [open](2024_Helli_et_al._Drift_Resilient_TabPFN_In_Context_Learning_Temporal_Distribution_Shifts_on_Tabular_Data_1.pdf)
+
+**Where it fits.** TabPFN variant trained for distribution shift
+— realistic temporal evolution of the data-generating process,
+rather than i.i.d. test data.
+
+**What it contains.** Modifies TabPFN's synthetic prior generator
+to inject continuous distribution shifts between context rows
+and query rows: covariate drift (input distribution moves over
+time), prior drift (label-marginal moves), and concept drift
+(conditional ``P(y|x)`` moves). A neural-network sub-component
+parametrises the drift dynamics, and the sampler interleaves
+"early" rows (context) with "late" rows (query) so the model
+learns to extrapolate the drift function from the context.
+
+The empirical message: a TabPFN trained with this drift-aware
+prior generalises noticeably better when the test distribution
+differs from training by a continuous shift. The vanilla TabPFN
+prior is implicitly i.i.d.; under drift, it cannot recover.
 
 **For CreditPFN.** Highly relevant. Credit-risk data drifts hard
-across macroeconomic regimes (2008, 2020). Borrowing their
-drift-aware training augmentation as part of our continued
-pretraining loop is a concrete avenue to explore — a CreditPFN
-trained with drift augmentation should generalise better to
+across macroeconomic regimes — the 2008 crisis and 2020 pandemic
+both produced massive shifts in PD distributions. A
+CreditPFN that combines (i) Real-TabPFN-style continued
+pretraining on a credit corpus with (ii) drift-aware training-time
+augmentation would, in principle, generalise better to
 out-of-cycle defaults than a plain Real-TabPFN replication.
+Worth folding the drift-aware augmentation into ``src/train/``
+behind a config flag.
 
-## 2024 — Hoo et al. — The Tabular Foundation Model TabPFN Outperforms Specialized Time Series Forecasting Models Based on Simple Features
+---
 
-**Where it fits:** application paper showing TabPFN beats classical
-forecasters when you frame forecasting as a tabular regression on
+## 2024 — Hoo et al. — TabPFN Outperforms Specialized Time Series Forecasting Models
+
+**arXiv:** [2407.05393](https://arxiv.org/abs/2407.05393) ·
+**PDF:** [open](2024_Hoo_et_al._The_Tabular_Foundation_Model_TabPFN_Outperforms_Specialized_Time_Series_Forecasting_Models_Based_on.pdf)
+
+**Where it fits.** Application paper rather than a method paper.
+Shows that TabPFN beats classical time-series forecasters when
+forecasting is reframed as cross-sectional regression on
 lag-features.
 
-**What it contains.** Take a univariate time series, build features
-(lags, calendar, rolling stats), feed to TabPFNRegressor. Beats
-ARIMA and several deep TS baselines on M-style benchmarks.
+**What it contains.** Pipeline: take a univariate time series,
+build features (lags, calendar features like day-of-week,
+rolling mean and rolling std with various window sizes), and
+feed each (features → next-step value) pair to TabPFNRegressor.
+On M4 / M5-style benchmarks, this beats ARIMA and several deep
+TS baselines (DeepAR, N-BEATS) — without any TS-specific
+architecture.
 
-**For CreditPFN.** Mostly out of scope — credit-risk modelling is
-typically a cross-sectional default/LGD task per loan. But validates
-that TabPFN-style in-context learning generalises beyond the
-"classic" tabular setup.
+The narrative is that TabPFN's flexibility on small datasets
+and absence of architectural priors lets it discover the right
+forecast structure from a few hundred lag-feature rows, where
+deep TS models need much more data to converge.
+
+**For CreditPFN.** Mostly out of scope — credit-risk modelling
+is typically cross-sectional (per loan / per borrower) rather
+than time-series forecasting. But the result validates the
+"TabPFN as a default tabular regressor" narrative we are
+building on.
+
+---
 
 ## 2024 — Rundel et al. — Interpretable Machine Learning for TabPFN
 
-**Where it fits:** interpretability tooling for TabPFN.
+**arXiv:** [2403.10923](https://arxiv.org/abs/2403.10923) ·
+**PDF:** [open](2024_Rundel_et_al._Interpretable_Machine_Learning_for_TabPFN.pdf)
 
-**What it contains.** Adapts SHAP, partial-dependence and feature
-interaction analysis to TabPFN's in-context inference path. Argues
-TabPFN is no harder to interpret than a GBDT once these tools are
-adapted.
+**Where it fits.** Interpretability tooling for TabPFN.
 
-**For CreditPFN.** Important downstream. Credit-risk modelling has
-regulatory interpretability requirements (Basel, EBA guidelines).
-For the thesis evaluation chapter, we'll need to demonstrate that
-CreditPFN's predictions can be explained at the same level a PD
-model is currently explained at production banks.
+**What it contains.** Adapts the standard interpretability
+toolkit — SHAP values, partial-dependence plots, feature
+interaction analysis — to TabPFN's in-context inference path.
+Key challenge addressed: SHAP for TabPFN cannot use the standard
+"model-as-black-box" approach because querying with a single row
+plus the entire training set is the unit of inference, not just
+the test row. The paper proposes adaptations that account for
+the in-context structure and shows that the resulting
+attributions are stable and consistent with expert intuition on
+several benchmark datasets.
+
+The headline argument is that TabPFN is *no harder* to
+interpret than a GBDT once the right tooling is in place.
+
+**For CreditPFN.** Important downstream. Credit-risk modelling
+has regulatory interpretability requirements (Basel III, EBA
+guidelines on internal ratings-based approaches), and any
+production deployment of CreditPFN must produce
+loan-by-loan attributions that map cleanly to credit-bureau
+inputs. For the thesis evaluation chapter, we will need to
+show that CreditPFN explanations are at parity with what
+production banks currently report from logistic-regression /
+GBDT scorecards.
+
+---
+
+<a id="real-tabpfn"></a>
 
 ## 2025 — Garg et al. — Real-TabPFN
 
-> Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
-> arXiv:2507.03971
+**arXiv:** [2507.03971](https://arxiv.org/abs/2507.03971) ·
+**PDF:** [open](2025_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.pdf)
 
-**Where it fits:** ★★★ **the recipe we are following.** ★★★ Continued
-pretraining of TabPFNv2 on a curated set of 71 real-world tables
-from OpenML + Kaggle.
+**Where it fits. The recipe we are following.** Continued
+pretraining of TabPFNv2 on a curated set of real-world tables
+from OpenML and Kaggle. The closest published methodology to
+CreditPFN — same pipeline, different domain.
 
-**What it contains in detail.**
+**What it contains.** *(I read pages 1–6 of this PDF directly via*
+*the* ``pdftotext`` *command, so the details below are quoted from*
+*the paper rather than reconstructed from memory.)*
 
-* *Method:* take the synthetic-only TabPFNv2 checkpoint, continue
-  pretraining on a hand-curated corpus of 71 datasets (≥ 10 000 rows
-  each, mixture of OpenML and Kaggle). Minimal preprocessing:
-  `OrdinalEncoder` for categoricals; if > 10 classes, keep top-9 +
-  "other".
-* *Data contamination protocol* (their §3) — five-tier filter:
-  size > 10k (every eval dataset is < 10k, so size alone separates
-  pretrain from eval); cross-reference IDs / names / shapes;
-  cross-reference column names; row hashes; column hashes; manual
-  metadata inspection. **This is exactly what our `dedup.py`
-  implements.**
-* *Results:* +0.022 normalised ROC AUC on the 29-dataset OpenML
-  AutoML Benchmark vs. default TabPFNv2 (Wilcoxon p = 0.0045). Gains
-  grow with context size — 2k → 20k context yields a monotonic
-  improvement curve.
-* *Ablations:* OpenML alone +0.019, Kaggle alone +0.015, union +0.022
-  (heterogeneous sources help). CommonCrawl as a corpus *hurts*
-  performance (datasets too small, ~100 rows each). GitTables helps
-  but less than OpenML+Kaggle.
+* **Method.** Take the synthetic-only TabPFNv2 checkpoint and
+  continue pretraining on a hand-curated corpus of 71 datasets
+  (≥ 10 000 rows each, mixture of OpenML and Kaggle).
+  *Minimal* preprocessing: ``OrdinalEncoder`` for categoricals,
+  and if the target has more than 10 classes, retain the nine
+  most common and merge the remainder into a tenth "other".
+  No imputation, no scaling beyond what TabPFN does internally.
+* **Data contamination protocol** (their §3) — five-tier filter:
+  (1) only datasets > 10k samples (every evaluation dataset is
+  smaller, so size alone separates pretrain from eval);
+  (2) cross-reference IDs / names / shapes;
+  (3) cross-reference column names;
+  (4) row hashes;
+  (5) column hashes;
+  (6) manual metadata inspection.
+  This is exactly what our :mod:`src.data.dedup` implements.
+* **Headline result.** On 29 datasets from the OpenML AutoML
+  Benchmark, Real-TabPFN improves normalised ROC-AUC by +0.022
+  vs. default TabPFNv2 (Wilcoxon signed-rank ``p = 0.0045``).
+  The Wilcoxon test confirms this is a per-dataset improvement,
+  not just an average bump driven by a few outliers.
+* **Ablations.** OpenML alone: +0.019. Kaggle alone: +0.015.
+  Union: +0.022 — heterogeneous sources are complementary.
+  CommonCrawl as a continued-pretraining corpus *hurts*
+  performance (the average dataset there is only ~100 rows ×
+  7 features — too small to give TabPFN useful signal).
+  GitTables (avg ~1000 rows × 9 features) helps, but less than
+  OpenML+Kaggle (avg 10k–100k rows × 10s of features).
+* **Context-size scaling.** Continued-pretraining gains grow with
+  the context size used during continued pretraining: 2k → 20k
+  context yields a monotonic improvement curve (Figure 4 in
+  the paper).
 
-**For CreditPFN.** This is our blueprint. Our contributions vs.
-Real-TabPFN:
-1. Different domain — credit risk instead of generic.
-2. Different scale — 3000 datasets vs. their 71.
-3. Two parallel tracks (PD / LGD) instead of one.
-4. The dedup protocol is replicated faithfully (Stage 1 of our
-   pipeline implements all five of their checks plus three extras).
+**For CreditPFN.** The blueprint. Our contributions versus
+Real-TabPFN are:
 
-The paper's source code is **not** public; this Markdown summary
-plus the methods section we just lifted is what we have to work
-from.
+1. **Domain.** Credit risk instead of generic. Their corpus is
+   "any real-world table they could find that wasn't in the eval
+   set". Ours is "credit-risk tables specifically".
+2. **Scale.** 3000 datasets vs. their 71. Whether the in-context
+   prior shift is a function of corpus size is exactly what our
+   ablations will measure.
+3. **Two parallel tracks.** PD (classification) and LGD
+   (regression) instead of one classification objective.
+4. **Dedup protocol.** Replicated faithfully — Stage 1 of our
+   pipeline implements all five of their checks plus three
+   extras (rounded-row hash, subset detection, fuzzy column-name
+   matching).
+
+The paper's source code is **not** public; the methods section
+plus this summary is what we have to work from. When a detail is
+ambiguous (e.g. exact context-size schedule), we err on the side
+of replicating their reported headline numbers as a sanity check
+before scaling up to credit-specific corpora.
+
+---
+
+<a id="tabpfn-v2-nature"></a>
 
 ## 2025 — Hollmann et al. — Accurate predictions on small data with a tabular foundation model
 
-**Where it fits:** the TabPFNv2 paper (Nature). Production-grade
-release that 100×s the scaling limits of v1.
+**Journal:** *Nature*, 2025 ·
+**PDF:** [open](2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf)
+
+**Where it fits.** The TabPFNv2 paper. Production-grade release
+that 100×s the scaling limits of v1 and ships in *Nature*.
 
 **What it contains.** A re-architected v2 with alternating
-sample-attention / feature-attention layers, scales to ~10 000 rows
-× 500 features. Synthetic prior expanded to include richer
-distributions, NaN handling baked into the encoder
-(`NanHandlingEncoderStep`), categorical handling via an internal
-`OrdinalEncoder`, an inference-time ensemble of preprocessing
-configurations (`PowerTransformer`, `QuantileTransformer`, etc.).
-Beats AutoGluon, CatBoost, XGBoost on TabArena.
+sample-attention / feature-attention layers, scaling to
+~10 000 rows × 500 features (orders of magnitude more than v1).
+Headline ingredients:
 
-**For CreditPFN.** This is the architecture we continue-pretrain.
-Most of our `sanitize.py` design decisions (don't winsorise,
-preserve NaNs, don't standardise the regression target) flow
-directly from how v2 is engineered.
+* **Synthetic prior expansion.** Far broader and deeper than v1's
+  prior; covers richer noise distributions, more diverse SCMs,
+  and inputs with realistic categorical / numerical mixes.
+* **Architecture.** Stacked transformer with two attention
+  patterns interleaved per layer: "sample attention" treating
+  each row as a token, and "feature attention" treating each
+  column as a token. The interleaving lets the model reason
+  about both row-level patterns (similarity, density) and
+  column-level patterns (interactions, redundancy) in one pass.
+* **NaN handling.** Built into the encoder via
+  ``NanHandlingEncoderStep`` — explicit indicator features plus
+  learned default replacements. Categorical handling via an
+  internal ``OrdinalEncoder`` fitted at ``.fit(X, y)`` time.
+* **Inference-time ensemble.** A pool of preprocessing
+  configurations (``PowerTransformer``, ``QuantileTransformer``,
+  ``RobustScaler``, ``SquashingScaler``, ``"none"``); each
+  estimator in the ensemble cycles through one configuration,
+  yielding diverse predictions that are averaged at inference.
+* **Headline results.** Beats AutoGluon, CatBoost, XGBoost on
+  the TabArena benchmark across the full ≤ 10k-row range.
 
-## 2025 — Liu and Ye — TabPFN Unleashed: A Scalable and Effective Solution to Tabular Classification Problems
+**For CreditPFN.** The architecture we instantiate. Most of our
+``sanitize.py`` design decisions flow directly from how v2 is
+engineered:
 
-**Where it fits:** scaling TabPFN to large datasets via
-context-subsampling tricks rather than re-pretraining.
+* Don't pre-winsorise (``OUTLIER_REMOVAL_STD = 12.0`` is internal).
+* Don't pre-apply power / quantile transforms (the inference
+  ensemble does that, with diversity).
+* Preserve NaNs (``NanHandlingEncoderStep`` handles them).
+* Don't pre-normalise the regression target
+  (``RegressorBatch.znorm_space_bardist_`` does that, and inverts
+  at predict time).
 
-**What it contains.** Strategies for handling > 10 000-row datasets
-with TabPFNv2 at inference time: stratified context selection,
-bootstrap aggregation, query-level subsampling. Closes the gap to
-GBDTs on medium-large data without retraining.
+---
 
-**For CreditPFN.** Operational. Useful at evaluation time when
-scoring CreditPFN on 100k-row downstream credit datasets.
+## 2025 — Liu and Ye — TabPFN Unleashed
+
+**arXiv:** [2502.02527](https://arxiv.org/abs/2502.02527) ·
+**PDF:** [open](2025_Liu_and_Ye_TabPFN_Unleashed_A_Scalable_and_Effective_Solution_to_Tabular_Classification_Problems.pdf)
+
+**Where it fits.** Adaptation method for TabPFN. Re-frames TabPFN's
+weaknesses through a formal **bias–variance decomposition** of its
+generalisation error, then proposes a method (**BETA**: Bagging
+and Encoder-based Fine-tuning for TabPFN Adaptation) that attacks
+both sides simultaneously.
+
+**What it contains.** The authors observe that previous TabPFN-
+improvement papers each address either bias or variance, never
+both — and the resulting methods leave performance on the table.
+BETA combines two complementary mechanisms.
+
+* **Bias reduction via a lightweight learned encoder.** A small
+  parameter-efficient adapter sits between the raw features and
+  TabPFN's internal embedding, mapping datasets of arbitrary
+  dimensionality into multiple fixed-dimensional latent
+  representations. This both addresses TabPFN's ~500-feature soft
+  cap and lets the model adapt to the downstream task during
+  fine-tuning.
+* **Variance reduction via Batch Ensemble plus bootstrapped
+  sampling.** Multiple lightweight encoders run in parallel with
+  parameter sharing (à la Wen 2020 / Gorishniy 2025), each fed a
+  bootstrap-sampled context. Their predictions are averaged,
+  smoothing out idiosyncrasies of any single sampled context set.
+
+The method also integrates with Error-Correcting Output Codes
+(ECOC) to handle multiclass tasks with > 10 classes (which v2
+struggles with). Evaluated on 200+ benchmark classification
+datasets where BETA either outperforms or matches state of the
+art while remaining computationally lightweight.
+
+**For CreditPFN.** Tangential to our continued-pretraining stage.
+The parameter-efficient adapter pattern would be interesting if
+our 3000-dataset corpus ever hits feature-count ceilings that
+``FeatureAgglomeration`` doesn't smoothly handle, and the
+variance-reduction tricks complement what the official TabPFN
+package already does at inference time (`AutoTabPFN` ensembling).
+We may pick up the bootstrap-context idea for evaluation.
+
+---
 
 ## 2025 — Müller et al. — Position: The Future of Bayesian Prediction Is Prior-Fitted
 
-**Where it fits:** position paper — a manifesto for PFNs as a unifying
-framework for "approximate Bayesian inference at scale".
+**arXiv:** [2502.05489](https://arxiv.org/abs/2502.05489) ·
+**PDF:** [open](2025_Muller_et_al._Position_The_Future_of_Bayesian_Prediction_Is_Prior_Fitted.pdf)
 
-**What it contains.** Argues that PFNs subsume GP regression, BNNs,
-and tabular models; the limiting factor is no longer inference
-algorithms but priors and dataset corpora.
+**Where it fits.** Position paper / manifesto from the original
+PFN authors.
 
-**For CreditPFN.** Useful for thesis context. Frames why "design a
-better prior for credit-risk" is a fundamentally Bayesian-inference
-contribution rather than a hyperparameter tuning exercise.
+**What it contains.** Argues that PFNs are the natural successor
+to MCMC and variational Bayes for *predictive* Bayesian inference
+(as opposed to posterior estimation per se). The argument:
 
-## 2025 — Pfefferle et al. — nanoTabPFN: A Lightweight and Educational Reimplementation of TabPFN
+* Inference algorithms for non-conjugate priors are slow and
+  brittle.
+* PFNs amortise inference into one forward pass, with arbitrary
+  user-specified priors.
+* The remaining bottlenecks are (a) prior design and (b) corpora
+  of real data to validate against synthetic priors — *not*
+  inference algorithms.
 
-**Where it fits:** educational reference implementation — TabPFN in
-~900 lines of clear Python.
+The paper sketches research directions: prior-design libraries,
+PFN-as-baseline for new probabilistic methods, and a unified
+benchmark across regression / classification / forecasting / BO.
 
-**What it contains.** A working PFN training loop, a synthetic-data
-HDF5 prior dump, a minimal model with alternating attention,
-inference utilities. Designed to be readable end-to-end.
+**For CreditPFN.** Useful for thesis context. Frames the
+"design a better prior for credit-risk" project as a fundamentally
+Bayesian-inference contribution rather than just hyperparameter
+tuning.
 
-**For CreditPFN.** ★★ Excellent for understanding. The `train(model,
-prior, ...)` function at ~ line 758 of the source dump
-(`repositories/NanoTabPFN.txt`) is the structural template for our
-training loop, and the `PriorDumpDataLoader` shows the canonical
-batch-format we must produce in our cache (X (B, N, F) + y (B, N) +
-single_eval_pos).
+---
 
-## 2025 — Qu et al. — TabICL: A Tabular Foundation Model for In-Context Learning on Large Data
+## 2025 — Pfefferle et al. — nanoTabPFN
 
-**Where it fits:** TabPFN competitor. Different architecture, scales
-to 500k-row tables natively.
+**arXiv:** [2510.13129](https://arxiv.org/abs/2510.13129) ·
+**PDF:** [open](2025_Pfefferle_et_al._nanoTabPFN_A_Lightweight_and_Educational_Reimplementation_of_TabPFN.pdf)
 
-**What it contains.** Hierarchical attention over rows-then-features,
-allowing the context to span much larger N than v2's 10k limit.
-Trained on a mix of synthetic and real data.
+**Where it fits.** Educational reference implementation —
+TabPFN distilled to ~900 lines of clear PyTorch.
 
-**For CreditPFN.** Comparison baseline only. Not our pretraining
-target.
+**What it contains.** A complete working PFN training loop
+(synthetic prior dump, model, optimiser, training loop, eval),
+designed to be readable end-to-end. Specifically:
 
-## 2025 — Robertson et al. — Do-PFN: In-Context Learning for Causal Effect Estimation
+* A synthetic-data HDF5 prior dump (300k×150×5 in the demo).
+* The TabPFN-style model — alternating attention between samples
+  and between features, plus a target-embedding head.
+* A ``train()`` function that iterates over the prior dump,
+  computes cross-entropy on held-out query labels, and applies
+  AdamW with gradient-norm clipping.
+* A small inference wrapper that exposes a sklearn-style
+  ``fit`` / ``predict_proba`` interface.
 
-**Where it fits:** PFN extension to causal effect estimation rather
-than predictive modelling.
+The paper accompanies the code with an exposition of the PFN
+recipe at a level appropriate for a graduate ML class.
 
-**What it contains.** Trains a PFN with synthetic data sampled from
-SCMs to predict do-interventions (Pearl's do-calculus). Outperforms
-classical IPW / DR estimators on synthetic and semi-synthetic
-benchmarks.
+**For CreditPFN.** Critical resource. The training loop in
+``repositories/NanoTabPFN.txt`` is the structural template for
+our ``src/train/train.py`` — we'll adapt the loop to iterate
+over our cached real datasets instead of a synthetic prior dump.
 
-**For CreditPFN.** Out of scope but interesting for follow-up work
-("what's the causal effect of an APR cut on default risk?").
+---
 
-## 2025 — Robertson et al. — FairPFN: A Tabular Foundation Model for Causal Fairness
+## 2025 — Qu et al. — TabICL
 
-**Where it fits:** another causal PFN, this time aimed at counterfactual
-fairness audits.
+**arXiv:** [2502.05564](https://arxiv.org/abs/2502.05564) ·
+**PDF:** [open](2025_Qu_et_al._TabICL_A_Tabular_Foundation_Model_for_In_Context_Learning_on_Large_Data.pdf)
 
-**What it contains.** Trains a PFN where the synthetic prior includes
-explicit protected-attribute structure, then audits a model by
-comparing factual and counterfactual predictions in-context.
+**Where it fits.** Direct competitor to TabPFN. Different
+architectural approach; scales to ~500 k-row tables natively.
 
-**For CreditPFN.** Relevant for the regulatory chapter — credit-risk
-models are subject to fair-lending rules (ECOA in the US). FairPFN's
-auditing primitive could be used to certify that a CreditPFN does not
-discriminate by protected attribute beyond what is statistically
-unavoidable.
+**What it contains.** TabICL ("Tabular In-Context Learning")
+adopts a **two-stage** architecture instead of TabPFNv2's flat
+column-then-row alternation. First, each row is collapsed into a
+single dense vector via a column-then-row attention block:
+distribution-aware column-wise embedding (a Set-Transformer-style
+operation that treats each column as a permutation-invariant set
+of cell values, enabling cross-table transferability), then
+within-row attention to model feature interactions, then a
+[CLS]-token aggregation that produces a fixed-dimensional row
+embedding. Second, ICL runs over these row embeddings — collapsing
+the column dimension *before* in-context learning sidesteps
+TabPFNv2's `O(n²m + nm²)` cost.
+
+The pretraining adds a tree-based synthetic prior (decision-tree
+ensembles) on top of the standard SCM prior to inject GBDT-flavoured
+inductive biases, plus curriculum learning that scales the
+pretraining dataset size from 1k → 60k rows. To handle > 10 classes
+(the pretraining limit) the model uses hierarchical classification.
+Empirically, on TabArena's 53 datasets above 10 k rows TabICL
+**surpasses both TabPFNv2 and CatBoost**, while on smaller datasets
+it matches TabPFNv2 at up to 10× faster inference.
+
+**For CreditPFN.** Comparison baseline only — our continued-
+pretraining work commits to the TabPFN family for continuity with
+Real-TabPFN. But TabICL is the right reference architecture for
+"what should the pipeline look like" if we ever push past v2's
+50 000-row context cap. The set-transformer column embedding is
+also a promising pattern for handling the 3000-dataset
+heterogeneity at scale.
+
+---
+
+## 2025 — Robertson et al. — Do-PFN
+
+**arXiv:** [2506.06039](https://arxiv.org/abs/2506.06039) ·
+**PDF:** [open](2025_Robertson_et_al._Do_PFN_In_Context_Learning_for_Causal_Effect_Estimation.pdf)
+
+**Where it fits.** First PFN published for causal-effect
+estimation. Predates the unified CausalFM framework (Ma 2026)
+by ~6 months and focuses specifically on **conditional
+interventional distributions** — the answer to "what would the
+outcome distribution look like if we intervened to set
+treatment t?", given only observational data.
+
+**What it contains.** Pretraining recipe:
+
+* **Sample millions of SCMs.** Each SCM has explicit treatment
+  variables, outcome variables, and confounders. Importantly,
+  the prior covers a wide variety of causal structures including
+  cases where unconfoundedness *fails*.
+* **For each SCM, sample two datasets simultaneously**: one
+  observational (no interventions) and one interventional (forced
+  ``do(T = t)``). The transformer is given the *observational*
+  dataset as context and is trained to predict the *interventional*
+  outcomes — meta-learning the act of causal inference itself.
+* **At inference time**, the model sees only an observational
+  dataset and a query intervention; the network outputs an
+  estimate of the causal effect with calibrated uncertainty.
+
+The crucial property: Do-PFN does **not** require the user to
+specify the causal graph, and does **not** rely on the
+unconfoundedness assumption that classical methods (IPW, DR,
+causal forests) need. The breadth of the SCM-prior means the
+model has, in expectation, "seen" enough confounded cases during
+training that it auto-corrects.
+
+Beats classical IPW and Doubly Robust estimators on synthetic and
+semi-synthetic causal-inference benchmarks.
+
+**For CreditPFN.** Out of scope for the immediate work but
+methodologically interesting follow-up. The killer question for
+credit-risk regulation is "what's the causal effect of an
+intervention (APR cut, forbearance, collateral tightening) on
+PD/LGD?". Standard predictive CreditPFN cannot answer this
+because correlations ≠ causation. A Do-PFN head trained on top
+of CreditPFN's representations *could* — and would unlock entire
+new classes of regulatory and policy-evaluation use-cases.
+
+---
+
+## 2025 — Robertson et al. — FairPFN
+
+**arXiv:** [2506.07049](https://arxiv.org/abs/2506.07049) ·
+**PDF:** [open](2025_Robertson_et_al._FairPFN_A_Tabular_Foundation_Model_for_Causal_Fairness.pdf)
+
+**Where it fits.** Causal-PFN sibling of Do-PFN, this time aimed
+at the **causal-fairness** problem rather than treatment-effect
+estimation. Addresses the limitation that current causal-fairness
+frameworks require the user to specify the correct causal model —
+a tall ask in practice and a source of "fairwashing" when the
+specified graph is wrong.
+
+**What it contains.** Pretraining recipe:
+
+* **Synthetic causal-fairness data prior.** Sparse MLPs
+  represent SCMs whose root nodes include exogenous protected
+  attributes (binary: race / gender / age). For each SCM, the
+  paper samples both a *biased* dataset (with the protected
+  attribute's full causal influence) and a *fair* counterpart
+  obtained by removing the outgoing edges of the protected
+  attribute — i.e. by simulating the counterfactual world in
+  which the protected attribute had no causal influence on the
+  outcome.
+* **Training objective.** The transformer sees the biased
+  observational dataset as context and is trained to predict
+  the *fair* outcomes from the counterfactual world. Loss is
+  computed against the fair targets, so the network learns to
+  internally identify and remove the causal effect of the
+  protected attribute.
+* **At inference time**, FairPFN takes only the biased
+  observational data and produces fairer predictions, integrating
+  over the simplest causal explanations consistent with the
+  observed bias. **No user-specified causal graph is needed.**
+
+The paper demonstrates strong performance on hand-crafted SCMs
+and several real-world fairness benchmarks (Adult, COMPAS,
+German Credit, Law School Admissions), beating robust baselines
+across most settings.
+
+**For CreditPFN.** ★ Highly relevant for the regulatory chapter.
+Credit-risk models are bound by anti-discrimination law (ECOA
+in the US, the EU AI Act, the Basel-III IRB framework's fair-
+lending guidance). A FairPFN-style audit on top of CreditPFN
+would let us certify that any disparate impact in our model's
+PD/LGD predictions is causally due to legitimate underwriting
+factors — and not to a leaked proxy of a protected attribute via
+ZIP code, employment sector, or similar. This is the exact
+audit pattern banks are increasingly being asked to produce by
+supervisors.
+
+---
+
+<a id="on-finetuning"></a>
 
 ## 2025 — Rubachev et al. — On Finetuning Tabular Foundation Models
 
-**Where it fits:** ★★ **directly relevant.** ★★ Studies what happens
-when you fine-tune TabPFN (and other tabular FMs) on a downstream
-dataset.
+**arXiv:** [2506.08982](https://arxiv.org/abs/2506.08982) ·
+**PDF:** [open](2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf)
 
-**What it contains.** Empirical study of fine-tuning TabPFN with full
-gradient updates vs. parameter-efficient methods (LoRA, prefix
-tuning) on dozens of downstream datasets. Headline findings:
-fine-tuning *helps* on datasets large enough to overcome the
-overfitting risk (typically > 1000 rows); LoRA-style methods recover
-most of the gain at a fraction of the parameter cost; learning rates
-in the 1e-5 to 1e-4 range are stable.
+**Where it fits.** Empirical study of finetuning tabular FMs on
+downstream datasets. The closest published reference for our
+training-stage hyperparameter choices.
 
-**For CreditPFN.** Our continued-pretraining is technically a
-multi-table generalisation of the fine-tuning setup studied here.
-The hyperparameter ranges (epochs ~30, LR ~1e-5) reported in this
-paper match what we'll use in `src/train/`.
+**What it contains.** Systematically benchmarks three finetuning
+strategies — full gradient updates, LoRA-style low-rank
+adapters, and prefix tuning — on TabPFN, TabICL, and TabDPT
+across dozens of downstream tasks. Headline findings:
 
-## 2025 — Tanna et al. — TabTune: A Unified Library for Inference and Fine-Tuning Tabular Foundation Models
+* **Full finetuning helps on datasets large enough to overcome
+  the overfitting risk** (typically > 1000 rows). Below that,
+  zero-shot in-context learning is hard to beat.
+* **LoRA recovers most of the gain at a fraction of the parameter
+  cost** — ~1–5 % of full-model parameters trained, typically
+  90–95 % of the full-finetune improvement.
+* **Stable learning rates** are in the 1e-5 to 1e-4 range. Higher
+  rates destabilise; lower rates barely move from the pretrained
+  point.
+* **Epoch budgets** of 10–50 epochs are typical; longer
+  schedules overfit on most datasets.
 
-**Where it fits:** software / benchmark paper. Unified API for
-running and finetuning TabPFN, TabICL, TabDPT, etc.
+The paper also identifies pathological cases where finetuning
+*hurts* (extremely small datasets, datasets with severe label
+noise) and proposes early-stopping protocols to detect them.
 
-**What it contains.** Common interface to load any tabular FM, apply
-common preprocessing, run inference, fine-tune. Useful for
-side-by-side comparisons.
+**For CreditPFN.** Our continued pretraining is technically a
+*multi-task* finetuning regime, which is a strict generalisation
+of the single-dataset finetuning studied here. The hyperparameter
+ranges (LR ~1e-5, ~30 epochs) reported in this paper are the
+starting point for ``config/training.yaml`` once ``src/train/``
+is implemented.
 
-**For CreditPFN.** Could provide a clean wrapper for our evaluation
-harness when we compare CreditPFN against TabICL / TabDPT baselines.
+---
 
-## 2025 — Ye et al. — A Closer Look at TabPFN v2: Understanding Its Strengths and Extending Its Capabilities
+## 2025 — Tanna et al. — TabTune
 
-**Where it fits:** empirical analysis of TabPFNv2 weaknesses.
+**arXiv:** [2511.02802](https://arxiv.org/abs/2511.02802) ·
+**PDF:** [open](2025_Tanna_et_al._TabTune_A_Unified_Library_for_Inference_and_Fine_Tuning_Tabular_Foundation_Models.pdf)
 
-**What it contains.** Identifies specific dataset characteristics
-(many classes, very wide tables, very long-tailed targets) where
-v2's defaults under-perform; proposes patches for each. Several of
-those patches were rolled into the official package as the
-non-default v2.5 checkpoint variants (`_low-skew`, `_quantiles`,
-`_large-features-XL`, etc., per
-`repositories/Huggingface TabPFN.txt`).
+**Where it fits.** Software / benchmark paper from Lexsi Labs. A
+unified, scikit-learn-compatible Python library that standardises
+the entire workflow — inference, fine-tuning, evaluation — across
+TabPFN, TabICL, ContextTab, OrionMSP, OrionBix, and other tabular
+FMs.
 
-**For CreditPFN.** Useful as a checklist of "things we should
-benchmark" — credit-risk datasets often have heavy-tailed loss
-distributions for LGD (relevant to `_low-skew`).
+**What it contains.** TabTune addresses four operational frictions
+that have been slowing TFM adoption in practice:
 
-## 2025 — Zhang et al. — Mitra: Mixed Synthetic Priors for Enhancing Tabular Foundation Models
+* **Diverse preprocessing requirements** — each TFM expects its
+  own data encoding (TabPFN wants numerically encoded categoricals
+  consistent with its synthetic priors, TabICL wants set-transformer
+  embeddings for categoricals, etc.). TabTune handles the per-model
+  preprocessing internally.
+* **Fragmented APIs and training protocols** — some models are
+  zero-shot only, some support full SFT, some support PEFT
+  (LoRA / prefix tuning). TabTune exposes a unified
+  ``.fit()`` / ``.predict()`` / ``.evaluate()`` interface across
+  all of them.
+* **Evaluation gaps in deployment-relevant metrics** — beyond
+  accuracy, the library ships built-in calibration (Expected
+  Calibration Error, Maximum Calibration Error, Brier score) and
+  fairness diagnostics (Statistical Parity Difference, Equalised
+  Odds Difference, Equalised Opportunity Difference).
+* **Model selection complexity** — a benchmarking module
+  consistently ranks models on accuracy, calibration, fairness
+  and resource efficiency on standard suites (TALENT, OpenML-CC18).
 
-**Where it fits:** alternative pretraining recipe — a richer
-synthetic prior rather than continued pretraining on real data.
+The library targets the "experimental bed" use-case: study how
+zero-shot vs. PEFT vs. SFT trades off across calibration,
+fairness, and compute, all under one harness.
 
-**What it contains.** Proposes a "mixed" prior that interpolates
-between several published priors (TabPFN's SCM prior, ForestPFN's
-decision-tree prior, etc.). Trained model outperforms each
-single-prior baseline.
+**For CreditPFN.** Strong candidate for our `src/eval/` layer.
+The ECE / MCE / Brier metrics directly answer the regulatory
+question of whether CreditPFN's PD probabilities can be used as
+calibrated risk scores in a Basel-III IRB context. The fairness
+metrics partially overlap with what FairPFN-style auditing
+provides. We will likely wrap our evaluation through TabTune
+when comparing CreditPFN vs. TabPFN-2.6, TabICL, TabDPT, and
+the published Real-TabPFN-2.5 checkpoint.
 
-**For CreditPFN.** A complementary direction we are *not* taking
-(we're enriching with real data instead). But the prior-mixing recipe
-could be combined with continued pretraining in a follow-up.
+---
+
+## 2025 — Ye et al. — A Closer Look at TabPFN v2
+
+**arXiv:** [2502.17361](https://arxiv.org/abs/2502.17361) ·
+**PDF:** [open](2025_Ye_et_al._A_Closer_Look_at_TabPFN_v2_Understanding_Its_Strengths_and_Extending_Its_Capabilities.pdf)
+
+**Where it fits.** Mechanistic analysis of TabPFNv2 (rather than
+a new architecture). Asks two questions: *how* does v2 cope so
+well with heterogeneous tabular data, and *how* can its known
+limits — 10 000 samples × 500 features × 10 classes — be lifted
+without retraining? Three concrete findings.
+
+**What it contains.**
+
+1. **TabPFN v2 internalises attribute-token learning.** Unlike
+   prior tabular methods that rely on word-vector–style attribute
+   semantics or learn dataset-specific attribute tokens, v2 uses
+   **randomly resampled attribute tokens at every inference call**.
+   The paper's analysis shows that v2 still consistently infers
+   attribute relationships *through ICL itself* — effectively
+   integrating "what this column means" learning into the same
+   forward pass that produces predictions. This is what lets v2
+   transfer across datasets with different schemas and
+   dimensionalities without per-dataset adaptation.
+2. **TabPFN v2 can be repurposed as a feature extractor.** Using
+   a leave-one-fold-out strategy that aligns training and test
+   embeddings, the authors show v2 maps tabular instances into a
+   *near-linearly-separable* embedding space. Training a plain
+   linear model on those embeddings recovers most of v2's
+   accuracy — meaning v2 is implicitly learning a strong general-
+   purpose tabular representation, not just a classifier.
+3. **Test-time divide-and-conquer mitigates the
+   10 k × 500 × 10 limits.** Instead of retraining v2 on bigger
+   data, the paper proposes post-hoc strategies analogous to LLM
+   test-time scaling: hierarchical class decomposition for
+   many-class tasks, feature-subset chunking for wide tables,
+   bootstrap-context aggregation for large-N data. Empirical
+   gains across all three limit regimes.
+
+Several of these patches were rolled into the official Prior Labs
+package as non-default v2.5 specialist checkpoints —
+``_low-skew``, ``_quantiles``, ``_large-features-L``,
+``_large-features-XL``, ``_large-samples`` — per the catalogue
+in ``repositories/Huggingface TabPFN.txt``.
+
+**For CreditPFN.** Two concrete uses. First, the feature-extractor
+finding gives us a free tool: at evaluation time we can extract
+v2 embeddings of credit-risk features and pass them to a downstream
+linear / GBDT classifier as a sanity-check baseline ("how much of
+CreditPFN's value-add is just better embeddings vs. better
+in-context learning?"). Second, LGD targets are heavy-tailed (most
+mass at LGD = 0 and LGD = 1, with sparse interior) — exactly the
+distribution the ``_low-skew`` and ``_quantiles`` v2.5 specialist
+checkpoints target. We should benchmark both as alternative LGD
+bases.
+
+---
+
+## 2025 — Zhang et al. — Mitra: Mixed Synthetic Priors
+
+**arXiv:** [2510.21204](https://arxiv.org/abs/2510.21204) ·
+**PDF:** [open](2025_Zhang_et_al._Mitra_Mixed_Synthetic_Priors_for_Enhancing_Tabular_Foundation_Models.pdf)
+
+**Where it fits.** Alternative pretraining recipe from Amazon /
+AutoGluon team. Argues that the right way to improve TFMs is *not*
+to add architectural complexity but to **design better synthetic
+priors** — and proposes a principled framework for mixing them.
+Pretrained model is open-source on HuggingFace as
+``autogluon/mitra-classifier`` and ``autogluon/mitra-regressor``.
+
+**What it contains.** The paper formalises three properties a good
+synthetic prior should have, and operationalises each as a
+measurable score:
+
+1. **Standalone performance** — a TFM pretrained *only* on this
+   prior should already do well on real data.
+2. **Diversity** — a TFM pretrained on this prior should not
+   easily overfit to its own distribution (i.e. the prior covers
+   a wide range of generative mechanisms).
+3. **Distinctiveness within a mixture** — data sampled from this
+   prior should be hard for TFMs trained on *other* priors to
+   predict, meaning it adds something the other priors miss.
+
+The first is captured by a per-prior performance vector P; the
+latter two by a "Generalisability Matrix" G with diagonal entries
+measuring overfitting and off-diagonal entries measuring inter-
+prior overlap. Using these criteria the authors select a final
+mixture of **SCMs + tree-based priors** (gradient boosting,
+random forest, decision tree, extra-tree). SCMs deliver
+standalone performance and diversity; tree-based priors are
+distinctive (TFMs pretrained on SCMs alone struggle on TBP-
+generated data, so adding TBPs covers ground SCMs miss).
+
+The mixture is model-agnostic: it improves both flat row-attention
+architectures (à la TabPFN) and 2D cell-attention architectures.
+**Mitra outperforms TabPFNv2 and TabICL on both classification and
+regression benchmarks**, with better sample efficiency.
+
+**For CreditPFN.** Complementary direction we are *not* taking —
+we're enriching with real data, not redesigning the synthetic
+prior. But:
+
+* The "mixed synthetic prior + continued pretraining on credit
+  data" combination is a clean ablation if we want to see whether
+  prior-design and data-augmentation are additive.
+* Mitra's open weights make it a strong **third comparison
+  baseline** in our `src/eval/` (alongside TabPFN-2.6, TabICL,
+  TabDPT). Particularly interesting for credit-risk: tree-based
+  priors are exactly the inductive bias GBDTs use, so Mitra may
+  be unusually competitive on credit-risk benchmarks where GBDTs
+  are the default production model.
+
+---
 
 ## 2025 — Zhang et al. — TabPFN: One Model to Rule Them All
 
-**Where it fits:** survey-style position paper covering TabPFN's
-empirical wins across many domains.
+**arXiv:** [2505.20003](https://arxiv.org/abs/2505.20003) ·
+**PDF:** [open](2025_Zhang_et_al._TabPFN_One_Model_to_Rule_Them_All.pdf)
 
-**What it contains.** Aggregated benchmark numbers across health,
-finance, ecology, etc. Argues TabPFN-class models replace much of
-the "classic ML toolbox" for tabular problems below ~10k rows.
+**Where it fits.** A statistician's appraisal of TabPFNv2,
+written for a *Statistical Science*-flavoured audience rather
+than an ICML one. Provides a careful re-derivation of how
+TabPFN works as **approximate Bayesian inference**, and uses
+that lens to identify several application domains in which
+out-of-the-box TabPFN matches or beats domain-specific
+state-of-the-art methods.
 
-**For CreditPFN.** Useful citation for the introduction of a paper.
+**What it contains.** Three concrete applications evaluated:
+
+* **Semi-supervised parameter estimation** — using TabPFN with
+  a small labelled set plus unlabelled rows as context. Beats
+  specialised semi-supervised baselines on several benchmarks.
+* **Prediction under covariate shift** — TabPFN automatically
+  handles a moderate degree of distribution shift through its
+  in-context calibration, with no covariate-shift-specific
+  modifications. Competitive with importance-weighting and
+  domain-adaptation baselines.
+* **Heterogeneous treatment-effect estimation** — TabPFN
+  predictions plug into S-learner / T-learner causal-inference
+  frameworks and are competitive with Causal Forest, X-learner,
+  and DR-learner.
+
+A key theoretical observation: **TabPFN can adapt to both
+nonparametric *and* parametric structure simultaneously**.
+Sometimes outperforms LASSO even when the data is genuinely
+sparse-linear (i.e. when LASSO's modelling assumptions are
+correctly specified) — because TabPFN's implicit prior over
+SCMs already covers sparse-linear data, plus everything else.
+This blurs the classical bias-variance trade-off and makes
+TabPFN attractive as a *default* tabular regressor / classifier
+even in regimes where simple parametric models are usually
+preferred.
+
+**For CreditPFN.** Strong rhetorical citation: when we argue in
+the thesis that TabPFN-as-baseline is a more principled
+reference than XGBoost-as-baseline, this paper makes the case
+for us in clean Bayesian language. The covariate-shift result
+also lines up with what we want from a credit-risk model:
+robustness across macroeconomic regimes without explicit
+domain-adaptation engineering.
+
+---
+
+<a id="tabpfn-25"></a>
 
 ## 2026 — Grinsztajn et al. — TabPFN-2.5
 
-> Advancing the State of the Art in Tabular Foundation Models
-> arXiv:2511.08667
+**arXiv:** [2511.08667](https://arxiv.org/abs/2511.08667) ·
+**PDF:** [open](2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf)
 
-**Where it fits:** ★★★ **the architecture we instantiate.** ★★★
-Successor to v2: deeper (18–24 layers), bigger context limit (50 000
-samples × 2000 features), and crucially **ships the
-real-data-finetuned variant as the default**.
+**Where it fits. The architecture we instantiate.** Successor to
+v2: deeper (18–24 layers), bigger context limit (50 000 samples
+× 2000 features), and crucially **ships the real-data-finetuned
+variant as a default option**.
 
 **What it contains.**
-* *Architecture:* transformer with TabPFNv2-like alternating attention
-  with 18–24 layers (varies across the family of checkpoints).
-* *Training data:* synthetic-only base + a Real-TabPFN-style
-  real-data continued pretraining variant. The Real-TabPFN-2.5
-  checkpoint uses 43 curated datasets listed in their Appendix C.1.
-* *Checkpoints* (`Huggingface TabPFN.txt:91-106`): `_default` is
-  real-finetuned; `_default-2` is synthetic-only; multiple specialist
-  variants (`_large-features-L`, `_large-features-XL`,
-  `_large-samples`, `_low-skew`, `_quantiles`, …).
-* *Evaluation:* new SOTA on a proprietary benchmark, on TabArena,
-  and on a causal benchmark (RealCause).
 
-**For CreditPFN.** Our base architecture. Important detail: v2.5's
-`_default` is real-finetuned (Prior Labs' generic 43-dataset corpus);
-the methodologically clean base for *our* continued pretraining is
-`_default-2` (synthetic-only). For v2.6 the convention flipped and
-`_default` is again synthetic-only — see
+* **Architecture.** Transformer with TabPFNv2-like alternating
+  attention with 18–24 layers, varying across the family of
+  checkpoints (the small-features specialist is shallower, the
+  large-features specialist is deeper).
+* **Training data.** Synthetic-only base + a Real-TabPFN-style
+  real-data continued-pretraining variant. The Real-TabPFN-2.5
+  checkpoint uses 43 curated datasets listed in the paper's
+  Appendix C.1 (the same recipe as Garg 2025 above, refined and
+  scaled).
+* **Checkpoints.** Per
+  ``repositories/Huggingface TabPFN.txt:91-106``: ``_default`` is
+  real-finetuned; ``_default-2`` is synthetic-only (the
+  methodologically clean base for our continued pretraining);
+  multiple specialist variants (``_large-features-L``,
+  ``_large-features-XL``, ``_large-samples``, ``_low-skew``,
+  ``_quantiles``, ``_real``, …).
+* **Evaluation.** New SOTA on a proprietary benchmark, on
+  TabArena, and on RealCause (a causal-inference benchmark
+  where the regression variant of the model is repurposed).
+
+Note that v2.6 (the immediate successor described on the
+HuggingFace card and the TabPFN docs) was released after v2.5
+*without* a corresponding paper. v2.6 reverts the
+"default-is-real-finetuned" naming convention: its single
+``_default`` checkpoint is again *synthetic-only*. The full
+checkpoint provenance is in
 [`checkpoints/CHECKPOINTS.md`](../checkpoints/CHECKPOINTS.md).
 
-## 2026 — Hoo et al. — From Tables to Time: Extending TabPFN-v2 to Time Series Forecasting
+**For CreditPFN.** Our base architecture. The checkpoint-choice
+question (v2.5 ``_default-2`` vs. v2.6 ``_default``) is a
+training-stage hyperparameter we will benchmark, not a decision
+fixed at the data-pipeline stage.
 
-**Where it fits:** more thorough version of the 2024 forecasting
-paper by the same authors — proper architectural extension instead
-of just feature-engineering on top of TabPFN.
+---
 
-**What it contains.** Native time-axis attention in TabPFN, multi-horizon
-forecasting, TS-specific preprocessing (de-trending, de-seasonalising
-in-context). Beats GPT-style TS models on M5/M4.
+## 2026 — Hoo et al. — From Tables to Time
 
-**For CreditPFN.** Out of scope. Worth knowing about if we ever
-extend CreditPFN to default-curve forecasting (one curve per loan
-across months).
+**arXiv:** [2501.02945](https://arxiv.org/abs/2501.02945) ·
+**PDF:** [open](2026_Hoo_et_al._From_Tables_to_Time_Extending_TabPFN_v2_to_Time_Series_Forecasting.pdf)
 
-## 2026 — Kolberg et al. — TabPFN-Wide: Continued Pre-Training for Extreme Feature Counts
+**Where it fits.** A more thorough version of the 2024 forecasting
+paper by the same authors. Reframes time-series forecasting as a
+*tabular regression problem* and shows that the **unmodified**
+pretrained TabPFN-v2 — paired with a lightweight temporal
+featurisation — beats specialised time-series foundation models.
+Released as **TabPFN-TS** at github.com/PriorLabs/tabpfn-time-series.
 
-**Where it fits:** ★★ **directly relevant.** ★★ Continued pretraining
-of TabPFN to handle datasets with more features than the v2 prior was
-trained on.
+**What it contains.** The construction is simple but the result
+is striking. Each time step becomes one row in a tabular
+regression problem: features encode time progression
+(running index), multi-scale seasonality (year, day-of-week,
+hour-of-day, …), plus optional covariates (weather, economic
+indicators, control inputs). The target is the observed value at
+that time step. Forecasting then reduces to predicting future
+rows whose temporal features are known in advance — and TabPFN-v2
+predicts the entire forecast horizon **in one forward pass**.
 
-**What it contains.** Modifies TabPFN's training recipe to include
-synthetic datasets with hundreds–thousands of features, then
-fine-tunes on real wide-feature datasets (genomics, multi-omics).
-Uses `FeatureAgglomeration(metric='euclidean', linkage='ward')`
-inside their preprocessing pipeline (their Appendix B is the
-direct source for the `FeatureAgglomeration` design in our
-`sanitize.py`). Releases `_large-features-L` (≤ 500 features) and
-`_large-features-XL` (≤ 1000 features) checkpoints.
+Headline results:
+
+* On the **fev-bench** benchmark (covariate-informed forecasting),
+  TabPFN-TS achieves **state-of-the-art** at 11 M parameters.
+* On **GIFT-Eval** (univariate forecasting), it is competitive
+  with Chronos-Mini and **matches Chronos-Large** despite having
+  ~65× fewer parameters.
+* No time-series–specific pretraining. No fine-tuning. The
+  pretrained TabPFN-v2 weights are used as-is.
+
+The paper also includes mechanistic studies: how the model
+exploits temporal structure (lag features matter most, calendar
+features add a calibration boost), how forecasting quality
+varies across tabular backbones (TabPFN-v2 ≫ TabPFNv1 ≫ tree
+ensembles given the same featurisation), and how the model
+handles distribution shifts at long horizons.
+
+**For CreditPFN.** Out of scope for our PD/LGD pretraining work.
+But it is the cleanest demonstration that **TabPFN-v2 generalises
+beyond i.i.d. tabular regression** — useful when defending the
+choice of TabPFN-v2 as our base architecture against reviewers who
+might argue it's "only" a tabular regressor. Also relevant if we
+ever extend CreditPFN to **default-curve forecasting** — predicting
+the survival curve of a loan across months — where the same
+featurisation trick would map directly onto our cached `.npz`
+format.
+
+---
+
+## 2026 — Kolberg et al. — TabPFN-Wide
+
+**arXiv:** [2511.21002](https://arxiv.org/abs/2511.21002) ·
+**PDF:** [open](2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf)
+
+**Where it fits.** Continued-pretraining sibling to Real-TabPFN,
+focused on the extreme-feature-count regime.
+
+**What it contains.** Modifies TabPFN's training recipe to
+include synthetic datasets with hundreds-to-thousands of
+features (matching multi-omics, wide bureau-data, etc.), then
+fine-tunes on real wide-feature datasets. Specifically:
+
+* **Synthetic prior augmentation** — the SCM generator is
+  extended to produce datasets where the number of features
+  vastly exceeds the number of rows, which v2's prior almost
+  never sampled.
+* **Preprocessing pipeline** — uses
+  ``FeatureAgglomeration(metric='euclidean', linkage='ward')``
+  inside their preprocessing chain (their Appendix B is the
+  direct source for the design we adopted in our ``sanitize.py``).
+* **Released checkpoints** — ``_large-features-L`` (≤ 500
+  features) and ``_large-features-XL`` (≤ 1000 features).
 
 **For CreditPFN.** Very relevant. Two of our raw datasets exceed
-2000 features (`0014.algorithmwatch` has 2987, `0011.loan_default`
-has 770). Two options: cluster down to 128 with our agglomeration
-(current default) or use the `_large-features-XL` checkpoint
-directly. We'll likely benchmark both in `src/train/`.
+2000 features (``0014.algorithmwatch`` has 2987,
+``0011.loan_default`` has 770). Two options for handling them:
+(a) cluster down to 128 with our own ``FeatureAgglomeration``
+(current default), or (b) use the ``_large-features-XL``
+checkpoint directly. We'll benchmark both in ``src/train/``.
+
+---
 
 ## 2026 — Ma et al. — Foundation Models for Causal Inference via Prior-Data Fitted Networks
 
-**Where it fits:** unified causal-PFN framework — generalises
-Do-PFN and FairPFN.
+**arXiv:** [2506.10914](https://arxiv.org/abs/2506.10914) ·
+**PDF:** [open](2026_Ma_et_al._Foundation_Models_for_Causal_Inference_via_Prior_Data_Fitted_Networks.pdf)
 
-**What it contains.** Theoretical and empirical groundwork for
-causal in-context learning at scale.
+**Where it fits.** Unified causal-PFN framework — published at
+ICLR 2026, supersedes Do-PFN and FairPFN by generalising both.
+Introduces **CausalFM**: a general recipe for training PFN-based
+foundation models that perform Bayesian causal inference across
+multiple identification strategies in a single forward pass.
 
-**For CreditPFN.** Out of scope; bookmarked for follow-up work on
-causal credit-risk modelling.
+**What it contains.** Three layers of contribution.
 
-## 2026 — Ma et al. — TabDPT: Scaling Tabular Foundation Models on Real Data
+1. **Theory: necessary criteria for valid SCM-priors for causal
+   inference.** The paper formalises how to construct prior
+   distributions over structural causal models such that the
+   resulting PFN's in-context predictions are valid estimates of
+   the causal quantity of interest. Identifies what breaks if you
+   naïvely take TabPFN's SCM-prior and ask it to estimate a
+   treatment effect.
+2. **Method: CausalFM priors.** A novel family of SCM-priors
+   parameterised by Bayesian neural networks, structured to
+   respect the underlying causal-inference setting. Concretely:
+   different priors for **back-door adjustment** (the
+   conditioning-on-confounders case), **front-door adjustment**
+   (the mediator case), and **instrumental-variable adjustment**
+   (the natural-experiment case).
+3. **Empirics: trained PFN models for CATE estimation.**
+   Conditional Average Treatment Effect estimation across diverse
+   benchmarks. CausalFM **outperforms current state-of-the-art
+   CATE estimators** that are specifically trained for the task,
+   while requiring no per-dataset training itself.
 
-**Where it fits:** competitor to TabPFN — a transformer pretrained on
-*real* OpenML data rather than synthetic priors.
+Key advantages over classical causal inference: (i) no retraining
+per new dataset (in-context inference), (ii) principled
+uncertainty quantification, (iii) the model auto-selects the
+identification formula based on the observed data structure,
+(iv) identifiability guarantees baked into the prior design.
 
-**What it contains.** Retrieval-augmented training: at every step,
-sample a real OpenML table, mask part of it, and train the model to
-fill the masked part. Discriminative architecture rather than
-generative.
+**For CreditPFN.** Out of scope for the immediate work. Bookmarked
+for follow-up causal questions in credit-risk: "what is the causal
+effect of a 100 bp APR cut on probability of default?",
+"would tightening collateral requirements have prevented these
+defaults?", "does forbearance during a downturn causally improve
+recovery rates?". A CausalFM-style head trained on top of a
+CreditPFN backbone would let us answer those without retraining
+per question.
 
-**For CreditPFN.** Comparison baseline. Notable for being an
-existence proof that real-data-only pretraining works (which is the
-opposite extreme of TabPFN's pure-synthetic recipe — Real-TabPFN
-sits in the middle).
+---
 
-## 2026 — Qu et al. — TabICLv2: A better, faster, scalable, and open tabular foundation model
+## 2026 — Ma et al. — TabDPT
 
-**Where it fits:** v2 of TabICL; closes more of the gap to TabPFN-2.5
-and ships open weights.
+**arXiv:** [2410.18164](https://arxiv.org/abs/2410.18164) ·
+**PDF:** [open](2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf)
 
-**What it contains.** Improved hierarchical attention, bigger
-training corpus, native large-context support.
+**Where it fits.** From Layer 6 AI (Toronto). Pretrained at the
+**opposite extreme of the synthetic-vs-real spectrum** from
+TabPFN: a transformer pretrained on *real* OpenML data only, with
+no synthetic prior. Open weights on
+[HuggingFace](https://huggingface.co/Layer6/TabDPT) and
+inference + training code on
+[GitHub](https://github.com/layer6ai-labs/TabDPT-inference).
 
-**For CreditPFN.** Comparison baseline.
+**What it contains.** Two methodological pillars:
+
+* **ICL retrieval + self-supervised learning.** At each training
+  step the model samples a real OpenML table, masks part of it,
+  and is trained to fill the masked part — a column-masking SSL
+  objective in the spirit of BERT's masked-language-model. Each
+  forward pass also retrieves an in-context support set from the
+  same table, so the model learns to use the retrieved context
+  as evidence (like LLM RAG). Trained model handles both
+  classification and regression.
+* **Scaling laws on real data.** The paper's empirical contribution
+  is showing that **scaling both model size and pre-training data
+  size yields consistent gains following power-laws** (Figure 1
+  of the paper). This is the first demonstration of LLM-style
+  scaling behaviour for tabular foundation models — and crucially,
+  it works on *real* data, not just synthetic.
+
+Evaluated on **OpenML-CC18** (classification) and **OpenML-CTR23**
+(regression). TabDPT consistently matches or surpasses specialised
+per-dataset baselines that get hyperparameter-tuned, at a fraction
+of the deployment cost. Particularly strong in the few-shot
+regime: with minimal semi-supervised modifications, TabDPT
+outperforms specialised baselines on **10-shot classification**.
+
+**For CreditPFN.** Important comparison baseline because it brackets
+our project from the opposite end. Real-TabPFN (and CreditPFN) is
+"synthetic-only pretraining + real-data continued pretraining";
+TabDPT is "real-data pretraining from scratch with retrieval";
+TabPFN-v2 is "synthetic-only pretraining". By comparing all three
+on credit-risk data we can disentangle the contributions of
+synthetic priors vs. real data vs. retrieval-augmentation. The
+local code dump is at ``repositories/TabDPT.txt``; the published
+training-data list (`tabdpt_datasets/data_splits/{cls,reg}_datasets.csv`)
+must be cross-checked against our held-out evaluation set to
+prevent contamination.
+
+---
+
+## 2026 — Qu et al. — TabICLv2
+
+**arXiv:** [2602.11139](https://arxiv.org/abs/2602.11139) ·
+**PDF:** [open](2026_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.pdf)
+
+**Where it fits.** Direct successor to TabICL — full state-of-the-
+art tabular FM, **fully open** (inference code, model weights,
+synthetic-data engine, and pretraining code), explicitly framed
+as a "let's democratize the recipe so the field can build on top"
+release. Beats RealTabPFN-2.5 on TabArena even after RealTabPFN-2.5
+is hyperparameter-tuned, ensembled, and fine-tuned on real data.
+
+**What it contains.** Three pillars of contributions, each with
+substantial detail.
+
+1. **A novel synthetic-data generation engine** focused on
+   *diversity*. Builds on TabICL's distribution-aware feature
+   embeddings and adds new SCM construction primitives,
+   tree-ensemble priors (à la Mitra), and a controllable
+   difficulty curriculum. The release of this generator is part
+   of the paper's open-science contribution.
+2. **Architectural innovations.** The most interesting one for
+   our work: a **scalable softmax** in the attention layers that
+   solves the "attention fading" problem — as context length n
+   grows, vanilla softmax's denominator grows too, flattening
+   the attention distribution and preventing the model from
+   focusing sharply. TabICLv2 scales attention logits by `s log n`
+   (where s is a learnable per-head parameter), maintaining
+   discriminative attention even at very large context sizes.
+   This is what unlocks generalisation to **million-scale
+   datasets in under 50 GB GPU memory**. Concurrent theoretical
+   work (Chen 2025) confirms `log n` scaling is *necessary* to
+   maintain attention sharpness as n grows.
+3. **Optimisation protocol.** Replaces AdamW with the **Muon**
+   optimizer (Jordan 2024), which converges faster on the
+   transformer-style training loop. Combined with the new prior
+   and architecture, this delivers TabICLv2's headline result:
+   surpassing the strongest previously-published TFM
+   (RealTabPFN-2.5) on TabArena and TALENT benchmarks **without
+   any hyperparameter tuning**.
+
+Comprehensive ablations quantify each contribution.
+
+**For CreditPFN.** Comparison baseline. Three concrete uses:
+
+* **Eval baseline.** Open weights mean we can drop TabICLv2 into
+  our `src/eval/` benchmarking with no licence friction.
+* **Open prior generator.** If we ever want to test "credit-risk
+  augmented synthetic prior", TabICLv2's open generator is a
+  better starting point than Prior Labs' (closed) v2.5/v2.6
+  generators.
+* **Scalable-softmax idea.** Transferable to TabPFN-v2 with
+  modest engineering — could let our continued-pretrained
+  CreditPFN handle larger downstream credit-risk datasets at
+  inference time.

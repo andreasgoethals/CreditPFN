@@ -214,10 +214,15 @@ data/
 !data/.gitkeep
 !data/README.md
 
-# Model checkpoints — TabPFN base weights and fine-tuned outputs.
-checkpoints/
+# Model checkpoints — share the folder structure + CHECKPOINTS.md
+# (so collaborators see which weights go where) but never commit
+# the actual .ckpt files. The negation rules below let CHECKPOINTS.md,
+# any README, and a .gitkeep stub through; the universal weight-file
+# globs at the bottom catch everything else.
+checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/README.md
+!checkpoints/CHECKPOINTS.md
 *.ckpt
 *.pt
 *.pth

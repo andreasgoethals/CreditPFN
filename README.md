@@ -1,6 +1,6 @@
 # CreditPFN
 
-Continued pretraining of TabPFNv2.6 on a curated corpus of real-world
+Continued pretraining of TabPFN (v2.5 / v2.6) on a curated corpus of real-world
 credit-risk datasets. The goal is to specialise the tabular foundation
 model's in-context-learning prior toward the structures, feature
 distributions, and label noise characteristic of credit-risk data,
@@ -11,7 +11,7 @@ outperforms the generalist TabPFN on downstream credit-risk tasks.
 
 **TabPFN** is a transformer-based tabular foundation model that
 performs in-context learning over entire tabular datasets in a single
-forward pass. Version 2.6 ships two separate checkpoints:
+forward pass. Each version ships two separate checkpoints:
 
 - a **classifier** used here for **Probability of Default (PD)**
   prediction, and
@@ -19,11 +19,35 @@ forward pass. Version 2.6 ships two separate checkpoints:
   estimation.
 
 These two checkpoints have different weights and must be adapted
-independently during continued pretraining. Both v2.6 default
-checkpoints are *synthetic-only* — the methodologically correct base
-for Real-TabPFN-style continued pretraining (see
-[checkpoints/CHECKPOINTS.md](checkpoints/CHECKPOINTS.md) for the full
-inventory and provenance).
+independently during continued pretraining.
+
+**Which base checkpoint?** A choice we will treat as a *training-stage
+hyperparameter* and benchmark, not a decision baked in at the
+data-pipeline stage. The two main candidates are:
+
+- **TabPFN-2.6** — the most recent architecture (24 layers).
+  Both default checkpoints (`tabpfn-v2.6-classifier-v2.6_default.ckpt`
+  and `tabpfn-v2.6-regressor-v2.6_default.ckpt`) are *synthetic-only*,
+  verified by the HuggingFace model card ("TabPFN-2.6 is trained
+  purely on synthetic tabular tasks") and the package source. v2.6
+  has no real-finetuned variant published — there is no
+  `Real-TabPFN-2.6` yet.
+- **TabPFN-2.5** — the previous family (18–24 layers). Ships with
+  several checkpoints; the methodologically clean base for our
+  continued pretraining is `tabpfn-v2.5-classifier-v2.5_default-2.ckpt`
+  (synthetic-only) and `tabpfn-v2.5-regressor-v2.5_default.ckpt` (also
+  synthetic-only, despite the unsuffixed name — the regressor default
+  *is* the synthetic-only one for v2.5). The corresponding
+  `_default.ckpt` for the v2.5 *classifier* is real-finetuned (Prior
+  Labs' generic 43-dataset Real-TabPFN-2.5 corpus) and is the right
+  comparison baseline.
+
+The full inventory plus the full citation chain that grounds these
+claims lives in
+[`checkpoints/CHECKPOINTS.md`](checkpoints/CHECKPOINTS.md). When
+`src/train/` is implemented we will benchmark continued pretraining
+from both v2.5 and v2.6 synthetic-only bases and compare against
+Real-TabPFN-2.5 as a published baseline.
 
 **Continued pretraining** — as introduced for tabular foundation
 models in *Real-TabPFN* (Garg et al., 2025,
@@ -82,9 +106,16 @@ CreditPFN/
 
 ## Quick start
 
+> **Python 3.12 strongly recommended.** Several dependencies
+> (scikit-learn, parts of torch) do not yet ship prebuilt wheels for
+> Python 3.14, so `pip install` will try to compile from source and
+> fail. Use `py -3.12` (Windows) or `python3.12` (Linux/macOS).
+
 ```bash
-# 1. Create the project venv (once).
-python -m venv .venv --prompt CreditPFN
+# 1. Create the project venv (once). Use Python 3.12 explicitly.
+py -3.12 -m venv .venv --prompt CreditPFN     # Windows / PowerShell
+# python3.12 -m venv .venv --prompt CreditPFN # Linux / macOS
+
 .venv/Scripts/activate              # Windows / PowerShell
 # source .venv/bin/activate         # Linux / macOS
 python -m pip install --upgrade pip

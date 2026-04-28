@@ -1,0 +1,619 @@
+                                                                         Real-TabPFN: Improving Tabular Foundation Models
+                                                                           via Continued Pre-training With Real-World Data
+
+                                                                         Anurag Garg 1 Muhammad Ali 1 Noah Hollmann 2 Lennart Purucker 1 Samuel Mu¨ ller 1 3 Frank Hutter 2 4 1
+
+                                                                                                 Abstract                                     1.00  Wilcoxon p = 0.0045
+
+arXiv:2507.03971v1 [cs.LG] 5 Jul 2025                                          Foundation models for tabular data, like TabPFN,               0.95 TabPFN stronger
+                                                                               achieve strong performance on small datasets
+                                                         TabPFN (default)      when pre-trained solely on synthetic data. We                  0.90
+                                                                               show that this performance can be significantly
+                                                                               boosted by a targeted continued pre-training                   0.85  Real-TabPFN stronger
+                                                                               phase. Specifically, we demonstrate that leverag-
+                                                                               ing a small, curated collection of large, real-world           0.800.80 0.R8e5al-Ta0b.9P0FN (0o.u9r5s) 1.00
+                                                                               datasets for continued pre-training yields supe-
+                                                                               rior downstream predictive accuracy compared                   Figure 1. Per Dataset Normalized ROC Comparison of TabPFN
+                                                                               to using broader, potentially noisier corpora like             (default) and Real-TabPFN (ours) on the 29 datasets from the
+                                                                               CommonCrawl or GitTables. Our resulting model,                 OpenML AutoML Benchmark Datasets. Wilcoxon p refers to the
+                                                                               Real-TabPFN, achieves substantial performance                  two-sided Wilcoxon signed-rank test p value.
+                                                                               gains on 29 datasets from the OpenML AutoML
+                                                                               Benchmark.                                                     tangible benefits, such as fewer hospital re-admissions or
+                                                                                                                                              more precise credit-risk scoring, domains in which tabular
+                                                                         1. Introduction                                                      data dominates.
+
+                                                                         Until recently, traditional tree-based algorithms like XG-           We enhance TabPFNv2's in-context learning by continuing
+                                                                         Boost (Chen & Guestrin, 2016) and CatBoost (Dorogush                 to pre-train it on a carefully selected set of real-world tables
+                                                                         et al., 2017) have consistently outperformed neural networks         from OpenML (Vanschoren et al., 2013) and Kaggle1. The
+                                                                         on tabular prediction tasks (Grinsztajn et al., 2022). How-          resulting model, Real-TabPFN, consistently outperforms
+                                                                         ever, TabPFNv2 has recently demonstrated improved per-               TabPFNv2 on the OpenML AutoMLBenchmark classifica-
+                                                                         formance on small datasets (up to 10,000 samples and 500             tion tasks (see Figure 1). In practice, Real-TabPFN serves
+                                                                         features), significantly advancing deep learning for tabular         as a stronger off-the-shelf baseline for tabular classification
+                                                                         data.                                                                than the default TabPFNv2 model.
+
+                                                                         Although TabPFNv2 delivers strong average performance,               Our contributions are:
+                                                                         it is still not universally best-in-class: many datasets are
+                                                                         better handled by well-tuned tree ensembles or by careful              We empirically show that using real-world datasets
+                                                                         hyper-parameter searches on TabPFNv2 itself. It is not easy                with synthetic data during the pre-training of a tabular
+                                                                         to improve the TabPFNv2 model further, since it has already                foundation model boosts in-context learning perfor-
+                                                                         been exhaustively trained on over 100 million synthetic                    mance, opening a promising research direction.
+                                                                         tables that approximate a broad prior over tabular problems.
+                                                                         However, even small accuracy gains could translate into                  1https://www.kaggle.com
+
+                                                                             1Department of Informatik, University of Freiburg, Freiburg,
+                                                                         Germany 2Prior Labs GmbH, Freiburg, Germany 3Meta, New York,
+                                                                         USA (work done in at University of Freiburg) 4ELLIS Institute
+                                                                         Tu¨bingen, Tu¨bingen, Germany. Correspondence to: Anurag Garg
+                                                                         <garga@cs.uni-freiburg.de>.
+
+                                                                         Proceedings of the 1 st ICML Workshop on Foundation Models for
+                                                                         Structured Data, Vancouver, Canada. 2025. Copyright 2025 by
+                                                                         the author(s).
+
+                                                                                                                                           1
+            Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+ The new model Real-TabPFN and its public weights2,
+    an extension of TabPFNv2 obtained by continued pre-
+    training on real-world data. Real-TabPFN's in-context
+    learning outperforms its predecessor on 29 small tabu-
+    lar datasets.
+
+2. Related Work                                                   Figure 2. Distribution of dataset sizes (number of rows and fea-
+                                                                  tures) from various sources. The prevalence of smaller datasets in
+So far, tabular foundation models have been pre-trained           broad corpora like CommonCrawl and GitTable contrasts with the
+solely on synthetic or real-world data. Our work aims to          larger datasets from OpenML and Kaggle.
+bridge this gap via continued pre-training.
+                                                                  Kaggle. We adopt the latter, manually curating 71 high-
+Synthetic-only Tabular Foundation Models. TabPFN                  quality datasets from OpenML and Kaggle. Figure 2 shows
+pre-trains a transformer (Vaswani et al., 2017) on mil-           the distribution of the number of features and rows across
+lions of synthetically generated tabular datasets, achiev-        datasets from different sources; Appendix A lists the curated
+ing strong in-context learning performance on small               datasets used for continued pre-training. We apply minimal
+datasets (Hollmann et al., 2023; 2025). Several extensions        preprocessing to the 71 datasets: categorical features are
+retain the synthetic-data recipe: TabForestPFN (den Bree-         encoded with Scikit-learn's (Pedregosa et al., 2011) Ordi-
+jen et al., 2025) augments TabPFN with more complex,              nalEncoder; and if the target variable has more than ten
+decision-boundary-oriented generators, and TabICL (Qu             classes, we retain the nine most common classes and merge
+et al., 2025) scales to tables with 500k rows.                    the remainder into a single tenth class.
+
+Real-data Foundation Models. In parallel, purely real-data        Data Contamination. We carefully avoided data contam-
+approaches emerged. TabDPT (Ma et al., 2024) couples              ination (Jiang et al., 2024) between training and the evalu-
+retrieval-based self-supervision with discriminative trans-       ation set. We implemented a multi-tiered filtering process:
+formers and is trained on real-world data collected from          (1) We only select datasets exceeding 10,000 samples since
+OpenML. TabuLa-8B (Gardner et al., 2024) adapts an Llama          all our evaluation datasets have fewer samples. (2) We
+3-8B backbone via language modeling over serialized ta-           cross-referenced dataset IDs, names, and shapes to identify
+bles, demonstrating that large LLMs can transfer to tabular       potential duplicates. (3) We compared feature names across
+few-shot prediction after real-world pre-training.                datasets to detect similar or identical data structures. (4)
+                                                                  We generated hashes of both rows and columns to identify
+3. Pre-training and Evaluation Data                               potential data duplications at a granular level. (5) We manu-
+                                                                  ally inspected metadata to ensure no training and evaluation
+To study continued pre-training, we had to decide on the          datasets share a common source dataset or a subsampled
+data for continuing pre-training and for evaluation.              version of that dataset.
+                                                                  We exclude any dataset from the pre-training data that does
+Evaluation Data. We adopt the same datasets as used               not meet these criteria.
+by Hollmann et al. (2025) for TabPFNv2 to evaluate our
+method. We use the same 29 datasets from the OpenML               4. Method: Continued Pre-training of TabPFN
+AutoML Benchmark (Gijsbers et al., 2023); see Appendix B.
+All datasets contain up to 10,000 samples and 500 features.       Our method bridges purely synthetic training (e.g.,
+                                                                  TabPFN (Hollmann et al., 2025; 2023)) and purely real-
+Continued Pre-training Data. Unlike the domains of natu-          data training (e.g., TabDPT (Ma et al., 2024)) by leveraging
+ral language processing and computer vision, where many           the complementary strengths of both paradigms.
+carefully curated datasets, such as ImageNet (Deng et al.,
+2009), COCO (Lin et al., 2015), FineWeb (Penedo et al.,
+2024), and C4 (Raffel et al., 2019) are available, comparably
+high-quality resources for tabular learning remain scarce.
+
+Recent efforts have attempted to address this gap. Notable
+contributions include the Web Table Corpus (Bizer et al.,
+2015), TabLib (Eggert et al., 2023), and GitTables (Hulse-
+bos et al., 2021). Beyond these, researchers either generate
+synthetic datasets or rely on existing repositories like UCI
+(Kelly et al., 2007), OpenML (Vanschoren et al., 2013), and
+
+    2available on Hugging Face
+
+                                                               2
+Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+Concretely, we adopt a two-stage approach. Stage 1 re-                                                  1.00
+lies on the original TabPFNv2 checkpoint, pre-trained by
+Hollmann et al. (2025) on a large, diverse set of synthetic                            1.0  Default
+tables. This serves as our starting point. Stage 2 continues                                Tuned (4h)
+pre-training exclusively on a curated collection of heteroge-
+neous real-world tables. This approach contrasts with mixed                                                                            0.95
+training, where synthetic and real samples are fed to the
+model simultaneously, as in D'souza et al. (2025). We opted                            0.8
+for a two-stage approach as it is easier to apply and builds
+directly on a strong existing synthetic base model.                Normalized ROC-AUC  0.6              0.90
+                                                                                                              TabPFN Real-TabPFN
+
+                                                                                       0.4
+
+Although continued pre-training has shown remarkable suc-                              0.2
+cess in language models (Gururangan et al., 2020), its po-
+tential for tabular foundation models remains largely unex-                   0.0 Lin MLPSVM RFLGBM CBXGRTaeBbaPl-FTaNbPFN
+plored. By pre-training on diverse real datasets rather than
+narrow task-specific data, our approach improves general-          Figure 3. Mean Normalized ROC AUC Comparsion of Real-
+ization while preserving cross-domain adaptability.                TabPFN with all the default and the tuned versions of the baselines
+                                                                   on the AutoMLBenchmark. Scores were normalized per dataset,
+To enable robust continued pre-training, we retained the           with 1.0 representing the best and 0.0 the worst performance with
+original TabPFNv2 architecture and trained with a re-              respect to all baselines.
+duced learning rate of 3 × 10-7 using the AdamW opti-
+mizer (Loshchilov & Hutter, 2017a) together with a lin-
+ear warm-up followed by a cosine annealing schedule
+(Loshchilov & Hutter, 2017b).
+
+Moreover, we added a regularizer penalizing distance to            each dataset at 400,000 total cells, adjusting the number of
+the L2-Starting-Point (L2-SP) (Li et al., 2018) to the pre-        samples accordingly for datasets with too many attributes.
+training objective. This penalizes large deviations from the
+initial pre-trained weights, and is used to mitigate catas-        5. Experiments and Results
+trophic forgetting (Kirkpatrick et al., 2017). More precisely,
+let w0 denote the parameter vector of the pre-trained base         We follow the evaluation protocol of Hollmann et al. (2025)
+model from which continued pre-training begins. The L2-            and evaluate Real-TabPFN with 10-fold cross-validation per
+SP penalty then regularizes the model parameters towards           dataset. Furthermore, we reuse the performance values for
+this initial vector. It is formally defined as:                    additional baselines from the results reported by Hollmann
+                                                                   et al. (2025). The baselines were tuned for ROC-AUC via
+              w - w0  2  ,                                         five-fold cross-validated random search under a four-hour
+(w) =                 2                                            time budget. We run Real-TabPFN and TabPFNv2 ourselves
+                                                                   without hyperparameter tuning to focus on their in-context
+           2                                                       learning performance.
+
+where  controls the strength of the regularization penalty,        Figure 1 compares TabPFNv2 and Real-TabPFN per dataset.
+                                                                   We observe that Real-TabPFN significantly outperforms
+and ·2 denotes the L2 norm. We add the L2 norm to the              TabPFNv2. Additionally, Figure 3 shows that Real-TabPFN
+cross-entropy loss: L = LCE + (w) to obtain our final              improves the mean normalized ROC-AUC from 0.954 to
+pre-training objective. We used a regularization strength          0.976 and naturally outperforms all baselines on average,
+                                                                   like TabPFNv2. We provide a table with various additional
+of 0.003.                                                          performance metrics for all methods in Appendix C.
+
+We continued pre-training for 20,000 steps with a batch            Effect of Context Size. We investigate the impact of the
+size of 1 (i.e., a single dataset). Choosing a batch size of       size of datasets during continued pre-training by testing
+1 is a simple approach that naturally handles the varying          pre-training with datasets from 2,048 to 20,000 (our GPU
+feature dimensions of real-world datasets without requir-          memory limit) samples. Figure 4 shows that downstream
+ing padding or truncation. Critically, it also allowed us to       accuracy increases with a larger context size.
+maximize the training context for each dataset up to 20,000
+samples, limited primarily by GPU memory, rather than by
+batching constraints. For datasets larger than this limit, we
+sample uniformly up to 20,000 rows. Per batch, we split the
+data into 60% context (TabPFN's training data) and 40%
+query (TabPFN's testing data) for the forward pass. The
+training was performed on a single Nvidia RTX 2080 Ti
+GPU. To stay within GPU memory limits, we further capped
+
+                                                                3
+                                Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+                                0.025  2048                                                                  0.025  CommonCrawl         +0.022
+                                       4096                                                                         GitTables
+Increase in Normalized ROC AUC         8192                                   +0.022                                OpenML & Kaggle
+                                                                                                             0.020
+                                0.020  16384                                             Normalized ROC AUC
+                                       20000
+                                                     +0.016           +0.016                                 0.015
+
+                                0.015                                                                        0.010         +0.010
+
+                                0.010 +0.010 +0.010                                                          0.005
+
+                                0.005                                                                        0.000
+
+                                0.000                                                                        0.005 -0.003
+                                                        Context Size
+                                                                                                                           Data Source
+
+Figure 4. Increase in normalized ROC AUC as the continued-pre-                           Figure 6. Change in normalized ROC AUC as the training data
+training context grows. The gains are shown relative to the base                         source is varied. The changes are shown relative to the base
+TabPFNv2 model performance which was synthetically pre-trained                           TabPFNv2 model performance which was synthetically pre-
+with 2,048 context size.                                                                 trained.
+
+                                0.025  Kaggle                                 +0.022     gression (Cox, 1958) and Random Forest (Breiman, 2001)
+                                       OpenML                                            and subsequently removing noisy datasets, followed by our
+Increase in Normalized ROC AUC         Both                                              data contamination pipeline (see Section 3). This resulted
+                                0.020                +0.019                              in approximately 97, 000 CommonCrawl and 658 GitTables
+                                                                                         datasets.
+                                0.015 +0.015
+                                                                                         Figure 6 compares performance using these two corpora.
+                                0.010                                                    The model trained on CommonCrawl (approximately 100
+                                                                                         data points and 7 features on average per dataset; see Fig-
+                                0.005                                                    ure 2) exhibits decreased performance, primarily because
+                                                                                         the small dataset size did not sufficiently benefit the model
+                                0.000                                                    during the continued pre-training phase, ultimately leading
+                                                        Data Source                      to a performance drop.
+
+Figure 5. Increase in normalized ROC AUC as the training data                            In contrast, GitTables (approximately 1000 data points and
+source is varied. The gains are shown relative to the base                               9 features on average per dataset; see Figure 2) leads to per-
+TabPFNv2 model performance which was synthetically pre-                                  formance improvements. The biggest performance improve-
+trained.                                                                                 ments are achieved with our manually curated OpenML and
+                                                                                         Kaggle datasets (10k to 100k data points and on average
+OpenML vs Kaggle. To understand the impact of our                                        tens of features). We intentionally chose a smaller, curated
+final curated 71 training data on model performance, we                                  set of datasets from OpenML and Kaggle to effectively pre-
+repeated continued pre-training with three corpora: (1)                                  vent data contamination, which is why we did not combine
+only KAGGLE, (2) only OPENML, and (3) the union of                                       them with GitTables or CommonCrawl datasets.
+both. As Figure 5 shows, OPENML alone delivers a +0.019
+gain, while KAGGLE alone gives +0.015. Combining them                                    6. Conclusion and Future Work
+yields the strongest boost, +0.022, confirming that heteroge-
+neous sources provide complementary supervision signals.                                 We show that continued pre-training of TabPFNv2 on cu-
+This finding indicates that while OpenML datasets provide                                rated, real-world tabular data yields a stronger default model,
+slightly better performance individually, the combination of                             Real-TabPFN, which we will open-source. Bridging the
+both data sources yields the best performing model.                                      synthetic-to-real gap, Real-TabPFN outperforms the default
+                                                                                         TabPFNv2 on most of the datasets and outperforms every
+Effect of Training Data Source. To evaluate the impact                                   other state-of-the-art baseline on all evaluated datasets. Ad-
+of different training data sources, we also experimented with                            ditional experiments deliver the same message: seeing more
+two alternative corpora: (1) COMMONCRAWL (Yin et al.,                                    context--whether temporal (longer windows) or statisti-
+2020) and (2) GITTABLES (Tran et al., 2024). We applied                                  cal (a richer mix of bigger datasets) during continued pre-
+aggressive filtering by evaluating datasets with Logistic Re-                            training produces larger improvements.
+
+                                                                                      4
+Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+Acknowledgements                                                References
+
+This research was funded by the Deutsche Forschungsge-          Bizer, C., Meusel, R., Lehmberg, O., Ritze, D., and Zope,
+meinschaft (DFG, German Research Foundation) under                 S. Web data commons - web table corpus 2015 /
+grant number 539134284, through EFRE (FEIH 2698644)                english-language relational subset, 2015. URL https:
+and the state of Baden-Wu¨rttemberg. We also acknowl-             //madata.bib.uni-mannheim.de/208/.
+edge funding by the European Union (via ERC Consolida-
+tor Grant DeepLearning 2.0, grant no. 101045765). Views         Breiman, L. Random forests. Machine Learning, 45(1):
+and opinions expressed are however those of the author(s)          5­32, 2001.
+only and do not necessarily reflect those of the European
+Union or the European Research Council. Neither the Eu-         Chen, T. and Guestrin, C. Xgboost: A scalable tree boosting
+ropean Union nor the granting authority can be held re-            system. CoRR, abs/1603.02754, 2016. URL http://
+sponsible for them. L.P. acknowledges funding by the               arxiv.org/abs/1603.02754.
+Deutsche Forschungsgemeinschaft (DFG, German Research
+Foundation) under SFB 1597 (SmallData), grant number            Cox, D. R. The regression analysis of binary sequences.
+499552394; and funding by ELSA ­ European Lighthouse              Journal of the Royal Statistical Society. Series B, 20(2):
+on Secure and Safe AI funded by the European Union un-             215­242, 1958.
+der Grant Agreement No. 101070617. F.H. acknowledges
+the financial support of the Hector Foundation. Finally, we     den Breejen, F., Bae, S., Cha, S., and Yun, S.-Y. Fine-tuned
+thank the reviewers for their feedback, which has helped us        in-context learning transformers are excellent tabular data
+improve the manuscript.                                            classifiers, 2025. URL https://arxiv.org/abs/
+                                                                   2405.13396.
+
+                                                                Deng, J., Dong, W., Socher, R., Li, L.-J., Li, K., and
+                                                                   Fei-Fei, L. Imagenet: A large-scale hierarchical image
+                                                                   database. In 2009 IEEE Conference on Computer Vi-
+                                                                   sion and Pattern Recognition, pp. 248­255, 2009. doi:
+                                                                  10.1109/CVPR.2009.5206848.
+
+                                                                Dorogush, A. V., Gulin, A., Gusev, G., Kazeev, N.,
+                                                                   Prokhorenkova, L. O., and Vorobev, A. Fighting biases
+                                                                  with dynamic boosting. CoRR, abs/1706.09516, 2017.
+                                                                   URL http://arxiv.org/abs/1706.09516.
+
+                                                                D'souza, A., Swetha, M., and Sarawagi, S. Synthetic tab-
+                                                                   ular data generation for imbalanced classification: The
+                                                                   surprising effectiveness of an overlap class. In Proceed-
+                                                                   ings of the AAAI Conference on Artificial Intelligence,
+                                                                  volume 39, pp. 16127­16134, 2025.
+
+                                                                Eggert, G., Huo, K., Biven, M., and Waugh, J. Tablib: A
+                                                                   dataset of 627m tables with context, 2023. URL https:
+                                                                  //arxiv.org/abs/2310.07875.
+
+                                                                Gardner, J., Perdomo, J. C., and Schmidt, L. Large scale
+                                                                   transfer learning for tabular data via language model-
+                                                                   ing, 2024. URL https://arxiv.org/abs/2406.
+                                                                  12031.
+
+                                                                Gijsbers, P., Bueno, M. L. P., Coors, S., LeDell, E., Poirier,
+                                                                   S., Thomas, J., Bischl, B., and Vanschoren, J. Amlb:
+                                                                   an automl benchmark, 2023. URL https://arxiv.
+                                                                   org/abs/2207.12560.
+
+                                                                Grinsztajn, L., Oyallon, E., and Varoquaux, G. Why do
+                                                                   tree-based models still outperform deep learning on tab-
+                                                                   ular data?, 2022. URL https://arxiv.org/abs/
+                                                                   2207.08815.
+
+                                                             5
+Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+Gururangan, S., Marasovic´, A., Swayamdipta, S., Lo, K.,              Loshchilov, I. and Hutter, F. Decoupled weight decay regu-
+   Beltagy, I., Downey, D., and Smith, N. A. Don`t stop pre-             larization, 2017a.
+   training: Adapt language models to domains and tasks. In
+  Jurafsky, D., Chai, J., Schluter, N., and Tetreault, J. (eds.),     Loshchilov, I. and Hutter, F. SGDR: Stochastic gradient
+  Proceedings of the 58th Annual Meeting of the Associa-                 descent with warm restarts. In International Conference
+   tion for Computational Linguistics, pp. 8342­8360, On-                on Learning Representations, 2017b. URL https://
+   line, July 2020. Association for Computational Linguis-               openreview.net/forum?id=Skq89Scxx.
+   tics. doi: 10.18653/v1/2020.acl-main.740. URL https:
+  //aclanthology.org/2020.acl-main.740/.                              Ma, J., Thomas, V., Hosseinzadeh, R., Kamkari, H., Labach,
+                                                                        A., Cresswell, J. C., Golestan, K., Yu, G., Volkovs, M.,
+Hollmann, N., Mu¨ller, S., Eggensperger, K., and Hut-                    and Caterini, A. L. Tabdpt: Scaling tabular foundation
+   ter, F. Tabpfn: A transformer that solves small tab-                  models, 2024. URL https://arxiv.org/abs/
+   ular classification problems in a second, 2023. URL                   2410.18164.
+   https://arxiv.org/abs/2207.01848.
+                                                                      Pedregosa, F., Varoquaux, G., Gramfort, A., Michel, V.,
+Hollmann, N., Mu¨ller, S., Purucker, L., Krishnakumar, A.,              Thirion, B., Grisel, O., Blondel, M., Prettenhofer, P.,
+   Ko¨rfer, M., Hoo, S. B., Schirrmeister, R. T., and Hutter,           Weiss, R., Dubourg, V., Vanderplas, J., Passos, A., Cour-
+   F. Accurate predictions on small data with a tabular                  napeau, D., Brucher, M., Perrot, M., and Duchesnay, E.
+   foundation model. Nature, 637(8045):319­326, 2025.                    Scikit-learn: Machine learning in Python. Journal of
+   doi: 10.1038/s41586-024-08328-6. URL https://                        Machine Learning Research, 12:2825­2830, 2011.
+   doi.org/10.1038/s41586-024-08328-6.
+                                                                      Penedo, G., Kydl´icek, H., allal, L. B., Lozhkov, A., Mitchell,
+Hulsebos, M., Demiralp, C¸ ., and Groth, P. Gitta-                       M., Raffel, C., Werra, L. V., and Wolf, T. The fineweb
+   bles: A large-scale corpus of relational tables. CoRR,                datasets: Decanting the web for the finest text data
+   abs/2106.07258, 2021. URL https://arxiv.org/                          at scale, 2024. URL https://arxiv.org/abs/
+   abs/2106.07258.                                                       2406.17557.
+
+Jiang, M., Liu, K. Z., Zhong, M., Schaeffer, R., Ouyang, S.,          Qu, J., Holzmu¨ller, D., Varoquaux, G., and Morvan, M. L.
+   Han, J., and Koyejo, S. Investigating data contamination             Tabicl: A tabular foundation model for in-context learn-
+   for pre-training language models, 2024. URL https:                    ing on large data, 2025. URL https://arxiv.org/
+  //arxiv.org/abs/2401.06059.                                            abs/2502.05564.
+
+Kelly, M., Longjohn, R., and Nottingham, K. The uci                   Raffel, C., Shazeer, N., Roberts, A., Lee, K., Narang, S.,
+   machine learning repository, 2007. URL https://                       Matena, M., Zhou, Y., Li, W., and Liu, P. J. Exploring
+   archive.ics.uci.edu.                                                  the limits of transfer learning with a unified text-to-text
+                                                                         transformer. CoRR, abs/1910.10683, 2019. URL http:
+Kirkpatrick, J., Pascanu, R., Rabinowitz, N., Veness, J.,               //arxiv.org/abs/1910.10683.
+   Desjardins, G., Rusu, A. A., Milan, K., Quan, J.,
+   Ramalho, T., Grabska-Barwinska, A., Hassabis, D.,                  Tran, Q. M., Hoang, S. N., Nguyen, L. M., Phan, D., and
+   Clopath, C., Kumaran, D., and Hadsell, R. Overcom-                    Lam, H. T. Tabularfm: An open framework for tabular
+   ing catastrophic forgetting in neural networks. Pro-                  foundational models, 2024. URL https://arxiv.
+   ceedings of the National Academy of Sciences, 114                     org/abs/2406.09837.
+  (13):3521­3526, March 2017. ISSN 1091-6490. doi:
+  10.1073/pnas.1611835114. URL http://dx.doi.                         Vanschoren, J., van Rijn, J. N., Bischl, B., and Torgo,
+   org/10.1073/pnas.1611835114.                                          L. Openml: networked science in machine learn-
+                                                                         ing. SIGKDD Explorations, 15(2):49­60, 2013. doi:
+Li, X., Grandvalet, Y., and Davoine, F. Explicit in-                    10.1145/2641190.2641198. URL http://doi.acm.
+   ductive bias for transfer learning with convolutional                 org/10.1145/2641190.264119.
+   networks, 2018. URL https://arxiv.org/abs/
+  1802.01483.                                                         Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones,
+                                                                         L., Gomez, A. N., Kaiser, L. u., and Polosukhin, I. At-
+Lin, T.-Y., Maire, M., Belongie, S., Bourdev, L., Girshick,              tention is all you need. In Guyon, I., Luxburg, U. V.,
+   R., Hays, J., Perona, P., Ramanan, D., Zitnick, C. L.,                Bengio, S., Wallach, H., Fergus, R., Vishwanathan, S.,
+   and Dolla´r, P. Microsoft coco: Common objects in con-                and Garnett, R. (eds.), Advances in Neural Information
+   text, 2015. URL https://arxiv.org/abs/1405.                          Processing Systems, volume 30. Curran Associates, Inc.,
+   0312.                                                                 2017.
+
+                                                                   6
+              Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+Yin, P., Neubig, G., tau Yih, W., and Riedel, S. Tabert:
+
+   Pretraining for joint understanding of textual and tabular
+   data, 2020. URL https://arxiv.org/abs/2005.
+   08314.
+
+                                                                         7
+              Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+A. Training Datasets
+
+The following table lists the 71 datasets curated for continued pre-training, along with their source and access link.
+
+Name                                                 Source
+
+aam avaliacao dataset                                Kaggle
+Air Traffic Data                                     Kaggle
+ansible-defects-prediction                           Kaggle
+AV Healthcare Analytics II                           Kaggle
+Candidate Selection                                  Kaggle
+Cardio Disease                                       Kaggle
+CC Fraud Dataset                                     Kaggle
+Classification - Crop Damages in India (2015-2019)   Kaggle
+CSGO Round Winner Classification                     Kaggle
+Flower Type Prediction Machine Hack                  Kaggle
+Horse Racing - Tipster Bets                          Kaggle
+How severe the accident could be                     Kaggle
+HR Analysis Case Study                               Kaggle
+HR analysis                                          Kaggle
+hr-comma-sep                                         Kaggle
+ip-network-traffic-flows-labeled-with-87-apps        Kaggle
+Janatahack cross-sell prediction                     Kaggle
+JanataHack Machine Learning for Banking              Kaggle
+L&T Vehicle Loan Default Prediction                  Kaggle
+League of Legends Diamond Games (First 15 Minutes)   Kaggle
+Multiple target variable classification - Hackathon  Kaggle
+Online News Popularity                               Kaggle
+Online Shopper's Intention                           Kaggle
+Phishing website Detector                            Kaggle
+Phishing websites Data                               Kaggle
+Pump it Up Data Mining the Water Table               Kaggle
+Richter's Predictor Modeling Earthquake Damage       Kaggle
+Server Logs - Suspicious                             Kaggle
+Sloan Digital Sky Survey DR14                        Kaggle
+Sloan Digital Sky Survey DR16                        Kaggle
+Success of Bank Telemarketing Data                   Kaggle
+Term Deposit Prediction Data Set                     Kaggle
+trajectory-based-ship-classification                 Kaggle
+Travel Insurance                                     Kaggle
+Amazon employee access                               OpenML
+artificial-characters                                OpenML
+Bank marketing data set UCI                          OpenML
+BNG(breast-w)                                        OpenML
+BNG(tic-tac-toe)                                     OpenML
+Click prediction small                               OpenML
+CreditCardSubset                                     OpenML
+connect 4                                            OpenML
+eeg-eye-state                                        OpenML
+electricity                                          OpenML
+elevators                                            OpenML
+Employee-Turnover-at-TECHCO                          OpenML
+eye movements                                        OpenML
+FOREX eurpln-hour-High                               OpenML
+gas-drift-different-concentrations                   OpenML
+
+8
+      Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+      Name                                                          Source
+
+      gas-drift                                                     OpenML
+      higgs                                                         OpenML
+      house 16H                                                     OpenML
+      house 8L                                                      OpenML
+      Intersectional-Bias-Assessment-(Training-Data)                OpenML
+      law-school-admission-binary                                   OpenML
+      magic                                                         OpenML
+      MagicTelescope                                                OpenML
+      Medical-Appointment                                           OpenML
+      microaggregation2                                             OpenML
+      fried                                                         OpenML
+      mozilla4                                                      OpenML
+      mushroom                                                      OpenML
+      NewspaperChurn                                                OpenML
+      nursery                                                       OpenML
+      okcupid stem                                                  OpenML
+      pendigits                                                     OpenML
+      PhishingWebsites                                              OpenML
+      pol                                                           OpenML
+      WBCAtt                                                        OpenML
+      Bank Marketing                                                OpenML
+      Internet Firewall Data                                        OpenML
+
+B. Evaluation Datasets
+
+We use the same evaluation suite as TabPFNv2 to ensure direct comparability of results. All classification tasks from the
+AutoML Benchmark with fewer 10,000 samples and 500 features. The benchmark comprises diverse real-world tabular
+datasets, curated for complexity, relevance, and domain diversity.
+
+Name                  OpenML ID  Domain                  Features Samples  Targets  Categorical Feats.
+                                                                           2        0
+ada                   41156      Census                  48   4147         2        8
+Australian            40981      Finance                                   2        0
+blood-transfusion-    1464       Healthcare              14   690
+service-center                                                             4        6
+car                   40975                              4    748          2        4
+churn                 40701                                                3        7
+cmc                   23         Automotive              6    1728         2        13
+credit-g              31                                      5000         3        180
+dna                   40670      Telecommunication       20   1473         5        5
+eucalyptus            188                                     1000         6        0
+first-order-theorem-  1475       Public Health           9    3186
+proving                                                       736          5        0
+GesturePhase Segmen-  4538       Finance                 20   6118
+tation Processed                                                           2        136
+jasmine               41143      Biology                 180
+                                                                           2        0
+                                 Agriculture             19
+
+                                 Computational Logic 51
+
+kc1                   1067       Human-Computer Inter- 32     9873
+                                 action                       2984
+                                                              2109
+                                 Natural Language Pro- 144
+                                 cessing
+
+                                 Software Engineering 21
+
+                                                      9
+Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+Name                OpenML ID  Domain               Features Samples  Targets  Categorical Feats.
+
+kr-vs-kp            3          Game Strategy        36   3196         2        36
+madeline            41144                                3140         2        0
+mfeat-factors       12         Artificial           259  2000         10       0
+
+ozone-level-8hr     1487       Handwriting Recogni- 216  2534         2        0
+pc4                 1049       tion                      1458         2        0
+philippine          41145                                5832         2        0
+phoneme             1489       Environmental        72   5404         2        0
+qsar-biodeg         1494                                 1055         2        0
+Satellite           40900      Software Engineering 37   5100         2        0
+segment             40984                                2310         7        0
+steel-plates-fault  40982      Bioinformatics       308  1941         7        0
+sylvine             41146                                5124         2        0
+vehicle             54         Audio                5    846          4        0
+wilt                40983                                4839         2        0
+wine-quality-white  40498      Environmental        41   4898         7        0
+yeast               181                                  1484         10       0
+                               Environmental Science 36
+
+                               Computer Vision      16
+
+                               Industrial           27
+
+                               Environmental Science 20
+
+                               Image Classification 18
+
+                               Environmental        5
+
+                               Food and Beverage    11
+
+                               Biology              8
+
+                                                10
+           Real-TabPFN: Improving Tabular Foundation Models via Continued Pre-training With Real-World Data
+
+C. Performance Comparison on 29 AMLB Classification Datasets
+
+Scores are normalized on all the baselines (0 = worst, 1 = best) per dataset; all methods are tuned for ROC-AUC, so
+secondary metrics may not reflect their true rank.
+
+            Mean Normalized      Mean                                                                        Mean
+
+            ROC Acc. F1 CE ECE ROC Acc. F1 CE ECE Time (s)
+
+            () () () () () () () () () ()
+
+Real-TabPFN 0.976 0.932 0.939 0.011 0.107 0.932 0.862 0.771 0.337 0.040 2.921
+
+            ±0.01 ±0.01 ±0.01 ±0.00 ±0.01 ±0.01 ±0.02 ±0.04 ±0.03 ±0.01 ±0.57
+
+TabPFN      0.954 0.906 0.920 0.036 0.111 0.929 0.857 0.767 0.347 0.042 2.793
+
+(default)   ±0.01 ±0.01 ±0.01 ±0.01 ±0.02 ±0.01 ±0.02 ±0.04 ±0.03 ±0.01 ±0.49
+
+Autogluon(V1, 0.928 0.888 0.916 0.040 0.108 0.926 0.856 0.769 0.311 0.041 9660.060
+
+BQ) (tuned) ±0.01 ±0.02 ±0.01 ±0.01 ±0.01 ±0.02 ±0.02 ±0.04 ±0.03 ±0.01 ±514.65
+
+XGB         0.842 0.748 0.759 0.268 0.367 0.920 0.844 0.739 0.432 0.066 14444.307
+
+(tuned)     ±0.02 ±0.02 ±0.02 ±0.03 ±0.03 ±0.02 ±0.02 ±0.04 ±0.08 ±0.03 ±11.99
+
+CatBoost    0.832 0.776 0.790 0.186 0.285 0.920 0.844 0.741 0.408 0.057 14437.103
+
+(tuned)     ±0.02 ±0.02 ±0.02 ±0.02 ±0.03 ±0.02 ±0.02 ±0.04 ±0.06 ±0.02 ±4.79
+
+LightGBM    0.781 0.720 0.767 0.252 0.361 0.915 0.841 0.741 0.443 0.063 14410.417
+
+(tuned)     ±0.02 ±0.03 ±0.02 ±0.03 ±0.04 ±0.02 ±0.02 ±0.04 ±0.11 ±0.02 ±1.37
+
+CatBoost    0.761 0.731 0.783 0.170 0.249 0.913 0.839 0.748 0.404 0.053 5.874
+
+(default)   ±0.02 ±0.02 ±0.02 ±0.02 ±0.02 ±0.02 ±0.02 ±0.04 ±0.04 ±0.01 ±0.74
+
+Random Forest 0.727 0.650 0.644 0.376 0.462 0.913 0.834 0.716 0.386 0.074 14404.904
+
+(tuned)     ±0.02 ±0.03 ±0.03 ±0.04 ±0.03 ±0.02 ±0.02 ±0.05 ±0.07 ±0.02 ±0.15
+
+LightGBM    0.693 0.684 0.747 0.307 0.407 0.908 0.836 0.745 0.461 0.068 0.583
+
+(default)   ±0.03 ±0.03 ±0.03 ±0.03 ±0.04 ±0.02 ±0.02 ±0.04 ±0.06 ±0.02 ±0.06
+
+XGB         0.665 0.643 0.725 0.330 0.533 0.906 0.834 0.743 0.468 0.079 0.814
+
+(default)   ±0.03 ±0.03 ±0.03 ±0.03 ±0.04 ±0.02 ±0.02 ±0.04 ±0.06 ±0.02 ±0.09
+
+Random Forest 0.640 0.633 0.672 0.553 0.425 0.907 0.833 0.727 0.432 0.073 0.488
+
+(default)   ±0.04 ±0.03 ±0.03 ±0.04 ±0.03 ±0.02 ±0.02 ±0.04 ±0.19 ±0.02 ±0.03
+
+SVM         0.571 0.531 0.537 0.292 0.169 0.887 0.810 0.680 0.455 0.044 14412.047
+
+(tuned)     ±0.03 ±0.03 ±0.03 ±0.03 ±0.02 ±0.02 ±0.02 ±0.04 ±0.04 ±0.01 ±3.05
+
+MLP         0.512 0.442 0.480 0.345 0.294 0.883 0.802 0.664 0.493 0.058 2.133
+
+(default)   ±0.03 ±0.03 ±0.03 ±0.03 ±0.03 ±0.02 ±0.02 ±0.05 ±0.05 ±0.02 ±0.19
+
+MLP (sklearn) 0.458 0.411 0.448 0.432 0.306 0.877 0.800 0.653 0.764 0.059 14408.730
+
+(tuned)     ±0.03 ±0.03 ±0.03 ±0.04 ±0.03 ±0.02 ±0.02 ±0.06 ±0.65 ±0.02 ±0.34
+
+Log. Regr.  0.401 0.354 0.391 0.386 0.241 0.874 0.789 0.637 inf 0.049 14406.416
+
+(tuned)     ±0.04 ±0.03 ±0.04 ±0.04 ±0.03 ±0.02 ±0.02 ±0.04 ±0.03 ±0.02 ±0.47
+
+SVM         0.388 0.406 0.430 0.357 0.202 0.872 0.794 0.672 0.482 0.046 2.887
+
+(default)   ±0.04 ±0.03 ±0.03 ±0.04 ±0.02 ±0.02 ±0.02 ±0.04 ±0.03 ±0.01 ±0.60
+
+Log. Regr.  0.209 0.185 0.186 0.483 0.348 0.857 0.778 0.600 0.529 0.062 0.609
+
+(default)   ±0.03 ±0.03 ±0.03 ±0.04 ±0.04 ±0.02 ±0.02 ±0.04 ±0.03 ±0.02 ±0.10
+
+                             11
+

@@ -5,6 +5,19 @@
 # Pinned to conservative major-version ranges. We version-pin minor where the
 # upstream API has changed in a breaking way recently.
 #
+# Python version: ** USE 3.11 OR 3.12 ** (do NOT use 3.14)
+# -----------------------------------------------------------------------------
+# scikit-learn, torch, and several other compiled packages do not yet ship
+# prebuilt wheels for Python 3.14 (cp314). Pip falls back to compiling from
+# source via MSVC, which crashes mid-build on Windows. Python 3.12 is the
+# sweet spot: every dep below has a cp312 wheel on PyPI as of late 2025.
+#
+# To switch: install Python 3.12 from python.org, then
+#     py -3.12 -m venv .venv --prompt CreditPFN
+#     .venv/Scripts/activate
+#     python -m pip install --upgrade pip
+#     pip install -r requirements.txt
+#
 # Refresh with:  pip install -r requirements.txt
 # =============================================================================
 
@@ -39,6 +52,11 @@ pyyaml>=6.0,<7.0
 # --- Logging / progress / experiment tracking --------------------------------
 tqdm>=4.66,<5.0
 wandb>=0.16,<1.0
+
+# --- Plotting + notebooks (data exploration in notebooks/) -------------------
+matplotlib>=3.8,<4.0
+ipykernel>=6.29,<7.0           # required for VS Code / Jupyter to find a kernel
+jupyter>=1.0,<2.0              # convenience: brings the notebook server too
 
 # --- Testing -----------------------------------------------------------------
 pytest>=8.0,<9.0
