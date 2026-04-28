@@ -1,0 +1,2874 @@
+Directory structure:
+└── layer6ai-labs-tabdpt-inference/
+    ├── README.md
+    ├── LICENSE
+    ├── paper_evaluation.py
+    ├── pyproject.toml
+    ├── notebooks/
+    │   └── analysis.ipynb
+    ├── src/
+    │   └── tabdpt/
+    │       ├── __init__.py
+    │       ├── classifier.py
+    │       ├── estimator.py
+    │       ├── model.py
+    │       ├── regressor.py
+    │       └── utils.py
+    ├── tabdpt_datasets/
+    │   ├── __init__.py
+    │   ├── dataset.py
+    │   ├── openml.py
+    │   └── data_splits/
+    │       ├── cls_datasets.csv
+    │       └── reg_datasets.csv
+    └── tests/
+        ├── cls_example.py
+        ├── reg_example.py
+        └── test_tabdpt_estimator.py
+
+================================================
+FILE: README.md
+================================================
+<div align="center">
+
+# TabDPT: Scaling Tabular Foundation Models on Real Data
+
+[![arxiv](https://img.shields.io/static/v1?label=arXiv&message=2410.18164&color=B31B1B&logo=arXiv)](https://arxiv.org/abs/2410.18164)
+[![huggingface](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Model-FFD21E)](https://huggingface.co/Layer6/TabDPT)
+[![pypi](https://img.shields.io/badge/PyPI-tabdpt-3775A9?logo=pypi)](https://pypi.org/project/tabdpt/)
+
+</div>
+
+**TabDPT** is an open-source foundation model for tabular data based on in-context learning (ICL). It is trained on real-world data and can generalize to new tasks **without** additional training or hyperparameter tuning.
+
+This repository provides lightweight interface code to generate predictions on new tabular datasets. Full training code is available [here](https://github.com/layer6ai-labs/TabDPT-training/).
+
+## Usage
+
+TabDPT is available on PyPI, and can be installed with:
+```
+pip install tabdpt
+```
+
+Model weights are available on [Hugging Face](https://huggingface.co/Layer6/TabDPT). They will be automatically downloaded on first use.
+
+### Installation From Source
+
+To set up this repo, first ensure you have Python 3.10 or 3.11. Then, run the following:
+```
+git clone git@github.com:layer6ai-labs/TabDPT.git
+cd TabDPT
+pip install -e .
+pip install --group dev
+```
+
+Alternatively, if you are using a package manager such as `uv`, you can run
+```
+uv sync
+```
+
+You may also need a C++ compiler such as `g++` for building dependencies. On Ubuntu, you can install it with:
+```
+sudo apt-get update
+sudo apt-get install g++
+```
+
+Lastly, you will need a `python-dev` system package. On Ubuntu, it can be installed with:
+```
+sudo apt-get update
+sudo apt-get install python-dev
+```
+
+### Tips
+
+If you experience errors caused by `torch compile` (e.g., `InductorError`), try updating package versions and system drivers. 
+
+For better runtime performance, adjust `context_size` or `n_ensembles` to trade off speed and accuracy.
+
+### Working Examples
+
+See `tests/cls_example.py` and `tests/reg_example.py` for examples of how to use TabDPT once installed.
+
+## Overview
+
+TabDPT uses retrieval and self-supervised learning to remove constraints on dataset size and to enable effective generalization from pre-training on real data. We find this to be competitive with existing ICL training approaches, and outperform leading deep learning and tree-based models:
+
+<table align="center">
+	<colgroup>
+		<col />
+		<col />
+		<col />
+		<col />
+		<col />
+	</colgroup>
+	<thead>
+		<tr class="header">
+			<td style="text-align: center;" rowspan=2><strong>Algorithm</strong></th>
+			<th style="text-align: center;" colspan=2><strong>CC18</strong></th>
+			<th style="text-align: center;" colspan=2><strong>CTR23</strong></th>
+		</tr>
+		<tr class="header">
+			<th style="text-align: center;"><strong>AUC</strong></th>
+			<th style="text-align: center;"><strong>Accuracy</strong></th>
+			<th style="text-align: center;"><strong>Correlation</strong></th>
+			<th style="text-align: center;"><strong><span class="math inline"><em>R</em><sup>2</sup></span></strong></th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr class="odd">
+			<td style="text-align: center;"><strong>TabDPT v1.1 (Ours)</strong></td>
+			<td><strong>0.976 <sub><sup>[0.974, 0.978]</sup></sub></strong></td>
+			<td><strong>0.928 <sub><sup>[0.926, 0.931]</sup></sub></strong></td>
+			<td><strong>0.920 <sub><sup>[0.918, 0.922]</sup></sub></strong></td>
+			<td><strong>0.847 <sub><sup>[0.843, 0.851]</sup></sub></strong></td>
+		</tr>
+		<tr class="even">
+			<td style="text-align: center;">TabDPT v1.0 (Ours)</td>
+			<td>0.972 <sub><sup>[0.971, 0.973]</sup></sub></td>
+			<td>0.917 <sub><sup>[0.915, 0.919]</sup></sub></td>
+			<td>0.911 <sub><sup>[0.908, 0.913]</sup></sub></td>
+			<td>0.831 <sub><sup>[0.826, 0.835]</sup></sub></td>
+		</tr>
+		<tr class="odd">
+			<td style="text-align: center;"><a href="https://www.nature.com/articles/s41586-024-08328-6">TabPFN v2</a></td>
+			<td>0.972 <sub><sup>[0.970, 0.974]</sup></sub></td>
+			<td>0.917 <sub><sup>[0.915, 0.919]</sup></sub></td>
+			<td>0.917 <sub><sup>[0.911, 0.921]</sup></sub></td>
+			<td>0.841 <sub><sup>[0.831, 0.848]</sup></sub></td>
+		</tr>
+		<!---
+		<tr class="even">
+			<td style="text-align: center;"><a href="https://arxiv.org/abs/2406.05207">TabPFN (kNN)</a></td>
+			<td>0.959 <sub><sup>[0.956, 0.962]</sup></sub></td>
+			<td>0.884 <sub><sup>[0.881, 0.887]</sup></sub></td>
+			<td style="text-align: center;">N/A</td>
+			<td style="text-align: center;">N/A</td>
+		</tr>
+		--->
+		<tr class="odd">
+			<td style="text-align: center;"><a href="https://arxiv.org/abs/2207.01848">TabPFN</a></td>
+			<td>0.939 <sub><sup>[0.935, 0.943]</sup></sub></td>
+			<td>0.852 <sub><sup>[0.849, 0.856]</sup></sub></td>
+			<td style="text-align: center;">N/A</td>
+			<td style="text-align: center;">N/A</td>
+		</tr>
+		<tr class="even">
+			<td style="text-align: center;"><a href="https://arxiv.org/abs/2307.14338">TabR</a></td>
+			<td>0.967 <sub><sup>[0.965, 0.969]</sup></sub></td>
+			<td>0.923 <sub><sup>[0.920, 0.926]</sup></sub></td>
+			<td>0.909 <sub><sup>[0.905, 0.912]</sup></sub></td>
+			<td>0.825 <sub><sup>[0.817, 0.831]</sup></sub></td>
+		</tr>
+		<tr class="odd">
+			<td style="text-align: center;"><a href="https://arxiv.org/abs/2203.05556">MLP-PLR</a></td>
+			<td>0.967 <sub><sup>[0.965, 0.968]</sup></sub></td>
+			<td>0.914 <sub><sup>[0.911, 0.917]</sup></sub></td>
+			<td>0.907 <sub><sup>[0.904, 0.910]</sup></sub></td>
+			<td>0.827 <sub><sup>[0.822, 0.832]</sup></sub></td>
+		</tr>
+		<tr class="even">
+			<td style="text-align: center;">MLP</td>
+			<td>0.915 <sub><sup>[0.909, 0.920]</sup></sub></td>
+			<td>0.865 <sub><sup>[0.860, 0.870]</sup></sub></td>
+			<td style="text-align: center;">N/A</td>
+			<td style="text-align: center;">N/A</td>
+		</tr>
+		<tr class="odd">
+			<td style="text-align: center;"><a href="https://arxiv.org/abs/1603.02754">XGBoost</a></td>
+			<td>0.965 <sub><sup>[0.963, 0.967]</sup></sub></td>
+			<td>0.910 <sub><sup>[0.906, 0.913]</sup></sub></td>
+			<td>0.904 <sub><sup>[0.900, 0.907]</sup></sub></td>
+			<td>0.820 <sub><sup>[0.814, 0.825]</sup></sub></td>
+		</tr>
+		<tr class="even">
+			<td style="text-align: center;"><a href="https://github.com/microsoft/LightGBM">LightGBM</a></td>
+			<td>0.964 <sub><sup>[0.962, 0.967]</sup></sub></td>
+			<td>0.906 <sub><sup>[0.902, 0.909]</sup></sub></td>
+			<td>0.900 <sub><sup>[0.896, 0.904]</sup></sub></td>
+			<td>0.809 <sub><sup>[0.803, 0.815]</sup></sub></td>
+		</tr>
+		<tr class="odd">
+			<td style="text-align: center;"><a href="https://arxiv.org/abs/1810.11363">CatBoost</a></td>
+			<td>0.964 <sub><sup>[0.962, 0.967]</sup></sub></td>
+			<td>0.908 <sub><sup>[0.905, 0.910]</sup></sub></td>
+			<td>0.897 <sub><sup>[0.890, 0.903]</sup></sub></td>
+			<td>0.802 <sub><sup>[0.794, 0.810]</sup></sub></td>
+		</tr>
+	</tbody>
+</table>
+<p>
+	<b>Table 1:</b> Model performance comparison on the <a href="https://new.openml.org/search?type=study&study_type=task&id=99">CC18</a> and <a href="https://www.openml.org/search?type=study&study_type=task&id=353">CTR23</a> benchmarks, with 95% confidence intervals. Tree-based models are taken from <a href="https://arxiv.org/abs/2305.02997">McElfresh et al.</a>, MLP-PLR and TabR are taken from the <a href="https://github.com/yandex-research/tabular-dl-tabr">official implementation</a>. TabPFN-v2 was run with the default setting <code>SUBSAMPLE_SAMPLES = 10000</code> for inference. TabDPT has context size 2048 and ensemble size 8.
+</p>
+
+TabDPT is trained on real-world tabular data and we observe scaling laws similar to LLMs opening the door to training Internet-scale tabular foundation models:
+
+<p align="center">
+<img
+src="https://raw.githubusercontent.com/layer6ai-labs/TabDPT-inference/main/figures/scaling.png" width="50%">
+<br />
+<p>
+<b>Figure 1:</b> Increasing model or pre-training data size (number of cells) leads to consistent improvements predictable by power laws (fitted solid lines).
+</p>
+</p>
+
+TabDPT also stands out in head-to-head model comparisons and is significantly faster than other models in total time taken to generate a prediction:
+
+<p align="center">
+<img
+src="https://github.com/layer6ai-labs/TabDPT-inference/raw/main/figures/performance-comparison.png" width="100%">
+<br />
+<p>
+<b>Figure 2:</b> (<i>left</i>) Pairwise win-rate comparison in terms of classification/regression accuracy/R<sup>2</sup>. (<i>right</i>) Total runtime vs performance. TabDPT models are ordered by context size.
+</p>
+</p>
+
+For full details, please see our paper [*TabDPT: Scaling Tabular Foundation Models on Real Data*](https://arxiv.org/abs/2410.18164).
+
+## Reproducing TabDPT Paper Numbers
+
+It is impossible to exactly replicate the results of TabDPT between runs, but this section describes how to generate results using the same evaluation approach as in the paper.
+
+To install the dependency versions used in the paper, run
+```
+pip install .[reproduce-results]
+```
+This requires Python 3.11.
+
+Running the `paper_evaluation.py` script will enable calculation of results similar to the paper. Run the following two commands:
+```
+python paper_evaluation.py --fold 0
+python paper_evaluation.py --fold 1
+```
+and then use `notebooks/analysis.ipynb` with the resulting CSV outputs to reproduce the numbers (including confidence intervals) from the Appendix.
+
+You can do something similar to get the ranked table from this README and the paper but will need to also compute the baseline results beforehand (code not provided in this repository).
+
+
+## Citation
+```
+@inproceedings{
+    ma2025tabdpt,
+    title={Tab{DPT}: Scaling Tabular Foundation Models on Real Data},
+    author={Junwei Ma and Valentin Thomas and Rasa Hosseinzadeh and Alex Labach and Hamidreza Kamkari and Jesse C. Cresswell and Keyvan Golestan and Guangwei Yu and Anthony L. Caterini and Maksims Volkovs},
+    booktitle={The Thirty-ninth Annual Conference on Neural Information Processing Systems},
+    year={2025},
+    url={https://openreview.net/forum?id=pIZxEOZCId}
+}
+```
+
+© Copyright 2024-2026 The Toronto-Dominion Bank and/or its affiliates
+
+
+
+================================================
+FILE: LICENSE
+================================================
+
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+
+
+================================================
+FILE: paper_evaluation.py
+================================================
+import argparse
+import itertools
+import os
+from datetime import datetime
+from time import time
+
+import numpy as np
+import pandas as pd
+import scipy
+from rliable import metrics
+from sklearn.metrics import accuracy_score, f1_score, log_loss, r2_score, roc_auc_score
+from sklearn.preprocessing import StandardScaler
+from tqdm import tqdm
+
+from tabdpt import TabDPTClassifier, TabDPTRegressor
+from tabdpt_datasets.openml import OpenMLDataset, TabZillaDataset
+
+CLS_DATASET_PATH = "tabdpt_datasets/data_splits/cls_datasets.csv"
+REG_DATASET_PATH = "tabdpt_datasets/data_splits/reg_datasets.csv"
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run TabDPT evaluation")
+    parser.add_argument("--context_size", type=int, default=2048, help="Context size for the model")
+    parser.add_argument("--fold", type=int, default=0, help="Fold number to use for evaluation")
+    parser.add_argument("--n-ensembles", type=int, default=8, help="Number of ensembles to use for evaluation")
+    parser.add_argument("--temperature", type=float, default=0.8, help="Temperature for classification")
+    parser.add_argument("--seed", type=int, default=0, help="Model evaluation seed")
+    parser.add_argument("--inf-batch-size", type=int, default=512, help="Batch size for inference")
+    parser.add_argument("--use-cpu", action="store_true", help="If true, use CPU for evalutation")
+    parser.add_argument("--gpu-to-use", type=int, default=0, help="Which GPU to use")
+    parser.add_argument("--results-folder", type=str, default="eval_output", help="Parent results directory")
+    args = parser.parse_args()
+
+    if args.use_cpu:
+        device = "cpu"
+    else:
+        device = "cuda"
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu_to_use)
+
+    df_eval_cls = pd.read_csv(CLS_DATASET_PATH)
+    cc18_test_df = df_eval_cls[df_eval_cls["test"] == True]
+    cc18_dids = cc18_test_df["did"]
+
+    df_eval_reg = pd.read_csv(REG_DATASET_PATH)
+    ctr23_test_df = df_eval_reg[df_eval_reg["test"] == True]
+    ctr23_dids = ctr23_test_df["did"]
+
+    did_tid_mapping = dict(zip(cc18_dids, cc18_test_df["tid"]))
+    did_tid_mapping.update(dict(zip(ctr23_dids, ctr23_test_df["tid"])))
+
+    results = {
+        "name": [],
+        "acc": [],
+        "f1": [],
+        "auc": [],
+        "log_loss": [],
+        "mse": [],
+        "corr": [],
+        "r2": [],
+        "train_time": [],
+        "inference_time": [],
+    }
+    model_cls = TabDPTClassifier(inf_batch_size=args.inf_batch_size, device=device)
+    model_reg = TabDPTRegressor(inf_batch_size=args.inf_batch_size, device=device)
+
+    pbar = tqdm(
+        itertools.chain(itertools.product(["cls"], cc18_dids), itertools.product(["reg"], ctr23_dids)),
+        total=(len(cc18_dids) + len(ctr23_dids)),
+    )
+    for mode, did in pbar:
+        if mode == "cls":
+            tid = did_tid_mapping[did]
+            dataset = TabZillaDataset(task_id=tid, fold=args.fold)
+            dataset.prepare_data(".cache")
+            dataset_name = dataset.name
+        else:
+            dataset = OpenMLDataset("openml_dataset", task_id=int(did_tid_mapping[did]), fold=args.fold)
+            dataset.prepare_data(".cache")
+            dataset_name = dataset.openml_dataset.name
+
+        pbar.set_description(f"Running {dataset_name}")
+
+        X_train, y_train = dataset.train_instances()
+        X_val, y_val = dataset.val_instances()
+
+        X_train = np.concatenate([X_train, X_val], axis=0)
+        y_train = np.concatenate([y_train, y_val], axis=0)
+        X_test, y_test = dataset.test_instances()
+
+        if mode == "cls":
+            model = model_cls
+
+            t0 = time()
+            model.fit(X_train, y_train)
+            train_time = time() - t0
+
+            t1 = time()
+            pred_val = model.ensemble_predict_proba(
+                X_test,
+                temperature=args.temperature,
+                context_size=args.context_size,
+                n_ensembles=args.n_ensembles,
+                seed=args.seed,
+            )
+            inference_time = time() - t1
+
+            if len(np.unique(y_test)) == 2:
+                auc = roc_auc_score(y_test, pred_val[:, 1])
+            else:
+                auc = roc_auc_score(y_test, pred_val, multi_class="ovo")
+
+            f1 = f1_score(y_test, np.argmax(pred_val, axis=1), average="weighted")
+            acc = accuracy_score(y_test, np.argmax(pred_val, axis=1))
+            ce_loss = log_loss(y_test, pred_val)
+            mse, corr, r2 = None, None, None
+
+        else:
+            model = model_reg
+
+            t0 = time()
+            scaler = StandardScaler()
+            y_train_scaled = scaler.fit_transform(y_train.reshape(-1, 1)).ravel()
+            y_test_scaled = scaler.transform(y_test.reshape(-1, 1)).ravel()
+            model.fit(X_train, y_train_scaled)
+            train_time = time() - t0
+
+            t1 = time()
+            pred_val_scaled = model.predict(
+                X_test, context_size=args.context_size, n_ensembles=args.n_ensembles, seed=args.seed
+            )
+            inference_time = time() - t1
+            pred_val = scaler.inverse_transform(pred_val_scaled.reshape(-1, 1)).ravel()
+
+            mse = np.mean((y_test - pred_val) ** 2)
+            corr = scipy.stats.pearsonr(y_test, pred_val.flatten())[0]
+            r2 = r2_score(y_test, pred_val)
+            f1, acc, auc, ce_loss = None, None, None, None
+
+        results["name"].append(dataset_name)
+        results["acc"].append(acc)
+        results["f1"].append(f1)
+        results["auc"].append(auc)
+        results["log_loss"].append(ce_loss)
+        results["mse"].append(mse)
+        results["corr"].append(corr)
+        results["r2"].append(r2)
+        results["train_time"].append(train_time)
+        results["inference_time"].append(inference_time)
+
+        print(f"\nDataset: {dataset_name}")
+        print(f"X_train shape: {X_train.shape}, X_test shape: {X_test.shape}")
+        print(f"train_time: {train_time:.4f}s, inference_time: {inference_time:.4f}s")
+
+        if mode == "cls":
+            print(f"acc {acc}, f1 {f1}, auc {auc}, loss {ce_loss}")
+        else:
+            print(f"mse {mse}, corr {corr}, r2 {r2}")
+
+    df = pd.DataFrame(results)
+
+    datetime_string = datetime.now().isoformat(timespec="seconds")
+    datetime_string = datetime_string.replace("T", "_").replace(":", "-")
+    csv_name = (
+        f"results_{datetime_string}_context={args.context_size}_"
+        f"fold={args.fold}_N={args.n_ensembles}_seed={args.seed}.csv"
+    )
+
+    os.makedirs(args.results_folder, exist_ok=True)
+    df.to_csv(os.path.join(args.results_folder, csv_name), index=False)
+
+    def robust_iqm(x):
+        try:
+            x = x[~np.isnan(x)]
+            return metrics.aggregate_iqm(x)
+        except TypeError:
+            return None
+
+    print(f"IQM for Fold {args.fold}, N={args.n_ensembles}, T={args.temperature}:")
+    print(df[["acc", "auc", "corr", "r2"]].apply(lambda x: robust_iqm(x)))
+
+
+
+================================================
+FILE: pyproject.toml
+================================================
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tabdpt"
+version = "1.1.13"
+description = "TabDPT: Scaling Tabular Foundation Models on Real Data"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICEN[CS]E*"]
+requires-python = ">=3.10"
+dependencies = [
+    "faiss-cpu>=1.11.0,<1.13.0",
+    "huggingface-hub>=0.33.2,<2.0",
+    "numpy>=1.25.0,<3.0",
+    "omegaconf>=2.1.1,<3.0",
+    "safetensors>=0.5.3,<1.0",
+    "scikit-learn>=1.4.0,<2.0",
+    "scipy>=1.9.0,<2.0",
+    "torch>=2.6.0,<3.0",
+    "tqdm>=4.38.0,<5.0",
+]
+
+[project.optional-dependencies]
+reproduce-results = [
+    "faiss-cpu==1.11.0",
+    "numpy==2.3.0;python_version>='3.11'",
+    "omegaconf==2.3.0",
+    "scikit-learn==1.7.0",
+    "scipy==1.15.3",
+    "torch==2.7.1",
+    "rliable==1.2.0",
+    "pandas==2.3.2",
+    "openml==0.15.1",
+    "jupyter==1.1.1",
+    "tenacity==9.1.2",
+    "gdown==5.2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/layer6ai-labs/TabDPT-inference"
+Paper = "https://arxiv.org/abs/2410.18164"
+Model = "https://huggingface.co/Layer6/TabDPT"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "rliable>=1.2.0,<2.0",
+    "pandas>=2.3.2,<3.0",
+    "openml>=0.15.1,<1.0",
+    "jupyter>=1.1.1,<2.0",
+    "tenacity>=9.1.2,<10.0",
+    "gdown>=5.2.0,<6.0",
+]
+
+
+
+================================================
+FILE: notebooks/analysis.ipynb
+================================================
+# Jupyter notebook converted to Python script.
+
+"""
+## TabDPT Evaluation Notebook 
+
+Use this notebook to computes confidence intervals with `rliable` as in the paper appendix
+"""
+
+import numpy as np
+import pandas as pd
+from rliable import library as rly
+from rliable import metrics
+
+# Get the csvs from TabDPT results on at least 2 folds
+# This is important to compute confidence intervals with rliable
+tabdpt_df0 = pd.read_csv('../results_fold0.csv')
+tabdpt_df1 = pd.read_csv('../results_fold1.csv')
+
+tabdpt_df0['fold'] = 0
+tabdpt_df1['fold'] = 1
+tabdpt_df = pd.concat([tabdpt_df0, tabdpt_df1], axis=0)
+
+tabdpt_df['alg_name'] = 'TabDPT'
+
+df = tabdpt_df  # can join several tables with same structure and different alg_name
+
+# column cc18 is 1 when auc is not NaN, 0 otherwise
+df['cc18'] = df['auc'].notna().astype(int)
+
+# column ctr is 1 when r2 is not NaN, 0 otherwise
+df['ctr'] = df['r2'].notna().astype(int)
+
+# Pivot table construction
+def get_scores_ci(metric, suite, data):
+    data_suite = data[data['cc18'] == 1] if suite == 'cc18' else data[data['ctr'] == 1]
+
+    algorithm_metric_dict = {}
+    for alg_name, group in data_suite.groupby('alg_name'):
+        # Create a pivot table: rows are folds, columns are datasets, values are metric scores
+        pivot_table = group.pivot(index='fold', columns='name', values=metric)
+        scores =  pivot_table.values
+        # if there are NaN values, replace them with row mean
+        scores = np.where(np.isnan(scores), np.nanmean(scores, axis=1, keepdims=True), scores)
+        algorithm_metric_dict[alg_name] = scores
+    algorithms = list(algorithm_metric_dict.keys())
+
+    # choose one of the following aggregate functions
+    aggregate_func = lambda x: np.array([
+        # metrics.aggregate_median(x),
+        metrics.aggregate_iqm(x),
+        # metrics.aggregate_mean(x),
+        # metrics.aggregate_optimality_gap(x)
+    ])
+    aggregate_scores, aggregate_score_cis = rly.get_interval_estimates(
+        algorithm_metric_dict, aggregate_func, reps=20000
+    )
+
+    aggregate_scores = {alg: aggregate_scores[alg] for alg in algorithms}
+    aggregate_score_cis = {alg: aggregate_score_cis[alg] for alg in algorithms}
+    return aggregate_scores, aggregate_score_cis
+
+best_is_higher = {
+    'auc':  True,
+    'acc':  True,
+    'corr': True,
+    'r2':   True,
+
+    'auc_rank': False,
+    'acc_rank': False,
+    'corr_rank': False,
+    'r2_rank': False,
+}
+
+metric_suite_pairs = [
+    ('auc',  'cc18'),  
+    ('acc',  'cc18'),  
+    ('corr', 'ctr'), 
+    ('r2',   'ctr'),  
+]
+# add _rank to the metrics
+# you can uncomment this to compute ranks instead of raw scores but you need more than one alg_name
+# TODO - Currently doesn't work, need to fix
+# metric_suite_pairs = [(m + "_rank", s) for m, s in metric_suite_pairs]
+
+all_scores = {} 
+all_cis    = {} 
+algorithms = set()
+
+for metric, suite in metric_suite_pairs:
+    scores, ci = get_scores_ci(metric, suite, df) 
+    scores = {k: float(v.squeeze()) for k, v in scores.items()}
+    ci     = {k: tuple(v.squeeze()) for k, v in ci.items()}
+    all_scores[(metric, suite)] = scores
+    all_cis[(metric, suite)]    = ci
+    algorithms.update(scores.keys())
+
+algorithms = sorted(algorithms)
+
+all_scores
+
+all_cis
+
+
+
+================================================
+FILE: src/tabdpt/__init__.py
+================================================
+from .classifier import TabDPTClassifier
+from .regressor import TabDPTRegressor
+
+__all__ = ["TabDPTClassifier", "TabDPTRegressor"]
+
+
+
+================================================
+FILE: src/tabdpt/classifier.py
+================================================
+import math
+from typing import Literal
+
+import numpy as np
+import torch
+from scipy.special import softmax
+from sklearn.base import ClassifierMixin
+
+from .estimator import TabDPTEstimator
+from .utils import generate_random_permutation, pad_x
+
+
+class TabDPTClassifier(TabDPTEstimator, ClassifierMixin):
+    def __init__(
+        self,
+        inf_batch_size: int = 512,
+        normalizer: Literal["standard", "minmax", "robust", "power", "quantile-uniform", "quantile-normal", "log1p"] | None
+            = "standard",
+        missing_indicators: bool = False,
+        clip_sigma: float = 4.,
+        feature_reduction: Literal["pca", "subsample"] = "pca",
+        faiss_metric: Literal["l2", "ip"] = "l2",
+        device: str = None,
+        use_flash: bool = True,
+        compile: bool = True,
+        model_weight_path: str | None = None,
+        verbose: bool = True,
+    ):
+        super().__init__(
+            mode="cls",
+            inf_batch_size=inf_batch_size,
+            normalizer=normalizer,
+            missing_indicators=missing_indicators,
+            clip_sigma=clip_sigma,
+            feature_reduction=feature_reduction,
+            faiss_metric=faiss_metric,
+            device=device,
+            use_flash=use_flash,
+            compile=compile,
+            model_weight_path=model_weight_path,
+            verbose=verbose,
+        )
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        super().fit(X, y)
+        self.num_classes = len(np.unique(self.y_train))
+        assert self.num_classes > 1, "Number of classes must be greater than 1"
+
+    def _predict_large_cls(self, X_train, X_test, y_train):
+        num_digits = math.ceil(math.log(self.num_classes, self.max_num_classes))
+
+        digit_preds = []
+        for i in range(num_digits):
+            y_train_digit = (y_train // (self.max_num_classes**i)) % self.max_num_classes
+            pred = self.model(
+                x_src=torch.cat([X_train, X_test], dim=1),
+                y_src=y_train_digit.unsqueeze(-1),
+                task=self.mode,
+            )
+            digit_preds.append(pred.float())
+
+        full_pred = torch.zeros((X_test.shape[0], X_test.shape[1], self.num_classes), device=X_train.device)
+        for class_idx in range(self.num_classes):
+            class_pred = torch.zeros_like(digit_preds[0][:, :, 0])
+            for digit_idx, digit_pred in enumerate(digit_preds):
+                digit_value = (class_idx // (self.max_num_classes**digit_idx)) % self.max_num_classes
+                class_pred += digit_pred[:, :, digit_value]
+            full_pred[:, :, class_idx] = class_pred.transpose(0, 1)
+
+        return full_pred
+
+    @torch.no_grad()
+    def predict_proba(
+        self,
+        X: np.ndarray,
+        temperature: float = 0.8,
+        context_size: int | None = 2048,
+        return_logits: bool = False,
+        seed: int | None = None,
+        class_perm: np.ndarray | None = None,
+    ):
+        train_x, train_y, test_x = self._prepare_prediction(X, class_perm=class_perm, seed=seed)
+
+        if context_size is None:
+            context_size = np.inf
+
+        if seed is not None:
+            feat_perm = generate_random_permutation(train_x.shape[1], seed)
+            train_x = train_x[:, feat_perm]
+            test_x = test_x[:, feat_perm]
+
+        if context_size >= self.n_instances:
+            X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
+            X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
+            y_train = train_y[None, :].float()
+
+            if self.num_classes <= self.max_num_classes:
+                pred = self.model(
+                    x_src=torch.cat([X_train, X_test], dim=1),
+                    y_src=y_train.unsqueeze(-1),
+                    task=self.mode,
+                )
+            else:
+                pred = self._predict_large_cls(X_train, X_test, y_train)
+
+            if not return_logits:
+                pred = pred[..., :self.num_classes] / temperature
+                pred = torch.nn.functional.softmax(pred.float(), dim=-1)
+            pred_val = pred.float().squeeze().detach().cpu().numpy()
+        else:
+            pred_list = []
+            for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
+                start = b * self.inf_batch_size
+                end = min(len(self.X_test), (b + 1) * self.inf_batch_size)
+
+                indices_nni = self._get_faiss_knn_indices(
+                    self.X_test[start:end], context_size=context_size, seed=seed
+                )
+                X_nni = train_x[torch.tensor(indices_nni)]
+                y_nni = train_y[torch.tensor(indices_nni)]
+
+                X_nni, y_nni = (
+                    pad_x(torch.Tensor(X_nni), self.max_features).to(self.device),
+                    torch.Tensor(y_nni).to(self.device),
+                )
+                X_eval = test_x[start:end]
+                X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
+
+                if self.num_classes <= self.max_num_classes:
+                    pred = self.model(
+                        x_src=torch.cat([X_nni, X_eval], dim=1),
+                        y_src=y_nni.unsqueeze(-1),
+                        task=self.mode,
+                    )
+                else:
+                    pred = self._predict_large_cls(X_nni, X_eval, y_nni)
+
+                pred = pred.float()
+                if not return_logits:
+                    pred = pred[..., :self.num_classes] / temperature
+                    pred = torch.nn.functional.softmax(pred, dim=-1)
+                    pred /= pred.sum(axis=-1, keepdims=True)  # numerical stability
+
+                pred_list.append(pred.squeeze(dim=0))
+            pred_val = torch.cat(pred_list, dim=0).squeeze().detach().cpu().float().numpy()
+
+        # Ensure pred_val is always (n_samples, n_classes) even for a single sample.
+        if pred_val.ndim == 1:
+            pred_val = pred_val[None, :]  # (n_classes,) -> (1, n_classes)
+        return pred_val
+
+    def ensemble_predict_proba(
+        self,
+        X,
+        n_ensembles: int = 8,
+        temperature: float = 0.8,
+        context_size: int = 2048,
+        permute_classes: bool = True,
+        seed: int | None = None,
+    ):
+        if n_ensembles == 1:
+            return self.predict_proba(X, temperature=temperature, context_size=context_size, seed=seed)
+
+        logit_cumsum = None
+        for inner_seed in self._get_ensemble_iterator(n_ensembles, seed):
+            inner_seed = int(inner_seed)
+            perm = torch.arange(self.num_classes)
+            if permute_classes:
+                perm = generate_random_permutation(self.num_classes, inner_seed)
+            inv_perm = np.argsort(perm)
+
+            logits = self.predict_proba(
+                X,
+                context_size=context_size,
+                return_logits=True,
+                seed=inner_seed,
+                class_perm=perm,
+            )
+            logits = logits[..., inv_perm]
+            if logit_cumsum is None:
+                logit_cumsum = np.zeros_like(logits)
+            logit_cumsum += logits
+
+        logits = (logit_cumsum / n_ensembles)[..., :self.num_classes] / temperature
+        pred = softmax(logits, axis=-1)
+        pred /= pred.sum(axis=-1, keepdims=True)
+        return pred
+
+    def predict(
+        self,
+        X,
+        n_ensembles: int = 8,
+        temperature: float = 0.8,
+        context_size: int = 2048,
+        permute_classes: bool = True,
+        seed: int | None = None,
+    ):
+        if n_ensembles == 1:
+            return self.predict_proba(X, temperature=temperature, context_size=context_size, seed=seed).argmax(axis=-1)
+        else:
+            return self.ensemble_predict_proba(
+                X,
+                n_ensembles=n_ensembles,
+                temperature=temperature,
+                context_size=context_size,
+                permute_classes=permute_classes,
+                seed=seed,
+            ).argmax(axis=-1)
+
+
+
+================================================
+FILE: src/tabdpt/estimator.py
+================================================
+import json
+from typing import Literal
+
+import numpy as np
+import torch
+from huggingface_hub import hf_hub_download
+from omegaconf import OmegaConf
+from safetensors import safe_open
+from sklearn.base import BaseEstimator
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler, PowerTransformer, QuantileTransformer
+from sklearn.utils.validation import check_is_fitted
+
+from .model import TabDPTModel
+from .utils import convert_to_torch_tensor, Log1pScaler, generate_random_permutation
+
+# Constants for model caching and download
+_VERSION = "1_1"
+_MODEL_NAME = f"tabdpt{_VERSION}.safetensors"
+_HF_REPO_ID = "Layer6/TabDPT"
+CPU_INF_BATCH = 16
+
+
+class TabDPTEstimator(BaseEstimator):
+    @staticmethod
+    def download_weights() -> str:
+        path = hf_hub_download(
+            repo_id=_HF_REPO_ID,
+            filename=_MODEL_NAME,
+        )
+        return path
+
+    def __init__(
+        self,
+        mode: Literal["cls", "reg"],
+        inf_batch_size: int = 512,
+        normalizer: Literal["standard", "minmax", "robust", "power", "quantile-uniform", "quantile-normal", "log1p"] | None
+            = "standard",
+        missing_indicators: bool = False,
+        clip_sigma: float = 4.,
+        feature_reduction: Literal["pca", "subsample"] = "pca",
+        faiss_metric: Literal["l2", "ip"] = "l2",
+        device: str = None,
+        use_flash: bool = True,
+        compile: bool = True,
+        model_weight_path: str | None = None,
+        verbose: bool = True,
+    ):
+        """
+        Initializes the TabDPT Estimator
+        Args:
+            mode: Defines what mode the estimator is
+                "cls" is classification, "reg" is regression
+            inf_batch_size: The batch size for inferencing
+            normalizer: Specifies normalization used for preprocessing before retrieval. Note that
+                the model performs additional normalization in its forward function. By default the
+                scikit-learn StandardScaler is used, which matches model training. Other options are:
+                - "minmax": scikit-learn MinMaxScaler(feature_range=(-1,1))
+                - "robust": scikit-learn RobustScaler()
+                - "power": scikit-learn PowerTransformer()
+                - "quantile-uniform": scikit-learn QuantileTransformer(output_distribution="uniform"), rescaled to (-1,1)
+                - "quantile-normal": scikit-learn QuantileTransformer(output_distribution="normal")
+                - "log1p": sign(X) * log(1 + abs(X))
+                - None: no normalization
+            missing_indicators: If True, adds an additional binary column for each feature with
+                missing values indicating their position.
+            clip_sigma: n*sigma used for outlier clipping
+            feature_reduction: Method used to reduce the number of features when over the model's
+                limit, either "pca" or "subsample"
+            faiss_metric: Distance used for retrieval, either "l2" or "ip"
+            device: Specifies the computational device (e.g., CPU, GPU)
+                Identical to https://docs.pytorch.org/docs/stable/generated/torch.cuda.device.html
+            use_flash: Specifies whether to use flash attention or not
+            compile: Specifies whether to compile the model with torch before inference
+            model_weight_path: path on file system specifying the model weights
+                If no path is specified, then the model weights are downloaded from HuggingFace
+            verbose: Specifies whether to add tqdm looping to ensemble estimator
+
+        """
+        self.mode = mode
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.inf_batch_size = inf_batch_size if self.device == "cuda" else min(inf_batch_size, CPU_INF_BATCH)
+        self.use_flash = use_flash and self.device == "cuda"
+        self.missing_indicators = missing_indicators
+
+        if model_weight_path:
+            self.path = model_weight_path
+        else:
+            self.path = self.download_weights()
+
+        with safe_open(self.path, framework="pt", device=self.device) as f:
+            meta = f.metadata()
+            cfg_dict = json.loads(meta["cfg"])
+            cfg = OmegaConf.create(cfg_dict)
+            model_state = {k: f.get_tensor(k) for k in f.keys()}
+
+        cfg.env.device = self.device
+        self.model = TabDPTModel.load(model_state=model_state, config=cfg, use_flash=self.use_flash, clip_sigma=clip_sigma)
+        self.model.eval()
+
+        self.max_features = self.model.num_features
+        self.max_num_classes = self.model.n_out
+        self.compile = compile and self.device == "cuda"
+        self.feature_reduction = feature_reduction
+        self.faiss_metric = faiss_metric
+        self.faiss_knn = None
+
+        assert self.mode in ["cls", "reg"], "mode must be 'cls' or 'reg'"
+        assert self.feature_reduction in ["pca", "subsample"], \
+                "feature_reduction must be 'pca' or 'subsample'"
+        assert self.faiss_metric in ["l2", "ip"], 'faiss_metric must be "l2" or "ip"'
+
+        self.verbose = verbose
+
+        self.normalizer = normalizer
+        match normalizer:
+            case "standard":
+                self.scaler = StandardScaler()
+            case "minmax":
+                self.scaler = MinMaxScaler(feature_range=(-1,1))
+            case "robust":
+                self.scaler = RobustScaler()
+            case "power":
+                self.scaler = PowerTransformer()
+            case "quantile-uniform":
+                self.scaler = QuantileTransformer(output_distribution="uniform")
+            case "quantile-normal":
+                self.scaler = QuantileTransformer(output_distribution="normal")
+            case "log1p":
+                self.scaler = Log1pScaler()
+            case None:
+                self.scaler = None
+            case _:
+                raise ValueError(
+                    'normalizer must be one of '
+                    '["standard", "minmax", "robust", "power", "quantile-uniform", "quantile-normal", "log1p", None]'
+                )
+
+        self.V = None
+
+    def fit(self, X: np.ndarray, y: np.ndarray):
+        assert isinstance(X, np.ndarray), "X must be a numpy array"
+        assert isinstance(y, np.ndarray), "y must be a numpy array"
+        assert X.shape[0] == y.shape[0], "X and y must have the same number of samples"
+        assert X.ndim == 2, "X must be a 2D array"
+        assert y.ndim == 1, "y must be a 1D array"
+
+        if self.missing_indicators:
+            inds = np.isnan(X)
+            self.has_missing_indicator = inds.any(axis=0)
+            inds = inds[:, self.has_missing_indicator].astype(float)
+            X = np.hstack((X, inds))
+
+        self.imputer = SimpleImputer(strategy="mean")
+        X = self.imputer.fit_transform(X)
+        if self.scaler:
+            X = self.scaler.fit_transform(X)
+        if self.normalizer == 'quantile-uniform':
+            X = 2*X - 1
+
+        self.n_instances, self.n_features = X.shape
+        self.X_train = X
+        self.y_train = y
+        if self.n_features > self.max_features and self.feature_reduction == "pca":
+            train_x = convert_to_torch_tensor(self.X_train).to(self.device).float()
+            _, _, self.V = torch.pca_lowrank(train_x, q=min(train_x.shape[0], self.max_features))
+
+        # Reset in case the model was previously fit, this will be lazily initialized
+        self.faiss_knn = None
+
+        self.is_fitted_ = True
+        if self.compile:
+            self.model.compile()
+
+    def to(self, device: str):
+        self.device = device
+        self.model.to(device)
+
+        if self.V is not None:
+            self.V = self.V.to(device)
+
+    def _get_faiss_knn_indices(self, X_test: np.ndarray, context_size: int, seed: int | None = None):
+        if self.faiss_knn is None:  # Lazily perform initialization
+            from .utils import FAISS
+            self.faiss_knn = FAISS(self.X_train, metric=self.faiss_metric)
+            if seed is not None:
+                self.faiss_knn.index.seed = seed
+
+        return self.faiss_knn.get_knn_indices(X_test, k=context_size)
+
+    def _prepare_prediction(self, X: np.ndarray, class_perm: np.ndarray | None = None, seed: int | None = None):
+        check_is_fitted(self)
+
+        if self.missing_indicators:
+            inds = np.isnan(X)[:, self.has_missing_indicator].astype(float)
+            X = np.hstack((X, inds))
+        self.X_test = self.imputer.transform(X)
+        if self.scaler:
+            self.X_test = self.scaler.transform(self.X_test)
+            if self.normalizer == 'quantile-uniform':
+                self.X_test = 2*self.X_test - 1
+
+        train_x, train_y, test_x = (
+            convert_to_torch_tensor(self.X_train).to(self.device).float(),
+            convert_to_torch_tensor(self.y_train).to(self.device).float(),
+            convert_to_torch_tensor(self.X_test).to(self.device).float(),
+        )
+
+        # Apply PCA/subsampling to reduce the number of features if necessary
+        if self.n_features > self.max_features:
+            if self.feature_reduction == "pca":
+                train_x = train_x @ self.V
+                test_x = test_x @ self.V
+            elif self.feature_reduction == "subsample":
+                feat_perm = generate_random_permutation(train_x.shape[1], seed)
+                train_x = train_x[:, feat_perm][:, :self.max_features]
+                test_x = test_x[:, feat_perm][:, :self.max_features]
+
+        if class_perm is not None:
+            assert self.mode == "cls", "class_perm only makes sense for classification"
+            inv_perm = np.argsort(class_perm)
+            train_y = train_y.to(torch.long)
+            inv_perm = torch.as_tensor(inv_perm, device=train_y.device)
+            train_y = inv_perm[train_y].to(torch.float)
+
+        return train_x, train_y, test_x
+
+    def _get_ensemble_iterator(self, n_ensembles: int, seed: int | None = None):
+        generator = np.random.SeedSequence(seed)
+        ensemble_iterator = generator.generate_state(n_ensembles)
+        if self.verbose:
+            from tqdm import tqdm
+            ensemble_iterator = tqdm(ensemble_iterator, desc="ensembles")
+        return ensemble_iterator
+
+
+
+================================================
+FILE: src/tabdpt/model.py
+================================================
+from typing import Literal
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.nn import GELU, LayerNorm, Linear
+
+from .utils import clip_outliers, flash_context, normalize_data
+
+
+class TabDPTModel(nn.Module):
+    def __init__(
+        self,
+        dropout: float,
+        n_out: int,
+        nhead: int,
+        nhid: int,
+        ninp: int,
+        nlayers: int,
+        num_features: int,
+        use_flash: bool = True,
+        clip_sigma: float = 4.
+    ):
+        super().__init__()
+        self.n_out = n_out
+        self.use_flash = use_flash
+        self.ninp = ninp
+        self.transformer_encoder = nn.ModuleList(
+            [
+                TransformerEncoderLayer(
+                    embed_dim=ninp,
+                    num_heads=nhead,
+                    ff_dim=nhid,
+                )
+                for _ in range(nlayers)
+            ]
+        )
+        self.num_features = num_features
+        self.encoder = nn.Linear(num_features, ninp)
+        self.dropout = nn.Dropout(p=dropout)
+        self.y_encoder = nn.Linear(1, ninp)
+        self.head = nn.Sequential(nn.Linear(ninp, nhid), nn.GELU(), nn.Linear(nhid, n_out + 1))
+        self.clip_sigma = clip_sigma
+
+    @flash_context
+    def forward(
+        self,
+        x_src: torch.Tensor,
+        y_src: torch.Tensor,
+        task: Literal["cls", "reg"],  # classification or regression
+    ) -> torch.Tensor:
+        x_src = x_src.transpose(0, 1)
+        y_src = y_src.squeeze(-1).transpose(0, 1)
+        eval_pos = y_src.shape[0]
+        assert x_src.shape[1] == y_src.shape[1], "x_src and y_src must have the same batch size"
+        x_src = clip_outliers(x_src, -1 if self.training else eval_pos, n_sigma=self.clip_sigma)
+        x_src = normalize_data(x_src, -1 if self.training else eval_pos)
+        x_src = clip_outliers(x_src, -1 if self.training else eval_pos, n_sigma=self.clip_sigma)
+        if task == "reg":
+            y_src, mean_y, std_y = normalize_data(y_src, return_mean_std=True)
+            y_src = clip_outliers(y_src)
+
+        x_src = torch.nan_to_num(x_src, nan=0)
+        x_src = self.encoder(x_src)
+        mean = (x_src**2).mean(dim=-1, keepdim=True)
+        rms = torch.sqrt(mean)
+        x_src = x_src / rms
+
+        y_src = self.y_encoder(y_src.unsqueeze(-1))
+        train_x = x_src[:eval_pos] + y_src
+        src = torch.cat([train_x, x_src[eval_pos:]], 0)
+
+        for layer in self.transformer_encoder:
+            src = layer(src, eval_pos)
+        pred = self.head(src)
+        if task == "reg":
+            pred = pred[eval_pos:, ..., -1]
+        elif task == "cls":
+            pred = pred[eval_pos:, ..., :-1]
+        else:
+            raise ValueError(f"Invalid task: {task}")
+
+        if task == "reg":
+            pred = pred * std_y + mean_y
+
+        return pred
+
+    @classmethod
+    def load(cls, model_state, config, use_flash, clip_sigma: float = 4.):
+        assert config.model.max_num_classes > 2
+        model = TabDPTModel(
+            dropout=config.training.dropout,
+            n_out=config.model.max_num_classes,
+            nhead=config.model.nhead,
+            nhid=config.model.emsize * config.model.nhid_factor,
+            ninp=config.model.emsize,
+            nlayers=config.model.nlayers,
+            num_features=config.model.max_num_features,
+            use_flash=use_flash,
+            clip_sigma=clip_sigma
+        )
+
+        model_state = {k.replace("_orig_mod.", ""): v for k, v in model_state.items()}
+        model_state = {k.replace("model.", ""): v for k, v in model_state.items()}
+        model.load_state_dict(model_state)
+        model.to(config.env.device)
+        model.eval()
+        return model
+
+
+class TransformerEncoderLayer(nn.Module):
+    def __init__(self, embed_dim, num_heads, ff_dim):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.head_dim = embed_dim // num_heads
+        self.num_heads = num_heads
+        self.kv_proj = nn.Linear(embed_dim, 2 * embed_dim, bias=False)
+        self.q_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=False)
+
+        self.attn_norm = LayerNorm(embed_dim)
+        self.ff_norm = LayerNorm(embed_dim)
+        self.ff = nn.Sequential(Linear(embed_dim, ff_dim), GELU(), Linear(ff_dim, embed_dim))
+        self.q_norm = LayerNorm(self.head_dim)
+        self.k_norm = LayerNorm(self.head_dim)
+
+    def forward(self, x, eval_pos):
+        x = x.transpose(0, 1)
+        B, L, _ = x.size()
+        h = self.attn_norm(x)
+        q = self.q_proj(h)
+        k, v = self.kv_proj(h[:, :eval_pos]).chunk(2, dim=-1)
+        q = q.view(B, L, self.num_heads, self.head_dim).transpose(1, 2)
+        k = k.view(B, eval_pos, self.num_heads, self.head_dim).transpose(1, 2)
+        v = v.view(B, eval_pos, self.num_heads, self.head_dim).transpose(1, 2)
+        q, k = self.q_norm(q), self.k_norm(k)
+        attn = F.scaled_dot_product_attention(q, k, v).transpose(1, 2)
+        attn = self.out_proj(attn.reshape(B, L, self.num_heads * self.head_dim))
+        x = x + attn
+        x = x + self.ff(self.ff_norm(x))
+        return x.transpose(0, 1)
+
+
+
+================================================
+FILE: src/tabdpt/regressor.py
+================================================
+import math
+from typing import Literal
+
+import numpy as np
+import torch
+from sklearn.base import RegressorMixin
+
+from .estimator import TabDPTEstimator
+from .utils import generate_random_permutation, pad_x
+
+
+class TabDPTRegressor(TabDPTEstimator, RegressorMixin):
+    def __init__(
+        self,
+        inf_batch_size: int = 512,
+        normalizer: Literal["standard", "minmax", "robust", "power", "quantile-uniform", "quantile-normal", "log1p"] | None
+            = "standard",
+        missing_indicators: bool = False,
+        clip_sigma: float = 4.,
+        feature_reduction: Literal["pca", "subsample"] = "pca",
+        faiss_metric: Literal["l2", "ip"] = "l2",
+        device: str = None,
+        use_flash: bool = True,
+        compile: bool = True,
+        model_weight_path: str | None = None,
+        verbose: bool = True,
+    ):
+        super().__init__(
+            mode="reg",
+            inf_batch_size=inf_batch_size,
+            normalizer=normalizer,
+            missing_indicators=missing_indicators,
+            clip_sigma=clip_sigma,
+            feature_reduction=feature_reduction,
+            faiss_metric=faiss_metric,
+            device=device,
+            use_flash=use_flash,
+            compile=compile,
+            model_weight_path=model_weight_path,
+            verbose=verbose,
+        )
+
+    @torch.no_grad()
+    def _predict(self, X: np.ndarray, context_size: int | None = 2048, seed: int | None = None):
+        train_x, train_y, test_x = self._prepare_prediction(X, seed=seed)
+
+        if context_size is None:
+            context_size = np.inf
+
+        if seed is not None:
+            feat_perm = generate_random_permutation(train_x.shape[1], seed)
+            train_x = train_x[:, feat_perm]
+            test_x = test_x[:, feat_perm]
+
+        if context_size >= self.n_instances:
+            X_train = pad_x(train_x[None, :, :], self.max_features).to(self.device)
+            X_test = pad_x(test_x[None, :, :], self.max_features).to(self.device)
+            y_train = train_y[None, :].float()
+            pred = self.model(
+                x_src=torch.cat([X_train, X_test], dim=1),
+                y_src=y_train.unsqueeze(-1),
+                task=self.mode,
+            )
+
+            return pred.float().squeeze(1).detach().cpu().float().numpy()
+        else:
+            pred_list = []
+            for b in range(math.ceil(len(self.X_test) / self.inf_batch_size)):
+                start = b * self.inf_batch_size
+                end = min(len(self.X_test), (b + 1) * self.inf_batch_size)
+
+                indices_nni = self._get_faiss_knn_indices(
+                    self.X_test[start:end], context_size=context_size, seed=seed
+                )
+                X_nni = train_x[torch.tensor(indices_nni)]
+                y_nni = train_y[torch.tensor(indices_nni)]
+
+                X_nni, y_nni = (
+                    pad_x(torch.Tensor(X_nni), self.max_features).to(self.device),
+                    torch.Tensor(y_nni).to(self.device),
+                )
+                X_eval = test_x[start:end]
+                X_eval = pad_x(X_eval.unsqueeze(1), self.max_features).to(self.device)
+                pred = self.model(
+                    x_src=torch.cat([X_nni, X_eval], dim=1),
+                    y_src=y_nni.unsqueeze(-1),
+                    task=self.mode,
+                )
+
+                pred_list.append(pred.squeeze(dim=0))
+
+            return torch.cat(pred_list).detach().cpu().float().numpy()
+
+    def _ensemble_predict(
+            self,
+            X: np.ndarray,
+            n_ensembles: int = 8,
+            context_size: int | None = 2048,
+            seed: int | None = None,
+        ):
+        prediction_cumsum = 0
+        for inner_seed in self._get_ensemble_iterator(n_ensembles, seed):
+            inner_seed = int(inner_seed)
+            prediction_cumsum += self._predict(X, context_size=context_size, seed=inner_seed)
+
+        return prediction_cumsum / n_ensembles
+
+    def predict(
+            self,
+            X: np.ndarray,
+            n_ensembles: int = 8,
+            context_size: int | None = 2048,
+            seed: int | None = None,
+        ):
+        if n_ensembles == 1:
+            return self._predict(X, context_size=context_size, seed=seed)
+        else:
+            return self._ensemble_predict(X, n_ensembles=n_ensembles, context_size=context_size, seed=seed)
+
+
+
+================================================
+FILE: src/tabdpt/utils.py
+================================================
+from functools import wraps
+from typing import Literal
+
+import faiss
+import numpy as np
+import torch
+from torch.nn.attention import SDPBackend, sdpa_kernel
+
+
+def generate_random_permutation(N, seed=None):
+    generator = torch.Generator()
+    if seed is not None:
+        generator.manual_seed(seed)
+
+    return torch.randperm(N, generator=generator)
+
+
+def flash_context(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        if getattr(self, "use_flash", False):
+            assert torch.cuda.is_available(), "FlashAttention requires CUDA support"
+            bf_support = torch.cuda.get_device_capability()[0] >= 8
+            dtype = torch.bfloat16 if bf_support else torch.float16
+            with (
+                torch.autocast(device_type="cuda", dtype=dtype),
+                sdpa_kernel(SDPBackend.FLASH_ATTENTION),
+            ):
+                return func(self, *args, **kwargs)
+        else:
+            return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+def maskmean(x, mask, dim):
+    x = torch.where(mask, x, 0)
+    return x.sum(dim=dim, keepdim=True) / mask.sum(dim=dim, keepdim=True)
+
+
+def maskstd(x, mask, dim=0):
+    num = mask.sum(dim=dim, keepdim=True)
+    mean = maskmean(x, mask, dim=0)
+    diffs = torch.where(mask, mean - x, 0)
+    return ((diffs**2).sum(dim=0, keepdim=True) / (num - 1)) ** 0.5
+
+
+def normalize_data(data, eval_pos=-1, dim=0, return_mean_std: bool = False):
+    X = data[:eval_pos] if eval_pos > 0 else data
+    mask = ~torch.isnan(X)
+    mean = maskmean(X, mask, dim=dim)
+    std = maskstd(X, mask, dim=dim) + 1e-6
+    data = (data - mean) / std
+    if return_mean_std:
+        return data, mean, std
+    return data
+
+
+def clip_outliers(data, eval_pos=-1, n_sigma=4, dim=0):
+    X = data[:eval_pos] if eval_pos > 0 else data
+    mask = ~torch.isnan(X)
+    mean = maskmean(X, mask, dim=dim)
+    cutoff = n_sigma * maskstd(X, mask, dim=dim)
+    mask &= cutoff >= torch.abs(X - mean)
+    cutoff = n_sigma * maskstd(X, mask, dim=dim)
+    return torch.clip(data, mean - cutoff, mean + cutoff)
+
+
+def convert_to_torch_tensor(input):
+    if isinstance(input, np.ndarray):
+        return torch.from_numpy(input)
+    elif torch.is_tensor(input):
+        return input
+    else:
+        raise TypeError("Input must be a NumPy array or a PyTorch tensor.")
+
+
+def pad_x(X: torch.Tensor, num_features: int = 100):
+    if num_features is None:
+        return X
+    n_features = X.shape[-1]
+    zero_feature_padding = torch.zeros((*X.shape[:-1], num_features - n_features), device=X.device)
+    return torch.cat([X, zero_feature_padding], dim=-1)
+
+
+class FAISS:
+    def __init__(self, X, metric: Literal["l2", "ip"] = "l2"):
+        assert isinstance(X, np.ndarray), "X must be a numpy array"
+        X = np.ascontiguousarray(X)
+        X = X.astype(np.float32)
+        if metric == "l2":
+            self.index = faiss.IndexFlatL2(X.shape[1])
+        elif metric == "ip":
+            self.index = faiss.IndexFlatIP(X.shape[1])
+        else:
+            raise ValueError('metric must be "l2" or "ip"')
+        self.index.add(X)
+
+    def get_knn_indices(self, queries, k):
+        if isinstance(queries, torch.Tensor):
+            queries = queries.cpu().numpy()
+        queries = np.ascontiguousarray(queries)
+        assert isinstance(k, int)
+
+        knns = self.index.search(queries, k)
+        indices_Xs = knns[1]
+        return indices_Xs
+
+class Log1pScaler:
+    def fit(self, X: np.ndarray):
+        pass
+
+    def fit_transform(self, X: np.ndarray):
+        return np.log1p(np.abs(X)) * np.sign(X)
+
+    def transform(self, X: np.ndarray):
+        return np.log1p(np.abs(X)) * np.sign(X)
+
+
+
+================================================
+FILE: tabdpt_datasets/__init__.py
+================================================
+[Empty file]
+
+
+================================================
+FILE: tabdpt_datasets/dataset.py
+================================================
+from abc import ABC, abstractmethod
+
+import numpy as np
+
+
+class Dataset(ABC):
+    """
+    Base class for dataset classes.
+
+    Each dataset class can be used for multiple datasets, distinguished by names.
+
+    To support evaluation over a range of methods, the current code assumes that the entire dataset
+    can be loaded into memory and accessed as numpy arrays using all_instances, which also supports
+    fast indexing.  Fixed train/val/test splits are used, stored as indices to avoid duplication in
+    memory. Synthetic datasets with a fixed set of instances can either generate their data at
+    initialization or lazily.
+
+    We will probably want to add separate methods for synthetic datasets that generate an indefinite
+    number of instances on the fly, since these are less appropriate for evaluation and might not be
+    usable for all baseline models anyway (e.g., decision trees that expect all instances to be
+    available at once).
+    """
+
+    def __init__(self, name):
+        """
+        Params:
+        name - the name of the dataset to load
+        """
+        self.name = name
+        self.metadata = {"class": self.__class__.__name__}
+        self.column_names = None
+
+    @staticmethod
+    @abstractmethod
+    def all_names() -> list[str] | None:
+        """
+        Return the names of all datasets provided by this class, or None if it does not provide a
+        fixed set of datasets
+        """
+        pass
+
+    @abstractmethod
+    def prepare_data(self, download_dir: str):
+        """
+        Download data if needed and do any CPU-side preprocessing, splitting, etc as needed.
+        """
+        pass
+
+    def __len__(self) -> int:
+        xs, _ = self.all_instances()
+        return xs.shape[0]
+
+    def __getitem__(self, i) -> tuple[np.ndarray, np.ndarray | int | float | None]:
+        xs, ys = self.all_instances()
+        if ys is not None:
+            return xs[i], ys[i]
+        return xs[i], None
+
+    @abstractmethod
+    def all_instances(self) -> tuple[np.ndarray, np.ndarray | None]:
+        """
+        Return all instances as a feature matrix and target vector.
+        """
+        pass
+
+    @abstractmethod
+    def train_inds(self) -> list[int] | np.ndarray | range:
+        pass
+
+    @abstractmethod
+    def val_inds(self) -> list[int] | np.ndarray | range:
+        pass
+
+    @abstractmethod
+    def test_inds(self) -> list[int] | np.ndarray | range:
+        pass
+
+    def train_instances(self) -> tuple[np.ndarray, np.ndarray]:
+        X, y = self.all_instances()
+        return X[self.train_inds()], y[self.train_inds()]
+
+    def val_instances(self) -> tuple[np.ndarray, np.ndarray]:
+        X, y = self.all_instances()
+        return X[self.val_inds()], y[self.val_inds()]
+
+    def test_instances(self) -> tuple[np.ndarray, np.ndarray]:
+        X, y = self.all_instances()
+        return X[self.test_inds()], y[self.test_inds()]
+
+    def auto_populate_metadata(self):
+        X, y = self.all_instances()
+        self.metadata["size"] = X.shape[0]
+        self.metadata["n_features"] = X.shape[1]
+        if y is None:
+            self.metadata["target_type"] = "none"
+        else:
+            self.metadata["y_mean"] = np.mean(y)
+            self.metadata["y_var"] = np.var(y)
+            if "target_type" not in self.metadata:
+                self.metadata["target_type"] = "unknown"
+        self.metadata["n_train"] = len(self.train_inds())
+        self.metadata["n_val"] = len(self.val_inds())
+        self.metadata["n_test"] = len(self.test_inds())
+
+        lin_coeffs = []
+        for i in range(X.shape[1]):
+            col = np.nan_to_num(X[:, i])
+            if np.all(np.isclose(col, col[0])):
+                lin_coeffs.append(None)
+                continue
+            try:
+                res = np.linalg.lstsq(np.stack((col, np.ones_like(col)), axis=1), y, rcond=None)
+                lin_coeffs.append(res[0].tolist())
+            except np.linalg.LinAlgError:
+                lin_coeffs.append(None)
+                continue
+        self.metadata["column_lin_coeffs"] = lin_coeffs
+
+        self.metadata["column_means"] = X.mean(axis=0).tolist()
+        self.metadata["column_vars"] = X.var(axis=0).tolist()
+
+
+
+================================================
+FILE: tabdpt_datasets/openml.py
+================================================
+import gzip
+import json
+import os
+import warnings
+import zipfile
+from pathlib import Path
+
+import gdown
+import numpy as np
+import openml
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+from .dataset import Dataset
+
+
+class OpenMLDataset(Dataset):
+    """
+    Generic class for loading any OpenML dataset
+    """
+
+    # OpenML typically only uses train/test splits, so get a 15% val from the train set
+    _VALIDATION_FRACTION = 0.15
+
+    # Although in some cases it does not even provide train/test splits
+    _TEST_FRACTION = 0.15
+
+    assert _VALIDATION_FRACTION + _TEST_FRACTION < 1
+
+    @staticmethod
+    def all_names():
+        return None
+
+    def __init__(
+        self,
+        name,
+        dataset_id: int | None = None,
+        task_id: int | None = None,
+        fold: int = 0,
+        split_seed: int = 0,
+    ):
+        super().__init__(name)
+        if (dataset_id is None) == (task_id is None):
+            raise ValueError("Must specify exactly one of dataset_id or task_id")
+        self.did = dataset_id
+        self.tid = task_id
+        self.rng = np.random.default_rng(split_seed)
+        self.split_seed = split_seed
+        self.fold = fold
+
+    @property
+    def unique_name(self) -> str:
+        """Returns a unique name for the dataset that can be used as an identifier"""
+        if self.did:
+            return f"OpenML-did={self.did}-{self.name}-seed={self.split_seed}"
+        else:
+            return f"OpenML-tid={self.tid}-{self.name}-fold={self.fold}-seed={self.split_seed}"
+
+    @property
+    def openml_dataset(self):
+        if not hasattr(self, "_openml_dataset"):
+            raise ValueError("Data not loaded yet")
+        return self._openml_dataset
+
+    @retry(
+        stop=stop_after_attempt(3),
+        # Wait strategy: Wait exponentially, starting at 0.5s, with a max of 30s
+        wait=wait_exponential(multiplier=0.5, max=30),
+        retry=retry_if_exception_type(openml.exceptions.OpenMLServerError),
+    )
+    def prepare_data(self, download_dir):
+
+        openml.config.set_root_cache_directory(os.path.join(download_dir, "openml_cache"))
+
+        if self.tid:
+            task = openml.tasks.get_task(
+                self.tid,
+                download_splits=True,
+                download_data=True,
+                download_qualities=True,
+                download_features_meta_data=True,
+            )
+            dataset = openml.datasets.get_dataset(
+                task.dataset_id,
+                download_data=True,
+                download_qualities=True,
+                download_features_meta_data=True,
+            )
+            X, y, _, self.column_names = dataset.get_data(target=dataset.default_target_attribute)
+            n = len(X)
+
+            # Some tasks have multiple folds
+            split = task.get_train_test_split_indices(fold=self.fold)
+            perm = self.rng.permutation(len(split.train))
+
+            val_split_point = int((len(split.train) + len(split.test)) * self._VALIDATION_FRACTION)
+            self._train_inds = split.train[perm[val_split_point:]]
+            self._val_inds = split.train[perm[:val_split_point]]
+            self._test_inds = split.test
+
+            self.metadata["openml_task_id"] = self.tid
+            self.metadata["openml_dataset_id"] = dataset.dataset_id
+
+        else:
+            dataset = openml.datasets.get_dataset(
+                self.did,
+                download_data=True,
+                download_qualities=True,
+                download_features_meta_data=True,
+            )
+            X, y, _, self.column_names = dataset.get_data(target=dataset.default_target_attribute)
+            n = len(X)
+
+            perm = self.rng.permutation(n)
+
+            train_end_ind = int(n * (1 - self._VALIDATION_FRACTION - self._TEST_FRACTION))
+            test_start_ind = int(n * (1 - self._TEST_FRACTION))
+            self._train_inds = perm[:train_end_ind]
+            self._val_inds = perm[train_end_ind:test_start_ind]
+            self._test_inds = perm[test_start_ind:]
+
+            self.metadata["openml_dataset_id"] = self.did
+
+        if dataset.default_target_attribute and "," in dataset.default_target_attribute:
+            y = None
+            warnings.warn(
+                f"Dataset {self.metadata['openml_dataset_id']} has multiple targets, which is "
+                "not supported. Omitting targets."
+            )
+
+        self._openml_dataset = dataset
+
+        categorical_inds = []
+        for i, col in enumerate(X.columns):
+            if X[col].dtype == "object" or pd.api.types.is_categorical_dtype(X[col]):
+                enc = OrdinalEncoder()
+                X[[col]] = enc.fit_transform(X[[col]])
+                categorical_inds.append(i)
+        self.metadata["categorical_feature_inds"] = categorical_inds
+        self.X = X.to_numpy().astype(np.float32)
+
+        if y is None:
+            self.y = None
+            self.metadata["target_type"] = "none"
+            return
+        target_feature = [f for f in dataset.features.values() if f.name == dataset.default_target_attribute][0]
+        if target_feature.data_type == "nominal" or y.dtype == "object" or pd.api.types.is_categorical_dtype(y):
+            enc = LabelEncoder()
+            self.y = enc.fit_transform(y)
+            self.metadata["target_type"] = "classification"
+        else:
+            self.y = y.to_numpy().astype(np.float32)
+            self.metadata["target_type"] = "regression"
+
+    def all_instances(self):
+        return self.X, self.y
+
+    def train_inds(self):
+        return self._train_inds
+
+    def val_inds(self):
+        return self._val_inds
+
+    def test_inds(self):
+        return self._test_inds
+
+
+class TabZillaDataset(Dataset):
+    @staticmethod
+    def all_names():
+        return TABZILLA_NAME_LIST
+
+    def __init__(self, name: str | None = None, task_id: int | None = None, fold: int = 0):
+        super().__init__(name)
+
+        # check at least one of name or task_id is provided
+        if name is None and task_id is None:
+            raise ValueError("Must specify at least one of name or task_id")
+
+        name_match = None
+        task_id_match = None
+        for i, n in enumerate(self.all_names()):
+            if name == n or (name is not None and n.split("__")[1] == name):
+                name_match = i
+            if task_id is not None and int(n.split("__")[2]) == task_id:
+                task_id_match = i
+
+        if name_match is not None and task_id_match is not None and name_match != task_id_match:
+            raise ValueError("Both name and task_id provided, but they don't match")
+        if name_match is None and task_id_match is None:
+            raise ValueError("No matching dataset found")
+
+        idx = name_match if name_match is not None else task_id_match
+        self.tid = int(self.all_names()[idx].split("__")[2])
+        self.name = self.all_names()[idx].split("__")[1]
+        self.fold = fold
+
+    def prepare_data(self, download_dir):
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+
+        subdir = Path(download_dir)
+        if not (subdir / "tabzilla" / "DONE").exists():
+            zip_path = os.path.join(download_dir, "tabzilla.zip")
+            gdown.download(id="1Zzhekd0auCGdDjWKsthaxMiOAlAzPuoR", output=zip_path)
+            with zipfile.ZipFile(zip_path, "r") as z:
+                z.extractall(subdir)
+            os.remove(zip_path)
+            # indicate that the download is done
+            with open(subdir / "tabzilla" / "DONE", "w") as f:
+                pass
+
+        task_dir = subdir / "tabzilla" / f"openml__{self.name}__{self.tid}"
+
+        with gzip.GzipFile(task_dir / "X.npy.gz", "rb") as f:
+            self.X = np.load(f, allow_pickle=True).astype(np.float32)
+        with gzip.GzipFile(task_dir / "y.npy.gz", "rb") as f:
+            self.y = np.load(f, allow_pickle=True)
+
+        # load json metadata
+        with open(subdir / "tabzilla" / f"openml__{self.name}__{self.tid}" / "metadata.json", "r") as f:
+            self.metadata["tabzilla"] = json.load(f)
+        self.metadata["target_type"] = (
+            "classification" if self.metadata["tabzilla"]["target_type"] != "regression" else "regression"
+        )
+        self.metadata["categorical_feature_inds"] = self.metadata["tabzilla"]["cat_idx"]
+        if self.metadata["target_type"] == "classification":
+            self.y = self.y.astype(np.int32)
+        else:
+            self.y = self.y.astype(np.float32)
+
+        # load the splits
+        with gzip.GzipFile(
+            os.path.join(download_dir, "tabzilla", f"openml__{self.name}__{self.tid}", "split_indeces.npy.gz"),
+            "rb",
+        ) as f:
+            self.folds = np.load(f, allow_pickle=True)
+
+    @property
+    def unique_name(self):
+        return f"TabZilla-OpenML-{self.name}-tid={self.tid}-fold={self.fold}"
+
+    def all_instances(self):
+        return self.X, self.y
+
+    def train_inds(self):
+        return self.folds[self.fold]["train"]
+
+    def val_inds(self):
+        return self.folds[self.fold]["val"]
+
+    def test_inds(self):
+        return self.folds[self.fold]["test"]
+
+
+TABZILLA_NAME_LIST = [
+    "openml__acute-inflammations__10089",
+    "openml__ada_agnostic__3896",
+    "openml__adult__7592",
+    "openml__adult-census__3953",
+    "openml__airlines__189354",
+    "openml__albert__189356",
+    "openml__aloi__12732",
+    "openml__Amazon_employee_access__34539",
+    "openml__analcatdata_authorship__3549",
+    "openml__analcatdata_boxing1__3540",
+    "openml__analcatdata_chlamydia__3739",
+    "openml__analcatdata_dmft__3560",
+    "openml__anneal__2867",
+    "openml__APSFailure__168868",
+    "openml__arrhythmia__5",
+    "openml__artificial-characters__14964",
+    "openml__audiology__7",
+    "openml__Australian__146818",
+    "openml__autos__9",
+    "openml__balance-scale__11",
+    "openml__bank-marketing__14965",
+    "openml__banknote-authentication__10093",
+    "openml__Bank-Note-Authentication-UCI__361002",
+    "openml__Bioresponse__9910",
+    "openml__blood-transfusion-service-center__10101",
+    "openml__BNG(credit-a)__146047",
+    "openml__bodyfat__5514",
+    "openml__breast-cancer__145799",
+    "openml__breast-w__15",
+    "openml__california__361089",
+    "openml__car__146821",
+    "openml__cardiotocography__9979",
+    "openml__car-evaluation__146192",
+    "openml__Census-Income__168340",
+    "openml__chess__3952",
+    "openml__christine__168908",
+    "openml__chscase_foot__5012",
+    "openml__churn__167141",
+    "openml__CIFAR_10__167124",
+    "openml__cjs__14967",
+    "openml__cleveland__2285",
+    "openml__Click_prediction_small__190408",
+    "openml__climate-model-simulation-crashes__146819",
+    "openml__cmc__23",
+    "openml__cnae-9__9981",
+    "openml__colic__25",
+    "openml__colic__27",
+    "openml__colleges__359942",
+    "openml__collins__3567",
+    "openml__connect-4__146195",
+    "openml__covertype__7593",
+    "openml__cpu_small__4883",
+    "openml__credit-approval__29",
+    "openml__credit-g__31",
+    "openml__cylinder-bands__14954",
+    "openml__dataset_sales__190418",
+    "openml__dermatology__35",
+    "openml__Devnagari-Script__167121",
+    "openml__diabetes__37",
+    "openml__dilbert__168909",
+    "openml__dionis__189355",
+    "openml__dna__167140",
+    "openml__dresses-sales__125920",
+    "openml__ecoli__145977",
+    "openml__eeg-eye-state__14951",
+    "openml__EgyptianSkulls__5040",
+    "openml__electricity__219",
+    "openml__elevators__3711",
+    "openml__eucalyptus__2079",
+    "openml__eye_movements__3897",
+    "openml__fabert__168910",
+    "openml__Fashion-MNIST__146825",
+    "openml__fertility__9984",
+    "openml__first-order-theorem-proving__9985",
+    "openml__fl2000__3566",
+    "openml__fri_c0_100_5__3620",
+    "openml__fri_c3_100_5__3779",
+    "openml__gas-drift__9986",
+    "openml__gas-drift-different-concentrations__9987",
+    "openml__GesturePhaseSegmentationProcessed__14969",
+    "openml__gina_agnostic__3891",
+    "openml__glass__40",
+    "openml__guillermo__168337",
+    "openml__haberman__42",
+    "openml__har__14970",
+    "openml__hayes-roth__146063",
+    "openml__heart-c__48",
+    "openml__heart-h__50",
+    "openml__helena__168329",
+    "openml__hepatitis__54",
+    "openml__higgs__146606",
+    "openml__hill-valley__145847",
+    "openml__house_16H__3686",
+    "openml__ilpd__9971",
+    "openml__Internet-Advertisements__167125",
+    "openml__ionosphere__145984",
+    "openml__iris__59",
+    "openml__irish__3543",
+    "openml__isolet__3481",
+    "openml__jannis__168330",
+    "openml__JapaneseVowels__3510",
+    "openml__jasmine__168911",
+    "openml__jm1__3904",
+    "openml__jungle_chess_2pcs_raw_endgame_complete__167119",
+    "openml__kc1__3917",
+    "openml__kc2__3913",
+    "openml__kin8nm__2280",
+    "openml__kropt__2076",
+    "openml__kr-vs-kp__3",
+    "openml__labor__4",
+    "openml__ldpa__9974",
+    "openml__LED-display-domain-7digit__125921",
+    "openml__letter__6",
+    "openml__libras__360948",
+    "openml__liver-disorders__52948",
+    "openml__lung-cancer__146024",
+    "openml__lymph__10",
+    "openml__madelon__9976",
+    "openml__magic__146206",
+    "openml__MagicTelescope__3954",
+    "openml__meta__4729",
+    "openml__mfeat-factors__12",
+    "openml__mfeat-fourier__14",
+    "openml__mfeat-karhunen__16",
+    "openml__mfeat-morphological__18",
+    "openml__mfeat-pixel__146824",
+    "openml__mfeat-zernike__22",
+    "openml__MiceProtein__146800",
+    "openml__MiniBooNE__168335",
+    "openml__mnist_784__3573",
+    "openml__monks-problems-2__146065",
+    "openml__mushroom__24",
+    "openml__musk__3950",
+    "openml__mv__4774",
+    "openml__nomao__9977",
+    "openml__numerai28.6__167120",
+    "openml__nursery__9892",
+    "openml__one-hundred-plants-texture__9956",
+    "openml__optdigits__28",
+    "openml__ozone-level-8hr__9978",
+    "openml__page-blocks__30",
+    "openml__pbc__4850",
+    "openml__pc1__3918",
+    "openml__pc3__3903",
+    "openml__pc4__3902",
+    "openml__pendigits__32",
+    "openml__philippine__190410",
+    "openml__PhishingWebsites__14952",
+    "openml__phoneme__9952",
+    "openml__poker-hand__9890",
+    "openml__pollen__3735",
+    "openml__postoperative-patient-data__146210",
+    "openml__primary-tumor__146032",
+    "openml__profb__3561",
+    "openml__qsar-biodeg__9957",
+    "openml__rabe_266__3647",
+    "openml__riccardo__168338",
+    "openml__robert__168332",
+    "openml__Satellite__167211",
+    "openml__satimage__2074",
+    "openml__scene__3485",
+    "openml__segment__146822",
+    "openml__semeion__9964",
+    "openml__shuttle__146212",
+    "openml__sick__3021",
+    "openml__skin-segmentation__9965",
+    "openml__socmob__3797",
+    "openml__solar-flare__2068",
+    "openml__sonar__39",
+    "openml__soybean__41",
+    "openml__spambase__43",
+    "openml__SpeedDating__146607",
+    "openml__splice__45",
+    "openml__steel-plates-fault__146817",
+    "openml__sulfur__360966",
+    "openml__sylva_agnostic__3889",
+    "openml__sylvine__168912",
+    "openml__synthetic_control__3512",
+    "openml__tae__47",
+    "openml__texture__125922",
+    "openml__tic-tac-toe__49",
+    "openml__transplant__3748",
+    "openml__vehicle__53",
+    "openml__veteran__4828",
+    "openml__visualizing_environmental__3602",
+    "openml__visualizing_livestock__3731",
+    "openml__volkert__168331",
+    "openml__vowel__3022",
+    "openml__walking-activity__9945",
+    "openml__wall-robot-navigation__9960",
+    "openml__wdbc__9946",
+    "openml__wilt__146820",
+    "openml__Wine__190420",
+    "openml__Wisconsin-breast-cancer-cytology-features__361003",
+    "openml__yeast__145793",
+]
+
+
+
+================================================
+FILE: tabdpt_datasets/data_splits/cls_datasets.csv
+================================================
+did,tid,num_instances,num_features,num_classes,num_missing_values,tabzilla_name,source,test_small,test_large,test
+41138,168868.0,76000.0,171.0,2.0,1078695.0,openml__APSFailure__168868,"['tabzilla', 'amlb']",False,False,False
+4135,34539.0,32769.0,10.0,2.0,0.0,openml__Amazon_employee_access__34539,"['tabzilla', 'amlb']",False,False,False
+40981,146818.0,690.0,15.0,2.0,0.0,openml__Australian__146818,"['tabzilla', 'amlb']",False,False,False
+4134,9910.0,3751.0,1777.0,2.0,0.0,openml__Bioresponse__9910,"['tabzilla', 'cc18', 'amlb', 'amlb']",False,False,True
+40927,167124.0,60000.0,3073.0,10.0,0.0,openml__CIFAR_10__167124,"['tabzilla', 'cc18']",False,False,True
+4535,168340.0,299285.0,42.0,,0.0,openml__Census-Income__168340,['tabzilla'],False,False,False
+41434,190408.0,39948.0,12.0,2.0,0.0,openml__Click_prediction_small__190408,['tabzilla'],False,False,False
+40923,167121.0,92000.0,1025.0,46.0,0.0,openml__Devnagari-Script__167121,"['tabzilla', 'cc18']",False,False,True
+40996,146825.0,70000.0,785.0,10.0,0.0,openml__Fashion-MNIST__146825,"['tabzilla', 'cc18', 'amlb']",False,False,True
+4538,14969.0,9873.0,33.0,5.0,0.0,openml__GesturePhaseSegmentationProcessed__14969,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+40978,167125.0,3279.0,1559.0,2.0,0.0,openml__Internet-Advertisements__167125,"['tabzilla', 'cc18', 'amlb', 'amlb']",False,False,True
+375,3510.0,9961.0,15.0,9.0,0.0,openml__JapaneseVowels__3510,['tabzilla'],False,False,False
+40496,125921.0,500.0,8.0,10.0,0.0,openml__LED-display-domain-7digit__125921,['tabzilla'],False,False,False
+1120,3954.0,19020.0,12.0,2.0,0.0,openml__MagicTelescope__3954,['tabzilla'],False,False,False
+40966,146800.0,1080.0,82.0,8.0,1396.0,openml__MiceProtein__146800,"['tabzilla', 'cc18']",True,True,True
+41150,168335.0,130064.0,51.0,2.0,0.0,openml__MiniBooNE__168335,"['tabzilla', 'amlb']",False,False,False
+4534,14952.0,11055.0,31.0,2.0,0.0,openml__PhishingWebsites__14952,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+40900,167211.0,5100.0,37.0,2.0,0.0,openml__Satellite__167211,"['tabzilla', 'amlb', 'amlb']",False,False,False
+40536,146607.0,8378.0,121.0,2.0,18372.0,openml__SpeedDating__146607,['tabzilla'],False,False,False
+1455,10089.0,120.0,7.0,2.0,0.0,openml__acute-inflammations__10089,['tabzilla'],False,False,False
+1043,3896.0,4562.0,49.0,2.0,0.0,openml__ada_agnostic__3896,['tabzilla'],False,False,False
+1119,3953.0,32561.0,16.0,2.0,4262.0,openml__adult-census__3953,['tabzilla'],False,False,False
+1590,7592.0,48842.0,15.0,2.0,6465.0,openml__adult__7592,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1169,189354.0,539383.0,8.0,2.0,0.0,openml__airlines__189354,"['tabzilla', 'amlb']",False,False,False
+41147,189356.0,425240.0,79.0,2.0,2734000.0,openml__albert__189356,"['tabzilla', 'amlb']",False,False,False
+458,3549.0,841.0,71.0,4.0,0.0,openml__analcatdata_authorship__3549,"['tabzilla', 'cc18']",True,True,True
+448,3540.0,120.0,4.0,2.0,0.0,openml__analcatdata_boxing1__3540,['tabzilla'],False,False,False
+875,3739.0,100.0,4.0,2.0,0.0,openml__analcatdata_chlamydia__3739,['tabzilla'],False,False,False
+469,3560.0,797.0,5.0,6.0,0.0,openml__analcatdata_dmft__3560,"['tabzilla', 'cc18']",True,True,True
+1,2867.0,898.0,39.0,5.0,0.0,openml__anneal__2867,['tabzilla'],False,False,False
+5,5.0,452.0,280.0,13.0,408.0,openml__arrhythmia__5,['tabzilla'],False,False,False
+1459,14964.0,10218.0,8.0,10.0,0.0,openml__artificial-characters__14964,['tabzilla'],False,False,False
+7,7.0,226.0,70.0,24.0,317.0,openml__audiology__7,['tabzilla'],False,False,False
+9,9.0,205.0,26.0,6.0,59.0,openml__autos__9,['tabzilla'],False,False,False
+11,11.0,625.0,5.0,3.0,0.0,openml__balance-scale__11,"['tabzilla', 'cc18']",True,True,True
+1461,14965.0,45211.0,17.0,2.0,0.0,openml__bank-marketing__14965,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1558,9899.0,4521.0,17.0,2.0,0.0,openml__bank-marketing__9899,['tabzilla'],False,False,False
+1462,10093.0,1372.0,5.0,2.0,0.0,openml__banknote-authentication__10093,"['tabzilla', 'cc18']",True,True,True
+1464,10101.0,748.0,5.0,2.0,0.0,openml__blood-transfusion-service-center__145836,"['tabzilla', 'tabzilla', 'cc18', 'amlb']",True,True,True
+13,145799.0,286.0,10.0,2.0,9.0,openml__breast-cancer__145799,['tabzilla'],False,False,False
+15,15.0,699.0,10.0,2.0,16.0,openml__breast-w__15,"['tabzilla', 'cc18']",True,True,True
+40664,146192.0,1728.0,22.0,4.0,0.0,openml__car-evaluation__146192,['tabzilla'],False,False,False
+40975,146821.0,1728.0,7.0,4.0,0.0,openml__car__146821,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1466,9979.0,2126.0,36.0,10.0,0.0,openml__cardiotocography__9979,['tabzilla'],False,False,False
+1118,3952.0,28056.0,7.0,18.0,0.0,openml__chess__3952,['tabzilla'],False,False,False
+41142,168908.0,5418.0,1637.0,2.0,0.0,openml__christine__168908,"['tabzilla', 'amlb']",False,False,False
+40701,167141.0,5000.0,21.0,2.0,0.0,openml__churn__167141,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+23380,14967.0,2796.0,35.0,6.0,68100.0,openml__cjs__14967,['tabzilla'],False,False,False
+40994,146819.0,540.0,21.0,2.0,0.0,openml__climate-model-simulation-crashes__146819,"['tabzilla', 'cc18']",True,True,True
+23,23.0,1473.0,10.0,3.0,0.0,openml__cmc__23,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+1468,9981.0,1080.0,857.0,9.0,0.0,openml__cnae-9__9981,"['tabzilla', 'cc18', 'amlb']",False,False,True
+25,25.0,368.0,27.0,2.0,1927.0,openml__colic__25,['tabzilla'],False,False,False
+27,27.0,368.0,23.0,2.0,1927.0,openml__colic__27,['tabzilla'],False,False,False
+478,3567.0,500.0,22.0,15.0,0.0,openml__collins__3567,['tabzilla'],False,False,False
+40668,146195.0,67557.0,43.0,3.0,0.0,openml__connect-4__146195,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1596,7593.0,581012.0,55.0,7.0,0.0,openml__covertype__7593,"['tabzilla', 'amlb']",False,False,False
+29,29.0,690.0,16.0,2.0,67.0,openml__credit-approval__29,"['tabzilla', 'cc18']",True,True,True
+31,31.0,1000.0,21.0,2.0,0.0,openml__credit-g__31,"['tabzilla', 'cc18', 'amlb']",True,True,True
+6332,14954.0,540.0,40.0,2.0,999.0,openml__cylinder-bands__14954,"['tabzilla', 'cc18']",True,True,True
+35,35.0,366.0,35.0,6.0,8.0,openml__dermatology__35,['tabzilla'],False,False,False
+37,37.0,768.0,9.0,2.0,0.0,openml__diabetes__37,"['tabzilla', 'cc18']",True,True,True
+41163,168909.0,10000.0,2001.0,5.0,0.0,openml__dilbert__168909,"['tabzilla', 'amlb']",False,False,False
+40670,167140.0,3186.0,181.0,3.0,0.0,openml__dna__167140,"['tabzilla', 'cc18', 'amlb', 'amlb']",False,True,True
+23381,125920.0,500.0,13.0,2.0,835.0,openml__dresses-sales__125920,"['tabzilla', 'cc18']",True,True,True
+39,145977.0,336.0,8.0,8.0,0.0,openml__ecoli__145977,['tabzilla'],False,False,False
+1471,14951.0,14980.0,15.0,2.0,0.0,openml__eeg-eye-state__14951,['tabzilla'],False,False,False
+151,219.0,45312.0,9.0,2.0,0.0,openml__electricity__219,"['tabzilla', 'cc18']",True,True,True
+846,3711.0,16599.0,19.0,2.0,0.0,openml__elevators__3711,['tabzilla'],False,False,False
+188,2079.0,736.0,20.0,5.0,448.0,openml__eucalyptus__2079,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+1044,3897.0,10936.0,28.0,3.0,0.0,openml__eye_movements__3897,['tabzilla'],False,False,False
+41164,168910.0,8237.0,801.0,7.0,0.0,openml__fabert__168910,"['tabzilla', 'amlb']",False,False,False
+1473,9984.0,100.0,10.0,2.0,0.0,openml__fertility__9984,['tabzilla'],False,False,False
+1475,9985.0,6118.0,52.0,6.0,0.0,openml__first-order-theorem-proving__9985,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+477,3566.0,67.0,16.0,5.0,0.0,openml__fl2000__3566,['tabzilla'],False,False,False
+754,3620.0,100.0,6.0,2.0,0.0,openml__fri_c0_100_5__3620,['tabzilla'],False,False,False
+916,3779.0,100.0,6.0,2.0,0.0,openml__fri_c3_100_5__3779,['tabzilla'],False,False,False
+1477,9987.0,13910.0,130.0,6.0,0.0,openml__gas-drift-different-concentrations__9987,['tabzilla'],False,False,False
+1476,9986.0,13910.0,129.0,6.0,0.0,openml__gas-drift__9986,['tabzilla'],False,False,False
+1038,3891.0,3468.0,971.0,2.0,0.0,openml__gina_agnostic__3891,['tabzilla'],False,False,False
+41,40.0,214.0,10.0,6.0,0.0,openml__glass__40,['tabzilla'],False,False,False
+41159,168337.0,20000.0,4297.0,2.0,0.0,openml__guillermo__168337,"['tabzilla', 'amlb']",False,False,False
+43,42.0,306.0,4.0,2.0,0.0,openml__haberman__42,['tabzilla'],False,False,False
+1478,14970.0,10299.0,562.0,6.0,0.0,openml__har__14970,"['tabzilla', 'cc18']",False,False,True
+329,146063.0,160.0,5.0,3.0,0.0,openml__hayes-roth__146063,['tabzilla'],False,False,False
+49,48.0,303.0,14.0,2.0,7.0,openml__heart-c__48,['tabzilla'],False,False,False
+51,50.0,294.0,14.0,2.0,782.0,openml__heart-h__50,['tabzilla'],False,False,False
+55,54.0,155.0,20.0,2.0,167.0,openml__hepatitis__54,['tabzilla'],False,False,False
+23512,146606.0,98050.0,29.0,2.0,9.0,openml__higgs__146606,['tabzilla'],False,False,False
+1479,145847.0,1212.0,101.0,2.0,0.0,openml__hill-valley__145847,['tabzilla'],False,False,False
+821,3686.0,22784.0,17.0,2.0,0.0,openml__house_16H__3686,['tabzilla'],False,False,False
+1480,9971.0,583.0,11.0,2.0,0.0,openml__ilpd__9971,"['tabzilla', 'cc18']",True,True,True
+59,145984.0,351.0,35.0,2.0,0.0,openml__ionosphere__145984,['tabzilla'],False,False,False
+61,59.0,150.0,5.0,3.0,0.0,openml__iris__59,['tabzilla'],False,False,False
+451,3543.0,500.0,6.0,2.0,32.0,openml__irish__3543,['tabzilla'],False,False,False
+300,3481.0,7797.0,618.0,26.0,0.0,openml__isolet__3481,"['tabzilla', 'cc18']",False,False,True
+41168,168330.0,83733.0,55.0,4.0,0.0,openml__jannis__168330,"['tabzilla', 'amlb']",False,False,False
+41143,168911.0,2984.0,145.0,2.0,0.0,openml__jasmine__168911,"['tabzilla', 'amlb']",False,False,False
+1053,3904.0,10885.0,22.0,2.0,25.0,openml__jm1__3904,"['tabzilla', 'cc18']",True,True,True
+41027,167119.0,44819.0,7.0,3.0,0.0,openml__jungle_chess_2pcs_raw_endgame_complete__167119,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1067,3917.0,2109.0,22.0,2.0,0.0,openml__kc1__3917,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1063,3913.0,522.0,22.0,2.0,0.0,openml__kc2__3913,"['tabzilla', 'cc18']",True,True,True
+3,3.0,3196.0,37.0,2.0,0.0,openml__kr-vs-kp__3,"['tabzilla', 'cc18', 'amlb']",True,True,True
+184,2076.0,28056.0,7.0,18.0,0.0,openml__kropt__2076,['tabzilla'],False,False,False
+4,4.0,57.0,17.0,2.0,326.0,openml__labor__4,['tabzilla'],False,False,False
+1483,9974.0,164860.0,8.0,11.0,0.0,openml__ldpa__9974,['tabzilla'],False,False,False
+6,6.0,20000.0,17.0,26.0,0.0,openml__letter__6,"['tabzilla', 'cc18']",False,False,True
+42855,360948.0,360.0,105.0,,0.0,openml__libras__360948,['tabzilla'],False,False,False
+163,146024.0,32.0,57.0,3.0,5.0,openml__lung-cancer__146024,['tabzilla'],False,False,False
+10,10.0,148.0,19.0,4.0,0.0,openml__lymph__10,['tabzilla'],False,False,False
+1485,9976.0,2600.0,501.0,2.0,0.0,openml__madelon__9976,"['tabzilla', 'cc18']",False,False,True
+40679,146206.0,19020.0,11.0,2.0,0.0,openml__magic__146206,['tabzilla'],False,False,False
+12,12.0,2000.0,217.0,10.0,0.0,openml__mfeat-factors__12,"['tabzilla', 'cc18', 'amlb']",False,True,True
+14,14.0,2000.0,77.0,10.0,0.0,openml__mfeat-fourier__14,"['tabzilla', 'cc18']",True,True,True
+16,16.0,2000.0,65.0,10.0,0.0,openml__mfeat-karhunen__16,"['tabzilla', 'cc18']",True,True,True
+18,18.0,2000.0,7.0,10.0,0.0,openml__mfeat-morphological__18,"['tabzilla', 'cc18']",True,True,True
+40979,146824.0,2000.0,241.0,10.0,0.0,openml__mfeat-pixel__146824,"['tabzilla', 'cc18']",False,True,True
+22,22.0,2000.0,48.0,10.0,0.0,openml__mfeat-zernike__22,"['tabzilla', 'cc18']",True,True,True
+554,3573.0,70000.0,785.0,10.0,0.0,openml__mnist_784__3573,"['tabzilla', 'cc18']",False,False,True
+334,146065.0,601.0,7.0,2.0,0.0,openml__monks-problems-2__146065,['tabzilla'],False,False,False
+24,24.0,8124.0,23.0,2.0,2480.0,openml__mushroom__24,['tabzilla'],False,False,False
+1116,3950.0,6598.0,168.0,2.0,0.0,openml__musk__3950,['tabzilla'],False,False,False
+1486,9977.0,34465.0,119.0,2.0,0.0,openml__nomao__9977,"['tabzilla', 'cc18', 'amlb']",False,True,True
+23517,167120.0,96320.0,22.0,2.0,0.0,openml__numerai28.6__167120,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1568,9892.0,12958.0,9.0,4.0,0.0,openml__nursery__9892,['tabzilla'],False,False,False
+1493,9956.0,1599.0,65.0,100.0,0.0,openml__one-hundred-plants-texture__9956,['tabzilla'],False,False,False
+28,28.0,5620.0,65.0,10.0,0.0,openml__optdigits__28,"['tabzilla', 'cc18']",True,True,True
+1487,9978.0,2534.0,73.0,2.0,0.0,openml__ozone-level-8hr__9978,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+30,30.0,5473.0,11.0,5.0,0.0,openml__page-blocks__30,['tabzilla'],False,False,False
+1068,3918.0,1109.0,22.0,2.0,0.0,openml__pc1__3918,"['tabzilla', 'cc18']",True,True,True
+1050,3903.0,1563.0,38.0,2.0,0.0,openml__pc3__3903,"['tabzilla', 'cc18']",True,True,True
+1049,3902.0,1458.0,38.0,2.0,0.0,openml__pc4__3902,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+32,32.0,10992.0,17.0,10.0,0.0,openml__pendigits__32,"['tabzilla', 'cc18']",True,True,True
+41145,190410.0,5832.0,309.0,2.0,0.0,openml__philippine__190410,"['tabzilla', 'amlb', 'amlb']",False,False,False
+1489,9952.0,5404.0,6.0,2.0,0.0,openml__phoneme__9952,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1567,9890.0,1025009.0,11.0,10.0,0.0,openml__poker-hand__9890,['tabzilla'],False,False,False
+871,3735.0,3848.0,6.0,2.0,0.0,openml__pollen__3735,['tabzilla'],False,False,False
+40683,146210.0,88.0,9.0,2.0,0.0,openml__postoperative-patient-data__146210,['tabzilla'],False,False,False
+171,146032.0,339.0,18.0,21.0,225.0,openml__primary-tumor__146032,['tabzilla'],False,False,False
+470,3561.0,672.0,10.0,2.0,1200.0,openml__profb__3561,['tabzilla'],False,False,False
+1494,9957.0,1055.0,42.0,2.0,0.0,openml__qsar-biodeg__9957,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+782,3647.0,120.0,3.0,2.0,0.0,openml__rabe_266__3647,['tabzilla'],False,False,False
+41161,168338.0,20000.0,4297.0,2.0,0.0,openml__riccardo__168338,"['tabzilla', 'amlb']",False,False,False
+41165,168332.0,10000.0,7201.0,10.0,0.0,openml__robert__168332,"['tabzilla', 'amlb']",False,False,False
+182,2074.0,6430.0,37.0,6.0,0.0,openml__satimage__2074,"['tabzilla', 'cc18']",True,True,True
+312,3485.0,2407.0,300.0,2.0,0.0,openml__scene__3485,['tabzilla'],False,False,False
+40984,146822.0,2310.0,20.0,7.0,0.0,openml__segment__146822,"['tabzilla', 'cc18', 'amlb']",True,True,True
+1501,9964.0,1593.0,257.0,10.0,0.0,openml__semeion__9964,"['tabzilla', 'cc18']",False,True,True
+40685,146212.0,58000.0,10.0,7.0,0.0,openml__shuttle__146212,"['tabzilla', 'amlb']",False,False,False
+38,3021.0,3772.0,30.0,2.0,6064.0,openml__sick__3021,"['tabzilla', 'cc18']",True,True,True
+1502,9965.0,245057.0,4.0,2.0,0.0,openml__skin-segmentation__9965,['tabzilla'],False,False,False
+934,3797.0,1156.0,6.0,2.0,0.0,openml__socmob__3797,['tabzilla'],False,False,False
+174,2068.0,1066.0,13.0,3.0,0.0,openml__solar-flare__2068,['tabzilla'],False,False,False
+40,39.0,208.0,61.0,2.0,0.0,openml__sonar__39,['tabzilla'],False,False,False
+42,41.0,683.0,36.0,19.0,2337.0,openml__soybean__41,['tabzilla'],False,False,False
+44,43.0,4601.0,58.0,2.0,0.0,openml__spambase__43,"['tabzilla', 'cc18']",True,True,True
+46,45.0,3190.0,61.0,3.0,0.0,openml__splice__45,"['tabzilla', 'cc18']",True,True,True
+40982,146817.0,1941.0,28.0,7.0,0.0,openml__steel-plates-fault__146817,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+1036,3889.0,14395.0,217.0,2.0,0.0,openml__sylva_agnostic__3889,['tabzilla'],False,False,False
+41146,168912.0,5124.0,21.0,2.0,0.0,openml__sylvine__168912,"['tabzilla', 'amlb']",False,False,False
+377,3512.0,600.0,61.0,6.0,0.0,openml__synthetic_control__3512,['tabzilla'],False,False,False
+48,47.0,151.0,6.0,3.0,0.0,openml__tae__47,['tabzilla'],False,False,False
+40499,125922.0,5500.0,41.0,11.0,0.0,openml__texture__125922,"['tabzilla', 'cc18']",False,True,True
+50,49.0,958.0,10.0,2.0,0.0,openml__tic-tac-toe__49,"['tabzilla', 'cc18']",True,True,True
+885,3748.0,131.0,4.0,2.0,0.0,openml__transplant__3748,['tabzilla'],False,False,False
+54,53.0,846.0,19.0,4.0,0.0,openml__vehicle__53,"['tabzilla', 'cc18', 'amlb']",True,True,True
+736,3602.0,111.0,4.0,2.0,0.0,openml__visualizing_environmental__3602,['tabzilla'],False,False,False
+867,3731.0,130.0,3.0,2.0,0.0,openml__visualizing_livestock__3731,['tabzilla'],False,False,False
+41166,168331.0,58310.0,181.0,10.0,0.0,openml__volkert__168331,"['tabzilla', 'amlb']",False,False,False
+307,3022.0,990.0,13.0,11.0,0.0,openml__vowel__3022,"['tabzilla', 'cc18']",False,True,True
+1509,9945.0,149332.0,5.0,22.0,0.0,openml__walking-activity__9945,['tabzilla'],False,False,False
+1497,9960.0,5456.0,25.0,4.0,0.0,openml__wall-robot-navigation__9960,"['tabzilla', 'cc18']",True,True,True
+1510,9946.0,569.0,31.0,2.0,0.0,openml__wdbc__9946,"['tabzilla', 'cc18']",True,True,True
+40983,146820.0,4839.0,6.0,2.0,0.0,openml__wilt__146820,"['tabzilla', 'cc18', 'amlb', 'amlb']",True,True,True
+40733,145793.0,1269.0,9.0,4.0,0.0,openml__yeast__145793,['tabzilla'],False,False,False
+44089,361055.0,16714.0,11.0,2.0,0.0,,['grins'],False,False,False
+44120,361060.0,38474.0,8.0,2.0,0.0,,['grins'],False,False,False
+44121,361061.0,566602.0,11.0,2.0,0.0,,['grins'],False,False,False
+44122,361062.0,10082.0,27.0,2.0,0.0,,['grins'],False,False,False
+44123,361063.0,13488.0,17.0,2.0,0.0,,['grins'],False,False,False
+44125,361065.0,13376.0,11.0,2.0,0.0,,['grins'],False,False,False
+44126,361066.0,10578.0,8.0,2.0,0.0,,['grins'],False,False,False
+44128,361068.0,72998.0,51.0,2.0,0.0,,['grins'],False,False,False
+44129,361069.0,940160.0,25.0,2.0,0.0,,['grins'],False,False,False
+44130,361070.0,7608.0,21.0,2.0,0.0,,['grins'],False,False,False
+45022,361273.0,71090.0,8.0,2.0,0.0,,['grins'],False,False,False
+45021,361274.0,57580.0,55.0,2.0,0.0,,['grins'],False,False,False
+45020,361275.0,13272.0,21.0,2.0,0.0,,['grins'],False,False,False
+45019,361276.0,3434.0,420.0,2.0,0.0,,['grins'],False,False,False
+45028,361277.0,20634.0,9.0,2.0,0.0,,['grins'],False,False,False
+45026,361278.0,10000.0,23.0,2.0,0.0,,['grins'],False,False,False
+44156,361110.0,38474.0,9.0,2.0,0.0,,['grins'],False,False,False
+44157,361111.0,7608.0,24.0,2.0,0.0,,['grins'],False,False,False
+44159,361113.0,423680.0,55.0,2.0,0.0,,['grins'],False,False,False
+45035,361282.0,58252.0,32.0,2.0,0.0,,['grins'],False,False,False
+45036,361283.0,13272.0,22.0,2.0,0.0,,['grins'],False,False,False
+45038,361285.0,111762.0,33.0,2.0,0.0,,['grins'],False,False,False
+45039,361286.0,4966.0,12.0,2.0,0.0,,['grins'],False,False,False
+181,2073.0,1484.0,9.0,10.0,0.0,,"['amlb', 'amlb']",False,False,False
+1111,3945.0,50000.0,231.0,2.0,8024152.0,,['amlb'],False,False,False
+1457,10090.0,1500.0,10001.0,50.0,0.0,,"['amlb', 'amlb']",False,False,False
+41167,189355.0,416188.0,61.0,355.0,0.0,,['amlb'],False,False,False
+41158,189922.0,3153.0,971.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+41144,190392.0,3140.0,260.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+41156,190411.0,4147.0,49.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+41157,190412.0,100.0,10001.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+4541,211986.0,101766.0,50.0,3.0,0.0,,"['amlb', 'amlb']",False,False,False
+1515,359953.0,571.0,1301.0,20.0,0.0,,"['amlb', 'amlb']",False,False,False
+40498,359974.0,4898.0,12.0,7.0,0.0,,"['amlb', 'amlb']",False,False,False
+41169,359984.0,65196.0,28.0,100.0,0.0,,['amlb'],False,False,False
+41162,359991.0,72983.0,33.0,2.0,149271.0,,"['amlb', 'amlb']",False,False,False
+42733,359992.0,39948.0,12.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+42734,359993.0,50789.0,20.0,3.0,154107.0,,"['amlb', 'amlb']",False,False,False
+42732,359994.0,2215023.0,9.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+42746,360112.0,4898431.0,42.0,23.0,0.0,,"['amlb', 'amlb']",False,False,False
+42742,360113.0,595212.0,58.0,2.0,846458.0,,"['amlb', 'amlb']",False,False,False
+42769,360114.0,1000000.0,29.0,2.0,0.0,,"['amlb', 'amlb']",False,False,False
+43072,360975.0,50000.0,14892.0,2.0,19658569.0,,"['amlb', 'amlb']",False,False,False
+20,,2000.0,241.0,10.0,0.0,,['additional'],False,False,
+53,,270.0,14.0,2.0,0.0,,['additional'],False,False,
+56,,435.0,17.0,2.0,392.0,,['additional'],False,False,
+137,,39366.0,10.0,2.0,0.0,,['additional'],False,False,
+273,,120919.0,1002.0,2.0,0.0,,['additional'],False,False,
+285,,194.0,29.0,8.0,0.0,,['additional'],False,False,
+311,,937.0,50.0,2.0,0.0,,['additional'],False,False,
+333,,556.0,7.0,2.0,0.0,,['additional'],False,False,
+335,,554.0,7.0,2.0,0.0,,['additional'],False,False,
+336,,267.0,23.0,2.0,0.0,,['additional'],False,False,
+337,,349.0,45.0,2.0,0.0,,['additional'],False,False,
+338,,155.0,9.0,4.0,0.0,,['additional'],False,False,
+382,,7019.0,61.0,8.0,48089.0,,['additional'],False,False,
+384,,336.0,7903.0,6.0,0.0,,['additional'],False,False,
+387,,414.0,6430.0,9.0,0.0,,['additional'],False,False,
+389,,2463.0,2001.0,17.0,0.0,,['additional'],False,False,
+396,,3204.0,13196.0,6.0,0.0,,['additional'],False,False,
+446,,200.0,8.0,2.0,0.0,,['additional'],False,False,
+449,,163.0,27.0,5.0,9.0,,['additional'],False,False,
+450,,264.0,5.0,2.0,0.0,,['additional'],False,False,
+452,,285.0,8.0,7.0,27.0,,['additional'],False,False,
+460,,379.0,8.0,4.0,1418.0,,['additional'],False,False,
+463,,180.0,32.0,2.0,0.0,,['additional'],False,False,
+464,,250.0,3.0,2.0,0.0,,['additional'],False,False,
+466,,340.0,15.0,2.0,834.0,,['additional'],False,False,
+474,,364.0,33.0,6.0,101.0,,['additional'],False,False,
+475,,400.0,6.0,4.0,0.0,,['additional'],False,False,
+481,,209.0,9.0,2.0,15.0,,['additional'],False,False,
+679,,1024.0,3.0,4.0,0.0,,['additional'],False,False,
+694,,310.0,9.0,9.0,0.0,,['additional'],False,False,
+717,,508.0,11.0,2.0,0.0,,['additional'],False,False,
+721,,200.0,11.0,2.0,0.0,,['additional'],False,False,
+724,,468.0,4.0,2.0,0.0,,['additional'],False,False,
+733,,209.0,7.0,2.0,0.0,,['additional'],False,False,
+738,,195.0,11.0,2.0,2.0,,['additional'],False,False,
+745,,159.0,16.0,2.0,0.0,,['additional'],False,False,
+746,,250.0,26.0,2.0,0.0,,['additional'],False,False,
+747,,167.0,5.0,2.0,0.0,,['additional'],False,False,
+748,,163.0,6.0,2.0,0.0,,['additional'],False,False,
+750,,500.0,8.0,2.0,0.0,,['additional'],False,False,
+753,,194.0,33.0,2.0,0.0,,['additional'],False,False,
+757,,528.0,22.0,2.0,504.0,,['additional'],False,False,
+763,,250.0,11.0,2.0,0.0,,['additional'],False,False,
+764,,450.0,4.0,2.0,0.0,,['additional'],False,False,
+765,,475.0,4.0,2.0,0.0,,['additional'],False,False,
+767,,475.0,4.0,2.0,0.0,,['additional'],False,False,
+774,,662.0,4.0,2.0,0.0,,['additional'],False,False,
+778,,252.0,15.0,2.0,0.0,,['additional'],False,False,
+779,,500.0,26.0,2.0,0.0,,['additional'],False,False,
+786,,303.0,14.0,2.0,6.0,,['additional'],False,False,
+788,,186.0,61.0,2.0,0.0,,['additional'],False,False,
+795,,662.0,4.0,2.0,0.0,,['additional'],False,False,
+796,,209.0,8.0,2.0,0.0,,['additional'],False,False,
+798,,303.0,14.0,2.0,6.0,,['additional'],False,False,
+801,,185.0,3.0,2.0,0.0,,['additional'],False,False,
+802,,1945.0,19.0,2.0,1133.0,,['additional'],False,False,
+805,,500.0,51.0,2.0,0.0,,['additional'],False,False,
+806,,1000.0,51.0,2.0,0.0,,['additional'],False,False,
+810,,418.0,19.0,2.0,1239.0,,['additional'],False,False,
+811,,264.0,3.0,2.0,0.0,,['additional'],False,False,
+814,,468.0,3.0,2.0,0.0,,['additional'],False,False,
+816,,8192.0,9.0,2.0,0.0,,['additional'],False,False,
+820,,235.0,13.0,2.0,0.0,,['additional'],False,False,
+825,,506.0,21.0,2.0,0.0,,['additional'],False,False,
+827,,662.0,4.0,2.0,0.0,,['additional'],False,False,
+831,,398.0,8.0,2.0,6.0,,['additional'],False,False,
+837,,1000.0,51.0,2.0,0.0,,['additional'],False,False,
+838,,500.0,26.0,2.0,0.0,,['additional'],False,False,
+839,,782.0,9.0,2.0,466.0,,['additional'],False,False,
+840,,205.0,26.0,2.0,57.0,,['additional'],False,False,
+841,,950.0,10.0,2.0,0.0,,['additional'],False,False,
+843,,22784.0,9.0,2.0,0.0,,['additional'],False,False,
+844,,286.0,10.0,2.0,9.0,,['additional'],False,False,
+852,,159.0,10.0,2.0,6.0,,['additional'],False,False,
+854,,158.0,8.0,2.0,87.0,,['additional'],False,False,
+860,,380.0,3.0,2.0,0.0,,['additional'],False,False,
+880,,284.0,11.0,2.0,0.0,,['additional'],False,False,
+886,,500.0,8.0,2.0,0.0,,['additional'],False,False,
+895,,222.0,3.0,2.0,0.0,,['additional'],False,False,
+896,,500.0,26.0,2.0,0.0,,['additional'],False,False,
+900,,400.0,7.0,2.0,0.0,,['additional'],False,False,
+903,,1000.0,26.0,2.0,0.0,,['additional'],False,False,
+906,,400.0,8.0,2.0,0.0,,['additional'],False,False,
+907,,400.0,8.0,2.0,0.0,,['additional'],False,False,
+908,,400.0,8.0,2.0,0.0,,['additional'],False,False,
+909,,400.0,8.0,2.0,0.0,,['additional'],False,False,
+911,,250.0,6.0,2.0,0.0,,['additional'],False,False,
+912,,1000.0,6.0,2.0,0.0,,['additional'],False,False,
+913,,1000.0,11.0,2.0,0.0,,['additional'],False,False,
+915,,315.0,14.0,2.0,0.0,,['additional'],False,False,
+925,,323.0,5.0,2.0,0.0,,['additional'],False,False,
+930,,1302.0,34.0,2.0,7830.0,,['additional'],False,False,
+931,,662.0,4.0,2.0,0.0,,['additional'],False,False,
+939,,228.0,9.0,2.0,20.0,,['additional'],False,False,
+940,,527.0,37.0,2.0,542.0,,['additional'],False,False,
+941,,189.0,10.0,2.0,0.0,,['additional'],False,False,
+943,,500.0,11.0,2.0,0.0,,['additional'],False,False,
+949,,559.0,5.0,2.0,0.0,,['additional'],False,False,
+957,,412.0,9.0,2.0,96.0,,['additional'],False,False,
+966,,1340.0,17.0,2.0,20.0,,['additional'],False,False,
+968,,365.0,4.0,2.0,30.0,,['additional'],False,False,
+981,,10108.0,69.0,2.0,2699.0,,['additional'],False,False,
+984,,366.0,5.0,2.0,1.0,,['additional'],False,False,
+987,,500.0,23.0,2.0,0.0,,['additional'],False,False,
+996,,214.0,10.0,2.0,0.0,,['additional'],False,False,
+1000,,3772.0,30.0,2.0,6064.0,,['additional'],False,False,
+1002,,7485.0,56.0,2.0,32427.0,,['additional'],False,False,
+1016,,990.0,14.0,2.0,0.0,,['additional'],False,False,
+1018,,8844.0,57.0,2.0,34843.0,,['additional'],False,False,
+1037,,4562.0,15.0,2.0,88.0,,['additional'],False,False,
+1042,,3468.0,785.0,2.0,0.0,,['additional'],False,False,
+1048,,369.0,9.0,2.0,0.0,,['additional'],False,False,
+1054,,161.0,40.0,2.0,0.0,,['additional'],False,False,
+1071,,403.0,38.0,2.0,0.0,,['additional'],False,False,
+1073,,274.0,9.0,2.0,0.0,,['additional'],False,False,
+1100,,478.0,11.0,3.0,0.0,,['additional'],False,False,
+1112,,50000.0,231.0,2.0,8024152.0,,['additional'],False,False,
+1115,,151.0,7.0,3.0,0.0,,['additional'],False,False,
+1126,,412.0,10936.0,2.0,0.0,,['additional'],False,False,
+1129,,384.0,10936.0,2.0,0.0,,['additional'],False,False,
+1130,,1545.0,10936.0,2.0,0.0,,['additional'],False,False,
+1131,,193.0,10936.0,2.0,0.0,,['additional'],False,False,
+1142,,1545.0,10936.0,2.0,0.0,,['additional'],False,False,
+1156,,275.0,10936.0,2.0,0.0,,['additional'],False,False,
+1162,,322.0,10936.0,2.0,0.0,,['additional'],False,False,
+1412,,226.0,24.0,2.0,0.0,,['additional'],False,False,
+1442,,253.0,38.0,2.0,0.0,,['additional'],False,False,
+1443,,661.0,38.0,2.0,0.0,,['additional'],False,False,
+1444,,1043.0,38.0,2.0,0.0,,['additional'],False,False,
+1446,,296.0,38.0,2.0,0.0,,['additional'],False,False,
+1447,,327.0,38.0,2.0,0.0,,['additional'],False,False,
+1448,,194.0,40.0,2.0,0.0,,['additional'],False,False,
+1451,,705.0,38.0,2.0,0.0,,['additional'],False,False,
+1452,,745.0,37.0,2.0,0.0,,['additional'],False,False,
+1453,,1077.0,38.0,2.0,0.0,,['additional'],False,False,
+1481,,28056.0,7.0,18.0,0.0,,['additional'],False,False,
+1488,,195.0,23.0,2.0,0.0,,['additional'],False,False,
+1490,,182.0,13.0,2.0,0.0,,['additional'],False,False,
+1495,,250.0,7.0,2.0,0.0,,['additional'],False,False,
+1498,,462.0,10.0,2.0,0.0,,['additional'],False,False,
+1499,,210.0,8.0,3.0,0.0,,['additional'],False,False,
+1503,,263256.0,15.0,10.0,0.0,,['additional'],False,False,
+1506,,470.0,17.0,2.0,0.0,,['additional'],False,False,
+1507,,7400.0,21.0,2.0,0.0,,['additional'],False,False,
+1508,,403.0,6.0,5.0,0.0,,['additional'],False,False,
+1511,,440.0,9.0,2.0,0.0,,['additional'],False,False,
+1512,,200.0,14.0,5.0,0.0,,['additional'],False,False,
+1520,,164.0,91.0,5.0,0.0,,['additional'],False,False,
+1523,,310.0,7.0,3.0,0.0,,['additional'],False,False,
+1531,,10176.0,4.0,5.0,0.0,,['additional'],False,False,
+1532,,10668.0,4.0,5.0,0.0,,['additional'],False,False,
+1538,,8753.0,4.0,5.0,0.0,,['additional'],False,False,
+1541,,8654.0,4.0,5.0,0.0,,['additional'],False,False,
+1546,,1112.0,4.0,5.0,0.0,,['additional'],False,False,
+1547,,1000.0,21.0,2.0,0.0,,['additional'],False,False,
+4153,,180.0,68.0,6.0,0.0,,['additional'],False,False,
+23499,,277.0,10.0,2.0,0.0,,['additional'],False,False,
+40646,,1600.0,21.0,2.0,0.0,,['additional'],False,False,
+40663,,399.0,33.0,5.0,0.0,,['additional'],False,False,
+40669,,160.0,7.0,2.0,0.0,,['additional'],False,False,
+40680,,1324.0,11.0,2.0,0.0,,['additional'],False,False,
+40682,,215.0,6.0,3.0,0.0,,['additional'],False,False,
+40690,,512.0,10.0,2.0,0.0,,['additional'],False,False,
+40693,,973.0,10.0,2.0,0.0,,['additional'],False,False,
+40705,,959.0,45.0,2.0,0.0,,['additional'],False,False,
+40706,,1124.0,11.0,2.0,0.0,,['additional'],False,False,
+40710,,303.0,14.0,2.0,0.0,,['additional'],False,False,
+40711,,303.0,8.0,5.0,0.0,,['additional'],False,False,
+41430,,281.0,98.0,2.0,2.0,,['additional'],False,False,
+41538,,246.0,7.0,2.0,0.0,,['additional'],False,False,
+41919,,527.0,23.0,4.0,0.0,,['additional'],False,False,
+41976,,156.0,81.0,2.0,0.0,,['additional'],False,False,
+42172,,202.0,20.0,2.0,17.0,,['additional'],False,False,
+42261,,150.0,5.0,3.0,0.0,,['additional'],False,False,
+42544,,265.0,11.0,8.0,0.0,,['additional'],False,False,
+42585,,344.0,7.0,3.0,18.0,,['additional'],False,False,
+42638,,891.0,8.0,2.0,689.0,,['additional'],False,False,
+
+
+
+================================================
+FILE: tabdpt_datasets/data_splits/reg_datasets.csv
+================================================
+did,tid,num_instances,num_features,num_missing_values,source,test
+44956,361234,4177.0,9.0,0.0,['ctr23'],True
+44957,361235,1503.0,6.0,0.0,['ctr23'],True
+44958,361236,2043.0,8.0,0.0,['ctr23'],True
+44959,361237,1030.0,9.0,0.0,['ctr23'],True
+44963,361241,45730.0,10.0,0.0,['ctr23'],True
+44964,361242,21263.0,82.0,0.0,['ctr23'],True
+44965,361243,1059.0,117.0,0.0,['ctr23'],True
+44966,361244,1066.0,11.0,0.0,['ctr23'],True
+44969,361247,11934.0,15.0,0.0,['ctr23'],True
+44971,361249,4898.0,12.0,0.0,['ctr23'],True
+44972,361250,1599.0,12.0,0.0,['ctr23'],True
+44973,361251,10000.0,13.0,0.0,['ctr23'],True
+44974,361252,68784.0,19.0,0.0,['ctr23'],True
+44975,361253,72000.0,49.0,0.0,['ctr23'],True
+44976,361254,48933.0,22.0,0.0,['ctr23'],True
+44977,361255,20640.0,9.0,0.0,['ctr23'],True
+44978,361256,8192.0,22.0,0.0,['ctr23'],True
+44979,361257,53940.0,10.0,0.0,['ctr23'],True
+44980,361258,8192.0,9.0,0.0,['ctr23'],True
+44981,361259,8192.0,33.0,0.0,['ctr23'],True
+44983,361260,13932.0,16.0,0.0,['ctr23'],True
+44984,361261,28155.0,7.0,0.0,['ctr23'],True
+44987,361264,1156.0,6.0,0.0,['ctr23'],True
+44989,361266,21613.0,22.0,0.0,['ctr23'],True
+44990,361267,10692.0,10.0,0.0,['ctr23'],True
+44992,361268,24624.0,44.0,69696.0,['ctr23'],True
+44993,361269,22272.0,12.0,0.0,['ctr23'],True
+45012,361272,19178.0,29.0,0.0,['ctr23'],True
+41021,361616,1232.0,15.0,3600.0,"['ctr23', 'amlb_reg']",True
+44960,361617,768.0,9.0,0.0,['ctr23'],True
+44962,361618,517.0,13.0,0.0,['ctr23'],True
+44967,361619,649.0,31.0,0.0,['ctr23'],True
+44970,361621,908.0,7.0,0.0,['ctr23'],True
+44994,361622,804.0,18.0,0.0,['ctr23'],True
+45402,361623,3107.0,7.0,0.0,['ctr23'],True
+44055,361093,4052.0,8.0,0.0,['grins_reg'],False
+44056,361094,8641.0,5.0,0.0,['grins_reg'],False
+44059,361096,53940.0,10.0,0.0,['grins_reg'],False
+44061,361097,4209.0,360.0,0.0,['grins_reg'],False
+44062,361098,10692.0,12.0,0.0,['grins_reg'],False
+44063,361099,17379.0,12.0,0.0,['grins_reg'],False
+44065,361101,581835.0,17.0,0.0,['grins_reg'],False
+44066,361102,21613.0,18.0,0.0,['grins_reg'],False
+44068,361103,394299.0,7.0,0.0,['grins_reg'],False
+44069,361104,241600.0,10.0,0.0,['grins_reg'],False
+45041,361287,8885.0,256.0,0.0,['grins_reg'],False
+45042,361288,4177.0,9.0,0.0,['grins_reg'],False
+45043,361289,52031.0,5.0,0.0,['grins_reg'],False
+45045,361291,5465575.0,12.0,0.0,['grins_reg'],False
+45046,361292,188318.0,125.0,0.0,['grins_reg'],False
+45047,361293,1000000.0,6.0,0.0,['grins_reg'],False
+45048,361294,163065.0,4.0,0.0,['grins_reg'],False
+44132,361072,8192.0,22.0,0.0,['grins_reg'],False
+44133,361073,15000.0,27.0,0.0,['grins_reg'],False
+44134,361074,16599.0,17.0,0.0,['grins_reg'],False
+44136,361076,6497.0,12.0,0.0,['grins_reg'],False
+44137,361077,13750.0,34.0,0.0,['grins_reg'],False
+44138,361078,20640.0,9.0,0.0,['grins_reg'],False
+44139,361079,22784.0,17.0,0.0,['grins_reg'],False
+44140,361080,53940.0,7.0,0.0,['grins_reg'],False
+44141,361081,10692.0,9.0,0.0,['grins_reg'],False
+44142,361082,17379.0,7.0,0.0,['grins_reg'],False
+44143,361083,581835.0,10.0,0.0,['grins_reg'],False
+44144,361084,21613.0,16.0,0.0,['grins_reg'],False
+44145,361085,10081.0,7.0,0.0,['grins_reg'],False
+44146,361086,163065.0,4.0,0.0,['grins_reg'],False
+44147,361087,13932.0,14.0,0.0,['grins_reg'],False
+44148,361088,21263.0,80.0,0.0,['grins_reg'],False
+45032,361279,8885.0,43.0,0.0,['grins_reg'],False
+45033,361280,4177.0,8.0,0.0,['grins_reg'],False
+45034,361281,5465575.0,9.0,0.0,['grins_reg'],False
+42225,233211,53940.0,10.0,0.0,['amlb_reg'],False
+42571,233212,188318.0,131.0,0.0,['amlb_reg'],False
+4549,233213,583250.0,78.0,0.0,['amlb_reg'],False
+42572,233214,4459.0,4992.0,0.0,['amlb_reg'],False
+42570,233215,4209.0,377.0,0.0,['amlb_reg'],False
+42705,317614,400000.0,101.0,0.0,['amlb_reg'],False
+42728,359929,10000000.0,10.0,0.0,['amlb_reg'],False
+550,359930,2178.0,4.0,0.0,['amlb_reg'],False
+546,359931,576.0,12.0,0.0,['amlb_reg'],False
+541,359932,1156.0,6.0,0.0,['amlb_reg'],False
+507,359933,3107.0,7.0,0.0,['amlb_reg'],False
+505,359934,240.0,125.0,0.0,['amlb_reg'],False
+287,359935,6497.0,12.0,0.0,['amlb_reg'],False
+216,359936,16599.0,19.0,0.0,['amlb_reg'],False
+41540,359937,166821.0,10.0,0.0,['amlb_reg'],False
+42688,359938,10692.0,13.0,0.0,['amlb_reg'],False
+422,359939,8885.0,267.0,0.0,['amlb_reg'],False
+416,359940,8885.0,252.0,0.0,['amlb_reg'],False
+42724,359941,39644.0,60.0,0.0,['amlb_reg'],False
+42727,359942,7063.0,45.0,104249.0,['amlb_reg'],False
+42729,359943,581835.0,19.0,0.0,['amlb_reg'],False
+42726,359944,4177.0,9.0,0.0,['amlb_reg'],False
+42730,359945,1994.0,127.0,39202.0,['amlb_reg'],False
+201,359946,15000.0,49.0,0.0,['amlb_reg'],False
+41980,359948,4440.0,117.0,27150.0,['amlb_reg'],False
+42731,359949,21613.0,22.0,0.0,['amlb_reg'],False
+531,359950,506.0,14.0,0.0,['amlb_reg'],False
+42563,359951,1460.0,80.0,6965.0,['amlb_reg'],False
+574,359952,22784.0,17.0,0.0,['amlb_reg'],False
+3050,360932,5742.0,1026.0,0.0,['amlb_reg'],False
+3277,360933,5766.0,1026.0,0.0,['amlb_reg'],False
+43071,360945,1090.0,145.0,0.0,['amlb_reg'],False
+
+
+
+================================================
+FILE: tests/cls_example.py
+================================================
+from sklearn.datasets import load_digits
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import train_test_split
+
+from tabdpt import TabDPTClassifier
+
+X, y = load_digits(return_X_y=True)
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+model = TabDPTClassifier()
+model.fit(X_train, y_train)
+y_pred = model.predict(
+    X_test,
+    n_ensembles=8,
+    temperature=0.8,
+    context_size=2048,
+    permute_classes=True,
+    seed=42,
+)
+print(accuracy_score(y_test, y_pred))
+
+
+
+================================================
+FILE: tests/reg_example.py
+================================================
+from sklearn.datasets import fetch_california_housing
+from sklearn.metrics import r2_score
+from sklearn.model_selection import train_test_split
+
+from tabdpt import TabDPTRegressor
+
+X, y = fetch_california_housing(return_X_y=True)
+X, y = X[:4096], y[:4096]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42)
+
+model = TabDPTRegressor()
+model.fit(X_train, y_train)
+y_pred = model.predict(X_test, n_ensembles=2, context_size=2048, seed=42)
+print(r2_score(y_test, y_pred))
+
+
+
+================================================
+FILE: tests/test_tabdpt_estimator.py
+================================================
+from unittest.mock import MagicMock, patch
+
+from tabdpt import estimator
+
+
+@patch("tabdpt.estimator.hf_hub_download", return_value="my/hf/path")
+@patch("tabdpt.estimator.safe_open")
+@patch("tabdpt.estimator.torch.cuda.is_available", return_value=False)
+@patch("tabdpt.estimator.json.loads", return_value={"env": {}})
+@patch("tabdpt.estimator.OmegaConf.create")
+@patch("tabdpt.estimator.TabDPTModel.load", return_value=MagicMock(num_features=10, n_out=2))
+def test_model_weight_path_set_or_download_from_hf(
+    mock_model_load,
+    mock_omega_create,
+    mock_json_loads,
+    mock_cuda_available,
+    mock_safe_open,
+    mock_hf_hub_download,
+):
+    mock_file = MagicMock()
+    mock_file.metadata.return_value = {"cfg": "{}"}
+    mock_file.keys.return_value = ["tensor1"]
+    mock_file.get_tensor.return_value = MagicMock()
+    mock_safe_open.return_value.__enter__.return_value = mock_file
+
+    # load from local path
+    local_path = "/test/path/model.safetensors"
+    dpt_estimator = estimator.TabDPTEstimator(mode="cls", model_weight_path=local_path)
+    mock_hf_hub_download.assert_not_called()
+    assert dpt_estimator.path == local_path
+
+    # load from hf path
+    dpt_estimator = estimator.TabDPTEstimator(mode="cls")
+    mock_hf_hub_download.assert_called_once_with(
+        repo_id="Layer6/TabDPT",
+        filename=estimator._MODEL_NAME,
+    )
+    assert dpt_estimator.path == "my/hf/path"
+
+

@@ -1,21 +1,44 @@
-# Core deep-learning stack
+# =============================================================================
+# CreditPFN — runtime dependencies
+# =============================================================================
+# Used by every script in src/data/ and (later) src/train, src/eval, src/model.
+# Pinned to conservative major-version ranges. We version-pin minor where the
+# upstream API has changed in a breaking way recently.
+#
+# Refresh with:  pip install -r requirements.txt
+# =============================================================================
+
+# --- Core deep-learning stack ------------------------------------------------
 torch>=2.2,<3.0
 
-# TabPFN (v2 API; classifier + regressor checkpoints)
-tabpfn>=2.0,<3.0
+# --- TabPFN (sklearn API + finetuning wrappers + internal preprocessing) ------
+# Note on versioning: PyPI releases of `tabpfn` cap at 2.2.x at the
+# moment (versions ≥6 on PyPI are an unrelated package that grabbed the
+# name). The TabPFN-v2.6 *checkpoints* (`tabpfn-v2.6-classifier-...`)
+# are loaded via these 2.x package releases. The API surface we rely on
+# (FinetunedTabPFN*, get_preprocessed_dataset_chunks,
+# DatasetCollectionWithPreprocessing, fit_from_preprocessed)
+# stabilised in 2.2.x.
+tabpfn>=2.2,<3.0
 
-# Scientific / tabular stack
+# --- Scientific / tabular stack ----------------------------------------------
 numpy>=1.26,<3.0
 pandas>=2.1,<3.0
-scikit-learn>=1.4,<2.0
+scipy>=1.11,<2.0                # spatial.distance, stats — used by dedup
+scikit-learn>=1.4,<2.0          # FeatureAgglomeration, StandardScaler,
+                                # LabelEncoder, OrdinalEncoder
 
-# Experiment tracking
-wandb>=0.16,<1.0
+# --- Deduplication helpers ---------------------------------------------------
+rapidfuzz>=3.6,<4.0             # fuzzy column-name matching in dedup
 
-# Configuration management
+# --- Configuration management ------------------------------------------------
 hydra-core>=1.3,<2.0
 omegaconf>=2.3,<3.0
-
-# Utilities
-tqdm>=4.66,<5.0
 pyyaml>=6.0,<7.0
+
+# --- Logging / progress / experiment tracking --------------------------------
+tqdm>=4.66,<5.0
+wandb>=0.16,<1.0
+
+# --- Testing -----------------------------------------------------------------
+pytest>=8.0,<9.0

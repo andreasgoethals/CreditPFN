@@ -1,0 +1,895 @@
+Directory structure:
+└── automl-nanotabpfn/
+    ├── README.md
+    ├── CITATION.bib
+    ├── experiment.ipynb
+    ├── model.py
+    └── train.py
+
+================================================
+FILE: README.md
+================================================
+# nanoTabPFN
+
+Train your own small TabPFN in less than 500 LOC and a few minutes.
+
+The purpose of this repository is to be a good starting point for students and researchers that are interested in learning about how TabPFN works under the hood.
+
+Clone the repository, afterwards install dependencies via:
+```
+pip install numpy torch schedulefree h5py scikit-learn openml seaborn
+```
+
+### Our Code
+
+- `model.py` contains the implementation of the architecture and a sklearn-like interface in less than 200 lines of code. 
+- `train.py` implements a simple training loop and prior dump data loader in under 200 lines
+- `experiment.ipynb` will recreate the experiment from the [paper](https://arxiv.org/pdf/2511.03634) (requires `pip install tabpfn==2.2.1`)
+
+
+### Pretrain your own nanoTabPFN
+
+To pretrain your own nanoTabPFN, you need to first download a prior data dump from [here](https://figshare.com/s/63fc1ada93e42e388e63), then run `train.py`.
+
+```bash
+cd nanoTabPFN
+
+# download data dump
+curl -L -H "User-Agent: Mozilla/5.0" -H "Referer: https://figshare.com/" -o 300k_150x5_2.h5 "https://figshare.com/ndownloader/files/58932628?private_link=63fc1ada93e42e388e63"
+
+python train.py
+```
+
+#### Step by Step explanation:
+
+First we import our code from model.py and train.py
+```py
+from model import NanoTabPFNModel
+from model import NanoTabPFNClassifier
+from train import PriorDumpDataLoader
+from train import train, get_default_device
+```
+Then we instantiate our model
+```py
+model = NanoTabPFNModel(
+    embedding_size=96,
+    num_attention_heads=4,
+    mlp_hidden_size=192,
+    num_layers=3,
+    num_outputs=2
+)
+```
+and our dataloader
+```py
+prior = PriorDumpDataLoader(
+    "300k_150x5_2.h5",
+    num_steps=2500,
+    batch_size=32,
+)
+```
+Now we can train our model:
+```py
+device = get_default_device()
+model, _ = train(
+    model,
+    prior,
+    lr = 4e-3,
+    device = device
+)
+```
+and finally we can instantiate our classifier:
+```py
+clf = NanoTabPFNClassifier(model, device)
+```
+and use its `.fit`, `.predict` and `.predict_proba`:
+```py
+from sklearn.datasets import load_breast_cancer
+from sklearn.metrics import roc_auc_score, accuracy_score
+from sklearn.model_selection import train_test_split
+
+X, y = load_breast_cancer(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5)
+
+clf.fit(X_train, y_train)
+prob = clf.predict_proba(X_test)
+pred = clf.predict(X_test)
+print('ROC AUC', roc_auc_score(y_test, prob))
+print('Accuracy', accuracy_score(y_test, pred))
+```
+
+### TFM-Playground
+
+The nanoTabPFN repository is supposed to stay ultra small and simple, but we created another repository,
+the [TFM-Playground](https://github.com/automl/TFM-Playground/) which we are building out to have a lot more features,
+like regression, multiple prior interfaces, multiple architectures, ensembling of different pre-processings and more,
+so check it out if you are interested!
+
+### Paper
+
+Check out our [paper](https://arxiv.org/pdf/2511.03634).
+Please use the following BibTex to cite:
+
+```
+@article{pfefferle2025nanotabpfn,
+  title={nanoTabPFN: A Lightweight and Educational Reimplementation of TabPFN},
+  author={Pfefferle, Alexander and Hog, Johannes and Purucker, Lennart and Hutter, Frank},
+  journal={arXiv preprint arXiv:2511.03634},
+  year={2025}
+}
+```
+
+
+
+================================================
+FILE: CITATION.bib
+================================================
+@article{pfefferle2025nanotabpfn,
+  title={nanoTabPFN: A Lightweight and Educational Reimplementation of TabPFN},
+  author={Pfefferle, Alexander and Hog, Johannes and Purucker, Lennart and Hutter, Frank},
+  journal={arXiv preprint arXiv:2511.03634},
+  year={2025}
+}
+
+
+
+================================================
+FILE: experiment.ipynb
+================================================
+# Jupyter notebook converted to Python script.
+
+"""
+# Introduction
+This notebook reproduces the results presented in *nanoTabPFN: A Lightweight and Educational Reimplementation of TabPFN*.
+
+"""
+
+"""
+# Helper Functions
+"""
+
+from matplotlib import pyplot as plt
+import functools
+import pandas as pd
+from sklearn.metrics import roc_auc_score
+import numpy as np
+from sklearn.model_selection import StratifiedKFold
+import seaborn as sns
+import numpy as np
+import openml
+import pandas as pd
+from openml.tasks import TaskType
+from sklearn.compose import ColumnTransformer
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import LabelEncoder, OrdinalEncoder, FunctionTransformer
+
+"""
+=================== DATA LOADING AND PREPROCESSING ===================
+"""
+
+def get_feature_preprocessor(X: np.ndarray | pd.DataFrame) -> ColumnTransformer:
+    """
+    fits a preprocessor that imputes NaNs, encodes categorical features and removes constant features
+    """
+    X = pd.DataFrame(X)
+    num_mask = []
+    cat_mask = []
+    for col in X:
+        unique_non_nan_entries = X[col].dropna().unique()
+        if len(unique_non_nan_entries) <= 1:
+            num_mask.append(False)
+            cat_mask.append(False)
+            continue
+        non_nan_entries = X[col].notna().sum()
+        numeric_entries = pd.to_numeric(X[col], errors='coerce').notna().sum() # in case numeric columns are stored as strings
+        num_mask.append(non_nan_entries == numeric_entries)
+        cat_mask.append(non_nan_entries != numeric_entries)
+        # num_mask.append(is_numeric_dtype(X[col]))  # Assumes pandas dtype is correct
+
+    num_mask = np.array(num_mask)
+    cat_mask = np.array(cat_mask)
+
+    num_transformer = Pipeline([
+        ("to_pandas", FunctionTransformer(lambda x: pd.DataFrame(x) if not isinstance(x, pd.DataFrame) else x)), # to apply pd.to_numeric of pandas
+        ("to_numeric", FunctionTransformer(lambda x: x.apply(pd.to_numeric, errors='coerce').to_numpy())), # in case numeric columns are stored as strings
+    ])
+    cat_transformer = Pipeline([
+        ('encoder', OrdinalEncoder(handle_unknown='use_encoded_value', unknown_value=np.nan)),
+    ])
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', num_transformer, num_mask),
+            ('cat', cat_transformer, cat_mask)
+        ]
+    )
+    return preprocessor
+
+def get_openml_datasets(
+        max_features_eval: int = 10, 
+        new_instances_eval: int = 200, 
+        target_classes_filter: int = 2,
+        **kwargs,
+        ) -> dict[str, tuple[np.ndarray, np.ndarray]]:
+    """
+    Load OpenML tabarena datasets with at most `max_features` features and subsampled (stratified) to `new_instances` instances.
+    """
+    task_ids = [
+        363612, 363613, 363614, 363615, 363616, 363618, 363619, 363620,
+        363621, 363623, 363624, 363625, 363626, 363627, 363628, 363629,
+        363630, 363631, 363632, 363671, 363672, 363673, 363674, 363675,
+        363676, 363677, 363678, 363679, 363681, 363682, 363683, 363684,
+        363685, 363686, 363689, 363691, 363693, 363694, 363696, 363697,
+        363698, 363699, 363700, 363702, 363704, 363705, 363706, 363707,
+        363708, 363711, 363712
+    ] # TabArena v0.1
+    datasets = {}
+    for task_id in task_ids:
+        task = openml.tasks.get_task(task_id, download_splits=False)
+        if task.task_type_id != TaskType.SUPERVISED_CLASSIFICATION:
+            continue  # skip task, only classification
+        dataset = task.get_dataset(download_data=False)
+
+        if dataset.qualities["NumberOfFeatures"] > max_features_eval or (dataset.qualities["NumberOfClasses"] > target_classes_filter) or dataset.qualities["PercentageOfInstancesWithMissingValues"] > 0 or dataset.qualities["MinorityClassPercentage"] < 2.5:
+            continue
+        X, y, categorical_indicator, attribute_names = dataset.get_data(
+            target=task.target_name, dataset_format="dataframe"
+        )
+        if new_instances_eval < len(y):
+            _, X_sub, _, y_sub = train_test_split(
+                X, y,
+                test_size=new_instances_eval,
+                stratify=y,
+                random_state=0,
+            )
+        else:
+            X_sub = X
+            y_sub = y
+        
+        X = X_sub.to_numpy(copy=True)
+        y = y_sub.to_numpy(copy=True)
+        label_encoder = LabelEncoder()
+        y = label_encoder.fit_transform(y)
+
+        preprocessor = get_feature_preprocessor(X)
+        X = preprocessor.fit_transform(X)
+        datasets[dataset.name] = (X, y)
+    return datasets
+
+"""
+=================== EVALUATION ===================
+"""
+
+_skf = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+
+def eval_model(model, datasets):
+    """Evaluates a model on multiple datasets and returns metrics"""
+    metrics = {}
+    for dataset_name, (X,y)  in datasets.items():
+        targets = []
+        probabilities = []
+        
+        for train_idx, test_idx in _skf.split(X, y):
+            X_train, X_test = X[train_idx], X[test_idx]
+            y_train, y_test  = y[train_idx], y[test_idx]
+            targets.append(y_test)
+            model.fit(X_train, y_train)
+            y_proba = model.predict_proba(X_test)
+            if y_proba.shape[1] == 2:  # binary classification with neural network
+                y_proba = y_proba[:, 1]
+            probabilities.append(y_proba)
+    
+        targets = np.concatenate(targets, axis=0)
+        probabilities = np.concatenate(probabilities, axis=0)
+
+        metrics[f"{dataset_name}/ROC AUC"] = roc_auc_score(targets, probabilities, multi_class="ovr")
+    
+    metric_names = list({key.split("/")[-1] for key in metrics.keys()})
+    for metric_name in metric_names:
+        avg_metric = np.mean([metrics[key] for key in metrics.keys() if key.endswith(metric_name)])
+        metrics[f"{metric_name}"] = float(avg_metric)
+    
+    return metrics
+
+"""
+=================== PLOTTING ===================
+"""
+
+def plot_runs(
+        ax: plt.Axes, 
+        runs: list[pd.DataFrame], 
+        metric: str, 
+        baselines: pd.DataFrame = None,
+        baselines_std: pd.DataFrame = None,
+        show_legend: bool = True,
+        show_xlabel: bool = True,
+        show_ylabel: bool = True,
+        show_xtics: bool = True
+        ):
+    """
+    Plots the run for a given metric and adds baselines
+
+    `runs` is a list of dataframes where each dataframe corresponds 
+    to a run from a model with the same config but a different seed.
+    Each dataframe needs to have a `"training_time"` column and a `metric`column.
+
+    `baselines` is a DataFrame with metric columns and rows whose index correspond to
+    a ML algorithm.
+    """
+    colors = sns.color_palette("tab10")[1:]
+    linestyles = [
+        '--',      # dashed
+        '-.',      # dash-dot
+        ':',       # dotted
+        (0, (3, 1, 1, 1)),  # dash-dot-dot
+        (0, (5, 5))         # spaced dash
+    ]
+
+    training_times = [run["training_time"].tolist() for run in runs]
+    training_times = sorted(set([item for sublist in training_times for item in sublist]))
+    shared_time_runs = []
+    for run in runs:
+        run = run.copy()
+        run = run[[metric, "training_time"]].set_index("training_time").reindex(training_times)
+        run = run.interpolate()
+        shared_time_runs.append(run)
+    all_runs = pd.concat(shared_time_runs, axis=1).dropna()
+    
+    # plot mean and std of all runs or single run if only one run
+    mean = all_runs.mean(axis=1)
+    ax.plot(mean.index, mean, label="nanoTabPFN", zorder=2, color="blue")
+    if all_runs.shape[1] > 1: # more than one run
+        std = all_runs.std(axis=1)
+        ax.fill_between(mean.index, mean - std, mean + std, alpha=0.2, zorder=2)
+
+    # plot horizontal lines for baselines
+    if baselines is not None:
+        for i ,(baseline_name, baseline_value) in enumerate(baselines[metric].items()):
+            # draw a horizontal line that ends at the same x as the runs
+            color = colors[i % len(colors)]
+            ax.plot([0, max(training_times)], [baseline_value, baseline_value], label=baseline_name, alpha=0.7, linestyle=linestyles[i], color=color, zorder=1)
+            if baselines_std is not None and baseline_name in baselines_std.index:
+                    std = baselines_std.loc[baseline_name, metric]
+                    ax.fill_between([0, max(training_times)], [baseline_value - std, baseline_value - std], [baseline_value + std, baseline_value + std], alpha=0.2, zorder=1)
+    
+    # Plot Style
+    ax.grid(True, axis="y")
+    ax.grid(False, axis="x")
+    ax.tick_params(axis="y", length=0)
+    if not show_xtics:
+        ax.tick_params(axis="x", length=0)
+    if show_xlabel:
+        ax.set_xlabel("Training time (seconds)")
+    if show_ylabel:
+        ax.set_ylabel(metric.split("/")[-1])
+    max_time = max(training_times)
+    ax.set_xlim(0, max_time)
+    ylim = ax.get_ylim()
+    ax.set_ylim(ylim[0], 1)
+    
+    # order legend entries by their y-value at the end of the plot
+    if show_legend:
+        handles, labels = ax.get_legend_handles_labels()
+        label_y_values = {}
+        for handle, label in zip(handles, labels):
+            if isinstance(handle, plt.Line2D):
+                y_data = handle.get_ydata()
+                label_y_values[label] = y_data[-1]
+        sorted_labels = sorted(label_y_values.items(), key=lambda x: x[1], reverse=True)
+        sorted_handles = [handle for label, _ in sorted_labels for handle, lbl in zip(handles, labels) if lbl == label]
+        sorted_labels = [label for label, _ in sorted_labels]
+        ax.legend(sorted_handles, sorted_labels)
+        
+    # remove border
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+def plot_run_grid(runs: list[pd.DataFrame], baselines: pd.DataFrame = None, baselines_std: pd.DataFrame = None):
+    """Plots the runs in a grid of metrics x datasets"""
+    # drop all columns without "/" for dataset/metric format
+    datasets = list(set([col.split("/")[0] for col in runs[0].columns if "/" in col]))
+    metric = 'ROC AUC'
+    figsize = (len(datasets) * 4, 4.6)
+    fig, axs = plt.subplots(1, len(datasets), figsize=figsize, sharex=True, sharey=True, layout="constrained")
+    fig.set_constrained_layout_pads(w_pad=0.0, h_pad=0.1)
+    # Plot each metric and dataset
+    for j, dataset in enumerate(datasets):
+        ax = axs[j]
+        plot_runs(ax, runs, f"{dataset}/{metric}", baselines, baselines_std, show_legend=False, show_xlabel=False, show_ylabel=(j==0))
+        ax.set_title(dataset)
+    fig.supxlabel("Training Time (seconds)")
+    
+    # y-axis and x-axis labels should have the same size as supxlabel
+    for ax in axs.flatten():
+        font_size = fig.texts[-1].get_fontsize() 
+        ax.xaxis.label.set_size(font_size)
+        ax.yaxis.label.set_size(font_size)
+    
+    # Create a single legend for the entire figure
+    legend_handels_labels = [list(zip(*ax.get_legend_handles_labels())) for ax in axs.flatten()]
+    legend_handels_labels = functools.reduce(lambda a, b: a + b, legend_handels_labels)
+    unique = dict([(label, handle) for (handle, label) in legend_handels_labels])
+    fig.legend(unique.values(), unique.keys(), loc="outside upper center", ncol=3)   
+    return fig, axs
+
+"""
+# Training and Evaluation
+"""
+
+NUM_SEEDS = 2
+# NUM_SEEDS = 20 # If you want to reproduce the paper results, use 20 seeds
+DATASETS = get_openml_datasets(max_features=10, new_instances=200, target_classes_filter=2)
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from tabpfn import TabPFNClassifier
+from tabpfn.config import ModelInterfaceConfig, PreprocessorConfig
+
+
+no_preprocessing_inference_config = ModelInterfaceConfig(
+    FINGERPRINT_FEATURE=False,
+    PREPROCESS_TRANSFORMS=[PreprocessorConfig(name='none')]
+)
+
+baseline_models = {
+    "TabPFN v2": [TabPFNClassifier(random_state=i) for i in range(NUM_SEEDS)],
+    "TabPFN v2 (no preprocessing)": [TabPFNClassifier(inference_config=no_preprocessing_inference_config, n_estimators=1, random_state=i) for i in range(NUM_SEEDS)],
+    "Random Forest": [RandomForestClassifier(random_state=i) for i in range(NUM_SEEDS)],
+    "K-Nearest Neighbors": [KNeighborsClassifier()],
+    "Decision Tree": [DecisionTreeClassifier(random_state=i) for i in range(NUM_SEEDS)],
+}
+
+baseline_models_eval = {name: [eval_model(model, datasets=DATASETS) for model in models] for name, models in baseline_models.items()}
+
+def apply_aggregation(eval_results: dict, func=np.mean):
+    aggregated_result = {}
+    for result in eval_results:
+        for metric, value in result.items():
+            if metric not in aggregated_result:
+                aggregated_result[metric] = []
+            aggregated_result[metric].append(value)
+    for metric in aggregated_result:
+        aggregated_result[metric] = func(aggregated_result[metric])
+    return aggregated_result
+
+baselines = pd.DataFrame({
+    name: apply_aggregation(models, np.mean) for name, models in baseline_models_eval.items()
+}).T
+
+baselines_std = pd.DataFrame({
+    name: apply_aggregation(models, np.std) for name, models in baseline_models_eval.items()
+}).T
+
+from model import NanoTabPFNModel
+from train import PriorDumpDataLoader, train, get_default_device, set_randomness_seed
+
+histories = []
+device = get_default_device()
+
+for seed in range(NUM_SEEDS):
+    set_randomness_seed(seed)
+    prior = PriorDumpDataLoader("300k_150x5_2.h5", num_steps=2500, batch_size=32, device=device)
+    model = NanoTabPFNModel(
+            embedding_size=96,
+            num_attention_heads=4,
+            mlp_hidden_size=192,
+            num_layers=3,
+            num_outputs=2
+        )
+    eval_model_partial = functools.partial(eval_model, datasets=DATASETS)
+    model, history = train(model, prior, lr=4e-3, steps_per_eval=25, eval_func=eval_model_partial)
+    history = [{**record, "training_time": training_time} for (training_time, record) in history]
+    history = pd.DataFrame(history)
+    histories.append(history)
+
+
+"""
+# Plotting
+"""
+
+metric = "ROC AUC"
+sns.set_style("ticks")
+sns.set_context("notebook")
+fig, ax = plt.subplots(figsize=(6,4.5), layout="constrained")
+plot_runs(ax, histories, metric, baselines)
+
+sns.set_context("notebook")
+fig, ax = plot_run_grid(histories, baselines)
+plt.show()
+fig.savefig(f"nanotabpfn_summary.png", dpi=300)
+
+
+
+
+================================================
+FILE: model.py
+================================================
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
+from torch.nn.modules.transformer import MultiheadAttention, Linear, LayerNorm
+
+class NanoTabPFNModel(nn.Module):
+    def __init__(self, embedding_size: int, num_attention_heads: int, mlp_hidden_size: int, num_layers: int, num_outputs: int):
+        """ Initializes the feature/target encoder, transformer stack and decoder """
+        super().__init__()
+        self.feature_encoder = FeatureEncoder(embedding_size)
+        self.target_encoder = TargetEncoder(embedding_size)
+        self.transformer_blocks = nn.ModuleList()
+        for _ in range(num_layers):
+            self.transformer_blocks.append(TransformerEncoderLayer(embedding_size, num_attention_heads, mlp_hidden_size))
+        self.decoder = Decoder(embedding_size, mlp_hidden_size, num_outputs)
+
+    def forward(self, src: tuple[torch.Tensor, torch.Tensor], train_test_split_index: int) -> torch.Tensor:
+        x_src, y_src = src
+        # we expect the labels to look like (batches, num_train_datapoints, 1),
+        # so we add the last dimension if it is missing
+        if len(y_src.shape) < len(x_src.shape):
+            y_src = y_src.unsqueeze(-1)
+        # from here on B=Batches, R=Rows, C=Columns, E=embedding size
+        # converts scalar values to embeddings, so (B,R,C-1) -> (B,R,C-1,E)
+        x_src = self.feature_encoder(x_src, train_test_split_index)
+        num_rows = x_src.shape[1]
+        # padds the y_train up to y by using the mean,
+        # then converts scalar values to embeddings (B,R,1,E)
+        y_src = self.target_encoder(y_src, num_rows)
+        # concatenates the feature embeddings with the target embeddings
+        # to give us the full table of embeddings (B,R,C,E))
+        src = torch.cat([x_src, y_src], 2)
+        # repeatedly applies the transformer block on (B,R,C,E)
+        for block in self.transformer_blocks:
+            src = block(src, train_test_split_index=train_test_split_index)
+        # selects the target embeddings (B,num_targets,1,E)
+        output = src[:, train_test_split_index:, -1, :]
+        # runs the embeddings through the decoder to get
+        # the logits of our predictions (B,num_targets,num_classes)
+        output = self.decoder(output)
+        return output
+
+
+class FeatureEncoder(nn.Module):
+    def __init__(self, embedding_size: int):
+        """ Creates the linear layer that we will use to embed our features. """
+        super().__init__()
+        self.linear_layer = nn.Linear(1, embedding_size)
+
+    def forward(self, x: torch.Tensor, train_test_split_index: int) -> torch.Tensor:
+        """
+        Normalizes all the features based on the mean and std of the features of the training data,
+        clips them between -100 and 100, then applies a linear layer to embed the features.
+
+        Args:
+            x: (torch.Tensor) a tensor of shape (batch_size, num_rows, num_features)
+            train_test_split_index: (int) the number of datapoints in X_train
+        Returns:
+            (torch.Tensor) a tensor of shape (batch_size, num_rows, num_features, embedding_size), representing
+                           the embeddings of the features
+        """
+        x = x.unsqueeze(-1)
+        mean = torch.mean(x[:, :train_test_split_index], dim=1, keepdims=True)
+        std = torch.std(x[:, :train_test_split_index], dim=1, keepdims=True) + 1e-20
+        x = (x-mean)/std
+        x = torch.clip(x, min=-100, max=100)
+        return self.linear_layer(x)
+
+class TargetEncoder(nn.Module):
+    def __init__(self, embedding_size: int):
+        """ Creates the linear layer that we will use to embed our targets. """
+        super().__init__()
+        self.linear_layer = nn.Linear(1, embedding_size)
+
+    def forward(self, y_train: torch.Tensor, num_rows: int) -> torch.Tensor:
+        """
+        Padds up y_train to the full length of y using the mean per dataset and then embeds it using a linear layer
+
+        Args:
+            y_train: (torch.Tensor) a tensor of shape (batch_size, num_train_datapoints, 1)
+            num_rows: (int) the full length of y
+        Returns:
+            (torch.Tensor) a tensor of shape (batch_size, num_rows, 1, embedding_size), representing
+                           the embeddings of the targets
+        """
+        # nan padding & nan handler instead?
+        mean = torch.mean(y_train, dim=1, keepdim=True)
+        padding = mean.repeat(1, num_rows-y_train.shape[1], 1)
+        y = torch.cat([y_train, padding], dim=1)
+        y = y.unsqueeze(-1)
+        return self.linear_layer(y)
+
+class TransformerEncoderLayer(nn.Module):
+    """
+    Modified version of older version of https://github.com/pytorch/pytorch/blob/v2.6.0/torch/nn/modules/transformer.py#L630
+    """
+    def __init__(self, embedding_size: int, nhead: int, mlp_hidden_size: int,
+                 layer_norm_eps: float = 1e-5, batch_first: bool = True,
+                 device=None, dtype=None):
+        super().__init__()
+        self.self_attention_between_datapoints = MultiheadAttention(embedding_size, nhead, batch_first=batch_first, device=device, dtype=dtype)
+        self.self_attention_between_features = MultiheadAttention(embedding_size, nhead, batch_first=batch_first, device=device, dtype=dtype)
+
+        self.linear1 = Linear(embedding_size, mlp_hidden_size, device=device, dtype=dtype)
+        self.linear2 = Linear(mlp_hidden_size, embedding_size, device=device, dtype=dtype)
+
+        self.norm1 = LayerNorm(embedding_size, eps=layer_norm_eps, device=device, dtype=dtype)
+        self.norm2 = LayerNorm(embedding_size, eps=layer_norm_eps, device=device, dtype=dtype)
+        self.norm3 = LayerNorm(embedding_size, eps=layer_norm_eps, device=device, dtype=dtype)
+
+    def forward(self, src: torch.Tensor, train_test_split_index: int) -> torch.Tensor:
+        """
+        Takes the embeddings of the table as input and applies self-attention between features and self-attention between datapoints
+        followed by a simple 2 layer MLP.
+
+        Args:
+            src: (torch.Tensor) a tensor of shape (batch_size, num_rows, num_features, embedding_size) that contains all the embeddings
+                                for all the cells in the table
+            train_test_split_index: (int) the length of X_train
+        Returns
+            (torch.Tensor) a tensor of shape (batch_size, num_rows, num_features, embedding_size)
+        """
+        batch_size, rows_size, col_size, embedding_size = src.shape
+        # attention between features
+        src = src.reshape(batch_size*rows_size, col_size, embedding_size)
+        src = self.self_attention_between_features(src, src, src)[0]+src
+        src = src.reshape(batch_size, rows_size, col_size, embedding_size)
+        src = self.norm1(src)
+        # attention between datapoints
+        src = src.transpose(1, 2)
+        src = src.reshape(batch_size*col_size, rows_size, embedding_size)
+        # training data attends to itself
+        src_left = self.self_attention_between_datapoints(src[:,:train_test_split_index], src[:,:train_test_split_index], src[:,:train_test_split_index])[0]
+        # test data attends to the training data
+        src_right = self.self_attention_between_datapoints(src[:,train_test_split_index:], src[:,:train_test_split_index], src[:,:train_test_split_index])[0]
+        src = torch.cat([src_left, src_right], dim=1)+src
+        src = src.reshape(batch_size, col_size, rows_size, embedding_size)
+        src = src.transpose(2, 1)
+        src = self.norm2(src)
+        # MLP after attention
+        src = self.linear2(F.gelu(self.linear1(src))) + src
+        src = self.norm3(src)
+        return src
+
+class Decoder(nn.Module):
+    def __init__(self, embedding_size: int, mlp_hidden_size: int, num_outputs: int):
+        """ Initializes the linear layers for use in the forward """
+        super().__init__()
+        self.linear1 = nn.Linear(embedding_size, mlp_hidden_size)
+        self.linear2 = nn.Linear(mlp_hidden_size, num_outputs)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Applies an MLP to the embeddings to get the logits
+
+        Args:
+            x: (torch.Tensor) a tensor of shape (batch_size, num_rows, embedding_size)
+        Returns:
+            (torch.Tensor) a tensor of shape (batch_size, num_rows, num_outputs)
+        """
+        return self.linear2(F.gelu(self.linear1(x)))
+
+class NanoTabPFNClassifier():
+    """ scikit-learn like interface """
+    def __init__(self, model: NanoTabPFNModel, device: torch.device):
+        self.model = model.to(device)
+        self.device = device
+
+    def fit(self, X_train: np.array, y_train: np.array):
+        """ stores X_train and y_train for later use, also computes the highest class number occuring in num_classes """
+        self.X_train = X_train
+        self.y_train = y_train
+        self.num_classes = max(set(y_train))+1
+
+    def predict_proba(self, X_test: np.array) -> np.array:
+        """
+        creates (x,y), runs it through our PyTorch Model, cuts off the classes that didn't appear in the training data
+        and applies softmax to get the probabilities
+        """
+        x = np.concatenate((self.X_train, X_test))
+        y = self.y_train
+        with torch.no_grad():
+            x = torch.from_numpy(x).unsqueeze(0).to(torch.float).to(self.device)  # introduce batch size 1
+            y = torch.from_numpy(y).unsqueeze(0).to(torch.float).to(self.device)
+            out = self.model((x, y), train_test_split_index=len(self.X_train)).squeeze(0)  # remove batch size 1
+            # our pretrained classifier supports up to num_outputs classes, if the dataset has less we cut off the rest
+            out = out[:, :self.num_classes]
+            # apply softmax to get a probability distribution
+            probabilities = F.softmax(out, dim=1)
+            return probabilities.to("cpu").numpy()
+
+    def predict(self, X_test: np.array) -> np.array:
+        predicted_probabilities = self.predict_proba(X_test)
+        return predicted_probabilities.argmax(axis=1)
+
+
+
+================================================
+FILE: train.py
+================================================
+import random
+import time
+
+import h5py
+import numpy as np
+import schedulefree
+import torch
+from model import NanoTabPFNClassifier, NanoTabPFNModel
+from sklearn.datasets import *
+from sklearn.metrics import accuracy_score, balanced_accuracy_score, roc_auc_score
+from sklearn.model_selection import train_test_split
+from torch import nn
+from torch.utils.data import DataLoader
+
+
+def set_randomness_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+set_randomness_seed(0)
+
+def get_default_device():
+    device = "cpu"
+    if torch.backends.mps.is_available(): device = "mps"
+    if torch.cuda.is_available(): device = "cuda"
+    return device
+
+datasets = []
+datasets.append(train_test_split(*load_breast_cancer(return_X_y=True), test_size=0.5, random_state=0))
+
+def eval(classifier):
+    scores = {
+        "roc_auc": 0,
+        "acc": 0,
+        "balanced_acc": 0
+    }
+    for  X_train, X_test, y_train, y_test in datasets:
+         classifier.fit(X_train, y_train)
+         prob = classifier.predict_proba(X_test)
+         pred = prob.argmax(axis=1) # avoid a second forward pass by not calling predict
+         if prob.shape[1]==2:
+             prob = prob[:,1]
+         scores["roc_auc"] += float(roc_auc_score(y_test, prob, multi_class="ovr"))
+         scores["acc"] += float(accuracy_score(y_test, pred))
+         scores["balanced_acc"] += float(balanced_accuracy_score(y_test, pred))
+    scores = {k:v/len(datasets) for k,v in scores.items()}
+    return scores
+
+def train(model: NanoTabPFNModel, prior: DataLoader,
+          lr: float = 1e-4, device: torch.device = None, steps_per_eval=10, eval_func=None):
+    """
+    Trains our model on the given prior using the given criterion.
+
+    Args:
+        model: (NanoTabPFNModel) our PyTorch model
+        prior: (DataLoader) torch-compatible dataloader
+        lr: (float) learning rate
+        device: (torch.device) the device we are using
+        steps_per_eval: (int) how many steps we wait before running evaluation again
+        eval_func: a function that takes in a classifier and returns a dict containing the average scores
+                   for some metrics and datasets
+
+    Returns:
+        (model) our trained numpy model
+        (list) a list containing our eval history, each entry is the real time used for training so far together
+               with a dict mapping metric names to their average values accross a list of datasets
+    """
+    if not device:
+        device = get_default_device()
+    model.to(device)
+    optimizer = schedulefree.AdamWScheduleFree(model.parameters(), lr=lr, weight_decay=0.0)
+    criterion = nn.CrossEntropyLoss()
+
+    model.train()
+    optimizer.train()
+
+    train_time = 0
+    eval_history=[]
+    try:
+        for step, full_data in enumerate(prior):
+            step_start_time = time.time()
+            train_test_split_index = full_data["train_test_split_index"]
+            #if (torch.isnan(data[0]).any() or torch.isnan(data[1]).any()):
+            #    continue
+            data = (full_data["x"].to(device),
+                    full_data["y"][:, :train_test_split_index].to(device))
+            targets = full_data["y"].to(device)
+
+            output = model(data, train_test_split_index=train_test_split_index)
+            targets = targets[:, train_test_split_index:]
+
+            targets = targets.reshape((-1,)).to(torch.long)
+            output = output.view(-1, output.shape[-1])
+
+            loss = criterion(output, targets).mean()
+            loss.backward()
+            total_loss = loss.cpu().detach().item()
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.)
+            optimizer.step()
+            optimizer.zero_grad()
+            step_train_duration = time.time() - step_start_time
+            train_time += step_train_duration
+
+            # evaluate
+            if step % steps_per_eval == steps_per_eval-1 and eval_func is not None:
+                model.eval()
+                optimizer.eval()
+
+                classifier = NanoTabPFNClassifier(model, device)
+                scores = eval_func(classifier)
+                eval_history.append((train_time, scores))
+                score_str = " | ".join([f"{k} {v:7.4f}" for k,v in scores.items()])
+                print(f"time {train_time:7.1f}s | loss {total_loss:7.4f} | {score_str}")
+
+                model.train()
+                optimizer.train()
+            elif step % steps_per_eval == steps_per_eval-1 and eval_func is None:
+                print(f"time {train_time:7.1f}s | loss {total_loss:7.4f}")
+    except KeyboardInterrupt:
+        pass
+
+    return model, eval_history
+
+
+class PriorDumpDataLoader(DataLoader):
+    """DataLoader that loads synthetic prior data from an HDF5 dump.
+
+    Args:
+        filename (str): Path to the HDF5 file.
+        num_steps (int): Number of batches per epoch.
+        batch_size (int): Batch size.
+        device (torch.device): Device to load tensors onto.
+    """
+
+    def __init__(self, filename, num_steps, batch_size, device=None):
+        self.filename = filename
+        self.num_steps = num_steps
+        self.batch_size = batch_size
+        self.device = device
+        self.pointer = 0
+        if device is None:
+            device = get_default_device()
+        with h5py.File(self.filename, "r") as f:
+            self.max_num_classes = f["max_num_classes"][0]
+
+    def __iter__(self):
+        with h5py.File(self.filename, "r") as f:
+            for _ in range(self.num_steps):
+                end = self.pointer + self.batch_size
+                num_features = f["num_features"][self.pointer : end].max()
+                num_datapoints_batch = f["num_datapoints"][self.pointer:end]
+                max_seq_in_batch = int(num_datapoints_batch.max())
+                x = torch.from_numpy(f["X"][self.pointer:end, :max_seq_in_batch, :num_features])
+                y = torch.from_numpy(f["y"][self.pointer:end, :max_seq_in_batch])
+                train_test_split_index = f["single_eval_pos"][self.pointer : end]
+
+                self.pointer += self.batch_size
+                if self.pointer >= f["X"].shape[0]:
+                    print("""Finished iteration over all stored datasets! """)
+                    self.pointer = 0
+
+                yield dict(
+                    x=x.to(self.device),
+                    y=y.to(self.device),
+                    train_test_split_index=train_test_split_index[0].item(),
+                )
+
+    def __len__(self):
+        return self.num_steps
+
+if __name__ == "__main__":
+    device = get_default_device()
+    model = NanoTabPFNModel(
+        embedding_size=96,
+        num_attention_heads=4,
+        mlp_hidden_size=192,
+        num_layers=3,
+        num_outputs=2
+    )
+    prior = PriorDumpDataLoader("300k_150x5_2.h5", num_steps=2500, batch_size=32, device=device)
+    model, history = train(model, prior, lr=4e-3, steps_per_eval=25)
+    print("Final evaluation:")
+    print(eval(NanoTabPFNClassifier(model, device)))
+
+
