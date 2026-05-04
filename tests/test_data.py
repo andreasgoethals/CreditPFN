@@ -69,6 +69,9 @@ from src.data.dedup import (
     _row_hashes,
 )
 from src.data.dataset import (
+    _cache_fingerprint,
+    _dataset_config_hash,
+    _dataset_seed,
     _ordinal_encode_categoricals,
     _shuffle_and_chunk_indices,
     _split_context_query,
@@ -469,6 +472,69 @@ def test_chunk_indices_equal_split() -> None:
     )
     sizes = [len(c) for c in chunks]
     assert max(sizes) - min(sizes) <= 1   # at most one row off
+
+
+def test_dataset_seed_is_stable_and_dataset_specific() -> None:
+    assert _dataset_seed(42, "0001.gmsc") == _dataset_seed(42, "0001.gmsc")
+    assert _dataset_seed(42, "0001.gmsc") != _dataset_seed(42, "0001.heloc")
+
+
+def _mk_dataset_cfg(**overrides):
+    categorical_encoding = NS(
+        strategy="ordinal",
+        handle_unknown="use_encoded_value",
+        unknown_value=-1,
+        encoded_missing_value="nan",
+    )
+    dataset = NS(
+        max_rows_per_chunk=20_000,
+        min_chunk_size=2_000,
+        equal_split_size=True,
+        stratify_classification=True,
+        context_fraction=0.60,
+        categorical_encoding=categorical_encoding,
+        y_dtype_classification="int64",
+        y_dtype_regression="float32",
+        skip_if_cached=True,
+    )
+    for key, value in overrides.items():
+        setattr(dataset, key, value)
+    return NS(seed=42, dataset=dataset)
+
+
+def test_cache_fingerprint_tracks_processed_file_and_config() -> None:
+    row = {
+        "dataset_id": "0001.gmsc",
+        "target_column": "target",
+        "categorical_columns": "grade",
+        "date_added": "2026-01-01",
+    }
+    cfg = _mk_dataset_cfg()
+    cfg_hash = _dataset_config_hash(cfg)
+    first = _cache_fingerprint(
+        row,
+        dataset_config_hash=cfg_hash,
+        processed_csv_sha256="processed-a",
+    )
+    assert first != _cache_fingerprint(
+        row,
+        dataset_config_hash=cfg_hash,
+        processed_csv_sha256="processed-b",
+    )
+
+    changed_cfg = _mk_dataset_cfg(context_fraction=0.50)
+    assert first != _cache_fingerprint(
+        row,
+        dataset_config_hash=_dataset_config_hash(changed_cfg),
+        processed_csv_sha256="processed-a",
+    )
+
+    row_with_new_date = dict(row, date_added="2026-05-04")
+    assert first == _cache_fingerprint(
+        row_with_new_date,
+        dataset_config_hash=cfg_hash,
+        processed_csv_sha256="processed-a",
+    )
 
 
 def test_split_context_query_disjoint_and_complete() -> None:

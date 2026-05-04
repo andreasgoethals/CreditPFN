@@ -308,6 +308,7 @@ dataset:
   y_dtype_regression:      "float32"
 
   # ------------- Re-run policy ----------------------------------------------
-  # If true, an existing chunk_NNN.npz with a matching meta.json is left
-  # alone (idempotent). Set false to force re-write of every chunk.
+  # If true, an existing cache with a matching meta.json fingerprint is left
+  # alone. The fingerprint covers the manifest row, processed CSV content,
+  # dataset config, and cache schema. Set false to force re-write every chunk.
   skip_if_cached: true

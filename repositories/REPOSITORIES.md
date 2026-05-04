@@ -18,6 +18,7 @@ fresh dump of a public GitHub repo, the upstream URL is linked.
 |------|-------|--------|-------|------------------|
 | `Huggingface TabPFN.txt` | 494 | [tabpfn_2_5](https://huggingface.co/Prior-Labs/tabpfn_2_5), [tabpfn_2_6](https://huggingface.co/Prior-Labs/tabpfn_2_6) | [Hollmann 2025](../papers/2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf), [Grinsztajn 2026](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) | Primary citation source for checkpoint provenance (synthetic vs. real-finetuned, layer counts, intended limits, licence). |
 | `NanoTabPFN.txt` | 895 | [automl/nanoTabPFN](https://github.com/automl/nanoTabPFN) | [Pfefferle 2025](../papers/2025_Pfefferle_et_al._nanoTabPFN_A_Lightweight_and_Educational_Reimplementation_of_TabPFN.pdf) | Cleanest end-to-end reference of a PFN training loop. Structural template for `src/train/`. |
+| `On Finetuning Tabular Foundation Models.txt` | 87 914 | [yandex-research/tabpfn-finetuning](https://github.com/yandex-research/tabpfn-finetuning) | [Rubachev 2025](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf) | Yandex research repo for TabPFNv2 full/PEFT finetuning: experiment configs, reports, LoRA utilities, vendored TabPFN changes, and practical LR/early-stopping recipes. |
 | `PFNS.txt` | 20 743 | [automl/PFNs](https://github.com/automl/PFNs) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Implementations of every encoder step that runs *inside* every TabPFN forward pass (NaN handling, normalisation, …). Tells us what `sanitize.py` should *not* duplicate. |
 | `PFNs4BO.txt` | 6 488 | [automl/PFNs4BO](https://github.com/automl/PFNs4BO) | [Müller 2023](../papers/2023_Muller_et_al._PFNs4BO_In_Context_Learning_for_Bayesian_Optimization.pdf) | PFN-as-Bayesian-optimisation surrogate. Tangential to credit-risk; useful only if we wrap a PFN around our own HP search. |
 | `TabDPT.txt` | 2 874 | [layer6ai-labs/TabDPT-inference](https://github.com/layer6ai-labs/TabDPT-inference) | [Ma 2026](../papers/2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf) | Inference code for the real-data-only competitor to TabPFN. Comparison baseline. |
@@ -38,6 +39,7 @@ repositories/
 ├── REPOSITORIES.md                          (this file)
 ├── Huggingface TabPFN.txt                   (   494 lines)
 ├── NanoTabPFN.txt                           (   895 lines)
+├── On Finetuning Tabular Foundation Models.txt (87 914 lines)
 ├── PFNS.txt                                 (20 743 lines)
 ├── PFNs4BO.txt                              ( 6 488 lines)
 ├── TabDPT.txt                               ( 2 874 lines)
@@ -175,6 +177,82 @@ read end-to-end" lives here.
 training loop actually look like" answer — model `forward`
 semantics, loss shape, gradient handling, optimizer setup, batch
 layout.
+
+---
+
+## `On Finetuning Tabular Foundation Models.txt`
+
+**Upstream:** [github.com/yandex-research/tabpfn-finetuning](https://github.com/yandex-research/tabpfn-finetuning).
+
+**Related paper:**
+[2025 - Rubachev et al. - On Finetuning Tabular Foundation Models](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf).
+
+**What it is.** A Yandex Research code dump for the Rubachev et al.
+TabPFNv2 finetuning study. It is much larger than the Prior Labs
+example scripts because it includes experiment grids, tuned configs,
+result reports, RTDL-style data/model utilities, LoRA utilities, and
+a vendored/modified TabPFN implementation.
+
+**Why it matters here.** The paper's main practical conclusion is
+that full finetuning is the strongest and simplest TabPFNv2
+adaptation baseline: it converges quickly, tends to beat PEFT
+variants, and can be run on datasets up to roughly 50K rows on an
+80GB GPU. The mechanism result is also directly relevant to
+CreditPFN: finetuning improves the alignment between test-row query
+representations and in-context training-row key representations, so
+attention weights better track target similarity. For our project,
+this repo is the best public source for the LR grid, patience,
+prediction length, and A100 memory assumptions behind single-dataset
+gradient adaptation.
+
+**Contents in detail:**
+
+- **`README.md` around line 1862** - project overview, arXiv link
+  (`2506.08982`), `uv` setup, checkpoint download instructions, and
+  the headline finding: full finetuning is the practical default for
+  TabPFNv2. The README BibTeX still says `arXiv:2024.08982`; treat
+  the paper text and arXiv link (`2506.08982`, 2025) as canonical.
+- **`pyproject.toml` around line 1946** - Python pinned to
+  `==3.11.11`, with CUDA 12.4 extras and dependencies including
+  PyTorch, CatBoost, XGBoost, Optuna, RTDL utilities, and `loralib`.
+- **`exp/full-finetune/*/*.toml`** - reproducible experiment grids.
+  The adult config at line 2212 calls
+  `bin.tabpfnv2_finetune.main`, uses `n_trials = 10`, brute-force
+  learning rates from about `5e-6` to `5e-4`, `batch_size = 1`,
+  `epoch_size = 10`, `seq_len_pred = 1024`, and
+  `finetune_mode = "full"`.
+- **`report.json` / `summary.json` blocks** - practical run reports:
+  A100-SXM4-80GB hardware, roughly 7.2M or 11.1M trainable
+  parameters depending on the config, early-stopped best steps, and
+  zero-shot vs. finetuned metrics.
+- **`lib/data.py`** - expects arrays such as `X_num.npy`,
+  `X_bin.npy`, `X_cat.npy`, `Y.npy`, and
+  `split-default/{train,val,test}_idx.npy`. Useful when designing
+  future adapters between our `.npz` cache and RTDL-style tabular
+  loaders.
+- **`lib/deep.py`** - RTDL numerical embedding utilities such as
+  piecewise-linear embeddings, one-hot helpers, optimization helpers,
+  and parameter-count utilities.
+- **`lib/tabpfn/lora_utils.py` around line 85367** - LoRA injection
+  helpers for TabPFN internals, including replacements for MHA,
+  linear layers, and embeddings. This is the local reference if we
+  later benchmark LoRA against full continued pretraining.
+- **`lib/tabpfn/preprocessing.py` around line 85798** - vendored
+  TabPFN preprocessing configs (`none`, `numeric`, `onehot`,
+  `ordinal`, `ordinal_shuffled`, etc.) and the package-level feature
+  preprocessing choices.
+
+**Important caveat.** The dump references
+`bin.tabpfnv2_finetune.main`, but this `.txt` snapshot contains no
+`FILE: bin/...` sections. Use it as a high-signal reference for
+configs, results, LoRA/vendored TabPFN changes, and paper-grounded
+hyperparameters; do not assume the local dump is a complete runnable
+clone.
+
+**When to grep this file:** when choosing single-dataset finetuning
+hyperparameters, comparing full finetuning vs. LoRA/prefix variants,
+or checking how Rubachev et al. structure their data arrays, tuning
+reports, and TabPFNv2 internals.
 
 ---
 
@@ -661,19 +739,20 @@ work is done on a laptop.
 
 ---
 
-## `TabPFN V2 Finetuning.txt` ↔ `NanoTabPFN.txt` ↔ `TabPFN Wide.txt` — how they relate
+## `TabPFN V2 Finetuning.txt` ↔ `On Finetuning Tabular Foundation Models.txt` ↔ `NanoTabPFN.txt` ↔ `TabPFN Wide.txt` — how they relate
 
-| | NanoTabPFN | Wide | V2 Finetuning |
-|---|---|---|---|
-| Model definition | toy reimpl | full + wide modifications | uses real package |
-| Loads real `.ckpt`? | no (trains from scratch) | yes | yes |
-| Has training loop? | yes (synthetic prior) | yes (sweep over real datasets) | yes (single-dataset finetune) |
-| Closest to *our* use case | training-loop structure | dataset-sweep structure | checkpoint mechanics |
+| | NanoTabPFN | Wide | V2 Finetuning | On Finetuning |
+|---|---|---|---|---|
+| Model definition | toy reimpl | full + wide modifications | uses real package | vendored/modified package |
+| Loads real `.ckpt`? | no (trains from scratch) | yes | yes | yes |
+| Has training loop? | yes (synthetic prior) | yes (sweep over real datasets) | yes (single-dataset finetune) | configs/results for single-dataset finetune |
+| Closest to *our* use case | training-loop structure | dataset-sweep structure | checkpoint mechanics | hyperparameters + PEFT/full-finetune evidence |
 
-We will end up combining all three: V2-Finetuning's checkpoint
-loading + Wide's resumable training-state pattern + NanoTabPFN's
-clear training-loop scaffolding, applied to a multi-dataset corpus
-in the Real-TabPFN spirit.
+We will end up combining all four: V2-Finetuning's checkpoint
+loading + On-Finetuning's hyperparameter evidence + Wide's
+resumable training-state pattern + NanoTabPFN's clear training-loop
+scaffolding, applied to a multi-dataset corpus in the Real-TabPFN
+spirit.
 
 ---
 

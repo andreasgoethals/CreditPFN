@@ -20,9 +20,10 @@ Public entry point
     ``True`` → wipe ``data/dedup``, ``data/processed``, ``data/cached``
     and the two manifest CSVs *before* anything runs. Use when you
     want the corpus rebuilt from scratch.
-    ``False`` → leave existing artefacts in place; each stage
-    skips datasets it has already produced output for, so this is
-    incremental.
+    ``False`` → leave existing artefacts in place. Register,
+    sanitize, and dedup refresh their outputs; dataset.py skips only
+    cache entries whose fingerprint still matches the manifest row,
+    processed CSV content, dataset config, and cache schema.
 ``datasets: list[str] | None``
     ``None`` or empty list → process every dataset_id registered in
     :data:`src.data.preprocessing.DATASET_METADATA`. Otherwise: only
@@ -251,7 +252,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--fresh", action="store_true",
         help="Delete existing dedup/, processed/, cached/, and manifests "
-             "before running. Default: incremental (skip already-cached).",
+             "before running. Default: incremental (skip valid cache).",
     )
     p.add_argument(
         "--datasets", nargs="*", default=None,

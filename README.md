@@ -127,7 +127,7 @@ pip install -r requirements.txt
 
 # 2. Run the full data pipeline end-to-end.
 python scripts/data_pipeline.py --fresh       # rebuild from scratch
-# python scripts/data_pipeline.py             # incremental (skip cached)
+# python scripts/data_pipeline.py             # incremental (skip valid cache)
 # python scripts/data_pipeline.py --datasets 0001.gmsc 0001.heloc
 
 # 3. Run the tests.
@@ -239,7 +239,7 @@ TabPFN's package handles these steps internally — see
 ## Tests
 
 ```bash
-pytest -q tests/data/test_pipeline.py
+pytest -q tests/test_data.py
 ```
 
 Tests cover the public contract of every module: surgical fixes
