@@ -1,0 +1,1107 @@
+                                        Position: Foundation Models for Tabular Data within Systemic Contexts Need
+                                                                                   Grounding
+
+                                                                        Tassilo Klein 1 Johannes Hoffart 1
+
+arXiv:2505.19825v2 [cs.LG] 17 Jan 2026                     Abstract                                         Semantically  (Operational) World knowledge
+                                                                                                               Linked
+                                        This position paper argues that foundation mod-                         Tables    General world knowledge about relevant entities,
+                                        els for tabular data face inherent limitations when                               types, and events
+                                        isolated from operational context--the procedural                                 Business concepts & functions, implicit back-
+                                        logic, declarative rules, and domain knowledge                                    ground assumptions and relations
+                                        that define how data is created and governed. Cur-
+                                        rent approaches focus on single-table generaliza-                                  Operational business knowledge
+                                        tion or schema-level relationships, fundamentally                                  Declarative: Data models, business objects &
+                                        missing the operational knowledge that gives data                                  rules & process models, ...
+                                        meaning.We introduce Semantically Linked Ta-                                       Procedural: Agent logic in natural language,
+                                        bles (SLT) and Foundation Models for SLT (FM-                                      application logic as code, ...
+                                        SLT) as a new model class that grounds tabular
+                                        data in its operational context. We propose dual-                                  Relational data
+                                        phase training: pre-training on open-source code-                                  Relational data, mostly database tables linked by
+                                        data pairs and synthetic systems to learn business                                 foreign keys
+                                        logic mechanics, followed by zero-shot inference
+                                        on proprietary data. We introduce the "Opera-                       Figure 1. The composition of SLT.
+                                        tional Turing Test" benchmark and argue that op-
+                                        erational grounding is essential for autonomous                     oversimplification of tabular data presents a gap that must
+                                        agents in complex data environments.                                be addressed. As Sutton's "bitter lesson" teaches us (Sutton,
+                                                                                                            2019), the most effective AI progress comes from leveraging
+                                        1. Introduction                                                     computation with general methods rather than hand-crafting
+                                                                                                            domain knowledge. Yet in the case of tabular data, we face a
+                                        Foundation models have demonstrated remarkable capacity             paradox: the operational logic governing data creation is al-
+                                        to generalize across diverse tasks and datasets, extending          ready written down in code, constraints, and documentation.
+                                        beyond training data (Bommasani et al., 2022; Huang et al.,         Rather than forcing models to rediscover this logic through
+                                        2022a). However, applying these models to tabular data              statistical learning, FMSLTs propose to make it directly ac-
+                                        analysis is hindered by oversimplifying assumptions. Cur-           cessible, combining the bitter lesson's emphasis on scalable
+                                        rent work on foundation models for tabular data sometimes           learning with the practical recognition that explicit opera-
+                                        conflates distinct problems: some focus primarily on "iso-          tional knowledge exists and should be utilized. This integra-
+                                        lated tables" (Van Breugel & Van Der Schaar, 2024), a le-           tion is visualized in Fig. 1, which illustrates how SLT com-
+                                        gitimate perspective in certain scenarios but one that fails to     bines three essential layers: (1) relational data (database ta-
+                                        reflect the realities of intricate, interconnected data ecosys-     bles linked by foreign keys), (2) operational business knowl-
+                                        tems. Others employ multi-table relational methods using            edge (both declarative: data models, business objects &
+                                        graph neural networks (Fey et al., 2024b; Robinson et al.,          rules; and procedural: application logic as code, agent logic),
+                                        2024) that, while effective at capturing relational structures,     and (3) world knowledge (general understanding of business
+                                        often assume information completeness within tables, ne-            concepts and implicit assumptions). Together, these layers
+                                        glecting the operational context essential for understanding        form the "semantic frame" that FMSLTs leverage to ground
+                                        data generated by real-world applications. Although current         tabular data in its real-world context. Recent work sug-
+                                        models display impressive generalization capabilities, this         gests foundation models contain implicit world models (Ab-
+                                                                                                            dou et al., 2021; Li et al., 2023b; Vafa et al., 2024), and
+                                           1SAP SE. Correspondence to:  Tassilo Klein <tas-                 the database community is exploring Foundation Database
+                                        silo.klein@sap.com>.                                                Models (Wehrstein et al., 2025). We hypothesize that for
+                                                                                                            structured data, explicitly modeling semantic context pro-
+                                        Preprint. January 21, 2026.                                         motes greater generalizability. Position papers on world
+                                                                                                            models (Ding et al., 2025; Ravi et al., 2025) emphasize
+                                                                                                            counterfactual reasoning and causal understanding, capabil-
+                                                                                                            ities requiring operational grounding. This motivates Se-
+
+                                                                                                         1
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+mantically Linked Tables (SLT), which leverage relational          SLTs differ from Text-to-SQL agents: NL2SQL answers
+structure alongside semantic relationships for world mod-          queries (read-only), while FMSLTs predict state changes
+eling in structured data. FMSLTs integrate relational data         and simulate outcomes--enabling counterfactual reasoning
+with operational knowledge, constituting a new model class.        that query engines cannot support. FMSLTs complement
+Tables in real-world systems are relationally linked through       autonomous tool-use (Patil et al., 2024; Schick et al., 2023),
+database constraints and operational context (business rules,      zero-shot planning (Huang et al., 2022b), and NL2SQL pars-
+validation code) that governs data operations (Fig. 1).            ing (Li et al., 2023a; Gao et al., 2023; Papicchio et al., 2025;
+                                                                   Biswal et al., 2024) with executable understanding of busi-
+Standard RAG is insufficient because it retrieves code             ness logic. Second, FMSLTs enable AutoML capabilities,
+as text, whereas FMSLTs must ingest code as logic--                replacing manual feature engineering and model selection
+learning the causal executable semantics (e.g., branch-            as well as current "data science agents" (Ou et al., 2025;
+ing paths) rather than just surface-level text pat-                Anonymous, 2025b) that rely on LLMs alone. In both cases,
+terns. Consider a concrete example: an expense ap-                 FMSLTs provide the semantic layer for robust autonomy
+proval system with the rule if amount >= 5000:                     by allowing agents to "read" business logic from code and
+require manager approval(). A statistical model                    rules rather than guessing from correlations.
+trained on historical data might learn an approximate thresh-
+old around $4,800 from observed correlations, occasionally         To illustrate how existing approaches fall short, consider
+misclassifying edge cases. A text-based RAG system might           the following example contrasting a vanilla ML approach
+retrieve the code snippet but fail to recognize that ">="          and an FMSLT within an SLT scenario. Figure 2 show-
+creates a hard decision boundary. In contrast, an FMSLT in-        cases a simplified supply chain involving a manufacturer of
+gests this rule as executable logic, understanding that $4,999     configurable goods (in this case computers) with an asso-
+requires no approval while $5,000 does--achieving perfect          ciated webshop. The webshop allows the configuration of
+accuracy on this policy without any training examples. This        computers with compatible hardware elements, taking into
+distinction between code-as-text versus code-as-logic is fun-      account information from the warehouse and the availability
+damental: models must learn that conditional statements            of items.
+create decision boundaries, loops define iteration semantics,
+and function calls invoke specific behaviors--not merely           Here, SLT encompasses components such as product cat-
+that certain tokens co-occur. Recent work on code world            alog and products with their configurable components, in-
+models (Meta FAIR CodeGen Team, 2025; Lehrach et al.,              cluding warehouse management and supply tracking. For
+2025) demonstrates that training on execution traces rather        instance, when predicting internal material restocking re-
+than static code significantly improves reasoning capabili-        quirements during production, a typical machine learning
+ties.                                                              approach would be constrained to a company's order his-
+                                                                   tory, or perhaps a manually curated subset of data from past
+We propose Foundation Models for Semantically                      analysis, limited by the underlying data complexity c.f. (Mi-
+Linked Tables (FMSLT) to integrate this operational                crosoft, 2024; Klein et al., 2024). However, effective mate-
+knowledge--connecting tables to the logic and rules that           rial restocking requires understanding not only the relational
+govern their creation and evolution. This grounding en-            schema (see Fig. 3) but also the operational context--such
+compasses intra- and inter-table relationships, rich contex-       as the product configuration rules implemented in the web
+tual metadata, and procedural logic. Such grounding is par-        shop's application code--that governs which component
+ticularly critical for autonomous agents in real-world ap-         combinations are valid and how inventory flows through
+plications. Recent enterprise agent benchmarks expose fun-         the system. While this example is drawn from a business
+damental gaps: WorkArena++ (Boisvert et al., 2024) reveals         context, similar complexities arise in other domains such as
+agents struggle with contextual understanding in knowl-            healthcare, where operational contexts are equally critical
+edge work, TheAgentCompany (Xu et al., 2025) shows                 for robust data-driven decision making.
+agents complete only 30% of professional tasks requiring
+implicit business knowledge, CRMArena-Pro (Huang et al.,           To advance FMSLT capabilities, we address three core re-
+2025) documents accuracy drops in multi-turn business di-          quirements: data acquisition, functional architecture, and
+alogues, AgentArch (Bogavelli et al., 2025) demonstrates           evaluation methodology. Our contributions are threefold:
+agents achieve only 35.3% success on complex enterprise            (1) we define SLT and FMSLT as a new model class; (2)
+tasks, MLGym (Nathani et al., 2025) shows frontier mod-            we identify data mixtures necessary for learning grounded
+els fail to generate novel hypotheses in AI research tasks,        representations; and (3) we propose a research roadmap
+and COMPASS (Choi et al., 2026) demonstrates that mod-             with targeted evaluation benchmarks.
+els refuse only 13­40% of organizational policy violations.
+FMSLTs address these shortcomings in two ways. First,              The paper proceeds as follows: Section 2 defines SLT and
+FMSLTs serve as an operational world model grounding               FMSLT; Section 3 examines data challenges across declara-
+agents that access structured knowledge. Critically, FM-           tive, procedural, and tabular modalities; Section 4 outlines
+                                                                   the FMSLT research roadmap; Section 5 positions FMSLTs
+
+                                                                2
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+relative to existing paradigms; and Section 6 proposes the           Definition 2.1 (Operational Knowledge). Declarative
+Operational Turing Test as a benchmark and calls for com-            Knowledge (the "What"): Domain concepts, rules, and
+munity collaboration. We recognize that operational knowl-           constraints that define valid states and relationships--
+edge--the procedural logic and business rules governing              typically encoded in knowledge graphs, ontologies, pol-
+real-world data--is often proprietary and unavailable in pub-        icy documents, and configuration files. Procedural
+lic datasets. Realizing FMSLTs thus requires collaboration           Knowledge (the "How"): Executable logic governing
+between domain experts and ML researchers, complemented              data creation and manipulation--encoded in source
+by synthetic data generation to simulate operational scenar-         code, validation scripts, workflows, and application
+ios while preserving privacy. This position paper articulates        logic that dictates how systems update state.
+the current limitations of tabular foundation models and
+charts a path toward FMSLTs that achieve robust, context-         2.1. Elements of Foundation Models for SLT
+aware understanding of structured data in its operational
+context.                                                          FMSLTs ground relational data by integrating both forms
+                                                                  of operational knowledge (Definition 2.1), requiring curated
+2. Semantically Linked Tables                                     data mixtures (OLMo et al., 2025) to provide the "missing
+                                                                  link" to real-world context:
+In many real-world environments, the available data resem-        1. Declarative Knowledge: In our webshop example
+bles an archipelago of semi-isolated information islands.         (Fig. 2), this includes compatibility policies ("Main-
+These "islands," which are individual tables, are typically       board X supports only DDR5") and product catalogs.
+understood only by their creators and domain specialists.         While traditionally captured in symbolic knowledge
+Even when organized in relational databases with explicit         graphs (KGs) (Gruber, 1995)--from general ones like
+foreign key relationships connecting tables, each table or        Wikidata (Vrandecic´ & Kro¨tzsch, 2014) to corporate
+cluster of related tables embodies both application-specific      implementations (Hogan et al., 2025)--connecting logical
+details and an implicit conceptualization of the domain. Ide-     rigidity with neural adaptability remains a neurosymbolic
+ally, table schemas (including names and column headers)          challenge (Marra et al., 2024). FMSLTs must leverage
+would possess semantic richness, enabling direct interpre-        recent advances in CoT (Wei et al., 2022) (despite linguistic
+tation. However, in practice, these schema elements fre-          limits (Mahowald et al., 2024)) and graph foundation
+quently act as opaque shorthands, demanding significant           models (Mao et al., 2024) to ingest these explicit rules,
+additional contextualization (Zhang et al., 2023). This frag-     ensuring models adhere to compliance constraints.
+mentation into semi-isolated tables substantially hinders the     2. Procedural Knowledge: This includes the code
+derivation of comprehensive insights and the establishment        validating a checkout selection or computing inventory
+of meaningful connections across the overall data landscape.      requirements. Unlike static schemas, procedural knowledge
+This opacity exceeds the limited context offered by rela-         captures operation semantics. Since LLMs already excel at
+tional database systems (e.g., column/table names, foreign        code generation (Chen et al., 2021) (e.g., Code Llama (Rozi
+keys), which fail to capture the rich operational context of      `ere et al., 2024), DeepSeek Coder (Guo et al., 2024)),
+tables. Research on training machine learning models on re-       FMSLTs can naturally leverage source code repositories
+lational data highlights the challenges of extracting meaning     to learn this underlying functionality, bridging the gap
+from such interconnected datasets (Robinson et al., 2024).        between static data observations and the dynamic processes
+Insufficient metadata contributes to data "swamps" (Mihin-        that generated them.
+dukulasooriya et al., 2023), where data volume, coupled
+with semantic ambiguity, hinders information retrieval.           3. Data Challenges
+
+Current efforts focus on metadata enrichment using LLMs           Data silos (Bruckhaus, 2024; Urlana et al., 2024) remain a
+to generate metadata and improve concept matching via             primary obstacle to realizing AI's full potential, particularly
+ontologies (Mihindukulasooriya et al., 2023), enhancing           in machine learning and deep learning. These silos are preva-
+dataset search (Brickley et al., 2019; Anonymous, 2024) and       lent across different domains, exhibiting considerable sim-
+downstream tasks like forecasting (Williams et al., 2025)         ilarities, especially in complex settings like healthcare and
+and analysis (Deng et al., 2020).                                 business operations. Both types of applications face chal-
+                                                                  lenges in data governance and access restrictions, stemming
+                                                                  from disparate systems governed by varying policies, secu-
+                                                                  rity protocols, and access controls. In business applications,
+                                                                  fragmentation arises from competitive sensitivities, depart-
+                                                                  mental divisions, or mergers and acquisitions. Healthcare
+                                                                  is constrained by stringent privacy regulations (e.g., HIPAA,
+
+                                                               3
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+Figure 2. SLT Example: A manufacturing supply chain with webshop inte-             Figure 3. Mockup schema.
+gration. Tables are linked through foreign keys and governed by operational
+logic (configuration rules, inventory validation) that defines valid data states.
+
+GDPR), patient consent requirements, and institutional             text alone. However, creating systems that can learn from
+policies (Rocher et al., 2019). Furthermore, both domains          these sensitive assets to enable transferability and inductive
+struggle with data heterogeneity and standardization, includ-      reasoning across different organizations remains a key objec-
+ing inconsistent terminologies, varying data quality, and          tive. Sharing or synthesizing KGs without violating privacy
+structural variations. Healthcare's issues are compounded          is an extremely challenging problem. Open-sourcing even
+by variations in data acquisition protocols and equipment          partial KGs is generally infeasible, and generating synthetic
+manufacturers (Rieke et al., 2020), while complex oper-            data that preserves both privacy and semantic utility remains
+ational systems often involve intricate knowledge bases            a significant technical challenge. Furthermore, public and
+spanning multiple domains, formats, and systems (Han               domain-specific KGs often comprise completely disjoint en-
+et al., 2023). These shared issues impede AI development           tity and relation sets, making it difficult to train universally
+by limiting the creation of large and diverse datasets es-         transferable models. To address these and related challenges,
+sential for effective deep learning (van Panhuis et al., 2014;     recent research investigates the development of foundational
+Sun et al., 2017; Chartrand et al., 2017). A key objective is      models for (knowledge) graphs (FMGs) (Galkin et al.,
+to circumvent these data siloing pitfalls and promote a more       2024a;b). FMGs are designed to learn universal and
+integrated approach to data utilization, potentially using         transferable graph representations, enabling inference
+synthetic data generation and privacy-enhancing techniques.        over unseen nodes and relations. By adopting inductive
+                                                                   generalization properties, these models can facilitate
+3.1. Declarative Data                                              reasoning across diverse graphs with differing vocabularies.
+                                                                   Training FMGs on open-source KGs represents an initial
+Large, heterogeneous declarative data assets are increas-          step toward this vision, but there remains a critical need for
+ingly managed as knowledge graphs (KGs) by major                   developing privacy-preserving capabilities to enable secure
+organizations (Noy et al., 2019), illustrated by Google's          collaboration and deployment in real-world scenarios.
+Knowledge Graph, Microsoft Academic Graph, and
+Bloomberg's Financial KG, with broad industry adoption             3.2. Procedural Data
+documented by (Hogan et al., 2021; Tamasauskaite & Groth,
+2023). These KGs, exemplified by the recent SALT-KG                While declarative knowledge defines what the rules are,
+benchmark (Mulang' et al., 2025), often contain proprietary,       procedural knowledge captures how systems execute them.
+confidential, and sensitive information. KG grounding has          Unlike KGs which excel at representing static entities and
+been shown to improve factuality and reduce hallucina-             relationships, procedural knowledge requires capturing
+tions (Guan et al., 2024; Luo et al., 2024; Tan et al., 2024),     dynamic execution semantics. Current coding LLMs train
+with empirical studies demonstrating substantial improve-          primarily on public corpora (GitHub, Stack Overflow),
+ments in reasoning accuracy when structured knowledge              which often lack the proprietary operational logic governing
+graphs are integrated with LLMs compared to unstructured           AI systems. This gap is critical for SLT, where procedural
+
+                                                                4
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+components (state transitions from application logic, val-        2025) highlights the value of real-world tabular data for
+idation scripts, workflows) are essential for understanding       foundation models, reinforcing our call for comprehensive,
+how declarative rules manifest as executable operations on        grounded data strategies.
+tables (see Appendix 7 for a concrete validation algorithm
+an FMSLT must internalize). FMSLTs extend beyond                  Tabular data is the product of both declarative and proce-
+declarative KGs by treating procedural code as a                  dural processes, intrinsically merging these two distinct
+first-class citizen: directly learning the dynamic "verbs"        knowledge sources. This dual nature presents both oppor-
+(e.g., execution semantics of check inventory()) that             tunities and challenges: maintaining operational integrity
+KGs cannot structurally represent. Program-of-Thought             while ensuring sufficient diversity becomes complex. Pri-
+approaches (Khatuya et al., 2025) demonstrate that gener-         vacy concerns restrict access to real-world operational data,
+ating intermediate code substantially improves reasoning          making synthetic data generation vital for creating realistic
+on financial/tabular data, reinforcing the need for FMSLTs        yet anonymized datasets. Such datasets (Klein et al., 2024)
+to internalize rather than merely retrieve procedural logic.      are crucial for advancing FMSLT research. Single-table
+Integrating proprietary procedure repositories could deepen       synthesis has progressed significantly (Kotelnikov et al.,
+FMSLTs' understanding of Code-to-Data relationships.              2023; Shi et al., 2025; Kwok et al., 2025), but SLT re-
+                                                                  quires multi-table synthesis, a more complex challenge.
+Synthetic code generation: Synthetic code generation of-          Existing approaches (Synthetic Data Vault (Patki et al.,
+fers a privacy-preserving solution. Recent work shows syn-        2016), PrivLava (Cai et al., 2023)) face scalability limi-
+thetic data substantially improves code models (Hui et al.,       tations. Diffusion-based methods (Pang et al., 2024; Ketata
+2024), particularly through agentic frameworks combining          et al., 2025; Rombach et al., 2022) show promise for joint
+symbolic guidance with neural generation (Ni et al., 2024;        relational database generation. Beyond generative models,
+Wang et al., 2024b). Crucially, code models trained on exe-       simulators (Chang et al., 2024) and digital twins (Tornqvist
+cution traces--observing code-data interactions at runtime--      et al., 2024; Wang et al., 2024c) offer viable approaches,
+learn superior world models versus static code alone (Meta        with secure sandboxes enabling privacy-preserving bench-
+FAIR CodeGen Team, 2025). This supports the FMSLT                 marking (Rajore et al., 2024).
+hypothesis: grounding in operational dynamics (code exe-
+cution paired with table states) yields better reasoning than     3.4. Breaking the Privacy Deadlock
+pure syntactic patterns. By leveraging these approaches,
+FMSLTs could generate synthetic training examples consist-        The circularity of needing private data to train synthetic
+ing of procedural code (e.g., validation functions, workflow      generators is resolvable via two-stage bootstrapping. First,
+logic) paired with corresponding table data and execution         FMSLTs pre-train on open-source ecosystems (GitHub
+traces, enabling privacy-preserving pre-training on realistic     repos with SQL databases) and simulator-generated
+operational behaviors without exposing proprietary systems.       synthetic data, learning "Code-to-Data" relationships in a
+                                                                  privacy-neutral setting. Crucially, generators must avoid
+3.3. Tabular Data                                                 "too clean" data by injecting noise, version conflicts, and
+                                                                  "simulated technical debt" (e.g., legacy data violating current
+Most tabular research relies on web-scraped "information is-      rules). This prevents overfitting to "perfect logic," preparing
+lands" (e.g., WebTables (Cafarella et al., 2008), TabLib (Eg-     models for real-world messiness. This Curriculum Learning
+gert et al., 2023)), missing operational context. While           has two phases: Phase 1 teaches the meta-skill of reading
+datasets like TURL (Deng et al., 2020) or GitTables (Hulse-       code ("Causal Mechanics"); Phase 2 fine-tunes this for spe-
+bos et al., 2023) are cleaner, they lack interconnectedness.      cific domains. Open-source ERPs and public data provide
+Recent datasets like SQaLe (Wolff et al., 2025), Rel-             rich examples without exposing secrets. This teaches how
+Bench (Fey et al., 2024a), and Adventure Works (Microsoft,        procedural code governs data--a transferable skill. Second,
+2024) introduce multi-table scenarios with relational inter-      federated learning (Cai et al., 2023) or differential privacy
+connectedness, but still lack the full operational knowledge      enables adaptation to private data without centralization.
+of SLT. This gap emphasizes the need for datasets grounded        This "bootstrapping from openness" learns operational
+in real-world complexity to advance FMSLT.                        semantics publicly, then specializes privately.
+
+Synthetic tables: Deep generative models (GANs, VAEs)             4. The FMSLT Framework
+create privacy-preserving synthetic tables (Xu et al., 2019).
+Recent work extends this to cross-tabular generation (Lin         We outline the landscape of tabular architectures and the
+et al., 2025), yet capturing complex inter-table logic            future of operational world models.
+remains challenging, though recent diffusion-based
+approaches (Pang et al., 2024; Ketata et al., 2025) show          Neural Tabular Models: Neural models for tabular
+promise. LLM-based generation (Borisov et al., 2023)              data are advancing rapidly (Somvanshi et al., 2024; Fang
+offers potential but struggles with strict schema adherence       et al., 2024; Badaro et al., 2023), challenging tree-based
+and scale. Recent work on Real-TabPFN (Garg et al.,               dominance (Grinsztajn et al., 2022; Chen & Guestrin, 2016;
+
+                                                               5
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+Prokhorenkova et al., 2018; Ye et al., 2025; Holzmu¨ller            allowing models to learn differentiable representations of
+et al., 2024). However, current models treat tables as iso-         symbolic rules. For example, a declarative business rule
+lated entities, neglecting operational context despite tabular      (e.g., "approvals required for expenses over $5k") should
+data's distinct challenges (Gardner et al., 2024; Raman et al.,     not act solely as a statistical correlation but as a logical
+2024; Hu et al., 2024; Spinaci et al., 2024; Su et al., 2024).      constraint in the model's inference process. Emerging work
+LLMs struggle with temporal (Islakoglu & Kalo, 2025) and            in neuro-symbolic AI (Nye et al., 2021; d'Avila Garcez &
+causal (Nastl & Hardt, 2024) reasoning in this domain. Re-          Lamb, 2024; Yang et al., 2025) suggests that hybrid archi-
+cent ICL approaches (TabPFN-2.5 (Hollmann et al., 2025b),           tectures can effectively bridge this gap. Unlike traditional
+ConTextTab (Spinaci et al., 2025), RealMLP (Holzmu¨ller             neuro-symbolic systems requiring rigid logic definitions,
+et al., 2024)) now match gradient boosting (Erickson                FMSLTs learn soft consistency, internalizing business
+et al., 2025; Hollmann et al., 2025a), though early work            logic "physics" through pre-training. Crucially, FMSLTs
+focused on small-scale data (Cheng et al., 2023; Ye et al.,         don't just execute rules; they predict the outcome of rule
+2023; Wang et al., 2024d; Hollmann et al., 2025a). While            execution, including cases where rules are overridden (e.g.,
+demonstrating strong single-table capabilities, they do not         an executive bypass) or inconsistently applied. Chain of
+yet incorporate the operational context central to SLT. The         Code (Li et al., 2024) introduces the "LMulator" concept
+lack of large, standardized datasets capturing multi-table          (using an LLM to simulate code execution when symbolic
+operational relationships further hinders progress toward           execution is infeasible), which supports our argument that
+fully grounded tabular foundation models. Scalability is            FMSLTs can reason over operational artifacts even when
+advancing through deeper architectures (Ma et al., 2024;            they are not directly runnable (e.g., policy documents).
+Hollmann et al., 2024; Su et al., 2024) and improved                This "probabilistic execution" capability (predicting what
+in-context learning (Qu et al., 2025; Ma et al., 2025), with        will happen rather than what should happen) distinguishes
+document-based contextualization enabling competitive               FMSLTs from rigid symbolic interpreters.
+zero-shot performance (Wydmuch et al., 2024). Graph-like
+representations offer a promising direction for Foundation          Algorithmic Alignment via Synthetic ICL: We propose
+Models for Graphs (FMGs). (Kim et al., 2024) employs                that FMSLTs should be trained primarily on synthetic
+star-shaped graphlets and graph-attentional networks to con-        "System-Table" pairs. By procedurally generating business
+textualize table entries. Similarly, the Zero-Shot Relational       logic (e.g., Python validation scripts) and corresponding
+Transformer (Ranjan et al., 2025) demonstrates the potential        synthetic table states, we can train the model on an infinite
+of graph-based architectures for relational reasoning.              stream of "Reasoning Tasks." This shifts the learning
+However, while capturing static structure, such methods             objective: instead of memorizing the correlations of a static
+lack the ability to model dynamic data evolution governed           dataset (which risks privacy leakage), the model learns the
+by procedural rules. This is a gap FMSLT aims to bridge.            meta-capability of In-Context Learning (ICL), applying an
+                                                                    arbitrary, unseen rule to a new table row. This effectively
+Operational World Model: Integrating world models is                bypasses the privacy deadlock, as the model learns how to
+critical for FMSLT to mirror real-world dynamism. Recent            reason from synthetic data, but applies that reasoning to
+work shows LLMs can serve as implicit world models (Liu             private data only at inference time.
+et al., 2024), yet effectiveness depends on behavioral cov-
+erage (Wang et al., 2024a). Executable code-based world             This Retrieval-Augmented In-Context Learning approach
+models outperform direct LLM inference (Lehrach et al.,             (see Figure 4) comprises: (1) Training Phase: The model
+2025). A Digital Twin is a simulation; an FMSLT is a sim-           learns to predict table row outcomes given arbitrary business
+ulator generator. When rules change, a Digital Twin must            rules by training on procedurally-generated synthetic data.
+be re-coded by engineers; an FMSLT simply reads the up-             This teaches the meta-capability of applying unseen logic
+dated policy PDF or source code and adapts zero-shot. This          to structured data. Crucially, this relies on the hypothesis
+zero-shot adaptability (generalizing to new operational logic       that logical reasoning is modality-invariant, analogous to
+without re-engineering) is the critical AI advantage over           Code-Induced Reasoning where code pre-training improves
+hard-coded simulations. Future work should unify these              general reasoning tasks (Huang et al., 2022a; Chen et al.,
+paradigms using object-centric methods (Zhao et al., 2022).         2021; Lehrach et al., 2025; Meta FAIR CodeGen Team,
+                                                                    2025). We posit that by training on diverse synthetic
+Symbolic Representation of World Knowledge: A                       modalities, FMSLTs acquire a generalized `reasoning
+critical distinctness of FMSLT is its requirement to ingest         engine' for zero-shot transfer to operational artifacts. (2)
+and reason over symbolic artifacts (documents, code, and            Inference Phase: A retriever identifies relevant operational
+constraints), not merely as text, but as executable or con-         artifacts (declarative knowledge: rules, KGs; procedural
+straining logic. Points raised in recent discussions highlight      knowledge: source code; and relational data) from the
+that declarative and world knowledge can be symbolically            private organizational context, and the model applies its
+represented, offering a rigorous scaffolding for learning.          learned ICL capability to make zero-shot predictions on
+Neuro-symbolic approaches offer a promising path here,              private tables. Engineering challenges include designing
+
+                                                                 6
+                Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+ Synthetic            Phase 1: Synthetic Training
+   Rules
+                           Learn               ICL
+ Synthetic            P (Row|Rule)             Skill
+   Tables
+                                    Transfer                                Semantically                 FMSLT
+Declarative                         Meta-Skill                              Linked Data                  FMG
+Knowledge
+                                                                               Relational   RelBen FMDB
+Procedural                                                                            Data
+Knowledge
+                      Retrieval +              Prediction
+Relational            Zero-Shot
+    Data                                                                    Single
+                                                                             Table          GBDTs                 LTM
+
+                                                                            Single-Task Multi-Task       Foundation
+                                                                                                           Model
+                      Phase 2: Private Inference                            Model           Model
+
+Figure 4. Retrieval-Augmented In-Context Learning Architecture. Figure 5. Conceptual positioning of FMSLT relative to existing
+Training learns reasoning from synthetic system-table pairs; inference paradigms, categorized by data richness (y-axis) and model capa-
+retrieves operational artifacts and applies learned ICL for zero-shot bilities (x-axis).
+prediction on private tables.
+
+effective synthetic data generators that capture real-world tional grounding requires explicit integration of procedural
+
+operational complexity, and building retrievers that can iden- knowledge rather than attempting to compress all semantic
+
+tify semantically relevant artifacts from large organizational information into learned representations. The position paper
+
+systems. A critical challenge is the "Provenance Gap": by (Van Breugel & Van Der Schaar, 2024) argues for this
+
+mapping database rows to the specific code functions that scope, and we acknowledge its validity for narrow, static
+
+generated or validated them. While modern microservices tasks. However, we contend this view is fundamentally
+
+with comprehensive logging provide this traceability, limiting for agentic systems where tables lack the semantic
+
+retrofitting provenance for legacy systems remains an self-containment of text (de Saussure, 1916).
+
+open problem. Recent advances in retrieval-augmented Relational methods (RelBench (Robinson et al., 2024),
+
+generation (Lewis et al., 2020) and program synthesis GraphSAGE (Hamilton et al., 2017), CARTE (Kim et al.,
+
+suggest viable paths forward. This architectural sketch 2024), Griffin (Wang et al., 2025), FMDB, Zero-Shot Re-
+
+demonstrates that FMSLT is not merely a conceptual pro- lational Transformer (Ranjan et al., 2025)) advance to the
+
+posal but a tractable engineering goal requiring innovation middle tier by capturing multi-table dependencies via for-
+
+beyond current foundation model capabilities.                               eign keys. While valuable, these assume all necessary con-
+
+5. Alternative Views                                                        text is encoded in relational schemas, missing operational
+                                                                            knowledge in code and business rules. They also lack the In-
+
+We contend that research on tabular foundation models Context Learning (ICL) capability of foundation models,
+
+has pursued a fundamentally narrow path. Most work requiring retraining for schema changes.
+
+focuses on single-table generalization or schema-level rela- Emerging foundation models (LTM, FMG (Galkin et al.,
+
+tional patterns, ignoring the operational context that defines 2024a), KumoRFM (Fey et al., 2025), TabICL (Qu et al.,
+
+how data acquires meaning in real systems. Figure 5 orga- 2025)) extend toward the upper-right but remain within
+
+nizes existing approaches along two axes: data richness and database boundaries. FMSLT completes this trajectory by
+
+model capability. FMSLT represents a necessary paradigm integrating declarative, procedural, and world knowledge,
+
+shift to the upper-right quadrant (foundation models on enabling not just prediction but agentic reasoning: identi-
+
+semantically linked data), which remains fundamentally fying why a supply chain delay occurred (new regulation
+
+underexplored.                                                              + missing code handler) rather than merely that it will oc-
+
+Single-table methods (GBDTs, TabPFN (Hollmann et al., cur (Boisvert et al., 2024; Xu et al., 2025).
+
+2025a;b), ConTextTab (Spinaci et al., 2025)) occupy the The world model analogy: Just as robots need a physics
+
+lower portion of Fig. 5. These excel at isolated table tasks engine to predict object motion, business AI requires an
+
+but, by design, neglect relational interconnectedness and operational model for data evolution (Li et al., 2023b; Ding
+
+operational context. Recent theoretical work reveals funda- et al., 2024). Tables are observations; operational context is
+
+mental limitations of embedding-based approaches: regard- the physics engine. Current models infer physics from cor-
+
+less of dimension, single-vector embeddings cannot scale to relations, akin to rediscovering F=ma by observing falling
+
+combinatorial query complexity (Anonymous, 2025a). This
+
+mathematical constraint reinforces our position that opera-
+                                                                         7
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+objects. FMSLTs, by contrast, are given the operational             the source code (procedural) to ground the decision in oper-
+formulas (code, constraints) directly, learning to apply them       ational artifacts. We call on industry partners to contribute
+rather than reinvent them from data. This enables coun-             sanitized operational contexts (anonymized ERP vendors,
+terfactual reasoning ("What if this rule changed?") that            simulated enterprise environments) and on researchers to
+data-driven models cannot achieve. We contend that oper-            develop models capable of passing this benchmark.
+ational grounding is not optional but essential for foun-
+dation models that can truly reason, explain, and act.              2. Develop Privacy-Preserving Data Sandboxes: Privacy
+                                                                    is the primary bottleneck to FMSLT progress. Without
+6. Call to Action                                                   access to operational context, models cannot learn grounded
+                                                                    reasoning. We insist that industry and academia collaborate
+The path forward requires community-wide action. FM-                on secure execution environments where code and logic can
+SLTs will not emerge from incremental improvements to               be shared without exposing raw sensitive rows (Rajore et al.,
+existing methods. We call upon the machine learning and             2024). This will enable "blind' pre-training corpora where
+data management communities to pursue four concrete, ur-            models learn procedural dynamics without memorizing PII,
+gent directions:                                                    leveraging privacy-enhancing techniques such as differential
+1. The Operational Turing Test: We contend that current             privacy (Cai et al., 2023).
+benchmarks fundamentally fail to test whether models
+truly understand structured data. They measure statisti-            3. Advance Privacy-Preserving Synthetic Data Genera-
+cal generalization, not operational reasoning. We propose           tion: As argued in Section 3, privacy regulations (HIPAA,
+a benchmark that no existing tabular foundation model can           GDPR) and data silos severely restrict access to the real-
+pass: one that demands genuine comprehension of business            world SLT data needed to train FMSLTs. Synthetic data
+logic rather than pattern memorization.                             generation is not merely a convenience but a necessity for
+                                                                    circumventing these barriers. We call for investment in
+   Definition 6.1 (The Operational Turing Test). A model            methods that generate high-fidelity, multi-table synthetic
+   passes the Operational Turing Test if it can join a sim-         data preserving complex relational dependencies and oper-
+   ulated organization (unseen during training) and cor-            ational semantics. Recent advances in graph-conditional
+   rectly predict the outcome of a transaction and explain          diffusion models (Ketata et al., 2025) and cross-tabular syn-
+   the decision by citing the relevant operational arti-            thesis (Lin et al., 2025) demonstrate promising scalability,
+   facts solely by reading the organization's Declarative           yet significant research remains to capture procedural con-
+   knowledge (rules and constraints), Procedural knowl-             straints, temporal dynamics, and the full semantic richness
+   edge (source code and application logic), and Rela-              inherent in SLT--while maintaining rigorous privacy guar-
+   tional data, with only a few-shot number of labeled              antees.
+   input-output examples (appropriate to task complexity)
+   demonstrating the organization's operational behavior.           4. Rethink Architectural Paradigms: Tabular FMs must
+                                                                    move beyond retrofitting LLM architectures or scaling up
+This test is deliberately hard. Success requires consult-           gradient boosting. We call for novel architectures purpose-
+ing operational artifacts (reading approval logic from code,        built for SLT: models that natively process relational struc-
+checking policy PDFs for constraints, traversing foreign key        tures, code, and rules while maintaining the ICL capabil-
+relationships) rather than memorizing statistical patterns. It      ities of foundation models. Whether via table-native pre-
+measures whether a model truly understands operational              training (Qu et al., 2025) or verbalized structural links (Wen
+semantics or merely interpolates training data. We assert           et al., 2024), FMSLTs demand architectures that unify sta-
+that no existing tabular foundation model can pass this             tistical rigor with semantic understanding.
+test. Current benchmarks like RelBench and TabArena test
+schema generalization on abundant training data, not zero-          7. Conclusion
+shot operational reasoning. The Operational Turing Test
+rectifies this: it demands the ability to make informed predic-     We argue that the next breakthrough in tabular AI requires
+tions about unseen business logic by grounding in explicit          grounding tables in their SLT context--shifting from learn-
+operational knowledge, precisely the capability FMSLTs              ing from tables to learning about the systems that generate
+aim to unlock. For example, given a $6,000 expense submis-          them. By integrating declarative, procedural, and world
+sion, a passing model would output: "Rejected: violates ap-         knowledge, FMSLTs can unlock predictive potential hidden
+proval threshold defined in policy v3.pdf Section 4.2               in structured data ecosystems and enable autonomous agents
+and enforced in approval.py:L47: if amount >=                       to reason over complex workflows. The choice is stark:
+5000: require manager approval()." This re-                         continue pursuing correlation-based pattern matching,
+quires reading both the policy document (declarative) and           or build foundation models that understand the opera-
+                                                                    tional logic that gives data meaning (Meta FAIR Code-
+                                                                    Gen Team, 2025; Lehrach et al., 2025). We believe the
+                                                                    future depends on choosing the latter.
+
+                                                                 8
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+References                                                                     https://arxiv.org/abs/2108.07258.
+                                                                            Borisov, V., Sessler, K., Schneider, T., Reinbold, J., Schaub, J.-
+Abdou, M., Kulmizev, A., Hershcovich, D., Frank, S., Pavlick,
+   E., and Søgaard, A. Can language models encode percep-                      G., Gjorgjievska, G., and Kasneci, E. Language models are
+   tual structure without grounding? a case study in color. In                 realistic tabular data generators. In International Conference on
+   Bisazza, A. and Abend, O. (eds.), Proceedings of the 25th                   Learning Representations, 2023.
+   Conference on Computational Natural Language Learning, pp.               Brickley, D., Burgess, M., and Noy, N. Google dataset search:
+   109­132, Online, November 2021. Association for Computa-                    Building a search engine for datasets in an open web ecosystem.
+   tional Linguistics. doi: 10.18653/v1/2021.conll-1.9. URL                    The World Wide Web Conference, 2019. URL https://api.
+   https://aclanthology.org/2021.conll-1.9/.                                   semanticscholar.org/CorpusID:86688027.
+                                                                            Bruckhaus, T. Rag does not work for enterprises, 2024. URL
+Anonymous. Tabmeta: Table metadata generation with LLM-                        https://arxiv.org/abs/2406.04369.
+   curated dataset and LLM-judges, 2024. Under review as ACL                Cafarella, M. J., Halevy, A., Wang, D. Z., Wu, E., and Zhang, Y.
+   Rolling Review June 2024 Submission.                                        Webtables: exploring the power of tables on the web. Proc.
+                                                                               VLDB Endow., 1(1):538­549, aug 2008. ISSN 2150-8097. doi:
+Anonymous. On the theoretical limitations of embedding-based                   10.14778/1453856.1453916. URL https://doi.org/10
+   retrieval. In Submitted to The Fourteenth International Con-                .14778/1453856.1453916.
+   ference on Learning Representations, 2025a. URL https:                   Cai, K., Xiao, X., and Cormode, G. Privlava: Synthesizing rela-
+   //openreview.net/forum?id=k9CzIvzfaA. under                                 tional data with foreign keys under differential privacy. Proc.
+   review.                                                                     ACM Manag. Data, 1(2), June 2023. doi: 10.1145/3589287.
+                                                                               URL https://doi.org/10.1145/3589287.
+Anonymous. Scaling generalist data-analytic agents. In Submitted            Chang, S., Lin, Z., Yan, B., Bembde, S., Xiu, Q., Wong, C. H.,
+   to The Fourteenth International Conference on Learning Rep-                 Qin, Y., Kloster, F., Luo, A., Palleti, R., and Leskovec, J. Learn-
+   resentations, 2025b. URL https://openreview.net/f                           ing production functions for supply chains with graph neural
+   orum?id=5PxFqpIYWC. under review.                                           networks, 2024. URL https://arxiv.org/abs/2407
+                                                                               .18772.
+Badaro, G., Saeed, M., and Papotti, P. Transformers for tabu-               Chartrand, G., Cheng, P. M., Vorontsov, E., Drozdzal, M., Turcotte,
+   lar data representation: A survey of models and applications.               S., Pal, C. J., Kadoury, S., and Tang, A. Deep learning: A primer
+   Transactions of the Association for Computational Linguis-                  for radiologists. RadioGraphics, 37(7):2113­2131, 2017. doi:
+   tics, 11:227­249, 2023. doi: 10.1162/tacl a 00544. URL                      10.1148/rg.2017170077. URL https://doi.org/10.1
+   https://aclanthology.org/2023.tacl-1.14/.                                   148/rg.2017170077. PMID: 29131760.
+                                                                            Chen, M., Tworek, J., Jun, H., Yuan, Q., Ponde´, H., Kaplan, J.,
+Biswal, A., Patel, L., Jha, S., Kamsetty, A., Liu, S., Gonzalez, J. E.,        Edwards, H., Burda, Y., Joseph, N., Brockman, G., Ray, A., Puri,
+   Guestrin, C., and Zaharia, M. Text2sql is not enough: Unifying              R., Krueger, G., Petrov, M., Khlaaf, H., Sastry, G., Mishkin, P.,
+   ai and databases with tag, 2024. URL https://arxiv.or                       Chan, B., Gray, S., Ryder, N., Pavlov, M., Power, A., Kaiser,
+   g/abs/2408.14717.                                                           L., Bavarian, M., Winter, C., Tillet, P., Such, F. P., Cummings,
+                                                                               D. W., Plappert, M., Chantzis, F., Barnes, E., Herbert-Voss, A.,
+Bogavelli, T., Sharma, R., and Subramani, H. Agentarch: A                      Guss, W. H., Nichol, A., Babuschkin, I., Balaji, S., Jain, S., Carr,
+   comprehensive benchmark to evaluate agent architectures in                  A., Leike, J., Achiam, J., Misra, V., Morikawa, E., Radford, A.,
+   enterprise, 2025.                                                           Knight, M. M., Brundage, M., Murati, M., Mayer, K., Welinder,
+                                                                               P., McGrew, B., Amodei, D., McCandlish, S., Sutskever, I., and
+Boisvert, L., Thakkar, M., Gasse, M., Caccia, M., de Chezelles, T.             Zaremba, W. Evaluating large language models trained on code.
+   L. S., Cappart, Q., Chapados, N., Lacoste, A., and Drouin, A.               ArXiv, abs/2107.03374, 2021. URL https://api.semant
+   WorkArena++: Towards compositional planning and reasoning-                  icscholar.org/CorpusID:235755472.
+   based common knowledge work tasks, 2024. URL https://                    Chen, T. and Guestrin, C. XGBoost: A scalable tree boosting
+   arxiv.org/abs/2407.05291. 682 enterprise workflow                           system. In Proceedings of the 22nd ACM SIGKDD International
+   tasks; reveals agents struggle with planning, reasoning, and                Conference on Knowledge Discovery and Data Mining, KDD
+   contextual understanding in knowledge work.                                 '16, pp. 785­794, New York, NY, USA, 2016. ACM. ISBN 978-
+                                                                               1-4503-4232-2. doi: 10.1145/2939672.2939785. URL http:
+Bommasani, R., Hudson, D. A., Adeli, E., Altman, R., Arora, S.,                //doi.acm.org/10.1145/2939672.2939785.
+   von Arx, S., Bernstein, M. S., Bohg, J., Bosselut, A., Brunskill,        Cheng, Z., Xie, T., Shi, P., Li, C., Nadkarni, R., Hu, Y., Xiong, C.,
+   E., Brynjolfsson, E., Buch, S., Card, D., Castellon, R., Chatterji,         Radev, D., Ostendorf, M., Zettlemoyer, L., Smith, N. A., and
+   N., Chen, A., Creel, K., Davis, J. Q., Demszky, D., Donahue,                Yu, T. Binding language models in symbolic languages. ICLR,
+   C., Doumbouya, M., Durmus, E., Ermon, S., Etchemendy, J.,                   2023.
+   Ethayarajh, K., Fei-Fei, L., Finn, C., Gale, T., Gillespie, L.,          Choi, D., Lee, D., Kartono, B. J., Berndt, H., Kwon, T., Jang, J.,
+   Goel, K., Goodman, N., Grossman, S., Guha, N., Hashimoto, T.,               Park, H., Yu, H., and Kahng, M. COMPASS: A framework
+   Henderson, P., Hewitt, J., Ho, D. E., Hong, J., Hsu, K., Huang,             for evaluating organization-specific policy alignment in LLMs,
+   J., Icard, T., Jain, S., Jurafsky, D., Kalluri, P., Karamcheti, S.,         2026. URL https://arxiv.org/abs/2601.01836.
+   Keeling, G., Khani, F., Khattab, O., Koh, P. W., Krass, M.,                 First systematic framework for organizational policy compli-
+   Krishna, R., Kuditipudi, R., Kumar, A., Ladhak, F., Lee, M.,                ance; models refuse only 13­40% of denylist violations, high-
+   Lee, T., Leskovec, J., Levent, I., Li, X. L., Li, X., Ma, T., Malik,        lighting critical gaps in policy-aware reasoning.
+   A., Manning, C. D., Mirchandani, S., Mitchell, E., Munyikwa,             d'Avila Garcez, A. and Lamb, L. C. Neurosymbolic ai: The 3rd
+   Z., Nair, S., Narayan, A., Narayanan, D., Newman, B., Nie, A.,              wave. Artificial Intelligence Review, 2024.
+   Niebles, J. C., Nilforoshan, H., Nyarko, J., Ogut, G., Orr, L.,          de Saussure, F. Cours de linguistique ge´ne´rale. Payot, Paris, 1916.
+   Papadimitriou, I., Park, J. S., Piech, C., Portelance, E., Potts,        Deng, X., Sun, H., Lees, A., Wu, Y., and Yu, C. Turl: table
+   C., Raghunathan, A., Reich, R., Ren, H., Rong, F., Roohani, Y.,             understanding through representation learning. Proc. VLDB
+   Ruiz, C., Ryan, J., R
+   'e, C., Sadigh, D., Sagawa, S., Santhanam, K., Shih, A., Srini-
+   vasan, K., Tamkin, A., Taori, R., Thomas, A. W., Tram
+  `er, F., Wang, R. E., Wang, W., Wu, B., Wu, J., Wu, Y., Xie,
+   S. M., Yasunaga, M., You, J., Zaharia, M., Zhang, M., Zhang,
+   T., Zhang, X., Zhang, Y., Zheng, L., Zhou, K., and Liang, P. On
+   the opportunities and risks of foundation models, 2022. URL
+
+                                                                         9
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+   Endow., 14(3):307­319, nov 2020. ISSN 2150-8097. doi:                   um?id=WH5blx5tZ1.
+   10.14778/3430915.3430921. URL https://doi.org/10                     Garg, S., Ali, M., Hollmann, N., Purucker, L., Mu¨ller, S., and
+   .14778/3430915.3430921.
+Ding, J., Wang, Y., Wu, S., Jiang, L., Yang, Y., Zheng, Y., Li, Y.,        Hutter, F. Real-tabpfn: Improving tabular foundation models via
+   Cao, Y., Wang, J., Li, Y., Chen, M., Zhao, C., Wang, Z., Bai,           continued pre-training with real-world data. In ICML Workshop
+   L., Xiong, R., and Wang, Y. Understanding world or predicting           on Foundation Models for Structured Data (FMSD), 2025. URL
+   future? a comprehensive survey of world models, 2024. URL               https://arxiv.org/abs/2507.03971.
+   https://arxiv.org/abs/2411.00114.                                    Grinsztajn, L., Oyallon, E., and Varoquaux, G. Why do tree-based
+Ding, J., Zhang, Y., Shang, Y., Zhang, Y., Zong, Z., Feng, J.,             models still outperform deep learning on typical tabular data? In
+   Yuan, Y., Su, H., Li, N., Sukiennik, N., Xu, F., and Li, Y.             Advances in Neural Information Processing Systems (NeurIPS),
+   Understanding world or predicting future? a comprehensive               2022. URL https://openreview.net/forum?id=
+   survey of world models. ACM Comput. Surv., 58(3), September             Fp7__phQszn.
+   2025. ISSN 0360-0300. doi: 10.1145/3746449. URL https:               Gruber, T. R. Toward principles for the design of ontologies used
+   //doi.org/10.1145/3746449.                                              for knowledge sharing? Int. J. Hum. Comput. Stud., 43:907­
+Eggert, G., Huo, K., Biven, M., and Waugh, J. Tablib: A dataset            928, 1995. URL https://api.semanticscholar.or
+   of 627m tables with context, 2023.                                      g/CorpusID:1652449.
+Erickson, N., Purucker, L., Tschalzev, A., Holzm                        Guan, X., Liu, Y., Lin, H., Lu, Y., He, B., Han, X., and Sun, L.
+   u¨ller, D., Desai, P. M., Salinas, D., and Hutter, F. Tabarena:         Mitigating large language model hallucinations via autonomous
+   A living benchmark for machine learning on tabular data. In             knowledge graph-based retrofitting. In Proceedings of the AAAI
+   Advances in Neural Information Processing Systems (NeurIPS)             Conference on Artificial Intelligence, 2024.
+   Datasets and Benchmarks Track, 2025. URL https://ar                  Guo, D., Zhu, Q., Yang, D., Xie, Z., Dong, K., Zhang, W., Chen,
+   xiv.org/abs/2506.16791.                                                 G., Bi, X., Wu, Y., Li, Y. K., Luo, F., Xiong, Y., and Liang, W.
+Fang, X., Xu, W., Tan, F. A., Zhang, J., Hu, Z., Qi, Y. J., Nickleach,     Deepseek-coder: When the large language model meets pro-
+   S., Socolinsky, D., Srinivasan Sengamedu, S., and Faloutsos,            gramming - the rise of code intelligence. ArXiv, abs/2401.14196,
+   C. Large language models (llms) on tabular data: Prediction,            2024. URL https://api.semanticscholar.org/
+   generation, and understanding -- a survey. Transactions on              CorpusID:267211867.
+   Machine Learning Research, 2024. URL https://www.                    Hamilton, W. L., Ying, R., and Leskovec, J. Inductive represen-
+                                                                           tation learning on large graphs. In Proceedings of the 31st
+   amazon.science/publications/large-languag                               International Conference on Neural Information Processing
+                                                                           Systems, NIPS'17, pp. 1025­1035, Red Hook, NY, USA, 2017.
+   e- models- llms- on- tabular- data- predictio                           Curran Associates Inc. ISBN 9781510860964.
+                                                                        Han, Y., Liu, C., and Wang, P. A comprehensive survey on vector
+   n-generation-and-understanding-a-survey.                                database: Storage and retrieval technique, challenge. CoRR,
+Fey, M., Hu, W., Huang, K., Lenssen, J. E., Ranjan, R., Robinson,          abs/2310.11703, 2023. URL http://dblp.uni-trier
+
+   J., Ying, R., You, J., and Leskovec, J. Position: Relational deep       .de/db/journals/corr/corr2310.html#abs-2
+   learning - graph representation learning on relational databases.
+   In Salakhutdinov, R., Kolter, Z., Heller, K., Weller, A., Oliver,       310-11703.
+   N., Scarlett, J., and Berkenkamp, F. (eds.), Proceedings of the      Hogan, A., Blomqvist, E., Cochez, M., d'Amato, C., de Melo, G.,
+   41st International Conference on Machine Learning, volume
+   235 of Proceedings of Machine Learning Research, pp. 13592­             Gutierrez, C., Kirrane, S., Gayo, J. E. L., Navigli, R., Neumaier,
+   13607. PMLR, 21­27 Jul 2024a. URL https://proceedi                      S., Ngomo, A.-C. N., Polleres, A., Rashid, S. M., Rula, A.,
+   ngs.mlr.press/v235/fey24a.html.                                         Schmelzeisen, L., Sequeda, J., Staab, S., and Zimmermann,
+Fey, M., Hu, W., Huang, K., Lenssen, J. E., Ranjan, R., Robinson,          A. Knowledge Graphs. Morgan & Claypool Publishers, 2021.
+   J., Ying, R., You, J., and Leskovec, J. Position: Relational deep       URL https://aidanhogan.com/kg-book/.
+   learning - graph representation learning on relational databases.    Hogan, A., Dong, X. L., i
+   In ICML, 2024b.                                                         'c, D. V., and Weikum, G. Large language models, knowledge
+Fey, M., Kocijan, V., Lopez, F., Lenssen, J. E., and Leskovec,             graphs and search engines: A crossroads for answering users'
+   J. Kumorfm: A foundation model for in-context learning on               questions, 2025. URL https://arxiv.org/abs/2501
+   relational data, 2025. URL https://kumo.ai/blog/k                       .06699.
+                                                                        Hollmann, N., Mu¨ller, S., Purucker, L., Krishnakumar, A., Ko¨rfer,
+   umorfm- a- foundation- model- for- in- context                          M., Hoo, S. B., Schirrmeister, R. T., and Hutter, F. Accurate
+                                                                           predictions on small data with a tabular foundation model. Na-
+  -learning-on-relational-data.                                            ture, 01 2024. doi: 10.1038/s41586-024-08328-6. URL
+Galkin, M., Yuan, X., Mostafa, H., Tang, J., and Zhu, Z. Towards
+                                                                           https://www.nature.com/articles/s41586-0
+   foundation models for knowledge graph reasoning. In The
+   Twelfth International Conference on Learning Representations,           24-08328-6.
+   2024a. URL https://openreview.net/forum?id=                          Hollmann, N., Mu¨ller, S., Eggensperger, K., and Hutter, F. Accu-
+   jVEoydFOl9.
+Galkin, M., Zhou, J., Ribeiro, B., Tang, J., and Zhu, Z. A foun-           rate predictions on small data with a tabular foundation model.
+   dation model for zero-shot logical query reasoning. In The              Nature, 2025a. doi: 10.1038/s41586-024-08343-z. URL
+   Thirty-eighth Annual Conference on Neural Information Pro-
+   cessing Systems, 2024b. URL https://openreview.n                        https://www.nature.com/articles/s41586-0
+   et/forum?id=JRSyMBBJi6.
+Gao, D., Wang, H., Li, Y., Sun, X., Qian, Y., Ding, B., and Zhou, J.       24-08343-z.
+   Text-to-sql empowered by large language models: A benchmark          Hollmann, N., M
+   evaluation. CoRR, abs/2308.15363, 2023.
+Gardner, J. P., Perdomo, J. C., and Schmidt, L. Large scale transfer       u¨ller, S., Hutter, F., Purucker, L., Krishnakumar, A., K
+   learning for tabular data via language modeling. In The Thirty-         o¨rfer, M., Hoo, S. B., and Schirrmeister, R. T. Tabpfn-2.5:
+   eighth Annual Conference on Neural Information Processing               Advancing the state of the art in tabular foundation models.
+   Systems, 2024. URL https://openreview.net/for                           arXiv preprint arXiv:2511.08667, 2025b. URL https://ar
+                                                                           xiv.org/abs/2511.08667.
+                                                                        Holzmu¨ller, D., Grinsztajn, L., and Steinwart, I. Better by default:
+                                                                           Strong pre-tuned MLPs and boosted trees on tabular data. In
+
+10
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+   Advances in Neural Information Processing Systems (NeurIPS),           of Machine Learning Research, pp. 17564­17579. PMLR, 23­
+   2024. URL https://openreview.net/forum?id=                             29 Jul 2023. URL https://proceedings.mlr.pres
+   3BNPUDvqMt.                                                            s/v202/kotelnikov23a.html.
+Hu, W., Yuan, Y., Zhang, Z., Nitta, A., Cao, K., Kocijan,              Kwok, T. S. T., Wang, C.-H., and Cheng, G. Greater: Generate
+   V., Leskovec, J., and Fey, M. Pytorch frame: A modular                 realistic tabular data after data enhancement and reduction, 2025.
+   framework for multi-modal tabular learning. arXiv preprint             URL https://arxiv.org/abs/2503.15564.
+   arXiv:2404.00776, 2024.                                             Lehrach, W., Hennes, D., Lazaro-Gredilla, M., Lou, X., Wen-
+Huang, K.-H., Prabhakar, A., Thorat, O., Agarwal, D., Choubey,            delken, C., Li, Z., Dedieu, A., Grau-Moya, J., Lanctot, M., Is-
+   P. K., Mao, Y., Savarese, S., Xiong, C., and Wu, C.-S.                 cen, A., Schultz, J., Chiam, M., Gemp, I., Zielinski, P., Singh, S.,
+   CRMArena-Pro: Holistic assessment of LLM agents across                 and Murphy, K. P. Code world models for general game playing,
+   diverse business scenarios and interactions. arXiv preprint            2025. URL https://arxiv.org/abs/2510.04542.
+   arXiv:2505.18878, 2025. Enterprise CRM benchmark; reveals           Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal,
+   significant accuracy drops in multi-turn dialogues and confiden-       N., Ku¨ttler, H., Lewis, M., tau Yih, W., Rockta¨schel, T.,
+   tiality awareness failures.                                            Riedel, S., and Kiela, D. Retrieval-augmented generation for
+Huang, W., Abbeel, P., Pathak, D., and Mordatch, I. Language              knowledge-intensive NLP tasks. In Advances in Neural Infor-
+   models as zero-shot planners: Extracting actionable knowledge          mation Processing Systems (NeurIPS), 2020. URL https:
+   for embodied agents. ArXiv, abs/2201.07207, 2022a. URL
+                                                                          //papers.nips.cc/paper/2020/hash/6b49323
+   https://api.semanticscholar.org/CorpusID:
+                                                                          d710fac1504ada8081f28e3a2-Abstract.html.
+   246035276.                                                          Li, C., Liang, J., Zeng, A., Chen, X., Hausman, K., Sadigh, D.,
+Huang, W., Abbeel, P., Pathak, D., and Mordatch, I. Language
+                                                                          Levine, S., Fei-Fei, L., Xia, F., and Ichter, B. Chain of code:
+   models as zero-shot planners: Extracting actionable knowledge          Reasoning with a language model-augmented code emulator. In
+   for embodied agents. In Chaudhuri, K., Jegelka, S., Song, L.,          Salakhutdinov, R., Kolter, Z., Heller, K., Weller, A., Oliver, N.,
+   Szepesvari, C., Niu, G., and Sabato, S. (eds.), Proceedings of the     Scarlett, J., and Berkenkamp, F. (eds.), Proceedings of the 41st
+   39th International Conference on Machine Learning, volume              International Conference on Machine Learning, volume 235 of
+   162 of Proceedings of Machine Learning Research, pp. 9118­             Proceedings of Machine Learning Research, pp. 28612­28635.
+   9147. PMLR, 2022b. URL https://proceedings.mlr.                        PMLR, 2024. URL https://proceedings.mlr.pres
+   press/v162/huang22a.html.                                              s/v235/li24bc.html. Oral presentation.
+Hui, B., Yang, J., Cui, Z., Yang, J., Liu, D., Zhang, L., Liu, T.,     Li, J., Hui, B., QU, G., Yang, J., Li, B., Li, B., Wang, B., Qin, B.,
+   Zhang, J., Yu, B., Lu, K., Dang, K., Fan, Y., Zhang, Y., Yang,         Geng, R., Huo, N., Zhou, X., Ma, C., Li, G., Chang, K., Huang,
+   A., Men, R., Huang, F., Zheng, B., Miao, Y., Quan, S., Feng, Y.,       F., Cheng, R., and Li, Y. Can LLM already serve as a database
+   Ren, X., Ren, X., Zhou, J., and Lin, J. Qwen2.5-coder technical        interface? a BIg bench for large-scale database grounded text-
+   report, 2024. URL https://arxiv.org/abs/2409.1                         to-SQLs. In Thirty-seventh Conference on Neural Information
+   2186.                                                                  Processing Systems Datasets and Benchmarks Track, 2023a.
+Hulsebos, M., Demiralp, C¸ ., and Groth, P. Gittables: A large-           URL https://openreview.net/forum?id=dI4wzA
+   scale corpus of relational tables. Proceedings of the ACM on           E6uV.
+   Management of Data, 1(1):1­17, 2023.                                Li, K., Hopkins, A. K., Bau, D., Vie´gas, F., Pfister, H., and Watten-
+Islakoglu, D. S. and Kalo, J.-C. Chronosense: Exploring temporal          berg, M. Emergent world representations: Exploring a sequence
+   understanding in large language models with time intervals of          model trained on a synthetic task. In The Eleventh International
+   events, 2025. URL https://arxiv.org/abs/2501.0                         Conference on Learning Representations, 2023b. URL https:
+   3040.                                                                  //openreview.net/forum?id=DeG07_TcZvT.
+Ketata, M. A., Lu¨dke, D., Schwinn, L., and Gu¨nnemann, S. Joint       Lin, X., Xu, C., Yang, M., and Cheng, G. Ctsyn: A foundation
+   relational database generation via graph-conditional diffusion         model for cross tabular data generation. In ICLR, 2025. URL
+   models. In Advances in Neural Information Processing Systems           https://iclr.cc/virtual/2025/poster/29585.
+   (NeurIPS), 2025. URL https://openreview.net/for                     Liu, K., Xu, Z., Chen, Z., Zhu, Y., Liu, A., Fu, J., Li, Z., and
+   um?id=Z3OtNSwuXX.                                                      Zha, Z.-J. From word to world: Can large language models
+Khatuya, S., Naidu, S., Goyal, P., and Ganguly, N. Program of             be implicit text-based world models?, 2024. URL https:
+   thoughts for financial reasoning: Leveraging dynamic in-context        //arxiv.org/abs/2512.18832.
+   examples and generative retrieval. In Proceedings of the 2025       Luo, M., Su, Y., and Li, Y. Improving factuality in llms with
+   Conference on Empirical Methods in Natural Language Pro-               enterprise knowledge graphs. arXiv preprint arXiv:2404.14441,
+   cessing, pp. 28742­28759, Suzhou, China, 2025. Association             2024.
+   for Computational Linguistics. doi: 10.18653/v1/2025.emnlp          Ma, J., Thomas, V., Hosseinzadeh, R., Kamkari, H., Labach, A.,
+  -main.1577.                                                             Cresswell, J. C., Golestan, K., Yu, G., Volkovs, M., and Caterini,
+Kim, M. J., Grinsztajn, L., and Varoquaux, G. Carte: Pretraining          A. L. Tabdpt: Scaling tabular foundation models, 2024. URL
+   and transfer for tabular learning. In Forty-first International        https://arxiv.org/abs/2410.18164.
+   Conference on Machine Learning, 2024.                               Ma, J., Thomas, V., Hosseinzadeh, R., Kamkari, H., Labach, A.,
+Klein, T., Biehl, C., Costa, M., Sres, A., Kolk, J., and Hoffart, J.      Cresswell, J. C., Golestan, K., Yu, G., Volkovs, M., and Caterini,
+   SALT: Sales autocompletion linked business tables dataset. In          A. L. Tabdpt: Scaling tabular foundation models on real data. In
+   NeurIPS 2024 Third Table Representation Learning Workshop,             Advances in Neural Information Processing Systems (NeurIPS),
+   2024. URL https://openreview.net/forum?id=                             2025. URL https://arxiv.org/abs/2410.18164.
+   UZbELpkWIr.                                                         Mahowald, K., Ivanova, A. A., Blank, I. A., Kanwisher, N.,
+Kotelnikov, A., Baranchuk, D., Rubachev, I., and Babenko, A.              Tenenbaum, J. B., and Fedorenko, E. Dissociating language
+   TabDDPM: Modelling tabular data with diffusion models. In              and thought in large language models. Trends in Cogni-
+   Krause, A., Brunskill, E., Cho, K., Engelhardt, B., Sabato, S.,        tive Sciences, 28(6):517­540, 2024. ISSN 1364-6613. doi:
+   and Scarlett, J. (eds.), Proceedings of the 40th International         https://doi.org/10.1016/j.tics.2024.01.011. URL https:
+   Conference on Machine Learning, volume 202 of Proceedings
+                                                                          //www.sciencedirect.com/science/article/
+
+11
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+   pii/S1364661324000275.                                                 Koh, P. W., Liu, J., Malik, S., Merrill, W., Miranda, L. J. V.,
+Mao, H., Chen, Z., Tang, W., Zhao, J., Ma, Y., Zhao, T., Shah, N.,        Morrison, J., Murray, T., Nam, C., Pyatkin, V., Rangapur, A.,
+                                                                          Schmitz, M., Skjonsberg, S., Wadden, D., Wilhelm, C., Wilson,
+   Galkin, M., and Tang, J. Position: Graph foundation models are         M., Zettlemoyer, L., Farhadi, A., Smith, N. A., and Hajishirzi,
+   already here. In International Conference on Machine Learning,         H. 2 olmo 2 furious, 2025. URL https://arxiv.org/ab
+   2024. URL https://api.semanticscholar.org/                             s/2501.00656.
+   CorpusID:267412744.                                                 Ou, Y., Luo, Y., Zheng, J., Wei, L., Qiao, S., Zhang, J., Zheng,
+Marra, G., i                                                              D., Chen, H., and Zhang, N. Automind: Adaptive knowl-
+   'c, S. D., Manhaeve, R., and Raedt, L. D. From statistical rela-       edgeable agent for automated data science. arXiv preprint
+   tional to neurosymbolic artificial intelligence: a survey, 2024.       arXiv:2506.10974, 2025.
+   URL https://arxiv.org/abs/2108.11451.                               Pang, W., Shafieinejad, M., Liu, L., Hazlewood, S., and He,
+Meta FAIR CodeGen Team. CWM: An open-weights LLM for                      X. ClavaDDPM: Multi-relational data synthesis with cluster-
+   research on code generation with world models, 2025. URL ht            guided diffusion models. In Advances in Neural Informa-
+   tps://arxiv.org/abs/2510.02387. 32B parameter                          tion Processing Systems (NeurIPS), 2024. URL https:
+   model trained on Python execution traces and agent trajectories;       //openreview.net/forum?id=Zb2ixT19VF.
+   demonstrates that world modeling improves code generation,          Papicchio, S., Rossi, S., Cagliero, L., and Papotti, P. Think2sql:
+   reasoning, and planning.                                               Reinforce llm reasoning capabilities for text2sql, 2025. URL
+Microsoft. Release AdventureWorks sample databases ·                      https://arxiv.org/abs/2504.15077.
+   microsoft/sql-server-samples -- github.com. https://gi              Patil, S. G., Zhang, T., Wang, X., and Gonzalez, J. E. Gorilla:
+                                                                          Large language model connected with massive APIs. In The
+   thub.com/Microsoft/sql-server-samples/rel                              Thirty-eighth Annual Conference on Neural Information Pro-
+                                                                          cessing Systems, 2024. URL https://openreview.net
+   eases/tag/adventureworks, 2024. [Accessed 26-01-                       /forum?id=tBRNC6YemY.
+   2025].                                                              Patki, N., Wedge, R., and Veeramachaneni, K. The synthetic
+Mihindukulasooriya, N., Dash, S., Bagchi, S., Chowdhury, M.               data vault. In IEEE International Conference on Data Science
+   F. M., Gliozzo, A. M., Farkash, A., Glass, M. R., Gokhman,             and Advanced Analytics (DSAA), pp. 399­410, Oct 2016. doi:
+   I., Hassanzadeh, O., Pham, N., Rossiello, G., Rozenberg, B.,           10.1109/DSAA.2016.49.
+   Sagron, Y., Subramanian, D., Takahashi, T., Tateishi, T., and       Prokhorenkova, L. O., Gusev, G., Vorobev, A., Dorogush, A. V.,
+   Vu, L. Unleashing the potential of data lakes with semantic            and Gulin, A. Catboost: unbiased boosting with categorical fea-
+   enrichment using foundation models. In Fundulaki, I., Kozaki,          tures. In Bengio, S., Wallach, H. M., Larochelle, H., Grauman,
+   K., Garijo, D., and Go´mez-Pe´rez, J. M. (eds.), Proceedings           K., Cesa-Bianchi, N., and Garnett, R. (eds.), NeurIPS, pp. 6639­
+   of the ISWC 2023 Posters, Demos and Industry Tracks: From              6649, 2018. URL http://dblp.uni-trier.de/db/c
+   Novel Ideas to Industrial Practice co-located with 22nd Interna-       onf/nips/nips2018.html#ProkhorenkovaGV18.
+   tional Semantic Web Conference (ISWC 2023), Athens, Greece,         Qu, J., Holzmu¨ller, D., Varoquaux, G., and Morvan, M. L. Tabicl:
+   November 6-10, 2023, volume 3632 of CEUR Workshop Pro-                 A tabular foundation model for in-context learning on large data.
+   ceedings. CEUR-WS.org, 2023. URL https://ceur-ws.                      arXiv preprint arXiv:2502.05564, 2025.
+   org/Vol-3632/ISWC2023_paper_513.pdf.                                Rajore, T., Chandran, N., Sitaram, S., Gupta, D., Sharma, R.,
+Mulang', I. O., Sasaki, F., Klein, T., Kolk, J., Grechanov, N., and       Mittal, K., and Swaminathan, M. Truce: Private benchmarking
+   Hoffart, J. Salt-kg: A benchmark for semantics-aware learning          to prevent contamination and improve comparative evaluation
+   on enterprise tables. In NeurIPS Workshop on AITD, 2025. URL           of llms, 2024. URL https://arxiv.org/abs/2403.0
+                                                                          0393.
+   https://openreview.net/forum?id=9vVMSvil                            Raman, N., Ganesh, S., and Veloso, M. Scalable representation
+                                                                          learning for multimodal tabular transactions, 2024. URL http
+   GX.                                                                    s://arxiv.org/abs/2410.07851.
+Nastl, V. Y. and Hardt, M. Do causal predictors generalize better      Ranjan, R., Hudovernik, V., Znidar, M., Kanatsoulis, C., Upen-
+                                                                          dra, R., Mohammadi, M., Meyer, J., Palczewski, T., Guestrin,
+   to new domains? In The Thirty-eighth Annual Conference on              C., and Leskovec, J. Relational transformer: Toward zero-
+   Neural Information Processing Systems, 2024. URL https:                shot foundation models for relational data. arXiv preprint
+   //openreview.net/forum?id=U4BC0GrFAz.                                  arXiv:2510.06377, 2025. URL https://arxiv.org/
+Nathani, D., Madaan, L., Roberts, N., Bashlykov, N., Menon, A.,           abs/2510.06377.
+   Moens, V., Budhiraja, A., Magka, D., Vorotilov, V., Chaura-         Ravi, S., Chinchure, A., Shukla, P., Shwartz, V., and Sigal, L.
+   sia, G., Hupkes, D., Cabral, R. S., Shavrina, T., Foerster, J.,        World models must live in parallel worlds. In NeurIPS 2025
+   Bachrach, Y., Wang, W. Y., and Raileanu, R. Mlgym: A new               Workshop on Bridging Language, Agent, and World Models for
+   framework and benchmark for advancing ai research agents,              Reasoning and Planning, 2025. URL https://openrevi
+   2025.                                                                  ew.net/forum?id=sj9Nyke43S.
+Ni, Z., Li, Y., Yang, N., Shen, D., Lv, P., and Dong, D. Tree-of-      Rieke, N., Hancox, J., Li, W., Milletar`i, F., Roth, H. R., Albarqouni,
+   code: A tree-structured exploring framework for end-to-end             S., Bakas, S., Galtier, M., Landman, B. A., Maier-Hein, K. H.,
+   code generation and execution in complex task handling, 2024.          Ourselin, S., Sheller, M. J., Summers, R. M., Trask, A., Xu,
+   URL https://arxiv.org/abs/2412.15305.                                  D., Baust, M., and Cardoso, M. J. The future of digital health
+Noy, N., Gao, Y., Jain, A., Narayanan, A., Patterson, A., and Taylor,     with federated learning. NPJ Digital Medicine, 3, 2020. URL
+   J. Industry-scale knowledge graphs: lessons and challenges.
+   Commun. ACM, 62(8):36­43, July 2019. ISSN 0001-0782. doi:              https://api.semanticscholar.org/CorpusID:
+   10.1145/3331166. URL https://doi.org/10.1145/
+   3331166.                                                               212747909.
+Nye, M., Tessler, M. H., Tenenbaum, J., and Lake, B. M. Improv-        Robinson, J., Ranjan, R., Hu, W., Huang, K., Han, J., Dobles,
+   ing coherence and consistency in neural sequence models with
+   dual-system reasoning. In NeurIPS, 2021.                               A., Fey, M., Lenssen, J. E., Yuan, Y., Zhang, Z., He, X., and
+OLMo, T., Walsh, P., Soldaini, L., Groeneveld, D., Lo, K., Arora,         Leskovec, J. Relbench: A benchmark for deep learning on
+   S., Bhagia, A., Gu, Y., Huang, S., Jordan, M., Lambert, N.,
+   Schwenk, D., Tafjord, O., Anderson, T., Atkinson, D., Brahman,
+   F., Clark, C., Dasigi, P., Dziri, N., Guerquin, M., Ivison, H.,
+
+12
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+   relational databases, 2024. URL https://arxiv.org/ab                   Tan, X., Wang, X., Liu, Q., Xu, X., Yuan, X., and Zhang, W.
+   s/2407.20060.                                                             Paths-over-graph: Knowledge graph empowered large language
+Rocher, L., Hendrickx, J. M., and de Montjoye, Y.-A. Estimating              model reasoning, 2024. URL https://arxiv.org/abs/
+   the success of re-identifications in incomplete datasets using            2410.14211. Empirical study showing 18.9
+   generative models. Nature Communications, 10(1):3069, 2019.
+   doi: 10.1038/s41467-019-10933-3. URL https://doi.or                    Tornqvist, M., Zucker, J.-D., Fauvel, T., Lambert, N., Berthelot,
+   g/10.1038/s41467-019-10933-3.                                             M., and Movschin, A. A text-to-tabular approach to generate
+Rombach, R., Blattmann, A., Lorenz, D., Esser, P., and Ommer, B.             synthetic patient data using llms. In NeurIPS Workshop on
+   High-resolution image synthesis with latent diffusion models. In          Synthetic Data for Health, 2024. URL https://api.sema
+   Proceedings of the IEEE/CVF Conference on Computer Vision                 nticscholar.org/CorpusID:274581956.
+   and Pattern Recognition, pp. 10684­10695, 2022.
+Rozi                                                                      Urlana, A., Kumar, C. V., Singh, A. K., Garlapati, B. M., Chala-
+  `ere, B., Gehring, J., Gloeckle, F., Sootla, S., Gat, I., Tan,             mala, S. R., and Mishra, R. Llms with industrial lens: De-
+   X. E., Adi, Y., Liu, J., Sauvestre, R., Remez, T., Rapin, J.,             ciphering the challenges and prospects - a survey. ArXiv,
+   Kozhevnikov, A., Evtimov, I., Bitton, J., Bhatt, M., Ferrer,              abs/2402.14558, 2024. URL https://api.semantic
+   C. C., Grattafiori, A., Xiong, W., D                                      scholar.org/CorpusID:267782487.
+   'efossez, A., Copet, J., Azhar, F., Touvron, H., Martin, L.,
+   Usunier, N., Scialom, T., and Synnaeve, G. Code llama:                 Vafa, K., Chen, J. Y., Rambachan, A., Kleinberg, J., and Mul-
+   Open foundation models for code, 2024. URL https:                         lainathan, S. Evaluating the world model implicit in a gen-
+   //arxiv.org/abs/2308.12950.                                               erative model. In The Thirty-eighth Annual Conference on
+Schick, T., Dwivedi-Yu, J., Dessi, R., Raileanu, R., Lomeli, M.,             Neural Information Processing Systems, 2024. URL https:
+   Hambro, E., Zettlemoyer, L., Cancedda, N., and Scialom, T.                //openreview.net/forum?id=aVK4JFpegy.
+   Toolformer: Language models can teach themselves to use tools.
+   In Thirty-seventh Conference on Neural Information Processing          Van Breugel, B. and Van Der Schaar, M. Position: Why tabular
+   Systems, 2023. URL https://openreview.net/for                             foundation models should be a research priority. In Salakhutdi-
+   um?id=Yacmpz84TH.                                                         nov, R., Kolter, Z., Heller, K., Weller, A., Oliver, N., Scarlett, J.,
+Shi, J., Xu, M., Hua, H., Zhang, H., Ermon, S., and Leskovec, J.             and Berkenkamp, F. (eds.), Proceedings of the 41st International
+   Tabdiff: a mixed-type diffusion model for tabular data genera-            Conference on Machine Learning, volume 235 of Proceedings
+   tion. In International Conference on Learning Representations             of Machine Learning Research, pp. 48976­48993. PMLR, 21­
+   (ICLR), 2025. URL https://openreview.net/forum                            27 Jul 2024. URL https://proceedings.mlr.pres
+   ?id=swvURjrt8z.                                                           s/v235/van-breugel24a.html.
+Somvanshi, S., Das, S., Javed, S. A., Antariksa, G., and Hossain,
+   A. A survey on deep tabular learning, 2024. URL https:                 van Panhuis, W. G., Paul, P., Emerson, C., Grefenstette, J., Wilder,
+   //arxiv.org/abs/2410.12034.                                               R., Herbst, A. J., Heymann, D., and Burke, D. S. A systematic
+Spinaci, M., Polewczyk, M., Hoffart, J., Kohler, M. C., Thelin, S.,          review of barriers to data sharing in public health. BMC Public
+   and Klein, T. PORTAL: Scalable tabular foundation models                  Health, 14, 2014. URL https://api.semanticschola
+   via content-specific tokenization. In NeurIPS 2024 Third Table            r.org/CorpusID:263974358.
+   Representation Learning Workshop, 2024. URL https://
+   openreview.net/forum?id=TSZQvknbLO.                                    Vrandecic´, D. and Kro¨tzsch, M. Wikidata: A free collaborative
+Spinaci, M., Polewczyk, M., Schambach, M., and Thelin, S. Con-               knowledgebase. Commun. ACM, 57(10):78­85, September
+   texttab: A semantics-aware tabular in-context learner. In Ad-             2014. ISSN 0001-0782. doi: 10.1145/2629489. URL http:
+   vances in Neural Information Processing Systems (NeurIPS),                //doi.acm.org/10.1145/2629489.
+   2025. URL https://arxiv.org/abs/2506.10707.
+   Spotlight.                                                             Wang, C., Wang, D., Ren, Q., Wang, J., Li, W., Wang, W., and
+Su, A., Wang, A., Ye, C., Zhou, C., Zhang, G., Zhu, G., Wang, H.,            Li, J. Evaluating world models with llm for decision making,
+   Xu, H., Chen, H., Li, H., Lan, H., Tian, J., Yuan, J., Zhao, J.,          2024a. URL https://arxiv.org/abs/2411.08794.
+   Zhou, J., Shou, K., Zha, L., Long, L., Li, L., Wu, P., Zhang, Q.,
+   Huang, Q., Yang, S., Zhang, T., Ye, W., Zhu, W., Hu, X., Gu,           Wang, X., Li, B., Song, Y., Xu, F. F., Tang, X., Zhuge, M., Pan, J.,
+   X., Sun, X., Li, X., Yang, Y., and Xiao, Z. Tablegpt2: A large            Song, Y., Li, B., Singh, J., Tran, H. H., Li, F., Ma, R., Zheng, M.,
+   multimodal model with tabular data integration, 2024. URL                 Qian, B., Shao, Y., Muennighoff, N., Zhang, Y., Hui, B., Lin, J.,
+   https://arxiv.org/abs/2411.02059.                                         Brennan, R., Peng, H., Ji, H., and Neubig, G. OpenHands: An
+Sun, C., Shrivastava, A., Singh, S., and Gupta, A. Revisiting                Open Platform for AI Software Developers as Generalist Agents,
+   Unreasonable Effectiveness of Data in Deep Learning Era .                 2024b. URL https://arxiv.org/abs/2407.16741.
+   In 2017 IEEE International Conference on Computer Vision
+   (ICCV), pp. 843­852, Los Alamitos, CA, USA, October 2017.              Wang, Y., Fu, T., Xu, Y., Ma, Z., Xu, H., Lu, Y., Du, B., Gao, H.,
+   IEEE Computer Society. doi: 10.1109/ICCV.2017.97. URL                     and Wu, J. Twin-gpt: Digital twins for clinical trials via large
+                                                                             language model, 2024c. URL https://arxiv.org/abs/
+   https://doi.ieeecomputersociety.org/10.1                                  2404.01273.
+
+   109/ICCV.2017.97.                                                      Wang, Y., Wang, X., Gan, Q., Wang, M., Yang, Q., Wipf, D., and
+Sutton, R. The bitter lesson, 2019. URL http://www.incomp                    Zhang, M. Griffin: Towards a graph-centric relational database
+                                                                             foundation model. In Forty-second International Conference
+   leteideas.net/IncIdeas/BitterLesson.html.                                 on Machine Learning, 2025. URL https://openreview
+   Accessed: 2025-05-20.                                                     .net/forum?id=TxeCxVb3cL.
+Tamasauskaite, G. and Groth, P. Defining a knowledge graph
+   development process through a systematic review. ACM Trans-            Wang, Z., Zhang, H., Li, C.-L., Martin, J., Perot, V., Wang, Z.,
+   actions on Software Engineering and Methodology, 32:1­40,                 Miculicich, L., and Fujii, Y. Chain-of-table: Evolving tables in
+   2023. doi: 10.1145/3522586.                                               the reasoning chain for table understanding. In International
+                                                                             Conference on Learning Representations (ICLR), 2024d. URL
+
+                                                                             https://openreview.net/forum?id=cp5PvcI6
+
+                                                                             w8_.
+                                                                          Wehrstein, J., Binnig, C., O¨ zcan, F., Vasudevan, S., Gan, Y., and
+
+                                                                             Wang, Y. Towards foundation database models. In Proceedingd
+                                                                             on Conference on Innovative Data Systems Research (CIDR),
+                                                                             2025.
+                                                                          Wei, J., Wang, X., Schuurmans, D., Bosma, M., ichter, b., Xia,
+
+                                                                      13
+Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+   F., Chi, E., Le, Q. V., and Zhou, D. Chain-of-thought prompt-               //aclanthology.org/2023.emnlp-main.820/.
+   ing elicits reasoning in large language models. In Koyejo, S.,           Zhao, L., Kong, L., Walters, R., and Wong, L. L. Toward compo-
+   Mohamed, S., Agarwal, A., Belgrave, D., Cho, K., and Oh,
+   A. (eds.), Advances in Neural Information Processing Systems,               sitional generalization in object-oriented world modeling. In
+   volume 35, pp. 24824­24837. Curran Associates, Inc., 2022.                  Chaudhuri, K., Jegelka, S., Song, L., Szepesvari, C., Niu, G.,
+Wen, X., Zhang, H., Zheng, S., Xu, W., and Bian, J. From su-                   and Sabato, S. (eds.), Proceedings of the 39th International
+   pervised to generative: A novel paradigm for tabular deep                   Conference on Machine Learning, volume 162 of Proceedings
+   learning with large language models. In Proceedings of the                  of Machine Learning Research, pp. 26841­26864. PMLR, 17­
+   30th ACM SIGKDD Conference on Knowledge Discovery and                       23 Jul 2022. URL https://proceedings.mlr.pres
+   Data Mining, KDD '24, pp. 3323­3333, New York, NY,                          s/v162/zhao22b.html.
+   USA, 2024. Association for Computing Machinery. ISBN
+   9798400704901. doi: 10.1145/3637528.3671975. URL
+   https://doi.org/10.1145/3637528.3671975.
+Williams, A. R., Ashok, A., tienne Marcotte, Zantedeschi, V.,
+   Subramanian, J., Riachi, R., Requeima, J., Lacoste, A., Rish,
+   I., Chapados, N., and Drouin, A. Context is key: A benchmark
+   for forecasting with essential textual information, 2025. URL
+   https://arxiv.org/abs/2410.18959.
+Wolff, C., Gomm, D., and Hulsebos, M. SQale: A large text-
+   to-SQL corpus grounded in real schemas. In EurIPS 2025
+   Workshop: AI for Tabular Data, 2025. URL https://open
+   review.net/forum?id=6PsKDjgoEy.
+Wydmuch, M., ukasz Borchmann, and ski, F. G. Tackling pre-
+   diction tasks in relational databases with llms, 2024. URL
+   https://arxiv.org/abs/2411.11829.
+Xu, F. F., Song, Y., Li, B., Tang, Y., Jain, K., Bao, M., Wang, Z. Z.,
+   Zhou, X., Guo, Z., Cao, M., Yang, M., Lu, H. Y., Martin, A.,
+   Su, Z., Maben, L. M., Mehta, R., Chi, W., Jang, L. K., Xie, Y.,
+   Zhou, S., and Neubig, G. Theagentcompany: Benchmarking
+   LLM agents on consequential real world tasks. In The Thirty-
+   ninth Annual Conference on Neural Information Processing
+   Systems Datasets and Benchmarks Track, 2025. URL https:
+   //openreview.net/forum?id=LZnKNApvhG.
+Xu, L., Skoularidou, M., Cuesta-Infante, A., and Veeramachaneni,
+   K. Modeling tabular data using conditional gan. In Advances in
+   Neural Information Processing Systems, volume 32, 2019.
+Yang, X.-W., Shao, J.-J., Guo, L.-Z., Zhang, B.-W., Zhou, Z.,
+   Jia, L.-H., Dai, W.-Z., and Li, Y.-F. Neuro-symbolic artifi-
+   cial intelligence: Towards improving the reasoning abilities of
+   large language models. In Proceedings of the Thirty-Fourth
+   International Joint Conference on Artificial Intelligence (IJ-
+   CAI 2025), Survey Track, 2025. URL https://arxi
+   v.org/abs/2508.13678. Comprehensive survey re-
+   viewing neuro-symbolic approaches for LLM reasoning from
+   three perspectives: SymbolicLLM, LLMSymbolic, and
+   LLM+Symbolic.
+Ye, H.-J., Liu, S.-Y., Cai, H.-R., Zhou, Q.-L., and Zhan, D.-C. A
+   closer look at deep learning methods on tabular datasets, 2025.
+   URL https://arxiv.org/abs/2407.00956.
+Ye, Y., Hui, B., Yang, M., Li, B., Huang, F., and Li, Y. Large
+   language models are versatile decomposers: Decomposing
+   evidence and questions for table-based reasoning. In Pro-
+   ceedings of the 46th International ACM SIGIR Conference
+   on Research and Development in Information Retrieval, SI-
+   GIR '23, pp. 174­184, New York, NY, USA, 2023. Associa-
+   tion for Computing Machinery. ISBN 9781450394086. doi:
+   10.1145/3539618.3591708. URL https://doi.org/10
+   .1145/3539618.3591708.
+Zhang, J., Shen, Z., Srinivasan, B., Wang, S., Rangwala, H.,
+   and Karypis, G. NameGuess: Column name expansion for
+   tabular data. In Bouamor, H., Pino, J., and Bali, K. (eds.),
+   Proceedings of the 2023 Conference on Empirical Methods in
+   Natural Language Processing, pp. 13276­13290, Singapore,
+   December 2023. Association for Computational Linguistics.
+   doi: 10.18653/v1/2023.emnlp- main.820. URL https:
+
+                                                                        14
+                        Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+Appendix
+
+Supplementary Materials for Supply-Chain Example
+
+This appendix provides supplementary details for the supply-chain example introduced in Section 1 (with associated
+schematic illustration and multi-table schema in Fig. 2 and Fig. 3), which were omitted from the main paper due to
+space constraints. Specifically, we present an acronym legend, descriptions of table functions, entity definitions, mockup
+configuration validation logic, and basic configuration rules.
+
+A.1 Acronym Legend
+
+· PRD: Product (Core product definitions)                        · INV TRX: Inventory Transaction (Stock movement records)
+· PROPT: Product Option (Configurable product features)          · SUPP: Supplier (Vendor management)
+· PROPT VAL: Product Option Value (Specific option               · PORD: Purchase Order (Material procurement)
+                                                                 · SHPMT: Shipment (Delivery tracking)
+  choices)                                                       · CUST: Customer (Client information)
+· CMP: Component (Manufacturing components)                      · ORD: Order (Sales transactions)
+· CFG CMP CN: Configuration-Component Connection                 · ORD ITM: Order Item (Per-product order details)
+                                                                 · ORD CFG: Order Configuration (Customer-chosen op-
+  (Links options to components)
+· RMAT: Raw Material (Base manufacturing materials)                tions)
+· BOM: Bill of Materials (Component material requirements)
+· INV LOC: Inventory Location (Storage facilities tracking)
+
+A.2 Table Functional Descriptions
+
+· PRD: Stores base product information and pricing               · INV TRX: Logs all inventory movements and adjustments
+
+· PROPT: Defines configurable options for products (e.g.,        · SUPP: Maintains supplier contact and lead time information
+  color, size)
+                                                                 · PORD: Tracks material procurement orders and status
+· PROPT VAL: Contains specific option choices with price
+  modifiers                                                      · SHPMT: Monitors delivery status of purchased materials
+
+· CMP: Tracks manufacturing components used in product           · CUST: Stores customer personal information and contact
+  assembly                                                         details
+
+· CFG CMP CN: Maps product configurations to required            · ORD: Manages order headers and overall status
+  components
+                                                                 · ORD ITM: Records line items with quantities and final
+· RMAT: Manages raw materials inventory and suppliers              pricing
+
+· BOM: Specifies raw material requirements for components        · ORD CFG: Stores customer-selected configuration options
+                                                                   per item
+· INV LOC: Records physical storage locations and types
+
+A.3 Entity Definitions
+PRD -- PRODUCT
+
+Field       Type           Description
+
+prd id      int            Unique product identifier (auto-increment)
+prd name    varchar(255)   Product display name
+prd desc    text           Detailed product description
+base price  decimal(10,2)  Base price before configuration
+created at  datetime       Timestamp of product creation
+
+                                                             15
+             Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+PROPT -- PRODUCT OPTION
+
+Field            Type           Description
+
+propt id         int            Unique option identifier
+prd id           int            Reference to PRD.prd id
+opt name         varchar(100)   Option name (e.g., "Color")
+display order    int            UI display sequence
+
+PROPT VAL -- PRODUCT OPTION VALUE
+
+Field      Type              Description
+
+prov id    int               Unique value identifier
+propt id   int               Reference to PROPT.propt id
+val name   varchar(100)      Value name (e.g., "Red")
+price mod  decimal(10,2)     Price modifier for this value
+
+BOM -- BILL OF MATERIALS
+
+Field      Type              Description
+
+bom id     int               Unique BOM entry identifier
+cmp id     int               Reference to CMP.cmp id
+rmat id    int               Reference to RMAT.rmat id
+qty req    decimal(10,2)     Required material quantity
+
+INV TRX -- INVENTORY TRANSACTION
+
+Field      Type              Description
+
+trx id     int               Unique transaction ID
+cmp id     int               Nullable component reference
+rmat id    int               Nullable material reference
+loc id     int               Reference to INV LOC.loc id
+qty        decimal(10,2)     Transaction quantity
+trx type   varchar(50)       Transaction type (PURCH/PROD/SALE/ADJ)
+trx date   datetime          Transaction timestamp
+notes      text              Additional transaction details
+
+ORD CFG -- ORDER CONFIGURATION
+
+Field      Type Description
+
+ocfg id int      Unique configuration ID
+oitm id int      Reference to ORD ITM.oitm id
+prov id int      Reference to PROPT VAL.prov id
+
+                                                 16
+                        Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+A.4 Configuration Validation Logic
+
+   Algorithm: Computer Configuration Validator
+
+     1: Input: User configuration C, Purpose P
+     2: Output: Valid configuration or error message
+     3: Apply purpose rules:
+     4: if P == "training" then
+     5: C.GPU  PR.H200
+     6: else if P == "inference" then
+     7: C.GPU  PR.A10G
+     8: end if
+     9: Check physical compatibility:
+    10: if C.CPU.socket = C.Motherboard.socket then
+    11: return Error: "CPU-Motherboard socket mismatch"
+    12: end if
+    13: Check power requirements:
+    14: total power  C.CPU.TDP + C.GPU.TDP + 100 {100W buffer}
+    15: if total power > C.PSU.wattage then
+    16: return Error: "Insufficient PSU capacity"
+    17: end if
+    18: Check interface compatibility:
+    19: if C.GPU.interface = C.Motherboard.PCIe version then
+    20: return Error: "GPU interface mismatch"
+    21: end if
+    22: Check RAM compatibility:
+    23: if C.RAM.type = C.Motherboard.RAM type then
+    24: return Error: "RAM type not supported"
+    25: end if
+    26: return "Configuration valid"
+
+A.5 Purpose-Based Configuration Rules
+
+Purpose GPU Requirement Minimum Specs
+
+Training                               PR.H200            32GB VRAM, PCIe 5.0
+Inference                              PR.A10G            24GB VRAM, PCIe 4.0
+Gaming                                 User choice        PCIe 4.0+
+Workstation                            Quadro series      ECC memory support
+
+Table: Purpose-based GPU configuration requirements
+
+                                                      17
+

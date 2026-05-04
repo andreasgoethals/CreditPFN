@@ -100,8 +100,12 @@ CreditPFN/
 │   ├── train/                    (placeholder; multi-table fine-tuning loop)
 │   ├── eval/                     (placeholder)
 │   └── model/                    (placeholder)
-├── notebooks/                    exploratory analysis
-└── tests/data/                   smoke tests for the data pipeline
+├── notebooks/                    three exploration notebooks
+│   ├── 0.0. raw_data_exploration.ipynb        — what did the vendor deliver?
+│   ├── 0.1. processed_data_exploration.ipynb  — did sanitize produce sensible inputs?
+│   └── 0.2. cached_data_exploration.ipynb     — is the .npz cache training-ready?
+└── tests/                        smoke + unit tests, flat
+    └── test_data.py              all data-pipeline tests in one file
 ```
 
 ## Quick start
@@ -127,7 +131,12 @@ python scripts/data_pipeline.py --fresh       # rebuild from scratch
 # python scripts/data_pipeline.py --datasets 0001.gmsc 0001.heloc
 
 # 3. Run the tests.
-pytest -q tests/data/test_pipeline.py
+pytest -q tests/test_data.py
+
+# 4. (Optional) open the exploration notebooks in VS Code / Jupyter:
+#    notebooks/0.0. raw_data_exploration.ipynb
+#    notebooks/0.1. processed_data_exploration.ipynb
+#    notebooks/0.2. cached_data_exploration.ipynb
 ```
 
 ## Data pipeline
@@ -187,8 +196,32 @@ Plus one importable helper used by stages 2 and 3:
   [0, 1].
 * **`dataset.py`** — chunks each sanitised dataset into ≤ 20 000-row
   chunks (stratified for PD, random for LGD), splits each chunk
-  60% context / 40% query, ordinal-encodes categoricals, writes
-  numpy `.npz` per chunk plus a `meta.json` sidecar.
+  60% context / 40% query, ordinal-encodes categoricals **with the
+  encoder fit on context only** (so query categories unseen in
+  context get the unknown-value sentinel `-1`, mirroring TabPFN's
+  inference scenario), writes numpy `.npz` per chunk plus a
+  `meta.json` sidecar.
+
+## Data exploration
+
+Three notebooks under `notebooks/`, designed to scale to the
+3 000-dataset corpus:
+
+* `0.0. raw_data_exploration.ipynb` — what did the vendor
+  deliver? Per-track shape and missingness on raw CSVs,
+  per-dataset target distribution for LGD, anomaly scan.
+* `0.1. processed_data_exploration.ipynb` — did sanitisation
+  produce sensible inputs? Same plot family as raw but on the
+  post-sanitise corpus.
+* `0.2. cached_data_exploration.ipynb` — is the cache healthy
+  for training? Chunk count / size, encoder-leakage sanity check
+  (unknown-sentinel rate per dataset), within-dataset target
+  consistency across chunks.
+
+All three load `cfg` from `config/data.yaml` by default. Corpus
+summaries are **memoised** so the first cell pays the disk-read
+cost once (~90 s on the wide datasets) and every subsequent
+plot reads from RAM.
 
 ### What sanitize.py deliberately does NOT do
 

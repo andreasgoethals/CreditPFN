@@ -46,6 +46,7 @@ The four most directly relevant papers for CreditPFN are
 | 2025 | Zhang et al. | TabPFN — One Model to Rule Them All | Survey-style win aggregation across many domains. | [pdf](2025_Zhang_et_al._TabPFN_One_Model_to_Rule_Them_All.pdf) |
 | 2026 | Grinsztajn et al. | **TabPFN-2.5** — Advancing the State of the Art in Tabular Foundation Models | Successor architecture (18–24 layers, 50 k×2000 limit) and the family of v2.5 checkpoints. | [pdf](2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) |
 | 2026 | Hoo et al. | From Tables to Time — Extending TabPFN-v2 to Time Series Forecasting | Native time-axis attention version of TabPFN. | [pdf](2026_Hoo_et_al._From_Tables_to_Time_Extending_TabPFN_v2_to_Time_Series_Forecasting.pdf) |
+| 2026 | Klein and Hoffart | Position — Foundation Models for Tabular Data within Systemic Contexts Need Grounding | Position paper from SAP: tabular FMs trained on isolated tables miss the operational context (business rules, code, data models) that gives data meaning. Proposes Semantically Linked Tables (SLT) and FMSLT as a new model class. | [pdf](2026_Klein_and_Hoffart_Position_Foundation_Models_for_Tabular_Data_within_Systemic_Contexts_Need_Grounding.pdf) |
 | 2026 | Kolberg et al. | **TabPFN-Wide** — Continued Pre-Training for Extreme Feature Counts | Continued-pretraining recipe for high-dim datasets; FeatureAgglomeration template. | [pdf](2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) |
 | 2026 | Ma et al. | Foundation Models for Causal Inference via Prior-Data Fitted Networks | Unified causal-PFN framework; Do-PFN + FairPFN at scale. | [pdf](2026_Ma_et_al._Foundation_Models_for_Causal_Inference_via_Prior_Data_Fitted_Networks.pdf) |
 | 2026 | Ma et al. | TabDPT — Scaling Tabular Foundation Models on Real Data | Real-data-only TabPFN competitor; retrieval-based self-supervision on OpenML. | [pdf](2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf) |
@@ -1002,6 +1003,81 @@ ever extend CreditPFN to **default-curve forecasting** — predicting
 the survival curve of a loan across months — where the same
 featurisation trick would map directly onto our cached `.npz`
 format.
+
+---
+
+## 2026 — Klein and Hoffart — Position: Foundation Models for Tabular Data within Systemic Contexts Need Grounding
+
+**arXiv:** [2505.19825](https://arxiv.org/abs/2505.19825) ·
+**PDF:** [open](2026_Klein_and_Hoffart_Position_Foundation_Models_for_Tabular_Data_within_Systemic_Contexts_Need_Grounding.pdf)
+
+**Where it fits.** A *contrarian* position paper from SAP that
+challenges the entire "isolated tables" framing of current tabular
+foundation models — TabPFN, TabICL, TabDPT, Mitra all included.
+Argues these models trained on individual tables (or even on
+schema-level multi-table relations via GNNs) fundamentally miss
+the **operational context** — the procedural logic, declarative
+rules, and domain knowledge — that gives tabular data its meaning
+in real-world enterprise systems.
+
+**What it contains.**
+
+* **The diagnosis.** Current tabular FMs assume "information
+  completeness within tables" — that the information needed to
+  predict an outcome is in the rows themselves. In an enterprise
+  setting that's almost never true. A row like
+  `(amount=4999, ..., approved=True)` next to
+  `(amount=5000, ..., approved=False)` is fully explained by a
+  rule somewhere in the codebase: ``if amount >= 5000:
+  require_manager_approval()``. A purely statistical model trained
+  on historical decisions might learn an *approximate* threshold
+  near $4 800 and misclassify edge cases — while the actual rule
+  is a hard `>=` boundary, sitting in source code that the model
+  never sees.
+* **The proposal: SLT + FMSLT.** *Semantically Linked Tables* —
+  the relational data plus three layers of explicitly-modelled
+  context: declarative business knowledge (data models, business
+  objects, business rules, process models), procedural knowledge
+  (agent logic in natural language, application logic as code),
+  and world knowledge (general business concepts, types,
+  relationships, implicit assumptions). A *Foundation Model for
+  SLT* (FMSLT) is then a new model class that ingests **code as
+  logic**, not as text — distinguishing "branching paths
+  define decision boundaries" from mere token co-occurrence.
+* **Two-phase training recipe.** (i) Pre-train on open-source
+  code-data pairs and synthetic systems to learn business-logic
+  mechanics. (ii) Apply zero-shot to proprietary enterprise data
+  via in-context retrieval of the relevant code/rules.
+* **Operational Turing Test.** A new benchmark proposed in the
+  paper: an FMSLT passes if, given an enterprise dataset, it can
+  predict outcomes that depend on rules expressed only in code, at
+  parity with a system that has access to the explicit rule
+  engine. The paper reviews recent enterprise-agent benchmarks
+  (WorkArena++, TheAgentCompany, CRMArena-Pro, AgentArch, MLGym,
+  COMPASS) and shows current LLM-based agents top out at 30–35%
+  on tasks requiring implicit business knowledge — motivating the
+  need for explicit operational grounding.
+
+**For CreditPFN.** A *very* relevant cautionary tale, even though
+we are not building an FMSLT. Two takeaways:
+
+* **The honesty argument.** Credit-risk decisions inside production
+  banks are *also* governed by code and rules — Basel-III IRB
+  formulae, internal scorecards, risk-appetite thresholds set by
+  the credit committee, ECOA fair-lending guardrails. A CreditPFN
+  trained purely on historical PD/LGD outcomes will absorb the
+  *consequences* of these rules but not the rules themselves. For
+  any production deployment we should be honest about what
+  CreditPFN *can* and *cannot* do: it predicts under the
+  distribution of past underwriting decisions; it does not
+  represent the underwriting policy itself.
+* **The follow-up direction.** A natural extension of CreditPFN
+  would be an FMSLT-style augmentation: feed in the documented
+  underwriting policy (as code or as structured rules) alongside
+  the tabular data, and train the model to use both. That's a
+  thesis-extension topic, not the current data-pipeline work — but
+  worth bookmarking for the discussion section of the eventual
+  paper.
 
 ---
 

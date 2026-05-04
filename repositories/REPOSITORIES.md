@@ -23,13 +23,13 @@ fresh dump of a public GitHub repo, the upstream URL is linked.
 | `TabDPT.txt` | 2 874 | [layer6ai-labs/TabDPT-inference](https://github.com/layer6ai-labs/TabDPT-inference) | [Ma 2026](../papers/2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf) | Inference code for the real-data-only competitor to TabPFN. Comparison baseline. |
 | `TabPFN .txt` | 63 974 | [PriorLabs/tabPFN](https://github.com/PriorLabs/tabPFN) | [Hollmann 2023](../papers/2023_Hollmann_et_al._TabPFN_A_Transformer_That_Solves_Small_Tabular_Classification_Problems_in_a_Second.pdf), [Hollmann 2025](../papers/2025_Hollmann_et_al._Accurate_predictions_on_small_data_with_a_tabular_foundation_model.pdf), [Grinsztajn 2026](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) | Canonical sklearn-style API, all checkpoint metadata, the multi-table finetuning machinery (`get_preprocessed_dataset_chunks`, `DatasetCollectionWithPreprocessing`, `FinetunedTabPFN*`). Primary code reference for `src/train/`. |
 | `TabPFN Client.txt` | 8 916 | [PriorLabs/tabpfn-client](https://github.com/PriorLabs/tabpfn-client) | — | Hosted-API HTTP client. Not used in our self-hosted pretraining; only for benchmarking against the API. |
-| `TabPFN Docs.txt` | 7 797 | [PriorLabs/tabpfn-docs](https://github.com/PriorLabs/tabpfn-docs) | — | The docs.priorlabs.ai source. Documents *intent* of every config knob; faster to grep than the implementation in `TabPFN .txt`. |
+| `TabPFN Docs.txt` | 7 797 | [PriorLabs/docs](https://github.com/PriorLabs/docs) | — | The docs.priorlabs.ai source. Documents *intent* of every config knob; faster to grep than the implementation in `TabPFN .txt`. |
 | `TabPFN Drift-Resilient.txt` | 17 844 | [automl/Drift-Resilient_TabPFN](https://github.com/automl/Drift-Resilient_TabPFN) | [Helli 2024](../papers/2024_Helli_et_al._Drift_Resilient_TabPFN_In_Context_Learning_Temporal_Distribution_Shifts_on_Tabular_Data_1.pdf) | Drift-aware training augmentation. Highly relevant for credit-risk's macro-cycle drift; consider folding into `src/train/`. |
 | `TabPFN Extensions.txt` | 17 415 | [PriorLabs/tabpfn-extensions](https://github.com/PriorLabs/tabpfn-extensions) | — | `AutoTabPFN` post-hoc ensembling, RF-PFN, embeddings, HPO. Source of evaluation baselines. |
 | `TabPFN V2 Finetuning.txt` | 3 697 | [PriorLabs/TabPFN/examples](https://github.com/PriorLabs/TabPFN/tree/main/examples) | [Rubachev 2025](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf) | The `finetune_classifier.py` and `finetune_regressor.py` reference scripts. Canonical "load checkpoint → backward pass → save checkpoint" sequence. |
 | `TabPFN Wide.txt` | 2 388 | [automl/TabPFN-Wide](https://github.com/automl/TabPFN-Wide) | [Kolberg 2026](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) | The continued-pretraining recipe for extreme-feature-count regimes. Source of our `FeatureAgglomeration` design. |
 | `TransformersCanDoBayesianInference.txt` | 6 869 | [automl/PFNs](https://github.com/automl/PFNs) (early) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Code for the original PFN paper. Mostly historical; useful for explaining what a PFN is. |
-| `VSC Documentation.txt` | 39 358 | [hpcleuven/vsc-documentation](https://github.com/hpcleuven/vsc-documentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, A100 partitions, storage tiers, account / VO management. The reference when writing the SLURM scripts under `scripts/`. |
+| `VSC Documentation.txt` | 39 358 | [hpcleuven/VscDocumentation](https://github.com/hpcleuven/VscDocumentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, A100 partitions, storage tiers, account / VO management. The reference when writing the SLURM scripts under `scripts/`. |
 
 ## Layout
 
@@ -386,7 +386,7 @@ VSC.
 
 ## `TabPFN Docs.txt`
 
-**Upstream:** [github.com/PriorLabs/tabpfn-docs](https://github.com/PriorLabs/tabpfn-docs)
+**Upstream:** [github.com/PriorLabs/docs](https://github.com/PriorLabs/docs)
 (the source for [docs.priorlabs.ai](https://docs.priorlabs.ai)).
 
 **Related papers:** indirectly all of the TabPFN papers — the docs
@@ -615,7 +615,7 @@ for pipeline implementation.
 
 ## `VSC Documentation.txt`
 
-**Upstream:** [github.com/hpcleuven/vsc-documentation](https://github.com/hpcleuven/vsc-documentation)
+**Upstream:** [github.com/hpcleuven/VscDocumentation](https://github.com/hpcleuven/VscDocumentation)
 (the source of the [VSC documentation site](https://docs.vscentrum.be)).
 
 **Related paper:** none — this is supercomputer infrastructure
