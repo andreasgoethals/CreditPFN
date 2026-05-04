@@ -1,0 +1,280 @@
+# =============================================================================
+#  CreditPFN — training configuration
+# =============================================================================
+#
+#  Single source of truth for every non-obvious choice made by any script
+#  in `src/train/`. Hardcoded values inside the Python files are reserved
+#  for things that are universally fixed by the architecture (e.g.
+#  `batch_size = 1` is forced by TabPFN's `meta_dataset_collator`
+#  assertion at `repositories/TabPFN .txt:17665-17666`, so it doesn't
+#  appear here).
+#
+#  Layout
+#  ------
+#  Section 0 — Tunable hyperparameters (LISTS).
+#               These are the knobs we *don't* know the right value of in
+#               advance — base checkpoint, learning rate, multi-chunk
+#               policy. Each one is a list. The training script
+#               (`scripts/train_pipeline.py`) decides what to do with the
+#               lists:
+#                   --single   → use only the FIRST value of every list
+#                                (one training run, one checkpoint)
+#                   --grid     → cartesian product of every list
+#                                (one training run per combination,
+#                                 one checkpoint per combination)
+#               That decision lives in the script, not in `src/train`,
+#               which always trains *one* config per call.
+#
+#  Section 1 — Cross-cutting fixed knobs (seed, run name, device, track).
+#  Section 2 — Corpus split (train/test fractions; NO val).
+#  Section 3 — Optimizer + LR schedule (fixed defaults).
+#  Section 4 — Training loop (epochs, AMP, grad clip, sampling).
+#  Section 5 — Test-time evaluation metrics.
+#  Section 6 — Checkpoint output (descriptive filenames).
+#
+#  Override anything on the CLI Hydra-style:
+#
+#      python scripts/train_pipeline.py train.epochs=10
+#      python scripts/train_pipeline.py tunable.learning_rates=[1e-5]
+# =============================================================================
+
+
+# =============================================================================
+#  Section 0  ·  Tunable hyperparameters (LISTS)
+# =============================================================================
+#  These are the only knobs that vary across training runs.
+#  Defaults follow the literature:
+#    * base checkpoint  → most-impactful knob, per Real-TabPFN §4.
+#    * learning rate    → second-most-impactful, per Rubachev 2025 §3.
+#    * multi-chunk policy → genuinely unsure for credit-risk specifically.
+#
+#  Anything else is fixed below in Sections 1–6 and matches TabPFN's
+#  `FinetunedTabPFNClassifier` defaults wherever those are well-tuned.
+
+tunable:
+
+  # --- Most-impactful: which base weights to continue-pretrain ---------------
+  # PD (classifier)
+  classifier_base_paths:
+    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"   # synthetic-only, current arch (recommended)
+    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt" # synthetic-only, older arch (Real-TabPFN-2.5 baseline)
+    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default.ckpt"   # real-finetuned (NOT a clean Real-TabPFN base)
+
+  # LGD (regressor)
+  regressor_base_paths:
+    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"    # synthetic-only (recommended)
+    - "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt"    # synthetic-only (Real-TabPFN-2.5 baseline)
+    - "checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt"       # real-finetuned variant
+
+  # --- Second-most-impactful: learning rate ----------------------------------
+  # Rubachev 2025 reports stable convergence in [5e-6, 5e-5];
+  # outside that range training routinely diverges or under-fits.
+  learning_rates:
+    - 5.0e-6
+    - 1.0e-5
+    - 5.0e-5
+
+  # --- Multi-chunk policy ----------------------------------------------------
+  # How to handle parent datasets larger than `cfg.dataset.max_rows_per_chunk`
+  # (which produce multiple `chunk_NNN.npz` files in the data pipeline):
+  #
+  #   "first_chunk_only"
+  #       Use chunk_000.npz only; ignore the rest. Each parent dataset
+  #       contributes one training step per epoch — no over-representation.
+  #       Discards data.
+  #
+  #   "all_chunks_as_separate_datasets"
+  #       Treat every chunk as its own training "dataset". A 100k-row
+  #       parent splits into 5 chunks → 5 training datasets. Uses all
+  #       the data; large parents over-represented (proportional to
+  #       row count).
+  multi_chunk_policies:
+    - "all_chunks_as_separate_datasets"
+    - "first_chunk_only"
+
+
+# =============================================================================
+#  Section 1  ·  Cross-cutting fixed knobs
+# =============================================================================
+
+seed: 42
+
+# Free-form tag baked into checkpoint filenames and run-log lines.
+# Useful for distinguishing experiments.
+run_name: "creditpfn"
+
+# Compute target.
+#   "auto"   → cuda if available, else cpu
+#   "cuda"   → forced cuda; raises if not available
+#   "cpu"    → forced cpu (slow; only for smoke tests)
+device: "auto"
+
+# Which TabPFN head to continue-pretrain on this invocation.
+#   "pd"   → classifier (uses tunable.classifier_base_paths)
+#   "lgd"  → regressor  (uses tunable.regressor_base_paths)
+# Train both by running the script twice with track=pd and track=lgd.
+track: "pd"
+
+
+# =============================================================================
+#  Section 2  ·  Corpus split  (train / test ONLY; no validation)
+# =============================================================================
+#  Design choice (cf. discussion in chat 2026-05-04): with ~13 PD and
+#  ~7 LGD datasets in cache, holding out a separate val set leaves so
+#  few datasets to fit on that early-stopping signal becomes pure
+#  noise. Instead we use **fixed-epoch training** (no early stopping)
+#  and *select* between hyperparameter settings *post-hoc* by their
+#  TEST-set performance — i.e. the cartesian-product run from Section 0
+#  produces N checkpoints; the eval module (future `src/eval/`) then
+#  compares them all against the same test split.
+#
+#  Splits are BY DATASET, not by row — every chunk of a given parent
+#  dataset goes to one bucket. The split is deterministic in `seed`
+#  so the same train/test buckets are reused by future baselines
+#  (XGBoost, CatBoost, TabICL, …) for an apples-to-apples comparison.
+
+corpus:
+  # Where the cached chunks live (relative to repo root).
+  cached_dir: "data/cached"
+
+  # ----------------------------------------------------------------- #
+  #  Mode A — fraction-based split (default)
+  # ----------------------------------------------------------------- #
+  # Used when both `train_dataset_ids` and `test_dataset_ids` are empty.
+  # Sum should be ≤ 1.0; any slack becomes "unused" (silently dropped).
+  train_fraction: 0.80
+  test_fraction:  0.20
+
+  # ----------------------------------------------------------------- #
+  #  Mode B — explicit dataset_id lists (override Mode A)
+  # ----------------------------------------------------------------- #
+  # If `train_dataset_ids` is non-empty, the train bucket is *exactly*
+  # these IDs (the fractions above are ignored for train). Useful for
+  # debugging with one dataset, or when an outer driver wants full
+  # control over the split.
+  #
+  #     # Debug: train on a single dataset
+  #     train_dataset_ids: ["0001.gmsc"]
+  #
+  # If `test_dataset_ids` is non-empty, the test bucket is *exactly*
+  # these IDs. If only `train_dataset_ids` is set, test = "remaining
+  # IDs after train" (still controlled by `test_fraction`). If only
+  # `test_dataset_ids` is set, train = "remaining IDs after test"
+  # (still controlled by `train_fraction`).
+  #
+  # An ID may not appear in both lists — :func:`split_corpus` will
+  # raise.
+  train_dataset_ids: []
+  test_dataset_ids:  []
+
+
+# =============================================================================
+#  Section 3  ·  Optimizer + LR schedule  (FIXED)
+# =============================================================================
+#  Defaults follow Rubachev 2025 ("On Finetuning Tabular Foundation
+#  Models", weight_decay=0.01) and TabPFN's own `FinetunedTabPFNClassifier`
+#  defaults (betas=(0.9, 0.999), warmup_fraction=0.10, warmup_cosine).
+
+optimizer:
+  type:         "AdamW"           # only AdamW is implemented
+  weight_decay: 0.01
+  betas:        [0.9, 0.999]
+
+scheduler:
+  # Schedule type — see ``src/train/loop.py::_make_optimizer_and_scheduler``
+  # for the exact formula. We use "warmup_cosine":
+  #
+  #   * Linear warmup from LR=0 over the first `warmup_fraction × total_steps`
+  #     optimizer steps.
+  #   * Cosine decay back to LR=0 over the remaining steps.
+  #
+  # ``total_steps`` = ceil(steps_per_epoch / accumulate_grad_batches) × epochs,
+  # computed at runtime once the dataloader is built.
+  type: "warmup_cosine"             # "constant" | "warmup_only" | "warmup_cosine"
+
+  # Fraction of total optimizer steps spent in linear warmup.
+  # Matches TabPFN's `FinetunedTabPFNClassifier` default.
+  warmup_fraction: 0.10
+
+
+# =============================================================================
+#  Section 4  ·  Training loop  (FIXED)
+# =============================================================================
+
+train:
+  # Total epochs. One epoch = one pass over the train datasets. With a
+  # small corpus (~10 datasets), each epoch is ~10 optimizer steps;
+  # set epochs high enough that the warmup-cosine schedule has room to
+  # actually decay. At 50 epochs × 10 datasets = 500 steps, with
+  # warmup_fraction=0.10 → 50-step warmup, 450-step cosine decay.
+  epochs: 50
+
+  # Gradient accumulation. Effective batch = batch_size × accumulate.
+  # batch_size is FIXED at 1 by TabPFN's collator (one dataset per
+  # forward pass), so this is the only way to grow the effective batch.
+  accumulate_grad_batches: 1
+
+  # Gradient-norm clipping (TabPFN finetuning default). null disables.
+  grad_clip_norm: 1.0
+
+  # Mixed-precision autocast. Halves memory and ~doubles throughput on
+  # A100; only applied on cuda devices. CPU runs ignore this flag.
+  amp: true
+
+  # How much context+query to sample from each training "dataset" per
+  # step. Matches TabPFN's `n_finetune_ctx_plus_query_samples = 10000`.
+  # Smaller = faster per step, more steps per epoch.
+  n_finetune_ctx_plus_query_samples: 10000
+
+  # Of those rows, what fraction is the query split? Matches TabPFN's
+  # `finetune_ctx_query_split_ratio = 0.20`.
+  finetune_ctx_query_split_ratio: 0.20
+
+  # PyTorch DataLoader workers (per training process). 0 means main
+  # process only — usually right because the heavy lifting is on GPU.
+  dataloader_workers: 0
+
+
+# =============================================================================
+#  Section 5  ·  Test-time evaluation metrics  (FIXED)
+# =============================================================================
+#  Computed ONCE, at the end of training, on the held-out test split.
+#  Never used during training — there is no early stopping, no
+#  selection-on-test, no leak. The numbers are reported in the run
+#  log and persisted to `logs/runs/<run_name>_<track>.csv` so a
+#  later script can compare TabPFN variants against XGBoost / CatBoost
+#  / etc on the exact same test split.
+
+eval:
+  # PD primary metric.
+  #   "roc_auc"  → ROC-AUC, threshold-free, default
+  #   "log_loss" → cross-entropy
+  classification_metric: "roc_auc"
+
+  # LGD primary metric.
+  #   "neg_nll"  → negative NLL (TabPFN's training objective), default
+  #   "rmse"     → root mean squared error
+  regression_metric: "neg_nll"
+
+  # Subsample query rows per test dataset to speed up eval on large
+  # chunks. Matches TabPFN's `n_inference_subsample_samples = 50000`.
+  n_inference_subsample_samples: 50000
+
+
+# =============================================================================
+#  Section 6  ·  Checkpoint output
+# =============================================================================
+#  Final-epoch weights (no "best" since there's no val signal) are
+#  written to `cfg.checkpoint.trained_dir/<descriptive_name>.ckpt` in
+#  Prior Labs format (state_dict + config), so they round-trip through
+#  `TabPFNClassifier(model_path=...)` / `TabPFNRegressor(model_path=...)`.
+#
+#  Filename schema (built in src/train/loop.py::descriptive_name):
+#
+#      <run_name>_<track>_<base-stem>_lr<lr>_<policy>_seed<seed>.ckpt
+#
+#  Example:
+#      creditpfn_pd_tabpfn-v2.6-classifier-v2.6_default_lr1e-05_allchunks_seed42.ckpt
+
+checkpoint:
+  trained_dir: "checkpoints/trained"
