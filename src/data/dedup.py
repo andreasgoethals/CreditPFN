@@ -87,6 +87,7 @@ import numpy as np
 import pandas as pd
 
 from src.data.preprocessing import DATASET_METADATA
+from src.utils.paths import resolve_data_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -368,10 +369,10 @@ def _load_cfg():
 
 def _gather_track_paths(cfg, track: str, pass_name: str) -> list[Path]:
     if pass_name == "pre":
-        root = Path(cfg.paths.raw) / track
+        root = resolve_data_path(cfg.paths.raw) / track
         return sorted(root.glob("*.csv"))
     if pass_name == "post":
-        root = Path(cfg.paths.processed) / track
+        root = resolve_data_path(cfg.paths.processed) / track
         return sorted(root.glob("*.sanitized.csv"))
     raise ValueError(f"pass must be 'pre' or 'post', got {pass_name!r}")
 
@@ -386,7 +387,7 @@ def main(cfg=None, pass_name: str = "pre") -> int:
     if pass_name not in ("pre", "post"):
         raise ValueError(f"pass_name must be 'pre' or 'post', got {pass_name!r}")
 
-    out_dir = Path(cfg.paths.dedup)
+    out_dir = resolve_data_path(cfg.paths.dedup)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     enable_fuzzy = (

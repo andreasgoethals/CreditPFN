@@ -224,16 +224,55 @@ def test_split_corpus_deterministic(synthetic_cache: Path) -> None:
            {(c.dataset_id, c.chunk_idx) for c in b.test}
 
 
-def test_split_corpus_pinned_test_id(synthetic_cache: Path) -> None:
-    """A pinned ID always lands in test, never train."""
+def test_split_corpus_explicit_test_id(synthetic_cache: Path) -> None:
+    """A dataset_id in `test_dataset_ids` always lands in test, never train."""
     split = split_corpus(
         synthetic_cache, track="pd",
         train_fraction=0.6, test_fraction=0.4,
-        pinned_test_dataset_ids=["0001.alpha"],
+        test_dataset_ids=["0001.alpha"],
         seed=0,
     )
     assert all(c.dataset_id != "0001.alpha" for c in split.train)
     assert any(c.dataset_id == "0001.alpha" for c in split.test)
+
+
+def test_split_corpus_explicit_train_id_alone(synthetic_cache: Path) -> None:
+    """Explicit `train_dataset_ids` without `test_dataset_ids` →
+    train = exactly those, test = remaining (count-wise)."""
+    split = split_corpus(
+        synthetic_cache, track="pd",
+        train_fraction=0.6, test_fraction=0.4,
+        train_dataset_ids=["0001.alpha", "0002.bravo"],
+        seed=0,
+    )
+    train_ids = {c.dataset_id for c in split.train}
+    test_ids = {c.dataset_id for c in split.test}
+    assert train_ids == {"0001.alpha", "0002.bravo"}
+    assert "0001.alpha" not in test_ids and "0002.bravo" not in test_ids
+
+
+def test_split_corpus_both_explicit_lists(synthetic_cache: Path) -> None:
+    """When BOTH lists are explicit, fractions are ignored entirely."""
+    split = split_corpus(
+        synthetic_cache, track="pd",
+        train_fraction=0.99, test_fraction=0.01,        # ignored
+        train_dataset_ids=["0001.alpha"],
+        test_dataset_ids=["0002.bravo"],
+        seed=0,
+    )
+    assert {c.dataset_id for c in split.train} == {"0001.alpha"}
+    assert {c.dataset_id for c in split.test}  == {"0002.bravo"}
+
+
+def test_split_corpus_overlap_raises(synthetic_cache: Path) -> None:
+    """An ID in BOTH lists is a programming error."""
+    with pytest.raises(ValueError, match="appear in both"):
+        split_corpus(
+            synthetic_cache, track="pd",
+            train_dataset_ids=["0001.alpha"],
+            test_dataset_ids=["0001.alpha"],
+            seed=0,
+        )
 
 
 def test_split_corpus_unknown_track_raises() -> None:

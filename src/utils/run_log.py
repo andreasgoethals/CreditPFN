@@ -27,7 +27,9 @@ from __future__ import annotations
 import datetime as _dt
 from pathlib import Path
 
-DEFAULT_LOG_DIR = Path("logs")
+from src.utils.paths import resolve_output_path
+
+DEFAULT_LOG_DIR = "logs"
 
 
 class RunLog:
@@ -66,7 +68,7 @@ def new_run_log(log_dir: Path | str | None = None) -> RunLog:
     pipeline run; pass the resulting handle's ``.path`` into any
     child orchestrator that should append to the same file.
     """
-    log_dir = Path(log_dir) if log_dir is not None else DEFAULT_LOG_DIR
+    log_dir = resolve_output_path(log_dir if log_dir is not None else DEFAULT_LOG_DIR)
     stamp = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     return RunLog(log_dir / f"{stamp}.log")
 

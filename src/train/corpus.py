@@ -41,6 +41,8 @@ from typing import Sequence
 
 import numpy as np
 
+from src.utils.paths import resolve_data_path
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -107,7 +109,7 @@ def build_chunk_pool(
     The on-disk layout is ``{cached_root}/{track}/{dataset_id}/chunk_NNN.npz``
     plus a sibling ``meta.json`` (the latter is read for ``task_type``).
     """
-    cached_root = Path(cached_root)
+    cached_root = resolve_data_path(cached_root)
     track_root = cached_root / track
     if not track_root.is_dir():
         return []

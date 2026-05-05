@@ -9,7 +9,7 @@ Key behaviour
   checkpoint filename (``tabpfn-v2.6-…ckpt`` → ``"v2.6"``,
   ``tabpfn-v2.5-…ckpt`` → ``"v2.5"``) and the **task** (classifier /
   regressor) from the user-supplied ``track`` argument. This avoids
-  having to put yet another knob in ``training.yaml`` — the filename
+  having to put yet another knob in ``train.yaml`` — the filename
   already carries the information.
 
 * The function returns a triple ``(model, criterion, architecture_config)``

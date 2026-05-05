@@ -3,37 +3,55 @@
 Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
 :mod:`src.train.loop`; this script's job is to:
 
-  1. Decide which (base, lr, multi-chunk-policy) tuples to train. By
-     default it iterates over the cartesian product of every list
-     under ``cfg.tunable``. With ``--single`` it uses only the FIRST
-     value of each list (one run, one checkpoint).
-  2. Call :func:`src.train.loop.train_one_config` for each tuple.
-  3. Save each finished checkpoint to
-     ``cfg.checkpoint.trained_dir/<descriptive_name>.ckpt`` (the
-     descriptive name is built by
-     :func:`src.train.loop.descriptive_name`).
-  4. Persist a ``logs/runs/<run_name>_<track>.csv`` row per trained
-     config: HP-tuple, test metric, checkpoint path, walltime. This
-     CSV is the manifest the future ``src/eval/`` reads to compare
-     TabPFN variants against XGBoost / CatBoost / TabICL — same
-     train/test split, same chunks, same metric.
-  5. Append one summary line to the run log (whether ``--single`` or
-     a full grid).
+  1. **Resolve the training plan**: which (base_checkpoint, learning_rate,
+     multi_chunk_policy) tuples to train. By default this is the full
+     cartesian product of every list under ``cfg.tunable``. With
+     ``--single`` the script uses only the FIRST value of each list
+     (one trial). With ``--trial-index N`` only the Nth trial of the
+     cartesian product is run — designed for slurm arrays where each
+     array task takes one trial.
 
-CLI usage::
+  2. **Auto-cache hook**: before training starts, check whether every
+     dataset the run will touch is on disk under
+     ``cfg.corpus.cached_dir``. If any are missing,
+     ``scripts/data_pipeline.py`` is invoked transparently for just
+     those IDs. This lets you train without ever calling the data
+     pipeline by hand — though running it once up-front is still the
+     recommended workflow for large corpora.
 
-    # default = cartesian product over `cfg.tunable.*`
+  3. **Per-trial training**: call :func:`src.train.loop.train_one_config`.
+     Each trained checkpoint is saved to
+     ``cfg.checkpoint.trained_dir/<track>/<descriptive_name>.ckpt``.
+
+  4. **Manifest CSV**: append a row per trial to
+     ``logs/runs/<run_name>_<track>.csv`` (HP-tuple, test metric,
+     checkpoint path, walltime, OK/FAIL). The eval pipeline
+     (`scripts/eval_pipeline.py`) reads this CSV to know which
+     checkpoints to benchmark against the baselines.
+
+CLI usage
+---------
+::
+
+    # Local: cartesian product over `cfg.tunable.*`
     python scripts/train_pipeline.py
 
-    # only one run (the first value of every tunable list)
+    # Local: only one trial (first value of every tunable list)
     python scripts/train_pipeline.py --single
 
-    # restrict to one track at a time
-    python scripts/train_pipeline.py track=lgd
+    # Slurm array (one task per trial):
+    #   sbatch --array=0-$(($(python scripts/train_pipeline.py --list-trials)-1)) \
+    #          scripts/slurm/train_pd.slurm
+    python scripts/train_pipeline.py --trial-index $SLURM_ARRAY_TASK_ID
 
-    # any Hydra-style override is honoured
-    python scripts/train_pipeline.py train.epochs=10
-    python scripts/train_pipeline.py tunable.learning_rates=[1e-5]
+    # How many trials does the current cfg expand to?
+    python scripts/train_pipeline.py --list-trials
+
+    # Debug: train on one specific dataset only
+    python scripts/train_pipeline.py corpus.train_dataset_ids=[0001.gmsc]
+
+    # Hydra-style overrides (any cfg key)
+    python scripts/train_pipeline.py track=lgd train.epochs=10
 """
 
 from __future__ import annotations
@@ -52,13 +70,114 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
+from src.utils.paths import resolve_output_path  # noqa: E402
 from src.utils.run_log import resolve_run_log  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
-# CSV row
+# Cfg loading + Hydra-style overrides
+# --------------------------------------------------------------------------- #
+
+
+def _load_cfg(overrides: list[str] | None = None):
+    """Load ``config/train.yaml`` and apply ``key=value`` overrides."""
+    from omegaconf import OmegaConf
+    cfg = OmegaConf.load("config/train.yaml")
+    if overrides:
+        cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(overrides))
+    return cfg
+
+
+def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, str]]:
+    """Materialise the (base, lr, policy) tuples to train.
+
+    ``single=True``: head of every tunable list (one trial).
+    Otherwise: full cartesian product.
+    """
+    track = str(cfg.track)
+    bases = (
+        list(cfg.tunable.classifier_base_paths) if track == "pd"
+        else list(cfg.tunable.regressor_base_paths)
+    )
+    lrs = [float(x) for x in cfg.tunable.learning_rates]
+    policies = list(cfg.tunable.multi_chunk_policies)
+
+    if single:
+        return [(str(bases[0]), float(lrs[0]), str(policies[0]))]
+    return [
+        (str(b), float(lr), str(p))
+        for b, lr, p in itertools.product(bases, lrs, policies)
+    ]
+
+
+# --------------------------------------------------------------------------- #
+# Auto-cache hook
+# --------------------------------------------------------------------------- #
+
+
+def _ensure_cache(cfg, log_path: Path | str | None) -> None:
+    """Run the data pipeline for any dataset that the training run will
+    need but that isn't cached yet.
+
+    Strategy:
+      * Pull the canonical ID list from ``DATASET_METADATA`` (one
+        entry per registered dataset) and filter to the active track.
+      * Restrict further to the IDs the user actually asked for in
+        ``cfg.corpus.train_dataset_ids`` ∪ ``cfg.corpus.test_dataset_ids``
+        (if either list is non-empty); otherwise consider every
+        registered ID for the track.
+      * Use :func:`src.data.cache.find_uncached_datasets` to compute
+        the missing subset; if it is non-empty, invoke
+        :func:`scripts.data_pipeline.run` with ``datasets=missing``.
+
+    Idempotent: a fully-cached corpus walks through this function
+    in O(#datasets) ``Path.exists()`` calls and does nothing else.
+    """
+    from src.data.preprocessing import DATASET_METADATA
+    from src.data.cache import find_uncached_datasets
+
+    track = str(cfg.track)
+    corpus = cfg.corpus
+
+    # Tracks lookup (used by find_uncached_datasets)
+    tracks = {did: m["track"] for did, m in DATASET_METADATA.items()}
+    track_ids = sorted([d for d, m in DATASET_METADATA.items()
+                        if m["track"] == track])
+
+    # Restrict to whatever the user explicitly asked for, if anything.
+    train_explicit = list(corpus.get("train_dataset_ids", []) or [])
+    test_explicit  = list(corpus.get("test_dataset_ids",  []) or [])
+    explicit = set(train_explicit) | set(test_explicit)
+    candidate_ids = sorted(explicit & set(track_ids)) if explicit else track_ids
+
+    missing = find_uncached_datasets(
+        corpus.cached_dir,
+        dataset_ids=candidate_ids,
+        tracks=tracks,
+    )
+    if not missing:
+        LOGGER.info("Cache OK: all %d candidate dataset(s) for track=%s "
+                    "are materialised.", len(candidate_ids), track)
+        return
+
+    LOGGER.info("Cache MISS: %d dataset(s) missing — running data pipeline "
+                "to fill them: %s", len(missing), missing)
+    # Lazy import: only loads omegaconf again etc. No circular refs.
+    from scripts import data_pipeline
+    rc = data_pipeline.run(
+        fresh=False, datasets=missing, log_path=log_path,
+    )
+    if rc != 0:
+        raise RuntimeError(
+            f"data pipeline returned non-zero exit code while filling "
+            f"{len(missing)} missing dataset(s); see logs."
+        )
+
+
+# --------------------------------------------------------------------------- #
+# CSV manifest row
 # --------------------------------------------------------------------------- #
 
 
@@ -82,40 +201,18 @@ class RunRow:
     error: str | None
 
 
-# --------------------------------------------------------------------------- #
-# Cfg loading + Hydra-style overrides
-# --------------------------------------------------------------------------- #
-
-
-def _load_cfg(overrides: list[str] | None = None):
-    """Load ``config/training.yaml`` and apply ``key=value`` overrides."""
-    from omegaconf import OmegaConf
-    cfg = OmegaConf.load("config/training.yaml")
-    if overrides:
-        cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(overrides))
-    return cfg
-
-
-def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, str]]:
-    """Materialise the (base, lr, policy) tuples to train.
-
-    With ``single=True``: take the first value of every tunable list.
-    Otherwise: full cartesian product.
-    """
-    track = str(cfg.track)
-    bases = (
-        list(cfg.tunable.classifier_base_paths) if track == "pd"
-        else list(cfg.tunable.regressor_base_paths)
-    )
-    lrs = [float(x) for x in cfg.tunable.learning_rates]
-    policies = list(cfg.tunable.multi_chunk_policies)
-
-    if single:
-        return [(str(bases[0]), float(lrs[0]), str(policies[0]))]
-    return [
-        (str(b), float(lr), str(p))
-        for b, lr, p in itertools.product(bases, lrs, policies)
-    ]
+def _write_csv(rows: list[RunRow], path: Path, *, append: bool) -> None:
+    if not rows:
+        return
+    fieldnames = list(asdict(rows[0]).keys())
+    write_header = (not append) or (not path.exists())
+    mode = "a" if append and path.exists() else "w"
+    with path.open(mode, newline="", encoding="utf-8") as fh:
+        w = csv.DictWriter(fh, fieldnames=fieldnames)
+        if write_header:
+            w.writeheader()
+        for r in rows:
+            w.writerow(asdict(r))
 
 
 # --------------------------------------------------------------------------- #
@@ -125,11 +222,14 @@ def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, str]]:
 
 def run(
     single: bool = False,
+    trial_index: int | None = None,
     overrides: list[str] | None = None,
     log_path: Path | str | None = None,
     cfg=None,
 ) -> int:
-    """Train one config (``--single``) or every (base × lr × policy) tuple.
+    """Train one trial (``--single`` / ``--trial-index``) or every (base × lr × policy) tuple.
+
+    ``trial_index`` takes precedence over ``single`` if both are set.
 
     Returns
     -------
@@ -147,27 +247,56 @@ def run(
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
-    grid = _resolve_grid(cfg, single=single)
+
+    # ---- 1) auto-cache hook (always runs, near-zero cost when cache is OK)
+    _ensure_cache(cfg, log_path=log.path if hasattr(log, "path") else None)
+
+    # ---- 2) resolve which trials to run
+    full_grid = _resolve_grid(cfg, single=False)
+
+    if trial_index is not None:
+        if not 0 <= trial_index < len(full_grid):
+            raise IndexError(
+                f"trial_index={trial_index} is out of bounds; this cfg "
+                f"has {len(full_grid)} trial(s) (indices 0..{len(full_grid) - 1})."
+            )
+        plan = [full_grid[trial_index]]
+        plan_label = f"trial {trial_index}"
+        # When running one trial of a slurm array, append (don't clobber).
+        csv_append = True
+    elif single:
+        plan = [full_grid[0]]
+        plan_label = "single (--single)"
+        csv_append = False
+    else:
+        plan = full_grid
+        plan_label = "cartesian grid"
+        csv_append = False
+
     LOGGER.info(
-        "Training plan: %d run(s) on track=%s (%s)",
-        len(grid), track, "single" if single else "cartesian grid",
+        "Training plan: %d run(s) on track=%s (%s; full grid has %d)",
+        len(plan), track, plan_label, len(full_grid),
     )
 
-    # CSV manifest path — the future eval module reads this.
-    csv_path = Path("logs/runs") / f"{cfg.run_name}_{track}.csv"
+    csv_path = resolve_output_path("logs/runs") / f"{cfg.run_name}_{track}.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Lazy import; avoids loading torch when --help'ing.
+    # ---- 3) per-trial training
     from src.train.loop import train_one_config
 
     rows: list[RunRow] = []
     failures = 0
     t_outer = time.monotonic()
 
-    for trial_idx, (base, lr, policy) in enumerate(grid, start=1):
+    for trial_idx_local, (base, lr, policy) in enumerate(plan, start=1):
+        global_idx = (
+            trial_index if trial_index is not None
+            else (trial_idx_local - 1)
+        )
         LOGGER.info(
-            "\n=== Trial %d/%d  base=%s  lr=%g  policy=%s ===",
-            trial_idx, len(grid), Path(base).name, lr, policy,
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  policy=%s ===",
+            trial_idx_local, len(plan), global_idx,
+            Path(base).name, lr, policy,
         )
         t_trial = time.monotonic()
         try:
@@ -192,7 +321,7 @@ def run(
             ))
         except Exception as exc:                           # noqa: BLE001
             failures += 1
-            LOGGER.error("Trial %d failed: %s", trial_idx, exc, exc_info=True)
+            LOGGER.error("Trial %d failed: %s", trial_idx_local, exc, exc_info=True)
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 multi_chunk_policy=policy, seed=int(cfg.seed),
@@ -205,34 +334,23 @@ def run(
                 status="FAIL", error=f"{type(exc).__name__}: {exc}",
             ))
 
-        _write_csv(rows, csv_path)        # persist after every trial
+        _write_csv(rows, csv_path, append=csv_append)
+        # After the first row of an appending run (slurm-array mode), we
+        # keep appending; for a clobbering run we stay in 'write' mode
+        # but the file already exists so subsequent writes append rows
+        # under the same header.
+        if not csv_append:
+            csv_append = True   # subsequent rows in the same process append
 
     elapsed = time.monotonic() - t_outer
     summary = (
-        f"train_pipeline: status={'OK' if failures == 0 else f'FAIL[{failures}/{len(grid)}]'}  "
-        f"track={track}  mode={'single' if single else 'grid'}  "
-        f"trials={len(grid)}  csv={csv_path}  elapsed={elapsed:.1f}s"
+        f"train_pipeline: status={'OK' if failures == 0 else f'FAIL[{failures}/{len(plan)}]'}  "
+        f"track={track}  mode={plan_label}  "
+        f"trials={len(plan)}  csv={csv_path}  elapsed={elapsed:.1f}s"
     )
     log.write(summary)
     print(summary)
-
     return 0 if failures == 0 else 1
-
-
-# --------------------------------------------------------------------------- #
-# CSV writer
-# --------------------------------------------------------------------------- #
-
-
-def _write_csv(rows: list[RunRow], path: Path) -> None:
-    if not rows:
-        return
-    fieldnames = list(asdict(rows[0]).keys())
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=fieldnames)
-        w.writeheader()
-        for r in rows:
-            w.writerow(asdict(r))
 
 
 # --------------------------------------------------------------------------- #
@@ -242,12 +360,22 @@ def _write_csv(rows: list[RunRow], path: Path) -> None:
 
 def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[str]]:
     p = argparse.ArgumentParser(
-        description="Continued pretraining for TabPFN-2.6 on the credit corpus.",
+        description="Continued pretraining for TabPFN on the credit corpus.",
     )
     p.add_argument(
         "--single", action="store_true",
-        help="Train only ONE config (the first value of every list under "
+        help="Train only ONE trial (the first value of every list under "
              "cfg.tunable). Default: cartesian product of all tunable lists.",
+    )
+    p.add_argument(
+        "--trial-index", type=int, default=None,
+        help="Train only the Nth trial of the cartesian grid (0-indexed). "
+             "Designed for slurm arrays — set to $SLURM_ARRAY_TASK_ID.",
+    )
+    p.add_argument(
+        "--list-trials", action="store_true",
+        help="Print the number of trials in the current cfg's cartesian "
+             "grid and exit. Useful for sizing slurm arrays.",
     )
     p.add_argument(
         "--log-path", default=None,
@@ -264,8 +392,13 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
 
 if __name__ == "__main__":
     args, overrides = _parse_args()
+    if args.list_trials:
+        cfg = _load_cfg(overrides)
+        print(len(_resolve_grid(cfg, single=False)))
+        raise SystemExit(0)
     raise SystemExit(run(
         single=args.single,
+        trial_index=args.trial_index,
         overrides=overrides,
         log_path=args.log_path,
     ))

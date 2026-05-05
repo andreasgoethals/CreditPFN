@@ -1,0 +1,110 @@
+# =============================================================================
+#  CreditPFN — eval / final-benchmark configuration
+# =============================================================================
+#
+#  Drives `scripts/eval_pipeline.py`, which compares:
+#
+#    * the classical baselines listed in `baselines.enabled`
+#      (XGBoost / CatBoost get a per-fold Optuna HPO; LogReg / LinReg
+#       use defaults with median-imputation + StandardScaler).
+#    * every `tabpfn-untuned` base in `cfg.tunable.<track>_base_paths`
+#      (read from `config/train.yaml` — same checkpoints the training
+#       starts from, so `untuned vs trained` is honest).
+#    * every `tabpfn-trained` row in the training manifest
+#      `logs/runs/<run_name>_<track>.csv`.
+#
+#  All scored on the same held-out test chunks computed by
+#  `src.train.corpus.split_corpus`. K-fold cross-validation per
+#  test dataset gives us mean ± std bars that reviewers expect.
+#
+#  Output: `results/<TRACK>/<method>/<run_name>_<timestamp>.csv`.
+#  PERMANENT — every run appends a fresh timestamped file under
+#  the corresponding method directory. Earlier runs are never
+#  overwritten, so the project keeps a growing record of every
+#  benchmark performed.
+# =============================================================================
+
+
+# Inherit shared knobs from the training config (single source of
+# truth for seed, run_name, track, test split definition).
+train_cfg_path: "config/train.yaml"
+
+
+# Which classical baselines to include. Drop any from this list to
+# skip them entirely.
+#   pd  → ["xgboost", "catboost", "logreg",  "tabpfn-untuned"]
+#   lgd → ["xgboost", "catboost", "linreg",  "tabpfn-untuned"]
+#
+# "logreg" is silently ignored on lgd; "linreg" is silently ignored on pd.
+baselines:
+  enabled:
+    - "xgboost"
+    - "catboost"
+    - "logreg"
+    - "linreg"
+    - "tabpfn-untuned"
+
+
+# Eval metric (mirrors training-time metric names so an eval row is
+# directly comparable to a training-manifest row).
+metric:
+  classification: "roc_auc"   # alt: "log_loss"
+  regression:     "rmse"      # alt: "neg_nll"  (neg-MSE for non-TabPFN)
+
+
+# ---------------------------------------------------------------- #
+#  Cross-validation
+# ---------------------------------------------------------------- #
+# Every (model × test_chunk) pair is scored across `n_folds` folds.
+# Folds are constructed with `KFold` (regression) or `StratifiedKFold`
+# (classification), shuffled with `seed`. For each fold:
+#     fit on (train + remaining query rows)        ← context
+#     predict on (held-out query fold)             ← validation
+# So `metric_value` rows are still one-per-(model × chunk × fold);
+# downstream aggregation reports `mean ± std` over folds per chunk.
+cv:
+  n_folds: 5
+
+
+# ---------------------------------------------------------------- #
+#  Hyperparameter optimisation for the boosting baselines
+# ---------------------------------------------------------------- #
+# XGBoost and CatBoost get a small Optuna HPO budget per chunk to
+# represent their best-effort baseline (rather than just defaults).
+# Set `n_trials: 0` to disable HPO and use library defaults.
+#
+# LogReg / LinReg are NOT tuned — they're the "what does plain linear
+# modelling do" baseline; tuning them defeats the point.
+hpo:
+  xgboost:
+    n_trials: 25
+    timeout_seconds: 300
+  catboost:
+    n_trials: 25
+    timeout_seconds: 300
+
+
+# Number of TabPFN inference-time estimators for both untuned and
+# trained variants. 4 is the package default; raise to 8/16 for
+# slightly better accuracy at proportional inference cost.
+tabpfn_n_estimators: 16
+
+
+# ---------------------------------------------------------------- #
+#  Output
+# ---------------------------------------------------------------- #
+# Long-format CSVs land at:
+#
+#   results/<TRACK>/<method>/<run_name>_<timestamp>.csv
+#
+# where <TRACK> is "PD" or "LGD" (uppercase, per the user's spec)
+# and <method> is one of:
+#
+#   xgboost / catboost / logreg / linreg /
+#   tabpfn-untuned__<base_stem> /
+#   tabpfn-trained__<descriptive_name>
+#
+# This means EVERY run is permanently archived: a new timestamp →
+# a new file under the same method dir. Aggregations live downstream.
+results:
+  base_dir: "results"

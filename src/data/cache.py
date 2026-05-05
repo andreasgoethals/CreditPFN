@@ -41,11 +41,13 @@ import logging
 from pathlib import Path
 from typing import Iterable
 
+from src.utils.paths import resolve_data_path
+
 LOGGER = logging.getLogger(__name__)
 
 
 def _meta_path(cached_root: Path, track: str, dataset_id: str) -> Path:
-    return Path(cached_root) / track / dataset_id / "meta.json"
+    return resolve_data_path(cached_root) / track / dataset_id / "meta.json"
 
 
 def is_cache_valid(
@@ -100,7 +102,7 @@ def find_uncached_datasets(
     The result is sorted (stable across machines) so callers can use
     it directly in log messages without wrapping in another sort.
     """
-    cached_root = Path(cached_root)
+    cached_root = resolve_data_path(cached_root)
     missing: list[str] = []
     for did in dataset_ids:
         track = tracks.get(did)

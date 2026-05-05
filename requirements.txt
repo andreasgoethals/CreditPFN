@@ -41,6 +41,11 @@ scipy>=1.11,<2.0                # spatial.distance, stats — used by dedup
 scikit-learn>=1.4,<2.0          # FeatureAgglomeration, StandardScaler,
                                 # LabelEncoder, OrdinalEncoder
 
+# --- Baseline models for the eval benchmark ----------------------------------
+xgboost>=2.0,<4.0               # XGBoost baseline (PD + LGD)
+catboost>=1.2,<2.0              # CatBoost baseline (PD + LGD)
+optuna>=3.6,<5.0                # HPO for the boosting baselines (TPE sampler)
+
 # --- Deduplication helpers ---------------------------------------------------
 rapidfuzz>=3.6,<4.0             # fuzzy column-name matching in dedup
 

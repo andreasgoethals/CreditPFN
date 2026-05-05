@@ -67,6 +67,7 @@ if str(_REPO) not in _sys.path:
 
 from src.data import dedup, register, sanitize, dataset  # noqa: E402
 from src.data.preprocessing import DATASET_METADATA  # noqa: E402
+from src.utils.paths import resolve_data_path  # noqa: E402
 from src.utils.run_log import resolve_run_log  # noqa: E402
 
 
@@ -87,9 +88,9 @@ def _wipe(cfg) -> None:
     refuses to remove a directory that an editor has visited recently.
     """
     dirs = [
-        Path(cfg.paths.dedup),
-        Path(cfg.paths.processed),
-        Path(cfg.paths.cached),
+        resolve_data_path(cfg.paths.dedup),
+        resolve_data_path(cfg.paths.processed),
+        resolve_data_path(cfg.paths.cached),
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
@@ -102,7 +103,7 @@ def _wipe(cfg) -> None:
                 except PermissionError:
                     pass
 
-    for f in (Path(cfg.paths.manifest_pd), Path(cfg.paths.manifest_lgd)):
+    for f in (resolve_data_path(cfg.paths.manifest_pd), resolve_data_path(cfg.paths.manifest_lgd)):
         if f.exists():
             try:
                 f.unlink()
@@ -217,8 +218,8 @@ def run(
                 mod.DATASET_METADATA = _pp.DATASET_METADATA
 
     elapsed = time.monotonic() - t0
-    dedup_dir = Path(cfg.paths.dedup)
-    cache_root = Path(cfg.paths.cached)
+    dedup_dir = resolve_data_path(cfg.paths.dedup)
+    cache_root = resolve_data_path(cfg.paths.cached)
 
     summary = (
         f"data_pipeline: "

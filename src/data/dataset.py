@@ -65,6 +65,7 @@ import numpy as np
 import pandas as pd
 
 from src.data.preprocessing import DATASET_METADATA
+from src.utils.paths import resolve_data_path
 
 LOGGER = logging.getLogger(__name__)
 CACHE_SCHEMA_VERSION = 2
@@ -478,11 +479,11 @@ def main(cfg=None) -> int:
     if cfg is None:
         cfg = _load_cfg()
 
-    proc_root = Path(cfg.paths.processed)
-    cache_root = Path(cfg.paths.cached)
+    proc_root = resolve_data_path(cfg.paths.processed)
+    cache_root = resolve_data_path(cfg.paths.cached)
     manifests = {
-        "pd": _read_manifest(Path(cfg.paths.manifest_pd)),
-        "lgd": _read_manifest(Path(cfg.paths.manifest_lgd)),
+        "pd": _read_manifest(resolve_data_path(cfg.paths.manifest_pd)),
+        "lgd": _read_manifest(resolve_data_path(cfg.paths.manifest_lgd)),
     }
     if any(m.empty for m in manifests.values()):
         LOGGER.error(

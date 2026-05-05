@@ -92,6 +92,7 @@ Directory structure:
     │   │       ├── uantwerp_storage_quota_table.rst
     │   │       └── vaughan_hardware.rst
     │   ├── brussel/
+    │   │   ├── tier1_sofia.rst
     │   │   ├── tier2_hardware.rst
     │   │   ├── vub_docs.rst
     │   │   └── tier2_hardware/
@@ -305,12 +306,13 @@ Directory structure:
     │       ├── credits.rst
     │       ├── genius_decommissioning.rst
     │       ├── genius_quick_start.rst
+    │       ├── mindwell_quick_start.rst
     │       ├── slurm_accounting.rst
     │       ├── slurm_specifics.rst
     │       ├── superdome_quick_start.rst
-    │       ├── tier2_2025.rst
     │       ├── tier2_genius.rst
     │       ├── tier2_hardware.rst
+    │       ├── tier2_mindwell.rst
     │       ├── tier2_storage.rst
     │       ├── tier2_superdome.rst
     │       ├── tier2_wice.rst
@@ -336,15 +338,14 @@ Directory structure:
     │       │       ├── thinking_node_map_v2.xlsx
     │       │       └── thinking_node_map_v2_centos7.xlsx
     │       └── tier2_hardware/
-    │           ├── 2025_hardware.rst
     │           ├── cascadelake_mlc.txt
     │           ├── genius_hardware.rst
     │           ├── icelake_mlc.txt
     │           ├── kuleuven_storage.rst
-    │           ├── kuleuven_storage_paths_table.rst
     │           ├── kuleuven_storage_quota_table.rst
     │           ├── memory_bandwidth_and_latency_genius.rst
     │           ├── memory_bandwidth_and_latency_wice.rst
+    │           ├── mindwell_hardware.rst
     │           ├── restoring_a_snapshot.rst
     │           ├── skylake_mlc.txt
     │           ├── superdome_hardware.rst
@@ -4051,6 +4052,8 @@ clusters.
 
    mfa_login   
 
+.. _location_access_restrictions:
+
 Location Access Restrictions
 ============================
 
@@ -4148,6 +4151,7 @@ FILE: source/accounts/clusters_ssh_key.rst
     .. grid-item-card:: |VUB|
        :columns: 12 4 4 4
 
+       * Tier-1 :ref:`sofia <sofia cluster>`
        * Tier-2 :ref:`Hydra <Hydra cluster>`
        * Tier-2 :ref:`Anansi <Anansi cluster>`
 
@@ -8464,6 +8468,226 @@ at Langley.
 
 
 ================================================
+FILE: source/brussel/tier1_sofia.rst
+================================================
+.. grid:: 2
+
+   .. grid-item::
+       .. image:: images/sofia.png
+          :width: 100%
+
+   .. grid-item::
+       .. image:: images/sofia-sun.png
+          :width: 90%
+
+.. _sofia cluster:
+
+sofia @ VUB-HPC
+===============
+
+.. contents::
+    :depth: 3
+    :local:
+    :backlinks: none
+
+General information
+-------------------
+
+.. important::
+
+   **sofia** is currently in **pilot phase**. No starting grants or full
+   project grants will be issued. The VUB-HPC team is working hard to make it
+   production-ready. If all goes well, the cluster will be open for starting
+   grant applications by May 2026, and for full project applications by June
+   2026.
+
+**sofia** is the 4th VSC Tier-1 cluster, following *muk* (hosted by HPC-UGent, 2012-2016),
+*BrENIAC* (hosted by HPC-Leuven, 2016-2022) and *Hortense* (hosted by HPC-Ugent, 2021-2027).
+
+It will be available in the second half of 2026, is hosted by Vrije Universiteit Brussel,
+and maintained and supported by the VUB-HPC team.
+
+.. _sofia_hardware_details:
+
+Hardware details
+----------------
+
+The **sofia** cluster consists of the following partitions:
+
+- ``zen5_dense``: CPU partition:
+   - 56 compute nodes, each with:
+       - 2x AMD EPYC 9965 192-Core CPU (Turin Dense) 2.25 GHz ("Zen 5c" microarchitecture, 384 cores per node)
+       - 770 GiB usable RAM (~2 GiB/core), 7.6 GiB swap (local SSD)
+       - 1.4 TiB SSD local disk
+- ``zen5_himem``: large-memory partition:
+   - 16 compute nodes, each with:
+       - 2x AMD EPYC 9655 96-Core CPU (Turin) 2.6 GHz ("Zen 5" microarchitecture, 192 cores per node)
+       - 1.5 TiB usable RAM (~8 GiB/core), 7.6 GiB swap (local SSD)
+       - 1.4 TiB SSD local disk
+- ``zen4_h200``: GPU partition:
+   - 22 compute nodes, each with:
+       - 2x AMD EPYC 9654 96-Core CPU (Genoa) 2.4 GHz (192 cores per node)
+       - 8x NVIDIA H200-SXM5 (141 GiB GPU memory), Nvlink4
+       - 1.5 TiB usable RAM (~8 GiB/CPU core), 7.6 GiB swap (local SSD)
+       - 1.4 TiB SSD local disk
+- ``zen5_vis``: interactive and debug partition:
+   - 4 compute nodes, each with:
+       - 2x AMD EPYC 9655 96-Core CPU (Turin) 2.6 GHz ("Zen 5" microarchitecture, 192 cores per node)
+       - 2x NVIDIA RTX 5000 Ada Generation (32 GiB GPU memory)
+       - 1.5 TiB usable RAM (~8 GiB/CPU core), 7.6 GiB swap (local SSD)
+       - 1.4 TiB SSD local disk
+
+Shared infrastructure:
+
+- *storage*: 4.3 PiB shared scratch storage, IBM Storage Scale System
+- *interconnect*: NVIDIA Quantum-2 InfiniBand, fat tree network with 2:1 blocking
+   - ~400 Gb/s for GPU and large-memory partition
+   - ~200 Gb/s for CPU partition
+
+.. _sofia_getting_access:
+
+Getting access
+--------------
+
+.. _sofia_access_policy:
+
+Access policy
+*************
+
+**The sofia VSC Tier-1 cluster can only be accessed by people with an active Tier-1 compute project.**
+
+Tier-1 compute project resources are always allocated for a given period.
+After this period expires, the users of this project lose access to all resources granted within that project.
+This includes storage in addition to compute resources (CPU and GPU).
+
+As soon as a project expires, project members:
+
+* will no longer be able to use any remaining CPU cycles, GPU cycles or credits
+* will no longer have access to the dedicated project folders
+* will lose access to the Tier-1 cluster, unless they have another active project
+
+See https://www.vscentrum.be/compute for more information on requesting access, rules and regulations.
+
+
+.. _sofia_login_nodes:
+
+Login nodes (SSH)
+*****************
+
+You can use SSH to connect to the login nodes of the Tier-1 **sofia** cluster
+with your VSC account.  From within the Flemish university network, use your
+VSC-id to connect to ``sofia.hpc.vub.be``.
+
+.. note::
+   If you are not inside the Flemish university network you can ``ssh`` into **sofia** from the login nodes
+   of any Tier-2 cluster. Do not forget to set up your SSH keys there or to forward your SSH agent.
+
+More general information about SSH login is available in the
+:ref:`terminal
+interface` section. Note that for access from abroad an extra step is needed. See the VUB tab at
+:ref:`location_access_restrictions`.
+
+There are 2 login nodes for **sofia**: ``login01`` and ``login02``, both running the Rocky Linux release 9.7 operating system.
+When logging in using SSH, you will be assigned to either of these login nodes,
+based on the IP address of the host you are connecting from.
+
+If you need to access a *specific* login node (for example because you have a ``screen`` or ``tmux`` session
+running there), just run "``ssh login01``" to jump to ``login01`` if you were logged in to ``login02``,
+or vice versa. Make sure your SSH keys are properly configured or forwarded.
+
+.. note::
+  The available resources on the **sofia** login nodes are shared by everyone who is logged in there.
+
+  **Please only use the sofia login nodes as an access portal!**
+
+  For resource-intensive interactive tasks, like software compilation, testing software or job scripts, etc.,
+  please use an interactive job, preferentially on the ``zen5_vis`` partition,
+  either via ``salloc -p zen5_vis`` or in the future through the
+  :ref:`sofia_web_portal`.
+
+.. _sofia_login_nodes_host_keys:
+
+Host keys
++++++++++
+
+The first time you log in to the **sofia** login nodes, a fingerprint of the host key will be shown.
+Before confirming the connection, verify the correctness of the host key, to ensure you are
+connecting to the correct system.
+
+The type of fingerprint that will be shown depends on the version and configuration of your SSH client.
+
+**Please verify that the fingerprint of the host key is *one* of the following**:
+
+* for ECDSA host key:
+
+  * ``78:2f:bd:30:95:7f:ba:eb:c4:bf:29:71:fd:1f:2b:b7`` (MD5)
+  * ``Trw7Gwirs3k9QdH2n2fB9NGrNKPwG8mVK3Yfy8VPc2Y`` (SHA256)
+
+* for ED25519 host key:
+
+  * ``bf:4d:d3:55:ce:72:cd:dd:a7:bf:44:62:97:5f:22:2d`` (MD5)
+  * ``IPZeanj7AVbBYFyc1KBFfd+hMxyDbIGyOghn2uQkuww`` (SHA256)
+
+* for RSA host key:
+
+  * ``5e:2e:21:11:c6:8e:1e:1f:c9:7c:d2:38:c7:f6:f9:35`` (MD5)
+  * ``vS9fAoDO52dWCXS/obPS5u95irhJiKo1PfV4dyJl2Mg`` (SHA256)
+
+.. _sofia_web_portal:
+
+Web portal
+**********
+
+The **sofia** web portal is not yet be available during the pilot phase.
+
+More information about the usage of the web portal is available at :ref:`compute portal`.
+
+Storage
+*******
+
+Similar to *Hortense*, the user’s ``$HOME`` directory is located on the scratch
+file system and is distinct from the user’s ``$VSC_HOME``.  The advantage of
+this setup is that **sofia** remains accessible even if the user’s home
+institution cluster is down.
+
+The :ref:`storage hardware`, specifically ``$VSC_HOME`` and ``$VSC_DATA``, is accessible, but **only on the
+login nodes**, and **only during the pilot phase**. These will be removed when
+the pilot phase concludes. We highly recommend using :ref:`Globus <sofia_scratch_globus>`
+for file transfer between **sofia** and Tier-2 storage.
+
+Each node in the cluster, including the login nodes, provides local non-shared storage for temporary data:
+
+* Temporary storage on local node hard drive: ``$VSC_SCRATCH_NODE``, ``$TMPDIR``, ``/tmp`` and ``/var/tmp``;
+* Temporary storage on local node memory (RAM): ``/dev/shm``.
+
+.. note::
+
+   Data placed in any of these temporary storage locations will be **deleted
+   at the end of the active session**. For compute nodes this is at the end
+   of your job and for login nodes whenever you log out of the cluster.
+
+.. _sofia_scratch_globus:
+
+sofia scratch via Globus
+************************
+
+Accessing the **sofia** scratch via Globus is not yet possible during the pilot phase.
+
+More general information about Globus is available at :ref:`globus platform`.
+
+.. _sofia_help:
+
+Getting help
+-------------
+
+For questions and problems related to Tier-1 **sofia**, please contact the central
+support address for Tier-1 support: `vsc-support@hpc.vub.be <mailto:vsc-support@hpc.vub.be>`_.
+
+Questions regarding Tier-1 Hortense will need to go to: `compute@vscentrum.be <mailto:compute@vscentrum.be>`_.
+
+
+
+================================================
 FILE: source/brussel/tier2_hardware.rst
 ================================================
 ###################
@@ -11229,9 +11453,15 @@ FILE: source/compute/tier1.rst
 
        * Tier-1 :ref:`Hortense <Hortense hardware>`
 
+    .. grid-item-card:: |VUB|
+       :columns: 12 4 4 4
+
+       * Tier-1 :ref:`sofia <sofia cluster>`
+
 .. toctree::
    :maxdepth: 2
 
+   /brussel/tier1_sofia
    /gent/tier1_hortense
 
 ------
@@ -11282,7 +11512,7 @@ FILE: source/compute/tier2.rst
        * :ref:`Genius <Genius hardware>`
        * :ref:`Superdome <Superdome hardware>`
        * :ref:`wICE <wICE hardware>`
-       * :ref:`upcoming Tier-2 <2025 hardware>`
+       * :ref:`Mindwell <mindwell hardware>`
 
     .. grid-item-card:: |UA|
        :columns: 6 6 3 3
@@ -11502,6 +11732,7 @@ FILE: source/compute/jobs/clusters_slurm.rst
     .. grid-item-card:: |VUB|
        :columns: 12 4 4 4
 
+       * Tier-1 :ref:`sofia <sofia cluster>`
        * Tier-2 :ref:`Hydra <Hydra cluster>`
        * Tier-2 :ref:`Anansi <Anansi cluster>`
 
@@ -30343,7 +30574,7 @@ Each type of scratch has his own use:
   file simultaneously, e.g., through MPI parallel I/O.
   For most jobs, this is the best scratch system to use.
 
-**Site scratch ($VSC_SITE_SCRATCH)**
+**Site scratch ($VSC_SCRATCH_SITE)**
   A variant of the previous one, may or may not be the same. On
   clusters that have access to both a cluster-local scratch and
   site-wide scratch file system, this variable will point to the
@@ -30368,7 +30599,7 @@ Each type of scratch has his own use:
   We may or may not implement a VSC-wide scratch volume in the
   future, and the environment variable VSC_SCRATCH_GLOBAL is reserved
   to point to that scratch volume. Currently is just points to the same
-  volume as ``$VSC_SCRATCH`` or ``$VSC_SITE_SCRATCH``.
+  volume as ``$VSC_SCRATCH`` or ``$VSC_SCRATCH_SITE``.
 
 
 
@@ -30952,16 +31183,6 @@ Ubuntu/Debian (local machines):
 
 - Click the authentication link displayed in your terminal and complete the steps on https://auth.vscentrum.be/.
 
-Alternatively, you can use one of the following commands to log in from HPC nodes: 
-
-- On HPC clusters of the KU Leuven, use the command ``irods-setup --zone <zone> | bash``.  
-  This command can also be used at the beginning of your job script to authenticate.
-  This is especially recommended for long running jobs, since if they spend a lot of time in the queue and a long time running, this may exceed the standard 7 day authentication.  
-
-- On other HPC clusters in Flanders, you can log in with ``ssh login.hpc.kuleuven.be irods-setup --zone <zone> | bash``.  
-  This command can currently not be included in job scripts, since it requires interaction from the user.  
-
-For most users, the ``<zone>`` will be the default zone 'vsc'.
 
 ************
 Getting help
@@ -36652,9 +36873,9 @@ Genius decommissioning
 ======================
 
 Most remaining parts of :ref:`Genius <Genius hardware>` will be
-decommissioned when we start the pilot phases for the
-:ref:`new Tier-2 cluster <2025 hardware>`. This should happen
-sometime between the third week and the fourth week of March.
+decommissioned when we start the open pilot phase for the
+:ref:`Tier-2 cluster Mindwell <mindwell hardware>`. This should happen
+towards the middle of May.
 
 .. note::
 
@@ -36825,6 +37046,9 @@ e.g. data visualization.
    batch jobs since these will result in fewer idling resources
    compared to interactive jobs.
 
+.. note::
+
+   Jobs on the ``interactive`` partition do not consume any credits.
 
 .. _submit_genius_gpu:
 
@@ -36896,6 +37120,163 @@ To run a debug job for 15 minutes on a GPU node, you would use::
 
    $ sbatch --account=lp_my_project --clusters=genius --nodes=1 --ntasks=9 \
             --gpus-per-node=1 --partition=gpu_p100_debug --time=15:00 myjobscript.slurm
+
+
+
+================================================
+FILE: source/leuven/mindwell_quick_start.rst
+================================================
+.. _mindwell_quick_start:
+
+Mindwell quick start guide
+==========================
+
+The KU Leuven / UHasselt Tier-2 cluster *Mindwell* is planned to enter
+production around mid 2026. Mindwell contains thin nodes, large memory
+nodes and GPU nodes.
+
+.. note::
+
+   Mindwell is currently only available for selected pilot users
+   by means of the ``lp_mindwell_pilot`` credit account.
+
+Mindwell does not have separate login nodes and can be accessed from the
+:ref:`Genius login nodes <tier2_login_nodes>`. Access through
+:ref:`Open OnDemand <ood>` will be provided in the near future.
+
+.. _running jobs on mindwell:
+
+Running jobs on Mindwell
+------------------------
+
+There are several type of nodes in Mindwell: normal compute nodes, GPU nodes,
+big memory nodes and nodes configured for interactive use.
+The resource specifications for jobs have to be tuned to use these nodes properly.
+
+In general, the maximum walltime for Mindwell jobs is 3 days (72 hours).
+Only jobs submitted to the ``*_long`` partitions are allowed to have
+walltimes up to 7 days (168 hours), as will be illustrated below.
+
+Similar to Genius and wICE, Mindwell uses Slurm as the workload manager.
+A Slurm jobscript for Mindwell will typically look like this:
+
+::
+
+    #!/bin/bash -l
+    #SBATCH --clusters=mindwell
+    #SBATCH --partition=...
+    #SBATCH --time=...
+    #SBATCH --nodes=...
+    #SBATCH --ntasks-per-node=...
+    #SBATCH --account=...
+
+    module load ...
+
+    ...
+
+In case you are not yet familiar with Slurm and/or the Mindwell hardware
+(including the new GPFS storage), you can find more information on the
+following pages:
+
+- :ref:`Mindwell hardware <mindwell hardware>`
+- :ref:`Scratch storage (including GPFS) <leuven_scratch>`
+- :ref:`Transferring data between Lustre and GPFS <leuven_lustre_gpfs_transfer>`
+- Slurm jobs (basics): :ref:`running jobs` and :ref:`job_types`
+- :ref:`Slurm jobs (advanced) <job advanced>`
+- :ref:`Site-specific Slurm info <leuven_slurm_specifics>`
+
+For information about compute credit accounts, see the
+:ref:`Leuven accounting <accounting_leuven>` and
+:ref:`KU Leuven credits <KU Leuven credits>` pages.
+
+.. note::
+
+   The examples given on this page only serve as illustrations.
+   We expect that you adapt the number of nodes, tasks, cores, memory,
+   walltime, ... depending on what your compute task requires.
+
+
+.. _submit to mindwell compute node:
+
+Submit to a regular compute node
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Submitting a 2-node job on the regular Granite Rapids compute nodes
+(with 192 cores each) can be done like this::
+
+   $ sbatch --account=lp_mindwell_pilot --clusters=mindwell \
+            --nodes=2 --ntasks-per-node=192 --time=2:00:00 myjobscript.slurm
+
+This will select the default partition (called ``batch_graniterapids``)
+which is the one of interest here.
+
+For jobs which need more than 3 days of walltime (up to maximum 7 days),
+you need to submit to the ``batch_graniterapids_long`` partition instead.
+
+
+.. _submit to mindwell interactive node:
+
+Submit to the interactive partition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There is also a small ``interactive`` partition intended for interactive work
+(compiling software, post-processing, small-scale debugging, visualization,
+...). This is typically done via interactive jobs, for example::
+
+   # A short single-core job:
+   $ srun --account=lp_mindwell_pilot --clusters=mindwell --partition=interactive \
+           --ntasks=1 --time=01:00:00 --pty bash -l
+
+   # A longer job with more cores, one GPU and X11 forwarding:
+   $ srun --account=lp_mindwell_pilot --clusters=mindwell --partition=interactive \
+          --ntasks-per-node=8 --gpus-per-node=1 --time=08:00:00 --x11 --pty bash -l
+
+Users are allowed to request a maximum of 8 cores and one RTX 5000 'Ada' GPU,
+for walltimes up to 16 hours.
+
+.. note::
+
+   It is also possible to submit interactive jobs to the other partitions
+   (e.g. ``batch_graniterapids``, ``gpu_b200`` or ``bigmem``) in case
+   you need more resources. For large amounts of compute resources, however,
+   we recommend to use batch jobs since these will result in fewer idling
+   resources compared to interactive jobs.
+
+.. note::
+
+   Jobs on the ``interactive`` partition do not consume any credits.
+
+.. _submit to mindwell big memory node:
+
+Submit to nodes with more memory
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Mindwell nodes with 1.5 TiB of RAM are placed in the ``bigmem`` partition.
+To select the maximum amount of memory per core (8 000 MB, which is also the
+default), you can submit a job as follows::
+
+   $ sbatch --account=lp_mindwell_pilot --clusters=mindwell --partition=bigmem \
+            --nodes=2 --ntasks-per-node=192 --mem-per-cpu=8000M myjobscript.slurm
+
+
+.. _submit to mindwell GPU node:
+
+Submit to a GPU node
+~~~~~~~~~~~~~~~~~~~~
+
+The nodes with B200 GPUs are located in the ``gpu_b200`` partition.
+As for the other node types, the GPU nodes can be shared by different jobs
+from different users but each job has exclusive access to its allocated cores
+and GPU(s).
+
+If you e.g. need one B200 GPU and two CPU cores::
+
+   $ sbatch --account=lp_mindwell_pilot --clusters=mindwell --partition=gpu_b200 \
+            --nodes=1 --ntasks=2 --gpus-per-node=1 myjobscript.slurm
+
+You are free to request more GPU devices and/or CPU cores if needed,
+but take note of the :ref:`limits on CPU resources per allocated GPU
+<cpu_resource_limits_in_gpu_jobs>`).
 
 
 
@@ -37299,6 +37680,10 @@ per GPU is provided in the table below.
      - ``gpu_h100``
      - 16
      - 187200
+   * - Mindwell
+     - ``gpu_b200``
+     - 24
+     - 194400
 
 If a job requests more cores or memory per GPU than listed above, you will receive a
 warining message.
@@ -37405,21 +37790,6 @@ If you want to get multiple Slurm tasks per socket you will need to use the
 
 
 ================================================
-FILE: source/leuven/tier2_2025.rst
-================================================
-###########
-Tier-2 2025
-###########
-
-
-.. toctree::
-   :maxdepth: 3
-
-   tier2_hardware/2025_hardware
-
-
-
-================================================
 FILE: source/leuven/tier2_genius.rst
 ================================================
 #############
@@ -37449,13 +37819,29 @@ KU Leuven/UHasselt Tier-2 clusters
    :maxdepth: 2
 
    tier2_hardware/tier2_login_nodes
-   tier2_genius
+   tier2_mindwell
    tier2_wice
+   tier2_genius
    tier2_superdome
    tier2_storage
    slurm_specifics
-   tier2_2025
 
+
+
+
+================================================
+FILE: source/leuven/tier2_mindwell.rst
+================================================
+###############
+Tier-2 Mindwell
+###############
+
+
+.. toctree::
+   :maxdepth: 3
+
+   tier2_hardware/mindwell_hardware
+   mindwell_quick_start
 
 
 
@@ -37725,7 +38111,7 @@ The resource specifications for jobs have to be tuned to use these nodes properl
 
 In general, the maximum walltime for wICE jobs is 3 days (72 hours).
 Only jobs submitted to the ``*_long`` partitions are allowed to have
-walltimes up to  7 days (168 hours), as will be illustrated below.
+walltimes up to 7 days (168 hours), as will be illustrated below.
 
 Similar to Genius, wICE uses Slurm as the workload manager.
 A Slurm jobscript for wICE will typically look like this:
@@ -37819,6 +38205,9 @@ Users are allowed to request a maximum of 8 cores, one A100 GPU instance
    batch jobs since these will result in fewer idling resources
    compared to interactive jobs.
 
+.. note::
+
+   Jobs on the ```interactive``` partition do not consume any credits.
 
 .. _submit to wice big memory node:
 
@@ -37856,7 +38245,7 @@ If you e.g. need one A100 GPU and two CPU cores::
 
 You are free to request more GPU devices and/or CPU cores if needed,
 but take note of the :ref:`limits on CPU resources per allocated GPU
-<cpu_resource_limits_in_gpu_jobs>`).
+<cpu_resource_limits_in_gpu_jobs>`.
 
 There are also nodes with H100 GPUs and AMD Genoa CPUs (4 GPUs and 64 cores
 per node) which you can select via the ``gpu_h100`` partition, e.g.::
@@ -38508,81 +38897,6 @@ FILE: source/leuven/old_hardware/thinking/thinking_node_map_v2_centos7.xlsx
 
 
 ================================================
-FILE: source/leuven/tier2_hardware/2025_hardware.rst
-================================================
-.. _2025 hardware:
-
-Tier-2 2025 new cluster
-=======================
-
-Toward the end of 2025 a new cluster will be added to the KU Leuven/UHasselt's Tier-2 infrastructure.
-In line with wICE it will feature thin nodes, large memory nodes, interactive nodes and GPU nodes.
-The cluster will be operational in Q2 2026.
-
-Hardware details
-----------------
-
-- 40 thin nodes
-
-  - 40 Granite Rapids nodes
-
-    - 2 Intel Xeon 6972P CPUs \@2.4 GHz,
-      96 cores each
-    - 768 GiB RAM
-    - default memory per core is TBA
-    - 960 GB NVMe local disk
-    - partitions TBA ``batch_granite``
-
-- 10 big memory nodes
-
-  - 2 Intel Xeon 6972P CPUs \@2.4 GHz,
-    96 cores each
-  - 1536 GiB RAM
-  - default memory per core is TBA
-  - 3840 GB NVMe local disk
-  - partition TBA ``bigmem``
-
-- 3 GPU nodes
-
-  - 3 nodes with 24 B200 GPUs in total
-
-    - 2 AMD EPYC 9655 CPUs \@2.6 GHz (Turin),
-      96 cores each
-    - 1536 GiB RAM
-    - default memory per core is TBA
-    - 8 NVIDIA B200 SXM6, 192 GiB GDDR, connected with NVLink
-    - 960 GB NVMe local disk
-    - partition TBA ``gpu|gpu_b200``
-
-- 2 interactive nodes
-
-  - 2 Intel Xeon 6972P CPUs \@2.4 GHz, 96 cores each
-  - 768 GiB RAM
-  - default memory per core is TBA
-  - 2 NVIDIA RTX 5000, 32 GiB GDDR
-  - 960 GB SSD local disk
-  - partitions TBA ``interactive``
-
-All nodes are interconnected using an Infiniband NDR
-network.
-All nodes are connected to the Lustre parallel file system
-through an Infiniband HDR-100 network.
-
-Similar to the wICE Sapphire Rapids and the H100 nodes, the new cluster is direct liquid cooled.
-
-Storage
--------
-
-A new parallel filesystem will be installed together with the cluster
-(IBM Storage Scale, 5.8 PB, connected over NDR).
-We will assign scratch storage on this new filesystem and also offer project storage
-(similar to the current `staging` storage).
-The compute nodes will also be connected to the existing Lustre filesystem,
-so all your existing data will be accessible from the new cluster.
-
-
-
-================================================
 FILE: source/leuven/tier2_hardware/cascadelake_mlc.txt
 ================================================
 Intel(R) Memory Latency Checker - v3.10
@@ -38668,8 +38982,8 @@ Genius hardware
 
    memory_bandwidth_and_latency_genius.rst
 
-Genius is one of KU Leuven/UHasselt's Tier-2 clusters, which is in production
-since 2018. It has thin nodes, large memory nodes, as well as GPU nodes.
+The KU Leuven / UHasselt Tier-2 cluster *Genius* has been in production
+since 2018. Genius contains thin nodes, large memory nodes and GPU nodes.
 
 .. note::
 
@@ -38826,93 +39140,184 @@ FILE: source/leuven/tier2_hardware/kuleuven_storage.rst
 KU Leuven storage
 #################
 
-The storage is organized according to the :ref:`VSC storage guidelines<data location>`
-
-File systems
-============
-
-.. include:: kuleuven_storage_quota_table.rst
-
-``$VSC_SCRATCH`` at KU Leuven is not a permanent storage. The files older than
-30 days are cleaned up regularly. To be more specific, the automatic file
-removal is based on the moment a file was accessed for the last time.
-The reasoning behind this is that as long as you are actively using a file (so
-accessing it) , the file will not be removed. This policy can however cause
-confusion when files are initially transferred to a scratch directory. If you
-use for instance the ``mv`` command, the file is not actually accessed. As a
-result, if the last access timestamp of the original file is a long time in the
-past, the file on scratch will be considered to be inactive and automatically
-removed. A similar thing happens when using ``rsync`` with the option to
-preserve timestamps. Also `Midnight Commander` will always preserve timestamps
-when copying or moving data. To avoid this problem, the ``cp`` command (without
-`-a` argument) should be used for the initial transfer of files to a scratch
-directory.
-
-For users from other universities, the quota on ``$VSC_HOME`` and ``$VSC_DATA``
-will be determined by the local policy of your home institution as these file
-systems are mounted from there. The path names will be similar with trivial
-modifications based on your home institution and VSC account number.
-
-Environment variables
-=====================
-
-The table below lists the path to different storages that KU Leuven users can
-by default access.
-
-.. include:: kuleuven_storage_paths_table.rst
+Storage on the clusters hosted at KU Leuven is organized
+:ref:`in a similar way as on other VSC clusters <data location>`.
+Currently, we use an NFS filesystem for home and data complemented with
+Lustre and IBM Storage Scale (GPFS) parallel filesystems for scratch storage.
 
 .. note::
 
-   All KU Leuven VSC accounts start with the digit ``3``.
-   Also the dots ``.`` are wildcards that match single digits.
+   We use environment variables to point at your different storage locations, as
+   demonstrated in the tables below. These paths are constructed based on the 5 digits
+   in your VSC ID. As mentioned in :ref:`data location`, you should always (try to)
+   use the environment variables rather than the paths shown in the tables.
 
-The ``$VSC_HOME`` and ``$VSC_DATA`` file systems have snapshots, so it is possible to
-recover data that was accidentally deleted or modified.  You can retrieve data by
-referring to :ref:`restoring a snapshot <restoring_snapshot>`.
+VSC home and data storage
+-------------------------
 
+The table below describes the VSC home and data storage locations, which
+can be acessed on all VSC clusters. These are intended for long term storage
+of files that are not accessed at high frequency by compute jobs.
 
++-----------------------+----------------------------------+--------+------------------+-------+---------------+
+| Variable              | Path                             | Type   | Access           |Backup | Default quota |
++=======================+==================================+========+==================+=======+===============+
+| ``$VSC_HOME``         | ``/user/leuven/3../vsc3....``    | NFS    | All VSC clusters | Yes   | 3 GiB         |
++-----------------------+----------------------------------+--------+------------------+-------+---------------+
+| ``$VSC_DATA``         | ``/data/leuven/3../vsc3....``    | NFS    | All VSC clusters | Yes   | 75 GiB        |
++-----------------------+----------------------------------+--------+------------------+-------+---------------+
 
-================================================
-FILE: source/leuven/tier2_hardware/kuleuven_storage_paths_table.rst
-================================================
-+--------------------+-------------------------------+
-| Variable           | Path                          |
-+====================+===============================+
-| $VSC_HOME          | /user/leuven/3../vsc3....     |
-+--------------------+-------------------------------+
-| $VSC_DATA          | /data/leuven/3../vsc3....     |
-+--------------------+-------------------------------+
-| $VSC_SCRATCH       | /scratch/leuven/3../vsc3....  |
-+--------------------+-------------------------------+
-| $VSC_SCRATCH_NODE  | /local_scratch (Genius)       |
-+                    +-------------------------------+
-|                    | /tmp (wIce)                   |
-+--------------------+-------------------------------+
-| $VSC_SCRATCH_SITE  | $VSC_SCRATCH                  |
-+--------------------+-------------------------------+
+Note that for ``$VSC_HOME`` and ``$VSC_DATA``:
+
+- data is protected by snapshots, which means it is possible to
+  :ref:`recover data <restoring_snapshot>` that was accidentally deleted
+  or modified,
+
+- quota for non-``vsc3*`` users are determined by the policy of the user's
+  home institution.
+
+.. _leuven_scratch:
+
+Parallel scratch storage
+------------------------
+
+For workflows requiring frequent read or write operations (especially those
+involving intermediate files), it is recommended to use scratch storage.
+Compared to NFS, the GPFS and Lustre filesystems are better designed to handle
+intensive serial and parallel input/output (IO) operations.
+:ref:`Genius <genius hardware>` and :ref:`wICE <wice hardware>` share the same
+(Lustre based) scratch storage, while :ref:`Mindwell <mindwell hardware>` comes
+with its own (GPFS based) scratch storage:
+
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+| Variable              | Path                             | Type   | Access        |Backup | Default quota |
++=======================+==================================+========+===============+=======+===============+
+|``$VSC_SCRATCH``       | ``/scratch/leuven/3../vsc3....`` | Lustre | Genius, wICE  | No    | 500 GiB       |
+|                       |                                  +--------+---------------+-------+---------------+
+|                       |                                  | GPFS   | Mindwell      | No    | 500 GiB       |
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+
+On each node, the ``$VSC_SCRATCH`` environment variable will point to the
+scratch storage associated with the node (GPFS scratch on the Mindwell nodes,
+Lustre scratch on the nodes of Genius and wICE).
+
+.. warning::
+
+   It is *crucial* that intensive IO operations in your compute jobs are done
+   on the scratch storage associated with the cluster where the job is running.
+   In other words, compute jobs running on Genius and wICE have to use Lustre
+   and jobs running on Mindwell have to use GPFS. Compute jobs that do not
+   comply can be cancelled by the system administrators without prior notice.
+
+.. note::
+
+   Non-``vsc3*`` users need to `contact the servicedesk <mailto:hpcinfo@kuleuven.be>`_
+   to receive scratch storage, as it is not set up by default.
+
+.. _leuven_lustre_gpfs_transfer:
+
+Transferring data between Lustre and GPFS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To facilitate data transfers between the Lustre and GPFS storage,
+Lustre is accessible from Mindwell and GPFS is accessible from wICE.
+
+.. note::
+
+   GPFS can currently not be accessed from the login nodes and the Genius
+   compute nodes. This will change when the nodes have been migrated to Rocky 9,
+   which is scheduled for the beginning of June. In the meantime you may carry
+   out your data transfers using (interactive or batch) jobs on, for example,
+   the ```interactive``` partitions of
+   :ref:`wICE <submit to wice interactive node>` or
+   :ref:`Mindwell <submit to mindwell interactive node>`.
+
+Two more environment variables (``$VSC_SCRATCH_LUSTRE1`` and
+``$VSC_SCRATCH_GPFS1``) have been defined for this purpose, so that you can
+easily find the mount location of your scratch directory on the "other"
+parallel file system.
+
+For instance, to copy a file from your Lustre scratch to your GPFS scratch,
+you could go about it as follows:
+
+.. code-block:: bash
+
+   # If initiating the transfer from Genius or wICE:
+   cp ${VSC_SCRATCH}/myfile ${VSC_SCRATCH_GPFS1}
+
+   # If initiating the transfer from Mindwell:
+   cp ${VSC_SCRATCH_LUSTRE1}/myfile ${VSC_SCRATCH}
+
+As a best practice, data transfers between Lustre and GPFS should be performed through
+'transfer' jobs, where you for example only request a few cores on an ``interactive`` partition.
+Short transfers which don't take more than a couple of minutes can also
+be performed from a Genius login node.
+
+Globus endpoints are available for Lustre, but not yet for GPFS. It is
+therefore not yet possible to use :ref:`Globus <globus platform>` for these
+data transfers.
+
+Automatic scratch cleanup
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``$VSC_SCRATCH`` at KU Leuven is not for long term storage, as files not accessed
+for more than 30 days are automatically removed.
+The reasoning behind this is that as long as you are actively using a file
+(so accessing it), the file will not be removed.
+
+This policy can however cause confusion when files are initially transferred
+to a scratch directory. If you use for instance the ``mv`` command, the file
+is not actually accessed. As a result, if the last access timestamp of the
+original file is a long time in the past, the file on scratch will be considered
+to be inactive and automatically removed. A similar thing happens when using
+``rsync`` with the option to preserve timestamps. To avoid this problem,
+the ``cp`` command (without ``-a`` argument) should be used to copy files to the
+scratch directory, followed by removing the sources (if needed) using  the ``rm``
+command upon a successful transfer.
+
+Node scratch
+------------
+
+If your jobs require temporary storage that does not need to be shared across
+compute nodes, you may also consider using the local node disks:
+
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+|Variable               | Path                             | Type   | Access        |Backup | Default quota |
++=======================+==================================+========+===============+=======+===============+
+|``$VSC_SCRATCH_NODE``  | ``/tmp``                         | ext4   | Genius        | No    | 200 GiB       |
+|                       |                                  |        +---------------+       +---------------+
+|                       |                                  |        | wICE          |       | 600 GiB       |
+|                       |                                  |        +---------------+       +---------------+
+|                       |                                  |        | Mindwell      |       | 600 GiB       |
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+
+Though limited in storage capacity, ``$VSC_SCRATCH_NODE`` has the advantage
+that no network traffic is involved. The contents of this temporary storage
+location are always removed when the job ends. Therefore, results need to be
+copied elsewhere if needed.
 
 
 
 ================================================
 FILE: source/leuven/tier2_hardware/kuleuven_storage_quota_table.rst
 ================================================
-+------------------+--------+---------+-------+----------------+
-|Variable          | Type   | Access  |Backup | Default quota  |
-+==================+========+=========+=======+================+
-|$VSC_HOME         | NFS    | VSC     |YES    | 3 GB           |
-+------------------+--------+---------+-------+----------------+
-|$VSC_DATA         | NFS    | VSC     |YES    | 75 GB          |
-+------------------+--------+---------+-------+----------------+
-|$VSC_SCRATCH      | Lustre | Genius  | NO    | 500 GB         |
-|                  |        | & wICE  |       |                |
-+------------------+--------+---------+-------+----------------+
-|$VSC_SCRATCH_SITE |        | Genius  | NO    | 500 GB         |
-|                  |        | & wICE  |       |                |
-+------------------+--------+---------+-------+----------------+
-|$VSC_SCRATCH_NODE | ext4   | Genius  | NO    | 200 GB         |
-|                  |        |         |       |                |
-|                  |        | wICE    |       | 600 GB         |
-+------------------+--------+---------+-------+----------------+
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+|Variable               | Path                             | Type   | Access        |Backup | Default quota |
++=======================+==================================+========+===============+=======+===============+
+|``$VSC_HOME``          | ``/user/leuven/3../vsc3....``    | NFS    | VSC           |Yes    | 3 GiB         |
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+|``$VSC_DATA``          | ``/data/leuven/3../vsc3....``    | NFS    | VSC           |Yes    | 75 GiB        |
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+|``$VSC_SCRATCH``       | ``/scratch/leuven/3../vsc3....`` | Lustre | Genius, wICE  | No    | 500 GiB       |
+|                       |                                  +--------+---------------+-------+---------------+
+|                       |                                  | GPFS   | Mindwell      | No    | 500 GiB       |
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
+|``$VSC_SCRATCH_NODE``  | ``/tmp``                         | ext4   | Genius        | No    | 200 GiB       |
+|                       |                                  |        +---------------+       +---------------+
+|                       |                                  |        | wICE          |       | 600 GiB       |
+|                       |                                  |        +---------------+       +---------------+
+|                       |                                  |        | Mindwell      |       | 600 GiB       |
++-----------------------+----------------------------------+--------+---------------+-------+---------------+
 
 
 
@@ -38967,6 +39372,84 @@ Icelake CPUs
 .. include:: icelake_mlc.txt
    :literal:
 
+
+
+
+================================================
+FILE: source/leuven/tier2_hardware/mindwell_hardware.rst
+================================================
+.. _mindwell hardware:
+
+Mindwell hardware
+=================
+
+The KU Leuven / UHasselt Tier-2 cluster *Mindwell* is planned to enter
+production around mid 2026. Mindwell contains thin nodes, large memory
+nodes and GPU nodes.
+
+Hardware details
+----------------
+
+- 40 thin nodes
+
+  - 2 Intel Xeon Platinum 6972P CPUs\@2.4 GHz (Granite Rapids),
+    96 cores each
+  - 768 GiB RAM
+  - default memory per core is 4000 MiB
+  - 960 GB NVMe local disk
+  - partitions ``batch_graniterapids|batch_graniterapids_long``
+
+- 10 big memory nodes
+
+  - 2 Intel Xeon 6972P CPUs \@2.4 GHz (Granite Rapids),
+    96 cores each
+  - 1536 GiB RAM
+  - default memory per core is 8000 MiB
+  - 3840 GB NVMe local disk
+  - partition ``bigmem``
+
+- 3 GPU nodes with 24 B200 GPUs in total
+
+  - 2 AMD EPYC 9655 CPUs \@2.6 GHz (Turin),
+    96 cores each
+  - 1536 GiB RAM
+  - default memory per core is 8000 MiB
+  - 8 NVIDIA B200 SXM6 (Blackwell),
+    192 GiB GDDR, connected with NVLink
+  - 960 GB NVMe local disk
+  - partition ``gpu_b200``
+
+- 2 interactive nodes
+
+  - 2 Intel Xeon 6972P CPUs \@2.4 GHz,
+    96 cores each
+  - 768 GiB RAM
+  - default memory per core is 2000 MiB
+  - maximum memory per core is 4000 MiB
+  - 2 NVIDIA RTX 5000 (Ada), 32 GiB GDDR
+  - 960 GB SSD local disk
+  - partition ``interactive``
+
+
+Storage
+-------
+
+A new parallel filesystem will be installed together with the cluster
+(IBM Storage Scale, 5.8 PB, connected over NDR). We will assign scratch storage
+on this new filesystem and also offer project storage (similar to the current
+`staging` storage). The compute nodes will also be connected to the existing
+Lustre filesystem (through an Infiniband HDR-100 network), so all your existing
+data will be accessible from the new cluster. Please read more about the
+:ref:`available scratch filesystems <leuven_scratch>` for detailed information and
+best practices.
+
+Additional highlights
+---------------------
+
+- Software modules will only be installed for toolchains starting from 2024a
+  (CPU partitions) or 2025a (GPU partitions).
+- All nodes are interconnected using an Infiniband NDR network.
+- Similar to the wICE Sapphire Rapids and the H100 nodes, the new cluster is direct liquid cooled.
 
 
 
@@ -39194,10 +39677,9 @@ FILE: source/leuven/tier2_hardware/wice_hardware.rst
 wICE hardware
 ===============
 
-wICE is KU Leuven/UHasselt's latest Tier-2 cluster.
-It has thin nodes, large memory nodes, interactive nodes and GPU nodes.
-This cluster is in production since February 2023
-and has been extended with additional compute nodes in early 2024.
+The KU Leuven / UHasselt Tier-2 cluster *wICE* has been in production
+since February 2023 and has been extended with additional compute nodes in
+early 2024. wICE contains thin nodes, large memory nodes and GPU nodes.
 
 .. toctree::
    :hidden:

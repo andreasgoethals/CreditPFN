@@ -52,6 +52,7 @@ from src.train.metrics import (
     improvement_direction, mean_ignore_nan,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
+from src.utils.paths import resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -352,14 +353,14 @@ def train_one_config(
 
     The four arguments ``track``, ``base_checkpoint``, ``learning_rate``,
     ``multi_chunk_policy`` are the ONLY things the script expects to
-    vary per run — see ``cfg.tunable`` in ``config/training.yaml``.
+    vary per run — see ``cfg.tunable`` in ``config/train.yaml``.
     All four default to either the explicit ``cfg.<...>`` field if
     set, or the first value of the corresponding tunable list.
 
     Parameters
     ----------
     cfg
-        OmegaConf config (typically ``OmegaConf.load("config/training.yaml")``).
+        OmegaConf config (typically ``OmegaConf.load("config/train.yaml")``).
     track
         Override ``cfg.track``. ``None`` → use the value from ``cfg``.
     base_checkpoint
@@ -453,7 +454,7 @@ def train_one_config(
 
     # ---- 4) checkpoint name + path ---------------------------------------- #
     save_path = Path(save_path) if save_path is not None else (
-        Path(cfg.checkpoint.trained_dir) / track / descriptive_name(
+        resolve_output_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
             run_name=str(cfg.run_name),
             track=track,
             base_path=base_checkpoint,
@@ -469,19 +470,39 @@ def train_one_config(
 
     history: list[EpochRecord] = []
     t0 = time.monotonic()
-    LOGGER.info(
-        "Starting %d epochs (%d train chunks/epoch, accumulate=%d, "
-        "total_steps=%d, lr=%.1e)",
-        epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
+
+    # ---- Per-trial log file: logs/train/<descriptive_name>.log -----
+    # Captures EVERY step's loss, dataset_id, GPU memory, throughput.
+    # Lives under output root so it survives scratch purges on VSC.
+    trial_log_path = (
+        resolve_output_path("logs/train") / save_path.with_suffix(".log").name
     )
+    trial_log_path.parent.mkdir(parents=True, exist_ok=True)
+    trial_log_handler = logging.FileHandler(trial_log_path, mode="w")
+    trial_log_handler.setLevel(logging.INFO)
+    trial_log_handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(message)s"
+    ))
+    LOGGER.addHandler(trial_log_handler)
+
+    LOGGER.info(
+        "Starting %d epochs | %d train chunks/epoch | accumulate=%d | "
+        "total_steps=%d | lr=%.1e | base=%s | policy=%s | seed=%d | device=%s",
+        epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
+        Path(base_checkpoint).name, multi_chunk_policy, int(cfg.seed), device,
+    )
+    LOGGER.info("Trial log file: %s", trial_log_path)
+    LOGGER.info("Save target   : %s", save_path)
 
     for epoch in range(epochs):
         model.train()
         running_loss = 0.0
         n_batches = 0
         optimizer.zero_grad(set_to_none=True)
+        epoch_t0 = time.monotonic()
 
         for step, batch in enumerate(train_loader, start=1):
+            step_t0 = time.monotonic()
             batch = batch.to(device)
             with torch.amp.autocast("cuda", enabled=use_amp):
                 pred_logits, y_target, _, _ = _forward(model, batch)
@@ -517,10 +538,23 @@ def train_one_config(
                 scheduler.step()
                 optimizer.zero_grad(set_to_none=True)
 
-            running_loss += float(loss.detach().cpu().item())
+            loss_val = float(loss.detach().cpu().item())
+            running_loss += loss_val
             n_batches += 1
 
+            step_dt = time.monotonic() - step_t0
+            cur_lr = float(scheduler.get_last_lr()[0])
+            gpu_mb = ""
+            if device == "cuda" and torch.cuda.is_available():
+                gpu_mb = f" gpu_mem_alloc={torch.cuda.memory_allocated()/1e9:.2f}GB"
+            LOGGER.debug(
+                "ep=%d step=%3d/%d ds=%-22s loss=%.4f lr=%.2e %.2fs/step%s",
+                epoch, step, len(train_loader), batch.dataset_id,
+                loss_val, cur_lr, step_dt, gpu_mb,
+            )
+
         train_loss = running_loss / max(1, n_batches)
+        epoch_dt = time.monotonic() - epoch_t0
         elapsed = time.monotonic() - t0
         record = EpochRecord(
             epoch=epoch,
@@ -533,8 +567,8 @@ def train_one_config(
             on_epoch_end(record)
 
         LOGGER.info(
-            "epoch=%2d  train_loss=%.4f  lr=%.2e  elapsed=%.1fs",
-            epoch, train_loss, record.lr, elapsed,
+            "epoch=%2d/%d  train_loss=%.4f  lr=%.2e  epoch_dt=%.1fs  elapsed=%.1fs",
+            epoch, epochs - 1, train_loss, record.lr, epoch_dt, elapsed,
         )
 
     # ---- 6) save final weights -------------------------------------------- #
@@ -559,6 +593,12 @@ def train_one_config(
         LOGGER.warning("Test bucket is empty — no test metric reported.")
 
     elapsed = time.monotonic() - t0
+
+    # Detach the per-trial file handler so the next trial gets its own
+    # log file (rather than appending to this one).
+    LOGGER.removeHandler(trial_log_handler)
+    trial_log_handler.close()
+
     return TrainingResult(
         final_ckpt_path=save_path,
         test_metric_raw=test_raw,
