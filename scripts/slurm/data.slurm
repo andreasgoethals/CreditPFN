@@ -5,16 +5,21 @@
 #
 #  Stage 1 of the on-VSC pipeline. Reads `data/raw/{pd,lgd}/<id>.csv`
 #  from $CREDITPFN_DATA_ROOT (= $VSC_SCRATCH/CreditPFN), runs the
-#  five-stage pipeline, and writes `data/cached/{pd,lgd}/<id>/chunk_*.npz`
-#  back to scratch.
+#  five-stage pipeline, and writes:
+#    * data/cached/{pd,lgd}/<id>/chunk_*.npz  → DATA_ROOT (scratch)
+#    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT (durable)
+#    * manifest_{pd,lgd}.csv                  → OUTPUT_ROOT (durable)
 #
-#  CPU-only — uses the Genius `batch` partition. The data pipeline is
-#  largely pandas + scikit-learn so multiple cores help.
+#  CPU-only — uses the Genius `batch` partition.
 #
 #  Submit with:
 #      sbatch scripts/slurm/data.slurm
+#  Or chained from `submit_full_pipeline.sh` (recommended).
 #
-#  Or chained from `full_pipeline_chain.slurm` (recommended).
+#  All slurm-level output goes to /dev/null; the *real* log is a
+#  single timestamped file `${OUTPUT_ROOT}/logs/data_<YYYYMMDD>_<HHMMSS>.log`
+#  (slurm boilerplate + python output + final summary line all in
+#  one place).
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-data
@@ -25,28 +30,29 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=40G
-#SBATCH --output=results/logs/slurm/data_%A.out
-#SBATCH --error=results/logs/slurm/data_%A.err
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
 
 set -euo pipefail
-
-# Force unbuffered Python so logs stream live to slurm-out.
 export PYTHONUNBUFFERED=1
 
-# ---- Path roots (the only env-difference vs. local) -------------------- #
-# Datasets live on scratch; durable outputs (logs/checkpoints/results) on data.
 export CREDITPFN_DATA_ROOT="${VSC_SCRATCH}/CreditPFN"
 export CREDITPFN_OUTPUT_ROOT="${VSC_DATA}/CreditPFN"
 
-# ---- Conda env --------------------------------------------------------- #
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
+
+TS=$(date +%Y%m%d_%H%M%S)
+LOG="${CREDITPFN_OUTPUT_ROOT}/logs/data_${TS}_j${SLURM_JOB_ID}.log"
+
+# Redirect everything from this point on (echo, nvidia-smi, python
+# stdout/stderr) to a single log file. Slurm `--output=/dev/null`
+# means slurm itself doesn't create a competing file.
+exec > "$LOG" 2>&1
+
 export PATH="${VSC_DATA}/miniconda3/bin:${PATH}"
 source activate CreditPFN
 
-# ---- Project location -------------------------------------------------- #
 cd "${VSC_DATA}/CreditPFN"
-
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/results/logs/slurm" \
-         "${CREDITPFN_OUTPUT_ROOT}/logs"
 
 echo "=========================================="
 echo "CreditPFN — DATA PREPROCESSING"
@@ -54,12 +60,12 @@ echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
 echo "Node           : ${SLURMD_NODENAME:-?}"
 echo "Date           : $(date)"
+echo "Log file       : ${LOG}"
 echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT}"
 echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
 echo "=========================================="
 
-python -u scripts/data_pipeline.py \
-    --log-path "${CREDITPFN_OUTPUT_ROOT}/logs/data_${SLURM_JOB_ID}.log"
+python -u scripts/data_pipeline.py --log-path "$LOG"
 
 echo "=========================================="
 echo "DONE — $(date)"

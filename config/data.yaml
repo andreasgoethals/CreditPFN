@@ -35,13 +35,31 @@ seed: 42
 
 # All paths are relative to the repo root (the directory you run scripts from).
 # Absolute paths also work.
+# Path policy (local vs. VSC)
+# ---------------------------
+# Each of these paths is interpreted by `src.utils.paths`:
+#   * `raw`, `processed`, `cached`  → resolved against $CREDITPFN_DATA_ROOT
+#                                     (= scratch on VSC, repo root locally).
+#                                     These are big I/O artefacts.
+#   * `dedup`, `manifest_*`         → resolved against $CREDITPFN_OUTPUT_ROOT
+#                                     (= $VSC_DATA on VSC, repo root locally).
+#                                     These are small but durable records that
+#                                     should be backed up alongside trained
+#                                     checkpoints and benchmark results.
+#
+# The "data/" prefix on the manifest / dedup paths is just a naming
+# convention — the resolver decides which root they go against. So
+# locally everything still lives under the repo's `data/` folder and
+# on VSC the manifests / dedup CSVs end up at
+# `$VSC_DATA/CreditPFN/data/...` (durable) while the heavy artefacts
+# end up at `$VSC_SCRATCH/CreditPFN/data/...` (scratch).
 paths:
-  raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv
-  processed:     data/processed          # sanitize.py writes here
-  cached:        data/cached              # dataset.py writes .npz here
-  dedup:         data/dedup                # 4× doubles_*_{pre,post}.csv
-  manifest_pd:   data/manifest_pd.csv      # register.py output (PD)
-  manifest_lgd:  data/manifest_lgd.csv     # register.py output (LGD)
+  raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv          (DATA_ROOT)
+  processed:     data/processed          # sanitize.py writes here              (DATA_ROOT)
+  cached:        data/cached             # dataset.py writes .npz here          (DATA_ROOT)
+  dedup:         data/dedup              # 4× doubles_*_{pre,post}.csv         (OUTPUT_ROOT)
+  manifest_pd:   data/manifest_pd.csv    # register.py output (PD)             (OUTPUT_ROOT)
+  manifest_lgd:  data/manifest_lgd.csv   # register.py output (LGD)            (OUTPUT_ROOT)
 
 
 # -----------------------------------------------------------------------------

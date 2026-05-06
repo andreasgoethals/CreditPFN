@@ -135,33 +135,67 @@ def save_finetuned(
     model: torch.nn.Module,
     architecture_config,
     save_path: Path | str,
+    *,
+    provenance: dict | None = None,
 ) -> Path:
-    """Persist a finetuned model in Prior Labs' on-disk format.
+    """Persist a finetuned model in Prior Labs' on-disk format, with
+    full provenance metadata.
 
     Format mirrors the base checkpoints (``state_dict`` + ``config``)
     so the saved file can be loaded later via
-    ``TabPFNClassifier(model_path=save_path)`` or
-    ``TabPFNRegressor(model_path=save_path)``.
+    ``TabPFNClassifier(model_path=save_path)`` /
+    ``TabPFNRegressor(model_path=save_path)``. We add a third key
+    ``provenance`` containing the training-time HPs, dataset list,
+    walltime, and GPU info — a permanent record of *how* this
+    checkpoint was produced.
+
+    The same provenance is also written to ``<save_path>.provenance.json``
+    next to the .ckpt so it can be inspected without loading torch.
     """
+    import json
+
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # ArchitectureConfig is a dataclass; `__dict__` serialises cleanly.
     config_payload = (
         architecture_config.__dict__
         if hasattr(architecture_config, "__dict__")
         else architecture_config
     )
-
-    # Strip a possible DataParallel wrapper (TabPFN finetuning uses
-    # DDP/DataParallel in the multi-GPU paths; ours doesn't, but be safe).
     state_dict = (
         model.module.state_dict()
         if hasattr(model, "module") else model.state_dict()
     )
 
-    torch.save(
-        {"state_dict": state_dict, "config": config_payload},
-        str(save_path),
-    )
+    payload: dict = {"state_dict": state_dict, "config": config_payload}
+    if provenance is not None:
+        payload["provenance"] = provenance
+        # Sidecar JSON — always written next to the .ckpt for at-a-
+        # glance inspection (no torch.load needed).
+        sidecar = save_path.with_suffix(save_path.suffix + ".provenance.json")
+        sidecar.write_text(
+            json.dumps(provenance, indent=2, default=str), encoding="utf-8",
+        )
+
+    torch.save(payload, str(save_path))
     return save_path
+
+
+def load_provenance(ckpt_path: Path | str) -> dict | None:
+    """Read just the ``provenance`` block from a checkpoint without
+    loading the model. Falls back to the JSON sidecar if present.
+    Returns ``None`` if neither has provenance recorded.
+    """
+    import json
+
+    ckpt_path = Path(ckpt_path)
+    sidecar = ckpt_path.with_suffix(ckpt_path.suffix + ".provenance.json")
+    if sidecar.exists():
+        return json.loads(sidecar.read_text(encoding="utf-8"))
+    if ckpt_path.exists():
+        try:
+            blob = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        except Exception:                                       # pragma: no cover
+            return None
+        return blob.get("provenance")
+    return None

@@ -29,6 +29,7 @@ fresh dump of a public GitHub repo, the upstream URL is linked.
 | `TabPFN Extensions.txt` | 17 415 | [PriorLabs/tabpfn-extensions](https://github.com/PriorLabs/tabpfn-extensions) | — | `AutoTabPFN` post-hoc ensembling, RF-PFN, embeddings, HPO. Source of evaluation baselines. |
 | `TabPFN V2 Finetuning.txt` | 3 697 | [PriorLabs/TabPFN/examples](https://github.com/PriorLabs/TabPFN/tree/main/examples) | [Rubachev 2025](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf) | The `finetune_classifier.py` and `finetune_regressor.py` reference scripts. Canonical "load checkpoint → backward pass → save checkpoint" sequence. |
 | `TabPFN Wide.txt` | 2 388 | [automl/TabPFN-Wide](https://github.com/automl/TabPFN-Wide) | [Kolberg 2026](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) | The continued-pretraining recipe for extreme-feature-count regimes. Source of our `FeatureAgglomeration` design. |
+| `TabTune.txt` | ~80k | [Lexsi-Labs/TabTune](https://github.com/Lexsi-Labs/TabTune) | [Lexsi-Labs 2025](https://arxiv.org/abs/2511.02802) | Unified sklearn-style wrapper around the **non-TabPFN** tabular foundation models (TabICL, OrionMSP/Bix, Mitra, ContextTab, TabDPT, LimiX) plus TabPFNv2.6 native FT, ensembling, distillation, and a `TabularLeaderboard`. Useful as a *future* source of additional eval baselines beyond what `src/model/` currently wraps; **not adopted now** because it doesn't natively support Real-TabPFN-style multi-dataset continued pretraining (which is the core training stage of this project). See "Should we use TabTune?" below for the full call. |
 | `TransformersCanDoBayesianInference.txt` | 6 869 | [automl/PFNs](https://github.com/automl/PFNs) (early) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Code for the original PFN paper. Mostly historical; useful for explaining what a PFN is. |
 | `VSC Documentation.txt` | 39 358 | [hpcleuven/VscDocumentation](https://github.com/hpcleuven/VscDocumentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, A100 partitions, storage tiers, account / VO management. The reference when writing the SLURM scripts under `scripts/`. |
 
@@ -50,6 +51,7 @@ repositories/
 ├── TabPFN Extensions.txt                    (17 415 lines)
 ├── TabPFN V2 Finetuning.txt                 ( 3 697 lines)
 ├── TabPFN Wide.txt                          ( 2 388 lines)
+├── TabTune.txt                              (~80 000 lines)
 ├── TransformersCanDoBayesianInference.txt   ( 6 869 lines)
 └── VSC Documentation.txt                    (39 358 lines)
 ```
@@ -667,6 +669,73 @@ idiom we adopted lives in this codebase first.
 
 **When to grep this file:** dimensionality-reduction strategies,
 checkpoint resumption, anything wide/high-feature.
+
+---
+
+## `TabTune.txt`
+
+**Upstream:** [github.com/Lexsi-Labs/TabTune](https://github.com/Lexsi-Labs/TabTune).
+
+**Related paper:**
+[arXiv:2511.02802 — Lexsi-Labs 2025 — TabTune: A Unified Library for
+Inference and Fine-Tuning of Tabular Foundation Models](https://arxiv.org/abs/2511.02802).
+
+**What it is.** A unified, sklearn-style wrapper that exposes ~10
+recent tabular foundation models — TabPFN-v2 / -v2.6, TabICL,
+TabICLv2, OrionMSP v1.0 / v1.5, OrionBix, Mitra, ContextTab, TabDPT,
+LimiX — under a single `TabularPipeline.fit() / .predict() /
+.evaluate() / .save() / .load()` API. Built on three components:
+`DataProcessor` (model-aware preprocessing), `TuningManager`
+(per-model training strategy), `TabularPipeline` (end-to-end driver),
+plus a `TabularLeaderboard` for head-to-head comparison. Each model
+gets four tuning strategies: zero-shot inference, episodic
+meta-learning FT (the *standard* way to finetune ICL models),
+supervised FT, and PEFT/LoRA. Recent additions: 6-strategy ensembling
+(`TabularEnsemble`), distillation (`TabDistiller` — TFM → MLP /
+LightGBM / XGBoost / CatBoost), and TabPFNv2.6 native FT (the
+official Prior Labs `FinetunedTabPFN*` API, surfaced through TabTune's
+unified pipeline).
+
+**Should we use TabTune?** **No, not for the training stage; possibly
+for the eval stage in the future.** Reasoning:
+
+1. *Training stage doesn't fit.* Real-TabPFN-style continued
+   pretraining iterates one transformer over a *corpus* of datasets
+   — an outer loop over many parents, each contributing context/
+   query batches. TabTune's pipelines are *per-dataset*: one
+   `TabularPipeline.fit()` call ↔ one dataset. Adopting TabTune for
+   training would replace our cross-dataset loop with a series of
+   per-dataset finetunes, which is a different research question.
+   Our `src/train/loop.py` already implements the cross-dataset
+   variant against the cached `.npz` chunks; no change needed.
+
+2. *Eval stage is potentially attractive.* The user's plan compares
+   TabPFN variants against XGBoost/CatBoost/LogReg/LinReg. TabTune
+   would give us the option to *also* compare against TabICL,
+   OrionMSP, Mitra, ContextTab, TabDPT, and LimiX with a single
+   library — much cheaper than wrapping each one ourselves. The
+   `TabularLeaderboard` API in particular looks like a near-drop-in
+   alternative to our `src/eval/benchmark.py`.
+
+3. *Cost.* TabTune pulls in every model's runtime as a dependency —
+   torch, transformers, several specific repo wheels. That's a
+   non-trivial install footprint on VSC. Worth doing only if the
+   thesis / paper actually compares against ≥ 3 of the non-TabPFN
+   foundation models.
+
+**Recommendation:** keep TabTune in the repo for reference, do not
+adopt it now. Revisit when the eval baseline list grows beyond
+{XGBoost, CatBoost, LogReg/LinReg, TabPFN-untuned, TabPFN-trained}.
+Specifically: if we add TabICL or any non-TabPFN foundation model as
+a comparison, swap our hand-written wrapper for TabTune at that point
+rather than building the 4th wrapper from scratch.
+
+**When to grep this file:** when designing a new eval baseline that
+would otherwise need its own model-specific wrapper. The
+`TuningManager` and `DataProcessor` source code in particular shows
+how each non-TabPFN model expects its inputs preprocessed
+(integer-encoded categoricals for TabPFN vs. text-tokenised columns
+for ContextTab vs. column-attention masks for TabICL, …).
 
 ---
 

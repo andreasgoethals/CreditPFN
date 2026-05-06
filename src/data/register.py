@@ -62,7 +62,7 @@ import numpy as np
 import pandas as pd
 
 from src.data.preprocessing import DATASET_METADATA, apply_dataset_specific_fixes
-from src.utils.paths import resolve_data_path
+from src.utils.paths import resolve_data_path, resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -246,8 +246,8 @@ def main(cfg=None) -> int:  # noqa: C901
     # Preserve date_added from existing manifests on idempotent re-runs.
     existing: dict[str, dict[str, str]] = {}
     for track, manifest_path in [
-        ("pd", resolve_data_path(cfg.paths.manifest_pd)),
-        ("lgd", resolve_data_path(cfg.paths.manifest_lgd)),
+        ("pd",  resolve_output_path(cfg.paths.manifest_pd)),
+        ("lgd", resolve_output_path(cfg.paths.manifest_lgd)),
     ]:
         prev = _read_existing_manifest(manifest_path)
         for _, row in prev.iterrows():
@@ -278,8 +278,8 @@ def main(cfg=None) -> int:  # noqa: C901
     by_track["pd"].sort(key=lambda r: r["dataset_id"])
     by_track["lgd"].sort(key=lambda r: r["dataset_id"])
 
-    _write_manifest(by_track["pd"], resolve_data_path(cfg.paths.manifest_pd))
-    _write_manifest(by_track["lgd"], resolve_data_path(cfg.paths.manifest_lgd))
+    _write_manifest(by_track["pd"],  resolve_output_path(cfg.paths.manifest_pd))
+    _write_manifest(by_track["lgd"], resolve_output_path(cfg.paths.manifest_lgd))
 
     return 1 if failures else 0
 

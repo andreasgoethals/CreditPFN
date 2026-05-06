@@ -65,6 +65,24 @@ map directly onto the TabPFN checkpoints above:
 2. **Loss Given Default (LGD)** — regression of the fraction of
    exposure lost conditional on default.
 
+## Project layout (key directories)
+
+```
+$CREDITPFN_DATA_ROOT/          (= scratch on VSC, repo locally)
+├── data/
+│   ├── raw/{pd,lgd}/<id>.csv          input corpus
+│   ├── processed/{pd,lgd}/             sanitize.py output
+│   └── cached/{pd,lgd}/<id>/           dataset.py output (.npz + meta.json)
+
+$CREDITPFN_OUTPUT_ROOT/        (= $VSC_DATA on VSC, repo locally)
+├── dedup/                              within-track duplicate sweeps
+├── manifest_pd.csv | manifest_lgd.csv  per-track dataset metadata
+├── manifests/<run_name>_<track>.csv    one row per trained checkpoint
+├── checkpoints/trained/<track>/        finetuned weights + .provenance.json sidecars
+├── results/{PD,LGD}/<method>/          benchmark CSVs, one per (run × task)
+└── logs/<task>_<ts>[_j<JID>_a<TID>].log  one log file per task (flat dir)
+```
+
 ## Compute
 
 Training runs on the VSC (KU Leuven) supercomputer:
@@ -82,16 +100,61 @@ Slurm templates live under `scripts/slurm/`. The full chain
 The repo auto-detects which environment it is running on through two
 environment variables:
 
-| Variable                   | Local default | On VSC                       | Used for                                  |
-|----------------------------|---------------|------------------------------|-------------------------------------------|
-| `CREDITPFN_DATA_ROOT`      | repo root     | `$VSC_SCRATCH/CreditPFN`     | `data/raw`, `data/processed`, `data/cached`, manifests |
-| `CREDITPFN_OUTPUT_ROOT`    | repo root     | `$VSC_DATA/CreditPFN`        | `checkpoints/trained`, `results/`, `logs/` |
+| Variable                   | Local default | On VSC                       | Used for                                                       |
+|----------------------------|---------------|------------------------------|----------------------------------------------------------------|
+| `CREDITPFN_DATA_ROOT`      | repo root     | `$VSC_SCRATCH/CreditPFN`     | big I/O artefacts: `data/raw`, `data/processed`, `data/cached` |
+| `CREDITPFN_OUTPUT_ROOT`    | repo root     | `$VSC_DATA/CreditPFN`        | durable artefacts: `dedup/`, `manifest_*.csv`, `checkpoints/trained/`, `results/`, `logs/`, `manifests/` |
 
 Datasets are too big for `$VSC_DATA` quotas → they live on
-`$VSC_SCRATCH` (large, parallel BeeGFS, no backup). Trained
-checkpoints and benchmark results live on `$VSC_DATA` (backed up,
-survive scratch purges) so a previous run is never lost. The slurm
-files in `scripts/slurm/` set both env vars before invoking Python.
+`$VSC_SCRATCH` (large, parallel BeeGFS, no backup). Everything that
+must survive a scratch purge — dedup CSVs, the per-track manifest of
+trained checkpoints, the trained checkpoints themselves, the
+benchmark results, and every log file — lives on `$VSC_DATA`. Locally,
+both env vars are unset so all artefacts land in the repo's `data/`,
+`logs/`, `results/`, `manifests/` directories — the laptop-debug
+flow doesn't change.
+
+### Logs: one flat directory, one file per task
+
+Every slurm job (and every local script invocation) produces
+**exactly one** log file:
+
+```
+$OUTPUT_ROOT/logs/<task>_<YYYYMMDD>_<HHMMSS>[_j<JOBID>_a<TASKID>].log
+```
+
+— flat, no subfolders. The slurm scripts use `exec > "$LOG" 2>&1` so
+that bash echos, `nvidia-smi`, the python orchestrator's stdout, and
+the per-step training loop's logger calls all land in the same file.
+Slurm's own `--output=/dev/null` so we don't get a competing stub
+file. Locally, the python `setup_logging()` helper attaches both a
+`StreamHandler` (live stdout) and a `FileHandler` to the timestamped
+file; under slurm the FileHandler is suppressed (bash already routed
+stdout to the log file, no double-write).
+
+### Trained-checkpoint provenance
+
+Every saved checkpoint at
+`checkpoints/trained/<track>/<descriptive_name>.ckpt` is paired with a
+sidecar `<descriptive_name>.ckpt.provenance.json` that records:
+
+- All hyperparameters used (base, lr, weight_decay, betas, scheduler
+  type + warmup fraction, epochs, accumulate_grad_batches, grad clip,
+  amp, ctx/query sample sizes, multi_chunk_policy, seed)
+- The list of training datasets (sorted dataset_ids)
+- The list of test datasets (sorted dataset_ids)
+- Number of train/test chunks
+- `training_time_seconds` (wall-clock)
+- The specific GPU (`torch.cuda.get_device_name(0)`, e.g. `"NVIDIA H100 NVL"`)
+- `torch_version`, `tabpfn_version`
+- `saved_at` ISO-8601 timestamp
+
+The same dict is also embedded inside the `.ckpt` itself under the
+`"provenance"` key (alongside `state_dict` and `config`), so the
+checkpoint is fully self-describing — even moved years from now,
+`torch.load(...)["provenance"]` recovers everything. Use
+`src.train.model.load_provenance(path)` to read either path
+without loading the model weights.
 
 ## Repository layout
 
@@ -373,13 +436,31 @@ Notes:
 One trial per SLURM task, dispatched via array index. The repo
 ships:
 
-| File                                    | What it submits                                     |
-|-----------------------------------------|------------------------------------------------------|
-| `scripts/slurm/data.slurm`              | One CPU job: full data pipeline (Genius `batch`).     |
-| `scripts/slurm/train_pd.slurm`          | Array job: one trial per task, PD track (wICE `gpu_h100`). |
-| `scripts/slurm/train_lgd.slurm`         | Array job: one trial per task, LGD track (wICE `gpu_h100`). |
-| `scripts/slurm/eval.slurm`              | One job per track: cross-model benchmark.             |
-| `scripts/slurm/submit_full_pipeline.sh` | Submits all of the above with `--dependency=afterok:` chaining. |
+| File                                    | What it submits                                                                |
+|-----------------------------------------|--------------------------------------------------------------------------------|
+| `scripts/slurm/data.slurm`              | One CPU job: full data pipeline (Genius `batch`).                                |
+| `scripts/slurm/train_pd.slurm`          | Array job: one **trial** per task, PD track (wICE `gpu_h100`).                   |
+| `scripts/slurm/train_lgd.slurm`         | Array job: one **trial** per task, LGD track (wICE `gpu_h100`).                  |
+| `scripts/slurm/eval_pd.slurm`           | Array job: one **(model × test_dataset)** per task, PD track.                    |
+| `scripts/slurm/eval_lgd.slurm`          | Array job: one **(model × test_dataset)** per task, LGD track.                   |
+| `scripts/slurm/submit_full_pipeline.sh` | Submits all of the above with `--dependency=afterok:` chaining.                  |
+
+Inside each slurm file the convention is identical:
+
+```bash
+#SBATCH --output=/dev/null              # let bash's `exec >` own the log file
+#SBATCH --error=/dev/null
+
+set -euo pipefail
+export PYTHONUNBUFFERED=1
+export CREDITPFN_DATA_ROOT="${VSC_SCRATCH}/CreditPFN"
+export CREDITPFN_OUTPUT_ROOT="${VSC_DATA}/CreditPFN"
+
+TS=$(date +%Y%m%d_%H%M%S)
+LOG="${CREDITPFN_OUTPUT_ROOT}/logs/<task>_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
+exec > "$LOG" 2>&1
+# … env activation, echos, python -u <script> --log-path "$LOG" …
+```
 
 End-to-end submit:
 
@@ -417,9 +498,9 @@ checkpoint that landed.
 | File / dir | What it is |
 |---|---|
 | `checkpoints/trained/<track>/<descriptive_name>.ckpt` | Final-epoch weights. Filename encodes track, base, lr, policy, seed. Round-trips through `TabPFNClassifier(model_path=...)`. **Permanent — kept for life of the project.** |
-| `logs/train/<descriptive_name>.log` | Per-trial training log: every epoch, every step's loss, dataset_id, GPU memory, throughput. One file per checkpoint. |
-| `logs/runs/<run_name>_<track>.csv` | Manifest: one row per trained config. Read by the eval pipeline. |
-| `logs/<ts>.log` | Run-summary line from each orchestrator invocation. |
+| `checkpoints/trained/<track>/<descriptive_name>.ckpt.provenance.json` | Sidecar with HPs, training datasets, training time, GPU, etc. (See "Trained-checkpoint provenance" above.) |
+| `manifests/<run_name>_<track>.csv` | One row per trained config. Read by the eval pipeline. |
+| `logs/<task>_<YYYYMMDD>_<HHMMSS>[_j<JID>_a<TID>].log` | One log file per task — flat directory, captures slurm boilerplate + python output + training loop in one place. |
 
 On VSC these all sit under `$CREDITPFN_OUTPUT_ROOT` (= `$VSC_DATA/CreditPFN`),
 which is backed up. The training data on `$CREDITPFN_DATA_ROOT`
@@ -442,15 +523,54 @@ Internals (the why):
 
 `scripts/eval_pipeline.py` loads the training manifest plus the
 classical baselines and scores every model on every test chunk
-with **K-fold cross-validation** for statistical rigour:
+with **K-fold cross-validation** for statistical rigour.
+
+### CV semantics (the user-mandated split)
+
+For each test chunk:
+
+```
+80%  →  training fold      (used to fit the model)
+20%  →  evaluation fold    (held out; model.score recorded)
+```
+
+…repeated `cv.n_folds` (default 5) times. For methods that need HPO
+(XGBoost, CatBoost), the inner Optuna study further splits the 80%
+training fold:
+
+```
+80% × 80% = 64%  →  Optuna trial fit
+80% × 20% = 16%  →  Optuna trial validation (objective)
+```
+
+Optuna runs once per CV fold (so 5 studies per (model × chunk) at the
+default `n_folds=5`), each with `hpo.<m>.n_trials` trials and capped
+at `hpo.<m>.timeout_seconds`. The user's "do HPO 5 times" contract
+is satisfied. LogReg / LinReg are intentionally not tuned — they're
+the "what does plain linear modelling do" baseline.
+
+### Local + slurm-array (parallelised) modes
 
 ```bash
+# Local — single process, all (model × chunk × fold) cells in one run.
 python scripts/eval_pipeline.py track=pd
 python scripts/eval_pipeline.py track=lgd
-# Or via SLURM (one job per track):
-sbatch --export=TRACK=pd  scripts/slurm/eval.slurm
-sbatch --export=TRACK=lgd scripts/slurm/eval.slurm
+
+# Restrict to one method or one dataset for debugging:
+python scripts/eval_pipeline.py track=pd --method xgboost --test-dataset 0001.gmsc
+
+# Slurm array — ONE (model × test_dataset) per task. With ~3 000
+# datasets × ~25 models, this fans the heavy Optuna tasks out
+# across many slurm jobs concurrently.
+N=$(python scripts/eval_pipeline.py --list-tasks track=pd)
+sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm
 ```
+
+Each slurm task writes its own
+`results/<TRACK>/<method>/<run_name>_<timestamp>_<task_tag>.csv`
+(the `<task_tag>` includes the dataset_id), so concurrent tasks
+NEVER write to the same file — no locking, no races. Aggregation is
+a single `pd.read_csv` over a glob.
 
 Per [`config/eval.yaml`](config/eval.yaml):
 
@@ -477,18 +597,29 @@ Every benchmark run writes per-method CSVs under:
 ```
 results/
 ├── PD/
-│   ├── xgboost/                                    creditpfn_<timestamp>.csv
-│   ├── catboost/                                   creditpfn_<timestamp>.csv
-│   ├── logreg/                                     creditpfn_<timestamp>.csv
-│   ├── tabpfn-untuned__tabpfn-v2.6-classifier-…/   creditpfn_<timestamp>.csv
-│   └── tabpfn-trained__creditpfn_pd_…_lr1e-05_…/   creditpfn_<timestamp>.csv
+│   ├── xgboost/                                       creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   ├── catboost/                                      creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   ├── logreg/                                        creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   ├── tabpfn-untuned__v2.6-default/                  creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   ├── tabpfn-untuned__v2.5-default-2/                creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   ├── tabpfn-trained__v2.6-default__lr1e-05__allchunks/   creditpfn_<ts>[__…].csv
+│   └── tabpfn-trained__v2.5-default-2__lr5e-05__firstchunk/ creditpfn_<ts>[__…].csv
 └── LGD/
     └── …
 ```
 
-Each `<timestamp>` is unique to one benchmark run, so re-running the
-eval **never overwrites** earlier results — every comparison this
-project ever ran is permanently archived. Aggregate with pandas:
+The TabPFN-variant directory names compress the published filenames
+(`tabpfn-v2.6-classifier-v2.6_default.ckpt` → `v2.6-default`,
+`tabpfn-v2.5-regressor-v2.5_real.ckpt` → `v2.5-real`,
+`tabpfn-v2.5-classifier-v2.5_default-2.ckpt` → `v2.5-default-2`); the
+track-specific "classifier"/"regressor" infix is dropped because the
+parent `PD/` or `LGD/` already encodes it. Trained variants append
+`__lr<rate>__<policy>` so two trials with different HPs land in
+different folders.
+
+Each timestamp is unique to one benchmark run, so re-running the eval
+**never overwrites** earlier results — every comparison this project
+ever ran is permanently archived. Aggregate with pandas:
 
 ```python
 import pandas as pd, glob

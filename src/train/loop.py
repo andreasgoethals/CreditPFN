@@ -471,27 +471,12 @@ def train_one_config(
     history: list[EpochRecord] = []
     t0 = time.monotonic()
 
-    # ---- Per-trial log file: logs/train/<descriptive_name>.log -----
-    # Captures EVERY step's loss, dataset_id, GPU memory, throughput.
-    # Lives under output root so it survives scratch purges on VSC.
-    trial_log_path = (
-        resolve_output_path("logs/train") / save_path.with_suffix(".log").name
-    )
-    trial_log_path.parent.mkdir(parents=True, exist_ok=True)
-    trial_log_handler = logging.FileHandler(trial_log_path, mode="w")
-    trial_log_handler.setLevel(logging.INFO)
-    trial_log_handler.setFormatter(logging.Formatter(
-        "%(asctime)s [%(levelname)s] %(message)s"
-    ))
-    LOGGER.addHandler(trial_log_handler)
-
     LOGGER.info(
         "Starting %d epochs | %d train chunks/epoch | accumulate=%d | "
         "total_steps=%d | lr=%.1e | base=%s | policy=%s | seed=%d | device=%s",
         epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
         Path(base_checkpoint).name, multi_chunk_policy, int(cfg.seed), device,
     )
-    LOGGER.info("Trial log file: %s", trial_log_path)
     LOGGER.info("Save target   : %s", save_path)
 
     for epoch in range(epochs):
@@ -571,9 +556,62 @@ def train_one_config(
             epoch, epochs - 1, train_loss, record.lr, epoch_dt, elapsed,
         )
 
-    # ---- 6) save final weights -------------------------------------------- #
-    save_finetuned(model, architecture_config, save_path)
-    LOGGER.info("Saved final-epoch checkpoint: %s", save_path)
+    # ---- 6) save final weights + permanent provenance --------------------- #
+    train_dataset_ids = sorted({c.dataset_id for c in split.train})
+    test_dataset_ids  = sorted({c.dataset_id for c in split.test})
+    training_seconds = time.monotonic() - t0
+    gpu_name = "cpu"
+    if device == "cuda" and torch.cuda.is_available():
+        try:
+            gpu_name = torch.cuda.get_device_name(0)
+        except Exception:                                       # pragma: no cover
+            gpu_name = "cuda"
+    try:
+        import tabpfn as _tabpfn
+        tabpfn_version = getattr(_tabpfn, "__version__", None)
+    except ImportError:                                         # pragma: no cover
+        tabpfn_version = None
+    provenance = {
+        "schema_version":      1,
+        "run_name":            str(cfg.run_name),
+        "track":               track,
+        "task_type":           "classification" if track == "pd" else "regression",
+        "saved_at":            time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "hyperparameters": {
+            "base_checkpoint":     str(base_checkpoint),
+            "learning_rate":       float(learning_rate),
+            "weight_decay":        float(cfg.optimizer.weight_decay),
+            "betas":               list(cfg.optimizer.betas),
+            "scheduler_type":      str(cfg.scheduler.type),
+            "warmup_fraction":     float(cfg.scheduler.warmup_fraction),
+            "epochs":              int(cfg.train.epochs),
+            "accumulate_grad_batches": int(cfg.train.accumulate_grad_batches),
+            "grad_clip_norm":      grad_clip,
+            "amp":                 bool(cfg.train.amp),
+            "n_finetune_ctx_plus_query_samples":
+                int(cfg.train.n_finetune_ctx_plus_query_samples),
+            "finetune_ctx_query_split_ratio":
+                float(cfg.train.finetune_ctx_query_split_ratio),
+            "multi_chunk_policy":  str(multi_chunk_policy),
+            "seed":                int(cfg.seed),
+        },
+        "training_datasets":   train_dataset_ids,
+        "test_datasets":       test_dataset_ids,
+        "n_train_chunks":      len(split.train),
+        "n_test_chunks":       len(split.test),
+        "training_time_seconds": float(training_seconds),
+        "device":              device,
+        "gpu":                 gpu_name,
+        "torch_version":       torch.__version__,
+        "tabpfn_version":      tabpfn_version,
+    }
+    save_finetuned(model, architecture_config, save_path, provenance=provenance)
+    LOGGER.info(
+        "Saved final-epoch checkpoint: %s "
+        "(provenance.json next to the .ckpt records HPs, datasets, GPU=%s, "
+        "training_time=%.1fs)",
+        save_path, gpu_name, training_seconds,
+    )
 
     # ---- 7) test eval (single pass, no leak) ------------------------------ #
     metric_name = (
@@ -593,11 +631,6 @@ def train_one_config(
         LOGGER.warning("Test bucket is empty — no test metric reported.")
 
     elapsed = time.monotonic() - t0
-
-    # Detach the per-trial file handler so the next trial gets its own
-    # log file (rather than appending to this one).
-    LOGGER.removeHandler(trial_log_handler)
-    trial_log_handler.close()
 
     return TrainingResult(
         final_ckpt_path=save_path,

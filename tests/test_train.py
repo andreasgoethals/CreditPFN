@@ -587,6 +587,46 @@ def test_infer_version_fails_loudly_on_bad_name() -> None:
         _infer_version(Path("randomly_named.ckpt"))
 
 
+def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
+    """The .ckpt + .ckpt.provenance.json must both contain the HP /
+    dataset / GPU / training-time record."""
+    import json
+    from src.train.model import save_finetuned, load_provenance
+
+    class _Tiny(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.fc = torch.nn.Linear(2, 2)
+
+    class _Cfg:
+        n_features = 2
+
+    save_path = tmp_path / "ckpt" / "test.ckpt"
+    provenance = {
+        "hyperparameters": {"learning_rate": 1e-5, "epochs": 30},
+        "training_datasets": ["0001.gmsc", "0002.heloc"],
+        "training_time_seconds": 123.4,
+        "gpu": "NVIDIA H100 NVL",
+    }
+    save_finetuned(_Tiny(), _Cfg(), save_path, provenance=provenance)
+
+    # Sidecar JSON exists and matches.
+    sidecar = save_path.with_suffix(save_path.suffix + ".provenance.json")
+    assert sidecar.exists()
+    parsed = json.loads(sidecar.read_text(encoding="utf-8"))
+    assert parsed["gpu"] == "NVIDIA H100 NVL"
+    assert parsed["training_datasets"] == ["0001.gmsc", "0002.heloc"]
+
+    # The same provenance round-trips through the .ckpt file.
+    loaded = load_provenance(save_path)
+    assert loaded == provenance
+
+    # Sidecar-only path (delete the .ckpt) still works.
+    save_path.unlink()
+    loaded2 = load_provenance(save_path)
+    assert loaded2["gpu"] == "NVIDIA H100 NVL"
+
+
 # =============================================================================
 # Block 6 · scripts/train_pipeline.py
 # =============================================================================
@@ -681,11 +721,14 @@ def test_train_one_config_end_to_end_mocked(
     monkeypatch.setattr(loop_mod, "load_tabpfn_for_training", fake_loader)
     # Don't bother saving the dummy model state to disk for real.
     saved_paths: list[Path] = []
+    captured_provenance: list[dict] = []
 
-    def fake_save(model, arch, save_path):
+    def fake_save(model, arch, save_path, *, provenance=None):
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         Path(save_path).write_bytes(b"")        # touch the file
         saved_paths.append(Path(save_path))
+        if provenance is not None:
+            captured_provenance.append(provenance)
         return Path(save_path)
 
     monkeypatch.setattr(loop_mod, "save_finetuned", fake_save)
@@ -744,3 +787,24 @@ def test_train_one_config_end_to_end_mocked(
     # Filename schema check.
     assert "smoketest_pd_" in result.descriptive_name
     assert result.descriptive_name.endswith(".ckpt")
+
+    # Provenance schema check — the loop must record HPs, datasets,
+    # GPU, and training time. This is the user-mandated permanent
+    # record of how each checkpoint was produced.
+    assert len(captured_provenance) == 1
+    prov = captured_provenance[0]
+    assert prov["schema_version"] == 1
+    assert prov["track"] == "pd"
+    assert prov["task_type"] == "classification"
+    assert prov["hyperparameters"]["learning_rate"] == 1e-3
+    assert prov["hyperparameters"]["multi_chunk_policy"] == "first_chunk_only"
+    assert prov["hyperparameters"]["epochs"] == 2
+    assert prov["hyperparameters"]["seed"] == 0
+    assert prov["hyperparameters"]["base_checkpoint"].endswith(
+        "tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    )
+    assert isinstance(prov["training_datasets"], list)
+    assert prov["training_time_seconds"] > 0
+    assert prov["device"] == "cpu"
+    assert prov["gpu"] == "cpu"
+    assert "torch_version" in prov

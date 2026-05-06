@@ -69,3 +69,69 @@ def test_is_vsc_environment_only_true_when_vsc_envvars_present(monkeypatch) -> N
     assert is_vsc_environment() is False
     monkeypatch.setenv("VSC_DATA", "/data/leuven/some/path")
     assert is_vsc_environment() is True
+
+
+# =============================================================================
+# run_log: per-task log file naming + setup_logging slurm-awareness
+# =============================================================================
+
+
+def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -> None:
+    """``logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, lands under
+    ``$CREDITPFN_OUTPUT_ROOT/logs/`` (flat, not in a subdir)."""
+    from src.utils.run_log import make_task_log_path
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
+    monkeypatch.delenv("SLURM_JOB_ID",       raising=False)
+    monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
+
+    p = make_task_log_path("train_pd")
+    assert p.parent == tmp_path / "logs"
+    assert p.name.startswith("train_pd_")
+    assert p.suffix == ".log"
+    # YYYYMMDD_HHMMSS — 15 chars between "train_pd_" and ".log".
+    stamp = p.stem.removeprefix("train_pd_")
+    assert len(stamp) == 15
+    assert stamp[8] == "_"
+    assert stamp[:8].isdigit() and stamp[9:].isdigit()
+
+
+def test_make_task_log_path_appends_slurm_array_ids(monkeypatch, tmp_path) -> None:
+    """Slurm array tasks get unique filenames even if they start at the
+    same second."""
+    from src.utils.run_log import make_task_log_path
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    monkeypatch.setenv("SLURM_ARRAY_JOB_ID",   "12345")
+    monkeypatch.setenv("SLURM_ARRAY_TASK_ID",  "7")
+    p = make_task_log_path("eval_pd")
+    assert "_j12345_a7.log" in p.name
+
+
+def test_setup_logging_skips_filehandler_under_slurm(monkeypatch, tmp_path) -> None:
+    """Under slurm, bash's `exec > $LOG 2>&1` already routes stdout
+    to the log file; adding a Python FileHandler would double-write."""
+    import logging as _logging
+    from src.utils.run_log import setup_logging
+
+    monkeypatch.setenv("SLURM_JOB_ID", "999")
+    setup_logging(tmp_path / "ignored.log")
+    handlers = _logging.getLogger().handlers
+    assert any(isinstance(h, _logging.StreamHandler) for h in handlers)
+    assert not any(isinstance(h, _logging.FileHandler) for h in handlers)
+
+
+def test_setup_logging_uses_filehandler_locally(monkeypatch, tmp_path) -> None:
+    """Locally (no slurm), both StreamHandler and FileHandler attach
+    so the user sees live output AND the log file is created."""
+    import logging as _logging
+    from src.utils.run_log import setup_logging
+
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    log_file = tmp_path / "out.log"
+    setup_logging(log_file)
+    handlers = _logging.getLogger().handlers
+    assert any(isinstance(h, _logging.StreamHandler) for h in handlers)
+    assert any(isinstance(h, _logging.FileHandler) for h in handlers)
+    # Triggering a log call should create the file.
+    _logging.getLogger("test").info("hello")
+    assert log_file.exists()

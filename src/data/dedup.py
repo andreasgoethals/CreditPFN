@@ -87,7 +87,7 @@ import numpy as np
 import pandas as pd
 
 from src.data.preprocessing import DATASET_METADATA
-from src.utils.paths import resolve_data_path
+from src.utils.paths import resolve_data_path, resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -387,7 +387,7 @@ def main(cfg=None, pass_name: str = "pre") -> int:
     if pass_name not in ("pre", "post"):
         raise ValueError(f"pass_name must be 'pre' or 'post', got {pass_name!r}")
 
-    out_dir = resolve_data_path(cfg.paths.dedup)
+    out_dir = resolve_output_path(cfg.paths.dedup)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     enable_fuzzy = (

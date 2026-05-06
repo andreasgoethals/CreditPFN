@@ -71,7 +71,7 @@ if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
 from src.utils.paths import resolve_output_path  # noqa: E402
-from src.utils.run_log import resolve_run_log  # noqa: E402
+from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
@@ -235,18 +235,17 @@ def run(
     -------
     ``0`` on full success, ``1`` if any trial raised.
     """
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(levelname)s %(name)s: %(message)s",
-        force=True,
-    )
     if cfg is None:
         cfg = _load_cfg(overrides)
-    log, _ = resolve_run_log(log_path)
-
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
+
+    # ---- 0) one log file per task: logs/<task>_<ts>.log -----------
+    log, _ = resolve_run_log(log_path, task_name=f"train_{track}")
+    setup_logging(log.path)
+    LOGGER.info("train_pipeline: log=%s  cfg.track=%s  cfg.run_name=%s",
+                log.path, track, cfg.run_name)
 
     # ---- 1) auto-cache hook (always runs, near-zero cost when cache is OK)
     _ensure_cache(cfg, log_path=log.path if hasattr(log, "path") else None)
@@ -278,7 +277,7 @@ def run(
         len(plan), track, plan_label, len(full_grid),
     )
 
-    csv_path = resolve_output_path("logs/runs") / f"{cfg.run_name}_{track}.csv"
+    csv_path = resolve_output_path("manifests") / f"{cfg.run_name}_{track}.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # ---- 3) per-trial training

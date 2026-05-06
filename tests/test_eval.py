@@ -262,6 +262,32 @@ def test_run_benchmark_records_failure_without_killing_loop(
     assert "RuntimeError: boom" in (boom_rows[0].error or "")
 
 
+def test_run_benchmark_per_task_tag_routes_to_distinct_files(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """Two parallel slurm tasks for the same method but different
+    datasets must NEVER write to the same file. The `per_task_tag`
+    arg encodes the dataset_id into the filename suffix."""
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    chunks = _make_chunk_refs(tmp_path, track="pd", dataset_id="0001.alpha")
+    handles_and_models = [
+        (ModelHandle(name="logreg", track="pd",
+                     task_type="classification", source="baseline"),
+         LogRegModel()),
+    ]
+    rows = run_benchmark(
+        test_chunks=chunks, handles_and_models=handles_and_models,
+        track="pd", metric_name="roc_auc",
+        run_name="creditpfn", n_folds=2, seed=0,
+        results_base_dir="results",
+        per_task_tag="task7_ds-0001.alpha",
+    )
+    assert rows
+    files = list((tmp_path / "results" / "PD" / "logreg").glob("*.csv"))
+    assert len(files) == 1
+    assert "task7_ds-0001.alpha" in files[0].name
+
+
 def test_run_benchmark_empty_test_returns_empty_list(tmp_path: Path) -> None:
     """No test chunks → no rows, no CSV crash."""
     rows = run_benchmark(
@@ -280,27 +306,62 @@ def test_method_dirname_baseline() -> None:
     assert _method_dirname(h) == "xgboost"
 
 
-def test_method_dirname_tabpfn_untuned() -> None:
+@pytest.mark.parametrize("base,expected", [
+    ("checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
+     "tabpfn-untuned__v2.6-default"),
+    ("checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt",
+     "tabpfn-untuned__v2.5-real"),
+    ("checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt",
+     "tabpfn-untuned__v2.5-default-2"),
+])
+def test_method_dirname_tabpfn_untuned(base: str, expected: str) -> None:
+    """The short-tag scheme drops the redundant 'classifier'/'regressor'
+    infix (already encoded in the parent results/<TRACK>/ folder) and
+    the 'tabpfn-' prefix."""
     from src.eval import _method_dirname
     h = ModelHandle(
         name="tabpfn-untuned[x]", track="pd",
         task_type="classification", source="tabpfn-untuned",
-        base_path="checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
+        base_path=base,
     )
-    assert _method_dirname(h) == \
-        "tabpfn-untuned__tabpfn-v2.6-classifier-v2.6_default"
+    assert _method_dirname(h) == expected
 
 
-def test_method_dirname_tabpfn_trained() -> None:
+def test_method_dirname_tabpfn_trained_includes_lr_and_policy() -> None:
+    """A tabpfn-trained dirname must encode the THREE knobs that vary
+    across training trials: short base tag, lr, multi_chunk_policy.
+    Seed is intentionally not in the dirname (different seed → new
+    timestamped CSV inside the same dirname)."""
     from src.eval import _method_dirname
     h = ModelHandle(
-        name="tabpfn-trained[x]", track="pd",
+        name="tabpfn-trained[…]", track="pd",
         task_type="classification", source="tabpfn-trained",
-        base_path="checkpoints/trained/pd/creditpfn_pd_v2.6_lr1e-05_allchunks_seed42.ckpt",
+        base_path="checkpoints/trained/pd/creditpfn_pd_some_long_name.ckpt",
+        extra={
+            "base_checkpoint":    "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
+            "learning_rate":      1.0e-5,
+            "multi_chunk_policy": "all_chunks_as_separate_datasets",
+            "seed":               42,
+        },
     )
     out = _method_dirname(h)
-    assert out.startswith("tabpfn-trained__")
-    assert "creditpfn_pd" in out
+    assert out == "tabpfn-trained__v2.6-default__lr1e-05__allchunks"
+
+
+def test_method_dirname_tabpfn_trained_first_chunk_only() -> None:
+    from src.eval import _method_dirname
+    h = ModelHandle(
+        name="tabpfn-trained[…]", track="lgd",
+        task_type="regression", source="tabpfn-trained",
+        base_path="anywhere.ckpt",
+        extra={
+            "base_checkpoint":    "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt",
+            "learning_rate":      5.0e-5,
+            "multi_chunk_policy": "first_chunk_only",
+            "seed":               7,
+        },
+    )
+    assert _method_dirname(h) == "tabpfn-trained__v2.5-default__lr5e-05__firstchunk"
 
 
 # =============================================================================
@@ -356,3 +417,80 @@ def test_load_trained_handles_skips_failed_and_missing(tmp_path: Path) -> None:
 def test_load_trained_handles_no_manifest_returns_empty(tmp_path: Path) -> None:
     handles = load_trained_handles(tmp_path / "does_not_exist.csv", track="pd")
     assert handles == []
+
+
+# =============================================================================
+# Block 4 · scripts/eval_pipeline.py — task indexing + filters
+# =============================================================================
+
+
+def _dummy_handles_and_chunks(tmp_path: Path):
+    """Build a 2-model × 3-dataset roster for filter tests."""
+    chunks = (
+        _make_chunk_refs(tmp_path, track="pd", dataset_id="0001.alpha")
+        + _make_chunk_refs(tmp_path, track="pd", dataset_id="0002.bravo")
+        + _make_chunk_refs(tmp_path, track="pd", dataset_id="0003.charlie")
+    )
+    handles_and_models = [
+        (ModelHandle(name="xgboost", track="pd",
+                     task_type="classification", source="baseline"), object()),
+        (ModelHandle(name="logreg", track="pd",
+                     task_type="classification", source="baseline"), object()),
+    ]
+    return handles_and_models, chunks
+
+
+def test_enumerate_tasks_cartesian_product(tmp_path: Path) -> None:
+    """`_enumerate_tasks` returns one entry per (model_idx, dataset_id)
+    pair — 2 models × 3 datasets = 6 tasks. Within each model_idx
+    group the dataset IDs are sorted (deterministic ordering across
+    runs)."""
+    import scripts.eval_pipeline as ep
+    h, c = _dummy_handles_and_chunks(tmp_path)
+    pairs = ep._enumerate_tasks(h, c)
+    assert len(pairs) == 6
+    assert len(set(pairs)) == 6                     # no dupes
+    by_model: dict[int, list[str]] = {}
+    for m_idx, ds in pairs:
+        by_model.setdefault(m_idx, []).append(ds)
+    for ds_list in by_model.values():
+        assert ds_list == sorted(ds_list)
+
+
+def test_filter_roster_task_index_picks_one_pair(tmp_path: Path) -> None:
+    import scripts.eval_pipeline as ep
+    h, c = _dummy_handles_and_chunks(tmp_path)
+    keep_models, keep_chunks = ep._filter_roster(
+        h, c, method_filter=[], dataset_filter=[], task_index=3,
+    )
+    # Exactly one model, exactly one dataset's chunks.
+    assert len(keep_models) == 1
+    assert len({k.dataset_id for k in keep_chunks}) == 1
+
+
+def test_filter_roster_method_filter_intersects(tmp_path: Path) -> None:
+    import scripts.eval_pipeline as ep
+    h, c = _dummy_handles_and_chunks(tmp_path)
+    keep_models, keep_chunks = ep._filter_roster(
+        h, c, method_filter=["logreg"], dataset_filter=[], task_index=None,
+    )
+    assert [hh.name for hh, _ in keep_models] == ["logreg"]
+    # All chunks kept (no dataset filter).
+    assert len(keep_chunks) == len(c)
+
+
+def test_filter_roster_dataset_filter_intersects(tmp_path: Path) -> None:
+    import scripts.eval_pipeline as ep
+    h, c = _dummy_handles_and_chunks(tmp_path)
+    keep_models, keep_chunks = ep._filter_roster(
+        h, c, method_filter=[], dataset_filter=["0002.bravo"], task_index=None,
+    )
+    assert {k.dataset_id for k in keep_chunks} == {"0002.bravo"}
+    assert len(keep_models) == len(h)
+
+
+def test_filter_roster_task_index_out_of_bounds_raises(tmp_path: Path) -> None:
+    import scripts.eval_pipeline as ep
+    h, c = _dummy_handles_and_chunks(tmp_path)
+    with pytest.raises(IndexError, match="out of bounds"):
+        ep._filter_roster(h, c, method_filter=[], dataset_filter=[], task_index=999)

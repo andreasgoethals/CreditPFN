@@ -178,7 +178,23 @@ def _score(
 
 
 def _make_folds(y: np.ndarray, *, task_type: str, n_folds: int, seed: int):
-    """Yield ``(train_idx, val_idx)`` pairs for K folds."""
+    """Yield ``(train_idx, val_idx)`` pairs for K folds.
+
+    With ``n_folds=5`` (the default), each fold holds out 20% of the
+    chunk's rows for evaluation and uses the remaining 80% as the
+    "training" / context data — exactly the structure the user
+    specified. Folds are stratified for classification (preserves
+    class proportions across folds) and plain shuffled for
+    regression.
+
+    HPO (when used by XGBoost / CatBoost) further splits the 80%
+    training fold into 64% (model fit) + 16% (Optuna validation).
+    See :meth:`src.model.boosting.XGBoostModel._maybe_hpo` for the
+    inner split — it uses ``train_test_split(test_size=0.2)`` on
+    the same training fold, so the user's "20% of training as
+    validation for HPO" contract is satisfied. Optuna runs ``n_folds``
+    studies per (model × chunk), one per CV fold.
+    """
     from sklearn.model_selection import KFold, StratifiedKFold
     n = len(y)
     if n_folds <= 1 or n_folds > n:
@@ -203,37 +219,87 @@ def _make_folds(y: np.ndarray, *, task_type: str, n_folds: int, seed: int):
 # --------------------------------------------------------------------------- #
 
 
-_NAME_RE = re.compile(r"[^A-Za-z0-9_.-]")
+_NAME_RE   = re.compile(r"[^A-Za-z0-9_.-]")
+_BASE_RE   = re.compile(r"tabpfn-(?P<v>v\d\.\d)-(?:classifier|regressor)-v\d\.\d_(?P<variant>.+)")
+
+
+def _short_base_tag(base_path: str | None) -> str:
+    """Compress a base-checkpoint filename to a short, readable tag.
+
+    The published Prior Labs filenames look like
+    ``tabpfn-v2.6-classifier-v2.6_default.ckpt`` — verbose, with the
+    track repeated ("classifier" / "regressor") and the version
+    repeated. The track is already encoded in the parent
+    ``results/PD|LGD/`` folder, so we drop it here.
+
+    Examples:
+        tabpfn-v2.6-classifier-v2.6_default.ckpt   → v2.6-default
+        tabpfn-v2.5-regressor-v2.5_real.ckpt       → v2.5-real
+        tabpfn-v2.5-classifier-v2.5_default-2.ckpt → v2.5-default-2
+    """
+    if not base_path:
+        return "unknown"
+    stem = Path(base_path).stem
+    m = _BASE_RE.match(stem)
+    if m:
+        return f"{m['v']}-{m['variant']}"
+    # Fall back: strip a possible "tabpfn-" prefix and call it a day.
+    return stem.removeprefix("tabpfn-")
 
 
 def _method_dirname(handle: ModelHandle) -> str:
     """Folder name for one model under ``results/<TRACK>/<here>/``.
 
-    * ``baseline``        → just the bare name (``xgboost``, ``catboost``, …).
-    * ``tabpfn-untuned``  → ``tabpfn-untuned__<base_stem>``
-    * ``tabpfn-trained``  → ``tabpfn-trained__<descriptive_name>``
+    Schema:
+        baseline        → just the name (``xgboost``, ``catboost``, …)
+        tabpfn-untuned  → ``tabpfn-untuned__<short_base>``
+                          (e.g. ``tabpfn-untuned__v2.6-default``)
+        tabpfn-trained  → ``tabpfn-trained__<short_base>__lr<lr>__<policy>``
+                          (e.g. ``tabpfn-trained__v2.6-default__lr1e-05__allchunks``)
+
+    The short tag is built by :func:`_short_base_tag`; the
+    track-specific "classifier"/"regressor" infix is dropped because
+    the parent path already encodes the track. The ``seed`` is
+    intentionally NOT in the dirname — it would multiply the number
+    of folders without changing what's being compared. A different
+    seed is a separate ``<run_name>_<timestamp>.csv`` *inside* the
+    same folder.
     """
     if handle.source == "baseline":
         return handle.name
     if handle.source == "tabpfn-untuned":
-        stem = Path(handle.base_path).stem if handle.base_path else "unknown"
-        return f"tabpfn-untuned__{_NAME_RE.sub('-', stem)}"
-    # tabpfn-trained
-    stem = Path(handle.base_path).stem if handle.base_path else handle.name
-    return f"tabpfn-trained__{_NAME_RE.sub('-', stem)}"
+        return f"tabpfn-untuned__{_short_base_tag(handle.base_path)}"
+    # tabpfn-trained — read HPs out of `extra` (see registry / load_trained_handles).
+    extra = handle.extra or {}
+    short = _short_base_tag(extra.get("base_checkpoint"))
+    lr = extra.get("learning_rate")
+    policy = extra.get("multi_chunk_policy", "")
+    policy_short = {
+        "all_chunks_as_separate_datasets": "allchunks",
+        "first_chunk_only":                "firstchunk",
+    }.get(policy, _NAME_RE.sub("-", policy))
+    if lr is not None:
+        return f"tabpfn-trained__{short}__lr{lr:.0e}__{policy_short}"
+    return f"tabpfn-trained__{short}"
 
 
 def _output_path_for(
     handle: ModelHandle, *,
     track: str, run_name: str, timestamp: str,
     base_dir: str | Path,
+    per_task_tag: str | None = None,
 ) -> Path:
-    """``results/<TRACK>/<method>/<run_name>_<timestamp>.csv`` (resolved
-    via :func:`resolve_output_path`)."""
+    """``results/<TRACK>/<method>/<run_name>_<timestamp>[_<tag>].csv``.
+
+    The ``per_task_tag`` is appended only when a slurm-array task is
+    running — it embeds the dataset_id (and task index) so two
+    concurrent tasks for the same method don't clobber each other.
+    """
     track_dir = "PD" if track == "pd" else "LGD"
+    suffix = f"_{per_task_tag}" if per_task_tag else ""
     return (
         resolve_output_path(base_dir) / track_dir / _method_dirname(handle)
-        / f"{run_name}_{timestamp}.csv"
+        / f"{run_name}_{timestamp}{suffix}.csv"
     )
 
 
@@ -252,6 +318,7 @@ def run_benchmark(
     n_folds: int = 5,
     seed: int = 42,
     results_base_dir: str | Path = "results",
+    per_task_tag: str | None = None,
 ) -> list[EvalRow]:
     """Score every (model × test-chunk × fold) and persist per-method CSVs.
 
@@ -346,7 +413,7 @@ def run_benchmark(
         # per (run_name, timestamp), so previous runs are never clobbered.
         out_path = _output_path_for(
             handle, track=track, run_name=run_name, timestamp=timestamp,
-            base_dir=results_base_dir,
+            base_dir=results_base_dir, per_task_tag=per_task_tag,
         )
         _write_csv(rows_by_model[handle.name], out_path)
         LOGGER.info("  → wrote %d rows to %s",

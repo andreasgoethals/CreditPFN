@@ -57,7 +57,7 @@ import numpy as np
 import pandas as pd
 
 from src.data.preprocessing import DATASET_METADATA, apply_dataset_specific_fixes
-from src.utils.paths import resolve_data_path
+from src.utils.paths import resolve_data_path, resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -437,8 +437,8 @@ def main(cfg=None) -> int:  # noqa: C901
     raw_root = resolve_data_path(cfg.paths.raw)
     proc_root = resolve_data_path(cfg.paths.processed)
     manifests = {
-        "pd": _read_manifest(resolve_data_path(cfg.paths.manifest_pd)),
-        "lgd": _read_manifest(resolve_data_path(cfg.paths.manifest_lgd)),
+        "pd":  _read_manifest(resolve_output_path(cfg.paths.manifest_pd)),
+        "lgd": _read_manifest(resolve_output_path(cfg.paths.manifest_lgd)),
     }
     if any(m.empty for m in manifests.values()):
         LOGGER.error(

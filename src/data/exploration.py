@@ -115,20 +115,25 @@ def _load_default_cfg():
 
 
 def _resolve_paths(cfg=None) -> dict[str, Path]:
-    """Return absolute paths derived from ``cfg`` (or default cfg)."""
+    """Return absolute paths derived from ``cfg`` (or default cfg).
+
+    Mirrors the same resolver split used by the data pipeline:
+
+      * raw / processed / cached → ``$CREDITPFN_DATA_ROOT`` (scratch on VSC)
+      * manifest_*               → ``$CREDITPFN_OUTPUT_ROOT`` (durable on VSC)
+    """
+    from src.utils.paths import resolve_data_path, resolve_output_path
     if cfg is None:
         cfg = _load_default_cfg()
 
-    def _abs(p):
-        path = Path(p)
-        return path if path.is_absolute() else _REPO / path
-
+    raw_default       = "data/raw"
+    cached_default    = "data/cached"
     return {
-        "raw":          _abs(cfg.paths.raw)         if hasattr(cfg.paths, "raw") else _abs("data/raw"),
-        "processed":    _abs(cfg.paths.processed),
-        "cached":       _abs(cfg.paths.cached)      if hasattr(cfg.paths, "cached") else _abs("data/cached"),
-        "manifest_pd":  _abs(cfg.paths.manifest_pd),
-        "manifest_lgd": _abs(cfg.paths.manifest_lgd),
+        "raw":          resolve_data_path(getattr(cfg.paths, "raw", raw_default)),
+        "processed":    resolve_data_path(cfg.paths.processed),
+        "cached":       resolve_data_path(getattr(cfg.paths, "cached", cached_default)),
+        "manifest_pd":  resolve_output_path(cfg.paths.manifest_pd),
+        "manifest_lgd": resolve_output_path(cfg.paths.manifest_lgd),
     }
 
 
