@@ -12,34 +12,50 @@ The same code base runs in two very different storage environments:
   live on ``$VSC_DATA`` (backed up) so they survive the periodic
   scratch purges.
 
-Two environment variables select between these worlds:
+How the code knows which environment it's in
+--------------------------------------------
+The resolver consults three sources, in order, for each kind of path:
 
-* ``CREDITPFN_DATA_ROOT``  — root for big I/O artefacts (the
-  ``data/`` tree). Default = repo root. On VSC, set to
-  ``$VSC_SCRATCH/CreditPFN``.
+1. **Explicit override** — the env var ``CREDITPFN_DATA_ROOT`` (for
+   data) or ``CREDITPFN_OUTPUT_ROOT`` (for durable outputs). The
+   slurm scripts in ``scripts/slurm/`` set both explicitly, so a
+   slurm-driven run is fully under user control.
 
-* ``CREDITPFN_OUTPUT_ROOT`` — root for *durable* outputs:
-  ``checkpoints/trained``, ``results/``, ``logs/``. Default =
-  repo root. On VSC, set to ``$VSC_DATA/CreditPFN`` so they
-  survive scratch purges and are backed up.
+2. **VSC auto-detection** — if the explicit override is absent but
+   ``$VSC_DATA`` is set in the environment (the VSC environment
+   *always* sets this on every node, login or compute), the resolver
+   uses VSC defaults:
 
-Both default to the repo root if unset, so the local development
-flow keeps working without any environment mutation.
+       CREDITPFN_DATA_ROOT   → $VSC_SCRATCH/CreditPFN   (big I/O artefacts)
+       CREDITPFN_OUTPUT_ROOT → $VSC_DATA/CreditPFN      (durable artefacts)
 
-All callers should funnel paths through :func:`resolve_data_path`
-and :func:`resolve_output_path` rather than hardcoding ``Path(...)``
-on a config string. The resolver leaves *absolute* paths untouched
-(so a user can still hardcode an absolute path in a yaml when they
-really want one).
+   This means a researcher who SSHes into a login node and just runs
+   ``python scripts/data_pipeline.py`` gets the right behaviour
+   without remembering to set anything.
 
-Small worked example (on VSC, after ``export
-CREDITPFN_DATA_ROOT=$VSC_SCRATCH/CreditPFN
-CREDITPFN_OUTPUT_ROOT=$VSC_DATA/CreditPFN``):
+3. **Local fallback** — if neither (1) nor (2) apply, the resolver
+   uses the repo root for both. Local laptops never set ``$VSC_DATA``
+   so the data folder is just ``<repo>/data/``, exactly as the
+   project's untouched dev workflow expects.
+
+A small worked example. After ``ssh login.hpc.kuleuven.be`` (so
+``$VSC_DATA=/data/leuven/.../vsc12345`` is set automatically by
+KU Leuven's login profile)::
 
     resolve_data_path("data/cached")
-        # → /scratch/leuven/.../CreditPFN/data/cached
+        # → /scratch/leuven/.../vsc12345/CreditPFN/data/cached
+
     resolve_output_path("checkpoints/trained")
-        # → /data/leuven/.../CreditPFN/checkpoints/trained
+        # → /data/leuven/.../vsc12345/CreditPFN/checkpoints/trained
+
+…and on a laptop with no env vars set::
+
+    resolve_data_path("data/cached")    # → <repo>/data/cached
+    resolve_output_path("logs")         # → <repo>/logs
+
+All callers funnel paths through :func:`resolve_data_path` and
+:func:`resolve_output_path` rather than hardcoding ``Path(...)`` on
+a config string. Absolute paths are always returned unchanged.
 """
 
 from __future__ import annotations
@@ -53,49 +69,98 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DATA_ROOT_ENV   = "CREDITPFN_DATA_ROOT"
 OUTPUT_ROOT_ENV = "CREDITPFN_OUTPUT_ROOT"
 
+# VSC's own environment variables — set automatically on every VSC
+# node by the user's login profile. We use them to compute sensible
+# defaults when the user hasn't set the explicit CREDITPFN_* overrides.
+VSC_DATA_ENV    = "VSC_DATA"
+VSC_SCRATCH_ENV = "VSC_SCRATCH"
 
-def _resolve(p: str | os.PathLike, *, env_var: str) -> Path:
-    """Resolve ``p`` against the root selected by ``env_var``.
+# Subdir under VSC_DATA / VSC_SCRATCH that this project owns.
+PROJECT_NAME = "CreditPFN"
 
-    * Absolute path → returned as-is (no rewrite).
-    * Relative path → joined to ``$<env_var>`` if set, else to
-      ``REPO_ROOT``.
+
+def is_vsc_environment() -> bool:
+    """True iff we are running on a VSC node.
+
+    The KU Leuven VSC profile sets ``$VSC_DATA`` and ``$VSC_HOME``
+    unconditionally on login, so either is a reliable signal.
+    """
+    return VSC_DATA_ENV in os.environ or "VSC_HOME" in os.environ
+
+
+def _vsc_default_data_root() -> Path | None:
+    """``$VSC_SCRATCH/CreditPFN`` if VSC_SCRATCH is set, else None."""
+    scratch = os.environ.get(VSC_SCRATCH_ENV)
+    return Path(scratch) / PROJECT_NAME if scratch else None
+
+
+def _vsc_default_output_root() -> Path | None:
+    """``$VSC_DATA/CreditPFN`` if VSC_DATA is set, else None."""
+    data = os.environ.get(VSC_DATA_ENV)
+    return Path(data) / PROJECT_NAME if data else None
+
+
+def _resolve_root(*, env_var: str, vsc_default: Path | None) -> Path:
+    """Resolve the *root* a relative path should be joined to.
+
+    Precedence:
+      1. ``$<env_var>``        (explicit override; what the slurm
+                                scripts set)
+      2. VSC default           (only if VSC_DATA is set, i.e. we're
+                                on a VSC node)
+      3. ``REPO_ROOT``         (local laptop fallback)
+    """
+    explicit = os.environ.get(env_var)
+    if explicit:
+        return Path(explicit)
+    if is_vsc_environment() and vsc_default is not None:
+        return vsc_default
+    return REPO_ROOT
+
+
+def _resolve(p: str | os.PathLike, *, env_var: str, vsc_default: Path | None) -> Path:
+    """Resolve ``p`` against the root selected by the precedence rules above.
+
+    Absolute paths are returned unchanged (so a yaml can hardcode an
+    absolute path when it really wants one).
     """
     path = Path(p)
     if path.is_absolute():
         return path
-    root_str = os.environ.get(env_var)
-    root = Path(root_str) if root_str else REPO_ROOT
-    return root / path
+    return _resolve_root(env_var=env_var, vsc_default=vsc_default) / path
 
 
 def resolve_data_path(p: str | os.PathLike) -> Path:
-    """Resolve a *data* path (raw / processed / cached / dedup / manifests).
+    """Resolve a *data* path (raw / processed / cached).
 
-    Driven by ``CREDITPFN_DATA_ROOT``. On VSC, point this at scratch.
+    On VSC: ``$VSC_SCRATCH/CreditPFN`` (auto-detected) or
+    ``$CREDITPFN_DATA_ROOT`` (explicit override).
+    Locally: repo root.
     """
-    return _resolve(p, env_var=DATA_ROOT_ENV)
+    return _resolve(p, env_var=DATA_ROOT_ENV, vsc_default=_vsc_default_data_root())
 
 
 def resolve_output_path(p: str | os.PathLike) -> Path:
-    """Resolve a *durable-output* path (trained checkpoints, results, logs).
+    """Resolve a *durable-output* path (trained checkpoints, results,
+    logs, manifests, dedup CSVs).
 
-    Driven by ``CREDITPFN_OUTPUT_ROOT``. On VSC, point this at
-    ``$VSC_DATA/CreditPFN`` so the artefacts survive scratch purges
-    and are part of the daily backup.
+    On VSC: ``$VSC_DATA/CreditPFN`` (auto-detected) — backed up,
+    survives scratch purges. Or ``$CREDITPFN_OUTPUT_ROOT`` (explicit
+    override).
+    Locally: repo root.
     """
-    return _resolve(p, env_var=OUTPUT_ROOT_ENV)
+    return _resolve(p, env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
 
 
 def get_roots() -> dict[str, Path]:
-    """Return the resolved roots — useful for log lines / sanity checks."""
+    """Return the *currently resolved* roots — useful for log lines /
+    sanity checks at script startup."""
     return {
         "repo_root":   REPO_ROOT,
-        "data_root":   Path(os.environ.get(DATA_ROOT_ENV) or REPO_ROOT),
-        "output_root": Path(os.environ.get(OUTPUT_ROOT_ENV) or REPO_ROOT),
+        "data_root":   _resolve_root(
+            env_var=DATA_ROOT_ENV,   vsc_default=_vsc_default_data_root(),
+        ),
+        "output_root": _resolve_root(
+            env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root(),
+        ),
     }
-
-
-def is_vsc_environment() -> bool:
-    """True iff we are running on a VSC node (used for log decoration)."""
-    return "VSC_HOME" in os.environ or "VSC_DATA" in os.environ

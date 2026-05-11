@@ -2,23 +2,29 @@
 
 Layout choice
 -------------
-One file per ``src/`` subpackage. ``test_eval.py`` covers
-``src/eval/benchmark.py`` end-to-end on a synthetic cache: it
-spins up two PD chunks + the boosting and linear baselines (no
-TabPFN — covered in ``test_model.py``) and checks the comparison
-CSV is well-formed.
+One file per ``src/`` subpackage, like ``test_data.py`` and
+``test_train.py``. ``test_eval.py`` covers everything in
+``src/eval/``: the processed-CSV loader, per-method subsampling,
+fold-aware cat encoding, K-fold + inner-val splits, comprehensive
+metrics, and the per-(method × dataset) parallelisation in
+``scripts/eval_pipeline.py``.
 
 Coverage map
 ------------
-    Block 1  benchmark._score          — every metric on toy inputs
-    Block 2  benchmark.run_benchmark   — end-to-end on synthetic chunks
-    Block 3  benchmark.load_trained_handles — manifest reading
+    Block 1  dataset_loader.py       — load_processed_dataset, subsample,
+                                       encode_for_model
+    Block 2  benchmark.py            — fold construction, comprehensive
+                                       metrics, end-to-end on a synthetic
+                                       processed CSV
+    Block 3  benchmark.resolve_test_datasets — provenance > cfg fallback
+    Block 4  scripts/eval_pipeline.py — task indexing + filters
+    Block 5  benchmark._method_dirname — naming for the results layout
 """
 
 from __future__ import annotations
 
-import csv
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -26,12 +32,16 @@ import pandas as pd
 import pytest
 
 from src.eval.benchmark import (
-    EvalRow, _score, load_trained_handles, run_benchmark,
+    EvalRow, _output_path_for, _method_dirname,
+    find_existing_results,
+    load_trained_handles, resolve_test_datasets, run_benchmark,
+)
+from src.eval.dataset_loader import (
+    ProcessedDataset, encode_for_model, load_processed_dataset, subsample,
 )
 from src.model.base import ModelHandle
 from src.model.boosting import XGBoostModel
 from src.model.linear import LogRegModel
-from src.train.corpus import ChunkRef
 
 
 # =============================================================================
@@ -39,200 +49,256 @@ from src.train.corpus import ChunkRef
 # =============================================================================
 
 
-def _write_chunk(folder: Path, *, chunk_idx: int = 0,
-                 task_type: str = "classification",
-                 n_ctx: int = 80, n_qry: int = 40,
-                 n_feat: int = 4) -> Path:
-    """Write one ``chunk_NNN.npz`` with separable synthetic data so
-    the eval metrics aren't dominated by noise."""
-    folder.mkdir(parents=True, exist_ok=True)
-    rng = np.random.default_rng(chunk_idx)
-    X_ctx = rng.standard_normal((n_ctx, n_feat)).astype(np.float32)
-    X_qry = rng.standard_normal((n_qry, n_feat)).astype(np.float32)
-    if task_type == "classification":
-        y_ctx = (X_ctx[:, 0] + X_ctx[:, 1] > 0).astype(np.int64)
-        y_qry = (X_qry[:, 0] + X_qry[:, 1] > 0).astype(np.int64)
-    else:
-        y_ctx = (X_ctx[:, 0] + X_ctx[:, 1]).astype(np.float32)
-        y_qry = (X_qry[:, 0] + X_qry[:, 1]).astype(np.float32)
-    out = folder / f"chunk_{chunk_idx:03d}.npz"
-    np.savez_compressed(
-        out, X_context=X_ctx, y_context=y_ctx, X_query=X_qry, y_query=y_qry,
-        categorical_idx=np.empty(0, dtype=np.int32),
-    )
-    return out
-
-
-def _make_chunk_refs(cached_root: Path, *, track: str, dataset_id: str,
-                     n_chunks: int = 1, task_type: str | None = None
-                     ) -> list[ChunkRef]:
+def _write_processed_dataset(
+    out_root: Path, *,
+    track: str, dataset_id: str,
+    n_rows: int = 200, n_features: int = 5, n_cat: int = 1,
+    task_type: str | None = None,
+) -> tuple[Path, Path]:
+    """Write a sanitised CSV + manifest entry that the eval loader can read."""
     task_type = task_type or (
         "classification" if track == "pd" else "regression"
     )
-    folder = cached_root / track / dataset_id
-    refs = []
-    for ci in range(n_chunks):
-        p = _write_chunk(folder, chunk_idx=ci, task_type=task_type)
-        refs.append(ChunkRef(
-            dataset_id=dataset_id, track=track, task_type=task_type,
-            chunk_path=p, chunk_idx=ci,
-        ))
-    (folder / "meta.json").write_text(
-        json.dumps({"task_type": task_type, "n_chunks": n_chunks}),
-        encoding="utf-8",
-    )
-    return refs
+    folder = out_root / "data" / "processed" / track
+    folder.mkdir(parents=True, exist_ok=True)
+    csv_path = folder / f"{dataset_id}.sanitized.csv"
+    rng = np.random.default_rng(abs(hash(dataset_id)) % (2**32))
 
-
-# =============================================================================
-# Block 1 · _score
-# =============================================================================
-
-
-def test_score_roc_auc_perfect_separation() -> None:
-    class _PerfectClf:
-        def predict_proba(self, X):                # noqa: D401
-            return np.column_stack([1 - X[:, 0], X[:, 0]])
-
-    X_query = np.array([[0.0], [1.0], [0.0], [1.0]])
-    y_query = np.array([0, 1, 0, 1])
-    auc = _score(
-        _PerfectClf(), task_type="classification",
-        X_query=X_query, y_query=y_query, metric_name="roc_auc",
-    )
-    assert auc == pytest.approx(1.0)
-
-
-def test_score_roc_auc_single_class_returns_nan() -> None:
-    class _DummyClf:
-        def predict_proba(self, X):
-            return np.column_stack([np.ones(len(X)) * 0.5,
-                                    np.ones(len(X)) * 0.5])
-
-    import math
-    out = _score(
-        _DummyClf(), task_type="classification",
-        X_query=np.zeros((5, 1)), y_query=np.zeros(5, dtype=np.int64),
-        metric_name="roc_auc",
-    )
-    assert math.isnan(out)
-
-
-def test_score_log_loss_finite() -> None:
-    class _Clf:
-        def predict_proba(self, X):
-            return np.column_stack([np.full(len(X), 0.4),
-                                    np.full(len(X), 0.6)])
-
-    ll = _score(
-        _Clf(), task_type="classification",
-        X_query=np.zeros((10, 1)), y_query=np.array([0, 1] * 5),
-        metric_name="log_loss",
-    )
-    assert ll > 0 and np.isfinite(ll)
-
-
-def test_score_rmse_zero_on_perfect_predictions() -> None:
-    class _PerfectReg:
-        def predict(self, X):
-            return X[:, 0]
-
-    rmse = _score(
-        _PerfectReg(), task_type="regression",
-        X_query=np.array([[1.0], [2.0]]), y_query=np.array([1.0, 2.0]),
-        metric_name="rmse",
-    )
-    assert rmse == pytest.approx(0.0, abs=1e-9)
-
-
-def test_score_unsupported_metric_raises() -> None:
-    class _Reg:
-        def predict(self, X):
-            return np.zeros(len(X))
-
-    with pytest.raises(ValueError, match="unsupported"):
-        _score(
-            _Reg(), task_type="regression",
-            X_query=np.zeros((1, 1)), y_query=np.zeros(1),
-            metric_name="banana",
+    cols: dict = {}
+    cat_names = []
+    for j in range(n_features):
+        if j < n_cat:
+            cat_names.append(f"cat_{j}")
+            cols[f"cat_{j}"] = rng.choice(["A", "B", "C"], size=n_rows)
+        else:
+            cols[f"num_{j}"] = rng.standard_normal(n_rows).astype(np.float32)
+    target_col = "target"
+    if task_type == "classification":
+        cols[target_col] = (
+            (cols.get("num_1", rng.standard_normal(n_rows)) > 0).astype(np.int64)
         )
+    else:
+        cols[target_col] = rng.uniform(0, 1, n_rows).astype(np.float32)
+    pd.DataFrame(cols).to_csv(csv_path, index=False)
+
+    # Manifest row.
+    manifest_path = out_root / "data" / f"manifest_{track}.csv"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "dataset_id":     dataset_id,
+        "track":          track,
+        "task_type":      task_type,
+        "target_column":  target_col,
+        "n_rows":         n_rows,
+        "n_cols":         n_features,
+        "n_categorical":  n_cat,
+        "n_numerical":    n_features - n_cat,
+        "missing_rate":   "0.0",
+        "minority_class_ratio": "0.5" if task_type == "classification" else "",
+        "target_mean":    "0.5",
+        "target_std":     "0.3",
+        "categorical_columns": ";".join(cat_names),
+        "source":         "synthetic",
+        "shape_hash":     "deadbeef",
+    }
+    if manifest_path.exists():
+        df = pd.read_csv(manifest_path, dtype=str).fillna("")
+        df = df[df["dataset_id"] != dataset_id]
+        df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
+    else:
+        df = pd.DataFrame([row])
+    df.to_csv(manifest_path, index=False)
+    return csv_path, manifest_path
 
 
-# =============================================================================
-# Block 2 · run_benchmark end-to-end
-# =============================================================================
-
-
-def test_run_benchmark_writes_per_method_csv(tmp_path: Path, monkeypatch) -> None:
-    """3 chunks × 2 models × 5 folds = 30 rows total. Each model gets its
-    own ``results/<TRACK>/<method>/<run_name>_<timestamp>.csv``."""
-    pytest.importorskip("xgboost")
-    # Force results into tmp_path so the test doesn't pollute the repo.
+@pytest.fixture
+def env_isolated(monkeypatch, tmp_path):
+    """Route both DATA_ROOT and OUTPUT_ROOT to tmp_path so a test can
+    write processed CSVs + manifests without polluting the repo."""
+    monkeypatch.setenv("CREDITPFN_DATA_ROOT", str(tmp_path))
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    monkeypatch.delenv("VSC_HOME", raising=False)
+    monkeypatch.delenv("VSC_DATA", raising=False)
+    return tmp_path
 
-    chunks = (
-        _make_chunk_refs(tmp_path, track="pd", dataset_id="0001.alpha", n_chunks=2)
-        + _make_chunk_refs(tmp_path, track="pd", dataset_id="0002.bravo", n_chunks=1)
+
+# =============================================================================
+# Block 1 · dataset_loader.py
+# =============================================================================
+
+
+def test_load_processed_dataset_round_trips(env_isolated: Path) -> None:
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=120,
+    )
+    ds = load_processed_dataset(track="pd", dataset_id="0001.alpha")
+    assert isinstance(ds, ProcessedDataset)
+    assert ds.task_type == "classification"
+    assert ds.n_rows == 120
+    assert ds.n_features == 5
+    assert "cat_0" in ds.categorical_columns
+
+
+def test_load_processed_dataset_missing_csv_raises(env_isolated: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        load_processed_dataset(track="pd", dataset_id="9999.nope")
+
+
+def test_subsample_no_op_when_under_cap() -> None:
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame({"a": rng.standard_normal(50)})
+    y = rng.integers(0, 2, 50)
+    Xo, yo = subsample(X, y, max_rows=200, seed=0, stratify=True)
+    assert len(Xo) == 50 and len(yo) == 50
+
+
+def test_subsample_caps_when_over() -> None:
+    rng = np.random.default_rng(0)
+    X = pd.DataFrame({"a": rng.standard_normal(1000)})
+    y = rng.integers(0, 2, 1000)
+    Xo, yo = subsample(X, y, max_rows=100, seed=0, stratify=True)
+    # Stratified subsample is approximate; allow a small slop.
+    assert 90 <= len(Xo) <= 110
+    assert len(Xo) == len(yo)
+
+
+def test_encode_for_model_handles_unseen_val_categories() -> None:
+    """Categories that appear only in val/test must encode to the
+    unknown_value sentinel (-1), matching TabPFN's inference path."""
+    X_tr = pd.DataFrame({"cat": ["A", "B", "A"], "num": [1.0, 2.0, 3.0]})
+    X_va = pd.DataFrame({"cat": ["A", "C"],      "num": [4.0, 5.0]})  # "C" unseen
+    X_te = pd.DataFrame({"cat": ["B"],            "num": [6.0]})
+    Atr, Ava, Ate, cat_idx = encode_for_model(
+        X_tr, X_va, X_te, categorical_columns=["cat"],
+    )
+    assert cat_idx == [0]
+    # The "C" in val should encode to -1.
+    assert Ava[1, 0] == -1.0
+
+
+# =============================================================================
+# Block 2 · benchmark.py — end-to-end on synthetic processed CSV
+# =============================================================================
+
+
+def test_run_benchmark_writes_per_method_csv(env_isolated: Path) -> None:
+    """1 dataset × 2 models × 3 folds = 6 rows total; per-method CSVs."""
+    pytest.importorskip("xgboost")
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=200,
     )
     handles_and_models = [
-        (ModelHandle(name="xgboost", track="pd", task_type="classification",
-                     source="baseline"),
+        (ModelHandle(name="xgboost", track="pd",
+                     task_type="classification", source="baseline"),
          XGBoostModel(task_type="classification")),
-        (ModelHandle(name="logreg",  track="pd", task_type="classification",
-                     source="baseline"),
+        (ModelHandle(name="logreg",  track="pd",
+                     task_type="classification", source="baseline"),
          LogRegModel()),
     ]
     rows = run_benchmark(
-        test_chunks=chunks,
+        test_dataset_ids=["0001.alpha"],
         handles_and_models=handles_and_models,
         track="pd",
-        metric_name="roc_auc",
         run_name="creditpfn",
-        n_folds=5,
-        seed=0,
+        n_folds=3, inner_val_fraction=0.20, seed=0,
         results_base_dir="results",
     )
-    assert len(rows) == 3 * 2 * 5
+    assert len(rows) == 1 * 2 * 3
     assert all(isinstance(r, EvalRow) for r in rows)
+    assert all(r.status == "OK" for r in rows)
 
-    # Per-method dirs exist, one CSV per model.
-    pd_dir = tmp_path / "results" / "PD"
+    pd_dir = env_isolated / "results" / "PD"
     method_dirs = sorted(p.name for p in pd_dir.iterdir() if p.is_dir())
     assert method_dirs == ["logreg", "xgboost"]
     for sub in method_dirs:
         files = list((pd_dir / sub).glob("creditpfn_*.csv"))
         assert len(files) == 1
         df = pd.read_csv(files[0])
-        # Each per-method file has 3 chunks × 5 folds = 15 rows.
-        assert len(df) == 15
-        expected_cols = {
-            "track", "task_type", "model_name", "model_source",
-            "model_path", "test_dataset_id", "test_chunk_idx", "fold_idx",
-            "n_train_rows", "n_test_rows", "metric_name",
-            "metric_value", "elapsed_sec", "timestamp", "status", "error",
-        }
-        assert expected_cols.issubset(set(df.columns))
-        assert (df["status"] == "OK").all()
+        assert len(df) == 3
+        # Comprehensive metric columns are present.
+        for col in ("roc_auc", "log_loss", "pr_auc",
+                    "optimal_threshold", "f1", "accuracy", "precision", "recall",
+                    "rmse", "mae", "r2", "neg_nll",
+                    "n_train_rows", "n_val_rows", "n_test_rows"):
+            assert col in df.columns, f"missing metric column: {col}"
+
+
+def test_run_benchmark_classification_metrics_are_finite(env_isolated: Path) -> None:
+    """A working classifier on a separable synthetic dataset must produce
+    finite ROC-AUC, log-loss, F1 etc."""
+    pytest.importorskip("xgboost")
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=300,
+    )
+    handles = [(
+        ModelHandle(name="xgboost", track="pd",
+                    task_type="classification", source="baseline"),
+        XGBoostModel(task_type="classification"),
+    )]
+    rows = run_benchmark(
+        test_dataset_ids=["0001.alpha"],
+        handles_and_models=handles,
+        track="pd", run_name="r",
+        n_folds=3, seed=0,
+        results_base_dir="results",
+    )
+    assert all(r.status == "OK" for r in rows)
+    for r in rows:
+        assert math.isfinite(r.roc_auc)
+        assert math.isfinite(r.log_loss)
+        assert math.isfinite(r.pr_auc)
+        # Threshold-tuned columns are finite for binary classification.
+        assert 0.0 <= r.optimal_threshold <= 1.0
+        assert 0.0 <= r.f1 <= 1.0
+        assert 0.0 <= r.accuracy <= 1.0
+
+
+def test_run_benchmark_split_sizes_match_user_contract(env_isolated: Path) -> None:
+    """5-fold CV with inner_val_fraction=0.2 produces 64/16/20 splits.
+    On a 200-row dataset that's ~128 / ~32 / ~40."""
+    pytest.importorskip("xgboost")
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=200,
+    )
+    handles = [(
+        ModelHandle(name="xgboost", track="pd",
+                    task_type="classification", source="baseline"),
+        XGBoostModel(task_type="classification"),
+    )]
+    rows = run_benchmark(
+        test_dataset_ids=["0001.alpha"],
+        handles_and_models=handles,
+        track="pd", run_name="r",
+        n_folds=5, inner_val_fraction=0.20, seed=0,
+        results_base_dir="results",
+    )
+    for r in rows:
+        # Outer test fold ≈ 20% of 200 = 40 (allow ±2 for stratified rounding)
+        assert 38 <= r.n_test_rows <= 42
+        # Inner train ≈ 64% = 128, val ≈ 16% = 32
+        assert 124 <= r.n_train_rows <= 132
+        assert 28 <= r.n_val_rows <= 36
+        # n_train + n_val + n_test ≈ 200
+        assert 195 <= r.n_train_rows + r.n_val_rows + r.n_test_rows <= 205
 
 
 def test_run_benchmark_records_failure_without_killing_loop(
-    tmp_path: Path, monkeypatch,
+    env_isolated: Path,
 ) -> None:
-    """A model that raises must produce FAIL rows but not stop the
-    other (model × chunk × fold) cells."""
-    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
-    chunks = _make_chunk_refs(tmp_path, track="pd", dataset_id="0001.x")
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=120,
+    )
 
     class _BoomModel:
         task_type = "classification"
-        def fit(self, X, y, categorical_idx):
+        def fit(self, X, y, categorical_idx, X_val=None, y_val=None):
             raise RuntimeError("boom")
         def predict_proba(self, X):                                    # pragma: no cover
             return np.zeros((len(X), 2))
 
     class _OKModel:
         task_type = "classification"
-        def fit(self, X, y, categorical_idx):
+        def fit(self, X, y, categorical_idx, X_val=None, y_val=None):
             self._mu = float(y.mean()) if len(y) else 0.5
         def predict_proba(self, X):
             n = len(X)
@@ -248,59 +314,253 @@ def test_run_benchmark_records_failure_without_killing_loop(
          _OKModel()),
     ]
     rows = run_benchmark(
-        test_chunks=chunks, handles_and_models=handles_and_models,
-        track="pd", metric_name="roc_auc",
-        run_name="creditpfn", n_folds=3, seed=0,
+        test_dataset_ids=["0001.alpha"],
+        handles_and_models=handles_and_models,
+        track="pd", run_name="r", n_folds=3, seed=0,
         results_base_dir="results",
     )
-    # 1 chunk × 2 models × 3 folds = 6 rows.
     assert len(rows) == 6
-    boom_rows = [r for r in rows if r.model_name == "boom"]
-    ok_rows   = [r for r in rows if r.model_name == "ok"]
-    assert all(r.status == "FAIL" for r in boom_rows)
-    assert all(r.status == "OK"   for r in ok_rows)
-    assert "RuntimeError: boom" in (boom_rows[0].error or "")
+    assert sum(r.status == "FAIL" for r in rows if r.model_name == "boom") == 3
+    assert sum(r.status == "OK"   for r in rows if r.model_name == "ok")   == 3
 
 
 def test_run_benchmark_per_task_tag_routes_to_distinct_files(
-    tmp_path: Path, monkeypatch,
+    env_isolated: Path,
 ) -> None:
-    """Two parallel slurm tasks for the same method but different
-    datasets must NEVER write to the same file. The `per_task_tag`
-    arg encodes the dataset_id into the filename suffix."""
-    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
-    chunks = _make_chunk_refs(tmp_path, track="pd", dataset_id="0001.alpha")
-    handles_and_models = [
-        (ModelHandle(name="logreg", track="pd",
-                     task_type="classification", source="baseline"),
-         LogRegModel()),
-    ]
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=120,
+    )
+    handles = [(
+        ModelHandle(name="logreg", track="pd",
+                    task_type="classification", source="baseline"),
+        LogRegModel(),
+    )]
     rows = run_benchmark(
-        test_chunks=chunks, handles_and_models=handles_and_models,
-        track="pd", metric_name="roc_auc",
-        run_name="creditpfn", n_folds=2, seed=0,
+        test_dataset_ids=["0001.alpha"],
+        handles_and_models=handles,
+        track="pd", run_name="creditpfn", n_folds=2, seed=0,
         results_base_dir="results",
         per_task_tag="task7_ds-0001.alpha",
     )
     assert rows
-    files = list((tmp_path / "results" / "PD" / "logreg").glob("*.csv"))
+    files = list((env_isolated / "results" / "PD" / "logreg").glob("*.csv"))
     assert len(files) == 1
     assert "task7_ds-0001.alpha" in files[0].name
 
 
-def test_run_benchmark_empty_test_returns_empty_list(tmp_path: Path) -> None:
-    """No test chunks → no rows, no CSV crash."""
+def test_run_benchmark_empty_returns_empty(env_isolated: Path) -> None:
     rows = run_benchmark(
-        test_chunks=[], handles_and_models=[],
-        track="pd", metric_name="roc_auc",
-        run_name="creditpfn", n_folds=5,
-        results_base_dir=str(tmp_path / "results"),
+        test_dataset_ids=[], handles_and_models=[],
+        track="pd", run_name="r", n_folds=5,
+        results_base_dir="results",
     )
     assert rows == []
 
 
+# Regression test for Gemini's #1: the benchmark MUST pass the eval's
+# (X_val, y_val) through to model.fit; the model must NOT do its own
+# internal train/test split for HPO.
+
+def test_benchmark_passes_inner_val_to_model_fit(env_isolated: Path) -> None:
+    """Capture every fit call and check X_val/y_val are populated with
+    the eval's inner-val split."""
+    _write_processed_dataset(
+        env_isolated, track="pd", dataset_id="0001.alpha", n_rows=120,
+    )
+
+    captured: list[dict] = []
+
+    class _SpyModel:
+        task_type = "classification"
+        def fit(self, X, y, categorical_idx, X_val=None, y_val=None):
+            captured.append({
+                "n_train": len(X), "n_val": (len(X_val) if X_val is not None else None),
+                "val_is_set": X_val is not None and y_val is not None,
+            })
+            self._mu = float(y.mean()) if len(y) else 0.5
+        def predict_proba(self, X):
+            n = len(X)
+            return np.column_stack([np.full(n, 1 - self._mu),
+                                    np.full(n, self._mu)])
+
+    rows = run_benchmark(
+        test_dataset_ids=["0001.alpha"],
+        handles_and_models=[(
+            ModelHandle(name="spy", track="pd",
+                        task_type="classification", source="baseline"),
+            _SpyModel(),
+        )],
+        track="pd", run_name="r", n_folds=3, inner_val_fraction=0.20, seed=0,
+        results_base_dir="results",
+    )
+    assert len(rows) == 3
+    assert all(r.status == "OK" for r in rows)
+    # Every fold's fit got a non-empty val split.
+    assert len(captured) == 3
+    for c in captured:
+        assert c["val_is_set"] is True
+        assert c["n_val"] is not None and c["n_val"] > 0
+        # 3-fold CV on 120 rows: test ≈ 40, train ≈ 80;
+        # inner split of train: sub-train ≈ 64, val ≈ 16
+        assert 58 <= c["n_train"] <= 70
+        assert 12 <= c["n_val"] <= 20
+
+
+# Regression test for Gemini's #3: threshold tuning via
+# precision_recall_curve should run in O(n) time on a large val set,
+# not O(n²). We test for correctness (still returns the right threshold).
+
+def test_best_f1_threshold_via_pr_curve() -> None:
+    """Synthetic: separable scores, optimum threshold should be around 0.5."""
+    from src.eval.benchmark import _best_f1_threshold
+    rng = np.random.default_rng(0)
+    n = 1000
+    y = (rng.standard_normal(n) > 0).astype(int)
+    # Scores correlated with y but noisy.
+    proba_pos = np.clip(y * 0.7 + rng.standard_normal(n) * 0.15, 0, 1)
+    th = _best_f1_threshold(proba_pos, y)
+    assert 0.3 <= th <= 0.7         # in the sensible neighbourhood
+    assert isinstance(th, float)
+
+
+def test_best_f1_threshold_falls_back_when_no_positive() -> None:
+    from src.eval.benchmark import _best_f1_threshold
+    # All-zero labels → no positives → F1 always 0 → fallback 0.5.
+    proba = np.linspace(0.1, 0.9, 50)
+    y = np.zeros(50, dtype=int)
+    assert _best_f1_threshold(proba, y) == 0.5
+
+
+# =============================================================================
+# Block 3 · resolve_test_datasets — provenance > cfg fallback
+# =============================================================================
+
+
+def test_resolve_test_datasets_uses_provenance_for_trained(tmp_path: Path) -> None:
+    ckpt = tmp_path / "trained.ckpt"
+    ckpt.write_bytes(b"")
+    (tmp_path / "trained.ckpt.provenance.json").write_text(
+        json.dumps({"test_datasets": ["0001.foo", "0002.bar"]}),
+        encoding="utf-8",
+    )
+    handle = ModelHandle(
+        name="tabpfn-trained[…]", track="pd",
+        task_type="classification", source="tabpfn-trained",
+        base_path=str(ckpt), extra={},
+    )
+    out = resolve_test_datasets(handle, cfg_test_dataset_ids=["zzz"])
+    assert out == ["0001.foo", "0002.bar"]
+
+
+def test_resolve_test_datasets_falls_back_to_cfg_for_others() -> None:
+    handle_baseline = ModelHandle(
+        name="xgboost", track="pd",
+        task_type="classification", source="baseline",
+    )
+    handle_untuned = ModelHandle(
+        name="tabpfn-untuned[v2.6]", track="pd",
+        task_type="classification", source="tabpfn-untuned",
+        base_path="checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
+    )
+    cfg_test = ["0001.alpha", "0002.bravo"]
+    assert resolve_test_datasets(handle_baseline, cfg_test_dataset_ids=cfg_test) == cfg_test
+    assert resolve_test_datasets(handle_untuned,  cfg_test_dataset_ids=cfg_test) == cfg_test
+
+
+def test_resolve_test_datasets_falls_back_when_provenance_missing(tmp_path: Path) -> None:
+    """tabpfn-trained whose ckpt has no provenance falls back to cfg."""
+    handle = ModelHandle(
+        name="tabpfn-trained[…]", track="pd",
+        task_type="classification", source="tabpfn-trained",
+        base_path=str(tmp_path / "ghost.ckpt"),  # doesn't exist
+        extra={},
+    )
+    cfg_test = ["0001.alpha"]
+    out = resolve_test_datasets(handle, cfg_test_dataset_ids=cfg_test)
+    assert out == cfg_test
+
+
+# =============================================================================
+# Block 4 · scripts/eval_pipeline.py — task indexing + filters
+# =============================================================================
+
+
+def _two_baseline_handles_and_models():
+    return [
+        (ModelHandle(name="xgboost", track="pd",
+                     task_type="classification", source="baseline"), object()),
+        (ModelHandle(name="logreg", track="pd",
+                     task_type="classification", source="baseline"), object()),
+    ]
+
+
+def test_enumerate_tasks_cartesian_product() -> None:
+    """2 models × 3 cfg test datasets = 6 tasks."""
+    import scripts.eval_pipeline as ep
+    pairs = ep._enumerate_tasks(
+        _two_baseline_handles_and_models(),
+        ["0001.alpha", "0002.bravo", "0003.charlie"],
+    )
+    assert len(pairs) == 6
+    assert len(set(pairs)) == 6
+    # Within each model_idx group the dataset IDs are sorted.
+    by_model: dict[int, list[str]] = {}
+    for m_idx, ds in pairs:
+        by_model.setdefault(m_idx, []).append(ds)
+    for ds_list in by_model.values():
+        assert ds_list == sorted(ds_list)
+
+
+def test_filter_roster_task_index_picks_one_pair() -> None:
+    import scripts.eval_pipeline as ep
+    plan = ep._filter_roster(
+        _two_baseline_handles_and_models(),
+        ["0001.alpha", "0002.bravo", "0003.charlie"],
+        method_filter=[], dataset_filter=[], task_index=3,
+    )
+    assert len(plan) == 1
+    handle_and_model, ds_ids = plan[0]
+    assert len(ds_ids) == 1
+
+
+def test_filter_roster_method_filter() -> None:
+    import scripts.eval_pipeline as ep
+    plan = ep._filter_roster(
+        _two_baseline_handles_and_models(),
+        ["0001.alpha"],
+        method_filter=["logreg"], dataset_filter=[], task_index=None,
+    )
+    assert len(plan) == 1
+    assert plan[0][0][0].name == "logreg"
+
+
+def test_filter_roster_dataset_filter() -> None:
+    import scripts.eval_pipeline as ep
+    plan = ep._filter_roster(
+        _two_baseline_handles_and_models(),
+        ["0001.alpha", "0002.bravo"],
+        method_filter=[], dataset_filter=["0002.bravo"], task_index=None,
+    )
+    for _, ds_ids in plan:
+        assert ds_ids == ["0002.bravo"]
+
+
+def test_filter_roster_task_index_out_of_bounds_raises() -> None:
+    import scripts.eval_pipeline as ep
+    with pytest.raises(IndexError, match="out of bounds"):
+        ep._filter_roster(
+            _two_baseline_handles_and_models(),
+            ["0001.alpha"],
+            method_filter=[], dataset_filter=[], task_index=999,
+        )
+
+
+# =============================================================================
+# Block 5 · _method_dirname  (regression: still produces clean names)
+# =============================================================================
+
+
 def test_method_dirname_baseline() -> None:
-    from src.eval import _method_dirname
     h = ModelHandle(name="xgboost", track="pd",
                     task_type="classification", source="baseline")
     assert _method_dirname(h) == "xgboost"
@@ -315,10 +575,6 @@ def test_method_dirname_baseline() -> None:
      "tabpfn-untuned__v2.5-default-2"),
 ])
 def test_method_dirname_tabpfn_untuned(base: str, expected: str) -> None:
-    """The short-tag scheme drops the redundant 'classifier'/'regressor'
-    infix (already encoded in the parent results/<TRACK>/ folder) and
-    the 'tabpfn-' prefix."""
-    from src.eval import _method_dirname
     h = ModelHandle(
         name="tabpfn-untuned[x]", track="pd",
         task_type="classification", source="tabpfn-untuned",
@@ -327,58 +583,34 @@ def test_method_dirname_tabpfn_untuned(base: str, expected: str) -> None:
     assert _method_dirname(h) == expected
 
 
-def test_method_dirname_tabpfn_trained_includes_lr_and_policy() -> None:
-    """A tabpfn-trained dirname must encode the THREE knobs that vary
-    across training trials: short base tag, lr, multi_chunk_policy.
-    Seed is intentionally not in the dirname (different seed → new
-    timestamped CSV inside the same dirname)."""
-    from src.eval import _method_dirname
+def test_method_dirname_tabpfn_trained_includes_lr() -> None:
     h = ModelHandle(
         name="tabpfn-trained[…]", track="pd",
         task_type="classification", source="tabpfn-trained",
-        base_path="checkpoints/trained/pd/creditpfn_pd_some_long_name.ckpt",
+        base_path="checkpoints/trained/pd/whatever.ckpt",
         extra={
             "base_checkpoint":    "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
-            "learning_rate":      1.0e-5,
-            "multi_chunk_policy": "all_chunks_as_separate_datasets",
+            "learning_rate":      1.0e-4,
             "seed":               42,
         },
     )
-    out = _method_dirname(h)
-    assert out == "tabpfn-trained__v2.6-default__lr1e-05__allchunks"
-
-
-def test_method_dirname_tabpfn_trained_first_chunk_only() -> None:
-    from src.eval import _method_dirname
-    h = ModelHandle(
-        name="tabpfn-trained[…]", track="lgd",
-        task_type="regression", source="tabpfn-trained",
-        base_path="anywhere.ckpt",
-        extra={
-            "base_checkpoint":    "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt",
-            "learning_rate":      5.0e-5,
-            "multi_chunk_policy": "first_chunk_only",
-            "seed":               7,
-        },
-    )
-    assert _method_dirname(h) == "tabpfn-trained__v2.5-default__lr5e-05__firstchunk"
+    assert _method_dirname(h) == "tabpfn-trained__v2.6-default__lr1e-04"
 
 
 # =============================================================================
-# Block 3 · load_trained_handles
+# Block 6 · load_trained_handles — manifest reading
 # =============================================================================
 
 
-def _make_synthetic_manifest(path: Path, *, rows: list[dict]) -> None:
-    """Write a CSV that matches the schema of `RunRow`."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+def _write_synthetic_manifest(path: Path, *, rows: list[dict]) -> None:
+    import csv
     fieldnames = [
-        "track", "base_checkpoint", "learning_rate", "multi_chunk_policy",
-        "seed", "test_metric_name", "test_metric_raw",
-        "n_train_datasets", "n_test_datasets",
+        "track", "base_checkpoint", "learning_rate",
+        "seed", "n_train_datasets", "n_test_datasets",
         "n_train_chunks", "n_test_chunks",
         "final_ckpt_path", "elapsed_sec", "status", "error",
     ]
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fieldnames)
         w.writeheader()
@@ -387,31 +619,27 @@ def _make_synthetic_manifest(path: Path, *, rows: list[dict]) -> None:
 
 
 def test_load_trained_handles_skips_failed_and_missing(tmp_path: Path) -> None:
-    """Manifest rows with status=FAIL or non-existent ckpt are skipped."""
     ckpt_ok = tmp_path / "ok.ckpt"
-    ckpt_ok.write_bytes(b"")            # touch
+    ckpt_ok.write_bytes(b"")
     manifest = tmp_path / "logs" / "runs" / "creditpfn_pd.csv"
-    _make_synthetic_manifest(manifest, rows=[
-        {"track": "pd", "base_checkpoint": "x", "learning_rate": "1e-5",
-         "multi_chunk_policy": "allchunks", "seed": "42",
+    _write_synthetic_manifest(manifest, rows=[
+        {"track": "pd", "base_checkpoint": "x", "learning_rate": "1e-4",
+         "seed": "42",
          "final_ckpt_path": str(ckpt_ok), "status": "OK"},
-        {"track": "pd", "base_checkpoint": "x", "learning_rate": "1e-5",
-         "multi_chunk_policy": "allchunks", "seed": "42",
+        {"track": "pd", "base_checkpoint": "x", "learning_rate": "1e-4",
+         "seed": "42",
          "final_ckpt_path": "", "status": "FAIL"},
-        {"track": "pd", "base_checkpoint": "x", "learning_rate": "1e-5",
-         "multi_chunk_policy": "allchunks", "seed": "42",
+        {"track": "pd", "base_checkpoint": "x", "learning_rate": "1e-4",
+         "seed": "42",
          "final_ckpt_path": str(tmp_path / "missing.ckpt"), "status": "OK"},
-        {"track": "lgd", "base_checkpoint": "x", "learning_rate": "1e-5",
-         "multi_chunk_policy": "allchunks", "seed": "42",
+        {"track": "lgd", "base_checkpoint": "x", "learning_rate": "1e-4",
+         "seed": "42",
          "final_ckpt_path": str(ckpt_ok), "status": "OK"},
     ])
-
     handles = load_trained_handles(manifest, track="pd")
     assert len(handles) == 1
-    handle, model = handles[0]
+    handle, _model = handles[0]
     assert handle.source == "tabpfn-trained"
-    assert handle.task_type == "classification"
-    assert "ok" in handle.name
 
 
 def test_load_trained_handles_no_manifest_returns_empty(tmp_path: Path) -> None:
@@ -420,77 +648,102 @@ def test_load_trained_handles_no_manifest_returns_empty(tmp_path: Path) -> None:
 
 
 # =============================================================================
-# Block 4 · scripts/eval_pipeline.py — task indexing + filters
+# Block 7 · find_existing_results — rerun-skip helper
 # =============================================================================
 
 
-def _dummy_handles_and_chunks(tmp_path: Path):
-    """Build a 2-model × 3-dataset roster for filter tests."""
-    chunks = (
-        _make_chunk_refs(tmp_path, track="pd", dataset_id="0001.alpha")
-        + _make_chunk_refs(tmp_path, track="pd", dataset_id="0002.bravo")
-        + _make_chunk_refs(tmp_path, track="pd", dataset_id="0003.charlie")
+def _xgb_handle() -> ModelHandle:
+    return ModelHandle(
+        name="xgboost", track="pd",
+        task_type="classification", source="baseline",
     )
-    handles_and_models = [
-        (ModelHandle(name="xgboost", track="pd",
-                     task_type="classification", source="baseline"), object()),
-        (ModelHandle(name="logreg", track="pd",
-                     task_type="classification", source="baseline"), object()),
-    ]
-    return handles_and_models, chunks
 
 
-def test_enumerate_tasks_cartesian_product(tmp_path: Path) -> None:
-    """`_enumerate_tasks` returns one entry per (model_idx, dataset_id)
-    pair — 2 models × 3 datasets = 6 tasks. Within each model_idx
-    group the dataset IDs are sorted (deterministic ordering across
-    runs)."""
-    import scripts.eval_pipeline as ep
-    h, c = _dummy_handles_and_chunks(tmp_path)
-    pairs = ep._enumerate_tasks(h, c)
-    assert len(pairs) == 6
-    assert len(set(pairs)) == 6                     # no dupes
-    by_model: dict[int, list[str]] = {}
-    for m_idx, ds in pairs:
-        by_model.setdefault(m_idx, []).append(ds)
-    for ds_list in by_model.values():
-        assert ds_list == sorted(ds_list)
+def _write_eval_csv(path: Path, *, rows: list[dict]) -> None:
+    import csv as _csv
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = ["model_name", "model_source", "model_path",
+                  "test_dataset_id", "fold_idx", "status"]
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = _csv.DictWriter(fh, fieldnames=fieldnames)
+        w.writeheader()
+        for r in rows:
+            w.writerow({k: r.get(k, "") for k in fieldnames})
 
 
-def test_filter_roster_task_index_picks_one_pair(tmp_path: Path) -> None:
-    import scripts.eval_pipeline as ep
-    h, c = _dummy_handles_and_chunks(tmp_path)
-    keep_models, keep_chunks = ep._filter_roster(
-        h, c, method_filter=[], dataset_filter=[], task_index=3,
+def test_find_existing_results_missing_dir(tmp_path: Path, monkeypatch) -> None:
+    """No method dir on disk → empty list (not an error)."""
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    out = find_existing_results(
+        _xgb_handle(), "0001.gmsc",
+        track="pd", results_base_dir="results/benchmark",
     )
-    # Exactly one model, exactly one dataset's chunks.
-    assert len(keep_models) == 1
-    assert len({k.dataset_id for k in keep_chunks}) == 1
+    assert out == []
 
 
-def test_filter_roster_method_filter_intersects(tmp_path: Path) -> None:
-    import scripts.eval_pipeline as ep
-    h, c = _dummy_handles_and_chunks(tmp_path)
-    keep_models, keep_chunks = ep._filter_roster(
-        h, c, method_filter=["logreg"], dataset_filter=[], task_index=None,
+def test_find_existing_results_matches_per_task_csv(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """Slurm-style per-task CSV with an OK row counts as 'already scored'."""
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    method_dir = tmp_path / "results" / "benchmark" / "PD" / "xgboost"
+    _write_eval_csv(
+        method_dir / "creditpfn_2026_task7_ds-0001.gmsc.csv",
+        rows=[{"model_name": "xgboost", "model_source": "baseline",
+               "test_dataset_id": "0001.gmsc", "fold_idx": 0,
+               "status": "OK"}],
     )
-    assert [hh.name for hh, _ in keep_models] == ["logreg"]
-    # All chunks kept (no dataset filter).
-    assert len(keep_chunks) == len(c)
-
-
-def test_filter_roster_dataset_filter_intersects(tmp_path: Path) -> None:
-    import scripts.eval_pipeline as ep
-    h, c = _dummy_handles_and_chunks(tmp_path)
-    keep_models, keep_chunks = ep._filter_roster(
-        h, c, method_filter=[], dataset_filter=["0002.bravo"], task_index=None,
+    hits = find_existing_results(
+        _xgb_handle(), "0001.gmsc",
+        track="pd", results_base_dir="results/benchmark",
     )
-    assert {k.dataset_id for k in keep_chunks} == {"0002.bravo"}
-    assert len(keep_models) == len(h)
+    assert len(hits) == 1
+    # Different dataset → no hit.
+    assert find_existing_results(
+        _xgb_handle(), "0002.taiwan_creditcard",
+        track="pd", results_base_dir="results/benchmark",
+    ) == []
 
 
-def test_filter_roster_task_index_out_of_bounds_raises(tmp_path: Path) -> None:
-    import scripts.eval_pipeline as ep
-    h, c = _dummy_handles_and_chunks(tmp_path)
-    with pytest.raises(IndexError, match="out of bounds"):
-        ep._filter_roster(h, c, method_filter=[], dataset_filter=[], task_index=999)
+def test_find_existing_results_ignores_fail_only_rows(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """A CSV with only FAIL rows for the target dataset should NOT count
+    as 'already scored' — the caller should retry."""
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    method_dir = tmp_path / "results" / "benchmark" / "PD" / "xgboost"
+    _write_eval_csv(
+        method_dir / "creditpfn_2026_task7_ds-0001.gmsc.csv",
+        rows=[{"model_name": "xgboost", "model_source": "baseline",
+               "test_dataset_id": "0001.gmsc", "fold_idx": 0,
+               "status": "FAIL"}],
+    )
+    assert find_existing_results(
+        _xgb_handle(), "0001.gmsc",
+        track="pd", results_base_dir="results/benchmark",
+    ) == []
+
+
+def test_find_existing_results_matches_single_process_csv(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """A non-tagged CSV (single-process run) that contains a matching
+    OK row is detected via row-level inspection."""
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    method_dir = tmp_path / "results" / "benchmark" / "PD" / "xgboost"
+    _write_eval_csv(
+        method_dir / "creditpfn_2026.csv",
+        rows=[
+            {"model_name": "xgboost", "model_source": "baseline",
+             "test_dataset_id": "0002.taiwan_creditcard", "fold_idx": 0,
+             "status": "OK"},
+            {"model_name": "xgboost", "model_source": "baseline",
+             "test_dataset_id": "0001.gmsc", "fold_idx": 0,
+             "status": "OK"},
+        ],
+    )
+    hits = find_existing_results(
+        _xgb_handle(), "0001.gmsc",
+        track="pd", results_base_dir="results/benchmark",
+    )
+    assert len(hits) == 1

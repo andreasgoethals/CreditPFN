@@ -109,6 +109,180 @@ def test_unknown_dataset_raises() -> None:
         apply_dataset_specific_fixes(df, "9999.does_not_exist")
 
 
+# =============================================================================
+# Block 1b · column-leakage tests
+# =============================================================================
+#
+# The surgical-fix functions claim to remove specific leakage columns (post-loan
+# state, direct default indicators, target components, …). These tests verify
+# that the claim holds: the post-fix DataFrame must NOT contain any of the
+# named leakage columns. If a future refactor accidentally re-introduces
+# one, the test fails loudly.
+#
+# Format: a parametrised matrix of (dataset_id, forbidden_column) pairs.
+
+_FORBIDDEN_AFTER_FIX: list[tuple[str, str]] = [
+    # 0016.bondora_peer2peer — post-loan / payment-progression / direct-default columns
+    ("0016.bondora_peer2peer", "loan_status"),
+    ("0016.bondora_peer2peer", "loan_status_risk"),
+    ("0016.bondora_peer2peer", "principal_balance"),
+    ("0016.bondora_peer2peer", "principal_debt"),
+    ("0016.bondora_peer2peer", "principal_paid_total"),
+    ("0016.bondora_peer2peer", "interest_paid_total"),
+    ("0016.bondora_peer2peer", "extra_interest_paid_total"),
+    ("0016.bondora_peer2peer", "late_fee_paid_total"),
+    ("0016.bondora_peer2peer", "maintenance_fee_paid_total"),
+    ("0016.bondora_peer2peer", "next_payment_nr"),
+    ("0016.bondora_peer2peer", "next_payment_date_local"),
+    ("0016.bondora_peer2peer", "debt_occured_date_local"),
+    ("0016.bondora_peer2peer", "days_past_due_principal"),
+    ("0016.bondora_peer2peer", "months_in_default"),
+    ("0016.bondora_peer2peer", "months_on_book"),
+    ("0016.bondora_peer2peer", "repaid_amount_total"),
+    ("0016.bondora_peer2peer", "has_default_within_12_months"),
+    ("0016.bondora_peer2peer", "projected_npv_return"),
+    ("0016.bondora_peer2peer", "early_repaid_at"),
+    ("0016.bondora_peer2peer", "is_early_repaid_within_14_days"),
+    ("0016.bondora_peer2peer", "loan_last_recorded_action_date_local"),
+    ("0016.bondora_peer2peer", "loan_issued_at"),
+    ("0016.bondora_peer2peer", "loan_id"),
+
+    # 0017.SBA_loans_case (PD) — leakage / ID / mystery columns
+    ("0017.SBA_loans_case", "MIS_Status"),     # 1:1 with Default
+    ("0017.SBA_loans_case", "ChgOffDate"),     # only set for defaults
+    ("0017.SBA_loans_case", "ChgOffPrinGr"),   # LGD-target component
+    ("0017.SBA_loans_case", "LoanNr_ChkDgt"),
+    ("0017.SBA_loans_case", "Name"),
+    ("0017.SBA_loans_case", "Bank"),
+    ("0017.SBA_loans_case", "City"),
+    ("0017.SBA_loans_case", "Zip"),
+    ("0017.SBA_loans_case", "Selected"),       # sampling artefact
+    ("0017.SBA_loans_case", "xx"),             # = DisbursementDate + daysterm
+
+    # 0008.SBA_loans_case (LGD twin) — same set plus `Default` (always 1 after filter)
+    ("0008.SBA_loans_case", "MIS_Status"),
+    ("0008.SBA_loans_case", "ChgOffDate"),
+    ("0008.SBA_loans_case", "ChgOffPrinGr"),
+    ("0008.SBA_loans_case", "LoanNr_ChkDgt"),
+    ("0008.SBA_loans_case", "Name"),
+    ("0008.SBA_loans_case", "Bank"),
+    ("0008.SBA_loans_case", "City"),
+    ("0008.SBA_loans_case", "Zip"),
+    ("0008.SBA_loans_case", "Selected"),
+    ("0008.SBA_loans_case", "xx"),
+    ("0008.SBA_loans_case", "Default"),        # always 1 in the filtered LGD copy
+]
+
+
+@pytest.mark.parametrize("dataset_id, forbidden_col", _FORBIDDEN_AFTER_FIX)
+def test_surgical_fix_removes_leakage_column(
+    dataset_id: str, forbidden_col: str,
+) -> None:
+    """For each (dataset, leakage-col) pair, the surgical fix MUST drop
+    the column. If a refactor leaves it in, this test fails — that's
+    what protects us from silently re-introducing data leakage.
+    """
+    meta = DATASET_METADATA[dataset_id]
+    raw_path = REPO / "data" / "raw" / meta["track"] / f"{dataset_id}.csv"
+    if not raw_path.exists():
+        pytest.skip(f"raw CSV not present: {raw_path}")
+    df = pd.read_csv(raw_path, low_memory=False)
+    out = apply_dataset_specific_fixes(df, dataset_id)
+    assert forbidden_col not in out.columns, (
+        f"{dataset_id}: leakage column {forbidden_col!r} survived the "
+        f"surgical fix — every fold's metrics would be inflated by this column."
+    )
+
+
+# Companion: target-column sanity — derived targets must be in the right
+# domain (binary 0/1 for classification, [0, 1] for LGD).
+
+@pytest.mark.parametrize("dataset_id", [
+    "0015.credit_risk_dataset",
+    "0016.bondora_peer2peer",
+    "0017.SBA_loans_case",
+])
+def test_classification_target_is_binary_after_fix(dataset_id: str) -> None:
+    """PD targets must be exactly {0, 1} (no Y/N, no NaN, no other levels)."""
+    meta = DATASET_METADATA[dataset_id]
+    raw_path = REPO / "data" / "raw" / meta["track"] / f"{dataset_id}.csv"
+    if not raw_path.exists():
+        pytest.skip(f"raw CSV not present: {raw_path}")
+    df = pd.read_csv(raw_path, low_memory=False)
+    out = apply_dataset_specific_fixes(df, dataset_id)
+    target = meta["target_column"]
+    y = out[target].dropna().astype("int64").unique()
+    assert set(y.tolist()).issubset({0, 1}), (
+        f"{dataset_id}: target {target!r} has non-binary values: {sorted(y)}"
+    )
+
+
+def test_lgd_target_is_non_negative_after_fix() -> None:
+    """The LGD twin of SBA derives `lgd` = ChgOffPrinGr / DisbursementGross.
+
+    Clipping to [0, 1] is the job of sanitize.py's global
+    `lgd_target_clip` block (single source of truth across all LGD
+    datasets). At the preprocessing stage we only assert the ratio
+    is finite and non-negative — values > 1 are allowed here and get
+    clipped downstream by sanitize.
+    """
+    raw_path = REPO / "data" / "raw" / "lgd" / "0008.SBA_loans_case.csv"
+    if not raw_path.exists():
+        pytest.skip(f"raw CSV not present: {raw_path}")
+    df = pd.read_csv(raw_path, low_memory=False)
+    out = apply_dataset_specific_fixes(df, "0008.SBA_loans_case")
+    assert "lgd" in out.columns, "0008.SBA_loans_case: `lgd` target column missing"
+    lgd = out["lgd"].dropna().to_numpy()
+    assert np.isfinite(lgd).all() and (lgd >= 0.0).all(), (
+        f"0008.SBA_loans_case: lgd not finite/non-negative — "
+        f"min={lgd.min()}, max={lgd.max()}"
+    )
+
+
+def test_lgd_filtered_to_defaults_only() -> None:
+    """The LGD twin of SBA must filter to defaulted loans only (the LGD
+    target is undefined for non-defaulted loans). We can't read
+    `Default` post-fix (it's dropped), but the raw count of defaults
+    matches the post-fix row count."""
+    raw_path = REPO / "data" / "raw" / "lgd" / "0008.SBA_loans_case.csv"
+    if not raw_path.exists():
+        pytest.skip(f"raw CSV not present: {raw_path}")
+    df = pd.read_csv(raw_path, low_memory=False)
+    expected = int((df["Default"] == 1).sum())
+    out = apply_dataset_specific_fixes(df, "0008.SBA_loans_case")
+    assert len(out) == expected, (
+        f"0008.SBA_loans_case: row count after fix {len(out)} != "
+        f"raw default count {expected}"
+    )
+
+
+def test_credit_risk_loan_grade_is_ordinal_integer() -> None:
+    """`loan_grade` ∈ {A..G} in raw; should be integer 0..6 post-fix."""
+    raw_path = REPO / "data" / "raw" / "pd" / "0015.credit_risk_dataset.csv"
+    if not raw_path.exists():
+        pytest.skip(f"raw CSV not present: {raw_path}")
+    df = pd.read_csv(raw_path, low_memory=False)
+    out = apply_dataset_specific_fixes(df, "0015.credit_risk_dataset")
+    grades = pd.to_numeric(out["loan_grade"], errors="coerce").dropna().unique()
+    assert set(int(g) for g in grades).issubset(set(range(7))), (
+        f"loan_grade values out of 0..6 range: {sorted(grades)}"
+    )
+    # Implicitly verifies the ordinal mapping was applied — no strings should
+    # survive (they would coerce to NaN above).
+    assert not any(isinstance(v, str) for v in out["loan_grade"].dropna().tolist())
+
+
+def test_credit_risk_default_on_file_is_binarised() -> None:
+    """`cb_person_default_on_file` ∈ {Y, N} in raw → {1, 0} post-fix."""
+    raw_path = REPO / "data" / "raw" / "pd" / "0015.credit_risk_dataset.csv"
+    if not raw_path.exists():
+        pytest.skip(f"raw CSV not present: {raw_path}")
+    df = pd.read_csv(raw_path, low_memory=False)
+    out = apply_dataset_specific_fixes(df, "0015.credit_risk_dataset")
+    values = out["cb_person_default_on_file"].dropna().astype("int64").unique()
+    assert set(values.tolist()).issubset({0, 1})
+
+
 def test_unknown_dataset_passthrough() -> None:
     """``passthrough`` policy returns the input unchanged."""
     df = pd.DataFrame({"a": [1, 2]})

@@ -73,10 +73,14 @@ class EpochRecord:
 
 @dataclass
 class TrainingResult:
-    """Returned by :func:`train_one_config`."""
+    """Returned by :func:`train_one_config`.
+
+    No test-set metric here — scoring trained models is the eval
+    pipeline's job. The training loop only produces checkpoints and
+    records the test_dataset_ids in the checkpoint's provenance for
+    the eval pipeline to read later.
+    """
     final_ckpt_path: Path
-    test_metric_raw: float | None        # None if test split is empty
-    test_metric_name: str
     history: list[EpochRecord] = field(default_factory=list)
     n_train_chunks: int = 0
     n_test_chunks: int = 0
@@ -91,32 +95,24 @@ class TrainingResult:
 # --------------------------------------------------------------------------- #
 
 
+# Multi-chunk policy is fixed: each parent dataset contributes only its
+# first cached chunk to training. This avoids over-weighting large parents
+# (would-be 8-chunk datasets ↔ 1-chunk datasets in the same epoch).
+MULTI_CHUNK_POLICY = "first_chunk_only"
+
+
 def descriptive_name(
     *, run_name: str, track: str, base_path: str | Path,
-    learning_rate: float, multi_chunk_policy: str, seed: int,
+    learning_rate: float, seed: int,
 ) -> str:
-    """Build the on-disk filename encoding all tunable HPs.
+    """Build the on-disk filename encoding the tunable HPs.
 
     Schema:
-        <run_name>_<track>_<base-stem>_lr<lr>_<policy_short>_seed<seed>.ckpt
-
-    where ``base-stem`` is ``Path(base_path).stem`` (everything but the
-    extension; the ``tabpfn-`` prefix kept for at-a-glance clarity)
-    and ``policy_short`` collapses the verbose policy name to a tag:
-
-        all_chunks_as_separate_datasets  →  allchunks
-        first_chunk_only                 →  firstchunk
+        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>.ckpt
     """
     base_stem = Path(str(base_path)).stem
-    policy_short = {
-        "all_chunks_as_separate_datasets": "allchunks",
-        "first_chunk_only":                "firstchunk",
-    }.get(multi_chunk_policy, multi_chunk_policy)
     lr_tag = f"{learning_rate:.0e}".replace("+", "")
-    return (
-        f"{run_name}_{track}_{base_stem}_lr{lr_tag}_"
-        f"{policy_short}_seed{seed}.ckpt"
-    )
+    return f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}.ckpt"
 
 
 # --------------------------------------------------------------------------- #
@@ -168,28 +164,26 @@ def make_warmup_cosine_schedule(
 def _make_optimizer_and_scheduler(
     model: torch.nn.Module, cfg, *, total_steps: int,
 ) -> tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]:
-    """AdamW + warmup-cosine schedule, both driven by ``cfg``."""
-    o = cfg.optimizer
-    if o.type != "AdamW":
-        raise ValueError(f"only optimizer.type='AdamW' supported (got {o.type!r})")
+    """AdamW (betas=(0.9, 0.999)) + linear-warmup → cosine-decay schedule.
 
+    Optimizer family and schedule type are hardcoded; only `weight_decay`
+    and `warmup_fraction` are exposed via cfg.
+    """
     lr = float(cfg.optimizer.lr) if hasattr(cfg.optimizer, "lr") else None
     if lr is None:
-        # The script will set this from `cfg.tunable.learning_rates[i]`;
-        # if absent, fall back to the first value of the tunable list.
         lr = float(cfg.tunable.learning_rates[0])
 
     optim = torch.optim.AdamW(
         model.parameters(),
         lr=lr,
-        weight_decay=float(o.weight_decay),
-        betas=tuple(o.betas),
+        weight_decay=float(cfg.optimizer.weight_decay),
+        betas=(0.9, 0.999),
     )
     sched = make_warmup_cosine_schedule(
         optim,
         total_steps=total_steps,
         warmup_fraction=float(cfg.scheduler.warmup_fraction),
-        schedule_type=str(cfg.scheduler.type),
+        schedule_type="warmup_cosine",
     )
     return optim, sched
 
@@ -345,17 +339,19 @@ def train_one_config(
     track: str | None = None,
     base_checkpoint: str | None = None,
     learning_rate: float | None = None,
-    multi_chunk_policy: str | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
 ) -> TrainingResult:
     """Run continued pretraining for one fixed (config, HP-tuple).
 
-    The four arguments ``track``, ``base_checkpoint``, ``learning_rate``,
-    ``multi_chunk_policy`` are the ONLY things the script expects to
-    vary per run — see ``cfg.tunable`` in ``config/train.yaml``.
-    All four default to either the explicit ``cfg.<...>`` field if
-    set, or the first value of the corresponding tunable list.
+    The three arguments ``track``, ``base_checkpoint``, ``learning_rate``
+    are the ONLY things the script expects to vary per run — see
+    ``cfg.tunable`` in ``config/train.yaml``. Each defaults to either
+    the explicit ``cfg.<...>`` field if set, or the first value of the
+    corresponding tunable list.
+
+    The multi-chunk policy is fixed (``first_chunk_only``); see the
+    ``MULTI_CHUNK_POLICY`` constant near the top of this module.
 
     Parameters
     ----------
@@ -368,9 +364,6 @@ def train_one_config(
         ``cfg.tunable.<classifier|regressor>_base_paths[0]``.
     learning_rate
         Override AdamW LR. ``None`` → ``cfg.tunable.learning_rates[0]``.
-    multi_chunk_policy
-        Override the multi-chunk policy. ``None`` →
-        ``cfg.tunable.multi_chunk_policies[0]``.
     save_path
         Where to write the final-epoch checkpoint. ``None`` →
         ``cfg.checkpoint.trained_dir / descriptive_name(...)``.
@@ -381,8 +374,9 @@ def train_one_config(
     Returns
     -------
     TrainingResult
-        Includes the final checkpoint path, test metric (or NaN if
-        the test bucket is empty), per-epoch train loss history.
+        Includes the final checkpoint path, per-epoch train loss
+        history. Scoring on the held-out test set is the eval
+        pipeline's job, not this loop's.
     """
     # ---- resolve every tunable parameter ---------------------------------- #
     track = track or cfg.track
@@ -395,25 +389,33 @@ def train_one_config(
         base_checkpoint = str(bases[0])
     if learning_rate is None:
         learning_rate = float(cfg.tunable.learning_rates[0])
-    if multi_chunk_policy is None:
-        multi_chunk_policy = str(cfg.tunable.multi_chunk_policies[0])
 
     # Inject the resolved choices back into cfg so downstream helpers
     # (corpus split, optimizer factory) read them via the usual path.
     cfg.optimizer.lr = float(learning_rate)
-    cfg.corpus.multi_chunk_policy = multi_chunk_policy
+    cfg.corpus.multi_chunk_policy = MULTI_CHUNK_POLICY
 
     _seed_everything(int(cfg.seed))
     device = _resolve_device(cfg)
     LOGGER.info(
-        "Training track=%s on device=%s | base=%s | lr=%g | policy=%s | seed=%d",
+        "Training track=%s on device=%s | base=%s | lr=%g | seed=%d",
         track, device, Path(base_checkpoint).name, learning_rate,
-        multi_chunk_policy, int(cfg.seed),
+        int(cfg.seed),
     )
 
     # ---- 1) corpus split --------------------------------------------------- #
     split: CorpusSplit = split_from_cfg(cfg, track=track)
     LOGGER.info("Corpus split: %s", split.summary)
+    train_ids = sorted({c.dataset_id for c in split.train})
+    test_ids  = sorted({c.dataset_id for c in split.test})
+    LOGGER.info(
+        "Training datasets (n=%d): %s",
+        len(train_ids), ", ".join(train_ids) if train_ids else "<none>",
+    )
+    LOGGER.info(
+        "Held-out test datasets (n=%d): %s",
+        len(test_ids), ", ".join(test_ids) if test_ids else "<none>",
+    )
     if not split.train:
         raise RuntimeError(
             "Corpus split contains no training chunks. Run the data "
@@ -459,7 +461,6 @@ def train_one_config(
             track=track,
             base_path=base_checkpoint,
             learning_rate=float(learning_rate),
-            multi_chunk_policy=multi_chunk_policy,
             seed=int(cfg.seed),
         )
     )
@@ -473,9 +474,9 @@ def train_one_config(
 
     LOGGER.info(
         "Starting %d epochs | %d train chunks/epoch | accumulate=%d | "
-        "total_steps=%d | lr=%.1e | base=%s | policy=%s | seed=%d | device=%s",
+        "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s",
         epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
-        Path(base_checkpoint).name, multi_chunk_policy, int(cfg.seed), device,
+        Path(base_checkpoint).name, int(cfg.seed), device,
     )
     LOGGER.info("Save target   : %s", save_path)
 
@@ -557,8 +558,8 @@ def train_one_config(
         )
 
     # ---- 6) save final weights + permanent provenance --------------------- #
-    train_dataset_ids = sorted({c.dataset_id for c in split.train})
-    test_dataset_ids  = sorted({c.dataset_id for c in split.test})
+    train_dataset_ids = train_ids        # already computed at step (1)
+    test_dataset_ids  = test_ids
     training_seconds = time.monotonic() - t0
     gpu_name = "cpu"
     if device == "cuda" and torch.cuda.is_available():
@@ -581,8 +582,8 @@ def train_one_config(
             "base_checkpoint":     str(base_checkpoint),
             "learning_rate":       float(learning_rate),
             "weight_decay":        float(cfg.optimizer.weight_decay),
-            "betas":               list(cfg.optimizer.betas),
-            "scheduler_type":      str(cfg.scheduler.type),
+            "betas":               [0.9, 0.999],          # hardcoded AdamW betas
+            "scheduler_type":      "warmup_cosine",       # hardcoded schedule family
             "warmup_fraction":     float(cfg.scheduler.warmup_fraction),
             "epochs":              int(cfg.train.epochs),
             "accumulate_grad_batches": int(cfg.train.accumulate_grad_batches),
@@ -592,7 +593,7 @@ def train_one_config(
                 int(cfg.train.n_finetune_ctx_plus_query_samples),
             "finetune_ctx_query_split_ratio":
                 float(cfg.train.finetune_ctx_query_split_ratio),
-            "multi_chunk_policy":  str(multi_chunk_policy),
+            "multi_chunk_policy":  MULTI_CHUNK_POLICY,    # hardcoded
             "seed":                int(cfg.seed),
         },
         "training_datasets":   train_dataset_ids,
@@ -613,29 +614,16 @@ def train_one_config(
         save_path, gpu_name, training_seconds,
     )
 
-    # ---- 7) test eval (single pass, no leak) ------------------------------ #
-    metric_name = (
-        cfg.eval.classification_metric if track == "pd"
-        else cfg.eval.regression_metric
-    )
-    test_raw: float | None = None
-    if split.test:
-        test_raw = evaluate_on_split(
-            model, split.test,
-            cfg=cfg, criterion=criterion, device=device,
-            metric_name=metric_name,
-        )
-        LOGGER.info("Test  %s=%.4f  (n_test_chunks=%d)",
-                    metric_name, test_raw, len(split.test))
-    else:
-        LOGGER.warning("Test bucket is empty — no test metric reported.")
+    # NOTE: the training pipeline does NOT score the model on the test
+    # split. Evaluation of trained checkpoints belongs to the eval
+    # pipeline (`scripts/eval_pipeline.py` / `config/eval.yaml`). The
+    # test_dataset_ids are recorded inside the checkpoint's provenance
+    # ONLY as metadata so the eval can identify which test datasets
+    # correspond to this checkpoint without re-running the splitter.
 
     elapsed = time.monotonic() - t0
-
     return TrainingResult(
         final_ckpt_path=save_path,
-        test_metric_raw=test_raw,
-        test_metric_name=metric_name,
         history=history,
         n_train_chunks=len(split.train),
         n_test_chunks=len(split.test),

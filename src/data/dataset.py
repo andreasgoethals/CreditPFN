@@ -283,20 +283,12 @@ def _encoded_missing_value(value) -> float:
     return float(value)
 
 
-def _resolve_categorical_encoding(cfg) -> tuple[int, float]:
-    enc = cfg.dataset.categorical_encoding
-    if enc.strategy != "ordinal":
-        raise ValueError(
-            "dataset.categorical_encoding.strategy must be 'ordinal'"
-        )
-    if enc.handle_unknown != "use_encoded_value":
-        raise ValueError(
-            "dataset.categorical_encoding.handle_unknown must be "
-            "'use_encoded_value'"
-        )
-    return int(enc.unknown_value), _encoded_missing_value(
-        enc.encoded_missing_value
-    )
+# Categorical encoding for cached chunks. The triple
+# (ordinal / use_encoded_value / unknown_value=-1 / missing=NaN) is the
+# canonical TabPFN-finetuning idiom (see `TabPFN V2 Finetuning.txt:562`)
+# and never changes — hardcoded rather than configurable.
+UNKNOWN_VALUE = -1
+MISSING_VALUE_SENTINEL = float("nan")
 
 
 def _clear_chunk_files(out_dir: Path) -> None:
@@ -336,9 +328,11 @@ def materialise_dataset(
     feature_cols = [c for c in df.columns if c != target]
     X = df[feature_cols]
     y_raw = df[target]
+    # y dtype is fixed by track (TabPFN expects int64 for classification,
+    # float32 for regression). Stratification is always-on for classification.
     if task_type == "classification":
         y = pd.to_numeric(y_raw, errors="coerce").astype(np.int64).to_numpy()
-        stratify = cfg.dataset.stratify_classification
+        stratify = True
     else:
         y = pd.to_numeric(y_raw, errors="coerce").astype(np.float32).to_numpy()
         stratify = False
@@ -346,7 +340,7 @@ def materialise_dataset(
     # Resolve which surviving columns are categorical.
     cats_present = [c for c in cats_hint if c in feature_cols]
     dataset_seed = _dataset_seed(cfg.seed, dataset_id)
-    unknown_value, missing_value_sentinel = _resolve_categorical_encoding(cfg)
+    unknown_value, missing_value_sentinel = UNKNOWN_VALUE, MISSING_VALUE_SENTINEL
 
     # Chunk indices.
     chunks = _shuffle_and_chunk_indices(
@@ -421,9 +415,7 @@ def materialise_dataset(
         "manifest_row_hash": _manifest_row_hash(manifest_row),
         "processed_csv_sha256": processed_csv_sha256,
         "dataset_config_hash": dataset_config_hash,
-        "encoded_missing_value": (
-            cfg.dataset.categorical_encoding.encoded_missing_value
-        ),
+        "encoded_missing_value": "nan",       # hardcoded; see UNKNOWN_VALUE / MISSING_VALUE_SENTINEL
     }
     (out_dir / "meta.json").write_text(
         json.dumps(_to_jsonable(meta), indent=2),

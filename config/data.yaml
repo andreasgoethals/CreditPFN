@@ -1,332 +1,129 @@
 # =============================================================================
-#  CreditPFN  —  data-pipeline configuration
+#  CreditPFN — data-pipeline configuration
 # =============================================================================
+#  Only the knobs that are genuinely tunable live here. Everything that is
+#  always-the-same (`unknown_dataset_policy='error'`, `keep_nans=True`,
+#  `replace_inf_with_nan=True`, etc.) is hardcoded in the corresponding
+#  module so this file stays scannable.
 #
-#  This is the SINGLE SOURCE OF TRUTH for every non-obvious choice made by
-#  any script in `src/data/`. If you find yourself editing a magic number
-#  inside a Python file, that number probably belongs here instead.
+#  Override on the CLI Hydra-style:
 #
-#  Layout of this file
-#  -------------------
-#  Section 0 — Cross-cutting    (seed, paths)
-#  Section 1 — preprocessing.py (per-dataset surgical fixes)
-#  Section 2 — register.py      (manifest construction)
-#  Section 3 — sanitize.py      (dataset-agnostic cleaning)
-#  Section 4 — dedup.py         (within-track duplicate detection)
-#  Section 5 — dataset.py       (chunking + numpy caching)
-#
-#  Sections appear in the order the corresponding scripts run.
-#
-#  Override any key on the command line with Hydra-style syntax:
-#
-#      python -m src.data.sanitize  sanitize.max_columns=64
-#      python scripts/data_pipeline.py  dataset.max_rows_per_chunk=10000
-#
+#      python scripts/data_pipeline.py dataset.max_rows_per_chunk=20000
 # =============================================================================
 
-
-# -----------------------------------------------------------------------------
-#  Section 0  ·  Cross-cutting
-# -----------------------------------------------------------------------------
-
-# Global RNG seed. Every script derives a deterministic local seed from this
-# (so re-running the entire pipeline is bit-for-bit reproducible).
+# Global seed — every stage derives a deterministic local seed from this so
+# re-running is bit-for-bit reproducible.
 seed: 42
 
-# All paths are relative to the repo root (the directory you run scripts from).
-# Absolute paths also work.
-# Path policy (local vs. VSC)
-# ---------------------------
-# Each of these paths is interpreted by `src.utils.paths`:
-#   * `raw`, `processed`, `cached`  → resolved against $CREDITPFN_DATA_ROOT
-#                                     (= scratch on VSC, repo root locally).
-#                                     These are big I/O artefacts.
-#   * `dedup`, `manifest_*`         → resolved against $CREDITPFN_OUTPUT_ROOT
-#                                     (= $VSC_DATA on VSC, repo root locally).
-#                                     These are small but durable records that
-#                                     should be backed up alongside trained
-#                                     checkpoints and benchmark results.
-#
-# The "data/" prefix on the manifest / dedup paths is just a naming
-# convention — the resolver decides which root they go against. So
-# locally everything still lives under the repo's `data/` folder and
-# on VSC the manifests / dedup CSVs end up at
-# `$VSC_DATA/CreditPFN/data/...` (durable) while the heavy artefacts
-# end up at `$VSC_SCRATCH/CreditPFN/data/...` (scratch).
+# Paths are interpreted by `src.utils.paths`:
+#   raw / processed / cached → $CREDITPFN_DATA_ROOT (scratch on VSC, repo locally)
+#   dedup / manifest_*       → $CREDITPFN_OUTPUT_ROOT (durable on VSC, repo locally)
 paths:
-  raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv          (DATA_ROOT)
-  processed:     data/processed          # sanitize.py writes here              (DATA_ROOT)
-  cached:        data/cached             # dataset.py writes .npz here          (DATA_ROOT)
-  dedup:         data/dedup              # 4× doubles_*_{pre,post}.csv         (OUTPUT_ROOT)
-  manifest_pd:   data/manifest_pd.csv    # register.py output (PD)             (OUTPUT_ROOT)
-  manifest_lgd:  data/manifest_lgd.csv   # register.py output (LGD)            (OUTPUT_ROOT)
+  raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv
+  processed:     data/processed          # sanitize.py output
+  cached:        data/cached             # dataset.py output (.npz chunks)
+  dedup:         data/dedup              # 4× doubles_*_{pre,post}.csv
+  manifest_pd:   data/manifest_pd.csv
+  manifest_lgd:  data/manifest_lgd.csv
 
 
 # -----------------------------------------------------------------------------
-#  Section 1  ·  preprocessing.py
-#  -----------------------------------------------------------------------------
-#  Per-dataset surgical fixes (column drops, value decodings, …) live in
-#  hard-coded Python under `src/data/preprocessing.py`. This config block
-#  only controls what happens when an unknown dataset_id appears.
+#  sanitize.py — dataset-agnostic cleaning
 # -----------------------------------------------------------------------------
-
-preprocessing:
-
-  # What should happen if a dataset_id is encountered for which no surgical-fix
-  # function is registered?
-  #
-  #   "error"        → raise. Useful when expanding the corpus — you want to be
-  #                    told you forgot to register a new dataset.
-  #   "passthrough"  → return the DataFrame unchanged. Useful when iterating
-  #                    on the sanitize stage and you don't yet care about
-  #                    per-dataset fixes.
-  unknown_dataset_policy: "error"
-
-
-# -----------------------------------------------------------------------------
-#  Section 2  ·  register.py
-#  -----------------------------------------------------------------------------
-#  Builds `data/manifest_{pd,lgd}.csv` — one row per dataset, every metadata
-#  fact downstream stages need (target column, n_rows, n_cols, missing rate,
-#  class balance, target stats, content-aware shape hash).
-# -----------------------------------------------------------------------------
-
-register:
-
-  # If true, re-running register updates each row in-place keyed by
-  # dataset_id; never duplicates rows. Always true unless you want
-  # snapshotting behaviour (no current use case).
-  idempotent: true
-
-  # The shape-aware SHA-256 baked into each manifest row sorts the column
-  # names before hashing so two datasets with the same shape but reordered
-  # columns hash identically. Used by dedup as a fast first-pass equivalence
-  # check.
-  shape_hash_includes_sorted_colnames: true
-
-
-# -----------------------------------------------------------------------------
-#  Section 3  ·  sanitize.py
-#  -----------------------------------------------------------------------------
-#  Dataset-agnostic cleaning that runs identically on every dataset.
-#  Per-dataset fixes belong in preprocessing.py, not here.
-#
-#  IMPORTANT — what sanitize deliberately does NOT do, and why:
-#
-#   ❌ No outlier winsorisation.
-#      TabPFN's OUTLIER_REMOVAL_STD = 12.0 (classifier) / None (regressor)
-#      handles this internally with the right semantics (context-only stats,
-#      soft log-squash). See repositories/REPOSITORIES.md § "Outlier handling".
-#
-#   ❌ No PowerTransformer / QuantileTransformer / RobustScaler.
-#      TabPFN's per-estimator inference ensemble cycles through these on
-#      every fit; pre-applying any of them on disk would fight that ensemble.
-#
-#   ❌ No NaN imputation.
-#      The model's NanHandlingEncoderStep handles them natively (replaces
-#      with a learned default + emits a binary indicator).
-#
-#   ❌ No regression-target z-normalisation.
-#      RegressorBatch.znorm_space_bardist_ standardises internally and
-#      inverts at predict time.
-# -----------------------------------------------------------------------------
-
 sanitize:
-
-  # ------------- (b)  Drop exact-duplicate feature columns -------------------
-  # Equality includes matching NaN positions. Iterates left-to-right and
-  # keeps the first occurrence.
-  drop_exact_duplicate_columns: true
-
-  # ------------- (c)/(d)  Drop columns with too many missings ----------------
-  # 0.90 = drop columns with > 90% NaN. Conservative — only drops columns
-  # that are essentially missing.
+  # Drop feature columns with NaN-rate > this. Conservative: only kills
+  # columns that are essentially missing.
   max_missing_rate: 0.90
 
-  # ------------- (e)  Drop constant columns ----------------------------------
-  # MUST be true: TabPFN's encoder steps error out on constant inputs.
-  drop_constant_columns: true
-
-  # ------------- (f)  Coerce numeric strings ---------------------------------
-  # When an object column is mostly numeric strings (e.g. "1.5", "42"),
-  # commit pd.to_numeric(errors='coerce'). Threshold = the fraction of
-  # non-NaN values that must successfully parse before we coerce.
+  # Coerce mostly-numeric object columns to numeric. Threshold = fraction of
+  # non-NaN values that must parse before we commit.
   coerce_numeric_strings: true
   coerce_numeric_threshold: 0.95
 
-  # ------------- (g)  Numerical dtype ----------------------------------------
-  numeric_dtype: "float32"      # TabPFN default — halves memory vs. float64
-  keep_nans:     true           # NEVER impute. NanHandlingEncoderStep
-                                # handles them downstream.
-
-  # ------------- (h)  Replace ±inf with NaN ----------------------------------
-  # Mandatory: pd.to_numeric and float32 cast both behave badly with inf,
-  # and `np.inf` poisons every standardisation step downstream.
-  replace_inf_with_nan: true
-
-  # ------------- (i)  FeatureAgglomeration cap -------------------------------
-  # Reduce feature count to ≤ max_columns when above. 128 keeps us inside
-  # TabPFN-2.x's well-trained regime while using more features than v2's
-  # hard 100-cap.
+  # FeatureAgglomeration cap — clamp to ≤ max_columns when above. 128 keeps
+  # us in TabPFN-2.x's well-trained regime while exceeding v2's hard 100 cap.
   max_columns: 128
   agglomeration:
-    enabled:                       true
-    metric:                        "euclidean"   # Ward linkage requires euclidean
-    linkage:                       "ward"
-    standardize_for_distance_only: true          # see explanation below
-    restrict_to_numerical:         true          # categoricals always pass
-                                                  # through unchanged
+    enabled: true
+    # Distance metric for Ward linkage; standardize for distance computation
+    # only (the OUTPUT features are still the means of the unscaled originals,
+    # so TabPFN sees the distribution it was trained on).
+    metric: "euclidean"
+    linkage: "ward"
+    standardize_for_distance_only: true
+    restrict_to_numerical: true        # categoricals always pass through
 
-    # Why `standardize_for_distance_only=true`?
-    #   Distances on raw, unscaled features are dominated by whichever feature
-    #   has the largest scale, which makes the clustering pathological.
-    #   We fit a StandardScaler ONLY for the distance computation that decides
-    #   cluster membership. The OUTPUT features are then computed as the mean
-    #   of the *unscaled* original columns within each cluster, so TabPFN
-    #   sees a distribution consistent with its training prior.
-
-  # ------------- (j)  Classification target encoding -------------------------
-  # Required by TabPFN's classifier path: contiguous int64 in [0, n_classes).
-  classification_target_to_int64_contiguous: true
-
-  # ------------- (k)  Regression target --------------------------------------
-  # Do NOT z-normalise here. TabPFN's RegressorBatch handles it internally.
-  standardize_regression_target: false
-
-  # ------------- LGD-only domain constraint ----------------------------------
-  # LGD is a fraction-of-loss; values outside [0, 1] are data-quality bugs.
-  # This is a domain constraint, not a statistical operation.
+  # LGD-only domain constraint — values outside [0, 1] are data-quality bugs.
+  # This is the single source of truth for LGD clipping; per-dataset surgical
+  # fixes do NOT clip themselves.
   lgd_target_clip:
     enabled: true
-    lower:   0.0
-    upper:   1.0
+    lower: 0.0
+    upper: 1.0
 
 
 # -----------------------------------------------------------------------------
-#  Section 4  ·  dedup.py
-#  -----------------------------------------------------------------------------
-#  Within-track duplicate detection. Runs **per track** (PD / LGD), and
-#  **per pass** (pre-sanitise / post-sanitise) — four CSVs total under
-#  cfg.paths.dedup. A dataset legitimately in both tracks is allowed and
-#  never flagged.
-#
-#  Detection methods (all run; results concatenated in `detection_method`):
-#
-#   1. id_match              identifier collision on (source, dataset_id) or
-#                            (name, n_rows, n_cols, task_type)
-#   2. name_jaccard_+_shape  column-name Jaccard ≥ name_jaccard_threshold
-#                            AND identical (n_rows, n_cols)
-#   3. row_hash              row-level pandas-hash; non-empty intersection
-#   4. col_hash              column-level pandas-hash; ≥ shared_columns_min
-#                            "non-trivial" columns shared
-#   5. rounded_row  (extra)  same as 3 but with floats rounded first; catches
-#                            float-precision round-trip near-duplicates
-#   6. subset       (extra)  |A ∩ B| / |A| ≥ min_overlap_fraction → A ⊂ B
-#   7. fuzzy_names  (extra)  rapidfuzz token-set ratio over column names
+#  dedup.py — within-track duplicate detection (per track, per pass)
 # -----------------------------------------------------------------------------
-
 dedup:
-
-  # ------------- Check 2 — column-name Jaccard + identical shape -------------
+  # Check 2 — column-name Jaccard ≥ this AND identical shape.
   name_jaccard_threshold: 0.80
 
-  # ------------- Check 3 — row-level hash ------------------------------------
-  row_hash_intersection_min: 1     # any non-empty intersection → flag
+  # Check 3 — any non-empty intersection of row-level hashes flags the pair.
+  row_hash_intersection_min: 1
 
-  # ------------- Check 4 — column-level hash ---------------------------------
-  shared_columns_min: 3            # pair must share ≥ N columns
-  column_nontrivial_unique_min: 10 # column with > N unique values is "non-trivial"
+  # Check 4 — column-level hash; pair must share ≥ N "non-trivial" columns
+  # (where non-trivial = column with > column_nontrivial_unique_min uniques).
+  shared_columns_min: 3
+  column_nontrivial_unique_min: 10
 
-  # ------------- Extra A — rounded-row hash ----------------------------------
+  # Extra A — rounded-row hash catches float-precision near-duplicates.
   rounded_row:
-    enabled:  true
-    decimals: 6                    # round floats to N decimals before hashing
+    enabled: true
+    decimals: 6
 
-  # ------------- Extra B — subset detection ----------------------------------
+  # Extra B — subset detection: |A ∩ B| / |A| ≥ this → A ⊆ B.
   subset:
-    enabled:              true
-    min_overlap_fraction: 0.95     # |A ∩ B| / |A| ≥ this → A ⊆ B
+    enabled: true
+    min_overlap_fraction: 0.95
 
-  # ------------- Extra C — fuzzy column-name match ---------------------------
-  # Useful before sanitize.py runs (real column names are still present and
-  # may genuinely differ by typo). Useless after, because sanitize.py's
-  # FeatureAgglomeration overwrites the column names with synthetic
-  # `feat_agglo_0000`..`feat_agglo_0127` strings that collide trivially
-  # across any two reduced datasets.
+  # Extra C — fuzzy column-name match. Useful pre-sanitize (real names still
+  # present, typos differ); useless post-sanitize (FeatureAgglomeration
+  # renames columns to `feat_agglo_0000`..`0127`).
   column_name_fuzzy:
-    enabled_pre:          true
-    enabled_post:         false
+    enabled_pre: true
+    enabled_post: false
     similarity_threshold: 90       # rapidfuzz token-set ratio, 0–100
 
-  # ------------- Confidence labelling ----------------------------------------
-  # Maps the set of triggered checks to a confidence label. First-matching-
-  # category wins: any "high" trigger → high, else any "medium" → medium,
-  # else low.
+  # Maps the set of triggered checks to a confidence label. First-matching
+  # category wins.
   confidence_rules:
-    high:   ["id_match",       "row_hash"]
-    medium: ["col_hash",       "name_jaccard_and_shape"]
-    low:    ["rounded_row",    "subset",  "fuzzy_names"]
-
-  # ------------- Re-run policy -----------------------------------------------
-  # On each invocation, the prior CSV for the same pass is deleted before
-  # we write a fresh one. Always true; turning it off would silently let
-  # stale results accumulate across runs.
-  overwrite_existing_pass_csv: true
+    high:   ["id_match",    "row_hash"]
+    medium: ["col_hash",    "name_jaccard_and_shape"]
+    low:    ["rounded_row", "subset", "fuzzy_names"]
 
 
 # -----------------------------------------------------------------------------
-#  Section 5  ·  dataset.py
-#  -----------------------------------------------------------------------------
-#  Chunks the sanitised CSVs and caches them as numpy `.npz` files —
-#  one chunk per file under `data/cached/{track}/<id>/chunk_NNN.npz`.
-#  This is the format the multi-table fine-tuning loop will read from in
-#  `src/train/`.
+#  dataset.py — chunking + numpy caching
 # -----------------------------------------------------------------------------
-
 dataset:
+  # Datasets > max_rows_per_chunk become multiple .npz chunks. 100,000 is
+  # tuned for wICE H100 NVL GPUs (96 GB VRAM); lower if memory-constrained.
+  # CHANGING THIS requires re-running the data pipeline.
+  max_rows_per_chunk: 100000
 
-  # ------------- Chunking ----------------------------------------------------
-  # Datasets larger than max_rows_per_chunk become multiple .npz files.
-  # 20 000 matches Real-TabPFN §4 (Garg et al., 2025).
-  max_rows_per_chunk: 20000
-
-  # Drop the tail chunk if its size would fall below this. Matches TabPFN's
-  # own `shuffle_and_chunk_data` default.
+  # Drop the tail chunk if its size would fall below this (matches TabPFN's
+  # `shuffle_and_chunk_data` default).
   min_chunk_size: 2000
 
-  # If true, prefer equal-sized chunks all ≤ max_rows_per_chunk. This avoids
-  # the bias toward 20 000-row chunks that arises when the dataset size is
-  # not a clean multiple of max_rows_per_chunk. Set to false to match
-  # TabPFN's default behaviour.
+  # If true, prefer equal-sized chunks all ≤ max_rows_per_chunk (avoids bias
+  # toward maxed-out chunks when the dataset doesn't divide cleanly).
   equal_split_size: true
 
-  # Stratify (preserve class proportions in each chunk) for classification
-  # tasks; pure random shuffle for regression. Standard.
-  stratify_classification: true
-
-  # ------------- Context / query split ---------------------------------------
-  # Per Garg et al. 2025 §4: 60% context, 40% query, per chunk.
+  # Per Garg et al. 2025 §4: 60% context, 40% query per chunk.
   context_fraction: 0.60
 
-  # ------------- Categorical encoding ---------------------------------------
-  # Applied at cache-write time. Identical to the sklearn-style snippet at
-  # repositories/TabPFN V2 Finetuning.txt:562 — the canonical idiom for
-  # feeding TabPFN. encoded_missing_value=NaN keeps downstream NaN handling
-  # uniform.
-  categorical_encoding:
-    strategy:                "ordinal"
-    handle_unknown:          "use_encoded_value"
-    unknown_value:           -1
-    encoded_missing_value:   "nan"     # the string "nan" → np.nan in code
-
-  # ------------- Cache dtype ------------------------------------------------
-  # X arrays use the sanitize.numeric_dtype above (float32). y dtype depends
-  # on track: int64 for classification, float32 for regression.
-  y_dtype_classification:  "int64"
-  y_dtype_regression:      "float32"
-
-  # ------------- Re-run policy ----------------------------------------------
-  # If true, an existing cache with a matching meta.json fingerprint is left
-  # alone. The fingerprint covers the manifest row, processed CSV content,
-  # dataset config, and cache schema. Set false to force re-write every chunk.
+  # Skip cache writes when fingerprint (manifest row + processed CSV +
+  # dataset config + schema version) is unchanged. Set false to force
+  # rewrite of every chunk.
   skip_if_cached: true

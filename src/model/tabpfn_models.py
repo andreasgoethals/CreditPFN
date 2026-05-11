@@ -80,7 +80,12 @@ class TabPFNUntuned:
         self._tabpfn = None
         self._categorical_idx: list[int] = []
 
-    def fit(self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int]) -> None:
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int],
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> None:
+        del X_val, y_val      # TabPFN has no HPO; val is unused.
         self._categorical_idx = list(categorical_idx or [])
         self._tabpfn = _make_tabpfn(
             self.task_type, self.base_path,
@@ -132,7 +137,12 @@ class TabPFNTrained:
         self._tabpfn = None
         self._categorical_idx: list[int] = []
 
-    def fit(self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int]) -> None:
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int],
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> None:
+        del X_val, y_val
         self._categorical_idx = list(categorical_idx or [])
         self._tabpfn = _make_tabpfn(
             self.task_type, self.ckpt_path,

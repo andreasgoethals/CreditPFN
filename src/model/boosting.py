@@ -36,6 +36,8 @@ from typing import Literal
 
 import numpy as np
 
+from src.model.base import replace_inf_with_nan
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -44,15 +46,44 @@ LOGGER = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
+def _hpo_subsample(
+    X: np.ndarray, y: np.ndarray, *,
+    max_rows: int | None, stratify: bool, seed: int,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Stratified random subsample to ``max_rows`` (HPO-only)."""
+    if max_rows is None or len(X) <= max_rows:
+        return X, y
+    rng = np.random.default_rng(seed)
+    n = len(X)
+    if stratify and len(np.unique(y)) >= 2:
+        keep = np.zeros(n, dtype=bool)
+        frac = max_rows / n
+        for cls in np.unique(y):
+            idx = np.where(y == cls)[0]
+            n_keep = max(1, int(round(len(idx) * frac)))
+            chosen = rng.choice(idx, size=min(n_keep, len(idx)), replace=False)
+            keep[chosen] = True
+        return X[keep], y[keep]
+    chosen = rng.choice(n, size=max_rows, replace=False)
+    return X[chosen], y[chosen]
+
+
 class XGBoostModel:
     """``XGBClassifier`` / ``XGBRegressor`` with optional Optuna HPO.
 
-    HPO knobs:
-      ``hpo_trials``           — 0 disables HPO (defaults).
-      ``hpo_timeout_seconds``  — wall-clock cap on the study.
+    HPO contract (matches Gemini's correctness fix):
 
-    Categorical columns are passed through as numerics (ordinal-encoded
-    upstream), which XGBoost handles fine via standard tree splits.
+      * The HPO objective is computed on the ``(X_val, y_val)`` pair
+        passed by the caller (the eval pipeline's 16% inner-val split).
+        We do NOT do our own internal train/test split — that was the
+        bug Gemini caught.
+      * If ``X_val`` is None we fall back to a one-off 80/20 split of
+        ``X`` so the wrapper still works standalone outside the eval.
+      * The final fit uses the FULL ``(X, y)`` passed in — the inner
+        val is only used for the Optuna search.
+      * ``hpo_max_rows`` (optional) stratified-subsamples the train
+        portion of the HPO objective to keep per-fold Optuna time
+        bounded; the final fit always uses everything.
     """
 
     def __init__(
@@ -63,17 +94,18 @@ class XGBoostModel:
         random_state: int = 42,
         hpo_trials: int = 0,
         hpo_timeout_seconds: float | None = None,
+        hpo_max_rows: int | None = None,
     ) -> None:
         self.task_type = task_type
         self.name = "xgboost"
         self._params = dict(params or {})
         self._params.setdefault("random_state", random_state)
-        # Reasonable defaults that don't depend on dataset shape.
         self._params.setdefault("n_estimators", 200)
         self._params.setdefault("tree_method", "hist")
         self._random_state = random_state
         self._hpo_trials = int(hpo_trials)
         self._hpo_timeout = hpo_timeout_seconds
+        self._hpo_max_rows = hpo_max_rows
         self._model = None
         self.best_params: dict | None = None
 
@@ -83,11 +115,12 @@ class XGBoostModel:
             return xgb.XGBClassifier(**params)
         return xgb.XGBRegressor(**params)
 
-    def _maybe_hpo(self, X: np.ndarray, y: np.ndarray) -> dict:
-        """Run Optuna HPO on a 80/20 split of (X, y); return best params.
-
-        Falls back to the wrapper's default ``self._params`` if HPO is
-        disabled, the dataset is too small, or Optuna is not installed.
+    def _maybe_hpo(
+        self, X: np.ndarray, y: np.ndarray,
+        X_val: np.ndarray | None, y_val: np.ndarray | None,
+    ) -> dict:
+        """Run Optuna HPO using the caller-supplied (X_val, y_val) as the
+        objective. Returns best params merged onto the wrapper's defaults.
         """
         if self._hpo_trials <= 0 or len(X) < 50:
             return dict(self._params)
@@ -96,19 +129,33 @@ class XGBoostModel:
         except ImportError:
             LOGGER.warning("optuna not installed; skipping XGBoost HPO")
             return dict(self._params)
-        from sklearn.model_selection import train_test_split
         from sklearn.metrics import roc_auc_score, mean_squared_error
 
-        stratify = y if self.task_type == "classification" else None
-        try:
-            X_tr, X_va, y_tr, y_va = train_test_split(
-                X, y, test_size=0.2,
-                random_state=self._random_state, stratify=stratify,
-            )
-        except ValueError:
-            X_tr, X_va, y_tr, y_va = train_test_split(
-                X, y, test_size=0.2, random_state=self._random_state,
-            )
+        # Fall back to an internal split only if the caller supplied no
+        # val set (e.g. someone using the wrapper outside the eval loop).
+        if X_val is None or y_val is None:
+            from sklearn.model_selection import train_test_split
+            stratify = y if self.task_type == "classification" else None
+            try:
+                X_tr, X_va, y_tr, y_va = train_test_split(
+                    X, y, test_size=0.2,
+                    random_state=self._random_state, stratify=stratify,
+                )
+            except ValueError:
+                X_tr, X_va, y_tr, y_va = train_test_split(
+                    X, y, test_size=0.2, random_state=self._random_state,
+                )
+        else:
+            X_tr, y_tr = X, y
+            X_va, y_va = X_val, y_val
+
+        # HPO-only subsample of the train set (speed knob).
+        X_tr, y_tr = _hpo_subsample(
+            X_tr, y_tr,
+            max_rows=self._hpo_max_rows,
+            stratify=self.task_type == "classification",
+            seed=self._random_state,
+        )
 
         def objective(trial: "optuna.Trial") -> float:
             params = dict(self._params)
@@ -144,17 +191,25 @@ class XGBoostModel:
         self.best_params = study.best_params
         return merged
 
-    def fit(self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int]) -> None:
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int],
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> None:
         del categorical_idx
-        params = self._maybe_hpo(X, y)
+        X = replace_inf_with_nan(X)
+        if X_val is not None:
+            X_val = replace_inf_with_nan(X_val)
+        params = self._maybe_hpo(X, y, X_val, y_val)
         self._model = self._make(params)
+        # FINAL FIT — on the full passed (X, y), no subsampling.
         self._model.fit(X, y)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        return self._model.predict_proba(X)
+        return self._model.predict_proba(replace_inf_with_nan(X))
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return self._model.predict(X)
+        return self._model.predict(replace_inf_with_nan(X))
 
 
 # --------------------------------------------------------------------------- #
@@ -180,6 +235,7 @@ class CatBoostModel:
         random_state: int = 42,
         hpo_trials: int = 0,
         hpo_timeout_seconds: float | None = None,
+        hpo_max_rows: int | None = None,
     ) -> None:
         self.task_type = task_type
         self.name = "catboost"
@@ -191,6 +247,7 @@ class CatBoostModel:
         self._random_state = random_state
         self._hpo_trials = int(hpo_trials)
         self._hpo_timeout = hpo_timeout_seconds
+        self._hpo_max_rows = hpo_max_rows
         self._model = None
         self._cat_features: list[int] = []
         self.best_params: dict | None = None
@@ -231,8 +288,12 @@ class CatBoostModel:
         )
         return cls(**params)
 
-    def _maybe_hpo(self, X: np.ndarray, y: np.ndarray) -> dict:
-        """Run Optuna HPO; return best params merged onto defaults."""
+    def _maybe_hpo(
+        self, X: np.ndarray, y: np.ndarray,
+        X_val: np.ndarray | None, y_val: np.ndarray | None,
+    ) -> dict:
+        """Run Optuna HPO using the caller-supplied (X_val, y_val) as
+        the objective. See XGBoostModel._maybe_hpo for the contract."""
         if self._hpo_trials <= 0 or len(X) < 50:
             return dict(self._params)
         try:
@@ -240,19 +301,31 @@ class CatBoostModel:
         except ImportError:
             LOGGER.warning("optuna not installed; skipping CatBoost HPO")
             return dict(self._params)
-        from sklearn.model_selection import train_test_split
         from sklearn.metrics import roc_auc_score, mean_squared_error
 
-        stratify = y if self.task_type == "classification" else None
-        try:
-            X_tr, X_va, y_tr, y_va = train_test_split(
-                X, y, test_size=0.2,
-                random_state=self._random_state, stratify=stratify,
-            )
-        except ValueError:
-            X_tr, X_va, y_tr, y_va = train_test_split(
-                X, y, test_size=0.2, random_state=self._random_state,
-            )
+        if X_val is None or y_val is None:
+            from sklearn.model_selection import train_test_split
+            stratify = y if self.task_type == "classification" else None
+            try:
+                X_tr, X_va, y_tr, y_va = train_test_split(
+                    X, y, test_size=0.2,
+                    random_state=self._random_state, stratify=stratify,
+                )
+            except ValueError:
+                X_tr, X_va, y_tr, y_va = train_test_split(
+                    X, y, test_size=0.2, random_state=self._random_state,
+                )
+        else:
+            X_tr, y_tr = X, y
+            X_va, y_va = X_val, y_val
+
+        # HPO-only subsample of the train set (speed knob).
+        X_tr, y_tr = _hpo_subsample(
+            X_tr, y_tr,
+            max_rows=self._hpo_max_rows,
+            stratify=self.task_type == "classification",
+            seed=self._random_state,
+        )
 
         def objective(trial: "optuna.Trial") -> float:
             params = dict(self._params)
@@ -288,17 +361,25 @@ class CatBoostModel:
         self.best_params = study.best_params
         return merged
 
-    def fit(self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int]) -> None:
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int],
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> None:
         self._cat_features = list(categorical_idx or [])
-        params = self._maybe_hpo(X, y)
+        X = replace_inf_with_nan(X)
+        if X_val is not None:
+            X_val = replace_inf_with_nan(X_val)
+        params = self._maybe_hpo(X, y, X_val, y_val)
         self._model = self._make(params)
+        # FINAL FIT — on the full passed (X, y), no subsampling.
         pool = self._to_catboost_pool(X, y=y)
         self._model.fit(pool)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        pool = self._to_catboost_pool(X)
+        pool = self._to_catboost_pool(replace_inf_with_nan(X))
         return self._model.predict_proba(pool)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        pool = self._to_catboost_pool(X)
+        pool = self._to_catboost_pool(replace_inf_with_nan(X))
         return np.asarray(self._model.predict(pool)).reshape(-1)

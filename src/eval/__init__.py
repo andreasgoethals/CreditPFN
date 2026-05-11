@@ -13,6 +13,10 @@ CLI entry point
 """
 
 from src.eval.benchmark import (  # noqa: F401
-    EvalRow, run_benchmark, load_trained_handles,
+    EvalRow, run_benchmark, load_trained_handles, resolve_test_datasets,
+    find_existing_results,
     _method_dirname, _output_path_for,
+)
+from src.eval.dataset_loader import (  # noqa: F401
+    ProcessedDataset, encode_for_model, load_processed_dataset, subsample,
 )

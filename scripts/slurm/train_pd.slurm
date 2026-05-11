@@ -9,9 +9,9 @@
 #  log, and the final summary line all in one place. Slurm's own
 #  --output goes to /dev/null so we don't get a competing stub file.
 #
-#  Trial = one (base_checkpoint × learning_rate × multi_chunk_policy)
-#  tuple from `cfg.tunable` in `config/train.yaml`. Compute the array
-#  size with:
+#  Trial = one (base_checkpoint × learning_rate) tuple from
+#  `cfg.tunable` in `config/train.yaml`. The multi-chunk policy is
+#  fixed (one chunk per parent dataset). Compute the array size with:
 #
 #      python scripts/train_pipeline.py --list-trials track=pd
 #
@@ -38,7 +38,7 @@
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-17%4   # 18 trials, recompute via --list-trials
+#SBATCH --array=0-8%4    # 9 trials (3 bases × 3 LRs), recompute via --list-trials
 
 # Stagger array starts to avoid I/O storms on shared scratch.
 sleep $((RANDOM % 60 + 1))

@@ -336,11 +336,10 @@ def sanitize_dataset(
     log: dict[str, list[str] | int] = {}
     n_rows_before = len(df)
 
-    # --- (b) exact-duplicate columns ----------------------------------------
-    if cfg.sanitize.drop_exact_duplicate_columns:
-        df, log["dropped_duplicate_cols"] = _drop_exact_duplicate_feature_columns(
-            df, target,
-        )
+    # --- (b) exact-duplicate columns (always on — TabPFN doesn't want them) -
+    df, log["dropped_duplicate_cols"] = _drop_exact_duplicate_feature_columns(
+        df, target,
+    )
     # --- (c)/(d) high-missing-rate columns ---------------------------------
     df, log["dropped_high_missing_cols"] = _drop_high_missing_columns(
         df, target, cfg.sanitize.max_missing_rate,
@@ -365,20 +364,18 @@ def sanitize_dataset(
             df, target, cfg.sanitize.coerce_numeric_threshold,
         )
 
-    # --- (g) numerical dtype cast ------------------------------------------
-    df = _cast_numericals_to(df, target, nums, cfg.sanitize.numeric_dtype)
+    # --- (g) numerical dtype cast — always float32 (TabPFN default) --------
+    df = _cast_numericals_to(df, target, nums, "float32")
 
-    # --- (h) ±inf → NaN -----------------------------------------------------
-    if cfg.sanitize.replace_inf_with_nan:
-        df = _replace_inf_with_nan(df, target)
+    # --- (h) ±inf → NaN — always on (downstream NaN handler cleans up) -----
+    df = _replace_inf_with_nan(df, target)
 
-    # --- (e) constant columns (now that all coercion is done) --------------
-    if cfg.sanitize.drop_constant_columns:
-        df, log["dropped_constant_cols"] = _drop_constant_columns(df, target)
-        # Refresh column lists after the second drop pass.
-        surviving = set(df.columns)
-        cats = [c for c in cats if c in surviving]
-        nums = [c for c in nums if c in surviving]
+    # --- (e) constant columns (always on — TabPFN's encoders error on them) -
+    df, log["dropped_constant_cols"] = _drop_constant_columns(df, target)
+    # Refresh column lists after the drop pass.
+    surviving = set(df.columns)
+    cats = [c for c in cats if c in surviving]
+    nums = [c for c in nums if c in surviving]
 
     # --- (i) FeatureAgglomeration ------------------------------------------
     if cfg.sanitize.agglomeration.enabled and (len(nums) + len(cats)) > cfg.sanitize.max_columns:
@@ -392,9 +389,11 @@ def sanitize_dataset(
         )
 
     # --- (j) / (k) target handling -----------------------------------------
-    if manifest_row["task_type"] == "classification" and \
-            cfg.sanitize.classification_target_to_int64_contiguous:
+    # Classification: always re-encode to contiguous int64 (TabPFN requires it).
+    if manifest_row["task_type"] == "classification":
         df = _label_encode_classification_target(df, target)
+    # LGD: single source of truth for the [0, 1] clip is here (per-dataset
+    # surgical fixes don't clip themselves).
     if manifest_row["track"] == "lgd" and cfg.sanitize.lgd_target_clip.enabled:
         df = _clip_lgd_target(
             df, target,

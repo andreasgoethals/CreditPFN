@@ -264,6 +264,45 @@ _RAW_METADATA: dict[str, dict] = {
         "source": "algorithmwatch",
         "source_url": None,
     },
+    "0015.credit_risk_dataset": {
+        "track": "pd",
+        "task_type": "classification",
+        "target_column": "loan_status",
+        # `loan_grade` (A..G) is ORDINAL — the surgical fix maps it to
+        # an integer rank, so it's NOT in the categoricals list any more.
+        # The other two object columns are nominal and stay categorical.
+        "categorical_columns": ["person_home_ownership", "loan_intent"],
+        "source": "kaggle",
+        "source_url": "https://www.kaggle.com/datasets/laotse/credit-risk-dataset",
+    },
+    "0016.bondora_peer2peer": {
+        "track": "pd",
+        "task_type": "classification",
+        "target_column": "is_default",
+        # Of the 31 raw columns only ~7 are safe at origination — the
+        # rest are post-loan payment progression / direct default
+        # indicators. The surgical fix drops all leakage; see comments
+        # there for the column-by-column rationale.
+        "categorical_columns": ["country", "customer_risk_rating"],
+        "source": "bondora",
+        "source_url": "https://www.bondora.com/marketing/media/LoanData.zip",
+    },
+    "0017.SBA_loans_case": {
+        "track": "pd",
+        "task_type": "classification",
+        "target_column": "Default",
+        # `RevLineCr`, `LowDoc`: nominal Y/N (after dirty-value cleanup);
+        # `State`, `BankState`: 2-letter US state codes;
+        # `NAICS`: 6-digit industry code (high cardinality).
+        # Other small-int columns (NewExist, UrbanRural, FranchiseCode,
+        # New, RealEstate, Recession) are binary/3-level flags — left as
+        # numeric for simplicity; sanitize.py won't drop them.
+        "categorical_columns": [
+            "State", "BankState", "NAICS", "RevLineCr", "LowDoc",
+        ],
+        "source": "kaggle",
+        "source_url": "https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set",
+    },
     # ---- LGD (regression) --------------------------------------------------
     "0001.heloc": {
         "track": "lgd",
@@ -320,6 +359,21 @@ _RAW_METADATA: dict[str, dict] = {
         "categorical_columns": [],
         "source": "lendingclub",
         "source_url": "https://www.lendingclub.com/info/download-data.action",
+    },
+    # ---- LGD twin of 0017 (same physical file in raw/lgd/) ----------------
+    # The SBA dataset has both default labels AND charge-off amounts, so we
+    # use it twice: once for PD (whole population) and once for LGD (defaults
+    # only, target derived from ChgOffPrinGr / DisbursementGross). The
+    # surgical fix for the LGD copy filters to defaults and derives `lgd`.
+    "0008.SBA_loans_case": {
+        "track": "lgd",
+        "task_type": "regression",
+        "target_column": "lgd",      # derived in the surgical fix
+        "categorical_columns": [
+            "State", "BankState", "NAICS", "RevLineCr", "LowDoc",
+        ],
+        "source": "kaggle",
+        "source_url": "https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set",
     },
 }
 
@@ -669,6 +723,198 @@ def _fix_algorithmwatch(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ----- 0015 — Credit Risk Dataset (Kaggle) ----------------------------- #
+# 32,581 rows × 12 columns. Target is `loan_status` ∈ {0, 1}. Two object
+# columns are nominal categorical (`person_home_ownership`, `loan_intent`)
+# and stay as strings — they're listed in DATASET_METADATA. The other
+# two object columns need surgery:
+#
+#   * `loan_grade` ∈ {A, B, C, D, E, F, G} is an ORDINAL credit grade
+#     (like S&P bond ratings: A is best, G is worst). We map it to
+#     integers 0..6 here so that downstream models receive the
+#     ordering. If we left it as a string and let `register.py`
+#     auto-detect it as categorical, the downstream OrdinalEncoder
+#     would use an arbitrary alphabetical mapping that happens to
+#     coincide with the correct order — but only by coincidence. An
+#     explicit mapping is more honest and protects us if the data
+#     ever ships with non-letter grades.
+#
+#   * `cb_person_default_on_file` ∈ {Y, N} is a binary indicator;
+#     we map to {1, 0}.
+#
+# `person_emp_length` has occasional sentinel-like values up to 123
+# (years of employment); the data card doesn't document a meaning for
+# values > 60, so we treat anything > 60 as NaN — the model's
+# NanHandlingEncoder will pick it up downstream.
+
+_LOAN_GRADE_ORDER = {g: i for i, g in enumerate(["A", "B", "C", "D", "E", "F", "G"])}
+
+
+@_register_fix("0015.credit_risk_dataset")
+def _fix_credit_risk_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    if "loan_grade" in df.columns:
+        df["loan_grade"] = (
+            df["loan_grade"].astype("object").map(_LOAN_GRADE_ORDER)
+            .astype("Int64")
+        )
+    if "cb_person_default_on_file" in df.columns:
+        df["cb_person_default_on_file"] = (
+            df["cb_person_default_on_file"]
+            .map({"Y": 1, "N": 0}).astype("Int64")
+        )
+    if "person_emp_length" in df.columns:
+        df.loc[df["person_emp_length"] > 60, "person_emp_length"] = np.nan
+    return df
+
+
+# ----- 0016 — Bondora P2P loans (full European P2P platform dump) ------ #
+# 737,889 rows × 31 columns. Target is `is_default` ∈ {True, False, NaN};
+# we coerce to {1, 0} and drop NaN-target rows.
+#
+# CRITICAL: ~22 of the 31 columns are POST-LOAN data (payment progression,
+# default-timeline indicators, current-state flags) that would not be
+# available at loan origination. Using them would massively inflate
+# the model's apparent performance. We strip them all. Specifically:
+#
+#   Pure leakage (drop): the loan-status duplicates and any column that
+#                       is non-zero only AFTER default has occurred —
+#                       e.g. `loan_status`, `loan_status_risk`,
+#                       `principal_debt`, `late_fee_paid_total`,
+#                       `months_in_default`, `has_default_within_12_months`.
+#
+#   Payment progression (drop): rolling balances and totals that are
+#                       updated as the borrower pays — `principal_balance`,
+#                       `principal_paid_total`, `interest_paid_total`,
+#                       `extra_interest_paid_total`, `maintenance_fee_paid_total`,
+#                       `repaid_amount_total`, `projected_npv_return`.
+#
+#   Timeline columns (drop): `loan_issued_at`, `early_repaid_at`,
+#                       `is_early_repaid_within_14_days`,
+#                       `loan_last_recorded_action_date_local`,
+#                       `next_payment_nr`, `next_payment_date_local`,
+#                       `debt_occured_date_local`, `days_past_due_principal`,
+#                       `months_on_book`. (Dates are also free-form strings
+#                       we'd otherwise have to parse.)
+#
+#   ID (drop): `loan_id` (UUID).
+#
+# What's left as "safe-at-origination" features:
+#   country, issued_amount, initial_interest_rate, nr_of_payments,
+#   initial_loan_duration, combined_income, customer_risk_rating, is_default
+#
+# This honest treatment yields a small (~7-feature) but uncontaminated
+# dataset. Reviewers will trust this; "Bondora got AUC=0.99" by including
+# `months_in_default` they will not.
+
+_BONDORA_LEAKAGE_COLS = [
+    "loan_id",
+    "loan_issued_at",
+    "early_repaid_at",
+    "is_early_repaid_within_14_days",
+    "loan_status",                          # categorical default indicator
+    "loan_last_recorded_action_date_local",
+    "principal_balance",
+    "principal_debt",
+    "principal_paid_total",
+    "interest_paid_total",
+    "extra_interest_paid_total",
+    "late_fee_paid_total",
+    "maintenance_fee_paid_total",
+    "next_payment_nr",
+    "next_payment_date_local",
+    "debt_occured_date_local",
+    "days_past_due_principal",
+    "months_in_default",
+    "months_on_book",
+    "loan_status_risk",
+    "repaid_amount_total",
+    "has_default_within_12_months",
+    "projected_npv_return",
+]
+
+
+@_register_fix("0016.bondora_peer2peer")
+def _fix_bondora_peer2peer(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    target = DATASET_METADATA["0016.bondora_peer2peer"]["target_column"]
+    # Coerce {True, False, "True", "False", "TRUE", "FALSE"} → {1, 0}.
+    if target in df.columns:
+        df[target] = (
+            df[target].astype(str).str.strip().str.lower()
+            .map({"true": 1, "false": 0}).astype("Int64")
+        )
+        df = df[df[target].notna()].copy()
+    df = df.drop(
+        columns=[c for c in _BONDORA_LEAKAGE_COLS if c in df.columns],
+    )
+    return df
+
+
+# ----- 0017 — SBA Loans Case (Kaggle; doubles as 0008.SBA for LGD) ----- #
+# 2,102 rows × 35 columns. The CSV in this folder ships with currency
+# columns already coerced to plain integers (no '$' or ',') — unlike
+# some other public mirrors of the same dataset. The surgery here is
+# pure column drops:
+#
+#   IDs / free text (drop):  LoanNr_ChkDgt, Name, Bank, City, Zip
+#                            (Zip is a 5-digit US ZIP — too high
+#                             cardinality for TabPFN; State/BankState
+#                             stay as the 2-letter geo features.)
+#
+#   Sampling artefact (drop): `Selected` — a 0/1 flag indicating an
+#                             evenly-sampled 50/50 subset. Not a
+#                             credit-risk feature; would leak the
+#                             sampling design.
+#
+#   Mystery / redundant (drop): `xx` is exactly `DisbursementDate +
+#                             daysterm` (the loan maturity date) — a
+#                             pure derived feature.
+#
+#   Leakage (drop): `MIS_Status` ∈ {"P I F", "CHGOFF"} is a 1-to-1
+#                   reflection of `Default`; `ChgOffDate` is only
+#                   non-null when the loan defaulted; `ChgOffPrinGr`
+#                   is the charge-off principal (component of the
+#                   LGD target — but a strong leakage proxy for PD too).
+#
+#   Dirty categorical levels (re-encode): `RevLineCr` has stray
+#                   values {Y, N, 0, T} — 0 maps to N (consistent
+#                   with the SBA codebook), T is undocumented → NaN.
+#                   `LowDoc` has stray {Y, N, S, A, 0} — S/A/0 → NaN.
+
+_SBA_DROP_COLS_COMMON = [
+    "LoanNr_ChkDgt", "Name", "Bank", "City", "Zip",
+    "Selected", "xx",
+    "MIS_Status", "ChgOffDate",
+]
+
+
+def _clean_sba_categoricals(df: pd.DataFrame) -> pd.DataFrame:
+    if "RevLineCr" in df.columns:
+        df["RevLineCr"] = (
+            df["RevLineCr"].astype(str).str.strip()
+            .map({"Y": "Y", "N": "N", "0": "N"})    # T / others → NaN
+        )
+    if "LowDoc" in df.columns:
+        df["LowDoc"] = (
+            df["LowDoc"].astype(str).str.strip()
+            .map({"Y": "Y", "N": "N"})              # S / A / 0 → NaN
+        )
+    return df
+
+
+@_register_fix("0017.SBA_loans_case")
+def _fix_sba_pd(df: pd.DataFrame) -> pd.DataFrame:
+    """PD copy: target = `Default` (0/1, already encoded). Drop the
+    leakage / ID / mystery columns plus `ChgOffPrinGr` (the LGD-target
+    component would otherwise leak into the PD model)."""
+    df = df.copy()
+    drop_cols = _SBA_DROP_COLS_COMMON + ["ChgOffPrinGr"]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+    df = _clean_sba_categoricals(df)
+    return df
+
+
 @_register_fix("0001.heloc")
 def _fix_heloc(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -824,6 +1070,52 @@ def _fix_lgd_lendingclub(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ----- 0008 — SBA Loans Case (LGD twin of 0017.SBA_loans_case) --------- #
+# Same CSV as `0017.SBA_loans_case` in the PD track; the raw file lives
+# in BOTH raw/pd/ AND raw/lgd/ so each track can apply its own surgical
+# fix to a private copy. The LGD-side fix:
+#
+#   1. Filters to defaulted loans only (Default == 1) — LGD is only
+#      defined for loans that actually defaulted.
+#   2. Derives the LGD target = clip(ChgOffPrinGr / DisbursementGross,
+#      0, 1). The clip handles the ~handful of cases where the charge-
+#      off is reported larger than disbursement (data entry artefacts).
+#   3. Drops the same ID / leakage / mystery columns the PD fix drops,
+#      plus the two target components (ChgOffPrinGr is the LGD
+#      numerator; DisbursementGross stays as a feature — its size IS
+#      predictive of LGD even though it appears in the target ratio).
+#   4. Drops the original `Default` column (also leakage for LGD: only
+#      the defaulted rows are kept, so it's a constant 1).
+
+@_register_fix("0008.SBA_loans_case")
+def _fix_sba_lgd(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+
+    # 1. Filter to defaulted loans.
+    if "Default" in df.columns:
+        df = df[df["Default"] == 1].copy()
+
+    # 2. Derive the LGD target ratio. Clipping to [0, 1] is the job of
+    # sanitize.py's global `lgd_target_clip` — every LGD dataset goes
+    # through the same clip, so no per-dataset clipping logic here.
+    disbursement = pd.to_numeric(df.get("DisbursementGross"), errors="coerce")
+    chargeoff    = pd.to_numeric(df.get("ChgOffPrinGr"),      errors="coerce")
+    with np.errstate(divide="ignore", invalid="ignore"):
+        df["lgd"] = chargeoff / disbursement
+
+    # 3. Drop ID / leakage / mystery / target-component / now-constant.
+    drop_cols = _SBA_DROP_COLS_COMMON + [
+        "Default",        # always 1 in the filtered dataset
+        "ChgOffPrinGr",   # numerator of the target — leakage
+    ]
+    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+
+    # 4. Re-encode the same dirty categorical levels as the PD twin.
+    df = _clean_sba_categoricals(df)
+
+    return df
+
+
 # =============================================================================
 # Bulk metadata import (helper for the 3000-dataset case)
 # =============================================================================
@@ -910,8 +1202,7 @@ def apply_dataset_specific_fixes(
             return df
         raise KeyError(
             f"No surgical-fix function registered for dataset_id="
-            f"{dataset_id!r}. Add one in src.data.preprocessing or "
-            f"set cfg.preprocessing.unknown_dataset_policy='passthrough'."
+            f"{dataset_id!r}. Add one in src.data.preprocessing."
         )
     return fix(df)
 
@@ -932,16 +1223,13 @@ def main(cfg=None) -> int:
     if cfg is None:
         cfg = _load_cfg()
     raw_root = cfg.paths.raw
-    policy = cfg.preprocessing.unknown_dataset_policy
 
     failures = 0
     for dataset_id, meta in DATASET_METADATA.items():
         path = f"{raw_root}/{meta['track']}/{dataset_id}.csv"
         try:
             df = pd.read_csv(path, low_memory=False)
-            fixed = apply_dataset_specific_fixes(
-                df, dataset_id, unknown_dataset_policy=policy
-            )
+            fixed = apply_dataset_specific_fixes(df, dataset_id)
             target = meta["target_column"]
             target_present = target in fixed.columns
             LOGGER.info(

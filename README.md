@@ -79,11 +79,17 @@ $CREDITPFN_OUTPUT_ROOT/        (= $VSC_DATA on VSC, repo locally)
 ├── manifest_pd.csv | manifest_lgd.csv  per-track dataset metadata
 ├── manifests/<run_name>_<track>.csv    one row per trained checkpoint
 ├── checkpoints/trained/<track>/        finetuned weights + .provenance.json sidecars
-├── results/{PD,LGD}/<method>/          benchmark CSVs, one per (run × task)
+├── results/benchmark/{PD,LGD}/<method>/ benchmark CSVs, one per (run × task)
+├── results/training/<track>/            per-epoch (loss, lr, elapsed) CSVs, one per trial
 └── logs/<task>_<ts>[_j<JID>_a<TID>].log  one log file per task (flat dir)
 ```
 
 ## Compute
+
+**Quick reference**: see [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) for
+the full step-by-step VSC deployment recipe (one-time setup, the
+`data → train → eval` chain in one command, three common workflows,
+and a failure-mode cheat sheet).
 
 Training runs on the VSC (KU Leuven) supercomputer:
 - **Data preprocessing** → Genius `batch` partition (CPU, 8 cores, 40 GB).
@@ -97,22 +103,43 @@ Slurm templates live under `scripts/slurm/`. The full chain
 
 ### Local vs. VSC paths
 
-The repo auto-detects which environment it is running on through two
-environment variables:
+The same code base runs in two storage worlds — laptop and VSC —
+and **auto-detects which one it's in.** Two layers, in order:
 
-| Variable                   | Local default | On VSC                       | Used for                                                       |
-|----------------------------|---------------|------------------------------|----------------------------------------------------------------|
-| `CREDITPFN_DATA_ROOT`      | repo root     | `$VSC_SCRATCH/CreditPFN`     | big I/O artefacts: `data/raw`, `data/processed`, `data/cached` |
-| `CREDITPFN_OUTPUT_ROOT`    | repo root     | `$VSC_DATA/CreditPFN`        | durable artefacts: `dedup/`, `manifest_*.csv`, `checkpoints/trained/`, `results/`, `logs/`, `manifests/` |
+1. **Explicit override.** If `CREDITPFN_DATA_ROOT` /
+   `CREDITPFN_OUTPUT_ROOT` are set in the environment, the resolver
+   uses them. The slurm scripts in `scripts/slurm/` set both
+   explicitly so a slurm-driven run is fully under user control.
 
-Datasets are too big for `$VSC_DATA` quotas → they live on
+2. **VSC auto-detection.** Otherwise, if `$VSC_DATA` is set
+   (= we're on a VSC node — the KU Leuven login profile sets it
+   unconditionally), the resolver picks VSC defaults:
+
+       CREDITPFN_DATA_ROOT   → $VSC_SCRATCH/CreditPFN     (big I/O)
+       CREDITPFN_OUTPUT_ROOT → $VSC_DATA/CreditPFN        (durable)
+
+   So even if you SSH into a login node and just run
+   `python scripts/data_pipeline.py` interactively (no slurm), the
+   right thing happens — no env-var setup needed.
+
+3. **Local fallback.** Neither (1) nor (2) → the repo root.
+   Laptops never set `$VSC_DATA`, so every artefact lands under
+   `<repo>/data/`, `<repo>/logs/`, `<repo>/results/`, etc.,
+   exactly as the dev workflow expects.
+
+The split between the two roots:
+
+| Resolver               | Used for                                                                                            | Where it routes on VSC               | Where it routes locally |
+|------------------------|-----------------------------------------------------------------------------------------------------|--------------------------------------|-------------------------|
+| `resolve_data_path`    | big I/O artefacts: `data/raw`, `data/processed`, `data/cached`                                      | `$VSC_SCRATCH/CreditPFN`             | repo root               |
+| `resolve_output_path`  | durable artefacts: `dedup/`, `manifest_*.csv`, `checkpoints/trained/`, `results/`, `logs/`, `manifests/` | `$VSC_DATA/CreditPFN`                | repo root               |
+
+Datasets are too big for the `$VSC_DATA` quota so they live on
 `$VSC_SCRATCH` (large, parallel BeeGFS, no backup). Everything that
-must survive a scratch purge — dedup CSVs, the per-track manifest of
-trained checkpoints, the trained checkpoints themselves, the
-benchmark results, and every log file — lives on `$VSC_DATA`. Locally,
-both env vars are unset so all artefacts land in the repo's `data/`,
-`logs/`, `results/`, `manifests/` directories — the laptop-debug
-flow doesn't change.
+must survive a scratch purge — dedup CSVs, the per-track manifest
+of trained checkpoints, the checkpoints themselves, the benchmark
+results, every log file — lives on `$VSC_DATA` (backed up nightly).
+Verified by `tests/test_paths.py`.
 
 ### Logs: one flat directory, one file per task
 
@@ -140,7 +167,8 @@ sidecar `<descriptive_name>.ckpt.provenance.json` that records:
 
 - All hyperparameters used (base, lr, weight_decay, betas, scheduler
   type + warmup fraction, epochs, accumulate_grad_batches, grad clip,
-  amp, ctx/query sample sizes, multi_chunk_policy, seed)
+  amp, ctx/query sample sizes, seed). The multi-chunk policy is fixed
+  to `first_chunk_only` and recorded in the sidecar for completeness.
 - The list of training datasets (sorted dataset_ids)
 - The list of test datasets (sorted dataset_ids)
 - Number of train/test chunks
@@ -282,9 +310,13 @@ Plus one importable helper used by stages 2 and 3:
 ### What each stage does, in one sentence
 
 * **`preprocessing.apply_dataset_specific_fixes(df, id)`** — drops ID
-  columns, decodes hand-crafted strings, parses dates, and removes
-  target-leakage columns for the 21 known datasets. *No* statistical
-  operations: no log-transforms, no scaling, no clipping.
+  columns, decodes hand-crafted strings, parses dates, ordinal-maps
+  credit grades (A..G → 0..6), and removes target-leakage columns for
+  every registered dataset. Currently covers **17 PD** + **8 LGD**
+  datasets (the SBA dataset is registered once per track because it
+  carries both a binary default label and a charge-off principal that
+  derives the LGD target). *No* statistical operations: no
+  log-transforms, no scaling, no clipping.
 * **`dedup.py`** — eight detection methods (identifier match,
   column-name Jaccard + identical shape, row-level pandas hash,
   column-level hash, rounded-row hash, subset detection, fuzzy
@@ -350,11 +382,15 @@ single source of truth for hyperparameters is
 [`config/train.yaml`](config/train.yaml), structured in two layers:
 
 * **Tunable HPs** (lists at the top of the file) — base checkpoint,
-  learning rate, multi-chunk policy. Anything that is genuinely
-  unknown in advance and must be picked empirically.
-* **Fixed HPs** (single values, below) — epochs, optimizer family,
-  AMP, gradient clipping, etc. These follow TabPFN's own
+  learning rate. Anything that is genuinely unknown in advance and
+  must be picked empirically.
+* **Fixed HPs** (single values, below) — epochs, AMP, gradient
+  clipping, warmup fraction, sample sizes. These follow TabPFN's own
   `FinetunedTabPFNClassifier` defaults wherever those are well-tuned.
+* **Hardcoded in code** — optimizer family (AdamW), betas
+  ((0.9, 0.999)), scheduler family (warmup → cosine), multi-chunk
+  policy (`first_chunk_only`). These never change between runs, so
+  they live in `src/train/loop.py`, not in YAML.
 
 The script — *not* `src/train/` — decides what to do with the
 tunable lists. Three modes:
@@ -487,10 +523,11 @@ Each training-array task runs:
 python scripts/train_pipeline.py --trial-index $SLURM_ARRAY_TASK_ID track=pd
 ```
 
-and appends one row to `logs/runs/<run_name>_<track>.csv` — the
-manifest the eval pipeline reads. **Failures don't bring down the
-chain**: if trial 7 of 18 fails, trials 0..17 still ran, the
-manifest still has 17 OK rows, and the eval will benchmark every
+and appends one row to `manifests/<run_name>_<track>.csv` — the
+manifest the eval pipeline reads — plus a per-epoch CSV under
+`results/training/<track>/<descriptive_name>.csv`. **Failures don't
+bring down the chain**: if trial 7 of 9 fails, trials 0..8 still ran,
+the manifest still has 8 OK rows, and the eval will benchmark every
 checkpoint that landed.
 
 ### Outputs
@@ -513,7 +550,7 @@ Internals (the why):
   `get_cosine_schedule_with_warmup`, which is what TabPFN's
   `FinetunedTabPFNClassifier` uses internally. Verified
   numerically in `tests/test_train.py::test_warmup_cosine_schedule_landmarks`.
-* **No validation set** — with ~13 PD + ~7 LGD datasets, holding
+* **No validation set** — with ~17 PD + ~8 LGD datasets, holding
   out a separate val bucket leaves so few datasets to fit on that
   early-stopping signal becomes pure noise. We use fixed-epoch
   training and pick between hyperparameter settings *post-hoc* on
@@ -521,33 +558,87 @@ Internals (the why):
 
 ## Eval pipeline
 
-`scripts/eval_pipeline.py` loads the training manifest plus the
-classical baselines and scores every model on every test chunk
-with **K-fold cross-validation** for statistical rigour.
+`scripts/eval_pipeline.py` scores every model on every held-out test
+**dataset** using K-fold cross-validation with an inner train/val
+split.
 
-### CV semantics (the user-mandated split)
+### Why processed CSVs (not cached chunks)
 
-For each test chunk:
-
-```
-80%  →  training fold      (used to fit the model)
-20%  →  evaluation fold    (held out; model.score recorded)
-```
-
-…repeated `cv.n_folds` (default 5) times. For methods that need HPO
-(XGBoost, CatBoost), the inner Optuna study further splits the 80%
-training fold:
+The `.npz` chunks under `data/cached/` are sized for TabPFN's
+in-context inference at *training* time. For *evaluation*, XGBoost /
+CatBoost have no row-count limit and would be underestimated if
+they only ever saw 20–100k-row chunks. So the eval reads the
+sanitised dataset directly:
 
 ```
-80% × 80% = 64%  →  Optuna trial fit
-80% × 20% = 16%  →  Optuna trial validation (objective)
+data/processed/{pd,lgd}/<id>.sanitized.csv
 ```
 
-Optuna runs once per CV fold (so 5 studies per (model × chunk) at the
-default `n_folds=5`), each with `hpo.<m>.n_trials` trials and capped
-at `hpo.<m>.timeout_seconds`. The user's "do HPO 5 times" contract
-is satisfied. LogReg / LinReg are intentionally not tuned — they're
-the "what does plain linear modelling do" baseline.
+…with the cap policy:
+
+| Model family | Pre-CV cap | Final fit + test eval | HPO subsample |
+|---|---|---|---|
+| `tabpfn-untuned` / `tabpfn-trained` | `cfg.max_rows_tabpfn = 100,000` (architectural — applies once, globally, before splitting) | uses the capped dataset | n/a |
+| `xgboost` / `catboost` | no cap | uses the FULL dataset | `cfg.hpo.<m>.max_rows = 50,000` (stratified subsample of the inner-train set; HPO objective only — final fit ignores it) |
+| `logreg` / `linreg` | no cap | uses the FULL dataset | n/a |
+
+This matches the user's design: the only architectural cap is for
+TabPFN; everything else trains on everything. HPO can be sped up
+without ever capping the final fit.
+
+### CV semantics — 80 / 16 / 20 per fold
+
+For each test dataset:
+
+```
+Outer K-fold (cfg.cv.n_folds = 5):
+    train      → 80% of dataset
+    test       → 20%                  ← final metrics computed here
+
+Inner split of the train fold (cfg.cv.inner_val_fraction = 0.20):
+    sub-train  → 64% of dataset       ← model fits on this
+    validation → 16% of dataset       ← Optuna HPO objective for
+                                        XGBoost / CatBoost AND
+                                        F1-threshold tuning for
+                                        binary classification
+```
+
+Validation is essential for the tabular foundation models too —
+without it, F1 / accuracy / precision / recall for PD would just use
+the implicit 0.5 threshold, which is rarely optimal. Optuna runs
+once per CV fold (5 studies per (model × dataset) at `n_folds=5`),
+each with `hpo.<m>.n_trials` trials. LogReg / LinReg are intentionally
+not tuned — they're the "what does plain linear modelling do"
+baseline.
+
+**Important:** the Optuna HPO objective uses **the eval pipeline's
+inner-val split** (same 16% across every model in a fold), NOT a
+fresh internal split inside the wrapper. This keeps the HPO objective
+comparable across models and uses the same val data that the F1
+threshold tuner needs anyway. The F1 threshold itself is picked in
+O(n log n) via `sklearn.metrics.precision_recall_curve` — no quadratic
+scan over the full probability array.
+
+### Comprehensive metrics (one row per model × dataset × fold)
+
+The eval CSV is wide format. NaN where not applicable.
+
+| Group | Columns |
+|---|---|
+| Classification — threshold-free  | `roc_auc`, `log_loss`, `pr_auc` |
+| Classification — threshold-tuned | `optimal_threshold` (max-F1 on inner-val), then `f1`, `accuracy`, `precision`, `recall` computed on the test fold AT that threshold |
+| Regression                       | `rmse`, `mae`, `r2`, `neg_nll` (TabPFN-only) |
+| Bookkeeping                      | `n_train_rows`, `n_val_rows`, `n_test_rows`, `elapsed_sec`, `status`, `error`, `timestamp` |
+
+### Test-dataset resolution
+
+For `tabpfn-trained` models the test datasets come from each
+checkpoint's `.provenance.json` (so every checkpoint is scored on
+its OWN held-out set — recorded at training time). For
+`tabpfn-untuned` and classical baselines the test datasets come
+from the cfg corpus split. Both routes give the same set when the
+seed and fractions match (which they do by default), so the
+comparison is apples-to-apples by construction.
 
 ### Local + slurm-array (parallelised) modes
 
@@ -567,7 +658,7 @@ sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm
 ```
 
 Each slurm task writes its own
-`results/<TRACK>/<method>/<run_name>_<timestamp>_<task_tag>.csv`
+`results/benchmark/<TRACK>/<method>/<run_name>_<timestamp>_<task_tag>.csv`
 (the `<task_tag>` includes the dataset_id), so concurrent tasks
 NEVER write to the same file — no locking, no races. Aggregation is
 a single `pd.read_csv` over a glob.
@@ -579,7 +670,7 @@ Per [`config/eval.yaml`](config/eval.yaml):
 | `cv.n_folds`                   | 5  | Stratified-K-fold per test dataset; results report mean ± std over folds. |
 | `hpo.xgboost.n_trials`         | 25 | Per-fold Optuna HPO budget for XGBoost (TPE sampler). 0 = use defaults. |
 | `hpo.catboost.n_trials`        | 25 | Same for CatBoost. |
-| `hpo.<m>.timeout_seconds`      | 300 | Wall-clock cap per study (whichever hits first). |
+| `hpo.<m>.timeout_seconds`      | 600 | Wall-clock cap per study (whichever hits first). |
 | `tabpfn_n_estimators`          | 16 | TabPFN inference-time ensemble size (untuned + trained). |
 
 Models compared:
@@ -588,34 +679,43 @@ Models compared:
 |---|---|
 | `baseline`        | XGBoost (Optuna-tuned), CatBoost (Optuna-tuned), LogReg (defaults, PD only), LinReg (defaults, LGD only) |
 | `tabpfn-untuned`  | One per checkpoint in `cfg.tunable.<track>_base_paths` |
-| `tabpfn-trained`  | Every OK row in `logs/runs/<run_name>_<track>.csv` |
+| `tabpfn-trained`  | Every OK row in `manifests/<run_name>_<track>.csv` |
 
 ### Permanent results layout
 
-Every benchmark run writes per-method CSVs under:
+The `results/` tree has two siblings — one for benchmarking, one for
+training diagnostics — so neither can clobber the other:
 
 ```
 results/
-├── PD/
-│   ├── xgboost/                                       creditpfn_<ts>[__task<i>_ds-<id>].csv
-│   ├── catboost/                                      creditpfn_<ts>[__task<i>_ds-<id>].csv
-│   ├── logreg/                                        creditpfn_<ts>[__task<i>_ds-<id>].csv
-│   ├── tabpfn-untuned__v2.6-default/                  creditpfn_<ts>[__task<i>_ds-<id>].csv
-│   ├── tabpfn-untuned__v2.5-default-2/                creditpfn_<ts>[__task<i>_ds-<id>].csv
-│   ├── tabpfn-trained__v2.6-default__lr1e-05__allchunks/   creditpfn_<ts>[__…].csv
-│   └── tabpfn-trained__v2.5-default-2__lr5e-05__firstchunk/ creditpfn_<ts>[__…].csv
-└── LGD/
-    └── …
+├── benchmark/                          eval pipeline output
+│   ├── PD/
+│   │   ├── xgboost/                                  creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   │   ├── catboost/                                 creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   │   ├── logreg/                                   creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   │   ├── tabpfn-untuned__v2.6-default/             creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   │   ├── tabpfn-untuned__v2.5-default-2/           creditpfn_<ts>[__task<i>_ds-<id>].csv
+│   │   ├── tabpfn-trained__v2.6-default__lr1e-05/    creditpfn_<ts>[__…].csv
+│   │   └── tabpfn-trained__v2.5-default-2__lr5e-05/  creditpfn_<ts>[__…].csv
+│   └── LGD/
+│       └── …
+└── training/                           train pipeline output
+    ├── pd/                             per-epoch CSV (epoch, train_loss, lr, elapsed_sec)
+    │   ├── creditpfn_pd_<base-stem>_lr1e-05_seed42.csv
+    │   └── …
+    └── lgd/
+        └── …
 ```
 
-The TabPFN-variant directory names compress the published filenames
-(`tabpfn-v2.6-classifier-v2.6_default.ckpt` → `v2.6-default`,
-`tabpfn-v2.5-regressor-v2.5_real.ckpt` → `v2.5-real`,
+The TabPFN-variant directory names under `benchmark/` compress the
+published filenames (`tabpfn-v2.6-classifier-v2.6_default.ckpt` →
+`v2.6-default`, `tabpfn-v2.5-regressor-v2.5_real.ckpt` → `v2.5-real`,
 `tabpfn-v2.5-classifier-v2.5_default-2.ckpt` → `v2.5-default-2`); the
 track-specific "classifier"/"regressor" infix is dropped because the
 parent `PD/` or `LGD/` already encodes it. Trained variants append
-`__lr<rate>__<policy>` so two trials with different HPs land in
-different folders.
+`__lr<rate>` so two trials with different HPs land in different
+folders. (The multi-chunk policy is no longer a sweep axis — fixed to
+`first_chunk_only`.)
 
 Each timestamp is unique to one benchmark run, so re-running the eval
 **never overwrites** earlier results — every comparison this project
@@ -623,14 +723,21 @@ ever ran is permanently archived. Aggregate with pandas:
 
 ```python
 import pandas as pd, glob
-files = glob.glob("results/PD/*/creditpfn_*.csv")
+files = glob.glob("results/benchmark/PD/*/creditpfn_*.csv")
 df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
-df.groupby(["model_name", "model_source"])["metric_value"].agg(["mean", "std", "count"])
+df.groupby(["model_name", "model_source"])[
+    ["roc_auc", "f1", "log_loss", "rmse"]
+].agg(["mean", "std", "count"])
 ```
 
-The same `src.train.corpus.split_corpus` is used by both training
-and eval, so the test split is bit-for-bit identical across TabPFN
-and the classical baselines — a fair comparison by construction.
+The per-epoch training CSVs let you see how each trial's training loss
+evolves — useful for debugging convergence and choosing a sane
+`train.epochs` cap. Aggregate the same way:
+
+```python
+files = glob.glob("results/training/pd/*.csv")
+hist = pd.concat([pd.read_csv(f).assign(run=Path(f).stem) for f in files])
+```
 
 ## Tests
 

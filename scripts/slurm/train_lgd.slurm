@@ -17,7 +17,7 @@
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-17%4
+#SBATCH --array=0-8%4   # 9 trials (3 bases × 3 LRs), recompute via --list-trials
 
 sleep $((RANDOM % 60 + 1))
 

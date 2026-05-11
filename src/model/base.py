@@ -40,16 +40,28 @@ import numpy as np
 
 @runtime_checkable
 class BaselineModel(Protocol):
-    """Duck-typed contract for any model the eval loop scores."""
+    """Duck-typed contract for any model the eval loop scores.
+
+    The fit signature takes an OPTIONAL validation split. Models that
+    do hyperparameter optimisation (XGBoost / CatBoost with Optuna)
+    use this val split as the HPO objective; models without HPO
+    (LogReg, LinReg, TabPFN-untuned/trained) ignore the val args
+    completely. Always passing the same val split from the eval loop
+    means the HPO objective and the F1-threshold tuning target are
+    drawn from THE SAME 16% of the dataset — no model gets to peek
+    at extra data the others didn't see.
+    """
 
     name: str
     task_type: str            # "classification" | "regression"
 
     def fit(
         self,
-        X: np.ndarray,        # (n_ctx, n_features)
-        y: np.ndarray,        # (n_ctx,)
+        X: np.ndarray,                       # (n_train, n_features)
+        y: np.ndarray,                       # (n_train,)
         categorical_idx: list[int],
+        X_val: np.ndarray | None = None,     # (n_val, n_features); HPO objective
+        y_val: np.ndarray | None = None,
     ) -> None: ...
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
@@ -69,4 +81,34 @@ class ModelHandle:
     task_type:   Literal["classification", "regression"]
     source:      Literal["baseline", "tabpfn-untuned", "tabpfn-trained"]
     base_path:   str | None = None   # only for tabpfn variants
-    extra:       dict | None = None  # base lr / policy / seed for trained TabPFN
+    extra:       dict | None = None  # base lr / seed for trained TabPFN
+
+
+# --------------------------------------------------------------------------- #
+# Shared input sanitiser for non-TabPFN baselines
+# --------------------------------------------------------------------------- #
+
+
+def replace_inf_with_nan(X: np.ndarray) -> np.ndarray:
+    """Replace +/-inf with NaN in a float feature matrix.
+
+    TabPFN handles ±inf natively (the architecture clips them as part of
+    the feature normaliser). The classical baselines don't:
+
+      * ``SimpleImputer`` (LogReg / LinReg pipelines) treats ``inf`` as
+        a finite-but-huge value and propagates it through the scaler →
+        the LBFGS solver explodes.
+      * XGBoost / CatBoost treat NaN as "missing" but raise / produce
+        garbage on ``inf``.
+
+    Converting ``inf → NaN`` at the wrapper edge gives all four
+    baselines the same "missing value" semantics TabPFN gets for free.
+    """
+    if not np.issubdtype(X.dtype, np.floating):
+        return X
+    mask = np.isinf(X)
+    if not mask.any():
+        return X
+    out = X.copy()
+    out[mask] = np.nan
+    return out

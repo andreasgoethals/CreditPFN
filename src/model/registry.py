@@ -95,6 +95,7 @@ def build_baselines(
             task_type=task_type, random_state=seed,
             hpo_trials=int(hpo_xgb.get("n_trials", 0)),
             hpo_timeout_seconds=hpo_xgb.get("timeout_seconds"),
+            hpo_max_rows=hpo_xgb.get("max_rows"),
         )
         out.append((ModelHandle(
             name=m.name, track=track, task_type=task_type, source="baseline",
@@ -105,6 +106,7 @@ def build_baselines(
             task_type=task_type, random_state=seed,
             hpo_trials=int(hpo_cb.get("n_trials", 0)),
             hpo_timeout_seconds=hpo_cb.get("timeout_seconds"),
+            hpo_max_rows=hpo_cb.get("max_rows"),
         )
         out.append((ModelHandle(
             name=m.name, track=track, task_type=task_type, source="baseline",

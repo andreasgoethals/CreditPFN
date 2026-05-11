@@ -481,6 +481,42 @@ def _import_mpl():
 
 
 # --------------------------------------------------------------------------- #
+# Plot style helpers (consistent across every corpus-level histogram)
+# --------------------------------------------------------------------------- #
+
+
+_TRACK_COLOR = {"pd": "#1f77b4", "lgd": "#ff7f0e"}     # tab:blue, tab:orange
+
+
+def _apply_style(ax, *, title: str, xlabel: str, ylabel: str = "# datasets"):
+    """Consistent grid + spine + label style across plots."""
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.grid(axis="y", linestyle=":", linewidth=0.6, alpha=0.6)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+
+def _log_bins(values, *, n_bins: int = 25, eps: float = 1.0):
+    """Log-spaced bin edges spanning ``[min, max]``.
+
+    Falls back to linear bins when the range collapses (all values
+    equal). The ``eps`` shift handles the case where the data contains
+    zero or one-row datasets that would crash a pure ``log10(0)``.
+    """
+    import numpy as _np
+    v = _np.asarray(values, dtype=float)
+    v = v[_np.isfinite(v)]
+    if v.size == 0:
+        return _np.linspace(0, 1, n_bins + 1)
+    lo, hi = float(_np.maximum(v.min(), eps)), float(_np.maximum(v.max(), eps))
+    if lo >= hi:
+        return _np.linspace(lo - 1, hi + 1, n_bins + 1)
+    return _np.logspace(_np.log10(lo), _np.log10(hi), n_bins + 1)
+
+
+# --------------------------------------------------------------------------- #
 # Corpus-level (scale to 3 000)
 # --------------------------------------------------------------------------- #
 
@@ -489,6 +525,13 @@ def plot_dataset_size_distribution(
     track: str, *, source: str = "processed", cfg=None,
 ):
     """Per-track histograms of dataset rows and feature columns.
+
+    Both panels use **log-spaced bins** with log-scaled x-axes so the
+    bar widths stay consistent (the previous version used linear bins
+    on a log axis, which produced wildly different bar widths across
+    the range — datasets at 1k rows got narrow bars and datasets at
+    300k rows got wide bars). Useful because our corpus spans 4–5
+    orders of magnitude in both row count and feature count.
 
     ``source``: ``"raw"`` for ``data/raw/`` shapes (pre-fix), or
     ``"processed"`` for post-sanitise shapes. ``track`` is required —
@@ -508,17 +551,33 @@ def plot_dataset_size_distribution(
     else:
         raise ValueError("source must be 'raw' or 'processed'")
 
-    color = {"pd": "tab:blue", "lgd": "tab:orange"}[track]
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    axes[0].hist(summary[rows_col], bins=30, color=color, alpha=0.85)
+    color = _TRACK_COLOR[track]
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+
+    rows = summary[rows_col].dropna()
+    axes[0].hist(
+        rows, bins=_log_bins(rows, n_bins=25),
+        color=color, alpha=0.85, edgecolor="white", linewidth=0.6,
+    )
     axes[0].set_xscale("log")
-    axes[0].set_xlabel("rows  (log-scaled)")
-    axes[0].set_ylabel("# datasets")
-    axes[0].set_title(f"{track.upper()} — dataset rows ({source})")
-    axes[1].hist(summary[cols_col], bins=30, color=color, alpha=0.85)
-    axes[1].set_xlabel("feature columns")
-    axes[1].set_ylabel("# datasets")
-    axes[1].set_title(f"{track.upper()} — dataset features ({source})")
+    _apply_style(
+        axes[0],
+        title=f"{track.upper()} — dataset rows ({source})",
+        xlabel="rows  (log-scaled)",
+    )
+
+    cols = summary[cols_col].dropna()
+    axes[1].hist(
+        cols, bins=_log_bins(cols, n_bins=25),
+        color=color, alpha=0.85, edgecolor="white", linewidth=0.6,
+    )
+    axes[1].set_xscale("log")
+    _apply_style(
+        axes[1],
+        title=f"{track.upper()} — dataset features ({source})",
+        xlabel="feature columns  (log-scaled)",
+    )
+
     fig.tight_layout()
     return fig
 
@@ -546,15 +605,18 @@ def plot_missing_rate_distribution(
     else:
         raise ValueError("source must be 'raw' or 'processed'")
 
-    color = {"pd": "tab:blue", "lgd": "tab:orange"}[track]
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(summary[col].dropna(), bins=30, color=color, alpha=0.85,
-            range=(0.0, 1.0))
-    ax.set_xlabel("missing rate  (fraction of NaN cells per dataset, "
-                  "denominator = rows × features)")
-    ax.set_ylabel("# datasets")
+    color = _TRACK_COLOR[track]
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.hist(summary[col].dropna(),
+            bins=np.linspace(0.0, 1.0, 31),
+            color=color, alpha=0.85, edgecolor="white", linewidth=0.6)
     ax.set_xlim(0.0, 1.0)
-    ax.set_title(f"{track.upper()} — missingness ({source})")
+    _apply_style(
+        ax,
+        title=f"{track.upper()} — missingness ({source})",
+        xlabel="missing rate  (fraction of NaN cells per dataset; "
+               "denominator = rows × features)",
+    )
     fig.tight_layout()
     return fig
 
@@ -570,16 +632,20 @@ def plot_class_imbalance_distribution(cfg=None):
     """
     plt = _import_mpl()
     summary = corpus_summary_table("pd", cfg).dropna(subset=["minority_class_ratio"])
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(summary["minority_class_ratio"], bins=30, color="tab:blue",
-            alpha=0.85, range=(0.0, 0.5))
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.hist(summary["minority_class_ratio"],
+            bins=np.linspace(0.0, 0.5, 26),
+            color=_TRACK_COLOR["pd"], alpha=0.85,
+            edgecolor="white", linewidth=0.6)
     ax.axvline(0.5, color="black", linewidth=0.8, linestyle=":",
                label="balanced (50%)")
     ax.set_xlim(0.0, 0.55)
-    ax.set_xlabel("minority-class share (n_minority / n_total)")
-    ax.set_ylabel("# datasets")
-    ax.set_title("PD — class-imbalance distribution across the corpus")
-    ax.legend()
+    _apply_style(
+        ax,
+        title="PD — class-imbalance distribution across the corpus",
+        xlabel="minority-class share (n_minority / n_total)",
+    )
+    ax.legend(loc="upper right", frameon=False)
     fig.tight_layout()
     return fig
 
@@ -594,13 +660,17 @@ def plot_target_mean_distribution_lgd(cfg=None):
     """
     plt = _import_mpl()
     summary = corpus_summary_table("lgd", cfg).dropna(subset=["target_mean"])
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.hist(summary["target_mean"], bins=30, color="tab:orange",
-            alpha=0.85, range=(0.0, 1.0))
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.hist(summary["target_mean"],
+            bins=np.linspace(0.0, 1.0, 26),
+            color=_TRACK_COLOR["lgd"], alpha=0.85,
+            edgecolor="white", linewidth=0.6)
     ax.set_xlim(0.0, 1.0)
-    ax.set_xlabel("dataset mean LGD")
-    ax.set_ylabel("# datasets")
-    ax.set_title("LGD — target-mean distribution across the corpus")
+    _apply_style(
+        ax,
+        title="LGD — target-mean distribution across the corpus",
+        xlabel="dataset mean LGD",
+    )
     fig.tight_layout()
     return fig
 
@@ -615,32 +685,55 @@ def plot_chunk_count_distribution(cfg=None):
     """
     plt = _import_mpl()
     summary = cached_corpus_summary(cfg=cfg)
-    fig, ax = plt.subplots(figsize=(8, 4))
-    for tr, color in [("pd", "tab:blue"), ("lgd", "tab:orange")]:
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    # Integer bins from 1 to the maximum number of chunks observed —
+    # avoids the "narrow bars at low counts, wide bars at high counts"
+    # artefact that linear-bins-on-log-axis produces.
+    max_chunks = int(max(summary["n_chunks"].max() or 1, 1))
+    bins = np.arange(0.5, max_chunks + 1.5, 1.0)
+    for tr in ("pd", "lgd"):
         sub = summary[summary["track"] == tr]
-        ax.hist(sub["n_chunks"], bins=30, alpha=0.6, label=tr.upper(),
-                color=color)
-    ax.set_xlabel("chunks per dataset")
-    ax.set_ylabel("# datasets")
-    ax.set_title("Cached — chunk count per dataset")
-    ax.legend()
+        if len(sub):
+            ax.hist(sub["n_chunks"], bins=bins, alpha=0.6, label=tr.upper(),
+                    color=_TRACK_COLOR[tr],
+                    edgecolor="white", linewidth=0.6)
+    _apply_style(
+        ax,
+        title="Cached — chunk count per dataset",
+        xlabel="chunks per dataset",
+    )
+    ax.legend(loc="upper right", frameon=False)
     fig.tight_layout()
     return fig
 
 
 def plot_chunk_size_distribution(cfg=None):
-    """Histogram of mean chunk size in rows, faceted by track."""
+    """Histogram of mean chunk size in rows, faceted by track.
+
+    Uses log-spaced bins because chunk sizes span 3+ orders of
+    magnitude (some datasets have a single 500-row chunk; others
+    have many 100k-row chunks).
+    """
     plt = _import_mpl()
     summary = cached_corpus_summary(cfg=cfg)
-    fig, ax = plt.subplots(figsize=(8, 4))
-    for tr, color in [("pd", "tab:blue"), ("lgd", "tab:orange")]:
-        sub = summary[summary["track"] == tr].dropna(subset=["mean_chunk_rows"])
-        ax.hist(sub["mean_chunk_rows"], bins=30, alpha=0.6, label=tr.upper(),
-                color=color)
-    ax.set_xlabel("mean chunk size  (rows in X_context + X_query)")
-    ax.set_ylabel("# datasets")
-    ax.set_title("Cached — mean chunk size per dataset")
-    ax.legend()
+    summary = summary.dropna(subset=["mean_chunk_rows"])
+    if summary.empty:
+        return None
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    bins = _log_bins(summary["mean_chunk_rows"], n_bins=20)
+    for tr in ("pd", "lgd"):
+        sub = summary[summary["track"] == tr]
+        if len(sub):
+            ax.hist(sub["mean_chunk_rows"], bins=bins, alpha=0.6,
+                    label=tr.upper(), color=_TRACK_COLOR[tr],
+                    edgecolor="white", linewidth=0.6)
+    ax.set_xscale("log")
+    _apply_style(
+        ax,
+        title="Cached — mean chunk size per dataset",
+        xlabel="mean chunk size  (rows in X_context + X_query, log-scaled)",
+    )
+    ax.legend(loc="upper right", frameon=False)
     fig.tight_layout()
     return fig
 
@@ -660,16 +753,21 @@ def plot_unknown_sentinel_rate(cfg=None):
     plt = _import_mpl()
     summary = cached_corpus_summary(cfg=cfg)
     summary = summary[summary["unknown_sentinel_rate"].notna()]
-    fig, ax = plt.subplots(figsize=(8, 4))
-    for tr, color in [("pd", "tab:blue"), ("lgd", "tab:orange")]:
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    bins = np.linspace(0.0, 1.0, 26)
+    for tr in ("pd", "lgd"):
         sub = summary[summary["track"] == tr]
         if len(sub):
-            ax.hist(sub["unknown_sentinel_rate"], bins=30, alpha=0.6,
-                    label=tr.upper(), color=color)
-    ax.set_xlabel("unknown-sentinel rate  (fraction of -1 in query categoricals)")
-    ax.set_ylabel("# datasets")
-    ax.set_title("Cached — unknown-sentinel rate per dataset")
-    ax.legend()
+            ax.hist(sub["unknown_sentinel_rate"], bins=bins, alpha=0.6,
+                    label=tr.upper(), color=_TRACK_COLOR[tr],
+                    edgecolor="white", linewidth=0.6)
+    ax.set_xlim(0.0, 1.0)
+    _apply_style(
+        ax,
+        title="Cached — unknown-sentinel rate per dataset",
+        xlabel="unknown-sentinel rate  (fraction of -1 in query categoricals)",
+    )
+    ax.legend(loc="upper right", frameon=False)
     fig.tight_layout()
     return fig
 

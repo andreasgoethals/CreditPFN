@@ -331,25 +331,17 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
     """Apply :func:`split_corpus` using ``cfg.corpus``, ``cfg.seed``,
     and the active ``cfg.track`` (or the supplied override).
 
-    The currently-active ``multi_chunk_policy`` is read from
-    ``cfg.corpus.multi_chunk_policy`` *if present* — when called from
-    a script that's iterating over `cfg.tunable.multi_chunk_policies`,
-    the script writes its choice into ``cfg.corpus.multi_chunk_policy``
-    before calling. Default if unset: the first value of the tunable
-    list, falling back to ``"all_chunks_as_separate_datasets"``.
+    The multi-chunk policy is fixed to ``"first_chunk_only"`` (see
+    ``src/train/loop.py::MULTI_CHUNK_POLICY``); callers may override
+    it by setting ``cfg.corpus.multi_chunk_policy`` directly before
+    calling, but no sweep axis exists for it.
     """
     track = track or cfg.track
     corpus = cfg.corpus
 
-    # Resolve the active policy: the script may have set it, otherwise
-    # take the first option from the tunable list (so a single-config
-    # invocation still picks something defensible).
-    if hasattr(corpus, "multi_chunk_policy"):
-        policy = str(corpus.multi_chunk_policy)
-    elif hasattr(cfg, "tunable") and getattr(cfg.tunable, "multi_chunk_policies", None):
-        policy = str(cfg.tunable.multi_chunk_policies[0])
-    else:
-        policy = "all_chunks_as_separate_datasets"
+    policy = (str(corpus.multi_chunk_policy)
+              if hasattr(corpus, "multi_chunk_policy")
+              else "first_chunk_only")
 
     return split_corpus(
         cached_root=corpus.cached_dir,

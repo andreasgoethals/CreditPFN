@@ -1,41 +1,27 @@
 # =============================================================================
 #  CreditPFN — eval / final-benchmark configuration
 # =============================================================================
+#  Drives `scripts/eval_pipeline.py`. For each (model × test dataset) it
+#  runs K-fold CV (outer 80/20; inner 80/20 of the train fold for HPO
+#  and F1-threshold tuning) and writes one CSV per (method, run, ts) at
 #
-#  Drives `scripts/eval_pipeline.py`, which compares:
+#      <results.base_dir>/<TRACK>/<method>/<run_name>_<timestamp>.csv
 #
-#    * the classical baselines listed in `baselines.enabled`
-#      (XGBoost / CatBoost get a per-fold Optuna HPO; LogReg / LinReg
-#       use defaults with median-imputation + StandardScaler).
-#    * every `tabpfn-untuned` base in `cfg.tunable.<track>_base_paths`
-#      (read from `config/train.yaml` — same checkpoints the training
-#       starts from, so `untuned vs trained` is honest).
-#    * every `tabpfn-trained` row in the training manifest
-#      `logs/runs/<run_name>_<track>.csv`.
-#
-#  All scored on the same held-out test chunks computed by
-#  `src.train.corpus.split_corpus`. K-fold cross-validation per
-#  test dataset gives us mean ± std bars that reviewers expect.
-#
-#  Output: `results/<TRACK>/<method>/<run_name>_<timestamp>.csv`.
-#  PERMANENT — every run appends a fresh timestamped file under
-#  the corresponding method directory. Earlier runs are never
-#  overwritten, so the project keeps a growing record of every
-#  benchmark performed.
+#  The training pipeline lives in `config/train.yaml`; the cross-cutting
+#  knobs (seed, run_name, track, corpus split) are inherited from there.
+#  Anything that's never changed across runs (metric column order,
+#  TabPFN inference-time defaults, processed-CSV path layout) is
+#  hardcoded in code.
 # =============================================================================
 
 
-# Inherit shared knobs from the training config (single source of
-# truth for seed, run_name, track, test split definition).
+# Inherit shared knobs (seed, run_name, track, corpus split) from the
+# training config.
 train_cfg_path: "config/train.yaml"
 
 
-# Which classical baselines to include. Drop any from this list to
-# skip them entirely.
-#   pd  → ["xgboost", "catboost", "logreg",  "tabpfn-untuned"]
-#   lgd → ["xgboost", "catboost", "linreg",  "tabpfn-untuned"]
-#
-# "logreg" is silently ignored on lgd; "linreg" is silently ignored on pd.
+# Which classical baselines to include. "logreg" is silently ignored on
+# lgd; "linreg" is silently ignored on pd.
 baselines:
   enabled:
     - "xgboost"
@@ -45,66 +31,41 @@ baselines:
     - "tabpfn-untuned"
 
 
-# Eval metric (mirrors training-time metric names so an eval row is
-# directly comparable to a training-manifest row).
-metric:
-  classification: "roc_auc"   # alt: "log_loss"
-  regression:     "rmse"      # alt: "neg_nll"  (neg-MSE for non-TabPFN)
-
-
-# ---------------------------------------------------------------- #
-#  Cross-validation
-# ---------------------------------------------------------------- #
-# Every (model × test_chunk) pair is scored across `n_folds` folds.
-# Folds are constructed with `KFold` (regression) or `StratifiedKFold`
-# (classification), shuffled with `seed`. For each fold:
-#     fit on (train + remaining query rows)        ← context
-#     predict on (held-out query fold)             ← validation
-# So `metric_value` rows are still one-per-(model × chunk × fold);
-# downstream aggregation reports `mean ± std` over folds per chunk.
+# K-fold CV per test dataset (stratified for classification, plain
+# KFold for regression). Inner val split is used for both Optuna HPO
+# and F1-threshold tuning.
 cv:
   n_folds: 5
+  inner_val_fraction: 0.20      # 64/16/20 train/val/test of the dataset
 
 
-# ---------------------------------------------------------------- #
-#  Hyperparameter optimisation for the boosting baselines
-# ---------------------------------------------------------------- #
-# XGBoost and CatBoost get a small Optuna HPO budget per chunk to
-# represent their best-effort baseline (rather than just defaults).
-# Set `n_trials: 0` to disable HPO and use library defaults.
-#
-# LogReg / LinReg are NOT tuned — they're the "what does plain linear
-# modelling do" baseline; tuning them defeats the point.
+# TabPFN-2.6 architectural in-context limit. wICE H100 NVL (96GB) lets
+# us push to 100k cleanly. Non-TabPFN baselines have no such cap and
+# run on the full data; see `hpo.<m>.max_rows` for HPO-only subsampling.
+max_rows_tabpfn: 100000
+
+
+# Per-fold Optuna budget for the boosting baselines. HPO objective is
+# computed on the inner-val split (same as F1-threshold tuning).
 hpo:
   xgboost:
     n_trials: 25
-    timeout_seconds: 300
+    timeout_seconds: 600
+    max_rows: 50000          # stratified subsample of the train fold (HPO only)
   catboost:
     n_trials: 25
-    timeout_seconds: 300
+    timeout_seconds: 600
+    max_rows: 50000
 
 
-# Number of TabPFN inference-time estimators for both untuned and
-# trained variants. 4 is the package default; raise to 8/16 for
-# slightly better accuracy at proportional inference cost.
+# TabPFN inference-time estimators (sklearn API), shared by untuned and
+# trained variants. 4 is the package default; 16 trades inference time
+# for slightly better accuracy/calibration.
 tabpfn_n_estimators: 16
 
 
-# ---------------------------------------------------------------- #
-#  Output
-# ---------------------------------------------------------------- #
-# Long-format CSVs land at:
-#
-#   results/<TRACK>/<method>/<run_name>_<timestamp>.csv
-#
-# where <TRACK> is "PD" or "LGD" (uppercase, per the user's spec)
-# and <method> is one of:
-#
-#   xgboost / catboost / logreg / linreg /
-#   tabpfn-untuned__<base_stem> /
-#   tabpfn-trained__<descriptive_name>
-#
-# This means EVERY run is permanently archived: a new timestamp →
-# a new file under the same method dir. Aggregations live downstream.
+# Output root. Benchmark CSVs land under <base_dir>/<TRACK>/<method>/...
+# Training per-epoch CSVs land under results/training/<track>/<...>.csv
+# (written by the training pipeline, not configurable here).
 results:
-  base_dir: "results"
+  base_dir: "results/benchmark"

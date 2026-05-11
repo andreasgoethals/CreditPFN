@@ -3,13 +3,15 @@
 Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
 :mod:`src.train.loop`; this script's job is to:
 
-  1. **Resolve the training plan**: which (base_checkpoint, learning_rate,
-     multi_chunk_policy) tuples to train. By default this is the full
-     cartesian product of every list under ``cfg.tunable``. With
-     ``--single`` the script uses only the FIRST value of each list
-     (one trial). With ``--trial-index N`` only the Nth trial of the
-     cartesian product is run — designed for slurm arrays where each
-     array task takes one trial.
+  1. **Resolve the training plan**: which (base_checkpoint, learning_rate)
+     tuples to train. By default this is the full cartesian product of
+     every list under ``cfg.tunable``. With ``--single`` the script uses
+     only the FIRST value of each list (one trial). With ``--trial-index
+     N`` only the Nth trial of the cartesian product is run — designed
+     for slurm arrays where each array task takes one trial.
+
+     The multi-chunk policy is fixed (one chunk per parent dataset);
+     see :data:`src.train.loop.MULTI_CHUNK_POLICY`.
 
   2. **Auto-cache hook**: before training starts, check whether every
      dataset the run will touch is on disk under
@@ -23,11 +25,16 @@ Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
      Each trained checkpoint is saved to
      ``cfg.checkpoint.trained_dir/<track>/<descriptive_name>.ckpt``.
 
-  4. **Manifest CSV**: append a row per trial to
-     ``logs/runs/<run_name>_<track>.csv`` (HP-tuple, test metric,
-     checkpoint path, walltime, OK/FAIL). The eval pipeline
-     (`scripts/eval_pipeline.py`) reads this CSV to know which
-     checkpoints to benchmark against the baselines.
+  4. **Manifest CSV** + **per-epoch CSV**:
+     * One row per trial appended to
+       ``manifests/<run_name>_<track>.csv`` (HP-tuple, checkpoint path,
+       walltime, OK/FAIL). The eval pipeline
+       (`scripts/eval_pipeline.py`) reads this to know which
+       checkpoints to benchmark against the baselines.
+     * One CSV per trial under
+       ``results/training/<track>/<descriptive_name>.csv`` with the
+       per-epoch ``(epoch, train_loss, lr, elapsed_sec)`` — useful
+       for diagnosing how the loss evolves across epochs.
 
 CLI usage
 ---------
@@ -90,8 +97,8 @@ def _load_cfg(overrides: list[str] | None = None):
     return cfg
 
 
-def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, str]]:
-    """Materialise the (base, lr, policy) tuples to train.
+def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float]]:
+    """Materialise the (base, lr) tuples to train.
 
     ``single=True``: head of every tunable list (one trial).
     Otherwise: full cartesian product.
@@ -102,13 +109,12 @@ def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, str]]:
         else list(cfg.tunable.regressor_base_paths)
     )
     lrs = [float(x) for x in cfg.tunable.learning_rates]
-    policies = list(cfg.tunable.multi_chunk_policies)
 
     if single:
-        return [(str(bases[0]), float(lrs[0]), str(policies[0]))]
+        return [(str(bases[0]), float(lrs[0]))]
     return [
-        (str(b), float(lr), str(p))
-        for b, lr, p in itertools.product(bases, lrs, policies)
+        (str(b), float(lr))
+        for b, lr in itertools.product(bases, lrs)
     ]
 
 
@@ -183,14 +189,18 @@ def _ensure_cache(cfg, log_path: Path | str | None) -> None:
 
 @dataclass
 class RunRow:
-    """One row of the per-track training manifest."""
+    """One row of the per-track training manifest.
+
+    No test-set metric — the training pipeline does not score models.
+    Use `scripts/eval_pipeline.py` for that. The eval reads the
+    `final_ckpt_path` and the corresponding sidecar
+    ``<final_ckpt_path>.provenance.json`` to recover the
+    ``test_dataset_ids`` for this checkpoint.
+    """
     track: str
     base_checkpoint: str
     learning_rate: float
-    multi_chunk_policy: str
     seed: int
-    test_metric_name: str
-    test_metric_raw: float | None
     n_train_datasets: int
     n_test_datasets: int
     n_train_chunks: int
@@ -227,7 +237,7 @@ def run(
     log_path: Path | str | None = None,
     cfg=None,
 ) -> int:
-    """Train one trial (``--single`` / ``--trial-index``) or every (base × lr × policy) tuple.
+    """Train one trial (``--single`` / ``--trial-index``) or every (base × lr) tuple.
 
     ``trial_index`` takes precedence over ``single`` if both are set.
 
@@ -281,35 +291,63 @@ def run(
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # ---- 3) per-trial training
-    from src.train.loop import train_one_config
+    from src.train.loop import descriptive_name, train_one_config
+
+    # Per-epoch CSVs live in results/training/<track>/<descriptive_name>.csv
+    epoch_csv_dir = resolve_output_path("results/training") / track
+    epoch_csv_dir.mkdir(parents=True, exist_ok=True)
 
     rows: list[RunRow] = []
     failures = 0
     t_outer = time.monotonic()
 
-    for trial_idx_local, (base, lr, policy) in enumerate(plan, start=1):
+    for trial_idx_local, (base, lr) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  policy=%s ===",
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g ===",
             trial_idx_local, len(plan), global_idx,
-            Path(base).name, lr, policy,
+            Path(base).name, lr,
         )
+
+        # Per-epoch CSV path (mirrors the descriptive name of the checkpoint)
+        run_basename = descriptive_name(
+            run_name=str(cfg.run_name), track=track,
+            base_path=base, learning_rate=lr, seed=int(cfg.seed),
+        ).removesuffix(".ckpt")
+        epoch_csv = epoch_csv_dir / f"{run_basename}.csv"
+        if epoch_csv.exists():
+            epoch_csv.unlink()              # fresh file per run
+        _epoch_csv_init: dict[str, bool] = {"written_header": False}
+
+        def _on_epoch_end(rec, _path=epoch_csv, _flag=_epoch_csv_init) -> None:
+            row = {
+                "epoch":       int(rec.epoch),
+                "train_loss":  float(rec.train_loss),
+                "lr":          float(rec.lr),
+                "elapsed_sec": float(rec.elapsed_sec),
+            }
+            write_header = not _flag["written_header"]
+            with _path.open("a", newline="", encoding="utf-8") as fh:
+                w = csv.DictWriter(fh, fieldnames=list(row.keys()))
+                if write_header:
+                    w.writeheader()
+                    _flag["written_header"] = True
+                w.writerow(row)
+
         t_trial = time.monotonic()
         try:
             result = train_one_config(
                 cfg, track=track,
                 base_checkpoint=base,
                 learning_rate=lr,
-                multi_chunk_policy=policy,
+                on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
-                multi_chunk_policy=policy, seed=int(cfg.seed),
-                test_metric_name=result.test_metric_name,
-                test_metric_raw=result.test_metric_raw,
+                seed=int(cfg.seed),
                 n_train_datasets=result.n_train_datasets,
                 n_test_datasets=result.n_test_datasets,
                 n_train_chunks=result.n_train_chunks,
@@ -323,9 +361,7 @@ def run(
             LOGGER.error("Trial %d failed: %s", trial_idx_local, exc, exc_info=True)
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
-                multi_chunk_policy=policy, seed=int(cfg.seed),
-                test_metric_name="",
-                test_metric_raw=None,
+                seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
                 n_train_chunks=0, n_test_chunks=0,
                 final_ckpt_path=None,

@@ -35,6 +35,8 @@ import logging
 
 import numpy as np
 
+from src.model.base import replace_inf_with_nan
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -71,17 +73,21 @@ class LogRegModel:
         self._params.setdefault("max_iter", 1000)
         self._pipeline = None
 
-    def fit(self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int]) -> None:
-        del categorical_idx       # ordinal codes treated as numerics
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int],
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> None:
+        del categorical_idx, X_val, y_val   # ordinal cats → numerics; no HPO
         from sklearn.linear_model import LogisticRegression
         self._pipeline = _make_linear_pipeline(LogisticRegression(**self._params))
-        self._pipeline.fit(X, y)
+        self._pipeline.fit(replace_inf_with_nan(X), y)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
-        return self._pipeline.predict_proba(X)
+        return self._pipeline.predict_proba(replace_inf_with_nan(X))
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return self._pipeline.predict(X)
+        return self._pipeline.predict(replace_inf_with_nan(X))
 
 
 # --------------------------------------------------------------------------- #
@@ -114,14 +120,18 @@ class LinRegModel:
         self._params.setdefault("alpha", 1.0)
         self._pipeline = None
 
-    def fit(self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int]) -> None:
-        del categorical_idx
+    def fit(
+        self, X: np.ndarray, y: np.ndarray, categorical_idx: list[int],
+        X_val: np.ndarray | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> None:
+        del categorical_idx, X_val, y_val
         from sklearn.linear_model import Ridge
         self._pipeline = _make_linear_pipeline(Ridge(**self._params))
-        self._pipeline.fit(X, y)
+        self._pipeline.fit(replace_inf_with_nan(X), y)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
-        return self._pipeline.predict(X)
+        return self._pipeline.predict(replace_inf_with_nan(X))
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:        # pragma: no cover
         raise NotImplementedError("LinReg has no predict_proba (regression task)")

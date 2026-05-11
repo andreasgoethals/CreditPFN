@@ -459,15 +459,11 @@ def test_unknown_schedule_type_raises() -> None:
         sched.step()
 
 
-@pytest.mark.parametrize("policy_short", [
-    "all_chunks_as_separate_datasets", "first_chunk_only",
-])
-def test_descriptive_name_encodes_every_tunable(policy_short: str) -> None:
+def test_descriptive_name_encodes_every_tunable() -> None:
     name = descriptive_name(
         run_name="myrun", track="pd",
         base_path="checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
         learning_rate=1.234e-5,
-        multi_chunk_policy=policy_short,
         seed=7,
     )
     # Every input must show up in the filename, so a glob can later
@@ -478,8 +474,6 @@ def test_descriptive_name_encodes_every_tunable(policy_short: str) -> None:
     assert "tabpfn-v2.6-classifier-v2.6_default" in name
     assert "lr1e-05" in name
     assert "seed7" in name
-    short = "allchunks" if policy_short == "all_chunks_as_separate_datasets" else "firstchunk"
-    assert short in name
 
 
 def test_descriptive_name_is_deterministic() -> None:
@@ -489,7 +483,6 @@ def test_descriptive_name_is_deterministic() -> None:
         run_name="r", track="pd",
         base_path="checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
         learning_rate=1e-5,
-        multi_chunk_policy="all_chunks_as_separate_datasets",
         seed=0,
     )
     assert descriptive_name(**kwargs) == descriptive_name(**kwargs)
@@ -633,7 +626,7 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
 
 
 def test_grid_full_cartesian_product() -> None:
-    """3 bases × 3 lrs × 2 policies = 18 trials."""
+    """3 bases × 3 lrs = 9 trials."""
     import scripts.train_pipeline as tp
     cfg = NS(
         track="pd",
@@ -641,12 +634,10 @@ def test_grid_full_cartesian_product() -> None:
             classifier_base_paths=["a", "b", "c"],
             regressor_base_paths=["x", "y", "z"],
             learning_rates=[1e-6, 1e-5, 5e-5],
-            multi_chunk_policies=["all_chunks_as_separate_datasets",
-                                  "first_chunk_only"],
         ),
     )
     grid = tp._resolve_grid(cfg, single=False)
-    assert len(grid) == 3 * 3 * 2
+    assert len(grid) == 3 * 3
     # No duplicates in a cartesian product of distinct lists.
     assert len(set(grid)) == len(grid)
 
@@ -660,11 +651,10 @@ def test_grid_single_picks_first_value() -> None:
             classifier_base_paths=["a", "b"],
             regressor_base_paths=["P", "Q"],
             learning_rates=[5e-6, 1e-5],
-            multi_chunk_policies=["allchunks", "firstchunk"],
         ),
     )
     grid = tp._resolve_grid(cfg, single=True)
-    assert grid == [("P", 5e-6, "allchunks")]
+    assert grid == [("P", 5e-6)]
     assert len(grid) == 1
 
 
@@ -744,7 +734,6 @@ def test_train_one_config_end_to_end_mocked(
             "regressor_base_paths":
                 ["checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"],
             "learning_rates":        [1e-3],
-            "multi_chunk_policies":  ["first_chunk_only"],
         },
         "corpus": {
             "cached_dir": str(synthetic_cache),
@@ -752,9 +741,8 @@ def test_train_one_config_end_to_end_mocked(
             "test_fraction":  0.4,
             "pinned_test_dataset_ids": [],
         },
-        "optimizer": {"type": "AdamW", "weight_decay": 0.01,
-                      "betas": [0.9, 0.999]},
-        "scheduler": {"type": "warmup_cosine", "warmup_fraction": 0.10},
+        "optimizer": {"weight_decay": 0.01},
+        "scheduler": {"warmup_fraction": 0.10},
         "train": {
             "epochs": 2,
             "accumulate_grad_batches": 1,
@@ -777,13 +765,11 @@ def test_train_one_config_end_to_end_mocked(
     assert len(result.history) == 2
     assert all(math.isfinite(r.train_loss) for r in result.history)
     assert result.final_ckpt_path == saved_paths[-1]
-    # We only need to assert finite-OR-nan — synthetic data may yield
-    # a single-class query split for a small chunk → NaN AUC.
-    assert (
-        result.test_metric_raw is None
-        or math.isnan(result.test_metric_raw)
-        or math.isfinite(result.test_metric_raw)
-    )
+    # The training pipeline no longer reports a test metric — that's
+    # the eval pipeline's job. The TrainingResult dataclass should not
+    # expose any test_metric_* field.
+    assert not hasattr(result, "test_metric_raw")
+    assert not hasattr(result, "test_metric_name")
     # Filename schema check.
     assert "smoketest_pd_" in result.descriptive_name
     assert result.descriptive_name.endswith(".ckpt")

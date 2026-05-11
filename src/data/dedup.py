@@ -406,7 +406,9 @@ def main(cfg=None, pass_name: str = "pre") -> int:
         )
 
         out_path = out_dir / f"doubles_{track}_{pass_name}.csv"
-        if cfg.dedup.overwrite_existing_pass_csv and out_path.exists():
+        # Always overwrite the prior pass CSV (stale results from a previous
+        # invocation would silently mix with the current run otherwise).
+        if out_path.exists():
             out_path.unlink()
         df = pd.DataFrame(records, columns=[
             "dataset_path", "dataset_name", "duplicate_of",
