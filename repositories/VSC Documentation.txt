@@ -70,9 +70,15 @@ Directory structure:
     │   │   ├── vsc_user_groups.rst
     │   │   ├── where_can_i_store_what_kind_of_data.rst
     │   │   └── mfa_login/
+    │   │       ├── filezilla_sitemanager_setup.PNG
     │   │       ├── firewall_confirmed.PNG
     │   │       ├── firewall_link_mfa.PNG
+    │   │       ├── idp_page.PNG
     │   │       ├── login_node.PNG
+    │   │       ├── mobaxterm_create_new_session.PNG
+    │   │       ├── nx_config.PNG
+    │   │       ├── nx_mod.PNG
+    │   │       ├── reauthenticate_phone.PNG
     │   │       └── vsc_firewall_institute.PNG
     │   ├── antwerp/
     │   │   ├── remote_visualization_uantwerp.rst
@@ -230,7 +236,6 @@ Directory structure:
     │   │       ├── macos_client.rst
     │   │       ├── mobaxterm_access.rst
     │   │       ├── mobaxterm_access_ssh_keys.rst
-    │   │       ├── nx_start_guide.rst
     │   │       ├── openssh_access.rst
     │   │       ├── openssh_jellyfissh_access.rst
     │   │       ├── openssh_ssh_config.rst
@@ -1313,465 +1318,7 @@ zipp==3.21.0
 ================================================
 FILE: styleguide.md
 ================================================
-# Style Guide
-
-The VSC documentation is written in reStructuredText (RST) format and rendered
-into HTML with Sphinx. This system has two main advantages:
-
-* the web pages can be fully formatted in text, allowing for simple version control
-* the render results in a folder with a collection of static HTML pages
-
-## Features
-
-There are a few extensions and customizations added to Sphinx that provide the
-following features:
-
-1. **[PyData Theme](https://pydata-sphinx-theme.readthedocs.io)**
-    - modern responsive theme for Sphinx
-    - adapts to different screen formats
-    - top bar with custom navigation, search box and links
-    - left side-bar showing the `toctree` navigation and that can be fully customized
-    - right side-bar showing in-page navigation
-    - includes and supports [FontAwesome](https://fontawesome.com)
-1. **[Sphinx-Design](https://sphinx-design.readthedocs.io)**:
-    - provides extra directives to organize/present information in the document
-    - adds directives `tab-set` and `tab-item` to add tabbed content
-    - adds directives `grid` and `card` to create groups of cards
-    - adds directive `button-link` to create colorful buttons, which can be
-      used for special links
-    - adds the role `bdg` to add colorful badges with text
-    - adds the role `fas` to insert icons from [FontAwesome](https://fontawesome.com)
-1. **[sphinx-reredirects](https://documatt.gitlab.io/sphinx-reredirects/)**
-    - creation of redirect URLs in the documentation
-1. **[sphinx-notfound-page](https://sphinx-notfound-page.readthedocs.io/)**
-    - custom 404 page
-
-## Documentation Structure
-
-Every document in the documentation must be included in the TOC tree to be part
-of its structure. This makes the documents visible in the navigation elements
-of the website, allowing users to organically find them.
-
-Therefore, any new document added to the document must also be listed in the
-[toctree directive](https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-toctree)
-of some other document.
-
-Simplified structure of the documentation
-
-* **Accounts and access** (folder `access`)
-
-    Main location for information related to VSC accounts, authentication
-    methods, connecting to platforms and account management.
-
-* **Research data** (folder `data`)
-
-    Main location for information about data management. Description of storage
-    solutions in VSC, moving data in and out of our platforms and sharing data
-    with other users. 
-
-* **Compute**
-
-    Information about the HPC platform of VSC. Tier-1 and tier-2 clusters on all sites.
-
-    * Infrastructure (folders per site)
-
-        Description of the hardware and policies in application on each VSC site.
-
-    * Jobs (folder `jobs`)
-
-        Documentation about job scripts and job management in the clusters.
-
-    * Software (folder `software`)
-
-        Documentation about how to use specific software in the HPC.
-
-* **T1-Cloud** (folder `cloud`)
-
-    Main location for the documentation of the T1-Cloud platform.
-
-* **T1-Data** (folder `data`)
-
-    Direct access to the documentation of the T1-Data platform. Part of the
-    *Research Data* section in the `data` folder.
-
-* **FAQs**
-
-    Page with links to documents answering common issues and questions.
-    Documents explaining a FAQ are specific to the FAQ section, *i.e.* they are
-    part of the TOC tree of the main `faq.rst` document. However, each of those
-    documents is located inside one the folders of one the aforementioned
-    section, depending on the subject they cover. For instance, documents with
-    FAQs about VSC accounts and access are located inside the `access` folder,
-    although they are part of the FAQ TOC tree.
-
-## Site-specific information
-
-There are two main ways to organize and show information that is specific to
-some VSC sites:
-
-* [Tabbed panels](#tabbed-panels) are useful for situations where there is
-  information to be shown for many VSC sites and each site can have specific
-  information.
-
-  Example: [Applying for your VSC account](source/access/vsc_account.rst?plain=1#L19)
-
-  Tabs can be synced, which means that whenever the tab of one VSC site is
-  selected, all other tab panels with that same tab will automatically switch
-  to that one as well. This happens not only on the open page, but across the
-  whole documentation website.
-
-* [Badges](#badges) are useful for situations where information that is general
-  needs a remark that a applies to one or a few VSC site. We have pre-defined
-  one badge for each VSC site: `|KUL|` for KU Leuven, `|UA|` for UAntwerp,
-  `|UG|` for UGent and `|VUB|` for VUB.
-
-  Example in a note: [TurboVNC](source/access/turbovnc_start_guide.rst?plain=1#L23)
-
-  Example in text: [MFA](source/access/mfa_login.rst?plain=1#L6)
-
-# Code formatting
-
-All Sphinx formatting options can be applied in all RST documents of the
-documentation. The basics are covered in the
-[reStructuredText Primer](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html).
-
-## Headers
-
-Sphinx is flexible on the formatting of headers. Hence, we defined the
-following convention to homogenize the headers in the VSC docs:
-
-```
-###########################
-Document title - Top header
-###########################
-
-****************
-Sub-title Header
-****************
-
-Section Header
-==============
-
-Sub-section header
-------------------
-```
-
-Note: Prepending [FA icons](#fontawesome) is safe, they do **not** count as
-characters of the header and will not be part of their anchors.
-
-## Lists
-
-⚠️ Warning: indentation is very strict!
-
-In Sphinx indentation has to follow the spacing established by the top element
-of the current group. In the case of lists, this means that different types of
-lists have different indentations:
-
-* unordered list `* `: 2 spaces
-* ordered list `1. `: 3 spaces
-* definitions `some_text`: 4 spaces
-
-```
-definition A
-    explanation text
-
-definition B
-    explanation text
-
-    1. order item one
-
-       * unorder item one
-
-         * nested item one
-
-       * unorder item two
-       * unorder item three
-
-    2. order item two
-```
-
-## Links
-
-Automatic generation of implicit targets is disabled to avoid name collisions.
-There are already multiple sub-sections in different parts of the documentation
-that happen to have the same header. Therefore, all targets have to be
-explicitly defined.
-
-```
-.. _intro_to_sphinx:
-
-Introduction to Sphinx
-======================
-
-```
-
-Once the section has a unique target, it can be linked to (*aka* referenced)
-using ``:ref:`target_name` `` or ``:ref:`link_label <target_name>` ``.
-
-Links to external websites can be directly added inline with `` `link_label
-<https://url.com>`_ ``. This will also add a target for this URL, which might
-also collide with existing targets. In such a case, use a double `__` at the
-end. This will disable the target for this link. *e.g.*
-`` `link_label <https://url.com>`__ ``
-
-URLs that are used multiple times can be defined a single time in
-[`conf.py`](source/conf.py) as a named reference that can be reused
-in the documentation files.
-
-```
-[conf.py]
-
-.. _VSC account page: https://account.vscentrum.be/
-```
-
-Then you can inject that link directly in the text and it will be rendered as a
-link to the defined URL using the name of the reference as label.
-
-
-```
-[example.rst]
-
-Check the `VSC account page`_.
-```
-
-Using the URL from a named reference but changing its label is also possible.
-
-```
-[example.rst]
-
-Check `your account page <VSC account page_>`_.
-```
-
-### Link Buttons
-
-It is also possible to create link buttons. This is useful for special links.
-The configuration of link buttons is described in the
-[Link Buttons](https://sphinx-design.readthedocs.io/en/latest/badges_buttons.html#buttons)
-documentation of sphinx-design.
-
-## Code Blocks
-
-We use the following convention to distinguish between two types of code blocks
-
-* Commands in a shell: use a regular code block with an optional caption
-  describing its contents
-
-```
-.. code-block::
-   :caption: Example to list all modules of Python
-
-   module spider Python
-```
-
-* Contents of a file: use a code block with line numbers (and optional caption)
-
-```
-.. code-block:: text
-   :caption: Example of job epilog showing job resources
-   :linenos:
-
-   Resources Requested: walltime=00:05:00,nodes=1:ppn=1,mem=1gb,neednodes=1:ppn=1
-   Resources Used: cput=00:01:19,vmem=105272kb,walltime=00:01:22,mem=17988kb,energy_used=0
-```
-
-Code highlighting in code blocks is defined globally in many documents to
-*shell*. This can be done with the `highlight` directive:
-
-```
-.. highlight:: shell
-```
-
-The code highlight can be set individually in the `code-block` directive as
-well (overwrites global `highlight`):
-
-```
-.. code-block:: python
-   :linenos:
-
-   import matplotlib
-   matplotlib.use('TkAgg')
-```
-
-⚠️ Warning: indentation is very strict!
-
-In Sphinx indentation has to follow the distance established by the top element
-of the block. In this case, `.. code-block::` is a directive and the
-indentation set by all directives is 3 spaces. Any extra spaces will be shown
-inside the codeblock, before each code line, which will make it hard to copy
-paste the code out of the documentation.
-
-## Figures
-
-Images should be always added to the document with the `.. figure:` directive.
-Figure are automatically centered, scaled and can have captions.
-
-```
-.. figure:: some_figure.png
-   :alt: some figure
-
-   Capion of some figure
-
-```
-
-⚠️ Avoid using the `.. image:` directive, which can cause rendering issues.
-
-## Tabbed Panels
-
-Information can be organized in tabs using the `tab-set::` directive. This is
-specially useful to show site-specific information in a compact manner.
-
-Tabs can be synced, which means that whenever one tab is selected, all other
-tab panels in that same ``sync-group`` will automatically switch to that same
-tab as well. The title of the tab is irrelevant, and the sync feature is
-controlled with the ``sync`` property. Syncing of tabs happens not only on the
-tab panes on the open page, but across the whole documentation website.
-
-```
-.. tab-set::
-   :sync-group: vsc-sites
-
-   .. tab-item:: KU Leuven/UHasselt
-      :sync: kuluh
-
-      Information specific to KU Leuven/UHasselt 
-
-   .. tab-item:: UAntwerp
-      :sync: ua
-
-      Information specific to UAntwerp
-
-   .. tab-item:: UGent
-      :sync: ug
-
-      Information specific to UGent
-
-   .. tab-item:: VUB
-      :sync: vub
-
-      Information specific to VUB
-```
-
-Keep in mind to always include these 4 tabs on tab panels for ``vsc-sites``.
-Even if there is no information for some of the sites. Otherwise users having
-selected the missing tab will get the first one activated.
-
-## Grids and Cards
-
-It is possible to present some information inside its own frame. These frames
-(*aka* cards) can be customized and easily organized in a flexible grid. Each
-card in a grid can contain any amount of text formatted in the same way as any
-other part of the document (including lists and code blocks). Optionally, cards
-can have a header and a footer; colored backgrounds and images.
-
-All formatting options are described in the documentation of Sphinx-Design:
-* [Grids](https://sphinx-design.readthedocs.io/en/latest/grids.html#grids)
-* [Cards](https://sphinx-design.readthedocs.io/en/latest/cards.html#cards)
-
-Examples in our documentation are:
-
-* [grid of sections in the front page](source/index.rst)
-* [grid of supported features per site](source/jobs/clusters_slurm.rst)
-* [grid of sections per OS](source/access/generating_keys.rst?plain=1#L51)
-
-## Level of severity
-
-There are two main ways to convey messages with different levels of severities,
-such as warnings, important notes or optional instructions.
-
-### Admonitions
-
-Renders the text in box with a header element indicating the type of
-message. Added with specific directives in the code.
-
-* Note: `.. note::`
-* Warning: `.. warning::`
-* See also: `.. seealso::`
-
-Example:
-
-```
-.. note::
-
-   Some additional information giving more insight.
-
-```
-
-### Badges
-    
-Badges are in-line elements with a very short text and colored background.
-They serve to flag in a clear way any special trait of the text following
-the badge.
-
-All configuration options are described in
-[Badges](https://sphinx-design.readthedocs.io/en/latest/badges_buttons.html#badges)
-in the documentation of sphinx-design.
-
-We have set the following global substitutions for badges to harmonize their
-use in our website:
-
-* `|Recommended|`: a recommended option
-* `|Optional`: an optional step in a instruction list
-* `|Example|`: an example
-* `|Warning|`: a warning message less prominent than the `.. warning::` admonition
-* `|Alert|`: an alert
-* `|Info|`: a note less prominent than the `.. note::` admonition
-
-## FontAwesome
-
-[FontAwesome](https://fontawesome.com) is a CSS font with more than a thousand
-icons. CSS fonts are purely applied as part of the style of the web page and do
-**not** alter the contents of the document (as any regular text with a font
-would do). This allows to easily add graphical content to our web pages without
-having to work with image files or complex CSS instructions. Moreover, since
-FontAwesome is a font, it is inserted as an in-line element of the document,
-which fits very well with the structure of our documents in RST.
-
-* The theme PyData includes a copy of the icon library and automatically uses
-  it for icons in navigation elements and admonitions (note, tip, warning...)
-* Sphinx-Design provides the `fas` role to insert any icon as an in-line
-  element of the document. For instance, to prepend an email address with a
-  mail icon
-
-    ```
-    :fas:`envelope` name.surname@vscentrum.be
-    ```
-
-The name of each icon can be found in the [FontAwesome Icon
-Gallery](https://fontawesome.com/icons).
-
-## Web Customizations
-
-### Sidebar Templates
-
-Templates are the method to customize the sidebar of the web site. Those are
-small pieces of HTML code that can be selectively added to the sidebar of some
-pages. They have to be places in the `source/_templates` folder. 
-
-The display of templates can be configured per document. This configuration is
-set in `html_sidebars` in the `conf.py` file.
-
-### Theme CSS
-
-The style of the web can be changed in almost any way we want. Any CSS rules
-added to the file [vsc.css](source/_static/css/vsc.css] will be added to the
-main stack of CSS styles and can overwrite those.
-
-The additional CSS style sheets are added in `conf.py` through the parameters
-`html_static_path` and `html_css_files`.
-
-### PyData Configuration
-
-The Sphinx PyData theme is very flexible. Most of its configuration options are
-set through the `html_theme_options` parameter. The configuration guide can be
-found in the [PyData User Guide](https://pydata-sphinx-theme.readthedocs.io/en/stable/user_guide/index.html).
-
-### Not found page
-
-The website shows a custom 404 page with the site navigation. This is done with
-the `sphinx-notfound-page` extension, which uses the
-[404.html](source/_templates/404.html) template.
-
-
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x8f in position 5687: character maps to <undefined>
 
 
 ================================================
@@ -2540,8 +2087,6 @@ rst_prolog += """
 .. _Netlib LAPACK repository: http://www.netlib.org/lapack/
 .. _Netlib ScaLAPACK repository: http://www.netlib.org/scalapack/
 .. _noVNC: https://novnc.com/
-.. _NoMachine: https://www.nomachine.com/
-.. _NX Client download: https://download.nomachine.com/enterprise/?product=enterprise-client
 .. _ollama: https://ollama.com
 .. _oneAPI Threading Building Blocks: https://uxlfoundation.github.io/oneTBB/
 .. _Open MPI Documentation: https://www.open-mpi.org/doc
@@ -2749,7 +2294,7 @@ Not only have supercomputers changed scientific research in a fundamental way ..
 ---------------------------------------------------------------------------------
 
 Supercomputers are indispensable for scientific research and for a
-modern R&D environment. ‘Computational Science’ is - alongside theory
+modern R&D environment. â€˜Computational Scienceâ€™ is - alongside theory
 and experiment - the third fully fledged pillar of science. For
 centuries, scientists used pen and paper to develop new theories based
 on scientific experiments. They also set up new experiments to verify
@@ -2763,7 +2308,7 @@ nuclear scientist it would be difficult to deliberately lose control
 over a nuclear reaction to ascertain the consequences of such a move.
 (Super)computers can do this and are indeed revolutionizing science.
 
-Complex theoretical models - too advanced for ‘pen and paper’ results -
+Complex theoretical models - too advanced for â€˜pen and paperâ€™ results -
 are simulated on computers. The results they deliver, are then compared
 with reality and used for prediction purposes. Supercomputers have the
 ability to handle huge amounts of data, thus enabling experiments that
@@ -2771,7 +2316,7 @@ would not be achievable in any other way. Large radio telescopes or the
 LHC particle accelerator at CERN could not function without
 supercomputers processing mountains of data.
 
-… but also the industry and out society
+â€¦ but also the industry and out society
 ---------------------------------------
 
 But supercomputers are not just an expensive toy for researchers at
@@ -2989,7 +2534,7 @@ Training programs in other centres
 
 * `PRACE Training Portal`_
 * `HLRS, Stuttgart (Germany) <https://www.hlrs.de/training/hpc-training>`_
-* `Leibniz RechenZentrum, Garching, near München (Germany) <https://www.lrz.de/services/compute/courses/>`_,
+* `Leibniz RechenZentrum, Garching, near MÃ¼nchen (Germany) <https://www.lrz.de/services/compute/courses/>`_,
   organised together with the `Erlangen Computing Centre <https://www.rrze.fau.de>`_.
 
 EU initiatives
@@ -3020,7 +2565,7 @@ Some HPC centres in Europe
 
 * Belgium
 
-  * `CÉCI - Consortium des Équipements de Calcul Intensif <http://www.ceci-hpc.be/>`_,
+  * `CÃ‰CI - Consortium des Ã‰quipements de Calcul Intensif <http://www.ceci-hpc.be/>`_,
     the equivalent of the VSC run by the French Community of Belgium
 
 * Denmark:
@@ -3034,13 +2579,13 @@ Some HPC centres in Europe
   * `GCS, Gauss Centre for Supercomputing <https://www.gauss-centre.eu/>`_,
     a collaboration of three German national supercomputer centres
 
-    * `JSC, Jülich Supercomputer Centre <http://www.fz-juelich.de/ias/jsc/EN/Home/home_node.html>`_
-      of the `Forschungszentrum Jülich <http://www.fz-juelich.de/portal/EN/Home/home_node.html>`_
-    * `HLRS, Höchstleistungsrechenzentrum Stuttgart <https://www.hlrs.de/>`_
+    * `JSC, JÃ¼lich Supercomputer Centre <http://www.fz-juelich.de/ias/jsc/EN/Home/home_node.html>`_
+      of the `Forschungszentrum JÃ¼lich <http://www.fz-juelich.de/portal/EN/Home/home_node.html>`_
+    * `HLRS, HÃ¶chstleistungsrechenzentrum Stuttgart <https://www.hlrs.de/>`_
     * `LRZ, Leibniz Rechenzentrum der Bayerischen Akademie der Wissenschaften <https://www.lrz.de/>`_
 
-  * `HLRN, Norddeutscher Verbund für Hoch- undHöchstleistungsrechnen <https://hlrn.de/>`_,
-    a German supercomputer center in which 7 Bundesländer (*States*) in Northern Germany participate
+  * `HLRN, Norddeutscher Verbund fÃ¼r Hoch- undHÃ¶chstleistungsrechnen <https://hlrn.de/>`_,
+    a German supercomputer center in which 7 BundeslÃ¤nder (*States*) in Northern Germany participate
   * `Max Planck Computing and Data Facility, Rechenzentrum Garching <http://www.mpcdf.mpg.de>`_
     of the Max Planck Society and the IPP (Institute for Plasma Physics)
 
@@ -3055,8 +2600,8 @@ Some HPC centres in Europe
 
     * `CCRT/CEA, Centre de Calcul Recherche et Technologie <http://www-ccrt.cea.fr/>`_,
       which also runs the French Tier-0 cluster for the `PRACE`_ program
-    * `CINES, Centre Informatique National de l’Enseignement Supérieur <https://www.cines.fr/>`_
-    * `IDRIS, Institut du Développement et des Ressources en Informatique Scientifique <http://www.idris.fr/>`_
+    * `CINES, Centre Informatique National de lâ€™Enseignement SupÃ©rieur <https://www.cines.fr/>`_
+    * `IDRIS, Institut du DÃ©veloppement et des Ressources en Informatique Scientifique <http://www.idris.fr/>`_
 
 * Ireland: 
 
@@ -3095,7 +2640,7 @@ Some HPC centres in Europe
 * Switzerland:
 
   * `CSCS, the Swiss National Supercomputer Center <https://www.cscs.ch/>`_,
-    an autonomous unit of ETH Zürich
+    an autonomous unit of ETH ZÃ¼rich
 
 * United Kingdom:
 
@@ -3146,7 +2691,6 @@ access/managing_disk_usage.html /accounts/managing_disk_usage.html
 access/messed_up_keys.html /accounts/messed_up_keys.html
 access/mfa_login.html /accounts/mfa_login.html
 access/multiplatform_client_tools.html /compute/terminal/index.html
-access/nx_start_guide.html /compute/terminal/nx_start_guide.html
 access/scientific_domains.html /accounts/scientific_domains.html
 access/setting_up_a_ssh_proxy.html /accounts/setting_up_a_ssh_proxy.html
 access/setting_up_a_ssh_proxy_with_putty.html /compute/terminal/putty_ssh_proxy.html
@@ -3703,7 +3247,7 @@ FILE: source/_static/css/vsc.css
 ================================================
 html[data-theme="light"] {
     --pst-color-primary: #d96c31;  /* VSC orange */
-    --pst-color-secondary: #2989bc;  /* Haddock’s Sweater (VSC orange complementary) */
+    --pst-color-secondary: #2989bc;  /* Haddockâ€™s Sweater (VSC orange complementary) */
     --pst-color-link: var(--pst-color-secondary);
     --pst-color-link-hover: #f28e24;  /* VSC secondary orange */
     --pst-color-background: #ffffff;  /* actual white */
@@ -4392,7 +3936,7 @@ directory ``~/.ssh``) if you or your operating system requires this.
 
 You will need to generate a new key pair, when:
 
--  you don’t yet have a dedicated key pair for the VSC clusters, or
+-  you donâ€™t yet have a dedicated key pair for the VSC clusters, or
 -  you forgot the passphrase protecting your private key, or
 -  or your private key was compromised.
 
@@ -5226,7 +4770,6 @@ SSH Client name                        Purpose              Operating System
 :ref:`OpenSSH <OpenSSH access>`        text-based terminal  Linux, macOS
 :ref:`PuTTY <terminal putty>`          text-based terminal  Windows
 :ref:`MobaXterm <terminal mobaxterm>`  text-based terminal  Windows
-:ref:`NoMachine <NX start guide>`      graphical desktop    Windows, Linux, macOS
 :ref:`FileZilla <FileZilla>`           file transfer        Windows, Linux, macOS
 ====================================== ==================== =====================
 
@@ -5241,8 +4784,8 @@ an :ref:`ssh agent`. Keep in mind, however, that this approach tends to be
 less convenient since each new connection will require multi-factor
 authentication.
 
-Certain clients (such as :ref:`FileZilla <FileZilla>`, ``sshfs`` or
-:ref:`NoMachine <NX start guide>`) furthermore do not show you the firewall
+Certain clients (such as :ref:`FileZilla <FileZilla>` or ``sshfs``)
+furthermore do not show you the firewall
 link needed for the MFA and hence can only function in combination with an SSH
 agent holding an SSH certificate.
 
@@ -5275,8 +4818,8 @@ Pageant
 #######
 
 Pageant is an SSH authentication agent that couples seamlessly with
-:ref:`Putty<terminal putty>`, :ref:`MobaXterm<terminal mobaxterm>`,
-:ref:`NoMachine<NX start guide>` and :ref:`FileZilla<FileZilla>` to make user
+:ref:`Putty<terminal putty>`, :ref:`MobaXterm<terminal mobaxterm>`
+and :ref:`FileZilla<FileZilla>` to make user
 authentication an easy task. As of version 0.78, Pageant can also hold SSH
 certificates in addition to SSH private keys.
 
@@ -5395,7 +4938,7 @@ authenticate you as a recognized user.
       At this point, a new certificate will be stored in Pageant that holds your
       identity for a limited period of time.
       You can verify that the certificate is actually stored by right-clicking on
-      Pageant and selecting ‘View Keys’:
+      Pageant and selecting â€˜View Keysâ€™:
 
       .. figure:: pageant/Pageant_view_keys.png
          :alt: pageant_view_keys
@@ -5418,7 +4961,7 @@ authenticate you as a recognized user.
       You can now open as many PuTTY sessions as you like without having to
       type your passphrase again.
 
-Pageant provides your credentials to other applications (such as PuTTY, NoMachine,
+Pageant provides your credentials to other applications (such as PuTTY,
 FileZilla, MobaXterm) whenever you are prompted for your identity.
 
 Stopping Pageant
@@ -6879,6 +6422,12 @@ all VSC accounts is described in :ref:`data location`.
 
 
 ================================================
+FILE: source/accounts/mfa_login/filezilla_sitemanager_setup.PNG
+================================================
+[Binary file]
+
+
+================================================
 FILE: source/accounts/mfa_login/firewall_confirmed.PNG
 ================================================
 [Binary file]
@@ -6891,7 +6440,37 @@ FILE: source/accounts/mfa_login/firewall_link_mfa.PNG
 
 
 ================================================
+FILE: source/accounts/mfa_login/idp_page.PNG
+================================================
+[Binary file]
+
+
+================================================
 FILE: source/accounts/mfa_login/login_node.PNG
+================================================
+[Binary file]
+
+
+================================================
+FILE: source/accounts/mfa_login/mobaxterm_create_new_session.PNG
+================================================
+[Binary file]
+
+
+================================================
+FILE: source/accounts/mfa_login/nx_config.PNG
+================================================
+[Binary file]
+
+
+================================================
+FILE: source/accounts/mfa_login/nx_mod.PNG
+================================================
+[Binary file]
+
+
+================================================
+FILE: source/accounts/mfa_login/reauthenticate_phone.PNG
 ================================================
 [Binary file]
 
@@ -8645,9 +8224,9 @@ More information about the usage of the web portal is available at :ref:`compute
 Storage
 *******
 
-Similar to *Hortense*, the user’s ``$HOME`` directory is located on the scratch
-file system and is distinct from the user’s ``$VSC_HOME``.  The advantage of
-this setup is that **sofia** remains accessible even if the user’s home
+Similar to *Hortense*, the userâ€™s ``$HOME`` directory is located on the scratch
+file system and is distinct from the userâ€™s ``$VSC_HOME``.  The advantage of
+this setup is that **sofia** remains accessible even if the userâ€™s home
 institution cluster is down.
 
 The :ref:`storage hardware`, specifically ``$VSC_HOME`` and ``$VSC_DATA``, is accessible, but **only on the
@@ -8674,6 +8253,35 @@ sofia scratch via Globus
 Accessing the **sofia** scratch via Globus is not yet possible during the pilot phase.
 
 More general information about Globus is available at :ref:`globus platform`.
+
+.. _sofia_job_submission:
+
+Job submission
+--------------
+
+sofia uses the :ref:`Slurm job scheduler <running jobs>` . Only Slurm-native
+commands are supported for managing your jobs.
+
+.. _sofia_job_environment:
+
+Job environment
+***************
+
+In sofia, both batch and interactive jobs start in a clean environment. This
+differs from the default Slurm behavior (``--export=ALL``). The reason is
+twofold:
+
+* reproducibility: it ensures your jobs run consistently regardless of your current shell state
+* architecture alignment: it forces software modules to reload when moving
+  between different hardware architectures, ensuring access to the correct and
+  optimized software.
+
+Propagating specific environment variables to your job can be done with the
+``--export=<environment_variables>`` option.
+
+If your workflow requires your full shell environment to be propagated, please
+refer to the VUB-HPC documentation on `how to copy your full shell environment into your job
+<https://hpc.vub.be/docs/faq/advanced/#how-can-i-copy-the-login-shell-environment-to-my-jobs>`_.
 
 .. _sofia_help:
 
@@ -8720,7 +8328,7 @@ For question or problems, please contact the VUB HPC team: hpc@vub.be
 Access restrictions
 -------------------
 
-Access is available for faculty members, students (master’s projects under
+Access is available for faculty members, students (masterâ€™s projects under
 faculty supervision), and researchers of the VUB, as well as VSC users of other
 Flemish universities.
 
@@ -9972,7 +9580,7 @@ in the *OpenStack Virtual Machine Image Guide*.
 
 Before you can connect to an instance using SSH, you must set up a
 floating IP for it, as discussed in
-section [floating-ip](configure_instances.md#floating-ip-addresses). Recall
+sectionÂ [floating-ip](configure_instances.md#floating-ip-addresses). Recall
 that only ports 50000 to 60000 of the floating IP's can be directly reached from
 outside the UGent network.
 
@@ -9991,7 +9599,7 @@ connect to the UGent login node _login.hpc.ugent.be_ first, and hop to
 your instance from there. To make this work without storing the required
 private key for the instance in your VSC storage space, you need to set
 up an [SSH agent with key forwarding locally](/accounts/ssh_agent.rst),
-i.e. on the machine where you store the private key of an authorized keypair
+i.e.Â on the machine where you store the private key of an authorized keypair
 for the instance.
 :::
 
@@ -10168,7 +9776,7 @@ their host keys. The warning above tells you that the server you are
 connecting to is not using the same key anymore. In this case, you
 should take the following steps:
 
-1.  Look up the fingerprint of the instance you want to access, according to the procedure described in the section Looking up an instance’s host key.
+1.  Look up the fingerprint of the instance you want to access, according to the procedure described in the section Looking up an instanceâ€™s host key.
 2.  Verify that the fingerprint you find in the Dashboard matches the fingerprint shown in the warning message.
 3.  If the fingerprint matches, the new key is legitimate. Remove the previous known key from the known_hosts file as follows (still using address 193.190.85.40 and port number 50322 as an example):
 
@@ -10708,7 +10316,7 @@ up the network location of your file system using the Dashboard:
 4.  Copy the content of the **Path:** field.
 
 Once you know the location of your shared file system, you can mount it
-on any VM with the appropriate access rights, e.g. to mount a shared
+on any VM with the appropriate access rights, e.g.Â to mount a shared
 file system with location _10.2.0.2:/volumes/_nogroup/918...a78_ at
 mount point _\mnt_:
 
@@ -10990,7 +10598,7 @@ Terraform will show your plan again and you will see this message:
 ..
 Do you want to perform these actions?
 Terraform will perform the actions described above.
-Only ’yes’ will be accepted to approve.
+Only â€™yesâ€™ will be accepted to approve.
 Enter a value:
 ```
 
@@ -11151,7 +10759,7 @@ If this section does not help you, don't hesitate to contact <cloud@vscentrum.be
 :::{dropdown} A duplicate port forwarding entry with same attributes already exists
 If you get the error:
 ```
-│ Error: Error creating openstack_networking_portforwarding_v2: Bad request with: [POST https://cloud.vscentrum.be:13696/v2.0/floatingips/64f2705c-43ec-4bdf-864e-d18fee013e3f/port_forwardings], error message: {"NeutronError": {"type": "BadRequest", "message": "Bad port_forwarding request: A duplicate port forwarding entry with same attributes already exists, conflicting values are {'floatingip_id': '64f2705c-43ec-4bdf-864e-d18fee013e3f', 'external_port': 80, 'protocol': 'tcp'}.", "detail": ""}}
+â”‚ Error: Error creating openstack_networking_portforwarding_v2: Bad request with: [POST https://cloud.vscentrum.be:13696/v2.0/floatingips/64f2705c-43ec-4bdf-864e-d18fee013e3f/port_forwardings], error message: {"NeutronError": {"type": "BadRequest", "message": "Bad port_forwarding request: A duplicate port forwarding entry with same attributes already exists, conflicting values are {'floatingip_id': '64f2705c-43ec-4bdf-864e-d18fee013e3f', 'external_port': 80, 'protocol': 'tcp'}.", "detail": ""}}
 ```
 This means that a different VM in your project is already using port 80 and/or 443.
 You can have multiple VMs with `nginx_enabled=true` by setting `alt_http=true` for that particular VM.
@@ -11159,14 +10767,14 @@ You can have multiple VMs with `nginx_enabled=true` by setting `alt_http=true` f
 :::{dropdown} remote-exec provisioner error
 If you get the error:
 ```
-│ Error: remote-exec provisioner error
-│ 
-│   with module.MyVMExample.null_resource.testconnection[0],
-│   on ../modules/single_instance/ansible.tf line 17, in resource "null_resource" "testconnection":
-│   17:   provisioner "remote-exec" {
-│ 
-│ interrupted - last error: SSH authentication failed (rocky@193.190.80.3:51307): ssh: handshake failed: ssh: unable to authenticate, attempted methods [none], no
-│ supported methods remain
+â”‚ Error: remote-exec provisioner error
+â”‚ 
+â”‚   with module.MyVMExample.null_resource.testconnection[0],
+â”‚   on ../modules/single_instance/ansible.tf line 17, in resource "null_resource" "testconnection":
+â”‚   17:   provisioner "remote-exec" {
+â”‚ 
+â”‚ interrupted - last error: SSH authentication failed (rocky@193.190.80.3:51307): ssh: handshake failed: ssh: unable to authenticate, attempted methods [none], no
+â”‚ supported methods remain
 ```
 Then terraform is unable to SSH to your instance. There are a couple of possible reasons:
 * You are on a login node but have not forwarded your ssh-agent with `ssh -A`
@@ -11185,14 +10793,14 @@ Feel free to contact us <cloud@vscentrum.be> for help.
 :::{dropdown} Failed to upload script: please login as the user...
 If you get the error:
 ```
-│ Error: remote-exec provisioner error
-│
-│   with module.RS-GPU[0].null_resource.testconnection[0],
-│   on ../modules/single_instance/ansible.tf line 17, in resource
+â”‚ Error: remote-exec provisioner error
+â”‚
+â”‚   with module.RS-GPU[0].null_resource.testconnection[0],
+â”‚   on ../modules/single_instance/ansible.tf line 17, in resource
 "null_resource" "testconnection":
-│   17:   provisioner "remote-exec" {
-│
-│ Failed to upload script: please login as the user "ubuntu" rather than
+â”‚   17:   provisioner "remote-exec" {
+â”‚
+â”‚ Failed to upload script: please login as the user "ubuntu" rather than
 the user "root".
 ```
 Terraform is using the wrong user to connect to your VM. This can happen if you're using your own OS image.
@@ -14712,8 +14320,8 @@ The job can now be submitted as follows::
    $ wsub  -batch run.pbs  -data data.txt
 
 Note that the PBS file is the value of the -batch option . The ``cfd-test``
-program will now be run for all 100 parameter instances—7
-concurrently—until all computations are done. A computation for such a
+program will now be run for all 100 parameter instancesâ€”7
+concurrentlyâ€”until all computations are done. A computation for such a
 parameter instance is called a work item in worker parlance.
 
 
@@ -14788,7 +14396,7 @@ The job is now submitted as follows::
    $ wsub  -t 1-100  -batch run.pbs
 
 The ``word-count`` program will now be run for all 100 input files---7
-concurrently—--until all computations are done. Again, a computation for
+concurrentlyâ€”--until all computations are done. Again, a computation for
 an individual input file, or, equivalently, an array ID, is called a
 work item in worker speak. Note that in contrast to Torque job arrays,
 a worker job array submits a single job.
@@ -15682,7 +15290,7 @@ Desktop
 
 The Desktop app will launch a light-weight (Xfce) desktop environment in an
 interactive job. Its main purpose is to run graphical software for which there
-isn’t (yet) a dedicated app available.
+isnâ€™t (yet) a dedicated app available.
 
 VSC clusters that support the Desktop app:
 
@@ -15815,38 +15423,6 @@ Additional site-specific constraints are listed below.
       :sync: vub
 
       (N/A)
-
-
-.. _ood_desktop_tips_for_nx_users:
-
-Tips for NoMachine users
-========================
-
-.. grid:: 3
-    :gutter: 4
-
-    .. grid-item-card:: |KUL|
-        :columns: 12
-
-        If you have been using the :ref:`NoMachine <NX start guide>` desktop,
-        you may need to do a few things differently when switching to the
-        OnDemand Desktop:
-
-        - For browser-related applications, see :ref:`the section above
-          <ood_desktop_using_applications>`. Note that in certain cases this
-          means the :ref:`Interactive Shell <ood_interactive_shell>` app may
-          suffice and you may not need the Desktop app.
-
-        - If your graphical application is available as a dedicated Interactive
-          App we recommend using that instead of the Desktop app (examples:
-          :ref:`MATLAB <ood_matlab>`, :ref:`ParaView <ood_paraview>`,
-          :ref:`Fluent <ood_fluent>`).
-
-        - The standard text editor is ``Mousepad`` (not ``Gedit``).
-
-        - As an image viewer you may use the ``display`` command provided by
-          the ``ImageMagick`` modules, but we would rather recommend the viewer
-          that is integrated in the :ref:`File Explorer <ood_files>`.
 
 
 
@@ -16677,7 +16253,7 @@ Dask Lab extension
 
 The `Dask JupyterLab extension
 <https://github.com/dask/dask-labextension/blob/main/README.md>`_
-(dask-labextension) provides tools to manage Dask clusters and embed Dask’s
+(dask-labextension) provides tools to manage Dask clusters and embed Daskâ€™s
 dashboard plots directly into your JupyterLab session.
 
 VSC clusters that support the Dask Lab extension:
@@ -17449,7 +17025,7 @@ R IDE
 Running Jupyter inside VS Code
 ------------------------------
 
-It’s also possible to edit/run Jupyter notebooks inside VS Code. Below are the
+Itâ€™s also possible to edit/run Jupyter notebooks inside VS Code. Below are the
 instructions for Python:
 
 #. When using Jupyter with a :ref:`jupyterlab_pure_module_env`, make sure to load
@@ -17551,7 +17127,7 @@ To connect to the VS Code tunnel, follow these steps:
    ``vsc-<VSC-id>-<cluster>``, where ``<VSC-id>`` is your VSC-id, and
    ``<cluster>`` is the cluster that you selected in the resources form.
 
-#. That’s it, you are now connected to your VS Code Tunnel session!
+#. Thatâ€™s it, you are now connected to your VS Code Tunnel session!
 
 .. admonition:: Notes
 
@@ -17577,7 +17153,7 @@ FILE: source/compute/portal/ondemand/vscode-warning-extensions.rst
    Please be cautious about which extensions you use/install with VS Code, as
    malware extensions are being reported more frequently.  We strongly recommend
    only installing extensions from verified publishers as indicated by the blue
-   checkmark next to the publisher’s name.
+   checkmark next to the publisherâ€™s name.
 
    For more info, please check the docs on `Extension runtime security
    <https://code.visualstudio.com/docs/configure/extensions/extension-runtime-security>`_.
@@ -18172,7 +17748,7 @@ You can then upload your public key as an additional key to the
 
 If you have a 4096-bit RSA private key in the wrong format, another option is to
 simply convert the private key to the PEM format.  Assuming your private key
-file is called `ìd_rsa_vsc``, then the conversion can be done using
+file is called `Ã¬d_rsa_vsc``, then the conversion can be done using
 
 ::
 
@@ -22524,7 +22100,7 @@ Barring any special requirements, we would recommend to use a centrally
 installed ``Miniforge3`` module, for example ``Miniforge3/25.3.0-3``.
 This has the following advantages:
 
-* The base installation is shared, so it isn’t duplicated for each user.
+* The base installation is shared, so it isnâ€™t duplicated for each user.
 * You cannot install additional packages into the ``base`` environment,
   enforcing the recommended practice of keeping it unchanged.
 * By default, Miniforge only includes the (unrestricted) ``conda-forge``
@@ -23008,7 +22584,7 @@ Containers are not always the best solution. Potential drawbacks include:
   architectures, which may reduce performance compared to optimized HPC builds.
 * Containers built for one CPU architecture (e.g. x86-64, Intel/AMD CPUs) cannot run on
   another architecture (e.g. AArch64, Arm CPUs).
-* :ref:`Security risks <apptainer_pulling_images>` arise when you don’t know
+* :ref:`Security risks <apptainer_pulling_images>` arise when you donâ€™t know
   who created a container image or exactly what software is inside it.
 
 .. _apptainer_vsc_clusters:
@@ -23299,7 +22875,7 @@ fakeroot
 <https://apptainer.org/docs/user/latest/fakeroot.html#restrictions-security>`_,
 some containers may fail to build. In that case, you can build the
 image on a local machine where you have root privileges. Apptainer only runs
-under Linux, so you’ll need to use a virtual machine when using Windows (e.g.
+under Linux, so youâ€™ll need to use a virtual machine when using Windows (e.g.
 WSL) or macOS.  For detailed instructions, see the `Apptainer Quick Start`_
 guide.  Once your image is built, you can :ref:`transfer <data transfer>` it to
 the VSC infrastructure.
@@ -23348,7 +22924,7 @@ Building interactively from base image
       nano my_sandbox/.singularity.d/runscript
 
 #. Create immutable SIF image from sandbox.
-   When we’re finished making changes, we can convert the sandbox to a SIF
+   When weâ€™re finished making changes, we can convert the sandbox to a SIF
    image:
 
    .. code-block:: bash
@@ -23375,7 +22951,7 @@ Another advantage of definition files is that they can be shared easily.
    installation risks breaking reproducibility if those external resources
    become unavailable.
 
-In the example below, we’ll create a container for tblite. The definition file
+In the example below, weâ€™ll create a container for tblite. The definition file
 can be found in the *gssi-training* repo at `tblite-0.4.0.def
 <https://github.com/vscentrum/gssi-training/blob/main/tblite/building_apptainer_containers/apptainer_definition_file/tblite-0.4.0.def>`_.
 
@@ -23443,7 +23019,7 @@ tool that automates the creation of an Apptainer image and provides wrapper scri
 call executables within the container environment. It supports building both
 Conda and Pip packages.
 
-In the example below, we’ll create a container for ``tblite`` with conda.
+In the example below, weâ€™ll create a container for ``tblite`` with conda.
 
 #. Create Conda environment file ``environment.yml``:
 
@@ -23637,291 +23213,7 @@ support <user support VSC>`.
 ================================================
 FILE: source/compute/software/installing_software/easybuild_spack.rst
 ================================================
-.. _easybuild_spack:
-
-EasyBuild and Spack
-===================
-
-`EasyBuild <https://easybuild.io>`_ and `Spack <https://spack.io>`_ are the two most prominent tools
-that can be used to automate the installation of software from source code on HPC systems.
-
-Both tools significantly facilitate software installation, and tap into the broad expertise of their respective communities.
-On the other hand, there is an *initial learning curve* for both. Unless you
-have some experience with compilers and manually installing software, you should
-consider other approaches to installing your software (see the other pages in
-this section).
-
-EasyBuild
----------
-
-EasyBuild is a tool to (build and) install (scientific) software.
-It was originally created by `HPC-UGent <https://www.ugent.be/hpc/en>`_ in 2009,
-and is available as open source software since 2012.
-
-It automates the installation of (scientific) software from source code, and generates accompanying
-environment module files so they can be used easily.
-
-EasyBuild has strong focus on scientific software, collaboration, software performance, and HPC systems.
-
-The `EasyBuild Slack <https://easybuild.io/join-slack>`_ is used as the main communication channel for the worldwide community,
-along with the `EasyBuild mailing list <https://lists.ugent.be/sympa/info/easybuild>`_.
-
-EasyBuild is the tool of choice for managing the central software stack on various HPC systems,
-including the Tier-2 and Tier-1 clusters of the VSC, and various `EuroHPC JU <https://www.eurohpc-ju.europa.eu>`_ supercomputers (LUMI, JUPITER, ...).
-
-Installing EasyBuild
-~~~~~~~~~~~~~~~~~~~~
-
-On VSC clusters, ``EasyBuild`` is available as a module so instead of
-installing it yourself, you can make it available with:
-
-.. code-block:: bash
-
-   module load EasyBuild/5.2.1
-
-It is recommended to use a recent EasyBuild version.
-
-If you prefer to install EasyBuild yourself, use:
-
-.. code-block:: bash
-
-  pip install easybuild
-
-We recommended to install EasyBuild in a :ref:`Python virtual environment <venv_python>`.
-
-After installing EasyBuild, you can run the ``eb`` command, for example to check the EasyBuild version:
-
-.. code-block:: bash
-
-    eb --version
-
-Some additional Python packages can be installed as optional dependencies for EasyBuild:
-
-- ``rich`` (colors)
-- ``archspec`` (CPU detection)
-
-For more information on installing EasyBuild, see https://docs.easybuild.io/installation.
-
-
-Configuring EasyBuild
-~~~~~~~~~~~~~~~~~~~~~
-
-Before you use EasyBuild, you should configure it.
-This can be done via configuration files, environment variables, and command line options.
-
-To show the active configuration, use:
-
-.. code-block:: bash
-
-    eb --show-config
-
-To see *all* configuration options, use:
-
-.. code-block:: bash
-
-    eb --show-full-config
-
-.. warning::
-
-  Do not use the default configuration!
-
-  By default, EasyBuild will (ab)use a hidden directory in your home directory (``$HOME/.local/easybuild``).
-
-An example minimal configuration via environment variables that is suitable to use in your VSC account:
-
-.. code-block:: bash
-
-  # configure EasyBuild to use a subdirectory of $VSC_DATA for everything (sources, software installations, etc.)
-  # that is specific to the operating system and architecture of choice
-  export EASYBUILD_PREFIX=$VSC_DATA/easybuild/${VSC_OS_LOCAL}/${VSC_ARCH_LOCAL}${VSC_ARCH_SUFFIX}
-  # make an exception for the (temporary) build directories, which should be on local disk
-  export EASYBUILD_BUILDPATH=/tmp/$USER
-
-For more information on configuring EasyBuild, see https://docs.easybuild.io/configuration.
-
-Basic usage of EasyBuild
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-The basic usage workflow of EasyBuild is as follows:
-
-#. Find an `easyconfig file <https://docs.easybuild.io/terminology/#easyconfig_files>`_ to install with ``eb --search``, or create one;
-#. Assess what will be installed first using `eb --missing <https://docs.easybuild.io/using-easybuild#eb_missing>`_, `eb -x <https://docs.easybuild.io/extended-dry-run>`_, etc.
-#. Use the ``eb`` command to install the easyconfig file, use `--robot <https://docs.easybuild.io/using-easybuild/#use_robot>`_ to enable dependency resolution.
-#. Load the environment module that was generated to start using the installed software.
-
-For example, to install & use ``tblite``:
-
-.. code-block:: bash
-
-  eb --search tblite
-  eb tblite-0.4.0-gfbf-2024a.eb --missing
-  # build+install tblite (incl. dependencies)
-  eb tblite-0.4.0-gfbf-2024a.eb --robot
-  # make module available to load
-  module use $VSC_DATA/easybuild/${VSC_OS_LOCAL}/${VSC_ARCH_LOCAL}${VSC_ARCH_SUFFIX}/modules/all
-  # load tblite for usage
-  module load tblite/0.4.0-gfbf-2024a
-
-Note that existing environment module files will automatically be used for dependencies if they are visible via ``module avail``.
-If a module is already installed, EasyBuild will skip the installation unless
-the ``--force`` option is provided.
-
-Links
-~~~~~
-
-For more information on EasyBuild, see:
-
-- Website: https://easybuild.io
-- Documentation: https://docs.easybuild.io
-- EasyBuild tutorial: https://tutorial.easybuild.io
-- GitHub organisation: https://github.com/easybuilders
-- Slack channel: https://easybuild.io/join-slack
-- Mailing list: https://lists.ugent.be/sympa/info/easybuild
-
-
-
-Spack
------
-
-Spack is a package manager for supercomputers, which was originally created
-by Lawrence Livermore National Lab (LLNL) in the US in 2014.
-
-It automates software installation procedures, can install pre-built software from binary cache,
-and it is particularly popular with software developers due to its usage model & specific features.
-
-It can generate environment module files for software installations, but also has its own mechanism
-for *activating* software (via ``spack load``).
-
-Spack focuses on scientific software & HPC systems, but also supports macOS & Windows.
-
-The `Spack Slack <https://https//slack.spack.io>`_ is used as main communication channel for the worldwide community.
-
-Installing and configuring Spack
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-You can "install" Spack by cloning the Git repository:
-
-.. code-block:: bash
-
-  git clone https://github.com/spack/spack
-
-.. warning::
-
-   This implies using the (potentially unstable) development version,
-   so you may want to download a `specific version <https://github.com/spack/spack/releases>`_ of Spack instead.
-
-By default, Spack will install software in the ``spack/opt/spack`` subdirectory of where it was installed,
-so pick a good location (*not* your home directory in your VSC account).
-
-Before using Spack, you need to set up your shell environment by sourcing the provided script,
-for example (for bash shell):
-
-.. code-block:: bash
-
-  source spack/share/spack/setup-env.sh
-
-You should also make Spack aware of available (system) compilers, using:
-
-.. code-block:: bash
-
-  spack compiler find
-
-.. note::
-
-   Be aware that by default Spack will cache some stuff in ``$HOME/.spack``.
-
-For more information on installing and configuring Spack, see https://spack.readthedocs.io/en/latest/getting_started.html.
-
-Basic usage of Spack
-~~~~~~~~~~~~~~~~~~~~
-
-The basic usage workflow of Spack is as follows (using ``tblite`` as example software):
-
-#. Check whether software is supported: ``spack list tblite``
-#. Show details of specific software: ``spack info tblite``
-#. Show dependency graph of specific software: ``spack graph tblite``
-#. Install the software with ``spack install``, for example:
-
-   - Install tblite version 0.4.0 incl. Python bindings with system compiler:
-
-     .. code-block:: bash
-
-       spack install tblite@0.4.0 +python
-
-   - Install tblite version 0.4.0 with GCC 13 as compiler:
-
-     .. code-block:: bash
-
-       # first install GCC 13
-       spack install gcc@13
-       # install tblite 0.4.0, incl. Python bindings, with GCC 13
-       spack install tblite@0.4.0 +python %gcc@13
-
-#. Load the software to start using it:
-
-   - ``spack find tblite``
-   - ``spack load tblite``
-
-Links
-~~~~~
-
-For more information on Spack, see:
-
-- Website: https://spack.io
-- Documentation: https://spack.readthedocs.io
-- Slack channel: https://https://slack.spack.io
-- GitHub organisation: https://github.com/spack
-
-
-EasyBuild vs Spack
-------------------
-
-EasyBuild and Spack are quite similar in several ways, yet quite different in many other ways.
-
-Similarities between EasyBuild & Spack
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Both are open source software implemented in Python;
-- Both are developed & supported by a worldwide community;
-- Both focus on scientific software, performance, HPC systems;
-- Both require *no* admin privileges to build & install software;
-- Both are highly configurable: you can tune them to your preferences;
-- Both are an "expert system” for installing (scientific) software;
-- Both wrap around commonly used tools like CMake, make, pip, ...;
-- Neither are a magic solution: building software may still fail (compiler errors, etc.);
-
-Differences between EasyBuild & Spack
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- The EasyBuild community is mostly European, while Spack is mostly US-based;
-- EasyBuild is available under the GPLv2 open source license, while Spack is dual-licensed under Apache 2.0 + MIT;
-- You can install EaysBuild via ``pip install``, Spack is typically installed with ``git clone``;
-- EasyBuild mainly supports Linux, while Spack supports Linux, macOS, and Windows;
-- EasyBuild has interesting features for HPC support teams, while Spack is more targeted towards software developers;
-- EasyBuild has published frequent stable releases since 2012, Spack 1.0 was released in summer of 2025;
-- EasyBuild strongly prefers building software from source code (when possible), Spack also has support for using a binary cache (pre-built binary packages);
-- Both have specific features:
-
-  - EasyBuild has `Slurm integration <https://docs.easybuild.io/submitting-jobs/>`_, `GitHub integration <https://docs.easybuild.io/integration-with-github/>`_, and integration with other tools;
-  - The functionality of EasyBuild can be customized via `hooks <https://docs.easybuild.io/hooks/>`_;
-  - Spack has support for `environments <https://spack.readthedocs.io/en/latest/environments_basics.html>`_.
-  - Spack has good support for building `container images <https://spack.readthedocs.io/en/latest/containers.html>`_;
-
-When (not to) use EasyBuild or Spack
-------------------------------------
-
-Both EasyBuild and Spack provide a uniform way of installing software, regardless of specifics of installation procedure. They automate (complex) software installation procedures, including required dependencies.
-They can both be used to build a consistent (central) software stack, with software performance in mind,
-and install the same software stack across different systems/partitions.
-
-Both leverage efforts by experienced people who contributed to these tools,
-and you can get help through community channels (there's a dedicated Slack for both).
-
-However, there is a *steep initial learning curve* for both. Some experience with compilers
-& manually installing software can be helpful. You should take some time to learn how
-to use the tool you picked (docs, tutorial, etc.).
-
-
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 8978: character maps to <undefined>
 
 
 ================================================
@@ -24714,11 +24006,11 @@ found in the central libraries of VSC clusters.
    $ R
    > library(devtools)
    > sessioninfo::session_info()
-   ## ─ Session info ────────────────────
+   ## â”€ Session info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    ##  setting  value
    ##  version  R version 4.5.1 (2025-06-13)
    ##  [...]
-   ## ─ Packages ────────────────────────
+   ## â”€ Packages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    ##  package     * version date (UTC) lib source
    ##  cachem        1.1.0   2024-05-16 [2] CRAN (R 4.5.1)
    ##  cli           3.6.5   2025-04-23 [2] CRAN (R 4.5.1)
@@ -27559,7 +26851,6 @@ graphics on local or remote screens.
    :hidden:
 
    Xming X Server <windows_xming>
-   NoMachine NX <nx_start_guide>
 
 .. tab-set::
    :sync-group: operating-system
@@ -27626,7 +26917,7 @@ want to use:
    .. tab-item:: KU Leuven/UHasselt
       :sync: kuluh
 
-      On the KUL clusters, users can use NX :ref:`NX start guide`.
+      On the KUL clusters, users can use :ref:`Open OnDemand <ood>`
 
    .. tab-item:: UAntwerpen
       :sync: ua
@@ -28034,143 +27325,6 @@ Press the 'OK' button and you should be prompted for your passphrase.
 Enter here the passphrase you chose while creating your public/private key pair.
 The characters will be hidden and nothing at all will appear as you
 type (no circles, no symbols).
-
-
-
-================================================
-FILE: source/compute/terminal/nx_start_guide.rst
-================================================
-.. _NX start guide:
-
-NX Start Guide
-==============
-
-`NoMachine`_ (NX) is a remote desktop application which can be used
-launch graphical applications on remote servers. It is currently supported on
-the Tier-2 login infrastructure at KU Leuven.
-
-.. grid:: 3
-    :gutter: 4
-
-    .. grid-item-card:: |KULUH|
-       :columns: 12 4 4 4
-    
-       * Tier-2 :ref:`Genius <Genius hardware>`
-       * Tier-2 :ref:`Superdome <Superdome hardware>`
-       * Tier-2 :ref:`wICE <wICE hardware>`
-
-.. note::
-
-   In March 2026, NoMachine access will be discontinued
-   in favor of the :ref:`Desktop app in Open OnDemand <ood_desktop>`.
-
-
-Installing NX client
---------------------
-
-Download the enterprise version of the client from the `NX Client download`_ page.
-
-Steps before configuring NoMachine
-----------------------------------
-
-For NoMachine connections to the (KU Leuven) HPC infrastructure, you need to use
-an SSH agent such as :ref:`Pageant` for Windows users or the default
-:ref:`SSH agent of OpenSSH <SSH agent>` for Linux/MacOS users.
-
-Once your SSH agent is up and running, you need to issue an SSH certificate to
-be stored in your agent. For that, please refer to the instructions given in
-:ref:`using SSH clients with SSH agent <mfa-with-ssh-agent>`.
-
-NoMachine NX Client Configuration
----------------------------------
-
-1. Start the NoMachine client and press 'Continue' until you see the screen
-   listing your connections, titled 'Machines'
-
-#. Press 'Add' to create a new connection
-
-#. In the 'Addres' pane:
-
-   #. choose a name for the connection, e.g. 'Genius'
-   #. change the Protocol to 'SSH'
-   #. choose the hostname ``nx.hpc.kuleuven.be`` for Genius and port ``22``
-
-   .. note::
-
-       This NX login host cannot be used to access the cluster
-       from the terminal, directly.
-
-#. In the 'Configuration' pane:
-
-   * choose 'Use key-based authentication with a SSH agent'
-   * press 'Modify' and select 'Forward authentication'
-
-#. Press 'Connect'
-
-#. If this is your first login via NX, you will need to enter your VSC username
-
-#. Your SSH certificate will be automatically fetched from your SSH agent
-
-#. If you are creating for the first time choose 'Create a new virtual desktop'.
-   Otherwise please refer to the :ref:`section on how to reconnect to an NX session
-   <nx_reconnect>` for instructions
-
-#. Read the useful information regarding your session displayed on several
-   screens. This step is very important in case of mobile devices – once
-   you miss the instructions it is not so easy to figure out how to operate
-   NoMachine on your device. You can optionally choose not to show these
-   messages again
-
-Once connected you will see the virtual Linux desktop.
-
-.. _nx_reconnect:
-
-Reconnecting to an NX session
------------------------------
-
-When you leave a session without logging out, you can reconnect to
-that session.  This is of course a great feature if your network
-connection is not very stable.  It also helps you to work more
-efficiently since you can simply resume your work where you left off.
-
-When reconnecting choose your desktop from all the listed ones. If
-there are too many you can use the option 'find a user or a desktop'
-and type your username (vsc-account). Once you found your desktop press
-'connect'.
-
-Note that when you don't want your session to persist, you should select
-'Log out' from the 'System' menu.
-
-How to start using NX on Genius?
-----------------------------------
-
-#. Once your desktop is open, you can use all available GUI designed
-   software that is listed within the Applications menu. Software is
-   divided into several groups:
-
-   - Accessories (e.g. Calculator, Character Map, Emacs, Gedit, GVim)
-   - Graphics (e.g. gThumb Image Viewer, Xpdf PDF Viewer)
-   - Internet (e.g. Firefox with pdf support, Filezilla)
-   - 'HPC' (modules related to HPC use: 'Computation' sub-menu with
-     MATLAB and SAS, 'Visualisation' sub-menu with ParaView, VisIt,
-     VMD and XCrySDen)
-   - Programming (e.g. Meld Diff Viewer, Microsoft Visual Studio Code),
-   - System tools (e.g. File Browser, Terminal)
-
-#. Running the applications in the text mode requires having a terminal
-   open. To launch the terminal please go to Applications -> System
-   tools -> Terminal. From Terminal all the commands available on
-   regular login node can be used
-#. Some more information can be found on :download:`slides from our lunchbox
-   session <nx_start_guide/nx_slides.pdf>`. In the slides you can find the
-   information how to 'connect the local HDD' to the NX session for
-   easier transfer of data between the cluster and your local computer
-
-Attached documents
-------------------
-
-* :download:`Slides from the lunchbox session <nx_start_guide/nx_slides.pdf>`
-
 
 
 
@@ -29152,9 +28306,8 @@ At this point, we highly recommend setting up an :ref:`ssh agent`. A widely
 used SSH agent is :ref:`Pageant` which is installed automatically with PuTTY.
 
 Pageant can be used to manage SSH keys and certificates for multiple clients,
-such as PuTTY, :ref:`WinSCP<WinSCP transfer>`, :ref:`FileZilla<FileZilla>`,
-as well as the :ref:`NX client for Windows<NX start guide>` so that you don't
-need to enter the passphrase all the time.
+such as PuTTY, :ref:`WinSCP<WinSCP transfer>` and :ref:`FileZilla<FileZilla>`,
+so that you don't need to enter the passphrase all the time.
 
 :ref:`pageant`
 
@@ -29780,69 +28933,7 @@ Running Xming
 ================================================
 FILE: source/compute/terminal/wsl.rst
 ================================================
-.. _wsl:
-
-##########################
-Installing WSL2 on windows
-##########################
-
-As a Windows user, if you don't already use any virtualisation system to
-operate Linux you can install Windows Subsystem for Linux (WSL2).
-
-You must be running Windows 10 version 2004 and higher (Build 19041 and higher)
-or Windows 11 to be able to use WSL2.
-The requirements can be checked by typing ``winver`` on your search bar, a
-informative popup appears showing your Windows version.
-
-|KUL| Users who are using a system managed by KU Leuven should fulfill these
-requirements. 
-
-The installation of WSL2 will consist of the following steps:
-
-1. Enable WSL 2
-2. Enable *Virtual Machine Platform*
-3. Set WSL 2 as default
-4. Install a Linux distro
-
-We will complete all steps by using Power Shell of Windows. However you can do
-some of the steps by graphical screens as an option. Here you can find all
-steps.
-
-Run Windows PowerShell as administrator and type the following to enable WSL:
-
-.. code-block::
-
-   dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
-
-To enable Virtual Machine Platform on Windows 10 (2004), execute the following command:
-
-.. code-block::
-
-   dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
-
-To set WSL 2 as default execute the command below (You might need to restart your PC):
-
-.. code-block::
-
-   wsl --set-default-version 2
-
-To install your Linux distribution of choice on Windows 10, open the Microsoft
-Store app, search for it, and click the “Get” button.
-The first time you launch a newly installed Linux distribution, a console
-window will open and you'll be asked to wait for a minute or two.
-You will then need to create a user account and password for your new Linux
-distribution. This password will give you ‘sudo' rights when asked.
-If you see ‘WSLRegisterDistribution Failed with Error:' or you may find that
-things don't work as intended you should restart your system at this point.
-After all these steps when you type ‘wsl' to your Windows PowerShell, you will
-be directed to your Ubuntu machine mounted on your Windows' C drive. From now
-on, you can execute all Linux commands. It is advised to use the home directory
-instead of your Windows drives. So if you type ‘cd‘ you will be forwarded to
-your Ubuntu home.
-
-You can also install (optional) the Windows Terminal app, which enables
-multiple tabs operation, search feature, and custom themes etc.
-
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 1606: character maps to <undefined>
 
 
 ================================================
@@ -30058,7 +29149,7 @@ The inode and space quota allow site admins to control the amount of data and/or
 number of files users create, and to prevent system wide problems in case of
 unexpected behavior, such as runaway jobs filling up the available space or
 creating too many files. A filesystem that runs out of space or inodes affects
-all users immediately.  It is also a way to raise users’ awareness of the data
+all users immediately.  It is also a way to raise usersâ€™ awareness of the data
 their jobs produce, as storage is a limited resource and should be used
 responsibly.
 
@@ -31244,7 +30335,7 @@ iCommands work on the data in Tier-1 Data.
 | chmod                         | ichmod                | changing    |
 |                               |                       | permissions |
 +-------------------------------+-----------------------+-------------+
-| …                             | …                     | …           |
+| â€¦                             | â€¦                     | â€¦           |
 +-------------------------------+-----------------------+-------------+
 
 Just like Unix commands, iCommands work with both absolute and relative
@@ -31273,7 +30364,7 @@ Uploading and downloading
 
 To upload data from your local directory to Tier-1 Data, you can use the
 command ``iput``. You can upload individual files but also whole
-directories, by using the ``-r`` option, which stands for ‘recursive’.
+directories, by using the ``-r`` option, which stands for â€˜recursiveâ€™.
 
 .. code-block:: sh
 
@@ -31813,441 +30904,7 @@ For example, if you want to search based on the field 'instrument' from the sche
 ================================================
 FILE: source/data/tier1data/clients/python_client.rst
 ================================================
-.. _python-client:
-
-########################
-Python-iRODSClient - PRC
-########################
-
-The Python-iRODSClient (PRC) is an API to iRODS, the underlying system behind Tier-1 Data.
-The goal of the PRC is to offer researchers means to manage their data in Tier-1 Data through python.
-
-************
-Installation
-************
-
-You can install the Python-iRODSclient in a local environment using pip:
-
-.. code-block:: sh
-
-   pip install python-irodsclient
-
-On the Tier-2 and Tier-1 clusters hosted at KU Leuven and UGent, a version
-of the Python-irodsclient is also already installed as a module
-which you can load as follows:
-
-.. code-block:: sh
-
-   # For Genius and wICE
-   module load python-irodsclient/1.1.4-GCCcore-10.3.0
-
-   # For Stevin and Hortense
-   module load python-irodsclient/1.1.4-GCCcore-11.2.0
-
-
-**************
-Authenticating
-**************
-
-Logging in
-----------
-
-In order to log in to the Tier-1 Data service via the PAM interactive authentication, you can authenticate either using the standardized :ref:`iron<iron-CLI>` client or following the PRC specific steps below.
-
-1. Install the required authentication package:
-
-.. code:: sh
-
-   pip install mango_auth
-
-2. Go to the “How to connect” page in `ManGO portal <https://mango.vscentrum.be/>`__ to get your `irods_user_name`, `irods_zone_name` and `irods_host` information.
-
-3. Execute the command below with your own information in your terminal:
-
-.. code:: sh
-
-   mango_auth <irods_user_name> <irods_zone_name> <irods_host>
-
-- To authenticate in a Python shell or within a script file, run the following snippet:
-
-.. code:: sh
-
-   from mango_auth import iinit
-   iinit('user_name', 'zone_name', 'host')
-
-4. Click the authentication link when displayed in your terminal and complete the steps on https://auth.vscentrum.be/.  
-
-Creating a session
-------------------
-
-To take actions in Tier-1 Data, you need to create an iRODSSession object. 
-
-In a script, this can be done as follows:
-
-.. code-block:: python
-   :linenos:
-
-   import os
-   import ssl
-   from irods.session import iRODSSession
-   try:
-       env_file = os.environ['IRODS_ENVIRONMENT_FILE']
-   except KeyError:
-       env_file = os.path.expanduser('~/.irods/irods_environment.json')
-
-   ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=None, capath=None, cadata=None)
-   ssl_settings = {'ssl_context': ssl_context}
-
-   with iRODSSession(irods_env_file=env_file, **ssl_settings) as session:
-       [your code here]
-
-In an interactive session you might want to replace the with statement above with:
-
-.. code-block:: python
-
-   session = iRODSSession(irods_env_file=env_file, **ssl_settings)
-
-In that case, you should clean up your session at the end:
-
-.. code-block:: python
-
-   session.cleanup()
-
-***********
-Collections
-***********
-
-Via the PRC, you can retrieve any collection in Tier-1 Data as an iRODSCollection object.
-This can be done as follows:
-
-.. code-block:: python
-
-   coll = session.collections.get("/path/to/existing/collection")
-
-
-You can also create a collection with the PRC.
-This method will return an iRODSCollection object as well.
-
-.. code-block:: python
-
-   coll = session.collections.create("/path/to/newCollection")
-
-
-This iRODSCollection object contains serveral attributes with information about the collection:
-
-.. list-table:: 
-   :header-rows: 1
-   :widths: 20 40 40
-
-   * - Attribute 
-     - Result
-     - Example
-   * - ``coll.id``
-     - The ID of the collection
-     - ``10074``
-   * - ``coll.name``
-     - the name of the collection
-     - ``'biology'``
-   * - ``coll.path``
-     - The full path of the collection
-     - ``'/set/home/biology'``
-   * - ``coll.subcollections``
-     - List of subcollections inside the collection (non-recursive)
-     - ``[<iRODSCollection 32701 b'flora'>, <iRODSCollection 57012 b'fauna'>]``
-   * - ``coll.data_objects``
-     - List of data objects inside the collection (non-recursive)
-     - ``[<iRODSDataObject 10473 readme.md>]``
-   * - ``coll.metadata.items()``
-     - List of metadata items attached to the collection
-     - ``[<iRODSMeta 17481 department science None>, <iRODSMeta 27283 size 25 members>]``
-
-It also contains some useful methods:
-
-.. list-table:: 
-   :header-rows: 1
-   :widths: 20 80
-
-   * - Method
-     - Result
-   * - ``coll.walk()``
-     - Creates a generator object with all data objects and subcollections inside the collection (recursive)
-   * - ``coll.move(destination)``
-     - Moves collection to the destination given as argument
-   * - ``coll.remove()``
-     - Moves the collection and its contents to your trash collection
-
-
-
-*************
-Data objects
-*************
-
-Similar to collections, data objects can be retrieved as iRODSDataObjects:
-
-.. code-block:: python
-
-   obj = session.data_objects.get("/path/to/existing/data")
-
-Creating an empty data object will return an iRODSDataObject as well:
-
-.. code-block:: python
-
-   new_obj = session.data_objects.create("/path/to/new/object")
-
-This iRODSDataObject object contains serveral attributes with information about the data object:
-
-.. list-table:: 
-   :header-rows: 1
-   :widths: 20 40 40
-
-   * - Attribute 
-     - Result
-     - Example
-   * - ``obj.id``
-     - The ID of the data object
-     - ``10074``
-   * - ``obj.name``
-     - The name of the data object
-     - ``'readme.md'``
-   * - ``obj.path``
-     - The full path of the data object
-     - ``'/set/home/biology/readme.md'``
-   * - ``obj.size``
-     - The size of the data object in bytes
-     - ``100``
-   * - ``obj.metadata.items()``
-     - List of metadata items attached to the collection
-     - ``[<iRODSMeta 17481 type documentation None>, <iRODSMeta 27283 author Emily None>]``
-
-It also contains some useful methods:
-
-.. list-table:: 
-   :header-rows: 1
-   :widths: 20 80
-
-   * - Method
-     - Result
-   * - ``obj.chksum()``
-     - Calculates and stores the checksum of the object in the database
-   * - ``obj.open(mode)``
-     - Opens the data object as a file object in Python in read ('r'), write ('w') or append 'a' mode
-   * - ``obj.unlink()``
-     - Moves the data object and to your trash collection
-
-Please note that the 'open' method is not suited for heavy IO. 
-
-*************************
-Uploading and downloading
-*************************
-
-In most cases, users will not create empty data objects, but instead upload files from their local filesystem.
-This can be done as follows:
-
-.. code-block:: python
-
-   session.data_objects.put("/path/to/local/file", "/path/to/collection")
-
-If the destination refers to an (existing) collection, the PRC automatically appends the filename of the local file to the path.
-However, you can also define a filename yourself, by appending it to the end of the path.
-
-Earlier, we saw that the function ``session.data_objects.get()`` is used to retrieve a python representation of a data object.
-However, when you provide a path to the local destination as second argument, it also downloads the data object to your pc:
-
-.. code-block:: python
-
-   session.data_objects.get('/path/to_existing/data_object', '/path/to/local/directory')
-
-Here as well, you can just provide the path to a directory, or specify a filename.
-
-***********
-Permissions
-***********
-
-In the PRC, you can create iRODSAccess objects, which represent a permission on a certain collection or data object.
-Each iRODSAccess object has an access type, a path it applies to, and the user or group that gets access.
-These permissions can be applied with ``session.acls.set()``.
-If the object in question is a collection, you can apply the permission recursively by adding the argument ``recursive = True``.
-
-.. code-block:: python
-
-   from irods.access import iRODSAccess
-   access = iRODSAccess("read", "/path/to/collection/or/data/object", "John")
-   session.acls.set(access, recursive = True)
-
-
-You can also set or unset inheritance of a collection this way:
-
-.. code-block:: python
-
-   # Turning inheritance on
-   access = iRODSAccess("inherit", "/path/to/collection")
-   session.acls.set(access)
-
-   # Turning inheritance off
-   access = iRODSAccess("noinherit", "/path/to/collection")
-   session.acls.set(access)
-
-
-You can retrieve the permissions on an object with ``session.permissions.get(object)``. 
-This will return a list of iRODSAccess objects:
-
-.. code-block:: python
-
-   coll = session.collections.get("/path/to/collection")
-   permissions = session.acls.get(coll)
-
-
-Lastly, you can give someone 'null' permissions to revoke their permissions on an object:
-
-.. code-block:: python
-
-   access = iRODSAccess("null", "/path/to/collection/or/data/object", "Chris")
-   session.acls.set(access)
-
-Note that ``session.acls.set()`` and ``sessions.acls.get()`` only work for the most recent releases of the Python-iRODSclient.
-For older releases, you should replace 'acls' with 'permissions'.
-
-********
-Metadata
-********
-
-The following methods are available to work with metadata on collections and data objects:
-
-
-.. list-table:: 
-   :header-rows: 1
-   :widths: 40 60
-
-   * - Method
-     - Result
-   * - ``obj.metadata.add(attribute, value, <unit>)``
-     - Adds the AVU to the object.
-   * - ``obj.metadata.set(attribute, value, <unit>)``
-     - Adds the AVU to the object. Overwrites previous AVUS with the same attribute name, if they exist.
-   * - ``obj.metadata.items()``
-     - Returns a list of all AVUS on the object as iRODSMeta objects.
-   * - ``obj.metadata.remove(attribute, value, <unit>)``
-     - Removes the AVU
-
-
-If you want to add lots of metadata to the same object, it can take long to do this with one function call for each AVU.
-To speed things up, the PRC offers a function that allows you to add or remove several AVU's from an object in one API call:
-
-.. code-block:: python
-
-   from irods.meta import iRODSMeta, AVUOperation
-   obj.metadata.apply_atomic_operations(AVUOperation(operation='add', avu=iRODSMeta('attribute1','value1','unit1')),
-                                        AVUOperation(operation='add', avu=iRODSMeta('attribute2','value2','unit2')),
-                                        AVUOperation(operation='add', avu=iRODSMeta('attribute3','value3','unit3'))
-                                       )
-
-The same can be used to remove several AVUs from an object in one call, but if you want to remove all of them there is a handier method.
-
-.. code-block:: python
-
-   obj.metadata.remove_all()
-
-*********
-Searching 
-*********
-
-The PRC allows you to build queries, which are database searches for specific information about collections, data objects, metadata...
-For example, to get the names and sizes of all the data objects you have access to, you can write the following query:
-
-.. code-block:: python
-
-   from irods.models import DataObject
-
-   query = session.query(DataObject)
-   for result in query:
-      print(result[DataObject.name], result[DataObject.size])
-
-
-Before you write your query, you should import the relevant classes from the module irods.models.
-These are the most important classes, with some of their attributes:
-
-
-.. list-table:: 
-   :header-rows: 1
-   :widths: 25 25 50
-
-   * - Class
-     - Represents
-     - Searchable attributes
-   * - ``irods.models.Collection``
-     - A collection in iRODS
-     - id, name, parent_name, owner_name, inheritance, create_time, modify_time...
-   * - ``irods.models.DataObject``
-     - A data object in iRODS
-     - id, collection_id, name, size, path, owner_name, status, checksum, create_time, modify_time...
-   * - ``irods.models.CollectionMeta``
-     - A metadata AVU on a collection
-     - id, name, value, units, create_time, modify_time
-   * - ``irods.models.DataObjectMeta``
-     - A metadata AVU on a data object
-     - id, name, value, units, create_time, modify_time
-   * - ``irods.models.User``
-     - A user or group in iRODS
-     - id, name, type, zone, create_time, modify_time
-
-Unfortunately, Classes from iRODS.models have some attributes which can be confusing:
-
-- ``Collection.name`` contains the full path of the collection.
-- ``DataObject.name`` contains only the name of the data object.
-- ``DataObject.path`` contains the physical path of the data object, i.e. the location where the file physically is stored in the data centers.
-- ``CollectionMeta.name`` and ``DataObjectMeta.name`` contain the attribute of the AVU.
-
-You can find the logical path of a data object by putting together its Collection.name and DataObject.name, with a slash in between.
-
-
-You can combine different classes in one query.
-For example, you can search for data objects and their parent collections as follows:
-
-.. code-block:: python
-
-   from irods.models import Collection, DataObject
-
-   query = session.query(Collection, DataObject)
-   for result in query:
-      print(f"{result[DataObject.name]} is part of collection {result[Collection.name]}")
-
-Of course, often you will want to restrict the results of your query based on some criteria.
-This can be done via the `filter()` method; 
-for example, the following query searches for Data Objects with the AVU 'type: organic'.
-
-.. code-block:: python
-
-   from irods.column import Criterion
-   from irods.models import DataObject, Collection, CollectionMeta
-
-   query = session.query(DataObject, Collection)
-   query.filter(Criterion('=', DataObjectMeta.name, 'type'))
-   query.filter(Criterion('=', DataObjectMeta.value, 'organic'))
-
-   for result in query:
-      print(result[Collection.name], result[DataObject.name])
-
-
-As comparison operators, for filtering, you can use:
-
-- '=' for exact matches
-- '!=' for excluding certain terms
-- 'like' for partial matches
-- 'not like' for excluding certain patterns
-
-If you use 'like' and 'not like', you should use '%' as wildcard character.
-For example, ``Criterion('like', Collection.name, '/set/home/biology%')`` will match the collection ``/set/home/biology`` and all its subcollections.  
-However, be aware that searching for partial matches has a higher performance cost than searching for exact matches.  
-
-***************
-Further reading
-***************
-
-If you would like to see more details and examples, you can have a look
-at the following link of original PRC documentation,
-https://github.com/irods/python-irodsclient.
-
-
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 1265: character maps to <undefined>
 
 
 ================================================
@@ -32406,25 +31063,25 @@ these permissions are cumulative: write permissions imply read permissions, and 
      - Write
      - Own
    * - View
-     - ✓
-     - ✓
-     - ✓
+     - âœ“
+     - âœ“
+     - âœ“
    * - Download (data object)
-     - ✓
-     - ✓
-     - ✓
+     - âœ“
+     - âœ“
+     - âœ“
    * - Copy
-     - ✓
-     - ✓
-     - ✓
+     - âœ“
+     - âœ“
+     - âœ“
    * - Edit/overwrite (data object)
      -
-     - ✓
-     - ✓
+     - âœ“
+     - âœ“
    * - Create new files/collections (collection)
      -
-     - ✓
-     - ✓
+     - âœ“
+     - âœ“
    * - Metadata
      - View
      - Edit
@@ -32432,19 +31089,19 @@ these permissions are cumulative: write permissions imply read permissions, and 
    * - Rename
      - 
      - 
-     - ✓
+     - âœ“
    * - Move
      - 
      - 
-     - ✓
+     - âœ“
    * - Delete
      - 
      - 
-     - ✓
+     - âœ“
    * - Change permissions
      -
      -
-     - ✓
+     - âœ“
 
 
 'Null' access allows no actions. Assigning 'null' permissions is equivalent to removing existing permissions. 
@@ -32894,1013 +31551,13 @@ Troubleshooting
 ================================================
 FILE: source/data/tier1data/schemas/metadata-schemas-tech.rst
 ================================================
-.. _t1data_metadata_tech_spec:
-
-##########################################
-Metadata schemas: technical specifications
-##########################################
-
-This article describes how the metadata schemas used in the ManGO portal
-are stored and represented, from the folder structure that supports the
-schemas lifecycle to the JSON format that codes the different fields and
-their characteristics.
-
-`Section 1 <#sec-lifecycle-tech>`__ gives a brief overview of the lifecycle
-of a schema and how that is coded into the folder structure and filename
-system. `Section 2 <#sec-json>`__ follows with a technical description
-of the JSON file that represents each version of a specific schema,
-followed by `Section 3 <#sec-items>`__, in which the different kinds of
-fields are described. Finally, `Section 4 <#sec-full>`__ shows an
-example of the JSON file for a draft version.
-
-.. note::
-    
-    If you would like to design your own metadata schema for Tier-1 Data
-    without using the Metadata Schema Manager, you should focus on
-    `Section 3 <#sec-items>`__ and create a JSON file that matches the
-    value of ``properties`` in the main JSON. On upload to Tier-1 Data, you
-    will be able to provide the name and title of your schema, and the
-    versioning will be taken care of in the backend.
-
-Before we go into these sections, here is some useful vocabulary:
-
-(metadata) schema
-   A set of rules to apply metadata in a systematic way; a collection of
-   *fields* with format instructions for a specific AVU.
-
-schema version
-   A specific version of a schema, with a given status. Multiple
-   versions of a given schema may co-exist, only one can be in a
-   ‘published’ status, meaning that it can be applied to data.
-
-field
-   A component of a schema with instructions for a specific AVU or for
-   multiple AVUs that have the same name (or prefix, in the case of a
-   composite field).
-
-to apply a schema / annotate with a schema
-   The action of adding or editing metadata of a data object or
-   collection based on a given schema.
-
-.. _sec-lifecycle-tech:
-
-Lifecycle and folder structure
-==============================
-
-In the Tier-1 Data infrastructure, schemas belong to “realms”, such as
-projects (other implementations of this infrastructure could extend this
-to personal collections). When designing a schema, one must first
-select a realm; at the moment, a schema designed within a certain realm
-can only be used to apply metadata to data of that realm.
-
-For each realm, there is a directory “schemas” that contains all the
-schemas designed within it. Each schema has its own subdirectory, which
-contains one JSON file for each existing version of the schema. In the
-example used for illustration in this article, the directory would be
-called “book”, which is also the ``schema_name`` attribute in the JSON
-file of each version.
-
-There can be any number of versions of a schema, following `semantic
-versioning <https://semver.org/>`__ (although for now only major versions are supported), and each version can have
-one of three states: “draft”, “published” or “archived”.
-
-The **draft** status is the first, default state of a schema, although
-it is possible to publish a schema directly without saving the draft
-first. It can be edited, viewed and deleted, but it cannot be applied.
-
-Once a draft is **published**, it cannot be edited or deleted anymore,
-but it can be viewed and, more importantly, it can be applied. Attempts
-to edit the published version of a schema will result in the creation of
-a new draft with a higher version number. If this draft is then
-published, the current published version is **archived**.
-Moreover, the metadata schema manager also allows you to clone (or “copy”) a
-published schema into a draft of a whole new schema with a
-different name and version 1.0.0.
-
-Archived versions cannot be edited, deleted or used. At the moment they
-cannot be viewed either, but this will be addressed in the future. A
-published version can also be purposefully archived, without having to
-publish a draft that replaces it. You can still have data with metadata
-based on an archived version of a schema, but if you try to reapply the
-metadata schema you will only be able to use the current published
-version, overriding any differences between the version originally used
-for annotation and the current version.
-
-`Table 1 <#tbl-lifecycle>`__ summarizes what can be done with a metadata
-schema version depending on its stage.
-
-.. list-table:: Table 1: Summary of metadata schema version states in Tier-1 Data.
-    :name: tbl-lifecycle
-    :header-rows: 1
-
-    * -  
-      - draft
-      - published
-      - archived
-    * - when:
-      - on creation
-      - on publication
-      - by archiving
-    * - can be edited
-      - ✔
-      - ❌
-      - ❌
-    * - can be viewed
-      - ✔
-      - ✔
-      - ✔
-    * - can be applied
-      - ❌
-      - ✔
-      - ❌
-    * - can be deleted
-      - ✔
-      - ❌
-      - ❌
-
-
-The name of a file corresponding to a version of a schema includes the
-name, version and (unless archived) the status, accordign to the
-following convention: ``{schema_name}-v{version}(-{status}).json``, with
-``status`` being one of “draft” or “published”. For example, when we
-first create the “book” schema used for illustration in this document, a
-file will be created called “book-v1.0.0-draft.json”, which will be
-stored inside the “book” subdirectory of the “schemas” directory. As
-shown in `Section 2 <#sec-json>`__, the version and status are also
-registered as attributes inside the JSON file. Once we are ready to make
-it available for annotation, we can publish the version in the metadata
-schema manager, which will update the status inside the JSON file and
-rename the file itself as “book-v1.0.0-published.json”. If we want to
-create a new version, this will generate a new file
-“book-v2.0.0-draft.json”, which will have the same name, title and realm
-as the previous version but a different version number and status.
-Publishing this new version will change its status and rename the file
-as “book-v2.0.0-published.json”, but it will also archive the first
-version. This means that the older file will become “book-v1.0.0.json”
-(without a suffix indicating the status) and change the ``status``
-inside the JSON file to “archived”.
-
-As mentioned above, if we have already annotated data using version
-1.0.0 of the “book” schema, that metadata will remain unchanged unless
-we try to update it. In that case, fields that have not changed between
-versions will be untouched, whereas fields that were deleted in version
-2.0.0 will be permanently deleted, and those that were added will become
-available.
-
-.. _sec-json:
-
-JSON format
-===========
-
-A specific version of a metadata schema will be stored in a json file
-with a series of key-value pairs.
-
-.. code-block:: 
-
-   {
-       "schema_name" : "book",
-       "version" : "1.0.0",
-       "status" : "draft",
-       "properties" : {...},
-       "title" : "Book schema as an example",
-       "edited_by" : "username",
-       "realm" : "project_collection",
-       "parent" : ""
-   }
-
-The ``schema_name`` attributes indicates the name or ID of the schema,
-i.e. the namespace of the AVUs assigned via this schema. In this
-example, all the attribute names generated with this schema will be
-prefixed with ``mgs.book.``, where ``mgs`` refers to “ManGO schema”. The
-``status`` attribute refers to the state in the lifecycle as described
-in `Section 1 <#sec-lifecycle-tech>`__, and with ``version`` they constitute
-the main characteristics to distinguish between versions of a schema.
-
-The ``title`` of a schema is used in the UI of the schema manager and
-when implementing schemas as a the user-facing label. The ``edited-by``
-attribute is self-explanatory. As introduced above, ``realm`` refers to
-the space (such as a project) to which the schema belongs and in which
-it can be used. The ``parent`` attribute is relevant when a schema has
-been initialized as clone of an existing schema; in that case, it
-records the name and version of the schema it originated from.
-
-The value of the ``properties`` element is itself a series of key-value
-pairs indicating fields of the metadata schema. The key is the ID of the
-field (how it is defined in the namespace of the schema) and the value
-is itself a series of key-value pairs describing the field. The format
-of these objects is documented in `Section 3 <#sec-items>`__.
-
-The order of the attributes is not important, but the order of the
-*fields* inside ``properties`` will define the order they take
-when rendering the form used to assing metadata from the schema.
-
-.. _sec-items:
-
-Schema fields
-=============
-
-There are three main kinds of fields that can be included in a metadata
-schema: simple fields, multiple-choice fields and composite fields.
-Simple fields, described in `Section 3.2 <#sec-simple>`__, include any
-form of text or numeric input for which a pattern or range may be
-defined but not, strictly speaking, the possible values. It also
-includes single (boolean) checkboxes. Multiple-choice fields
-(`Section 3.3 <#sec-multiple>`__) include any field that provides a
-specific, limited selection of possible values. Finally, the composite
-fields, described in `Section 3.4 <#sec-object>`__, are mini-schemas:
-collections of fields of other kinds related to each other.
-
-Each field is represented by a key-value pair in the ``properties``
-element of the schema JSON. Before going through the specific
-characteristics of each kind of field, `Section 3.1 <#sec-attr>`__
-offers an overview of their common attributes.
-
-.. _sec-attr:
-
-General Attributes
-------------------
-
-The following attributes are used in at least two different kinds of
-fields.
-
-title
-   All fields in a metadata schema must include the ``title`` attribute,
-   which provides a user-facing, human-readable label. While the ID or
-   name of the field is used in the AVU itself, the title is used in the
-   schema manager, during annotation and when we inspect the existing
-   metadata in the ManGO portal.
-
-type
-   All fields need a ``type`` attribute indicating the kind of field
-   they represent. The possible values are discussed in the sections
-   dedicated to each type of field.
-
-required
-   Simple fields and single-value multiple-choice fields may contain an
-   optional boolean ``required`` attribute indicating whether the field
-   is required when assigning metadata from the schema. A required field
-   needs to be filled for the metadata form to be submitted. If this
-   attribute is missing, it is read as “false”.
-
-default
-   Simple fields and single-value multiple-choice fields, *if required
-   is true*, may also contain a ``default`` attribute providing a
-   default value for the field.
-
-In the metadata schema manager, the ``title``, id and (if relevant)
-``default`` attributes are provided via text input fields and
-``required`` via a switch button. In contrast, ``type`` is defined by
-the choice of field in the metadata schema manager, except for simple
-fields, in which there is an additional dropdown to select among its
-various subtypes.
-
-.. _sec-simple:
-
-Simple fields
--------------
-
-The prototypical example of a simple field is a text field, such as the
-example below. They key “title” indicates that, when assigning metadata
-via this field, the name will be ``msg.book.title``.
-
-.. code-block:: 
-
-   "title" : {
-       "type" : "text",
-       "title" : "Book title",
-       "required" : true
-   }
-
-The ``type`` attribute can have one of several different values, to be
-selected from a dropdown menu when designing an instance of this field.
-Next to the basic “text” value, other standard inputs are available that
-provide minimal validation: “date”, “time”, “email”, or “url”. For a
-longer-form, non-restricted text output, the “textarea” value is also an
-option; in that case, it is not longer possible to provide a default
-value.
-
-For numeric inputs, the possible types are “integer” or “float”. Fields
-with these types also have two optional key-value pairs indicating the
-range of allowed values:
-
-.. code-block:: 
-
-   "copies_published": {
-       "type": "integer",
-       "title": "Number of copies published",
-       "minimum": "100"
-   },
-   "market_price": {
-       "type": "float",
-       "title": "Market price (in euros)",
-       "minimum": "0.99",
-       "maximum": "999.99"
-   }
-
-Finally, it is also possible to create an individual checkbox (with
-``type`` “checkbox”), which takes the value “true” when checked and no
-value when unchecked.
-
-Except for the “checkbox”, all the other simple field types can
-additionally have a ``repeatable`` attribute. If “true”, the field can
-be copied when assinging the metadata to a collection or data object, in
-order to generate multiple AVUs with the same attribute name and
-different values.
-
-In the metadata schema manager, minimum and maximum values for numeric
-types can be provided via numeric input fields, whereas the
-``repeatable`` attribute is selected via a switch button.
-
-.. _sec-multiple:
-
-Multiple-choice
----------------
-
-Multiple-choice fields are indicated by providing the “select” value to
-the ``type`` attribute. They are characterized by a restricted selection
-of possible values for the metadata field they define. These values are
-indicated as a list in the ``values`` attribute:
-
-.. code-block:: 
-
-   "ebook": {
-       "type": "select",
-       "multiple": false,
-       "ui": "radio",
-       "values": [
-           "Available",
-           "Unavailable"
-           ],
-       "title": "Is there an e-book?",
-       "required": true
-   }
-
-The metadata schema manager offers two types of multiple-choice fields:
-single-value and multiple-value. The former represents radio buttons and
-classic dropdowns in which the user must choose up to one of the
-possible options. The latter, in contrast, represents checkboxes and
-dropdowns in which the user may choose more than one of the possible
-options. This choice is coded in the ``multiple`` attribute, which takes
-the “false” value in the first case and “true” in the second.
-
-In addition, the ``ui`` attribute indicates what the field will look
-like in the form used to apply the schema. Its value can be “dropdown”,
-“checkbox” (if ``multiple`` is “true”) or “radio” (if ``multiple`` is
-“false”). This choice is made via a switch button in the metadata schema
-manager.
-
-In the metadata schema manager, each value of the list of options must
-be provided manually and then can be edited, deleted or reordered. It is
-not yet possible to import a list of values from an external source.
-
-.. _sec-object:
-
-Composite field
----------------
-
-Composite fields are miniature schemas nested inside schemas (or other
-composite fields) and are meant to bring together multiple fields that
-conceptually come together. They take the ``type`` “object”, which is
-assigned when the composite field is selected in the metadata schema
-manager. Like for schemas, they have a ``properties`` attribute
-describing the fields it is composed of.
-
-.. code-block:: 
-
-   "author": {
-       "type": "object",
-       "title": "Author",
-       "properties": {
-           "name": {
-               "type": "text",
-               "title": "Name and Surname",
-               "required": true
-           },
-           "age": {
-               "type": "integer",
-               "title": "Age",
-               "minimum": "12",
-               "maximum": "99"
-           },
-           "email": {
-               "type": "email",
-               "title": "Email address",
-               "required": true,
-               "repeatable": true
-           }
-       }
-   }
-
-Composite fields cannot be required: this is a property of their
-components. Currently, they cannot be repeatable either, but that might
-change in the future.
-
-In practical terms, composite fields generate a nested namespace for the
-AVUs they contain. As an example, the fields shown in
-`Section 3.2 <#sec-simple>`__ would be coded with the names
-``msg.book.title``, ``msg.book.copies_published`` and
-``msg.book.market_price``, and the one shown in
-`Section 3.3 <#sec-multiple>`__ as ``msg.book.ebook``. In contrast, the
-composite field shown above results in AVUs with attribute names
-``msg.book.author.name``, ``msg.book.author.age`` and
-``msg.book.author.email``.
-
-.. _sec-full:
-
-Full example
-============
-
-This section contains the full example of a JSON file that represents a
-schema draft.
-
-.. code-block:: sh
-   :linenos:
-
-   {
-       "schema_name": "book",
-       "version" : "1.0.0",
-       "status" : "draft",
-       "properties": {
-           "title": {
-               "type": "text",
-               "title": "Book title",
-               "required": true
-           },
-           "cover_colors": {
-               "type": "select",
-               "multiple": true,
-               "ui": "checkbox",
-               "title": "Colors in the cover",
-               "values": [
-                   "red",
-                   "blue",
-                   "green",
-                   "yellow"
-               ]
-           },
-           "publisher": {
-               "type": "select",
-               "multiple": false,
-               "ui": "dropdown",
-               "values": [
-                   "Penguin House",
-                   "Tor",
-                   "Corgi",
-                   "Nightshade books"
-               ],
-               "title": "Publishing house",
-               "required": true
-           },
-           "author": {
-               "type": "object",
-               "title": "Author",
-               "properties": {
-                   "name": {
-                       "type": "text",
-                       "title": "Name and Surname",
-                       "required": true
-                   },
-                   "age": {
-                       "type": "integer",
-                       "title": "Age",
-                       "minimum": "12",
-                       "maximum": "99"
-                   },
-                   "email": {
-                       "type": "email",
-                       "title": "Email address",
-                       "required": true,
-                       "repeatable": true
-                   }
-               }
-           },
-           "ebook": {
-               "type": "select",
-               "multiple": false,
-               "ui": "radio",
-               "values": [
-                   "Available",
-                   "Unavailable"
-               ],
-               "title": "Is there an e-book?",
-               "required": true
-           },
-           "genre": {
-               "type": "select",
-               "multiple": true,
-               "ui": "dropdown",
-               "values": [
-                   "Speculative fiction",
-                   "Mystery",
-                   "Non-fiction",
-                   "Encyclopaedia",
-                   "Memoir",
-                   "Literary fiction"
-               ],
-               "title": "Genre"
-           },
-           "publishing_date": {
-               "type": "date",
-               "title": "Publishing date",
-               "required": true,
-               "repeatable": true
-           },
-           "copies_published": {
-               "type": "integer",
-               "title": "Number of copies published",
-               "minimum": "100"
-           },
-           "market_price": {
-               "type": "float",
-               "title": "Market price (in euros)",
-               "minimum": "0.99",
-               "maximum": "999.99"
-           },
-           "website": {
-               "type": "url",
-               "title": "Website"
-           },
-           "synopsis": {
-               "type": "textarea",
-               "title": "Synopsis"
-           }
-       },
-       "title": "Book schema as an example",
-       "edited_by" : "username",
-       "realm" : "project_collection",
-       "parent" : ""
-   }
-
-
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 2259: character maps to <undefined>
 
 
 ================================================
 FILE: source/data/tier1data/schemas/metadata-schemas.rst
 ================================================
-.. _metadata-schemas:
-
-####################################
-Metadata schemas in the ManGO portal
-####################################
-
-This article describes the ManGO portal functionalities related to
-metadata schemas: how to design them and how to apply them. Users who
-might want to design their own schemas independently and load them via
-JSON, as well as developers interested in implemented this feature
-outside the portal, are directed to :ref:`t1data_metadata_tech_spec`.
-
-One crucial principle of the metadata schema functionality in the ManGO
-portal is that schemas that can be used to apply metadata cannot be
-modified. In other words, for a schema to be used in metadata annotation
-it must be fixed and stable; a schema that is undergoing changes cannot
-reliably be used for annotation. However, during the course of a
-research project it might be necessary to update a schema, and it would
-be impractical to create whole new schemas with different names for
-every such change. In order to tackle this issue, the ManGO portal
-implements a lifecycle via versioning and tags. In short, a schema can
-evolve and its evolutions can be registered as new versions of the same
-schema. Each version can have one of three statuses: (1) ‘draft’, while
-it is being designed and edited; (2) ‘published’, when it is ready to be
-implemented; and (3) ‘archived’, when it should not be used anymore,
-maybe because a new version has been published.
-
-In this context, the rest of this document will walk you through the
-process of creating, managing and applying metadata schemas. First,
-`Section 1 <#sec-draft>`__ will illustrate how to design a new schema
-from scratch and save a draft. Then, `Section 2 <#sec-lifecycle>`__ will
-briefly discuss the stages of a schema in more detail, including how
-they can be managed in the Metadata Schema Manager (the “Metadata
-schemas” tab in the ManGO portal). Finally,
-`Section 3 <#sec-application>`__ will show how a published schema can be
-used to annotate metadata.
-
-.. _sec-draft:
-
-Schema design
-=============
-
-New schema creation
--------------------
-
-In order to design a new schema, we need to go to the *Metadata schemas*
-section via the left sidebar menu. This will first show a selection of
-projects, so-called *realms*, to which your schemas may belong.
-After choosing one, the schema manager will open:
-
-.. figure:: ../images/metadata-schemas/001-schema-start.png
-   :alt: Accordion with a list of realms, one of which is framed in a blue
-         square with a cursor icon on top. Underneath and connected via an
-         arrow, an empty metadata schema manager that just has the title and
-         a button that reads 'new schema'.
-   :width: 400
-   :name: fig-start
-
-   Choose a realm for new schema.
-
-
-Any existing schemas will be listed under the **New schema** button. Click the
-**New schema** button to add a new schema. A new panel will open to define the
-new schema. It includes a field to provide a name, one for a user-facing title
-and a button to add a field:
-
-.. figure:: ../images/metadata-schemas/03-empty-schema.png
-   :alt: Initial form for an empty schema under the 'New schema' button, with
-         fields to insert the schema ID and label, a button to add a new
-         element and buttons to submit the form.
-   :width: 400
-   :name: fig-schemaeditor
-
-   Empty definition of new schema.
-
-The *Schema ID* field is meant for the unique ID or name of a schema and, like
-the *Schema label*, is shared by all the versions of the same schema. The given
-ID of the schema will prefixed to all attribute names of its metadata fields.
-For instance, an schema with ID ``book`` will have attributes with the form
-``mgs.book.``.
-
-Therefore some restrictions apply to the format of the ID: it can only contain
-lowercase letters, numbers, hyphens and underscores. In contrast, the label can
-be any type of name or title and will be used to represent the schema in
-user-facing interactions, as will be shown later. In the following, we will
-exemplify with a schema named ``book`` with the label “Book schema as an
-example”.
-
-.. _schema_elements:
-
-Schema elements
----------------
-
-The button **Add element** in :numref:`fig-schemaeditor` opens a modal that
-offers the different kinds of fields that can be added to a schema:
-
-.. figure:: ../images/metadata-schemas/002-fields-long.png
-   :alt: Four cards with examples of the different kinds of fields and buttons
-         that open editors to instantiate each field.
-   :width: 600
-   :name: fig-fields
-
-   Options to select a type of input field.
-
-
-The blue buttons with the names of the types of fields open new modals
-with forms that can be used to design an instance of this field: 
-
-Simple fields
-    Generate input fields for texts, numbers, dates and similar formats or a
-    single checkbox.
-
-    .. figure:: ../images/metadata-schemas/06-add-simple-field.png
-       :alt: Form to create a simple field.
-       :width: 500
-       :name: fig-simple
-
-       Design a simple field.
-   
-Single-value multiple choice
-    Generate dropdown menus or radio buttons and are used when the metadata
-    value must be one of a selection of possible values.
-
-    .. figure:: ../images/metadata-schemas/10-add-single-value-multiple.png
-       :alt: Form to create a single-value multiple-choice field.
-       :width: 500
-       :name: fig-radio
-
-       Design a single-value multiple-choice field.
-   
-Multiple-value multiple choice
-    Generate dropdown menus or checkboxes and are used when the metadata value
-    may be many of a selection of possible values. As a result, the same
-    attribute name is repeated with different attribute values.
-
-    .. figure:: ../images/metadata-schemas/17-add-multiple-value-multiple.png
-       :alt: Form to create a multiple-value multiple-choice field.
-       :width: 500
-       :name: fig-checkbox
-
-       Design a multiple-value multiple-choice field.
-
-Composite field
-    Group other kinds of fields that describe the same concept. Similar to
-    nested schemas.
-
-    .. figure:: ../images/metadata-schemas/24-add-composite-field.png
-       :alt: Form to create a composite field, which looks like an empty schema.
-       :width: 500
-       :name: fig-composite
-
-       Design a composite field.
-
-All these forms start with two text fields to define an ID and a label for the
-field and end with a button to add the new field to the schema. In between
-there are more specific input fields used to refine the characteristics of the
-field you want to design as well as up to two switch buttons to implement
-optional properties.
-
-Simple field example
---------------------
-
-As an example, we will illustrate the creation of a new simple field. Clicking
-on *Simple field* will open the form in :numref:`fig-simple`. After the common
-fields for ID and label, we see a dropdown menu that offers different kinds of
-simple fields: text, textbox, email, url, integer, float, date, time, datetime…
-If *integer* or *float* are chosen, two new fields will appear to define
-minimum and maximum thresholds for the value of the field.
-
-The *Required* switch at the bottom the panel will make this field mandatory,
-*i.e.* when filling in the metadata, this field will have to be provided. In
-such a case, we can also provide a default value.
-
-The *Repeatable* switch allows to create multiple instances of this field,
-*i.e.* when filling in the metadata, multiple copies with the same
-attribute name but different values will be allowed.
-
-:numref:`fig-simplefull` shows the same form as :numref:`fig-simple` after
-filling in some choices. The chosen ID is ``title``, which means that when
-applying the schema this will create an attribute name ``mgs.book.title``. The
-label is ``Book title``, so that the form to apply the metadata schema and the
-table used to inspect the existing metadata will show this label. The field is
-also required, but has no default value, and of type ``text``.
-
-
-.. figure:: ../images/metadata-schemas/08-title-simple-field.png
-   :alt: Filled form to create a new simple field.
-   :width: 500
-   :name: fig-simplefull
-
-   Example filled-in form for a simple field.
-
-Once we add this new field to the schema, a box for it is added to the
-schema editor:
-
-.. figure:: ../images/metadata-schemas/09-after-adding-field1.png
-   :alt: View of an editing form for a schema to which the book title field has
-         been added.
-   :width: 500
-   :name: fig-simpleview
-
-   View of a designed simple field.
-
-The new field added to this example schema is shown by its title –but not the
-ID–. The asterisk after the title indicates that the field is required.
-Underneath we see the input field as it would look like in the final form with
-a small clarification of the type of input field it is.
-
-The top right corner of the box has some options to further manipulate the
-field and its position in the form. The arrows allow us to move the field up
-and down, but they are disabled at the moment because there are no other fields
-in this schema. The third button creates a quick copy of the field as an aid to
-create a similar one. The pencil reopens the editing modal if you want to
-change anything in the field, and the trash bin can be used to delete the field
-altogether.
-
-You can also see in :numref:`fig-simpleview` that the box representing the new
-field now has two **Add element** buttons: one to add a field right before, and
-the other to add a field right after. Clicking one of these buttons will open
-again the modal shown in :numref:`fig-fields` and we can choose again the type
-of field we want to add.
-
-Multiple-choice fields example
-------------------------------
-
-As seen in the :ref:`schema_elements`, the only differences between the
-single-value multiple-choice (:numref:`fig-radio`) and the multiple-value
-multiple-choice fields (:numref:`fig-checkbox`) are the title of the modal and
-the possibility of defining a default value or not. However, the resulting
-elements have significant differences.
-
-Single-value multi-choice fields will rendered as radio buttons by default,
-whereas multiple-value ones will be rendered as checkboxes.
-In both case the input field will look like a dropdown menu whenever the *As
-dropdown* switch is activated (see :numref:`fig-radiofull`). However, the
-number of options that can be selected from it depend on whether it is created
-as a single-value or multiple-value field.
-
-.. figure:: ../images/metadata-schemas/15-publisher-svmc-field.png
-   :alt: Filled form to design a single-value multiple-choice field.
-   :width: 500
-   :name: fig-radiofull
-
-   Example filled-in form for a single-value multiple-choice field.
-   
-In both cases, the editor of options in :numref:`fig-radio` and
-:numref:`fig-checkbox` work in the same way. We start with two empty fields
-labeled *Select option* with three buttons to their right: two arrows and a
-trash bin. The arrows allow us to reorder the options, whereas the trash bin
-lets us remove one of the fields (there cannot be fewer than two). The big
-**Add option** button creates a new input field for a new option, which must be
-either filled or deleted.
-
-Once the new multi-choice field defined in :numref:`fig-radiofull` is added to
-the schema, it will be previewed in the schema editor:
-
-.. figure:: ../images/metadata-schemas/16-after-adding-field2.png
-   :alt: View of an editing form for a schema to which a field with a dropdown
-         has been added.
-   :width: 500
-   :name: fig-radioview
-
-   View of a designed single-value multiple-choice field.
-
-Keep in mind that this new field is displayed by its label *Publishing house*,
-although metadata assigned via this field will have the name
-``mgs.book.publisher``.
-
-Schema publication
-------------------
-
-Schemas can be saved at any moment as private drafts with the green **Save
-draft** button at the bottom of the schema editor (see :numref:`fig-start`).
-Once the schema has at least one field it can already made public with the
-yellow **Publish** button (see :numref:`fig-simpleview` and
-:numref:`fig-radioview`).
-
-Once we save a draft, a new accordion item is created for the new schema in the
-page including a tab for the draft version. :numref:`fig-saved` shows this tab
-after also adding a non-required checkbox field between *Book title* and
-*Publishing house* and saving the draft.
-
-.. figure:: ../images/metadata-schemas/22-save-draft1.png
-   :alt: View of the draft of a schema as only tab in the accordion item of
-         that schema.
-   :width: 500
-   :name: fig-saved
-
-   Saved schema draft.
-
-The tab itself shows the version number and status of this version and contains
-three buttons: one to view the form as it will be shown when applying metadata,
-one to edit it, which opens a tab that looks just like the editor we were
-working on, and one to discard the draft. By clicking on **Discard** a modal pops
-up to ask for confirmation: if we accept, all traces of this schema will be
-removed, because the draft is its only existing version.
-
-While the draft has not been published, we can still edit it: add new
-fields, change them, reorder them, remove them… It is also possible to
-change the title or label of the schema itself, but not to change the
-ID. If we want to add a composite field, you can see in :numref:`fig-composite`
-that the editor starts like the editors of other fields, but then just has an
-**Add element** button, which behaves exactly like the “Add element” button of
-a schema: it opens the modal in :numref:`fig-fields`, which in turn opens the
-modal of the chosen field type.
-
-:numref:`fig-compositefull` shows an editor for a composite field to which we
-have added three simple fields: a required *Name and surname* of type text, an
-*Age* of type integer with a minimum value of 12 and a maximum value of 99, and
-a required, repeatable *Email address* of type email.
-
-.. figure:: ../images/metadata-schemas/26-author-composite-field.png
-   :alt: Filled form to edit a composite field, which looks like an editor for
-         a schema, after adding three subfields.
-   :width: 500
-   :name: fig-compositefull
-
-   Example filled-in form for a single-value multiple-choice field.
-   
-Once we add the composite field to the schema, its editing box shows its
-components as they will appear in the final form (see :numref:`fig-compositeview`).
-To edit the elements in the composite field, first we need to open the editor
-of the composite field itself.
-
-.. figure:: ../images/metadata-schemas/27-view-composite.png
-   :alt: View of the box corresponding to a composite field after adding it to a draft schema.
-   :width: 500
-   :name: fig-compositeview
-
-   View of a designed single-value multiple-choice field.
-
-.. _sec-lifecycle:
-
-Versioning and lifecycle
-========================
-
-Once you are satisfied with your draft is ready to be applied, you can
-publish it. This will update the tab so that the orange badge “draft” is
-replaced with a green one labeled *published*, and change the options
-provided in the top right buttons shown in :numref:`fig-published`. The
-“View” tab, which shows the form as it will appear when applying the
-metadata schema, is the same as for a draft version, but the rest of the
-buttons have changed.
-
-.. figure:: ../images/metadata-schemas/34-view-published.png
-   :alt: View of a published version of a schema as only tab in the accordion
-         item of a schema.
-   :width: 500
-   :name: fig-published
-
-   A published version of a schema.
-
-The buttons **New (draft) version** and **Copy to new schema** open editors
-like **Edit** did for the draft schemas. The difference between these two
-editors is that the former creates a new draft for the same schema and the
-latter starts a whole other schema with the same contents. Saving a new draft
-will create a new version (in this case 2.0.0) and show it in a second
-tab next to the published version:
-
-.. figure:: ../images/metadata-schemas/38-view-published2.png
-   :alt: View of a published version of a schema as first tab in the accordion item, with a draft as the second tab.
-   :width: 400
-   :name: fig-published2
-
-   A published version of a schema when a draft exists.
-
-While a draft version exists, the **New (draft) version** button is absent.
-When creating this draft, the Schema ID and label are fixed and cannot be
-edited. In contrast, in the editor in **Copy to new schema** (shown in
-:numref:`fig-clone`) these fields are empty and, in fact, it is not possible
-to reuse the same *Schema ID* we had before. Use cases for this feature are
-derived schemas, *i.e.* schemas that share many fields with another schema but
-represent a different thing. The name and version of the published schema it
-originated from is recorded, but nothing is done with this information
-yet.
-
-.. figure:: ../images/metadata-schemas/39-clone-published.png
-   :alt: Editor of a schema to create a copy or clone from a published schema.
-   :width: 500
-   :name: fig-clone
-
-   Draft a new schema from a published version of a schema.
-
-When this copy is saved, a new schema is created, like when we edit one
-from scratch in “New schema”. This generates a new accordion item with
-its own “draft” tab containing the version that was just created. Note
-that it is also possible to publish a version of a schema, even a copy
-from a published schema, without saving it as a draft first. In
-:numref:`fig-clone2` we could decide to view and edit this new
-schema or the previous one by clicking on their name, which expands the
-appropriate tabs. If we click on “Book schema as an example”, we’ll see
-that the “Copy to new schema” section has been reset to the original
-contents of the published version of this schema.
-
-.. figure:: ../images/metadata-schemas/40-save-clone.png
-   :alt: View of the draft tab in the accordion of the new schema copied from a published schema, under the closed accordion item of the previous schema.
-   :name: fig-clone2
-   :width: 600
-
-   Figure 10: Saved draft of copied schema.
-
-Archiving a published version of a schema will prevent it from being
-implemented, but won’t delete it. In the current version of the Metadata
-Schema Manager, archived versions are not visible either. However, they
-still exist, and it is not possible to create a new schema with the same
-ID.
-
-.. _sec-application:
-
-Apply metadata with a schema
-============================
-
-In order to apply a metadata schema, we first have to move to the
-*Collections* tab of the ManGO portal and select the collection or data
-object to which we want to add metadata. In the *Metadata* tab, a
-dropdown will appear with the selection of published schemas:
-
-.. figure:: ../images/metadata-schemas/41-apply.png
-   :alt: View of the metadata tab of a data-object frankenstein.txt with focus
-         on the dropbox showing the published metadata schemas.
-   :width: 500
-   :name: fig-selectschema
-
-   Select a published metadata schema.
-   
-
-Clicking on **Edit** will open a page with the following form, which is
-very similar to what we could see in the “View” tab of the published
-schema (:numref:`fig-published`):
-
-.. figure:: ../images/metadata-schemas/42-apply-form.png
-   :alt: Form with empty fields corresponding to the metadata schema including
-         information on the name of the object and name and version of the
-         schema.
-   :width: 500
-   :name: fig-apply
-
-   Empty form to apply a metadata schema
-
-Required fields have an asterisk next to their name, simple fields have a short
-description under their input fields and repeatable fields have a button that
-can be used to duplicate them.
-
-If a required field is not filled, it won’t be possible to save the
-metadata. Once we do save it, we can see the results in a tab inside the
-“Metadata” tab of the object. :numref:`fig-viewann` shows that
-the user-facing label of the schema, not its name, is used to name the
-tab, and that the labels of the different fields are used in the table
-that shows the current annotation. Hovering over the labels will show a
-small popover with the name that the AVU takes in Tier-1 Data,
-e.g. ``mgs.book.title`` for the book title, ``mgs.book.author.email``
-for the email address inside the Author composite field, etc. Moreover,
-fields for which no values have been provided can still be seen as
-empty, to indicate that the schema has not been completely implemented.
-
-.. figure:: ../images/metadata-schemas/45-view-annotation.png
-   :alt: View of the metadata tab of the data-object frankenstein.txt with the
-         filled-in data of the metadata schema.
-   :name: fig-viewann
-   :width: 600
-
-   All metadata fields are shown, with or without values.
-
-
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 1917: character maps to <undefined>
 
 
 ================================================
@@ -34512,7 +32169,6 @@ Via the GUI
 -----------
 
 #. Start an :ref:`OnDemand Desktop session <ood_desktop>`
-   or a :ref:`NoMachine connection <NX start guide>`.
 #. Click on e.g. ``Places`` -> ``Home Folder`` to open the default file
    manager (Thunar).
 #. Replace the ``/user/...`` location with
@@ -34529,8 +32185,8 @@ Via the GUI
 Via the CLI
 -----------
 
-#. If you are using the :ref:`OnDemand Desktop <ood_desktop>`
-   or :ref:`NoMachine <NX start guide>`, open a terminal there.
+#. If you are using the :ref:`OnDemand Desktop <ood_desktop>`,
+   open a terminal there.
    If you are using plain SSH, make sure that you are connected to either
    ``tier2-p-login-3`` or ``tier2-p-login-4`` (possibly by connecting
    to one of these nodes after landing on a different login node).
@@ -34622,16 +32278,16 @@ to/your your local computer before transferring them to the HPC.
       ``\/:*?""<>|``. Files that contain any of these characters will not be
       synced.
 
-    * The following names aren’t allowed for files or folders: .lock, CON, PRN,
+    * The following names arenâ€™t allowed for files or folders: .lock, CON, PRN,
       AUX, NUL, COM0 - COM9, LPT0 - LPT9, _vti_, desktop.ini, any filename
       starting with ~$.
 
     * "_vti_" cannot appear anywhere in a file name.
 
-    * "forms" isn’t supported when the folder is at the root level for a
+    * "forms" isnâ€™t supported when the folder is at the root level for a
       library.
 
-    * You can’t create a folder name in SharePoint that begins with a tilde (~).
+    * You canâ€™t create a folder name in SharePoint that begins with a tilde (~).
 
 .. seealso::
 
@@ -35007,7 +32663,7 @@ Consult your project resource usage
 
 The Resource Application web app https://resapp.hpc.ugent.be allows you to consult your usage in a user-friendly way.
 
-Please note that this app is still in ‘beta’.
+Please note that this app is still in â€˜betaâ€™.
 (For instance, storage usage is not yet done, so this will show up 0 everywhere.)
 In an upcoming development cycle, we will improve shortcomings and correct bugs.
 Do not hesitate to give your feedback on using the Resource Application via compute@vscentrum.be
@@ -35526,12 +33182,12 @@ Gradual decommissioning
 End 2025, the gradual decommissioning of Tier-1 Compute Hortense will be initiated.
 Around this time, the 4th VSC Tier-1 cluster will become available at the VUB datacenter.
 
-T̵h̵e̵ ̵e̵n̵t̵i̵r̵e̵ ̵R̵o̵m̵e̵ ̵p̵a̵r̵t̵i̵t̵i̵o̵n̵ ̵i̵s̵ ̵e̵n̵d̵ ̵o̵f̵ ̵l̵i̵f̵e̵ ̵N̵o̵v̵e̵m̵b̵e̵r̵ ̵2̵0̵2̵5̵,̵ ̵a̵n̵d̵ ̵w̵i̵l̵l̵ ̵b̵e̵ ̵s̵h̵u̵t̵
-d̵o̵w̵n̵ ̵b̵y̵ ̵e̵n̵d̵ ̵2̵0̵2̵5̵.̵
-̵T̵h̵i̵s̵ ̵i̵m̵p̵l̵i̵e̵s̵ ̵t̵h̵a̵t̵ ̵t̵h̵e̵ ̵p̵a̵r̵t̵i̵t̵i̵o̵n̵s̵ c̵p̵u̵_̵r̵o̵m̵e̵, c̵p̵u̵_̵r̵o̵m̵e̵_̵a̵l̵l̵,
-c̵p̵u̵_̵r̵o̵m̵e̵_̵5̵1̵2̵, d̵e̵b̵u̵g̵_̵r̵o̵m̵e̵ w̵i̵l̵l̵ ̵a̵l̵l̵ ̵d̵i̵s̵a̵p̵p̵e̵a̵r̵.̵
-̵D̵e̵p̵e̵n̵d̵i̵n̵g̵ ̵o̵n̵ ̵V̵S̵C̵ ̵p̵l̵a̵n̵s̵,̵ ̵t̵h̵e̵ a̵1̵0̵0̵_̵4̵0̵ p̵a̵r̵t̵i̵t̵i̵o̵n̵ ̵m̵a̵y̵ ̵a̵l̵s̵o̵ ̵d̵i̵s̵a̵p̵p̵e̵a̵r̵.̵
-H̵o̵w̵e̵v̵e̵r̵,̵ ̵t̵h̵e̵r̵e̵ ̵c̵u̵r̵r̵e̵n̵t̵l̵y̵ ̵i̵s̵ ̵n̵o̵ ̵c̵o̵n̵f̵i̵r̵m̵a̵t̵i̵o̵n̵ ̵r̵e̵g̵a̵r̵d̵i̵n̵g̵ ̵t̵h̵i̵s̵.̵
+TÌµhÌµeÌµ ÌµeÌµnÌµtÌµiÌµrÌµeÌµ ÌµRÌµoÌµmÌµeÌµ ÌµpÌµaÌµrÌµtÌµiÌµtÌµiÌµoÌµnÌµ ÌµiÌµsÌµ ÌµeÌµnÌµdÌµ ÌµoÌµfÌµ ÌµlÌµiÌµfÌµeÌµ ÌµNÌµoÌµvÌµeÌµmÌµbÌµeÌµrÌµ Ìµ2Ìµ0Ìµ2Ìµ5Ìµ,Ìµ ÌµaÌµnÌµdÌµ ÌµwÌµiÌµlÌµlÌµ ÌµbÌµeÌµ ÌµsÌµhÌµuÌµtÌµ
+dÌµoÌµwÌµnÌµ ÌµbÌµyÌµ ÌµeÌµnÌµdÌµ Ìµ2Ìµ0Ìµ2Ìµ5Ìµ.Ìµ
+ÌµTÌµhÌµiÌµsÌµ ÌµiÌµmÌµpÌµlÌµiÌµeÌµsÌµ ÌµtÌµhÌµaÌµtÌµ ÌµtÌµhÌµeÌµ ÌµpÌµaÌµrÌµtÌµiÌµtÌµiÌµoÌµnÌµsÌµ cÌµpÌµuÌµ_ÌµrÌµoÌµmÌµeÌµ, cÌµpÌµuÌµ_ÌµrÌµoÌµmÌµeÌµ_ÌµaÌµlÌµlÌµ,
+cÌµpÌµuÌµ_ÌµrÌµoÌµmÌµeÌµ_Ìµ5Ìµ1Ìµ2Ìµ, dÌµeÌµbÌµuÌµgÌµ_ÌµrÌµoÌµmÌµeÌµ wÌµiÌµlÌµlÌµ ÌµaÌµlÌµlÌµ ÌµdÌµiÌµsÌµaÌµpÌµpÌµeÌµaÌµrÌµ.Ìµ
+ÌµDÌµeÌµpÌµeÌµnÌµdÌµiÌµnÌµgÌµ ÌµoÌµnÌµ ÌµVÌµSÌµCÌµ ÌµpÌµlÌµaÌµnÌµsÌµ,Ìµ ÌµtÌµhÌµeÌµ aÌµ1Ìµ0Ìµ0Ìµ_Ìµ4Ìµ0Ìµ pÌµaÌµrÌµtÌµiÌµtÌµiÌµoÌµnÌµ ÌµmÌµaÌµyÌµ ÌµaÌµlÌµsÌµoÌµ ÌµdÌµiÌµsÌµaÌµpÌµpÌµeÌµaÌµrÌµ.Ìµ
+HÌµoÌµwÌµeÌµvÌµeÌµrÌµ,Ìµ ÌµtÌµhÌµeÌµrÌµeÌµ ÌµcÌµuÌµrÌµrÌµeÌµnÌµtÌµlÌµyÌµ ÌµiÌµsÌµ ÌµnÌµoÌµ ÌµcÌµoÌµnÌµfÌµiÌµrÌµmÌµaÌµtÌµiÌµoÌµnÌµ ÌµrÌµeÌµgÌµaÌµrÌµdÌµiÌµnÌµgÌµ ÌµtÌµhÌµiÌµsÌµ.Ìµ
 
 Update 1 November 2025: The operational phase of the 4th Tier-1 has, unfortunately, 
 suffered a delay. As a result, the VSC has decided to keep the entire Rome partition active until end June 2026.
@@ -37034,7 +34690,7 @@ There is also a small ``interactive`` partition intended for interactive work
           --ntasks-per-node=8 --time=08:00:00 --x11 --pty bash -l
 
 Users are allowed to request a maximum of 8 cores for walltimes up to 16 hours.
-Note that the nodes in this partition do not contain GPUs. The ``ìnteractive``
+Note that the nodes in this partition do not contain GPUs. The ``Ã¬nteractive``
 partition on wICE is therefore better suited if you need GPU acceleration for
 e.g. data visualization.
 
@@ -37256,7 +34912,7 @@ To select the maximum amount of memory per core (8 000 MB, which is also the
 default), you can submit a job as follows::
 
    $ sbatch --account=lp_mindwell_pilot --clusters=mindwell --partition=bigmem \
-            --nodes=2 --ntasks-per-node=192 --mem-per-cpu=8000M myjobscript.slurm
+            --nodes=2 --ntasks-per-node=192Â --mem-per-cpu=8000M myjobscript.slurm
 
 
 .. _submit to mindwell GPU node:
@@ -38219,7 +35875,7 @@ To select the maximum amount of memory per core (28 000 MB, which is also the
 default), you can submit a job as follows::
 
    $ sbatch --account=lp_myproject --clusters=wice --partition=bigmem \
-            --nodes=2 --ntasks-per-node=72 --mem-per-cpu=28000M myjobscript.slurm
+            --nodes=2 --ntasks-per-node=72Â --mem-per-cpu=28000M myjobscript.slurm
 
 There is also one IceLake node with even more memory (8 TiB RAM) in the
 ``hugemem`` partition (defaulting to ``--mem-per-cpu=111900M``).
@@ -39220,17 +36876,9 @@ Transferring data between Lustre and GPFS
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To facilitate data transfers between the Lustre and GPFS storage,
-Lustre is accessible from Mindwell and GPFS is accessible from wICE.
-
-.. note::
-
-   GPFS can currently not be accessed from the login nodes and the Genius
-   compute nodes. This will change when the nodes have been migrated to Rocky 9,
-   which is scheduled for the beginning of June. In the meantime you may carry
-   out your data transfers using (interactive or batch) jobs on, for example,
-   the ```interactive``` partitions of
-   :ref:`wICE <submit to wice interactive node>` or
-   :ref:`Mindwell <submit to mindwell interactive node>`.
+Lustre is accessible from Mindwell and GPFS is accessible from wICE
+and from the (Genius) login nodes. Note that GPFS is not reachable
+from the Genius *compute* nodes.
 
 Two more environment variables (``$VSC_SCRATCH_LUSTRE1`` and
 ``$VSC_SCRATCH_GPFS1``) have been defined for this purpose, so that you can
@@ -39248,14 +36896,17 @@ you could go about it as follows:
    # If initiating the transfer from Mindwell:
    cp ${VSC_SCRATCH_LUSTRE1}/myfile ${VSC_SCRATCH}
 
-As a best practice, data transfers between Lustre and GPFS should be performed through
-'transfer' jobs, where you for example only request a few cores on an ``interactive`` partition.
+As a best practice, data transfers between Lustre and GPFS should be performed
+through 'transfer' jobs submitted to, for example, the ``interactive``
+partition of :ref:`wICE <submit to wice interactive node>` or
+:ref:`Mindwell <submit to mindwell interactive node>`.
 Short transfers which don't take more than a couple of minutes can also
 be performed from a Genius login node.
 
-Globus endpoints are available for Lustre, but not yet for GPFS. It is
-therefore not yet possible to use :ref:`Globus <globus platform>` for these
-data transfers.
+Globus endpoints have been defined on both Lustre and GPFS filesystems,
+so you can use the :ref:`globus platform` for these data transfers.
+For transferring large volumes of data (> 1 TB), however, we recommend using
+'transfer' jobs instead of Globus for performance reasons.
 
 Automatic scratch cleanup
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39613,59 +37264,22 @@ Tier-2 access
 -------------
 
 Currently, Genius and wICE are the two Tier-2 clusters in production at KU Leuven.
-The Genius cluster runs on Rocky Linux 8.10 operating system, whereas wICE runs on
-Rocky Linux 9.6.
-The access to both machines is possible
+Both clusters run on the Rocky Linux 9.6 operating system. The access to both
+machines is possible
 
 - either via the Genius login nodes (see below), as wICE itself has no
   dedicated login node
 
-- or via the :ref:`Open OnDemand <ood>` on your web browser
-
-.. warning::
-
-   Currently, the operating system of the login nodes is Rocky Linux 8.10,
-   which is different from that of wICE nodes. To compile your own software,
-   we strongly recommend to follow the best practices in
-   :ref:`compiling software <wice_compilation>`. 
-
+- or via the :ref:`Open OnDemand <ood>` portal in your web browser
 
 Login infrastructure
 --------------------
 
-Direct login using SSH is possible to all login infrastructure without
-restrictions.
-
+Direct login using SSH is possible to all login infrastructure, taking into
+account :ref:`access restrictions <location_access_restrictions>`.
 You can access the KU Leuven Tier-2 either through ``login.hpc.kuleuven.be`` or
-``login-genius.hpc.kuleuven.be``.
-This will loadbalance your connection to one of the 4 Genius login nodes.
-
-Two types of login nodes are available:
-
-- classic login nodes, i.e., terminal SSH access:
-
-  - ``login1-tier2.hpc.kuleuven.be``
-  - ``login2-tier2.hpc.kuleuven.be``
-  - ``login3-tier2.hpc.kuleuven.be``
-  - ``login4-tier2.hpc.kuleuven.be``
-
-- login node that provides a desktop environment on Genius that can be used for,
-  e.g., visualization, see the :ref:`NX clients section <NX start guide>`:
-
-  -  ``nx.hpc.kuleuven.be``
-
-     .. warning::
-
-        This node *should not* be accessed using terminal SSH, it serves only
-        as a gateway to the actual login nodes your NX sessions will be running
-        on.
-
-     The NX login node will start a session on a login node that has a GPU, i.e.,
-     one of
-
-       - ``login3-tier2.hpc.kuleuven.be``
-       - ``login4-tier2.hpc.kuleuven.be``
-
+``login-genius.hpc.kuleuven.be``. This will loadbalance your connection to one
+of the 4 Genius login nodes.
 
 
 

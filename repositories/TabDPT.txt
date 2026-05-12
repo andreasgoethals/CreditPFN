@@ -256,7 +256,7 @@ You can do something similar to get the ranked table from this README and the pa
 }
 ```
 
-© Copyright 2024-2026 The Toronto-Dominion Bank and/or its affiliates
+Â© Copyright 2024-2026 The Toronto-Dominion Bank and/or its affiliates
 
 
 

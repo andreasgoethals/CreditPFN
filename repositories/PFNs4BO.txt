@@ -1,6 +1,7 @@
 Directory structure:
 └── automl-pfns4bo/
     ├── README.md
+    ├── Getting_Started_With_PFNs.ipynb
     ├── LICENSE
     ├── pyproject.toml
     ├── setup.py
@@ -283,6 +284,972 @@ train.train(**add_criterion(config_bnn))
 }
 
 ```
+
+
+
+================================================
+FILE: Getting_Started_With_PFNs.ipynb
+================================================
+# Jupyter notebook converted to Python script.
+
+"""
+## Let's train our first PFN to do ridge regression
+"""
+
+"""
+PFNs are all about fitting priors, thus we need a prior for this.
+
+We will now describe the prior of ridge regression and we will later on prove this in math *and* by example, we will see that the PFN does in fact approximate ridge regression.
+
+### The prior
+
+Our prior has two parts. i) What the mapping from x to y looks like, that is
+$$
+y \sim Normal(x^Tw, a^2I).
+$$
+While $x$ is our input, we have two more undefined symbols. $a$ is the standard deviation of our outputs and is fixed upfront to some value, e.g. $0.1$. $w$ on the other hand controls the form of our function, in one d this could e.g. define whether we go up or down with increasing $x$.
+
+As $w$ is so crucial, we define a prior over it, too. That is we say $w \sim Normal(0, b^2I)$ for some other fixed standard deviation $b$. BTW in Bayesian terms a variable like $w$ that controls what our distribution looks like is generally called latent.
+
+The above is the whole prior of ridge regression. We define a distribution over $w$ and then given that $w$ we define a distribution over mappings from $x$ to $y$.
+
+
+### Generating prior samples for PFN training
+
+All we want to do is train a neural network on datasets sampled from a prior. To do this, we need to define one more thing, that is: we need to define a distribution over $x$ that we consider. For simplicity let us just consider the uniform distribution between 0 and 1.
+
+
+### Let's generate some samples in 1D
+"""
+
+import torch
+
+num_datasets = 10
+num_points_in_each_dataset = 100
+
+# Let's fix our constants
+a = 0.1
+b = 1.0
+
+# Now we go through the above up from the buttom, first we define our samples of w
+ws = torch.distributions.Normal(torch.tensor([0.0]), b).sample((num_datasets,)) # a tensor of shape (num_datasets, 1)
+
+# For each constant we generate `num_points_in_each_dataset` many x's and y's
+xs = torch.rand(num_datasets, num_points_in_each_dataset, 1)
+ys = torch.distributions.Normal(torch.einsum('nmf, nf -> nm', xs, ws), a).sample()
+
+"""
+### We can plot our sample datasets
+If you change the constants above, you have a lot of impact on this plot.
+"""
+
+import matplotlib.pyplot as plt
+
+for dataset_index in range(num_datasets):
+    plt.scatter(xs[dataset_index,:,0].numpy(), ys[dataset_index].numpy())
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+### Damn all curves go through the identity...
+We can fix that by simply appending a $1$ to each $x$. Let's also generally allow different numbers of features.
+"""
+
+def sample_from_prior(num_datasets = 10, num_features=1, num_points_in_each_dataset = 100,
+                      hyperparameters={'a': 0.1, 'b': 1.0}):
+    ws = torch.distributions.Normal(torch.zeros(num_features+1), hyperparameters['b']).sample((num_datasets,)) # a tensor of shape (num_datasets, 1)
+
+    xs = torch.rand(num_datasets, num_points_in_each_dataset, num_features)
+    ys = torch.distributions.Normal(
+        torch.einsum('nmf, nf -> nm',
+                     torch.cat([xs,torch.ones(num_datasets, num_points_in_each_dataset,1)],2),
+                     ws
+                    ),
+        hyperparameters['a']
+    ).sample()
+    return xs, ys
+
+xs, ys = sample_from_prior()
+for dataset_index in range(num_datasets):
+    plt.scatter(xs[dataset_index,:,0].numpy(), ys[dataset_index].numpy())
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+### Ok cool. What now? Let's make something for the PFN to train on..
+
+What a PFN does is, given a training set of $(x,y)$ pairs, it learns a predictor internally and predicts the $y$ for another set of $x$ inputs. It also trains like this. During training we automatically split datasets into train and test before feeding them to the PFN.
+
+So, all we need to do is refine our `sample_from_prior` to return datasets s.t. it has the format our training function expects.
+
+We generally call these functions `get_batch` functions, as they are called before each training step to get the training batches, and they look something like this:
+"""
+
+from pfns4bo.priors import Batch
+
+# in our convention we name the `num_datasets` -> `batch_size`, and the `num_points_in_each_dataset` -> `seq_len`
+# another convetion is to not have the batch size first, but instead the seq len.
+
+def get_batch_for_ridge_regression(batch_size=2,seq_len=100,num_features=1, 
+                                   hyperparameters=None, **kwargs):
+    if hyperparameters is None:
+        hyperparameters = {'a': 0.1, 'b': 1.0}
+    ws = torch.distributions.Normal(torch.zeros(num_features+1), hyperparameters['b']).sample((batch_size,))
+
+    xs = torch.rand(batch_size, seq_len, num_features)
+    ys = torch.distributions.Normal(
+        torch.einsum('nmf, nf -> nm',
+                     torch.cat([xs,torch.ones(batch_size, seq_len,1)],2),
+                     ws
+                    ),
+        hyperparameters['a']
+    ).sample()
+    
+    # get_batch functions return two different ys, let's come back to this later, though.
+    return Batch(x=xs.transpose(0,1), y=ys.transpose(0,1), target_y=ys.transpose(0,1))
+
+
+"""
+## Train Train Train!!!
+
+### Let's train a mini PFN for 1D datasets with up to 20 elements 🚀
+
+This should take around 1 minute, at least on my machine it does.
+
+#### What happens during training?
+During training we sample datasets from our `get_batch` method, we then split them into left and right of the so called `single_eval_pos` (which in turn is sampled uniformly at random). If something is left it is training, on the right it is test. Now our PFN is training to predict the $y$ of the test set, given $x$ and $y$ for the training set, as well as $x$ for the test set.
+
+Our training uses standard Adam and a cross-entropy loss. We use a transformer as PFN, where each example in the training or test set is encoded as a token (sometimes also called time step). More info on the architecture can be found in our paper.
+"""
+
+from torch import nn
+from pfns4bo.train import train
+from pfns4bo.priors.utils import get_batch_to_dataloader
+from pfns4bo import encoders
+from pfns4bo import utils
+from pfns4bo import bar_distribution
+
+# Let's fix some global settings
+
+hps = None
+num_features = 1
+max_dataset_size = 20
+
+def train_a_pfn(get_batch_function, epochs=20, max_dataset_size=max_dataset_size, num_features=num_features,
+                hps=hps,
+               ):
+    
+    # define a bar distribution (riemann distribution) criterion with 1000 bars
+    ys = get_batch_function(100000,20,num_features, hyperparameters=hps).target_y
+    # we define our bar distribution adaptively with respect to the above sample of target ys from our prior
+    criterion = bar_distribution.FullSupportBarDistribution(bar_distribution.get_bucket_limits(num_outputs=1000, ys=ys))
+
+    # now train
+    train_result = train(# the prior is the key. It defines what we train on.
+                         get_batch_function, criterion=criterion,
+                         # define the transformer size
+                         emsize=128, nhead=4, nhid=256, nlayers=4, 
+                         # how to encode the x and y inputs to the transformer
+                         encoder_generator=encoders.get_normalized_uniform_encoder(encoders.Linear),
+                         y_encoder_generator=encoders.Linear, 
+                         # these are given to the prior, which needs to know how many features we have etc
+                         extra_prior_kwargs_dict=\
+                            {'num_features': num_features, 'fuse_x_y': False, 'hyperparameters': hps},
+                         # change the number of epochs to put more compute into a training
+                         # an epoch length is defined by `steps_per_epoch`
+                         # the below means we do 10 epochs, with 100 batches per epoch and 4 datasets per batch
+                         # that means we look at 10*1000*4 = 4000 datasets. Considerably less than in the demo.
+                         epochs=epochs, warmup_epochs=epochs//4, steps_per_epoch=100,batch_size=8,
+                         # the lr is what you want to tune! usually something in [.00005,.0001,.0003,.001] works best
+                         # the lr interacts heavily with `batch_size` (smaller `batch_size` -> smaller best `lr`)
+                         lr=.001,
+                         # seq_len defines the size of your datasets (including the test set)
+                         seq_len=max_dataset_size,
+                         # single_eval_pos_gen defines where to cut off between train and test set
+                         # a function that (randomly) returns lengths of the training set
+                         # the below definition, will just choose the size uniformly at random up to `max_dataset_size`
+                         single_eval_pos_gen=utils.get_uniform_single_eval_pos_sampler(max_dataset_size))
+    return train_result
+
+train_result = train_a_pfn(get_batch_for_ridge_regression)
+
+# Our trained model can be taken from the results as
+trained_model = train_result[2]
+trained_model
+# Output:
+#   TransformerModel(
+
+#     (transformer_encoder): TransformerEncoderDiffInit(
+
+#       (layers): ModuleList(
+
+#         (0-3): 4 x TransformerEncoderLayer(
+
+#           (self_attn): MultiheadAttention(
+
+#             (out_proj): NonDynamicallyQuantizableLinear(in_features=128, out_features=128, bias=True)
+
+#           )
+
+#           (linear1): Linear(in_features=128, out_features=256, bias=True)
+
+#           (dropout): Dropout(p=0.0, inplace=False)
+
+#           (linear2): Linear(in_features=256, out_features=128, bias=True)
+
+#           (norm1): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+
+#           (norm2): LayerNorm((128,), eps=1e-05, elementwise_affine=True)
+
+#           (dropout1): Dropout(p=0.0, inplace=False)
+
+#           (dropout2): Dropout(p=0.0, inplace=False)
+
+#         )
+
+#       )
+
+#     )
+
+#     (encoder): Sequential(
+
+#       (0): Normalize()
+
+#       (1): Linear(in_features=1, out_features=128, bias=True)
+
+#     )
+
+#     (y_encoder): Linear(in_features=1, out_features=128, bias=True)
+
+#     (pos_encoder): NoPositionalEncoding()
+
+#     (decoder_dict): ModuleDict(
+
+#       (standard): Sequential(
+
+#         (0): Linear(in_features=128, out_features=256, bias=True)
+
+#         (1): GELU(approximate='none')
+
+#         (2): Linear(in_features=256, out_features=1000, bias=True)
+
+#       )
+
+#     )
+
+#     (criterion): FullSupportBarDistribution()
+
+#   )
+
+"""
+### Analysis of the performance of our trained PFN
+"""
+
+# let's sample some datasets to look at
+batch = get_batch_for_ridge_regression(seq_len=100, hyperparameters=hps, batch_size=10)
+
+# our model wants the seq dimension first, remember that!
+
+batch_index = 0 # change this to see other examples
+num_training_points = 4
+
+
+train_x = batch.x[:num_training_points, batch_index]
+train_y = batch.y[:num_training_points, batch_index]
+test_x = batch.x[:, batch_index]
+
+with torch.no_grad():
+    # we add our batch dimension, as our transformer always expects that
+    logits = trained_model(train_x[:,None], train_y[:,None], test_x[:,None])
+
+# the model has the criterion still attached (it is the same though, as our criterion above)
+# the criterion has a lot of handy function to use these logits
+pred_means = trained_model.criterion.mean(logits)
+pred_confs = trained_model.criterion.quantile(logits)
+
+
+plt.scatter(train_x[...,0],train_y)
+order_test_x = test_x[...,0].argsort()
+plt.plot(test_x[order_test_x, ..., 0],pred_means[order_test_x], color='green', label='pfn')
+plt.fill_between(test_x[order_test_x, ..., 0], pred_confs[...,0 , 0][order_test_x], pred_confs[...,0 ,1][order_test_x], alpha=.1, color='green')
+
+import sklearn.linear_model
+
+ridge_model = sklearn.linear_model.Ridge(alpha=(a/b)**2)
+ridge_model.fit(train_x,train_y)
+plt.plot(test_x[order_test_x].squeeze(), ridge_model.predict(test_x[order_test_x]), label='ridge regression')
+plt.legend()
+plt.plot();
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+### They seem to align kinda well..
+
+.. at least for a PFN trained for 1 minute. If you are now interested in the more theoretical analysis why this prior yields ridge regression, please see https://statisticaloddsandends.wordpress.com/2018/12/29/bayesian-interpretation-of-ridge-regression/.
+
+What we can also see is that our PFN provides us with confidence bounds, unlike ridge regression. This is actually the case out of the box. We use a discretized distribution (the riemann distribution). It can be described as
+a piece-wise constant distribution. We just need to find out what good pieces are for our prior.
+You can view the discretization in `trained_model.criterion.borders`. We fit them on a lot of samples from our prior.
+If you are interested in the way we do regression, see read about the Riemann distribution in our paper https://arxiv.org/abs/2112.10510 or see the code in `bar_distribution.py`.
+"""
+
+"""
+## Let's do some special stuff!!
+
+So far we only reproduced an algorithm that already exists.
+Let's try two more things. 
+"""
+
+"""
+### i) Sine Ridge Regression
+
+
+What should **sine ridge regression** be!? It is the same as ridge regression, just that 
+we replace our curves with sines.
+
+We can adapt the `get_batch` function from above to get there.
+"""
+
+def get_batch_for_sine_ridge_regression(batch_size=10,seq_len=100,num_features=1, 
+                                   hyperparameters=None, **kwargs):
+    if hyperparameters is None:
+        hyperparameters = {'a': 0.01, 'b': 1.0, 's': .3}
+    ws = torch.distributions.Normal(torch.zeros(num_features+1), hyperparameters['b']).sample((batch_size,))
+
+    xs = torch.rand(batch_size, seq_len, num_features)
+    ys = torch.distributions.Normal(
+        torch.einsum('nmf, nf -> nm',
+                     torch.cat([xs,torch.ones(batch_size, seq_len,1)],2),
+                     ws
+                    ),
+        hyperparameters['a']
+    ).sample()
+    
+    ## the new part
+        
+    ys += torch.sin(xs[...,0]*20) * hyperparameters['s']
+    
+    ## end new part
+    
+    # get_batch functions return two different ys, let's come back to this later, though.
+    return Batch(x=xs.transpose(0,1), y=ys.transpose(0,1), target_y=ys.transpose(0,1))
+
+
+
+"""
+Let's sample from this prior...
+"""
+
+batch = get_batch_for_sine_ridge_regression()
+for dataset_index in range(batch.x.shape[1]):
+    plt.scatter(batch.x[:,dataset_index,0].numpy(), batch.y[:,dataset_index].numpy())
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+#### Funky curves, let's train a PFN!!!
+"""
+
+train_results_sine = train_a_pfn(get_batch_for_sine_ridge_regression)
+trained_model_sine = train_results_sine[2]
+# Output:
+#   Using 2000000 y evals to estimate 1000 buckets. Cut off the last 0 ys.
+
+#   Using cpu:0 device
+
+#   init dist
+
+#   Not using distributed
+
+#   DataLoader.__dict__ {'num_steps': 100, 'get_batch_kwargs': {'batch_size': 8, 'eval_pos_seq_len_sampler': <function train.<locals>.eval_pos_seq_len_sampler at 0x7fa47da55b40>, 'seq_len_maximum': 20, 'device': 'cpu:0', 'num_features': 1, 'fuse_x_y': False, 'hyperparameters': None}, 'num_features': 1, 'epoch_count': 0}
+
+#   Style definition of first 3 examples: None
+
+#   Initialized decoder for standard with (None, 1000)  and nout 1000
+
+#   Using a Transformer with 0.82 M parameters
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   1 | time:  2.74s | mean loss  1.64 | pos losses  1.59, 1.83, 1.63, 1.57, 1.56, 1.48, 1.60, 1.58, 1.65, 1.48, 1.71, 1.73, 1.63, 1.69, 1.69, 1.76, 1.69, 1.52, 1.43, 1.69, lr 0.0 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   2 | time:  2.45s | mean loss  1.53 | pos losses  1.67, 1.37, 1.71, 1.50, 1.56, 1.70, 1.58, 1.48, 1.72, 1.45, 1.37, 1.65, 1.44, 1.57, 1.52, 1.55, 1.45, 1.68, 1.50, 1.27, lr 0.0002 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   3 | time:  2.28s | mean loss  1.12 | pos losses  1.61, 1.17, 1.14, 1.08, 1.18, 1.02, 1.04, 1.21, 0.97, 1.20, 1.05, 1.15, 1.15, 1.28, 1.06, 1.02, 1.10, 1.13, 0.81, 1.02, lr 0.0004 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   4 | time:  2.52s | mean loss  0.84 | pos losses  1.86, 0.85, 0.95, 0.73, 0.82, 0.73, 0.79, 0.78, 0.69, 0.67, 0.92, 1.01, 0.89, 0.76, 0.71, 0.85, 0.91, 0.69, 0.72, 0.67, lr 0.0006 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   5 | time:  2.63s | mean loss  0.61 | pos losses  1.68, 0.95, 0.68, 0.58, 0.61, 0.73, 0.68, 0.61, 0.60, 0.55, 0.56, 0.51, 0.55, 0.51,  nan, 0.42, 0.53, 0.56, 0.52, 0.62, lr 0.0008 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   6 | time:  2.46s | mean loss  0.53 | pos losses  1.81, 0.85, 0.70, 0.51, 0.49, 0.49, 0.43, 0.34, 0.30, 0.53, 0.51, 0.42, 0.47, 0.37, 0.40, 0.35, 0.54, 0.29, 0.37, 0.45, lr 0.001 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   7 | time:  2.76s | mean loss  0.42 | pos losses  1.63, 0.96, 0.67, 0.54, 0.31, 0.19, 0.38, 0.36, 0.31, 0.28, 0.35, 0.20, 0.36, 0.15, 0.31, 0.29, 0.38, 0.23, 0.39, 0.26, lr 0.0009890738003669028 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   8 | time:  2.65s | mean loss  0.37 | pos losses  1.55, 0.83, 0.54, 0.39, 0.28, 0.23, 0.21, 0.29, 0.25, 0.26, 0.28, 0.25, 0.55, 0.10, 0.16, 0.16,  nan, 0.25, 0.15, 0.16, lr 0.0009567727288213005 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   9 | time:  2.70s | mean loss  0.23 | pos losses  1.73, 0.70, 0.41, 0.28, 0.06, 0.17, 0.17, 0.10,-0.05, 0.25,-0.01, 0.10, 0.03, 0.02,-0.02, 0.08,-0.00, 0.04, 0.32,-0.23, lr 0.0009045084971874737 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  10 | time:  2.66s | mean loss  0.05 | pos losses  1.88, 0.77, 0.67, 0.16, 0.03,-0.11,-0.11,-0.07,-0.07, 0.06, 0.03,-0.12,-0.15,-0.15,-0.18,-0.04,-0.06,-0.16,-0.30,-0.43, lr 0.0008345653031794292 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  11 | time:  2.66s | mean loss -0.01 | pos losses  1.54, 0.71, 0.21, 0.13,-0.01,-0.15,-0.09,-0.19,-0.22,  nan,-0.15,-0.20,-0.30,-0.20,-0.19,-0.08,-0.20,-0.09,-0.12,-0.31, lr 0.00075 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  12 | time:  3.05s | mean loss -0.06 | pos losses  1.54, 0.76, 0.21,-0.17,-0.16,-0.29,-0.27,-0.19,-0.30,-0.33,-0.36,-0.48,-0.29,-0.30,-0.35,-0.35,-0.35,-0.26,-0.33,-0.29, lr 0.0006545084971874737 data time  0.00 step time  0.04 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  13 | time:  2.64s | mean loss -0.22 | pos losses  1.55, 0.76, 0.13,-0.04,-0.20,-0.59,-0.40,-0.40,-0.44,-0.33,-0.28,-0.41,-0.46,-0.35,-0.46,-0.49,-0.39,-0.43,-0.39,-0.52, lr 0.0005522642316338268 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  14 | time:  2.67s | mean loss -0.31 | pos losses  1.88, 0.63, 0.10,-0.19,-0.22,-0.43,-0.52,-0.41,-0.42,-0.41,-0.54,-0.61,-0.49,-0.51,-0.51,-0.66,-0.55,-0.50,-0.55,-0.66, lr 0.00044773576836617336 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  15 | time:  2.65s | mean loss -0.41 | pos losses  1.69, 0.48,-0.01,-0.28,-0.44,-0.57,-0.58,-0.61,-0.60,-0.57,-0.65,-0.52,-0.61,-0.78,-0.70,-0.73,-0.58,-0.58,-0.63,-0.67, lr 0.00034549150281252633 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  16 | time:  2.83s | mean loss -0.47 | pos losses  1.45, 0.64,-0.02,-0.49,-0.47,-0.49,-0.62,-0.65,-0.76,-0.69,-0.83,-0.74,-0.80,-0.70,-0.69,-0.68,-0.75,-0.66,-0.66,-0.67, lr 0.0002500000000000001 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  17 | time:  2.51s | mean loss -0.61 | pos losses  1.48, 0.69,-0.05,-0.43,-0.63,-0.73,-0.72,-0.75,-0.80,-0.88,-0.72,-0.85,-0.81,-0.84,-0.77,-0.75,-0.84,-0.81,-0.80,-0.72, lr 0.00016543469682057105 data time  0.00 step time  0.02 forward time  0.00 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  18 | time:  2.57s | mean loss -0.55 | pos losses  1.63, 0.54,-0.25,-0.57,-0.60,-0.78,-0.78,-0.84,-0.85,-0.85,-0.87,-0.74,-0.83,-0.79,-0.79,-0.80,-0.97,-0.76,-0.96,-0.80, lr 9.549150281252633e-05 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  19 | time:  2.81s | mean loss -0.63 | pos losses  1.66, 0.51,-0.35,-0.46,-0.67,-0.76,-0.81,-0.91,-0.79,-0.78,-0.89,-0.85,  nan,-0.86,-0.88,-0.92,-0.91,-0.84,-0.92,-0.88, lr 4.322727117869951e-05 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  20 | time:  2.78s | mean loss -0.60 | pos losses  1.55, 0.85,-0.14,-0.45,-0.77,-0.89,-0.87,-0.84,-0.80,-0.88,-0.91,-0.85,-0.84,-0.91,-0.92,-0.90,-0.83,-0.86,-0.92,-0.93, lr 1.0926199633097156e-05 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+
+batch = get_batch_for_sine_ridge_regression(seq_len=300)
+
+# our model wants the seq dimension first, remember that!
+
+batch_index = 0 # change this to see other examples
+num_training_points = 6
+
+train_x = batch.x[:num_training_points, batch_index]
+train_y = batch.y[:num_training_points, batch_index]
+test_x = batch.x[:, batch_index]
+
+with torch.no_grad():
+    # we add our batch dimension, as our transformer always expects that
+    logits = trained_model_sine(train_x[:,None], train_y[:,None], test_x[:,None])
+
+# the model has the criterion still attached (it is the same though, as our criterion above)
+# the criterion has a lot of handy function to use these logits
+pred_means = trained_model_sine.criterion.mean(logits)
+pred_confs = trained_model_sine.criterion.quantile(logits)
+
+
+plt.scatter(train_x[...,0],train_y)
+order_test_x = test_x[...,0].argsort()
+plt.plot(test_x[order_test_x, ..., 0],pred_means[order_test_x], color='green', label='pfn')
+plt.fill_between(test_x[order_test_x, ..., 0], pred_confs[...,0 , 0][order_test_x], pred_confs[...,0 ,1][order_test_x], alpha=.1, color='green')
+# Output:
+#   <matplotlib.collections.PolyCollection at 0x7fa47d9fee60>
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+We can see that the predictions appear, as we expect it, in a sine shape, too.
+"""
+
+"""
+### ii) Anti-sine Regression. Let's play with `batch.target_y`
+
+In all `get_batch` functions so far we specified two `y`s. We did this because there is a difference in how they are treated by the training loop. `batch.y` is used to feed it to the PFN as knowledge about the training set, while `batch.target_y` is used to train the transformer to predict it.
+
+Typically we use a different `batch.target_y` s.t. we train not to fit the noise. In EI for example one often prefers EI over predictions that do not take inherent noise into account, as that changes the confidence intervals.
+
+We will use the same prior as before, but make our model predict the middle of the sine wave instead of the wave itself.
+"""
+
+def get_batch_for_anti_sine_ridge_regression(batch_size=10,seq_len=100,num_features=1, 
+                                             hyperparameters=None, **kwargs):
+    if hyperparameters is None:
+        hyperparameters = {'a': 0.01, 'b': 1.0, 's': .3}
+    ws = torch.distributions.Normal(torch.zeros(num_features+1), hyperparameters['b']).sample((batch_size,))
+
+    xs = torch.rand(batch_size, seq_len, num_features)
+    mean_ys = torch.einsum('nmf, nf -> nm',
+                     torch.cat([xs,torch.ones(batch_size, seq_len,1)],2),
+                     ws
+                    )
+    ys = torch.distributions.Normal(
+        mean_ys,
+        hyperparameters['a']
+    ).sample()
+    
+        
+    ys += torch.sin(xs[...,0]*20) * hyperparameters['s']
+    
+    
+    # the new part is in target_y
+    return Batch(x=xs.transpose(0,1), y=ys.transpose(0,1), target_y=mean_ys.transpose(0,1))
+
+
+
+
+"""
+Let's visualize this for one example:
+"""
+
+batch = get_batch_for_anti_sine_ridge_regression()
+
+plt.scatter(batch.x[:,dataset_index,0].numpy(), batch.y[:,dataset_index].numpy(), label='y')
+plt.scatter(batch.x[:,dataset_index,0].numpy(), batch.target_y[:,dataset_index].numpy(), label='target_y')
+
+plt.legend()
+plt.show()
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+
+# we use a large max_dataset_size s.t. we can show it with more training examples, which makes the effect more clear
+train_results_anti_sine = train_a_pfn(get_batch_for_anti_sine_ridge_regression, max_dataset_size=100)
+trained_model_anti_sine = train_results_anti_sine[2]
+# Output:
+#   Using 2000000 y evals to estimate 1000 buckets. Cut off the last 0 ys.
+
+#   Using cpu:0 device
+
+#   init dist
+
+#   Not using distributed
+
+#   DataLoader.__dict__ {'num_steps': 100, 'get_batch_kwargs': {'batch_size': 8, 'eval_pos_seq_len_sampler': <function train.<locals>.eval_pos_seq_len_sampler at 0x7fa480d07ac0>, 'seq_len_maximum': 100, 'device': 'cpu:0', 'num_features': 1, 'fuse_x_y': False, 'hyperparameters': None}, 'num_features': 1, 'epoch_count': 0}
+
+#   Style definition of first 3 examples: None
+
+#   Initialized decoder for standard with (None, 1000)  and nout 1000
+
+#   Using a Transformer with 0.82 M parameters
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   1 | time:  5.91s | mean loss  1.60 | pos losses  1.18, 1.51, 1.69, 1.46, 1.55, 1.35,  nan,  nan, 1.46,  nan, 1.70, 1.42,  nan, 1.76,  nan, 1.35, 1.60,  nan, 1.64, 1.53, 1.83, 1.43, 2.01, 1.78,  nan, 1.95, 1.47,  nan, 1.44,  nan, 1.77,  nan, 1.65, 1.85, 1.48,  nan,  nan,  nan, 1.64, 1.43,  nan,  nan, 1.84,  nan, 1.47, 1.55,  nan, 1.82, 1.70,  nan,  nan, 1.84, 1.55, 1.76,  nan, 1.77, 1.58,  nan,  nan,  nan,  nan, 1.48, 1.68, 1.58, 1.38, 1.45,  nan, 1.81, 1.68,  nan, 1.59, 1.86,  nan, 1.46,  nan, 1.55, 1.61, 1.64, 1.48,  nan, 1.46, 1.38,  nan, 1.77, 1.43,  nan,  nan,  nan, 1.42,  nan,  nan,  nan,  nan,  nan, 1.46,  nan, 1.92, 1.63, 1.43, 1.46, lr 0.0 data time  0.00 step time  0.07 forward time  0.03 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   2 | time:  5.82s | mean loss  1.37 | pos losses   nan, 1.36, 1.02, 1.69, 1.70,  nan, 1.33, 1.51,  nan, 0.94, 1.18, 1.81,  nan, 1.14,  nan, 1.42,  nan, 1.32,  nan, 1.54,  nan, 1.73, 1.57, 1.49, 1.33, 1.39,  nan,  nan, 1.57, 0.99, 1.57, 1.80, 0.89, 1.13, 1.66,  nan,  nan,  nan, 1.17,  nan, 1.49, 1.51,  nan, 1.30,  nan,  nan, 1.54,  nan,  nan, 1.52, 1.97, 1.24,  nan, 1.44, 1.60, 1.37, 1.20, 1.03,  nan,  nan, 1.14,  nan,  nan, 1.34, 1.66, 1.42,  nan, 1.32,  nan,  nan, 1.45, 1.39, 1.30,  nan, 1.73, 2.01, 1.46,  nan,  nan,  nan,  nan, 1.34, 1.07, 1.17,  nan, 1.53, 1.31, 1.61,  nan,  nan, 1.24, 1.66, 1.03, 1.37,  nan, 1.36, 1.06, 1.22, 1.26, 1.42, lr 0.0002 data time  0.00 step time  0.06 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   3 | time:  5.45s | mean loss  0.63 | pos losses   nan, 0.79, 0.72,  nan,  nan, 0.98, 0.65, 0.70, 0.73,  nan, 0.64, 0.38, 0.76, 0.37, 0.44, 0.76, 0.39, 0.93, 0.61,  nan,  nan, 0.67, 0.62, 1.32, 0.76, 0.13,  nan, 0.54, 0.51, 0.93,  nan, 0.42, 0.07, 0.36,  nan, 0.83, 0.69, 0.45,  nan, 0.62,  nan,  nan, 0.28, 0.41, 0.25, 1.12,  nan, 0.72,  nan, 0.54, 0.52,  nan,  nan,  nan, 0.37, 0.79,  nan,  nan,  nan, 0.94, 0.75,  nan,  nan, 0.87, 0.79,  nan,  nan,  nan,  nan, 0.92, 0.38,  nan,  nan, 0.61, 1.02,  nan, 0.46,  nan, 0.43, 0.66, 0.52, 0.70, 0.41, 0.96, 0.65,  nan,  nan,  nan, 0.09, 0.41, 0.48, 0.68, 0.42,  nan, 0.77, 0.73,  nan,  nan,  nan,  nan, lr 0.0004 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   4 | time:  5.38s | mean loss  0.12 | pos losses  1.89, 0.74, 0.48, 0.02, 0.43,  nan, 0.30, 0.14, 0.03, 0.28, 0.17,  nan,  nan, 0.28,  nan,-0.15, 0.04, 0.20,  nan,  nan,  nan, 0.22, 0.03, 0.08,  nan, 0.22,-0.16,-0.25, 0.22, 0.35, 0.02,-0.01, 0.43,-0.02, 0.16,-0.15, 0.05, 0.29, 0.42, 0.18,-0.03,  nan, 0.27, 0.20,  nan,  nan,  nan,-0.10,  nan,  nan,  nan,-0.07,  nan,  nan,-0.08,  nan, 0.11,-0.09,-0.03,  nan, 0.35, 0.11,  nan, 0.06, 1.03,  nan,-0.26,-0.05, 0.05,-0.00,  nan,  nan, 0.85, 0.11,-0.03,  nan, 0.17, 0.09, 0.09,-0.23, 0.34, 0.17,-0.03,-0.16,  nan,  nan,-0.21,  nan,-0.01,-0.10, 0.01,  nan,-0.26,  nan,  nan, 0.25,  nan,-0.16,  nan,-0.07, lr 0.0006 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   5 | time:  5.53s | mean loss -0.21 | pos losses   nan,  nan, 0.64, 0.93, 0.43,-0.00,  nan,-0.07,-0.16, 0.11,-0.30,-0.22,  nan,-0.34,-0.24,  nan,  nan,-0.18,-0.35,-0.44,-0.37,  nan,-0.08,  nan,  nan,-0.43,-0.09,  nan,-0.38,-0.01,  nan,  nan,-0.53,-0.41,-0.30,-0.32,-0.18, 0.14,  nan, 0.25,  nan,  nan,-0.11,-0.36,-0.49,-0.38,-0.08,-0.33,-0.21,-0.09,  nan,-0.41,  nan,-0.20,  nan,-0.34,-0.38,-0.12,  nan,  nan,-0.27,-0.34,  nan,  nan,-0.22,  nan,-0.07,  nan,-0.38,-0.28,-0.29,-0.03, 0.25,-0.19,  nan,-0.27,-0.42,  nan,-0.32,-0.32,  nan,  nan,-0.33,-0.59,  nan,  nan,-0.39,-0.18,-0.23,-0.56,-0.48,  nan,  nan, 0.09,-0.31,-0.59,-0.16,-0.44,-0.13,-0.02, lr 0.0008 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   6 | time:  5.22s | mean loss -0.35 | pos losses   nan,  nan,  nan,  nan,-0.13, 0.12,  nan,  nan,-0.15,  nan,-0.42,  nan,-0.15,-0.43,  nan,  nan,-0.21,-0.12,-0.25,-0.53,  nan,-0.00,-0.60,  nan,-0.33,-0.43,-0.73,  nan,-0.24,  nan,-0.01,  nan, 0.16,-0.36,  nan,  nan,  nan,-0.68,-0.53,-0.10,-0.19,-0.48,  nan,-0.55,-0.16,  nan,-0.32,  nan,-0.27,-0.32,-0.47,  nan,-0.51,-0.63, 0.12,  nan,-0.52,-0.51,-0.49,-0.17,-0.41,  nan,  nan, 0.37,  nan,-0.39,  nan,-0.39,-0.25,-0.57,-0.35,  nan,  nan,-0.45,-0.77,-0.53,  nan,-0.17,-0.49,-0.30,  nan,-0.03,-0.40,  nan,-0.47,  nan,-0.54,-0.38,  nan,-0.35,-0.40,-0.19,-0.65,  nan,  nan,-0.42,-0.71,-0.47,-0.34,  nan, lr 0.001 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   7 | time:  5.07s | mean loss -0.39 | pos losses  2.46,  nan,  nan,-0.04,  nan, 0.51, 0.16,  nan,-0.32, 0.13,  nan,-0.35,-0.48,  nan,-0.50,  nan,-0.63,-0.52,  nan,-0.48,-0.34,  nan,  nan,-0.61,-0.62,  nan,-0.38,-0.75,-0.44,-0.55,-0.41,  nan,-0.46, 0.05, 0.05,-0.62,-0.59,-0.45,-0.42,  nan,-0.46,-0.18,  nan,-0.50,  nan,  nan,-0.46,  nan,  nan,-0.52,-0.70,-0.71,-0.71,-0.53,-0.12,-0.02,-0.80,-0.24,-0.46,  nan,  nan,  nan,-0.38,  nan,  nan,-0.41,-0.37,-0.73,  nan,-0.71,-0.70,-0.45,  nan,  nan,-0.56,-0.59,-0.54,  nan,-0.41,-0.75,  nan,  nan,  nan,-0.70,-0.17,  nan,  nan,  nan,-0.60,-0.62,-0.51,-0.32,-0.49,  nan,-0.75,-0.07,-0.44,-0.77,-0.41,-0.41, lr 0.0009890738003669028 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   8 | time:  5.36s | mean loss -0.59 | pos losses   nan, 0.86,  nan, 0.24,-0.38,  nan,  nan,-0.10,-0.48,-0.66,-0.67,  nan,-0.71,-0.28,  nan,-0.58,-0.56,-0.73,  nan,-0.37,  nan,-0.68,-0.63,  nan,  nan,-0.68,-0.52,-0.40,-0.72,  nan,-0.55,-0.70,-0.53,  nan,-0.68,  nan,-0.67,-0.72, 0.04,-0.35,-1.01,  nan,-0.73,-0.95,-0.81,-0.66,-0.57,-0.88,  nan,-0.76,-0.92,-0.95, 0.10,  nan,-0.51,  nan,-0.50,-0.83,-0.82,-0.41,-0.86,  nan,  nan,-0.79,  nan,-0.44,  nan,  nan,-0.53,-0.48,-0.82,-0.71,  nan,  nan,-0.85,  nan,-0.67,-0.78,  nan,-0.78,-0.30,-0.81,-0.46,  nan,-0.90,  nan,  nan,  nan,  nan,  nan,-0.91,-0.84,-0.52,-0.45,  nan,  nan,-0.63,-0.64,-0.78,  nan, lr 0.0009567727288213005 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   9 | time:  5.53s | mean loss -0.57 | pos losses  2.26, 0.77, 1.10, 0.28,  nan,  nan,-0.31,-0.37,-0.46,  nan,-0.31,-0.05,  nan,-0.53,  nan,-0.62,-0.93,-0.51,  nan,-0.79,-0.77,-0.63,-0.54,-0.88,  nan,  nan,-0.87,-0.77,  nan,-0.83,  nan,-0.68,-0.70,-0.78,-0.42,  nan,-1.03,  nan,  nan,-1.02,  nan,  nan,-0.66,-0.36,-0.61,-0.44,  nan,  nan,  nan,-0.81,-0.81,-0.93,  nan,  nan,-0.65,-0.84,  nan,-0.67,-0.79,  nan,  nan,-0.94,-0.75,-0.93,  nan,-0.83,  nan,-0.36,  nan,  nan,  nan,  nan,-0.89,  nan,  nan,-0.46,-0.53,  nan,  nan,-0.44,-0.67,-0.72,  nan,-0.77,  nan,-0.66,  nan,-0.81,-1.01,  nan,-1.01,-0.49,-0.83,  nan,-0.67,-0.48,-0.78,  nan,-0.78,-0.91, lr 0.0009045084971874737 data time  0.00 step time  0.06 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  10 | time:  5.65s | mean loss -0.76 | pos losses  2.07, 0.48,  nan,  nan,-0.08,-0.16,-0.65,  nan,  nan,  nan,-0.55,-0.73,-0.93,  nan,-0.82,-0.83,-1.05,  nan,-0.64,-0.64,  nan,-0.91,-1.09,-0.80,-0.68,-1.33,  nan,-0.88,  nan,-0.85,-0.77,  nan,-0.65,-0.83,  nan,-1.06,-0.60,  nan,-1.05,  nan,-0.96,-1.14,-0.94,-0.79,-1.14,-0.99,-0.81,-0.88,-1.03,-0.98,  nan,  nan,-0.76,-0.91,-0.84,  nan,  nan,  nan,  nan,-1.05,  nan,  nan,  nan,-0.94,  nan,-0.78,  nan,-0.56,  nan,  nan,-0.87,-0.95,  nan,-0.82,  nan,  nan,-0.93,-0.82,-0.84,  nan,  nan,-1.18,  nan,  nan,  nan,  nan,-0.76,-0.85,  nan,-0.84,  nan,  nan,  nan,-1.07,-0.77,-0.97,-0.94,  nan,-0.95,  nan, lr 0.0008345653031794292 data time  0.00 step time  0.07 forward time  0.03 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  11 | time:  6.56s | mean loss -0.92 | pos losses   nan,  nan,  nan,  nan,  nan, 0.03,-0.50,  nan,  nan,  nan,-0.71,-0.78,  nan,  nan,  nan,  nan,-0.79,  nan,  nan,  nan,-1.07,-0.94,-0.77,  nan,  nan,-1.10,  nan,-1.01,-0.84,-1.15,-0.80,-0.66,-1.12,  nan,  nan,-1.07,-0.78,-1.01,-0.72,  nan,  nan,-0.94,  nan,  nan,-1.13,-0.73,-0.71,-1.12,-0.74,-1.00,  nan,-1.18,-0.77,-1.11,  nan,-1.16,  nan,  nan,  nan,  nan,-1.08,-0.80,  nan,-1.07,  nan,-0.95,-0.90,-1.06,  nan,-0.88,  nan,-0.98,-0.63,-1.12,-0.77,-1.13,-1.12,-1.01,  nan,-0.88,  nan,-1.11,-1.12,-1.06,  nan,-1.12,-0.92,-0.85,-0.84,-1.08,-0.58,  nan,-0.97,-1.07,-1.03,-0.87,-1.08,-0.66,-1.09,-1.06, lr 0.00075 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  12 | time:  6.63s | mean loss -0.89 | pos losses  1.91, 0.90, 0.39,  nan, 0.03,-0.57,  nan,-0.02,  nan,-0.77,-0.77,  nan,-0.77,-0.79,-0.83,  nan,-1.28,-1.20,-0.89,-0.87,-1.09,-1.15,-1.03,-1.03,-1.14,  nan,-1.15,  nan,  nan,-1.09,  nan,-1.13,-1.05,-1.17,-1.03,  nan,-0.86,  nan,-0.96,  nan,  nan,-1.09,-1.17,  nan,-1.22,  nan,  nan,-0.61,-1.12,-0.90,-1.07,-1.24,-1.30,  nan,  nan,-0.90,-0.66,-1.21,  nan,-1.11,  nan,-1.21,  nan,  nan,-1.09,-1.01,-1.07,-0.97,-0.92,  nan,-1.02,-1.12,-1.23,-1.21,-1.09,-1.29,-1.15,-1.03,-1.18,-1.20,-1.21,  nan,  nan,-1.12,  nan,  nan,-1.11,  nan,-0.85,  nan,-1.19,-1.29,-1.07,-1.20,-0.75,-1.32,  nan,  nan,-0.91,-1.58, lr 0.0006545084971874737 data time  0.00 step time  0.08 forward time  0.03 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  13 | time:  6.81s | mean loss -1.08 | pos losses   nan, 0.99,  nan,  nan, 0.33, 0.01,  nan,-0.44,  nan,-0.54,-0.97,  nan,  nan,  nan,  nan,-1.23,  nan,-1.18,  nan,-1.27,-1.39,-0.84,-1.32,-1.21,  nan,-1.36,  nan,-1.18,  nan,-1.14,-1.32,-1.15,  nan,  nan,-1.39,-1.25,-1.21,-1.50,  nan,  nan,  nan,-1.30,-1.26,-1.19,  nan,-1.24,-1.16,-1.18,  nan,-1.22,  nan,  nan,-1.13,-1.09,-0.94,-0.99,-1.36,  nan,-1.10,  nan,-1.07,-1.24,  nan,  nan,-1.51,-1.35,-1.28,-1.18,-0.85,-0.90,  nan,  nan,-1.29,-1.19,-0.91,-1.23,-1.23,-1.13,  nan,-1.20,  nan,-0.92,-1.13,-1.11,-1.32,  nan,-1.08,-1.06,-1.17,  nan,-1.14,-1.14,-1.26,-1.28,-1.33,  nan,-1.23,-1.42,-1.00,-1.39, lr 0.0005522642316338268 data time  0.00 step time  0.06 forward time  0.03 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  14 | time:  6.53s | mean loss -1.16 | pos losses  1.66, 0.85,  nan,  nan,  nan,-0.15,  nan,-0.64,-0.72,-1.04,-1.01,-1.14,-1.12,-1.20,-0.89,-0.98,-1.37,-1.30,  nan,-1.20,-1.39,-1.30,  nan,  nan,-1.18,-1.26,-1.26,-1.19,  nan,  nan,-1.15,  nan,-1.27,-1.29,-1.09,-1.35,  nan,-1.20,-1.02,  nan,  nan,  nan,  nan,  nan,  nan,  nan,-1.11,-1.41,  nan,-1.38,-1.48,-1.31,-1.48,  nan,  nan,-1.26,  nan,  nan,-1.34,-1.44,-1.19,-1.16,-1.35,  nan,-1.27,-1.34,  nan,  nan,-1.28,-1.38,-1.35,-1.38,  nan,-1.35,  nan,  nan,  nan,-1.27,-1.43,-1.38,-1.24,-1.37,-1.38,  nan,-1.48,  nan,-1.45,-1.23,  nan,  nan,-1.18,-1.55,  nan,  nan,  nan,-1.40,  nan,  nan,-1.30,-1.33, lr 0.00044773576836617336 data time  0.00 step time  0.06 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  15 | time:  6.11s | mean loss -1.21 | pos losses  1.57, 1.63,  nan, 0.02,  nan,-0.78,  nan,  nan,-0.72,-0.79,-0.94,  nan,-1.27,-1.22,  nan,-1.20,-1.30,-1.45,-1.38,  nan,-1.21,-1.25,  nan,-1.54,-1.38,  nan,  nan,-1.18,-1.18,-1.34,-0.92,  nan,-1.28,-1.32,  nan,-1.38,-1.32,  nan,  nan,  nan,  nan,-1.34,  nan,  nan,-1.55,-1.06,-1.52,-1.38,-1.40,-1.27,-1.41,  nan,  nan,-1.42,  nan,-1.36,-1.19,  nan,-1.38,  nan,  nan,-1.42,-1.50,  nan,-0.89,-0.87,  nan,  nan,-1.39,-1.47,-1.44,-1.15,-1.23,-1.42,-1.52,-1.39,-1.49,-1.27,  nan,-1.51,-1.48,  nan,-1.37,  nan,-1.57,  nan,-1.40,-1.25,  nan,-1.33,-1.55,  nan,  nan,-1.44,  nan,-1.40,-1.61,  nan,-1.57,  nan, lr 0.00034549150281252633 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  16 | time:  5.66s | mean loss -1.37 | pos losses   nan, 1.52, 1.00,  nan,  nan,  nan,-0.76,-0.89,-1.33,-0.93,-1.12,  nan,-1.28,-1.38,-1.23,-1.14,-1.41,-1.25,  nan,-1.48,-1.38,  nan,-1.44,  nan,  nan,-1.62,-1.23,  nan,-1.56,-1.49,-1.39,-1.37,  nan,  nan,-1.54,-1.60,-1.31,-1.13,  nan,-1.52,-1.49,-1.38,-1.40,-1.51,-1.53,-1.16,  nan,  nan,  nan,-1.55,-1.40,-1.69,-1.52,  nan,  nan,  nan,-1.62,  nan,-1.43,-1.06,-1.40,-1.53,-1.35,-1.55,-1.58,-1.41,  nan,  nan,-1.63,-1.45,-1.29,-1.64,  nan,-1.36,-1.53,-1.51,-1.48,-1.63,-1.55,  nan,  nan,-1.67,  nan,-1.58,  nan,  nan,-1.38,-1.59,  nan,-1.54,-1.65,-1.46,-1.30,  nan,-1.58,  nan,-1.64,-1.44,-1.63,  nan, lr 0.0002500000000000001 data time  0.00 step time  0.06 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  17 | time:  5.89s | mean loss -1.44 | pos losses  1.49,  nan, 0.45,  nan,-0.04,  nan,  nan,-0.80,  nan,-0.80,-1.15,  nan,  nan,-1.19,-1.41,-1.31,  nan,-1.46,-1.43,-1.38,  nan,  nan,  nan,-1.37,-1.50,  nan,-1.43,-1.53,-1.56,-1.17,-1.50,-1.52,-1.50,  nan,  nan,-1.39,-1.53,  nan,  nan,-1.46,  nan,-1.52,-1.44,  nan,-1.41,-1.55,  nan,  nan,-1.66,-1.57,  nan,-1.58,  nan,-1.67,  nan,  nan,  nan,-1.56,-1.58,  nan,  nan,-1.53,-1.50,-1.67,  nan,-1.41,  nan,  nan,  nan,-1.63,-1.68,-1.63,-1.67,  nan,-1.59,-1.67,-1.70,-1.58,  nan,-1.48,-1.79,-1.49,  nan,-1.46,-1.64,-1.62,  nan,-1.70,-1.57,  nan,  nan,-1.74,-1.63,  nan,-1.72,-1.67,-1.56,-1.54,  nan,-1.60, lr 0.00016543469682057105 data time  0.00 step time  0.06 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  18 | time:  5.39s | mean loss -1.46 | pos losses  1.41, 0.85,  nan,-0.16,  nan,  nan,  nan,  nan,-1.04,  nan,-1.10,-1.18,-1.30,  nan,-1.22,  nan,  nan,-1.60,-1.50,-1.45,-1.24,-1.59,-1.53,  nan,-1.27,-1.51,  nan,-1.61,-1.60,-1.67,  nan,-1.35,  nan,-1.53,-1.72,  nan,  nan,  nan,-1.64,-1.59,  nan,-1.60,  nan,-1.51,  nan,-1.62,-1.62,  nan,-1.69,-1.63,  nan,-1.79,-1.59,-1.38,-1.51,-1.49,-1.68,-1.68,-1.61,-1.54,  nan,-1.57,  nan,-1.47,-1.78,-1.44,  nan,-1.51,  nan,-1.58,-1.78,-1.59,-1.72,  nan,-1.65,-1.54,-1.62,-1.62,-1.73,-1.61,-1.66,-1.76,-1.65,-1.72,  nan,-1.70,  nan,-1.65,-1.55,  nan,-1.68,-1.57,-1.64,-1.62,  nan,  nan,  nan,-1.62,-1.56,-1.54, lr 9.549150281252633e-05 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  19 | time:  5.32s | mean loss -1.47 | pos losses  2.22, 0.63,  nan,-0.56,-0.35,-0.31,-0.89,-1.18,  nan,  nan,-1.04,-1.42,-1.44,  nan,-1.36,  nan,-1.45,-1.53,  nan,-1.42,-1.62,  nan,-1.64,-1.57,-1.47,  nan,-1.39,  nan,  nan,-1.70,-1.67,-1.65,  nan,-1.54,  nan,-1.68,  nan,-1.69,-1.69,-1.79,-1.70,-1.32,-1.77,  nan,  nan,  nan,  nan,-1.71,  nan,-1.65,  nan,  nan,-1.55,-1.77,  nan,-1.61,-1.57,  nan,-1.82,  nan,-1.59,-1.73,-1.71,-1.59,  nan,-1.60,-1.70,-1.66,  nan,  nan,-1.62,-1.58,  nan,-1.73,  nan,-1.67,-1.58,-1.63,-1.72,  nan,  nan,-1.60,  nan,  nan,-1.60,-1.69,-1.86,-1.76,-1.73,-1.63,  nan,-1.76,  nan,-1.37,  nan,  nan,-1.57,  nan,-1.69,  nan, lr 4.322727117869951e-05 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  20 | time:  5.43s | mean loss -1.48 | pos losses  2.19, 1.10, 0.26,  nan,  nan,  nan,-0.58,-0.72,-1.13,-1.15,  nan,  nan,-1.27,  nan,-1.57,  nan,  nan,-1.46,-1.64,  nan,-1.66,  nan,-1.44,  nan,-1.64,-1.74,  nan,  nan,  nan,-1.57,  nan,  nan,-1.67,-1.59,-1.74,  nan,  nan,-1.69,-1.67,-1.64,  nan,-1.57,-1.60,-1.80,  nan,  nan,-1.76,-1.77,  nan,-1.74,  nan,-1.78,  nan,  nan,-1.73,-1.75,-1.77,-1.70,-1.64,-1.52,-1.72,  nan,-1.10,-1.80,-1.68,-1.61,-1.74,-1.56,-1.62,-1.81,-1.63,-1.63,  nan,  nan,-1.72,-1.77,-1.81,-1.66,-1.77,-1.76,  nan,-1.71,  nan,  nan,  nan,-1.65,-1.81,-1.55,-1.70,-1.69,-1.61,-1.77,-1.76,-1.78,-1.77,-1.51,  nan,-1.68,-1.78,  nan, lr 1.0926199633097156e-05 data time  0.00 step time  0.05 forward time  0.02 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+
+"""
+If you see "nan" in the positional losses in the training log above that just means this particular `single_eval_pos` was not sampled.
+"""
+
+# our model wants the seq dimension first, remember that!
+
+batch_index = 0 # change this to see other examples
+num_training_points = 50
+
+train_x = batch.x[:num_training_points, batch_index]
+train_y = batch.y[:num_training_points, batch_index]
+test_x = batch.x[:, batch_index]
+
+with torch.no_grad():
+    # we add our batch dimension, as our transformer always expects that
+    logits = trained_model_anti_sine(train_x[:,None], train_y[:,None], test_x[:,None])
+
+# the model has the criterion still attached (it is the same though, as our criterion above)
+# the criterion has a lot of handy function to use these logits
+pred_means = trained_model_anti_sine.criterion.mean(logits)
+pred_confs = trained_model_anti_sine.criterion.quantile(logits)
+
+
+plt.scatter(train_x[...,0],train_y)
+order_test_x = test_x[...,0].argsort()
+plt.plot(test_x[order_test_x, ..., 0],pred_means[order_test_x], color='green', label='pfn')
+plt.fill_between(test_x[order_test_x, ..., 0], pred_confs[...,0 , 0][order_test_x], pred_confs[...,0 ,1][order_test_x], alpha=.1, color='green')
+# Output:
+#   <matplotlib.collections.PolyCollection at 0x7fa480dbe8f0>
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+It looks like we can actually reconstruct the mean of the sine. This might be helpful for some obscure regression with a sine based noise..
+"""
+
+"""
+### ONE ENCORE!! Let's do a GP as finale (and calculate EI on it)
+
+For this we will use a prior that is already part of the pacakge in the `priors` folder. This folder is generally useful to store priors.
+
+You can already have a sneak peak at what we will get out here, in our demo https://huggingface.co/spaces/samuelinferences/transformers-can-do-bayesian-inference
+
+We will start by sampling some datasets in 1d from GP.
+"""
+
+from pfns4bo.priors.fast_gp import get_batch as get_batch_for_gp
+
+batch = get_batch_for_gp(batch_size=2, seq_len=100, num_features=1)
+for dataset_index in range(batch.x.shape[1]):
+    plt.scatter(batch.x[:,dataset_index,0].numpy(), batch.y[:,dataset_index].numpy())
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+
+"""
+### Now we can go ahead and train a PFN, let's go 🚂
+"""
+
+from pfns4bo import priors
+
+training_output_gp = train_a_pfn(get_batch_for_gp, hps={"noise": 1e-4, "outputscale": 1., "lengthscale": 0.1})
+trained_model_gp = training_output_gp[2]
+# Output:
+#   Using 2000000 y evals to estimate 1000 buckets. Cut off the last 0 ys.
+
+#   Using cpu:0 device
+
+#   init dist
+
+#   Not using distributed
+
+#   DataLoader.__dict__ {'num_steps': 100, 'get_batch_kwargs': {'batch_size': 8, 'eval_pos_seq_len_sampler': <function train.<locals>.eval_pos_seq_len_sampler at 0x7fa46cbc5cf0>, 'seq_len_maximum': 20, 'device': 'cpu:0', 'num_features': 1, 'fuse_x_y': False, 'hyperparameters': {'noise': 0.0001, 'outputscale': 1.0, 'lengthscale': 0.1}}, 'num_features': 1, 'epoch_count': 0}
+
+#   Style definition of first 3 examples: None
+
+#   Initialized decoder for standard with (None, 1000)  and nout 1000
+
+#   Using a Transformer with 0.82 M parameters
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   1 | time:  3.08s | mean loss  1.45 | pos losses  1.43, 1.54, 1.43, 1.44, 1.47, 1.31, 1.51, 1.40, 1.47, 1.51, 1.43, 1.49, 1.44, 1.43, 1.42, 1.25, 1.47, 1.54, 1.35, 1.49, lr 0.0 data time  0.01 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   2 | time:  2.86s | mean loss  1.42 | pos losses  1.41, 1.38, 1.39, 1.40, 1.44, 1.40, 1.61, 1.38, 1.45, 1.40, 1.43, 1.37, 1.48, 1.31, 1.45, 1.46, 1.33, 1.44, 1.52, 1.39, lr 0.0002 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   3 | time:  3.04s | mean loss  1.43 | pos losses  1.55, 1.46, 1.39, 1.37, 1.47, 1.36, 1.39, 1.40, 1.28, 1.39, 1.54, 1.34, 1.43, 1.34, 1.44, 1.38, 1.54, 1.64, 1.41, 1.49, lr 0.0004 data time  0.01 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   4 | time:  3.24s | mean loss  1.38 | pos losses  1.44, 1.42, 1.49, 1.41, 1.45, 1.37, 1.38, 1.35, 1.44, 1.43, 1.49, 1.34, 1.34, 1.30, 1.32, 1.29, 1.34, 1.42, 1.37, 1.37, lr 0.0006 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   5 | time:  3.07s | mean loss  1.35 | pos losses  1.56, 1.48, 1.61, 1.39, 1.40, 1.32, 1.34, 1.28, 1.35, 1.26, 1.39, 1.35, 1.22, 1.33, 1.41, 1.33, 1.22, 1.14, 1.26, 1.33, lr 0.0008 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   6 | time:  2.92s | mean loss  1.31 | pos losses  1.48, 1.40, 1.42, 1.35, 1.49, 1.33, 1.29, 1.33, 1.27, 1.18, 1.21, 1.23, 1.34, 1.26, 1.26, 1.33, 1.42, 1.20, 1.34, 1.18, lr 0.001 data time  0.01 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   7 | time:  2.93s | mean loss  1.27 | pos losses  1.38, 1.27, 1.45, 1.40, 1.37, 1.29, 1.20, 1.36, 1.26, 1.22, 1.23, 1.15, 1.18, 1.23, 1.24, 1.25, 1.17, 1.19, 1.21, 1.27, lr 0.0009890738003669028 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   8 | time:  3.07s | mean loss  1.24 | pos losses  1.58, 1.46, 1.44, 1.40, 1.24, 1.33, 1.22, 1.19, 1.27, 1.23, 1.16, 1.12, 1.24, 1.15, 0.98, 1.20, 1.09, 1.03, 1.19, 1.29, lr 0.0009567727288213005 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch   9 | time:  3.01s | mean loss  1.17 | pos losses  1.53, 1.38, 1.42, 1.27, 1.25, 1.33, 1.17, 0.92, 1.12, 1.07, 1.05, 1.18, 1.07, 1.09, 1.06, 1.14, 1.09, 0.99, 1.00, 1.02, lr 0.0009045084971874737 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  10 | time:  4.28s | mean loss  1.03 | pos losses  1.43, 1.38, 1.29, 1.26, 1.14, 1.22, 1.08, 0.93, 0.99, 0.94, 0.98, 0.88, 0.89, 1.10, 0.96, 0.88, 0.86, 0.82, 0.88, 0.85, lr 0.0008345653031794292 data time  0.01 step time  0.11 forward time  0.03 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  11 | time:  4.24s | mean loss  0.93 | pos losses  1.43, 1.22, 1.11, 1.19, 1.17, 1.03, 1.08, 0.96, 0.79, 0.94, 0.72, 0.84, 0.89, 0.73, 0.70, 0.86, 0.71, 0.79, 0.88, 0.65, lr 0.00075 data time  0.01 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  12 | time:  5.44s | mean loss  0.88 | pos losses  1.38, 1.30, 1.24, 1.08, 1.17, 1.06, 1.06, 0.92, 0.86, 0.82, 0.73, 0.76, 0.61, 0.70, 0.66, 0.52, 0.56, 0.72, 0.60, 0.67, lr 0.0006545084971874737 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  13 | time:  3.81s | mean loss  0.78 | pos losses  1.43, 1.35, 1.19, 1.08, 1.01, 0.84, 0.88, 0.92, 0.81, 0.75, 0.66, 0.44, 0.57, 0.53, 0.38, 0.40, 0.51, 0.77, 0.28, 0.71, lr 0.0005522642316338268 data time  0.01 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  14 | time:  3.25s | mean loss  0.75 | pos losses  1.52, 1.28, 1.18, 1.04, 0.94, 0.88, 0.80, 0.92, 0.72, 0.66, 0.52, 0.49, 0.52, 0.48, 0.49, 0.44, 0.46, 0.36, 0.33, 0.36, lr 0.00044773576836617336 data time  0.01 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  15 | time:  3.68s | mean loss  0.64 | pos losses  1.48, 1.23, 1.20, 1.08, 0.91, 0.80, 0.71, 0.69, 0.69, 0.54,  nan, 0.37, 0.41, 0.29, 0.36, 0.35, 0.41, 0.29, 0.29, 0.28, lr 0.00034549150281252633 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  16 | time:  3.59s | mean loss  0.60 | pos losses  1.51, 1.27, 1.10, 0.98, 0.99, 0.91, 0.75, 0.62, 0.52, 0.61, 0.56, 0.47, 0.50, 0.21, 0.20, 0.35, 0.34, 0.29, 0.15, 0.44, lr 0.0002500000000000001 data time  0.00 step time  0.03 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  17 | time:  3.08s | mean loss  0.59 | pos losses  1.33, 1.33, 1.14, 1.10, 0.92, 0.94, 0.64, 0.61, 0.53, 0.51, 0.46, 0.22,  nan, 0.32, 0.23, 0.14, 0.09, 0.09, 0.06, 0.23, lr 0.00016543469682057105 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  18 | time:  2.74s | mean loss  0.51 | pos losses  1.38, 1.22, 1.25, 1.00, 0.81, 0.85, 0.64, 0.53, 0.52, 0.43, 0.39, 0.41, 0.35, 0.28, 0.19, 0.14, 0.08, 0.13, 0.08, 0.21, lr 9.549150281252633e-05 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  19 | time:  2.97s | mean loss  0.53 | pos losses  1.39, 1.31, 1.32, 0.93, 0.82, 0.73, 0.62, 0.59, 0.43, 0.42, 0.34, 0.28, 0.21, 0.23, 0.14, 0.20,-0.06, 0.13, 0.02, 0.64, lr 4.322727117869951e-05 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+#   -----------------------------------------------------------------------------------------
+
+#   | end of epoch  20 | time:  3.10s | mean loss  0.52 | pos losses  1.38, 1.19, 1.16, 0.97, 0.95, 0.73, 0.65, 0.53, 0.55, 0.34, 0.32, 0.39, 0.16, 0.27, 0.16, 0.09, 0.19,-0.06, 0.04, 0.03, lr 1.0926199633097156e-05 data time  0.00 step time  0.02 forward time  0.01 nan share  0.00 ignore share (for classification tasks) 0.0000
+
+#   -----------------------------------------------------------------------------------------
+
+
+# our model wants the seq dimension first, remember that!
+
+batch_index = 1 # change this to see other examples
+num_training_points = 5
+
+train_x = batch.x[:num_training_points, batch_index]
+train_y = batch.y[:num_training_points, batch_index]
+test_x = batch.x[:, batch_index]
+
+with torch.no_grad():
+    # we add our batch dimension, as our transformer always expects that
+    logits = trained_model_gp(train_x[:,None], train_y[:,None], test_x[:,None])
+
+# the model has the criterion still attached (it is the same though, as our criterion above)
+# the criterion has a lot of handy function to use these logits
+pred_means = trained_model_gp.criterion.mean(logits)
+pred_confs = trained_model_gp.criterion.quantile(logits)
+
+### WE CAN CALCULATE THE EI LIKE THIS:
+pred_ei = trained_model_gp.criterion.ei(logits, best_f=max(train_y))
+
+
+plt.scatter(train_x[...,0],train_y)
+order_test_x = test_x[...,0].argsort()
+plt.plot(test_x[order_test_x, ..., 0], pred_means[order_test_x], color='green', label='pfn')
+plt.fill_between(test_x[order_test_x, ..., 0], pred_confs[...,0 , 0][order_test_x], pred_confs[...,0 ,1][order_test_x], alpha=.1, color='green')
+plt.title('Mean and Confidence Interval')
+plt.show()
+
+
+plt.title('EI')
+plt.plot(test_x[order_test_x, ..., 0], pred_ei[order_test_x], color='green', label='ei')
+plt.show()
+# Output:
+#   <Figure size 640x480 with 1 Axes>
+#   <Figure size 640x480 with 1 Axes>
 
 
 
