@@ -71,6 +71,13 @@ matplotlib>=3.8,<4.0
 ipykernel>=6.29,<7.0           # required for VS Code / Jupyter to find a kernel
 jupyter>=1.0,<2.0              # convenience: brings the notebook server too
 
+# --- LoRA adapter (training-time only; see config/train.yaml::tunable.use_lora) ----
+# Wraps TabPFN's PerFeatureTransformer with a LoRA adapter when use_lora=true.
+# The adapter is merged back into the base weights at save time, so trained
+# checkpoints load via the standard TabPFN loader without a peft dependency
+# at inference. PEFT's API is stable across 0.x.
+peft>=0.10,<1.0
+
 # --- Repository corpus refresh (src/utils/refresh_repositories.py) -----------
 # Pulls fresh `repositories/*.txt` dumps from GitHub. Pinned to the 0.x line
 # because gitingest is still alpha (current PyPI release 0.3.1); the eventual

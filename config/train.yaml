@@ -25,16 +25,29 @@
 
 tunable:
   classifier_base_paths:
-    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"   # v2.6 synthetic-only (recommended)
-    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt" # v2.5 synthetic-only (Real-TabPFN ablation)
-    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default.ckpt"   # v2.5 real-finetuned (stack on top of Real-TabPFN)
+    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"        # v3 synthetic-only (NEW, recommended)
+    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"    # v2.6 synthetic-only
+    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt"  # v2.5 synthetic-only (Real-TabPFN ablation)
+    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default.ckpt"    # v2.5 real-finetuned (stack on top of Real-TabPFN)
 
   regressor_base_paths:
-    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"    # v2.6 synthetic-only
-    - "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt"    # v2.5 synthetic-only
-    - "checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt"       # v2.5 real-finetuned
+    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"         # v3 synthetic-only (NEW, recommended)
+    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"     # v2.6 synthetic-only
+    - "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt"     # v2.5 synthetic-only
+    - "checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt"        # v2.5 real-finetuned
 
-  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4]
+  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4]
+
+  # Whether to wrap the base model with a LoRA adapter before training
+  # (Hu et al. 2021). With `use_lora: true` the base TabPFN weights are
+  # frozen and only the LoRA A/B matrices receive gradients — typically
+  # 1–5 % of full-model parameters. Rubachev 2025 ("On Finetuning Tabular
+  # Foundation Models") finds full FT > LoRA on most datasets but LoRA
+  # captures 90–95 % of the gain at a fraction of compute. The LoRA
+  # adapter is merged back into the base weights at save time, so the
+  # resulting .ckpt loads via the standard TabPFN loader without any
+  # PEFT dependency.
+  use_lora: [false, true]
 
 
 # =============================================================================
@@ -81,7 +94,21 @@ scheduler:
 
 
 # =============================================================================
-#  Section 4 · Training loop
+#  Section 4 · LoRA adapter (used only when `tunable.use_lora == true`)
+# =============================================================================
+#  Default targets match TabPFN's attention layer naming
+#  (see repositories/TabPFN .txt:15430-15442). Adjust for v3 if the
+#  multi-stage architecture exposes different module names.
+
+lora:
+  r:                 8
+  alpha:             16
+  dropout:           0.10
+  target_modules:    ["q_projection", "k_projection", "v_projection", "out_projection"]
+
+
+# =============================================================================
+#  Section 5 · Training loop
 # =============================================================================
 
 train:
@@ -100,9 +127,17 @@ train:
 
   dataloader_workers: 0                 # 0 = main process only (GPU is the bottleneck)
 
+  # Per-epoch evaluation: at the end of every epoch we score the model
+  # on a small subsample of each training- and test-dataset and write
+  # the result to results/training/<track>/<descriptive_name>.csv. The
+  # primary metric is ROC-AUC for PD (classification) and RMSE for LGD
+  # (regression). Set `epoch_eval_subsample_samples` to 0 to disable the
+  # check (saves wall-clock for debug runs).
+  epoch_eval_subsample_samples: 500
+
 
 # =============================================================================
-#  Section 5 · Checkpoint output
+#  Section 6 · Checkpoint output
 # =============================================================================
 #  Final-epoch weights → `cfg.checkpoint.trained_dir/<track>/<descriptive_name>.ckpt`
 #  in Prior Labs format. A sidecar `<...>.ckpt.provenance.json` records the
@@ -110,7 +145,7 @@ train:
 #  that's what the eval pipeline reads to know which test set goes with which
 #  checkpoint.
 #
-#  Filename: <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>.ckpt
+#  Filename: <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt
 
 checkpoint:
   trained_dir: "checkpoints/trained"

@@ -331,9 +331,19 @@ def materialise_dataset(
     # y dtype is fixed by track (TabPFN expects int64 for classification,
     # float32 for regression). Stratification is always-on for classification.
     if task_type == "classification":
-        y = pd.to_numeric(y_raw, errors="coerce").astype(np.int64).to_numpy()
+        # The sanitize stage guarantees integer-encoded, NaN-free
+        # classification targets (see `sanitize._label_encode_classification_target`),
+        # so `errors="raise"` here is a contract assertion: if pandas
+        # can't parse the value as numeric, something upstream is wrong
+        # and we want a loud failure rather than a silent NaN that then
+        # crashes the int64 cast with a less obvious traceback.
+        y = pd.to_numeric(y_raw, errors="raise").astype(np.int64).to_numpy()
         stratify = True
     else:
+        # Regression targets can legitimately be NaN at this stage (e.g.
+        # rows where LGD couldn't be computed); float32 happily carries
+        # NaN through the cache, and TabPFN's NanHandlingEncoderStep
+        # deals with them downstream.
         y = pd.to_numeric(y_raw, errors="coerce").astype(np.float32).to_numpy()
         stratify = False
 
@@ -383,7 +393,11 @@ def materialise_dataset(
         )
 
         out_path = out_dir / f"chunk_{chunk_idx:03d}.npz"
-        np.savez_compressed(
+        # ``np.savez`` (uncompressed) — decompression cost dominates
+        # per-chunk load time, and with `first_chunk_only` we re-read
+        # every chunk on every epoch. Doubles disk usage on $VSC_SCRATCH
+        # which is acceptable for the cache directory.
+        np.savez(
             out_path,
             X_context=X_arr[ctx_idx].astype(np.float32),
             y_context=y_chunk[ctx_idx].astype(

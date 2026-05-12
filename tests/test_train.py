@@ -628,7 +628,7 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
 
 
 def test_grid_full_cartesian_product() -> None:
-    """3 bases × 3 lrs = 9 trials."""
+    """3 bases × 3 lrs × default use_lora=[False] → 9 trials."""
     import scripts.train_pipeline as tp
     cfg = NS(
         track="pd",
@@ -642,6 +642,27 @@ def test_grid_full_cartesian_product() -> None:
     assert len(grid) == 3 * 3
     # No duplicates in a cartesian product of distinct lists.
     assert len(set(grid)) == len(grid)
+    # Every entry is the 3-tuple (base, lr, use_lora); default use_lora=False.
+    assert all(len(t) == 3 and t[2] is False for t in grid)
+
+
+def test_grid_full_cartesian_product_with_lora_axis() -> None:
+    """With both use_lora values requested, the grid doubles."""
+    import scripts.train_pipeline as tp
+    cfg = NS(
+        track="pd",
+        tunable=NS(
+            classifier_base_paths=["a", "b"],
+            regressor_base_paths=["x", "y"],
+            learning_rates=[1e-5, 1e-4],
+            use_lora=[False, True],
+        ),
+    )
+    grid = tp._resolve_grid(cfg, single=False)
+    assert len(grid) == 2 * 2 * 2
+    # Both LoRA flavours represented.
+    loras = {t[2] for t in grid}
+    assert loras == {False, True}
 
 
 def test_grid_single_picks_first_value() -> None:
@@ -656,7 +677,7 @@ def test_grid_single_picks_first_value() -> None:
         ),
     )
     grid = tp._resolve_grid(cfg, single=True)
-    assert grid == [("P", 5e-6)]
+    assert grid == [("P", 5e-6, False)]
     assert len(grid) == 1
 
 
@@ -714,7 +735,8 @@ def test_train_one_config_end_to_end_mocked(
 
     n_feat = 4
 
-    def fake_loader(checkpoint_path, *, track, device):
+    def fake_loader(checkpoint_path, *, track, device, lora_config=None):
+        del lora_config              # mocked loader ignores LoRA wrapping
         model = _DummyClassifier(n_features=n_feat).to(device)
         criterion = torch.nn.CrossEntropyLoss().to(device)
         # Minimal "ArchitectureConfig" — anything with a __dict__ works.
@@ -765,6 +787,8 @@ def test_train_one_config_end_to_end_mocked(
             "n_finetune_ctx_plus_query_samples": 80,
             "finetune_ctx_query_split_ratio": 0.20,
             "dataloader_workers": 0,
+            # Per-epoch monitoring eval: small to keep the smoke test fast.
+            "epoch_eval_subsample_samples": 50,
         },
         "eval": {
             "classification_metric": "roc_auc",

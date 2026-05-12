@@ -144,9 +144,18 @@ def load_trained_handles(
         if not Path(ckpt).exists():
             LOGGER.warning("trained checkpoint missing on disk: %s — skipped", ckpt)
             continue
+        # ``use_lora`` column is present on manifests produced after the
+        # LoRA tuneable was added; older manifests don't have it. Default
+        # missing → False so the eval still runs against legacy manifests.
+        use_lora_raw = row.get("use_lora", False)
+        if isinstance(use_lora_raw, str):
+            use_lora_val = use_lora_raw.strip().lower() in ("true", "1", "yes")
+        else:
+            use_lora_val = bool(use_lora_raw)
         extra = {
             "base_checkpoint":     row["base_checkpoint"],
             "learning_rate":       float(row["learning_rate"]),
+            "use_lora":            use_lora_val,
             "seed":                int(row["seed"]),
         }
         model = TabPFNTrained(
@@ -350,7 +359,13 @@ def _regression_metrics(
 
 
 _NAME_RE = re.compile(r"[^A-Za-z0-9_.-]")
-_BASE_RE = re.compile(r"tabpfn-(?P<v>v\d\.\d)-(?:classifier|regressor)-v\d\.\d_(?P<variant>.+)")
+# Filename schema: ``tabpfn-<version>-<role>-<version>_<variant>``
+# where <version> is ``v2.5`` / ``v2.6`` / ``v3`` (and any future
+# ``v3.x``). The pre- and post-role version strings always match; we
+# only capture once.
+_BASE_RE = re.compile(
+    r"tabpfn-(?P<v>v\d+(?:\.\d+)?)-(?:classifier|regressor)-v\d+(?:\.\d+)?_(?P<variant>.+)"
+)
 
 
 def _short_base_tag(base_path: str | None) -> str:
@@ -371,9 +386,10 @@ def _method_dirname(handle: ModelHandle) -> str:
     extra = handle.extra or {}
     short = _short_base_tag(extra.get("base_checkpoint"))
     lr = extra.get("learning_rate")
+    lora_tag = "__lora" if extra.get("use_lora") else ""
     if lr is not None:
-        return f"tabpfn-trained__{short}__lr{lr:.0e}"
-    return f"tabpfn-trained__{short}"
+        return f"tabpfn-trained__{short}__lr{lr:.0e}{lora_tag}"
+    return f"tabpfn-trained__{short}{lora_tag}"
 
 
 def _output_path_for(

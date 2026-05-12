@@ -597,6 +597,28 @@ def test_method_dirname_tabpfn_trained_includes_lr() -> None:
     assert _method_dirname(h) == "tabpfn-trained__v2.6-default__lr1e-04"
 
 
+def test_method_dirname_tabpfn_trained_separates_lora_variants() -> None:
+    """LoRA-trained and full-FT checkpoints with otherwise-identical HPs
+    must land in distinct result directories so their CSVs don't mix."""
+    common_extra = {
+        "base_checkpoint":    "checkpoints/tabpfn-v3-classifier-v3_default.ckpt",
+        "learning_rate":      1.0e-4,
+        "seed":               42,
+    }
+    h_full = ModelHandle(
+        name="full", track="pd", task_type="classification",
+        source="tabpfn-trained", base_path="x",
+        extra={**common_extra, "use_lora": False},
+    )
+    h_lora = ModelHandle(
+        name="lora", track="pd", task_type="classification",
+        source="tabpfn-trained", base_path="x",
+        extra={**common_extra, "use_lora": True},
+    )
+    assert _method_dirname(h_full) == "tabpfn-trained__v3-default__lr1e-04"
+    assert _method_dirname(h_lora) == "tabpfn-trained__v3-default__lr1e-04__lora"
+
+
 # =============================================================================
 # Block 6 · load_trained_handles — manifest reading
 # =============================================================================

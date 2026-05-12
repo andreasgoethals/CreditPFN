@@ -97,11 +97,14 @@ def _load_cfg(overrides: list[str] | None = None):
     return cfg
 
 
-def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float]]:
-    """Materialise the (base, lr) tuples to train.
+def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, bool]]:
+    """Materialise the (base, lr, use_lora) tuples to train.
 
     ``single=True``: head of every tunable list (one trial).
-    Otherwise: full cartesian product.
+    Otherwise: full cartesian product over base × lr × use_lora.
+
+    ``cfg.tunable.use_lora`` may be a single bool, a list of bools,
+    or missing entirely (defaults to ``[False]``).
     """
     track = str(cfg.track)
     bases = (
@@ -109,12 +112,17 @@ def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float]]:
         else list(cfg.tunable.regressor_base_paths)
     )
     lrs = [float(x) for x in cfg.tunable.learning_rates]
+    raw_lora = getattr(cfg.tunable, "use_lora", [False])
+    if isinstance(raw_lora, bool):
+        loras = [bool(raw_lora)]
+    else:
+        loras = [bool(x) for x in raw_lora]
 
     if single:
-        return [(str(bases[0]), float(lrs[0]))]
+        return [(str(bases[0]), float(lrs[0]), bool(loras[0]))]
     return [
-        (str(b), float(lr))
-        for b, lr in itertools.product(bases, lrs)
+        (str(b), float(lr), bool(lo))
+        for b, lr, lo in itertools.product(bases, lrs, loras)
     ]
 
 
@@ -200,6 +208,7 @@ class RunRow:
     track: str
     base_checkpoint: str
     learning_rate: float
+    use_lora: bool
     seed: int
     n_train_datasets: int
     n_test_datasets: int
@@ -301,21 +310,22 @@ def run(
     failures = 0
     t_outer = time.monotonic()
 
-    for trial_idx_local, (base, lr) in enumerate(plan, start=1):
+    for trial_idx_local, (base, lr, use_lora) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g ===",
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s ===",
             trial_idx_local, len(plan), global_idx,
-            Path(base).name, lr,
+            Path(base).name, lr, use_lora,
         )
 
         # Per-epoch CSV path (mirrors the descriptive name of the checkpoint)
         run_basename = descriptive_name(
             run_name=str(cfg.run_name), track=track,
             base_path=base, learning_rate=lr, seed=int(cfg.seed),
+            use_lora=use_lora,
         ).removesuffix(".ckpt")
         epoch_csv = epoch_csv_dir / f"{run_basename}.csv"
         if epoch_csv.exists():
@@ -324,10 +334,14 @@ def run(
 
         def _on_epoch_end(rec, _path=epoch_csv, _flag=_epoch_csv_init) -> None:
             row = {
-                "epoch":       int(rec.epoch),
-                "train_loss":  float(rec.train_loss),
-                "lr":          float(rec.lr),
-                "elapsed_sec": float(rec.elapsed_sec),
+                "epoch":          int(rec.epoch),
+                "train_loss":     float(rec.train_loss),
+                "lr":             float(rec.lr),
+                "metric_name":    str(rec.metric_name),
+                "train_metric":   float(rec.train_metric),
+                "test_metric":    float(rec.test_metric),
+                "epoch_time_sec": float(rec.epoch_time_sec),
+                "elapsed_sec":    float(rec.elapsed_sec),
             }
             write_header = not _flag["written_header"]
             with _path.open("a", newline="", encoding="utf-8") as fh:
@@ -343,11 +357,12 @@ def run(
                 cfg, track=track,
                 base_checkpoint=base,
                 learning_rate=lr,
+                use_lora=use_lora,
                 on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
-                seed=int(cfg.seed),
+                use_lora=use_lora, seed=int(cfg.seed),
                 n_train_datasets=result.n_train_datasets,
                 n_test_datasets=result.n_test_datasets,
                 n_train_chunks=result.n_train_chunks,
@@ -361,7 +376,7 @@ def run(
             LOGGER.error("Trial %d failed: %s", trial_idx_local, exc, exc_info=True)
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
-                seed=int(cfg.seed),
+                use_lora=use_lora, seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
                 n_train_chunks=0, n_test_chunks=0,
                 final_ckpt_path=None,

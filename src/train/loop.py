@@ -64,11 +64,27 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class EpochRecord:
-    """One row of the training history."""
+    """One row of the training history.
+
+    ``train_metric`` / ``test_metric`` carry the primary monitoring
+    metric (ROC-AUC for PD, RMSE for LGD) averaged over a small
+    subsample of the train- and test-dataset chunks at end of epoch.
+    Both are ``NaN`` when ``cfg.train.epoch_eval_subsample_samples == 0``
+    (per-epoch eval disabled).
+
+    ``elapsed_sec`` is **cumulative** training time since the loop
+    started; ``epoch_time_sec`` is the wall-clock for just this epoch
+    (so you can spot a slow epoch without diffing the cumulative
+    column).
+    """
     epoch: int
     train_loss: float
     elapsed_sec: float
     lr: float
+    train_metric: float = float("nan")
+    test_metric:  float = float("nan")
+    metric_name:  str   = ""
+    epoch_time_sec: float = 0.0
 
 
 @dataclass
@@ -104,15 +120,17 @@ MULTI_CHUNK_POLICY = "first_chunk_only"
 def descriptive_name(
     *, run_name: str, track: str, base_path: str | Path,
     learning_rate: float, seed: int,
+    use_lora: bool = False,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
     Schema:
-        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>.ckpt
+        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt
     """
     base_stem = Path(str(base_path)).stem
     lr_tag = f"{learning_rate:.0e}".replace("+", "")
-    return f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}.ckpt"
+    lora_tag = "_lora" if use_lora else ""
+    return f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}{lora_tag}.ckpt"
 
 
 # --------------------------------------------------------------------------- #
@@ -253,7 +271,12 @@ def _forward(
     znorm_mean = znorm_std = None
     if batch.task_type == "regression":
         mean = train_y.mean(dim=0, keepdim=True)
-        std = train_y.std(dim=0, keepdim=True).clamp_min(1e-6)
+        # ``unbiased=False`` divides by N (not N-1), so an N=1 chunk
+        # yields std=0 rather than NaN. ``clamp_min`` then floors to
+        # 1e-6 so the subsequent division is numerically safe.
+        # ``clamp_min`` alone cannot rescue a NaN, so the unbiased=False
+        # is the defensive bit here.
+        std = train_y.std(dim=0, unbiased=False, keepdim=True).clamp_min(1e-6)
         train_y = (train_y - mean) / std
         y_target = (batch.y_query.float() - mean) / std
         znorm_mean = float(mean.detach().cpu().item())
@@ -308,46 +331,65 @@ def evaluate_on_split(
     model: torch.nn.Module,
     chunks: list[ChunkRef],
     *,
-    cfg,
     criterion,
     device: str,
     metric_name: str,
+    n_inference_subsample_samples: int,
+    seed: int = 0,
 ) -> float:
     """Mean primary metric over a list of chunks (test-time inference).
 
-    Used at the end of training to report the held-out test metric;
-    can also be called from a future ``src/eval/`` to evaluate any
-    saved checkpoint on the same chunks. Higher = better when paired
-    with :func:`improvement_direction` (the caller multiplies).
+    Used by the training loop for per-epoch monitoring (small subsample,
+    fast) and by ``src/eval/`` for end-of-run scoring (larger subsample).
+    Higher = better when paired with :func:`improvement_direction`
+    (the caller multiplies).
+
+    Parameters
+    ----------
+    n_inference_subsample_samples
+        Row budget per chunk for the eval forward pass. Lower → faster,
+        noisier; the per-epoch monitor uses ~500, the full eval uses
+        ~100 000. ``0`` returns ``NaN`` immediately (caller-side opt-out).
+    seed
+        Base seed for the chunk subsample. Each chunk gets ``seed + i``
+        so subsamples are reproducible AND uncorrelated across chunks.
     """
-    if not chunks:
+    if not chunks or n_inference_subsample_samples <= 0:
         return float("nan")
+    was_training = model.training
     model.eval()
     is_classification = chunks[0].task_type == "classification"
     per_chunk: list[float] = []
-    seed = int(cfg.seed)
-    n_inf = int(cfg.eval.n_inference_subsample_samples)
 
-    with torch.no_grad():
-        for i, ref in enumerate(chunks):
-            batch = prepare_eval_chunk(
-                ref, n_inference_subsample_samples=n_inf, seed=seed + i,
-            ).to(device)
-            pred_logits, y_target, zmean, zstd = _forward(model, batch)
-            if is_classification:
-                K = _n_classes(batch)
-                logits = pred_logits[:, :, :K]
-                value = classification_metric(
-                    logits=logits, targets=y_target,
-                    metric=metric_name, n_classes=K,
-                )
-            else:
-                value = regression_metric(
-                    logits=pred_logits, targets=y_target,
-                    criterion=criterion, metric=metric_name,
-                    znorm_mean=zmean, znorm_std=zstd,
-                )
-            per_chunk.append(value)
+    try:
+        with torch.no_grad():
+            for i, ref in enumerate(chunks):
+                batch = prepare_eval_chunk(
+                    ref,
+                    n_inference_subsample_samples=n_inference_subsample_samples,
+                    seed=seed + i,
+                ).to(device)
+                pred_logits, y_target, zmean, zstd = _forward(model, batch)
+                if is_classification:
+                    K = _n_classes(batch)
+                    logits = pred_logits[:, :, :K]
+                    value = classification_metric(
+                        logits=logits, targets=y_target,
+                        metric=metric_name, n_classes=K,
+                    )
+                else:
+                    value = regression_metric(
+                        logits=pred_logits, targets=y_target,
+                        criterion=criterion, metric=metric_name,
+                        znorm_mean=zmean, znorm_std=zstd,
+                    )
+                per_chunk.append(value)
+    finally:
+        # Restore prior train/eval state so the outer loop's optimizer
+        # step continues against a training-mode model (matters for
+        # dropout / batchnorm if the architecture grows them later).
+        if was_training:
+            model.train()
 
     return mean_ignore_nan(per_chunk)
 
@@ -363,16 +405,17 @@ def train_one_config(
     track: str | None = None,
     base_checkpoint: str | None = None,
     learning_rate: float | None = None,
+    use_lora: bool | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
 ) -> TrainingResult:
     """Run continued pretraining for one fixed (config, HP-tuple).
 
-    The three arguments ``track``, ``base_checkpoint``, ``learning_rate``
-    are the ONLY things the script expects to vary per run — see
-    ``cfg.tunable`` in ``config/train.yaml``. Each defaults to either
-    the explicit ``cfg.<...>`` field if set, or the first value of the
-    corresponding tunable list.
+    The four arguments ``track``, ``base_checkpoint``, ``learning_rate``,
+    ``use_lora`` are the ONLY things the script expects to vary per
+    run — see ``cfg.tunable`` in ``config/train.yaml``. Each defaults
+    to either the explicit ``cfg.<...>`` field if set, or the first
+    value of the corresponding tunable list.
 
     The multi-chunk policy is fixed (``first_chunk_only``); see the
     ``MULTI_CHUNK_POLICY`` constant near the top of this module.
@@ -388,6 +431,11 @@ def train_one_config(
         ``cfg.tunable.<classifier|regressor>_base_paths[0]``.
     learning_rate
         Override AdamW LR. ``None`` → ``cfg.tunable.learning_rates[0]``.
+    use_lora
+        Override the LoRA flag. ``None`` → ``bool(cfg.tunable.use_lora[0])``
+        if that list exists, else ``False``. When True the base weights
+        are frozen and only the LoRA A/B matrices receive gradients;
+        the adapter is merged back into the base weights at save time.
     save_path
         Where to write the final-epoch checkpoint. ``None`` →
         ``cfg.checkpoint.trained_dir / descriptive_name(...)``.
@@ -413,6 +461,18 @@ def train_one_config(
         base_checkpoint = str(bases[0])
     if learning_rate is None:
         learning_rate = float(cfg.tunable.learning_rates[0])
+    if use_lora is None:
+        # cfg.tunable.use_lora is a list (e.g. [false, true]) the script
+        # iterates over. When this function is invoked without an explicit
+        # `use_lora` argument, default to the head of that list — same
+        # convention as the other tunable axes.
+        tunable_lora = getattr(cfg.tunable, "use_lora", None)
+        if tunable_lora is None:
+            use_lora = False
+        elif isinstance(tunable_lora, bool):
+            use_lora = bool(tunable_lora)
+        else:
+            use_lora = bool(list(tunable_lora)[0])
 
     # Inject the resolved choices back into cfg so downstream helpers
     # (corpus split, optimizer factory) read them via the usual path.
@@ -422,9 +482,9 @@ def train_one_config(
     _seed_everything(int(cfg.seed))
     device = _resolve_device(cfg)
     LOGGER.info(
-        "Training track=%s on device=%s | base=%s | lr=%g | seed=%d",
+        "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | seed=%d",
         track, device, Path(base_checkpoint).name, learning_rate,
-        int(cfg.seed),
+        use_lora, int(cfg.seed),
     )
 
     # ---- 1) corpus split --------------------------------------------------- #
@@ -447,8 +507,12 @@ def train_one_config(
         )
 
     # ---- 2) base model + criterion ---------------------------------------- #
+    lora_cfg_dict = (
+        dict(cfg.lora) if (use_lora and hasattr(cfg, "lora")) else None
+    )
     model, criterion, architecture_config = load_tabpfn_for_training(
         base_checkpoint, track=track, device=device,
+        lora_config=lora_cfg_dict,
     )
 
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
@@ -469,7 +533,13 @@ def train_one_config(
 
     epochs = int(cfg.train.epochs)
     accumulate = max(1, int(cfg.train.accumulate_grad_batches))
-    steps_per_epoch = max(1, len(train_loader) // accumulate)
+    # Use ``ceil`` (not floor) so this matches what the loop actually
+    # does: the inner block fires `floor(L/A)` optimizer steps, and the
+    # end-of-epoch flush adds one more when `L % A != 0` — i.e.
+    # `ceil(L/A)` optimizer/scheduler steps per epoch. Floor here would
+    # under-size ``total_steps`` and the cosine schedule would reach LR=0
+    # before training ends.
+    steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
     total_steps = max(1, steps_per_epoch * epochs)
     optimizer, scheduler = _make_optimizer_and_scheduler(
         model, cfg, total_steps=total_steps,
@@ -486,6 +556,7 @@ def train_one_config(
             base_path=base_checkpoint,
             learning_rate=float(learning_rate),
             seed=int(cfg.seed),
+            use_lora=bool(use_lora),
         )
     )
 
@@ -580,6 +651,30 @@ def train_one_config(
             scheduler.step()
             optimizer.zero_grad(set_to_none=True)
 
+        # End-of-epoch monitoring eval: score the model on a small
+        # subsample of each train- and test-dataset and record the
+        # primary metric (ROC-AUC for PD, RMSE for LGD). Both end up in
+        # the per-epoch CSV so it's easy to see whether the model is
+        # still improving, has plateaued, or has started overfitting.
+        # Skipped when `cfg.train.epoch_eval_subsample_samples == 0`.
+        epoch_eval_n = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
+        if batch.task_type == "classification":          # `batch` from inner loop
+            metric_name = "roc_auc"
+        else:
+            metric_name = "rmse"
+        train_metric = evaluate_on_split(
+            model, split.train, criterion=criterion, device=device,
+            metric_name=metric_name,
+            n_inference_subsample_samples=epoch_eval_n,
+            seed=int(cfg.seed) + 10_000 * (epoch + 1),
+        )
+        test_metric = evaluate_on_split(
+            model, split.test, criterion=criterion, device=device,
+            metric_name=metric_name,
+            n_inference_subsample_samples=epoch_eval_n,
+            seed=int(cfg.seed) + 20_000 * (epoch + 1),
+        )
+
         train_loss = running_loss / max(1, n_batches)
         epoch_dt = time.monotonic() - epoch_t0
         elapsed = time.monotonic() - t0
@@ -588,14 +683,21 @@ def train_one_config(
             train_loss=train_loss,
             elapsed_sec=elapsed,
             lr=float(scheduler.get_last_lr()[0]),
+            train_metric=float(train_metric),
+            test_metric=float(test_metric),
+            metric_name=metric_name,
+            epoch_time_sec=epoch_dt,
         )
         history.append(record)
         if on_epoch_end is not None:
             on_epoch_end(record)
 
         LOGGER.info(
-            "epoch=%2d/%d  train_loss=%.4f  lr=%.2e  epoch_dt=%.1fs  elapsed=%.1fs",
-            epoch, epochs - 1, train_loss, record.lr, epoch_dt, elapsed,
+            "epoch=%2d/%d  loss=%.4f  lr=%.2e  %s(train)=%.4f  %s(test)=%.4f  "
+            "epoch_dt=%.1fs  elapsed=%.1fs",
+            epoch, epochs - 1, train_loss, record.lr,
+            metric_name, train_metric, metric_name, test_metric,
+            epoch_dt, elapsed,
         )
 
     # ---- 6) save final weights + permanent provenance --------------------- #
@@ -636,6 +738,16 @@ def train_one_config(
                 float(cfg.train.finetune_ctx_query_split_ratio),
             "multi_chunk_policy":  MULTI_CHUNK_POLICY,    # hardcoded
             "seed":                int(cfg.seed),
+            "use_lora":            bool(use_lora),
+            "lora": (
+                {
+                    "r":              int(cfg.lora.r),
+                    "alpha":          int(cfg.lora.alpha),
+                    "dropout":        float(cfg.lora.dropout),
+                    "target_modules": list(cfg.lora.target_modules),
+                }
+                if (use_lora and hasattr(cfg, "lora")) else None
+            ),
         },
         "training_datasets":   train_dataset_ids,
         "test_datasets":       test_dataset_ids,

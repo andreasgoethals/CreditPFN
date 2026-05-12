@@ -1,4 +1,4 @@
-"""Continued-pretraining pipeline for TabPFN-2.6 on the credit-risk corpus.
+"""Continued-pretraining pipeline for TabPFN (v2.5/v2.6/v3) on the credit-risk corpus.
 
 Sub-modules
 -----------
