@@ -27,6 +27,7 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=batch
 #SBATCH --time=08:00:00
+#SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=40G
