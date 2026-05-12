@@ -223,6 +223,8 @@ __marimo__/
 checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/README.md
+# CHECKPOINTS.md moved to docs/CHECKPOINTS.md; the negation below is kept
+# as a no-op so legacy checkouts that still have the file don't lose it.
 !checkpoints/CHECKPOINTS.md
 *.ckpt
 *.pt

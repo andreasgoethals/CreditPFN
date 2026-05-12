@@ -220,15 +220,35 @@ def _forward(
 ) -> tuple[torch.Tensor, torch.Tensor, float | None, float | None]:
     """Run one TabPFN forward pass.
 
+    Calling convention matches TabPFN's canonical signature
+    (``repositories/TabPFN .txt:15098-15203`` and the live 2.x package):
+
+        forward(
+            x: (train_rows + test_rows, batch, n_features),  # concatenated
+            y: (train_rows, batch, 1),                       # train labels only
+            *,
+            only_return_standard_out=True,
+            categorical_inds: list[list[int]] | None,        # one inner list per batch item
+        ) -> (test_rows, batch, n_classes_or_bardist_buckets)
+
+    The model deduces ``single_eval_pos = y.shape[0]`` and predicts the
+    remaining rows of x.
+
     Returns ``(pred_logits, y_target, znorm_mean, znorm_std)``. The
     last two are non-None only for regression (where we z-normalise
     the context y, mirroring LennartPurucker's reference pipeline at
     `repositories/TabPFN V2 Finetuning.txt:1463-1469`).
     """
-    train_x = batch.X_context
+    train_x = batch.X_context       # (n_ctx, 1, F)
     train_y = batch.y_context.float()
-    test_x = batch.X_query
-    cat_inds = batch.categorical_idx if batch.categorical_idx else None
+    test_x = batch.X_query          # (n_qry, 1, F)
+    raw_cat = batch.categorical_idx
+    # TabPFN's assertion: categorical_inds[0] must itself be a list.
+    # Our dataloader produces list[int] per chunk; wrap in a length-1
+    # outer list to match the batch_size=1 we always run with.
+    cat_inds: list[list[int]] | None = (
+        [list(raw_cat)] if raw_cat else None
+    )
 
     znorm_mean = znorm_std = None
     if batch.task_type == "regression":
@@ -241,10 +261,14 @@ def _forward(
     else:
         y_target = batch.y_query
 
+    # Concat context + query along the row/seq dimension; model sees one
+    # tensor and derives the train/test split from len(y).
+    combined_x = torch.cat([train_x, test_x], dim=0)
+
     pred_logits = model(
-        train_x=train_x,
-        train_y=train_y,
-        test_x=test_x,
+        combined_x,
+        train_y,
+        only_return_standard_out=True,
         categorical_inds=cat_inds,
     )
     return pred_logits, y_target, znorm_mean, znorm_std
@@ -539,6 +563,23 @@ def train_one_config(
                 loss_val, cur_lr, step_dt, gpu_mb,
             )
 
+        # Flush any pending gradients from a partial accumulation window
+        # at the end of the epoch — otherwise the last
+        # `len(train_loader) % accumulate` micro-batches' gradients are
+        # computed but never applied. No-op when `accumulate == 1`
+        # (the standard case) because every step already triggered a
+        # full optimizer step.
+        if (n_batches > 0) and (n_batches % accumulate != 0):
+            if grad_clip is not None:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), max_norm=grad_clip,
+                )
+            scaler.step(optimizer)
+            scaler.update()
+            scheduler.step()
+            optimizer.zero_grad(set_to_none=True)
+
         train_loss = running_loss / max(1, n_batches)
         epoch_dt = time.monotonic() - epoch_t0
         elapsed = time.monotonic() - t0
@@ -606,7 +647,14 @@ def train_one_config(
         "torch_version":       torch.__version__,
         "tabpfn_version":      tabpfn_version,
     }
-    save_finetuned(model, architecture_config, save_path, provenance=provenance)
+    # Pass the criterion only for regression — the LGD bar-distribution
+    # state must round-trip through the checkpoint (`criterion.*` keys);
+    # for PD the criterion is a stateless CrossEntropyLoss.
+    save_criterion = criterion if track == "lgd" else None
+    save_finetuned(
+        model, architecture_config, save_path,
+        criterion=save_criterion, provenance=provenance,
+    )
     LOGGER.info(
         "Saved final-epoch checkpoint: %s "
         "(provenance.json next to the .ckpt records HPs, datasets, GPU=%s, "

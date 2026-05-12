@@ -11,22 +11,20 @@ The cache contract is the one written by ``src/data/dataset.py``:
         chunk_NNN.npz       (one or more)
         meta.json           (sidecar with `n_chunks`, fingerprints, …)
 
-A "valid" cache satisfies all of the following:
+A "valid" cache, for the purposes of :func:`is_cache_valid`,
+satisfies the following minimal contract:
 
   * the ``meta.json`` sidecar exists and parses;
-  * its ``cache_schema_version`` matches the current code's
-    ``CACHE_SCHEMA_VERSION``;
-  * every ``chunk_NNN.npz`` file referenced by ``n_chunks`` is on
-    disk;
-  * (when given) the supplied ``cache_fingerprint`` matches the one
-    persisted in ``meta.json``.
+  * ``meta["n_chunks"]`` is a positive int;
+  * every ``chunk_NNN.npz`` file referenced by ``n_chunks`` is on disk.
 
 The validity check intentionally does NOT compare to the current
-``DATASET_METADATA``-derived fingerprint — that's a stricter check
-worth running occasionally, but the day-to-day question for the
-train pipeline is just "are the files on disk and intact". A
-fingerprint mismatch would be caught by ``dataset.py``'s own
-``skip_if_cached`` logic the next time the data pipeline runs.
+``DATASET_METADATA``-derived fingerprint or to a stored
+``cache_schema_version`` — those are stricter checks worth running
+occasionally, but the day-to-day question for the train pipeline is
+just "are the files on disk and intact". A fingerprint or schema
+mismatch would be caught by ``dataset.py``'s own ``skip_if_cached``
+logic the next time the data pipeline runs.
 
 Public surface
 --------------

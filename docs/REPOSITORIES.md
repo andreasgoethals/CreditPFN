@@ -80,7 +80,7 @@ hit.
 source* for which checkpoint is real-finetuned vs. synthetic-only,
 the layer counts (v2.5 = 18–24, v2.6 = 24), the licence terms, and
 the citation. Every fact in
-[`checkpoints/CHECKPOINTS.md`](../checkpoints/CHECKPOINTS.md) is
+[`docs/CHECKPOINTS.md`](CHECKPOINTS.md) is
 cross-checked against this file.
 
 **Contents in detail.**
@@ -417,7 +417,7 @@ input shapes / dtypes / NaN handling at the API boundary.
   (`large-features-L` up to 500 features, `large-features-XL` up
   to 1000), which for "large samples" (>30K), which for low-skew
   regression targets, etc. **This is what
-  `checkpoints/CHECKPOINTS.md` is built from — when in doubt, this
+  `docs/CHECKPOINTS.md` is built from — when in doubt, this
   section of `TabPFN .txt` is ground truth.**
 - **Lines 2606–2628 — Programmatic checkpoint name registry** used
   inside the package to validate `model_path` arguments.

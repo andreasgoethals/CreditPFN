@@ -25,13 +25,21 @@
 torch>=2.2,<3.0
 
 # --- TabPFN (sklearn API + finetuning wrappers + internal preprocessing) ------
-# Note on versioning: PyPI releases of `tabpfn` cap at 2.2.x at the
-# moment (versions ≥6 on PyPI are an unrelated package that grabbed the
-# name). The TabPFN-v2.6 *checkpoints* (`tabpfn-v2.6-classifier-...`)
-# are loaded via these 2.x package releases. The API surface we rely on
-# (FinetunedTabPFN*, get_preprocessed_dataset_chunks,
-# DatasetCollectionWithPreprocessing, fit_from_preprocessed)
-# stabilised in 2.2.x.
+# Note on versioning: this project's `src/train/` code is written against
+# the **canonical TabPFN API documented in repositories/TabPFN .txt** —
+# specifically:
+#   * load_model_criterion_config returns 4-tuple (list[Architecture],
+#     criterion, list[ArchitectureConfig], InferenceConfig)
+#   * version: Literal["v2", "v2.5", "v2.6", "v3"]
+#   * download_if_not_exists keyword
+#   * PerFeatureTransformer.forward(x, y, *, only_return_standard_out,
+#     categorical_inds=list[list[int]], ...) — auto-derives
+#     single_eval_pos from len(y)
+# PyPI's `tabpfn` currently caps at 2.2.x with a different, narrower API
+# (3-tuple return, version="v2" only, `download` keyword). The code will
+# only run end-to-end against the newer release; on VSC install from a
+# Prior Labs wheel / git source providing v2.5+ API, NOT from plain PyPI.
+# Versions ≥6 on PyPI are an unrelated package that grabbed the name.
 tabpfn>=2.2,<3.0
 
 # --- Scientific / tabular stack ----------------------------------------------

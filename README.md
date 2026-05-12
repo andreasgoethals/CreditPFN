@@ -44,7 +44,7 @@ data-pipeline stage. The two main candidates are:
 
 The full inventory plus the full citation chain that grounds these
 claims lives in
-[`checkpoints/CHECKPOINTS.md`](checkpoints/CHECKPOINTS.md). When
+[`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md). When
 `src/train/` is implemented we will benchmark continued pretraining
 from both v2.5 and v2.6 synthetic-only bases and compare against
 Real-TabPFN-2.5 as a published baseline.
@@ -513,8 +513,10 @@ DATA_JID=$(sbatch --parsable scripts/slurm/data.slurm)
 N_PD=$(python scripts/train_pipeline.py --list-trials track=pd)
 TRAIN_PD_JID=$(sbatch --parsable --dependency=afterok:$DATA_JID \
                   --array=0-$((N_PD - 1))%4 scripts/slurm/train_pd.slurm)
-sbatch --dependency=afterok:$TRAIN_PD_JID --export=ALL,TRACK=pd scripts/slurm/eval.slurm
-# … same for LGD
+N_PD_EVAL=$(python scripts/eval_pipeline.py --list-tasks track=pd)
+sbatch --dependency=afterok:$TRAIN_PD_JID \
+       --array=0-$((N_PD_EVAL - 1))%32 scripts/slurm/eval_pd.slurm
+# … same for LGD (eval_lgd.slurm)
 ```
 
 Each training-array task runs:

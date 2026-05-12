@@ -402,20 +402,29 @@ def _output_path_for(
 #
 #     <results_base>/<TRACK>/<method-dirname>/*.csv
 #
-# contains at least one row with `test_dataset_id == dataset_id` AND
-# `status == "OK"`. FAIL rows do NOT count — those should be retried.
+# contains an OK row for **every fold** of that dataset (so partial-failure
+# pairs — where, say, 1/5 folds succeeded — are NOT skipped on rerun and
+# the missing folds get retried). The required fold count is taken from
+# the caller's `n_folds_required`; when None, any single OK row counts
+# (legacy behaviour, used only by the test suite).
 
 
 def find_existing_results(
     handle: ModelHandle, dataset_id: str, *,
     track: str, results_base_dir: str | Path,
+    n_folds_required: int | None = None,
 ) -> list[Path]:
-    """Return CSVs that already contain an OK row for this (handle, dataset).
+    """Return CSVs that contribute OK rows for this (handle, dataset).
 
-    Walks every CSV under the method's results directory; opens each one
-    with ``csv.DictReader`` and looks for a matching ``test_dataset_id``
-    with ``status == "OK"``. Empty list ⇒ no prior result; caller should
-    score this pair from scratch.
+    Walks every CSV under the method's results directory; opens each
+    one with ``csv.DictReader`` and collects the set of distinct
+    ``fold_idx`` values with ``status == "OK"`` for ``dataset_id``.
+    The pair is considered "complete" — and the returned list is
+    non-empty — iff the OK fold count is at least ``n_folds_required``
+    (or, when ``n_folds_required`` is None, at least one OK row exists).
+
+    A pair with some failed folds will return an empty list, so the
+    caller re-runs and the missing folds get retried.
     """
     method_dir = (
         resolve_output_path(results_base_dir)
@@ -424,38 +433,55 @@ def find_existing_results(
     )
     if not method_dir.exists():
         return []
+
     hits: list[Path] = []
-    # Two fast filename heuristics first (per-task slurm tag encodes the id);
-    # fall back to opening the file only for CSVs that might match.
+    ok_folds: set[int | str] = set()
     needle = f"ds-{dataset_id}"
     for csv_path in sorted(method_dir.glob("*.csv")):
-        if needle in csv_path.name:
-            # Per-task slurm CSV: filename guarantees the dataset is in here.
-            # Trust it without re-opening — but still confirm at least one
-            # OK row exists, since the file may record only FAILs.
-            if _csv_has_ok_row(csv_path, dataset_id):
-                hits.append(csv_path)
-        else:
-            # Non-tagged CSV (single-process run): may contain rows for many
-            # datasets; have to open it.
-            if _csv_has_ok_row(csv_path, dataset_id):
-                hits.append(csv_path)
-    return hits
+        if needle not in csv_path.name and not _csv_might_have_dataset(csv_path, dataset_id):
+            # Filename doesn't carry the id AND the file isn't a generic
+            # multi-dataset CSV (skip the expensive open).
+            continue
+        new_folds = _csv_ok_folds_for(csv_path, dataset_id)
+        if new_folds:
+            hits.append(csv_path)
+            ok_folds.update(new_folds)
+
+    if not hits:
+        return []
+    if n_folds_required is None:
+        return hits
+    return hits if len(ok_folds) >= int(n_folds_required) else []
 
 
-def _csv_has_ok_row(csv_path: Path, dataset_id: str) -> bool:
-    """Quick membership check: does this CSV record at least one OK row
-    for ``dataset_id``?"""
+def _csv_might_have_dataset(csv_path: Path, dataset_id: str) -> bool:
+    """Cheap pre-filter for non-tagged (single-process) CSVs.
+
+    Per-task slurm filenames always encode ``ds-<id>`` so are matched by
+    the caller's filename check. Non-tagged files may or may not contain
+    the dataset; we open them only when there's at least a chance the
+    test_dataset_id column is present.
+    """
+    return csv_path.suffix == ".csv"
+
+
+def _csv_ok_folds_for(csv_path: Path, dataset_id: str) -> set[int | str]:
+    """Return the set of distinct ``fold_idx`` values with status=OK
+    for ``dataset_id`` in this CSV (empty if none / on read error)."""
+    folds: set[int | str] = set()
     try:
         with csv_path.open("r", newline="", encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
             for row in reader:
                 if (row.get("test_dataset_id") == dataset_id
                         and row.get("status") == "OK"):
-                    return True
+                    try:
+                        folds.add(int(row.get("fold_idx", "")))
+                    except (TypeError, ValueError):
+                        folds.add(row.get("fold_idx", ""))
     except (OSError, csv.Error):
-        return False
-    return False
+        return set()
+    return folds
 
 
 def _write_csv(rows: list[EvalRow], path: Path) -> None:

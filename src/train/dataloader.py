@@ -8,9 +8,12 @@ by TabPFN's ``meta_dataset_collator`` assertion at
 
   2. Concatenate the cached ``X_context`` and ``X_query`` rows into one
      pool. The cache's 60/40 split is ignored at training time; we
-     resplit each step so each epoch sees a different ctx/query mix
-     (a form of data augmentation, matching TabPFN's per-epoch
-     re-shuffle in `repositories/TabPFN .txt:18640-18656`).
+     resplit deterministically from ``(seed, chunk_idx)`` — so the
+     same chunk gets the **same** ctx/query mix every epoch (a
+     reproducibility choice, not the per-epoch reshuffle described
+     in `repositories/TabPFN .txt:18640-18656`). Inter-epoch
+     variation comes from the DataLoader's outer shuffle of the
+     chunk order, not from re-resampling within a chunk.
 
   3. Subsample to ``cfg.train.n_finetune_ctx_plus_query_samples``
      (default 10_000). Random rows, without replacement.
@@ -167,8 +170,10 @@ class ChunkDataset(Dataset):
     "batch" is already a single dataset).
 
     Pass training-mode ``seed`` to make subsampling deterministic
-    across processes; per-step randomness is mixed in from the
-    ``__getitem__`` index so each epoch sees different rows.
+    across processes. The per-call rng is seeded from
+    ``(seed, idx)`` — so the same chunk index produces the same
+    resample every epoch (full run-level reproducibility, at the
+    cost of no per-epoch resampling variation within a chunk).
     """
 
     def __init__(

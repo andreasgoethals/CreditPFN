@@ -42,13 +42,19 @@ _VERSION_RE = re.compile(r"tabpfn-v(2\.5|2\.6)-")
 
 
 def _infer_version(ckpt_path: Path) -> Literal["v2.5", "v2.6"]:
+    """Return the version string TabPFN's loader expects (with leading 'v').
+
+    The regex captures bare "2.5" / "2.6"; we prepend "v" to match the
+    ``version: Literal["v2", "v2.5", "v2.6", "v3"]`` contract used by
+    ``load_model_criterion_config`` (see ``repositories/TabPFN .txt:11712``).
+    """
     m = _VERSION_RE.search(ckpt_path.name)
     if not m:
         raise ValueError(
             f"Could not infer TabPFN version from filename {ckpt_path.name!r}. "
             "Expected name to start with 'tabpfn-v2.5-' or 'tabpfn-v2.6-'."
         )
-    return m.group(1)  # type: ignore[return-value]
+    return f"v{m.group(1)}"  # type: ignore[return-value]
 
 
 def load_tabpfn_for_training(
@@ -136,6 +142,7 @@ def save_finetuned(
     architecture_config,
     save_path: Path | str,
     *,
+    criterion: torch.nn.Module | None = None,
     provenance: dict | None = None,
 ) -> Path:
     """Persist a finetuned model in Prior Labs' on-disk format, with
@@ -151,6 +158,14 @@ def save_finetuned(
 
     The same provenance is also written to ``<save_path>.provenance.json``
     next to the .ckpt so it can be inspected without loading torch.
+
+    Regressor checkpoints (LGD): pass the ``criterion`` (a
+    :class:`FullSupportBarDistribution`) so its parameters get merged
+    into the state-dict under the ``criterion.*`` prefix. This mirrors
+    TabPFN's own ``save_tabpfn_model`` (see ``.venv/.../model_loading.py``
+    ``save_tabpfn_model``) — its loader pops these keys out and calls
+    ``criterion.load_state_dict(...)``. Without them, reloading a
+    trained LGD checkpoint would raise ``Missing key(s) in state_dict``.
     """
     import json
 
@@ -166,6 +181,16 @@ def save_finetuned(
         model.module.state_dict()
         if hasattr(model, "module") else model.state_dict()
     )
+
+    # Regressor: merge bar-distribution criterion params into the state_dict
+    # with the `criterion.` prefix the loader expects. We probe by attribute
+    # rather than isinstance() to avoid importing FullSupportBarDistribution
+    # at module top-level (saves a heavy tabpfn import on the save path).
+    if criterion is not None and hasattr(criterion, "state_dict"):
+        crit_state = criterion.state_dict()
+        if crit_state:                                            # non-empty (bar dist has buffers/params)
+            for k, v in crit_state.items():
+                state_dict[f"criterion.{k}"] = v
 
     payload: dict = {"state_dict": state_dict, "config": config_payload}
     if provenance is not None:

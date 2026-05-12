@@ -275,8 +275,22 @@ def main(cfg=None) -> int:  # noqa: C901
             LOGGER.error("%s failed: %s", dataset_id, exc, exc_info=True)
             failures += 1
 
-    by_track["pd"].sort(key=lambda r: r["dataset_id"])
-    by_track["lgd"].sort(key=lambda r: r["dataset_id"])
+    # Merge with any pre-existing rows for datasets NOT in the current
+    # DATASET_METADATA snapshot. This matters when the data pipeline is
+    # invoked on a subset (the train/eval auto-cache hook does this via
+    # `data_pipeline.run(datasets=missing)`) — without the merge, the
+    # previously-registered datasets would silently drop out of the
+    # manifest, which downstream consumers (corpus split, dedup tracking)
+    # rely on. The currently-visible DATASET_METADATA always wins for IDs
+    # it contains; only IDs not in the current snapshot are carried over.
+    current_ids = set(DATASET_METADATA.keys())
+    for track in ("pd", "lgd"):
+        existing_track_rows = [
+            row for did, row in existing.items()
+            if did not in current_ids and row.get("track") == track
+        ]
+        by_track[track].extend(existing_track_rows)
+        by_track[track].sort(key=lambda r: r["dataset_id"])
 
     _write_manifest(by_track["pd"],  resolve_output_path(cfg.paths.manifest_pd))
     _write_manifest(by_track["lgd"], resolve_output_path(cfg.paths.manifest_lgd))

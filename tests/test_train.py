@@ -567,9 +567,11 @@ def test_mean_ignore_nan_drops_nans() -> None:
 
 
 @pytest.mark.parametrize("name,expected", [
-    ("tabpfn-v2.6-classifier-v2.6_default.ckpt", "2.6"),
-    ("tabpfn-v2.5-regressor-v2.5_default.ckpt",  "2.5"),
-    ("tabpfn-v2.5-classifier-v2.5_default-2.ckpt", "2.5"),
+    # The returned string must carry the leading 'v' so it round-trips
+    # through TabPFN's `version: Literal["v2", "v2.5", "v2.6", "v3"]`.
+    ("tabpfn-v2.6-classifier-v2.6_default.ckpt",   "v2.6"),
+    ("tabpfn-v2.5-regressor-v2.5_default.ckpt",    "v2.5"),
+    ("tabpfn-v2.5-classifier-v2.5_default-2.ckpt", "v2.5"),
 ])
 def test_infer_version_from_filename(name: str, expected: str) -> None:
     assert _infer_version(Path(name)) == expected
@@ -672,8 +674,15 @@ def test_grid_single_picks_first_value() -> None:
 class _DummyClassifier(torch.nn.Module):
     """Stand-in for ``PerFeatureTransformer`` (classifier head).
 
-    Forward signature: ``(train_x, train_y, test_x, categorical_inds)``
-    → ``(n_query, batch=1, n_classes_max)`` logits.
+    Mirrors TabPFN's canonical forward signature (per
+    ``repositories/TabPFN .txt:15098-15203``):
+
+        forward(x, y, *, only_return_standard_out=True,
+                categorical_inds=None, ...) -> (n_test, batch, n_classes_max)
+
+    where ``x`` is the concatenated train+test rows and ``y`` carries
+    only the train labels. The model derives ``single_eval_pos`` from
+    ``y.shape[0]`` and returns predictions for the remaining rows.
     """
     N_CLASSES_MAX = 10
 
@@ -681,8 +690,12 @@ class _DummyClassifier(torch.nn.Module):
         super().__init__()
         self.head = torch.nn.Linear(n_features, self.N_CLASSES_MAX)
 
-    def forward(self, train_x, train_y, test_x, categorical_inds):
-        # test_x: (n_query, 1, n_features)
+    def forward(self, x, y, *,
+                only_return_standard_out=True,
+                categorical_inds=None, **_):
+        # x: (n_train + n_test, batch=1, n_features); y: (n_train, batch, 1).
+        n_train = y.shape[0]
+        test_x = x[n_train:]                            # (n_test, 1, n_features)
         return self.head(test_x)
 
 
@@ -713,7 +726,8 @@ def test_train_one_config_end_to_end_mocked(
     saved_paths: list[Path] = []
     captured_provenance: list[dict] = []
 
-    def fake_save(model, arch, save_path, *, provenance=None):
+    def fake_save(model, arch, save_path, *, criterion=None, provenance=None):
+        del criterion           # the real save merges criterion.* keys
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         Path(save_path).write_bytes(b"")        # touch the file
         saved_paths.append(Path(save_path))

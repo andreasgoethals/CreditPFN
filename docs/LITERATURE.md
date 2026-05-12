@@ -947,7 +947,7 @@ HuggingFace card and the TabPFN docs) was released after v2.5
 "default-is-real-finetuned" naming convention: its single
 ``_default`` checkpoint is again *synthetic-only*. The full
 checkpoint provenance is in
-[`checkpoints/CHECKPOINTS.md`](../checkpoints/CHECKPOINTS.md).
+[`docs/CHECKPOINTS.md`](CHECKPOINTS.md).
 
 **For CreditPFN.** Our base architecture. The checkpoint-choice
 question (v2.5 ``_default-2`` vs. v2.6 ``_default``) is a

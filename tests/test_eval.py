@@ -747,3 +747,47 @@ def test_find_existing_results_matches_single_process_csv(
         track="pd", results_base_dir="results/benchmark",
     )
     assert len(hits) == 1
+
+
+def test_find_existing_results_requires_all_folds_when_count_given(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    """When ``n_folds_required`` is passed, a pair with only some folds
+    OK should NOT be reported as scored — so the caller re-runs and
+    retries the missing folds."""
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    method_dir = tmp_path / "results" / "benchmark" / "PD" / "xgboost"
+    # 1 OK fold + 4 FAIL folds for the same dataset.
+    rows = [
+        {"model_name": "xgboost", "model_source": "baseline",
+         "test_dataset_id": "0001.gmsc", "fold_idx": 0, "status": "OK"},
+    ] + [
+        {"model_name": "xgboost", "model_source": "baseline",
+         "test_dataset_id": "0001.gmsc", "fold_idx": k, "status": "FAIL"}
+        for k in (1, 2, 3, 4)
+    ]
+    _write_eval_csv(
+        method_dir / "creditpfn_2026_task7_ds-0001.gmsc.csv", rows=rows,
+    )
+    # Partial-folds scenario: with n_folds_required=5, the pair must NOT
+    # be treated as already scored.
+    assert find_existing_results(
+        _xgb_handle(), "0001.gmsc",
+        track="pd", results_base_dir="results/benchmark",
+        n_folds_required=5,
+    ) == []
+    # Adding the four missing OK folds → pair is now complete.
+    full_rows = [
+        {"model_name": "xgboost", "model_source": "baseline",
+         "test_dataset_id": "0001.gmsc", "fold_idx": k, "status": "OK"}
+        for k in (0, 1, 2, 3, 4)
+    ]
+    _write_eval_csv(
+        method_dir / "creditpfn_2026_task7_ds-0001.gmsc.csv", rows=full_rows,
+    )
+    hits = find_existing_results(
+        _xgb_handle(), "0001.gmsc",
+        track="pd", results_base_dir="results/benchmark",
+        n_folds_required=5,
+    )
+    assert len(hits) == 1

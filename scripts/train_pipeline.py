@@ -369,11 +369,11 @@ def run(
                 status="FAIL", error=f"{type(exc).__name__}: {exc}",
             ))
 
-        _write_csv(rows, csv_path, append=csv_append)
-        # After the first row of an appending run (slurm-array mode), we
-        # keep appending; for a clobbering run we stay in 'write' mode
-        # but the file already exists so subsequent writes append rows
-        # under the same header.
+        # Write ONLY the row from this trial (not the full accumulated
+        # `rows` list — that would re-append rows 1..N-1 every iteration).
+        # `csv_append` flips to True after the first write so subsequent
+        # trials append under the existing header.
+        _write_csv([rows[-1]], csv_path, append=csv_append)
         if not csv_append:
             csv_append = True   # subsequent rows in the same process append
 

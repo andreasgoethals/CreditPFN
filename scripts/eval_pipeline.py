@@ -295,6 +295,9 @@ def run(
     results_base_for_skip = (
         eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "results"
     )
+    n_folds_required = (
+        int(eval_cfg.cv.n_folds) if hasattr(eval_cfg, "cv") else 5
+    )
     if rerun:
         LOGGER.info("--rerun set: existing CSVs will NOT be consulted.")
     else:
@@ -309,6 +312,7 @@ def run(
                 existing = find_existing_results(
                     handle, did, track=track,
                     results_base_dir=results_base_for_skip,
+                    n_folds_required=n_folds_required,
                 )
                 if existing:
                     n_skipped += 1
@@ -319,9 +323,10 @@ def run(
                 pruned_plan.append((handle_and_model, keep_ids))
         if n_skipped:
             LOGGER.info(
-                "Skipping %d already-scored (model × dataset) pair(s); "
-                "pass --rerun to force a fresh scoring. First 5: %s",
-                n_skipped, skipped_pairs[:5],
+                "Skipping %d already-scored (model × dataset) pair(s) "
+                "(all %d folds OK on disk); pass --rerun to force a "
+                "fresh scoring. First 5: %s",
+                n_skipped, n_folds_required, skipped_pairs[:5],
             )
         plan = pruned_plan
         LOGGER.info(
