@@ -127,6 +127,43 @@ def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, bool]]:
 
 
 # --------------------------------------------------------------------------- #
+# Explicit-ID validation
+# --------------------------------------------------------------------------- #
+
+
+def _validate_corpus_ids_or_raise(cfg, *, track: str) -> None:
+    """Fail fast if ``cfg.corpus.train_dataset_ids`` / ``test_dataset_ids``
+    contain IDs that aren't registered in ``DATASET_METADATA`` for the
+    active track.
+
+    Without this, a typo (e.g. ``0002.heloc`` instead of
+    ``0002.taiwan_creditcard``) would be silently dropped by the
+    auto-cache hook's set-intersection and then the corpus splitter's
+    warn-and-continue, leaving the user with a quietly smaller training
+    set than intended. We'd rather crash with a message that lists the
+    valid IDs.
+    """
+    from src.data.preprocessing import DATASET_METADATA
+
+    known = {d for d, m in DATASET_METADATA.items() if m["track"] == track}
+    train_ids = list(cfg.corpus.get("train_dataset_ids", []) or [])
+    test_ids  = list(cfg.corpus.get("test_dataset_ids", []) or [])
+
+    bad_train = [d for d in train_ids if d not in known]
+    bad_test  = [d for d in test_ids  if d not in known]
+    if not (bad_train or bad_test):
+        return
+
+    valid_sorted = "\n  ".join(sorted(known))
+    raise ValueError(
+        f"Unknown dataset_id(s) for track={track!r}:\n"
+        f"  train_dataset_ids: {bad_train}\n"
+        f"  test_dataset_ids:  {bad_test}\n"
+        f"Valid IDs for this track:\n  {valid_sorted}"
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Auto-cache hook
 # --------------------------------------------------------------------------- #
 
@@ -266,6 +303,13 @@ def run(
     LOGGER.info("train_pipeline: log=%s  cfg.track=%s  cfg.run_name=%s",
                 log.path, track, cfg.run_name)
 
+    # Validate any explicit corpus IDs against the dataset registry
+    # NOW (before the auto-cache hook silently drops typos and the
+    # downstream splitter quietly skips them). A typo in a CLI command
+    # that copies an outdated README snippet would otherwise end up
+    # training on fewer datasets than the user intended.
+    _validate_corpus_ids_or_raise(cfg, track=track)
+
     # ---- 1) auto-cache hook (always runs, near-zero cost when cache is OK)
     _ensure_cache(cfg, log_path=log.path if hasattr(log, "path") else None)
 
@@ -274,10 +318,22 @@ def run(
 
     if trial_index is not None:
         if not 0 <= trial_index < len(full_grid):
-            raise IndexError(
-                f"trial_index={trial_index} is out of bounds; this cfg "
-                f"has {len(full_grid)} trial(s) (indices 0..{len(full_grid) - 1})."
+            # Soft no-op: an over-sized slurm array (e.g. --array=0-31
+            # against a 9-trial grid) is a legitimate pattern when the
+            # grid size changes between submissions, and we want the
+            # surplus tasks to exit zero cleanly rather than spam the
+            # cluster with FAILED jobs. Direct CLI users still get a
+            # clear message in the log.
+            LOGGER.warning(
+                "trial_index=%d is out of bounds for the %d-trial grid "
+                "(valid indices 0..%d). Nothing to do — exiting cleanly.",
+                trial_index, len(full_grid), len(full_grid) - 1,
             )
+            print(
+                f"train_pipeline: SKIP  trial_index={trial_index} "
+                f"out of bounds for {len(full_grid)}-trial grid; exit 0",
+            )
+            return 0
         plan = [full_grid[trial_index]]
         plan_label = f"trial {trial_index}"
         # When running one trial of a slurm array, append (don't clobber).

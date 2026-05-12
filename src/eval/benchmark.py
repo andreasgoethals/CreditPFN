@@ -578,12 +578,31 @@ def _bench_model_on_dataset(
             if ds.task_type == "classification":
                 proba_va = np.asarray(model.predict_proba(X_va_arr))
                 proba_te = np.asarray(model.predict_proba(X_te_arr))
-                # K-classes: pad with zeros if the model only saw some.
-                K_seen = max(int(proba_va.shape[1]), int(proba_te.shape[1]))
+                # If the model only saw a subset of classes during fit,
+                # its predict_proba returns fewer columns than the dataset
+                # has classes. Pad with zero columns so the column index
+                # matches the actual class label — required for log_loss
+                # with labels=[0..K-1] and multiclass roc_auc.
+                K_total = max(
+                    int(proba_va.shape[1]),
+                    int(proba_te.shape[1]),
+                    int(y_va.max()) + 1 if len(y_va) else 0,
+                    int(y_te.max()) + 1 if len(y_te) else 0,
+                )
+
+                def _pad(p: np.ndarray, K: int) -> np.ndarray:
+                    if p.shape[1] >= K:
+                        return p
+                    pad_cols = np.zeros((p.shape[0], K - p.shape[1]),
+                                        dtype=p.dtype)
+                    return np.hstack([p, pad_cols])
+
+                proba_va = _pad(proba_va, K_total)
+                proba_te = _pad(proba_te, K_total)
                 metrics = _classification_metrics(
                     proba_test=proba_te, y_test=y_te,
                     proba_val=proba_va,  y_val=y_va,
-                    n_classes_seen=K_seen,
+                    n_classes_seen=K_total,
                 )
             else:
                 pred_te = np.asarray(model.predict(X_te_arr)).reshape(-1)

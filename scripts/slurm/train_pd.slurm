@@ -38,7 +38,10 @@
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-8%4    # 9 trials (3 bases × 3 LRs), recompute via --list-trials
+#SBATCH --array=0-31%4   # 32 trials (4 bases x 4 LRs x 2 LoRA). Recompute
+                         # via `python scripts/train_pipeline.py --list-trials track=pd`.
+                         # Over-sizing is safe: surplus tasks exit 0 cleanly
+                         # (see scripts/train_pipeline.py soft no-op).
 
 # Stagger array starts to avoid I/O storms on shared scratch.
 sleep $((RANDOM % 60 + 1))

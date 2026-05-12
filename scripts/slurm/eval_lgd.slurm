@@ -16,7 +16,11 @@
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-99%32
+#SBATCH --array=0-199%32   # generous upper bound; surplus tasks exit 0
+                          # cleanly via the soft no-op in eval_pipeline.py.
+                          # Recompute the tight bound with:
+                          #   python scripts/eval_pipeline.py --list-tasks track=lgd
+                          # …or just submit via scripts/slurm/submit_full_pipeline.sh.
 
 sleep $((RANDOM % 30 + 1))
 

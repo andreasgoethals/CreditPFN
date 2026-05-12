@@ -16,7 +16,8 @@ by TabPFN's ``meta_dataset_collator`` assertion at
      chunk order, not from re-resampling within a chunk.
 
   3. Subsample to ``cfg.train.n_finetune_ctx_plus_query_samples``
-     (default 10_000). Random rows, without replacement.
+     (default 100_000 — matches the chunk cap; tuned for wICE H100 NVL).
+     Random rows, without replacement.
 
   4. Random 80 / 20 split where the 20% is the query split — i.e.
      ``cfg.train.finetune_ctx_query_split_ratio``. Both splits are

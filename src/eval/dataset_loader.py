@@ -5,12 +5,13 @@ Why the eval pipeline doesn't reuse the cached chunks
 -----------------------------------------------------
 The cached ``.npz`` chunks under ``data/cached/`` are the TRAINING
 input format: each chunk is at most ``cfg.dataset.max_rows_per_chunk``
-(= 20,000) rows, ordinal-encoded and split into the 60/40 context/
-query that TabPFN's in-context learning expects. That cap is correct
-for TabPFN training but wrong for evaluation:
+(= 100,000 in the default config) rows, ordinal-encoded and split
+into the 60/40 context/query that TabPFN's in-context learning
+expects. That cap is correct for TabPFN training but wrong for
+evaluation:
 
   * XGBoost / CatBoost have no row-count limit and would be
-    underestimated if capped at 20k.
+    underestimated if capped at the chunk size.
   * The 60/40 ctx/query split was computed at cache-write time with
     a single seed; eval needs K-fold cross-validation which is a
     different (and more rigorous) split.

@@ -60,6 +60,13 @@ ssh -T git@github.com                 # should greet you by username
 mamba create -y -n CreditPFN python=3.12      # or `conda` if mamba isn't installed
 source activate CreditPFN
 pip install -r requirements.txt
+
+# IMPORTANT: PyPI's `tabpfn` caps at 2.2.1 with the older API; the
+# training code targets the newer Prior Labs release documented in
+# repositories/TabPFN .txt. Install the matching wheel after the line
+# above (skip this and `train_pipeline.py` will TypeError on first
+# model load; eval against pre-existing checkpoints is unaffected):
+pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
 ```
 
 ### 0.4 Upload datasets and base checkpoints (manual, not via OnDemand)

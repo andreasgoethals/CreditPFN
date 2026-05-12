@@ -204,11 +204,13 @@ CreditPFN/
 │   ├── dedup/                    doubles_{track}_{pre,post}.csv (dedup.py output)
 │   ├── manifest_pd.csv           register.py output (PD)
 │   └── manifest_lgd.csv          register.py output (LGD)
-├── logs/                         per-run logs and CSV manifests
-│   ├── <ts>.log                  one timestamped file per orchestrator run
-│   ├── runs/<run_name>_<track>.csv      training manifest (one row per trained ckpt)
-│   ├── benchmark/<run_name>_<track>.csv eval comparison (long format)
-│   └── slurm/                    SLURM stdout / stderr / per-job log files
+├── logs/                         per-run logs (one file per task)
+│   └── <task>_<YYYYMMDD>_<HHMMSS>[_j<JID>_a<TID>].log
+├── manifests/                    one CSV per (run × track), produced by train_pipeline
+│   └── <run_name>_<track>.csv    training manifest (one row per trained ckpt)
+├── results/
+│   ├── benchmark/<TRACK>/<method>/<run>_<ts>__task<N>_ds-<id>.csv   eval CSVs
+│   └── training/<track>/<descriptive_name>.csv                     per-epoch CSVs
 ├── papers/                       PDF library + Literature.md (chronological summary)
 ├── repositories/                 read-only reference corpus + REPOSITORIES.md
 ├── scripts/
@@ -249,7 +251,26 @@ py -3.12 -m venv .venv --prompt CreditPFN     # Windows / PowerShell
 # source .venv/bin/activate         # Linux / macOS
 python -m pip install --upgrade pip
 pip install -r requirements.txt
+```
 
+> ⚠ **TabPFN version caveat.** PyPI's `tabpfn` package currently caps
+> at `2.2.1` (versions ≥ 6 on PyPI are an unrelated package that took
+> the name). The training code in `src/train/` is written against the
+> newer Prior Labs API documented in `repositories/TabPFN .txt`
+> (4-tuple `load_model_criterion_config` return, `version="v3"`,
+> `download_if_not_exists` kwarg). After running the line above, install
+> the matching wheel manually:
+>
+> ```bash
+> # Example — adjust to whichever wheel Prior Labs has shipped you.
+> pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
+> ```
+>
+> Skip this and `python scripts/train_pipeline.py` will fail with a
+> TypeError on the first model load. Eval against pre-existing
+> checkpoints is unaffected.
+
+```bash
 # 2. Run the full data pipeline end-to-end (one-time; idempotent).
 python scripts/data_pipeline.py               # incremental (skip valid cache)
 # python scripts/data_pipeline.py --fresh     # rebuild from scratch
@@ -449,8 +470,8 @@ The same script + config drives every workflow you'll need:
 |---|---|
 | **Debug, 1 dataset, 1 HP set** | `python scripts/train_pipeline.py --single corpus.train_dataset_ids=[0001.gmsc] train.epochs=3` |
 | **Debug, 1 dataset, HP grid** | `python scripts/train_pipeline.py corpus.train_dataset_ids=[0001.gmsc] train.epochs=3` |
-| **Continued pretraining on 5 specific PD datasets, 1 HP set** | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.heloc,0003.lendingclub,0004.taiwan,0005.bank_status]'` |
-| **Continued pretraining on 5 specific PD datasets, HP grid** | `python scripts/train_pipeline.py track=pd corpus.train_dataset_ids='[0001.gmsc,0002.heloc,0003.lendingclub,0004.taiwan,0005.bank_status]'` |
+| **Continued pretraining on 5 specific PD datasets, 1 HP set** | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0009.bank_status]'` |
+| **Continued pretraining on 5 specific PD datasets, HP grid** | `python scripts/train_pipeline.py track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0009.bank_status]'` |
 | **Full corpus, 1 HP set** | `python scripts/train_pipeline.py --single` |
 | **Full corpus, full HP grid** | `python scripts/train_pipeline.py` |
 | **Full corpus, full HP grid, parallelised on VSC** | `bash scripts/slurm/submit_full_pipeline.sh` |

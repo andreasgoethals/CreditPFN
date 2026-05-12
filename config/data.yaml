@@ -51,7 +51,10 @@ sanitize:
     metric: "euclidean"
     linkage: "ward"
     standardize_for_distance_only: true
-    restrict_to_numerical: true        # categoricals always pass through
+    # Note: agglomeration always operates on numerical columns only —
+    # categoricals pass through unchanged. This isn't a toggle (the
+    # behaviour is hardcoded in _agglomerate_to_max_columns) so it
+    # was previously exposed here as a dead config key; removed.
 
   # LGD-only domain constraint — values outside [0, 1] are data-quality bugs.
   # This is the single source of truth for LGD clipping; per-dataset surgical

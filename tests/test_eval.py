@@ -545,14 +545,18 @@ def test_filter_roster_dataset_filter() -> None:
         assert ds_ids == ["0002.bravo"]
 
 
-def test_filter_roster_task_index_out_of_bounds_raises() -> None:
+def test_filter_roster_task_index_out_of_bounds_is_soft_no_op() -> None:
+    """Out-of-range ``--task-index`` returns an empty plan rather than
+    raising. This is the contract over-sized slurm arrays rely on: a
+    surplus task should exit zero cleanly, not fail with IndexError.
+    """
     import scripts.eval_pipeline as ep
-    with pytest.raises(IndexError, match="out of bounds"):
-        ep._filter_roster(
-            _two_baseline_handles_and_models(),
-            ["0001.alpha"],
-            method_filter=[], dataset_filter=[], task_index=999,
-        )
+    plan = ep._filter_roster(
+        _two_baseline_handles_and_models(),
+        ["0001.alpha"],
+        method_filter=[], dataset_filter=[], task_index=999,
+    )
+    assert plan == []
 
 
 # =============================================================================

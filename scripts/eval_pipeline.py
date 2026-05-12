@@ -228,10 +228,19 @@ def _filter_roster(handles_and_models, cfg_test_ids, *,
 
     if task_index is not None:
         if not 0 <= task_index < len(pairs):
-            raise IndexError(
-                f"--task-index={task_index} is out of bounds; this cfg "
-                f"has {len(pairs)} task(s) (indices 0..{len(pairs) - 1})."
+            # Soft no-op: an over-sized slurm array is a legitimate
+            # pattern (the upper-bound computed at submit time may
+            # exceed the final task count once training is done).
+            # Surplus tasks should exit zero cleanly rather than fail.
+            # Signalled by returning an empty plan; the caller's
+            # "nothing to do" branch handles the rest.
+            from logging import getLogger
+            getLogger(__name__).warning(
+                "task_index=%d is out of bounds for the %d-task grid "
+                "(valid indices 0..%d). Returning empty plan.",
+                task_index, len(pairs), len(pairs) - 1,
             )
+            return []
         m_idx, ds_id = pairs[task_index]
         return [(handles_and_models[m_idx], [ds_id])]
 

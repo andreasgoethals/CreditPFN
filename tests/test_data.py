@@ -102,11 +102,26 @@ def test_surgical_fix_preserves_target(dataset_id: str) -> None:
     assert len(out) > 0, f"{dataset_id}: empty after surgical fix"
 
 
-def test_unknown_dataset_raises() -> None:
-    """Unknown dataset_id must raise under the default policy."""
+def test_unknown_dataset_raises_under_error_policy() -> None:
+    """``unknown_dataset_policy='error'`` raises on unregistered IDs.
+
+    Default policy is ``"passthrough"`` (matches the documented
+    "clean datasets need no surgery" workflow), but tooling that wants
+    every dataset to have an explicit fix registration can opt into
+    the strict mode.
+    """
     df = pd.DataFrame({"a": [1, 2]})
     with pytest.raises(KeyError):
-        apply_dataset_specific_fixes(df, "9999.does_not_exist")
+        apply_dataset_specific_fixes(
+            df, "9999.does_not_exist", unknown_dataset_policy="error",
+        )
+
+
+def test_unknown_dataset_passthrough_by_default() -> None:
+    """Under the default policy, an unregistered ID returns the input."""
+    df = pd.DataFrame({"a": [1, 2]})
+    out = apply_dataset_specific_fixes(df, "9999.does_not_exist")
+    pd.testing.assert_frame_equal(out, df)
 
 
 # =============================================================================

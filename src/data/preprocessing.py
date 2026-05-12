@@ -1176,7 +1176,7 @@ def apply_dataset_specific_fixes(
     df: pd.DataFrame,
     dataset_id: str,
     *,
-    unknown_dataset_policy: str = "error",
+    unknown_dataset_policy: str = "passthrough",
 ) -> pd.DataFrame:
     """Apply the registered surgical fix for ``dataset_id``.
 
@@ -1187,8 +1187,11 @@ def apply_dataset_specific_fixes(
     dataset_id
         e.g. ``"0001.gmsc"`` or ``"0004.base_model"``.
     unknown_dataset_policy
-        ``"error"`` (default) raises ``KeyError`` for unregistered IDs;
-        ``"passthrough"`` returns the input unchanged.
+        ``"passthrough"`` (default) returns the input unchanged when
+        no fix is registered — matching the documented "clean datasets
+        need no surgery" workflow. Pass ``"error"`` to instead raise
+        ``KeyError`` (useful in tooling that wants every dataset to
+        have at least an explicit passthrough registration).
 
     Returns
     -------
@@ -1222,11 +1225,15 @@ def main(cfg=None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     if cfg is None:
         cfg = _load_cfg()
-    raw_root = cfg.paths.raw
+    # Use the env-aware path resolver — on VSC, the raw datasets live
+    # under $VSC_SCRATCH/CreditPFN, not the repo's relative cwd. The
+    # bare-string `cfg.paths.raw` would point at the wrong place there.
+    from src.utils.paths import resolve_data_path
+    raw_root = resolve_data_path(cfg.paths.raw)
 
     failures = 0
     for dataset_id, meta in DATASET_METADATA.items():
-        path = f"{raw_root}/{meta['track']}/{dataset_id}.csv"
+        path = raw_root / meta["track"] / f"{dataset_id}.csv"
         try:
             df = pd.read_csv(path, low_memory=False)
             fixed = apply_dataset_specific_fixes(df, dataset_id)
