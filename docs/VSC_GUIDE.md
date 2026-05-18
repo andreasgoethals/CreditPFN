@@ -19,9 +19,12 @@ how to vary what gets trained.
 ### 0.1 Open a shell on the cluster
 
 In the OnDemand portal, click **Clusters → Login (Server) Shell Access**.
-A terminal opens in a new browser tab on a login node — prompt looks
-like `[May/11 15:21] vscXXXXX@tier2-p-login-1 $`. Every command below
-runs in that shell.
+A terminal opens in a new browser tab on a Genius login node — prompt
+looks like `[May/11 15:21] vscXXXXX@tier2-p-login-N $` (where `N` is
+1–4). wICE has no dedicated login node; you always SSH into Genius and
+submit to wICE via `#SBATCH --cluster=wice` in the job script, which
+every `.slurm` here already does. Every command below runs in that
+shell.
 
 ### 0.2 Two storage tiers, two purposes
 
@@ -381,7 +384,7 @@ python scripts/eval_pipeline.py track=pd --method xgboost --rerun
 | Symptom                                                 | What to do                                                                                                       |
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
 | `ModuleNotFoundError: No module named 'omegaconf'` on submit | The conda env isn't active. Run `source activate CreditPFN` first; the submitter also tries to activate it itself. |
-| `sbatch: error: Batch job submission failed: Job dependency problem` | A stage is targeted at a different cluster than the one it depends on — VSC has separate Slurm controllers for Genius and wICE, so cross-cluster `afterok:` chains don't work. All `.slurm` headers must use `#SBATCH --cluster=wice` (the only cluster with GPUs you'd want for training). |
+| `sbatch: error: Batch job submission failed: Job dependency problem` | A stage targets a different cluster than its dependency — VSC has separate Slurm controllers for Genius and wICE, so cross-cluster `afterok:` chains don't work. Every `.slurm` header in this repo uses `#SBATCH --cluster=wice` for exactly this reason. (The `<jobid>;wice` suffix in `sbatch --parsable` output on a Genius login is NOT this error — it just means the jobid lives in wICE's controller, which is normal.) |
 | `TypeError` on first model load in training             | PyPI tabpfn 2.2.1 has the old API — install the Prior Labs wheel (see §0.4).                                     |
 | Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
 | One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |

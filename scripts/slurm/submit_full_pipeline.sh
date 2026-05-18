@@ -84,33 +84,39 @@ echo "  TRACKS             : ${TRACKS}"
 echo "  TRAIN_CONCURRENCY  : ${TRAIN_CONCURRENCY}"
 echo "  EVAL_CONCURRENCY   : ${EVAL_CONCURRENCY}"
 
-# Helper: when sbatch's `--parsable` output crosses clusters it returns
-# `<jobid>;<cluster>`; everything we chain expects bare `<jobid>`. This
-# strips the suffix so even an accidentally-cross-cluster submission
-# fails with a clearer error than a mangled --dependency string.
+# Helper: extract the bare jobid from sbatch's `--parsable` output.
+# All VSC login nodes are GENIUS login nodes (wICE has no dedicated
+# login — see VSC docs `tier2_login_nodes.rst:37292`), so submitting
+# any `--cluster=wice` job from a login shell produces `<jobid>;wice`.
+# That suffix is normal — it just tells you the jobid lives in the
+# wICE Slurm controller. The `afterok:` chain still works as long as
+# both the dependency target AND the dependent job target the SAME
+# cluster (all our .slurm scripts target wICE, so they do).
 strip_cluster_suffix() {
-    # The `%%;*` removes the longest match of `;*` from the END;
-    # equivalent to `cut -d';' -f1` but built into bash.
+    # `${1%%;*}` removes the longest `;*` match from the END — equivalent
+    # to `cut -d';' -f1` but built into bash.
     echo "${1%%;*}"
 }
 
-# 1) Data preprocessing. Strip the `;<cluster>` suffix sbatch adds when
-# the submitted script targets a different cluster than the one we're
-# logged in to — bare `<jobid>` is what `afterok:` expects.
+# Helper: extract the cluster name from `<jobid>;<cluster>`, or empty
+# if no suffix. Used to verify every stage targets the same cluster.
+get_cluster_suffix() {
+    if [[ "$1" == *";"* ]]; then
+        echo "${1#*;}"
+    else
+        echo ""
+    fi
+}
+
+# 1) Data preprocessing. sbatch's `--parsable` output is `<jid>` when
+# the script's cluster matches the login default, or `<jid>;<cluster>`
+# when it doesn't (typical for VSC: login nodes are Genius, all our
+# jobs target wICE → suffix is always `;wice`). Strip the suffix and
+# remember the target cluster so we can sanity-check downstream stages.
 DATA_JID_RAW=$(sbatch --parsable scripts/slurm/data.slurm)
 DATA_JID=$(strip_cluster_suffix "${DATA_JID_RAW}")
-echo "  data               : ${DATA_JID}  (raw='${DATA_JID_RAW}')"
-
-# Verify the data job is on the SAME cluster as train (otherwise SLURM
-# can't honour the dependency — Genius and wICE have separate controllers).
-if [[ "${DATA_JID_RAW}" == *";"* ]]; then
-    DATA_CLUSTER="${DATA_JID_RAW#*;}"
-    echo "ERROR: data.slurm submitted to '${DATA_CLUSTER}', but train/eval" >&2
-    echo "       run on wICE — cross-cluster dependencies are not supported" >&2
-    echo "       on VSC. Make sure data.slurm has '#SBATCH --cluster=wice'," >&2
-    echo "       or break the chain (submit data first, wait, then train)." >&2
-    exit 1
-fi
+DATA_CLUSTER=$(get_cluster_suffix "${DATA_JID_RAW}")
+echo "  data               : ${DATA_JID}${DATA_CLUSTER:+  (cluster=${DATA_CLUSTER})}"
 
 # 2) Training (one array job per track), each waiting on data.
 declare -A TRAIN_JIDS=()
@@ -122,6 +128,18 @@ for TR in ${TRACKS}; do
         --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
         "${SCRIPT}")
     JID=$(strip_cluster_suffix "${JID_RAW}")
+    JID_CLUSTER=$(get_cluster_suffix "${JID_RAW}")
+    # Cross-cluster dep would silently fail to start: catch it here.
+    if [[ -n "${DATA_CLUSTER}" && -n "${JID_CLUSTER}" \
+          && "${DATA_CLUSTER}" != "${JID_CLUSTER}" ]]; then
+        echo "ERROR: train_${TR}.slurm targets cluster '${JID_CLUSTER}' but" >&2
+        echo "       data.slurm targets '${DATA_CLUSTER}'. VSC's two Tier-2" >&2
+        echo "       clusters have separate Slurm controllers — afterok" >&2
+        echo "       dependencies cannot cross them. Align both --cluster=" >&2
+        echo "       headers (typically both =wice for this project)." >&2
+        scancel "${JID}" 2>/dev/null || true
+        exit 1
+    fi
     TRAIN_JIDS["$TR"]="${JID}"
     echo "  train ${TR}        : ${JID}  (array 0..$((N - 1)))"
 done
