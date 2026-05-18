@@ -4,6 +4,7 @@ Directory structure:
     ├── LICENSE
     ├── pyproject.toml
     ├── ruff.toml
+    ├── SECURITY.md
     ├── uv.lock
     ├── .pre-commit-config.yaml
     ├── scripts/
@@ -51,7 +52,7 @@ Directory structure:
 ================================================
 FILE: README.md
 ================================================
-Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x90 in position 2328: character maps to <undefined>
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 12863: character maps to <undefined>
 
 
 ================================================
@@ -348,6 +349,25 @@ FILE: ruff.toml
 line-length = 88
 indent-width = 4
 target-version = "py310"
+
+
+================================================
+FILE: SECURITY.md
+================================================
+# Security
+
+## Supported Versions
+
+We support only the most recent minor release. Older releases do not
+receive security patches â€” please upgrade.
+
+## Reporting a Vulnerability
+
+Please email **security@priorlabs.ai** to report a vulnerability.
+
+We support coordinated disclosure and will acknowledge promptly.
+Please do not report security vulnerabilities via public GitHub issues.
+
 
 
 ================================================
@@ -10889,12 +10909,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: chartboost/ruff-action@v1
+      - uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6  # v3
         with:
           src: "./"
           version: 0.3.3
           args: "format --force-exclude"
-      - uses: chartboost/ruff-action@v1
+      - uses: astral-sh/ruff-action@4919ec5cf1f49eff0871dbcea0da843445b837e6  # v3
         with:
           src: "./"
           version: 0.3.3

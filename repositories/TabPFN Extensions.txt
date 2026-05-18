@@ -6,8 +6,10 @@ Directory structure:
     ├── LICENSE
     ├── mypy.ini
     ├── pyproject.toml
+    ├── SECURITY.md
     ├── setup.py
     ├── tabpfn_summary.webp
+    ├── THIRD-PARTY-NOTICES.md
     ├── uv.lock
     ├── .pre-commit-config.yaml
     ├── examples/
@@ -61,6 +63,7 @@ Directory structure:
     │       │   ├── __init__.py
     │       │   ├── feature_selection.py
     │       │   ├── pdp.py
+    │       │   ├── shap.py
     │       │   └── shapiq.py
     │       ├── many_class/
     │       │   ├── __init__.py
@@ -122,7 +125,7 @@ Directory structure:
 ================================================
 FILE: README.md
 ================================================
-Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 7881: character maps to <undefined>
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 7914: character maps to <undefined>
 
 
 ================================================
@@ -913,6 +916,25 @@ reportUntypedFunctionDecorator = false
 
 
 ================================================
+FILE: SECURITY.md
+================================================
+# Security
+
+## Supported Versions
+
+We support only the most recent minor release. Older releases do not
+receive security patches â€” please upgrade.
+
+## Reporting a Vulnerability
+
+Please email **security@priorlabs.ai** to report a vulnerability.
+
+We support coordinated disclosure and will acknowledge promptly.
+Please do not report security vulnerabilities via public GitHub issues.
+
+
+
+================================================
 FILE: setup.py
 ================================================
 """Setup file for tabpfn-extensions."""
@@ -931,6 +953,48 @@ setup()
 FILE: tabpfn_summary.webp
 ================================================
 [Binary file]
+
+
+================================================
+FILE: THIRD-PARTY-NOTICES.md
+================================================
+# Third-Party Notices
+
+This file documents third-party code adapted into this repository, with
+upstream attribution preserved. Transitive dependencies installed via
+`pip` are governed by their own licenses (see `pyproject.toml` for the
+canonical list).
+
+---
+
+## Summary
+
+| Upstream | Local path | Upstream license |
+|---|---|---|
+| sklearn-compat â€” single-file compat shim | `src/tabpfn_extensions/misc/sklearn_compat.py` | BSD-3-Clause |
+
+---
+
+## Per-upstream notices
+
+### sklearn-compat â€” compatibility shim
+
+**Upstream:** https://github.com/sklearn-compat/sklearn-compat
+**Local path:** `src/tabpfn_extensions/misc/sklearn_compat.py` (single-file vendored distribution; ~1000 lines)
+**License:** BSD-3-Clause
+**Copyright:** Copyright (c) 2024, Guillaume Lemaitre (per the upstream `LICENSE`)
+**Modifications:** None of significance; vendored verbatim from upstream version 0.1.5 to avoid an extra runtime dependency. The single-file format is the distribution model sklearn-compat itself encourages for downstream users. File is kept as close to upstream as possible â€” both `ruff` formatting and `mypy` type-checking are suppressed at the top of the file.
+
+---
+
+## Adding new entries
+
+When vendoring or adapting third-party code:
+
+1. Preserve any upstream per-file copyright and license header verbatim. If the upstream does not ship a per-file header, add an attribution block citing the upstream URL, copyright holder, and SPDX license identifier.
+2. When vendoring a whole directory of upstream code, also vendor the upstream `LICENSE` / `NOTICE` file alongside it. For single-file adaptations, the in-file attribution plus the entry in this NOTICE file is sufficient.
+3. Add a row to the summary table and a per-upstream notice to this file, including the upstream copyright line when one is published.
+
 
 
 ================================================
@@ -5172,19 +5236,25 @@ warning if the cache isn't enabled.
 
 from __future__ import annotations
 
-import numpy as np
 import shap
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
 
 from tabpfn_extensions import TabPFNRegressor
-from tabpfn_extensions.interpretability import shapiq as tabpfn_shapiq
+from tabpfn_extensions.interpretability import (
+    shapiq as tabpfn_shapiq,
+    shapiq_to_shap_explanation,
+)
 
 housing = fetch_california_housing(as_frame=False)
 X, y, feature_names = housing.data, housing.target, list(housing.feature_names)
 
 X_train, X_test, y_train, _ = train_test_split(
-    X, y, train_size=1000, test_size=200, random_state=0,
+    X,
+    y,
+    train_size=1000,
+    test_size=200,
+    random_state=0,
 )
 n_explain = 30
 X_explain = X_test[:n_explain]
@@ -5201,24 +5271,16 @@ explainer = tabpfn_shapiq.get_tabpfn_imputation_explainer(
     max_order=1,
 )
 
-# Compute Shapley values for n_explain rows. Each call produces an
-# `InteractionValues` object; we extract the (d,) 1st-order array per row and
-# stack into the (n, d) matrix that shap.Explanation expects.
+# Compute first-order Shapley values for n_explain rows and wrap them in a
+# shap.Explanation. `shapiq_to_shap_explanation` runs one .explain() call per
+# row, stacks the (d,) arrays, averages baseline values, and packages
+# everything for the SHAP plotting API. budget=256 = 2^8 is the exact-Shapley
+# budget for d=8 features.
 print(f"Computing Shapley values for {n_explain} rows...")
-ivs = [explainer.explain(x=X_explain[i], budget=256) for i in range(n_explain)]
-shap_values = np.stack([iv.get_n_order_values(1) for iv in ivs])
-
-# baseline_value is the model's expected output when *every* feature is masked
-# â€” i.e. the prediction on the empty coalition. We average across rows to get
-# the scalar E[f(X)] that shap.Explanation wants for base_values.
-base_value = float(np.mean([iv.baseline_value for iv in ivs]))
-
-# Wrap shapiq's output in a shap.Explanation so the full shap.plots.* family
-# accepts it directly.
-explanation = shap.Explanation(
-    values=shap_values,
-    base_values=np.full(n_explain, base_value),
-    data=X_explain,
+explanation = shapiq_to_shap_explanation(
+    explainer,
+    X_explain,
+    budget=256,
     feature_names=feature_names,
 )
 
@@ -7823,11 +7885,32 @@ We expose two adapters:
 
   The wrapper warns at construction time if the model isn't configured this way.
 
-For SHAP-style plots (waterfall, beeswarm, summary, dependence) you can use shapiq's
-own visualizations on the returned ``InteractionValues`` object (``iv.plot_force()``,
-``iv.plot_waterfall()``, ``iv.plot_network()``, ``iv.plot_si_graph()``, etc.), or convert
-the values to ``shap.Explanation`` and use ``shap.plots.*``. See
-``examples/interpretability/shapiq_example.py`` and ``shap_example.py`` for both.
+For SHAP-style plots (waterfall, beeswarm, summary, dependence) you have two options:
+
+1. **Use shapiq's own visualizations** on the returned ``InteractionValues`` object:
+   ``iv.plot_force()``, ``iv.plot_waterfall()``, ``iv.plot_network()``,
+   ``iv.plot_si_graph()``, etc.
+
+2. **Use the SHAP library's plotting** via the bridge helper. Run shapiq's
+   ``.explain()`` over a batch of rows and wrap the result in a
+   ``shap.Explanation`` in one call:
+
+   ```python
+   from tabpfn_extensions.interpretability import shapiq_to_shap_explanation
+
+   explanation = shapiq_to_shap_explanation(
+       explainer, X_explain, budget=256, feature_names=feature_names,
+   )
+   shap.plots.waterfall(explanation[0])
+   ```
+
+   ``shapiq_to_shap_explanation`` extracts first-order Shapley values from
+   shapiq's output and wraps them in a ``shap.Explanation``. Requires
+   ``pip install shap`` â€” kept out of the ``interpretability`` extra by
+   design (shapiq is the runtime dependency; shap is opt-in for plotting).
+
+See ``examples/interpretability/shapiq_example.py`` and ``shap_example.py``
+for both paths.
 
 The ``shapiq`` library and the paper introducing the improved Shapley value computation
 for TabPFN can be cited as follows:
@@ -7877,12 +7960,13 @@ can be cited as:
 FILE: src/tabpfn_extensions/interpretability/__init__.py
 ================================================
 try:
-    from . import feature_selection, pdp, shapiq
+    from . import feature_selection, pdp, shap, shapiq
+    from .shap import shapiq_to_shap_explanation
 except ImportError:
     raise ImportError(
         "Please install tabpfn-extensions with the 'interpretability' extra: pip install 'tabpfn-extensions[interpretability]'",
     )
-__all__ = ["feature_selection", "shapiq", "pdp"]
+__all__ = ["feature_selection", "shapiq", "pdp", "shap", "shapiq_to_shap_explanation"]
 
 
 
@@ -8080,6 +8164,92 @@ def partial_dependence_plots(
             estimator.show_progress = restore_progress
 
     return disp
+
+
+
+================================================
+FILE: src/tabpfn_extensions/interpretability/shap.py
+================================================
+#  Copyright (c) Prior Labs GmbH 2025.
+#  Licensed under the Apache License, Version 2.0
+
+"""Bridge helpers for using the SHAP library's plotting ecosystem with
+Shapley values computed by shapiq.
+
+We use shapiq for the actual Shapley-value computation â€” it's faster and
+extension-friendly for TabPFN â€” but the SHAP library's plotting ecosystem
+(``shap.plots.waterfall``, ``beeswarm``, ``summary``, ``dependence``, etc.)
+is mature and widely used. This module bridges the two.
+
+The ``shap`` package is **not** part of the ``interpretability`` extra. Install
+it separately (``pip install shap``) if you want to use these helpers.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
+
+import numpy as np
+
+if TYPE_CHECKING:
+    import shap
+    from numpy.typing import ArrayLike
+
+
+def shapiq_to_shap_explanation(
+    explainer: Any,
+    X: ArrayLike,
+    *,
+    budget: int,
+    feature_names: list[str] | None = None,
+) -> shap.Explanation:
+    """Compute first-order Shapley values with a shapiq explainer for each
+    row in ``X`` and wrap them in a ``shap.Explanation`` ready for use with
+    ``shap.plots.*`` and ``shap.summary_plot``.
+
+    Mirrors the pattern in ``examples/interpretability/shap_example.py``:
+    one ``.explain(...)`` call per row, stack the first-order arrays into an
+    ``(n, d)`` matrix, average baseline values, and pass everything to
+    ``shap.Explanation``.
+
+    Args:
+        explainer: A shapiq explainer â€” e.g. one returned by
+            ``get_tabpfn_imputation_explainer(..., index="SV", max_order=1)``.
+        X: ``(n, d)`` array of rows to explain.
+        budget: Number of model evaluations shapiq is allowed per row. For
+            small ``d`` and exact Shapley values, pass ``2**d``.
+        feature_names: Optional list of feature name strings (length ``d``).
+            Used by ``shap.plots.*`` for axis labels.
+
+    Returns:
+        A ``shap.Explanation`` with ``values.shape == (n, d)``.
+
+    Notes:
+        Only first-order Shapley values are wrapped. ``shap.Explanation``
+        doesn't represent higher-order interactions; for those, use
+        shapiq's native plots on the ``InteractionValues`` object.
+
+        Requires ``shap`` to be installed (``pip install shap``). It is
+        kept out of the ``interpretability`` extra by design â€” shapiq is
+        the runtime dependency, shap is opt-in for plotting.
+    """
+    import shap
+
+    X_arr = np.asarray(X)
+    n = len(X_arr)
+    ivs = [explainer.explain(x=X_arr[i], budget=budget) for i in range(n)]
+    values = np.stack([iv.get_n_order_values(1) for iv in ivs])
+    # Pass per-row baselines through unchanged. For the imputation path the
+    # background is fixed and these are all the same value; for the Rundel
+    # remove-and-recontextualize path baselines genuinely vary per row.
+    # shap.Explanation accepts a 1-d (n,) array natively.
+    base_values = np.array([iv.baseline_value for iv in ivs])
+    return shap.Explanation(
+        values=values,
+        base_values=base_values,
+        data=X_arr,
+        feature_names=feature_names,
+    )
 
 
 
@@ -9554,7 +9724,17 @@ FILE: src/tabpfn_extensions/misc/sklearn_compat.py
 ================================================
 # ruff: noqa
 # mypy: ignore-errors
-# taken from https://github.com/sklearn-compat/sklearn-compat (vendored â€” do not lint-format)
+#
+# Vendored from sklearn-compat: https://github.com/sklearn-compat/sklearn-compat
+# (do not lint-format â€” keep as close to upstream as possible).
+#
+# Copyright (c) 2024, Guillaume Lemaitre
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# sklearn-compat is distributed under the BSD-3-Clause license; see the
+# repository LICENSE for full terms. This file is the vendored, single-file
+# distribution intended for projects that prefer not to depend on the
+# sklearn-compat package directly.
 """Ease developer experience to support multiple versions of scikit-learn.
 
 This file is intended to be vendored in your project if you do not want to depend on
@@ -13425,42 +13605,49 @@ class OutlierDetectionUnsupervisedExperiment(Experiment):
     def plot(self):
         # Create a grid of jointplots using PairGrid
         g = sns.PairGrid(self.data, vars=self.feature_names)
-        g.map_upper(sns.scatterplot, s=5, alpha=0.5, hue=self.data["p"])
-        g.map_lower(sns.scatterplot, s=5, alpha=0.5, hue=self.data["p_rank"])
+        g.map_upper(sns.scatterplot, s=5, alpha=0.5, hue=self.data["log_p"])
+        g.map_lower(sns.scatterplot, s=5, alpha=0.5, hue=self.data["log_p_rank"])
         g.add_legend()
 
     def plot_two(self, **kwargs):
-        outlier_thresh_p = kwargs.get("outlier_thresh_p", 0.98)
-        outlier_thresh = np.quantile(
-            self.data["p"][self.data["p"] > 0],
-            outlier_thresh_p,
-        )
+        outlier_thresh_p = kwargs.get("outlier_thresh_p", 0.02)
+        outlier_thresh_p_1 = kwargs.get("outlier_thresh_p_1", 0.1)
 
-        outlier_thresh_p_1 = kwargs.get("outlier_thresh_p_1", 0.9)
-        outlier_thresh_1 = np.quantile(
-            self.data["p"][self.data["p"] > 0],
-            outlier_thresh_p_1,
-        )
+        # np.quantile returns NaN if any rank position falls on -inf (since
+        # interpolation across -inf yields -inf - -inf = NaN). Clamp -inf to
+        # the finite minimum just for the quantile computation; the original
+        # log_p series is preserved for bucketing, where x < thresh keeps
+        # -inf rows correctly classified as Low.
+        log_p_series = self.data["log_p"]
+        finite_mask = np.isfinite(log_p_series)
+        if finite_mask.any() and not finite_mask.all():
+            finite_floor = float(log_p_series[finite_mask].min())
+            log_p_for_quantile = log_p_series.where(finite_mask, finite_floor)
+        else:
+            log_p_for_quantile = log_p_series
+
+        outlier_thresh = np.quantile(log_p_for_quantile, outlier_thresh_p)
+        outlier_thresh_1 = np.quantile(log_p_for_quantile, outlier_thresh_p_1)
 
         def outlier_f(x, thresh_0, thresh_1):
             if np.isnan(x):
                 return np.nan
-            if x > thresh_0:
-                return f"Low ({round(100 * (1 - outlier_thresh_p), 2)} Percentile)"
-            if x > thresh_1:
-                return f"Medium ({round(100 * (1 - outlier_thresh_p_1), 2)} Percentile)"
+            if x < thresh_0:
+                return f"Low ({round(100 * (outlier_thresh_p), 2)} Percentile)"
+            if x < thresh_1:
+                return f"Medium ({round(100 * (outlier_thresh_p_1), 2)} Percentile)"
             return "High"
 
-        self.data["outlier"] = self.data["p"].map(
+        self.data["outlier"] = self.data["log_p"].map(
             partial(outlier_f, thresh_0=outlier_thresh, thresh_1=outlier_thresh_1),
         )
         # Oversample the data with outlier = True
         oversample_low = self.data[
             self.data["outlier"].map(lambda x: "Low" in x)
-        ].sample(frac=1 / (1 - outlier_thresh_p), replace=True)
+        ].sample(frac=1 / (outlier_thresh_p), replace=True)
         oversample_med = self.data[
             self.data["outlier"].map(lambda x: "Medium" in x)
-        ].sample(frac=1 / (1 - outlier_thresh_p_1), replace=True)
+        ].sample(frac=1 / (outlier_thresh_p_1), replace=True)
         data_ = pd.concat(
             [
                 self.data[self.data["outlier"].map(lambda x: "High" in x)],
@@ -13468,37 +13655,37 @@ class OutlierDetectionUnsupervisedExperiment(Experiment):
                 oversample_med,
             ],
         )
-        g = sns.JointGrid(
+        fig, ax = plt.subplots(figsize=(DEFAULT_HEIGHT, DEFAULT_HEIGHT))
+        sns.scatterplot(
             data=data_,
-            hue="outlier",
             x=self.feature_names[0],
             y=self.feature_names[1],
-            height=DEFAULT_HEIGHT,
+            hue="outlier",
+            s=50,
+            alpha=0.5,
+            ax=ax,
         )
 
-        g.fig.suptitle("Data Density Estimation")
-        g.fig.tight_layout()
-        g.fig.subplots_adjust(top=0.95)  # Reduce plot to make room
+        ax.set_title("outlier detection")
 
-        g.plot_joint(sns.scatterplot, s=50, alpha=0.5)
-        g.plot_marginals(sns.histplot, kde=True, stat="density")
-
-        # Remove the original legend created by plot_joint
-        g.ax_joint.get_legend().remove()
-
-        # Create a new legend on the joint plot axis with no frame and no title
-        handles, labels = g.ax_joint.get_legend_handles_labels()
-        leg = g.ax_joint.legend(
+        ax.get_legend().remove()
+        handles, labels = ax.get_legend_handles_labels()
+        leg = ax.legend(
             handles=handles,
             labels=labels,
-            loc="upper right",
-            title="Estimated density (percentile)",
+            loc="upper left",
+            title="Estimated data log(density)",
+            fontsize="small",
+            title_fontsize="small",
+            borderpad=0.6,
+            handletextpad=0.5,
         )
         leg.get_frame().set_facecolor("white")
         leg.get_frame().set_edgecolor("none")
-        leg.get_frame().set_alpha(1)  # Make the legend background completely opaque
+        leg.get_frame().set_alpha(1)
+        fig.tight_layout()
 
-        return g
+        return ax
 
     def run(
         self,
@@ -13529,16 +13716,16 @@ class OutlierDetectionUnsupervisedExperiment(Experiment):
             tabpfn.set_categorical_features(categorical_features)
 
             tabpfn.fit(self.X)
-            self.p = tabpfn.outliers(self.X, n_permutations=n_permutations)
+            self.log_p = tabpfn.outliers(self.X, n_permutations=n_permutations)
 
-            p_rank = self.p.argsort().argsort()
+            log_p_rank = self.log_p.argsort().argsort()
 
             self.data = pd.DataFrame(
                 torch.cat(
-                    [self.p[:, np.newaxis], p_rank[:, np.newaxis], self.X],
+                    [self.log_p[:, np.newaxis], log_p_rank[:, np.newaxis], self.X],
                     dim=1,
                 ).numpy(),
-                columns=["p", "p_rank", *self.feature_names],
+                columns=["log_p", "log_p_rank", *self.feature_names],
             )
 
             if kwargs.get("should_plot", True):
@@ -13550,7 +13737,7 @@ class OutlierDetectionUnsupervisedExperiment(Experiment):
                     # Skip plotting if matplotlib is not available
                     pass
 
-            return {"outlier_scores": self.p.numpy()}
+            return {"log_p": self.log_p.numpy()}
 
 
 
@@ -14152,6 +14339,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         X: torch.tensor,
         feature_permutation: list[int] | tuple[int],
     ) -> torch.tensor:
+        """Compute the chain-rule log-density / log-probability of each row under one permutation."""
         log_p = torch.zeros_like(
             X[:, 0],
         )  # Start with a log probability of 0 (log(1) = 0)
@@ -14190,46 +14378,33 @@ class TabPFNUnsupervisedModel(BaseEstimator):
                         ):  # Check bounds again per sample
                             # Proper tensor construction to avoid warning
                             pred[idx] = torch.as_tensor(prob_row[y_idx])
+                log_pred = torch.log(pred)
             else:
                 pred = model.predict(X_predict, output_type="full")
-
-                # Get logits tensor properly
                 logits = pred["logits"]
                 logits_tensor = logits.clone().detach()
-
                 y_tensor = y_predict.clone().detach().to(logits.device)
-
-                # TODO: We use 1/pdf here because pdf() returns probability densities that
-                # can be >> 1, causing exp(sum(log(p))) to overflow. Using 1/p keeps values
-                # small and numerically stable. Ideally, refactor to work in log space
-                # throughout and avoid exponentiating altogether.
-                pred = (1.0 / pred["criterion"].pdf(logits_tensor, y_tensor)).to(
-                    log_p.device
+                # criterion.forward returns the NLL, so -forward is log p_Î¸ directly.
+                log_pred = (
+                    -pred["criterion"].forward(logits_tensor, y_tensor).to(log_p.device)
                 )
 
-            # Handle zero or negative probabilities (avoid log(0))
-            pred = torch.clamp(pred, min=1e-10)
-
-            # Convert probabilities to log probabilities
-            log_pred = torch.log(pred)
-
-            # Add log probabilities instead of multiplying probabilities
             log_p = log_p + log_pred
 
-        return log_p, torch.exp(log_p)
+        return log_p
 
     def outliers_pdf(self, X: torch.Tensor, n_permutations: int = 10) -> torch.Tensor:
-        """Calculate outlier scores based on probability density functions for continuous features.
+        """Calculate the log_pdf from numerical features only.
 
         This method filters out categorical features and only considers numerical features
-        for outlier detection using probability density functions.
+        for outlier detection.
 
         Args:
             X: Input data tensor
             n_permutations: Number of permutations to use for the outlier calculation
 
         Returns:
-            Tensor of outlier scores (lower values indicate more likely outliers)
+            log_pdf (lower values indicate more likely outliers).
         """
         X_store = copy.deepcopy(self.X_)
         mask = torch.ones_like(X_store).bool()
@@ -14239,15 +14414,15 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         mask[self.categorical_features] = False
         X = X[mask]
 
-        pdf = self.outliers(X, n_permutations=n_permutations)
+        log_pdf = self.outliers(X, n_permutations=n_permutations)
         self.X_ = X_store
-        return pdf
+        return log_pdf
 
     def outliers_pmf(self, X: torch.Tensor, n_permutations: int = 10) -> torch.Tensor:
-        """Calculate outlier scores based on probability mass functions for categorical features.
+        """Calculate log_pmf from categorical features only.
 
         This method filters out numerical features and only considers categorical features
-        for outlier detection using probability mass functions.
+        for outlier detection.
 
         Args:
             X: Input data tensor
@@ -14264,9 +14439,9 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         mask[self.categorical_features] = True
         X = X[mask]
 
-        pmf = self.outliers(X, n_permutations=n_permutations)
+        log_pmf = self.outliers(X, n_permutations=n_permutations)
         self.X_ = X_store
-        return pmf
+        return log_pmf
 
     @set_extension("unsupervised:outliers")
     def outliers(
@@ -14274,12 +14449,9 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         X: torch.Tensor | np.ndarray | pd.DataFrame,
         n_permutations: int = 10,
     ) -> torch.Tensor:
-        """Calculate outlier scores for each sample in the input data.
+        """Calculate outlier scores as the log of the arithmetic mean (AM) of the densities across the permutations used to approximate the chain rule.
 
-        This is the preferred implementation for outlier detection, which calculates
-        sample probability for each sample in X by multiplying the probabilities of
-        each feature according to chain rule of probability. Lower probabilities
-        indicate samples that are more likely to be outliers.
+        The logsumexp trick is used to compute the log of the AM to address the risk of over- or underflow.
 
         Parameters:
             X: Union[torch.Tensor, np.ndarray, pd.DataFrame]
@@ -14290,8 +14462,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
 
         Returns:
             torch.Tensor:
-                Tensor of outlier scores (lower values indicate more likely outliers),
-                shape (n_samples,)
+                Tensor of outlier scores as log(AM(densities)), (lower values indicate more likely outliers), shape (n_samples,).
 
         Raises:
             RuntimeError: If the model initialization fails
@@ -14315,31 +14486,18 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         # Use fewer permutations in fast mode
         actual_n_permutations = 1 if fast_mode else n_permutations
 
-        densities: list[torch.Tensor | np.ndarray] = []
+        log_densities: list[torch.Tensor] = []
         for perm in efficient_random_permutation(all_features, actual_n_permutations):
-            perm_density_log, perm_density = self.outliers_single_permutation_(
+            log_p = self.outliers_single_permutation_(
                 X,
                 feature_permutation=perm,
             )
-            densities.append(perm_density)
+            log_densities.append(log_p)
 
-        # Average the densities across all permutations
-        # Handle potential infinite values by replacing them with large finite values
-        densities_clean: list[torch.Tensor] = [
-            torch.nan_to_num(d, nan=0.0, posinf=1e30, neginf=1e-30)
-            if torch.is_tensor(d)
-            else torch.nan_to_num(
-                torch.tensor(d, dtype=torch.float32),
-                nan=0.0,
-                posinf=1e30,
-                neginf=1e-30,
-            )
-            for d in densities
-        ]
-
-        # Stack the clean tensors and compute mean
-        densities_tensor = torch.stack(densities_clean)
-        return densities_tensor.mean(dim=0)
+        # AM combiner via the log-sum-exp identity.
+        return torch.logsumexp(torch.stack(log_densities), dim=0) - np.log(
+            actual_n_permutations
+        )
 
     @set_extension("unsupervised:synthetic")
     def generate_synthetic_data(
