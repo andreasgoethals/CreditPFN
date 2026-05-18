@@ -122,7 +122,7 @@ explicitly first avoids surprises on shells where conda isn't on
 That submits six SLURM jobs with `afterok` chaining:
 
 ```text
-data.slurm                          ──┐  CPU (Genius batch)
+data.slurm                          ──┐  CPU (wICE batch)
         ↓ afterok                     │
 train_pd.slurm   (array, N jobs)    ──┤  GPU (wICE gpu_h100)
 train_lgd.slurm  (array, N jobs)    ──┤
@@ -381,6 +381,7 @@ python scripts/eval_pipeline.py track=pd --method xgboost --rerun
 | Symptom                                                 | What to do                                                                                                       |
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
 | `ModuleNotFoundError: No module named 'omegaconf'` on submit | The conda env isn't active. Run `source activate CreditPFN` first; the submitter also tries to activate it itself. |
+| `sbatch: error: Batch job submission failed: Job dependency problem` | A stage is targeted at a different cluster than the one it depends on — VSC has separate Slurm controllers for Genius and wICE, so cross-cluster `afterok:` chains don't work. All `.slurm` headers must use `#SBATCH --cluster=wice` (the only cluster with GPUs you'd want for training). |
 | `TypeError` on first model load in training             | PyPI tabpfn 2.2.1 has the old API — install the Prior Labs wheel (see §0.4).                                     |
 | Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
 | One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |

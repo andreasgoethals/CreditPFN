@@ -10,7 +10,15 @@
 #    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT (durable)
 #    * manifest_{pd,lgd}.csv                  → OUTPUT_ROOT (durable)
 #
-#  CPU-only — uses the Genius `batch` partition.
+#  CPU-only — uses the wICE `batch` partition (IceLake).
+#
+#  Why wICE, not Genius: the train and eval stages run on wICE
+#  (`gpu_h100`), and SLURM on VSC does NOT support cross-cluster
+#  dependencies (Genius and wICE have separate controllers). Putting
+#  every stage on wICE means the `afterok:` chain in
+#  `submit_full_pipeline.sh` just works. If you ever need to put data
+#  back on Genius, also break the dependency chain — submit data
+#  first, wait for it to finish, then submit train/eval manually.
 #
 #  Submit with:
 #      sbatch scripts/slurm/data.slurm
@@ -23,7 +31,7 @@
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-data
-#SBATCH --cluster=genius
+#SBATCH --cluster=wice
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=batch
 #SBATCH --time=08:00:00

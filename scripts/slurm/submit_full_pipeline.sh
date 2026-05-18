@@ -84,19 +84,44 @@ echo "  TRACKS             : ${TRACKS}"
 echo "  TRAIN_CONCURRENCY  : ${TRAIN_CONCURRENCY}"
 echo "  EVAL_CONCURRENCY   : ${EVAL_CONCURRENCY}"
 
-# 1) Data preprocessing.
-DATA_JID=$(sbatch --parsable scripts/slurm/data.slurm)
-echo "  data               : ${DATA_JID}"
+# Helper: when sbatch's `--parsable` output crosses clusters it returns
+# `<jobid>;<cluster>`; everything we chain expects bare `<jobid>`. This
+# strips the suffix so even an accidentally-cross-cluster submission
+# fails with a clearer error than a mangled --dependency string.
+strip_cluster_suffix() {
+    # The `%%;*` removes the longest match of `;*` from the END;
+    # equivalent to `cut -d';' -f1` but built into bash.
+    echo "${1%%;*}"
+}
+
+# 1) Data preprocessing. Strip the `;<cluster>` suffix sbatch adds when
+# the submitted script targets a different cluster than the one we're
+# logged in to — bare `<jobid>` is what `afterok:` expects.
+DATA_JID_RAW=$(sbatch --parsable scripts/slurm/data.slurm)
+DATA_JID=$(strip_cluster_suffix "${DATA_JID_RAW}")
+echo "  data               : ${DATA_JID}  (raw='${DATA_JID_RAW}')"
+
+# Verify the data job is on the SAME cluster as train (otherwise SLURM
+# can't honour the dependency — Genius and wICE have separate controllers).
+if [[ "${DATA_JID_RAW}" == *";"* ]]; then
+    DATA_CLUSTER="${DATA_JID_RAW#*;}"
+    echo "ERROR: data.slurm submitted to '${DATA_CLUSTER}', but train/eval" >&2
+    echo "       run on wICE — cross-cluster dependencies are not supported" >&2
+    echo "       on VSC. Make sure data.slurm has '#SBATCH --cluster=wice'," >&2
+    echo "       or break the chain (submit data first, wait, then train)." >&2
+    exit 1
+fi
 
 # 2) Training (one array job per track), each waiting on data.
 declare -A TRAIN_JIDS=()
 for TR in ${TRACKS}; do
     SCRIPT="scripts/slurm/train_${TR}.slurm"
     N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
-    JID=$(sbatch --parsable \
+    JID_RAW=$(sbatch --parsable \
         --dependency="afterok:${DATA_JID}" \
         --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
         "${SCRIPT}")
+    JID=$(strip_cluster_suffix "${JID_RAW}")
     TRAIN_JIDS["$TR"]="${JID}"
     echo "  train ${TR}        : ${JID}  (array 0..$((N - 1)))"
 done
@@ -149,10 +174,11 @@ print((n_baselines + n_untuned + n_planned) * max(1, n_test))
 " 2>/dev/null || echo 1)
     UPPER_N=${UPPER_N:-1}
     if [[ "$UPPER_N" -lt 1 ]]; then UPPER_N=1; fi
-    EVAL_JID=$(sbatch --parsable \
+    EVAL_JID_RAW=$(sbatch --parsable \
         --dependency="afterok:${DEP}" \
         --array=0-$((UPPER_N - 1))%"${EVAL_CONCURRENCY}" \
         "${SCRIPT}")
+    EVAL_JID=$(strip_cluster_suffix "${EVAL_JID_RAW}")
     echo "  eval  ${TR}        : ${EVAL_JID}  (array 0..$((UPPER_N - 1)), waits on ${DEP})"
 done
 
