@@ -34,10 +34,52 @@ set -euo pipefail
 TRAIN_CONCURRENCY="${TRAIN_CONCURRENCY:-4}"
 EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-32}"
 TRACKS="${TRACKS:-pd lgd}"
+CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
 cd "$(dirname "$0")/../.."
 
+# ---------------------------------------------------------------------------
+# Activate the project conda env if it isn't already. The login-node `python`
+# does NOT have omegaconf / src.train / etc.; those live in the env created
+# during one-time setup. This block is a no-op when the user has already run
+# `source activate CreditPFN`.
+# ---------------------------------------------------------------------------
+if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]]; then
+    # Try the standard conda hook first; fall back to a hardcoded shim
+    # that mirrors what the .slurm scripts do.
+    if command -v conda >/dev/null 2>&1; then
+        # shellcheck disable=SC1091
+        source "$(conda info --base)/etc/profile.d/conda.sh"
+        conda activate "${CONDA_ENV}" 2>/dev/null || true
+    fi
+    if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]] \
+       && [[ -d "${VSC_DATA:-}/miniconda3" ]]; then
+        export PATH="${VSC_DATA}/miniconda3/bin:${PATH}"
+        # `source activate` is the legacy shim; quieter than `conda activate`
+        # under set -u.
+        # shellcheck disable=SC1091
+        source activate "${CONDA_ENV}" 2>/dev/null || true
+    fi
+    if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]]; then
+        echo "ERROR: could not activate conda env '${CONDA_ENV}'." >&2
+        echo "       Run 'source activate ${CONDA_ENV}' before this script," >&2
+        echo "       or set CONDA_ENV=<name> if you use a different env name." >&2
+        exit 1
+    fi
+fi
+
+# Sanity-check the env has the project deps the submitter needs to run on
+# the login node (omegaconf for cfg load, src.train.corpus for the eval
+# upper-bound calculation). A clear error here saves debugging an opaque
+# ModuleNotFoundError stack trace 40 lines down.
+if ! python -c "import omegaconf, src.train.corpus" 2>/dev/null; then
+    echo "ERROR: the '${CONDA_ENV}' env is missing project dependencies." >&2
+    echo "       Re-install with: pip install -r requirements.txt" >&2
+    exit 1
+fi
+
 echo "Submitting CreditPFN full pipeline …"
+echo "  CONDA_ENV          : ${CONDA_ENV}"
 echo "  TRACKS             : ${TRACKS}"
 echo "  TRAIN_CONCURRENCY  : ${TRAIN_CONCURRENCY}"
 echo "  EVAL_CONCURRENCY   : ${EVAL_CONCURRENCY}"

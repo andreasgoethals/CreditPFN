@@ -110,9 +110,14 @@ From the cloned repo:
 
 ```bash
 cd $VSC_DATA/CreditPFN
+source activate CreditPFN      # one-time per shell session
 git pull
 bash scripts/slurm/submit_full_pipeline.sh
 ```
+
+(The submitter auto-activates the env if it can find one, but doing it
+explicitly first avoids surprises on shells where conda isn't on
+`$PATH`.)
 
 That submits six SLURM jobs with `afterok` chaining:
 
@@ -375,6 +380,7 @@ python scripts/eval_pipeline.py track=pd --method xgboost --rerun
 
 | Symptom                                                 | What to do                                                                                                       |
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| `ModuleNotFoundError: No module named 'omegaconf'` on submit | The conda env isn't active. Run `source activate CreditPFN` first; the submitter also tries to activate it itself. |
 | `TypeError` on first model load in training             | PyPI tabpfn 2.2.1 has the old API — install the Prior Labs wheel (see §0.4).                                     |
 | Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
 | One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |
@@ -399,6 +405,7 @@ pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main
 # and base .ckpt files to $VSC_DATA/CreditPFN/checkpoints/ via WinSCP.
 
 # Per experiment:
+source activate CreditPFN     # if not already in this shell
 git pull
 bash scripts/slurm/submit_full_pipeline.sh
 squeue --me --clusters=genius,wice
