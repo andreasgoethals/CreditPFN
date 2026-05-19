@@ -309,17 +309,14 @@ Directory structure:
     │   │   └── using_globus_via_web.rst
     │   └── leuven/
     │       ├── credits.rst
-    │       ├── genius_decommissioning.rst
     │       ├── genius_quick_start.rst
     │       ├── mindwell_quick_start.rst
     │       ├── slurm_accounting.rst
     │       ├── slurm_specifics.rst
-    │       ├── superdome_quick_start.rst
     │       ├── tier2_genius.rst
     │       ├── tier2_hardware.rst
     │       ├── tier2_mindwell.rst
     │       ├── tier2_storage.rst
-    │       ├── tier2_superdome.rst
     │       ├── tier2_wice.rst
     │       ├── wice_advanced_guide.rst
     │       ├── wice_quick_start.rst
@@ -334,7 +331,11 @@ Directory structure:
     │       │   │   ├── memory_bandwidth_and_latency_breniac.rst
     │       │   │   └── skylake_breniac_mlc_avx512.txt
     │       │   ├── genius/
-    │       │   │   └── genius_hardware.rst
+    │       │   │   ├── cascadelake_mlc.txt
+    │       │   │   ├── genius_hardware.rst
+    │       │   │   ├── genius_node_map.xlsx
+    │       │   │   ├── memory_bandwidth_and_latency_genius.rst
+    │       │   │   └── skylake_mlc.txt
     │       │   └── thinking/
     │       │       ├── haswell_mlc.txt
     │       │       ├── ivybridge_mlc.txt
@@ -343,21 +344,15 @@ Directory structure:
     │       │       ├── thinking_node_map_v2.xlsx
     │       │       └── thinking_node_map_v2_centos7.xlsx
     │       └── tier2_hardware/
-    │           ├── cascadelake_mlc.txt
     │           ├── genius_hardware.rst
     │           ├── icelake_mlc.txt
     │           ├── kuleuven_storage.rst
     │           ├── kuleuven_storage_quota_table.rst
-    │           ├── memory_bandwidth_and_latency_genius.rst
     │           ├── memory_bandwidth_and_latency_wice.rst
     │           ├── mindwell_hardware.rst
     │           ├── restoring_a_snapshot.rst
-    │           ├── skylake_mlc.txt
-    │           ├── superdome_hardware.rst
     │           ├── tier2_login_nodes.rst
     │           ├── wice_hardware.rst
-    │           ├── genius_hardware/
-    │           │   └── genius_node_map.xlsx
     │           └── wice_hardware/
     │               └── wice_node_map.xlsx
     └── .github/
@@ -3667,7 +3662,6 @@ FILE: source/accounts/clusters_mfa.rst
        :columns: 12 4 4 4
     
        * Tier-2 :ref:`Genius <Genius hardware>`
-       * Tier-2 :ref:`Superdome <Superdome hardware>`
        * Tier-2 :ref:`wICE <wICE hardware>`
 
 
@@ -11136,7 +11130,6 @@ FILE: source/compute/tier2.rst
        :columns: 6 6 3 3
     
        * :ref:`Genius <Genius hardware>`
-       * :ref:`Superdome <Superdome hardware>`
        * :ref:`wICE <wICE hardware>`
        * :ref:`Mindwell <mindwell hardware>`
 
@@ -11345,7 +11338,6 @@ FILE: source/compute/jobs/clusters_slurm.rst
        :columns: 12 4 4 4
     
        * Tier-2 :ref:`Genius <Genius hardware>`
-       * Tier-2 :ref:`Superdome <Superdome hardware>`
        * Tier-2 :ref:`wICE <wICE hardware>`
 
     .. grid-item-card:: |UA|
@@ -11411,7 +11403,11 @@ consult the respective documentation sources:
    .. tab-item:: KU Leuven/UHasselt
       :sync: kuluh
 
-      Genius cluster: :ref:`Submit to a GPU node <submit_genius_gpu>`
+      Genius: :ref:`Submit to a GPU node <submit_genius_gpu>`
+
+      wICE: :ref:`Submit to a GPU node <submit to wice GPU node>`
+
+      Mindwell: :ref:`Submit to a GPU node <submit to mindwell GPU node>`
 
    .. tab-item:: UAntwerpen
       :sync: ua
@@ -13368,8 +13364,7 @@ use the following two options:
    run on the same nodes if not all cores are used.
 ``-l naccesspolicy=singlejob``
    This will make sure that no other job can use the nodes allocated
-   to your job. When requesting half a node or less on Genius,
-   you will also need to add ``-l qos=shared`` to enforce this policy.
+   to your job.
   
 .. warning::
 
@@ -14856,15 +14851,7 @@ various cluster/partitions.
 +----------+--------------------+-----------+-------------+------------+
 | Ghent    | any                | any       | shared      | no         |
 +----------+--------------------+-----------+-------------+------------+
-| Leuven   | genius             | default   | shared      | yes        |
-+----------+--------------------+-----------+-------------+------------+
-| Leuven   | genius             | bigmem    | shared      | yes        |
-+----------+--------------------+-----------+-------------+------------+
-| Leuven   | genius             | gpu       | shared      | yes        |
-+----------+--------------------+-----------+-------------+------------+
-| Leuven   | genius             | superdome | shared      | yes        |
-+----------+--------------------+-----------+-------------+------------+
-| Leuven   | breniac (Tier-1)   | default   | single job  | yes        |
+| Leuven   | any                | any       | shared      | yes        |
 +----------+--------------------+-----------+-------------+------------+
 
 Clusters with accounting enabled:
@@ -15188,7 +15175,6 @@ VSC clusters that support an Open OnDemand web portal:
        :fas:`circle-play` `KU Leuven OnDemand`_
 
        | Tier-2 :ref:`Genius <Genius hardware>`
-       | Tier-2 :ref:`Superdome <Superdome hardware>`
        | Tier-2 :ref:`wICE <wICE hardware>`
 
     .. grid-item-card:: |UA|
@@ -26022,11 +26008,9 @@ of the available versions of the ``CP2K`` module by executing:
     You will need to load all module(s) on any one of the lines below before
     the "CP2K/8.2-intel-2021a" module is available to load
 
-      cluster/genius/batch
-      cluster/genius/batch_debug
-      cluster/genius/batch_long
-      ...
       cluster/wice/batch
+      cluster/wice/batch_icelake
+      cluster/wice/batch_icelake_long
       ...
 
 This command shows which ``cluster`` modules will make the ``CP2K/8.2-intel-2021a``
@@ -34474,22 +34458,22 @@ of a job will be comparable on any compute node, but the
 walltime will be different, depending on the performance of the nodes.
 
 As an example, consider a job running on two nodes of the default partition on
-Genius, where ``TRESBillingWeights=CPU=4.62963`` applies::
+wICE, where ``TRESBillingWeights=CPU=2.546296296`` applies::
 
-   $ sbatch --account=lp_myproject --clusters=genius --nodes=2 \
-            --ntasks-per-node=36 myjobscript.slurm
+   $ sbatch --account=lp_myproject --clusters=wice --nodes=2 \
+            --ntasks-per-node=72 myjobscript.slurm
 
 If this job finishes in 2.5 hours (i.e., walltime is 150 minutes), the user
 will be charged::
 
-   floor(4.62963 * (2 * 36)) * 150 = 49 950 credits
+   floor(2.546296296 * (2 * 72)) * 150 = 54 900 credits
 
 You can also get such estimates from the ``sam-quote`` tool by providing it
 with your job submission command::
 
-   $ sam-quote sbatch --account=lp_myproject --clusters=genius --nodes=2 \
-                      --ntasks-per-node=36 --time=2:30:00 myjobscript.slurm
-   49950
+   $ sam-quote sbatch --account=lp_myproject --clusters=wice --nodes=2 \
+                      --ntasks-per-node=72 --time=2:30:00 myjobscript.slurm
+   54900
 
 Note that ``sam-quote`` assumes a worst-case scenario in which the job does
 not stop before reaching its time limit.
@@ -34506,10 +34490,6 @@ to allocate one core or GPU during one minute.
 | Cluster | Resource            | Type     | ``TRESBillingWeights`` |
 +=========+=====================+==========+========================+
 | Genius  | Skylake             | CPU core | 4.62963                |
-+         +---------------------+----------+------------------------+
-|         | Skylake (bigmem)    | CPU core | 5.55556                |
-+         +---------------------+----------+------------------------+
-|         | Skylake (superdome) | CPU core | 18.7500                |
 +         +---------------------+----------+------------------------+
 |         | Cascadelake         | CPU core | 4.62963                |
 +         +---------------------+----------+------------------------+
@@ -34539,49 +34519,6 @@ to allocate one core or GPU during one minute.
 
 
 ================================================
-FILE: source/leuven/genius_decommissioning.rst
-================================================
-.. _genius_decommissioning:
-
-Genius decommissioning
-======================
-
-Most remaining parts of :ref:`Genius <Genius hardware>` will be
-decommissioned when we start the open pilot phase for the
-:ref:`Tier-2 cluster Mindwell <mindwell hardware>`. This should happen
-towards the middle of May.
-
-.. note::
-
-   Starting from the second week of March, many nodes from the `batch*`
-   and `interactive` partitions on Genius will already be blocked to allow
-   large-scale benchmarks to run on the new cluster. You will still be able
-   to send jobs to those Genius partitions, but they may spend more time in
-   the queue because of the reduced capacity.
-
-The decommissioning will consist of retiring the following hardware:
-
-- all Cascadelake CPU nodes (`batch*` partitions)
-- all Skylake CPU nodes (`interactive` and `bigmem*` partitions)
-- all nodes in the `dedicated*` partitions
-- Superdome (`superdome*` partitions)
-
-If you are still using the Genius CPU partitions, be prepared to switch
-to the :ref:`wICE <wICE hardware>` CPU partitions since the final
-decommissioning of this hardware is drawing near (towards the end of March,
-as mentioned above).
-
-The P100 and V100 GPU nodes will be kept online for a longer period
-(`gpu_p100*` and `gpu_v100*` partitions).
-If your compute tasks rely on these older GPUs because they cannot efficiently
-use more powerful devices, you are welcome to reach out to us at
-mailto:hpcinfo@kuleuven.be (in case you haven't been contacted by us already).
-
-Note that the Tier-2 login nodes will remain in service until the end of 2026.
-
-
-
-================================================
 FILE: source/leuven/genius_quick_start.rst
 ================================================
 .. _genius_t2_leuven:
@@ -34590,13 +34527,8 @@ Genius quick start guide
 ========================
 
 :ref:`Genius <genius hardware>` is a KU Leuven/UHasselt Tier-2 cluster
-which entered production in 2018. Aside from regular CPU nodes, Genius also
-contains large memory nodes and GPU nodes.
-
-.. note::
-
-   Most of Genius will be :ref:`decommissioned <genius_decommissioning>`
-   in early 2026.
+which entered production in 2018. Currently only its login nodes and most of
+its GPU nodes remain in production.
 
 Access to the cluster
 ---------------------
@@ -34612,15 +34544,11 @@ For example, you can log in to any of the login node using SSH::
 
 Running jobs on Genius
 ----------------------
-Genius is equipped with regular (thin) compute nodes, two kinds of big memory nodes,
-and GPU nodes.  The resource specifications for jobs have to be tuned to use these
-nodes properly.
-
 The `Slurm Workload Manager <https://slurm.schedmd.com>`_ is the scheduler,
 resource manager and credit accounting manager on Genius (and wICE).
 
-In case you are not yet familiar with Slurm and/or the Genius hardware, you can find
-more information on the following pages:
+In case you are not yet familiar with Slurm and/or the Genius hardware,
+you can find more information on the following pages:
 
 - :ref:`Genius hardware <Genius hardware>`
 - Slurm jobs (basics): :ref:`running jobs` and :ref:`job_types`
@@ -34633,97 +34561,6 @@ more information on the following pages:
    We expect that you adapt the number of nodes, tasks, cores, memory,
    walltime, ... depending on what your compute task requires.
 
-
-.. _submit_genius_batch:
-
-Submitting to a regular compute node
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The regular (thin) compute nodes are gathered in the default ``batch`` partition.
-This partition allows jobs with maximum 3 days of walltime. Jobs which require a
-walltime up to maximum 7 days need to be submitted to the ``batch_long`` partition
-instead.
-
-Submitting a regular compute job boils down to specifying the required number of
-nodes, cores-per-node, memory and walltime. You may e.g. request two full nodes like
-this::
-
-   $ sbatch --account=lp_myproject --clusters=genius --time=2:00:00 --nodes=2 \
-            --ntasks-per-node=36 myjobscript.slurm
-
-You may also request only a part of the resources on a node.
-For instance, to test a multi-threaded application which performs optimally using 4 cores,
-you may submit your job like this::
-
-   $ sbatch --account=lp_myproject --clusters=genius --time=2:00:00 --ntasks=4 myjobscript.slurm
-   # or
-   $ sbatch --account=lp_myproject --clusters=genius --time=2:00:00 --ntasks=1 \
-            --cpus-per-task=4 myjobscript.slurm
-
-.. note::
-
-   Please bear in mind to not exceed the maximum allowed resources on compute
-   nodes for the targeted partition. E.g. you can request at most 36 cores per
-   node (``--ntasks=36``). In general, we advise you to only request as many
-   resources as needed by your application.
-
-.. note::
-
-   If you do not provide a walltime for your job, then a default walltime will
-   be applied. This is 1 hour for all partitions, except for the debug partitions
-   where it is 30 minutes (see :ref:`submit_genius_debug` below).
-
-.. note::
-
-   If you do not specify the number of tasks and cores per task for your job,
-   then it will default to a single task running on a single core.
-
-
-Advanced node usage
-^^^^^^^^^^^^^^^^^^^
-The ``batch(_long)`` partitions used to contain both Skylake and Cascadelake
-nodes, which meant that ``--constraint=skylake|cascadelake``-like options
-were needed when you wanted to ensure that your job runs on a specific type
-of node. As the Skylake nodes from this partitions have been decommissioned,
-only the Cascadelake nodes remain and ``--constraint=skylake`` no longer works.
-
-By default, all nodes are shared among all jobs and users, unless the resource specifications
-would imply an exclusive access to a node by a job or user.
-
-
-.. _submit_genius_interactive:
-
-Submit to the interactive partition
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-There is also a small ``interactive`` partition intended for interactive work
-(compiling software, post-processing, small-scale debugging, visualization,
-...). This is typically done via interactive jobs, for example::
-
-   # A short single-core job:
-   $ srun --account=lp_myproject --clusters=genius --partition=interactive \
-           --ntasks=1 --time=01:00:00 --pty bash -l
-
-   # A longer job with more cores and X11 forwarding:
-   $ srun --account=lp_myproject --clusters=genius --partition=interactive \
-          --ntasks-per-node=8 --time=08:00:00 --x11 --pty bash -l
-
-Users are allowed to request a maximum of 8 cores for walltimes up to 16 hours.
-Note that the nodes in this partition do not contain GPUs. The ``Ã¬nteractive``
-partition on wICE is therefore better suited if you need GPU acceleration for
-e.g. data visualization.
-
-.. note::
-
-   It is also possible to submit interactive jobs to the other partitions
-   (``batch``, ``gpu_v100``, ``bigmem``, ...) in case you need more resources.
-   For large amounts of compute resources, however, we recommend to use
-   batch jobs since these will result in fewer idling resources
-   compared to interactive jobs.
-
-.. note::
-
-   Jobs on the ``interactive`` partition do not consume any credits.
-
 .. _submit_genius_gpu:
 
 Submitting to a GPU node
@@ -34733,7 +34570,7 @@ The GPU nodes are accessible via the following partitions:
 +---------------+----------+----------------------------------------+-------------+
 | Partition     | Walltime | Resources                              | CPU model   |
 +===============+==========+========================================+=============+
-| gpu_p100      | 3 days   | 20 nodes, 4x Nvidia P100 GPUs per node | Skylake     |
+| gpu_p100      | 3 days   | 13 nodes, 4x Nvidia P100 GPUs per node | Skylake     |
 +---------------+----------+                                        |             |
 | gpu_p100_long | 7 days   |                                        |             |
 +---------------+----------+----------------------------------------+-------------+
@@ -34742,9 +34579,8 @@ The GPU nodes are accessible via the following partitions:
 | gpu_v100_long | 7 days   |                                        |             |
 +---------------+----------+----------------------------------------+-------------+
 
-Similar to the other nodes, the GPU nodes can be shared by different jobs from
-different users.
-However, every user will have exclusive access to the number of GPUs requested.
+As usual, GPU nodes can be shared by different jobs from different users.
+However, every user will have exclusive access to its allocated GPUs.
 
 If you e.g. want to get one P100 GPU and two CPU cores::
 
@@ -34758,42 +34594,9 @@ You are free to request more GPU devices and/or CPU cores if needed,
 but take note of the :ref:`limits on CPU resources per allocated GPU
 <cpu_resource_limits_in_gpu_jobs>`).
 
-.. _submit_genius_bigmem:
-
-Submitting to a big memory node
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The big memory nodes are located in the ``bigmem`` and ``bigmem_long`` partitions.
-In case of the big memory nodes it is also important to add your memory requirements,
-for example::
-
-   $ sbatch --account=lp_my_project --clusters=genius --nodes=1 --ntasks=36 \
-            --mem-per-cpu=20000M --partition=bigmem myjobscript.slurm
-
-
-.. _submit_genius_debug:
-
-Running debug jobs
-------------------
-Debugging on a busy cluster can be taxing due to long queue times.
-To mitigate this, two Cascadelake CPU nodes and a Skylake GPU node have been
-reserved for debugging purposes. To use these debug nodes, you have to select
-the ``batch_debug`` or ``gpu_p100_debug`` partition, respectively.
-
-A few restrictions apply to a debug job:
-
-- it can only use at most two nodes for CPU jobs, a single node for GPU jobs
-- its walltime is at most 1 hour
-- you can only have a single debug job in the queue at any time.
-
-To run a debug job for 20 minutes on two CPU nodes, you would use::
-
-   $ sbatch --account=lp_my_project --clusters=genius --nodes=2 --ntasks-per-node=36 \
-            --partition=batch_debug --time=20:00 myjobscript.slurm
-
-To run a debug job for 15 minutes on a GPU node, you would use::
-
-   $ sbatch --account=lp_my_project --clusters=genius --nodes=1 --ntasks=9 \
-            --gpus-per-node=1 --partition=gpu_p100_debug --time=15:00 myjobscript.slurm
+For easier development and testing, also a ``gpu_p100_debug`` partition is
+available which accepts jobs with walltimes up to 1 hour. Note that you can
+only have a single debug job in the queue at any time.
 
 
 
@@ -35405,69 +35208,6 @@ using GDB). In such cases we recommend to 'join' the job as follows::
 
 
 ================================================
-FILE: source/leuven/superdome_quick_start.rst
-================================================
-.. _superdome_quick_start:
-
-Superdome quick start guide
-===========================
-
-The :ref:`Superdome <Superdome hardware>` is a shared memory machine
-which is intended for applications requiring large amounts of RAM
-on a single host.
-
-As Superdome is part of the Genius cluster, please also see the
-:ref:`Tier-2 access page<tier2_login_nodes>` for general information
-on how to access Genius.
-
-.. note::
-
-   The examples given on this page only serve as illustrations.
-   We expect that you adapt the number of nodes, cores, memory, walltime, ...
-   depending on what your compute task requires.
-
-
-How to run a job on Superdome?
-------------------------------
-
-To submit jobs to Superdome from a Genius login node you need to select either
-the ``superdome`` or ``superdome_long`` Slurm partition, depending on whether
-your job needs less than 3 days or less than 7 days.
-
-The CPU resources on Superdome are furthermore allocated on the basis of entire
-sockets and not on the basis of individual cores as on other partitions.
-Since the 112 cores in Superdome are grouped in 8 sockets (see the
-:ref:`Superdome hardware page<Superdome hardware>`), this means that all
-Superdome jobs get access to a number of cores which is a multiple of 14.
-
-The allocation for the following job will hence consist of an entire socket
-(and its 14 cores)::
-
-  $ sbatch --account=lp_my_project --clusters=genius --partition=superdome \
-           --ntasks=1 myscript.slurm
-
-By default, each task will be launched on a separate socket. The following
-job will therefore get two sockets (and so 28 cores in total)::
-
-  $ sbatch --account=lp_my_project --clusters=genius --partition=superdome \
-           --ntasks=2 myscript.slurm
-
-If you want to get multiple Slurm tasks per socket you will need to use the
-``--ntasks-per-socket`` option, for example::
-
-  $ sbatch --account=lp_my_project --clusters=genius --partition=superdome \
-           --ntasks=28 --ntasks-per-socket=14 myscript.slurm
-
-.. note::
-
-   The maximum amount of memory per core for Superdome is 53.5 GB, which is also
-   the default value. Your jobs will hence by default receive 749 GB of RAM per
-   allocated socket.
-
-
-
-
-================================================
 FILE: source/leuven/tier2_genius.rst
 ================================================
 #############
@@ -35480,7 +35220,6 @@ Tier-2 Genius
 
    tier2_hardware/genius_hardware
    genius_quick_start
-   genius_decommissioning
 
 
 
@@ -35500,7 +35239,6 @@ KU Leuven/UHasselt Tier-2 clusters
    tier2_mindwell
    tier2_wice
    tier2_genius
-   tier2_superdome
    tier2_storage
    slurm_specifics
 
@@ -35535,22 +35273,6 @@ Tier-2 Storage
 
    tier2_hardware/kuleuven_storage
    tier2_hardware/restoring_a_snapshot
-
-
-
-================================================
-FILE: source/leuven/tier2_superdome.rst
-================================================
-################
-Tier-2 Superdome
-################
-
-
-.. toctree::
-   :maxdepth: 3
-
-   tier2_hardware/superdome_hardware
-   superdome_quick_start
 
 
 
@@ -35625,11 +35347,6 @@ installations (see the examples below).
 
 For software using CPUs, the different installations would be:
 
-- one for SkyLake and CascadeLake CPUs
-  :raw-html:`<br />`
-  (``${VSC_ARCH_LOCAL}`` = ``skylake`` or ``cascadelake``; :raw-html:`<br />`
-  if needed you can control this for your jobs by e.g. adding a
-  ``--constraint=cascadelake`` Slurm option)
 - one for IceLake CPUs
   :raw-html:`<br />`
   (``${VSC_ARCH_LOCAL}`` = ``icelake``)
@@ -35712,7 +35429,7 @@ Memory hierarchy
 When running applications in parallel it is often a good idea to take the
 memory hierarchy into account (for example when pinning MPI processes
 in :ref:`hybrid MPI/OpenMP calculations <hybrid_mpi_openmp_programs>`).
-The nodes in the ``batch`` partition on Genius and wICE are the simpler ones
+The Genius GPU nodes and wICE CPU nodes are the simpler ones
 with a single NUMA domain and L3 cache per CPU, with the usual core-private
 L1 and L2 caches. Other node types may feature more than one NUMA domain per
 CPU and (in the case of AMD CPUs) more than one L3 cache per CPU.
@@ -35829,6 +35546,17 @@ For information about compute credit accounts, see the
    We expect that you adapt the number of nodes, tasks, cores, memory,
    walltime, ... depending on what your compute task requires.
 
+.. note::
+
+   If you do not provide a walltime for your job, then a default walltime will
+   be applied. This is 1 hour for all partitions, except for the ``*_debug``
+   partitions where it is 30 minutes.
+
+.. note::
+
+   If you do not specify the number of tasks and cores per task for your job,
+   then it will default to a single task running on a single core.
+
 
 .. _submit to wice compute node:
 
@@ -35901,9 +35629,6 @@ default), you can submit a job as follows::
 
 There is also one IceLake node with even more memory (8 TiB RAM) in the
 ``hugemem`` partition (defaulting to ``--mem-per-cpu=111900M``).
-In contrast to :ref:`Superdome <superdome_quick_start>`, you do not need to
-request entire sockets and so the node is more similar to the other large
-memory nodes in this regard.
 
 
 .. _submit to wice GPU node:
@@ -36245,6 +35970,79 @@ Writer Numa Node     0	     1
 
 
 ================================================
+FILE: source/leuven/old_hardware/genius/cascadelake_mlc.txt
+================================================
+Intel(R) Memory Latency Checker - v3.10
+*** Unable to modify prefetchers (try executing 'modprobe msr')
+*** So, enabling random access for latency measurements
+Measuring idle latencies for random access (in ns)...
+		Numa node
+Numa node	     0	     1	
+       0	  80.8	 140.4	
+       1	 141.6	  81.5	
+
+Measuring Peak Injection Memory Bandwidths for the system
+Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
+Using all the threads from each core if Hyper-threading is enabled
+Using traffic with the following read-write ratios
+ALL Reads        :	225630.8	
+3:1 Reads-Writes :	208349.9	
+2:1 Reads-Writes :	206510.3	
+1:1 Reads-Writes :	200031.8	
+Stream-triad like:	187482.4	
+
+Measuring Memory Bandwidths between nodes within system 
+Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
+Using all the threads from each core if Hyper-threading is enabled
+Using Read-only traffic type
+		Numa node
+Numa node	     0	     1	
+       0	113073.7	34305.5	
+       1	34322.2	112810.7	
+
+Measuring Loaded Latencies for the system
+Using all the threads from each core if Hyper-threading is enabled
+Using Read-only traffic type
+Inject	Latency	Bandwidth
+Delay	(ns)	MB/sec
+==========================
+ 00000	155.60	 226127.7
+ 00002	156.23	 226129.4
+ 00008	155.32	 226082.8
+ 00015	155.90	 226627.2
+ 00050	157.25	 221318.3
+ 00100	119.65	 181499.4
+ 00200	103.11	 120242.4
+ 00300	 97.46	  87252.6
+ 00400	 94.40	  67737.9
+ 00500	 94.95	  55202.5
+ 00700	 90.12	  40541.6
+ 01000	 88.52	  29035.8
+ 01300	 87.39	  22709.1
+ 01700	 88.36	  17635.5
+ 02500	 85.50	  12323.4
+ 03500	 84.00	   9059.1
+ 05000	 83.91	   6582.9
+ 09000	 86.54	   3975.8
+ 20000	 82.21	   2240.7
+
+Measuring cache-to-cache transfer latency (in ns)...
+Local Socket L2->L2 HIT  latency	48.8
+Local Socket L2->L2 HITM latency	49.3
+Remote Socket L2->L2 HITM latency (data address homed in writer socket)
+			Reader Numa Node
+Writer Numa Node     0	     1	
+            0	     -	 114.1	
+            1	 113.2	     -	
+Remote Socket L2->L2 HITM latency (data address homed in reader socket)
+			Reader Numa Node
+Writer Numa Node     0	     1	
+            0	     -	 114.0	
+            1	 113.5	     -	
+
+
+
+================================================
 FILE: source/leuven/old_hardware/genius/genius_hardware.rst
 ================================================
 Genius
@@ -36253,8 +36051,13 @@ Genius
 .. note::
 
    Genius is a KU Leuven/UHasselt Tier-2 cluster which is still in operation,
-   but parts of it have already been decommissioned. This page is only
+   but most of its hardware has already been decommissioned. This page is only
    for possible future reference.
+
+.. toctree::
+   :hidden:
+
+   memory_bandwidth_and_latency_genius.rst
 
 
 Hardware details
@@ -36262,12 +36065,22 @@ Hardware details
 
 - thin nodes
 
-  - 48 of the original 86 Skylake nodes have been decommissioned
+  - 86 Skylake nodes
 
     - 2 Xeon Gold 6140 CPUs\@2.3 GHz (Skylake),
       18 cores each :raw-html:`<br />`
       (1 NUMA domain and 1 L3 cache per CPU)
     - 192 GiB RAM (:ref:`memory bandwidth and latency measurements <memory bandwidth and latency genius skylake>`)
+    - 200 GB SSD local disk
+    - partition ``batch|batch_long`` and ``interactive``
+
+  - 144 Cascadelake nodes
+
+    - 2 Xeon Gold 6240 CPUs\@2.6 GHz (Cascadelake),
+      18 cores each :raw-html:`<br />`
+      (1 NUMA domain and 1 L3 cache per CPU)
+    - 192 GiB RAM (:ref:`memory bandwidth and latency measurements <memory bandwidth and latency genius cascadelake>`)
+    - default memory per core is 5000 MiB
     - 200 GB SSD local disk
     - partition ``batch|batch_long``
 
@@ -36280,9 +36093,26 @@ Hardware details
     - 200 GB SSD local disk
     - partition ``amd``
 
-- GPU nodes
+- 10 big memory nodes
 
-  - 5 P100 nodes
+  - 2 Xeon Gold 6140 CPUs\@2.3 GHz (Skylake),
+    18 cores each :raw-html:`<br />`
+    (1 NUMA domain and 1 L3 cache per CPU)
+  - 768 GiB RAM
+  - default memory per core is 21000 MiB
+  - 200 GB SSD local disk
+  - partition ``bigmem|bigmem_long``
+
+- 1 huge memory node ``Superdome``
+
+  - 8 Xeon Gold 6132 CPUs\@2.6 GHz (Skylake), 14 cores each
+  - 6 TiB RAM
+  - default memory per core is 53500 MiB
+  - partition ``superdome|superdome_long``
+
+- 6 GPU nodes, 24 GPU devices
+
+  - 6 P100 nodes
 
     - 2 Xeon Gold 6140 CPUs\@2.3 GHz (Skylake),
       18 cores each :raw-html:`<br />`
@@ -36293,6 +36123,123 @@ Hardware details
     - 200 GB SSD local disk
     - partition ``gpu_p100|gpu_p100_long``
 
+
+The nodes were connected using an Infiniband EDR network (bandwidth 25 Gb/s).
+The islands are indicated on the diagram below.
+
+.. figure:: genius.png
+   :alt: Genius hardware diagram
+
+
+
+
+================================================
+FILE: source/leuven/old_hardware/genius/genius_node_map.xlsx
+================================================
+[Binary file]
+
+
+================================================
+FILE: source/leuven/old_hardware/genius/memory_bandwidth_and_latency_genius.rst
+================================================
+.. _memory bandwidth and latency genius:
+
+Memory bandwidth and latency measurements (Genius)
+==================================================
+
+Memory bandwidth and latencies for main memory, as well as latencies for L2
+and LLC cache. Measurements have been performed using Intel's Memory Latency
+Checker (``mlc``).
+
+.. _memory bandwidth and latency genius cascadelake:
+
+Cascadelake CPUs
+----------------
+
+.. include:: cascadelake_mlc.txt
+   :literal:
+
+
+.. _memory bandwidth and latency genius skylake:
+
+Skylake CPUs
+------------
+
+.. include:: skylake_mlc.txt
+   :literal:
+
+
+
+================================================
+FILE: source/leuven/old_hardware/genius/skylake_mlc.txt
+================================================
+Intel(R) Memory Latency Checker - v3.10
+*** Unable to modify prefetchers (try executing 'modprobe msr')
+*** So, enabling random access for latency measurements
+Measuring idle latencies for random access (in ns)...
+		Numa node
+Numa node	     0	     1	
+       0	  90.2	 144.3	
+       1	 143.2	  89.1	
+
+Measuring Peak Injection Memory Bandwidths for the system
+Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
+Using all the threads from each core if Hyper-threading is enabled
+Using traffic with the following read-write ratios
+ALL Reads        :	211194.2	
+3:1 Reads-Writes :	193422.0	
+2:1 Reads-Writes :	192554.0	
+1:1 Reads-Writes :	185556.1	
+Stream-triad like:	172770.4	
+
+Measuring Memory Bandwidths between nodes within system 
+Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
+Using all the threads from each core if Hyper-threading is enabled
+Using Read-only traffic type
+		Numa node
+Numa node	     0	     1	
+       0	104362.2	34290.6	
+       1	34283.3	106028.4	
+
+Measuring Loaded Latencies for the system
+Using all the threads from each core if Hyper-threading is enabled
+Using Read-only traffic type
+Inject	Latency	Bandwidth
+Delay	(ns)	MB/sec
+==========================
+ 00000	166.18	 210643.1
+ 00002	177.85	 208001.7
+ 00008	166.21	 206740.7
+ 00015	167.47	 206801.3
+ 00050	163.31	 201772.4
+ 00100	128.73	 164062.6
+ 00200	116.34	 110208.0
+ 00300	105.64	  79347.3
+ 00400	103.73	  61575.2
+ 00500	101.35	  50291.8
+ 00700	102.52	  36809.1
+ 01000	 96.23	  26420.4
+ 01300	 95.39	  20649.2
+ 01700	 94.13	  16054.2
+ 02500	 93.31	  11207.0
+ 03500	 95.06	   8212.5
+ 05000	 92.51	   5982.5
+ 09000	 92.46	   3634.3
+ 20000	 91.66	   2027.6
+
+Measuring cache-to-cache transfer latency (in ns)...
+Local Socket L2->L2 HIT  latency	50.5
+Local Socket L2->L2 HITM latency	49.9
+Remote Socket L2->L2 HITM latency (data address homed in writer socket)
+			Reader Numa Node
+Writer Numa Node     0	     1	
+            0	     -	 114.0	
+            1	 114.6	     -	
+Remote Socket L2->L2 HITM latency (data address homed in reader socket)
+			Reader Numa Node
+Writer Numa Node     0	     1	
+            0	     -	 114.0	
+            1	 123.2	     -	
 
 
 
@@ -36575,79 +36522,6 @@ FILE: source/leuven/old_hardware/thinking/thinking_node_map_v2_centos7.xlsx
 
 
 ================================================
-FILE: source/leuven/tier2_hardware/cascadelake_mlc.txt
-================================================
-Intel(R) Memory Latency Checker - v3.10
-*** Unable to modify prefetchers (try executing 'modprobe msr')
-*** So, enabling random access for latency measurements
-Measuring idle latencies for random access (in ns)...
-		Numa node
-Numa node	     0	     1	
-       0	  80.8	 140.4	
-       1	 141.6	  81.5	
-
-Measuring Peak Injection Memory Bandwidths for the system
-Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
-Using all the threads from each core if Hyper-threading is enabled
-Using traffic with the following read-write ratios
-ALL Reads        :	225630.8	
-3:1 Reads-Writes :	208349.9	
-2:1 Reads-Writes :	206510.3	
-1:1 Reads-Writes :	200031.8	
-Stream-triad like:	187482.4	
-
-Measuring Memory Bandwidths between nodes within system 
-Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
-Using all the threads from each core if Hyper-threading is enabled
-Using Read-only traffic type
-		Numa node
-Numa node	     0	     1	
-       0	113073.7	34305.5	
-       1	34322.2	112810.7	
-
-Measuring Loaded Latencies for the system
-Using all the threads from each core if Hyper-threading is enabled
-Using Read-only traffic type
-Inject	Latency	Bandwidth
-Delay	(ns)	MB/sec
-==========================
- 00000	155.60	 226127.7
- 00002	156.23	 226129.4
- 00008	155.32	 226082.8
- 00015	155.90	 226627.2
- 00050	157.25	 221318.3
- 00100	119.65	 181499.4
- 00200	103.11	 120242.4
- 00300	 97.46	  87252.6
- 00400	 94.40	  67737.9
- 00500	 94.95	  55202.5
- 00700	 90.12	  40541.6
- 01000	 88.52	  29035.8
- 01300	 87.39	  22709.1
- 01700	 88.36	  17635.5
- 02500	 85.50	  12323.4
- 03500	 84.00	   9059.1
- 05000	 83.91	   6582.9
- 09000	 86.54	   3975.8
- 20000	 82.21	   2240.7
-
-Measuring cache-to-cache transfer latency (in ns)...
-Local Socket L2->L2 HIT  latency	48.8
-Local Socket L2->L2 HITM latency	49.3
-Remote Socket L2->L2 HITM latency (data address homed in writer socket)
-			Reader Numa Node
-Writer Numa Node     0	     1	
-            0	     -	 114.1	
-            1	 113.2	     -	
-Remote Socket L2->L2 HITM latency (data address homed in reader socket)
-			Reader Numa Node
-Writer Numa Node     0	     1	
-            0	     -	 114.0	
-            1	 113.5	     -	
-
-
-
-================================================
 FILE: source/leuven/tier2_hardware/genius_hardware.rst
 ================================================
 .. _genius hardware:
@@ -36655,57 +36529,17 @@ FILE: source/leuven/tier2_hardware/genius_hardware.rst
 Genius hardware
 ===============
 
-.. toctree::
-   :hidden:
-
-   memory_bandwidth_and_latency_genius.rst
-
 The KU Leuven / UHasselt Tier-2 cluster *Genius* has been in production
-since 2018. Genius contains thin nodes, large memory nodes and GPU nodes.
+since 2018. Currently only its login nodes and most of its GPU nodes remain in
+operation.
 
-.. note::
-
-   Most of Genius will be :ref:`decommissioned <genius_decommissioning>`
-   in early 2026.
 
 Hardware details
 ----------------
 
-- 144 thin nodes
+- 16 GPU nodes, 72 GPU devices
 
-  - 2 Xeon Gold 6240 CPUs\@2.6 GHz (Cascadelake),
-    18 cores each :raw-html:`<br />`
-    (1 NUMA domain and 1 L3 cache per CPU)
-  - 192 GiB RAM (:ref:`memory bandwidth and latency measurements <memory bandwidth and latency genius cascadelake>`)
-  - default memory per core is 5000 MiB
-  - 200 GB SSD local disk
-  - partition ``batch|batch_long``,
-    specific Slurm :ref:`options <submit_genius_batch>` apply
-
-- 12 interactive nodes
-
-  - 2 Xeon Gold 6140 CPUs\@2.3 GHz (Skylake),
-    18 cores each :raw-html:`<br />`
-    (1 NUMA domain and 1 L3 cache per CPU)
-  - 192 GiB RAM (:ref:`memory bandwidth and latency measurements <memory bandwidth and latency genius skylake>`)
-  - default memory per core is 2000 MiB
-  - 200 GB SSD local disk
-  - partition ``interactive``,
-    specific Slurm :ref:`options <submit_genius_interactive>` apply
-
-- 10 big memory nodes
-
-  - 2 Xeon Gold 6140 CPUs\@2.3 GHz (Skylake),
-    18 cores each :raw-html:`<br />`
-    (1 NUMA domain and 1 L3 cache per CPU)
-  - 768 GiB RAM
-  - default memory per core is 21000 MiB
-  - 200 GB SSD local disk
-  - partition ``bigmem|bigmem_long``, specific Slurm :ref:`options <submit_genius_bigmem>` apply
-
-- 17 GPU nodes, 76 GPU devices
-
-  - 15 P100 nodes
+  - 14 P100 nodes
 
     - 2 Xeon Gold 6140 CPUs\@2.3 GHz (Skylake),
       18 cores each :raw-html:`<br />`
@@ -36727,12 +36561,7 @@ Hardware details
     - 200 GB SSD local disk
     - partition ``gpu_v100|gpu_v100_long``, specific Slurm :ref:`options <submit_genius_gpu>` apply
 
-The nodes are connected using an Infiniband EDR network (bandwidth 25 Gb/s), the islands
-are indicated on the diagram below.
-
-.. figure:: genius_hardware/genius.png
-   :alt: Genius hardware diagram
-
+The nodes are connected using an Infiniband EDR network (bandwidth 25 Gb/s).
 
 
 
@@ -36995,37 +36824,6 @@ FILE: source/leuven/tier2_hardware/kuleuven_storage_quota_table.rst
 
 
 ================================================
-FILE: source/leuven/tier2_hardware/memory_bandwidth_and_latency_genius.rst
-================================================
-.. _memory bandwidth and latency genius:
-
-Memory bandwith and latency measurements (Genius)
-=================================================
-
-Memory bandwidth and latencies for main memory, as well as latencies for L2
-and LLC cache. Measurements have been performed using Intel's Memory Latency
-Checker (``mlc``).
-
-.. _memory bandwidth and latency genius cascadelake:
-
-Cascadelake CPUs
-----------------
-
-.. include:: cascadelake_mlc.txt
-   :literal:
-
-
-.. _memory bandwidth and latency genius skylake:
-
-Skylake CPUs
-------------
-
-.. include:: skylake_mlc.txt
-   :literal:
-
-
-
-================================================
 FILE: source/leuven/tier2_hardware/memory_bandwidth_and_latency_wice.rst
 ================================================
 .. _memory bandwidth and latency wice:
@@ -37173,107 +36971,6 @@ was made, and you can simply copy them using the familiar bash shell operations.
     strictly at fixed time intervals. However, for a full control over the history
     of your critical files, you may consider using version control. Good example of
     that would be using Github or the private Gitlab services offered at KU Leuven.
-
-
-
-================================================
-FILE: source/leuven/tier2_hardware/skylake_mlc.txt
-================================================
-Intel(R) Memory Latency Checker - v3.10
-*** Unable to modify prefetchers (try executing 'modprobe msr')
-*** So, enabling random access for latency measurements
-Measuring idle latencies for random access (in ns)...
-		Numa node
-Numa node	     0	     1	
-       0	  90.2	 144.3	
-       1	 143.2	  89.1	
-
-Measuring Peak Injection Memory Bandwidths for the system
-Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
-Using all the threads from each core if Hyper-threading is enabled
-Using traffic with the following read-write ratios
-ALL Reads        :	211194.2	
-3:1 Reads-Writes :	193422.0	
-2:1 Reads-Writes :	192554.0	
-1:1 Reads-Writes :	185556.1	
-Stream-triad like:	172770.4	
-
-Measuring Memory Bandwidths between nodes within system 
-Bandwidths are in MB/sec (1 MB/sec = 1,000,000 Bytes/sec)
-Using all the threads from each core if Hyper-threading is enabled
-Using Read-only traffic type
-		Numa node
-Numa node	     0	     1	
-       0	104362.2	34290.6	
-       1	34283.3	106028.4	
-
-Measuring Loaded Latencies for the system
-Using all the threads from each core if Hyper-threading is enabled
-Using Read-only traffic type
-Inject	Latency	Bandwidth
-Delay	(ns)	MB/sec
-==========================
- 00000	166.18	 210643.1
- 00002	177.85	 208001.7
- 00008	166.21	 206740.7
- 00015	167.47	 206801.3
- 00050	163.31	 201772.4
- 00100	128.73	 164062.6
- 00200	116.34	 110208.0
- 00300	105.64	  79347.3
- 00400	103.73	  61575.2
- 00500	101.35	  50291.8
- 00700	102.52	  36809.1
- 01000	 96.23	  26420.4
- 01300	 95.39	  20649.2
- 01700	 94.13	  16054.2
- 02500	 93.31	  11207.0
- 03500	 95.06	   8212.5
- 05000	 92.51	   5982.5
- 09000	 92.46	   3634.3
- 20000	 91.66	   2027.6
-
-Measuring cache-to-cache transfer latency (in ns)...
-Local Socket L2->L2 HIT  latency	50.5
-Local Socket L2->L2 HITM latency	49.9
-Remote Socket L2->L2 HITM latency (data address homed in writer socket)
-			Reader Numa Node
-Writer Numa Node     0	     1	
-            0	     -	 114.0	
-            1	 114.6	     -	
-Remote Socket L2->L2 HITM latency (data address homed in reader socket)
-			Reader Numa Node
-Writer Numa Node     0	     1	
-            0	     -	 114.0	
-            1	 123.2	     -	
-
-
-
-================================================
-FILE: source/leuven/tier2_hardware/superdome_hardware.rst
-================================================
-.. _superdome hardware:
-
-Superdome hardware
-==================
-Superdome is a single node with a large amount of memory (6 TB)
-which is part of the Genius cluster.
-
-Hardware details
-----------------
-Superdome consists of
-
-- 8 sockets with
-
-    - Xeon Gold 6132 CPU\@2.6 GHz (Skylake), 14 cores each
-    - 768 GiB RAM each
-    - default memory per core is 53500 MiB
-    - partition ``superdome|superdome_long``
-
-- a 6 TB local node disk
-
-A :ref:`quick start guide <superdome_quick_start>` is available
-to get you started with running jobs on Superdome.
 
 
 
@@ -37443,12 +37140,6 @@ through an Infiniband HDR-100 network.
 The Sapphire Rapids and H100 GPU nodes are the first ones
 in the data center to be direct liquid cooled.
 
-
-
-================================================
-FILE: source/leuven/tier2_hardware/genius_hardware/genius_node_map.xlsx
-================================================
-[Binary file]
 
 
 ================================================
