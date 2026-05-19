@@ -90,37 +90,44 @@ load. Eval against pre-existing checkpoints is unaffected.
 
 Two things have to be transferred manually — everything else is in git:
 
-| What                                                                    | Destination                                  | How                                      |
-|-------------------------------------------------------------------------|----------------------------------------------|------------------------------------------|
-| Raw credit-risk datasets (`*.csv`)                                      | `$VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/`  | `src/utils/upload_to_vsc.py` (fastest) or WinSCP / FileZilla / `scp` |
-| Base TabPFN checkpoints (`tabpfn-v3-*.ckpt`, `tabpfn-v2.6-*.ckpt`, …)    | `$VSC_DATA/CreditPFN/checkpoints/`           | WinSCP / `wget` from Hugging Face        |
+| What                                                                    | Destination                                  | How                                                |
+|-------------------------------------------------------------------------|----------------------------------------------|----------------------------------------------------|
+| Raw credit-risk datasets (`*.csv`)                                      | `$VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/`  | WinSCP / FileZilla / `scp` (Globus for >1 GB)      |
+| Base TabPFN checkpoints (`tabpfn-v3-*.ckpt`, `tabpfn-v2.6-*.ckpt`, …)    | `$VSC_DATA/CreditPFN/checkpoints/`           | WinSCP, or `wget` from Hugging Face on a login node |
 
 OnDemand's built-in **Files** app can browse `$VSC_HOME` and `$VSC_DATA`
 but **not** `$VSC_SCRATCH`, which is exactly where the datasets need to
-live. WinSCP / FileZilla / `scp` reach scratch over SFTP.
+live. WinSCP / FileZilla / `scp` reach scratch over SFTP. For transfers
+larger than ~1 GB, **Globus** (button in the OnDemand Files app) is the
+fastest option.
 
-**Fast upload from your laptop** — `src/utils/upload_to_vsc.py` is a
-parallel-SFTP uploader (works on Windows without WSL). Prerequisite:
-your public SSH key is
-[registered with VSC](https://account.vscentrum.be/django/sshkey/).
+Base checkpoints can also be fetched from Hugging Face directly on a
+VSC login node — see `docs/CHECKPOINTS.md` for the exact `.ckpt`
+filenames the loader expects.
+
+### 0.6 The exact layout the pipeline expects
+
+The data pipeline reads from `$CREDITPFN_DATA_ROOT/data/raw/{pd,lgd}/<id>.csv`.
+With the default `CREDITPFN_DATA_ROOT=$VSC_SCRATCH/CreditPFN`, the
+absolute path is e.g.
+`/scratch/leuven/383/vsc38338/CreditPFN/data/raw/pd/0001.gmsc.csv`.
+
+A common mistake is to drop the CSVs straight under
+`$VSC_SCRATCH/data/raw/...` (no `CreditPFN/` subdir). The pipeline
+then logs `missing raw file: …` for every dataset and exits with
+empty manifests. Two clean fixes:
 
 ```bash
-# From the repo root on your laptop, after `pip install -r requirements.txt`:
-python src/utils/upload_to_vsc.py --user vsc38338              # default 4 workers
-python src/utils/upload_to_vsc.py --user vsc38338 --workers 8  # if your link is fast
-python src/utils/upload_to_vsc.py --user vsc38338 --force      # re-upload everything
+# Option A — move the data into the expected layout (one-off).
+mkdir -p "$VSC_SCRATCH/CreditPFN/data"
+mv "$VSC_SCRATCH/data" "$VSC_SCRATCH/CreditPFN/data"
+
+# Option B — point CREDITPFN_DATA_ROOT one level up.
+export CREDITPFN_DATA_ROOT="$VSC_SCRATCH"
+bash scripts/slurm/submit_full_pipeline.sh
 ```
 
-The script walks `data/raw/{pd,lgd}/*.csv` locally and uploads to
-`$VSC_SCRATCH/CreditPFN/data/raw/` in parallel. Files whose remote size
-already matches are skipped. For very large transfers (≥ tens of GB)
-**Globus** (button in the OnDemand Files app) is still the right tool.
-
-Base checkpoints can also be fetched from Hugging Face directly on the
-login node — see `docs/CHECKPOINTS.md` for the exact `.ckpt` filenames
-the loader expects.
-
-### 0.6 Scratch purge — temporary workaround
+### 0.7 Scratch purge — temporary workaround
 
 `$VSC_SCRATCH` auto-cleans files that haven't been accessed for
 ~1 month (VSC docs `data/storage.rst:29009`). If your raw datasets

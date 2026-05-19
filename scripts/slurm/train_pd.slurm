@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 # =============================================================================
 #  CreditPFN — slurm array: continued pretraining (PD / classifier)
 # =============================================================================
@@ -66,9 +66,8 @@ LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLUR
 # Single log file for the whole task (slurm + python).
 exec > "$LOG" 2>&1
 
-export PATH="${VSC_DATA}/miniconda3/bin:${PATH}"
-source activate CreditPFN
 cd "${VSC_DATA}/CreditPFN"
+source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
 echo "CreditPFN — TRAINING (PD)"

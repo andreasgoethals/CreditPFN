@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 # =============================================================================
 #  CreditPFN — slurm: data preprocessing
 # =============================================================================
@@ -64,10 +64,8 @@ LOG="${CREDITPFN_OUTPUT_ROOT}/logs/data_${TS}_j${SLURM_JOB_ID}.log"
 # means slurm itself doesn't create a competing file.
 exec > "$LOG" 2>&1
 
-export PATH="${VSC_DATA}/miniconda3/bin:${PATH}"
-source activate CreditPFN
-
 cd "${VSC_DATA}/CreditPFN"
+source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
 echo "CreditPFN — DATA PREPROCESSING"

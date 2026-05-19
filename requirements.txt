@@ -78,11 +78,6 @@ jupyter>=1.0,<2.0              # convenience: brings the notebook server too
 # at inference. PEFT's API is stable across 0.x.
 peft>=0.10,<1.0
 
-# --- SSH / SFTP for bulk dataset upload to VSC (src/utils/upload_to_vsc.py) --
-# Pure-Python SSH client + SFTP; lets the upload script run on Windows
-# without WSL / Git Bash / rsync. Auth via ~/.ssh/config + SSH agent.
-paramiko>=3.4,<4.0
-
 # --- Repository corpus refresh (src/utils/refresh_repositories.py) -----------
 # Pulls fresh `repositories/*.txt` dumps from GitHub. Pinned to the 0.x line
 # because gitingest is still alpha (current PyPI release 0.3.1); the eventual

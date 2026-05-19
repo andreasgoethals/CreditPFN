@@ -41,29 +41,16 @@ cd "$(dirname "$0")/../.."
 # ---------------------------------------------------------------------------
 # Activate the project conda env if it isn't already. The login-node `python`
 # does NOT have omegaconf / src.train / etc.; those live in the env created
-# during one-time setup. This block is a no-op when the user has already run
-# `source activate CreditPFN`.
+# during one-time setup. This block delegates to the shared helper used by
+# every .slurm script, so the activation logic stays in one place.
 # ---------------------------------------------------------------------------
 if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]]; then
-    # Try the standard conda hook first; fall back to a hardcoded shim
-    # that mirrors what the .slurm scripts do.
-    if command -v conda >/dev/null 2>&1; then
-        # shellcheck disable=SC1091
-        source "$(conda info --base)/etc/profile.d/conda.sh"
-        conda activate "${CONDA_ENV}" 2>/dev/null || true
-    fi
-    if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]] \
-       && [[ -d "${VSC_DATA:-}/miniconda3" ]]; then
-        export PATH="${VSC_DATA}/miniconda3/bin:${PATH}"
-        # `source activate` is the legacy shim; quieter than `conda activate`
-        # under set -u.
-        # shellcheck disable=SC1091
-        source activate "${CONDA_ENV}" 2>/dev/null || true
-    fi
-    if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]]; then
-        echo "ERROR: could not activate conda env '${CONDA_ENV}'." >&2
-        echo "       Run 'source activate ${CONDA_ENV}' before this script," >&2
-        echo "       or set CONDA_ENV=<name> if you use a different env name." >&2
+    # The helper exits 1 with a clear message on failure; trap that here so
+    # the user sees the right hint about activating the env first.
+    if ! source scripts/slurm/_activate_env.sh; then
+        echo "ERROR: could not activate conda env '${CONDA_ENV}' for the submitter." >&2
+        echo "       Quick fix: run 'source activate ${CONDA_ENV}' in this shell" >&2
+        echo "       and re-invoke 'bash scripts/slurm/submit_full_pipeline.sh'." >&2
         exit 1
     fi
 fi
@@ -102,9 +89,9 @@ if [[ -d "${CREDITPFN_DATA_ROOT}/data/raw" ]]; then
     n_lgd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/lgd" -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
     if [[ "${n_pd}" -eq 0 && "${n_lgd}" -eq 0 ]]; then
         echo "ERROR: no raw CSVs found under ${CREDITPFN_DATA_ROOT}/data/raw/." >&2
-        echo "       Upload them via:  python src/utils/upload_to_vsc.py" >&2
-        echo "       Or override the location with:  export CREDITPFN_DATA_ROOT=<path>" >&2
-        echo "       (e.g. \$VSC_DATA/CreditPFN if scratch was purged)." >&2
+        echo "       Upload them via WinSCP (or Globus for >1 GB) and re-submit." >&2
+        echo "       To use a different DATA_ROOT (e.g. \$VSC_DATA/CreditPFN" >&2
+        echo "       when scratch was purged):  export CREDITPFN_DATA_ROOT=<path>" >&2
         exit 1
     fi
     echo "  raw datasets found   : pd=${n_pd}  lgd=${n_lgd}"
