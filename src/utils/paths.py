@@ -18,20 +18,24 @@ The resolver consults three sources, in order, for each kind of path:
 
 1. **Explicit override** — the env var ``CREDITPFN_DATA_ROOT`` (for
    data) or ``CREDITPFN_OUTPUT_ROOT`` (for durable outputs). The
-   slurm scripts in ``scripts/slurm/`` set both explicitly, so a
-   slurm-driven run is fully under user control.
+   slurm scripts in ``scripts/slurm/`` honour both, so a slurm-driven
+   run can be fully under user control.
 
 2. **VSC auto-detection** — if the explicit override is absent but
    ``$VSC_DATA`` is set in the environment (the VSC environment
    *always* sets this on every node, login or compute), the resolver
-   uses VSC defaults:
+   picks defaults. For the **output root** this is always
+   ``$VSC_DATA/CreditPFN``. For the **data root** it probes a small
+   list of candidate paths and picks the first one that actually
+   contains raw CSVs under ``data/raw/{pd,lgd}/``:
 
-       CREDITPFN_DATA_ROOT   → $VSC_SCRATCH/CreditPFN   (big I/O artefacts)
-       CREDITPFN_OUTPUT_ROOT → $VSC_DATA/CreditPFN      (durable artefacts)
+       i.   $VSC_SCRATCH/CreditPFN   (the documented layout)
+       ii.  $VSC_SCRATCH             (raw datasets uploaded straight to scratch)
+       iii. $VSC_DATA/CreditPFN      (the repo's own data/ folder)
 
-   This means a researcher who SSHes into a login node and just runs
-   ``python scripts/data_pipeline.py`` gets the right behaviour
-   without remembering to set anything.
+   If none of those have data on disk (fresh checkout, first run),
+   the resolver falls back to (i) so downstream "missing raw file"
+   warnings still point at the canonical place to upload to.
 
 3. **Local fallback** — if neither (1) nor (2) apply, the resolver
    uses the repo root for both. Local laptops never set ``$VSC_DATA``
@@ -60,6 +64,7 @@ a config string. Absolute paths are always returned unchanged.
 
 from __future__ import annotations
 
+import functools
 import os
 from pathlib import Path
 
@@ -88,8 +93,79 @@ def is_vsc_environment() -> bool:
     return VSC_DATA_ENV in os.environ or "VSC_HOME" in os.environ
 
 
+# --------------------------------------------------------------------------- #
+# Auto-detection of the data root
+# --------------------------------------------------------------------------- #
+#
+# Historically the VSC default was hardcoded as ``$VSC_SCRATCH/CreditPFN``.
+# In practice the raw datasets show up in any of three places depending
+# on how the user uploaded them:
+#
+#     1. $VSC_SCRATCH/CreditPFN/data/raw/   ← the documented layout
+#     2. $VSC_SCRATCH/data/raw/             ← straight-into-scratch, no project subdir
+#     3. $VSC_DATA/CreditPFN/data/raw/      ← they sat in the repo's own data/
+#                                            folder when the user cloned
+#
+# Rather than insist on (1) we probe all three at startup and pick the
+# first one that actually contains CSVs under data/raw/{pd,lgd}/. The
+# explicit env var ``CREDITPFN_DATA_ROOT`` always wins; this only kicks
+# in when the user hasn't set one.
+
+
+def _candidate_data_roots() -> list[Path]:
+    """Ordered list of VSC-side roots to probe for raw datasets."""
+    out: list[Path] = []
+    scratch = os.environ.get(VSC_SCRATCH_ENV)
+    vsc_data = os.environ.get(VSC_DATA_ENV)
+    if scratch:
+        out.append(Path(scratch) / PROJECT_NAME)   # canonical
+        out.append(Path(scratch))                  # no-subdir variant
+    if vsc_data:
+        out.append(Path(vsc_data) / PROJECT_NAME)  # home fallback
+    out.append(REPO_ROOT)                          # local / dev
+    return out
+
+
+def _root_has_data(root: Path) -> bool:
+    """True iff ``root/data/raw/pd/`` or ``root/data/raw/lgd/`` has CSVs."""
+    for track in ("pd", "lgd"):
+        d = root / "data" / "raw" / track
+        try:
+            if d.is_dir() and next(d.glob("*.csv"), None) is not None:
+                return True
+        except (OSError, PermissionError):                                # pragma: no cover
+            continue
+    return False
+
+
+@functools.cache
+def _autodetect_data_root() -> Path | None:
+    """Return the first candidate root that contains raw CSVs, or None.
+
+    Memoised because we'll be called many times during a single pipeline
+    run and the filesystem state doesn't change underneath us. Tests
+    that monkey-patch env vars between calls should invoke
+    ``_autodetect_data_root.cache_clear()`` between cases.
+    """
+    for candidate in _candidate_data_roots():
+        if _root_has_data(candidate):
+            return candidate
+    return None
+
+
 def _vsc_default_data_root() -> Path | None:
-    """``$VSC_SCRATCH/CreditPFN`` if VSC_SCRATCH is set, else None."""
+    """Pick a sensible data root for a VSC run.
+
+    Order of preference:
+      1. Whichever candidate path has CSVs under ``data/raw/{pd,lgd}/``
+         (see :func:`_autodetect_data_root`).
+      2. ``$VSC_SCRATCH/CreditPFN`` — the documented layout, used even
+         when no data is on disk yet so downstream "missing raw file"
+         warnings point at the canonical location.
+    """
+    detected = _autodetect_data_root()
+    if detected is not None:
+        return detected
     scratch = os.environ.get(VSC_SCRATCH_ENV)
     return Path(scratch) / PROJECT_NAME if scratch else None
 

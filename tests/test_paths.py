@@ -14,10 +14,24 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from src.utils.paths import (
     REPO_ROOT, get_roots, is_vsc_environment,
     resolve_data_path, resolve_output_path,
 )
+from src.utils import paths as _paths_mod
+
+
+@pytest.fixture(autouse=True)
+def _clear_autodetect_cache():
+    """``_autodetect_data_root`` is ``@functools.cache``-d for production
+    speed (the filesystem doesn't change underneath one run). For tests
+    that monkey-patch env vars between cases that's a state leak, so
+    flush the cache around every test."""
+    _paths_mod._autodetect_data_root.cache_clear()
+    yield
+    _paths_mod._autodetect_data_root.cache_clear()
 
 
 def test_relative_path_resolves_to_repo_root_when_unset(monkeypatch) -> None:
