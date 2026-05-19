@@ -11,7 +11,7 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=12:00:00
+#SBATCH --time=04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -22,13 +22,14 @@
                          # via `python scripts/train_pipeline.py --list-trials track=lgd`.
                          # Over-sizing is safe: surplus tasks exit 0 cleanly.
 
-sleep $((RANDOM % 60 + 1))
+sleep $((RANDOM % 30 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-export CREDITPFN_DATA_ROOT="${VSC_SCRATCH}/CreditPFN"
-export CREDITPFN_OUTPUT_ROOT="${VSC_DATA}/CreditPFN"
+# See data.slurm for the rationale on these defaults + overrides.
+export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
          "${CREDITPFN_OUTPUT_ROOT}/manifests" \

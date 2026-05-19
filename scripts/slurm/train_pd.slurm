@@ -32,7 +32,7 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=12:00:00
+#SBATCH --time=04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -45,13 +45,16 @@
                          # (see scripts/train_pipeline.py soft no-op).
 
 # Stagger array starts to avoid I/O storms on shared scratch.
-sleep $((RANDOM % 60 + 1))
+sleep $((RANDOM % 30 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-export CREDITPFN_DATA_ROOT="${VSC_SCRATCH}/CreditPFN"
-export CREDITPFN_OUTPUT_ROOT="${VSC_DATA}/CreditPFN"
+# Honour user-set CREDITPFN_DATA_ROOT (propagated via submit_full_pipeline.sh
+# --export=ALL,...). Default = scratch; override to $VSC_DATA/CreditPFN
+# if you want to keep data on home (e.g. as a scratch-purge workaround).
+export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
          "${CREDITPFN_OUTPUT_ROOT}/manifests" \

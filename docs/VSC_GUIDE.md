@@ -92,18 +92,50 @@ Two things have to be transferred manually — everything else is in git:
 
 | What                                                                    | Destination                                  | How                                      |
 |-------------------------------------------------------------------------|----------------------------------------------|------------------------------------------|
-| Raw credit-risk datasets (`*.csv`)                                      | `$VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/`  | WinSCP / FileZilla / `scp` / `rsync`     |
-| Base TabPFN checkpoints (`tabpfn-v3-*.ckpt`, `tabpfn-v2.6-*.ckpt`, …)    | `$VSC_DATA/CreditPFN/checkpoints/`           | Same — or `wget` from Hugging Face       |
+| Raw credit-risk datasets (`*.csv`)                                      | `$VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/`  | `src/utils/upload_to_vsc.py` (fastest) or WinSCP / FileZilla / `scp` |
+| Base TabPFN checkpoints (`tabpfn-v3-*.ckpt`, `tabpfn-v2.6-*.ckpt`, …)    | `$VSC_DATA/CreditPFN/checkpoints/`           | WinSCP / `wget` from Hugging Face        |
 
 OnDemand's built-in **Files** app can browse `$VSC_HOME` and `$VSC_DATA`
 but **not** `$VSC_SCRATCH`, which is exactly where the datasets need to
-live. WinSCP / FileZilla / `scp` reach scratch over SFTP. For files
-larger than a few GB, prefer **Globus** (button in the OnDemand Files
-app).
+live. WinSCP / FileZilla / `scp` reach scratch over SFTP.
+
+**Fast upload from your laptop** — `src/utils/upload_to_vsc.py` is a
+parallel-SFTP uploader (works on Windows without WSL). Prerequisite:
+your public SSH key is
+[registered with VSC](https://account.vscentrum.be/django/sshkey/).
+
+```bash
+# From the repo root on your laptop, after `pip install -r requirements.txt`:
+python src/utils/upload_to_vsc.py --user vsc38338              # default 4 workers
+python src/utils/upload_to_vsc.py --user vsc38338 --workers 8  # if your link is fast
+python src/utils/upload_to_vsc.py --user vsc38338 --force      # re-upload everything
+```
+
+The script walks `data/raw/{pd,lgd}/*.csv` locally and uploads to
+`$VSC_SCRATCH/CreditPFN/data/raw/` in parallel. Files whose remote size
+already matches are skipped. For very large transfers (≥ tens of GB)
+**Globus** (button in the OnDemand Files app) is still the right tool.
 
 Base checkpoints can also be fetched from Hugging Face directly on the
 login node — see `docs/CHECKPOINTS.md` for the exact `.ckpt` filenames
 the loader expects.
+
+### 0.6 Scratch purge — temporary workaround
+
+`$VSC_SCRATCH` auto-cleans files that haven't been accessed for
+~1 month (VSC docs `data/storage.rst:29009`). If your raw datasets
+disappeared between runs, you can temporarily keep them on
+`$VSC_DATA` instead. Set `CREDITPFN_DATA_ROOT` before submitting:
+
+```bash
+export CREDITPFN_DATA_ROOT="$VSC_DATA/CreditPFN"
+bash scripts/slurm/submit_full_pipeline.sh
+```
+
+`submit_full_pipeline.sh` propagates this through `sbatch --export=ALL,…`
+to every chained job (data, train, eval). Re-upload to scratch and
+unset the env var when you're done — `$VSC_DATA` has a tight quota,
+not designed for the cached `.npz` artefacts the pipeline produces.
 
 ---
 
@@ -385,6 +417,7 @@ python scripts/eval_pipeline.py track=pd --method xgboost --rerun
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
 | `ModuleNotFoundError: No module named 'omegaconf'` on submit | The conda env isn't active. Run `source activate CreditPFN` first; the submitter also tries to activate it itself. |
 | `sbatch: error: Batch job submission failed: Job dependency problem` | A stage targets a different cluster than its dependency — VSC has separate Slurm controllers for Genius and wICE, so cross-cluster `afterok:` chains don't work. Every `.slurm` header in this repo uses `#SBATCH --cluster=wice` for exactly this reason. (The `<jobid>;wice` suffix in `sbatch --parsable` output on a Genius login is NOT this error — it just means the jobid lives in wICE's controller, which is normal.) |
+| Data preprocessing log shows `missing raw file: …/<id>.csv — skipped` for everything | The raw datasets aren't where the pipeline expects. Either (a) re-upload to `$VSC_SCRATCH` (see §0.5), or (b) `export CREDITPFN_DATA_ROOT="$VSC_DATA/CreditPFN"` and put the datasets there instead (see §0.6). |
 | `TypeError` on first model load in training             | PyPI tabpfn 2.2.1 has the old API — install the Prior Labs wheel (see §0.4).                                     |
 | Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
 | One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |

@@ -34,19 +34,25 @@
 #SBATCH --cluster=wice
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=batch
-#SBATCH --time=08:00:00
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=40G
+#SBATCH --mem=16G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-export CREDITPFN_DATA_ROOT="${VSC_SCRATCH}/CreditPFN"
-export CREDITPFN_OUTPUT_ROOT="${VSC_DATA}/CreditPFN"
+# Default: raw datasets + cache live on scratch (big, parallel, no
+# backup — scratch policy is auto-cleanup of files unaccessed for 1
+# month). If the user exports CREDITPFN_DATA_ROOT before submitting
+# (e.g. to keep data on $VSC_DATA as a temporary workaround for a
+# scratch purge), the value propagates through the submitter via
+# `sbatch --export=ALL,...` and the `:-` default below honours it.
+export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
 

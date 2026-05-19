@@ -23,13 +23,14 @@
                           #   python scripts/eval_pipeline.py --list-tasks track=lgd
                           # …or just submit via scripts/slurm/submit_full_pipeline.sh.
 
-sleep $((RANDOM % 30 + 1))
+sleep $((RANDOM % 15 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-export CREDITPFN_DATA_ROOT="${VSC_SCRATCH}/CreditPFN"
-export CREDITPFN_OUTPUT_ROOT="${VSC_DATA}/CreditPFN"
+# See data.slurm for the rationale on these defaults + overrides.
+export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
          "${CREDITPFN_OUTPUT_ROOT}/results"

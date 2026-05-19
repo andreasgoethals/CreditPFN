@@ -78,11 +78,37 @@ if ! python -c "import omegaconf, src.train.corpus" 2>/dev/null; then
     exit 1
 fi
 
+# Propagate `CREDITPFN_DATA_ROOT` / `CREDITPFN_OUTPUT_ROOT` to the
+# spawned jobs. Slurm doesn't inherit env vars by default; we have to
+# list them on each `sbatch --export=ALL,<vars>`. Defaults match what
+# the .slurm scripts themselves fall back to, so unset = scratch.
+CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH:-/scratch}/CreditPFN}"
+CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA:-${HOME}}/CreditPFN}"
+SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT}"
+
 echo "Submitting CreditPFN full pipeline …"
-echo "  CONDA_ENV          : ${CONDA_ENV}"
-echo "  TRACKS             : ${TRACKS}"
-echo "  TRAIN_CONCURRENCY  : ${TRAIN_CONCURRENCY}"
-echo "  EVAL_CONCURRENCY   : ${EVAL_CONCURRENCY}"
+echo "  CONDA_ENV            : ${CONDA_ENV}"
+echo "  TRACKS               : ${TRACKS}"
+echo "  TRAIN_CONCURRENCY    : ${TRAIN_CONCURRENCY}"
+echo "  EVAL_CONCURRENCY     : ${EVAL_CONCURRENCY}"
+echo "  CREDITPFN_DATA_ROOT  : ${CREDITPFN_DATA_ROOT}"
+echo "  CREDITPFN_OUTPUT_ROOT: ${CREDITPFN_OUTPUT_ROOT}"
+
+# Sanity-check the chosen DATA_ROOT actually has raw datasets before
+# burning queue time. Skip if the dir doesn't exist on this filesystem
+# (e.g. we're on a laptop just dry-running the script).
+if [[ -d "${CREDITPFN_DATA_ROOT}/data/raw" ]]; then
+    n_pd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/pd"  -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
+    n_lgd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/lgd" -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
+    if [[ "${n_pd}" -eq 0 && "${n_lgd}" -eq 0 ]]; then
+        echo "ERROR: no raw CSVs found under ${CREDITPFN_DATA_ROOT}/data/raw/." >&2
+        echo "       Upload them via:  python src/utils/upload_to_vsc.py" >&2
+        echo "       Or override the location with:  export CREDITPFN_DATA_ROOT=<path>" >&2
+        echo "       (e.g. \$VSC_DATA/CreditPFN if scratch was purged)." >&2
+        exit 1
+    fi
+    echo "  raw datasets found   : pd=${n_pd}  lgd=${n_lgd}"
+fi
 
 # Helper: extract the bare jobid from sbatch's `--parsable` output.
 # All VSC login nodes are GENIUS login nodes (wICE has no dedicated
@@ -113,7 +139,7 @@ get_cluster_suffix() {
 # when it doesn't (typical for VSC: login nodes are Genius, all our
 # jobs target wICE → suffix is always `;wice`). Strip the suffix and
 # remember the target cluster so we can sanity-check downstream stages.
-DATA_JID_RAW=$(sbatch --parsable scripts/slurm/data.slurm)
+DATA_JID_RAW=$(sbatch --parsable --export="${SBATCH_EXPORT}" scripts/slurm/data.slurm)
 DATA_JID=$(strip_cluster_suffix "${DATA_JID_RAW}")
 DATA_CLUSTER=$(get_cluster_suffix "${DATA_JID_RAW}")
 echo "  data               : ${DATA_JID}${DATA_CLUSTER:+  (cluster=${DATA_CLUSTER})}"
@@ -124,6 +150,7 @@ for TR in ${TRACKS}; do
     SCRIPT="scripts/slurm/train_${TR}.slurm"
     N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
     JID_RAW=$(sbatch --parsable \
+        --export="${SBATCH_EXPORT}" \
         --dependency="afterok:${DATA_JID}" \
         --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
         "${SCRIPT}")
@@ -193,6 +220,7 @@ print((n_baselines + n_untuned + n_planned) * max(1, n_test))
     UPPER_N=${UPPER_N:-1}
     if [[ "$UPPER_N" -lt 1 ]]; then UPPER_N=1; fi
     EVAL_JID_RAW=$(sbatch --parsable \
+        --export="${SBATCH_EXPORT}" \
         --dependency="afterok:${DEP}" \
         --array=0-$((UPPER_N - 1))%"${EVAL_CONCURRENCY}" \
         "${SCRIPT}")
