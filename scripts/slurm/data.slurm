@@ -4,7 +4,9 @@
 # =============================================================================
 #
 #  Stage 1 of the on-VSC pipeline. Reads `data/raw/{pd,lgd}/<id>.csv`
-#  from $CREDITPFN_DATA_ROOT (= $VSC_SCRATCH/CreditPFN), runs the
+#  from $CREDITPFN_DATA_ROOT (auto-detected by src.utils.paths when
+#  unset — probes $VSC_SCRATCH/CreditPFN, $VSC_SCRATCH, $VSC_DATA/CreditPFN
+#  in that order; whichever has CSVs wins), runs the
 #  five-stage pipeline, and writes:
 #    * data/cached/{pd,lgd}/<id>/chunk_*.npz  → DATA_ROOT (scratch)
 #    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT (durable)

@@ -109,20 +109,29 @@ def is_vsc_environment() -> bool:
 # Rather than insist on (1) we probe all three at startup and pick the
 # first one that actually contains CSVs under data/raw/{pd,lgd}/. The
 # explicit env var ``CREDITPFN_DATA_ROOT`` always wins; this only kicks
-# in when the user hasn't set one.
+# in when the user hasn't set one. ``REPO_ROOT`` is deliberately NOT a
+# candidate — see the note on :func:`_candidate_data_roots`.
 
 
 def _candidate_data_roots() -> list[Path]:
-    """Ordered list of VSC-side roots to probe for raw datasets."""
+    """Ordered list of VSC-side roots to probe for raw datasets.
+
+    Only consulted when we're on a VSC node (see :func:`_vsc_default_data_root`).
+    We deliberately don't include ``REPO_ROOT`` here — on VSC the repo
+    typically lives at ``$VSC_DATA/CreditPFN`` (= candidate #3), and on a
+    laptop ``_resolve_root`` skips this whole function and uses
+    ``REPO_ROOT`` directly. Including ``REPO_ROOT`` would also cause
+    autodetect on a developer machine to pick the dev's repo data even
+    when VSC env vars are set (e.g. in tests).
+    """
     out: list[Path] = []
     scratch = os.environ.get(VSC_SCRATCH_ENV)
     vsc_data = os.environ.get(VSC_DATA_ENV)
     if scratch:
-        out.append(Path(scratch) / PROJECT_NAME)   # canonical
-        out.append(Path(scratch))                  # no-subdir variant
+        out.append(Path(scratch) / PROJECT_NAME)   # A: canonical
+        out.append(Path(scratch))                  # B: no-subdir variant
     if vsc_data:
-        out.append(Path(vsc_data) / PROJECT_NAME)  # home fallback
-    out.append(REPO_ROOT)                          # local / dev
+        out.append(Path(vsc_data) / PROJECT_NAME)  # C: repo's own data/
     return out
 
 

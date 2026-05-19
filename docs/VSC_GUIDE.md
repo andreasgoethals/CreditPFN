@@ -105,25 +105,38 @@ Base checkpoints can also be fetched from Hugging Face directly on a
 VSC login node — see `docs/CHECKPOINTS.md` for the exact `.ckpt`
 filenames the loader expects.
 
-### 0.6 The exact layout the pipeline expects
+### 0.6 The exact layout the pipeline expects (auto-detected)
 
 The data pipeline reads from `$CREDITPFN_DATA_ROOT/data/raw/{pd,lgd}/<id>.csv`.
-With the default `CREDITPFN_DATA_ROOT=$VSC_SCRATCH/CreditPFN`, the
-absolute path is e.g.
-`/scratch/leuven/383/vsc38338/CreditPFN/data/raw/pd/0001.gmsc.csv`.
+The submitter (`submit_full_pipeline.sh`) auto-detects where you put
+the data and sets `CREDITPFN_DATA_ROOT` for the slurm jobs. The probe
+order is:
 
-A common mistake is to drop the CSVs straight under
-`$VSC_SCRATCH/data/raw/...` (no `CreditPFN/` subdir). The pipeline
-then logs `missing raw file: …` for every dataset and exits with
-empty manifests. Two clean fixes:
+  1. `$VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/` — canonical layout
+  2. `$VSC_SCRATCH/data/raw/{pd,lgd}/`           — straight-into-scratch
+  3. `$VSC_DATA/CreditPFN/data/raw/{pd,lgd}/`    — repo-local
+
+Whichever directory actually contains CSVs wins. So all three of these
+work without any further configuration:
 
 ```bash
-# Option A — move the data into the expected layout (one-off).
-mkdir -p "$VSC_SCRATCH/CreditPFN/data"
-mv "$VSC_SCRATCH/data" "$VSC_SCRATCH/CreditPFN/data"
+# A — documented canonical layout
+scp -r raw/ vsc38338@login.hpc.kuleuven.be:'$VSC_SCRATCH/CreditPFN/data/'
+# B — straight to scratch (no project subdir)
+scp -r raw/ vsc38338@login.hpc.kuleuven.be:'$VSC_SCRATCH/data/'
+# C — uploaded into the repo's own data/ folder
+scp -r raw/ vsc38338@login.hpc.kuleuven.be:'$VSC_DATA/CreditPFN/data/'
+```
 
-# Option B — point CREDITPFN_DATA_ROOT one level up.
-export CREDITPFN_DATA_ROOT="$VSC_SCRATCH"
+After any of the above, just run `bash scripts/slurm/submit_full_pipeline.sh`
+— it'll print `CREDITPFN_DATA_ROOT: <resolved path>` so you can verify it
+picked the right one.
+
+If you need to force a specific location (e.g. mid-run, after a scratch
+purge), set the env var explicitly — it always wins over autodetect:
+
+```bash
+export CREDITPFN_DATA_ROOT="$VSC_DATA/CreditPFN"
 bash scripts/slurm/submit_full_pipeline.sh
 ```
 
@@ -131,18 +144,15 @@ bash scripts/slurm/submit_full_pipeline.sh
 
 `$VSC_SCRATCH` auto-cleans files that haven't been accessed for
 ~1 month (VSC docs `data/storage.rst:29009`). If your raw datasets
-disappeared between runs, you can temporarily keep them on
-`$VSC_DATA` instead. Set `CREDITPFN_DATA_ROOT` before submitting:
+disappeared between runs, either re-upload to scratch, or — if you
+still have a copy in `$VSC_DATA/CreditPFN/data/` — just re-submit:
+autodetect (§0.6) will route to `$VSC_DATA` automatically.
 
-```bash
-export CREDITPFN_DATA_ROOT="$VSC_DATA/CreditPFN"
-bash scripts/slurm/submit_full_pipeline.sh
-```
-
-`submit_full_pipeline.sh` propagates this through `sbatch --export=ALL,…`
-to every chained job (data, train, eval). Re-upload to scratch and
-unset the env var when you're done — `$VSC_DATA` has a tight quota,
-not designed for the cached `.npz` artefacts the pipeline produces.
+`submit_full_pipeline.sh` propagates the resolved `CREDITPFN_DATA_ROOT`
+through `sbatch --export=ALL,…` to every chained job (data, train,
+eval). For sustained use, re-upload to scratch — `$VSC_DATA` has a
+tight quota, not designed for the cached `.npz` artefacts the pipeline
+produces.
 
 ---
 
@@ -424,7 +434,7 @@ python scripts/eval_pipeline.py track=pd --method xgboost --rerun
 |---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
 | `ModuleNotFoundError: No module named 'omegaconf'` on submit | The conda env isn't active. Run `source activate CreditPFN` first; the submitter also tries to activate it itself. |
 | `sbatch: error: Batch job submission failed: Job dependency problem` | A stage targets a different cluster than its dependency — VSC has separate Slurm controllers for Genius and wICE, so cross-cluster `afterok:` chains don't work. Every `.slurm` header in this repo uses `#SBATCH --cluster=wice` for exactly this reason. (The `<jobid>;wice` suffix in `sbatch --parsable` output on a Genius login is NOT this error — it just means the jobid lives in wICE's controller, which is normal.) |
-| Data preprocessing log shows `missing raw file: …/<id>.csv — skipped` for everything | The raw datasets aren't where the pipeline expects. Either (a) re-upload to `$VSC_SCRATCH` (see §0.5), or (b) `export CREDITPFN_DATA_ROOT="$VSC_DATA/CreditPFN"` and put the datasets there instead (see §0.6). |
+| Data preprocessing log shows `missing raw file: …/<id>.csv — skipped` for everything | The pipeline auto-probes three layouts (see §0.6); if none have CSVs you'll get this. Re-upload to any of `$VSC_SCRATCH/CreditPFN/data/raw/`, `$VSC_SCRATCH/data/raw/`, or `$VSC_DATA/CreditPFN/data/raw/`. The submitter prints the resolved `CREDITPFN_DATA_ROOT` on launch — verify it matches where you actually uploaded. |
 | `TypeError` on first model load in training             | PyPI tabpfn 2.2.1 has the old API — install the Prior Labs wheel (see §0.4).                                     |
 | Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
 | One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |

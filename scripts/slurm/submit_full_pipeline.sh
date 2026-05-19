@@ -67,10 +67,18 @@ fi
 
 # Propagate `CREDITPFN_DATA_ROOT` / `CREDITPFN_OUTPUT_ROOT` to the
 # spawned jobs. Slurm doesn't inherit env vars by default; we have to
-# list them on each `sbatch --export=ALL,<vars>`. Defaults match what
-# the .slurm scripts themselves fall back to, so unset = scratch.
-CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH:-/scratch}/CreditPFN}"
-CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA:-${HOME}}/CreditPFN}"
+# list them on each `sbatch --export=ALL,<vars>`.
+#
+# If the user already exported one (explicit override), keep it. Otherwise
+# delegate to `src.utils.paths.get_roots()` — which probes the three known
+# VSC upload layouts and returns whichever one actually has raw CSVs on
+# disk. That way uploads to `$VSC_SCRATCH/data/raw/` (no project subdir)
+# or `$VSC_DATA/CreditPFN/data/raw/` (repo-local) are found automatically
+# without the user having to remember to set the env var. See the docstring
+# of `src/utils/paths.py` for the precedence ladder.
+read -r CREDITPFN_DATA_ROOT CREDITPFN_OUTPUT_ROOT < <(
+    python -c "from src.utils.paths import get_roots; r=get_roots(); print(r['data_root'], r['output_root'])"
+)
 SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT}"
 
 echo "Submitting CreditPFN full pipeline …"

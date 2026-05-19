@@ -174,6 +174,113 @@ def test_is_vsc_environment_only_true_when_vsc_envvars_present(monkeypatch) -> N
 
 
 # =============================================================================
+# Auto-detection of *where the raw data actually sits* on VSC
+# =============================================================================
+#
+# Real user upload layouts we've seen in the wild:
+#
+#   A. $VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/   ← documented canonical
+#   B. $VSC_SCRATCH/data/raw/{pd,lgd}/             ← straight-into-scratch
+#   C. $VSC_DATA/CreditPFN/data/raw/{pd,lgd}/      ← uploaded with the repo
+#
+# ``_autodetect_data_root`` probes the three in that priority order and
+# returns the first one that has CSVs under ``data/raw/pd/`` or
+# ``data/raw/lgd/``.
+
+
+def _seed_raw_csv(root: Path, track: str = "pd") -> None:
+    """Drop a stub CSV under ``root/data/raw/<track>/`` so the autodetect
+    probe ``_root_has_data`` sees it."""
+    d = root / "data" / "raw" / track
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "stub.csv").write_text("dummy,header\n1,2\n", encoding="utf-8")
+
+
+def test_autodetect_prefers_scratch_with_project_subdir(monkeypatch, tmp_path) -> None:
+    """Layout A wins over B and C when all three have data."""
+    scratch  = tmp_path / "scratch"
+    vsc_data = tmp_path / "data"
+    _seed_raw_csv(scratch / "CreditPFN")   # A
+    _seed_raw_csv(scratch)                 # B
+    _seed_raw_csv(vsc_data / "CreditPFN")  # C
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    monkeypatch.setenv("VSC_SCRATCH", str(scratch))
+    monkeypatch.setenv("VSC_DATA",    str(vsc_data))
+    monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
+    assert resolve_data_path("data/raw") == scratch / "CreditPFN" / "data" / "raw"
+
+
+def test_autodetect_falls_back_to_scratch_root(monkeypatch, tmp_path) -> None:
+    """Layout B: data sits straight in $VSC_SCRATCH (no CreditPFN subdir).
+    Autodetect must still find it and route there."""
+    scratch  = tmp_path / "scratch"
+    vsc_data = tmp_path / "data"
+    _seed_raw_csv(scratch)                 # B
+    _seed_raw_csv(vsc_data / "CreditPFN")  # C — exists too, but loses to B
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    monkeypatch.setenv("VSC_SCRATCH", str(scratch))
+    monkeypatch.setenv("VSC_DATA",    str(vsc_data))
+    monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
+    assert resolve_data_path("data/raw") == scratch / "data" / "raw"
+
+
+def test_autodetect_uses_vsc_data_when_scratch_empty(monkeypatch, tmp_path) -> None:
+    """Layout C: scratch was purged (or user uploaded straight to $VSC_DATA);
+    autodetect routes data reads to ``$VSC_DATA/CreditPFN``."""
+    scratch  = tmp_path / "scratch"
+    scratch.mkdir()
+    vsc_data = tmp_path / "data"
+    _seed_raw_csv(vsc_data / "CreditPFN")  # only C
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    monkeypatch.setenv("VSC_SCRATCH", str(scratch))
+    monkeypatch.setenv("VSC_DATA",    str(vsc_data))
+    monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
+    assert resolve_data_path("data/raw") == \
+        vsc_data / "CreditPFN" / "data" / "raw"
+
+
+def test_autodetect_detects_lgd_csvs_too(monkeypatch, tmp_path) -> None:
+    """``_root_has_data`` probes both ``pd/`` *and* ``lgd/`` — either is
+    enough to count a root as populated."""
+    scratch  = tmp_path / "scratch"
+    vsc_data = tmp_path / "data"
+    _seed_raw_csv(scratch, track="lgd")  # only LGD CSVs, no PD
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    monkeypatch.setenv("VSC_SCRATCH", str(scratch))
+    monkeypatch.setenv("VSC_DATA",    str(vsc_data))
+    monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
+    assert resolve_data_path("data/raw") == scratch / "data" / "raw"
+
+
+def test_autodetect_falls_back_to_canonical_when_nothing_found(monkeypatch, tmp_path) -> None:
+    """Fresh checkout, no data on disk anywhere → fall back to the
+    documented ``$VSC_SCRATCH/CreditPFN`` so downstream "missing raw file"
+    warnings point at the canonical upload location."""
+    scratch  = tmp_path / "scratch"
+    vsc_data = tmp_path / "data"
+    scratch.mkdir(); vsc_data.mkdir()  # exist but empty
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    monkeypatch.setenv("VSC_SCRATCH", str(scratch))
+    monkeypatch.setenv("VSC_DATA",    str(vsc_data))
+    monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
+    assert resolve_data_path("data/cached") == \
+        scratch / "CreditPFN" / "data" / "cached"
+
+
+def test_explicit_envvar_wins_over_autodetect(monkeypatch, tmp_path) -> None:
+    """Even if a candidate VSC root has data on disk, an explicit
+    ``CREDITPFN_DATA_ROOT`` always wins — slurm scripts rely on this."""
+    scratch  = tmp_path / "scratch"
+    explicit = tmp_path / "explicit"
+    _seed_raw_csv(scratch / "CreditPFN")    # autodetect *would* find this
+    monkeypatch.setenv("CREDITPFN_DATA_ROOT", str(explicit))
+    monkeypatch.setenv("VSC_SCRATCH",         str(scratch))
+    monkeypatch.setenv("VSC_DATA",            str(tmp_path / "data"))
+    monkeypatch.setenv("VSC_HOME",            str(tmp_path / "home"))
+    assert resolve_data_path("data/cached") == explicit / "data" / "cached"
+
+
+# =============================================================================
 # run_log: per-task log file naming + setup_logging slurm-awareness
 # =============================================================================
 
