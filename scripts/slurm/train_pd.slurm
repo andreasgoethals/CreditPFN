@@ -50,6 +50,12 @@ sleep $((RANDOM % 30 + 1))
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
+# wICE's gpu_h100 partition mixes H100 80 GB and H100 NVL 94 GB cards.
+# `expandable_segments` lets the allocator reclaim fragmented blocks,
+# which the OOM error message explicitly recommends. Cheap insurance —
+# no measurable slowdown.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+
 # Honour user-set CREDITPFN_DATA_ROOT (propagated via submit_full_pipeline.sh
 # --export=ALL,...). Default = scratch; override to $VSC_DATA/CreditPFN
 # if you want to keep data on home (e.g. as a scratch-purge workaround).

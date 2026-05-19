@@ -16,15 +16,24 @@
 seed: 42
 
 # Paths are interpreted by `src.utils.paths`:
-#   raw / processed / cached → $CREDITPFN_DATA_ROOT (scratch on VSC, repo locally)
-#   dedup / manifest_*       → $CREDITPFN_OUTPUT_ROOT (durable on VSC, repo locally)
+#   raw / processed / cached → wherever `data_source` points (see below).
+#   dedup / manifest_*       → ALWAYS the durable "data" location
+#                              ($VSC_DATA/CreditPFN on VSC, repo root locally).
 paths:
+  # Where the data corpus lives — raw inputs AND the processed/cached outputs.
+  # Two values:
+  #   "scratch" — $VSC_SCRATCH/383/<user>/CreditPFN/data/...  (VSC fast-purge area)
+  #   "data"    — $VSC_DATA/leuven/383/<user>/CreditPFN/data/... (VSC durable storage)
+  # Ignored on a laptop (no $VSC_DATA / $VSC_SCRATCH — the repo's own data/
+  # folder is always used).
+  data_source:   "scratch"
+
   raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv
   processed:     data/processed          # sanitize.py output
   cached:        data/cached             # dataset.py output (.npz chunks)
-  dedup:         data/dedup              # 4× doubles_*_{pre,post}.csv
-  manifest_pd:   data/manifest_pd.csv
-  manifest_lgd:  data/manifest_lgd.csv
+  dedup:         data/dedup              # 4× doubles_*_{pre,post}.csv (always durable)
+  manifest_pd:   data/manifest_pd.csv    # always durable
+  manifest_lgd:  data/manifest_lgd.csv   # always durable
 
 
 # -----------------------------------------------------------------------------

@@ -59,6 +59,11 @@ run_name: "creditpfn"
 device: "auto"           # "auto" | "cuda" | "cpu"
 track: "pd"              # "pd" (classifier) | "lgd" (regressor)
 
+# The training corpus location is taken from `paths.data_source` in
+# config/data.yaml (single source of truth). To flip between scratch
+# and durable storage, change it there — the train pipeline reads
+# that file at startup before resolving cfg.corpus.cached_dir.
+
 
 # =============================================================================
 #  Section 2 · Corpus split (train / test by dataset_id)
@@ -117,9 +122,17 @@ train:
   grad_clip_norm: 1.0
   amp: true                             # AMP autocast (CUDA only)
 
-  # Per-step context+query sample count. 100k matches the chunk cap; tuned
-  # for wICE H100 NVL. Lower if you see OOMs.
-  n_finetune_ctx_plus_query_samples: 100000
+  # Per-step context+query sample count.
+  #
+  # Memory budget (empirical, TabPFN-v3 + LoRA, AMP on):
+  #   * 100 000 rows → OOM on H100 80 GB (wICE gpu_h100); fits H100 NVL 94 GB.
+  #   *  50 000 rows → fits H100 80 GB with ~10 GB headroom; recommended default.
+  #   *  25 000 rows → safe for any 40 GB+ card (A100, L40S).
+  # The v3 three-stage architecture is ~2× more memory-hungry per row than
+  # v2.6 because the column-aggregator's `cls`-token cross-attention sees
+  # the full row count. Match this to the GPU you actually get, not the
+  # one you wish you had. (See literature note on TabPFN-3 for context.)
+  n_finetune_ctx_plus_query_samples: 50000
 
   # Fraction of those rows that go to the query split (matches TabPFN's
   # `finetune_ctx_query_split_ratio = 0.20`).

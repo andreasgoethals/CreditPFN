@@ -73,7 +73,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.utils.paths import resolve_output_path  # noqa: E402
+from src.utils.paths import apply_data_source_from_cfg, resolve_output_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
@@ -276,6 +276,11 @@ def run(
 ) -> int:
     eval_cfg, train_cfg = _load_cfgs(eval_overrides or [], train_overrides or [])
     track = str(train_cfg.track)
+
+    # Apply paths.data_source from config/data.yaml (single source of
+    # truth) BEFORE any resolve_*_path calls below.
+    from omegaconf import OmegaConf
+    apply_data_source_from_cfg(OmegaConf.load("config/data.yaml"))
 
     log, _ = resolve_run_log(log_path, task_name=f"eval_{track}")
     setup_logging(log.path)

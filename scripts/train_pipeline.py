@@ -77,7 +77,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.utils.paths import resolve_output_path  # noqa: E402
+from src.utils.paths import apply_data_source_from_cfg, resolve_output_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
@@ -296,6 +296,11 @@ def run(
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
+
+    # Apply paths.data_source from config/data.yaml (single source of truth)
+    # BEFORE any path resolution downstream. See apply_data_source_from_cfg.
+    from omegaconf import OmegaConf
+    apply_data_source_from_cfg(OmegaConf.load("config/data.yaml"))
 
     # ---- 0) one log file per task: logs/<task>_<ts>.log -----------
     log, _ = resolve_run_log(log_path, task_name=f"train_{track}")

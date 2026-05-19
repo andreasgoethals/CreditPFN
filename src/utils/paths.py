@@ -249,3 +249,82 @@ def get_roots() -> dict[str, Path]:
             env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root(),
         ),
     }
+
+
+# --------------------------------------------------------------------------- #
+# Config-driven data-source selection
+# --------------------------------------------------------------------------- #
+#
+# `config/data.yaml` exposes a `paths.data_source` knob with TWO allowed values:
+#
+#   "scratch" — raw/processed/cached live on $VSC_SCRATCH/CreditPFN
+#               (fast, purged periodically).
+#   "data"    — raw/processed/cached live on $VSC_DATA/CreditPFN
+#               (durable, backed up).
+#
+# On a laptop (no $VSC_DATA / $VSC_SCRATCH) the knob is IGNORED and the
+# repo's own data/ folder is always used — there is only one place data
+# can live locally, so the toggle is meaningless.
+#
+# Dedup CSVs and manifests always resolve via `resolve_output_path`, which
+# uses the independent `OUTPUT_ROOT_ENV` ($VSC_DATA/CreditPFN on VSC, repo
+# root locally). They are the "main data directory" and never move.
+#
+# Implementation: this function sets CREDITPFN_DATA_ROOT before any path
+# resolution happens. It MUST run *immediately after* `_load_cfg()` in
+# each entry-point script.
+
+
+_DATA_SOURCE_CHOICES = ("scratch", "data")
+
+
+def apply_data_source_from_cfg(cfg) -> Path:
+    """Apply ``cfg.paths.data_source`` by setting CREDITPFN_DATA_ROOT.
+
+    Two allowed values: ``"scratch"`` or ``"data"``. On a non-VSC machine
+    the knob is ignored (the repo root is the only sensible data root).
+
+    Explicit ``$CREDITPFN_DATA_ROOT`` always wins (slurm submitters set it).
+
+    Returns the resolved data root for logging.
+    """
+    # Slurm submit scripts may have set this explicitly — honour it.
+    if os.environ.get(DATA_ROOT_ENV):
+        return _resolve_root(
+            env_var=DATA_ROOT_ENV, vsc_default=_vsc_default_data_root(),
+        )
+
+    # Laptop: knob has no effect — the repo's data/ folder is the only
+    # place data can live. Return REPO_ROOT and leave the env var unset.
+    if not is_vsc_environment():
+        return REPO_ROOT
+
+    # VSC: read the knob and translate to a concrete root.
+    paths_section = getattr(cfg, "paths", None)
+    choice = str(getattr(paths_section, "data_source", "scratch") or "scratch")
+    if choice not in _DATA_SOURCE_CHOICES:
+        raise ValueError(
+            f"paths.data_source={choice!r}: must be one of "
+            f"{_DATA_SOURCE_CHOICES}."
+        )
+
+    if choice == "scratch":
+        scratch = os.environ.get(VSC_SCRATCH_ENV)
+        if scratch is None:
+            raise RuntimeError(
+                "paths.data_source='scratch' but $VSC_SCRATCH is unset."
+            )
+        target = Path(scratch) / PROJECT_NAME
+    else:  # "data"
+        data = os.environ.get(VSC_DATA_ENV)
+        if data is None:
+            raise RuntimeError(
+                "paths.data_source='data' but $VSC_DATA is unset."
+            )
+        target = Path(data) / PROJECT_NAME
+
+    os.environ[DATA_ROOT_ENV] = str(target)
+    # The autodetect cache was filled before we set the env var; reset it
+    # so the explicit override wins on subsequent calls.
+    _autodetect_data_root.cache_clear()
+    return target

@@ -67,7 +67,9 @@ if str(_REPO) not in _sys.path:
 
 from src.data import dedup, register, sanitize, dataset  # noqa: E402
 from src.data.preprocessing import DATASET_METADATA  # noqa: E402
-from src.utils.paths import resolve_data_path, resolve_output_path  # noqa: E402
+from src.utils.paths import (  # noqa: E402
+    apply_data_source_from_cfg, resolve_data_path, resolve_output_path,
+)
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
 
@@ -160,6 +162,10 @@ def run(
     """Run the full five-stage data pipeline. See module docstring."""
     if cfg is None:
         cfg = _load_cfg()
+    # Resolve the data root from cfg.paths.data_source BEFORE any path
+    # resolution downstream. The yaml knob is a no-op if the env var is
+    # already set (slurm wins); see paths.apply_data_source_from_cfg.
+    apply_data_source_from_cfg(cfg)
     log, _ = resolve_run_log(log_path, task_name="data")
     setup_logging(log.path)
 

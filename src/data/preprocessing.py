@@ -469,7 +469,7 @@ def _fix_taiwan_creditcard(df: pd.DataFrame) -> pd.DataFrame:
         # to a 0/1 binary so the column has a sensible numeric ordering
         # for any sklearn-style baseline (TabPFN itself doesn't care about
         # the encoding direction).
-        df["SEX"] = df["SEX"].replace({2: 1, 1: 0, "2": 1, "1": 0})
+        df["SEX"] = df["SEX"].replace({2: 1, 1: 0, "2": 1, "1": 0}).infer_objects(copy=False)
     return df
 
 
@@ -605,7 +605,7 @@ def _fix_cobranded(df: pd.DataFrame) -> pd.DataFrame:
     if "application_key" in df.columns:
         df = df.drop(columns=["application_key"])
     if "mvar47" in df.columns:
-        df["mvar47"] = df["mvar47"].replace({"C": 1, "L": 0})
+        df["mvar47"] = df["mvar47"].replace({"C": 1, "L": 0}).infer_objects(copy=False)
 
     # Some columns are object-typed but mostly numeric; coerce best-effort
     # but only commit the coercion when the bulk of the column parses
@@ -637,7 +637,7 @@ def _fix_german(df: pd.DataFrame) -> pd.DataFrame:
 
     target = DATASET_METADATA["0008.german"]["target_column"]
     df = df.dropna(subset=[target])
-    df[target] = df[target].replace({1: 0, 2: 1})
+    df[target] = df[target].replace({1: 0, 2: 1}).infer_objects(copy=False)
     return df
 
 
@@ -648,17 +648,21 @@ def _fix_bank_status(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=[c for c in ["Loan ID", "Customer ID"] if c in df.columns])
 
     if "Loan Status" in df.columns:
-        df["Loan Status"] = df["Loan Status"].replace({"Fully Paid": 0, "Charged Off": 1})
+        df["Loan Status"] = df["Loan Status"].replace(
+            {"Fully Paid": 0, "Charged Off": 1}
+        ).infer_objects(copy=False)
         df["Loan Status"] = pd.to_numeric(df["Loan Status"], errors="coerce")
 
     if "Term" in df.columns:
-        df["Term"] = df["Term"].replace({"Short Term": 0, "Long Term": 1})
+        df["Term"] = df["Term"].replace(
+            {"Short Term": 0, "Long Term": 1}
+        ).infer_objects(copy=False)
         df["Term"] = pd.to_numeric(df["Term"], errors="coerce")
 
     if "Home Ownership" in df.columns:
         df["Home Ownership"] = df["Home Ownership"].replace({
             "Own Home": 0, "Home Mortgage": 1, "HaveMortgage": 1, "Rent": 2,
-        })
+        }).infer_objects(copy=False)
         df["Home Ownership"] = pd.to_numeric(df["Home Ownership"], errors="coerce")
 
     if "Purpose" in df.columns:
@@ -668,7 +672,7 @@ def _fix_bank_status(df: pd.DataFrame) -> pd.DataFrame:
             "Buy House": 2, "Buy a Car": 3, "major_purchase": 4,
             "Business Loan": 5, "small_business": 5,
             "Take a Trip": 6, "Vacation": 6, "Other": 7, "other": 7,
-        })
+        }).infer_objects(copy=False)
         df["Purpose"] = pd.to_numeric(df["Purpose"], errors="coerce")
 
     if "Years in current job" in df.columns:
@@ -923,8 +927,9 @@ def _fix_heloc(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
 
     if "LienPos" in df.columns:
-        df["LienPos"] = df["LienPos"].replace({"Unknow": 0, "First": 1, "Second": 2})
-        df = df.infer_objects()
+        df["LienPos"] = df["LienPos"].replace(
+            {"Unknow": 0, "First": 1, "Second": 2}
+        ).infer_objects(copy=False)
 
     target = DATASET_METADATA["0001.heloc"]["target_column"]
     if target in df.columns:
