@@ -429,9 +429,11 @@ input shapes / dtypes / NaN handling at the API boundary.
   dataset on `__getitem__`, returning a `ClassifierBatch` or
   `RegressorBatch`.
 - **Lines 17702–17761 — `shuffle_and_chunk_data`**, TabPFN's own
-  chunking utility (the package equivalent of our `dataset.py`'s
-  chunking). Stratified for multiclass, non-stratified for
-  regression.
+  per-dataset row sub-sampler. Stratified for multiclass,
+  non-stratified for regression. Reference behaviour: our
+  `src/train/dataloader.py::_build_step_batch` performs the same
+  shape (subsample → 80/20 ctx/qry split → ordinal-encode) on the
+  fly per epoch, against the sanitized CSV directly.
 - **Lines 17764–17881 — `get_preprocessed_dataset_chunks`**, the
   helper that accepts a *list* of datasets and produces a
   `DatasetCollectionWithPreprocessing` ready for a multi-table
@@ -715,7 +717,9 @@ for the eval stage in the future.** Reasoning:
    training would replace our cross-dataset loop with a series of
    per-dataset finetunes, which is a different research question.
    Our `src/train/loop.py` already implements the cross-dataset
-   variant against the cached `.npz` chunks; no change needed.
+   variant — reading sanitized CSVs directly via
+   `ProcessedDatasetLoader` and drawing a fresh random subsample
+   per epoch; no change needed.
 
 2. *Eval stage is potentially attractive.* The user's plan compares
    TabPFN variants against XGBoost/CatBoost/LogReg/LinReg. TabTune
@@ -804,8 +808,9 @@ memory, scratch storage — this dump is the canonical reference.
   build custom virtual environments on the cluster filesystem.
 * **`source/data_storage/`** — `$VSC_DATA`, `$VSC_SCRATCH` and
   the project storage tiers. Important for deciding where the
-  3000-dataset corpus and the cached `.npz` files live (they
-  shouldn't all be in `$VSC_HOME`).
+  3000-dataset corpus and the per-track sanitized CSVs live (the
+  `paths.data_source` knob in `config/data.yaml` flips between
+  them; never put either on `$VSC_HOME`).
 * **`source/accounts/`** — initial SSH key setup, MFA, VO
   membership, requesting more quota.
 
@@ -874,10 +879,10 @@ def remove_outliers(X, n_sigma=4, normalize_positions=-1, ...):
    far more aggressive than what TabPFN does at inference and would
    create a train-vs-inference distribution mismatch.
 3. **`OUTLIER_REMOVAL_STD` is an *inference-time* parameter** — when
-   we pretrain by feeding cached tensors directly to the underlying
-   torch model, this step is not automatically applied for us. Our
+   we pretrain by feeding tensors directly to the underlying torch
+   model, this step is not automatically applied for us. Our
    `sanitize.py` therefore only normalises `±inf → NaN`; we delegate
-   true outlier handling to the package's own machinery at training
+   true outlier handling to the package's own machinery at inference
    time.
 
 ### Fine-tuning wrappers: official package machinery
@@ -885,14 +890,15 @@ def remove_outliers(X, n_sigma=4, normalize_positions=-1, ...):
 Independent of the data pipeline, `TabPFN Docs.txt:4224-4450` and
 `TabPFN .txt:2035-2188` document `FinetunedTabPFNClassifier` /
 `FinetunedTabPFNRegressor`. These are the supported entry points
-for gradient-based adaptation of TabPFN. Their existence narrows
-our `src/train/` design choices (later turn): we either compose
-multiple `FinetunedTabPFN*.fit()` calls in a sweep over our 3,000
-datasets, *or* we use the package's own internal multi-table
-machinery (`get_preprocessed_dataset_chunks` +
-`DatasetCollectionWithPreprocessing` +
-`fit_from_preprocessed`) — the second path is what our cached
-`.npz` triples (`X`, `y`, `categorical_idx`) are shaped for.
+for gradient-based adaptation of TabPFN. Our `src/train/loop.py`
+goes one level lower than these wrappers: it calls the underlying
+`PerFeatureTransformer.forward(x, y, ...)` directly with batches
+assembled on the fly by `ProcessedDatasetLoader`, which lets us
+iterate over a *corpus* of datasets (Real-TabPFN-style) rather
+than fine-tune on one dataset at a time. The default per-step
+subsample size (`finetuning.max_rows_per_epoch = 10_000`) matches
+the upstream `FinetunedTabPFNClassifier` default at
+`TabPFN .txt:26832`.
 
 ---
 

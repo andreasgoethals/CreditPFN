@@ -14,8 +14,8 @@ Public surface
 * :func:`load_processed_dataset`    — load one (track, dataset_id) pair.
 * :func:`encode_for_model`          — apply per-method encoding rules
                                       (ordinal-encode cats with the
-                                      train-fold-only fit, mirroring
-                                      `src/data/dataset.py` exactly).
+                                      train-fold-only fit, matching
+                                      ``src/train/dataloader.py::_ordinal_encode``).
 * :func:`subsample`                 — stratified row-count cap.
 """
 
@@ -210,7 +210,7 @@ def encode_for_model(
     """Ordinal-encode cats with a TRAIN-FOLD-ONLY fit and apply to all
     three splits.
 
-    Mirrors ``src/data/dataset.py::_ordinal_encode_categoricals`` —
+    Mirrors ``src/train/dataloader.py::_ordinal_encode`` —
     fitting the encoder on the train fold only means categories that
     appear *only* in val/test are encoded as ``unknown_value`` (-1),
     matching the inference scenario TabPFN was trained for. NaN values

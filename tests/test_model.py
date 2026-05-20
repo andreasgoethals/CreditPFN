@@ -4,9 +4,7 @@ Layout choice
 -------------
 One file per ``src/`` subpackage, like ``test_data.py`` and
 ``test_train.py``. ``test_model.py`` covers everything in
-``src/model/``: the registry, the boosting / linear / TabPFN
-wrappers, and the cache helper that lives in ``src/data/cache.py``
-(no separate ``test_cache.py`` file because the coverage is small).
+``src/model/``: the registry, the boosting / linear / TabPFN wrappers.
 
 Tests that genuinely need a TabPFN checkpoint on disk are guarded
 by ``pytest.importorskip`` + a path-exists check so the suite stays
@@ -16,23 +14,20 @@ synthetic data.
 
 Coverage map
 ------------
-    Block 1  src.data.cache          — is_cache_valid, find_uncached_datasets
-    Block 2  src.model.base          — ModelHandle dataclass shape
-    Block 3  src.model.boosting      — XGBoost + CatBoost on toy data
-    Block 4  src.model.linear        — LogReg + LinReg + NaN handling
-    Block 5  src.model.registry      — track-aware default sets
-    Block 6  src.model.tabpfn_models — guarded smoke test
+    Block 1  src.model.base          — ModelHandle dataclass shape
+    Block 2  src.model.boosting      — XGBoost + CatBoost on toy data
+    Block 3  src.model.linear        — LogReg + LinReg + NaN handling
+    Block 4  src.model.registry      — track-aware default sets
+    Block 5  src.model.tabpfn_models — guarded smoke test
 """
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import numpy as np
 import pytest
 
-from src.data.cache import find_uncached_datasets, is_cache_valid
 from src.model.base import ModelHandle
 from src.model.boosting import CatBoostModel, XGBoostModel
 from src.model.linear import LinRegModel, LogRegModel
@@ -40,112 +35,7 @@ from src.model.registry import build_baselines
 
 
 # =============================================================================
-# Helpers
-# =============================================================================
-
-
-def _write_synthetic_chunk(folder: Path, *, chunk_idx: int = 0,
-                           task_type: str = "classification",
-                           n_ctx: int = 50, n_qry: int = 30,
-                           n_feat: int = 5, n_cat: int = 1,
-                           rng: np.random.Generator | None = None) -> Path:
-    rng = rng or np.random.default_rng(0)
-    folder.mkdir(parents=True, exist_ok=True)
-    X_ctx = rng.standard_normal((n_ctx, n_feat)).astype(np.float32)
-    X_qry = rng.standard_normal((n_qry, n_feat)).astype(np.float32)
-    # Make first n_cat columns ordinal-encoded categoricals (small alphabet).
-    for i in range(n_cat):
-        X_ctx[:, i] = rng.integers(0, 4, size=n_ctx).astype(np.float32)
-        X_qry[:, i] = rng.integers(0, 4, size=n_qry).astype(np.float32)
-    if task_type == "classification":
-        y_ctx = rng.integers(0, 2, n_ctx).astype(np.int64)
-        y_qry = rng.integers(0, 2, n_qry).astype(np.int64)
-    else:
-        y_ctx = rng.uniform(0, 1, n_ctx).astype(np.float32)
-        y_qry = rng.uniform(0, 1, n_qry).astype(np.float32)
-    out = folder / f"chunk_{chunk_idx:03d}.npz"
-    np.savez_compressed(
-        out, X_context=X_ctx, y_context=y_ctx, X_query=X_qry, y_query=y_qry,
-        categorical_idx=np.arange(n_cat, dtype=np.int32),
-    )
-    return out
-
-
-def _write_synthetic_dataset(cached_root: Path, *, track: str, dataset_id: str,
-                             n_chunks: int = 1, task_type: str | None = None,
-                             rng: np.random.Generator | None = None) -> Path:
-    task_type = task_type or (
-        "classification" if track == "pd" else "regression"
-    )
-    folder = cached_root / track / dataset_id
-    rng = rng or np.random.default_rng(abs(hash(dataset_id)) % (2**32))
-    for ci in range(n_chunks):
-        _write_synthetic_chunk(folder, chunk_idx=ci, task_type=task_type, rng=rng)
-    (folder / "meta.json").write_text(
-        json.dumps({"task_type": task_type, "n_chunks": n_chunks}),
-        encoding="utf-8",
-    )
-    return folder
-
-
-# =============================================================================
-# Block 1 · src.data.cache
-# =============================================================================
-
-
-def test_is_cache_valid_true_when_meta_and_chunks_present(tmp_path: Path) -> None:
-    _write_synthetic_dataset(tmp_path, track="pd", dataset_id="0001.x", n_chunks=2)
-    assert is_cache_valid(tmp_path, "pd", "0001.x") is True
-
-
-def test_is_cache_valid_false_when_meta_missing(tmp_path: Path) -> None:
-    assert is_cache_valid(tmp_path, "pd", "0001.never_built") is False
-
-
-def test_is_cache_valid_false_when_chunk_missing(tmp_path: Path) -> None:
-    """Meta says n_chunks=2 but only one chunk on disk → invalid."""
-    folder = tmp_path / "pd" / "0001.x"
-    folder.mkdir(parents=True)
-    _write_synthetic_chunk(folder, chunk_idx=0)
-    (folder / "meta.json").write_text(
-        json.dumps({"task_type": "classification", "n_chunks": 2}),
-        encoding="utf-8",
-    )
-    assert is_cache_valid(tmp_path, "pd", "0001.x") is False
-
-
-def test_is_cache_valid_false_when_meta_unparseable(tmp_path: Path) -> None:
-    folder = tmp_path / "pd" / "0001.x"
-    folder.mkdir(parents=True)
-    _write_synthetic_chunk(folder, chunk_idx=0)
-    (folder / "meta.json").write_text("not-json{", encoding="utf-8")
-    assert is_cache_valid(tmp_path, "pd", "0001.x") is False
-
-
-def test_find_uncached_returns_only_missing(tmp_path: Path) -> None:
-    _write_synthetic_dataset(tmp_path, track="pd", dataset_id="0001.cached")
-    _write_synthetic_dataset(tmp_path, track="lgd", dataset_id="0002.cached_lgd")
-    tracks = {
-        "0001.cached":      "pd",
-        "0002.cached_lgd":  "lgd",
-        "0003.absent":      "pd",
-        "0004.also_absent": "lgd",
-    }
-    missing = find_uncached_datasets(
-        tmp_path, dataset_ids=list(tracks), tracks=tracks,
-    )
-    assert missing == ["0003.absent", "0004.also_absent"]
-
-
-def test_find_uncached_skips_unknown_track(tmp_path: Path, caplog) -> None:
-    """A dataset_id not in the tracks dict is skipped with a warning,
-    not silently treated as 'cached'."""
-    out = find_uncached_datasets(tmp_path, dataset_ids=["0001.x"], tracks={})
-    assert out == []          # we don't claim 0001.x is missing — we don't know
-
-
-# =============================================================================
-# Block 2 · src.model.base
+# Block 1 · src.model.base
 # =============================================================================
 
 
@@ -159,7 +49,7 @@ def test_model_handle_construction() -> None:
 
 
 # =============================================================================
-# Block 3 · src.model.boosting
+# Block 2 · src.model.boosting
 # =============================================================================
 
 
@@ -221,7 +111,7 @@ def test_catboost_regressor_runs() -> None:
 
 
 # =============================================================================
-# Block 4 · src.model.linear
+# Block 3 · src.model.linear
 # =============================================================================
 
 
@@ -258,7 +148,7 @@ def test_linreg_predict_proba_raises() -> None:
 
 
 # =============================================================================
-# Block 5 · src.model.registry
+# Block 4 · src.model.registry
 # =============================================================================
 
 
@@ -314,7 +204,7 @@ def test_build_baselines_subset() -> None:
 
 
 # =============================================================================
-# Block 6 · src.model.tabpfn_models  (guarded smoke)
+# Block 5 · src.model.tabpfn_models  (guarded smoke)
 # =============================================================================
 
 

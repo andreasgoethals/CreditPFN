@@ -62,23 +62,26 @@ CreditPFN/
 ├── notebooks/                       three data-exploration notebooks
 ├── checkpoints/                     TabPFN base weights (gitignored)
 │   └── trained/{pd,lgd}/            finetuned weights produced by train_pipeline (gitignored)
-├── data/                            big I/O artefacts (gitignored)
+├── data/                            big input + intermediate artefacts (gitignored)
 │   ├── raw/{pd,lgd}/<id>.csv        hand-curated input corpus
-│   ├── processed/{pd,lgd}/          <id>.sanitized.csv
-│   └── dedup/                       doubles_{track}_{pre,post}.csv
-├── manifests/<run>_<track>.csv      one row per trained checkpoint (gitignored)
-├── results/                         (gitignored)
-│   ├── benchmark/<TRACK>/<method>/  eval CSVs (one per run × task)
-│   └── training/<track>/            per-epoch CSVs (loss, lr, train/test metric)
-└── logs/<task>_<ts>[_j<jid>_a<tid>].log    one log file per task (flat dir)
+│   ├── processed/{pd,lgd}/          <id>.sanitized.csv (the on-disk training input)
+│   ├── dedup/                       doubles_{track}_{pre,post}.csv
+│   └── manifest_{pd,lgd}.csv        per-track dataset manifest (one row per dataset)
+├── output/                          everything the code writes (gitignored)
+│   ├── training/
+│   │   ├── manifests/<run>_<track>.csv         one row per trained checkpoint
+│   │   └── epochs/<track>/<descriptive>.csv    per-epoch (loss, lr, train/test metric)
+│   ├── results/<TRACK>/<method>/                eval-pipeline CSVs (one per run × task)
+│   └── figures/<notebook-slug>/*.pdf            per-notebook PDF figure dumps
+└── logs/<task>_<ts>[_j<jid>_a<tid>].log         one log file per task (flat dir)
 ```
 
 ### What's in `src/`
 
 | Subpackage | Role | Public CLI |
 |---|---|---|
-| [`src/data/`](src/data)   | 5 data-pipeline stages (dedup · register · sanitize · dedup · dataset) plus `preprocessing.py` for per-dataset surgical fixes and `cache.py` for cache-state inspection. | `python -m src.data.<stage>` for any one stage, or `scripts/data_pipeline.py` for the chain. |
-| [`src/train/`](src/train) | The continued-pretraining loop: corpus split (`corpus.py`), dataloader with per-chunk resample (`dataloader.py`), TabPFN load/save + LoRA wrapping (`model.py`), training loop with per-epoch eval (`loop.py`), metrics (`metrics.py`). | `scripts/train_pipeline.py` |
+| [`src/data/`](src/data)   | 4 data-pipeline stages (dedup pre · register · sanitize · dedup post) plus `preprocessing.py` for per-dataset surgical fixes. Output is one sanitized CSV per dataset under `data/processed/`. | `python -m src.data.<stage>` for any one stage, or `scripts/data_pipeline.py` for the chain. |
+| [`src/train/`](src/train) | The continued-pretraining loop: corpus split (`corpus.py`), the on-the-fly dataloader (`dataloader.py`) that reads the sanitized CSVs and draws a fresh random subsample per epoch, TabPFN load/save + LoRA wrapping (`model.py`), training loop with per-epoch monitor (`loop.py`), metrics (`metrics.py`). | `scripts/train_pipeline.py` |
 | [`src/model/`](src/model) | sklearn-style wrappers for every model the eval scores: XGBoost + CatBoost (with Optuna HPO), LogReg / LinReg (default-hyperparam baselines), TabPFN-untuned and TabPFN-trained. Single `base.py::BaselineModel` protocol so the eval loop stays model-agnostic. | importable only |
 | [`src/eval/`](src/eval)   | The cross-model benchmark: processed-CSV loader, K-fold splitter with inner train/val, comprehensive metrics computation, results-dir routing, skip-existing rerun guard. | `scripts/eval_pipeline.py` |
 | [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), repository corpus refresh (`refresh_repositories.py`). | `python src/utils/refresh_repositories.py` |
@@ -92,14 +95,14 @@ OmegaConf and accepts Hydra-style overrides on the CLI
 
 | File | Drives | Main sections |
 |---|---|---|
-| [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths, dedup detection thresholds, sanitize knobs (max missing rate, FeatureAgglomeration, LGD target clip), chunking, cache fingerprint |
+| [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths (incl. `data_source: "scratch" | "data"`), `finetuning.max_rows_per_epoch` + `query_fraction`, dedup detection thresholds, sanitize knobs (max missing rate, FeatureAgglomeration, LGD target clip) |
 | [`config/train.yaml`](config/train.yaml) | `src/train/*` + `scripts/train_pipeline.py` | `tunable.*` (sweep axes: base checkpoint × LR × LoRA), corpus split (Mode A fractions / Mode B explicit IDs), optimizer + scheduler, LoRA cfg, train loop |
-| [`config/eval.yaml`](config/eval.yaml)   | `src/eval/*` + `scripts/eval_pipeline.py` | enabled baselines, K-fold + inner-val fractions, per-fold Optuna budget, TabPFN row caps, results dir |
+| [`config/eval.yaml`](config/eval.yaml)   | `src/eval/*` + `scripts/eval_pipeline.py` | enabled baselines, K-fold + inner-val fractions, per-fold Optuna budget, `max_rows_per_model` (per-architecture training-context cap), results dir |
 
 What is **deliberately not in YAML**: anything that never changes
-across runs (optimizer family AdamW, cosine schedule, multi-chunk
-policy, metric column order). Those are hardcoded in code — searchable
-constants near the top of the relevant module.
+across runs (optimizer family AdamW, cosine schedule, metric column
+order). Those are hardcoded in code — searchable constants near the
+top of the relevant module.
 
 ### What's in `docs/`
 
@@ -118,75 +121,121 @@ cluster:
 | File | What it does |
 |---|---|
 | [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Run all 5 data stages end-to-end, or just the ones you ask for (`--datasets ...`). Idempotent; `--fresh` to rebuild. |
-| [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills the cache for missing datasets. |
+| [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills missing sanitized CSVs by invoking the data pipeline for just those IDs. |
 | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | Score every model on every test dataset, K-fold CV. Skip-existing by default; `--rerun` to force. Filterable with `--method` / `--test-dataset` / `--task-index`. |
 | [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `submit_full_pipeline.sh` for the chained submission. |
 
 ## Quick start
 
-> **Python 3.12 strongly recommended.** Several deps (scikit-learn,
-> parts of torch) don't ship Python-3.14 wheels yet, so `pip install`
-> will try to compile from source and fail. Use `py -3.12` (Windows)
-> or `python3.12` (Linux/macOS).
+> **Heads-up — where each stage runs.** Continued pretraining
+> (`scripts/train_pipeline.py`) and the cross-model benchmark
+> (`scripts/eval_pipeline.py`) require a CUDA GPU with **≥ 16 GB
+> VRAM** and substantial system RAM. They cannot run on a laptop
+> or a CPU-only machine; expect to use an HPC cluster (this project
+> uses KU Leuven's VSC — see [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md)
+> for the SLURM chain, partition choices, and failure-mode cheat
+> sheet). What you *can* do locally is the **data pipeline** (CPU-
+> only, ~10 min for the 17 PD + 8 LGD corpus) and the **test suite**.
+
+### 1 · Install (anywhere)
+
+Python **3.11 or 3.12** is required — `torch` and `scikit-learn` don't
+yet ship Python-3.14 wheels and falling back to source builds fails on
+most platforms.
 
 ```bash
-# 1. Create the venv (once).
-py -3.12 -m venv .venv --prompt CreditPFN     # Windows / PowerShell
-# python3.12 -m venv .venv --prompt CreditPFN # Linux / macOS
-
-.venv/Scripts/activate              # Windows / PowerShell
-# source .venv/bin/activate         # Linux / macOS
-python -m pip install --upgrade pip
+python3.12 -m venv .venv --prompt CreditPFN     # Linux / macOS
+# py -3.12 -m venv .venv --prompt CreditPFN     # Windows / PowerShell
+source .venv/bin/activate                       # Linux / macOS
+# .venv/Scripts/activate                        # Windows / PowerShell
+pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-> ⚠ **TabPFN version caveat.** PyPI's `tabpfn` caps at `2.2.1` with an
-> older API than this project's training code expects (4-tuple
-> `load_model_criterion_config` return, `version="v3"`,
-> `download_if_not_exists` kwarg). After `pip install -r
-> requirements.txt`, install the matching Prior Labs wheel on top:
+> ⚠ **TabPFN install gotcha.** This project's `src/train/` code calls
+> the **current** `tabpfn.base.load_model_criterion_config` API
+> (4-tuple return, `version=` ∈ {"v2.5", "v2.6", "v3"},
+> `download_if_not_exists=` kwarg — see
+> [`src/train/model.py:115-124`](src/train/model.py)). PyPI's
+> `tabpfn` package is pinned at an older 2.2.x release with a
+> narrower API and *will* `TypeError` on the first model load. Right
+> after `pip install -r requirements.txt`, override the PyPI version
+> with the Prior Labs main branch:
 >
 > ```bash
 > pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
 > ```
 >
-> Skip this and `train_pipeline.py` will `TypeError` on the first
-> model load. Eval against pre-existing checkpoints is unaffected.
+> The eval pipeline against pre-existing checkpoints is unaffected by
+> this caveat — only training and untuned-TabPFN inference call the
+> new API.
+
+### 2 · What you can do locally
+
+These three operate on CPU; a laptop with ~16 GB RAM is enough.
 
 ```bash
-# 2. Run the data pipeline end-to-end (one-time; idempotent).
+# Build the data corpus end-to-end (idempotent; ~10 min full corpus)
 python scripts/data_pipeline.py
-# python scripts/data_pipeline.py --fresh
-# python scripts/data_pipeline.py --datasets 0001.gmsc
+python scripts/data_pipeline.py --datasets 0001.gmsc 0013.hmeq   # one or more datasets
+python scripts/data_pipeline.py --fresh                          # rebuild from scratch
 
-# 3. Continued pretraining (auto-fills missing cache).
-python scripts/train_pipeline.py              # full cartesian grid
-# python scripts/train_pipeline.py --single   # one trial (head of every tunable list)
-# python scripts/train_pipeline.py track=lgd  # LGD regressor
-
-# 4. Cross-model benchmark on the held-out test split.
-python scripts/eval_pipeline.py track=pd
-python scripts/eval_pipeline.py track=lgd
-
-# 5. Tests.
+# Run the test suite (~5 min, no GPU needed; torch-dependent tests skip if torch missing)
 pytest -q tests/
+
+# Open any of the four notebooks for corpus exploration / training / eval viz
+jupyter notebook notebooks/
 ```
 
-For cluster deployment see [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) —
-SLURM chain, dataset upload to scratch, failure-mode cheat sheet.
+The data pipeline writes sanitized CSVs under `data/processed/`,
+manifests under `data/manifest_{pd,lgd}.csv`, and dedup reports under
+`data/dedup/`. The notebooks drop their figures as PDFs under
+`output/figures/<notebook>/`.
+
+### 3 · What needs a supercomputer
+
+Continued pretraining and the cross-model benchmark live on the
+cluster. The recommended entry point is the chained submitter — it
+handles SLURM dependencies, log routing, and array sizing for you:
+
+```bash
+# On a VSC login node (one-time): clone, install, upload data, submit.
+# Full walkthrough — including partitions, GPU choice, and the
+# storage-tier layout — in docs/VSC_GUIDE.md.
+bash scripts/slurm/submit_full_pipeline.sh
+```
+
+If you want to run a single stage by hand (e.g. resubmit just the
+eval after fixing a baseline), individual SLURM templates live in
+[`scripts/slurm/`](scripts/slurm/). The same scripts read the
+`paths.data_source` knob in [`config/data.yaml`](config/data.yaml)
+to decide whether the raw / processed corpus lives on
+`$VSC_SCRATCH` (fast, purged monthly) or `$VSC_DATA` (durable).
+
+For configuration overrides (Hydra-style, no yaml edit needed):
+
+```bash
+python scripts/train_pipeline.py track=lgd train.epochs=30
+python scripts/eval_pipeline.py  --method xgboost  --test-dataset 0001.gmsc
+```
+
+See the **Training pipeline** and **Eval pipeline** sections below
+for the full set of knobs and behaviours.
 
 ## Data pipeline
 
-Five stages, in order. The end-to-end driver is
+Four stages, in order. The end-to-end driver is
 [`scripts/data_pipeline.py`](scripts/data_pipeline.py); each stage can
-also run independently via `python -m src.data.<stage>`.
+also run independently via `python -m src.data.<stage>`. There is
+**no `.npz` chunking step** — the sanitized CSV is the canonical on-disk
+training input, and the training loop builds batches on the fly.
 
 | # | Module | Reads | Writes |
 |---|---|---|---|
-| 1 | [`src/data/dedup.py`](src/data/dedup.py) `--pass pre`        | `data/raw/{pd,lgd}/*.csv` | `dedup/doubles_{track}_pre.csv` |
-| 2 | [`src/data/register.py`](src/data/register.py)               | raw CSVs + `DATASET_METADATA` | `manifest_{pd,lgd}.csv` |
+| 1 | [`src/data/dedup.py`](src/data/dedup.py) `--pass pre`        | `data/raw/{pd,lgd}/*.csv` | `data/dedup/doubles_{track}_pre.csv` |
+| 2 | [`src/data/register.py`](src/data/register.py)               | raw CSVs + `DATASET_METADATA` | `data/manifest_{pd,lgd}.csv` |
 | 3 | [`src/data/sanitize.py`](src/data/sanitize.py)               | raw CSVs + manifests | `data/processed/{pd,lgd}/<id>.sanitized.csv` |
-| 4 | [`src/data/dedup.py`](src/data/dedup.py) `--pass post`       | processed CSVs | `dedup/doubles_{track}_post.csv` |
+| 4 | [`src/data/dedup.py`](src/data/dedup.py) `--pass post`       | processed CSVs | `data/dedup/doubles_{track}_post.csv` |
 
 Plus one importable helper used by stages 2 and 3:
 
@@ -211,17 +260,19 @@ Plus one importable helper used by stages 2 and 3:
   filter.
 * **`sanitize.py`** — surgical fixes, then a dataset-agnostic clean:
   drop exact-duplicate columns, drop > 90 %-NaN columns, drop constant
-  columns, coerce numeric strings, cast numericals to float32,
-  ±inf → NaN, optional FeatureAgglomeration to ≤ 128 columns (Ward
-  linkage, unscaled per-cluster means), label-encode classification
-  targets, clip LGD targets to [0, 1].
-* **`dataset.py`** — chunks each sanitised dataset into ≤
-  `finetuning.max_rows_per_epoch` rows (random
-  for LGD), splits each chunk 60 % context / 40 % query, ordinal-
-  encodes categoricals **with the encoder fit on context only**
-  (so query categories unseen in context get `-1`, mirroring TabPFN's
-  inference scenario), writes one `.npz` per chunk plus a
-  `meta.json` sidecar.
+  columns, coerce numeric strings, cast numericals to float32
+  (out-of-range values become NaN before the cast — no overflow
+  warnings), ±inf → NaN, optional FeatureAgglomeration to ≤ 128
+  columns (Ward linkage, unscaled per-cluster means), label-encode
+  classification targets, clip LGD targets to [0, 1].
+
+The eval pipeline reads the same sanitized CSVs but applies its own
+K-fold CV split + per-model row cap (see eval pipeline section). The
+training loop reads them via `src/train/dataloader.py::ProcessedDatasetLoader`,
+which draws a fresh random subsample of `finetuning.max_rows_per_epoch`
+rows from each parent dataset every epoch and applies a context-only
+ordinal encoder (so query categories unseen in context get `-1`,
+mirroring TabPFN's inference scenario).
 
 ### What sanitize.py deliberately does NOT do
 
@@ -235,16 +286,20 @@ TabPFN's package handles these internally — see
 | NaN imputation | `NanHandlingEncoderStep` handles NaNs natively (learned default + binary indicator). |
 | Regression target z-normalisation | `RegressorBatch.znorm_space_bardist_` standardises the target internally and inverts at predict time. |
 
-### Data-exploration notebooks
+### Notebooks
 
 Under [`notebooks/`](notebooks/), designed to scale to the
-3 000-dataset corpus:
+3 000-dataset corpus. Every notebook drops its figures as PDFs into
+`output/figures/<notebook-slug>/` via the figure sink helper in
+[`src/utils/figures.py`](src/utils/figures.py); the per-notebook
+directory is wiped on each re-run, so stale figures never linger.
 
-* `0.0. raw_data_exploration.ipynb` — what did the vendor deliver?
-* `0.1. processed_data_exploration.ipynb` — did sanitisation produce
-  sensible inputs?
-* `0.2. cached_data_exploration.ipynb` — is the `.npz` cache healthy
-  for training?
+| Notebook | What it shows |
+|---|---|
+| `0.0. raw_data_exploration.ipynb`          | What did the vendor deliver? Shapes, missing-rates, target distributions on raw CSVs. |
+| `0.1. processed_data_exploration.ipynb`    | Did sanitisation produce sensible inputs? Same plots as 0.0 but on the post-sanitize CSVs. |
+| `1.0. training_visualization.ipynb`        | All trained CreditPFN variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, LoRA effect, time/accuracy Pareto, convergence diagnostics, leaderboard. |
+| `2.0. final_results.ipynb`                 | The headline eval leaderboard — per-method box plots, per-dataset heatmaps, pairwise win-rate matrix (à la TabPFN-3 Fig 3), trained-vs-untuned scatter (à la Real-TabPFN), fold stability, threshold calibration. |
 
 Corpus summaries are memoised so the first cell pays the disk-read
 cost once and every subsequent plot reads from RAM.
@@ -258,12 +313,14 @@ layers:
 * **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint,
   learning rate, LoRA on/off. Anything genuinely unknown in advance.
 * **Fixed HPs** (single values below) — epochs, AMP, gradient
-  clipping, warmup fraction, sample sizes, per-epoch eval subsample.
-  Follow TabPFN's `FinetunedTabPFNClassifier` defaults where those
-  are well-tuned.
+  clipping, warmup fraction, per-epoch monitor subsample. Follow
+  TabPFN's `FinetunedTabPFNClassifier` defaults where those are
+  well-tuned. The per-step subsample size lives in
+  [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
+  default 10 000 = Prior Labs' documented default).
 * **Hardcoded in code** — optimizer family (AdamW), betas
-  ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay),
-  multi-chunk policy (`first_chunk_only`). Never change between runs.
+  ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
+  Never change between runs.
 
 ### Three invocation modes
 
@@ -284,13 +341,13 @@ python scripts/train_pipeline.py --list-trials
 Out-of-range trial indices exit zero cleanly (soft no-op), so an
 over-sized SLURM array is safe.
 
-### Auto-cache hook
+### Auto-process hook
 
 Before training starts, the pipeline checks that every dataset it
-needs is on disk under `data/processed/<track>/`. Missing
-datasets trigger `scripts/data_pipeline.py` transparently for just
-those IDs. Net effect: `train_pipeline.py` runs from a fresh checkout
-and fills the cache as needed.
+needs has a sanitized CSV on disk under `data/processed/<track>/`.
+Missing CSVs trigger `scripts/data_pipeline.py` transparently for
+just those IDs. Net effect: `train_pipeline.py` runs from a fresh
+checkout and fills the processed corpus as needed.
 
 ### Configurable training datasets
 
@@ -331,13 +388,13 @@ not break a teammate's next full run.
 
 Each trial writes:
 
-| Artefact                                                              | Path                                                             |
-|-----------------------------------------------------------------------|------------------------------------------------------------------|
-| Final-epoch weights                                                   | `checkpoints/trained/<track>/<descriptive_name>.ckpt`            |
-| Provenance sidecar (HPs, train/test IDs, GPU, walltime, …)           | `<descriptive_name>.ckpt.provenance.json`                        |
-| Manifest row consumed by the eval pipeline                            | `manifests/<run_name>_<track>.csv`                               |
-| Per-epoch CSV (epoch, train_loss, lr, train/test metric, epoch_time)  | `output/training/epochs/<track>/<descriptive_name>.csv`                |
-| Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                    |
+| Artefact                                                              | Path                                                                |
+|-----------------------------------------------------------------------|---------------------------------------------------------------------|
+| Final-epoch weights                                                   | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
+| Provenance sidecar (HPs, train/test IDs, GPU, walltime, …)           | `<descriptive_name>.ckpt.provenance.json`                           |
+| Manifest row consumed by the eval pipeline                            | `output/training/manifests/<run_name>_<track>.csv`                  |
+| Per-epoch CSV (epoch, train_loss, lr, train/test metric, epoch_time)  | `output/training/epochs/<track>/<descriptive_name>.csv`             |
+| Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                       |
 
 Filename schema:
 `<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt`.
@@ -355,7 +412,7 @@ recording:
   warmup fraction, epochs, accumulate, grad clip, amp, ctx/query
   sample sizes, seed, `use_lora` + LoRA config).
 - Sorted training-dataset and test-dataset ID lists.
-- Number of train/test chunks.
+- Counts of train/test datasets.
 - `training_time_seconds`, GPU name, `torch_version`, `tabpfn_version`,
   ISO-8601 `saved_at`.
 
@@ -384,20 +441,21 @@ without loading the model weights.
 model on every held-out test **dataset** using K-fold cross-validation
 with an inner train/val split.
 
-### Why processed CSVs (not cached chunks)
+### Row-cap policy
 
-The `.npz` chunks are sized for TabPFN's in-context inference at
-*training* time. For *evaluation*, XGBoost / CatBoost have no
-row-count limit and would be underestimated if capped at the chunk
-size. So the eval reads
-`data/processed/{pd,lgd}/<id>.sanitized.csv` directly, with the cap
-policy:
+Both the eval and training pipelines read the same sanitized CSVs
+(`data/processed/{pd,lgd}/<id>.sanitized.csv`). The eval applies its
+caps **inside each CV fold**, only to the training partition — the
+held-out test partition is never capped, so the model predicts on
+every row in one `predict_proba` call (TabPFN-v3's internal
+`inference_row_chunk_size = 2048` handles arbitrarily large test
+sets gracefully).
 
-| Model family                          | Pre-CV cap                         | Final fit + test eval | HPO subsample                           |
-|---------------------------------------|------------------------------------|-----------------------|-----------------------------------------|
-| `tabpfn-untuned` / `tabpfn-trained`   | `eval.max_rows_per_model` (v2.x: 100 000; v3: 1 000 000) | train fold capped; full test fold | n/a |
-| `xgboost` / `catboost`                | none                               | full dataset          | `cfg.hpo.<m>.max_rows = 50 000` (stratified subsample of inner-train; HPO only) |
-| `logreg` / `linreg`                   | none                               | full dataset          | n/a                                     |
+| Model family                          | Train-fold cap                                                              | Test fold      | HPO subsample                                                                 |
+|---------------------------------------|-----------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------|
+| `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_per_model[<v>]` (v3: 1 000 000; v2.x: 100 000)                | **full**       | n/a                                                                            |
+| `xgboost` / `catboost`                | none                                                                        | full           | `cfg.hpo.<m>.max_rows = 50 000` (stratified subsample of inner-train; HPO only) |
+| `logreg` / `linreg`                   | none                                                                        | full           | n/a                                                                            |
 
 ### CV semantics — 80 / 16 / 20 per fold
 
@@ -468,9 +526,20 @@ array doesn't fail.
 
 ### Results layout
 
+Everything the code writes lives under `output/`. Trained
+checkpoints stay under `checkpoints/trained/` so they can be wiped
+independently.
+
 ```text
-results/
-├── benchmark/                                          eval pipeline output
+output/
+├── training/
+│   ├── manifests/                                      one row per trial
+│   │   ├── creditpfn_pd.csv
+│   │   └── creditpfn_lgd.csv
+│   └── epochs/                                         per-trial epoch-level metrics
+│       ├── pd/  creditpfn_pd_<base-stem>_lr1e-04_seed42[_lora].csv
+│       └── lgd/  …
+├── results/                                            eval pipeline output
 │   ├── PD/
 │   │   ├── xgboost/                                    creditpfn_<ts>__task<i>_ds-<id>.csv
 │   │   ├── catboost/                                   …
@@ -478,9 +547,11 @@ results/
 │   │   ├── tabpfn-untuned__v3-default/                 …
 │   │   └── tabpfn-trained__v3-default__lr1e-04/        …
 │   └── LGD/  …
-└── training/                                           train pipeline output (per-epoch)
-    ├── pd/   creditpfn_pd_<base-stem>_lr1e-04_seed42.csv
-    └── lgd/  …
+└── figures/                                            notebook-generated PDFs
+    ├── 0.0_raw_data_exploration/                       wiped + regenerated per run
+    ├── 0.1_processed_data_exploration/                 …
+    ├── 1.0_training_visualization/                     …
+    └── 2.0_final_results/                              …
 ```
 
 Method-directory names compress the published checkpoint filenames
@@ -510,11 +581,11 @@ pytest -q tests/    # ~230 tests, ~3.5 min
 
 | File | Coverage |
 |---|---|
-| `test_data.py`  | data pipeline (preprocessing → register → sanitize → dedup → dataset) + surgical-fix correctness per dataset |
-| `test_paths.py` | env-aware path resolution (local-vs-VSC routing) |
-| `test_train.py` | corpus split, dataloader, LR schedule, descriptive name, end-to-end mocked training loop |
-| `test_model.py` | cache helper, baseline wrappers on synthetic data, model registry |
-| `test_eval.py`  | per-cell scoring, K-fold benchmark on synthetic chunks, per-method CSV dirs, rerun-skip with full-fold semantics |
+| `test_data.py`  | data pipeline (preprocessing → register → sanitize → dedup) + surgical-fix correctness per dataset |
+| `test_paths.py` | env-aware path resolution (local-vs-VSC routing) + `data_source` cfg knob |
+| `test_train.py` | corpus split (`DatasetRef`), dataloader (`ProcessedDatasetLoader` incl. per-epoch reshuffle), LR schedule, descriptive name, end-to-end mocked training loop |
+| `test_model.py` | baseline wrappers on synthetic data, model registry |
+| `test_eval.py`  | per-cell scoring, K-fold benchmark on synthetic processed CSVs, per-method CSV dirs, rerun-skip with full-fold semantics |
 
 The suite leans toward *failure-mode coverage* over behavioural
 completeness. Tests requiring a real TabPFN checkpoint on disk are

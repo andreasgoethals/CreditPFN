@@ -22,13 +22,11 @@ Public entry point
 :func:`run` — the orchestration function. Parameters:
 
 ``fresh: bool`` (default ``False``)
-    ``True`` → wipe ``data/dedup``, ``data/processed``, ``data/cached``
-    and the two manifest CSVs *before* anything runs. Use when you
-    want the corpus rebuilt from scratch.
+    ``True`` → wipe ``data/dedup``, ``data/processed`` and the two
+    manifest CSVs *before* anything runs. Use when you want the
+    corpus rebuilt from scratch.
     ``False`` → leave existing artefacts in place. Register,
-    sanitize, and dedup refresh their outputs; dataset.py skips only
-    cache entries whose fingerprint still matches the manifest row,
-    processed CSV content, dataset config, and cache schema.
+    sanitize, and dedup refresh their outputs.
 ``datasets: list[str] | None``
     ``None`` or empty list → process every dataset_id registered in
     :data:`src.data.preprocessing.DATASET_METADATA`. Otherwise: only

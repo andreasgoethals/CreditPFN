@@ -10,12 +10,13 @@ Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
      N`` only the Nth trial of the cartesian product is run — designed
      for slurm arrays where each array task takes one trial.
 
-     The multi-chunk policy is fixed (one chunk per parent dataset);
-     see :data:`src.train.loop.MULTI_CHUNK_POLICY`.
+     Each parent dataset contributes exactly one training step per
+     epoch (no chunking; see ``src/train/corpus.py`` for the rationale).
 
-  2. **Auto-cache hook**: before training starts, check whether every
-     dataset the run will touch is on disk under
-     ``cfg.corpus.cached_dir``. If any are missing,
+  2. **Auto-process hook**: before training starts, check whether the
+     sanitized CSV exists under
+     ``data/processed/<track>/<id>.sanitized.csv`` for every dataset
+     the run will touch. If any are missing,
      ``scripts/data_pipeline.py`` is invoked transparently for just
      those IDs. This lets you train without ever calling the data
      pipeline by hand — though running it once up-front is still the
@@ -27,7 +28,7 @@ Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
 
   4. **Manifest CSV** + **per-epoch CSV**:
      * One row per trial appended to
-       ``manifests/<run_name>_<track>.csv`` (HP-tuple, checkpoint path,
+       ``output/training/manifests/<run_name>_<track>.csv`` (HP-tuple, checkpoint path,
        walltime, OK/FAIL). The eval pipeline
        (`scripts/eval_pipeline.py`) reads this to know which
        checkpoints to benchmark against the baselines.

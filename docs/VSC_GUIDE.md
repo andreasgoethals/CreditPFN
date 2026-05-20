@@ -31,15 +31,23 @@ shell.
 VSC gives every user two storage roots. CreditPFN uses them
 deliberately:
 
-| Root             | Holds                                                                                       | Default for CreditPFN     |
-|------------------|---------------------------------------------------------------------------------------------|---------------------------|
-| `$VSC_DATA`      | Code + small artefacts that must survive — logs, manifests, results, trained checkpoints.   | `$VSC_DATA/CreditPFN`     |
-| `$VSC_SCRATCH`   | Large I/O — raw datasets, processed CSVs, cached `.npz` chunks. Big, fast, **not backed up**. | `$VSC_SCRATCH/CreditPFN`  |
+| Root             | Holds                                                                                                   | Default                  |
+|------------------|---------------------------------------------------------------------------------------------------------|--------------------------|
+| `$VSC_DATA`      | Code + everything the code writes — logs, training manifests, eval results, trained checkpoints, notebook figures. Backed up. | `$VSC_DATA/CreditPFN`    |
+| `$VSC_SCRATCH`   | Big I/O the code reads — raw datasets, processed CSVs. Fast, **not backed up**.                          | `$VSC_SCRATCH/CreditPFN` |
 
-The two env vars `$CREDITPFN_DATA_ROOT` (→ scratch) and
-`$CREDITPFN_OUTPUT_ROOT` (→ data) are auto-detected from `$VSC_DATA` /
-`$VSC_SCRATCH`; you don't have to set them manually unless you want a
-non-default layout.
+The split is driven by **`paths.data_source` in
+[`config/data.yaml`](../config/data.yaml)** (two values: `"scratch"`
+or `"data"`). The default is `"scratch"` so the heavy input I/O stays
+off the durable share, but you can flip to `"data"` whenever scratch
+has been purged or you want everything in one place. Output paths are
+always rooted at `$VSC_DATA/CreditPFN` (the "output_root") regardless.
+
+The env vars `$CREDITPFN_DATA_ROOT` and `$CREDITPFN_OUTPUT_ROOT`
+remain available as escape-hatch overrides (highest precedence —
+honoured by the path resolver before the yaml). The slurm scripts
+no longer pre-set `CREDITPFN_DATA_ROOT` at all; they let the yaml
+drive (see [`scripts/slurm/_activate_env.sh`](../scripts/slurm/_activate_env.sh)).
 
 ### 0.3 Clone the repo
 
@@ -144,15 +152,16 @@ bash scripts/slurm/submit_full_pipeline.sh
 
 `$VSC_SCRATCH` auto-cleans files that haven't been accessed for
 ~1 month (VSC docs `data/storage.rst:29009`). If your raw datasets
-disappeared between runs, either re-upload to scratch, or — if you
-still have a copy in `$VSC_DATA/CreditPFN/data/` — just re-submit:
-autodetect (§0.6) will route to `$VSC_DATA` automatically.
+disappeared between runs, either re-upload to scratch, or flip
+`paths.data_source: "data"` in `config/data.yaml` and re-submit —
+the pipeline will then read raw + write processed under
+`$VSC_DATA/CreditPFN/data/`.
 
-`submit_full_pipeline.sh` propagates the resolved `CREDITPFN_DATA_ROOT`
-through `sbatch --export=ALL,…` to every chained job (data, train,
-eval). For sustained use, re-upload to scratch — `$VSC_DATA` has a
-tight quota, not designed for the cached `.npz` artefacts the pipeline
-produces.
+`submit_full_pipeline.sh` reads the cfg and propagates the resolved
+`CREDITPFN_DATA_ROOT` through `sbatch --export=ALL,…` to every
+chained job. For sustained use you usually want scratch — `$VSC_DATA`
+has a tight quota that's fine for the (small) processed CSVs but
+gets tight if you ever expand to the full 3 000-dataset corpus.
 
 ---
 
@@ -199,23 +208,23 @@ file at
 
 ## 2 · Stage 1 — data preprocessing
 
-CPU-only. Reads from `$VSC_SCRATCH/CreditPFN/data/raw/`, writes
-processed and cached artefacts back to scratch:
+CPU-only. Reads from `<data_root>/data/raw/`, writes processed
+artefacts to the same root (the data pipeline has **no `.npz`
+chunking step** — sanitized CSVs are the canonical training input):
 
 ```text
 data/raw/{pd,lgd}/<id>.csv          (you uploaded)
-        ↓ dedup --pass pre          → dedup/doubles_{track}_pre.csv
-        ↓ register                  → manifest_{pd,lgd}.csv
-        ↓ sanitize                  → data/processed/{pd,lgd}/<id>.sanitized.csv
-        ↓ dedup --pass post         → dedup/doubles_{track}_post.csv
+        ↓ dedup --pass pre          → data/dedup/doubles_{track}_pre.csv     (always durable)
+        ↓ register                  → data/manifest_{pd,lgd}.csv             (always durable)
+        ↓ sanitize                  → data/processed/{pd,lgd}/<id>.sanitized.csv  (data_root)
+        ↓ dedup --pass post         → data/dedup/doubles_{track}_post.csv    (always durable)
 ```
 
 Submit just this stage: `sbatch scripts/slurm/data.slurm`.
 
-**Idempotent.** Re-running skips datasets whose cache fingerprint
-matches the current manifest, processed CSV, and dataset config.
-Pass `--fresh` (uncomment the line in `data.slurm`) to rebuild from
-scratch.
+**Idempotent.** Re-running detects existing processed CSVs and skips
+them; pass `--fresh` (uncomment the line in `data.slurm`) to rebuild
+from scratch.
 
 ---
 
@@ -242,9 +251,11 @@ tunable:
 ```
 
 Default = **4 bases × 4 LRs × 2 LoRA = 32 trials per track**. One
-SLURM array task per trial. The multi-chunk policy is fixed to
-`first_chunk_only` (one chunk per parent dataset) and hardcoded in
-`src/train/loop.py`. Recompute the current count any time with:
+SLURM array task per trial. Each parent dataset contributes exactly
+one training step per epoch (no chunking — see the 2026-05-20
+refactor and the `ProcessedDatasetLoader` in
+`src/train/dataloader.py`). Recompute the current trial count any
+time with:
 
 ```bash
 python scripts/train_pipeline.py --list-trials track=pd
@@ -286,13 +297,13 @@ sbatch --array=0-$((N_LGD - 1))%4 scripts/slurm/train_lgd.slurm
 The `.slurm` files have generous default array bounds; over-sizing is
 safe (surplus array tasks exit zero cleanly). Each task writes:
 
-| Artefact                                           | Path                                                             |
-|----------------------------------------------------|------------------------------------------------------------------|
-| Final-epoch weights                                | `checkpoints/trained/<track>/<descriptive_name>.ckpt`            |
-| Provenance sidecar (HPs, train/test IDs, GPU, …)   | `<descriptive_name>.ckpt.provenance.json`                        |
-| Manifest row (consumed by the eval pipeline)       | `manifests/<run_name>_<track>.csv`                               |
-| Per-epoch CSV (loss, lr, train/test metric, time)  | `output/training/epochs/<track>/<descriptive_name>.csv`                |
-| Full run log                                       | `logs/train_<track>_<ts>_j<jid>_a<tid>.log`                      |
+| Artefact                                           | Path                                                                |
+|----------------------------------------------------|---------------------------------------------------------------------|
+| Final-epoch weights                                | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
+| Provenance sidecar (HPs, train/test IDs, GPU, …)   | `<descriptive_name>.ckpt.provenance.json`                           |
+| Manifest row (consumed by the eval pipeline)       | `output/training/manifests/<run_name>_<track>.csv`                  |
+| Per-epoch CSV (loss, lr, train/test metric, time)  | `output/training/epochs/<track>/<descriptive_name>.csv`             |
+| Full run log                                       | `logs/train_<track>_<ts>_j<jid>_a<tid>.log`                         |
 
 Filename schema:
 `<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt`.
@@ -307,7 +318,7 @@ Filename schema:
 |-------------------|---------------------------------------------------------------------------------------|
 | `baseline`        | XGBoost + CatBoost (Optuna-tuned), LogReg (PD), LinReg (LGD)                          |
 | `tabpfn-untuned`  | One per checkpoint in `cfg.tunable.<track>_base_paths` — the "before" weights         |
-| `tabpfn-trained`  | Every OK row in `manifests/<run_name>_<track>.csv` — the "after" weights              |
+| `tabpfn-trained`  | Every OK row in `output/training/manifests/<run_name>_<track>.csv` — the "after" weights |
 
 Every continued-pretrained checkpoint is picked up automatically.
 
@@ -316,8 +327,12 @@ Every continued-pretrained checkpoint is picked up automatically.
 5-fold stratified CV per test dataset. Each train fold is 80/20-split
 again into sub-train + inner-val; that inner-val is shared by the
 Optuna HPO objective (XGBoost / CatBoost) and the F1-threshold tuner
-(PD). TabPFN inference is row-capped per architecture by `eval.max_rows_per_model` (v2.x: 100 000; v3: 1 000 000);
-non-TabPFN baselines see the full dataset.
+(PD). For TabPFN-family models, only the **training partition** of
+each fold is capped at `cfg.max_rows_per_model[<v>]` (v3: 1 000 000,
+v2.x: 100 000) — the held-out test partition is **always full** and
+gets predicted in a single `predict_proba` call (TabPFN-v3's
+internal `inference_row_chunk_size = 2048` handles arbitrarily large
+test sets). Non-TabPFN baselines see the full dataset.
 
 ### 4.3 Re-runs are idempotent
 
@@ -350,8 +365,8 @@ array is sized larger than the grid) do the same.
 ### 4.5 Output layout
 
 ```text
-$VSC_DATA/CreditPFN/results/
-├── benchmark/                               eval-pipeline output
+$VSC_DATA/CreditPFN/output/
+├── results/                                 eval-pipeline output
 │   ├── PD/
 │   │   ├── xgboost/                                  creditpfn_<ts>__task<N>_ds-<id>.csv
 │   │   ├── catboost/                                 creditpfn_<ts>__task<N>_ds-<id>.csv
@@ -359,9 +374,18 @@ $VSC_DATA/CreditPFN/results/
 │   │   ├── tabpfn-untuned__v3-default/               creditpfn_<ts>__task<N>_ds-<id>.csv
 │   │   └── tabpfn-trained__v3-default__lr1e-04/      creditpfn_<ts>__task<N>_ds-<id>.csv
 │   └── LGD/  …
-└── training/                                train-pipeline output (per-epoch CSVs)
-    ├── pd/   creditpfn_pd_<base-stem>_lr1e-04_seed42.csv
-    └── lgd/  …
+├── training/
+│   ├── manifests/                           one row per trained checkpoint
+│   │   ├── creditpfn_pd.csv
+│   │   └── creditpfn_lgd.csv
+│   └── epochs/                              per-trial per-epoch CSVs
+│       ├── pd/   creditpfn_pd_<base-stem>_lr1e-04_seed42[_lora].csv
+│       └── lgd/  …
+└── figures/                                 notebook PDF dumps (wiped on each run)
+    ├── 0.0_raw_data_exploration/
+    ├── 0.1_processed_data_exploration/
+    ├── 1.0_training_visualization/
+    └── 2.0_final_results/
 ```
 
 Every benchmark invocation gets a fresh `<timestamp>` — earlier runs

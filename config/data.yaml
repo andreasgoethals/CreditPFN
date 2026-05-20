@@ -8,7 +8,7 @@
 #
 #  Override on the CLI Hydra-style:
 #
-#      python scripts/data_pipeline.py dataset.max_rows_per_chunk=20000
+#      python scripts/data_pipeline.py finetuning.max_rows_per_epoch=5000
 # =============================================================================
 
 # Global seed — every stage derives a deterministic local seed from this so
@@ -61,7 +61,8 @@ finetuning:
 
   # Fraction of the per-step subsample that goes to the query split;
   # the rest is the context split. Matches TabPFN's documented
-  # `finetune_ctx_query_split_ratio = 0.20`.
+  # default (the `finetune_ctx_query_split_ratio` kwarg of
+  # `FinetunedTabPFNClassifier` — see repositories/TabPFN .txt:26833).
   query_fraction:     0.20
 
 

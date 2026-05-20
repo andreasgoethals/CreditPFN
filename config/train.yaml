@@ -62,7 +62,7 @@ track: "pd"              # "pd" (classifier) | "lgd" (regressor)
 # The training corpus location is taken from `paths.data_source` in
 # config/data.yaml (single source of truth). To flip between scratch
 # and durable storage, change it there — the train pipeline reads
-# that file at startup before resolving cfg.corpus.cached_dir.
+# that file at startup before resolving any data path.
 
 
 # =============================================================================

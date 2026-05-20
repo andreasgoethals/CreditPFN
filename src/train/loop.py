@@ -397,7 +397,6 @@ def train_one_config(
     to either the explicit ``cfg.<...>`` field if set, or the first
     value of the corresponding tunable list.
 
-    The multi-chunk policy is fixed (``first_chunk_only``); see the
     Each parent dataset contributes EXACTLY ONE training step per epoch
     (no chunking — see 2026-05-20 refactor in `src/train/corpus.py`).
 
