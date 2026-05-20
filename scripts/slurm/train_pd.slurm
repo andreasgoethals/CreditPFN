@@ -61,10 +61,9 @@ export PYTHONUNBUFFERED=1
 # no measurable slowdown.
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:512}"
 
-# Honour user-set CREDITPFN_DATA_ROOT (propagated via submit_full_pipeline.sh
-# --export=ALL,...). Default = scratch; override to $VSC_DATA/CreditPFN
-# if you want to keep data on home (e.g. as a scratch-purge workaround).
-export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+# OUTPUT_ROOT is always durable storage; DATA_ROOT is resolved from
+# `config/data.yaml`'s `paths.data_source` knob inside _activate_env.sh.
+# See `scripts/slurm/data.slurm` for the full precedence ladder.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \

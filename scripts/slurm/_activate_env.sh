@@ -90,3 +90,34 @@ if ! python -c "import numpy, torch, omegaconf, tabpfn" 2>/dev/null; then
 fi
 
 echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
+
+
+# =============================================================================
+#  Resolve CREDITPFN_DATA_ROOT from config/data.yaml (one source of truth)
+# =============================================================================
+#
+#  The slurm boilerplate above set `CREDITPFN_DATA_ROOT` to either the user's
+#  explicit export or `$VSC_SCRATCH/CreditPFN`. Now that conda is active we
+#  can finally consult `config/data.yaml`'s `paths.data_source` knob and
+#  re-resolve. Precedence (mirroring src/utils/paths.apply_data_source_from_cfg):
+#
+#    1. Explicit user export (CREDITPFN_DATA_ROOT set on submission)
+#    2. `cfg.paths.data_source = "data"`    → $VSC_DATA/CreditPFN
+#    3. `cfg.paths.data_source = "scratch"` → $VSC_SCRATCH/CreditPFN  (VSC default)
+#
+#  We honour an explicit user export by checking whether the env var differs
+#  from the standard slurm default (the value the .slurm script just set).
+#  If the user wants a one-off override they can set
+#  `CREDITPFN_DATA_ROOT=/some/path bash scripts/slurm/submit_full_pipeline.sh`
+#  and the value will pass through unchanged.
+
+_resolved_data_root=$(python -c "
+from omegaconf import OmegaConf
+from src.utils.paths import apply_data_source_from_cfg
+print(apply_data_source_from_cfg(OmegaConf.load('config/data.yaml')))
+" 2>/dev/null)
+
+if [[ -n "${_resolved_data_root}" ]]; then
+    export CREDITPFN_DATA_ROOT="${_resolved_data_root}"
+fi
+unset _resolved_data_root

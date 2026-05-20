@@ -53,14 +53,18 @@
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-# Default: raw datasets + cache live on scratch (big, parallel, no
-# backup — scratch policy is auto-cleanup of files unaccessed for 1
-# month). If the user exports CREDITPFN_DATA_ROOT before submitting
-# (e.g. to keep data on $VSC_DATA as a temporary workaround for a
-# scratch purge), the value propagates through the submitter via
-# `sbatch --export=ALL,...` and the `:-` default below honours it.
-export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+# OUTPUT_ROOT is always durable storage ($VSC_DATA on VSC) — it holds
+# the log file this script is about to open, manifests, training
+# checkpoints, eval CSVs, and notebook figures. Never on scratch.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
+
+# DATA_ROOT is NOT defaulted here. It's resolved inside
+# `scripts/slurm/_activate_env.sh` from `config/data.yaml`'s
+# `paths.data_source` knob (after conda activation). Precedence:
+#   1. Explicit `CREDITPFN_DATA_ROOT` exported by the user (highest)
+#   2. `cfg.paths.data_source` in config/data.yaml
+#   3. VSC default ($VSC_SCRATCH/CreditPFN)
+# Setting a default here would silently shadow the yaml (bug fix 2026-05-21).
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
 

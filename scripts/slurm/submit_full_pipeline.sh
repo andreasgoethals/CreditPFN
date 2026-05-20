@@ -69,15 +69,23 @@ fi
 # spawned jobs. Slurm doesn't inherit env vars by default; we have to
 # list them on each `sbatch --export=ALL,<vars>`.
 #
-# If the user already exported one (explicit override), keep it. Otherwise
-# delegate to `src.utils.paths.get_roots()` — which probes the three known
-# VSC upload layouts and returns whichever one actually has raw CSVs on
-# disk. That way uploads to `$VSC_SCRATCH/data/raw/` (no project subdir)
-# or `$VSC_DATA/CreditPFN/data/raw/` (repo-local) are found automatically
-# without the user having to remember to set the env var. See the docstring
-# of `src/utils/paths.py` for the precedence ladder.
+# Resolution order (in `src/utils/paths.apply_data_source_from_cfg`):
+#   1. Explicit `$CREDITPFN_DATA_ROOT` already in the user's env  (highest)
+#   2. `cfg.paths.data_source` in `config/data.yaml`  ("scratch" or "data")
+#   3. VSC default ($VSC_SCRATCH/CreditPFN) — laptop default = repo root.
+#
+# We MUST load the cfg here so the yaml's `data_source` flips the
+# resolved root, otherwise the export below would unconditionally bake
+# in the VSC default and silently override the user's yaml choice
+# (the bug fixed on 2026-05-21).
 read -r CREDITPFN_DATA_ROOT CREDITPFN_OUTPUT_ROOT < <(
-    python -c "from src.utils.paths import get_roots; r=get_roots(); print(r['data_root'], r['output_root'])"
+    python -c "
+from omegaconf import OmegaConf
+from src.utils.paths import apply_data_source_from_cfg, get_roots
+apply_data_source_from_cfg(OmegaConf.load('config/data.yaml'))
+r = get_roots()
+print(r['data_root'], r['output_root'])
+"
 )
 SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT}"
 

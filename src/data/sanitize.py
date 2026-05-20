@@ -169,13 +169,36 @@ def _cast_numericals_to(
 
     Existing NaNs are preserved (float dtypes only — ``int64``-typed
     targets are handled separately).
+
+    When casting to a smaller float dtype (e.g. ``float32``), values
+    above the target's range — e.g. credit-risk features like
+    debt-to-income with a near-zero denominator — would silently
+    overflow to ``±inf`` AND emit a noisy
+    ``RuntimeWarning: overflow encountered in cast`` from NumPy.
+    Both effects are unhelpful: we want those out-of-range values to
+    become NaN (the standard "this is a data issue, treat as missing"
+    contract) cleanly, with no warning. So we explicitly replace
+    ``±inf`` with NaN at the float64 stage — before the cast that
+    would have produced the overflow.
     """
     np_dtype = np.dtype(dtype)
+    is_narrow_float = (
+        np_dtype.kind == "f" and np_dtype.itemsize < 8
+    )
     for col in numerical_columns:
         if col not in df.columns or col == target:
             continue
-        # Force float; integer columns become floats (NaN-compatible).
-        df[col] = pd.to_numeric(df[col], errors="coerce").astype(np_dtype)
+        # Force float64 first; integer columns become floats (NaN-compatible).
+        coerced = pd.to_numeric(df[col], errors="coerce")
+        if is_narrow_float:
+            # Catch both pre-existing ±inf in the source AND any value
+            # that would overflow the narrower target dtype.
+            target_max = np.finfo(np_dtype).max
+            mask = ~np.isfinite(coerced.to_numpy(dtype=np.float64, na_value=np.nan))
+            mask |= coerced.abs().to_numpy(dtype=np.float64, na_value=0.0) > target_max
+            if mask.any():
+                coerced = coerced.mask(mask, np.nan)
+        df[col] = coerced.astype(np_dtype)
     return df
 
 

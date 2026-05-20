@@ -28,8 +28,8 @@ sleep $((RANDOM % 15 + 1))
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-# See data.slurm for the rationale on these defaults + overrides.
-export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
+# See data.slurm for the rationale: OUTPUT_ROOT always durable;
+# DATA_ROOT resolved from config/data.yaml inside _activate_env.sh.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
