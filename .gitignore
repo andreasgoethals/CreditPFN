@@ -241,6 +241,20 @@ tensorboard/
 outputs/
 multirun/
 
+# CreditPFN's "everything the code writes" tree. Anchored to repo root
+# so a `src/output/` (if anyone ever created one) stays tracked, but
+# `<repo>/output/` does not. Subtree layout:
+#   output/training/manifests/   — per-run trial manifest CSVs
+#   output/training/epochs/      — per-trial per-epoch CSVs
+#   output/results/              — eval-pipeline benchmark CSVs
+#   output/figures/<notebook>/   — notebook-generated PDFs
+/output/
+
+# Legacy results/ directory (pre-output-paradigm). Keep ignored so an
+# old checkout containing leftover results/ files doesn't bleed into
+# new commits.
+/results/
+
 # SLURM / VSC logs
 slurm-*.out
 slurm-*.err

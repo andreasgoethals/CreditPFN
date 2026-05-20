@@ -40,7 +40,13 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=16G
+# 64 GB: 0014.algorithmwatch is 159k×2986 cells (~3.8 GB as float64 in
+# memory). Ward-linkage FeatureAgglomeration on that wide a numerical
+# block needs ~4× the matrix size in scratch buffers — peak resident
+# size during sanitize was ~25 GB in the 2026-05-19 run that 16 GB
+# killed (job 66727474). 64 GB leaves headroom for the next-widest
+# dataset (0011.loan_default, 105k×769) and any future addition.
+#SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 

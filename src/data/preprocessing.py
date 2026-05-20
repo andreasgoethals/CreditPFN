@@ -119,6 +119,25 @@ from typing import Callable, Mapping
 import numpy as np
 import pandas as pd
 
+# Opt-in to pandas's future `replace` behaviour: no silent downcasting,
+# no FutureWarning. Each surgical fix that wants the old downcast
+# behaviour chains `.infer_objects(copy=False)` after `.replace({...})`
+# (see e.g. `_fix_cobranded`, `_fix_bank_status`, `_fix_heloc`). Without
+# this opt-in, pandas 2.x emits the warning from INSIDE `replace` before
+# the chained `infer_objects` even runs.
+#
+# Pandas 4+ removed the silent downcast and deprecated the option — we
+# swallow the cosmetic "option deprecated" warning in that case so the
+# module loads cleanly on every pandas version we care about.
+import warnings as _warnings
+with _warnings.catch_warnings():
+    _warnings.simplefilter("ignore")
+    try:
+        pd.set_option("future.no_silent_downcasting", True)
+    except (KeyError, AttributeError, pd.errors.OptionError):
+        # Pandas < 2.1 doesn't know this option; older versions don't warn either.
+        pass
+
 LOGGER = logging.getLogger(__name__)
 
 

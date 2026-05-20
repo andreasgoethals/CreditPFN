@@ -55,12 +55,64 @@ import logging
 import os
 import sys
 import time
+import warnings
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
 
 # Refuse to swap if the new dump is below this fraction of the existing one.
 _SHRINK_GUARD_RATIO = 0.5
+
+# Default per-repository ingest timeout (seconds). Some repos
+# (VscDocumentation in particular) are slow to clone — bump from
+# gitingest's stock 60s default. Can be overridden with `--timeout`.
+_DEFAULT_TIMEOUT_SECONDS = 180
+
+
+# --------------------------------------------------------------------------- #
+# Windows / asyncio teardown noise
+# --------------------------------------------------------------------------- #
+#
+# gitingest runs `git clone` through an asyncio subprocess transport. On
+# Windows + Python 3.12, the ProactorEventLoop transports occasionally
+# raise during interpreter shutdown — `RuntimeError: Event loop is closed`
+# and `ValueError: I/O operation on closed pipe`. These are cosmetic,
+# the actual subprocess already completed, and the cleanup happens AFTER
+# `_print_summary` has written the user-visible result. Swallow them so
+# the summary stays clean.
+
+
+_NOISY_SHUTDOWN_MARKERS = (
+    "Event loop is closed",
+    "I/O operation on closed pipe",
+    "unclosed transport",
+)
+
+
+def _install_quiet_async_shutdown() -> None:
+    """Install a ``sys.unraisablehook`` that swallows asyncio teardown noise.
+
+    Only suppresses messages that match the well-known set of cosmetic
+    shutdown traces; any other unraisable exception still surfaces via
+    the default hook.
+    """
+    orig_hook = sys.unraisablehook
+
+    def _hook(unraisable):
+        err = unraisable.exc_value
+        msg = str(err) if err is not None else ""
+        if any(marker in msg for marker in _NOISY_SHUTDOWN_MARKERS):
+            return  # silently drop
+        orig_hook(unraisable)
+
+    sys.unraisablehook = _hook
+    # Same warnings, different surface — ResourceWarning sometimes fires
+    # before the transport raises. Filter only the ones we know about.
+    warnings.filterwarnings(
+        "ignore",
+        category=ResourceWarning,
+        message=".*unclosed.*transport.*",
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -194,6 +246,7 @@ def refresh_one(
     *,
     repositories_dir: Path,
     force_shrink: bool = False,
+    timeout: int | None = None,
 ) -> _Result:
     """Refresh a single ``repositories/<filename>`` from ``url`` atomically.
 
@@ -208,6 +261,15 @@ def refresh_one(
     4. ``os.replace`` swaps the temp file in.
     5. On any failure, the temp file is removed and the original file
        (if any) is left untouched.
+
+    Parameters
+    ----------
+    timeout
+        Forwarded to gitingest as a ``timeout=`` kwarg if the installed
+        version accepts it (newer releases do). On older releases that
+        don't accept it the call is retried without the kwarg — the
+        bump is then a no-op rather than a crash. ``None`` falls back to
+        whatever default gitingest applies.
     """
     target = repositories_dir / filename
     tmp    = repositories_dir / f"{filename}.refresh.tmp"
@@ -229,7 +291,7 @@ def refresh_one(
 
     t0 = time.monotonic()
     try:
-        ingest(source=url, output=str(tmp))
+        _ingest_with_optional_timeout(ingest, url, tmp, timeout=timeout)
     except Exception as exc:                                       # noqa: BLE001
         if tmp.exists():
             try:
@@ -267,13 +329,35 @@ def refresh_one(
             reason=(f"shrink guard: new dump is {new_size/1024:.1f} KB, "
                     f"existing is {old_size/1024:.1f} KB "
                     f"(< {int(_SHRINK_GUARD_RATIO*100)}%). "
-                    f"Existing file kept. Use --force-shrink to override."),
+                    f"Existing file kept. If the slim-down is legitimate, "
+                    f"override with: "
+                    f"--force-shrink --only {filename!r}."),
         )
 
     os.replace(tmp, target)
     return _Result(filename, url, "OK",
                    size_kb=new_size / 1024,
                    elapsed=time.monotonic() - t0)
+
+
+def _ingest_with_optional_timeout(ingest_fn, url: str, tmp: Path,
+                                  *, timeout: int | None) -> None:
+    """Call ``gitingest.ingest`` with an optional timeout kwarg.
+
+    Newer gitingest releases accept ``timeout=``; older ones don't. We
+    try the modern signature first and gracefully fall back. A
+    ``TypeError`` for an unexpected ``timeout`` arg is the signal; any
+    other exception propagates so the caller's error handler sees it.
+    """
+    kwargs = {"source": url, "output": str(tmp)}
+    if timeout is not None:
+        try:
+            return ingest_fn(**kwargs, timeout=timeout)
+        except TypeError as exc:
+            if "timeout" not in str(exc):
+                raise
+            # Older gitingest — fall through to the no-timeout call.
+    return ingest_fn(**kwargs)
 
 
 def _summarise_exception(exc: BaseException) -> str:
@@ -307,6 +391,7 @@ def refresh_all(
     only: list[str] | None = None,
     repositories_dir: Path | None = None,
     force_shrink: bool = False,
+    timeout: int | None = _DEFAULT_TIMEOUT_SECONDS,
 ) -> list[_Result]:
     """Refresh every entry in :data:`REPOSITORIES`.
 
@@ -347,7 +432,8 @@ def refresh_all(
         results.append(
             refresh_one(filename, url,
                         repositories_dir=repositories_dir,
-                        force_shrink=force_shrink)
+                        force_shrink=force_shrink,
+                        timeout=timeout)
         )
 
     # Skipped files — only on a full run; --only callers know what they're doing.
@@ -466,15 +552,30 @@ def main(argv: list[str] | None = None) -> int:
               "Use only when a legitimate slim-down of the upstream is "
               "expected."),
     )
+    parser.add_argument(
+        "--timeout", type=int, default=_DEFAULT_TIMEOUT_SECONDS,
+        metavar="SECS",
+        help=(f"Per-repository gitingest timeout in seconds "
+              f"(default: {_DEFAULT_TIMEOUT_SECONDS}). Increase if "
+              f"large repos like VscDocumentation time out. Ignored "
+              f"silently on gitingest versions that don't accept "
+              f"a 'timeout' kwarg."),
+    )
     args = parser.parse_args(argv)
 
     # Quiet, table-style output. The streaming gitingest INFO logs are
     # muted so the user only sees per-file progress + the final summary.
     logging.basicConfig(level=logging.WARNING, format="%(message)s", force=True)
     _silence_gitingest_logging()
+    # Swallow cosmetic asyncio shutdown noise on Windows + Python 3.12.
+    _install_quiet_async_shutdown()
 
     try:
-        results = refresh_all(only=args.only, force_shrink=args.force_shrink)
+        results = refresh_all(
+            only=args.only,
+            force_shrink=args.force_shrink,
+            timeout=args.timeout,
+        )
     except (FileNotFoundError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

@@ -338,7 +338,7 @@ Each trial writes:
 | Final-epoch weights                                                   | `checkpoints/trained/<track>/<descriptive_name>.ckpt`            |
 | Provenance sidecar (HPs, train/test IDs, GPU, walltime, …)           | `<descriptive_name>.ckpt.provenance.json`                        |
 | Manifest row consumed by the eval pipeline                            | `manifests/<run_name>_<track>.csv`                               |
-| Per-epoch CSV (epoch, train_loss, lr, train/test metric, epoch_time)  | `results/training/<track>/<descriptive_name>.csv`                |
+| Per-epoch CSV (epoch, train_loss, lr, train/test metric, epoch_time)  | `output/training/epochs/<track>/<descriptive_name>.csv`                |
 | Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                    |
 
 Filename schema:
@@ -441,7 +441,7 @@ Wide format; NaN where not applicable.
 ### Re-runs are idempotent
 
 Before scoring, each (model × dataset) pair is checked against
-existing CSVs under `results/benchmark/<TRACK>/<method-dirname>/`.
+existing CSVs under `output/results/<TRACK>/<method-dirname>/`.
 Pairs whose **all folds** are already `OK` are skipped. So:
 
 - **First run** — scores every baseline + untuned + trained variant.
@@ -449,7 +449,7 @@ Pairs whose **all folds** are already `OK` are skipped. So:
   new checkpoint's pairs; baselines reuse rows from disk.
 
 Force fresh scoring with `--rerun`. To rescore a single method, delete
-its directory under `results/benchmark/<TRACK>/` and re-submit.
+its directory under `output/results/<TRACK>/` and re-submit.
 
 ### Filters and run modes
 
@@ -497,7 +497,7 @@ are never overwritten. Aggregate with pandas:
 
 ```python
 import pandas as pd, glob
-files = glob.glob("results/benchmark/PD/*/creditpfn_*.csv")
+files = glob.glob("output/results/PD/*/creditpfn_*.csv")
 df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
 df.groupby(["model_name", "model_source"])[
     ["roc_auc", "f1", "log_loss", "rmse"]

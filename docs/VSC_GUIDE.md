@@ -292,7 +292,7 @@ safe (surplus array tasks exit zero cleanly). Each task writes:
 | Final-epoch weights                                | `checkpoints/trained/<track>/<descriptive_name>.ckpt`            |
 | Provenance sidecar (HPs, train/test IDs, GPU, …)   | `<descriptive_name>.ckpt.provenance.json`                        |
 | Manifest row (consumed by the eval pipeline)       | `manifests/<run_name>_<track>.csv`                               |
-| Per-epoch CSV (loss, lr, train/test metric, time)  | `results/training/<track>/<descriptive_name>.csv`                |
+| Per-epoch CSV (loss, lr, train/test metric, time)  | `output/training/epochs/<track>/<descriptive_name>.csv`                |
 | Full run log                                       | `logs/train_<track>_<ts>_j<jid>_a<tid>.log`                      |
 
 Filename schema:
@@ -324,7 +324,7 @@ non-TabPFN baselines see the full dataset.
 
 Before scoring, each `(model × dataset)` pair is checked against the
 existing CSVs under
-`results/benchmark/<TRACK>/<method-dirname>/`. Pairs whose **all
+`output/results/<TRACK>/<method-dirname>/`. Pairs whose **all
 folds** are already `OK` are skipped:
 
 - **First run** — scores every baseline + untuned + trained variant.
@@ -333,7 +333,7 @@ folds** are already `OK` are skipped:
   untuned-TabPFN are reused from disk.
 
 Force a fresh scoring with `--rerun`. To rescore a single method,
-delete its directory under `results/benchmark/<TRACK>/` and re-submit.
+delete its directory under `output/results/<TRACK>/` and re-submit.
 
 ### 4.4 Submit
 
@@ -370,7 +370,7 @@ are never overwritten. Aggregate across runs:
 
 ```python
 import pandas as pd, glob
-files = glob.glob("$VSC_DATA/CreditPFN/results/benchmark/PD/*/creditpfn_*.csv")
+files = glob.glob("$VSC_DATA/CreditPFN/output/results/PD/*/creditpfn_*.csv")
 df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
 df.groupby(["model_name", "model_source"])[
     ["roc_auc", "f1", "log_loss", "pr_auc"]
@@ -471,5 +471,5 @@ squeue --me --clusters=genius,wice
 | Data          | `$VSC_SCRATCH/CreditPFN/data/`                                    |
 | Logs          | `$VSC_DATA/CreditPFN/logs/<task>_<ts>_j<jid>_a<tid>.log`          |
 | Models        | `$VSC_DATA/CreditPFN/checkpoints/trained/<track>/*.ckpt`          |
-| Results       | `$VSC_DATA/CreditPFN/results/benchmark/<TRACK>/<method>/*.csv`    |
-| Per-epoch     | `$VSC_DATA/CreditPFN/results/training/<track>/*.csv`              |
+| Results       | `$VSC_DATA/CreditPFN/output/results/<TRACK>/<method>/*.csv`    |
+| Per-epoch     | `$VSC_DATA/CreditPFN/output/training/epochs/<track>/*.csv`              |

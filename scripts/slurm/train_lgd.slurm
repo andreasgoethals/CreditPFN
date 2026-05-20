@@ -35,7 +35,8 @@ export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
-         "${CREDITPFN_OUTPUT_ROOT}/manifests" \
+         "${CREDITPFN_OUTPUT_ROOT}/output/training/manifests" \
+         "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/lgd" \
          "${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/lgd"
 
 TS=$(date +%Y%m%d_%H%M%S)

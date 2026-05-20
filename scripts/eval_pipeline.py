@@ -28,7 +28,7 @@ Two execution modes
        sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm
 
    Each task writes its own
-   ``results/<TRACK>/<method>/<run>_<timestamp>__ds-<id>.csv``,
+   ``output/results/<TRACK>/<method>/<run>_<timestamp>__ds-<id>.csv``,
    so concurrent tasks never write to the same file (no locking).
 
 Re-runs and skip-existing
@@ -193,7 +193,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     )
 
     manifest_csv = (
-        resolve_output_path("manifests") / f"{train_cfg.run_name}_{track}.csv"
+        resolve_output_path("output/training/manifests") / f"{train_cfg.run_name}_{track}.csv"
     )
     trained = load_trained_handles(
         manifest_csv, track=track,
@@ -307,7 +307,7 @@ def run(
     # already-scored ones means a new tabpfn-trained variant only triggers
     # work for the new cells. Pass `--rerun` to force-rescore everything.
     results_base_for_skip = (
-        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "results"
+        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "output/results"
     )
     n_folds_required = (
         int(eval_cfg.cv.n_folds) if hasattr(eval_cfg, "cv") else 5
@@ -368,7 +368,7 @@ def run(
         else None
     )
     results_base = (
-        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "results"
+        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "output/results"
     )
 
     from src.eval.benchmark import run_benchmark

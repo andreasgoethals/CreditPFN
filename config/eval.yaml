@@ -7,6 +7,11 @@
 #
 #      <results.base_dir>/<TRACK>/<method>/<run_name>_<timestamp>.csv
 #
+#  All code-generated outputs live under `output/` (results, training
+#  manifests, per-epoch CSVs, notebook figures). The only exceptions
+#  are trained checkpoints (`checkpoints/trained/`) and the data
+#  pipeline's own artefacts (`data/`).
+#
 #  The training pipeline lives in `config/train.yaml`; the cross-cutting
 #  knobs (seed, run_name, track, corpus split) are inherited from there.
 #  Anything that's never changed across runs (metric column order,
@@ -65,7 +70,7 @@ tabpfn_n_estimators: 16
 
 
 # Output root. Benchmark CSVs land under <base_dir>/<TRACK>/<method>/...
-# Training per-epoch CSVs land under results/training/<track>/<...>.csv
+# Training per-epoch CSVs land under output/training/epochs/<track>/<...>.csv
 # (written by the training pipeline, not configurable here).
 results:
-  base_dir: "results/benchmark"
+  base_dir: "output/results"

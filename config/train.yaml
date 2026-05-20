@@ -142,7 +142,7 @@ train:
 
   # Per-epoch evaluation: at the end of every epoch we score the model
   # on a small subsample of each training- and test-dataset and write
-  # the result to results/training/<track>/<descriptive_name>.csv. The
+  # the result to output/training/epochs/<track>/<descriptive_name>.csv. The
   # primary metric is ROC-AUC for PD (classification) and RMSE for LGD
   # (regression). Set `epoch_eval_subsample_samples` to 0 to disable the
   # check (saves wall-clock for debug runs).

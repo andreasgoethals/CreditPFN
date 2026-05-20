@@ -32,7 +32,7 @@ Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
        (`scripts/eval_pipeline.py`) reads this to know which
        checkpoints to benchmark against the baselines.
      * One CSV per trial under
-       ``results/training/<track>/<descriptive_name>.csv`` with the
+       ``output/training/epochs/<track>/<descriptive_name>.csv`` with the
        per-epoch ``(epoch, train_loss, lr, elapsed_sec)`` — useful
        for diagnosing how the loss evolves across epochs.
 
@@ -357,14 +357,14 @@ def run(
         len(plan), track, plan_label, len(full_grid),
     )
 
-    csv_path = resolve_output_path("manifests") / f"{cfg.run_name}_{track}.csv"
+    csv_path = resolve_output_path("output/training/manifests") / f"{cfg.run_name}_{track}.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # ---- 3) per-trial training
     from src.train.loop import descriptive_name, train_one_config
 
-    # Per-epoch CSVs live in results/training/<track>/<descriptive_name>.csv
-    epoch_csv_dir = resolve_output_path("results/training") / track
+    # Per-epoch CSVs live in output/training/epochs/<track>/<descriptive_name>.csv
+    epoch_csv_dir = resolve_output_path("output/training/epochs") / track
     epoch_csv_dir.mkdir(parents=True, exist_ok=True)
 
     rows: list[RunRow] = []
