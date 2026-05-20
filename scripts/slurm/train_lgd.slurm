@@ -28,7 +28,7 @@ set -euo pipefail
 export PYTHONUNBUFFERED=1
 
 # See train_pd.slurm for the rationale.
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:512}"
 
 # See data.slurm for the rationale on these defaults + overrides.
 export CREDITPFN_DATA_ROOT="${CREDITPFN_DATA_ROOT:-${VSC_SCRATCH}/CreditPFN}"

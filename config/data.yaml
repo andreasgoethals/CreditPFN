@@ -26,7 +26,7 @@ paths:
   #   "data"    — $VSC_DATA/leuven/383/<user>/CreditPFN/data/... (VSC durable storage)
   # Ignored on a laptop (no $VSC_DATA / $VSC_SCRATCH — the repo's own data/
   # folder is always used).
-  data_source:   "scratch"
+  data_source:   "data"
 
   raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv
   processed:     data/processed          # sanitize.py output

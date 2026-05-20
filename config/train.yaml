@@ -124,15 +124,29 @@ train:
 
   # Per-step context+query sample count.
   #
-  # Memory budget (empirical, TabPFN-v3 + LoRA, AMP on):
-  #   * 100 000 rows → OOM on H100 80 GB (wICE gpu_h100); fits H100 NVL 94 GB.
-  #   *  50 000 rows → fits H100 80 GB with ~10 GB headroom; recommended default.
-  #   *  25 000 rows → safe for any 40 GB+ card (A100, L40S).
-  # The v3 three-stage architecture is ~2× more memory-hungry per row than
-  # v2.6 because the column-aggregator's `cls`-token cross-attention sees
-  # the full row count. Match this to the GPU you actually get, not the
-  # one you wish you had. (See literature note on TabPFN-3 for context.)
-  n_finetune_ctx_plus_query_samples: 50000
+  # THIS IS THE TabPFN-DOCUMENTED DEFAULT.
+  # `FinetunedTabPFNClassifier.__init__` in the upstream `tabpfn` package
+  # (`repositories/TabPFN .txt:26832` and `:27467`) hard-codes
+  #     n_finetune_ctx_plus_query_samples: int = 10_000
+  # — the value Prior Labs themselves recommend for any fine-tune.
+  #
+  # WHY THE NUMBER MATTERS DURING TRAINING.
+  # TabPFN-v3's `inference_row_chunk_size = 2048` (`TabPFN .txt:17650`)
+  # only kicks in for INFERENCE, where gradients aren't kept and the
+  # forward can be chunked. During FINE-TUNING the activations of the
+  # full forward must be retained for backward, so peak VRAM scales
+  # with `rows × features × hidden × layers`. Empirically on a 79 GB
+  # H100 with the v3 default model (54M params, ~12 layers per stage):
+  #   * 100 000 rows → 77 GB allocated → OOM (this was the misguided default)
+  #   *  50 000 rows → still 77 GB allocated → OOM (confirmed 2026-05-20)
+  #   *  10 000 rows → ≈ 16 GB allocated → comfortable headroom
+  #   *   5 000 rows → ≈ 8 GB allocated → safe on any 16 GB+ card
+  # Memory is roughly linear in rows once the model is loaded, so the
+  # 80 GB H100 sweet spot really is the documented 10 k.
+  #
+  # If a future card or a v3 with row-chunked training enabled gives
+  # you room, you can raise this knob. Until then, leave it at 10_000.
+  n_finetune_ctx_plus_query_samples: 10000
 
   # Fraction of those rows that go to the query split (matches TabPFN's
   # `finetune_ctx_query_split_ratio = 0.20`).

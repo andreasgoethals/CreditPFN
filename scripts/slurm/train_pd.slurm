@@ -23,8 +23,13 @@
 #  (`%4` caps in-flight tasks at 4. Drop or raise as the queue
 #   tolerates.)
 #
-#  wICE `gpu_h100` partition gives us KU Leuven's newest GPU
-#  (NVIDIA H100 NVL, 96GB) — the best fit for TabPFN finetuning.
+#  wICE `gpu_h100` partition is a MIX of two H100 generations:
+#      * NVIDIA H100 80 GB HBM3   (most nodes — `s16gNN`)
+#      * NVIDIA H100 NVL 94 GB    (subset)
+#  Slurm does not guarantee which one you get on a given task. The
+#  `n_finetune_ctx_plus_query_samples = 10_000` default in train.yaml
+#  is sized for the 80 GB card so every task fits. The comment in
+#  train.yaml has the full memory budget table.
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-pd-train
@@ -54,7 +59,7 @@ export PYTHONUNBUFFERED=1
 # `expandable_segments` lets the allocator reclaim fragmented blocks,
 # which the OOM error message explicitly recommends. Cheap insurance —
 # no measurable slowdown.
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:512}"
 
 # Honour user-set CREDITPFN_DATA_ROOT (propagated via submit_full_pipeline.sh
 # --export=ALL,...). Default = scratch; override to $VSC_DATA/CreditPFN
