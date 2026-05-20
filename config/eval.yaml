@@ -44,10 +44,29 @@ cv:
   inner_val_fraction: 0.20      # 64/16/20 train/val/test of the dataset
 
 
-# TabPFN-2.6 architectural in-context limit. wICE H100 NVL (96GB) lets
-# us push to 100k cleanly. Non-TabPFN baselines have no such cap and
-# run on the full data; see `hpo.<m>.max_rows` for HPO-only subsampling.
-max_rows_tabpfn: 100000
+# Per-base-architecture max-rows cap for the *training* subset that
+# the TabPFN-family models see during evaluation. The cap is the
+# upstream architectural limit on how many in-context rows TabPFN
+# can fit through one forward pass on an 80 GB H100 (the wICE
+# gpu_h100 standard):
+#
+#   * TabPFN-v2.x  → 100_000   (Hollmann 2025 §3; verified upper bound)
+#   * TabPFN-v3    → 1_000_000 (Grinsztajn 2026 §2.4; the "1M rows on a
+#                              single H100" headline result, enabled by
+#                              v3's row-chunked inference + reduced KV
+#                              cache)
+#
+# The lookup key matches the leading "v<MAJOR>" of the base-stem the
+# eval pipeline parses out (see `src/eval/benchmark._short_base_tag`).
+# `default` is the fallback when nothing matches.
+#
+# Non-TabPFN baselines (XGBoost / CatBoost / LogReg / LinReg) have no
+# such cap and see the full training fold.
+max_rows_per_model:
+  v3:      1000000
+  v2.6:    100000
+  v2.5:    100000
+  default: 100000
 
 
 # Per-fold Optuna budget for the boosting baselines. HPO objective is

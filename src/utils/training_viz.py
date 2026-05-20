@@ -16,7 +16,7 @@ kinds of artefacts that this module consumes:
   ``output/training/manifests/<run_name>_<track>.csv``. Each row is one trial::
 
       track, base_checkpoint, learning_rate, use_lora, seed,
-      n_train_datasets, n_test_datasets, n_train_chunks, n_test_chunks,
+      n_train_datasets, n_test_datasets,
       final_ckpt_path, elapsed_sec, status, error
 
   (The dataclass is ``RunRow`` in the same script.)

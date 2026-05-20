@@ -16,11 +16,9 @@ Three layers
 * **Processed** — ``data/processed/{pd,lgd}/<id>.sanitized.csv``.
                   Read by ``corpus_summary_table`` / the
                   ``processed_data_exploration`` notebook. The
-                  "is the cleaning sound" view.
-* **Cached**    — ``data/cached/{pd,lgd}/<id>/chunk_NNN.npz`` +
-                  ``meta.json``. Read by ``cached_*`` helpers / the
-                  ``cached_data_exploration`` notebook. The "is the
-                  training input shape healthy" view.
+                  "is the cleaning sound" view. Since 2026-05-20
+                  this is also the format that the training pipeline
+                  reads directly (no more `.npz` chunks).
 
 Glossary
 --------
@@ -37,17 +35,12 @@ Glossary
   imbalance into a single 0–1 number where lower = more imbalanced.
 * **target_mean / target_std** — for regression: the target
   variable's empirical mean / standard deviation across the dataset.
-* **chunk** — one ``.npz`` file under ``data/cached/...``. Each chunk
-  is a self-contained ``(X_context, y_context, X_query, y_query)``
-  tuple ready for the multi-table fine-tuning loop. Datasets larger
-  than ``cfg.dataset.max_rows_per_chunk`` become multiple chunks.
 
 Public surface — corpus-level (scales to 3 000 datasets)
 --------------------------------------------------------
 * :func:`raw_corpus_summary` — one row per raw CSV.
 * :func:`corpus_summary_table` — one row per dataset, manifest +
   on-disk processed shapes side-by-side.
-* :func:`cached_corpus_summary` — one row per cached dataset.
 * :func:`plot_dataset_size_distribution` — ``track`` is required;
   one plot for one track at a time. Two histograms: rows and
   features.
@@ -56,8 +49,6 @@ Public surface — corpus-level (scales to 3 000 datasets)
 * :func:`plot_class_imbalance_distribution` — PD only.
 * :func:`plot_target_mean_distribution_lgd` — corpus-level histogram
   of LGD target means across all datasets.
-* :func:`plot_chunk_count_distribution` — cached.
-* :func:`plot_chunk_size_distribution` — cached.
 
 Public surface — per-dataset (paginated for scale)
 --------------------------------------------------
@@ -69,7 +60,6 @@ Public surface — error detection
 --------------------------------
 * :func:`find_anomalous_datasets` — flag corpus members with
   anomalous values on any of N indicators.
-* :func:`find_anomalous_chunks` — same for cached chunks.
 
 All plot helpers return the matplotlib ``Figure`` so the caller can
 ``fig.savefig(...)`` or further customise.
@@ -108,7 +98,6 @@ def _load_default_cfg():
         return _NS(paths=_NS(
             raw=str(_REPO / "data" / "raw"),
             processed=str(_REPO / "data" / "processed"),
-            cached=str(_REPO / "data" / "cached"),
             manifest_pd=str(_REPO / "data" / "manifest_pd.csv"),
             manifest_lgd=str(_REPO / "data" / "manifest_lgd.csv"),
         ))
@@ -119,7 +108,7 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
 
     Mirrors the same resolver split used by the data pipeline:
 
-      * raw / processed / cached → ``$CREDITPFN_DATA_ROOT`` (scratch on VSC)
+      * raw / processed → ``$CREDITPFN_DATA_ROOT`` (scratch on VSC)
       * manifest_*               → ``$CREDITPFN_OUTPUT_ROOT`` (durable on VSC)
     """
     from src.utils.paths import resolve_data_path, resolve_output_path
@@ -127,11 +116,9 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
         cfg = _load_default_cfg()
 
     raw_default       = "data/raw"
-    cached_default    = "data/cached"
     return {
         "raw":          resolve_data_path(getattr(cfg.paths, "raw", raw_default)),
         "processed":    resolve_data_path(cfg.paths.processed),
-        "cached":       resolve_data_path(getattr(cfg.paths, "cached", cached_default)),
         "manifest_pd":  resolve_output_path(cfg.paths.manifest_pd),
         "manifest_lgd": resolve_output_path(cfg.paths.manifest_lgd),
     }
@@ -171,43 +158,11 @@ def load_sanitized_dataset(
     return pd.read_csv(p, low_memory=False)
 
 
-def load_cached_meta(track: str, dataset_id: str, cfg=None) -> dict:
-    """Read the meta.json sidecar for one cached dataset."""
-    paths = _resolve_paths(cfg)
-    p = paths["cached"] / track / dataset_id / "meta.json"
-    if not p.exists():
-        raise FileNotFoundError(f"meta.json not found at {p}")
-    return json.loads(p.read_text(encoding="utf-8"))
-
-
-def list_cached_chunks(track: str, dataset_id: str, cfg=None) -> list[Path]:
-    """Return sorted list of ``chunk_NNN.npz`` paths for one dataset."""
-    paths = _resolve_paths(cfg)
-    folder = paths["cached"] / track / dataset_id
-    if not folder.exists():
-        return []
-    return sorted(folder.glob("chunk_*.npz"))
-
-
-def load_cached_chunk(path: Path) -> Mapping[str, np.ndarray]:
-    """Load one ``.npz`` chunk as a dict-like read-only view."""
-    return np.load(path)
-
-
-# =============================================================================
-# Corpus-level summaries
-# =============================================================================
-#
-# Performance note: ``raw_corpus_summary`` and ``cached_corpus_summary``
-# read every dataset on disk. With wide datasets (``algorithmwatch`` is
-# 159 k × 2 987) a single pass is on the order of tens of seconds, and
-# the exploration notebooks call these functions multiple times
-# (once per plot). To avoid the resulting "every cell takes a minute"
-# experience we memoise the result by ``(function, repr(cfg))`` so a
-# notebook session re-uses the first computation.
-#
-# Pass ``refresh=True`` to bust the cache (e.g. after a rebuild).
-
+# In-process memoisation: the loaders read every CSV on disk, which is
+# slow for the wide datasets (algorithmwatch is 159 k × 2 987). Re-using
+# the same DataFrame across notebook cells keeps the second-and-later
+# cell render times in milliseconds. Pass ``refresh=True`` to bust the
+# cache after a fresh pipeline rebuild.
 _SUMMARY_CACHE: dict[tuple, pd.DataFrame] = {}
 
 
@@ -391,88 +346,6 @@ def corpus_summary_table(
     out = _round_summary(pd.DataFrame(rows))
     _SUMMARY_CACHE[key] = out
     return out.copy()
-
-
-def cached_corpus_summary(
-    track: str | None = None, cfg=None, *, refresh: bool = False,
-) -> pd.DataFrame:
-    """One row per cached dataset. Memoised.
-
-    For each dataset, summarises:
-
-    * ``n_chunks`` — number of ``chunk_*.npz`` files on disk.
-    * ``mean_chunk_rows`` — mean chunk size (context + query).
-    * ``total_size_mb`` — sum of ``.npz`` file sizes.
-    * ``ctx_query_ratio`` — actual ``len(X_context) / total`` averaged
-      across chunks. Should be close to 0.60. Deviations indicate
-      a stale cache vs. updated cfg.
-    * ``unknown_sentinel_rate`` — fraction of cells in the *query*
-      categorical columns that equal the encoder's ``unknown_value``
-      (``-1`` by default). 0.0 means the dataset never tests TabPFN
-      on unseen-in-context categories — fine for low-cardinality
-      categoricals, suspicious for high-cardinality ones.
-    * ``nan_rate_in_X`` — fraction of NaN cells across all chunk
-      ``X_*`` arrays.
-    """
-    key = _cache_key(f"cached_corpus_summary:{track}", cfg)
-    if not refresh and key in _SUMMARY_CACHE:
-        return _SUMMARY_CACHE[key].copy()
-
-    from src.data.preprocessing import DATASET_METADATA
-    paths = _resolve_paths(cfg)
-    rows: list[dict] = []
-    tracks = ["pd", "lgd"] if track is None else [track]
-    for did, meta in DATASET_METADATA.items():
-        if meta["track"] not in tracks:
-            continue
-        chunks = list_cached_chunks(meta["track"], did, cfg)
-        if not chunks:
-            rows.append({
-                "track": meta["track"], "dataset_id": did,
-                "n_chunks": 0,
-                "mean_chunk_rows": np.nan, "total_size_mb": np.nan,
-                "ctx_query_ratio": np.nan, "unknown_sentinel_rate": np.nan,
-                "nan_rate_in_X": np.nan, "task_type": meta["task_type"],
-            })
-            continue
-        sizes = [p.stat().st_size for p in chunks]
-        ratios: list[float] = []
-        chunk_rows: list[int] = []
-        unk_counts = unk_total = nan_count = nan_total = 0
-        for p in chunks:
-            d = load_cached_chunk(p)
-            n_ctx, n_qry = len(d["X_context"]), len(d["X_query"])
-            chunk_rows.append(n_ctx + n_qry)
-            ratios.append(n_ctx / max(1, n_ctx + n_qry))
-            cat_idx = d["categorical_idx"].tolist()
-            if cat_idx:
-                # Unknown-sentinel rate computed on the QUERY split only.
-                qry_cats = d["X_query"][:, cat_idx]
-                unk_counts += int(np.sum(qry_cats == -1.0))
-                unk_total += qry_cats.size
-            for arr_name in ("X_context", "X_query"):
-                arr = d[arr_name]
-                nan_count += int(np.isnan(arr).sum())
-                nan_total += arr.size
-        rows.append({
-            "track": meta["track"],
-            "dataset_id": did,
-            "n_chunks": len(chunks),
-            "mean_chunk_rows": float(np.mean(chunk_rows)),
-            "total_size_mb": sum(sizes) / (1024 * 1024),
-            "ctx_query_ratio": float(np.mean(ratios)),
-            "unknown_sentinel_rate": (unk_counts / unk_total) if unk_total else 0.0,
-            "nan_rate_in_X": (nan_count / nan_total) if nan_total else 0.0,
-            "task_type": meta["task_type"],
-        })
-    out = _round_summary(pd.DataFrame(rows))
-    _SUMMARY_CACHE[key] = out
-    return out.copy()
-
-
-# =============================================================================
-# Plot helpers
-# =============================================================================
 
 
 def _import_mpl():
@@ -675,108 +548,6 @@ def plot_target_mean_distribution_lgd(cfg=None):
     return fig
 
 
-def plot_chunk_count_distribution(cfg=None):
-    """Histogram of chunks-per-dataset, faceted by track.
-
-    Most credit-risk datasets are < ~20 k rows so most produce 1 chunk;
-    a few large ones (`hackerearth`, `home_credit`, `algorithmwatch`)
-    produce 8–30. Long-tail outliers indicate either very large
-    parent datasets or a too-small ``max_rows_per_chunk``.
-    """
-    plt = _import_mpl()
-    summary = cached_corpus_summary(cfg=cfg)
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    # Integer bins from 1 to the maximum number of chunks observed —
-    # avoids the "narrow bars at low counts, wide bars at high counts"
-    # artefact that linear-bins-on-log-axis produces.
-    max_chunks = int(max(summary["n_chunks"].max() or 1, 1))
-    bins = np.arange(0.5, max_chunks + 1.5, 1.0)
-    for tr in ("pd", "lgd"):
-        sub = summary[summary["track"] == tr]
-        if len(sub):
-            ax.hist(sub["n_chunks"], bins=bins, alpha=0.6, label=tr.upper(),
-                    color=_TRACK_COLOR[tr],
-                    edgecolor="white", linewidth=0.6)
-    _apply_style(
-        ax,
-        title="Cached — chunk count per dataset",
-        xlabel="chunks per dataset",
-    )
-    ax.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
-    return fig
-
-
-def plot_chunk_size_distribution(cfg=None):
-    """Histogram of mean chunk size in rows, faceted by track.
-
-    Uses log-spaced bins because chunk sizes span 3+ orders of
-    magnitude (some datasets have a single 500-row chunk; others
-    have many 100k-row chunks).
-    """
-    plt = _import_mpl()
-    summary = cached_corpus_summary(cfg=cfg)
-    summary = summary.dropna(subset=["mean_chunk_rows"])
-    if summary.empty:
-        return None
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    bins = _log_bins(summary["mean_chunk_rows"], n_bins=20)
-    for tr in ("pd", "lgd"):
-        sub = summary[summary["track"] == tr]
-        if len(sub):
-            ax.hist(sub["mean_chunk_rows"], bins=bins, alpha=0.6,
-                    label=tr.upper(), color=_TRACK_COLOR[tr],
-                    edgecolor="white", linewidth=0.6)
-    ax.set_xscale("log")
-    _apply_style(
-        ax,
-        title="Cached — mean chunk size per dataset",
-        xlabel="mean chunk size  (rows in X_context + X_query, log-scaled)",
-    )
-    ax.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
-    return fig
-
-
-def plot_unknown_sentinel_rate(cfg=None):
-    """Histogram of the per-dataset unknown-sentinel rate (cached).
-
-    See the cached_corpus_summary docstring for what
-    ``unknown_sentinel_rate`` means. A dataset at 0 means the encoder
-    never had to substitute -1 in the query — fine for small
-    categorical vocabularies, suspicious for wide ones (suggests
-    every category is well-covered by chance, or your context split
-    is too large). A dataset > 0.10 means a tenth of categorical
-    cells in the query were unseen in context — that's exactly the
-    scenario TabPFN must learn to handle.
-    """
-    plt = _import_mpl()
-    summary = cached_corpus_summary(cfg=cfg)
-    summary = summary[summary["unknown_sentinel_rate"].notna()]
-    fig, ax = plt.subplots(figsize=(9, 4.5))
-    bins = np.linspace(0.0, 1.0, 26)
-    for tr in ("pd", "lgd"):
-        sub = summary[summary["track"] == tr]
-        if len(sub):
-            ax.hist(sub["unknown_sentinel_rate"], bins=bins, alpha=0.6,
-                    label=tr.upper(), color=_TRACK_COLOR[tr],
-                    edgecolor="white", linewidth=0.6)
-    ax.set_xlim(0.0, 1.0)
-    _apply_style(
-        ax,
-        title="Cached — unknown-sentinel rate per dataset",
-        xlabel="unknown-sentinel rate  (fraction of -1 in query categoricals)",
-    )
-    ax.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
-    return fig
-
-
-# --------------------------------------------------------------------------- #
-# Per-dataset (paginated)
-# --------------------------------------------------------------------------- #
-
-
 def plot_target_distribution_lgd(
     dataset_ids: Iterable[str] | None = None,
     *,
@@ -873,71 +644,6 @@ def plot_target_distribution_pd(
 # --------------------------------------------------------------------------- #
 
 
-def plot_chunk_target_consistency(
-    track: str,
-    dataset_ids: Iterable[str] | None = None,
-    *,
-    max_show: int = 12,
-    cfg=None,
-):
-    """Per-dataset target stats per chunk.
-
-    For PD: bar chart of class-1 fraction in each chunk's query split.
-    Stratified chunking should make these almost identical across
-    chunks of the same dataset; large drift means stratification
-    failed for that dataset.
-
-    For LGD: bar chart of mean target per chunk. Random chunking
-    should keep means within ~1 sample-error of each other; an
-    outlier chunk indicates suspicious mass concentration.
-    """
-    plt = _import_mpl()
-    if track not in ("pd", "lgd"):
-        raise ValueError("track must be 'pd' or 'lgd'")
-    summary = cached_corpus_summary(track, cfg)
-    summary = summary[summary["n_chunks"] > 1]
-    if dataset_ids is not None:
-        summary = summary[summary["dataset_id"].isin(list(dataset_ids))]
-    summary = summary.head(max_show)
-    n = len(summary)
-    if n == 0:
-        return None
-    ncols = 2
-    nrows = (n + ncols - 1) // ncols
-    fig, axes = plt.subplots(nrows, ncols, figsize=(7 * ncols, 2.5 * nrows),
-                             squeeze=False)
-    color = {"pd": "tab:blue", "lgd": "tab:orange"}[track]
-    for ax, (_, row) in zip(axes.flat, summary.iterrows()):
-        did = row["dataset_id"]
-        chunks = list_cached_chunks(track, did, cfg)
-        stats = []
-        for p in chunks:
-            d = load_cached_chunk(p)
-            y = np.concatenate([d["y_context"], d["y_query"]])
-            if track == "pd":
-                stats.append(float((y == 1).mean()))
-            else:
-                stats.append(float(np.nanmean(y)))
-        ax.bar(range(len(stats)), stats, color=color, alpha=0.85)
-        if track == "pd":
-            ax.set_ylabel("class-1 fraction")
-            ax.set_ylim(0, max(0.5, max(stats) * 1.2))
-        else:
-            ax.set_ylabel("mean target")
-            ax.set_ylim(0, 1)
-        ax.set_xlabel("chunk index")
-        ax.set_title(f"{did}  ({len(stats)} chunks)", fontsize=9)
-    for ax in axes.flat[n:]:
-        ax.set_axis_off()
-    fig.tight_layout()
-    return fig
-
-
-# =============================================================================
-# Error detection
-# =============================================================================
-
-
 def find_anomalous_datasets(
     cfg=None,
     *,
@@ -992,52 +698,3 @@ def find_anomalous_datasets(
     return pd.DataFrame(flags)
 
 
-def find_anomalous_chunks(
-    cfg=None,
-    *,
-    min_chunks: int = 1,
-    min_unknown_for_warning: float = 0.30,
-    max_nan_rate: float = 0.50,
-    ctx_query_tolerance: float = 0.10,
-) -> pd.DataFrame:
-    """Flag cached datasets with anomalous chunk-level indicators.
-
-    Indicators (each becomes a ``flag_*`` column plus a token in
-    the ``reasons`` semicolon-list):
-
-    * ``no_chunks`` — fewer than ``min_chunks`` chunks on disk.
-    * ``ctx_query_off`` — average context fraction differs from the
-      configured ``cfg.dataset.context_fraction`` by more than
-      ``ctx_query_tolerance`` (default ±0.10). Signals a stale cache
-      relative to the current config.
-    * ``high_unknown_sentinel`` — more than
-      ``min_unknown_for_warning`` of query categorical cells were
-      unseen in context. Not necessarily wrong (TabPFN can handle
-      it), but noteworthy at very high rates.
-    * ``too_many_nans`` — more than ``max_nan_rate`` of X-cells are
-      NaN. Indicates the sanitisation didn't drop enough.
-    """
-    cfg = cfg or _load_default_cfg()
-    summary = cached_corpus_summary(cfg=cfg)
-    expected_ctx = float(cfg.dataset.context_fraction) if hasattr(cfg, "dataset") else 0.60
-    flags: list[dict] = []
-    for _, row in summary.iterrows():
-        reasons: list[str] = []
-        if row["n_chunks"] < min_chunks:
-            reasons.append("no_chunks")
-        if (pd.notna(row["ctx_query_ratio"])
-                and abs(row["ctx_query_ratio"] - expected_ctx) > ctx_query_tolerance):
-            reasons.append("ctx_query_off")
-        if (pd.notna(row["unknown_sentinel_rate"])
-                and row["unknown_sentinel_rate"] > min_unknown_for_warning):
-            reasons.append("high_unknown_sentinel")
-        if (pd.notna(row["nan_rate_in_X"])
-                and row["nan_rate_in_X"] > max_nan_rate):
-            reasons.append("too_many_nans")
-        if reasons:
-            flags.append({
-                "track": row["track"], "dataset_id": row["dataset_id"],
-                "reasons": ";".join(reasons),
-                **{f"flag_{r}": True for r in reasons},
-            })
-    return pd.DataFrame(flags)

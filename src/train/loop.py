@@ -43,9 +43,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from src.train.corpus import ChunkRef, CorpusSplit, split_from_cfg
+from src.train.corpus import DatasetRef, CorpusSplit, split_from_cfg
 from src.train.dataloader import (
-    ChunkDataset, TabPFNBatch, identity_collate, prepare_eval_chunk,
+    ProcessedDatasetLoader, TabPFNBatch, identity_collate, prepare_eval_chunk,
 )
 from src.train.metrics import (
     classification_metric, regression_metric,
@@ -98,8 +98,6 @@ class TrainingResult:
     """
     final_ckpt_path: Path
     history: list[EpochRecord] = field(default_factory=list)
-    n_train_chunks: int = 0
-    n_test_chunks: int = 0
     n_train_datasets: int = 0
     n_test_datasets: int = 0
     elapsed_sec: float = 0.0
@@ -109,12 +107,6 @@ class TrainingResult:
 # --------------------------------------------------------------------------- #
 # Public utility: descriptive checkpoint name
 # --------------------------------------------------------------------------- #
-
-
-# Multi-chunk policy is fixed: each parent dataset contributes only its
-# first cached chunk to training. This avoids over-weighting large parents
-# (would-be 8-chunk datasets ↔ 1-chunk datasets in the same epoch).
-MULTI_CHUNK_POLICY = "first_chunk_only"
 
 
 def descriptive_name(
@@ -329,7 +321,7 @@ def _n_classes(batch: TabPFNBatch) -> int:
 
 def evaluate_on_split(
     model: torch.nn.Module,
-    chunks: list[ChunkRef],
+    refs: list[DatasetRef],
     *,
     criterion,
     device: str,
@@ -337,33 +329,21 @@ def evaluate_on_split(
     n_inference_subsample_samples: int,
     seed: int = 0,
 ) -> float:
-    """Mean primary metric over a list of chunks (test-time inference).
+    """Mean primary metric over a list of datasets (end-of-epoch monitor).
 
-    Used by the training loop for per-epoch monitoring (small subsample,
-    fast) and by ``src/eval/`` for end-of-run scoring (larger subsample).
-    Higher = better when paired with :func:`improvement_direction`
-    (the caller multiplies).
-
-    Parameters
-    ----------
-    n_inference_subsample_samples
-        Row budget per chunk for the eval forward pass. Lower → faster,
-        noisier; the per-epoch monitor uses ~500, the full eval uses
-        ~100 000. ``0`` returns ``NaN`` immediately (caller-side opt-out).
-    seed
-        Base seed for the chunk subsample. Each chunk gets ``seed + i``
-        so subsamples are reproducible AND uncorrelated across chunks.
+    Used by the training loop for per-epoch monitoring only — the proper
+    eval is a separate pipeline (``scripts/eval_pipeline.py``).
     """
-    if not chunks or n_inference_subsample_samples <= 0:
+    if not refs or n_inference_subsample_samples <= 0:
         return float("nan")
     was_training = model.training
     model.eval()
-    is_classification = chunks[0].task_type == "classification"
+    is_classification = refs[0].task_type == "classification"
     per_chunk: list[float] = []
 
     try:
         with torch.no_grad():
-            for i, ref in enumerate(chunks):
+            for i, ref in enumerate(refs):
                 batch = prepare_eval_chunk(
                     ref,
                     n_inference_subsample_samples=n_inference_subsample_samples,
@@ -418,7 +398,8 @@ def train_one_config(
     value of the corresponding tunable list.
 
     The multi-chunk policy is fixed (``first_chunk_only``); see the
-    ``MULTI_CHUNK_POLICY`` constant near the top of this module.
+    Each parent dataset contributes EXACTLY ONE training step per epoch
+    (no chunking — see 2026-05-20 refactor in `src/train/corpus.py`).
 
     Parameters
     ----------
@@ -477,7 +458,6 @@ def train_one_config(
     # Inject the resolved choices back into cfg so downstream helpers
     # (corpus split, optimizer factory) read them via the usual path.
     cfg.optimizer.lr = float(learning_rate)
-    cfg.corpus.multi_chunk_policy = MULTI_CHUNK_POLICY
 
     _seed_everything(int(cfg.seed))
     device = _resolve_device(cfg)
@@ -516,10 +496,18 @@ def train_one_config(
     )
 
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
-    train_ds = ChunkDataset(
+    # The per-step subsample size is `finetuning.max_rows_per_epoch` in
+    # `config/data.yaml` (single source of truth — same value for every
+    # base in the sweep).
+    from omegaconf import OmegaConf
+    _data_cfg = OmegaConf.load("config/data.yaml")
+    max_rows_per_epoch = int(_data_cfg.finetuning.max_rows_per_epoch)
+    query_fraction = float(_data_cfg.finetuning.query_fraction)
+
+    train_ds = ProcessedDatasetLoader(
         split.train,
-        n_total_target=int(cfg.train.n_finetune_ctx_plus_query_samples),
-        query_fraction=float(cfg.train.finetune_ctx_query_split_ratio),
+        max_rows_per_epoch=max_rows_per_epoch,
+        query_fraction=query_fraction,
         seed=int(cfg.seed),
     )
     train_loader = DataLoader(
@@ -568,15 +556,20 @@ def train_one_config(
     t0 = time.monotonic()
 
     LOGGER.info(
-        "Starting %d epochs | %d train chunks/epoch | accumulate=%d | "
-        "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s",
+        "Starting %d epochs | %d train datasets/epoch | accumulate=%d | "
+        "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s | "
+        "max_rows_per_epoch=%d | query_fraction=%.2f",
         epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
         Path(base_checkpoint).name, int(cfg.seed), device,
+        max_rows_per_epoch, query_fraction,
     )
     LOGGER.info("Save target   : %s", save_path)
 
     for epoch in range(epochs):
         model.train()
+        # Per-epoch reshuffle: a fresh random subsample is drawn from each
+        # dataset's full processed CSV (see ProcessedDatasetLoader.set_epoch).
+        train_ds.set_epoch(epoch)
         running_loss = 0.0
         n_batches = 0
         optimizer.zero_grad(set_to_none=True)
@@ -732,11 +725,8 @@ def train_one_config(
             "accumulate_grad_batches": int(cfg.train.accumulate_grad_batches),
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
-            "n_finetune_ctx_plus_query_samples":
-                int(cfg.train.n_finetune_ctx_plus_query_samples),
-            "finetune_ctx_query_split_ratio":
-                float(cfg.train.finetune_ctx_query_split_ratio),
-            "multi_chunk_policy":  MULTI_CHUNK_POLICY,    # hardcoded
+            "max_rows_per_epoch":  max_rows_per_epoch,
+            "query_fraction":      query_fraction,
             "seed":                int(cfg.seed),
             "use_lora":            bool(use_lora),
             "lora": (
@@ -751,8 +741,8 @@ def train_one_config(
         },
         "training_datasets":   train_dataset_ids,
         "test_datasets":       test_dataset_ids,
-        "n_train_chunks":      len(split.train),
-        "n_test_chunks":       len(split.test),
+        "n_train_datasets_meta": len(split.train),
+        "n_test_datasets_meta":  len(split.test),
         "training_time_seconds": float(training_seconds),
         "device":              device,
         "gpu":                 gpu_name,
@@ -785,10 +775,8 @@ def train_one_config(
     return TrainingResult(
         final_ckpt_path=save_path,
         history=history,
-        n_train_chunks=len(split.train),
-        n_test_chunks=len(split.test),
-        n_train_datasets=len({c.dataset_id for c in split.train}),
-        n_test_datasets=len({c.dataset_id for c in split.test}),
+        n_train_datasets=len(split.train),
+        n_test_datasets=len(split.test),
         elapsed_sec=elapsed,
         descriptive_name=save_path.name,
     )

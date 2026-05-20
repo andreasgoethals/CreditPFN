@@ -1,17 +1,19 @@
 """Cross-model benchmark on the held-out test datasets.
 
-For each test dataset (one entry per `dataset_id`, NOT per chunk) and
-each model in the roster, this module:
+For each test dataset (one entry per `dataset_id`) and each model in
+the roster, this module:
 
   1. Loads the processed CSV via
-     :func:`src.eval.dataset_loader.load_processed_dataset` — i.e. the
-     full sanitised dataset, NOT a 20k-row chunk. The chunk format
-     is a TabPFN-training artefact and the wrong granularity here.
-  2. For TabPFN-* models ONLY: subsamples to `cfg.max_rows_tabpfn`
-     (architectural cap; 100k by default on H100). Non-TabPFN
-     baselines see the full dataset — they can train on millions
-     of rows and pre-capping them would be misleading.
-  3. Runs `cfg.cv.n_folds` cross-validation. Per outer fold:
+     :func:`src.eval.dataset_loader.load_processed_dataset`.
+  2. Runs `cfg.cv.n_folds` cross-validation on the **full** dataset.
+     Inside each fold, **only the training partition is capped** at
+     the architectural per-model row limit (TabPFN family only —
+     see ``cfg.max_rows_per_model``). The held-out test partition is
+     never capped; we call `predict_proba(X_test)` once on the full
+     test fold and TabPFN-v3's internal row chunking handles it.
+     Classical baselines (XGBoost/CatBoost/LogReg/LinReg) bypass the
+     cap and see the full train + test rows.
+  3. Per outer fold:
 
          outer:  80% train  /  20% test
          inner:  80% sub-train  /  20% validation     (split of the train fold)
@@ -524,20 +526,25 @@ def _bench_model_on_dataset(
     n_folds: int, inner_val_fraction: float,
     seed: int,
     timestamp: str,
+    max_rows_for_handle: int | None = None,
 ) -> list[EvalRow]:
     """Run K-fold CV (with inner train/val split) of one model on one
     test dataset and return the per-fold rows.
 
-    Subsampling policy (Gemini's #4 fix + user's HPO-only-cap design):
-
-      * The dataset's TabPFN-architectural cap (``max_rows_tabpfn``,
-        applied to TabPFN-* models only) has been pre-applied by
-        :func:`run_benchmark` BEFORE this function is called. Inside
-        the CV loop we don't subsample further — we want every fold
-        to use the full data the model can handle.
-      * The boosting wrappers (XGBoost, CatBoost) themselves apply
-        ``hpo.<m>.max_rows`` to the HPO objective only — that cap
-        never touches the final fit or the test fold.
+    Subsampling policy
+    ------------------
+      * Outer K-fold runs on the **full** dataset — no pre-cap.
+      * Inside each fold, if a per-model row-cap applies (TabPFN
+        family only — see :func:`resolve_max_rows_for_handle`), the
+        **train + inner-val** partitions are subsampled to that cap.
+        The **test fold is NEVER capped** — we predict on the
+        entirety of the held-out rows in one ``predict_proba`` /
+        ``predict`` call, which TabPFN-v3 handles via its own
+        ``inference_row_chunk_size`` machinery
+        (``repositories/TabPFN .txt:17650``).
+      * Classical baselines (``max_rows_for_handle=None``) see the
+        full train + val partitions and predict on the full test
+        partition.
     """
     rows: list[EvalRow] = []
     X_full, y_full = ds.X, ds.y
@@ -552,12 +559,39 @@ def _bench_model_on_dataset(
             seed=seed + fold_idx,
         )
 
-        X_tr_df = X_full.iloc[sub_tr]
-        X_va_df = X_full.iloc[sub_va]
-        X_te_df = X_full.iloc[te_idx]
+        X_tr_df = X_full.iloc[sub_tr].reset_index(drop=True)
+        X_va_df = X_full.iloc[sub_va].reset_index(drop=True)
+        X_te_df = X_full.iloc[te_idx].reset_index(drop=True)
         y_tr = y_full[sub_tr]
         y_va = y_full[sub_va]
         y_te = y_full[te_idx]
+
+        # Per-model architectural cap — applied to train + val only.
+        # The test partition stays at full size: TabPFN-v3 handles
+        # arbitrarily large test sets via its internal row-chunked
+        # inference path.
+        if max_rows_for_handle is not None:
+            if len(X_tr_df) > max_rows_for_handle:
+                LOGGER.info(
+                    "  ↳ %s cap: train %d → %d rows (architectural limit, fold %d)",
+                    handle.name, len(X_tr_df), max_rows_for_handle, fold_idx,
+                )
+                X_tr_df, y_tr = _subsample_train(
+                    X_tr_df, y_tr,
+                    max_rows=max_rows_for_handle,
+                    seed=seed + 1000 + fold_idx,
+                    task_type=ds.task_type,
+                )
+            # Validation set should be small (~16% of dataset post 80/20
+            # outer + 20% inner) but cap it too if a tiny `max_rows`
+            # somehow yields a val split larger than the cap.
+            if len(X_va_df) > max_rows_for_handle:
+                X_va_df, y_va = _subsample_train(
+                    X_va_df, y_va,
+                    max_rows=max_rows_for_handle,
+                    seed=seed + 2000 + fold_idx,
+                    task_type=ds.task_type,
+                )
 
         X_tr_arr, X_va_arr, X_te_arr, cat_idx = encode_for_model(
             X_tr_df, X_va_df, X_te_df,
@@ -653,36 +687,79 @@ def _bench_model_on_dataset(
 # --------------------------------------------------------------------------- #
 
 
-def _maybe_apply_tabpfn_cap(
-    ds: ProcessedDataset, *,
-    max_rows_tabpfn: int | None, seed: int,
-) -> ProcessedDataset:
-    """Apply the TabPFN architectural cap to ``ds`` if it's larger.
+def resolve_max_rows_for_handle(
+    handle: ModelHandle, *,
+    max_rows_per_model: dict[str, int] | None,
+) -> int | None:
+    """Look up the architectural row-cap for one handle.
 
-    This is the ONE place where the eval subsamples before splitting
-    into CV folds — and only because TabPFN's in-context learning
-    has a hard memory limit. For every other model the full dataset
-    is fed to K-fold splitting unchanged (per Gemini #4 + the user's
-    HPO-only-subsample design).
+    The cap applies to TabPFN-family models only (in-context learning
+    has a hard memory budget tied to the training-context size). For
+    classical baselines (XGBoost / CatBoost / LogReg / LinReg) the
+    cap is unset — they see the full training fold.
+
+    Lookup key: the leading ``v<MAJOR>[.<MINOR>]`` of the base-stem,
+    e.g. ``v3-default`` → look up ``"v3"`` then ``"v3-default"`` then
+    fall back to ``"default"``. So one entry per generation is enough.
+
+    Parameters
+    ----------
+    max_rows_per_model
+        ``cfg.max_rows_per_model`` from ``config/eval.yaml`` (or any
+        equivalent dict). ``None`` disables the cap entirely.
+
+    Returns
+    -------
+    The per-model row-cap, or ``None`` if no cap applies. ``None``
+    also means "no cap" for classical baselines.
     """
-    if max_rows_tabpfn is None or ds.n_rows <= max_rows_tabpfn:
-        return ds
+    if not max_rows_per_model:
+        return None
+    if not handle.source.startswith("tabpfn-"):
+        return None
+
+    # Most-specific to least-specific key lookup.
+    base_short = (
+        _short_base_tag((handle.extra or {}).get("base_checkpoint"))
+        if handle.source == "tabpfn-trained"
+        else handle.name.removeprefix("tabpfn-untuned__")
+        if handle.source == "tabpfn-untuned"
+        else _short_base_tag(handle.base_path)
+    )
+    base_short = base_short or ""
+    candidates: list[str] = [base_short]
+    # Strip variant suffix: "v3-default" → "v3"
+    if "-" in base_short:
+        candidates.append(base_short.split("-", 1)[0])
+    candidates.append("default")
+
+    for key in candidates:
+        if key in max_rows_per_model:
+            return int(max_rows_per_model[key])
+    return None
+
+
+def _subsample_train(
+    X_df: pd.DataFrame, y: np.ndarray,
+    *,
+    max_rows: int | None,
+    seed: int,
+    task_type: str,
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """Cap a (train-partition) DataFrame to ``max_rows`` rows.
+
+    The test partition is NEVER touched by this function — the user
+    contract is "use the same training data of each fold to make
+    predictions on the entirety of the test set" (chat 2026-05-20).
+    """
+    if max_rows is None or len(X_df) <= max_rows:
+        return X_df, y
     X_cap, y_cap = subsample(
-        ds.X, ds.y,
-        max_rows=max_rows_tabpfn, seed=seed,
-        stratify=(ds.task_type == "classification"),
+        X_df, y,
+        max_rows=max_rows, seed=seed,
+        stratify=(task_type == "classification"),
     )
-    LOGGER.info(
-        "TabPFN cap: %s subsampled %d → %d rows (architectural limit)",
-        ds.dataset_id, ds.n_rows, len(X_cap),
-    )
-    return ProcessedDataset(
-        X=X_cap, y=y_cap,
-        categorical_columns=ds.categorical_columns,
-        task_type=ds.task_type,
-        dataset_id=ds.dataset_id,
-        track=ds.track,
-    )
+    return X_cap, y_cap
 
 
 def run_benchmark(
@@ -695,7 +772,7 @@ def run_benchmark(
     inner_val_fraction: float = 0.20,
     seed: int = 42,
     results_base_dir: str | Path = "results",
-    max_rows_tabpfn: int | None = None,
+    max_rows_per_model: dict[str, int] | None = None,
     per_task_tag: str | None = None,
 ) -> list[EvalRow]:
     """Score every (model × test_dataset × fold) and persist per-method CSVs.
@@ -704,9 +781,11 @@ def run_benchmark(
     with ``status="FAIL"`` so the comparison table is robust to a
     single bad cell.
 
-    ``max_rows_tabpfn`` is applied to TabPFN-* models only (architectural
-    cap; their in-context inference can't exceed it on a single H100).
-    Classical baselines see the full dataset.
+    ``max_rows_per_model`` is the per-architecture training-context
+    cap (TabPFN-v3 → 1 M, TabPFN-v2.x → 100 k, etc.). Looked up by the
+    base-stem key. Applied to the training fold only — the test fold
+    is **always full** and predict_proba is called on it in one go.
+    Classical baselines bypass the cap entirely.
     """
     handles_and_models = list(handles_and_models)
     if not test_dataset_ids:
@@ -726,7 +805,9 @@ def run_benchmark(
         run_name, timestamp,
     )
 
-    # Pre-load datasets once to amortise disk I/O across models.
+    # Pre-load datasets once to amortise disk I/O across models. There is
+    # no pre-cap step: the per-fold logic caps only the training partition,
+    # leaving the test partition full so we predict on all held-out rows.
     datasets_full: dict[str, ProcessedDataset] = {}
     for did in test_dataset_ids:
         try:
@@ -734,35 +815,28 @@ def run_benchmark(
         except (FileNotFoundError, KeyError) as exc:
             LOGGER.warning("skipping %s: %s", did, exc)
 
-    # Build a TabPFN-capped variant ONCE per dataset (saves recomputing
-    # the stratified subsample for every TabPFN model that sees it).
-    datasets_tabpfn: dict[str, ProcessedDataset] = {
-        did: _maybe_apply_tabpfn_cap(ds, max_rows_tabpfn=max_rows_tabpfn, seed=seed)
-        for did, ds in datasets_full.items()
-    }
-
     rows: list[EvalRow] = []
     rows_by_model: dict[str, list[EvalRow]] = {}
 
     for m_idx, (handle, model) in enumerate(handles_and_models, start=1):
         rows_by_model.setdefault(handle.name, [])
-        LOGGER.info("model %d/%d  %s  (source=%s)",
-                    m_idx, len(handles_and_models), handle.name, handle.source)
-
-        # TabPFN models see the architecturally-capped dataset; every
-        # other model sees the full one.
-        ds_pool = (
-            datasets_tabpfn if handle.source.startswith("tabpfn-")
-            else datasets_full
+        max_rows_for_handle = resolve_max_rows_for_handle(
+            handle, max_rows_per_model=max_rows_per_model,
+        )
+        LOGGER.info(
+            "model %d/%d  %s  (source=%s, cap=%s)",
+            m_idx, len(handles_and_models), handle.name, handle.source,
+            "none" if max_rows_for_handle is None else f"{max_rows_for_handle:,}",
         )
 
-        for did, ds in ds_pool.items():
+        for did, ds in datasets_full.items():
             LOGGER.info("  dataset %s  (n_rows=%d, n_features=%d)",
                         did, ds.n_rows, ds.n_features)
             fold_rows = _bench_model_on_dataset(
                 handle=handle, model=model, ds=ds,
                 n_folds=n_folds, inner_val_fraction=inner_val_fraction,
                 seed=seed, timestamp=timestamp,
+                max_rows_for_handle=max_rows_for_handle,
             )
             rows.extend(fold_rows)
             rows_by_model[handle.name].extend(fold_rows)

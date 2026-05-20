@@ -164,36 +164,27 @@ def _validate_corpus_ids_or_raise(cfg, *, track: str) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Auto-cache hook
+# Auto-process hook
 # --------------------------------------------------------------------------- #
 
 
-def _ensure_cache(cfg, log_path: Path | str | None) -> None:
-    """Run the data pipeline for any dataset that the training run will
-    need but that isn't cached yet.
+def _ensure_processed(cfg, log_path: Path | str | None) -> None:
+    """Run the data pipeline for any dataset whose sanitized CSV is missing.
 
-    Strategy:
-      * Pull the canonical ID list from ``DATASET_METADATA`` (one
-        entry per registered dataset) and filter to the active track.
-      * Restrict further to the IDs the user actually asked for in
-        ``cfg.corpus.train_dataset_ids`` ∪ ``cfg.corpus.test_dataset_ids``
-        (if either list is non-empty); otherwise consider every
-        registered ID for the track.
-      * Use :func:`src.data.cache.find_uncached_datasets` to compute
-        the missing subset; if it is non-empty, invoke
-        :func:`scripts.data_pipeline.run` with ``datasets=missing``.
-
-    Idempotent: a fully-cached corpus walks through this function
-    in O(#datasets) ``Path.exists()`` calls and does nothing else.
+    The training pipeline reads ``data/processed/{track}/<id>.sanitized.csv``
+    directly. If any of the datasets in the corpus split are missing from
+    disk, this kicks off the data pipeline for just those IDs and lets it
+    rebuild the manifest + sanitized CSV. Idempotent — when everything is
+    on disk this function does O(#datasets) ``Path.exists()`` checks and
+    returns.
     """
     from src.data.preprocessing import DATASET_METADATA
-    from src.data.cache import find_uncached_datasets
+    from src.utils.paths import resolve_data_path
+    from omegaconf import OmegaConf
 
     track = str(cfg.track)
     corpus = cfg.corpus
 
-    # Tracks lookup (used by find_uncached_datasets)
-    tracks = {did: m["track"] for did, m in DATASET_METADATA.items()}
     track_ids = sorted([d for d, m in DATASET_METADATA.items()
                         if m["track"] == track])
 
@@ -203,23 +194,26 @@ def _ensure_cache(cfg, log_path: Path | str | None) -> None:
     explicit = set(train_explicit) | set(test_explicit)
     candidate_ids = sorted(explicit & set(track_ids)) if explicit else track_ids
 
-    missing = find_uncached_datasets(
-        corpus.cached_dir,
-        dataset_ids=candidate_ids,
-        tracks=tracks,
-    )
+    data_cfg = OmegaConf.load("config/data.yaml")
+    proc_root = resolve_data_path(data_cfg.paths.processed)
+
+    missing = [
+        did for did in candidate_ids
+        if not (proc_root / track / f"{did}.sanitized.csv").exists()
+    ]
     if not missing:
-        LOGGER.info("Cache OK: all %d candidate dataset(s) for track=%s "
-                    "are materialised.", len(candidate_ids), track)
+        LOGGER.info(
+            "Processed-CSV check OK: all %d candidate dataset(s) for "
+            "track=%s are on disk.", len(candidate_ids), track,
+        )
         return
 
-    LOGGER.info("Cache MISS: %d dataset(s) missing — running data pipeline "
-                "to fill them: %s", len(missing), missing)
-    # Lazy import: only loads omegaconf again etc. No circular refs.
-    from scripts import data_pipeline
-    rc = data_pipeline.run(
-        fresh=False, datasets=missing, log_path=log_path,
+    LOGGER.info(
+        "Processed-CSV miss: %d dataset(s) missing — running data pipeline "
+        "to fill them: %s", len(missing), missing,
     )
+    from scripts import data_pipeline
+    rc = data_pipeline.run(fresh=False, datasets=missing, log_path=log_path)
     if rc != 0:
         raise RuntimeError(
             f"data pipeline returned non-zero exit code while filling "
@@ -249,8 +243,6 @@ class RunRow:
     seed: int
     n_train_datasets: int
     n_test_datasets: int
-    n_train_chunks: int
-    n_test_chunks: int
     final_ckpt_path: str | None
     elapsed_sec: float
     status: str                       # "OK" | "FAIL"
@@ -315,8 +307,8 @@ def run(
     # training on fewer datasets than the user intended.
     _validate_corpus_ids_or_raise(cfg, track=track)
 
-    # ---- 1) auto-cache hook (always runs, near-zero cost when cache is OK)
-    _ensure_cache(cfg, log_path=log.path if hasattr(log, "path") else None)
+    # ---- 1) auto-process hook (always runs, near-zero cost when on-disk)
+    _ensure_processed(cfg, log_path=log.path if hasattr(log, "path") else None)
 
     # ---- 2) resolve which trials to run
     full_grid = _resolve_grid(cfg, single=False)
@@ -426,8 +418,6 @@ def run(
                 use_lora=use_lora, seed=int(cfg.seed),
                 n_train_datasets=result.n_train_datasets,
                 n_test_datasets=result.n_test_datasets,
-                n_train_chunks=result.n_train_chunks,
-                n_test_chunks=result.n_test_chunks,
                 final_ckpt_path=str(result.final_ckpt_path),
                 elapsed_sec=result.elapsed_sec,
                 status="OK", error=None,
@@ -439,7 +429,6 @@ def run(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
-                n_train_chunks=0, n_test_chunks=0,
                 final_ckpt_path=None,
                 elapsed_sec=time.monotonic() - t_trial,
                 status="FAIL", error=f"{type(exc).__name__}: {exc}",

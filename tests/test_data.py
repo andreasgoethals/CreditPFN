@@ -3,10 +3,10 @@
 Layout choice
 -------------
 One file per ``src/`` subpackage. ``test_data.py`` covers everything in
-``src/data/``: preprocessing, register, sanitize, dedup, dataset, and
-the exploration helpers. As ``src/train``, ``src/eval`` and
-``src/model`` come online they get their own sibling files
-(``test_train.py`` etc.), still flat under ``tests/``.
+``src/data/``: preprocessing, register, sanitize, dedup, and the
+exploration helpers. The ``.npz`` chunking stage and its module
+(``src/data/dataset.py``) were removed in the 2026-05-20 refactor —
+training reads sanitized CSVs directly now.
 
 Running
 -------
@@ -21,8 +21,7 @@ Coverage map
     Block 2  register.py      — manifest building blocks
     Block 3  sanitize.py      — agnostic-clean steps in isolation
     Block 4  dedup.py         — fingerprint + pairwise checks
-    Block 5  dataset.py       — chunking, ctx/query split, encoder leakage
-    Block 6  exploration.py   — smoke tests for the data-exploration helpers
+    Block 5  exploration.py   — smoke tests for the data-exploration helpers
 
 Tests intentionally lean toward *failure-mode coverage* over
 behavioural completeness. Each block prefers a few sharp tests that
@@ -67,14 +66,6 @@ from src.data.dedup import (
     _column_hashes,
     _jaccard,
     _row_hashes,
-)
-from src.data.dataset import (
-    _cache_fingerprint,
-    _dataset_config_hash,
-    _dataset_seed,
-    _ordinal_encode_categoricals,
-    _shuffle_and_chunk_indices,
-    _split_context_query,
 )
 
 
@@ -627,165 +618,7 @@ def test_compare_pair_subset_detection() -> None:
 
 
 # =============================================================================
-# Block 5 · dataset.py
-# =============================================================================
-
-
-def test_chunk_indices_no_chunk_when_small() -> None:
-    chunks = _shuffle_and_chunk_indices(
-        n_rows=100, y=None,
-        max_rows_per_chunk=200, min_chunk_size=10,
-        equal_split_size=False, stratify=False, seed=0,
-    )
-    assert len(chunks) == 1
-    assert sorted(chunks[0].tolist()) == list(range(100))
-
-
-def test_chunk_indices_drops_undersized_tail() -> None:
-    chunks = _shuffle_and_chunk_indices(
-        n_rows=2_500, y=None,
-        max_rows_per_chunk=2_000, min_chunk_size=2_000,
-        equal_split_size=False, stratify=False, seed=0,
-    )
-    # 2 500 ÷ 2 000 → one chunk of 2 000, remainder of 500 < min, dropped
-    assert len(chunks) == 1
-    assert len(chunks[0]) == 2_000
-
-
-def test_chunk_indices_equal_split() -> None:
-    """``equal_split_size=True`` produces same-sized chunks ≤ max."""
-    chunks = _shuffle_and_chunk_indices(
-        n_rows=10_000, y=None,
-        max_rows_per_chunk=4_000, min_chunk_size=10,
-        equal_split_size=True, stratify=False, seed=0,
-    )
-    sizes = [len(c) for c in chunks]
-    assert max(sizes) - min(sizes) <= 1   # at most one row off
-
-
-def test_dataset_seed_is_stable_and_dataset_specific() -> None:
-    assert _dataset_seed(42, "0001.gmsc") == _dataset_seed(42, "0001.gmsc")
-    assert _dataset_seed(42, "0001.gmsc") != _dataset_seed(42, "0001.heloc")
-
-
-def _mk_dataset_cfg(**overrides):
-    categorical_encoding = NS(
-        strategy="ordinal",
-        handle_unknown="use_encoded_value",
-        unknown_value=-1,
-        encoded_missing_value="nan",
-    )
-    dataset = NS(
-        max_rows_per_chunk=20_000,
-        min_chunk_size=2_000,
-        equal_split_size=True,
-        stratify_classification=True,
-        context_fraction=0.60,
-        categorical_encoding=categorical_encoding,
-        y_dtype_classification="int64",
-        y_dtype_regression="float32",
-        skip_if_cached=True,
-    )
-    for key, value in overrides.items():
-        setattr(dataset, key, value)
-    return NS(seed=42, dataset=dataset)
-
-
-def test_cache_fingerprint_tracks_processed_file_and_config() -> None:
-    row = {
-        "dataset_id": "0001.gmsc",
-        "target_column": "target",
-        "categorical_columns": "grade",
-        "date_added": "2026-01-01",
-    }
-    cfg = _mk_dataset_cfg()
-    cfg_hash = _dataset_config_hash(cfg)
-    first = _cache_fingerprint(
-        row,
-        dataset_config_hash=cfg_hash,
-        processed_csv_sha256="processed-a",
-    )
-    assert first != _cache_fingerprint(
-        row,
-        dataset_config_hash=cfg_hash,
-        processed_csv_sha256="processed-b",
-    )
-
-    changed_cfg = _mk_dataset_cfg(context_fraction=0.50)
-    assert first != _cache_fingerprint(
-        row,
-        dataset_config_hash=_dataset_config_hash(changed_cfg),
-        processed_csv_sha256="processed-a",
-    )
-
-    row_with_new_date = dict(row, date_added="2026-05-04")
-    assert first == _cache_fingerprint(
-        row_with_new_date,
-        dataset_config_hash=cfg_hash,
-        processed_csv_sha256="processed-a",
-    )
-
-
-def test_split_context_query_disjoint_and_complete() -> None:
-    ctx, qry = _split_context_query(n=1000, context_fraction=0.6, seed=0)
-    assert len(ctx) + len(qry) == 1000
-    assert set(ctx).isdisjoint(set(qry))
-    assert len(ctx) == 600
-
-
-def test_ordinal_encode_no_categoricals() -> None:
-    """If no categorical columns, return the array unchanged (cast to f32)."""
-    df = pd.DataFrame({"a": [1.0, 2.0, 3.0], "b": [4.0, 5.0, 6.0]})
-    arr, positions = _ordinal_encode_categoricals(
-        df, categorical_columns=[],
-        fit_indices=np.arange(3),
-        unknown_value=-1, missing_value_sentinel=np.nan,
-    )
-    assert positions == []
-    assert arr.dtype == np.float32
-    np.testing.assert_array_equal(arr, df.to_numpy(dtype=np.float32))
-
-
-def test_ordinal_encode_context_only_yields_unknown_sentinel() -> None:
-    """REGRESSION TEST for the encoder-leakage bug.
-
-    Fitting on context-only must mean a category that appears ONLY in
-    the query slice gets encoded as ``unknown_value`` (default -1).
-    Before the fix, the encoder was fit on the whole chunk, so
-    query-only categories silently received valid IDs.
-    """
-    df = pd.DataFrame({
-        "city": ["A", "A", "B", "C"],   # row 3 has 'C' which is query-only
-        "x":    [1.0, 2.0, 3.0, 4.0],
-    })
-    fit_indices = np.array([0, 1, 2])   # context = first 3 rows; query = last
-    arr, positions = _ordinal_encode_categoricals(
-        df, categorical_columns=["city"],
-        fit_indices=fit_indices,
-        unknown_value=-1, missing_value_sentinel=np.nan,
-    )
-    assert positions == [0]
-    # Row 3's encoded value for 'city' must be -1 (unseen by the encoder).
-    assert arr[3, 0] == -1.0, (
-        f"expected unknown sentinel -1 for query-only category, got {arr[3, 0]}"
-    )
-    # Context rows 0–2 should get valid (non-negative) IDs.
-    assert (arr[:3, 0] >= 0).all()
-
-
-def test_ordinal_encode_preserves_nan() -> None:
-    """NaN in the input survives the encoding via missing_value_sentinel."""
-    df = pd.DataFrame({"city": ["A", None, "B"], "x": [1.0, 2.0, 3.0]})
-    arr, _ = _ordinal_encode_categoricals(
-        df, categorical_columns=["city"],
-        fit_indices=np.arange(3),
-        unknown_value=-1, missing_value_sentinel=np.nan,
-    )
-    assert np.isnan(arr[1, 0])
-
-
-# =============================================================================
-# Block 6 · exploration.py — light smoke tests
+# Block 5 · exploration.py — light smoke tests
 # =============================================================================
 
 

@@ -74,8 +74,6 @@ track: "pd"              # "pd" (classifier) | "lgd" (regressor)
 #  set to score against; the training loop itself never reads test rows.
 
 corpus:
-  cached_dir: "data/cached"
-
   # Mode A — fraction-based (default; both _dataset_ids lists empty).
   train_fraction: 0.7
   test_fraction:  0.3
@@ -122,35 +120,9 @@ train:
   grad_clip_norm: 1.0
   amp: true                             # AMP autocast (CUDA only)
 
-  # Per-step context+query sample count.
-  #
-  # THIS IS THE TabPFN-DOCUMENTED DEFAULT.
-  # `FinetunedTabPFNClassifier.__init__` in the upstream `tabpfn` package
-  # (`repositories/TabPFN .txt:26832` and `:27467`) hard-codes
-  #     n_finetune_ctx_plus_query_samples: int = 10_000
-  # — the value Prior Labs themselves recommend for any fine-tune.
-  #
-  # WHY THE NUMBER MATTERS DURING TRAINING.
-  # TabPFN-v3's `inference_row_chunk_size = 2048` (`TabPFN .txt:17650`)
-  # only kicks in for INFERENCE, where gradients aren't kept and the
-  # forward can be chunked. During FINE-TUNING the activations of the
-  # full forward must be retained for backward, so peak VRAM scales
-  # with `rows × features × hidden × layers`. Empirically on a 79 GB
-  # H100 with the v3 default model (54M params, ~12 layers per stage):
-  #   * 100 000 rows → 77 GB allocated → OOM (this was the misguided default)
-  #   *  50 000 rows → still 77 GB allocated → OOM (confirmed 2026-05-20)
-  #   *  10 000 rows → ≈ 16 GB allocated → comfortable headroom
-  #   *   5 000 rows → ≈ 8 GB allocated → safe on any 16 GB+ card
-  # Memory is roughly linear in rows once the model is loaded, so the
-  # 80 GB H100 sweet spot really is the documented 10 k.
-  #
-  # If a future card or a v3 with row-chunked training enabled gives
-  # you room, you can raise this knob. Until then, leave it at 10_000.
-  n_finetune_ctx_plus_query_samples: 10000
-
-  # Fraction of those rows that go to the query split (matches TabPFN's
-  # `finetune_ctx_query_split_ratio = 0.20`).
-  finetune_ctx_query_split_ratio: 0.20
+  # Per-step subsample size is `finetuning.max_rows_per_epoch` in
+  # config/data.yaml (single source of truth — see that file for the
+  # memory-budget reasoning). Same knob for every base in the sweep.
 
   dataloader_workers: 0                 # 0 = main process only (GPU is the bottleneck)
 

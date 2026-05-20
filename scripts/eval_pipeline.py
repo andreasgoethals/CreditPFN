@@ -361,12 +361,17 @@ def run(
     # Per-method row caps and CV settings.
     n_folds = int(eval_cfg.cv.n_folds)             if hasattr(eval_cfg, "cv") else 5
     inner   = float(eval_cfg.cv.inner_val_fraction) if hasattr(eval_cfg, "cv") else 0.20
-    max_rows_tabpfn = (
-        int(eval_cfg.max_rows_tabpfn)
-        if hasattr(eval_cfg, "max_rows_tabpfn")
-        and eval_cfg.max_rows_tabpfn is not None
-        else None
-    )
+    # Per-model architectural cap (TabPFN family only — see
+    # src.eval.benchmark.resolve_max_rows_for_handle for the lookup rule).
+    if hasattr(eval_cfg, "max_rows_per_model") and eval_cfg.max_rows_per_model is not None:
+        from omegaconf import OmegaConf as _OC
+        max_rows_per_model = {
+            str(k): int(v) for k, v in _OC.to_container(
+                eval_cfg.max_rows_per_model, resolve=True,
+            ).items()
+        }
+    else:
+        max_rows_per_model = None
     results_base = (
         eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "output/results"
     )
@@ -392,7 +397,7 @@ def run(
             inner_val_fraction=inner,
             seed=int(train_cfg.seed),
             results_base_dir=results_base,
-            max_rows_tabpfn=max_rows_tabpfn,
+            max_rows_per_model=max_rows_per_model,
             per_task_tag=per_task_tag,
         )
         all_rows.extend(rows)
@@ -442,7 +447,7 @@ def _parse_args(argv: list[str] | None = None):
                         "checkpoint only triggers work for the new cells.")
     args, unknown = p.parse_known_args(argv)
     eval_keys_prefixes = (
-        "train_cfg_path", "baselines.", "max_rows_tabpfn",
+        "train_cfg_path", "baselines.", "max_rows_per_model",
         "tabpfn_n_estimators", "cv.", "hpo.", "results.", "metrics.",
     )
     eval_overrides, train_overrides = [], []

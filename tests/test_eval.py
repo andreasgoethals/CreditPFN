@@ -633,7 +633,6 @@ def _write_synthetic_manifest(path: Path, *, rows: list[dict]) -> None:
     fieldnames = [
         "track", "base_checkpoint", "learning_rate",
         "seed", "n_train_datasets", "n_test_datasets",
-        "n_train_chunks", "n_test_chunks",
         "final_ckpt_path", "elapsed_sec", "status", "error",
     ]
     path.parent.mkdir(parents=True, exist_ok=True)

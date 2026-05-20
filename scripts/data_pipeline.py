@@ -1,4 +1,4 @@
-"""End-to-end orchestrator for the five data-pipeline stages.
+"""End-to-end orchestrator for the four data-pipeline stages.
 
 Calls, in order:
 
@@ -6,11 +6,16 @@ Calls, in order:
     2. register              → data/manifest_{pd,lgd}.csv
     3. sanitize              → data/processed/{pd,lgd}/<id>.sanitized.csv
     4. dedup    --pass post  on data/processed/{pd,lgd}/
-    5. dataset               → data/cached/{pd,lgd}/<id>/chunk_*.npz
 
-The five stage modules are each callable on their own (``python -m
+The four stage modules are each callable on their own (``python -m
 src.data.<name>``); this script is the convenience wrapper that
 chains them and writes a single summary line per run to ``logs/``.
+
+There is **no `.npz` chunking stage**. The training pipeline reads
+sanitized CSVs directly and applies the per-epoch random subsample
+itself; the eval pipeline reads them too and applies K-fold CV.
+Removing chunking turned the per-dataset cache invalidation logic
+into dead code; that simplification lives in 2026-05-20's refactor.
 
 Public entry point
 ------------------
@@ -65,7 +70,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.data import dedup, register, sanitize, dataset  # noqa: E402
+from src.data import dedup, register, sanitize  # noqa: E402
 from src.data.preprocessing import DATASET_METADATA  # noqa: E402
 from src.utils.paths import (  # noqa: E402
     apply_data_source_from_cfg, resolve_data_path, resolve_output_path,
@@ -92,7 +97,6 @@ def _wipe(cfg) -> None:
     dirs = [
         resolve_output_path(cfg.paths.dedup),         # OUTPUT_ROOT (durable)
         resolve_data_path(cfg.paths.processed),       # DATA_ROOT (scratch on VSC)
-        resolve_data_path(cfg.paths.cached),
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
@@ -132,12 +136,6 @@ def _count_files(folder: Path, pattern: str = "*") -> int:
     if not folder.is_dir():
         return 0
     return sum(1 for _ in folder.glob(pattern))
-
-
-def _count_chunks(cache_root: Path) -> int:
-    if not cache_root.is_dir():
-        return 0
-    return sum(1 for _ in cache_root.rglob("chunk_*.npz"))
 
 
 def _count_doubles(dedup_dir: Path, track: str, pass_name: str) -> int:
@@ -196,7 +194,7 @@ def run(
         )
         # The stage modules already imported `DATASET_METADATA` by name; we
         # need to refresh those bindings too.
-        for mod in (dedup, register, sanitize, dataset):
+        for mod in (dedup, register, sanitize):
             mod.DATASET_METADATA = _pp.DATASET_METADATA
 
     t0 = time.monotonic()
@@ -210,8 +208,6 @@ def run(
             failures.append("sanitize")
         if dedup.main(cfg, pass_name="post"):
             failures.append("dedup_post")
-        if dataset.main(cfg):
-            failures.append("dataset")
     finally:
         if selected is not None:
             # Restore.
@@ -226,7 +222,8 @@ def run(
 
     elapsed = time.monotonic() - t0
     dedup_dir = resolve_output_path(cfg.paths.dedup)
-    cache_root = resolve_data_path(cfg.paths.cached)
+    proc_root = resolve_data_path(cfg.paths.processed)
+    n_processed = sum(1 for _ in proc_root.rglob("*.sanitized.csv")) if proc_root.is_dir() else 0
 
     summary = (
         f"data_pipeline: "
@@ -238,7 +235,7 @@ def run(
         f"lgd:{_count_doubles(dedup_dir, 'lgd', 'pre')}]  "
         f"doubles_post=[pd:{_count_doubles(dedup_dir, 'pd', 'post')}, "
         f"lgd:{_count_doubles(dedup_dir, 'lgd', 'post')}]  "
-        f"chunks={_count_chunks(cache_root)}  "
+        f"processed_csvs={n_processed}  "
         f"elapsed={elapsed:.1f}s"
     )
     log.write(summary)

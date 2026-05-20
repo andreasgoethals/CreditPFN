@@ -1,54 +1,58 @@
-"""DataLoader: turn a list of :class:`ChunkRef` into TabPFN-shaped batches.
+"""Training dataloader — read sanitized CSVs, subsample per epoch.
 
-Per-step recipe (one "batch" = one dataset, batch_size is FIXED at 1
-by TabPFN's ``meta_dataset_collator`` assertion at
+Per-step recipe (one "batch" = one dataset, batch_size fixed at 1 by
+TabPFN's ``meta_dataset_collator`` assertion at
 ``repositories/TabPFN .txt:17665-17666``):
 
-  1. Pick one chunk (one ``.npz`` file) — that's our atomic unit.
+  1. Pick one parent dataset (one ``DatasetRef``) — every parent
+     contributes exactly one step per epoch. No more chunk splitting.
 
-  2. Concatenate the cached ``X_context`` and ``X_query`` rows into one
-     pool. The cache's 60/40 split is ignored at training time; we
-     resplit deterministically from ``(seed, chunk_idx)`` — so the
-     same chunk gets the **same** ctx/query mix every epoch (a
-     reproducibility choice, not the per-epoch reshuffle described
-     in `repositories/TabPFN .txt:18640-18656`). Inter-epoch
-     variation comes from the DataLoader's outer shuffle of the
-     chunk order, not from re-resampling within a chunk.
+  2. Load (memoised) the entire sanitized CSV. Cast features to a
+     pandas DataFrame; cast the target to ``int64`` (classification)
+     or ``float32`` (regression).
 
-  3. Subsample to ``cfg.train.n_finetune_ctx_plus_query_samples``
-     (default 100_000 — matches the chunk cap; tuned for wICE H100 NVL).
-     Random rows, without replacement.
+  3. **Per-epoch reshuffle**: each epoch draws a fresh random
+     subsample of ``cfg.finetuning.max_rows_per_epoch`` rows from the
+     full dataset. Smaller datasets (rows ≤ the cap) are passed
+     through in full — the cap is non-binding. The RNG seed mixes
+     ``(base_seed, epoch, dataset_idx)`` so two epochs see two
+     different subsamples of the same large dataset, while the
+     subsample is still reproducible end-to-end if the same seed
+     is rerun.
 
-  4. Random 80 / 20 split where the 20% is the query split — i.e.
-     ``cfg.train.finetune_ctx_query_split_ratio``. Both splits are
-     drawn from the same chunk so they share encoder vocabulary, etc.
+  4. Ordinal-encode categoricals **on the context split only**
+     (matching the train-fold-only-fit pattern that the eval pipeline
+     also uses — see ``src/eval/dataset_loader.encode_for_model``).
 
-  5. Cast to ``torch.Tensor`` of shape:
-        - ``X``:  (n_samples, batch_size=1, n_features)
-        - ``y``:  (n_samples, batch_size=1, 1)
-     (this matches the ``model(train_x, train_y, test_x,
-     categorical_inds)`` API in `TabPFN V2 Finetuning.txt:1413-1505`).
+  5. Random ``(1 − query_fraction) / query_fraction`` split between
+     context and query, drawn from the subsample.
 
-For *test-time evaluation*, see :func:`prepare_eval_chunk`: we
-honour the cache's stable 60/40 ctx/query split (no extra
-randomness so test numbers are reproducible across HP variants),
-and subsample to ``cfg.eval.n_inference_subsample_samples`` if larger.
-The same function is the entry point for the future `src/eval/`
-module, which will use it to score XGBoost / CatBoost / TabICL on
-the same chunks for an apples-to-apples comparison.
+  6. Cast to ``torch.Tensor`` of shape ``(n_samples, batch_size=1, F)``.
+
+The DataLoader caller invokes :meth:`ProcessedDatasetLoader.set_epoch`
+at the top of each epoch so that ``__getitem__`` picks up the new
+epoch number. The CSV-loading is memoised behind a module-level cache
+so re-visiting a dataset doesn't re-read the CSV from disk every
+epoch — only re-subsamples it.
+
+For *test-time evaluation*, see :func:`prepare_eval_chunk` — it
+ignores the random subsample completely and uses the full dataset
+(callers cap rows externally via ``n_inference_subsample_samples``).
 """
 
 from __future__ import annotations
 
+import functools
 import logging
 from dataclasses import dataclass
 from typing import Sequence
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import Dataset
 
-from src.train.corpus import ChunkRef
+from src.train.corpus import DatasetRef
 
 LOGGER = logging.getLogger(__name__)
 
@@ -62,8 +66,7 @@ LOGGER = logging.getLogger(__name__)
 class TabPFNBatch:
     """One forward-pass-ready batch (batch_size=1).
 
-    Tensor shapes follow the TabPFN convention used by the
-    ``PerFeatureTransformer`` forward signature:
+    Tensor shapes match the TabPFN ``PerFeatureTransformer`` signature:
 
     * ``X_context``  — (n_ctx,   1, n_features)   float32
     * ``y_context``  — (n_ctx,   1, 1)            float32 / int64
@@ -92,70 +95,138 @@ class TabPFNBatch:
 
 
 # --------------------------------------------------------------------------- #
-# Numpy → torch helpers
+# CSV → (X_df, y, cat_cols) loader (memoised)
 # --------------------------------------------------------------------------- #
 
 
-def _load_chunk(ref: ChunkRef) -> dict[str, np.ndarray]:
-    """Read one cached ``.npz`` into a plain dict of numpy arrays."""
-    with np.load(ref.chunk_path) as data:
-        return {
-            "X_context": data["X_context"],
-            "y_context": data["y_context"],
-            "X_query":   data["X_query"],
-            "y_query":   data["y_query"],
-            "categorical_idx": data["categorical_idx"],
-        }
+@dataclass(frozen=True)
+class _LoadedDataset:
+    X: pd.DataFrame
+    y: np.ndarray
+    cat_columns: tuple[str, ...]
+    task_type: str
+    dataset_id: str
 
 
-def _to_xy_tensor(
-    X: np.ndarray, y: np.ndarray, *, task_type: str,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Cast numpy ``(n, F)`` and ``(n,)`` to the TabPFN tensor shapes."""
-    X_t = torch.from_numpy(np.ascontiguousarray(X.astype(np.float32, copy=False)))
-    X_t = X_t.unsqueeze(1)  # (n, 1, F)
+@functools.lru_cache(maxsize=64)
+def _load_processed_csv(ref: DatasetRef) -> _LoadedDataset:
+    """Load one sanitized CSV (memoised by ``DatasetRef`` identity).
 
-    if task_type == "classification":
-        y_dtype = torch.int64
+    Idempotent and thread-safe inside a single process; the LRU cache
+    means each parent dataset is read from disk **once per training
+    process** even though the dataloader re-visits it every epoch.
+    """
+    df = pd.read_csv(ref.processed_csv, low_memory=False)
+    if ref.target_column not in df.columns:
+        raise ValueError(
+            f"target column {ref.target_column!r} missing from "
+            f"{ref.processed_csv}"
+        )
+    feature_cols = [c for c in df.columns if c != ref.target_column]
+    X_df = df[feature_cols].copy()
+    if ref.task_type == "classification":
+        y = pd.to_numeric(df[ref.target_column], errors="coerce").astype(np.int64).to_numpy()
     else:
-        y_dtype = torch.float32
-    y_t = torch.as_tensor(y, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
-    return X_t, y_t
+        y = pd.to_numeric(df[ref.target_column], errors="coerce").astype(np.float32).to_numpy()
+    cats = tuple(c for c in ref.categorical_columns if c in feature_cols)
+    return _LoadedDataset(
+        X=X_df, y=y, cat_columns=cats,
+        task_type=ref.task_type, dataset_id=ref.dataset_id,
+    )
 
 
-def _resample_chunk(
-    chunk: dict[str, np.ndarray], *,
+# --------------------------------------------------------------------------- #
+# Per-step subsample + encode + split
+# --------------------------------------------------------------------------- #
+
+
+def _ordinal_encode(
+    X_full: pd.DataFrame,
+    *,
+    ctx_idx: np.ndarray,
+    cat_cols: Sequence[str],
+    unknown_value: int = -1,
+) -> tuple[np.ndarray, list[int]]:
+    """Ordinal-encode categorical columns with a context-only fit.
+
+    Mirrors :func:`src.eval.dataset_loader.encode_for_model`: the
+    encoder is fit on the *context* rows so any category seen only
+    in the query rows is encoded as ``unknown_value`` (-1), matching
+    the inference scenario the model was trained for.
+    """
+    from sklearn.preprocessing import OrdinalEncoder
+
+    cols = list(X_full.columns)
+    cat_positions = [cols.index(c) for c in cat_cols if c in cols]
+    if not cat_positions:
+        return X_full.to_numpy(dtype=np.float32, na_value=np.nan), []
+
+    encoder = OrdinalEncoder(
+        handle_unknown="use_encoded_value",
+        unknown_value=unknown_value,
+        encoded_missing_value=np.nan,
+    )
+    cat_block = X_full.iloc[:, cat_positions].astype(object)
+    cat_block = cat_block.where(cat_block.notna(), other=np.nan)
+    encoder.fit(cat_block.iloc[ctx_idx])
+    encoded = encoder.transform(cat_block)
+
+    out = X_full.to_numpy(dtype=object).copy()
+    for write_pos, src_pos in enumerate(cat_positions):
+        out[:, src_pos] = encoded[:, write_pos]
+    return out.astype(np.float32), cat_positions
+
+
+def _build_step_batch(
+    loaded: _LoadedDataset,
+    *,
     n_total_target: int,
     query_fraction: float,
     rng: np.random.Generator,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """Concat cache's ctx/query, subsample, then resplit.
+) -> TabPFNBatch:
+    """Subsample → 80/20 split → ordinal-encode → tensorise."""
+    n = len(loaded.X)
+    n_total = min(n_total_target, n)
+    if n_total <= 1:
+        # Pathological tiny dataset — fall through with whatever we have.
+        n_total = n
 
-    Returns ``(X_ctx, y_ctx, X_qry, y_qry)`` numpy arrays.
-    """
-    X_full = np.concatenate([chunk["X_context"], chunk["X_query"]], axis=0)
-    y_full = np.concatenate([chunk["y_context"], chunk["y_query"]], axis=0)
-
-    n_total_actual = min(n_total_target, len(X_full))
-    if n_total_actual <= 1:
-        # Pathological — shouldn't happen with min_chunk_size=2000, but
-        # be defensive: degenerate to whatever we have.
-        return chunk["X_context"], chunk["y_context"], \
-               chunk["X_query"], chunk["y_query"]
-
-    if n_total_actual < len(X_full):
-        sel = rng.choice(len(X_full), size=n_total_actual, replace=False)
+    if n_total < n:
+        sel = rng.choice(n, size=n_total, replace=False)
     else:
-        sel = rng.permutation(len(X_full))
+        sel = rng.permutation(n)
 
-    X_full = X_full[sel]
-    y_full = y_full[sel]
+    X_sub = loaded.X.iloc[sel].reset_index(drop=True)
+    y_sub = loaded.y[sel]
 
-    n_query = max(1, int(round(n_total_actual * query_fraction)))
-    n_query = min(n_query, n_total_actual - 1)
-    n_ctx = n_total_actual - n_query
+    n_query = max(1, int(round(n_total * query_fraction)))
+    n_query = min(n_query, n_total - 1)
+    n_ctx = n_total - n_query
+    ctx_idx = np.arange(n_ctx)
 
-    return X_full[:n_ctx], y_full[:n_ctx], X_full[n_ctx:], y_full[n_ctx:]
+    X_full_arr, cat_idx = _ordinal_encode(
+        X_sub, ctx_idx=ctx_idx, cat_cols=loaded.cat_columns,
+    )
+    X_ctx = X_full_arr[:n_ctx]
+    X_qry = X_full_arr[n_ctx:]
+    y_ctx = y_sub[:n_ctx]
+    y_qry = y_sub[n_ctx:]
+
+    X_ctx_t = torch.from_numpy(np.ascontiguousarray(X_ctx)).unsqueeze(1)
+    X_qry_t = torch.from_numpy(np.ascontiguousarray(X_qry)).unsqueeze(1)
+    y_dtype = torch.int64 if loaded.task_type == "classification" else torch.float32
+    y_ctx_t = torch.as_tensor(y_ctx, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
+    y_qry_t = torch.as_tensor(y_qry, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
+
+    return TabPFNBatch(
+        X_context=X_ctx_t,
+        y_context=y_ctx_t,
+        X_query=X_qry_t,
+        y_query=y_qry_t,
+        categorical_idx=cat_idx,
+        task_type=loaded.task_type,
+        dataset_id=loaded.dataset_id,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -163,66 +234,58 @@ def _resample_chunk(
 # --------------------------------------------------------------------------- #
 
 
-class ChunkDataset(Dataset):
-    """One ``__getitem__`` call → one fully-formed :class:`TabPFNBatch`.
+class ProcessedDatasetLoader(Dataset):
+    """One ``__getitem__`` call → one TabPFNBatch from one sanitized CSV.
 
     Designed to be wrapped in ``torch.utils.data.DataLoader`` with
-    ``batch_size=1, collate_fn=lambda batch: batch[0]`` (since our
-    "batch" is already a single dataset).
+    ``batch_size=1`` and ``collate_fn=identity_collate``.
 
-    Pass training-mode ``seed`` to make subsampling deterministic
-    across processes. The per-call rng is seeded from
-    ``(seed, idx)`` — so the same chunk index produces the same
-    resample every epoch (full run-level reproducibility, at the
-    cost of no per-epoch resampling variation within a chunk).
+    The training loop must call :meth:`set_epoch` before each new
+    epoch so the per-epoch reshuffle (epoch-aware RNG seed) produces
+    a fresh random subsample of large datasets every epoch. The
+    subsample is still deterministic given ``(base_seed, epoch, idx)``,
+    so a re-run with the same seed is bit-for-bit reproducible.
     """
 
     def __init__(
         self,
-        chunks: Sequence[ChunkRef],
+        refs: Sequence[DatasetRef],
         *,
-        n_total_target: int,
+        max_rows_per_epoch: int,
         query_fraction: float,
         seed: int = 0,
     ) -> None:
-        if len(chunks) == 0:
-            raise ValueError("ChunkDataset received an empty chunk list")
-        self.chunks = list(chunks)
-        self.n_total_target = int(n_total_target)
+        if len(refs) == 0:
+            raise ValueError("ProcessedDatasetLoader received an empty refs list")
+        self.refs = list(refs)
+        self.max_rows_per_epoch = int(max_rows_per_epoch)
         self.query_fraction = float(query_fraction)
         self._base_seed = int(seed)
+        self._epoch = 0
+
+    def set_epoch(self, epoch: int) -> None:
+        """Bump the epoch counter so the next __getitem__ reshuffles."""
+        self._epoch = int(epoch)
 
     def __len__(self) -> int:
-        return len(self.chunks)
+        return len(self.refs)
 
     def __getitem__(self, idx: int) -> TabPFNBatch:
-        ref = self.chunks[idx]
-        # Per-call rng so parallel DataLoader workers don't clash;
-        # mix in idx and base_seed so it's reproducible per (seed, idx).
+        ref = self.refs[idx]
+        loaded = _load_processed_csv(ref)
+        # Epoch-aware seed: same chunk on epoch 0 ≠ epoch 1 ≠ …
         rng = np.random.default_rng(
-            (self._base_seed * 1_000_003 + idx) & 0xFFFF_FFFF
+            (
+                self._base_seed * 1_000_003
+                + self._epoch * 10_007
+                + idx * 31
+            ) & 0xFFFF_FFFF
         )
-        chunk = _load_chunk(ref)
-
-        X_ctx, y_ctx, X_qry, y_qry = _resample_chunk(
-            chunk,
-            n_total_target=self.n_total_target,
+        return _build_step_batch(
+            loaded,
+            n_total_target=self.max_rows_per_epoch,
             query_fraction=self.query_fraction,
             rng=rng,
-        )
-
-        X_ctx_t, y_ctx_t = _to_xy_tensor(X_ctx, y_ctx, task_type=ref.task_type)
-        X_qry_t, y_qry_t = _to_xy_tensor(X_qry, y_qry, task_type=ref.task_type)
-
-        cat_idx = chunk["categorical_idx"].tolist()
-        return TabPFNBatch(
-            X_context=X_ctx_t,
-            y_context=y_ctx_t,
-            X_query=X_qry_t,
-            y_query=y_qry_t,
-            categorical_idx=cat_idx,
-            task_type=ref.task_type,
-            dataset_id=ref.dataset_id,
         )
 
 
@@ -243,58 +306,66 @@ def identity_collate(batch):
 
 
 # --------------------------------------------------------------------------- #
-# Public: test/eval chunk preparation (deterministic)
+# Public: test/eval batch preparation (deterministic)
 # --------------------------------------------------------------------------- #
 
 
 def prepare_eval_chunk(
-    ref: ChunkRef,
+    ref: DatasetRef,
     *,
     n_inference_subsample_samples: int,
     seed: int,
 ) -> TabPFNBatch:
-    """Build a deterministic eval batch for one chunk.
+    """Build a deterministic eval batch for one dataset.
 
-    Uses the cache's stable 60/40 context/query split (no resampling,
-    so test numbers are reproducible across HP variants and across
-    different models in the future TabPFN-vs-XGBoost-vs-… benchmark).
-    If ``n_inference_subsample_samples`` is smaller than the chunk's
-    row count, both splits are subsampled proportionally (preserves
-    the ratio).
+    Uses a fixed 80 / 20 context / query split for monitoring purposes
+    (the proper evaluation pipeline uses K-fold CV — this function is
+    only invoked by the training loop's end-of-epoch quick eval). When
+    ``n_inference_subsample_samples`` is smaller than the dataset, both
+    splits are subsampled proportionally.
     """
-    chunk = _load_chunk(ref)
+    loaded = _load_processed_csv(ref)
     rng = np.random.default_rng(seed)
+    n = len(loaded.X)
 
-    n_ctx_full = len(chunk["X_context"])
-    n_qry_full = len(chunk["X_query"])
-    total = n_ctx_full + n_qry_full
-
-    if total > n_inference_subsample_samples > 0:
-        keep_ratio = n_inference_subsample_samples / total
-        n_ctx_keep = max(1, int(round(n_ctx_full * keep_ratio)))
-        n_qry_keep = max(1, int(round(n_qry_full * keep_ratio)))
-        ctx_sel = rng.choice(n_ctx_full, size=n_ctx_keep, replace=False)
-        qry_sel = rng.choice(n_qry_full, size=n_qry_keep, replace=False)
-        X_ctx, y_ctx = chunk["X_context"][ctx_sel], chunk["y_context"][ctx_sel]
-        X_qry, y_qry = chunk["X_query"][qry_sel], chunk["y_query"][qry_sel]
+    if 0 < n_inference_subsample_samples < n:
+        keep = rng.choice(n, size=n_inference_subsample_samples, replace=False)
+        X_sub = loaded.X.iloc[keep].reset_index(drop=True)
+        y_sub = loaded.y[keep]
     else:
-        X_ctx, y_ctx = chunk["X_context"], chunk["y_context"]
-        X_qry, y_qry = chunk["X_query"], chunk["y_query"]
+        X_sub = loaded.X.reset_index(drop=True)
+        y_sub = loaded.y
 
-    X_ctx_t, y_ctx_t = _to_xy_tensor(X_ctx, y_ctx, task_type=ref.task_type)
-    X_qry_t, y_qry_t = _to_xy_tensor(X_qry, y_qry, task_type=ref.task_type)
+    n_total = len(X_sub)
+    n_query = max(1, int(round(n_total * 0.20)))
+    n_query = min(n_query, n_total - 1)
+    n_ctx = n_total - n_query
+    ctx_idx = np.arange(n_ctx)
+
+    X_full_arr, cat_idx = _ordinal_encode(
+        X_sub, ctx_idx=ctx_idx, cat_cols=loaded.cat_columns,
+    )
+    X_ctx = X_full_arr[:n_ctx]
+    X_qry = X_full_arr[n_ctx:]
+    y_ctx = y_sub[:n_ctx]
+    y_qry = y_sub[n_ctx:]
+
+    X_ctx_t = torch.from_numpy(np.ascontiguousarray(X_ctx)).unsqueeze(1)
+    X_qry_t = torch.from_numpy(np.ascontiguousarray(X_qry)).unsqueeze(1)
+    y_dtype = torch.int64 if loaded.task_type == "classification" else torch.float32
+    y_ctx_t = torch.as_tensor(y_ctx, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
+    y_qry_t = torch.as_tensor(y_qry, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
 
     return TabPFNBatch(
         X_context=X_ctx_t,
         y_context=y_ctx_t,
         X_query=X_qry_t,
         y_query=y_qry_t,
-        categorical_idx=chunk["categorical_idx"].tolist(),
-        task_type=ref.task_type,
-        dataset_id=ref.dataset_id,
+        categorical_idx=cat_idx,
+        task_type=loaded.task_type,
+        dataset_id=loaded.dataset_id,
     )
 
 
-# Backwards-compat alias kept only for the duration of the refactor;
-# remove once src/eval/ lands.
+# Backwards-compat alias.
 prepare_validation_chunk = prepare_eval_chunk

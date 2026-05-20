@@ -65,7 +65,6 @@ CreditPFN/
 ├── data/                            big I/O artefacts (gitignored)
 │   ├── raw/{pd,lgd}/<id>.csv        hand-curated input corpus
 │   ├── processed/{pd,lgd}/          <id>.sanitized.csv
-│   ├── cached/{pd,lgd}/<id>/        chunk_NNN.npz + meta.json
 │   └── dedup/                       doubles_{track}_{pre,post}.csv
 ├── manifests/<run>_<track>.csv      one row per trained checkpoint (gitignored)
 ├── results/                         (gitignored)
@@ -188,7 +187,6 @@ also run independently via `python -m src.data.<stage>`.
 | 2 | [`src/data/register.py`](src/data/register.py)               | raw CSVs + `DATASET_METADATA` | `manifest_{pd,lgd}.csv` |
 | 3 | [`src/data/sanitize.py`](src/data/sanitize.py)               | raw CSVs + manifests | `data/processed/{pd,lgd}/<id>.sanitized.csv` |
 | 4 | [`src/data/dedup.py`](src/data/dedup.py) `--pass post`       | processed CSVs | `dedup/doubles_{track}_post.csv` |
-| 5 | [`src/data/dataset.py`](src/data/dataset.py)                 | processed CSVs + manifests | `data/cached/{track}/<id>/chunk_NNN.npz` + `meta.json` |
 
 Plus one importable helper used by stages 2 and 3:
 
@@ -218,7 +216,7 @@ Plus one importable helper used by stages 2 and 3:
   linkage, unscaled per-cluster means), label-encode classification
   targets, clip LGD targets to [0, 1].
 * **`dataset.py`** — chunks each sanitised dataset into ≤
-  `cfg.dataset.max_rows_per_chunk` rows (stratified for PD, random
+  `finetuning.max_rows_per_epoch` rows (random
   for LGD), splits each chunk 60 % context / 40 % query, ordinal-
   encodes categoricals **with the encoder fit on context only**
   (so query categories unseen in context get `-1`, mirroring TabPFN's
@@ -289,7 +287,7 @@ over-sized SLURM array is safe.
 ### Auto-cache hook
 
 Before training starts, the pipeline checks that every dataset it
-needs is materialised under `data/cached/<track>/<id>/`. Missing
+needs is on disk under `data/processed/<track>/`. Missing
 datasets trigger `scripts/data_pipeline.py` transparently for just
 those IDs. Net effect: `train_pipeline.py` runs from a fresh checkout
 and fills the cache as needed.
@@ -397,7 +395,7 @@ policy:
 
 | Model family                          | Pre-CV cap                         | Final fit + test eval | HPO subsample                           |
 |---------------------------------------|------------------------------------|-----------------------|-----------------------------------------|
-| `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_tabpfn = 100 000`    | uses the capped data  | n/a                                     |
+| `tabpfn-untuned` / `tabpfn-trained`   | `eval.max_rows_per_model` (v2.x: 100 000; v3: 1 000 000) | train fold capped; full test fold | n/a |
 | `xgboost` / `catboost`                | none                               | full dataset          | `cfg.hpo.<m>.max_rows = 50 000` (stratified subsample of inner-train; HPO only) |
 | `logreg` / `linreg`                   | none                               | full dataset          | n/a                                     |
 

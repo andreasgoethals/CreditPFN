@@ -208,7 +208,6 @@ data/raw/{pd,lgd}/<id>.csv          (you uploaded)
         ↓ register                  → manifest_{pd,lgd}.csv
         ↓ sanitize                  → data/processed/{pd,lgd}/<id>.sanitized.csv
         ↓ dedup --pass post         → dedup/doubles_{track}_post.csv
-        ↓ dataset (chunk + cache)   → data/cached/{pd,lgd}/<id>/chunk_*.npz
 ```
 
 Submit just this stage: `sbatch scripts/slurm/data.slurm`.
@@ -317,7 +316,7 @@ Every continued-pretrained checkpoint is picked up automatically.
 5-fold stratified CV per test dataset. Each train fold is 80/20-split
 again into sub-train + inner-val; that inner-val is shared by the
 Optuna HPO objective (XGBoost / CatBoost) and the F1-threshold tuner
-(PD). TabPFN inference is row-capped at `cfg.max_rows_tabpfn = 100 000`;
+(PD). TabPFN inference is row-capped per architecture by `eval.max_rows_per_model` (v2.x: 100 000; v3: 1 000 000);
 non-TabPFN baselines see the full dataset.
 
 ### 4.3 Re-runs are idempotent
@@ -439,7 +438,7 @@ python scripts/eval_pipeline.py track=pd --method xgboost --rerun
 | Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
 | One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |
 | Eval task says `KeyError: <id> not in cache`            | The auto-cache hook re-runs the data pipeline for missing IDs — let it finish.                                   |
-| Out-of-memory on `gpu_h100`                             | Lower `train.n_finetune_ctx_plus_query_samples` from 100 000 to 50 000.                                          |
+| Out-of-memory on `gpu_h100`                             | Lower `finetuning.max_rows_per_epoch` in `config/data.yaml` (default 10 000; drop to 5 000 if needed).                                          |
 | Wrong test set scored for a checkpoint                  | Check `<checkpoint>.ckpt.provenance.json` — the eval reads that, not the live cfg.                               |
 | Eval re-run produces 0 new CSVs                         | The skip-existing guard fired — every pair was already scored. Pass `--rerun` to force.                          |
 

@@ -46,15 +46,15 @@ A small worked example. After ``ssh login.hpc.kuleuven.be`` (so
 ``$VSC_DATA=/data/leuven/.../vsc12345`` is set automatically by
 KU Leuven's login profile)::
 
-    resolve_data_path("data/cached")
-        # → /scratch/leuven/.../vsc12345/CreditPFN/data/cached
+    resolve_data_path("data/processed")
+        # → /scratch/leuven/.../vsc12345/CreditPFN/data/processed
 
     resolve_output_path("checkpoints/trained")
         # → /data/leuven/.../vsc12345/CreditPFN/checkpoints/trained
 
 …and on a laptop with no env vars set::
 
-    resolve_data_path("data/cached")    # → <repo>/data/cached
+    resolve_data_path("data/processed")  # → <repo>/data/processed
     resolve_output_path("logs")         # → <repo>/logs
 
 All callers funnel paths through :func:`resolve_data_path` and
@@ -216,7 +216,7 @@ def _resolve(p: str | os.PathLike, *, env_var: str, vsc_default: Path | None) ->
 
 
 def resolve_data_path(p: str | os.PathLike) -> Path:
-    """Resolve a *data* path (raw / processed / cached).
+    """Resolve a *data* path (raw / processed).
 
     On VSC: ``$VSC_SCRATCH/CreditPFN`` (auto-detected) or
     ``$CREDITPFN_DATA_ROOT`` (explicit override).
@@ -257,9 +257,9 @@ def get_roots() -> dict[str, Path]:
 #
 # `config/data.yaml` exposes a `paths.data_source` knob with TWO allowed values:
 #
-#   "scratch" — raw/processed/cached live on $VSC_SCRATCH/CreditPFN
+#   "scratch" — raw/processed live on $VSC_SCRATCH/CreditPFN
 #               (fast, purged periodically).
-#   "data"    — raw/processed/cached live on $VSC_DATA/CreditPFN
+#   "data"    — raw/processed live on $VSC_DATA/CreditPFN
 #               (durable, backed up).
 #
 # On a laptop (no $VSC_DATA / $VSC_SCRATCH) the knob is IGNORED and the

@@ -169,11 +169,12 @@ read end-to-end" lives here.
   `X (B, N_max, F_max)`, `y (B, N_max)`, `num_features`,
   `num_datapoints`, `single_eval_pos` (= train/test split index),
   `max_num_classes`. Padding-aware: each batch slices to the
-  per-batch max feature count and max sequence length. **This format
-  is exactly what our `data/cached/` directory needs to match** for
-  continued pretraining, except we'll use `.npz` per dataset instead
-  of one monolithic HDF5 (rationale: Real-TabPFN-style continued
-  pretraining loops over real datasets, not over a synthetic prior).
+  per-batch max feature count and max sequence length. **Reference
+  format only** — since the 2026-05-20 refactor our training pipeline
+  reads sanitized CSVs from `data/processed/` directly and assembles
+  the same `(X_context, y_context, X_query, y_query)` quadruple on
+  the fly inside `src/train/dataloader.py::_build_step_batch` (with
+  a fresh random subsample every epoch). No `.npz` cache step.
 
 **When to grep this file:** any time you need the "what does the
 training loop actually look like" answer — model `forward`

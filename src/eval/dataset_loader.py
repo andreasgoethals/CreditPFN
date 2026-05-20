@@ -1,25 +1,12 @@
 """Eval-time dataset loader: reads ``data/processed/{track}/<id>.sanitized.csv``
 and produces ``(X, y, categorical_idx)`` for downstream model wrappers.
 
-Why the eval pipeline doesn't reuse the cached chunks
------------------------------------------------------
-The cached ``.npz`` chunks under ``data/cached/`` are the TRAINING
-input format: each chunk is at most ``cfg.dataset.max_rows_per_chunk``
-(= 100,000 in the default config) rows, ordinal-encoded and split
-into the 60/40 context/query that TabPFN's in-context learning
-expects. That cap is correct for TabPFN training but wrong for
-evaluation:
-
-  * XGBoost / CatBoost have no row-count limit and would be
-    underestimated if capped at the chunk size.
-  * The 60/40 ctx/query split was computed at cache-write time with
-    a single seed; eval needs K-fold cross-validation which is a
-    different (and more rigorous) split.
-
-So the eval loads the *processed* (sanitised, post-FeatureAgglomeration)
-CSV directly. The processed CSVs are produced by ``src/data/sanitize.py``
-and are the canonical "one row per observation, features + target,
-categoricals as strings/objects" representation of every dataset.
+Since the 2026-05-20 refactor, the sanitized CSV is the **only**
+on-disk training input — there is no more ``.npz`` chunking step. Both
+the training and eval pipelines read the same CSV files; the training
+pipeline applies its own per-epoch random subsample, while the eval
+pipeline applies K-fold cross-validation and a per-model architectural
+row cap (looked up via ``cfg.max_rows_per_model``).
 
 Public surface
 --------------

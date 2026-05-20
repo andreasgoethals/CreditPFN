@@ -8,7 +8,7 @@
 #  unset — probes $VSC_SCRATCH/CreditPFN, $VSC_SCRATCH, $VSC_DATA/CreditPFN
 #  in that order; whichever has CSVs wins), runs the
 #  five-stage pipeline, and writes:
-#    * data/cached/{pd,lgd}/<id>/chunk_*.npz  → DATA_ROOT (scratch)
+#    * data/processed/{pd,lgd}/<id>.sanitized.csv → DATA_ROOT (scratch)
 #    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT (durable)
 #    * manifest_{pd,lgd}.csv                  → OUTPUT_ROOT (durable)
 #
