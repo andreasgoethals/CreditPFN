@@ -215,11 +215,24 @@ def test_run_benchmark_writes_per_method_csv(env_isolated: Path) -> None:
         assert len(files) == 1
         df = pd.read_csv(files[0])
         assert len(df) == 3
-        # Comprehensive metric columns are present.
-        for col in ("roc_auc", "log_loss", "pr_auc",
-                    "optimal_threshold", "f1", "accuracy", "precision", "recall",
-                    "rmse", "mae", "r2", "neg_nll",
-                    "n_train_rows", "n_val_rows", "n_test_rows"):
+        # Comprehensive metric columns are present (post-2026-05-21
+        # expansion: brier/mcc/balanced_accuracy/cohen_kappa/specificity
+        # for classification; median_ae/mape/explained_variance/
+        # pearson_r/spearman_r for regression).
+        for col in (
+            # Classification — discriminator-quality / probabilistic
+            "roc_auc", "log_loss", "pr_auc", "brier_score",
+            # Classification — threshold-tuned
+            "optimal_threshold",
+            "f1", "accuracy", "precision", "recall", "specificity",
+            "balanced_accuracy", "mcc", "cohen_kappa",
+            # Regression
+            "rmse", "mae", "median_ae", "mape",
+            "r2", "explained_variance", "pearson_r", "spearman_r",
+            "neg_nll",
+            # Split metadata
+            "n_train_rows", "n_val_rows", "n_test_rows",
+        ):
             assert col in df.columns, f"missing metric column: {col}"
 
 
@@ -251,6 +264,12 @@ def test_run_benchmark_classification_metrics_are_finite(env_isolated: Path) -> 
         assert 0.0 <= r.optimal_threshold <= 1.0
         assert 0.0 <= r.f1 <= 1.0
         assert 0.0 <= r.accuracy <= 1.0
+        # New metrics added 2026-05-21 — must be finite + in plausible range.
+        assert 0.0 <= r.brier_score <= 1.0
+        assert -1.0 <= r.mcc <= 1.0
+        assert -1.0 <= r.cohen_kappa <= 1.0
+        assert 0.0 <= r.specificity <= 1.0
+        assert 0.0 <= r.balanced_accuracy <= 1.0
 
 
 def test_run_benchmark_split_sizes_match_user_contract(env_isolated: Path) -> None:
@@ -571,12 +590,12 @@ def test_method_dirname_baseline() -> None:
 
 
 @pytest.mark.parametrize("base,expected", [
+    ("checkpoints/tabpfn-v3-classifier-v3_default.ckpt",
+     "tabpfn-untuned__v3-default"),
     ("checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
      "tabpfn-untuned__v2.6-default"),
-    ("checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt",
-     "tabpfn-untuned__v2.5-real"),
-    ("checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt",
-     "tabpfn-untuned__v2.5-default-2"),
+    ("checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt",
+     "tabpfn-untuned__v2.6-default"),
 ])
 def test_method_dirname_tabpfn_untuned(base: str, expected: str) -> None:
     h = ModelHandle(

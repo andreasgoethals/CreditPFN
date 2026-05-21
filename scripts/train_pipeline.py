@@ -98,14 +98,19 @@ def _load_cfg(overrides: list[str] | None = None):
     return cfg
 
 
-def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, bool]]:
-    """Materialise the (base, lr, use_lora) tuples to train.
+def _resolve_grid(
+    cfg, *, single: bool,
+) -> list[tuple[str, float, bool, float]]:
+    """Materialise the ``(base, lr, use_lora, query_fraction)`` tuples to train.
 
     ``single=True``: head of every tunable list (one trial).
-    Otherwise: full cartesian product over base × lr × use_lora.
+    Otherwise: full cartesian product over base × lr × use_lora ×
+    query_fraction.
 
-    ``cfg.tunable.use_lora`` may be a single bool, a list of bools,
-    or missing entirely (defaults to ``[False]``).
+    All tunable lists accept either a scalar or a list. ``use_lora``
+    defaults to ``[False]`` when absent; ``query_fractions`` defaults
+    to ``[0.20]`` (the TabPFN documented default) when absent so
+    legacy configs without that axis still produce 32 trials.
     """
     track = str(cfg.track)
     bases = (
@@ -118,12 +123,19 @@ def _resolve_grid(cfg, *, single: bool) -> list[tuple[str, float, bool]]:
         loras = [bool(raw_lora)]
     else:
         loras = [bool(x) for x in raw_lora]
+    raw_qf = getattr(cfg.tunable, "query_fractions", [0.20])
+    if isinstance(raw_qf, (int, float)):
+        qfs = [float(raw_qf)]
+    else:
+        qfs = [float(x) for x in raw_qf]
 
     if single:
-        return [(str(bases[0]), float(lrs[0]), bool(loras[0]))]
+        return [(
+            str(bases[0]), float(lrs[0]), bool(loras[0]), float(qfs[0]),
+        )]
     return [
-        (str(b), float(lr), bool(lo))
-        for b, lr, lo in itertools.product(bases, lrs, loras)
+        (str(b), float(lr), bool(lo), float(qf))
+        for b, lr, lo, qf in itertools.product(bases, lrs, loras, qfs)
     ]
 
 
@@ -241,6 +253,7 @@ class RunRow:
     base_checkpoint: str
     learning_rate: float
     use_lora: bool
+    query_fraction: float             # 0.20 / 0.30 / 0.40, see cfg.tunable.query_fractions
     seed: int
     n_train_datasets: int
     n_test_datasets: int
@@ -364,38 +377,77 @@ def run(
     failures = 0
     t_outer = time.monotonic()
 
-    for trial_idx_local, (base, lr, use_lora) in enumerate(plan, start=1):
+    for trial_idx_local, (base, lr, use_lora, query_fraction) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s ===",
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f ===",
             trial_idx_local, len(plan), global_idx,
-            Path(base).name, lr, use_lora,
+            Path(base).name, lr, use_lora, query_fraction,
         )
 
         # Per-epoch CSV path (mirrors the descriptive name of the checkpoint)
         run_basename = descriptive_name(
             run_name=str(cfg.run_name), track=track,
             base_path=base, learning_rate=lr, seed=int(cfg.seed),
-            use_lora=use_lora,
+            use_lora=use_lora, query_fraction=query_fraction,
         ).removesuffix(".ckpt")
+
+        # ---- Rename the log file to include the trial's HPs --------- #
+        # On Linux, renaming a file that's currently the target of an
+        # `exec > $LOG` redirection works cleanly: the slurm shell holds
+        # an open file descriptor on the inode, not on the directory
+        # entry, so subsequent writes follow the renamed file. This
+        # makes it trivial to find a specific (base × lr × qf × lora)
+        # log: just glob for `*_<run_basename>.log` instead of having to
+        # cross-reference the array task ID with the manifest.
+        try:
+            current_log = log.path if hasattr(log, "path") else log_path
+            if current_log is not None:
+                cur = Path(str(current_log))
+                if cur.exists():
+                    enriched = cur.with_name(
+                        cur.stem + "__" + run_basename + cur.suffix
+                    )
+                    if enriched != cur:
+                        cur.rename(enriched)
+                        # Update our in-memory pointer so anyone who
+                        # introspects log.path post-rename sees the new
+                        # location.
+                        try:
+                            log.path = enriched                        # type: ignore[attr-defined]
+                        except Exception:
+                            pass
+                        LOGGER.info(
+                            "Log file renamed for this trial: %s",
+                            enriched.name,
+                        )
+        except Exception as exc:                                       # pragma: no cover
+            LOGGER.warning("log-rename failed (continuing): %s", exc)
         epoch_csv = epoch_csv_dir / f"{run_basename}.csv"
         if epoch_csv.exists():
             epoch_csv.unlink()              # fresh file per run
         _epoch_csv_init: dict[str, bool] = {"written_header": False}
 
         def _on_epoch_end(rec, _path=epoch_csv, _flag=_epoch_csv_init) -> None:
+            # `secondary_*` is the optional per-track second metric — R²
+            # for LGD, empty for PD. Columns are present in both tracks'
+            # CSVs so the downstream notebooks see a stable schema; for
+            # PD the secondary columns hold NaN / empty string.
             row = {
-                "epoch":          int(rec.epoch),
-                "train_loss":     float(rec.train_loss),
-                "lr":             float(rec.lr),
-                "metric_name":    str(rec.metric_name),
-                "train_metric":   float(rec.train_metric),
-                "test_metric":    float(rec.test_metric),
-                "epoch_time_sec": float(rec.epoch_time_sec),
-                "elapsed_sec":    float(rec.elapsed_sec),
+                "epoch":                     int(rec.epoch),
+                "train_loss":                float(rec.train_loss),
+                "lr":                        float(rec.lr),
+                "metric_name":               str(rec.metric_name),
+                "train_metric":              float(rec.train_metric),
+                "test_metric":               float(rec.test_metric),
+                "secondary_metric_name":     str(rec.secondary_metric_name),
+                "secondary_train_metric":    float(rec.secondary_train_metric),
+                "secondary_test_metric":     float(rec.secondary_test_metric),
+                "epoch_time_sec":            float(rec.epoch_time_sec),
+                "elapsed_sec":               float(rec.elapsed_sec),
             }
             write_header = not _flag["written_header"]
             with _path.open("a", newline="", encoding="utf-8") as fh:
@@ -412,11 +464,13 @@ def run(
                 base_checkpoint=base,
                 learning_rate=lr,
                 use_lora=use_lora,
+                query_fraction=query_fraction,
                 on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
-                use_lora=use_lora, seed=int(cfg.seed),
+                use_lora=use_lora, query_fraction=query_fraction,
+                seed=int(cfg.seed),
                 n_train_datasets=result.n_train_datasets,
                 n_test_datasets=result.n_test_datasets,
                 final_ckpt_path=str(result.final_ckpt_path),
@@ -428,7 +482,8 @@ def run(
             LOGGER.error("Trial %d failed: %s", trial_idx_local, exc, exc_info=True)
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
-                use_lora=use_lora, seed=int(cfg.seed),
+                use_lora=use_lora, query_fraction=query_fraction,
+                seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
                 final_ckpt_path=None,
                 elapsed_sec=time.monotonic() - t_trial,

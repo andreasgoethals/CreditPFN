@@ -569,9 +569,12 @@ def test_mean_ignore_nan_drops_nans() -> None:
 @pytest.mark.parametrize("name,expected", [
     # The returned string must carry the leading 'v' so it round-trips
     # through TabPFN's `version: Literal["v2", "v2.5", "v2.6", "v3"]`.
+    # We only sweep v2.6 / v3, but the inference function must remain
+    # robust to the full literal set so we keep v2.5 in the test
+    # (the regex pattern is exercised, no checkpoint is loaded).
+    ("tabpfn-v3-classifier-v3_default.ckpt",       "v3"),
     ("tabpfn-v2.6-classifier-v2.6_default.ckpt",   "v2.6"),
     ("tabpfn-v2.5-regressor-v2.5_default.ckpt",    "v2.5"),
-    ("tabpfn-v2.5-classifier-v2.5_default-2.ckpt", "v2.5"),
 ])
 def test_infer_version_from_filename(name: str, expected: str) -> None:
     assert _infer_version(Path(name)) == expected
@@ -786,6 +789,12 @@ def test_train_one_config_end_to_end_mocked(
             "dataloader_workers": 0,
             # Per-epoch monitoring eval: small to keep smoke test fast.
             "epoch_eval_subsample_samples": 50,
+            # Smoke test stays on the cheap single-forward path — the
+            # ensemble path (n_estimators>1) calls the real
+            # TabPFNClassifier sklearn API which expects on-disk
+            # checkpoints and a working TabPFN install; out of scope
+            # for the unit test.
+            "epoch_eval_n_estimators": 1,
         },
         "eval": {
             "classification_metric": "roc_auc",

@@ -47,14 +47,18 @@ paths:
 #             tensor than the alternating attention of v2.x. ~54 M params.
 #             10_000 rows fit on 80 GB H100 with ~64 GB headroom.
 #
-#    * v2.6 / v2.5 — alternating row × feature attention at every layer
-#             (24 layers in v2.5/v2.6). At each layer the model retains
-#             a (batch, rows, features, hidden) tensor for backward. With
+#    * v2.6 — alternating row × feature attention at every layer
+#             (24 layers). At each layer the model retains a
+#             (batch, rows, features, hidden) tensor for backward. With
 #             10_000 rows × 128 features × 192 hidden × 24 layers × ~4
 #             expansion the peak resident size exceeds the 80 GB card.
 #             Empirically the safe ceiling on wICE gpu_h100 is ~3_000 rows
 #             (confirmed by trial-8 OOM in the 2026-05-20 run, where 10k
 #             OOMed at the *first* forward pass).
+#
+#  (v2.5 was dropped from the sweep on 2026-05-21 — see
+#   docs/CHECKPOINTS.md for the rationale. The lookup table no longer
+#   needs an entry for it.)
 #
 #  The lookup key is the leading ``v<MAJOR>[.<MINOR>]`` segment that
 #  `src/train/loop.py::_max_rows_for_base` parses out of the base
@@ -70,7 +74,6 @@ finetuning:
   max_rows_per_epoch:
     v3:      10000
     v2.6:    3000
-    v2.5:    3000
     default: 10000
 
   # Fraction of the per-step subsample that goes to the query split;

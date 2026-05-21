@@ -67,11 +67,17 @@ LOGGER = logging.getLogger(__name__)
 class EpochRecord:
     """One row of the training history.
 
-    ``train_metric`` / ``test_metric`` carry the primary monitoring
+    ``train_metric`` / ``test_metric`` carry the **primary** monitoring
     metric (ROC-AUC for PD, RMSE for LGD) averaged over a small
     subsample of the train- and test-dataset chunks at end of epoch.
     Both are ``NaN`` when ``cfg.train.epoch_eval_subsample_samples == 0``
     (per-epoch eval disabled).
+
+    ``secondary_*`` carries an optional **secondary** metric also logged
+    each epoch (R² for LGD; unused for PD, where the secondary fields
+    stay NaN with ``secondary_metric_name == ""``). The forward pass is
+    shared with the primary metric — see
+    :func:`evaluate_on_split` — so the extra column is essentially free.
 
     ``elapsed_sec`` is **cumulative** training time since the loop
     started; ``epoch_time_sec`` is the wall-clock for just this epoch
@@ -85,6 +91,9 @@ class EpochRecord:
     train_metric: float = float("nan")
     test_metric:  float = float("nan")
     metric_name:  str   = ""
+    secondary_train_metric: float = float("nan")
+    secondary_test_metric:  float = float("nan")
+    secondary_metric_name:  str   = ""
     epoch_time_sec: float = 0.0
 
 
@@ -143,16 +152,29 @@ def descriptive_name(
     *, run_name: str, track: str, base_path: str | Path,
     learning_rate: float, seed: int,
     use_lora: bool = False,
+    query_fraction: float | None = None,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
     Schema:
-        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt
+        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_lora].ckpt
+
+    ``query_fraction`` is part of the sweep grid as of 2026-05-21, so
+    different qf values must produce distinct filenames. ``None``
+    omits the segment (back-compat with legacy callers / tests that
+    don't sweep the axis).
     """
     base_stem = Path(str(base_path)).stem
     lr_tag = f"{learning_rate:.0e}".replace("+", "")
+    qf_tag = ""
+    if query_fraction is not None:
+        # 0.20 → "qf20", 0.30 → "qf30", 0.40 → "qf40"
+        qf_tag = f"_qf{int(round(query_fraction * 100)):02d}"
     lora_tag = "_lora" if use_lora else ""
-    return f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}{lora_tag}.ckpt"
+    return (
+        f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}"
+        f"{qf_tag}{lora_tag}.ckpt"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -247,6 +269,36 @@ def _seed_everything(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def _amp_step_was_skipped(scaler: "torch.amp.GradScaler") -> bool:
+    """Return True if the most recent ``scaler.step(optimizer)`` was a no-op.
+
+    ``GradScaler.step()`` silently skips the optimizer step when any
+    gradient was inf/NaN (the dynamic-loss-scaling escape hatch). The
+    public API doesn't expose a return value indicating skip / no-skip
+    when AMP is disabled, so we look at the scaler's private
+    per-optimizer ``_per_optimizer_states`` dict, which records
+    ``"found_inf_per_device"`` as a tensor of 0 / 1 per device. Any 1 ⇒
+    the step was skipped.
+
+    Falls back to ``False`` when AMP is disabled (the scaler is a no-op
+    that always lets the step through).
+    """
+    if not getattr(scaler, "_enabled", True):
+        return False
+    try:
+        states = scaler._per_optimizer_states                          # type: ignore[attr-defined]
+        for state in states.values():
+            found = state.get("found_inf_per_device", {})
+            for v in found.values():
+                if float(v.item() if hasattr(v, "item") else v) != 0.0:
+                    return True
+    except Exception:                                                  # pragma: no cover
+        # Best-effort probe — if the private API ever moves we degrade
+        # to the old behaviour (assume the step happened).
+        return False
+    return False
 
 
 # --------------------------------------------------------------------------- #
@@ -345,6 +397,181 @@ def _n_classes(batch: TabPFNBatch) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# Ensemble per-epoch eval (n_estimators=32 via TabPFNClassifier/Regressor)
+# --------------------------------------------------------------------------- #
+
+
+def _save_eval_snapshot(
+    model: torch.nn.Module,
+    architecture_config,
+    snapshot_path: Path,
+    *,
+    criterion: torch.nn.Module | None = None,
+) -> None:
+    """Persist the live model's state_dict to a Prior-Labs-format .ckpt
+    so ``TabPFNClassifier(model_path=...)`` can load it.
+
+    **Non-destructive.** The live model and (if LoRA-wrapped) its
+    PEFT adapter are left exactly as they were on entry — we operate
+    on a ``copy.deepcopy`` of LoRA-wrapped models before calling
+    ``merge_and_unload``. This is the whole reason this function exists
+    instead of just calling ``save_finetuned``: the production save path
+    mutates the live model, which would terminate training.
+    """
+    snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+
+    config_payload = (
+        architecture_config.__dict__
+        if hasattr(architecture_config, "__dict__")
+        else architecture_config
+    )
+
+    # LoRA case: clone first, merge into the clone, throw the clone away.
+    # Costs one transient deep-copy of the model (~213 MB for v3) but
+    # keeps the training trajectory exactly as it was.
+    is_peft = (
+        hasattr(model, "merge_and_unload")
+        and callable(getattr(model, "merge_and_unload", None))
+    )
+    if is_peft:
+        import copy as _copy
+        cloned = _copy.deepcopy(model)
+        merged = cloned.merge_and_unload()                              # type: ignore[attr-defined]
+        state_dict = merged.state_dict()
+        del cloned, merged
+    else:
+        state_dict = (
+            model.module.state_dict()
+            if hasattr(model, "module") else model.state_dict()
+        )
+
+    # Regressor: merge bar-distribution criterion params into the state_dict
+    # under the `criterion.` prefix the TabPFN loader expects.
+    if criterion is not None and hasattr(criterion, "state_dict"):
+        crit_state = criterion.state_dict()
+        if crit_state:
+            for k, v in crit_state.items():
+                state_dict[f"criterion.{k}"] = v
+
+    torch.save(
+        {"state_dict": state_dict, "config": config_payload},
+        str(snapshot_path),
+    )
+
+
+def evaluate_ensemble_on_split(
+    ckpt_path: Path | str,
+    refs: list[DatasetRef],
+    *,
+    n_estimators: int,
+    n_subsample: int,
+    query_fraction: float,
+    seed: int,
+    device: str,
+    task_type: str,
+    metric_names: tuple[str, ...],
+) -> dict[str, float]:
+    """Evaluate one TabPFN checkpoint via the sklearn API with full
+    ensemble inference (``n_estimators`` forward passes per fit/predict,
+    averaged with the package's standard feature-permutation strategy).
+
+    This is what ``scripts/eval_pipeline.py`` does at the end of
+    training, just on a smaller per-epoch sample. Reusing the same code
+    path guarantees per-epoch and final-eval numbers are directly
+    comparable (same model, same context/query geometry, same
+    n_estimators).
+
+    Returns a ``{metric_name: mean_over_datasets}`` dict. NaN-skips
+    datasets where a metric is undefined (single-class query,
+    ill-conditioned predictions, etc.) so a single degenerate dataset
+    doesn't contaminate the mean.
+    """
+    # Local imports — the function is called once per epoch from the
+    # training loop, so we can afford the lazy-load overhead in exchange
+    # for keeping `loop.py`'s module-level import cost low.
+    from src.eval.benchmark import _classification_metrics, _regression_metrics
+    from src.train.dataloader import _load_processed_csv
+    from src.train.dataloader import _stratified_subsample_indices  # type: ignore[attr-defined]
+    from src.model.tabpfn_models import _make_tabpfn
+    from src.train.metrics import mean_ignore_nan
+
+    if not refs or n_subsample <= 0:
+        return {m: float("nan") for m in metric_names}
+
+    per_dataset: dict[str, list[float]] = {m: [] for m in metric_names}
+
+    for i, ref in enumerate(refs):
+        loaded = _load_processed_csv(ref)
+        rng = np.random.default_rng(seed + i)
+        n = len(loaded.X)
+
+        if 0 < n_subsample < n:
+            if task_type == "classification":
+                keep = _stratified_subsample_indices(loaded.y, n_subsample, rng)
+            else:
+                keep = rng.choice(n, size=n_subsample, replace=False)
+            X_sub = loaded.X.iloc[keep].reset_index(drop=True)
+            y_sub = loaded.y[keep]
+        else:
+            X_sub = loaded.X.reset_index(drop=True)
+            y_sub = loaded.y
+
+        n_total = len(X_sub)
+        n_query = max(1, int(round(n_total * float(query_fraction))))
+        n_query = min(n_query, n_total - 1)
+        n_ctx = n_total - n_query
+
+        X_ctx = X_sub.iloc[:n_ctx].values
+        y_ctx = y_sub[:n_ctx]
+        X_qry = X_sub.iloc[n_ctx:].values
+        y_qry = y_sub[n_ctx:]
+
+        # Categorical feature INDICES (positional) into the dataframe.
+        cat_idx = [
+            X_sub.columns.get_loc(c)
+            for c in loaded.cat_columns if c in X_sub.columns
+        ]
+
+        try:
+            tabpfn = _make_tabpfn(
+                task_type, ckpt_path,
+                device=device, n_estimators=int(n_estimators),
+                categorical_features_indices=(cat_idx or None),
+            )
+            tabpfn.fit(X_ctx, y_ctx)
+            if task_type == "classification":
+                proba = tabpfn.predict_proba(X_qry)
+                # Note: passing proba twice (test + "val") means the
+                # F1-tuned classification metrics (f1/accuracy/...) use
+                # an in-sample threshold here, biased toward optimism.
+                # That's fine for a monitor — the unbiased threshold
+                # comes from the full eval pipeline. We DO get unbiased
+                # threshold-free metrics: roc_auc, log_loss, pr_auc,
+                # brier_score.
+                metrics = _classification_metrics(
+                    proba_test=proba, y_test=y_qry,
+                    proba_val=proba,  y_val=y_qry,
+                    n_classes_seen=int(len(np.unique(y_ctx))),
+                )
+            else:
+                preds = tabpfn.predict(X_qry)
+                metrics = _regression_metrics(
+                    pred_test=preds, y_test=y_qry, neg_nll=None,
+                )
+        except Exception as exc:                                       # noqa: BLE001
+            LOGGER.warning(
+                "ensemble eval failed for dataset=%s (n_est=%d): %s — emitting NaN",
+                ref.dataset_id, n_estimators, exc,
+            )
+            metrics = {m: float("nan") for m in metric_names}
+
+        for m in metric_names:
+            per_dataset[m].append(float(metrics.get(m, float("nan"))))
+
+    return {m: mean_ignore_nan(per_dataset[m]) for m in metric_names}
+
+
+# --------------------------------------------------------------------------- #
 # Test-set evaluation (called ONCE at end of training)
 # --------------------------------------------------------------------------- #
 
@@ -355,21 +582,35 @@ def evaluate_on_split(
     *,
     criterion,
     device: str,
-    metric_name: str,
+    metric_name: str | tuple[str, ...] | list[str],
     n_inference_subsample_samples: int,
     seed: int = 0,
-) -> float:
+    query_fraction: float = 0.20,
+) -> float | dict[str, float]:
     """Mean primary metric over a list of datasets (end-of-epoch monitor).
 
     Used by the training loop for per-epoch monitoring only — the proper
     eval is a separate pipeline (``scripts/eval_pipeline.py``).
+
+    ``metric_name`` may be a single string (back-compat — returns a
+    float) or a sequence of strings (returns a ``dict[str, float]``
+    keyed by metric name). The multi-metric path shares the model's
+    forward pass across all listed metrics, so adding R² alongside RMSE
+    costs only the cheap post-processing.
     """
+    multi = not isinstance(metric_name, str)
+    metric_names: tuple[str, ...] = (
+        tuple(metric_name) if multi else (metric_name,)  # type: ignore[arg-type]
+    )
+
     if not refs or n_inference_subsample_samples <= 0:
-        return float("nan")
+        nan_result = {m: float("nan") for m in metric_names}
+        return nan_result if multi else float("nan")
+
     was_training = model.training
     model.eval()
     is_classification = refs[0].task_type == "classification"
-    per_chunk: list[float] = []
+    per_chunk: dict[str, list[float]] = {m: [] for m in metric_names}
 
     try:
         with torch.no_grad():
@@ -378,22 +619,24 @@ def evaluate_on_split(
                     ref,
                     n_inference_subsample_samples=n_inference_subsample_samples,
                     seed=seed + i,
+                    query_fraction=query_fraction,
                 ).to(device)
                 pred_logits, y_target, zmean, zstd = _forward(model, batch)
-                if is_classification:
-                    K = _n_classes(batch)
-                    logits = pred_logits[:, :, :K]
-                    value = classification_metric(
-                        logits=logits, targets=y_target,
-                        metric=metric_name, n_classes=K,
-                    )
-                else:
-                    value = regression_metric(
-                        logits=pred_logits, targets=y_target,
-                        criterion=criterion, metric=metric_name,
-                        znorm_mean=zmean, znorm_std=zstd,
-                    )
-                per_chunk.append(value)
+                for m in metric_names:
+                    if is_classification:
+                        K = _n_classes(batch)
+                        logits = pred_logits[:, :, :K]
+                        value = classification_metric(
+                            logits=logits, targets=y_target,
+                            metric=m, n_classes=K,
+                        )
+                    else:
+                        value = regression_metric(
+                            logits=pred_logits, targets=y_target,
+                            criterion=criterion, metric=m,
+                            znorm_mean=zmean, znorm_std=zstd,
+                        )
+                    per_chunk[m].append(value)
     finally:
         # Restore prior train/eval state so the outer loop's optimizer
         # step continues against a training-mode model (matters for
@@ -401,7 +644,8 @@ def evaluate_on_split(
         if was_training:
             model.train()
 
-    return mean_ignore_nan(per_chunk)
+    means = {m: mean_ignore_nan(per_chunk[m]) for m in metric_names}
+    return means if multi else means[metric_names[0]]
 
 
 # --------------------------------------------------------------------------- #
@@ -416,6 +660,7 @@ def train_one_config(
     base_checkpoint: str | None = None,
     learning_rate: float | None = None,
     use_lora: bool | None = None,
+    query_fraction: float | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
 ) -> TrainingResult:
@@ -483,6 +728,16 @@ def train_one_config(
             use_lora = bool(tunable_lora)
         else:
             use_lora = bool(list(tunable_lora)[0])
+    if query_fraction is None:
+        # cfg.tunable.query_fractions is a list (e.g. [0.20, 0.30, 0.40])
+        # the script iterates over; default to the head of that list.
+        tunable_qf = getattr(cfg.tunable, "query_fractions", None)
+        if tunable_qf is None:
+            query_fraction = 0.20  # TabPFN documented default
+        elif isinstance(tunable_qf, (int, float)):
+            query_fraction = float(tunable_qf)
+        else:
+            query_fraction = float(list(tunable_qf)[0])
 
     # Inject the resolved choices back into cfg so downstream helpers
     # (corpus split, optimizer factory) read them via the usual path.
@@ -491,9 +746,9 @@ def train_one_config(
     _seed_everything(int(cfg.seed))
     device = _resolve_device(cfg)
     LOGGER.info(
-        "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | seed=%d",
+        "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | qf=%.2f | seed=%d",
         track, device, Path(base_checkpoint).name, learning_rate,
-        use_lora, int(cfg.seed),
+        use_lora, query_fraction, int(cfg.seed),
     )
 
     # ---- 1) corpus split --------------------------------------------------- #
@@ -527,9 +782,9 @@ def train_one_config(
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
     # The per-step subsample size is `finetuning.max_rows_per_epoch` in
     # `config/data.yaml`. As of the 2026-05-20 PD run it became clear
-    # that v2.5/v2.6 OOM at the v3-safe 10_000 rows (alternating
-    # row × feature attention × 24 layers is much more memory-hungry
-    # than v3's three-stage design). So `max_rows_per_epoch` is now a
+    # that v2.6 OOMs at the v3-safe 10_000 rows (alternating row ×
+    # feature attention × 24 layers is much more memory-hungry than
+    # v3's three-stage design). So `max_rows_per_epoch` is now a
     # per-version map; we look it up by the base checkpoint's leading
     # `v<MAJOR>` segment.
     from omegaconf import OmegaConf
@@ -537,7 +792,13 @@ def train_one_config(
     max_rows_per_epoch = _resolve_max_rows_per_epoch(
         base_checkpoint, _data_cfg.finetuning.max_rows_per_epoch,
     )
-    query_fraction = float(_data_cfg.finetuning.query_fraction)
+    # `query_fraction` is now a per-trial argument coming from the
+    # sweep — defaulted above to the head of cfg.tunable.query_fractions
+    # if the caller didn't pass it. The old single-value
+    # `data_cfg.finetuning.query_fraction` is preserved only as a
+    # back-compat fallback when no per-trial value was resolved.
+    if query_fraction is None:
+        query_fraction = float(_data_cfg.finetuning.query_fraction)
 
     train_ds = ProcessedDatasetLoader(
         split.train,
@@ -580,6 +841,7 @@ def train_one_config(
             learning_rate=float(learning_rate),
             seed=int(cfg.seed),
             use_lora=bool(use_lora),
+            query_fraction=float(query_fraction),
         )
     )
 
@@ -600,6 +862,127 @@ def train_one_config(
     )
     LOGGER.info("Save target   : %s", save_path)
 
+    # ---- 5a) BASELINE eval — pre-finetuning snapshot ----------------------- #
+    # This is the reference point against which every finetuned epoch must
+    # beat. We emit it as ``epoch=-1`` in the per-epoch CSV / on_epoch_end
+    # callback. If the final epoch's metrics are NOT clearly above this row,
+    # the finetuning has not improved over the unmodified base — likely a
+    # sign that the LR is too high, the trial diverged, or the corpus is
+    # too small to move the prior.
+    epoch_eval_n0 = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
+    epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators", 1))
+    use_ensemble_eval = epoch_eval_ne > 1
+    snapshot_path = Path(str(save_path) + ".epoch_eval.ckpt") if use_ensemble_eval else None
+
+    # Picks the per-track primary + secondary metric names. For PD we
+    # add brier_score as the calibration-collapse early-warning metric
+    # (see chat 2026-05-21: loss-vs-AUC divergence diagnosed as
+    # over-confidence). For LGD we keep R² as the rank/scale secondary.
+    if split.train and split.train[0].task_type == "classification":
+        track_primary_metric = "roc_auc"
+        track_secondary_metric = "brier_score" if use_ensemble_eval else ""
+        track_task_type = "classification"
+    else:
+        track_primary_metric = "rmse"
+        track_secondary_metric = "r2"
+        track_task_type = "regression"
+    track_metric_names: tuple[str, ...] = (
+        (track_primary_metric,) if not track_secondary_metric
+        else (track_primary_metric, track_secondary_metric)
+    )
+
+    def _do_eval(
+        ckpt_path: Path | str, refs: list[DatasetRef], *, seed: int,
+    ) -> dict[str, float]:
+        """Dispatcher: ensemble eval (sklearn API, n_estimators>1) or the
+        cheap single-forward path."""
+        if use_ensemble_eval:
+            return evaluate_ensemble_on_split(
+                ckpt_path=ckpt_path,
+                refs=refs,
+                n_estimators=epoch_eval_ne,
+                n_subsample=epoch_eval_n0,
+                query_fraction=query_fraction,
+                seed=seed,
+                device=device,
+                task_type=track_task_type,
+                metric_names=track_metric_names,
+            )
+        result = evaluate_on_split(
+            model, refs, criterion=criterion, device=device,
+            metric_name=track_metric_names,
+            n_inference_subsample_samples=epoch_eval_n0,
+            seed=seed,
+            query_fraction=query_fraction,
+        )
+        # evaluate_on_split returns dict[str, float] when given a tuple.
+        return result if isinstance(result, dict) else {track_primary_metric: float(result)}
+
+    if epoch_eval_n0 > 0:
+        LOGGER.info(
+            "Baseline eval (epoch=-1, model = unmodified base checkpoint, "
+            "n_estimators=%d, qf=%.2f) — this is the score every finetuned "
+            "epoch must beat. Ensemble path: %s.",
+            epoch_eval_ne, query_fraction,
+            "TabPFNClassifier/Regressor sklearn API" if use_ensemble_eval
+            else "single forward pass (cheap)",
+        )
+        # For the baseline we evaluate the UNMODIFIED base checkpoint — no
+        # snapshot needed. We feed the base_checkpoint path straight to
+        # the ensemble loader, mirroring what tabpfn-untuned does in the
+        # full eval pipeline.
+        baseline_ckpt = (
+            str(base_checkpoint) if use_ensemble_eval
+            else save_path  # ignored on the cheap path; the live model is used
+        )
+        baseline_train_d = _do_eval(
+            baseline_ckpt, split.train, seed=int(cfg.seed) + 10_000 * 0,
+        )
+        baseline_test_d = _do_eval(
+            baseline_ckpt, split.test, seed=int(cfg.seed) + 20_000 * 0,
+        )
+        baseline_train_p = float(baseline_train_d.get(track_primary_metric, float("nan")))
+        baseline_test_p  = float(baseline_test_d.get(track_primary_metric, float("nan")))
+        baseline_train_s = (
+            float(baseline_train_d.get(track_secondary_metric, float("nan")))
+            if track_secondary_metric else float("nan")
+        )
+        baseline_test_s = (
+            float(baseline_test_d.get(track_secondary_metric, float("nan")))
+            if track_secondary_metric else float("nan")
+        )
+        baseline_record = EpochRecord(
+            epoch=-1,
+            train_loss=float("nan"),       # no training has happened yet
+            elapsed_sec=0.0,
+            lr=0.0,
+            train_metric=baseline_train_p,
+            test_metric=baseline_test_p,
+            metric_name=track_primary_metric,
+            secondary_train_metric=baseline_train_s,
+            secondary_test_metric=baseline_test_s,
+            secondary_metric_name=track_secondary_metric,
+            epoch_time_sec=0.0,
+        )
+        history.append(baseline_record)
+        if on_epoch_end is not None:
+            on_epoch_end(baseline_record)
+        if track_secondary_metric:
+            LOGGER.info(
+                "epoch=-1 BASELINE  %s(train)=%.4f  %s(test)=%.4f  "
+                "%s(train)=%.4f  %s(test)=%.4f",
+                track_primary_metric, baseline_train_p,
+                track_primary_metric, baseline_test_p,
+                track_secondary_metric, baseline_train_s,
+                track_secondary_metric, baseline_test_s,
+            )
+        else:
+            LOGGER.info(
+                "epoch=-1 BASELINE  %s(train)=%.4f  %s(test)=%.4f",
+                track_primary_metric, baseline_train_p,
+                track_primary_metric, baseline_test_p,
+            )
+
     for epoch in range(epochs):
         model.train()
         # Per-epoch reshuffle: a fresh random subsample is drawn from each
@@ -609,6 +992,15 @@ def train_one_config(
         n_batches = 0
         optimizer.zero_grad(set_to_none=True)
         epoch_t0 = time.monotonic()
+
+        # Per-epoch debug accumulators — used to compose the
+        # end-of-epoch INFO line that gives gradient-noise visibility
+        # (pre-clip grad-norm max/mean) and per-dataset loss spread
+        # (so a single misbehaving dataset shows up clearly).
+        epoch_grad_norms: list[float] = []
+        epoch_clipped_count = 0
+        epoch_step_losses: list[tuple[str, float]] = []   # (dataset_id, loss)
+        epoch_skipped_steps = 0
 
         for step, batch in enumerate(train_loader, start=1):
             step_t0 = time.monotonic()
@@ -632,34 +1024,75 @@ def train_one_config(
                     epoch, step, batch.dataset_id,
                 )
                 optimizer.zero_grad(set_to_none=True)
+                epoch_skipped_steps += 1
                 continue
 
             scaler.scale(loss_to_backprop).backward()
 
+            stepped = False
+            pre_clip_norm: float | None = None
             if step % accumulate == 0:
-                if grad_clip is not None:
-                    scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        model.parameters(), max_norm=grad_clip,
-                    )
-                scaler.step(optimizer)
+                # We always unscale here (with or without grad_clip) so we
+                # can MEASURE the pre-clip gradient norm. This is the
+                # single most useful number for diagnosing the loss
+                # explosion: if pre-clip norm hits 100s of × the
+                # grad_clip threshold (= 1.0 in our cfg), the LR is too
+                # high for the current gradient noise.
+                scaler.unscale_(optimizer)
+                total_norm = torch.nn.utils.clip_grad_norm_(
+                    model.parameters(),
+                    max_norm=(grad_clip if grad_clip is not None else float("inf")),
+                )
+                pre_clip_norm = float(total_norm.detach().cpu().item())
+                epoch_grad_norms.append(pre_clip_norm)
+                if grad_clip is not None and pre_clip_norm > grad_clip:
+                    epoch_clipped_count += 1
+
+                # Inspect the AMP scaler's internal state BEFORE step:
+                # `scaler.step()` returns the optimizer's return value
+                # when the step ran, and None when it was skipped due to
+                # inf/NaN. We mirror this into `stepped` and only advance
+                # the LR scheduler when the optimizer actually stepped —
+                # otherwise the schedule drifts ahead of the real
+                # optimization trajectory (real bug found in pipeline
+                # review 2026-05-21).
+                _ = scaler.step(optimizer)
+                stepped = not _amp_step_was_skipped(scaler)
                 scaler.update()
-                scheduler.step()
+                if stepped:
+                    scheduler.step()
+                else:
+                    LOGGER.warning(
+                        "epoch=%d step=%d: AMP scaler skipped optimizer step "
+                        "(inf/NaN grads). Scheduler NOT advanced this step.",
+                        epoch, step,
+                    )
                 optimizer.zero_grad(set_to_none=True)
 
             loss_val = float(loss.detach().cpu().item())
             running_loss += loss_val
             n_batches += 1
+            epoch_step_losses.append((batch.dataset_id, loss_val))
 
             step_dt = time.monotonic() - step_t0
             cur_lr = float(scheduler.get_last_lr()[0])
             gpu_mb = ""
             if device == "cuda" and torch.cuda.is_available():
                 gpu_mb = f" gpu_mem_alloc={torch.cuda.memory_allocated()/1e9:.2f}GB"
-            LOGGER.debug(
-                "ep=%d step=%3d/%d ds=%-22s loss=%.4f lr=%.2e %.2fs/step%s",
-                epoch, step, len(train_loader), batch.dataset_id,
-                loss_val, cur_lr, step_dt, gpu_mb,
+
+            # Promoted from DEBUG to INFO on 2026-05-21 — without this
+            # the user can't see per-dataset gradient behaviour and the
+            # diagnosis of loss explosions is blind. One line per step
+            # at 12-17 steps per epoch and 100 epochs gives ~1500 lines
+            # per trial which is still very tractable.
+            grad_str = (
+                f" grad_norm={pre_clip_norm:.3f}" if pre_clip_norm is not None
+                else " grad_norm=    -    "
+            )
+            LOGGER.info(
+                "  step=%3d/%d ds=%-22s loss=%.4f lr=%.2e%s %.2fs/step%s",
+                step, len(train_loader), batch.dataset_id,
+                loss_val, cur_lr, grad_str, step_dt, gpu_mb,
             )
 
         # Flush any pending gradients from a partial accumulation window
@@ -669,14 +1102,25 @@ def train_one_config(
         # (the standard case) because every step already triggered a
         # full optimizer step.
         if (n_batches > 0) and (n_batches % accumulate != 0):
-            if grad_clip is not None:
-                scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(
-                    model.parameters(), max_norm=grad_clip,
-                )
-            scaler.step(optimizer)
+            scaler.unscale_(optimizer)
+            total_norm = torch.nn.utils.clip_grad_norm_(
+                model.parameters(),
+                max_norm=(grad_clip if grad_clip is not None else float("inf")),
+            )
+            pre_clip_flush = float(total_norm.detach().cpu().item())
+            epoch_grad_norms.append(pre_clip_flush)
+            if grad_clip is not None and pre_clip_flush > grad_clip:
+                epoch_clipped_count += 1
+            _ = scaler.step(optimizer)
+            stepped_flush = not _amp_step_was_skipped(scaler)
             scaler.update()
-            scheduler.step()
+            if stepped_flush:
+                scheduler.step()
+            else:
+                LOGGER.warning(
+                    "epoch=%d (flush): AMP scaler skipped optimizer step "
+                    "(inf/NaN grads). Scheduler NOT advanced.", epoch,
+                )
             optimizer.zero_grad(set_to_none=True)
 
         # End-of-epoch monitoring eval: score the model on a small
@@ -685,48 +1129,125 @@ def train_one_config(
         # the per-epoch CSV so it's easy to see whether the model is
         # still improving, has plateaued, or has started overfitting.
         # Skipped when `cfg.train.epoch_eval_subsample_samples == 0`.
-        epoch_eval_n = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
-        if batch.task_type == "classification":          # `batch` from inner loop
-            metric_name = "roc_auc"
+        # End-of-epoch eval — runs via the same dispatcher
+        # (_do_eval) as the baseline (epoch=-1). For the ensemble path
+        # we save a snapshot of the live model's state_dict here so the
+        # sklearn-API loader has a checkpoint file to mmap. The snapshot
+        # is overwritten every epoch, keeping disk usage bounded at one
+        # .ckpt-worth (~213 MB v3 / ~43 MB v2.6) per trial.
+        if use_ensemble_eval and snapshot_path is not None:
+            assert architecture_config is not None
+            _save_eval_snapshot(
+                model, architecture_config, snapshot_path, criterion=criterion,
+            )
+            eval_ckpt_path: Path | str = snapshot_path
         else:
-            metric_name = "rmse"
-        train_metric = evaluate_on_split(
-            model, split.train, criterion=criterion, device=device,
-            metric_name=metric_name,
-            n_inference_subsample_samples=epoch_eval_n,
+            eval_ckpt_path = save_path        # ignored on cheap path
+
+        # Track-level metric names already resolved before the loop —
+        # `track_primary_metric` / `track_secondary_metric` /
+        # `track_metric_names`. Keep local aliases for the EpochRecord
+        # construction below to mirror the previous variable names.
+        metric_name = track_primary_metric
+        secondary_metric_name = track_secondary_metric
+
+        train_metrics = _do_eval(
+            eval_ckpt_path, split.train,
             seed=int(cfg.seed) + 10_000 * (epoch + 1),
         )
-        test_metric = evaluate_on_split(
-            model, split.test, criterion=criterion, device=device,
-            metric_name=metric_name,
-            n_inference_subsample_samples=epoch_eval_n,
+        test_metrics = _do_eval(
+            eval_ckpt_path, split.test,
             seed=int(cfg.seed) + 20_000 * (epoch + 1),
+        )
+        train_metric = float(train_metrics.get(metric_name, float("nan")))
+        test_metric  = float(test_metrics.get(metric_name,  float("nan")))
+        secondary_train = (
+            float(train_metrics.get(secondary_metric_name, float("nan")))
+            if secondary_metric_name else float("nan")
+        )
+        secondary_test = (
+            float(test_metrics.get(secondary_metric_name, float("nan")))
+            if secondary_metric_name else float("nan")
         )
 
         train_loss = running_loss / max(1, n_batches)
         epoch_dt = time.monotonic() - epoch_t0
         elapsed = time.monotonic() - t0
+
+        # Per-epoch GRADIENT-NOISE summary — these three numbers are
+        # the smoking gun for the loss-explosion diagnosis. With the
+        # cfg grad_clip_norm=1.0:
+        #   * grad_norm_max ≫ 1   ⇒  optimizer constantly clipping
+        #   * clipped_frac ≈ 1.0  ⇒  LR is too high for the noise level
+        #   * loss_std large      ⇒  per-dataset gradients disagree wildly
+        if epoch_grad_norms:
+            gnorm_arr = np.asarray(epoch_grad_norms)
+            gnorm_mean = float(gnorm_arr.mean())
+            gnorm_max  = float(gnorm_arr.max())
+            clipped_frac = (
+                float(epoch_clipped_count) / max(1, len(epoch_grad_norms))
+            )
+        else:
+            gnorm_mean = gnorm_max = float("nan")
+            clipped_frac = float("nan")
+        step_losses = [v for _, v in epoch_step_losses]
+        if step_losses:
+            loss_arr = np.asarray(step_losses)
+            loss_min = float(loss_arr.min())
+            loss_max = float(loss_arr.max())
+            loss_std = float(loss_arr.std())
+            # Identify the single worst (highest-loss) dataset of the epoch.
+            worst_ds, worst_loss = max(epoch_step_losses, key=lambda t: t[1])
+        else:
+            loss_min = loss_max = loss_std = worst_loss = float("nan")
+            worst_ds = "?"
+        LOGGER.info(
+            "  ↳ debug: grad_norm mean=%.3f max=%.3f clipped_frac=%.2f  "
+            "per_step_loss min=%.4f max=%.4f std=%.4f  "
+            "worst_ds=%s (loss=%.4f)  skipped_steps=%d",
+            gnorm_mean, gnorm_max, clipped_frac,
+            loss_min, loss_max, loss_std,
+            worst_ds, worst_loss, epoch_skipped_steps,
+        )
+
         record = EpochRecord(
             epoch=epoch,
             train_loss=train_loss,
             elapsed_sec=elapsed,
             lr=float(scheduler.get_last_lr()[0]),
-            train_metric=float(train_metric),
-            test_metric=float(test_metric),
+            train_metric=train_metric,
+            test_metric=test_metric,
             metric_name=metric_name,
+            secondary_train_metric=secondary_train,
+            secondary_test_metric=secondary_test,
+            secondary_metric_name=secondary_metric_name,
             epoch_time_sec=epoch_dt,
         )
         history.append(record)
         if on_epoch_end is not None:
             on_epoch_end(record)
 
-        LOGGER.info(
-            "epoch=%2d/%d  loss=%.4f  lr=%.2e  %s(train)=%.4f  %s(test)=%.4f  "
-            "epoch_dt=%.1fs  elapsed=%.1fs",
-            epoch, epochs - 1, train_loss, record.lr,
-            metric_name, train_metric, metric_name, test_metric,
-            epoch_dt, elapsed,
-        )
+        if secondary_metric_name:
+            LOGGER.info(
+                "epoch=%2d/%d  loss=%.4f  lr=%.2e  "
+                "%s(train)=%.4f  %s(test)=%.4f  "
+                "%s(train)=%.4f  %s(test)=%.4f  "
+                "epoch_dt=%.1fs  elapsed=%.1fs",
+                epoch, epochs - 1, train_loss, record.lr,
+                metric_name, train_metric, metric_name, test_metric,
+                secondary_metric_name, secondary_train,
+                secondary_metric_name, secondary_test,
+                epoch_dt, elapsed,
+            )
+        else:
+            LOGGER.info(
+                "epoch=%2d/%d  loss=%.4f  lr=%.2e  "
+                "%s(train)=%.4f  %s(test)=%.4f  "
+                "epoch_dt=%.1fs  elapsed=%.1fs",
+                epoch, epochs - 1, train_loss, record.lr,
+                metric_name, train_metric, metric_name, test_metric,
+                epoch_dt, elapsed,
+            )
 
     # ---- 6) save final weights + permanent provenance --------------------- #
     train_dataset_ids = train_ids        # already computed at step (1)
@@ -798,6 +1319,18 @@ def train_one_config(
         "training_time=%.1fs)",
         save_path, gpu_name, training_seconds,
     )
+
+    # Clean up the rolling per-epoch eval snapshot — kept as a single
+    # file overwritten each epoch, so on success there's exactly one
+    # file to remove. Best-effort: a failure here doesn't fail the trial.
+    if snapshot_path is not None and snapshot_path.exists():
+        try:
+            snapshot_path.unlink()
+        except OSError as exc:                                         # pragma: no cover
+            LOGGER.warning(
+                "Failed to remove eval snapshot %s (continuing): %s",
+                snapshot_path, exc,
+            )
 
     # NOTE: the training pipeline does NOT score the model on the test
     # split. Evaluation of trained checkpoints belongs to the eval

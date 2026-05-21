@@ -27,10 +27,13 @@ the roster, this module:
 
   4. Computes a comprehensive metric block per (model × dataset × fold):
 
-         classification → roc_auc, log_loss, pr_auc,
-                          optimal_threshold, f1, accuracy,
-                          precision, recall
-         regression     → rmse, mae, r2, neg_nll (TabPFN only)
+         classification → roc_auc, log_loss, pr_auc, brier_score,
+                          optimal_threshold, f1, accuracy, precision,
+                          recall, specificity, balanced_accuracy,
+                          mcc, cohen_kappa
+         regression     → rmse, mae, median_ae, mape, r2,
+                          explained_variance, pearson_r, spearman_r,
+                          neg_nll (TabPFN only)
 
   5. Persists each model's results to its own CSV under
      ``results/<TRACK>/<method>/<run>_<timestamp>[_<task_tag>].csv``.
@@ -92,21 +95,54 @@ class EvalRow:
     n_val_rows:      int
     n_test_rows:     int
 
-    # Classification metrics (NaN for regression).
+    # Classification metrics (NaN for regression). The block below adds
+    # — on top of the original Roc-AUC / log-loss / PR-AUC / F1 /
+    # accuracy / precision / recall set — five more discriminator-quality
+    # / calibration / class-imbalance-aware columns:
+    #
+    #   * brier_score      — proper score on positive-class probability
+    #                        (lower = better; calibration + sharpness).
+    #   * mcc              — Matthews Correlation Coefficient on the
+    #                        F1-tuned binary preds (single number that
+    #                        handles class imbalance; -1..+1, 0 = chance).
+    #   * balanced_accuracy — macro-recall on the F1-tuned preds.
+    #   * cohen_kappa      — chance-adjusted accuracy (-1..+1; > 0 ⇒
+    #                        agreement above random).
+    #   * specificity      — TN / (TN + FP) on the F1-tuned preds; the
+    #                        binary "true negative rate" companion to
+    #                        recall (= sensitivity / TPR).
     roc_auc:            float = float("nan")
     log_loss:           float = float("nan")
     pr_auc:             float = float("nan")
+    brier_score:        float = float("nan")
     optimal_threshold:  float = float("nan")    # max-F1 on inner-val
     f1:                 float = float("nan")
     accuracy:           float = float("nan")
     precision:          float = float("nan")
     recall:             float = float("nan")
+    specificity:        float = float("nan")
+    balanced_accuracy:  float = float("nan")
+    mcc:                float = float("nan")
+    cohen_kappa:        float = float("nan")
 
-    # Regression metrics (NaN for classification).
-    rmse:               float = float("nan")
-    mae:                float = float("nan")
-    r2:                 float = float("nan")
-    neg_nll:            float = float("nan")    # TabPFN-* only
+    # Regression metrics (NaN for classification). On top of RMSE / MAE
+    # / R² / neg-NLL the block below adds:
+    #
+    #   * median_ae         — median absolute error (outlier-robust).
+    #   * mape              — mean absolute percentage error in PCT
+    #                         (skipped where any |y_true| == 0).
+    #   * explained_variance — sklearn's explained_variance_score.
+    #   * pearson_r          — linear correlation pred vs target.
+    #   * spearman_r         — rank correlation pred vs target.
+    rmse:                float = float("nan")
+    mae:                 float = float("nan")
+    median_ae:           float = float("nan")
+    mape:                float = float("nan")
+    r2:                  float = float("nan")
+    explained_variance:  float = float("nan")
+    pearson_r:           float = float("nan")
+    spearman_r:          float = float("nan")
+    neg_nll:             float = float("nan")    # TabPFN-* only
 
     elapsed_sec:     float = 0.0
     timestamp:       str = ""
@@ -299,6 +335,8 @@ def _classification_metrics(
     from sklearn.metrics import (
         roc_auc_score, log_loss, average_precision_score,
         f1_score, accuracy_score, precision_score, recall_score,
+        brier_score_loss, matthews_corrcoef, balanced_accuracy_score,
+        cohen_kappa_score, confusion_matrix,
     )
     out: dict[str, float] = {}
     K = proba_test.shape[1]
@@ -326,6 +364,16 @@ def _classification_metrics(
     except ValueError:
         out["log_loss"] = float("nan")
 
+    # Brier score on positive-class probability (binary only). Proper
+    # score, lower = better; combines calibration + sharpness.
+    if K == 2:
+        try:
+            out["brier_score"] = float(brier_score_loss(y_test, proba_test[:, 1]))
+        except ValueError:
+            out["brier_score"] = float("nan")
+    else:
+        out["brier_score"] = float("nan")
+
     # Threshold-tuned metrics — binary only.
     if K == 2 and len(np.unique(y_val)) >= 2:
         best_th = _best_f1_threshold(proba_val[:, 1], y_val)
@@ -335,8 +383,30 @@ def _classification_metrics(
         out["accuracy"]  = float(accuracy_score(y_test, preds_t))
         out["precision"] = float(precision_score(y_test, preds_t, zero_division=0))
         out["recall"]    = float(recall_score(y_test, preds_t, zero_division=0))
+
+        # Specificity = TN / (TN + FP). Companion to recall (TPR).
+        try:
+            cm = confusion_matrix(y_test, preds_t, labels=[0, 1])
+            tn, fp = float(cm[0, 0]), float(cm[0, 1])
+            out["specificity"] = (
+                float("nan") if (tn + fp) == 0.0 else tn / (tn + fp)
+            )
+        except ValueError:
+            out["specificity"] = float("nan")
+
+        out["balanced_accuracy"] = float(balanced_accuracy_score(y_test, preds_t))
+
+        # MCC — handles imbalance gracefully; undefined when ANY of
+        # TP/TN/FP/FN combinations make the denominator zero, in which
+        # case sklearn returns 0 and emits a runtime warning. We accept
+        # the sklearn behaviour (returns 0 rather than NaN) since the
+        # warning is suppressed at the loop level.
+        out["mcc"] = float(matthews_corrcoef(y_test, preds_t))
+
+        out["cohen_kappa"] = float(cohen_kappa_score(y_test, preds_t))
     else:
-        for k in ("optimal_threshold", "f1", "accuracy", "precision", "recall"):
+        for k in ("optimal_threshold", "f1", "accuracy", "precision", "recall",
+                  "specificity", "balanced_accuracy", "mcc", "cohen_kappa"):
             out[k] = float("nan")
 
     return out
@@ -346,13 +416,62 @@ def _regression_metrics(
     pred_test: np.ndarray, y_test: np.ndarray,
     *, neg_nll: float | None,
 ) -> dict[str, float]:
-    from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-    return {
-        "rmse":    float(np.sqrt(mean_squared_error(y_test, pred_test))),
-        "mae":     float(mean_absolute_error(y_test, pred_test)),
-        "r2":      float(r2_score(y_test, pred_test)),
-        "neg_nll": float("nan") if neg_nll is None else float(neg_nll),
+    """Full regression-metric block.
+
+    On top of RMSE / MAE / R² / neg-NLL we emit:
+
+    * ``median_ae``           — outlier-robust point error.
+    * ``mape``                — mean absolute percentage error in
+      decimal units (NOT multiplied by 100; multiply downstream if you
+      want %). NaN when any target equals zero — divide-by-zero would
+      poison the mean.
+    * ``explained_variance``  — sklearn's ``explained_variance_score``;
+      equals R² when prediction is unbiased.
+    * ``pearson_r``           — linear correlation. NaN on a constant
+      target or constant prediction.
+    * ``spearman_r``          — rank correlation; robust to monotone
+      nonlinearities. NaN under the same degenerate cases.
+    """
+    from sklearn.metrics import (
+        mean_squared_error, mean_absolute_error, r2_score,
+        median_absolute_error, explained_variance_score,
+    )
+    out: dict[str, float] = {
+        "rmse":               float(np.sqrt(mean_squared_error(y_test, pred_test))),
+        "mae":                float(mean_absolute_error(y_test, pred_test)),
+        "median_ae":          float(median_absolute_error(y_test, pred_test)),
+        "r2":                 float(r2_score(y_test, pred_test)),
+        "explained_variance": float(explained_variance_score(y_test, pred_test)),
+        "neg_nll":            float("nan") if neg_nll is None else float(neg_nll),
     }
+
+    # MAPE — undefined where any target is zero; we emit NaN rather
+    # than +inf so the column aggregates cleanly across folds.
+    if np.any(y_test == 0):
+        out["mape"] = float("nan")
+    else:
+        out["mape"] = float(
+            np.mean(np.abs((y_test - pred_test) / y_test))
+        )
+
+    # Pearson / Spearman — guard against constant-vector inputs which
+    # make the correlation undefined (the denominator is zero).
+    if np.std(y_test) == 0 or np.std(pred_test) == 0:
+        out["pearson_r"] = float("nan")
+    else:
+        out["pearson_r"] = float(np.corrcoef(y_test, pred_test)[0, 1])
+
+    try:
+        from scipy.stats import spearmanr
+        if np.std(y_test) == 0 or np.std(pred_test) == 0:
+            out["spearman_r"] = float("nan")
+        else:
+            rho, _ = spearmanr(y_test, pred_test)
+            out["spearman_r"] = float(rho) if not np.isnan(rho) else float("nan")
+    except ImportError:                                                # pragma: no cover
+        out["spearman_r"] = float("nan")
+
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -680,9 +799,16 @@ def _bench_model_on_dataset(
             timestamp=timestamp,
             status=status, error=error,
             **{k: metrics.get(k, float("nan")) for k in (
-                "roc_auc", "log_loss", "pr_auc", "optimal_threshold",
-                "f1", "accuracy", "precision", "recall",
-                "rmse", "mae", "r2", "neg_nll",
+                # Classification — threshold-free / probabilistic
+                "roc_auc", "log_loss", "pr_auc", "brier_score",
+                # Classification — threshold-tuned (max-F1 on val)
+                "optimal_threshold",
+                "f1", "accuracy", "precision", "recall", "specificity",
+                "balanced_accuracy", "mcc", "cohen_kappa",
+                # Regression
+                "rmse", "mae", "median_ae", "mape",
+                "r2", "explained_variance", "pearson_r", "spearman_r",
+                "neg_nll",
             )},
         ))
 

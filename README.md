@@ -1,6 +1,6 @@
 # CreditPFN
 
-Continued pretraining of TabPFN (v2.5 / v2.6 / v3) on a curated corpus
+Continued pretraining of TabPFN (v2.6 / v3) on a curated corpus
 of real-world credit-risk datasets. The aim is to specialise the
 tabular foundation model's in-context-learning prior toward the
 structures, feature distributions, and label noise of credit-risk
@@ -65,11 +65,12 @@ The two have different weights and must be adapted independently.
 
 **Which base checkpoint?** Treated as a *training-stage
 hyperparameter*, not a decision baked in at the data-pipeline stage.
-The default sweep covers v3 (newest, synthetic-only), v2.6
-(synthetic-only), and two v2.5 variants (one synthetic-only, one
-real-finetuned). The full inventory plus the citation chain that
-grounds each provenance claim lives in
-[`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md).
+The default sweep covers v3 (newest, synthetic-only) and v2.6
+(synthetic-only). The v2.5 family was dropped on 2026-05-21 — its
+loaded checkpoint exposes module names PEFT cannot suffix-match for
+LoRA and its internal scaler produces NaN on constant columns. The
+full inventory plus the citation chain that grounds each provenance
+claim lives in [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md).
 
 **Continued pretraining** — as introduced for tabular foundation
 models in *Real-TabPFN* (Garg et al., 2025,
@@ -118,7 +119,7 @@ pip install -r requirements.txt
 
 # TabPFN install gotcha (read this).
 # This project's src/train/model.py uses the current Prior Labs API
-# (4-tuple load_model_criterion_config return; version="v3"/"v2.6"/"v2.5";
+# (4-tuple load_model_criterion_config return; version="v3"/"v2.6";
 # download_if_not_exists kwarg). PyPI's `tabpfn` is pinned at 2.2.x with
 # an older API and will TypeError on the first model load. Override:
 pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
@@ -273,7 +274,7 @@ stripped-down CI image.
 
 | File | What it is |
 |---|---|
-| [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship: training data (synthetic vs real-finetuned), sample/feature caps, layer counts, licence terms. Cross-referenced to HF model cards and the v2.5 paper. |
+| [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (v2.6 / v3): training data (synthetic-only), sample/feature caps, layer counts, licence terms. Cross-referenced to HF model cards and the TabPFN-2.5 paper (which documents the architecture family). |
 | [`docs/LITERATURE.md`](docs/LITERATURE.md)       | Chronological tour of every paper under `papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
 | [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md)   | What each `repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python src/utils/refresh_repositories.py`. |
 | [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md)         | **VSC-specific deployment guide** (KU Leuven's Vlaamse Supercomputer Centre): OnDemand portal, conda env, dataset upload, partition / GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this only when you're about to deploy on VSC; everything in this README applies to any SLURM cluster. |
@@ -294,7 +295,7 @@ stripped-down CI image.
 ### 4.8 `checkpoints/` — base and trained TabPFN weights (gitignored)
 
 * `checkpoints/*.ckpt` — base weights downloaded from Prior Labs
-  (v2.5, v2.6, v3 in both classifier and regressor flavours). The
+  (v2.6, v3 in both classifier and regressor flavours). The
   inventory and provenance live in
   [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md). The actual `.ckpt`
   files are gitignored because they're large; collaborators download
@@ -690,7 +691,7 @@ works for this project:
 Local code dumps under
 [`repositories/`](repositories/) (catalogued in
 [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md)) cover the public TabPFN
-package, the docs site, the v2.5 / v2.6 HuggingFace model cards,
+package, the docs site, the v2.5 / v2.6 / v3 HuggingFace model cards (v2.5 kept for scholarly reference; not used in our sweep),
 NanoTabPFN, the V2-Finetuning recipe, and the underlying PFN
 framework. Read-only — refresh with
 `python src/utils/refresh_repositories.py`.

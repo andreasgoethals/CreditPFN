@@ -239,18 +239,16 @@ tunable:
   classifier_base_paths:
     - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
-    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt"
-    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default.ckpt"
   regressor_base_paths:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
-    - "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt"
-    - "checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt"
-  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4]
-  use_lora:       [false, true]
+  learning_rates:    [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4]
+  use_lora:          [false, true]
+  query_fractions:   [0.20, 0.30, 0.40]
 ```
 
-Default = **4 bases × 4 LRs × 2 LoRA = 32 trials per track**. One
+Default = **2 bases × 4 LRs × 2 LoRA × 3 qf = 48 trials per track**.
+(v2.5 was dropped on 2026-05-21 — see `docs/CHECKPOINTS.md`.) One
 SLURM array task per trial. Each parent dataset contributes exactly
 one training step per epoch (no chunking — see the 2026-05-20
 refactor and the `ProcessedDatasetLoader` in

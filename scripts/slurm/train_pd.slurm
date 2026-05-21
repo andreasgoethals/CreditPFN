@@ -44,7 +44,7 @@
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-31%4   # 32 trials (4 bases x 4 LRs x 2 LoRA). Recompute
+#SBATCH --array=0-47%4   # 48 trials (2 bases x 4 LRs x 2 LoRA x 3 qf). Recompute
                          # via `python scripts/train_pipeline.py --list-trials track=pd`.
                          # Over-sizing is safe: surplus tasks exit 0 cleanly
                          # (see scripts/train_pipeline.py soft no-op).

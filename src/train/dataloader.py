@@ -217,6 +217,68 @@ def _ordinal_encode(
     return out, cat_positions
 
 
+def _stratified_subsample_indices(
+    y: np.ndarray, n_total: int, rng: np.random.Generator,
+) -> np.ndarray:
+    """Stratified (proportional-per-class) subsample of size ``n_total``.
+
+    For classification targets, draws ``n_total`` indices keeping each
+    class's frequency proportional to its frequency in ``y``. This is
+    the same scheme sklearn's ``StratifiedKFold`` uses, but as a single
+    one-shot subsample instead of K folds.
+
+    Falls back to uniform random sampling for regression targets, for
+    classification targets with a single class, or whenever stratified
+    sampling would produce too few samples in any class (< 2). The
+    fallback is identical to the previous behaviour so this function
+    is a strict superset.
+    """
+    n = len(y)
+    if n_total >= n:
+        return rng.permutation(n)
+
+    # Detect classification-style y: small integer alphabet.
+    is_classy = (
+        np.issubdtype(y.dtype, np.integer)
+        and len(np.unique(y)) >= 2
+        and len(np.unique(y)) <= max(50, n // 2)
+    )
+    if not is_classy:
+        return rng.choice(n, size=n_total, replace=False)
+
+    classes, counts = np.unique(y, return_counts=True)
+    # Target per-class quota proportional to class frequency, rounded.
+    quotas = np.maximum(1, np.round(counts * n_total / n).astype(int))
+    # Resolve rounding drift: total quotas must equal n_total. Adjust on
+    # the largest class(es) so a tiny rounding off-by-one doesn't bias.
+    drift = int(quotas.sum()) - int(n_total)
+    if drift != 0:
+        order = np.argsort(-counts)               # largest classes first
+        idx = 0
+        while drift > 0:
+            if quotas[order[idx]] > 1:
+                quotas[order[idx]] -= 1
+                drift -= 1
+            idx = (idx + 1) % len(order)
+        while drift < 0:
+            quotas[order[idx]] += 1
+            drift += 1
+            idx = (idx + 1) % len(order)
+
+    picks: list[np.ndarray] = []
+    for cls, quota in zip(classes, quotas):
+        cls_idx = np.where(y == cls)[0]
+        # min() guards against quota > class frequency (extreme class imbalance).
+        quota = int(min(quota, len(cls_idx)))
+        if quota == 0:
+            continue
+        picks.append(rng.choice(cls_idx, size=quota, replace=False))
+    selection = np.concatenate(picks)
+    # Final shuffle so the context/query slice afterwards isn't class-ordered.
+    rng.shuffle(selection)
+    return selection
+
+
 def _build_step_batch(
     loaded: _LoadedDataset,
     *,
@@ -224,17 +286,22 @@ def _build_step_batch(
     query_fraction: float,
     rng: np.random.Generator,
 ) -> TabPFNBatch:
-    """Subsample → 80/20 split → ordinal-encode → tensorise."""
+    """Subsample → context/query split → ordinal-encode → tensorise.
+
+    For classification targets the subsample is stratified — each
+    class's rows are picked proportionally so the per-step gradient
+    sees roughly the same class balance as the full dataset. For
+    regression targets and degenerate classification edge cases
+    (single class, ultra-imbalanced) the function falls back to a
+    plain uniform random sample. See :func:`_stratified_subsample_indices`.
+    """
     n = len(loaded.X)
     n_total = min(n_total_target, n)
     if n_total <= 1:
         # Pathological tiny dataset — fall through with whatever we have.
         n_total = n
 
-    if n_total < n:
-        sel = rng.choice(n, size=n_total, replace=False)
-    else:
-        sel = rng.permutation(n)
+    sel = _stratified_subsample_indices(loaded.y, n_total, rng)
 
     X_sub = loaded.X.iloc[sel].reset_index(drop=True)
     y_sub = loaded.y[sel]
@@ -355,14 +422,18 @@ def prepare_eval_chunk(
     *,
     n_inference_subsample_samples: int,
     seed: int,
+    query_fraction: float = 0.20,
 ) -> TabPFNBatch:
     """Build a deterministic eval batch for one dataset.
 
-    Uses a fixed 80 / 20 context / query split for monitoring purposes
-    (the proper evaluation pipeline uses K-fold CV — this function is
-    only invoked by the training loop's end-of-epoch quick eval). When
+    Uses a ``(1 - query_fraction) / query_fraction`` context/query split,
+    matching the trial's training-time split so the per-epoch monitor
+    measures the same geometry the optimizer just learned on. When
     ``n_inference_subsample_samples`` is smaller than the dataset, both
     splits are subsampled proportionally.
+
+    Defaults to a 80/20 split (qf=0.20) for back-compat with tests and
+    callers that don't sweep the axis.
     """
     loaded = _load_processed_csv(ref)
     rng = np.random.default_rng(seed)
@@ -377,7 +448,7 @@ def prepare_eval_chunk(
         y_sub = loaded.y
 
     n_total = len(X_sub)
-    n_query = max(1, int(round(n_total * 0.20)))
+    n_query = max(1, int(round(n_total * float(query_fraction))))
     n_query = min(n_query, n_total - 1)
     n_ctx = n_total - n_query
     ctx_idx = np.arange(n_ctx)

@@ -8,8 +8,8 @@ Public surface
 * :func:`classification_metric` — ``roc_auc`` (default) or ``log_loss``
   on PD logits. ROC-AUC handles binary and multiclass (one-vs-rest).
 * :func:`regression_metric` — ``neg_nll`` (default; bar-distribution
-  NLL flipped so that higher = better, matching ``roc_auc`` semantics)
-  or ``rmse``.
+  NLL flipped so that higher = better, matching ``roc_auc`` semantics),
+  ``rmse``, or ``r2`` (coefficient of determination; higher = better).
 * :func:`improvement_direction` — returns ``+1`` if the metric should
   be maximised (improving = larger), ``-1`` if minimised. Lets the
   loop write ``best = metric * direction`` and use the same comparison
@@ -30,7 +30,7 @@ import torch
 LOGGER = logging.getLogger(__name__)
 
 CLASSIFICATION_CHOICES = ("roc_auc", "log_loss")
-REGRESSION_CHOICES = ("neg_nll", "rmse")
+REGRESSION_CHOICES = ("neg_nll", "rmse", "r2")
 
 
 def improvement_direction(metric: str) -> int:
@@ -40,7 +40,7 @@ def improvement_direction(metric: str) -> int:
     a single ``score = metric * direction`` so early stopping just
     asks "did score increase?".
     """
-    if metric in ("roc_auc", "neg_nll"):
+    if metric in ("roc_auc", "neg_nll", "r2"):
         return +1
     if metric in ("log_loss", "rmse"):
         return -1
@@ -106,7 +106,7 @@ def regression_metric(
     targets: torch.Tensor,        # (n_query, 1, 1)
     criterion,                    # FullSupportBarDistribution
     *,
-    metric: Literal["neg_nll", "rmse"],
+    metric: Literal["neg_nll", "rmse", "r2"],
     znorm_mean: float | None = None,
     znorm_std: float | None = None,
 ) -> float:
@@ -121,6 +121,14 @@ def regression_metric(
         mean as the point prediction. If the loss was computed in
         z-normalised space (see :mod:`src.train.loop`), pass
         ``znorm_mean`` / ``znorm_std`` so we can invert the transform.
+
+    ``r2``
+        Coefficient of determination (``1 - SS_res / SS_tot``) on the
+        bar-distribution expectation. Reported in raw target units —
+        the znorm transform is inverted on BOTH preds and targets, same
+        as for ``rmse``. Returns NaN on a single-value query split
+        (``SS_tot == 0``), which the caller filters via
+        :func:`mean_ignore_nan`.
     """
     from tabpfn.architectures.base.bar_distribution import (
         FullSupportBarDistribution,
@@ -137,7 +145,7 @@ def regression_metric(
             nll = criterion(logits=logits, y=targets[:, :, 0]).mean()
         return float(-nll.detach().cpu().item())
 
-    if metric == "rmse":
+    if metric in ("rmse", "r2"):
         with torch.no_grad():
             # Expected value under the bar distribution. The criterion's
             # `mean` op operates on a flat (B, n_buckets) tensor.
@@ -147,7 +155,7 @@ def regression_metric(
             # (the z-normalised tensor passed in by `src.train.loop._forward`)
             # live in the internal z-normalised space when the caller
             # supplies znorm. We must undo the transform on BOTH so the
-            # RMSE comes out in raw target units. Reported as a bug by
+            # metric comes out in raw target units. Reported as a bug by
             # Codex on 2026-05-21 — previously only `preds` got inverted,
             # which left the per-epoch LGD RMSE comparing raw against
             # z-normalised values.
@@ -157,7 +165,21 @@ def regression_metric(
             targets_np = _flatten_targets(targets)
             if znorm_mean is not None and znorm_std is not None:
                 targets_np = targets_np * znorm_std + znorm_mean
-        return float(np.sqrt(np.mean((preds_np - targets_np) ** 2)))
+
+        if metric == "rmse":
+            return float(np.sqrt(np.mean((preds_np - targets_np) ** 2)))
+
+        # r2: 1 - SS_res / SS_tot. NaN if SS_tot == 0 (constant target
+        # in this query split — R² is undefined). Note that R² is
+        # scale-invariant: inverting znorm above is not strictly needed
+        # for R² itself (it cancels in the ratio), but we do it anyway
+        # so reported predictions/targets share the raw-unit semantics
+        # of every other regression metric we emit.
+        ss_res = float(np.sum((targets_np - preds_np) ** 2))
+        ss_tot = float(np.sum((targets_np - targets_np.mean()) ** 2))
+        if ss_tot == 0.0:
+            return float("nan")
+        return 1.0 - ss_res / ss_tot
 
     raise ValueError(f"unsupported regression metric {metric!r}")
 

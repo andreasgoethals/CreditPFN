@@ -156,7 +156,7 @@ def test_build_baselines_pd_default_set() -> None:
     """Default PD set: xgboost + catboost + logreg + tabpfn-untuned (one
     per base path)."""
     bases = ["checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
-             "checkpoints/tabpfn-v2.5-classifier-v2.5_default.ckpt"]
+             "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"]
     out = build_baselines(track="pd", base_paths_for_tabpfn_untuned=bases)
     handles = [h for h, _ in out]
     sources = [h.source for h in handles]

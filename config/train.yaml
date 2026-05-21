@@ -24,19 +24,25 @@
 #  among the base checkpoints.
 
 tunable:
+  # v2.5 was dropped from the sweep on 2026-05-21: its loaded checkpoint
+  # exposes module names PEFT can't suffix-match for LoRA (failure mode
+  # observed in PD trials 16-31 / LGD odd trials in v2.5 range), AND
+  # v2.5's internal TorchStandardScaler produces NaN in `embedded_x`
+  # when a per-step subsample contains a constant column. Both
+  # incompatibilities live inside the model's pre-attention pipeline
+  # and would require either a sklearn-API rewrap or per-step
+  # constant-column patching — out of scope for this project. v3
+  # (the current generation) and v2.6 (the most recent v2 line) are
+  # the only bases we sweep over.
   classifier_base_paths:
-    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"        # v3 synthetic-only (NEW, recommended)
+    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"        # v3 synthetic-only (current default)
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"    # v2.6 synthetic-only
-    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default-2.ckpt"  # v2.5 synthetic-only (Real-TabPFN ablation)
-    - "checkpoints/tabpfn-v2.5-classifier-v2.5_default.ckpt"    # v2.5 real-finetuned (stack on top of Real-TabPFN)
 
   regressor_base_paths:
-    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"         # v3 synthetic-only (NEW, recommended)
+    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"         # v3 synthetic-only (current default)
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"     # v2.6 synthetic-only
-    - "checkpoints/tabpfn-v2.5-regressor-v2.5_default.ckpt"     # v2.5 synthetic-only
-    - "checkpoints/tabpfn-v2.5-regressor-v2.5_real.ckpt"        # v2.5 real-finetuned
 
-  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4, 5.0e-4]
+  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4]
 
   # Whether to wrap the base model with a LoRA adapter before training
   # (Hu et al. 2021). With `use_lora: true` the base TabPFN weights are
@@ -48,6 +54,15 @@ tunable:
   # resulting .ckpt loads via the standard TabPFN loader without any
   # PEFT dependency.
   use_lora: [false, true]
+
+  # Per-step context / query split — the fraction of the
+  # `finetuning.max_rows_per_epoch` rows that go to the query (loss-
+  # bearing) split; the rest is context (in-context examples). TabPFN's
+  # `FinetunedTabPFNClassifier` defaults to 0.20; Real-TabPFN
+  # (Garg 2025) uses 0.40 because more query rows mean lower-variance
+  # gradients with batch size 1. Sweeping all three documented values
+  # so we can compare directly. 0.20 = 80/20, 0.30 = 70/30, 0.40 = 60/40.
+  query_fractions: [0.20, 0.40]
 
 
 # =============================================================================
@@ -115,8 +130,16 @@ lora:
 # =============================================================================
 
 train:
-  epochs: 50                            # no early stopping — fixed-epoch
-  accumulate_grad_batches: 1
+  epochs: 100                           # no early stopping — fixed-epoch
+  # Gradient accumulation: forward+backward K times, sum gradients,
+  # then call optimizer.step() once. Effective batch becomes K
+  # datasets per gradient update; peak GPU memory stays at one
+  # dataset's worth. Set to 4 on 2026-05-21 — with 12 train datasets
+  # we get 3 optimizer steps per epoch and 300 total over 100 epochs,
+  # which still gives the cosine LR schedule plenty of resolution.
+  # Higher values (6, 12) trade gradient noise for fewer scheduled
+  # steps; past ~12 the cosine schedule loses too much texture.
+  accumulate_grad_batches: 4
   grad_clip_norm: 1.0
   amp: true                             # AMP autocast (CUDA only)
 
@@ -133,6 +156,19 @@ train:
   # (regression). Set `epoch_eval_subsample_samples` to 0 to disable the
   # check (saves wall-clock for debug runs).
   epoch_eval_subsample_samples: 500
+  # Per-epoch eval uses TabPFN ensemble inference (sklearn API) so the
+  # numbers in the training log are directly comparable to the final
+  # `scripts/eval_pipeline.py` numbers. 32 matches `eval.tabpfn_n_estimators`
+  # in config/eval.yaml. Set to 1 to fall back to a single forward pass
+  # per dataset (cheaper but methodologically inconsistent with the final
+  # eval — only useful for fast smoke tests). At end of each epoch we
+  # snapshot the live model's state_dict to a rolling temp .ckpt next to
+  # the trial's final checkpoint, then load it via TabPFNClassifier(
+  # n_estimators=32) for ensemble inference. The snapshot is overwritten
+  # each epoch, so disk usage stays bounded at one .ckpt-worth per trial.
+  # Includes the pre-finetuning baseline emitted as epoch=-1 in the
+  # per-epoch CSV, which is the score every finetuned epoch must beat.
+  epoch_eval_n_estimators: 32
 
 
 # =============================================================================

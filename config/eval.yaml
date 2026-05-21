@@ -65,7 +65,6 @@ cv:
 max_rows_per_model:
   v3:      1000000
   v2.6:    100000
-  v2.5:    100000
   default: 100000
 
 
@@ -83,9 +82,13 @@ hpo:
 
 
 # TabPFN inference-time estimators (sklearn API), shared by untuned and
-# trained variants. 4 is the package default; 16 trades inference time
-# for slightly better accuracy/calibration.
-tabpfn_n_estimators: 16
+# trained variants. 4 is the package default; 32 was chosen on 2026-05-21
+# to (1) reduce ensemble noise in the per-(model × dataset × fold)
+# numbers we report and (2) match the per-epoch training-monitor's
+# ensemble size so monitor numbers are directly comparable to final
+# eval numbers (same model, same context, same n_estimators, same
+# context/query geometry).
+tabpfn_n_estimators: 32
 
 
 # Output root. Benchmark CSVs land under <base_dir>/<TRACK>/<method>/...
