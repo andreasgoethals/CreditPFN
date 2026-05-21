@@ -37,27 +37,41 @@ paths:
 
 # -----------------------------------------------------------------------------
 #  Finetuning subsample — the size of the random row sample each training
-#  step pulls from a dataset's processed CSV. The same knob is used by every
-#  base checkpoint in the train sweep; 10_000 is Prior Labs' documented
-#  default for `FinetunedTabPFNClassifier` (see `repositories/TabPFN .txt`
-#  line 26832 and 27467) and is the largest value that fits on the wICE
-#  gpu_h100 partition (uniformly H100 SXM5, 80 GB HBM3) when the worst-case
-#  base in the sweep — TabPFN-v3 with its three-stage architecture, ~54 M
-#  params, no training-time row chunking — is selected.
+#  step pulls from a dataset's processed CSV. Different TabPFN generations
+#  have very different memory profiles during fine-tuning (gradients
+#  retained, no row chunking, alternating attention etc.), so the cap is
+#  **per-architecture**:
 #
-#  Memory budget on 80 GB H100 (TabPFN-v3 + LoRA + AMP):
-#    *  10 000 rows → ~16 GB allocated → ~64 GB headroom ✓
-#    *  30 000 rows → fits v2.5/v2.6 comfortably but OOMs on v3
-#    *  50 000 rows → OOMs on v3 (confirmed 2026-05-20)
-#    * 100 000 rows → OOMs on every v3 trial
+#    * v3   — 3-stage architecture (column-dist embed → column aggregator
+#             → ICL transformer); each stage processes a smaller activation
+#             tensor than the alternating attention of v2.x. ~54 M params.
+#             10_000 rows fit on 80 GB H100 with ~64 GB headroom.
+#
+#    * v2.6 / v2.5 — alternating row × feature attention at every layer
+#             (24 layers in v2.5/v2.6). At each layer the model retains
+#             a (batch, rows, features, hidden) tensor for backward. With
+#             10_000 rows × 128 features × 192 hidden × 24 layers × ~4
+#             expansion the peak resident size exceeds the 80 GB card.
+#             Empirically the safe ceiling on wICE gpu_h100 is ~3_000 rows
+#             (confirmed by trial-8 OOM in the 2026-05-20 run, where 10k
+#             OOMed at the *first* forward pass).
+#
+#  The lookup key is the leading ``v<MAJOR>[.<MINOR>]`` segment that
+#  `src/train/loop.py::_max_rows_for_base` parses out of the base
+#  checkpoint filename — e.g. `tabpfn-v2.6-classifier-…` → "v2.6".
+#  `default` is the fallback when nothing matches.
 #
 #  Per-epoch reshuffle: each epoch draws a fresh random subsample for
-#  datasets larger than `max_rows_per_epoch`. Smaller datasets are visited
-#  in full every epoch (the cap is non-binding). See
+#  datasets larger than the cap; smaller datasets are visited in full
+#  every epoch (the cap is non-binding for them). See
 #  `src/train/dataloader.py::ProcessedDatasetLoader.set_epoch`.
 # -----------------------------------------------------------------------------
 finetuning:
-  max_rows_per_epoch: 10000
+  max_rows_per_epoch:
+    v3:      10000
+    v2.6:    3000
+    v2.5:    3000
+    default: 10000
 
   # Fraction of the per-step subsample that goes to the query split;
   # the rest is the context split. Matches TabPFN's documented

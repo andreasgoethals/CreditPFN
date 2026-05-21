@@ -1,10 +1,9 @@
 """End-to-end orchestrator for the cross-model benchmark.
 
-Scores every model on every held-out test dataset. The eval reads
-the **processed CSVs** under ``data/processed/{track}/<id>.sanitized.csv``
-(NOT the cached `.npz` chunks — those exist for TabPFN training only;
-their 20k row cap is the wrong granularity for XGBoost / CatBoost on
-real-sized datasets).
+Scores every model on every held-out test dataset. The eval reads the
+**processed CSVs** under ``data/processed/{track}/<id>.sanitized.csv``
+— the same on-disk format the training pipeline uses since the
+2026-05-20 refactor.
 
 Per (model × dataset) the eval runs ``cfg.cv.n_folds`` cross-validation
 with an INNER train/val split for HPO + F1-threshold tuning:
@@ -468,6 +467,13 @@ if __name__ == "__main__":
     if args.list_tasks:
         eval_cfg, train_cfg = _load_cfgs(eval_overrides, train_overrides)
         track = str(train_cfg.track)
+        # Apply paths.data_source from config/data.yaml here too — the
+        # roster builder calls into the corpus splitter, which checks
+        # for sanitized CSVs via `resolve_data_path`. Without this the
+        # task count is computed against the wrong storage tier on VSC.
+        # Reported by Codex on 2026-05-21.
+        from omegaconf import OmegaConf
+        apply_data_source_from_cfg(OmegaConf.load("config/data.yaml"))
         logging.basicConfig(level=logging.WARNING, force=True)
         handles_and_models, cfg_test_ids, _ = _build_roster(
             eval_cfg, train_cfg, track,

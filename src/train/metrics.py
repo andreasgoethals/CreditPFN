@@ -143,12 +143,20 @@ def regression_metric(
             # `mean` op operates on a flat (B, n_buckets) tensor.
             flat_logits = logits.reshape(-1, logits.shape[-1])
             preds = criterion.mean(flat_logits)            # (n_query,)
-            # Targets and preds are both in the *internal* space the
-            # caller used. If the caller z-normalised, undo it.
+            # Both `preds` (the bar-dist expectation) AND `targets`
+            # (the z-normalised tensor passed in by `src.train.loop._forward`)
+            # live in the internal z-normalised space when the caller
+            # supplies znorm. We must undo the transform on BOTH so the
+            # RMSE comes out in raw target units. Reported as a bug by
+            # Codex on 2026-05-21 — previously only `preds` got inverted,
+            # which left the per-epoch LGD RMSE comparing raw against
+            # z-normalised values.
             if znorm_mean is not None and znorm_std is not None:
                 preds = preds * znorm_std + znorm_mean
             preds_np = preds.detach().cpu().numpy()
             targets_np = _flatten_targets(targets)
+            if znorm_mean is not None and znorm_std is not None:
+                targets_np = targets_np * znorm_std + znorm_mean
         return float(np.sqrt(np.mean((preds_np - targets_np) ** 2)))
 
     raise ValueError(f"unsupported regression metric {metric!r}")

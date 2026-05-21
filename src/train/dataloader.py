@@ -140,6 +140,34 @@ def _load_processed_csv(ref: DatasetRef) -> _LoadedDataset:
 # --------------------------------------------------------------------------- #
 
 
+_NAN_IMPUTE_VALUE: float = 0.0
+"""Sentinel that replaces ±inf / NaN in the encoded feature matrix.
+
+WHY THIS EXISTS.  TabPFN-v2.5's transformer asserts ``embedded_x``
+has no NaN (``tabpfn/architectures/base/transformer.py:520``) — see
+the PD-run-2026-05-20 trial-16 traceback. Our ordinal encoder
+intentionally leaves NaN for missing categorical values (and the
+sanitize pipeline leaves NaN for missing numerical values), so the
+raw `model.forward()` call on v2.5 fails fast.
+
+The fix is to impute ±inf / NaN to a single sentinel value AFTER
+ordinal encoding but BEFORE the tensor cast. v3 happens to tolerate
+NaN through its own column-distribution embedder; imputing to 0.0
+costs us the explicit missing-value signal for v3 but does not
+otherwise change behaviour. The previous in-context-learning prior
+already routinely sees zero-valued features, so the imputed values
+are not out-of-distribution.
+
+Lossy alternative considered and rejected: passing data through
+TabPFN's NanHandlingEncoderStep, which adds a binary
+missing-indicator column. That would change feature dimensionality
+mid-training and require deeper refactor. The simple 0.0
+imputation is correct enough for continued pretraining; the eval
+pipeline uses the same encoding via ``src.eval.dataset_loader``
+which now mirrors this step.
+"""
+
+
 def _ordinal_encode(
     X_full: pd.DataFrame,
     *,
@@ -147,7 +175,8 @@ def _ordinal_encode(
     cat_cols: Sequence[str],
     unknown_value: int = -1,
 ) -> tuple[np.ndarray, list[int]]:
-    """Ordinal-encode categorical columns with a context-only fit.
+    """Ordinal-encode categorical columns with a context-only fit, then
+    replace any remaining ±inf / NaN with :data:`_NAN_IMPUTE_VALUE`.
 
     Mirrors :func:`src.eval.dataset_loader.encode_for_model`: the
     encoder is fit on the *context* rows so any category seen only
@@ -159,7 +188,12 @@ def _ordinal_encode(
     cols = list(X_full.columns)
     cat_positions = [cols.index(c) for c in cat_cols if c in cols]
     if not cat_positions:
-        return X_full.to_numpy(dtype=np.float32, na_value=np.nan), []
+        arr = X_full.to_numpy(dtype=np.float32, na_value=_NAN_IMPUTE_VALUE)
+        np.nan_to_num(
+            arr, copy=False, nan=_NAN_IMPUTE_VALUE,
+            posinf=_NAN_IMPUTE_VALUE, neginf=_NAN_IMPUTE_VALUE,
+        )
+        return arr, []
 
     encoder = OrdinalEncoder(
         handle_unknown="use_encoded_value",
@@ -174,7 +208,13 @@ def _ordinal_encode(
     out = X_full.to_numpy(dtype=object).copy()
     for write_pos, src_pos in enumerate(cat_positions):
         out[:, src_pos] = encoded[:, write_pos]
-    return out.astype(np.float32), cat_positions
+    out = out.astype(np.float32)
+    # Single in-place sweep — every NaN/±inf becomes _NAN_IMPUTE_VALUE.
+    np.nan_to_num(
+        out, copy=False, nan=_NAN_IMPUTE_VALUE,
+        posinf=_NAN_IMPUTE_VALUE, neginf=_NAN_IMPUTE_VALUE,
+    )
+    return out, cat_positions
 
 
 def _build_step_batch(

@@ -147,24 +147,36 @@ def _row_hashes(df: pd.DataFrame, decimals: int | None) -> set[int]:
 def _column_hashes(df: pd.DataFrame, nontrivial_unique_min: int) -> set[int]:
     """Hash every column whose number of unique values is > threshold.
 
-    Uses ``hash_pandas_object`` on the *sorted* values of each column,
-    so the resulting hash is invariant to row ordering. Returns a set
-    of uint64 hashes.
+    Sorts the column then hashes the full byte representation in one
+    shot. We deliberately do NOT XOR per-row hashes: XOR-reduction
+    cancels any value appearing an even number of times to 0, so
+    columns dominated by even-multiplicity categoricals would all
+    collapse to the same 0 hash and falsely match each other across
+    unrelated datasets. Reported by Gemini on 2026-05-21.
     """
+    import hashlib
+
     out: set[int] = set()
     for col in df.columns:
         s = df[col].dropna()
         if s.nunique() <= nontrivial_unique_min:
             continue
         try:
-            s_sorted = pd.Series(np.sort(s.to_numpy()))
+            s_sorted = np.sort(s.to_numpy())
         except TypeError:
-            s_sorted = pd.Series(np.sort(s.astype(str).to_numpy()))
-        h = pd.util.hash_pandas_object(s_sorted, index=False)
-        # Combine the column's per-row hashes into a single value via XOR
-        # (order-independent, but here we already sorted so xor is fine).
-        combined = int(np.bitwise_xor.reduce(h.to_numpy()))
-        out.add(combined)
+            s_sorted = np.sort(s.astype(str).to_numpy())
+        # Use a stable byte view of the sorted array. For object/str
+        # arrays `.tobytes()` is undefined; fall back to a pandas hash
+        # of the sorted series (still order-dependent which is fine —
+        # we sorted) and then a hashlib digest over its bytes.
+        try:
+            payload = s_sorted.tobytes()
+        except (AttributeError, ValueError):
+            payload = pd.util.hash_pandas_object(
+                pd.Series(s_sorted), index=False,
+            ).to_numpy().tobytes()
+        digest = hashlib.blake2b(payload, digest_size=8).digest()
+        out.add(int.from_bytes(digest, "big"))
     return out
 
 
@@ -272,7 +284,14 @@ def compare_pair(
     # --- extra B: subset detection ----------------------------------------
     if cfg.dedup.subset.enabled and a.row_hashes and b.row_hashes:
         overlap = len(a.row_hashes & b.row_hashes)
-        if overlap and overlap / max(1, len(a.row_hashes)) >= cfg.dedup.subset.min_overlap_fraction:
+        # Use the smaller set as the denominator so we catch a subset
+        # of EITHER direction (`a ⊆ b` OR `b ⊆ a`). Codex 2026-05-21
+        # noted that the previous `/ len(a)` only triggered when the
+        # earlier-iterated set was contained in the later one; the
+        # opposite direction silently slipped through (often picked
+        # up by the row_hash check, but not always).
+        denom = max(1, min(len(a.row_hashes), len(b.row_hashes)))
+        if overlap and overlap / denom >= cfg.dedup.subset.min_overlap_fraction:
             triggered.append("subset")
 
     # --- extra C: fuzzy column-name match --------------------------------

@@ -666,8 +666,15 @@ def _bench_model_on_dataset(
             model_path=handle.base_path,
             test_dataset_id=ds.dataset_id,
             fold_idx=fold_idx,
-            n_train_rows=int(len(sub_tr)),
-            n_val_rows=int(len(sub_va)),
+            # Use the *post-cap* sizes so the CSV records what the model
+            # actually saw, not the pre-cap fold size. When a TabPFN model
+            # hits its per-architecture cap (cfg.max_rows_per_model), the
+            # earlier `_subsample_train` call shrinks X_tr_df / X_va_df —
+            # `sub_tr` / `sub_va` are the pre-cap index arrays and would
+            # over-state the training-context size. Reported by Codex
+            # on 2026-05-21.
+            n_train_rows=int(len(X_tr_df)),
+            n_val_rows=int(len(X_va_df)),
             n_test_rows=int(len(te_idx)),
             elapsed_sec=time.monotonic() - t0,
             timestamp=timestamp,

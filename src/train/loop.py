@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import logging
 import math
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -107,6 +108,35 @@ class TrainingResult:
 # --------------------------------------------------------------------------- #
 # Public utility: descriptive checkpoint name
 # --------------------------------------------------------------------------- #
+
+
+_BASE_VERSION_RE = re.compile(r"tabpfn-(v\d+(?:\.\d+)?)-")
+
+
+def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
+    """Look up the per-version `max_rows_per_epoch` cap.
+
+    Accepts either an int (legacy single-value config) or a mapping
+    ``{"v3": 10000, "v2.6": 3000, ...}``. For a mapping, we extract
+    the leading ``v<MAJOR>[.<MINOR>]`` from the base checkpoint's
+    filename (e.g. ``tabpfn-v2.6-classifier-…`` → ``"v2.6"``) and
+    look up that key, falling back to ``"default"`` if absent.
+    """
+    if isinstance(mapping, int):
+        return int(mapping)
+    name = Path(str(base_checkpoint)).name
+    m = _BASE_VERSION_RE.search(name)
+    key = m.group(1) if m else "default"
+    if hasattr(mapping, "get"):
+        if key in mapping:
+            return int(mapping[key])
+        if "default" in mapping:
+            return int(mapping["default"])
+    raise ValueError(
+        f"finetuning.max_rows_per_epoch is neither an int nor a mapping "
+        f"with a usable key for base={name!r} (resolved version key={key!r}). "
+        f"Got: {mapping!r}"
+    )
 
 
 def descriptive_name(
@@ -496,11 +526,17 @@ def train_one_config(
 
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
     # The per-step subsample size is `finetuning.max_rows_per_epoch` in
-    # `config/data.yaml` (single source of truth — same value for every
-    # base in the sweep).
+    # `config/data.yaml`. As of the 2026-05-20 PD run it became clear
+    # that v2.5/v2.6 OOM at the v3-safe 10_000 rows (alternating
+    # row × feature attention × 24 layers is much more memory-hungry
+    # than v3's three-stage design). So `max_rows_per_epoch` is now a
+    # per-version map; we look it up by the base checkpoint's leading
+    # `v<MAJOR>` segment.
     from omegaconf import OmegaConf
     _data_cfg = OmegaConf.load("config/data.yaml")
-    max_rows_per_epoch = int(_data_cfg.finetuning.max_rows_per_epoch)
+    max_rows_per_epoch = _resolve_max_rows_per_epoch(
+        base_checkpoint, _data_cfg.finetuning.max_rows_per_epoch,
+    )
     query_fraction = float(_data_cfg.finetuning.query_fraction)
 
     train_ds = ProcessedDatasetLoader(

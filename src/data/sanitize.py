@@ -462,9 +462,20 @@ def main(cfg=None) -> int:  # noqa: C901
         "pd":  _read_manifest(resolve_output_path(cfg.paths.manifest_pd)),
         "lgd": _read_manifest(resolve_output_path(cfg.paths.manifest_lgd)),
     }
-    if any(m.empty for m in manifests.values()):
+    # Only require the manifest(s) for tracks present in the current
+    # DATASET_METADATA snapshot to be populated. On subset runs
+    # (`scripts/data_pipeline.py --datasets 0001.gmsc`, or the train
+    # pipeline's auto-process hook with a missing PD-only dataset)
+    # the LGD manifest legitimately stays empty on a fresh checkout —
+    # treating that as a hard error would block the subset run that
+    # only needs the PD manifest. Required = "track has datasets in
+    # the current snapshot AND its manifest is empty".
+    tracks_in_scope = {meta["track"] for meta in DATASET_METADATA.values()}
+    missing = [t for t in tracks_in_scope if manifests[t].empty]
+    if missing:
         LOGGER.error(
-            "Manifests are empty. Run `python -m src.data.register` first."
+            "Manifest(s) empty for track(s) we're about to sanitize: %s. "
+            "Run `python -m src.data.register` first.", missing,
         )
         return 1
 

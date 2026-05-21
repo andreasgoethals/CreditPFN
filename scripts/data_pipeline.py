@@ -215,7 +215,7 @@ def run(
             _pp.DATASET_METADATA = MappingProxyType(
                 {k: MappingProxyType(v) for k, v in _pp._RAW_METADATA.items()}
             )
-            for mod in (dedup, register, sanitize, dataset):
+            for mod in (dedup, register, sanitize):
                 mod.DATASET_METADATA = _pp.DATASET_METADATA
 
     elapsed = time.monotonic() - t0
@@ -249,13 +249,13 @@ def run(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Run the full data pipeline (dedup/register/sanitize/"
-                    "dedup/dataset) end-to-end.",
+        description="Run the full data pipeline (dedup pre / register / "
+                    "sanitize / dedup post) end-to-end.",
     )
     p.add_argument(
         "--fresh", action="store_true",
-        help="Delete existing dedup/, processed/, cached/, and manifests "
-             "before running. Default: incremental (skip valid cache).",
+        help="Delete existing dedup/, processed/, and manifests "
+             "before running. Default: incremental (skip existing).",
     )
     p.add_argument(
         "--datasets", nargs="*", default=None,

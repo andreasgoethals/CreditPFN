@@ -182,7 +182,35 @@ def _wrap_with_lora(model: torch.nn.Module, lora_config: dict) -> torch.nn.Modul
         )),
         bias="none",
     )
-    wrapped = get_peft_model(model, cfg)
+    try:
+        wrapped = get_peft_model(model, cfg)
+    except ValueError as exc:
+        # PEFT raises "Target modules ... not found in the base model"
+        # when its suffix matcher can't find any of the listed names.
+        # This is the symptom on TabPFN v2.5 / v2.6 (PD trial 17 in the
+        # 2026-05-20 run): PEFT's matcher fails despite v2.5's source
+        # naming the layers `q_projection`. Dump the actual layer
+        # inventory so the next config bump can use the right names.
+        if "Target modules" not in str(exc):
+            raise
+        all_linear = [
+            name
+            for name, module in model.named_modules()
+            if isinstance(module, torch.nn.Linear)
+        ]
+        suffixes_seen = sorted({n.split(".")[-1] for n in all_linear})
+        sample_paths = "\n          ".join(all_linear[:8])
+        raise RuntimeError(
+            f"LoRA wrap failed for target_modules={cfg.target_modules}. "
+            f"PEFT could not match any of those names against the "
+            f"loaded model. The model contains {len(all_linear)} "
+            f"nn.Linear layers; their distinct suffixes are: "
+            f"{suffixes_seen}. First few full paths:\n          "
+            f"{sample_paths}\n"
+            f"Fix: set `cfg.lora.target_modules` to a list whose entries "
+            f"match one of the suffixes above, or pass a regex pattern "
+            f"as a single-element list."
+        ) from exc
 
     # Sanity-check that PEFT actually matched at least one target module —
     # easy to get wrong on a non-standard arch like v3, and silent
