@@ -1065,6 +1065,7 @@ def train_one_config(
             seed=int(cfg.seed),
             use_lora=bool(use_lora),
             query_fraction=float(query_fraction),
+            accumulate_grad_batches=int(accumulate),
         )
     )
 

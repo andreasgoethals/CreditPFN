@@ -29,6 +29,7 @@ yaml, and result layout.
    - [4.7 `papers/` and `repositories/` — reference material](#47-papers-and-repositories--reference-material)
    - [4.8 `checkpoints/` — base and trained TabPFN weights (gitignored)](#48-checkpoints--base-and-trained-tabpfn-weights-gitignored)
    - [4.9 Runtime trees: `data/`, `output/`, `logs/` (gitignored)](#49-runtime-trees-data-output-logs-gitignored)
+   - [4.10 Re-submitting the pipeline (resume semantics + cleanup)](#410-re-submitting-the-pipeline-resume-semantics--cleanup)
 5. [Data pipeline](#5-data-pipeline)
 6. [Training pipeline](#6-training-pipeline)
 7. [Eval pipeline](#7-eval-pipeline)
@@ -222,9 +223,10 @@ cluster:
 | File | What it does |
 |---|---|
 | [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Run all four data stages end-to-end, or just the ones you ask for (`--datasets ...`). Idempotent; `--fresh` rebuilds from scratch. |
-| [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills missing sanitized CSVs by invoking the data pipeline for just those IDs. |
+| [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills missing sanitized CSVs by invoking the data pipeline for just those IDs. **Skips trials whose finetuned checkpoint already exists** — re-submission is safe. |
 | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | Score every model on every test dataset, K-fold CV. Skip-existing by default; `--rerun` to force. Filterable with `--method` / `--test-dataset` / `--task-index`. |
 | [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `submit_full_pipeline.sh` for the chained submission. |
+| [`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py) | Stage-level cleanup utility. `python -m src.utils.pipeline_clean --stages train,eval` wipes the outputs of the named stage(s) so the next re-submit starts those stages from scratch. See section 4.10 for details. |
 
 ### 4.4 `notebooks/` — exploration and result visualisations
 
@@ -341,6 +343,63 @@ according to `paths.data_source` in `config/data.yaml`:
 The eval results (`output/results/`), training manifests
 (`output/training/`), figures (`output/figures/`), checkpoints, and
 logs always live on durable storage regardless of `data_source`.
+
+### 4.10 Re-submitting the pipeline (resume semantics + cleanup)
+
+Every stage is designed to be **idempotent** — re-submitting picks up
+where the previous run left off without redoing work it has already
+done. The skip logic lives in three places, one per stage:
+
+| Stage | What is treated as "already done" | What re-submission does |
+|---|---|---|
+| **Data**  | A dataset is skipped if its `data/processed/<track>/<id>.sanitized.csv` exists on disk. Checked per-dataset by `_ensure_processed` in `scripts/train_pipeline.py` and by `scripts/data_pipeline.py` itself. | Datasets already on disk are skipped silently. Missing datasets are sanitized fresh. |
+| **Train** | A trial is skipped if BOTH `checkpoints/trained/<track>/<descriptive_name>.ckpt` AND `<...>.ckpt.provenance.json` exist. (Added 2026-05-27.) | A "SKIP" row is appended to the manifest for that trial; the SLURM array task exits cleanly without retraining. |
+| **Eval**  | A `(model, dataset)` pair is skipped if every fold has an existing `status="OK"` row in its per-method CSV under `output/results/`. Partial-failure pairs (some folds FAIL) ARE retried. | Pairs already complete are skipped. New trials added to the training manifest after a previous eval run get scored. `--rerun` flag forces fresh scoring. |
+
+**Logs** are NEVER auto-deleted between runs. Each SLURM job creates a
+new `logs/<task>_<ts>_j<jid>_a<tid>.log` file (suffixed with the
+trial's descriptive name on rename — see the training pipeline). They
+accumulate until you explicitly delete them.
+
+**To force a fresh start of one or more stages**, use the cleanup
+utility:
+
+```bash
+# wipe just the training stage (keeps data + eval intact)
+python -m src.utils.pipeline_clean --stages train
+
+# wipe training and eval (keeps the sanitized CSVs)
+python -m src.utils.pipeline_clean --stages train,eval
+
+# nuclear option — wipe everything
+python -m src.utils.pipeline_clean --stages all
+
+# dry-run first to see what would be deleted
+python -m src.utils.pipeline_clean --stages all --dry-run
+```
+
+`pipeline_clean` deletes every output of the listed stage(s) — sanitized
+CSVs, dedup files, finetuned checkpoints, manifests, per-epoch CSVs,
+benchmark CSVs, notebook figures, AND that stage's log files. It NEVER
+touches `data/raw/` (the input corpus) or `checkpoints/*.ckpt` (the
+base TabPFN weights — only `checkpoints/trained/` is in scope). Full
+file catalogue lives in the module's docstring at
+[`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py).
+
+> **Typical re-submit workflow.** You change something in
+> `config/train.yaml` (different LR sweep, different LoRA targets) and
+> want to retrain. The previous run's checkpoints would now be stale,
+> so:
+>
+> ```bash
+> python -m src.utils.pipeline_clean --stages train,eval
+> sbatch scripts/slurm/train_pd.slurm
+> ```
+>
+> Data stays — you didn't change anything that would invalidate the
+> sanitized CSVs. Eval is cleared too because the trained checkpoints
+> changed, so old eval results would mix freshly-trained scores with
+> stale-base scores.
 
 ---
 
@@ -505,7 +564,7 @@ Each trial writes:
 | Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                       |
 
 Filename schema:
-`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt`.
+`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_lora].ckpt`.
 Identical re-runs overwrite in place; trials with different HPs land
 in distinct files.
 

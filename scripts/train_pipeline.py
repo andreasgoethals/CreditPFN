@@ -435,6 +435,42 @@ def run(
                         )
         except Exception as exc:                                       # pragma: no cover
             LOGGER.warning("log-rename failed (continuing): %s", exc)
+        # ---- Resume: skip trial if checkpoint + provenance both exist --- #
+        # Idempotency contract: if both the final .ckpt AND its
+        # .provenance.json sidecar are on disk, the trial is considered
+        # successfully completed. We emit a one-line "SKIP" record into
+        # the manifest (so it still appears in the summary) and move on.
+        # To force a rerun, delete the .ckpt (or use
+        # `python -m src.utils.pipeline_clean --stages train`).
+        expected_ckpt = (
+            resolve_output_path(cfg.checkpoint.trained_dir)
+            / track / f"{run_basename}.ckpt"
+        )
+        expected_prov = expected_ckpt.with_suffix(
+            expected_ckpt.suffix + ".provenance.json",
+        )
+        if expected_ckpt.exists() and expected_prov.exists():
+            LOGGER.info(
+                "SKIP trial %d (global %d): checkpoint already exists at %s "
+                "— delete the file or use `pipeline_clean --stages train` "
+                "to force a rerun.",
+                trial_idx_local, global_idx, expected_ckpt,
+            )
+            rows.append(RunRow(
+                track=track, base_checkpoint=base, learning_rate=lr,
+                use_lora=use_lora, query_fraction=query_fraction,
+                accumulate_grad_batches=int(accumulate),
+                seed=int(cfg.seed),
+                n_train_datasets=0, n_test_datasets=0,
+                final_ckpt_path=str(expected_ckpt),
+                elapsed_sec=0.0,
+                status="SKIP", error=None,
+            ))
+            _write_csv([rows[-1]], csv_path, append=csv_append)
+            if not csv_append:
+                csv_append = True
+            continue
+
         epoch_csv = epoch_csv_dir / f"{run_basename}.csv"
         if epoch_csv.exists():
             epoch_csv.unlink()              # fresh file per run

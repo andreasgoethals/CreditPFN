@@ -198,18 +198,44 @@ def build_ensemble_members(
     # Lazy imports — TabPFN is a multi-hundred-MB dependency and we want
     # the test suite (which mocks load_tabpfn_for_training) to be able
     # to import this module without paying the cost.
+    #
+    # IMPORTANT — exact import paths are version-sensitive. Verified
+    # against the upstream TabPFN source at
+    # ``repositories/TabPFN .txt:7067-7082`` (classifier path) and
+    # ``:12635-12651`` (regressor path):
+    #
+    #   * ``TabPFNEnsemblePreprocessor`` lives in
+    #     ``tabpfn.preprocessing.ensemble`` (NOT in
+    #     ``tabpfn.preprocessing``).
+    #   * ``generate_classification_ensemble_configs`` /
+    #     ``generate_regression_ensemble_configs`` ARE re-exported from
+    #     ``tabpfn.preprocessing``.
+    #   * ``get_all_reshape_feature_distribution_preprocessors`` lives in
+    #     ``tabpfn.preprocessing.steps``.
+    #
+    # The on-2026-05-27 import bug was using the wrong source for
+    # `TabPFNEnsemblePreprocessor` — installed TabPFN doesn't re-export
+    # it from the top-level preprocessing module.
     from tabpfn.preprocessing import (
-        TabPFNEnsemblePreprocessor,
         generate_classification_ensemble_configs,
         generate_regression_ensemble_configs,
     )
+    from tabpfn.preprocessing.ensemble import TabPFNEnsemblePreprocessor
     from tabpfn.preprocessing.datamodel import (
         FeatureSchema,
         FeatureModality,
     )
-    from tabpfn.preprocessing.steps.reshape_feature_distributions_step import (
-        get_all_reshape_feature_distribution_preprocessors,
-    )
+    try:
+        # Preferred path (verified at TabPFN .txt:12649-12651).
+        from tabpfn.preprocessing.steps import (
+            get_all_reshape_feature_distribution_preprocessors,
+        )
+    except ImportError:                                                # pragma: no cover
+        # Defensive fallback for an older API: the helper used to live
+        # in a deeper submodule before being re-exported.
+        from tabpfn.preprocessing.steps.reshape_feature_distributions_step import (  # type: ignore[import-not-found]
+            get_all_reshape_feature_distribution_preprocessors,
+        )
 
     # ---- 1) build the FeatureSchema ----------------------------------- #
     # FeatureSchema is TabPFN's record of which columns are categorical
