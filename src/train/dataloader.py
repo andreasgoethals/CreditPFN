@@ -353,32 +353,56 @@ def _build_ensemble_step_batch(
 ):
     """N-estimator step batch with TabPFN's official preprocessing.
 
-    Wraps the existing per-step subsample + ctx/query split logic and
-    hands the raw (still-with-NaNs, still-with-strings) feature frame to
-    TabPFN's :class:`TabPFNEnsemblePreprocessor`. Returns a
-    :class:`TabPFNEnsembleBatch` carrying ``n_estimators`` preprocessed
-    views — the training loop runs one model forward pass per view.
-    """
-    from src.train.tabpfn_preprocessing import build_ensemble_members
+    Two-phase pipeline (mirrors the official multi-dataset finetune at
+    ``repositories/TabPFN .txt:26604-26635`` step-for-step):
 
-    n = len(loaded.X)
+      1. **Once per dataset** — ``clean_loaded_dataset`` runs TabPFN's
+         ``clean_data`` to produce a numeric numpy array with
+         categoricals ordinal-encoded (NaNs preserved). Result is
+         cached in ``tabpfn_preprocessing._CLEAN_CACHE`` keyed by
+         ``(dataset_id, shape, task_type)`` so each parent dataset is
+         cleaned once per training process.
+      2. **Per step** — subsample rows, split context/query, hand the
+         already-cleaned numeric slices to ``build_ensemble_members``
+         which calls ``TabPFNEnsemblePreprocessor.fit_transform_ensemble_members``.
+
+    The earlier 2026-05-27 PD/LGD crash (``np.isnan`` on object dtype
+    inside `encode_categorical_features_step`) was caused by skipping
+    phase 1 — we passed a raw object-dtype slice directly to
+    ``fit_transform_ensemble_members``. Fixed by routing through
+    ``clean_loaded_dataset`` first.
+    """
+    from src.train.tabpfn_preprocessing import (
+        build_ensemble_members, clean_loaded_dataset,
+    )
+
+    # ---- Phase 1: clean_data (cached per dataset) ----------------------- #
+    cleaned = clean_loaded_dataset(
+        X_full_df=loaded.X,
+        y_full=loaded.y,
+        cat_columns=loaded.cat_columns,
+        task_type=loaded.task_type,
+        dataset_id=loaded.dataset_id,
+    )
+    X_all = cleaned.X_clean          # (n_total_dataset, n_features) numeric
+    y_all = cleaned.y
+
+    # ---- Phase 2a: subsample + ctx/query split (per step) -------------- #
+    n = X_all.shape[0]
     n_total = min(n_total_target, n)
     if n_total <= 1:
         n_total = n
 
-    # Stratified subsample (classification) or uniform random (regression).
-    # Same logic as the legacy `_build_step_batch` — the subsample axis
-    # is shared between the two pathways.
-    sel = _stratified_subsample_indices(loaded.y, n_total, rng)
-    X_sub = loaded.X.iloc[sel].reset_index(drop=True)
-    y_sub = loaded.y[sel]
+    sel = _stratified_subsample_indices(y_all, n_total, rng)
+    X_sub = X_all[sel]
+    y_sub = y_all[sel]
 
     n_query = max(1, int(round(n_total * query_fraction)))
     n_query = min(n_query, n_total - 1)
     n_ctx = n_total - n_query
 
-    X_ctx_df = X_sub.iloc[:n_ctx].reset_index(drop=True)
-    X_qry_df = X_sub.iloc[n_ctx:].reset_index(drop=True)
+    X_ctx = np.ascontiguousarray(X_sub[:n_ctx])
+    X_qry = np.ascontiguousarray(X_sub[n_ctx:])
     y_ctx = y_sub[:n_ctx]
     y_qry = y_sub[n_ctx:]
 
@@ -387,18 +411,19 @@ def _build_ensemble_step_batch(
         # Use the OBSERVED class count from the FULL dataset's y so the
         # ensemble's class-permutation generator sees the right cardinality
         # even if a stratified subsample happens to drop a rare class.
-        n_classes = int(len(np.unique(loaded.y)))
+        n_classes = int(len(np.unique(y_all)))
         if n_classes < 2:
             n_classes = 2                     # binary minimum
     else:
         n_classes = None
 
+    # ---- Phase 2b: per-step TabPFN preprocessing ----------------------- #
     return build_ensemble_members(
-        X_ctx_raw=X_ctx_df,
+        X_ctx=X_ctx,
         y_ctx_raw=y_ctx,
-        X_qry_raw=X_qry_df,
+        X_qry=X_qry,
         y_qry_raw=y_qry,
-        cat_columns=loaded.cat_columns,
+        feature_schema=cleaned.feature_schema,
         task_type=loaded.task_type,
         n_classes=n_classes,
         inference_config=inference_config,

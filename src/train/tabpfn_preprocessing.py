@@ -68,6 +68,7 @@ Reference citations
 
 from __future__ import annotations
 
+import functools
 import logging
 from dataclasses import dataclass
 from typing import Any, Sequence
@@ -77,6 +78,121 @@ import pandas as pd
 import torch
 
 LOGGER = logging.getLogger(__name__)
+
+
+# --------------------------------------------------------------------------- #
+# Per-dataset clean_data cache
+# --------------------------------------------------------------------------- #
+#
+# TabPFN's `clean_data` (verified at `repositories/TabPFN .txt:29818-29846`)
+# takes (X, feature_schema) and returns (X_numpy_clean, ordinal_encoder,
+# feature_schema). It runs `fix_dtypes` (ensures numeric ndarray, casts
+# categoricals to `category` dtype) and `process_text_na_dataframe`
+# (ordinal-encodes categoricals to integer codes; NaNs are preserved).
+#
+# The official multi-dataset finetune (`get_preprocessed_dataset_chunks`,
+# `TabPFN .txt:26604-26635`) calls `_initialize_dataset_preprocessing`
+# ONCE per parent dataset BEFORE the per-step DataLoader iteration —
+# the result is cached in `ClassifierDatasetConfig.X_raw` (the name is
+# misleading; the X stored there is ALREADY clean_data-cleaned). Then
+# per-step preprocessing just slices that numeric array and runs the
+# `TabPFNEnsemblePreprocessor`.
+#
+# We mirror that exactly with an LRU cache keyed by `dataset_id` so each
+# parent dataset is cleaned once per training process. The cache holds
+# the cleaned numpy array (numeric dtype, ordinal-encoded categoricals)
+# alongside the feature_schema with which to drive the per-step
+# preprocessor.
+
+
+@dataclass(frozen=True)
+class _CleanedDataset:
+    """One ``clean_data``-cleaned dataset, ready to feed to
+    ``TabPFNEnsemblePreprocessor``. Cached by ``dataset_id``."""
+    X_clean: np.ndarray            # (n_total, n_features) float64, NaN-preserving
+    y: np.ndarray                  # original (un-encoded) targets
+    feature_schema: Any            # tabpfn.preprocessing.datamodel.FeatureSchema
+    task_type: str                 # "classification" / "regression"
+    dataset_id: str
+
+
+def _clean_one_dataset(
+    *,
+    X_full_df: pd.DataFrame,
+    y_full: np.ndarray,
+    cat_columns: Sequence[str],
+    task_type: str,
+    dataset_id: str,
+) -> _CleanedDataset:
+    """Run TabPFN's ``clean_data`` once per parent dataset.
+
+    Builds a ``FeatureSchema`` from our known categorical-column names
+    (not via ``detect_feature_modalities`` — we already know which
+    columns are categorical from ``DATASET_METADATA``) and runs
+    ``clean_data`` to get a numeric ndarray with categoricals
+    ordinal-encoded. NaN values are preserved (TabPFN's downstream
+    preprocessor handles them).
+    """
+    from tabpfn.preprocessing import clean_data
+    from tabpfn.preprocessing.datamodel import FeatureSchema
+
+    cols = list(X_full_df.columns)
+    cat_positions = [cols.index(c) for c in cat_columns if c in cols]
+    feature_schema = FeatureSchema.from_only_categorical_indices(
+        cat_positions, num_columns=int(X_full_df.shape[1]),
+    )
+    X_clean, _ord_encoder, feature_schema = clean_data(
+        X=X_full_df, feature_schema=feature_schema,
+    )
+    # X_clean is a 2-D numpy array, float64, with categoricals as
+    # integer codes and NaNs preserved. Exactly what TabPFN's
+    # ensemble preprocessor expects (line 26244-26258 of the dump).
+    return _CleanedDataset(
+        X_clean=np.asarray(X_clean),
+        y=np.asarray(y_full),
+        feature_schema=feature_schema,
+        task_type=task_type,
+        dataset_id=dataset_id,
+    )
+
+
+# Cache by (dataset_id, n_rows, n_cols, task_type) — these are stable
+# per training process. We can't use `_LoadedDataset` directly as the
+# key because it contains a non-hashable DataFrame, so we expose a
+# simple `clean_loaded_dataset(loaded)` API that hashes by id+shape.
+_CLEAN_CACHE: dict[tuple, _CleanedDataset] = {}
+
+
+def clean_loaded_dataset(
+    *,
+    X_full_df: pd.DataFrame,
+    y_full: np.ndarray,
+    cat_columns: Sequence[str],
+    task_type: str,
+    dataset_id: str,
+) -> _CleanedDataset:
+    """Cached wrapper for :func:`_clean_one_dataset`.
+
+    Cache key: ``(dataset_id, n_rows, n_cols, task_type)``. So two
+    different DataFrames with the same dataset_id and shape will share
+    the cache entry — fine for our use because the sanitized CSV is
+    deterministic per (DataPipeline run, dataset_id).
+    """
+    key = (
+        dataset_id,
+        int(X_full_df.shape[0]),
+        int(X_full_df.shape[1]),
+        task_type,
+    )
+    if key not in _CLEAN_CACHE:
+        _CLEAN_CACHE[key] = _clean_one_dataset(
+            X_full_df=X_full_df,
+            y_full=y_full,
+            cat_columns=cat_columns,
+            task_type=task_type,
+            dataset_id=dataset_id,
+        )
+    return _CLEAN_CACHE[key]
 
 
 # --------------------------------------------------------------------------- #
@@ -171,11 +287,11 @@ class TabPFNEnsembleBatch:
 
 def build_ensemble_members(
     *,
-    X_ctx_raw: pd.DataFrame,
+    X_ctx: np.ndarray,             # (n_ctx, n_features) float64 — ALREADY clean_data-cleaned
     y_ctx_raw: np.ndarray,
-    X_qry_raw: pd.DataFrame,
+    X_qry: np.ndarray,             # (n_qry, n_features) float64 — ALREADY clean_data-cleaned
     y_qry_raw: np.ndarray,
-    cat_columns: Sequence[str],
+    feature_schema: Any,           # tabpfn.preprocessing.datamodel.FeatureSchema (cleaned)
     task_type: str,                # "classification" | "regression"
     n_classes: int | None,
     inference_config: Any,         # tabpfn.inference_config.InferenceConfig
@@ -258,20 +374,19 @@ def build_ensemble_members(
             f"task_type must be 'classification' or 'regression'; got {task_type!r}"
         )
 
-    # ---- 1) build the FeatureSchema ----------------------------------- #
-    # FeatureSchema is TabPFN's record of which columns are categorical
-    # vs numerical. We tell it which positional indices in our raw X
-    # frame are categorical; everything else defaults to numerical.
-    #
-    # **KWARG NAME — fixed 2026-05-27.** The second positional arg is
-    # called ``num_columns`` in TabPFN's source (verified at
-    # ``TabPFN .txt:30229-30233``), not ``n_features``. The earlier
-    # name was a mis-paraphrase; passing ``n_features=...`` raises
-    # TypeError at runtime.
-    cols = list(X_ctx_raw.columns)
-    cat_positions = [cols.index(c) for c in cat_columns if c in cols]
-    feature_schema = FeatureSchema.from_only_categorical_indices(
-        cat_positions, num_columns=int(X_ctx_raw.shape[1]),
+    # ---- 1) feature_schema is supplied by the caller ------------------- #
+    # The caller has already run ``clean_data`` on the full dataset and
+    # passed in the resulting numeric numpy arrays plus the
+    # ``FeatureSchema``. Mirrors the official multi-dataset finetune
+    # which stores the cleaned ``X_mod`` in
+    # ``ClassifierDatasetConfig.X_raw`` (TabPFN .txt:26604-26635) —
+    # the "raw" in the name is a misnomer; that array is already
+    # ordinal-encoded and numeric.
+    assert X_ctx.ndim == 2, f"X_ctx must be 2D, got shape {X_ctx.shape}"
+    assert X_qry.ndim == 2, f"X_qry must be 2D, got shape {X_qry.shape}"
+    assert X_ctx.shape[1] == X_qry.shape[1], (
+        f"X_ctx and X_qry must have same n_features; "
+        f"got {X_ctx.shape[1]} vs {X_qry.shape[1]}"
     )
 
     # ---- 2) build the per-estimator EnsembleConfig list --------------- #
@@ -355,7 +470,7 @@ def build_ensemble_members(
     # mix-in, but explicit wrapping is safer across versions.
     preprocessor = TabPFNEnsemblePreprocessor(
         configs=ensemble_configs,
-        n_samples=int(X_ctx_raw.shape[0]),
+        n_samples=int(X_ctx.shape[0]),
         feature_schema=feature_schema,
         random_state=int(rng_seed),
         n_preprocessing_jobs=1,
@@ -367,22 +482,19 @@ def build_ensemble_members(
         constant_feature_count=inference_config.FEATURE_SUBSAMPLING_CONSTANT_FEATURE_COUNT,
         subsample_samples=inference_config.SUBSAMPLE_SAMPLES,
         importance_top_k_count=inference_config.FEATURE_SUBSAMPLING_IMPORTANCE_TOP_K_COUNT,
-        X_train=X_ctx_raw.values if isinstance(X_ctx_raw, pd.DataFrame) else X_ctx_raw,
+        X_train=X_ctx,
         y_train=y_ctx_for_pre,
         task_type=tabpfn_task_type,
     )
 
     # ---- 5) fit on context, transform context AND query --------------- #
     members = preprocessor.fit_transform_ensemble_members(
-        X_train=X_ctx_raw.values if isinstance(X_ctx_raw, pd.DataFrame) else X_ctx_raw,
+        X_train=X_ctx,
         y_train=y_ctx_for_pre,
     )
 
     # ---- 6) tensorise per-estimator views ----------------------------- #
     per_estimator_views: list[_PerEstimatorView] = []
-    X_qry_arr = (
-        X_qry_raw.values if isinstance(X_qry_raw, pd.DataFrame) else X_qry_raw
-    )
     for member, config in zip(members, ensemble_configs):
         # member.X_train: (n_ctx, n_features_after_preproc) float
         # member.y_train: (n_ctx,) — already class-permuted for classifier
@@ -392,7 +504,7 @@ def build_ensemble_members(
         # Apply the SAME CPU pipeline to query features via the member's
         # bound transform_X_test (line 26265 in the official finetune).
         X_qry_np = np.asarray(
-            member.transform_X_test(X_qry_arr), dtype=np.float32,
+            member.transform_X_test(X_qry), dtype=np.float32,
         )
 
         # Cast to torch tensors with shape (n, 1, F) / (n, 1, 1).
