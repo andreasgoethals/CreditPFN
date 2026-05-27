@@ -101,6 +101,83 @@ _VALID_STAGES = ("data", "train", "eval")
 
 
 # --------------------------------------------------------------------------- #
+# Config readers — dependency-free fallback for the VSC login node
+# --------------------------------------------------------------------------- #
+#
+# This util is designed to run on the SLURM **login node** (where the
+# user types commands before submitting batch jobs). The login node has
+# a minimal Python environment — typically no `omegaconf` (a heavy
+# import that's only installed in the per-job conda env). So we read
+# the configs with three escalating layers:
+#
+#   1. Try `omegaconf` (matches the rest of the pipeline).
+#   2. Else try `PyYAML` (a smaller, more commonly-available dep).
+#   3. Else fall back to the HARDCODED DEFAULTS below — which are
+#      the values shipped in config/{data,eval,train}.yaml. The user
+#      only loses the ability to override paths via cfg edits, which
+#      is acceptable for a utility script.
+#
+# Cleaning the outputs is a build-time concern, so the defaults are
+# fine 99% of the time. The script also prints which layer it used so
+# users can audit.
+
+_DEFAULTS = {
+    "data": {
+        # data.paths.* — these match config/data.yaml verbatim.
+        "processed":    "data/processed",
+        "dedup":        "data/dedup",
+        "manifest_pd":  "data/manifest_pd.csv",
+        "manifest_lgd": "data/manifest_lgd.csv",
+    },
+    "train": {
+        # train.checkpoint.trained_dir
+        "trained_dir":  "checkpoints/trained",
+    },
+    "eval": {
+        # eval.results.base_dir
+        "results_base": "output/results",
+    },
+}
+
+
+def _load_yaml(path: str) -> dict | None:
+    """Load a yaml file via whichever parser is installed.
+
+    Returns the parsed dict on success, ``None`` if the file is missing
+    OR no yaml parser is available (so callers can fall back to the
+    hardcoded defaults).
+    """
+    p = Path(path)
+    if not p.exists():
+        return None
+    # Try OmegaConf first (matches the rest of the pipeline).
+    try:
+        from omegaconf import OmegaConf  # type: ignore[import-not-found]
+        return OmegaConf.to_container(OmegaConf.load(str(p)), resolve=True)  # type: ignore[return-value]
+    except ImportError:
+        pass
+    # Fall back to PyYAML.
+    try:
+        import yaml  # type: ignore[import-not-found]
+        with p.open("r", encoding="utf-8") as fh:
+            return yaml.safe_load(fh)
+    except ImportError:
+        return None
+
+
+def _cfg_get(d: dict | None, *keys: str, default: str) -> str:
+    """Walk a nested dict, falling back to `default` on any miss."""
+    cur: object = d
+    for k in keys:
+        if not isinstance(cur, dict) or k not in cur:
+            return default
+        cur = cur[k]
+    if not isinstance(cur, (str, int)):
+        return default
+    return str(cur)
+
+
+# --------------------------------------------------------------------------- #
 # Per-stage target enumeration
 # --------------------------------------------------------------------------- #
 
@@ -132,14 +209,22 @@ def _data_stage_targets() -> dict[str, list[Path]]:
     (12 files)" etc.). Categories are display-only — deletion treats
     all paths uniformly.
     """
-    from omegaconf import OmegaConf
-    cfg = OmegaConf.load("config/data.yaml")
+    cfg = _load_yaml("config/data.yaml")
+    d = _DEFAULTS["data"]
 
     # The processed and dedup roots — per data.yaml's `paths` block.
-    proc_root = resolve_data_path(cfg.paths.processed)
-    dedup_root = resolve_output_path(cfg.paths.dedup)
-    manifest_pd = resolve_output_path(cfg.paths.manifest_pd)
-    manifest_lgd = resolve_output_path(cfg.paths.manifest_lgd)
+    proc_root = resolve_data_path(
+        _cfg_get(cfg, "paths", "processed", default=d["processed"]),
+    )
+    dedup_root = resolve_output_path(
+        _cfg_get(cfg, "paths", "dedup", default=d["dedup"]),
+    )
+    manifest_pd = resolve_output_path(
+        _cfg_get(cfg, "paths", "manifest_pd", default=d["manifest_pd"]),
+    )
+    manifest_lgd = resolve_output_path(
+        _cfg_get(cfg, "paths", "manifest_lgd", default=d["manifest_lgd"]),
+    )
     logs_root = resolve_output_path("logs")
 
     out: dict[str, list[Path]] = {}
@@ -162,12 +247,11 @@ def _data_stage_targets() -> dict[str, list[Path]]:
 
 def _train_stage_targets() -> dict[str, list[Path]]:
     """Catalogue every output of the training stage."""
-    from omegaconf import OmegaConf
-    try:
-        tcfg = OmegaConf.load("config/train.yaml")
-        trained_dir_rel = str(tcfg.checkpoint.trained_dir)
-    except Exception:
-        trained_dir_rel = "checkpoints/trained"
+    tcfg = _load_yaml("config/train.yaml")
+    d = _DEFAULTS["train"]
+    trained_dir_rel = _cfg_get(
+        tcfg, "checkpoint", "trained_dir", default=d["trained_dir"],
+    )
 
     trained_root = resolve_output_path(trained_dir_rel)
     manifests_root = resolve_output_path("output/training/manifests")
@@ -194,15 +278,11 @@ def _train_stage_targets() -> dict[str, list[Path]]:
 
 def _eval_stage_targets() -> dict[str, list[Path]]:
     """Catalogue every output of the eval stage."""
-    from omegaconf import OmegaConf
-    try:
-        ecfg = OmegaConf.load("config/eval.yaml")
-        results_base = (
-            ecfg.results.base_dir if hasattr(ecfg, "results")
-            else "output/results"
-        )
-    except Exception:
-        results_base = "output/results"
+    ecfg = _load_yaml("config/eval.yaml")
+    d = _DEFAULTS["eval"]
+    results_base = _cfg_get(
+        ecfg, "results", "base_dir", default=d["results_base"],
+    )
 
     results_root = resolve_output_path(results_base)
     figures_root = resolve_output_path("output/figures")
