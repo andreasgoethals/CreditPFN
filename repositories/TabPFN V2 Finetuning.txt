@@ -3171,43 +3171,6 @@ else:
     plt.show()
 
 """
-### Feature selection
-
-Feature selection is the process of selecting a subset of relevant features for use in model construction. It's useful for reducing model complexity, improving performance by removing noise, and decreasing training time. Here, we'll use Sequential Forward Selection (SFS), which starts with no features and iteratively adds the feature that most improves the model's performance.
-
-The goal is to see if we can create a simpler, faster model with fewer features without a significant drop in accuracy.
-
-"""
-
-from tabpfn_extensions import interpretability
-
-# Load data
-data = load_breast_cancer()
-X, y = data.data, data.target
-feature_names = data.feature_names
-
-# Initialize model
-clf = TabPFNClassifier(n_estimators=1)
-
-# Feature selection
-sfs = interpretability.feature_selection.feature_selection(
-    estimator=clf,
-    X=X,
-    y=y,
-    n_features_to_select=4,
-    feature_names=feature_names,
-    cv=3,
-)
-
-# Print selected features
-selected_features = [
-    feature_names[i] for i in range(len(feature_names)) if sfs.get_support()[i]
-]
-print("\nSelected features:")
-for feature in selected_features:
-    print(f"- {feature}")
-
-"""
 # Predictive Behavior of TabPFN <a name="behavior"></a>
 
 In this section, we explore the behavior of predictions from TabPFN on various toy functions.

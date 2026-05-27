@@ -45,7 +45,7 @@ from __future__ import annotations
 import functools
 import logging
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Any, Sequence
 
 import numpy as np
 import pandas as pd
@@ -337,12 +337,85 @@ def _build_step_batch(
 
 
 # --------------------------------------------------------------------------- #
+# Ensemble step builder — uses TabPFN's official preprocessing pipeline
+# --------------------------------------------------------------------------- #
+
+
+def _build_ensemble_step_batch(
+    loaded: _LoadedDataset,
+    *,
+    n_total_target: int,
+    query_fraction: float,
+    rng: np.random.Generator,
+    inference_config: Any,
+    n_estimators: int,
+    rng_seed: int,
+):
+    """N-estimator step batch with TabPFN's official preprocessing.
+
+    Wraps the existing per-step subsample + ctx/query split logic and
+    hands the raw (still-with-NaNs, still-with-strings) feature frame to
+    TabPFN's :class:`TabPFNEnsemblePreprocessor`. Returns a
+    :class:`TabPFNEnsembleBatch` carrying ``n_estimators`` preprocessed
+    views — the training loop runs one model forward pass per view.
+    """
+    from src.train.tabpfn_preprocessing import build_ensemble_members
+
+    n = len(loaded.X)
+    n_total = min(n_total_target, n)
+    if n_total <= 1:
+        n_total = n
+
+    # Stratified subsample (classification) or uniform random (regression).
+    # Same logic as the legacy `_build_step_batch` — the subsample axis
+    # is shared between the two pathways.
+    sel = _stratified_subsample_indices(loaded.y, n_total, rng)
+    X_sub = loaded.X.iloc[sel].reset_index(drop=True)
+    y_sub = loaded.y[sel]
+
+    n_query = max(1, int(round(n_total * query_fraction)))
+    n_query = min(n_query, n_total - 1)
+    n_ctx = n_total - n_query
+
+    X_ctx_df = X_sub.iloc[:n_ctx].reset_index(drop=True)
+    X_qry_df = X_sub.iloc[n_ctx:].reset_index(drop=True)
+    y_ctx = y_sub[:n_ctx]
+    y_qry = y_sub[n_ctx:]
+
+    n_classes: int | None
+    if loaded.task_type == "classification":
+        # Use the OBSERVED class count from the FULL dataset's y so the
+        # ensemble's class-permutation generator sees the right cardinality
+        # even if a stratified subsample happens to drop a rare class.
+        n_classes = int(len(np.unique(loaded.y)))
+        if n_classes < 2:
+            n_classes = 2                     # binary minimum
+    else:
+        n_classes = None
+
+    return build_ensemble_members(
+        X_ctx_raw=X_ctx_df,
+        y_ctx_raw=y_ctx,
+        X_qry_raw=X_qry_df,
+        y_qry_raw=y_qry,
+        cat_columns=loaded.cat_columns,
+        task_type=loaded.task_type,
+        n_classes=n_classes,
+        inference_config=inference_config,
+        n_estimators=n_estimators,
+        rng_seed=int(rng_seed),
+        dataset_id=loaded.dataset_id,
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Public: training Dataset
 # --------------------------------------------------------------------------- #
 
 
 class ProcessedDatasetLoader(Dataset):
-    """One ``__getitem__`` call → one TabPFNBatch from one sanitized CSV.
+    """One ``__getitem__`` call → one batch (legacy ``TabPFNBatch`` OR
+    new ``TabPFNEnsembleBatch``) from one sanitized CSV.
 
     Designed to be wrapped in ``torch.utils.data.DataLoader`` with
     ``batch_size=1`` and ``collate_fn=identity_collate``.
@@ -352,6 +425,22 @@ class ProcessedDatasetLoader(Dataset):
     a fresh random subsample of large datasets every epoch. The
     subsample is still deterministic given ``(base_seed, epoch, idx)``,
     so a re-run with the same seed is bit-for-bit reproducible.
+
+    Parameters
+    ----------
+    inference_config
+        TabPFN's ``InferenceConfig`` (returned by
+        ``load_tabpfn_for_training``). When non-None, ``__getitem__``
+        runs TabPFN's official preprocessor and returns a
+        ``TabPFNEnsembleBatch`` with ``n_estimators_finetune``
+        preprocessed views. When None, falls back to the legacy
+        single-view ``TabPFNBatch`` (used by the mocked smoke test that
+        doesn't have a real TabPFN checkpoint).
+    n_estimators_finetune
+        How many preprocessed views per step. TabPFN's official
+        ``FinetunedTabPFNClassifier`` defaults to 2 — different feature
+        shifts, different class permutations, gradient averaged. See
+        ``repositories/TabPFN .txt:26842``.
     """
 
     def __init__(
@@ -361,6 +450,8 @@ class ProcessedDatasetLoader(Dataset):
         max_rows_per_epoch: int,
         query_fraction: float,
         seed: int = 0,
+        inference_config: Any | None = None,
+        n_estimators_finetune: int = 2,
     ) -> None:
         if len(refs) == 0:
             raise ValueError("ProcessedDatasetLoader received an empty refs list")
@@ -369,6 +460,8 @@ class ProcessedDatasetLoader(Dataset):
         self.query_fraction = float(query_fraction)
         self._base_seed = int(seed)
         self._epoch = 0
+        self._inference_config = inference_config
+        self._n_estimators_finetune = max(1, int(n_estimators_finetune))
 
     def set_epoch(self, epoch: int) -> None:
         """Bump the epoch counter so the next __getitem__ reshuffles."""
@@ -377,22 +470,38 @@ class ProcessedDatasetLoader(Dataset):
     def __len__(self) -> int:
         return len(self.refs)
 
-    def __getitem__(self, idx: int) -> TabPFNBatch:
+    def __getitem__(self, idx: int):
         ref = self.refs[idx]
         loaded = _load_processed_csv(ref)
         # Epoch-aware seed: same chunk on epoch 0 ≠ epoch 1 ≠ …
-        rng = np.random.default_rng(
-            (
-                self._base_seed * 1_000_003
-                + self._epoch * 10_007
-                + idx * 31
-            ) & 0xFFFF_FFFF
-        )
-        return _build_step_batch(
+        step_seed = (
+            self._base_seed * 1_000_003
+            + self._epoch * 10_007
+            + idx * 31
+        ) & 0xFFFF_FFFF
+        rng = np.random.default_rng(step_seed)
+
+        # Legacy single-view path (smoke tests, debug runs without a
+        # real InferenceConfig).
+        if self._inference_config is None:
+            return _build_step_batch(
+                loaded,
+                n_total_target=self.max_rows_per_epoch,
+                query_fraction=self.query_fraction,
+                rng=rng,
+            )
+
+        # ---- TabPFN-preprocessed N-estimator path ------------------- #
+        # Mirrors `DatasetCollectionWithPreprocessing.__getitem__`
+        # (`repositories/TabPFN .txt:26147-26319`).
+        return _build_ensemble_step_batch(
             loaded,
             n_total_target=self.max_rows_per_epoch,
             query_fraction=self.query_fraction,
             rng=rng,
+            inference_config=self._inference_config,
+            n_estimators=self._n_estimators_finetune,
+            rng_seed=int(step_seed),
         )
 
 

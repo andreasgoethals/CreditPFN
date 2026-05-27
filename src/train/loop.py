@@ -153,16 +153,17 @@ def descriptive_name(
     learning_rate: float, seed: int,
     use_lora: bool = False,
     query_fraction: float | None = None,
+    accumulate_grad_batches: int | None = None,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
     Schema:
-        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_lora].ckpt
+        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_lora].ckpt
 
-    ``query_fraction`` is part of the sweep grid as of 2026-05-21, so
-    different qf values must produce distinct filenames. ``None``
-    omits the segment (back-compat with legacy callers / tests that
-    don't sweep the axis).
+    ``query_fraction`` is part of the sweep grid as of 2026-05-21,
+    ``accumulate_grad_batches`` as of 2026-05-27. Both are optional in
+    the filename — passing ``None`` omits the segment (back-compat with
+    legacy callers / tests that don't sweep the axis).
     """
     base_stem = Path(str(base_path)).stem
     lr_tag = f"{learning_rate:.0e}".replace("+", "")
@@ -170,10 +171,13 @@ def descriptive_name(
     if query_fraction is not None:
         # 0.20 → "qf20", 0.30 → "qf30", 0.40 → "qf40"
         qf_tag = f"_qf{int(round(query_fraction * 100)):02d}"
+    acc_tag = ""
+    if accumulate_grad_batches is not None:
+        acc_tag = f"_acc{int(accumulate_grad_batches)}"
     lora_tag = "_lora" if use_lora else ""
     return (
         f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}"
-        f"{qf_tag}{lora_tag}.ckpt"
+        f"{qf_tag}{acc_tag}{lora_tag}.ckpt"
     )
 
 
@@ -371,14 +375,97 @@ def _forward(
     return pred_logits, y_target, znorm_mean, znorm_std
 
 
+def _forward_one_member(
+    model: torch.nn.Module,
+    *,
+    X_ctx: torch.Tensor,           # (n_ctx, 1, F)  ALREADY PREPROCESSED
+    y_ctx: torch.Tensor,           # (n_ctx, 1, 1)  class-permuted (classifier) / z-normed (regressor)
+    X_qry: torch.Tensor,           # (n_qry, 1, F)  ALREADY PREPROCESSED
+    cat_idx: list[int],
+    outlier_removal_std: float | None,
+) -> torch.Tensor:
+    """One forward pass through the live training model for ONE preprocessed
+    ensemble member.
+
+    The input tensors here have already gone through TabPFN's CPU
+    preprocessing pipeline (squashing scaler / quantile / SVD /
+    fingerprint / class permutation). The remaining work before the model
+    forward is the GPU soft-clip outlier removal (TabPFN's
+    ``TorchSoftClipOutliersStep``, ``TabPFN .txt:35959-35967``) — we
+    apply it here on the combined (context+query) tensor.
+
+    Returns the raw model output logits, shape ``(n_qry, 1, L)`` where
+    ``L`` is the per-row output dimensionality (= ``MAX_NUMBER_OF_CLASSES=10``
+    for classifier, = bar-distribution buckets for regressor).
+    """
+    # Apply GPU soft-clip on numerical columns. Done on combined tensor
+    # so the column-wise μ/σ uses both context AND query rows
+    # (matching TabPFN's GPU pipeline which sees the concatenated tensor
+    # inside `_call_model`).
+    from src.train.tabpfn_preprocessing import apply_outlier_clip
+
+    combined_x = torch.cat([X_ctx, X_qry], dim=0)
+    if outlier_removal_std is not None:
+        combined_x = apply_outlier_clip(
+            combined_x, n_sigma=outlier_removal_std,
+            categorical_idx=cat_idx,
+        )
+
+    cat_inds: list[list[int]] | None = (
+        [list(cat_idx)] if cat_idx else None
+    )
+
+    pred_logits = model(
+        combined_x,
+        y_ctx.float(),
+        only_return_standard_out=True,
+        categorical_inds=cat_inds,
+    )
+    return pred_logits
+
+
 def _classification_loss(
     pred_logits: torch.Tensor, targets: torch.Tensor,
     *, n_classes: int, criterion: torch.nn.Module,
 ) -> torch.Tensor:
-    """CrossEntropyLoss on the K-class slice of TabPFN's output."""
-    logits = pred_logits[:, :, :n_classes].float()
+    """CrossEntropyLoss on TabPFN's full ``MAX_NUMBER_OF_CLASSES`` (=10)
+    logit columns.
+
+    **CHANGE 2026-05-27** — previously we sliced the logits to the first
+    K=n_classes columns before calling cross_entropy. That was a
+    methodological bug: TabPFN's classifier head emits 10 logits
+    (the pretraining max-classes; ``repositories/TabPFN .txt:10710``),
+    and the official `FinetunedTabPFNClassifier` computes CE over ALL
+    10 columns so the softmax denominator regularises every column
+    every step (gradient on z_k for k ≥ K is proportional to that
+    column's softmax probability — i.e. a push-down signal).
+
+    Slicing meant columns K..9 received zero gradient signal during
+    training and were free to drift to arbitrary values. At inference
+    (which softmaxes over all 10 columns then keeps the first K),
+    those drifted columns stole probability mass from the K active
+    columns — the calibration-collapse failure mode that produces
+    high log-loss while ROC-AUC stays reasonable. See chat 2026-05-27
+    and `_audit_2026-05-27_methodology.md` for the full derivation.
+
+    The `n_classes` parameter is still required for downstream code
+    (per-epoch eval, metric reporting) so we accept it but no longer
+    slice with it. We do, however, sanity-check that targets are in
+    `[0, n_classes)` — out-of-range targets would silently push the
+    K..9 columns up (the wrong direction).
+    """
+    logits = pred_logits.float()
     logits = logits.reshape(-1, logits.shape[-1])
     target = targets.long().flatten()
+    if __debug__:
+        # Cheap assertion; bypassed under `python -O`. Catches a
+        # mis-encoded label early instead of letting CE silently
+        # propagate it.
+        max_t = int(target.max().item()) if target.numel() else -1
+        assert max_t < int(n_classes), (
+            f"target label {max_t} >= n_classes={n_classes}; "
+            "labels must be in [0, n_classes)"
+        )
     return criterion(logits, target)
 
 
@@ -387,6 +474,116 @@ def _regression_loss(
 ) -> torch.Tensor:
     """Bar-distribution NLL on the z-normalised targets."""
     return criterion(logits=pred_logits, y=targets[:, :, 0]).mean()
+
+
+def _ensemble_step_loss(
+    model: torch.nn.Module,
+    batch,             # TabPFNEnsembleBatch — annotated as Any to avoid
+                       # circular import-time pull of tabpfn_preprocessing.
+    *,
+    criterion,
+) -> torch.Tensor:
+    """One training-step loss for the N-estimator preprocessed batch.
+
+    Mirrors ``FinetunedTabPFNClassifier._forward_with_loss``
+    (``TabPFN .txt:26920-26941``):
+
+      1. For each ensemble member i:
+            * forward the model with member i's (X_ctx, y_ctx_permuted, X_qry)
+            * if classifier and class_permutation is non-None, unscramble
+              the logit columns by ``logits[..., perm]`` so they land back
+              in canonical class order
+      2. Stack the per-member logits into ``(Q, B, E, L)``.
+      3. CE classifier loss: reshape to ``(B*E, L, Q)``, targets to
+         ``(B*E, Q)`` via ``y_query.repeat(B*E, 1)``, single call to
+         ``cross_entropy``. CE then averages over ``E*Q`` samples — exactly
+         the official behaviour.
+      4. Regression NLL: stack to ``(B*E, Q, L)``, ``criterion(logits, y)``
+         then ``.mean()``.
+
+    Returns a scalar tensor (the loss). Caller divides by accumulation
+    before backward.
+    """
+    members = batch.members
+    is_classification = batch.task_type == "classification"
+
+    per_member_logits: list[torch.Tensor] = []
+    for m in members:
+        pred_logits = _forward_one_member(
+            model,
+            X_ctx=m.X_context,
+            y_ctx=m.y_context,
+            X_qry=m.X_query,
+            cat_idx=m.categorical_idx,
+            outlier_removal_std=m.outlier_removal_std,
+        )                                      # (n_qry, 1, L)
+
+        # Unscramble class permutation if any (classifier only).
+        if is_classification and m.class_permutation is not None:
+            # `class_permutation` is a positional permutation array, e.g.
+            # [1, 0] for binary-flipped. The official inference path at
+            # `TabPFN .txt:8511-8523` does `logits[..., perm]` to reorder
+            # the output columns back into canonical class order. We do
+            # the same here so the CE loss sees logits already aligned
+            # with `y_query` (which stays in canonical order).
+            perm = m.class_permutation
+            L = pred_logits.shape[-1]
+            if len(perm) < L:
+                # Pad permutation to full L=10 by leaving extra columns
+                # in place — they receive gradient via the softmax
+                # denominator but don't get swapped.
+                use_perm = np.arange(L)
+                use_perm[: len(perm)] = perm
+            else:
+                use_perm = np.asarray(perm[:L])
+            use_perm_t = torch.as_tensor(
+                use_perm, device=pred_logits.device, dtype=torch.long,
+            )
+            pred_logits = pred_logits.index_select(-1, use_perm_t)
+
+        per_member_logits.append(pred_logits)
+
+    # Stack along a new E dim: (n_qry, 1, E, L)
+    logits_QBEL = torch.stack(per_member_logits, dim=2)
+    Q, B, E, L = logits_QBEL.shape
+    assert B == 1, f"expected batch_size=1, got B={B}"
+
+    if is_classification:
+        # Reshape to (B*E, L, Q) — PyTorch CE wants class dim at axis 1.
+        # `permute(1, 2, 3, 0)` → (B, E, L, Q); reshape to (B*E, L, Q).
+        logits_BLQ = logits_QBEL.permute(1, 2, 3, 0).reshape(B * E, L, Q)
+        targets_BQ = batch.y_query.reshape(B, Q).repeat(B * E, 1)
+        return _classification_loss_BE_LQ(
+            logits_BLQ, targets_BQ,
+            n_classes=int(batch.n_classes or 2), criterion=criterion,
+        )
+    # Regression: stack to (B*E, Q, L) for the bar-distribution criterion.
+    logits_BQL = logits_QBEL.permute(1, 2, 0, 3).reshape(B * E, Q, L)
+    targets_BQ_reg = batch.y_query.reshape(B, Q).repeat(B * E, 1).float()
+    # criterion's `__call__(logits=..., y=...)` expects logits shape
+    # (Q, batch, L) for `FullSupportBarDistribution.__call__`; pass with
+    # the batch dim as B*E and Q on axis 0.
+    return criterion(
+        logits=logits_BQL.permute(1, 0, 2),     # (Q, B*E, L)
+        y=targets_BQ_reg.transpose(0, 1),       # (Q, B*E)
+    ).mean()
+
+
+def _classification_loss_BE_LQ(
+    logits_BLQ: torch.Tensor, targets_BQ: torch.Tensor,
+    *, n_classes: int, criterion: torch.nn.Module,
+) -> torch.Tensor:
+    """CE on the (B*E, L, Q) / (B*E, Q) shape — matches official
+    ``F.cross_entropy(input, target)`` where the class dim is at axis 1
+    of `input`. See `_compute_classification_loss` at
+    ``TabPFN .txt:26727-26744``.
+    """
+    if __debug__:
+        max_t = int(targets_BQ.max().item()) if targets_BQ.numel() else -1
+        assert max_t < int(n_classes), (
+            f"target label {max_t} >= n_classes={n_classes}"
+        )
+    return criterion(logits_BLQ.float(), targets_BQ.long())
 
 
 def _n_classes(batch: TabPFNBatch) -> int:
@@ -661,6 +858,7 @@ def train_one_config(
     learning_rate: float | None = None,
     use_lora: bool | None = None,
     query_fraction: float | None = None,
+    accumulate_grad_batches: int | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
 ) -> TrainingResult:
@@ -774,9 +972,11 @@ def train_one_config(
     lora_cfg_dict = (
         dict(cfg.lora) if (use_lora and hasattr(cfg, "lora")) else None
     )
-    model, criterion, architecture_config = load_tabpfn_for_training(
-        base_checkpoint, track=track, device=device,
-        lora_config=lora_cfg_dict,
+    model, criterion, architecture_config, inference_config = (
+        load_tabpfn_for_training(
+            base_checkpoint, track=track, device=device,
+            lora_config=lora_cfg_dict,
+        )
     )
 
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
@@ -800,11 +1000,19 @@ def train_one_config(
     if query_fraction is None:
         query_fraction = float(_data_cfg.finetuning.query_fraction)
 
+    # Resolve `n_estimators_finetune` (number of preprocessed ensemble
+    # members per training step). Pulled from cfg.train; defaults to 2
+    # to match TabPFN's `FinetunedTabPFNClassifier` (TabPFN .txt:26842).
+    n_estimators_finetune = int(
+        getattr(cfg.train, "n_estimators_finetune", 2)
+    )
     train_ds = ProcessedDatasetLoader(
         split.train,
         max_rows_per_epoch=max_rows_per_epoch,
         query_fraction=query_fraction,
         seed=int(cfg.seed),
+        inference_config=inference_config,
+        n_estimators_finetune=n_estimators_finetune,
     )
     train_loader = DataLoader(
         train_ds,
@@ -816,7 +1024,22 @@ def train_one_config(
     )
 
     epochs = int(cfg.train.epochs)
-    accumulate = max(1, int(cfg.train.accumulate_grad_batches))
+    # `accumulate_grad_batches` is a tunable as of 2026-05-27. Caller
+    # may pass the trial's value via the kwarg; falls back to the
+    # legacy `cfg.train.accumulate_grad_batches` (or the first value of
+    # `cfg.tunable.accumulate_grad_batches`) for back-compat.
+    if accumulate_grad_batches is not None:
+        accumulate = max(1, int(accumulate_grad_batches))
+    else:
+        legacy = getattr(cfg.train, "accumulate_grad_batches", None)
+        if legacy is None:
+            raw_acc = getattr(cfg.tunable, "accumulate_grad_batches", [1])
+            if isinstance(raw_acc, int):
+                accumulate = max(1, int(raw_acc))
+            else:
+                accumulate = max(1, int(list(raw_acc)[0]))
+        else:
+            accumulate = max(1, int(legacy))
     # Use ``ceil`` (not floor) so this matches what the loop actually
     # does: the inner block fires `floor(L/A)` optimizer steps, and the
     # end-of-epoch flush adds one more when `L % A != 0` — i.e.
@@ -1006,16 +1229,31 @@ def train_one_config(
             step_t0 = time.monotonic()
             batch = batch.to(device)
             with torch.amp.autocast("cuda", enabled=use_amp):
-                pred_logits, y_target, _, _ = _forward(model, batch)
-                if batch.task_type == "classification":
-                    loss = _classification_loss(
-                        pred_logits, batch.y_query,
-                        n_classes=_n_classes(batch), criterion=criterion,
+                # Branch on batch type. The new TabPFNEnsembleBatch (path
+                # taken when `inference_config` is non-None, i.e. every
+                # real training run) carries N preprocessed views; we
+                # forward each one, stack logits as (Q,B,E,L), and let
+                # CE / NLL average across the E*Q query positions —
+                # mirroring `FinetunedTabPFNClassifier._forward_with_loss`
+                # at `TabPFN .txt:26920-26941`. The legacy TabPFNBatch
+                # path (E=1, no preprocessing) is kept ONLY for the
+                # mocked smoke test in tests/test_train.py.
+                from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch
+                if isinstance(batch, TabPFNEnsembleBatch):
+                    loss = _ensemble_step_loss(
+                        model, batch, criterion=criterion,
                     )
                 else:
-                    loss = _regression_loss(
-                        pred_logits, y_target, criterion=criterion,
-                    )
+                    pred_logits, y_target, _, _ = _forward(model, batch)
+                    if batch.task_type == "classification":
+                        loss = _classification_loss(
+                            pred_logits, batch.y_query,
+                            n_classes=_n_classes(batch), criterion=criterion,
+                        )
+                    else:
+                        loss = _regression_loss(
+                            pred_logits, y_target, criterion=criterion,
+                        )
                 loss_to_backprop = loss / accumulate
 
             if torch.isnan(loss).item() or torch.isinf(loss).item():
@@ -1278,7 +1516,7 @@ def train_one_config(
             "scheduler_type":      "warmup_cosine",       # hardcoded schedule family
             "warmup_fraction":     float(cfg.scheduler.warmup_fraction),
             "epochs":              int(cfg.train.epochs),
-            "accumulate_grad_batches": int(cfg.train.accumulate_grad_batches),
+            "accumulate_grad_batches": int(accumulate),
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
             "max_rows_per_epoch":  max_rows_per_epoch,

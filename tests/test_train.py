@@ -745,7 +745,11 @@ def test_train_one_config_end_to_end_mocked(
         model = _DummyClassifier(n_features=n_feat).to(device)
         criterion = torch.nn.CrossEntropyLoss().to(device)
         arch = NS(num_features=n_feat, num_classes=2)
-        return model, criterion, arch
+        # 4th return slot is the InferenceConfig — None on the mock path
+        # because the dummy classifier doesn't go through TabPFN's
+        # ensemble preprocessor (skip_tabpfn_preprocessing=True in the
+        # smoke test's cfg.train).
+        return model, criterion, arch, None
 
     monkeypatch.setattr(loop_mod, "load_tabpfn_for_training", fake_loader)
 
@@ -795,6 +799,12 @@ def test_train_one_config_end_to_end_mocked(
             # checkpoints and a working TabPFN install; out of scope
             # for the unit test.
             "epoch_eval_n_estimators": 1,
+            # Forces the dataloader's LEGACY single-view path (no
+            # TabPFN preprocessing). The mocked loader returns
+            # inference_config=None, which the dataloader also reads
+            # to skip the ensemble preprocessor — but we pin it here
+            # too for explicit intent.
+            "n_estimators_finetune": 1,
         },
         "eval": {
             "classification_metric": "roc_auc",

@@ -350,6 +350,7 @@ Directory structure:
     │           ├── kuleuven_storage_quota_table.rst
     │           ├── memory_bandwidth_and_latency_wice.rst
     │           ├── mindwell_hardware.rst
+    │           ├── parallel_filesystems.rst
     │           ├── restoring_a_snapshot.rst
     │           ├── tier2_login_nodes.rst
     │           ├── wice_hardware.rst
@@ -2039,6 +2040,7 @@ rst_prolog += """
 .. _ghcr: https://ghcr.io/
 .. _GNU: https://www.gnu.org/
 .. _GNU binutils documentation: https://sourceware.org/binutils/docs/
+.. _GPFS architecture: https://www.ibm.com/docs/en/storage-scale/5.2.3?topic=overview-gpfs-architecture
 .. _GROMACS: http://www.gromacs.org/
 .. _HPE MPT documentation: https://support.hpe.com/hpsc/doc/public/display?docId=emr_na-a00037728en_us&docLocale=en_US
 .. _Hugging Face: https://huggingface.co
@@ -2070,6 +2072,7 @@ rst_prolog += """
 .. _LLNL Advanced MPI: https://hpc.llnl.gov/sites/default/files/DavidCronkSlides.pdf
 .. _Lmod documentation: http://lmod.readthedocs.io/en/latest/
 .. _Lmod: http://lmod.readthedocs.io/en/latest/
+.. _Lustre: https://www.lustre.org/
 .. _MathWorks: https://nl.mathworks.com/
 .. _MATLAB compiler documentation: https://nl.mathworks.com/help/compiler/index.html
 .. _MobaXterm: https://mobaxterm.mobatek.net
@@ -15646,7 +15649,7 @@ If needed, you may even share such session URLs and session JSON files with
 co-workers who also use the present ``IGV-Web`` OnDemand app. This will,
 of course, only work if they can also access the associated datasets. On the
 Tier-2 clusters at KU Leuven, this typically means that the data needs to be
-stored in a shared ``staging`` folder.
+stored in a shared project storage folder.
 
 
 Good to know
@@ -28961,8 +28964,9 @@ This page only concerns the following clusters:
 
        * Tier-2 :ref:`Genius <Genius hardware>`
        * Tier-2 :ref:`wICE <wICE hardware>`
+       * Tier-2 :ref:`Mindwell <Mindwell hardware>`
 
-This page offers guidelines on how to manage your data on the different storage platforms which VSC and KU Leuven have to offer and how to transfer data between them. While most of these guidelines can be applied to any storage available to you, the focus will lie on shared storage related to KU Leuven (e.g. staging storage, Tier-1 Data / ManGO, L-drive, other local shared storage).
+This page offers guidelines on how to manage your data on the different storage platforms which VSC and KU Leuven have to offer and how to transfer data between them. While most of these guidelines can be applied to any storage available to you, the focus will lie on shared storage related to KU Leuven (e.g. project storage, Tier-1 Data / ManGO, L-drive, other local shared storage).
 
 This page is structured as follows:
 
@@ -28987,14 +28991,18 @@ You will normally require at least the following two kinds of storage:
 
 HPC storage
 -----------
-Carefully consider which type(s) of HPC storage are best suited for your work. The different VSC clusters all offer a :ref:`set of HPC storage locations<data location>`. For the Tier-2 clusters hosted at KU Leuven this is supplemented with so-called 'staging' storage. Staging uses the same (Lustre based) platform as the scratch storage and is also intended for larger amounts of data. Compared to scratch storage, however, staging is better suited for data which:
+Carefully consider which type(s) of HPC storage are best suited for your work. The different VSC clusters all offer a :ref:`set of HPC storage locations<data location>`. For the Tier-2 clusters hosted at KU Leuven this is supplemented with so-called "project" storage. Project storage uses a :ref:`parallel filesystem <kuluh_parallel_filesystems>` (the same platform used for scratch storage) and is also intended for larger amounts of data. Compared to scratch storage, however, project storage is better suited for data which:
 
 - either needs to be shared by multiple users in a research project
 - and/or should not be subjected to automatic cleanup (files on scratch get deleted if they have not been accessed during the last month)
 
-Note that staging (even in the absence of automatic cleanup) should not be considered as a 'safe' storage location. Just like scratch, staging is single-copy and does not offer snapshots or backups. If somebody accidentally removes data or an unexpected system failure removes, this data is gone forever.
+Note that project storage (even in the absence of automatic cleanup) should not be considered as a "safe" storage location. Just like scratch, project storage is single-copy and does not necessarily offer snapshots or backups. If somebody accidentally removes data or an unexpected system failure removes, this data is gone forever.
 
-Also keep in mind that staging is a paid service (charged based on peak usage per month) while temporarily increasing your scratch quotum can be done for free. If you only need more workspace for your own calculations, it may therefore be more advantageous to ask for a higher scratch quotum than to make more use of staging. In general, we recommend to only use staging storage if strictly required and to use scratch storage whenever possible. For all storage related requests, see also the `HPC Service Catalog <https://icts.kuleuven.be/sc/onderzoeksgegevens/english-version/HPC-storage>`_.
+Also keep in mind that project storage is a paid service (charged based on peak usage per month) while temporarily increasing your scratch quotum can be done for free. If you only need more workspace for your own calculations, it may therefore be more advantageous to ask for a higher scratch quotum than to make more use of project storage. In general, we recommend to only use project storage if strictly required and to use scratch storage whenever possible. For all storage related requests, see also the `HPC Service Catalog <https://icts.kuleuven.be/sc/onderzoeksgegevens/english-version/HPC-storage>`_.
+
+.. note::
+
+   Project storage on the GPFS1 file system is still under construction.
 
 External storage
 ----------------
@@ -29048,7 +29056,7 @@ When working with sensitive data, one more point to consider is that access rest
 
 Location of software
 --------------------
-Aside from regular data, also local software installations can be placed on shared storage such as staging. In general we recommend to only do this when really required, i.e. when a large or complex software installation needs to be shared between different users. Software which is only for your own use is best left in a non-shared location such as your ``$VSC_DATA``. Keep in mind that most software can be offered as centrally installed modules (send your requests to the `service desk <hpcinfo@kuleuven.be>`_).
+Aside from regular data, also local software installations can be placed on shared storage such as project storage. In general we recommend to only do this when really required, i.e. when a large or complex software installation needs to be shared between different users. Software which is only for your own use is best left in a non-shared location such as your ``$VSC_DATA``. Keep in mind that most software can be offered as centrally installed modules (send your requests to the `service desk <hpcinfo@kuleuven.be>`_).
 
 A few more things to keep in mind:
 
@@ -29084,7 +29092,7 @@ Also keep in mind that external storage can function as a (temporary) intermedia
 - If the data needs to be used on different HPC sites, possibly with some delay in between (e.g. production runs on Tier-1 followed by postprocessing on Tier-2).
 - If the data is publicly available but download times are too high, in which case you would benefit from a nearby 'cache'.
 
-Note you do not need to wait until your data is processed to put it on external storage. You could consider copying any data early to an external location, both for safeguarding or to sharing it with others, while keeping a copy on scratch or staging for further processing.
+Note you do not need to wait until your data is processed to put it on external storage. You could consider copying any data early to an external location, both for safeguarding or to sharing it with others, while keeping a copy on scratch or project storage for further processing.
 
 Data transfer tools
 -------------------
@@ -29098,7 +29106,7 @@ There are multiple ways in which you can transfer data to or from HPC storage:
 Keeping track of your data
 ==========================
 
-Once multiple storage locations are involved, you will need to keep an overview of where everything is located (e.g. which input data has been staged in on HPC storage, which data has flowed out, et cetera). We advise to include this topic in your project meetings (e.g. the current status, planned data transfers and cleanups, possible quota constraints, ...) and to monitor disk usage on a regular basis. For HPC storage you can use command-line tools such as ``du`` and ``myquota``. For staging storage we also offer `the duduckdb tool <https://github.com/hpcleuven/duduckdb/>`_, which allows you to query a database with information on the disk usage for your staging directory.
+Once multiple storage locations are involved, you will need to keep an overview of where everything is located (e.g. which input data has been staged in on HPC storage, which data has flowed out, et cetera). We advise to include this topic in your project meetings (e.g. the current status, planned data transfers and cleanups, possible quota constraints, ...) and to monitor disk usage on a regular basis. For HPC storage you can use command-line tools such as ``du`` and ``myquota``. For project storage we also offer `the duduckdb tool <https://github.com/hpcleuven/duduckdb/>`_, which allows you to query a database with information on the disk usage for your project storage directory.
 
 Automating (part of) your data operations can of course be helpful in this regard. One possibility to consider is to automatically transfer and/or clean up data as part of your compute jobs. Automation of course tends to require well-defined directory structures (see above).
 
@@ -32492,7 +32500,7 @@ Hortense consists of the following partitions:
 
 Shared infrastructure:
 
-- *storage*: 5.4 PB shared scratch storage, based on `Lustre <https://www.lustre.org>`_ (see ``$VSC_SCRATCH_PROJECTS_BASE``);
+- *storage*: 5.4 PB shared scratch storage, based on `Lustre`_ (see ``$VSC_SCRATCH_PROJECTS_BASE``);
 - *interconnect*: InfiniBand HDR-100 (~12.5GB/sec), 2:1 fat tree topology
 
   - for the GPU partition specifically: dual HDR Infiniband
@@ -32782,7 +32790,7 @@ Scratch storage quota usage
 Accessing data via ``/readonly``
 ********************************
 
-Due to the fairly aggressive page cache purging policy of the `Lustre <https://www.lustre.org>`_
+Due to the fairly aggressive page cache purging policy of the `Lustre`_
 storage software that is used for the Tier-1 Hortense scratch filesystem, you may need to make some changes
 to how you access data in your job scripts to avoid performance problems.
 
@@ -33531,8 +33539,16 @@ The VSC hosts a number of collections:
      - `VSC UAntwerpen Tier2 filesystems <https://app.globus.org/file-manager/collections/6a13242d-6506-4b3d-a49c-ac981b35ab7d/overview>`_
      - No
      - No
-   * - KU Leuven Tier-2 (scratch)
-     - `VSC KU Leuven tier2 scratch <https://app.globus.org/file-manager/collections/82c495cc-aef8-40ad-88df-f9c92bee82d3/overview>`_
+   * - KU Leuven Tier-2 (``VSC_SCRATCH_LUSTRE1`` and ``VSC_PROJECT_LUSTRE1``)
+     - `VSC KU Leuven tier2 /lustre1/scratch en /lustre1/project <https://app.globus.org/file-manager/collections/82c495cc-aef8-40ad-88df-f9c92bee82d3/overview>`_
+     - No
+     - Yes
+   * - KU Leuven Tier-2 (``VSC_SCRATCH_GPFS1``)
+     - `VSC KU Leuven tier2 /gpfs1/scratch <https://app.globus.org/file-manager/collections/a6593381-d93d-4543-a3af-89424bcc6555/overview>`_
+     - No
+     - Yes
+   * - KU Leuven Tier-2 (``VSC_PROJECT_GPFS1``)
+     - `VSC KU Leuven tier2 /gpfs1/project <https://app.globus.org/file-manager/collections/49da2af5-d757-4998-8dc1-b5cecb91893d/overview>`_
      - No
      - Yes
    * - KU Leuven Tier-2 (user directories)  
@@ -33547,9 +33563,6 @@ The VSC hosts a number of collections:
      - `VSC KU Leuven archive directories <https://app.globus.org/file-manager/collections/64cb7bf2-492b-4489-ab7f-f80c252a7d92/overview>`_
      - No  
      - No  
-
-.. Note::
-      The collection 'VSC KU Leuven tier2 scratch' also contains the staging directories, under :bgrnd1:`/project`
 
 .. list-table:: Overview of collections for Tier-1 Data
    :header-rows: 1
@@ -35273,6 +35286,7 @@ Tier-2 Storage
 
    tier2_hardware/kuleuven_storage
    tier2_hardware/restoring_a_snapshot
+   tier2_hardware/parallel_filesystems
 
 
 
@@ -36715,6 +36729,8 @@ Lustre scratch on the nodes of Genius and wICE).
    In other words, compute jobs running on Genius and wICE have to use Lustre
    and jobs running on Mindwell have to use GPFS. Compute jobs that do not
    comply can be cancelled by the system administrators without prior notice.
+   If you are looking for more information on this, please read the page on
+   :ref:`parallel filesystems <kuluh_parallel_filesystems>`
 
 .. note::
 
@@ -36752,7 +36768,8 @@ through 'transfer' jobs submitted to, for example, the ``interactive``
 partition of :ref:`wICE <submit to wice interactive node>` or
 :ref:`Mindwell <submit to mindwell interactive node>`.
 Short transfers which don't take more than a couple of minutes can also
-be performed from a Genius login node.
+be performed from a Genius login node. For more advanced examples, please read
+the :ref:`recommendations for managing data on multiple filesystems <kuluh_pfs_practical>`.
 
 Globus endpoints have been defined on both Lustre and GPFS filesystems,
 so you can use the :ref:`globus platform` for these data transfers.
@@ -36921,6 +36938,237 @@ Additional highlights
   (CPU partitions) or 2025a (GPU partitions).
 - All nodes are interconnected using an Infiniband NDR network.
 - Similar to the wICE Sapphire Rapids and the H100 nodes, the new cluster is direct liquid cooled.
+
+
+
+================================================
+FILE: source/leuven/tier2_hardware/parallel_filesystems.rst
+================================================
+.. _kuluh_parallel_filesystems:
+
+###########################################
+Parallel file systems at KU Leuven/UHasselt
+###########################################
+
+This page provides in-depth information about the parallel file systems
+available on the KU Leuven/UHasselt Tier-2 clusters. After giving some
+background information, the current setup is shown and some practical advice
+is given on how you can handle data that can be spread over filesystems.
+
+.. _kuluh_pfs_background:
+
+Background information
+----------------------
+
+The setup of a filesystem on a local machine is usually quite simple: it
+consists of a single disk connected directly (or via a USB port in case of an
+external disk) to the motherboard of the machine. It should be clear that there
+are several reasons why such a simple setup does not provide the required
+functionality on a high-performance compute cluster.
+
+The first issue is that on a cluster, you want to be able to access the same
+files from many different machines, specifically all compute nodes and login
+nodes. Because this typically involves several hundreds of nodes on our Tier-2
+system, a direct connection between each node and the file system is not
+feasible. Instead, each node is connected to a *network* to which the file
+system is hooked up.
+
+The second issue is that if the file system itself consists of a single server,
+this server will quickly become a bottleneck for high-performant input/output
+operations. To overcome this, a parallel file system itself typically consists
+of multiple servers which can access many disks independently (but of course
+in a coordinated fashion). This is illustrated for a `Lustre`_ parallel file
+system below; note that it is not necessary to understand the details in this
+diagram, it is intended to help appreciate the complexity of a parallel file system
+in an HPC context.
+
+.. figure:: Lustre-storage-system.jpg
+   :alt: Lustre storage system
+
+   Diagram of a Lustre file system, the Lustre Clients are compute nodes in an
+   HPC context. Source: https://www.weka.io/learn/glossary/file-storage/hpc-storage-explained/
+
+.. note::
+
+   Parallel file systems usually allow to distribute files transparently to
+   users over multiple servers, providing a high aggregate bandwidth. When it
+   comes to reading or writing *large* amounts of data, a parallel file system can
+   easily surpass a regular file system in performance. Metadata operations
+   (creating, opening, listing) are intrinsically much harder to distribute
+   and this is not an area where parallel file systems necessarily excel at.
+   As a consequence, you should in general avoid doing a lot of metadata
+   operations on a parallel file system. A practical advice is that having a
+   lot (let's say millions) of small files is a bad idea. The support team
+   will even impose quota on the number of files on some storage for this very
+   reason.
+
+Related to the issues discussed above, it is worth noting that both the
+parallel file systems and their network are *shared* resources in the sense
+that all users on a cluster use these resources concurrently. This is in
+contrast to resources such as compute cores, to which only a single user at a
+time has exclusive access. As a consequence, it is very important to make sure
+you use the parallel file systems properly and your workload does not affect
+other users negatively. The next sections will help you in this respect.
+
+.. _kuluh_pfs_setup:
+
+Setup of parallel filesystems
+-----------------------------
+
+Since mid 2026, there are two parallel file systems in use on the KU Leuven/
+UHasselt Tier-2 clusters Mindwell and wICE (for Genius the wICE information applies):
+
+- The ``Lustre1`` file system
+
+  - based on the `Lustre`_ architecture
+  - offers user scratch directories intended to be used on wICE
+  - offers group-based storage as "staging" directories, also intended to be
+    used on wICE
+- The ``GPFS1`` file system
+
+  - based on the `GPFS architecture`_ (also known under the IBM Storage Scale
+    brand name)
+  - offers user scratch directories intended to be used on Mindwell
+  - offers group-based storage as "project1" directories, also intended to be
+    used on Mindwell
+
+The diagram below shows these parallel file systems (at the bottom) and the
+networks that connect them to the compute nodes (at the top).
+
+.. figure:: kuluh_pfs.svg
+   :alt: Parallel file systems at KU Leuven/UHasselt
+
+   Diagram of the parallel file systems on the KU Leuven/UHasselt Tier-2
+   clusters and their interconnects
+
+It is not coincidental that the ``Lustre1`` file system is directly below the
+wICE cluster and the ``GPFS1`` file system is directly below the Mindwell
+cluster. If you study the diagram carefully, you will note that the path
+between wICE compute nodes and ``Lustre`` is much shorter (shorter as in, fewer
+network switches involved) than the path between wICE compute nodes and
+``GPFS1``. Similarly, the path connecting Mindwell compute nodes with ``GPFS1``
+is more direct than the path connecting them to ``Lustre1``. Additionally you
+need to take into account that not all network connections have the same
+performance: specifically, the dotted lines connecting Mindwell spine switches
+and Lustre switches do not guarantee good performance.
+
+The main takeaway of this section is that **you must select the most
+appropriate parallel file system for the cluster you are working on.** For
+user convenience, cross access (from wICE to ``GPFS1`` and from ``Mindwell``
+to Lustre1) is technically possible, but not recommended. The next section
+will provide some practical guidelines on how to handle this.
+
+.. note::
+
+   At this point it is justified to ask the question why the somewhat
+   complicated setup with two parallel file systems was introduced when the
+   Mindwell cluster was commissioned around mid 2026. The answer is that
+   "extending" the existing ``Lustre1`` storage was not deemed a good long-term
+   solution. Even though adding more disks to the backend to increase
+   its capacity would be feasible, the previous section demonstrates that much
+   more components such as management servers and the networks would need
+   to be updated or replaced to be able to handle the load from the new
+   cluster. After a tendering procedure, the choice was therefore made to
+   purchase a completely new parallel file system (named ``GPFS1``).
+
+.. _kuluh_pfs_practical:
+
+Practical recommendations for managing data on multiple filesystems
+-------------------------------------------------------------------
+
+After the more theoretical considerations of the previous sections, this
+section provides concrete suggestions on how you handle data that is spread
+over multiple (parallel) file systems, while making sure you make proper use
+of these file systems.
+
+Separate locations for separate compute tasks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The first solution simply bypasses the problem: before starting a series of
+related compute tasks (for instance, constituting a work package of a project),
+you select a single cluster where you will execute all tasks and store all
+files on the corresponding parallel file system.
+
+- If you select wICE:
+
+  - store all files in ``$VSC_SCRATCH_LUSTRE1`` or a staging
+    directory (a subdirectory of ``$VSC_PROJECT_LUSTRE1``)
+- If you select Mindwell:
+
+  - store all files in ``$VSC_SCRATCH_GPFS1`` or a
+    project1 directory (a subdirectory of ``$VSC_PROJECT_GPFS1``)
+
+This is a clean approach that is conceptually and practically simple. The main
+(or only) disadvantage is that you cannot simply switch between clusters for
+related compute tasks. This can be inconvenient because your work will be
+blocked if one cluster is under maintenance or fully occupied.
+
+Central location: staging in/staging out
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This second approach does allow to easily switch between clusters. The basic
+idea is that at the start of a job, you transfer the required input files from
+a *central location* to the parallel file system on which the job in question is
+running. At the end, you transfer back the output files you need to keep to
+the central location. In the example below, the central location is a staging
+directory called ``stg_00000``, you will need to adapt this to your own case.
+
+.. code-block:: shell
+
+   # Make a work directory on the parallel file system of this cluster,
+   # make it unique for this job (optional)
+   workdir=${VSC_SCRATCH}/task1/${SLURM_JOB_ID}
+   mkdir -p ${workdir}
+
+   # Transfer input files from central location to the work directory,
+   # check the rsync documentation for more options
+   rsync -a ${VSC_PROJECT_LUSTRE1}/stg_00000/task1/input ${workdir}
+
+   # Run the actual computation in the work directory
+   cd $workdir
+   <do_work>
+
+   # After the computation, transfer output files that need to be kept back
+   rsync -a --include='*.out' --exclude='*' ${workdir} ${VSC_PROJECT_LUSTRE1}/stg_00000/task1/output
+
+   # [Optionally] Remove work directory if no longer needed
+   cd $SLURM_SUBMIT_DIR
+   rm -r ${workdir}
+
+
+Some additional hints:
+
+- This example script does not need to be modified when switching to a
+  different cluster, the work directory will automatically be located on the
+  appropriate parallel file system
+- The first step (staging in) and final step (staging out) of this example
+  job might access the "wrong" parallel file system. Make sure the time these
+  steps take is small compared to the time the computation takes
+- The central location does not need to be on a parallel file system, it could
+  also be located in a :ref:`Tier-1 data project <tier1_data_service>` for
+  example
+- Try to be selective in which input and output files are really necessary.
+  Some generated output files are only intermediate (they are *scratch* files
+  in the true sense) and serve no real purpose after the computation
+  finishes
+
+Central location: regular synchronization
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In a case where staging in and out files in every job is not feasible or not
+desirable, another option is to store all input and output of a computational
+task on the parallel file system closest to the cluster on which that specific
+computational task will be performed. This can however lead to problems when
+you need to post-process data, but some of the required files are on
+``$VSC_SCRATCH_LUSTRE1`` while others are on ``$VSC_SCRATCH_GPFS1``. That can
+be overcome by synchronizing both locations to a central location and run the
+post-processing in there. Such a synchronization is preferably done in a job
+requesting a moderate amount of cores and should not be done *too* often, since
+it results in cross-cluster parallel file system access. Also take into
+account that this results in data duplication, which not only consumes
+precious disk space unnecessarily, but also requires careful management from
+your side. Only use this method if no other methods suit your workflow and if
+you are prepared to carefully manage your data!
 
 
 

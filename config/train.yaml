@@ -64,6 +64,18 @@ tunable:
   # so we can compare directly. 0.20 = 80/20, 0.30 = 70/30, 0.40 = 60/40.
   query_fractions: [0.20, 0.40]
 
+  # Gradient accumulation: forward+backward K times, sum gradients,
+  # then call optimizer.step() once. Effective batch becomes K
+  # datasets per gradient update; peak GPU memory stays at one
+  # dataset's worth. The official TabPFN `FinetunedTabPFNClassifier`
+  # does NOT accumulate (effectively K=1). We sweep both K=1 (official
+  # behaviour, more gradient noise but better LR-schedule resolution)
+  # and K=4 (smoother gradients, coarser schedule) so we can compare.
+  # With 12 train datasets and 100 epochs:
+  #   K=1 → 1200 optimizer steps (cosine schedule is smooth)
+  #   K=4 →  300 optimizer steps (still adequate)
+  accumulate_grad_batches: [1, 4]
+
 
 # =============================================================================
 #  Section 1 · Cross-cutting knobs
@@ -131,17 +143,20 @@ lora:
 
 train:
   epochs: 100                           # no early stopping — fixed-epoch
-  # Gradient accumulation: forward+backward K times, sum gradients,
-  # then call optimizer.step() once. Effective batch becomes K
-  # datasets per gradient update; peak GPU memory stays at one
-  # dataset's worth. Set to 4 on 2026-05-21 — with 12 train datasets
-  # we get 3 optimizer steps per epoch and 300 total over 100 epochs,
-  # which still gives the cosine LR schedule plenty of resolution.
-  # Higher values (6, 12) trade gradient noise for fewer scheduled
-  # steps; past ~12 the cosine schedule loses too much texture.
-  accumulate_grad_batches: 4
+  # `accumulate_grad_batches` was moved into `tunable` on 2026-05-27 so
+  # we sweep both {1, 4}; see that block for the rationale.
   grad_clip_norm: 1.0
   amp: true                             # AMP autocast (CUDA only)
+
+  # Number of TabPFN ensemble members per training step
+  # (`n_estimators_finetune` in TabPFN's `FinetunedTabPFNClassifier`,
+  # default 2 — `repositories/TabPFN .txt:26842`). Each step we draw
+  # 2 different preprocessed views of the same context/query split
+  # (different feature shifts, different class permutations) and
+  # average the CE/NLL loss across them. Cuts gradient variance by
+  # ~sqrt(2). Set to 1 to disable (faster but noisier; corresponds
+  # to the audit-time CreditPFN behaviour).
+  n_estimators_finetune: 2
 
   # Per-step subsample size is `finetuning.max_rows_per_epoch` in
   # config/data.yaml (single source of truth — see that file for the

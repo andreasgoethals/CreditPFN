@@ -9,7 +9,8 @@ Directory structure:
     ├── THIRD-PARTY-NOTICES.md
     ├── .pre-commit-config.yaml
     ├── changelog/
-    │   └── README.md
+    │   ├── README.md
+    │   └── 978.changed.md
     ├── examples/
     │   ├── benchmarking_tabpfn.py
     │   ├── finetune_classifier.py
@@ -1452,6 +1453,13 @@ This will:
 1. Compile all fragments into `CHANGELOG.md`
 2. Delete the fragment files
 3. Add a new `## [Unreleased]` section
+
+
+
+================================================
+FILE: changelog/978.changed.md
+================================================
+Remove the feature selection cell from the TabPFN_Demo_Local example notebook.
 
 
 
@@ -4610,43 +4618,6 @@ else:
     plt.legend(title="Class")
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.show()
-
-"""
-### Feature selection
-
-Feature selection is the process of selecting a subset of relevant features for use in model construction. It's useful for reducing model complexity, improving performance by removing noise, and decreasing training time. Here, we'll use Sequential Forward Selection (SFS), which starts with no features and iteratively adds the feature that most improves the model's performance.
-
-The goal is to see if we can create a simpler, faster model with fewer features without a significant drop in accuracy.
-
-"""
-
-from tabpfn_extensions import interpretability
-
-# Load data
-data = load_breast_cancer()
-X, y = data.data, data.target
-feature_names = data.feature_names
-
-# Initialize model
-clf = TabPFNClassifier(n_estimators=1)
-
-# Feature selection
-sfs = interpretability.feature_selection.feature_selection(
-    estimator=clf,
-    X=X,
-    y=y,
-    n_features_to_select=4,
-    feature_names=feature_names,
-    cv=3,
-)
-
-# Print selected features
-selected_features = [
-    feature_names[i] for i in range(len(feature_names)) if sfs.get_support()[i]
-]
-print("\nSelected features:")
-for feature in selected_features:
-    print(f"- {feature}")
 
 """
 # Predictive Behavior of TabPFN <a name="behavior"></a>
@@ -30055,6 +30026,7 @@ class PreprocessorConfig:
         "quantile_norm",
         "quantile_uni_fine",
         "quantile_norm_fine",
+        "quantile_uni_extrapolate",
         "squashing_scaler_default",
         "squashing_scaler_max10",
         "robust",  # a standard sklearn robust scaler
@@ -33029,13 +33001,24 @@ def get_user_n_quantiles_for_preset(transform_name: str, n_samples: int) -> int:
     Raises:
         ValueError: If *transform_name* is not a known quantile preset.
     """
-    if transform_name in ("quantile_uni", "quantile_norm"):
+    if transform_name in (
+        "quantile_uni",
+        "quantile_norm",
+        "quantile_uni_extrapolate",
+    ):
         return max(n_samples // 5, 2)
     if transform_name in ("quantile_uni_coarse", "quantile_norm_coarse"):
         return max(n_samples // 10, 2)
     if transform_name in ("quantile_uni_fine", "quantile_norm_fine"):
         return n_samples
     raise ValueError(f"Unknown quantile preset: {transform_name}")
+
+
+def get_extrapolate_ratio_for_preset(transform_name: str) -> float | None:
+    """Return the default ``extrapolate_ratio`` for a named quantile preset."""
+    if transform_name == "quantile_uni_extrapolate":
+        return 1.0
+    return None
 
 
 class AdaptiveQuantileTransformer(QuantileTransformer):
@@ -33049,6 +33032,12 @@ class AdaptiveQuantileTransformer(QuantileTransformer):
     greater than the number of available samples in the input data (X).
     This situation can arises because we first initialize the transformer
     based on total samples and then subsample.
+
+    When ``extrapolate_ratio`` is set, inputs outside the training range
+    are linearly extrapolated beyond ``[0, 1]`` at ``transform`` time and
+    clipped at ``-extrapolate_ratio`` / ``1 + extrapolate_ratio``. This
+    preserves OOD information that would otherwise be flattened by the
+    boundary clamp. Intended for ``output_distribution="uniform"``.
     """
 
     def __init__(
@@ -33056,12 +33045,22 @@ class AdaptiveQuantileTransformer(QuantileTransformer):
         *,
         n_quantiles: int = 1_000,
         subsample: int = _DEFAULT_SUBSAMPLE,
+        extrapolate_ratio: float | None = None,
         **kwargs: Any,
     ) -> None:
         # Store the user's desired n_quantiles to use as an upper bound
         self._user_n_quantiles = n_quantiles
         # Initialize parent with this, but it will be adapted in fit
         super().__init__(n_quantiles=n_quantiles, subsample=subsample, **kwargs)
+        if extrapolate_ratio is not None:
+            if extrapolate_ratio < 0:
+                raise ValueError("extrapolate_ratio must be non-negative.")
+            if kwargs.get("output_distribution", "uniform") != "uniform":
+                raise ValueError(
+                    "extrapolate_ratio is only supported for "
+                    "output_distribution='uniform'."
+                )
+        self.extrapolate_ratio = extrapolate_ratio
 
     @override
     def fit(
@@ -33069,6 +33068,10 @@ class AdaptiveQuantileTransformer(QuantileTransformer):
         X: np.ndarray,
         y: np.ndarray | None = None,
     ) -> AdaptiveQuantileTransformer:
+        if self.extrapolate_ratio is not None and X.shape[0] > 0:
+            self.x_min_ = np.nanmin(X, axis=0, keepdims=True)
+            self.x_max_ = np.nanmax(X, axis=0, keepdims=True)
+
         n_samples = X.shape[0]
 
         self.n_quantiles = compute_effective_n_quantiles(
@@ -33086,6 +33089,33 @@ class AdaptiveQuantileTransformer(QuantileTransformer):
             )
 
         return super().fit(X, y)
+
+    @override
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        out = super().transform(X)
+
+        if self.extrapolate_ratio is not None and X.shape[0] > 0:
+            x_range = self.x_max_ - self.x_min_
+            # Skip constant features (matches the GPU path); also avoids a
+            # divide-by-zero in the normalisation below.
+            extrap_mask = x_range > 0
+            min_idcs = (self.x_min_ > X) & extrap_mask
+            max_idcs = (self.x_max_ < X) & extrap_mask
+            if np.any(min_idcs) or np.any(max_idcs):
+                # (X - x_max)/range + 1 simplifies to (X - x_min)/range, so
+                # one normalised array suffices for both branches.
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    norm = (X - self.x_min_) / x_range
+                if np.any(min_idcs):
+                    out[min_idcs] = np.clip(
+                        norm[min_idcs], -self.extrapolate_ratio, 0.0
+                    )
+                if np.any(max_idcs):
+                    out[max_idcs] = np.clip(
+                        norm[max_idcs], 1.0, 1.0 + self.extrapolate_ratio
+                    )
+
+        return out
 
 
 __all__ = [
@@ -34390,6 +34420,7 @@ from tabpfn.preprocessing.pipeline_interface import (
 )
 from tabpfn.preprocessing.steps.adaptive_quantile_transformer import (
     AdaptiveQuantileTransformer,
+    get_extrapolate_ratio_for_preset,
     get_user_n_quantiles_for_preset,
 )
 from tabpfn.preprocessing.steps.kdi_transformer import (
@@ -34898,6 +34929,16 @@ def get_all_reshape_feature_distribution_preprocessors(
             output_distribution="normal",
             n_quantiles=get_user_n_quantiles_for_preset(
                 "quantile_norm_fine", num_examples
+            ),
+            random_state=random_state,
+        ),
+        "quantile_uni_extrapolate": AdaptiveQuantileTransformer(
+            output_distribution="uniform",
+            n_quantiles=get_user_n_quantiles_for_preset(
+                "quantile_uni_extrapolate", num_examples
+            ),
+            extrapolate_ratio=get_extrapolate_ratio_for_preset(
+                "quantile_uni_extrapolate"
             ),
             random_state=random_state,
         ),
@@ -35785,6 +35826,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from tabpfn.preprocessing.datamodel import FeatureModality
+from tabpfn.preprocessing.steps.adaptive_quantile_transformer import (
+    get_extrapolate_ratio_for_preset,
+)
 from tabpfn.preprocessing.torch.gpu_preprocessing_metadata import (
     compute_effective_n_quantiles,
     get_squashing_scaler_max_absolute_value,
@@ -35844,11 +35888,13 @@ def create_gpu_preprocessing_pipeline(
         quantile_on_gpu = len(quantile_target_indices) > 0
         if quantile_on_gpu and n_train_samples is not None:
             n_quantiles = compute_effective_n_quantiles(pconfig.name, n_train_samples)
+            extrapolate_ratio = get_extrapolate_ratio_for_preset(pconfig.name)
             steps.append(
                 (
                     TorchSelectiveQuantileTransformerStep(
                         n_quantiles=n_quantiles,
                         target_column_indices=quantile_target_indices,
+                        extrapolate_ratio=extrapolate_ratio,
                     ),
                     None,  # operates on explicit indices, receives full tensor
                 )
@@ -35946,6 +35992,7 @@ _GPU_ELIGIBLE_QUANTILE_TRANSFORMS = frozenset(
         "quantile_uni",
         "quantile_uni_coarse",
         "quantile_uni_fine",
+        "quantile_uni_extrapolate",
     }
 )
 
@@ -36450,10 +36497,17 @@ from tabpfn.utils import infer_random_state
 class TorchQuantileTransformerStep(TorchPreprocessingStep):
     """Pipeline step wrapper for TorchQuantileTransformer."""
 
-    def __init__(self, n_quantiles: int = 1_000) -> None:
+    def __init__(
+        self,
+        n_quantiles: int = 1_000,
+        extrapolate_ratio: float | None = None,
+    ) -> None:
         """Initialize the quantile transformer step."""
         super().__init__()
-        self._quantile_transformer = TorchQuantileTransformer(n_quantiles=n_quantiles)
+        self._quantile_transformer = TorchQuantileTransformer(
+            n_quantiles=n_quantiles,
+            extrapolate_ratio=extrapolate_ratio,
+        )
 
     @override
     def _fit(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
@@ -36565,9 +36619,13 @@ class TorchSelectiveQuantileTransformerStep(TorchPreprocessingStep):
         self,
         n_quantiles: int,
         target_column_indices: list[int],
+        extrapolate_ratio: float | None = None,
     ) -> None:
         super().__init__()
-        self._qt = TorchQuantileTransformer(n_quantiles=n_quantiles)
+        self._qt = TorchQuantileTransformer(
+            n_quantiles=n_quantiles,
+            extrapolate_ratio=extrapolate_ratio,
+        )
         self._target_column_indices = target_column_indices
 
     @override
@@ -36973,15 +37031,27 @@ class TorchQuantileTransformer:
     quantile information from the training data.
     """
 
-    def __init__(self, n_quantiles: int = 1_000) -> None:
+    def __init__(
+        self,
+        n_quantiles: int = 1_000,
+        extrapolate_ratio: float | None = None,
+    ) -> None:
         """Initialize the quantile transformer.
 
         Args:
             n_quantiles: Number of quantiles to compute. More quantiles give
                 a better approximation of the CDF but use more memory.
+            extrapolate_ratio: When set, inputs outside the fitted range are
+                linearly extrapolated past ``[0, 1]`` and clipped at
+                ``-ratio`` / ``1 + ratio`` instead of being clamped at the
+                boundary quantile. Mirrors the
+                :class:`AdaptiveQuantileTransformer` mode-1 behaviour.
         """
         super().__init__()
+        if extrapolate_ratio is not None and extrapolate_ratio < 0:
+            raise ValueError("extrapolate_ratio must be non-negative.")
         self.n_quantiles = n_quantiles
+        self.extrapolate_ratio = extrapolate_ratio
 
     def fit(self, x: torch.Tensor) -> dict[str, torch.Tensor]:
         """Compute the quantiles from the training data.
@@ -37206,7 +37276,10 @@ class TorchQuantileTransformer:
         result = 0.5 * (interp_forward - interp_backward)  # [n_features, n_samples]
         result = result.t()  # [n_samples, n_features]
 
-        result = torch.clamp(result, 0.0, 1.0)
+        if self.extrapolate_ratio is None:
+            result = torch.clamp(result, 0.0, 1.0)
+        else:
+            result = self._apply_extrapolation(result, x_flat, quantiles_flat)
 
         if len(original_shape) > 1:
             result = result.reshape(original_shape)
@@ -37214,6 +37287,48 @@ class TorchQuantileTransformer:
             result = result.squeeze(-1)
 
         return result
+
+    def _apply_extrapolation(
+        self,
+        result: torch.Tensor,
+        x: torch.Tensor,
+        quantiles: torch.Tensor,
+    ) -> torch.Tensor:
+        """Replace boundary-clamped values with linear extrapolation.
+
+        ``_interp_batched`` clamps out-of-range inputs at ``fp_first``/``fp_last``
+        (i.e. 0 and 1). When ``extrapolate_ratio`` is set, those values are
+        instead linearly extrapolated past ``[0, 1]`` using the training-data
+        range (``quantiles[0]`` and ``quantiles[-1]`` per feature) and clipped
+        at ``-ratio`` / ``1 + ratio``.
+
+        Args:
+            result: Output of the standard transform, shape [n_samples, n_features].
+            x: Original input, shape [n_samples, n_features].
+            quantiles: Per-feature breakpoints, shape [n_quantiles, n_features].
+                ``quantiles[0]`` and ``quantiles[-1]`` are the training min/max.
+        """
+        ratio = self.extrapolate_ratio
+        x_min = quantiles[0]  # [n_features]
+        x_max = quantiles[-1]  # [n_features]
+        x_range = x_max - x_min
+        safe_range = torch.where(x_range == 0, torch.ones_like(x_range), x_range)
+
+        # (x - x_max) / range + 1 simplifies to (x - x_min) / range, so a
+        # single normalised tensor serves both the below and above branches.
+        norm = (x - x_min) / safe_range
+
+        below_mask = x < x_min
+        above_mask = x > x_max
+
+        # Constant features (x_range == 0) have no meaningful extrapolation;
+        # leave the standard 0.5 midpoint untouched.
+        constant_mask = x_range == 0
+        below_mask = below_mask & ~constant_mask
+        above_mask = above_mask & ~constant_mask
+
+        result = torch.where(below_mask, torch.clamp(norm, -ratio, 0.0), result)
+        return torch.where(above_mask, torch.clamp(norm, 1.0, 1.0 + ratio), result)
 
     def _interp_batched(
         self,
@@ -49258,6 +49373,7 @@ FILE: tests/test_preprocessing/test_adaptive_quantile_transformer.py
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from tabpfn.preprocessing.steps import AdaptiveQuantileTransformer
 
@@ -49288,6 +49404,114 @@ def test_adaptive_quantile_transformer_with_numpy_generator():
     # Further assertion to ensure the transformer is functional
     assert hasattr(transformer, "quantiles_")
     assert transformer.quantiles_.shape == (10, 10)
+
+
+def test__extrapolate_ratio_uniform__extends_outside_training_range():
+    """Inputs outside the training range get linearly extrapolated and clipped."""
+    rng = np.random.default_rng(0)
+    X_train = rng.uniform(0.0, 1.0, size=(200, 1))
+
+    transformer = AdaptiveQuantileTransformer(
+        output_distribution="uniform",
+        n_quantiles=50,
+        extrapolate_ratio=1.0,
+        random_state=0,
+    )
+    transformer.fit(X_train)
+
+    in_range = transformer.transform(np.array([[0.5]]))
+    assert 0.0 <= in_range[0, 0] <= 1.0
+
+    # Below the training min: maps to negative values, clipped at -extrapolate_ratio.
+    below = transformer.transform(np.array([[-0.1], [-2.0]]))
+    assert below[0, 0] < 0.0
+    assert below[0, 0] == pytest.approx(-0.1, abs=0.05)
+    assert below[1, 0] == pytest.approx(-1.0)  # clipped
+
+    # Above the training max: maps to >1, clipped at 1 + extrapolate_ratio.
+    above = transformer.transform(np.array([[1.1], [3.0]]))
+    assert above[0, 0] > 1.0
+    assert above[0, 0] == pytest.approx(1.1, abs=0.05)
+    assert above[1, 0] == pytest.approx(2.0)  # clipped
+
+
+def test__extrapolate_ratio__nan_columns_get_valid_boundaries():
+    """NaN entries in training data must not make the extrapolation bounds NaN."""
+    X_train = np.array(
+        [
+            [1.0, 1.0],
+            [2.0, np.nan],
+            [3.0, 2.0],
+            [4.0, 3.0],
+        ]
+    )
+    transformer = AdaptiveQuantileTransformer(
+        output_distribution="uniform",
+        n_quantiles=4,
+        extrapolate_ratio=1.0,
+        random_state=0,
+    )
+    transformer.fit(X_train)
+
+    assert np.all(np.isfinite(transformer.x_min_))
+    assert np.all(np.isfinite(transformer.x_max_))
+
+    # Out-of-range inputs in either column extrapolate to a finite value.
+    out = transformer.transform(np.array([[5.0, 4.0]]))
+    assert np.all(np.isfinite(out))
+    assert out[0, 0] > 1.0
+    assert out[0, 1] > 1.0
+
+
+def test__extrapolate_ratio__constant_feature_no_extrapolation():
+    """Constant features should not be extrapolated (matches GPU behaviour)."""
+    X_train = np.column_stack(
+        [
+            np.linspace(0.0, 1.0, 50),  # varying
+            np.full(50, 5.0),  # constant
+        ]
+    )
+    transformer = AdaptiveQuantileTransformer(
+        output_distribution="uniform",
+        n_quantiles=20,
+        extrapolate_ratio=1.0,
+        random_state=0,
+    )
+    transformer.fit(X_train)
+
+    out = transformer.transform(np.array([[2.0, 99.0], [-1.0, 99.0]]))
+    # First column extrapolates, second column stays in [0, 1].
+    assert out[0, 0] > 1.0
+    assert out[1, 0] < 0.0
+    assert 0.0 <= out[0, 1] <= 1.0
+    assert 0.0 <= out[1, 1] <= 1.0
+
+
+def test__no_extrapolation_when_unset__matches_baseline():
+    """Without extrapolation params, behaviour matches the unmodified transformer."""
+    rng = np.random.default_rng(0)
+    X = rng.normal(size=(100, 3))
+
+    baseline = AdaptiveQuantileTransformer(
+        output_distribution="uniform", n_quantiles=20, random_state=0
+    ).fit(X)
+    no_extrap = AdaptiveQuantileTransformer(
+        output_distribution="uniform", n_quantiles=20, random_state=0
+    ).fit(X)
+
+    np.testing.assert_array_equal(baseline.transform(X), no_extrap.transform(X))
+
+
+def test__extrapolate_ratio__validation_guards():
+    """Invalid extrapolate_ratio configs are rejected at construction."""
+    with pytest.raises(ValueError, match="non-negative"):
+        AdaptiveQuantileTransformer(
+            output_distribution="uniform", extrapolate_ratio=-0.1
+        )
+    with pytest.raises(ValueError, match="output_distribution='uniform'"):
+        AdaptiveQuantileTransformer(output_distribution="normal", extrapolate_ratio=0.1)
+    # Valid config still constructs.
+    AdaptiveQuantileTransformer(output_distribution="uniform", extrapolate_ratio=0.1)
 
 
 
@@ -75276,6 +75500,7 @@ class TestGpuQuantileEligibility:
         assert is_gpu_quantile_eligible("quantile_uni")
         assert is_gpu_quantile_eligible("quantile_uni_coarse")
         assert is_gpu_quantile_eligible("quantile_uni_fine")
+        assert is_gpu_quantile_eligible("quantile_uni_extrapolate")
 
     def test_not_eligible(self) -> None:
         assert not is_gpu_quantile_eligible("squashing_scaler_default")
@@ -75326,6 +75551,12 @@ class TestPipelineConsistency:
         categorical_name="onehot",
         max_features_per_estimator=680,
     )
+    # Extrapolating quantile (uses the optional extrapolate_ratio path).
+    V26_QUANTILE_EXTRAPOLATE = PreprocessorConfig(
+        "quantile_uni_extrapolate",
+        categorical_name="numeric",
+        max_features_per_estimator=680,
+    )
     # v2.5 classifier configs (non-quantile)
     V25_SQUASHING_SVD = PreprocessorConfig(
         name="squashing_scaler_default",
@@ -75358,6 +75589,7 @@ class TestPipelineConsistency:
             V26_QUANTILE_NUMERIC,
             V26_QUANTILE_NUMERIC_APPEND_ORIGINAL,
             V26_QUANTILE_ONEHOT,
+            V26_QUANTILE_EXTRAPOLATE,
             pytest.param(
                 V26_QUANTILE_SVD,
                 marks=pytest.mark.skipif(
@@ -75370,6 +75602,7 @@ class TestPipelineConsistency:
             "v26_quantile_numeric",
             "v26_quantile_numeric_append_original",
             "v26_quantile_onehot",
+            "v26_quantile_extrapolate",
             "v26_quantile_svd",
         ],
     )
@@ -76360,6 +76593,83 @@ class TestTorchQuantileTransformer:
         assert torch.isnan(result[:, 1]).all()
 
 
+class TestTorchQuantileTransformerExtrapolation:
+    """Tests for the optional extrapolate_ratio mode."""
+
+    def test__extrapolate_ratio__matches_sklearn_adaptive_inside_range(self):
+        """In-range values match the CPU AdaptiveQuantileTransformer."""
+        rng = np.random.default_rng(42)
+        x_np = rng.standard_normal((300, 5)).astype(np.float32)
+
+        cpu_qt = AdaptiveQuantileTransformer(
+            output_distribution="uniform",
+            n_quantiles=100,
+            extrapolate_ratio=1.0,
+            random_state=42,
+        )
+        cpu_result = cpu_qt.fit_transform(x_np)
+
+        torch_qt = TorchQuantileTransformer(n_quantiles=100, extrapolate_ratio=1.0)
+        torch_result = torch_qt(torch.from_numpy(x_np))
+
+        assert torch.allclose(
+            torch_result, torch.from_numpy(cpu_result), atol=1e-4, rtol=1e-4
+        )
+
+    def test__extrapolate_ratio__extends_beyond_training_range(self):
+        """Out-of-range inputs map to <0 or >1, clipped at the ratio bound."""
+        rng = np.random.default_rng(0)
+        x_train_np = rng.uniform(0.0, 1.0, size=(200, 1)).astype(np.float32)
+        x_train = torch.from_numpy(x_train_np)
+
+        torch_qt = TorchQuantileTransformer(n_quantiles=50, extrapolate_ratio=1.0)
+        cache = torch_qt.fit(x_train)
+
+        x_test = torch.tensor(
+            [[-0.1], [-2.0], [0.5], [1.1], [3.0]], dtype=torch.float32
+        )
+        out = torch_qt.transform(x_test, fitted_cache=cache).flatten()
+
+        assert out[0].item() < 0.0
+        assert out[1].item() == pytest.approx(-1.0, abs=1e-5)  # clipped
+        assert 0.0 <= out[2].item() <= 1.0
+        assert out[3].item() > 1.0
+        assert out[4].item() == pytest.approx(2.0, abs=1e-5)  # clipped
+
+    def test__extrapolate_ratio__matches_cpu_on_out_of_range_inputs(self):
+        """End-to-end CPU/GPU agreement for out-of-range inputs."""
+        rng = np.random.default_rng(0)
+        x_train_np = rng.normal(size=(200, 3)).astype(np.float32)
+        x_test_np = np.concatenate(
+            [
+                rng.normal(size=(50, 3)).astype(np.float32),
+                # rows that fall outside training range
+                (x_train_np.max(axis=0) + 2.0)[None, :],
+                (x_train_np.min(axis=0) - 2.0)[None, :],
+            ],
+            axis=0,
+        )
+
+        cpu_qt = AdaptiveQuantileTransformer(
+            output_distribution="uniform",
+            n_quantiles=50,
+            extrapolate_ratio=1.0,
+            random_state=42,
+        )
+        cpu_qt.fit(x_train_np)
+        cpu_result = cpu_qt.transform(x_test_np)
+
+        torch_qt = TorchQuantileTransformer(n_quantiles=50, extrapolate_ratio=1.0)
+        cache = torch_qt.fit(torch.from_numpy(x_train_np))
+        torch_result = torch_qt.transform(
+            torch.from_numpy(x_test_np), fitted_cache=cache
+        )
+
+        assert torch.allclose(
+            torch_result, torch.from_numpy(cpu_result), atol=1e-4, rtol=1e-4
+        )
+
+
 def _make_schema(
     *,
     num_numericals: int = 0,
@@ -76502,6 +76812,12 @@ class TestTorchQuantileTransformerCategoricalBoundary:
             rtol=1e-5,
             err_msg=f"Boundary mismatch with n_quantiles={n_quantiles}",
         )
+
+
+def test__torch_extrapolate_ratio__rejects_negative():
+    """Negative extrapolate_ratio is rejected at construction."""
+    with pytest.raises(ValueError, match="non-negative"):
+        TorchQuantileTransformer(n_quantiles=10, extrapolate_ratio=-1.0)
 
 
 
@@ -77962,7 +78278,7 @@ jobs:
       !startsWith(github.head_ref, 'release/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -78017,7 +78333,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
       - uses: astral-sh/ruff-action@0ce1b0bf8b818ef400413f810f8a11cdbda0034b # v4.0.0
         with:
           version-file: pyproject.toml
@@ -78063,7 +78379,7 @@ jobs:
       TABPFN_TOKEN: ${{ secrets.TABPFN_TOKEN }}
 
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -78150,7 +78466,7 @@ jobs:
       TABPFN_TOKEN: ${{ secrets.TABPFN_TOKEN }}
 
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
 
       - name: Set up Python 3.14
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -78208,12 +78524,12 @@ jobs:
 
     steps:
       - name: Checkout TabPFN at current ref
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
         with:
           path: TabPFN
 
       - name: Checkout ${{ matrix.repo-name }}
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
         with:
           repository: PriorLabs/${{ matrix.repo-name }}
           path: ${{ matrix.repo-name }}
@@ -78287,7 +78603,7 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -78362,7 +78678,7 @@ jobs:
     steps:
       - name: Checkout repository
         # Pinned to v4 commit SHA to mitigate moving-tag supply-chain risk.
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -78372,7 +78688,7 @@ jobs:
         # Pinned to v1 commit SHA to mitigate moving-tag supply-chain risk.
         # When updating, resolve the new tag's underlying commit via
         #   gh api /repos/anthropics/claude-code-action/git/refs/tags/<tag>
-        uses: anthropics/claude-code-action@476e359e6203e73dad705c8b322e333fabbd7416  # v1
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251  # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
@@ -78426,7 +78742,7 @@ jobs:
     steps:
       - name: Checkout repository
         # Pinned to v4 commit SHA to mitigate moving-tag supply-chain risk.
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 1
           persist-credentials: false
@@ -78436,7 +78752,7 @@ jobs:
         # Pinned to v1 commit SHA to mitigate moving-tag supply-chain risk.
         # When updating, resolve the new tag's underlying commit via
         #   gh api /repos/anthropics/claude-code-action/git/refs/tags/<tag>
-        uses: anthropics/claude-code-action@476e359e6203e73dad705c8b322e333fabbd7416  # v1
+        uses: anthropics/claude-code-action@787c5a0ce96a9a6cfb050ea0c8f4c05f2447c251  # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -78479,7 +78795,7 @@ jobs:
         python-version: ["3.11", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # v4.3.1
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # v4.3.1
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -78603,7 +78919,7 @@ jobs:
           }
 
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -78686,7 +79002,7 @@ jobs:
 ================================================
 FILE: .github/workflows/release-publish.yml
 ================================================
-Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x8f in position 3662: character maps to <undefined>
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x8f in position 3666: character maps to <undefined>
 
 
 ================================================
@@ -78710,7 +79026,7 @@ jobs:
     environment: release
     steps:
       - name: Checkout merge commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0

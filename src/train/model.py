@@ -65,7 +65,7 @@ def load_tabpfn_for_training(
     track: Literal["pd", "lgd"],
     device: str = "cpu",
     lora_config: dict | None = None,
-) -> tuple[torch.nn.Module, torch.nn.Module, object]:
+) -> tuple[torch.nn.Module, torch.nn.Module, object, object]:
     """Load a TabPFN base checkpoint, ready to be trained on.
 
     Parameters
@@ -101,6 +101,17 @@ def load_tabpfn_for_training(
         The ``ArchitectureConfig`` returned by ``load_model_criterion_config``;
         re-saved alongside the trained ``state_dict`` so the file
         round-trips through Prior Labs' loaders.
+    inference_config
+        The :class:`tabpfn.inference_config.InferenceConfig` embedded in
+        the checkpoint (v2.6 / v3) or rebuilt via
+        ``InferenceConfig.get_default`` (legacy v2 / v2.5). The
+        continued-pretraining dataloader uses this to instantiate
+        TabPFN's official preprocessor (`TabPFNEnsemblePreprocessor`)
+        per training step so the X tensors fed to the model match the
+        distribution it was pretrained on (and the distribution it
+        will see at inference time via ``TabPFNClassifier.predict_proba``).
+        See chat 2026-05-27 for the audit that found we were skipping
+        this and the calibration-collapse failure mode it produced.
     """
     from tabpfn.base import load_model_criterion_config
 
@@ -112,7 +123,7 @@ def load_tabpfn_for_training(
         "classifier" if track == "pd" else "regressor"
     )
 
-    models, criterion, architecture_configs, _inference_config = (
+    models, criterion, architecture_configs, inference_config = (
         load_model_criterion_config(
             model_path=ckpt,
             check_bar_distribution_criterion=False,  # we re-check below
@@ -152,7 +163,7 @@ def load_tabpfn_for_training(
 
     model.to(device)
     train_criterion.to(device)
-    return model, train_criterion, architecture_config
+    return model, train_criterion, architecture_config, inference_config
 
 
 def _wrap_with_lora(model: torch.nn.Module, lora_config: dict) -> torch.nn.Module:

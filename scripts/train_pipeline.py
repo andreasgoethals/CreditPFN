@@ -100,17 +100,18 @@ def _load_cfg(overrides: list[str] | None = None):
 
 def _resolve_grid(
     cfg, *, single: bool,
-) -> list[tuple[str, float, bool, float]]:
-    """Materialise the ``(base, lr, use_lora, query_fraction)`` tuples to train.
+) -> list[tuple[str, float, bool, float, int]]:
+    """Materialise the ``(base, lr, use_lora, query_fraction, accumulate)`` tuples to train.
 
     ``single=True``: head of every tunable list (one trial).
-    Otherwise: full cartesian product over base × lr × use_lora ×
-    query_fraction.
+    Otherwise: full cartesian product over
+    ``base × lr × use_lora × query_fraction × accumulate_grad_batches``.
 
     All tunable lists accept either a scalar or a list. ``use_lora``
     defaults to ``[False]`` when absent; ``query_fractions`` defaults
-    to ``[0.20]`` (the TabPFN documented default) when absent so
-    legacy configs without that axis still produce 32 trials.
+    to ``[0.20]`` (the TabPFN documented default) when absent;
+    ``accumulate_grad_batches`` defaults to ``[1]`` (TabPFN's official
+    no-accumulation behaviour) when absent.
     """
     track = str(cfg.track)
     bases = (
@@ -128,14 +129,20 @@ def _resolve_grid(
         qfs = [float(raw_qf)]
     else:
         qfs = [float(x) for x in raw_qf]
+    raw_acc = getattr(cfg.tunable, "accumulate_grad_batches", [1])
+    if isinstance(raw_acc, int):
+        accs = [int(raw_acc)]
+    else:
+        accs = [int(x) for x in raw_acc]
 
     if single:
         return [(
             str(bases[0]), float(lrs[0]), bool(loras[0]), float(qfs[0]),
+            int(accs[0]),
         )]
     return [
-        (str(b), float(lr), bool(lo), float(qf))
-        for b, lr, lo, qf in itertools.product(bases, lrs, loras, qfs)
+        (str(b), float(lr), bool(lo), float(qf), int(ac))
+        for b, lr, lo, qf, ac in itertools.product(bases, lrs, loras, qfs, accs)
     ]
 
 
@@ -253,7 +260,8 @@ class RunRow:
     base_checkpoint: str
     learning_rate: float
     use_lora: bool
-    query_fraction: float             # 0.20 / 0.30 / 0.40, see cfg.tunable.query_fractions
+    query_fraction: float             # 0.20 / 0.40, see cfg.tunable.query_fractions
+    accumulate_grad_batches: int      # 1 / 4, see cfg.tunable.accumulate_grad_batches
     seed: int
     n_train_datasets: int
     n_test_datasets: int
@@ -377,15 +385,15 @@ def run(
     failures = 0
     t_outer = time.monotonic()
 
-    for trial_idx_local, (base, lr, use_lora, query_fraction) in enumerate(plan, start=1):
+    for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f ===",
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d ===",
             trial_idx_local, len(plan), global_idx,
-            Path(base).name, lr, use_lora, query_fraction,
+            Path(base).name, lr, use_lora, query_fraction, accumulate,
         )
 
         # Per-epoch CSV path (mirrors the descriptive name of the checkpoint)
@@ -393,6 +401,7 @@ def run(
             run_name=str(cfg.run_name), track=track,
             base_path=base, learning_rate=lr, seed=int(cfg.seed),
             use_lora=use_lora, query_fraction=query_fraction,
+            accumulate_grad_batches=accumulate,
         ).removesuffix(".ckpt")
 
         # ---- Rename the log file to include the trial's HPs --------- #
@@ -465,11 +474,13 @@ def run(
                 learning_rate=lr,
                 use_lora=use_lora,
                 query_fraction=query_fraction,
+                accumulate_grad_batches=accumulate,
                 on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, query_fraction=query_fraction,
+                accumulate_grad_batches=int(accumulate),
                 seed=int(cfg.seed),
                 n_train_datasets=result.n_train_datasets,
                 n_test_datasets=result.n_test_datasets,
@@ -483,6 +494,7 @@ def run(
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, query_fraction=query_fraction,
+                accumulate_grad_batches=int(accumulate),
                 seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
                 final_ckpt_path=None,
