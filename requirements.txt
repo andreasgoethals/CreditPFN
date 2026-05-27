@@ -1,9 +1,9 @@
 # =============================================================================
 # CreditPFN — runtime dependencies
 # =============================================================================
-# Used by every script in src/data/ and (later) src/train, src/eval, src/model.
-# Pinned to conservative major-version ranges. We version-pin minor where the
-# upstream API has changed in a breaking way recently.
+# Pinned to conservative major-version ranges. Audited 2026-05-27 against the
+# actual `import` statements in src/ and the verified TabPFN API in
+# `repositories/TabPFN .txt`.
 #
 # Python version: ** USE 3.11 OR 3.12 ** (do NOT use 3.14)
 # -----------------------------------------------------------------------------
@@ -12,40 +12,47 @@
 # source via MSVC, which crashes mid-build on Windows. Python 3.12 is the
 # sweet spot: every dep below has a cp312 wheel on PyPI as of late 2025.
 #
-# To switch: install Python 3.12 from python.org, then
-#     py -3.12 -m venv .venv --prompt CreditPFN
-#     .venv/Scripts/activate
+# Quick start:
+#     py -3.12 -m venv .venv --prompt CreditPFN          # Windows
+#     python3.12 -m venv .venv --prompt CreditPFN        # Linux / macOS
+#     source .venv/bin/activate                          # Linux / macOS
+#     # .venv/Scripts/activate                           # Windows
 #     python -m pip install --upgrade pip
 #     pip install -r requirements.txt
 #
-# Refresh with:  pip install -r requirements.txt
+#     # IMPORTANT: TabPFN's PyPI release lags behind main. Override with
+#     # the git source so we get the v2.6/v3 API our code relies on:
+#     pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
 # =============================================================================
 
 # --- Core deep-learning stack ------------------------------------------------
 torch>=2.2,<3.0
 
-# --- TabPFN (sklearn API + finetuning wrappers + internal preprocessing) ------
-# Note on versioning: this project's `src/train/` code is written against
-# the **canonical TabPFN API documented in repositories/TabPFN .txt** —
-# specifically:
-#   * load_model_criterion_config returns 4-tuple (list[Architecture],
-#     criterion, list[ArchitectureConfig], InferenceConfig)
+# --- TabPFN ------------------------------------------------------------------
+# This project's code is written against the TabPFN API documented in
+# `repositories/TabPFN .txt` (verified 2026-05-27). Key surface used:
+#   * load_model_criterion_config returns 4-tuple
+#     (list[Architecture], criterion, list[ArchitectureConfig], InferenceConfig)
 #   * version: Literal["v2", "v2.5", "v2.6", "v3"]
 #   * download_if_not_exists keyword
 #   * PerFeatureTransformer.forward(x, y, *, only_return_standard_out,
-#     categorical_inds=list[list[int]], ...) — auto-derives
-#     single_eval_pos from len(y)
-# PyPI's `tabpfn` currently caps at 2.2.x with a different, narrower API
-# (3-tuple return, version="v2" only, `download` keyword). The code will
-# only run end-to-end against the newer release; on VSC install from a
-# Prior Labs wheel / git source providing v2.5+ API, NOT from plain PyPI.
-# Versions ≥6 on PyPI are an unrelated package that grabbed the name.
-tabpfn>=2.2,<3.0
+#     categorical_inds=list[list[int]])  — auto-derives single_eval_pos from len(y)
+#   * tabpfn.preprocessing.ensemble.TabPFNEnsemblePreprocessor (NOT re-exported
+#     from the top-level tabpfn.preprocessing — verified at TabPFN .txt:5876)
+#   * FeatureSchema.from_only_categorical_indices(cats, num_columns=N)
+#     (TabPFN .txt:30229-30233)
+#   * get_resolved_outlier_removal_std(estimator_type="classifier" | "regressor")
+#     (TabPFN .txt:10622-10637)
+#
+# PyPI's `tabpfn` historically lagged main by a few months. Bump the floor
+# whenever PyPI catches up to a known-good release. The git-source install
+# noted above bypasses PyPI entirely.
+tabpfn>=2.2
 
 # --- Scientific / tabular stack ----------------------------------------------
 numpy>=1.26,<3.0
 pandas>=2.1,<3.0
-scipy>=1.11,<2.0                # spatial.distance, stats — used by dedup
+scipy>=1.11,<2.0                # spatial.distance, stats.spearmanr (eval metrics)
 scikit-learn>=1.4,<2.0          # FeatureAgglomeration, StandardScaler,
                                 # LabelEncoder, OrdinalEncoder
 
@@ -58,18 +65,16 @@ optuna>=3.6,<5.0                # HPO for the boosting baselines (TPE sampler)
 rapidfuzz>=3.6,<4.0             # fuzzy column-name matching in dedup
 
 # --- Configuration management ------------------------------------------------
-hydra-core>=1.3,<2.0
+# We use plain OmegaConf for YAML loading + Hydra-style dot-overrides on the
+# CLI (e.g. `train_pipeline.py track=lgd`). Full Hydra (`@hydra.main`) is NOT
+# used anywhere in the codebase — removed from requirements 2026-05-27.
 omegaconf>=2.3,<3.0
 pyyaml>=6.0,<7.0
 
-# --- Logging / progress / experiment tracking --------------------------------
-tqdm>=4.66,<5.0
-wandb>=0.16,<1.0
-
 # --- Plotting + notebooks (data exploration in notebooks/) -------------------
 matplotlib>=3.8,<4.0
-ipykernel>=6.29,<7.0           # required for VS Code / Jupyter to find a kernel
-jupyter>=1.0,<2.0              # convenience: brings the notebook server too
+ipykernel>=6.29,<7.0            # required for VS Code / Jupyter to find a kernel
+jupyter>=1.0,<2.0               # convenience: brings the notebook server too
 
 # --- LoRA adapter (training-time only; see config/train.yaml::tunable.use_lora) ----
 # Wraps TabPFN's PerFeatureTransformer with a LoRA adapter when use_lora=true.

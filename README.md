@@ -29,11 +29,11 @@ yaml, and result layout.
    - [4.7 `papers/` and `repositories/` — reference material](#47-papers-and-repositories--reference-material)
    - [4.8 `checkpoints/` — base and trained TabPFN weights (gitignored)](#48-checkpoints--base-and-trained-tabpfn-weights-gitignored)
    - [4.9 Runtime trees: `data/`, `output/`, `logs/` (gitignored)](#49-runtime-trees-data-output-logs-gitignored)
-   - [4.10 Re-submitting the pipeline (resume semantics + cleanup)](#410-re-submitting-the-pipeline-resume-semantics--cleanup)
-5. [Data pipeline](#5-data-pipeline)
-6. [Training pipeline](#6-training-pipeline)
-7. [Eval pipeline](#7-eval-pipeline)
-8. [References](#8-references)
+5. [Re-submitting the pipeline (resume semantics + cleanup)](#5-re-submitting-the-pipeline-resume-semantics--cleanup)
+6. [Data pipeline](#6-data-pipeline)
+7. [Training pipeline](#7-training-pipeline)
+8. [Eval pipeline](#8-eval-pipeline)
+9. [References](#9-references)
 
 ---
 
@@ -44,7 +44,7 @@ Three pipeline stages, each with one config yaml and one CLI script:
 | Stage | Config | Orchestrator | What it does |
 |---|---|---|---|
 | **Data**  | [`config/data.yaml`](config/data.yaml)   | [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Dedup → register → sanitize → dedup. Writes one sanitized CSV per dataset under `data/processed/`. CPU-only; ~10 minutes for the full 17 PD + 8 LGD corpus. |
-| **Train** | [`config/train.yaml`](config/train.yaml) | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Continued pretraining of every `(base × LR × LoRA)` tuple in the tunable grid. Reads sanitized CSVs directly, draws a fresh per-epoch subsample for each dataset. Writes finetuned `.ckpt` files + provenance + per-epoch CSVs. **Requires a CUDA GPU.** |
+| **Train** | [`config/train.yaml`](config/train.yaml) | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Continued pretraining of every `(base × LR × LoRA × query_fraction × accumulate_grad_batches)` tuple in the tunable grid. Reads sanitized CSVs directly, draws a fresh per-epoch subsample for each dataset, then applies TabPFN's official preprocessor (squashing scaler / quantile / SVD) to every step's data before the model sees it. Writes finetuned `.ckpt` files + provenance + per-epoch CSVs. **Requires a CUDA GPU.** |
 | **Eval**  | [`config/eval.yaml`](config/eval.yaml)   | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | K-fold cross-validation of every model on every held-out test dataset (XGBoost, CatBoost, LogReg / LinReg, untuned and trained TabPFN). Writes one CSV per `(model × dataset × fold)`. **Requires a CUDA GPU.** |
 
 The notebooks under `notebooks/` consume the outputs of all three
@@ -207,7 +207,7 @@ via OmegaConf and accepts Hydra-style overrides on the CLI
 | File | Drives | Main sections |
 |---|---|---|
 | [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths (incl. `data_source: "scratch" \| "data"`), `finetuning.max_rows_per_epoch` + `query_fraction`, dedup detection thresholds, sanitize knobs (max missing rate, FeatureAgglomeration, LGD target clip) |
-| [`config/train.yaml`](config/train.yaml) | `src/train/*` + `scripts/train_pipeline.py` | `tunable.*` (sweep axes: base checkpoint × LR × LoRA), corpus split (Mode A fractions / Mode B explicit IDs), optimizer + scheduler, LoRA cfg, train loop |
+| [`config/train.yaml`](config/train.yaml) | `src/train/*` + `scripts/train_pipeline.py` | `tunable.*` (sweep axes: base checkpoint × LR × LoRA × query_fraction × accumulate_grad_batches), corpus split (Mode A fractions / Mode B explicit IDs), optimizer + scheduler, LoRA cfg, train loop |
 | [`config/eval.yaml`](config/eval.yaml)   | `src/eval/*` + `scripts/eval_pipeline.py` | enabled baselines, K-fold + inner-val fractions, per-fold Optuna budget, `max_rows_per_model` (per-architecture training-context cap), results dir |
 
 What is **deliberately not in YAML**: anything that never changes
@@ -344,7 +344,9 @@ The eval results (`output/results/`), training manifests
 (`output/training/`), figures (`output/figures/`), checkpoints, and
 logs always live on durable storage regardless of `data_source`.
 
-### 4.10 Re-submitting the pipeline (resume semantics + cleanup)
+---
+
+## 5. Re-submitting the pipeline (resume semantics + cleanup)
 
 Every stage is designed to be **idempotent** — re-submitting picks up
 where the previous run left off without redoing work it has already
@@ -386,6 +388,11 @@ base TabPFN weights — only `checkpoints/trained/` is in scope). Full
 file catalogue lives in the module's docstring at
 [`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py).
 
+The util has no heavy dependencies (no `omegaconf`, no `torch`) — it
+runs on a bare login node. It reads `config/{data,eval,train}.yaml`
+when available (via `omegaconf` or `PyYAML`) and falls back to
+hardcoded defaults otherwise.
+
 > **Typical re-submit workflow.** You change something in
 > `config/train.yaml` (different LR sweep, different LoRA targets) and
 > want to retrain. The previous run's checkpoints would now be stale,
@@ -403,7 +410,7 @@ file catalogue lives in the module's docstring at
 
 ---
 
-## 5. Data pipeline
+## 6. Data pipeline
 
 Four stages, in order. The end-to-end driver is
 [`scripts/data_pipeline.py`](scripts/data_pipeline.py); each stage can
@@ -434,7 +441,15 @@ Plus one importable helper used by stages 2 and 3:
 * **`dedup.py`** — eight detection methods per pass per track
   (identifier match, column-name Jaccard + identical shape,
   row-level pandas hash, column-level hash, rounded-row hash, subset
-  detection, fuzzy column-name match). First-encountered wins.
+  detection, fuzzy column-name match). **Diagnostic only**: the stage
+  writes a `doubles_{track}_{pre,post}.csv` report listing every
+  flagged pair with the detection method and confidence label
+  (`high` / `medium` / `low`) but does NOT remove any dataset from
+  the corpus. The first occurrence of a dataset within a track is
+  always considered the canonical one; only subsequent duplicates
+  appear in the report. To act on findings, manually delete a CSV
+  from `data/raw/<track>/` and re-run `pipeline_clean --stages data`
+  followed by `sbatch scripts/slurm/data.slurm`.
 * **`register.py`** — applies surgical fixes, then computes
   per-dataset metadata (n_rows / n_cols, missing rate, class balance,
   target mean/std, content-aware shape hash). Idempotent: re-running
@@ -449,13 +464,19 @@ Plus one importable helper used by stages 2 and 3:
   classification targets, clip LGD targets to [0, 1].
 
 The eval pipeline reads the same sanitized CSVs but applies its own
-K-fold CV split + per-model row cap (see chapter 7). The training
+K-fold CV split + per-model row cap (see chapter 8). The training
 loop reads them via
 `src/train/dataloader.py::ProcessedDatasetLoader`, which draws a
 fresh random subsample of `finetuning.max_rows_per_epoch` rows from
-each parent dataset every epoch and applies a context-only ordinal
-encoder (so query categories unseen in context get `-1`, mirroring
-TabPFN's inference scenario).
+each parent dataset every epoch and then **runs TabPFN's official
+preprocessor** (`TabPFNEnsemblePreprocessor`, see
+`src/train/tabpfn_preprocessing.py`) on the context split — same
+squashing-scaler + quantile + SVD + class-permutation pipeline
+that runs at inference time inside `TabPFNClassifier.predict_proba`.
+This ensures training-time inputs match the distribution the model
+was pretrained on (added 2026-05-27; before this the model was
+trained on raw heavy-tailed features and inference applied
+preprocessing, which produced calibration-collapse — see chat).
 
 ### What sanitize.py deliberately does NOT do
 
@@ -464,27 +485,32 @@ TabPFN's package handles these internally — see
 
 | Step | Why we don't pre-apply it |
 |---|---|
-| Outlier winsorisation | TabPFN's `OUTLIER_REMOVAL_STD = 12.0` (classifier) / `None` (regressor) handles outliers with the right semantics. |
-| `PowerTransformer` / `QuantileTransformer` / `RobustScaler` | TabPFN's per-estimator inference ensemble cycles through these on every fit. |
-| NaN imputation | `NanHandlingEncoderStep` handles NaNs natively (learned default + binary indicator). |
-| Regression target z-normalisation | `RegressorBatch.znorm_space_bardist_` standardises the target internally and inverts at predict time. |
+| Outlier winsorisation | TabPFN's `OUTLIER_REMOVAL_STD = 12.0` (classifier) / `None` (regressor) handles outliers with the right semantics. We invoke it from `src/train/tabpfn_preprocessing.py::apply_outlier_clip` just before each model forward. |
+| `PowerTransformer` / `QuantileTransformer` / `RobustScaler` / `SquashingScaler` / SVD | TabPFN's per-estimator inference ensemble cycles through these on every fit. We invoke them per-step in training (`TabPFNEnsemblePreprocessor.fit_transform_ensemble_members`) and TabPFN re-runs them at inference. |
+| NaN imputation | TabPFN's preprocessor handles NaNs natively (learned default + binary indicator) — no pre-imputation needed. |
+| Regression target z-normalisation | Applied per-step inside `tabpfn_preprocessing.build_ensemble_members` on context-only stats, mirroring TabPFN's `znorm_space_bardist_`. |
+| Class label permutation (data augmentation) | Generated per-step inside `TabPFNEnsemblePreprocessor` via `class_shift_method="shuffle"`. The loop unpermutes the logit columns before the CE loss (matches the inference path at `TabPFN .txt:8511-8523`). |
 
 ---
 
-## 6. Training pipeline
+## 7. Training pipeline
 
 A thin orchestrator over `src/train/`. The single source of truth for
 hyperparameters is [`config/train.yaml`](config/train.yaml), in three
 layers:
 
 * **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint,
-  learning rate, LoRA on/off. Anything genuinely unknown in advance.
-* **Fixed HPs** (single values below) — epochs, AMP, gradient
-  clipping, warmup fraction, per-epoch monitor subsample. Follow
-  TabPFN's `FinetunedTabPFNClassifier` defaults where those are
-  well-tuned. The per-step subsample size lives in
+  learning rate, LoRA on/off, query_fraction, accumulate_grad_batches.
+  Anything genuinely unknown in advance. The full cartesian product is
+  the default sweep (currently **2 bases × 3 LRs × 2 LoRA × 2 qf × 2 acc =
+  48 trials per track**).
+* **Fixed HPs** (single values under `train.*`) — epochs, AMP, gradient
+  clipping, warmup fraction, per-epoch monitor subsample,
+  `n_estimators_finetune` (TabPFN ensemble size during training; 2 per
+  the official `FinetunedTabPFNClassifier`). Follow TabPFN's defaults
+  where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  default 10 000 = Prior Labs' documented default).
+  per-version: 10 000 for v3, 3 000 for v2.6).
 * **Hardcoded in code** — optimizer family (AdamW), betas
   ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
   Never change between runs.
@@ -560,7 +586,7 @@ Each trial writes:
 | Final-epoch weights                                                   | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
 | Provenance sidecar (HPs, train/test IDs, GPU, walltime, …)            | `<descriptive_name>.ckpt.provenance.json`                           |
 | Manifest row consumed by the eval pipeline                            | `output/training/manifests/<run_name>_<track>.csv`                  |
-| Per-epoch CSV (epoch, train_loss, lr, train/test metric, epoch_time)  | `output/training/epochs/<track>/<descriptive_name>.csv`             |
+| Per-epoch CSV (epoch incl. `-1` = pre-FT baseline; train_loss, lr, train/test primary + secondary metric, epoch_time)  | `output/training/epochs/<track>/<descriptive_name>.csv`             |
 | Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                       |
 
 Filename schema:
@@ -604,7 +630,7 @@ without loading the model weights.
 
 ---
 
-## 7. Eval pipeline
+## 8. Eval pipeline
 
 [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py) scores every
 model on every held-out test **dataset** using K-fold cross-validation
@@ -658,9 +684,9 @@ Wide format; NaN where not applicable.
 
 | Group                              | Columns                                                                                          |
 |------------------------------------|--------------------------------------------------------------------------------------------------|
-| Classification — threshold-free    | `roc_auc`, `log_loss`, `pr_auc`                                                                  |
-| Classification — threshold-tuned   | `optimal_threshold` (max-F1 on inner-val), then `f1`, `accuracy`, `precision`, `recall` on test  |
-| Regression                         | `rmse`, `mae`, `r2`, `neg_nll` (TabPFN-only)                                                     |
+| Classification — threshold-free    | `roc_auc`, `log_loss`, `pr_auc`, `brier_score`                                                   |
+| Classification — threshold-tuned   | `optimal_threshold` (max-F1 on inner-val), then `f1`, `accuracy`, `precision`, `recall`, `specificity`, `balanced_accuracy`, `mcc`, `cohen_kappa` on test |
+| Regression                         | `rmse`, `mae`, `median_ae`, `mape`, `r2`, `explained_variance`, `pearson_r`, `spearman_r`, `neg_nll` (TabPFN-only) |
 | Bookkeeping                        | `n_train_rows`, `n_val_rows`, `n_test_rows`, `elapsed_sec`, `status`, `error`, `timestamp`       |
 
 ### Re-runs are idempotent
@@ -720,7 +746,7 @@ df.groupby(["model_name", "model_source"])[
 
 ---
 
-## 8. References
+## 9. References
 
 The full paper library lives under [`papers/`](papers/) with a
 chronological, detailed summary in

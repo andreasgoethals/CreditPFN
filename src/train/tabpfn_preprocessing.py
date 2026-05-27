@@ -217,6 +217,7 @@ def build_ensemble_members(
     # `TabPFNEnsemblePreprocessor` — installed TabPFN doesn't re-export
     # it from the top-level preprocessing module.
     from tabpfn.preprocessing import (
+        FeatureSubsamplingMethod,
         generate_classification_ensemble_configs,
         generate_regression_ensemble_configs,
     )
@@ -237,19 +238,45 @@ def build_ensemble_members(
             get_all_reshape_feature_distribution_preprocessors,
         )
 
+    # ---- 0) translate task-type vocabulary --------------------------- #
+    # **VOCAB GAP — fixed 2026-05-27.** Our codebase uses
+    # ``"classification"`` / ``"regression"`` everywhere (matches
+    # sklearn conventions, our YAML files, and `DatasetRef.task_type`).
+    # TabPFN's API uses the shorter ``"classifier"`` / ``"regressor"``
+    # (matches `BaseEstimator._estimator_type`). Passing our vocabulary
+    # to TabPFN's helpers SILENTLY MISBEHAVES — e.g.
+    # `get_resolved_outlier_removal_std("regression")` returns the
+    # classifier default (12.0σ) because the comparison
+    # `estimator_type == "regressor"` is False, falling through to the
+    # classifier branch. Verified at `TabPFN .txt:10622-10637`.
+    if task_type == "classification":
+        tabpfn_task_type = "classifier"
+    elif task_type == "regression":
+        tabpfn_task_type = "regressor"
+    else:                                                              # pragma: no cover
+        raise ValueError(
+            f"task_type must be 'classification' or 'regression'; got {task_type!r}"
+        )
+
     # ---- 1) build the FeatureSchema ----------------------------------- #
     # FeatureSchema is TabPFN's record of which columns are categorical
     # vs numerical. We tell it which positional indices in our raw X
     # frame are categorical; everything else defaults to numerical.
+    #
+    # **KWARG NAME — fixed 2026-05-27.** The second positional arg is
+    # called ``num_columns`` in TabPFN's source (verified at
+    # ``TabPFN .txt:30229-30233``), not ``n_features``. The earlier
+    # name was a mis-paraphrase; passing ``n_features=...`` raises
+    # TypeError at runtime.
     cols = list(X_ctx_raw.columns)
     cat_positions = [cols.index(c) for c in cat_columns if c in cols]
     feature_schema = FeatureSchema.from_only_categorical_indices(
-        cat_positions, n_features=X_ctx_raw.shape[1],
+        cat_positions, num_columns=int(X_ctx_raw.shape[1]),
     )
 
     # ---- 2) build the per-estimator EnsembleConfig list --------------- #
     outlier_removal_std = inference_config.get_resolved_outlier_removal_std(
-        estimator_type=task_type,
+        estimator_type=tabpfn_task_type,
     )
     if task_type == "classification":
         ensemble_configs = generate_classification_ensemble_configs(
@@ -313,22 +340,36 @@ def build_ensemble_members(
     # inference_config. n_preprocessing_jobs=1 keeps everything in this
     # process (we already have DataLoader workers disabled).
     # enable_gpu_preprocessing=False so the soft-clip step is built
-    # but not run until the forward pass.
+    # but not run until the forward pass (we apply it manually in
+    # `_forward_one_member`).
+    #
+    # **VOCAB GAP** — same translation as for `outlier_removal_std`
+    # above. The constructor's ``task_type`` kwarg expects ``"classifier"``
+    # or ``"regressor"`` (TabPFN .txt:30504).
+    #
+    # **ENUM WRAP** — ``feature_subsampling_method`` is typed as
+    # ``FeatureSubsamplingMethod`` (a ``(str, Enum)`` at TabPFN
+    # .txt:29979). The official call wraps the raw string from
+    # inference_config in the enum constructor (TabPFN .txt:13444).
+    # We mirror that — passing the raw string MAY work due to the str
+    # mix-in, but explicit wrapping is safer across versions.
     preprocessor = TabPFNEnsemblePreprocessor(
         configs=ensemble_configs,
-        n_samples=X_ctx_raw.shape[0],
+        n_samples=int(X_ctx_raw.shape[0]),
         feature_schema=feature_schema,
         random_state=int(rng_seed),
         n_preprocessing_jobs=1,
         keep_fitted_cache=False,
         enable_gpu_preprocessing=False,
-        feature_subsampling_method=inference_config.FEATURE_SUBSAMPLING_METHOD,
+        feature_subsampling_method=FeatureSubsamplingMethod(
+            inference_config.FEATURE_SUBSAMPLING_METHOD
+        ),
         constant_feature_count=inference_config.FEATURE_SUBSAMPLING_CONSTANT_FEATURE_COUNT,
         subsample_samples=inference_config.SUBSAMPLE_SAMPLES,
         importance_top_k_count=inference_config.FEATURE_SUBSAMPLING_IMPORTANCE_TOP_K_COUNT,
         X_train=X_ctx_raw.values if isinstance(X_ctx_raw, pd.DataFrame) else X_ctx_raw,
         y_train=y_ctx_for_pre,
-        task_type=task_type,
+        task_type=tabpfn_task_type,
     )
 
     # ---- 5) fit on context, transform context AND query --------------- #
