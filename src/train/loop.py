@@ -101,10 +101,10 @@ class EpochRecord:
 class TrainingResult:
     """Returned by :func:`train_one_config`.
 
-    No test-set metric here — scoring trained models is the eval
-    pipeline's job. The training loop only produces checkpoints and
-    records the test_dataset_ids in the checkpoint's provenance for
-    the eval pipeline to read later.
+    The training loop produces checkpoints and records summary metrics
+    (epoch=-1 baseline + final epoch train/test scores, divergence flag).
+    Per-(model × dataset) scoring is still the eval pipeline's job; this
+    summary just lets the manifest CSV answer "did this trial help?".
     """
     final_ckpt_path: Path
     history: list[EpochRecord] = field(default_factory=list)
@@ -112,6 +112,20 @@ class TrainingResult:
     n_test_datasets: int = 0
     elapsed_sec: float = 0.0
     descriptive_name: str = ""           # the basename of final_ckpt_path
+
+    # NEW (2026-05-28) — summary fields surfaced through to the manifest.
+    diverged: bool = False               # True if the loop aborted early
+    diverged_at_epoch: int | None = None # last good epoch index (None if no divergence)
+    diverge_reason: str = ""             # short tag — "loss_const" / "auc_random" / "amp_skip_storm"
+    baseline_train_metric: float = float("nan")    # epoch=-1, primary metric
+    baseline_test_metric:  float = float("nan")
+    final_train_metric:    float = float("nan")    # last good epoch
+    final_test_metric:     float = float("nan")
+    final_train_loss:      float = float("nan")    # CE for PD, NLL for LGD
+    final_secondary_train: float = float("nan")    # brier (PD) / r2 (LGD)
+    final_secondary_test:  float = float("nan")
+    primary_metric_name:   str = ""                # "roc_auc" / "rmse"
+    secondary_metric_name: str = ""                # "brier_score" / "r2"
 
 
 # --------------------------------------------------------------------------- #
@@ -1597,6 +1611,86 @@ def train_one_config(
                 epoch_dt, elapsed,
             )
 
+        # ---- Divergence detection — early abort on collapse ------------ #
+        # We watch the LAST ``divergence_patience`` epoch records and
+        # trip if any of these heuristics matches the published
+        # collapse signature from the 2026-05-28 PD run (trials a0/a1):
+        #   * loss CONSTANT to ~6 sig figs across all watched epochs
+        #     (the model is dead — outputs deterministic garbage)
+        #   * train AND test metric == 0.5 (PD) or NaN for both
+        #     (classifier predicts random; regressor produces NaN)
+        #   * fraction of AMP scaler skips in the watched epochs > 50 %
+        #     (most steps are being thrown away)
+        # When tripped, we break out of the epoch loop, set
+        # diverged=True on the TrainingResult, and STILL save the
+        # checkpoint (so the user can inspect what went wrong). The
+        # caller writes a status="DIVERGED" row to the manifest.
+        diverge_patience = int(getattr(cfg.train, "divergence_patience", 5))
+        recent = history[-diverge_patience:]
+        if len(recent) == diverge_patience:
+            losses = [r.train_loss for r in recent if not math.isnan(r.train_loss)]
+            test_metrics_recent = [r.test_metric for r in recent]
+            train_metrics_recent = [r.train_metric for r in recent]
+
+            loss_constant = (
+                len(losses) == diverge_patience
+                and max(losses) - min(losses) < 1e-4
+            )
+            # For PD (ROC-AUC primary), AUC=0.5 means random — exact
+            # equality after the dead-model collapse.
+            # For LGD (RMSE primary), the analogue is NaN train/test.
+            auc_random = (
+                track_primary_metric == "roc_auc"
+                and all(
+                    not math.isnan(t) and not math.isnan(tr)
+                    and abs(t - 0.5) < 1e-4 and abs(tr - 0.5) < 1e-4
+                    for t, tr in zip(test_metrics_recent, train_metrics_recent)
+                )
+            )
+            metric_nan = all(
+                math.isnan(t) and math.isnan(tr)
+                for t, tr in zip(test_metrics_recent, train_metrics_recent)
+            )
+            if loss_constant or auc_random or metric_nan:
+                reason = (
+                    "loss_const" if loss_constant
+                    else "auc_random" if auc_random
+                    else "metric_nan"
+                )
+                LOGGER.error(
+                    "DIVERGED at epoch=%d after %d-epoch patience window "
+                    "(reason=%s). Aborting early. Last good epoch=%d.",
+                    epoch, diverge_patience, reason,
+                    epoch - diverge_patience,
+                )
+                diverged = True
+                diverged_at_epoch = max(0, epoch - diverge_patience)
+                diverge_reason = reason
+                break
+
+    # ---- 5b) gather summary metrics from the history ------------------ #
+    # Pulled out into local vars so the TrainingResult constructor below
+    # has the per-trial baseline + last-good numbers in one place. These
+    # also get written through to the manifest CSV.
+    diverged = locals().get("diverged", False)
+    diverged_at_epoch = locals().get("diverged_at_epoch", None)
+    diverge_reason = locals().get("diverge_reason", "")
+    # Baseline row (epoch=-1) is always the first entry in history when
+    # the per-epoch monitor is enabled.
+    baseline_row = next(
+        (r for r in history if r.epoch == -1), None,
+    )
+    # Last good epoch = last non-divergent epoch. When diverged=True,
+    # we skip the tail of NaN/constant rows.
+    last_good = None
+    if diverged and diverged_at_epoch is not None:
+        for r in reversed(history):
+            if r.epoch >= 0 and r.epoch <= diverged_at_epoch:
+                last_good = r
+                break
+    if last_good is None:
+        last_good = next((r for r in reversed(history) if r.epoch >= 0), None)
+
     # ---- 6) save final weights + permanent provenance --------------------- #
     train_dataset_ids = train_ids        # already computed at step (1)
     test_dataset_ids  = test_ids
@@ -1687,6 +1781,74 @@ def train_one_config(
     # ONLY as metadata so the eval can identify which test datasets
     # correspond to this checkpoint without re-running the splitter.
 
+    # ---- 7) end-of-trial summary table -------------------------------- #
+    # A compact text table the user sees AT the bottom of every log
+    # file. Carries the same numbers that go into the manifest CSV row,
+    # but human-readable. Critical when scanning a sweep of 48+ logs
+    # to find which trials actually improved over baseline.
+    if baseline_row is not None and last_good is not None:
+        pm = baseline_row.metric_name or "metric"
+        sm = baseline_row.secondary_metric_name
+        delta_train = last_good.train_metric - baseline_row.train_metric
+        delta_test  = last_good.test_metric  - baseline_row.test_metric
+        # Sign meaning for the primary metric: higher = better for roc_auc, lower = better for rmse.
+        higher_better = (pm == "roc_auc")
+        def _trend(d: float) -> str:
+            if math.isnan(d):
+                return "  ?  "
+            sign = "+" if d >= 0 else "−"
+            magnitude = abs(d)
+            good = (d > 0) == higher_better
+            marker = "↑" if good else "↓"
+            return f" {marker}{sign}{magnitude:.4f}"
+        LOGGER.info("")
+        LOGGER.info("─" * 78)
+        LOGGER.info("  TRIAL SUMMARY  (%s)", save_path.name)
+        LOGGER.info("─" * 78)
+        LOGGER.info(
+            "  %-22s %-12s %-12s %-12s",
+            "stage", f"{pm}(train)", f"{pm}(test)", "train_loss",
+        )
+        LOGGER.info(
+            "  %-22s %-12.4f %-12.4f %-12s",
+            "epoch=-1 baseline",
+            baseline_row.train_metric, baseline_row.test_metric, "n/a",
+        )
+        last_epoch_tag = (
+            f"epoch={last_good.epoch} (DIVERGED@{diverged_at_epoch})"
+            if diverged else f"epoch={last_good.epoch} (final)"
+        )
+        LOGGER.info(
+            "  %-22s %-12.4f %-12.4f %-12.4f",
+            last_epoch_tag,
+            last_good.train_metric, last_good.test_metric, last_good.train_loss,
+        )
+        LOGGER.info(
+            "  %-22s %-12s %-12s",
+            "Δ (lift over baseline)",
+            _trend(delta_train).strip(), _trend(delta_test).strip(),
+        )
+        if sm:
+            LOGGER.info(
+                "  %-22s %-12.4f %-12.4f",
+                f"baseline {sm}",
+                baseline_row.secondary_train_metric,
+                baseline_row.secondary_test_metric,
+            )
+            LOGGER.info(
+                "  %-22s %-12.4f %-12.4f",
+                f"final {sm}",
+                last_good.secondary_train_metric,
+                last_good.secondary_test_metric,
+            )
+        LOGGER.info(
+            "  %-22s %s",
+            "status",
+            f"DIVERGED ({diverge_reason})" if diverged else "OK",
+        )
+        LOGGER.info("─" * 78)
+        LOGGER.info("")
+
     elapsed = time.monotonic() - t0
     return TrainingResult(
         final_ckpt_path=save_path,
@@ -1695,4 +1857,36 @@ def train_one_config(
         n_test_datasets=len(split.test),
         elapsed_sec=elapsed,
         descriptive_name=save_path.name,
+        diverged=bool(diverged),
+        diverged_at_epoch=diverged_at_epoch,
+        diverge_reason=str(diverge_reason),
+        baseline_train_metric=(
+            float(baseline_row.train_metric) if baseline_row is not None else float("nan")
+        ),
+        baseline_test_metric=(
+            float(baseline_row.test_metric) if baseline_row is not None else float("nan")
+        ),
+        final_train_metric=(
+            float(last_good.train_metric) if last_good is not None else float("nan")
+        ),
+        final_test_metric=(
+            float(last_good.test_metric) if last_good is not None else float("nan")
+        ),
+        final_train_loss=(
+            float(last_good.train_loss) if last_good is not None else float("nan")
+        ),
+        final_secondary_train=(
+            float(last_good.secondary_train_metric) if last_good is not None else float("nan")
+        ),
+        final_secondary_test=(
+            float(last_good.secondary_test_metric) if last_good is not None else float("nan")
+        ),
+        primary_metric_name=(
+            str(last_good.metric_name) if last_good is not None
+            else (str(baseline_row.metric_name) if baseline_row is not None else "")
+        ),
+        secondary_metric_name=(
+            str(last_good.secondary_metric_name) if last_good is not None
+            else (str(baseline_row.secondary_metric_name) if baseline_row is not None else "")
+        ),
     )

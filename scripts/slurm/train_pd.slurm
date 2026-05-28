@@ -37,26 +37,50 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=04:00:00
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-47%4   # 48 trials (2 bases × 3 LRs × 2 LoRA × 2 qf × 2 acc).
+#SBATCH --array=0-63%8   # 64 trials (2 bases × 4 LRs × 2 LoRA × 2 qf × 2 acc).
                          # Recompute via
                          #   `python scripts/train_pipeline.py --list-trials track=pd`.
                          # Over-sizing is safe: surplus tasks exit 0 cleanly
                          # (see scripts/train_pipeline.py soft no-op).
                          #
+                         # **Resource-asks tightened 2026-05-28** based on
+                         # VSC docs (`repositories/VSC Documentation.txt`):
+                         #   "Short jobs may benefit from back fill, i.e.,
+                         #    if the scheduler finds a gap … long enough to
+                         #    run that job before it has enough resources
+                         #    to start a large higher-priority parallel job."
+                         # AND:
+                         #   "On some clusters, a short walltime will give
+                         #    you a higher priority."
+                         # AND:
+                         #   "Many of our clusters have a stricter limit on
+                         #    the number of long-running jobs than on the
+                         #    number of jobs with a shorter walltime."
+                         #
+                         # So shorter `--time` → better queue position via
+                         # backfill + potentially higher concurrent-job
+                         # limit. Halving the time-budget from 04:00:00 to
+                         # 02:00:00 matches the actual 50-epoch wall time:
+                         #   * Full-FT trial: ~35 min observed (a2 at 89 epochs took 70 min)
+                         #   * LoRA trial:    ~5  min observed
+                         # 02:00:00 gives ~3× margin over the worst case,
+                         # which covers slow node + per-epoch eval overhead.
+                         #
+                         # `%8` (up from `%4`) — with the time-budget cut in
+                         # half, doubling concurrency keeps the total sweep
+                         # wall-time roughly constant (~4 h) while staying
+                         # well under VSC's user-level job count limits.
+                         #
                          # `cpus-per-task=16` matches the documented gpu_h100
-                         # per-GPU limit (16 cores per GPU; VSC docs at
-                         # `repositories/VSC Documentation.txt`, the
-                         # "cpu_resource_limits_in_gpu_jobs" table). Going
-                         # under 16 leaves cores unused; going over triggers
-                         # a VSC warning. `mem=64G` is well within the
-                         # 187 200 MiB per-GPU budget.
+                         # per-GPU limit (16 cores per GPU). `mem=64G` is
+                         # well within the 187 200 MiB per-GPU budget.
 
 # Stagger array starts to avoid I/O storms on shared scratch.
 sleep $((RANDOM % 30 + 1))

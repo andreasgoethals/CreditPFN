@@ -169,6 +169,19 @@ def _clean_one_dataset(
             get_all_reshape_feature_distribution_preprocessors,
         )
 
+    # Silence pandas's noisy `invalid value encountered in cast` warnings
+    # that fire inside `clean_data`'s `fix_dtypes` when checking whether
+    # a float-with-NaN column can be safely cast to int. Cosmetic — does
+    # not affect the result (the cast is wrapped in an `if` that
+    # gracefully falls through). Filed as P4 in chat 2026-05-28.
+    import warnings as _warnings
+    _warnings.filterwarnings(
+        "ignore",
+        message="invalid value encountered in cast",
+        category=RuntimeWarning,
+        module=r"pandas\.core\.dtypes\.cast",
+    )
+
     # Vocab translation (see build_ensemble_members for the rationale).
     if task_type == "classification":
         tabpfn_task_type = "classifier"

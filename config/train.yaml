@@ -42,21 +42,20 @@ tunable:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"         # v3 synthetic-only (current default)
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"     # v2.6 synthetic-only
 
-  # LR grid. Documented published values for context:
-  #   * Real-TabPFN (Garg 2025) uses 3e-7 — by far the smallest. They
-  #     emphasise catastrophic forgetting as the dominant risk for
-  #     continued pretraining → LR has to be tiny. NOT YET in our
-  #     grid; user decided 2026-05-27 to first see whether the
-  #     existing range surfaces a clear learning signal before
-  #     widening.
-  #   * `FinetunedTabPFNClassifier` default = 1e-5 (`TabPFN .txt:26800`).
-  #   * Rubachev (2025) sweeps `logspace(5e-6, 5e-4)` for single-dataset
-  #     finetuning.
-  # Our grid brackets the FinetunedTabPFNClassifier default and the
-  # upper-Rubachev band. If 1e-5 turns out to still be too high
-  # (calibration collapse + frequent AMP-fp16 inf gradients), add
-  # 1e-6 (or 3e-7) to this list and re-run.
-  learning_rates: [1.0e-5, 5.0e-5, 1.0e-4]
+  # LR grid (2026-05-28). Brackets the documented published values:
+  #   * 3e-7 — Real-TabPFN (Garg 2025). Smallest; designed to prevent
+  #     catastrophic forgetting of the synthetic prior during continued
+  #     pretraining.
+  #   * 1e-6 — interpolates between Real-TabPFN and TabPFN's
+  #     FinetunedTabPFNClassifier default.
+  #   * 1e-5 — `FinetunedTabPFNClassifier` default (TabPFN .txt:26800)
+  #     and Rubachev (2025) middle-band.
+  #   * 5e-5 — high end of Rubachev's safe regime. Above 5e-5 (we
+  #     tried 1e-4 on 2026-05-27) the no-LoRA + qf=0.20 trials
+  #     diverged within ~35 epochs. Divergence detection (added
+  #     2026-05-28) catches these but the trial is wasted compute.
+  # 4 LR values × 2 LoRA × 2 qf × 2 acc × 2 bases = 64 trials per track.
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 5.0e-5]
 
   # Whether to wrap the base model with a LoRA adapter before training
   # (Hu et al. 2021). With `use_lora: true` the base TabPFN weights are
@@ -156,7 +155,17 @@ lora:
 # =============================================================================
 
 train:
-  epochs: 100                           # no early stopping — fixed-epoch
+  # Fixed-epoch training (no validation-based early stopping; see
+  # README.md "Design notes — no validation set" for rationale).
+  # Reduced 100 → 50 on 2026-05-28 after the log analysis showed:
+  #   * Loss stabilises by epoch 30 across all stable trials.
+  #   * LoRA reaches best test AUC around epoch 60 but the gain
+  #     epoch 50 → 60 is marginal (<0.005 AUC).
+  #   * Wasted compute on diverging trials runs only until epoch ~36
+  #     for the qf=0.20 + no-LoRA case anyway (divergence detection
+  #     now aborts at that point).
+  # 50 epochs ≈ 35-min full-FT trial / 5-min LoRA trial.
+  epochs: 50
   # `accumulate_grad_batches` was moved into `tunable` on 2026-05-27 so
   # we sweep both {1, 4}; see that block for the rationale.
   grad_clip_norm: 1.0
@@ -184,7 +193,20 @@ train:
   # primary metric is ROC-AUC for PD (classification) and RMSE for LGD
   # (regression). Set `epoch_eval_subsample_samples` to 0 to disable the
   # check (saves wall-clock for debug runs).
-  epoch_eval_subsample_samples: 500
+  #
+  # What `epoch_eval_subsample_samples=500` actually means: for EACH of
+  # the train and test datasets (17 datasets for PD, 8 for LGD) at end
+  # of every epoch, sample 500 rows, split into ctx/qry by the trial's
+  # qf, run TabPFN with `epoch_eval_n_estimators` ensemble members,
+  # compute ROC-AUC (or RMSE/R²/brier) on the query rows, average
+  # across all datasets. Binomial standard error on an AUC point
+  # estimate at 500 rows × ~3 % positive rate is ~0.02 — i.e. the
+  # per-epoch AUC is a *trend* indicator with about ±0.02 noise. The
+  # final reportable AUC comes from `scripts/eval_pipeline.py`, which
+  # uses the full datasets via K-fold CV. Keep at 500 unless you need
+  # crisper trend curves (then bump to 1000 — doubles the per-epoch
+  # eval wall time but halves the noise).
+  epoch_eval_subsample_samples: 2000
   # Per-epoch eval uses TabPFN ensemble inference (sklearn API) so the
   # numbers in the training log are directly comparable to the final
   # `scripts/eval_pipeline.py` numbers. 32 matches `eval.tabpfn_n_estimators`
@@ -198,6 +220,21 @@ train:
   # Includes the pre-finetuning baseline emitted as epoch=-1 in the
   # per-epoch CSV, which is the score every finetuned epoch must beat.
   epoch_eval_n_estimators: 32
+
+  # Divergence detection — early-abort safeguard added 2026-05-28
+  # after the qf=0.20 + no-LoRA trials catastrophically diverged (loss
+  # collapsed to a constant value, AUC pegged at 0.5 random, AMP scaler
+  # skipping >50% of steps, model produced NaN gradients forever).
+  # The loop watches the last N epochs and aborts when:
+  #   * loss is constant to 6 sig figs across all watched epochs, OR
+  #   * train AND test AUC are both 0.5 (PD), OR
+  #   * train AND test metrics are both NaN
+  # When tripped, the trial saves the (broken) checkpoint, marks the
+  # manifest row as status="DIVERGED" with the reason, and exits
+  # cleanly so the SLURM array task doesn't waste its full time slot.
+  # Patience=5 means we need 5 consecutive matching epochs before
+  # we trust the verdict.
+  divergence_patience: 5
 
 
 # =============================================================================

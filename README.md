@@ -627,6 +627,40 @@ without loading the model weights.
   scores the model on a small subsample of each train- and
   test-dataset (ROC-AUC for PD, RMSE for LGD). Cheap (~500 rows per
   chunk) but enough to see whether the model is still improving.
+* **Divergence detection + early abort** — when the loss stays
+  constant, or AUC pegs at 0.5 (random), or AMP scaler skips >50 %
+  of recent steps, the training loop aborts and records
+  `status=DIVERGED` in the manifest. This prevents wasting 3+ hours
+  of GPU on a dead model (observed in `train_pd_*qf20_acc1*` runs of
+  2026-05-28 before the safeguard was added).
+
+### Optimization objective — why CE / NLL, not AUC
+
+* **PD (classifier): `torch.nn.CrossEntropyLoss`.** Three reasons:
+  (i) CE is differentiable everywhere, AUC isn't (it's a step function
+  in predictions — gradient is 0 almost everywhere); (ii) CE optimizes
+  BOTH rank-ordering AND probability calibration, while AUC optimizes
+  only rank — but credit-risk regulation (Basel III) requires calibrated
+  PD probabilities for expected-loss and capital calculations;
+  (iii) TabPFN was pretrained with CE — switching to a different
+  objective for finetuning would create a train/finetune mismatch that
+  damages the synthetic prior. Differentiable surrogates for AUC
+  (Wilcoxon-style, ROC-Star) exist but are unstable and typically used
+  as a regularizer added to CE, not a replacement. We track AUC as the
+  primary *evaluation* metric (more interpretable across imbalance
+  levels) but optimize CE.
+* **LGD (regressor): bar-distribution NLL.** TabPFN's regressor head
+  emits *logits over a discrete histogram* (the "bar distribution",
+  Müller et al. 2023). Its NLL `−log(density)` is what TabPFN was
+  pretrained on, and crucially it trains the **uncertainty estimate**
+  simultaneously with the point estimate — a Gaussian-NLL alternative
+  would force unimodal homoscedastic predictions; an MSE alternative
+  would throw away the uncertainty quantification that's the whole
+  point of TabPFN's regression head. Regulators care about the full
+  loss distribution, not just the mean. Negative loss values are
+  expected: a bar-distribution NLL `= −log(density)` can be negative
+  whenever the density exceeds 1.0 (narrow histogram buckets, sharp
+  predictions). RMSE / R² are tracked as *evaluation* metrics.
 
 ---
 

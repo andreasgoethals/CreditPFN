@@ -139,8 +139,108 @@ def resolve_run_log(
 
 
 # --------------------------------------------------------------------------- #
+# Colored / structured formatter
+# --------------------------------------------------------------------------- #
+#
+# We use ANSI escape codes for color. They render correctly in
+#   * modern terminals (xterm, iTerm, Windows Terminal, VS Code)
+#   * `less -R` / `cat` on Linux (preserve raw bytes)
+#   * Most editors that read SLURM log files (Sublime, VS Code, vim)
+# Plain text editors WILL show the raw escape codes. The runtime-color
+# decision is made per-handler: stream handler gets colors (terminals
+# are usually capable); file handler gets plain text (logs are mostly
+# read by editors).
+
+# Standard ANSI 8-color codes.
+_ANSI_RESET   = "\033[0m"
+_ANSI_BOLD    = "\033[1m"
+_ANSI_DIM     = "\033[2m"
+_ANSI_RED     = "\033[31m"
+_ANSI_GREEN   = "\033[32m"
+_ANSI_YELLOW  = "\033[33m"
+_ANSI_BLUE    = "\033[34m"
+_ANSI_MAGENTA = "\033[35m"
+_ANSI_CYAN    = "\033[36m"
+_ANSI_WHITE   = "\033[37m"
+
+_LEVEL_COLORS = {
+    "DEBUG":    _ANSI_DIM,
+    "INFO":     _ANSI_CYAN,
+    "WARNING":  _ANSI_YELLOW + _ANSI_BOLD,
+    "ERROR":    _ANSI_RED + _ANSI_BOLD,
+    "CRITICAL": _ANSI_RED + _ANSI_BOLD,
+}
+
+
+class _StructuredFormatter(logging.Formatter):
+    """Compact, aligned, optionally-colored log line.
+
+    Output layout:
+        HH:MM:SS [LEVEL] module : message
+        |       | |    | |    | |
+        +-- 8c  | +-7c-+ +18c-+ +-- variable
+                +-- bracketed, padded
+
+    Where colors are applied to the level tag and (where helpful) the
+    module name. Designed so that visual scanning of a 30 MB SLURM log
+    in `less` is easy — every line type has a distinct color.
+    """
+
+    def __init__(self, *, use_color: bool):
+        super().__init__()
+        self.use_color = use_color
+
+    def format(self, record: logging.LogRecord) -> str:
+        ts = self.formatTime(record, "%H:%M:%S")
+        lvl = record.levelname
+        # Shorten verbose module names so the column stays aligned.
+        name = record.name
+        if name == "__main__":
+            name = "pipeline"
+        elif name.startswith("src.train.loop"):
+            name = "train.loop"
+        elif name.startswith("src.train.tabpfn_preprocessing"):
+            name = "tabpfn.preproc"
+        elif name.startswith("src.train."):
+            name = name.removeprefix("src.train.")
+        elif name.startswith("src.eval."):
+            name = name.removeprefix("src.eval.")
+        elif name.startswith("src.data."):
+            name = name.removeprefix("src.data.")
+        # Pad / truncate to a fixed width so columns align.
+        name = (name[:18]).ljust(18)
+        lvl_short = lvl[:5].ljust(5)
+        msg = record.getMessage()
+
+        if self.use_color:
+            colored_lvl = (
+                f"{_LEVEL_COLORS.get(lvl, '')}{lvl_short}{_ANSI_RESET}"
+            )
+            return f"{ts} [{colored_lvl}] {_ANSI_DIM}{name}{_ANSI_RESET} : {msg}"
+        return f"{ts} [{lvl_short}] {name} : {msg}"
+
+
+# --------------------------------------------------------------------------- #
 # Root-logger wiring (called by every script's ``run()``)
 # --------------------------------------------------------------------------- #
+
+
+def _terminal_supports_color() -> bool:
+    """Cheap heuristic: stdout is a TTY AND not explicitly disabled.
+
+    Respects the standard ``NO_COLOR`` env var
+    (https://no-color.org). ``FORCE_COLOR`` overrides the TTY check
+    (useful for `less -R` style consumers).
+    """
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    try:
+        import sys
+        return bool(getattr(sys.stdout, "isatty", lambda: False)())
+    except Exception:                                                  # pragma: no cover
+        return False
 
 
 def setup_logging(
@@ -156,6 +256,16 @@ def setup_logging(
     ``exec > $LOG`` already captures stdout to the same file) so the
     log file isn't double-written. Outside slurm, both handlers fire
     so the user sees live output AND the file is created locally.
+
+    **Formatter (2026-05-28):** structured + colored. Stream handler
+    gets ANSI colors when the runtime supports them (TTY, FORCE_COLOR,
+    no NO_COLOR); file handler stays plain text so the log files don't
+    contain escape codes that confuse plain editors. The format is:
+
+        HH:MM:SS [LEVEL] module-padded : message
+
+    which packs ~25 fewer characters per line than the previous
+    fully-qualified-module-name format → wider room for the message.
     """
     root = logging.getLogger()
     root.setLevel(level)
@@ -167,18 +277,19 @@ def setup_logging(
         root.removeHandler(h)
         h.close()
 
-    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-
+    # Stream handler: colored when possible.
     stream = logging.StreamHandler()
     stream.setLevel(level)
-    stream.setFormatter(fmt)
+    stream.setFormatter(_StructuredFormatter(use_color=_terminal_supports_color()))
     root.addHandler(stream)
 
     if not _running_under_slurm():
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         fh = logging.FileHandler(Path(log_path), mode=file_mode, encoding="utf-8")
         fh.setLevel(level)
-        fh.setFormatter(fmt)
+        # File handler: plain — log files are usually read in editors
+        # which don't render ANSI codes.
+        fh.setFormatter(_StructuredFormatter(use_color=False))
         root.addHandler(fh)
 
     for handler in extra_handlers or ():

@@ -11,21 +11,23 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=04:00:00
+#SBATCH --time=01:30:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-47%4   # 48 trials (2 bases × 3 LRs × 2 LoRA × 2 qf × 2 acc).
-                         # Recompute via
-                         #   `python scripts/train_pipeline.py --list-trials track=lgd`.
-                         # Over-sizing is safe: surplus tasks exit 0 cleanly.
+#SBATCH --array=0-63%8   # 64 trials (2 bases × 4 LRs × 2 LoRA × 2 qf × 2 acc).
+                         # See train_pd.slurm for the full SBATCH resource-
+                         # tightening rationale (backfill, queue priority).
                          #
-                         # `cpus-per-task=16` matches the documented gpu_h100
-                         # per-GPU limit (VSC docs, gpu_h100 row of the
-                         # cpu_resource_limits_in_gpu_jobs table).
+                         # LGD has a smaller corpus (6 train + 2 test
+                         # datasets vs PD's 12 + 5), so wall times are
+                         # ~30 % shorter than PD. 01:30:00 is comfortably
+                         # above the worst observed:
+                         #   * Full-FT @ 50 epochs: ~25 min
+                         #   * LoRA   @ 50 epochs: ~4 min
 
 sleep $((RANDOM % 30 + 1))
 

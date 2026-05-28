@@ -250,12 +250,15 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
 class RunRow:
     """One row of the per-track training manifest.
 
-    No test-set metric — the training pipeline does not score models.
-    Use `scripts/eval_pipeline.py` for that. The eval reads the
-    `final_ckpt_path` and the corresponding sidecar
-    ``<final_ckpt_path>.provenance.json`` to recover the
-    ``test_dataset_ids`` for this checkpoint.
+    The training pipeline does NOT score the trained checkpoint via the
+    full eval pipeline (``scripts/eval_pipeline.py`` for that, which does
+    K-fold CV against every baseline). What the row DOES include is the
+    epoch=-1 baseline (= pre-finetuning unmodified base TabPFN) and the
+    last-good epoch's per-trial metrics, so you can answer at-a-glance:
+    "did this trial improve over baseline, by how much, and on which
+    metric?".
     """
+    # Identity & hyperparameters
     track: str
     base_checkpoint: str
     learning_rate: float
@@ -263,12 +266,34 @@ class RunRow:
     query_fraction: float             # 0.20 / 0.40, see cfg.tunable.query_fractions
     accumulate_grad_batches: int      # 1 / 4, see cfg.tunable.accumulate_grad_batches
     seed: int
+
+    # Corpus
     n_train_datasets: int
     n_test_datasets: int
+
+    # Outputs
     final_ckpt_path: str | None
     elapsed_sec: float
-    status: str                       # "OK" | "FAIL"
+    status: str                       # "OK" | "FAIL" | "SKIP" | "DIVERGED"
     error: str | None
+
+    # NEW (2026-05-28) — per-trial summary metrics.
+    # `primary_metric_name` = "roc_auc" for PD, "rmse" for LGD.
+    # `secondary_metric_name` = "brier_score" for PD, "r2" for LGD.
+    # The `baseline_*` numbers come from epoch=-1 (pre-FT) so a quick
+    # comparison `final - baseline` shows the lift from finetuning.
+    primary_metric_name:    str   = ""
+    baseline_train_metric:  float = float("nan")
+    baseline_test_metric:   float = float("nan")
+    final_train_metric:     float = float("nan")
+    final_test_metric:      float = float("nan")
+    final_train_loss:       float = float("nan")
+    secondary_metric_name:  str   = ""
+    final_secondary_train:  float = float("nan")
+    final_secondary_test:   float = float("nan")
+    # Divergence record — only populated when status == "DIVERGED".
+    diverged_at_epoch:      int | None = None
+    diverge_reason:         str   = ""
 
 
 def _write_csv(rows: list[RunRow], path: Path, *, append: bool) -> None:
@@ -522,7 +547,23 @@ def run(
                 n_test_datasets=result.n_test_datasets,
                 final_ckpt_path=str(result.final_ckpt_path),
                 elapsed_sec=result.elapsed_sec,
-                status="OK", error=None,
+                status=("DIVERGED" if result.diverged else "OK"),
+                error=(
+                    f"diverged@epoch={result.diverged_at_epoch}"
+                    f"({result.diverge_reason})"
+                    if result.diverged else None
+                ),
+                primary_metric_name=result.primary_metric_name,
+                baseline_train_metric=result.baseline_train_metric,
+                baseline_test_metric=result.baseline_test_metric,
+                final_train_metric=result.final_train_metric,
+                final_test_metric=result.final_test_metric,
+                final_train_loss=result.final_train_loss,
+                secondary_metric_name=result.secondary_metric_name,
+                final_secondary_train=result.final_secondary_train,
+                final_secondary_test=result.final_secondary_test,
+                diverged_at_epoch=result.diverged_at_epoch,
+                diverge_reason=result.diverge_reason,
             ))
         except Exception as exc:                           # noqa: BLE001
             failures += 1
