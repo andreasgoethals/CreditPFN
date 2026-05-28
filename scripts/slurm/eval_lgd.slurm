@@ -13,7 +13,7 @@
 #SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
@@ -22,6 +22,10 @@
                           # Recompute the tight bound with:
                           #   python scripts/eval_pipeline.py --list-tasks track=lgd
                           # …or just submit via scripts/slurm/submit_full_pipeline.sh.
+                          #
+                          # `cpus-per-task=16` matches the documented gpu_h100
+                          # per-GPU limit (VSC docs gpu_h100 row of the
+                          # cpu_resource_limits_in_gpu_jobs table).
 
 sleep $((RANDOM % 15 + 1))
 

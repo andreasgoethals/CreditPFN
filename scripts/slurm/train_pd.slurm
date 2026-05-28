@@ -40,14 +40,23 @@
 #SBATCH --time=04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-47%4   # 48 trials (2 bases x 4 LRs x 2 LoRA x 3 qf). Recompute
-                         # via `python scripts/train_pipeline.py --list-trials track=pd`.
+#SBATCH --array=0-47%4   # 48 trials (2 bases × 3 LRs × 2 LoRA × 2 qf × 2 acc).
+                         # Recompute via
+                         #   `python scripts/train_pipeline.py --list-trials track=pd`.
                          # Over-sizing is safe: surplus tasks exit 0 cleanly
                          # (see scripts/train_pipeline.py soft no-op).
+                         #
+                         # `cpus-per-task=16` matches the documented gpu_h100
+                         # per-GPU limit (16 cores per GPU; VSC docs at
+                         # `repositories/VSC Documentation.txt`, the
+                         # "cpu_resource_limits_in_gpu_jobs" table). Going
+                         # under 16 leaves cores unused; going over triggers
+                         # a VSC warning. `mem=64G` is well within the
+                         # 187 200 MiB per-GPU budget.
 
 # Stagger array starts to avoid I/O storms on shared scratch.
 sleep $((RANDOM % 30 + 1))

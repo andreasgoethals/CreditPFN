@@ -68,7 +68,6 @@ Reference citations
 
 from __future__ import annotations
 
-import functools
 import logging
 from dataclasses import dataclass
 from typing import Any, Sequence
@@ -156,7 +155,6 @@ def _clean_one_dataset(
     stay stable per dataset — exactly the published behaviour.
     """
     from tabpfn.preprocessing import (
-        FeatureSubsamplingMethod,
         clean_data,
         generate_classification_ensemble_configs,
         generate_regression_ensemble_configs,
@@ -170,7 +168,6 @@ def _clean_one_dataset(
         from tabpfn.preprocessing.steps.reshape_feature_distributions_step import (  # type: ignore[import-not-found]
             get_all_reshape_feature_distribution_preprocessors,
         )
-    del FeatureSubsamplingMethod                                       # imported for completeness; unused here
 
     # Vocab translation (see build_ensemble_members for the rationale).
     if task_type == "classification":
@@ -423,44 +420,25 @@ def build_ensemble_members(
     # the test suite (which mocks load_tabpfn_for_training) to be able
     # to import this module without paying the cost.
     #
-    # IMPORTANT — exact import paths are version-sensitive. Verified
-    # against the upstream TabPFN source at
-    # ``repositories/TabPFN .txt:7067-7082`` (classifier path) and
-    # ``:12635-12651`` (regressor path):
+    # IMPORTANT — exact import paths verified against the installed
+    # TabPFN source (mirrored at ``repositories/TabPFN .txt``):
     #
     #   * ``TabPFNEnsemblePreprocessor`` lives in
-    #     ``tabpfn.preprocessing.ensemble`` (NOT in
-    #     ``tabpfn.preprocessing``).
-    #   * ``generate_classification_ensemble_configs`` /
-    #     ``generate_regression_ensemble_configs`` ARE re-exported from
-    #     ``tabpfn.preprocessing``.
-    #   * ``get_all_reshape_feature_distribution_preprocessors`` lives in
-    #     ``tabpfn.preprocessing.steps``.
+    #     ``tabpfn.preprocessing.ensemble`` (NOT re-exported from the
+    #     top-level ``tabpfn.preprocessing`` — verified at
+    #     ``repositories/TabPFN .txt:5876``).
+    #   * ``FeatureSubsamplingMethod`` re-exported from
+    #     ``tabpfn.preprocessing`` (``__all__`` at line 29763).
+    #   * ``FeatureModality`` re-exported from
+    #     ``tabpfn.preprocessing.datamodel``.
     #
-    # The on-2026-05-27 import bug was using the wrong source for
-    # `TabPFNEnsemblePreprocessor` — installed TabPFN doesn't re-export
-    # it from the top-level preprocessing module.
-    from tabpfn.preprocessing import (
-        FeatureSubsamplingMethod,
-        generate_classification_ensemble_configs,
-        generate_regression_ensemble_configs,
-    )
+    # `generate_*_ensemble_configs`, `get_all_reshape_feature_distribution_preprocessors`,
+    # `clean_data`, `FeatureSchema` — used in `_clean_one_dataset`, NOT
+    # here. Importing them here would just shadow the function-local
+    # scope unnecessarily.
+    from tabpfn.preprocessing import FeatureSubsamplingMethod
     from tabpfn.preprocessing.ensemble import TabPFNEnsemblePreprocessor
-    from tabpfn.preprocessing.datamodel import (
-        FeatureSchema,
-        FeatureModality,
-    )
-    try:
-        # Preferred path (verified at TabPFN .txt:12649-12651).
-        from tabpfn.preprocessing.steps import (
-            get_all_reshape_feature_distribution_preprocessors,
-        )
-    except ImportError:                                                # pragma: no cover
-        # Defensive fallback for an older API: the helper used to live
-        # in a deeper submodule before being re-exported.
-        from tabpfn.preprocessing.steps.reshape_feature_distributions_step import (  # type: ignore[import-not-found]
-            get_all_reshape_feature_distribution_preprocessors,
-        )
+    from tabpfn.preprocessing.datamodel import FeatureModality
 
     # ---- 0) translate task-type vocabulary --------------------------- #
     # **VOCAB GAP — fixed 2026-05-27.** Our codebase uses
@@ -510,12 +488,6 @@ def build_ensemble_members(
         f"n_estimators={n_estimators}; the per-dataset cache is stale "
         "for a different n_estimators_finetune setting"
     )
-    # `outlier_removal_std` is also passed in pre-resolved (cached on
-    # the _CleanedDataset). Suppress the unused-import warnings for
-    # the helpers that are only used by `_clean_one_dataset` now.
-    del FeatureSubsamplingMethod, generate_classification_ensemble_configs
-    del generate_regression_ensemble_configs
-    del get_all_reshape_feature_distribution_preprocessors
 
     # ---- 3) regression: pre-z-norm y on context-only stats ------------ #
     # Matches `DatasetCollectionWithPreprocessing.__getitem__` lines

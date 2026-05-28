@@ -50,7 +50,7 @@ from src.train.dataloader import (
 )
 from src.train.metrics import (
     classification_metric, regression_metric,
-    improvement_direction, mean_ignore_nan,
+    mean_ignore_nan,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
 from src.utils.paths import resolve_output_path

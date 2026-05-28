@@ -10,7 +10,9 @@ Directory structure:
     ├── .pre-commit-config.yaml
     ├── changelog/
     │   ├── README.md
-    │   └── 978.changed.md
+    │   ├── 978.changed.md
+    │   ├── 981.added.md
+    │   └── 982.added.md
     ├── examples/
     │   ├── benchmarking_tabpfn.py
     │   ├── finetune_classifier.py
@@ -27,12 +29,14 @@ Directory structure:
     │       └── TabPFN_Demo_Local.ipynb
     ├── scripts/
     │   ├── __init__.py
+    │   ├── convert_checkpoint_to_safetensors.py
     │   └── download_all_models.py
     ├── src/
     │   └── tabpfn/
     │       ├── __init__.py
     │       ├── base.py
     │       ├── browser_auth.py
+    │       ├── checkpoint.py
     │       ├── classifier.py
     │       ├── constants.py
     │       ├── errors.py
@@ -160,6 +164,7 @@ Directory structure:
     │   ├── conftest.py
     │   ├── quick_test.py
     │   ├── test_browser_auth.py
+    │   ├── test_checkpoint.py
     │   ├── test_classifier_interface.py
     │   ├── test_config.py
     │   ├── test_consistency.py
@@ -709,6 +714,7 @@ name = "tabpfn"
 version = "8.0.3"
 dependencies = [
   "torch>=2.5",
+  "safetensors>=0.4.0",
   "numpy>=1.21.6",
   "scikit-learn>=1.2.0",
   "typing_extensions>=4.12.0",
@@ -1460,6 +1466,20 @@ This will:
 FILE: changelog/978.changed.md
 ================================================
 Remove the feature selection cell from the TabPFN_Demo_Local example notebook.
+
+
+
+================================================
+FILE: changelog/981.added.md
+================================================
+Add SafeTensors checkpoint loading. TabPFN can now load model checkpoints from `.safetensors` files in addition to the legacy `.ckpt` format, with non-tensor metadata (architecture name, model config, inference config) embedded in the safetensors header.
+
+
+
+================================================
+FILE: changelog/982.added.md
+================================================
+Register `tabpfn-v3-classifier-v3_20260506_ood.ckpt` and `tabpfn-v3-regressor-v3_20260506_ood.ckpt` so they can be loaded from Hugging Face by filename.
 
 
 
@@ -5737,6 +5757,45 @@ from __future__ import annotations
 
 
 ================================================
+FILE: scripts/convert_checkpoint_to_safetensors.py
+================================================
+# ruff: noqa: T201
+#  Copyright (c) Prior Labs GmbH 2026.
+
+"""Convert a TabPFN PyTorch checkpoint to SafeTensors.
+
+Non-tensor checkpoint fields (architecture name, config, inference config, â€¦)
+are JSON-encoded and stored in the safetensors header.
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from tabpfn.checkpoint import Checkpoint, save_as_safetensors
+
+
+def main() -> None:
+    """Main entry point."""
+    parser = argparse.ArgumentParser(
+        description="Convert a TabPFN .ckpt file to .safetensors with header metadata."
+    )
+    parser.add_argument("--input-checkpoint", required=True, type=Path)
+    parser.add_argument("--output-safetensors", required=True, type=Path)
+    args = parser.parse_args()
+
+    checkpoint = Checkpoint(args.input_checkpoint).load()
+    save_as_safetensors(checkpoint, args.output_safetensors)
+    print(f"Saved SafeTensors file: {args.output_safetensors}")
+
+
+if __name__ == "__main__":
+    main()
+
+
+
+================================================
 FILE: scripts/download_all_models.py
 ================================================
 #  Copyright (c) Prior Labs GmbH 2026.
@@ -6986,6 +7045,143 @@ def ensure_license_accepted(hf_repo_id: str) -> Literal[True]:  # noqa: C901
         "License not yet accepted. Please complete the acceptance form at\n"
         f"{gui_url}/accept-license?hf_repo_id={encoded} and try again."
     )
+
+
+
+================================================
+FILE: src/tabpfn/checkpoint.py
+================================================
+#  Copyright (c) Prior Labs GmbH 2026.
+
+"""Checkpoint loading for TabPFN.
+
+Handles both ``.ckpt`` (pickled torch) and ``.safetensors`` checkpoints
+behind a single :class:`Checkpoint` object that owns format detection, cache
+fingerprinting, and the load itself.
+"""
+
+from __future__ import annotations
+
+import json
+import warnings
+from enum import Enum
+from pathlib import Path
+from typing import Any
+from typing_extensions import override
+
+import torch
+from safetensors import safe_open
+from safetensors.torch import save_file
+
+
+class Checkpoint:
+    """A TabPFN model checkpoint on disk.
+
+    Wraps a checkpoint path and knows which format it is, how to fingerprint
+    it for cache invalidation, and how to materialize it into a dict.
+
+    Example:
+        ckpt = Checkpoint("model.safetensors")
+        data = ckpt.load()
+    """
+
+    def __init__(self, path: str | Path) -> None:
+        super().__init__()
+        self.path = Path(path)
+
+    @property
+    def is_safetensors(self) -> bool:
+        """Whether this checkpoint is stored in the safetensors format."""
+        return self.path.suffix == ".safetensors"
+
+    def identity(self) -> tuple[int, int]:
+        """Cheap (mtime_ns, size) fingerprint; used as an lru_cache key."""
+        st = self.path.stat()
+        return (st.st_mtime_ns, st.st_size)
+
+    def load(self) -> dict[str, Any]:
+        """Load the checkpoint into a dict with ``state_dict`` and metadata."""
+        if self.is_safetensors:
+            return self._load_safetensors()
+        return self._load_torch()
+
+    def _load_safetensors(self) -> dict[str, Any]:
+        tensors: dict[str, torch.Tensor] = {}
+        with safe_open(str(self.path), framework="pt", device="cpu") as f:
+            # Header metadata is dict[str, str]; each value is a JSON string.
+            header = f.metadata() or {}
+            for key in f.keys():  # noqa: SIM118 -- safe_open is not iterable
+                tensors[key] = f.get_tensor(key)
+
+        checkpoint: dict[str, Any] = {k: json.loads(v) for k, v in header.items()}
+        checkpoint["state_dict"] = tensors
+        return checkpoint
+
+    def _load_torch(self) -> dict[str, Any]:
+        # `torch.load` raises a FutureWarning because the default for
+        # `weights_only` will flip to True and disallow arbitrary objects.
+        # TabPFN checkpoints currently rely on the legacy behavior.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=FutureWarning)
+            return torch.load(str(self.path), map_location="cpu", weights_only=None)
+
+
+def save_as_safetensors(checkpoint: dict[str, Any], path: str | Path) -> None:
+    """Save a TabPFN checkpoint dict as a SafeTensors file with header metadata.
+
+    Non-tensor fields are JSON-encoded into the safetensors header so the
+    resulting file is a self-contained replacement for the legacy ``.ckpt``.
+    """
+    state_dict = checkpoint.get("state_dict")
+    if not isinstance(state_dict, dict):
+        raise ValueError("Checkpoint does not contain a dict-valued 'state_dict'.")
+
+    tensors: dict[str, torch.Tensor] = {}
+    for key, value in state_dict.items():
+        if not isinstance(value, torch.Tensor):
+            raise TypeError(
+                f"Expected all state_dict values to be tensors. "
+                f"Key {key!r} has type {type(value).__name__}."
+            )
+        tensors[key] = value.detach().cpu().contiguous()
+
+    # safetensors header metadata is dict[str, str]; JSON-encode each value.
+    metadata = {
+        key: json.dumps(value, cls=_CheckpointJSONEncoder, sort_keys=True)
+        for key, value in checkpoint.items()
+        if key != "state_dict"
+    }
+
+    output_path = Path(path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    save_file(tensors, str(output_path), metadata=metadata)
+
+
+class _CheckpointJSONEncoder(json.JSONEncoder):
+    """JSON encoder for TabPFN checkpoint metadata values.
+
+    Handles types commonly found in checkpoint configs: Path, torch dtype/device,
+    Enum, set. Raises ``TypeError`` on anything else rather than silently dropping data.
+    """
+
+    @override
+    def default(self, o: Any) -> Any:
+        """Encode types not natively handled by ``json.JSONEncoder``."""
+        if isinstance(o, Path):
+            return str(o)
+        if isinstance(o, (torch.dtype, torch.device)):
+            return str(o)
+        if isinstance(o, Enum):
+            return o.value
+        if isinstance(o, set):
+            # key=str so heterogeneous sets (e.g. {1, "a"}) don't raise; the
+            # sort keeps output deterministic across saves.
+            return sorted(o, key=str)
+        raise TypeError(
+            f"Cannot encode value of type {type(o).__name__!r} for the checkpoint "
+            f"header. Add a branch to _CheckpointJSONEncoder.default() if this "
+            f"type should be supported. Value: {o!r}"
+        )
 
 
 
@@ -11183,6 +11379,7 @@ from torch import nn
 
 from tabpfn.architectures import ARCHITECTURES
 from tabpfn.architectures.base.bar_distribution import FullSupportBarDistribution
+from tabpfn.checkpoint import Checkpoint
 from tabpfn.constants import ModelVersion
 from tabpfn.errors import TabPFNHuggingFaceGatedRepoError
 from tabpfn.inference import InferenceEngine
@@ -11323,6 +11520,7 @@ class ModelSource:  # noqa: D101
             "tabpfn-v3-classifier-v3_default.ckpt",
             "tabpfn-v3-classifier-v3_20260417_binary.ckpt",
             "tabpfn-v3-classifier-v3_20260417_multiclass.ckpt",
+            "tabpfn-v3-classifier-v3_20260506_ood.ckpt",
         ]
         return cls(
             repo_id="Prior-Labs/tabpfn_3",
@@ -11336,6 +11534,7 @@ class ModelSource:  # noqa: D101
             "tabpfn-v3-regressor-v3_default.ckpt",
             "tabpfn-v3-regressor-v3_20260417_mediumdata.ckpt",
             "tabpfn-v3-regressor-v3_20260506_timeseries.ckpt",
+            "tabpfn-v3-regressor-v3_20260506_ood.ckpt",
         ]
         return cls(
             repo_id="Prior-Labs/tabpfn_3",
@@ -12070,12 +12269,6 @@ def get_loss_criterion(
     return FullSupportBarDistribution(borders, ignore_nan_targets=True)
 
 
-def _file_identity(path: str) -> tuple[int, int]:
-    """Return a cheap identity tuple (mtime_ns, size) for cache-keying."""
-    st = Path(path).stat()
-    return (st.st_mtime_ns, st.st_size)
-
-
 @functools.lru_cache(maxsize=1)
 def _load_checkpoint_cached(path: str, _identity: tuple[int, int]) -> dict:
     """Load and cache a checkpoint from disk.
@@ -12084,19 +12277,7 @@ def _load_checkpoint_cached(path: str, _identity: tuple[int, int]) -> dict:
     *path* is modified.  Use ``_load_checkpoint_cached.cache_clear()`` to
     free memory manually.
     """
-    return _load_checkpoint(path)
-
-
-def _load_checkpoint(path: str) -> dict:
-    """Load a checkpoint from disk."""
-    # Catch the `FutureWarning` that torch raises. This should be dealt with!
-    # The warning is raised due to `torch.load`, which advises against ckpt
-    # files that contain non-tensor data.
-    # This `weights_only=None` is the default value. In the future this will
-    # default to `True`, disallowing loading of arbitrary objects.
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=FutureWarning)
-        return torch.load(path, map_location="cpu", weights_only=None)
+    return Checkpoint(path).load()
 
 
 def load_model(
@@ -12121,7 +12302,7 @@ def load_model(
             trainset representation. Forwarded to get_architecture.
     """
     resolved = str(path.resolve())
-    checkpoint = _load_checkpoint_cached(resolved, _file_identity(resolved))
+    checkpoint = _load_checkpoint_cached(resolved, Checkpoint(resolved).identity())
 
     try:
         architecture_name = checkpoint["architecture_name"]
@@ -39076,6 +39257,145 @@ class TestTryBrowserLoginRouting:
 
         assert result == "browser-jwt"
         mock_browser.assert_called_once()
+
+
+
+================================================
+FILE: tests/test_checkpoint.py
+================================================
+#  Copyright (c) Prior Labs GmbH 2026.
+
+from __future__ import annotations
+
+from enum import Enum
+from pathlib import Path
+
+import pytest
+import torch
+from safetensors.torch import save_file
+
+from tabpfn.checkpoint import Checkpoint, save_as_safetensors
+
+
+def _sample_checkpoint() -> dict:
+    return {
+        "architecture_name": "fake_arch",
+        "config": {"max_num_classes": 10, "num_buckets": 100, "name": "test"},
+        "inference_config": {"PREPROCESS_TRANSFORMS": []},
+        "state_dict": {
+            "encoder.weight": torch.randn(4, 3),
+            "head.bias": torch.zeros(5),
+        },
+    }
+
+
+def test__checkpoint__detects_safetensors_by_suffix() -> None:
+    assert Checkpoint("model.safetensors").is_safetensors
+    assert not Checkpoint("model.ckpt").is_safetensors
+
+
+def test__checkpoint__torch_load_returns_full_dict(tmp_path: Path) -> None:
+    original = _sample_checkpoint()
+    path = tmp_path / "x.ckpt"
+    torch.save(original, path)
+
+    loaded = Checkpoint(path).load()
+
+    assert loaded["architecture_name"] == original["architecture_name"]
+    assert loaded["config"] == original["config"]
+    assert torch.equal(
+        loaded["state_dict"]["encoder.weight"],
+        original["state_dict"]["encoder.weight"],
+    )
+
+
+def test__checkpoint__safetensors_round_trip_preserves_data(tmp_path: Path) -> None:
+    original = _sample_checkpoint()
+    safetensors_path = tmp_path / "x.safetensors"
+
+    save_as_safetensors(original, safetensors_path)
+
+    loaded = Checkpoint(safetensors_path).load()
+
+    assert loaded["architecture_name"] == original["architecture_name"]
+    assert loaded["config"] == original["config"]
+    assert loaded["inference_config"] == original["inference_config"]
+    assert set(loaded["state_dict"]) == set(original["state_dict"])
+    for key, tensor in original["state_dict"].items():
+        assert torch.equal(loaded["state_dict"][key], tensor)
+
+
+def test__checkpoint__safetensors_load_without_metadata_returns_only_state_dict(
+    tmp_path: Path,
+) -> None:
+    """A safetensors file written without header metadata still loads;
+    the returned dict just has no non-tensor fields beyond state_dict.
+    """
+    path = tmp_path / "weights_only.safetensors"
+    tensors = {"w": torch.randn(3, 3)}
+    save_file(tensors, str(path))
+
+    loaded = Checkpoint(path).load()
+
+    assert set(loaded) == {"state_dict"}
+    assert torch.equal(loaded["state_dict"]["w"], tensors["w"])
+
+
+def test__checkpoint__identity_changes_when_file_changes(tmp_path: Path) -> None:
+    path = tmp_path / "x.ckpt"
+    torch.save({"state_dict": {}}, path)
+    ckpt = Checkpoint(path)
+    identity_before = ckpt.identity()
+
+    torch.save({"state_dict": {"a": torch.randn(100)}}, path)
+    identity_after = ckpt.identity()
+
+    assert identity_before != identity_after
+
+
+def test__checkpoint__identity_missing_file_raises(tmp_path: Path) -> None:
+    with pytest.raises(FileNotFoundError):
+        Checkpoint(tmp_path / "does_not_exist.ckpt").identity()
+
+
+def test__save_as_safetensors__encodes_path_dtype_and_enum(tmp_path: Path) -> None:
+    class Color(Enum):
+        RED = "red"
+
+    save_dir = tmp_path / "model"
+    original = {
+        "state_dict": {"w": torch.zeros(2)},
+        "config": {
+            "save_dir": save_dir,
+            "dtype": torch.float32,
+            "color": Color.RED,
+            "tags": {"a", "b"},
+            "mixed": {1, "a"},
+        },
+    }
+    path = tmp_path / "x.safetensors"
+
+    save_as_safetensors(original, path)
+    loaded = Checkpoint(path).load()
+
+    assert loaded["config"]["save_dir"] == str(save_dir)
+    assert loaded["config"]["dtype"] == "torch.float32"
+    assert loaded["config"]["color"] == "red"
+    assert loaded["config"]["tags"] == ["a", "b"]
+    # Heterogeneous sets sort by str() so the encode doesn't raise on mixed types.
+    assert sorted(loaded["config"]["mixed"], key=str) == [1, "a"]
+
+
+def test__save_as_safetensors__unknown_type_raises(tmp_path: Path) -> None:
+    class Unserializable:
+        pass
+
+    bad = {
+        "state_dict": {"w": torch.zeros(2)},
+        "config": {"thing": Unserializable()},
+    }
+    with pytest.raises(TypeError, match="Unserializable"):
+        save_as_safetensors(bad, tmp_path / "x.safetensors")
 
 
 

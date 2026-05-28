@@ -30,6 +30,10 @@ Directory structure:
     │   │   └── multioutput_prediction.py
     │   ├── phe/
     │   │   └── phe_example.py
+    │   ├── predictive_distribution/
+    │   │   ├── README.md
+    │   │   ├── bar_distribution_plot.py
+    │   │   └── predictive_distribution_example.py
     │   ├── pval_crt/
     │   │   └── pval_crt_demo.py
     │   ├── survival/
@@ -109,6 +113,7 @@ Directory structure:
     │   ├── test_hpo.py
     │   ├── test_many_class_classifier.py
     │   ├── test_post_hoc_ensembles.py
+    │   ├── test_predictive_distribution_example.py
     │   ├── test_pval_crt.py
     │   ├── test_survival.py
     │   ├── test_tabebm.py
@@ -127,7 +132,7 @@ Directory structure:
 ================================================
 FILE: README.md
 ================================================
-Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 7914: character maps to <undefined>
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 8155: character maps to <undefined>
 
 
 ================================================
@@ -4790,6 +4795,7 @@ examples/
 â”œâ”€â”€ interpretability/  # SHAP, partial dependence, feature selection
 â”œâ”€â”€ many_class/        # More classes than the checkpoint supports
 â”œâ”€â”€ multioutput/       # Multi-output regression + multi-label classification (sklearn wrapper)
+â”œâ”€â”€ predictive_distribution/  # Visualize TabPFN's full predictive distribution + derive point estimates
 â”œâ”€â”€ pval_crt/          # Statistical feature relevance testing
 â”œâ”€â”€ survival/          # Survival analysis
 â”œâ”€â”€ tabebm/            # Data augmentation via TabEBM
@@ -5634,6 +5640,809 @@ predictions = reg.predict(X_test)
 print("Mean Squared Error (MSE):", mean_squared_error(y_test, predictions))
 print("Mean Absolute Error (MAE):", mean_absolute_error(y_test, predictions))
 print("R-squared (R^2):", r2_score(y_test, predictions))
+
+
+
+================================================
+FILE: examples/predictive_distribution/README.md
+================================================
+# TabPFN Predictive Distribution
+
+`TabPFNRegressor` does not just predict a single value. It predicts an entire
+probability distribution over the target, called the **bar distribution**. The
+default `.predict(X)` call collapses that distribution to its mean for
+sklearn compatibility, but the full distribution is available through
+`predict(X, output_type="full")` and is what powers every other output type
+(median, mode, quantiles, intervals).
+
+![Predictive bar distribution heatmap](tabpfn_bar_distribution.png)
+
+*Per-x predictive density on a toy problem with three regimes: tight unimodal
+noise for `x < 4`, growing variance for `4 < x < 7`, and bimodal noise
+(`Â±1.5`) for `x > 7`. Each vertical column is the model's posterior
+`p(y | x)`. In the bimodal region the mean (solid) sits in the empty trough
+between modes while the median (dashed) snaps to whichever mode currently
+carries more than half the mass and oscillates between the two as the local
+mixing ratio shifts. Both behaviors are textbook failure modes of a single
+point estimate.*
+
+This folder shows how to read, visualize, and post-process the bar
+distribution.
+
+## What is the bar distribution?
+
+TabPFN treats regression as classification over a fixed grid of buckets on
+the target axis. Concretely, the model outputs a logit per bucket; a softmax
+turns those into bucket probabilities, and within each bucket the density is
+assumed uniform. The result is a **piecewise-uniform probability density**
+over `y`:
+
+```
+density(y) = softmax(logits)[k] / width[k]    for y in [border[k], border[k+1])
+```
+
+with `k = 0 ... num_bars - 1`. The buckets are non-uniform: they're packed
+densely near the bulk of the training targets and spread out into long tails.
+Borders and widths live on the fitted criterion at
+`reg.predict(..., output_type="full")["criterion"]`.
+
+This representation is what lets a single transformer forward pass capture
+heteroscedastic noise, multi-modal posteriors, and asymmetric tails without
+assuming any parametric form.
+
+## Getting the full distribution
+
+```python
+from tabpfn_extensions import TabPFNRegressor
+
+reg = TabPFNRegressor()
+reg.fit(X_train, y_train)
+
+preds = reg.predict(X_test, output_type="full")
+# preds is a dict:
+#   "mean", "median", "mode"   : point estimates (np.ndarray, shape (n,))
+#   "quantiles"                : list of np.ndarray, one per requested quantile
+#   "criterion"                : the BarDistribution object (.borders, .bucket_widths, ...)
+#   "logits"                   : torch.Tensor of shape (n, num_bars)
+```
+
+Other `output_type` values are convenience shortcuts:
+
+| `output_type` | Returns                                       |
+| ------------- | --------------------------------------------- |
+| `"mean"` (default) | `np.ndarray`, shape `(n,)`               |
+| `"median"`    | `np.ndarray`, shape `(n,)`                    |
+| `"mode"`      | `np.ndarray`, shape `(n,)`                    |
+| `"quantiles"` | `list[np.ndarray]` for `quantiles=[...]`      |
+| `"main"`      | dict with the four above                      |
+| `"full"`      | `"main"` plus `"criterion"` and `"logits"`    |
+
+## From distribution to point estimate
+
+The three standard summaries are all derived from the same `(logits, criterion)`
+pair. `output_type="mean"` is just a convenience call to `criterion.mean(logits)`.
+
+### Mean
+Probability-weighted average over bucket centers:
+
+$$
+\mathbb{E}[y \mid x] = \sum_{k} p_k \cdot \tfrac{1}{2}\big(b_k + b_{k+1}\big)
+$$
+
+where `p_k = softmax(logits)[k]` and `b_k` are the bucket borders.
+
+### Median
+The 0.5-quantile, found by inverting the CDF. The CDF is exact under the
+piecewise-uniform assumption: cumulative mass up to the containing bucket
+plus a linear interpolation within it.
+
+$$
+\mathrm{median} = F^{-1}(0.5), \qquad F(y) = \sum_{k:\,b_{k+1}\le y} p_k + p_{k^\star}\cdot\frac{y - b_{k^\star}}{b_{k^\star+1} - b_{k^\star}}
+$$
+
+Here $k^\star$ denotes the index of the bucket containing $y$, i.e. the unique
+$k$ with $b_k \le y < b_{k+1}$.
+
+### Mode
+The bucket with the highest **density** (probability divided by width), since
+buckets are not equally wide:
+
+$$
+\mathrm{mode} = \tfrac{1}{2}(b_{k^\star} + b_{k^\star+1}), \quad k^\star = \arg\max_k \frac{p_k}{b_{k+1} - b_k}
+$$
+
+### Quantiles and credible intervals
+A central 90% interval is just two inverse-CDF calls:
+
+```python
+criterion = preds["criterion"].to("cpu")
+logits = preds["logits"].detach().cpu()
+
+lower = criterion.icdf(logits, 0.05).numpy()   # 5th percentile
+upper = criterion.icdf(logits, 0.95).numpy()   # 95th percentile
+```
+
+### When to use which
+
+| Output | Best for                                                |
+| ------ | ------------------------------------------------------- |
+| Mean   | MSE-style metrics, optimal-under-squared-loss baselines |
+| Median | Robust to heavy tails; minimizes MAE                    |
+| Mode   | "Most likely" answer when the posterior is multimodal. Note: a unimodal mode is rarely meaningful for skewed posteriors |
+| Quantiles | Calibrated intervals and risk-aware decision making  |
+
+For a multimodal predictive distribution (e.g. when several plausible
+outcomes are consistent with `x`), the mean falls **between** the modes. It
+is the right answer under squared loss but not a typical sample. In that
+case, prefer the median, the mode, or, better, keep the full distribution.
+
+![Predictive density slices at five test points](tabpfn_density_slices.png)
+
+*Each panel is a 1D slice of the heatmap above: `p(y | x)` at a fixed `x`.
+For `x in {1, 3}` the distribution is tight and unimodal, so mean and median
+agree. At `x = 5.5` the variance has grown but the distribution is still
+unimodal. By `x = 7` and `x = 9` two modes appear at roughly `Â±1.5`; the
+mean sits in the empty trough between them while the median snaps to the
+dominant mode. This is the failure mode the bar distribution is built to
+expose.*
+
+## Visualizing the bar distribution
+
+`bar_distribution_plot.py` provides `plot_bar_distribution`, which renders the
+per-sample predictive density as a heatmap column. It expects a 1D `x` so it
+suits low-dimensional inputs or projections.
+
+```python
+import matplotlib.pyplot as plt
+import torch
+from bar_distribution_plot import plot_bar_distribution
+
+fig, ax = plt.subplots(figsize=(12, 6))
+plot_bar_distribution(
+    ax,
+    torch.tensor(X_test[:, 0]),          # 1D x-positions
+    preds["criterion"].borders.cpu(),    # bucket borders
+    preds["logits"].detach().cpu(),      # logits (n, num_bars)
+    restrict_to_range=(-4.0, 4.0),       # optional y-axis crop
+)
+```
+
+### Plots you can build with `plot_bar_distribution`
+
+The same helper produces two main views depending on its keyword arguments.
+The example script renders both side by side so you can pick the one that
+best fits your use case:
+
+![Variants of plot_bar_distribution](tabpfn_bar_distribution_variants.png)
+
+- **Default density** (no extra args): linear-scale piecewise-uniform
+  density, one column per test point. Best for showing where the model
+  concentrates mass.
+- **Coarse merge** (`merge_bars=k`): merges `k` adjacent buckets into one
+  before rendering. Much faster on dense grids and cleaner when buckets are
+  finer than your eye needs.
+
+Other useful arguments:
+- `restrict_to_range=(y_min, y_max)`: crop the y-axis and skip buckets that
+  fall entirely outside it (fewer rectangles, faster plot).
+- `plot_log_probs=True`: plot log-density instead of density; useful when a
+  few buckets dominate.
+- `palette=`: any matplotlib colormap. The default is a `seaborn`
+  cubehelix.
+
+## Run the example
+
+```bash
+python examples/predictive_distribution/predictive_distribution_example.py
+```
+
+Regenerates all three figures shown above:
+- `tabpfn_bar_distribution.png`: heatmap of the predictive density on a 1D
+  toy problem with three regimes (tight unimodal, growing variance,
+  bimodal), overlaid with the training data, mean/median point estimates,
+  and a 90% credible interval.
+- `tabpfn_bar_distribution_variants.png`: a 1x2 showcase of the two main
+  views `plot_bar_distribution` can render (default density and coarse
+  merge).
+- `tabpfn_density_slices.png`: 1D `p(y | x)` slices at five selected test
+  points, showing how the mean and median behave under multimodal posteriors.
+
+
+
+================================================
+FILE: examples/predictive_distribution/bar_distribution_plot.py
+================================================
+"""Plot TabPFN's bar-distribution predictions as a per-sample heatmap.
+
+`plot_bar_distribution` is the entry point: given a `matplotlib` axis, the
+1D x-positions of your test samples, the criterion borders, and the raw
+logits returned by ``TabPFNRegressor.predict(..., output_type="full")``,
+it renders each predicted density as a vertical heatmap column.
+
+This is a visualization helper for examples / notebooks; it has no runtime
+dependency on `tabpfn_extensions` itself.
+"""
+
+from __future__ import annotations
+
+import seaborn as sns
+import torch
+from matplotlib import patches
+from matplotlib.collections import PatchCollection
+
+
+def _get_rect(coord, height, width):
+    return patches.Rectangle(coord, height, width)
+
+
+def heatmap_with_box_sizes(
+    ax,
+    data: torch.Tensor,
+    x_starts,
+    x_ends,
+    y_starts,
+    y_ends,
+    palette=None,
+    set_lims=True,
+    threshold_i=0.0,
+    y_min=None,
+    y_max=None,
+    transpose=False,
+    per_col_normalize=False,
+):
+    """Draw a heatmap where each cell has its own (x, y) extent.
+
+    All x/y arrays must be sorted ascending; small indices map to lower
+    axis values. `data` has shape (n_rows, n_cols) and is normalized to
+    [0, 1] before being mapped through `palette`.
+    """
+    if palette is None:
+        palette = sns.cubehelix_palette(
+            start=2.9,
+            rot=0.0,
+            dark=0.6,
+            light=1,
+            gamma=4.0,
+            hue=9.0,
+            as_cmap=True,
+        )
+
+    if set_lims:
+        ax.set_xlim(x_starts[0], x_ends[-1])
+        if y_min is None or y_max is None:
+            assert len(y_starts.shape) == 1, (
+                "If y_min and y_max are not provided, y_starts should be 1D. "
+                "Please set y_min and y_max manually."
+            )
+            ax.set_ylim(y_starts[0], y_ends[-1])
+        else:
+            ax.set_ylim(y_min, y_max)
+
+    if per_col_normalize:
+        data = (data - data.min(0, keepdim=True).values) / (
+            data.max(0, keepdim=True).values - data.min(0, keepdim=True).values
+        )
+    else:
+        data = (data - data.min()) / (data.max() - data.min())
+
+    rects, colors = [], []
+
+    assert y_ends.shape == y_starts.shape
+    if len(y_starts.shape) == 1:
+        y_starts = y_starts.unsqueeze(0).expand(len(x_starts), -1)
+        y_ends = y_ends.unsqueeze(0).expand(len(x_starts), -1)
+
+    for col_i, (col_start, col_end) in enumerate(zip(x_starts, x_ends)):
+        for row_i, (row_start, row_end) in enumerate(
+            zip(y_starts[col_i], y_ends[col_i])
+        ):
+            intensity = data[row_i, col_i].item()
+            intensity = max(0.0, (intensity - threshold_i)) / (1 - threshold_i)
+
+            if intensity <= 0:
+                continue
+            if y_max is not None and y_min is not None and (row_start > y_max or row_end < y_min):
+                continue
+            if row_start >= row_end or col_start >= col_end:
+                continue
+            if palette(intensity) == (1.0, 1.0, 1.0, 1.0):
+                continue
+
+            if transpose:
+                rects.append(
+                    _get_rect(
+                        (row_start, col_start),
+                        row_end - row_start,
+                        col_end - col_start,
+                    )
+                )
+            else:
+                rects.append(
+                    _get_rect(
+                        (col_start, row_start),
+                        col_end - col_start,
+                        row_end - row_start,
+                    )
+                )
+            colors.append(palette(intensity))
+
+    rect_collection = PatchCollection(
+        rects, facecolors=colors, edgecolor="none", linewidth=1
+    )
+    ax.add_collection(rect_collection)
+    ax.set_rasterized(True)
+
+
+def plot_bar_distribution(
+    ax,
+    x: torch.Tensor,
+    bar_borders: torch.Tensor,
+    logits: torch.Tensor,
+    merge_bars=None,
+    restrict_to_range=None,
+    plot_log_probs=False,
+    **kwargs,
+):
+    """Plot TabPFN's per-sample bar distribution as a vertical heatmap column.
+
+    Args:
+        ax: A matplotlib axis (``fig, ax = plt.subplots()``).
+        x: 1D positions of shape ``(num_examples,)`` to place along the x-axis.
+        bar_borders: Borders of the bar distribution, taken from
+            ``preds["criterion"].borders`` when calling
+            ``TabPFNRegressor.predict(..., output_type="full")``.
+        logits: Raw logits of shape ``(num_examples, len(bar_borders) - 1)``
+            from ``preds["logits"]``.
+        merge_bars: If set, merge this many adjacent bars into one for a
+            faster, coarser plot.
+        restrict_to_range: ``(min_y, max_y)`` to crop the y-axis to a range
+            of target values.
+        plot_log_probs: If True, plot log-densities (useful when a few bars
+            dominate).
+        **kwargs: Forwarded to :func:`heatmap_with_box_sizes` (e.g. ``palette``,
+            ``threshold_i``).
+    """
+    x = x.flatten()
+    if logits.ndim == 3 and logits.shape[0] == 1:
+        logits = logits.squeeze(0)
+    predictions = logits.softmax(-1)
+    assert len(x.shape) == 1
+    assert len(predictions.shape) == 2
+    assert len(predictions) == len(x)
+    assert len(bar_borders.shape) == 1
+    assert len(bar_borders) - 1 == predictions.shape[1]
+    assert isinstance(x, torch.Tensor)
+
+    if merge_bars and merge_bars > 1:
+        new_borders_inds = torch.arange(0, len(bar_borders), merge_bars)
+        if new_borders_inds[-1] != len(bar_borders) - 1:
+            new_borders_inds = torch.cat(
+                [new_borders_inds, torch.tensor([len(bar_borders) - 1])]
+            )
+        bar_borders = bar_borders[new_borders_inds]
+        pred_cumsum = torch.cat(
+            [predictions.new_zeros(len(predictions), 1), predictions.cumsum(-1)], dim=-1
+        )
+        predictions = (
+            pred_cumsum[:, new_borders_inds[1:]] - pred_cumsum[:, new_borders_inds[:-1]]
+        )
+        assert len(bar_borders) - 1 == predictions.shape[-1]
+
+    if restrict_to_range is not None:
+        min_y, max_y = restrict_to_range
+        border_mask = (min_y <= bar_borders) & (bar_borders <= max_y)
+        border_mask[:-1] = border_mask[1:] | border_mask[:-1]
+        border_mask[1:] = border_mask[1:] | border_mask[:-1]
+        logit_mask = border_mask[:-1] & border_mask[1:]
+        bar_borders = bar_borders[border_mask]
+        predictions = predictions[:, logit_mask]
+
+    y_starts = bar_borders[:-1]
+    y_ends = bar_borders[1:]
+
+    x, order = x.sort(0)
+
+    # Convert probability mass to probability density (per unit of y).
+    predictions = predictions[order] / (bar_borders[1:] - bar_borders[:-1])
+    predictions[~torch.isfinite(predictions)] = 0.0
+    predictions[:, (bar_borders[1:] - bar_borders[:-1]) < 1e-10] = 0.0
+
+    if plot_log_probs:
+        predictions = predictions.log()
+        predictions[predictions.isinf()] = torch.min(predictions[~predictions.isinf()])
+
+    # x positions are widened to the midpoint between neighbours.
+    x_starts = torch.cat([x[0].unsqueeze(0), (x[1:] + x[:-1]) / 2])
+    x_ends = torch.cat([(x[1:] + x[:-1]) / 2, x[-1].unsqueeze(0)])
+
+    heatmap_with_box_sizes(
+        ax, predictions.T, x_starts, x_ends, y_starts, y_ends, **kwargs
+    )
+
+
+
+================================================
+FILE: examples/predictive_distribution/predictive_distribution_example.py
+================================================
+"""TabPFN bar-distribution: visualize the full predictive density.
+
+TabPFN regressors do not predict a single value. Internally they predict
+a discrete *bar distribution* over the target axis (one probability per
+bucket). That distribution is the model's full belief about y given x and
+the in-context examples; point estimates (mean / median / mode) and
+quantiles are all derived from it.
+
+This example shows how to:
+
+  1. Get the raw distribution via ``predict(X, output_type="full")``.
+  2. Visualize it as a per-sample heatmap with ``plot_bar_distribution``.
+  3. Showcase the different views ``plot_bar_distribution`` can produce.
+  4. Recover point estimates and confidence intervals from the distribution.
+
+The toy dataset evolves over x in three regimes (tight unimodal, then
+growing variance, then bimodal), so the predictive distribution has
+interesting structure throughout.
+
+NOTE: This example requires the full TabPFN package (``pip install tabpfn``).
+The cloud client does not return logits, so ``output_type="full"`` is
+unavailable there.
+
+CLI usage::
+
+    # Full demo (default):
+    python predictive_distribution_example.py
+
+    # Tiny dataset for quick testing (no window pop-up, figures saved to /tmp):
+    python predictive_distribution_example.py \\
+        --n-train 60 --n-test 30 --n-estimators 1 --no-show --out-dir /tmp
+"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from bar_distribution_plot import plot_bar_distribution
+
+from tabpfn_extensions import TabPFNRegressor
+
+_DEFAULT_OUT_DIR = Path(__file__).resolve().parent
+
+
+def main(
+    n_train: int = 600,
+    n_test: int = 240,
+    n_estimators: int = 4,
+    no_show: bool = False,
+    out_dir: Path | None = None,
+) -> None:
+    """Run the bar-distribution example end-to-end.
+
+    Args:
+        n_train: Number of training samples to generate.
+        n_test: Number of test-grid points.
+        n_estimators: Number of TabPFN estimators (lower â†’ faster).
+        no_show: If True, skip ``plt.show()`` (useful for CI / headless runs).
+        out_dir: Directory for saved PNGs.  Defaults to the script's directory.
+    """
+    if out_dir is None:
+        out_dir = _DEFAULT_OUT_DIR
+
+    if no_show:
+        plt.switch_backend("Agg")
+
+    # Bigger fonts everywhere so the saved PNGs stay readable when embedded
+    # in the README.
+    plt.rcParams.update(
+        {
+            "font.size": 17,
+            "axes.titlesize": 19,
+            "axes.labelsize": 18,
+            "xtick.labelsize": 16,
+            "ytick.labelsize": 16,
+            "legend.fontsize": 16,
+            "figure.titlesize": 21,
+        }
+    )
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ toy dataset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Three regimes along x (think of x as time):
+    #   x in [0, 4]:   tight unimodal noise
+    #   x in [4, 7]:   variance grows linearly (heteroscedastic)
+    #   x in [7, 10]:  two equally likely modes (bimodal posterior)
+    # This lets one heatmap show all three failure modes of a single point
+    # estimate.
+
+    rng = np.random.default_rng(0)
+
+    x_train = rng.uniform(0.0, 10.0, size=n_train).astype(np.float32)
+    y_clean = np.sin(0.6 * x_train)
+
+    bimodal_mask = x_train > 7.0
+    # Grows from 0.10 at x=4 to ~0.85 at x=7, then drops back to 0.20 inside
+    # each bimodal mode so the two bands stay visually separated.
+    sigma_heteroscedastic = np.clip(
+        0.10 + np.maximum(0.0, x_train - 4.0) * 0.25, 0.10, 0.85
+    ).astype(np.float32)
+    sigma = np.where(bimodal_mask, 0.20, sigma_heteroscedastic).astype(np.float32)
+
+    # Vary the upper-mode probability smoothly along x so the median flips
+    # between modes instead of locking onto one. Outside the bimodal region
+    # this has no effect.
+    upper_prob = 0.5 + 0.42 * np.sin(2 * np.pi * (x_train - 7.0) / 1.2)
+    upper_pick = rng.random(n_train) < upper_prob
+    mode_offset = np.where(upper_pick, 1.5, -1.5).astype(np.float32)
+    mode_offset = np.where(bimodal_mask, mode_offset, 0.0).astype(np.float32)
+
+    y_train = y_clean + mode_offset + rng.normal(0.0, sigma).astype(np.float32)
+
+    X_train = x_train.reshape(-1, 1)
+
+    # Test grid covers the full input range, sorted for nicer plotting.
+    X_test = np.linspace(0.0, 10.0, n_test, dtype=np.float32).reshape(-1, 1)
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ fit & full prediction â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    reg = TabPFNRegressor(n_estimators=n_estimators, random_state=0)
+    reg.fit(X_train, y_train)
+
+    # output_type="full" returns a dict containing:
+    #   "mean", "median", "mode": point estimates over the bar distribution
+    #   "quantiles": list of arrays, one per requested quantile
+    #   "criterion": the BarDistribution object (.borders, .bucket_widths, ...)
+    #   "logits": raw (n_samples, n_bars) logits parameterizing the distribution
+    preds = reg.predict(X_test, output_type="full")
+
+    # Move the bar distribution and its logits to CPU together so we can do
+    # our own derivations and plot with matplotlib.
+    criterion = preds["criterion"].to("cpu")
+    logits = preds["logits"].detach().cpu()
+    borders = criterion.borders
+
+    print(
+        f"Predicted distribution: {logits.shape[1]} bars over {len(X_test)} test points"
+    )
+    print(f"Bar borders span [{borders[0]:.2f}, {borders[-1]:.2f}]")
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ point estimates from the distribution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # The convenience entries in ``preds`` are computed from ``logits`` plus
+    # ``criterion``. You can reproduce them yourself, which is useful when you
+    # want a custom summary statistic (e.g. a trimmed mean or a custom quantile):
+
+    mean_manual = criterion.mean(logits).numpy()
+    median_manual = criterion.median(logits).numpy()
+
+    # These match the dict entries up to float32 precision. The dict values are
+    # computed by exactly the same calls under the hood.
+    print(
+        "mean   match: max |manual - preds['mean']|   = "
+        f"{np.max(np.abs(mean_manual - preds['mean'])):.2e}"
+    )
+    print(
+        "median match: max |manual - preds['median']| = "
+        f"{np.max(np.abs(median_manual - preds['median'])):.2e}"
+    )
+
+    # A 90% central credible interval, directly from the bar distribution's
+    # inverse CDF.
+    q05 = criterion.icdf(logits, 0.05).numpy()
+    q95 = criterion.icdf(logits, 0.95).numpy()
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ main figure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Full predictive density across x, with point estimates overlaid. The
+    # heatmap exposes the three regimes (tight, heteroscedastic, bimodal);
+    # the mean and median collapse all of that to a single curve.
+
+    Y_MIN, Y_MAX = -4.0, 4.0
+    x_test_1d = torch.tensor(X_test[:, 0])
+
+    fig, ax = plt.subplots(figsize=(15, 7.5))
+
+    plot_bar_distribution(
+        ax,
+        x_test_1d,
+        borders,
+        logits,
+        restrict_to_range=(Y_MIN, Y_MAX),
+    )
+
+    ax.scatter(
+        x_train, y_train, s=10, alpha=0.4, color="black", label="train data", zorder=2
+    )
+    ax.plot(X_test[:, 0], preds["mean"], color="C0", lw=2.2, label="mean", zorder=3)
+    ax.plot(
+        X_test[:, 0],
+        preds["median"],
+        color="C1",
+        lw=2.2,
+        ls="--",
+        label="median",
+        zorder=3,
+    )
+    ax.fill_between(
+        X_test[:, 0], q05, q95, color="C0", alpha=0.10, label="90% CI", zorder=1
+    )
+
+    # Annotate the three regimes so the structure is obvious at a glance.
+    for x_edge in (4.0, 7.0):
+        ax.axvline(x_edge, color="gray", lw=1, ls=":", alpha=0.7, zorder=0)
+    ax.text(2.0, 3.6, "tight unimodal", ha="center", fontsize=15, color="gray")
+    ax.text(5.5, 3.6, "growing variance", ha="center", fontsize=15, color="gray")
+    ax.text(8.5, 3.6, "bimodal", ha="center", fontsize=15, color="gray")
+
+    ax.set_xlabel("x  (interpret as time)")
+    ax.set_ylabel("y")
+    ax.set_xlim(0.0, 10.0)
+    ax.set_ylim(Y_MIN, Y_MAX)
+    ax.set_title(
+        "TabPFN predictive distribution\n"
+        "heatmap = full bar distribution, lines = derived point estimates"
+    )
+    ax.legend(loc="lower left")
+
+    plt.tight_layout()
+    plt.savefig(out_dir / "tabpfn_bar_distribution.png", dpi=150)
+    if not no_show:
+        plt.show()
+    plt.close(fig)
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ showcase: plots you can build with plot_bar_distribution â”€â”€
+    # ``plot_bar_distribution`` is the helper in ``bar_distribution_plot.py``.
+    # The two panels below are the views it produces out of the box: the
+    # default per-bucket density, and a coarser merged version for faster /
+    # cleaner rendering on dense grids.
+
+    fig_showcase, (ax_default, ax_coarse) = plt.subplots(
+        1, 2, figsize=(18, 7), sharex=True, sharey=True
+    )
+
+    # Default density: linear scale, one column per test point.
+    plot_bar_distribution(
+        ax_default, x_test_1d, borders, logits, restrict_to_range=(Y_MIN, Y_MAX)
+    )
+    ax_default.set_title(
+        "Default density\nplot_bar_distribution(ax, x, borders, logits)"
+    )
+
+    # Coarse merge: merges adjacent buckets for a faster, lower-resolution render.
+    plot_bar_distribution(
+        ax_coarse,
+        x_test_1d,
+        borders,
+        logits,
+        restrict_to_range=(Y_MIN, Y_MAX),
+        merge_bars=4,
+    )
+    ax_coarse.set_title(
+        "Coarse merge (merge_bars=4)\n"
+        "merges adjacent buckets for a faster, lower-resolution render"
+    )
+
+    for ax_s in (ax_default, ax_coarse):
+        ax_s.set_xlim(0.0, 10.0)
+        ax_s.set_ylim(Y_MIN, Y_MAX)
+        ax_s.set_xlabel("x")
+        ax_s.set_ylabel("y")
+
+    fig_showcase.suptitle(
+        "Plots you can build with plot_bar_distribution (bar_distribution_plot.py)"
+    )
+    plt.tight_layout()
+    plt.savefig(out_dir / "tabpfn_bar_distribution_variants.png", dpi=150)
+    if not no_show:
+        plt.show()
+    plt.close(fig_showcase)
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ 1D density slices at a few test points â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Each column of the heatmap above is a 1D density over y. Plotting those
+    # slices makes the three regimes obvious side by side: tight at low x,
+    # wide and unimodal in the middle, bimodal on the right.
+
+    slice_targets = np.array([1.0, 3.0, 5.5, 7.0, 9.0], dtype=np.float32)
+    # Clip slice targets to valid X_test range and deduplicate
+    slice_indices = list(
+        dict.fromkeys(int(np.argmin(np.abs(X_test[:, 0] - t))) for t in slice_targets)
+    )
+
+    # Rebin the bar masses into uniform y-bins. The raw bars are non-uniform
+    # (narrow near the bulk, wide in the tails); converting to a uniform grid
+    # avoids spikes from very narrow bars and gives a clean histogram look.
+    n_coarse = 80
+    y_edges = np.linspace(Y_MIN, Y_MAX, n_coarse + 1)
+    y_centers_c = 0.5 * (y_edges[:-1] + y_edges[1:])
+    y_widths_c = np.full(n_coarse, (Y_MAX - Y_MIN) / n_coarse)
+
+    probs_np = logits.softmax(-1).numpy()
+    bar_centers = 0.5 * (borders[1:] + borders[:-1])
+    bin_idx = np.digitize(bar_centers.numpy(), y_edges) - 1
+    valid = (bin_idx >= 0) & (bin_idx < n_coarse)
+
+    fig2, axes = plt.subplots(
+        1, len(slice_indices), figsize=(19, 5.5), sharey=True, squeeze=False
+    )
+    axes = axes.flatten()
+    for ax_i, idx in zip(axes, slice_indices, strict=False):
+        mass = np.bincount(
+            bin_idx[valid], weights=probs_np[idx, valid], minlength=n_coarse
+        )
+        density_slice = mass / y_widths_c
+        x_val = X_test[idx, 0]
+        ax_i.barh(
+            y_centers_c,
+            density_slice,
+            height=y_widths_c,
+            color="C0",
+            alpha=0.7,
+            align="center",
+        )
+        ax_i.axhline(preds["mean"][idx], color="black", lw=1.8, label="mean")
+        ax_i.axhline(preds["median"][idx], color="C1", lw=1.8, ls="--", label="median")
+        ax_i.set_title(f"p(y | x = {x_val:.2f})")
+        ax_i.set_xlabel("density")
+    axes[0].set_ylabel("y")
+    axes[0].set_ylim(Y_MIN, Y_MAX)
+    axes[-1].legend(loc="upper right")
+    fig2.suptitle(
+        "Predictive density slices: tight, then heteroscedastic, then bimodal"
+    )
+    plt.tight_layout()
+    plt.savefig(out_dir / "tabpfn_density_slices.png", dpi=150)
+    if not no_show:
+        plt.show()
+    plt.close(fig2)
+
+    print(f"Saved figures to {out_dir}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--n-train",
+        type=int,
+        default=600,
+        metavar="N",
+        help="Number of training samples (default: 600).",
+    )
+    parser.add_argument(
+        "--n-test",
+        type=int,
+        default=240,
+        metavar="N",
+        help="Number of test-grid points (default: 240).",
+    )
+    parser.add_argument(
+        "--n-estimators",
+        type=int,
+        default=4,
+        metavar="N",
+        help="Number of TabPFN estimators â€” lower values run faster (default: 4).",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        default=False,
+        help="Skip plt.show() â€” useful for headless / CI runs.",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        metavar="DIR",
+        help="Directory for saved PNG files (default: same directory as this script).",
+    )
+    args = parser.parse_args()
+    main(
+        n_train=args.n_train,
+        n_test=args.n_test,
+        n_estimators=args.n_estimators,
+        no_show=args.no_show,
+        out_dir=args.out_dir,
+    )
 
 
 
@@ -17345,6 +18154,76 @@ class TestPHESpecificFeatures:
             f"expected only {expected_ag_name!r} in trained TabPFN sub-models, "
             f"got {tabpfn_ag_names} (leaderboard: {leaderboard_names})"
         )
+
+
+
+================================================
+FILE: tests/test_predictive_distribution_example.py
+================================================
+"""Tests for examples/predictive_distribution/predictive_distribution_example.py.
+
+Runs the example with a tiny synthetic dataset so the test stays fast.
+The CLI entry-point (``--n-train``, ``--n-test``, ``--n-estimators``,
+``--no-show``, ``--out-dir``) is exercised directly by calling ``main()``.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+# Add the example directory to sys.path so its local import
+# ``from bar_distribution_plot import plot_bar_distribution`` works.
+EXAMPLE_DIR = (
+    Path(__file__).resolve().parent.parent / "examples" / "predictive_distribution"
+)
+if str(EXAMPLE_DIR) not in sys.path:
+    sys.path.insert(0, str(EXAMPLE_DIR))
+
+
+# ---------------------------------------------------------------------------
+# Fixtures / helpers
+# ---------------------------------------------------------------------------
+
+
+def _has_local_tabpfn() -> bool:
+    """Return True if the full TabPFN package is installed."""
+    import importlib.util
+
+    return importlib.util.find_spec("tabpfn") is not None
+
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.local_compatible
+@pytest.mark.skipif(
+    not _has_local_tabpfn(),
+    reason="Requires the full 'tabpfn' package (output_type='full' not available with client).",
+)
+def test_predictive_distribution_example_runs(tmp_path):
+    """main() completes without error on a tiny dataset and saves three PNGs."""
+    from predictive_distribution_example import main
+
+    main(
+        n_train=60,
+        n_test=30,
+        n_estimators=1,
+        no_show=True,
+        out_dir=tmp_path,
+    )
+
+    expected_files = [
+        "tabpfn_bar_distribution.png",
+        "tabpfn_bar_distribution_variants.png",
+        "tabpfn_density_slices.png",
+    ]
+    for fname in expected_files:
+        assert (tmp_path / fname).exists(), f"Expected output file not found: {fname}"
 
 
 

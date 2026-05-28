@@ -14,13 +14,18 @@
 #SBATCH --time=04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-47%4   # 48 trials (2 bases x 4 LRs x 2 LoRA x 3 qf). Recompute
-                         # via `python scripts/train_pipeline.py --list-trials track=lgd`.
+#SBATCH --array=0-47%4   # 48 trials (2 bases × 3 LRs × 2 LoRA × 2 qf × 2 acc).
+                         # Recompute via
+                         #   `python scripts/train_pipeline.py --list-trials track=lgd`.
                          # Over-sizing is safe: surplus tasks exit 0 cleanly.
+                         #
+                         # `cpus-per-task=16` matches the documented gpu_h100
+                         # per-GPU limit (VSC docs, gpu_h100 row of the
+                         # cpu_resource_limits_in_gpu_jobs table).
 
 sleep $((RANDOM % 30 + 1))
 
