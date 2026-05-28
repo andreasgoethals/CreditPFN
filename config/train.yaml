@@ -42,6 +42,20 @@ tunable:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"         # v3 synthetic-only (current default)
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"     # v2.6 synthetic-only
 
+  # LR grid. Documented published values for context:
+  #   * Real-TabPFN (Garg 2025) uses 3e-7 — by far the smallest. They
+  #     emphasise catastrophic forgetting as the dominant risk for
+  #     continued pretraining → LR has to be tiny. NOT YET in our
+  #     grid; user decided 2026-05-27 to first see whether the
+  #     existing range surfaces a clear learning signal before
+  #     widening.
+  #   * `FinetunedTabPFNClassifier` default = 1e-5 (`TabPFN .txt:26800`).
+  #   * Rubachev (2025) sweeps `logspace(5e-6, 5e-4)` for single-dataset
+  #     finetuning.
+  # Our grid brackets the FinetunedTabPFNClassifier default and the
+  # upper-Rubachev band. If 1e-5 turns out to still be too high
+  # (calibration collapse + frequent AMP-fp16 inf gradients), add
+  # 1e-6 (or 3e-7) to this list and re-run.
   learning_rates: [1.0e-5, 5.0e-5, 1.0e-4]
 
   # Whether to wrap the base model with a LoRA adapter before training

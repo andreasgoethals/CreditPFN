@@ -376,13 +376,27 @@ def _build_ensemble_step_batch(
         build_ensemble_members, clean_loaded_dataset,
     )
 
-    # ---- Phase 1: clean_data (cached per dataset) ----------------------- #
+    # Determine n_classes BEFORE the clean cache lookup — the cache key
+    # doesn't include n_classes but the EnsembleConfig generation does
+    # need it, so we resolve it here.
+    if loaded.task_type == "classification":
+        n_classes = int(len(np.unique(loaded.y)))
+        if n_classes < 2:
+            n_classes = 2                     # binary minimum
+    else:
+        n_classes = None
+
+    # ---- Phase 1: clean_data + EnsembleConfig (cached per dataset) ----- #
     cleaned = clean_loaded_dataset(
         X_full_df=loaded.X,
         y_full=loaded.y,
         cat_columns=loaded.cat_columns,
         task_type=loaded.task_type,
         dataset_id=loaded.dataset_id,
+        n_estimators=n_estimators,
+        n_classes=n_classes,
+        inference_config=inference_config,
+        base_seed=int(rng_seed),
     )
     X_all = cleaned.X_clean          # (n_total_dataset, n_features) numeric
     y_all = cleaned.y
@@ -406,17 +420,6 @@ def _build_ensemble_step_batch(
     y_ctx = y_sub[:n_ctx]
     y_qry = y_sub[n_ctx:]
 
-    n_classes: int | None
-    if loaded.task_type == "classification":
-        # Use the OBSERVED class count from the FULL dataset's y so the
-        # ensemble's class-permutation generator sees the right cardinality
-        # even if a stratified subsample happens to drop a rare class.
-        n_classes = int(len(np.unique(y_all)))
-        if n_classes < 2:
-            n_classes = 2                     # binary minimum
-    else:
-        n_classes = None
-
     # ---- Phase 2b: per-step TabPFN preprocessing ----------------------- #
     return build_ensemble_members(
         X_ctx=X_ctx,
@@ -424,6 +427,8 @@ def _build_ensemble_step_batch(
         X_qry=X_qry,
         y_qry_raw=y_qry,
         feature_schema=cleaned.feature_schema,
+        ensemble_configs=cleaned.ensemble_configs,
+        outlier_removal_std=cleaned.outlier_removal_std,
         task_type=loaded.task_type,
         n_classes=n_classes,
         inference_config=inference_config,

@@ -107,13 +107,27 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class _CleanedDataset:
-    """One ``clean_data``-cleaned dataset, ready to feed to
-    ``TabPFNEnsemblePreprocessor``. Cached by ``dataset_id``."""
+    """One ``clean_data``-cleaned dataset PLUS its per-estimator
+    ``EnsembleConfig`` list — cached by ``dataset_id``.
+
+    **Why ensemble_configs are stored per dataset (not regenerated per
+    step):** the official multi-dataset finetune
+    (`TabPFN .txt:26604-26635` and `__getitem__` at 26193-26203) builds
+    the configs ONCE per dataset chunk and stores them on the
+    ``DatasetConfig``. Per-step `__getitem__` reuses these — only the
+    train/test SPLIT and per-step preprocessor RNG seed change.
+    Re-rolling the EnsembleConfigs every step (our pre-2026-05-27
+    behaviour) adds unnecessary gradient variance and deviates from
+    the published methodology. Fixed by moving generation here.
+    """
     X_clean: np.ndarray            # (n_total, n_features) float64, NaN-preserving
     y: np.ndarray                  # original (un-encoded) targets
     feature_schema: Any            # tabpfn.preprocessing.datamodel.FeatureSchema
     task_type: str                 # "classification" / "regression"
     dataset_id: str
+    # Per-dataset ensemble configs (length == n_estimators_finetune):
+    ensemble_configs: tuple        # tuple[ClassifierEnsembleConfig | RegressorEnsembleConfig, ...]
+    outlier_removal_std: float | None
 
 
 def _clean_one_dataset(
@@ -123,18 +137,48 @@ def _clean_one_dataset(
     cat_columns: Sequence[str],
     task_type: str,
     dataset_id: str,
+    n_estimators: int,
+    n_classes: int | None,
+    inference_config: Any,
+    rng_seed: int,
 ) -> _CleanedDataset:
-    """Run TabPFN's ``clean_data`` once per parent dataset.
+    """Run TabPFN's ``clean_data`` once per parent dataset AND generate
+    the per-dataset EnsembleConfig list (with class permutations,
+    feature shifts, etc.) ONCE — mirrors
+    ``_initialize_dataset_preprocessing`` at
+    ``TabPFN .txt:7686-7733`` (classifier) and 13270-13298 (regressor).
 
-    Builds a ``FeatureSchema`` from our known categorical-column names
-    (not via ``detect_feature_modalities`` — we already know which
-    columns are categorical from ``DATASET_METADATA``) and runs
-    ``clean_data`` to get a numeric ndarray with categoricals
-    ordinal-encoded. NaN values are preserved (TabPFN's downstream
-    preprocessor handles them).
+    The ``rng_seed`` is derived from ``(base_seed, dataset_id)`` so each
+    dataset's configs are deterministic but distinct across datasets.
+    Across epochs, the per-step preprocessor's *internal* random_state
+    varies (so quantile fits, SVD seeds, etc. change every step), but
+    the COARSE choices (which class permutation, which feature shift)
+    stay stable per dataset — exactly the published behaviour.
     """
-    from tabpfn.preprocessing import clean_data
+    from tabpfn.preprocessing import (
+        FeatureSubsamplingMethod,
+        clean_data,
+        generate_classification_ensemble_configs,
+        generate_regression_ensemble_configs,
+    )
     from tabpfn.preprocessing.datamodel import FeatureSchema
+    try:
+        from tabpfn.preprocessing.steps import (
+            get_all_reshape_feature_distribution_preprocessors,
+        )
+    except ImportError:                                                # pragma: no cover
+        from tabpfn.preprocessing.steps.reshape_feature_distributions_step import (  # type: ignore[import-not-found]
+            get_all_reshape_feature_distribution_preprocessors,
+        )
+    del FeatureSubsamplingMethod                                       # imported for completeness; unused here
+
+    # Vocab translation (see build_ensemble_members for the rationale).
+    if task_type == "classification":
+        tabpfn_task_type = "classifier"
+    elif task_type == "regression":
+        tabpfn_task_type = "regressor"
+    else:
+        raise ValueError(f"unknown task_type {task_type!r}")
 
     cols = list(X_full_df.columns)
     cat_positions = [cols.index(c) for c in cat_columns if c in cols]
@@ -147,19 +191,62 @@ def _clean_one_dataset(
     # X_clean is a 2-D numpy array, float64, with categoricals as
     # integer codes and NaNs preserved. Exactly what TabPFN's
     # ensemble preprocessor expects (line 26244-26258 of the dump).
+
+    outlier_removal_std = inference_config.get_resolved_outlier_removal_std(
+        estimator_type=tabpfn_task_type,
+    )
+
+    # Build per-dataset ensemble configs.
+    if task_type == "classification":
+        ensemble_configs = generate_classification_ensemble_configs(
+            num_estimators=int(n_estimators),
+            add_fingerprint_feature=inference_config.FINGERPRINT_FEATURE,
+            feature_shift_decoder=inference_config.FEATURE_SHIFT_METHOD,
+            polynomial_features=inference_config.POLYNOMIAL_FEATURES,
+            preprocessor_configs=list(inference_config.PREPROCESS_TRANSFORMS),
+            class_shift_method=inference_config.CLASS_SHIFT_METHOD,
+            n_classes=int(n_classes if n_classes is not None else 2),
+            random_state=int(rng_seed),
+            num_models=1,
+            outlier_removal_std=outlier_removal_std,
+        )
+    else:
+        target_factories = get_all_reshape_feature_distribution_preprocessors(
+            num_examples=int(X_full_df.shape[0]),
+            random_state=int(rng_seed),
+        )
+        target_transforms = []
+        for name in inference_config.REGRESSION_Y_PREPROCESS_TRANSFORMS:
+            if name is None:
+                target_transforms.append(None)
+            else:
+                target_transforms.append(target_factories[name])
+        ensemble_configs = generate_regression_ensemble_configs(
+            num_estimators=int(n_estimators),
+            add_fingerprint_feature=inference_config.FINGERPRINT_FEATURE,
+            feature_shift_decoder=inference_config.FEATURE_SHIFT_METHOD,
+            polynomial_features=inference_config.POLYNOMIAL_FEATURES,
+            preprocessor_configs=list(inference_config.PREPROCESS_TRANSFORMS),
+            target_transforms=target_transforms,
+            random_state=int(rng_seed),
+            num_models=1,
+            outlier_removal_std=outlier_removal_std,
+        )
+
     return _CleanedDataset(
         X_clean=np.asarray(X_clean),
         y=np.asarray(y_full),
         feature_schema=feature_schema,
         task_type=task_type,
         dataset_id=dataset_id,
+        ensemble_configs=tuple(ensemble_configs),
+        outlier_removal_std=(
+            float(outlier_removal_std) if outlier_removal_std is not None else None
+        ),
     )
 
 
-# Cache by (dataset_id, n_rows, n_cols, task_type) — these are stable
-# per training process. We can't use `_LoadedDataset` directly as the
-# key because it contains a non-hashable DataFrame, so we expose a
-# simple `clean_loaded_dataset(loaded)` API that hashes by id+shape.
+# Cache by (dataset_id, n_rows, n_cols, task_type, n_estimators, base_seed).
 _CLEAN_CACHE: dict[tuple, _CleanedDataset] = {}
 
 
@@ -170,27 +257,46 @@ def clean_loaded_dataset(
     cat_columns: Sequence[str],
     task_type: str,
     dataset_id: str,
+    n_estimators: int,
+    n_classes: int | None,
+    inference_config: Any,
+    base_seed: int,
 ) -> _CleanedDataset:
     """Cached wrapper for :func:`_clean_one_dataset`.
 
-    Cache key: ``(dataset_id, n_rows, n_cols, task_type)``. So two
-    different DataFrames with the same dataset_id and shape will share
-    the cache entry — fine for our use because the sanitized CSV is
-    deterministic per (DataPipeline run, dataset_id).
+    Cache key includes ``n_estimators`` and ``base_seed`` so a sweep
+    that changes either of them gets a fresh cache entry (different
+    EnsembleConfig list).
     """
     key = (
         dataset_id,
         int(X_full_df.shape[0]),
         int(X_full_df.shape[1]),
         task_type,
+        int(n_estimators),
+        int(base_seed),
     )
     if key not in _CLEAN_CACHE:
+        # Derive a stable per-dataset rng_seed from (base_seed, dataset_id).
+        # `hash` over a tuple of ints+str — deterministic in CPython 3.6+
+        # via the PYTHONHASHSEED env (we don't seed it; this is just a
+        # mixer to spread dataset_ids across the int32 range).
+        import hashlib
+        h = hashlib.blake2b(
+            f"{base_seed}::{dataset_id}".encode("utf-8"),
+            digest_size=8,
+        ).digest()
+        rng_seed = int.from_bytes(h, "big") & 0x7FFF_FFFF
         _CLEAN_CACHE[key] = _clean_one_dataset(
             X_full_df=X_full_df,
             y_full=y_full,
             cat_columns=cat_columns,
             task_type=task_type,
             dataset_id=dataset_id,
+            n_estimators=n_estimators,
+            n_classes=n_classes,
+            inference_config=inference_config,
+            rng_seed=rng_seed,
         )
     return _CLEAN_CACHE[key]
 
@@ -292,6 +398,8 @@ def build_ensemble_members(
     X_qry: np.ndarray,             # (n_qry, n_features) float64 — ALREADY clean_data-cleaned
     y_qry_raw: np.ndarray,
     feature_schema: Any,           # tabpfn.preprocessing.datamodel.FeatureSchema (cleaned)
+    ensemble_configs: Sequence,    # per-dataset cached configs (from clean_loaded_dataset)
+    outlier_removal_std: float | None,    # cached on the _CleanedDataset
     task_type: str,                # "classification" | "regression"
     n_classes: int | None,
     inference_config: Any,         # tabpfn.inference_config.InferenceConfig
@@ -389,61 +497,51 @@ def build_ensemble_members(
         f"got {X_ctx.shape[1]} vs {X_qry.shape[1]}"
     )
 
-    # ---- 2) build the per-estimator EnsembleConfig list --------------- #
-    outlier_removal_std = inference_config.get_resolved_outlier_removal_std(
-        estimator_type=tabpfn_task_type,
+    # ---- 2) ensemble configs come from the per-dataset cache ----------- #
+    # Mirrors the official path: `_initialize_dataset_preprocessing` runs
+    # ONCE per parent dataset (TabPFN .txt:7686-7733 cls, 13270-13298
+    # reg) and stores configs on the `DatasetConfig`. Per-step
+    # `__getitem__` reuses these — only the per-step RNG seed differs.
+    # Re-rolling per step would change class permutations and feature
+    # shifts every step, adding gradient noise the published pipeline
+    # does not have.
+    assert len(ensemble_configs) == int(n_estimators), (
+        f"ensemble_configs has length {len(ensemble_configs)} but "
+        f"n_estimators={n_estimators}; the per-dataset cache is stale "
+        "for a different n_estimators_finetune setting"
     )
-    if task_type == "classification":
-        ensemble_configs = generate_classification_ensemble_configs(
-            num_estimators=n_estimators,
-            add_fingerprint_feature=inference_config.FINGERPRINT_FEATURE,
-            feature_shift_decoder=inference_config.FEATURE_SHIFT_METHOD,
-            polynomial_features=inference_config.POLYNOMIAL_FEATURES,
-            preprocessor_configs=list(inference_config.PREPROCESS_TRANSFORMS),
-            class_shift_method=inference_config.CLASS_SHIFT_METHOD,
-            n_classes=int(n_classes),
-            random_state=int(rng_seed),
-            num_models=1,
-            outlier_removal_std=outlier_removal_std,
-        )
-    else:
-        # Regression target transforms: REGRESSION_Y_PREPROCESS_TRANSFORMS
-        # is a tuple like (None, "safepower"). Resolve each name to a
-        # sklearn-style transformer via TabPFN's helper.
-        target_factories = get_all_reshape_feature_distribution_preprocessors(
-            num_examples=len(y_ctx_raw),
-            random_state=int(rng_seed),
-        )
-        target_transforms = []
-        for name in inference_config.REGRESSION_Y_PREPROCESS_TRANSFORMS:
-            if name is None:
-                target_transforms.append(None)
-            else:
-                # The factories dict returns sklearn-style transformer
-                # CLASSES; we instantiate via `()` per TabPFN's pattern.
-                target_transforms.append(target_factories[name])
-        ensemble_configs = generate_regression_ensemble_configs(
-            num_estimators=n_estimators,
-            add_fingerprint_feature=inference_config.FINGERPRINT_FEATURE,
-            feature_shift_decoder=inference_config.FEATURE_SHIFT_METHOD,
-            polynomial_features=inference_config.POLYNOMIAL_FEATURES,
-            preprocessor_configs=list(inference_config.PREPROCESS_TRANSFORMS),
-            target_transforms=target_transforms,
-            random_state=int(rng_seed),
-            num_models=1,
-            outlier_removal_std=outlier_removal_std,
-        )
+    # `outlier_removal_std` is also passed in pre-resolved (cached on
+    # the _CleanedDataset). Suppress the unused-import warnings for
+    # the helpers that are only used by `_clean_one_dataset` now.
+    del FeatureSubsamplingMethod, generate_classification_ensemble_configs
+    del generate_regression_ensemble_configs
+    del get_all_reshape_feature_distribution_preprocessors
 
     # ---- 3) regression: pre-z-norm y on context-only stats ------------ #
-    # Matches `TabPFNRegressor.fit` lines 13425-13429: global z-norm
-    # is applied BEFORE the per-estimator target_transform. We do it
-    # here so the values that hit the preprocessor are already
-    # standardised.
+    # Matches `DatasetCollectionWithPreprocessing.__getitem__` lines
+    # 26220-26240 — the official multi-dataset finetune path. Critical
+    # detail: when `train_std < 1e-8` we use 1e-8 (with a warning),
+    # NOT a tiny epsilon like 1e-20. Adding 1e-20 to a near-zero std
+    # produces z-scores of ~1e+20, which immediately overflow fp16
+    # gradients (one of the diagnosed causes of the 2026-05-27 inf
+    # grad_norm spikes — see chat).
+    import warnings as _warnings
     znorm_mean: float | None = None
     znorm_std:  float | None = None
     if task_type == "regression":
         znorm_mean = float(np.mean(y_ctx_raw))
-        znorm_std = float(np.std(y_ctx_raw)) + 1e-20
+        train_std = float(np.std(y_ctx_raw))
+        eps = 1e-8
+        if train_std < eps:
+            _warnings.warn(
+                f"Target variable for dataset={dataset_id} has constant or "
+                f"near-constant values (std={train_std:.2e}). Clamping to "
+                f"eps={eps:.0e} to prevent division by zero in standardization.",
+                UserWarning,
+                stacklevel=2,
+            )
+            train_std = eps
+        znorm_std = train_std
         y_ctx_for_pre = ((y_ctx_raw - znorm_mean) / znorm_std).astype(np.float32)
         y_qry_for_loss = ((y_qry_raw - znorm_mean) / znorm_std).astype(np.float32)
     else:

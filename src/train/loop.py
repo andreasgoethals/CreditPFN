@@ -593,6 +593,43 @@ def _n_classes(batch: TabPFNBatch) -> int:
     return max(K, 2)            # binary at minimum
 
 
+def _query_missing_context_class(batch) -> bool:
+    """Return True iff the query split contains a class index that the
+    context split does NOT contain.
+
+    Mirrors the official guard at ``repositories/TabPFN .txt:26893-26912``
+    (``FinetunedTabPFNClassifier._should_skip_batch``). Without it, a
+    stratified PD subsample that happens to put both positives in the
+    query split leaves the context with only one class — the CE loss
+    is then ill-defined on the positive query row(s) because the
+    in-context examples never demonstrate what "class 1" looks like.
+
+    Works for both the legacy :class:`TabPFNBatch` (single y_context /
+    y_query tensors) and the new :class:`TabPFNEnsembleBatch` (list of
+    per-member y_context tensors). Regression batches always return
+    False — the check is classifier-only.
+    """
+    if getattr(batch, "task_type", "") != "classification":
+        return False
+
+    # Ensemble batch: y_context is per-member (each member sees a
+    # potentially class-permuted view), but the y_query is shared in
+    # canonical class order. Concatenate across members for the union.
+    if hasattr(batch, "members"):
+        ctx_uniques = []
+        for m in batch.members:
+            ctx_uniques.append(torch.unique(m.y_context.reshape(-1)))
+        ctx_unique = torch.unique(torch.cat(ctx_uniques))
+        qry_unique = torch.unique(batch.y_query.reshape(-1))
+    else:
+        ctx_unique = torch.unique(batch.y_context.reshape(-1))
+        qry_unique = torch.unique(batch.y_query.reshape(-1))
+
+    # Check: every class in query must also be in context.
+    in_ctx = torch.isin(qry_unique, ctx_unique)
+    return not bool(in_ctx.all().item())
+
+
 # --------------------------------------------------------------------------- #
 # Ensemble per-epoch eval (n_estimators=32 via TabPFNClassifier/Regressor)
 # --------------------------------------------------------------------------- #
@@ -604,6 +641,7 @@ def _save_eval_snapshot(
     snapshot_path: Path,
     *,
     criterion: torch.nn.Module | None = None,
+    inference_config=None,
 ) -> None:
     """Persist the live model's state_dict to a Prior-Labs-format .ckpt
     so ``TabPFNClassifier(model_path=...)`` can load it.
@@ -614,14 +652,35 @@ def _save_eval_snapshot(
     ``merge_and_unload``. This is the whole reason this function exists
     instead of just calling ``save_finetuned``: the production save path
     mutates the live model, which would terminate training.
+
+    **Format — matched verbatim to ``save_tabpfn_model`` at
+    ``repositories/TabPFN .txt:12211-12278``.** Critical: we MUST write
+    the 4 keys ``{state_dict, config, architecture_name, inference_config}``.
+    Skipping ``architecture_name`` and ``inference_config`` makes
+    ``load_model`` (TabPFN .txt:12127-12150) fall back to V2 architecture
+    inference, producing the "Missing key(s) in state_dict" error on V3
+    weights — observed in every snapshot-load attempt in the
+    2026-05-27 PD/LGD logs.
     """
     snapshot_path.parent.mkdir(parents=True, exist_ok=True)
 
-    config_payload = (
-        architecture_config.__dict__
-        if hasattr(architecture_config, "__dict__")
-        else architecture_config
-    )
+    # Pull TabPFN's helpers lazily — they require tabpfn import.
+    try:
+        from tabpfn.model_loading import _resolve_architecture_name
+    except ImportError:                                                # pragma: no cover
+        _resolve_architecture_name = None
+
+    from dataclasses import asdict, is_dataclass
+
+    # The architecture_config is a dataclass instance (TabPFNV3Config /
+    # TabPFNV2p6Config / …). Use `asdict` per the canonical save path
+    # (TabPFN .txt:12268). Fall back to __dict__ for non-dataclass cfgs.
+    if is_dataclass(architecture_config):
+        config_payload = asdict(architecture_config)
+    elif hasattr(architecture_config, "__dict__"):
+        config_payload = dict(architecture_config.__dict__)
+    else:
+        config_payload = architecture_config
 
     # LoRA case: clone first, merge into the clone, throw the clone away.
     # Costs one transient deep-copy of the model (~213 MB for v3) but
@@ -650,10 +709,40 @@ def _save_eval_snapshot(
             for k, v in crit_state.items():
                 state_dict[f"criterion.{k}"] = v
 
-    torch.save(
-        {"state_dict": state_dict, "config": config_payload},
-        str(snapshot_path),
-    )
+    # Architecture name — tells the loader which architecture class to
+    # instantiate. Without this key, load_model defaults to
+    # ``ARCHITECTURES["base"]`` (V2). Critical for V3 / V2.6.
+    if _resolve_architecture_name is not None:
+        architecture_name = _resolve_architecture_name(architecture_config)
+    else:
+        # Conservative fallback if private helper moves: try to identify
+        # by class name (TabPFNV3Config → tabpfn_v3, etc.).
+        cls_name = type(architecture_config).__name__
+        if "V3" in cls_name:
+            architecture_name = "tabpfn_v3"
+        elif "V2p6" in cls_name or "V2_6" in cls_name:
+            architecture_name = "tabpfn_v2_6"
+        elif "V2p5" in cls_name or "V2_5" in cls_name:
+            architecture_name = "tabpfn_v2_5"
+        else:
+            architecture_name = "base"
+
+    checkpoint: dict = {
+        "state_dict": state_dict,
+        "config": config_payload,
+        "architecture_name": architecture_name,
+    }
+
+    # Inference config — required for V2.6 and V3 (these checkpoints
+    # always embed their own; the loader at TabPFN .txt:12148-12150
+    # reads this key directly for self-loss models).
+    if inference_config is not None:
+        if is_dataclass(inference_config):
+            checkpoint["inference_config"] = asdict(inference_config)
+        else:
+            checkpoint["inference_config"] = inference_config
+
+    torch.save(checkpoint, str(snapshot_path))
 
 
 def evaluate_ensemble_on_split(
@@ -1229,6 +1318,24 @@ def train_one_config(
         for step, batch in enumerate(train_loader, start=1):
             step_t0 = time.monotonic()
             batch = batch.to(device)
+            # Skip-on-missing-class check — mirrors the official
+            # `FinetunedTabPFNClassifier._should_skip_batch` at
+            # `TabPFN .txt:26893-26912`. If a stratified subsample
+            # happens to draw a context split that's missing one of
+            # the labels present in the query split, the CE loss is
+            # ill-defined for those query rows (no positive softmax
+            # target). We skip the entire step, the dataloader will
+            # serve a different dataset next step. Important on PD
+            # with strong class imbalance (default rate ~1-3 %).
+            if (batch.task_type == "classification"
+                    and _query_missing_context_class(batch)):
+                LOGGER.warning(
+                    "epoch=%d step=%d dataset=%s — query labels not subset of "
+                    "context labels; skipped step.",
+                    epoch, step, batch.dataset_id,
+                )
+                epoch_skipped_steps += 1
+                continue
             with torch.amp.autocast("cuda", enabled=use_amp):
                 # Branch on batch type. The new TabPFNEnsembleBatch (path
                 # taken when `inference_config` is non-None, i.e. every
@@ -1377,7 +1484,9 @@ def train_one_config(
         if use_ensemble_eval and snapshot_path is not None:
             assert architecture_config is not None
             _save_eval_snapshot(
-                model, architecture_config, snapshot_path, criterion=criterion,
+                model, architecture_config, snapshot_path,
+                criterion=criterion,
+                inference_config=inference_config,
             )
             eval_ckpt_path: Path | str = snapshot_path
         else:
