@@ -1,148 +1,102 @@
 # =============================================================================
 #  CreditPFN — training configuration
 # =============================================================================
-#  Only tunable knobs live here. Anything that doesn't change between runs
-#  (optimizer family, scheduler type, multi-chunk policy, AdamW betas, …)
-#  is hardcoded in `src/train/loop.py`.
-#
-#  The training pipeline produces continued-pretrained checkpoints only.
-#  Scoring is the eval pipeline's job (`scripts/eval_pipeline.py`).
-#
-#  Hydra-style overrides on the CLI:
-#      python scripts/train_pipeline.py train.epochs=10 track=lgd
+#  Tunable knobs only. Invariants (AdamW family, betas, schedule type) are
+#  hardcoded in src/train/loop.py. This stage produces checkpoints; scoring
+#  is the eval pipeline's job. CLI overrides: `train_pipeline.py train.epochs=10`.
+#  Full rationale for every knob lives in README §7 (Training pipeline).
 # =============================================================================
 
 
-# =============================================================================
-#  Section 0 · Tunable hyperparameters (sweep over the cartesian product)
-# =============================================================================
-#  Brackets both LR regimes:
-#    * single-dataset finetuning (Rubachev 2025 / TabPFN's
-#      FinetunedTabPFNClassifier): 1e-5
-#    * multi-dataset continued pretraining (TabPFN-Wide 2026): 1e-4
-#  See docs/CHECKPOINTS.md for the synthetic-vs-real-finetuned distinction
-#  among the base checkpoints.
-
+# --- Section 0 · Tunable sweep (cartesian product) ---------------------------
+# Grid: 2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc × 2 pass-modes = 24 trials/track.
+# v2.5 is not swept (PEFT module-name + NaN-scaler incompatibilities — see
+# docs/CHECKPOINTS.md). Only v2.6 and v3 synthetic-only bases.
 tunable:
-  # v2.5 was dropped from the sweep on 2026-05-21: its loaded checkpoint
-  # exposes module names PEFT can't suffix-match for LoRA (failure mode
-  # observed in PD trials 16-31 / LGD odd trials in v2.5 range), AND
-  # v2.5's internal TorchStandardScaler produces NaN in `embedded_x`
-  # when a per-step subsample contains a constant column. Both
-  # incompatibilities live inside the model's pre-attention pipeline
-  # and would require either a sklearn-API rewrap or per-step
-  # constant-column patching — out of scope for this project. v3
-  # (the current generation) and v2.6 (the most recent v2 line) are
-  # the only bases we sweep over.
   classifier_base_paths:
-    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"        # v3 synthetic-only (current default)
-    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"    # v2.6 synthetic-only
-
+    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
+    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
   regressor_base_paths:
-    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"         # v3 synthetic-only (current default)
-    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"     # v2.6 synthetic-only
+    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
+    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
 
-  # LR grid (2026-05-28). Brackets the documented published values:
-  #   * 3e-7 — Real-TabPFN (Garg 2025). Smallest; designed to prevent
-  #     catastrophic forgetting of the synthetic prior during continued
-  #     pretraining.
-  #   * 1e-6 — interpolates between Real-TabPFN and TabPFN's
-  #     FinetunedTabPFNClassifier default.
-  #   * 1e-5 — `FinetunedTabPFNClassifier` default (TabPFN .txt:26800)
-  #     and Rubachev (2025) middle-band.
-  #   * 5e-5 — high end of Rubachev's safe regime. Above 5e-5 (we
-  #     tried 1e-4 on 2026-05-27) the no-LoRA + qf=0.20 trials
-  #     diverged within ~35 epochs. Divergence detection (added
-  #     2026-05-28) catches these but the trial is wasted compute.
-  # 4 LR values × 2 LoRA × 2 qf × 2 acc × 2 bases = 64 trials per track.
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 5.0e-5]
+  # LR grid brackets the published values: 3e-7 (Real-TabPFN), 1e-5
+  # (FinetunedTabPFNClassifier default), 5e-5 (Rubachev high end). 1e-4
+  # diverges on no-LoRA + qf=0.20, so it's excluded. See README §7.
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]
 
-  # Whether to wrap the base model with a LoRA adapter before training
-  # (Hu et al. 2021). With `use_lora: true` the base TabPFN weights are
-  # frozen and only the LoRA A/B matrices receive gradients — typically
-  # 1–5 % of full-model parameters. Rubachev 2025 ("On Finetuning Tabular
-  # Foundation Models") finds full FT > LoRA on most datasets but LoRA
-  # captures 90–95 % of the gain at a fraction of compute. The LoRA
-  # adapter is merged back into the base weights at save time, so the
-  # resulting .ckpt loads via the standard TabPFN loader without any
-  # PEFT dependency.
+  # LoRA (Hu et al. 2021): freeze base weights, train ~1.6 % adapter params.
+  # Merged back at save time → .ckpt loads without a PEFT dependency.
   use_lora: [false, true]
 
-  # Per-step context / query split — the fraction of the
-  # `finetuning.max_rows_per_epoch` rows that go to the query (loss-
-  # bearing) split; the rest is context (in-context examples). TabPFN's
-  # `FinetunedTabPFNClassifier` defaults to 0.20; Real-TabPFN
-  # (Garg 2025) uses 0.40 because more query rows mean lower-variance
-  # gradients with batch size 1. Sweeping all three documented values
-  # so we can compare directly. 0.20 = 80/20, 0.30 = 70/30, 0.40 = 60/40.
-  query_fractions: [0.20, 0.40]
+  # ctx/query split: query_fraction of the per-step subsample is the
+  # loss-bearing query. 0.20 = TabPFN default, 0.40 = Real-TabPFN.
+  query_fractions: [0.20]
 
-  # Gradient accumulation: forward+backward K times, sum gradients,
-  # then call optimizer.step() once. Effective batch becomes K
-  # datasets per gradient update; peak GPU memory stays at one
-  # dataset's worth. The official TabPFN `FinetunedTabPFNClassifier`
-  # does NOT accumulate (effectively K=1). We sweep both K=1 (official
-  # behaviour, more gradient noise but better LR-schedule resolution)
-  # and K=4 (smoother gradients, coarser schedule) so we can compare.
-  # With 12 train datasets and 100 epochs:
-  #   K=1 → 1200 optimizer steps (cosine schedule is smooth)
-  #   K=4 →  300 optimizer steps (still adequate)
-  accumulate_grad_batches: [1, 4]
+  # Gradient accumulation: K=1 (TabPFN default, no accumulation) vs K=4
+  # (smoother gradients, coarser LR schedule).
+  accumulate_grad_batches: [1]
+
+  # Per-epoch step plan:
+  #   "one_sample" — ONE step per dataset per epoch (a single fresh random
+  #                  subsample of <= max_rows_per_epoch rows). Original
+  #                  behaviour; total steps = n_datasets × epochs.
+  #   "full_pass"  — size-proportional steps: a dataset with n rows gets
+  #                  ceil(n / max_rows_per_epoch) steps/epoch, each a distinct
+  #                  draw. Big datasets contribute MANY (non-repeated within a
+  #                  step) steps; small ones stay at 1 (no extra overfit
+  #                  pressure). Decouples #steps from #datasets — the lever for
+  #                  "more steps from few datasets". Both listed → A/B both.
+  epoch_pass_modes: ["one_sample", "full_pass"]
 
 
-# =============================================================================
-#  Section 1 · Cross-cutting knobs
-# =============================================================================
-
+# --- Section 1 · Cross-cutting knobs -----------------------------------------
+# Corpus location comes from paths.data_source in config/data.yaml.
 seed: 42
 run_name: "creditpfn"
 device: "auto"           # "auto" | "cuda" | "cpu"
 track: "pd"              # "pd" (classifier) | "lgd" (regressor)
 
-# The training corpus location is taken from `paths.data_source` in
-# config/data.yaml (single source of truth). To flip between scratch
-# and durable storage, change it there — the train pipeline reads
-# that file at startup before resolving any data path.
 
-
-# =============================================================================
-#  Section 2 · Corpus split (train / test by dataset_id)
-# =============================================================================
-#  No validation set — by design. Variants are kept and compared post-hoc
-#  in the eval stage. The `test_dataset_ids` here are recorded as metadata
-#  in each checkpoint's `.provenance.json` so the eval knows which test
-#  set to score against; the training loop itself never reads test rows.
-
+# --- Section 2 · Corpus split (by dataset_id) --------------------------------
+# No validation set by design; variants compared post-hoc in eval. The
+# test_dataset_ids land in each checkpoint's .provenance.json. Mode B
+# (explicit ID lists) overrides Mode A (fractions) when non-empty.
 corpus:
-  # Mode A — fraction-based (default; both _dataset_ids lists empty).
   train_fraction: 0.7
   test_fraction:  0.3
+  # Explicit pins. Each may be a flat list (applies to the active track) OR
+  # a per-track mapping {pd: [...], lgd: [...]} so one shared config can pin
+  # different IDs per track. A track with no pins → fraction-based split.
+  # PD: unpinned → 0.7/0.3 fraction split. LGD: fully pinned so loss2 + axa
+  # are the held-out test sets and the other 6 datasets are training.
+  train_dataset_ids:
+    lgd: ["0001.heloc", "0003.axa", "0004.base_model", "0005.base_modelisation",
+          "0006.lgd_freddie", "0008.SBA_loans_case"]
+  test_dataset_ids:
+    lgd: ["0002.loss2", "0007.lgd_lendingclub"]
 
-  # Mode B — explicit ID lists (override Mode A; useful for debug / outer drivers).
-  # E.g. train_dataset_ids: ["0001.gmsc"]
-  train_dataset_ids: []
-  test_dataset_ids:  []
 
-
-# =============================================================================
-#  Section 3 · Optimizer + LR schedule
-# =============================================================================
-#  Always AdamW (betas (0.9, 0.999)) with linear-warmup → cosine-decay.
-
+# --- Section 3 · Optimizer + LR schedule -------------------------------------
+# AdamW (betas 0.9/0.999) + linear-warmup → cosine-decay (hardcoded in loop).
 optimizer:
   weight_decay: 0.01
-
+  # L2-SP (Li et al. 2018; the anti-forgetting term Real-TabPFN §4 uses):
+  # penalise drift of the weights away from the synthetic-prior start w0
+  # — NOT toward zero, which is what weight_decay does. ON by default at
+  # Real-TabPFN's value (0.003); set to 0.0 to disable. FULL-FT-only: with
+  # LoRA the base is frozen, so L2-SP is inert and silently skipped — i.e.
+  # effectively "full-FT gets L2-SP, LoRA doesn't". NOTE: 0.003 was tuned
+  # for v2 / 20k steps / CE-only, so on our v2.6+v3 / ~hundreds-of-steps /
+  # CE+NLL setup treat it as a sensible starting point, not a constant.
+  # See README §7.
+  l2sp_lambda: 0.003
 scheduler:
-  warmup_fraction: 0.10    # TabPFN's FinetunedTabPFNClassifier default
+  warmup_fraction: 0.10    # TabPFN FinetunedTabPFNClassifier default
 
 
-# =============================================================================
-#  Section 4 · LoRA adapter (used only when `tunable.use_lora == true`)
-# =============================================================================
-#  Default targets match TabPFN's attention layer naming
-#  (see repositories/TabPFN .txt:15430-15442). Adjust for v3 if the
-#  multi-stage architecture exposes different module names.
-
+# --- Section 4 · LoRA adapter (only when tunable.use_lora == true) -----------
+# target_modules match TabPFN's attention layer names.
 lora:
   r:                 8
   alpha:             16
@@ -150,103 +104,37 @@ lora:
   target_modules:    ["q_projection", "k_projection", "v_projection", "out_projection"]
 
 
-# =============================================================================
-#  Section 5 · Training loop
-# =============================================================================
-
+# --- Section 5 · Training loop -----------------------------------------------
 train:
-  # Fixed-epoch training (no validation-based early stopping; see
-  # README.md "Design notes — no validation set" for rationale).
-  # Reduced 100 → 50 on 2026-05-28 after the log analysis showed:
-  #   * Loss stabilises by epoch 30 across all stable trials.
-  #   * LoRA reaches best test AUC around epoch 60 but the gain
-  #     epoch 50 → 60 is marginal (<0.005 AUC).
-  #   * Wasted compute on diverging trials runs only until epoch ~36
-  #     for the qf=0.20 + no-LoRA case anyway (divergence detection
-  #     now aborts at that point).
-  # 50 epochs ≈ 35-min full-FT trial / 5-min LoRA trial.
-  epochs: 50
-  # `accumulate_grad_batches` was moved into `tunable` on 2026-05-27 so
-  # we sweep both {1, 4}; see that block for the rationale.
+  epochs: 50                              # fixed-epoch (no early stopping)
   grad_clip_norm: 1.0
-  amp: true                             # AMP autocast (CUDA only)
+  amp: true                               # AMP autocast (CUDA only; fp16)
+  dataloader_workers: 0                   # GPU is the bottleneck
 
-  # Number of TabPFN ensemble members per training step
-  # (`n_estimators_finetune` in TabPFN's `FinetunedTabPFNClassifier`,
-  # default 2 — `repositories/TabPFN .txt:26842`). Each step we draw
-  # 2 different preprocessed views of the same context/query split
-  # (different feature shifts, different class permutations) and
-  # average the CE/NLL loss across them. Cuts gradient variance by
-  # ~sqrt(2). Set to 1 to disable (faster but noisier; corresponds
-  # to the audit-time CreditPFN behaviour).
+  # TabPFN ensemble members per training step (FinetunedTabPFNClassifier
+  # default = 2): two preprocessed views averaged, ~sqrt(2) less grad noise.
   n_estimators_finetune: 2
 
-  # Per-step subsample size is `finetuning.max_rows_per_epoch` in
-  # config/data.yaml (single source of truth — see that file for the
-  # memory-budget reasoning). Same knob for every base in the sweep.
-
-  dataloader_workers: 0                 # 0 = main process only (GPU is the bottleneck)
-
-  # Per-epoch evaluation: at the end of every epoch we score the model
-  # on a small subsample of each training- and test-dataset and write
-  # the result to output/training/epochs/<track>/<descriptive_name>.csv. The
-  # primary metric is ROC-AUC for PD (classification) and RMSE for LGD
-  # (regression). Set `epoch_eval_subsample_samples` to 0 to disable the
-  # check (saves wall-clock for debug runs).
-  #
-  # What `epoch_eval_subsample_samples=500` actually means: for EACH of
-  # the train and test datasets (17 datasets for PD, 8 for LGD) at end
-  # of every epoch, sample 500 rows, split into ctx/qry by the trial's
-  # qf, run TabPFN with `epoch_eval_n_estimators` ensemble members,
-  # compute ROC-AUC (or RMSE/R²/brier) on the query rows, average
-  # across all datasets. Binomial standard error on an AUC point
-  # estimate at 500 rows × ~3 % positive rate is ~0.02 — i.e. the
-  # per-epoch AUC is a *trend* indicator with about ±0.02 noise. The
-  # final reportable AUC comes from `scripts/eval_pipeline.py`, which
-  # uses the full datasets via K-fold CV. Keep at 500 unless you need
-  # crisper trend curves (then bump to 1000 — doubles the per-epoch
-  # eval wall time but halves the noise).
+  # Per-epoch monitor: at each epoch end, score `epoch_eval_subsample_samples`
+  # rows per train/test dataset via `epoch_eval_n_estimators`-member TabPFN
+  # ensemble inference (same sklearn path as the eval pipeline, so numbers
+  # are comparable). Emits epoch=-1 baseline (pre-FT) and per-epoch curves to
+  # output/training/epochs/<track>/<descriptive_name>.csv. Per-step subsample
+  # size = finetuning.max_rows_per_epoch in config/data.yaml. Set
+  # epoch_eval_subsample_samples=0 to disable the monitor.
   epoch_eval_subsample_samples: 2000
-  # Per-epoch eval uses TabPFN ensemble inference (sklearn API) so the
-  # numbers in the training log are directly comparable to the final
-  # `scripts/eval_pipeline.py` numbers. 32 matches `eval.tabpfn_n_estimators`
-  # in config/eval.yaml. Set to 1 to fall back to a single forward pass
-  # per dataset (cheaper but methodologically inconsistent with the final
-  # eval — only useful for fast smoke tests). At end of each epoch we
-  # snapshot the live model's state_dict to a rolling temp .ckpt next to
-  # the trial's final checkpoint, then load it via TabPFNClassifier(
-  # n_estimators=32) for ensemble inference. The snapshot is overwritten
-  # each epoch, so disk usage stays bounded at one .ckpt-worth per trial.
-  # Includes the pre-finetuning baseline emitted as epoch=-1 in the
-  # per-epoch CSV, which is the score every finetuned epoch must beat.
   epoch_eval_n_estimators: 32
 
-  # Divergence detection — early-abort safeguard added 2026-05-28
-  # after the qf=0.20 + no-LoRA trials catastrophically diverged (loss
-  # collapsed to a constant value, AUC pegged at 0.5 random, AMP scaler
-  # skipping >50% of steps, model produced NaN gradients forever).
-  # The loop watches the last N epochs and aborts when:
-  #   * loss is constant to 6 sig figs across all watched epochs, OR
-  #   * train AND test AUC are both 0.5 (PD), OR
-  #   * train AND test metrics are both NaN
-  # When tripped, the trial saves the (broken) checkpoint, marks the
-  # manifest row as status="DIVERGED" with the reason, and exits
-  # cleanly so the SLURM array task doesn't waste its full time slot.
-  # Patience=5 means we need 5 consecutive matching epochs before
-  # we trust the verdict.
+  # Early-abort when training collapses: loss constant across `patience`
+  # epochs, OR AUC pegged at 0.5, OR all metrics NaN. Records
+  # status="DIVERGED" in the manifest. See README §7.
   divergence_patience: 5
 
 
-# =============================================================================
-#  Section 6 · Checkpoint output
-# =============================================================================
-#  Final-epoch weights → `cfg.checkpoint.trained_dir/<track>/<descriptive_name>.ckpt`
-#  in Prior Labs format. A sidecar `<...>.ckpt.provenance.json` records the
-#  hyperparameters, training/test dataset IDs, training time, and GPU used —
-#  that's what the eval pipeline reads to know which test set goes with which
-#  checkpoint.
-#
-#  Filename: <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt
-
+# --- Section 6 · Checkpoint output -------------------------------------------
+# Final weights → trained_dir/<track>/<descriptive_name>.ckpt + a
+# .ckpt.provenance.json sidecar (HPs, train/test IDs, GPU, walltime).
+# Filename schema:
+#   <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_lora].ckpt
 checkpoint:
   trained_dir: "checkpoints/trained"

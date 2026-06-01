@@ -247,8 +247,9 @@ tunable:
   query_fractions:   [0.20, 0.30, 0.40]
 ```
 
-Default = **2 bases × 4 LRs × 2 LoRA × 3 qf = 48 trials per track**.
-(v2.5 was dropped on 2026-05-21 — see `docs/CHECKPOINTS.md`.) One
+Default = **2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc × 2 epoch-pass-modes
+= 24 trials per track**. (v2.5 was dropped on 2026-05-21 — see
+`docs/CHECKPOINTS.md`.) One
 SLURM array task per trial. Each parent dataset contributes exactly
 one training step per epoch (no chunking — see the 2026-05-20
 refactor and the `ProcessedDatasetLoader` in

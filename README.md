@@ -37,6 +37,8 @@ yaml, and result layout.
 
 ---
 
+<a id="1-overview"></a>
+
 ## 1. Overview
 
 Three pipeline stages, each with one config yaml and one CLI script:
@@ -52,6 +54,8 @@ stages and drop publication-quality PDFs under `output/figures/`. See
 chapter 4 for the per-folder breakdown.
 
 ---
+
+<a id="2-background"></a>
 
 ## 2. Background
 
@@ -87,6 +91,8 @@ specific objectives:
 
 ---
 
+<a id="3-quick-start"></a>
+
 ## 3. Quick start
 
 > **You almost certainly cannot run the interesting parts of this
@@ -103,6 +109,8 @@ specific objectives:
 > [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md). The notes below are
 > general and will adapt to any SLURM-managed cluster with a CUDA GPU
 > partition.
+
+<a id="31-install"></a>
 
 ### 3.1 Install
 
@@ -126,6 +134,8 @@ pip install -r requirements.txt
 pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
 ```
 
+<a id="32-verify-the-install-local-laptop-is-fine"></a>
+
 ### 3.2 Verify the install (local laptop is fine)
 
 These three operate on CPU; a laptop is sufficient. Use them to make
@@ -137,6 +147,8 @@ pytest -q tests/                                   # ~5 min, no GPU needed
 python scripts/data_pipeline.py                    # ~10 min, builds data/processed/
 jupyter notebook notebooks/                        # open the data-exploration notebooks
 ```
+
+<a id="33-real-training-and-eval-require-a-cuda-cluster"></a>
 
 ### 3.3 Real training and eval require a CUDA cluster
 
@@ -167,6 +179,8 @@ python scripts/eval_pipeline.py  --method xgboost  --test-dataset 0001.gmsc
 
 ---
 
+<a id="4-repository-layout"></a>
+
 ## 4. Repository layout
 
 ```text
@@ -187,6 +201,8 @@ CreditPFN/
 └── logs/                     one log file per task        (see 4.9, gitignored)
 ```
 
+<a id="41-src--pipeline-source-code"></a>
+
 ### 4.1 `src/` — pipeline source code
 
 | Subpackage | Role | Public CLI |
@@ -196,6 +212,8 @@ CreditPFN/
 | [`src/model/`](src/model) | sklearn-style wrappers for every model the eval scores: XGBoost + CatBoost (with Optuna HPO), LogReg / LinReg (default-hyperparam baselines), TabPFN-untuned, TabPFN-trained. Single `base.py::BaselineModel` protocol so the eval loop stays model-agnostic. | importable only |
 | [`src/eval/`](src/eval)   | The cross-model benchmark: processed-CSV loader, K-fold splitter with inner train/val, comprehensive metrics computation, results-dir routing, skip-existing rerun guard. | `scripts/eval_pipeline.py` |
 | [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), notebook figure sink (`figures.py`), training / eval visualisation helpers (`training_viz.py`, `eval_viz.py`), upstream code refresh (`refresh_repositories.py`). | `python src/utils/refresh_repositories.py` |
+
+<a id="42-config--three-yaml-configs-one-per-stage"></a>
 
 ### 4.2 `config/` — three YAML configs, one per stage
 
@@ -215,6 +233,8 @@ across runs (optimizer family AdamW, cosine schedule, metric column
 order). Those are hardcoded in code — searchable constants near the
 top of the relevant module.
 
+<a id="43-scripts--cli-entrypoints-and-slurm-templates"></a>
+
 ### 4.3 `scripts/` — CLI entrypoints and SLURM templates
 
 One orchestrator per pipeline stage, plus SLURM templates for the
@@ -227,6 +247,8 @@ cluster:
 | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | Score every model on every test dataset, K-fold CV. Skip-existing by default; `--rerun` to force. Filterable with `--method` / `--test-dataset` / `--task-index`. |
 | [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `submit_full_pipeline.sh` for the chained submission. |
 | [`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py) | Stage-level cleanup utility. `python -m src.utils.pipeline_clean --stages train,eval` wipes the outputs of the named stage(s) so the next re-submit starts those stages from scratch. See section 4.10 for details. |
+
+<a id="44-notebooks--exploration-and-result-visualisations"></a>
 
 ### 4.4 `notebooks/` — exploration and result visualisations
 
@@ -251,6 +273,8 @@ Corpus summaries in the data notebooks are memoised so the first
 cell pays the disk-read cost once and every subsequent plot reads
 from RAM.
 
+<a id="45-tests--unit-and-smoke-tests"></a>
+
 ### 4.5 `tests/` — unit and smoke tests
 
 ```bash
@@ -272,14 +296,19 @@ stripped-down CI image.
 | [`tests/test_model.py`](tests/test_model.py) | baseline wrappers on synthetic data, model registry |
 | [`tests/test_eval.py`](tests/test_eval.py)   | per-cell scoring, K-fold benchmark on synthetic processed CSVs, per-method CSV dirs, rerun-skip with full-fold semantics |
 
+<a id="46-docs--project-documentation"></a>
+
 ### 4.6 `docs/` — project documentation
 
 | File | What it is |
 |---|---|
-| [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (v2.6 / v3): training data (synthetic-only), sample/feature caps, layer counts, licence terms. Cross-referenced to HF model cards and the TabPFN-2.5 paper (which documents the architecture family). |
+| [`docs/DATA_PIPELINE.md`](docs/DATA_PIPELINE.md) | Deep-dive on the data stage: one raw CSV's full journey through dedup → register → sanitize, plus the two divergent downstream preprocessing paths (TabPFN vs classical baselines). Companion to `config/data.yaml`. |
+| [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (v2.6 / v3): training data (synthetic-only), sample/feature caps, layer counts, licence terms. Cross-referenced to the HF model cards and Grinsztajn et al. 2026 (arXiv:2511.08667), which documents the architecture family. |
 | [`docs/LITERATURE.md`](docs/LITERATURE.md)       | Chronological tour of every paper under `papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
 | [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md)   | What each `repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python src/utils/refresh_repositories.py`. |
 | [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md)         | **VSC-specific deployment guide** (KU Leuven's Vlaamse Supercomputer Centre): OnDemand portal, conda env, dataset upload, partition / GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this only when you're about to deploy on VSC; everything in this README applies to any SLURM cluster. |
+
+<a id="47-papers-and-repositories--reference-material"></a>
 
 ### 4.7 `papers/` and `repositories/` — reference material
 
@@ -293,6 +322,8 @@ stripped-down CI image.
   Catalogued in [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md);
   refreshed with `python src/utils/refresh_repositories.py`. These
   are read-only references — the project does not import any of them.
+
+<a id="48-checkpoints--base-and-trained-tabpfn-weights-gitignored"></a>
 
 ### 4.8 `checkpoints/` — base and trained TabPFN weights (gitignored)
 
@@ -308,6 +339,8 @@ stripped-down CI image.
   hyperparameter, the training/test dataset IDs, the GPU used, and
   the wall-clock time — readable via
   `src.train.model.load_provenance(path)`.
+
+<a id="49-runtime-trees-data-output-logs-gitignored"></a>
 
 ### 4.9 Runtime trees: `data/`, `output/`, `logs/` (gitignored)
 
@@ -345,6 +378,8 @@ The eval results (`output/results/`), training manifests
 logs always live on durable storage regardless of `data_source`.
 
 ---
+
+<a id="5-re-submitting-the-pipeline-resume-semantics--cleanup"></a>
 
 ## 5. Re-submitting the pipeline (resume semantics + cleanup)
 
@@ -410,6 +445,8 @@ hardcoded defaults otherwise.
 
 ---
 
+<a id="6-data-pipeline"></a>
+
 ## 6. Data pipeline
 
 Four stages, in order. The end-to-end driver is
@@ -459,8 +496,9 @@ Plus one importable helper used by stages 2 and 3:
   drop exact-duplicate columns, drop > 90 %-NaN columns, drop constant
   columns, coerce numeric strings, cast numericals to float32
   (out-of-range values become NaN before the cast — no overflow
-  warnings), ±inf → NaN, optional FeatureAgglomeration to ≤ 128
-  columns (Ward linkage, unscaled per-cluster means), label-encode
+  warnings), ±inf → NaN, optional unsupervised feature **selection** to
+  ≤ 64 real columns (top by scale-free variance, de-correlated; not
+  averaged), label-encode
   classification targets, clip LGD targets to [0, 1].
 
 The eval pipeline reads the same sanitized CSVs but applies its own
@@ -493,6 +531,8 @@ TabPFN's package handles these internally — see
 
 ---
 
+<a id="7-training-pipeline"></a>
+
 ## 7. Training pipeline
 
 A thin orchestrator over `src/train/`. The single source of truth for
@@ -502,15 +542,16 @@ layers:
 * **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint,
   learning rate, LoRA on/off, query_fraction, accumulate_grad_batches.
   Anything genuinely unknown in advance. The full cartesian product is
-  the default sweep (currently **2 bases × 3 LRs × 2 LoRA × 2 qf × 2 acc =
-  48 trials per track**).
+  the default sweep (currently **2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc ×
+  2 epoch-pass-modes = 24 trials per track**).
 * **Fixed HPs** (single values under `train.*`) — epochs, AMP, gradient
   clipping, warmup fraction, per-epoch monitor subsample,
   `n_estimators_finetune` (TabPFN ensemble size during training; 2 per
   the official `FinetunedTabPFNClassifier`). Follow TabPFN's defaults
   where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  per-version: 10 000 for v3, 3 000 for v2.6).
+  per-version: 20 000 for v3, 3 000 for v2.6; plus an optional v3-only
+  `max_cells_per_epoch` cell budget).
 * **Hardcoded in code** — optimizer family (AdamW), betas
   ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
   Never change between runs.
@@ -590,7 +631,7 @@ Each trial writes:
 | Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                       |
 
 Filename schema:
-`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_lora].ckpt`.
+`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_lora].ckpt`.
 Identical re-runs overwrite in place; trials with different HPs land
 in distinct files.
 
@@ -633,6 +674,20 @@ without loading the model weights.
   `status=DIVERGED` in the manifest. This prevents wasting 3+ hours
   of GPU on a dead model (observed in `train_pd_*qf20_acc1*` runs of
   2026-05-28 before the safeguard was added).
+* **L2-SP anti-forgetting penalty (optional)** — `optimizer.l2sp_lambda`
+  adds `0.5·λ·‖w − w₀‖²` to the loss, penalising drift of the weights
+  away from the **synthetic-prior start `w₀`** (not toward zero, which is
+  what `weight_decay` does). This is the anti-catastrophic-forgetting term
+  from Real-TabPFN (Garg 2025, §4); on our tiny corpus it protects the
+  pretrained prior's calibration. It is **on by default for full-FT
+  trials** at Real-TabPFN's `λ = 0.003` (set `optimizer.l2sp_lambda: 0.0`
+  to disable) and is **orthogonal to the LoRA axis but full-FT-only** —
+  with LoRA the base weights are frozen and cannot drift, so L2-SP is inert
+  and silently skipped (effectively: full-FT gets L2-SP, LoRA doesn't). The
+  penalty enters only the back-prop loss; the logged CE / NLL curves stay
+  the pure data loss. The effective λ is recorded in each checkpoint's
+  provenance. (`λ = 0.003` was tuned for v2 / 20k steps; treat it as a
+  starting point on our setup, not a constant.)
 
 ### Optimization objective — why CE / NLL, not AUC
 
@@ -662,7 +717,42 @@ without loading the model weights.
   whenever the density exceeds 1.0 (narrow histogram buckets, sharp
   predictions). RMSE / R² are tracked as *evaluation* metrics.
 
+### Methodology & limitations (statistical validity)
+
+The core methodology is sound — preprocessing mirrors TabPFN's
+inference path exactly (no train/inference skew), the CE / NLL
+objectives match what the model was pretrained with, and the eval
+stage's inner/outer split keeps HPO and threshold-tuning out of the
+test fold. The honest caveats below are limitations of the
+*experimental design*, not bugs:
+
+* **Small test corpus → wide confidence intervals.** A 70/30
+  dataset-level split of ~17 PD + ~8 LGD datasets leaves only ~5 PD and
+  ~2–3 LGD *test* datasets. Per-dataset K-fold CV tightens the
+  within-dataset estimate, but the across-dataset mean rests on a
+  handful of datasets — report per-dataset results, not just the pooled
+  mean.
+* **Best-of-64 selection on the test set (winner's curse).** With no
+  validation set, the best of 64 trials is picked by test performance;
+  the maximum over 64 noisy estimates is upward-biased. Prefer the
+  per-architecture trained-vs-untuned delta over the absolute best, and
+  report the trial distribution.
+* **Within-domain split ≠ Real-TabPFN's external benchmark.** We split
+  one credit corpus into train/test datasets, so they may share vendor
+  quirks. This is the right test of "does credit-specialisation help on
+  credit data," but it measures less external generalisation than a
+  cross-benchmark protocol would.
+* **FeatureAgglomeration is fit on the whole dataset** (before the eval
+  CV split), so cluster assignments see rows that later land in test
+  folds. It is *unsupervised* (never sees `y`), so there is no label
+  leakage — only a small optimistic bias in feature construction.
+* **No multiple-comparison correction across ~20 metrics.** Pre-register
+  the primary metric (roc_auc for PD, rmse for LGD) and treat the rest
+  as diagnostic.
+
 ---
+
+<a id="8-eval-pipeline"></a>
 
 ## 8. Eval pipeline
 
@@ -780,6 +870,8 @@ df.groupby(["model_name", "model_source"])[
 
 ---
 
+<a id="9-references"></a>
+
 ## 9. References
 
 The full paper library lives under [`papers/`](papers/) with a
@@ -804,8 +896,13 @@ works for this project:
   Models.* — finetuning hyperparameter ranges that anchor our
   training stage.
 - **Kolberg et al., 2026.** *TabPFN-Wide: Continued Pre-Training for
-  Extreme Feature Counts.* — source of the `FeatureAgglomeration`
-  design used in `sanitize.py`.
+  Extreme Feature Counts.* — continued-pretraining for >500-feature
+  data via a *feature-widening synthetic prior*. Note: TabPFN-Wide
+  argues *against* dimensionality reduction (it uses
+  `FeatureAgglomeration` only as a baseline to beat). Our `sanitize.py`
+  step is unsupervised feature **selection** (keep real columns, don't
+  average) — an independent, pragmatic feature cap, **not** derived from
+  this paper.
 
 Local code dumps under
 [`repositories/`](repositories/) (catalogued in

@@ -37,7 +37,7 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=02:00:00
+#SBATCH --time=12:00:00   # raised for the full_pass A/B @ 50 epochs (see note)
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
@@ -65,13 +65,20 @@
                          #    number of jobs with a shorter walltime."
                          #
                          # So shorter `--time` → better queue position via
-                         # backfill + potentially higher concurrent-job
-                         # limit. Halving the time-budget from 04:00:00 to
-                         # 02:00:00 matches the actual 50-epoch wall time:
-                         #   * Full-FT trial: ~35 min observed (a2 at 89 epochs took 70 min)
-                         #   * LoRA trial:    ~5  min observed
-                         # 02:00:00 gives ~3× margin over the worst case,
-                         # which covers slow node + per-epoch eval overhead.
+                         # backfill + potentially higher concurrent-job limit.
+                         # Observed for ONE_SAMPLE @ 50 epochs: ~37-39 min/trial
+                         # (8 v3 lr=3e-7 trials, 2026-05-28/29) at the old 10k
+                         # row cap — LoRA/qf/accumulate barely moved it.
+                         # BUT this array now also runs the FULL_PASS arm at
+                         # the 20k row cap: full_pass takes ~Σ ceil(rows/cap)
+                         # steps/epoch (≈ 8-12× more steps for PD's big
+                         # datasets), so a full_pass trial can run several
+                         # hours. --time=12:00:00 is sized for that worst case;
+                         # the fast one_sample trials simply finish early and
+                         # free the slot. **Check the first full_pass trial's
+                         # `epoch_dt` in the log and extrapolate (50×epoch_dt +
+                         # setup); raise --time if it approaches the limit, or
+                         # lower it to ~02:00:00 for one_sample-only runs.**
                          #
                          # `%8` (up from `%4`) — with the time-budget cut in
                          # half, doubling concurrency keeps the total sweep

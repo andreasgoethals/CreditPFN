@@ -1,165 +1,104 @@
 # =============================================================================
 #  CreditPFN — data-pipeline configuration
 # =============================================================================
-#  Only the knobs that are genuinely tunable live here. Everything that is
-#  always-the-same (`unknown_dataset_policy='error'`, `keep_nans=True`,
-#  `replace_inf_with_nan=True`, etc.) is hardcoded in the corresponding
-#  module so this file stays scannable.
-#
-#  Override on the CLI Hydra-style:
-#
-#      python scripts/data_pipeline.py finetuning.max_rows_per_epoch=5000
+#  Tunable knobs only; always-on policy is hardcoded in the stage modules.
+#  CLI overrides Hydra-style: `data_pipeline.py finetuning.max_rows_per_epoch=5000`.
+#  Full walkthrough of every stage in docs/DATA_PIPELINE.md.
 # =============================================================================
 
-# Global seed — every stage derives a deterministic local seed from this so
-# re-running is bit-for-bit reproducible.
+# Global seed — every stage derives a deterministic local seed from this.
 seed: 42
 
-# Paths are interpreted by `src.utils.paths`:
-#   raw / processed / cached → wherever `data_source` points (see below).
-#   dedup / manifest_*       → ALWAYS the durable "data" location
-#                              ($VSC_DATA/CreditPFN on VSC, repo root locally).
+# Paths (resolved by src.utils.paths):
+#   data_source picks the corpus tier — "scratch" (VSC fast-purge) or "data"
+#   (VSC durable / repo root locally). dedup + manifests are ALWAYS durable.
 paths:
-  # Where the data corpus lives — raw inputs AND the processed/cached outputs.
-  # Two values:
-  #   "scratch" — $VSC_SCRATCH/383/<user>/CreditPFN/data/...  (VSC fast-purge area)
-  #   "data"    — $VSC_DATA/leuven/383/<user>/CreditPFN/data/... (VSC durable storage)
-  # Ignored on a laptop (no $VSC_DATA / $VSC_SCRATCH — the repo's own data/
-  # folder is always used).
-  data_source:   "data"
-
-  raw:           data/raw                # data/raw/{pd,lgd}/<id>.csv
-  processed:     data/processed          # sanitize.py output — the ONE on-disk training input
-  dedup:         data/dedup              # 4× doubles_*_{pre,post}.csv (always durable)
-  manifest_pd:   data/manifest_pd.csv    # always durable
-  manifest_lgd:  data/manifest_lgd.csv   # always durable
+  data_source:   "data"            # "scratch" | "data"
+  raw:           data/raw          # data/raw/{pd,lgd}/<id>.csv
+  processed:     data/processed    # sanitize.py output — the on-disk training input
+  dedup:         data/dedup        # doubles_*_{pre,post}.csv (always durable)
+  manifest_pd:   data/manifest_pd.csv
+  manifest_lgd:  data/manifest_lgd.csv
 
 
-# -----------------------------------------------------------------------------
-#  Finetuning subsample — the size of the random row sample each training
-#  step pulls from a dataset's processed CSV. Different TabPFN generations
-#  have very different memory profiles during fine-tuning (gradients
-#  retained, no row chunking, alternating attention etc.), so the cap is
-#  **per-architecture**:
+# --- Finetuning subsample ----------------------------------------------------
+# Rows pulled per training step from a dataset's processed CSV (the in-context
+# "training" set the model conditions on while finetuning). Per-architecture
+# cap because v2.6's alternating attention is far more memory-hungry than v3's
+# 3-stage design (v2.6 OOMs on an 80 GB H100 above ~3 000 rows).
 #
-#    * v3   — 3-stage architecture (column-dist embed → column aggregator
-#             → ICL transformer); each stage processes a smaller activation
-#             tensor than the alternating attention of v2.x. ~54 M params.
-#             10_000 rows fit on 80 GB H100 with ~64 GB headroom.
-#
-#    * v2.6 — alternating row × feature attention at every layer
-#             (24 layers). At each layer the model retains a
-#             (batch, rows, features, hidden) tensor for backward. With
-#             10_000 rows × 128 features × 192 hidden × 24 layers × ~4
-#             expansion the peak resident size exceeds the 80 GB card.
-#             Empirically the safe ceiling on wICE gpu_h100 is ~3_000 rows
-#             (confirmed by trial-8 OOM in the 2026-05-20 run, where 10k
-#             OOMed at the *first* forward pass).
-#
-#  (v2.5 was dropped from the sweep on 2026-05-21 — see
-#   docs/CHECKPOINTS.md for the rationale. The lookup table no longer
-#   needs an entry for it.)
-#
-#  The lookup key is the leading ``v<MAJOR>[.<MINOR>]`` segment that
-#  `src/train/loop.py::_max_rows_for_base` parses out of the base
-#  checkpoint filename — e.g. `tabpfn-v2.6-classifier-…` → "v2.6".
-#  `default` is the fallback when nothing matches.
-#
-#  Per-epoch reshuffle: each epoch draws a fresh random subsample for
-#  datasets larger than the cap; smaller datasets are visited in full
-#  every epoch (the cap is non-binding for them). See
-#  `src/train/dataloader.py::ProcessedDatasetLoader.set_epoch`.
-# -----------------------------------------------------------------------------
+# Real-TabPFN (Garg 2025 §5) found downstream gains rise monotonically with
+# context size up to their 20 000-row GPU limit, so v3 is bumped 10k → 20k to
+# carry more context per step. Two caveats: (1) Real-TabPFN tuned this on a
+# v2-family model; v3's different architecture may scale differently — VALIDATE
+# it doesn't OOM on the target H100 before a full sweep, and drop back to 10000
+# if it does. (2) cells = rows × features drive memory, so the feature cap in
+# sanitize.max_columns bounds how high rows can go. Key = leading
+# v<MAJOR>[.<MINOR>] of the base filename. query_fraction here is a back-compat
+# single value; the sweep value lives in train.yaml.
 finetuning:
   max_rows_per_epoch:
-    v3:      10000
-    v2.6:    3000
+    v3:      20000
+    v2.6:    6000
     default: 10000
-
-  # Fraction of the per-step subsample that goes to the query split;
-  # the rest is the context split. Matches TabPFN's documented
-  # default (the `finetune_ctx_query_split_ratio` kwarg of
-  # `FinetunedTabPFNClassifier` — see repositories/TabPFN .txt:26833).
+  # Optional CELL budget (rows × features). When non-null for a base, the
+  # per-step row count = min(max_rows_per_epoch, max_cells // n_features) —
+  # narrow datasets get more rows, wide ones fewer, at ~constant cells.
+  # ARCHITECTURE NOTE (why per-base): this fits v3 — TabPFN-3's capacity is a
+  # "cell-budget frontier" (report §2.4: 1M rows@200 feat ≡ 100k@2000 feat),
+  # its 3-stage design decouples the ICL stage from feature count and
+  # row-chunks activation memory. It is NOT right for v2.6, whose dual
+  # attention costs O(r²·c + r·c²) — QUADRATIC in rows — so v2.6 stays on a
+  # pure row cap. null → off (pure row cap, current behaviour). To enable for
+  # v3: set v3 to a budget AND raise max_rows_per_epoch.v3 to the row ceiling
+  # narrow datasets may reach (e.g. cells 8000000, rows 100000). VALIDATE OOM
+  # on the H100 before a full sweep.
+  max_cells_per_epoch:
+    v3:      null
+    v2.6:    null
+    default: null
   query_fraction:     0.20
 
 
-# -----------------------------------------------------------------------------
-#  sanitize.py — dataset-agnostic cleaning
-# -----------------------------------------------------------------------------
+# --- sanitize.py — dataset-agnostic cleaning ---------------------------------
 sanitize:
-  # Drop feature columns with NaN-rate > this. Conservative: only kills
-  # columns that are essentially missing.
-  max_missing_rate: 0.90
-
-  # Coerce mostly-numeric object columns to numeric. Threshold = fraction of
-  # non-NaN values that must parse before we commit.
-  coerce_numeric_strings: true
-  coerce_numeric_threshold: 0.95
-
-  # FeatureAgglomeration cap — clamp to ≤ max_columns when above. 128 keeps
-  # us in TabPFN-2.x's well-trained regime while exceeding v2's hard 100 cap.
-  max_columns: 128
-  agglomeration:
+  max_missing_rate: 0.90                  # drop columns more NaN than this
+  coerce_numeric_strings: true            # cast mostly-numeric object cols
+  coerce_numeric_threshold: 0.95          # ...if this fraction parses
+  max_columns: 64                         # feature-count cap (selection; see below)
+  # Cap the feature count by UNSUPERVISED SELECTION of real columns (top by
+  # scale-free variance, greedily de-correlated) — NOT by averaging into
+  # cluster means. Keeps real marginals/interactions so continued pretraining
+  # specialises the prior toward genuine credit features. corr_threshold drops
+  # a column when |Pearson r| with a kept column exceeds it. See docs/DATA_PIPELINE.md.
+  feature_selection:
     enabled: true
-    # Distance metric for Ward linkage; standardize for distance computation
-    # only (the OUTPUT features are still the means of the unscaled originals,
-    # so TabPFN sees the distribution it was trained on).
-    metric: "euclidean"
-    linkage: "ward"
-    standardize_for_distance_only: true
-    # Note: agglomeration always operates on numerical columns only —
-    # categoricals pass through unchanged. This isn't a toggle (the
-    # behaviour is hardcoded in _agglomerate_to_max_columns) so it
-    # was previously exposed here as a dead config key; removed.
-
-  # LGD-only domain constraint — values outside [0, 1] are data-quality bugs.
-  # This is the single source of truth for LGD clipping; per-dataset surgical
-  # fixes do NOT clip themselves.
-  lgd_target_clip:
+    corr_threshold: 0.95
+  lgd_target_clip:                        # LGD ∈ [0,1] by definition
     enabled: true
     lower: 0.0
     upper: 1.0
 
 
-# -----------------------------------------------------------------------------
-#  dedup.py — within-track duplicate detection (per track, per pass)
-# -----------------------------------------------------------------------------
+# --- dedup.py — within-track duplicate detection (diagnostic only) -----------
+# Writes a report per (track, pass); never removes datasets. See
+# docs/DATA_PIPELINE.md § dedup.
 dedup:
-  # Check 2 — column-name Jaccard ≥ this AND identical shape.
-  name_jaccard_threshold: 0.80
-
-  # Check 3 — any non-empty intersection of row-level hashes flags the pair.
-  row_hash_intersection_min: 1
-
-  # Check 4 — column-level hash; pair must share ≥ N "non-trivial" columns
-  # (where non-trivial = column with > column_nontrivial_unique_min uniques).
-  shared_columns_min: 3
+  name_jaccard_threshold: 0.80            # check 2: col-name Jaccard + same shape
+  row_hash_intersection_min: 1            # check 3: shared row hashes
+  shared_columns_min: 3                   # check 4: shared non-trivial columns
   column_nontrivial_unique_min: 10
-
-  # Extra A — rounded-row hash catches float-precision near-duplicates.
-  rounded_row:
+  rounded_row:                            # extra A: float-precision near-dupes
     enabled: true
     decimals: 6
-
-  # Extra B — subset detection: |A ∩ B| / |A| ≥ this → A ⊆ B.
-  subset:
+  subset:                                 # extra B: |A∩B|/|A| ≥ frac ⇒ A ⊆ B
     enabled: true
     min_overlap_fraction: 0.95
-
-  # Extra C — fuzzy column-name match. Useful pre-sanitize (real names still
-  # present, typos differ); useless post-sanitize (FeatureAgglomeration
-  # renames columns to `feat_agglo_0000`..`0127`).
-  column_name_fuzzy:
+  column_name_fuzzy:                      # extra C: fuzzy col-name (pre-sanitize only)
     enabled_pre: true
     enabled_post: false
-    similarity_threshold: 90       # rapidfuzz token-set ratio, 0–100
-
-  # Maps the set of triggered checks to a confidence label. First-matching
-  # category wins.
-  confidence_rules:
+    similarity_threshold: 90              # rapidfuzz token-set ratio 0–100
+  confidence_rules:                       # triggered-checks → label (first match wins)
     high:   ["id_match",    "row_hash"]
     medium: ["col_hash",    "name_jaccard_and_shape"]
     low:    ["rounded_row", "subset", "fuzzy_names"]
-
-
-

@@ -21,12 +21,14 @@ Two layers:
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Iterable, Literal
 
 from src.model.base import ModelHandle
 from src.model.boosting import CatBoostModel, XGBoostModel
 from src.model.linear import LinRegModel, LogRegModel
 from src.model.tabpfn_models import TabPFNUntuned
+from src.utils.paths import resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -90,42 +92,60 @@ def build_baselines(
     hpo_xgb  = hpo_xgboost  or {}
     hpo_cb   = hpo_catboost or {}
 
+    # Each baseline is constructed inside a try/except so the eval roster
+    # is robust: a missing optional package (e.g. catboost not installed)
+    # or any constructor failure SKIPS that one baseline with a warning
+    # rather than crashing the whole benchmark. The eval always runs with
+    # whatever subset of {xgboost, catboost, logreg/linreg, tabpfn-untuned}
+    # can actually be built. (Added 2026-05-29.)
+    def _try_add(name: str, factory) -> None:
+        try:
+            m = factory()
+        except Exception as exc:                                # noqa: BLE001
+            LOGGER.warning(
+                "baseline %r could not be constructed (%s: %s) — skipping it "
+                "from the eval roster.", name, type(exc).__name__, exc,
+            )
+            return
+        out.append((ModelHandle(
+            name=m.name, track=track, task_type=task_type, source="baseline",
+        ), m))
+
     if "xgboost" in enabled:
-        m = XGBoostModel(
+        _try_add("xgboost", lambda: XGBoostModel(
             task_type=task_type, random_state=seed,
             hpo_trials=int(hpo_xgb.get("n_trials", 0)),
             hpo_timeout_seconds=hpo_xgb.get("timeout_seconds"),
             hpo_max_rows=hpo_xgb.get("max_rows"),
-        )
-        out.append((ModelHandle(
-            name=m.name, track=track, task_type=task_type, source="baseline",
-        ), m))
+        ))
 
     if "catboost" in enabled:
-        m = CatBoostModel(
+        _try_add("catboost", lambda: CatBoostModel(
             task_type=task_type, random_state=seed,
             hpo_trials=int(hpo_cb.get("n_trials", 0)),
             hpo_timeout_seconds=hpo_cb.get("timeout_seconds"),
             hpo_max_rows=hpo_cb.get("max_rows"),
-        )
-        out.append((ModelHandle(
-            name=m.name, track=track, task_type=task_type, source="baseline",
-        ), m))
+        ))
 
     if "logreg" in enabled and track == "pd":
-        m = LogRegModel(random_state=seed)
-        out.append((ModelHandle(
-            name=m.name, track=track, task_type=task_type, source="baseline",
-        ), m))
+        _try_add("logreg", lambda: LogRegModel(random_state=seed))
 
     if "linreg" in enabled and track == "lgd":
-        m = LinRegModel(random_state=seed)
-        out.append((ModelHandle(
-            name=m.name, track=track, task_type=task_type, source="baseline",
-        ), m))
+        _try_add("linreg", lambda: LinRegModel(random_state=seed))
 
     if "tabpfn-untuned" in enabled:
         for base_path in base_paths_for_tabpfn_untuned or ():
+            # Skip base checkpoints that aren't on disk — otherwise the
+            # untuned model would FAIL every CV fold (polluting the
+            # results with FAIL rows). The checkpoint path is resolved
+            # against the output root so it works on the cluster too.
+            resolved = resolve_output_path(str(base_path))
+            if not Path(resolved).exists() and not Path(str(base_path)).exists():
+                LOGGER.warning(
+                    "tabpfn-untuned base checkpoint not on disk: %s — skipping "
+                    "it from the eval roster.", base_path,
+                )
+                continue
             m = TabPFNUntuned(
                 task_type=task_type, base_path=base_path,
                 device=device, n_estimators=n_estimators_tabpfn,
@@ -135,4 +155,11 @@ def build_baselines(
                 source="tabpfn-untuned", base_path=str(base_path),
             ), m))
 
+    if not out:
+        LOGGER.warning(
+            "build_baselines produced an EMPTY roster for track=%s "
+            "(enabled=%s). Check that at least one baseline package is "
+            "installed and at least one base checkpoint is on disk.",
+            track, sorted(enabled),
+        )
     return out

@@ -153,9 +153,8 @@ REPOSITORIES: dict[str, str] = {
         # gitingest's parse_remote_repo understands /tree/<branch>/<path>.
         "https://github.com/PriorLabs/TabPFN/tree/main/examples",
     "TabPFN Wide.txt":
-        # Authoring lab moved from automl/ to pfeiferAI/; the old slug is
-        # gone (no GitHub redirect).
-        "https://github.com/pfeiferAI/TabPFN-Wide",
+        # Canonical upstream for the TabPFN-Wide paper (Kolberg et al. 2026).
+        "https://github.com/not-a-feature/TabPFN-Wide",
     "TabTune.txt":
         "https://github.com/Lexsi-Labs/TabTune",
     "TransformersCanDoBayesianInference.txt":

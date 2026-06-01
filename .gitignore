@@ -286,3 +286,6 @@ Thumbs.db
 *.pickle
 *.joblib
 *.onnx
+
+# Specifically ignore the problematic large file
+repositories/TabPFN Wide.txt

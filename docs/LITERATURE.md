@@ -1,6 +1,6 @@
 # Literature on Tabular Foundation Models
 
-A chronological tour of the 27 PDFs in this folder. The arc:
+A chronological tour of the 29 PDFs in this folder. The arc:
 PFNs (in-context Bayesian inference for arbitrary priors) → TabPFN
 (PFNs with a tabular prior) → TabPFNv2 (production-grade — the
 model we build on) → a Cambrian explosion of variants (continued
@@ -51,10 +51,11 @@ The six most directly relevant papers for CreditPFN are
 | 2026 | Grinsztajn et al. | **TabPFN-2.5** — Advancing the State of the Art in Tabular Foundation Models | Successor architecture (18–24 layers, 50 k×2000 limit) and the family of v2.5 checkpoints. | [pdf](../papers/2026_Grinsztajn_et_al._TabPFN_2.5_Advancing_the_State_of_the_Art_in_Tabular_Foundation_Models.pdf) |
 | 2026 | Hoo et al. | From Tables to Time — Extending TabPFN-v2 to Time Series Forecasting | Native time-axis attention version of TabPFN. | [pdf](../papers/2026_Hoo_et_al._From_Tables_to_Time_Extending_TabPFN_v2_to_Time_Series_Forecasting.pdf) |
 | 2026 | Klein and Hoffart | Position — Foundation Models for Tabular Data within Systemic Contexts Need Grounding | Position paper from SAP: tabular FMs trained on isolated tables miss the operational context (business rules, code, data models) that gives data meaning. Proposes Semantically Linked Tables (SLT) and FMSLT as a new model class. | [pdf](../papers/2026_Klein_and_Hoffart_Position_Foundation_Models_for_Tabular_Data_within_Systemic_Contexts_Need_Grounding.pdf) |
-| 2026 | Kolberg et al. | **TabPFN-Wide** — Continued Pre-Training for Extreme Feature Counts | Continued-pretraining recipe for high-dim datasets; FeatureAgglomeration template. | [pdf](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) |
+| 2026 | Kolberg et al. | **TabPFN-Wide** — Continued Pre-Training for Extreme Feature Counts | Continued-pretraining for >500-feature data via a feature-widening synthetic prior (argues *against* feature reduction). | [pdf](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) |
 | 2026 | Ma et al. | Foundation Models for Causal Inference via Prior-Data Fitted Networks | Unified causal-PFN framework; Do-PFN + FairPFN at scale. | [pdf](../papers/2026_Ma_et_al._Foundation_Models_for_Causal_Inference_via_Prior_Data_Fitted_Networks.pdf) |
 | 2026 | Ma et al. | TabDPT — Scaling Tabular Foundation Models on Real Data | Real-data-only TabPFN competitor; retrieval-based self-supervision on OpenML. | [pdf](../papers/2026_Ma_et_al._TabDPT_Scaling_Tabular_Foundation_Models_on_Real_Data.pdf) |
 | 2026 | Qu et al. | TabICLv2 — A better, faster, scalable, and open tabular foundation model | Improved TabICL with bigger context limit and open weights. | [pdf](../papers/2026_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.pdf) |
+| 2026 | Tanna et al. | **Exploring Fine-Tuning for Tabular Foundation Models** | First large-scale study of *when* fine-tuning helps TFMs (zero-shot vs meta-learning vs SFT vs PEFT/LoRA across TALENT / OpenML-CC18 / TabZilla). Full SFT can hurt accuracy & calibration; gains are model- and data-dependent; TabPFN is comparatively robust. | [pdf](../papers/2026_Tanna_et_al._Exploring_Fine_Tuning_for_Tabular_Foundation_Models.pdf) |
 | 2026 | Grinsztajn et al. | **TabPFN-3** — Technical Report | **The successor we will eventually re-base on.** New three-stage architecture (column-wise → row-wise → ICL), scales to 1M rows on a single H100, many-class attention decoder, "Thinking" test-time-compute mode. Synthetic-prior only, +200 Elo over TabPFN-2.6 on TabArena-medium. | [pdf](../papers/2026_Grinsztajn_et_al._TabPFN_3_Technical_Report.pdf) |
 
 ---
@@ -1101,23 +1102,33 @@ include synthetic datasets with hundreds-to-thousands of
 features (matching multi-omics, wide bureau-data, etc.), then
 fine-tunes on real wide-feature datasets. Specifically:
 
-* **Synthetic prior augmentation** — the SCM generator is
-  extended to produce datasets where the number of features
-  vastly exceeds the number of rows, which v2's prior almost
-  never sampled.
-* **Preprocessing pipeline** — uses
-  ``FeatureAgglomeration(metric='euclidean', linkage='ward')``
-  inside their preprocessing chain (their Appendix B is the
-  direct source for the design we adopted in our ``sanitize.py``).
+* **Synthetic prior augmentation (the actual method)** — the SCM
+  generator is *widened* to produce datasets where the number of
+  features vastly exceeds the number of rows, which v2's prior
+  almost never sampled. The whole point is to handle wide data
+  **without** reducing it.
+* **FeatureAgglomeration is a baseline, not the method** — the
+  paper evaluates agglomerative feature reduction only as a
+  comparison point that its widened model beats (Fig. 3 /
+  Appendix B). It is therefore **not** the source of our
+  ``sanitize.py`` feature handling.
 * **Released checkpoints** — ``_large-features-L`` (≤ 500
-  features) and ``_large-features-XL`` (≤ 1000 features).
+  features) and ``_large-features-XL`` (≤ 1000 features),
+  **classifier-only** (no regressor — nothing for our LGD track).
 
-**For CreditPFN.** Very relevant. Two of our raw datasets exceed
-2000 features (``0014.algorithmwatch`` has 2987,
-``0011.loan_default`` has 770). Two options for handling them:
-(a) cluster down to 128 with our own ``FeatureAgglomeration``
-(current default), or (b) use the ``_large-features-XL``
-checkpoint directly. We'll benchmark both in ``src/train/``.
+**For CreditPFN.** Relevant as a cautionary contrast. Reading this
+paper is what prompted us to **drop FeatureAgglomeration** in favour
+of unsupervised feature **selection** (`sanitize.py`): keep the
+top-``max_columns`` (currently 64) *real* columns by scale-free
+variance + de-correlation, rather than averaging columns into
+synthetic cluster means — which changed the feature distribution and
+worked against the goal of adapting the prior to *real* credit
+features. Only ``0014.algorithmwatch`` (2987 cols) exceeds TabPFN's
+~2000 ceiling; ``0011.loan_default`` (768) and the LGD
+``base_model*`` sets (~255) sit under it, and everything else is
+already < 64. TabPFN-Wide's widened checkpoints remain an option for
+genuinely wide PD data but are classifier-only and built on v2, not
+our v2.6 / v3 bases.
 
 ---
 
@@ -1277,6 +1288,52 @@ Comprehensive ablations quantify each contribution.
   modest engineering — could let our continued-pretrained
   CreditPFN handle larger downstream credit-risk datasets at
   inference time.
+
+---
+
+## 2026 — Tanna et al. — Exploring Fine-Tuning for Tabular Foundation Models
+
+**Venue:** ACM Web Conference 2026 (WWW '26) ·
+**DOI:** [10.1145/3774904.3792923](https://doi.org/10.1145/3774904.3792923) ·
+**PDF:** [open](../papers/2026_Tanna_et_al._Exploring_Fine_Tuning_for_Tabular_Foundation_Models.pdf)
+
+**Where it fits.** A companion empirical study from the same lab as
+the TabTune library — the broad "when does fine-tuning actually help a
+tabular FM?" benchmark that Rubachev et al. 2025 began, now widened to
+six TFMs and three large suites.
+
+**What it contains.** Compares four adaptation strategies — zero-shot,
+meta-learning (episodic, 48–512 support samples, 5 epochs), supervised
+fine-tuning (full-parameter AdamW, LR 1e-5–5e-5, early stopping ≤ 10
+epochs), and PEFT (LoRA r=8, α=16) — over TabPFN, TabICL, OrionMSP,
+OrionBiX, TabDPT and Mitra on TALENT (155), OpenML-CC18 (63) and
+TabZilla (27), plus a 9-dataset fairness suite (which includes
+**German Credit** and **Default-of-Credit-Card-Clients (Taiwan)**).
+Metrics span accuracy / weighted-F1 / mean-rank, **calibration**
+(ECE, MCE, Brier), and **fairness** (SPD, EOD, EOpD). Headline
+findings:
+
+* **Zero-shot TFMs are already strong** — often competitive with tuned
+  gradient boosting, so fine-tuning has a high bar to clear.
+* **Gains are highly model- and data-dependent.** Meta-learning and
+  PEFT give moderate, conditional gains; **full SFT frequently degrades
+  accuracy and/or calibration** — catastrophically for some models
+  (TabICL / OrionBiX collapse under SFT on the smaller suites) — while
+  **TabPFN is comparatively robust** to fine-tuning.
+* Dataset **imbalance, small size, and high dimensionality** are the
+  factors that most often flip fine-tuning from helpful to harmful.
+* Calibration can worsen even when accuracy holds, so accuracy alone is
+  a misleading model-selection signal.
+
+**For CreditPFN.** Strong external validation of three design choices:
+(1) we sweep **LoRA/PEFT** and conservative LRs rather than betting on
+aggressive full-finetuning; (2) we track **calibration (Brier,
+log-loss)** alongside AUC — this paper shows fine-tuning can silently
+wreck calibration, which Basel-III PD models cannot tolerate; (3) credit
+data is **imbalanced** and our corpus is **small** — exactly the regime
+where the paper finds fine-tuning most fragile, so trained-vs-untuned
+must be judged per-dataset and on calibration, not just pooled AUC. The
+reassuring note: TabPFN tolerates fine-tuning better than its peers.
 
 ---
 

@@ -168,16 +168,19 @@ def descriptive_name(
     use_lora: bool = False,
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
+    epoch_pass_mode: str | None = None,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
     Schema:
-        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_lora].ckpt
+        <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_lora].ckpt
 
     ``query_fraction`` is part of the sweep grid as of 2026-05-21,
-    ``accumulate_grad_batches`` as of 2026-05-27. Both are optional in
-    the filename — passing ``None`` omits the segment (back-compat with
-    legacy callers / tests that don't sweep the axis).
+    ``accumulate_grad_batches`` as of 2026-05-27, ``epoch_pass_mode`` as
+    of 2026-06-01. All are optional in the filename — passing ``None``
+    (or ``"one_sample"`` for the pass mode) omits the segment, so legacy
+    callers / the default one-step-per-dataset sweep produce identical
+    names to before.
     """
     base_stem = Path(str(base_path)).stem
     lr_tag = f"{learning_rate:.0e}".replace("+", "")
@@ -188,10 +191,13 @@ def descriptive_name(
     acc_tag = ""
     if accumulate_grad_batches is not None:
         acc_tag = f"_acc{int(accumulate_grad_batches)}"
+    # Only the non-default "full_pass" mode adds a tag, so "one_sample"
+    # (the default) keeps the exact pre-2026-06-01 filename.
+    pass_tag = "_fullpass" if (epoch_pass_mode == "full_pass") else ""
     lora_tag = "_lora" if use_lora else ""
     return (
         f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}"
-        f"{qf_tag}{acc_tag}{lora_tag}.ckpt"
+        f"{qf_tag}{acc_tag}{pass_tag}{lora_tag}.ckpt"
     )
 
 
@@ -239,6 +245,36 @@ def make_warmup_cosine_schedule(
         raise ValueError(f"unknown schedule_type={schedule_type!r}")
 
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+
+
+def _l2sp_penalty(
+    model: torch.nn.Module,
+    anchor: dict[str, "torch.Tensor"],
+    lam: float,
+):
+    """L2-SP regulariser: ``0.5 * lam * Σ ‖w − w₀‖²`` over anchored params.
+
+    L2-SP (Li et al. 2018) penalises drift from the *starting* weights
+    ``w₀`` — here the synthetic-prior checkpoint — instead of from the
+    origin (which is what plain AdamW ``weight_decay`` does). Real-TabPFN
+    (Garg et al. 2025, §4) uses exactly this term to fight catastrophic
+    forgetting of the pretrained prior during continued pretraining.
+
+    Returns ``None`` when nothing is anchored (e.g. LoRA trials, where the
+    base is frozen so there is no full-weight drift to penalise).
+    """
+    total = None
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        w0 = anchor.get(name)
+        if w0 is None:
+            continue
+        term = (p - w0).pow(2).sum()
+        total = term if total is None else total + term
+    if total is None:
+        return None
+    return 0.5 * float(lam) * total
 
 
 def _make_optimizer_and_scheduler(
@@ -962,6 +998,7 @@ def train_one_config(
     use_lora: bool | None = None,
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
+    pass_mode: str | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
 ) -> TrainingResult:
@@ -1082,6 +1119,28 @@ def train_one_config(
         )
     )
 
+    # L2-SP anchor (Real-TabPFN §4): snapshot the synthetic-prior weights
+    # w0 right after load, so the loss can penalise drift away from them
+    # (see _l2sp_penalty). Configurable via cfg.optimizer.l2sp_lambda
+    # (0.0 = off, the default). FULL-FT only — with LoRA the base is frozen
+    # and cannot drift, so L2-SP is inert and skipped.
+    l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
+    l2sp_anchor: dict[str, torch.Tensor] | None = None
+    if l2sp_lambda > 0.0 and not use_lora:
+        l2sp_anchor = {
+            n: p.detach().clone()
+            for n, p in model.named_parameters() if p.requires_grad
+        }
+        LOGGER.info(
+            "L2-SP enabled: lambda=%.2e, anchoring %d trainable tensors to w0.",
+            l2sp_lambda, len(l2sp_anchor),
+        )
+    elif l2sp_lambda > 0.0 and use_lora:
+        LOGGER.info(
+            "L2-SP lambda=%.2e configured but use_lora=True — base weights are "
+            "frozen, so L2-SP is inert; skipping it.", l2sp_lambda,
+        )
+
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
     # The per-step subsample size is `finetuning.max_rows_per_epoch` in
     # `config/data.yaml`. As of the 2026-05-20 PD run it became clear
@@ -1095,6 +1154,19 @@ def train_one_config(
     max_rows_per_epoch = _resolve_max_rows_per_epoch(
         base_checkpoint, _data_cfg.finetuning.max_rows_per_epoch,
     )
+    # Optional per-architecture cell budget (rows × features). Off (null)
+    # for both bases by default → pure row cap. Appropriate for v3 (whose
+    # capacity is a cell-budget frontier), NOT v2.6 (quadratic in rows).
+    # Reuses the same per-version mapping resolver; a null value or an
+    # absent key resolves to None (no cell budget for that base).
+    max_cells_per_epoch = None
+    _max_cells_cfg = _data_cfg.finetuning.get("max_cells_per_epoch", None)
+    if _max_cells_cfg is not None:
+        try:
+            _mc = _resolve_max_rows_per_epoch(base_checkpoint, _max_cells_cfg)
+            max_cells_per_epoch = int(_mc) if _mc else None
+        except Exception:                                          # null / no key
+            max_cells_per_epoch = None
     # `query_fraction` is now a per-trial argument coming from the
     # sweep — defaulted above to the head of cfg.tunable.query_fractions
     # if the caller didn't pass it. The old single-value
@@ -1109,6 +1181,16 @@ def train_one_config(
     n_estimators_finetune = int(
         getattr(cfg.train, "n_estimators_finetune", 2)
     )
+    # Resolve the per-epoch step plan. None → head of the sweep list
+    # (default "one_sample" = one step per dataset per epoch).
+    if pass_mode is None:
+        raw_pm = getattr(cfg.tunable, "epoch_pass_modes", None)
+        if raw_pm is None:
+            pass_mode = "one_sample"
+        elif isinstance(raw_pm, str):
+            pass_mode = raw_pm
+        else:
+            pass_mode = str(list(raw_pm)[0])
     train_ds = ProcessedDatasetLoader(
         split.train,
         max_rows_per_epoch=max_rows_per_epoch,
@@ -1116,6 +1198,8 @@ def train_one_config(
         seed=int(cfg.seed),
         inference_config=inference_config,
         n_estimators_finetune=n_estimators_finetune,
+        pass_mode=pass_mode,
+        max_cells_per_epoch=max_cells_per_epoch,
     )
     train_loader = DataLoader(
         train_ds,
@@ -1169,6 +1253,7 @@ def train_one_config(
             use_lora=bool(use_lora),
             query_fraction=float(query_fraction),
             accumulate_grad_batches=int(accumulate),
+            epoch_pass_mode=pass_mode,
         )
     )
 
@@ -1376,7 +1461,17 @@ def train_one_config(
                         loss = _regression_loss(
                             pred_logits, y_target, criterion=criterion,
                         )
-                loss_to_backprop = loss / accumulate
+                # L2-SP penalty (full-FT only; anchor is None under LoRA).
+                # Added to the back-prop loss ONLY — `loss` stays the pure
+                # data loss (CE / NLL) for logging, curves, and the
+                # non-finite / divergence checks below.
+                if l2sp_anchor is not None:
+                    _pen = _l2sp_penalty(model, l2sp_anchor, l2sp_lambda)
+                    loss_to_backprop = (
+                        (loss + _pen) if _pen is not None else loss
+                    ) / accumulate
+                else:
+                    loss_to_backprop = loss / accumulate
 
             if torch.isnan(loss).item() or torch.isinf(loss).item():
                 LOGGER.warning(
@@ -1716,6 +1811,9 @@ def train_one_config(
             "base_checkpoint":     str(base_checkpoint),
             "learning_rate":       float(learning_rate),
             "weight_decay":        float(cfg.optimizer.weight_decay),
+            # Effective L2-SP strength actually applied this trial (0.0 when
+            # off, or when use_lora makes it inert). See _l2sp_penalty.
+            "l2sp_lambda":         (l2sp_lambda if l2sp_anchor is not None else 0.0),
             "betas":               [0.9, 0.999],          # hardcoded AdamW betas
             "scheduler_type":      "warmup_cosine",       # hardcoded schedule family
             "warmup_fraction":     float(cfg.scheduler.warmup_fraction),
@@ -1724,7 +1822,9 @@ def train_one_config(
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
             "max_rows_per_epoch":  max_rows_per_epoch,
+            "max_cells_per_epoch": max_cells_per_epoch,
             "query_fraction":      query_fraction,
+            "epoch_pass_mode":     pass_mode,
             "seed":                int(cfg.seed),
             "use_lora":            bool(use_lora),
             "lora": (
@@ -1744,8 +1844,14 @@ def train_one_config(
         "training_time_seconds": float(training_seconds),
         "device":              device,
         "gpu":                 gpu_name,
-        "torch_version":       torch.__version__,
-        "tabpfn_version":      tabpfn_version,
+        # str() is deliberate: torch.__version__ is a torch.torch_version.
+        # TorchVersion (a str subclass), which torch.load(weights_only=True)
+        # — PyTorch >=2.6's default — refuses to unpickle. Embedding the raw
+        # object made every trained checkpoint unloadable at eval time
+        # (the 2026-05-31 run: 1475 UnpicklingError fails). Cast to a plain
+        # str so the .ckpt is weights_only-safe regardless of the loader.
+        "torch_version":       str(torch.__version__),
+        "tabpfn_version":      (str(tabpfn_version) if tabpfn_version is not None else None),
     }
     # Pass the criterion only for regression — the LGD bar-distribution
     # state must round-trip through the checkpoint (`criterion.*` keys);

@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import math
 from dataclasses import dataclass
 from typing import Any, Sequence
 
@@ -482,6 +483,8 @@ class ProcessedDatasetLoader(Dataset):
         seed: int = 0,
         inference_config: Any | None = None,
         n_estimators_finetune: int = 2,
+        pass_mode: str = "one_sample",
+        max_cells_per_epoch: int | None = None,
     ) -> None:
         if len(refs) == 0:
             raise ValueError("ProcessedDatasetLoader received an empty refs list")
@@ -492,22 +495,89 @@ class ProcessedDatasetLoader(Dataset):
         self._epoch = 0
         self._inference_config = inference_config
         self._n_estimators_finetune = max(1, int(n_estimators_finetune))
+        self.pass_mode = str(pass_mode)
+        # Optional cell budget. When set (>0), the per-step row count for a
+        # dataset is min(max_rows_per_epoch, max_cells_per_epoch // n_features)
+        # — so narrow datasets get more rows and wide ones fewer, at roughly
+        # constant rows×features. This is the right control for TabPFN-3 (whose
+        # capacity is a "cell-budget frontier", TabPFN-3 report §2) but NOT for
+        # v2.6 (dual-attention cost is O(r²c + rc²) — quadratic in rows — so a
+        # row cap is correct there). Off (None) → pure row cap (unchanged).
+        self.max_cells_per_epoch = (
+            int(max_cells_per_epoch) if max_cells_per_epoch else None
+        )
+
+        # Step plan: a list of (ref_idx, replica) pairs, one per training
+        # step in an epoch.
+        #
+        #  * "one_sample" (default): exactly ONE step per dataset per epoch —
+        #    each step a fresh random subsample of <= max_rows_per_epoch rows.
+        #    This is the original behaviour; nothing changes.
+        #
+        #  * "full_pass": size-proportional steps. A dataset with n rows gets
+        #    ceil(n / max_rows_per_epoch) steps per epoch, so a large dataset
+        #    contributes MANY steps (each a different draw, seeded by the
+        #    replica index) instead of just one. This exploits the unused data
+        #    in the big datasets without repeating it within a step; the small
+        #    datasets stay at 1 step (no extra repetition / overfit pressure).
+        #    The loop's steps-per-epoch auto-scales via len(self).
+        if self.pass_mode == "full_pass":
+            self._plan: list[tuple[int, int]] = []
+            for ref_idx, ref in enumerate(self.refs):
+                try:
+                    loaded = _load_processed_csv(ref)
+                    n_rows = int(len(loaded.y))
+                    eff_cap = self._effective_cap(loaded)
+                except Exception:                                  # pragma: no cover
+                    n_rows = eff_cap = self.max_rows_per_epoch
+                k = max(1, math.ceil(n_rows / max(1, eff_cap)))
+                self._plan.extend((ref_idx, r) for r in range(k))
+        else:
+            if self.pass_mode != "one_sample":
+                LOGGER.warning(
+                    "Unknown pass_mode=%r; falling back to 'one_sample'.",
+                    self.pass_mode,
+                )
+                self.pass_mode = "one_sample"
+            self._plan = [(i, 0) for i in range(len(self.refs))]
 
     def set_epoch(self, epoch: int) -> None:
         """Bump the epoch counter so the next __getitem__ reshuffles."""
         self._epoch = int(epoch)
 
+    def _effective_cap(self, loaded: "_LoadedDataset") -> int:
+        """Per-step row cap for one dataset.
+
+        Pure row cap (``max_rows_per_epoch``) unless a cell budget is set,
+        in which case it's ``min(max_rows_per_epoch, max_cells // n_features)``
+        — narrow datasets get more rows, wide ones fewer, at ~constant cells.
+        Floored at 256 rows so a very wide dataset still trains on something.
+        """
+        cap = self.max_rows_per_epoch
+        if self.max_cells_per_epoch:
+            try:
+                n_feat = max(1, int(loaded.X.shape[1]))
+            except Exception:                                      # pragma: no cover
+                return cap
+            cap = min(cap, max(256, self.max_cells_per_epoch // n_feat))
+        return int(cap)
+
     def __len__(self) -> int:
-        return len(self.refs)
+        return len(self._plan)
 
     def __getitem__(self, idx: int):
-        ref = self.refs[idx]
+        ref_idx, replica = self._plan[idx]
+        ref = self.refs[ref_idx]
         loaded = _load_processed_csv(ref)
-        # Epoch-aware seed: same chunk on epoch 0 ≠ epoch 1 ≠ …
+        n_total_target = self._effective_cap(loaded)
+        # Epoch-aware seed: same chunk on epoch 0 ≠ epoch 1 ≠ …; the replica
+        # term makes each of a dataset's full_pass steps draw a distinct
+        # subsample within the same epoch.
         step_seed = (
             self._base_seed * 1_000_003
             + self._epoch * 10_007
-            + idx * 31
+            + ref_idx * 31
+            + replica * 131_071
         ) & 0xFFFF_FFFF
         rng = np.random.default_rng(step_seed)
 
@@ -516,7 +586,7 @@ class ProcessedDatasetLoader(Dataset):
         if self._inference_config is None:
             return _build_step_batch(
                 loaded,
-                n_total_target=self.max_rows_per_epoch,
+                n_total_target=n_total_target,
                 query_fraction=self.query_fraction,
                 rng=rng,
             )

@@ -630,8 +630,8 @@ def plot_metric_correlation(track: str):
     if df.empty:
         return _no_data_fig(f"no results on track={track}")
     metric_cols = [
-        "roc_auc", "log_loss", "pr_auc", "f1", "accuracy",
-        "precision", "recall", "rmse", "mae", "r2", "neg_nll",
+        "roc_auc", "log_loss", "pr_auc", "brier_score", "ece", "f1",
+        "accuracy", "precision", "recall", "rmse", "mae", "r2", "neg_nll",
     ]
     present = [c for c in metric_cols if c in df.columns]
     if len(present) < 2:

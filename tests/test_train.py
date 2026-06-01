@@ -50,8 +50,8 @@ from src.train.dataloader import (
     identity_collate, prepare_eval_chunk,
 )
 from src.train.loop import (
-    descriptive_name, evaluate_on_split, make_warmup_cosine_schedule,
-    train_one_config,
+    _l2sp_penalty, descriptive_name, evaluate_on_split,
+    make_warmup_cosine_schedule, train_one_config,
 )
 from src.train.metrics import (
     classification_metric, improvement_direction, mean_ignore_nan,
@@ -313,6 +313,47 @@ def test_dataloader_yields_correct_shapes(synthetic_processed) -> None:
     assert abs(n_ctx - 64) <= 1
 
 
+def test_dataloader_full_pass_expands_steps(synthetic_processed) -> None:
+    """`pass_mode='full_pass'` yields >= one step per dataset (more for the
+    large ones), covers every dataset, and still produces valid batches.
+    `one_sample` stays at exactly one step per dataset."""
+    refs = build_dataset_pool("pd")
+    one = ProcessedDatasetLoader(
+        refs, max_rows_per_epoch=20, query_fraction=0.2, seed=0,
+        pass_mode="one_sample",
+    )
+    full = ProcessedDatasetLoader(
+        refs, max_rows_per_epoch=20, query_fraction=0.2, seed=0,
+        pass_mode="full_pass",
+    )
+    assert len(one) == len(refs)
+    assert len(full) >= len(one)              # small datasets stay at 1 step
+    # Every dataset is represented at least once in the expanded plan.
+    assert {p[0] for p in full._plan} == set(range(len(refs)))
+    # A step from the expanded plan still yields a usable batch.
+    assert isinstance(full[len(full) - 1], TabPFNBatch)
+
+
+def test_dataloader_cell_budget_caps_rows_by_features(synthetic_processed) -> None:
+    """The optional cell budget sets per-step rows to
+    min(max_rows, max_cells // n_features), floored at 256; off → pure row cap."""
+    import types
+    refs = build_dataset_pool("pd")
+    ds = ProcessedDatasetLoader(
+        refs, max_rows_per_epoch=100_000, query_fraction=0.2, seed=0,
+        max_cells_per_epoch=64_000,
+    )
+    wide = types.SimpleNamespace(X=types.SimpleNamespace(shape=(10, 1000)))
+    narrow = types.SimpleNamespace(X=types.SimpleNamespace(shape=(10, 8)))
+    assert ds._effective_cap(wide) == 256       # 64000//1000=64 → floored to 256
+    assert ds._effective_cap(narrow) == 8_000   # 64000//8=8000 ≤ row cap
+    # No cell budget → pure row cap, regardless of feature count.
+    ds2 = ProcessedDatasetLoader(
+        refs, max_rows_per_epoch=12_345, query_fraction=0.2, seed=0,
+    )
+    assert ds2._effective_cap(narrow) == 12_345
+
+
 def test_dataloader_classification_dtype(synthetic_processed) -> None:
     refs = build_dataset_pool("pd")
     batch = ProcessedDatasetLoader(
@@ -493,6 +534,42 @@ def test_descriptive_name_is_deterministic() -> None:
 # =============================================================================
 
 
+def test_l2sp_penalty_zero_at_anchor_and_grows_with_drift() -> None:
+    """L2-SP = 0.5·λ·‖w−w₀‖²: zero at the anchor, positive once drifted,
+    and gradient-bearing. Mirrors how train_one_config uses it."""
+    lin = torch.nn.Linear(4, 3)
+    anchor = {n: p.detach().clone() for n, p in lin.named_parameters()
+              if p.requires_grad}
+    lam = 0.003
+
+    # At the anchor the penalty is exactly zero.
+    pen0 = _l2sp_penalty(lin, anchor, lam)
+    assert pen0 is not None
+    assert float(pen0.detach()) == pytest.approx(0.0, abs=1e-12)
+
+    # Drift the weights by a known amount → closed-form penalty.
+    with torch.no_grad():
+        for p in lin.parameters():
+            p.add_(0.1)
+    n_params = sum(p.numel() for p in lin.parameters() if p.requires_grad)
+    expected = 0.5 * lam * (n_params * (0.1 ** 2))
+    pen1 = _l2sp_penalty(lin, anchor, lam)
+    assert float(pen1.detach()) == pytest.approx(expected, rel=1e-5)
+
+    # It is differentiable (carries grad back to the live weights).
+    pen1.backward()
+    assert lin.weight.grad is not None and torch.isfinite(lin.weight.grad).all()
+
+
+def test_l2sp_penalty_none_when_nothing_anchored() -> None:
+    """No anchored (trainable) params → None, so LoRA trials (frozen base)
+    cleanly contribute no L2-SP term."""
+    lin = torch.nn.Linear(4, 3)
+    for p in lin.parameters():        # emulate a fully-frozen base
+        p.requires_grad_(False)
+    assert _l2sp_penalty(lin, {}, 0.003) is None
+
+
 def test_improvement_direction_known_metrics() -> None:
     assert improvement_direction("roc_auc")  == +1
     assert improvement_direction("neg_nll")  == +1
@@ -631,7 +708,7 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
 
 
 def test_grid_full_cartesian_product() -> None:
-    """3 bases × 3 lrs × default use_lora=[False] → 9 trials."""
+    """3 bases × 3 lrs × default use_lora/qf/accumulate → 9 trials."""
     import scripts.train_pipeline as tp
     cfg = NS(
         track="pd",
@@ -645,8 +722,14 @@ def test_grid_full_cartesian_product() -> None:
     assert len(grid) == 3 * 3
     # No duplicates in a cartesian product of distinct lists.
     assert len(set(grid)) == len(grid)
-    # Every entry is the 3-tuple (base, lr, use_lora); default use_lora=False.
-    assert all(len(t) == 3 and t[2] is False for t in grid)
+    # Every entry is the 6-tuple (base, lr, use_lora, query_fraction,
+    # accumulate, epoch_pass_mode); defaults when those axes are absent:
+    # use_lora=False, query_fraction=0.20, accumulate=1, pass="one_sample".
+    assert all(
+        len(t) == 6 and t[2] is False and t[3] == 0.20 and t[4] == 1
+        and t[5] == "one_sample"
+        for t in grid
+    )
 
 
 def test_grid_full_cartesian_product_with_lora_axis() -> None:
@@ -680,7 +763,7 @@ def test_grid_single_picks_first_value() -> None:
         ),
     )
     grid = tp._resolve_grid(cfg, single=True)
-    assert grid == [("P", 5e-6, False)]
+    assert grid == [("P", 5e-6, False, 0.20, 1, "one_sample")]
     assert len(grid) == 1
 
 
@@ -832,8 +915,13 @@ def test_train_one_config_end_to_end_mocked(
 
     result = loop_mod.train_one_config(cfg)
 
-    assert len(result.history) == 2
-    assert all(math.isfinite(r.train_loss) for r in result.history)
+    # epoch=-1 baseline (pre-finetune eval) + 2 finetuning epochs.
+    assert len(result.history) == 3
+    # The epoch=-1 baseline carries train_loss=NaN (no training yet); only
+    # the real finetuning epochs (epoch >= 0) must have a finite loss.
+    assert all(
+        math.isfinite(r.train_loss) for r in result.history if r.epoch >= 0
+    )
     assert result.final_ckpt_path == saved_paths[-1]
     assert not hasattr(result, "test_metric_raw")
     assert not hasattr(result, "test_metric_name")

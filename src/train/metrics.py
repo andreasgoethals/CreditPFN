@@ -36,9 +36,12 @@ REGRESSION_CHOICES = ("neg_nll", "rmse", "r2")
 def improvement_direction(metric: str) -> int:
     """Return ``+1`` if ``metric`` is maximised, ``-1`` if minimised.
 
-    Used by the loop to fold "higher = better" / "lower = better" into
-    a single ``score = metric * direction`` so early stopping just
-    asks "did score increase?".
+    Folds "higher = better" / "lower = better" into a single
+    ``score = metric * direction`` so monitoring code can compare metrics
+    direction-agnostically — e.g. picking the best epoch's checkpoint or
+    sorting a leaderboard works the same whether the metric is roc_auc
+    (max) or rmse (min). Training itself is fixed-epoch (no early
+    stopping); see README §7 (Training pipeline).
     """
     if metric in ("roc_auc", "neg_nll", "r2"):
         return +1

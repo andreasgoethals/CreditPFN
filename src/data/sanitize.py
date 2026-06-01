@@ -10,11 +10,15 @@ correspond to the steps in ``cfg.sanitize`` in ``config/data.yaml``:
   (f) coerce object columns that are mostly numeric strings to numeric
   (g) cast numerical features to ``numeric_dtype``  (default float32)
   (h) replace ±inf with NaN                         (uniform NaN handling)
-  (i) ``FeatureAgglomeration`` to at most ``max_columns`` features
-       (default 128); restricted to numerical features. Categoricals
-       always pass through. Distances are computed on
-       ``StandardScaler``-scaled values; the final output features are
-       the *unscaled* per-cluster means.
+  (i) **unsupervised feature SELECTION** to at most ``max_columns``
+       features (``sanitize.max_columns``, currently 64); restricted to
+       numerical features,
+       categoricals always pass through. Keeps a subset of the *real*
+       columns (top by scale-free variance, greedily de-correlated at
+       ``corr_threshold``) — NOT cluster means. This preserves real
+       marginals + interactions so continued pretraining specialises the
+       prior toward genuine credit features (the old FeatureAgglomeration
+       averaged columns into synthetic means, which defeated that goal).
   (j) classification targets → contiguous ``int64`` labels
   (k) regression targets — left in their raw scale (TabPFN's
       ``RegressorBatch.znorm_space_bardist_`` standardises internally).
@@ -213,91 +217,132 @@ def _replace_inf_with_nan(df: pd.DataFrame, target: str) -> pd.DataFrame:
     return df
 
 
-def _agglomerate_to_max_columns(
+def _select_to_max_columns(
     df: pd.DataFrame,
     target: str,
     numerical_columns: list[str],
     categorical_columns: list[str],
     max_columns: int,
     *,
-    metric: str,
-    linkage: str,
-    standardize_for_distance_only: bool,
-    seed: int,
+    corr_threshold: float = 0.95,
+    seed: int = 0,
 ) -> tuple[pd.DataFrame, list[str], list[str]]:
-    """Reduce the feature count to ≤ ``max_columns`` via Ward-linkage
-    feature clustering on the numerical columns only.
+    """Reduce the feature count to ≤ ``max_columns`` by **unsupervised
+    feature SELECTION** — keep a subset of the *real* columns (numerical
+    AND categorical), rather than averaging them into cluster means.
 
-    Categoricals always pass through. If ``len(categoricals) >=
-    max_columns``, no reduction is performed (we cannot drop categorical
-    information). Otherwise the numerical bucket is reduced to
-    ``max_columns - len(categoricals)`` clusters; the output features
-    are per-cluster means in the *unscaled* original space (``standardize_
-    for_distance_only=True``).
+    Why selection, not the old ``FeatureAgglomeration``: continued
+    pretraining aims to adjust TabPFN's prior toward the *real* marginal
+    distributions and feature interactions of credit-risk data. Averaging
+    columns into per-cluster means destroyed both, which works against that
+    goal and is inconsistent with what the model sees at inference.
+    Selection keeps real columns with real distributions. It is
+    **unsupervised** (never touches ``y``) — no label leak.
 
-    Returns ``(df_reduced, new_numerical_columns, categorical_columns)``.
+    Both feature types are eligible, so a categorical-heavy dataset is
+    capped too (the earlier version only trimmed numericals and skipped
+    when the categoricals alone exceeded the budget — which left the LGD
+    ``base_model*`` sets uncapped). Three steps:
+
+      1. **Score** each feature, scale-free: numerical → variance after
+         min-max to ``[0, 1]``; categorical → Shannon entropy of the value
+         distribution, normalised to ``[0, 1]``. Near-constant of either
+         type → ~0.
+      2. **De-correlate** the numerical block (greedy, best-score-first,
+         bounded candidate set): drop a numerical whose ``|Pearson r|``
+         with an already-kept numerical exceeds ``corr_threshold``.
+      3. **Rank** all survivors (numerical + categorical) by score and keep
+         the top ``max_columns``; each kept column keeps its real name and
+         type.
+
+    Returns ``(df_reduced, kept_numerical_columns, kept_categorical_columns)``
+    — all ORIGINAL column names.
     """
-    from sklearn.cluster import FeatureAgglomeration
-    from sklearn.preprocessing import StandardScaler
-
     feat_count = len(numerical_columns) + len(categorical_columns)
     if feat_count <= max_columns:
         return df, numerical_columns, categorical_columns
 
-    target_numerical_count = max_columns - len(categorical_columns)
-    if target_numerical_count <= 0:
-        LOGGER.warning(
-            "FeatureAgglomeration skipped: %d categorical features already "
-            "exceed max_columns=%d", len(categorical_columns), max_columns,
-        )
-        return df, numerical_columns, categorical_columns
+    scores: dict[str, float] = {}
 
-    # Build the numerical block; impute NaN with column mean *only* for
-    # the distance computation. The output features are means of the
-    # unscaled, original (NaN-bearing) columns. The fillna(0) afterwards
-    # is a defensive fallback: a column whose values are all NaN at this
-    # point (which step (c) should have dropped, but float-coercion in
-    # step (g) can produce in edge cases) would otherwise still feed
-    # NaNs into FeatureAgglomeration, which sklearn rejects.
-    raw_block = df[numerical_columns].astype(np.float64)
-    col_means = raw_block.mean(numeric_only=True)
-    imputed = raw_block.fillna(col_means).fillna(0.0)
-    if standardize_for_distance_only:
-        scaler = StandardScaler()
-        cluster_input = scaler.fit_transform(imputed.to_numpy())
-    else:
-        cluster_input = imputed.to_numpy()
+    # (1a) Numerical score: variance after per-column min-max to [0, 1]
+    # (scale-free; near-constant → ~0).
+    if numerical_columns:
+        nb = df[numerical_columns].astype(np.float64)
+        span = (nb.max() - nb.min()).replace(0.0, np.nan)       # constant -> NaN
+        nvar = ((nb - nb.min()) / span).var(axis=0, skipna=True).fillna(0.0)
+        for c in numerical_columns:
+            scores[c] = float(nvar.get(c, 0.0))
 
-    fa = FeatureAgglomeration(
-        n_clusters=target_numerical_count,
-        metric=metric,
-        linkage=linkage,
-    )
-    fa.fit(cluster_input)
-    labels = fa.labels_
+    # (1b) Categorical score: Shannon entropy of the value distribution,
+    # normalised to [0, 1] (near-constant → ~0; balanced → ~1). This lets a
+    # categorical-heavy dataset be capped too — the previous version only
+    # trimmed numericals and silently skipped when the categoricals alone
+    # exceeded the budget, leaving e.g. the LGD base_model* sets uncapped.
+    for c in categorical_columns:
+        vc = df[c].astype("object").value_counts(normalize=True, dropna=True)
+        if len(vc) <= 1:
+            scores[c] = 0.0
+        else:
+            p = vc.to_numpy(dtype=np.float64)
+            scores[c] = float(-(p * np.log(p)).sum() / np.log(len(vc)))
 
-    # Output features = unscaled per-cluster means.
-    new_numerical_columns: list[str] = []
-    out_cols: dict[str, pd.Series] = {}
-    for k in range(target_numerical_count):
-        members = [numerical_columns[i] for i in range(len(numerical_columns))
-                   if labels[i] == k]
-        if not members:
-            continue
-        new_name = f"feat_agglo_{k:04d}"
-        out_cols[new_name] = raw_block[members].mean(axis=1)
-        new_numerical_columns.append(new_name)
+    # (2) Greedy de-correlation among NUMERICAL columns (best-score-first,
+    # bounded candidate set so the O(k²) correlation stays cheap). Drops a
+    # numerical whose |Pearson r| with an already-kept numerical exceeds the
+    # threshold. (Pearson does not apply to categoricals.)
+    drop_corr: set[str] = set()
+    num_ranked = sorted(numerical_columns, key=lambda c: scores.get(c, 0.0),
+                        reverse=True)
+    if len(num_ranked) > 1:
+        n_cand = min(len(num_ranked), max(2 * max_columns, max_columns + 1))
+        cand = num_ranked[:n_cand]
+        cb = df[cand].astype(np.float64)
+        cb = cb.fillna(cb.mean()).fillna(0.0)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            corr = np.atleast_2d(np.corrcoef(cb.to_numpy(), rowvar=False))
+        kept_pos: list[int] = []
+        for i in range(len(cand)):
+            keep = True
+            for j in kept_pos:
+                cval = corr[i, j]
+                if not np.isnan(cval) and abs(cval) > corr_threshold:
+                    keep = False
+                    break
+            if keep:
+                kept_pos.append(i)
+            else:
+                drop_corr.add(cand[i])
 
-    # Stitch: categoricals (untouched) + agglomerated numericals + target.
-    keep_cats = df[categorical_columns].copy()
-    new_df = pd.concat([keep_cats, pd.DataFrame(out_cols, index=df.index)], axis=1)
+    # (3) Allocate the budget proportionally to each type's count, then keep
+    # the top-scored within each type. A single cross-type ranking would be
+    # biased: numerical min-max variance (~0.02-0.1) and normalised
+    # categorical entropy (~0.5-1) are NOT on a comparable scale, so ranking
+    # them together would keep almost only categoricals. Per-type allocation
+    # preserves the dataset's feature-type balance; within a type we keep the
+    # most-informative (numericals by variance after de-correlation,
+    # categoricals by entropy). Leftover budget (when a type runs out) is
+    # redistributed to the other type.
+    num_survivors = [c for c in num_ranked if c not in drop_corr]      # score-ordered
+    cat_ranked = sorted(categorical_columns, key=lambda c: scores.get(c, 0.0),
+                        reverse=True)
+    n_num_keep = int(round(max_columns * len(numerical_columns) / feat_count))
+    n_num_keep = min(n_num_keep, len(num_survivors))
+    n_cat_keep = min(max_columns - n_num_keep, len(cat_ranked))
+    n_num_keep = min(len(num_survivors), max_columns - n_cat_keep)     # refill if cats short
+
+    new_nums = num_survivors[:n_num_keep]
+    new_cats = cat_ranked[:n_cat_keep]
+    keep_cols = new_cats + new_nums          # categoricals first, then numericals
+    new_df = df[keep_cols].copy()
     if target in df.columns:
         new_df[target] = df[target].values
     LOGGER.info(
-        "FeatureAgglomeration: %d numerical → %d clusters (cats kept: %d)",
-        len(numerical_columns), len(new_numerical_columns), len(categorical_columns),
+        "Feature selection: %d features (%d num + %d cat) → %d kept "
+        "(%d num + %d cat); unsupervised, real columns.",
+        feat_count, len(numerical_columns), len(categorical_columns),
+        len(keep_cols), len(new_nums), len(new_cats),
     )
-    return new_df, new_numerical_columns, categorical_columns
+    return new_df, new_nums, new_cats
 
 
 def _label_encode_classification_target(
@@ -400,14 +445,23 @@ def sanitize_dataset(
     cats = [c for c in cats if c in surviving]
     nums = [c for c in nums if c in surviving]
 
-    # --- (i) FeatureAgglomeration ------------------------------------------
-    if cfg.sanitize.agglomeration.enabled and (len(nums) + len(cats)) > cfg.sanitize.max_columns:
-        df, nums, cats = _agglomerate_to_max_columns(
+    # --- (i) feature selection (cap feature count; keep REAL columns) ------
+    # Reads cfg.sanitize.feature_selection.{enabled, corr_threshold}; falls
+    # back to the legacy cfg.sanitize.agglomeration.enabled flag so old
+    # configs still parse.
+    fs_cfg = getattr(cfg.sanitize, "feature_selection", None)
+    if fs_cfg is not None:
+        fs_enabled = bool(getattr(fs_cfg, "enabled", True))
+        corr_thr = float(getattr(fs_cfg, "corr_threshold", 0.95))
+    else:                                                       # legacy config
+        agg = getattr(cfg.sanitize, "agglomeration", None)
+        fs_enabled = bool(getattr(agg, "enabled", True)) if agg is not None else True
+        corr_thr = 0.95
+    if fs_enabled and (len(nums) + len(cats)) > cfg.sanitize.max_columns:
+        df, nums, cats = _select_to_max_columns(
             df, target, nums, cats,
             max_columns=cfg.sanitize.max_columns,
-            metric=cfg.sanitize.agglomeration.metric,
-            linkage=cfg.sanitize.agglomeration.linkage,
-            standardize_for_distance_only=cfg.sanitize.agglomeration.standardize_for_distance_only,
+            corr_threshold=corr_thr,
             seed=cfg.seed,
         )
 

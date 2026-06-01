@@ -147,11 +147,21 @@ class TrialId:
         return f"{self.base_short}  lr={self.lr:.0e}{lora_tag}"
 
 
+# Matches descriptive_name (src/train/loop.py):
+#   <run>_<track>_<base>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_lora]
+# The qf / acc / fullpass segments are optional so this matches both the
+# legacy name and the swept-axis names. (Before 2026-06-01 this regex
+# stopped at _seed<seed>[_lora] and so returned None for every name that
+# carried _qf/_acc — i.e. the entire current sweep — silently emptying the
+# cross-trial training plots.)
 _NAME_RE = re.compile(
     r"^(?P<run>.+?)_(?P<track>pd|lgd)_"
     r"(?P<base>.+?)"
     r"_lr(?P<lr>[0-9eE.+\-]+)"
     r"_seed(?P<seed>\d+)"
+    r"(?:_qf(?P<qf>\d+))?"
+    r"(?:_acc(?P<acc>\d+))?"
+    r"(?P<fullpass>_fullpass)?"
     r"(?P<lora>_lora)?$"
 )
 

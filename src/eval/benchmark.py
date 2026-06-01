@@ -115,6 +115,7 @@ class EvalRow:
     log_loss:           float = float("nan")
     pr_auc:             float = float("nan")
     brier_score:        float = float("nan")
+    ece:                float = float("nan")     # expected calibration error (10-bin, binary)
     optimal_threshold:  float = float("nan")    # max-F1 on inner-val
     f1:                 float = float("nan")
     accuracy:           float = float("nan")
@@ -129,8 +130,9 @@ class EvalRow:
     # / R² / neg-NLL the block below adds:
     #
     #   * median_ae         — median absolute error (outlier-robust).
-    #   * mape              — mean absolute percentage error in PCT
-    #                         (skipped where any |y_true| == 0).
+    #   * mape              — mean absolute percentage error in DECIMAL
+    #                         units (not ×100; multiply downstream for %).
+    #                         NaN where any y_true == 0.
     #   * explained_variance — sklearn's explained_variance_score.
     #   * pearson_r          — linear correlation pred vs target.
     #   * spearman_r         — rank correlation pred vs target.
@@ -172,7 +174,12 @@ def load_trained_handles(
 
     df = pd.read_csv(manifest_csv)
     df = df[df["track"] == track]
-    df = df[df["status"] == "OK"]
+    # Include both "OK" (freshly trained this run) and "SKIP" (a previous
+    # run already produced a valid checkpoint + provenance, so the trial
+    # was skipped). Both have a usable checkpoint on disk. EXCLUDE "FAIL"
+    # (no checkpoint) and "DIVERGED" (checkpoint exists but the weights
+    # collapsed to random — scoring it would just add noise rows).
+    df = df[df["status"].isin(["OK", "SKIP"])]
     df = df[df["final_ckpt_path"].notna() & (df["final_ckpt_path"] != "")]
 
     out: list[tuple[ModelHandle, TabPFNTrained]] = []
@@ -195,6 +202,9 @@ def load_trained_handles(
             "learning_rate":       float(row["learning_rate"]),
             "use_lora":            use_lora_val,
             "seed":                int(row["seed"]),
+            # Keeps full_pass vs one_sample checkpoints in separate result
+            # dirs (legacy manifests lack the column → "one_sample").
+            "epoch_pass_mode":     str(row.get("epoch_pass_mode", "one_sample")),
         }
         model = TabPFNTrained(
             task_type=task_type, ckpt_path=ckpt,
@@ -374,6 +384,35 @@ def _classification_metrics(
     else:
         out["brier_score"] = float("nan")
 
+    # Expected Calibration Error (binary): 10 equal-width confidence bins on
+    # the positive-class probability. ECE = Σ_b (n_b/N)·|acc_b − conf_b|;
+    # lower = better calibrated. Distinct from Brier (which mixes calibration
+    # and sharpness) — ECE isolates calibration, which Basel-III PD models
+    # require and which Tanna et al. 2026 show fine-tuning can silently
+    # degrade even when ROC-AUC holds.
+    if K == 2:
+        try:
+            p = np.asarray(proba_test[:, 1], dtype=float)
+            yt = np.asarray(y_test).astype(int)
+            n_bins = 10
+            edges = np.linspace(0.0, 1.0, n_bins + 1)
+            bin_idx = np.clip(np.digitize(p, edges[1:-1]), 0, n_bins - 1)
+            N = len(p)
+            ece = 0.0
+            for b in range(n_bins):
+                mask = bin_idx == b
+                nb = int(mask.sum())
+                if nb == 0:
+                    continue
+                conf = float(p[mask].mean())
+                acc = float((yt[mask] == 1).mean())
+                ece += (nb / N) * abs(acc - conf)
+            out["ece"] = float(ece)
+        except (ValueError, IndexError):
+            out["ece"] = float("nan")
+    else:
+        out["ece"] = float("nan")
+
     # Threshold-tuned metrics — binary only.
     if K == 2 and len(np.unique(y_val)) >= 2:
         best_th = _best_f1_threshold(proba_val[:, 1], y_val)
@@ -508,9 +547,12 @@ def _method_dirname(handle: ModelHandle) -> str:
     short = _short_base_tag(extra.get("base_checkpoint"))
     lr = extra.get("learning_rate")
     lora_tag = "__lora" if extra.get("use_lora") else ""
+    # full_pass checkpoints get a distinct dir so they don't collide with
+    # the one_sample variant of the same (base, lr, lora).
+    fp_tag = "__fullpass" if extra.get("epoch_pass_mode") == "full_pass" else ""
     if lr is not None:
-        return f"tabpfn-trained__{short}__lr{lr:.0e}{lora_tag}"
-    return f"tabpfn-trained__{short}{lora_tag}"
+        return f"tabpfn-trained__{short}__lr{lr:.0e}{fp_tag}{lora_tag}"
+    return f"tabpfn-trained__{short}{fp_tag}{lora_tag}"
 
 
 def _output_path_for(
@@ -592,12 +634,16 @@ def find_existing_results(
 
 
 def _csv_might_have_dataset(csv_path: Path, dataset_id: str) -> bool:
-    """Cheap pre-filter for non-tagged (single-process) CSVs.
+    """Permissive pre-filter for non-tagged (single-process) CSVs.
 
-    Per-task slurm filenames always encode ``ds-<id>`` so are matched by
-    the caller's filename check. Non-tagged files may or may not contain
-    the dataset; we open them only when there's at least a chance the
-    test_dataset_id column is present.
+    Per-task slurm filenames always encode ``ds-<id>`` and are matched by
+    the caller's filename check. A non-tagged file (single-process run,
+    all datasets in one CSV) carries no id in its name, so we cannot rule
+    it out cheaply — it might hold any dataset's rows. We therefore accept
+    every ``.csv`` here and let the authoritative header scan in
+    :func:`_csv_ok_folds_for` decide. (I.e. this is intentionally a
+    pass-through, not a filter — the only files it would ever reject are
+    non-``.csv``, which the caller's ``glob("*.csv")`` already excludes.)
     """
     return csv_path.suffix == ".csv"
 
@@ -736,11 +782,18 @@ def _bench_model_on_dataset(
                 # has classes. Pad with zero columns so the column index
                 # matches the actual class label — required for log_loss
                 # with labels=[0..K-1] and multiclass roc_auc.
+                #
+                # K is sized from the predicted-probability widths and the
+                # VALIDATION labels only — NOT from the held-out TEST
+                # labels. Reading `y_te.max()` here would leak test-set
+                # information into the metric-column geometry. For binary
+                # PD (our only classification track) this is a no-op
+                # (proba always has ≥2 cols), but the train-only sizing is
+                # the correct, leak-free form. (Audit fix 2026-05-29.)
                 K_total = max(
                     int(proba_va.shape[1]),
                     int(proba_te.shape[1]),
                     int(y_va.max()) + 1 if len(y_va) else 0,
-                    int(y_te.max()) + 1 if len(y_te) else 0,
                 )
 
                 def _pad(p: np.ndarray, K: int) -> np.ndarray:
@@ -800,7 +853,7 @@ def _bench_model_on_dataset(
             status=status, error=error,
             **{k: metrics.get(k, float("nan")) for k in (
                 # Classification — threshold-free / probabilistic
-                "roc_auc", "log_loss", "pr_auc", "brier_score",
+                "roc_auc", "log_loss", "pr_auc", "brier_score", "ece",
                 # Classification — threshold-tuned (max-F1 on val)
                 "optimal_threshold",
                 "f1", "accuracy", "precision", "recall", "specificity",

@@ -32,6 +32,7 @@ self-documenting:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from pathlib import Path
 from typing import Literal
@@ -41,6 +42,41 @@ import numpy as np
 LOGGER = logging.getLogger(__name__)
 
 
+@contextlib.contextmanager
+def _trust_local_checkpoints():
+    """Force ``torch.load(weights_only=False)`` while loading our own ckpts.
+
+    PyTorch >= 2.6 flipped ``torch.load``'s default to
+    ``weights_only=True``, whose safe-unpickler rejects the config objects
+    embedded in a finetuned checkpoint. TabPFN's internal loader calls
+    ``torch.load(..., weights_only=None)`` (-> the new ``True`` default), so
+    ``TabPFNClassifier(model_path=<our trained .ckpt>)`` raises
+    ``UnpicklingError`` and **every** trained-model eval row FAILs (observed
+    in the 2026-05-31 run: 875 PD + 600 LGD trained rows). The published
+    base checkpoints store config as plain primitives and load fine, which
+    is why only the *trained* checkpoints broke.
+
+    We trust our own files, so within this context we intercept
+    ``torch.load`` and force ``weights_only=False`` (matching what TabPFN's
+    own non-base load paths already do). Scope is tight — only around model
+    construction / fit — and the swap is always restored. Calls that
+    explicitly pass ``weights_only=False`` are left untouched.
+    """
+    import torch
+    orig_load = torch.load
+
+    def _patched_load(*args, **kwargs):
+        if kwargs.get("weights_only", None) is not False:
+            kwargs["weights_only"] = False
+        return orig_load(*args, **kwargs)
+
+    torch.load = _patched_load
+    try:
+        yield
+    finally:
+        torch.load = orig_load
+
+
 def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
     """Construct ``TabPFNClassifier`` or ``TabPFNRegressor`` from a path."""
     from tabpfn import TabPFNClassifier, TabPFNRegressor
@@ -48,7 +84,11 @@ def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
         TabPFNClassifier if task_type == "classification"
         else TabPFNRegressor
     )
-    return cls(model_path=str(model_path), **extra)
+    # Some TabPFN versions load the checkpoint at construction, others at
+    # .fit(); the caller also wraps .fit() in the same context, so both
+    # entry points are covered.
+    with _trust_local_checkpoints():
+        return cls(model_path=str(model_path), **extra)
 
 
 # --------------------------------------------------------------------------- #
@@ -93,7 +133,8 @@ class TabPFNUntuned:
             n_estimators=self._n_estimators,
             categorical_features_indices=self._categorical_idx or None,
         )
-        self._tabpfn.fit(X, y)
+        with _trust_local_checkpoints():
+            self._tabpfn.fit(X, y)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         return self._tabpfn.predict_proba(X)
@@ -150,7 +191,8 @@ class TabPFNTrained:
             n_estimators=self._n_estimators,
             categorical_features_indices=self._categorical_idx or None,
         )
-        self._tabpfn.fit(X, y)
+        with _trust_local_checkpoints():
+            self._tabpfn.fit(X, y)
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         return self._tabpfn.predict_proba(X)

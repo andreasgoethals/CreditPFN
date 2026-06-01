@@ -1,98 +1,57 @@
 # =============================================================================
 #  CreditPFN — eval / final-benchmark configuration
 # =============================================================================
-#  Drives `scripts/eval_pipeline.py`. For each (model × test dataset) it
-#  runs K-fold CV (outer 80/20; inner 80/20 of the train fold for HPO
-#  and F1-threshold tuning) and writes one CSV per (method, run, ts) at
-#
-#      <results.base_dir>/<TRACK>/<method>/<run_name>_<timestamp>.csv
-#
-#  All code-generated outputs live under `output/` (results, training
-#  manifests, per-epoch CSVs, notebook figures). The only exceptions
-#  are trained checkpoints (`checkpoints/trained/`) and the data
-#  pipeline's own artefacts (`data/`).
-#
-#  The training pipeline lives in `config/train.yaml`; the cross-cutting
-#  knobs (seed, run_name, track, corpus split) are inherited from there.
-#  Anything that's never changed across runs (metric column order,
-#  TabPFN inference-time defaults, processed-CSV path layout) is
-#  hardcoded in code.
+#  Drives scripts/eval_pipeline.py: for each (model × test dataset) it runs
+#  K-fold CV (outer 80/20, inner 80/20 of the train fold for HPO + F1-threshold
+#  tuning) and writes one CSV per (method, run, ts) under results.base_dir.
+#  Shared knobs (seed, run_name, track, corpus split) are inherited from
+#  train.yaml. Full rationale for every knob lives in README §8 (Eval pipeline).
 # =============================================================================
 
-
-# Inherit shared knobs (seed, run_name, track, corpus split) from the
-# training config.
+# Shared knobs (seed, run_name, track, corpus split) come from here.
 train_cfg_path: "config/train.yaml"
 
 
-# Which classical baselines to include. "logreg" is silently ignored on
-# lgd; "linreg" is silently ignored on pd.
+# Classical baselines to score. "logreg" is ignored on lgd; "linreg" on pd.
+# tabpfn-untuned expands to one entry per base in tunable.<track>_base_paths.
+# Any baseline whose package is missing, or whose base .ckpt is absent, is
+# skipped with a warning rather than failing the run.
 baselines:
-  enabled:
-    - "xgboost"
-    - "catboost"
-    - "logreg"
-    - "linreg"
-    - "tabpfn-untuned"
+  enabled: ["xgboost", "catboost", "logreg", "linreg", "tabpfn-untuned"]
 
 
-# K-fold CV per test dataset (stratified for classification, plain
-# KFold for regression). Inner val split is used for both Optuna HPO
-# and F1-threshold tuning.
+# Outer K-fold CV per test dataset (stratified for pd, plain KFold for lgd).
+# inner_val_fraction carves a val split out of each train fold, shared by
+# Optuna HPO and the F1-threshold tuner → 64/16/20 train/val/test.
 cv:
   n_folds: 5
-  inner_val_fraction: 0.20      # 64/16/20 train/val/test of the dataset
+  inner_val_fraction: 0.20
 
 
-# Per-base-architecture max-rows cap for the *training* subset that
-# the TabPFN-family models see during evaluation. The cap is the
-# upstream architectural limit on how many in-context rows TabPFN
-# can fit through one forward pass on an 80 GB H100 (the wICE
-# gpu_h100 standard):
-#
-#   * TabPFN-v2.x  → 100_000   (Hollmann 2025 §3; verified upper bound)
-#   * TabPFN-v3    → 1_000_000 (Grinsztajn 2026 §2.4; the "1M rows on a
-#                              single H100" headline result, enabled by
-#                              v3's row-chunked inference + reduced KV
-#                              cache)
-#
-# The lookup key matches the leading "v<MAJOR>" of the base-stem the
-# eval pipeline parses out (see `src/eval/benchmark._short_base_tag`).
-# `default` is the fallback when nothing matches.
-#
-# Non-TabPFN baselines (XGBoost / CatBoost / LogReg / LinReg) have no
-# such cap and see the full training fold.
+# Per-architecture cap on TabPFN's in-context training rows (the upstream
+# single-H100 limit; non-TabPFN baselines see the full train fold). Key =
+# leading v<MAJOR> of the parsed base-stem; default is the fallback.
+#   v3 → 1M rows (TabPFN-3 §2.4), v2.x → 100k (TabPFN-2.5 §3).
 max_rows_per_model:
   v3:      1000000
   v2.6:    100000
   default: 100000
 
 
-# Per-fold Optuna budget for the boosting baselines. HPO objective is
-# computed on the inner-val split (same as F1-threshold tuning).
+# Per-fold Optuna budget for the boosting baselines. HPO objective is scored
+# on the inner-val split. max_rows = stratified subsample of the train fold
+# used during HPO only (final fit sees the full fold).
 hpo:
-  xgboost:
-    n_trials: 25
-    timeout_seconds: 600
-    max_rows: 50000          # stratified subsample of the train fold (HPO only)
-  catboost:
-    n_trials: 25
-    timeout_seconds: 600
-    max_rows: 50000
+  xgboost:  {n_trials: 25, timeout_seconds: 600, max_rows: 50000}
+  catboost: {n_trials: 25, timeout_seconds: 600, max_rows: 50000}
 
 
-# TabPFN inference-time estimators (sklearn API), shared by untuned and
-# trained variants. 4 is the package default; 32 was chosen on 2026-05-21
-# to (1) reduce ensemble noise in the per-(model × dataset × fold)
-# numbers we report and (2) match the per-epoch training-monitor's
-# ensemble size so monitor numbers are directly comparable to final
-# eval numbers (same model, same context, same n_estimators, same
-# context/query geometry).
+# TabPFN inference-time ensemble size (sklearn API), shared by untuned and
+# trained variants. Matches the per-epoch training monitor so eval numbers
+# are directly comparable to the training curves.
 tabpfn_n_estimators: 32
 
 
 # Output root. Benchmark CSVs land under <base_dir>/<TRACK>/<method>/...
-# Training per-epoch CSVs land under output/training/epochs/<track>/<...>.csv
-# (written by the training pipeline, not configurable here).
 results:
   base_dir: "output/results"

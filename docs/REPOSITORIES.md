@@ -28,7 +28,7 @@ fresh dump of a public GitHub repo, the upstream URL is linked.
 | `TabPFN Drift-Resilient.txt` | 17,844 | [automl/Drift-Resilient_TabPFN](https://github.com/automl/Drift-Resilient_TabPFN) | [Helli 2024](../papers/2024_Helli_et_al._Drift_Resilient_TabPFN_In_Context_Learning_Temporal_Distribution_Shifts_on_Tabular_Data_1.pdf) | Drift-aware training augmentation. Highly relevant for credit-risk's macro-cycle drift; consider folding into `src/train/`. |
 | `TabPFN Extensions.txt` | 17,415 | [PriorLabs/tabpfn-extensions](https://github.com/PriorLabs/tabpfn-extensions) | — | `AutoTabPFN` post-hoc ensembling, RF-PFN, embeddings, HPO. Source of evaluation baselines. |
 | `TabPFN V2 Finetuning.txt` | 3,697 | [PriorLabs/TabPFN/examples](https://github.com/PriorLabs/TabPFN/tree/main/examples) | [Rubachev 2025](../papers/2025_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.pdf) | The `finetune_classifier.py` and `finetune_regressor.py` reference scripts. Canonical "load checkpoint → backward pass → save checkpoint" sequence. |
-| `TabPFN Wide.txt` | 2,388 | [pfeiferAI/TabPFN-Wide](https://github.com/pfeiferAI/TabPFN-Wide) | [Kolberg 2026](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) | The continued-pretraining recipe for extreme-feature-count regimes. Source of our `FeatureAgglomeration` design. |
+| `TabPFN Wide.txt` | 2,388 | [not-a-feature/TabPFN-Wide](https://github.com/not-a-feature/TabPFN-Wide) | [Kolberg 2026](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) | Continued-pretraining for extreme-feature-count regimes via a feature-widening prior (it argues *against* feature reduction; not the source of our agglomeration). |
 | `TabTune.txt` | 134,411 | [Lexsi-Labs/TabTune](https://github.com/Lexsi-Labs/TabTune) | [Lexsi-Labs 2025](https://arxiv.org/abs/2511.02802) | Unified sklearn-style wrapper around the **non-TabPFN** tabular foundation models (TabICL, OrionMSP/Bix, Mitra, ContextTab, TabDPT, LimiX) plus TabPFNv2.6 native FT, ensembling, distillation, and a `TabularLeaderboard`. Useful as a *future* source of additional eval baselines beyond what `src/model/` currently wraps; **not adopted now** because it doesn't natively support Real-TabPFN-style multi-dataset continued pretraining (which is the core training stage of this project). See "Should we use TabTune?" below for the full call. |
 | `TransformersCanDoBayesianInference.txt` | 6,869 | [SamuelGabriel/PFNs](https://github.com/SamuelGabriel/PFNs) (early, same upstream as `PFNS.txt`) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Code for the original PFN paper. Mostly historical; useful for explaining what a PFN is. |
 | `VSC Documentation.txt` | 39,358 | [hpcleuven/VscDocumentation](https://github.com/hpcleuven/VscDocumentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, A100 partitions, storage tiers, account / VO management. The reference when writing the SLURM scripts under `scripts/`. |
@@ -643,9 +643,8 @@ sequence for *real* TabPFN-2 weights, not the toy model.
 
 ## `TabPFN Wide.txt`
 
-**Upstream:** [github.com/pfeiferAI/TabPFN-Wide](https://github.com/pfeiferAI/TabPFN-Wide)
-(the authoring lab moved the repo from `automl/` to `pfeiferAI/`; the
-old slug no longer resolves).
+**Upstream:** [github.com/not-a-feature/TabPFN-Wide](https://github.com/not-a-feature/TabPFN-Wide)
+(the canonical repo for the TabPFN-Wide paper, Kolberg et al. 2026).
 
 **Related paper:**
 [2026 — Kolberg et al. — TabPFN-Wide](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf).
@@ -655,11 +654,15 @@ inputs, e.g. multi-omics or wide credit-bureau datasets with
 hundreds to thousands of columns.
 
 **Why it matters:** several credit datasets in our raw corpus
-already have >100 columns. The 128-column ceiling we apply via
-`FeatureAgglomeration` matches the TabPFN-2.x training prior, but
-we should know how the Wide variant addresses the same problem —
-and the `FeatureAgglomeration(metric='euclidean', linkage='ward')`
-idiom we adopted lives in this codebase first.
+already have >100 columns, so we need a story for wide data.
+TabPFN-Wide's answer is the **opposite** of ours: instead of
+reducing features, it *widens the synthetic prior* so the model
+natively handles hundreds-to-thousands of columns, and it uses
+`FeatureAgglomeration` only as a **baseline it compares against**,
+not as its method. Our `sanitize.py` step is unsupervised feature
+*selection* (keep real columns) — an independent, pragmatic cap;
+useful to read this repo for how the widening alternative works,
+**not** as the source of our design.
 
 **Contents in detail:**
 

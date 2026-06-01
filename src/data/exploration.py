@@ -49,6 +49,14 @@ Public surface — corpus-level (scales to 3 000 datasets)
 * :func:`plot_class_imbalance_distribution` — PD only.
 * :func:`plot_target_mean_distribution_lgd` — corpus-level histogram
   of LGD target means across all datasets.
+* :func:`plot_source_breakdown` — dataset count per data source,
+  split by track (corpus provenance).
+* :func:`plot_size_scatter` — rows-vs-features scatter (log-log)
+  mapping the corpus shape space; ``source`` selects raw / processed.
+* :func:`plot_feature_type_distribution` — histogram of each
+  dataset's categorical-feature share, per track.
+* :func:`plot_feature_reduction` — raw vs post-sanitise feature
+  count, visualising the FeatureAgglomeration 128-column cap.
 
 Public surface — per-dataset (paginated for scale)
 --------------------------------------------------
@@ -544,6 +552,158 @@ def plot_target_mean_distribution_lgd(cfg=None):
         title="LGD — target-mean distribution across the corpus",
         xlabel="dataset mean LGD",
     )
+    fig.tight_layout()
+    return fig
+
+
+def plot_source_breakdown(cfg=None):
+    """Corpus provenance: dataset count per source, split by track.
+
+    Each raw dataset's ``source`` (``"kaggle"`` / ``"uci"`` /
+    ``"freddie-mac"`` / ``"local"`` / …) comes from
+    ``DATASET_METADATA`` and is carried into the manifest. A diverse
+    source mix is a mild guard against the whole corpus inheriting one
+    vendor's quirks.
+    """
+    plt = _import_mpl()
+    summary = corpus_summary_table(cfg=cfg)
+    if summary.empty or "source" not in summary.columns:
+        return None
+    counts = summary.groupby(["source", "track"]).size().unstack(fill_value=0)
+    for tr in ("pd", "lgd"):
+        if tr not in counts.columns:
+            counts[tr] = 0
+    counts = counts.loc[counts.sum(axis=1).sort_values(ascending=False).index]
+    sources = list(counts.index)
+    x = np.arange(len(sources))
+    width = 0.38
+    fig, ax = plt.subplots(figsize=(max(7, 1.2 * len(sources)), 4.5))
+    ax.bar(x - width / 2, counts["pd"], width, label="PD",
+           color=_TRACK_COLOR["pd"], alpha=0.85, edgecolor="white", linewidth=0.6)
+    ax.bar(x + width / 2, counts["lgd"], width, label="LGD",
+           color=_TRACK_COLOR["lgd"], alpha=0.85, edgecolor="white", linewidth=0.6)
+    ax.set_xticks(x)
+    ax.set_xticklabels(sources, rotation=20, ha="right")
+    _apply_style(ax, title="Corpus provenance — datasets per source",
+                 xlabel="source")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    return fig
+
+
+def plot_size_scatter(*, source: str = "processed", cfg=None):
+    """Per-dataset rows vs features scatter (log-log), coloured by track.
+
+    Maps out the corpus "shape space": tall-and-narrow datasets
+    (many rows, few features) sit bottom-right; wide datasets
+    (few rows, many features — the TabPFN-Wide regime) sit top-left.
+    ``source`` is ``"raw"`` (pre-fix shapes) or ``"processed"``
+    (post-sanitise).
+    """
+    plt = _import_mpl()
+    if source == "raw":
+        summary = raw_corpus_summary(cfg)
+        rcol, ccol = "raw_rows", "raw_cols"
+    elif source == "processed":
+        summary = corpus_summary_table(cfg=cfg)
+        rcol, ccol = "post_rows", "post_features"
+    else:
+        raise ValueError("source must be 'raw' or 'processed'")
+    if summary.empty:
+        return None
+    df = summary[(summary[rcol] > 0) & (summary[ccol] > 0)]
+    if df.empty:
+        return None
+    fig, ax = plt.subplots(figsize=(8, 5.5))
+    for tr in ("pd", "lgd"):
+        sub = df[df["track"] == tr]
+        if sub.empty:
+            continue
+        ax.scatter(sub[rcol], sub[ccol], s=55, alpha=0.8,
+                   color=_TRACK_COLOR[tr], edgecolor="black",
+                   linewidth=0.4, label=tr.upper())
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    _apply_style(ax, title=f"Corpus shape space — rows vs features ({source})",
+                 xlabel="rows  (log-scaled)", ylabel="features  (log-scaled)")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    return fig
+
+
+def plot_feature_type_distribution(cfg=None):
+    """Histogram of each dataset's categorical-feature share, per track.
+
+    ``categorical share = n_categorical / (n_categorical + n_numerical)``.
+    Credit-risk corpora are usually mostly-numerical, so this should
+    cluster near 0; a dataset near 1 is worth a second look (likely a
+    coding/labelling quirk).
+    """
+    plt = _import_mpl()
+    summary = corpus_summary_table(cfg=cfg)
+    if summary.empty:
+        return None
+    denom = (summary["n_categorical"] + summary["n_numerical"]).replace(0, np.nan)
+    summary = summary.assign(cat_share=summary["n_categorical"] / denom)
+    summary = summary.dropna(subset=["cat_share"])
+    if summary.empty:
+        return None
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    bins = np.linspace(0.0, 1.0, 21)
+    for tr in ("pd", "lgd"):
+        sub = summary[summary["track"] == tr]
+        if sub.empty:
+            continue
+        ax.hist(sub["cat_share"], bins=bins, alpha=0.6, label=tr.upper(),
+                color=_TRACK_COLOR[tr], edgecolor="white", linewidth=0.6)
+    ax.set_xlim(0.0, 1.0)
+    _apply_style(ax, title="Feature-type composition — categorical share per dataset",
+                 xlabel="categorical share  (n_categorical / n_features)")
+    ax.legend(frameon=False)
+    fig.tight_layout()
+    return fig
+
+
+def plot_feature_reduction(cfg=None):
+    """Raw vs post-sanitise feature count — visualises feature selection.
+
+    Points on the dashed ``y = x`` line were left untouched by sanitise.
+    Points pulled down toward the red cap line had their feature count
+    reduced by unsupervised **selection** (``sanitize.max_columns`` keeps
+    the top-N *real* columns — not cluster means). The handful of
+    >cap-feature datasets (e.g. ``algorithmwatch`` at ~2 987 cols) are
+    the whole reason the selection step exists.
+    """
+    plt = _import_mpl()
+    try:
+        from omegaconf import OmegaConf
+        cap = int(OmegaConf.load(_REPO / "config" / "data.yaml").sanitize.max_columns)
+    except Exception:                                          # pragma: no cover
+        cap = 64
+    summary = corpus_summary_table(cfg=cfg)
+    if summary.empty:
+        return None
+    df = summary[(summary["raw_features"] > 0) & (summary["post_features"] > 0)]
+    if df.empty:
+        return None
+    fig, ax = plt.subplots(figsize=(7, 6.5))
+    for tr in ("pd", "lgd"):
+        sub = df[df["track"] == tr]
+        if sub.empty:
+            continue
+        ax.scatter(sub["raw_features"], sub["post_features"], s=55, alpha=0.8,
+                   color=_TRACK_COLOR[tr], edgecolor="black",
+                   linewidth=0.4, label=tr.upper())
+    hi = float(df["raw_features"].max())
+    ax.plot([1, hi], [1, hi], "k--", alpha=0.4, linewidth=0.8, label="y = x (unchanged)")
+    ax.axhline(cap, color="red", linestyle=":", linewidth=1.0, alpha=0.7,
+               label=f"{cap}-feature cap (selection)")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    _apply_style(ax, title="Feature reduction — raw vs post-sanitise feature count",
+                 xlabel="raw features  (log-scaled)",
+                 ylabel="post-sanitise features  (log-scaled)")
+    ax.legend(frameon=False, fontsize=8)
     fig.tight_layout()
     return fig
 

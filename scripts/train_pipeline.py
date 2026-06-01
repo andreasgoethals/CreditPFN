@@ -100,18 +100,22 @@ def _load_cfg(overrides: list[str] | None = None):
 
 def _resolve_grid(
     cfg, *, single: bool,
-) -> list[tuple[str, float, bool, float, int]]:
-    """Materialise the ``(base, lr, use_lora, query_fraction, accumulate)`` tuples to train.
+) -> list[tuple[str, float, bool, float, int, str]]:
+    """Materialise the ``(base, lr, use_lora, query_fraction, accumulate,
+    epoch_pass_mode)`` tuples to train.
 
     ``single=True``: head of every tunable list (one trial).
     Otherwise: full cartesian product over
-    ``base × lr × use_lora × query_fraction × accumulate_grad_batches``.
+    ``base × lr × use_lora × query_fraction × accumulate_grad_batches ×
+    epoch_pass_modes``.
 
     All tunable lists accept either a scalar or a list. ``use_lora``
     defaults to ``[False]`` when absent; ``query_fractions`` defaults
     to ``[0.20]`` (the TabPFN documented default) when absent;
     ``accumulate_grad_batches`` defaults to ``[1]`` (TabPFN's official
-    no-accumulation behaviour) when absent.
+    no-accumulation behaviour) when absent; ``epoch_pass_modes`` defaults
+    to ``["one_sample"]`` (one step per dataset per epoch — the original
+    behaviour) when absent.
     """
     track = str(cfg.track)
     bases = (
@@ -134,15 +138,21 @@ def _resolve_grid(
         accs = [int(raw_acc)]
     else:
         accs = [int(x) for x in raw_acc]
+    raw_pm = getattr(cfg.tunable, "epoch_pass_modes", ["one_sample"])
+    if isinstance(raw_pm, str):
+        pms = [raw_pm]
+    else:
+        pms = [str(x) for x in raw_pm]
 
     if single:
         return [(
             str(bases[0]), float(lrs[0]), bool(loras[0]), float(qfs[0]),
-            int(accs[0]),
+            int(accs[0]), str(pms[0]),
         )]
     return [
-        (str(b), float(lr), bool(lo), float(qf), int(ac))
-        for b, lr, lo, qf, ac in itertools.product(bases, lrs, loras, qfs, accs)
+        (str(b), float(lr), bool(lo), float(qf), int(ac), str(pm))
+        for b, lr, lo, qf, ac, pm
+        in itertools.product(bases, lrs, loras, qfs, accs, pms)
     ]
 
 
@@ -164,10 +174,13 @@ def _validate_corpus_ids_or_raise(cfg, *, track: str) -> None:
     valid IDs.
     """
     from src.data.preprocessing import DATASET_METADATA
+    from src.train.corpus import resolve_ids_for_track
 
     known = {d for d, m in DATASET_METADATA.items() if m["track"] == track}
-    train_ids = list(cfg.corpus.get("train_dataset_ids", []) or [])
-    test_ids  = list(cfg.corpus.get("test_dataset_ids", []) or [])
+    # Per-track aware: train/test ID configs may be a flat list or a
+    # {pd: [...], lgd: [...]} mapping; resolve to the active track's pins.
+    train_ids = list(resolve_ids_for_track(cfg.corpus.get("train_dataset_ids", None), track))
+    test_ids  = list(resolve_ids_for_track(cfg.corpus.get("test_dataset_ids", None), track))
 
     bad_train = [d for d in train_ids if d not in known]
     bad_test  = [d for d in test_ids  if d not in known]
@@ -294,6 +307,9 @@ class RunRow:
     # Divergence record — only populated when status == "DIVERGED".
     diverged_at_epoch:      int | None = None
     diverge_reason:         str   = ""
+    # Per-epoch step plan: "one_sample" (1 step/dataset/epoch) or
+    # "full_pass" (size-proportional steps). See cfg.tunable.epoch_pass_modes.
+    epoch_pass_mode:        str   = "one_sample"
 
 
 def _write_csv(rows: list[RunRow], path: Path, *, append: bool) -> None:
@@ -410,15 +426,15 @@ def run(
     failures = 0
     t_outer = time.monotonic()
 
-    for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate) in enumerate(plan, start=1):
+    for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate, pass_mode) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d ===",
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d  pass=%s ===",
             trial_idx_local, len(plan), global_idx,
-            Path(base).name, lr, use_lora, query_fraction, accumulate,
+            Path(base).name, lr, use_lora, query_fraction, accumulate, pass_mode,
         )
 
         # Per-epoch CSV path (mirrors the descriptive name of the checkpoint)
@@ -426,7 +442,7 @@ def run(
             run_name=str(cfg.run_name), track=track,
             base_path=base, learning_rate=lr, seed=int(cfg.seed),
             use_lora=use_lora, query_fraction=query_fraction,
-            accumulate_grad_batches=accumulate,
+            accumulate_grad_batches=accumulate, epoch_pass_mode=pass_mode,
         ).removesuffix(".ckpt")
 
         # ---- Rename the log file to include the trial's HPs --------- #
@@ -485,6 +501,7 @@ def run(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, query_fraction=query_fraction,
                 accumulate_grad_batches=int(accumulate),
+                epoch_pass_mode=pass_mode,
                 seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
                 final_ckpt_path=str(expected_ckpt),
@@ -536,12 +553,14 @@ def run(
                 use_lora=use_lora,
                 query_fraction=query_fraction,
                 accumulate_grad_batches=accumulate,
+                pass_mode=pass_mode,
                 on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, query_fraction=query_fraction,
                 accumulate_grad_batches=int(accumulate),
+                epoch_pass_mode=pass_mode,
                 seed=int(cfg.seed),
                 n_train_datasets=result.n_train_datasets,
                 n_test_datasets=result.n_test_datasets,
@@ -572,6 +591,7 @@ def run(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, query_fraction=query_fraction,
                 accumulate_grad_batches=int(accumulate),
+                epoch_pass_mode=pass_mode,
                 seed=int(cfg.seed),
                 n_train_datasets=0, n_test_datasets=0,
                 final_ckpt_path=None,

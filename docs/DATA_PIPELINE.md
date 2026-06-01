@@ -16,7 +16,7 @@ bottom is for revisits.
 ```
 ┌──────────────────────────────────────────────────────────────────┐
 │  STAGE 0 — Raw                                                    │
-│  data/raw/{pd,lgd}/<id>/raw.csv                                   │
+│  data/raw/{pd,lgd}/<id>.csv                                       │
 │  User-supplied. Free-form. Strings, numbers, NaNs, junk columns.  │
 └──────────────────────────────────────────────────────────────────┘
                               │
@@ -123,18 +123,32 @@ we explicitly mask them first — see `_safe_cast_to_float32`).
 ### 3.5 Replace `±inf` with `NaN`
 TabPFN's downstream encoder treats `NaN` natively; `inf` it cannot.
 
-### 3.6 FeatureAgglomeration (only when n_features > 128)
-When a dataset has more than 128 features (e.g. `loan_default` with
-769 cols, `algorithmwatch` with 2986 cols), we apply
-`sklearn.cluster.FeatureAgglomeration` to the numerical columns,
-clustering them into ≤ 128 clusters via Ward linkage. **Categoricals
-are kept unchanged** — agglomeration only operates on numerics. The
-cluster assignments are written to a sidecar
-`<id>.sanitized.feature_groups.json` for reproducibility.
+### 3.6 Feature selection (only when n_features > `sanitize.max_columns`)
+When a dataset has more numerical features than the cap
+(`sanitize.max_columns`, currently **64**; e.g. `loan_default` 768,
+`home_credit` 119, `algorithmwatch` 2985, the LGD `base_model*` ~255),
+we **select a subset of the real columns** rather than averaging them:
+keep the top-`max_columns` by scale-free (min-max-normalised) variance,
+after greedily dropping columns whose `|Pearson r|` with an
+already-kept column exceeds `feature_selection.corr_threshold` (0.95).
+**Categoricals are kept unchanged.** The kept columns are *original*
+features with their *real* distributions — so continued pretraining
+specialises the prior toward genuine credit features.
 
-This is the mechanism that lets a 2986-column dataset fit through
-TabPFN's hard limit of 2000 features per estimator (TabPFN-2.5 paper,
-appendix B).
+Why selection, not the previous `FeatureAgglomeration`: cluster means
+are synthetic averaged columns with smoothed distributions and no
+real-world meaning, which works against the goal of adjusting the prior
+to real credit data (and is inconsistent with what the model sees at
+inference). It is **unsupervised** (never touches `y`) → no label leak.
+
+**On the cap value.** Real-TabPFN (Garg 2025) doesn't reduce features
+at all — it curates datasets to ≤ 500 features and caps each at 400 000
+*cells* (trimming rows, not columns). TabPFN-v2's documented sweet spot
+is ≤ 100 features; v2.6 / v3 handle up to ~2 000. We use a tighter cap
+(64) because all but ~3 PD / ~2 LGD datasets are already < 64 features,
+and a tight cap maximises the per-step row budget (cells = rows ×
+features). Raise `sanitize.max_columns` to 100 / 128 to preserve more
+features at the cost of fewer rows; re-run the data stage to apply.
 
 ### 3.7 Label-encode classification targets
 Map raw target labels to `{0, ..., K-1}`. Sorted lexicographically so
@@ -265,7 +279,7 @@ downstream transformations differ.
 
 | Stage | Module | Reads | Writes |
 |---|---|---|---|
-| 1 | `src/data/dedup.py --pass pre`  | `data/raw/{pd,lgd}/<id>/raw.csv` | `data/dedup/doubles_<track>_pre.csv` |
+| 1 | `src/data/dedup.py --pass pre`  | `data/raw/{pd,lgd}/<id>.csv` | `data/dedup/doubles_<track>_pre.csv` |
 | 2 | `src/data/register.py`          | `data/raw/{pd,lgd}/`             | `data/manifest_{pd,lgd}.csv` |
 | 3 | `src/data/sanitize.py`          | `data/raw/` + manifest           | `data/processed/{pd,lgd}/<id>.sanitized.csv` |
 | 4 | `src/data/dedup.py --pass post` | `data/processed/`                | `data/dedup/doubles_<track>_post.csv` |
@@ -295,9 +309,10 @@ data logs) but **never** touches `data/raw/`.
   categorical in `DATASET_METADATA[id]["categorical_columns"]` so
   TabPFN's `clean_data` re-encodes it correctly.
 
-- **"FeatureAgglomeration ran on a dataset with < 128 features"** —
-  it shouldn't. Check the log line; if it did, the dataset has
-  hidden duplicate columns inflating the count.
+- **"Feature selection dropped columns on a dataset with ≤ 64
+  features"** — it shouldn't. Selection only fires when a dataset
+  exceeds `sanitize.max_columns` (64). If it fired below that, the
+  dataset has hidden duplicate columns inflating the count.
 
 - **"LGD training has negative losses"** — by design. See
   [README.md § 7 design notes](../README.md#design-notes-the-why) and the

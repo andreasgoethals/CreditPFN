@@ -11,7 +11,7 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=01:30:00
+#SBATCH --time=06:00:00   # raised for the full_pass A/B @ 50 epochs (see note)
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
@@ -24,10 +24,10 @@
                          #
                          # LGD has a smaller corpus (6 train + 2 test
                          # datasets vs PD's 12 + 5), so wall times are
-                         # ~30 % shorter than PD. 01:30:00 is comfortably
-                         # above the worst observed:
-                         #   * Full-FT @ 50 epochs: ~25 min
-                         #   * LoRA   @ 50 epochs: ~4 min
+                         # ~30 % shorter than PD — expect ~25-30 min per
+                         # trial (LoRA included; the per-epoch monitor, not
+                         # param count, sets the pace — see train_pd.slurm).
+                         # 01:30:00 leaves a comfortable margin.
 
 sleep $((RANDOM % 30 + 1))
 

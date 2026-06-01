@@ -58,6 +58,7 @@ from src.data.sanitize import (
     _replace_inf_with_nan,
     _clip_lgd_target,
     _label_encode_classification_target,
+    _select_to_max_columns,
 )
 from src.data.dedup import (
     Fingerprint,
@@ -331,6 +332,43 @@ def test_two_digit_year_parser() -> None:
 # =============================================================================
 # Block 2 · register.py
 # =============================================================================
+
+
+def test_feature_selection_caps_categorical_heavy_dataset() -> None:
+    """The LGD base_model* regression: a categorical-heavy dataset (more
+    categoricals than the cap) must still be capped — the earlier version
+    skipped when categoricals alone exceeded the budget. The budget is split
+    proportionally between the two feature types."""
+    rng = np.random.default_rng(0)
+    n = 400
+    nums = [f"num{i}" for i in range(120)]
+    cats = [f"cat{i}" for i in range(130)]
+    data = {c: rng.normal(0, i + 1, n) for i, c in enumerate(nums)}
+    for i, c in enumerate(cats):
+        data[c] = rng.integers(0, (i % 6) + 2, n).astype(str)
+    data["lgd"] = rng.uniform(0, 1, n)
+    df = pd.DataFrame(data)
+    new_df, kept_nums, kept_cats = _select_to_max_columns(
+        df, "lgd", nums, cats, max_columns=64, corr_threshold=0.95,
+    )
+    assert len(kept_nums) + len(kept_cats) == 64        # capped, not skipped
+    assert kept_nums and kept_cats                       # both types represented
+    assert "lgd" in new_df.columns
+    assert new_df.shape[1] == 65                         # 64 features + target
+
+
+def test_feature_selection_noop_when_under_cap() -> None:
+    """A dataset with ≤ max_columns features is returned unchanged."""
+    rng = np.random.default_rng(1)
+    nums, cats = ["a", "b"], ["c"]
+    df = pd.DataFrame({
+        "a": rng.normal(size=50), "b": rng.normal(size=50),
+        "c": rng.integers(0, 3, 50).astype(str), "y": rng.integers(0, 2, 50),
+    })
+    _, kept_nums, kept_cats = _select_to_max_columns(
+        df, "y", nums, cats, max_columns=64,
+    )
+    assert set(kept_nums) == set(nums) and set(kept_cats) == set(cats)
 
 
 def test_shape_hash_is_order_independent() -> None:

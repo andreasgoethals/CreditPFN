@@ -319,16 +319,49 @@ def split_corpus(
     return CorpusSplit(train=train, test=test)
 
 
+def resolve_ids_for_track(raw, track: str) -> tuple[str, ...]:
+    """Resolve an explicit-ID config value (``train_dataset_ids`` /
+    ``test_dataset_ids``) for one track.
+
+    Accepts either:
+
+    * a **flat list** — applies to whichever track is active (back-compat); or
+    * a **per-track mapping** ``{"pd": [...], "lgd": [...]}`` — so the shared
+      ``config/train.yaml`` can pin different IDs per track without the
+      *other* track tripping the explicit-ID validation. A missing track
+      key resolves to "no pins" (fall back to the fraction split).
+
+    Returns a tuple of IDs (empty when nothing applies to this track).
+    """
+    if raw is None:
+        return ()
+    try:
+        from omegaconf import OmegaConf
+        if OmegaConf.is_config(raw):
+            raw = OmegaConf.to_container(raw, resolve=True)
+    except Exception:                                          # pragma: no cover
+        pass
+    if isinstance(raw, dict):
+        return tuple(raw.get(track, []) or ())
+    return tuple(raw or ())
+
+
 def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
     """Apply :func:`split_corpus` using ``cfg.corpus``, ``cfg.seed``,
-    and the active ``cfg.track`` (or the supplied override)."""
+    and the active ``cfg.track`` (or the supplied override).
+
+    ``train_dataset_ids`` / ``test_dataset_ids`` may be a flat list or a
+    per-track mapping — see :func:`resolve_ids_for_track`.
+    """
     track = track or cfg.track
     corpus = cfg.corpus
     return split_corpus(
         track=track,
         train_fraction=float(corpus.train_fraction),
         test_fraction=float(corpus.test_fraction),
-        train_dataset_ids=tuple(corpus.get("train_dataset_ids", []) or ()),
-        test_dataset_ids=tuple(corpus.get("test_dataset_ids", []) or ()),
+        train_dataset_ids=resolve_ids_for_track(
+            corpus.get("train_dataset_ids", None), track),
+        test_dataset_ids=resolve_ids_for_track(
+            corpus.get("test_dataset_ids", None), track),
         seed=int(cfg.seed),
     )
