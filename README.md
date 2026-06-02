@@ -264,10 +264,12 @@ narrative stays scannable and the logic stays testable.
 
 | Notebook | What it shows |
 |---|---|
-| `0.0. raw_data_exploration.ipynb`          | What did the vendor deliver? Shapes, missing-rates, target distributions on raw CSVs. |
-| `0.1. processed_data_exploration.ipynb`    | Did sanitisation produce sensible inputs? Same plots as 0.0 but on the post-sanitize CSVs. |
-| `1.0. training_visualization.ipynb`        | All trained CreditPFN variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, LoRA effect, time/accuracy Pareto, convergence diagnostics, leaderboard. Consumes `output/training/`. |
-| `2.0. final_results.ipynb`                 | The headline eval leaderboard — per-method box plots, per-dataset heatmaps, pairwise win-rate matrix (à la TabPFN-3 Fig 3), trained-vs-untuned scatter (à la Real-TabPFN), fold stability, threshold calibration. Consumes `output/results/`. |
+| `0.0. raw_data_exploration.ipynb`          | What did the vendor deliver? Corpus shape-space scatter (features vs rows, per-track → combined, log + linear), per-dataset missing-cell bars, target / class-balance landscape on the raw CSVs. |
+| `0.1. processed_data_exploration.ipynb`    | Did sanitisation produce sensible inputs? Same shape + missingness views on the post-sanitize CSVs, plus the 64-feature selection effect and feature-type composition. |
+| `1.0. training_visualization.ipynb`        | **PD** trained variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, LoRA effect, time/accuracy Pareto, convergence diagnostics, leaderboard. `TRACK='pd'`; consumes `output/training/`. |
+| `1.1. training_visualization.ipynb`        | **LGD** counterpart of 1.0 — identical dashboard with `TRACK='lgd'`. |
+| `2.0. final_results.ipynb`                 | **PD** eval leaderboard — per-method box plots, per-dataset heatmaps, pairwise win-rate matrix (à la TabPFN-3 Fig 3), trained-vs-untuned scatter (à la Real-TabPFN), fold stability, threshold calibration. `TRACK='pd'`; consumes `output/results/`. |
+| `2.1. final_results.ipynb`                 | **LGD** counterpart of 2.0 — identical leaderboard with `TRACK='lgd'`. |
 
 Corpus summaries in the data notebooks are memoised so the first
 cell pays the disk-read cost once and every subsequent plot reads
@@ -550,7 +552,7 @@ layers:
   the official `FinetunedTabPFNClassifier`). Follow TabPFN's defaults
   where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  per-version: 20 000 for v3, 3 000 for v2.6; plus an optional v3-only
+  per-version: 10 000 for v3, 6 000 for v2.6; plus an optional v3-only
   `max_cells_per_epoch` cell budget).
 * **Hardcoded in code** — optimizer family (AdamW), betas
   ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
@@ -732,9 +734,9 @@ test fold. The honest caveats below are limitations of the
   within-dataset estimate, but the across-dataset mean rests on a
   handful of datasets — report per-dataset results, not just the pooled
   mean.
-* **Best-of-64 selection on the test set (winner's curse).** With no
-  validation set, the best of 64 trials is picked by test performance;
-  the maximum over 64 noisy estimates is upward-biased. Prefer the
+* **Best-of-24 selection on the test set (winner's curse).** With no
+  validation set, the best of 24 trials is picked by test performance;
+  the maximum over 24 noisy estimates is upward-biased. Prefer the
   per-architecture trained-vs-untuned delta over the absolute best, and
   report the trial distribution.
 * **Within-domain split ≠ Real-TabPFN's external benchmark.** We split

@@ -37,15 +37,18 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_h100
 #SBATCH --gpus-per-node=1
-#SBATCH --time=12:00:00   # raised for the full_pass A/B @ 50 epochs (see note)
+#SBATCH --time=24:00:00   # full_pass on PD's big datasets @ 50 epochs is slow;
+                          # 12h killed 9 full_pass PD trials on 2026-06-01.
+                          # eval now uses afterany so killed trials don't block
+                          # eval, but 24h lets more full_pass trials finish.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-63%8   # 64 trials (2 bases × 4 LRs × 2 LoRA × 2 qf × 2 acc).
-                         # Recompute via
+#SBATCH --array=0-23%8   # 24 trials (2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc
+                         #            × 2 pass-modes). Recompute via
                          #   `python scripts/train_pipeline.py --list-trials track=pd`.
                          # Over-sizing is safe: surplus tasks exit 0 cleanly
                          # (see scripts/train_pipeline.py soft no-op).
@@ -70,20 +73,21 @@
                          # (8 v3 lr=3e-7 trials, 2026-05-28/29) at the old 10k
                          # row cap — LoRA/qf/accumulate barely moved it.
                          # BUT this array now also runs the FULL_PASS arm at
-                         # the 20k row cap: full_pass takes ~Σ ceil(rows/cap)
-                         # steps/epoch (≈ 8-12× more steps for PD's big
-                         # datasets), so a full_pass trial can run several
-                         # hours. --time=12:00:00 is sized for that worst case;
-                         # the fast one_sample trials simply finish early and
-                         # free the slot. **Check the first full_pass trial's
-                         # `epoch_dt` in the log and extrapolate (50×epoch_dt +
-                         # setup); raise --time if it approaches the limit, or
-                         # lower it to ~02:00:00 for one_sample-only runs.**
+                         # the 10k row cap (v3; v2.6 = 6k): full_pass takes
+                         # ~Σ ceil(rows/cap) steps/epoch (≈ 8-12× more steps for
+                         # PD's big datasets), so a full_pass trial can run
+                         # several hours. --time=24:00:00 is sized for that
+                         # worst case (12h killed 9 full_pass PD trials on
+                         # 2026-06-01); the fast one_sample trials simply finish
+                         # early and free the slot. **Check the first full_pass
+                         # trial's `epoch_dt` in the log and extrapolate
+                         # (50×epoch_dt + setup); lower --time to ~02:00:00 for
+                         # one_sample-only runs to regain backfill priority.**
                          #
-                         # `%8` (up from `%4`) — with the time-budget cut in
-                         # half, doubling concurrency keeps the total sweep
-                         # wall-time roughly constant (~4 h) while staying
-                         # well under VSC's user-level job count limits.
+                         # `%8` (up from `%4`) — keeps the total sweep wall-time
+                         # bounded (fast one_sample trials cycle through the 8
+                         # slots quickly) while staying well under VSC's
+                         # user-level job count limits.
                          #
                          # `cpus-per-task=16` matches the documented gpu_h100
                          # per-GPU limit (16 cores per GPU). `mem=64G` is

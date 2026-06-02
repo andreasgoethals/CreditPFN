@@ -222,9 +222,17 @@ print((n_baselines + n_untuned + n_planned) * max(1, n_test))
 " 2>/dev/null || echo 1)
     UPPER_N=${UPPER_N:-1}
     if [[ "$UPPER_N" -lt 1 ]]; then UPPER_N=1; fi
+    # afterany (NOT afterok): eval must run once training *completes*, even
+    # if some train array tasks failed or were killed (OOM, walltime). The
+    # eval pipeline is robust — it scores whatever checkpoints exist and
+    # skips the rest (src/model/registry.build_baselines + the trained-handle
+    # loader). Using afterok here meant a single failed/killed train task
+    # left eval "dependency never satisfied" and it never ran (observed for
+    # eval_pd on 2026-06-01: 6 OOM + 9 walltime-killed PD trials → eval_pd
+    # cancelled, while the all-OK LGD train let eval_lgd run).
     EVAL_JID_RAW=$(sbatch --parsable \
         --export="${SBATCH_EXPORT}" \
-        --dependency="afterok:${DEP}" \
+        --dependency="afterany:${DEP}" \
         --array=0-$((UPPER_N - 1))%"${EVAL_CONCURRENCY}" \
         "${SCRIPT}")
     EVAL_JID=$(strip_cluster_suffix "${EVAL_JID_RAW}")

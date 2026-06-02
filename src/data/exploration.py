@@ -591,14 +591,26 @@ def plot_source_breakdown(cfg=None):
     return fig
 
 
-def plot_size_scatter(*, source: str = "processed", cfg=None):
-    """Per-dataset rows vs features scatter (log-log), coloured by track.
+def plot_size_scatter(
+    track: str | None = None, *, source: str = "processed",
+    scale: str = "log", cfg=None,
+):
+    """Per-dataset **features (y) vs rows (x)** scatter — the corpus
+    "shape space".
 
-    Maps out the corpus "shape space": tall-and-narrow datasets
-    (many rows, few features) sit bottom-right; wide datasets
-    (few rows, many features — the TabPFN-Wide regime) sit top-left.
-    ``source`` is ``"raw"`` (pre-fix shapes) or ``"processed"``
-    (post-sanitise).
+    Parameters
+    ----------
+    track
+        ``"pd"`` or ``"lgd"`` for a single track; ``None`` (default) plots
+        both tracks combined, coloured by track.
+    source
+        ``"raw"`` (pre-fix shapes) or ``"processed"`` (post-sanitise).
+    scale
+        ``"log"`` (log-log; the corpus spans ~4-5 orders of magnitude in
+        both axes) or ``"linear"``.
+
+    Tall-and-narrow datasets (many rows, few features) sit bottom-right;
+    wide datasets (few rows, many features) sit top-left.
     """
     plt = _import_mpl()
     if source == "raw":
@@ -612,21 +624,81 @@ def plot_size_scatter(*, source: str = "processed", cfg=None):
     if summary.empty:
         return None
     df = summary[(summary[rcol] > 0) & (summary[ccol] > 0)]
+    if track is not None:
+        if track not in ("pd", "lgd"):
+            raise ValueError("track must be 'pd', 'lgd', or None")
+        df = df[df["track"] == track]
     if df.empty:
         return None
-    fig, ax = plt.subplots(figsize=(8, 5.5))
-    for tr in ("pd", "lgd"):
+
+    fig, ax = plt.subplots(figsize=(7.5, 5.5))
+    for tr in ([track] if track else ("pd", "lgd")):
         sub = df[df["track"] == tr]
         if sub.empty:
             continue
-        ax.scatter(sub[rcol], sub[ccol], s=55, alpha=0.8,
+        ax.scatter(sub[rcol], sub[ccol], s=60, alpha=0.8,
                    color=_TRACK_COLOR[tr], edgecolor="black",
                    linewidth=0.4, label=tr.upper())
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    _apply_style(ax, title=f"Corpus shape space — rows vs features ({source})",
-                 xlabel="rows  (log-scaled)", ylabel="features  (log-scaled)")
+    if scale == "log":
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        xlabel, ylabel = "rows  (log)", "features  (log)"
+    else:
+        xlabel, ylabel = "rows", "features"
+    who = track.upper() if track else "PD + LGD"
+    _apply_style(ax, title=f"Shape space — {who}: features vs rows ({source}, {scale})",
+                 xlabel=xlabel, ylabel=ylabel)
     ax.legend(frameon=False)
+    fig.tight_layout()
+    return fig
+
+
+def plot_missing_cells_bar(
+    track: str | None = None, *, source: str = "processed", cfg=None,
+):
+    """Per-dataset missing-cell rate as a sorted bar chart.
+
+    ``track``: ``"pd"`` / ``"lgd"`` for one track, ``None`` for both
+    (datasets coloured by track). Missing rate = fraction of NaN cells
+    (denominator = rows × features). ``source``: ``"raw"`` / ``"processed"``.
+    """
+    plt = _import_mpl()
+    if source == "raw":
+        summary = raw_corpus_summary(cfg)
+        col = "missing_cells_rate"
+    elif source == "processed":
+        summary = corpus_summary_table(cfg=cfg)
+        col = "missing_rate_raw"
+    else:
+        raise ValueError("source must be 'raw' or 'processed'")
+    if summary.empty or col not in summary.columns:
+        return None
+    df = summary.dropna(subset=[col]).copy()
+    if track is not None:
+        if track not in ("pd", "lgd"):
+            raise ValueError("track must be 'pd', 'lgd', or None")
+        df = df[df["track"] == track]
+    if df.empty:
+        return None
+    df = df.sort_values(col, ascending=False)
+    who = track.upper() if track else "PD + LGD"
+
+    fig, ax = plt.subplots(figsize=(max(7, 0.32 * len(df)), 4.8))
+    colors = [_TRACK_COLOR[t] for t in df["track"]]
+    ax.bar(range(len(df)), df[col].to_numpy(), color=colors,
+           alpha=0.85, edgecolor="white", linewidth=0.5)
+    ax.set_xticks(range(len(df)))
+    ax.set_xticklabels(df["dataset_id"], rotation=60, ha="right", fontsize=7)
+    ax.set_ylim(0.0, max(0.01, float(df[col].max()) * 1.1))
+    _apply_style(ax, title=f"Missing-cell rate per dataset — {who} ({source})",
+                 xlabel="", ylabel="missing rate (NaN cells / rows×features)")
+    if track is None:
+        import matplotlib.patches as mpatches
+        ax.legend(
+            handles=[mpatches.Patch(color=_TRACK_COLOR["pd"], label="PD"),
+                     mpatches.Patch(color=_TRACK_COLOR["lgd"], label="LGD")],
+            frameon=False,
+        )
     fig.tight_layout()
     return fig
 

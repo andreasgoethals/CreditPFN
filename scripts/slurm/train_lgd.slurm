@@ -18,16 +18,18 @@
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-63%8   # 64 trials (2 bases × 4 LRs × 2 LoRA × 2 qf × 2 acc).
-                         # See train_pd.slurm for the full SBATCH resource-
-                         # tightening rationale (backfill, queue priority).
+#SBATCH --array=0-23%8   # 24 trials (2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc
+                         #            × 2 pass-modes). See train_pd.slurm for the
+                         #            full SBATCH resource rationale (backfill,
+                         #            queue priority).
                          #
-                         # LGD has a smaller corpus (6 train + 2 test
-                         # datasets vs PD's 12 + 5), so wall times are
-                         # ~30 % shorter than PD — expect ~25-30 min per
-                         # trial (LoRA included; the per-epoch monitor, not
-                         # param count, sets the pace — see train_pd.slurm).
-                         # 01:30:00 leaves a comfortable margin.
+                         # LGD has a smaller corpus (6 train + 2 test datasets
+                         # vs PD's 12 + 5), so one_sample trials are fast
+                         # (~25-30 min; the per-epoch monitor, not param count,
+                         # sets the pace — see train_pd.slurm). --time=06:00:00
+                         # covers the full_pass A/B arm, whose Σ ceil(rows/cap)
+                         # steps/epoch run several × longer; one_sample trials
+                         # finish early and free the slot.
 
 sleep $((RANDOM % 30 + 1))
 
