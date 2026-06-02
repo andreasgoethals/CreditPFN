@@ -592,11 +592,10 @@ def plot_source_breakdown(cfg=None):
 
 
 def plot_size_scatter(
-    track: str | None = None, *, source: str = "processed",
-    scale: str = "log", cfg=None,
+    track: str | None = None, *, source: str = "processed", cfg=None,
 ):
-    """Per-dataset **features (y) vs rows (x)** scatter — the corpus
-    "shape space".
+    """Per-dataset **features (y) vs rows (x)** shape scatter, shown as a
+    **linear | log** pair in one row (1x2).
 
     Parameters
     ----------
@@ -605,12 +604,11 @@ def plot_size_scatter(
         both tracks combined, coloured by track.
     source
         ``"raw"`` (pre-fix shapes) or ``"processed"`` (post-sanitise).
-    scale
-        ``"log"`` (log-log; the corpus spans ~4-5 orders of magnitude in
-        both axes) or ``"linear"``.
 
-    Tall-and-narrow datasets (many rows, few features) sit bottom-right;
-    wide datasets (few rows, many features) sit top-left.
+    Left panel = linear axes (absolute size); right panel = log-log (the
+    corpus spans ~4-5 orders of magnitude in both axes). Tall-and-narrow
+    datasets (many rows, few features) sit bottom-right; wide datasets sit
+    top-left.
     """
     plt = _import_mpl()
     if source == "raw":
@@ -631,24 +629,47 @@ def plot_size_scatter(
     if df.empty:
         return None
 
-    fig, ax = plt.subplots(figsize=(7.5, 5.5))
-    for tr in ([track] if track else ("pd", "lgd")):
-        sub = df[df["track"] == tr]
-        if sub.empty:
-            continue
-        ax.scatter(sub[rcol], sub[ccol], s=60, alpha=0.8,
-                   color=_TRACK_COLOR[tr], edgecolor="black",
-                   linewidth=0.4, label=tr.upper())
-    if scale == "log":
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        xlabel, ylabel = "rows  (log)", "features  (log)"
-    else:
-        xlabel, ylabel = "rows", "features"
     who = track.upper() if track else "PD + LGD"
-    _apply_style(ax, title=f"Shape space — {who}: features vs rows ({source}, {scale})",
-                 xlabel=xlabel, ylabel=ylabel)
-    ax.legend(frameon=False)
+    tracks = [track] if track else ("pd", "lgd")
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
+    for ax, scale in zip(axes, ("linear", "log")):
+        for tr in tracks:
+            sub = df[df["track"] == tr]
+            if sub.empty:
+                continue
+            ax.scatter(sub[rcol], sub[ccol], s=60, alpha=0.8,
+                       color=_TRACK_COLOR[tr], edgecolor="black",
+                       linewidth=0.4, label=tr.upper())
+        if scale == "log":
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            # Force explicit y-axis ticks spanning the actual data range so
+            # the log panel always shows more than one label. Matplotlib's
+            # auto locator can drop to a single tick (e.g. "10") when the
+            # data sit close together in log-space.
+            import math
+            y_vals = df[ccol].replace(0, float("nan")).dropna()
+            if not y_vals.empty:
+                lo = 10 ** math.floor(math.log10(y_vals.min()))
+                hi = 10 ** math.ceil(math.log10(y_vals.max()))
+                import numpy as np
+                ticks = [10**p for p in range(int(math.log10(lo)),
+                                              int(math.log10(hi)) + 1)]
+                if len(ticks) > 1:
+                    ax.set_yticks(ticks)
+                    ax.yaxis.set_major_formatter(
+                        plt.matplotlib.ticker.FuncFormatter(
+                            lambda v, _: f"{int(v):,}" if v >= 1 else str(v)))
+                ax.set_ylim(lo * 0.5, hi * 2)
+            _apply_style(ax, title="log", xlabel="rows  (log)", ylabel="features  (log)")
+        else:
+            _apply_style(ax, title="linear", xlabel="rows", ylabel="features")
+        # Framed legend so the colour chips are clearly separated from the data
+        leg = ax.legend(frameon=True, fancybox=True,
+                        edgecolor="black", framealpha=0.9)
+        leg.get_frame().set_linewidth(0.8)
+    fig.suptitle(f"Shape space — {who}: features vs rows ({source})",
+                 fontsize=12, fontweight="bold")
     fig.tight_layout()
     return fig
 

@@ -14,10 +14,10 @@ Usage from a notebook
     sink.save(plot_trial_dashboard(...),   "02_trial_dashboard")
     ...
 
-``sink.save(fig, name)`` writes the figure to PDF and **returns**
-the same figure so Jupyter's inline display still renders the
-image. ``fig=None`` (e.g. the helper returned a stub when no data
-was on disk) is silently ignored.
+``sink.save(fig, name)`` writes the figure to PDF, renders it
+**exactly once** in the notebook, then closes it (returns ``None``).
+``fig=None`` (e.g. the helper returned a stub when no data was on
+disk) is silently ignored.
 
 Why this is a class, not a free function
 ----------------------------------------
@@ -112,15 +112,15 @@ class FigureSink:
     # Saving
     # ------------------------------------------------------------------ #
 
-    def save(self, fig: "Figure | None", name: str | None = None) -> "Figure | None":
-        """Persist ``fig`` as ``<dir>/<name>.pdf`` and return ``fig``.
+    def save(self, fig: "Figure | None", name: str | None = None) -> None:
+        """Persist ``fig`` as ``<dir>/<name>.pdf``, render it once, return None.
 
         Parameters
         ----------
         fig
             The matplotlib Figure object. ``None`` is accepted and
-            returned unchanged — this lets you wrap a plot helper that
-            may opt out of plotting in some edge case.
+            ignored — this lets you wrap a plot helper that may opt out
+            of plotting in some edge case.
         name
             Filename stem (no extension). ``None`` ⇒ auto-numbered as
             ``figure_NN``. The stem is sanitised via
@@ -128,8 +128,14 @@ class FigureSink:
 
         Returns
         -------
-        The same Figure (or None) — so Jupyter's inline backend still
-        renders the figure cell-by-cell.
+        ``None``. The figure is displayed **exactly once** (via
+        ``IPython.display.display``) and then closed. Returning ``None``
+        (rather than the figure) is deliberate: if we returned ``fig``,
+        Jupyter would render it a *second* time as the cell's last
+        expression — on top of the inline backend's own auto-display —
+        so every plot appeared twice. Displaying explicitly and closing
+        the figure guarantees one render and frees the figure's memory
+        (notebooks here emit 10-20 figures per run).
         """
         if fig is None:
             return None
@@ -141,11 +147,22 @@ class FigureSink:
         out = self.dir / f"{stem}.pdf"
         try:
             fig.savefig(out, format="pdf", bbox_inches="tight")
+            self.saved.append(out)
         except Exception as exc:                                    # pragma: no cover
             LOGGER.warning("could not write %s: %s", out, exc)
-            return fig
-        self.saved.append(out)
-        return fig
+        # Render exactly once (no-op outside IPython), then close so the
+        # inline backend does not re-display it at cell end.
+        try:                                                        # pragma: no cover
+            from IPython.display import display
+            display(fig)
+        except Exception:
+            pass
+        try:
+            import matplotlib.pyplot as plt
+            plt.close(fig)
+        except Exception:                                           # pragma: no cover
+            pass
+        return None
 
     def summary(self) -> str:
         """Short one-line summary of how many figures were written."""
