@@ -1955,6 +1955,7 @@ rst_prolog += """
 rst_prolog += """
 .. _eligible users: https://www.vscentrum.be/getaccess
 .. _get in touch: https://www.vscentrum.be/getintouch
+.. _ManGO portal: https://mango.vscentrum.be/
 .. _Tier-1 project application: https://www.vscentrum.be/compute
 .. _VSC account page: https://account.vscentrum.be/
 .. _VSC Account - Edit Account: https://account.vscentrum.be/django/account/edit
@@ -2075,6 +2076,7 @@ rst_prolog += """
 .. _Lustre: https://www.lustre.org/
 .. _MathWorks: https://nl.mathworks.com/
 .. _MATLAB compiler documentation: https://nl.mathworks.com/help/compiler/index.html
+.. _MathWorks: https://nl.mathworks.com/
 .. _MobaXterm: https://mobaxterm.mobatek.net
 .. _MPI Forum: https://www.mpi-forum.org/
 .. _MPI Documents: https://www.mpi-forum.org/docs/
@@ -15926,10 +15928,11 @@ JupyterLab
 ==========
 
 With this app you can write and run `Jupyter notebooks <official JupyterLab
-documentation_>`_ containing annotated Python, R or Julia code (among other
+documentation_>`_ containing annotated Python, R, Julia and Bash code (among other
 languages). IPython consoles are available as well. One of the benefits of
 JupyterLab is that it supports different types of user-defined environments, as
-will become clear below.
+will become clear below. The included plugins are additional assets in the notebook
+environment (as elaborated below).
 
 .. tab-set::
    :sync-group: vsc-sites
@@ -15937,7 +15940,9 @@ will become clear below.
    .. tab-item:: KU Leuven/UHasselt
       :sync: kuluh
 
-      The top-level notebook directory is by default ``$VSC_DATA``.
+      By default, your top-level notebook directory points to ``$VSC_DATA``. You can
+      switch to other available cluster storage (such as scratch) by entering the 
+      full path into the 'Working directory' text field.
 
    .. tab-item:: VUB
       :sync: vub
@@ -15949,6 +15954,7 @@ will become clear below.
       (default = ``~/.jupyter/jupyter_server_config.py``), this config will take
       priority over your 'Working directory' in the resources form.
 
+
 .. _jupyterlab_pure_module_env:
 
 Pure module environment
@@ -15956,8 +15962,9 @@ Pure module environment
 
 In the resources form, besides the :ref:`shared resources <shared_resources>`,
 you can also choose between different 'Toolchain and Python versions' from a
-drop-down menu.  An example would be '2023a and
-``Python/3.11.3-GCCcore-12.3.0``'.  Based on that choice, the corresponding
+drop-down menu. At the moment, we support the most recent toolchains starting from
+2023a up to 2025a. An example would be '2025a and
+``Python/3.13.1-GCCcore-14.2.0``'.  Based on that choice, the corresponding
 JupyterLab module will be loaded together with its dependencies (such as the
 listed Python module).
 
@@ -16180,9 +16187,9 @@ For more general information, please refer to the `official JupyterLab documenta
 
 
 JupyterLab extensions
----------------------
+~~~~~~~~~~~~~~~~~~~~~
 
-JupyterLab extensions enhance or customize your JupyterLab session.  You can
+JupyterLab extensions enhance or customize your JupyterLab session. You can
 find the list of available extensions in the extension tab on the left panel
 (*puzzle piece icon*) and you can enable or disable any of them.
 
@@ -16191,12 +16198,12 @@ find the list of available extensions in the extension tab on the left panel
    The JupyterLab extensions store is disabled because the available extensions
    in the store are not reviewed and may contain malicious or malfunctioning
    software. If you need any JupyterLab extension that is not yet available,
-   please contact the site admins.
+   please :ref:`contact your site admins <contact VSC>`.
 
 .. _software_modules_extension:
 
 Software modules Lab extension
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------
 
 The 'Software Modules' JupyterLab extension allows you to load additional
 software modules within JupyterLab without relaunching your JupyterLab session.
@@ -16324,6 +16331,137 @@ include 'Cpu', 'Cluster Memory', 'Task Stream', and 'Workers'.
    :target: ../../../_images/jupyterlab-dask.png
 
    Dask Lab extension in action
+
+
+Bash kernel extension
+~~~~~~~~~~~~~~~~~~~~~
+
+Despite the fact that Jupyter notebooks are best known for running Python, R and Julia code,
+it is also possile to execute Bash commands inside your notebook if your Jupyter kernel
+is well integrated with the underlying Bash kernel of your operating system.
+VSC clusters that support the Bash kernel extension:
+
+.. grid:: 3
+    :gutter: 4
+
+    .. grid-item-card:: |KUL|
+       :columns: 12 4 4 4
+
+       * Tier-2 :ref:`Genius <Genius hardware>`
+       * Tier-2 :ref:`wICE <wICE hardware>`
+
+    .. grid-item-card:: |VUB|
+       :columns: 12 4 4 4
+
+       * Tier-2 :ref:`Anansi <Anansi cluster>`
+       * Tier-2 :ref:`Hydra <Hydra cluster>`
+
+By default, the 'Bash' kernel is loaded in your environment, starting from the 2023a toolchain.
+To use it in a notebook, you need to choose the 'Bash' or 'Python 3 (ipykernel)' jupyter  kernels
+which appear automatically among your list of kernels.
+
+.. figure:: img/jupyterlab-bash-kernel.png
+
+   Jupyter Bash kernel
+
+.. note::
+
+   If you have loaded additional modules via the 'Pre-run scriptlet', you have to choose the
+   'Python 3 (ipykernel)' as your Jupyter kernel. Only then, the Bash kernel and additional
+   packages from the loaded module(s) are all exposed in your notebook environment.
+
+
+Jupyter resource usage extension
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When prototyping, debugging and testing your application, it is crucial to have a realistic
+estimate of resource utilization at runtime. More specifically, monitoring CPU usage can
+help debugging parallel code blocks, and monitoring the memory usage can help estimating
+the lower bound of memory resources needed for your application.
+
+Starting from the 2023a toolchain, you may inspect the aggregated CPU and memory resource
+usage by your kernel. This is shown in your bottom tray (for CPU and memory), in the top tray
+(for memory)  and in the right sidebar of your Notebook (for a summary). The VSC clusters that
+support this extension are:
+
+.. grid:: 3
+    :gutter: 4
+
+    .. grid-item-card:: |KUL|
+       :columns: 12 4 4 4
+
+       * Tier-2 :ref:`Genius <Genius hardware>`
+       * Tier-2 :ref:`wICE <wICE hardware>`
+
+To monitor the host CPU and memory utilization at runtime, click on the
+'Kernel Usage' tab on the right tray. Among the various fields, you may like
+to keep eye on the 'CPU' and 'Memory' metrics for aggreggated resource usage of
+your kernel. Then, execute the cell(s) of interest which might be resource intensive;
+you will see that the CPU and memory metrics are updated in real time.
+
+
+JupyterLab git extension
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Version control is an integral part of software development and management of your intellectual property,
+with a focus on preserving the incremental changes made to the software code base. This topic is extensively
+explained in the :ref:`Version Control Systems <version control systems>` section.
+
+Similar to many modern interactive development envrionments (IDEs), JupyterLab integrates seamlessly with 'git'
+using the 'JupyterLab-git' extension powered by the ``JupyterLab-git`` module; this module is automatically
+loaded if you choose more recent toolchains starting from 2023a. Once the session starts, a new 'Git' drop-down
+menu is added to the top bar, in addition to a "version control" logo on the left sidebar. The VSC clusters where
+this extension is supported are:
+
+.. grid:: 3
+    :gutter: 4
+
+    .. grid-item-card:: |KUL|
+       :columns: 12 4 4 4
+
+       * Tier-2 :ref:`Genius <Genius hardware>`
+       * Tier-2 :ref:`wICE <wICE hardware>`
+
+Using this extension you can create or clone a new git repository, manage your (new) branches, track
+your changed files in your trunk, commit your changes and push your changes to an upstream repository, in addition
+to more advanced functionalities.
+
+
+.. _jupyter-irods-client:
+
+Python iRODS Client
+~~~~~~~~~~~~~~~~~~~
+
+.. grid:: 3
+    :gutter: 4
+
+    .. grid-item-card:: |KUL|
+       :columns: 12 4 4 4
+
+       * Tier-2 :ref:`Genius <Genius hardware>`
+       * Tier-2 :ref:`wICE <wICE hardware>`
+
+You can use the :ref:`Python iRODS client (PRC) <python-client>` to transfer data between
+your local storage, `ManGO portal`_ and/or the
+:ref:`Tier-1 Data platform <tier1_data_service>`.
+
+To integrate the authentication and data transfer steps together with your computation directly in
+JupyterLab, you can choose to load the PRC module in the form. 
+The benefit of this choice is that you can skip loading the ``mango-auth`` and ``python-irodsclient``
+modules or install them locally, because they will be automatically loaded in your environment.
+You will not need the :ref:`iron CLI client <iron-CLI>` either. The aforementioned modules are
+available starting from the 2023a toolchain.
+
+:ref:`Authenticating to ManGO <mango-login>` in your Jupyter notebook boils down to the following
+two lines of code:
+
+.. code-block:: python
+
+   from mango_auth import iinit
+   iinit('user_name', 'zone_name', 'host')
+
+For details about the broad functionalities of the PRC in your Python or Jupyter notebook environment,
+please refer to the :ref:`Python iRODS client <python-client>` documentation.
 
 
 
@@ -30114,8 +30252,8 @@ For more information on this procedure, see https://www.vscentrum.be/data.
 Users can connect to Tier-1 Data by using different clients from any computer after logging in with their institutional account.
 For example, VSC users from UAntwerpen will be forwarded to the UAntwerpen login page.
 
-The landing page for all Tier-1 Data clients is our web front-end, the `ManGO portal <https://mango.vscentrum.be/>`_.  
-After logging in, you will get an overview of all zones you have access to.  
+The landing page for all Tier-1 Data clients is our web front-end, the `ManGO portal`_.
+After logging in, you will get an overview of all zones you have access to.
 By clicking on 'Enter portal', you will go to the ManGO portal for that zone.
 If you prefer to access Tier-1 Data via a different client, you can find the necessary credentials or code under 'How to Connect'.
 
@@ -30307,8 +30445,9 @@ Ubuntu/Debian (local machines):
 
 **Note:** For VSC login nodes, the package is already (or will be) installed centrally.
 
-- Go to the `ManGO portal <https://mango.vscentrum.be/>`__ and log in. Click on "How to connect" next to your zone, copy the code under "With iCommands only for Linux operating systems" and paste it into your terminal. 
-
+- Go to the `ManGO portal`_ and log in. 
+  Click on "How to connect" next to your zone, copy the code under "With iCommands only 
+  for Linux operating systems" and paste it into your terminal.
 
 - Click the authentication link displayed in your terminal and complete the steps on https://auth.vscentrum.be/.
 
@@ -30600,7 +30739,7 @@ After installation is completed, you verify with:
 Authentication
 --------------
 
-To authenticate using iron, first obtain your connection details from the `ManGO portal <https://mango.vscentrum.be/>`__ and then run the snippet below.
+To authenticate using iron, first obtain your connection details from the `ManGO portal`_ and then run the snippet below.
 
 .. code:: sh
 
@@ -30699,6 +30838,7 @@ You can discover all supported operations and their corresponding commands by ru
     Use "iron [command] --help" for more information about a command.
 
 
+
 ================================================
 FILE: source/data/tier1data/clients/mango_portal.rst
 ================================================
@@ -30708,18 +30848,18 @@ FILE: source/data/tier1data/clients/mango_portal.rst
 ManGO Portal
 ############
 
-The `ManGO portal <https://mango.vscentrum.be/>`_ is a graphical web interface for Tier-1 Data.
+The `ManGO portal`_ is a graphical web interface for Tier-1 Data.
 It allows users to manage their data in an intuitive way, without any installations,
 with a strong focus on managing :ref:`metadata<metadata>`.
 
 When logging in, you will be redirected to the login page of your institution. 
 This takes you to an overview with one or multiple zones with at least one of the following options:
 
-- Select 'Enter portal' to enter that zone via the ManGO portal.
+- Select 'Enter portal' to enter that zone via the `ManGO portal`_.
 - Select 'How to Connect' to get credentials for logging in to other clients, like :ref:`iCommands` or the :ref:`the PRC<python-client>`.
 - Selecting the downward arrow opens an overview of all projects you are member of in that zone. Clicking on the project name sends you to the project management page. 
 
-If you select the first option, you will be sent to the ManGO Portal home page:
+If you select the first option, you will be sent to the `ManGO portal`_ home page:
 
 .. figure:: ../images/mango_portal/mango_portal_main_page.png
   :width: 1000
@@ -30903,7 +31043,7 @@ Analysis by Apache Tika may also give an OCR (Optical Character Recognition) rea
 This feature is a proof of concept, and this information can currently not be added as metadata. 
 
 Downloading metadata
-===================
+====================
 
 It is possible to download metadata attached to a collection or data object as an interoperable JSON file and use outside of Tier-1 Data. 
 To download metadata go to the tab 'Metadata' and click on the 'Download metadata' button on the right. 
@@ -30959,7 +31099,7 @@ For example, if you want to search based on the field 'instrument' from the sche
 ================================================
 FILE: source/data/tier1data/clients/python_client.rst
 ================================================
-Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 1265: character maps to <undefined>
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 1556: character maps to <undefined>
 
 
 ================================================
@@ -31308,7 +31448,7 @@ The support role is meant for support staff from the VSC.
 They might temporarily join projects when they are actively involved, or for debugging purposes.
 
 To manage project members, reponsibles/managers need to go to the web page of their project, 
-by going to the `ManGO portal <https://mango.vscentrum.be/>`_, clicking on their zone to expand the list of projects they are member of, and clicking on their project name.
+by going to the `ManGO portal`_, clicking on their zone to expand the list of projects they are member of, and clicking on their project name.
 Alternatively, they can go straight to ``https://mango.vscentrum.be/data-platform/project/<project_name>``.
 
 On this page, you get an overview of all members in the project:
@@ -31397,6 +31537,7 @@ However, there are some caveats:
 We suggest giving users access based on their institutional login if possible. ORCID ID is a plan B, and we only suggest sharing with a Gmail account if no other option is available.
 
 To read more about using Globus to share data, see :ref:`Globus documentation on sharing data<globus-sharing>`.
+
 
 
 ================================================
