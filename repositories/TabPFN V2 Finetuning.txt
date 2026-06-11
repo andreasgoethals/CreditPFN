@@ -541,7 +541,7 @@ def main(
     fig, axes = plt.subplots(1, 3, figsize=(16, 4.5))
     fig.suptitle("TabPFN predicted distributions â€” diabetes dataset", fontsize=13)
 
-    for i, (ax, idx, title) in enumerate(zip(axes, selected, titles)):
+    for i, (ax, idx, title) in enumerate(zip(axes, selected, titles, strict=True)):
         plot_regression_distribution(out, sample_idx=i, ax=ax)
         true_val = y_test[idx]
         true_line = ax.axvline(
@@ -606,7 +606,7 @@ usage, import `invoke_tabpfn` and pass your own NumPy arrays.
 
 import json
 import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import boto3
 import numpy as np
@@ -738,8 +738,8 @@ def invoke_tabpfn(
     y_train: np.ndarray,
     x_test: np.ndarray,
     task: Literal["classification", "regression"],
-    model_params: Optional[dict[str, Any]] = None,
-    predict_params: Optional[dict[str, Any]] = None,
+    model_params: dict[str, Any] | None = None,
+    predict_params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Invoke the TabPFN SageMaker endpoint with tabular data.
 
@@ -1136,7 +1136,7 @@ quantile_predictions = reg.predict(
     output_type="quantiles",
     quantiles=quantiles,
 )
-for q, q_pred in zip(quantiles, quantile_predictions):
+for q, q_pred in zip(quantiles, quantile_predictions, strict=True):
     print(f"Quantile {q} MAE:", mean_absolute_error(y_test, q_pred))
 # Predict with mode
 mode_predictions = reg.predict(X_test, output_type="mode")
@@ -1751,8 +1751,6 @@ First, we need to install the necessary libraries. This includes TabPFN itself, 
 
 #    [32m+[39m [1mpassword-strength[0m[2m==0.0.3.post2[0m
 
-#    [32m+[39m [1mposthog[0m[2m==7.14.1[0m
-
 #    [31m-[39m [1mrequests[0m[2m==2.32.4[0m
 
 #    [32m+[39m [1mrequests[0m[2m==2.34.0[0m
@@ -1760,8 +1758,6 @@ First, we need to install the necessary libraries. This includes TabPFN itself, 
 #    [32m+[39m [1msseclient-py[0m[2m==1.9.0[0m
 
 #    [32m+[39m [1mtabpfn-client[0m[2m==0.3.0[0m
-
-#    [32m+[39m [1mtabpfn-common-utils[0m[2m==0.2.19[0m
 
 #   [2mUsing Python 3.12.13 environment at: /usr[0m
 
@@ -4017,8 +4013,6 @@ Note: you will need to restart the notebook (Runtime -> Restart Session)
 
 #   Requirement already satisfied: joblib>=1.2.0 in /usr/local/lib/python3.12/dist-packages (from tabpfn) (1.5.2)
 
-#   Requirement already satisfied: tabpfn-common-utils>=0.1.8 in /usr/local/lib/python3.12/dist-packages (from tabpfn-common-utils[telemetry-interactive]>=0.1.8->tabpfn) (0.2.2)
-
 #   Requirement already satisfied: kditransform>=1.2 in /usr/local/lib/python3.12/dist-packages (from tabpfn) (1.2.0)
 
 #   Requirement already satisfied: filelock in /usr/local/lib/python3.12/dist-packages (from huggingface-hub<2,>=0.25.0->tabpfn) (3.20.0)
@@ -4052,10 +4046,6 @@ Note: you will need to restart the notebook (Runtime -> Restart Session)
 #   Requirement already satisfied: python-dotenv>=0.21.0 in /usr/local/lib/python3.12/dist-packages (from pydantic-settings>=2.10.1->tabpfn) (1.2.1)
 
 #   Requirement already satisfied: threadpoolctl>=3.1.0 in /usr/local/lib/python3.12/dist-packages (from scikit-learn<1.8,>=1.2.0->tabpfn) (3.6.0)
-
-#   Requirement already satisfied: platformdirs>=4.4.0 in /usr/local/lib/python3.12/dist-packages (from tabpfn-common-utils>=0.1.8->tabpfn-common-utils[telemetry-interactive]>=0.1.8->tabpfn) (4.5.0)
-
-#   Requirement already satisfied: posthog~=6.7 in /usr/local/lib/python3.12/dist-packages (from tabpfn-common-utils>=0.1.8->tabpfn-common-utils[telemetry-interactive]>=0.1.8->tabpfn) (6.8.0)
 
 #   Requirement already satisfied: setuptools in /usr/local/lib/python3.12/dist-packages (from torch<3,>=2.1->tabpfn) (75.2.0)
 
@@ -4096,12 +4086,6 @@ Note: you will need to restart the notebook (Runtime -> Restart Session)
 #   Requirement already satisfied: triton==3.4.0 in /usr/local/lib/python3.12/dist-packages (from torch<3,>=2.1->tabpfn) (3.4.0)
 
 #   Requirement already satisfied: llvmlite<0.44,>=0.43.0dev0 in /usr/local/lib/python3.12/dist-packages (from numba>=0.48->kditransform>=1.2->tabpfn) (0.43.0)
-
-#   Requirement already satisfied: six>=1.5 in /usr/local/lib/python3.12/dist-packages (from posthog~=6.7->tabpfn-common-utils>=0.1.8->tabpfn-common-utils[telemetry-interactive]>=0.1.8->tabpfn) (1.17.0)
-
-#   Requirement already satisfied: backoff>=1.10.0 in /usr/local/lib/python3.12/dist-packages (from posthog~=6.7->tabpfn-common-utils>=0.1.8->tabpfn-common-utils[telemetry-interactive]>=0.1.8->tabpfn) (2.2.1)
-
-#   Requirement already satisfied: distro>=1.5.0 in /usr/local/lib/python3.12/dist-packages (from posthog~=6.7->tabpfn-common-utils>=0.1.8->tabpfn-common-utils[telemetry-interactive]>=0.1.8->tabpfn) (1.9.0)
 
 #   Requirement already satisfied: charset_normalizer<4,>=2 in /usr/local/lib/python3.12/dist-packages (from requests->huggingface-hub<2,>=0.25.0->tabpfn) (3.4.4)
 

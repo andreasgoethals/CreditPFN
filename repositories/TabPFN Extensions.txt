@@ -14,9 +14,22 @@ Directory structure:
     ├── uv.lock
     ├── .pre-commit-config.yaml
     ├── changelog/
-    │   └── README.md
+    │   ├── README.md
+    │   ├── 231.added.md
+    │   ├── 280.added.md
+    │   ├── 280.fixed.md
+    │   ├── 306.added.md
+    │   ├── 307.fixed.md
+    │   ├── 311.fixed.md
+    │   ├── 312.breaking.md
+    │   ├── 312.changed.md
+    │   ├── 312.fixed.md
+    │   ├── 313.fixed.md
+    │   └── 315.fixed.md
     ├── examples/
     │   ├── README.md
+    │   ├── cp_missing_data/
+    │   │   └── cp_missing_data_example.py
     │   ├── embedding/
     │   │   ├── README.md
     │   │   └── get_embeddings.py
@@ -46,6 +59,7 @@ Directory structure:
     │   └── unsupervised/
     │       ├── density_estimation_outlier_detection.py
     │       ├── generate_data.py
+    │       ├── generate_data_following_dag.py
     │       └── imputation.py
     ├── scripts/
     │   ├── __init__.py
@@ -59,6 +73,9 @@ Directory structure:
     │       ├── benchmarking/
     │       │   ├── __init__.py
     │       │   └── experiment.py
+    │       ├── cp_missing_data/
+    │       │   ├── __init__.py
+    │       │   └── cp_missing_data.py
     │       ├── embedding/
     │       │   ├── __init__.py
     │       │   └── tabpfn_embedding.py
@@ -110,7 +127,9 @@ Directory structure:
     │           └── unsupervised.py
     ├── tests/
     │   ├── conftest.py
+    │   ├── test_backend_selection.py
     │   ├── test_base_tabpfn.py
+    │   ├── test_cp_missing_data.py
     │   ├── test_embedding.py
     │   ├── test_examples.py
     │   ├── test_hpo.py
@@ -121,6 +140,7 @@ Directory structure:
     │   ├── test_survival.py
     │   ├── test_tabebm.py
     │   ├── test_unsupervised.py
+    │   ├── test_unsupervised_dag.py
     │   └── utils.py
     └── .github/
         ├── CODEOWNERS
@@ -562,7 +582,7 @@ dependencies = [
     "pandas>=2.2.2",
     "scikit-learn>=1.6.0",
     "scipy>=1.11.1",
-    "tabpfn>=7.0.0",
+    "tabpfn>=8.0.0",
     "tabpfn-common-utils[telemetry-interactive]>=0.2.13",
 ]
 
@@ -5007,6 +5027,82 @@ bypass the check.
 
 
 ================================================
+FILE: changelog/231.added.md
+================================================
+Add `CPMDATabPFNRegressor` function to obtain better uncertainty estimates when there are missing values in the features. Conformal prediction is used conditional on missing masks.
+
+
+
+================================================
+FILE: changelog/280.added.md
+================================================
+`score_classification` now accepts `"auroc"` as an alias for `"roc"`, so callers can use either name interchangeably (e.g. scripts passing `"auroc"` no longer fall through to the wrong scoring path).
+
+
+
+================================================
+FILE: changelog/280.fixed.md
+================================================
+`score_classification` no longer slices `y_pred[:, 1]` based on the number of unique labels in `y_true`, which produced incorrect ROC AUC scores for multiclass predictions whose `y_true` subset happened to contain only two classes. Positive-class selection and missing-class handling are now delegated to `safe_roc_auc_score`.
+
+
+
+================================================
+FILE: changelog/306.added.md
+================================================
+Support an optional `dag` argument in `TabPFNUnsupervisedModel.impute()` and `generate_synthetic_data()` to condition synthesis/imputation on a known causal structure (features processed in topological order, each conditioned on its DAG parents).
+
+
+
+================================================
+FILE: changelog/307.fixed.md
+================================================
+`TabPFNUnsupervisedModel.density_` now models the requested feature for the unconditional term of the chain-rule decomposition instead of always using the first column. Previously every feature permutation in `outliers` (and `outliers_pdf`/`outliers_pmf`) opened with the first column's marginal â€” double-counting feature 0 and dropping the first permuted feature's marginal â€” and `generate_synthetic_data` sampled the first generated feature of each permutation from the first column's distribution.
+
+
+================================================
+FILE: changelog/311.fixed.md
+================================================
+Fix `TabPFNUnsupervisedModel.outliers` crashing on the MPS backend by casting the target to the logits dtype before moving it to the device.
+
+
+
+================================================
+FILE: changelog/312.breaking.md
+================================================
+Require `tabpfn>=8.0.0` (was `>=7.0.0`). The class-count limit is now read directly from the model's inference config, so the fallback that assumed a 10-class cap for older TabPFN builds has been removed.
+
+
+
+================================================
+FILE: changelog/312.changed.md
+================================================
+`infer_categorical_features` now treats columns with up to 40 unique values as categorical (was 10), requires more than 10 samples per category on average (replacing the flat 100-row guard), and keeps caller-declared categoricals regardless of cardinality; whether the model can predict that many classes is now a separate check.
+
+
+
+================================================
+FILE: changelog/312.fixed.md
+================================================
+Infer TabPFN's supported class count from the model (`utils.get_max_num_classes`) instead of hard-coding it to 10, so the unsupervised model and `ManyClassClassifier` work correctly with TabPFN-3's higher class limit. `TabPFNUnsupervisedModel` now raises a clear error naming the column that needs a missing classifier/regressor, instead of a cryptic `AttributeError` on `None`.
+
+
+
+================================================
+FILE: changelog/313.fixed.md
+================================================
+`TabPFNUnsupervisedModel` imputation/density now fits each column's conditional model only on rows whose target value is observed, instead of keeping rows with a missing target and replacing their label with 0. This removes a bias toward 0 and, when fitting on the same data being imputed, stops the query rows from leaking into their own training context.
+
+
+
+================================================
+FILE: changelog/315.fixed.md
+================================================
+Fix TabPFN backend selection in `get_tabpfn_models()`. Selecting the API/client backend (`USE_TABPFN_LOCAL=false`) with `tabpfn-client` installed previously raised a `NameError` at import time, because the client wrapper classes were not bound to the names the selector reads; they now are, so API inference resolves correctly. Backend selection is also now strict and symmetric: the requested backend is used and, when it is not installed, an `ImportError` naming that backend is raised instead of silently falling back to the other one (which could hide a broken local setup or trigger unexpected API calls).
+
+
+
+================================================
 FILE: examples/README.md
 ================================================
 # TabPFN Extensions Examples
@@ -5068,6 +5164,72 @@ When adding examples for new extensions:
 4. Clearly document any requirements or limitations
 
 See the existing examples for reference.
+
+
+
+================================================
+FILE: examples/cp_missing_data/cp_missing_data_example.py
+================================================
+"""Example of conformal prediction intervals for TabPFN with missing data.
+
+Demonstrates how to obtain valid prediction intervals when the dataset
+contains missing values, using split conformal prediction calibrated
+per missing-data mask pattern.
+
+Note: This algorithm works well when the number of unique missing patterns is small.
+"""
+
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+from tabpfn_extensions.cp_missing_data import CPMDATabPFNRegressor
+
+# generate some data
+np.random.seed(42)  # For reproducibility
+X = np.random.rand(500, 2)
+y = X @ np.array([5, 5]) + np.random.rand(500)
+
+# add missing values in X under MCAR
+X[np.random.randint(0, 500, 200), np.random.randint(0, 2, 200)] = np.nan
+
+# Train/test split
+X_train, X_test, y_train, _ = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Check how many unique patterns there are
+unique_patterns = pd.DataFrame(X_train).isna().astype(int).drop_duplicates()
+print(f"Number of unique missing data patterns: {len(unique_patterns)}")
+print("\nUnique patterns:")
+print(unique_patterns)
+
+# Use TabPFN+CP-MDA, the interval
+# Note the interval needs to be symmetric
+model = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=123)
+model.fit(X_train, y_train)
+print("\nCalibration results:")
+print(model.calibration_results_)
+
+# Apply the model to new cases
+CP_results = model.predict(X_test)
+
+# Show first 5
+print("\nConformal prediction results:")
+print(f"Lower bound (corrected): {CP_results[0][:5]}")
+print(f"Predictions: {CP_results[1][:5]}")
+print(f"Upper bound (corrected): {CP_results[2][:5]}")
+print(f"Lower bound (uncorrected): {CP_results[3][:5]}")
+print(f"Upper bound (uncorrected): {CP_results[4][:5]}")
+
+# Optionally, pass a custom TabPFNRegressor to control settings such as
+# n_estimators or device. The custom estimator is cloned internally so
+# it does not need to be fitted beforehand.
+# from tabpfn_extensions.utils import TabPFNRegressor
+# model = CPMDATabPFNRegressor(
+#     quantiles=[0.05, 0.5, 0.95],
+#     val_size=0.5,
+#     seed=123,
+#     tabpfn_estimator=TabPFNRegressor(n_estimators=16, device="cpu"),
+# )
 
 
 
@@ -7227,6 +7389,86 @@ if __name__ == "__main__":
 
 
 ================================================
+FILE: examples/unsupervised/generate_data_following_dag.py
+================================================
+#  Copyright (c) Prior Labs GmbH 2025.
+#  Licensed under the Apache License, Version 2.0
+"""Example: causally-informed synthetic data via a DAG.
+
+Shows how to pass a Directed Acyclic Graph of inter-feature dependencies to
+``TabPFNUnsupervisedModel.generate_synthetic_data``. With a DAG, each feature
+is generated in topological order and conditioned only on its declared
+parents â€” useful for counterfactual generation or scenarios where the user
+encodes domain knowledge about feature dependencies.
+
+NB: the DAG used here is **illustrative only**, not a validated causal model
+of wine chemistry. Replace it with your domain's actual DAG.
+"""
+import torch
+from sklearn.datasets import load_wine
+from sklearn.model_selection import train_test_split
+
+from tabpfn_extensions import TabPFNClassifier, TabPFNRegressor, unsupervised
+
+df = load_wine(return_X_y=False)
+X, y = df["data"], df["target"]
+attribute_names = df["feature_names"]
+
+# Illustrative DAG over wine features. Each key depends on the listed parents.
+wine_dag_by_name = {
+    "alcohol": [],
+    "malic_acid": [],
+    "ash": ["magnesium"],
+    "alcalinity_of_ash": ["ash", "magnesium"],
+    "magnesium": [],
+    "total_phenols": ["flavanoids", "nonflavanoid_phenols", "proanthocyanins"],
+    "flavanoids": [],
+    "nonflavanoid_phenols": [],
+    "proanthocyanins": [],
+    "color_intensity": ["flavanoids", "proanthocyanins", "total_phenols"],
+    "hue": ["color_intensity"],
+    "od280/od315_of_diluted_wines": ["flavanoids", "total_phenols"],
+    "proline": ["alcohol", "total_phenols"],
+}
+
+# Convert feature-name DAG â†’ integer-index DAG (the public API expects ints)
+name_to_idx = {n: i for i, n in enumerate(attribute_names)}
+dag = {
+    name_to_idx[child]: [name_to_idx[p] for p in parents]
+    for child, parents in wine_dag_by_name.items()
+}
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.5, random_state=42)
+
+clf = TabPFNClassifier(n_estimators=3)
+reg = TabPFNRegressor(n_estimators=3)
+model_unsupervised = unsupervised.TabPFNUnsupervisedModel(
+    tabpfn_clf=clf,
+    tabpfn_reg=reg,
+)
+
+exp_synthetic = unsupervised.experiments.GenerateSyntheticDataExperiment(
+    task_type="unsupervised",
+)
+
+X_tensor = torch.tensor(X_train, dtype=torch.float32)
+y_tensor = torch.tensor(y_train, dtype=torch.float32)
+
+results = exp_synthetic.run(
+    tabpfn=model_unsupervised,
+    X=X_tensor,
+    y=y_tensor,
+    attribute_names=attribute_names,
+    temp=1.0,
+    n_samples=X_train.shape[0] * 3,  # 3x original samples
+    indices=list(range(X_train.shape[1])),
+    n_permutations=3,
+    dag=dag,
+)
+
+
+
+================================================
 FILE: examples/unsupervised/imputation.py
 ================================================
 #  Copyright (c) Prior Labs GmbH 2025.
@@ -7769,8 +8011,8 @@ try:
             return params
 
 except ImportError:
-    TabPFNClassifierWrapper = None
-    TabPFNRegressorWrapper = None
+    ClientTabPFNClassifier = None
+    ClientTabPFNRegressor = None
 
 try:
     from tabpfn import (
@@ -7783,63 +8025,119 @@ except ImportError:
 
 
 def get_tabpfn_models() -> tuple[type, type]:
-    """Get TabPFN models with fallback between different versions.
+    """Get the TabPFN model classes for the selected backend.
 
-    Attempts to import TabPFN models in the following order:
-    1. Standard TabPFN package (if USE_TABPFN_LOCAL is True)
-    2. TabPFN client
+    ``USE_TABPFN_LOCAL`` selects the backend; the function does not silently fall
+    back to the other one:
+    1. ``USE_TABPFN_LOCAL`` is True  -> the standard ``tabpfn`` package
+    2. ``USE_TABPFN_LOCAL`` is False -> the ``tabpfn-client`` API backend
+
+    If the selected backend is not installed, an ImportError is raised naming that
+    backend, rather than quietly using the other one.
 
     Returns:
         tuple[type, type]: A tuple containing (TabPFNClassifier, TabPFNRegressor) classes
 
     Raises:
-        ImportError: If none of the TabPFN implementations could be imported
+        ImportError: If the selected TabPFN backend is not installed
     """
-    # First try standard TabPFN package (if local usage is enabled)
-    if USE_TABPFN_LOCAL and LocalTabPFNClassifier is not None:
-        # Debug info controlled by environment variable
-        # (using logging rather than print for better debugging)
-        logging.info("Using TabPFN package")
+    if USE_TABPFN_LOCAL:
+        if LocalTabPFNClassifier is not None:
+            # Debug info controlled by environment variable
+            # (using logging rather than print for better debugging)
+            logging.info("Using TabPFN package")
 
-        return LocalTabPFNClassifier, LocalTabPFNRegressor
-    elif TabPFNClassifierWrapper is not None:
-        return TabPFNClassifierWrapper, TabPFNRegressorWrapper
-    else:
+            return LocalTabPFNClassifier, LocalTabPFNRegressor
         raise ImportError(
-            "No TabPFN implementation could be imported. Install with one of the following:\n"
-            "pip install tabpfn    # For standard TabPFN package\n"
-            "pip install tabpfn-client  # For TabPFN client (API-based inference)",
+            "Local TabPFN backend requested (USE_TABPFN_LOCAL=true) but the "
+            "'tabpfn' package is not installed.\n"
+            "pip install tabpfn       # install the local backend\n"
+            "USE_TABPFN_LOCAL=false   # or switch to the API/client backend",
         )
+
+    if ClientTabPFNClassifier is not None:
+        return ClientTabPFNClassifier, ClientTabPFNRegressor
+    raise ImportError(
+        "API/client TabPFN backend requested (USE_TABPFN_LOCAL=false) but the "
+        "'tabpfn-client' package is not installed.\n"
+        "pip install tabpfn-client   # install the API/client backend\n"
+        "USE_TABPFN_LOCAL=true        # or switch to the local backend",
+    )
 
 
 TabPFNClassifier, TabPFNRegressor = get_tabpfn_models()
+
+
+# Cardinality threshold for the categorical-detection heuristic (constraint
+# (a) below): a column with at most this many unique values is treated as
+# categorical. This is a property of the *data* and is intentionally separate
+# from how many classes a model can *predict* (see ``get_max_num_classes``).
+MAX_UNIQUE_VALUES_FOR_CATEGORICAL = 40
+
+# Minimum average samples per category required to auto-detect a column as
+# categorical. Scales the support requirement with cardinality: a column needs
+# more than ``MIN_SAMPLES_PER_CATEGORY * n_unique`` rows, so high-cardinality
+# columns aren't called categorical on the basis of thin per-level evidence.
+MIN_SAMPLES_PER_CATEGORY = 10
+
+
+def get_max_num_classes(model: Any) -> int | None:
+    """Infer the max number of classes a TabPFN estimator can predict in one fit.
+
+    This is the single source of truth for the TabPFN class-count limit across
+    tabpfn-extensions, so a fix here propagates everywhere (unsupervised
+    classifier/regressor routing, the many-class output-coding wrapper, ...).
+
+    The value is read from the model's inference config
+    (``get_inference_config().MAX_NUMBER_OF_CLASSES``), which TabPFN exposes as
+    of v8.0.0 (the minimum version this package depends on).
+
+    Args:
+        model: A (typically TabPFN) classifier instance.
+
+    Returns:
+        The maximum number of classes the model supports, or ``None`` if
+        ``model`` is not a TabPFN estimator (i.e. has no inherent class limit).
+    """
+    if hasattr(model, "get_inference_config"):
+        cfg = model.get_inference_config()
+        val = getattr(cfg, "MAX_NUMBER_OF_CLASSES", None)
+        if val:
+            return int(val)
+    return None
 
 
 def infer_categorical_features(
     X: np.ndarray,
     categorical_features: list[int] | None = None,
 ) -> list[int]:
-    """Infer the categorical features from the input data.
+    """Infer which columns are categorical *features* (constraint (a) only).
 
-    Features are identified as categorical if any of these conditions are met:
-    1. The feature index is in the provided categorical_features list AND has few unique values
-    2. The feature has few unique values compared to the dataset size
-    3. The feature has string/object/category data type (pandas DataFrame)
-    4. The feature contains string values (numpy array)
+    This answers a data question â€” "is this column categorical?" â€” and is
+    deliberately independent of any model constraint. Whether a categorical
+    column has few enough levels for a TabPFN classifier to *predict* it
+    (constraint (b)) is a separate concern; derive that limit with
+    ``get_max_num_classes`` and apply it at the point of use.
+
+    A column is treated as categorical if any of these hold:
+    1. It is in the caller-provided ``categorical_features`` list.
+    2. It has a string/object/category dtype (pandas DataFrame).
+    3. It contains string values (numpy object array).
+    4. It is low-cardinality: at most ``MAX_UNIQUE_VALUES_FOR_CATEGORICAL``
+       unique values, with more than ``MIN_SAMPLES_PER_CATEGORY`` samples per
+       unique value on average, to avoid mislabelling columns that only look
+       low-cardinality because the sample is too thin per level.
 
     Parameters:
         X (np.ndarray or pandas.DataFrame): The input data.
-        categorical_features (list[int], optional): Initial list of categorical feature indices.
-            If None, will start with an empty list.
+        categorical_features (list[int], optional): Initial list of categorical
+            feature indices. If None, will start with an empty list.
 
     Returns:
         list[int]: The indices of the categorical features.
     """
     if categorical_features is None:
         categorical_features = []
-
-    max_unique_values_as_categorical_feature = 10
-    min_unique_values_as_numerical_feature = 10
 
     _categorical_features: list[int] = []
 
@@ -7873,7 +8171,7 @@ def infer_categorical_features(
                             _categorical_features.append(i)
                             break
 
-    # Then detect based on unique values
+    # Then detect based on cardinality (constraint (a) heuristic only).
     for i in range(X.shape[-1]):
         # Skip if already identified as categorical
         if i in _categorical_features:
@@ -7882,18 +8180,18 @@ def infer_categorical_features(
         # Get unique values - handle differently for pandas and numpy
         n_unique = X.iloc[:, i].nunique() if is_pandas else len(np.unique(X[:, i]))
 
-        # Filter categorical features, with too many unique values
-        if (
-            i in categorical_features
-            and n_unique <= max_unique_values_as_categorical_feature
-        ):
+        # Respect caller-declared categoricals unconditionally: whether such a
+        # column has too many levels for a model to *predict* is a separate
+        # concern (see ``get_max_num_classes``), handled at the point of use.
+        if i in categorical_features:
             _categorical_features.append(i)
 
-        # Filter non-categorical features, with few unique values
+        # Otherwise auto-detect low-cardinality columns as categorical, but
+        # only when there is enough support per level (samples / categories).
+        # ``n_unique`` can be 0 for an all-NaN pandas column, so guard the ratio.
         elif (
-            i not in categorical_features
-            and n_unique < min_unique_values_as_numerical_feature
-            and X.shape[0] > 100
+            0 < n_unique <= MAX_UNIQUE_VALUES_FOR_CATEGORICAL
+            and X.shape[0] / n_unique > MIN_SAMPLES_PER_CATEGORY
         ):
             _categorical_features.append(i)
 
@@ -8008,6 +8306,347 @@ class Experiment:
         :param ax:
         :return:
         """
+
+
+
+================================================
+FILE: src/tabpfn_extensions/cp_missing_data/__init__.py
+================================================
+"""Conformal prediction for missing data module for tabpfn_extensions package."""
+
+from .cp_missing_data import (
+    CPMDATabPFNRegressor,
+)
+
+__all__ = ["CPMDATabPFNRegressor"]
+
+
+
+================================================
+FILE: src/tabpfn_extensions/cp_missing_data/cp_missing_data.py
+================================================
+"""Conformal prediction for TabPFN with missing data patterns.
+
+This module provides conformal prediction intervals that are calibrated
+for different missing data patterns in the input features.
+"""
+
+from __future__ import annotations
+
+import warnings
+from typing import TYPE_CHECKING
+
+import numpy as np
+import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin, clone
+from sklearn.model_selection import train_test_split
+from sklearn.utils.validation import check_is_fitted
+
+from tabpfn_extensions.utils import TabPFNRegressor
+
+if TYPE_CHECKING:
+    from numpy.typing import ArrayLike
+
+
+class CPMDATabPFNRegressor(BaseEstimator, RegressorMixin):
+    """Compute the correction terms for missing data masks using conformal prediction.
+
+    Parameters:
+        quantiles : list of float, default=[0.05, 0.5, 0.95]
+            Three quantiles [lower, median, upper]. Must be symmetric
+            (lower + upper == 1).
+        val_size : float, default=0.3
+            Fraction of training data used for conformal calibration.
+        seed : int or None, default=None
+            Random seed for the train/calibration split.
+        tabpfn_estimator : TabPFNRegressor or None, default=None
+            A pre-configured TabPFNRegressor instance. If None, a default
+            TabPFNRegressor() is used. Use this to customise parameters such
+            as n_estimators, device, or random_state. Example::
+
+                CPMDATabPFNRegressor(
+                    tabpfn_estimator=TabPFNRegressor(n_estimators=16, device="cuda")
+                )
+
+    Attributes:
+        model_ : TabPFNRegressor
+            Fitted TabPFN model.
+        calibration_results_ : pd.DataFrame
+            Correction terms for each observed missing-data mask.
+        alpha_ : float
+            Miscoverage level derived from quantiles (lower * 2).
+        feature_names_in_ : list
+            Column names seen during fit.
+    """
+
+    def __init__(
+        self,
+        quantiles: list[float] | None = None,
+        val_size: float = 0.3,
+        seed: int | None = None,
+        tabpfn_estimator: TabPFNRegressor | None = None,
+    ) -> None:
+        self.quantiles = quantiles
+        self.val_size = val_size
+        self.seed = seed
+        self.tabpfn_estimator = tabpfn_estimator
+
+    def _validate_quantiles(self, quantiles: list[float]) -> None:
+        if len(quantiles) != 3:
+            raise ValueError(
+                f"quantiles must have exactly 3 elements [lower, median, upper], "
+                f"got {len(quantiles)}."
+            )
+        if quantiles[0] >= quantiles[1] or quantiles[1] >= quantiles[2]:
+            raise ValueError(f"quantiles must be strictly increasing, got {quantiles}.")
+        if not np.isclose(quantiles[0], 1 - quantiles[2]):
+            raise ValueError(
+                f"quantiles must be symmetric (lower + (1-upper) == 0), "
+                f"got {quantiles[0]} - (1 - {quantiles[2]}) = {quantiles[0] - (1 - quantiles[2])}."
+            )
+
+    def _calc_correction_term(
+        self,
+        predictions: tuple[np.ndarray, np.ndarray, np.ndarray],
+        y_val: pd.Series,
+    ) -> float:
+        """Calculate the correction term for conformal prediction."""
+        # obtain the lower bound, median, and upper bound
+        lb, _, ub = predictions
+        # calculate difference between bounds and observed values
+        error_lb = lb - y_val
+        error_ub = y_val - ub
+        s = np.maximum(error_lb, error_ub)
+
+        # obtain the empirical quantile
+        Q_use = (1 - self.alpha_) * (1 + 1 / len(s))
+
+        # Check if Q_use is not larger than 1
+        if Q_use > 1:
+            Q_use = 1
+            warnings.warn("Some masks have very small calibration sets", stacklevel=2)
+
+        correction_term = np.quantile(s, Q_use)
+        return correction_term
+
+    def _split_data(
+        self, x: pd.DataFrame, y: np.ndarray
+    ) -> tuple[
+        pd.DataFrame, pd.DataFrame, pd.Series, pd.Series, pd.DataFrame, pd.DataFrame
+    ]:
+        """Split data into training and validation sets."""
+        # create df with missing data indicator
+        missing_bool_df = x.isna().astype(int)
+        x_train, x_val, y_train_arr, y_val_arr, mask_train, mask_val = train_test_split(
+            x, y, missing_bool_df, test_size=self.val_size, random_state=self.seed
+        )
+
+        # Convert y arrays back to pandas Series to maintain .iloc functionality
+        y_train = pd.Series(y_train_arr, index=x_train.index)
+        y_val = pd.Series(y_val_arr, index=x_val.index)
+
+        return x_train, x_val, y_train, y_val, mask_train, mask_val
+
+    def _run_tabpfn(self, x_train: pd.DataFrame, y_train: pd.Series) -> TabPFNRegressor:
+        """Fit the TabPFN model."""
+        model = (
+            clone(self.tabpfn_estimator)
+            if self.tabpfn_estimator is not None
+            else TabPFNRegressor()
+        )
+        model.fit(x_train, y_train)
+        return model
+
+    def _mask_preprocess(
+        self, mask_val: pd.DataFrame
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Preprocess masks and identify nested relationships."""
+        # drop duplicates masks
+        mask_unique = mask_val.drop_duplicates().copy()
+        # add mask id
+        mask_unique["mask_id"] = range(1, len(mask_unique) + 1)
+        # Get mask columns (all columns except mask_id)
+        mask_cols = [col for col in mask_unique.columns if col != "mask_id"]
+
+        # Check nesting for all pairs of masks
+        results = []
+        for i, row_a in mask_unique.iterrows():
+            mask_a = row_a[mask_cols].values
+            mask_a_id = row_a["mask_id"]
+            nested_masks = []
+
+            for j, row_b in mask_unique.iterrows():
+                if i == j:  # Skip comparing mask with itself
+                    continue
+                mask_b = row_b[mask_cols].values
+                mask_b_id = row_b["mask_id"]
+
+                if ((mask_b == 1) & (mask_a == 0)).sum() == 0:
+                    nested_masks.append(mask_b_id)
+
+            results.append({"mask_id": mask_a_id, "nested_masks": nested_masks})
+
+        mask_nested = pd.DataFrame(results)
+        return mask_unique, mask_nested
+
+    def _create_calibration_sets(
+        self,
+        x_val: pd.DataFrame,
+        y_val: pd.Series,
+        mask_val: pd.DataFrame,
+        mask_unique: pd.DataFrame,
+        mask_nested: pd.DataFrame,
+        model: TabPFNRegressor,
+    ) -> tuple[pd.DataFrame, TabPFNRegressor]:
+        """Create calibration sets for each mask pattern."""
+        # obtain list of columns
+        mask_cols = list(mask_val.columns.values)
+
+        # Using merge to add the id of the mask
+        # use original index values
+        df_with_ids = mask_val.reset_index().merge(
+            mask_unique, on=mask_cols, how="left"
+        )
+
+        for i in mask_unique["mask_id"]:
+            # select the nested masks
+            nested_masks = mask_nested[mask_nested["mask_id"] == i][
+                "nested_masks"
+            ].values[0]
+
+            # add the mask itself
+            nested_masks_with_self = [*nested_masks, i]
+
+            # obtain indexes for the rows
+            indexes = df_with_ids[df_with_ids["mask_id"].isin(nested_masks_with_self)][
+                "index"
+            ]
+
+            # select the validation data based on the indices
+            x_val_nested = x_val.loc[indexes].copy()
+            y_val_nested = y_val.loc[indexes].copy()
+
+            # SET ENTIRE COLUMNS TO NaN WHERE THE MASK HAS MISSING VALUES
+            current_mask = mask_unique[mask_unique["mask_id"] == i][mask_cols].iloc[0]
+
+            # For each column where the mask indicates missing (value = 1), set entire column to NaN
+            for col_idx, col_name in enumerate(mask_cols):
+                if current_mask.iloc[col_idx] == 1:
+                    x_val_nested.loc[:, col_name] = np.nan
+
+            # obtain predictions
+            predictions = model.predict(
+                x_val_nested, output_type="quantiles", quantiles=self.quantiles_
+            )
+
+            # calculate correction term
+            correction_term = self._calc_correction_term(predictions, y_val_nested)
+
+            # save the correction term to the mask_unique dataframe
+            mask_unique.loc[mask_unique["mask_id"] == i, "correction_term"] = (
+                correction_term
+            )
+            mask_unique.loc[mask_unique["mask_id"] == i, "val_size"] = (
+                x_val_nested.shape[0]
+            )
+
+        return mask_unique, model
+
+    def fit(self, x_train: ArrayLike, y_train: ArrayLike) -> CPMDATabPFNRegressor:
+        """Fit the model and compute conformal calibration corrections.
+
+        Parameters:
+            x_train : matrix-like of shape (n_samples, n_predictors)
+            y_train : array-like of continuous outcome with shape (n_samples,)
+        """
+        # check if quantiles are correct
+        quantiles = self.quantiles if self.quantiles is not None else [0.05, 0.5, 0.95]
+        self._validate_quantiles(quantiles)
+        self.quantiles_ = quantiles
+        self.alpha_ = self.quantiles_[0] * 2
+
+        # Store and parse the data
+        x = pd.DataFrame(x_train)
+        y = y_train
+
+        # save colnames for check later
+        self.feature_names_in_ = list(x.columns)
+
+        # Run through all the functions
+        x_train_split, x_val, y_train_split, y_val, _, mask_val = self._split_data(x, y)
+        model = self._run_tabpfn(x_train_split, y_train_split)
+        mask_unique, mask_nested = self._mask_preprocess(mask_val)
+        self.calibration_results_, self.model_ = self._create_calibration_sets(
+            x_val, y_val, mask_val, mask_unique, mask_nested, model
+        )
+
+        return self
+
+    def _obtain_preds(self, x: pd.DataFrame) -> np.ndarray:
+        """Obtain predictions from fitted model."""
+        preds = self.model_.predict(
+            x, output_type="quantiles", quantiles=self.quantiles_
+        )
+        return preds
+
+    def _match_mask(self, x: pd.DataFrame) -> pd.DataFrame:
+        """Add correction terms to the new masks from the test set."""
+        mask_test = x.isna().astype(int)
+        mask_cols = list(mask_test.columns.values)
+
+        mask_test_cor = mask_test.merge(
+            self.calibration_results_, on=mask_cols, how="left"
+        )
+
+        # check if there are masks in the test set that are not in the calibration set
+        new_masks = mask_test_cor[mask_test_cor["correction_term"].isna()][mask_cols]
+
+        if new_masks.shape[0] > 0:
+            warnings.warn(
+                "The following masks are not in the calibration set:\n"
+                f"{new_masks.to_string()}\n"
+                "The baseline quantile estimates will be returned for those cases.",
+                stacklevel=2,
+            )
+
+        # Fill NA to return original intervals
+        mask_test_cor["correction_term"] = mask_test_cor["correction_term"].fillna(0)
+
+        return mask_test_cor
+
+    def _perform_correction(
+        self, preds: np.ndarray, mask_test_cor: pd.DataFrame
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Apply correction terms to the prediction intervals."""
+        lb_corr = preds[0] - mask_test_cor["correction_term"].values
+        ub_corr = preds[2] + mask_test_cor["correction_term"].values
+
+        return lb_corr, preds[1], ub_corr, preds[0], preds[2]
+
+    def predict(
+        self, x_new: ArrayLike
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Obtain predictions for new data with conformalised uncertainty estimates.
+
+        Parameters:
+            x_new : matrix-like of shape (n_samples, n_predictors)
+        """
+        check_is_fitted(self)
+        x = pd.DataFrame(x_new)
+
+        # check if new data has the same columns as old data
+        if isinstance(x_new, pd.DataFrame):
+            if list(x.columns) != self.feature_names_in_:
+                raise ValueError(
+                    f"Column names of x_new do not match those seen during fit. "
+                    f"Expected {self.feature_names_in_}, got {list(x.columns)}."
+                )
+
+        preds = self._obtain_preds(x)
+        mask_test_cor = self._match_mask(x)
+        cp_results = self._perform_correction(preds, mask_test_cor)
+
+        return cp_results
 
 
 
@@ -10663,6 +11302,7 @@ from sklearn.utils.validation import check_is_fitted
 from tabpfn_common_utils.telemetry import set_extension
 
 from tabpfn_extensions.misc.sklearn_compat import validate_data
+from tabpfn_extensions.utils import get_max_num_classes
 
 from ._strategies import (
     AggregationConfig,
@@ -10757,20 +11397,7 @@ class ManyClassClassifier(BaseEstimator, ClassifierMixin):
     def _get_alphabet_size(self) -> int | None:
         if self.alphabet_size is not None:
             return int(self.alphabet_size)
-        if hasattr(self.estimator, "get_inference_config"):
-            cfg = self.estimator.get_inference_config()
-            val = getattr(cfg, "MAX_NUMBER_OF_CLASSES", None)
-            if val:
-                return int(val)
-        # Older TabPFN versions (pre PriorLabs/TabPFN#890) don't expose
-        # get_inference_config; their MAX_NUMBER_OF_CLASSES was always 10.
-        if type(self.estimator).__module__.startswith("tabpfn"):
-            logger.info(
-                "Base estimator has no get_inference_config(); assuming "
-                "alphabet_size=10 (older TabPFN default).",
-            )
-            return 10
-        return None
+        return get_max_num_classes(self.estimator)
 
     def _get_n_estimators(self, n_classes: int, alphabet_size: int) -> int:
         if self.n_estimators is not None:
@@ -13956,13 +14583,16 @@ def score_classification(
     if optimize_metric is None:
         optimize_metric = "roc"
 
-    if (optimize_metric == "roc") and len(np.unique(y_true)) == 2:
-        y_pred = y_pred[:, 1]
+    # "auroc" is an alias for "roc"; normalize it here so the downstream logic
+    # only ever has to reason about "roc". safe_roc_auc_score already handles
+    # selecting the positive class for binary inputs, so no slicing is needed.
+    if optimize_metric == "auroc":
+        optimize_metric = "roc"
 
     if (not y_pred_is_labels) and (optimize_metric not in ["roc", "log_loss"]):
         y_pred = np.argmax(y_pred, axis=1)
 
-    if optimize_metric in ("roc", "auroc"):
+    if optimize_metric == "roc":
         return safe_roc_auc_score(
             y_true,
             y_pred,
@@ -14995,6 +15625,8 @@ class GenerateSyntheticDataExperiment(Experiment):
 
             temp = kwargs.get("temp", 1.0)
             n_samples = kwargs.get("n_samples", X.shape[0])
+            n_permutations = kwargs.get("n_permutations", 3)
+            dag = kwargs.get("dag")
 
             self.X, self.y = X, y
             self.X = self.X[:, indices]
@@ -15012,6 +15644,8 @@ class GenerateSyntheticDataExperiment(Experiment):
             self.synthetic_X = tabpfn.generate_synthetic_data(
                 n_samples=n_samples,
                 t=temp,
+                n_permutations=n_permutations,
+                dag=dag,
             )
 
             data_real = pd.DataFrame(
@@ -15222,6 +15856,8 @@ Key features:
 - Compatibility with both TabPFN and TabPFN-client backends
 - Support for mixed data types (categorical and numerical features)
 - Flexible permutation-based approach for feature dependencies
+- Optional Directed Acyclic Graph (DAG) of inter-feature dependencies for
+  causally-informed synthesis / imputation
 
 Example usage:
     ```python
@@ -15250,6 +15886,7 @@ from __future__ import annotations
 import copy
 import os
 import random
+from graphlib import CycleError, TopologicalSorter
 from typing import Any
 
 import numpy as np
@@ -15263,8 +15900,40 @@ from tqdm import tqdm
 from tabpfn_extensions.utils import (  # type: ignore
     TabPFNClassifier,
     TabPFNRegressor,
+    get_max_num_classes,
     infer_categorical_features,
 )
+
+
+def _resolve_dag_order(
+    dag: dict[int, list[int]],
+    all_features: list[int],
+) -> tuple[list[int], dict[int, list[int]]]:
+    """Topologically order ``all_features`` according to ``dag``.
+
+    Returns ``(ordered, full_dag)`` where ``ordered`` is a permutation of
+    ``all_features`` consistent with the DAG, and ``full_dag`` is a copy of
+    ``dag`` with empty dependency lists filled in for any feature not present
+    as a key.
+
+    The caller's ``dag`` is **not** mutated. On a cyclic graph we raise
+    ``ValueError`` with the cycle path embedded in the message â€” easier for a
+    user to debug than the raw stdlib ``CycleError`` traceback.
+    """
+    valid = set(all_features)
+    unknown = (set(dag) | {p for parents in dag.values() for p in parents}) - valid
+    if unknown:
+        raise ValueError(
+            f"DAG references unknown feature indices {sorted(unknown)}; "
+            f"valid indices are {sorted(valid)}.",
+        )
+    full_dag = {i: list(dag.get(i, [])) for i in all_features}
+    try:
+        ordered = list(TopologicalSorter(full_dag).static_order())
+    except CycleError as exc:
+        cycle = exc.args[1] if len(exc.args) > 1 else exc.args[0]
+        raise ValueError(f"DAG contains a cycle through features: {cycle}") from exc
+    return ordered, full_dag
 
 
 class TabPFNUnsupervisedModel(BaseEstimator):
@@ -15319,12 +15988,18 @@ class TabPFNUnsupervisedModel(BaseEstimator):
                 TabPFNRegressor instance for handling numerical features.
 
         Raises:
-            AssertionError
+            ValueError
                 If both tabpfn_clf and tabpfn_reg are None.
         """
-        assert not (
-            tabpfn_clf is None and tabpfn_reg is None
-        ), "You cannot set both `tabpfn_clf` and `tabpfn_reg` to None. You can set one to None, if your table exclusively consists of categoricals/numericals."
+        # A raise (not assert) so the check survives `python -O`. One may be
+        # None when the table is exclusively categorical/numerical; if a
+        # missing model is later actually needed, ``density_`` raises a clear
+        # error pointing at the column that needs it.
+        if tabpfn_clf is None and tabpfn_reg is None:
+            raise ValueError(
+                "At least one of `tabpfn_clf` or `tabpfn_reg` must be provided; "
+                "both are None.",
+            )
 
         self.tabpfn_clf = tabpfn_clf
         self.tabpfn_reg = tabpfn_reg
@@ -15477,6 +16152,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         t: float = 0.000000001,
         n_permutations: int = 10,
         condition_on_all_features: bool = True,
+        dag: dict[int, list[int]] | None = None,
         fast_mode: bool = False,
     ) -> torch.Tensor:
         """Impute missing values (np.nan) in X by sampling all cells independently from the trained models.
@@ -15490,11 +16166,22 @@ class TabPFNUnsupervisedModel(BaseEstimator):
                 Number of permutations to use for imputation
             condition_on_all_features: bool, default=True
                 Whether to condition on all other features (True) or only previous features (False)
+            dag: dict[int, list[int]] | None, default=None
+                Optional Directed Acyclic Graph mapping each column index to its
+                list of parent column indices (i.e. the features it depends on).
+                When provided, columns are imputed in topological order and each
+                column is conditioned on exactly its DAG parents. Mutually
+                exclusive with ``condition_on_all_features=True``. Features
+                absent from the dict default to no dependencies.
             fast_mode: bool, default=False
                 Whether to use faster settings for testing
 
         Returns:
             torch.Tensor: Imputed data with missing values replaced
+
+        Raises:
+            ValueError: If ``dag`` is combined with ``condition_on_all_features=True``,
+                or if ``dag`` contains a cycle.
         """
         n_features = X.shape[1]
         all_features = list(range(n_features))
@@ -15502,16 +16189,32 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         X_fit = self.X_
         impute_X = copy.deepcopy(X)
 
+        # When a DAG is supplied, take a local copy (no caller mutation) and a
+        # topological order; iterate parents before children.
+        full_dag: dict[int, list[int]] | None = None
+        topo_order: list[int] | None = None
+        if dag is not None:
+            if condition_on_all_features:
+                raise ValueError(
+                    "`dag` is mutually exclusive with `condition_on_all_features=True`;"
+                    " pass condition_on_all_features=False when supplying a DAG."
+                )
+            topo_order, full_dag = _resolve_dag_order(dag, all_features)
+
         columns_with_nan = [
             col_idx
             for col_idx in all_features
             if torch.isnan(impute_X[:, col_idx]).any()
         ]
+        if topo_order is not None:
+            with_nan_set = set(columns_with_nan)
+            columns_with_nan = [c for c in topo_order if c in with_nan_set]
 
         for column_idx in tqdm(columns_with_nan):
             y_predict = impute_X[:, column_idx]
-
-            if not condition_on_all_features:
+            if full_dag is not None:
+                conditional_idx = full_dag[column_idx]
+            elif not condition_on_all_features:
                 conditional_idx = all_features[:column_idx] if column_idx > 0 else []
             else:
                 conditional_idx = list(set(range(X.shape[1])) - {column_idx})
@@ -15671,11 +16374,22 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         Returns:
             bool: True if a classifier should be used, False for a regressor
         """
-        # Check if we should use classifier based on feature type and number of unique values
-        max_classes = getattr(self.tabpfn_clf, "max_num_classes_", 10)
-        return (
-            column_idx in self.categorical_features and len(np.unique(y)) < max_classes
-        )
+        is_categorical = column_idx in self.categorical_features
+        if self.tabpfn_clf is None:
+            # No classifier was provided: surface categorical columns so
+            # density_ raises a clear "missing tabpfn_clf" error rather than
+            # silently routing categorical data to the regressor; numerical
+            # columns go to the regressor as usual.
+            return is_categorical
+        # Use the classifier only when both constraints hold:
+        #   (a) the column is categorical, and
+        #   (b) the classifier can actually predict that many classes
+        #       (a TabPFN clf always reports a limit; None means no inherent
+        #       limit, e.g. a non-TabPFN estimator).
+        max_classes = get_max_num_classes(self.tabpfn_clf)
+        # torch.unique stays on-device; np.unique raises on CUDA/MPS tensors.
+        n_unique = torch.unique(y).numel() if torch.is_tensor(y) else len(np.unique(y))
+        return is_categorical and (max_classes is None or n_unique <= max_classes)
 
     def density_(
         self,
@@ -15704,6 +16418,21 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         # Initialize model if needed
         self.init_model_and_get_model_config()
 
+        # Only rows whose target column is observed can serve as labeled context
+        # for that column. Rows whose target is NaN carry no usable label: they
+        # were previously kept with a fabricated 0 label (see nan_to_num below),
+        # which biases the fit toward 0 and â€” when the fit data is the same data
+        # being imputed â€” leaks the query rows into their own training context.
+        # Dropping them addresses both. This is a no-op when the fit data has no
+        # missing targets (e.g. fitting on complete reference data, the
+        # recommended imputation workflow, or outlier detection on complete
+        # data). If the target column is entirely missing there is no signal to
+        # learn from, so we fall back to the previous behaviour rather than
+        # failing the whole call.
+        target_observed = ~torch.isnan(X_fit[:, column_idx])
+        if target_observed.any() and not target_observed.all():
+            X_fit = X_fit[target_observed]
+
         if len(conditional_idx) > 0:
             # If not the first feature, use all previous features
             mask = torch.zeros_like(X_fit).bool()
@@ -15718,17 +16447,29 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         else:
             # If the first feature, use a zero feature as input
             # Because of preprocessing, we can't use a zero feature, so we use a random feature
+            # dtype override: X_fit/X_predict may be integer tensors (e.g.
+            # categorical-only data), for which randn_like is undefined
             X_fit, y_fit = (
-                torch.randn(X_fit[:, 0:1].shape, dtype=torch.float32),
-                X_fit[:, 0],
+                torch.randn_like(X_fit[:, 0:1], dtype=torch.float32),
+                X_fit[:, column_idx],
             )
-            X_predict, y_predict = torch.randn_like(X_predict[:, 0:1]), X_predict[:, 0]
+            X_predict, y_predict = (
+                torch.randn_like(X_predict[:, 0:1], dtype=torch.float32),
+                X_predict[:, column_idx],
+            )
 
-        model = (
-            self.tabpfn_clf
-            if self.use_classifier_(column_idx, y_fit)
-            else self.tabpfn_reg
-        )
+        use_clf = self.use_classifier_(column_idx, y_fit)
+        model = self.tabpfn_clf if use_clf else self.tabpfn_reg
+        if model is None:
+            needed, estimator = (
+                ("categorical", "tabpfn_clf=TabPFNClassifier(...)")
+                if use_clf
+                else ("numerical", "tabpfn_reg=TabPFNRegressor(...)")
+            )
+            raise ValueError(
+                f"Column {column_idx} needs the {needed} model, but it was not "
+                f"provided. Pass `{estimator}` to TabPFNUnsupervisedModel.",
+            )
         # Handle potential nan values in y_fit
         y_fit_np = y_fit.numpy() if hasattr(y_fit, "numpy") else y_fit
         if np.isnan(y_fit_np).any():
@@ -15736,7 +16477,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
 
         X_fit_np = X_fit.numpy() if hasattr(X_fit, "numpy") else X_fit
 
-        if self.use_classifier_(column_idx, y_fit):
+        if use_clf:
             y_fit_np = y_fit_np.astype(int)
             y_predict = y_predict.long()
 
@@ -15750,6 +16491,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         X: torch.Tensor | np.ndarray | pd.DataFrame,
         t: float = 0.000000001,
         n_permutations: int = 10,
+        dag: dict[int, list[int]] | None = None,
     ) -> torch.Tensor:
         """Impute missing values in the input data using the fitted TabPFN models.
 
@@ -15771,6 +16513,13 @@ class TabPFNUnsupervisedModel(BaseEstimator):
                 Number of random feature permutations to use for imputation.
                 Higher values may improve robustness but increase computation time.
 
+            dag: dict[int, list[int]] | None, default=None
+                Optional Directed Acyclic Graph mapping each column index to the
+                list of column indices it depends on. When provided, columns are
+                imputed in topological order and each column is conditioned on
+                its DAG parents instead of all other features. Useful for
+                causally-informed imputation.
+
         Returns:
             torch.Tensor
                 Imputed data with missing values replaced, of shape (n_samples, n_features).
@@ -15790,8 +16539,9 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         return self.impute_(
             X,
             t,
-            condition_on_all_features=True,
+            condition_on_all_features=(dag is None),
             n_permutations=n_permutations,
+            dag=dag,
             fast_mode=fast_mode,
         )
 
@@ -15844,7 +16594,12 @@ class TabPFNUnsupervisedModel(BaseEstimator):
                 pred = model.predict(X_predict, output_type="full")
                 logits = pred["logits"]
                 logits_tensor = logits.clone().detach()
-                y_tensor = y_predict.clone().detach().to(logits.device)
+                # Match logits dtype/device: MPS rejects float64, and sklearn
+                # inputs arrive as float64, so cast before moving to the device.
+                y_tensor = y_predict.detach().to(
+                    dtype=logits.dtype,
+                    device=logits.device,
+                )
                 # criterion.forward returns the NLL, so -forward is log p_Î¸ directly.
                 log_pred = (
                     -pred["criterion"].forward(logits_tensor, y_tensor).to(log_p.device)
@@ -15966,6 +16721,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
         n_samples: int = 100,
         t: float = 1.0,
         n_permutations: int = 3,
+        dag: dict[int, list[int]] | None = None,
     ) -> torch.Tensor:
         """Generate synthetic tabular data samples using the fitted TabPFN models.
 
@@ -15985,6 +16741,12 @@ class TabPFNUnsupervisedModel(BaseEstimator):
             n_permutations: int, default=3
                 Number of feature permutations to use for generation
                 More permutations may provide more robust results but increase computation time
+
+            dag: dict[int, list[int]] | None, default=None
+                Optional Directed Acyclic Graph mapping each column index to the
+                list of column indices it depends on. When provided, columns are
+                generated in topological order and each column is conditioned on
+                its DAG parents only. Useful for causally-informed synthesis.
 
         Returns:
             torch.Tensor:
@@ -16017,6 +16779,7 @@ class TabPFNUnsupervisedModel(BaseEstimator):
             t=t,
             condition_on_all_features=False,
             n_permutations=actual_n_permutations,
+            dag=dag,
             fast_mode=fast_mode,
         )
 
@@ -16563,6 +17326,172 @@ def pytest_runtest_setup(item):
 
 
 ================================================
+FILE: tests/test_backend_selection.py
+================================================
+"""Tests for TabPFN backend selection in tabpfn_extensions.utils.
+
+These tests exercise get_tabpfn_models, the function that decides whether the
+local (tabpfn) or the API/client (tabpfn-client) backend is used. Its decision
+depends on exactly three module-level globals:
+
+- USE_TABPFN_LOCAL, the boolean derived from the environment variable of the
+  same name,
+- LocalTabPFNClassifier, the local backend class, or None if tabpfn is not
+  importable,
+- ClientTabPFNClassifier, the client backend class, or None if tabpfn-client is
+  not importable.
+
+Because those are module globals that the function looks up at call time, the
+tests simulate every install and configuration combination by monkeypatching
+them on the utils module. No real models, no network, and no need for eight
+different environments.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from tabpfn_extensions import utils
+
+
+# Throwaway stand-ins for the four backend classes. The tests only ever check
+# which class object came back (its identity), never behaviour, so empty classes
+# suffice.
+class _FakeLocalClassifier:
+    pass
+
+
+class _FakeLocalRegressor:
+    pass
+
+
+class _FakeClientClassifier:
+    pass
+
+
+class _FakeClientRegressor:
+    pass
+
+
+def _set_backends(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    use_local: bool,
+    local_present: bool,
+    client_present: bool,
+) -> None:
+    """Patch the three globals get_tabpfn_models reads, simulating one scenario.
+
+    A backend that is not installed is represented by its globals being None,
+    exactly what the except ImportError fallbacks in utils bind them to.
+    """
+    monkeypatch.setattr(utils, "USE_TABPFN_LOCAL", use_local)
+    monkeypatch.setattr(
+        utils, "LocalTabPFNClassifier", _FakeLocalClassifier if local_present else None
+    )
+    monkeypatch.setattr(
+        utils, "LocalTabPFNRegressor", _FakeLocalRegressor if local_present else None
+    )
+    monkeypatch.setattr(
+        utils,
+        "ClientTabPFNClassifier",
+        _FakeClientClassifier if client_present else None,
+    )
+    monkeypatch.setattr(
+        utils, "ClientTabPFNRegressor", _FakeClientRegressor if client_present else None
+    )
+
+
+# The full decision table. expected is one of "local", "client" or "error".
+# Backend selection is symmetric: the flag picks the backend, and if the selected
+# backend is missing the function raises ImportError naming it. It never silently
+# falls back to the other backend.
+_DECISION_TABLE = [
+    # use_local, local_present, client_present, expected
+    pytest.param(True, True, True, "local", id="row1-local-flag-both-present"),
+    pytest.param(True, True, False, "local", id="row2-local-flag-local-only"),
+    pytest.param(True, False, True, "error", id="row3-local-flag-local-missing"),
+    pytest.param(True, False, False, "error", id="row4-local-flag-none-present"),
+    pytest.param(False, True, True, "client", id="row5-client-flag-both-present"),
+    pytest.param(False, True, False, "error", id="row6-client-flag-client-missing"),
+    pytest.param(False, False, True, "client", id="row7-client-flag-client-only"),
+    pytest.param(False, False, False, "error", id="row8-client-flag-none-present"),
+]
+
+
+@pytest.mark.parametrize(
+    ("use_local", "local_present", "client_present", "expected"), _DECISION_TABLE
+)
+def test_get_tabpfn_models_selection(
+    monkeypatch: pytest.MonkeyPatch,
+    use_local: bool,
+    local_present: bool,
+    client_present: bool,
+    expected: str,
+) -> None:
+    """get_tabpfn_models returns the selected backend, or raises if it is missing."""
+    _set_backends(
+        monkeypatch,
+        use_local=use_local,
+        local_present=local_present,
+        client_present=client_present,
+    )
+
+    if expected == "error":
+        with pytest.raises(ImportError):
+            utils.get_tabpfn_models()
+        return
+
+    classifier, regressor = utils.get_tabpfn_models()
+    if expected == "local":
+        assert classifier is _FakeLocalClassifier
+        assert regressor is _FakeLocalRegressor
+    else:  # "client"
+        assert classifier is _FakeClientClassifier
+        assert regressor is _FakeClientRegressor
+
+
+def test_local_backend_missing_error_names_local_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When local is requested but absent, the error names the local backend.
+
+    The client is present here, so this also pins that the function does not
+    quietly use it. It must fail, and the message must point at tabpfn and the
+    flag, not at the client.
+    """
+    _set_backends(monkeypatch, use_local=True, local_present=False, client_present=True)
+
+    with pytest.raises(ImportError) as excinfo:
+        utils.get_tabpfn_models()
+
+    message = str(excinfo.value)
+    assert "Local TabPFN backend requested" in message
+    assert "pip install tabpfn" in message
+    # Must not be the client error message (guards against swapped branches).
+    assert "API/client TabPFN backend requested" not in message
+
+
+def test_client_backend_missing_error_names_client_backend(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When the client is requested but absent, the error names the client backend."""
+    _set_backends(
+        monkeypatch, use_local=False, local_present=True, client_present=False
+    )
+
+    with pytest.raises(ImportError) as excinfo:
+        utils.get_tabpfn_models()
+
+    message = str(excinfo.value)
+    assert "API/client TabPFN backend requested" in message
+    assert "pip install tabpfn-client" in message
+    # Must not be the local error message (guards against swapped branches).
+    assert "Local TabPFN backend requested" not in message
+
+
+
+================================================
 FILE: tests/test_base_tabpfn.py
 ================================================
 """Tests for base TabPFN functionality.
@@ -17068,6 +17997,183 @@ class TestTabPFNRegressor(BaseRegressorTests):
     def test_passes_estimator_checks(self, estimator):
         """Run scikit-learn's estimator compatibility checks."""
         pass
+
+
+
+================================================
+FILE: tests/test_cp_missing_data.py
+================================================
+"""Tests for the CP_missing_data extension.
+
+This file tests the CPMDATabPFNRegressor.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+from numpy.testing import assert_array_equal
+from sklearn.model_selection import train_test_split
+
+try:
+    from tabpfn_extensions.cp_missing_data import CPMDATabPFNRegressor
+    from tabpfn_extensions.utils import TabPFNRegressor
+except ImportError:
+    pytest.skip("Required libraries (tabpfn) not installed", allow_module_level=True)
+
+
+# -------- Fixtures --------
+@pytest.fixture
+def X_train():
+    return np.array(
+        [
+            [0.1, np.nan],
+            [0.3, 0.4],
+            [np.nan, 0.6],
+            [0.7, 0.8],
+            [0.2, np.nan],
+            [0.2, np.nan],
+            [0.9, 0.4],
+            [np.nan, 0.4],
+            [0.3, 0.2],
+            [np.nan, 0.9],
+            [0.8, np.nan],
+            [0.1, 0.2],
+            [np.nan, 0.5],
+            [0.3, 0.7],
+            [0.7, np.nan],
+            [0.7, np.nan],
+            [0.3, 0.4],
+            [np.nan, 0.2],
+            [0.9, 0.7],
+            [np.nan, 0.3],
+            [0.3, 0.7],
+            [0.4, 0.8],
+            [0.5, 0.4],
+            [0.7, 0.2],
+            [0.8, 0.3],
+        ]
+    )
+
+
+@pytest.fixture
+def Y_train():
+    return np.array(
+        [1, 3, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6, 7, 2, 3, 5, 6, 8, 4, 2, 1, 2, 3]
+    )
+
+
+@pytest.fixture
+def X_new():
+    return np.array(
+        [
+            [0.1, 0.1],
+            [0.3, np.nan],
+            [np.nan, 0.6],
+        ]
+    )
+
+
+@pytest.fixture
+def seed():
+    return 123
+
+
+# -- Test --
+def test_fit_returns_self(X_train, Y_train, seed):
+    """fit() should return the estimator itself for sklearn compatibility."""
+    model = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    result = model.fit(X_train, Y_train)
+    assert result is model
+
+
+def test_model_CP(X_train, Y_train, seed):
+    """Tests if the calibration corrections are of the correct shape and type."""
+    model = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    model.fit(X_train, Y_train)
+
+    # Replicate the split to get the validation set and find its unique masks.
+    _, X_val, _, _ = train_test_split(
+        X_train, Y_train, test_size=0.5, random_state=seed
+    )
+    missing_df = pd.DataFrame(X_val).isna().astype(int).drop_duplicates()
+
+    # check type, size of the calibration results
+    assert model.calibration_results_.shape[0] == missing_df.shape[0]
+    assert model.calibration_results_.shape[1] == 5
+    assert isinstance(model.calibration_results_, pd.DataFrame)
+
+
+def test_reproducibility(X_train, Y_train, seed):
+    """Tests that random_state ensures deterministic correction terms."""
+    model_1 = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    model_1.fit(X_train, Y_train)
+
+    # Second model with the same seed
+    model_2 = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    model_2.fit(X_train, Y_train)
+
+    # Assert that the outputs are identical
+    assert_array_equal(model_1.calibration_results_, model_2.calibration_results_)
+
+
+def test_predict(X_train, Y_train, seed, X_new):
+    """Tests if the predictions have the correct shape and type."""
+    # fit model
+    model = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    model.fit(X_train, Y_train)
+
+    # Apply the model to new cases
+    CP_results = model.predict(X_new)
+
+    assert CP_results[1].size == X_new.shape[0]
+    assert isinstance(CP_results[1], np.ndarray)
+    assert len(CP_results) == 5
+
+
+def test_validate_quantiles_wrong_length(seed):
+    """_validate_quantiles should raise if quantiles does not have 3 elements."""
+    model = CPMDATabPFNRegressor(quantiles=[0.05, 0.95], val_size=0.5, seed=seed)
+    with pytest.raises(ValueError, match="exactly 3 elements"):
+        model._validate_quantiles([0.05, 0.95])
+
+
+def test_validate_quantiles_not_symmetric(seed):
+    """_validate_quantiles should raise if quantiles are not symmetric."""
+    model = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    with pytest.raises(ValueError, match="symmetric"):
+        model._validate_quantiles([0.05, 0.5, 0.96])
+
+
+def test_validate_quantiles_not_increasing(seed):
+    """_validate_quantiles should raise if quantiles are not strictly increasing."""
+    model = CPMDATabPFNRegressor(quantiles=[0.05, 0.5, 0.95], val_size=0.5, seed=seed)
+    with pytest.raises(ValueError, match="strictly increasing"):
+        model._validate_quantiles([0.5, 0.3, 0.5])
+
+
+def test_custom_tabpfn_estimator(X_train, Y_train, seed, X_new):
+    """Tests that a custom TabPFNRegressor can be passed and is used correctly."""
+    custom_estimator = TabPFNRegressor(n_estimators=4)
+    model = CPMDATabPFNRegressor(
+        quantiles=[0.05, 0.5, 0.95],
+        val_size=0.5,
+        seed=seed,
+        tabpfn_estimator=custom_estimator,
+    )
+    model.fit(X_train, Y_train)
+
+    # check the fitted model used the custom estimator's settings
+    assert model.model_.n_estimators == 4
+
+    # check predict still works and returns correct shape
+    CP_results = model.predict(X_new)
+    assert len(CP_results) == 5
+    assert CP_results[1].size == X_new.shape[0]
+
+    # check get_params exposes the custom estimator
+    assert model.get_params()["tabpfn_estimator"] is custom_estimator
 
 
 
@@ -19564,6 +20670,159 @@ def test_generate_synthetic_data_categorical(monkeypatch):
 
 
 ================================================
+FILE: tests/test_unsupervised_dag.py
+================================================
+"""Tests for DAG-conditioned synthesis / imputation.
+
+The pure-Python ordering / cycle / mutation tests run instantly and need no
+TabPFN model. The end-to-end synthesis test uses ``FAST_TEST_MODE=1`` and
+``n_estimators=1`` so it stays in the per-test budget on the existing CI.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+import pytest
+import torch
+
+from tabpfn_extensions import TabPFNClassifier, TabPFNRegressor, unsupervised
+from tabpfn_extensions.unsupervised.unsupervised import _resolve_dag_order
+
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ helper-level tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_resolve_dag_order_basic():
+    """Topological order respects parent â†’ child."""
+    dag = {0: [], 1: [0], 2: [1, 0]}
+    ordered, full = _resolve_dag_order(dag, [0, 1, 2])
+    assert ordered.index(0) < ordered.index(1)
+    assert ordered.index(0) < ordered.index(2)
+    assert ordered.index(1) < ordered.index(2)
+    assert full == {0: [], 1: [0], 2: [1, 0]}
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_resolve_dag_order_partial():
+    """Features with no explicit deps get empty parents."""
+    ordered, full = _resolve_dag_order({2: [0, 1]}, [0, 1, 2, 3])
+    assert ordered.index(2) > ordered.index(0)
+    assert ordered.index(2) > ordered.index(1)
+    assert set(ordered) == {0, 1, 2, 3}
+    assert full[0] == []
+    assert full[3] == []
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_resolve_dag_order_cycle_raises_valueerror():
+    """Cycles surface as ValueError, not stdlib CycleError traceback."""
+    with pytest.raises(ValueError, match="cycle"):
+        _resolve_dag_order({0: [1], 1: [0]}, [0, 1])
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_resolve_dag_order_rejects_unknown_indices():
+    """Out-of-range children/parents fail loudly, not via a later IndexError."""
+    with pytest.raises(ValueError, match="unknown feature indices"):
+        _resolve_dag_order({0: [], 1: [9]}, [0, 1, 2])
+    with pytest.raises(ValueError, match="unknown feature indices"):
+        _resolve_dag_order({5: [0]}, [0, 1, 2])
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_resolve_dag_order_does_not_mutate_caller_dict():
+    """Filling in empty deps must not write into the caller's dict."""
+    user_dag = {2: [0, 1]}
+    snapshot = {k: list(v) for k, v in user_dag.items()}
+    _resolve_dag_order(user_dag, [0, 1, 2, 3])
+    assert user_dag == snapshot, "caller's DAG dict was mutated"
+
+
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ public API tests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_impute_rejects_dag_with_condition_on_all_features():
+    """The two modes are mutually exclusive â€” must raise a clear ValueError."""
+    X = torch.tensor(np.random.rand(5, 3), dtype=torch.float32)
+    model = unsupervised.TabPFNUnsupervisedModel(
+        tabpfn_clf=TabPFNClassifier(n_estimators=1),
+        tabpfn_reg=TabPFNRegressor(n_estimators=1),
+    )
+    model.fit(X)
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        model.impute_(
+            X,
+            condition_on_all_features=True,
+            dag={0: [], 1: [0], 2: [0, 1]},
+        )
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_generate_synthetic_data_with_dag(monkeypatch):
+    """End-to-end: generation with a DAG returns the right shape."""
+    monkeypatch.setenv("FAST_TEST_MODE", "1")
+
+    X = np.random.rand(5, 3).astype(np.float32)
+    X_tensor = torch.tensor(X)
+    model = unsupervised.TabPFNUnsupervisedModel(
+        tabpfn_clf=TabPFNClassifier(n_estimators=1),
+        tabpfn_reg=TabPFNRegressor(n_estimators=1),
+    )
+    model.fit(X_tensor)
+
+    # 0 is independent; 1 depends on 0; 2 depends on 0 and 1
+    dag = {0: [], 1: [0], 2: [0, 1]}
+    synthetic_X = model.generate_synthetic_data(n_samples=5, dag=dag)
+
+    assert isinstance(synthetic_X, torch.Tensor)
+    assert synthetic_X.shape == (5, 3)
+
+
+@pytest.mark.client_compatible
+@pytest.mark.local_compatible
+def test_impute_with_dag(monkeypatch):
+    """End-to-end: imputation with a DAG fills every NaN and keeps the shape.
+
+    Uses a different DAG shape from the synthesis test above â€” a fork/diamond
+    (two children of a shared root that both feed a final feature) rather than
+    a simple chain â€” to exercise a column conditioned on multiple parents.
+    """
+    monkeypatch.setenv("FAST_TEST_MODE", "1")
+
+    rng = np.random.default_rng(0)
+    X = rng.random((6, 4)).astype(np.float32)
+    model = unsupervised.TabPFNUnsupervisedModel(
+        tabpfn_clf=TabPFNClassifier(n_estimators=1),
+        tabpfn_reg=TabPFNRegressor(n_estimators=1),
+    )
+    # Fit on the complete data; impute a copy with missing values (the
+    # recommended workflow â€” the fitting context stays fully observed).
+    model.fit(torch.tensor(X))
+
+    X_missing = X.copy()
+    X_missing[1, 2] = np.nan
+    X_missing[4, 3] = np.nan
+    X_missing[5, 1] = np.nan
+
+    # 0 is a root; 1 and 2 both depend on 0; 3 depends on both 1 and 2.
+    dag = {0: [], 1: [0], 2: [0], 3: [1, 2]}
+    imputed = model.impute(torch.tensor(X_missing), dag=dag)
+
+    assert isinstance(imputed, torch.Tensor)
+    assert imputed.shape == (6, 4)
+    assert not torch.isnan(imputed).any()
+
+
+
+================================================
 FILE: tests/utils.py
 ================================================
 from __future__ import annotations
@@ -20146,7 +21405,7 @@ jobs:
       !startsWith(github.head_ref, 'release/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
@@ -20205,7 +21464,7 @@ jobs:
     name: Ruff Linting & Formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - uses: astral-sh/ruff-action@0ce1b0bf8b818ef400413f810f8a11cdbda0034b # v4.0.0
         with:
           src: "./src ./tests"
@@ -20249,7 +21508,7 @@ jobs:
       TABPFN_MODEL_CACHE_DIR: ${{ github.workspace }}/model_cache
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -20257,7 +21516,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: true
 
@@ -20318,7 +21577,7 @@ jobs:
     name: Build wheel + sdist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -20326,7 +21585,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Build sdist + wheel
         run: uv build
@@ -20373,7 +21632,7 @@ jobs:
           }
 
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
 
@@ -20383,7 +21642,7 @@ jobs:
           python-version: "3.12"
 
       - name: Set up uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Install Towncrier
         run: uv pip install --system towncrier
@@ -20482,7 +21741,7 @@ jobs:
     environment: release
     steps:
       - name: Checkout merge commit
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ github.event.pull_request.merge_commit_sha }}
           fetch-depth: 0

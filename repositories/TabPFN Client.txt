@@ -3,10 +3,10 @@ Directory structure:
     ├── README.md
     ├── LICENSE
     ├── pyproject.toml
+    ├── pyrightconfig.json
     ├── ruff.toml
     ├── SECURITY.md
     ├── uv.lock
-    ├── .pre-commit-config.yaml
     ├── examples/
     │   └── sagemaker/
     │       └── tabpfn-3-sample.ipynb
@@ -42,23 +42,31 @@ Directory structure:
     │       ├── __init__.py
     │       ├── test_browser_auth.py
     │       ├── test_client.py
+    │       ├── test_estimator.py
     │       ├── test_prompt_agent.py
     │       ├── test_service_wrapper.py
     │       ├── test_tabpfn_classifier.py
     │       ├── test_tabpfn_regressor.py
     │       ├── test_text_features.py
     │       └── test_thinking_validation.py
-    └── .github/
-        ├── CODEOWNERS
-        ├── dependabot.yml
-        ├── pull_request_template.md
-        └── workflows/
-            └── pull_request.yml
+    ├── .github/
+    │   ├── CODEOWNERS
+    │   ├── dependabot.yml
+    │   ├── pull_request_template.md
+    │   └── workflows/
+    │       ├── cache_trunk.yaml
+    │       ├── linters.yaml
+    │       └── pull_request.yml
+    └── .trunk/
+        ├── trunk.yaml
+        └── scripts/
+            ├── pyright_to_sarif.py
+            └── ruff_to_sarif.py
 
 ================================================
 FILE: README.md
 ================================================
-Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 15916: character maps to <undefined>
+Error reading file with 'cp1252': 'charmap' codec can't decode byte 0x9d in position 15667: character maps to <undefined>
 
 
 ================================================
@@ -316,6 +324,7 @@ dependencies = [
     "tabpfn-common-utils>=0.2.10,<=0.2.19",
     "google-crc32c>=1.5.0,<=1.8.0",
     "pyarrow>=14.0.0,<=23.0.1",
+    "eval-type-backport>=0.3.1,<=0.4.0",
 ]
 
 [project.optional-dependencies]
@@ -343,12 +352,47 @@ norecursedirs = [
 
 [dependency-groups]
 dev = [
-    "pre-commit==4.3.0",
     "pytest==8.4.2",
     "respx==0.22.0",
-    "ruff==0.15.15",
-    "licensecheck==2025.1.0"
+    "ruff==0.15.16",
+    "licensecheck==2025.1.0",
+    "basedpyright~=1.32.1"
 ]
+
+
+
+================================================
+FILE: pyrightconfig.json
+================================================
+{
+  "include": ["src"],
+  "exclude": [
+    "**/__pycache__",
+    "experiments_*",
+    "tmp",
+    ".venv",
+    "src/tabpfn_client/api_models.py"
+  ],
+  "extraPaths": [
+    "./.venv/lib/*/site-packages"
+  ],
+  "pythonVersion": "3.9",
+  "typeCheckingMode": "strict",
+  "reportPossiblyUnboundVariable": true,
+  "reportUnusedFunction": true,
+  // Disable
+  "reportWildcardImportFromLibrary": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownArgumentType": false,
+  "reportUnknownParameterType": false,
+  "reportUnknownLambdaType": false,
+  "reportMissingTypeStubs": false,
+  "reportMissingParameterType": false,
+  "reportMissingTypeArgument": false,
+  "reportPrivateUsage": false,
+  "reportUntypedFunctionDecorator": false,
+}
 
 
 
@@ -358,6 +402,12 @@ FILE: ruff.toml
 line-length = 88
 indent-width = 4
 target-version = "py310"
+extend-exclude = [
+    "src/tabpfn_client/api_models.py",
+    "examples/*"
+]
+force-exclude = true
+
 
 
 ================================================
@@ -450,12 +500,96 @@ wheels = [
 ]
 
 [[package]]
+name = "basedpyright"
+version = "1.32.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "nodejs-wheel-binaries" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/a5/691d02a30bda15acb6a5727bb696dd7f3fcae1ad5b9f2708020c2645af8c/basedpyright-1.32.1.tar.gz", hash = "sha256:ce979891a3c4649e7c31d665acb06fd451f33fedfd500bc7796ee0950034aa54", size = 22757919, upload-time = "2025-10-23T12:53:28.169Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/d5/17d24fd7ba9d899b82859ee04f4599a1e8a02a85c0753bc15eb3ca7ffff7/basedpyright-1.32.1-py3-none-any.whl", hash = "sha256:06b5cc56693e3690653955e19fbe5d2e38f2a343563b40ef95fd1b10fa556fb6", size = 11841548, upload-time = "2025-10-23T12:53:25.541Z" },
+]
+
+[[package]]
 name = "boolean-py"
 version = "5.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c4/cf/85379f13b76f3a69bca86b60237978af17d6aa0bc5998978c3b8cf05abb2/boolean_py-5.0.tar.gz", hash = "sha256:60cbc4bad079753721d32649545505362c754e121570ada4658b852a3a318d95", size = 37047, upload-time = "2025-04-03T10:39:49.734Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/ca/78d423b324b8d77900030fa59c4aa9054261ef0925631cd2501dd015b7b7/boolean_py-5.0-py3-none-any.whl", hash = "sha256:ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9", size = 26577, upload-time = "2025-04-03T10:39:48.449Z" },
+]
+
+[[package]]
+name = "boto3"
+version = "1.42.97"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.10'",
+]
+dependencies = [
+    { name = "botocore", version = "1.42.97", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "jmespath", marker = "python_full_version < '3.10'" },
+    { name = "s3transfer", version = "0.16.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/55/7d/5c6fa0bb9fd5caf865b9356411793900304328bcd0bc1eda96a32a1368a6/boto3-1.42.97.tar.gz", hash = "sha256:2833dbeda3670ea610ad48dff7d27cdc829dbbfcdfbc6b750b673948e949b6f0", size = 113217, upload-time = "2026-04-27T20:39:17.646Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/43/84c1888139aa1aaf1dc53f8f914e6ec629e5a571fbafdd42fb2d98ac361f/boto3-1.42.97-py3-none-any.whl", hash = "sha256:966e49f0510af9a64057a902b7df53d4348c447de0d3df4cc855dfd85e058fcd", size = 140556, upload-time = "2026-04-27T20:39:15.509Z" },
+]
+
+[[package]]
+name = "boto3"
+version = "1.43.21"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+]
+dependencies = [
+    { name = "botocore", version = "1.43.21", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "jmespath", marker = "python_full_version >= '3.10'" },
+    { name = "s3transfer", version = "0.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/f2/0ef88b6584285002a8a8000e34340f56e82681ad2b8a76ea8bd3ecaa5cb9/boto3-1.43.21.tar.gz", hash = "sha256:6dfeb70bf4f9a3514b91c7199f475f71f939199d62f9c63cd555b033fb283f89", size = 113157, upload-time = "2026-06-03T07:09:23.263Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/01/ea/5352950cbee9d1e8392e5396ddbc6defc982414e2abc004b501139bce13c/boto3-1.43.21-py3-none-any.whl", hash = "sha256:8bb863b32dabe5baa4f2e3701778c259243ba117e4811a595411819958c4fb1b", size = 140534, upload-time = "2026-06-03T07:09:21.18Z" },
+]
+
+[[package]]
+name = "botocore"
+version = "1.42.97"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.10'",
+]
+dependencies = [
+    { name = "jmespath", marker = "python_full_version < '3.10'" },
+    { name = "python-dateutil", marker = "python_full_version < '3.10'" },
+    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c6/95/c37edb602948fad2253ffd1bb3dba5b938645bd1845ee4160350136a0f41/botocore-1.42.97.tar.gz", hash = "sha256:5c0bb00e32d16ff6d278cc8c9e10dc3672d9c1d569031635ac3c908a60de8310", size = 15269348, upload-time = "2026-04-27T20:39:05.625Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e3/d2/8e025ba1a4e257879af72d06913272311af79673d82fa2581a351b924317/botocore-1.42.97-py3-none-any.whl", hash = "sha256:77d2c8ce1bc592d3fbd7c01c35836f4a5b0cac2ca03ccdf6ffc60faa16b5fadc", size = 14950367, upload-time = "2026-04-27T20:39:01.261Z" },
+]
+
+[[package]]
+name = "botocore"
+version = "1.43.21"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+]
+dependencies = [
+    { name = "jmespath", marker = "python_full_version >= '3.10'" },
+    { name = "python-dateutil", marker = "python_full_version >= '3.10'" },
+    { name = "urllib3", version = "2.6.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/7b/97/d9d26cebf0a8533105e183d8438931c0b196e52484cd5bf00e8443ac1b2d/botocore-1.43.21.tar.gz", hash = "sha256:17604607efe28894e947401379e569cc8f0fe2d69337ece98bd0c82d1bcfaf92", size = 15451979, upload-time = "2026-06-03T07:09:11.489Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bb/c7/8c60049357e96d663980d66b98a44cb3626a7e5eaca66480b97826eb5379/botocore-1.43.21-py3-none-any.whl", hash = "sha256:f021ba3e844c36031106fc531ec90259ef005ba5d04f691df53bc4ecbd08f0dd", size = 15135303, upload-time = "2026-06-03T07:09:06.115Z" },
 ]
 
 [[package]]
@@ -479,15 +613,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/dc/67/960ebe6bf230a96cda2e0abcf73af550ec4f090005363542f0765df162e0/certifi-2025.8.3.tar.gz", hash = "sha256:e564105f78ded564e3ae7c923924435e1daa7463faeab5bb932bc53ffae63407", size = 162386, upload-time = "2025-08-03T03:07:47.08Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e5/48/1549795ba7742c948d2ad169c1c8cdbae65bc450d6cd753d124b17c8cd32/certifi-2025.8.3-py3-none-any.whl", hash = "sha256:f6c12493cfb1b06ba2ff328595af9350c65d6644968e5d3a2ffd78699af217a5", size = 161216, upload-time = "2025-08-03T03:07:45.777Z" },
-]
-
-[[package]]
-name = "cfgv"
-version = "3.4.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/11/74/539e56497d9bd1d484fd863dd69cbbfa653cd2aa27abfe35653494d85e94/cfgv-3.4.0.tar.gz", hash = "sha256:e52591d4c5f5dead8e0f673fb16db7949d2cfb3f7da4582893288f0ded8fe560", size = 7114, upload-time = "2023-08-12T20:38:17.776Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/55/51844dd50c4fc7a33b653bfaba4c2456f06955289ca770a5dbd5fd267374/cfgv-3.4.0-py2.py3-none-any.whl", hash = "sha256:b7265b1f29fd3316bfcd2b330d63d024f2bfd8bcb8b0272f8e19a504856c48f9", size = 7249, upload-time = "2023-08-12T20:38:16.269Z" },
 ]
 
 [[package]]
@@ -605,21 +730,21 @@ wheels = [
 ]
 
 [[package]]
-name = "distlib"
-version = "0.4.0"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/96/8e/709914eb2b5749865801041647dc7f4e6d00b549cfe88b65ca192995f07c/distlib-0.4.0.tar.gz", hash = "sha256:feec40075be03a04501a973d81f633735b4b69f98b05450592310c0f401a4e0d", size = 614605, upload-time = "2025-07-17T16:52:00.465Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/33/6b/e0547afaf41bf2c42e52430072fa5658766e3d65bd4b03a563d1b6336f57/distlib-0.4.0-py2.py3-none-any.whl", hash = "sha256:9659f7d87e46584a30b5780e43ac7a2143098441670ff0a49d5f9034c54a6c16", size = 469047, upload-time = "2025-07-17T16:51:58.613Z" },
-]
-
-[[package]]
 name = "distro"
 version = "1.9.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed", size = 60722, upload-time = "2023-12-24T09:54:32.31Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2", size = 20277, upload-time = "2023-12-24T09:54:30.421Z" },
+]
+
+[[package]]
+name = "eval-type-backport"
+version = "0.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/a3/cafafb4558fd638aadfe4121dc6cefb8d743368c085acb2f521df0f3d9d7/eval_type_backport-0.3.1.tar.gz", hash = "sha256:57e993f7b5b69d271e37482e62f74e76a0276c82490cf8e4f0dffeb6b332d5ed", size = 9445, upload-time = "2025-12-02T11:51:42.987Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cf/22/fdc2e30d43ff853720042fa15baa3e6122722be1a7950a98233ebb55cd71/eval_type_backport-0.3.1-py3-none-any.whl", hash = "sha256:279ab641905e9f11129f56a8a78f493518515b83402b860f6f06dd7c011fdfa8", size = 6063, upload-time = "2025-12-02T11:51:41.665Z" },
 ]
 
 [[package]]
@@ -751,15 +876,6 @@ wheels = [
 ]
 
 [[package]]
-name = "identify"
-version = "2.6.14"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/52/c4/62963f25a678f6a050fb0505a65e9e726996171e6dbe1547f79619eefb15/identify-2.6.14.tar.gz", hash = "sha256:663494103b4f717cb26921c52f8751363dc89db64364cd836a9bf1535f53cd6a", size = 99283, upload-time = "2025-09-06T19:30:52.938Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/ae/2ad30f4652712c82f1c23423d79136fbce338932ad166d70c1efb86a5998/identify-2.6.14-py2.py3-none-any.whl", hash = "sha256:11a073da82212c6646b1f39bb20d4483bfb9543bd5566fec60053c4bb309bf2e", size = 99172, upload-time = "2025-09-06T19:30:51.759Z" },
-]
-
-[[package]]
 name = "idna"
 version = "3.15"
 source = { registry = "https://pypi.org/simple" }
@@ -787,6 +903,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f2/97/ebf4da567aa6827c909642694d71c9fcf53e5b504f2d96afea02718862f3/iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7", size = 4793, upload-time = "2025-03-19T20:09:59.721Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2c/e1/e6716421ea10d38022b952c159d5161ca1193197fb744506875fbb87ea7b/iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760", size = 6050, upload-time = "2025-03-19T20:10:01.071Z" },
+]
+
+[[package]]
+name = "jmespath"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d3/59/322338183ecda247fb5d1763a6cbe46eff7222eaeebafd9fa65d4bf5cb11/jmespath-1.1.0.tar.gz", hash = "sha256:472c87d80f36026ae83c6ddd0f1d05d4e510134ed462851fd5f754c8c3cbb88d", size = 27377, upload-time = "2026-01-22T16:35:26.279Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/2f/967ba146e6d58cf6a652da73885f52fc68001525b4197effc174321d70b4/jmespath-1.1.0-py3-none-any.whl", hash = "sha256:a5663118de4908c91729bea0acadca56526eb2698e83de10cd116ae0f4e97c64", size = 20419, upload-time = "2026-01-22T16:35:24.919Z" },
 ]
 
 [[package]]
@@ -918,12 +1043,19 @@ wheels = [
 ]
 
 [[package]]
-name = "nodeenv"
-version = "1.9.1"
+name = "nodejs-wheel-binaries"
+version = "24.16.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/43/16/fc88b08840de0e0a72a2f9d8c6bae36be573e475a6326ae854bcc549fc45/nodeenv-1.9.1.tar.gz", hash = "sha256:6ec12890a2dab7946721edbfbcd91f3319c6ccc9aec47be7c7e6b7011ee6645f", size = 47437, upload-time = "2024-06-04T18:44:11.171Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a3/22/2a5beb4e21417c73233d9f65cf6f3e96e891b80d2f550a8f630ebc6b88c6/nodejs_wheel_binaries-24.16.0.tar.gz", hash = "sha256:c973cb69dc5fd16e6f6dc6e579e2c3d5534e2a1f57619dddf5ba070efa7dde37", size = 8056, upload-time = "2026-05-30T16:52:09.807Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/1d/1b658dbd2b9fa9c4c9f32accbfc0205d532c8c6194dc0f2a4c0428e7128a/nodeenv-1.9.1-py2.py3-none-any.whl", hash = "sha256:ba11c9782d29c27c70ffbdda2d7415098754709be8a7056d79a737cd901155c9", size = 22314, upload-time = "2024-06-04T18:44:08.352Z" },
+    { url = "https://files.pythonhosted.org/packages/83/d1/68b43b53cd0fa83ae6fd406705023ca988d9e0ca41c724d82e66fbeb2ef6/nodejs_wheel_binaries-24.16.0-py2.py3-none-macosx_13_0_arm64.whl", hash = "sha256:d9f8f677dcf30e37ac244f07869726abe043f01eb0f45722b1df31cc2af7093c", size = 55666374, upload-time = "2026-05-30T16:51:39.588Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/b2/40a989159599080da485de966c4c2d207e852ac7aa7864702626d96c8bf5/nodejs_wheel_binaries-24.16.0-py2.py3-none-macosx_13_0_x86_64.whl", hash = "sha256:3d0370fe7120ce9697a4f60d40480d2bd8808d9f30131458d5afc0040d4e5a51", size = 55838487, upload-time = "2026-05-30T16:51:43.383Z" },
+    { url = "https://files.pythonhosted.org/packages/d7/a7/cd42174fb5ff6faff7fa8d326a18914d8f232098ab5de055b57c16fa13ca/nodejs_wheel_binaries-24.16.0-py2.py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:85dc92bbb79c851569c5925dcc2a4c915a034efab375f99e4e7e6bbe9cca8342", size = 60179540, upload-time = "2026-05-30T16:51:47.036Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/95/c8a1f9ae140aa28df8744d984d01d4b3af7cdd6555af12127f40ceb45a7d/nodejs_wheel_binaries-24.16.0-py2.py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:2f3036292811514ba847b3708492644764f88a833ac425c5f55007014308ddfd", size = 60716262, upload-time = "2026-05-30T16:51:50.711Z" },
+    { url = "https://files.pythonhosted.org/packages/64/c9/7c35b3737f59e36d0249c265397b7bff570519b95301d6e16ea361e904ad/nodejs_wheel_binaries-24.16.0-py2.py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:db8a8a76ebd2b28ecbfc9ad464baa3707241b9e050a30e2efdf6f60c0f886502", size = 62230592, upload-time = "2026-05-30T16:51:55Z" },
+    { url = "https://files.pythonhosted.org/packages/04/96/d931255cf9d11a84d6b54d882dba7434646467d568ccf070ea3418638df3/nodejs_wheel_binaries-24.16.0-py2.py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:f1a3d8f7b4491cbbd023ba3fc4e901fcca2d9fb80d57f24ba3890de8b1dbac03", size = 62841759, upload-time = "2026-05-30T16:51:59.407Z" },
+    { url = "https://files.pythonhosted.org/packages/a2/7b/8b7a3f41bc255411be30b6d7d288aab8ffd9ea2055db8555ced3548007b9/nodejs_wheel_binaries-24.16.0-py2.py3-none-win_amd64.whl", hash = "sha256:bb136be9944f0662dcf1120f45193a6b75b13fac378971a95cc42c9f879a81aa", size = 42027734, upload-time = "2026-05-30T16:52:03.348Z" },
+    { url = "https://files.pythonhosted.org/packages/17/66/1ed71f1f529b8ca727d42c7ceb9db0bef145ce4a13dfc86fb50aa44f3be6/nodejs_wheel_binaries-24.16.0-py2.py3-none-win_arm64.whl", hash = "sha256:8308940b5edd0a50dc5267ea36ba21c9f668e83fe0d9f293937174d3a7e31c36", size = 39714528, upload-time = "2026-05-30T16:52:06.421Z" },
 ]
 
 [[package]]
@@ -1255,22 +1387,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b3/03/ed31e77f260971ed633c13815107b08edf999c7d1ec769d6313765ec89cb/posthog-6.9.3.tar.gz", hash = "sha256:7d201774ea9eba156f1de46d34313e30b2384d523900fe8e425accc92486cc34", size = 126554, upload-time = "2025-11-11T17:56:58.191Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a7/4b/e4759803793843ce2258ddef3b3a744bdf0318c77c3ac10560683a2eee60/posthog-6.9.3-py3-none-any.whl", hash = "sha256:c71e9cb7ac4ef13eb604f04c3161edd10b1d08a32499edd54437ba5eab591c58", size = 144740, upload-time = "2025-11-11T17:56:56.986Z" },
-]
-
-[[package]]
-name = "pre-commit"
-version = "4.3.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "cfgv" },
-    { name = "identify" },
-    { name = "nodeenv" },
-    { name = "pyyaml" },
-    { name = "virtualenv" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ff/29/7cf5bbc236333876e4b41f56e06857a87937ce4bf91e117a6991a2dbb02a/pre_commit-4.3.0.tar.gz", hash = "sha256:499fe450cc9d42e9d58e606262795ecb64dd05438943c62b66f6a8673da30b16", size = 193792, upload-time = "2025-08-09T18:56:14.651Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5b/a5/987a405322d78a73b66e39e4a90e4ef156fd7141bf71df987e50717c321b/pre_commit-4.3.0-py2.py3-none-any.whl", hash = "sha256:2b0747ad7e6e967169136edffee14c16e148a778a54e4f967921aa1ebf2308d8", size = 220965, upload-time = "2025-08-09T18:56:13.192Z" },
 ]
 
 [[package]]
@@ -1643,7 +1759,8 @@ dependencies = [
     { name = "certifi" },
     { name = "charset-normalizer" },
     { name = "idna" },
-    { name = "urllib3" },
+    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "urllib3", version = "2.6.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
 wheels = [
@@ -1660,7 +1777,8 @@ dependencies = [
     { name = "platformdirs" },
     { name = "requests" },
     { name = "url-normalize" },
-    { name = "urllib3" },
+    { name = "urllib3", version = "1.26.20", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "urllib3", version = "2.6.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a4/6c/deaf1a9462ce8b6a9ac0ee3603d9ba32917be8e48c8f6799770d5418c3cb/requests_cache-1.3.0.tar.gz", hash = "sha256:070e357ccef11a300ccef4294a85de1ab265833c5d9c9538b26cd7ba4085d54a", size = 97720, upload-time = "2026-02-02T23:17:33.245Z" }
 wheels = [
@@ -1708,27 +1826,59 @@ wheels = [
 
 [[package]]
 name = "ruff"
-version = "0.15.11"
+version = "0.15.15"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e4/8d/192f3d7103816158dfd5ea50d098ef2aec19194e6cbccd4b3485bdb2eb2d/ruff-0.15.11.tar.gz", hash = "sha256:f092b21708bf0e7437ce9ada249dfe688ff9a0954fc94abab05dcea7dcd29c33", size = 4637264, upload-time = "2026-04-16T18:46:26.58Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/84/6f/a76f7d96e5c962f5b69cee865e49c15c1116897c01990faa8a57edb62e7f/ruff-0.15.15.tar.gz", hash = "sha256:b8dff018130b46d8e5bf0f926ef6b60cf871d6d5ae45fc9334e09632daa741d6", size = 4706985, upload-time = "2026-05-28T14:16:57.784Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/1e/6aca3427f751295ab011828e15e9bf452200ac74484f1db4be0197b8170b/ruff-0.15.11-py3-none-linux_armv6l.whl", hash = "sha256:e927cfff503135c558eb581a0c9792264aae9507904eb27809cdcff2f2c847b7", size = 10607943, upload-time = "2026-04-16T18:46:05.967Z" },
-    { url = "https://files.pythonhosted.org/packages/e7/26/1341c262e74f36d4e84f3d6f4df0ac68cd53331a66bfc5080daa17c84c0b/ruff-0.15.11-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:7a1b5b2938d8f890b76084d4fa843604d787a912541eae85fd7e233398bbb73e", size = 10988592, upload-time = "2026-04-16T18:46:00.742Z" },
-    { url = "https://files.pythonhosted.org/packages/03/71/850b1d6ffa9564fbb6740429bad53df1094082fe515c8c1e74b6d8d05f18/ruff-0.15.11-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d4176f3d194afbdaee6e41b9ccb1a2c287dba8700047df474abfbe773825d1cb", size = 10338501, upload-time = "2026-04-16T18:46:03.723Z" },
-    { url = "https://files.pythonhosted.org/packages/f2/11/cc1284d3e298c45a817a6aadb6c3e1d70b45c9b36d8d9cce3387b495a03a/ruff-0.15.11-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3b17c886fb88203ced3afe7f14e8d5ae96e9d2f4ccc0ee66aa19f2c2675a27e4", size = 10670693, upload-time = "2026-04-16T18:46:41.941Z" },
-    { url = "https://files.pythonhosted.org/packages/ce/9e/f8288b034ab72b371513c13f9a41d9ba3effac54e24bfb467b007daee2ca/ruff-0.15.11-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:49fafa220220afe7758a487b048de4c8f9f767f37dfefad46b9dd06759d003eb", size = 10416177, upload-time = "2026-04-16T18:46:21.717Z" },
-    { url = "https://files.pythonhosted.org/packages/85/71/504d79abfd3d92532ba6bbe3d1c19fada03e494332a59e37c7c2dabae427/ruff-0.15.11-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:f2ab8427e74a00d93b8bda1307b1e60970d40f304af38bccb218e056c220120d", size = 11221886, upload-time = "2026-04-16T18:46:15.086Z" },
-    { url = "https://files.pythonhosted.org/packages/43/5a/947e6ab7a5ad603d65b474be15a4cbc6d29832db5d762cd142e4e3a74164/ruff-0.15.11-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:195072c0c8e1fc8f940652073df082e37a5d9cb43b4ab1e4d0566ab8977a13b7", size = 12075183, upload-time = "2026-04-16T18:46:07.944Z" },
-    { url = "https://files.pythonhosted.org/packages/9f/a1/0b7bb6268775fdd3a0818aee8efd8f5b4e231d24dd4d528ced2534023182/ruff-0.15.11-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:a3a0996d486af3920dec930a2e7daed4847dfc12649b537a9335585ada163e9e", size = 11516575, upload-time = "2026-04-16T18:46:31.687Z" },
-    { url = "https://files.pythonhosted.org/packages/30/c3/bb5168fc4d233cc06e95f482770d0f3c87945a0cd9f614b90ea8dc2f2833/ruff-0.15.11-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1bef2cb556d509259f1fe440bb9cd33c756222cf0a7afe90d15edf0866702431", size = 11306537, upload-time = "2026-04-16T18:46:36.988Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/92/4cfae6441f3967317946f3b788136eecf093729b94d6561f963ed810c82e/ruff-0.15.11-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:030d921a836d7d4a12cf6e8d984a88b66094ccb0e0f17ddd55067c331191bf19", size = 11296813, upload-time = "2026-04-16T18:46:24.182Z" },
-    { url = "https://files.pythonhosted.org/packages/43/26/972784c5dde8313acde8ac71ba8ac65475b85db4a2352a76c9934361f9bc/ruff-0.15.11-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:0e783b599b4577788dbbb66b9addcef87e9a8832f4ce0c19e34bf55543a2f890", size = 10633136, upload-time = "2026-04-16T18:46:39.802Z" },
-    { url = "https://files.pythonhosted.org/packages/5b/53/3985a4f185020c2f367f2e08a103032e12564829742a1b417980ce1514a0/ruff-0.15.11-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:ae90592246625ba4a34349d68ec28d4400d75182b71baa196ddb9f82db025ef5", size = 10424701, upload-time = "2026-04-16T18:46:10.381Z" },
-    { url = "https://files.pythonhosted.org/packages/d3/57/bf0dfb32241b56c83bb663a826133da4bf17f682ba8c096973065f6e6a68/ruff-0.15.11-py3-none-musllinux_1_2_i686.whl", hash = "sha256:1f111d62e3c983ed20e0ca2e800f8d77433a5b1161947df99a5c2a3fb60514f0", size = 10873887, upload-time = "2026-04-16T18:46:29.157Z" },
-    { url = "https://files.pythonhosted.org/packages/02/05/e48076b2a57dc33ee8c7a957296f97c744ca891a8ffb4ffb1aaa3b3f517d/ruff-0.15.11-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:06f483d6646f59eaffba9ae30956370d3a886625f511a3108994000480621d1c", size = 11404316, upload-time = "2026-04-16T18:46:19.462Z" },
-    { url = "https://files.pythonhosted.org/packages/88/27/0195d15fe7a897cbcba0904792c4b7c9fdd958456c3a17d2ea6093716a9a/ruff-0.15.11-py3-none-win32.whl", hash = "sha256:476a2aa56b7da0b73a3ee80b6b2f0e19cce544245479adde7baa65466664d5f3", size = 10655535, upload-time = "2026-04-16T18:46:12.47Z" },
-    { url = "https://files.pythonhosted.org/packages/3a/5e/c927b325bd4c1d3620211a4b96f47864633199feed60fa936025ab27e090/ruff-0.15.11-py3-none-win_amd64.whl", hash = "sha256:8b6756d88d7e234fb0c98c91511aae3cd519d5e3ed271cae31b20f39cb2a12a3", size = 11779692, upload-time = "2026-04-16T18:46:17.268Z" },
-    { url = "https://files.pythonhosted.org/packages/63/b6/aeadee5443e49baa2facd51131159fd6301cc4ccfc1541e4df7b021c37dd/ruff-0.15.11-py3-none-win_arm64.whl", hash = "sha256:063fed18cc1bbe0ee7393957284a6fe8b588c6a406a285af3ee3f46da2391ee4", size = 11032614, upload-time = "2026-04-16T18:46:34.487Z" },
+    { url = "https://files.pythonhosted.org/packages/fa/9d/3a45c05b8ab04b4705989de70a79008e27c8003296a0feaee9edc18dd7e9/ruff-0.15.15-py3-none-linux_armv6l.whl", hash = "sha256:cf93e5388f412e1b108b1f8b34a6e036b70fe8aff89393befad96fe48670311b", size = 10710652, upload-time = "2026-05-28T14:16:06.701Z" },
+    { url = "https://files.pythonhosted.org/packages/05/66/da974431624bf3b49f6ee1f9543c02d929ff1cba78b0d5a79c38cf21f744/ruff-0.15.15-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:ac5a646d1f6a7dadd5d50842dae2c1f9862ac887ef5d1b1375e02def791fde6e", size = 11096615, upload-time = "2026-05-28T14:16:23.313Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/09/7443452e5d290230a712103f2fdceeef7184f3ec99a2bd01c8be78aaceb5/ruff-0.15.15-py3-none-macosx_11_0_arm64.whl", hash = "sha256:77d955a431430c66f72dd94e379ad38a16daea3d25094872ac4edf9e797be530", size = 10436683, upload-time = "2026-05-28T14:16:40.974Z" },
+    { url = "https://files.pythonhosted.org/packages/53/01/d330c26a57fa4f3943a14424904027428315b700fe4d14a84bb123a649e5/ruff-0.15.15-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7614ee79c69788cf6cedd568069ade9cecc22a1ad20494efe8d0c9ebb4b622d4", size = 10769064, upload-time = "2026-05-28T14:16:28.905Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/85/cc8770f8bdff541b1da8392d1634141fe4a0e3f4ee596605959b7906c27f/ruff-0.15.15-py3-none-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:3cdb1679e06a1f6b47bc384714ae96f6e2fb65ca441eb78c43d2ca554176ce1f", size = 10511987, upload-time = "2026-05-28T14:16:43.732Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/29/8c190c1472b63013583ba391f3342036e02010544c1270455ed8e519bdf3/ruff-0.15.15-py3-none-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:2728b93d7b23a603ea2c0ac6eb73d760bd38ec9de35f35fb41e18f7a3fee7622", size = 11275100, upload-time = "2026-05-28T14:16:55.244Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/6b/7e145ce2cc8e63d6834eca03d83a0e18d121def5c69f91b4cf4011ed4879/ruff-0.15.15-py3-none-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:be582fcc0db438902c7792b08d6ddf6c9b9e21addaa10092c2c741cfb09e5a45", size = 12176903, upload-time = "2026-05-28T14:16:14.368Z" },
+    { url = "https://files.pythonhosted.org/packages/80/a3/d5974637f68e451f7fadf015cf3101d1cd7d8ba5027cffe0b9e3826ebe6b/ruff-0.15.15-py3-none-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:7aa77465b8ecaf1a27bea098d696f7fed5e1eccbd10b321b682d6de586ae5627", size = 11404550, upload-time = "2026-05-28T14:16:20.138Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/1c/e6e5e568f22be4fb05d6244234aba384c06b451252453b821e1a529263cf/ruff-0.15.15-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:48decfa11d740de4889de623be1463308346312f2409a56e24aa280c86162dc4", size = 11382027, upload-time = "2026-05-28T14:16:46.615Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/01/170921b49fcd2e8858825593f91cf7146c3e40a5c3e6df763e4bb0484dde/ruff-0.15.15-py3-none-manylinux_2_31_riscv64.whl", hash = "sha256:a5015088452ca0081387063649ec67f06d3d1d6b8b936a1f836b5e9657ecd48c", size = 11366041, upload-time = "2026-05-28T14:16:26.247Z" },
+    { url = "https://files.pythonhosted.org/packages/87/54/a7bad711d7de93254e15e06a4c375b89a03d18de45d3e5dcc86a4472fb1a/ruff-0.15.15-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:f5294aab6356c81600fcdea3a62bb1b924dfd5e91767c12318d3f68f86af57cd", size = 10741795, upload-time = "2026-05-28T14:16:17.11Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/31/38c075963668f8b41c6914ee0f6f318727fbe30ab9145cb29e6df464c5fa/ruff-0.15.15-py3-none-musllinux_1_2_armv7l.whl", hash = "sha256:db5bd4d802415cca656dc1616070b725952d6ae95eb5d4831e49fbd94a38f75f", size = 10511117, upload-time = "2026-05-28T14:16:31.767Z" },
+    { url = "https://files.pythonhosted.org/packages/9d/96/6ff689e1f7e375d1d97075eca022f74c2bab59554a432fe4d2e6f091986a/ruff-0.15.15-py3-none-musllinux_1_2_i686.whl", hash = "sha256:587a6278ed42059191c1a466e490bd7930fb50bd2e255398bc29616c895a61cb", size = 10994867, upload-time = "2026-05-28T14:16:35.149Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/c2/5dce0ab9f92a8d534fa62b9bf9caca3eddb8c1a81b616f5e195ada4f0d6e/ruff-0.15.15-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:df0c1c084f5f4be9812f61518a45c440d3c30d69ce4bf6c5270e66d38338f02a", size = 11482101, upload-time = "2026-05-28T14:16:49.598Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/c0/1003b60edd697c649faf61f1a34094b1abb38fb3d1181e3f895781250a08/ruff-0.15.15-py3-none-win32.whl", hash = "sha256:29428ea79694afbe756d45fd59b36f22b6b020dc0443cf7de0173046236964b9", size = 10716774, upload-time = "2026-05-28T14:16:52.337Z" },
+    { url = "https://files.pythonhosted.org/packages/02/a8/1269eddd6945a06c23f055ef7848886e37cf9d6a8bebb386a3115f01470c/ruff-0.15.15-py3-none-win_amd64.whl", hash = "sha256:8df0323902e15e24bc4bf246da830573d3cf3352bd0b9a164eab335d111ff4a4", size = 11868463, upload-time = "2026-05-28T14:16:11.333Z" },
+    { url = "https://files.pythonhosted.org/packages/4e/b2/920464c907b191e37469d477a1aa8bc048b8f36c4c1610dfa4ab87b39e18/ruff-0.15.15-py3-none-win_arm64.whl", hash = "sha256:3c8ceca6792f38196b8f589bc92eccd03eef286602da92e5dc05cc42ef6441b7", size = 11138498, upload-time = "2026-05-28T14:16:38.425Z" },
+]
+
+[[package]]
+name = "s3transfer"
+version = "0.16.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.10'",
+]
+dependencies = [
+    { name = "botocore", version = "1.42.97", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/46/29/af14f4ef3c11a50435308660e2cc68761c9a7742475e0585cd4396b91777/s3transfer-0.16.1.tar.gz", hash = "sha256:8e424355754b9ccb32467bdc568edf55be82692ef2002d934b1311dbb3b9e524", size = 154801, upload-time = "2026-04-22T20:36:06.475Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/19/90d7d4ed51932c022d53f1d02d564b62d10e272692a1f9b76425c1ad2a02/s3transfer-0.16.1-py3-none-any.whl", hash = "sha256:61bcd00ccb83b21a0fe7e91a553fff9729d46c83b4e0106e7c314a733891f7c2", size = 86825, upload-time = "2026-04-22T20:36:04.992Z" },
+]
+
+[[package]]
+name = "s3transfer"
+version = "0.18.0"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+]
+dependencies = [
+    { name = "botocore", version = "1.43.21", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/1f/12417f7f493fc45e1f9fd5d4a9b6c125cf8d2cf3f8ddbdfab3e76406e9d6/s3transfer-0.18.0.tar.gz", hash = "sha256:3760b8b7ec1315da54048b2d626276732bee4300d054d492d4e1d43e20d4ecbd", size = 160560, upload-time = "2026-05-28T19:39:09.124Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2b/58/a58fc997655386daa2e25784e30c288aa3e3819e401f77029ee4899fb55a/s3transfer-0.18.0-py3-none-any.whl", hash = "sha256:239c13b09e65ad0346e1be7348b8a202dcad44ac7ea7c6eb858fc881dce739b6", size = 88572, upload-time = "2026-05-28T19:39:07.999Z" },
 ]
 
 [[package]]
@@ -1979,10 +2129,11 @@ wheels = [
 
 [[package]]
 name = "tabpfn-client"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "backoff" },
+    { name = "eval-type-backport" },
     { name = "google-crc32c" },
     { name = "httpx" },
     { name = "omegaconf" },
@@ -2000,10 +2151,16 @@ dependencies = [
     { name = "xxhash" },
 ]
 
+[package.optional-dependencies]
+sagemaker = [
+    { name = "boto3", version = "1.42.97", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "boto3", version = "1.43.21", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+]
+
 [package.dev-dependencies]
 dev = [
+    { name = "basedpyright" },
     { name = "licensecheck" },
-    { name = "pre-commit" },
     { name = "pytest" },
     { name = "respx" },
     { name = "ruff" },
@@ -2012,6 +2169,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "backoff", specifier = ">=2.2.0,<=2.2.1" },
+    { name = "boto3", marker = "extra == 'sagemaker'", specifier = ">=1.34" },
+    { name = "eval-type-backport", specifier = ">=0.3.1,<=0.4.0" },
     { name = "google-crc32c", specifier = ">=1.5.0,<=1.8.0" },
     { name = "httpx", specifier = ">=0.25.0,<=0.28.1" },
     { name = "omegaconf", specifier = ">=2.1.2,<=2.3.0" },
@@ -2027,14 +2186,15 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.12.2,<=4.15.0" },
     { name = "xxhash", specifier = ">=1.1.0,<=3.6.0" },
 ]
+provides-extras = ["sagemaker"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "basedpyright", specifier = "~=1.32.1" },
     { name = "licensecheck", specifier = "==2025.1.0" },
-    { name = "pre-commit", specifier = "==4.3.0" },
     { name = "pytest", specifier = "==8.4.2" },
     { name = "respx", specifier = "==0.22.0" },
-    { name = "ruff", specifier = "==0.15.11" },
+    { name = "ruff", specifier = "==0.15.15" },
 ]
 
 [[package]]
@@ -2164,8 +2324,25 @@ wheels = [
 
 [[package]]
 name = "urllib3"
+version = "1.26.20"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.10'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e4/e8/6ff5e6bc22095cfc59b6ea711b687e2b7ed4bdb373f7eeec370a97d7392f/urllib3-1.26.20.tar.gz", hash = "sha256:40c2dc0c681e47eb8f90e7e27bf6ff7df2e677421fd46756da1161c39ca70d32", size = 307380, upload-time = "2024-08-29T15:43:11.37Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/cf/8435d5a7159e2a9c83a95896ed596f68cf798005fe107cc655b5c5c14704/urllib3-1.26.20-py2.py3-none-any.whl", hash = "sha256:0ed14ccfbf1c30a9072c7ca157e4319b70d65f623e91e7b32fadb2853431016e", size = 144225, upload-time = "2024-08-29T15:43:08.921Z" },
+]
+
+[[package]]
+name = "urllib3"
 version = "2.6.3"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.12'",
+    "python_full_version == '3.11.*'",
+    "python_full_version == '3.10.*'",
+]
 sdist = { url = "https://files.pythonhosted.org/packages/c7/24/5f1b3bdffd70275f6661c76461e25f024d5a38a46f04aaca912426a2b1d3/urllib3-2.6.3.tar.gz", hash = "sha256:1b62b6884944a57dbe321509ab94fd4d3b307075e0c2eae991ac71ee15ad38ed", size = 435556, upload-time = "2026-01-07T16:24:43.925Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/39/08/aaaad47bc4e9dc8c725e68f9d04865dbcb2052843ff09c97b08904852d84/urllib3-2.6.3-py3-none-any.whl", hash = "sha256:bf272323e553dfb2e87d9bfd225ca7b0f467b919d7bbd355436d3fd37cb0acd4", size = 131584, upload-time = "2026-01-07T16:24:42.685Z" },
@@ -2195,22 +2372,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/43/60/1d58e8a05718cb50494763115710b73846cacb651fd735d285233fd72c59/uv-0.11.15-py3-none-win32.whl", hash = "sha256:8e2da3076761086a5b76869c3f38ef0509c836046ef41ddd19485dfd7271dca9", size = 22020178, upload-time = "2026-05-18T19:58:07.64Z" },
     { url = "https://files.pythonhosted.org/packages/55/53/40fcefcb348af660488597ed3c01363df7344e60611f8883750dc596f5c6/uv-0.11.15-py3-none-win_amd64.whl", hash = "sha256:cc3915ab291a1ecaf31de05f5d8bd70d09c66fe9911a53f70d9efa62ff0dbd8a", size = 24668779, upload-time = "2026-05-18T19:57:44.894Z" },
     { url = "https://files.pythonhosted.org/packages/e5/7d/fa3a9960c95af9bbe2a629048760d0b9b4fead8ccd4f2235af747ec7cdf0/uv-0.11.15-py3-none-win_arm64.whl", hash = "sha256:4f39426a13dee24897aed60c4b98058c66f18bd983885ac5f4a54a04b24fbddf", size = 23198178, upload-time = "2026-05-18T19:57:14.68Z" },
-]
-
-[[package]]
-name = "virtualenv"
-version = "20.36.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "distlib" },
-    { name = "filelock", version = "3.19.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "filelock", version = "3.28.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "platformdirs" },
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/aa/a3/4d310fa5f00863544e1d0f4de93bddec248499ccf97d4791bc3122c9d4f3/virtualenv-20.36.1.tar.gz", hash = "sha256:8befb5c81842c641f8ee658481e42641c68b5eab3521d8e092d18320902466ba", size = 6032239, upload-time = "2026-01-09T18:21:01.296Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/2a/dc2228b2888f51192c7dc766106cd475f1b768c10caaf9727659726f7391/virtualenv-20.36.1-py3-none-any.whl", hash = "sha256:575a8d6b124ef88f6f51d56d656132389f961062a9177016a50e4f507bbcc19f", size = 6008258, upload-time = "2026-01-09T18:20:59.425Z" },
 ]
 
 [[package]]
@@ -2324,20 +2485,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2e/54/647ade08bf0db230bfea292f893923872fd20be6ac6f53b2b936ba839d75/zipp-3.23.0-py3-none-any.whl", hash = "sha256:071652d6115ed432f5ce1d34c336c0adfd6a884660d1e9712a256d3d3bd4b14e", size = 10276, upload-time = "2025-06-08T17:06:38.034Z" },
 ]
 
-
-
-================================================
-FILE: .pre-commit-config.yaml
-================================================
-repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.3.3
-  hooks:
-    # Run the linter.
-    - id: ruff
-    # Run the formatter.
-    - id: ruff-format
 
 
 ================================================
@@ -2592,87 +2739,314 @@ __all__ = [
 ================================================
 FILE: src/tabpfn_client/api_models.py
 ================================================
+# Generated code. Do not edit by hand.
+#
+# Requires the `eval-type-backport` package on Python < 3.10: pydantic uses it
+# to evaluate the `X | Y` annotations under `from __future__ import annotations`.
+#
+# Forward-compat note: enum-typed fields are widened to `EnumName | UnknownEnum`
+# (and `Literal[...] | str` for inline literals) so the SDK does not
+# reject response payloads when the server adds a new enum value. Known
+# values still deserialize to the enum member; unrecognized values flow
+# through as `UnknownEnum` (a `str` subclass) instead of raising a
+# ValidationError. Widened fields are wrapped in
+# `Annotated[..., Field(union_mode="left_to_right")]` because pydantic's
+# default smart mode would land known values in the wider branch.
+# Discriminator `const` fields are intentionally left non-forward-compatible.
+#
+# Nullified-defaults note: every field with a literal default is projected
+# as `<type> | None = None`. The server's concrete defaults are intentionally
+# dropped so an omitted (None) value lets the server apply its own. `const`
+# discriminator and `default_factory` fields keep their original shape.
+
+from __future__ import annotations
+
+from enum import Enum
+from typing import Annotated, Any, Literal, Union
 from uuid import UUID
-from typing import Any, Dict, List, Literal, Optional, Union
+
 from pydantic import BaseModel, Field
 
-# Classification output_type="preds" preserves the original label type, so
-# scalar predictions must allow non-numeric JSON scalars in addition to floats.
-# see: tabpfn/preprocessing/label_encoder.py:66
-PredictionScalar = Union[str, int, bool]
-Prediction = Union[
-    List[PredictionScalar],
-    List[float],
-    List[List[float]],
-    Dict[str, Union[List[Optional[float]], List[List[Optional[float]]]]],
-]
 
-TabPFNConfig = Optional[Dict[str, Any]]
+class UnknownEnum(str):
+    """Sentinel for enum values not known to this SDK â€” see header."""
 
-PredictParams = Optional[Dict[str, Any]]
+    @property
+    def value(self) -> str:
+        return str(self)
 
+    @classmethod
+    def __get_pydantic_core_schema__(cls, _source, _handler):
+        from pydantic_core import core_schema
 
-class TaskConfig(BaseModel):
-    task: str
-    tabpfn_config: TabPFNConfig
-    predict_params: PredictParams
+        return core_schema.no_info_after_validator_function(cls, core_schema.str_schema())
 
 
-class Metadata(BaseModel):
-    task: str
-    package_version: str
-    tabpfn_config: TabPFNConfig
+class PredictionTask(str, Enum):
+    CLASSIFICATION = "classification"
+    REGRESSION = "regression"
+
+
+class ModelLimit(BaseModel):
+    train_set_max_rows: int
+    train_set_max_cells: int
+    test_set_max_rows: int
+    max_classes: int
+    max_cols: int
+    test_set_max_rows_w_full_regression_output: int
+    test_set_max_cells: int
+
+
+class ModelVersion(str, Enum):
+    V2 = "v2"
+    V2_5 = "v2.5"
+    V2_6 = "v2.6"
+    V3 = "v3"
+
+
+class ClassifierOutputType(str, Enum):
+    PROBAS = "probas"
+    PREDS = "preds"
+
+
+class RegressorOutputType(str, Enum):
+    MEAN = "mean"
+    MEDIAN = "median"
+    MODE = "mode"
+    QUANTILES = "quantiles"
+    FULL = "full"
+    MAIN = "main"
+
+
+class ClassifierPredictParams(BaseModel):
+    output_type: (
+        Annotated[ClassifierOutputType | UnknownEnum, Field(union_mode="left_to_right")] | None
+    ) = None
+
+
+class ClassifierTabPFNConfig(BaseModel):
+    n_estimators: int | None = None
+    categorical_features_indices: list[int] | None = None
+    softmax_temperature: float | None = None
+    average_before_softmax: bool | None = None
+    random_state: int | None = None
+    inference_config: dict[str, Any] | None = Field(
+        default=None, description="Refer to tabpfn.inference_config.InferenceConfig for more details."
+    )
+    inference_precision: (
+        Annotated[Literal["autocast", "auto"] | str, Field(union_mode="left_to_right")] | None
+    ) = None
+    ignore_pretraining_limits: bool | None = None
+    model_path: str | None = None
+    balance_probabilities: bool | None = None
+
+
+class ClassifierConfig(BaseModel):
+    task: Literal["classification"] = "classification"
+    tabpfn_config: ClassifierTabPFNConfig = Field(default_factory=ClassifierTabPFNConfig)
+    predict_params: ClassifierPredictParams = Field(default_factory=ClassifierPredictParams)
+
+
+class RegressorPredictParams(BaseModel):
+    output_type: (
+        Annotated[RegressorOutputType | UnknownEnum, Field(union_mode="left_to_right")] | None
+    ) = None
+    quantiles: list[float] | None = None
+
+
+class RegressorTabPFNConfig(BaseModel):
+    n_estimators: int | None = None
+    categorical_features_indices: list[int] | None = None
+    softmax_temperature: float | None = None
+    average_before_softmax: bool | None = None
+    random_state: int | None = None
+    inference_config: dict[str, Any] | None = Field(
+        default=None, description="Refer to tabpfn.inference_config.InferenceConfig for more details."
+    )
+    inference_precision: (
+        Annotated[Literal["autocast", "auto"] | str, Field(union_mode="left_to_right")] | None
+    ) = None
+    ignore_pretraining_limits: bool | None = None
+    model_path: str | None = None
+
+
+class RegressorConfig(BaseModel):
+    task: Literal["regression"] = "regression"
+    tabpfn_config: RegressorTabPFNConfig = Field(default_factory=RegressorTabPFNConfig)
+    predict_params: RegressorPredictParams = Field(default_factory=RegressorPredictParams)
+
+
+class ClassifierMetadata(BaseModel):
     test_set_num_rows: int
     test_set_num_cols: int
+    task: Literal["classification"] = "classification"
+    package_version: str
+    tabpfn_config: ClassifierTabPFNConfig
+
+
+class RegressorMetadata(BaseModel):
+    test_set_num_rows: int
+    test_set_num_cols: int
+    task: Literal["regression"] = "regression"
+    package_version: str
+    tabpfn_config: RegressorTabPFNConfig
+
+
+class FileInfo(BaseModel):
+    format: Annotated[Literal["csv", "parquet"] | str, Field(union_mode="left_to_right")]
+    hash: str | None = Field(
+        default=None, description="The crc32c hash of the file, used to deduplicate the file."
+    )
+    size_bytes: int | None = Field(
+        default=None,
+        description="The size of the file in bytes, used to compute the optimal number of chunks when chunking is enabled.",
+    )
+    use_chunks: bool | None = Field(
+        default=None,
+        description="Whether to split the the file into chunks and upload them in parallel.",
+    )
+
+
+class FileUploadInfo(BaseModel):
+    signed_urls: list[str]
+    expires_at: float
+    required_headers: dict[str, str]
+
+
+Prediction = Union[list[Any], list[list[Any]], dict[str, Union[list[Any], list[list[Any]]]]]
+
+
+TaskConfig = Annotated[Union[ClassifierConfig, RegressorConfig], Field(discriminator="task")]
+
+
+Metadata = Annotated[Union[ClassifierMetadata, RegressorMetadata], Field(discriminator="task")]
+
+
+class TransformTrainSetRequest(BaseModel):
+    bucket: str
+    x_train_key: str
+    y_train_key: str
+    fitted_train_set_prefix: str
+    task: Annotated[PredictionTask | UnknownEnum, Field(union_mode="left_to_right")]
+    tabpfn_systems: list[
+        Annotated[Literal["preprocessing", "text", "thinking"] | str, Field(union_mode="left_to_right")]
+    ]
+    task_config: dict[str, Any] | None = None
+    ag_time_limit_s: float | None = None
+    thinking_effort_metric: str | None = None
+    max_tabprep_configs: int | None = None
+
+
+class FitRequest(BaseModel):
+    train_set_upload_id: UUID
+    task: Annotated[PredictionTask | UnknownEnum, Field(union_mode="left_to_right")]
+    tabpfn_systems: (
+        list[
+            Annotated[
+                Literal["preprocessing", "text", "thinking"] | str, Field(union_mode="left_to_right")
+            ]
+        ]
+        | None
+    ) = None
+    tabpfn_config: dict[str, Any] | None = None
+    thinking_effort: (
+        Annotated[Literal["medium", "high"] | str, Field(union_mode="left_to_right")] | None
+    ) = None
+    thinking_timeout_s: float | None = None
+    thinking_effort_metric: str | None = None
+    force_refit: bool | None = Field(
+        default=None,
+        description="Whether to force the fitting of the train set even if a fittedtrain set and transform states already exist.",
+    )
+
+
+class FitResponse(BaseModel):
+    fitted_train_set_id: UUID
+
+
+class GetModelLimitsResponse(BaseModel):
+    default_model_version: Annotated[ModelVersion | UnknownEnum, Field(union_mode="left_to_right")]
+    max_model_limit: ModelLimit
+    model_limits: dict[
+        Annotated[ModelVersion | UnknownEnum, Field(union_mode="left_to_right")], ModelLimit
+    ]
+    dataset_max_size_bytes: int
+
+
+class TransformTestSetRequest(BaseModel):
+    bucket: str
+    x_test_key: str
+    fitted_train_set_prefix: str
+    fitted_test_set_prefix: str
+    x_train_cols: int
+    output_type: (
+        Annotated[ClassifierOutputType | UnknownEnum, Field(union_mode="left_to_right")]
+        | Annotated[RegressorOutputType | UnknownEnum, Field(union_mode="left_to_right")]
+    )
+    tabpfn_systems: list[
+        Annotated[Literal["preprocessing", "text", "thinking"] | str, Field(union_mode="left_to_right")]
+    ]
+
+
+class NotFoundErrorResponse(BaseModel):
+    message: str
+    error_code: str = "NOT_FOUND"
+    trace_id: UUID | None = None
+    detail: str | None = None
+
+
+class PredictRequest(BaseModel):
+    test_set_upload_id: UUID
+    fitted_train_set_id: UUID
+    task_config: TaskConfig
+    force_refit: bool | None = Field(
+        default=None,
+        description="Whether to force the fitting of the test set even if a fittedtest set and transform states already exist.",
+    )
+
+
+class PredictResponse(BaseModel):
+    prediction: Prediction
+    metadata: Metadata
 
 
 class ErrorResponse(BaseModel):
     message: str
-    error_code: str
-    trace_id: Optional[str] = None
+    error_code: str = "GENERAL_ERROR"
+    trace_id: UUID | None = None
+    detail: str | None = None
 
 
-class FileInfo(BaseModel):
-    format: str
-    hash: Optional[str] = None
-    size_bytes: Optional[int] = None
-    use_chunks: bool = False
+class PrepareTestSetUploadRequest(BaseModel):
+    fitted_train_set_id: UUID
+    x_test_info: FileInfo
+    force_reupload: bool | None = Field(
+        default=None,
+        description="Whether to force the upload of the file even if a file with the same hash already exists.",
+    )
 
 
-class FileUploadInfo(BaseModel):
-    signed_urls: List[str] = Field(..., min_length=1)
-    expires_at: float
-    required_headers: Dict[str, str]
+class PrepareTestSetUploadResponse(BaseModel):
+    test_set_upload_id: UUID
+    x_test_info: FileUploadInfo
 
 
-# ---------------------------------------------------------------------------
-# /tabpfn/get_model_limits/
-# ---------------------------------------------------------------------------
-class ModelLimit(BaseModel):
-    max_cols: int
-    max_classes: int
-    train_set_max_rows: int
-    train_set_max_cells: int
-    test_set_max_rows: int
-    test_set_max_cells: int
-    test_set_max_rows_w_full_regression_output: int
+class DuplicateTestSetErrorResponse(BaseModel):
+    message: str
+    error_code: str = "DUPLICATE_TEST_SET_UPLOAD"
+    trace_id: UUID | None = None
+    detail: str | None = None
+    test_set_upload_id: UUID
 
 
-class GetModelLimitsResponse(BaseModel):
-    default_model_version: str
-    max_model_limit: ModelLimit
-    model_limits: dict[str, ModelLimit]
-    dataset_max_size_bytes: int
-
-
-# ---------------------------------------------------------------------------
-# /tabpfn/prepare_train_set_upload/
-# ---------------------------------------------------------------------------
 class PrepareTrainSetUploadRequest(BaseModel):
     x_train_info: FileInfo
     y_train_info: FileInfo
-    description: Optional[str] = None
-    force_reupload: bool = False
+    description: str | None = None
+    force_reupload: bool | None = Field(
+        default=None,
+        description="Whether to force the upload of the file even if a file with the same hash already exists.",
+    )
 
 
 class PrepareTrainSetUploadResponse(BaseModel):
@@ -2681,65 +3055,12 @@ class PrepareTrainSetUploadResponse(BaseModel):
     y_train_info: FileUploadInfo
 
 
-class DuplicateTrainSetErrorResponse(ErrorResponse):
+class DuplicateTrainSetErrorResponse(BaseModel):
+    message: str
+    error_code: str = "DUPLICATE_TRAIN_SET_UPLOAD"
+    trace_id: UUID | None = None
+    detail: str | None = None
     train_set_upload_id: UUID
-
-
-# ---------------------------------------------------------------------------
-# /tabpfn/fit/
-# ---------------------------------------------------------------------------
-class FitRequest(BaseModel):
-    train_set_upload_id: UUID
-    task: str
-    tabpfn_systems: List[str]
-    force_refit: bool = False
-    # Estimator-side configuration (model_path, hyperparameters). Some
-    # `tabpfn_systems` values on the server need this at fit time; the
-    # server ignores it otherwise.
-    tabpfn_config: TabPFNConfig = None
-    # User-facing thinking-effort level. None disables it.
-    thinking_effort: Optional[Literal["medium", "high"]] = None
-    # Budget for the fit (seconds). Only consulted when `thinking_effort` is set.
-    thinking_timeout_s: Optional[float] = None
-    # Optimization metric for the fit. Only consulted when `thinking_effort` is set.
-    thinking_effort_metric: Optional[str] = None
-
-
-class FitResponse(BaseModel):
-    fitted_train_set_id: UUID
-
-
-# ---------------------------------------------------------------------------
-# /tabpfn/prepare_test_set_upload/
-# ---------------------------------------------------------------------------
-class PrepareTestSetUploadRequest(BaseModel):
-    fitted_train_set_id: UUID
-    x_test_info: FileInfo
-    force_reupload: bool = False
-
-
-class PrepareTestSetUploadResponse(BaseModel):
-    test_set_upload_id: UUID
-    x_test_info: FileUploadInfo
-
-
-class DuplicateTestSetErrorResponse(ErrorResponse):
-    test_set_upload_id: UUID
-
-
-# ---------------------------------------------------------------------------
-# /tabpfn/predict/
-# ---------------------------------------------------------------------------
-class PredictRequest(BaseModel):
-    test_set_upload_id: UUID
-    fitted_train_set_id: UUID
-    task_config: TaskConfig
-    force_refit: bool = False
-
-
-class PredictResponse(BaseModel):
-    prediction: Prediction
-    metadata: Metadata
 
 
 
@@ -2749,22 +3070,23 @@ FILE: src/tabpfn_client/browser_auth.py
 #  Copyright (c) Prior Labs GmbH 2025.
 #  Licensed under the Apache License, Version 2.0
 
+from __future__ import annotations
+
 from threading import Event
 import http.server
 import socketserver
 import webbrowser
 import urllib.parse
-from typing import Optional, Tuple
 
 
 class BrowserAuthHandler:
     def __init__(self, gui_url: str):
         self.gui_url = gui_url
 
-    def try_browser_login(self) -> Tuple[bool, Optional[str]]:
+    def try_browser_login(self) -> tuple[bool, str | None]:
         """
         Attempts to perform browser-based login
-        Returns (success: bool, token: Optional[str])
+        Returns (success: bool, token: str | None)
         """
         auth_event = Event()
         received_token = None
@@ -2836,6 +3158,7 @@ FILE: src/tabpfn_client/client.py
 #  Licensed under the Apache License, Version 2.0
 
 from __future__ import annotations
+
 from uuid import UUID
 import base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -2852,7 +3175,7 @@ import time
 import traceback
 import warnings
 from pydantic import BaseModel, ValidationError
-from typing import Any, Callable, Dict, Literal, Union, cast
+from typing import Any, Callable, cast, Literal, Mapping, Union
 
 import google_crc32c
 
@@ -2860,7 +3183,7 @@ import pandas as pd
 
 import backoff
 import httpx
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 from tabpfn_client.browser_auth import BrowserAuthHandler
 from tabpfn_client.constants import (
     dedup_datasets_enabled,
@@ -2887,8 +3210,10 @@ from tabpfn_client.api_models import (
     FitResponse,
     PredictRequest,
     PredictResponse,
-    TaskConfig,
+    ClassifierConfig,
+    RegressorConfig,
     ErrorResponse,
+    PredictionTask,
 )
 
 logger = logging.getLogger(__name__)
@@ -2898,7 +3223,7 @@ logging.getLogger("httpcore").setLevel(logging.WARNING)
 logging.getLogger("httpcore.http11").setLevel(logging.WARNING)
 
 
-def _on_backoff(details: Dict[str, Any]):
+def _on_backoff(details: Mapping[str, Any]):
     """Callback function for retry attempts."""
     function_name = details["target"].__name__
     message = (
@@ -2908,7 +3233,7 @@ def _on_backoff(details: Dict[str, Any]):
     logger.warning(message)
 
 
-def _on_giveup(details: Dict[str, Any]):
+def _on_giveup(details: Mapping[str, Any]):
     """Callback function when retries are exhausted."""
     function_name: str = details["target"].__name__.title()
     message = (
@@ -2944,13 +3269,18 @@ class RetryableServerError(Exception):
 
 
 class SensitiveDataFilter(logging.Filter):
-    def filter(self, record):
-        if "password" in record.getMessage():
-            original_query = str(record.args[1])
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if (
+            "password" in record.getMessage()
+            and isinstance(args, tuple)
+            and len(args) >= 2
+        ):
+            original_query = str(args[1])
             filtered_query = re.sub(
                 r"(password|password_confirm)=[^&]*", r"\1=[FILTERED]", original_query
             )
-            record.args = (record.args[0], filtered_query, *record.args[2:])
+            record.args = (args[0], filtered_query, *args[2:])
         return True
 
 
@@ -2960,7 +3290,7 @@ httpx_logger.setLevel(logging.WARNING)
 httpx_logger.addFilter(SensitiveDataFilter())
 
 SERVER_CONFIG_FILE = Path(__file__).parent.resolve() / "server_config.yaml"
-SERVER_CONFIG = OmegaConf.load(SERVER_CONFIG_FILE)
+SERVER_CONFIG = cast(DictConfig, OmegaConf.load(SERVER_CONFIG_FILE))
 
 
 def get_client_version() -> str:
@@ -2994,6 +3324,9 @@ class NeedsRefittingError(Exception):
     pass
 
 
+ThinkingEffort = Literal["medium", "high"]
+
+
 @dataclass
 class ClientOptions:
     """
@@ -3016,7 +3349,7 @@ class ClientOptions:
 
 @dataclass(frozen=True)
 class PredictionResult:
-    y_pred: Union[np.ndarray, list[np.ndarray], dict[str, np.ndarray]]
+    y_pred: np.ndarray | list[np.ndarray] | dict[str, np.ndarray]
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -3052,7 +3385,7 @@ class ServiceClient(Singleton):
         headers={"Prior-Client-Version": get_client_version()},
         follow_redirects=True,
     )
-    _access_token = None
+    _access_token: str | None = None
     _model_limits: GetModelLimitsResponse | None = None
     _model_limits_ts: float = 0.0
 
@@ -3099,11 +3432,15 @@ class ServiceClient(Singleton):
         cls,
         X: pd.DataFrame | np.ndarray,
         y: pd.Series | np.ndarray,
-        task: Literal["classification", "regression"],
-        tabpfn_config: Union[dict, None] = None,
-        description: str | None = None,
+        task_config: ClassifierConfig | RegressorConfig,
+        paper_version: bool = False,
+        thinking_mode: bool = False,
+        thinking_effort: ThinkingEffort | None = None,
+        thinking_timeout_s: float | None = None,
+        thinking_metric: str | None = None,
         force_refit: bool = False,
         client_options: ClientOptions | None = None,
+        description: str | None = None,
     ) -> UUID:
         """
         Upload a train set to server and return the train set UID if successful.
@@ -3114,7 +3451,7 @@ class ServiceClient(Singleton):
             The training input samples.
         y : array-like of shape (n_samples,) or (n_samples, n_outputs)
             The target values.
-        task: str
+        task: PredictionTask
             Task type: "classification" or "regression"
         tabpfn_config : dict, optional
             Configuration for the fit method. Supported keys currently include
@@ -3131,13 +3468,27 @@ class ServiceClient(Singleton):
         fitted_train_set_id: UUID
             The unique ID of the fitted train set in the server.
         """
-        if task not in {"classification", "regression"}:
-            raise ValueError("task must be either 'classification' or 'regression'.")
+        tabpfn_systems = ["preprocessing", "text"]
+        thinking_enabled = thinking_mode is True or thinking_effort is not None
+
+        # The client-side `thinking_*` knobs forward 1:1 to the server's
+        # top-level FitRequest fields. When the user enabled thinking via
+        # `thinking_mode=True` without picking a level, default to "medium".
+        # The user-facing kwarg is `thinking_metric`; on the wire it is sent
+        # as `thinking_effort_metric` (matching the server's FitRequest schema).
+        if thinking_enabled:
+            thinking_effort = thinking_effort or "medium"
+            # Thinking runs on top of the base systems rather than
+            # replacing them â€” keep preprocessing + text alongside it.
+            tabpfn_systems = ["preprocessing", "text", "thinking"]
+
+        if paper_version:
+            tabpfn_systems = []
 
         client_options = client_options or ClientOptions()
 
         df_X = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
-        df_y = y if isinstance(y, pd.DataFrame) else pd.DataFrame(y)
+        df_y = cast(pd.DataFrame, y if isinstance(y, pd.DataFrame) else pd.DataFrame(y))
 
         limits = cls.get_model_limits()
         if limits is not None:
@@ -3171,14 +3522,11 @@ class ServiceClient(Singleton):
         )
         res = cls.httpx_client.post(
             url="/tabpfn/prepare_train_set_upload",
-            json=prepare_req.model_dump(mode="json"),
+            json=prepare_req.model_dump(mode="json", exclude_none=True),
             headers=client_options.headers,
         )
         prepare_resp = cast(
-            Union[
-                PrepareTrainSetUploadResponse,
-                DuplicateTrainSetErrorResponse,
-            ],
+            Union[PrepareTrainSetUploadResponse, DuplicateTrainSetErrorResponse],
             cls._validate_response(
                 res,
                 "prepare_train_set_upload",
@@ -3215,63 +3563,19 @@ class ServiceClient(Singleton):
                         f.cancel()
                     raise
 
-        tabpfn_systems = ["preprocessing", "text"]
-        # Thinking is enabled when either flag is set: explicit `thinking_mode=True`,
-        # or any non-None `thinking_effort`. Setting `thinking_effort` alone is
-        # enough â€” the server-side validator on FitRequest also normalises this,
-        # but doing it here means the request body itself is consistent.
-        thinking_enabled = bool(tabpfn_config) and (
-            bool(tabpfn_config.get("thinking_mode"))
-            or tabpfn_config.get("thinking_effort") is not None
-        )
-        if tabpfn_config:
-            if tabpfn_config.get("paper_version") is True:
-                tabpfn_systems = []
-            elif thinking_enabled:
-                # Thinking runs on top of the base systems rather than
-                # replacing them â€” keep preprocessing + text alongside it.
-                tabpfn_systems = ["preprocessing", "text", "thinking"]
-
-        # The client-side `thinking_*` knobs forward 1:1 to the server's
-        # top-level FitRequest fields. When the user enabled thinking via
-        # `thinking_mode=True` without picking a level, default to "medium".
-        # The user-facing kwarg is `thinking_metric`; on the wire it is sent
-        # as `thinking_effort_metric` (matching the server's FitRequest schema).
-        if thinking_enabled and tabpfn_config:
-            thinking_effort = tabpfn_config.get("thinking_effort") or "medium"
-            thinking_timeout_s = tabpfn_config.get("thinking_timeout_s")
-            thinking_metric = tabpfn_config.get("thinking_metric")
-        else:
-            thinking_effort = None
-            thinking_timeout_s = None
-            thinking_metric = None
-
-        # Strip client-only keys that the server does not expect (mirrors
-        # the predict path's filter below).
-        server_tabpfn_config = (
-            {
-                k: v
-                for k, v in tabpfn_config.items()
-                if k
-                not in {
-                    "paper_version",
-                    "thinking_mode",
-                    "thinking_effort",
-                    "thinking_timeout_s",
-                    "thinking_metric",
-                }
-            }
-            if tabpfn_config is not None
-            else None
-        )
-
         res = cls._fit(
             req=FitRequest(
                 train_set_upload_id=prepare_resp.train_set_upload_id,
-                task=task,
+                task=PredictionTask(task_config.task),
                 tabpfn_systems=tabpfn_systems,
                 force_refit=force_refit or force_refit_enabled(),
-                tabpfn_config=server_tabpfn_config,
+                # NOTE: Since the current shape of the fit request makes it difficult to
+                # discriminate `tabpfn_config` it is set to a generic dict.
+                # TODO: Refactor FitRequest, use tabpfn-system specific config objects
+                # and discriminate based on task (see TaskConfig).
+                tabpfn_config=task_config.tabpfn_config.model_dump(
+                    mode="json", exclude_none=True
+                ),
                 thinking_effort=thinking_effort,
                 thinking_timeout_s=thinking_timeout_s,
                 thinking_effort_metric=thinking_metric,
@@ -3315,7 +3619,7 @@ class ServiceClient(Singleton):
     ) -> httpx.Response:
         return cls.httpx_client.post(
             url="/tabpfn/fit",
-            json=req.model_dump(mode="json"),
+            json=req.model_dump(mode="json", exclude_none=True),
             headers=headers,
             timeout=timeout,
         )
@@ -3325,9 +3629,7 @@ class ServiceClient(Singleton):
         cls,
         fitted_train_set_id: UUID,
         x_test: pd.DataFrame | np.ndarray,
-        task: Literal["classification", "regression"],
-        tabpfn_config: Union[dict, None] = None,
-        predict_params: Union[dict, None] = None,
+        task_config: ClassifierConfig | RegressorConfig,
         client_options: ClientOptions | None = None,
     ) -> PredictionResult:
         """
@@ -3339,7 +3641,7 @@ class ServiceClient(Singleton):
             The unique ID of the fitted train set in the server.
         x_test : array-like of shape (n_samples, n_features)
             The test input.
-        task: str, optional
+        task: PredictionTask, optional
             Task type: "classification" or "regression"
         tabpfn_config : dict, optional
             Configuration used to initialize the the TabPFN model.
@@ -3384,14 +3686,11 @@ class ServiceClient(Singleton):
         )
         res = cls.httpx_client.post(
             url="/tabpfn/prepare_test_set_upload",
-            json=prepare_req.model_dump(mode="json"),
+            json=prepare_req.model_dump(mode="json", exclude_none=True),
             headers=client_options.headers,
         )
         prepare_resp = cast(
-            Union[
-                PrepareTestSetUploadResponse,
-                DuplicateTestSetErrorResponse,
-            ],
+            Union[PrepareTestSetUploadResponse, DuplicateTestSetErrorResponse],
             cls._validate_response(
                 res,
                 "prepare_test_set_upload",
@@ -3413,30 +3712,11 @@ class ServiceClient(Singleton):
                 prepare_resp.x_test_info,
             )
 
-        # Strip client-only keys that the server does not expect.
-        if tabpfn_config is not None:
-            tabpfn_config = {
-                k: v
-                for k, v in tabpfn_config.items()
-                if k
-                not in {
-                    "paper_version",
-                    "thinking_mode",
-                    "thinking_effort",
-                    "thinking_timeout_s",
-                    "thinking_metric",
-                }
-            }
-
         res = cls._predict(
             req=PredictRequest(
                 test_set_upload_id=prepare_resp.test_set_upload_id,
                 fitted_train_set_id=fitted_train_set_id,
-                task_config=TaskConfig(
-                    task=task,
-                    tabpfn_config=tabpfn_config,
-                    predict_params=predict_params,
-                ),
+                task_config=task_config,
                 force_refit=force_refit_enabled(),
             ),
             timeout=client_options.timeout,
@@ -3457,7 +3737,7 @@ class ServiceClient(Singleton):
         if isinstance(prediction, dict):
             result = {}
             for k, v in prediction.items():
-                if isinstance(v, list):
+                if isinstance(v, list):  # type: ignore
                     dtype = float if _contains_none(v) else None
                     result[k] = np.array(v, dtype=dtype)
                 else:
@@ -3469,7 +3749,7 @@ class ServiceClient(Singleton):
 
         return PredictionResult(
             y_pred=result,
-            metadata=predict_resp.metadata.model_dump(mode="json"),
+            metadata=predict_resp.metadata.model_dump(mode="json", exclude_none=True),
         )
 
     @classmethod
@@ -3497,7 +3777,7 @@ class ServiceClient(Singleton):
     ) -> httpx.Response:
         return cls.httpx_client.post(
             url="/tabpfn/predict",
-            json=req.model_dump(mode="json"),
+            json=req.model_dump(mode="json", exclude_none=True),
             headers=headers,
             timeout=timeout,
         )
@@ -3612,7 +3892,7 @@ class ServiceClient(Singleton):
         method_name: str,
         only_version_check: bool = False,
         response_models: dict[int, type[BaseModel]] | None = None,
-        handlers: dict[int, Callable[[BaseModel], Any]] | None = None,
+        handlers: dict[int, Callable[[Any], Any]] | None = None,
     ) -> BaseModel | None:
         ServiceClient._warn_if_deprecated(response)
 
@@ -3638,9 +3918,7 @@ class ServiceClient(Singleton):
         # real message is buried inside `input_value`.
         if isinstance(load, dict) and load.get("_streamed_error"):
             message = (
-                load.get("message")
-                or load.get("detail", "")
-                or response.reason_phrase
+                load.get("message") or load.get("detail", "") or response.reason_phrase
             )
             logger.info(
                 f"Fail to call {method_name}, streamed error on status "
@@ -3779,7 +4057,7 @@ class ServiceClient(Singleton):
         return found_valid_connection
 
     @classmethod
-    def is_auth_token_outdated(cls, access_token) -> Union[bool, None]:
+    def is_auth_token_outdated(cls, access_token) -> bool | None:
         """
         Check if the provided access token is valid and return True if successful.
         """
@@ -3963,7 +4241,7 @@ class ServiceClient(Singleton):
         return access_token, message, response.status_code, session_id
 
     @classmethod
-    def get_password_policy(cls) -> dict:
+    def get_password_policy(cls) -> list[str]:
         """
         Get the password policy from the server.
 
@@ -4050,7 +4328,7 @@ class ServiceClient(Singleton):
         return response.json()
 
     @classmethod
-    def download_all_data(cls, save_dir: Path) -> Union[Path, None]:
+    def download_all_data(cls, save_dir: Path) -> Path | None:
         """
         Download all data uploaded by the user from the server.
 
@@ -4109,13 +4387,13 @@ class ServiceClient(Singleton):
         return response.json()["deleted_dataset_uids"]
 
     @classmethod
-    def delete_all_datasets(cls) -> [str]:
+    def delete_all_datasets(cls) -> list[str]:
         """
         Delete all datasets uploaded by the user from the server.
 
         Returns
         -------
-        deleted_dataset_uids : [str]
+        deleted_dataset_uids : list[str]
             The list of deleted dataset UIDs.
         """
         response = cls.httpx_client.delete(
@@ -4299,7 +4577,10 @@ def get_access_token() -> str:
     :return: The access token string used for API requests.
     """
     init()
-    return ServiceClient.get_access_token()
+    access_token = ServiceClient.get_access_token()
+    if access_token is None:
+        raise CONNECTION_ERROR
+    return access_token
 
 
 def set_access_token(access_token: str):
@@ -4345,6 +4626,7 @@ import logging
 from enum import Enum
 from functools import cache
 from pathlib import Path
+from typing import Any
 from tabpfn_client.api_models import ModelLimit
 
 logger = logging.getLogger(__name__)
@@ -4357,7 +4639,7 @@ class ModelVersion(str, Enum):
     V2_6 = "v2.6"
     V3 = "v3"
 
-    def model_limit(self, model_limits: dict[str, ModelLimit]) -> ModelLimit:
+    def model_limit(self, model_limits: dict[Any, ModelLimit]) -> ModelLimit:
         """Resolve limit of a model to the same or closest previous version limit.
 
         Raises:
@@ -4450,7 +4732,7 @@ import sys
 import time
 from uuid import uuid4
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, Literal, Optional, Union
+from typing import Any, Callable, Literal, cast, overload
 from typing_extensions import Self
 from uuid import UUID
 
@@ -4465,6 +4747,7 @@ from tabpfn_client.client import (
     ClientOptions,
     PredictionResult,
     NeedsRefittingError,
+    ThinkingEffort,
 )
 from tabpfn_client.config import Config, init
 from tabpfn_client.constants import (
@@ -4473,13 +4756,21 @@ from tabpfn_client.constants import (
     ModelVersion,
 )
 from tabpfn_client.service_wrapper import InferenceClient
+from tabpfn_client.api_models import (
+    RegressorTabPFNConfig,
+    ClassifierTabPFNConfig,
+    RegressorPredictParams,
+    ClassifierPredictParams,
+    ClassifierConfig,
+    RegressorConfig,
+)
 
 try:
-    from torch import Tensor
-
-    TORCH_AVAILABLE = True
+    from torch import Tensor  # type: ignore
 except ImportError:
-    TORCH_AVAILABLE = False
+    Tensor = None
+
+TORCH_AVAILABLE = Tensor is not None
 
 logger = logging.getLogger(__name__)
 
@@ -4494,13 +4785,12 @@ DEFAULT_V2_6_MODEL_PATH = "v2.6_default"
 DEFAULT_V3_MODEL_PATH = "v3_default"
 
 # Sentinel values for `model_path` that defer model selection to the server.
-# "auto" is the canonical name (matches the OSS tabpfn package); "default"
-# is kept as a backward-compatible alias.
-_AUTO_MODEL_PATH_ALIASES = frozenset({"auto", "default"})
+# `None` means the caller didn't pick a model; "auto" is the canonical name
+# (matches the OSS tabpfn package); "default" is a backward-compatible alias.
+_AUTO_MODEL_PATH_ALIASES: frozenset[str | None] = frozenset({None, "auto", "default"})
 
 THINKING_TIMEOUT_MAX_S = 40 * 60
 
-ThinkingEffort = Literal["medium", "high"]
 _VALID_THINKING_EFFORT_LEVELS = frozenset({"medium", "high"})
 
 
@@ -4515,7 +4805,9 @@ class TabPFNModelSelection:
         return cls._AVAILABLE_MODELS
 
     @classmethod
-    def _validate_model_name(cls, model_name: str) -> None:
+    def _validate_model_name(cls, model_name: str | None) -> None:
+        # `None` (defer to the server) is one of the auto aliases, so it counts
+        # as valid rather than an unknown model name.
         if (
             model_name not in _AUTO_MODEL_PATH_ALIASES
             and model_name not in cls._AVAILABLE_MODELS
@@ -4527,13 +4819,16 @@ class TabPFNModelSelection:
 
     @classmethod
     def _model_name_to_path(
-        cls, task: Literal["classification", "regression"], model_name: str
-    ) -> Optional[str]:
+        cls, task: Literal["classification", "regression"], model_name: str | None
+    ) -> str | None:
         cls._validate_model_name(model_name)
         model_name_task = "classifier" if task == "classification" else "regressor"
         # Let the server pick the default model when the caller defers to us.
         if model_name in _AUTO_MODEL_PATH_ALIASES:
             return None
+        # `None` is one of the auto aliases handled above, so the remainder is a
+        # concrete model name; assert it to narrow `str | None` -> `str`.
+        assert model_name is not None
         if V_3_IDENTIFIER in model_name:
             return f"tabpfn-{V_3_IDENTIFIER}-{model_name_task}-{model_name}.ckpt"
         if V_2_6_IDENTIFIER in model_name:
@@ -4551,7 +4846,7 @@ class TabPFNModelSelection:
 
         Any kwargs will override the default settings.
         """
-        options = {
+        options: dict[str, Any] = {
             "n_estimators": 8,
             "softmax_temperature": 0.9,
         }
@@ -4569,28 +4864,6 @@ class TabPFNModelSelection:
         options.update(overrides)
 
         return cls(**options)
-
-    def _get_estimator_params_with_model_path(
-        self, task: Literal["classification", "regression"]
-    ) -> Dict:
-        """Get estimator parameters with the model_path resolved to full path.
-
-        Parameters
-        ----------
-        task : {"classification", "regression"}
-            The task type to determine the correct model path.
-
-        Returns
-        -------
-        Dict
-            Dictionary of estimator parameters with model_path updated to full path.
-        """
-        estimator_param = self.get_params()
-        estimator_param["model_path"] = self._model_name_to_path(task, self.model_path)
-        # Client-side concerns â€” passed separately to InferenceClient, not part of server config.
-        estimator_param.pop("client_options", None)
-        estimator_param.pop("force_refit", None)
-        return estimator_param
 
 
 class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
@@ -4620,22 +4893,23 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
 
     def __init__(
         self,
-        model_path: str = "auto",
-        n_estimators: int = 8,
-        softmax_temperature: float = 0.9,
+        # start: tabpfn_config
+        model_path: str | None = None,
+        n_estimators: int | None = None,
+        softmax_temperature: float | None = None,
         balance_probabilities: bool = False,
-        average_before_softmax: bool = False,
-        ignore_pretraining_limits: bool = True,
-        inference_precision: Literal["autocast", "auto"] = "auto",
-        random_state: Optional[
-            Union[int, np.random.RandomState, np.random.Generator]
-        ] = 0,
-        inference_config: Optional[Dict] = None,
+        average_before_softmax: bool | None = None,
+        ignore_pretraining_limits: bool = False,
+        inference_precision: Literal["autocast", "auto"] | None = None,
+        random_state: int | None = 0,
+        inference_config: dict[str, Any] | None = None,
+        categorical_features_indices: list[int] | None = None,
+        # end: tabpfn_config
         paper_version: bool = False,
         thinking_mode: bool = False,
-        thinking_effort: Optional[ThinkingEffort] = None,
-        thinking_timeout_s: Optional[float] = None,
-        thinking_metric: Optional[str] = None,
+        thinking_effort: ThinkingEffort | None = None,
+        thinking_timeout_s: float | None = None,
+        thinking_metric: str | None = None,
         force_refit: bool = False,
         client_options: ClientOptions | None = None,
     ):
@@ -4690,6 +4964,9 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
             Additional advanced arguments for model interface. See the doc of InferenceConfig
             in the tabpfn package for more details. For the client, the inference_config and the
             preprocess transforms need to be dictionaries.
+        categorical_features_indices: list[int] or None, default=None
+            The indices of the columns that should be treated as categorical.
+            If None, the model infers which columns are categorical.
         paper_version: bool, default=False
             If True, will use the model described in the paper, instead of the newest
             version available on the API, which e.g handles text features better.
@@ -4726,8 +5003,13 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
                 "roc_auc_ovr_micro", "roc_auc_ovr_weighted".
 
             Aliases "acc", "nll", "pac_score" are also accepted.
+        force_refit: bool, default=False
+            Whether to force refit the model even if the model has already been fitted.
+        client_options : ClientOptions, default=None
+            Client specific options (e.g. timeout, headers).
         """
         self.model_path = model_path
+        self.categorical_features_indices = categorical_features_indices
         self.n_estimators = n_estimators
         self.softmax_temperature = softmax_temperature
         self.balance_probabilities = balance_probabilities
@@ -4738,19 +5020,19 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
         self.inference_config = inference_config
         self.paper_version = paper_version
         self.thinking_mode = thinking_mode
-        self.thinking_effort = thinking_effort
+        self.thinking_effort: ThinkingEffort | None = thinking_effort
         self.thinking_timeout_s = thinking_timeout_s
         self.thinking_metric = thinking_metric
         self.force_refit = force_refit
         self.client_options = client_options or ClientOptions()
 
-        self.last_trace_id = None
-        self.last_fitted_train_set_id = None
-        self.last_train_X = None
-        self.last_train_y = None
-        self.last_meta = {}
-        self.last_train_set_description = None
-        self.fit_count = 0
+        self._last_trace_id = None
+        self._last_fitted_train_set_id = None
+        self._last_train_X = None
+        self._last_train_y = None
+        self._last_meta = {}
+        self._last_train_set_description = None
+        self._fit_count = 0
 
     def fit(
         self,
@@ -4761,7 +5043,10 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
         # assert init() is called
         init()
 
-        estimator_param = self._get_estimator_params_with_model_path("classification")
+        tabpfn_config = self._get_tabpfn_config()
+
+        task_config = ClassifierConfig(tabpfn_config=tabpfn_config)
+
         validate_train_set(X, y)
         validate_thinking_mode(
             self.thinking_mode,
@@ -4770,7 +5055,7 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
             self.thinking_metric,
             self.model_path,
         )
-        X = _clean_text_features(X)
+        X_clean = _clean_text_features(X)
         self._validate_targets_and_classes(y)
 
         if Config.use_server:
@@ -4780,30 +5065,34 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
             # - In any case if we have already called .fit() on this instance.
             if (
                 self.force_refit
-                or self.fit_count > 0
+                or self._fit_count > 0
                 or "sentry-trace" not in self.client_options.headers
             ):
                 self.client_options.headers["sentry-trace"] = uuid4().hex
 
-            self.last_trace_id = self.client_options.headers["sentry-trace"]
-            self.last_train_set_description = description
+            self._last_trace_id = self.client_options.headers["sentry-trace"]
+            self._last_train_set_description = description
 
             def fit_task() -> UUID:
                 return InferenceClient.fit(
-                    X,
+                    X_clean,
                     y,
-                    task="classification",
-                    tabpfn_config=estimator_param,
-                    description=description,
+                    task_config=task_config,
+                    paper_version=self.paper_version,
+                    thinking_mode=self.thinking_mode,
+                    thinking_effort=self.thinking_effort,
+                    thinking_timeout_s=self.thinking_timeout_s,
+                    thinking_metric=self.thinking_metric,
                     force_refit=self.force_refit,
                     client_options=self.client_options,
+                    description=description,
                 )
 
-            self.last_fitted_train_set_id = run_task(fit_task, "Fitting")
-            self.last_train_X = X
-            self.last_train_y = y
+            self._last_fitted_train_set_id = cast(UUID, run_task(fit_task, "Fitting"))
+            self._last_train_X = X_clean
+            self._last_train_y = y
             self.fitted_ = True
-            self.fit_count += 1
+            self._fit_count += 1
         else:
             raise NotImplementedError(
                 "Only server mode is supported at the moment for init(use_server=False)"
@@ -4835,15 +5124,28 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
     def _predict(
         self,
         X,
-        output_type,
-    ) -> dict[str, np.ndarray]:
-        check_is_fitted(self)
-        estimator_param = self._get_estimator_params_with_model_path("classification")
-        validate_test_set(X, output_type, estimator_param["model_path"])
-        X = _clean_text_features(X)
+        output_type: Literal["probas", "preds"],
+    ) -> np.ndarray:
+        # IMPORTANT: self._get_predict_params() should be called first to make sure
+        # we capture the original user-provided values.
+        predict_params = self._get_predict_params(locals())
 
-        if "sentry-trace" not in self.client_options.headers:
-            self.client_options.headers["sentry-trace"] = self.last_trace_id
+        check_is_fitted(self)
+
+        tabpfn_config = self._get_tabpfn_config()
+        task_config = ClassifierConfig(
+            tabpfn_config=tabpfn_config,
+            predict_params=predict_params,
+        )
+
+        validate_test_set(X, output_type, tabpfn_config.model_path)
+        X_clean = _clean_text_features(X)
+
+        if (
+            "sentry-trace" not in self.client_options.headers
+            and self._last_trace_id is not None
+        ):
+            self.client_options.headers["sentry-trace"] = self._last_trace_id
 
         def predict_task() -> PredictionResult:
             last_exc = None
@@ -4855,33 +5157,52 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
                     ) from last_exc
                 try:
                     return InferenceClient.predict(
-                        X,
-                        fitted_train_set_id=self.last_fitted_train_set_id,
-                        task="classification",
-                        tabpfn_config=estimator_param,
-                        predict_params={"output_type": output_type},
+                        X_clean,
+                        fitted_train_set_id=cast(UUID, self._last_fitted_train_set_id),
+                        task_config=task_config,
                         client_options=self.client_options,
                     )
                 except NeedsRefittingError as exc:
                     last_exc = exc
                     refit_attempts += 1
-                    self.last_fitted_train_set_id = InferenceClient.fit(
-                        self.last_train_X,
-                        self.last_train_y,
-                        task="classification",
-                        tabpfn_config=estimator_param,
-                        description=self.last_train_set_description,
+                    self._last_fitted_train_set_id = InferenceClient.fit(
+                        self._last_train_X,
+                        self._last_train_y,
+                        task_config=task_config,
+                        paper_version=self.paper_version,
+                        thinking_mode=self.thinking_mode,
+                        thinking_effort=self.thinking_effort,
+                        thinking_timeout_s=self.thinking_timeout_s,
+                        thinking_metric=self.thinking_metric,
                         force_refit=True,
                         client_options=self.client_options,
+                        description=self._last_train_set_description,
                     )
 
         result = run_task(predict_task, "Predicting")
         # Unpack and store metadata
-        self.last_meta = result.metadata
+        self._last_meta = result.metadata
 
         return result.y_pred
 
-    def _validate_targets_and_classes(self, y) -> np.ndarray:
+    def _get_tabpfn_config(self) -> ClassifierTabPFNConfig:
+        init_params = self.get_params()
+        cfg = {
+            k: v
+            for k, v in init_params.items()
+            # Nones are treated as unset
+            if k in ClassifierTabPFNConfig.model_fields and v is not None
+        }
+        cfg["model_path"] = self._model_name_to_path("classification", self.model_path)
+        return ClassifierTabPFNConfig.model_validate(cfg)
+
+    def _get_predict_params(self, kwargs: dict[str, Any]) -> ClassifierPredictParams:
+        params = {
+            k: v for k, v in kwargs.items() if k in ClassifierPredictParams.model_fields
+        }
+        return ClassifierPredictParams.model_validate(params)
+
+    def _validate_targets_and_classes(self, y) -> None:
         y_ = column_or_1d(y, warn=True)
         if sum(pd.isnull(y_)) > 0:
             raise ValueError("Input y contains NaN.")
@@ -4932,21 +5253,22 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
 
     def __init__(
         self,
-        model_path: str = "auto",
-        n_estimators: int = 8,
-        softmax_temperature: float = 0.9,
-        average_before_softmax: bool = False,
+        # start: tabpfn_config
+        model_path: str | None = None,
+        n_estimators: int | None = None,
+        softmax_temperature: float | None = None,
+        average_before_softmax: bool | None = None,
         ignore_pretraining_limits: bool = False,
-        inference_precision: Literal["autocast", "auto"] = "auto",
-        random_state: Optional[
-            Union[int, np.random.RandomState, np.random.Generator]
-        ] = 0,
-        inference_config: Optional[Dict] = None,
+        inference_precision: Literal["autocast", "auto"] | None = None,
+        random_state: int | None = 0,
+        inference_config: dict[str, Any] | None = None,
+        categorical_features_indices: list[int] | None = None,
+        # end: tabpfn_config
         paper_version: bool = False,
         thinking_mode: bool = False,
-        thinking_effort: Optional[ThinkingEffort] = None,
-        thinking_timeout_s: Optional[float] = None,
-        thinking_metric: Optional[str] = None,
+        thinking_effort: ThinkingEffort | None = None,
+        thinking_timeout_s: float | None = None,
+        thinking_metric: str | None = None,
         force_refit: bool = False,
         client_options: ClientOptions | None = None,
     ):
@@ -4993,6 +5315,9 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
             Additional advanced arguments for model interface. See the doc of InferenceConfig
             in the tabpfn package for more details. For the client, the inference_config and the
             preprocess transforms need to be dictionaries.
+        categorical_features_indices: list[int] or None, default=None
+            The indices of the columns that should be treated as categorical.
+            If None, the model infers which columns are categorical.
         paper_version: bool, default=False
             If True, will use the model described in the paper, instead of the newest
             version available on the API, which e.g handles text features better.
@@ -5027,6 +5352,7 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
             Client specific options (e.g. timeout, headers).
         """
         self.model_path = model_path
+        self.categorical_features_indices = categorical_features_indices
         self.n_estimators = n_estimators
         self.softmax_temperature = softmax_temperature
         self.average_before_softmax = average_before_softmax
@@ -5036,19 +5362,19 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
         self.inference_config = inference_config
         self.paper_version = paper_version
         self.thinking_mode = thinking_mode
-        self.thinking_effort = thinking_effort
+        self.thinking_effort: ThinkingEffort | None = thinking_effort
         self.thinking_timeout_s = thinking_timeout_s
         self.thinking_metric = thinking_metric
         self.force_refit = force_refit
         self.client_options = client_options or ClientOptions()
 
-        self.last_trace_id = None
-        self.last_fitted_train_set_id = None
-        self.last_train_X = None
-        self.last_train_y = None
-        self.last_meta = {}
-        self.last_train_set_description = None
-        self.fit_count = 0
+        self._last_trace_id = None
+        self._last_fitted_train_set_id = None
+        self._last_train_X = None
+        self._last_train_y = None
+        self._last_meta = {}
+        self._last_train_set_description = None
+        self._fit_count = 0
 
     def fit(
         self,
@@ -5059,7 +5385,10 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
         # assert init() is called
         init()
 
-        estimator_param = self._get_estimator_params_with_model_path("regression")
+        tabpfn_config = self._get_tabpfn_config()
+
+        task_config = RegressorConfig(tabpfn_config=tabpfn_config)
+
         validate_train_set(X, y)
         validate_thinking_mode(
             self.thinking_mode,
@@ -5069,7 +5398,7 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
             self.model_path,
         )
         self._validate_targets(y)
-        X = _clean_text_features(X)
+        X_clean = _clean_text_features(X)
 
         if Config.use_server:
             # Create a new sentry trace at every fit, provided that:
@@ -5078,31 +5407,35 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
             # - In any case if we have already called .fit() on this instance.
             if (
                 self.force_refit
-                or self.fit_count > 0
+                or self._fit_count > 0
                 or "sentry-trace" not in self.client_options.headers
             ):
                 self.client_options.headers["sentry-trace"] = uuid4().hex
 
-            self.last_trace_id = self.client_options.headers["sentry-trace"]
+            self._last_trace_id = self.client_options.headers["sentry-trace"]
 
-            self.last_train_set_description = description
+            self._last_train_set_description = description
 
             def fit_task() -> UUID:
                 return InferenceClient.fit(
-                    X,
+                    X_clean,
                     y,
-                    task="regression",
-                    tabpfn_config=estimator_param,
-                    description=description,
+                    task_config=task_config,
+                    paper_version=self.paper_version,
+                    thinking_mode=self.thinking_mode,
+                    thinking_effort=self.thinking_effort,
+                    thinking_timeout_s=self.thinking_timeout_s,
+                    thinking_metric=self.thinking_metric,
                     force_refit=self.force_refit,
                     client_options=self.client_options,
+                    description=description,
                 )
 
-            self.last_fitted_train_set_id = run_task(fit_task, "Fitting")
-            self.last_train_X = X
-            self.last_train_y = y
+            self._last_fitted_train_set_id = cast(UUID, run_task(fit_task, "Fitting"))
+            self._last_train_X = X_clean
+            self._last_train_y = y
             self.fitted_ = True
-            self.fit_count += 1
+            self._fit_count += 1
         else:
             raise NotImplementedError(
                 "Only server mode is supported at the moment for init(use_server=False)"
@@ -5116,8 +5449,8 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
         output_type: Literal[
             "mean", "median", "mode", "quantiles", "full", "main"
         ] = "mean",
-        quantiles: Optional[list[float]] = None,
-    ) -> Union[np.ndarray, list[np.ndarray], dict[str, np.ndarray]]:
+        quantiles: list[float] | None = None,
+    ) -> np.ndarray | list[np.ndarray] | dict[str, np.ndarray]:
         """Predict regression target for X.
 
         Parameters
@@ -5141,19 +5474,26 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
         array-like or dict
             The predicted values.
         """
+        # IMPORTANT: self._get_predict_params() should be called first to make sure
+        # we capture the original user-provided values.
+        predict_params = self._get_predict_params(locals())
+
         check_is_fitted(self)
-        estimator_param = self._get_estimator_params_with_model_path("regression")
-        validate_test_set(X, output_type, estimator_param["model_path"])
-        X = _clean_text_features(X)
 
-        # Add new parameters
-        predict_params = {
-            "output_type": output_type,
-            "quantiles": quantiles,
-        }
+        tabpfn_config = self._get_tabpfn_config()
+        task_config = RegressorConfig(
+            tabpfn_config=tabpfn_config,
+            predict_params=predict_params,
+        )
 
-        if "sentry-trace" not in self.client_options.headers:
-            self.client_options.headers["sentry-trace"] = self.last_trace_id
+        validate_test_set(X, output_type, tabpfn_config.model_path)
+        X_clean = _clean_text_features(X)
+
+        if (
+            "sentry-trace" not in self.client_options.headers
+            and self._last_trace_id is not None
+        ):
+            self.client_options.headers["sentry-trace"] = self._last_trace_id
 
         def predict_task() -> PredictionResult:
             last_exc = None
@@ -5165,35 +5505,37 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
                     ) from last_exc
                 try:
                     return InferenceClient.predict(
-                        X,
-                        fitted_train_set_id=self.last_fitted_train_set_id,
-                        task="regression",
-                        tabpfn_config=estimator_param,
-                        predict_params=predict_params,
+                        X_clean,
+                        fitted_train_set_id=cast(UUID, self._last_fitted_train_set_id),
+                        task_config=task_config,
                         client_options=self.client_options,
                     )
                 except NeedsRefittingError as exc:
                     last_exc = exc
                     refit_attempts += 1
-                    self.last_fitted_train_set_id = InferenceClient.fit(
-                        self.last_train_X,
-                        self.last_train_y,
-                        task="regression",
-                        tabpfn_config=estimator_param,
-                        description=self.last_train_set_description,
+                    self._last_fitted_train_set_id = InferenceClient.fit(
+                        self._last_train_X,
+                        self._last_train_y,
+                        task_config=task_config,
+                        paper_version=self.paper_version,
+                        thinking_mode=self.thinking_mode,
+                        thinking_effort=self.thinking_effort,
+                        thinking_timeout_s=self.thinking_timeout_s,
+                        thinking_metric=self.thinking_metric,
                         force_refit=True,
                         client_options=self.client_options,
+                        description=self._last_train_set_description,
                     )
 
         result = run_task(predict_task, "Predicting")
         # Unpack and store metadata
-        self.last_meta = result.metadata
+        self._last_meta = result.metadata
 
         output = result.y_pred
         if output_type == "full":
             try:
-                from tabpfn.regressor import FullSupportBarDistribution
-                import torch
+                from tabpfn.regressor import FullSupportBarDistribution  # type: ignore
+                import torch  # type: ignore
 
                 output["criterion"] = FullSupportBarDistribution(
                     borders=torch.tensor(output["borders"])
@@ -5206,26 +5548,48 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
 
         return output
 
-    def _validate_targets(self, y) -> np.ndarray:
+    def _get_tabpfn_config(self) -> RegressorTabPFNConfig:
+        init_params = self.get_params()
+        cfg = {
+            k: v
+            for k, v in init_params.items()
+            # Nones are treated as unset
+            if k in RegressorTabPFNConfig.model_fields and v is not None
+        }
+        cfg["model_path"] = self._model_name_to_path("regression", self.model_path)
+        return RegressorTabPFNConfig.model_validate(cfg)
+
+    def _get_predict_params(self, kwargs: dict[str, Any]) -> RegressorPredictParams:
+        params = {
+            k: v
+            for k, v in kwargs.items()
+            # Nones are treated as unset
+            if k in RegressorPredictParams.model_fields and v is not None
+        }
+        return RegressorPredictParams.model_validate(params)
+
+    def _validate_targets(self, y) -> None:
         y_ = column_or_1d(y, warn=True)
         if sum(pd.isnull(y_)) > 0:
             raise ValueError("Input y contains NaN.")
 
 
-def _is_thinking_supported_model_path(model_path: str) -> bool:
+def _is_thinking_supported_model_path(model_path: str | None) -> bool:
     """Thinking is server-side supported only for v3 models (or the auto sentinel,
     which lets the server pick â€” currently a v3 model)."""
     if model_path in _AUTO_MODEL_PATH_ALIASES:
         return True
+    # `None` is an auto alias handled above, so the remainder is a concrete path.
+    assert model_path is not None
     return V_3_IDENTIFIER in model_path
 
 
 def validate_thinking_mode(
     thinking_mode: bool,
-    thinking_effort: Optional[str],
-    thinking_timeout_s: Optional[float],
-    thinking_metric: Optional[str],
-    model_path: str,
+    thinking_effort: ThinkingEffort | None,
+    thinking_timeout_s: float | None,
+    thinking_metric: str | None,
+    model_path: str | None,
 ) -> None:
     if (
         thinking_effort is not None
@@ -5247,10 +5611,7 @@ def validate_thinking_mode(
             "consulted when thinking is enabled; pass `thinking_mode=True` "
             "or `thinking_effort=...` to use them."
         )
-    if (
-        thinking_timeout_s is not None
-        and thinking_timeout_s > THINKING_TIMEOUT_MAX_S
-    ):
+    if thinking_timeout_s is not None and thinking_timeout_s > THINKING_TIMEOUT_MAX_S:
         raise ValueError(
             f"thinking_timeout_s ({thinking_timeout_s}) exceeds the "
             f"maximum allowed of {THINKING_TIMEOUT_MAX_S} seconds "
@@ -5266,7 +5627,9 @@ def validate_thinking_mode(
         )
 
 
-def validate_train_set(X: np.ndarray, y: Union[np.ndarray, None] = None):
+def validate_train_set(
+    X: pd.DataFrame | np.ndarray, y: pd.Series | np.ndarray | None = None
+):
     """Check the integrity of the training data."""
 
     # check if the number of samples is consistent (ValueError)
@@ -5297,7 +5660,11 @@ def validate_train_set(X: np.ndarray, y: Union[np.ndarray, None] = None):
         )
 
 
-def validate_test_set(X: np.ndarray, output_type: str, model_path: str | None = None):
+def validate_test_set(
+    X: pd.DataFrame | np.ndarray,
+    output_type: str | None,
+    model_path: str | None = None,
+):
     """Check the integrity of the test data."""
 
     limits = ServiceClient.get_model_limits()
@@ -5333,6 +5700,10 @@ def validate_test_set(X: np.ndarray, output_type: str, model_path: str | None = 
             )
 
 
+@overload
+def _clean_text_features(X: pd.DataFrame) -> pd.DataFrame: ...
+@overload
+def _clean_text_features(X: np.ndarray) -> np.ndarray: ...
 def _clean_text_features(X):
     """
     Clean text features in the input data. This is used to avoid
@@ -5341,31 +5712,32 @@ def _clean_text_features(X):
     """
     # Convert numpy array to pandas DataFrame if necessary
     # not necessary if numpy array of numbers
-    if TORCH_AVAILABLE and isinstance(X, Tensor):
-        if X.requires_grad:
-            X = X.detach()
-        if X.is_cuda:
-            X = X.cpu()
+    data = X
+    if Tensor is not None and isinstance(data, Tensor):
+        if data.requires_grad:
+            data = data.detach()
+        if data.is_cuda:
+            data = data.cpu()
 
-        X = X.numpy()
+        data = data.numpy()
 
-    if isinstance(X, np.ndarray):
-        if np.issubdtype(X.dtype, np.number):
-            return X
+    if isinstance(data, np.ndarray):
+        if np.issubdtype(data.dtype, np.number):
+            return data
         else:
-            X_ = pd.DataFrame(X.copy())
+            df = pd.DataFrame(data.copy())
     else:
-        X_ = X.copy()
+        df = data.copy()
 
     # limit to 2500 chars and remove commas for text features
-    for col in X_.columns:
+    for col in df.columns:
         # check if we can't convert to float
         try:
-            pd.to_numeric(X_[col])
+            pd.to_numeric(df[col])
         except ValueError:
-            if X_[col].dtype == object:  # only process string/object columns
-                X_[col] = (
-                    X_[col]
+            if df[col].dtype == object:  # only process string/object columns
+                df[col] = (
+                    df[col]
                     .str.replace(",", "")
                     .str.replace(r"\s+", " ", regex=True)
                     .str.strip()
@@ -5373,9 +5745,9 @@ def _clean_text_features(X):
                 )
 
     # Convert back to numpy if input was numpy (or tensor that was converted to numpy)
-    if isinstance(X, np.ndarray):
-        return X_.to_numpy()
-    return X_
+    if isinstance(data, np.ndarray):
+        return df.to_numpy()
+    return df
 
 
 def run_task(task: Callable, message: str, with_spinner: bool = True) -> Any:
@@ -5412,6 +5784,8 @@ FILE: src/tabpfn_client/prompt_agent.py
 ================================================
 #  Copyright (c) Prior Labs GmbH 2025.
 #  Licensed under the Apache License, Version 2.0
+from __future__ import annotations
+
 import getpass
 import sys
 import textwrap
@@ -5436,7 +5810,7 @@ from tabpfn_client.ui import (
 
 def maybe_graceful_exit() -> None:
     try:
-        from IPython import get_ipython
+        from IPython import get_ipython  # type: ignore
 
         if get_ipython() is not None:
             return
@@ -5498,7 +5872,7 @@ class PromptAgent:
         console.print("  Requirements:")
         for req in password_req:
             # Parse requirement like "Length(8)" -> ("length", "8")
-            word_part, number_part = req.split("(")
+            word_part, _ = req.split("(")
             req_key = word_part.lower()
 
             # Check if this requirement is in failed tests
@@ -5530,7 +5904,7 @@ class PromptAgent:
     def prompt_and_set_token(cls) -> bool:
         """Prompt for login/registration. Returns True if successful, False if interrupted."""
         try:
-            success, message = UserAuthenticationClient.try_browser_login()
+            success, _ = UserAuthenticationClient.try_browser_login()
             if success:
                 console.print("[green]Login via browser successful![/green]")
                 return True
@@ -5686,7 +6060,7 @@ class PromptAgent:
             return True
 
         # Login
-        elif choice == "2":
+        else:
             console.print("\n[bold]Login[/bold]")
             email = console.input("Email: ").strip()
 
@@ -5873,7 +6247,7 @@ class PromptAgent:
 
     @classmethod
     def prompt_and_retry(
-        cls, prompt: str, min_length: int = 2, example: str = None
+        cls, prompt: str, min_length: int = 2, example: str | None = None
     ) -> str:
         """Prompt with validation and optional example."""
         console.print(f"\n{prompt}:")
@@ -6039,7 +6413,10 @@ class PromptAgent:
         return choice.lower()
 
     @classmethod
-    def _verify_user_email(cls, access_token: str) -> bool:
+    def _verify_user_email(cls, access_token: str | None) -> bool:
+        if access_token is None:
+            fail("No access token available for email verification.")
+            return False
         console.print("\n[bold]Email Verification[/bold]")
         console.print("Enter the verification code sent to your email.")
         console.print(
@@ -6223,12 +6600,20 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import Literal
 
 from uuid import UUID
-from tabpfn_client.client import ServiceClient, ClientOptions, PredictionResult
+from tabpfn_client.client import (
+    ServiceClient,
+    ClientOptions,
+    PredictionResult,
+    ThinkingEffort,
+)
 import tabpfn_client.constants as constants
 from tabpfn_common_utils.utils import Singleton
+from tabpfn_client.api_models import (
+    ClassifierConfig,
+    RegressorConfig,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -6250,7 +6635,7 @@ class UserAuthenticationClient(ServiceClientWrapper, Singleton):
 
     CACHED_TOKEN_FILE = constants.CACHE_DIR / "config"
 
-    def __new__(self):
+    def __new__(cls):
         raise TypeError(
             "This class should not be instantiated. Use classmethods instead."
         )
@@ -6288,7 +6673,7 @@ class UserAuthenticationClient(ServiceClientWrapper, Singleton):
         password_confirm: str,
         validation_link: str,
         additional_info: dict,
-    ) -> tuple[bool, str]:
+    ) -> tuple[bool, str, str | None]:
         is_created, message, access_token = ServiceClient.register(
             email, password, password_confirm, validation_link, additional_info
         )
@@ -6297,17 +6682,19 @@ class UserAuthenticationClient(ServiceClientWrapper, Singleton):
         return is_created, message, access_token
 
     @classmethod
-    def set_token_by_login(cls, email: str, password: str) -> tuple[bool, str]:
+    def set_token_by_login(
+        cls, email: str, password: str
+    ) -> tuple[str | None, str, int]:
         access_token, message, status_code, _ = ServiceClient.login(email, password)
 
         if access_token is None:
-            return False, message, status_code
+            return None, message, status_code
 
         cls.set_token(access_token)
         return access_token, message, status_code
 
     @classmethod
-    def try_reuse_existing_token(cls) -> tuple[bool, str or None]:
+    def try_reuse_existing_token(cls) -> tuple[bool, str | None]:
         if ServiceClient.get_access_token() is None:
             if constants.TABPFN_TOKEN:
                 access_token = constants.TABPFN_TOKEN
@@ -6326,6 +6713,8 @@ class UserAuthenticationClient(ServiceClientWrapper, Singleton):
             return False, access_token
 
         logger.debug(f"Reusing existing access token? {is_valid}")
+        if access_token is None:
+            return False, None
         cls.set_token(access_token)
 
         return True, access_token
@@ -6374,8 +6763,8 @@ class UserAuthenticationClient(ServiceClientWrapper, Singleton):
         # Allow disabling browser login via environment variables
         # - TABPFN_NO_BROWSER=1/true/yes/on
         # - TABPFN_CLIENT_NO_BROWSER=1/true/yes/on (backward-compatible alias)
-        def _truthy(val: str) -> bool:
-            return bool(val) and val.strip().lower() in {"1", "true", "yes", "on"}
+        def _truthy(val: str | None) -> bool:
+            return val is not None and val.strip().lower() in {"1", "true", "yes", "on"}
 
         if _truthy(os.environ.get("TABPFN_NO_BROWSER")) or _truthy(
             os.environ.get("TABPFN_CLIENT_NO_BROWSER")
@@ -6396,7 +6785,7 @@ class UserDataClient(ServiceClientWrapper, Singleton):
     """
 
     @classmethod
-    def get_data_summary(cls) -> {}:
+    def get_data_summary(cls) -> dict:
         try:
             summary = ServiceClient.get_data_summary()
         except RuntimeError as e:
@@ -6468,7 +6857,7 @@ class InferenceClient(ServiceClientWrapper, Singleton):
     - prediction
     """
 
-    def __new__(self):
+    def __new__(cls):
         raise TypeError(
             "This class should not be instantiated. Use classmethods instead."
         )
@@ -6478,20 +6867,28 @@ class InferenceClient(ServiceClientWrapper, Singleton):
         cls,
         X,
         y,
-        task: Literal["classification", "regression"],
-        tabpfn_config=None,
-        description: str | None = None,
+        task_config: ClassifierConfig | RegressorConfig,
+        paper_version: bool = False,
+        thinking_mode: bool = False,
+        thinking_effort: ThinkingEffort | None = None,
+        thinking_timeout_s: float | None = None,
+        thinking_metric: str | None = None,
         force_refit: bool = False,
         client_options: ClientOptions | None = None,
+        description: str | None = None,
     ) -> UUID:
         return ServiceClient.fit(
             X,
             y,
-            task=task,
-            tabpfn_config=tabpfn_config,
-            description=description,
+            task_config=task_config,
+            paper_version=paper_version,
+            thinking_mode=thinking_mode,
+            thinking_effort=thinking_effort,
+            thinking_timeout_s=thinking_timeout_s,
+            thinking_metric=thinking_metric,
             force_refit=force_refit,
             client_options=client_options,
+            description=description,
         )
 
     @classmethod
@@ -6499,17 +6896,13 @@ class InferenceClient(ServiceClientWrapper, Singleton):
         cls,
         X,
         fitted_train_set_id: UUID,
-        task: Literal["classification", "regression"],
-        tabpfn_config=None,
-        predict_params=None,
+        task_config: ClassifierConfig | RegressorConfig,
         client_options: ClientOptions | None = None,
     ) -> PredictionResult:
         return ServiceClient.predict(
             x_test=X,
             fitted_train_set_id=fitted_train_set_id,
-            task=task,
-            tabpfn_config=tabpfn_config,
-            predict_params=predict_params,
+            task_config=task_config,
             client_options=client_options,
         )
 
@@ -6526,7 +6919,7 @@ import logging
 import os
 import sys
 from contextlib import contextmanager
-from typing import Iterator, List
+from typing import Iterator
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -6538,18 +6931,6 @@ from rich.progress import (
     TextColumn,
     TimeElapsedColumn,
 )
-
-
-def _collect_suppressed_modules() -> List[object]:
-    suppressed: List[object] = []
-    for name in ("typer", "click", "rich"):
-        try:
-            module = __import__(name)
-        except ModuleNotFoundError:
-            continue
-        else:
-            suppressed.append(module)
-    return suppressed
 
 
 def _should_use_color() -> bool:
@@ -6583,7 +6964,7 @@ def setup_logging(verbosity: int = 0) -> None:
     )
 
 
-def header(title: str, subtitle: str = None) -> None:
+def header(title: str, subtitle: str | None = None) -> None:
     """Render a section header."""
 
     console.print(
@@ -6681,7 +7062,7 @@ FILE: src/tabpfn_client/sagemaker/__init__.py
 #  Licensed under the Apache License, Version 2.0
 """SageMaker BYOC client for TabPFN.
 
-    from tabpfn_client.sagemaker import TabPFNClassifier, TabPFNRegressor
+from tabpfn_client.sagemaker import TabPFNClassifier, TabPFNRegressor
 """
 
 from tabpfn_client.sagemaker.estimator import TabPFNClassifier, TabPFNRegressor
@@ -6719,11 +7100,10 @@ from sklearn.utils.validation import check_is_fitted
 
 try:
     import boto3  # type: ignore[import-untyped]
-
-    _BOTO3_AVAILABLE = True
 except ImportError:  # pragma: no cover
     boto3 = None  # type: ignore[assignment]
-    _BOTO3_AVAILABLE = False
+
+_BOTO3_AVAILABLE = boto3 is not None
 
 
 ThinkingEffort = Literal["medium", "high"]
@@ -6820,7 +7200,9 @@ class _SagemakerBase(BaseEstimator):
             "inference_precision": self.inference_precision,
             "random_state": self.random_state,
             "inference_config": self.inference_config,
-            "fit_mode": "fit_with_cache" if self._effective_use_kv_cache else "fit_preprocessors",
+            "fit_mode": "fit_with_cache"
+            if self._effective_use_kv_cache
+            else "fit_preprocessors",
         }
         if self._TASK == "classification":
             cfg["balance_probabilities"] = self.balance_probabilities
@@ -6833,7 +7215,9 @@ class _SagemakerBase(BaseEstimator):
         if not self._thinking_active:
             return {}
         block: Dict[str, Any] = {
-            "thinking_effort": self.thinking_effort if self.thinking_effort is not None else "medium",
+            "thinking_effort": self.thinking_effort
+            if self.thinking_effort is not None
+            else "medium",
         }
         if self.thinking_timeout_s is not None:
             block["thinking_timeout_s"] = self.thinking_timeout_s
@@ -6847,6 +7231,7 @@ class _SagemakerBase(BaseEstimator):
         if client is not None:
             return client
         _require_boto3()
+        assert boto3 is not None
         if self.boto_session is not None:
             client = self.boto_session.client("sagemaker-runtime")
         elif self.region_name is not None:
@@ -6861,6 +7246,7 @@ class _SagemakerBase(BaseEstimator):
         if client is not None:
             return client
         _require_boto3()
+        assert boto3 is not None
         if self.boto_session is not None:
             client = self.boto_session.client("s3")
         elif self.region_name is not None:
@@ -7044,6 +7430,8 @@ FILE: tests/__init__.py
 ================================================
 FILE: tests/mock_tabpfn_server.py
 ================================================
+from __future__ import annotations
+
 import respx
 from contextlib import AbstractContextManager
 
@@ -7055,7 +7443,7 @@ class MockTabPFNServer(AbstractContextManager):
         self.server_config = SERVER_CONFIG
         self.endpoints = self.server_config.endpoints
         self.base_url = f"{self.server_config.protocol}://{self.server_config.host}:{self.server_config.port}"
-        self.router = None
+        self.router: respx.MockRouter | None = None
 
     def __enter__(self):
         self.router = respx.mock(base_url=self.base_url, assert_all_called=True)
@@ -7063,6 +7451,7 @@ class MockTabPFNServer(AbstractContextManager):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        assert self.router is not None
         self.router.stop()
 
 
@@ -7090,7 +7479,10 @@ and try various prediction types.
 """
 
 import logging
+from typing import cast
 from unittest.mock import patch
+
+import numpy as np
 
 from sklearn.datasets import load_breast_cancer, load_diabetes
 from sklearn.model_selection import train_test_split
@@ -7109,27 +7501,30 @@ if __name__ == "__main__":
         # use_server = False
 
         X, y = load_breast_cancer(return_X_y=True)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.33, random_state=42
+        X_train, X_test, y_train, y_test = cast(
+            "tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]",
+            train_test_split(X, y, test_size=0.33, random_state=42),
         )
 
         tabpfn = TabPFNClassifier.create_default_for_version(
             ModelVersion.V2_5, n_estimators=3
         )
+        estimator = TabPFNClassifier()
         # print("checking estimator", check_estimator(tabpfn))
         tabpfn.fit(X_train[:99], y_train[:99])
         print("predicting")
         print(tabpfn.predict(X_test))
         print("predicting_proba")
         print(tabpfn.predict_proba(X_test))
-        print(f"last meta: {tabpfn.last_meta}")
+        print(f"last meta: {tabpfn._last_meta}")
 
         # can be slow if you have a lot of data
         # print(UserDataClient.get_data_summary())
 
-        X, y = load_diabetes(return_X_y=True)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.33, random_state=42
+        X_reg, y_reg = load_diabetes(return_X_y=True)
+        X_train, X_test, y_train, y_test = cast(
+            "tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]",
+            train_test_split(X_reg, y_reg, test_size=0.33, random_state=42),
         )
 
         tabpfn = TabPFNRegressor.create_default_for_version(
@@ -7146,17 +7541,18 @@ if __name__ == "__main__":
         print(
             tabpfn.predict(X_test[:30], output_type="full", quantiles=[0.1, 0.5, 0.9])
         )
-        print(f"last meta: {tabpfn.last_meta}")
+        print(f"last meta: {tabpfn._last_meta}")
 
 
 
 ================================================
 FILE: tests/quick_test_v1.py
 ================================================
+from __future__ import annotations
+
 import os
 import json
 import requests
-from typing import Optional
 
 from tabpfn_common_utils.utils import get_example_dataset
 
@@ -7164,7 +7560,7 @@ TARGET_NAME = "target"
 
 
 def call_fit(
-    train_path: str, target_name: str = TARGET_NAME, api_key: Optional[str] = None
+    train_path: str, target_name: str = TARGET_NAME, api_key: str | None = None
 ) -> str:
     """
     Call the /v1/fit endpoint to train a model.
@@ -7205,7 +7601,7 @@ def call_fit(
     return model_id
 
 
-def call_predict(test_path: str, model_id: str, api_key: Optional[str] = None) -> None:
+def call_predict(test_path: str, model_id: str, api_key: str | None = None) -> None:
     """
     Call the /v1/predict endpoint to get predictions.
 
@@ -7281,6 +7677,7 @@ Run with:
     pytest tests/quick_test_v2.py -v -k regressor
 """
 
+from typing import Any, cast
 from unittest.mock import patch
 
 import numpy as np
@@ -7298,7 +7695,7 @@ from tabpfn_client.estimator import TabPFNClassifier, TabPFNRegressor
 
 
 @pytest.fixture(autouse=True)
-def _patch_webbrowser():
+def _patch_webbrowser():  # pyright: ignore[reportUnusedFunction]  # used by pytest (autouse)
     """Prevent browser login popup during tests."""
     with patch("webbrowser.open", return_value=False):
         yield
@@ -7336,7 +7733,9 @@ def _fit_and_predict_classifier(clf, X_train, y_train, X_test):
     return preds, probas
 
 
-def _fit_and_predict_regressor(reg, X_train, y_train, X_test, **predict_kwargs):
+def _fit_and_predict_regressor(reg, X_train, y_train, X_test, **predict_kwargs) -> Any:
+    # predict()'s return type varies with output_type (ndarray / list / dict),
+    # so callers narrow it themselves; Any keeps the helper usable for all of them.
     reg.fit(X_train, y_train)
     return reg.predict(X_test, **predict_kwargs)
 
@@ -7360,7 +7759,7 @@ class TestClassifierVersions:
         assert probas.shape[1] == 2  # binary classification
         # probabilities sum to 1
         np.testing.assert_allclose(probas.sum(axis=1), 1.0, atol=1e-5)
-        assert clf.last_meta, "last_meta should be populated after predict"
+        assert clf._last_meta, "last_meta should be populated after predict"
 
 
 class TestClassifierConfig:
@@ -7406,7 +7805,7 @@ class TestClassifierConfig:
             n_estimators=3,
             average_before_softmax=True,
         )
-        preds, probas = _fit_and_predict_classifier(clf, X_train, y_train, X_test)
+        preds, _ = _fit_and_predict_classifier(clf, X_train, y_train, X_test)
         assert preds.shape == (len(X_test),)
 
     def test_predict_twice_without_refit(self, clf_data):
@@ -7433,7 +7832,7 @@ class TestClassifierInputFormats:
         clf = TabPFNClassifier.create_default_for_version(
             ModelVersion.V2_5, n_estimators=3
         )
-        preds, probas = _fit_and_predict_classifier(clf, X_train_df, y_train, X_test_df)
+        preds, _ = _fit_and_predict_classifier(clf, X_train_df, y_train, X_test_df)
         assert preds.shape == (len(X_test),)
 
     def test_small_train_set(self, clf_data):
@@ -7442,9 +7841,7 @@ class TestClassifierInputFormats:
         clf = TabPFNClassifier.create_default_for_version(
             ModelVersion.V2_5, n_estimators=3
         )
-        preds, probas = _fit_and_predict_classifier(
-            clf, X_train[:10], y_train[:10], X_test
-        )
+        preds, _ = _fit_and_predict_classifier(clf, X_train[:10], y_train[:10], X_test)
         assert preds.shape == (len(X_test),)
 
     def test_single_test_sample(self, clf_data):
@@ -7468,7 +7865,7 @@ class TestClassifierInputFormats:
         clf = TabPFNClassifier.create_default_for_version(
             ModelVersion.V2_5, n_estimators=3
         )
-        preds, probas = _fit_and_predict_classifier(clf, X_train, y_train, X_test)
+        preds, _ = _fit_and_predict_classifier(clf, X_train, y_train, X_test)
         assert preds.shape == (10,)
 
 
@@ -7486,7 +7883,7 @@ class TestRegressorVersions:
         reg = TabPFNRegressor.create_default_for_version(version, n_estimators=3)
         preds = _fit_and_predict_regressor(reg, X_train, y_train, X_test)
         assert preds.shape == (len(X_test),)
-        assert reg.last_meta, "last_meta should be populated after predict"
+        assert reg._last_meta, "last_meta should be populated after predict"
 
 
 class TestRegressorOutputTypes:
@@ -7628,7 +8025,7 @@ class TestRegressorInputFormats:
             ModelVersion.V2_5, n_estimators=3
         )
         reg.fit(X_train, y_train)
-        preds = reg.predict(X_test[:1])
+        preds = cast(np.ndarray, reg.predict(X_test[:1]))
         assert preds.shape == (1,)
 
     def test_few_features(self):
@@ -7683,6 +8080,7 @@ class TestServerConfig(unittest.TestCase):
 FILE: tests/integration/test_tabpfn_classifier.py
 ================================================
 import unittest
+from typing import cast
 
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
@@ -7697,8 +8095,9 @@ from tabpfn_client.service_wrapper import UserAuthenticationClient
 class TestTabPFNClassifier(unittest.TestCase):
     def setUp(self):
         X, y = load_breast_cancer(return_X_y=True)
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y, test_size=0.33, random_state=42
+        self.X_train, self.X_test, self.y_train, self.y_test = cast(
+            "tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]",
+            train_test_split(X, y, test_size=0.33, random_state=42),
         )
 
     def tearDown(self):
@@ -7753,7 +8152,7 @@ class TestTabPFNClassifier(unittest.TestCase):
                 "metadata": {
                     "task": "classification",
                     "package_version": "0.3.0rc1",
-                    "tabpfn_config": None,
+                    "tabpfn_config": {},
                     "test_set_num_rows": len(self.X_test),
                     "test_set_num_cols": self.X_test.shape[1],
                 },
@@ -7780,6 +8179,7 @@ import time
 import threading
 import urllib.parse
 import http.client
+import http.server
 import socketserver
 
 
@@ -8029,6 +8429,7 @@ FILE: tests/unit/test_client.py
 ================================================
 import time
 import unittest
+from typing import Any, cast
 from uuid import UUID
 from unittest.mock import Mock, patch
 
@@ -8041,6 +8442,12 @@ from tabpfn_client.client import (
     NeedsRefittingError,
     ServiceClient,
 )
+from tabpfn_client.api_models import (
+    ClassifierConfig,
+    RegressorConfig,
+    RegressorOutputType,
+    RegressorPredictParams,
+)
 from tests.mock_tabpfn_server import with_mock_server
 
 
@@ -8051,7 +8458,7 @@ def _model_limits_payload(
     max_classes=10,
     max_rows=None,
     test_max_cells=None,
-):
+) -> dict[str, Any]:
     max_rows = max_cells if max_rows is None else max_rows
     test_max_cells = max_cells if test_max_cells is None else test_max_cells
     model_limit = {
@@ -8074,8 +8481,9 @@ def _model_limits_payload(
 class TestServiceClient(unittest.TestCase):
     def setUp(self):
         X, y = load_breast_cancer(return_X_y=True)
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y, test_size=0.33, random_state=42
+        self.X_train, self.X_test, self.y_train, self.y_test = cast(
+            "tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]",
+            train_test_split(X, y, test_size=0.33, random_state=42),
         )
 
         ServiceClient.reset_authorization()
@@ -8116,7 +8524,7 @@ class TestServiceClient(unittest.TestCase):
             "metadata": {
                 "task": "classification",
                 "package_version": "0.3.0rc1",
-                "tabpfn_config": None,
+                "tabpfn_config": {},
                 "test_set_num_rows": len(self.X_test),
                 "test_set_num_cols": self.X_test.shape[1],
             },
@@ -8270,12 +8678,12 @@ class TestServiceClient(unittest.TestCase):
             fitted_train_set_id = ServiceClient.fit(
                 self.X_train,
                 self.y_train,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
             pred = ServiceClient.predict(
                 fitted_train_set_id=fitted_train_set_id,
                 x_test=self.X_test,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
 
         self.assertEqual(
@@ -8377,12 +8785,12 @@ class TestServiceClient(unittest.TestCase):
             fitted_train_set_id_1 = ServiceClient.fit(
                 self.X_train,
                 self.y_train,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
             fitted_train_set_id_2 = ServiceClient.fit(
                 self.X_train,
                 self.y_train,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
 
         self.assertEqual(fitted_train_set_id_1, fitted_train_set_id_2)
@@ -8412,12 +8820,12 @@ class TestServiceClient(unittest.TestCase):
             pred_1 = ServiceClient.predict(
                 fitted_train_set_id=fitted_train_set_id,
                 x_test=self.X_test,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
             pred_2 = ServiceClient.predict(
                 fitted_train_set_id=fitted_train_set_id,
                 x_test=self.X_test,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
 
         self.assertTrue(np.array_equal(pred_1.y_pred, pred_2.y_pred))
@@ -8433,7 +8841,7 @@ class TestServiceClient(unittest.TestCase):
             json={
                 "message": "fitted train set missing",
                 "error_code": "NOT_FOUND",
-                "trace_id": "trace-123",
+                "trace_id": "00000000-0000-0000-0000-0000000000aa",
             },
         )
 
@@ -8441,7 +8849,7 @@ class TestServiceClient(unittest.TestCase):
             ServiceClient.predict(
                 fitted_train_set_id=UUID("00000000-0000-0000-0000-000000000002"),
                 x_test=self.X_test,
-                task="classification",
+                task_config=ClassifierConfig(),
             )
 
     def test_get_model_limits_uses_cache(self):
@@ -8463,6 +8871,7 @@ class TestServiceClient(unittest.TestCase):
             first = ServiceClient.get_model_limits()
             second = ServiceClient.get_model_limits()
 
+        assert first is not None
         self.assertEqual(first.dataset_max_size_bytes, 456)
         self.assertIs(first, second)
         self.assertEqual(m.call_count, 1)
@@ -8514,7 +8923,7 @@ class TestServiceClientPredictionNormalization(unittest.TestCase):
             "metadata": {
                 "task": "regression",
                 "package_version": "0.3.0rc1",
-                "tabpfn_config": None,
+                "tabpfn_config": {},
                 "test_set_num_rows": 2,
                 "test_set_num_cols": 1,
             },
@@ -8543,22 +8952,297 @@ class TestServiceClientPredictionNormalization(unittest.TestCase):
                 pred = ServiceClient.predict(
                     fitted_train_set_id=UUID("00000000-0000-0000-0000-000000000002"),
                     x_test=np.array([[1.0], [2.0]]),
-                    task="regression",
-                    predict_params={"output_type": "full"},
+                    task_config=RegressorConfig(
+                        predict_params=RegressorPredictParams(
+                            output_type=RegressorOutputType.FULL
+                        )
+                    ),
                 )
 
-        self.assertTrue(np.issubdtype(pred.y_pred["borders"].dtype, np.floating))
-        self.assertTrue(np.issubdtype(pred.y_pred["logits"].dtype, np.floating))
+        y_pred = cast("dict[str, np.ndarray]", pred.y_pred)
+        self.assertTrue(np.issubdtype(y_pred["borders"].dtype, np.floating))
+        self.assertTrue(np.issubdtype(y_pred["logits"].dtype, np.floating))
         np.testing.assert_allclose(
-            pred.y_pred["borders"],
+            y_pred["borders"],
             np.array([0.0, np.nan, 2.0]),
             equal_nan=True,
         )
         np.testing.assert_allclose(
-            pred.y_pred["logits"],
+            y_pred["logits"],
             np.array([[1.0, np.nan], [np.nan, 4.0]]),
             equal_nan=True,
         )
+
+
+
+================================================
+FILE: tests/unit/test_estimator.py
+================================================
+from __future__ import annotations
+
+import inspect
+import sys
+import types
+import typing
+from enum import Enum
+from typing import (
+    Annotated,
+    Callable,
+    Literal,
+    Type,
+    Union,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
+from unittest.mock import patch
+from uuid import UUID
+
+import numpy as np
+import pytest
+from eval_type_backport import eval_type_backport
+from sklearn.utils.estimator_checks import check_estimator
+
+from tabpfn_client import estimator as estimator_module
+from tabpfn_client.client import PredictionResult, ServiceClient
+from tabpfn_client.config import Config
+from tabpfn_client.estimator import TabPFNClassifier, TabPFNRegressor
+from tabpfn_client.api_models import (
+    ClassifierTabPFNConfig,
+    RegressorTabPFNConfig,
+    ClassifierPredictParams,
+    RegressorPredictParams,
+    UnknownEnum,
+)
+
+# ``types.UnionType`` (the ``X | Y`` form) only exists on Python 3.10+; fall back
+# to an empty tuple so ``isinstance(..., _UNION_TYPES)`` is a no-op on 3.9.
+_UNION_TYPE = getattr(types, "UnionType", ())
+
+
+def _resolve_hints(fn: Callable) -> dict:
+    """Like ``typing.get_type_hints`` but works on Python < 3.10.
+
+    The estimators use ``from __future__ import annotations``, so their PEP 604
+    ``X | Y`` annotations are stored as strings. ``get_type_hints`` evaluates
+    them, which raises ``TypeError`` on 3.9 where ``|`` is unsupported between
+    types. In that case we resolve each annotation through ``eval-type-backport``
+    (already a runtime dependency), which rewrites ``X | Y`` into ``Union[X, Y]``.
+    """
+    try:
+        return get_type_hints(fn)
+    except TypeError:
+        globalns = getattr(sys.modules.get(fn.__module__, None), "__dict__", {})
+        return {
+            name: (
+                eval_type_backport(typing.ForwardRef(ann), globalns, None)
+                if isinstance(ann, str)
+                else ann
+            )
+            for name, ann in getattr(fn, "__annotations__", {}).items()
+        }
+
+
+def _normalize_type(tp: object) -> object:
+    """Reduce a type hint to a comparable core: unwrap ``Annotated[T, ...]`` and
+    drop ``None`` from unions, so the server's all-optional ``X | None`` fields
+    compare equal to the estimator's concrete ``X`` params."""
+    if get_origin(tp) is Annotated:
+        tp = get_args(tp)[0]
+    if get_origin(tp) is Union or isinstance(tp, _UNION_TYPE):
+        args = [a for a in get_args(tp) if a is not type(None)]
+        # Special case: a two-element ``Leading | Fallback`` union where the
+        # trailing member is only a permissive fallback (used on the server with
+        # ``union_mode="left_to_right"``) is compared against the leading member
+        # alone. This covers ``Literal[...] | str`` and ``SomeEnum | UnknownEnum``.
+        if len(args) == 2 and args[1] in (str, UnknownEnum):
+            return _normalize_type(args[0])
+        parts = tuple(_normalize_type(a) for a in args)
+        return parts[0] if len(parts) == 1 else frozenset(parts)
+    # A str-backed ``Enum`` compares equal to the ``Literal`` of its values, so
+    # the server's enum fields line up with the estimator's ``Literal[...]`` ones.
+    if isinstance(tp, type) and issubclass(tp, Enum):
+        return Literal[tuple(member.value for member in tp)]
+    return tp
+
+
+_ALLOWED_NON_NULL_DEFAULT_TABPFN_CONFIG_PARAMS = [
+    "random_state",
+    "ignore_pretraining_limits",
+    "balance_probabilities",
+]
+
+
+@pytest.mark.parametrize(
+    "estimator, config_model",
+    [
+        (TabPFNClassifier, ClassifierTabPFNConfig),
+        (TabPFNRegressor, RegressorTabPFNConfig),
+    ],
+)
+def test_client_config_includes_server_config(
+    estimator: Type[TabPFNClassifier | TabPFNRegressor],
+    config_model: Type[ClassifierTabPFNConfig | RegressorTabPFNConfig],
+):
+    init_sig = inspect.signature(estimator.__init__).parameters
+    init_params = set(init_sig) - {"self"}
+    # Resolve stringized annotations (the estimator uses `from __future__ import
+    # annotations`, so raw signature annotations are str, not types).
+    init_hints = _resolve_hints(estimator.__init__)
+
+    for param, field in config_model.model_fields.items():
+        assert param in init_params, (
+            f"Field `{param}` is absent from {estimator.__name__}.__init__()."
+        )
+        expected = _normalize_type(field.annotation)
+        actual = _normalize_type(init_hints[param])
+        assert actual == expected, (
+            f"Type of `{param}` on {estimator.__name__}.__init__() is {actual}, "
+            f"but the server schema expects {expected}."
+        )
+        if param in _ALLOWED_NON_NULL_DEFAULT_TABPFN_CONFIG_PARAMS:
+            continue
+        default = init_sig[param].default
+        assert default is inspect.Parameter.empty or default is None, (
+            f"Default of `{param}` on {estimator.__name__}.__init__() is {default!r}, "
+            f"but server-backed params must default to None."
+        )
+
+
+_ALLOWED_NON_NULL_DEFAULT_PREDICT_PARAMS = [
+    "output_type",
+]
+
+
+@pytest.mark.parametrize(
+    "predict_fn, predict_params_model",
+    [
+        (TabPFNClassifier._predict, ClassifierPredictParams),
+        (TabPFNRegressor.predict, RegressorPredictParams),
+    ],
+)
+def test_client_predict_params_include_server_predict_params(
+    predict_fn: Callable,
+    predict_params_model: Type[ClassifierPredictParams | RegressorPredictParams],
+):
+    predict_sig = inspect.signature(predict_fn).parameters
+    predict_params = set(predict_sig) - {"self"}
+    predict_hints = _resolve_hints(predict_fn)
+
+    for param, field in predict_params_model.model_fields.items():
+        assert param in predict_params, (
+            f"Field `{param}` is absent from {predict_fn.__qualname__}()."
+        )
+        expected = _normalize_type(field.annotation)
+        actual = _normalize_type(predict_hints[param])
+        assert actual == expected, (
+            f"Type of `{param}` on {predict_fn.__qualname__}() is {actual}, "
+            f"but the server schema expects {expected}."
+        )
+        if param in _ALLOWED_NON_NULL_DEFAULT_PREDICT_PARAMS:
+            continue
+        default = predict_sig[param].default
+        assert default is inspect.Parameter.empty or default is None, (
+            f"Default of `{param}` on {predict_fn.__qualname__}() is {default!r}, "
+            f"but server-backed params must default to None."
+        )
+
+
+# sklearn's `check_estimator` runs a large battery of conformance checks. The
+# ones below don't hold for TabPFN's server-backed, in-context-learning design
+# (or assume the sklearn input-validation pipeline we intentionally don't use),
+# so we mark them as expected failures rather than asserting on them.
+_EXPECTED_FAILED_CHECKS = {
+    "check_n_features_in_after_fitting": "TabPFN does not set n_features_in_.",
+    "check_n_features_in": "TabPFN does not set n_features_in_.",
+    "check_dtype_object": "Object-dtype handling differs from sklearn's pipeline.",
+    "check_estimators_empty_data_messages": "Empty-data errors are not validated client-side.",
+    "check_estimators_nan_inf": "TabPFN accepts NaN/inf inputs.",
+    "check_estimator_sparse_tag": "Sparse input is not supported with an sklearn-style message.",
+    "check_estimator_sparse_array": "Sparse input is not supported with an sklearn-style message.",
+    "check_estimator_sparse_matrix": "Sparse input is not supported with an sklearn-style message.",
+    "check_classifier_data_not_an_array": "Non-array array-likes are not coerced.",
+    "check_classifiers_train": "Non-array array-likes are not coerced.",
+    "check_parameters_default_constructible": "client_options default is materialized in __init__.",
+    "check_estimators_overwrite_params": "fit() mutates client_options.headers (e.g. sentry-trace).",
+    "check_do_not_raise_errors_in_init_or_set_params": "__init__ evaluates client_options truthiness.",
+    "check_fit1d": "1D input is not validated client-side.",
+    "check_fit2d_predict1d": "1D input is not validated client-side.",
+}
+
+
+class _FakeInferenceServer:
+    """Stand-in for the remote inference service used by ``check_estimator``.
+
+    ``check_estimator`` calls ``fit``/``predict`` many times with datasets of
+    varying size and label sets, so a static HTTP mock can't serve it. Instead we
+    mock the ``InferenceClient`` boundary directly: ``fit`` receives ``y`` (so we
+    know the classes) and ``predict`` receives ``X`` (so we know the row count),
+    which lets us return correctly-shaped, valid responses without a network call.
+    """
+
+    _DUMMY_ID = UUID("00000000-0000-0000-0000-000000000002")
+
+    def __init__(self):
+        self.classes_ = np.array([0])
+
+    def fit(self, X, y, *args, **kwargs) -> UUID:
+        self.classes_ = np.unique(np.asarray(y))
+        return self._DUMMY_ID
+
+    def predict(self, X, *, task_config, **kwargs) -> PredictionResult:
+        n_rows = np.asarray(X).shape[0]
+        output_type = task_config.predict_params.output_type
+        if output_type == "probas":
+            n_classes = len(self.classes_)
+            y_pred = np.full((n_rows, n_classes), 1.0 / n_classes)
+        else:
+            # A constant, valid label keeps predictions deterministic and within
+            # ``classes_`` (enough for the structural/consistency checks we run).
+            y_pred = np.full(n_rows, self.classes_[0])
+        return PredictionResult(y_pred=y_pred, metadata={})
+
+
+# `expected_failed_checks` was added to `check_estimator` in scikit-learn 1.6.
+# Older versions (e.g. the build pinned on Python 3.9) don't accept it and have
+# no equivalent way to express expected failures, so we skip there.
+_SUPPORTS_EXPECTED_FAILED_CHECKS = (
+    "expected_failed_checks" in inspect.signature(check_estimator).parameters
+)
+
+
+@pytest.mark.skipif(
+    not _SUPPORTS_EXPECTED_FAILED_CHECKS,
+    reason="check_estimator(expected_failed_checks=...) requires scikit-learn >= 1.6",
+)
+@pytest.mark.parametrize(
+    "estimator",
+    [TabPFNClassifier],
+)
+def test_sklearn_compatible(
+    estimator: Type[TabPFNClassifier | TabPFNRegressor],
+):
+    # Run the sklearn conformance suite fully offline: ``init`` (which would
+    # trigger interactive auth / open a browser) is neutralized and the remote
+    # inference calls are served by an in-process fake, so this is CI-safe.
+    fake = _FakeInferenceServer()
+    use_server_before = Config.use_server
+    Config.use_server = True
+    try:
+        with (
+            patch.object(estimator_module, "init", lambda *a, **k: None),
+            patch.object(estimator_module.InferenceClient, "fit", side_effect=fake.fit),
+            patch.object(
+                estimator_module.InferenceClient, "predict", side_effect=fake.predict
+            ),
+            patch.object(ServiceClient, "get_model_limits", return_value=None),
+        ):
+            check_estimator(
+                estimator(),
+                expected_failed_checks=_EXPECTED_FAILED_CHECKS,
+            )
+    finally:
+        Config.use_server = use_server_before
 
 
 
@@ -8737,7 +9421,7 @@ class TestUserAuthClient(unittest.TestCase):
             401, json={"detail": "Incorrect email or password"}
         )
         self.assertEqual(
-            (False, "Incorrect email or password", 401),
+            (None, "Incorrect email or password", 401),
             UserAuthenticationClient.set_token_by_login(
                 "dummy_email", "dummy_password"
             ),
@@ -8997,7 +9681,9 @@ FILE: tests/unit/test_tabpfn_classifier.py
 ================================================
 import time
 import unittest
+from typing import Any, cast
 from unittest.mock import patch
+from uuid import UUID
 import shutil
 import json
 
@@ -9019,6 +9705,7 @@ from tabpfn_client.client import (
     PredictionResult,
     ServiceClient,
 )
+from tabpfn_client.api_models import ClassifierTabPFNConfig
 
 
 def _model_limits_payload(
@@ -9028,7 +9715,7 @@ def _model_limits_payload(
     max_classes=10,
     max_rows=None,
     test_max_cells=None,
-):
+) -> dict[str, Any]:
     max_rows = max_cells if max_rows is None else max_rows
     test_max_cells = max_cells if test_max_cells is None else test_max_cells
     model_limit = {
@@ -9057,8 +9744,9 @@ class TestTabPFNClassifierInit(unittest.TestCase):
         ServiceClient.reset_authorization()
         ServiceClient._model_limits = None
         X, y = load_breast_cancer(return_X_y=True)
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y, test_size=0.33
+        self.X_train, self.X_test, self.y_train, self.y_test = cast(
+            "tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]",
+            train_test_split(X, y, test_size=0.33),
         )
 
     def tearDown(self):
@@ -9120,7 +9808,7 @@ class TestTabPFNClassifierInit(unittest.TestCase):
                 "metadata": {
                     "task": "classification",
                     "package_version": "0.3.0rc1",
-                    "tabpfn_config": None,
+                    "tabpfn_config": {},
                     "test_set_num_rows": len(self.X_test),
                     "test_set_num_cols": self.X_test.shape[1],
                 },
@@ -9293,7 +9981,7 @@ class TestTabPFNClassifierInit(unittest.TestCase):
                 "metadata": {
                     "task": "classification",
                     "package_version": "0.3.0rc1",
-                    "tabpfn_config": None,
+                    "tabpfn_config": {},
                     "test_set_num_rows": 5,
                     "test_set_num_cols": 5,
                 },
@@ -9459,28 +10147,17 @@ class TestTabPFNClassifierInference(unittest.TestCase):
 
     def test_only_allowed_parameters_passed_to_config(self):
         """Test that only allowed parameters are passed to the config."""
-        ALLOWED_PARAMS = {
-            "n_estimators",
-            # TODO: put it back
-            # "categorical_features_indices",
-            "softmax_temperature",
-            "average_before_softmax",
-            "ignore_pretraining_limits",
-            "inference_precision",
-            "random_state",
-            "inference_config",
-            "model_path",
-            "balance_probabilities",
+        # The server-side tabpfn_config is a typed ClassifierTabPFNConfig, so the
+        # set of allowed parameters is exactly its model fields. Client-only knobs
+        # such as paper_version and the thinking_* params are forwarded as separate
+        # top-level fit arguments and must not leak into tabpfn_config.
+        ALLOWED_PARAMS = set(ClassifierTabPFNConfig.model_fields)
+        LEAKED_PARAMS = {
             "paper_version",
             "thinking_mode",
             "thinking_effort",
             "thinking_timeout_s",
             "thinking_metric",
-        }
-        OPTIONAL_PARAMS = {
-            # These may be emitted by newer model versions, but are not required.
-            "thinking_params",
-            "thinking",
         }
 
         # Create classifier with various parameters
@@ -9494,7 +10171,9 @@ class TestTabPFNClassifierInference(unittest.TestCase):
 
         # Skip fitting
         classifier.fitted_ = True
-        classifier.last_fitted_train_set_id = "dummy_uid"
+        classifier._last_fitted_train_set_id = UUID(
+            "00000000-0000-0000-0000-000000000000"
+        )
 
         test_X = np.random.randn(10, 5)
 
@@ -9506,11 +10185,12 @@ class TestTabPFNClassifierInference(unittest.TestCase):
             classifier.predict(test_X)
 
             # Get the config that was passed to predict
-            actual_config = mock_predict.call_args[1]["tabpfn_config"]
+            task_config = mock_predict.call_args[1]["task_config"]
+            actual_config = task_config.tabpfn_config.model_dump()
 
-            # Check that only allowed parameters are present
+            # Check that exactly the allowed parameters are present
             config_params = set(actual_config.keys())
-            unexpected_params = config_params - (ALLOWED_PARAMS | OPTIONAL_PARAMS)
+            unexpected_params = config_params - ALLOWED_PARAMS
             missing_required_params = ALLOWED_PARAMS - config_params
 
             self.assertEqual(
@@ -9522,6 +10202,11 @@ class TestTabPFNClassifierInference(unittest.TestCase):
                 missing_required_params,
                 set(),
                 f"Missing required parameters in config: {missing_required_params}",
+            )
+            self.assertEqual(
+                config_params & LEAKED_PARAMS,
+                set(),
+                "Client-only params leaked into the server-side tabpfn_config",
             )
 
     def test_predict_params_output_type(self):
@@ -9537,8 +10222,8 @@ class TestTabPFNClassifierInference(unittest.TestCase):
             )
             classifier.predict(test_X)
 
-            predict_params = mock_predict.call_args[1]["predict_params"]
-            self.assertEqual(predict_params, {"output_type": "preds"})
+            task_config = mock_predict.call_args[1]["task_config"]
+            self.assertEqual(task_config.predict_params.output_type, "preds")
 
         # Test predict_proba() sets output_type to "probas"
         with patch.object(InferenceClient, "predict") as mock_predict:
@@ -9547,8 +10232,8 @@ class TestTabPFNClassifierInference(unittest.TestCase):
             )
             classifier.predict_proba(test_X)
 
-            predict_params = mock_predict.call_args[1]["predict_params"]
-            self.assertEqual(predict_params, {"output_type": "probas"})
+            task_config = mock_predict.call_args[1]["task_config"]
+            self.assertEqual(task_config.predict_params.output_type, "probas")
 
     def test_string_label_predictions(self):
         """Test that string labels in y are preserved in predictions."""
@@ -9771,7 +10456,7 @@ class TestTabPFNClassifierInference(unittest.TestCase):
 
             # Verify DataFrame wasn't modified
             pd.testing.assert_frame_equal(
-                df, df_copy, "Input DataFrame was modified during prediction"
+                df, df_copy, obj="Input DataFrame was modified during prediction"
             )
 
             # Verify predictions are returned as expected
@@ -9787,7 +10472,7 @@ class TestTabPFNClassifierInference(unittest.TestCase):
             pd.testing.assert_frame_equal(
                 df,
                 df_copy,
-                "Input DataFrame was modified during probability prediction",
+                obj="Input DataFrame was modified during probability prediction",
             )
 
             # Verify probability predictions are returned as expected
@@ -9812,7 +10497,7 @@ class TestTabPFNClassifierInference(unittest.TestCase):
             pd.testing.assert_frame_equal(
                 df_shuffled,
                 df_shuffled_copy,
-                "Shuffled DataFrame was modified during prediction",
+                obj="Shuffled DataFrame was modified during prediction",
             )
 
             # Verify predictions match regardless of column order
@@ -9980,7 +10665,8 @@ class TestTabPFNModelSelection(unittest.TestCase):
                 expected_model_path = "tabpfn-v2-classifier-gn2p4bpt.ckpt"
 
                 self.assertEqual(
-                    predict_kwargs["tabpfn_config"]["model_path"], expected_model_path
+                    predict_kwargs["task_config"].tabpfn_config.model_path,
+                    expected_model_path,
                 )
 
     @patch.object(InferenceClient, "fit", return_value="dummy_uid")
@@ -10051,7 +10737,9 @@ FILE: tests/unit/test_tabpfn_regressor.py
 ================================================
 import time
 import unittest
+from typing import Any, cast
 from unittest.mock import patch
+from uuid import UUID
 import sys
 import types
 import builtins
@@ -10074,6 +10762,7 @@ from tabpfn_client.client import (
     PredictionResult,
     ServiceClient,
 )
+from tabpfn_client.api_models import RegressorTabPFNConfig
 
 
 def _model_limits_payload(
@@ -10083,7 +10772,7 @@ def _model_limits_payload(
     max_classes=10,
     max_rows=None,
     test_max_cells=None,
-):
+) -> dict[str, Any]:
     max_rows = max_cells if max_rows is None else max_rows
     test_max_cells = max_cells if test_max_cells is None else test_max_cells
     model_limit = {
@@ -10112,8 +10801,9 @@ class TestTabPFNRegressorInit(unittest.TestCase):
         ServiceClient.reset_authorization()
         ServiceClient._model_limits = None
         X, y = load_diabetes(return_X_y=True)
-        self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            X, y, test_size=0.33
+        self.X_train, self.X_test, self.y_train, self.y_test = cast(
+            "tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]",
+            train_test_split(X, y, test_size=0.33),
         )
 
     def tearDown(self):
@@ -10175,7 +10865,7 @@ class TestTabPFNRegressorInit(unittest.TestCase):
                 "metadata": {
                     "task": "regression",
                     "package_version": "0.3.0rc1",
-                    "tabpfn_config": None,
+                    "tabpfn_config": {},
                     "test_set_num_rows": len(self.X_test),
                     "test_set_num_cols": self.X_test.shape[1],
                 },
@@ -10347,7 +11037,7 @@ class TestTabPFNRegressorInit(unittest.TestCase):
                 "metadata": {
                     "task": "regression",
                     "package_version": "0.3.0rc1",
-                    "tabpfn_config": None,
+                    "tabpfn_config": {},
                     "test_set_num_rows": 5,
                     "test_set_num_cols": 5,
                 },
@@ -10508,26 +11198,17 @@ class TestTabPFNRegressorInference(unittest.TestCase):
 
     def test_only_allowed_parameters_passed_to_config(self):
         """Test that only allowed parameters are passed to the config."""
-        ALLOWED_PARAMS = {
-            "n_estimators",
-            # TODO: put it back
-            # "categorical_features_indices",
-            "softmax_temperature",
-            "average_before_softmax",
-            "ignore_pretraining_limits",
-            "inference_precision",
-            "random_state",
-            "inference_config",
-            "model_path",
+        # The server-side tabpfn_config is a typed RegressorTabPFNConfig, so the
+        # set of allowed parameters is exactly its model fields. Client-only knobs
+        # such as paper_version and the thinking_* params are forwarded as separate
+        # top-level fit arguments and must not leak into tabpfn_config.
+        ALLOWED_PARAMS = set(RegressorTabPFNConfig.model_fields)
+        LEAKED_PARAMS = {
             "paper_version",
             "thinking_mode",
             "thinking_effort",
             "thinking_timeout_s",
             "thinking_metric",
-        }
-        OPTIONAL_PARAMS = {
-            "thinking",
-            "thinking_params",
         }
 
         # Create regressor with various parameters
@@ -10540,7 +11221,9 @@ class TestTabPFNRegressorInference(unittest.TestCase):
 
         # Skip fitting
         regressor.fitted_ = True
-        regressor.last_fitted_train_set_id = "dummy_uid"
+        regressor._last_fitted_train_set_id = UUID(
+            "00000000-0000-0000-0000-000000000000"
+        )
 
         test_X = np.random.randn(10, 5)
 
@@ -10552,11 +11235,12 @@ class TestTabPFNRegressorInference(unittest.TestCase):
             regressor.predict(test_X)
 
             # Get the config that was passed to predict
-            actual_config = mock_predict.call_args[1]["tabpfn_config"]
+            task_config = mock_predict.call_args[1]["task_config"]
+            actual_config = task_config.tabpfn_config.model_dump()
 
-            # Check that only allowed parameters are present
+            # Check that exactly the allowed parameters are present
             config_params = set(actual_config.keys())
-            unexpected_params = config_params - (ALLOWED_PARAMS | OPTIONAL_PARAMS)
+            unexpected_params = config_params - ALLOWED_PARAMS
             missing_required_params = ALLOWED_PARAMS - config_params
 
             self.assertEqual(
@@ -10568,6 +11252,11 @@ class TestTabPFNRegressorInference(unittest.TestCase):
                 missing_required_params,
                 set(),
                 f"Missing required parameters in config: {missing_required_params}",
+            )
+            self.assertEqual(
+                config_params & LEAKED_PARAMS,
+                set(),
+                "Client-only params leaked into the server-side tabpfn_config",
             )
 
     def test_predict_params_output_type(self):
@@ -10583,8 +11272,9 @@ class TestTabPFNRegressorInference(unittest.TestCase):
             )
             regressor.predict(test_X)
 
-            predict_params = mock_predict.call_args[1]["predict_params"]
-            self.assertEqual(predict_params, {"output_type": "mean", "quantiles": None})
+            predict_params = mock_predict.call_args[1]["task_config"].predict_params
+            self.assertEqual(predict_params.output_type, "mean")
+            self.assertIsNone(predict_params.quantiles)
 
         # Test predict() with quantiles
         with patch.object(InferenceClient, "predict") as mock_predict:
@@ -10594,17 +11284,18 @@ class TestTabPFNRegressorInference(unittest.TestCase):
             quantiles = [0.1, 0.5, 0.9]
             regressor.predict(test_X, output_type="quantiles", quantiles=quantiles)
 
-            predict_params = mock_predict.call_args[1]["predict_params"]
-            self.assertEqual(
-                predict_params, {"output_type": "quantiles", "quantiles": quantiles}
-            )
+            predict_params = mock_predict.call_args[1]["task_config"].predict_params
+            self.assertEqual(predict_params.output_type, "quantiles")
+            self.assertEqual(predict_params.quantiles, quantiles)
 
     def test_predict_full_adds_criterion_with_optional_dependencies(self):
         regressor = TabPFNRegressor()
         regressor.fitted_ = True
-        regressor.last_fitted_train_set_id = "dummy_uid"
-        regressor.last_train_X = np.random.randn(5, 2)
-        regressor.last_train_y = np.random.randn(5)
+        regressor._last_fitted_train_set_id = UUID(
+            "00000000-0000-0000-0000-000000000000"
+        )
+        regressor._last_train_X = np.random.randn(5, 2)
+        regressor._last_train_y = np.random.randn(5)
 
         test_X = np.random.randn(3, 2)
         dummy_output = {"borders": [0.0, 1.0], "mean": np.random.randn(3)}
@@ -10615,11 +11306,15 @@ class TestTabPFNRegressorInference(unittest.TestCase):
 
         module_tabpfn = types.ModuleType("tabpfn")
         module_regressor = types.ModuleType("tabpfn.regressor")
-        module_regressor.FullSupportBarDistribution = DummyFullSupportBarDistribution
-        module_tabpfn.regressor = module_regressor
+        setattr(
+            module_regressor,
+            "FullSupportBarDistribution",
+            DummyFullSupportBarDistribution,
+        )
+        setattr(module_tabpfn, "regressor", module_regressor)
 
         module_torch = types.ModuleType("torch")
-        module_torch.tensor = lambda borders: borders
+        setattr(module_torch, "tensor", lambda borders: borders)
 
         with patch.dict(
             sys.modules,
@@ -10631,9 +11326,12 @@ class TestTabPFNRegressorInference(unittest.TestCase):
         ):
             with patch.object(InferenceClient, "predict") as mock_predict:
                 mock_predict.return_value = PredictionResult(
-                    y_pred=dummy_output.copy(), metadata={}
+                    y_pred=cast(Any, dummy_output.copy()), metadata={}
                 )
-                output = regressor.predict(test_X, output_type="full")
+                output = cast(
+                    "dict[str, Any]",
+                    regressor.predict(test_X, output_type="full"),
+                )
 
         self.assertIn("criterion", output)
         self.assertIsInstance(output["criterion"], DummyFullSupportBarDistribution)
@@ -10642,16 +11340,18 @@ class TestTabPFNRegressorInference(unittest.TestCase):
     def test_predict_full_missing_optional_dependencies_logs_warning(self):
         regressor = TabPFNRegressor()
         regressor.fitted_ = True
-        regressor.last_fitted_train_set_id = "dummy_uid"
-        regressor.last_train_X = np.random.randn(5, 2)
-        regressor.last_train_y = np.random.randn(5)
+        regressor._last_fitted_train_set_id = UUID(
+            "00000000-0000-0000-0000-000000000000"
+        )
+        regressor._last_train_X = np.random.randn(5, 2)
+        regressor._last_train_y = np.random.randn(5)
 
         test_X = np.random.randn(3, 2)
         dummy_output = {"borders": [0.0, 1.0], "mean": np.random.randn(3)}
 
         with patch.object(InferenceClient, "predict") as mock_predict:
             mock_predict.return_value = PredictionResult(
-                y_pred=dummy_output.copy(), metadata={}
+                y_pred=cast(Any, dummy_output.copy()), metadata={}
             )
 
             original_import = builtins.__import__
@@ -10794,7 +11494,7 @@ class TestTabPFNRegressorInference(unittest.TestCase):
 
             # Verify DataFrame wasn't modified
             pd.testing.assert_frame_equal(
-                df, df_copy, "Input DataFrame was modified during prediction"
+                df, df_copy, obj="Input DataFrame was modified during prediction"
             )
 
             # Verify predictions are returned as expected
@@ -10803,7 +11503,7 @@ class TestTabPFNRegressorInference(unittest.TestCase):
             # Test that column order doesn't matter
             shuffled_columns = list(df.columns)
             np.random.shuffle(shuffled_columns)
-            df_shuffled = df[shuffled_columns]
+            df_shuffled = cast(pd.DataFrame, df[shuffled_columns])
             df_shuffled_copy = df_shuffled.copy()
 
             # Test predict with shuffled columns
@@ -10816,7 +11516,7 @@ class TestTabPFNRegressorInference(unittest.TestCase):
             pd.testing.assert_frame_equal(
                 df_shuffled,
                 df_shuffled_copy,
-                "Shuffled DataFrame was modified during prediction",
+                obj="Shuffled DataFrame was modified during prediction",
             )
 
             # Verify predictions match regardless of column order
@@ -10990,7 +11690,8 @@ class TestTabPFNModelSelection(unittest.TestCase):
                 expected_model_path = "tabpfn-v2-regressor-2noar4o2.ckpt"
 
                 self.assertEqual(
-                    predict_kwargs["tabpfn_config"]["model_path"], expected_model_path
+                    predict_kwargs["task_config"].tabpfn_config.model_path,
+                    expected_model_path,
                 )
 
     @patch.object(InferenceClient, "fit", return_value="dummy_uid")
@@ -11229,6 +11930,8 @@ Pins the rule that thinking is enabled when either `thinking_mode=True` OR
 `thinking_effort` is set, so callers can pass either or both without surprise.
 """
 
+from typing import Any
+
 import pytest
 
 from tabpfn_client.estimator import (
@@ -11238,7 +11941,7 @@ from tabpfn_client.estimator import (
 
 
 def _v(**overrides):
-    args = dict(
+    args: dict[str, Any] = dict(
         thinking_mode=False,
         thinking_effort=None,
         thinking_timeout_s=None,
@@ -11339,7 +12042,6 @@ updates:
     groups:
       dev-dependencies:
         patterns:
-          - "pre-commit"
           - "ruff"
       test-dependencies:
         patterns:
@@ -11382,35 +12084,81 @@ Breaking changes are totally fine, we just need to make sure to keep the users i
 
 
 ================================================
+FILE: .github/workflows/cache_trunk.yaml
+================================================
+# https://github.com/trunk-io/trunk-action?tab=readme-ov-file#caching
+name: cache_trunk
+
+on:
+  push:
+    branches: [main]
+    paths: [.trunk/trunk.yaml]
+
+permissions: read-all
+
+jobs:
+  cache_trunk:
+    name: Cache Trunk
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Trunk Populate Cache
+        uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3 # v1.3.1
+        with:
+          check-mode: populate_cache_only
+
+
+
+================================================
+FILE: .github/workflows/linters.yaml
+================================================
+name: linters
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linters-${{ github.head_ref }}
+  cancel-in-progress: true
+
+jobs:
+  linters:
+    name: Trunk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          version: "0.9.9"
+          cache-python: true
+      - name: Install deps
+        run: uv sync --frozen --all-groups
+      - name: Trunk check
+        uses: trunk-io/trunk-action@04ba50e7658c81db7356da96657e6e77f220bfa3 # v1.3.1
+        with:
+          arguments: --all --no-progress --show-existing
+
+
+
+================================================
 FILE: .github/workflows/pull_request.yml
 ================================================
 name: In pull request
+
 on:
   pull_request:
-    branches:
-      - main
 
 concurrency:
   group: pr-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  check_python_linting:
-    name: Ruff Linting & Formatting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/ruff-action@0ce1b0bf8b818ef400413f810f8a11cdbda0034b  # v4.0.0
-        with:
-          src: "./"
-          version: 0.3.3
-          args: "format --force-exclude"
-      - uses: astral-sh/ruff-action@0ce1b0bf8b818ef400413f810f8a11cdbda0034b  # v4.0.0
-        with:
-          src: "./"
-          version: 0.3.3
-          args: "format --check --force-exclude"
-
   test_compatibility:
     name: Test Package Compatibility
     strategy:
@@ -11433,10 +12181,10 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: ${{ matrix.python-version }}
           architecture: x64
@@ -11459,7 +12207,7 @@ jobs:
       # REFER: https://github.com/actions/setup-python#caching-packages-dependencies
       - name: Setup pip cache
         id: pip-cache
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.dependency-set }}-${{ hashFiles('pyproject.toml', 'requirements-generated.txt', 'dev-requirements-generated.txt')}}
@@ -11503,5 +12251,268 @@ jobs:
       - name: Run Tests
         run: |
           pytest
+
+
+
+================================================
+FILE: .trunk/trunk.yaml
+================================================
+# Reference: https://docs.trunk.io/reference/trunk-yaml
+version: 0.1
+cli:
+  version: 1.25.0
+
+plugins:
+  sources:
+    - id: trunk
+      ref: v1.7.3
+      uri: https://github.com/trunk-io/plugins
+
+lint:
+  enabled:
+    # Make sure versions are compatible by looking at "known_good_version"
+    # in the corresponding plugin.yaml file: https://github.com/trunk-io/plugins/blob/main/linters/
+    # Python
+    - basedpyright
+    - ruff_ # avoid conflict with official plugin
+  ignore:
+    - linters: [ruff_]
+      paths:
+        - "src/tabpfn_client/api_models.py"
+    - linters: [ALL]
+      paths:
+        - "**/*.ipynb"
+        - .trunk/scripts/**
+        - "examples/**"
+  definitions:
+    - name: ruff_
+      files: [python, python-interface, jupyter]
+      commands:
+        - name: lint
+          # As of ruff v0.6.0, ruff runs by default on jupyter notebooks
+          version: ">=0.6.0"
+          files: [python, python-interface, jupyter]
+          run: ruff check --cache-dir ${cachedir} --output-format json ${target}
+          output: sarif
+          parser:
+            run: ${workspace}/.venv/bin/python3 ${workspace}/.trunk/scripts/ruff_to_sarif.py 0
+          batch: true
+          success_codes: [0, 1]
+          formatter: true
+        - name: format
+          files: [python, python-interface]
+          run: ruff format ${target}
+          output: rewrite
+          batch: true
+          success_codes: [0]
+          in_place: true
+          formatter: true
+          allow_empty_files: false
+          cache_results: true
+      affects_cache:
+        - pyproject.toml
+      direct_configs:
+        - ruff.toml
+      environment:
+        - name: PYTHONPATH
+          value: ${workspace}/src
+        - name: PATH
+          list: ["${workspace}/.venv/bin"]
+    - name: basedpyright
+      files: [python]
+      commands:
+        - name: lint
+          output: sarif
+          run: basedpyright --outputjson ${target}
+          success_codes: [0, 1]
+          read_output_from: stdout
+          batch: true
+          cache_results: false
+          parser:
+            run: ${workspace}/.venv/bin/python3 ${workspace}/.trunk/scripts/pyright_to_sarif.py
+      affects_cache:
+        - pyproject.toml
+      direct_configs:
+        - pyrightconfig.json
+      environment:
+        - name: PYTHONPATH
+          value: ${workspace}/src
+        - name: PATH
+          list: ["${workspace}/.venv/bin"]
+
+# https://docs.trunk.io/cli/configuration/tools#package-based-tools
+tools:
+  auto_sync: true # whether shims should be hot-reloaded off config changes.
+
+
+
+================================================
+FILE: .trunk/scripts/pyright_to_sarif.py
+================================================
+#!/usr/bin/env python3
+#
+# Adapted from trunk-io/plugins:
+#   https://github.com/trunk-io/plugins/blob/main/linters/pyright/pyright_to_sarif.py
+#
+# Copyright (c) Trunk Technologies, Inc.
+# SPDX-License-Identifier: MIT
+#
+# Local modifications: wrapped the per-result parse in try/except KeyError for
+# better error messages, and made the `region` block conditional on `range` being
+# present in the pyright output.
+import json
+import sys
+
+
+results = []
+
+for result in json.load(sys.stdin)["generalDiagnostics"]:
+    try:
+        parse = {
+            "level": result["severity"] if result["severity"] != "information" else "note",
+            "locations": [
+                {
+                    "physicalLocation": {
+                        "artifactLocation": {
+                            "uri": result["file"],
+                        },
+                        "region": {
+                            "startLine": result["range"]["start"]["line"]
+                            + 1,  # pyright is 0-indexed, SARIF is 1-indexed
+                            "startColumn": result["range"]["start"]["character"] + 1,
+                            "endLine": result["range"]["end"]["line"] + 1,
+                            "endColumn": result["range"]["end"]["character"] + 1,
+                        }
+                        if "range" in result
+                        else {},
+                    }
+                }
+            ],
+            "message": {
+                "text": result["message"].replace("Ã‚", ""),
+            },
+        }
+        if "rule" in result:
+            parse["ruleId"] = result["rule"]
+    except KeyError as e:
+        print(f"KeyError: {result}")
+        raise (e)
+    results.append(parse)
+
+sarif = {
+    "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    "version": "2.1.0",
+    "runs": [{"results": results}],
+}
+
+print(json.dumps(sarif, indent=2))
+
+
+
+================================================
+FILE: .trunk/scripts/ruff_to_sarif.py
+================================================
+#!/usr/bin/env python3
+
+import json
+import sys
+
+
+results = []
+
+
+def get_region(entry, column_offset=0):
+    location = entry["location"]
+    region = {
+        "startColumn": location["column"] + column_offset,
+        "startLine": location["row"],
+    }
+    if "end_location" in entry:
+        end_location = entry["end_location"]
+        region["endColumn"] = end_location["column"] + column_offset
+        region["endLine"] = end_location["row"]
+    return region
+
+
+# As of ruff v0.0.266, column edits are 1-indexed. This is handled by the command definition
+ruff_column_index = 1
+if len(sys.argv) > 1:
+    ruff_column_index = int(sys.argv[1])
+
+for result in json.load(sys.stdin):
+    # As of ruff v0.0.260, some autofixable diagnostics may appear redundantly
+    if "location" not in result:
+        continue
+
+    filepath = result["filename"]
+    # Ruff will set code to null for syntax errors
+    rule_id = result["code"] or "E999"
+    message = result["message"]
+
+    sarif_result = {
+        "level": "error",
+        "locations": [
+            {
+                "physicalLocation": {
+                    "artifactLocation": {
+                        "uri": filepath,
+                    },
+                    "region": get_region(result),
+                }
+            }
+        ],
+        "message": {
+            "text": message,
+        },
+        "ruleId": rule_id,
+    }
+
+    if "fix" in result and result["fix"] is not None:
+        fixes = result["fix"]
+
+        # TODO(Tyler): If output format changes any more substantially, consider version-specific parsers
+        # As of ruff v0.0.260, autofixes are nested inside fix.edits
+        if "edits" in fixes:
+            message = fixes["message"]
+            fixes = fixes["edits"]
+        else:
+            message = fixes["message"]
+            fixes = [fixes]
+
+        sarif_result["fixes"] = [
+            {
+                "description": {
+                    "text": message,
+                },
+                "artifactChanges": [
+                    {
+                        "artifactLocation": {
+                            "uri": filepath,
+                        },
+                        "replacements": [
+                            {
+                                # Ruff gives 0-indexed columns, SARIF requires 1-indexed
+                                # https://github.com/charliermarsh/ruff/issues/3106
+                                "deletedRegion": get_region(fix, ruff_column_index),
+                                "insertedContent": {
+                                    "text": fix["content"],
+                                },
+                            }
+                        ],
+                    }
+                ],
+            }
+            for fix in fixes
+        ]
+
+    results.append(sarif_result)
+
+sarif = {
+    "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    "version": "2.1.0",
+    "runs": [{"results": results}],
+}
+
+print(json.dumps(sarif, indent=2))
 
 
