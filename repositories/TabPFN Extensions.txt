@@ -25,7 +25,8 @@ Directory structure:
     │   ├── 312.changed.md
     │   ├── 312.fixed.md
     │   ├── 313.fixed.md
-    │   └── 315.fixed.md
+    │   ├── 315.fixed.md
+    │   └── 318.changed.md
     ├── examples/
     │   ├── README.md
     │   ├── cp_missing_data/
@@ -68,7 +69,6 @@ Directory structure:
     ├── src/
     │   └── tabpfn_extensions/
     │       ├── __init__.py
-    │       ├── test_utils.py
     │       ├── utils.py
     │       ├── benchmarking/
     │       │   ├── __init__.py
@@ -5103,6 +5103,13 @@ Fix TabPFN backend selection in `get_tabpfn_models()`. Selecting the API/client 
 
 
 ================================================
+FILE: changelog/318.changed.md
+================================================
+Removed the unused, always-empty `test_utils` module from the `tabpfn_extensions` package namespace.
+
+
+
+================================================
 FILE: examples/README.md
 ================================================
 # TabPFN Extensions Examples
@@ -7620,11 +7627,9 @@ try:
 except PackageNotFoundError:
     __version__ = "0.1.0.dev0"
 
-# Create alias for test_utils
 # Import third party extensions
 from tabpfn_common_utils.telemetry.interactive import opt_in
 
-from . import test_utils
 from .embedding import TabPFNEmbedding
 from .hpo import TunedTabPFNClassifier, TunedTabPFNRegressor
 from .many_class import ManyClassClassifier
@@ -7635,7 +7640,6 @@ from .unsupervised import TabPFNUnsupervisedModel
 from .utils import TabPFNClassifier, TabPFNRegressor, is_tabpfn
 
 __all__ = [
-    "test_utils",
     "TabPFNClassifier",
     "TabPFNRegressor",
     "is_tabpfn",
@@ -7651,12 +7655,6 @@ __all__ = [
 # Prompt the user to opt in for our newsletter
 opt_in()
 
-
-
-================================================
-FILE: src/tabpfn_extensions/test_utils.py
-================================================
-[Empty file]
 
 
 ================================================
