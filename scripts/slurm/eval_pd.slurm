@@ -55,9 +55,17 @@ export PYTHONUNBUFFERED=1
 # See data.slurm for the rationale: OUTPUT_ROOT always durable;
 # DATA_ROOT resolved from config/data.yaml inside _activate_env.sh.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
+# Large durable artefacts (eval results) go to project staging.
+# Set this before submitting:
+#   export CREDITPFN_STAGING_ROOT="/staging/leuven/stg_XXXXX/CreditPFN"
+# Falls back to CREDITPFN_OUTPUT_ROOT if unset.
 
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
-         "${CREDITPFN_OUTPUT_ROOT}/results"
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
+if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
+    mkdir -p "${CREDITPFN_STAGING_ROOT}/output/results"
+else
+    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/results"
+fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/eval_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
@@ -74,6 +82,8 @@ echo "Array task ID  : ${SLURM_ARRAY_TASK_ID}"
 echo "Node           : ${SLURMD_NODENAME:-?}"
 echo "Date           : $(date)"
 echo "Log file       : ${LOG}"
+echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
+echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-<not set — using OUTPUT_ROOT>}"
 nvidia-smi || true
 echo "=========================================="
 

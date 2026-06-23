@@ -17,8 +17,8 @@ from pathlib import Path
 import pytest
 
 from src.utils.paths import (
-    REPO_ROOT, get_roots, is_vsc_environment,
-    resolve_data_path, resolve_output_path,
+    REPO_ROOT, get_roots, is_staging_available, is_vsc_environment,
+    resolve_data_path, resolve_output_path, resolve_staging_path,
 )
 from src.utils import paths as _paths_mod
 
@@ -171,6 +171,66 @@ def test_is_vsc_environment_only_true_when_vsc_envvars_present(monkeypatch) -> N
     assert is_vsc_environment() is False
     monkeypatch.setenv("VSC_DATA", "/data/leuven/some/path")
     assert is_vsc_environment() is True
+
+
+# =============================================================================
+# resolve_staging_path — project staging tier
+# =============================================================================
+
+
+def test_resolve_staging_path_falls_back_to_output_root_when_unset(monkeypatch) -> None:
+    """Without CREDITPFN_STAGING_ROOT, staging falls back to output root."""
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT",  raising=False)
+    monkeypatch.delenv("VSC_DATA", raising=False)
+    monkeypatch.delenv("VSC_HOME", raising=False)
+    assert resolve_staging_path("checkpoints/trained") == REPO_ROOT / "checkpoints/trained"
+
+
+def test_resolve_staging_path_uses_staging_root_when_set(monkeypatch) -> None:
+    """When CREDITPFN_STAGING_ROOT is set, staging paths use it."""
+    staging = "/staging/leuven/stg_00001/CreditPFN"
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", staging)
+    assert resolve_staging_path("checkpoints/trained") == Path(staging) / "checkpoints/trained"
+    assert resolve_staging_path("output/results") == Path(staging) / "output/results"
+
+
+def test_resolve_staging_path_passes_absolute_through(monkeypatch) -> None:
+    """Absolute paths are returned unchanged regardless of env vars."""
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", "/staging/leuven/stg_00001/CreditPFN")
+    abs_path = Path("/abs/path/to/checkpoint.ckpt")
+    assert resolve_staging_path(abs_path) == abs_path
+
+
+def test_is_staging_available_false_when_unset(monkeypatch) -> None:
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    assert is_staging_available() is False
+
+
+def test_is_staging_available_false_when_path_missing(monkeypatch, tmp_path) -> None:
+    missing = str(tmp_path / "does_not_exist")
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", missing)
+    assert is_staging_available() is False
+
+
+def test_is_staging_available_true_when_path_exists(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path))
+    assert is_staging_available() is True
+
+
+def test_get_roots_includes_staging(monkeypatch) -> None:
+    """get_roots() exposes staging_root."""
+    staging = "/staging/leuven/stg_00001/CreditPFN"
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", staging)
+    roots = get_roots()
+    assert "staging_root" in roots
+    assert roots["staging_root"] == Path(staging)
+
+
+def test_get_roots_staging_falls_back_to_repo_root_when_unset(monkeypatch) -> None:
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    roots = get_roots()
+    assert roots["staging_root"] == REPO_ROOT
 
 
 # =============================================================================

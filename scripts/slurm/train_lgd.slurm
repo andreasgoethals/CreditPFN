@@ -42,11 +42,19 @@ export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:T
 # See data.slurm for the rationale: OUTPUT_ROOT always durable;
 # DATA_ROOT resolved from config/data.yaml inside _activate_env.sh.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
+# Large durable artefacts (checkpoints, eval results) go to project staging.
+# Set this before submitting:
+#   export CREDITPFN_STAGING_ROOT="/staging/leuven/stg_XXXXX/CreditPFN"
+# Falls back to CREDITPFN_OUTPUT_ROOT if unset (no staging available).
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
          "${CREDITPFN_OUTPUT_ROOT}/output/training/manifests" \
-         "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/lgd" \
-         "${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/lgd"
+         "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/lgd"
+if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
+    mkdir -p "${CREDITPFN_STAGING_ROOT}/checkpoints/trained/lgd"
+else
+    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/lgd"
+fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_lgd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
@@ -65,6 +73,7 @@ echo "Date           : $(date)"
 echo "Log file       : ${LOG}"
 echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT}"
 echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
+echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-<not set — using OUTPUT_ROOT>}"
 nvidia-smi || true
 echo "=========================================="
 

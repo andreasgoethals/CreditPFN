@@ -97,17 +97,17 @@ LOGGER = logging.getLogger(__name__)
 # per-step preprocessing just slices that numeric array and runs the
 # `TabPFNEnsemblePreprocessor`.
 #
-# We mirror that exactly with an LRU cache keyed by `dataset_id` so each
-# parent dataset is cleaned once per training process. The cache holds
-# the cleaned numpy array (numeric dtype, ordinal-encoded categoricals)
-# alongside the feature_schema with which to drive the per-step
-# preprocessor.
+# We mirror that exactly with `_CLEAN_CACHE` keyed by
+# (dataset_id, shape, n_estimators) so each parent dataset is cleaned
+# exactly once per training process — regardless of which epoch or step
+# accesses it. The cache holds the cleaned numpy array alongside the
+# per-dataset EnsembleConfig list and feature_schema.
 
 
 @dataclass(frozen=True)
 class _CleanedDataset:
     """One ``clean_data``-cleaned dataset PLUS its per-estimator
-    ``EnsembleConfig`` list — cached by ``dataset_id``.
+    ``EnsembleConfig`` list — cached by ``(dataset_id, shape, n_estimators)``.
 
     **Why ensemble_configs are stored per dataset (not regenerated per
     step):** the official multi-dataset finetune
@@ -256,7 +256,17 @@ def _clean_one_dataset(
     )
 
 
-# Cache by (dataset_id, n_rows, n_cols, task_type, n_estimators, base_seed).
+# Cache by (dataset_id, n_rows, n_cols, task_type, n_estimators).
+# base_seed is intentionally EXCLUDED from the key — including it caused an
+# O(steps) memory leak: each training step produced a unique step_seed, so
+# every step created a new cache entry holding a full copy of the dataset's
+# cleaned numpy array (e.g. 600 MB for bondora_peer2peer). After 222 steps ×
+# 3 epochs = 666 entries, RAM exceeded the 64 GB SLURM limit and the job was
+# killed mid-epoch-3. The dataset-level ensemble configs (class permutations,
+# feature shifts) are fixed once per training run — they do NOT need a
+# per-step seed. Only the per-step TabPFNEnsemblePreprocessor internals
+# (quantile fits, SVD seeds) need the step-level RNG, which is in
+# build_ensemble_members — not here.
 _CLEAN_CACHE: dict[tuple, _CleanedDataset] = {}
 
 
@@ -274,9 +284,10 @@ def clean_loaded_dataset(
 ) -> _CleanedDataset:
     """Cached wrapper for :func:`_clean_one_dataset`.
 
-    Cache key includes ``n_estimators`` and ``base_seed`` so a sweep
-    that changes either of them gets a fresh cache entry (different
-    EnsembleConfig list).
+    Each dataset is cleaned exactly ONCE per training process, regardless
+    of which epoch or step calls it. ``base_seed`` is accepted for API
+    compatibility but is NOT included in the cache key and does NOT affect
+    the stable per-dataset ensemble configs.
     """
     key = (
         dataset_id,
@@ -284,16 +295,14 @@ def clean_loaded_dataset(
         int(X_full_df.shape[1]),
         task_type,
         int(n_estimators),
-        int(base_seed),
     )
     if key not in _CLEAN_CACHE:
-        # Derive a stable per-dataset rng_seed from (base_seed, dataset_id).
-        # `hash` over a tuple of ints+str — deterministic in CPython 3.6+
-        # via the PYTHONHASHSEED env (we don't seed it; this is just a
-        # mixer to spread dataset_ids across the int32 range).
+        # Derive a stable per-dataset seed from dataset_id only.
+        # This ensures each dataset gets fixed, reproducible ensemble
+        # configs (class permutations, feature shifts) for the whole run.
         import hashlib
         h = hashlib.blake2b(
-            f"{base_seed}::{dataset_id}".encode("utf-8"),
+            dataset_id.encode("utf-8"),
             digest_size=8,
         ).digest()
         rng_seed = int.from_bytes(h, "big") & 0x7FFF_FFFF

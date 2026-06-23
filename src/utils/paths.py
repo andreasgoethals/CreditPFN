@@ -1,65 +1,63 @@
 """Environment-aware path resolution: local laptop vs. VSC supercomputer.
 
-The same code base runs in two very different storage environments:
+The same code base runs in three storage environments:
 
 * **Local laptop / dev** — every artefact lives under the repo root
-  (``data/``, ``checkpoints/``, ``results/``, ``logs/``).
+  (``data/``, ``checkpoints/``, ``output/``, ``logs/``).
 
-* **VSC supercomputer** — datasets are too large for ``$VSC_DATA``
-  (small quota, NFS, slow on big I/O) and must live on
-  ``$VSC_SCRATCH`` (parallel BeeGFS, large quota, no backup).
-  Conversely, *trained checkpoints* and *benchmark results* must
-  live on ``$VSC_DATA`` (backed up) so they survive the periodic
-  scratch purges.
+* **VSC supercomputer (without staging)** — datasets live on
+  ``$VSC_SCRATCH`` (parallel Lustre/GPFS, large quota, no backup;
+  purged every 30 days); trained checkpoints and benchmark results
+  live on ``$VSC_DATA`` (NFS, backed up, survives purges).
 
-How the code knows which environment it's in
---------------------------------------------
-The resolver consults three sources, in order, for each kind of path:
+* **VSC supercomputer (with project staging)** — large durable
+  artefacts (trained checkpoints, benchmark result CSVs) live on
+  the project's *staging* storage (``$CREDITPFN_STAGING_ROOT``,
+  resolved from ``/staging/leuven/stg_XXXXX/CreditPFN``). Staging
+  is persistent (no purge), large (≥ 1 TB), and has a *low inode
+  budget* (~150 k inodes/TB), so it is used only for big-file
+  outputs. Logs and manifests stay on ``$VSC_DATA``.
 
-1. **Explicit override** — the env var ``CREDITPFN_DATA_ROOT`` (for
-   data) or ``CREDITPFN_OUTPUT_ROOT`` (for durable outputs). The
-   slurm scripts in ``scripts/slurm/`` honour both, so a slurm-driven
-   run can be fully under user control.
+Path kinds and their resolvers
+-------------------------------
+:func:`resolve_data_path`
+    Raw / processed datasets → scratch (fast parallel I/O).
+    Falls back to staging if scratch has no data yet.
 
-2. **VSC auto-detection** — if the explicit override is absent but
-   ``$VSC_DATA`` is set in the environment (the VSC environment
-   *always* sets this on every node, login or compute), the resolver
-   picks defaults. For the **output root** this is always
-   ``$VSC_DATA/CreditPFN``. For the **data root** it probes a small
-   list of candidate paths and picks the first one that actually
-   contains raw CSVs under ``data/raw/{pd,lgd}/``:
+:func:`resolve_output_path`
+    Logs, manifests, epoch snapshots, dedup CSVs — small or
+    temporary outputs that benefit from NFS backup.
+    On VSC → ``$VSC_DATA/CreditPFN``.
 
-       i.   $VSC_SCRATCH/CreditPFN   (the documented layout)
-       ii.  $VSC_SCRATCH             (raw datasets uploaded straight to scratch)
-       iii. $VSC_DATA/CreditPFN      (the repo's own data/ folder)
+:func:`resolve_staging_path`
+    Trained checkpoints and bulk eval results — large, durable,
+    few files (respects staging inode budget).
+    On VSC with ``$CREDITPFN_STAGING_ROOT`` set → staging.
+    Falls back to :func:`resolve_output_path` if staging is unset.
 
-   If none of those have data on disk (fresh checkout, first run),
-   the resolver falls back to (i) so downstream "missing raw file"
-   warnings still point at the canonical place to upload to.
+Precedence for each resolver
+------------------------------
+1. Explicit env-var override (``CREDITPFN_DATA_ROOT``,
+   ``CREDITPFN_OUTPUT_ROOT``, ``CREDITPFN_STAGING_ROOT``).
+2. VSC auto-detection (if ``$VSC_DATA`` is set).
+3. Repo root (local laptop fallback).
 
-3. **Local fallback** — if neither (1) nor (2) apply, the resolver
-   uses the repo root for both. Local laptops never set ``$VSC_DATA``
-   so the data folder is just ``<repo>/data/``, exactly as the
-   project's untouched dev workflow expects.
-
-A small worked example. After ``ssh login.hpc.kuleuven.be`` (so
-``$VSC_DATA=/data/leuven/.../vsc12345`` is set automatically by
-KU Leuven's login profile)::
+Worked example on VSC with staging configured::
 
     resolve_data_path("data/processed")
         # → /scratch/leuven/.../vsc12345/CreditPFN/data/processed
 
-    resolve_output_path("checkpoints/trained")
-        # → /data/leuven/.../vsc12345/CreditPFN/checkpoints/trained
+    resolve_output_path("logs")
+        # → /data/leuven/.../vsc12345/CreditPFN/logs
 
-…and on a laptop with no env vars set::
+    resolve_staging_path("checkpoints/trained")
+        # → /staging/leuven/stg_XXXXX/CreditPFN/checkpoints/trained
+
+On a laptop with no env vars::
 
     resolve_data_path("data/processed")  # → <repo>/data/processed
-    resolve_output_path("logs")         # → <repo>/logs
-
-All callers funnel paths through :func:`resolve_data_path` and
-:func:`resolve_output_path` rather than hardcoding ``Path(...)`` on
-a config string. Absolute paths are always returned unchanged.
+    resolve_output_path("logs")          # → <repo>/logs
+    resolve_staging_path("checkpoints/trained")  # → <repo>/checkpoints/trained
 """
 
 from __future__ import annotations
@@ -71,8 +69,9 @@ from pathlib import Path
 # Resolve once: this module's parent's parent is the repo root.
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-DATA_ROOT_ENV   = "CREDITPFN_DATA_ROOT"
-OUTPUT_ROOT_ENV = "CREDITPFN_OUTPUT_ROOT"
+DATA_ROOT_ENV    = "CREDITPFN_DATA_ROOT"
+OUTPUT_ROOT_ENV  = "CREDITPFN_OUTPUT_ROOT"
+STAGING_ROOT_ENV = "CREDITPFN_STAGING_ROOT"
 
 # VSC's own environment variables — set automatically on every VSC
 # node by the user's login profile. We use them to compute sensible
@@ -91,6 +90,20 @@ def is_vsc_environment() -> bool:
     unconditionally on login, so either is a reliable signal.
     """
     return VSC_DATA_ENV in os.environ or "VSC_HOME" in os.environ
+
+
+def is_staging_available() -> bool:
+    """True iff project staging storage is configured and the path exists."""
+    staging = os.environ.get(STAGING_ROOT_ENV)
+    if not staging:
+        return False
+    return Path(staging).exists()
+
+
+def _vsc_staging_root() -> Path | None:
+    """The project staging root path, or None if not configured."""
+    staging = os.environ.get(STAGING_ROOT_ENV)
+    return Path(staging) if staging else None
 
 
 # --------------------------------------------------------------------------- #
@@ -127,11 +140,14 @@ def _candidate_data_roots() -> list[Path]:
     out: list[Path] = []
     scratch = os.environ.get(VSC_SCRATCH_ENV)
     vsc_data = os.environ.get(VSC_DATA_ENV)
+    staging = os.environ.get(STAGING_ROOT_ENV)
     if scratch:
-        out.append(Path(scratch) / PROJECT_NAME)   # A: canonical
+        out.append(Path(scratch) / PROJECT_NAME)   # A: canonical scratch
         out.append(Path(scratch))                  # B: no-subdir variant
     if vsc_data:
         out.append(Path(vsc_data) / PROJECT_NAME)  # C: repo's own data/
+    if staging:
+        out.append(Path(staging))                  # D: project staging (persistent, slower I/O)
     return out
 
 
@@ -226,28 +242,53 @@ def resolve_data_path(p: str | os.PathLike) -> Path:
 
 
 def resolve_output_path(p: str | os.PathLike) -> Path:
-    """Resolve a *durable-output* path (trained checkpoints, results,
-    logs, manifests, dedup CSVs).
+    """Resolve a *durable-output* path (logs, manifests, epoch snapshots, dedup CSVs).
 
-    On VSC: ``$VSC_DATA/CreditPFN`` (auto-detected) — backed up,
-    survives scratch purges. Or ``$CREDITPFN_OUTPUT_ROOT`` (explicit
-    override).
+    On VSC: ``$VSC_DATA/CreditPFN`` — NFS-backed, survives scratch purges.
+    Or ``$CREDITPFN_OUTPUT_ROOT`` (explicit override).
     Locally: repo root.
+
+    For *large* durable artefacts (trained checkpoints, bulk eval results)
+    use :func:`resolve_staging_path` instead so they land on project staging.
     """
     return _resolve(p, env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
+
+
+def resolve_staging_path(p: str | os.PathLike) -> Path:
+    """Resolve a path for large, durable artefacts: trained checkpoints and bulk results.
+
+    Priority:
+      1. ``$CREDITPFN_STAGING_ROOT``  (project staging — persistent, no purge, ≥ 1 TB)
+      2. :func:`resolve_output_path`  (``$VSC_DATA`` or repo root — fallback)
+
+    Use for: trained ``.ckpt`` files, benchmark result CSVs.
+    Do NOT use for: logs, manifests, figures — those stay on ``$VSC_DATA``
+    via :func:`resolve_output_path`.
+
+    Absolute paths are returned unchanged.
+    """
+    path = Path(p)
+    if path.is_absolute():
+        return path
+    staging = os.environ.get(STAGING_ROOT_ENV)
+    if staging:
+        return Path(staging) / path
+    return resolve_output_path(p)
 
 
 def get_roots() -> dict[str, Path]:
     """Return the *currently resolved* roots — useful for log lines /
     sanity checks at script startup."""
+    staging = _vsc_staging_root()
     return {
-        "repo_root":   REPO_ROOT,
-        "data_root":   _resolve_root(
+        "repo_root":    REPO_ROOT,
+        "data_root":    _resolve_root(
             env_var=DATA_ROOT_ENV,   vsc_default=_vsc_default_data_root(),
         ),
-        "output_root": _resolve_root(
+        "output_root":  _resolve_root(
             env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root(),
         ),
+        "staging_root": staging if staging is not None else REPO_ROOT,
     }
 
 

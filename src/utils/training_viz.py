@@ -86,7 +86,7 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
     except Exception:  # pragma: no cover  — local fallback
         pass
 
-    from src.utils.paths import resolve_output_path
+    from src.utils.paths import resolve_output_path, resolve_staging_path
     if cfg is None:
         cfg = _load_default_cfg()
 
@@ -98,7 +98,7 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
     return {
         "epoch_dir":     resolve_output_path("output/training/epochs"),
         "manifest_dir":  resolve_output_path("output/training/manifests"),
-        "trained_dir":   resolve_output_path(trained_dir),
+        "trained_dir":   resolve_staging_path(trained_dir),
         "run_name":      run_name,
     }
 

@@ -361,8 +361,9 @@ def _build_ensemble_step_batch(
          ``clean_data`` to produce a numeric numpy array with
          categoricals ordinal-encoded (NaNs preserved). Result is
          cached in ``tabpfn_preprocessing._CLEAN_CACHE`` keyed by
-         ``(dataset_id, shape, task_type)`` so each parent dataset is
-         cleaned once per training process.
+         ``(dataset_id, shape, n_estimators)`` so each parent dataset
+         is cleaned exactly once per training process (step-level seeds
+         are excluded from the key to prevent O(steps) memory growth).
       2. **Per step** — subsample rows, split context/query, hand the
          already-cleaned numeric slices to ``build_ensemble_members``
          which calls ``TabPFNEnsemblePreprocessor.fit_transform_ensemble_members``.

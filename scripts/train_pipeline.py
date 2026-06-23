@@ -78,7 +78,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.utils.paths import apply_data_source_from_cfg, resolve_output_path  # noqa: E402
+from src.utils.paths import apply_data_source_from_cfg, resolve_output_path, resolve_staging_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
@@ -484,7 +484,7 @@ def run(
         # To force a rerun, delete the .ckpt (or use
         # `python -m src.utils.pipeline_clean --stages train`).
         expected_ckpt = (
-            resolve_output_path(cfg.checkpoint.trained_dir)
+            resolve_staging_path(cfg.checkpoint.trained_dir)
             / track / f"{run_basename}.ckpt"
         )
         expected_prov = expected_ckpt.with_suffix(

@@ -62,11 +62,11 @@ def _resolve_paths():
     except Exception:  # pragma: no cover
         pass
 
-    from src.utils.paths import resolve_output_path
+    from src.utils.paths import resolve_staging_path
     cfg = _load_eval_cfg()
     base = str(cfg.results.base_dir) if hasattr(cfg, "results") else "output/results"
     return {
-        "benchmark_root": resolve_output_path(base),
+        "benchmark_root": resolve_staging_path(base),
     }
 
 

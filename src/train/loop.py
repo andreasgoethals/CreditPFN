@@ -53,7 +53,7 @@ from src.train.metrics import (
     mean_ignore_nan,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
-from src.utils.paths import resolve_output_path
+from src.utils.paths import resolve_output_path, resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1244,7 +1244,7 @@ def train_one_config(
 
     # ---- 4) checkpoint name + path ---------------------------------------- #
     save_path = Path(save_path) if save_path is not None else (
-        resolve_output_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
+        resolve_staging_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
             run_name=str(cfg.run_name),
             track=track,
             base_path=base_checkpoint,
@@ -1859,7 +1859,9 @@ def train_one_config(
     save_criterion = criterion if track == "lgd" else None
     save_finetuned(
         model, architecture_config, save_path,
-        criterion=save_criterion, provenance=provenance,
+        criterion=save_criterion,
+        inference_config=inference_config,
+        provenance=provenance,
     )
     LOGGER.info(
         "Saved final-epoch checkpoint: %s "

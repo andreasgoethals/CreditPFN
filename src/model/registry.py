@@ -28,7 +28,7 @@ from src.model.base import ModelHandle
 from src.model.boosting import CatBoostModel, XGBoostModel
 from src.model.linear import LinRegModel, LogRegModel
 from src.model.tabpfn_models import TabPFNUntuned
-from src.utils.paths import resolve_output_path
+from src.utils.paths import resolve_output_path, resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def build_baselines(
             # untuned model would FAIL every CV fold (polluting the
             # results with FAIL rows). The checkpoint path is resolved
             # against the output root so it works on the cluster too.
-            resolved = resolve_output_path(str(base_path))
+            resolved = resolve_staging_path(str(base_path))
             if not Path(resolved).exists() and not Path(str(base_path)).exists():
                 LOGGER.warning(
                     "tabpfn-untuned base checkpoint not on disk: %s — skipping "

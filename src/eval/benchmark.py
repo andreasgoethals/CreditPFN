@@ -66,7 +66,7 @@ from src.eval.dataset_loader import (
 from src.model.base import ModelHandle
 from src.model.tabpfn_models import TabPFNTrained
 from src.train.model import load_provenance
-from src.utils.paths import resolve_output_path
+from src.utils.paths import resolve_output_path, resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -564,7 +564,7 @@ def _output_path_for(
     track_dir = "PD" if track == "pd" else "LGD"
     suffix = f"__{per_task_tag}" if per_task_tag else ""
     return (
-        resolve_output_path(base_dir) / track_dir / _method_dirname(handle)
+        resolve_staging_path(base_dir) / track_dir / _method_dirname(handle)
         / f"{run_name}_{timestamp}{suffix}.csv"
     )
 
@@ -606,7 +606,7 @@ def find_existing_results(
     caller re-runs and the missing folds get retried.
     """
     method_dir = (
-        resolve_output_path(results_base_dir)
+        resolve_staging_path(results_base_dir)
         / ("PD" if track == "pd" else "LGD")
         / _method_dirname(handle)
     )

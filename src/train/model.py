@@ -254,40 +254,59 @@ def save_finetuned(
     save_path: Path | str,
     *,
     criterion: torch.nn.Module | None = None,
+    inference_config=None,
     provenance: dict | None = None,
 ) -> Path:
     """Persist a finetuned model in Prior Labs' on-disk format, with
     full provenance metadata.
 
-    Format mirrors the base checkpoints (``state_dict`` + ``config``)
-    so the saved file can be loaded later via
-    ``TabPFNClassifier(model_path=save_path)`` /
-    ``TabPFNRegressor(model_path=save_path)``. We add a third key
-    ``provenance`` containing the training-time HPs, dataset list,
-    walltime, and GPU info — a permanent record of *how* this
-    checkpoint was produced.
+    Format matches ``save_tabpfn_model`` exactly (4 mandatory keys):
+    ``{state_dict, config, architecture_name, inference_config}``.
+    Without ``architecture_name`` and ``inference_config``, TabPFN's
+    ``load_model`` falls back to V2 architecture inference, producing
+    "Missing key(s) in state_dict" on V3/V2.6 weights.
 
-    The same provenance is also written to ``<save_path>.provenance.json``
-    next to the .ckpt so it can be inspected without loading torch.
+    The saved file can be loaded via
+    ``TabPFNClassifier(model_path=save_path)`` /
+    ``TabPFNRegressor(model_path=save_path)``. We also add a
+    ``provenance`` key (training-time HPs, dataset list, walltime, GPU)
+    and write a ``<save_path>.provenance.json`` sidecar for at-a-glance
+    inspection without torch.load.
 
     Regressor checkpoints (LGD): pass the ``criterion`` (a
     :class:`FullSupportBarDistribution`) so its parameters get merged
     into the state-dict under the ``criterion.*`` prefix. This mirrors
-    TabPFN's own ``save_tabpfn_model`` (see ``.venv/.../model_loading.py``
-    ``save_tabpfn_model``) — its loader pops these keys out and calls
-    ``criterion.load_state_dict(...)``. Without them, reloading a
-    trained LGD checkpoint would raise ``Missing key(s) in state_dict``.
+    TabPFN's own ``save_tabpfn_model`` — its loader pops these keys out
+    and calls ``criterion.load_state_dict(...)``. Without them, reloading
+    a trained LGD checkpoint would raise ``Missing key(s) in state_dict``.
     """
     import json
+    from dataclasses import asdict, is_dataclass
 
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
-    config_payload = (
-        architecture_config.__dict__
-        if hasattr(architecture_config, "__dict__")
-        else architecture_config
-    )
+    if is_dataclass(architecture_config):
+        config_payload = asdict(architecture_config)
+    elif hasattr(architecture_config, "__dict__"):
+        config_payload = dict(architecture_config.__dict__)
+    else:
+        config_payload = architecture_config
+
+    # Resolve architecture_name — tells load_model which architecture
+    # class to instantiate. Without this key it defaults to V2 ("base"),
+    # causing key mismatches on V3/V2.6 state_dicts.
+    try:
+        from tabpfn.model_loading import _resolve_architecture_name
+        architecture_name = _resolve_architecture_name(architecture_config)
+    except Exception:
+        cls_name = type(architecture_config).__name__
+        if "V3" in cls_name:
+            architecture_name = "tabpfn_v3"
+        elif "V2p6" in cls_name or "V2_6" in cls_name:
+            architecture_name = "tabpfn_v2_6"
+        else:
+            architecture_name = "base"
 
     # If the model was LoRA-wrapped during training, fold the adapter
     # back into the base weights so the on-disk state_dict matches the
@@ -311,7 +330,16 @@ def save_finetuned(
             for k, v in crit_state.items():
                 state_dict[f"criterion.{k}"] = v
 
-    payload: dict = {"state_dict": state_dict, "config": config_payload}
+    payload: dict = {
+        "state_dict": state_dict,
+        "config": config_payload,
+        "architecture_name": architecture_name,
+    }
+    if inference_config is not None:
+        if is_dataclass(inference_config):
+            payload["inference_config"] = asdict(inference_config)
+        else:
+            payload["inference_config"] = inference_config
     if provenance is not None:
         payload["provenance"] = provenance
         # Sidecar JSON — always written next to the .ckpt for at-a-

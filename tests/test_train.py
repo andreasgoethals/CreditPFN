@@ -839,7 +839,7 @@ def test_train_one_config_end_to_end_mocked(
     saved_paths: list[Path] = []
     captured_provenance: list[dict] = []
 
-    def fake_save(model, arch, save_path, *, criterion=None, provenance=None):
+    def fake_save(model, arch, save_path, *, criterion=None, inference_config=None, provenance=None):
         del criterion
         Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         Path(save_path).write_bytes(b"")

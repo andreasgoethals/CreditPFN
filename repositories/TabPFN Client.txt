@@ -2442,40 +2442,9 @@ class UnknownEnum(str):
         return core_schema.no_info_after_validator_function(cls, core_schema.str_schema())
 
 
-class PredictionTask(str, Enum):
-    CLASSIFICATION = "classification"
-    REGRESSION = "regression"
-
-
-class ModelLimit(BaseModel):
-    train_set_max_rows: int
-    train_set_max_cells: int
-    test_set_max_rows: int
-    max_classes: int
-    max_cols: int
-    test_set_max_rows_w_full_regression_output: int
-    test_set_max_cells: int
-
-
-class ModelVersion(str, Enum):
-    V2 = "v2"
-    V2_5 = "v2.5"
-    V2_6 = "v2.6"
-    V3 = "v3"
-
-
 class ClassifierOutputType(str, Enum):
     PROBAS = "probas"
     PREDS = "preds"
-
-
-class RegressorOutputType(str, Enum):
-    MEAN = "mean"
-    MEDIAN = "median"
-    MODE = "mode"
-    QUANTILES = "quantiles"
-    FULL = "full"
-    MAIN = "main"
 
 
 class ClassifierPredictParams(BaseModel):
@@ -2507,6 +2476,72 @@ class ClassifierConfig(BaseModel):
     predict_params: ClassifierPredictParams = Field(default_factory=ClassifierPredictParams)
 
 
+class ClassifierMetadata(BaseModel):
+    test_set_num_rows: int
+    test_set_num_cols: int
+    task: Literal["classification"] = "classification"
+    package_version: str
+    tabpfn_config: ClassifierTabPFNConfig
+
+
+class FileInfo(BaseModel):
+    format: Annotated[Literal["csv", "parquet"] | str, Field(union_mode="left_to_right")]
+    hash: str | None = Field(
+        default=None, description="The crc32c hash of the file, used to deduplicate the file."
+    )
+    size_bytes: int | None = Field(
+        default=None,
+        description="The size of the file in bytes, used to compute the optimal number of chunks when chunking is enabled.",
+    )
+    use_chunks: bool | None = Field(
+        default=None,
+        description="Whether to split the the file into chunks and upload them in parallel.",
+    )
+
+
+class FileUploadInfo(BaseModel):
+    signed_urls: list[str]
+    expires_at: float
+    required_headers: dict[str, str]
+
+
+class FitStatus(str, Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ModelLimit(BaseModel):
+    train_set_max_rows: int
+    train_set_max_cells: int
+    test_set_max_rows: int
+    max_classes: int
+    max_cols: int
+    test_set_max_rows_w_full_regression_output: int
+    test_set_max_cells: int
+
+
+class ModelVersion(str, Enum):
+    V2 = "v2"
+    V2_5 = "v2.5"
+    V2_6 = "v2.6"
+    V3 = "v3"
+
+
+class PredictionTask(str, Enum):
+    CLASSIFICATION = "classification"
+    REGRESSION = "regression"
+
+
+class RegressorOutputType(str, Enum):
+    MEAN = "mean"
+    MEDIAN = "median"
+    MODE = "mode"
+    QUANTILES = "quantiles"
+    FULL = "full"
+    MAIN = "main"
+
+
 class RegressorPredictParams(BaseModel):
     output_type: (
         Annotated[RegressorOutputType | UnknownEnum, Field(union_mode="left_to_right")] | None
@@ -2536,14 +2571,6 @@ class RegressorConfig(BaseModel):
     predict_params: RegressorPredictParams = Field(default_factory=RegressorPredictParams)
 
 
-class ClassifierMetadata(BaseModel):
-    test_set_num_rows: int
-    test_set_num_cols: int
-    task: Literal["classification"] = "classification"
-    package_version: str
-    tabpfn_config: ClassifierTabPFNConfig
-
-
 class RegressorMetadata(BaseModel):
     test_set_num_rows: int
     test_set_num_cols: int
@@ -2552,34 +2579,29 @@ class RegressorMetadata(BaseModel):
     tabpfn_config: RegressorTabPFNConfig
 
 
-class FileInfo(BaseModel):
-    format: Annotated[Literal["csv", "parquet"] | str, Field(union_mode="left_to_right")]
-    hash: str | None = Field(
-        default=None, description="The crc32c hash of the file, used to deduplicate the file."
-    )
-    size_bytes: int | None = Field(
-        default=None,
-        description="The size of the file in bytes, used to compute the optimal number of chunks when chunking is enabled.",
-    )
-    use_chunks: bool | None = Field(
-        default=None,
-        description="Whether to split the the file into chunks and upload them in parallel.",
-    )
-
-
-class FileUploadInfo(BaseModel):
-    signed_urls: list[str]
-    expires_at: float
-    required_headers: dict[str, str]
-
-
 Prediction = Union[list[Any], list[list[Any]], dict[str, Union[list[Any], list[list[Any]]]]]
+
+
+Metadata = Annotated[Union[ClassifierMetadata, RegressorMetadata], Field(discriminator="task")]
 
 
 TaskConfig = Annotated[Union[ClassifierConfig, RegressorConfig], Field(discriminator="task")]
 
 
-Metadata = Annotated[Union[ClassifierMetadata, RegressorMetadata], Field(discriminator="task")]
+class DuplicateTestSetErrorResponse(BaseModel):
+    message: str
+    error_code: str = "DUPLICATE_TEST_SET_UPLOAD"
+    trace_id: UUID | None = None
+    detail: str | None = None
+    test_set_upload_id: UUID
+
+
+class DuplicateTrainSetErrorResponse(BaseModel):
+    message: str
+    error_code: str = "DUPLICATE_TRAIN_SET_UPLOAD"
+    trace_id: UUID | None = None
+    detail: str | None = None
+    train_set_upload_id: UUID
 
 
 class FitRequest(BaseModel):
@@ -2601,12 +2623,23 @@ class FitRequest(BaseModel):
     thinking_effort_metric: str | None = None
     force_refit: bool | None = Field(
         default=None,
-        description="Whether to force the fitting of the train set even if a fittedtrain set and transform states already exist.",
+        description="Deprecated, ignored: every fit creates a fresh fitted train set and runs unconditionally. Reuse fits by keeping the fitted_train_set_id (estimator save_model/load_model).",
+    )
+    async_mode: bool | None = Field(
+        default=None,
+        description="Submit the fit and return immediately with status=pending; poll GET /tabpfn/fit/{fitted_train_set_id} for the outcome. Defaults to the blocking behaviour.",
     )
 
 
 class FitResponse(BaseModel):
     fitted_train_set_id: UUID
+    status: Annotated[FitStatus | UnknownEnum, Field(union_mode="left_to_right")]
+
+
+class FitStatusResponse(BaseModel):
+    fitted_train_set_id: UUID
+    status: Annotated[FitStatus | UnknownEnum, Field(union_mode="left_to_right")]
+    error: str | None = None
 
 
 class GetModelLimitsResponse(BaseModel):
@@ -2616,6 +2649,13 @@ class GetModelLimitsResponse(BaseModel):
         Annotated[ModelVersion | UnknownEnum, Field(union_mode="left_to_right")], ModelLimit
     ]
     dataset_max_size_bytes: int
+
+
+class NotFoundErrorResponse(BaseModel):
+    message: str
+    error_code: str = "NOT_FOUND"
+    trace_id: UUID | None = None
+    detail: str | None = None
 
 
 class PredictRequest(BaseModel):
@@ -2633,13 +2673,6 @@ class PredictResponse(BaseModel):
     metadata: Metadata
 
 
-class ErrorResponse(BaseModel):
-    message: str
-    error_code: str = "GENERAL_ERROR"
-    trace_id: UUID | None = None
-    detail: str | None = None
-
-
 class PrepareTestSetUploadRequest(BaseModel):
     fitted_train_set_id: UUID
     x_test_info: FileInfo
@@ -2652,14 +2685,6 @@ class PrepareTestSetUploadRequest(BaseModel):
 class PrepareTestSetUploadResponse(BaseModel):
     test_set_upload_id: UUID
     x_test_info: FileUploadInfo
-
-
-class DuplicateTestSetErrorResponse(BaseModel):
-    message: str
-    error_code: str = "DUPLICATE_TEST_SET_UPLOAD"
-    trace_id: UUID | None = None
-    detail: str | None = None
-    test_set_upload_id: UUID
 
 
 class PrepareTrainSetUploadRequest(BaseModel):
@@ -2676,14 +2701,6 @@ class PrepareTrainSetUploadResponse(BaseModel):
     train_set_upload_id: UUID
     x_train_info: FileUploadInfo
     y_train_info: FileUploadInfo
-
-
-class DuplicateTrainSetErrorResponse(BaseModel):
-    message: str
-    error_code: str = "DUPLICATE_TRAIN_SET_UPLOAD"
-    trace_id: UUID | None = None
-    detail: str | None = None
-    train_set_upload_id: UUID
 
 
 
@@ -2810,12 +2827,15 @@ from omegaconf import DictConfig, OmegaConf
 from tabpfn_client.browser_auth import BrowserAuthHandler
 from tabpfn_client.constants import (
     dedup_datasets_enabled,
-    force_refit_enabled,
     force_reupload_enabled,
+    force_async_enabled,
     TABPFN_CLIENT_MAX_THREAD_PER_UPLOAD,
     TABPFN_CLIENT_TIMEOUT,
     TABPFN_CLIENT_UPLOAD_TIMEOUT,
     TABPFN_CLIENT_API_URL,
+    TABPFN_CLIENT_POLL_INTERVAL,
+    TABPFN_CLIENT_POLL_TIMEOUT,
+    _ASYNC_MODE_ENABLED_ABOVE_SIZE_BYTES,
 )
 from tabpfn_common_utils import utils as common_utils
 from tabpfn_common_utils.utils import Singleton
@@ -2827,15 +2847,17 @@ from tabpfn_client.api_models import (
     PrepareTestSetUploadRequest,
     PrepareTestSetUploadResponse,
     DuplicateTestSetErrorResponse,
+    NotFoundErrorResponse,
     FileUploadInfo,
     FileInfo,
     FitRequest,
     FitResponse,
+    FitStatus,
+    FitStatusResponse,
     PredictRequest,
     PredictResponse,
     ClassifierConfig,
     RegressorConfig,
-    ErrorResponse,
     PredictionTask,
 )
 
@@ -3061,7 +3083,6 @@ class ServiceClient(Singleton):
         thinking_effort: ThinkingEffort | None = None,
         thinking_timeout_s: float | None = None,
         thinking_metric: str | None = None,
-        force_refit: bool = False,
         client_options: ClientOptions | None = None,
         description: str | None = None,
     ) -> UUID:
@@ -3081,8 +3102,6 @@ class ServiceClient(Singleton):
             `paper_version`.
         description: str, optional
             Description of the dataset and task for the server.
-        force_refit: bool, optional
-            Whether to force refit the model even if the model has already been fitted.
         client_options : ClientOptions, optional
             Client specific options (e.g. timeout, headers).
 
@@ -3113,15 +3132,24 @@ class ServiceClient(Singleton):
         df_X = X if isinstance(X, pd.DataFrame) else pd.DataFrame(X)
         df_y = cast(pd.DataFrame, y if isinstance(y, pd.DataFrame) else pd.DataFrame(y))
 
+        async_mode = True
+
         limits = cls.get_model_limits()
         if limits is not None:
+            total_mem_usage = 0
             for name, df in [("x_train", df_X), ("y_train", df_y)]:
                 mem_usage = df.memory_usage(deep=True).sum()
+                total_mem_usage += mem_usage
                 if mem_usage > limits.dataset_max_size_bytes:
                     raise ValueError(
                         f"In-memory size of {name} ({mem_usage} bytes) exceeds "
                         f"the server limit of {limits.dataset_max_size_bytes} bytes."
                     )
+            if (
+                total_mem_usage <= _ASYNC_MODE_ENABLED_ABOVE_SIZE_BYTES
+                and not force_async_enabled()
+            ):
+                async_mode = False
 
         x_bytes, x_crc32c_hash = _serialize_to_parquet(df_X)
         y_bytes, y_crc32c_hash = _serialize_to_parquet(df_y)
@@ -3191,7 +3219,6 @@ class ServiceClient(Singleton):
                 train_set_upload_id=prepare_resp.train_set_upload_id,
                 task=PredictionTask(task_config.task),
                 tabpfn_systems=tabpfn_systems,
-                force_refit=force_refit or force_refit_enabled(),
                 # NOTE: Since the current shape of the fit request makes it difficult to
                 # discriminate `tabpfn_config` it is set to a generic dict.
                 # TODO: Refactor FitRequest, use tabpfn-system specific config objects
@@ -3202,6 +3229,7 @@ class ServiceClient(Singleton):
                 thinking_effort=thinking_effort,
                 thinking_timeout_s=thinking_timeout_s,
                 thinking_effort_metric=thinking_metric,
+                async_mode=async_mode,
             ),
             timeout=client_options.timeout,
             headers=client_options.headers,
@@ -3215,7 +3243,84 @@ class ServiceClient(Singleton):
             ),
         )
 
+        # In async mode the server returns immediately with status=PENDING and
+        # the outcome must be retrieved by polling GET /tabpfn/fit/{id}. The sync
+        # path can also return PENDING if the server-side blocking poll times out
+        # before the fit finishes, so branch on the returned status rather than on
+        # `async_mode` to cover both cases.
+        if fit_resp.status == FitStatus.PENDING:
+            cls._wait_for_fit(
+                fit_resp.fitted_train_set_id,
+                headers=client_options.headers,
+            )
+
         return fit_resp.fitted_train_set_id
+
+    @classmethod
+    def _wait_for_fit(
+        cls,
+        fitted_train_set_id: UUID,
+        timeout: float = TABPFN_CLIENT_POLL_TIMEOUT,
+        headers: dict[str, str] | None = None,
+    ) -> None:
+        """Poll ``GET /tabpfn/fit/{id}`` until the fit reaches a terminal state.
+
+        Returns once the fit is COMPLETED. Raises if the fit FAILED, or
+        ``TimeoutError`` if it does not reach a terminal state within ``timeout``
+        seconds. A failed fit is reported by the server as HTTP 200 with
+        ``status=failed`` (only an unknown/foreign id is a 404), so the status
+        field â€” not the HTTP code â€” is what we inspect here.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            # status == PENDING: keep polling until the deadline.
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Fit {fitted_train_set_id} did not reach a terminal state "
+                    f"within {timeout} seconds."
+                )
+
+            time.sleep(min(TABPFN_CLIENT_POLL_INTERVAL, remaining))
+
+            try:
+                res = cls._get_fit_status(fitted_train_set_id, headers=headers)
+            except (
+                httpx.ConnectError,
+                httpx.TimeoutException,
+                httpx.ReadTimeout,
+                httpx.WriteTimeout,
+                httpx.RemoteProtocolError,
+                RetryableServerError,
+            ):
+                continue
+
+            status_resp = cast(
+                FitStatusResponse,
+                cls._validate_response(
+                    res,
+                    "get_fit_status",
+                    response_models={200: FitStatusResponse},
+                ),
+            )
+            if status_resp.status == FitStatus.COMPLETED:
+                return
+            if status_resp.status == FitStatus.FAILED:
+                raise RuntimeError(
+                    f"Fit {fitted_train_set_id} failed: "
+                    f"{status_resp.error or 'no error message provided'}"
+                )
+
+    @classmethod
+    def _get_fit_status(
+        cls,
+        fitted_train_set_id: UUID,
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        return cls.httpx_client.get(
+            url=f"/tabpfn/fit/{fitted_train_set_id}",
+            headers=headers,
+        )
 
     @classmethod
     @backoff.on_exception(
@@ -3319,7 +3424,7 @@ class ServiceClient(Singleton):
                 "prepare_test_set_upload",
                 response_models={
                     200: PrepareTestSetUploadResponse,
-                    404: ErrorResponse,
+                    404: NotFoundErrorResponse,
                     409: DuplicateTestSetErrorResponse,
                 },
                 handlers={404: cls._raise_not_found_error},
@@ -3340,7 +3445,6 @@ class ServiceClient(Singleton):
                 test_set_upload_id=prepare_resp.test_set_upload_id,
                 fitted_train_set_id=fitted_train_set_id,
                 task_config=task_config,
-                force_refit=force_refit_enabled(),
             ),
             timeout=client_options.timeout,
             headers=client_options.headers,
@@ -3350,7 +3454,7 @@ class ServiceClient(Singleton):
             cls._validate_response(
                 res,
                 "predict",
-                response_models={200: PredictResponse, 404: ErrorResponse},
+                response_models={200: PredictResponse, 404: NotFoundErrorResponse},
                 handlers={404: cls._raise_not_found_error},
             ),
         )
@@ -3485,7 +3589,7 @@ class ServiceClient(Singleton):
         )
 
     @staticmethod
-    def _raise_not_found_error(error_response: ErrorResponse) -> None:
+    def _raise_not_found_error(error_response: NotFoundErrorResponse) -> None:
         if error_response.error_code == "NOT_FOUND":
             raise NeedsRefittingError(error_response.message)
         raise RuntimeError(error_response.message)
@@ -4299,6 +4403,13 @@ TABPFN_CLIENT_MAX_THREAD_PER_UPLOAD = int(
 )
 TABPFN_CLIENT_TIMEOUT = float(os.getenv("TABPFN_CLIENT_TIMEOUT", 900.0))
 TABPFN_CLIENT_UPLOAD_TIMEOUT = float(os.getenv("TABPFN_CLIENT_UPLOAD_TIMEOUT", 7200.0))
+TABPFN_CLIENT_FORCE_ASYNC = os.getenv("TABPFN_CLIENT_FORCE_ASYNC")
+TABPFN_CLIENT_POLL_INTERVAL = float(os.getenv("TABPFN_CLIENT_POLL_INTERVAL", 5.0))
+TABPFN_CLIENT_POLL_TIMEOUT = float(
+    os.getenv("TABPFN_CLIENT_POLL_TIMEOUT", 7200.0)  # 2 hours
+)
+
+_ASYNC_MODE_ENABLED_ABOVE_SIZE_BYTES = 50 * 1024 * 1024
 
 
 @cache
@@ -4308,9 +4419,9 @@ def ci_mode_enabled() -> bool:
 
 
 @cache
-def force_refit_enabled() -> bool:
-    force_refit = os.getenv("TABPFN_CLIENT_FORCE_REFIT")
-    return str(force_refit).lower() in {"1", "true", "yes", "on"}
+def force_async_enabled() -> bool:
+    val = os.getenv("TABPFN_CLIENT_FORCE_ASYNC")
+    return str(val).lower() in {"1", "true", "yes", "on"}
 
 
 @cache
@@ -4533,7 +4644,6 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
         thinking_effort: ThinkingEffort | None = None,
         thinking_timeout_s: float | None = None,
         thinking_metric: str | None = None,
-        force_refit: bool = False,
         client_options: ClientOptions | None = None,
     ):
         """Construct a TabPFN classifier.
@@ -4626,8 +4736,6 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
                 "roc_auc_ovr_micro", "roc_auc_ovr_weighted".
 
             Aliases "acc", "nll", "pac_score" are also accepted.
-        force_refit: bool, default=False
-            Whether to force refit the model even if the model has already been fitted.
         client_options : ClientOptions, default=None
             Client specific options (e.g. timeout, headers).
         """
@@ -4646,7 +4754,6 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
         self.thinking_effort: ThinkingEffort | None = thinking_effort
         self.thinking_timeout_s = thinking_timeout_s
         self.thinking_metric = thinking_metric
-        self.force_refit = force_refit
         self.client_options = client_options or ClientOptions()
 
         self._last_trace_id = None
@@ -4686,11 +4793,7 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
             # - The user has not explicitly set a sentry-trace header.
             # - In any case if we're going to refit.
             # - In any case if we have already called .fit() on this instance.
-            if (
-                self.force_refit
-                or self._fit_count > 0
-                or "sentry-trace" not in self.client_options.headers
-            ):
+            if self._fit_count > 0 or "sentry-trace" not in self.client_options.headers:
                 self.client_options.headers["sentry-trace"] = uuid4().hex
 
             self._last_trace_id = self.client_options.headers["sentry-trace"]
@@ -4706,7 +4809,6 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
                     thinking_effort=self.thinking_effort,
                     thinking_timeout_s=self.thinking_timeout_s,
                     thinking_metric=self.thinking_metric,
-                    force_refit=self.force_refit,
                     client_options=self.client_options,
                     description=description,
                 )
@@ -4797,7 +4899,6 @@ class TabPFNClassifier(ClassifierMixin, BaseEstimator, TabPFNModelSelection):
                         thinking_effort=self.thinking_effort,
                         thinking_timeout_s=self.thinking_timeout_s,
                         thinking_metric=self.thinking_metric,
-                        force_refit=True,
                         client_options=self.client_options,
                         description=self._last_train_set_description,
                     )
@@ -4892,7 +4993,6 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
         thinking_effort: ThinkingEffort | None = None,
         thinking_timeout_s: float | None = None,
         thinking_metric: str | None = None,
-        force_refit: bool = False,
         client_options: ClientOptions | None = None,
     ):
         """Construct a TabPFN regressor.
@@ -4969,8 +5069,6 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
 
             Aliases "mse", "rmse", "mae", "mape", "smape" are also
             accepted.
-        force_refit: bool, default=False
-            Whether to force refit the model even if the model has already been fitted.
         client_options : ClientOptions, default=None
             Client specific options (e.g. timeout, headers).
         """
@@ -4988,7 +5086,6 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
         self.thinking_effort: ThinkingEffort | None = thinking_effort
         self.thinking_timeout_s = thinking_timeout_s
         self.thinking_metric = thinking_metric
-        self.force_refit = force_refit
         self.client_options = client_options or ClientOptions()
 
         self._last_trace_id = None
@@ -5028,11 +5125,7 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
             # - The user has not explicitly set a sentry-trace header.
             # - In any case if we're going to refit.
             # - In any case if we have already called .fit() on this instance.
-            if (
-                self.force_refit
-                or self._fit_count > 0
-                or "sentry-trace" not in self.client_options.headers
-            ):
+            if self._fit_count > 0 or "sentry-trace" not in self.client_options.headers:
                 self.client_options.headers["sentry-trace"] = uuid4().hex
 
             self._last_trace_id = self.client_options.headers["sentry-trace"]
@@ -5049,7 +5142,6 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
                     thinking_effort=self.thinking_effort,
                     thinking_timeout_s=self.thinking_timeout_s,
                     thinking_metric=self.thinking_metric,
-                    force_refit=self.force_refit,
                     client_options=self.client_options,
                     description=description,
                 )
@@ -5145,7 +5237,6 @@ class TabPFNRegressor(RegressorMixin, BaseEstimator, TabPFNModelSelection):
                         thinking_effort=self.thinking_effort,
                         thinking_timeout_s=self.thinking_timeout_s,
                         thinking_metric=self.thinking_metric,
-                        force_refit=True,
                         client_options=self.client_options,
                         description=self._last_train_set_description,
                     )
@@ -6496,7 +6587,6 @@ class InferenceClient(ServiceClientWrapper, Singleton):
         thinking_effort: ThinkingEffort | None = None,
         thinking_timeout_s: float | None = None,
         thinking_metric: str | None = None,
-        force_refit: bool = False,
         client_options: ClientOptions | None = None,
         description: str | None = None,
     ) -> UUID:
@@ -6509,7 +6599,6 @@ class InferenceClient(ServiceClientWrapper, Singleton):
             thinking_effort=thinking_effort,
             thinking_timeout_s=thinking_timeout_s,
             thinking_metric=thinking_metric,
-            force_refit=force_refit,
             client_options=client_options,
             description=description,
         )
@@ -7980,7 +8069,9 @@ FILE: tests/integration/test_tabpfn_classifier.py
 ================================================
 import unittest
 from typing import cast
+from unittest.mock import patch
 
+import httpx
 from sklearn.datasets import load_breast_cancer
 from sklearn.model_selection import train_test_split
 import numpy as np
@@ -8028,7 +8119,11 @@ class TestTabPFNClassifier(unittest.TestCase):
             },
         )
         mock_server.router.post(mock_server.endpoints.fit.path).respond(
-            200, json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"}
+            200,
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
         tabpfn.fit(self.X_train, self.y_train)
 
@@ -8041,6 +8136,85 @@ class TestTabPFNClassifier(unittest.TestCase):
             },
         )
 
+        prediction = np.random.randint(
+            0, len(np.unique(self.y_train)), len(self.X_test)
+        ).tolist()
+        mock_server.router.post(mock_server.endpoints.predict.path).respond(
+            200,
+            json={
+                "prediction": prediction,
+                "metadata": {
+                    "task": "classification",
+                    "package_version": "0.3.0rc1",
+                    "tabpfn_config": {},
+                    "test_set_num_rows": len(self.X_test),
+                    "test_set_num_cols": self.X_test.shape[1],
+                },
+            },
+        )
+        pred = tabpfn.predict(self.X_test)
+        self.assertEqual(pred.shape[0], self.X_test.shape[0])
+
+    @with_mock_server()
+    def test_use_remote_tabpfn_classifier_async_mode(self, mock_server):
+        # End-to-end async-mode flow: POST /tabpfn/fit returns status=pending and
+        # the client polls GET /tabpfn/fit/{id} until the fit is completed before
+        # predict can run.
+        token_file = UserAuthenticationClient.CACHED_TOKEN_FILE
+        token_file.parent.mkdir(parents=True, exist_ok=True)
+        token_file.write_text("dummy token")
+
+        mock_server.router.get(mock_server.endpoints.protected_root.path).respond(200)
+        mock_server.router.get(
+            mock_server.endpoints.retrieve_greeting_messages.path
+        ).respond(200, json={"messages": []})
+        init(use_server=True)
+
+        tabpfn = TabPFNClassifier()
+
+        fitted_train_set_id = "00000000-0000-0000-0000-000000000002"
+        mock_server.router.post("/tabpfn/prepare_train_set_upload").respond(
+            409,
+            json={
+                "message": "duplicate",
+                "error_code": "DUPLICATE_TRAIN_SET",
+                "train_set_upload_id": "00000000-0000-0000-0000-000000000001",
+            },
+        )
+        # Async fit: returns immediately with status=pending ...
+        mock_server.router.post(mock_server.endpoints.fit.path).respond(
+            200,
+            json={"fitted_train_set_id": fitted_train_set_id, "status": "pending"},
+        )
+        # ... and the client polls until the fit reaches a terminal state.
+        status_route = mock_server.router.get(f"/tabpfn/fit/{fitted_train_set_id}")
+        status_route.side_effect = [
+            httpx.Response(
+                200,
+                json={"fitted_train_set_id": fitted_train_set_id, "status": "pending"},
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "fitted_train_set_id": fitted_train_set_id,
+                    "status": "completed",
+                },
+            ),
+        ]
+
+        with patch("tabpfn_client.client.TABPFN_CLIENT_POLL_INTERVAL", 0):
+            tabpfn.fit(self.X_train, self.y_train)
+
+        self.assertEqual(status_route.call_count, 2)
+
+        mock_server.router.post("/tabpfn/prepare_test_set_upload").respond(
+            409,
+            json={
+                "message": "duplicate",
+                "error_code": "DUPLICATE_TEST_SET",
+                "test_set_upload_id": "00000000-0000-0000-0000-000000000003",
+            },
+        )
         prediction = np.random.randint(
             0, len(np.unique(self.y_train)), len(self.X_test)
         ).tolist()
@@ -8558,7 +8732,10 @@ class TestServiceClient(unittest.TestCase):
         )
         mock_server.router.post("/tabpfn/fit").respond(
             200,
-            json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"},
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
         mock_server.router.post("/tabpfn/prepare_test_set_upload").respond(
             200,
@@ -8676,7 +8853,10 @@ class TestServiceClient(unittest.TestCase):
         fit_route = mock_server.router.post("/tabpfn/fit")
         fit_route.respond(
             200,
-            json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"},
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
 
         ServiceClient.authorize("dummy_access_token")
@@ -8696,6 +8876,93 @@ class TestServiceClient(unittest.TestCase):
         self.assertEqual(fitted_train_set_id_1, fitted_train_set_id_2)
         self.assertEqual(prepare_route.call_count, 2)
         self.assertEqual(fit_route.call_count, 2)
+
+    @with_mock_server()
+    def test_fit_async_mode_polls_until_completed(self, mock_server):
+        # In async mode POST /tabpfn/fit returns immediately with status=pending;
+        # the client must poll GET /tabpfn/fit/{id} until a terminal state.
+        import httpx
+
+        fitted_train_set_id = "00000000-0000-0000-0000-000000000002"
+        mock_server.router.post("/tabpfn/prepare_train_set_upload").respond(
+            200,
+            json=self._prepare_train_set_upload_response(
+                "00000000-0000-0000-0000-000000000001"
+            ),
+        )
+        mock_server.router.post("/tabpfn/fit").respond(
+            200,
+            json={"fitted_train_set_id": fitted_train_set_id, "status": "pending"},
+        )
+        status_route = mock_server.router.get(f"/tabpfn/fit/{fitted_train_set_id}")
+        # First poll still pending, second poll completed â€” exercises the loop.
+        status_route.side_effect = [
+            httpx.Response(
+                200,
+                json={"fitted_train_set_id": fitted_train_set_id, "status": "pending"},
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "fitted_train_set_id": fitted_train_set_id,
+                    "status": "completed",
+                },
+            ),
+        ]
+
+        ServiceClient.authorize("dummy_access_token")
+
+        with (
+            patch.object(ServiceClient, "_upload_to_gcs"),
+            patch("tabpfn_client.client.TABPFN_CLIENT_POLL_INTERVAL", 0),
+        ):
+            result = ServiceClient.fit(
+                self.X_train,
+                self.y_train,
+                task_config=ClassifierConfig(),
+            )
+
+        self.assertEqual(result, UUID(fitted_train_set_id))
+        self.assertEqual(status_route.call_count, 2)
+
+    @with_mock_server()
+    def test_fit_async_mode_raises_on_failed(self, mock_server):
+        # A failed fit is reported as HTTP 200 + status=failed on the polling
+        # endpoint, so the client must inspect the status field and raise.
+        fitted_train_set_id = "00000000-0000-0000-0000-000000000002"
+        mock_server.router.post("/tabpfn/prepare_train_set_upload").respond(
+            200,
+            json=self._prepare_train_set_upload_response(
+                "00000000-0000-0000-0000-000000000001"
+            ),
+        )
+        mock_server.router.post("/tabpfn/fit").respond(
+            200,
+            json={"fitted_train_set_id": fitted_train_set_id, "status": "pending"},
+        )
+        mock_server.router.get(f"/tabpfn/fit/{fitted_train_set_id}").respond(
+            200,
+            json={
+                "fitted_train_set_id": fitted_train_set_id,
+                "status": "failed",
+                "error": "boom",
+            },
+        )
+
+        ServiceClient.authorize("dummy_access_token")
+
+        with (
+            patch.object(ServiceClient, "_upload_to_gcs"),
+            patch("tabpfn_client.client.TABPFN_CLIENT_POLL_INTERVAL", 0),
+        ):
+            with self.assertRaises(RuntimeError) as cm:
+                ServiceClient.fit(
+                    self.X_train,
+                    self.y_train,
+                    task_config=ClassifierConfig(),
+                )
+
+        self.assertIn("boom", str(cm.exception))
 
     @with_mock_server()
     def test_predict_with_same_test_set_calls_prepare_and_predict_each_time(
@@ -9652,7 +9919,11 @@ class TestTabPFNClassifierInit(unittest.TestCase):
             },
         )
         mock_server.router.post(mock_server.endpoints.fit.path).respond(
-            200, json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"}
+            200,
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
         mock_server.router.post("/tabpfn/prepare_test_set_upload").respond(
             409,
@@ -9827,7 +10098,11 @@ class TestTabPFNClassifierInit(unittest.TestCase):
         )
         fit_route = mock_server.router.post(mock_server.endpoints.fit.path)
         fit_route.respond(
-            200, json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"}
+            200,
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
         mock_server.router.post("/tabpfn/prepare_test_set_upload").respond(
             409,
@@ -10709,7 +10984,11 @@ class TestTabPFNRegressorInit(unittest.TestCase):
             },
         )
         mock_server.router.post(mock_server.endpoints.fit.path).respond(
-            200, json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"}
+            200,
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
         mock_server.router.post("/tabpfn/prepare_test_set_upload").respond(
             409,
@@ -10878,7 +11157,11 @@ class TestTabPFNRegressorInit(unittest.TestCase):
         )
         fit_route = mock_server.router.post(mock_server.endpoints.fit.path)
         fit_route.respond(
-            200, json={"fitted_train_set_id": "00000000-0000-0000-0000-000000000002"}
+            200,
+            json={
+                "fitted_train_set_id": "00000000-0000-0000-0000-000000000002",
+                "status": "completed",
+            },
         )
         mock_server.router.post("/tabpfn/prepare_test_set_upload").respond(
             409,

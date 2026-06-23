@@ -88,6 +88,10 @@ print(r['data_root'], r['output_root'])
 "
 )
 SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT}"
+# Propagate staging root to spawned jobs if configured in the caller's environment.
+if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
+    SBATCH_EXPORT="${SBATCH_EXPORT},CREDITPFN_STAGING_ROOT=${CREDITPFN_STAGING_ROOT}"
+fi
 
 echo "Submitting CreditPFN full pipeline …"
 echo "  CONDA_ENV            : ${CONDA_ENV}"
@@ -96,6 +100,7 @@ echo "  TRAIN_CONCURRENCY    : ${TRAIN_CONCURRENCY}"
 echo "  EVAL_CONCURRENCY     : ${EVAL_CONCURRENCY}"
 echo "  CREDITPFN_DATA_ROOT  : ${CREDITPFN_DATA_ROOT}"
 echo "  CREDITPFN_OUTPUT_ROOT: ${CREDITPFN_OUTPUT_ROOT}"
+echo "  CREDITPFN_STAGING_ROOT: ${CREDITPFN_STAGING_ROOT:-<not set — checkpoints/results → OUTPUT_ROOT>}"
 
 # Sanity-check the chosen DATA_ROOT actually has raw datasets before
 # burning queue time. Skip if the dir doesn't exist on this filesystem
@@ -241,11 +246,16 @@ done
 
 echo
 echo "All jobs submitted. Watch progress with:"
-echo "    squeue --me --clusters=genius,wice"
+echo "    squeue --me --clusters=genius,wice,mindwell"
 echo
-echo "Per-task logs:    \$VSC_DATA/CreditPFN/logs/<task>_<ts>_j<jid>_a<tid>.log"
-echo "Training manif.:  \$VSC_DATA/CreditPFN/output/training/manifests/<run_name>_<track>.csv"
-echo "Per-epoch CSVs:   \$VSC_DATA/CreditPFN/output/training/epochs/<track>/<descriptive>.csv"
-echo "Trained ckpts:    \$VSC_DATA/CreditPFN/checkpoints/trained/<track>/"
-echo "Benchmark CSVs:   \$VSC_DATA/CreditPFN/output/results/<TRACK>/<method>/"
-echo "Notebook figures: \$VSC_DATA/CreditPFN/output/figures/<notebook>/*.pdf"
+echo "Per-task logs:    ${CREDITPFN_OUTPUT_ROOT}/logs/<task>_<ts>_j<jid>_a<tid>.log"
+echo "Training manif.:  ${CREDITPFN_OUTPUT_ROOT}/output/training/manifests/<run_name>_<track>.csv"
+echo "Per-epoch CSVs:   ${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/<track>/<descriptive>.csv"
+if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
+echo "Trained ckpts:    ${CREDITPFN_STAGING_ROOT}/checkpoints/trained/<track>/"
+echo "Benchmark CSVs:   ${CREDITPFN_STAGING_ROOT}/output/results/<TRACK>/<method>/"
+else
+echo "Trained ckpts:    ${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/<track>/"
+echo "Benchmark CSVs:   ${CREDITPFN_OUTPUT_ROOT}/output/results/<TRACK>/<method>/"
+fi
+echo "Notebook figures: ${CREDITPFN_OUTPUT_ROOT}/output/figures/<notebook>/*.pdf"

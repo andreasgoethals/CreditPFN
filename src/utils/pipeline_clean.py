@@ -92,7 +92,7 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from src.utils.paths import resolve_data_path, resolve_output_path
+from src.utils.paths import resolve_data_path, resolve_output_path, resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -253,7 +253,7 @@ def _train_stage_targets() -> dict[str, list[Path]]:
         tcfg, "checkpoint", "trained_dir", default=d["trained_dir"],
     )
 
-    trained_root = resolve_output_path(trained_dir_rel)
+    trained_root = resolve_staging_path(trained_dir_rel)
     manifests_root = resolve_output_path("output/training/manifests")
     epochs_root = resolve_output_path("output/training/epochs")
     logs_root = resolve_output_path("logs")
@@ -284,7 +284,7 @@ def _eval_stage_targets() -> dict[str, list[Path]]:
         ecfg, "results", "base_dir", default=d["results_base"],
     )
 
-    results_root = resolve_output_path(results_base)
+    results_root = resolve_staging_path(results_base)
     figures_root = resolve_output_path("output/figures")
     logs_root = resolve_output_path("logs")
 
