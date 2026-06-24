@@ -123,10 +123,17 @@ $VSC_DATA/CreditPFN/
 ### 0.4 Create the conda env (one time)
 
 ```bash
-mamba create -y -n CreditPFN python=3.12      # or `conda` if mamba isn't installed
-source activate CreditPFN
+# The SLURM scripts activate an env named exactly "CreditPFN", so create that.
+# Fastest on VSC — clone the base env (reuses the torch/CUDA stack already
+# installed there, no multi-GB re-download):
+conda create -y -n CreditPFN --clone base
+# …or a clean env from scratch (mamba if you have it, else conda):
+#   conda create -y -n CreditPFN python=3.12
+conda activate CreditPFN                      # NOT `source activate` (deprecated)
 pip install -e ".[dev,notebooks]"             # deps from pyproject.toml
 ```
+
+Python **3.11–3.13** are all supported (the VSC base env is 3.13, which works).
 
 **TabPFN caveat.** PyPI's `tabpfn` caps at `2.2.1`, which has an older
 API than the code expects. Install the matching Prior Labs release on

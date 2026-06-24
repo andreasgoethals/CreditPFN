@@ -114,9 +114,10 @@ specific objectives:
 
 ### 3.1 Install
 
-Python **3.11 or 3.12** is required. `torch` and `scikit-learn` don't
-ship Python-3.14 wheels yet, so a fall-back compile from source will
-fail on most platforms.
+Python **3.11, 3.12, or 3.13** is supported. Python **3.14** is
+excluded — some compiled deps (`torch`, `scikit-learn`) still lack
+cp314 wheels, so a fall-back compile from source will fail on most
+platforms.
 
 ```bash
 python3.12 -m venv .venv --prompt CreditPFN          # Linux / macOS

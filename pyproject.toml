@@ -18,10 +18,10 @@
 #
 #      pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
 #
-#  Python: ** 3.11 or 3.12 ** (the VSC conda env is 3.12). 3.13/3.14 are
-#  untested — some compiled deps (torch, scikit-learn) historically lacked
-#  cp313/cp314 wheels and fall back to a from-source build that fails on
-#  Windows. See docs/VSC_GUIDE.md §0.4.
+#  Python: ** 3.11, 3.12, or 3.13 **. torch / scikit-learn now ship cp313
+#  wheels (the VSC base conda env is 3.13 and works). 3.14 is excluded —
+#  some compiled deps still lack cp314 wheels and fall back to a
+#  from-source build. See docs/VSC_GUIDE.md §0.4.
 # =============================================================================
 
 [build-system]
@@ -33,13 +33,14 @@ name = "creditpfn"
 version = "0.1.0"
 description = "Continued pretraining of TabPFN tabular foundation models (v2.6 / v3) on real credit-risk data — PD (classification) and LGD (regression)."
 readme = "README.md"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Andreas Goethals", email = "andreas.goethals@kuleuven.be" }]
 keywords = ["tabpfn", "tabular", "foundation-models", "credit-risk", "continued-pretraining", "finetuning"]
 classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
