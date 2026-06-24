@@ -266,7 +266,8 @@ def _train_stage_targets() -> dict[str, list[Path]]:
     # leave one behind.
     all_ckpts = list(trained_root.glob("**/*.ckpt"))
     snapshot_ckpts = [p for p in all_ckpts if p.name.endswith(".epoch_eval.ckpt")]
-    real_ckpts = [p for p in all_ckpts if p not in snapshot_ckpts]
+    _snapshot_set = set(snapshot_ckpts)            # O(1) membership (was O(n²))
+    real_ckpts = [p for p in all_ckpts if p not in _snapshot_set]
     out["Finetuned checkpoints"] = real_ckpts
     out["Per-epoch snapshots"] = snapshot_ckpts
     out["Checkpoint provenance"] = list(trained_root.glob("**/*.provenance.json"))

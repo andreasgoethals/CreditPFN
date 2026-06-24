@@ -1,261 +1,206 @@
 #!/bin/bash
 # =============================================================================
-#  CreditPFN — full pipeline submitter (data → train → eval) on VSC
+#  CreditPFN — multi-cluster pipeline submitter (data -> train -> eval)
 # =============================================================================
 #
-#  Submits FOUR stages with `--dependency=afterok:` chaining so each
-#  stage starts only after the previous one succeeds:
+#  THREE stages, deliberately split across TWO clusters:
 #
-#    1. data.slurm                       (1 job ; genius batch CPU)
-#    2. train_pd.slurm + train_lgd.slurm (arrays; wice gpu_h100)
-#    3. eval_pd.slurm  + eval_lgd.slurm  (arrays; wice gpu_h100,
-#                                         one (model × dataset) per
-#                                         array task — heavy HPO
-#                                         tasks parallelise cleanly)
+#    1. data.slurm                        CPU   — wICE `batch`        (writes
+#                                                 processed CSVs to staging)
+#    2. train_pd.slurm + train_lgd.slurm  GPU   — Mindwell `gpu_b200` (continued
+#                                                 pretraining — Mindwell ONLY)
+#    3. eval_pd.slurm  + eval_lgd.slurm   GPU   — wICE `gpu_h100`     (benchmark)
 #
-#  Each stage writes ONE log file per slurm task to
-#  `$VSC_DATA/CreditPFN/logs/<task>_<YYYYMMDD>_<HHMMSS>_j<JOBID>_a<TASKID>.log`.
-#  Slurm's own `--output` is /dev/null in every .slurm — the bash
-#  `exec >` redirection inside each script is the source of truth.
+#  *** Why no single afterok chain? ***  VSC runs Genius, wICE and Mindwell as
+#  separate Slurm clusters selected by `--clusters=`. Slurm `--dependency`
+#  (afterok/afterany) does NOT work across clusters. Since training is on
+#  Mindwell and data/eval are on wICE, the stages CANNOT be auto-chained.
+#  This submitter therefore submits each stage independently and relies on:
+#    * data -> train : datasets persist in project staging (visible from both
+#      clusters); training reads them. Run data FIRST and let it finish before
+#      training reads (the submitter submits data, then training — if you run
+#      the whole thing cold, give data a head start or submit STAGES=data first).
+#    * train -> eval : the eval pipeline is ROBUST — it scores whatever trained
+#      checkpoints exist in staging and skips the rest, so a re-run picks up
+#      late-finishing trials. Submitting eval now is safe; re-submit after
+#      training completes to score the stragglers.
 #
-#  Usage (from a VSC login node):
+#  Datasets, base checkpoints, trained checkpoints and benchmark results all
+#  live in project STAGING (default /lustre1/project/stg_00211/CreditPFN,
+#  overridable via $CREDITPFN_STAGING_ROOT or $TABPFN_STAGING_ROOT). Logs,
+#  manifests and per-epoch CSVs live on $VSC_DATA (NFS, backed up). See
+#  docs/VSC_GUIDE.md.
 #
+#  Usage (from a Genius login node):
 #      bash scripts/slurm/submit_full_pipeline.sh
 #
-#  Optional knobs (override via env vars before invoking):
-#
-#      TRAIN_CONCURRENCY=4   # max in-flight train trials per array
-#      EVAL_CONCURRENCY=32   # max in-flight eval (model × dataset) tasks
-#      TRACKS="pd lgd"       # train + eval just one track if you want
+#  Knobs (env vars):
+#      STAGES="data train eval"          # which stages to submit (any subset/order)
+#      TRACKS="pd lgd"                   # which tracks to train/eval
+#      TRAIN_CONCURRENCY=24              # max in-flight Mindwell train tasks (24 B200)
+#      EVAL_CONCURRENCY=32               # max in-flight eval tasks PER partition
+#      EVAL_PARTITIONS="gpu_h100 gpu_a100"  # eval runs a SEPARATE array per
+#                                           # partition; the task range is split
+#                                           # across them so wICE's 20 H100 + 16
+#                                           # A100 drain eval in parallel. Set to
+#                                           # "gpu_h100" for a single array.
+#      CONDA_ENV=CreditPFN
 # =============================================================================
 
 set -euo pipefail
 
-TRAIN_CONCURRENCY="${TRAIN_CONCURRENCY:-4}"
-EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-32}"
+STAGES="${STAGES:-data train eval}"
 TRACKS="${TRACKS:-pd lgd}"
+TRAIN_CONCURRENCY="${TRAIN_CONCURRENCY:-24}"
+EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-32}"
+EVAL_PARTITIONS="${EVAL_PARTITIONS:-gpu_h100 gpu_a100}"
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
 cd "$(dirname "$0")/../.."
 
 # ---------------------------------------------------------------------------
-# Activate the project conda env if it isn't already. The login-node `python`
-# does NOT have omegaconf / src.train / etc.; those live in the env created
-# during one-time setup. This block delegates to the shared helper used by
-# every .slurm script, so the activation logic stays in one place.
+# Activate the project conda env (the login-node python lacks omegaconf etc.).
 # ---------------------------------------------------------------------------
 if [[ "${CONDA_DEFAULT_ENV:-}" != "${CONDA_ENV}" ]]; then
-    # The helper exits 1 with a clear message on failure; trap that here so
-    # the user sees the right hint about activating the env first.
     if ! source scripts/slurm/_activate_env.sh; then
-        echo "ERROR: could not activate conda env '${CONDA_ENV}' for the submitter." >&2
-        echo "       Quick fix: run 'source activate ${CONDA_ENV}' in this shell" >&2
-        echo "       and re-invoke 'bash scripts/slurm/submit_full_pipeline.sh'." >&2
+        echo "ERROR: could not activate conda env '${CONDA_ENV}'." >&2
+        echo "       Run 'source activate ${CONDA_ENV}' and re-invoke." >&2
         exit 1
     fi
 fi
-
-# Sanity-check the env has the project deps the submitter needs to run on
-# the login node (omegaconf for cfg load, src.train.corpus for the eval
-# upper-bound calculation). A clear error here saves debugging an opaque
-# ModuleNotFoundError stack trace 40 lines down.
 if ! python -c "import omegaconf, src.train.corpus" 2>/dev/null; then
     echo "ERROR: the '${CONDA_ENV}' env is missing project dependencies." >&2
-    echo "       Re-install with: pip install -r requirements.txt" >&2
+    echo "       Re-install with: pip install -e \".[dev]\"" >&2
     exit 1
 fi
 
-# Propagate `CREDITPFN_DATA_ROOT` / `CREDITPFN_OUTPUT_ROOT` to the
-# spawned jobs. Slurm doesn't inherit env vars by default; we have to
-# list them on each `sbatch --export=ALL,<vars>`.
-#
-# Resolution order (in `src/utils/paths.apply_data_source_from_cfg`):
-#   1. Explicit `$CREDITPFN_DATA_ROOT` already in the user's env  (highest)
-#   2. `cfg.paths.data_source` in `config/data.yaml`  ("scratch" or "data")
-#   3. VSC default ($VSC_SCRATCH/CreditPFN) — laptop default = repo root.
-#
-# We MUST load the cfg here so the yaml's `data_source` flips the
-# resolved root, otherwise the export below would unconditionally bake
-# in the VSC default and silently override the user's yaml choice
-# (the bug fixed on 2026-05-21).
-read -r CREDITPFN_DATA_ROOT CREDITPFN_OUTPUT_ROOT < <(
+# ---------------------------------------------------------------------------
+# Resolve the storage roots ONCE and propagate them to every spawned job.
+# Slurm does not inherit env vars across clusters by default, so we pass them
+# on each `sbatch --export`. data_source -> staging by default (datasets are
+# the largest files; project storage is their canonical home).
+# ---------------------------------------------------------------------------
+read -r CREDITPFN_DATA_ROOT CREDITPFN_OUTPUT_ROOT CREDITPFN_STAGING_ROOT < <(
     python -c "
 from omegaconf import OmegaConf
 from src.utils.paths import apply_data_source_from_cfg, get_roots
 apply_data_source_from_cfg(OmegaConf.load('config/data.yaml'))
 r = get_roots()
-print(r['data_root'], r['output_root'])
+print(r['data_root'], r['output_root'], r['staging_root'])
 "
 )
-SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT}"
-# Propagate staging root to spawned jobs if configured in the caller's environment.
-if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
-    SBATCH_EXPORT="${SBATCH_EXPORT},CREDITPFN_STAGING_ROOT=${CREDITPFN_STAGING_ROOT}"
+SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT},CREDITPFN_STAGING_ROOT=${CREDITPFN_STAGING_ROOT}"
+
+echo "Submitting CreditPFN pipeline …"
+echo "  STAGES                : ${STAGES}"
+echo "  TRACKS                : ${TRACKS}"
+echo "  TRAIN_CONCURRENCY     : ${TRAIN_CONCURRENCY}  (Mindwell gpu_b200)"
+echo "  EVAL_CONCURRENCY      : ${EVAL_CONCURRENCY}  per partition"
+echo "  EVAL_PARTITIONS       : ${EVAL_PARTITIONS}  (wICE)"
+echo "  CREDITPFN_DATA_ROOT   : ${CREDITPFN_DATA_ROOT}"
+echo "  CREDITPFN_OUTPUT_ROOT : ${CREDITPFN_OUTPUT_ROOT}"
+echo "  CREDITPFN_STAGING_ROOT: ${CREDITPFN_STAGING_ROOT}"
+echo
+
+strip_cluster_suffix() { echo "${1%%;*}"; }   # `<jid>;<cluster>` -> `<jid>`
+
+DATA_JID=""
+
+# ---------------------------------------------------------------------------
+# Stage 1 — DATA preprocessing (wICE CPU). Writes processed CSVs to staging.
+# ---------------------------------------------------------------------------
+if [[ " ${STAGES} " == *" data "* ]]; then
+    if [[ -d "${CREDITPFN_DATA_ROOT}/data/raw" ]]; then
+        n_pd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/pd"  -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
+        n_lgd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/lgd" -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
+        if [[ "${n_pd}" -eq 0 && "${n_lgd}" -eq 0 ]]; then
+            echo "ERROR: no raw CSVs under ${CREDITPFN_DATA_ROOT}/data/raw/." >&2
+            echo "       Upload them to project staging and re-submit." >&2
+            exit 1
+        fi
+        echo "  raw datasets found    : pd=${n_pd}  lgd=${n_lgd}"
+    fi
+    DATA_JID=$(strip_cluster_suffix "$(sbatch --parsable --export="${SBATCH_EXPORT}" scripts/slurm/data.slurm)")
+    echo "  data (wICE)           : ${DATA_JID}"
 fi
 
-echo "Submitting CreditPFN full pipeline …"
-echo "  CONDA_ENV            : ${CONDA_ENV}"
-echo "  TRACKS               : ${TRACKS}"
-echo "  TRAIN_CONCURRENCY    : ${TRAIN_CONCURRENCY}"
-echo "  EVAL_CONCURRENCY     : ${EVAL_CONCURRENCY}"
-echo "  CREDITPFN_DATA_ROOT  : ${CREDITPFN_DATA_ROOT}"
-echo "  CREDITPFN_OUTPUT_ROOT: ${CREDITPFN_OUTPUT_ROOT}"
-echo "  CREDITPFN_STAGING_ROOT: ${CREDITPFN_STAGING_ROOT:-<not set — checkpoints/results → OUTPUT_ROOT>}"
-
-# Sanity-check the chosen DATA_ROOT actually has raw datasets before
-# burning queue time. Skip if the dir doesn't exist on this filesystem
-# (e.g. we're on a laptop just dry-running the script).
-if [[ -d "${CREDITPFN_DATA_ROOT}/data/raw" ]]; then
-    n_pd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/pd"  -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
-    n_lgd=$(find "${CREDITPFN_DATA_ROOT}/data/raw/lgd" -maxdepth 1 -name '*.csv' 2>/dev/null | wc -l || echo 0)
-    if [[ "${n_pd}" -eq 0 && "${n_lgd}" -eq 0 ]]; then
-        echo "ERROR: no raw CSVs found under ${CREDITPFN_DATA_ROOT}/data/raw/." >&2
-        echo "       Upload them via WinSCP (or Globus for >1 GB) and re-submit." >&2
-        echo "       To use a different DATA_ROOT (e.g. \$VSC_DATA/CreditPFN" >&2
-        echo "       when scratch was purged):  export CREDITPFN_DATA_ROOT=<path>" >&2
-        exit 1
+# ---------------------------------------------------------------------------
+# Stage 2 — TRAINING (Mindwell B200). Continued pretraining runs ONLY here.
+# Cross-cluster dep on data is impossible; data must be complete first.
+# ---------------------------------------------------------------------------
+if [[ " ${STAGES} " == *" train "* ]]; then
+    if [[ -n "${DATA_JID}" ]]; then
+        echo "  NOTE: training cannot afterok-depend on the wICE data job"
+        echo "        (cross-cluster). Ensure data job ${DATA_JID} FINISHES"
+        echo "        before the Mindwell training tasks start reading."
     fi
-    echo "  raw datasets found   : pd=${n_pd}  lgd=${n_lgd}"
+    for TR in ${TRACKS}; do
+        N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
+        JID=$(strip_cluster_suffix "$(sbatch --parsable \
+            --export="${SBATCH_EXPORT}" \
+            --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
+            "scripts/slurm/train_${TR}.slurm")")
+        echo "  train ${TR} (Mindwell) : ${JID}  (array 0..$((N - 1)))"
+    done
 fi
 
-# Helper: extract the bare jobid from sbatch's `--parsable` output.
-# All VSC login nodes are GENIUS login nodes (wICE has no dedicated
-# login — see VSC docs `tier2_login_nodes.rst:37292`), so submitting
-# any `--cluster=wice` job from a login shell produces `<jobid>;wice`.
-# That suffix is normal — it just tells you the jobid lives in the
-# wICE Slurm controller. The `afterok:` chain still works as long as
-# both the dependency target AND the dependent job target the SAME
-# cluster (all our .slurm scripts target wICE, so they do).
-strip_cluster_suffix() {
-    # `${1%%;*}` removes the longest `;*` match from the END — equivalent
-    # to `cut -d';' -f1` but built into bash.
-    echo "${1%%;*}"
-}
-
-# Helper: extract the cluster name from `<jobid>;<cluster>`, or empty
-# if no suffix. Used to verify every stage targets the same cluster.
-get_cluster_suffix() {
-    if [[ "$1" == *";"* ]]; then
-        echo "${1#*;}"
-    else
-        echo ""
-    fi
-}
-
-# 1) Data preprocessing. sbatch's `--parsable` output is `<jid>` when
-# the script's cluster matches the login default, or `<jid>;<cluster>`
-# when it doesn't (typical for VSC: login nodes are Genius, all our
-# jobs target wICE → suffix is always `;wice`). Strip the suffix and
-# remember the target cluster so we can sanity-check downstream stages.
-DATA_JID_RAW=$(sbatch --parsable --export="${SBATCH_EXPORT}" scripts/slurm/data.slurm)
-DATA_JID=$(strip_cluster_suffix "${DATA_JID_RAW}")
-DATA_CLUSTER=$(get_cluster_suffix "${DATA_JID_RAW}")
-echo "  data               : ${DATA_JID}${DATA_CLUSTER:+  (cluster=${DATA_CLUSTER})}"
-
-# 2) Training (one array job per track), each waiting on data.
-declare -A TRAIN_JIDS=()
-for TR in ${TRACKS}; do
-    SCRIPT="scripts/slurm/train_${TR}.slurm"
-    N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
-    JID_RAW=$(sbatch --parsable \
-        --export="${SBATCH_EXPORT}" \
-        --dependency="afterok:${DATA_JID}" \
-        --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
-        "${SCRIPT}")
-    JID=$(strip_cluster_suffix "${JID_RAW}")
-    JID_CLUSTER=$(get_cluster_suffix "${JID_RAW}")
-    # Cross-cluster dep would silently fail to start: catch it here.
-    if [[ -n "${DATA_CLUSTER}" && -n "${JID_CLUSTER}" \
-          && "${DATA_CLUSTER}" != "${JID_CLUSTER}" ]]; then
-        echo "ERROR: train_${TR}.slurm targets cluster '${JID_CLUSTER}' but" >&2
-        echo "       data.slurm targets '${DATA_CLUSTER}'. VSC's two Tier-2" >&2
-        echo "       clusters have separate Slurm controllers — afterok" >&2
-        echo "       dependencies cannot cross them. Align both --cluster=" >&2
-        echo "       headers (typically both =wice for this project)." >&2
-        scancel "${JID}" 2>/dev/null || true
-        exit 1
-    fi
-    TRAIN_JIDS["$TR"]="${JID}"
-    echo "  train ${TR}        : ${JID}  (array 0..$((N - 1)))"
-done
-
-# 3) Eval — one array job per track, gated on the matching training array.
-#
-# Array size: we cannot run `eval_pipeline.py --list-tasks` here because
-# the trained-model manifest is still empty at submission time. Instead
-# we compute the EXPECTED upper bound from the cfg cardinality:
-#
-#     N_eval = (n_baselines + n_untuned + n_planned_trials) * n_test_datasets
-#
-# where n_planned_trials is what `train_pipeline.py --list-trials` returns
-# (i.e. base_paths × learning_rates). Some training trials may fail; those
-# slots become no-op tasks (the eval pipeline's skip-existing guard exits
-# early). That's much better than under-sizing the array and silently
-# skipping newly-trained checkpoints.
-N_PD_PLANNED=$(python scripts/train_pipeline.py --list-trials track=pd 2>/dev/null || echo 0)
-N_LGD_PLANNED=$(python scripts/train_pipeline.py --list-trials track=lgd 2>/dev/null || echo 0)
-for TR in ${TRACKS}; do
-    SCRIPT="scripts/slurm/eval_${TR}.slurm"
-    DEP="${TRAIN_JIDS[$TR]}"
-    if [[ "$TR" == "pd" ]]; then PLANNED_TRIALS=${N_PD_PLANNED}; else PLANNED_TRIALS=${N_LGD_PLANNED}; fi
-    # Upper bound: the eval roster at run time = baselines + untuned + trained.
-    # Each gets paired with every test dataset. We approximate the count
-    # below; the eval script's --task-index N then runs exactly the Nth
-    # pair from the freshly-built roster (which by then includes every
-    # OK-trained checkpoint).
-    UPPER_N=$(python -c "
-import sys
-sys.path.insert(0, '.')
+# ---------------------------------------------------------------------------
+# Stage 3 — EVAL (wICE H100). Robust: scores whatever checkpoints exist.
+# ---------------------------------------------------------------------------
+if [[ " ${STAGES} " == *" eval "* ]]; then
+    for TR in ${TRACKS}; do
+        if [[ "$TR" == "pd" ]]; then PLANNED=$(python scripts/train_pipeline.py --list-trials track=pd 2>/dev/null || echo 0)
+        else PLANNED=$(python scripts/train_pipeline.py --list-trials track=lgd 2>/dev/null || echo 0); fi
+        UPPER_N=$(python -c "
+import sys; sys.path.insert(0, '.')
 from omegaconf import OmegaConf
 eval_cfg = OmegaConf.load('config/eval.yaml')
 train_cfg = OmegaConf.load(eval_cfg.train_cfg_path)
-n_baselines = sum(1 for b in eval_cfg.baselines.enabled
-                  if b != 'tabpfn-untuned')
-# logreg only counts for pd; linreg only for lgd
-if '${TR}' == 'pd' and 'linreg' in eval_cfg.baselines.enabled:
-    n_baselines -= 1
-if '${TR}' == 'lgd' and 'logreg' in eval_cfg.baselines.enabled:
-    n_baselines -= 1
-n_untuned = len(train_cfg.tunable.classifier_base_paths
-                if '${TR}' == 'pd' else train_cfg.tunable.regressor_base_paths)
-n_planned = int('${PLANNED_TRIALS}' or 0)
-# Test dataset count: from corpus split (Mode A fractions or Mode B explicit).
+n_baselines = sum(1 for b in eval_cfg.baselines.enabled if b != 'tabpfn-untuned')
+if '${TR}' == 'pd' and 'linreg' in eval_cfg.baselines.enabled: n_baselines -= 1
+if '${TR}' == 'lgd' and 'logreg' in eval_cfg.baselines.enabled: n_baselines -= 1
+n_untuned = len(train_cfg.tunable.classifier_base_paths if '${TR}' == 'pd' else train_cfg.tunable.regressor_base_paths)
+n_planned = int('${PLANNED}' or 0)
 from src.train.corpus import split_from_cfg
 split = split_from_cfg(train_cfg, track='${TR}')
 n_test = len({c.dataset_id for c in split.test})
 print((n_baselines + n_untuned + n_planned) * max(1, n_test))
 " 2>/dev/null || echo 1)
-    UPPER_N=${UPPER_N:-1}
-    if [[ "$UPPER_N" -lt 1 ]]; then UPPER_N=1; fi
-    # afterany (NOT afterok): eval must run once training *completes*, even
-    # if some train array tasks failed or were killed (OOM, walltime). The
-    # eval pipeline is robust — it scores whatever checkpoints exist and
-    # skips the rest (src/model/registry.build_baselines + the trained-handle
-    # loader). Using afterok here meant a single failed/killed train task
-    # left eval "dependency never satisfied" and it never ran (observed for
-    # eval_pd on 2026-06-01: 6 OOM + 9 walltime-killed PD trials → eval_pd
-    # cancelled, while the all-OK LGD train let eval_lgd run).
-    EVAL_JID_RAW=$(sbatch --parsable \
-        --export="${SBATCH_EXPORT}" \
-        --dependency="afterany:${DEP}" \
-        --array=0-$((UPPER_N - 1))%"${EVAL_CONCURRENCY}" \
-        "${SCRIPT}")
-    EVAL_JID=$(strip_cluster_suffix "${EVAL_JID_RAW}")
-    echo "  eval  ${TR}        : ${EVAL_JID}  (array 0..$((UPPER_N - 1)), waits on ${DEP})"
-done
+        UPPER_N=${UPPER_N:-1}; [[ "$UPPER_N" -lt 1 ]] && UPPER_N=1
+        # Split the [0, UPPER_N) task range into contiguous chunks, one per
+        # eval partition, so wICE's H100 + A100 pools drain eval in parallel
+        # with NO overlap (each pair is owned by exactly one partition).
+        # shellcheck disable=SC2206
+        PARTS=(${EVAL_PARTITIONS}); K=${#PARTS[@]}
+        CHUNK=$(( (UPPER_N + K - 1) / K ))   # ceil(UPPER_N / K)
+        for i in "${!PARTS[@]}"; do
+            P="${PARTS[$i]}"
+            LO=$(( i * CHUNK ))
+            HI=$(( (i + 1) * CHUNK - 1 ))
+            [[ "$HI" -ge "$UPPER_N" ]] && HI=$(( UPPER_N - 1 ))
+            [[ "$LO" -gt "$HI" ]] && continue   # more partitions than tasks
+            JID=$(strip_cluster_suffix "$(sbatch --parsable \
+                --export="${SBATCH_EXPORT}" \
+                --partition="${P}" \
+                --array="${LO}-${HI}%${EVAL_CONCURRENCY}" \
+                "scripts/slurm/eval_${TR}.slurm")")
+            echo "  eval  ${TR} (wICE ${P}) : ${JID}  (array ${LO}..${HI})"
+        done
+    done
+    echo
+    echo "  NOTE: eval scores the checkpoints present in staging NOW. Re-run"
+    echo "        this with STAGES=eval after training finishes to pick up"
+    echo "        late-finishing trials (already-scored pairs are skipped)."
+fi
 
 echo
-echo "All jobs submitted. Watch progress with:"
-echo "    squeue --me --clusters=genius,wice,mindwell"
+echo "Watch progress across both clusters with:"
+echo "    squeue --me --clusters=wice,mindwell"
 echo
+echo "Datasets:         ${CREDITPFN_STAGING_ROOT}/data/processed/<track>/"
+echo "Trained ckpts:    ${CREDITPFN_STAGING_ROOT}/checkpoints/trained/<track>/"
+echo "Benchmark CSVs:   ${CREDITPFN_STAGING_ROOT}/output/results/<TRACK>/<method>/"
 echo "Per-task logs:    ${CREDITPFN_OUTPUT_ROOT}/logs/<task>_<ts>_j<jid>_a<tid>.log"
 echo "Training manif.:  ${CREDITPFN_OUTPUT_ROOT}/output/training/manifests/<run_name>_<track>.csv"
 echo "Per-epoch CSVs:   ${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/<track>/<descriptive>.csv"
-if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
-echo "Trained ckpts:    ${CREDITPFN_STAGING_ROOT}/checkpoints/trained/<track>/"
-echo "Benchmark CSVs:   ${CREDITPFN_STAGING_ROOT}/output/results/<TRACK>/<method>/"
-else
-echo "Trained ckpts:    ${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/<track>/"
-echo "Benchmark CSVs:   ${CREDITPFN_OUTPUT_ROOT}/output/results/<TRACK>/<method>/"
-fi
 echo "Notebook figures: ${CREDITPFN_OUTPUT_ROOT}/output/figures/<notebook>/*.pdf"

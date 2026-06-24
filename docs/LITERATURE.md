@@ -1,6 +1,6 @@
 # Literature on Tabular Foundation Models
 
-A chronological tour of the 29 PDFs in this folder. The arc:
+A chronological tour of the papers in this folder. The arc:
 PFNs (in-context Bayesian inference for arbitrary priors) → TabPFN
 (PFNs with a tabular prior) → TabPFNv2 (production-grade — the
 model we build on) → a Cambrian explosion of variants (continued
@@ -310,19 +310,35 @@ CreditPFN — same pipeline, different domain.
 * **Method.** Take the synthetic-only TabPFNv2 checkpoint and
   continue pretraining on a hand-curated corpus of 71 datasets
   (≥ 10 000 rows each, mixture of OpenML and Kaggle).
-  *Minimal* preprocessing: ``OrdinalEncoder`` for categoricals,
-  and if the target has more than 10 classes, retain the nine
-  most common and merge the remainder into a tenth "other".
+  *Minimal* preprocessing: ``OrdinalEncoder`` for categoricals
+  (``num_policy`` noisy-quantile, ``cat_policy`` ordinal in their
+  code), and if the target has more than 10 classes, retain the
+  nine most common and merge the remainder into a tenth "other".
   No imputation, no scaling beyond what TabPFN does internally.
-* **Data contamination protocol** (their §3) — five-tier filter:
-  (1) only datasets > 10k samples (every evaluation dataset is
-  smaller, so size alone separates pretrain from eval);
+* **The actual finetuning recipe** (from the repo dump in
+  ``repositories/On Finetuning Tabular Foundation Models.txt`` —
+  the Real-TabPFN code release). Across all 342 reported runs:
+  **full fine-tuning** (no LoRA in any experiment, though LoRA
+  exists in their code), **AdamW with weight_decay 0.0 on every
+  run**, learning rate tuned per dataset in 5e-6…5e-4 (median
+  ≈ 3.9e-5), batch_size 1, epoch_size 10 steps, ``n_epochs=-1``
+  with **early stopping** (patience 16), AMP on, **no LR
+  scheduler, no warmup, and no L2-SP**. Critically, every
+  reported experiment is **single-dataset** continued pretraining;
+  the multi-dataset *corpus* setting — many real tables in one
+  finetuning run — is the paper's distinctive idea and is exactly
+  the regime CreditPFN operates in.
+* **Data contamination protocol** (their §3) — a multi-tier
+  filter: (1) only datasets > 10k samples (every evaluation
+  dataset is smaller, so size alone separates pretrain from eval);
   (2) cross-reference IDs / names / shapes;
   (3) cross-reference column names;
   (4) row hashes;
   (5) column hashes;
   (6) manual metadata inspection.
-  This is exactly what our :mod:`src.data.dedup` implements.
+  This is exactly what our :mod:`src.data.dedup` implements (those
+  checks plus three extras — rounded-row hash, subset detection,
+  fuzzy column-name matching).
 * **Headline result.** On 29 datasets from the OpenML AutoML
   Benchmark, Real-TabPFN improves normalised ROC-AUC by +0.022
   vs. default TabPFNv2 (Wilcoxon signed-rank ``p = 0.0045``).
@@ -349,17 +365,55 @@ Real-TabPFN are:
 2. **Scale.** 3000 datasets vs. their 71. Whether the in-context
    prior shift is a function of corpus size is exactly what our
    ablations will measure.
-3. **Two parallel tracks.** PD (classification) and LGD
-   (regression) instead of one classification objective.
-4. **Dedup protocol.** Replicated faithfully — Stage 1 of our
-   pipeline implements all five of their checks plus three
-   extras (rounded-row hash, subset detection, fuzzy column-name
-   matching).
+3. **Two parallel tracks.** PD (classification, cross-entropy on
+   the class head) and LGD (regression, bar-distribution NLL)
+   instead of one classification objective.
+4. **Multi-dataset corpus, not single-dataset.** Their 342
+   experiments each finetune on one dataset; we finetune on a
+   *corpus* in a single run. This is the gap that motivates our
+   anti-forgetting machinery (next point).
 
-The paper's source code is **not** public; the methods section
-plus this summary is what we have to work from. When a detail is
-ambiguous (e.g. exact context-size schedule), we err on the side
-of replicating their reported headline numbers as a sanity check
+**Where our recipe diverges from theirs (and why).** Their setting
+is single-dataset full-FT; ours is a multi-dataset corpus, so we
+deliberately differ:
+
+* **weight_decay 0.0** — we now *match* the references (every
+  Real-TabPFN run and the official ``FinetunedTabPFN*`` examples
+  use 0.0). Until 2026-06-23 we ran 0.01; the methodology audit
+  flagged that AdamW decay pulls weights toward the origin, which
+  fights staying near the synthetic prior *and* double-penalises
+  on top of L2-SP. See [`config/train.yaml`](../config/train.yaml).
+* **L2-SP anchor (λ = 0.003)** — *our own* addition for the corpus
+  setting, NOT used by Real-TabPFN. (An earlier comment in our code
+  mis-attributed L2-SP to "Real-TabPFN §4"; that attribution was
+  wrong and has been corrected.) L2-SP penalises drift away from
+  the synthetic-prior start ``w0`` rather than toward zero, the
+  anti-forgetting mechanism a multi-dataset run needs. Full-FT only
+  — inert under LoRA, where the base is frozen.
+* **Warmup → cosine schedule** (warmup_fraction 0.10) — our choice;
+  the references use a constant LR with no warmup.
+* **Conservative LR grid** ``{3e-7, 1e-6, 1e-5}`` — sits at or
+  below the references' range (their median ≈ 3.9e-5). A deliberate
+  caution: 1e-4 diverges on our no-LoRA + query_fraction 0.20
+  configuration.
+* **Fixed 50 epochs + divergence-abort** instead of their early
+  stopping (patience 16). We compare variants post-hoc in eval
+  rather than early-stopping each run.
+* **query_fraction split** — each per-step subsample is split into
+  context + loss-bearing query; we use 0.20 (the TabPFN default;
+  Real-TabPFN uses 0.40).
+* **Dedup protocol** — replicated faithfully: Stage 1 of our
+  pipeline implements all of their checks plus three extras
+  (rounded-row hash, subset detection, fuzzy column-name matching).
+
+The paper's source code dump is in
+``repositories/On Finetuning Tabular Foundation Models.txt``; the
+official Prior Labs finetuning wrapper is the other reference point
+(``FinetunedTabPFNClassifier``: 30 epochs, LR 2e-5, n_estimators 2;
+``FinetunedTabPFNRegressor``: 30 epochs, LR 1e-5, n_estimators 8,
+``n_finetune_ctx_plus_query_samples`` 20000). When a detail is
+ambiguous (e.g. exact context-size schedule), we err on the side of
+replicating their reported headline numbers as a sanity check
 before scaling up to credit-specific corpora.
 
 ---
@@ -411,6 +465,16 @@ engineered:
 * Don't pre-normalise the regression target
   (``RegressorBatch.znorm_space_bardist_`` does that, and inverts
   at predict time).
+
+The regression head is also why our LGD loss is **bar-distribution
+NLL** rather than MSE: v2 / v2.6 / v3 regress by predicting a
+distribution over a fixed grid of borders (the bar distribution),
+not a point estimate. Our ``save_finetuned`` (``src/train/model.py``)
+writes the ``criterion.*`` keys that carry that grid — **required by
+v2.6** (whose ``forward`` has no ``test_targets_MB`` and so demands
+them) and **harmlessly stripped by v3** (whose loader rebuilds the
+bar distribution from the model's own ``regression_borders`` buffer).
+See the [TabPFN-3](#tabpfn-3) note for the full v2.6-vs-v3 difference.
 
 ---
 
@@ -515,9 +579,11 @@ The paper accompanies the code with an exposition of the PFN
 recipe at a level appropriate for a graduate ML class.
 
 **For CreditPFN.** Critical resource. The training loop in
-``repositories/NanoTabPFN.txt`` is the structural template for
-our ``src/train/train.py`` — we'll adapt the loop to iterate
-over our cached real datasets instead of a synthetic prior dump.
+``repositories/NanoTabPFN.txt`` was the structural template for
+our ``src/train/loop.py`` — the loop iterates over our processed
+real datasets (``data/processed/<track>/<id>.sanitized.csv``)
+instead of a synthetic prior dump, computing CE for the PD
+classifier and bar-distribution NLL for the LGD regressor.
 
 ---
 
@@ -693,12 +759,26 @@ The paper also identifies pathological cases where finetuning
 *hurts* (extremely small datasets, datasets with severe label
 noise) and proposes early-stopping protocols to detect them.
 
+Note: this paper *is* the Real-TabPFN code release dumped in
+``repositories/On Finetuning Tabular Foundation Models.txt`` — the
+same artefact summarised under [Real-TabPFN](#real-tabpfn) above.
+The reported runs are full-FT (no LoRA), AdamW with weight_decay
+0.0, LR 5e-6…5e-4 (median ≈ 3.9e-5), batch_size 1, epoch_size 10
+steps, early stopping with patience 16, AMP on, and no LR schedule
+or warmup.
+
 **For CreditPFN.** Our continued pretraining is technically a
 *multi-task* finetuning regime, which is a strict generalisation
-of the single-dataset finetuning studied here. The hyperparameter
-ranges (LR ~1e-5, ~30 epochs) reported in this paper are the
-starting point for ``config/training.yaml`` once ``src/train/``
-is implemented.
+of the single-dataset finetuning studied here. The reported ranges
+inform [`config/train.yaml`](../config/train.yaml): we bracket the
+references with a conservative LR grid ``{3e-7, 1e-6, 1e-5}`` (at
+or below their median ≈ 3.9e-5), sweep both full-FT and LoRA
+(``r=8``, ``α=16``), match their **weight_decay 0.0**, and run a
+fixed 50 epochs with divergence-abort instead of early stopping.
+Where we depart — L2-SP anchor, warmup→cosine schedule — is
+spelled out in the [Real-TabPFN](#real-tabpfn) divergence list,
+because the corpus setting needs anti-forgetting machinery their
+single-dataset runs did not.
 
 ---
 
@@ -1383,6 +1463,22 @@ shrinking the per-estimator KV cache to ~7 GB at 1M rows.
 Pretrained purely on synthetic data from an improved SCM prior;
 no real-data continued pretraining in the base release.
 
+One integration consequence worth flagging for our pipeline:
+the **regressor criterion handling differs between v2.6 and v3**.
+TabPFN regressors predict a *bar distribution* over a fixed grid
+of borders. In v3, ``model.forward`` takes ``test_targets_MB`` and
+the checkpoint loader **strips** any ``criterion.*`` keys and
+rebuilds the bar distribution from the model's own
+``regression_borders`` buffer; v2.6 has no ``test_targets_MB`` and
+so the loader **requires** the ``criterion.*`` keys. Our
+``save_finetuned`` writes ``criterion.*`` unconditionally — required
+for v2.6, harmlessly stripped for v3 — so a single save path
+round-trips for both bases. The checkpoint format itself is the
+standard four-key ``torch.save`` dict (``state_dict``, ``config``,
+``architecture_name``, ``inference_config``); valid
+``architecture_name`` strings are ``tabpfn_v2``, ``tabpfn_v2_5``,
+``tabpfn_v2_6``, ``tabpfn_v3``.
+
 **What it contains — results.** On TabArena-medium
 (10k–100k rows), a single forward pass of TabPFN-3 beats every
 other model — including tuned-and-ensembled baselines — by a
@@ -1398,13 +1494,15 @@ benchmark via a TabPFN-TS-3 checkpoint.
 **For CreditPFN.** Important and slightly destabilising. Three
 threads to think about:
 
-* **Successor question.** Our current pipeline targets
-  TabPFN-v3 *classifier-v3_default* and *regressor-v3_default*
-  checkpoints (see `config/train.yaml:27-37` and
-  `docs/CHECKPOINTS.md`). Those v3 weights ARE this paper's
-  release — the v3 line in our checkpoint inventory and this
-  paper's "TabPFN-3" are the same model. So we are already on
-  the latest generation; no re-base required.
+* **Successor question.** Our current pipeline sweeps **both**
+  TabPFN-v3 (*classifier-v3_default* / *regressor-v3_default*) and
+  TabPFN-v2.6 base checkpoints as a tunable grid axis (see
+  [`config/train.yaml`](../config/train.yaml) `tunable.*_base_paths`
+  and [`docs/CHECKPOINTS.md`](CHECKPOINTS.md)). Those v3 weights
+  ARE this paper's release — the v3 line in our checkpoint
+  inventory and this paper's "TabPFN-3" are the same model. So we
+  are already on the latest generation; no re-base required, and
+  v2.6 vs v3 is a benchmarked choice rather than a fixed decision.
 
 * **Continued-pretraining still applies, but the recipe shifts.**
   TabPFN-3 ships synthetic-prior only — no Real-TabPFN-style
@@ -1414,8 +1512,8 @@ threads to think about:
   different. In practice the loop should still work (gradients
   through the column-aggregator + ICL stages are the same idea),
   but the LoRA target modules in
-  [config/train.yaml:99-107](../config/train.yaml) (currently
-  `q_projection`, `k_projection`, `v_projection`,
+  [`config/train.yaml`](../config/train.yaml) (`lora.target_modules`,
+  currently `q_projection`, `k_projection`, `v_projection`,
   `out_projection`) may need adjusting for v3's named stages —
   especially the new column-aggregator and the many-class
   decoder. Worth re-checking which layers exist on v3 with
@@ -1423,18 +1521,27 @@ threads to think about:
   trusting the existing LoRA wrap on v3 ckpts.
 
 * **Memory & chunk-size implications.** The paper's row-chunking
-  inference scheme is the formalisation of what our cached
-  `chunk_*.npz` files already approximate at the dataset level —
-  but our training step still loads `n_finetune_ctx_plus_query_samples`
-  rows into GPU memory at once. v3's three-stage forward has a
-  *very* different memory profile from v2.6 (the column-wise
-  inducing-point attention plus the cls-token aggregation
-  consume significant VRAM at training time). The
-  100 000-row default in [config/train.yaml:122](../config/train.yaml)
-  was tuned for v2.6 on a 96 GB H100 NVL; on v3 with LoRA on an
-  80 GB H100 it OOMs (observed 2026-05-19, job 66726904). Drop
-  the value (50 k or lower) for v3 base checkpoints until we
-  re-tune.
+  inference scheme is the formalisation of what our per-step
+  subsampling already approximates at the dataset level — but our
+  training step still loads a whole `max_rows_per_epoch` subsample
+  into GPU memory at once. v3's three-stage forward has a *very*
+  different memory profile from v2.6: v3 is roughly **linear in
+  rows** (the column-wise inducing-point attention plus cls-token
+  aggregation decouple the ICL stage from feature count and
+  row-chunk activation memory), whereas v2.6's dual alternating
+  attention is **O(rows²)**. That asymmetry is exactly why the
+  per-step row caps are **per-architecture** in
+  [`config/data.yaml`](../config/data.yaml)
+  (`finetuning.max_rows_per_epoch`): **v3 = 20 000, v2.6 = 9 000**.
+  These were re-sized on 2026-06-23 for the **Mindwell B200
+  (192 GiB VRAM)** now that training runs only there (see
+  [`docs/VSC_GUIDE.md`](VSC_GUIDE.md) and
+  `scripts/slurm/train_{pd,lgd}.slurm`). The v3 = 20 000 value is
+  the one that OOM'd v3 full-FT on the old 80 GiB H100
+  (2026-06-01) but fits comfortably on the B200; if we ever train
+  on an 80 GiB card again, drop these to 10 000 / 6 000. v3's
+  cell-budget frontier (report §2.4) is why `max_cells_per_epoch`
+  exists as a v3-only knob (currently `null` = pure row cap).
 
 * **Test-time compute for risk scoring.** The "Thinking" mode is
   a research-grade idea: trade inference time for accuracy on the

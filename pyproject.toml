@@ -1,0 +1,102 @@
+# =============================================================================
+#  CreditPFN — project metadata, dependencies, and tool configuration
+# =============================================================================
+#  Single source of truth for the package. Install editable:
+#
+#      python -m pip install --upgrade pip
+#      pip install -e .                 # runtime only
+#      pip install -e ".[dev]"          # + pytest, repo-refresh tooling
+#      pip install -e ".[dev,notebooks]"# + Jupyter/ipykernel for the notebooks
+#
+#  *** TabPFN caveat (read this) ***
+#  PyPI's `tabpfn` lags the Prior Labs `main` API this code is written against
+#  (4-tuple `load_model_criterion_config`, version="v2.6"/"v3",
+#  `download_if_not_exists`, `TabPFNEnsemblePreprocessor`). After the editable
+#  install above, ALWAYS override with the git source so the v2.6/v3 API is
+#  present (this is intentionally NOT a hard dependency below, to avoid a
+#  network git-clone on every reinstall):
+#
+#      pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
+#
+#  Python: ** 3.11 or 3.12 ** (the VSC conda env is 3.12). 3.13/3.14 are
+#  untested — some compiled deps (torch, scikit-learn) historically lacked
+#  cp313/cp314 wheels and fall back to a from-source build that fails on
+#  Windows. See docs/VSC_GUIDE.md §0.4.
+# =============================================================================
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "creditpfn"
+version = "0.1.0"
+description = "Continued pretraining of TabPFN tabular foundation models (v2.6 / v3) on real credit-risk data — PD (classification) and LGD (regression)."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Andreas Goethals", email = "andreas.goethals@kuleuven.be" }]
+keywords = ["tabpfn", "tabular", "foundation-models", "credit-risk", "continued-pretraining", "finetuning"]
+classifiers = [
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Runtime dependencies — everything needed to run the data → train → eval
+# pipelines. Pinned to conservative major-version ranges; audited against the
+# actual `import` statements in src/ and the verified TabPFN API.
+dependencies = [
+    # Core deep-learning stack
+    "torch>=2.2,<3.0",
+    # TabPFN — see the caveat in the header; the git override supersedes this.
+    "tabpfn>=2.2",
+    # Scientific / tabular stack
+    "numpy>=1.26,<3.0",
+    "pandas>=2.1,<3.0",
+    "scipy>=1.11,<2.0",            # spatial.distance, stats.spearmanr (eval metrics)
+    "scikit-learn>=1.4,<2.0",      # FeatureAgglomeration, OrdinalEncoder, KFold, metrics
+    # Baseline models for the eval benchmark
+    "xgboost>=2.0,<4.0",
+    "catboost>=1.2,<2.0",
+    "optuna>=3.6,<5.0",            # per-fold HPO (TPE) for the boosting baselines
+    # Deduplication helper
+    "rapidfuzz>=3.6,<4.0",         # fuzzy column-name matching in dedup
+    # Configuration management (plain OmegaConf + Hydra-style CLI dot-overrides)
+    "omegaconf>=2.3,<3.0",
+    "pyyaml>=6.0,<7.0",
+    # Plotting (figure export in src/utils/figures.py + the notebooks)
+    "matplotlib>=3.8,<4.0",
+    # LoRA adapter (training-time only; merged into base weights at save time)
+    "peft>=0.10,<1.0",
+]
+
+[project.optional-dependencies]
+# Testing + the repository-corpus refresh utility (src/utils/refresh_repositories.py).
+dev = [
+    "pytest>=8.0,<9.0",
+    "gitingest>=0.3,<1.0",         # pulls fresh repositories/*.txt dumps (alpha; capped <1.0)
+]
+# Interactive notebooks under notebooks/.
+notebooks = [
+    "ipykernel>=6.29,<7.0",
+    "jupyter>=1.0,<2.0",
+]
+
+[project.urls]
+Repository = "https://github.com/andreasgoethals/CreditPFN"
+
+[tool.setuptools]
+# `src` is imported directly as a top-level package (e.g. `import src.train.loop`),
+# matching how the scripts and tests reference it. The YAML configs are NOT
+# package data — every entrypoint loads them by cwd-relative path
+# (`OmegaConf.load("config/data.yaml")`) after cd-ing into the repo root.
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]

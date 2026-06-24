@@ -72,7 +72,7 @@ if ! conda activate "${CONDA_ENV}" 2>/dev/null; then
     echo "       Create the env once with:" >&2
     echo "         mamba create -y -n ${CONDA_ENV} python=3.12" >&2
     echo "         source activate ${CONDA_ENV}" >&2
-    echo "         pip install -r requirements.txt" >&2
+    echo "         pip install -e \".[dev]\"" >&2
     exit 1
 fi
 
@@ -84,7 +84,7 @@ if ! python -c "import numpy, torch, omegaconf, tabpfn" 2>/dev/null; then
     echo "       Active python: $(command -v python)" >&2
     echo "       Reinstall with:" >&2
     echo "         conda activate ${CONDA_ENV}" >&2
-    echo "         pip install -r requirements.txt" >&2
+    echo "         pip install -e \".[dev]\"" >&2
     echo "         pip install --upgrade 'tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main'" >&2
     exit 1
 fi

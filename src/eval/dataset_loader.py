@@ -134,7 +134,21 @@ def load_processed_dataset(
     X = df[feature_cols].copy()
     y_raw = df[target]
     if task_type == "classification":
-        y = pd.to_numeric(y_raw, errors="coerce").astype(np.int64).to_numpy()
+        # Coerce, but DO NOT blindly `.astype(np.int64)` over NaNs — that maps
+        # NaN to a platform-dependent sentinel (e.g. -9223372036854775808),
+        # silently injecting a phantom extra class that corrupts
+        # StratifiedKFold, the unique-class count, and log_loss's label set.
+        # A non-numeric / missing target in a *sanitized* CSV is a real data
+        # error, so fail loudly. (Bug fixed 2026-06-23.)
+        y_num = pd.to_numeric(y_raw, errors="coerce")
+        n_bad = int(y_num.isna().sum())
+        if n_bad:
+            raise ValueError(
+                f"{csv_path}: classification target {target!r} has {n_bad} "
+                f"non-numeric/missing value(s) after coercion. Sanitized data "
+                f"must have a clean integer-coded target."
+            )
+        y = y_num.astype(np.int64).to_numpy()
     else:
         y = pd.to_numeric(y_raw, errors="coerce").astype(np.float32).to_numpy()
 
@@ -176,13 +190,27 @@ def subsample(
 
     rng = np.random.default_rng(seed)
     if stratify and len(np.unique(y)) >= 2:
-        # Stratified subsample: fraction per class.
+        # Stratified subsample: fraction per class. Per-class rounding-up plus
+        # the max(1,…) floor for rare classes can push the TOTAL above
+        # max_rows; for TabPFN the cap is a HARD architectural memory limit,
+        # so we must not exceed it. Trim the overflow afterwards, preferring
+        # to thin the largest (majority) classes. (Bug fixed 2026-06-23.)
         keep = np.zeros(n, dtype=bool)
         for cls in np.unique(y):
             idx = np.where(y == cls)[0]
             n_keep = max(1, int(round(len(idx) * (max_rows / n))))
             chosen = rng.choice(idx, size=min(n_keep, len(idx)), replace=False)
             keep[chosen] = True
+        kept_idx = np.where(keep)[0]
+        if kept_idx.size > max_rows:
+            drop_n = kept_idx.size - max_rows
+            # Drop the overflow from the most frequent (majority) classes
+            # first, to preserve minority-class signal.
+            y_kept = np.asarray(y)[kept_idx]
+            freq = {v: int(np.sum(y_kept == v)) for v in np.unique(y_kept)}
+            majority_first = np.argsort([-freq[v] for v in y_kept], kind="stable")
+            to_drop = kept_idx[majority_first[:drop_n]]
+            keep[to_drop] = False
     else:
         chosen = rng.choice(n, size=max_rows, replace=False)
         keep = np.zeros(n, dtype=bool)

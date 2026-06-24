@@ -673,7 +673,11 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
             super().__init__()
             self.fc = torch.nn.Linear(2, 2)
 
-    class _Cfg:
+    # Class name carries a recognizable architecture token ("V3") so the
+    # architecture_name fallback in save_finetuned resolves it without the
+    # real (private) upstream resolver — a stub config that matches NO token
+    # is now (correctly) refused rather than silently mislabeled as v2.5.
+    class _V3Cfg:
         n_features = 2
 
     save_path = tmp_path / "ckpt" / "test.ckpt"
@@ -683,7 +687,7 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
         "training_time_seconds": 123.4,
         "gpu": "NVIDIA H100 NVL",
     }
-    save_finetuned(_Tiny(), _Cfg(), save_path, provenance=provenance)
+    save_finetuned(_Tiny(), _V3Cfg(), save_path, provenance=provenance)
 
     # Sidecar JSON exists and matches.
     sidecar = save_path.with_suffix(save_path.suffix + ".provenance.json")

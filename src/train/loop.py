@@ -34,7 +34,11 @@ from __future__ import annotations
 
 import logging
 import math
+import os
+import platform
 import re
+import socket
+import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -323,6 +327,100 @@ def _seed_everything(seed: int) -> None:
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def _gpu_total_mem_gb(device: str) -> float | None:
+    """Total VRAM (GiB) of the active CUDA device, or None on CPU."""
+    if device != "cuda" or not torch.cuda.is_available():
+        return None
+    try:
+        return torch.cuda.get_device_properties(0).total_memory / 1e9
+    except Exception:                                              # pragma: no cover
+        return None
+
+
+def _log_debug_banner(
+    *, track: str, device: str, base_checkpoint, save_path,
+    learning_rate, use_lora, query_fraction, accumulate, pass_mode,
+    n_estimators_finetune, max_rows_per_epoch, max_cells_per_epoch,
+    epochs, total_steps, steps_per_epoch, weight_decay, l2sp_lambda,
+    warmup_fraction, seed, n_train_ds, n_test_ds, use_amp,
+) -> None:
+    """Emit a single, comprehensive DEBUG banner at training start.
+
+    The goal (user request, 2026-06-23): if a trial crashes or is killed
+    mid-run, the log alone must contain EVERY piece of context needed to
+    reproduce and debug it — environment, cluster, hardware, library
+    versions, resolved storage paths, the full hyperparameter set, and the
+    corpus shape. This is logged BEFORE the first forward pass so it
+    survives any later failure (OOM, SIGKILL, divergence).
+    """
+    # --- versions -------------------------------------------------------- #
+    try:
+        import tabpfn as _tabpfn
+        tabpfn_ver = getattr(_tabpfn, "__version__", "?")
+    except Exception:                                              # pragma: no cover
+        tabpfn_ver = "?"
+    # --- hardware -------------------------------------------------------- #
+    gpu_name, gpu_mem, cuda_cap = "cpu", None, None
+    if device == "cuda" and torch.cuda.is_available():
+        try:
+            props = torch.cuda.get_device_properties(0)
+            gpu_name = props.name
+            gpu_mem = props.total_memory / 1e9
+            cuda_cap = f"{props.major}.{props.minor}"
+        except Exception:                                          # pragma: no cover
+            gpu_name = "cuda"
+    # --- resolved storage roots ----------------------------------------- #
+    try:
+        from src.utils.paths import get_roots
+        roots = get_roots()
+    except Exception:                                              # pragma: no cover
+        roots = {}
+
+    sep = "─" * 78
+    lines = [
+        sep,
+        f"CreditPFN — TRAINING DEBUG BANNER (track={track})",
+        sep,
+        "[run] "
+        f"base={Path(base_checkpoint).name} lr={learning_rate:g} lora={use_lora} "
+        f"qf={query_fraction:.2f} accumulate={accumulate} pass_mode={pass_mode} "
+        f"seed={seed}",
+        "[hyperparams] "
+        f"epochs={epochs} steps/epoch={steps_per_epoch} total_steps={total_steps} "
+        f"n_estimators_finetune={n_estimators_finetune} amp={use_amp} "
+        f"max_rows_per_epoch={max_rows_per_epoch} max_cells_per_epoch={max_cells_per_epoch} "
+        f"weight_decay={weight_decay:g} l2sp_lambda={l2sp_lambda:g} "
+        f"warmup_fraction={warmup_fraction:g}",
+        "[corpus] "
+        f"n_train_datasets={n_train_ds} n_test_datasets={n_test_ds}",
+        "[env] "
+        f"host={socket.gethostname()} "
+        f"slurm_job={os.environ.get('SLURM_JOB_ID', '-')} "
+        f"array={os.environ.get('SLURM_ARRAY_JOB_ID', '-')}/{os.environ.get('SLURM_ARRAY_TASK_ID', '-')} "
+        f"cluster={os.environ.get('SLURM_CLUSTER_NAME', '-')} "
+        f"partition={os.environ.get('SLURM_JOB_PARTITION', '-')} "
+        f"node={os.environ.get('SLURMD_NODENAME', '-')} "
+        f"account={os.environ.get('SLURM_JOB_ACCOUNT', '-')}",
+        "[hardware] "
+        f"device={device} gpu={gpu_name} vram={f'{gpu_mem:.1f}GB' if gpu_mem else 'n/a'} "
+        f"cuda_capability={cuda_cap} "
+        f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', '-')} "
+        f"PYTORCH_CUDA_ALLOC_CONF={os.environ.get('PYTORCH_CUDA_ALLOC_CONF', '-')}",
+        "[versions] "
+        f"python={platform.python_version()} torch={torch.__version__} "
+        f"cuda={torch.version.cuda} cudnn={torch.backends.cudnn.version()} "
+        f"numpy={np.__version__} tabpfn={tabpfn_ver} platform={platform.platform()}",
+        "[paths] "
+        f"data_root={roots.get('data_root', '?')} "
+        f"output_root={roots.get('output_root', '?')} "
+        f"staging_root={roots.get('staging_root', '?')}",
+        f"[paths] base_checkpoint={base_checkpoint}",
+        f"[paths] save_target={save_path}",
+        sep,
+    ]
+    LOGGER.info("\n".join(str(x) for x in lines))
 
 
 def _amp_step_was_skipped(scaler: "torch.amp.GradScaler") -> bool:
@@ -1119,11 +1217,14 @@ def train_one_config(
         )
     )
 
-    # L2-SP anchor (Real-TabPFN §4): snapshot the synthetic-prior weights
+    # L2-SP anchor (Li et al. 2018): snapshot the synthetic-prior weights
     # w0 right after load, so the loss can penalise drift away from them
-    # (see _l2sp_penalty). Configurable via cfg.optimizer.l2sp_lambda
-    # (0.0 = off, the default). FULL-FT only — with LoRA the base is frozen
-    # and cannot drift, so L2-SP is inert and skipped.
+    # (see _l2sp_penalty). This is OUR deliberate addition for the
+    # multi-dataset corpus continued-pretraining setting — the Real-TabPFN
+    # experiments themselves use weight_decay=0.0 and NO anchor (their runs
+    # are single-dataset). Configurable via cfg.optimizer.l2sp_lambda
+    # (0.0 = off). FULL-FT only — with LoRA the base is frozen and cannot
+    # drift, so L2-SP is inert and skipped.
     l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
     l2sp_anchor: dict[str, torch.Tensor] | None = None
     if l2sp_lambda > 0.0 and not use_lora:
@@ -1176,11 +1277,24 @@ def train_one_config(
         query_fraction = float(_data_cfg.finetuning.query_fraction)
 
     # Resolve `n_estimators_finetune` (number of preprocessed ensemble
-    # members per training step). Pulled from cfg.train; defaults to 2
-    # to match TabPFN's `FinetunedTabPFNClassifier` (TabPFN .txt:26842).
-    n_estimators_finetune = int(
-        getattr(cfg.train, "n_estimators_finetune", 2)
-    )
+    # members per training step). Accepts EITHER a scalar int (applied to
+    # both tracks) OR a per-track mapping {pd: 2, lgd: 8, default: 2} so the
+    # regressor can use more members (lower per-step gradient noise), matching
+    # the official FinetunedTabPFNClassifier (=2) / FinetunedTabPFNRegressor
+    # (=8) defaults.
+    _raw_ne = getattr(cfg.train, "n_estimators_finetune", 2)
+    if isinstance(_raw_ne, (int, float)):
+        n_estimators_finetune = int(_raw_ne)
+    else:  # per-track mapping (OmegaConf DictConfig or plain dict)
+        _ne = getattr(_raw_ne, track, None)
+        if _ne is None and hasattr(_raw_ne, "get"):
+            _ne = _raw_ne.get(track, None)
+        if _ne is None:
+            _ne = getattr(_raw_ne, "default", None)
+            if _ne is None and hasattr(_raw_ne, "get"):
+                _ne = _raw_ne.get("default", 2)
+        n_estimators_finetune = int(_ne if _ne is not None else 2)
+    n_estimators_finetune = max(1, n_estimators_finetune)
     # Resolve the per-epoch step plan. None → head of the sweep list
     # (default "one_sample" = one step per dataset per epoch).
     if pass_mode is None:
@@ -1264,6 +1378,26 @@ def train_one_config(
     history: list[EpochRecord] = []
     t0 = time.monotonic()
 
+    # Comprehensive debug banner — logged BEFORE the first forward pass so the
+    # log retains full context even if the trial is later OOM-killed / SIGKILLed
+    # / diverges. Captures env, cluster, hardware, versions, storage roots and
+    # the complete hyperparameter set. (User request 2026-06-23.)
+    _log_debug_banner(
+        track=track, device=device, base_checkpoint=base_checkpoint,
+        save_path=save_path, learning_rate=float(learning_rate),
+        use_lora=bool(use_lora), query_fraction=float(query_fraction),
+        accumulate=int(accumulate), pass_mode=pass_mode,
+        n_estimators_finetune=int(n_estimators_finetune),
+        max_rows_per_epoch=int(max_rows_per_epoch),
+        max_cells_per_epoch=max_cells_per_epoch,
+        epochs=int(epochs), total_steps=int(total_steps),
+        steps_per_epoch=int(steps_per_epoch),
+        weight_decay=float(cfg.optimizer.weight_decay),
+        l2sp_lambda=(l2sp_lambda if l2sp_anchor is not None else 0.0),
+        warmup_fraction=float(cfg.scheduler.warmup_fraction),
+        seed=int(cfg.seed), n_train_ds=len(split.train),
+        n_test_ds=len(split.test), use_amp=bool(use_amp),
+    )
     LOGGER.info(
         "Starting %d epochs | %d train datasets/epoch | accumulate=%d | "
         "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s | "
@@ -1402,6 +1536,13 @@ def train_one_config(
         train_ds.set_epoch(epoch)
         running_loss = 0.0
         n_batches = 0
+        # Number of real (.backward()-ed) micro-batches accumulated since the
+        # last optimizer step. This — NOT the `enumerate` step counter — drives
+        # the accumulation boundary, because steps can be SKIPPED (missing
+        # context class, non-finite loss) before any backward, and using the
+        # raw step index would mis-scale gradients and desync the end-of-epoch
+        # flush whenever a skip occurs. (Bug fixed 2026-06-23.)
+        micro_since_step = 0
         optimizer.zero_grad(set_to_none=True)
         epoch_t0 = time.monotonic()
 
@@ -1413,6 +1554,13 @@ def train_one_config(
         epoch_clipped_count = 0
         epoch_step_losses: list[tuple[str, float]] = []   # (dataset_id, loss)
         epoch_skipped_steps = 0
+        # Timing + regularization accumulators — let a single shared log line
+        # answer the two recurring questions after a run: (1) WHERE is the
+        # epoch's wall-clock going — forward/backward compute, data loading
+        # (Lustre/GPFS I/O), or the per-epoch monitoring eval? and (2) is the
+        # L2-SP anchor actually contributing to the loss?
+        epoch_compute_s = 0.0                 # Σ forward+backward+step time
+        epoch_l2sp: list[float] = []          # per-step L2-SP penalty values
 
         for step, batch in enumerate(train_loader, start=1):
             step_t0 = time.monotonic()
@@ -1467,6 +1615,8 @@ def train_one_config(
                 # non-finite / divergence checks below.
                 if l2sp_anchor is not None:
                     _pen = _l2sp_penalty(model, l2sp_anchor, l2sp_lambda)
+                    if _pen is not None:
+                        epoch_l2sp.append(float(_pen.detach().cpu().item()))
                     loss_to_backprop = (
                         (loss + _pen) if _pen is not None else loss
                     ) / accumulate
@@ -1483,10 +1633,11 @@ def train_one_config(
                 continue
 
             scaler.scale(loss_to_backprop).backward()
+            micro_since_step += 1
 
             stepped = False
             pre_clip_norm: float | None = None
-            if step % accumulate == 0:
+            if micro_since_step >= accumulate:
                 # We always unscale here (with or without grad_clip) so we
                 # can MEASURE the pre-clip gradient norm. This is the
                 # single most useful number for diagnosing the loss
@@ -1523,6 +1674,7 @@ def train_one_config(
                         epoch, step,
                     )
                 optimizer.zero_grad(set_to_none=True)
+                micro_since_step = 0
 
             loss_val = float(loss.detach().cpu().item())
             running_loss += loss_val
@@ -1530,6 +1682,7 @@ def train_one_config(
             epoch_step_losses.append((batch.dataset_id, loss_val))
 
             step_dt = time.monotonic() - step_t0
+            epoch_compute_s += step_dt
             cur_lr = float(scheduler.get_last_lr()[0])
             gpu_mb = ""
             if device == "cuda" and torch.cuda.is_available():
@@ -1551,12 +1704,13 @@ def train_one_config(
             )
 
         # Flush any pending gradients from a partial accumulation window
-        # at the end of the epoch — otherwise the last
-        # `len(train_loader) % accumulate` micro-batches' gradients are
-        # computed but never applied. No-op when `accumulate == 1`
-        # (the standard case) because every step already triggered a
-        # full optimizer step.
-        if (n_batches > 0) and (n_batches % accumulate != 0):
+        # at the end of the epoch — otherwise the trailing micro-batches'
+        # gradients are computed but never applied. Driven by the real
+        # micro-batch counter (`micro_since_step > 0`), NOT the step index,
+        # so it stays correct in the presence of skipped steps. No-op when
+        # `accumulate == 1` (every backward already triggered a full step,
+        # leaving the counter at 0).
+        if micro_since_step > 0:
             scaler.unscale_(optimizer)
             total_norm = torch.nn.utils.clip_grad_norm_(
                 model.parameters(),
@@ -1577,6 +1731,13 @@ def train_one_config(
                     "(inf/NaN grads). Scheduler NOT advanced.", epoch,
                 )
             optimizer.zero_grad(set_to_none=True)
+
+        # Pure training time for this epoch (data loading + forward/backward
+        # + optimizer steps), measured BEFORE the monitoring eval so the two
+        # phases can be separated in the log below. eval_phase_s = epoch_dt -
+        # train_phase_s then reveals whether the per-epoch monitor (a 32-member
+        # ensemble inference, by default) dominates the epoch wall-clock.
+        train_phase_dt = time.monotonic() - epoch_t0
 
         # End-of-epoch monitoring eval: score the model on a small
         # subsample of each train- and test-dataset and record the
@@ -1658,13 +1819,48 @@ def train_one_config(
         else:
             loss_min = loss_max = loss_std = worst_loss = float("nan")
             worst_ds = "?"
+        # Peak GPU memory this epoch — the single most useful number for
+        # debugging OOM / tuning max_rows_per_epoch on a new GPU (e.g. the
+        # B200's 192 GiB). Reset after reading so each epoch reports its own
+        # peak rather than a running max.
+        gpu_peak = ""
+        if device == "cuda" and torch.cuda.is_available():
+            try:
+                peak_gb = torch.cuda.max_memory_allocated() / 1e9
+                resv_gb = torch.cuda.max_memory_reserved() / 1e9
+                total_gb = _gpu_total_mem_gb(device) or 0.0
+                pct = (100.0 * peak_gb / total_gb) if total_gb else float("nan")
+                # peak/total headroom makes the max_rows_per_epoch tuning
+                # decision a one-glance read on the new GPU (e.g. B200 192 GiB).
+                gpu_peak = (
+                    f"  gpu_peak_alloc={peak_gb:.2f}GB gpu_peak_reserved={resv_gb:.2f}GB"
+                    f" gpu_total={total_gb:.0f}GB ({pct:.0f}% of VRAM)"
+                )
+                torch.cuda.reset_peak_memory_stats()
+            except Exception:                                      # pragma: no cover
+                gpu_peak = ""
+        # Timing decomposition: where did the epoch's wall-clock go?
+        eval_phase_dt = max(0.0, epoch_dt - train_phase_dt)
+        data_io_s = max(0.0, train_phase_dt - epoch_compute_s)
+        steps_per_s = (n_batches / train_phase_dt) if train_phase_dt > 0 else float("nan")
+        l2sp_str = (
+            f"  l2sp_pen_mean={float(np.mean(epoch_l2sp)):.4f}" if epoch_l2sp else ""
+        )
         LOGGER.info(
             "  ↳ debug: grad_norm mean=%.3f max=%.3f clipped_frac=%.2f  "
             "per_step_loss min=%.4f max=%.4f std=%.4f  "
-            "worst_ds=%s (loss=%.4f)  skipped_steps=%d",
+            "worst_ds=%s (loss=%.4f)  skipped_steps=%d%s%s",
             gnorm_mean, gnorm_max, clipped_frac,
             loss_min, loss_max, loss_std,
-            worst_ds, worst_loss, epoch_skipped_steps,
+            worst_ds, worst_loss, epoch_skipped_steps, l2sp_str, gpu_peak,
+        )
+        # Timing line — kept separate so it's easy to grep across a run to see
+        # whether compute, data I/O, or the monitoring eval is the bottleneck.
+        LOGGER.info(
+            "  ↳ timing: epoch=%.1fs  train_phase=%.1fs (compute=%.1fs data_io=%.1fs "
+            "%.2f steps/s)  monitor_eval=%.1fs",
+            epoch_dt, train_phase_dt, epoch_compute_s, data_io_s,
+            steps_per_s, eval_phase_dt,
         )
 
         record = EpochRecord(
@@ -1742,9 +1938,19 @@ def train_one_config(
                     for t, tr in zip(test_metrics_recent, train_metrics_recent)
                 )
             )
-            metric_nan = all(
-                math.isnan(t) and math.isnan(tr)
-                for t, tr in zip(test_metrics_recent, train_metrics_recent)
+            # `metric_nan` is a collapse signal ONLY when the per-epoch
+            # monitor is actually running. When it's disabled
+            # (epoch_eval_subsample_samples == 0) every metric is NaN BY
+            # DESIGN — not because the model died — so guarding on
+            # ``epoch_eval_n0 > 0`` prevents a spurious DIVERGED abort that
+            # would otherwise truncate every monitor-disabled run after
+            # `patience` epochs. (Bug fixed 2026-06-23.)
+            metric_nan = (
+                epoch_eval_n0 > 0
+                and all(
+                    math.isnan(t) and math.isnan(tr)
+                    for t, tr in zip(test_metrics_recent, train_metrics_recent)
+                )
             )
             if loss_constant or auc_random or metric_nan:
                 reason = (

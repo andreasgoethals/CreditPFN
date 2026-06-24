@@ -708,5 +708,11 @@ def apply_outlier_clip(
     )
     z = (num_tensor - mu) / sd
     soft = z / torch.sqrt(1.0 + (z / float(n_sigma)) ** 2) * sd + mu
+    # An all-NaN numerical column (nanmean over zero non-NaN entries -> NaN)
+    # would poison `soft` with NaN and trip the model-forward NaN assertion.
+    # Restore the original values for any non-finite soft-clip output so a
+    # degenerate column passes through untouched rather than crashing.
+    # (Hardened 2026-06-23.)
+    soft = torch.where(torch.isfinite(soft), soft, num_tensor)
     out[..., num_idx] = soft.to(out.dtype)
     return out

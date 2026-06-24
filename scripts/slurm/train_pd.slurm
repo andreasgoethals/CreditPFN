@@ -1,148 +1,112 @@
 #!/bin/bash -l
 # =============================================================================
 #  CreditPFN — slurm array: continued pretraining (PD / classifier)
+#  TARGET: Mindwell cluster — NVIDIA B200 SXM6 (Blackwell), 192 GiB VRAM
 # =============================================================================
 #
-#  ONE TRIAL PER ARRAY TASK. Each trial produces ONE log file:
-#      ${OUTPUT_ROOT}/logs/train_pd_<YYYYMMDD>_<HHMMSS>_j<JOBID>_a<TASKID>.log
-#  with the slurm boilerplate, the python loop's per-step training
-#  log, and the final summary line all in one place. Slurm's own
-#  --output goes to /dev/null so we don't get a competing stub file.
+#  *** Continued pretraining of the TabPFN foundation models runs ONLY on
+#      Mindwell B200. *** The B200's 192 GiB VRAM (2.4x the 80 GiB H100) lets
+#      us train at a larger in-context size (config/data.yaml:
+#      finetuning.max_rows_per_epoch — v3: 20 000, v2.6: 9 000) to chase
+#      Real-TabPFN's "more context -> bigger gains". Data prep and evaluation
+#      stay on wICE (see data.slurm, eval_*.slurm).
 #
-#  Trial = one (base_checkpoint × learning_rate) tuple from
-#  `cfg.tunable` in `config/train.yaml`. The multi-chunk policy is
-#  fixed (one chunk per parent dataset). Compute the array size with:
-#
+#  ONE TRIAL PER ARRAY TASK. Trial = one
+#    (base_checkpoint x learning_rate x use_lora x query_fraction
+#     x accumulate x epoch_pass_mode) tuple from `cfg.tunable`.
+#  Compute the array size with:
 #      python scripts/train_pipeline.py --list-trials track=pd
 #
-#  Submit with:
-#
+#  Submit (from a Genius login node — Mindwell has no own login node):
 #      N=$(python scripts/train_pipeline.py --list-trials track=pd)
-#      sbatch --array=0-$((N - 1))%4 scripts/slurm/train_pd.slurm
+#      sbatch --clusters=mindwell --array=0-$((N - 1))%24 scripts/slurm/train_pd.slurm
+#  …or just `bash scripts/slurm/submit_full_pipeline.sh`, which sizes the
+#  array and targets the right cluster automatically.
 #
-#  (`%4` caps in-flight tasks at 4. Drop or raise as the queue
-#   tolerates.)
+#  STORAGE (see docs/VSC_GUIDE.md "Storage tiers"):
+#    * Datasets + base ckpts + trained ckpts -> project staging
+#      ($CREDITPFN_STAGING_ROOT, default /lustre1/project/stg_00211/CreditPFN).
+#      Staging is on Lustre. Mindwell prefers GPFS for SUSTAINED I/O, but our
+#      training only does a one-time startup read of the processed CSVs (then
+#      caches in RAM) + a single checkpoint write at the end — not sustained
+#      I/O — so direct Lustre access is fine. If a Mindwell job is ever killed
+#      for I/O, switch to the stage-in/out pattern documented in VSC_GUIDE.
+#    * Logs + manifests + per-epoch CSVs -> $VSC_DATA/CreditPFN (NFS, backed up).
 #
-#  wICE `gpu_h100` partition is a MIX of two H100 generations:
-#      * NVIDIA H100 80 GB HBM3   (most nodes — `s16gNN`)
-#      * NVIDIA H100 NVL 94 GB    (subset)
-#  Slurm does not guarantee which one you get on a given task. The
-#  `n_finetune_ctx_plus_query_samples = 10_000` default in train.yaml
-#  is sized for the 80 GB card so every task fits. The comment in
-#  train.yaml has the full memory budget table.
+#  PILOT ACCOUNT: lp_mindwell_pilot is FREE during the Mindwell pilot. Check
+#  it's still active (it may convert to paid post-pilot):
+#      sam-balance -A lp_mindwell_pilot
+#  If exhausted/closed, switch --account to your project account (e.g.
+#  lp_verbekelab) — B200 credit weight is 437.5/GPU-min.
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-pd-train
-#SBATCH --cluster=wice
-#SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100
+#SBATCH --clusters=mindwell
+#SBATCH --account=lp_mindwell_pilot
+#SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=24:00:00   # full_pass on PD's big datasets @ 50 epochs is slow;
-                          # 12h killed 9 full_pass PD trials on 2026-06-01.
-                          # eval now uses afterany so killed trials don't block
-                          # eval, but 24h lets more full_pass trials finish.
+#SBATCH --time=48:00:00   # GPU partitions cap at 72h (no gpu_*_long on VSC).
+                          # full_pass @ 50 epochs on the big PD datasets at the
+                          # 20k-row B200 cap is the worst case; one_sample
+                          # trials finish far sooner and free the slot. Tune
+                          # down (e.g. 04:00:00 for one_sample-only) to gain
+                          # backfill priority — shorter walltime => better queue
+                          # position on VSC.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=24   # max CPU cores per B200 GPU on gpu_b200 (192 cores / 8 GPUs)
+#SBATCH --mem=120G           # B200 nodes have 1536 GiB / 8 GPUs ~= 190 GiB per GPU;
+                             # 120G covers the larger row cap + the in-RAM clean cache.
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-23%8   # 24 trials (2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc
-                         #            × 2 pass-modes). Recompute via
-                         #   `python scripts/train_pipeline.py --list-trials track=pd`.
-                         # Over-sizing is safe: surplus tasks exit 0 cleanly
-                         # (see scripts/train_pipeline.py soft no-op).
-                         #
-                         # **Resource-asks tightened 2026-05-28** based on
-                         # VSC docs (`repositories/VSC Documentation.txt`):
-                         #   "Short jobs may benefit from back fill, i.e.,
-                         #    if the scheduler finds a gap … long enough to
-                         #    run that job before it has enough resources
-                         #    to start a large higher-priority parallel job."
-                         # AND:
-                         #   "On some clusters, a short walltime will give
-                         #    you a higher priority."
-                         # AND:
-                         #   "Many of our clusters have a stricter limit on
-                         #    the number of long-running jobs than on the
-                         #    number of jobs with a shorter walltime."
-                         #
-                         # So shorter `--time` → better queue position via
-                         # backfill + potentially higher concurrent-job limit.
-                         # Observed for ONE_SAMPLE @ 50 epochs: ~37-39 min/trial
-                         # (8 v3 lr=3e-7 trials, 2026-05-28/29) at the old 10k
-                         # row cap — LoRA/qf/accumulate barely moved it.
-                         # BUT this array now also runs the FULL_PASS arm at
-                         # the 10k row cap (v3; v2.6 = 6k): full_pass takes
-                         # ~Σ ceil(rows/cap) steps/epoch (≈ 8-12× more steps for
-                         # PD's big datasets), so a full_pass trial can run
-                         # several hours. --time=24:00:00 is sized for that
-                         # worst case (12h killed 9 full_pass PD trials on
-                         # 2026-06-01); the fast one_sample trials simply finish
-                         # early and free the slot. **Check the first full_pass
-                         # trial's `epoch_dt` in the log and extrapolate
-                         # (50×epoch_dt + setup); lower --time to ~02:00:00 for
-                         # one_sample-only runs to regain backfill priority.**
-                         #
-                         # `%8` (up from `%4`) — keeps the total sweep wall-time
-                         # bounded (fast one_sample trials cycle through the 8
-                         # slots quickly) while staying well under VSC's
-                         # user-level job count limits.
-                         #
-                         # `cpus-per-task=16` matches the documented gpu_h100
-                         # per-GPU limit (16 cores per GPU). `mem=64G` is
-                         # well within the 187 200 MiB per-GPU budget.
+#SBATCH --array=0-31%24   # 32 trials (2 bases x 4 LRs x 2 LoRA x 1 qf x 1 acc
+                          #            x 2 pass-modes). %24 saturates all 24
+                          #            Mindwell B200 GPUs. Recompute via
+                          #   python scripts/train_pipeline.py --list-trials track=pd
+                          # Over-sizing is safe (surplus tasks exit 0 cleanly).
 
-# Stagger array starts to avoid I/O storms on shared scratch.
+# Stagger array starts to avoid an I/O storm on the shared filesystem.
 sleep $((RANDOM % 30 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-# wICE's gpu_h100 partition mixes H100 80 GB and H100 NVL 94 GB cards.
-# `expandable_segments` lets the allocator reclaim fragmented blocks,
-# which the OOM error message explicitly recommends. Cheap insurance —
-# no measurable slowdown.
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:512}"
+# Blackwell: expandable_segments lets the CUDA allocator reclaim fragmented
+# blocks — cheap insurance for the larger in-context tensors.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
-# OUTPUT_ROOT is always durable storage; DATA_ROOT is resolved from
-# `config/data.yaml`'s `paths.data_source` knob inside _activate_env.sh.
-# See `scripts/slurm/data.slurm` for the full precedence ladder.
+# Logs + manifests + per-epoch CSVs -> $VSC_DATA (NFS, backed up, visible
+# from every cluster). Trained checkpoints -> project staging (resolved in
+# src/utils/paths.py from $CREDITPFN_STAGING_ROOT / $TABPFN_STAGING_ROOT /
+# the built-in /lustre1/project/stg_00211 default).
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
-# Large durable artefacts (checkpoints, eval results) go to project staging.
-# Set this before submitting:
-#   export CREDITPFN_STAGING_ROOT="/staging/leuven/stg_XXXXX/CreditPFN"
-# Falls back to CREDITPFN_OUTPUT_ROOT if unset (no staging available).
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
          "${CREDITPFN_OUTPUT_ROOT}/output/training/manifests" \
          "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/pd"
-if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
-    mkdir -p "${CREDITPFN_STAGING_ROOT}/checkpoints/trained/pd"
-else
-    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/pd"
-fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
-
-# Single log file for the whole task (slurm + python).
 exec > "$LOG" 2>&1
 
 cd "${VSC_DATA}/CreditPFN"
 source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
-echo "CreditPFN — TRAINING (PD)"
+echo "CreditPFN — TRAINING (PD) — Mindwell B200"
 echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
-echo "Array task ID  : ${SLURM_ARRAY_TASK_ID}"
+echo "Array job/task : ${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}"
+echo "Cluster        : ${SLURM_CLUSTER_NAME:-?}  partition=${SLURM_JOB_PARTITION:-?}"
 echo "Node           : ${SLURMD_NODENAME:-?}"
+echo "Account        : ${SLURM_JOB_ACCOUNT:-?}"
 echo "Date           : $(date)"
 echo "Log file       : ${LOG}"
-echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT}"
+echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT:-<auto: staging>}"
 echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
-echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-<not set — using OUTPUT_ROOT>}"
+echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-<built-in /lustre1/project/stg_00211>}}"
+echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
+echo "PYTORCH_ALLOC  : ${PYTORCH_CUDA_ALLOC_CONF}"
 nvidia-smi || true
 echo "=========================================="
 

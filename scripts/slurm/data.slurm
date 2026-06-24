@@ -5,26 +5,27 @@
 #
 #  Stage 1 of the on-VSC pipeline. Reads `data/raw/{pd,lgd}/<id>.csv`
 #  from $CREDITPFN_DATA_ROOT (auto-detected by src.utils.paths when
-#  unset — probes $VSC_SCRATCH/CreditPFN, $VSC_SCRATCH, $VSC_DATA/CreditPFN
-#  in that order; whichever has CSVs wins), runs the
+#  unset — probes project STAGING first, then $VSC_SCRATCH/CreditPFN,
+#  $VSC_SCRATCH, $VSC_DATA/CreditPFN; whichever has CSVs wins), runs the
 #  five-stage pipeline, and writes:
-#    * data/processed/{pd,lgd}/<id>.sanitized.csv → DATA_ROOT (scratch)
-#    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT (durable)
-#    * manifest_{pd,lgd}.csv                  → OUTPUT_ROOT (durable)
+#    * data/processed/{pd,lgd}/<id>.sanitized.csv → DATA_ROOT (staging)
+#    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT ($VSC_DATA, durable)
+#    * manifest_{pd,lgd}.csv                  → OUTPUT_ROOT ($VSC_DATA, durable)
 #
-#  CPU-only — uses the wICE `batch` partition (IceLake).
+#  CPU-only — uses the wICE `batch` partition (IceLake). wICE's scratch and
+#  the project staging dir are both on Lustre, so writing processed datasets
+#  to staging from here is on the right filesystem (compliant + fast).
 #
-#  Why wICE, not Genius: the train and eval stages run on wICE
-#  (`gpu_h100`), and SLURM on VSC does NOT support cross-cluster
-#  dependencies (Genius and wICE have separate controllers). Putting
-#  every stage on wICE means the `afterok:` chain in
-#  `submit_full_pipeline.sh` just works. If you ever need to put data
-#  back on Genius, also break the dependency chain — submit data
-#  first, wait for it to finish, then submit train/eval manually.
+#  MULTI-CLUSTER NOTE: continued pretraining (train_*.slurm) runs on the
+#  Mindwell `gpu_b200` cluster; data + eval run on wICE. VSC does NOT support
+#  cross-cluster Slurm dependencies, so the stages are submitted independently
+#  by `submit_full_pipeline.sh` (which is why this script writes datasets to
+#  project staging — the one storage tier both clusters can see). Run data
+#  FIRST and let it finish before the Mindwell training tasks read.
 #
 #  Submit with:
 #      sbatch scripts/slurm/data.slurm
-#  Or chained from `submit_full_pipeline.sh` (recommended).
+#  Or via `submit_full_pipeline.sh` (recommended).
 #
 #  All slurm-level output goes to /dev/null; the *real* log is a
 #  single timestamped file `${OUTPUT_ROOT}/logs/data_<YYYYMMDD>_<HHMMSS>.log`
@@ -88,6 +89,7 @@ echo "Date           : $(date)"
 echo "Log file       : ${LOG}"
 echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT}"
 echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
+echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-<built-in /lustre1/project/stg_00211>}}"
 echo "=========================================="
 
 python -u scripts/data_pipeline.py --log-path "$LOG"

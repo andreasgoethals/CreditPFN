@@ -6,9 +6,11 @@
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-lgd-eval
-#SBATCH --cluster=wice
+#SBATCH --clusters=wice
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100
+#SBATCH --partition=gpu_h100   # submit_full_pipeline.sh launches a SECOND eval
+                               # array on gpu_a100 (via --partition override) so
+                               # eval drains across BOTH wICE GPU pools.
 #SBATCH --gpus-per-node=1
 #SBATCH --time=02:00:00
 #SBATCH --nodes=1
@@ -32,20 +34,14 @@ sleep $((RANDOM % 15 + 1))
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-# See data.slurm for the rationale: OUTPUT_ROOT always durable;
-# DATA_ROOT resolved from config/data.yaml inside _activate_env.sh.
+# Logs -> $VSC_DATA (NFS, backed up). Eval result CSVs are large/durable and
+# go to project STAGING — resolved in src/utils/paths.py from
+# $CREDITPFN_STAGING_ROOT / $TABPFN_STAGING_ROOT / the built-in
+# /lustre1/project/stg_00211 default. wICE uses Lustre (where staging lives).
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
-# Large durable artefacts (eval results) go to project staging.
-# Set this before submitting:
-#   export CREDITPFN_STAGING_ROOT="/staging/leuven/stg_XXXXX/CreditPFN"
-# Falls back to CREDITPFN_OUTPUT_ROOT if unset.
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
-if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
-    mkdir -p "${CREDITPFN_STAGING_ROOT}/output/results"
-else
-    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/results"
-fi
+mkdir -p "${CREDITPFN_STAGING_ROOT:-${CREDITPFN_OUTPUT_ROOT}}/output/results"
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/eval_lgd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
@@ -58,12 +54,15 @@ echo "=========================================="
 echo "CreditPFN — EVAL (LGD)"
 echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
-echo "Array task ID  : ${SLURM_ARRAY_TASK_ID}"
+echo "Array job/task : ${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}"
+echo "Cluster        : ${SLURM_CLUSTER_NAME:-?}  partition=${SLURM_JOB_PARTITION:-?}"
 echo "Node           : ${SLURMD_NODENAME:-?}"
+echo "Account        : ${SLURM_JOB_ACCOUNT:-?}"
 echo "Date           : $(date)"
 echo "Log file       : ${LOG}"
 echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
-echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-<not set — using OUTPUT_ROOT>}"
+echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-<built-in /lustre1/project/stg_00211>}}"
+echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
 nvidia-smi || true
 echo "=========================================="
 

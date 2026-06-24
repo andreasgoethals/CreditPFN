@@ -50,6 +50,7 @@ from __future__ import annotations
 import csv
 import datetime as _dt
 import logging
+import os
 import re
 import time
 import traceback
@@ -66,7 +67,7 @@ from src.eval.dataset_loader import (
 from src.model.base import ModelHandle
 from src.model.tabpfn_models import TabPFNTrained
 from src.train.model import load_provenance
-from src.utils.paths import resolve_output_path, resolve_staging_path
+from src.utils.paths import resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -672,11 +673,27 @@ def _write_csv(rows: list[EvalRow], path: Path) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = list(asdict(rows[0]).keys())
-    with path.open("w", newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=fieldnames)
-        w.writeheader()
-        for r in rows:
-            w.writerow(asdict(r))
+    # Write ATOMICALLY: many eval array tasks run concurrently and the
+    # skip-existing scan (`find_existing_results`) reads every CSV in the
+    # method dir. A plain open("w") leaves a window where another task can
+    # read a half-written file (header but only some fold rows) and wrongly
+    # conclude the pair is incomplete -> duplicate re-scoring. Writing to a
+    # unique temp file and os.replace()-ing it in means readers only ever
+    # see a complete file. (Bug fixed 2026-06-23.)
+    tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    try:
+        with tmp.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=fieldnames)
+            w.writeheader()
+            for r in rows:
+                w.writerow(asdict(r))
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:                                        # pragma: no cover
+                pass
 
 
 # --------------------------------------------------------------------------- #
@@ -1027,6 +1044,31 @@ def run_benchmark(
             rows.extend(fold_rows)
             rows_by_model[handle.name].extend(fold_rows)
 
+            # One-line per (model × dataset) result summary in the log, so a
+            # shared eval log shows the actual scores (mean over OK folds) and
+            # any fold failures at a glance — no need to open the CSVs.
+            ok_rows = [r for r in fold_rows if r.status == "OK"]
+            n_fail_ds = len(fold_rows) - len(ok_rows)
+
+            def _mean(attr):
+                vals = [getattr(r, attr) for r in ok_rows]
+                vals = [v for v in vals if v == v]          # drop NaN (NaN != NaN)
+                return sum(vals) / len(vals) if vals else None
+
+            if track == "pd":
+                _au, _f1 = _mean("roc_auc"), _mean("f1")
+                _summ = (f"roc_auc={_au:.4f}" if _au is not None else "roc_auc=n/a") + \
+                        (f" f1={_f1:.4f}" if _f1 is not None else "")
+            else:
+                _rmse, _r2 = _mean("rmse"), _mean("r2")
+                _summ = (f"rmse={_rmse:.4f}" if _rmse is not None else "rmse=n/a") + \
+                        (f" r2={_r2:.4f}" if _r2 is not None else "")
+            LOGGER.info(
+                "    ↳ %s × %s: %d/%d folds OK  %s%s",
+                handle.name, did, len(ok_rows), len(fold_rows), _summ,
+                f"  FAILED={n_fail_ds}" if n_fail_ds else "",
+            )
+
         # Persist this model's rows. New file per (run_name, timestamp,
         # task_tag), so concurrent slurm tasks never write to the same file.
         out_path = _output_path_for(
@@ -1034,7 +1076,15 @@ def run_benchmark(
             base_dir=results_base_dir, per_task_tag=per_task_tag,
         )
         _write_csv(rows_by_model[handle.name], out_path)
-        LOGGER.info("  → wrote %d rows to %s",
-                    len(rows_by_model[handle.name]), out_path)
+        # Total wall-clock this model spent across all its folds/datasets —
+        # surfaces which methods dominate eval cost (typically the XGBoost /
+        # CatBoost per-fold Optuna HPO), so the eval log alone shows where to
+        # optimize the benchmark stage.
+        model_elapsed = sum(
+            float(r.elapsed_sec) for r in rows_by_model[handle.name]
+            if r.elapsed_sec == r.elapsed_sec   # drop NaN
+        )
+        LOGGER.info("  → wrote %d rows to %s  (model elapsed=%.1fs)",
+                    len(rows_by_model[handle.name]), out_path, model_elapsed)
 
     return rows

@@ -100,17 +100,21 @@ def test_explicit_envvar_beats_vsc_autodetect(monkeypatch, tmp_path) -> None:
     assert resolve_data_path("data/cached") == tmp_path / "explicit" / "data" / "cached"
 
 
-def test_vsc_autodetect_uses_scratch_for_data(monkeypatch) -> None:
-    """On VSC (VSC_DATA + VSC_SCRATCH set, no CREDITPFN_*), data paths
-    auto-route to ``$VSC_SCRATCH/CreditPFN``."""
-    monkeypatch.delenv("CREDITPFN_DATA_ROOT",   raising=False)
-    monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT", raising=False)
+def test_vsc_autodetect_uses_staging_for_data(monkeypatch) -> None:
+    """On VSC with no data on disk yet, data paths default to project
+    STAGING (datasets are the largest files -> project storage). Here we
+    pin the staging base via TABPFN_STAGING_ROOT for a deterministic
+    assertion that doesn't depend on the built-in default constant."""
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT",    raising=False)
+    monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT",  raising=False)
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
     monkeypatch.setenv("VSC_DATA",     "/data/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_SCRATCH",  "/scratch/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_HOME",     "/user/leuven/example/vsc12345")  # for is_vsc_environment
     p = resolve_data_path("data/cached")
     assert str(p).replace("\\", "/").endswith(
-        "/scratch/leuven/example/vsc12345/CreditPFN/data/cached"
+        "/lustre1/project/stg_00211/CreditPFN/data/cached"
     )
 
 
@@ -136,33 +140,55 @@ def test_local_fallback_when_no_vsc_envvars(monkeypatch) -> None:
     assert resolve_output_path("logs") == REPO_ROOT / "logs"
 
 
-def test_partial_vsc_envvars_dont_trigger_autodetect(monkeypatch) -> None:
-    """If VSC_HOME is set but VSC_SCRATCH/VSC_DATA are missing,
-    auto-detection silently degrades to repo root rather than building
-    a broken path. Belt-and-braces — shouldn't happen in practice."""
-    monkeypatch.delenv("CREDITPFN_DATA_ROOT",   raising=False)
-    monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT", raising=False)
+def test_partial_vsc_envvars_route_data_to_staging(monkeypatch) -> None:
+    """If VSC_HOME marks us as on-VSC but VSC_SCRATCH/VSC_DATA are missing,
+    data still routes to project staging (its mount is independent of the
+    scratch/data vars), while the durable OUTPUT root degrades to repo root
+    (no $VSC_DATA to anchor it). Belt-and-braces — shouldn't happen in
+    practice, but must not build a broken scratch path."""
+    monkeypatch.delenv("CREDITPFN_DATA_ROOT",    raising=False)
+    monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT",  raising=False)
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
     monkeypatch.delenv("VSC_DATA",    raising=False)
     monkeypatch.delenv("VSC_SCRATCH", raising=False)
     monkeypatch.setenv("VSC_HOME", "/user/leuven/example/vsc12345")
-    assert resolve_data_path("data/cached") == REPO_ROOT / "data" / "cached"
+    assert resolve_data_path("data/cached") == \
+        Path("/lustre1/project/stg_00211/CreditPFN/data/cached")
     assert resolve_output_path("logs") == REPO_ROOT / "logs"
 
 
 def test_get_roots_on_vsc(monkeypatch) -> None:
-    """``get_roots()`` reports the VSC defaults when nothing is overridden."""
-    for v in ("CREDITPFN_DATA_ROOT", "CREDITPFN_OUTPUT_ROOT"):
+    """``get_roots()`` reports the VSC defaults when nothing is overridden:
+    data -> project staging, output -> $VSC_DATA, staging -> project staging."""
+    for v in ("CREDITPFN_DATA_ROOT", "CREDITPFN_OUTPUT_ROOT", "CREDITPFN_STAGING_ROOT"):
         monkeypatch.delenv(v, raising=False)
+    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
     monkeypatch.setenv("VSC_DATA",    "/data/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_SCRATCH", "/scratch/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_HOME",    "/user/leuven/example/vsc12345")
     roots = get_roots()
     assert str(roots["data_root"]).replace("\\", "/").endswith(
-        "/scratch/leuven/example/vsc12345/CreditPFN"
+        "/lustre1/project/stg_00211/CreditPFN"
     )
     assert str(roots["output_root"]).replace("\\", "/").endswith(
         "/data/leuven/example/vsc12345/CreditPFN"
     )
+    assert str(roots["staging_root"]).replace("\\", "/").endswith(
+        "/lustre1/project/stg_00211/CreditPFN"
+    )
+
+
+def test_builtin_staging_default_used_on_vsc_without_env(monkeypatch) -> None:
+    """With NO staging env var but a VSC environment, staging resolves to the
+    built-in default base (the project's KU Leuven allocation) + /CreditPFN."""
+    for v in ("CREDITPFN_STAGING_ROOT", "TABPFN_STAGING_ROOT",
+              "CREDITPFN_DATA_ROOT", "CREDITPFN_OUTPUT_ROOT"):
+        monkeypatch.delenv(v, raising=False)
+    monkeypatch.setenv("VSC_DATA", "/data/leuven/example/vsc12345")
+    monkeypatch.setenv("VSC_HOME", "/user/leuven/example/vsc12345")
+    got = str(resolve_staging_path("checkpoints/trained")).replace("\\", "/")
+    assert got == "/lustre1/project/stg_00211/CreditPFN/checkpoints/trained"
 
 
 def test_is_vsc_environment_only_true_when_vsc_envvars_present(monkeypatch) -> None:
@@ -179,8 +205,9 @@ def test_is_vsc_environment_only_true_when_vsc_envvars_present(monkeypatch) -> N
 
 
 def test_resolve_staging_path_falls_back_to_output_root_when_unset(monkeypatch) -> None:
-    """Without CREDITPFN_STAGING_ROOT, staging falls back to output root."""
+    """Off-VSC with no staging env, staging falls back to the repo root."""
     monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
     monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT",  raising=False)
     monkeypatch.delenv("VSC_DATA", raising=False)
     monkeypatch.delenv("VSC_HOME", raising=False)
@@ -204,6 +231,9 @@ def test_resolve_staging_path_passes_absolute_through(monkeypatch) -> None:
 
 def test_is_staging_available_false_when_unset(monkeypatch) -> None:
     monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
+    monkeypatch.delenv("VSC_DATA", raising=False)
+    monkeypatch.delenv("VSC_HOME", raising=False)
     assert is_staging_available() is False
 
 
@@ -214,6 +244,8 @@ def test_is_staging_available_false_when_path_missing(monkeypatch, tmp_path) -> 
 
 
 def test_is_staging_available_true_when_path_exists(monkeypatch, tmp_path) -> None:
+    # Staging base + the /CreditPFN project subdir must exist on disk.
+    (tmp_path / "CreditPFN").mkdir()
     monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path))
     assert is_staging_available() is True
 
@@ -229,8 +261,36 @@ def test_get_roots_includes_staging(monkeypatch) -> None:
 
 def test_get_roots_staging_falls_back_to_repo_root_when_unset(monkeypatch) -> None:
     monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
+    monkeypatch.delenv("VSC_DATA", raising=False)
+    monkeypatch.delenv("VSC_HOME", raising=False)
     roots = get_roots()
     assert roots["staging_root"] == REPO_ROOT
+
+
+def test_tabpfn_staging_root_env_is_honoured(monkeypatch) -> None:
+    """The generic TABPFN_STAGING_ROOT var (no CREDITPFN_ override) resolves
+    staging to <base>/CreditPFN."""
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
+    assert resolve_staging_path("checkpoints/trained") == \
+        Path("/lustre1/project/stg_00211/CreditPFN/checkpoints/trained")
+
+
+def test_creditpfn_staging_root_takes_precedence_over_tabpfn(monkeypatch) -> None:
+    monkeypatch.setenv("TABPFN_STAGING_ROOT",    "/staging/leuven/stg_99999")
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
+    assert resolve_staging_path("x") == Path("/lustre1/project/stg_00211/CreditPFN/x")
+
+
+def test_builtin_staging_default_on_vsc(monkeypatch) -> None:
+    """On a VSC node with no staging env var set, staging resolves to the
+    built-in default allocation."""
+    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
+    monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
+    monkeypatch.setenv("VSC_HOME", "/user/leuven/example/vsc12345")
+    assert resolve_staging_path("checkpoints") == \
+        Path("/lustre1/project/stg_00211/CreditPFN/checkpoints")
 
 
 # =============================================================================
@@ -312,19 +372,21 @@ def test_autodetect_detects_lgd_csvs_too(monkeypatch, tmp_path) -> None:
     assert resolve_data_path("data/raw") == scratch / "data" / "raw"
 
 
-def test_autodetect_falls_back_to_canonical_when_nothing_found(monkeypatch, tmp_path) -> None:
-    """Fresh checkout, no data on disk anywhere → fall back to the
-    documented ``$VSC_SCRATCH/CreditPFN`` so downstream "missing raw file"
-    warnings point at the canonical upload location."""
+def test_autodetect_falls_back_to_staging_when_nothing_found(monkeypatch, tmp_path) -> None:
+    """Fresh checkout, no data on disk anywhere → fall back to project
+    STAGING (the canonical home for datasets) so downstream "missing raw
+    file" warnings point at the right upload location."""
     scratch  = tmp_path / "scratch"
     vsc_data = tmp_path / "data"
-    scratch.mkdir(); vsc_data.mkdir()  # exist but empty
+    staging  = tmp_path / "staging"
+    scratch.mkdir(); vsc_data.mkdir(); staging.mkdir()  # exist but empty
     monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(staging))
     monkeypatch.setenv("VSC_SCRATCH", str(scratch))
     monkeypatch.setenv("VSC_DATA",    str(vsc_data))
     monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
     assert resolve_data_path("data/cached") == \
-        scratch / "CreditPFN" / "data" / "cached"
+        staging / "CreditPFN" / "data" / "cached"
 
 
 def test_explicit_envvar_wins_over_autodetect(monkeypatch, tmp_path) -> None:

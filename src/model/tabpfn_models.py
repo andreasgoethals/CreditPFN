@@ -154,9 +154,10 @@ class TabPFNTrained:
     forwarded to the eval CSV.
 
     ``ckpt_path`` is a path under ``checkpoints/trained/<track>/``
-    written by ``src.train.loop.save_finetuned``. Because that
-    function writes the same Prior Labs format
-    (``state_dict + config``), the file round-trips cleanly through
+    written by ``src.train.model.save_finetuned`` (invoked from
+    ``src.train.loop``). Because that function writes the full Prior
+    Labs format (``state_dict + config + architecture_name +
+    inference_config``), the file round-trips cleanly through
     ``TabPFNClassifier(model_path=...)``.
     """
 

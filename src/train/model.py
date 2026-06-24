@@ -300,13 +300,28 @@ def save_finetuned(
         from tabpfn.model_loading import _resolve_architecture_name
         architecture_name = _resolve_architecture_name(architecture_config)
     except Exception:
+        # Fallback for when the (private) upstream symbol is unavailable.
+        # Map by the real config class names. CRUCIALLY, do NOT default to
+        # "base" (which load_model remaps to tabpfn_v2_5): silently saving a
+        # v3 state_dict under a v2.5 architecture makes the checkpoint
+        # unloadable. Raise instead so the failure is loud and immediate.
+        # (Hardened 2026-06-23 per the TabPFN-core consistency audit.)
         cls_name = type(architecture_config).__name__
         if "V3" in cls_name:
             architecture_name = "tabpfn_v3"
         elif "V2p6" in cls_name or "V2_6" in cls_name:
             architecture_name = "tabpfn_v2_6"
+        elif "V2p5" in cls_name or "V2_5" in cls_name:
+            architecture_name = "tabpfn_v2_5"
+        elif "V2" in cls_name:
+            architecture_name = "tabpfn_v2"
         else:
-            architecture_name = "base"
+            raise RuntimeError(
+                f"Could not resolve architecture_name for config class "
+                f"{cls_name!r} (tabpfn._resolve_architecture_name import failed "
+                f"and no class-name match). Refusing to save a checkpoint with "
+                f"an unknown/guessed architecture — it would not round-trip."
+            )
 
     # If the model was LoRA-wrapped during training, fold the adapter
     # back into the base weights so the on-disk state_dict matches the

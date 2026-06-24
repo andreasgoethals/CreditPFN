@@ -9,7 +9,7 @@
 
 
 # --- Section 0 · Tunable sweep (cartesian product) ---------------------------
-# Grid: 2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc × 2 pass-modes = 24 trials/track.
+# Grid: 2 bases × 4 LRs × 2 LoRA × 1 qf × 1 acc × 2 pass-modes = 32 trials/track.
 # v2.5 is not swept (PEFT module-name + NaN-scaler incompatibilities — see
 # docs/CHECKPOINTS.md). Only v2.6 and v3 synthetic-only bases.
 tunable:
@@ -20,10 +20,18 @@ tunable:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
 
-  # LR grid brackets the published values: 3e-7 (Real-TabPFN), 1e-5
-  # (FinetunedTabPFNClassifier default), 5e-5 (Rubachev high end). 1e-4
-  # diverges on no-LoRA + qf=0.20, so it's excluded. See README §7.
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]
+  # LR grid brackets the literature. The official FinetunedTabPFN wrappers
+  # use 2e-5 (classifier) / 1e-5 (regressor); Real-TabPFN's 342 per-dataset
+  # finetune runs tune lr in 5e-6..5e-4 with MEDIAN ≈ 3.9e-5. So:
+  #   3e-7  — very conservative anti-forgetting low end (probes whether tiny
+  #           steps suffice for the multi-dataset corpus setting),
+  #   1e-6  — conservative,
+  #   1e-5  — ≈ the official regressor-wrapper default,
+  #   3e-5  — ≈ Real-TabPFN's per-dataset median (added 2026-06-23 so the
+  #           sweep actually reaches the references' central value).
+  # 1e-4 is excluded (diverged on no-LoRA + qf=0.20 in an earlier run; revisit
+  # now that weight_decay=0.0). See README §7 and docs/LITERATURE.md.
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
 
   # LoRA (Hu et al. 2021): freeze base weights, train ~1.6 % adapter params.
   # Merged back at save time → .ckpt loads without a PEFT dependency.
@@ -80,15 +88,21 @@ corpus:
 # --- Section 3 · Optimizer + LR schedule -------------------------------------
 # AdamW (betas 0.9/0.999) + linear-warmup → cosine-decay (hardcoded in loop).
 optimizer:
-  weight_decay: 0.01
-  # L2-SP (Li et al. 2018; the anti-forgetting term Real-TabPFN §4 uses):
-  # penalise drift of the weights away from the synthetic-prior start w0
-  # — NOT toward zero, which is what weight_decay does. ON by default at
-  # Real-TabPFN's value (0.003); set to 0.0 to disable. FULL-FT-only: with
-  # LoRA the base is frozen, so L2-SP is inert and silently skipped — i.e.
-  # effectively "full-FT gets L2-SP, LoRA doesn't". NOTE: 0.003 was tuned
-  # for v2 / 20k steps / CE-only, so on our v2.6+v3 / ~hundreds-of-steps /
-  # CE+NLL setup treat it as a sensible starting point, not a constant.
+  # weight_decay = 0.0 to MATCH the references: all 342 Real-TabPFN finetune
+  # runs and the official FinetunedTabPFN* examples use AdamW with
+  # weight_decay 0.0. AdamW decay pulls weights toward the ORIGIN, which
+  # fights continued pretraining's goal of staying near the synthetic prior —
+  # and would partly cancel the L2-SP anchor below. We let L2-SP alone handle
+  # anti-forgetting. (Changed 2026-06-23 from 0.01; flagged by the methodology
+  # audit against the reference repos.)
+  weight_decay: 0.0
+  # L2-SP (Li et al. 2018): penalise drift of the weights away from the
+  # synthetic-prior start w0 — NOT toward zero (that's weight_decay). This is
+  # OUR deliberate addition for the multi-dataset *corpus* continued-pretraining
+  # setting; it is NOT used in the Real-TabPFN experiments (their single-dataset
+  # runs use weight_decay 0.0 and no anchor). ON by default at 0.003; set to
+  # 0.0 to disable, or sweep {0.0, 0.003} to measure whether it helps. FULL-FT
+  # only: with LoRA the base is frozen, so L2-SP is inert and silently skipped.
   # See README §7.
   l2sp_lambda: 0.003
 scheduler:
@@ -111,9 +125,19 @@ train:
   amp: true                               # AMP autocast (CUDA only; fp16)
   dataloader_workers: 0                   # GPU is the bottleneck
 
-  # TabPFN ensemble members per training step (FinetunedTabPFNClassifier
-  # default = 2): two preprocessed views averaged, ~sqrt(2) less grad noise.
-  n_estimators_finetune: 2
+  # TabPFN ensemble members per training step — averaged preprocessed views,
+  # ~1/sqrt(K) less gradient noise. PER-TRACK to match the official wrappers:
+  #   pd  = 2  (FinetunedTabPFNClassifier default),
+  #   lgd = 8  (FinetunedTabPFNRegressor default — regression benefits from
+  #            lower per-step gradient noise; changed 2026-06-23 from 2).
+  # Cost scales ~linearly with K (8 members ≈ 4× the per-step forward cost of
+  # 2), which is why only the smaller LGD corpus uses 8. A scalar int is also
+  # accepted (applied to both tracks); `default` is the fallback for an
+  # unlisted track.
+  n_estimators_finetune:
+    pd:      2
+    lgd:     8
+    default: 2
 
   # Per-epoch monitor: at each epoch end, score `epoch_eval_subsample_samples`
   # rows per train/test dataset via `epoch_eval_n_estimators`-member TabPFN

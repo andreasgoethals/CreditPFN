@@ -1,60 +1,39 @@
 #!/bin/bash -l
 # =============================================================================
 #  CreditPFN — slurm array: continued pretraining (LGD / regressor)
+#  TARGET: Mindwell cluster — NVIDIA B200 SXM6 (Blackwell), 192 GiB VRAM
 #
-#  Same structure as train_pd.slurm — see that file's header for
-#  the array-size + submission flow.
+#  Same structure as train_pd.slurm — see that file's header for the full
+#  rationale (Mindwell-only training, storage tiers, pilot account, backfill).
+#  LGD has a smaller corpus (6 train + 2 test datasets), so trials finish
+#  faster; --time is set lower accordingly.
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-lgd-train
-#SBATCH --cluster=wice
-#SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100
+#SBATCH --clusters=mindwell
+#SBATCH --account=lp_mindwell_pilot
+#SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=06:00:00   # raised for the full_pass A/B @ 50 epochs (see note)
+#SBATCH --time=12:00:00   # smaller LGD corpus; full_pass A/B @ 50 epochs fits.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=120G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-#SBATCH --array=0-23%8   # 24 trials (2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc
-                         #            × 2 pass-modes). See train_pd.slurm for the
-                         #            full SBATCH resource rationale (backfill,
-                         #            queue priority).
-                         #
-                         # LGD has a smaller corpus (6 train + 2 test datasets
-                         # vs PD's 12 + 5), so one_sample trials are fast
-                         # (~25-30 min; the per-epoch monitor, not param count,
-                         # sets the pace — see train_pd.slurm). --time=06:00:00
-                         # covers the full_pass A/B arm, whose Σ ceil(rows/cap)
-                         # steps/epoch run several × longer; one_sample trials
-                         # finish early and free the slot.
+#SBATCH --array=0-31%24   # 32 trials. See train_pd.slurm for the rationale.
 
 sleep $((RANDOM % 30 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
 
-# See train_pd.slurm for the rationale.
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:512}"
-
-# See data.slurm for the rationale: OUTPUT_ROOT always durable;
-# DATA_ROOT resolved from config/data.yaml inside _activate_env.sh.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
-# Large durable artefacts (checkpoints, eval results) go to project staging.
-# Set this before submitting:
-#   export CREDITPFN_STAGING_ROOT="/staging/leuven/stg_XXXXX/CreditPFN"
-# Falls back to CREDITPFN_OUTPUT_ROOT if unset (no staging available).
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
          "${CREDITPFN_OUTPUT_ROOT}/output/training/manifests" \
          "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/lgd"
-if [[ -n "${CREDITPFN_STAGING_ROOT:-}" ]]; then
-    mkdir -p "${CREDITPFN_STAGING_ROOT}/checkpoints/trained/lgd"
-else
-    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/checkpoints/trained/lgd"
-fi
 
 TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_lgd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
@@ -64,16 +43,20 @@ cd "${VSC_DATA}/CreditPFN"
 source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
-echo "CreditPFN — TRAINING (LGD)"
+echo "CreditPFN — TRAINING (LGD) — Mindwell B200"
 echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
-echo "Array task ID  : ${SLURM_ARRAY_TASK_ID}"
+echo "Array job/task : ${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}"
+echo "Cluster        : ${SLURM_CLUSTER_NAME:-?}  partition=${SLURM_JOB_PARTITION:-?}"
 echo "Node           : ${SLURMD_NODENAME:-?}"
+echo "Account        : ${SLURM_JOB_ACCOUNT:-?}"
 echo "Date           : $(date)"
 echo "Log file       : ${LOG}"
-echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT}"
+echo "DATA_ROOT      : ${CREDITPFN_DATA_ROOT:-<auto: staging>}"
 echo "OUTPUT_ROOT    : ${CREDITPFN_OUTPUT_ROOT}"
-echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-<not set — using OUTPUT_ROOT>}"
+echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-<built-in /lustre1/project/stg_00211>}}"
+echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
+echo "PYTORCH_ALLOC  : ${PYTORCH_CUDA_ALLOC_CONF}"
 nvidia-smi || true
 echo "=========================================="
 

@@ -248,6 +248,13 @@ def _stratified_subsample_indices(
         return rng.choice(n, size=n_total, replace=False)
 
     classes, counts = np.unique(y, return_counts=True)
+    # When the requested subsample is smaller than the number of classes,
+    # the max(1,…) floor below makes a balanced per-class quota impossible
+    # (every class wants >=1 row but n_total < n_classes). Fall back to a
+    # plain random draw rather than spinning in the drift loop forever.
+    # (Bug fixed 2026-06-23.)
+    if n_total < len(classes):
+        return rng.choice(n, size=n_total, replace=False)
     # Target per-class quota proportional to class frequency, rounded.
     quotas = np.maximum(1, np.round(counts * n_total / n).astype(int))
     # Resolve rounding drift: total quotas must equal n_total. Adjust on
@@ -255,11 +262,19 @@ def _stratified_subsample_indices(
     drift = int(quotas.sum()) - int(n_total)
     if drift != 0:
         order = np.argsort(-counts)               # largest classes first
+        # Bound the down-adjust loop: if a full pass over all classes can't
+        # shed any more (every quota already at its floor of 1), stop — the
+        # remaining drift is absorbed by returning slightly fewer rows,
+        # which is harmless. Prevents an infinite spin.
         idx = 0
-        while drift > 0:
+        stalls = 0
+        while drift > 0 and stalls < len(order):
             if quotas[order[idx]] > 1:
                 quotas[order[idx]] -= 1
                 drift -= 1
+                stalls = 0
+            else:
+                stalls += 1
             idx = (idx + 1) % len(order)
         while drift < 0:
             quotas[order[idx]] += 1
@@ -597,7 +612,13 @@ class ProcessedDatasetLoader(Dataset):
         # (`repositories/TabPFN .txt:26147-26319`).
         return _build_ensemble_step_batch(
             loaded,
-            n_total_target=self.max_rows_per_epoch,
+            # Use the SAME effective cap as the legacy path and the full_pass
+            # step-count math (`_effective_cap`), not the raw row cap —
+            # otherwise the optional max_cells_per_epoch budget is silently
+            # ignored on the real (ensemble) training path, and under
+            # full_pass the per-step row count would disagree with the
+            # k = ceil(n_rows / eff_cap) step count. (Bug fixed 2026-06-23.)
+            n_total_target=n_total_target,
             query_fraction=self.query_fraction,
             rng=rng,
             inference_config=self._inference_config,

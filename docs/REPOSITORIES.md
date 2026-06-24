@@ -31,7 +31,7 @@ fresh dump of a public GitHub repo, the upstream URL is linked.
 | `TabPFN Wide.txt` | 2,388 | [not-a-feature/TabPFN-Wide](https://github.com/not-a-feature/TabPFN-Wide) | [Kolberg 2026](../papers/2026_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.pdf) | Continued-pretraining for extreme-feature-count regimes via a feature-widening prior (it argues *against* feature reduction; not the source of our agglomeration). |
 | `TabTune.txt` | 134,411 | [Lexsi-Labs/TabTune](https://github.com/Lexsi-Labs/TabTune) | [Lexsi-Labs 2025](https://arxiv.org/abs/2511.02802) | Unified sklearn-style wrapper around the **non-TabPFN** tabular foundation models (TabICL, OrionMSP/Bix, Mitra, ContextTab, TabDPT, LimiX) plus TabPFNv2.6 native FT, ensembling, distillation, and a `TabularLeaderboard`. Useful as a *future* source of additional eval baselines beyond what `src/model/` currently wraps; **not adopted now** because it doesn't natively support Real-TabPFN-style multi-dataset continued pretraining (which is the core training stage of this project). See "Should we use TabTune?" below for the full call. |
 | `TransformersCanDoBayesianInference.txt` | 6,869 | [SamuelGabriel/PFNs](https://github.com/SamuelGabriel/PFNs) (early, same upstream as `PFNS.txt`) | [Müller 2021](../papers/2021_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.pdf) | Code for the original PFN paper. Mostly historical; useful for explaining what a PFN is. |
-| `VSC Documentation.txt` | 39,358 | [hpcleuven/VscDocumentation](https://github.com/hpcleuven/VscDocumentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, A100 partitions, storage tiers, account / VO management. The reference when writing the SLURM scripts under `scripts/`. |
+| `VSC Documentation.txt` | 39,358 | [hpcleuven/VscDocumentation](https://github.com/hpcleuven/VscDocumentation) | — | Full Sphinx source of the VSC supercomputer documentation. SLURM job scripting, **Mindwell B200 / wICE H100+A100** partitions, Lustre/GPFS + project-staging storage tiers, account / credit management. The reference when writing the SLURM scripts under `scripts/slurm/`. |
 
 ## Layout
 
@@ -208,6 +208,17 @@ this repo is the best public source for the LR grid, patience,
 prediction length, and A100 memory assumptions behind single-dataset
 gradient adaptation.
 
+**Two facts that frame all our comparisons against it:** (1) *every
+one of the 342 reported runs is full fine-tuning — NO LoRA.* LoRA
+utilities exist in their code (`lib/tabpfn/lora_utils.py`), but the
+PEFT variants are not what the headline results use; our `use_lora`
+grid axis is therefore exploring territory the references did not
+report on. (2) *Every run is single-dataset* — one finetune per
+table. Multi-dataset corpus continued pretraining (our setting) is
+the paper's distinctive *idea* but not what their experiment grid
+runs; so their per-run hyperparameters are a lower bound on what a
+corpus loop needs, not a drop-in recipe.
+
 **Contents in detail:**
 
 - **`README.md` around line 1862** - project overview, arXiv link
@@ -244,6 +255,31 @@ gradient adaptation.
   TabPFN preprocessing configs (`none`, `numeric`, `onehot`,
   `ordinal`, `ordinal_shuffled`, etc.) and the package-level feature
   preprocessing choices.
+
+**Verified config facts (aggregated across all 342 `report.json`
+runs, 2026-06-23) — and how CreditPFN deliberately differs.** These
+are the *reference* values; our deviations are intentional and noted:
+
+| Knob | Reference (all 342 runs) | CreditPFN | Why we differ |
+|------|--------------------------|-----------|---------------|
+| optimizer | AdamW | AdamW | match |
+| **weight_decay** | **0.0** | **0.0** (was 0.01; fixed 2026-06-23) | match — decay-to-origin fights the prior |
+| LR | tuned 5e-6…5e-4, median ~3.9e-5 | grid {3e-7, 1e-6, 1e-5} | ours is lower; the references center higher — candidate to widen |
+| LR schedule | **none (constant)** | warmup→cosine | deliberate; consider a constant rung |
+| **L2-SP / anchor** | **not used** | λ=0.003 (full-FT only) | OUR addition for the multi-dataset corpus setting (the references are single-dataset) |
+| batch_size | 1 | 1 | match |
+| epoch policy | `n_epochs=-1` + early stop (patience 16) | fixed 50 epochs + divergence-abort | deliberate (val-noise with ~10 datasets) |
+| ensemble/step | clf 2 / **reg 8** | 2 both tracks | LGD could try 8 |
+| loss | CE (clf) / bar-dist NLL (reg) | same | match |
+
+The single most important correction from this audit: **set
+`weight_decay=0.0`** (the references uniformly use it, and stacking it
+on top of L2-SP double-penalises). The "Real-TabPFN uses L2-SP" claim
+that previously appeared in our config comments was **wrong** — L2-SP is
+our own addition; the reference runs use neither weight decay nor an
+anchor. (The README body is unrecoverable from this dump — a `charmap`
+codec error replaced it — so paper *prose* claims like "more context →
+bigger gains" must be read from the PDF, not this `.txt`.)
 
 **Important caveat.** The dump references
 `bin.tabpfnv2_finetune.main`, but this `.txt` snapshot contains no
@@ -445,11 +481,46 @@ input shapes / dtypes / NaN handling at the API boundary.
   `name='none' | 'safepower' | 'quantile_uni_coarse' | 'quantile_uni'
   | 'robust_scaler' | …`. These are inference-time ensemble names.
 - **`save_tabpfn_model` utility** (around line 710) — the reverse
-  direction: how to dump a model object back to a `.ckpt`.
+  direction: how to dump a model object back to a `.ckpt`. PR #930
+  (changelog ~line 435) fixed it to set
+  `architecture_name="tabpfn_v3"` for v3 configs and to persist
+  `inference_config_`, which is exactly the gap our own
+  `save_finetuned` had to close (see the checkpoint-format note
+  below).
+- **Architecture registry** (`architectures/tabpfn_v2_6.py`,
+  `tabpfn_v3.py`; `inference_config.py`) — the `architecture_name`
+  strings the loader recognises and the `InferenceConfig` schema
+  (pydantic, `extra="forbid"`).
 
-**When to grep this file:** checkpoint names, public API surface,
-inference-time preprocessing names, validation / error messages
-the package raises, the multi-table finetuning machinery.
+**The 4-key checkpoint contract (critical for `src/train/model.py`).**
+A TabPFN checkpoint is a single `torch.save` dict with exactly four
+keys: `state_dict`, `config` (asdict of the pydantic
+`ArchitectureConfig`), `architecture_name`, and `inference_config`
+(asdict of `InferenceConfig`). Valid `architecture_name` values are
+`tabpfn_v2`, `tabpfn_v2_5`, `tabpfn_v2_6`, `tabpfn_v3` (a missing key
+defaults to `tabpfn_v2`; the legacy `"base"` string remaps to
+`tabpfn_v2_5`). Our `save_finetuned` writes all four keys; the only
+robustness gap is that the `architecture_name` fallback leans on the
+private upstream symbol `_resolve_architecture_name` (hardened, and
+`src/train/model.py` now RAISES rather than mislabelling an unknown
+architecture as `"base"` — 2026-06-23 audit fix). The
+`weights_only=False` load patch in `src/model/tabpfn_models.py` is
+necessary because PyTorch ≥ 2.6 rejects the embedded pydantic config
+objects by default.
+
+**v2.6-vs-v3 criterion handling (regressors).** v3's
+`model.forward` takes `test_targets_MB`, so the loader STRIPS the
+`criterion.*` keys and rebuilds the bar-distribution from the model's
+`regression_borders` buffer; v2.6 has no `test_targets_MB`, so the
+loader REQUIRES the `criterion.*` keys. Our `save_finetuned` writes
+`criterion.*` for regressors — required by v2.6, harmlessly stripped
+by v3 — so a saved regressor checkpoint round-trips correctly for
+both architectures.
+
+**When to grep this file:** checkpoint names, the 4-key checkpoint
+schema, public API surface, inference-time preprocessing names,
+validation / error messages the package raises, the multi-table
+finetuning machinery.
 
 ---
 
@@ -616,13 +687,31 @@ and saving the result — which is the unit-of-work for continued
 pretraining too. Just call the same loop in a sweep over many
 datasets.
 
+**Official wrapper defaults (verified, lines 183–188 / 339–348).**
+These are the upstream `FinetunedTabPFN*` settings our `train.yaml`
+grid is calibrated against:
+
+| Wrapper | epochs | lr | `n_estimators_finetune` | ctx+query samples |
+|---|---|---|---|---|
+| `FinetunedTabPFNClassifier` | 30 | `2e-5` | 2 | — |
+| `FinetunedTabPFNRegressor` | 30 | `1e-5` | 8 | `n_finetune_ctx_plus_query_samples = 20_000` |
+
+CreditPFN uses `n_estimators_finetune = 2` on **both** tracks (the
+reference regressor uses 8 — a candidate to revisit for LGD) and a
+fixed-50-epoch schedule with divergence-abort instead of the 30-epoch
+default.
+
 **Contents in detail:**
 
 - **Lines ~85, 367, 418, 718** — `save_path_to_fine_tuned_model =
   "./fine_tuned_model.ckpt"` and surrounding
   `torch.save({"state_dict": …, "optimizer_state": …,
-  "scheduler_state": …}, path)` — the canonical checkpoint format
-  for finetuning runs.
+  "scheduler_state": …}, path)`. Note this is a *training-state*
+  save (weights + optimizer + scheduler, for resuming a run); it is
+  **not** the 4-key inference checkpoint (`state_dict`, `config`,
+  `architecture_name`, `inference_config`) that the package loader
+  consumes and that our `save_finetuned` writes — see the
+  `TabPFN .txt` section for that contract.
 - **Lines ~407–441** — `from tabpfn.config import
   ModelInterfaceConfig, PreprocessorConfig` and the
   `no_preprocessing_inference_config` pattern.
@@ -787,41 +876,44 @@ documentation, not a research artefact.
 **What it is.** Flat dump of the entire Sphinx-generated VSC
 (Vlaams Supercomputer Centrum / Flemish Supercomputer Centre)
 user documentation. ~39,000 lines of `.rst` source covering
-account management, SSH/MFA setup, Genius / wICE / Tier-1 cluster
-hardware, SLURM job scripting, storage tiers, scientific software
-modules, and the various ways to acknowledge the VSC in
-publications.
+account management, SSH/MFA setup, **Genius / wICE / Mindwell**
+cluster hardware, SLURM job scripting, storage tiers, scientific
+software modules, and the various ways to acknowledge the VSC.
 
-**Why it matters here.** Our continued pretraining will run on
-VSC A100 nodes via SLURM. When we write the SLURM job scripts
-under `scripts/` — partitions, GPU allocation, time limits,
-memory, scratch storage — this dump is the canonical reference.
+**Why it matters here.** Continued pretraining runs on the **Mindwell
+B200** cluster; data prep and eval run on **wICE**. When writing the
+SLURM scripts under `scripts/slurm/` — partitions, GPU allocation,
+walltimes, the Lustre/GPFS storage split — this dump is the canonical
+reference. Verified facts (line numbers as of the 2026-06-23 dump):
 
-**Sections most relevant to CreditPFN:**
+* **Mindwell** (lines 37570–37642): partition `gpu_b200`, 3 nodes × 8
+  = **24 B200 GPUs**, **192 GiB** VRAM each, AMD EPYC Turin hosts; max
+  **24 cores + ~190 GiB CPU mem per GPU**. Account `lp_mindwell_pilot`
+  (free pilot). `--clusters=mindwell`. GPFS scratch.
+* **wICE** (lines 37959–38084): `gpu_h100` (5×4 = 20 H100, 80 GiB,
+  16 cores/GPU) and `gpu_a100` (4×4 = 16 A100, 80 GiB, 18 cores/GPU).
+  Lustre scratch. CPU `batch` partition for data prep.
+* **Storage** (lines 37357–37873): `$VSC_HOME` 3 GiB / `$VSC_DATA`
+  75 GiB (both NFS, backed up, all-cluster) / `$VSC_SCRATCH` 500 GiB
+  (Lustre on wICE+Genius, GPFS on Mindwell; **purged after 30 days** —
+  and `mv`/`rsync -a` don't refresh atime, so stage with `cp`).
+  **Project ("staging") storage** lives under `$VSC_PROJECT_LUSTRE1`
+  (`stg_XXXXX`, Lustre) and `$VSC_PROJECT_GPFS1` (Mindwell, GPFS) —
+  single-copy, not guaranteed backed up. **Hard rule:** Mindwell jobs
+  must use GPFS, wICE/Genius jobs must use Lustre for *sustained* I/O.
+* **Scheduling** (lines 13343–14243, 35463–35563): `--clusters=` is
+  mandatory; GPU walltime caps at **72 h** (no `gpu_*_long`); shorter
+  walltime ⇒ better backfill priority; `sam-balance -A <acct>` checks
+  credits (B200 437.5 / H100 569.4 / A100 141.7 per GPU-min).
+* **Cross-cluster:** `--dependency` (afterok) across `-M` clusters is
+  **undocumented/unverified** — we treat it as unsupported and submit
+  data (wICE) / train (Mindwell) / eval (wICE) independently, sequenced
+  through the shared staging tier.
 
-* **`source/leuven/tier_2_hardware/`** — KU Leuven Tier-2 cluster
-  documentation (Genius and wICE). Includes the GPU partitions
-  with NVIDIA A100s and the SLURM partition / QOS names.
-* **`source/jobs/`** — SLURM job submission, partitions, time
-  limits, GPU requests (e.g. `--gres=gpu:1`,
-  `--partition=gpu_a100`), array jobs (useful for the
-  3000-dataset parallel preprocessing case).
-* **`source/software/`** — module-system documentation for
-  loading specific Python / CUDA / cuDNN versions, plus how to
-  build custom virtual environments on the cluster filesystem.
-* **`source/data_storage/`** — `$VSC_DATA`, `$VSC_SCRATCH` and
-  the project storage tiers. Important for deciding where the
-  3000-dataset corpus and the per-track sanitized CSVs live (the
-  `paths.data_source` knob in `config/data.yaml` flips between
-  them; never put either on `$VSC_HOME`).
-* **`source/accounts/`** — initial SSH key setup, MFA, VO
-  membership, requesting more quota.
-
-**When to grep this file:** when writing or updating a SLURM
-script (`scripts/*.slurm`), debugging a job-submission error,
-choosing a partition or GPU type, or sizing storage allocations.
-Less relevant during the data-pipeline implementation since that
-work is done on a laptop.
+**When to grep this file:** writing/updating a SLURM script, debugging
+a job-submission error, choosing a partition or GPU type, or sizing
+storage. See [`docs/VSC_GUIDE.md`](VSC_GUIDE.md) for the distilled
+deployment recipe.
 
 ---
 
@@ -898,10 +990,11 @@ goes one level lower than these wrappers: it calls the underlying
 `PerFeatureTransformer.forward(x, y, ...)` directly with batches
 assembled on the fly by `ProcessedDatasetLoader`, which lets us
 iterate over a *corpus* of datasets (Real-TabPFN-style) rather
-than fine-tune on one dataset at a time. The default per-step
-subsample size (`finetuning.max_rows_per_epoch = 10_000`) matches
-the upstream `FinetunedTabPFNClassifier` default at
-`TabPFN .txt:26832`.
+than fine-tune on one dataset at a time. Our per-epoch subsample
+size is set in [`config/data.yaml`](../config/data.yaml)
+(`finetuning.max_rows_per_epoch`: **20000** for v3/default, **9000**
+for v2.6), in the same spirit as the upstream
+`FinetunedTabPFNClassifier` per-fit row cap.
 
 ---
 

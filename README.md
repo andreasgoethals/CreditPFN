@@ -124,7 +124,7 @@ python3.12 -m venv .venv --prompt CreditPFN          # Linux / macOS
 source .venv/bin/activate                            # Linux / macOS
 # .venv\Scripts\activate                             # Windows / PowerShell
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -e ".[dev,notebooks]"      # runtime + pytest + Jupyter (see pyproject.toml)
 
 # TabPFN install gotcha (read this).
 # This project's src/train/model.py uses the current Prior Labs API
@@ -152,23 +152,32 @@ jupyter notebook notebooks/                        # open the data-exploration n
 
 ### 3.3 Real training and eval require a CUDA cluster
 
-The recommended entry point is the **chained submitter**. It loads
-[`config/data.yaml`](config/data.yaml), resolves the storage tier
-(`scratch` for fast-purge / `data` for durable), submits the data
-job, then submits training and eval as dependents:
+The recommended entry point is the **multi-cluster submitter**. It
+loads [`config/data.yaml`](config/data.yaml), resolves the storage
+tiers, and submits each stage to the right cluster: **data prep →
+wICE (CPU)**, **continued pretraining → Mindwell B200 (GPU)**,
+**evaluation → wICE H100 (GPU)**:
 
 ```bash
-# On a cluster login node, after cloning + installing + uploading raw CSVs:
+# On a Genius login node, after cloning + installing + uploading raw CSVs:
 bash scripts/slurm/submit_full_pipeline.sh
 ```
 
+Continued pretraining runs **only on Mindwell** — its B200 GPUs have
+192 GiB VRAM (2.4× an H100), which we use to train at a larger
+in-context size. The big files (datasets, trained checkpoints, results)
+live in **project staging** (`/lustre1/project/stg_00211/CreditPFN`,
+overridable via `$CREDITPFN_STAGING_ROOT` / `$TABPFN_STAGING_ROOT`);
+small bookkeeping (logs, manifests, figures) lives on `$VSC_DATA`.
+Because VSC clusters have separate Slurm controllers, the stages are
+**not** `afterok`-chained across clusters — see chapter 5 and
+[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) for the storage tiers,
+cluster table, partitions, and a failure-mode cheat sheet.
+
 To run a single stage by hand, the per-stage SLURM templates live in
-[`scripts/slurm/`](scripts/slurm/). All of them read the
-`paths.data_source` knob in [`config/data.yaml`](config/data.yaml)
-to decide whether raw and processed data live on fast scratch or
-durable storage — see chapter 5 for the data layout and
-[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) for VSC-specific paths,
-partitions, and a failure-mode cheat sheet.
+[`scripts/slurm/`](scripts/slurm/). The `paths.data_source` knob in
+[`config/data.yaml`](config/data.yaml) picks the dataset tier
+(`staging` default / `scratch` / `data`).
 
 Hydra-style CLI overrides work from any entrypoint (no yaml edits):
 
@@ -186,7 +195,7 @@ python scripts/eval_pipeline.py  --method xgboost  --test-dataset 0001.gmsc
 ```text
 CreditPFN/
 ├── README.md
-├── requirements.txt
+├── pyproject.toml            package metadata + dependencies
 ├── src/                      pipeline source code         (see 4.1)
 ├── config/                   three YAML configs           (see 4.2)
 ├── scripts/                  CLI + SLURM templates        (see 4.3)
@@ -224,7 +233,7 @@ via OmegaConf and accepts Hydra-style overrides on the CLI
 
 | File | Drives | Main sections |
 |---|---|---|
-| [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths (incl. `data_source: "scratch" \| "data"`), `finetuning.max_rows_per_epoch` + `query_fraction`, dedup detection thresholds, sanitize knobs (max missing rate, FeatureAgglomeration, LGD target clip) |
+| [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths (incl. `data_source: "staging" \| "scratch" \| "data"`, default `"staging"`), `finetuning.max_rows_per_epoch` + `query_fraction`, dedup detection thresholds, sanitize knobs (max missing rate, ≤ 64-feature selection, LGD target clip) |
 | [`config/train.yaml`](config/train.yaml) | `src/train/*` + `scripts/train_pipeline.py` | `tunable.*` (sweep axes: base checkpoint × LR × LoRA × query_fraction × accumulate_grad_batches), corpus split (Mode A fractions / Mode B explicit IDs), optimizer + scheduler, LoRA cfg, train loop |
 | [`config/eval.yaml`](config/eval.yaml)   | `src/eval/*` + `scripts/eval_pipeline.py` | enabled baselines, K-fold + inner-val fractions, per-fold Optuna budget, `max_rows_per_model` (per-architecture training-context cap), results dir |
 
@@ -246,7 +255,7 @@ cluster:
 | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills missing sanitized CSVs by invoking the data pipeline for just those IDs. **Skips trials whose finetuned checkpoint already exists** — re-submission is safe. |
 | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | Score every model on every test dataset, K-fold CV. Skip-existing by default; `--rerun` to force. Filterable with `--method` / `--test-dataset` / `--task-index`. |
 | [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `submit_full_pipeline.sh` for the chained submission. |
-| [`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py) | Stage-level cleanup utility. `python -m src.utils.pipeline_clean --stages train,eval` wipes the outputs of the named stage(s) so the next re-submit starts those stages from scratch. See section 4.10 for details. |
+| [`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py) | Stage-level cleanup utility. `python -m src.utils.pipeline_clean --stages train,eval` wipes the outputs of the named stage(s) so the next re-submit starts those stages from scratch. See chapter 5 for details. |
 
 <a id="44-notebooks--exploration-and-result-visualisations"></a>
 
@@ -366,18 +375,23 @@ output/                         # everything the code writes (except trained .ck
 logs/<task>_<ts>[_j<jid>_a<tid>].log        one log file per task (flat dir)
 ```
 
-On a laptop, `data/` and `output/` live under the repo root. On a
-cluster, they are split between fast and durable storage tiers
-according to `paths.data_source` in `config/data.yaml`:
+On a laptop, `data/`, `output/`, and `checkpoints/` all live under the
+repo root. On VSC they are split across three storage tiers:
 
-* `data_source: "scratch"` — `data/raw/`, `data/processed/` on fast
-  scratch storage (subject to monthly purge); dedup files and
-  manifests still on durable storage.
-* `data_source: "data"` — everything on durable storage.
+* **Project staging** (`/lustre1/project/stg_00211/CreditPFN`, the big
+  files) — **datasets** (`data/raw`, `data/processed`), **trained
+  checkpoints** (`checkpoints/trained/`), and **eval results**
+  (`output/results/`). Persistent, large, non-purged.
+* **`$VSC_DATA/CreditPFN`** (small, NFS-backed) — logs, training
+  manifests (`output/training/`), per-epoch CSVs, notebook figures
+  (`output/figures/`), dedup files.
+* **`$VSC_SCRATCH`** — optional fast-I/O working copy of datasets.
 
-The eval results (`output/results/`), training manifests
-(`output/training/`), figures (`output/figures/`), checkpoints, and
-logs always live on durable storage regardless of `data_source`.
+The dataset tier is picked by `paths.data_source` in
+`config/data.yaml` (`staging` default / `scratch` / `data`); the
+staging root resolves from `$CREDITPFN_STAGING_ROOT` →
+`$TABPFN_STAGING_ROOT` → the built-in `/lustre1/project/stg_00211`
+default. See [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) §0.2.
 
 ---
 
@@ -537,23 +551,37 @@ TabPFN's package handles these internally — see
 
 ## 7. Training pipeline
 
-A thin orchestrator over `src/train/`. The single source of truth for
+A thin orchestrator over `src/train/`. **Continued pretraining runs only
+on the Mindwell B200 cluster** (192 GiB VRAM) — see
+[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md). The single source of truth for
 hyperparameters is [`config/train.yaml`](config/train.yaml), in three
 layers:
 
-* **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint,
-  learning rate, LoRA on/off, query_fraction, accumulate_grad_batches.
-  Anything genuinely unknown in advance. The full cartesian product is
-  the default sweep (currently **2 bases × 3 LRs × 2 LoRA × 1 qf × 1 acc ×
-  2 epoch-pass-modes = 24 trials per track**).
+* **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint
+  (v3 / v2.6), learning rate (`{3e-7, 1e-6, 1e-5, 3e-5}` — spans from a
+  very conservative anti-forgetting floor up to `3e-5` ≈ Real-TabPFN's
+  per-dataset median LR (~3.9e-5); `1e-4` is still excluded because it
+  diverged on no-LoRA + qf 0.20 — revisit now that `weight_decay=0.0`),
+  LoRA on/off, query_fraction, accumulate_grad_batches, and epoch
+  pass-mode (`one_sample` / `full_pass`). Anything genuinely unknown in
+  advance. The full cartesian product is the default sweep (currently
+  **2 bases × 4 LRs × 2 LoRA × 1 qf × 1 acc × 2 epoch-pass-modes = 32
+  trials per track**, run as a 32-task SLURM array on the 24 Mindwell
+  B200 GPUs). See "Hyperparameter rationale vs. the literature" below.
 * **Fixed HPs** (single values under `train.*`) — epochs, AMP, gradient
   clipping, warmup fraction, per-epoch monitor subsample,
-  `n_estimators_finetune` (TabPFN ensemble size during training; 2 per
-  the official `FinetunedTabPFNClassifier`). Follow TabPFN's defaults
-  where those are well-tuned. The per-step subsample size lives in
+  `n_estimators_finetune` (TabPFN ensemble members per training step —
+  **per-track: `pd: 2`, `lgd: 8`**, matching the official
+  `FinetunedTabPFNClassifier` / `FinetunedTabPFNRegressor` defaults).
+  Follow TabPFN's defaults where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  per-version: 10 000 for v3, 6 000 for v2.6; plus an optional v3-only
-  `max_cells_per_epoch` cell budget).
+  per-version: **20 000 for v3, 9 000 for v2.6** — sized for the B200's
+  192 GiB to chase Real-TabPFN's "more context → bigger gains"; plus an
+  optional v3-only `max_cells_per_epoch` cell budget). `weight_decay` is
+  **0.0** (matching the Real-TabPFN reference runs and the official
+  FinetunedTabPFN examples); anti-forgetting is handled by the optional
+  L2-SP anchor (`l2sp_lambda`, our deliberate addition for the
+  multi-dataset corpus setting), not by decay-to-origin.
 * **Hardcoded in code** — optimizer family (AdamW), betas
   ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
   Never change between runs.
@@ -668,28 +696,68 @@ without loading the model weights.
   the test set in the eval stage.
 * **Per-epoch monitor eval** — at the end of every epoch the loop
   scores the model on a small subsample of each train- and
-  test-dataset (ROC-AUC for PD, RMSE for LGD). Cheap (~500 rows per
-  chunk) but enough to see whether the model is still improving.
+  test-dataset (ROC-AUC for PD, RMSE for LGD, at
+  `train.epoch_eval_subsample_samples = 2000` rows). Cheap but enough to
+  see whether the model is still improving. Set it to `0` to disable the
+  monitor entirely (divergence detection then ignores the metric signal).
+* **Up-front debug banner** — before the very first forward pass the loop
+  emits a single multi-line log block (`[run] [hyperparams] [corpus]
+  [env] [hardware] [versions] [paths]`) capturing the resolved HPs, the
+  SLURM array/cluster/node, GPU + VRAM, library versions, and the base /
+  save paths. It is logged early on purpose so the run is fully
+  reconstructable even if the job is later OOM-killed or diverges.
 * **Divergence detection + early abort** — when the loss stays
-  constant, or AUC pegs at 0.5 (random), or AMP scaler skips >50 %
-  of recent steps, the training loop aborts and records
-  `status=DIVERGED` in the manifest. This prevents wasting 3+ hours
-  of GPU on a dead model (observed in `train_pd_*qf20_acc1*` runs of
-  2026-05-28 before the safeguard was added).
+  constant, or AUC pegs at 0.5 (random), or the AMP scaler skips >50 %
+  of recent steps for `train.divergence_patience = 5` epochs, the
+  training loop aborts and records `status=DIVERGED` in the manifest.
+  This prevents wasting 3+ hours of GPU on a dead model (observed in
+  `train_pd_*qf20_acc1*` runs of 2026-05-28 before the safeguard was
+  added).
 * **L2-SP anti-forgetting penalty (optional)** — `optimizer.l2sp_lambda`
   adds `0.5·λ·‖w − w₀‖²` to the loss, penalising drift of the weights
   away from the **synthetic-prior start `w₀`** (not toward zero, which is
-  what `weight_decay` does). This is the anti-catastrophic-forgetting term
-  from Real-TabPFN (Garg 2025, §4); on our tiny corpus it protects the
-  pretrained prior's calibration. It is **on by default for full-FT
-  trials** at Real-TabPFN's `λ = 0.003` (set `optimizer.l2sp_lambda: 0.0`
-  to disable) and is **orthogonal to the LoRA axis but full-FT-only** —
-  with LoRA the base weights are frozen and cannot drift, so L2-SP is inert
-  and silently skipped (effectively: full-FT gets L2-SP, LoRA doesn't). The
-  penalty enters only the back-prop loss; the logged CE / NLL curves stay
-  the pure data loss. The effective λ is recorded in each checkpoint's
-  provenance. (`λ = 0.003` was tuned for v2 / 20k steps; treat it as a
-  starting point on our setup, not a constant.)
+  what `weight_decay` does). This is **our own addition** for the
+  multi-dataset corpus setting — it is *not* part of the Real-TabPFN
+  recipe (their runs use no L2-SP, no scheduler, and `weight_decay = 0.0`);
+  on our tiny corpus it protects the pretrained prior's calibration against
+  catastrophic forgetting. It is **on by default for full-FT trials** at
+  `λ = 0.003` (set `optimizer.l2sp_lambda: 0.0` to disable) and is
+  **orthogonal to the LoRA axis but full-FT-only** — with LoRA the base
+  weights are frozen and cannot drift, so L2-SP is inert and silently
+  skipped (effectively: full-FT gets L2-SP, LoRA doesn't). The penalty
+  enters only the back-prop loss; the logged CE / NLL curves stay the pure
+  data loss. The effective λ is recorded in each checkpoint's provenance.
+  (`λ = 0.003` is a starting point chosen for this setup, not a tuned
+  constant — adjust if anti-forgetting is too strong or too weak.)
+
+### Hyperparameter rationale vs. the literature
+
+Every training knob is anchored to a published reference — either the
+**Real-TabPFN** paper (Rubachev et al., *On Finetuning Tabular Foundation
+Models*, arXiv:2507.03971; 342 finetune runs, all on A100-80GB) or the
+**official `FinetunedTabPFN*` wrappers** (Prior Labs). Where we diverge it
+is deliberate and noted as **OURS**.
+
+| Knob | CreditPFN | Reference | Why |
+|------|-----------|-----------|-----|
+| Optimizer | AdamW, β=(0.9, 0.999) | AdamW (all 342 RT runs) | match |
+| `weight_decay` | **0.0** | 0.0 (every RT run + wrappers) | AdamW decay pulls weights → origin, which fights staying near the synthetic prior; we let L2-SP do anti-forgetting instead |
+| LR grid | **{3e-7, 1e-6, 1e-5, 3e-5}** | RT tunes per-dataset 5e-6–5e-4 (median ≈ 3.9e-5); wrappers 2e-5 (clf) / 1e-5 (reg) | `3e-5` reaches the references' centre; the lower rungs probe whether smaller steps suffice for the *corpus* setting (continued pretraining on many datasets, not RT's single-dataset finetune). `1e-4` excluded (diverged on no-LoRA+qf0.20) |
+| Schedule | linear-warmup → cosine, warmup 0.10 | RT: **constant LR, no warmup** | **OURS** — standard for our fixed-epoch budget; consider a `constant` A/B to reproduce RT exactly |
+| Epochs / stopping | fixed 50 epochs + divergence-abort | RT: `n_epochs=-1`, early-stop patience 16, 10 steps/"epoch" | **OURS** — early stopping needs a val set; our ~5–8 test datasets are too few for a trustworthy val signal, so we fix epochs and compare post-hoc |
+| `n_estimators_finetune` | **pd 2 / lgd 8** | wrapper defaults: clf 2, reg 8 | match (per-track) |
+| Loss | CE (PD) / bar-distribution NLL (LGD) | same | match — what TabPFN was pretrained with |
+| query_fraction | 0.20 (80 % context / 20 % query) | TabPFN default; RT uses an absolute `seq_len_pred` block | match in spirit |
+| Context size (`max_rows_per_epoch`) | **v3 20 000 / v2.6 9 000** | wrapper reg uses `n_finetune_ctx_plus_query=20 000`; RT: "more context → bigger gains" | sized for the B200's 192 GiB (2.4× H100); chases the "more context" finding |
+| L2-SP anchor | λ=0.003, full-FT only | **not in RT** (RT uses none) | **OURS** — anti-forgetting for the multi-dataset corpus; treat λ as tunable, include 0.0 as a baseline |
+| LoRA | swept on/off (r=8, α=16) | exists in RT code, **not used** in their experiments | **OURS** — parameter-efficient comparison point |
+| Preprocessing | TabPFN `TabPFNEnsemblePreprocessor` (ordinal cats, quantile/standardize numerics) | RT: `noisy-quantile` num + `ordinal` cat | match (we call the package's own pipeline) |
+
+The headline divergence from Real-TabPFN is **the setting itself**: RT
+finetunes on *one dataset at a time*; CreditPFN does *continued
+pretraining on a corpus* of real credit datasets (one step per dataset
+per epoch). L2-SP, the LR floor, and the fixed-epoch schedule are all
+adaptations to that corpus setting and the small held-out set.
 
 ### Optimization objective — why CE / NLL, not AUC
 
@@ -734,9 +802,9 @@ test fold. The honest caveats below are limitations of the
   within-dataset estimate, but the across-dataset mean rests on a
   handful of datasets — report per-dataset results, not just the pooled
   mean.
-* **Best-of-24 selection on the test set (winner's curse).** With no
-  validation set, the best of 24 trials is picked by test performance;
-  the maximum over 24 noisy estimates is upward-biased. Prefer the
+* **Best-of-32 selection on the test set (winner's curse).** With no
+  validation set, the best of 32 trials is picked by test performance;
+  the maximum over 32 noisy estimates is upward-biased. Prefer the
   per-architecture trained-vs-untuned delta over the absolute best, and
   report the trial distribution.
 * **Within-domain split ≠ Real-TabPFN's external benchmark.** We split
@@ -744,10 +812,12 @@ test fold. The honest caveats below are limitations of the
   quirks. This is the right test of "does credit-specialisation help on
   credit data," but it measures less external generalisation than a
   cross-benchmark protocol would.
-* **FeatureAgglomeration is fit on the whole dataset** (before the eval
-  CV split), so cluster assignments see rows that later land in test
-  folds. It is *unsupervised* (never sees `y`), so there is no label
-  leakage — only a small optimistic bias in feature construction.
+* **Feature selection is fit on the whole dataset** (in `sanitize.py`,
+  before the eval CV split), so the kept-column set is chosen using rows
+  that later land in test folds. The selection is *unsupervised* (a
+  scale-free-variance ranking + correlation de-duplication that never sees
+  `y`), so there is no label leakage — only a small optimistic bias in
+  feature construction.
 * **No multiple-comparison correction across ~20 metrics.** Pre-register
   the primary metric (roc_auc for PD, rmse for LGD) and treat the rest
   as diagnostic.
@@ -887,7 +957,7 @@ works for this project:
   follow.
 - **Hollmann et al., 2025.** *Accurate predictions on small data with
   a tabular foundation model.* (Nature) — TabPFNv2 architecture.
-- **Grinsztajn et al., 2025.** *TabPFN-2.5: Advancing the State of
+- **Grinsztajn et al., 2026.** *TabPFN-2.5: Advancing the State of
   the Art in Tabular Foundation Models.*
   [arXiv:2511.08667](https://arxiv.org/abs/2511.08667) — the
   successor architecture used by our v2.6 / v3 checkpoints.
