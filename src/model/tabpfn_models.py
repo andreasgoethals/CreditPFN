@@ -77,6 +77,57 @@ def _trust_local_checkpoints():
         torch.load = orig_load
 
 
+def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray) -> float | None:
+    """Mean log-density (= −NLL) of ``y`` under TabPFN's predictive
+    bar-distribution on ``X``. Higher = better (matches the ``neg_*``
+    convention of the ``neg_nll`` eval column).
+
+    This is the metric that actually rewards TabPFN's *probabilistic* output
+    for LGD: point metrics (RMSE/MAE/R²) only see the mean, but the bar
+    distribution predicts a full density per row, and its log-likelihood is
+    what the model was trained on (bar-distribution NLL).
+
+    Implementation is best-effort and version-tolerant: it uses
+    ``TabPFNRegressor.predict(X, output_type="full")`` to recover the
+    predictive distribution (the bar-distribution ``criterion`` + ``logits``,
+    both in the original target space). If the installed ``tabpfn`` doesn't
+    expose that surface (the API has shifted across major versions), it
+    returns ``None`` so the caller records NaN — never crashing the eval.
+    """
+    try:
+        import torch
+    except Exception:                                              # pragma: no cover
+        return None
+    try:
+        with _trust_local_checkpoints():
+            out = tabpfn_model.predict(X, output_type="full")
+    except Exception as exc:                                       # noqa: BLE001
+        LOGGER.warning("neg_nll: predict(output_type='full') unavailable (%s: %s)",
+                       type(exc).__name__, exc)
+        return None
+    if not isinstance(out, dict):
+        LOGGER.warning("neg_nll: full output is %s, expected dict — skipping.", type(out))
+        return None
+    crit = out.get("criterion")
+    logits = out.get("logits")
+    if crit is None or logits is None:
+        LOGGER.warning("neg_nll: full output lacks 'criterion'/'logits' (keys=%s) — skipping.",
+                       list(out.keys()))
+        return None
+    try:
+        logits_t = logits if torch.is_tensor(logits) else torch.as_tensor(logits)
+        y_t = torch.as_tensor(np.asarray(y).reshape(-1), dtype=logits_t.dtype,
+                              device=logits_t.device)
+        # FullSupportBarDistribution.forward(logits[..., num_bars], y[...])
+        # returns per-row NLL (−log density). Reduce over the leading dims.
+        nll = crit(logits_t, y_t)
+        return float((-nll).mean().item())
+    except Exception as exc:                                       # noqa: BLE001
+        LOGGER.warning("neg_nll: bar-distribution NLL failed (%s: %s) — skipping.",
+                       type(exc).__name__, exc)
+        return None
+
+
 def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
     """Construct ``TabPFNClassifier`` or ``TabPFNRegressor`` from a path."""
     from tabpfn import TabPFNClassifier, TabPFNRegressor
@@ -142,6 +193,13 @@ class TabPFNUntuned:
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self._tabpfn.predict(X)
 
+    def neg_log_likelihood(self, X: np.ndarray, y: np.ndarray) -> float | None:
+        """Mean log-density (−NLL) of ``y`` under the predictive
+        bar-distribution; regression only, ``None`` on any failure."""
+        if self.task_type != "regression":
+            return None
+        return _tabpfn_regression_neg_nll(self._tabpfn, X, y)
+
 
 # --------------------------------------------------------------------------- #
 # TabPFN-trained — a continued-pretrained checkpoint
@@ -200,3 +258,10 @@ class TabPFNTrained:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self._tabpfn.predict(X)
+
+    def neg_log_likelihood(self, X: np.ndarray, y: np.ndarray) -> float | None:
+        """Mean log-density (−NLL) of ``y`` under the predictive
+        bar-distribution; regression only, ``None`` on any failure."""
+        if self.task_type != "regression":
+            return None
+        return _tabpfn_regression_neg_nll(self._tabpfn, X, y)

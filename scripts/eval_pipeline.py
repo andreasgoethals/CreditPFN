@@ -178,8 +178,13 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         list(train_cfg.tunable.classifier_base_paths) if track == "pd"
         else list(train_cfg.tunable.regressor_base_paths)
     )
-    hpo_xgb = dict(eval_cfg.hpo.xgboost)  if hasattr(eval_cfg, "hpo") else {}
-    hpo_cb  = dict(eval_cfg.hpo.catboost) if hasattr(eval_cfg, "hpo") else {}
+    _hpo = getattr(eval_cfg, "hpo", None)
+    def _hpo_get(name):
+        return dict(getattr(_hpo, name)) if (_hpo is not None and hasattr(_hpo, name)) else {}
+    hpo_xgb = _hpo_get("xgboost")
+    hpo_cb  = _hpo_get("catboost")
+    hpo_lr  = _hpo_get("logreg")
+    hpo_lin = _hpo_get("linreg")
     baselines = build_baselines(
         track=track,
         base_paths_for_tabpfn_untuned=bases,
@@ -189,6 +194,8 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         seed=int(train_cfg.seed),
         hpo_xgboost=hpo_xgb,
         hpo_catboost=hpo_cb,
+        hpo_logreg=hpo_lr,
+        hpo_linreg=hpo_lin,
     )
 
     manifest_csv = (

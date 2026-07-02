@@ -38,12 +38,18 @@ max_rows_per_model:
   default: 100000
 
 
-# Per-fold Optuna budget for the boosting baselines. HPO objective is scored
-# on the inner-val split. max_rows = stratified subsample of the train fold
-# used during HPO only (final fit sees the full fold).
+# Per-fold Optuna budget for the tuned baselines. HPO objective is scored on
+# the inner-val split. max_rows = stratified subsample of the train fold used
+# during HPO only (final fit sees the full fold). n_trials=50 for ALL four so
+# a TabPFN "win" can't be dismissed as under-tuned baselines (2026-06-24):
+# xgboost/catboost tune their full param space; logreg/linreg tune the
+# regularization strength (C / alpha) that dominates a linear model on
+# collinear credit features.
 hpo:
-  xgboost:  {n_trials: 25, timeout_seconds: 600, max_rows: 50000}
-  catboost: {n_trials: 25, timeout_seconds: 600, max_rows: 50000}
+  xgboost:  {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
+  catboost: {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
+  logreg:   {n_trials: 50, timeout_seconds: 300}
+  linreg:   {n_trials: 50, timeout_seconds: 300}
 
 
 # TabPFN inference-time ensemble size (sklearn API), shared by untuned and

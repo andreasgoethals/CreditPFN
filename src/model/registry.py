@@ -48,6 +48,8 @@ def build_baselines(
     seed: int = 42,
     hpo_xgboost: dict | None = None,    # {"n_trials": int, "timeout_seconds": float}
     hpo_catboost: dict | None = None,
+    hpo_logreg: dict | None = None,     # {"n_trials": int, "timeout_seconds": float}
+    hpo_linreg: dict | None = None,
 ) -> list[tuple[ModelHandle, object]]:
     """Yield ``(handle, model_instance)`` pairs for every enabled baseline.
 
@@ -91,6 +93,8 @@ def build_baselines(
 
     hpo_xgb  = hpo_xgboost  or {}
     hpo_cb   = hpo_catboost or {}
+    hpo_lr   = hpo_logreg   or {}
+    hpo_lin  = hpo_linreg   or {}
 
     # Each baseline is constructed inside a try/except so the eval roster
     # is robust: a missing optional package (e.g. catboost not installed)
@@ -128,10 +132,18 @@ def build_baselines(
         ))
 
     if "logreg" in enabled and track == "pd":
-        _try_add("logreg", lambda: LogRegModel(random_state=seed))
+        _try_add("logreg", lambda: LogRegModel(
+            random_state=seed,
+            hpo_trials=int(hpo_lr.get("n_trials", 0)),
+            hpo_timeout_seconds=hpo_lr.get("timeout_seconds"),
+        ))
 
     if "linreg" in enabled and track == "lgd":
-        _try_add("linreg", lambda: LinRegModel(random_state=seed))
+        _try_add("linreg", lambda: LinRegModel(
+            random_state=seed,
+            hpo_trials=int(hpo_lin.get("n_trials", 0)),
+            hpo_timeout_seconds=hpo_lin.get("timeout_seconds"),
+        ))
 
     if "tabpfn-untuned" in enabled:
         for base_path in base_paths_for_tabpfn_untuned or ():

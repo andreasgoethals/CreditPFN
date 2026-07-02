@@ -133,17 +133,26 @@ def _drop_constant_columns(
 
 def _coerce_numeric_strings(
     df: pd.DataFrame, target: str, threshold: float,
+    *, skip_cols: "list[str] | tuple[str, ...]" = (),
 ) -> tuple[pd.DataFrame, list[str]]:
     """Where ≥ ``threshold`` of a string-like column's non-NaN values
     parse as numeric, commit the coercion. Targets are left untouched.
+
+    ``skip_cols`` (the manifest-declared CATEGORICAL columns) are also left
+    untouched: a numeric-looking categorical — an industry code (NAICS), a
+    ZIP, an ordinal code — must stay categorical (TabPFN ordinal-encodes it)
+    rather than being cast to a continuous magnitude with a false ordering.
+    Honouring the categorical hint here makes the documented "mark it
+    categorical to prevent coercion" mitigation actually work (2026-06-24).
 
     Treats both legacy ``object`` and the new pandas-3.x ``str`` /
     ``StringDtype`` columns as candidates — a single ``is_object_dtype``
     check would silently miss strings on pandas 3.x.
     """
+    skip = set(skip_cols)
     coerced: list[str] = []
     for col in df.columns:
-        if col == target:
+        if col == target or col in skip:
             continue
         dtype = df[col].dtype
         is_string_like = (
@@ -227,33 +236,56 @@ def _select_to_max_columns(
     corr_threshold: float = 0.95,
     seed: int = 0,
 ) -> tuple[pd.DataFrame, list[str], list[str]]:
-    """Reduce the feature count to ≤ ``max_columns`` by **unsupervised
-    feature SELECTION** — keep a subset of the *real* columns (numerical
-    AND categorical), rather than averaging them into cluster means.
+    """Cap a wide dataset at ``max_columns`` features by **unsupervised
+    feature SELECTION** — keep a subset of the *real* columns (numerical AND
+    categorical) rather than averaging them into synthetic cluster means.
 
-    Why selection, not the old ``FeatureAgglomeration``: continued
-    pretraining aims to adjust TabPFN's prior toward the *real* marginal
-    distributions and feature interactions of credit-risk data. Averaging
-    columns into per-cluster means destroyed both, which works against that
-    goal and is inconsistent with what the model sees at inference.
-    Selection keeps real columns with real distributions. It is
-    **unsupervised** (never touches ``y``) — no label leak.
+    WHY this exists
+    ---------------
+    TabPFN v3 has a hard per-forward feature ceiling, and continued
+    pretraining aims to nudge its prior toward the *real* marginal
+    distributions and interactions of credit-risk data. The old
+    ``FeatureAgglomeration`` averaged columns into cluster means, destroying
+    both the real marginals and the match to what the model sees at
+    inference. Selection instead keeps genuine columns with genuine
+    distributions, and is **unsupervised** (never looks at ``y``) so it
+    cannot leak the label into feature choice.
 
-    Both feature types are eligible, so a categorical-heavy dataset is
-    capped too (the earlier version only trimmed numericals and skipped
-    when the categoricals alone exceeded the budget — which left the LGD
-    ``base_model*`` sets uncapped). Three steps:
+    HOW it scores + selects (three steps)
+    -------------------------------------
+      1. **Score** each feature, scale-free so numerical and categorical are
+         each judged on their own [0, 1] range:
+           * numerical  → variance AFTER per-column min-max to [0, 1];
+           * categorical → Shannon entropy of the value distribution,
+                           normalised to [0, 1].
+         Near-constant columns of either type score ~0.
+      2. **De-correlate** the numerical block (greedy, best-score-first):
+         drop a numerical whose ``|Pearson r|`` with an already-kept
+         numerical exceeds ``corr_threshold`` (removes near-duplicate ratios).
+      3. **Allocate** the budget proportionally to each type's original count
+         and keep the top-scored within each type (leftover budget spills to
+         the other type). Every kept column keeps its real name and dtype.
 
-      1. **Score** each feature, scale-free: numerical → variance after
-         min-max to ``[0, 1]``; categorical → Shannon entropy of the value
-         distribution, normalised to ``[0, 1]``. Near-constant of either
-         type → ~0.
-      2. **De-correlate** the numerical block (greedy, best-score-first,
-         bounded candidate set): drop a numerical whose ``|Pearson r|``
-         with an already-kept numerical exceeds ``corr_threshold``.
-      3. **Rank** all survivors (numerical + categorical) by score and keep
-         the top ``max_columns``; each kept column keeps its real name and
-         type.
+    KNOWN LIMITATIONS (this is a pragmatic heuristic, not an oracle)
+    ----------------------------------------------------------------
+      * **Variance is a proxy for "informativeness", not for predictiveness.**
+        Because selection is unsupervised (deliberately, to avoid label leak),
+        a column that spreads out is *assumed* useful. A genuinely predictive
+        but smoothly-distributed feature (e.g. a well-behaved DTI or LTV ratio,
+        whose min-maxed variance is modest ~0.02–0.1) can be out-ranked by a
+        spiky one.
+      * **Min-max normalisation is outlier-sensitive.** A single extreme value
+        compresses a column's bulk toward 0, so heavy-tailed / near-binary /
+        ID-like numeric columns tend to score *high*. (A rank- or MAD-based
+        dispersion would be more robust — a candidate future improvement.)
+      * **The de-correlation candidate set is bounded** to the top
+        ``2 * max_columns`` numericals for an O(k²) cost. On very wide
+        datasets (e.g. algorithmwatch ≈ 2985 cols) only the top ~128 by the
+        variance score are ever considered; a predictive column ranked below
+        that window is never selected.
+      * Only fires when ``#features > max_columns`` — it affects only the few
+        wide datasets (the wide PD sets + the LGD ``base_model*`` sets); narrow
+        datasets pass through untouched.
 
     Returns ``(df_reduced, kept_numerical_columns, kept_categorical_columns)``
     — all ORIGINAL column names.
@@ -418,18 +450,31 @@ def sanitize_dataset(
     surviving = set(df.columns)
     cats = [c for c in raw_cats if c in surviving]
     nums = [c for c in raw_nums if c in surviving]
+    # Unhinted survivors (columns present in the CSV but absent from BOTH
+    # manifest lists — normally none, since register lists them all). Classify
+    # each by dtype, mirroring register.infer_categorical_numerical: string-like
+    # → categorical (so it's protected from numeric coercion, not force-cast to
+    # NaN), else numerical. Previously all extras were dumped into `nums`, which
+    # disagreed with register and could silently destroy a string categorical.
     extras = [c for c in surviving
               if c != target and c not in cats and c not in nums]
-    nums.extend(extras)
+    for c in extras:
+        dt = df[c].dtype
+        if pd.api.types.is_object_dtype(dt) or pd.api.types.is_string_dtype(dt):
+            cats.append(c)
+        else:
+            nums.append(c)
 
     # --- (f) coerce numeric strings ----------------------------------------
     # Done BEFORE the constant-column drop so that columns whose values
     # become all-NaN under pd.to_numeric(errors="coerce") (a column of
     # garbage strings, say) get caught by step (e) and never reach
-    # FeatureAgglomeration.
+    # feature selection. Categorical-hinted columns are skipped so numeric
+    # codes (NAICS/ZIP/ordinal) stay categorical.
     if cfg.sanitize.coerce_numeric_strings:
         df, log["coerced_numeric_strings"] = _coerce_numeric_strings(
             df, target, cfg.sanitize.coerce_numeric_threshold,
+            skip_cols=cats,
         )
 
     # --- (g) numerical dtype cast — always float32 (TabPFN default) --------

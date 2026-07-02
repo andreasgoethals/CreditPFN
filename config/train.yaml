@@ -76,8 +76,9 @@ corpus:
   # Explicit pins. Each may be a flat list (applies to the active track) OR
   # a per-track mapping {pd: [...], lgd: [...]} so one shared config can pin
   # different IDs per track. A track with no pins → fraction-based split.
-  # PD: unpinned → 0.7/0.3 fraction split. LGD: fully pinned so loss2 + axa
-  # are the held-out test sets and the other 6 datasets are training.
+  # PD: unpinned → 0.7/0.3 fraction split. LGD: fully pinned so loss2 +
+  # lgd_lendingclub are the held-out test sets and the other 6 datasets
+  # (incl. axa) are training.
   train_dataset_ids:
     lgd: ["0001.heloc", "0003.axa", "0004.base_model", "0005.base_modelisation",
           "0006.lgd_freddie", "0008.SBA_loans_case"]

@@ -239,6 +239,21 @@ def resolve_test_datasets(handle: ModelHandle,
     if handle.source == "tabpfn-trained" and handle.base_path:
         prov = load_provenance(handle.base_path)
         if prov and prov.get("test_datasets"):
+            # Guard the PAIRED comparison: a trained checkpoint is scored on its
+            # own provenance test set, while untuned/classical use the cfg split.
+            # These are identical only when the corpus seed + fractions match. If
+            # they diverge, trained-vs-untuned is silently scored on DIFFERENT
+            # datasets and the headline delta is not apples-to-apples — warn loud.
+            prov_ids = sorted(set(str(x) for x in prov["test_datasets"]))
+            cfg_ids = sorted(set(str(x) for x in cfg_test_dataset_ids))
+            if cfg_ids and prov_ids != cfg_ids:
+                LOGGER.warning(
+                    "PAIRING RISK: trained model %s was held out on %s, but the "
+                    "current cfg test split is %s. Trained-vs-untuned will be scored "
+                    "on DIFFERENT datasets (not a paired comparison). Re-run training "
+                    "against the current corpus split, or align config/train.yaml.",
+                    handle.name, prov_ids, cfg_ids,
+                )
             return list(prov["test_datasets"])
         LOGGER.warning(
             "tabpfn-trained %s has no test_datasets in provenance — "
@@ -246,6 +261,34 @@ def resolve_test_datasets(handle: ModelHandle,
             handle.name,
         )
     return list(cfg_test_dataset_ids)
+
+
+def _regression_strata(y: np.ndarray, *, n_bins: int, min_count: int):
+    """Quantile-bin a continuous target so regression CV can be *stratified*.
+
+    LGD targets are strongly bimodal (mass at 0 and 1, sparse interior), so
+    plain KFold can hand folds very different 0/1 fractions, inflating
+    fold-to-fold RMSE variance and adding noise to the trained-vs-untuned
+    delta. Binning y into quantile strata and stratifying on them balances the
+    target distribution across folds. Returns integer bin labels, or ``None``
+    when binning isn't viable (caller then falls back to plain KFold). The
+    split stays symmetric across all models, so it does not bias the comparison.
+    """
+    import pandas as pd
+    y = np.asarray(y, dtype=float)
+    if len(y) < n_bins * min_count:
+        return None
+    try:
+        bins = pd.qcut(y, q=n_bins, labels=False, duplicates="drop")
+    except Exception:                                              # pragma: no cover
+        return None
+    bins = np.asarray(bins, dtype=float)
+    if np.isnan(bins).any():
+        return None
+    bins = bins.astype(int)
+    if len(np.unique(bins)) < 2 or int(np.bincount(bins).min()) < min_count:
+        return None
+    return bins
 
 
 # --------------------------------------------------------------------------- #
@@ -274,8 +317,21 @@ def _make_outer_folds(y: np.ndarray, *, task_type: str,
         for tr, te in skf.split(np.zeros(n), y):
             yield tr, te
     else:
-        kf = KFold(n_splits=n_folds, shuffle=True, random_state=seed)
-        for tr, te in kf.split(np.zeros(n)):
+        # Regression: stratify on quantile bins of the (bimodal) target when
+        # feasible, else plain KFold. Lower-variance LGD estimates; symmetric
+        # across models so the trained-vs-untuned comparison stays fair.
+        strata = _regression_strata(y, n_bins=n_folds, min_count=n_folds)
+        splits = None
+        if strata is not None:
+            try:
+                skf = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=seed)
+                splits = list(skf.split(np.zeros(n), strata))
+            except Exception:                                      # pragma: no cover
+                splits = None
+        if splits is None:
+            kf = KFold(n_splits=n_folds, shuffle=True, random_state=seed)
+            splits = list(kf.split(np.zeros(n)))
+        for tr, te in splits:
             yield tr, te
 
 
@@ -288,9 +344,16 @@ def _inner_split(train_idx: np.ndarray, y_train: np.ndarray, *,
     remaining 64% is what the model actually fits on.
     """
     from sklearn.model_selection import train_test_split
-    stratify = y_train if (
-        task_type == "classification" and len(np.unique(y_train)) >= 2
-    ) else None
+    if task_type == "classification" and len(np.unique(y_train)) >= 2:
+        stratify = y_train
+    elif task_type != "classification":
+        # Match the outer folds: stratify the inner HPO/val split on target
+        # quantile bins so XGBoost/CatBoost tune on a val set whose target
+        # distribution matches the sub-train. Safe: the except below falls
+        # back to an unstratified split if the bins don't support it.
+        stratify = _regression_strata(y_train, n_bins=5, min_count=2)
+    else:
+        stratify = None
     try:
         sub_tr, sub_va = train_test_split(
             train_idx, test_size=val_fraction,
@@ -829,14 +892,18 @@ def _bench_model_on_dataset(
                 )
             else:
                 pred_te = np.asarray(model.predict(X_te_arr)).reshape(-1)
-                # Bar-distribution NLL is TabPFN-only. The current
-                # sklearn-style wrapper doesn't expose it cleanly; we
-                # record NaN and flag it as a known gap. Implementing
-                # it requires accessing TabPFNRegressor's `predict`
-                # `output_type="full"` and computing NLL from the
-                # bar-distribution borders. Future work.
+                # Bar-distribution NLL is TabPFN-only: it rewards the full
+                # predictive DISTRIBUTION (not just the mean), which is the
+                # point of TabPFN's regression head. Models that expose
+                # `neg_log_likelihood` (the TabPFN wrappers) compute the mean
+                # log-density of y under their predictive bar-distribution;
+                # everything else (Ridge/XGBoost/CatBoost) has no distribution,
+                # so neg_nll stays NaN. Best-effort: the wrapper returns None if
+                # the installed tabpfn's full-output API differs.
+                nll_fn = getattr(model, "neg_log_likelihood", None)
+                neg_nll = nll_fn(X_te_arr, y_te) if callable(nll_fn) else None
                 metrics = _regression_metrics(
-                    pred_test=pred_te, y_test=y_te, neg_nll=None,
+                    pred_test=pred_te, y_test=y_te, neg_nll=neg_nll,
                 )
         except Exception as exc:                              # noqa: BLE001
             status = "FAIL"
@@ -1056,13 +1123,21 @@ def run_benchmark(
                 return sum(vals) / len(vals) if vals else None
 
             if track == "pd":
+                # Surface calibration (ECE/Brier) next to discrimination (AUC):
+                # continued-pretraining can silently DEGRADE calibration while
+                # AUC holds — the Basel-relevant property must be visible in the
+                # shared log, not just the CSV.
                 _au, _f1 = _mean("roc_auc"), _mean("f1")
+                _ece, _brier = _mean("ece"), _mean("brier_score")
                 _summ = (f"roc_auc={_au:.4f}" if _au is not None else "roc_auc=n/a") + \
-                        (f" f1={_f1:.4f}" if _f1 is not None else "")
+                        (f" f1={_f1:.4f}" if _f1 is not None else "") + \
+                        (f" ece={_ece:.4f}" if _ece is not None else "") + \
+                        (f" brier={_brier:.4f}" if _brier is not None else "")
             else:
-                _rmse, _r2 = _mean("rmse"), _mean("r2")
+                _rmse, _r2, _nnll = _mean("rmse"), _mean("r2"), _mean("neg_nll")
                 _summ = (f"rmse={_rmse:.4f}" if _rmse is not None else "rmse=n/a") + \
-                        (f" r2={_r2:.4f}" if _r2 is not None else "")
+                        (f" r2={_r2:.4f}" if _r2 is not None else "") + \
+                        (f" neg_nll={_nnll:.4f}" if _nnll is not None else "")
             LOGGER.info(
                 "    ↳ %s × %s: %d/%d folds OK  %s%s",
                 handle.name, did, len(ok_rows), len(fold_rows), _summ,

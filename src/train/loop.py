@@ -329,6 +329,23 @@ def _seed_everything(seed: int) -> None:
         torch.cuda.manual_seed_all(seed)
 
 
+def _git_sha() -> str:
+    """Short git commit of the CreditPFN checkout (``?`` if unavailable).
+
+    Logged in the debug banner so a shared run log pins the EXACT code
+    version that produced it — the first thing needed when debugging a run.
+    """
+    try:
+        import subprocess
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=str(Path(__file__).resolve().parents[2]),
+            stderr=subprocess.DEVNULL, text=True,
+        ).strip() or "?"
+    except Exception:                                              # pragma: no cover
+        return "?"
+
+
 def _gpu_total_mem_gb(device: str) -> float | None:
     """Total VRAM (GiB) of the active CUDA device, or None on CPU."""
     if device != "cuda" or not torch.cuda.is_available():
@@ -409,6 +426,7 @@ def _log_debug_banner(
         f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', '-')} "
         f"PYTORCH_CUDA_ALLOC_CONF={os.environ.get('PYTORCH_CUDA_ALLOC_CONF', '-')}",
         "[versions] "
+        f"creditpfn_git={_git_sha()} "
         f"python={platform.python_version()} torch={torch.__version__} "
         f"cuda={torch.version.cuda} cudnn={torch.backends.cudnn.version()} "
         f"numpy={np.__version__} tabpfn={tabpfn_ver} platform={platform.platform()}",
@@ -447,8 +465,17 @@ def _amp_step_was_skipped(scaler: "torch.amp.GradScaler") -> bool:
                 if float(v.item() if hasattr(v, "item") else v) != 0.0:
                     return True
     except Exception:                                                  # pragma: no cover
-        # Best-effort probe — if the private API ever moves we degrade
-        # to the old behaviour (assume the step happened).
+        # Best-effort probe — if the private API ever moves we degrade to the
+        # old behaviour (assume the step happened). Warn ONCE so a silently
+        # broken probe (which would re-introduce the LR-scheduler desync this
+        # guards against) is visible in the log rather than invisible.
+        if not getattr(_amp_step_was_skipped, "_warned", False):
+            LOGGER.warning(
+                "Could not read GradScaler private state to detect AMP-skipped "
+                "steps; assuming steps were taken. If inf/NaN grad skips occur, "
+                "the LR schedule may drift. (PyTorch internals may have changed.)"
+            )
+            _amp_step_was_skipped._warned = True                       # type: ignore[attr-defined]
         return False
     return False
 
@@ -499,10 +526,12 @@ def _forward(
         mean = train_y.mean(dim=0, keepdim=True)
         # ``unbiased=False`` divides by N (not N-1), so an N=1 chunk
         # yields std=0 rather than NaN. ``clamp_min`` then floors to
-        # 1e-6 so the subsequent division is numerically safe.
+        # 1e-8 so the subsequent division is numerically safe.
         # ``clamp_min`` alone cannot rescue a NaN, so the unbiased=False
-        # is the defensive bit here.
-        std = train_y.std(dim=0, unbiased=False, keepdim=True).clamp_min(1e-6)
+        # is the defensive bit here. Floor matches the ensemble path
+        # (tabpfn_preprocessing.py) so the monitor and training z-norm a
+        # near-constant target identically.
+        std = train_y.std(dim=0, unbiased=False, keepdim=True).clamp_min(1e-8)
         train_y = (train_y - mean) / std
         y_target = (batch.y_query.float() - mean) / std
         znorm_mean = float(mean.detach().cpu().item())
