@@ -33,16 +33,15 @@
 #      for I/O, switch to the stage-in/out pattern documented in VSC_GUIDE.
 #    * Logs + manifests + per-epoch CSVs -> $VSC_DATA/CreditPFN (NFS, backed up).
 #
-#  PILOT ACCOUNT: lp_mindwell_pilot is FREE during the Mindwell pilot. Check
-#  it's still active (it may convert to paid post-pilot):
-#      sam-balance -A lp_mindwell_pilot
-#  If exhausted/closed, switch --account to your project account (e.g.
-#  lp_verbekelab) — B200 credit weight is 437.5/GPU-min.
+#  ACCOUNT: lp_verbekelab (has Mindwell access — verified via
+#  `sacctmgr -s show user $USER cluster=mindwell`). The free `lp_mindwell_pilot`
+#  is gone now that Mindwell is in production. B200 credit weight is
+#  437.5/GPU-min. Override at submit time with `sbatch --account=<acct> …`.
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-pd-train
 #SBATCH --clusters=mindwell
-#SBATCH --account=lp_mindwell_pilot
+#SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
 #SBATCH --time=48:00:00   # GPU partitions cap at 72h (no gpu_*_long on VSC).
@@ -109,6 +108,24 @@ echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
 echo "PYTORCH_ALLOC  : ${PYTORCH_CUDA_ALLOC_CONF}"
 nvidia-smi || true
 echo "=========================================="
+
+# Cross-cluster self-sequencing: when launched by submit_overnight.sh, wait for
+# the data stage (running on wICE) to signal completion via a sentinel file on
+# $VSC_DATA (NFS, visible from every cluster) before reading the processed CSVs.
+# This lets the whole pipeline be fired at once without cross-cluster afterok.
+# No-op unless CREDITPFN_WAIT_DATA is set.
+if [[ -n "${CREDITPFN_WAIT_DATA:-}" ]]; then
+    SENT="${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
+    echo "Waiting up to 90 min for data sentinel: ${SENT}"
+    for _i in $(seq 1 180); do
+        [[ -f "${SENT}" ]] && { echo "data sentinel found after $((_i*30))s."; break; }
+        sleep 30
+    done
+    if [[ ! -f "${SENT}" ]]; then
+        echo "ERROR: data sentinel not found after 90 min — aborting (data stage failed?)." >&2
+        exit 1
+    fi
+fi
 
 python -u scripts/train_pipeline.py \
     --trial-index "${SLURM_ARRAY_TASK_ID}" \

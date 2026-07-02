@@ -11,7 +11,7 @@
 
 #SBATCH --job-name=creditpfn-lgd-train
 #SBATCH --clusters=mindwell
-#SBATCH --account=lp_mindwell_pilot
+#SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
 #SBATCH --time=12:00:00   # smaller LGD corpus; full_pass A/B @ 50 epochs fits.
@@ -59,6 +59,22 @@ echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
 echo "PYTORCH_ALLOC  : ${PYTORCH_CUDA_ALLOC_CONF}"
 nvidia-smi || true
 echo "=========================================="
+
+# Cross-cluster self-sequencing (see train_pd.slurm): wait for the wICE data
+# stage's completion sentinel before reading processed CSVs. No-op unless
+# CREDITPFN_WAIT_DATA is set (submit_overnight.sh sets it).
+if [[ -n "${CREDITPFN_WAIT_DATA:-}" ]]; then
+    SENT="${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
+    echo "Waiting up to 90 min for data sentinel: ${SENT}"
+    for _i in $(seq 1 180); do
+        [[ -f "${SENT}" ]] && { echo "data sentinel found after $((_i*30))s."; break; }
+        sleep 30
+    done
+    if [[ ! -f "${SENT}" ]]; then
+        echo "ERROR: data sentinel not found after 90 min — aborting (data stage failed?)." >&2
+        exit 1
+    fi
+fi
 
 python -u scripts/train_pipeline.py \
     --trial-index "${SLURM_ARRAY_TASK_ID}" \

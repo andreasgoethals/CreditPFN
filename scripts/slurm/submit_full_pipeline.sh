@@ -55,6 +55,12 @@ TRAIN_CONCURRENCY="${TRAIN_CONCURRENCY:-24}"
 EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-32}"
 EVAL_PARTITIONS="${EVAL_PARTITIONS:-gpu_h100 gpu_a100}"
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
+# Override the Mindwell training account when the built-in `lp_mindwell_pilot`
+# (the free pilot) is no longer valid for you — the pilot closed when Mindwell
+# went to production. Find yours with `sam-balance`, then run e.g.
+#   TRAIN_ACCOUNT=lp_yourproject STAGES=train bash scripts/slurm/submit_full_pipeline.sh
+# Empty → use the account hard-coded in train_{pd,lgd}.slurm.
+TRAIN_ACCOUNT="${TRAIN_ACCOUNT:-}"
 
 cd "$(dirname "$0")/../.."
 
@@ -134,13 +140,16 @@ if [[ " ${STAGES} " == *" train "* ]]; then
         echo "        (cross-cluster). Ensure data job ${DATA_JID} FINISHES"
         echo "        before the Mindwell training tasks start reading."
     fi
+    ACCT_FLAG=()
+    [[ -n "${TRAIN_ACCOUNT}" ]] && ACCT_FLAG=(--account="${TRAIN_ACCOUNT}")
     for TR in ${TRACKS}; do
         N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
         JID=$(strip_cluster_suffix "$(sbatch --parsable \
             --export="${SBATCH_EXPORT}" \
+            "${ACCT_FLAG[@]}" \
             --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
             "scripts/slurm/train_${TR}.slurm")")
-        echo "  train ${TR} (Mindwell) : ${JID}  (array 0..$((N - 1)))"
+        echo "  train ${TR} (Mindwell) : ${JID:-<FAILED>}  (array 0..$((N - 1)); account=${TRAIN_ACCOUNT:-<slurm default>})"
     done
 fi
 
