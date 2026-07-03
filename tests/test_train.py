@@ -826,9 +826,11 @@ def test_train_one_config_end_to_end_mocked(
     import src.train.loop as loop_mod
 
     n_feat = 4
+    loaded_checkpoints: list[Path] = []
 
     def fake_loader(checkpoint_path, *, track, device, lora_config=None):
         del lora_config
+        loaded_checkpoints.append(Path(checkpoint_path))
         model = _DummyClassifier(n_features=n_feat).to(device)
         criterion = torch.nn.CrossEntropyLoss().to(device)
         arch = NS(num_features=n_feat, num_classes=2)
@@ -931,6 +933,10 @@ def test_train_one_config_end_to_end_mocked(
     assert not hasattr(result, "test_metric_name")
     assert "smoketest_pd_" in result.descriptive_name
     assert result.descriptive_name.endswith(".ckpt")
+    expected_base = (
+        tmp_path / "checkpoints" / "tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    )
+    assert loaded_checkpoints == [expected_base]
 
     assert len(captured_provenance) == 1
     prov = captured_provenance[0]
@@ -945,6 +951,7 @@ def test_train_one_config_end_to_end_mocked(
     assert prov["hyperparameters"]["base_checkpoint"].endswith(
         "tabpfn-v2.6-classifier-v2.6_default.ckpt"
     )
+    assert prov["hyperparameters"]["base_checkpoint_resolved"] == str(expected_base)
     assert isinstance(prov["training_datasets"], list)
     assert prov["training_time_seconds"] > 0
     assert prov["device"] == "cpu"

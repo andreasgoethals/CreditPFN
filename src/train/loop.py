@@ -1179,6 +1179,8 @@ def train_one_config(
         bases = (cfg.tunable.classifier_base_paths if track == "pd"
                  else cfg.tunable.regressor_base_paths)
         base_checkpoint = str(bases[0])
+    base_checkpoint_config = str(base_checkpoint)
+    base_checkpoint_path = resolve_staging_path(base_checkpoint_config)
     if learning_rate is None:
         learning_rate = float(cfg.tunable.learning_rates[0])
     if use_lora is None:
@@ -1212,8 +1214,12 @@ def train_one_config(
     device = _resolve_device(cfg)
     LOGGER.info(
         "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | qf=%.2f | seed=%d",
-        track, device, Path(base_checkpoint).name, learning_rate,
+        track, device, Path(base_checkpoint_config).name, learning_rate,
         use_lora, query_fraction, int(cfg.seed),
+    )
+    LOGGER.info(
+        "Resolved base checkpoint path: %s -> %s",
+        base_checkpoint_config, base_checkpoint_path,
     )
 
     # ---- 1) corpus split --------------------------------------------------- #
@@ -1241,7 +1247,7 @@ def train_one_config(
     )
     model, criterion, architecture_config, inference_config = (
         load_tabpfn_for_training(
-            base_checkpoint, track=track, device=device,
+            base_checkpoint_path, track=track, device=device,
             lora_config=lora_cfg_dict,
         )
     )
@@ -1282,7 +1288,7 @@ def train_one_config(
     from omegaconf import OmegaConf
     _data_cfg = OmegaConf.load("config/data.yaml")
     max_rows_per_epoch = _resolve_max_rows_per_epoch(
-        base_checkpoint, _data_cfg.finetuning.max_rows_per_epoch,
+        base_checkpoint_config, _data_cfg.finetuning.max_rows_per_epoch,
     )
     # Optional per-architecture cell budget (rows × features). Off (null)
     # for both bases by default → pure row cap. Appropriate for v3 (whose
@@ -1293,7 +1299,7 @@ def train_one_config(
     _max_cells_cfg = _data_cfg.finetuning.get("max_cells_per_epoch", None)
     if _max_cells_cfg is not None:
         try:
-            _mc = _resolve_max_rows_per_epoch(base_checkpoint, _max_cells_cfg)
+            _mc = _resolve_max_rows_per_epoch(base_checkpoint_config, _max_cells_cfg)
             max_cells_per_epoch = int(_mc) if _mc else None
         except Exception:                                          # null / no key
             max_cells_per_epoch = None
@@ -1390,7 +1396,7 @@ def train_one_config(
         resolve_staging_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
             run_name=str(cfg.run_name),
             track=track,
-            base_path=base_checkpoint,
+            base_path=base_checkpoint_config,
             learning_rate=float(learning_rate),
             seed=int(cfg.seed),
             use_lora=bool(use_lora),
@@ -1412,7 +1418,7 @@ def train_one_config(
     # / diverges. Captures env, cluster, hardware, versions, storage roots and
     # the complete hyperparameter set. (User request 2026-06-23.)
     _log_debug_banner(
-        track=track, device=device, base_checkpoint=base_checkpoint,
+        track=track, device=device, base_checkpoint=base_checkpoint_path,
         save_path=save_path, learning_rate=float(learning_rate),
         use_lora=bool(use_lora), query_fraction=float(query_fraction),
         accumulate=int(accumulate), pass_mode=pass_mode,
@@ -1432,7 +1438,7 @@ def train_one_config(
         "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s | "
         "max_rows_per_epoch=%d | query_fraction=%.2f",
         epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
-        Path(base_checkpoint).name, int(cfg.seed), device,
+        Path(base_checkpoint_config).name, int(cfg.seed), device,
         max_rows_per_epoch, query_fraction,
     )
     LOGGER.info("Save target   : %s", save_path)
@@ -1507,7 +1513,7 @@ def train_one_config(
         # the ensemble loader, mirroring what tabpfn-untuned does in the
         # full eval pipeline.
         baseline_ckpt = (
-            str(base_checkpoint) if use_ensemble_eval
+            str(base_checkpoint_path) if use_ensemble_eval
             else save_path  # ignored on the cheap path; the live model is used
         )
         baseline_train_d = _do_eval(
@@ -2043,7 +2049,8 @@ def train_one_config(
         "task_type":           "classification" if track == "pd" else "regression",
         "saved_at":            time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "hyperparameters": {
-            "base_checkpoint":     str(base_checkpoint),
+            "base_checkpoint":     base_checkpoint_config,
+            "base_checkpoint_resolved": str(base_checkpoint_path),
             "learning_rate":       float(learning_rate),
             "weight_decay":        float(cfg.optimizer.weight_decay),
             # Effective L2-SP strength actually applied this trial (0.0 when

@@ -159,12 +159,12 @@ def build_baselines(
                 )
                 continue
             m = TabPFNUntuned(
-                task_type=task_type, base_path=base_path,
+                task_type=task_type, base_path=resolved,
                 device=device, n_estimators=n_estimators_tabpfn,
             )
             out.append((ModelHandle(
                 name=m.name, track=track, task_type=task_type,
-                source="tabpfn-untuned", base_path=str(base_path),
+                source="tabpfn-untuned", base_path=str(resolved),
             ), m))
 
     if not out:
