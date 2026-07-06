@@ -81,6 +81,13 @@ if str(_REPO) not in _sys.path:
 from src.utils.paths import apply_data_source_from_cfg, resolve_output_path, resolve_staging_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
+# sklearn's ColumnTransformer emits a FutureWarning about
+# `force_int_remainder_cols` from INSIDE tabpfn's preprocessing on every
+# ensemble-member fit — ~4x log bloat on full_pass trials (2026-07-03 run).
+# Behaviourally irrelevant to us; silence just that message.
+import warnings  # noqa: E402
+warnings.filterwarnings("ignore", message=".*force_int_remainder_cols.*")
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -230,6 +237,17 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     data_cfg = OmegaConf.load("config/data.yaml")
     proc_root = resolve_data_path(data_cfg.paths.processed)
 
+    # A healthy corpus ALWAYS has >=1 dataset per active track — an empty
+    # candidate list means the metadata/corpus resolution silently failed,
+    # and the old "all 0 candidate dataset(s) are on disk" message passed a
+    # vacuous check (flagged in the 2026-07-03 run logs). Fail loudly instead.
+    if not candidate_ids:
+        raise RuntimeError(
+            f"Processed-CSV preflight resolved 0 candidate datasets for "
+            f"track={track!r} — DATASET_METADATA or the corpus pins are "
+            f"broken; refusing to train on an empty corpus."
+        )
+
     missing = [
         did for did in candidate_ids
         if not (proc_root / track / f"{did}.sanitized.csv").exists()
@@ -237,7 +255,8 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     if not missing:
         LOGGER.info(
             "Processed-CSV check OK: all %d candidate dataset(s) for "
-            "track=%s are on disk.", len(candidate_ids), track,
+            "track=%s are on disk under %s.",
+            len(candidate_ids), track, proc_root / track,
         )
         return
 
@@ -436,6 +455,28 @@ def run(
             trial_idx_local, len(plan), global_idx,
             Path(base).name, lr, use_lora, query_fraction, accumulate, pass_mode,
         )
+        # Mini environment banner BEFORE any tabpfn import / model load, so a
+        # crash during load still leaves version + path context in the log.
+        # (The 2026-07-03 LGD failures died before the full debug banner —
+        # those 32 logs carried no git sha / tabpfn version at all.)
+        try:
+            import torch as _torch
+            from src.train.loop import _git_sha as _sha
+            try:
+                import tabpfn as _tp
+                _tpv = getattr(_tp, "__version__", "?")
+            except Exception as _e:                          # noqa: BLE001
+                _tpv = f"IMPORT FAILED: {_e}"
+            from src.utils.paths import get_roots as _gr
+            _r = _gr()
+            LOGGER.info(
+                "[env] creditpfn_git=%s python=%s torch=%s tabpfn=%s | "
+                "data_root=%s output_root=%s staging_root=%s",
+                _sha(), _sys.version.split()[0], _torch.__version__, _tpv,
+                _r.get("data_root"), _r.get("output_root"), _r.get("staging_root"),
+            )
+        except Exception:                                    # pragma: no cover
+            pass
 
         # Per-epoch CSV path (mirrors the descriptive name of the checkpoint)
         run_basename = descriptive_name(
@@ -483,9 +524,19 @@ def run(
         # the manifest (so it still appears in the summary) and move on.
         # To force a rerun, delete the .ckpt (or use
         # `python -m src.utils.pipeline_clean --stages train`).
-        expected_ckpt = (
-            resolve_staging_path(cfg.checkpoint.trained_dir)
-            / track / f"{run_basename}.ckpt"
+        # A finished checkpoint may live in staging OR — when staging wasn't
+        # writable from the training node and the loop fell back — under the
+        # output root. Check BOTH so re-submissions skip completed trials
+        # regardless of where the artefact landed.
+        from src.utils.paths import resolve_output_path as _rop
+        _candidates = [
+            resolve_staging_path(cfg.checkpoint.trained_dir) / track / f"{run_basename}.ckpt",
+            _rop(cfg.checkpoint.trained_dir) / track / f"{run_basename}.ckpt",
+        ]
+        expected_ckpt = next(
+            (c for c in _candidates
+             if c.exists() and c.with_suffix(c.suffix + ".provenance.json").exists()),
+            _candidates[0],
         )
         expected_prov = expected_ckpt.with_suffix(
             expected_ckpt.suffix + ".provenance.json",

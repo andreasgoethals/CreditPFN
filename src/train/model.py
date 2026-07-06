@@ -142,9 +142,11 @@ def load_tabpfn_for_training(
     if track == "pd":
         train_criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
     else:
-        from tabpfn.architectures.base.bar_distribution import (
-            FullSupportBarDistribution,
-        )
+        # Version-tolerant import: the module moved between tabpfn 2.x
+        # (architectures.base) and 8.x (architectures.shared). The hardcoded
+        # 2.x path killed all 32 LGD trials of the 2026-07-03 run in seconds.
+        from src.train.tabpfn_compat import import_bar_distribution
+        FullSupportBarDistribution = import_bar_distribution().FullSupportBarDistribution
         if not isinstance(criterion, FullSupportBarDistribution):
             raise TypeError(
                 f"Regressor checkpoint did not yield a "

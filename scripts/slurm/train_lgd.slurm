@@ -62,7 +62,7 @@ echo "=========================================="
 
 # Cross-cluster self-sequencing (see train_pd.slurm): wait for the wICE data
 # stage's completion sentinel before reading processed CSVs. No-op unless
-# CREDITPFN_WAIT_DATA is set (submit_overnight.sh sets it).
+# CREDITPFN_WAIT_DATA is set (run_full_pipeline.sh sets it).
 if [[ -n "${CREDITPFN_WAIT_DATA:-}" ]]; then
     SENT="${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
     echo "Waiting up to 90 min for data sentinel: ${SENT}"
@@ -76,10 +76,23 @@ if [[ -n "${CREDITPFN_WAIT_DATA:-}" ]]; then
     fi
 fi
 
+# PRE-FLIGHT SMOKE TEST (see train_pd.slurm) — the 'lgd' variant also checks
+# the bar-distribution import that killed all 32 LGD trials on 2026-07-03.
+python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" || {
+    echo "PREFLIGHT FAILED: tabpfn import smoke test — aborting before training." >&2
+    exit 1
+}
+# (Staging writability is probed in python — resolve_writable_staging_path —
+#  before any training compute; falls back to $VSC_DATA if unwritable.)
+
 python -u scripts/train_pipeline.py \
     --trial-index "${SLURM_ARRAY_TASK_ID}" \
     --log-path "$LOG" \
     track=lgd
+
+# Reached ONLY on success (set -e) — success sentinel for the eval gate.
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
+touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd"
 
 echo "=========================================="
 echo "DONE — $(date)"

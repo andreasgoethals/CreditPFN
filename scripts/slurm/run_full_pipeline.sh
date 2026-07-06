@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-#  CreditPFN — FIRE-ONCE overnight pipeline (data → train → eval), one command.
+#  CreditPFN — FIRE-ONCE full pipeline (data → train → eval), one command.
 # =============================================================================
 #  Submits ALL stages at once and self-sequences them across the two clusters
 #  WITHOUT any cross-cluster afterok dependency (VSC doesn't support those):
@@ -18,7 +18,7 @@
 #  checkpoints and results live in project staging; logs on $VSC_DATA.
 #
 #  Usage (Genius login node):
-#      bash scripts/slurm/submit_overnight.sh
+#      bash scripts/slurm/run_full_pipeline.sh
 #  Knobs (env): TRAIN_ACCOUNT (default lp_verbekelab), EVAL_ACCOUNT, TRACKS,
 #      TRAIN_CONCURRENCY, EVAL_CONCURRENCY, EVAL_PARTITIONS, CONDA_ENV.
 # =============================================================================
@@ -58,7 +58,7 @@ SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_R
 strip() { echo "${1%%;*}"; }            # "<jid>;<cluster>" → "<jid>"
 
 echo "=================================================================="
-echo "CreditPFN — one-shot overnight pipeline"
+echo "CreditPFN — one-shot full pipeline"
 echo "  TRAIN_ACCOUNT : ${TRAIN_ACCOUNT}   (Mindwell gpu_b200)"
 echo "  EVAL_ACCOUNT  : ${EVAL_ACCOUNT}    (wICE ${EVAL_PARTITIONS})"
 echo "  TRACKS        : ${TRACKS}"
@@ -82,6 +82,11 @@ echo "=================================================================="
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels" "${CREDITPFN_OUTPUT_ROOT}/logs"
 rm -f "${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
 
+# Clear stale SUCCESS sentinels from a previous run (train_ok_* are written by
+# the train tasks only when a trial actually SAVES; the gate reads them).
+rm -f "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd" \
+      "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd"
+
 # --- [1] DATA (wICE) ---------------------------------------------------------
 DATA_JID=$(strip "$(sbatch --parsable --export="${SBATCH_EXPORT}" scripts/slurm/data.slurm)")
 echo "  [1] data  (wICE batch)        : ${DATA_JID}"
@@ -104,6 +109,7 @@ GATE_JID=$(strip "$(sbatch --parsable \
     --clusters=wice --account="${EVAL_ACCOUNT}" --partition=batch \
     --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=2G --time=21:00:00 \
     --job-name=creditpfn-eval-gate --chdir="${REPO}" \
+    --export="${SBATCH_EXPORT}" \
     --output="${CREDITPFN_OUTPUT_ROOT}/logs/eval_gate_%j.log" \
     --wrap="bash scripts/slurm/_wait_for_jobs.sh '${TRAIN_CSV}' 2400")")
 echo "  [3] eval gate (wICE batch)    : ${GATE_JID}  (watches Mindwell ${TRAIN_CSV})"
@@ -127,20 +133,25 @@ n_test = len({c.dataset_id for c in split.test})
 print((n_baselines + n_untuned + n_planned) * max(1, n_test))
 " 2>/dev/null || echo 1)
     UPPER_N=${UPPER_N:-1}; [[ "$UPPER_N" -lt 1 ]] && UPPER_N=1
+    # INTERLEAVED pool split (post-mortem fix, 2026-07-04): the old contiguous
+    # offset split (H100: 0..N/2, A100: N/2..N) made the second pool 100% dead
+    # weight whenever the REAL task grid was smaller than the offset — exactly
+    # what happened when training failed and only 25/185 planned PD tasks
+    # existed (~120 surplus GPU dispatches). A stride split (pool i takes
+    # indices i, i+K, i+2K, …) keeps every pool busy across the LOW indices
+    # regardless of how many tasks actually materialize.
     # shellcheck disable=SC2206
     PARTS=(${EVAL_PARTITIONS}); K=${#PARTS[@]}
-    CHUNK=$(( (UPPER_N + K - 1) / K ))
     for i in "${!PARTS[@]}"; do
-        P="${PARTS[$i]}"; LO=$(( i * CHUNK )); HI=$(( (i + 1) * CHUNK - 1 ))
-        [[ "$HI" -ge "$UPPER_N" ]] && HI=$(( UPPER_N - 1 ))
-        [[ "$LO" -gt "$HI" ]] && continue
+        P="${PARTS[$i]}"
+        [[ "$i" -ge "$UPPER_N" ]] && continue   # more pools than tasks
         JID=$(strip "$(sbatch --parsable \
             --clusters=wice --account="${EVAL_ACCOUNT}" --partition="${P}" \
             --dependency=afterok:"${GATE_JID}" \
             --export="${SBATCH_EXPORT}" \
-            --array="${LO}-${HI}%${EVAL_CONCURRENCY}" \
+            --array="${i}-$((UPPER_N - 1)):${K}%${EVAL_CONCURRENCY}" \
             "scripts/slurm/eval_${TR}.slurm")")
-        echo "  [4] eval ${TR} (wICE ${P}) : ${JID}  (array ${LO}..${HI}, afterok gate)"
+        echo "  [4] eval ${TR} (wICE ${P}) : ${JID}  (array ${i}..$((UPPER_N - 1)) step ${K}, afterok gate)"
     done
 done
 

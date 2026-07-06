@@ -149,6 +149,13 @@ train:
   # epoch_eval_subsample_samples=0 to disable the monitor.
   epoch_eval_subsample_samples: 2000
   epoch_eval_n_estimators: 32
+  # Monitor CADENCE: run the 32-estimator monitor eval only every k-th epoch
+  # (plus always epoch 0 and the final epoch). The 2026-07-03 run's timing
+  # lines showed the monitor dominating one_sample epoch wall-clock ~3:1;
+  # k=5 keeps the learning-curve resolution while cutting monitor cost 5x.
+  # Divergence detection correctly considers only the epochs where the
+  # monitor ran. Set to 1 for the legacy every-epoch behaviour.
+  epoch_eval_every: 5
 
   # Early-abort when training collapses: loss constant across `patience`
   # epochs, OR AUC pegged at 0.5, OR all metrics NaN. Records

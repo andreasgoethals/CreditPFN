@@ -57,7 +57,9 @@ from src.train.metrics import (
     mean_ignore_nan,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
-from src.utils.paths import resolve_output_path, resolve_staging_path
+from src.utils.paths import (
+    resolve_output_path, resolve_staging_path, resolve_writable_staging_path,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1392,8 +1394,12 @@ def train_one_config(
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
 
     # ---- 4) checkpoint name + path ---------------------------------------- #
+    # resolve_writable_staging_path PROBES writability here — before the
+    # baseline eval and all training compute — and falls back to $VSC_DATA
+    # with a loud warning if staging can't be written from this node (the
+    # failure mode that killed all 32 PD trials on 2026-07-03).
     save_path = Path(save_path) if save_path is not None else (
-        resolve_staging_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
+        resolve_writable_staging_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
             run_name=str(cfg.run_name),
             track=track,
             base_path=base_checkpoint_config,
@@ -1452,8 +1458,17 @@ def train_one_config(
     # too small to move the prior.
     epoch_eval_n0 = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
     epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators", 1))
+    # Monitor CADENCE: run the (expensive, 32-estimator) per-epoch eval only
+    # every k-th epoch (+ always the first and last). The 2026-07-03 run's
+    # timing lines showed the monitor dominating one_sample epochs ~3:1 —
+    # config/train.yaml sets 5; code default 1 preserves legacy behaviour.
+    epoch_eval_every = max(1, int(getattr(cfg.train, "epoch_eval_every", 1)))
     use_ensemble_eval = epoch_eval_ne > 1
     snapshot_path = Path(str(save_path) + ".epoch_eval.ckpt") if use_ensemble_eval else None
+    # (test_metric, train_metric) pairs from epochs where the monitor RAN —
+    # the divergence detector's metric window must only look at these, else
+    # the by-design NaN metrics of skipped epochs would fake a collapse.
+    monitored_metrics: list[tuple[float, float]] = []
 
     # Picks the per-track primary + secondary metric names. For PD we
     # add brier_score as the calibration-collapse early-warning metric
@@ -1546,6 +1561,7 @@ def train_one_config(
             epoch_time_sec=0.0,
         )
         history.append(baseline_record)
+        monitored_metrics.append((baseline_test_p, baseline_train_p))
         if on_epoch_end is not None:
             on_epoch_end(baseline_record)
         if track_secondary_metric:
@@ -1786,17 +1802,6 @@ def train_one_config(
         # sklearn-API loader has a checkpoint file to mmap. The snapshot
         # is overwritten every epoch, keeping disk usage bounded at one
         # .ckpt-worth (~213 MB v3 / ~43 MB v2.6) per trial.
-        if use_ensemble_eval and snapshot_path is not None:
-            assert architecture_config is not None
-            _save_eval_snapshot(
-                model, architecture_config, snapshot_path,
-                criterion=criterion,
-                inference_config=inference_config,
-            )
-            eval_ckpt_path: Path | str = snapshot_path
-        else:
-            eval_ckpt_path = save_path        # ignored on cheap path
-
         # Track-level metric names already resolved before the loop —
         # `track_primary_metric` / `track_secondary_metric` /
         # `track_metric_names`. Keep local aliases for the EpochRecord
@@ -1804,24 +1809,47 @@ def train_one_config(
         metric_name = track_primary_metric
         secondary_metric_name = track_secondary_metric
 
-        train_metrics = _do_eval(
-            eval_ckpt_path, split.train,
-            seed=int(cfg.seed) + 10_000 * (epoch + 1),
+        # Cadence: evaluate on the first epoch, every `epoch_eval_every`-th
+        # epoch, and always the final one. Skipped epochs record NaN metrics
+        # (loss is always recorded) and skip the snapshot write too.
+        monitor_this_epoch = (
+            epoch_eval_n0 > 0
+            and (epoch % epoch_eval_every == 0 or epoch == epochs - 1)
         )
-        test_metrics = _do_eval(
-            eval_ckpt_path, split.test,
-            seed=int(cfg.seed) + 20_000 * (epoch + 1),
-        )
-        train_metric = float(train_metrics.get(metric_name, float("nan")))
-        test_metric  = float(test_metrics.get(metric_name,  float("nan")))
-        secondary_train = (
-            float(train_metrics.get(secondary_metric_name, float("nan")))
-            if secondary_metric_name else float("nan")
-        )
-        secondary_test = (
-            float(test_metrics.get(secondary_metric_name, float("nan")))
-            if secondary_metric_name else float("nan")
-        )
+        if monitor_this_epoch:
+            if use_ensemble_eval and snapshot_path is not None:
+                assert architecture_config is not None
+                _save_eval_snapshot(
+                    model, architecture_config, snapshot_path,
+                    criterion=criterion,
+                    inference_config=inference_config,
+                )
+                eval_ckpt_path: Path | str = snapshot_path
+            else:
+                eval_ckpt_path = save_path    # ignored on cheap path
+
+            train_metrics = _do_eval(
+                eval_ckpt_path, split.train,
+                seed=int(cfg.seed) + 10_000 * (epoch + 1),
+            )
+            test_metrics = _do_eval(
+                eval_ckpt_path, split.test,
+                seed=int(cfg.seed) + 20_000 * (epoch + 1),
+            )
+            train_metric = float(train_metrics.get(metric_name, float("nan")))
+            test_metric  = float(test_metrics.get(metric_name,  float("nan")))
+            secondary_train = (
+                float(train_metrics.get(secondary_metric_name, float("nan")))
+                if secondary_metric_name else float("nan")
+            )
+            secondary_test = (
+                float(test_metrics.get(secondary_metric_name, float("nan")))
+                if secondary_metric_name else float("nan")
+            )
+            monitored_metrics.append((test_metric, train_metric))
+        else:
+            train_metric = test_metric = float("nan")
+            secondary_train = secondary_test = float("nan")
 
         train_loss = running_loss / max(1, n_batches)
         epoch_dt = time.monotonic() - epoch_t0
@@ -1955,8 +1983,13 @@ def train_one_config(
         recent = history[-diverge_patience:]
         if len(recent) == diverge_patience:
             losses = [r.train_loss for r in recent if not math.isnan(r.train_loss)]
-            test_metrics_recent = [r.test_metric for r in recent]
-            train_metrics_recent = [r.train_metric for r in recent]
+            # Metric-based collapse signals must only look at epochs where the
+            # monitor actually RAN — with `epoch_eval_every > 1` the skipped
+            # epochs hold NaN by design and would fake a `metric_nan` collapse.
+            monitored_recent = monitored_metrics[-diverge_patience:]
+            metrics_window_full = len(monitored_recent) == diverge_patience
+            test_metrics_recent = [t for t, _ in monitored_recent]
+            train_metrics_recent = [tr for _, tr in monitored_recent]
 
             loss_constant = (
                 len(losses) == diverge_patience
@@ -1967,6 +2000,7 @@ def train_one_config(
             # For LGD (RMSE primary), the analogue is NaN train/test.
             auc_random = (
                 track_primary_metric == "roc_auc"
+                and metrics_window_full
                 and all(
                     not math.isnan(t) and not math.isnan(tr)
                     and abs(t - 0.5) < 1e-4 and abs(tr - 0.5) < 1e-4
@@ -1982,6 +2016,7 @@ def train_one_config(
             # `patience` epochs. (Bug fixed 2026-06-23.)
             metric_nan = (
                 epoch_eval_n0 > 0
+                and metrics_window_full
                 and all(
                     math.isnan(t) and math.isnan(tr)
                     for t, tr in zip(test_metrics_recent, train_metrics_recent)

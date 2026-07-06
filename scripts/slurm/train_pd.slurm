@@ -109,7 +109,7 @@ echo "PYTORCH_ALLOC  : ${PYTORCH_CUDA_ALLOC_CONF}"
 nvidia-smi || true
 echo "=========================================="
 
-# Cross-cluster self-sequencing: when launched by submit_overnight.sh, wait for
+# Cross-cluster self-sequencing: when launched by run_full_pipeline.sh, wait for
 # the data stage (running on wICE) to signal completion via a sentinel file on
 # $VSC_DATA (NFS, visible from every cluster) before reading the processed CSVs.
 # This lets the whole pipeline be fired at once without cross-cluster afterok.
@@ -127,10 +127,26 @@ if [[ -n "${CREDITPFN_WAIT_DATA:-}" ]]; then
     fi
 fi
 
+# PRE-FLIGHT SMOKE TEST (seconds, no GPU compute) — verifies every import the
+# trial will need + staging writability BEFORE burning B200 time. Added after
+# the 2026-07-03 run lost 3 h to failures a 10-second check would have caught.
+python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('pd')" || {
+    echo "PREFLIGHT FAILED: tabpfn import smoke test — aborting before training." >&2
+    exit 1
+}
+# (Staging WRITABILITY is probed in python — resolve_writable_staging_path —
+#  at save-path resolution, before any training compute; unwritable staging
+#  now falls back to $VSC_DATA with a loud warning instead of Errno 13.)
+
 python -u scripts/train_pipeline.py \
     --trial-index "${SLURM_ARRAY_TASK_ID}" \
     --log-path "$LOG" \
     track=pd
+
+# Reached ONLY on success (set -e aborts on a python failure/exit 1) —
+# the success sentinel the eval gate requires before releasing eval.
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
+touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd"
 
 echo "=========================================="
 echo "DONE — $(date)"

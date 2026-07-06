@@ -121,6 +121,20 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray) -> fl
         # FullSupportBarDistribution.forward(logits[..., num_bars], y[...])
         # returns per-row NLL (−log density). Reduce over the leading dims.
         nll = crit(logits_t, y_t)
+        # Clamp degenerate rows: a y that lands where the predicted density
+        # underflows to 0 yields nll=+inf, and ONE such row makes the mean
+        # −inf and poisons every downstream aggregate (observed for the v2.6
+        # regressor on both LGD test sets, 2026-07-03 run). Cap per-row NLL
+        # at 100 (density 1e-44 — beyond any meaningful resolution) and log.
+        n_bad = int((~torch.isfinite(nll)).sum().item())
+        if n_bad:
+            LOGGER.warning(
+                "neg_nll: %d/%d rows had non-finite NLL (density underflow) — "
+                "clamped to 100 nats so the mean stays finite.",
+                n_bad, nll.numel(),
+            )
+        nll = torch.nan_to_num(nll, nan=100.0, posinf=100.0, neginf=-100.0)
+        nll = torch.clamp(nll, min=-100.0, max=100.0)
         return float((-nll).mean().item())
     except Exception as exc:                                       # noqa: BLE001
         LOGGER.warning("neg_nll: bar-distribution NLL failed (%s: %s) — skipping.",

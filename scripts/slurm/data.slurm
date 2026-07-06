@@ -97,7 +97,7 @@ python -u scripts/data_pipeline.py --log-path "$LOG"
 # Completion sentinel (only reached because `set -e` aborts on a python failure).
 # Written to $VSC_DATA (NFS, visible from every cluster) so the Mindwell training
 # tasks can self-sequence after data without a cross-cluster afterok dependency.
-# See scripts/slurm/submit_overnight.sh and the wait-loop in train_{pd,lgd}.slurm.
+# See scripts/slurm/run_full_pipeline.sh and the wait-loop in train_{pd,lgd}.slurm.
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
 touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
 echo "Wrote data-completion sentinel: ${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"

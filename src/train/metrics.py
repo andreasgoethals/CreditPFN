@@ -133,9 +133,9 @@ def regression_metric(
         (``SS_tot == 0``), which the caller filters via
         :func:`mean_ignore_nan`.
     """
-    from tabpfn.architectures.base.bar_distribution import (
-        FullSupportBarDistribution,
-    )
+    # Version-tolerant import (module moved between tabpfn 2.x and 8.x).
+    from src.train.tabpfn_compat import import_bar_distribution
+    FullSupportBarDistribution = import_bar_distribution().FullSupportBarDistribution
     if not isinstance(criterion, FullSupportBarDistribution):
         raise TypeError(
             "regression_metric expects a FullSupportBarDistribution criterion"

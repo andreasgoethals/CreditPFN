@@ -75,6 +75,11 @@ if str(_REPO) not in _sys.path:
 from src.utils.paths import apply_data_source_from_cfg, resolve_output_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
 
+# Silence the sklearn ColumnTransformer `force_int_remainder_cols`
+# FutureWarning emitted from inside tabpfn's preprocessing (log-bloat only).
+import warnings  # noqa: E402
+warnings.filterwarnings("ignore", message=".*force_int_remainder_cols.*")
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -206,6 +211,21 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         device=str(train_cfg.device),
         n_estimators=int(eval_cfg.tabpfn_n_estimators),
     )
+
+    # LOUD guard (post-mortem, 2026-07-04): in the Jul-3 run all 64 training
+    # trials failed and eval silently benchmarked a baselines-only roster —
+    # nothing in any eval log said "there are no trained models here". Make
+    # that state unmissable so a wasted comparison can't masquerade as a run.
+    if not trained:
+        LOGGER.warning(
+            "=========================================================\n"
+            "NO TRAINED CHECKPOINTS for track=%s — the roster is\n"
+            "BASELINES-ONLY (%d models). The trained-vs-untuned\n"
+            "comparison this pipeline exists for CANNOT be computed.\n"
+            "Check %s for FAIL rows and the train_*.log files.\n"
+            "=========================================================",
+            track, len(baselines), manifest_csv,
+        )
 
     return baselines + trained, cfg_test_ids, manifest_csv
 

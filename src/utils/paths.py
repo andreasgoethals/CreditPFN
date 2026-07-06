@@ -344,6 +344,58 @@ def resolve_staging_path(p: str | os.PathLike) -> Path:
     return resolve_output_path(p)
 
 
+def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
+    """Like :func:`resolve_staging_path`, but VERIFIED writable — with an
+    automatic fallback to the output root (``$VSC_DATA``) when it isn't.
+
+    WHY (run post-mortem, 2026-07-04): all 32 PD training trials of the
+    Jul-3 run died at the FIRST checkpoint save with ``[Errno 13] Permission
+    denied: /lustre1/project/.../checkpoints/trained`` — project staging was
+    readable from the Mindwell compute nodes (data + base checkpoints loaded
+    fine) but not writable, and each trial burned ~6 minutes of B200 time
+    before hitting the wall. This resolver probes writability (mkdir -p +
+    touch + unlink) ONCE per process at path-resolution time — i.e. BEFORE
+    any training compute — and falls back to the durable output root with a
+    loud warning instead of failing 3 hours into an array.
+
+    The probe result is cached per resolved root, so repeated calls are free.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    path = Path(p)
+    if path.is_absolute():
+        return path
+    staging = _vsc_staging_root()
+    if staging is None:
+        return resolve_output_path(p)
+
+    cache = resolve_writable_staging_path.__dict__.setdefault("_probe_cache", {})
+    key = str(staging)
+    if key not in cache:
+        probe_dir = staging / path
+        try:
+            probe_dir.mkdir(parents=True, exist_ok=True)
+            probe = probe_dir / ".write_probe"
+            probe.touch()
+            probe.unlink()
+            cache[key] = True
+        except OSError as exc:
+            cache[key] = False
+            logger.warning(
+                "Staging root %s is NOT writable from this node (%s). "
+                "Falling back to the output root for %s — artefacts will land "
+                "under %s instead. Move them to staging later with "
+                "scripts/slurm/stage_to_project.slurm, and check the staging "
+                "dir's permissions/mount on this cluster.",
+                staging, exc, p, resolve_output_path(p),
+            )
+    if cache[key]:
+        return staging / path
+    fallback = resolve_output_path(p)
+    fallback.mkdir(parents=True, exist_ok=True)
+    return fallback
+
+
 def get_roots() -> dict[str, Path]:
     """Return the *currently resolved* roots — useful for log lines /
     sanity checks at script startup."""
