@@ -48,7 +48,7 @@ def _infer_version(ckpt_path: Path) -> Literal["v2.5", "v2.6", "v3"]:
     The regex captures bare ``"2.5"`` / ``"2.6"`` / ``"3"``; we prepend
     ``"v"`` to match the
     ``version: Literal["v2", "v2.5", "v2.6", "v3"]`` contract used by
-    ``load_model_criterion_config`` (see ``repositories/TabPFN .txt:11712``).
+    ``load_model_criterion_config`` (see ``repositories/TabPFN .txt``).
     """
     m = _VERSION_RE.search(ckpt_path.name)
     if not m:
@@ -173,7 +173,7 @@ def _wrap_with_lora(model: torch.nn.Module, lora_config: dict) -> torch.nn.Modul
 
     Target modules default to TabPFN's attention layer names
     (``q_projection``, ``k_projection``, ``v_projection``,
-    ``out_projection`` — see ``repositories/TabPFN .txt:15430-15442``).
+    ``out_projection`` — see ``repositories/TabPFN .txt``).
     Adjust via ``cfg.lora.target_modules`` if a future architecture
     (e.g. TabPFN-v3's multi-stage transformer) uses different names.
     """

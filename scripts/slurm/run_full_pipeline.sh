@@ -18,12 +18,21 @@
 #  checkpoints and results live in project staging; logs on $VSC_DATA.
 #
 #  Usage (Genius login node):
-#      bash scripts/slurm/run_full_pipeline.sh
-#  Knobs (env): TRAIN_ACCOUNT (default lp_verbekelab), EVAL_ACCOUNT, TRACKS,
+#      bash scripts/slurm/run_full_pipeline.sh                 # everything
+#      STAGES="eval"       bash scripts/slurm/run_full_pipeline.sh   # re-score only
+#      STAGES="data train" bash scripts/slurm/run_full_pipeline.sh   # skip eval
+#  Knobs (env): STAGES (any subset of "data train eval"), TRACKS,
+#      TRAIN_ACCOUNT (default lp_verbekelab), EVAL_ACCOUNT,
 #      TRAIN_CONCURRENCY, EVAL_CONCURRENCY, EVAL_PARTITIONS, CONDA_ENV.
+#  Stage coupling is handled automatically: train only waits for the data
+#  sentinel when data was submitted in the same invocation, and eval only
+#  goes through the training gate when train was submitted too (a bare
+#  STAGES=eval submits the eval arrays immediately — the skip-existing
+#  logic makes re-scoring idempotent).
 # =============================================================================
 set -euo pipefail
 
+STAGES="${STAGES:-data train eval}"
 TRACKS="${TRACKS:-pd lgd}"
 TRAIN_ACCOUNT="${TRAIN_ACCOUNT:-lp_verbekelab}"      # has Mindwell access
 EVAL_ACCOUNT="${EVAL_ACCOUNT:-lp_verbekelab}"
@@ -57,8 +66,16 @@ SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_R
 
 strip() { echo "${1%%;*}"; }            # "<jid>;<cluster>" → "<jid>"
 
+# NOTE: if-form (not `[[ ]] && var=1`) — under `set -e` a false test at the
+# end of a && list aborts the whole script.
+run_data=""; run_train=""; run_eval=""
+if [[ " ${STAGES} " == *" data "*  ]]; then run_data=1;  fi
+if [[ " ${STAGES} " == *" train "* ]]; then run_train=1; fi
+if [[ " ${STAGES} " == *" eval "*  ]]; then run_eval=1;  fi
+
 echo "=================================================================="
 echo "CreditPFN — one-shot full pipeline"
+echo "  STAGES        : ${STAGES}"
 echo "  TRAIN_ACCOUNT : ${TRAIN_ACCOUNT}   (Mindwell gpu_b200)"
 echo "  EVAL_ACCOUNT  : ${EVAL_ACCOUNT}    (wICE ${EVAL_PARTITIONS})"
 echo "  TRACKS        : ${TRACKS}"
@@ -78,44 +95,65 @@ if [[ -d "${CREDITPFN_DATA_ROOT}/data/raw" ]]; then
 fi
 echo "=================================================================="
 
-# --- clear a stale data sentinel from a previous run -------------------------
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels" "${CREDITPFN_OUTPUT_ROOT}/logs"
-rm -f "${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
-
-# Clear stale SUCCESS sentinels from a previous run (train_ok_* are written by
-# the train tasks only when a trial actually SAVES; the gate reads them).
-rm -f "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd" \
-      "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd"
 
 # --- [1] DATA (wICE) ---------------------------------------------------------
-DATA_JID=$(strip "$(sbatch --parsable --export="${SBATCH_EXPORT}" scripts/slurm/data.slurm)")
-echo "  [1] data  (wICE batch)        : ${DATA_JID}"
+DATA_JID=""
+if [[ -n "${run_data}" ]]; then
+    # Clear the stale completion sentinel so this run's train tasks wait for
+    # THIS run's data job, not a previous run's leftover marker.
+    rm -f "${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
+    DATA_JID=$(strip "$(sbatch --parsable --export="${SBATCH_EXPORT}" scripts/slurm/data.slurm)")
+    echo "  [1] data  (wICE batch)        : ${DATA_JID}"
+else
+    echo "  [1] data  : skipped (not in STAGES) — training will use the processed CSVs already in staging."
+fi
 
-# --- [2] TRAIN (Mindwell); each task waits for the data_done sentinel --------
+# --- [2] TRAIN (Mindwell); waits for the data sentinel only if data runs too --
 TRAIN_CSV=""
-for TR in ${TRACKS}; do
-    N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
-    JID=$(strip "$(sbatch --parsable \
-        --export="${SBATCH_EXPORT},CREDITPFN_WAIT_DATA=1" \
-        --account="${TRAIN_ACCOUNT}" \
-        --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
-        "scripts/slurm/train_${TR}.slurm")")
-    TRAIN_CSV="${TRAIN_CSV:+${TRAIN_CSV},}${JID}"
-    echo "  [2] train ${TR} (Mindwell b200): ${JID:-<FAILED>}  (array 0..$((N - 1)))"
-done
+if [[ -n "${run_train}" ]]; then
+    # Clear stale SUCCESS sentinels (train_ok_* are written by the train tasks
+    # only when a trial actually SAVES; the eval gate reads them).
+    rm -f "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd" \
+          "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd"
+    WAIT_FLAG=""
+    [[ -n "${run_data}" ]] && WAIT_FLAG=",CREDITPFN_WAIT_DATA=1"
+    for TR in ${TRACKS}; do
+        N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
+        JID=$(strip "$(sbatch --parsable \
+            --export="${SBATCH_EXPORT}${WAIT_FLAG}" \
+            --account="${TRAIN_ACCOUNT}" \
+            --array=0-$((N - 1))%"${TRAIN_CONCURRENCY}" \
+            "scripts/slurm/train_${TR}.slurm")")
+        TRAIN_CSV="${TRAIN_CSV:+${TRAIN_CSV},}${JID}"
+        echo "  [2] train ${TR} (Mindwell b200): ${JID:-<FAILED>}  (array 0..$((N - 1)))"
+    done
+else
+    echo "  [2] train : skipped (not in STAGES)."
+fi
 
-# --- [3] EVAL GATE (wICE, 1 CPU) — releases eval when training finishes -------
-GATE_JID=$(strip "$(sbatch --parsable \
-    --clusters=wice --account="${EVAL_ACCOUNT}" --partition=batch \
-    --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=2G --time=21:00:00 \
-    --job-name=creditpfn-eval-gate --chdir="${REPO}" \
-    --export="${SBATCH_EXPORT}" \
-    --output="${CREDITPFN_OUTPUT_ROOT}/logs/eval_gate_%j.log" \
-    --wrap="bash scripts/slurm/_wait_for_jobs.sh '${TRAIN_CSV}' 2400")")
-echo "  [3] eval gate (wICE batch)    : ${GATE_JID}  (watches Mindwell ${TRAIN_CSV})"
+# --- [3] EVAL GATE (wICE, 1 CPU) — only needed when train runs in this batch --
+GATE_JID=""
+if [[ -n "${run_eval}" && -n "${run_train}" && -n "${TRAIN_CSV}" ]]; then
+    GATE_JID=$(strip "$(sbatch --parsable \
+        --clusters=wice --account="${EVAL_ACCOUNT}" --partition=batch \
+        --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=2G --time=21:00:00 \
+        --job-name=creditpfn-eval-gate --chdir="${REPO}" \
+        --export="${SBATCH_EXPORT}" \
+        --output="${CREDITPFN_OUTPUT_ROOT}/logs/eval_gate_%j.log" \
+        --wrap="bash scripts/slurm/_wait_for_jobs.sh '${TRAIN_CSV}' 2400")")
+    echo "  [3] eval gate (wICE batch)    : ${GATE_JID}  (watches Mindwell ${TRAIN_CSV})"
+elif [[ -n "${run_eval}" ]]; then
+    echo "  [3] eval gate : skipped (no training in this batch) — eval arrays start immediately."
+fi
 
-# --- [4] EVAL (wICE gpu; afterok the gate; split across both GPU pools) ------
-for TR in ${TRACKS}; do
+# --- [4] EVAL (wICE gpu; afterok the gate when one exists) --------------------
+EVAL_TRACKS="${TRACKS}"
+if [[ -z "${run_eval}" ]]; then
+    echo "  [4] eval  : skipped (not in STAGES)."
+    EVAL_TRACKS=""
+fi
+for TR in ${EVAL_TRACKS}; do
     PLANNED=$(python scripts/train_pipeline.py --list-trials track="${TR}" 2>/dev/null || echo 0)
     UPPER_N=$(python -c "
 import sys; sys.path.insert(0, '.')
@@ -142,16 +180,19 @@ print((n_baselines + n_untuned + n_planned) * max(1, n_test))
     # regardless of how many tasks actually materialize.
     # shellcheck disable=SC2206
     PARTS=(${EVAL_PARTITIONS}); K=${#PARTS[@]}
+    # Depend on the gate only when a gate was submitted (train in this batch).
+    DEP_FLAG=()
+    if [[ -n "${GATE_JID}" ]]; then DEP_FLAG=(--dependency=afterok:"${GATE_JID}"); fi
     for i in "${!PARTS[@]}"; do
         P="${PARTS[$i]}"
-        [[ "$i" -ge "$UPPER_N" ]] && continue   # more pools than tasks
+        if [[ "$i" -ge "$UPPER_N" ]]; then continue; fi   # more pools than tasks
         JID=$(strip "$(sbatch --parsable \
             --clusters=wice --account="${EVAL_ACCOUNT}" --partition="${P}" \
-            --dependency=afterok:"${GATE_JID}" \
+            "${DEP_FLAG[@]}" \
             --export="${SBATCH_EXPORT}" \
             --array="${i}-$((UPPER_N - 1)):${K}%${EVAL_CONCURRENCY}" \
             "scripts/slurm/eval_${TR}.slurm")")
-        echo "  [4] eval ${TR} (wICE ${P}) : ${JID}  (array ${i}..$((UPPER_N - 1)) step ${K}, afterok gate)"
+        echo "  [4] eval ${TR} (wICE ${P}) : ${JID}  (array ${i}..$((UPPER_N - 1)) step ${K}${GATE_JID:+, afterok gate})"
     done
 done
 

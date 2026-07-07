@@ -260,9 +260,9 @@ def _train_stage_targets() -> dict[str, list[Path]]:
 
     out: dict[str, list[Path]] = {}
     # Separate the rolling per-epoch eval snapshots (`*.epoch_eval.ckpt`)
-    # from the real finetuned checkpoints. The snapshot is overwritten
-    # every epoch by `_save_eval_snapshot` and best-effort-deleted at
-    # the end of training (see src/train/loop.py). A crashed trial may
+    # from the real finetuned checkpoints. The snapshot is overwritten on
+    # each monitored epoch by `_save_eval_snapshot` and best-effort-deleted
+    # at the end of training (see src/train/loop.py). A crashed trial may
     # leave one behind.
     all_ckpts = list(trained_root.glob("**/*.ckpt"))
     snapshot_ckpts = [p for p in all_ckpts if p.name.endswith(".epoch_eval.ckpt")]

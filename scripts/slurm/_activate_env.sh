@@ -64,25 +64,53 @@ else
     }
 fi
 
-# Actually activate the project env.
-if ! conda activate "${CONDA_ENV}" 2>/dev/null; then
-    echo "ERROR: 'conda activate ${CONDA_ENV}' failed." >&2
-    echo "       Available envs:" >&2
-    conda env list >&2
-    echo "       Create the env once with:" >&2
-    echo "         mamba create -y -n ${CONDA_ENV} python=3.12" >&2
-    echo "         source activate ${CONDA_ENV}" >&2
-    echo "         pip install -e \".[dev]\"" >&2
-    exit 1
+# --------------------------------------------------------------------------
+# Activate + VERIFY. `conda activate` can "succeed" on a broken or EMPTY env
+# (created without python, or whose install was interrupted) — the env's bin/
+# then contributes nothing to PATH and `python` silently falls through to
+# /bin/python (observed on the 2026-07-07 probe_row_cap job: "Active python:
+# /bin/python"). So after activating we verify the interpreter really belongs
+# to the env AND carries the project deps; on failure we FALL BACK to the
+# base env (which may hold the full stack when the named env was never built)
+# before giving up — a running job with a loud warning beats a dead one.
+# --------------------------------------------------------------------------
+
+_env_is_healthy() {
+    # The active python must live under $CONDA_PREFIX and import the deps.
+    local py
+    py="$(command -v python || true)"
+    if [[ -z "${CONDA_PREFIX:-}" || "${py}" != "${CONDA_PREFIX}"* ]]; then
+        echo "  [activate] python (${py:-none}) is NOT inside CONDA_PREFIX (${CONDA_PREFIX:-unset}) — env is broken/empty." >&2
+        return 1
+    fi
+    local err
+    if ! err=$(python -c "import numpy, torch, omegaconf, tabpfn" 2>&1); then
+        echo "  [activate] dependency import failed in env '${CONDA_DEFAULT_ENV:-?}':" >&2
+        echo "${err}" | head -3 | sed 's/^/      /' >&2
+        return 1
+    fi
+    return 0
+}
+
+_activated=""
+if conda activate "${CONDA_ENV}" 2>/dev/null && _env_is_healthy; then
+    _activated="${CONDA_ENV}"
+else
+    echo "WARNING: env '${CONDA_ENV}' is unusable — trying the 'base' env as a fallback." >&2
+    if conda activate base 2>/dev/null && _env_is_healthy; then
+        _activated="base"
+        echo "WARNING: running in the BASE env. Repair the named env when convenient:" >&2
+        echo "         conda create -y -n ${CONDA_ENV} --clone base" >&2
+        echo "         conda activate ${CONDA_ENV} && pip install -e \".[dev]\"" >&2
+    fi
 fi
 
-# Sanity-check the env has the project deps the slurm job will need. Fail
-# loud and early — better than a 40-line traceback halfway through the data
-# pipeline.
-if ! python -c "import numpy, torch, omegaconf, tabpfn" 2>/dev/null; then
-    echo "ERROR: conda env '${CONDA_ENV}' is missing project dependencies." >&2
-    echo "       Active python: $(command -v python)" >&2
-    echo "       Reinstall with:" >&2
+if [[ -z "${_activated}" ]]; then
+    echo "ERROR: no usable conda env (tried '${CONDA_ENV}' and 'base')." >&2
+    echo "       Available envs:" >&2
+    conda env list >&2
+    echo "       Repair once from a login node:" >&2
+    echo "         conda create -y -n ${CONDA_ENV} --clone base      # reuses base's torch/CUDA stack" >&2
     echo "         conda activate ${CONDA_ENV}" >&2
     echo "         pip install -e \".[dev]\"" >&2
     echo "         pip install --upgrade 'tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main'" >&2
@@ -108,7 +136,7 @@ echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
 #  We honour an explicit user export by checking whether the env var differs
 #  from the standard slurm default (the value the .slurm script just set).
 #  If the user wants a one-off override they can set
-#  `CREDITPFN_DATA_ROOT=/some/path bash scripts/slurm/submit_full_pipeline.sh`
+#  `CREDITPFN_DATA_ROOT=/some/path bash scripts/slurm/run_full_pipeline.sh`
 #  and the value will pass through unchanged.
 
 _resolved_data_root=$(python -c "

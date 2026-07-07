@@ -161,7 +161,7 @@ wICE (CPU)**, **continued pretraining → Mindwell B200 (GPU)**,
 
 ```bash
 # On a Genius login node, after cloning + installing + uploading raw CSVs:
-bash scripts/slurm/submit_full_pipeline.sh
+bash scripts/slurm/run_full_pipeline.sh
 ```
 
 Continued pretraining runs **only on Mindwell** — its B200 GPUs have
@@ -255,16 +255,17 @@ cluster:
 | [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Run all four data stages end-to-end, or just the ones you ask for (`--datasets ...`). Idempotent; `--fresh` rebuilds from scratch. |
 | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills missing sanitized CSVs by invoking the data pipeline for just those IDs. **Skips trials whose finetuned checkpoint already exists** — re-submission is safe. |
 | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | Score every model on every test dataset, K-fold CV. Skip-existing by default; `--rerun` to force. Filterable with `--method` / `--test-dataset` / `--task-index`. |
-| [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `submit_full_pipeline.sh` for the chained submission. |
+| [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `run_full_pipeline.sh` for the chained submission. |
 | [`src/utils/pipeline_clean.py`](src/utils/pipeline_clean.py) | Stage-level cleanup utility. `python -m src.utils.pipeline_clean --stages train,eval` wipes the outputs of the named stage(s) so the next re-submit starts those stages from scratch. See chapter 5 for details. |
 
 <a id="44-notebooks--exploration-and-result-visualisations"></a>
 
 ### 4.4 `notebooks/` — exploration and result visualisations
 
-Four notebooks, two for data exploration (run after the data
-pipeline) and two for training / eval visualisation (run after the
-respective pipeline). Every notebook drops its figures as PDFs into
+Six notebooks: two for data exploration (run after the data
+pipeline), two for training visualisation (PD / LGD), and two for
+final-results visualisation (PD / LGD) — the visualisation notebooks
+run after the respective pipeline. Every notebook drops its figures as PDFs into
 `output/figures/<notebook-slug>/` via the figure sink helper in
 [`src/utils/figures.py`](src/utils/figures.py); the per-notebook
 directory is **wiped on each re-run**, so stale figures never linger.
@@ -317,6 +318,7 @@ stripped-down CI image.
 | [`docs/DATA_PIPELINE.md`](docs/DATA_PIPELINE.md) | Deep-dive on the data stage: one raw CSV's full journey through dedup → register → sanitize, plus the two divergent downstream preprocessing paths (TabPFN vs classical baselines). Companion to `config/data.yaml`. |
 | [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (v2.6 / v3): training data (synthetic-only), sample/feature caps, layer counts, licence terms. Cross-referenced to the HF model cards and Grinsztajn et al. 2026 (arXiv:2511.08667), which documents the architecture family. |
 | [`docs/LITERATURE.md`](docs/LITERATURE.md)       | Chronological tour of every paper under `papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
+| [`docs/summary.md`](docs/summary.md)             | Cross-paper synthesis of the whole tabular-foundation-model paradigm (PFNs → TabPFN line → scaling → adaptation → extensions → critique), with a lineage timeline, design-axis comparison, and a one-card-per-paper appendix. Narrative companion to the per-paper `LITERATURE.md`. |
 | [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md)   | What each `repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python src/utils/refresh_repositories.py`. |
 | [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md)         | **VSC-specific deployment guide** (KU Leuven's Vlaamse Supercomputer Centre): OnDemand portal, conda env, dataset upload, partition / GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this only when you're about to deploy on VSC; everything in this README applies to any SLURM cluster. |
 
@@ -649,7 +651,7 @@ Two paths into the train/test split, both in `cfg.corpus`:
 | 5 specific PD datasets, 1 HP set             | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0009.bank_status]'` |
 | Full corpus, 1 HP set                        | `python scripts/train_pipeline.py --single` |
 | Full corpus, full HP grid                    | `python scripts/train_pipeline.py` |
-| Full corpus, full HP grid, on the cluster    | `bash scripts/slurm/submit_full_pipeline.sh` — see [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) |
+| Full corpus, full HP grid, on the cluster    | `bash scripts/slurm/run_full_pipeline.sh` — see [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) |
 
 Hydra-style CLI overrides (`key=value`) write through the in-memory
 cfg; they are NOT persisted to `config/train.yaml`. A debug run does

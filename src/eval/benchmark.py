@@ -786,7 +786,7 @@ def _bench_model_on_dataset(
         entirety of the held-out rows in one ``predict_proba`` /
         ``predict`` call, which TabPFN-v3 handles via its own
         ``inference_row_chunk_size`` machinery
-        (``repositories/TabPFN .txt:17650``).
+        (``repositories/TabPFN .txt``).
       * Classical baselines (``max_rows_for_handle=None``) see the
         full train + val partitions and predict on the full test
         partition.

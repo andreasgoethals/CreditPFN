@@ -146,7 +146,7 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
     """Look up the per-version `max_rows_per_epoch` cap.
 
     Accepts either an int (legacy single-value config) or a mapping
-    ``{"v3": 10000, "v2.6": 3000, ...}``. For a mapping, we extract
+    ``{"v3": 100000, "v2.6": 30000, ...}``. For a mapping, we extract
     the leading ``v<MAJOR>[.<MINOR>]`` from the base checkpoint's
     filename (e.g. ``tabpfn-v2.6-classifier-…`` → ``"v2.6"``) and
     look up that key, falling back to ``"default"`` if absent.
@@ -223,7 +223,7 @@ def make_warmup_cosine_schedule(
 
     Matches HuggingFace's ``get_cosine_schedule_with_warmup``
     (which is what TabPFN's ``FinetunedTabPFNClassifier`` uses
-    internally; see ``repositories/TabPFN .txt:18696``):
+    internally; see ``repositories/TabPFN .txt``):
 
       * step 0           → multiplier = 0
       * step warmup_steps → multiplier = 1
@@ -494,7 +494,7 @@ def _forward(
     """Run one TabPFN forward pass.
 
     Calling convention matches TabPFN's canonical signature
-    (``repositories/TabPFN .txt:15098-15203`` and the live 2.x package):
+    (``repositories/TabPFN .txt`` and the live 2.x package):
 
         forward(
             x: (train_rows + test_rows, batch, n_features),  # concatenated
@@ -510,7 +510,7 @@ def _forward(
     Returns ``(pred_logits, y_target, znorm_mean, znorm_std)``. The
     last two are non-None only for regression (where we z-normalise
     the context y, mirroring LennartPurucker's reference pipeline at
-    `repositories/TabPFN V2 Finetuning.txt:1463-1469`).
+    `repositories/TabPFN V2 Finetuning.txt`).
     """
     train_x = batch.X_context       # (n_ctx, 1, F)
     train_y = batch.y_context.float()
@@ -570,7 +570,7 @@ def _forward_one_member(
     preprocessing pipeline (squashing scaler / quantile / SVD /
     fingerprint / class permutation). The remaining work before the model
     forward is the GPU soft-clip outlier removal (TabPFN's
-    ``TorchSoftClipOutliersStep``, ``TabPFN .txt:35959-35967``) — we
+    ``TorchSoftClipOutliersStep``, ``TabPFN .txt``) — we
     apply it here on the combined (context+query) tensor.
 
     Returns the raw model output logits, shape ``(n_qry, 1, L)`` where
@@ -613,7 +613,7 @@ def _classification_loss(
     **CHANGE 2026-05-27** — previously we sliced the logits to the first
     K=n_classes columns before calling cross_entropy. That was a
     methodological bug: TabPFN's classifier head emits 10 logits
-    (the pretraining max-classes; ``repositories/TabPFN .txt:10710``),
+    (the pretraining max-classes; ``repositories/TabPFN .txt``),
     and the official `FinetunedTabPFNClassifier` computes CE over ALL
     10 columns so the softmax denominator regularises every column
     every step (gradient on z_k for k ≥ K is proportional to that
@@ -665,7 +665,7 @@ def _ensemble_step_loss(
     """One training-step loss for the N-estimator preprocessed batch.
 
     Mirrors ``FinetunedTabPFNClassifier._forward_with_loss``
-    (``TabPFN .txt:26920-26941``):
+    (``TabPFN .txt``):
 
       1. For each ensemble member i:
             * forward the model with member i's (X_ctx, y_ctx_permuted, X_qry)
@@ -701,7 +701,7 @@ def _ensemble_step_loss(
         if is_classification and m.class_permutation is not None:
             # `class_permutation` is a positional permutation array, e.g.
             # [1, 0] for binary-flipped. The official inference path at
-            # `TabPFN .txt:8511-8523` does `logits[..., perm]` to reorder
+            # `TabPFN .txt` does `logits[..., perm]` to reorder
             # the output columns back into canonical class order. We do
             # the same here so the CE loss sees logits already aligned
             # with `y_query` (which stays in canonical order).
@@ -755,7 +755,7 @@ def _classification_loss_BE_LQ(
     """CE on the (B*E, L, Q) / (B*E, Q) shape — matches official
     ``F.cross_entropy(input, target)`` where the class dim is at axis 1
     of `input`. See `_compute_classification_loss` at
-    ``TabPFN .txt:26727-26744``.
+    ``TabPFN .txt``.
     """
     if __debug__:
         max_t = int(targets_BQ.max().item()) if targets_BQ.numel() else -1
@@ -776,7 +776,7 @@ def _query_missing_context_class(batch) -> bool:
     """Return True iff the query split contains a class index that the
     context split does NOT contain.
 
-    Mirrors the official guard at ``repositories/TabPFN .txt:26893-26912``
+    Mirrors the official guard at ``repositories/TabPFN .txt``
     (``FinetunedTabPFNClassifier._should_skip_batch``). Without it, a
     stratified PD subsample that happens to put both positives in the
     query split leaves the context with only one class — the CE loss
@@ -833,10 +833,10 @@ def _save_eval_snapshot(
     mutates the live model, which would terminate training.
 
     **Format — matched verbatim to ``save_tabpfn_model`` at
-    ``repositories/TabPFN .txt:12211-12278``.** Critical: we MUST write
+    ``repositories/TabPFN .txt``.** Critical: we MUST write
     the 4 keys ``{state_dict, config, architecture_name, inference_config}``.
     Skipping ``architecture_name`` and ``inference_config`` makes
-    ``load_model`` (TabPFN .txt:12127-12150) fall back to V2 architecture
+    ``load_model`` (TabPFN .txt) fall back to V2 architecture
     inference, producing the "Missing key(s) in state_dict" error on V3
     weights — observed in every snapshot-load attempt in the
     2026-05-27 PD/LGD logs.
@@ -853,7 +853,7 @@ def _save_eval_snapshot(
 
     # The architecture_config is a dataclass instance (TabPFNV3Config /
     # TabPFNV2p6Config / …). Use `asdict` per the canonical save path
-    # (TabPFN .txt:12268). Fall back to __dict__ for non-dataclass cfgs.
+    # (TabPFN .txt). Fall back to __dict__ for non-dataclass cfgs.
     if is_dataclass(architecture_config):
         config_payload = asdict(architecture_config)
     elif hasattr(architecture_config, "__dict__"):
@@ -913,7 +913,7 @@ def _save_eval_snapshot(
     }
 
     # Inference config — required for V2.6 and V3 (these checkpoints
-    # always embed their own; the loader at TabPFN .txt:12148-12150
+    # always embed their own; the loader at TabPFN .txt
     # reads this key directly for self-loss models).
     if inference_config is not None:
         if is_dataclass(inference_config):
@@ -1618,7 +1618,7 @@ def train_one_config(
             batch = batch.to(device)
             # Skip-on-missing-class check — mirrors the official
             # `FinetunedTabPFNClassifier._should_skip_batch` at
-            # `TabPFN .txt:26893-26912`. If a stratified subsample
+            # `TabPFN .txt`. If a stratified subsample
             # happens to draw a context split that's missing one of
             # the labels present in the query split, the CE loss is
             # ill-defined for those query rows (no positive softmax
@@ -1641,7 +1641,7 @@ def train_one_config(
                 # forward each one, stack logits as (Q,B,E,L), and let
                 # CE / NLL average across the E*Q query positions —
                 # mirroring `FinetunedTabPFNClassifier._forward_with_loss`
-                # at `TabPFN .txt:26920-26941`. The legacy TabPFNBatch
+                # at `TabPFN .txt`. The legacy TabPFNBatch
                 # path (E=1, no preprocessing) is kept ONLY for the
                 # mocked smoke test in tests/test_train.py.
                 from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch
@@ -1800,8 +1800,9 @@ def train_one_config(
         # (_do_eval) as the baseline (epoch=-1). For the ensemble path
         # we save a snapshot of the live model's state_dict here so the
         # sklearn-API loader has a checkpoint file to mmap. The snapshot
-        # is overwritten every epoch, keeping disk usage bounded at one
-        # .ckpt-worth (~213 MB v3 / ~43 MB v2.6) per trial.
+        # is overwritten on every MONITORED epoch (every `epoch_eval_every`-th;
+        # non-monitored epochs write nothing), keeping disk usage bounded at
+        # one .ckpt-worth (~213 MB v3 / ~43 MB v2.6) per trial.
         # Track-level metric names already resolved before the loop —
         # `track_primary_metric` / `track_secondary_metric` /
         # `track_metric_names`. Keep local aliases for the EpochRecord

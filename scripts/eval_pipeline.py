@@ -19,9 +19,10 @@ Two execution modes
 
        python scripts/eval_pipeline.py track=pd
 
-2. **Slurm-array (one (model × test_dataset) per task)** — for the
-   3,000-dataset corpus, the cartesian product is large and each cell
-   includes an Optuna HPO study. Each task processes ONE pair::
+2. **Slurm-array (one (model × test_dataset) per task)** — at the
+   planned full ~3,000-dataset corpus scale, the cartesian product is
+   large and each cell includes an Optuna HPO study. Each task processes
+   ONE pair::
 
        N=$(python scripts/eval_pipeline.py --list-tasks track=pd)
        sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm

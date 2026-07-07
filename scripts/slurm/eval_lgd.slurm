@@ -8,7 +8,7 @@
 #SBATCH --job-name=creditpfn-lgd-eval
 #SBATCH --clusters=wice
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100   # submit_full_pipeline.sh launches a SECOND eval
+#SBATCH --partition=gpu_h100   # run_full_pipeline.sh launches a SECOND eval
                                # array on gpu_a100 (via --partition override) so
                                # eval drains across BOTH wICE GPU pools.
 #SBATCH --gpus-per-node=1
@@ -23,7 +23,7 @@
                           # cleanly via the soft no-op in eval_pipeline.py.
                           # Recompute the tight bound with:
                           #   python scripts/eval_pipeline.py --list-tasks track=lgd
-                          # …or just submit via scripts/slurm/submit_full_pipeline.sh.
+                          # …or just submit via scripts/slurm/run_full_pipeline.sh.
                           #
                           # `cpus-per-task=16` matches the documented gpu_h100
                           # per-GPU limit (VSC docs gpu_h100 row of the

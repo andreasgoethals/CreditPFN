@@ -20,7 +20,7 @@
 #  Submit (from a Genius login node — Mindwell has no own login node):
 #      N=$(python scripts/train_pipeline.py --list-trials track=pd)
 #      sbatch --clusters=mindwell --array=0-$((N - 1))%24 scripts/slurm/train_pd.slurm
-#  …or just `bash scripts/slurm/submit_full_pipeline.sh`, which sizes the
+#  …or just `bash scripts/slurm/run_full_pipeline.sh`, which sizes the
 #  array and targets the right cluster automatically.
 #
 #  STORAGE (see docs/VSC_GUIDE.md "Storage tiers"):

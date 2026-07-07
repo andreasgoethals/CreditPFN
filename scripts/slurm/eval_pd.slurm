@@ -3,8 +3,9 @@
 #  CreditPFN — slurm array: cross-model benchmark (PD / classifier)
 # =============================================================================
 #
-#  ONE (model × test_dataset) PER ARRAY TASK. With ~3 000 test
-#  datasets × ~25 models, the cartesian product is ~75 000 tasks; we
+#  ONE (model × test_dataset) PER ARRAY TASK. At the planned full corpus
+#  scale (~3 000 test datasets × ~25 models) the cartesian product is
+#  ~75 000 tasks; we
 #  parallelise the heavy ones (XGBoost / CatBoost with per-fold
 #  Optuna HPO) by running each in its own slurm task. Each task
 #  writes its own per-method file under
@@ -31,7 +32,7 @@
 #SBATCH --job-name=creditpfn-pd-eval
 #SBATCH --clusters=wice
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100   # submit_full_pipeline.sh launches a SECOND eval
+#SBATCH --partition=gpu_h100   # run_full_pipeline.sh launches a SECOND eval
                                # array on gpu_a100 (via --partition override) so
                                # eval drains across BOTH wICE GPU pools (20 H100
                                # + 16 A100 = 36 GPUs). Both partitions cooperate
@@ -48,7 +49,7 @@
                           # cleanly via the soft no-op in eval_pipeline.py.
                           # Recompute the tight bound with:
                           #   python scripts/eval_pipeline.py --list-tasks track=pd
-                          # …or just submit via scripts/slurm/submit_full_pipeline.sh
+                          # …or just submit via scripts/slurm/run_full_pipeline.sh
                           # which sizes the array dynamically.
 
 sleep $((RANDOM % 15 + 1))

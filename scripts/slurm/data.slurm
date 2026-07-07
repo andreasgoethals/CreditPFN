@@ -19,13 +19,13 @@
 #  MULTI-CLUSTER NOTE: continued pretraining (train_*.slurm) runs on the
 #  Mindwell `gpu_b200` cluster; data + eval run on wICE. VSC does NOT support
 #  cross-cluster Slurm dependencies, so the stages are submitted independently
-#  by `submit_full_pipeline.sh` (which is why this script writes datasets to
+#  by `run_full_pipeline.sh` (which is why this script writes datasets to
 #  project staging — the one storage tier both clusters can see). Run data
 #  FIRST and let it finish before the Mindwell training tasks read.
 #
 #  Submit with:
 #      sbatch scripts/slurm/data.slurm
-#  Or via `submit_full_pipeline.sh` (recommended).
+#  Or via `run_full_pipeline.sh` (recommended).
 #
 #  All slurm-level output goes to /dev/null; the *real* log is a
 #  single timestamped file `${OUTPUT_ROOT}/logs/data_<YYYYMMDD>_<HHMMSS>.log`

@@ -5,8 +5,7 @@ This module wires TabPFN's official preprocessor
 preparation. **Without this, training-time inputs do not match the
 distribution the model was pretrained on, which is the root cause of the
 calibration-collapse failure mode we observed on 2026-05-27** (audit in
-chat 2026-05-27; verified against ``repositories/TabPFN .txt`` line
-ranges below).
+chat 2026-05-27; cross-referenced against ``repositories/TabPFN .txt`` by symbol name).
 
 Why a separate module
 ---------------------
@@ -22,8 +21,7 @@ Given the per-step ``(X_ctx, y_ctx, X_qry, y_qry, cat_indices)`` tuple:
 
   1. Build per-estimator ``EnsembleConfig`` objects via TabPFN's
      ``generate_classification_ensemble_configs`` /
-     ``generate_regression_ensemble_configs`` (``TabPFN .txt:31415,
-     31490``). These carry per-estimator feature shifts, class
+     ``generate_regression_ensemble_configs`` (``TabPFN .txt``). These carry per-estimator feature shifts, class
      permutations, target transforms, and outlier-removal std.
 
   2. Instantiate :class:`TabPFNEnsemblePreprocessor` with these configs
@@ -48,7 +46,7 @@ What it does NOT do
   default n_sigma=12 for classifier) is intentionally NOT applied here.
   It is the only "GPU" step in TabPFN's official pipeline and runs
   inside ``_call_model`` via ``_maybe_run_gpu_preprocessing``
-  (``TabPFN .txt:9398``). We mirror this in our training loop: the
+  (``TabPFN .txt``). We mirror this in our training loop: the
   outlier-clip is applied just before the forward pass against the live
   training model, on the same device as the model.
 
@@ -58,12 +56,12 @@ What it does NOT do
 
 Reference citations
 -------------------
-* `TabPFNEnsemblePreprocessor`: ``TabPFN .txt:30477-30733``.
-* `fit_transform_ensemble_members`: ``TabPFN .txt:30721-30733``.
-* `DatasetCollectionWithPreprocessing.__getitem__`: ``TabPFN .txt:26147-26319``
+* `TabPFNEnsemblePreprocessor`: ``TabPFN .txt``.
+* `fit_transform_ensemble_members`: ``TabPFN .txt``.
+* `DatasetCollectionWithPreprocessing.__getitem__`: ``TabPFN .txt``
   — the official finetune's exact code path that we mirror here.
-* `generate_classification_ensemble_configs`: ``TabPFN .txt:31415``.
-* `generate_regression_ensemble_configs`: ``TabPFN .txt:31490``.
+* `generate_classification_ensemble_configs`: ``TabPFN .txt``.
+* `generate_regression_ensemble_configs`: ``TabPFN .txt``.
 """
 
 from __future__ import annotations
@@ -83,14 +81,14 @@ LOGGER = logging.getLogger(__name__)
 # Per-dataset clean_data cache
 # --------------------------------------------------------------------------- #
 #
-# TabPFN's `clean_data` (verified at `repositories/TabPFN .txt:29818-29846`)
+# TabPFN's `clean_data` (verified at `repositories/TabPFN .txt`)
 # takes (X, feature_schema) and returns (X_numpy_clean, ordinal_encoder,
 # feature_schema). It runs `fix_dtypes` (ensures numeric ndarray, casts
 # categoricals to `category` dtype) and `process_text_na_dataframe`
 # (ordinal-encodes categoricals to integer codes; NaNs are preserved).
 #
 # The official multi-dataset finetune (`get_preprocessed_dataset_chunks`,
-# `TabPFN .txt:26604-26635`) calls `_initialize_dataset_preprocessing`
+# `TabPFN .txt`) calls `_initialize_dataset_preprocessing`
 # ONCE per parent dataset BEFORE the per-step DataLoader iteration —
 # the result is cached in `ClassifierDatasetConfig.X_raw` (the name is
 # misleading; the X stored there is ALREADY clean_data-cleaned). Then
@@ -111,7 +109,7 @@ class _CleanedDataset:
 
     **Why ensemble_configs are stored per dataset (not regenerated per
     step):** the official multi-dataset finetune
-    (`TabPFN .txt:26604-26635` and `__getitem__` at 26193-26203) builds
+    (`TabPFN .txt` and `__getitem__` at 26193-26203) builds
     the configs ONCE per dataset chunk and stores them on the
     ``DatasetConfig``. Per-step `__getitem__` reuses these — only the
     train/test SPLIT and per-step preprocessor RNG seed change.
@@ -145,7 +143,7 @@ def _clean_one_dataset(
     the per-dataset EnsembleConfig list (with class permutations,
     feature shifts, etc.) ONCE — mirrors
     ``_initialize_dataset_preprocessing`` at
-    ``TabPFN .txt:7686-7733`` (classifier) and 13270-13298 (regressor).
+    ``TabPFN .txt`` (classifier) (regressor path).
 
     The ``rng_seed`` is derived from ``(base_seed, dataset_id)`` so each
     dataset's configs are deterministic but distinct across datasets.
@@ -331,7 +329,7 @@ class _PerEstimatorView:
     ``n_estimators_finetune`` per training step.
 
     All tensor shapes match TabPFN's ``PerFeatureTransformer`` signature
-    (``repositories/TabPFN .txt:15198-15217``):
+    (``repositories/TabPFN .txt``):
 
     * ``X_context`` — (n_ctx,   1, n_features_after_preproc)  float32
     * ``y_context`` — (n_ctx,   1, 1)                         long / float32
@@ -364,7 +362,7 @@ class TabPFNEnsembleBatch:
       1. Forward each member through the model and stack logits as
          ``(Q, B, E, L)`` — matches the official
          ``FinetunedTabPFNClassifier._forward_with_loss`` shape at
-         ``TabPFN .txt:26920-26941``.
+         ``TabPFN .txt``.
       2. Apply the per-member class-permutation undo on each logit
          tensor before the CE loss sees it.
       3. Compute the CE / NLL loss against the canonical-class-order
@@ -436,7 +434,7 @@ def build_ensemble_members(
     ``outlier_removal_std`` value travels with the batch.
 
     Mirrors ``DatasetCollectionWithPreprocessing.__getitem__`` at
-    ``repositories/TabPFN .txt:26147-26319`` step-for-step.
+    ``repositories/TabPFN .txt`` step-for-step.
     """
     # Lazy imports — TabPFN is a multi-hundred-MB dependency and we want
     # the test suite (which mocks load_tabpfn_for_training) to be able
@@ -448,7 +446,7 @@ def build_ensemble_members(
     #   * ``TabPFNEnsemblePreprocessor`` lives in
     #     ``tabpfn.preprocessing.ensemble`` (NOT re-exported from the
     #     top-level ``tabpfn.preprocessing`` — verified at
-    #     ``repositories/TabPFN .txt:5876``).
+    #     ``repositories/TabPFN .txt``).
     #   * ``FeatureSubsamplingMethod`` re-exported from
     #     ``tabpfn.preprocessing`` (``__all__`` at line 29763).
     #   * ``FeatureModality`` re-exported from
@@ -472,7 +470,7 @@ def build_ensemble_members(
     # `get_resolved_outlier_removal_std("regression")` returns the
     # classifier default (12.0σ) because the comparison
     # `estimator_type == "regressor"` is False, falling through to the
-    # classifier branch. Verified at `TabPFN .txt:10622-10637`.
+    # classifier branch. Verified at `TabPFN .txt`.
     if task_type == "classification":
         tabpfn_task_type = "classifier"
     elif task_type == "regression":
@@ -487,7 +485,7 @@ def build_ensemble_members(
     # passed in the resulting numeric numpy arrays plus the
     # ``FeatureSchema``. Mirrors the official multi-dataset finetune
     # which stores the cleaned ``X_mod`` in
-    # ``ClassifierDatasetConfig.X_raw`` (TabPFN .txt:26604-26635) —
+    # ``ClassifierDatasetConfig.X_raw`` (TabPFN .txt) —
     # the "raw" in the name is a misnomer; that array is already
     # ordinal-encoded and numeric.
     assert X_ctx.ndim == 2, f"X_ctx must be 2D, got shape {X_ctx.shape}"
@@ -499,7 +497,7 @@ def build_ensemble_members(
 
     # ---- 2) ensemble configs come from the per-dataset cache ----------- #
     # Mirrors the official path: `_initialize_dataset_preprocessing` runs
-    # ONCE per parent dataset (TabPFN .txt:7686-7733 cls, 13270-13298
+    # ONCE per parent dataset (TabPFN .txt cls, 13270-13298
     # reg) and stores configs on the `DatasetConfig`. Per-step
     # `__getitem__` reuses these — only the per-step RNG seed differs.
     # Re-rolling per step would change class permutations and feature
@@ -552,12 +550,12 @@ def build_ensemble_members(
     #
     # **VOCAB GAP** — same translation as for `outlier_removal_std`
     # above. The constructor's ``task_type`` kwarg expects ``"classifier"``
-    # or ``"regressor"`` (TabPFN .txt:30504).
+    # or ``"regressor"`` (TabPFN .txt).
     #
     # **ENUM WRAP** — ``feature_subsampling_method`` is typed as
-    # ``FeatureSubsamplingMethod`` (a ``(str, Enum)`` at TabPFN
-    # .txt:29979). The official call wraps the raw string from
-    # inference_config in the enum constructor (TabPFN .txt:13444).
+    # ``FeatureSubsamplingMethod`` (a ``(str, Enum)`` in TabPFN
+    # .txt). The official call wraps the raw string from
+    # inference_config in the enum constructor (TabPFN .txt).
     # We mirror that — passing the raw string MAY work due to the str
     # mix-in, but explicit wrapping is safer across versions.
     preprocessor = TabPFNEnsemblePreprocessor(
@@ -644,7 +642,7 @@ def build_ensemble_members(
     # applied). The per-member class_permutation is used only on the
     # logits side — to swap the logit columns back into canonical order
     # before the loss compares against y_query. This matches the
-    # official forward path at TabPFN .txt:8504-8525.
+    # official forward path at TabPFN .txt.
     if task_type == "classification":
         y_qry_t = torch.as_tensor(y_qry_for_loss, dtype=torch.int64).reshape(-1, 1, 1).contiguous()
     else:
@@ -672,7 +670,7 @@ def apply_outlier_clip(
     categorical_idx: Sequence[int] | None = None,
 ) -> torch.Tensor:
     """Mirror of TabPFN's ``TorchSoftClipOutliersStep`` (see
-    ``TabPFN .txt:35959-35967``).
+    ``TabPFN .txt``).
 
     Applied per training step on the combined ``(context+query)`` tensor
     just before model forward. The official pipeline runs this on

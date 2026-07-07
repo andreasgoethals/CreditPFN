@@ -5,7 +5,7 @@ a VSC site via the [Open OnDemand](https://openondemand.org/) web
 portal. The whole flow lives behind one command:
 
 ```bash
-bash scripts/slurm/submit_full_pipeline.sh
+bash scripts/slurm/run_full_pipeline.sh
 ```
 
 The rest of this guide is the story of how to get there: where the code
@@ -34,7 +34,7 @@ in-context size); everything else runs on wICE.
 
 | Cluster | GPU partition | GPU | VRAM | GPUs | Cores/GPU | Account | Used for |
 |---------|---------------|-----|------|------|-----------|---------|----------|
-| **Mindwell** | `gpu_b200` | B200 (Blackwell) | **192 GiB** | 3×8 = **24** | 24 | `lp_mindwell_pilot` (free pilot) | **Training** |
+| **Mindwell** | `gpu_b200` | B200 (Blackwell) | **192 GiB** | 3×8 = **24** | 24 | `lp_verbekelab` | **Training** |
 | **wICE** | `gpu_h100` | H100 SXM5 | 80 GiB | 5×4 = 20 | 16 | `lp_verbekelab` | Eval |
 | **wICE** | `gpu_a100` | A100 SXM4 | 80 GiB | 4×4 = 16 | 18 | `lp_verbekelab` | Eval (extra capacity) |
 | **wICE** | `batch` | — (CPU) | — | — | — | `lp_verbekelab` | Data prep |
@@ -44,9 +44,11 @@ Notes:
   partition — only CPU partitions have 7-day `_long` variants).
 - **Backfill:** shorter `--time` ⇒ better queue position. Tighten your
   walltime estimate after the first trial (read `epoch_dt` in the log).
-- **Mindwell pilot:** `lp_mindwell_pilot` is free during the pilot. Check
-  it's still active: `sam-balance -A lp_mindwell_pilot`. B200 credit
-  weight is 437.5/GPU-min (cheaper than H100's 569.4) once it's paid.
+- **Account:** `lp_verbekelab` has Mindwell access (the free
+  `lp_mindwell_pilot` ended when Mindwell entered production —
+  confirmed 2026-07-02, it now rejects submissions). B200 credit
+  weight is 437.5/GPU-min (cheaper than H100's 569.4). Balance:
+  `sam-balance`.
 - **Maximum parallelism:** PD and LGD training run as independent 24-wide
   arrays on Mindwell; eval runs as 32-wide arrays on wICE — so PD+LGD
   train simultaneously while wICE eval churns through whatever's done.
@@ -222,7 +224,7 @@ filenames the loader expects.
 ### 0.6 The exact layout the pipeline expects (auto-detected)
 
 The data pipeline reads from `$CREDITPFN_DATA_ROOT/data/raw/{pd,lgd}/<id>.csv`.
-The submitter (`submit_full_pipeline.sh`) auto-detects where you put
+The submitter (`run_full_pipeline.sh`) auto-detects where you put
 the data and sets `CREDITPFN_DATA_ROOT` for the slurm jobs. The probe
 order (staging first — datasets' canonical home) is:
 
@@ -233,7 +235,7 @@ order (staging first — datasets' canonical home) is:
 
 Whichever directory actually contains CSVs wins — so if you uploaded to
 staging as in §0.5 (the canonical place), it is found automatically.
-After uploading, run `bash scripts/slurm/submit_full_pipeline.sh` — it
+After uploading, run `bash scripts/slurm/run_full_pipeline.sh` — it
 prints `CREDITPFN_DATA_ROOT: <resolved path>` so you can verify it picked
 the right one.
 
@@ -243,7 +245,7 @@ autodetect:
 
 ```bash
 export CREDITPFN_DATA_ROOT="$VSC_SCRATCH/CreditPFN"
-bash scripts/slurm/submit_full_pipeline.sh
+bash scripts/slurm/run_full_pipeline.sh
 ```
 
 ### 0.7 Why staging, not scratch, is the default
@@ -257,7 +259,7 @@ this entirely: upload your datasets once and they persist.
 If you deliberately want the fast-but-ephemeral scratch tier (e.g. for a
 throughput experiment), set `paths.data_source: "scratch"` in
 `config/data.yaml`; for everything on `$VSC_DATA`, set `"data"`.
-`submit_full_pipeline.sh` resolves the cfg and propagates
+`run_full_pipeline.sh` resolves the cfg and propagates
 `CREDITPFN_DATA_ROOT` / `CREDITPFN_OUTPUT_ROOT` / `CREDITPFN_STAGING_ROOT`
 through `sbatch --export` to every job.
 
@@ -271,7 +273,7 @@ From the cloned repo:
 cd $VSC_DATA/CreditPFN
 source activate CreditPFN      # one-time per shell session
 git pull
-bash scripts/slurm/submit_full_pipeline.sh
+bash scripts/slurm/run_full_pipeline.sh
 ```
 
 (The submitter auto-activates the env if it can find one, but doing it
@@ -312,7 +314,7 @@ STAGES="data train eval"   # submit a subset, e.g. STAGES=train
 TRACKS="pd lgd"            # one track only if you want
 TRAIN_CONCURRENCY=24       # max in-flight Mindwell B200 tasks (24 GPUs)
 EVAL_CONCURRENCY=32        # max in-flight wICE eval tasks
-bash scripts/slurm/submit_full_pipeline.sh
+bash scripts/slurm/run_full_pipeline.sh
 ```
 
 Watch progress across both clusters with **Active Jobs** in OnDemand, or
@@ -486,7 +488,7 @@ delete its directory under `output/results/<TRACK>/` and re-submit.
 
 ### 4.4 Submit (parallelised across BOTH wICE GPU pools)
 
-The easy path — `submit_full_pipeline.sh` (or `STAGES=eval bash …`) — splits
+The easy path — `run_full_pipeline.sh` (or `STAGES=eval bash …`) — splits
 each track's task range into two arrays and launches one on **`gpu_h100`**
 (20 GPUs) and one on **`gpu_a100`** (16 GPUs), so eval drains across all 36
 wICE GPUs at once. The split is contiguous (no overlap), and even if it
@@ -586,7 +588,7 @@ the inner-validation split and are NaN for multiclass.
    function only if the dataset needs one — clean datasets fall through
    automatically.
 3. Commit + push, then on VSC:
-   `git pull && bash scripts/slurm/submit_full_pipeline.sh`.
+   `git pull && bash scripts/slurm/run_full_pipeline.sh`.
 
 The data stage processes only the new ID; training re-runs all
 variants; the eval reuses every baseline row that's already on disk
@@ -658,7 +660,7 @@ pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main
 # Per experiment (training on Mindwell, data+eval on wICE):
 source activate CreditPFN     # if not already in this shell
 git pull
-bash scripts/slurm/submit_full_pipeline.sh    # data → wICE; train → Mindwell; eval → wICE
+bash scripts/slurm/run_full_pipeline.sh    # data → wICE; train → Mindwell; eval → wICE
 squeue --me --clusters=wice,mindwell
 ```
 
