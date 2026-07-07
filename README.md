@@ -392,7 +392,13 @@ The dataset tier is picked by `paths.data_source` in
 `config/data.yaml` (`staging` default / `scratch` / `data`); the
 staging root resolves from `$CREDITPFN_STAGING_ROOT` →
 `$TABPFN_STAGING_ROOT` → the built-in `/lustre1/project/stg_00211`
-default. See [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) §0.2.
+default. Trained-checkpoint saves *probe* staging writability first
+(`resolve_writable_staging_path`) and fall back to `$VSC_DATA` with a
+loud warning when the compute node can't write staging (the Mindwell
+failure mode of 2026-07-03); the eval gate then archives any fallback
+checkpoints into staging automatically, so the durable copy of every
+big artefact always ends up in project storage. See
+[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) §0.2.
 
 ---
 

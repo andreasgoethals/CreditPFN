@@ -84,11 +84,24 @@ processed data to `$VSC_SCRATCH` (GPFS) first and
 **How the split is configured.** `paths.data_source` in
 [`config/data.yaml`](../config/data.yaml) picks the dataset tier:
 `"staging"` (default), `"scratch"`, or `"data"`. Logs/manifests/figures
-always go to `$VSC_DATA`; trained checkpoints + results always go to
+always go to `$VSC_DATA`; trained checkpoints + results go to
 staging. The resolver finds the staging root from, in order:
 `$CREDITPFN_STAGING_ROOT` → `$TABPFN_STAGING_ROOT` → the built-in
 default `/lustre1/project/stg_00211`. So on VSC it **just works** with no
 env var set; override only if your allocation differs.
+
+**Writability fallback (added after the 2026-07-03 run).** Staging proved
+*readable but not writable* from the Mindwell compute nodes, which killed
+every checkpoint save. Training therefore now **probes** staging
+writability at startup (`resolve_writable_staging_path`) and, if it can't
+write, saves checkpoints to `$VSC_DATA` with a loud warning instead of
+failing. The eval gate — which runs on wICE, where staging *is* writable —
+then **automatically archives** any fallback checkpoints into
+`<staging>/CreditPFN/checkpoints/trained/` before releasing eval, so the
+project-storage guarantee ("all big files end up on staging") holds either
+way. Eval reads the manifest's recorded paths, so it works regardless of
+where the files landed; reclaim the temporary `$VSC_DATA` copies with
+`python scripts/clean_run.py` after verifying the staging archive.
 
 The env vars `$CREDITPFN_DATA_ROOT`, `$CREDITPFN_OUTPUT_ROOT` and
 `$CREDITPFN_STAGING_ROOT` remain available as escape-hatch overrides
@@ -417,11 +430,15 @@ files → staging; small bookkeeping → `$VSC_DATA`):
 
 | Artefact                                           | Tier        | Path                                                                |
 |----------------------------------------------------|-------------|---------------------------------------------------------------------|
-| Final-epoch weights                                | **staging** | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
-| Provenance sidecar (HPs, train/test IDs, GPU, …)   | **staging** | `<descriptive_name>.ckpt.provenance.json`                           |
+| Final-epoch weights                                | **staging**¹ | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
+| Provenance sidecar (HPs, train/test IDs, GPU, …)   | **staging**¹ | `<descriptive_name>.ckpt.provenance.json`                           |
 | Manifest row (consumed by the eval pipeline)       | `$VSC_DATA` | `output/training/manifests/<run_name>_<track>.csv`                  |
 | Per-epoch CSV (loss, lr, train/test metric, time)  | `$VSC_DATA` | `output/training/epochs/<track>/<descriptive_name>.csv`             |
 | Full run log (incl. debug banner)                  | `$VSC_DATA` | `logs/train_<track>_<ts>_j<jid>_a<tid>.log`                         |
+
+¹ If staging is not writable from the Mindwell node, training saves to
+`$VSC_DATA` instead (loud warning in the log) and the eval gate archives the
+files into staging afterwards — see §0.2 "Writability fallback".
 
 Filename schema:
 `<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt`.

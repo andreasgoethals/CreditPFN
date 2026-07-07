@@ -127,6 +127,12 @@ resolve_staging_path(checkpoint.trained_dir) / <track> / <descriptive_name>.ckpt
 With the default `checkpoint.trained_dir: "checkpoints/trained"` in
 [`../config/train.yaml`](../config/train.yaml), that resolves on VSC to
 `/lustre1/project/stg_00211/CreditPFN/checkpoints/trained/<pd|lgd>/…`.
+(Training actually resolves via `resolve_writable_staging_path`, which
+probes staging writability first: if the compute node can't write staging
+— the 2026-07-03 Mindwell failure mode — checkpoints are saved under
+`$VSC_DATA/CreditPFN/checkpoints/trained/` instead, and the eval gate
+archives them into staging afterwards. Either way the durable copy ends
+up in project storage; see docs/VSC_GUIDE.md §0.2.)
 Alongside each `.ckpt` we write a `<name>.ckpt.provenance.json`
 sidecar (full training-time hyperparameters, the train/test dataset
 lists, walltime, GPU, library versions) so a checkpoint can be

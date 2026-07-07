@@ -58,6 +58,41 @@ for i in $(seq 1 "${MAX}"); do
     sleep 30
 done
 
+# --- archive fallback checkpoints into PROJECT STAGING ------------------------
+# Trained checkpoints belong on project storage (persistent, big-file tier).
+# When staging is NOT writable from the Mindwell compute nodes (the Jul-3
+# failure mode), resolve_writable_staging_path falls back to $VSC_DATA — so
+# this gate, which runs on wICE (Lustre-writable, proven by the data job),
+# COPIES any fallback checkpoints into staging before releasing eval. Copy,
+# not move: the training manifest records the $VSC_DATA paths and eval reads
+# them from there; the staging copy is the durable archive. Reclaim the
+# $VSC_DATA space later with scripts/clean_run.py once staging is verified.
+STAGING_BASE="${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-/lustre1/project/stg_00211}}"
+case "${STAGING_BASE}" in
+    */CreditPFN) STAGE="${STAGING_BASE}" ;;
+    *)           STAGE="${STAGING_BASE}/CreditPFN" ;;
+esac
+FALLBACK_DIR="${OUT}/checkpoints/trained"
+if [ -d "${FALLBACK_DIR}" ] && [ -n "$(find "${FALLBACK_DIR}" -name '*.ckpt' -print -quit 2>/dev/null)" ]; then
+    n_ckpt=$(find "${FALLBACK_DIR}" -name '*.ckpt' | wc -l)
+    echo "$(date '+%F %T') eval-gate: ${n_ckpt} checkpoint(s) found in the \$VSC_DATA fallback dir — archiving to staging ${STAGE}/checkpoints/trained/"
+    if mkdir -p "${STAGE}/checkpoints/trained" 2>/dev/null; then
+        if command -v rsync >/dev/null 2>&1; then
+            rsync -a "${FALLBACK_DIR}/" "${STAGE}/checkpoints/trained/" \
+                && echo "$(date '+%F %T') eval-gate: archive to staging OK (rsync)." \
+                || echo "$(date '+%F %T') eval-gate: WARNING — rsync to staging failed; checkpoints remain only on \$VSC_DATA."
+        else
+            cp -rn "${FALLBACK_DIR}/." "${STAGE}/checkpoints/trained/" \
+                && echo "$(date '+%F %T') eval-gate: archive to staging OK (cp)." \
+                || echo "$(date '+%F %T') eval-gate: WARNING — cp to staging failed; checkpoints remain only on \$VSC_DATA."
+        fi
+    else
+        echo "$(date '+%F %T') eval-gate: WARNING — cannot create ${STAGE}/checkpoints/trained even from wICE; checkpoints remain on \$VSC_DATA only."
+    fi
+else
+    echo "$(date '+%F %T') eval-gate: no fallback checkpoints on \$VSC_DATA (either training wrote staging directly, or nothing saved)."
+fi
+
 # --- success verification ----------------------------------------------------
 ok_pd=""; ok_lgd=""
 [ -f "${SENT_DIR}/train_ok_pd"  ] && ok_pd="yes"

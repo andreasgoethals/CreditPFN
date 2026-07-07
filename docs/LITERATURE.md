@@ -57,6 +57,7 @@ The six most directly relevant papers for CreditPFN are
 | 2026 | Qu et al. | TabICLv2 — A better, faster, scalable, and open tabular foundation model | Improved TabICL with bigger context limit and open weights. | [pdf](../papers/2026_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.pdf) |
 | 2026 | Tanna et al. | **Exploring Fine-Tuning for Tabular Foundation Models** | First large-scale study of *when* fine-tuning helps TFMs (zero-shot vs meta-learning vs SFT vs PEFT/LoRA across TALENT / OpenML-CC18 / TabZilla). Full SFT can hurt accuracy & calibration; gains are model- and data-dependent; TabPFN is comparatively robust. | [pdf](../papers/2026_Tanna_et_al._Exploring_Fine_Tuning_for_Tabular_Foundation_Models.pdf) |
 | 2026 | Grinsztajn et al. | **TabPFN-3** — Technical Report | **The successor we will eventually re-base on.** New three-stage architecture (column-wise → row-wise → ICL), scales to 1M rows on a single H100, many-class attention decoder, "Thinking" test-time-compute mode. Synthetic-prior only, +200 Elo over TabPFN-2.6 on TabArena-medium. | [pdf](../papers/2026_Grinsztajn_et_al._TabPFN_3_Technical_Report.pdf) |
+| 2026 | Purucker et al. | **Beyond IID: How General Are Tabular Foundation Models, Really?** | BeyondArena (142 curated datasets, IID + temporal + grouped splits): TFM ICL wins tiny/small IID data but **loses to tuned RealMLP/GBDTs under temporal & grouped splits**, with the gap growing with sample size and high-cardinality categoricals. Fine-tuning explicitly untested — the gap CreditPFN targets. | [pdf](../papers/2026_Purucker_et_al._Beyond_IID_How_General_Are_Tabular_Foundation_Models_Really.pdf) |
 
 ---
 
@@ -1553,3 +1554,56 @@ threads to think about:
   the AUC needle without retraining. Park this as a downstream
   evaluation idea once the continued-pretrained CreditPFN
   checkpoints exist.
+
+
+---
+
+## 2026 — Purucker et al. — Beyond IID: How General Are Tabular Foundation Models, Really?
+
+**Venue:** preprint (TabArena team: Prior Labs, U. Freiburg, INRIA, ELLIS) ·
+**PDF:** [open](../papers/2026_Purucker_et_al._Beyond_IID_How_General_Are_Tabular_Foundation_Models_Really.pdf)
+
+**Where it fits.** The empirical counterpart to the position-paper
+critiques: the most systematic test to date of whether TFM "generality"
+survives outside the IID academic benchmark regime — co-authored by
+TabPFN's own developers, which lends the negative result weight.
+
+**What it contains.** Introduces **BeyondArena** — 142 datasets
+hand-curated from 1,128 candidates (via the released DataFoundry
+framework, now integrated into TabArena) spanning IID / **temporal** /
+**grouped** splits, 100–1M rows, text and high-cardinality features —
+and evaluates the *in-context learning* of three TFMs (TabPFN-2.6,
+TabICLv2, TabDPT) against 8 default and tuned+ensembled baselines
+(CatBoost, XGBoost, LightGBM, RealMLP, TabM, RF, ET, Linear; ~$50k
+compute). Headline findings:
+
+* **TFM ICL dominates tiny/small IID, low-dimensional data** — the
+  regime the TabPFN line was built for.
+* **On BOTH non-IID sub-benchmarks — temporal and grouped splits —
+  tuned+ensembled RealMLP wins**, and tuned CatBoost takes
+  high-cardinality data.
+* The best-GBDT-over-best-TFM margin **grows with sample size
+  (Spearman ρ=+0.60) and high-cardinality categoricals (ρ=+0.47)**.
+* Split protocol matters enormously: scoring grouped tasks with IID
+  splits distorts model rankings to Kendall τ=0.49–0.60.
+* Calibration ablation: TabPFN-2.6 was one of only two models that
+  post-hoc calibration made *worse* — native TFM calibration is
+  already strong (GBDTs benefit most from recalibration).
+
+**Limitations.** Tests in-context learning ONLY — TFM fine-tuning /
+continued pretraining is explicitly listed as untested future work;
+the non-IID sub-benchmarks are small (21 temporal / 18 grouped, noisy
+grouped rankings); TabPFN-2.6/TabDPT results beyond 100k rows are
+Random-Forest-imputed.
+
+**For CreditPFN.** Simultaneously a warning and a mandate. Warning:
+temporal splits — exactly the through-the-cycle deployment regime of
+PD/LGD models — are where TabPFN-2.6's ICL loses to tuned baselines,
+and credit data's high-cardinality categoricals + larger sample sizes
+are the meta-features that predict a further TFM disadvantage. Mandate:
+the paper leaves fine-tuning untested, so continued pretraining on
+in-domain, temporally structured credit data targets the precise gap it
+exposes rather than contradicting it. It also corroborates the
+calibration angle: native TFM calibration is the differentiator to
+*preserve* through continued pretraining, and results should be
+reported under temporal splits, not only random CV.
