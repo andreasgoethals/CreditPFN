@@ -33,37 +33,36 @@ paths:
 # cap because v2.6's alternating attention is far more memory-hungry than v3's
 # 3-stage design.
 #
-# **RE-SIZED FROM MEASURED B200 PEAKS — 2026-07-04.** The Jul-3 run measured
-# actual training peaks on the 192 GiB B200 (debug-banner `gpu_peak_alloc`):
-#   v3 full-FT @ 20 000 rows × 64 feats → 0.93 GB   (<0.5% of VRAM)
-#   v2.6 full-FT @ 9 000 rows × 64 feats → 0.24 GB  (~0.1% of VRAM)
-# Memory-scaling law (from the papers, matching the measurements):
-#   * v3     — row-chunked attention + column-collapsed embeddings avoid
-#              quadratic cross-row attention: cost ≈ LINEAR in CELLS
-#              (rows × features); design envelope 1M rows @ 200 features
-#              (TabPFN-3 report §"cell-budget frontier").
-#   * v2.6   — dual attention: O(r²·min(c,500) + r·min(c,500)²), i.e.
-#              QUADRATIC in rows (TabPFN-2.5 paper §4.3); design envelope
-#              50 000 rows × 2 000 features.
-# New caps (validate with scripts/probe_row_cap.py before a full sweep —
-# it measures fwd+bwd peak memory + step time at escalating row counts):
-#   * v3 → 100 000: 5× more context; ≈ linear → projected peak ~2–3 GB
-#     (~80× headroom). Actually binds on the big PD datasets (hackerearth
-#     532k, home_credit 307k, vehicle_loan 233k) → 5× more real context,
-#     chasing Real-TabPFN's "more context → bigger gains". Step TIME grows
-#     ~5× (one_sample epochs slower; full_pass ~flat, since steps/dataset
-#     shrink proportionally).
-#   * v2.6 → 30 000: within its 50k design envelope; quadratic-in-rows term
-#     grows ~11× → projected peak still ≤ ~3 GB, but step COMPUTE ~11×
-#     (this, not memory, is v2.6's binding constraint).
-# cells = rows × features drive memory, so sanitize.max_columns also bounds
-# how high rows can go. Key = leading v<MAJOR>[.<MINOR>] of the base filename.
-# On an 80 GiB card drop these back toward 20 000 / 9 000.
+# **CALIBRATED FROM DIRECT B200 MEASUREMENTS — 2026-07-08**
+# (scripts/probe_row_cap.py on Mindwell; fwd+bwd, 64 features, ONE ensemble
+# member). Measured single-member peak GPU memory, ~LINEAR in rows:
+#   v3   : 20k→50 GB, 50k→125 GB, 100k→OOM   ⇒ ≈ 2.5 GB per 1 000 rows
+#   v2.6 : 9k→49 GB, 20k→109 GB, 30k→169 GB, 50k→OOM ⇒ ≈ 5.7 GB per 1 000 rows
+# (183 GiB usable on the card. The earlier "0.93 GB" figure was a bad
+#  measurement — the lightweight monitor eval, not the training step.)
+#
+# CRITICAL: a training step forwards ALL `n_estimators_finetune` ensemble
+# members and holds every member's graph for ONE backward, so per-step memory
+# ≈ n_estimators × rows × per-member-cost. Members: PD=2, LGD=8. The values
+# below are the **PD (2-member) per-step caps**; loop.py auto-scales them DOWN
+# by 2/n_estimators for LGD (8 members) so both hold ~the same GPU memory —
+# see the "member-aware row-cap scaling" block in train_one_config.
+#
+# Targets ~130 GB peak (≈53 GiB headroom for optimizer state / fragmentation /
+# the eval snapshot). Effective per-step rows after member scaling:
+#   PD  (E=2): v3 = 26 000   | v2.6 = 11 000     (config value, ×1)
+#   LGD (E=8): v3 =  6 500   | v2.6 =  2 750      (auto ×2/8)
+# PD's big datasets (hackerearth 532k, home_credit 307k, vehicle_loan 233k)
+# bind on the cap → 26k rows of real context (2.6× the old 10k), chasing
+# Real-TabPFN's "more context → bigger gains". LGD datasets are all ≤16k rows,
+# so the smaller LGD caps truncate only lgd_freddie (16k). Key = leading
+# v<MAJOR>[.<MINOR>] of the base filename. Re-run the probe if the card,
+# feature count (sanitize.max_columns), or n_estimators changes.
 finetuning:
   max_rows_per_epoch:
-    v3:      100000
-    v2.6:    30000
-    default: 100000
+    v3:      26000
+    v2.6:    11000
+    default: 26000
   # Optional CELL budget (rows × features). When non-null for a base, the
   # per-step row count = min(max_rows_per_epoch, max_cells // n_features) —
   # narrow datasets get more rows, wide ones fewer, at ~constant cells.

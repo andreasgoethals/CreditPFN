@@ -146,7 +146,9 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
     """Look up the per-version `max_rows_per_epoch` cap.
 
     Accepts either an int (legacy single-value config) or a mapping
-    ``{"v3": 100000, "v2.6": 30000, ...}``. For a mapping, we extract
+    ``{"v3": 26000, "v2.6": 11000, ...}`` (the PD 2-member per-step caps;
+    ``train_one_config`` scales them down for higher member counts). For a
+    mapping, we extract
     the leading ``v<MAJOR>[.<MINOR>]`` from the base checkpoint's
     filename (e.g. ``tabpfn-v2.6-classifier-…`` → ``"v2.6"``) and
     look up that key, falling back to ``"default"`` if absent.
@@ -1332,6 +1334,29 @@ def train_one_config(
                 _ne = _raw_ne.get("default", 2)
         n_estimators_finetune = int(_ne if _ne is not None else 2)
     n_estimators_finetune = max(1, n_estimators_finetune)
+
+    # ---- member-aware row-cap scaling (GPU-memory safety) ---------------- #
+    # A training step forwards ALL `n_estimators_finetune` preprocessed
+    # ensemble members and holds every member's activation graph
+    # simultaneously for a SINGLE backward (see `_ensemble_step_loss`), so
+    # per-step GPU memory ≈ n_estimators × rows × per-member-per-row cost.
+    # Measured on the B200 (scripts/probe_row_cap.py, 2026-07-08, 64 feats,
+    # fwd+bwd, single member): v3 ≈ 2.5 GB and v2.6 ≈ 5.7 GB per 1 000 rows,
+    # ~linear (intercept ≈ 0). The `max_rows_per_epoch` config values are
+    # calibrated for the 2-member reference (PD); we scale INVERSELY with the
+    # actual member count so an 8-member LGD step holds ~the same memory as a
+    # 2-member PD step instead of 4× more (which OOMs the 192 GiB card).
+    _REFERENCE_MEMBERS = 2
+    if n_estimators_finetune > _REFERENCE_MEMBERS:
+        _scaled = max(1000, max_rows_per_epoch * _REFERENCE_MEMBERS // n_estimators_finetune)
+        if _scaled < max_rows_per_epoch:
+            LOGGER.info(
+                "Row cap scaled %d → %d rows/step for %d ensemble members "
+                "(per-step GPU memory ≈ n_estimators × rows; see probe_row_cap).",
+                max_rows_per_epoch, _scaled, n_estimators_finetune,
+            )
+            max_rows_per_epoch = _scaled
+
     # Resolve the per-epoch step plan. None → head of the sweep list
     # (default "one_sample" = one step per dataset per epoch).
     if pass_mode is None:
