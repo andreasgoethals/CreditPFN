@@ -42,11 +42,19 @@ def probe_base(base_path: str, track: str, rows_grid: list[int], device: str) ->
     from src.train.model import load_tabpfn_for_training
     from src.train.dataloader import TabPFNBatch
     from src.train.loop import _forward, _classification_loss, _regression_loss, _n_classes
+    from src.utils.paths import resolve_staging_path
 
+    # Base checkpoints live in project STAGING, not the repo. The config lists
+    # them as repo-relative paths (e.g. "checkpoints/tabpfn-v3-...ckpt"); resolve
+    # through the staging root, mirroring loop.py's base_checkpoint_path.
+    ckpt = resolve_staging_path(base_path)
     print(f"\n=== {Path(base_path).name}  (track={track}, {N_FEATURES} features, "
           f"qf={QUERY_FRACTION}) ===")
+    if not Path(ckpt).exists():
+        print(f"  SKIP: base checkpoint not found at {ckpt}")
+        return
     model, criterion, _arch, _inf = load_tabpfn_for_training(
-        base_path, track=track, device=device, lora_config=None,
+        str(ckpt), track=track, device=device, lora_config=None,
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-6)
     print(f"{'rows':>8} {'ctx':>8} {'query':>7} {'peak_alloc':>11} "
