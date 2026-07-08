@@ -21,6 +21,10 @@
 #SBATCH --mem=120G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
+# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
+# Slurm's login-shell env retrieval ("user env retrieval failed requeued
+# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
+#SBATCH --export=ALL
 #SBATCH --array=0-31%24   # 32 trials. See train_pd.slurm for the rationale.
 
 sleep $((RANDOM % 30 + 1))

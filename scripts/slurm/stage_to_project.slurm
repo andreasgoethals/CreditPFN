@@ -35,6 +35,10 @@
 #SBATCH --mem=16G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
+# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
+# Slurm's login-shell env retrieval ("user env retrieval failed requeued
+# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
+#SBATCH --export=ALL
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1

@@ -58,6 +58,10 @@
                              # 120G covers the larger row cap + the in-RAM clean cache.
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
+# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
+# Slurm's login-shell env retrieval ("user env retrieval failed requeued
+# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
+#SBATCH --export=ALL
 #SBATCH --array=0-31%24   # 32 trials (2 bases x 4 LRs x 2 LoRA x 1 qf x 1 acc
                           #            x 2 pass-modes). %24 saturates all 24
                           #            Mindwell B200 GPUs. Recompute via

@@ -24,6 +24,14 @@
 #SBATCH --mem=120G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
+# Propagate the submission environment directly. WITHOUT this, a bare
+# `sbatch scripts/slurm/probe_row_cap.slurm` submitted cross-cluster
+# (Genius → Mindwell) makes Slurm reconstruct the login env by spawning the
+# user's login shell on the target node — which fails on this cluster with
+# "user env retrieval failed requeued held" (observed 2026-07-08, job
+# 10285206). --export=ALL skips that path. run_full_pipeline.sh passes its
+# own --export on the CLI, which overrides this line.
+#SBATCH --export=ALL
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
