@@ -220,6 +220,7 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     """
     from src.data.preprocessing import DATASET_METADATA
     from src.utils.paths import resolve_data_path
+    from src.train.corpus import resolve_ids_for_track
     from omegaconf import OmegaConf
 
     track = str(cfg.track)
@@ -228,25 +229,32 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     track_ids = sorted([d for d, m in DATASET_METADATA.items()
                         if m["track"] == track])
 
-    # Restrict to whatever the user explicitly asked for, if anything.
-    train_explicit = list(corpus.get("train_dataset_ids", []) or [])
-    test_explicit  = list(corpus.get("test_dataset_ids",  []) or [])
+    # Restrict to whatever the user explicitly pinned, if anything. Use the
+    # SAME per-track resolver the authoritative corpus builder (split_from_cfg)
+    # uses: `train_dataset_ids` / `test_dataset_ids` may be a flat list OR a
+    # per-track mapping {pd: [...], lgd: [...]}. A naive `list()` on the mapping
+    # yields its KEYS (["lgd"]) — the latent bug that made this pre-check
+    # resolve 0 candidates on 2026-07-08 (both tracks) and, with a too-strict
+    # guard, fatally block the run.
+    train_explicit = list(resolve_ids_for_track(corpus.get("train_dataset_ids", None), track))
+    test_explicit  = list(resolve_ids_for_track(corpus.get("test_dataset_ids",  None), track))
     explicit = set(train_explicit) | set(test_explicit)
     candidate_ids = sorted(explicit & set(track_ids)) if explicit else track_ids
 
     data_cfg = OmegaConf.load("config/data.yaml")
     proc_root = resolve_data_path(data_cfg.paths.processed)
 
-    # A healthy corpus ALWAYS has >=1 dataset per active track — an empty
-    # candidate list means the metadata/corpus resolution silently failed,
-    # and the old "all 0 candidate dataset(s) are on disk" message passed a
-    # vacuous check (flagged in the 2026-07-03 run logs). Fail loudly instead.
+    # Best-effort pre-check ONLY: its job is to auto-run the data pipeline for
+    # any missing sanitized CSV. The AUTHORITATIVE corpus is built and validated
+    # by split_from_cfg downstream, so an empty candidate set here must NEVER be
+    # fatal (a 2026-07-08 hard-error regression blocked a whole run this way).
     if not candidate_ids:
-        raise RuntimeError(
-            f"Processed-CSV preflight resolved 0 candidate datasets for "
-            f"track={track!r} — DATASET_METADATA or the corpus pins are "
-            f"broken; refusing to train on an empty corpus."
+        LOGGER.warning(
+            "Processed-CSV preflight resolved 0 candidate datasets for "
+            "track=%r (corpus pins matched no DATASET_METADATA id). Skipping "
+            "auto-processing; the corpus split is validated downstream.", track,
         )
+        return
 
     missing = [
         did for did in candidate_ids
