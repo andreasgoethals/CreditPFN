@@ -691,6 +691,29 @@ def test_load_trained_handles_no_manifest_returns_empty(tmp_path: Path) -> None:
     assert handles == []
 
 
+def test_load_trained_handles_deduplicates_resumed_trial(tmp_path: Path) -> None:
+    """An OK row followed by a resume-SKIP row is still one model."""
+    fallback = tmp_path / "fallback" / "same_trial.ckpt"
+    staging = tmp_path / "staging" / "same_trial.ckpt"
+    fallback.parent.mkdir()
+    staging.parent.mkdir()
+    fallback.write_bytes(b"")
+    staging.write_bytes(b"")
+    manifest = tmp_path / "creditpfn_pd.csv"
+    common = {
+        "track": "pd", "base_checkpoint": "base.ckpt",
+        "learning_rate": "1e-6", "seed": "42",
+    }
+    _write_synthetic_manifest(manifest, rows=[
+        {**common, "final_ckpt_path": str(fallback), "status": "OK"},
+        {**common, "final_ckpt_path": str(staging), "status": "SKIP"},
+    ])
+
+    handles = load_trained_handles(manifest, track="pd")
+    assert len(handles) == 1
+    assert handles[0][0].base_path == str(staging)
+
+
 # =============================================================================
 # Block 7 · find_existing_results — rerun-skip helper
 # =============================================================================

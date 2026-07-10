@@ -35,9 +35,9 @@ Re-runs and skip-existing
 -------------------------
 By default the eval is **idempotent across reruns**: before scoring,
 each (model × test_dataset) pair is checked against existing CSVs
-under ``<results.base_dir>/<TRACK>/<method-dirname>/``. If at least
-one CSV already records an ``OK`` row for that pair, the pair is
-skipped. This means adding a new trained checkpoint and resubmitting
+under ``<results.base_dir>/<TRACK>/<method-dirname>/``. If the existing
+files contain every required fold with ``status=OK``, the pair is skipped.
+This means adding a new trained checkpoint and resubmitting
 the eval only triggers work for the new (and any previously failed)
 cells — XGBoost, CatBoost, LogReg, LinReg, and untuned-TabPFN do not
 re-run. Pass ``--rerun`` to force fresh scoring.
@@ -75,11 +75,6 @@ if str(_REPO) not in _sys.path:
 
 from src.utils.paths import apply_data_source_from_cfg, resolve_output_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
-
-# Silence the sklearn ColumnTransformer `force_int_remainder_cols`
-# FutureWarning emitted from inside tabpfn's preprocessing (log-bloat only).
-import warnings  # noqa: E402
-warnings.filterwarnings("ignore", message=".*force_int_remainder_cols.*")
 
 LOGGER = logging.getLogger(__name__)
 
@@ -262,7 +257,7 @@ def _filter_roster(handles_and_models, cfg_test_ids, *,
             # Signalled by returning an empty plan; the caller's
             # "nothing to do" branch handles the rest.
             from logging import getLogger
-            getLogger(__name__).warning(
+            getLogger(__name__).info(
                 "task_index=%d is out of bounds for the %d-task grid "
                 "(valid indices 0..%d). Returning empty plan.",
                 task_index, len(pairs), len(pairs) - 1,
@@ -376,7 +371,13 @@ def run(
         )
 
     if not plan:
-        LOGGER.warning("nothing to do.")
+        line = (
+            f"eval_pipeline: status=SKIP  track={track}  pairs=0  "
+            "reason=no_unscored_work"
+        )
+        LOGGER.info("Nothing to do: every requested pair was absent or already scored.")
+        log.write(line)
+        print(line)
         return 0
 
     # Auto-cache hook (Gemini's #2 fix) — the eval reads PROCESSED

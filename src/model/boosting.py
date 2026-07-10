@@ -180,8 +180,8 @@ class XGBoostModel:
             return float(np.sqrt(mean_squared_error(y_va, preds)))
 
         sampler = optuna.samplers.TPESampler(seed=self._random_state)
-        study = optuna.create_study(direction="minimize", sampler=sampler)
         optuna.logging.set_verbosity(optuna.logging.WARNING)
+        study = optuna.create_study(direction="minimize", sampler=sampler)
         study.optimize(
             objective, n_trials=self._hpo_trials,
             timeout=self._hpo_timeout, show_progress_bar=False,
@@ -350,8 +350,8 @@ class CatBoostModel:
             return float(np.sqrt(mean_squared_error(y_va, preds)))
 
         sampler = optuna.samplers.TPESampler(seed=self._random_state)
-        study = optuna.create_study(direction="minimize", sampler=sampler)
         optuna.logging.set_verbosity(optuna.logging.WARNING)
+        study = optuna.create_study(direction="minimize", sampler=sampler)
         study.optimize(
             objective, n_trials=self._hpo_trials,
             timeout=self._hpo_timeout, show_progress_bar=False,

@@ -208,16 +208,13 @@ this repo is the best public source for the LR grid, patience,
 prediction length, and A100 memory assumptions behind single-dataset
 gradient adaptation.
 
-**Two facts that frame all our comparisons against it:** (1) *every
-one of the 342 reported runs is full fine-tuning — NO LoRA.* LoRA
-utilities exist in their code (`lib/tabpfn/lora_utils.py`), but the
-PEFT variants are not what the headline results use; our `use_lora`
-grid axis is therefore exploring territory the references did not
-report on. (2) *Every run is single-dataset* — one finetune per
-table. Multi-dataset corpus continued pretraining (our setting) is
-the paper's distinctive *idea* but not what their experiment grid
-runs; so their per-run hyperparameters are a lower bound on what a
-corpus loop needs, not a drop-in recipe.
+**Two facts that frame comparisons against it:** (1) the 342 archived
+``report.json`` grid runs inspected below are full-FT runs, but the
+**paper also reports LoRA and other partial/PEFT ablations**. Do not turn
+the contents of that one result directory into a claim that the paper did
+not evaluate LoRA. (2) each run adapts to one target table. Multi-dataset
+corpus continued pretraining is Garg et al.'s Real-TabPFN setting and
+CreditPFN's setting, not Rubachev's experimental design.
 
 **Contents in detail:**
 
@@ -264,22 +261,22 @@ are the *reference* values; our deviations are intentional and noted:
 |------|--------------------------|-----------|---------------|
 | optimizer | AdamW | AdamW | match |
 | **weight_decay** | **0.0** | **0.0** (was 0.01; fixed 2026-06-23) | match — decay-to-origin fights the prior |
-| LR | tuned 5e-6…5e-4, median ~3.9e-5 | grid {3e-7, 1e-6, 1e-5} | ours is lower; the references center higher — candidate to widen |
+| LR | tuned 5e-6…5e-4, median ~3.9e-5 | grid {3e-7, 1e-6, 1e-5, 3e-5} | low rung matches Garg; high rung approaches Rubachev's median |
 | LR schedule | **none (constant)** | warmup→cosine | deliberate; consider a constant rung |
-| **L2-SP / anchor** | **not used** | λ=0.003 (full-FT only) | OUR addition for the multi-dataset corpus setting (the references are single-dataset) |
+| **L2-SP / anchor** | **not used** | λ=0.003 (full-FT only) | follows Garg's Real-TabPFN corpus-CPT recipe, not Rubachev |
 | batch_size | 1 | 1 | match |
 | epoch policy | `n_epochs=-1` + early stop (patience 16) | fixed 50 epochs + divergence-abort | deliberate (val-noise with ~10 datasets) |
-| ensemble/step | clf 2 / **reg 8** | 2 both tracks | LGD could try 8 |
+| ensemble/step | clf 2 / **reg 8** (official wrappers) | PD 2 / LGD 8 | match |
 | loss | CE (clf) / bar-dist NLL (reg) | same | match |
 
-The single most important correction from this audit: **set
-`weight_decay=0.0`** (the references uniformly use it, and stacking it
-on top of L2-SP double-penalises). The "Real-TabPFN uses L2-SP" claim
-that previously appeared in our config comments was **wrong** — L2-SP is
-our own addition; the reference runs use neither weight decay nor an
-anchor. (The README body is unrecoverable from this dump — a `charmap`
-codec error replaced it — so paper *prose* claims like "more context →
-bigger gains" must be read from the PDF, not this `.txt`.)
+The main optimization lesson from this repository is that Rubachev uses
+`weight_decay=0.0`; stacking decay-to-origin on an L2-SP anchor would be a
+separate, untested regularization choice. **This says nothing about Garg's
+AdamW weight decay, which the Real-TabPFN paper does not report.** Garg
+does explicitly use L2-SP λ=0.003, warmup→cosine, and LR 3e-7. Keep the
+two papers separate. (The README body is unrecoverable from this dump — a
+`charmap` codec error replaced it — so prose claims must be read from the
+PDF, not this `.txt`.)
 
 **Important caveat.** The dump references
 `bin.tabpfnv2_finetune.main`, but this `.txt` snapshot contains no

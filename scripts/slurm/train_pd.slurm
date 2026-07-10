@@ -7,7 +7,8 @@
 #  *** Continued pretraining of the TabPFN foundation models runs ONLY on
 #      Mindwell B200. *** The B200's 192 GiB VRAM (2.4x the 80 GiB H100) lets
 #      us train at a larger in-context size (config/data.yaml:
-#      finetuning.max_rows_per_epoch — v3: 20 000, v2.6: 9 000) to chase
+#      finetuning.max_rows_per_epoch — v3: 26 000, v2.6: 11 000 for PD's
+#      two ensemble members; LGD scales these caps for eight members) to chase
 #      Real-TabPFN's "more context -> bigger gains". Data prep and evaluation
 #      stay on wICE (see data.slurm, eval_*.slurm).
 #
@@ -46,7 +47,7 @@
 #SBATCH --gpus-per-node=1
 #SBATCH --time=48:00:00   # GPU partitions cap at 72h (no gpu_*_long on VSC).
                           # full_pass @ 50 epochs on the big PD datasets at the
-                          # 20k-row B200 cap is the worst case; one_sample
+                          # 26k-row B200 cap is the worst case; one_sample
                           # trials finish far sooner and free the slot. Tune
                           # down (e.g. 04:00:00 for one_sample-only) to gain
                           # backfill priority — shorter walltime => better queue
@@ -73,6 +74,7 @@ sleep $((RANDOM % 30 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
+export PYTHONIOENCODING=utf-8
 
 # Blackwell: expandable_segments lets the CUDA allocator reclaim fragmented
 # blocks — cheap insurance for the larger in-context tensors.
@@ -92,11 +94,24 @@ TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
 exec > "$LOG" 2>&1
 
+_log_exit() {
+    rc=$?
+    echo "=========================================="
+    if [[ "$rc" -eq 0 ]]; then
+        echo "END status=OK - $(date)"
+    else
+        echo "END status=FAILED exit_code=${rc} - $(date)"
+    fi
+    echo "=========================================="
+}
+trap _log_exit EXIT
+trap 'exit 143' TERM INT
+
 cd "${VSC_DATA}/CreditPFN"
 source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
-echo "CreditPFN — TRAINING (PD) — Mindwell B200"
+echo "CreditPFN - TRAINING (PD) - Mindwell B200"
 echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
 echo "Array job/task : ${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}"
@@ -148,10 +163,6 @@ python -u scripts/train_pipeline.py \
     track=pd
 
 # Reached ONLY on success (set -e aborts on a python failure/exit 1) —
-# the success sentinel the eval gate requires before releasing eval.
+# the per-task success sentinel the eval gate requires before releasing eval.
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
-touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd"
-
-echo "=========================================="
-echo "DONE — $(date)"
-echo "=========================================="
+touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd_${SLURM_ARRAY_TASK_ID}"

@@ -60,6 +60,7 @@ sleep $((RANDOM % 15 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
+export PYTHONIOENCODING=utf-8
 
 # Logs -> $VSC_DATA (NFS, backed up). Eval result CSVs are large/durable and
 # go to project STAGING — resolved in src/utils/paths.py from
@@ -75,11 +76,24 @@ TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/eval_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
 exec > "$LOG" 2>&1
 
+_log_exit() {
+    rc=$?
+    echo "=========================================="
+    if [[ "$rc" -eq 0 ]]; then
+        echo "END status=OK - $(date)"
+    else
+        echo "END status=FAILED exit_code=${rc} - $(date)"
+    fi
+    echo "=========================================="
+}
+trap _log_exit EXIT
+trap 'exit 143' TERM INT
+
 cd "${VSC_DATA}/CreditPFN"
 source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
-echo "CreditPFN — EVAL (PD)"
+echo "CreditPFN - EVAL (PD)"
 echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
 echo "Array job/task : ${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}"
@@ -98,7 +112,3 @@ python -u scripts/eval_pipeline.py \
     --task-index "${SLURM_ARRAY_TASK_ID}" \
     --log-path "$LOG" \
     track=pd
-
-echo "=========================================="
-echo "DONE — $(date)"
-echo "=========================================="

@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import math
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace as NS
 
@@ -50,7 +51,7 @@ from src.train.dataloader import (
     identity_collate, prepare_eval_chunk,
 )
 from src.train.loop import (
-    _l2sp_penalty, descriptive_name, evaluate_on_split,
+    _l2sp_penalty, _resolve_amp_dtype, descriptive_name, evaluate_on_split,
     make_warmup_cosine_schedule, train_one_config,
 )
 from src.train.metrics import (
@@ -497,6 +498,7 @@ def test_unknown_schedule_type_raises() -> None:
         opt, total_steps=10, warmup_fraction=0.10, schedule_type="banana",
     )
     with pytest.raises(ValueError, match="schedule_type"):
+        opt.step()
         sched.step()
 
 
@@ -771,6 +773,59 @@ def test_grid_single_picks_first_value() -> None:
     assert len(grid) == 1
 
 
+def test_manifest_concurrent_first_writers_keep_every_row(tmp_path) -> None:
+    """Concurrent array tasks must not race while creating one manifest.
+
+    In particular, two first writers used to both observe a missing file and
+    open it with ``mode="w"``, silently discarding one completed trial.
+    """
+    import csv
+    import scripts.train_pipeline as tp
+
+    path = tmp_path / "training.csv"
+    rows = [
+        tp.RunRow(
+            track="pd",
+            base_checkpoint=f"base-{i}",
+            learning_rate=1e-6,
+            use_lora=False,
+            query_fraction=0.2,
+            accumulate_grad_batches=1,
+            seed=42,
+            n_train_datasets=12,
+            n_test_datasets=5,
+            final_ckpt_path=f"model-{i}.ckpt",
+            elapsed_sec=1.0,
+            status="OK",
+            error=None,
+        )
+        for i in range(24)
+    ]
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda row: tp._write_csv([row], path, append=True), rows))
+
+    with path.open(newline="", encoding="utf-8") as fh:
+        parsed = list(csv.DictReader(fh))
+    assert len(parsed) == len(rows)
+    assert {r["base_checkpoint"] for r in parsed} == {
+        f"base-{i}" for i in range(len(rows))
+    }
+    # Exactly one header: any repeated header would parse as a bogus data row.
+    assert all(r["track"] == "pd" for r in parsed)
+
+
+def test_resolve_amp_dtype_cpu_disables_amp() -> None:
+    cfg = NS(train=NS(amp=True, amp_dtype="auto"))
+    assert _resolve_amp_dtype(cfg, "cpu") == (False, None)
+
+
+def test_resolve_amp_dtype_auto_prefers_bfloat16(monkeypatch) -> None:
+    cfg = NS(train=NS(amp=True, amp_dtype="auto"))
+    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda: True)
+    assert _resolve_amp_dtype(cfg, "cuda") == (True, torch.bfloat16)
+
+
 # =============================================================================
 # Block 3b · end-to-end with a mocked TabPFN model (no GPU, no checkpoint)
 # =============================================================================
@@ -919,6 +974,20 @@ def test_train_one_config_end_to_end_mocked(
 
     monkeypatch.setattr(_oc.OmegaConf, "load", fake_load)
 
+    # Capture monitoring seeds while retaining the real cheap evaluator. A
+    # valid learning curve must use the same train/test sample at baseline and
+    # after every epoch; only the model weights are allowed to change.
+    real_evaluate_on_split = loop_mod.evaluate_on_split
+    monitor_seeds: list[int] = []
+
+    def recording_evaluate_on_split(*args, **kwargs):
+        monitor_seeds.append(int(kwargs["seed"]))
+        return real_evaluate_on_split(*args, **kwargs)
+
+    monkeypatch.setattr(
+        loop_mod, "evaluate_on_split", recording_evaluate_on_split,
+    )
+
     result = loop_mod.train_one_config(cfg)
 
     # epoch=-1 baseline (pre-finetune eval) + 2 finetuning epochs.
@@ -928,6 +997,7 @@ def test_train_one_config_end_to_end_mocked(
     assert all(
         math.isfinite(r.train_loss) for r in result.history if r.epoch >= 0
     )
+    assert monitor_seeds == [10_000, 20_000] * 3
     assert result.final_ckpt_path == saved_paths[-1]
     assert not hasattr(result, "test_metric_raw")
     assert not hasattr(result, "test_metric_name")
@@ -948,6 +1018,7 @@ def test_train_one_config_end_to_end_mocked(
     assert prov["hyperparameters"]["query_fraction"] == 0.20
     assert prov["hyperparameters"]["epochs"] == 2
     assert prov["hyperparameters"]["seed"] == 0
+    assert prov["hyperparameters"]["amp_dtype"] == "disabled"
     assert prov["hyperparameters"]["base_checkpoint"].endswith(
         "tabpfn-v2.6-classifier-v2.6_default.ckpt"
     )

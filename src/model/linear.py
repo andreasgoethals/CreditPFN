@@ -85,8 +85,8 @@ def _tune_regularization(
         return float(score_val(pipe, Xvf, y_val))
 
     sampler = optuna.samplers.TPESampler(seed=seed)
-    study = optuna.create_study(direction="minimize", sampler=sampler)
     optuna.logging.set_verbosity(optuna.logging.WARNING)
+    study = optuna.create_study(direction="minimize", sampler=sampler)
     study.optimize(objective, n_trials=int(n_trials), timeout=timeout,
                    show_progress_bar=False)
     return study.best_params.get(param_name)

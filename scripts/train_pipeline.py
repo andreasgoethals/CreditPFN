@@ -68,8 +68,11 @@ import argparse
 import csv
 import itertools
 import logging
+import os
 import sys as _sys
+import threading
 import time
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -80,13 +83,6 @@ if str(_REPO) not in _sys.path:
 
 from src.utils.paths import apply_data_source_from_cfg, resolve_output_path, resolve_staging_path  # noqa: E402
 from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
-
-# sklearn's ColumnTransformer emits a FutureWarning about
-# `force_int_remainder_cols` from INSIDE tabpfn's preprocessing on every
-# ensemble-member fit — ~4x log bloat on full_pass trials (2026-07-03 run).
-# Behaviourally irrelevant to us; silence just that message.
-import warnings  # noqa: E402
-warnings.filterwarnings("ignore", message=".*force_int_remainder_cols.*")
 
 LOGGER = logging.getLogger(__name__)
 
@@ -339,18 +335,66 @@ class RunRow:
     epoch_pass_mode:        str   = "one_sample"
 
 
+_MANIFEST_THREAD_LOCK = threading.Lock()
+
+
+@contextmanager
+def _manifest_lock(path: Path):
+    """Serialize manifest writes across local threads and SLURM processes.
+
+    All array tasks append to one per-track CSV on NFS.  The old
+    check-then-open sequence could let two first writers both choose ``"w"``
+    and truncate one another.  Linux ``flock`` supplies the cross-process
+    lock used on VSC; the in-process lock also makes local threaded tests and
+    non-POSIX development safe.
+    """
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with _MANIFEST_THREAD_LOCK:
+        with lock_path.open("a+b") as lock_fh:
+            try:
+                import fcntl  # type: ignore[import-not-found]
+            except ImportError:  # Windows: no multi-process SLURM writers.
+                fcntl = None
+            locked = False
+            if fcntl is not None:
+                try:
+                    fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+                    locked = True
+                except OSError as exc:
+                    # e.g. ENOSYS on a Lustre mount without `-o flock`, or ENOLCK
+                    # if the NFS lock manager is down. Don't abort the trial's
+                    # manifest write over this — fall back to the in-process lock
+                    # (already held) with a one-time warning. Cross-node races
+                    # become possible, but the append-only single-row writes make
+                    # data loss unlikely, and the benchmark dedup is a backstop.
+                    LOGGER.warning(
+                        "manifest flock() unavailable on this filesystem (%s); "
+                        "using the in-process lock only.", exc,
+                    )
+            try:
+                yield
+            finally:
+                if locked:
+                    fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
+
+
 def _write_csv(rows: list[RunRow], path: Path, *, append: bool) -> None:
     if not rows:
         return
     fieldnames = list(asdict(rows[0]).keys())
-    write_header = (not append) or (not path.exists())
-    mode = "a" if append and path.exists() else "w"
-    with path.open(mode, newline="", encoding="utf-8") as fh:
-        w = csv.DictWriter(fh, fieldnames=fieldnames)
-        if write_header:
-            w.writeheader()
-        for r in rows:
-            w.writerow(asdict(r))
+    with _manifest_lock(path):
+        exists = path.exists() and path.stat().st_size > 0
+        write_header = (not append) or (not exists)
+        mode = "a" if append and exists else "w"
+        with path.open(mode, newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=fieldnames)
+            if write_header:
+                w.writeheader()
+            for r in rows:
+                w.writerow(asdict(r))
+            fh.flush()
+            os.fsync(fh.fileno())
 
 
 # --------------------------------------------------------------------------- #
@@ -451,6 +495,7 @@ def run(
 
     rows: list[RunRow] = []
     failures = 0
+    divergences = 0
     t_outer = time.monotonic()
 
     for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate, pass_mode) in enumerate(plan, start=1):
@@ -594,6 +639,9 @@ def run(
                 "secondary_test_metric":     float(rec.secondary_test_metric),
                 "epoch_time_sec":            float(rec.epoch_time_sec),
                 "elapsed_sec":               float(rec.elapsed_sec),
+                "optimizer_steps":           int(rec.optimizer_steps),
+                "amp_skipped_steps":         int(rec.amp_skipped_steps),
+                "data_skipped_steps":        int(rec.data_skipped_steps),
             }
             write_header = not _flag["written_header"]
             with _path.open("a", newline="", encoding="utf-8") as fh:
@@ -643,6 +691,12 @@ def run(
                 diverged_at_epoch=result.diverged_at_epoch,
                 diverge_reason=result.diverge_reason,
             ))
+            if result.diverged:
+                # A numerically completed but diverged checkpoint is excluded
+                # from eval and must not make its SLURM task write a success
+                # sentinel. Returning non-zero lets the post-training gate
+                # detect an incomplete scientific grid.
+                divergences += 1
         except Exception as exc:                           # noqa: BLE001
             failures += 1
             LOGGER.error("Trial %d failed: %s", trial_idx_local, exc, exc_info=True)
@@ -667,14 +721,20 @@ def run(
             csv_append = True   # subsequent rows in the same process append
 
     elapsed = time.monotonic() - t_outer
+    if failures:
+        overall_status = f"FAIL[{failures}/{len(plan)}]"
+    elif divergences:
+        overall_status = f"DIVERGED[{divergences}/{len(plan)}]"
+    else:
+        overall_status = "OK"
     summary = (
-        f"train_pipeline: status={'OK' if failures == 0 else f'FAIL[{failures}/{len(plan)}]'}  "
+        f"train_pipeline: status={overall_status}  "
         f"track={track}  mode={plan_label}  "
         f"trials={len(plan)}  csv={csv_path}  elapsed={elapsed:.1f}s"
     )
     log.write(summary)
     print(summary)
-    return 0 if failures == 0 else 1
+    return 0 if failures == 0 and divergences == 0 else 1
 
 
 # --------------------------------------------------------------------------- #

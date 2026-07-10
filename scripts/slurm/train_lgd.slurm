@@ -31,6 +31,7 @@ sleep $((RANDOM % 30 + 1))
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
+export PYTHONIOENCODING=utf-8
 
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
@@ -43,11 +44,24 @@ TS=$(date +%Y%m%d_%H%M%S)
 LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_lgd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
 exec > "$LOG" 2>&1
 
+_log_exit() {
+    rc=$?
+    echo "=========================================="
+    if [[ "$rc" -eq 0 ]]; then
+        echo "END status=OK - $(date)"
+    else
+        echo "END status=FAILED exit_code=${rc} - $(date)"
+    fi
+    echo "=========================================="
+}
+trap _log_exit EXIT
+trap 'exit 143' TERM INT
+
 cd "${VSC_DATA}/CreditPFN"
 source scripts/slurm/_activate_env.sh
 
 echo "=========================================="
-echo "CreditPFN — TRAINING (LGD) — Mindwell B200"
+echo "CreditPFN - TRAINING (LGD) - Mindwell B200"
 echo "=========================================="
 echo "Job ID         : ${SLURM_JOB_ID}"
 echo "Array job/task : ${SLURM_ARRAY_JOB_ID}/${SLURM_ARRAY_TASK_ID}"
@@ -94,10 +108,6 @@ python -u scripts/train_pipeline.py \
     --log-path "$LOG" \
     track=lgd
 
-# Reached ONLY on success (set -e) — success sentinel for the eval gate.
+# Reached ONLY on success (set -e) - per-task sentinel for the eval gate.
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
-touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd"
-
-echo "=========================================="
-echo "DONE — $(date)"
-echo "=========================================="
+touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd_${SLURM_ARRAY_TASK_ID}"

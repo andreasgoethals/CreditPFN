@@ -82,8 +82,9 @@ synthetic-only bases for v2.6 and v3:
 
 The total grid per track is then `2 bases × 4 LRs × 2 LoRA × 1 qf ×
 1 acc × 2 epoch-pass-modes = 32 trials`. The current LR grid is
-`[3e-7, 1e-6, 1e-5, 3e-5]` — the top rung `3e-5` ≈ the Real-TabPFN
-per-dataset median LR (~3.9e-5); `1e-4` is still excluded because it
+`[3e-7, 1e-6, 1e-5, 3e-5]` — the bottom rung `3e-7` matches
+Real-TabPFN, while `3e-5` approaches Rubachev's separate single-dataset
+finetuning median (~3.9e-5); `1e-4` is excluded because it
 diverged on the no-LoRA + `qf=0.20` setting (revisit now that
 `weight_decay=0.0`). See the hyperparameter-rationale table in the
 README for the full literature comparison.
@@ -112,7 +113,7 @@ below.
 | Sample limit (intended)               | ≤ 50 000                      | ≤ 1 000 000                              |
 | Feature limit (intended)              | ≤ 2 000                       | ≤ 2 000                                  |
 | Real-finetuned variant published?     | No (only synthetic `_default`)| No (only synthetic `_default`)           |
-| Model technical report                | Grinsztajn et al. 2026 (arXiv:2511.08667, same architecture family) | Not yet published (HF card only)         |
+| Model technical report                | Grinsztajn et al. 2026 (arXiv:2511.08667, same architecture family) | Grinsztajn et al. 2026, *TabPFN-3 Technical Report* |
 | Approximate checkpoint size           | ~43–51 MB                     | ~213–233 MB                              |
 | License                               | `tabpfn-2.6-license-v1.0`     | `tabpfn-3-license-v1.0`                  |
 

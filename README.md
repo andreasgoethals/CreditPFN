@@ -568,8 +568,8 @@ layers:
 
 * **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint
   (v3 / v2.6), learning rate (`{3e-7, 1e-6, 1e-5, 3e-5}` — spans from a
-  very conservative anti-forgetting floor up to `3e-5` ≈ Real-TabPFN's
-  per-dataset median LR (~3.9e-5); `1e-4` is still excluded because it
+  direct reproduction of Real-TabPFN's `3e-7` up to `3e-5`, near the
+  separate Rubachev single-dataset FT median (~3.9e-5); `1e-4` is excluded because it
   diverged on no-LoRA + qf 0.20 — revisit now that `weight_decay=0.0`),
   LoRA on/off, query_fraction, accumulate_grad_batches, and epoch
   pass-mode (`one_sample` / `full_pass`). Anything genuinely unknown in
@@ -584,13 +584,13 @@ layers:
   `FinetunedTabPFNClassifier` / `FinetunedTabPFNRegressor` defaults).
   Follow TabPFN's defaults where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  per-version: **20 000 for v3, 9 000 for v2.6** — sized for the B200's
-  192 GiB to chase Real-TabPFN's "more context → bigger gains"; plus an
+  PD/two-member caps: **26 000 for v3, 11 000 for v2.6**; LGD's eight
+  members scale these to 6 500 / 2 750 — sized from a B200 fwd+bwd probe
+  while chasing Real-TabPFN's "more context → bigger gains"; plus an
   optional v3-only `max_cells_per_epoch` cell budget). `weight_decay` is
-  **0.0** (matching the Real-TabPFN reference runs and the official
-  FinetunedTabPFN examples); anti-forgetting is handled by the optional
-  L2-SP anchor (`l2sp_lambda`, our deliberate addition for the
-  multi-dataset corpus setting), not by decay-to-origin.
+  **0.0** (matching Rubachev's study and the official wrappers; Garg et al.
+  do not report this value); anti-forgetting uses Real-TabPFN's L2-SP anchor
+  (`l2sp_lambda=0.003`), not decay-to-origin.
 * **Hardcoded in code** — optimizer family (AdamW), betas
   ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
   Never change between runs.
@@ -703,10 +703,13 @@ without loading the model weights.
   early-stopping signal becomes pure noise. We use fixed-epoch
   training and pick between hyperparameter settings *post hoc* on
   the test set in the eval stage.
-* **Per-epoch monitor eval** — at the end of every epoch the loop
+* **Fixed-sample monitor eval** — at baseline, the first/final epoch, and
+  every `train.epoch_eval_every` epochs, the loop
   scores the model on a small subsample of each train- and
   test-dataset (ROC-AUC for PD, RMSE for LGD, at
-  `train.epoch_eval_subsample_samples = 2000` rows). Cheap but enough to
+  `train.epoch_eval_subsample_samples = 2000` rows). The exact sampled rows
+  and context/query split stay fixed across the learning curve; changing them
+  would confound model improvement with sampling noise. Cheap but enough to
   see whether the model is still improving. Set it to `0` to disable the
   monitor entirely (divergence detection then ignores the metric signal).
 * **Up-front debug banner** — before the very first forward pass the loop
@@ -725,11 +728,10 @@ without loading the model weights.
 * **L2-SP anti-forgetting penalty (optional)** — `optimizer.l2sp_lambda`
   adds `0.5·λ·‖w − w₀‖²` to the loss, penalising drift of the weights
   away from the **synthetic-prior start `w₀`** (not toward zero, which is
-  what `weight_decay` does). This is **our own addition** for the
-  multi-dataset corpus setting — it is *not* part of the Real-TabPFN
-  recipe (their runs use no L2-SP, no scheduler, and `weight_decay = 0.0`);
-  on our tiny corpus it protects the pretrained prior's calibration against
-  catastrophic forgetting. It is **on by default for full-FT trials** at
+  what `weight_decay` does). This is the regularizer used by Garg et al.'s
+  Real-TabPFN corpus-level continued pretraining, with the same `λ=0.003`;
+  it is not part of Rubachev et al.'s separate single-dataset finetuning
+  study. It is **on by default for full-FT trials** at
   `λ = 0.003` (set `optimizer.l2sp_lambda: 0.0` to disable) and is
   **orthogonal to the LoRA axis but full-FT-only** — with LoRA the base
   weights are frozen and cannot drift, so L2-SP is inert and silently
@@ -741,32 +743,32 @@ without loading the model weights.
 
 ### Hyperparameter rationale vs. the literature
 
-Every training knob is anchored to a published reference — either the
-**Real-TabPFN** paper (Rubachev et al., *On Finetuning Tabular Foundation
-Models*, arXiv:2507.03971; 342 finetune runs, all on A100-80GB) or the
-**official `FinetunedTabPFN*` wrappers** (Prior Labs). Where we diverge it
-is deliberate and noted as **OURS**.
+Every training knob is compared against three distinct references:
+**Real-TabPFN** (Garg et al., corpus-level continued pretraining),
+**On Finetuning Tabular Foundation Models** (Rubachev et al., 342
+single-dataset FT runs), and the official `FinetunedTabPFN*` wrappers.
+They are not the same study or code release.
 
 | Knob | CreditPFN | Reference | Why |
 |------|-----------|-----------|-----|
-| Optimizer | AdamW, β=(0.9, 0.999) | AdamW (all 342 RT runs) | match |
-| `weight_decay` | **0.0** | 0.0 (every RT run + wrappers) | AdamW decay pulls weights → origin, which fights staying near the synthetic prior; we let L2-SP do anti-forgetting instead |
-| LR grid | **{3e-7, 1e-6, 1e-5, 3e-5}** | RT tunes per-dataset 5e-6–5e-4 (median ≈ 3.9e-5); wrappers 2e-5 (clf) / 1e-5 (reg) | `3e-5` reaches the references' centre; the lower rungs probe whether smaller steps suffice for the *corpus* setting (continued pretraining on many datasets, not RT's single-dataset finetune). `1e-4` excluded (diverged on no-LoRA+qf0.20) |
-| Schedule | linear-warmup → cosine, warmup 0.10 | RT: **constant LR, no warmup** | **OURS** — standard for our fixed-epoch budget; consider a `constant` A/B to reproduce RT exactly |
-| Epochs / stopping | fixed 50 epochs + divergence-abort | RT: `n_epochs=-1`, early-stop patience 16, 10 steps/"epoch" | **OURS** — early stopping needs a val set; our ~5–8 test datasets are too few for a trustworthy val signal, so we fix epochs and compare post-hoc |
+| Optimizer | AdamW, β=(0.9, 0.999) | Garg: AdamW; Rubachev/wrappers: AdamW | match |
+| `weight_decay` | **0.0** | Garg: not reported; Rubachev + wrappers: 0.0 | avoids stacking decay-to-origin on L2-SP; do not claim this reproduces an unreported Garg setting |
+| LR grid | **{3e-7, 1e-6, 1e-5, 3e-5}** | Garg: fixed **3e-7**; Rubachev: tuned 5e-6–5e-4 (median ≈3.9e-5); wrappers: 2e-5 clf / 1e-5 reg | lowest rung reproduces Garg; upper rungs span transfer to newer bases and Rubachev's FT range |
+| Schedule | linear-warmup → cosine, warmup 0.10 | Garg: linear warmup → cosine; Rubachev: constant LR | matches Garg; differs from Rubachev |
+| Training budget | fixed 50 corpus epochs + divergence-abort | Garg: 20 000 steps; Rubachev: early-stop patience 16, eval every 10 steps | **OURS** — dataset-balanced epochs/full-pass ablation replace Garg's fixed step budget; no validation bucket is held out |
 | `n_estimators_finetune` | **pd 2 / lgd 8** | wrapper defaults: clf 2, reg 8 | match (per-track) |
 | Loss | CE (PD) / bar-distribution NLL (LGD) | same | match — what TabPFN was pretrained with |
-| query_fraction | 0.20 (80 % context / 20 % query) | TabPFN default; RT uses an absolute `seq_len_pred` block | match in spirit |
-| Context size (`max_rows_per_epoch`) | **v3 20 000 / v2.6 9 000** | wrapper reg uses `n_finetune_ctx_plus_query=20 000`; RT: "more context → bigger gains" | sized for the B200's 192 GiB (2.4× H100); chases the "more context" finding |
-| L2-SP anchor | λ=0.003, full-FT only | **not in RT** (RT uses none) | **OURS** — anti-forgetting for the multi-dataset corpus; treat λ as tunable, include 0.0 as a baseline |
-| LoRA | swept on/off (r=8, α=16) | exists in RT code, **not used** in their experiments | **OURS** — parameter-efficient comparison point |
-| Preprocessing | TabPFN `TabPFNEnsemblePreprocessor` (ordinal cats, quantile/standardize numerics) | RT: `noisy-quantile` num + `ordinal` cat | match (we call the package's own pipeline) |
+| query_fraction | 0.20 (80 % context / 20 % query) | Garg: 0.40 (60/40); package default: 0.20 | deliberate deviation to package default |
+| Context size (`max_rows_per_epoch`) | PD: **v3 26 000 / v2.6 11 000**; LGD scaled to 6 500 / 2 750 for eight members | Garg: up to 20 000 rows and 400 000 cells; larger context helped | B200-measured member-aware caps, not a paper default |
+| L2-SP anchor | λ=0.003, full-FT only | Garg: **λ=0.003** | matches Garg for full FT; inert when LoRA freezes the base |
+| LoRA | swept on/off (r=8, α=16) | Rubachev studies LoRA; Garg reports full-model CPT only | parameter-efficient comparison point |
+| Preprocessing | package ensemble preprocessing | Garg: ordinal categoricals + noisy-quantile numerics | analogous, not byte-for-byte identical |
 
-The headline divergence from Real-TabPFN is **the setting itself**: RT
-finetunes on *one dataset at a time*; CreditPFN does *continued
-pretraining on a corpus* of real credit datasets (one step per dataset
-per epoch). L2-SP, the LR floor, and the fixed-epoch schedule are all
-adaptations to that corpus setting and the small held-out set.
+Like Real-TabPFN, CreditPFN performs corpus-level continued pretraining:
+each batch contains one table, but tables are repeatedly sampled from a
+multi-dataset corpus. CreditPFN changes the domain, adds an LGD track and
+LoRA/pass-mode ablations, uses newer v2.6/v3 bases, and replaces Garg's fixed
+20 000-step budget with 50 dataset-balanced epochs.
 
 ### Optimization objective — why CE / NLL, not AUC
 

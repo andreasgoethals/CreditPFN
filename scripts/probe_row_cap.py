@@ -2,15 +2,14 @@
 """Row-cap capacity probe: measure TRAINING peak GPU memory + step time as the
 in-context row count grows, for both TabPFN bases.
 
-WHY (2026-07-04): the Jul-3 run measured tiny training peaks on the 192 GiB
-B200 (v3: 0.93 GB @ 20k rows; v2.6: 0.24 GB @ 9k rows), so the row caps in
-``config/data.yaml`` were raised (v3 → 100k, v2.6 → 30k) based on the papers'
-scaling laws — v3 ≈ linear in cells (row-chunked attention), v2.6 ≈ quadratic
-in rows (dual attention, O(r²·min(c,500))). This probe VERIFIES those
-projections empirically before a full sweep commits to them: it loads each
-base, runs a real forward+backward (the training objective) on synthetic data
-with the corpus feature width, and reports peak memory + step time per row
-count.
+WHY (2026-07-04): an earlier monitor-based measurement reported implausibly
+tiny peaks because it was not measuring the training step. This probe instead
+loads each base and runs a real forward+backward objective on synthetic data
+with the corpus feature width. The 2026-07-08 B200 results were approximately
+linear per member (v3 ≈2.5 GB and v2.6 ≈5.7 GB per 1 000 rows) and established
+the current two-member caps of 26k / 11k; the training loop scales them down
+for larger ensembles. Re-run this probe before changing caps, feature width,
+hardware, or ensemble size.
 
 Run on a GPU node (see scripts/slurm/probe_row_cap.slurm), ~10-20 min:
 

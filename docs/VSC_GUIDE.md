@@ -373,17 +373,16 @@ tunable:
 ```
 
 Default = **2 bases × 4 LRs × 2 LoRA × 1 qf × 1 acc × 2 epoch-pass-modes
-= 32 trials per track**. (The grid now reaches `3e-5` ≈ Real-TabPFN's
-per-dataset median LR; `1e-4` is still excluded because it diverged on
+= 32 trials per track**. (The `3e-7` rung matches Real-TabPFN; `3e-5`
+approaches Rubachev's separate single-dataset FT median. `1e-4` is excluded because it diverged on
 no-LoRA + qf=0.20 — revisit now that `weight_decay=0.0`; see the comment
 in [`config/train.yaml`](../config/train.yaml) and the hyperparameter
 rationale in the README. v2.5 was dropped on 2026-05-21 — see
 `docs/CHECKPOINTS.md`. Regression uses `n_estimators_finetune: 8`,
 classification `2`, matching the official wrappers.) One
-SLURM array task per trial. Each parent dataset contributes exactly
-one training step per epoch (no chunking — see the 2026-05-20
-refactor and the `ProcessedDatasetLoader` in
-`src/train/dataloader.py`). Recompute the current trial count any
+SLURM array task per trial. In `one_sample` mode each dataset contributes
+one step per epoch; in `full_pass`, it contributes
+`ceil(n_rows / max_rows_per_epoch)` size-proportional steps. Recompute the current trial count any
 time with:
 
 ```bash
@@ -491,22 +490,21 @@ delete its directory under `output/results/<TRACK>/` and re-submit.
 The easy path — `run_full_pipeline.sh` (or `STAGES=eval bash …`) — splits
 each track's task range into two arrays and launches one on **`gpu_h100`**
 (20 GPUs) and one on **`gpu_a100`** (16 GPUs), so eval drains across all 36
-wICE GPUs at once. The split is contiguous (no overlap), and even if it
-weren't, the skip-existing guard makes concurrent arrays safe. Control it
+wICE GPUs at once. The split is **stride-interleaved** (pool 0 gets
+`0,2,4,…`; pool 1 gets `1,3,5,…`) with no overlap. Control it
 with the `EVAL_PARTITIONS` knob (default `"gpu_h100 gpu_a100"`; set to
 `"gpu_h100"` for a single pool).
 
-To submit by hand instead — e.g. the full range on each pool, letting the
-idempotent skip-existing logic cooperatively drain the work:
+To submit by hand with the same non-overlapping two-pool stride:
 
 ```bash
 N_PD=$(python scripts/eval_pipeline.py --list-tasks track=pd)
-sbatch --array=0-$((N_PD - 1))%32 --partition=gpu_h100 scripts/slurm/eval_pd.slurm
-sbatch --array=0-$((N_PD - 1))%32 --partition=gpu_a100 scripts/slurm/eval_pd.slurm   # 2nd array
+sbatch --array=0-$((N_PD - 1)):2%32 --partition=gpu_h100 scripts/slurm/eval_pd.slurm
+sbatch --array=1-$((N_PD - 1)):2%32 --partition=gpu_a100 scripts/slurm/eval_pd.slurm
 
 N_LGD=$(python scripts/eval_pipeline.py --list-tasks track=lgd)
-sbatch --array=0-$((N_LGD - 1))%32 --partition=gpu_h100 scripts/slurm/eval_lgd.slurm
-sbatch --array=0-$((N_LGD - 1))%32 --partition=gpu_a100 scripts/slurm/eval_lgd.slurm  # 2nd array
+sbatch --array=0-$((N_LGD - 1)):2%32 --partition=gpu_h100 scripts/slurm/eval_lgd.slurm
+sbatch --array=1-$((N_LGD - 1)):2%32 --partition=gpu_a100 scripts/slurm/eval_lgd.slurm
 ```
 
 Already-scored pairs exit zero in seconds; surplus array tasks (if the
@@ -569,8 +567,9 @@ Row schema (classification): `roc_auc, log_loss, pr_auc, brier_score,
 ece, optimal_threshold, f1, accuracy, precision, recall, specificity,
 balanced_accuracy, mcc, cohen_kappa`. Row schema (regression): `rmse,
 mae, median_ae, mape, r2, explained_variance, pearson_r, spearman_r,
-neg_nll` (`neg_nll` is currently always NaN — the TabPFN wrapper does
-not expose bar-distribution NLL). The threshold-tuned classification
+neg_nll`. `neg_nll` is populated for TabPFN regressors through their
+bar-distribution density; models without a predictive density report NaN.
+The threshold-tuned classification
 metrics (everything from `f1` onward) use the max-F1 threshold chosen on
 the inner-validation split and are NaN for multiclass.
 

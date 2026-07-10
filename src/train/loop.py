@@ -101,6 +101,9 @@ class EpochRecord:
     secondary_test_metric:  float = float("nan")
     secondary_metric_name:  str   = ""
     epoch_time_sec: float = 0.0
+    optimizer_steps: int = 0
+    amp_skipped_steps: int = 0
+    data_skipped_steps: int = 0
 
 
 @dataclass
@@ -326,6 +329,46 @@ def _resolve_device(cfg) -> str:
     return pref
 
 
+def _resolve_amp_dtype(cfg, device: str) -> tuple[bool, torch.dtype | None]:
+    """Resolve whether AMP is active and which CUDA autocast dtype to use.
+
+    BF16 is preferred when supported: unlike FP16 it retains FP32's exponent
+    range, so large TabPFN regression gradients do not repeatedly overflow and
+    force ``GradScaler`` to discard optimizer steps.  The tensor width remains
+    two bytes, so the B200/H100 memory budget is unchanged.
+    """
+    enabled = bool(cfg.train.amp) and device == "cuda"
+    if not enabled:
+        return False, None
+
+    requested = str(getattr(cfg.train, "amp_dtype", "auto")).strip().lower()
+    aliases = {
+        "bf16": "bfloat16",
+        "bfloat16": "bfloat16",
+        "fp16": "float16",
+        "float16": "float16",
+        "auto": "auto",
+    }
+    if requested not in aliases:
+        raise ValueError(
+            "train.amp_dtype must be one of auto, bfloat16/bf16, "
+            f"or float16/fp16; got {requested!r}"
+        )
+    requested = aliases[requested]
+    bf16_supported = bool(
+        getattr(torch.cuda, "is_bf16_supported", lambda: False)()
+    )
+    if requested == "auto":
+        return True, torch.bfloat16 if bf16_supported else torch.float16
+    if requested == "bfloat16" and not bf16_supported:
+        LOGGER.warning(
+            "train.amp_dtype=bfloat16 requested but this CUDA device does not "
+            "report BF16 support; falling back to float16 + GradScaler."
+        )
+        return True, torch.float16
+    return True, torch.bfloat16 if requested == "bfloat16" else torch.float16
+
+
 def _seed_everything(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -365,7 +408,7 @@ def _log_debug_banner(
     learning_rate, use_lora, query_fraction, accumulate, pass_mode,
     n_estimators_finetune, max_rows_per_epoch, max_cells_per_epoch,
     epochs, total_steps, steps_per_epoch, weight_decay, l2sp_lambda,
-    warmup_fraction, seed, n_train_ds, n_test_ds, use_amp,
+    warmup_fraction, seed, n_train_ds, n_test_ds, use_amp, amp_dtype,
 ) -> None:
     """Emit a single, comprehensive DEBUG banner at training start.
 
@@ -411,6 +454,7 @@ def _log_debug_banner(
         "[hyperparams] "
         f"epochs={epochs} steps/epoch={steps_per_epoch} total_steps={total_steps} "
         f"n_estimators_finetune={n_estimators_finetune} amp={use_amp} "
+        f"amp_dtype={amp_dtype} "
         f"max_rows_per_epoch={max_rows_per_epoch} max_cells_per_epoch={max_cells_per_epoch} "
         f"weight_decay={weight_decay:g} l2sp_lambda={l2sp_lambda:g} "
         f"warmup_fraction={warmup_fraction:g}",
@@ -654,7 +698,13 @@ def _regression_loss(
     pred_logits: torch.Tensor, targets: torch.Tensor, *, criterion,
 ) -> torch.Tensor:
     """Bar-distribution NLL on the z-normalised targets."""
-    return criterion(logits=pred_logits, y=targets[:, :, 0]).mean()
+    # ``FullSupportBarDistribution`` calls ``torch.searchsorted`` on ``y``.
+    # A strided slice is non-contiguous and makes PyTorch allocate/copy it on
+    # every call (and emit a once-per-process performance warning).
+    return criterion(
+        logits=pred_logits,
+        y=targets[:, :, 0].contiguous(),
+    ).mean()
 
 
 def _ensemble_step_loss(
@@ -746,7 +796,7 @@ def _ensemble_step_loss(
     # the batch dim as B*E and Q on axis 0.
     return criterion(
         logits=logits_BQL.permute(1, 0, 2),     # (Q, B*E, L)
-        y=targets_BQ_reg.transpose(0, 1),       # (Q, B*E)
+        y=targets_BQ_reg.transpose(0, 1).contiguous(),  # (Q, B*E)
     ).mean()
 
 
@@ -1415,8 +1465,14 @@ def train_one_config(
         model, cfg, total_steps=total_steps,
     )
 
-    use_amp = bool(cfg.train.amp) and device == "cuda"
-    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+    use_amp, amp_dtype = _resolve_amp_dtype(cfg, device)
+    # Dynamic loss scaling is useful for FP16 but unnecessary for BF16, whose
+    # exponent range matches FP32. Keeping it disabled for BF16 also makes an
+    # optimizer step's success/failure unambiguous.
+    scaler = torch.amp.GradScaler(
+        "cuda",
+        enabled=bool(use_amp and amp_dtype == torch.float16),
+    )
 
     # ---- 4) checkpoint name + path ---------------------------------------- #
     # resolve_writable_staging_path PROBES writability here — before the
@@ -1463,9 +1519,13 @@ def train_one_config(
         warmup_fraction=float(cfg.scheduler.warmup_fraction),
         seed=int(cfg.seed), n_train_ds=len(split.train),
         n_test_ds=len(split.test), use_amp=bool(use_amp),
+        amp_dtype=(
+            str(amp_dtype).removeprefix("torch.")
+            if amp_dtype is not None else "disabled"
+        ),
     )
     LOGGER.info(
-        "Starting %d epochs | %d train datasets/epoch | accumulate=%d | "
+        "Starting %d epochs | %d train steps/epoch | accumulate=%d | "
         "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s | "
         "max_rows_per_epoch=%d | query_fraction=%.2f",
         epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
@@ -1494,6 +1554,15 @@ def train_one_config(
     # the divergence detector's metric window must only look at these, else
     # the by-design NaN metrics of skipped epochs would fake a collapse.
     monitored_metrics: list[tuple[float, float]] = []
+
+    # Hold the monitoring sample and context/query split FIXED across the
+    # unmodified baseline and every monitored epoch.  The previous code added
+    # ``10_000 * (epoch + 1)`` to these seeds, so each point used different
+    # rows.  On only 2,000 rows per dataset that sampling noise created apparent
+    # AUC/RMSE "lift" which disappeared in the full K-fold evaluation.  A
+    # learning curve must change only the checkpoint, not its evaluation set.
+    monitor_train_seed = int(cfg.seed) + 10_000
+    monitor_test_seed = int(cfg.seed) + 20_000
 
     # Picks the per-track primary + secondary metric names. For PD we
     # add brier_score as the calibration-collapse early-warning metric
@@ -1557,10 +1626,10 @@ def train_one_config(
             else save_path  # ignored on the cheap path; the live model is used
         )
         baseline_train_d = _do_eval(
-            baseline_ckpt, split.train, seed=int(cfg.seed) + 10_000 * 0,
+            baseline_ckpt, split.train, seed=monitor_train_seed,
         )
         baseline_test_d = _do_eval(
-            baseline_ckpt, split.test, seed=int(cfg.seed) + 20_000 * 0,
+            baseline_ckpt, split.test, seed=monitor_test_seed,
         )
         baseline_train_p = float(baseline_train_d.get(track_primary_metric, float("nan")))
         baseline_test_p  = float(baseline_test_d.get(track_primary_metric, float("nan")))
@@ -1630,6 +1699,8 @@ def train_one_config(
         epoch_clipped_count = 0
         epoch_step_losses: list[tuple[str, float]] = []   # (dataset_id, loss)
         epoch_skipped_steps = 0
+        epoch_optimizer_steps = 0
+        epoch_amp_skipped_steps = 0
         # Timing + regularization accumulators — let a single shared log line
         # answer the two recurring questions after a run: (1) WHERE is the
         # epoch's wall-clock going — forward/backward compute, data loading
@@ -1659,7 +1730,9 @@ def train_one_config(
                 )
                 epoch_skipped_steps += 1
                 continue
-            with torch.amp.autocast("cuda", enabled=use_amp):
+            with torch.amp.autocast(
+                "cuda", enabled=use_amp, dtype=amp_dtype,
+            ):
                 # Branch on batch type. The new TabPFNEnsembleBatch (path
                 # taken when `inference_config` is non-None, i.e. every
                 # real training run) carries N preprocessed views; we
@@ -1738,12 +1811,14 @@ def train_one_config(
                 # otherwise the schedule drifts ahead of the real
                 # optimization trajectory (real bug found in pipeline
                 # review 2026-05-21).
+                epoch_optimizer_steps += 1
                 _ = scaler.step(optimizer)
                 stepped = not _amp_step_was_skipped(scaler)
                 scaler.update()
                 if stepped:
                     scheduler.step()
                 else:
+                    epoch_amp_skipped_steps += 1
                     LOGGER.warning(
                         "epoch=%d step=%d: AMP scaler skipped optimizer step "
                         "(inf/NaN grads). Scheduler NOT advanced this step.",
@@ -1764,20 +1839,29 @@ def train_one_config(
             if device == "cuda" and torch.cuda.is_available():
                 gpu_mb = f" gpu_mem_alloc={torch.cuda.memory_allocated()/1e9:.2f}GB"
 
-            # Promoted from DEBUG to INFO on 2026-05-21 — without this
-            # the user can't see per-dataset gradient behaviour and the
-            # diagnosis of loss explosions is blind. One line per step
-            # at 12-17 steps per epoch and 100 epochs gives ~1500 lines
-            # per trial which is still very tractable.
+            # Keep every step visible for short one-sample epochs.  Full-pass
+            # epochs can exceed 200 steps, so sample their progress while the
+            # end-of-epoch debug line retains the complete min/max/std and
+            # worst-dataset diagnostics. This cuts ~9,000 low-signal lines per
+            # large PD trial without hiding failures or outliers.
             grad_str = (
                 f" grad_norm={pre_clip_norm:.3f}" if pre_clip_norm is not None
                 else " grad_norm=    -    "
             )
-            LOGGER.info(
-                "  step=%3d/%d ds=%-22s loss=%.4f lr=%.2e%s %.2fs/step%s",
-                step, len(train_loader), batch.dataset_id,
-                loss_val, cur_lr, grad_str, step_dt, gpu_mb,
+            step_log_interval = max(
+                1, int(getattr(cfg.train, "step_log_interval", 10)),
             )
+            n_epoch_steps = len(train_loader)
+            if (
+                n_epoch_steps <= 20
+                or step in (1, n_epoch_steps)
+                or step % step_log_interval == 0
+            ):
+                LOGGER.info(
+                    "  step=%3d/%d ds=%-22s loss=%.4f lr=%.2e%s %.2fs/step%s",
+                    step, n_epoch_steps, batch.dataset_id,
+                    loss_val, cur_lr, grad_str, step_dt, gpu_mb,
+                )
 
         # Flush any pending gradients from a partial accumulation window
         # at the end of the epoch — otherwise the trailing micro-batches'
@@ -1796,12 +1880,14 @@ def train_one_config(
             epoch_grad_norms.append(pre_clip_flush)
             if grad_clip is not None and pre_clip_flush > grad_clip:
                 epoch_clipped_count += 1
+            epoch_optimizer_steps += 1
             _ = scaler.step(optimizer)
             stepped_flush = not _amp_step_was_skipped(scaler)
             scaler.update()
             if stepped_flush:
                 scheduler.step()
             else:
+                epoch_amp_skipped_steps += 1
                 LOGGER.warning(
                     "epoch=%d (flush): AMP scaler skipped optimizer step "
                     "(inf/NaN grads). Scheduler NOT advanced.", epoch,
@@ -1856,11 +1942,11 @@ def train_one_config(
 
             train_metrics = _do_eval(
                 eval_ckpt_path, split.train,
-                seed=int(cfg.seed) + 10_000 * (epoch + 1),
+                seed=monitor_train_seed,
             )
             test_metrics = _do_eval(
                 eval_ckpt_path, split.test,
-                seed=int(cfg.seed) + 20_000 * (epoch + 1),
+                seed=monitor_test_seed,
             )
             train_metric = float(train_metrics.get(metric_name, float("nan")))
             test_metric  = float(test_metrics.get(metric_name,  float("nan")))
@@ -1938,10 +2024,12 @@ def train_one_config(
         LOGGER.info(
             "  ↳ debug: grad_norm mean=%.3f max=%.3f clipped_frac=%.2f  "
             "per_step_loss min=%.4f max=%.4f std=%.4f  "
-            "worst_ds=%s (loss=%.4f)  skipped_steps=%d%s%s",
+            "worst_ds=%s (loss=%.4f)  data_skips=%d amp_skips=%d/%d%s%s",
             gnorm_mean, gnorm_max, clipped_frac,
             loss_min, loss_max, loss_std,
-            worst_ds, worst_loss, epoch_skipped_steps, l2sp_str, gpu_peak,
+            worst_ds, worst_loss, epoch_skipped_steps,
+            epoch_amp_skipped_steps, epoch_optimizer_steps,
+            l2sp_str, gpu_peak,
         )
         # Timing line — kept separate so it's easy to grep across a run to see
         # whether compute, data I/O, or the monitoring eval is the bottleneck.
@@ -1964,6 +2052,9 @@ def train_one_config(
             secondary_test_metric=secondary_test,
             secondary_metric_name=secondary_metric_name,
             epoch_time_sec=epoch_dt,
+            optimizer_steps=epoch_optimizer_steps,
+            amp_skipped_steps=epoch_amp_skipped_steps,
+            data_skipped_steps=epoch_skipped_steps,
         )
         history.append(record)
         if on_epoch_end is not None:
@@ -2006,7 +2097,7 @@ def train_one_config(
         # checkpoint (so the user can inspect what went wrong). The
         # caller writes a status="DIVERGED" row to the manifest.
         diverge_patience = int(getattr(cfg.train, "divergence_patience", 5))
-        recent = history[-diverge_patience:]
+        recent = [r for r in history if r.epoch >= 0][-diverge_patience:]
         if len(recent) == diverge_patience:
             losses = [r.train_loss for r in recent if not math.isnan(r.train_loss)]
             # Metric-based collapse signals must only look at epochs where the
@@ -2048,11 +2139,18 @@ def train_one_config(
                     for t, tr in zip(test_metrics_recent, train_metrics_recent)
                 )
             )
-            if loss_constant or auc_random or metric_nan:
+            attempted_steps = sum(r.optimizer_steps for r in recent)
+            amp_skips = sum(r.amp_skipped_steps for r in recent)
+            amp_skip_storm = (
+                attempted_steps > 0
+                and amp_skips / attempted_steps > 0.50
+            )
+            if loss_constant or auc_random or metric_nan or amp_skip_storm:
                 reason = (
                     "loss_const" if loss_constant
                     else "auc_random" if auc_random
-                    else "metric_nan"
+                    else "metric_nan" if metric_nan
+                    else "amp_skip_storm"
                 )
                 LOGGER.error(
                     "DIVERGED at epoch=%d after %d-epoch patience window "
@@ -2124,6 +2222,10 @@ def train_one_config(
             "accumulate_grad_batches": int(accumulate),
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
+            "amp_dtype":           (
+                str(amp_dtype).removeprefix("torch.")
+                if use_amp and amp_dtype is not None else "disabled"
+            ),
             "max_rows_per_epoch":  max_rows_per_epoch,
             "max_cells_per_epoch": max_cells_per_epoch,
             "query_fraction":      query_fraction,

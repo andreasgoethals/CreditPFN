@@ -289,6 +289,7 @@ Thumbs.db
 
 # Specifically ignore the problematic large file
 repositories/TabPFN Wide.txt
-# Claude Code local project memory — private session context (probe results,
-# mistakes log, do-not-undo notes). Auto-loaded by Claude Code; never committed.
-CLAUDE.local.md
+# Shared Claude/Codex local project memory (probe results, mistakes log,
+# do-not-undo notes). Loaded through the tracked CLAUDE.md / AGENTS.md files;
+# never committed.
+AGENTS_MEMORY.md

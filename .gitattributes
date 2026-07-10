@@ -1,0 +1,21 @@
+# Line-ending normalization.
+# Shell and SLURM scripts MUST be LF in the repo AND the working tree — a stray
+# CRLF makes bash fail on Linux with "$'\r': command not found" / "bad
+# interpreter: /bin/bash^M". (Codex's 2026-07-10 edits introduced CRLF into the
+# .sh files on a Windows checkout; this guarantees they normalize to LF.)
+* text=auto
+*.sh    text eol=lf
+*.slurm text eol=lf
+*.py    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+
+# Binary artefacts — never touch.
+*.ckpt  binary
+*.pdf   binary
+*.pkl   binary
+*.pickle binary
+*.joblib binary
+*.onnx  binary
+*.png   binary
+*.jpg   binary

@@ -45,6 +45,7 @@ from __future__ import annotations
 import datetime as _dt
 import logging
 import os
+import warnings
 from pathlib import Path
 from typing import Iterable
 
@@ -171,6 +172,36 @@ _LEVEL_COLORS = {
     "CRITICAL": _ANSI_RED + _ANSI_BOLD,
 }
 
+_LEVEL_LABELS = {
+    "DEBUG": "DEBUG",
+    "INFO": "INFO ",
+    "WARNING": "WARN ",
+    "ERROR": "ERROR",
+    "CRITICAL": "CRIT ",
+}
+
+
+def configure_warning_filters() -> None:
+    """Hide one known, non-actionable upstream scikit-learn warning.
+
+    TabPFN creates ``ColumnTransformer`` instances inside its ensemble
+    preprocessor. scikit-learn < 1.7 emits the same multi-line
+    ``force_int_remainder_cols`` ``FutureWarning`` every time one is fitted.
+    A full sweep produced 97,877 copies and buried the real diagnostics.
+    CreditPFN never inspects the affected ``transformers_`` representation,
+    and the construction site lives in the dependency, so filter only this
+    exact warning class/message and leave every other warning visible.
+    """
+    warnings.filterwarnings(
+        "ignore",
+        category=FutureWarning,
+        message=(
+            r"(?s)^\s*The format of the columns of the 'remainder' transformer "
+            r"in ColumnTransformer\.transformers_ will change.*"
+            r"force_int_remainder_cols=False.*$"
+        ),
+    )
+
 
 class _StructuredFormatter(logging.Formatter):
     """Compact, aligned, optionally-colored log line.
@@ -209,7 +240,8 @@ class _StructuredFormatter(logging.Formatter):
             name = name.removeprefix("src.data.")
         # Pad / truncate to a fixed width so columns align.
         name = (name[:18]).ljust(18)
-        lvl_short = lvl[:5].ljust(5)
+        # ``WARNING[:5]`` used to render as the confusing ``[WARNI]``.
+        lvl_short = _LEVEL_LABELS.get(lvl, lvl[:5].ljust(5))
         msg = record.getMessage()
 
         if self.use_color:
@@ -267,6 +299,8 @@ def setup_logging(
     which packs ~25 fewer characters per line than the previous
     fully-qualified-module-name format → wider room for the message.
     """
+    configure_warning_filters()
+
     root = logging.getLogger()
     root.setLevel(level)
 

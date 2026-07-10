@@ -183,6 +183,26 @@ def load_trained_handles(
     df = df[df["status"].isin(["OK", "SKIP"])]
     df = df[df["final_ckpt_path"].notna() & (df["final_ckpt_path"] != "")]
 
+    # Manifests are append-only across resumptions. A completed task can
+    # therefore appear first as OK and later as SKIP when its checkpoint is
+    # detected on disk. Without deduplication the same scientific model enters
+    # the roster twice (and can even appear once under staging and once under
+    # the $VSC_DATA fallback). Checkpoint basenames encode the full trial
+    # identity, so retain only the most recent row for each basename.
+    if not df.empty:
+        df = df.copy()
+        df["_checkpoint_basename"] = df["final_ckpt_path"].map(
+            lambda p: Path(str(p)).name,
+        )
+        n_before = len(df)
+        df = df.drop_duplicates(subset=["_checkpoint_basename"], keep="last")
+        if len(df) != n_before:
+            LOGGER.info(
+                "Deduplicated %d repeated training-manifest row(s); "
+                "using the latest row per checkpoint basename.",
+                n_before - len(df),
+            )
+
     out: list[tuple[ModelHandle, TabPFNTrained]] = []
     task_type = "classification" if track == "pd" else "regression"
     for _, row in df.iterrows():
@@ -381,6 +401,12 @@ def _best_f1_threshold(
     score). The old "np.unique over all probas" approach was O(n²) on
     large val sets — Gemini's #3 bottleneck.
     """
+    # A one-class validation fold has no meaningful ranking threshold and
+    # sklearn warns for the all-negative case. Use the documented neutral
+    # fallback directly; the outer metric code already handles one-class folds.
+    if np.unique(np.asarray(y_val)).size < 2:
+        return 0.5
+
     from sklearn.metrics import precision_recall_curve
     precisions, recalls, thresholds = precision_recall_curve(
         y_val, proba_val_pos,

@@ -11,20 +11,18 @@
 #  COMPLETION alone — all 64 training tasks had FAILED, yet eval was released
 #  against an empty trained-model manifest, and the gate log contained just two
 #  lines for a 4.7-hour watch. This version:
-#    * logs EVERY poll (timestamp + raw remaining-count) so any misfire is
-#      diagnosable after the fact;
+#    * logs state changes plus a 10-minute heartbeat (rather than thousands of
+#      identical 30-second lines) so any misfire remains diagnosable;
 #    * requires 2 CONSECUTIVE empty-queue polls (guards transient empty reads);
-#    * after the queue drains, checks the per-track SUCCESS sentinels that
-#      train_{pd,lgd}.slurm write only when a trial actually SAVED — and
-#      says loudly whether eval is being released onto real checkpoints or
-#      onto a baselines-only roster.
-#  It still always exits 0 (eval's skip-existing logic is safe either way and
-#  the timeout is the backstop) — but the log now tells the whole story.
+#    * after the queue drains, reports PER-TASK success-sentinel counts. The
+#      generated submit script requires the full planned count before eval.
+#    * treats a watch timeout as failure instead of releasing eval while train
+#      tasks may still be running.
 #
 #  As of 2026-07-08 it also SUBMITS the eval arrays once training finishes (arg
 #  3 = a generated eval-submit script) — so eval is never queued on the GPUs
-#  while training runs, and is only submitted for tracks that actually saved a
-#  checkpoint (the script self-checks the train_ok_<track> sentinels).
+#  while training runs, and is only submitted for tracks whose complete array
+#  wrote train_ok_<track>_<index> sentinels.
 #
 #  Usage:  _wait_for_jobs.sh <comma-separated-mindwell-jobids> [max_polls] [eval_submit_script]
 #  Env:    CREDITPFN_OUTPUT_ROOT (for the .sentinels dir; default $VSC_DATA/CreditPFN)
@@ -38,19 +36,25 @@ OUT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 SENT_DIR="${OUT}/.sentinels"
 
 echo "$(date '+%F %T') eval-gate: watching Mindwell train jobs [${JIDS}] (max $((MAX * 30 / 3600)) h, poll=30s)"
-echo "$(date '+%F %T') eval-gate: success sentinels expected under ${SENT_DIR}/train_ok_{pd,lgd}"
+echo "$(date '+%F %T') eval-gate: per-task sentinels expected under ${SENT_DIR}/train_ok_{pd,lgd}_<index>"
 
 consecutive_empty=0
+last_remaining=""
+drained=0
 for i in $(seq 1 "${MAX}"); do
     out=$(squeue -M mindwell -h -o "%i %T" -j "${JIDS}" 2>&1)
     rc=$?
     if [ ${rc} -eq 0 ]; then
         remaining=$(printf '%s\n' "${out}" | grep -cE '^[0-9]' || true)
-        echo "$(date '+%F %T') eval-gate: poll ${i}  remaining=${remaining}  [$(printf '%s' "${out}" | grep -E '^[0-9]' | tr '\n' ';' | cut -c1-160)]"
+        if [ "${remaining}" != "${last_remaining}" ] || [ "${i}" -eq 1 ] || [ $((i % 20)) -eq 0 ]; then
+            echo "$(date '+%F %T') eval-gate: poll ${i}  remaining=${remaining}  [$(printf '%s' "${out}" | grep -E '^[0-9]' | tr '\n' ';' | cut -c1-160)]"
+        fi
+        last_remaining="${remaining}"
         if [ "${remaining}" -eq 0 ]; then
             consecutive_empty=$((consecutive_empty + 1))
             if [ "${consecutive_empty}" -ge 2 ]; then
                 echo "$(date '+%F %T') eval-gate: queue drained (2 consecutive empty polls) after $((i * 30)) s."
+                drained=1
                 break
             fi
         else
@@ -63,6 +67,11 @@ for i in $(seq 1 "${MAX}"); do
     fi
     sleep 30
 done
+
+if [ "${drained}" -ne 1 ]; then
+    echo "$(date '+%F %T') eval-gate: ERROR - timed out before the Mindwell queue drained; eval will NOT be submitted." >&2
+    exit 1
+fi
 
 # --- archive fallback checkpoints into PROJECT STAGING ------------------------
 # Trained checkpoints belong on project storage (persistent, big-file tier).
@@ -79,18 +88,26 @@ case "${STAGING_BASE}" in
     *)           STAGE="${STAGING_BASE}/CreditPFN" ;;
 esac
 FALLBACK_DIR="${OUT}/checkpoints/trained"
-if [ -d "${FALLBACK_DIR}" ] && [ -n "$(find "${FALLBACK_DIR}" -name '*.ckpt' -print -quit 2>/dev/null)" ]; then
-    n_ckpt=$(find "${FALLBACK_DIR}" -name '*.ckpt' | wc -l)
+if [ -d "${FALLBACK_DIR}" ] && [ -n "$(find "${FALLBACK_DIR}" -name '*.ckpt' ! -name '*.epoch_eval.ckpt' -print -quit 2>/dev/null)" ]; then
+    n_ckpt=$(find "${FALLBACK_DIR}" -name '*.ckpt' ! -name '*.epoch_eval.ckpt' | wc -l)
     echo "$(date '+%F %T') eval-gate: ${n_ckpt} checkpoint(s) found in the \$VSC_DATA fallback dir — archiving to staging ${STAGE}/checkpoints/trained/"
     if mkdir -p "${STAGE}/checkpoints/trained" 2>/dev/null; then
         if command -v rsync >/dev/null 2>&1; then
-            rsync -a "${FALLBACK_DIR}/" "${STAGE}/checkpoints/trained/" \
+            rsync -a --exclude='*.epoch_eval.ckpt' "${FALLBACK_DIR}/" "${STAGE}/checkpoints/trained/" \
                 && echo "$(date '+%F %T') eval-gate: archive to staging OK (rsync)." \
                 || echo "$(date '+%F %T') eval-gate: WARNING — rsync to staging failed; checkpoints remain only on \$VSC_DATA."
         else
-            cp -rn "${FALLBACK_DIR}/." "${STAGE}/checkpoints/trained/" \
-                && echo "$(date '+%F %T') eval-gate: archive to staging OK (cp)." \
-                || echo "$(date '+%F %T') eval-gate: WARNING — cp to staging failed; checkpoints remain only on \$VSC_DATA."
+            copy_rc=0
+            while IFS= read -r -d '' src; do
+                rel="${src#${FALLBACK_DIR}/}"
+                dst="${STAGE}/checkpoints/trained/${rel}"
+                mkdir -p "$(dirname "${dst}")" && cp -n "${src}" "${dst}" || copy_rc=1
+            done < <(find "${FALLBACK_DIR}" -type f \( \( -name '*.ckpt' ! -name '*.epoch_eval.ckpt' \) -o -name '*.ckpt.provenance.json' \) -print0)
+            if [ "${copy_rc}" -eq 0 ]; then
+                echo "$(date '+%F %T') eval-gate: archive to staging OK (cp)."
+            else
+                echo "$(date '+%F %T') eval-gate: WARNING - cp to staging failed; checkpoints remain only on \$VSC_DATA."
+            fi
         fi
     else
         echo "$(date '+%F %T') eval-gate: WARNING — cannot create ${STAGE}/checkpoints/trained even from wICE; checkpoints remain on \$VSC_DATA only."
@@ -100,31 +117,33 @@ else
 fi
 
 # --- success verification ----------------------------------------------------
-ok_pd=""; ok_lgd=""
-[ -f "${SENT_DIR}/train_ok_pd"  ] && ok_pd="yes"
-[ -f "${SENT_DIR}/train_ok_lgd" ] && ok_lgd="yes"
-echo "$(date '+%F %T') eval-gate: success sentinels — pd=${ok_pd:-NO} lgd=${ok_lgd:-NO}"
+n_ok_pd=$(find "${SENT_DIR}" -maxdepth 1 -type f -name 'train_ok_pd_*' 2>/dev/null | wc -l)
+n_ok_lgd=$(find "${SENT_DIR}" -maxdepth 1 -type f -name 'train_ok_lgd_*' 2>/dev/null | wc -l)
+echo "$(date '+%F %T') eval-gate: successful array tasks - pd=${n_ok_pd} lgd=${n_ok_lgd}"
 
-if [ -z "${ok_pd}" ] && [ -z "${ok_lgd}" ]; then
+if [ "${n_ok_pd}" -eq 0 ] && [ "${n_ok_lgd}" -eq 0 ]; then
     echo "=================================================================="
     echo "WARNING: NO training task on EITHER track reported success."
-    echo "         Eval will run against a baselines-only roster (no trained"
-    echo "         checkpoints). Check the train_*.log files on \$VSC_DATA"
-    echo "         before trusting any downstream comparison."
+    echo "         Eval will not be submitted for an incomplete track."
     echo "=================================================================="
-elif [ -z "${ok_pd}" ] || [ -z "${ok_lgd}" ]; then
-    echo "WARNING: only ONE track has successful trials (pd=${ok_pd:-NO} lgd=${ok_lgd:-NO})."
+elif [ "${n_ok_pd}" -eq 0 ] || [ "${n_ok_lgd}" -eq 0 ]; then
+    echo "WARNING: only one track has successful tasks (pd=${n_ok_pd} lgd=${n_ok_lgd})."
 fi
 
 # --- submit the eval arrays now that training has finished --------------------
 # (Eval is submitted here, POST-training, rather than pre-queued — so no eval
-#  GPU job waits in the queue during training. The script self-gates per track
-#  on the train_ok_<track> sentinels, so a track that produced no checkpoint
-#  submits nothing.)
+#  GPU job waits in the queue during training. The generated script self-gates
+#  per track on the full per-task sentinel count, so a partial grid submits
+#  nothing.)
 if [ -n "${EVAL_SCRIPT}" ] && [ -f "${EVAL_SCRIPT}" ]; then
     echo "$(date '+%F %T') eval-gate: training finished — submitting eval via ${EVAL_SCRIPT}"
-    bash "${EVAL_SCRIPT}"
-    echo "$(date '+%F %T') eval-gate: eval submission done."
+    if bash "${EVAL_SCRIPT}"; then
+        echo "$(date '+%F %T') eval-gate: eval submission done."
+    else
+        rc=$?
+        echo "$(date '+%F %T') eval-gate: ERROR - eval submission script failed (rc=${rc})." >&2
+        exit "${rc}"
+    fi
 else
     echo "$(date '+%F %T') eval-gate: no eval-submit script provided (${EVAL_SCRIPT:-none}) — nothing to submit."
 fi

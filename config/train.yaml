@@ -20,15 +20,15 @@ tunable:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
 
-  # LR grid brackets the literature. The official FinetunedTabPFN wrappers
-  # use 2e-5 (classifier) / 1e-5 (regressor); Real-TabPFN's 342 per-dataset
-  # finetune runs tune lr in 5e-6..5e-4 with MEDIAN ≈ 3.9e-5. So:
-  #   3e-7  — very conservative anti-forgetting low end (probes whether tiny
-  #           steps suffice for the multi-dataset corpus setting),
+  # LR grid brackets TWO distinct references. Real-TabPFN (Garg et al.) uses
+  # exactly 3e-7 for corpus-level continued pretraining. Rubachev et al.'s
+  # separate single-dataset finetuning study tunes 5e-6..5e-4 (median ≈3.9e-5),
+  # while the official wrappers use 2e-5 (classifier) / 1e-5 (regressor). So:
+  #   3e-7  — exact Real-TabPFN learning rate,
   #   1e-6  — conservative,
   #   1e-5  — ≈ the official regressor-wrapper default,
-  #   3e-5  — ≈ Real-TabPFN's per-dataset median (added 2026-06-23 so the
-  #           sweep actually reaches the references' central value).
+  #   3e-5  — near Rubachev's per-dataset median (added 2026-06-23 so the
+  #           sweep also reaches the single-dataset FT reference range).
   # 1e-4 is excluded (diverged on no-LoRA + qf=0.20 in an earlier run; revisit
   # now that weight_decay=0.0). See README §7 and docs/LITERATURE.md.
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
@@ -89,22 +89,19 @@ corpus:
 # --- Section 3 · Optimizer + LR schedule -------------------------------------
 # AdamW (betas 0.9/0.999) + linear-warmup → cosine-decay (hardcoded in loop).
 optimizer:
-  # weight_decay = 0.0 to MATCH the references: all 342 Real-TabPFN finetune
-  # runs and the official FinetunedTabPFN* examples use AdamW with
-  # weight_decay 0.0. AdamW decay pulls weights toward the ORIGIN, which
-  # fights continued pretraining's goal of staying near the synthetic prior —
-  # and would partly cancel the L2-SP anchor below. We let L2-SP alone handle
-  # anti-forgetting. (Changed 2026-06-23 from 0.01; flagged by the methodology
-  # audit against the reference repos.)
+  # Real-TabPFN reports AdamW but does NOT state its weight-decay value. The
+  # separate Rubachev finetuning runs and official FinetunedTabPFN* examples
+  # use 0.0. We use 0.0 deliberately: decay pulls weights toward the ORIGIN
+  # and stacks a second penalty on top of the L2-SP start-point anchor below.
+  # (Changed 2026-06-23 from 0.01.)
   weight_decay: 0.0
   # L2-SP (Li et al. 2018): penalise drift of the weights away from the
-  # synthetic-prior start w0 — NOT toward zero (that's weight_decay). This is
-  # OUR deliberate addition for the multi-dataset *corpus* continued-pretraining
-  # setting; it is NOT used in the Real-TabPFN experiments (their single-dataset
-  # runs use weight_decay 0.0 and no anchor). ON by default at 0.003; set to
-  # 0.0 to disable, or sweep {0.0, 0.003} to measure whether it helps. FULL-FT
-  # only: with LoRA the base is frozen, so L2-SP is inert and silently skipped.
-  # See README §7.
+  # synthetic-prior start w0 — NOT toward zero (that's weight_decay). This
+  # exactly matches Real-TabPFN's λ=0.003 corpus-CPT regularizer. It is absent
+  # from Rubachev's separate single-dataset finetuning study. Set to 0.0 to
+  # disable or sweep {0.0, 0.003} to measure its effect. FULL-FT only: with
+  # LoRA the base is frozen, so L2-SP is inert and silently skipped. See README
+  # §7.
   l2sp_lambda: 0.003
 scheduler:
   warmup_fraction: 0.10    # TabPFN FinetunedTabPFNClassifier default
@@ -123,8 +120,17 @@ lora:
 train:
   epochs: 50                              # fixed-epoch (no early stopping)
   grad_clip_norm: 1.0
-  amp: true                               # AMP autocast (CUDA only; fp16)
+  amp: true                               # AMP autocast (CUDA only)
+  # "auto" prefers bfloat16 on Ampere-or-newer GPUs (including B200/H100)
+  # and falls back to float16 elsewhere. BF16 has FP32-like dynamic range and
+  # avoids the inf/NaN GradScaler skips seen throughout the 2026-07-09 sweep.
+  # Accepted: "auto" | "bfloat16" | "float16".
+  amp_dtype: "auto"
   dataloader_workers: 0                   # GPU is the bottleneck
+  # Per-step INFO logging cadence for long epochs. Epochs with <=20 steps
+  # still log every step; longer full_pass epochs log first/last and every Nth
+  # step. End-of-epoch summaries retain min/max/std/worst-dataset diagnostics.
+  step_log_interval: 10
 
   # TabPFN ensemble members per training step — averaged preprocessed views,
   # ~1/sqrt(K) less gradient noise. PER-TRACK to match the official wrappers:
