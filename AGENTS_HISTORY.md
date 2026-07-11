@@ -52,3 +52,34 @@ Append new entries below in chronological order.
   expected outcome, and the CRLF/flock/gitignore issues were latent landmines.
 
 ---
+
+## 2026-07-11 - Claude (subagent): PD eval log analysis (read-only, no repository changes)
+
+- Parsed all 98 eval_pd_*.log in Downloads/logs (j61424066 even array tasks 0-184,
+  93 files; j61424067 odd tasks, 5 files a1-a9). 97/98 complete with 5/5 folds OK,
+  0 failed cells, no tracebacks; a9 (catboost x credit_risk) still running at snapshot.
+  Odd tasks 11-183 (87 pairs) not yet evaluated. No trained config beats its untuned
+  base; v3 lr3e-05 fullpass full-wt collapsed (AUC 0.50); v3 fullpass full-wt at
+  lr>=1e-06 degraded (likely stale FP16 checkpoints from Jul-9 run). Findings returned
+  to orchestrator, not written to repo.
+
+---
+
+## 2026-07-11 - Claude
+
+- Changed/reviewed: Analyzed all ~200 Jul-10/11 run logs (4-agent sweep). Found
+  + fixed: (1) clean_run.py missed the $VSC_DATA fallback checkpoint dir ->
+  59/64 trials silently SKIPped on stale Jul-9 FP16 checkpoints (now wipes both
+  locations + .sentinels, dedupes resolved paths); (2) eval pool split by raw
+  index parity sent ALL of lgd_lendingclub to the slow A100 pool -> new
+  model-parity split (`--list-tasks --pools K --pool i` in eval_pipeline.py,
+  used by the generated eval-submit script); (3) collapsed the 3 per-epoch log
+  lines into ONE comprehensive greppable line (user request); (4) l2sp display
+  %.4f -> %.3e (was rendering 0.0000). Confirmed staging checkpoints/trained
+  is unwritable EVEN from wICE (mkdir denied; infra fix needed, not code).
+  Tests: 243+ pass, exit 0.
+- Why: The "clean" rerun was contaminated by surviving old checkpoints; the
+  pool-split artifact left a whole LGD dataset unscored; per-epoch diagnostics
+  were spread over 3 lines.
+
+---

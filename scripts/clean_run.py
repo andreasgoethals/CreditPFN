@@ -52,11 +52,22 @@ from src.utils.paths import (  # noqa: E402
 #   "dataset" → resolve_data_path    (where datasets live; --fresh-data only)
 _TARGETS = [
     ("trained checkpoints", "staging", "checkpoints/trained"),
+    # CRITICAL second location (bug found 2026-07-11): when staging is not
+    # writable from the Mindwell compute nodes, training saves checkpoints to
+    # the $VSC_DATA FALLBACK dir (resolve_writable_staging_path). A "clean"
+    # rerun that misses this dir silently SKIPs trials against the previous
+    # run's checkpoints — exactly what contaminated the Jul-10 rerun (59/64
+    # trials reused old FP16 checkpoints).
+    ("trained checkpoints (fallback)", "output", "checkpoints/trained"),
     ("benchmark results",   "staging", "output/results"),
     ("run logs",            "output",  "logs"),
     ("training manifests",  "output",  "output/training/manifests"),
     ("per-epoch CSVs",      "output",  "output/training/epochs"),
     ("notebook figures",    "output",  "output/figures"),
+    # Orchestration state: data_done/train_ok_* sentinels + generated
+    # eval_submit_*.sh scripts. Stale sentinels can't gate a NEW run (the
+    # submitter clears them) but they accumulate and confuse debugging.
+    ("orchestration sentinels", "output", ".sentinels"),
 ]
 
 # Hard safety denylist: a resolved target whose final component is any of these
@@ -131,10 +142,15 @@ def main() -> int:
 
     total_files = total_bytes = 0
     to_delete: list[tuple[str, Path, int, int]] = []
+    seen_paths: set[str] = set()
     for label, tier, rel in targets:
         if args.keep_logs and rel == "logs":
             continue
         p = _resolve(tier, rel)
+        # Locally, staging/output both resolve to the repo root — skip dupes.
+        if str(p) in seen_paths:
+            continue
+        seen_paths.add(str(p))
         tag = tier.upper()
         if not _is_safe(p):
             print(f"  [REFUSE] {label:22s} unsafe path, skipping: {p}")

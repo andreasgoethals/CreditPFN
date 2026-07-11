@@ -186,10 +186,17 @@ if [[ -n "${run_eval}" ]]; then
             echo "${indent}  echo \"eval ${TR}: ERROR - invalid/empty task count: \${N}\" >&2"
             echo "${indent}  exit 1"
             echo "${indent}else"
+            # MODEL-parity pool split (fix 2026-07-11): each pool gets the
+            # explicit comma-list of task indices for model_idx % K == i, so
+            # every pool covers ALL datasets. The old stride split (i-N:K)
+            # aligned with the dataset count whenever they shared a factor —
+            # LGD's 2 datasets × 2 pools sent ALL of lgd_lendingclub to the
+            # slow A100 pool, leaving a whole dataset unscored for hours.
             for i in "${!PARTS[@]}"; do
-                echo "${indent}  if [[ ${i} -lt \"\${N}\" ]]; then"
-                echo "${indent}    sbatch --clusters=wice --account='${EVAL_ACCOUNT}' --partition='${PARTS[$i]}' --export='${SBATCH_EXPORT}' --array=\"${i}-\$((N - 1)):${K}%${EVAL_CONCURRENCY}\" scripts/slurm/eval_${TR}.slurm"
-                echo "${indent}    echo \"submitted eval ${TR} on ${PARTS[$i]} (\${N} exact tasks)\""
+                echo "${indent}  IDX=\$(python scripts/eval_pipeline.py --list-tasks --pools ${K} --pool ${i} track='${TR}')"
+                echo "${indent}  if [[ -n \"\${IDX}\" ]]; then"
+                echo "${indent}    sbatch --clusters=wice --account='${EVAL_ACCOUNT}' --partition='${PARTS[$i]}' --export='${SBATCH_EXPORT}' --array=\"\${IDX}%${EVAL_CONCURRENCY}\" scripts/slurm/eval_${TR}.slurm"
+                echo "${indent}    echo \"submitted eval ${TR} on ${PARTS[$i]} (pool ${i}/${K} of \${N} tasks)\""
                 echo "${indent}  fi"
             done
             echo "${indent}fi"

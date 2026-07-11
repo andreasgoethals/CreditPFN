@@ -464,6 +464,18 @@ def _parse_args(argv: list[str] | None = None):
     p.add_argument("--task-index", type=int, default=None,
                    help="Pick the Nth (model × dataset) pair. For SLURM "
                         "arrays — set to $SLURM_ARRAY_TASK_ID.")
+    p.add_argument("--pools", type=int, default=None,
+                   help="With --list-tasks: number of GPU pools the eval is "
+                        "split across. Prints the comma-separated task indices "
+                        "for pool --pool instead of the total count. Pools are "
+                        "assigned by MODEL parity (model_idx %% pools), so every "
+                        "pool covers ALL test datasets — a raw index-parity "
+                        "stride assigns entire datasets to one pool whenever "
+                        "n_datasets shares a factor with the pool count (seen "
+                        "2026-07-11: ALL of lgd_lendingclub landed on the slow "
+                        "A100 pool and went unscored for hours).")
+    p.add_argument("--pool", type=int, default=None,
+                   help="With --pools: which pool's indices to print (0-based).")
     p.add_argument("--list-tasks", action="store_true",
                    help="Print the total (model × dataset) task count for "
                         "the current cfg and exit.")
@@ -507,7 +519,17 @@ if __name__ == "__main__":
         handles_and_models, cfg_test_ids, _ = _build_roster(
             eval_cfg, train_cfg, track,
         )
-        print(len(_enumerate_tasks(handles_and_models, cfg_test_ids)))
+        pairs = _enumerate_tasks(handles_and_models, cfg_test_ids)
+        if args.pools is not None:
+            if args.pool is None or not (0 <= args.pool < args.pools):
+                raise SystemExit("--pools requires --pool in [0, pools)")
+            # Model-parity split: pool p gets every task whose MODEL index
+            # satisfies m % pools == p, so each pool spans all datasets.
+            idx = [str(i) for i, (m_idx, _) in enumerate(pairs)
+                   if m_idx % args.pools == args.pool]
+            print(",".join(idx))
+        else:
+            print(len(pairs))
         raise SystemExit(0)
     raise SystemExit(run(
         eval_overrides=eval_overrides,

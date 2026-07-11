@@ -2018,28 +2018,12 @@ def train_one_config(
         eval_phase_dt = max(0.0, epoch_dt - train_phase_dt)
         data_io_s = max(0.0, train_phase_dt - epoch_compute_s)
         steps_per_s = (n_batches / train_phase_dt) if train_phase_dt > 0 else float("nan")
+        # Scientific notation: at conservative LRs the penalty is ~1e-6..1e-9
+        # (‖w−w0‖² after tiny steps), which a %.4f rendered as a useless
+        # "0.0000" in every Jul-10 log line.
         l2sp_str = (
-            f"  l2sp_pen_mean={float(np.mean(epoch_l2sp)):.4f}" if epoch_l2sp else ""
+            f"  l2sp={float(np.mean(epoch_l2sp)):.3e}" if epoch_l2sp else ""
         )
-        LOGGER.info(
-            "  ↳ debug: grad_norm mean=%.3f max=%.3f clipped_frac=%.2f  "
-            "per_step_loss min=%.4f max=%.4f std=%.4f  "
-            "worst_ds=%s (loss=%.4f)  data_skips=%d amp_skips=%d/%d%s%s",
-            gnorm_mean, gnorm_max, clipped_frac,
-            loss_min, loss_max, loss_std,
-            worst_ds, worst_loss, epoch_skipped_steps,
-            epoch_amp_skipped_steps, epoch_optimizer_steps,
-            l2sp_str, gpu_peak,
-        )
-        # Timing line — kept separate so it's easy to grep across a run to see
-        # whether compute, data I/O, or the monitoring eval is the bottleneck.
-        LOGGER.info(
-            "  ↳ timing: epoch=%.1fs  train_phase=%.1fs (compute=%.1fs data_io=%.1fs "
-            "%.2f steps/s)  monitor_eval=%.1fs",
-            epoch_dt, train_phase_dt, epoch_compute_s, data_io_s,
-            steps_per_s, eval_phase_dt,
-        )
-
         record = EpochRecord(
             epoch=epoch,
             train_loss=train_loss,
@@ -2060,27 +2044,34 @@ def train_one_config(
         if on_epoch_end is not None:
             on_epoch_end(record)
 
-        if secondary_metric_name:
-            LOGGER.info(
-                "epoch=%2d/%d  loss=%.4f  lr=%.2e  "
-                "%s(train)=%.4f  %s(test)=%.4f  "
-                "%s(train)=%.4f  %s(test)=%.4f  "
-                "epoch_dt=%.1fs  elapsed=%.1fs",
-                epoch, epochs - 1, train_loss, record.lr,
-                metric_name, train_metric, metric_name, test_metric,
-                secondary_metric_name, secondary_train,
-                secondary_metric_name, secondary_test,
-                epoch_dt, elapsed,
-            )
-        else:
-            LOGGER.info(
-                "epoch=%2d/%d  loss=%.4f  lr=%.2e  "
-                "%s(train)=%.4f  %s(test)=%.4f  "
-                "epoch_dt=%.1fs  elapsed=%.1fs",
-                epoch, epochs - 1, train_loss, record.lr,
-                metric_name, train_metric, metric_name, test_metric,
-                epoch_dt, elapsed,
-            )
+        # ONE comprehensive line per epoch (user request 2026-07-11): every
+        # number needed to diagnose a run lives on a single greppable line —
+        # loss stats, LR, monitor metrics, gradient health, skip counters,
+        # L2-SP, GPU peak, worst dataset, and the full timing decomposition.
+        # `|`-separated key=value groups; fixed field order for easy awk/grep.
+        _sec = (
+            f"  {secondary_metric_name}(tr)={secondary_train:.4f}"
+            f" {secondary_metric_name}(te)={secondary_test:.4f}"
+            if secondary_metric_name else ""
+        )
+        _mon = "" if monitor_this_epoch else " [no-monitor]"
+        LOGGER.info(
+            "epoch=%2d/%d | loss=%.4f (min=%.4f max=%.4f std=%.4f) lr=%.2e | "
+            "%s(tr)=%.4f %s(te)=%.4f%s%s | "
+            "grad: mean=%.3f max=%.3f clip=%.2f | "
+            "steps=%d amp_skip=%d data_skip=%d | worst=%s(%.4f)%s%s | "
+            "t: epoch=%.1fs compute=%.1fs io=%.1fs monitor=%.1fs %.2fst/s | "
+            "total=%.1fmin",
+            epoch, epochs - 1, train_loss, loss_min, loss_max, loss_std,
+            record.lr,
+            metric_name, train_metric, metric_name, test_metric, _sec, _mon,
+            gnorm_mean, gnorm_max, clipped_frac,
+            epoch_optimizer_steps, epoch_amp_skipped_steps,
+            epoch_skipped_steps,
+            worst_ds, worst_loss, l2sp_str, gpu_peak,
+            epoch_dt, epoch_compute_s, data_io_s, eval_phase_dt, steps_per_s,
+            elapsed / 60.0,
+        )
 
         # ---- Divergence detection — early abort on collapse ------------ #
         # We watch the LAST ``divergence_patience`` epoch records and
