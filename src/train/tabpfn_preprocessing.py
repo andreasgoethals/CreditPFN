@@ -5,7 +5,7 @@ This module wires TabPFN's official preprocessor
 preparation. **Without this, training-time inputs do not match the
 distribution the model was pretrained on, which is the root cause of the
 calibration-collapse failure mode we observed on 2026-05-27** (audit in
-chat 2026-05-27; cross-referenced against ``repositories/TabPFN .txt`` by symbol name).
+chat 2026-05-27; cross-referenced against ``tfm-library/repositories/TabPFN .txt`` by symbol name).
 
 Why a separate module
 ---------------------
@@ -81,7 +81,7 @@ LOGGER = logging.getLogger(__name__)
 # Per-dataset clean_data cache
 # --------------------------------------------------------------------------- #
 #
-# TabPFN's `clean_data` (verified at `repositories/TabPFN .txt`)
+# TabPFN's `clean_data` (verified at `tfm-library/repositories/TabPFN .txt`)
 # takes (X, feature_schema) and returns (X_numpy_clean, ordinal_encoder,
 # feature_schema). It runs `fix_dtypes` (ensures numeric ndarray, casts
 # categoricals to `category` dtype) and `process_text_na_dataframe`
@@ -329,7 +329,7 @@ class _PerEstimatorView:
     ``n_estimators_finetune`` per training step.
 
     All tensor shapes match TabPFN's ``PerFeatureTransformer`` signature
-    (``repositories/TabPFN .txt``):
+    (``tfm-library/repositories/TabPFN .txt``):
 
     * ``X_context`` — (n_ctx,   1, n_features_after_preproc)  float32
     * ``y_context`` — (n_ctx,   1, 1)                         long / float32
@@ -434,19 +434,19 @@ def build_ensemble_members(
     ``outlier_removal_std`` value travels with the batch.
 
     Mirrors ``DatasetCollectionWithPreprocessing.__getitem__`` at
-    ``repositories/TabPFN .txt`` step-for-step.
+    ``tfm-library/repositories/TabPFN .txt`` step-for-step.
     """
     # Lazy imports — TabPFN is a multi-hundred-MB dependency and we want
     # the test suite (which mocks load_tabpfn_for_training) to be able
     # to import this module without paying the cost.
     #
     # IMPORTANT — exact import paths verified against the installed
-    # TabPFN source (mirrored at ``repositories/TabPFN .txt``):
+    # TabPFN source (mirrored at ``tfm-library/repositories/TabPFN .txt``):
     #
     #   * ``TabPFNEnsemblePreprocessor`` lives in
     #     ``tabpfn.preprocessing.ensemble`` (NOT re-exported from the
     #     top-level ``tabpfn.preprocessing`` — verified at
-    #     ``repositories/TabPFN .txt``).
+    #     ``tfm-library/repositories/TabPFN .txt``).
     #   * ``FeatureSubsamplingMethod`` re-exported from
     #     ``tabpfn.preprocessing`` (``__all__`` at line 29763).
     #   * ``FeatureModality`` re-exported from

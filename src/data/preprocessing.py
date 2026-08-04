@@ -25,12 +25,12 @@ What this module deliberately does NOT do:
   preprocessing pipeline does not already handle.
 * No ``np.log1p`` skew transforms. TabPFN's per-estimator ensemble
   cycles through ``safepower`` / ``quantile_uni`` / ``kdi`` / ``robust``
-  on every fit (see ``repositories/TabPFN Docs.txt`` line 6346–6352);
+  on every fit (see ``tfm-library/repositories/TabPFN Docs.txt`` line 6346–6352);
   pre-applying a log on disk would fight that ensemble.
 * No outlier clipping. ``OUTLIER_REMOVAL_STD = 12.0`` (classifier) /
   ``None`` (regressor) inside TabPFN already handles this with the
   right semantics (context-only statistics, soft log-squash). See
-  ``repositories/REPOSITORIES.md::Outlier handling`` for the full
+  ``tfm-library/repositories/REPOSITORIES.md::Outlier handling`` for the full
   argument.
 * No target normalisation. TabPFN's ``RegressorBatch.znorm_space_bardist_``
   z-normalises regression targets internally and inverts at predict

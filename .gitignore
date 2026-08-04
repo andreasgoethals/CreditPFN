@@ -287,8 +287,6 @@ Thumbs.db
 *.joblib
 *.onnx
 
-# Specifically ignore the problematic large file
-repositories/TabPFN Wide.txt
 # Shared Claude/Codex local project memory (probe results, mistakes log,
 # do-not-undo notes). Loaded through the tracked CLAUDE.md / AGENTS.md files;
 # never committed.

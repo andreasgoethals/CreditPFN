@@ -2,7 +2,7 @@
 
 Per-step recipe (one "batch" = one dataset, batch_size fixed at 1 by
 TabPFN's ``meta_dataset_collator`` assertion at
-``repositories/TabPFN .txt``):
+``tfm-library/repositories/TabPFN .txt``):
 
   1. Pick one parent dataset (one ``DatasetRef``) — every parent
      contributes exactly one step per epoch. No more chunk splitting.
@@ -370,7 +370,7 @@ def _build_ensemble_step_batch(
     """N-estimator step batch with TabPFN's official preprocessing.
 
     Two-phase pipeline (mirrors the official multi-dataset finetune at
-    ``repositories/TabPFN .txt`` step-for-step):
+    ``tfm-library/repositories/TabPFN .txt`` step-for-step):
 
       1. **Once per dataset** — ``clean_loaded_dataset`` runs TabPFN's
          ``clean_data`` to produce a numeric numpy array with
@@ -487,7 +487,7 @@ class ProcessedDatasetLoader(Dataset):
         How many preprocessed views per step. TabPFN's official
         ``FinetunedTabPFNClassifier`` defaults to 2 — different feature
         shifts, different class permutations, gradient averaged. See
-        ``repositories/TabPFN .txt``.
+        ``tfm-library/repositories/TabPFN .txt``.
     """
 
     def __init__(
@@ -609,7 +609,7 @@ class ProcessedDatasetLoader(Dataset):
 
         # ---- TabPFN-preprocessed N-estimator path ------------------- #
         # Mirrors `DatasetCollectionWithPreprocessing.__getitem__`
-        # (`repositories/TabPFN .txt`).
+        # (`tfm-library/repositories/TabPFN .txt`).
         return _build_ensemble_step_batch(
             loaded,
             # Use the SAME effective cap as the legacy path and the full_pass
@@ -638,7 +638,7 @@ def identity_collate(batch):
         raise ValueError(
             f"identity_collate expects batch_size=1; got {len(batch)} "
             "(TabPFN's meta_dataset_collator hard-asserts this — see "
-            "repositories/TabPFN .txt)"
+            "tfm-library/repositories/TabPFN .txt)"
         )
     return batch[0]
 

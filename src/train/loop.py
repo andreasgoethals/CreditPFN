@@ -228,7 +228,7 @@ def make_warmup_cosine_schedule(
 
     Matches HuggingFace's ``get_cosine_schedule_with_warmup``
     (which is what TabPFN's ``FinetunedTabPFNClassifier`` uses
-    internally; see ``repositories/TabPFN .txt``):
+    internally; see ``tfm-library/repositories/TabPFN .txt``):
 
       * step 0           → multiplier = 0
       * step warmup_steps → multiplier = 1
@@ -540,7 +540,7 @@ def _forward(
     """Run one TabPFN forward pass.
 
     Calling convention matches TabPFN's canonical signature
-    (``repositories/TabPFN .txt`` and the live 2.x package):
+    (``tfm-library/repositories/TabPFN .txt`` and the live 2.x package):
 
         forward(
             x: (train_rows + test_rows, batch, n_features),  # concatenated
@@ -556,7 +556,7 @@ def _forward(
     Returns ``(pred_logits, y_target, znorm_mean, znorm_std)``. The
     last two are non-None only for regression (where we z-normalise
     the context y, mirroring LennartPurucker's reference pipeline at
-    `repositories/TabPFN V2 Finetuning.txt`).
+    `tfm-library/repositories/TabPFN V2 Finetuning.txt`).
     """
     train_x = batch.X_context       # (n_ctx, 1, F)
     train_y = batch.y_context.float()
@@ -659,7 +659,7 @@ def _classification_loss(
     **CHANGE 2026-05-27** — previously we sliced the logits to the first
     K=n_classes columns before calling cross_entropy. That was a
     methodological bug: TabPFN's classifier head emits 10 logits
-    (the pretraining max-classes; ``repositories/TabPFN .txt``),
+    (the pretraining max-classes; ``tfm-library/repositories/TabPFN .txt``),
     and the official `FinetunedTabPFNClassifier` computes CE over ALL
     10 columns so the softmax denominator regularises every column
     every step (gradient on z_k for k ≥ K is proportional to that
@@ -828,7 +828,7 @@ def _query_missing_context_class(batch) -> bool:
     """Return True iff the query split contains a class index that the
     context split does NOT contain.
 
-    Mirrors the official guard at ``repositories/TabPFN .txt``
+    Mirrors the official guard at ``tfm-library/repositories/TabPFN .txt``
     (``FinetunedTabPFNClassifier._should_skip_batch``). Without it, a
     stratified PD subsample that happens to put both positives in the
     query split leaves the context with only one class — the CE loss
@@ -885,7 +885,7 @@ def _save_eval_snapshot(
     mutates the live model, which would terminate training.
 
     **Format — matched verbatim to ``save_tabpfn_model`` at
-    ``repositories/TabPFN .txt``.** Critical: we MUST write
+    ``tfm-library/repositories/TabPFN .txt``.** Critical: we MUST write
     the 4 keys ``{state_dict, config, architecture_name, inference_config}``.
     Skipping ``architecture_name`` and ``inference_config`` makes
     ``load_model`` (TabPFN .txt) fall back to V2 architecture

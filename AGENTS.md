@@ -11,6 +11,9 @@ At the start of every task in this repository:
    changed previously and why.
 3. Treat the literature and upstream repository dumps as evidence, but verify
    claims against the primary paper or implementation when sources disagree.
+   They live in the `tfm-library/` git submodule (the shared TFM_Library
+   repository) — read `tfm-library/AGENTS.md` before editing anything inside
+   it, and remember its content is shared with other projects.
 
 Before finishing every user request or agent session, append one concise entry
 to `AGENTS_HISTORY.md` with the date, agent (`Codex`), what changed or was

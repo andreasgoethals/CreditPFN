@@ -10,7 +10,7 @@ Root cause: our regressor code path imported
 ``tabpfn.architectures.base.bar_distribution`` — the module path of the 2.x
 PyPI line — but the VSC env runs tabpfn **8.0.8** (installed from git main),
 where the module moved to ``tabpfn.architectures.shared.bar_distribution``
-(verified against the refreshed source dump, ``repositories/TabPFN .txt``:
+(verified against the refreshed source dump, ``tfm-library/repositories/TabPFN .txt``:
 ``FILE: src/tabpfn/architectures/shared/bar_distribution.py``). Classifiers
 never import the bar distribution, which is why every PD trial loaded fine on
 the exact same env while every LGD trial died before the debug banner.

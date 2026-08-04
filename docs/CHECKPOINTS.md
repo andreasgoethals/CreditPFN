@@ -22,9 +22,9 @@ this file.**
 All facts below are sourced from:
 
 - The upstream `tabpfn` package README (mirrored at
-  `repositories/TabPFN .txt`, lines 649–751 and 2606–2623).
+  `tfm-library/repositories/TabPFN .txt`, lines 649–751 and 2606–2623).
 - Prior Labs' HuggingFace model cards (verbatim mirror at
-  `repositories/Huggingface TabPFN.txt`).
+  `tfm-library/repositories/Huggingface TabPFN.txt`).
 - Hollmann et al. 2025 (*Nature*) and Grinsztajn et al. 2026
   (arXiv:2511.08667), Appendix C.
 
@@ -67,7 +67,7 @@ For **v2.6** the naming is: `_default` = synthetic-only (no
 real-finetuned variant published yet).
 
 Both conventions are confirmed verbatim by the HuggingFace cards
-mirrored at `repositories/Huggingface TabPFN.txt`.
+mirrored at `tfm-library/repositories/Huggingface TabPFN.txt`.
 
 ## What we sweep over
 

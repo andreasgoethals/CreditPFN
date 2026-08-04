@@ -29,7 +29,7 @@ What this module deliberately does NOT do:
 
 * No outlier winsorisation. ``OUTLIER_REMOVAL_STD = 12.0`` (classifier)
   / ``None`` (regressor) inside TabPFN handles outliers with the
-  correct semantics — see ``repositories/REPOSITORIES.md``.
+  correct semantics — see ``tfm-library/repositories/REPOSITORIES.md``.
 * No PowerTransformer / QuantileTransformer / RobustScaler. Those run
   per-estimator inside TabPFN's inference ensemble; pre-applying any
   of them on disk would break the ensemble's diversity.

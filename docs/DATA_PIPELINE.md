@@ -193,7 +193,7 @@ The sanitized CSV is the input to TabPFN training but is **not** what
 the model forward pass sees. Per training step the
 `ProcessedDatasetLoader.__getitem__` runs an additional preprocessing
 pipeline that mirrors the official TabPFN finetune
-(`repositories/TabPFN .txt:26147-26319`):
+(`tfm-library/repositories/TabPFN .txt:26147-26319`):
 
 ### 5a.1 `clean_data` (once per dataset, cached)
 TabPFN's own `clean_data(X, feature_schema)` is invoked ONCE per

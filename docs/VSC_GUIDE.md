@@ -118,8 +118,11 @@ every run:
 
 ```bash
 cd $VSC_DATA
-git clone https://github.com/andreasgoethals/CreditPFN.git
+git clone --recursive https://github.com/andreasgoethals/CreditPFN.git
 cd CreditPFN
+# (--recursive pulls the tfm-library knowledge-base submodule too. On an
+#  EXISTING checkout, after any `git pull` that bumps the submodule run:
+#  git submodule update --init)
 ```
 
 After the clone the layout is:
@@ -129,8 +132,8 @@ $VSC_DATA/CreditPFN/
 ├── src/                 all the pipeline code (data, train, eval, model, utils)
 ├── scripts/             CLI entrypoints + SLURM templates
 ├── config/              data.yaml, train.yaml, eval.yaml — the only knobs
-├── repositories/        flat-text dumps of upstream code (read-only reference)
-├── docs/                this file + CHECKPOINTS.md + LITERATURE.md
+├── tfm-library/         SHARED knowledge base (git submodule): papers, summaries, code dumps
+├── docs/                this file + CHECKPOINTS.md + DATA_PIPELINE.md
 ├── tests/               pytest suite (236 tests)
 └── pyproject.toml       package metadata + dependencies
 ```

@@ -12,7 +12,10 @@
                                # array on gpu_a100 (via --partition override) so
                                # eval drains across BOTH wICE GPU pools.
 #SBATCH --gpus-per-node=1
-#SBATCH --time=02:00:00
+#SBATCH --time=05:00:00  # raised from 2h (2026-07-13): v2.6 x 100k-row
+                          # datasets on the A100 pool blew 2h (8 walltime
+                          # kills in the Jul-12 run); 5h + the 50k v2.6 row
+                          # cap gives ample margin.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16

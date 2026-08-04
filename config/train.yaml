@@ -30,7 +30,7 @@ tunable:
   #   3e-5  — near Rubachev's per-dataset median (added 2026-06-23 so the
   #           sweep also reaches the single-dataset FT reference range).
   # 1e-4 is excluded (diverged on no-LoRA + qf=0.20 in an earlier run; revisit
-  # now that weight_decay=0.0). See README §7 and docs/LITERATURE.md.
+  # now that weight_decay=0.0). See README §7 and tfm-library/SUMMARIES.md.
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
 
   # LoRA (Hu et al. 2021): freeze base weights, train ~1.6 % adapter params.

@@ -83,3 +83,46 @@ Append new entries below in chronological order.
   were spread over 3 lines.
 
 ---
+
+## 2026-07-13 - Claude
+
+- Changed/reviewed: Converted CreditPFN to consume the shared TFM_Library
+  repo (github.com/andreasgoethals/TFM_Library) as a git submodule at
+  `tfm-library/` (branch-tracking main). Removed the now-duplicated papers/,
+  repositories/, docs/{LITERATURE,summary,REPOSITORIES}.md and
+  src/utils/refresh_repositories.py; updated every reference (README tree +
+  4.6/4.7, VSC_GUIDE clone instructions now `--recursive` + `git submodule
+  update --init`, CLAUDE.md/AGENTS.md pointer to tfm-library/AGENTS.md,
+  .gitignore Wide.txt entry dropped, path citations across src/ + config +
+  docs + tests). Doc renames upstream: LITERATURE->SUMMARIES,
+  summary->SYNTHESIS.
+- Why: One canonical knowledge base shared across projects instead of
+  per-project drift; the library is pinned per-commit for reproducibility
+  and bumped with `git submodule update --remote tfm-library`.
+
+---
+
+## 2026-07-13 - Claude (run-4 analysis)
+
+- Changed/reviewed: Analyzed all ~325 logs of the first CLEAN run (4-agent
+  sweep): pipeline fully green (64/64 fresh BF16 trials, gate/sentinels/pools
+  all correct). Science: PD discrimination unchanged by CPT (best +0.0004);
+  LoRA a no-op at every LR; LGD NLL-vs-RMSE trade-off REPLICATES (v3 full-FT
+  up to -0.32 nats at +0.009 RMSE; v2.6 degrades on both). Fixes: eval
+  walltime 2h->5h + v2.6 eval row cap 100k->50k (8 walltime-killed
+  v2.6xalgorithmwatch cells); noted missing a48 LGD cell (one-off, recovered
+  by an eval re-run).
+- Why: The homogeneous sweep is the citable baseline experiment; the two
+  eval fixes close the only coverage gaps.
+
+---
+
+### 2026-07-30 — Codex
+- Changed/reviewed: Researched European DataWarehouse public ABS data and
+  added `docs/EDW_DATASET_FEASIBILITY.md`; verified EU/UK availability,
+  PD/LGD/prepayment fields, reporting-history harmonisation, access and
+  current use terms, then mapped the panel data to CreditPFN's pipeline. No
+  code changes.
+- Why: EDW data are technically viable after leakage-safe panel-to-table ETL,
+  but its January 2026 standard terms prohibit AI training unless the
+  university agreement explicitly overrides that restriction.

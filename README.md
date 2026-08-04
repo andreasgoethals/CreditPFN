@@ -26,7 +26,7 @@ yaml, and result layout.
    - [4.4 `notebooks/` — exploration and result visualisations](#44-notebooks--exploration-and-result-visualisations)
    - [4.5 `tests/` — unit and smoke tests](#45-tests--unit-and-smoke-tests)
    - [4.6 `docs/` — project documentation](#46-docs--project-documentation)
-   - [4.7 `papers/` and `repositories/` — reference material](#47-papers-and-repositories--reference-material)
+   - [4.7 `tfm-library/papers/` and `tfm-library/repositories/` — reference material](#47-papers-and-repositories--reference-material)
    - [4.8 `checkpoints/` — base and trained TabPFN weights (gitignored)](#48-checkpoints--base-and-trained-tabpfn-weights-gitignored)
    - [4.9 Runtime trees: `data/`, `output/`, `logs/` (gitignored)](#49-runtime-trees-data-output-logs-gitignored)
 5. [Re-submitting the pipeline (resume semantics + cleanup)](#5-re-submitting-the-pipeline-resume-semantics--cleanup)
@@ -203,8 +203,7 @@ CreditPFN/
 ├── notebooks/                exploration + viz notebooks  (see 4.4)
 ├── tests/                    pytest suite                 (see 4.5)
 ├── docs/                     long-form documentation      (see 4.6)
-├── papers/                   PDF library                  (see 4.7)
-├── repositories/             upstream code dumps          (see 4.7)
+├── tfm-library/              SHARED knowledge base (git submodule -> TFM_Library repo): papers + code dumps + literature summaries  (see 4.7)
 ├── checkpoints/              base + trained TabPFN .ckpt  (see 4.8, gitignored)
 ├── data/                     raw + processed corpus       (see 4.9, gitignored)
 ├── output/                   everything the code writes   (see 4.9, gitignored)
@@ -221,7 +220,7 @@ CreditPFN/
 | [`src/train/`](src/train) | The continued-pretraining loop: corpus split (`corpus.py`), the on-the-fly dataloader (`dataloader.py`) that reads sanitized CSVs and draws a fresh random subsample every epoch, TabPFN load/save + LoRA wrapping (`model.py`), training loop with per-epoch monitor (`loop.py`), metrics (`metrics.py`). | `scripts/train_pipeline.py` |
 | [`src/model/`](src/model) | sklearn-style wrappers for every model the eval scores: XGBoost + CatBoost (with Optuna HPO), LogReg / LinReg (default-hyperparam baselines), TabPFN-untuned, TabPFN-trained. Single `base.py::BaselineModel` protocol so the eval loop stays model-agnostic. | importable only |
 | [`src/eval/`](src/eval)   | The cross-model benchmark: processed-CSV loader, K-fold splitter with inner train/val, comprehensive metrics computation, results-dir routing, skip-existing rerun guard. | `scripts/eval_pipeline.py` |
-| [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), notebook figure sink (`figures.py`), training / eval visualisation helpers (`training_viz.py`, `eval_viz.py`), upstream code refresh (`refresh_repositories.py`). | `python src/utils/refresh_repositories.py` |
+| [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), notebook figure sink (`figures.py`), training / eval visualisation helpers (`training_viz.py`, `eval_viz.py`), upstream code refresh (`refresh_repositories.py`). | `python tfm-library/scripts/refresh_repositories.py` |
 
 <a id="42-config--three-yaml-configs-one-per-stage"></a>
 
@@ -317,25 +316,38 @@ stripped-down CI image.
 |---|---|
 | [`docs/DATA_PIPELINE.md`](docs/DATA_PIPELINE.md) | Deep-dive on the data stage: one raw CSV's full journey through dedup → register → sanitize, plus the two divergent downstream preprocessing paths (TabPFN vs classical baselines). Companion to `config/data.yaml`. |
 | [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (v2.6 / v3): training data (synthetic-only), sample/feature caps, layer counts, licence terms. Cross-referenced to the HF model cards and Grinsztajn et al. 2026 (arXiv:2511.08667), which documents the architecture family. |
-| [`docs/LITERATURE.md`](docs/LITERATURE.md)       | Chronological tour of every paper under `papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
-| [`docs/summary.md`](docs/summary.md)             | Cross-paper synthesis of the whole tabular-foundation-model paradigm (PFNs → TabPFN line → scaling → adaptation → extensions → critique), with a lineage timeline, design-axis comparison, and a one-card-per-paper appendix. Narrative companion to the per-paper `LITERATURE.md`. |
-| [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md)   | What each `repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python src/utils/refresh_repositories.py`. |
+| [`tfm-library/SUMMARIES.md`](tfm-library/SUMMARIES.md)       | Chronological tour of every paper under `tfm-library/papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
+| [`tfm-library/SYNTHESIS.md`](tfm-library/SYNTHESIS.md)             | Cross-paper synthesis of the whole tabular-foundation-model paradigm (PFNs → TabPFN line → scaling → adaptation → extensions → critique), with a lineage timeline, design-axis comparison, and a one-card-per-paper appendix. Narrative companion to the per-paper `SUMMARIES.md`. |
+| [`tfm-library/REPOSITORIES.md`](tfm-library/REPOSITORIES.md)   | What each `tfm-library/repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python tfm-library/scripts/refresh_repositories.py`. |
 | [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md)         | **VSC-specific deployment guide** (KU Leuven's Vlaamse Supercomputer Centre): OnDemand portal, conda env, dataset upload, partition / GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this only when you're about to deploy on VSC; everything in this README applies to any SLURM cluster. |
 
 <a id="47-papers-and-repositories--reference-material"></a>
 
-### 4.7 `papers/` and `repositories/` — reference material
+### 4.7 `tfm-library/` — the shared TFM knowledge base (git submodule)
 
-* [`papers/`](papers/) — PDF library of every paper we cite. The
-  same set is summarised chronologically in
-  [`docs/LITERATURE.md`](docs/LITERATURE.md) with extracted-text
-  versions under `papers/text/` for grep-friendly search.
-* [`repositories/`](repositories/) — flat-text dumps of the upstream
-  Python packages we depend on (TabPFN, TabPFN extensions, the PFN
-  reference implementation, NanoTabPFN, VSC documentation, …).
-  Catalogued in [`docs/REPOSITORIES.md`](docs/REPOSITORIES.md);
-  refreshed with `python src/utils/refresh_repositories.py`. These
-  are read-only references — the project does not import any of them.
+All reference material lives in **[TFM_Library](https://github.com/andreasgoethals/TFM_Library)**,
+a separate private repository mounted here as a git submodule at
+`tfm-library/` and **shared across multiple projects** (one canonical
+collection of papers, summaries, and upstream code dumps). Inside:
+
+* `tfm-library/papers/` — every collected paper (PDF + text extraction).
+* `tfm-library/SUMMARIES.md` / `tfm-library/SYNTHESIS.md` — per-paper
+  summaries and the cross-paper synthesis of the TFM field.
+* `tfm-library/repositories/` — flat-text dumps of the upstream
+  implementations (TabPFN, extensions, finetuning repos, …), catalogued in
+  `tfm-library/REPOSITORIES.md`. Read-only references — nothing is imported.
+
+Submodule mechanics (the only three commands you need):
+
+```bash
+git clone --recursive <this-repo>        # new clone WITH the library
+git submodule update --init              # ...or populate it after a plain clone/pull
+git submodule update --remote tfm-library  # pull the library's latest state, then commit the bump
+```
+
+The submodule pins a specific library commit (reproducible by
+construction). Agents: read `tfm-library/AGENTS.md` before editing
+anything inside the mountpoint.
 
 <a id="48-checkpoints--base-and-trained-tabpfn-weights-gitignored"></a>
 
@@ -544,7 +556,7 @@ preprocessing, which produced calibration-collapse — see chat).
 ### What sanitize.py deliberately does NOT do
 
 TabPFN's package handles these internally — see
-[`docs/REPOSITORIES.md`](docs/REPOSITORIES.md) § "Outlier handling":
+[`tfm-library/REPOSITORIES.md`](tfm-library/REPOSITORIES.md) § "Outlier handling":
 
 | Step | Why we don't pre-apply it |
 |---|---|
@@ -957,9 +969,9 @@ df.groupby(["model_name", "model_source"])[
 
 ## 9. References
 
-The full paper library lives under [`papers/`](papers/) with a
+The full paper library lives under [`tfm-library/papers/`](tfm-library/papers/) with a
 chronological, detailed summary in
-[`docs/LITERATURE.md`](docs/LITERATURE.md). The most directly relevant
+[`tfm-library/SUMMARIES.md`](tfm-library/SUMMARIES.md). The most directly relevant
 works for this project:
 
 - **Garg et al., 2025.** *Real-TabPFN — Improving Tabular Foundation
@@ -988,9 +1000,9 @@ works for this project:
   this paper.
 
 Local code dumps under
-[`repositories/`](repositories/) (catalogued in
-[`docs/REPOSITORIES.md`](docs/REPOSITORIES.md)) cover the public TabPFN
+[`tfm-library/repositories/`](tfm-library/repositories/) (catalogued in
+[`tfm-library/REPOSITORIES.md`](tfm-library/REPOSITORIES.md)) cover the public TabPFN
 package, the docs site, the v2.5 / v2.6 / v3 HuggingFace model cards (v2.5 kept for scholarly reference; not used in our sweep),
 NanoTabPFN, the V2-Finetuning recipe, and the underlying PFN
 framework. Read-only — refresh with
-`python src/utils/refresh_repositories.py`.
+`python tfm-library/scripts/refresh_repositories.py`.

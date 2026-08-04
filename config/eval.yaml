@@ -31,11 +31,17 @@ cv:
 # Per-architecture cap on TabPFN's in-context training rows (the upstream
 # single-H100 limit; non-TabPFN baselines see the full train fold). Key =
 # leading v<MAJOR> of the parsed base-stem; default is the fallback.
-#   v3 → 1M rows (TabPFN-3 §2.4), v2.x → 100k (TabPFN-2.5 §3).
+#   v3 → 1M rows (TabPFN-3 §2.4).
+#   v2.6 → 50k (REDUCED from 100k, 2026-07-13): 50k is v2.6's PUBLISHED
+#   design envelope (TabPFN-2.5 §"up to 50,000 data points"), and its dual
+#   attention is O(rows²) — at 100k in-context rows a single v2.6 ×
+#   algorithmwatch fold took ~40 min on an A100, so all 8 such eval cells
+#   blew the 2 h walltime in the Jul-12 run. 50k stays inside the envelope
+#   and cuts the quadratic term 4×.
 max_rows_per_model:
   v3:      1000000
-  v2.6:    100000
-  default: 100000
+  v2.6:    50000
+  default: 50000
 
 
 # Per-fold Optuna budget for the tuned baselines. HPO objective is scored on

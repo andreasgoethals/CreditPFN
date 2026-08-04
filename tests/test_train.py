@@ -841,7 +841,7 @@ class _DummyClassifier(torch.nn.Module):
     """Stand-in for ``PerFeatureTransformer`` (classifier head).
 
     Mirrors TabPFN's canonical forward signature (per
-    ``repositories/TabPFN .txt:15098-15203``):
+    ``tfm-library/repositories/TabPFN .txt:15098-15203``):
 
         forward(x, y, *, only_return_standard_out=True,
                 categorical_inds=None, ...) -> (n_test, batch, n_classes_max)
