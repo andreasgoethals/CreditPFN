@@ -126,3 +126,21 @@ Append new entries below in chronological order.
 - Why: EDW data are technically viable after leakage-safe panel-to-table ETL,
   but its January 2026 standard terms prohibit AI training unless the
   university agreement explicitly overrides that restriction.
+
+## 2026-08-04 - Claude
+
+- Changed/reviewed: Created `tfm-library/PROJECT_SPECIFIC.md` from the
+  parent-folder handoff file (all CreditPFN-specific literature notes moved
+  out of the now project-neutral library docs), filled in the library pin
+  (221bac0, "Update Skeleton") in its header, and verified the library's
+  gitignore keeps the file invisible (submodule status stays clean). Rule-6
+  sweep: updated the 4 stale `../papers/YYYY_...` links in notebooks
+  2.0/2.1 to the new `../tfm-library/papers/<year>/<MM>_...` layout
+  (Garg 2025 -> 2025/07_, TabPFN-3 report -> 2026/05_); no other old-form
+  references existed in tracked or agent files. Did NOT touch any shared
+  library file (read-only contract respected).
+- Why: The library became strictly project-neutral on 2026-08-04; the
+  single sanctioned home for CreditPFN literature notes is the gitignored
+  PROJECT_SPECIFIC.md, and old paper paths would 404 after the layout move.
+
+---
