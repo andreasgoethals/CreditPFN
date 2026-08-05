@@ -363,9 +363,9 @@ def test_row_cap_resolution_prefers_the_tabicl_key() -> None:
     """A tabicl base must resolve to the `tabicl` row cap, not to a
     version-regex match or the TabPFN default."""
     from src.train.loop import _resolve_max_rows_per_epoch
-    caps = {"v3": 26000, "v2.6": 11000, "tabicl": 10000, "default": 26000}
+    caps = {"v3": 26000, "v2.6": 11000, "tabicl": 26000, "default": 99999}
     assert _resolve_max_rows_per_epoch(
-        "checkpoints/tabicl-classifier-v2-20260212.ckpt", caps) == 10000
+        "checkpoints/tabicl-classifier-v2-20260212.ckpt", caps) == 26000
     assert _resolve_max_rows_per_epoch(
         "checkpoints/tabpfn-v3-classifier-v3_default.ckpt", caps) == 26000
     assert _resolve_max_rows_per_epoch(
@@ -674,7 +674,9 @@ def test_train_one_config_end_to_end_tabicl(
     # TabICL uses 2 members on BOTH tracks — the lgd-track value of 8 must
     # NOT leak into a tabicl trial.
     assert hp["n_estimators_finetune"] == 2
-    assert hp["max_rows_per_epoch"] == 10_000     # the tabicl row-cap key
+    # The tabicl row-cap key resolved (26 000 = v3's cap, for cross-family
+    # parity), NOT the member-scaled TabPFN value.
+    assert hp["max_rows_per_epoch"] == 26_000
     assert prov["tabicl_version"] is not None
 
     # The rolling monitor snapshot must be cleaned up on success.

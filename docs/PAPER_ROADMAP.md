@@ -100,10 +100,17 @@ save format and the reload through TabICL's own inference wrappers.
    a missing file fails in seconds instead of hanging a GPU job. The command
    is in [CHECKPOINTS.md](CHECKPOINTS.md).
 
-**Two numbers are inherited defaults, not measurements:** TabICL's training
-row cap (10 000 rows/step, its own chunk size) and its evaluation fold cap
-(50 000 rows). `scripts/probe_row_cap.py` now measures TabICL too. The
-failure mode to watch is walltime, not memory — that was the v2.6 lesson.
+**TabICL's row caps were corrected on 2026-08-04** after checking Qu et al.
+2026 rather than the library's defaults. Evaluation is now 1 000 000 rows,
+matching v3 — million-scale in-context inference is TabICLv2's headline
+capability (they report 1M samples × 500 features in ~450 s under 50 GB GPU),
+and the earlier 50 000 would have handicapped it 20× against v3. Training is
+now 26 000 rows/step, also matching v3, so a cross-family difference cannot
+be confounded with context size; that sits inside TabICLv2's own stage-3
+pretraining range (400–60 000 samples). **Neither number is measured on our
+hardware yet** — `scripts/probe_row_cap.py` has a TabICL branch; run it
+before the full sweep. The failure mode to watch is walltime, not memory —
+that was the v2.6 lesson.
 
 ---
 
@@ -205,11 +212,40 @@ Ordered by how much each one strengthens the paper per unit of effort.
 1. **Recover the 9 missing evaluation cells.** One command, no new code.
 2. **Run the two-family sweep.** 48 trials/track. This is the single biggest
    addition to the paper's claim.
-3. **Temporal splits.** Purucker et al. show that scoring grouped/temporal
-   tasks with IID splits distorts model rankings badly (Kendall τ ≈ 0.5).
-   Credit data is inherently temporal, and this is the axis where in-context
-   learning loses to tuned RealMLP — so it is exactly where adaptation might
-   win. Needs a date column per dataset and a time-ordered fold generator.
+3. **Temporal splits — but scope them first; the corpus mostly cannot support
+   them.** Purucker et al. show that scoring grouped/temporal tasks with IID
+   splits distorts model rankings badly (Kendall τ ≈ 0.5). Credit data is
+   inherently temporal, and this is the axis where in-context learning loses
+   to tuned RealMLP — so it is exactly where adaptation might win.
+
+   **Measured 2026-08-04, and it is the binding constraint:** only 5 of our 25
+   raw datasets carry a parseable date column at all — PD `vehicle_loan`
+   (`DisbursalDate`) and `bondora_peer2peer` (outcome-side dates only, so
+   leakage-prone); LGD `loss2` (`Origination_Date`, `date_vintage_year` — the
+   cleanest one we have), `base_model` (`DEAL_TransactionStartDate`) and
+   `base_modelisation` (`DATE`). `sanitize.py` currently drops them, and the
+   pipeline has no datetime handling anywhere.
+
+   Worse, of the **held-out** datasets: **none of the 5 PD test sets has a
+   date**, and only 1 of the 2 LGD test sets does (`loss2`). Both dated PD
+   datasets sit in the *training* split.
+
+   So there are three options, in increasing cost:
+   - **(a) A temporal case study on `loss2`** — one held-out dataset, LGD
+     only. Cheap, honest, and enough to say "the density gain survives a
+     time-ordered split on the one dataset where we can test it."
+   - **(b) Re-pin the corpus split** so `vehicle_loan` (and possibly
+     `bondora`) become PD test sets. Costs a full retrain, and shrinks the
+     already-small training corpus.
+   - **(c) Re-source fuller raw files** — the complete Lending Club has
+     `issue_d`, Home Credit has relative day offsets. Most scientifically
+     satisfying, most work, and it changes the corpus mid-project.
+
+   Either way this needs: date-column preservation in `sanitize.py` as a
+   **split key, not a feature** (adding it as a feature would change the
+   feature space and break comparability with run-4), plus a time-ordered
+   fold generator in the eval. Recommendation: do (a) now, and treat (b)/(c)
+   as a decision to make deliberately rather than a task to schedule.
 4. **Multiple seeds.** Currently one seed per configuration, so "no effect"
    and "effect smaller than seed noise" are indistinguishable. Three seeds on
    the best few configurations is enough to state that properly.

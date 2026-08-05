@@ -154,12 +154,20 @@ python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('pd')" || 
     echo "PREFLIGHT FAILED: tabpfn import smoke test — aborting before training." >&2
     exit 1
 }
-# Same for the TabICL family (imports tabicl._finetune internals, which are
-# private modules and therefore the most upgrade-fragile part of the stack).
-python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')" || {
-    echo "PREFLIGHT FAILED: tabicl import smoke test — aborting before training." >&2
-    exit 1
-}
+# TabICL preflight — ONLY for trials that actually use a tabicl base (grid
+# indices are family-ordered, but ask rather than assume). Scoping it this way
+# means a missing/broken `tabicl` install fails that family's 16 trials
+# instead of killing all 48, which matters because the tabicl bases are an
+# addition to an otherwise-working TabPFN sweep. (2026-08-05)
+TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" track=pd 2>/dev/null || true)"
+if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then
+    python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')" || {
+        echo "PREFLIGHT FAILED: tabicl import smoke test (trial ${SLURM_ARRAY_TASK_ID} uses a tabicl base)." >&2
+        echo "  Fix: pip install 'tabicl>=2.1.1,<3' INTO THE ENV THIS JOB ACTIVATES" >&2
+        echo "       (see 'Active conda env' above — an interactive venv is NOT it)." >&2
+        exit 1
+    }
+fi
 # (Staging WRITABILITY is probed in python — resolve_writable_staging_path —
 #  at save-path resolution, before any training compute; unwritable staging
 #  now falls back to $VSC_DATA with a loud warning instead of Errno 13.)

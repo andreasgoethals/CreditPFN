@@ -618,14 +618,16 @@ layers:
   matching *its* wrappers).
   Follow each package's defaults where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  PD/two-member caps: **26 000 for v3, 11 000 for v2.6, 10 000 for
-  TabICL**; LGD's eight
+  PD/two-member caps: **26 000 for v3 and TabICL, 11 000 for v2.6**;
+  LGD's eight
   members scale the TabPFN caps to 6 500 / 2 750 — sized from a B200
   fwd+bwd probe
   while chasing Real-TabPFN's "more context → bigger gains"; plus an
-  optional v3-only `max_cells_per_epoch` cell budget. The TabICL cap is
-  upstream's own chunk size, **not** a B200 measurement — probe it
-  before raising it). `weight_decay` is
+  optional v3-only `max_cells_per_epoch` cell budget. TabICL deliberately
+  matches v3's cap so a cross-family difference cannot be confounded with
+  context size; it sits inside TabICLv2's own stage-3 pretraining range
+  (400–60 000 samples) but is **not yet measured on a B200** — probe it
+  before trusting it for a full sweep). `weight_decay` is
   **0.0** (matching Rubachev's study and the official wrappers; Garg et al.
   do not report this value); anti-forgetting uses Real-TabPFN's L2-SP anchor
   (`l2sp_lambda=0.003`), not decay-to-origin.
@@ -903,7 +905,7 @@ sets gracefully).
 | Model family                          | Train-fold cap                                                              | Test fold      | HPO subsample                                                                 |
 |---------------------------------------|-----------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------|
 | `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_per_model[<v>]` (v3: 1 000 000; v2.6: 50 000)                 | **full**       | n/a                                                                            |
-| `tabicl-untuned` / `tabicl-trained`   | `cfg.max_rows_per_model["tabicl"]` (50 000 — conservative, unmeasured)      | **full**       | n/a                                                                            |
+| `tabicl-untuned` / `tabicl-trained`   | `cfg.max_rows_per_model["tabicl"]` (1 000 000 — TabICLv2 handles million-scale context natively) | **full**       | n/a                                                                            |
 | `xgboost` / `catboost`                | none                                                                        | full           | `cfg.hpo.<m>.max_rows = 50 000` (stratified subsample of inner-train; HPO only) |
 | `logreg` / `linreg`                   | none                                                                        | full           | `cfg.hpo.<m>.n_trials = 50` (tunes `C` / `alpha`)                              |
 

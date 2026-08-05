@@ -40,15 +40,25 @@ cv:
 #   algorithmwatch fold took ~40 min on an A100, so all 8 such eval cells
 #   blew the 2 h walltime in the Jul-12 run. 50k stays inside the envelope
 #   and cuts the quadratic term 4×.
-#   tabicl → 50k (CONSERVATIVE, not measured): TabICL v2's ICL stage is
-#   O(rows²) like v2.6's, and its wrappers reach larger data through
-#   batching / kv-cache / offloading rather than a bigger single context.
-#   Raise only after timing one fold at the target size (the v2.6 lesson:
-#   a quadratic model silently blows the eval walltime, it does not OOM).
+#   tabicl → 1M, same as v3 (CORRECTED 2026-08-04; was 50k). Million-scale
+#   in-context inference is TabICLv2's headline capability, not a stretch
+#   goal: Qu et al. 2026 report processing **1M samples × 500 features in
+#   ~450 s under 50 GB GPU + 24 GB CPU** via hierarchical CPU/disk
+#   offloading, and 10.6x faster than TabPFN-2.5 on an H100 at 50k samples.
+#   Their QASSMax (scalable softmax, attention logits x s·log n) exists
+#   precisely to keep attention sharp at long context, so they "natively
+#   handle million-scale tables without retrieval and distillation".
+#   Capping it at 50k would have thrown away the model's main advantage AND
+#   handicapped it 20x against v3 — an un-paired cross-family comparison,
+#   the same error class as the untuned-vs-trained cap bug fixed today.
+#   Our corpus tops out at 532k rows and <=64 features (sanitize.max_columns),
+#   so 1M means "no cap in practice" for both families. Their wrappers
+#   auto-estimate a safe batch size (polynomial memory regression), so OOM
+#   is unlikely; WALLTIME is the thing to watch on the first run.
 max_rows_per_model:
   v3:      1000000
   v2.6:    50000
-  tabicl:  50000
+  tabicl:  1000000
   default: 50000
 
 

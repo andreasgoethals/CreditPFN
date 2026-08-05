@@ -762,6 +762,13 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
              "grid and exit. Useful for sizing slurm arrays.",
     )
     p.add_argument(
+        "--trial-family", type=int, default=None, metavar="N",
+        help="Print the MODEL FAMILY ('tabpfn' or 'tabicl') of the Nth trial "
+             "and exit. Lets a slurm prolog run only the preflight checks "
+             "that this trial actually needs, so a missing optional "
+             "dependency fails one family's trials instead of the whole grid.",
+    )
+    p.add_argument(
         "--log-path", default=None,
         help="Append the run summary to this log file instead of creating "
              "a fresh logs/<timestamp>.log file.",
@@ -779,6 +786,17 @@ if __name__ == "__main__":
     if args.list_trials:
         cfg = _load_cfg(overrides)
         print(len(_resolve_grid(cfg, single=False)))
+        raise SystemExit(0)
+    if args.trial_family is not None:
+        from src.train.tabicl_compat import model_family
+        cfg = _load_cfg(overrides)
+        grid = _resolve_grid(cfg, single=False)
+        if not 0 <= args.trial_family < len(grid):
+            # Over-sized slurm arrays are a legitimate pattern; a surplus
+            # index is not an error. Print nothing and exit 0 so the caller's
+            # `[[ "$FAMILY" == tabicl ]]` test simply doesn't match.
+            raise SystemExit(0)
+        print(model_family(grid[args.trial_family][0]))
         raise SystemExit(0)
     raise SystemExit(run(
         single=args.single,

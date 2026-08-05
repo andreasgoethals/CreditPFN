@@ -279,9 +279,30 @@ Two family differences worth remembering when reading results:
   not a bar distribution, so `neg_nll` is `NaN` for TabICL rows. Never
   compare density metrics across families; the planned cross-family
   density metric is CRPS (computable from the quantiles).
-- **`recompute=True` during training.** Gradient checkpointing in all
-  three stages is the main VRAM lever, since the ICL stage's attention
-  is O(rows²).
+- **`recompute=True` during training.** Gradient checkpointing is the
+  main VRAM lever. It is also what upstream does: TabICLv2's own stage-3
+  pretraining enables it above 20K samples.
+
+### TabICL context sizes — use the paper, not the library defaults
+
+A correction worth recording, because the first values were wrong:
+
+| | Value | Where it comes from |
+|---|---|---|
+| Eval fold cap | **1 000 000** (same as v3) | Qu et al. 2026: 1M samples × 500 features in ~450 s under 50 GB GPU + 24 GB CPU (hierarchical CPU/disk offloading); QASSMax scalable softmax keeps attention sharp at long context, so million-scale tables are handled "natively, without retrieval and distillation" |
+| Training rows/step | **26 000** (same as v3) | Inside TabICLv2's own stage-3 pretraining range (400–60 000 samples, log-uniform); equal to v3 so a cross-family difference is not confounded with context size |
+
+The earlier values (10 000 train / 50 000 eval) came from
+`max_data_size=10_000`, a **default argument of their convenience
+finetuning wrapper**, and from mirroring v2.6's cap. Neither is a
+capability limit — million-scale in-context inference is TabICLv2's
+headline result, and a 50 000-row eval cap would have handicapped it 20×
+against v3 while discarding the model's main advantage.
+
+Both numbers are still **unmeasured on our hardware**. Run
+`scripts/probe_row_cap.py` (it has a TabICL branch, grid 10k–60k) before
+committing a full sweep to them, and watch eval walltime on the first
+run — a large-context model overruns the clock rather than OOM-ing.
 
 ## Licence
 

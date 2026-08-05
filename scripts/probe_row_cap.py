@@ -31,6 +31,7 @@ peak memory is roughly members x per-member cost.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -205,6 +206,58 @@ def probe_tabicl_base(base_path: str, track: str, rows_grid: list[int],
         torch.cuda.empty_cache()
 
 
+def _gpu_is_usable() -> bool:
+    """Refuse to probe on a GPU that cannot give a meaningful answer.
+
+    WHY (2026-08-05): run bare on a Genius **login** node, this script found
+    the node's *display* GPU (Quadro P6000, sm_61), which
+    ``torch.cuda.is_available()`` happily reports as available even though
+    (a) the installed PyTorch has no sm_61 kernels and (b) the card is tiny
+    and shared. The result was a bare ``CUDA error: out of memory`` while
+    merely moving the model onto the device — an error that looks like "the
+    row cap is too high" but actually means "wrong machine".
+
+    A capacity probe on the wrong GPU is worse than no probe: its numbers
+    would be silently transplanted into config/data.yaml. So fail loudly and
+    name the submit command instead.
+    """
+    import socket
+    import torch
+
+    try:
+        props = torch.cuda.get_device_properties(0)
+    except Exception as exc:                                   # pragma: no cover
+        print(f"ERROR: could not query GPU 0 ({type(exc).__name__}: {exc}).")
+        return False
+    cap = f"sm_{props.major}{props.minor}"
+    supported = set(torch.cuda.get_arch_list())
+    host = socket.gethostname()
+    on_login = "login" in host and not os.environ.get("SLURM_JOB_ID")
+
+    if cap not in supported or on_login:
+        print("=" * 78)
+        print("REFUSING TO PROBE — this is not a usable capacity-probe GPU.")
+        print("=" * 78)
+        print(f"  host              : {host}")
+        print(f"  slurm job         : {os.environ.get('SLURM_JOB_ID', '<none — interactive>')}")
+        print(f"  gpu               : {props.name} ({cap}, "
+              f"{props.total_memory / 1e9:.1f} GB)")
+        print(f"  pytorch supports  : {' '.join(sorted(supported))}")
+        if on_login:
+            print("\n  A login node's GPU is a shared DISPLAY device, not a compute GPU.")
+        if cap not in supported:
+            print(f"\n  This PyTorch build has no {cap} kernels, so anything it did"
+                  "\n  report would be meaningless (and it usually fails with a"
+                  "\n  misleading 'CUDA error: out of memory' during model .to(device)).")
+        print("\n  Submit it as a batch job on a real compute GPU instead:")
+        print("      sbatch scripts/slurm/probe_row_cap.slurm")
+        print("  (Mindwell gpu_b200, 1 GPU, ~1 h; log lands in "
+              "$VSC_DATA/CreditPFN/logs/.)")
+        print("=" * 78)
+        return False
+    return True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--track", choices=["pd", "lgd", "both"], default="both")
@@ -215,6 +268,8 @@ def main() -> int:
     import torch
     from omegaconf import OmegaConf
     device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cuda" and not _gpu_is_usable():
+        return 1
     if device != "cuda":
         print("WARNING: no CUDA device — timing only, no memory numbers.")
     cfg = OmegaConf.load("config/train.yaml")
@@ -226,10 +281,13 @@ def main() -> int:
         for base in bases:
             from src.train.tabicl_compat import model_family
             if model_family(str(base)) == "tabicl":
-                # Quadratic-in-rows ICL attention, probed at the training
-                # ensemble size (2), so these numbers are directly comparable
-                # to config/data.yaml's finetuning.max_rows_per_epoch.tabicl.
-                grid = args.rows or [5_000, 10_000, 20_000, 30_000]
+                # Probed at the training ensemble size (2), so these numbers
+                # are directly comparable to config/data.yaml's
+                # finetuning.max_rows_per_epoch.tabicl (26 000, = v3's cap for
+                # cross-family parity). The grid brackets that value and
+                # reaches toward TabICLv2's own stage-3 pretraining top of
+                # 60K samples (Qu et al. 2026 §B.1).
+                grid = args.rows or [10_000, 26_000, 40_000, 60_000]
                 probe_tabicl_base(str(base), track, grid, device)
                 continue
             is_v26 = "v2.6" in str(base)
