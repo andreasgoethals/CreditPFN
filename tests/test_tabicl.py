@@ -62,6 +62,41 @@ def test_tabicl_smoke_test_imports() -> None:
     smoke_test("lgd")
 
 
+def test_missing_finetune_extra_names_the_extra_not_the_version() -> None:
+    """Regression test (2026-08-05): tabicl declares `transformers` only under
+    its `finetune` extra, so a plain `pip install tabicl` yields a working
+    INFERENCE install that fails only when importing the finetuning
+    internals. Our first error message blamed the tabicl *version* and sent a
+    real debugging session down the wrong path — it must name the missing
+    extra instead."""
+    pytest.importorskip("tabicl")
+    import sys
+    from src.train.tabicl_compat import import_tabicl_finetune_data
+
+    # Simulate "extra not installed": block transformers and evict the
+    # already-imported tabicl finetune modules so the import re-runs.
+    saved = {k: v for k, v in sys.modules.items()
+             if k == "transformers" or k.startswith(("transformers.",
+                                                     "tabicl._finetune",
+                                                     "tabicl.train"))}
+    for k in saved:
+        del sys.modules[k]
+    sys.modules["transformers"] = None                      # type: ignore[assignment]
+    try:
+        with pytest.raises(ImportError) as excinfo:
+            import_tabicl_finetune_data()
+        msg = str(excinfo.value)
+        assert "transformers" in msg
+        assert "tabicl[finetune]" in msg
+        assert "EXTRA, not a version problem" in msg
+    finally:
+        sys.modules.pop("transformers", None)
+        sys.modules.update(saved)
+
+    # And the happy path still works once it is importable again.
+    import_tabicl_finetune_data()
+
+
 def test_finetune_internals_have_expected_signature() -> None:
     """Pin the PRIVATE upstream API we depend on. If a tabicl upgrade
     renames these, this test fails with a clear pointer instead of the

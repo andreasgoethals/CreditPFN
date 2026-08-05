@@ -43,7 +43,7 @@ TabICL sources:
 
 - Upstream code + finetuning internals (mirrored at
   `tfm-library/repositories/TabICL.txt`); the pip package is pinned
-  `tabicl>=2.1.1,<3` because our shim imports its private
+  `tabicl[finetune]>=2.1.1,<3` because our shim imports its private
   `tabicl._finetune.data` helpers.
 - Weights: HuggingFace `jingang/TabICL`.
 - Qu et al., *TabICL: A Tabular Foundation Model for In-Context

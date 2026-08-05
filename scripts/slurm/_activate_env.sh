@@ -28,6 +28,26 @@
 
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
+# --------------------------------------------------------------------------
+# An active virtualenv SHADOWS conda and wins silently (2026-08-05).
+# `#!/bin/bash -l` sources ~/.bashrc; if that auto-activates a venv, its
+# bin/ sits ahead of the conda env's on PATH. `conda activate` then reports
+# success while `python` and `pip` still resolve to the VENV — so a package
+# installed "into CreditPFN" lands somewhere the job never looks, and vice
+# versa. Observed interactively: `conda activate CreditPFN; pip install ...`
+# wrote to a venv belonging to an entirely different project.
+# Neutralise it before touching conda: drop the venv's bin/ from PATH and
+# unset the marker.
+# --------------------------------------------------------------------------
+if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+    echo "WARNING: a virtualenv is active (${VIRTUAL_ENV}) and would shadow" >&2
+    echo "         the conda env. Removing it from PATH for this job." >&2
+    PATH="$(echo "${PATH}" | tr ':' '\n' | grep -v "^${VIRTUAL_ENV}/bin$" | paste -sd: -)"
+    export PATH
+    unset VIRTUAL_ENV
+    unset VIRTUAL_ENV_PROMPT 2>/dev/null || true
+fi
+
 _try_source_conda() {
     # Args: a candidate `conda.sh` path. Returns 0 on success.
     if [[ -f "$1" ]]; then

@@ -164,15 +164,42 @@ pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main
 Without this, `train_pipeline.py` will `TypeError` on the first model
 load. Eval against pre-existing checkpoints is unaffected.
 
-**TabICL.** Installed straight from PyPI by the `pip install -e` above
-(`tabicl>=2.1.1,<3`). Verify both families import before submitting:
+**TabICL.** Installed by the `pip install -e` above as
+**`tabicl[finetune]>=2.1.1,<3`** — the `[finetune]` extra is **required, not
+optional**. Importing tabicl's finetuning internals pulls in
+`transformers`, which tabicl declares only under that extra. Without it you
+get an install that works perfectly for *inference* and fails at *training*
+with `ModuleNotFoundError: No module named 'transformers'`. If you installed
+`tabicl` by hand earlier, re-run:
+
+```bash
+pip install 'tabicl[finetune]>=2.1.1,<3'
+```
+
+**Watch out: an active virtualenv silently beats `conda activate`.** If your
+shell has a venv active, its `bin/` sits ahead of the conda env on `PATH`, so
+`conda activate CreditPFN && pip install X` reports success while installing
+into the **venv**. Check where you actually are before installing:
+
+```bash
+which python pip          # must be under the conda env, not a venv
+echo "${VIRTUAL_ENV:-no venv active}"
+```
+
+If a venv is active, `deactivate` first, then `conda activate CreditPFN`. The
+SLURM scripts now strip a shadowing venv from `PATH` automatically (and say
+so in the log), but an interactive install has no such protection — that is
+where the wrong-environment mistake actually happens.
+
+Verify both families import before submitting:
 
 ```bash
 python -c "from src.train.tabpfn_compat import smoke_test as a; from src.train.tabicl_compat import smoke_test as b; a('pd'); b('pd')"
 ```
 
-The SLURM scripts run exactly these two checks in their pre-flight, so a
-missing or upgrade-broken import costs seconds instead of a GPU job.
+The SLURM scripts run these checks in their pre-flight (the TabICL one only
+for trials that use a TabICL base), so a missing or upgrade-broken import
+costs seconds instead of a GPU job.
 
 ### 0.5 Upload datasets and base checkpoints
 

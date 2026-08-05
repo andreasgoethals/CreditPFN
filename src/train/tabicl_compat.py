@@ -4,7 +4,7 @@ TabICL is the second model family CreditPFN continued-pretrains (2026-08-04),
 next to TabPFN. It is fully open (code BSD-3, weights on HF `jingang/TabICL`)
 and ships official finetuning internals under ``tabicl._finetune`` — private
 modules, so every import is funneled through this file (mirroring
-``tabpfn_compat.py``) and pinned via ``pyproject.toml`` (``tabicl>=2.1.1,<3``).
+``tabpfn_compat.py``) and pinned via ``pyproject.toml`` (``tabicl[finetune]>=2.1.1,<3``).
 If an upstream release moves these symbols, this is the ONE file to fix.
 
 Family detection
@@ -52,7 +52,7 @@ def import_tabicl_core():
     except ImportError as exc:                                  # pragma: no cover
         raise ImportError(
             "The `tabicl` package (>=2.1.1) is required for the TabICL model "
-            "family. Install with `pip install 'tabicl>=2.1.1,<3'`. "
+            "family. Install with `pip install 'tabicl[finetune]>=2.1.1,<3'`. "
             f"Underlying error: {exc}"
         ) from exc
     return TabICL
@@ -62,9 +62,41 @@ def import_tabicl_finetune_data():
     """Return ``(MetaBatch, _build_meta_batch)`` from tabicl's official
     finetuning internals — the exact per-step preprocessing (context/query
     split, EnsembleGenerator variants, class-shuffle remap, regression
-    z-norm) their ``FinetunedTabICL*`` wrappers train with."""
+    z-norm) their ``FinetunedTabICL*`` wrappers train with.
+
+    Requires the ``tabicl[finetune]`` extra: importing this module executes
+    ``tabicl._finetune/__init__.py`` → ``base`` → ``tabicl.train._optim`` →
+    ``transformers``, and tabicl declares ``transformers`` ONLY under its
+    finetune/pretrain/all extras. Inference works without it (the sklearn
+    wrappers are lazily imported), so a plain ``pip install tabicl`` fails
+    here and nowhere else.
+    """
     try:
         from tabicl._finetune.data import MetaBatch, _build_meta_batch
+    except ModuleNotFoundError as exc:                          # pragma: no cover
+        # Distinguish "optional extra not installed" (by far the likeliest
+        # cause, and the one a version check will NOT reveal) from "upstream
+        # moved the symbol". The first message we shipped blamed the version
+        # and sent a real debugging session down the wrong path (2026-08-05).
+        missing = getattr(exc, "name", "") or str(exc)
+        if "tabicl" not in missing:
+            raise ImportError(
+                f"tabicl's finetuning internals need the optional dependency "
+                f"'{missing}', which is NOT installed. This is a missing "
+                f"EXTRA, not a version problem: tabicl declares it under its "
+                f"`finetune` extra, so plain `pip install tabicl` gives you a "
+                f"working INFERENCE install that fails only here.\n"
+                f"  Fix: pip install 'tabicl[finetune]>=2.1.1,<3'\n"
+                f"  Install it into the environment the SLURM jobs activate "
+                f"(each job log prints 'Active conda env: ...' near the top) "
+                f"— an interactive venv is not necessarily that environment.\n"
+                f"  Underlying error: {exc}"
+            ) from exc
+        raise ImportError(
+            "tabicl._finetune.data moved or is unavailable — the pinned "
+            "tabicl version (2.1.x) ships it. Check the installed version "
+            f"before adjusting this shim. Underlying error: {exc}"
+        ) from exc
     except ImportError as exc:                                  # pragma: no cover
         raise ImportError(
             "tabicl._finetune.data moved or is unavailable — the pinned "
@@ -91,11 +123,28 @@ def smoke_test(track: str) -> None:
     """Fail-fast preflight (SLURM prolog): verify every tabicl import the
     given track's training will need, in seconds, before GPU time is spent.
     Mirrors ``tabpfn_compat.smoke_test``. Safe to call when the grid contains
-    no tabicl base — it only checks imports, not checkpoints."""
-    TabICL = import_tabicl_core()                               # noqa: N806
-    import_tabicl_finetune_data()
-    clf, reg = import_tabicl_sklearn()
-    assert TabICL is not None and clf is not None and reg is not None
+    no tabicl base — it only checks imports, not checkpoints.
+
+    Checks are ordered cheapest-and-most-fundamental first and each is
+    reported, so a failure says WHICH capability is missing rather than just
+    "tabicl is broken". Inference and training have different dependency
+    sets (see :func:`import_tabicl_finetune_data`), and only the training
+    one needs the ``[finetune]`` extra.
+    """
     from importlib.metadata import version
-    print(f"tabicl_compat smoke_test OK (track={track}, "
-          f"tabicl={version('tabicl')})")
+    print(f"tabicl_compat smoke_test (track={track}, tabicl={version('tabicl')})")
+
+    TabICL = import_tabicl_core()                               # noqa: N806
+    assert TabICL is not None
+    print("  [ok] core model class      (tabicl._model.tabicl.TabICL)")
+
+    clf, reg = import_tabicl_sklearn()
+    assert clf is not None and reg is not None
+    print("  [ok] inference wrappers    (TabICLClassifier / TabICLRegressor)")
+
+    import_tabicl_finetune_data()
+    # ASCII only: this runs in a SLURM prolog, and a UnicodeEncodeError in a
+    # preflight check would abort the job it exists to protect.
+    print("  [ok] finetuning internals  (tabicl._finetune.data) "
+          "- requires the [finetune] extra")
+    print("tabicl_compat smoke_test PASSED")

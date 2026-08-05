@@ -94,7 +94,7 @@ save format and the reload through TabICL's own inference wrappers.
 
 **Two things must happen on the cluster before the next run:**
 
-1. `pip install 'tabicl>=2.1.1,<3'` in the CreditPFN environment.
+1. `pip install 'tabicl[finetune]>=2.1.1,<3'` in the CreditPFN environment.
 2. Stage both TabICL checkpoints **from a login node** — compute nodes have no
    outbound network, and the loaders deliberately refuse to auto-download so
    a missing file fails in seconds instead of hanging a GPU job. The command
@@ -298,7 +298,7 @@ git push origin main
 
 ```bash
 # 2. On VSC (Genius login node), in the CreditPFN env.
-pip install 'tabicl>=2.1.1,<3'
+pip install 'tabicl[finetune]>=2.1.1,<3'
 python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')"
 ```
 
