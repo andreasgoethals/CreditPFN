@@ -288,9 +288,10 @@ Thumbs.db
 *.onnx
 
 # Shared Claude/Codex local project memory (probe results, mistakes log,
-# do-not-undo notes). Loaded through the tracked CLAUDE.md / AGENTS.md files;
-# never committed.
+# do-not-undo notes). Lives at docs/AGENTS_MEMORY.md and is loaded through
+# the tracked CLAUDE.md / AGENTS.md files; never committed. The pattern is
+# deliberately a bare filename so it matches wherever the file sits.
 AGENTS_MEMORY.md
 # Claude Code's own auto-loaded local notes (session-facing quick reference;
-# the durable shared memory is AGENTS_MEMORY.md).
+# the durable shared memory is docs/AGENTS_MEMORY.md).
 CLAUDE.local.md

@@ -25,8 +25,9 @@ included.
    secrets, or anything already in the permanent docs.
 6. **Never rewrite an older day.** If a past entry became wrong, say so in
    today's entry and mark the old one superseded.
-7. **Division of labour.** Transient findings and pitfalls → `AGENTS_MEMORY.md`
-   (gitignored). Durable facts → `docs/`. This file records only *changes*.
+7. **Division of labour.** Transient findings and pitfalls →
+   `docs/AGENTS_MEMORY.md` (gitignored). Durable facts → the committed docs
+   alongside this file. This file records only *changes*.
 
 ---
 
@@ -115,7 +116,7 @@ included.
 - **Why:** EDW data are technically viable after leakage-safe panel-to-table
   ETL, but its January 2026 terms prohibit AI training unless the university
   agreement overrides that. *(The `docs/EDW_DATASET_FEASIBILITY.md` this
-  entry claims was never committed — see `AGENTS_MEMORY.md` §4.)*
+  entry claims was never committed — see `docs/AGENTS_MEMORY.md` §4.)*
 
 ---
 
@@ -216,6 +217,24 @@ included.
   explicit request for this one pass.
 - **Why:** Entries had drifted into three different formats and several were
   long enough that the actual change was hard to find.
+
+### Move the agent log and memory into docs/ — Claude
+
+- **What:** `AGENTS_HISTORY.md` → `docs/AGENTS_HISTORY.md` (via `git mv`, so
+  the rename is tracked) and `AGENTS_MEMORY.md` → `docs/AGENTS_MEMORY.md`.
+  Updated every pointer: `CLAUDE.md` and `AGENTS.md` (4 lines each),
+  `CLAUDE.local.md`, the two `.gitignore` comments, this file's house-style
+  rule, and the README doc table. The `.gitignore` pattern is a bare filename,
+  so the memory file stays ignored at its new path.
+- **Why:** The user asked to de-clutter the repo root. These two were the only
+  loose root files with no tooling dependency — everything else there
+  (`.gitignore`, `.gitmodules`, `pyproject.toml`, `CLAUDE.md`, `AGENTS.md`,
+  `README.md`) is resolved from the root by git, pip/pytest, or agent
+  auto-loading and would break if moved.
+- **Verified:** No Python, config or SLURM file references either name; both
+  moved files contain zero relative markdown links, so nothing re-resolves.
+  The 2026-07-10 entry's mention of introducing `AGENTS_MEMORY.md` is left
+  bare on purpose — it narrates where the file was then (rule 6).
 
 ### Rescope the temporal-split plan after auditing the corpus — Claude
 
