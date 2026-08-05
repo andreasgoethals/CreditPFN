@@ -57,6 +57,7 @@ from src.train.metrics import (
     mean_ignore_nan,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
+from src.train.tabicl_compat import model_family
 from src.utils.paths import (
     resolve_output_path, resolve_staging_path, resolve_writable_staging_path,
 )
@@ -159,8 +160,15 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
     if isinstance(mapping, int):
         return int(mapping)
     name = Path(str(base_checkpoint)).name
-    m = _BASE_VERSION_RE.search(name)
-    key = m.group(1) if m else "default"
+    # Family key takes precedence over version parsing: a TabICL base like
+    # "tabicl-classifier-v2-20260212.ckpt" would otherwise match "v2" (or
+    # fall to "default"), silently inheriting a TabPFN-derived cap. TabICL's
+    # ICL stage is O(rows²) with its own memory profile → own config key.
+    if "tabicl" in name.lower():
+        key = "tabicl"
+    else:
+        m = _BASE_VERSION_RE.search(name)
+        key = m.group(1) if m else "default"
     if hasattr(mapping, "get"):
         if key in mapping:
             return int(mapping[key])
@@ -205,7 +213,18 @@ def descriptive_name(
     # Only the non-default "full_pass" mode adds a tag, so "one_sample"
     # (the default) keeps the exact pre-2026-06-01 filename.
     pass_tag = "_fullpass" if (epoch_pass_mode == "full_pass") else ""
-    lora_tag = "_lora" if use_lora else ""
+    # The `use_lora` grid axis means LoRA for the TabPFN family but
+    # FREEZE-BACKBONE / train-ICL-head-only for TabICL (its upstream
+    # stage-3 regime; full SFT collapsed TabICL in two independent
+    # reports — see src/train/tabicl_compat.py). Tag names must be
+    # honest about which adaptation actually ran. Derived from
+    # `base_path` HERE so every caller (loop + train_pipeline
+    # idempotency + epoch CSVs) stays consistent with zero call-site
+    # changes.
+    if use_lora and "tabicl" in base_stem.lower():
+        lora_tag = "_iclhead"
+    else:
+        lora_tag = "_lora" if use_lora else ""
     return (
         f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}"
         f"{qf_tag}{acc_tag}{pass_tag}{lora_tag}.ckpt"
@@ -425,6 +444,11 @@ def _log_debug_banner(
         tabpfn_ver = getattr(_tabpfn, "__version__", "?")
     except Exception:                                              # pragma: no cover
         tabpfn_ver = "?"
+    try:
+        from importlib.metadata import version as _pkg_ver
+        tabicl_ver = _pkg_ver("tabicl")
+    except Exception:                                              # pragma: no cover
+        tabicl_ver = "-"
     # --- hardware -------------------------------------------------------- #
     gpu_name, gpu_mem, cuda_cap = "cpu", None, None
     if device == "cuda" and torch.cuda.is_available():
@@ -477,7 +501,8 @@ def _log_debug_banner(
         f"creditpfn_git={_git_sha()} "
         f"python={platform.python_version()} torch={torch.__version__} "
         f"cuda={torch.version.cuda} cudnn={torch.backends.cudnn.version()} "
-        f"numpy={np.__version__} tabpfn={tabpfn_ver} platform={platform.platform()}",
+        f"numpy={np.__version__} tabpfn={tabpfn_ver} tabicl={tabicl_ver} "
+        f"platform={platform.platform()}",
         "[paths] "
         f"data_root={roots.get('data_root', '?')} "
         f"output_root={roots.get('output_root', '?')} "
@@ -852,6 +877,13 @@ def _query_missing_context_class(batch) -> bool:
             ctx_uniques.append(torch.unique(m.y_context.reshape(-1)))
         ctx_unique = torch.unique(torch.cat(ctx_uniques))
         qry_unique = torch.unique(batch.y_query.reshape(-1))
+    elif hasattr(batch, "y_train"):
+        # TabICLTrainBatch: per-member class shuffles are BIJECTIVE remaps
+        # applied consistently to y_train and y_query, so a set-membership
+        # mismatch in member 0's space ⇔ a mismatch in every member's space.
+        # (Mirrors tabicl's own `_task_skip_batch`.)
+        ctx_unique = torch.unique(batch.y_train[0].reshape(-1).long())
+        qry_unique = torch.unique(batch.y_query[0].reshape(-1).long())
     else:
         ctx_unique = torch.unique(batch.y_context.reshape(-1))
         qry_unique = torch.unique(batch.y_query.reshape(-1))
@@ -987,10 +1019,11 @@ def evaluate_ensemble_on_split(
     device: str,
     task_type: str,
     metric_names: tuple[str, ...],
+    family: str = "tabpfn",
 ) -> dict[str, float]:
-    """Evaluate one TabPFN checkpoint via the sklearn API with full
-    ensemble inference (``n_estimators`` forward passes per fit/predict,
-    averaged with the package's standard feature-permutation strategy).
+    """Evaluate one TabPFN or TabICL checkpoint via its sklearn API with
+    full ensemble inference (``n_estimators`` forward passes per
+    fit/predict, averaged with the package's standard ensembling strategy).
 
     This is what ``scripts/eval_pipeline.py`` does at the end of
     training, just on a smaller per-epoch sample. Reusing the same code
@@ -1050,11 +1083,28 @@ def evaluate_ensemble_on_split(
         ]
 
         try:
-            tabpfn = _make_tabpfn(
-                task_type, ckpt_path,
-                device=device, n_estimators=int(n_estimators),
-                categorical_features_indices=(cat_idx or None),
-            )
+            if family == "tabicl":
+                # TabICL sklearn wrappers do their own preprocessing on raw
+                # features (no categorical-indices parameter exists).
+                # allow_auto_download=False: VSC compute nodes have no
+                # outbound network — a missing checkpoint must fail loudly,
+                # not attempt an HF download.
+                from src.train.tabicl_compat import import_tabicl_sklearn
+                ticl_clf, ticl_reg = import_tabicl_sklearn()
+                wrapper_cls = ticl_clf if task_type == "classification" else ticl_reg
+                tabpfn = wrapper_cls(
+                    model_path=str(ckpt_path),
+                    device=device,
+                    n_estimators=int(n_estimators),
+                    allow_auto_download=False,
+                    random_state=int(seed),
+                )
+            else:
+                tabpfn = _make_tabpfn(
+                    task_type, ckpt_path,
+                    device=device, n_estimators=int(n_estimators),
+                    categorical_features_indices=(cat_idx or None),
+                )
             tabpfn.fit(X_ctx, y_ctx)
             if task_type == "classification":
                 proba = tabpfn.predict_proba(X_qry)
@@ -1296,27 +1346,49 @@ def train_one_config(
         )
 
     # ---- 2) base model + criterion ---------------------------------------- #
-    lora_cfg_dict = (
-        dict(cfg.lora) if (use_lora and hasattr(cfg, "lora")) else None
-    )
-    model, criterion, architecture_config, inference_config = (
-        load_tabpfn_for_training(
+    # Two model families (2026-08-04). The grid's `use_lora` axis means:
+    #   tabpfn → PEFT LoRA adapters (base frozen, adapters train);
+    #   tabicl → FREEZE-BACKBONE / train-ICL-head-only (upstream stage-3;
+    #            full SFT collapsed TabICL in two independent reports —
+    #            see src/train/tabicl_compat.py). Checkpoint names tag the
+    #            difference honestly (`_lora` vs `_iclhead`).
+    family = model_family(base_checkpoint_config)
+    if family == "tabicl":
+        from src.train.tabicl_model import load_tabicl_for_training
+        model, tabicl_model_config = load_tabicl_for_training(
             base_checkpoint_path, track=track, device=device,
-            lora_config=lora_cfg_dict,
+            freeze_backbone=bool(use_lora),
         )
-    )
+        criterion = None                    # CE / pinball are functional losses
+        architecture_config = None
+        inference_config = None             # dataloader uses the tabicl path
+    else:
+        tabicl_model_config = None
+        lora_cfg_dict = (
+            dict(cfg.lora) if (use_lora and hasattr(cfg, "lora")) else None
+        )
+        model, criterion, architecture_config, inference_config = (
+            load_tabpfn_for_training(
+                base_checkpoint_path, track=track, device=device,
+                lora_config=lora_cfg_dict,
+            )
+        )
 
-    # L2-SP anchor (Li et al. 2018): snapshot the synthetic-prior weights
-    # w0 right after load, so the loss can penalise drift away from them
-    # (see _l2sp_penalty). This is OUR deliberate addition for the
-    # multi-dataset corpus continued-pretraining setting — the Real-TabPFN
-    # experiments themselves use weight_decay=0.0 and NO anchor (their runs
-    # are single-dataset). Configurable via cfg.optimizer.l2sp_lambda
-    # (0.0 = off). FULL-FT only — with LoRA the base is frozen and cannot
-    # drift, so L2-SP is inert and skipped.
+    # L2-SP anchor (Li et al. 2018): snapshot the pretrained weights w0 right
+    # after load, so the loss can penalise drift away from them (see
+    # _l2sp_penalty). λ=0.003 matches Real-TabPFN's corpus-CPT regularizer
+    # exactly (Garg et al. 2025 §method — verified against the paper
+    # 2026-07-10). Configurable via cfg.optimizer.l2sp_lambda (0.0 = off).
+    # Applicability per family/mode:
+    #   tabpfn + LoRA        → inert (base frozen, adapters start at 0): skip.
+    #   tabpfn + full-FT     → anchor all trainable weights.
+    #   tabicl (both modes)  → anchor the TRAINABLE weights (full-FT: all;
+    #                          icl-head mode: the head only — it starts at the
+    #                          pretrained weights and can drift, unlike LoRA).
     l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
+    l2sp_applicable = (family == "tabicl") or (not use_lora)
     l2sp_anchor: dict[str, torch.Tensor] | None = None
-    if l2sp_lambda > 0.0 and not use_lora:
+    if l2sp_lambda > 0.0 and l2sp_applicable:
         l2sp_anchor = {
             n: p.detach().clone()
             for n, p in model.named_parameters() if p.requires_grad
@@ -1325,10 +1397,10 @@ def train_one_config(
             "L2-SP enabled: lambda=%.2e, anchoring %d trainable tensors to w0.",
             l2sp_lambda, len(l2sp_anchor),
         )
-    elif l2sp_lambda > 0.0 and use_lora:
+    elif l2sp_lambda > 0.0:
         LOGGER.info(
-            "L2-SP lambda=%.2e configured but use_lora=True — base weights are "
-            "frozen, so L2-SP is inert; skipping it.", l2sp_lambda,
+            "L2-SP lambda=%.2e configured but use_lora=True (TabPFN) — base "
+            "weights are frozen, so L2-SP is inert; skipping it.", l2sp_lambda,
         )
 
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
@@ -1385,6 +1457,15 @@ def train_one_config(
         n_estimators_finetune = int(_ne if _ne is not None else 2)
     n_estimators_finetune = max(1, n_estimators_finetune)
 
+    # TabICL family: upstream's finetuning uses n_estimators=2 for BOTH the
+    # classifier and the regressor (tabicl._finetune defaults) — override the
+    # TabPFN-derived per-track mapping (pd=2/lgd=8) unless the config sets an
+    # explicit tabicl value.
+    if family == "tabicl":
+        n_estimators_finetune = max(
+            1, int(getattr(cfg.train, "n_estimators_finetune_tabicl", 2)),
+        )
+
     # ---- member-aware row-cap scaling (GPU-memory safety) ---------------- #
     # A training step forwards ALL `n_estimators_finetune` preprocessed
     # ensemble members and holds every member's activation graph
@@ -1396,8 +1477,12 @@ def train_one_config(
     # calibrated for the 2-member reference (PD); we scale INVERSELY with the
     # actual member count so an 8-member LGD step holds ~the same memory as a
     # 2-member PD step instead of 4× more (which OOMs the 192 GiB card).
+    # (TabPFN-measured constants — B200 probe 2026-07-08. NOT applied to the
+    # tabicl family: its memory slope is unmeasured and its member count is
+    # fixed at 2 anyway; the `tabicl` row-cap key in config/data.yaml is the
+    # sizing knob there.)
     _REFERENCE_MEMBERS = 2
-    if n_estimators_finetune > _REFERENCE_MEMBERS:
+    if family == "tabpfn" and n_estimators_finetune > _REFERENCE_MEMBERS:
         _scaled = max(1000, max_rows_per_epoch * _REFERENCE_MEMBERS // n_estimators_finetune)
         if _scaled < max_rows_per_epoch:
             LOGGER.info(
@@ -1426,6 +1511,7 @@ def train_one_config(
         n_estimators_finetune=n_estimators_finetune,
         pass_mode=pass_mode,
         max_cells_per_epoch=max_cells_per_epoch,
+        model_family=family,
     )
     train_loader = DataLoader(
         train_ds,
@@ -1548,7 +1634,10 @@ def train_one_config(
     # timing lines showed the monitor dominating one_sample epochs ~3:1 —
     # config/train.yaml sets 5; code default 1 preserves legacy behaviour.
     epoch_eval_every = max(1, int(getattr(cfg.train, "epoch_eval_every", 1)))
-    use_ensemble_eval = epoch_eval_ne > 1
+    # TabICL has no cheap single-forward monitor path (evaluate_on_split's
+    # prepare_eval_chunk/_forward are TabPFN-specific), so its monitor always
+    # goes through the sklearn ensemble path regardless of epoch_eval_ne.
+    use_ensemble_eval = epoch_eval_ne > 1 or family == "tabicl"
     snapshot_path = Path(str(save_path) + ".epoch_eval.ckpt") if use_ensemble_eval else None
     # (test_metric, train_metric) pairs from epochs where the monitor RAN —
     # the divergence detector's metric window must only look at these, else
@@ -1597,6 +1686,7 @@ def train_one_config(
                 device=device,
                 task_type=track_task_type,
                 metric_names=track_metric_names,
+                family=family,
             )
         result = evaluate_on_split(
             model, refs, criterion=criterion, device=device,
@@ -1676,6 +1766,14 @@ def train_one_config(
 
     for epoch in range(epochs):
         model.train()
+        if family == "tabicl" and use_lora:
+            # freeze-backbone mode: model.train() above flipped the frozen
+            # stages back to train mode — restore inference-mode behaviour
+            # (dropout off, norm statistics fixed) for the frozen backbone.
+            # TabICL's forward routes on module training flags, so this
+            # matters beyond bookkeeping.
+            model.col_embedder.eval()
+            model.row_interactor.eval()
         # Per-epoch reshuffle: a fresh random subsample is drawn from each
         # dataset's full processed CSV (see ProcessedDatasetLoader.set_epoch).
         train_ds.set_epoch(epoch)
@@ -1743,7 +1841,26 @@ def train_one_config(
                 # path (E=1, no preprocessing) is kept ONLY for the
                 # mocked smoke test in tests/test_train.py.
                 from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch
-                if isinstance(batch, TabPFNEnsembleBatch):
+                from src.train.dataloader import TabICLTrainBatch
+                if isinstance(batch, TabICLTrainBatch):
+                    # TabICL family (2026-08-04): one forward over all E
+                    # ensemble members — `TabICL._train_forward` routes on
+                    # model.train(). Losses are verbatim tabicl's own
+                    # finetuning objectives (`tabicl._finetune.{classifier,
+                    # regressor}._compute_batch_loss`): CE over the first
+                    # n_classes of the 10 logit columns; mean pinball over
+                    # the 999-quantile head on z-normed targets.
+                    out = model(batch.X, batch.y_train)   # (E, test, out_dim)
+                    if batch.task_type == "classification":
+                        n_cls = int(batch.y_train.max().item()) + 1
+                        loss = torch.nn.functional.cross_entropy(
+                            out[..., :n_cls].reshape(-1, n_cls),
+                            batch.y_query.long().reshape(-1),
+                        )
+                    else:
+                        from src.train.tabicl_model import tabicl_pinball_loss
+                        loss = tabicl_pinball_loss(out, batch.y_query)
+                elif isinstance(batch, TabPFNEnsembleBatch):
                     loss = _ensemble_step_loss(
                         model, batch, criterion=criterion,
                     )
@@ -1930,12 +2047,24 @@ def train_one_config(
         )
         if monitor_this_epoch:
             if use_ensemble_eval and snapshot_path is not None:
-                assert architecture_config is not None
-                _save_eval_snapshot(
-                    model, architecture_config, snapshot_path,
-                    criterion=criterion,
-                    inference_config=inference_config,
-                )
+                if family == "tabicl":
+                    # Non-destructive by construction: state_dict tensors are
+                    # detach().cpu() copies, no adapter merge exists for this
+                    # family. Written in upstream's {config, state_dict}
+                    # schema so TabICLClassifier/Regressor(model_path=...)
+                    # loads it directly.
+                    from src.train.tabicl_model import save_finetuned_tabicl
+                    assert tabicl_model_config is not None
+                    save_finetuned_tabicl(
+                        model, tabicl_model_config, snapshot_path,
+                    )
+                else:
+                    assert architecture_config is not None
+                    _save_eval_snapshot(
+                        model, architecture_config, snapshot_path,
+                        criterion=criterion,
+                        inference_config=inference_config,
+                    )
                 eval_ckpt_path: Path | str = snapshot_path
             else:
                 eval_ckpt_path = save_path    # ignored on cheap path
@@ -2192,10 +2321,22 @@ def train_one_config(
         tabpfn_version = getattr(_tabpfn, "__version__", None)
     except ImportError:                                         # pragma: no cover
         tabpfn_version = None
+    try:
+        from importlib.metadata import version as _pkg_version
+        tabicl_version = _pkg_version("tabicl")
+    except Exception:                                           # pragma: no cover
+        tabicl_version = None
     provenance = {
         "schema_version":      1,
         "run_name":            str(cfg.run_name),
         "track":               track,
+        "model_family":        family,
+        # What the grid's use_lora axis actually did for this family —
+        # eval-side interpretation must not assume LoRA semantics.
+        "adaptation_mode": (
+            ("iclhead_only" if use_lora else "full_ft") if family == "tabicl"
+            else ("lora" if use_lora else "full_ft")
+        ),
         "task_type":           "classification" if track == "pd" else "regression",
         "saved_at":            time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "hyperparameters": {
@@ -2219,6 +2360,12 @@ def train_one_config(
             ),
             "max_rows_per_epoch":  max_rows_per_epoch,
             "max_cells_per_epoch": max_cells_per_epoch,
+            # Per-step ensemble members actually used. Varies by track AND
+            # family (TabPFN pd=2 / lgd=8; TabICL 2 for both), and it drives
+            # both the gradient noise and the member-aware row scaling — so
+            # a checkpoint that doesn't record it can't be reproduced from
+            # its own provenance. (Added 2026-08-04.)
+            "n_estimators_finetune": int(n_estimators_finetune),
             "query_fraction":      query_fraction,
             "epoch_pass_mode":     pass_mode,
             "seed":                int(cfg.seed),
@@ -2248,17 +2395,26 @@ def train_one_config(
         # str so the .ckpt is weights_only-safe regardless of the loader.
         "torch_version":       str(torch.__version__),
         "tabpfn_version":      (str(tabpfn_version) if tabpfn_version is not None else None),
+        "tabicl_version":      (str(tabicl_version) if tabicl_version is not None else None),
     }
-    # Pass the criterion only for regression — the LGD bar-distribution
-    # state must round-trip through the checkpoint (`criterion.*` keys);
-    # for PD the criterion is a stateless CrossEntropyLoss.
-    save_criterion = criterion if track == "lgd" else None
-    save_finetuned(
-        model, architecture_config, save_path,
-        criterion=save_criterion,
-        inference_config=inference_config,
-        provenance=provenance,
-    )
+    if family == "tabicl":
+        from src.train.tabicl_model import save_finetuned_tabicl
+        assert tabicl_model_config is not None
+        save_finetuned_tabicl(
+            model, tabicl_model_config, save_path,
+            provenance=provenance,
+        )
+    else:
+        # Pass the criterion only for regression — the LGD bar-distribution
+        # state must round-trip through the checkpoint (`criterion.*` keys);
+        # for PD the criterion is a stateless CrossEntropyLoss.
+        save_criterion = criterion if track == "lgd" else None
+        save_finetuned(
+            model, architecture_config, save_path,
+            criterion=save_criterion,
+            inference_config=inference_config,
+            provenance=provenance,
+        )
     LOGGER.info(
         "Saved final-epoch checkpoint: %s "
         "(provenance.json next to the .ckpt records HPs, datasets, GPU=%s, "

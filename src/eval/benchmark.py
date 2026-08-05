@@ -164,9 +164,11 @@ def load_trained_handles(
     track: Literal["pd", "lgd"],
     device: str = "auto",
     n_estimators: int = 4,
-) -> list[tuple[ModelHandle, TabPFNTrained]]:
-    """Read the training manifest and build a TabPFN-trained handle per
-    successful (status=OK, ckpt-on-disk) row."""
+    n_estimators_tabicl: int | None = None,
+) -> list[tuple[ModelHandle, object]]:
+    """Read the training manifest and build a trained-model handle per
+    successful (status=OK, ckpt-on-disk) row — TabPFNTrained or
+    TabICLTrained depending on the row's base_checkpoint family."""
     manifest_csv = Path(manifest_csv)
     if not manifest_csv.exists():
         LOGGER.warning("training manifest not found: %s — skipping TabPFN-trained",
@@ -203,7 +205,7 @@ def load_trained_handles(
                 n_before - len(df),
             )
 
-    out: list[tuple[ModelHandle, TabPFNTrained]] = []
+    out: list[tuple[ModelHandle, object]] = []
     task_type = "classification" if track == "pd" else "regression"
     for _, row in df.iterrows():
         ckpt = str(row["final_ckpt_path"])
@@ -227,13 +229,31 @@ def load_trained_handles(
             # dirs (legacy manifests lack the column → "one_sample").
             "epoch_pass_mode":     str(row.get("epoch_pass_mode", "one_sample")),
         }
-        model = TabPFNTrained(
-            task_type=task_type, ckpt_path=ckpt,
-            device=device, n_estimators=n_estimators, extra=extra,
-        )
+        # Family from the manifest's base_checkpoint column — the trained
+        # ckpt filename inherits the base stem, but the base column is the
+        # canonical record.
+        from src.train.tabicl_compat import model_family
+        if model_family(str(row["base_checkpoint"])) == "tabicl":
+            from src.model.tabicl_models import TabICLTrained
+            model: object = TabICLTrained(
+                task_type=task_type, ckpt_path=ckpt,
+                device=device,
+                n_estimators=int(
+                    n_estimators_tabicl if n_estimators_tabicl is not None
+                    else n_estimators
+                ),
+                extra=extra,
+            )
+            source = "tabicl-trained"
+        else:
+            model = TabPFNTrained(
+                task_type=task_type, ckpt_path=ckpt,
+                device=device, n_estimators=n_estimators, extra=extra,
+            )
+            source = "tabpfn-trained"
         handle = ModelHandle(
             name=model.name, track=track, task_type=task_type,
-            source="tabpfn-trained", base_path=ckpt, extra=extra,
+            source=source, base_path=ckpt, extra=extra,
         )
         out.append((handle, model))
     return out
@@ -256,7 +276,7 @@ def resolve_test_datasets(handle: ModelHandle,
     test split (passed in by the caller). Same seed + same fractions
     → same datasets, so this stays consistent across all models.
     """
-    if handle.source == "tabpfn-trained" and handle.base_path:
+    if handle.source.endswith("-trained") and handle.base_path:
         prov = load_provenance(handle.base_path)
         if prov and prov.get("test_datasets"):
             # Guard the PAIRED comparison: a trained checkpoint is scored on its
@@ -616,6 +636,10 @@ _NAME_RE = re.compile(r"[^A-Za-z0-9_.-]")
 _BASE_RE = re.compile(
     r"tabpfn-(?P<v>v\d+(?:\.\d+)?)-(?:classifier|regressor)-v\d+(?:\.\d+)?_(?P<variant>.+)"
 )
+# TabICL checkpoint stems: ``tabicl-<role>-v<major>-<yyyymmdd>``.
+_TABICL_BASE_RE = re.compile(
+    r"tabicl-(?:classifier|regressor)-(?P<v>v\d+)-\d+"
+)
 
 
 def _short_base_tag(base_path: str | None) -> str:
@@ -625,24 +649,35 @@ def _short_base_tag(base_path: str | None) -> str:
     m = _BASE_RE.match(stem)
     if m:
         return f"{m['v']}-{m['variant']}"
+    m = _TABICL_BASE_RE.match(stem)
+    if m:
+        # Track dirs (PD/LGD) already separate classifier from regressor,
+        # so the role is deliberately dropped: one tag per generation.
+        return f"tabicl-{m['v']}"
     return stem.removeprefix("tabpfn-")
 
 
 def _method_dirname(handle: ModelHandle) -> str:
     if handle.source == "baseline":
         return handle.name
-    if handle.source == "tabpfn-untuned":
-        return f"tabpfn-untuned__{_short_base_tag(handle.base_path)}"
+    if handle.source.endswith("-untuned"):
+        return f"{handle.source}__{_short_base_tag(handle.base_path)}"
     extra = handle.extra or {}
     short = _short_base_tag(extra.get("base_checkpoint"))
     lr = extra.get("learning_rate")
-    lora_tag = "__lora" if extra.get("use_lora") else ""
+    # For the tabicl family the grid's use_lora axis means freeze-backbone
+    # (train ICL head only) — tag accordingly so dirnames don't lie.
+    if extra.get("use_lora"):
+        lora_tag = ("__iclhead" if handle.source.startswith("tabicl")
+                    else "__lora")
+    else:
+        lora_tag = ""
     # full_pass checkpoints get a distinct dir so they don't collide with
     # the one_sample variant of the same (base, lr, lora).
     fp_tag = "__fullpass" if extra.get("epoch_pass_mode") == "full_pass" else ""
     if lr is not None:
-        return f"tabpfn-trained__{short}__lr{lr:.0e}{fp_tag}{lora_tag}"
-    return f"tabpfn-trained__{short}{fp_tag}{lora_tag}"
+        return f"{handle.source}__{short}__lr{lr:.0e}{fp_tag}{lora_tag}"
+    return f"{handle.source}__{short}{fp_tag}{lora_tag}"
 
 
 def _output_path_for(
@@ -1011,17 +1046,22 @@ def resolve_max_rows_for_handle(
     """
     if not max_rows_per_model:
         return None
-    if not handle.source.startswith("tabpfn-"):
+    if handle.source == "baseline":
         return None
 
-    # Most-specific to least-specific key lookup.
-    base_short = (
-        _short_base_tag((handle.extra or {}).get("base_checkpoint"))
-        if handle.source == "tabpfn-trained"
-        else handle.name.removeprefix("tabpfn-untuned__")
-        if handle.source == "tabpfn-untuned"
-        else _short_base_tag(handle.base_path)
-    )
+    # Most-specific to least-specific key lookup. Both -trained and
+    # -untuned handles resolve through _short_base_tag so the SAME key is
+    # produced for the same base generation. (Bug fixed 2026-08-04: the
+    # untuned branch previously stripped a "tabpfn-untuned__" prefix from
+    # handle.name, but untuned names use brackets — the strip never
+    # matched, every untuned model fell through to the "default" cap, and
+    # untuned-v3 was evaluated with 50k-row folds while trained-v3 got
+    # 1M. Asymmetric caps silently un-pair the headline comparison on
+    # datasets larger than the default cap.)
+    if handle.source.endswith("-trained"):
+        base_short = _short_base_tag((handle.extra or {}).get("base_checkpoint"))
+    else:
+        base_short = _short_base_tag(handle.base_path)
     base_short = base_short or ""
     candidates: list[str] = [base_short]
     # Strip variant suffix: "v3-default" → "v3"

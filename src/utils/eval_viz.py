@@ -11,8 +11,13 @@ project / pivot / plot from there.
 
 Method-dirname conventions (mirrored in ``src.eval.benchmark._method_dirname``):
     xgboost, catboost, logreg, linreg                  → classical baselines
-    tabpfn-untuned__<short>                            → reference TabPFN with no fine-tune
-    tabpfn-trained__<short>__lr<lr>[__lora]            → our continued-pretrained variants
+    <family>-untuned__<short>                          → reference base weights, no finetune
+    <family>-trained__<short>__lr<lr>[__fullpass][__lora|__iclhead]
+                                                       → our continued-pretrained variants
+
+``<family>`` is ``tabpfn`` or ``tabicl``. The adaptation tag is
+``__lora`` for tabpfn and ``__iclhead`` for tabicl (that family's
+freeze-backbone rendering of the same grid axis).
 
 The visualisations here are deliberately exhaustive — the notebook
 caller picks which to display.
@@ -88,17 +93,21 @@ def _decode_method_dirname(d: str) -> dict:
     """
     if d in _CLASSICAL_BASELINES:
         return {"source": "baseline", "base_short": d,
-                "lr": np.nan, "use_lora": False}
-    if d.startswith("tabpfn-untuned__"):
-        return {"source": "tabpfn-untuned",
-                "base_short": d.removeprefix("tabpfn-untuned__"),
-                "lr": np.nan, "use_lora": False}
-    if d.startswith("tabpfn-trained__"):
-        rest = d.removeprefix("tabpfn-trained__")
-        lora = rest.endswith("__lora")
-        if lora:
-            rest = rest.removesuffix("__lora")
-        # The lr piece (if present) is the LAST ``__lr<tag>`` chunk.
+                "lr": np.nan, "use_lora": False, "full_pass": False}
+    m_src = re.match(r"^(?P<src>(?:tabpfn|tabicl)-(?:untuned|trained))__", d)
+    if m_src and m_src["src"].endswith("-untuned"):
+        return {"source": m_src["src"],
+                "base_short": d.removeprefix(m_src["src"] + "__"),
+                "lr": np.nan, "use_lora": False, "full_pass": False}
+    if m_src:   # <family>-trained
+        rest = d.removeprefix(m_src["src"] + "__")
+        # Dirname layout: <base>[__lr<lr>][__fullpass][__lora|__iclhead]
+        # — strip the tags back-to-front. (``__iclhead`` is the tabicl
+        # family's freeze-backbone rendering of the use_lora axis.)
+        lora = rest.endswith(("__lora", "__iclhead"))
+        rest = rest.removesuffix("__lora").removesuffix("__iclhead")
+        full_pass = rest.endswith("__fullpass")
+        rest = rest.removesuffix("__fullpass")
         m = re.search(r"__lr([0-9eE.+\-]+)$", rest)
         if m:
             lr = float(m.group(1))
@@ -106,10 +115,10 @@ def _decode_method_dirname(d: str) -> dict:
         else:
             lr = np.nan
             base = rest
-        return {"source": "tabpfn-trained", "base_short": base,
-                "lr": lr, "use_lora": lora}
+        return {"source": m_src["src"], "base_short": base,
+                "lr": lr, "use_lora": lora, "full_pass": full_pass}
     return {"source": "unknown", "base_short": d,
-            "lr": np.nan, "use_lora": False}
+            "lr": np.nan, "use_lora": False, "full_pass": False}
 
 
 def human_method_name(row: pd.Series) -> str:
@@ -118,14 +127,20 @@ def human_method_name(row: pd.Series) -> str:
     base = row.get("base_short", "?")
     if src == "baseline":
         return base
-    if src == "tabpfn-untuned":
+    if src.endswith("-untuned"):
         return f"untuned ({base})"
-    if src == "tabpfn-trained":
+    if src.endswith("-trained"):
         lr = row.get("lr", np.nan)
-        lora = " ·LoRA" if row.get("use_lora") else ""
+        # The use_lora axis means LoRA for tabpfn and freeze-backbone
+        # (ICL-head-only) for tabicl — label it truthfully per family.
+        if row.get("use_lora"):
+            adapt = " ·ICLhead" if src.startswith("tabicl") else " ·LoRA"
+        else:
+            adapt = ""
+        fp = " ·fullpass" if row.get("full_pass") else ""
         if np.isfinite(lr):
-            return f"trained ({base}) lr={lr:.0e}{lora}"
-        return f"trained ({base}){lora}"
+            return f"trained ({base}) lr={lr:.0e}{fp}{adapt}"
+        return f"trained ({base}){fp}{adapt}"
     return f"{src}({base})"
 
 
@@ -139,9 +154,11 @@ def load_eval_results(track: str) -> pd.DataFrame:
 
     Adds structured columns derived from the parent directory name:
     ``method_dirname`` (raw dir name), ``source`` (baseline /
-    tabpfn-untuned / tabpfn-trained / unknown), ``base_short`` (the
-    short tag, e.g. ``v3-default``), ``lr``, ``use_lora``, and a
-    ``method_name`` column built by :func:`human_method_name`.
+    ``<family>-untuned`` / ``<family>-trained`` / unknown), ``family``
+    (tabpfn / tabicl / classical), ``base_short`` (the short tag, e.g.
+    ``v3-default`` or ``tabicl-v2``), ``lr``, ``use_lora``,
+    ``full_pass``, and a ``method_name`` column built by
+    :func:`human_method_name`.
 
     Returns an empty DataFrame when nothing is on disk yet.
     """
@@ -169,6 +186,15 @@ def load_eval_results(track: str) -> pd.DataFrame:
         df["base_short"] = meta["base_short"]
         df["lr"] = meta["lr"]
         df["use_lora"] = meta["use_lora"]
+        # ``full_pass`` was previously swallowed into base_short, which
+        # averaged one_sample and full_pass rows of the same (base, lr)
+        # into one point. Decoded explicitly since 2026-08-04.
+        df["full_pass"] = meta["full_pass"]
+        df["family"] = (
+            "tabicl" if meta["source"].startswith("tabicl")
+            else "tabpfn" if meta["source"].startswith("tabpfn")
+            else "classical"
+        )
         df["source_file"] = str(csv.relative_to(paths["benchmark_root"]))
         frames.append(df)
 
@@ -515,22 +541,24 @@ def plot_trained_vs_untuned(
     df = _ok(load_eval_results(track))
     if df.empty or metric not in df.columns:
         return _no_data_fig(f"no results / metric={metric!r}")
+    # base_short encodes the family (``v3-default`` vs ``tabicl-v2``), so
+    # merging on it keeps the trained-vs-untuned comparison within-family.
     untuned = (
-        df[df["source"] == "tabpfn-untuned"]
+        df[df["source"].str.endswith("-untuned")]
         .groupby(["base_short", "test_dataset_id"])[metric]
         .mean()
         .rename("untuned")
         .reset_index()
     )
     trained = (
-        df[df["source"] == "tabpfn-trained"]
-        .groupby(["base_short", "test_dataset_id", "lr", "use_lora"])[metric]
+        df[df["source"].str.endswith("-trained")]
+        .groupby(["base_short", "test_dataset_id", "lr", "use_lora", "full_pass"])[metric]
         .mean()
         .rename("trained")
         .reset_index()
     )
     if untuned.empty or trained.empty:
-        return _no_data_fig("need both tabpfn-trained AND tabpfn-untuned rows")
+        return _no_data_fig("need both trained AND untuned rows")
     merged = trained.merge(untuned, on=["base_short", "test_dataset_id"], how="inner")
     if merged.empty:
         return _no_data_fig("no shared base × dataset between trained / untuned")
@@ -771,19 +799,22 @@ def plot_baselines_vs_tabpfn(track: str, *, metric: str | None = None):
     def _group_of(src: str) -> str:
         if src == "baseline":
             return "classical"
-        if src in {"tabpfn-untuned", "tabpfn-trained"}:
+        if src.startswith("tabpfn-"):
             return "tabpfn"
+        if src.startswith("tabicl-"):
+            return "tabicl"
         return "other"
 
     df["group"] = df["source"].map(_group_of)
     direction = metric_direction(metric)
     fig, ax = _new_fig(
-        f"Classical baselines vs TabPFN-family — {metric}",
+        f"Classical baselines vs foundation models — {metric}",
         figsize=(7, 5.5),
     )
+    _groups = ("classical", "tabpfn", "tabicl", "other")
     data = [df.loc[df["group"] == g, metric].dropna().values
-            for g in ("classical", "tabpfn", "other") if (df["group"] == g).any()]
-    labels = [g for g in ("classical", "tabpfn", "other") if (df["group"] == g).any()]
+            for g in _groups if (df["group"] == g).any()]
+    labels = [g for g in _groups if (df["group"] == g).any()]
     bp = ax.boxplot(
         data, labels=labels, showmeans=True, patch_artist=True,
         meanprops=dict(marker="D", markerfacecolor="white",
@@ -792,9 +823,11 @@ def plot_baselines_vs_tabpfn(track: str, *, metric: str | None = None):
     )
     palette = {"classical": (0.85, 0.5, 0.2),
                "tabpfn":    (0.3, 0.6, 0.8),
+               "tabicl":    (0.45, 0.75, 0.45),
                "other":     (0.5, 0.5, 0.5)}
     for patch, lbl in zip(bp["boxes"], labels):
-        patch.set_facecolor(palette[lbl]); patch.set_alpha(0.8)
+        patch.set_facecolor(palette.get(lbl, (0.5, 0.5, 0.5)))
+        patch.set_alpha(0.8)
     ax.set_ylabel(metric)
     return fig
 

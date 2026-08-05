@@ -63,7 +63,8 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-31%24   # 32 trials (2 bases x 4 LRs x 2 LoRA x 1 qf x 1 acc
+#SBATCH --array=0-47%24   # 48 trials (3 bases [v3, v2.6, tabicl-v2] x 4 LRs
+                          #            x 2 adapt-modes x 1 qf x 1 acc
                           #            x 2 pass-modes). %24 saturates all 24
                           #            Mindwell B200 GPUs. Recompute via
                           #   python scripts/train_pipeline.py --list-trials track=pd
@@ -151,6 +152,12 @@ fi
 # the 2026-07-03 run lost 3 h to failures a 10-second check would have caught.
 python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('pd')" || {
     echo "PREFLIGHT FAILED: tabpfn import smoke test — aborting before training." >&2
+    exit 1
+}
+# Same for the TabICL family (imports tabicl._finetune internals, which are
+# private modules and therefore the most upgrade-fragile part of the stack).
+python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')" || {
+    echo "PREFLIGHT FAILED: tabicl import smoke test — aborting before training." >&2
     exit 1
 }
 # (Staging WRITABILITY is probed in python — resolve_writable_staging_path —

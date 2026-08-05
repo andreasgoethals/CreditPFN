@@ -52,8 +52,12 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-199%32   # generous upper bound; surplus tasks exit 0
+#SBATCH --array=0-399%32   # generous upper bound; surplus tasks exit 0
                           # cleanly via the soft no-op in eval_pipeline.py.
+                          # RAISED from 200 (2026-08-04): with the TabICL
+                          # family the PD grid is 48 trials x ~5 test
+                          # datasets + baselines ~= 275 tasks, so 200 would
+                          # have SILENTLY dropped the tail on a bare sbatch.
                           # Recompute the tight bound with:
                           #   python scripts/eval_pipeline.py --list-tasks track=pd
                           # …or just submit via scripts/slurm/run_full_pipeline.sh

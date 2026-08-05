@@ -186,12 +186,17 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     hpo_cb  = _hpo_get("catboost")
     hpo_lr  = _hpo_get("logreg")
     hpo_lin = _hpo_get("linreg")
+    # TabICL's inference ensemble is quadratic in rows; upstream's default
+    # is 8 where our TabPFN setting is 32. Separate knob so one family's
+    # cost decision can't silently be imposed on the other.
+    n_est_tabicl = int(getattr(eval_cfg, "tabicl_n_estimators", 8))
     baselines = build_baselines(
         track=track,
         base_paths_for_tabpfn_untuned=bases,
         enabled=list(eval_cfg.baselines.enabled),
         device=str(train_cfg.device),
         n_estimators_tabpfn=int(eval_cfg.tabpfn_n_estimators),
+        n_estimators_tabicl=n_est_tabicl,
         seed=int(train_cfg.seed),
         hpo_xgboost=hpo_xgb,
         hpo_catboost=hpo_cb,
@@ -206,6 +211,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         manifest_csv, track=track,
         device=str(train_cfg.device),
         n_estimators=int(eval_cfg.tabpfn_n_estimators),
+        n_estimators_tabicl=n_est_tabicl,
     )
 
     # LOUD guard (post-mortem, 2026-07-04): in the Jul-3 run all 64 training

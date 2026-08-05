@@ -353,6 +353,134 @@ def _build_step_batch(
 
 
 # --------------------------------------------------------------------------- #
+# TabICL step builder — uses tabicl's official finetuning preprocessing
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class TabICLTrainBatch:
+    """One training step for the TabICL family (2026-08-04).
+
+    Thin wrapper around tabicl's own ``MetaBatch`` fields (built by their
+    ``_finetune.data._build_meta_batch`` — context/query split, per-member
+    ``EnsembleGenerator`` preprocessing, class-shuffle remap, regression
+    z-norm by context stats), plus the metadata our loop needs. The ensemble
+    dimension E is the leading batch dim; the model forward is
+    ``model(X, y_train)`` with rows ``[:train_size]`` = context.
+    """
+    X: torch.Tensor              # (E, T, H) float32, context+query concatenated
+    y_train: torch.Tensor        # (E, train_size) float32
+    y_query: torch.Tensor        # (E, test_size) long (clf, shuffled space) / float32 (reg, z-normed)
+    train_size: int
+    y_scaler_mean: float | None  # regression-only context z-norm stats
+    y_scaler_std: float | None
+    task_type: str
+    dataset_id: str
+
+    def to(self, device: str) -> "TabICLTrainBatch":
+        return TabICLTrainBatch(
+            X=self.X.to(device, non_blocking=True),
+            y_train=self.y_train.to(device, non_blocking=True),
+            y_query=self.y_query.to(device, non_blocking=True),
+            train_size=self.train_size,
+            y_scaler_mean=self.y_scaler_mean,
+            y_scaler_std=self.y_scaler_std,
+            task_type=self.task_type,
+            dataset_id=self.dataset_id,
+        )
+
+
+def _build_tabicl_step_batch(
+    loaded: _LoadedDataset,
+    *,
+    n_total_target: int,
+    query_fraction: float,
+    rng: np.random.Generator,
+    n_estimators: int,
+    epoch_seed: int,
+    replica: int,
+    preprocessing_seed: int,
+) -> TabICLTrainBatch:
+    """Subsample → encode/impute → tabicl's official ``_build_meta_batch``.
+
+    Faithfulness notes (vs. upstream ``FinetunedTabICL*``):
+
+    * The stratified subsample reuses the SAME sampler as the TabPFN path
+      (`_stratified_subsample_indices`) so the "context construction" axis
+      (Tanna 2026 shows it can move AUC more than model choice) is held
+      constant across model families.
+    * Ordinal encoding + median imputation are fit on the WHOLE subsample.
+      That matches the upstream user contract — their finetune wrappers
+      expect X already numeric and imputed for the entire training set
+      (their ``TransformToNumerical`` is not in the finetune path) — and the
+      ctx/qry split happens INSIDE ``_build_meta_batch`` afterwards. NaNs
+      must not reach the transformer (only their scalers are NaN-aware).
+    * ``preprocessing_seed`` is FIXED across epochs per dataset while
+      ``epoch_seed`` varies — their design: fresh chunk/split every epoch,
+      stable coarse preprocessing choices.
+    """
+    from src.train.tabicl_compat import import_tabicl_finetune_data
+    _, build_meta_batch = import_tabicl_finetune_data()
+
+    n = len(loaded.X)
+    n_total = min(n_total_target, n)
+    if n_total <= 1:                                    # pathological tiny set
+        n_total = n
+    sel = _stratified_subsample_indices(loaded.y, n_total, rng)
+
+    X_sub = loaded.X.iloc[sel].reset_index(drop=True)
+    y_sub = np.asarray(loaded.y[sel])
+
+    # Encode over the full subsample (see faithfulness note above).
+    all_idx = np.arange(len(X_sub))
+    X_arr, _cat_idx = _ordinal_encode(
+        X_sub, ctx_idx=all_idx, cat_cols=loaded.cat_columns,
+    )
+    X_arr = np.asarray(X_arr, dtype=np.float64)
+    # ±inf → NaN first, so the median impute below absorbs it. TabPFN clips
+    # inf inside its feature normaliser; TabICL does NOT (its sklearn path
+    # raises on inf, and the raw training path would carry it into the
+    # scalers). Credit features hit this via zero-denominator ratios.
+    if np.isinf(X_arr).any():
+        X_arr[np.isinf(X_arr)] = np.nan
+    # Median-impute NaNs; all-NaN columns fall back to 0.
+    if np.isnan(X_arr).any():
+        col_median = np.nanmedian(X_arr, axis=0)
+        col_median = np.where(np.isfinite(col_median), col_median, 0.0)
+        nan_r, nan_c = np.nonzero(np.isnan(X_arr))
+        X_arr[nan_r, nan_c] = col_median[nan_c]
+
+    classification = loaded.task_type == "classification"
+    query_size = max(1, int(round(len(X_arr) * query_fraction)))
+    query_size = min(query_size, len(X_arr) - 1)
+
+    mb = build_meta_batch(
+        X_arr,
+        y_sub.astype(np.int64) if classification else y_sub.astype(np.float64),
+        classification=classification,
+        n_estimators=n_estimators,
+        query_size=query_size,
+        epoch_seed=int(epoch_seed) & 0x7FFF_FFFF,
+        chunk_idx=int(replica),
+        norm_methods=None,                    # upstream default ["none","power"]
+        feat_shuffle_method="latin",
+        class_shuffle_method="shift",
+        outlier_threshold=4.0,
+        preprocessing_seed=int(preprocessing_seed) & 0x7FFF_FFFF,
+    )
+    return TabICLTrainBatch(
+        X=mb.X,
+        y_train=mb.y_train,
+        y_query=mb.y_query,
+        train_size=int(mb.train_size),
+        y_scaler_mean=mb.y_scaler_mean,
+        y_scaler_std=mb.y_scaler_std,
+        task_type=loaded.task_type,
+        dataset_id=loaded.dataset_id,
+    )
+
+
+# --------------------------------------------------------------------------- #
 # Ensemble step builder — uses TabPFN's official preprocessing pipeline
 # --------------------------------------------------------------------------- #
 
@@ -501,9 +629,13 @@ class ProcessedDatasetLoader(Dataset):
         n_estimators_finetune: int = 2,
         pass_mode: str = "one_sample",
         max_cells_per_epoch: int | None = None,
+        model_family: str = "tabpfn",
     ) -> None:
         if len(refs) == 0:
             raise ValueError("ProcessedDatasetLoader received an empty refs list")
+        if model_family not in ("tabpfn", "tabicl"):
+            raise ValueError(f"unknown model_family: {model_family!r}")
+        self.model_family = model_family
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)
         self.query_fraction = float(query_fraction)
@@ -596,6 +728,21 @@ class ProcessedDatasetLoader(Dataset):
             + replica * 131_071
         ) & 0xFFFF_FFFF
         rng = np.random.default_rng(step_seed)
+
+        # ---- TabICL family path (official tabicl finetune preprocessing) --- #
+        if self.model_family == "tabicl":
+            return _build_tabicl_step_batch(
+                loaded,
+                n_total_target=n_total_target,
+                query_fraction=self.query_fraction,
+                rng=rng,
+                n_estimators=self._n_estimators_finetune,
+                epoch_seed=step_seed,
+                replica=replica,
+                # Fixed per dataset across epochs (their design): coarse
+                # preprocessing choices stay stable, splits vary per epoch.
+                preprocessing_seed=self._base_seed * 7_919 + ref_idx,
+            )
 
         # Legacy single-view path (smoke tests, debug runs without a
         # real InferenceConfig).

@@ -164,6 +164,16 @@ pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main
 Without this, `train_pipeline.py` will `TypeError` on the first model
 load. Eval against pre-existing checkpoints is unaffected.
 
+**TabICL.** Installed straight from PyPI by the `pip install -e` above
+(`tabicl>=2.1.1,<3`). Verify both families import before submitting:
+
+```bash
+python -c "from src.train.tabpfn_compat import smoke_test as a; from src.train.tabicl_compat import smoke_test as b; a('pd'); b('pd')"
+```
+
+The SLURM scripts run exactly these two checks in their pre-flight, so a
+missing or upgrade-broken import costs seconds instead of a GPU job.
+
 ### 0.5 Upload datasets and base checkpoints
 
 The big files go to **project staging** (everything else is in git):
@@ -172,6 +182,7 @@ The big files go to **project staging** (everything else is in git):
 |-------------------------------------------------------------------------|------------------------------------------------------|----------------------------------------------------|
 | Raw credit-risk datasets (`*.csv`)                                      | `/lustre1/project/stg_00211/CreditPFN/data/raw/{pd,lgd}/` | WinSCP / FileZilla / `scp` (Globus for >1 GB)      |
 | Base TabPFN checkpoints (`tabpfn-v3-*.ckpt`, `tabpfn-v2.6-*.ckpt`, …)    | `/lustre1/project/stg_00211/CreditPFN/checkpoints/`   | WinSCP, or `wget` from Hugging Face on a login node |
+| Base TabICL checkpoints (`tabicl-{classifier,regressor}-v2-20260212.ckpt`, 110 + 114 MB) | `/lustre1/project/stg_00211/CreditPFN/checkpoints/`   | `hf_hub_download` on a **login** node — see [CHECKPOINTS.md](CHECKPOINTS.md#getting-the-tabicl-weights-onto-vsc-one-time-from-a-login-node) |
 
 Staging lives on Lustre (`$VSC_PROJECT_LUSTRE1/stg_00211`) and the big
 files **stay there forever** (no purge). Logs and other small outputs go
@@ -365,9 +376,11 @@ tunable:
   classifier_base_paths:
     - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
   regressor_base_paths:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
+    - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
   learning_rates:    [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
   use_lora:          [false, true]
   query_fractions:   [0.20]
@@ -375,14 +388,28 @@ tunable:
   epoch_pass_modes:  ["one_sample", "full_pass"]
 ```
 
-Default = **2 bases × 4 LRs × 2 LoRA × 1 qf × 1 acc × 2 epoch-pass-modes
-= 32 trials per track**. (The `3e-7` rung matches Real-TabPFN; `3e-5`
+Default = **3 bases × 4 LRs × 2 adapt-modes × 1 qf × 1 acc × 2
+epoch-pass-modes = 48 trials per track**. (The `3e-7` rung matches
+Real-TabPFN, `1e-5` is TabICL's own finetuning default, and `3e-5`
 approaches Rubachev's separate single-dataset FT median. `1e-4` is excluded because it diverged on
 no-LoRA + qf=0.20 — revisit now that `weight_decay=0.0`; see the comment
 in [`config/train.yaml`](../config/train.yaml) and the hyperparameter
 rationale in the README. v2.5 was dropped on 2026-05-21 — see
 `docs/CHECKPOINTS.md`. Regression uses `n_estimators_finetune: 8`,
-classification `2`, matching the official wrappers.) One
+classification `2`, matching the official wrappers; TabICL overrides
+both to `2`, matching *its* wrappers.)
+
+**Two model families since 2026-08-04.** The base list mixes TabPFN and
+TabICL; the family is detected from the filename and drives the loader,
+the loss, the row cap, and the save schema
+(`src/train/tabicl_compat.py`). On the TabICL bases the `use_lora` axis
+means **freeze-backbone** (train the ICL module only) rather than LoRA
+— TabICL's own stage-3 regime, chosen because full SFT collapsed
+TabICL in two independent reports. Those checkpoints are tagged
+`_iclhead`. Both TabICL `.ckpt` files must be staged once from a login
+node (compute nodes have no outbound network) — the command is in
+[`docs/CHECKPOINTS.md`](CHECKPOINTS.md#getting-the-tabicl-weights-onto-vsc-one-time-from-a-login-node).
+One
 SLURM array task per trial. In `one_sample` mode each dataset contributes
 one step per epoch; in `full_pass`, it contributes
 `ceil(n_rows / max_rows_per_epoch)` size-proportional steps. Recompute the current trial count any
@@ -605,8 +632,8 @@ tunable:
   learning_rates: [1.0e-5]
 ```
 
-Grid drops to `2 bases × 1 LR × 2 LoRA × 1 qf × 1 acc × 2 pass-modes = 8`
-per track. Re-submit; `--list-trials` reflects the new count.
+Grid drops to `3 bases × 1 LR × 2 adapt-modes × 1 qf × 1 acc × 2 pass-modes
+= 12` per track. Re-submit; `--list-trials` reflects the new count.
 
 ### 5.3 Benchmark a subset
 

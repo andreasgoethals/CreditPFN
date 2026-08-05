@@ -291,3 +291,6 @@ Thumbs.db
 # do-not-undo notes). Loaded through the tracked CLAUDE.md / AGENTS.md files;
 # never committed.
 AGENTS_MEMORY.md
+# Claude Code's own auto-loaded local notes (session-facing quick reference;
+# the durable shared memory is AGENTS_MEMORY.md).
+CLAUDE.local.md

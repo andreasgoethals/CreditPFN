@@ -8,7 +8,8 @@
 #    [1] data  (wICE `batch`, CPU)            → writes a "data_done" sentinel on
 #                                               $VSC_DATA (NFS, seen everywhere)
 #         ⇣  train waits for the sentinel at startup (CREDITPFN_WAIT_DATA=1)
-#    [2] train pd + lgd (Mindwell `gpu_b200`, 32 trials each)
+#    [2] train pd + lgd (Mindwell `gpu_b200`, 48 trials each: TabPFN v3 +
+#        v2.6 + TabICL v2 bases; the exact count comes from --list-trials)
 #         ⇣  an eval "gate" (wICE, 1 CPU) watches the train jobs via squeue
 #    [3] eval gate (wICE `batch`)             → finishes when training finishes
 #         ⇣  eval arrays `afterok` the gate → PENDING (no GPU held) until then
@@ -121,7 +122,20 @@ if [[ -n "${run_train}" ]]; then
     WAIT_FLAG=""
     [[ -n "${run_data}" ]] && WAIT_FLAG=",CREDITPFN_WAIT_DATA=1"
     for TR in ${TRACKS}; do
-        N=$(python scripts/train_pipeline.py --list-trials track="${TR}")
+        # Abort loudly on a failed trial count: an empty N would expand to
+        # `--array=0--1` and sbatch's error is easy to miss in a long launch
+        # log. (Same class of silent failure as the eval-pool index call.)
+        if ! N=$(python scripts/train_pipeline.py --list-trials track="${TR}"); then
+            echo "ERROR: could not compute the trial count for track=${TR} " \
+                 "(--list-trials failed) — aborting instead of submitting a " \
+                 "malformed array." >&2
+            exit 1
+        fi
+        if ! [[ "${N}" =~ ^[0-9]+$ ]] || (( N < 1 )); then
+            echo "ERROR: --list-trials returned '${N}' for track=${TR}; " \
+                 "expected a positive integer — aborting." >&2
+            exit 1
+        fi
         JID=$(strip "$(sbatch --parsable \
             --export="${SBATCH_EXPORT}${WAIT_FLAG}" \
             --account="${TRAIN_ACCOUNT}" \
@@ -193,7 +207,13 @@ if [[ -n "${run_eval}" ]]; then
             # LGD's 2 datasets × 2 pools sent ALL of lgd_lendingclub to the
             # slow A100 pool, leaving a whole dataset unscored for hours.
             for i in "${!PARTS[@]}"; do
-                echo "${indent}  IDX=\$(python scripts/eval_pipeline.py --list-tasks --pools ${K} --pool ${i} track='${TR}')"
+                # Distinguish "python failed" (must abort loudly) from "pool
+                # legitimately has zero tasks" (skip quietly) — previously a
+                # failing --pools call silently dropped the whole pool.
+                echo "${indent}  if ! IDX=\$(python scripts/eval_pipeline.py --list-tasks --pools ${K} --pool ${i} track='${TR}'); then"
+                echo "${indent}    echo \"eval ${TR}: ERROR - pool-${i} index computation failed\" >&2"
+                echo "${indent}    exit 1"
+                echo "${indent}  fi"
                 echo "${indent}  if [[ -n \"\${IDX}\" ]]; then"
                 echo "${indent}    sbatch --clusters=wice --account='${EVAL_ACCOUNT}' --partition='${PARTS[$i]}' --export='${SBATCH_EXPORT}' --array=\"\${IDX}%${EVAL_CONCURRENCY}\" scripts/slurm/eval_${TR}.slurm"
                 echo "${indent}    echo \"submitted eval ${TR} on ${PARTS[$i]} (pool ${i}/${K} of \${N} tasks)\""

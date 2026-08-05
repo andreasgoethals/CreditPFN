@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Row-cap capacity probe: measure TRAINING peak GPU memory + step time as the
-in-context row count grows, for both TabPFN bases.
+in-context row count grows, for every base in the sweep (both families).
 
 WHY (2026-07-04): an earlier monitor-based measurement reported implausibly
 tiny peaks because it was not measuring the training step. This probe instead
@@ -19,6 +19,13 @@ Run on a GPU node (see scripts/slurm/probe_row_cap.slurm), ~10-20 min:
 Reads the same base checkpoints the training pipeline uses
 (cfg.tunable.<track>_base_paths). Output: one table per base; a row that OOMs
 is reported as OOM and the probe continues with the next size.
+
+TABICL (2026-08-04): its bases go through a separate probe path because the
+loader, batch layout and loss all differ. Its in-config cap (10 000 rows) is
+upstream's own chunk size, NOT a measurement — this probe is how to replace it
+with one. Both families are probed with the SAME per-step ensemble size the
+training loop would use (TabPFN: 1 member here, then scaled; TabICL: 2), since
+peak memory is roughly members x per-member cost.
 """
 
 from __future__ import annotations
@@ -116,6 +123,88 @@ def probe_base(base_path: str, track: str, rows_grid: list[int], device: str) ->
         torch.cuda.empty_cache()
 
 
+def probe_tabicl_base(base_path: str, track: str, rows_grid: list[int],
+                      device: str, n_estimators: int = 2) -> None:
+    """TabICL variant of :func:`probe_base`.
+
+    Differences that matter for the measurement: the meta-batch is
+    ``(E, rows, features)`` with all E members forwarded in ONE graph before a
+    single backward (so peak memory scales with E), ``recompute=True`` turns on
+    gradient checkpointing in all three stages, and the loss is upstream's own
+    (CE over the first n_classes logits / mean pinball over 999 quantiles).
+    """
+    import torch
+    from src.train.tabicl_model import load_tabicl_for_training, tabicl_pinball_loss
+    from src.utils.paths import resolve_staging_path
+
+    ckpt = resolve_staging_path(base_path)
+    print(f"\n=== {Path(base_path).name}  (track={track}, {N_FEATURES} features, "
+          f"qf={QUERY_FRACTION}, n_estimators={n_estimators}, recompute=True) ===")
+    if not Path(ckpt).exists():
+        print(f"  SKIP: base checkpoint not found at {ckpt}")
+        return
+    model, _cfg = load_tabicl_for_training(
+        str(ckpt), track=track, device=device, freeze_backbone=False,
+    )
+    model.train()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-6)
+    print(f"{'rows':>8} {'ctx':>8} {'query':>7} {'peak_alloc':>11} "
+          f"{'peak_resv':>10} {'fwd+bwd_s':>10}  note")
+
+    for n_rows in rows_grid:
+        n_query = max(1, int(n_rows * QUERY_FRACTION))
+        n_ctx = n_rows - n_query
+        try:
+            torch.manual_seed(0)
+            E = int(n_estimators)
+            X = torch.randn(E, n_rows, N_FEATURES, dtype=torch.float32)
+            if track == "pd":
+                y_all = (torch.rand(E, n_rows) < 0.15).float()   # ~default rate
+            else:
+                y_all = torch.randn(E, n_rows)                   # z-normed targets
+            X = X.to(device)
+            y_train = y_all[:, :n_ctx].to(device)
+            y_query = y_all[:, n_ctx:].to(device)
+
+            if device == "cuda":
+                torch.cuda.synchronize()
+                torch.cuda.reset_peak_memory_stats()
+            t0 = time.monotonic()
+            with torch.amp.autocast("cuda", enabled=device == "cuda"):
+                out = model(X, y_train)
+                if track == "pd":
+                    n_cls = int(y_train.max().item()) + 1
+                    loss = torch.nn.functional.cross_entropy(
+                        out[..., :n_cls].reshape(-1, n_cls),
+                        y_query.long().reshape(-1),
+                    )
+                else:
+                    loss = tabicl_pinball_loss(out, y_query)
+            loss.backward()
+            optimizer.zero_grad(set_to_none=True)   # free grads; don't step
+            if device == "cuda":
+                torch.cuda.synchronize()
+            dt = time.monotonic() - t0
+            if device == "cuda":
+                pa = torch.cuda.max_memory_allocated() / 1e9
+                pr = torch.cuda.max_memory_reserved() / 1e9
+                print(f"{n_rows:>8,} {n_ctx:>8,} {n_query:>7,} {pa:>10.2f}G "
+                      f"{pr:>9.2f}G {dt:>10.2f}  loss={float(loss):.4f}")
+            else:
+                print(f"{n_rows:>8,} {n_ctx:>8,} {n_query:>7,} {'n/a':>11} "
+                      f"{'n/a':>10} {dt:>10.2f}  (cpu)")
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            print(f"{n_rows:>8,} {'-':>8} {'-':>7} {'OOM':>11} {'OOM':>10} "
+                  f"{'-':>10}  << row cap must stay below this")
+        except Exception as exc:                               # noqa: BLE001
+            print(f"{n_rows:>8,}  FAILED: {type(exc).__name__}: {exc}")
+
+    del model, optimizer
+    if device == "cuda":
+        torch.cuda.empty_cache()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--track", choices=["pd", "lgd", "both"], default="both")
@@ -135,6 +224,14 @@ def main() -> int:
         bases = (cfg.tunable.classifier_base_paths if track == "pd"
                  else cfg.tunable.regressor_base_paths)
         for base in bases:
+            from src.train.tabicl_compat import model_family
+            if model_family(str(base)) == "tabicl":
+                # Quadratic-in-rows ICL attention, probed at the training
+                # ensemble size (2), so these numbers are directly comparable
+                # to config/data.yaml's finetuning.max_rows_per_epoch.tabicl.
+                grid = args.rows or [5_000, 10_000, 20_000, 30_000]
+                probe_tabicl_base(str(base), track, grid, device)
+                continue
             is_v26 = "v2.6" in str(base)
             grid = args.rows or (
                 [9_000, 20_000, 30_000, 50_000] if is_v26         # quadratic-in-rows

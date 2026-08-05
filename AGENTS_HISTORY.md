@@ -144,3 +144,53 @@ Append new entries below in chronological order.
   PROJECT_SPECIFIC.md, and old paper paths would 404 after the layout move.
 
 ---
+
+## 2026-08-04 - Claude
+
+- Changed/reviewed: **Implemented TabICL v2 as a second continued-pretraining
+  family, for BOTH tracks.** New: `src/train/tabicl_compat.py` (family
+  detection + all guarded imports of the private `tabicl._finetune`
+  internals, plus a SLURM-prolog smoke test), `src/train/tabicl_model.py`
+  (load with `recompute=True`, head/track guard, freeze-backbone mode,
+  verbatim upstream pinball loss, upstream 2-key save schema + provenance
+  sidecar), `src/model/tabicl_models.py` (TabICLUntuned / TabICLTrained eval
+  wrappers with input sanitisation), `tests/test_tabicl.py` (33 tests,
+  including a real no-mock `train_one_config` run on a tiny checkpoint for
+  PD-freeze-backbone and LGD-full-FT). Edited: `dataloader.py`
+  (`TabICLTrainBatch` + `_build_tabicl_step_batch` via upstream's own
+  `_build_meta_batch`, same stratified sampler as the TabPFN path so the
+  context-construction axis is held constant), `loop.py` (family branch at
+  load / forward+loss / monitor snapshot / monitor eval / final save;
+  `_iclhead` naming; tabicl row-cap key; per-family n_estimators; L2-SP
+  applicability; backbone re-freeze after `model.train()`; provenance gains
+  `model_family`, `adaptation_mode`, `tabicl_version`, `n_estimators_finetune`),
+  `benchmark.py` + `registry.py` + `base.py` + `eval_viz.py` (per-family
+  untuned controls, `<family>-{untuned,trained}` sources, dirname
+  writer/reader round-trip incl. `__fullpass`/`__iclhead`), configs (48-trial
+  grid, tabicl row caps, `tabicl_n_estimators: 8`), SLURM (arrays 0-47,
+  tabicl prolog check), `probe_row_cap.py` (tabicl branch), and the docs
+  (README §7/§8, CHECKPOINTS, VSC_GUIDE).
+- Bugs found and fixed while doing it: (1) `resolve_max_rows_for_handle`
+  never matched its untuned key, so untuned models silently used the
+  `default` eval row cap while their trained counterparts used the
+  architecture cap — an un-paired headline comparison; (2) `eval_*.slurm`
+  fallback `--array` bound of 200 would have silently dropped ~75 PD tasks
+  at the new grid size (raised to 400); (3) `run_full_pipeline.sh` did not
+  check the `--list-trials` result, so a failed call would have expanded to
+  `--array=0--1`; (4) `_decode_method_dirname` folded `__fullpass` into the
+  base tag, averaging one_sample and full_pass results together in the
+  notebooks; (5) ±inf reached the TabICL transformer (and its sklearn
+  wrappers raise on inf / on an all-NaN column) — both absorbed now;
+  (6) provenance did not record `n_estimators_finetune`.
+- Why: The user asked for a bug-free two-family run and for the repo to be as
+  clean as possible before writing a paper. A second architecture with a
+  different prior is also the strongest available answer to the "is the PD
+  null result architecture-specific?" reviewer question. Full test suite:
+  275 passed. No repository changes were pushed (user's rule).
+- Verified locally (CPU, tiny checkpoints): batch construction, both losses
+  against the upstream formulas, freeze-backbone, save→reload through
+  TabICL's own sklearn wrappers, and three full `train_one_config` runs.
+  NOT yet run on VSC — that needs `pip install 'tabicl>=2.1.1,<3'` and both
+  HF checkpoints staged from a login node.
+
+---

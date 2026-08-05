@@ -79,9 +79,16 @@ class ModelHandle:
     name:        str             # human-readable, unique per row
     track:       str             # "pd" | "lgd"
     task_type:   Literal["classification", "regression"]
-    source:      Literal["baseline", "tabpfn-untuned", "tabpfn-trained"]
-    base_path:   str | None = None   # only for tabpfn variants
-    extra:       dict | None = None  # base lr / seed for trained TabPFN
+    # ``<family>-untuned`` / ``<family>-trained`` per model family
+    # (tabpfn, tabicl); downstream code matches on the -untuned/-trained
+    # suffix, never on the family prefix.
+    source:      Literal[
+        "baseline",
+        "tabpfn-untuned", "tabpfn-trained",
+        "tabicl-untuned", "tabicl-trained",
+    ]
+    base_path:   str | None = None   # only for foundation-model variants
+    extra:       dict | None = None  # base lr / seed for trained variants
 
 
 # --------------------------------------------------------------------------- #

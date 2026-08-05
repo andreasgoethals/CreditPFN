@@ -1,9 +1,10 @@
 # Checkpoints
 
-TabPFN model weights used as starting points for continued
+Tabular-foundation-model weights used as starting points for continued
 pretraining on credit-risk data, plus the trained checkpoints our
-sweeps emit. **Do not edit or commit new checkpoints without updating
-this file.**
+sweeps emit. Two families are swept: **TabPFN** (v2.6, v3) and
+**TabICL v2** (added 2026-08-04). **Do not edit or commit new
+checkpoints without updating this file.**
 
 > **Where the weights actually live.** On VSC, both the **base**
 > checkpoints and the **trained** outputs live in project *staging*,
@@ -33,9 +34,20 @@ used to produce it, and a brief note on what role each plays in
 **our** continued pretraining experiments. Trained outputs and their
 on-disk format are documented further below.
 
-Only **v2.6** and **v3** synthetic-only bases are used; both the PD
-classifier and the LGD regressor sweep over these two. (The older
-**v2.5** base has been dropped from the sweep entirely.)
+From the TabPFN family only the **v2.6** and **v3** synthetic-only
+bases are used (the older **v2.5** base has been dropped from the sweep
+entirely). Alongside them the sweep includes the **TabICL v2** base of
+the matching head — so both tracks run three bases.
+
+TabICL sources:
+
+- Upstream code + finetuning internals (mirrored at
+  `tfm-library/repositories/TabICL.txt`); the pip package is pinned
+  `tabicl>=2.1.1,<3` because our shim imports its private
+  `tabicl._finetune.data` helpers.
+- Weights: HuggingFace `jingang/TabICL`.
+- Qu et al., *TabICL: A Tabular Foundation Model for In-Context
+  Learning on Large Data* (see `tfm-library/SUMMARIES.md`).
 
 ## All our bases are synthetic-only
 
@@ -57,6 +69,27 @@ that corpus.
 | `tabpfn-v3-regressor-v3_default.ckpt`          | 233 MB | HF `Prior-Labs/tabpfn_3` | **Synthetic-only.** Same v3 card statement applies; no real-finetuned v3 regressor yet. | **Default sweep base** for LGD. |
 | `tabpfn-v2.6-classifier-v2.6_default.ckpt`     | 43 MB  | HF `Prior-Labs/tabpfn_2_6` | **Synthetic-only** — the v2.6 card states *"TabPFN-2.6 is trained purely on synthetic tabular tasks"*; no real-finetuned v2.6 variant has been released. | Sweep base: the cleanest v2.6 base available. |
 | `tabpfn-v2.6-regressor-v2.6_default.ckpt`      | 51 MB  | HF `Prior-Labs/tabpfn_2_6` | **Synthetic-only** (same card statement). No real-finetuned v2.6 regressor yet. | Sweep base: cleanest v2.6 regressor base. |
+| `tabicl-classifier-v2-20260212.ckpt`           | 110 MB | HF `jingang/TabICL` | **Synthetic-only.** TabICL is pretrained on synthetic tabular tasks; 3-stage architecture (column embedder → row interactor → ICL predictor), ~27 M params. Classifier head emits 10 logit columns. | **Second-family sweep base (PD).** Tests whether the CPT result generalises beyond one architecture/prior. |
+| `tabicl-regressor-v2-20260212.ckpt`            | 114 MB | HF `jingang/TabICL` | **Synthetic-only**, same architecture; regression head emits 999 quantiles on context-z-normalised targets (no bar distribution). | **Second-family sweep base (LGD).** |
+
+### Getting the TabICL weights onto VSC (one-time, from a LOGIN node)
+
+Compute nodes have **no outbound network**, and our loaders pass
+`allow_auto_download=False` so a missing file fails loudly instead of
+stalling a GPU job. Stage both checkpoints once:
+
+```bash
+python -c "
+from huggingface_hub import hf_hub_download
+import shutil, os
+dest = os.environ.get('CREDITPFN_STAGING_ROOT', '/lustre1/project/stg_00211/CreditPFN') + '/checkpoints'
+os.makedirs(dest, exist_ok=True)
+for f in ('tabicl-classifier-v2-20260212.ckpt', 'tabicl-regressor-v2-20260212.ckpt'):
+    p = hf_hub_download('jingang/TabICL', f)
+    shutil.copy2(p, dest + '/' + f)
+    print('staged', f)
+"
+```
 
 ## How to read the naming conventions
 
@@ -75,19 +108,29 @@ The training config (`config/train.yaml::tunable`) treats the base
 checkpoint as a tuneable knob and sweeps over the released
 synthetic-only bases for v2.6 and v3:
 
-| Track           | Sweep includes (default)                  | What each tells us                                          |
-|-----------------|-------------------------------------------|-------------------------------------------------------------|
-| PD (classifier) | `v3_default` · `v2.6_default`             | v3 synthetic-only · v2.6 synthetic-only                     |
-| LGD (regressor) | `v3_default` · `v2.6_default`             | v3 synthetic-only · v2.6 synthetic-only                     |
+| Track           | Sweep includes (default)                        | What each tells us                                                        |
+|-----------------|-------------------------------------------------|---------------------------------------------------------------------------|
+| PD (classifier) | `v3_default` · `v2.6_default` · `tabicl-v2`     | v3 synthetic-only · v2.6 synthetic-only · second family (different prior + architecture) |
+| LGD (regressor) | `v3_default` · `v2.6_default` · `tabicl-v2`     | same three, regression heads                                              |
 
-The total grid per track is then `2 bases × 4 LRs × 2 LoRA × 1 qf ×
-1 acc × 2 epoch-pass-modes = 32 trials`. The current LR grid is
+The total grid per track is then `3 bases × 4 LRs × 2 adapt-modes ×
+1 qf × 1 acc × 2 epoch-pass-modes = 48 trials`. The current LR grid is
 `[3e-7, 1e-6, 1e-5, 3e-5]` — the bottom rung `3e-7` matches
-Real-TabPFN, while `3e-5` approaches Rubachev's separate single-dataset
-finetuning median (~3.9e-5); `1e-4` is excluded because it
-diverged on the no-LoRA + `qf=0.20` setting (revisit now that
-`weight_decay=0.0`). See the hyperparameter-rationale table in the
-README for the full literature comparison.
+Real-TabPFN, `1e-5` is TabICL's own finetuning default, and `3e-5`
+approaches Rubachev's separate single-dataset finetuning median
+(~3.9e-5); `1e-4` is excluded because it diverged on the no-LoRA +
+`qf=0.20` setting (revisit now that `weight_decay=0.0`). See the
+hyperparameter-rationale table in the README for the full literature
+comparison.
+
+**The adapt-mode axis is family-specific.** `use_lora=true` means LoRA
+for TabPFN, and **freeze-backbone** (train the ICL module only) for
+TabICL — that family's own pretraining stage-3 regime. The reason is
+empirical: full SFT collapsed TabICL in two independent reports
+(TabZilla accuracy 0.873 → 0.567 in Tanna 2026; "failed to train
+TabICL" in Kolberg 2026), so the freeze-backbone arm is TabICL's
+safe-adaptation arm rather than a parameter-count experiment. Its
+checkpoints are tagged `_iclhead` instead of `_lora`.
 
 Every base in this sweep follows the methodologically clean
 ablation recipe of Real-TabPFN (Garg et al. 2025): start from
@@ -161,7 +204,8 @@ The basename encodes the tunable hyperparameters
 - `acc<K>` — `accumulate_grad_batches`; omitted when `None`.
 - `_fullpass` — present only for `epoch_pass_mode == "full_pass"`; the
   default `one_sample` adds no tag.
-- `_lora` — present only when `use_lora` is true.
+- `_lora` / `_iclhead` — present only when `use_lora` is true;
+  `_iclhead` for TabICL bases (freeze-backbone), `_lora` for TabPFN.
 
 Optional segments are dropped when their value is the default/`None`,
 so the default one-step-per-dataset, full-FT sweep produces the same
@@ -212,6 +256,32 @@ parameters into the saved state-dict. Those keys are *required* by
 v2.6 and *harmlessly stripped* by v3, so the same write path
 round-trips correctly for both. (Classifiers carry no bar-distribution
 criterion, so this only concerns the LGD regressor checkpoints.)
+
+### TabICL save format (upstream 2-key dict)
+
+TabICL checkpoints use a different, simpler schema, written by
+`save_finetuned_tabicl()` (`src/train/tabicl_model.py`):
+
+| Key | Contents |
+|---|---|
+| `config` | the `TabICL(**kwargs)` init dict, with `recompute` reset to `False` so inference doesn't pay for gradient checkpointing |
+| `state_dict` | CPU model weights (no adapter merging exists for this family — freeze-backbone trials simply have fewer changed tensors) |
+
+Plus our `provenance` key and the same `.provenance.json` sidecar. The
+file round-trips through `TabICLClassifier(model_path=…)` /
+`TabICLRegressor(model_path=…)`; upstream's loader reads only the two
+keys above with `weights_only=True` and ignores extras, so provenance
+must stay JSON-safe primitives.
+
+Two family differences worth remembering when reading results:
+
+- **No exact predictive density.** The regressor emits 999 quantiles,
+  not a bar distribution, so `neg_nll` is `NaN` for TabICL rows. Never
+  compare density metrics across families; the planned cross-family
+  density metric is CRPS (computable from the quantiles).
+- **`recompute=True` during training.** Gradient checkpointing in all
+  three stages is the main VRAM lever, since the ICL stage's attention
+  is O(rows²).
 
 ## Licence
 

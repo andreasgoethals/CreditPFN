@@ -9,16 +9,24 @@
 
 
 # --- Section 0 · Tunable sweep (cartesian product) ---------------------------
-# Grid: 2 bases × 4 LRs × 2 LoRA × 1 qf × 1 acc × 2 pass-modes = 32 trials/track.
+# Grid: 3 bases × 4 LRs × 2 adapt-modes × 1 qf × 1 acc × 2 pass-modes
+#       = 48 trials/track.
 # v2.5 is not swept (PEFT module-name + NaN-scaler incompatibilities — see
-# docs/CHECKPOINTS.md). Only v2.6 and v3 synthetic-only bases.
+# docs/CHECKPOINTS.md). Only v2.6 and v3 synthetic-only TabPFN bases, plus
+# the TabICL v2 base (second model family, added 2026-08-04). Family is
+# detected from the filename (`tabicl` in the basename → tabicl); see
+# src/train/tabicl_compat.py. Both TabICL checkpoints must be pre-staged
+# from a login node — compute nodes have no outbound network
+# (docs/CHECKPOINTS.md).
 tunable:
   classifier_base_paths:
     - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
   regressor_base_paths:
     - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
+    - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
 
   # LR grid brackets TWO distinct references. Real-TabPFN (Garg et al.) uses
   # exactly 3e-7 for corpus-level continued pretraining. Rubachev et al.'s
@@ -31,10 +39,21 @@ tunable:
   #           sweep also reaches the single-dataset FT reference range).
   # 1e-4 is excluded (diverged on no-LoRA + qf=0.20 in an earlier run; revisit
   # now that weight_decay=0.0). See README §7 and tfm-library/SUMMARIES.md.
+  # The grid also covers TabICL's own finetuning default (1e-5), so the
+  # tabicl trials bracket their upstream recipe as well.
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
 
-  # LoRA (Hu et al. 2021): freeze base weights, train ~1.6 % adapter params.
-  # Merged back at save time → .ckpt loads without a PEFT dependency.
+  # PARAMETER-EFFICIENT ADAPTATION axis — one flag, family-specific meaning:
+  #   tabpfn: LoRA (Hu et al. 2021) — freeze base weights, train ~1.6 %
+  #           adapter params; merged back at save time so the .ckpt loads
+  #           without a PEFT dependency.
+  #   tabicl: FREEZE-BACKBONE — freeze col_embedder + row_interactor, train
+  #           the ICL module only. This is TabICL's own pretraining stage-3
+  #           regime and the literature-sanctioned adaptation: full SFT
+  #           collapsed TabICL in two independent reports (Tanna 2026:
+  #           TabZilla acc 0.873→0.567; Kolberg 2026 "failed to train
+  #           TabICL"). Checkpoints get an `_iclhead` tag instead of `_lora`.
+  # See src/train/tabicl_compat.py for the citation trail.
   use_lora: [false, true]
 
   # ctx/query split: query_fraction of the per-step subsample is the
@@ -145,6 +164,11 @@ train:
     pd:      2
     lgd:     8
     default: 2
+
+  # TabICL family override (its ICL attention is quadratic in rows, and its
+  # own finetuning code uses 2 members for BOTH tracks — so the LGD-track
+  # value of 8 above is deliberately NOT applied to tabicl trials).
+  n_estimators_finetune_tabicl: 2
 
   # Per-epoch monitor: at each epoch end, score `epoch_eval_subsample_samples`
   # rows per train/test dataset via `epoch_eval_n_estimators`-member TabPFN

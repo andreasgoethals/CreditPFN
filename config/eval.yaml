@@ -13,11 +13,13 @@ train_cfg_path: "config/train.yaml"
 
 
 # Classical baselines to score. "logreg" is ignored on lgd; "linreg" on pd.
-# tabpfn-untuned expands to one entry per base in tunable.<track>_base_paths.
-# Any baseline whose package is missing, or whose base .ckpt is absent, is
-# skipped with a warning rather than failing the run.
+# "<family>-untuned" expands to one entry per base of THAT family in
+# tunable.<track>_base_paths, so each family's trained checkpoints have their
+# own within-family control. Any baseline whose package is missing, or whose
+# base .ckpt is absent, is skipped with a warning rather than failing the run.
 baselines:
-  enabled: ["xgboost", "catboost", "logreg", "linreg", "tabpfn-untuned"]
+  enabled: ["xgboost", "catboost", "logreg", "linreg",
+            "tabpfn-untuned", "tabicl-untuned"]
 
 
 # Outer K-fold CV per test dataset (stratified for pd, plain KFold for lgd).
@@ -38,9 +40,15 @@ cv:
 #   algorithmwatch fold took ~40 min on an A100, so all 8 such eval cells
 #   blew the 2 h walltime in the Jul-12 run. 50k stays inside the envelope
 #   and cuts the quadratic term 4×.
+#   tabicl → 50k (CONSERVATIVE, not measured): TabICL v2's ICL stage is
+#   O(rows²) like v2.6's, and its wrappers reach larger data through
+#   batching / kv-cache / offloading rather than a bigger single context.
+#   Raise only after timing one fold at the target size (the v2.6 lesson:
+#   a quadratic model silently blows the eval walltime, it does not OOM).
 max_rows_per_model:
   v3:      1000000
   v2.6:    50000
+  tabicl:  50000
   default: 50000
 
 
@@ -62,6 +70,13 @@ hpo:
 # trained variants. Matches the per-epoch training monitor so eval numbers
 # are directly comparable to the training curves.
 tabpfn_n_estimators: 32
+
+# TabICL inference-time ensemble size — SEPARATE knob because TabICL's ICL
+# attention is quadratic in rows and 32 members would multiply an already
+# steeper cost. 8 is upstream's own default (TabICLClassifier/Regressor).
+# Both families' untuned and trained variants use their family's value, so
+# each trained-vs-untuned comparison stays internally paired.
+tabicl_n_estimators: 8
 
 
 # Output root. Benchmark CSVs land under <base_dir>/<TRACK>/<method>/...

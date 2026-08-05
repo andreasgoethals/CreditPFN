@@ -314,8 +314,9 @@ stripped-down CI image.
 
 | File | What it is |
 |---|---|
+| [`docs/PAPER_ROADMAP.md`](docs/PAPER_ROADMAP.md) | **Start here for the scientific status.** Plain-language account of what the experiments have shown, whether the contribution is novel (with the nearest-neighbour papers), and the ordered list of what is still missing before writing a paper. |
 | [`docs/DATA_PIPELINE.md`](docs/DATA_PIPELINE.md) | Deep-dive on the data stage: one raw CSV's full journey through dedup → register → sanitize, plus the two divergent downstream preprocessing paths (TabPFN vs classical baselines). Companion to `config/data.yaml`. |
-| [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (v2.6 / v3): training data (synthetic-only), sample/feature caps, layer counts, licence terms. Cross-referenced to the HF model cards and Grinsztajn et al. 2026 (arXiv:2511.08667), which documents the architecture family. |
+| [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (TabPFN v2.6 / v3 and TabICL v2): training data (synthetic-only), sample/feature caps, save formats per family, licence terms, and the one-time TabICL staging command. Cross-referenced to the HF model cards and Grinsztajn et al. 2026 (arXiv:2511.08667). |
 | [`tfm-library/SUMMARIES.md`](tfm-library/SUMMARIES.md)       | Chronological tour of every paper under `tfm-library/papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
 | [`tfm-library/SYNTHESIS.md`](tfm-library/SYNTHESIS.md)             | Cross-paper synthesis of the whole tabular-foundation-model paradigm (PFNs → TabPFN line → scaling → adaptation → extensions → critique), with a lineage timeline, design-axis comparison, and a one-card-per-paper appendix. Narrative companion to the per-paper `SUMMARIES.md`. |
 | [`tfm-library/REPOSITORIES.md`](tfm-library/REPOSITORIES.md)   | What each `tfm-library/repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python tfm-library/scripts/refresh_repositories.py`. |
@@ -579,27 +580,52 @@ hyperparameters is [`config/train.yaml`](config/train.yaml), in three
 layers:
 
 * **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint
-  (v3 / v2.6), learning rate (`{3e-7, 1e-6, 1e-5, 3e-5}` — spans from a
-  direct reproduction of Real-TabPFN's `3e-7` up to `3e-5`, near the
+  (TabPFN v3 / TabPFN v2.6 / **TabICL v2**), learning rate
+  (`{3e-7, 1e-6, 1e-5, 3e-5}` — spans from a
+  direct reproduction of Real-TabPFN's `3e-7` through TabICL's own
+  finetuning default `1e-5` up to `3e-5`, near the
   separate Rubachev single-dataset FT median (~3.9e-5); `1e-4` is excluded because it
   diverged on no-LoRA + qf 0.20 — revisit now that `weight_decay=0.0`),
-  LoRA on/off, query_fraction, accumulate_grad_batches, and epoch
+  the parameter-efficient-adaptation flag, query_fraction,
+  accumulate_grad_batches, and epoch
   pass-mode (`one_sample` / `full_pass`). Anything genuinely unknown in
   advance. The full cartesian product is the default sweep (currently
-  **2 bases × 4 LRs × 2 LoRA × 1 qf × 1 acc × 2 epoch-pass-modes = 32
-  trials per track**, run as a 32-task SLURM array on the 24 Mindwell
-  B200 GPUs). See "Hyperparameter rationale vs. the literature" below.
+  **3 bases × 4 LRs × 2 adapt-modes × 1 qf × 1 acc × 2 epoch-pass-modes
+  = 48 trials per track**, run as a 48-task SLURM array on the 24
+  Mindwell B200 GPUs). See "Hyperparameter rationale vs. the literature"
+  below.
+* **Two model families.** The base list mixes **TabPFN** and **TabICL
+  v2** (added 2026-08-04); the family is detected from the checkpoint
+  filename (`src/train/tabicl_compat.py::model_family`) and selects the
+  loader, the loss, the row cap, and the save schema. The `use_lora`
+  axis is family-specific: LoRA for TabPFN, **freeze-backbone** (train
+  the ICL module only) for TabICL — that family's own pretraining
+  stage-3 regime, chosen because full SFT collapsed TabICL in two
+  independent reports (TabZilla accuracy 0.873 → 0.567 in Tanna 2026;
+  "failed to train TabICL" in Kolberg 2026). TabICL trials are tagged
+  `_iclhead` instead of `_lora`. TabICL losses are upstream's own:
+  cross-entropy over the first `n_classes` of its 10 logit columns, and
+  mean pinball loss over its 999-quantile head. Because that head is
+  not a bar distribution, `neg_nll` is undefined for TabICL — density
+  numbers are never comparable across families (CRPS is the planned
+  cross-family density metric).
 * **Fixed HPs** (single values under `train.*`) — epochs, AMP, gradient
   clipping, warmup fraction, per-epoch monitor subsample,
-  `n_estimators_finetune` (TabPFN ensemble members per training step —
+  `n_estimators_finetune` (ensemble members per training step —
   **per-track: `pd: 2`, `lgd: 8`**, matching the official
-  `FinetunedTabPFNClassifier` / `FinetunedTabPFNRegressor` defaults).
-  Follow TabPFN's defaults where those are well-tuned. The per-step subsample size lives in
+  `FinetunedTabPFNClassifier` / `FinetunedTabPFNRegressor` defaults;
+  TabICL overrides both to `2` via `n_estimators_finetune_tabicl`,
+  matching *its* wrappers).
+  Follow each package's defaults where those are well-tuned. The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  PD/two-member caps: **26 000 for v3, 11 000 for v2.6**; LGD's eight
-  members scale these to 6 500 / 2 750 — sized from a B200 fwd+bwd probe
+  PD/two-member caps: **26 000 for v3, 11 000 for v2.6, 10 000 for
+  TabICL**; LGD's eight
+  members scale the TabPFN caps to 6 500 / 2 750 — sized from a B200
+  fwd+bwd probe
   while chasing Real-TabPFN's "more context → bigger gains"; plus an
-  optional v3-only `max_cells_per_epoch` cell budget). `weight_decay` is
+  optional v3-only `max_cells_per_epoch` cell budget. The TabICL cap is
+  upstream's own chunk size, **not** a B200 measurement — probe it
+  before raising it). `weight_decay` is
   **0.0** (matching Rubachev's study and the official wrappers; Garg et al.
   do not report this value); anti-forgetting uses Real-TabPFN's L2-SP anchor
   (`l2sp_lambda=0.003`), not decay-to-origin.
@@ -809,6 +835,15 @@ LoRA/pass-mode ablations, uses newer v2.6/v3 bases, and replaces Garg's fixed
   expected: a bar-distribution NLL `= −log(density)` can be negative
   whenever the density exceeds 1.0 (narrow histogram buckets, sharp
   predictions). RMSE / R² are tracked as *evaluation* metrics.
+* **TabICL uses its own two objectives.** Classification is
+  cross-entropy over the first `n_classes` of its 10 logit columns;
+  regression is the mean pinball loss over 999 quantile levels
+  (`linspace(0,1,Q+2)[1:-1]`) on context-z-normalised targets. Both are
+  copied verbatim from `tabicl._finetune`, i.e. each family is trained
+  with the objective it was pretrained on — the whole point of continued
+  pretraining. The practical consequence for reporting: a quantile head
+  has no exact predictive density, so **`neg_nll` is never comparable
+  between TabPFN and TabICL** (and is recorded as NaN for TabICL).
 
 ### Methodology & limitations (statistical validity)
 
@@ -825,9 +860,9 @@ test fold. The honest caveats below are limitations of the
   within-dataset estimate, but the across-dataset mean rests on a
   handful of datasets — report per-dataset results, not just the pooled
   mean.
-* **Best-of-32 selection on the test set (winner's curse).** With no
-  validation set, the best of 32 trials is picked by test performance;
-  the maximum over 32 noisy estimates is upward-biased. Prefer the
+* **Best-of-48 selection on the test set (winner's curse).** With no
+  validation set, the best of 48 trials is picked by test performance;
+  the maximum over 48 noisy estimates is upward-biased. Prefer the
   per-architecture trained-vs-untuned delta over the absolute best, and
   report the trial distribution.
 * **Within-domain split ≠ Real-TabPFN's external benchmark.** We split
@@ -867,9 +902,15 @@ sets gracefully).
 
 | Model family                          | Train-fold cap                                                              | Test fold      | HPO subsample                                                                 |
 |---------------------------------------|-----------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------|
-| `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_per_model[<v>]` (v3: 1 000 000; v2.x: 100 000)                | **full**       | n/a                                                                            |
+| `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_per_model[<v>]` (v3: 1 000 000; v2.6: 50 000)                 | **full**       | n/a                                                                            |
+| `tabicl-untuned` / `tabicl-trained`   | `cfg.max_rows_per_model["tabicl"]` (50 000 — conservative, unmeasured)      | **full**       | n/a                                                                            |
 | `xgboost` / `catboost`                | none                                                                        | full           | `cfg.hpo.<m>.max_rows = 50 000` (stratified subsample of inner-train; HPO only) |
-| `logreg` / `linreg`                   | none                                                                        | full           | n/a                                                                            |
+| `logreg` / `linreg`                   | none                                                                        | full           | `cfg.hpo.<m>.n_trials = 50` (tunes `C` / `alpha`)                              |
+
+The cap resolves from the **base checkpoint** for both the trained and
+the untuned handle, so a family's two arms always see the same fold size
+(a 2026-08-04 fix: the untuned branch used to miss its key and silently
+fall through to the `default` cap).
 
 ### CV semantics — 80 / 16 / 20 per fold
 
@@ -884,9 +925,11 @@ Inner split (cfg.cv.inner_val_fraction = 0.20):
 ```
 
 Optuna runs once per CV fold (5 studies per `(model × dataset)` at
-`n_folds=5`), each with `hpo.<m>.n_trials` trials. LogReg / LinReg are
-intentionally untuned — they're the "what does plain linear modelling
-do" baseline.
+`n_folds=5`), each with `hpo.<m>.n_trials` trials. All four baselines
+get **50 trials** — including LogReg's `C` and LinReg's `alpha`, which
+dominate a linear model on collinear credit features — so a
+foundation-model win cannot be dismissed as under-tuned baselines
+(changed 2026-06-24).
 
 ### Test-dataset resolution
 

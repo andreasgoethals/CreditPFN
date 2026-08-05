@@ -34,8 +34,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 # Default baseline list per track.
-DEFAULT_BASELINES_PD = ("xgboost", "catboost", "logreg", "tabpfn-untuned")
-DEFAULT_BASELINES_LGD = ("xgboost", "catboost", "linreg", "tabpfn-untuned")
+DEFAULT_BASELINES_PD = ("xgboost", "catboost", "logreg",
+                        "tabpfn-untuned", "tabicl-untuned")
+DEFAULT_BASELINES_LGD = ("xgboost", "catboost", "linreg",
+                         "tabpfn-untuned", "tabicl-untuned")
 
 
 def build_baselines(
@@ -45,6 +47,7 @@ def build_baselines(
     enabled: Iterable[str] | None = None,
     device: str = "auto",
     n_estimators_tabpfn: int = 4,
+    n_estimators_tabicl: int | None = None,
     seed: int = 42,
     hpo_xgboost: dict | None = None,    # {"n_trials": int, "timeout_seconds": float}
     hpo_catboost: dict | None = None,
@@ -58,17 +61,23 @@ def build_baselines(
     track
         ``"pd"`` (classification) or ``"lgd"`` (regression).
     base_paths_for_tabpfn_untuned
-        One ``TabPFNUntuned`` instance is created per path. Typically
-        these are ``cfg.tunable.<classifier|regressor>_base_paths``,
-        because those are the same checkpoints the training pipeline
-        starts from — comparing them at "untuned" vs. "trained" shows
-        whether continued pretraining helped.
+        One untuned instance is created per path — ``TabPFNUntuned`` or
+        ``TabICLUntuned`` depending on the path's family. Typically these
+        are ``cfg.tunable.<classifier|regressor>_base_paths``, because
+        those are the same checkpoints the training pipeline starts from
+        — comparing them at "untuned" vs. "trained" shows whether
+        continued pretraining helped.
     enabled
         Subset of ``{"xgboost", "catboost", "logreg", "linreg",
-        "tabpfn-untuned"}`` to include. ``None`` → use the per-track
-        default.
+        "tabpfn-untuned", "tabicl-untuned"}`` to include. ``None`` → use
+        the per-track default.
     device, n_estimators_tabpfn
         Forwarded to the TabPFN-untuned constructors.
+    n_estimators_tabicl
+        Inference-ensemble size for TabICL-untuned entries. TabICL's ICL
+        attention is quadratic in rows, so its useful ensemble size is
+        much smaller than TabPFN's (upstream default 8 vs our 32);
+        ``None`` → fall back to ``n_estimators_tabpfn``.
     seed
         Forwarded to the boosting / linear constructors via
         ``random_state``.
@@ -100,7 +109,7 @@ def build_baselines(
     # is robust: a missing optional package (e.g. catboost not installed)
     # or any constructor failure SKIPS that one baseline with a warning
     # rather than crashing the whole benchmark. The eval always runs with
-    # whatever subset of {xgboost, catboost, logreg/linreg, tabpfn-untuned}
+    # whatever subset of {xgboost, catboost, logreg/linreg, <family>-untuned}
     # can actually be built. (Added 2026-05-29.)
     def _try_add(name: str, factory) -> None:
         try:
@@ -145,8 +154,21 @@ def build_baselines(
             hpo_timeout_seconds=hpo_lin.get("timeout_seconds"),
         ))
 
-    if "tabpfn-untuned" in enabled:
+    # Untuned foundation-model controls, one per base checkpoint in the
+    # training grid. The grid may mix families, and each family is enabled
+    # independently ("tabpfn-untuned" / "tabicl-untuned") so a family can be
+    # dropped from the eval roster without editing the training grid.
+    from src.train.tabicl_compat import model_family
+    untuned_families = {
+        fam for fam, flag in (("tabpfn", "tabpfn-untuned"),
+                              ("tabicl", "tabicl-untuned"))
+        if flag in enabled
+    }
+    if untuned_families:
         for base_path in base_paths_for_tabpfn_untuned or ():
+            family = model_family(base_path)
+            if family not in untuned_families:
+                continue
             # Skip base checkpoints that aren't on disk — otherwise the
             # untuned model would FAIL every CV fold (polluting the
             # results with FAIL rows). The checkpoint path is resolved
@@ -154,17 +176,32 @@ def build_baselines(
             resolved = resolve_staging_path(str(base_path))
             if not Path(resolved).exists() and not Path(str(base_path)).exists():
                 LOGGER.warning(
-                    "tabpfn-untuned base checkpoint not on disk: %s — skipping "
+                    "untuned base checkpoint not on disk: %s — skipping "
                     "it from the eval roster.", base_path,
                 )
                 continue
-            m = TabPFNUntuned(
-                task_type=task_type, base_path=resolved,
-                device=device, n_estimators=n_estimators_tabpfn,
-            )
+            # Each base gets its OWN family's untuned control, so the
+            # trained-vs-untuned comparison is always within-family.
+            if family == "tabicl":
+                from src.model.tabicl_models import TabICLUntuned
+                m = TabICLUntuned(
+                    task_type=task_type, base_path=resolved,
+                    device=device,
+                    n_estimators=int(
+                        n_estimators_tabicl if n_estimators_tabicl is not None
+                        else n_estimators_tabpfn
+                    ),
+                )
+                source = "tabicl-untuned"
+            else:
+                m = TabPFNUntuned(
+                    task_type=task_type, base_path=resolved,
+                    device=device, n_estimators=n_estimators_tabpfn,
+                )
+                source = "tabpfn-untuned"
             out.append((ModelHandle(
                 name=m.name, track=track, task_type=task_type,
-                source="tabpfn-untuned", base_path=str(resolved),
+                source=source, base_path=str(resolved),
             ), m))
 
     if not out:

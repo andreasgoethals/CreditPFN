@@ -25,7 +25,8 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-31%24   # 32 trials. See train_pd.slurm for the rationale.
+#SBATCH --array=0-47%24   # 48 trials (3 bases incl. tabicl-v2). See
+                          # train_pd.slurm for the full rationale.
 
 sleep $((RANDOM % 30 + 1))
 
@@ -98,6 +99,11 @@ fi
 # the bar-distribution import that killed all 32 LGD trials on 2026-07-03.
 python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" || {
     echo "PREFLIGHT FAILED: tabpfn import smoke test — aborting before training." >&2
+    exit 1
+}
+# Same for the TabICL family (private tabicl._finetune internals).
+python -c "from src.train.tabicl_compat import smoke_test; smoke_test('lgd')" || {
+    echo "PREFLIGHT FAILED: tabicl import smoke test — aborting before training." >&2
     exit 1
 }
 # (Staging writability is probed in python — resolve_writable_staging_path —
