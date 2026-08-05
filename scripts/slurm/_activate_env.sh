@@ -95,6 +95,23 @@ fi
 # before giving up — a running job with a loud warning beats a dead one.
 # --------------------------------------------------------------------------
 
+_prepend_conda_bin() {
+    # `conda activate` sets CONDA_PREFIX but does not always WIN the PATH race.
+    # On a Genius login node with a Python Lmod module loaded, `python` still
+    # resolved to /apps/leuven/.../Python/3.12.3/bin/python while CONDA_PREFIX
+    # correctly pointed at our env — so the health check below rejected a
+    # perfectly good env and the launcher aborted (observed 2026-08-05 from
+    # run_full_pipeline.sh; the same activation worked on a compute node, which
+    # has no such module loaded). Forcing the env's bin to the front makes the
+    # interpreter match CONDA_PREFIX. A duplicate PATH entry is harmless;
+    # `hash -r` clears bash's cached location for an already-resolved `python`.
+    [[ -n "${CONDA_PREFIX:-}" && -x "${CONDA_PREFIX}/bin/python" ]] || return 0
+    PATH="${CONDA_PREFIX}/bin:${PATH}"
+    export PATH
+    hash -r 2>/dev/null || true
+    return 0
+}
+
 _env_is_healthy() {
     # The active python must live under $CONDA_PREFIX and import the deps.
     local py
@@ -113,11 +130,11 @@ _env_is_healthy() {
 }
 
 _activated=""
-if conda activate "${CONDA_ENV}" 2>/dev/null && _env_is_healthy; then
+if conda activate "${CONDA_ENV}" 2>/dev/null && _prepend_conda_bin && _env_is_healthy; then
     _activated="${CONDA_ENV}"
 else
     echo "WARNING: env '${CONDA_ENV}' is unusable — trying the 'base' env as a fallback." >&2
-    if conda activate base 2>/dev/null && _env_is_healthy; then
+    if conda activate base 2>/dev/null && _prepend_conda_bin && _env_is_healthy; then
         _activated="base"
         echo "WARNING: running in the BASE env. Repair the named env when convenient:" >&2
         echo "         conda create -y -n ${CONDA_ENV} --clone base" >&2

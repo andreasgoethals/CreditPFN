@@ -9,15 +9,10 @@
 
 
 # --- Section 0 · Tunable sweep (cartesian product) ---------------------------
-# Grid: 3 bases × 4 LRs × 2 adapt-modes × 1 qf × 1 acc × 2 pass-modes
-#       = 48 trials/track.
-# v2.5 is not swept (PEFT module-name + NaN-scaler incompatibilities — see
-# docs/CHECKPOINTS.md). Only v2.6 and v3 synthetic-only TabPFN bases, plus
-# the TabICL v2 base (second model family, added 2026-08-04). Family is
-# detected from the filename (`tabicl` in the basename → tabicl); see
-# src/train/tabicl_compat.py. Both TabICL checkpoints must be pre-staged
-# from a login node — compute nodes have no outbound network
-# (docs/CHECKPOINTS.md).
+# 3 bases x 4 LRs x 2 adapt-modes x 1 qf x 1 acc x 2 pass-modes = 48/track.
+# Two FAMILIES: TabPFN (v2.6, v3) + TabICL v2, detected from the filename.
+# v2.5 is not swept. TabICL checkpoints must be pre-staged from a login node.
+# Rationale: README §7. Checkpoint inventory + staging: docs/CHECKPOINTS.md.
 tunable:
   classifier_base_paths:
     - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
@@ -28,32 +23,14 @@ tunable:
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
     - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
 
-  # LR grid brackets TWO distinct references. Real-TabPFN (Garg et al.) uses
-  # exactly 3e-7 for corpus-level continued pretraining. Rubachev et al.'s
-  # separate single-dataset finetuning study tunes 5e-6..5e-4 (median ≈3.9e-5),
-  # while the official wrappers use 2e-5 (classifier) / 1e-5 (regressor). So:
-  #   3e-7  — exact Real-TabPFN learning rate,
-  #   1e-6  — conservative,
-  #   1e-5  — ≈ the official regressor-wrapper default,
-  #   3e-5  — near Rubachev's per-dataset median (added 2026-06-23 so the
-  #           sweep also reaches the single-dataset FT reference range).
-  # 1e-4 is excluded (diverged on no-LoRA + qf=0.20 in an earlier run; revisit
-  # now that weight_decay=0.0). See README §7 and tfm-library/SUMMARIES.md.
-  # The grid also covers TabICL's own finetuning default (1e-5), so the
-  # tabicl trials bracket their upstream recipe as well.
+  # Brackets three published recipes: 3e-7 = Real-TabPFN's exact CPT rate,
+  # 1e-5 = TabICL's (and TabPFN's regressor wrapper's) finetuning default,
+  # 3e-5 ~ Rubachev's single-dataset median. 1e-4 excluded (diverged).
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
 
-  # PARAMETER-EFFICIENT ADAPTATION axis — one flag, family-specific meaning:
-  #   tabpfn: LoRA (Hu et al. 2021) — freeze base weights, train ~1.6 %
-  #           adapter params; merged back at save time so the .ckpt loads
-  #           without a PEFT dependency.
-  #   tabicl: FREEZE-BACKBONE — freeze col_embedder + row_interactor, train
-  #           the ICL module only. This is TabICL's own pretraining stage-3
-  #           regime and the literature-sanctioned adaptation: full SFT
-  #           collapsed TabICL in two independent reports (Tanna 2026:
-  #           TabZilla acc 0.873→0.567; Kolberg 2026 "failed to train
-  #           TabICL"). Checkpoints get an `_iclhead` tag instead of `_lora`.
-  # See src/train/tabicl_compat.py for the citation trail.
+  # Adaptation mode, FAMILY-SPECIFIC: LoRA for TabPFN, freeze-backbone
+  # (train the ICL module only) for TabICL, whose checkpoints are tagged
+  # `_iclhead`. Why they differ: README §7 / src/train/tabicl_compat.py.
   use_lora: [false, true]
 
   # ctx/query split: query_fraction of the per-step subsample is the
@@ -64,16 +41,9 @@ tunable:
   # (smoother gradients, coarser LR schedule).
   accumulate_grad_batches: [1]
 
-  # Per-epoch step plan:
-  #   "one_sample" — ONE step per dataset per epoch (a single fresh random
-  #                  subsample of <= max_rows_per_epoch rows). Original
-  #                  behaviour; total steps = n_datasets × epochs.
-  #   "full_pass"  — size-proportional steps: a dataset with n rows gets
-  #                  ceil(n / max_rows_per_epoch) steps/epoch, each a distinct
-  #                  draw. Big datasets contribute MANY (non-repeated within a
-  #                  step) steps; small ones stay at 1 (no extra overfit
-  #                  pressure). Decouples #steps from #datasets — the lever for
-  #                  "more steps from few datasets". Both listed → A/B both.
+  # Steps per dataset per epoch: "one_sample" = one fresh subsample;
+  # "full_pass" = ceil(n_rows / max_rows_per_epoch) distinct draws, so big
+  # datasets contribute more steps. Both listed -> A/B both. See README §7.
   epoch_pass_modes: ["one_sample", "full_pass"]
 
 
@@ -114,13 +84,9 @@ optimizer:
   # and stacks a second penalty on top of the L2-SP start-point anchor below.
   # (Changed 2026-06-23 from 0.01.)
   weight_decay: 0.0
-  # L2-SP (Li et al. 2018): penalise drift of the weights away from the
-  # synthetic-prior start w0 — NOT toward zero (that's weight_decay). This
-  # exactly matches Real-TabPFN's λ=0.003 corpus-CPT regularizer. It is absent
-  # from Rubachev's separate single-dataset finetuning study. Set to 0.0 to
-  # disable or sweep {0.0, 0.003} to measure its effect. FULL-FT only: with
-  # LoRA the base is frozen, so L2-SP is inert and silently skipped. See README
-  # §7.
+  # L2-SP (Li et al. 2018): penalise drift from the synthetic-prior start w0,
+  # not toward zero. 0.003 is Real-TabPFN's exact value. Inert under LoRA
+  # (frozen base). Set 0.0 to disable. See README §7.
   l2sp_lambda: 0.003
 scheduler:
   warmup_fraction: 0.10    # TabPFN FinetunedTabPFNClassifier default
@@ -151,23 +117,16 @@ train:
   # step. End-of-epoch summaries retain min/max/std/worst-dataset diagnostics.
   step_log_interval: 10
 
-  # TabPFN ensemble members per training step — averaged preprocessed views,
-  # ~1/sqrt(K) less gradient noise. PER-TRACK to match the official wrappers:
-  #   pd  = 2  (FinetunedTabPFNClassifier default),
-  #   lgd = 8  (FinetunedTabPFNRegressor default — regression benefits from
-  #            lower per-step gradient noise; changed 2026-06-23 from 2).
-  # Cost scales ~linearly with K (8 members ≈ 4× the per-step forward cost of
-  # 2), which is why only the smaller LGD corpus uses 8. A scalar int is also
-  # accepted (applied to both tracks); `default` is the fallback for an
-  # unlisted track.
+  # Ensemble members per training step (less gradient noise, ~linear cost).
+  # Per-track, matching the official wrappers: pd=2, lgd=8. A scalar applies
+  # to both tracks; `default` covers an unlisted one. Memory: docs/ROW_CAPS.md.
   n_estimators_finetune:
     pd:      2
     lgd:     8
     default: 2
 
-  # TabICL family override (its ICL attention is quadratic in rows, and its
-  # own finetuning code uses 2 members for BOTH tracks — so the LGD-track
-  # value of 8 above is deliberately NOT applied to tabicl trials).
+  # TabICL uses 2 members on BOTH tracks (its own finetuning default), so the
+  # lgd value of 8 above is deliberately not applied to tabicl trials.
   n_estimators_finetune_tabicl: 2
 
   # Per-epoch monitor: at each epoch end, score `epoch_eval_subsample_samples`
