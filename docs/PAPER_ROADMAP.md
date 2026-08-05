@@ -107,10 +107,18 @@ capability (they report 1M samples × 500 features in ~450 s under 50 GB GPU),
 and the earlier 50 000 would have handicapped it 20× against v3. Training is
 now 26 000 rows/step, also matching v3, so a cross-family difference cannot
 be confounded with context size; that sits inside TabICLv2's own stage-3
-pretraining range (400–60 000 samples). **Neither number is measured on our
-hardware yet** — `scripts/probe_row_cap.py` has a TabICL branch; run it
-before the full sweep. The failure mode to watch is walltime, not memory —
-that was the v2.6 lesson.
+pretraining range (400–60 000 samples).
+
+**Both were then measured on the B200 (2026-08-05, job 11509346).** The
+training cap is validated: TabICL uses 26.8 GB at 26 000 rows — only 15 % of
+the card, about 5× leaner per row than v3 — and all three families' configured
+caps land near the intended ~130 GB budget. One surprise: TabICL's ceiling is
+**not** memory but a cuDNN fused-attention kernel failure somewhere between
+26k and 40k rows (`mha_graph.execute(...)`, with ~140 GB still free), so 26 000
+is both the parity value and safely under a hard limit. Raising it would need
+the cuDNN attention backend disabled first. Eval at 1M rows is a different code
+path and remains untested by us; watch for that same error on the large PD
+datasets.
 
 ---
 

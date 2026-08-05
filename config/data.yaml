@@ -76,10 +76,34 @@ paths:
 # their convenience finetuning wrapper — a library default, not a capability
 # limit, and well below their own pretraining regime. Do not treat a default
 # as a ceiling.
-# STILL UNMEASURED on our hardware: run scripts/probe_row_cap.py (it has a
-# tabicl branch) before trusting 26 000 for a 48-trial sweep — their stage-3
-# top of 60K is a batch-size-64 pretraining figure, not a 2-member
-# fine-tuning-step figure on a B200.
+# **MEASURED on the B200, 2026-08-05** (job 11509346, 64 feats, qf=0.20,
+# n_estimators=2, recompute=True — i.e. exactly the training configuration):
+#   10 000 rows -> 10.48 GB, 1.16 s/step
+#   26 000 rows -> 26.80 GB, 1.27 s/step   <- the configured cap
+#   40 000 rows -> FAILS (see below)
+# Slope ~1.02 GB per 1 000 rows AT TWO MEMBERS, i.e. ~0.51 GB/1k per member —
+# about 5x leaner than v3 and 11x leaner than v2.6, thanks to the 3-stage
+# design plus gradient checkpointing. At the 26 000 cap TabICL uses only
+# **26.8 of 183 GB (15 %)**, so memory is NOT its binding constraint.
+#
+# **THE BINDING CONSTRAINT IS A cuDNN KERNEL LIMIT, NOT MEMORY.** At 40 000 and
+# 60 000 rows the step dies with
+#   RuntimeError: Expected mha_graph.execute(...).is_good() to be true
+# — cuDNN's fused multi-head-attention graph failing on the long attention
+# sequence, NOT an OOM (there were ~140 GB free). So 26 000 is simultaneously
+# (a) the parity value with v3 and (b) safely under a hard ceiling somewhere in
+# 26k–40k. Do NOT raise it without first switching the attention backend away
+# from cuDNN (e.g. torch.backends.cuda.enable_cudnn_sdp(False)) AND re-probing;
+# raising it blind produces that opaque error mid-sweep.
+#
+# LGD ASYMMETRY, stated deliberately: TabPFN uses 8 members on LGD, so its caps
+# auto-scale to v3 6 500 / v2.6 2 750 rows per step, while TabICL keeps 2
+# members and therefore 26 000. Every LGD dataset is <=16k rows, so TabICL sees
+# FULL tables while v3 sees 6.5k-row samples. Each family runs at its own
+# official member count (the fair "as its authors intended" protocol), and
+# changing TabPFN's LGD members would break comparability with run-4 — but the
+# LGD cross-family comparison is therefore confounded with context size and
+# must be reported as such.
 # The member-aware auto-scaling above is TabPFN-specific (calibrated on
 # TabPFN's memory slope) and is deliberately NOT applied to tabicl, whose
 # member count is fixed at 2 for both tracks anyway

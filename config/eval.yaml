@@ -55,6 +55,15 @@ cv:
 #   so 1M means "no cap in practice" for both families. Their wrappers
 #   auto-estimate a safe batch size (polynomial memory regression), so OOM
 #   is unlikely; WALLTIME is the thing to watch on the first run.
+#   CAVEAT ADDED 2026-08-05 after the B200 probe: TabICL's *training* step dies
+#   above ~26k rows with a cuDNN fused-attention failure
+#   ("mha_graph.execute(...).is_good()"), not an OOM. Inference is a different
+#   code path — upstream demonstrates 1M rows, and their wrapper chunks/offloads
+#   — so this cap is left at 1M, but if TabICL eval cells FAIL with that same
+#   mha_graph message on the large PD datasets, the fix is to disable the cuDNN
+#   SDPA backend (torch.backends.cuda.enable_cudnn_sdp(False)) rather than to
+#   lower the cap. Failures surface as FAIL rows with the error text, not
+#   silently.
 max_rows_per_model:
   v3:      1000000
   v2.6:    50000

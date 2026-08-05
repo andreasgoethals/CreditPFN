@@ -107,7 +107,7 @@ def probe_base(base_path: str, track: str, rows_grid: list[int], device: str) ->
                 pa = torch.cuda.max_memory_allocated() / 1e9
                 pr = torch.cuda.max_memory_reserved() / 1e9
                 print(f"{n_rows:>8,} {n_ctx:>8,} {n_query:>7,} {pa:>10.2f}G "
-                      f"{pr:>9.2f}G {dt:>10.2f}  loss={float(loss):.4f}")
+                      f"{pr:>9.2f}G {dt:>10.2f}  loss={float(loss.detach()):.4f}")
             else:
                 print(f"{n_rows:>8,} {n_ctx:>8,} {n_query:>7,} {'n/a':>11} "
                       f"{'n/a':>10} {dt:>10.2f}  (cpu)")
@@ -190,7 +190,7 @@ def probe_tabicl_base(base_path: str, track: str, rows_grid: list[int],
                 pa = torch.cuda.max_memory_allocated() / 1e9
                 pr = torch.cuda.max_memory_reserved() / 1e9
                 print(f"{n_rows:>8,} {n_ctx:>8,} {n_query:>7,} {pa:>10.2f}G "
-                      f"{pr:>9.2f}G {dt:>10.2f}  loss={float(loss):.4f}")
+                      f"{pr:>9.2f}G {dt:>10.2f}  loss={float(loss.detach()):.4f}")
             else:
                 print(f"{n_rows:>8,} {n_ctx:>8,} {n_query:>7,} {'n/a':>11} "
                       f"{'n/a':>10} {dt:>10.2f}  (cpu)")
