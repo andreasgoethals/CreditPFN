@@ -163,7 +163,9 @@ TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_T
 if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then
     python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')" || {
         echo "PREFLIGHT FAILED: tabicl import smoke test (trial ${SLURM_ARRAY_TASK_ID} uses a tabicl base)." >&2
-        echo "  Fix: pip install 'tabicl>=2.1.1,<3' INTO THE ENV THIS JOB ACTIVATES" >&2
+        echo "  Fix: pip install 'tabicl[finetune]>=2.1.1,<3' INTO THE ENV THIS JOB ACTIVATES" >&2
+        echo "       (the [finetune] extra carries 'transformers'; without it" >&2
+        echo "        inference works and only TRAINING fails.)" >&2
         echo "       (see 'Active conda env' above — an interactive venv is NOT it)." >&2
         exit 1
     }

@@ -1,196 +1,228 @@
 # Agent change history
 
-## Purpose
+Concise hand-off log between Claude and Codex: what changed, what was
+reviewed, what was deliberately left alone, and why — so neither agent has to
+reconstruct a prior chat session. Read it at the start of every repository
+task; add an entry before ending every request or session, read-only ones
+included.
 
-This tracked file is the concise hand-off log between Claude and Codex. It lets
-either agent see what the other changed, reviewed, or deliberately left alone,
-and why, without reconstructing prior chat sessions. Both agents must read it
-at the start of each repository task and append exactly one entry before ending
-each user request or agent session, including read-only sessions.
+## House style (follow exactly)
 
-Keep entries short but decision-complete. Do not copy command output, raw logs,
-dataset contents, secrets, or information already explained in permanent docs.
-Use `AGENTS_MEMORY.md` for transient experiment findings and known pitfalls;
-promote stable facts to the normal documentation.
-
-## Entry format
-
-```text
-### YYYY-MM-DD — Claude|Codex
-- Changed/reviewed: ...
-- Why: ...
-```
-
-Append new entries below in chronological order.
-
-### 2026-07-10 — Codex
-- Changed/reviewed: Audited the full repository/literature and 183 VSC logs;
-  documented the provisional PD/LGD findings; fixed monitor sampling, AMP
-  overflow accounting/BF16, warning noise, manifest races/duplicates, partial
-  grid gating, exact eval sizing, Slurm end-state logging, and stale methodology
-  docs; introduced shared `AGENTS_MEMORY.md` plus Claude/Codex instructions.
-- Why: The run was incomplete and its monitor deltas were confounded, while
-  repeated warnings and shared sentinel/manifest races obscured failures and
-  allowed incomplete experiments to look successful.
-
-### 2026-07-10 — Claude
-- Changed/reviewed: Reviewed all of Codex's uncommitted changes (4-way: loop.py,
-  run_log/manifest lock, train/eval pipeline, orchestration). Verified the
-  monitor-seed fix, BF16+disabled-GradScaler, AMP counting, per-task sentinels,
-  exact eval sizing, and the L2-SP/3e-7 Real-TabPFN claims (checked against the
-  Garg paper — Codex was right, L2-SP λ=0.003 IS in Real-TabPFN). Then fixed:
-  (1) the eval gate was all-or-nothing (`SUCCESS -ne EXPECTED` skipped a whole
-  track if ONE trial diverged/failed/over-sized) → now submits if >=1 trained
-  and loudly flags partial grids; (2) guarded `fcntl.flock` OSError so a
-  no-flock filesystem degrades to the thread lock instead of aborting the
-  manifest write; (3) added `.gitattributes` (LF for *.sh/*.slurm — Codex's
-  edits had introduced CRLF); (4) deleted the now-superseded, un-ignored
-  `CLAUDE.local.md` (its content lives in AGENTS_MEMORY.md); (5) recorded the
-  never-push hard rule in AGENTS_MEMORY.md.
-- Why: Codex's work was high-quality and mostly correct, but the strict eval
-  gate would realistically never fire in a 4-LR sweep where divergence is an
-  expected outcome, and the CRLF/flock/gitignore issues were latent landmines.
+1. **One `##` heading per DAY** (`## YYYY-MM-DD`), newest at the bottom.
+   Append to today's heading if it already exists — never open a second one.
+2. **One `###` heading per CHANGE**, ending in `— Claude` or `— Codex`.
+   Title it as a short imperative claim ("Correct the TabICL row caps"), not
+   a topic label ("row caps").
+3. **Each change gets exactly these bullets**, in this order. Omit a bullet
+   only when it genuinely does not apply:
+   - `**What:**` what changed, in 1–3 sentences.
+   - `**Why:**` the reason, in 1 sentence.
+   - `**Verified:**` how it was checked (test count, log inspected, etc.).
+4. **Cap a change at ~8 lines.** Long bug lists become a nested bullet list
+   of one line each. If it will not fit, it belongs in `docs/` and this entry
+   should link to it.
+5. **Facts, not narrative.** No command output, raw logs, dataset contents,
+   secrets, or anything already in the permanent docs.
+6. **Never rewrite an older day.** If a past entry became wrong, say so in
+   today's entry and mark the old one superseded.
+7. **Division of labour.** Transient findings and pitfalls → `AGENTS_MEMORY.md`
+   (gitignored). Durable facts → `docs/`. This file records only *changes*.
 
 ---
 
-## 2026-07-11 - Claude (subagent): PD eval log analysis (read-only, no repository changes)
+## 2026-07-10
 
-- Parsed all 98 eval_pd_*.log in Downloads/logs (j61424066 even array tasks 0-184,
-  93 files; j61424067 odd tasks, 5 files a1-a9). 97/98 complete with 5/5 folds OK,
-  0 failed cells, no tracebacks; a9 (catboost x credit_risk) still running at snapshot.
-  Odd tasks 11-183 (87 pairs) not yet evaluated. No trained config beats its untuned
-  base; v3 lr3e-05 fullpass full-wt collapsed (AUC 0.50); v3 fullpass full-wt at
-  lr>=1e-06 degraded (likely stale FP16 checkpoints from Jul-9 run). Findings returned
-  to orchestrator, not written to repo.
+### Audit the repository and 183 VSC logs, then fix the confounds — Codex
 
----
+- **What:** Documented the provisional PD/LGD findings and fixed monitor
+  sampling, AMP overflow accounting (→ BF16), warning noise, manifest
+  races/duplicates, partial-grid gating, exact eval sizing, and Slurm
+  end-state logging. Introduced `AGENTS_MEMORY.md` plus the Claude/Codex
+  instruction files.
+- **Why:** The run was incomplete and its monitor deltas were confounded,
+  while repeated warnings and sentinel/manifest races let incomplete
+  experiments look successful.
 
-## 2026-07-11 - Claude
+### Review Codex's changes and repair the eval gate — Claude
 
-- Changed/reviewed: Analyzed all ~200 Jul-10/11 run logs (4-agent sweep). Found
-  + fixed: (1) clean_run.py missed the $VSC_DATA fallback checkpoint dir ->
-  59/64 trials silently SKIPped on stale Jul-9 FP16 checkpoints (now wipes both
-  locations + .sentinels, dedupes resolved paths); (2) eval pool split by raw
-  index parity sent ALL of lgd_lendingclub to the slow A100 pool -> new
-  model-parity split (`--list-tasks --pools K --pool i` in eval_pipeline.py,
-  used by the generated eval-submit script); (3) collapsed the 3 per-epoch log
-  lines into ONE comprehensive greppable line (user request); (4) l2sp display
-  %.4f -> %.3e (was rendering 0.0000). Confirmed staging checkpoints/trained
-  is unwritable EVEN from wICE (mkdir denied; infra fix needed, not code).
-  Tests: 243+ pass, exit 0.
-- Why: The "clean" rerun was contaminated by surviving old checkpoints; the
-  pool-split artifact left a whole LGD dataset unscored; per-epoch diagnostics
-  were spread over 3 lines.
+- **What:** 4-way review (loop.py, run_log/manifest lock, pipelines,
+  orchestration). Confirmed Codex's L2-SP claim against the Garg paper —
+  λ=0.003 **is** Real-TabPFN's value. Then fixed: the eval gate was
+  all-or-nothing (one diverged trial skipped a whole track) → now submits if
+  ≥1 trial trained and loudly flags partial grids; guarded `fcntl.flock`
+  `OSError` so a no-flock filesystem degrades to the thread lock; added
+  `.gitattributes` (LF for `*.sh`/`*.slurm`); recorded the never-push rule.
+- **Why:** A strict gate would never fire in a 4-LR sweep where divergence is
+  an expected outcome, and the CRLF/flock issues were latent landmines.
 
 ---
 
-## 2026-07-13 - Claude
+## 2026-07-11
 
-- Changed/reviewed: Converted CreditPFN to consume the shared TFM_Library
-  repo (github.com/andreasgoethals/TFM_Library) as a git submodule at
-  `tfm-library/` (branch-tracking main). Removed the now-duplicated papers/,
-  repositories/, docs/{LITERATURE,summary,REPOSITORIES}.md and
-  src/utils/refresh_repositories.py; updated every reference (README tree +
-  4.6/4.7, VSC_GUIDE clone instructions now `--recursive` + `git submodule
-  update --init`, CLAUDE.md/AGENTS.md pointer to tfm-library/AGENTS.md,
-  .gitignore Wide.txt entry dropped, path citations across src/ + config +
-  docs + tests). Doc renames upstream: LITERATURE->SUMMARIES,
-  summary->SYNTHESIS.
-- Why: One canonical knowledge base shared across projects instead of
-  per-project drift; the library is pinned per-commit for reproducibility
-  and bumped with `git submodule update --remote tfm-library`.
+### Analyse the PD eval logs (read-only) — Claude
 
----
+- **What:** Parsed all 98 `eval_pd_*.log`; 97/98 complete with 5/5 folds and
+  no failed cells. No trained config beat its untuned base. **No repository
+  changes.**
+- **Why:** Needed to know whether the run was usable before acting on it.
 
-## 2026-07-13 - Claude (run-4 analysis)
+### Fix the stale-checkpoint contamination and the eval pool split — Claude
 
-- Changed/reviewed: Analyzed all ~325 logs of the first CLEAN run (4-agent
-  sweep): pipeline fully green (64/64 fresh BF16 trials, gate/sentinels/pools
-  all correct). Science: PD discrimination unchanged by CPT (best +0.0004);
-  LoRA a no-op at every LR; LGD NLL-vs-RMSE trade-off REPLICATES (v3 full-FT
-  up to -0.32 nats at +0.009 RMSE; v2.6 degrades on both). Fixes: eval
-  walltime 2h->5h + v2.6 eval row cap 100k->50k (8 walltime-killed
-  v2.6xalgorithmwatch cells); noted missing a48 LGD cell (one-off, recovered
-  by an eval re-run).
-- Why: The homogeneous sweep is the citable baseline experiment; the two
-  eval fixes close the only coverage gaps.
+- **What:** From ~200 logs: (a) `clean_run.py` missed the `$VSC_DATA`
+  fallback checkpoint dir, so 59/64 trials silently SKIPped onto stale FP16
+  checkpoints — it now wipes both locations plus `.sentinels`; (b) the eval
+  pool split used raw index parity, sending all of `lgd_lendingclub` to the
+  slow A100 pool — replaced with a model-parity split
+  (`--list-tasks --pools K --pool i`); (c) collapsed the three per-epoch log
+  lines into one greppable line.
+- **Why:** The "clean" rerun was contaminated by surviving checkpoints and a
+  whole LGD dataset went unscored.
+- **Verified:** 243+ tests pass.
 
 ---
 
-### 2026-07-30 — Codex
-- Changed/reviewed: Researched European DataWarehouse public ABS data and
-  added `docs/EDW_DATASET_FEASIBILITY.md`; verified EU/UK availability,
-  PD/LGD/prepayment fields, reporting-history harmonisation, access and
-  current use terms, then mapped the panel data to CreditPFN's pipeline. No
-  code changes.
-- Why: EDW data are technically viable after leakage-safe panel-to-table ETL,
-  but its January 2026 standard terms prohibit AI training unless the
-  university agreement explicitly overrides that restriction.
+## 2026-07-13
 
-## 2026-08-04 - Claude
+### Consume the TFM literature library as a git submodule — Claude
 
-- Changed/reviewed: Created `tfm-library/PROJECT_SPECIFIC.md` from the
-  parent-folder handoff file (all CreditPFN-specific literature notes moved
-  out of the now project-neutral library docs), filled in the library pin
-  (221bac0, "Update Skeleton") in its header, and verified the library's
-  gitignore keeps the file invisible (submodule status stays clean). Rule-6
-  sweep: updated the 4 stale `../papers/YYYY_...` links in notebooks
-  2.0/2.1 to the new `../tfm-library/papers/<year>/<MM>_...` layout
-  (Garg 2025 -> 2025/07_, TabPFN-3 report -> 2026/05_); no other old-form
-  references existed in tracked or agent files. Did NOT touch any shared
-  library file (read-only contract respected).
-- Why: The library became strictly project-neutral on 2026-08-04; the
-  single sanctioned home for CreditPFN literature notes is the gitignored
-  PROJECT_SPECIFIC.md, and old paper paths would 404 after the layout move.
+- **What:** Converted the papers/repositories/literature docs into the shared
+  `TFM_Library` repo, mounted at `tfm-library/` (branch-tracking main), and
+  updated every reference across README, VSC_GUIDE, CLAUDE.md/AGENTS.md,
+  `.gitignore`, src, config, docs and tests. Upstream renames:
+  `LITERATURE`→`SUMMARIES`, `summary`→`SYNTHESIS`.
+- **Why:** One canonical knowledge base shared across projects instead of
+  per-project drift, pinned per-commit for reproducibility.
+
+### Analyse run-4 and close the two eval coverage gaps — Claude
+
+- **What:** All ~325 logs of the first clean run: pipeline fully green (64/64
+  fresh BF16 trials). Science — PD discrimination unchanged by CPT (best
+  +0.0004), LoRA a no-op at every LR, LGD NLL-vs-RMSE trade-off replicates
+  (v3 full-FT up to −0.32 nats at +0.009 RMSE; v2.6 degrades on both). Fixes:
+  eval walltime 2 h→5 h and v2.6 eval row cap 100k→50k (8 walltime-killed
+  cells); noted one missing LGD cell, recoverable by an eval re-run.
+- **Why:** This homogeneous sweep is the citable baseline experiment.
 
 ---
 
-## 2026-08-04 - Claude
+## 2026-07-30
 
-- Changed/reviewed: **Implemented TabICL v2 as a second continued-pretraining
-  family, for BOTH tracks.** New: `src/train/tabicl_compat.py` (family
-  detection + all guarded imports of the private `tabicl._finetune`
-  internals, plus a SLURM-prolog smoke test), `src/train/tabicl_model.py`
-  (load with `recompute=True`, head/track guard, freeze-backbone mode,
-  verbatim upstream pinball loss, upstream 2-key save schema + provenance
-  sidecar), `src/model/tabicl_models.py` (TabICLUntuned / TabICLTrained eval
-  wrappers with input sanitisation), `tests/test_tabicl.py` (33 tests,
-  including a real no-mock `train_one_config` run on a tiny checkpoint for
-  PD-freeze-backbone and LGD-full-FT). Edited: `dataloader.py`
-  (`TabICLTrainBatch` + `_build_tabicl_step_batch` via upstream's own
-  `_build_meta_batch`, same stratified sampler as the TabPFN path so the
-  context-construction axis is held constant), `loop.py` (family branch at
-  load / forward+loss / monitor snapshot / monitor eval / final save;
-  `_iclhead` naming; tabicl row-cap key; per-family n_estimators; L2-SP
-  applicability; backbone re-freeze after `model.train()`; provenance gains
-  `model_family`, `adaptation_mode`, `tabicl_version`, `n_estimators_finetune`),
-  `benchmark.py` + `registry.py` + `base.py` + `eval_viz.py` (per-family
-  untuned controls, `<family>-{untuned,trained}` sources, dirname
-  writer/reader round-trip incl. `__fullpass`/`__iclhead`), configs (48-trial
-  grid, tabicl row caps, `tabicl_n_estimators: 8`), SLURM (arrays 0-47,
-  tabicl prolog check), `probe_row_cap.py` (tabicl branch), and the docs
-  (README §7/§8, CHECKPOINTS, VSC_GUIDE).
-- Bugs found and fixed while doing it: (1) `resolve_max_rows_for_handle`
-  never matched its untuned key, so untuned models silently used the
-  `default` eval row cap while their trained counterparts used the
-  architecture cap — an un-paired headline comparison; (2) `eval_*.slurm`
-  fallback `--array` bound of 200 would have silently dropped ~75 PD tasks
-  at the new grid size (raised to 400); (3) `run_full_pipeline.sh` did not
-  check the `--list-trials` result, so a failed call would have expanded to
-  `--array=0--1`; (4) `_decode_method_dirname` folded `__fullpass` into the
-  base tag, averaging one_sample and full_pass results together in the
-  notebooks; (5) ±inf reached the TabICL transformer (and its sklearn
-  wrappers raise on inf / on an all-NaN column) — both absorbed now;
-  (6) provenance did not record `n_estimators_finetune`.
-- Why: The user asked for a bug-free two-family run and for the repo to be as
-  clean as possible before writing a paper. A second architecture with a
-  different prior is also the strongest available answer to the "is the PD
-  null result architecture-specific?" reviewer question. Full test suite:
-  275 passed. No repository changes were pushed (user's rule).
-- Verified locally (CPU, tiny checkpoints): batch construction, both losses
-  against the upstream formulas, freeze-backbone, save→reload through
-  TabICL's own sklearn wrappers, and three full `train_one_config` runs.
-  NOT yet run on VSC — that needs `pip install 'tabicl>=2.1.1,<3'` and both
-  HF checkpoints staged from a login node.
+### Assess European DataWarehouse ABS data — Codex
+
+- **What:** Researched EU/UK availability, PD/LGD/prepayment fields,
+  reporting-history harmonisation and access terms, and mapped the panel data
+  to our pipeline. No code changes.
+- **Why:** EDW data are technically viable after leakage-safe panel-to-table
+  ETL, but its January 2026 terms prohibit AI training unless the university
+  agreement overrides that. *(The `docs/EDW_DATASET_FEASIBILITY.md` this
+  entry claims was never committed — see `AGENTS_MEMORY.md` §4.)*
 
 ---
+
+## 2026-08-04
+
+### Move CreditPFN-specific literature notes out of the shared library — Claude
+
+- **What:** Created `tfm-library/PROJECT_SPECIFIC.md` (gitignored by the
+  library, so submodule status stays clean) with the library pin recorded in
+  its header, and repointed the 4 stale paper links in notebooks 2.0/2.1 at
+  the new `papers/<year>/<MM>_...` layout. Touched no shared library file.
+- **Why:** The library became strictly project-neutral, and the old paper
+  paths would 404 after its layout move.
+
+### Add TabICL v2 as a second continued-pretraining family — Claude
+
+- **What:** New `src/train/tabicl_{compat,model}.py`,
+  `src/model/tabicl_models.py`, `tests/test_tabicl.py`. Family is detected
+  from the checkpoint filename and drives the loader, losses (upstream's own
+  CE and 999-quantile pinball), row cap, and save schema. The `use_lora` grid
+  axis means freeze-backbone for TabICL — its own stage-3 regime, since full
+  SFT collapsed it in two independent reports — tagged `_iclhead`. Grid is now
+  48 trials/track.
+- **Why:** Every result so far came from one architecture and one synthetic
+  prior; a second family is the strongest answer to "is the PD null result
+  architecture-specific?".
+- **Verified:** 275 tests, including a no-mock `train_one_config` run on a
+  tiny checkpoint for PD-freeze-backbone and LGD-full-FT.
+
+### Fix six bugs found while wiring the second family — Claude
+
+- **What:**
+  - `resolve_max_rows_for_handle` never matched its untuned key → untuned
+    models used the `default` eval row cap while trained ones used the
+    architecture cap (an un-paired headline comparison).
+  - `eval_*.slurm` fallback `--array` bound of 200 would silently drop ~75 PD
+    tasks at the new grid size → 400.
+  - `run_full_pipeline.sh` did not check `--list-trials`, so a failure
+    expanded to `--array=0--1`.
+  - `_decode_method_dirname` folded `__fullpass` into the base tag, averaging
+    one_sample and full_pass results together in the notebooks.
+  - ±inf reached the TabICL transformer, whose sklearn wrappers also reject an
+    all-NaN column — both absorbed now.
+  - Provenance did not record `n_estimators_finetune`.
+- **Why:** The first two silently bias results rather than failing loudly.
+
+---
+
+## 2026-08-05
+
+### Correct the TabICL row caps from the paper — Claude
+
+- **What:** Eval `max_rows_per_model.tabicl` 50 000 → **1 000 000** (= v3):
+  Qu et al. 2026 report 1M samples × 500 features in ~450 s under 50 GB GPU,
+  so 50k discarded the model's headline capability and handicapped it 20×
+  against v3. Training `max_rows_per_epoch.tabicl` 10 000 → **26 000** (= v3):
+  unequal caps confound architecture with context size, and 10 000 came from
+  `max_data_size=10_000`, a default argument of their convenience finetune
+  wrapper — their own stage-3 pretraining uses 400–60 000 samples. Probe grid
+  widened to 10k–60k.
+- **Why:** A wrong cap silently biases the cross-family comparison the second
+  family exists to make.
+- **Verified:** Read from the TabICLv2 PDF (§4.2, App. H.2, §B.1), not from
+  library defaults. Still unmeasured on VSC hardware.
+
+### Require the `tabicl[finetune]` extra — Claude
+
+- **What:** `transformers` is declared only under tabicl's `finetune` extra,
+  so a plain install works for inference and dies at training. Pin is now
+  `tabicl[finetune]>=2.1.1,<3`; the error message names the extra instead of
+  blaming the version; `smoke_test` reports core / inference / finetune
+  separately, in ASCII.
+- **Why:** The original message misdirected a real debugging session, and a
+  `UnicodeEncodeError` in a prolog check would abort the job it protects.
+- **Verified:** Regression test blocks `transformers` and asserts the message.
+  **Supersedes** the `tabicl>=2.1.1,<3` command in the 2026-08-04 entries.
+
+### Harden the environment and probe entry points — Claude
+
+- **What:** `_activate_env.sh` strips a shadowing `$VIRTUAL_ENV/bin` from PATH
+  before activating conda (an active venv silently won, so `pip` installed
+  into another project's venv). `probe_row_cap.py` now refuses an unusable
+  GPU — on a login node it had grabbed the Quadro P6000 display card (sm_61,
+  no kernels in this PyTorch) and died with a misleading CUDA OOM — and
+  prints the sbatch command instead. New `train_pipeline.py --trial-family N`
+  lets the SLURM prolog run the TabICL preflight only for TabICL trials, so a
+  missing optional dep costs 16 trials rather than all 48.
+- **Why:** Each of these cost real cluster time, and a capacity probe on the
+  wrong GPU is worse than none — its numbers get copied into `config/`.
+- **Verified:** 276 tests; both SLURM scripts pass `bash -n`.
+
+### Restructure this log and formalise its style — Claude
+
+- **What:** Regrouped every entry under one `##` heading per day with one
+  `###` heading per change, rewrote all of them into the same
+  What/Why/Verified shape, and added the "House style" ruleset at the top.
+  Older days were edited (normally forbidden by rule 6) at the user's
+  explicit request for this one pass.
+- **Why:** Entries had drifted into three different formats and several were
+  long enough that the actual change was hard to find.
+
+### Rescope the temporal-split plan after auditing the corpus — Claude
+
+- **What:** Measured that only 5 of 25 raw datasets carry a parseable date
+  column, that `sanitize.py` drops them, and that **none of the 5 PD test
+  sets** has one (only LGD `loss2` does). Rewrote that roadmap item into three
+  scoped options: a `loss2`-only case study, re-pinning the corpus split, or
+  re-sourcing fuller raw files.
+- **Why:** It had been listed as a scheduling task when it is really a corpus
+  decision, and would have been discovered only mid-implementation.
