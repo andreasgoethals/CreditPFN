@@ -45,13 +45,18 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=48:00:00   # GPU partitions cap at 72h (no gpu_*_long on VSC).
-                          # full_pass @ 50 epochs on the big PD datasets at the
-                          # 26k-row B200 cap is the worst case; one_sample
-                          # trials finish far sooner and free the slot. Tune
-                          # down (e.g. 04:00:00 for one_sample-only) to gain
-                          # backfill priority — shorter walltime => better queue
-                          # position on VSC.
+#SBATCH --time=10:00:00   # SIZED FROM MEASUREMENT (2026-08-06), not guessed.
+                          # Run-5 per-trial wall-clock at 50 epochs, full_pass:
+                          #   v2.6 ~2.4 h | v3 ~1.4 h | tabicl ~0.5 h
+                          # At the new 100 epochs the worst case (v2.6) is ~5 h,
+                          # so 10 h is 2x margin.
+                          # WHY THIS MATTERS: the old 48 h request was the likely
+                          # cause of run-5's terrible concurrency — Slurm only
+                          # ever ran 1-2 of the 24 requested array tasks, so 43.7
+                          # GPU-h took 47 h of wall-clock. A short walltime is
+                          # far easier to BACKFILL into gaps between big jobs, so
+                          # it buys queue position. Re-measure if epochs, the row
+                          # caps, or the corpus change.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24   # max CPU cores per B200 GPU on gpu_b200 (192 cores / 8 GPUs)

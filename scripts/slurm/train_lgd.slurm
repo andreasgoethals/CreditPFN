@@ -14,7 +14,9 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=12:00:00   # smaller LGD corpus; full_pass A/B @ 50 epochs fits.
+#SBATCH --time=04:00:00   # Measured run-5: every LGD trial finished in <25 min
+                          # at 50 epochs, so <1 h at 100. Short requests backfill
+                          # far better — see train_pd.slurm for the rationale.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
