@@ -48,6 +48,17 @@ finetuning:
     v3:      null
     v2.6:    null
     default: null
+
+  # CONTEXT CONSTRUCTION for the per-step subsample. "stratified" keeps each
+  # class's natural frequency; "balanced" gives every class an equal quota
+  # capped by availability. Under credit's 1-3 % default rate, stratified puts
+  # ~260 positives in a 26 000-row context while balanced takes every positive
+  # there is. Tanna et al. 2026 measure balanced/hybrid context as worth 3-4
+  # AUC points over uniform on Home Credit + Lending Club (both in our
+  # training corpus) — a bigger effect than the choice of model. Applies to
+  # classification only (regression falls back to a uniform draw) and is
+  # shared by BOTH families so it never confounds a cross-family comparison.
+  context_sampling: "balanced"
   query_fraction:     0.20
 
 

@@ -242,6 +242,7 @@ def make_warmup_cosine_schedule(
     total_steps: int,
     warmup_fraction: float,
     schedule_type: str,
+    min_lr_fraction: float = 0.0,
 ) -> torch.optim.lr_scheduler.LambdaLR:
     """Linear-warmup → cosine-decay LR multiplier.
 
@@ -256,7 +257,15 @@ def make_warmup_cosine_schedule(
     ``schedule_type``:
         - ``"constant"``      — multiplier = 1 throughout
         - ``"warmup_only"``   — linear warmup, then constant 1
-        - ``"warmup_cosine"`` — linear warmup, then cosine to 0
+        - ``"warmup_cosine"`` — linear warmup, then cosine decay to
+          ``min_lr_fraction`` × peak (0.0 = the classic decay-to-zero).
+
+    ``min_lr_fraction`` exists because our runs are SHORT. Real-TabPFN decays
+    over 20 000 steps; a 600-step run that also decays to exactly zero spends
+    its final quarter taking steps of size ~0, so the effective budget is far
+    smaller than the step count suggests. Holding a small floor keeps the tail
+    of training useful. (Added 2026-08-06 after the first two-family run moved
+    v3's weights by only ~0.02 % at lr=3e-7.)
     """
     warmup_steps = max(1, int(round(total_steps * warmup_fraction)))
     total_steps = max(1, int(total_steps))
@@ -271,7 +280,9 @@ def make_warmup_cosine_schedule(
         if schedule_type == "warmup_cosine":
             progress = (step - warmup_steps) / max(1, total_steps - warmup_steps)
             progress = min(1.0, max(0.0, progress))
-            return 0.5 * (1.0 + math.cos(math.pi * progress))
+            cos = 0.5 * (1.0 + math.cos(math.pi * progress))
+            floor = min(1.0, max(0.0, float(min_lr_fraction)))
+            return floor + (1.0 - floor) * cos
         raise ValueError(f"unknown schedule_type={schedule_type!r}")
 
     return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
@@ -330,6 +341,7 @@ def _make_optimizer_and_scheduler(
         total_steps=total_steps,
         warmup_fraction=float(cfg.scheduler.warmup_fraction),
         schedule_type="warmup_cosine",
+        min_lr_fraction=float(getattr(cfg.scheduler, "min_lr_fraction", 0.0)),
     )
     return optim, sched
 
@@ -1422,6 +1434,11 @@ def train_one_config(
     # Reuses the same per-version mapping resolver; a null value or an
     # absent key resolves to None (no cell budget for that base).
     max_cells_per_epoch = None
+    # Context-construction strategy for the per-step subsample. Shared by
+    # BOTH families so a cross-family comparison never confounds this axis —
+    # the axis Tanna et al. 2026 measure as worth more AUC than model choice.
+    context_sampling = str(
+        _data_cfg.finetuning.get("context_sampling", "stratified"))
     _max_cells_cfg = _data_cfg.finetuning.get("max_cells_per_epoch", None)
     if _max_cells_cfg is not None:
         try:
@@ -1512,6 +1529,7 @@ def train_one_config(
         pass_mode=pass_mode,
         max_cells_per_epoch=max_cells_per_epoch,
         model_family=family,
+        context_sampling=context_sampling,
     )
     train_loader = DataLoader(
         train_ds,
@@ -1629,6 +1647,14 @@ def train_one_config(
     # too small to move the prior.
     epoch_eval_n0 = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
     epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators", 1))
+    if family == "tabicl":
+        # Use the family's own inference-ensemble size (8, upstream's default)
+        # rather than TabPFN's 32. The monitor exists so its curves are directly
+        # comparable to the final eval numbers, and config/eval.yaml scores
+        # tabicl with 8 — running the monitor at 32 broke that comparability
+        # and cost 4x the monitor time. (2026-08-06.)
+        epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators_tabicl",
+                                    min(epoch_eval_ne, 8)))
     # Monitor CADENCE: run the (expensive, 32-estimator) per-epoch eval only
     # every k-th epoch (+ always the first and last). The 2026-07-03 run's
     # timing lines showed the monitor dominating one_sample epochs ~3:1 —
@@ -1766,14 +1792,13 @@ def train_one_config(
 
     for epoch in range(epochs):
         model.train()
-        if family == "tabicl" and use_lora:
-            # freeze-backbone mode: model.train() above flipped the frozen
-            # stages back to train mode — restore inference-mode behaviour
-            # (dropout off, norm statistics fixed) for the frozen backbone.
-            # TabICL's forward routes on module training flags, so this
-            # matters beyond bookkeeping.
-            model.col_embedder.eval()
-            model.row_interactor.eval()
+        # NOTE (2026-08-06): do NOT snap TabICL's frozen stages back to eval()
+        # here. `.training` picks the ALGORITHM in TabICL (train forward vs the
+        # no_grad, KV-cached inference forward that writes into its input in
+        # place), so eval-ing them crashed every `_iclhead` trial in the
+        # 2026-08-05 run. Freezing is requires_grad=False only — see
+        # load_tabicl_for_training. The whole model therefore stays on the
+        # train forward path, exactly as in full-FT.
         # Per-epoch reshuffle: a fresh random subsample is drawn from each
         # dataset's full processed CSV (see ProcessedDatasetLoader.set_epoch).
         train_ds.set_epoch(epoch)

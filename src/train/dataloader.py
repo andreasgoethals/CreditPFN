@@ -220,20 +220,41 @@ def _ordinal_encode(
 
 def _stratified_subsample_indices(
     y: np.ndarray, n_total: int, rng: np.random.Generator,
+    mode: str = "stratified",
 ) -> np.ndarray:
-    """Stratified (proportional-per-class) subsample of size ``n_total``.
+    """Per-class subsample of size ``n_total`` — the CONTEXT-CONSTRUCTION knob.
 
-    For classification targets, draws ``n_total`` indices keeping each
-    class's frequency proportional to its frequency in ``y``. This is
-    the same scheme sklearn's ``StratifiedKFold`` uses, but as a single
-    one-shot subsample instead of K folds.
+    ``mode``:
+
+    * ``"stratified"`` (default) — keep each class's frequency proportional
+      to its frequency in ``y``, like sklearn's ``StratifiedKFold`` but as a
+      single one-shot draw.
+    * ``"balanced"`` — give every class an EQUAL quota, capped by how many
+      rows that class actually has, and spend any leftover budget on the
+      classes that still have rows.
+
+    Why ``balanced`` exists (Tanna et al. 2026, *Data Presentation Over
+    Architecture*, in tfm-library): because a tabular foundation model
+    predicts by in-context learning, how the context window is built matters
+    enormously under class imbalance. They cross seven context strategies
+    with 1K–50K context sizes on Home Credit and Lending Club — both in OUR
+    training corpus — and find balanced/hybrid sampling worth **3–4 AUC
+    points over uniform, a gap larger than the spread between TFM
+    families**. Concretely here: proportional sampling of 26 000 rows from a
+    1 %-default-rate dataset yields ~260 positives, while balanced yields
+    every positive available (often thousands). The minority class is what
+    the model has to learn to retrieve.
 
     Falls back to uniform random sampling for regression targets, for
-    classification targets with a single class, or whenever stratified
-    sampling would produce too few samples in any class (< 2). The
-    fallback is identical to the previous behaviour so this function
-    is a strict superset.
+    single-class targets, and whenever a per-class quota is impossible
+    (``n_total`` < number of classes), so it stays a strict superset of the
+    original behaviour.
     """
+    if mode not in ("stratified", "balanced"):
+        raise ValueError(
+            f"context sampling mode must be 'stratified' or 'balanced'; "
+            f"got {mode!r}"
+        )
     n = len(y)
     if n_total >= n:
         return rng.permutation(n)
@@ -255,11 +276,43 @@ def _stratified_subsample_indices(
     # (Bug fixed 2026-06-23.)
     if n_total < len(classes):
         return rng.choice(n, size=n_total, replace=False)
-    # Target per-class quota proportional to class frequency, rounded.
-    quotas = np.maximum(1, np.round(counts * n_total / n).astype(int))
+
+    if mode == "balanced":
+        # Equal quota per class, capped by availability; the budget freed by
+        # a class that cannot fill its share is redistributed (repeatedly) to
+        # the classes that still have rows. With a 1 % positive rate this
+        # takes EVERY positive plus enough negatives to reach n_total, rather
+        # than the ~1 % of n_total a proportional draw would take.
+        quotas = np.zeros(len(classes), dtype=int)
+        remaining = int(n_total)
+        open_mask = np.ones(len(classes), dtype=bool)
+        while remaining > 0 and open_mask.any():
+            share = max(1, remaining // int(open_mask.sum()))
+            progressed = False
+            for i in np.where(open_mask)[0]:
+                if remaining <= 0:
+                    break
+                room = int(counts[i]) - int(quotas[i])
+                if room <= 0:
+                    open_mask[i] = False
+                    continue
+                take = int(min(share, room, remaining))
+                quotas[i] += take
+                remaining -= take
+                progressed = True
+                if quotas[i] >= counts[i]:
+                    open_mask[i] = False
+            if not progressed:
+                break
+    else:
+        # Target per-class quota proportional to class frequency, rounded.
+        quotas = np.maximum(1, np.round(counts * n_total / n).astype(int))
     # Resolve rounding drift: total quotas must equal n_total. Adjust on
     # the largest class(es) so a tiny rounding off-by-one doesn't bias.
-    drift = int(quotas.sum()) - int(n_total)
+    # Balanced mode allocates exactly against real availability above, so it
+    # has no rounding drift to fix — and running this block would hand a
+    # class a quota larger than the rows it owns.
+    drift = 0 if mode == "balanced" else int(quotas.sum()) - int(n_total)
     if drift != 0:
         order = np.argsort(-counts)               # largest classes first
         # Bound the down-adjust loop: if a full pass over all classes can't
@@ -301,6 +354,7 @@ def _build_step_batch(
     n_total_target: int,
     query_fraction: float,
     rng: np.random.Generator,
+    context_sampling: str = "stratified",
 ) -> TabPFNBatch:
     """Subsample → context/query split → ordinal-encode → tensorise.
 
@@ -317,7 +371,7 @@ def _build_step_batch(
         # Pathological tiny dataset — fall through with whatever we have.
         n_total = n
 
-    sel = _stratified_subsample_indices(loaded.y, n_total, rng)
+    sel = _stratified_subsample_indices(loaded.y, n_total, rng, mode=context_sampling)
 
     X_sub = loaded.X.iloc[sel].reset_index(drop=True)
     y_sub = loaded.y[sel]
@@ -400,6 +454,7 @@ def _build_tabicl_step_batch(
     epoch_seed: int,
     replica: int,
     preprocessing_seed: int,
+    context_sampling: str = "stratified",
 ) -> TabICLTrainBatch:
     """Subsample → encode/impute → tabicl's official ``_build_meta_batch``.
 
@@ -426,7 +481,7 @@ def _build_tabicl_step_batch(
     n_total = min(n_total_target, n)
     if n_total <= 1:                                    # pathological tiny set
         n_total = n
-    sel = _stratified_subsample_indices(loaded.y, n_total, rng)
+    sel = _stratified_subsample_indices(loaded.y, n_total, rng, mode=context_sampling)
 
     X_sub = loaded.X.iloc[sel].reset_index(drop=True)
     y_sub = np.asarray(loaded.y[sel])
@@ -494,6 +549,7 @@ def _build_ensemble_step_batch(
     inference_config: Any,
     n_estimators: int,
     rng_seed: int,
+    context_sampling: str = "stratified",
 ):
     """N-estimator step batch with TabPFN's official preprocessing.
 
@@ -552,7 +608,7 @@ def _build_ensemble_step_batch(
     if n_total <= 1:
         n_total = n
 
-    sel = _stratified_subsample_indices(y_all, n_total, rng)
+    sel = _stratified_subsample_indices(y_all, n_total, rng, mode=context_sampling)
     X_sub = X_all[sel]
     y_sub = y_all[sel]
 
@@ -630,12 +686,16 @@ class ProcessedDatasetLoader(Dataset):
         pass_mode: str = "one_sample",
         max_cells_per_epoch: int | None = None,
         model_family: str = "tabpfn",
+        context_sampling: str = "stratified",
     ) -> None:
         if len(refs) == 0:
             raise ValueError("ProcessedDatasetLoader received an empty refs list")
         if model_family not in ("tabpfn", "tabicl"):
             raise ValueError(f"unknown model_family: {model_family!r}")
         self.model_family = model_family
+        # Context-construction strategy for the per-step subsample; see
+        # _stratified_subsample_indices and docs/ROW_CAPS.md.
+        self.context_sampling = str(context_sampling)
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)
         self.query_fraction = float(query_fraction)
@@ -739,6 +799,7 @@ class ProcessedDatasetLoader(Dataset):
                 n_estimators=self._n_estimators_finetune,
                 epoch_seed=step_seed,
                 replica=replica,
+                context_sampling=self.context_sampling,
                 # Fixed per dataset across epochs (their design): coarse
                 # preprocessing choices stay stable, splits vary per epoch.
                 preprocessing_seed=self._base_seed * 7_919 + ref_idx,
@@ -752,6 +813,7 @@ class ProcessedDatasetLoader(Dataset):
                 n_total_target=n_total_target,
                 query_fraction=self.query_fraction,
                 rng=rng,
+                context_sampling=self.context_sampling,
             )
 
         # ---- TabPFN-preprocessed N-estimator path ------------------- #
@@ -769,6 +831,7 @@ class ProcessedDatasetLoader(Dataset):
             query_fraction=self.query_fraction,
             rng=rng,
             inference_config=self._inference_config,
+            context_sampling=self.context_sampling,
             n_estimators=self._n_estimators_finetune,
             rng_seed=int(step_seed),
         )

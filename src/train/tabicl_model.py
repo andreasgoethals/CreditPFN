@@ -102,15 +102,46 @@ def load_tabicl_for_training(
         n_frozen = 0
         for module_name in ("col_embedder", "row_interactor"):
             module = getattr(model, module_name)
-            module.eval()
+            # DO NOT call module.eval() here. In TabICL, `.training` selects the
+            # ALGORITHM, not just dropout/BN: both `ColEmbedder.forward` and
+            # `RowInteractor.forward` branch `if self.training: _train_forward
+            # else: _inference_forward`. The inference branch runs through
+            # InferenceManager (chunked, KV-cached, wrapped in torch.no_grad)
+            # and, at interaction.py `_inference_forward`, writes the CLS tokens
+            # into the incoming embeddings IN PLACE:
+            #     embeddings[:, :, : self.num_cls] = cls_tokens
+            # With the col_embedder also in eval mode that tensor is a view
+            # produced under no_grad, so the write raises
+            #     "A view was created in no_grad mode and is being modified
+            #      inplace with grad mode enabled"
+            # a few steps into training. That killed ALL 16 `_iclhead` trials
+            # (both tracks) in the 2026-08-05 run while every full-FT trial
+            # passed — the tell that the freeze, not TabICL, was at fault.
+            #
+            # Freezing is `requires_grad=False` alone. The module then runs the
+            # SAME `_train_forward` as in full-FT, which makes freeze-backbone a
+            # clean ablation of it (identical computation, gradients differ).
+            # Safe for regularisation too: TabICL's `dropout` defaults to 0.0 and
+            # the architecture uses LayerNorm (no running statistics), so train
+            # vs eval mode is behaviourally identical for the frozen stages —
+            # we warn below if a checkpoint ever ships dropout > 0.
             for p in module.parameters():
                 p.requires_grad = False
                 n_frozen += 1
         n_train = sum(1 for p in model.parameters() if p.requires_grad)
+        drop = float(model_config.get("dropout", 0.0) or 0.0)
+        if drop > 0:
+            LOGGER.warning(
+                "TabICL freeze-backbone: checkpoint has dropout=%.3g, so the "
+                "FROZEN stages still apply dropout (they stay in train mode by "
+                "design — see the comment in load_tabicl_for_training). Their "
+                "weights are still fixed; only the forward noise differs.", drop,
+            )
         LOGGER.info(
             "TabICL freeze-backbone mode: col_embedder + row_interactor frozen "
-            "(%d tensors); training ICL module only (%d trainable tensors) — "
-            "upstream stage-3 regime.", n_frozen, n_train,
+            "(%d tensors, requires_grad=False, kept on the TRAIN forward path); "
+            "training ICL module only (%d trainable tensors) — upstream stage-3 "
+            "regime.", n_frozen, n_train,
         )
 
     model.to(device)

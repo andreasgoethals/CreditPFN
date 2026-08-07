@@ -63,9 +63,9 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-47%24   # 48 trials (3 bases [v3, v2.6, tabicl-v2] x 4 LRs
+#SBATCH --array=0-17%24   # 18 trials (3 bases [v3, v2.6, tabicl-v2] x 3 LRs
                           #            x 2 adapt-modes x 1 qf x 1 acc
-                          #            x 2 pass-modes). %24 saturates all 24
+                          #            x 1 pass-mode). %24 saturates all 24
                           #            Mindwell B200 GPUs. Recompute via
                           #   python scripts/train_pipeline.py --list-trials track=pd
                           # Over-sizing is safe (surplus tasks exit 0 cleanly).

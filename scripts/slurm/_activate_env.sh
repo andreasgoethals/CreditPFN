@@ -29,6 +29,34 @@
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
 # --------------------------------------------------------------------------
+# KEEP CACHES OUT OF $VSC_HOME (added 2026-08-06 after a 99%-of-3 GB quota
+# warning on /user/leuven/383/<id>).
+#
+# Nothing in this project writes to HOME directly, but every Python cache
+# DEFAULTS there, and a 96-job GPU sweep fills it fast:
+#   ~/.cache/huggingface  the TabICL checkpoints are ~225 MB and hf_hub_download
+#                         keeps its own copy even after we cp to staging
+#   ~/.cache/pip          wheel cache from repeated `pip install -e .`
+#   ~/.triton, ~/.nv      JIT kernel caches, written by EVERY GPU job
+#   ~/.cache/torch, ~/.config/matplotlib, wandb state
+# $VSC_HOME is only ~3 GB and is not meant for bulk data; $VSC_DATA is.
+# Exported before conda so every job and every child process inherits them.
+# --------------------------------------------------------------------------
+_CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_DATA:-$HOME}/.cache/creditpfn}"
+mkdir -p "${_CACHE_ROOT}" 2>/dev/null || true
+export XDG_CACHE_HOME="${_CACHE_ROOT}"
+export HF_HOME="${_CACHE_ROOT}/huggingface"
+export TORCH_HOME="${_CACHE_ROOT}/torch"
+export TRITON_CACHE_DIR="${_CACHE_ROOT}/triton"
+export CUDA_CACHE_PATH="${_CACHE_ROOT}/nv"
+export MPLCONFIGDIR="${_CACHE_ROOT}/matplotlib"
+export PIP_CACHE_DIR="${_CACHE_ROOT}/pip"
+# wandb ships with tabicl[finetune]; we never call it, but make sure a stray
+# import can't try to reach the network or write a run dir into HOME.
+export WANDB_MODE="${WANDB_MODE:-disabled}"
+export WANDB_DIR="${_CACHE_ROOT}/wandb"
+
+# --------------------------------------------------------------------------
 # An active virtualenv SHADOWS conda and wins silently (2026-08-05).
 # `#!/bin/bash -l` sources ~/.bashrc; if that auto-activates a venv, its
 # bin/ sits ahead of the conda env's on PATH. `conda activate` then reports

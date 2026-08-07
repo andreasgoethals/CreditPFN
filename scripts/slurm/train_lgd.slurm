@@ -25,7 +25,7 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-47%24   # 48 trials (3 bases incl. tabicl-v2). See
+#SBATCH --array=0-17%24   # 18 trials (3 bases incl. tabicl-v2). See
                           # train_pd.slurm for the full rationale.
 
 sleep $((RANDOM % 30 + 1))

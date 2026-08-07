@@ -245,3 +245,71 @@ included.
   re-sourcing fuller raw files.
 - **Why:** It had been listed as a scheduling task when it is really a corpus
   decision, and would have been discovered only mid-implementation.
+
+## 2026-08-06
+
+### Fix the TabICL freeze-backbone crash that killed 16 trials — Claude
+
+- **What:** Freezing used `.eval()`, but TabICL branches `if self.training:
+  _train_forward else: _inference_forward` in both ColEmbedder and
+  RowInteractor, so eval mode routed the frozen stages onto the no_grad,
+  KV-cached inference path — which writes CLS tokens into its input in place
+  and raises "a view created in no_grad mode modified inplace". Freezing is
+  now `requires_grad=False` only; the model stays on the train forward path.
+- **Why:** All 16 `_iclhead` trials failed on both tracks while all 16 TabICL
+  full-FT trials completed — the tell that the freeze, not TabICL, was wrong.
+- **Verified:** New regression test runs 5 optimiser steps through the real
+  freeze path with `recompute=True` and asserts the stages stay in train mode.
+
+### Give the eval gate a walltime that matches reality — Claude
+
+- **What:** Gate walltime 21 h → 72 h and poll budget 2400 → 8400; on timeout
+  it now prints the exact recovery command and how to check readiness.
+- **Why:** The run needed 47 h of wall-clock (7.5 h queued, then 1–2 concurrent
+  GPUs instead of 24), so the gate expired with PD at task 19/47 and **eval
+  never ran at all** — 43.7 GPU-h of training went unscored.
+
+### Keep Python caches out of $VSC_HOME — Claude
+
+- **What:** `_activate_env.sh` now exports `XDG_CACHE_HOME`, `HF_HOME`,
+  `TORCH_HOME`, `TRITON_CACHE_DIR`, `CUDA_CACHE_PATH`, `MPLCONFIGDIR`,
+  `PIP_CACHE_DIR` and `WANDB_DIR` under `$VSC_DATA/.cache/creditpfn`, and
+  disables wandb.
+- **Why:** A 99 %-of-3 GB quota warning on `/user/leuven/383/…`. We set no
+  cache variables, so every default landed in HOME — the ~225 MB HF copy of
+  the TabICL checkpoints, the pip wheel cache, and Triton/CUDA JIT caches from
+  96 GPU jobs.
+
+### Retarget the sweep at the real problem: the model never moved — Claude
+
+- **What:** Measured weight drift from the logged L2-SP term: at lr 3e-7 the
+  weights moved ~0.02 % of ‖w₀‖. Real-TabPFN pairs that LR with 20 000 steps;
+  we ran 600–10 150. So: dropped lr 3e-7 and the `one_sample` pass mode (both
+  provably inert), raised epochs 50 → 100, and added `scheduler.min_lr_fraction`
+  so a short cosine no longer decays to exactly zero. Grid 48 → 18 trials per
+  track, each trained ~7× longer for a similar GPU budget.
+- **Why:** The PD null result was an artefact of undertraining, not evidence
+  about continued pretraining.
+
+### Add balanced context construction — Claude
+
+- **What:** New `finetuning.context_sampling` (`stratified` | `balanced`),
+  shared by both families so it can never confound a cross-family comparison.
+  Default switched to `balanced`.
+- **Why:** Tanna et al. 2026 measure balanced context as worth 3–4 AUC points
+  over uniform on Home Credit and Lending Club — both in our training corpus —
+  a larger effect than the choice of model. Proportional sampling put ~260
+  positives in a 26 000-row context; balanced puts every positive available.
+- **Verified:** On a synthetic 1 %-positive 500k-row set, 260 → 4 999
+  positives at the same 26 000 rows; regression falls back to uniform.
+
+### Make the TabICL monitor match its eval settings — Claude
+
+- **What:** The per-epoch monitor scored TabICL with 32 ensemble members while
+  `config/eval.yaml` scores it with 8. Added
+  `train.epoch_eval_n_estimators_tabicl: 8`.
+- **Why:** The monitor exists so its curves are comparable to the final eval
+  numbers; running it at a different ensemble size broke that and cost 4× the
+  monitor time.
+
+---

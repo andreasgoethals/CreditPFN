@@ -9,7 +9,9 @@
 
 
 # --- Section 0 · Tunable sweep (cartesian product) ---------------------------
-# 3 bases x 4 LRs x 2 adapt-modes x 1 qf x 1 acc x 2 pass-modes = 48/track.
+# 3 bases x 3 LRs x 2 adapt-modes x 1 qf x 1 acc x 1 pass-mode = 18/track.
+# Reshaped 2026-08-06: fewer configurations, each trained ~7x longer. The
+# 2026-08-05 run swept 48/track and every one of them was undertrained.
 # Two FAMILIES: TabPFN (v2.6, v3) + TabICL v2, detected from the filename.
 # v2.5 is not swept. TabICL checkpoints must be pre-staged from a login node.
 # Rationale: README §7. Checkpoint inventory + staging: docs/CHECKPOINTS.md.
@@ -23,10 +25,14 @@ tunable:
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
     - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
 
-  # Brackets three published recipes: 3e-7 = Real-TabPFN's exact CPT rate,
-  # 1e-5 = TabICL's (and TabPFN's regressor wrapper's) finetuning default,
-  # 3e-5 ~ Rubachev's single-dataset median. 1e-4 excluded (diverged).
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
+  # 3e-7 DROPPED 2026-08-06. Real-TabPFN pairs it with 20 000 steps; at our
+  # 600-10 150 steps it moved v3's weights by ~0.02 % and every trial scored
+  # its untuned baseline to 4 decimals. The remaining three bracket the useful
+  # region: 1e-6 conservative, 1e-5 = TabICL's own finetuning default (and the
+  # best PD result last run), 3e-5 ~ Rubachev's single-dataset median and our
+  # upper anchor. Rubachev tunes 5e-6-5e-4 per dataset, so this is still the
+  # low end of the gradient-adaptation range. See docs/PAPER_ROADMAP.md.
+  learning_rates: [1.0e-6, 1.0e-5, 3.0e-5]
 
   # Adaptation mode, FAMILY-SPECIFIC: LoRA for TabPFN, freeze-backbone
   # (train the ICL module only) for TabICL, whose checkpoints are tagged
@@ -44,7 +50,12 @@ tunable:
   # Steps per dataset per epoch: "one_sample" = one fresh subsample;
   # "full_pass" = ceil(n_rows / max_rows_per_epoch) distinct draws, so big
   # datasets contribute more steps. Both listed -> A/B both. See README §7.
-  epoch_pass_modes: ["one_sample", "full_pass"]
+  # one_sample DROPPED 2026-08-06: it gives one step per dataset per epoch =
+  # 600 total steps, ~3 % of Real-TabPFN's 20 000, and its weight drift was
+  # indistinguishable from zero. full_pass is size-proportional (91 steps/epoch
+  # for v3/tabicl, 203 for v2.6) and is the only setting that reaches a
+  # comparable budget. Halves the grid too, which buys the extra epochs below.
+  epoch_pass_modes: ["full_pass"]
 
 
 # --- Section 1 · Cross-cutting knobs -----------------------------------------
@@ -90,6 +101,9 @@ optimizer:
   l2sp_lambda: 0.003
 scheduler:
   warmup_fraction: 0.10    # TabPFN FinetunedTabPFNClassifier default
+  # Cosine decays to this fraction of the peak LR instead of to exactly 0.
+  # A short run that decays to zero wastes its tail on ~zero-size steps.
+  min_lr_fraction: 0.05
 
 
 # --- Section 4 · LoRA adapter (only when tunable.use_lora == true) -----------
@@ -103,7 +117,11 @@ lora:
 
 # --- Section 5 · Training loop -----------------------------------------------
 train:
-  epochs: 50                              # fixed-epoch (no early stopping)
+  # 50 -> 100 (2026-08-06). With full_pass this is ~9 100 steps for v3/tabicl
+  # and ~20 300 for v2.6 — the first configuration in this project that
+  # actually reaches Real-TabPFN's training budget. The 2026-08-05 run's
+  # headline problem was not the recipe but that the model never moved.
+  epochs: 100                             # fixed-epoch (no early stopping)
   grad_clip_norm: 1.0
   amp: true                               # AMP autocast (CUDA only)
   # "auto" prefers bfloat16 on Ampere-or-newer GPUs (including B200/H100)
@@ -138,6 +156,9 @@ train:
   # epoch_eval_subsample_samples=0 to disable the monitor.
   epoch_eval_subsample_samples: 2000
   epoch_eval_n_estimators: 32
+  # TabICL monitors with its own inference-ensemble size so the curves match
+  # what config/eval.yaml scores it with (tabicl_n_estimators: 8).
+  epoch_eval_n_estimators_tabicl: 8
   # Monitor CADENCE: run the 32-estimator monitor eval only every k-th epoch
   # (plus always epoch 0 and the final epoch). The 2026-07-03 run's timing
   # lines showed the monitor dominating one_sample epoch wall-clock ~3:1;

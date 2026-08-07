@@ -223,10 +223,17 @@ def test_freeze_backbone_leaves_only_icl_trainable(tmp_path: Path) -> None:
     assert not any(p.requires_grad for p in frozen.col_embedder.parameters())
     assert not any(p.requires_grad for p in frozen.row_interactor.parameters())
     assert all(p.requires_grad for p in frozen.icl_predictor.parameters())
-    # .eval() as well as requires_grad=False — TabICL's forward routes on
-    # module training flags, so dropout/norm must stay in inference mode.
-    assert not frozen.col_embedder.training
-    assert not frozen.row_interactor.training
+
+    # REGRESSION (2026-08-06): the frozen stages must stay on the TRAINING
+    # forward path. TabICL branches `if self.training: _train_forward else:
+    # _inference_forward`, and the inference branch runs under no_grad and
+    # writes CLS tokens into its input in place — which raised "A view was
+    # created in no_grad mode and is being modified inplace with grad mode
+    # enabled" and killed all 16 `_iclhead` trials on the cluster. Freezing is
+    # requires_grad=False ONLY; never .eval().
+    frozen.train()
+    assert frozen.col_embedder.training, "frozen col_embedder must stay on the train path"
+    assert frozen.row_interactor.training, "frozen row_interactor must stay on the train path"
 
     # Full-FT mode leaves the backbone trainable. One parameter
     # (`row_interactor.tf_row.rope.freqs`) ships with requires_grad=False
@@ -615,6 +622,41 @@ def _write_tabicl_corpus(root: Path, track: str, task_type: str) -> None:
     pd.DataFrame(rows).to_csv(root / "data" / f"manifest_{track}.csv", index=False)
 
 
+def test_freeze_backbone_survives_repeated_steps(tmp_path: Path) -> None:
+    """The `_iclhead` crash only appeared a few steps in, so a single forward
+    is not enough to catch it. Run several optimiser steps with the real
+    freeze path and `recompute=True` (gradient checkpointing), which is the
+    configuration the cluster ran."""
+    pytest.importorskip("tabicl")
+    from src.train.tabicl_model import load_tabicl_for_training, save_finetuned_tabicl
+
+    model, cfg = _tiny_tabicl(regressor=False)
+    path = tmp_path / "tabicl-classifier-v2-test.ckpt"
+    save_finetuned_tabicl(model, cfg, path)
+    trained, out_cfg = load_tabicl_for_training(
+        path, track="pd", device="cpu", freeze_backbone=True,
+    )
+    assert out_cfg["recompute"] is True
+    trained.train()
+    opt = torch.optim.AdamW(
+        [p for p in trained.parameters() if p.requires_grad], lr=1e-6)
+
+    rng = np.random.default_rng(0)
+    for _ in range(5):
+        X = torch.tensor(rng.normal(size=(2, 120, 6)), dtype=torch.float32)
+        y = torch.tensor((rng.uniform(size=(2, 120)) < 0.25).astype("float32"))
+        out = trained(X, y[:, :96])
+        n_cls = int(y[:, :96].max().item()) + 1
+        loss = torch.nn.functional.cross_entropy(
+            out[..., :n_cls].reshape(-1, n_cls), y[:, 96:].long().reshape(-1))
+        loss.backward()
+        opt.step()
+        opt.zero_grad(set_to_none=True)
+        # The backbone must remain frozen AND on the train path throughout.
+        assert trained.col_embedder.training and trained.row_interactor.training
+        assert not any(p.requires_grad for p in trained.col_embedder.parameters())
+
+
 @pytest.mark.parametrize(
     "track, freeze_backbone",
     [("pd", True), ("lgd", False)],
@@ -745,4 +787,8 @@ def test_training_grid_contains_both_families() -> None:
                     * len(cfg.tunable.query_fractions)
                     * len(cfg.tunable.accumulate_grad_batches)
                     * len(cfg.tunable.epoch_pass_modes))
-        assert n_trials == 48, (key, n_trials)
+        # 18 = 3 bases x 3 LRs x 2 adapt-modes x 1 qf x 1 acc x 1 pass-mode.
+        # Reshaped 2026-08-06: the 48-trial grid was undertrained end to end
+        # (600-10 150 steps vs Real-TabPFN's 20 000), so LRs and pass-modes
+        # that provably did nothing were dropped to buy epochs.
+        assert n_trials == 18, (key, n_trials)

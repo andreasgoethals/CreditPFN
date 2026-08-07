@@ -229,11 +229,11 @@ if [[ -n "${run_eval}" ]]; then
     if [[ -n "${run_train}" && -n "${TRAIN_CSV}" ]]; then
         GATE_JID=$(strip "$(sbatch --parsable \
             --clusters=wice --account="${EVAL_ACCOUNT}" --partition=batch \
-            --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=2G --time=21:00:00 \
+            --nodes=1 --ntasks=1 --cpus-per-task=1 --mem=2G --time=72:00:00 \
             --job-name=creditpfn-eval-gate --chdir="${REPO}" \
             --export="${SBATCH_EXPORT}" \
             --output="${CREDITPFN_OUTPUT_ROOT}/logs/eval_gate_%j.log" \
-            --wrap="bash scripts/slurm/_wait_for_jobs.sh '${TRAIN_CSV}' 2400 '${EVAL_SCRIPT}'")")
+            --wrap="bash scripts/slurm/_wait_for_jobs.sh '${TRAIN_CSV}' 8400 '${EVAL_SCRIPT}'")")
         echo "  [3] eval gate (wICE batch)    : ${GATE_JID}  — submits eval AFTER training finishes"
         echo "      (per-track, if >=1 trial trained; partial grids scored + flagged; no GPU eval queued meanwhile)"
     else
