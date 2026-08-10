@@ -33,6 +33,131 @@ included.
 
 ---
 
+## 08-08-2026
+
+### Add per-dataset loss and per-stage drift to the per-epoch CSV — Claude
+
+- **What:** Each per-epoch CSV row now carries `loss__<dataset_id>` for every
+  training dataset and `drift__<stage>` for every top-level model stage, and
+  monitored epochs log a `drift by stage:` line. Stages are grouped on the
+  first dotted component of the parameter name, so it is architecture-agnostic
+  (TabICL → col_embedder / row_interactor / icl_predictor). The CSV writer
+  widens its header and pads earlier rows when a new column first appears,
+  since the baseline row has no per-dataset losses and drift only exists on
+  monitored epochs.
+- **Why:** The scalar epoch loss hides whether the corpus is learned uniformly
+  or some datasets improve while others degrade — the per-dataset forgetting
+  question. Per-stage drift answers WHERE credit-specialisation lands, a claim
+  nobody has made for tabular foundation models and one the single aggregate
+  drift number cannot support.
+- **Verified:** Real training run produces both column families, the CSV stays
+  a rectangle across the baseline / non-monitored / monitored mix, and stage
+  drift ordered icl_predictor > row_interactor > col_embedder as expected for
+  a freeze-nothing run.
+
+### Fix the context-balance metric to use canonical labels — Claude
+
+- **What:** `ctx_pos` is now measured in the batch builders from the ORIGINAL
+  sampled labels and carried on every batch type (`TabPFNBatch`,
+  `TabPFNEnsembleBatch`, `TabICLTrainBatch`) through `.to(device)`.
+- **Why:** The first version counted `y > 0` on the batch tensors, but both
+  families class-permute per ensemble member — so on 25 %-positive fixture data
+  it reported **74.7 %**. The metric added to verify balanced sampling was
+  itself unreliable, and after the device move a non-propagated field silently
+  reverted to NaN and the number vanished entirely.
+- **Verified:** Now reads 25.22 % on 25 %-positive data; new test asserts all
+  three batch types preserve it through `.to()`.
+
+### Log the realised context class balance — Claude
+
+- **What:** Each epoch line now reports `ctx_pos=NN.NN%` — the mean positive
+  rate of the context the model actually trained on (classification only).
+- **Why:** `context_sampling: balanced` was switched on for run-6 and nothing
+  in the logs could confirm it took effect. Proportional sampling of a
+  1 %-default dataset leaves ~1 % positives in context; balanced leaves far
+  more, so this one number verifies the intervention and quantifies how much
+  minority signal the model is actually exposed to.
+
+### Record post-hoc recalibrated metrics for every model — Claude
+
+- **What:** Every binary eval row now also carries `ece_platt`,
+  `brier_score_platt`, `log_loss_platt` and the `_isotonic` trio, fitted on
+  the inner-val split and applied to the test fold WITHOUT retraining. Raw
+  columns are untouched, so `ece - ece_platt` is the recoverable share.
+- **Why:** CPT worsens calibration consistently across run-4 and run-6 while
+  leaving discrimination flat. Whether that is recoverable for free decides
+  whether the finding reads "use CPT and recalibrate" or "CPT damages
+  calibration irreparably" — and Purucker et al. found TabPFN one of only two
+  models recalibration makes WORSE, so it is genuinely open. For credit risk
+  the probability is the regulated quantity, so this may matter more than AUC.
+- **Verified:** On deliberately over-confident probabilities ECE 0.1077 →
+  0.0023 (Platt) / 0.0027 (isotonic) with AUC unchanged; multiclass yields NaN
+  without raising; 3 new tests.
+
+### Sweep downward, A/B the query fraction, log drift as a percentage — Claude
+
+- **What:** LRs `[1e-6, 1e-5, 3e-5]` → `[3e-7, 1e-6, 3e-6]`; `query_fractions`
+  now sweeps `[0.20, 0.40]`; grid 18 → 36/track (arrays `0-35`). Training now
+  measures ‖w0‖ once at anchor time and prints `drift=‖w−w0‖/‖w0‖` as a
+  percentage on every epoch line.
+- **Why:** With a real step budget, run-6 showed LOWER LR wins on both tracks,
+  and 3e-7 (Real-TabPFN's exact rate) was only inert because run-5 had 600
+  steps. qf 0.40 doubles the loss signal per step at identical memory. The
+  drift figure answers "did the model actually change?" without hand
+  arithmetic on the L2-SP term — the question that dominated the last two
+  post-mortems.
+
+### Make the grid test structural instead of a magic number — Claude
+
+- **What:** `test_training_grid_contains_both_families` asserted a hardcoded
+  trial count; it now asserts that the pipeline's real grid expansion equals
+  the cartesian product of the configured axes, and that every base appears.
+- **Why:** The constant broke on all three deliberate reshapes (48 → 18 → 36),
+  three false alarms that caught no bug. The structural invariant still
+  catches a silently dropped or duplicated axis.
+
+### Equalise the training budget across architectures — Claude
+
+- **What:** New `train.target_total_steps` (9 100) trims epochs per base so
+  every base runs the same number of optimizer steps; `train.epochs` becomes
+  an upper bound. v2.6 now takes 45 epochs, v3/tabicl 100.
+- **Why:** Under `full_pass`, steps/epoch = Σ ceil(rows / row_cap), so a base
+  with a smaller memory-driven row cap silently trains LONGER. In the 07-08
+  run v2.6 got 20 300 steps and v3/tabicl 9 100 at identical `epochs: 100` —
+  a 2.2× budget gap that confounds every cross-architecture comparison. It
+  showed in the drift: v2.6 @3e-5 reached l2sp 0.61 vs v3's 0.0045.
+
+### Spread eval pools by task instead of by model — Claude
+
+- **What:** `--pools/--pool` now strides over the task list (`i % pools`)
+  instead of splitting on model index (`m % pools`).
+- **Why:** The 07-08 run lost the gpu_a100 pool, and model-parity meant that
+  cost 12 of 24 models OUTRIGHT — including `tabpfn-untuned[v3]` and
+  `tabicl-untuned`, the two controls the whole trained-vs-untuned comparison
+  rests on. Under task-stride a lost pool costs each model roughly half its
+  datasets instead, so every model survives and comparisons stay computable.
+
+### Record the context-sampling strategy — Claude
+
+- **What:** `context_sampling` now appears in the training debug banner and in
+  each checkpoint's provenance.
+- **Why:** It was added on 06-08 but never surfaced, so the 07-08 logs give no
+  way to confirm balanced sampling was actually active — unacceptable for the
+  axis the literature says matters most.
+
+### Analyse the 07-08 two-family run — Claude
+
+- **What:** 36/36 training trials and 84/84 eval cells OK; the freeze-backbone
+  fix held (all 6 `_iclhead` trials trained), the step budget rose 600 → 9 100
+  / 20 300, weight drift became non-trivial, and the LR floor worked (final LR
+  = 5 % of peak). Training drained in 7.1 h vs 47 h. **No repository changes
+  beyond the fixes above.**
+- **Why:** First run where the pipeline, the budget and the eval all worked.
+- **Verified:** Half the eval roster is still missing (the a100 pool never
+  logged), so trained-vs-untuned is not yet computable for v3 or TabICL.
+
+---
+
 ## 07-08-2026
 
 ### Restructure this log newest-first with DD-MM-YYYY dates — Claude

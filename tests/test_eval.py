@@ -858,3 +858,62 @@ def test_find_existing_results_requires_all_folds_when_count_given(
         n_folds_required=5,
     )
     assert len(hits) == 1
+
+
+# --------------------------------------------------------------------------- #
+# Post-hoc recalibration (added 08-08-2026)
+# --------------------------------------------------------------------------- #
+
+
+def test_posthoc_calibration_repairs_overconfident_probabilities() -> None:
+    """Continued pretraining consistently worsens calibration in our runs, so
+    the eval records post-hoc-recalibrated metrics ALONGSIDE the raw ones.
+    On deliberately over-confident probabilities both calibrators must cut
+    ECE substantially while leaving AUC untouched (they are monotone maps)."""
+    import numpy as np
+    from src.eval.benchmark import _classification_metrics
+
+    rng = np.random.default_rng(0)
+    n = 4000
+    y = (rng.uniform(size=n) < 0.2).astype(int)
+    p_true = np.clip(0.2 + 0.6 * (y - 0.5) + rng.normal(0, 0.15, n), 0.01, 0.99)
+    p_over = np.clip((p_true - 0.5) * 2.2 + 0.5, 0.001, 0.999)   # over-confident
+    proba = np.column_stack([1 - p_over, p_over])
+    half = n // 2
+
+    m = _classification_metrics(proba[half:], y[half:], proba[:half], y[:half], 2)
+
+    assert m["ece"] > 0.05, "fixture should be badly calibrated"
+    for method in ("platt", "isotonic"):
+        assert m[f"ece_{method}"] < m["ece"] / 5, method
+        assert m[f"brier_score_{method}"] < m["brier_score"], method
+        assert m[f"log_loss_{method}"] < m["log_loss"], method
+    # Calibration is monotone, so ranking (and therefore AUC) is unchanged.
+    assert 0.9 < m["roc_auc"] <= 1.0
+
+
+def test_posthoc_calibration_is_nan_for_multiclass_and_never_raises() -> None:
+    import numpy as np
+    from src.eval.benchmark import _classification_metrics
+
+    rng = np.random.default_rng(1)
+    proba = rng.dirichlet([1, 1, 1], size=200)
+    y = rng.integers(0, 3, 200)
+    m = _classification_metrics(proba[100:], y[100:], proba[:100], y[:100], 3)
+    for method in ("platt", "isotonic"):
+        assert np.isnan(m[f"ece_{method}"])
+        assert np.isnan(m[f"brier_score_{method}"])
+
+
+def test_eval_row_exposes_calibration_columns() -> None:
+    """The CSV writer serialises EvalRow via asdict, so the new fields must
+    exist on the dataclass or they silently never reach disk."""
+    from dataclasses import asdict
+    from src.eval.benchmark import EvalRow
+
+    cols = set(asdict(EvalRow(
+        track="pd", task_type="classification", model_name="m",
+        model_source="baseline", model_path="p", test_dataset_id="d",
+        fold_idx=0, n_train_rows=1, n_val_rows=1, n_test_rows=1)).keys())
+    assert {"ece", "ece_platt", "ece_isotonic",
+            "brier_score_platt", "log_loss_isotonic"} <= cols

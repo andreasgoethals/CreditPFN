@@ -380,6 +380,12 @@ class TabPFNEnsembleBatch:
     znorm_mean: float | None = None
     znorm_std:  float | None = None
 
+    # Positive-class rate of the ORIGINAL sampled labels, measured BEFORE the
+    # per-member class permutation. Counting `y_context > 0` after the permute
+    # measures a shuffled label, not the minority class — on 25 %-positive data
+    # that read 74.7 %. This is the number that verifies `context_sampling`.
+    ctx_pos_rate: float = float("nan")
+
     def to(self, device: str) -> "TabPFNEnsembleBatch":
         new_members = [
             _PerEstimatorView(
@@ -398,6 +404,7 @@ class TabPFNEnsembleBatch:
             task_type=self.task_type,
             dataset_id=self.dataset_id,
             n_classes=self.n_classes,
+            ctx_pos_rate=self.ctx_pos_rate,
             znorm_mean=self.znorm_mean,
             znorm_std=self.znorm_std,
         )
@@ -656,6 +663,12 @@ def build_ensemble_members(
         n_classes=n_classes,
         znorm_mean=znorm_mean,
         znorm_std=znorm_std,
+        # From y_ctx_raw: the CANONICAL context labels, before any
+        # per-member class permutation.
+        ctx_pos_rate=(
+            float((np.asarray(y_ctx_raw) > 0).mean())
+            if task_type == "classification" else float("nan")
+        ),
     )
 
 

@@ -1028,3 +1028,49 @@ def test_train_one_config_end_to_end_mocked(
     assert prov["device"] == "cpu"
     assert prov["gpu"] == "cpu"
     assert "torch_version" in prov
+
+
+def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
+    """`ctx_pos=` in the epoch line reads batch.ctx_pos_rate AFTER the device
+    move, so every batch type must propagate it through `.to()`. A dropped
+    field silently reverts to the NaN default and the metric vanishes — which
+    is exactly how it broke the first time (08-08-2026).
+
+    It must also be measured from the CANONICAL labels: both families
+    class-permute per ensemble member, and counting `y > 0` post-permutation
+    reported 74.7% on 25%-positive data.
+    """
+    import numpy as np
+    import torch
+    from src.train.dataloader import TabPFNBatch
+
+    b = TabPFNBatch(
+        X_context=torch.zeros(4, 1, 3), y_context=torch.zeros(4, 1, 1),
+        X_query=torch.zeros(2, 1, 3), y_query=torch.zeros(2, 1, 1),
+        categorical_idx=[], task_type="classification", dataset_id="d",
+        ctx_pos_rate=0.25,
+    )
+    assert b.to("cpu").ctx_pos_rate == 0.25
+
+    from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch, _PerEstimatorView
+    view = _PerEstimatorView(
+        X_context=torch.zeros(4, 1, 3), y_context=torch.zeros(4, 1, 1),
+        X_query=torch.zeros(2, 1, 3), categorical_idx=[],
+        class_permutation=None, outlier_removal_std=None,
+    )
+    eb = TabPFNEnsembleBatch(
+        members=[view], y_query=torch.zeros(2, 1, 1),
+        task_type="classification", dataset_id="d", n_classes=2,
+        ctx_pos_rate=0.13,
+    )
+    assert eb.to("cpu").ctx_pos_rate == 0.13
+
+    pytest.importorskip("tabicl")
+    from src.train.dataloader import TabICLTrainBatch
+    tb = TabICLTrainBatch(
+        X=torch.zeros(2, 6, 3), y_train=torch.zeros(2, 4),
+        y_query=torch.zeros(2, 2), train_size=4,
+        y_scaler_mean=None, y_scaler_std=None,
+        task_type="classification", dataset_id="d", ctx_pos_rate=0.07,
+    )
+    assert tb.to("cpu").ctx_pos_rate == 0.07

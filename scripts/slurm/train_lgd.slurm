@@ -27,7 +27,7 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-17%24   # 18 trials (3 bases incl. tabicl-v2). See
+#SBATCH --array=0-35%24   # 36 trials (3 bases incl. tabicl-v2). See
                           # train_pd.slurm for the full rationale.
 
 sleep $((RANDOM % 30 + 1))
@@ -104,7 +104,7 @@ python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" ||
     exit 1
 }
 # TabICL preflight — ONLY for trials using a tabicl base, so a missing
-# `tabicl` install costs that family's 16 trials rather than all 48.
+# `tabicl` install costs that family's trials rather than the whole grid.
 # See train_pd.slurm for the full rationale. (2026-08-05)
 TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" track=lgd 2>/dev/null || true)"
 if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then

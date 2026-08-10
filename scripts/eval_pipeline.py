@@ -529,10 +529,29 @@ if __name__ == "__main__":
         if args.pools is not None:
             if args.pool is None or not (0 <= args.pool < args.pools):
                 raise SystemExit("--pools requires --pool in [0, pools)")
-            # Model-parity split: pool p gets every task whose MODEL index
-            # satisfies m % pools == p, so each pool spans all datasets.
-            idx = [str(i) for i, (m_idx, _) in enumerate(pairs)
-                   if m_idx % args.pools == args.pool]
+            # TASK-STRIDE split: pool p takes every pools-th task from the
+            # (model-major) task list, so each pool contains a slice of EVERY
+            # model rather than a subset of models.
+            #
+            # This replaced a model-parity split on 08-08-2026 after a pool
+            # was lost in the 07-08 run. Model parity meant pool p held whole
+            # models (m % pools == p), so when the gpu_a100 pool never ran we
+            # lost 12 of 24 models OUTRIGHT — including `tabpfn-untuned[v3]`
+            # and `tabicl-untuned`, i.e. the two controls the entire
+            # trained-vs-untuned comparison rests on. That is the worst
+            # possible way to lose half a run.
+            #
+            # Under task-stride, losing a pool costs each model roughly half
+            # its DATASETS instead. Every model survives, so model-to-model
+            # comparisons stay computable (on fewer datasets), and the
+            # skip-existing logic fills the rest on a re-run. Tasks are
+            # enumerated model-major, so consecutive indices are the same
+            # model on different datasets — the stride therefore spreads each
+            # model's datasets across pools, which also preserves the original
+            # reason model-parity existed (never send one whole dataset to the
+            # slow pool).
+            idx = [str(i) for i in range(len(pairs))
+                   if i % args.pools == args.pool]
             print(",".join(idx))
         else:
             print(len(pairs))

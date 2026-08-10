@@ -117,6 +117,16 @@ class EvalRow:
     pr_auc:             float = float("nan")
     brier_score:        float = float("nan")
     ece:                float = float("nan")     # expected calibration error (10-bin, binary)
+    # Post-hoc recalibration, fitted on the inner-val split and applied to the
+    # test fold WITHOUT retraining the model. Paired with the raw columns
+    # above so `ece - ece_platt` is the recoverable share of any calibration
+    # damage. NaN for multiclass or when the calibrator cannot be fitted.
+    ece_platt:             float = float("nan")
+    brier_score_platt:     float = float("nan")
+    log_loss_platt:        float = float("nan")
+    ece_isotonic:          float = float("nan")
+    brier_score_isotonic:  float = float("nan")
+    log_loss_isotonic:     float = float("nan")
     optimal_threshold:  float = float("nan")    # max-F1 on inner-val
     f1:                 float = float("nan")
     accuracy:           float = float("nan")
@@ -442,6 +452,74 @@ def _best_f1_threshold(
     return float(thresholds[int(np.argmax(f1))])
 
 
+def _binary_ece(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> float:
+    """10-bin expected calibration error for binary positive-class probs."""
+    try:
+        bins = np.linspace(0.0, 1.0, n_bins + 1)
+        idx = np.digitize(p, bins[1:-1], right=True)
+        N = len(p)
+        ece = 0.0
+        for b in range(n_bins):
+            mask = idx == b
+            nb = int(mask.sum())
+            if nb == 0:
+                continue
+            ece += (nb / N) * abs(float((y[mask] == 1).mean()) - float(p[mask].mean()))
+        return float(ece)
+    except (ValueError, IndexError):                              # pragma: no cover
+        return float("nan")
+
+
+def _posthoc_calibrated(
+    proba_test: np.ndarray, proba_val: np.ndarray, y_val: np.ndarray,
+    method: str,
+) -> np.ndarray | None:
+    """Fit a post-hoc probability calibrator on the INNER-VAL split and
+    apply it to the test probabilities. Binary only; returns None if it
+    cannot be fitted.
+
+    The model itself is never refitted or retrained — only its output
+    probabilities are remapped, which is what makes this "post-hoc" and
+    cheap. Fitting on inner-val (never on test) keeps the test fold clean.
+
+    * ``platt``    — logistic regression on the log-odds (Platt scaling).
+      A smooth, 2-parameter monotone squash; robust on small validation
+      splits, but can only fix a systematic over/under-confidence.
+    * ``isotonic`` — non-parametric monotone fit. Strictly more flexible,
+      so it can correct odd calibration curves, but it overfits a small
+      validation split and produces a step function.
+
+    WHY (08-08-2026): continued pretraining consistently WORSENS calibration
+    in our runs (untuned v2.6 ECE 0.0159 → trained 0.0169-0.0224, replicated
+    across run-4 and run-6) while leaving discrimination flat. Whether that
+    cost is recoverable for free decides how the finding reads: "use CPT and
+    recalibrate" versus "CPT damages calibration irreparably". Purucker et al.
+    2026 found TabPFN one of only two models post-hoc calibration made WORSE,
+    so the answer is genuinely open — and it matters more than AUC for credit
+    risk, where the probability itself is the regulated quantity.
+    """
+    if proba_test.shape[1] != 2 or len(np.unique(y_val)) < 2:
+        return None
+    pv = np.clip(proba_val[:, 1], 1e-6, 1 - 1e-6)
+    pt = np.clip(proba_test[:, 1], 1e-6, 1 - 1e-6)
+    try:
+        if method == "platt":
+            from sklearn.linear_model import LogisticRegression
+            z = np.log(pv / (1 - pv)).reshape(-1, 1)
+            lr = LogisticRegression(C=1e10, solver="lbfgs")
+            lr.fit(z, y_val)
+            zt = np.log(pt / (1 - pt)).reshape(-1, 1)
+            return lr.predict_proba(zt)[:, 1]
+        if method == "isotonic":
+            from sklearn.isotonic import IsotonicRegression
+            iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
+            iso.fit(pv, y_val)
+            return np.clip(iso.predict(pt), 0.0, 1.0)
+    except (ValueError, RuntimeError):                            # pragma: no cover
+        return None
+    return None
+
+
 def _classification_metrics(
     proba_test: np.ndarray, y_test: np.ndarray,
     proba_val: np.ndarray, y_val: np.ndarray,
@@ -522,6 +600,35 @@ def _classification_metrics(
             out["ece"] = float("nan")
     else:
         out["ece"] = float("nan")
+
+    # POST-HOC CALIBRATION (binary only). Recorded ALONGSIDE the raw metrics,
+    # never replacing them, so every row carries the before/after pair and the
+    # ablation is a column subtraction rather than a second run.
+    if K == 2:
+        from sklearn.metrics import brier_score_loss, log_loss as _ll
+        for method in ("platt", "isotonic"):
+            cal = _posthoc_calibrated(proba_test, proba_val, y_val, method)
+            if cal is None:
+                out[f"ece_{method}"] = float("nan")
+                out[f"brier_score_{method}"] = float("nan")
+                out[f"log_loss_{method}"] = float("nan")
+                continue
+            out[f"ece_{method}"] = _binary_ece(cal, np.asarray(y_test))
+            try:
+                out[f"brier_score_{method}"] = float(
+                    brier_score_loss(y_test, cal))
+            except ValueError:                                    # pragma: no cover
+                out[f"brier_score_{method}"] = float("nan")
+            try:
+                out[f"log_loss_{method}"] = float(
+                    _ll(y_test, np.column_stack([1 - cal, cal]), labels=[0, 1]))
+            except ValueError:                                    # pragma: no cover
+                out[f"log_loss_{method}"] = float("nan")
+    else:
+        for method in ("platt", "isotonic"):
+            out[f"ece_{method}"] = float("nan")
+            out[f"brier_score_{method}"] = float("nan")
+            out[f"log_loss_{method}"] = float("nan")
 
     # Threshold-tuned metrics — binary only.
     if K == 2 and len(np.unique(y_val)) >= 2:

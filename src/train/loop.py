@@ -106,6 +106,22 @@ class EpochRecord:
     amp_skipped_steps: int = 0
     data_skipped_steps: int = 0
 
+    # Mean training loss for THIS epoch, per source dataset. The epoch's
+    # scalar `train_loss` averages the whole corpus, which hides the question
+    # continued pretraining actually raises: is the corpus being learned
+    # uniformly, or do some datasets improve while others degrade? A
+    # per-dataset trajectory answers that directly (and is the per-dataset
+    # forgetting check). Written to the per-epoch CSV as `loss__<dataset_id>`.
+    per_dataset_loss: dict[str, float] = field(default_factory=dict)
+
+    # Relative weight drift ``‖w−w0‖/‖w0‖`` per top-level model stage, on
+    # monitored epochs only (it needs a full pass over the parameters).
+    # Answers WHERE credit-specialisation lands: for TabICL the stages are
+    # col_embedder / row_interactor / icl_predictor, for TabPFN whatever its
+    # top-level modules are. Empty on non-monitored epochs and under LoRA
+    # (no anchor exists there).
+    stage_drift: dict[str, float] = field(default_factory=dict)
+
 
 @dataclass
 class TrainingResult:
@@ -234,6 +250,55 @@ def descriptive_name(
 # --------------------------------------------------------------------------- #
 # LR schedule
 # --------------------------------------------------------------------------- #
+
+
+def _stage_drift(
+    model: torch.nn.Module,
+    anchor: dict[str, "torch.Tensor"],
+    stage_names: dict[str, list[str]],
+    stage_w0: dict[str, float],
+) -> dict[str, float]:
+    """Relative drift ``‖w−w0‖/‖w0‖`` per top-level model stage.
+
+    One pass over the anchored parameters; called only on monitored epochs.
+    Tells us WHERE continued pretraining actually changes the model — e.g.
+    whether credit-specialisation reshapes the feature embedder or the
+    in-context attention. That is a claim nobody has made for tabular
+    foundation models, and it is invisible in the single aggregate drift
+    number.
+    """
+    if not anchor or not stage_names:
+        return {}
+    live = dict(model.named_parameters())
+    out: dict[str, float] = {}
+    with torch.no_grad():
+        for stage, names in stage_names.items():
+            w0 = stage_w0.get(stage, 0.0)
+            if w0 <= 0:
+                continue
+            acc = 0.0
+            for n in names:
+                p = live.get(n)
+                if p is None:
+                    continue
+                acc += float((p.detach().double() - anchor[n].double())
+                             .pow(2).sum().item())
+            out[stage] = math.sqrt(acc) / w0
+    return out
+
+
+def _drift_pct(l2sp_value: float, lam: float, w0_norm: float) -> str:
+    """Render L2-SP as relative weight drift, ``‖w-w0‖/‖w0‖`` in percent.
+
+    ``l2sp = 0.5 * lam * ‖w-w0‖²`` ⇒ ``‖w-w0‖ = sqrt(2*l2sp/lam)``. Dividing by
+    the norm of the anchored start weights gives a scale-free number that is
+    directly comparable across architectures and learning rates — unlike the
+    raw penalty, whose magnitude also depends on how many tensors are anchored.
+    """
+    if lam <= 0 or w0_norm <= 0 or l2sp_value < 0:
+        return "n/a"
+    dw = math.sqrt(2.0 * l2sp_value / lam)
+    return f"{100.0 * dw / w0_norm:.3f}%"
 
 
 def make_warmup_cosine_schedule(
@@ -440,6 +505,7 @@ def _log_debug_banner(
     n_estimators_finetune, max_rows_per_epoch, max_cells_per_epoch,
     epochs, total_steps, steps_per_epoch, weight_decay, l2sp_lambda,
     warmup_fraction, seed, n_train_ds, n_test_ds, use_amp, amp_dtype,
+    context_sampling="?",
 ) -> None:
     """Emit a single, comprehensive DEBUG banner at training start.
 
@@ -492,6 +558,7 @@ def _log_debug_banner(
         f"n_estimators_finetune={n_estimators_finetune} amp={use_amp} "
         f"amp_dtype={amp_dtype} "
         f"max_rows_per_epoch={max_rows_per_epoch} max_cells_per_epoch={max_cells_per_epoch} "
+        f"context_sampling={context_sampling} "
         f"weight_decay={weight_decay:g} l2sp_lambda={l2sp_lambda:g} "
         f"warmup_fraction={warmup_fraction:g}",
         "[corpus] "
@@ -1400,14 +1467,43 @@ def train_one_config(
     l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
     l2sp_applicable = (family == "tabicl") or (not use_lora)
     l2sp_anchor: dict[str, torch.Tensor] | None = None
+    l2sp_w0_norm: float = 0.0
+    l2sp_stage_names: dict[str, list[str]] = {}
+    l2sp_stage_w0: dict[str, float] = {}
     if l2sp_lambda > 0.0 and l2sp_applicable:
         l2sp_anchor = {
             n: p.detach().clone()
             for n, p in model.named_parameters() if p.requires_grad
         }
+        # ‖w0‖ over the anchored tensors, captured once. It turns the L2-SP
+        # penalty into a HUMAN-READABLE drift figure: the penalty is
+        #     l2sp = 0.5 * lambda * ‖w - w0‖²
+        # so   ‖w - w0‖ = sqrt(2 * l2sp / lambda)
+        # and the relative drift is ‖w - w0‖ / ‖w0‖. Logged per epoch below.
+        # Added 08-08-2026 — the single most useful diagnostic we have for
+        # "did continued pretraining actually change the model?", which took
+        # manual arithmetic on the log to answer for runs 5 and 6.
+        l2sp_w0_norm = float(torch.sqrt(sum(
+            (t.double() ** 2).sum() for t in l2sp_anchor.values()
+        )).item())
+        # Group anchored tensors by TOP-LEVEL module so per-stage drift can be
+        # reported. Grouping on the first dotted component is deliberately
+        # architecture-agnostic: TabICL yields col_embedder / row_interactor /
+        # icl_predictor, TabPFN yields whatever its own top-level modules are,
+        # and neither is hardcoded here.
+        l2sp_stage_names: dict[str, list[str]] = {}
+        for n in l2sp_anchor:
+            l2sp_stage_names.setdefault(n.split(".", 1)[0], []).append(n)
+        l2sp_stage_w0: dict[str, float] = {
+            stage: float(torch.sqrt(sum(
+                (l2sp_anchor[n].double() ** 2).sum() for n in names
+            )).item())
+            for stage, names in l2sp_stage_names.items()
+        }
         LOGGER.info(
-            "L2-SP enabled: lambda=%.2e, anchoring %d trainable tensors to w0.",
-            l2sp_lambda, len(l2sp_anchor),
+            "L2-SP enabled: lambda=%.2e, anchoring %d trainable tensors to w0 "
+            "(‖w0‖=%.3f). Per-epoch lines report drift=‖w-w0‖/‖w0‖.",
+            l2sp_lambda, len(l2sp_anchor), l2sp_w0_norm,
         )
     elif l2sp_lambda > 0.0:
         LOGGER.info(
@@ -1564,6 +1660,36 @@ def train_one_config(
     # under-size ``total_steps`` and the cosine schedule would reach LR=0
     # before training ends.
     steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
+
+    # EQUALISE THE TRAINING BUDGET ACROSS ARCHITECTURES (added 08-08-2026).
+    # Under full_pass, steps/epoch = sum(ceil(n_rows / row_cap)) — so a base
+    # with a SMALLER memory-driven row cap silently gets MORE optimizer steps
+    # for the same `epochs`. In the 07-08 run that gave v2.6 20 300 steps and
+    # v3/tabicl 9 100 at identical `epochs: 100`: v2.6 was trained 2.2x longer
+    # purely because its row cap is 11k instead of 26k. The drift showed it —
+    # v2.6 @3e-5 reached l2sp 0.61 against v3's 0.0045 — which confounds every
+    # cross-architecture comparison with "who got more gradient steps".
+    # With `target_total_steps` set, epochs are trimmed so each base runs the
+    # SAME number of steps; `train.epochs` stays the upper bound.
+    target_steps = getattr(cfg.train, "target_total_steps", None)
+    if target_steps:
+        capped = max(1, math.ceil(int(target_steps) / steps_per_epoch))
+        if capped < epochs:
+            LOGGER.info(
+                "Step-budget equalisation: %d steps/epoch x %d epochs would be "
+                "%d steps; trimming to %d epochs to hit the %d-step target "
+                "shared by every base.",
+                steps_per_epoch, epochs, steps_per_epoch * epochs,
+                capped, int(target_steps),
+            )
+            epochs = capped
+        else:
+            LOGGER.info(
+                "Step-budget equalisation: %d steps/epoch x %d epochs = %d "
+                "steps, at or below the %d-step target — keeping all epochs.",
+                steps_per_epoch, epochs, steps_per_epoch * epochs,
+                int(target_steps),
+            )
     total_steps = max(1, steps_per_epoch * epochs)
     optimizer, scheduler = _make_optimizer_and_scheduler(
         model, cfg, total_steps=total_steps,
@@ -1616,6 +1742,7 @@ def train_one_config(
         n_estimators_finetune=int(n_estimators_finetune),
         max_rows_per_epoch=int(max_rows_per_epoch),
         max_cells_per_epoch=max_cells_per_epoch,
+        context_sampling=context_sampling,
         epochs=int(epochs), total_steps=int(total_steps),
         steps_per_epoch=int(steps_per_epoch),
         weight_decay=float(cfg.optimizer.weight_decay),
@@ -1821,6 +1948,13 @@ def train_one_config(
         epoch_grad_norms: list[float] = []
         epoch_clipped_count = 0
         epoch_step_losses: list[tuple[str, float]] = []   # (dataset_id, loss)
+        # Realised positive rate of the CONTEXT each step actually saw.
+        # This is the only direct evidence that `context_sampling` did what
+        # it claims: proportional sampling of a 1 %-default dataset leaves
+        # ~1 % positives in context, balanced sampling leaves far more. The
+        # 07-08 run switched to balanced and the logs could not confirm it.
+        epoch_ctx_pos_rate: list[float] = []
+        stage_drift: dict[str, float] = {}
         epoch_skipped_steps = 0
         epoch_optimizer_steps = 0
         epoch_amp_skipped_steps = 0
@@ -1973,6 +2107,13 @@ def train_one_config(
             running_loss += loss_val
             n_batches += 1
             epoch_step_losses.append((batch.dataset_id, loss_val))
+            # Every batch type carries `ctx_pos_rate`, measured in its builder
+            # from the CANONICAL labels — never recompute it from the tensors
+            # here, because both families class-permute per ensemble member and
+            # the permuted labels give a meaningless rate.
+            _cpr = getattr(batch, "ctx_pos_rate", float("nan"))
+            if _cpr == _cpr:                      # not NaN → classification
+                epoch_ctx_pos_rate.append(float(_cpr))
 
             step_dt = time.monotonic() - step_t0
             epoch_compute_s += step_dt
@@ -2113,6 +2254,17 @@ def train_one_config(
                 if secondary_metric_name else float("nan")
             )
             monitored_metrics.append((test_metric, train_metric))
+            # Per-stage drift: only on monitored epochs (needs a full pass over
+            # the anchored parameters). Empty under LoRA, where no anchor exists.
+            if l2sp_anchor is not None:
+                stage_drift = _stage_drift(
+                    model, l2sp_anchor, l2sp_stage_names, l2sp_stage_w0)
+                if stage_drift:
+                    LOGGER.info(
+                        "  drift by stage: %s",
+                        "  ".join(f"{k}={100 * v:.3f}%" for k, v in
+                                  sorted(stage_drift.items(), key=lambda kv: -kv[1])),
+                    )
         else:
             train_metric = test_metric = float("nan")
             secondary_train = secondary_test = float("nan")
@@ -2176,8 +2328,21 @@ def train_one_config(
         # (‖w−w0‖² after tiny steps), which a %.4f rendered as a useless
         # "0.0000" in every Jul-10 log line.
         l2sp_str = (
-            f"  l2sp={float(np.mean(epoch_l2sp)):.3e}" if epoch_l2sp else ""
+            (f"  ctx_pos={100 * float(np.mean(epoch_ctx_pos_rate)):.2f}%"
+             if epoch_ctx_pos_rate else "")
+            + (
+                f"  l2sp={float(np.mean(epoch_l2sp)):.3e}"
+                f" drift={_drift_pct(float(np.mean(epoch_l2sp)), l2sp_lambda, l2sp_w0_norm)}"
+                if epoch_l2sp else ""
+            )
         )
+        # Mean loss per source dataset this epoch (see EpochRecord docstring).
+        _per_ds: dict[str, list[float]] = {}
+        for _ds, _lv in epoch_step_losses:
+            _per_ds.setdefault(_ds, []).append(_lv)
+        per_dataset_loss = {
+            k: float(np.mean(v)) for k, v in sorted(_per_ds.items())
+        }
         record = EpochRecord(
             epoch=epoch,
             train_loss=train_loss,
@@ -2190,6 +2355,8 @@ def train_one_config(
             secondary_test_metric=secondary_test,
             secondary_metric_name=secondary_metric_name,
             epoch_time_sec=epoch_dt,
+            per_dataset_loss=per_dataset_loss,
+            stage_drift=stage_drift,
             optimizer_steps=epoch_optimizer_steps,
             amp_skipped_steps=epoch_amp_skipped_steps,
             data_skipped_steps=epoch_skipped_steps,
@@ -2385,6 +2552,10 @@ def train_one_config(
             ),
             "max_rows_per_epoch":  max_rows_per_epoch,
             "max_cells_per_epoch": max_cells_per_epoch,
+            # Context-construction strategy — the axis Tanna et al. 2026
+            # measure as worth more AUC than the choice of model, so a
+            # checkpoint that does not record it is not reproducible.
+            "context_sampling": context_sampling,
             # Per-step ensemble members actually used. Varies by track AND
             # family (TabPFN pd=2 / lgd=8; TabICL 2 for both), and it drives
             # both the gradient noise and the member-aware row scaling — so

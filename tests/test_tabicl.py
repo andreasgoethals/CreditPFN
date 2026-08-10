@@ -773,7 +773,8 @@ def test_train_one_config_end_to_end_tabicl(
 
 def test_training_grid_contains_both_families() -> None:
     """config/train.yaml must sweep TabPFN v3 + v2.6 + TabICL v2 on both
-    tracks (48 trials/track with the current LR × adapt × pass axes)."""
+    tracks, and the pipeline's grid expansion must equal the cartesian
+    product of the configured axes (whatever size that currently is)."""
     from omegaconf import OmegaConf
     repo = Path(__file__).resolve().parents[1]
     cfg = OmegaConf.load(repo / "config" / "train.yaml")
@@ -782,13 +783,26 @@ def test_training_grid_contains_both_families() -> None:
         bases = list(cfg.tunable[key])
         fams = {model_family(b) for b in bases}
         assert fams == {"tabpfn", "tabicl"}, (key, bases)
-        n_trials = (len(bases) * len(cfg.tunable.learning_rates)
+        expected = (len(bases) * len(cfg.tunable.learning_rates)
                     * len(cfg.tunable.use_lora)
                     * len(cfg.tunable.query_fractions)
                     * len(cfg.tunable.accumulate_grad_batches)
                     * len(cfg.tunable.epoch_pass_modes))
-        # 18 = 3 bases x 3 LRs x 2 adapt-modes x 1 qf x 1 acc x 1 pass-mode.
-        # Reshaped 2026-08-06: the 48-trial grid was undertrained end to end
-        # (600-10 150 steps vs Real-TabPFN's 20 000), so LRs and pass-modes
-        # that provably did nothing were dropped to buy epochs.
-        assert n_trials == 18, (key, n_trials)
+
+        # Assert the STRUCTURE, not a magic number. This test previously
+        # hardcoded the trial count (48, then 18, then 36) and broke on every
+        # deliberate grid reshape — three false alarms that taught nothing.
+        # What actually matters is that the pipeline's real grid expansion
+        # equals the cartesian product of the configured axes: that catches a
+        # silently dropped or duplicated axis, which is a genuine bug, while
+        # staying correct however the sweep is resized.
+        from omegaconf import open_dict
+        track = "pd" if key == "classifier_base_paths" else "lgd"
+        cfg_track = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
+        with open_dict(cfg_track):
+            cfg_track.track = track
+        from scripts.train_pipeline import _resolve_grid
+        actual = len(_resolve_grid(cfg_track, single=False))
+        assert actual == expected, (key, actual, expected)
+        # Every base must appear, so no family can be silently skipped.
+        assert {b for b, *_ in _resolve_grid(cfg_track, single=False)} == set(bases)

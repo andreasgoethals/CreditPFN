@@ -9,7 +9,7 @@
 
 
 # --- Section 0 · Tunable sweep (cartesian product) ---------------------------
-# 3 bases x 3 LRs x 2 adapt-modes x 1 qf x 1 acc x 1 pass-mode = 18/track.
+# 3 bases x 3 LRs x 2 adapt-modes x 2 qf x 1 acc x 1 pass-mode = 36/track.
 # Reshaped 2026-08-06: fewer configurations, each trained ~7x longer. The
 # 2026-08-05 run swept 48/track and every one of them was undertrained.
 # Two FAMILIES: TabPFN (v2.6, v3) + TabICL v2, detected from the filename.
@@ -25,14 +25,13 @@ tunable:
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
     - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
 
-  # 3e-7 DROPPED 2026-08-06. Real-TabPFN pairs it with 20 000 steps; at our
-  # 600-10 150 steps it moved v3's weights by ~0.02 % and every trial scored
-  # its untuned baseline to 4 decimals. The remaining three bracket the useful
-  # region: 1e-6 conservative, 1e-5 = TabICL's own finetuning default (and the
-  # best PD result last run), 3e-5 ~ Rubachev's single-dataset median and our
-  # upper anchor. Rubachev tunes 5e-6-5e-4 per dataset, so this is still the
-  # low end of the gradient-adaptation range. See docs/PAPER_ROADMAP.md.
-  learning_rates: [1.0e-6, 1.0e-5, 3.0e-5]
+  # SWEEP DOWNWARD (08-08-2026). Run-6 was the first with a real step budget
+  # (9 100), and at that budget LOWER is decisively better: on BOTH tracks
+  # every 1e-6 variant beat its 1e-5 and 3e-5 siblings (PD 0.7620 vs 0.7576 /
+  # 0.7552; LGD 0.1335 vs 0.1376 / 0.1423). 3e-7 was dropped on 06-08 only
+  # because it was inert at 600 steps — with 9 100 it is Real-TabPFN's exact
+  # rate and back in play. This grid brackets the winner on both sides.
+  learning_rates: [3.0e-7, 1.0e-6, 3.0e-6]
 
   # Adaptation mode, FAMILY-SPECIFIC: LoRA for TabPFN, freeze-backbone
   # (train the ICL module only) for TabICL, whose checkpoints are tagged
@@ -40,8 +39,12 @@ tunable:
   use_lora: [false, true]
 
   # ctx/query split: query_fraction of the per-step subsample is the
-  # loss-bearing query. 0.20 = TabPFN default, 0.40 = Real-TabPFN.
-  query_fractions: [0.20]
+  # loss-bearing query. 0.20 = TabPFN's default, 0.40 = Real-TabPFN's.
+  # SWEPT as an A/B from 08-08-2026: 0.40 doubles the loss signal per step at
+  # identical memory (the row budget is unchanged; only the ctx/query boundary
+  # moves), which is the cheapest remaining lever on the effective training
+  # budget. Held at 0.20 until now so run-6's other changes stayed attributable.
+  query_fractions: [0.20, 0.40]
 
   # Gradient accumulation: K=1 (TabPFN default, no accumulation) vs K=4
   # (smoother gradients, coarser LR schedule).
@@ -122,6 +125,14 @@ train:
   # actually reaches Real-TabPFN's training budget. The 2026-08-05 run's
   # headline problem was not the recipe but that the model never moved.
   epochs: 100                             # fixed-epoch (no early stopping)
+  # Cap total optimizer steps so every BASE trains for the same budget.
+  # Without it, `epochs` is not a fair unit: under full_pass a base with a
+  # smaller row cap gets more steps/epoch, so the 07-08 run gave v2.6 20 300
+  # steps and v3/tabicl 9 100 at the same `epochs: 100` — a 2.2x budget gap
+  # that confounds every cross-architecture comparison. 9 100 = what v3 and
+  # tabicl reached, and is the value the good results came from. Set to null
+  # to go back to pure epoch counting.
+  target_total_steps: 9100
   grad_clip_norm: 1.0
   amp: true                               # AMP autocast (CUDA only)
   # "auto" prefers bfloat16 on Ampere-or-newer GPUs (including B200/H100)

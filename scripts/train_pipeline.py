@@ -643,9 +643,34 @@ def run(
                 "amp_skipped_steps":         int(rec.amp_skipped_steps),
                 "data_skipped_steps":        int(rec.data_skipped_steps),
             }
+            # Per-dataset loss and per-stage drift, one column each. The
+            # column SET is fixed by the first row written (the epoch=-1
+            # baseline has neither, so the header is taken from the first
+            # trained epoch instead — see the header logic below).
+            row.update({f"loss__{k}": float(v)
+                        for k, v in sorted(rec.per_dataset_loss.items())})
+            row.update({f"drift__{k}": float(v)
+                        for k, v in sorted(rec.stage_drift.items())})
+
+            # The baseline row (epoch=-1) carries no per-dataset losses, and
+            # stage drift only appears on MONITORED epochs — so the naive
+            # "header = keys of the first row" rule would lock in a schema
+            # that later rows overflow, and DictWriter would raise on the
+            # extra keys. Keep the widest header seen so far and pad missing
+            # cells, so the file stays a rectangle whatever the cadence.
+            known = _flag.setdefault("fieldnames", [])
+            for k in row:
+                if k not in known:
+                    known.append(k)
             write_header = not _flag["written_header"]
+            if not write_header and len(known) != _flag.get("n_cols", len(known)):
+                # A new column appeared after the header was written (first
+                # monitored epoch adds the drift__* set). Rewrite the file
+                # with the wider header so downstream readers see a rectangle.
+                _rewrite_epoch_csv(_path, known)
+            _flag["n_cols"] = len(known)
             with _path.open("a", newline="", encoding="utf-8") as fh:
-                w = csv.DictWriter(fh, fieldnames=list(row.keys()))
+                w = csv.DictWriter(fh, fieldnames=known, restval="")
                 if write_header:
                     w.writeheader()
                     _flag["written_header"] = True
@@ -741,6 +766,28 @@ def run(
 # CLI
 # --------------------------------------------------------------------------- #
 
+
+
+def _rewrite_epoch_csv(path, fieldnames: list[str]) -> None:
+    """Re-emit an existing per-epoch CSV under a WIDER header.
+
+    Needed because the column set grows during a run: the epoch=-1 baseline
+    row has no per-dataset losses, and `drift__*` only appears on monitored
+    epochs. Rather than pre-declaring every possible column (which would
+    require knowing the dataset list and module names up front), we widen the
+    header when a new column first appears and pad the earlier rows. Cheap —
+    the file has one row per epoch.
+    """
+    import csv as _csv
+    if not path.exists():
+        return
+    with path.open(newline="", encoding="utf-8") as fh:
+        old = list(_csv.DictReader(fh))
+    with path.open("w", newline="", encoding="utf-8") as fh:
+        w = _csv.DictWriter(fh, fieldnames=fieldnames, restval="")
+        w.writeheader()
+        for r in old:
+            w.writerow({k: r.get(k, "") for k in fieldnames})
 
 def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[str]]:
     p = argparse.ArgumentParser(

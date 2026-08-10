@@ -82,6 +82,9 @@ class TabPFNBatch:
     categorical_idx: list[int]
     task_type: str
     dataset_id: str
+    # Positive-class rate of the ORIGINAL sampled labels (see
+    # TabICLTrainBatch.ctx_pos_rate for why it must be measured pre-shuffle).
+    ctx_pos_rate: float = float("nan")
 
     def to(self, device: str) -> "TabPFNBatch":
         return TabPFNBatch(
@@ -92,6 +95,7 @@ class TabPFNBatch:
             categorical_idx=self.categorical_idx,
             task_type=self.task_type,
             dataset_id=self.dataset_id,
+            ctx_pos_rate=self.ctx_pos_rate,
         )
 
 
@@ -395,6 +399,12 @@ def _build_step_batch(
     y_ctx_t = torch.as_tensor(y_ctx, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
     y_qry_t = torch.as_tensor(y_qry, dtype=y_dtype).reshape(-1, 1, 1).contiguous()
 
+    # Canonical context labels — this path applies no class permutation, but
+    # measure it here anyway so every batch type reports the same quantity.
+    ctx_pos_rate = (
+        float((np.asarray(y_ctx) > 0).mean())
+        if loaded.task_type == "classification" else float("nan")
+    )
     return TabPFNBatch(
         X_context=X_ctx_t,
         y_context=y_ctx_t,
@@ -403,6 +413,7 @@ def _build_step_batch(
         categorical_idx=cat_idx,
         task_type=loaded.task_type,
         dataset_id=loaded.dataset_id,
+        ctx_pos_rate=ctx_pos_rate,
     )
 
 
@@ -430,6 +441,12 @@ class TabICLTrainBatch:
     y_scaler_std: float | None
     task_type: str
     dataset_id: str
+    # Positive-class rate of the ORIGINAL sampled labels, before tabicl's
+    # per-member class-shuffle remap. Measured here because after the remap
+    # `y_train > 0` counts a permuted label and is meaningless: on 25 %-positive
+    # data a 2-member batch reported 74.7 %. This is what verifies that
+    # `context_sampling: balanced` actually raised minority exposure.
+    ctx_pos_rate: float = float("nan")
 
     def to(self, device: str) -> "TabICLTrainBatch":
         return TabICLTrainBatch(
@@ -441,6 +458,10 @@ class TabICLTrainBatch:
             y_scaler_std=self.y_scaler_std,
             task_type=self.task_type,
             dataset_id=self.dataset_id,
+            # Must be carried through .to(): the loop reads it AFTER the device
+            # move, and a dropped field silently reverts to its NaN default —
+            # which is exactly how the metric went missing the first time.
+            ctx_pos_rate=self.ctx_pos_rate,
         )
 
 
@@ -523,6 +544,9 @@ def _build_tabicl_step_batch(
         outlier_threshold=4.0,
         preprocessing_seed=int(preprocessing_seed) & 0x7FFF_FFFF,
     )
+    ctx_pos_rate = (
+        float((y_sub > 0).mean()) if classification else float("nan")
+    )
     return TabICLTrainBatch(
         X=mb.X,
         y_train=mb.y_train,
@@ -532,6 +556,7 @@ def _build_tabicl_step_batch(
         y_scaler_std=mb.y_scaler_std,
         task_type=loaded.task_type,
         dataset_id=loaded.dataset_id,
+        ctx_pos_rate=ctx_pos_rate,
     )
 
 
@@ -916,6 +941,10 @@ def prepare_eval_chunk(
         categorical_idx=cat_idx,
         task_type=loaded.task_type,
         dataset_id=loaded.dataset_id,
+        ctx_pos_rate=(
+            float((np.asarray(y_ctx) > 0).mean())
+            if loaded.task_type == "classification" else float("nan")
+        ),
     )
 
 
