@@ -13,7 +13,7 @@ seed: 42
 #   data_source picks the corpus tier on VSC:
 #     "staging" (DEFAULT) — project storage <staging>/CreditPFN. Datasets are
 #                           the largest files → they belong in project storage
-#                           (persistent, large, non-purged). See docs/VSC_GUIDE.md.
+#                           (persistent, large, non-purged). See docs/VSC.md.
 #     "scratch"           — $VSC_SCRATCH/CreditPFN (fast parallel FS, purged ~30d).
 #     "data"              — $VSC_DATA/CreditPFN (NFS, backed up, tight quota).
 #   On a laptop the knob is ignored (repo root is the only data home).
@@ -22,9 +22,9 @@ paths:
   data_source:   "staging"         # "staging" | "scratch" | "data"
   raw:           data/raw          # data/raw/{pd,lgd}/<id>.csv
   processed:     data/processed    # sanitize.py output — the on-disk training input
-  dedup:         data/dedup        # doubles_*_{pre,post}.csv (always durable)
-  manifest_pd:   data/manifest_pd.csv
-  manifest_lgd:  data/manifest_lgd.csv
+  dedup:         output/manifests/dedup   # doubles_*_{pre,post}.csv (always durable)
+  manifest_pd:   output/manifests/manifest_pd.csv
+  manifest_lgd:  output/manifests/manifest_lgd.csv
 
 
 # --- Finetuning subsample ----------------------------------------------------

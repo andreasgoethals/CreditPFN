@@ -76,11 +76,11 @@ export PYTHONIOENCODING=utf-8
 # so eval reads checkpoints + writes results directly (no stage-in needed).
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs"
 mkdir -p "${CREDITPFN_STAGING_ROOT:-${CREDITPFN_OUTPUT_ROOT}}/output/results"
 
 TS=$(date +%Y%m%d_%H%M%S)
-LOG="${CREDITPFN_OUTPUT_ROOT}/logs/eval_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
+LOG="${CREDITPFN_OUTPUT_ROOT}/output/logs/eval_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
 exec > "$LOG" 2>&1
 
 _log_exit() {

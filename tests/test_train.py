@@ -86,7 +86,7 @@ def _write_synthetic_processed(
     Mimics what the post-2026-05-20 data pipeline lands on disk:
     ``<data_root>/data/processed/{track}/<id>.sanitized.csv`` plus
     a per-track manifest row at
-    ``<output_root>/data/manifest_{track}.csv``.
+    ``<output_root>/output/manifests/manifest_{track}.csv``.
     """
     task_type = task_type or (
         "classification" if track == "pd" else "regression"
@@ -109,7 +109,7 @@ def _write_synthetic_processed(
     df.to_csv(csv_path, index=False)
 
     # Manifest row (one per dataset, accumulated).
-    manifest_path = output_root / "data" / f"manifest_{track}.csv"
+    manifest_path = output_root / "output" / "manifests" / f"manifest_{track}.csv"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     cats_field = ";".join(categorical_columns)
     row = {

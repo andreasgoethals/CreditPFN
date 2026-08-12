@@ -9,7 +9,7 @@
 #  ("staging") storage so they persist and don't eat the tiny 75 GiB $VSC_DATA
 #  quota. If you can upload from your laptop STRAIGHT to staging (scp/WinSCP to
 #  the absolute path /lustre1/project/stg_00211/CreditPFN/...), you do NOT need
-#  this script — see docs/VSC_GUIDE.md §0.
+#  this script — see docs/VSC.md §0.
 #
 #  Use this ONLY if you can reach $VSC_DATA from your transfer tool but NOT the
 #  project storage. Then: (1) upload from your laptop into
@@ -52,9 +52,9 @@ case "${STAGING_BASE}" in
     *)           DEST="${STAGING_BASE}/CreditPFN" ;;
 esac
 
-mkdir -p "${VSC_DATA}/CreditPFN/logs"
+mkdir -p "${VSC_DATA}/CreditPFN/output/logs"
 TS=$(date +%Y%m%d_%H%M%S)
-LOG="${VSC_DATA}/CreditPFN/logs/stage_to_project_${TS}_j${SLURM_JOB_ID}.log"
+LOG="${VSC_DATA}/CreditPFN/output/logs/stage_to_project_${TS}_j${SLURM_JOB_ID}.log"
 exec > "$LOG" 2>&1
 
 echo "=========================================="

@@ -73,8 +73,13 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.utils.paths import apply_data_source_from_cfg, resolve_output_path  # noqa: E402
-from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
+from src.utils.paths import (  # noqa: E402
+    apply_data_source_from_cfg,
+    manifests_dir,
+    results_dir,
+)
+from src.utils.config import dump_resolved  # noqa: E402
+from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
@@ -205,7 +210,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     )
 
     manifest_csv = (
-        resolve_output_path("output/training/manifests") / f"{train_cfg.run_name}_{track}.csv"
+        manifests_dir() / f"{train_cfg.run_name}_{track}.csv"
     )
     trained = load_trained_handles(
         manifest_csv, track=track,
@@ -312,6 +317,9 @@ def run(
 
     log, _ = resolve_run_log(log_path, task_name=f"eval_{track}")
     setup_logging(log.path)
+
+    # The resolved config, next to the results it produced (see src/utils/config.py).
+    dump_resolved(cfg, f"eval_{track}")
     LOGGER.info("eval_pipeline: log=%s  track=%s", log.path, track)
 
     handles_and_models, cfg_test_ids, manifest_csv = _build_roster(
@@ -335,7 +343,7 @@ def run(
     # already-scored ones means a new tabpfn-trained variant only triggers
     # work for the new cells. Pass `--rerun` to force-rescore everything.
     results_base_for_skip = (
-        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "output/results"
+        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else results_dir()
     )
     n_folds_required = (
         int(eval_cfg.cv.n_folds) if hasattr(eval_cfg, "cv") else 5
@@ -407,7 +415,7 @@ def run(
     else:
         max_rows_per_model = None
     results_base = (
-        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else "output/results"
+        eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else results_dir()
     )
 
     from src.eval.benchmark import run_benchmark

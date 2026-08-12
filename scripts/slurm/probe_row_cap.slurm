@@ -38,9 +38,9 @@ export PYTHONUNBUFFERED=1
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs"
 TS=$(date +%Y%m%d_%H%M%S)
-LOG="${CREDITPFN_OUTPUT_ROOT}/logs/probe_row_cap_${TS}_j${SLURM_JOB_ID}.log"
+LOG="${CREDITPFN_OUTPUT_ROOT}/output/logs/probe_row_cap_${TS}_j${SLURM_JOB_ID}.log"
 exec > "$LOG" 2>&1
 
 cd "${VSC_DATA}/CreditPFN"

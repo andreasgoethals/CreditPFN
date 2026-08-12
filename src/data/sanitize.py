@@ -60,7 +60,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.data.preprocessing import DATASET_METADATA, apply_dataset_specific_fixes
+from src.data.preprocessing import (
+    DATASET_METADATA,
+    apply_dataset_specific_fixes,
+    write_csv_atomic,
+)
 from src.utils.paths import resolve_data_path, resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
@@ -602,7 +606,7 @@ def main(cfg=None) -> int:  # noqa: C901
             out_dir = proc_root / track
             out_dir.mkdir(parents=True, exist_ok=True)
             out_path = out_dir / f"{dataset_id}.sanitized.csv"
-            df_clean.to_csv(out_path, index=False)
+            write_csv_atomic(df_clean, out_path, index=False)
             LOGGER.info(
                 "%-26s rows=%d→%d cols(features)=%d  → %s",
                 dataset_id,

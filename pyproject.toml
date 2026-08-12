@@ -21,7 +21,7 @@
 #  Python: ** 3.11, 3.12, or 3.13 **. torch / scikit-learn now ship cp313
 #  wheels (the VSC base conda env is 3.13 and works). 3.14 is excluded —
 #  some compiled deps still lack cp314 wheels and fall back to a
-#  from-source build. See docs/VSC_GUIDE.md §0.4.
+#  from-source build. See docs/VSC.md §0.4.
 # =============================================================================
 
 [build-system]
@@ -95,6 +95,7 @@ dependencies = [
 # Testing + the repository-corpus refresh utility (tfm-library/scripts/refresh_repositories.py).
 dev = [
     "pytest>=8.0,<9.0",
+    "ruff>=0.6",                   # step 1 of scripts/check.py
     "gitingest>=0.3,<1.0",         # pulls fresh tfm-library/repositories/*.txt dumps (alpha; capped <1.0)
 ]
 # Interactive notebooks under notebooks/.
@@ -113,9 +114,44 @@ Repository = "https://github.com/andreasgoethals/CreditPFN"
 # (`OmegaConf.load("config/data.yaml")`) after cd-ing into the repo root.
 packages = ["src"]
 
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [
+    # Read-only submodule. Never lint, never format, never touch.
+    "tfm-library",
+    # Generated output and notebook JSON are not source.
+    "output",
+    "notebooks",
+    ".venv",
+    "venv",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "NPY"]
+ignore = [
+    "E501",    # line length is the formatter's job, not the linter's
+    "B905",    # zip(strict=) noise in numeric code
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Template idiom: scripts/ are invoked as files, not imported, so they insert the
+# repository root on sys.path BEFORE importing from src. That is an import-not-at-top
+# by construction.
+"scripts/*" = ["E402"]
+
 [tool.pytest.ini_options]
+minversion = "8.0"
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-ra --strict-markers"
+# WHY: without this, pytest walks tfm-library/ and tries to collect the upstream
+# code snapshots as tests. It finds "test" in filenames there and fails on imports
+# of packages this project does not have.
+norecursedirs = ["tfm-library", "output", "data", ".venv", "venv", "notebooks"]
+markers = [
+    "slow: takes more than a few seconds",
+    "gpu: requires CUDA; skipped on the local dev machine",
+]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]

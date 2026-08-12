@@ -61,7 +61,11 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from src.data.preprocessing import DATASET_METADATA, apply_dataset_specific_fixes
+from src.data.preprocessing import (
+    DATASET_METADATA,
+    apply_dataset_specific_fixes,
+    write_csv_atomic,
+)
 from src.utils.paths import resolve_data_path, resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
@@ -216,7 +220,7 @@ def _read_existing_manifest(path: Path) -> pd.DataFrame:
 def _write_manifest(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
-    df.to_csv(path, index=False)
+    write_csv_atomic(df, path, index=False)
     LOGGER.info("wrote %s (%d rows)", path, len(df))
 
 

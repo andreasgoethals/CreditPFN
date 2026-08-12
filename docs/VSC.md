@@ -103,7 +103,7 @@ then **automatically archives** any fallback checkpoints into
 project-storage guarantee ("all big files end up on staging") holds either
 way. Eval reads the manifest's recorded paths, so it works regardless of
 where the files landed; reclaim the temporary `$VSC_DATA` copies with
-`python scripts/clean_run.py` after verifying the staging archive.
+`python -m src.utils.clean_run --clean` after verifying the staging archive.
 
 The env vars `$CREDITPFN_DATA_ROOT`, `$CREDITPFN_OUTPUT_ROOT` and
 `$CREDITPFN_STAGING_ROOT` remain available as escape-hatch overrides
@@ -376,10 +376,10 @@ are the canonical training input):
 
 ```text
 data/raw/{pd,lgd}/<id>.csv          (you uploaded to staging)
-        ↓ dedup --pass pre          → data/dedup/doubles_{track}_pre.csv     ($VSC_DATA, durable)
-        ↓ register                  → data/manifest_{pd,lgd}.csv             ($VSC_DATA, durable)
+        ↓ dedup --pass pre          → output/manifests/dedup/doubles_{track}_pre.csv     ($VSC_DATA, durable)
+        ↓ register                  → output/manifests/manifest_{pd,lgd}.csv  ($VSC_DATA, durable)
         ↓ sanitize                  → data/processed/{pd,lgd}/<id>.sanitized.csv  (staging, data_root)
-        ↓ dedup --pass post         → data/dedup/doubles_{track}_post.csv    ($VSC_DATA, durable)
+        ↓ dedup --pass post         → output/manifests/dedup/doubles_{track}_post.csv    ($VSC_DATA, durable)
 ```
 
 The processed CSVs land in staging so the Mindwell training stage (a

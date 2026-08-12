@@ -3,7 +3,7 @@
 Calls, in order:
 
     1. dedup    --pass pre   on data/raw/{pd,lgd}/
-    2. register              → data/manifest_{pd,lgd}.csv
+    2. register              → output/manifests/manifest_{pd,lgd}.csv
     3. sanitize              → data/processed/{pd,lgd}/<id>.sanitized.csv
     4. dedup    --pass post  on data/processed/{pd,lgd}/
 
@@ -22,7 +22,7 @@ Public entry point
 :func:`run` — the orchestration function. Parameters:
 
 ``fresh: bool`` (default ``False``)
-    ``True`` → wipe ``data/dedup``, ``data/processed`` and the two
+    ``True`` → wipe ``output/manifests/dedup``, ``data/processed`` and the two
     manifest CSVs *before* anything runs. Use when you want the
     corpus rebuilt from scratch.
     ``False`` → leave existing artefacts in place. Register,
@@ -73,7 +73,8 @@ from src.data.preprocessing import DATASET_METADATA  # noqa: E402
 from src.utils.paths import (  # noqa: E402
     apply_data_source_from_cfg, resolve_data_path, resolve_output_path,
 )
-from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
+from src.utils.config import dump_resolved  # noqa: E402
+from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
 
 # --------------------------------------------------------------------------- #
@@ -164,6 +165,9 @@ def run(
     apply_data_source_from_cfg(cfg)
     log, _ = resolve_run_log(log_path, task_name="data")
     setup_logging(log.path)
+
+    # The resolved config, next to the results it produced (see src/utils/config.py).
+    dump_resolved(cfg, "data")
 
     selected = _filter_dataset_ids(datasets)
     if selected is None:

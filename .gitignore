@@ -263,7 +263,12 @@ slurm-*.err
 
 # IDE / editor
 .idea/
-.vscode/
+# `.vscode/` is ignored EXCEPT settings.json + extensions.json, which the template
+# commits: without `python.analysis.extraPaths`, Pylance cannot resolve
+# `from src.utils...` in a fresh clone (flat `src/` package root), so every import is
+# underlined red until someone runs the editable install. Layout, not taste.
+/.vscode/*
+!/.vscode/settings.json
 *.swp
 *.swo
 .DS_Store
@@ -287,11 +292,11 @@ Thumbs.db
 *.joblib
 *.onnx
 
-# Shared Claude/Codex local project memory (probe results, mistakes log,
-# do-not-undo notes). Lives at docs/AGENTS_MEMORY.md and is loaded through
-# the tracked CLAUDE.md / AGENTS.md files; never committed. The pattern is
-# deliberately a bare filename so it matches wherever the file sits.
-AGENTS_MEMORY.md
-# Claude Code's own auto-loaded local notes (session-facing quick reference;
-# the durable shared memory is docs/AGENTS_MEMORY.md).
+# docs/AGENTS_MEMORY.md is TRACKED as of 11-08-2026 (the template makes it a
+# required doc): a dead end nobody else can see gets paid for twice. Durable
+# facts live in docs/RESULTS.md and docs/CODE_NOTES.md, also tracked.
+
+# CLAUDE.md IS tracked: it is one line, `@AGENTS.md`, so Claude Code and every other
+# agent read the same rules with nothing duplicated. Only the personal scratch file
+# below stays local.
 CLAUDE.local.md

@@ -4,7 +4,7 @@ The training pipeline (``scripts/train_pipeline.py``) writes two
 kinds of artefacts that this module consumes:
 
 * **Per-trial epoch CSV** — one file per trial under
-  ``output/training/epochs/<track>/<descriptive_name>.csv`` with columns::
+  ``output/manifests/epochs/<track>/<descriptive_name>.csv`` with columns::
 
       epoch, train_loss, lr, metric_name,
       train_metric, test_metric, epoch_time_sec, elapsed_sec
@@ -13,7 +13,7 @@ kinds of artefacts that this module consumes:
   ``scripts/train_pipeline.py``.)
 
 * **Run manifest CSV** — one file per track at
-  ``output/training/manifests/<run_name>_<track>.csv``. Each row is one trial::
+  ``output/manifests/<run_name>_<track>.csv``. Each row is one trial::
 
       track, base_checkpoint, learning_rate, use_lora, seed,
       n_train_datasets, n_test_datasets,
@@ -51,6 +51,8 @@ from typing import Iterable, Sequence
 import numpy as np
 import pandas as pd
 
+from src.visualize import style
+
 LOGGER = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parents[2]
@@ -68,8 +70,10 @@ def _load_default_cfg():
         return OmegaConf.load(_REPO / "config" / "train.yaml")
     except Exception:  # pragma: no cover  — local fallback
         from types import SimpleNamespace as _NS
+
+        from src.utils.paths import checkpoints_dir
         return _NS(run_name="creditpfn", track="pd",
-                   checkpoint=_NS(trained_dir="checkpoints/trained"))
+                   checkpoint=_NS(trained_dir=str(checkpoints_dir("trained"))))
 
 
 def _resolve_paths(cfg=None) -> dict[str, Path]:
@@ -86,18 +90,18 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
     except Exception:  # pragma: no cover  — local fallback
         pass
 
-    from src.utils.paths import resolve_output_path, resolve_staging_path
+    from src.utils.paths import checkpoints_dir, manifests_dir, resolve_staging_path
     if cfg is None:
         cfg = _load_default_cfg()
 
     run_name = str(getattr(cfg, "run_name", "creditpfn"))
     trained_dir = str(getattr(cfg, "checkpoint", _load_default_cfg().checkpoint)
                       .trained_dir if hasattr(cfg, "checkpoint")
-                      else "checkpoints/trained")
+                      else str(checkpoints_dir("trained")))
 
     return {
-        "epoch_dir":     resolve_output_path("output/training/epochs"),
-        "manifest_dir":  resolve_output_path("output/training/manifests"),
+        "epoch_dir":     manifests_dir() / "epochs",
+        "manifest_dir":  manifests_dir(),
         "trained_dir":   resolve_staging_path(trained_dir),
         "run_name":      run_name,
     }
@@ -242,7 +246,7 @@ def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
 
 
 def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
-    """Load every per-epoch CSV under ``output/training/epochs/<track>/``.
+    """Load every per-epoch CSV under ``output/manifests/epochs/<track>/``.
 
     Returns a dict keyed by the file stem (== descriptive_name).
     """
@@ -359,7 +363,7 @@ def metric_direction(track: str, history: pd.DataFrame | None = None) -> str:
 # =============================================================================
 
 
-def _new_fig(title: str, *, figsize=(8, 4.5)):
+def _new_fig(title: str, *, figsize=style.figsize(style.WIDTH_FULL, ratio=0.562)):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_title(title)
@@ -371,7 +375,7 @@ def _no_data_fig(reason: str = "no data"):
     """Render a stub figure with a centred message — for notebooks that
     run before any training output is on disk."""
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(6, 2))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.333))
     ax.text(0.5, 0.5, f"({reason})", ha="center", va="center",
             transform=ax.transAxes, fontsize=12, color="#888")
     ax.set_axis_off()
@@ -441,7 +445,7 @@ def plot_trial_dashboard(trial_name: str, track: str, cfg=None):
         return _no_data_fig(f"no epoch CSV for {trial_name}")
     metric_name = str(hist["metric_name"].iloc[0]) if "metric_name" in hist.columns else ""
 
-    fig, axes = plt.subplots(2, 2, figsize=(13, 8))
+    fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=0.615))
     fig.suptitle(f"Trial dashboard — {trial_name}", fontsize=11)
 
     axes[0, 0].plot(hist["epoch"], hist["train_loss"],
@@ -471,7 +475,9 @@ def plot_trial_dashboard(trial_name: str, track: str, cfg=None):
         axes[1, 1].set_title("seconds / epoch")
         axes[1, 1].set_xlabel("epoch")
         axes[1, 1].grid(True, alpha=0.3, linestyle="--", axis="y")
-    fig.tight_layout(rect=(0, 0, 1, 0.97))
+    # No tight_layout: style.py turns constrained_layout ON, and calling both makes
+    # matplotlib warn and discard one of them. constrained_layout fits the content
+    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -488,13 +494,27 @@ def _style_for(trial: TrialId, base_palette: dict[str, tuple]) -> dict:
                 alpha=0.95, label=trial.label)
 
 
-def _palette_for_bases(bases: Sequence[str]) -> dict[str, tuple]:
-    import matplotlib.cm as cm
-    bases = list(dict.fromkeys(bases))   # de-dup, preserve order
-    if not bases:
-        return {}
-    cmap = cm.get_cmap("tab10", max(len(bases), 3))
-    return {b: cmap(i)[:3] for i, b in enumerate(bases)}
+def _palette_for_bases(bases: Sequence[str]) -> dict[str, str]:
+    """One colour per base checkpoint, from `src/visualize/style.py`.
+
+    Keyed on the base NAME, never on its position: the previous
+    `cm.get_cmap("tab10", n)[i]` meant a figure that omitted one arm shifted every
+    colour after it, so v2.6 was orange in one panel and green in the next.
+    """
+    from src.visualize.style import color
+    return {b: color(_base_series_name(b)) for b in dict.fromkeys(bases)}
+
+
+def _base_series_name(base: str) -> str:
+    """Map a base checkpoint or short tag onto a registered `style.COLORS` name."""
+    b = base.lower()
+    if "tabicl" in b:
+        return "tabicl"
+    if "v2.6" in b or "v2_6" in b:
+        return "v2.6"
+    if "v3" in b:
+        return "v3"
+    return base
 
 
 def plot_loss_overlay(track: str, *, only_ok: bool = True, cfg=None):
@@ -514,7 +534,7 @@ def plot_loss_overlay(track: str, *, only_ok: bool = True, cfg=None):
     if not parsed:
         return _no_data_fig(f"no training runs on track={track}")
 
-    fig, ax = _new_fig(f"All trials — train loss (track={track})", figsize=(11, 6))
+    fig, ax = _new_fig(f"All trials — train loss (track={track})", figsize=style.figsize(style.WIDTH_FULL, ratio=0.545))
     palette = _palette_for_bases([t.base for t in parsed.values()])
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
@@ -550,7 +570,7 @@ def plot_metric_overlay(
 
     fig, ax = _new_fig(
         f"All trials — {split} {metric_name} (track={track})",
-        figsize=(11, 6),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=0.545),
     )
     palette = _palette_for_bases([t.base for t in parsed.values()])
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
@@ -581,7 +601,7 @@ def plot_overfitting_diagnostic(track: str, *, cfg=None):
 
     fig, ax = _new_fig(
         f"Overfitting gap (train − test) — track={track}",
-        figsize=(11, 6),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=0.545),
     )
     palette = _palette_for_bases([t.base for t in parsed.values()])
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
@@ -621,7 +641,7 @@ def plot_final_metric_bar(
     df = df.sort_values(metric, ascending=(direction == "min"))
     fig, ax = _new_fig(
         f"{metric} per trial — track={track} ({'lower is better' if direction == 'min' else 'higher is better'})",
-        figsize=(11, max(4.5, 0.35 * len(df))),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4.5, 0.35 * len(df))) / (11)),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
     colors = [palette[b] for b in df["base_short"]]
@@ -646,7 +666,7 @@ def plot_lr_effect(
 
     fig, ax = _new_fig(
         f"Learning rate sweep — {metric} (track={track})",
-        figsize=(9, 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
     for (base, lora), grp in df.groupby(["base_short", "use_lora"], sort=True):
@@ -695,7 +715,7 @@ def plot_lora_effect(track: str, *, metric: str = "best_test_metric", cfg=None):
 
     fig, ax = _new_fig(
         f"LoRA effect on {metric} — track={track}",
-        figsize=(7, 7),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=1.000),
     )
     palette = _palette_for_bases(list(pivot["base_short"].unique()))
     for _, row in pivot.iterrows():
@@ -730,7 +750,7 @@ def plot_metric_heatmap(
     cmap = "viridis" if direction == "max" else "viridis_r"
 
     fig, axes = plt.subplots(
-        1, 2, figsize=(12, max(4, 0.5 * overview["base_short"].nunique())),
+        1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4, 0.5 * overview["base_short"].nunique())) / (12)),
         sharey=True,
     )
     fig.suptitle(f"{metric} heatmap — track={track}")
@@ -764,7 +784,9 @@ def plot_metric_heatmap(
                                                         else np.nanpercentile(mat.values, 40)))
                             else "black")
         fig.colorbar(im, ax=ax, fraction=0.03)
-    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    # No tight_layout: style.py turns constrained_layout ON, and calling both makes
+    # matplotlib warn and discard one of them. constrained_layout fits the content
+    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -780,7 +802,7 @@ def plot_pareto_time_vs_metric(
         return _no_data_fig(f"need {metric} AND elapsed_sec")
 
     fig, ax = _new_fig(
-        f"Time / accuracy trade-off — track={track}", figsize=(9, 5.5),
+        f"Time / accuracy trade-off — track={track}", figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
     for base, grp in df.groupby("base_short"):
@@ -820,7 +842,7 @@ def plot_base_ranking(
     palette = _palette_for_bases(order)
     fig, ax = _new_fig(
         f"{metric} by base checkpoint — track={track}",
-        figsize=(max(7, 1.1 * len(order)), 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(7, 1.1 * len(order)))),
     )
     data = [df.loc[df["base_short"] == b, metric].values for b in order]
     bp = ax.boxplot(
@@ -848,7 +870,7 @@ def plot_convergence_speed(track: str, *, cfg=None):
     df["best_epoch_pct"] = df["best_epoch"] / df["n_epochs"].clip(lower=1)
     fig, ax = _new_fig(
         f"When does the best test metric land? — track={track}",
-        figsize=(8.5, 4.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=0.529),
     )
     ax.hist(df["best_epoch_pct"] * 100, bins=20, alpha=0.8,
             edgecolor="black", linewidth=0.4)
@@ -869,7 +891,7 @@ def plot_epoch_time_overlay(track: str, *, cfg=None):
     df = df.sort_values("mean_epoch_sec", ascending=False)
     fig, ax = _new_fig(
         f"Mean seconds / epoch per trial — track={track}",
-        figsize=(11, max(4, 0.3 * len(df))),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4, 0.3 * len(df))) / (11)),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
     colors = [palette[b] for b in df["base_short"]]

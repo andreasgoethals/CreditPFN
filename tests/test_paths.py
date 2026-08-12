@@ -403,21 +403,22 @@ def test_explicit_envvar_wins_over_autodetect(monkeypatch, tmp_path) -> None:
 
 
 # =============================================================================
-# run_log: per-task log file naming + setup_logging slurm-awareness
+# logging_setup: per-task log file naming + setup_logging slurm-awareness
 # =============================================================================
 
 
 def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -> None:
-    """``logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, lands under
-    ``$CREDITPFN_OUTPUT_ROOT/logs/`` (flat, not in a subdir)."""
-    from src.utils.run_log import make_task_log_path
+    """``output/logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, flat inside that directory.
+
+    Under `output/` since 11-08-2026, like everything else the code generates."""
+    from src.utils.logging_setup import make_task_log_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
     monkeypatch.delenv("SLURM_JOB_ID",       raising=False)
     monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
 
     p = make_task_log_path("train_pd")
-    assert p.parent == tmp_path / "logs"
+    assert p.parent == tmp_path / "output" / "logs"
     assert p.name.startswith("train_pd_")
     assert p.suffix == ".log"
     # YYYYMMDD_HHMMSS — 15 chars between "train_pd_" and ".log".
@@ -430,7 +431,7 @@ def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -
 def test_make_task_log_path_appends_slurm_array_ids(monkeypatch, tmp_path) -> None:
     """Slurm array tasks get unique filenames even if they start at the
     same second."""
-    from src.utils.run_log import make_task_log_path
+    from src.utils.logging_setup import make_task_log_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.setenv("SLURM_ARRAY_JOB_ID",   "12345")
     monkeypatch.setenv("SLURM_ARRAY_TASK_ID",  "7")
@@ -442,7 +443,7 @@ def test_setup_logging_skips_filehandler_under_slurm(monkeypatch, tmp_path) -> N
     """Under slurm, bash's `exec > $LOG 2>&1` already routes stdout
     to the log file; adding a Python FileHandler would double-write."""
     import logging as _logging
-    from src.utils.run_log import setup_logging
+    from src.utils.logging_setup import setup_logging
 
     monkeypatch.setenv("SLURM_JOB_ID", "999")
     setup_logging(tmp_path / "ignored.log")
@@ -455,7 +456,7 @@ def test_setup_logging_uses_filehandler_locally(monkeypatch, tmp_path) -> None:
     """Locally (no slurm), both StreamHandler and FileHandler attach
     so the user sees live output AND the log file is created."""
     import logging as _logging
-    from src.utils.run_log import setup_logging
+    from src.utils.logging_setup import setup_logging
 
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)
     log_file = tmp_path / "out.log"

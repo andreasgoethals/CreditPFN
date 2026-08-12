@@ -112,7 +112,9 @@ to 3000+ datasets — see its docstring for the contract.
 from __future__ import annotations
 
 import logging
+import os
 import re
+from pathlib import Path
 from types import MappingProxyType
 from typing import Callable, Mapping
 
@@ -401,6 +403,32 @@ _RAW_METADATA: dict[str, dict] = {
 DATASET_METADATA: Mapping[str, Mapping] = MappingProxyType(
     {k: MappingProxyType(v) for k, v in _RAW_METADATA.items()}
 )
+
+
+def write_csv_atomic(df: pd.DataFrame, path: Path, **to_csv_kwargs) -> Path:
+    """``df.to_csv(path)``, but a killed run leaves NO file instead of a truncated one.
+
+    Every stage output under ``data/processed/`` is read back as a cache: the training
+    corpus takes "the CSV exists" as "the CSV is complete". A plain ``to_csv`` breaks that
+    — a job killed mid-write (walltime, OOM, node failure, all of which have happened
+    here) leaves a short CSV that pandas parses happily, so training silently runs on a
+    truncated dataset. Writing to a PID-unique temp file in the same directory and
+    ``os.replace``-ing it in makes the appearance of the file atomic, because the rename
+    is atomic on one filesystem. Mirrors ``src/eval/benchmark._write_csv``.
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
+    try:
+        df.to_csv(tmp, **to_csv_kwargs)
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            try:
+                tmp.unlink()
+            except OSError:                                            # pragma: no cover
+                pass
+    return path
 
 
 def list_dataset_ids(track: str | None = None) -> list[str]:

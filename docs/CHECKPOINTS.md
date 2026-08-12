@@ -18,7 +18,7 @@ checkpoints without updating this file.**
 > `resolve_staging_path` falls back to the repo root, so the same
 > relative paths resolve under `<repo>/checkpoints/`. The base weights
 > are read once at job start and cached in RAM. See
-> [VSC_GUIDE.md](VSC_GUIDE.md) for the storage-tier topology.
+> [VSC.md](VSC.md) for the storage-tier topology.
 
 All facts below are sourced from:
 
@@ -176,7 +176,7 @@ probes staging writability first: if the compute node can't write staging
 — the 2026-07-03 Mindwell failure mode — checkpoints are saved under
 `$VSC_DATA/CreditPFN/checkpoints/trained/` instead, and the eval gate
 archives them into staging afterwards. Either way the durable copy ends
-up in project storage; see docs/VSC_GUIDE.md §0.2.)
+up in project storage; see docs/VSC.md §0.2.)
 Alongside each `.ckpt` we write a `<name>.ckpt.provenance.json`
 sidecar (full training-time hyperparameters, the train/test dataset
 lists, walltime, GPU, library versions) so a checkpoint can be

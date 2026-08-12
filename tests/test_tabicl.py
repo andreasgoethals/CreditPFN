@@ -514,7 +514,7 @@ def test_method_dirname_and_decoding_round_trip() -> None:
     agree — they are the on-disk contract between eval and the notebooks."""
     from src.eval.benchmark import _method_dirname
     from src.model.base import ModelHandle
-    from src.utils.eval_viz import _decode_method_dirname
+    from src.visualize.eval_viz import _decode_method_dirname
 
     handle = ModelHandle(
         name="tabicl-trained[…]", track="lgd", task_type="regression",
@@ -619,7 +619,9 @@ def _write_tabicl_corpus(root: Path, track: str, task_type: str) -> None:
                      "categorical_columns": "cat", "n_rows": n, "n_cols": 6,
                      "source": "synthetic"})
     (root / "data").mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(root / "data" / f"manifest_{track}.csv", index=False)
+    manifest_dir = root / "output" / "manifests"
+    manifest_dir.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(manifest_dir / f"manifest_{track}.csv", index=False)
 
 
 def test_freeze_backbone_survives_repeated_steps(tmp_path: Path) -> None:

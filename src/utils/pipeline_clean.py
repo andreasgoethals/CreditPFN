@@ -54,8 +54,8 @@ Output paths (verified against the codebase 2026-05-27)
 
   * ``data/processed/{pd,lgd}/*.sanitized.csv`` and any feature_groups
     sidecar JSONs (per-dataset sanitize output, under DATA_ROOT)
-  * ``data/dedup/*`` (4× dedup CSVs, under OUTPUT_ROOT)
-  * ``data/manifest_pd.csv``, ``data/manifest_lgd.csv``
+  * ``output/manifests/dedup/*`` (4× dedup CSVs, under OUTPUT_ROOT)
+  * ``output/manifests/manifest_{pd,lgd}.csv``
     (track-level sanitize manifests, under OUTPUT_ROOT)
   * ``logs/data_*.log``, ``logs/sanitize_*.log``, ``logs/dedup_*.log``
   * The raw datasets at ``data/raw/`` are NEVER touched.
@@ -67,8 +67,8 @@ Output paths (verified against the codebase 2026-05-27)
   * ``checkpoints/trained/{pd,lgd}/*.ckpt.epoch_eval.ckpt`` (rolling
     per-epoch snapshots; usually auto-removed at end of training but
     can be left behind by a crashed trial)
-  * ``output/training/manifests/<run_name>_<track>.csv``
-  * ``output/training/epochs/{pd,lgd}/*.csv``
+  * ``output/manifests/<run_name>_<track>.csv``
+  * ``output/manifests/epochs/{pd,lgd}/*.csv``
   * ``logs/train_*.log``
   * The base TabPFN checkpoints in ``checkpoints/`` (NOT in the
     ``trained/`` subdir) are NEVER touched.
@@ -92,7 +92,7 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-from src.utils.paths import resolve_data_path, resolve_output_path, resolve_staging_path
+from src.utils.paths import logs_dir, resolve_data_path, resolve_output_path, resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -125,9 +125,9 @@ _DEFAULTS = {
     "data": {
         # data.paths.* — these match config/data.yaml verbatim.
         "processed":    "data/processed",
-        "dedup":        "data/dedup",
-        "manifest_pd":  "data/manifest_pd.csv",
-        "manifest_lgd": "data/manifest_lgd.csv",
+        "dedup":        "output/manifests/dedup",
+        "manifest_pd":  "output/manifests/manifest_pd.csv",
+        "manifest_lgd": "output/manifests/manifest_lgd.csv",
     },
     "train": {
         # train.checkpoint.trained_dir
@@ -225,7 +225,7 @@ def _data_stage_targets() -> dict[str, list[Path]]:
     manifest_lgd = resolve_output_path(
         _cfg_get(cfg, "paths", "manifest_lgd", default=d["manifest_lgd"]),
     )
-    logs_root = resolve_output_path("logs")
+    logs_root = logs_dir()
 
     out: dict[str, list[Path]] = {}
     out["Processed CSVs"] = (
@@ -254,9 +254,9 @@ def _train_stage_targets() -> dict[str, list[Path]]:
     )
 
     trained_root = resolve_staging_path(trained_dir_rel)
-    manifests_root = resolve_output_path("output/training/manifests")
-    epochs_root = resolve_output_path("output/training/epochs")
-    logs_root = resolve_output_path("logs")
+    manifests_root = resolve_output_path("output/manifests")
+    epochs_root = resolve_output_path("output/manifests/epochs")
+    logs_root = logs_dir()
 
     out: dict[str, list[Path]] = {}
     # Separate the rolling per-epoch eval snapshots (`*.epoch_eval.ckpt`)
@@ -287,7 +287,7 @@ def _eval_stage_targets() -> dict[str, list[Path]]:
 
     results_root = resolve_staging_path(results_base)
     figures_root = resolve_output_path("output/figures")
-    logs_root = resolve_output_path("logs")
+    logs_root = logs_dir()
 
     out: dict[str, list[Path]] = {}
     out["Benchmark CSVs"] = list(results_root.glob("**/*.csv"))

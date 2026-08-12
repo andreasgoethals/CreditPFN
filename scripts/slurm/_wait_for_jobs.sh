@@ -101,7 +101,7 @@ fi
 # COPIES any fallback checkpoints into staging before releasing eval. Copy,
 # not move: the training manifest records the $VSC_DATA paths and eval reads
 # them from there; the staging copy is the durable archive. Reclaim the
-# $VSC_DATA space later with scripts/clean_run.py once staging is verified.
+# $VSC_DATA space later with python -m src.utils.clean_run once staging is verified.
 STAGING_BASE="${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-/lustre1/project/stg_00211}}"
 case "${STAGING_BASE}" in
     */CreditPFN) STAGE="${STAGING_BASE}" ;;

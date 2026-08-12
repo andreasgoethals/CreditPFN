@@ -89,7 +89,7 @@ save format and the reload through TabICL's own inference wrappers.
 | Training | Two families, 48 trials/track, 50 epochs, per-epoch monitor every 5th epoch |
 | Evaluation | 5-fold CV per dataset, 50-trial Optuna for all four classical baselines, ~40 metric columns |
 | Tests | 275 passing (~6.5 min locally) |
-| Docs | README, VSC_GUIDE, CHECKPOINTS, DATA_PIPELINE all updated for two families |
+| Docs | README, docs/VSC.md, CHECKPOINTS, DATA_PIPELINE all updated for two families |
 | Literature | `tfm-library/` submodule (shared, read-only) — 40+ paper summaries plus a synthesis |
 
 **Two things must happen on the cluster before the next run:**

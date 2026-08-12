@@ -82,7 +82,7 @@ def _write_processed_dataset(
     pd.DataFrame(cols).to_csv(csv_path, index=False)
 
     # Manifest row.
-    manifest_path = out_root / "data" / f"manifest_{track}.csv"
+    manifest_path = out_root / "output" / "manifests" / f"manifest_{track}.csv"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     row = {
         "dataset_id":     dataset_id,

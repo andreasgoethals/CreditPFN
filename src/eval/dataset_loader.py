@@ -29,7 +29,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from src.utils.paths import resolve_data_path, resolve_output_path
+from src.utils.paths import manifests_dir, processed_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -74,11 +74,9 @@ class ProcessedDataset:
 # --------------------------------------------------------------------------- #
 
 
-def _read_manifest_row(track: str, dataset_id: str, *,
-                       manifest_template: str = "data/manifest_{track}.csv"
-                       ) -> dict:
+def _read_manifest_row(track: str, dataset_id: str) -> dict:
     """Look up one dataset_id's row in the per-track manifest."""
-    p = resolve_output_path(manifest_template.format(track=track))
+    p = manifests_dir() / f"manifest_{track}.csv"
     if not p.exists():
         raise FileNotFoundError(
             f"Manifest not found at {p}. Run the data pipeline first."
@@ -98,18 +96,12 @@ def _read_manifest_row(track: str, dataset_id: str, *,
 # --------------------------------------------------------------------------- #
 
 
-def load_processed_dataset(
-    track: str, dataset_id: str,
-    *,
-    processed_template: str = "data/processed/{track}/{dataset_id}.sanitized.csv",
-) -> ProcessedDataset:
+def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
     """Read the sanitised CSV + manifest row → :class:`ProcessedDataset`."""
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
 
-    csv_path = resolve_data_path(
-        processed_template.format(track=track, dataset_id=dataset_id)
-    )
+    csv_path = processed_dir(track, f"{dataset_id}.sanitized.csv")
     if not csv_path.exists():
         raise FileNotFoundError(
             f"Processed CSV not found: {csv_path}\n"

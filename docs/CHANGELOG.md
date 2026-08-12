@@ -1,37 +1,55 @@
-# Agent change history
+# Changelog
 
-Concise hand-off log between Claude and Codex: what changed, what was
-reviewed, what was deliberately left alone, and why — so neither agent has to
-reconstruct a prior chat session. Read it at the start of every repository
-task; add an entry before ending every request or session, read-only ones
-included.
+What changed in this repository, newest first. One chapter per date, `DD-MM-YYYY`; one bullet per
+change, as short as it can be — the *what*, plus the *why* only when it is not obvious. The detail
+belongs in the commit.
 
-## House style (follow exactly)
+Two things do NOT go here: what a cluster run measured and what turned out not to work — both live
+in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Durable facts go in `RESULTS.md`, `CODE_NOTES.md` and
+`ROW_CAPS.md`.
 
-1. **One `##` heading per DAY**, written `## DD-MM-YYYY`, **newest at the
-   TOP of the file**. If today's heading already exists, add your change at
-   the top of that day — never open a second heading for the same day.
-2. **One `###` heading per CHANGE**, ending in `— Claude` or `— Codex`.
-   Title it as a short imperative claim ("Correct the TabICL row caps"), not
-   a topic label ("row caps").
-3. **Each change gets exactly these bullets**, in this order. Omit a bullet
-   only when it genuinely does not apply:
-   - `**What:**` what changed, in 1–3 sentences.
-   - `**Why:**` the reason, in 1 sentence.
-   - `**Verified:**` how it was checked (test count, log inspected, etc.).
-4. **Cap a change at ~8 lines.** Long bug lists become a nested bullet list
-   of one line each. If it will not fit, it belongs in `docs/` and this entry
-   should link to it.
-5. **Facts, not narrative.** No command output, raw logs, dataset contents,
-   secrets, or anything already in the permanent docs.
-6. **Never rewrite an older day.** If a past entry became wrong, say so in
-   today's entry and mark the old one superseded. (The whole file was
-   restructured once, on 07-08-2026, to newest-first + DD-MM-YYYY.)
-7. **Division of labour.** Transient findings and pitfalls →
-   `docs/AGENTS_MEMORY.md` (gitignored). Durable facts → the committed docs
-   alongside this file. This file records only *changes*.
+Entries above 11-08-2026 follow this rule. Below it they use an older, longer house style
+(`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
+day is never rewritten.
 
----
+## 11-08-2026
+
+- **Brought the repository in line with the renewed `docs/TEMPLATE.md`** — a starting point rather
+  than a contract, so the previous pass's compliance test, `scripts/check.py`, CI workflow and
+  `CITATION.cff` are gone, and the `tunable:` → `sweep:` config rename is reverted.
+- `src/utils/paths.py` is now the template's file with a marked **project layer** underneath: the
+  four `resolve_*` functions, the `paths.data_source` knob and the writability probe. The template's
+  `outputs_dir`/`results_dir`/`raw_dir`/`processed_dir`/`checkpoints_dir` delegate to it, so both
+  APIs resolve to the same paths — asserted in `tests/test_paths.py`, not assumed.
+- **Everything generated now lives under `output/`.** `output/runs/epochs/` → `output/manifests/`,
+  `data/manifest_{track}.csv` → `output/manifests/`, `data/dedup/` → `output/manifests/dedup/`, and
+  run logs from `<root>/logs/` → `output/logs/` (all 8 SLURM scripts updated). Deleted a stale
+  `output/training/` tree from a June layout nothing references.
+- Utilities moved out of `scripts/`, which now holds only the four experiments and `slurm/`:
+  `clean_run.py`, `run_notebooks.py`, `update_tfm_library.py`, `config.py`, `logging_setup.py` are
+  the template's files under `src/utils/`, run with `python -m`. `clean_run` keeps this project's
+  extra targets (trained weights on **both** tiers, `.sentinels/`) and its refusal list.
+- `src/visualize/style.py` filled in: an 11-entry Okabe–Ito palette keyed by **entity**, and all 29
+  `figsize=` calls in `eval_viz`/`training_viz` now go through `style.figsize(WIDTH_FULL, ratio=…)`.
+  Colours used to come from `cm.get_cmap("tab10", n)` indexed by list position, so dropping one arm
+  from a plot repainted every arm after it.
+- Notebooks: three real bugs fixed — the repo-root probe still looked for `src/utils/training_viz.py`
+  and would have walked past the root; `FigureSaver` was keyed on an underscored name the runner
+  never reads, so `CAPTIONS.md` and `All_Results.md` saw zero figures; and `display()` is an IPython
+  builtin the runner does not provide. Also added `style.apply()` and stripped the hand-written
+  `NN_` prefixes the saver now supplies. `python -m src.utils.run_notebooks`: **6/6, 79 figures.**
+- `docs/AGENTS_MEMORY.md` is tracked and rewritten in the new two-part shape: a **Runs table**
+  seeded with all nine cluster runs and probes since 03-07-2026, then the 28 dead ends unchanged.
+- `src/utils/run_log.py` → `logging_setup.py`, the template's name for that slot, keeping this
+  project's implementation (SLURM-array-aware filenames, structured formatter). Two modules
+  configuring logging is the drift the template exists to prevent.
+- `src/utils/config.py` fills in the template's one ask: `dump_resolved()` writes the fully
+  resolved config, storage roots and SLURM ids to `output/manifests/resolved/` at every entry
+  point. The YAML in `config/` may have been edited since a result was produced.
+- `CLAUDE.md` is now one line, `@AGENTS.md`; `AGENTS.md` is the template's with a CreditPFN section.
+- Processed-data CSVs are written atomically (temp file + `os.replace`) in
+  `src/data/{dedup,register,sanitize}.py` — a job killed mid-write left a truncated CSV that pandas
+  parses happily and training silently used.
 
 ## 08-08-2026
 
@@ -305,7 +323,7 @@ included.
 
 ### Move the agent log and memory into docs/ — Claude
 
-- **What:** `AGENTS_HISTORY.md` → `docs/AGENTS_HISTORY.md` (via `git mv`, so
+- **What:** `CHANGELOG.md` → `docs/CHANGELOG.md` (via `git mv`, so
   the rename is tracked) and `AGENTS_MEMORY.md` → `docs/AGENTS_MEMORY.md`.
   Updated every pointer: `CLAUDE.md` and `AGENTS.md` (4 lines each),
   `CLAUDE.local.md`, the two `.gitignore` comments, this file's house-style
@@ -398,7 +416,7 @@ included.
 
 - **What:** Converted the papers/repositories/literature docs into the shared
   `TFM_Library` repo, mounted at `tfm-library/` (branch-tracking main), and
-  updated every reference across README, VSC_GUIDE, CLAUDE.md/AGENTS.md,
+  updated every reference across README, docs/VSC.md, CLAUDE.md/AGENTS.md,
   `.gitignore`, src, config, docs and tests. Upstream renames:
   `LITERATURE`→`SUMMARIES`, `summary`→`SYNTHESIS`.
 - **Why:** One canonical knowledge base shared across projects instead of

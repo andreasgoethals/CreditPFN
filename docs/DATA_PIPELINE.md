@@ -8,7 +8,7 @@ classical-baseline eval pipeline) that need DIFFERENT preprocessing.
 
 The whole data stage runs on a single **wICE CPU node** (`batch`
 partition, no GPU — see `scripts/slurm/data.slurm` and
-[docs/VSC_GUIDE.md](VSC_GUIDE.md)). It is the only stage that does not
+[docs/VSC.md](VSC.md)). It is the only stage that does not
 need a GPU.
 
 Read this end-to-end the first time. The "Quick reference" at the
@@ -20,12 +20,12 @@ bottom is for revisits.
 > — `data/raw/` and the sanitized `data/processed/` CSVs — lives in
 > **project staging** `<staging>/CreditPFN` (large, persistent, the one
 > tier both wICE and Mindwell can see). The smaller, durable
-> diagnostics — the dedup reports (`data/dedup/`) and the manifests
-> (`data/manifest_{pd,lgd}.csv`) — ALWAYS resolve to the **output root**
+> diagnostics — the dedup reports (`output/manifests/dedup/`) and the manifests
+> (`output/manifests/manifest_{pd,lgd}.csv`) — ALWAYS resolve to the **output root**
 > `$VSC_DATA/CreditPFN` (NFS, backed up). `data_source` can be flipped to
 > `"scratch"` (`$VSC_SCRATCH/CreditPFN`, purged ~30 d) or `"data"`
 > (`$VSC_DATA/CreditPFN`); on a laptop the knob is ignored and everything
-> sits under the repo root. See [docs/VSC_GUIDE.md](VSC_GUIDE.md) for the
+> sits under the repo root. See [docs/VSC.md](VSC.md) for the
 > storage-tier rationale.
 
 ---
@@ -46,7 +46,7 @@ bottom is for revisits.
 │  src/data/dedup.py --pass pre                                     │
 │  Detects within-track dataset duplicates BEFORE any cleaning.     │
 │  Writes a report; does not remove anything.                       │
-│  → data/dedup/doubles_{pd,lgd}_pre.csv   [output root, durable]   │
+│  → output/manifests/dedup/doubles_{pd,lgd}_pre.csv   [output root, durable]   │
 └──────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -56,7 +56,7 @@ bottom is for revisits.
 │  Reads each raw CSV. Applies surgical fixes (drop ID columns,     │
 │  parse bespoke string formats, decode "5yrs 3mon" → months,       │
 │  remove leakage columns). Computes per-dataset metadata.          │
-│  → data/manifest_{pd,lgd}.csv            [output root, durable]   │
+│  → output/manifests/manifest_{pd,lgd}.csv [output root, durable]  │
 │    (one row per dataset: n_rows, n_cols, missing rate, class      │
 │     balance, target mean/std, content-aware shape hash)           │
 └──────────────────────────────────────────────────────────────────┘
@@ -76,7 +76,7 @@ bottom is for revisits.
 │  STAGE 4 — Dedup POST pass (diagnostic only)                      │
 │  src/data/dedup.py --pass post                                    │
 │  Catches duplicates that only become identical after sanitize.    │
-│  → data/dedup/doubles_{pd,lgd}_post.csv  [output root, durable]   │
+│  → output/manifests/dedup/doubles_{pd,lgd}_post.csv  [output root, durable]   │
 └──────────────────────────────────────────────────────────────────┘
                               │
             ┌─────────────────┴──────────────────┐
@@ -303,10 +303,10 @@ repo root.
 
 | Stage | Module | Reads | Writes |
 |---|---|---|---|
-| 1 | `src/data/dedup.py --pass pre`  | `data/raw/{pd,lgd}/<id>.csv` [stg] | `data/dedup/doubles_<track>_pre.csv` [out] |
-| 2 | `src/data/register.py`          | `data/raw/{pd,lgd}/` [stg]            | `data/manifest_{pd,lgd}.csv` [out] |
+| 1 | `src/data/dedup.py --pass pre`  | `data/raw/{pd,lgd}/<id>.csv` [stg] | `output/manifests/dedup/doubles_<track>_pre.csv` [out] |
+| 2 | `src/data/register.py`          | `data/raw/{pd,lgd}/` [stg]            | `output/manifests/manifest_{pd,lgd}.csv` [out] |
 | 3 | `src/data/sanitize.py`          | `data/raw/` [stg] + manifest          | `data/processed/{pd,lgd}/<id>.sanitized.csv` [stg] |
-| 4 | `src/data/dedup.py --pass post` | `data/processed/` [stg]               | `data/dedup/doubles_<track>_post.csv` [out] |
+| 4 | `src/data/dedup.py --pass post` | `data/processed/` [stg]               | `output/manifests/dedup/doubles_<track>_post.csv` [out] |
 | 5a | `src/train/dataloader.py` + `src/train/tabpfn_preprocessing.py` | `data/processed/.../*.sanitized.csv` [stg] | Live tensors (no disk artefact) |
 | 5b | `src/eval/benchmark.py` + `src/model/{boosting,linear,tabpfn_models}.py` | `data/processed/.../*.sanitized.csv` [stg] | Eval CSVs at `output/results/...` [stg] |
 

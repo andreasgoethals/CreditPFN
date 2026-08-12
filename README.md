@@ -106,7 +106,7 @@ specific objectives:
 > The real workflow lives on an HPC cluster. This project was
 > developed against KU Leuven's VSC (Flemish Supercomputer Centre);
 > step-by-step VSC-specific instructions live in
-> [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md). The notes below are
+> [`docs/VSC.md`](docs/VSC.md). The notes below are
 > general and will adapt to any SLURM-managed cluster with a CUDA GPU
 > partition.
 
@@ -172,7 +172,7 @@ overridable via `$CREDITPFN_STAGING_ROOT` / `$TABPFN_STAGING_ROOT`);
 small bookkeeping (logs, manifests, figures) lives on `$VSC_DATA`.
 Because VSC clusters have separate Slurm controllers, the stages are
 **not** `afterok`-chained across clusters — see chapter 5 and
-[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) for the storage tiers,
+[`docs/VSC.md`](docs/VSC.md) for the storage tiers,
 cluster table, partitions, and a failure-mode cheat sheet.
 
 To run a single stage by hand, the per-stage SLURM templates live in
@@ -315,14 +315,14 @@ stripped-down CI image.
 | File | What it is |
 |---|---|
 | [`docs/PAPER_ROADMAP.md`](docs/PAPER_ROADMAP.md) | **Start here for the scientific status.** Plain-language account of what the experiments have shown, whether the contribution is novel (with the nearest-neighbour papers), and the ordered list of what is still missing before writing a paper. |
-| [`docs/AGENTS_HISTORY.md`](docs/AGENTS_HISTORY.md) | Hand-off log between Claude and Codex — one heading per day, one per change, in a fixed What/Why/Verified shape (its "House style" section is the contract). Read it to see what an agent changed recently and why. Its gitignored sibling `docs/AGENTS_MEMORY.md` holds transient findings and pitfalls and exists only in a local checkout. |
+| [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | Hand-off log between Claude and Codex — one heading per day, one per change, in a fixed What/Why/Verified shape (its "House style" section is the contract). Read it to see what an agent changed recently and why. Its gitignored sibling `docs/AGENTS_MEMORY.md` holds transient findings and pitfalls and exists only in a local checkout. |
 | [`docs/ROW_CAPS.md`](docs/ROW_CAPS.md) | Single authority on context-size limits — how many rows each model sees per training step and per eval fold, the B200 measurements behind every cap, member-aware scaling, TabICL's cuDNN attention ceiling, and how to re-probe. The config files hold the numbers; this holds the reasoning. |
 | [`docs/DATA_PIPELINE.md`](docs/DATA_PIPELINE.md) | Deep-dive on the data stage: one raw CSV's full journey through dedup → register → sanitize, plus the two divergent downstream preprocessing paths (TabPFN vs classical baselines). Companion to `config/data.yaml`. |
 | [`docs/CHECKPOINTS.md`](docs/CHECKPOINTS.md)     | Inventory of every base `.ckpt` we ship (TabPFN v2.6 / v3 and TabICL v2): training data (synthetic-only), sample/feature caps, save formats per family, licence terms, and the one-time TabICL staging command. Cross-referenced to the HF model cards and Grinsztajn et al. 2026 (arXiv:2511.08667). |
 | [`tfm-library/SUMMARIES.md`](tfm-library/SUMMARIES.md)       | Chronological tour of every paper under `tfm-library/papers/`, with a "For CreditPFN" pointer per paper. The most directly relevant works (Real-TabPFN, TabPFNv2, TabPFN-2.5, TabPFN-3, Rubachev finetuning, TabPFN-Wide) are flagged at the top. |
 | [`tfm-library/SYNTHESIS.md`](tfm-library/SYNTHESIS.md)             | Cross-paper synthesis of the whole tabular-foundation-model paradigm (PFNs → TabPFN line → scaling → adaptation → extensions → critique), with a lineage timeline, design-axis comparison, and a one-card-per-paper appendix. Narrative companion to the per-paper `SUMMARIES.md`. |
 | [`tfm-library/REPOSITORIES.md`](tfm-library/REPOSITORIES.md)   | What each `tfm-library/repositories/*.txt` dump is, why we keep it, and which lines to grep when designing each pipeline stage. Refresh script: `python tfm-library/scripts/refresh_repositories.py`. |
-| [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md)         | **VSC-specific deployment guide** (KU Leuven's Vlaamse Supercomputer Centre): OnDemand portal, conda env, dataset upload, partition / GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this only when you're about to deploy on VSC; everything in this README applies to any SLURM cluster. |
+| [`docs/VSC.md`](docs/VSC.md)         | **VSC-specific deployment guide** (KU Leuven's Vlaamse Supercomputer Centre): OnDemand portal, conda env, dataset upload, partition / GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this only when you're about to deploy on VSC; everything in this README applies to any SLURM cluster. |
 
 <a id="47-papers-and-repositories--reference-material"></a>
 
@@ -415,7 +415,7 @@ loud warning when the compute node can't write staging (the Mindwell
 failure mode of 2026-07-03); the eval gate then archives any fallback
 checkpoints into staging automatically, so the durable copy of every
 big artefact always ends up in project storage. See
-[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) §0.2.
+[`docs/VSC.md`](docs/VSC.md) §0.2.
 
 ---
 
@@ -577,7 +577,7 @@ TabPFN's package handles these internally — see
 
 A thin orchestrator over `src/train/`. **Continued pretraining runs only
 on the Mindwell B200 cluster** (192 GiB VRAM) — see
-[`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md). The single source of truth for
+[`docs/VSC.md`](docs/VSC.md). The single source of truth for
 hyperparameters is [`config/train.yaml`](config/train.yaml), in three
 layers:
 
@@ -693,7 +693,7 @@ Two paths into the train/test split, both in `cfg.corpus`:
 | 5 specific PD datasets, 1 HP set             | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0009.bank_status]'` |
 | Full corpus, 1 HP set                        | `python scripts/train_pipeline.py --single` |
 | Full corpus, full HP grid                    | `python scripts/train_pipeline.py` |
-| Full corpus, full HP grid, on the cluster    | `bash scripts/slurm/run_full_pipeline.sh` — see [`docs/VSC_GUIDE.md`](docs/VSC_GUIDE.md) |
+| Full corpus, full HP grid, on the cluster    | `bash scripts/slurm/run_full_pipeline.sh` — see [`docs/VSC.md`](docs/VSC.md) |
 
 Hydra-style CLI overrides (`key=value`) write through the in-memory
 cfg; they are NOT persisted to `config/train.yaml`. A debug run does
@@ -1053,3 +1053,14 @@ package, the docs site, the v2.5 / v2.6 / v3 HuggingFace model cards (v2.5 kept 
 NanoTabPFN, the V2-Finetuning recipe, and the underlying PFN
 framework. Read-only — refresh with
 `python tfm-library/scripts/refresh_repositories.py`.
+
+## Based on the repository template
+
+This repository was created from
+[**andreasgoethals/0.-Template**](https://github.com/andreasgoethals/0.-Template).
+[`docs/TEMPLATE.md`](docs/TEMPLATE.md) is that template: it explains every folder and file here,
+and it is a **starting point, not a contract** — this project may grow past it, and deviating where
+the work needs it is fine as long as you say so. Generic rule changes belong at the source above.
+
+*Keep this chapter, at the bottom, in every project that starts from the template. Everything above
+it is that project's own.*

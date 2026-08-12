@@ -28,12 +28,12 @@ Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
 
   4. **Manifest CSV** + **per-epoch CSV**:
      * One row per trial appended to
-       ``output/training/manifests/<run_name>_<track>.csv`` (HP-tuple, checkpoint path,
+       ``output/manifests/<run_name>_<track>.csv`` (HP-tuple, checkpoint path,
        walltime, OK/FAIL). The eval pipeline
        (`scripts/eval_pipeline.py`) reads this to know which
        checkpoints to benchmark against the baselines.
      * One CSV per trial under
-       ``output/training/epochs/<track>/<descriptive_name>.csv`` with the
+       ``output/manifests/epochs/<track>/<descriptive_name>.csv`` with the
        per-epoch ``(epoch, train_loss, lr, elapsed_sec)`` — useful
        for diagnosing how the loss evolves across epochs.
 
@@ -81,8 +81,13 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.utils.paths import apply_data_source_from_cfg, resolve_output_path, resolve_staging_path  # noqa: E402
-from src.utils.run_log import resolve_run_log, setup_logging  # noqa: E402
+from src.utils.paths import (  # noqa: E402
+    apply_data_source_from_cfg,
+    manifests_dir,
+    resolve_staging_path,
+)
+from src.utils.config import dump_resolved  # noqa: E402
+from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
@@ -431,6 +436,9 @@ def run(
     # ---- 0) one log file per task: logs/<task>_<ts>.log -----------
     log, _ = resolve_run_log(log_path, task_name=f"train_{track}")
     setup_logging(log.path)
+
+    # The resolved config, next to the results it produced (see src/utils/config.py).
+    dump_resolved(cfg, f"train_{track}")
     LOGGER.info("train_pipeline: log=%s  cfg.track=%s  cfg.run_name=%s",
                 log.path, track, cfg.run_name)
 
@@ -483,14 +491,14 @@ def run(
         len(plan), track, plan_label, len(full_grid),
     )
 
-    csv_path = resolve_output_path("output/training/manifests") / f"{cfg.run_name}_{track}.csv"
+    csv_path = manifests_dir() / f"{cfg.run_name}_{track}.csv"
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # ---- 3) per-trial training
     from src.train.loop import descriptive_name, train_one_config
 
-    # Per-epoch CSVs live in output/training/epochs/<track>/<descriptive_name>.csv
-    epoch_csv_dir = resolve_output_path("output/training/epochs") / track
+    # Per-epoch CSVs live in output/manifests/epochs/<track>/<descriptive_name>.csv
+    epoch_csv_dir = manifests_dir() / "epochs" / track
     epoch_csv_dir.mkdir(parents=True, exist_ok=True)
 
     rows: list[RunRow] = []

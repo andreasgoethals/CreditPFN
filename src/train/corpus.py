@@ -46,7 +46,7 @@ from typing import Sequence
 import numpy as np
 import pandas as pd
 
-from src.utils.paths import resolve_data_path, resolve_output_path
+from src.utils.paths import manifests_dir, processed_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,13 +92,15 @@ class CorpusSplit:
 # --------------------------------------------------------------------------- #
 
 
-_MANIFEST_TEMPLATE = "data/manifest_{track}.csv"
-_PROCESSED_TEMPLATE = "data/processed/{track}/{dataset_id}.sanitized.csv"
+#: Filenames only — the DIRECTORY comes from `src/utils/paths.py`, which is the one
+#: module allowed to know which storage tier each of these lives on.
+_MANIFEST_NAME = "manifest_{track}.csv"
+_PROCESSED_NAME = "{dataset_id}.sanitized.csv"
 
 
 def _read_manifest(track: str) -> pd.DataFrame:
-    """Read ``data/manifest_{track}.csv`` from the durable output root."""
-    p = resolve_output_path(_MANIFEST_TEMPLATE.format(track=track))
+    """Read ``output/manifests/manifest_{track}.csv`` from the durable output root."""
+    p = manifests_dir() / _MANIFEST_NAME.format(track=track)
     if not p.exists():
         return pd.DataFrame()
     return pd.read_csv(p, dtype=str).fillna("")
@@ -124,9 +126,7 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
     refs: list[DatasetRef] = []
     for _, row in df.iterrows():
         did = row["dataset_id"]
-        csv = resolve_data_path(
-            _PROCESSED_TEMPLATE.format(track=track, dataset_id=did)
-        )
+        csv = processed_dir(track, _PROCESSED_NAME.format(dataset_id=did))
         if not csv.exists():
             LOGGER.warning(
                 "missing sanitized CSV for %s/%s at %s — skipped",

@@ -24,14 +24,14 @@
 #  …or just `bash scripts/slurm/run_full_pipeline.sh`, which sizes the
 #  array and targets the right cluster automatically.
 #
-#  STORAGE (see docs/VSC_GUIDE.md "Storage tiers"):
+#  STORAGE (see docs/VSC.md "Storage tiers"):
 #    * Datasets + base ckpts + trained ckpts -> project staging
 #      ($CREDITPFN_STAGING_ROOT, default /lustre1/project/stg_00211/CreditPFN).
 #      Staging is on Lustre. Mindwell prefers GPFS for SUSTAINED I/O, but our
 #      training only does a one-time startup read of the processed CSVs (then
 #      caches in RAM) + a single checkpoint write at the end — not sustained
 #      I/O — so direct Lustre access is fine. If a Mindwell job is ever killed
-#      for I/O, switch to the stage-in/out pattern documented in VSC_GUIDE.
+#      for I/O, switch to the stage-in/out pattern documented in docs/VSC.md.
 #    * Logs + manifests + per-epoch CSVs -> $VSC_DATA/CreditPFN (NFS, backed up).
 #
 #  ACCOUNT: lp_verbekelab (has Mindwell access — verified via
@@ -92,12 +92,12 @@ export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:T
 # the built-in /lustre1/project/stg_00211 default).
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
-         "${CREDITPFN_OUTPUT_ROOT}/output/training/manifests" \
-         "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/pd"
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs" \
+         "${CREDITPFN_OUTPUT_ROOT}/output/manifests" \
+         "${CREDITPFN_OUTPUT_ROOT}/output/manifests/epochs/pd"
 
 TS=$(date +%Y%m%d_%H%M%S)
-LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
+LOG="${CREDITPFN_OUTPUT_ROOT}/output/logs/train_pd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
 exec > "$LOG" 2>&1
 
 _log_exit() {

@@ -39,12 +39,12 @@ export PYTHONIOENCODING=utf-8
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs" \
-         "${CREDITPFN_OUTPUT_ROOT}/output/training/manifests" \
-         "${CREDITPFN_OUTPUT_ROOT}/output/training/epochs/lgd"
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs" \
+         "${CREDITPFN_OUTPUT_ROOT}/output/manifests" \
+         "${CREDITPFN_OUTPUT_ROOT}/output/manifests/epochs/lgd"
 
 TS=$(date +%Y%m%d_%H%M%S)
-LOG="${CREDITPFN_OUTPUT_ROOT}/logs/train_lgd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
+LOG="${CREDITPFN_OUTPUT_ROOT}/output/logs/train_lgd_${TS}_j${SLURM_ARRAY_JOB_ID}_a${SLURM_ARRAY_TASK_ID}.log"
 exec > "$LOG" 2>&1
 
 _log_exit() {

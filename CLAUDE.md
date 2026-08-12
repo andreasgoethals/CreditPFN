@@ -1,26 +1,12 @@
-# Shared agent instructions
+@AGENTS.md
 
-These repository-level instructions apply to Claude and any Claude subagents.
+<!--
+  Claude Code reads CLAUDE.md, not AGENTS.md. Every other agent (Codex, Cursor, Copilot,
+  Windsurf, ...) reads AGENTS.md. So AGENTS.md is the single source of truth and this file is a
+  one-line import of it — nothing is duplicated, and nothing has to be kept in sync.
 
-At the start of every task in this repository:
+  A symlink would also work, but not on Windows without Administrator or Developer Mode, so the
+  `@AGENTS.md` import above is the portable form.
 
-1. Read `docs/AGENTS_MEMORY.md` completely if it exists. It is gitignored shared
-   local memory containing experiment findings, prior bugs, and deliberate
-   implementation choices. Preserve its compact/current maintenance rules.
-2. Read `docs/AGENTS_HISTORY.md` before editing so you know what Codex and Claude
-   changed previously and why.
-3. Treat the literature and upstream repository dumps as evidence, but verify
-   claims against the primary paper or implementation when sources disagree.
-   They live in the `tfm-library/` git submodule (the shared TFM_Library
-   repository) — read `tfm-library/AGENTS.md` before editing anything inside
-   it, and remember its content is shared with other projects.
-
-Before finishing every user request or agent session, append one concise entry
-to `docs/AGENTS_HISTORY.md` with the date, agent (`Claude`), what changed or was
-reviewed, and why. Record read-only work as "no repository changes" when
-applicable. Do not put secrets, credentials, private dataset contents, or large
-log excerpts in either agent file.
-
-Keep durable scientific and operational facts in the committed documentation;
-use `docs/AGENTS_MEMORY.md` only for transient findings and pitfalls that should not
-be committed.
+  Claude-specific instructions, if this project ever needs any, go below the import.
+-->

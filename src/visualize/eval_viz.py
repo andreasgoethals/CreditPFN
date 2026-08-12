@@ -38,6 +38,8 @@ from typing import Iterable, Sequence
 import numpy as np
 import pandas as pd
 
+from src.visualize import style
+
 LOGGER = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parents[2]
@@ -54,7 +56,9 @@ def _load_eval_cfg():
         return OmegaConf.load(_REPO / "config" / "eval.yaml")
     except Exception:  # pragma: no cover  — fallback for missing dep
         from types import SimpleNamespace as _NS
-        return _NS(results=_NS(base_dir="output/results"))
+
+        from src.utils.paths import results_dir
+        return _NS(results=_NS(base_dir=str(results_dir())))
 
 
 def _resolve_paths():
@@ -67,9 +71,9 @@ def _resolve_paths():
     except Exception:  # pragma: no cover
         pass
 
-    from src.utils.paths import resolve_staging_path
+    from src.utils.paths import resolve_staging_path, results_dir
     cfg = _load_eval_cfg()
-    base = str(cfg.results.base_dir) if hasattr(cfg, "results") else "output/results"
+    base = str(cfg.results.base_dir) if hasattr(cfg, "results") else str(results_dir())
     return {
         "benchmark_root": resolve_staging_path(base),
     }
@@ -324,7 +328,7 @@ def winrate_matrix(
 # =============================================================================
 
 
-def _new_fig(title: str, *, figsize=(9, 5.5)):
+def _new_fig(title: str, *, figsize=style.figsize(style.WIDTH_FULL, ratio=0.611)):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
     ax.set_title(title)
@@ -334,20 +338,32 @@ def _new_fig(title: str, *, figsize=(9, 5.5)):
 
 def _no_data_fig(reason: str = "no data"):
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(6, 2))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.333))
     ax.text(0.5, 0.5, f"({reason})", ha="center", va="center",
             transform=ax.transAxes, fontsize=12, color="#888")
     ax.set_axis_off()
     return fig
 
 
-def _palette_for_methods(methods: Sequence[str]) -> dict[str, tuple]:
-    import matplotlib.cm as cm
-    methods = list(dict.fromkeys(methods))
-    if not methods:
-        return {}
-    cmap = cm.get_cmap("tab20", max(len(methods), 3))
-    return {m: cmap(i % cmap.N)[:3] for i, m in enumerate(methods)}
+def _palette_for_methods(methods: Sequence[str]) -> dict[str, str]:
+    """One colour per method, from `src/visualize/style.py`.
+
+    Keyed on the method name rather than its index, so a method keeps its colour
+    across every figure even when a plot drops or reorders arms.
+    """
+    from src.visualize.style import color
+    return {m: color(_method_series_name(m)) for m in dict.fromkeys(methods)}
+
+
+def _method_series_name(method: str) -> str:
+    """Map an eval method dirname onto a registered `style.COLORS` name."""
+    m = method.lower()
+    for tag in ("tabicl", "v2.6", "v3", "xgboost", "lightgbm", "catboost"):
+        if tag in m:
+            return tag
+    if "logreg" in m or "linreg" in m or "ridge" in m:
+        return "linear"
+    return method
 
 
 # =============================================================================
@@ -364,7 +380,7 @@ def plot_leaderboard(track: str, *, metric: str | None = None):
     direction = metric_direction(metric)
     fig, ax = _new_fig(
         f"Leaderboard — {metric} ({'higher is better' if direction == 'max' else 'lower is better'})  ·  track={track}",
-        figsize=(11, max(4.5, 0.32 * len(agg))),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4.5, 0.32 * len(agg))) / (11)),
     )
     palette = _palette_for_methods(agg["method_name"].tolist())
     colors = [palette[m] for m in agg["method_name"]]
@@ -391,7 +407,7 @@ def plot_metric_boxplot(track: str, *, metric: str | None = None):
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
         f"{metric} by method — track={track}",
-        figsize=(max(8, 0.55 * len(order)), 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
     )
     data = [df.loc[df["method_name"] == m, metric].dropna().values for m in order]
     bp = ax.boxplot(
@@ -429,8 +445,7 @@ def plot_per_dataset_heatmap(track: str, *, metric: str | None = None):
     )
     pivot = pivot.loc[order]
     fig, ax = plt.subplots(
-        figsize=(max(8, 0.45 * pivot.shape[1]),
-                 max(5, 0.32 * pivot.shape[0])),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(max(5, 0.32 * pivot.shape[0])) / (max(8, 0.45 * pivot.shape[1]))),
     )
     cmap = "viridis" if direction == "max" else "viridis_r"
     im = ax.imshow(pivot.values, aspect="auto", cmap=cmap)
@@ -450,7 +465,9 @@ def plot_per_dataset_heatmap(track: str, *, metric: str | None = None):
                             else v > np.nanmedian(pivot.values))
                         else "black")
     fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02)
-    fig.tight_layout()
+    # No tight_layout: style.py turns constrained_layout ON, and calling both makes
+    # matplotlib warn and discard one of them. constrained_layout fits the content
+    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -469,8 +486,7 @@ def plot_winrate_matrix(track: str, *, metric: str | None = None):
     order = mat.mean(axis=1).sort_values(ascending=False).index
     mat = mat.loc[order, order]
     fig, ax = plt.subplots(
-        figsize=(max(7, 0.55 * mat.shape[0]),
-                 max(6, 0.5 * mat.shape[0])),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(max(6, 0.5 * mat.shape[0])) / (max(7, 0.55 * mat.shape[0]))),
     )
     im = ax.imshow(mat.values * 100.0, vmin=0, vmax=100, cmap="RdYlGn")
     ax.set_xticks(range(mat.shape[1]))
@@ -487,7 +503,9 @@ def plot_winrate_matrix(track: str, *, metric: str | None = None):
                         fontsize=7,
                         color="black" if 0.2 < v < 0.8 else "white")
     fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02, label="row wins  (%)")
-    fig.tight_layout()
+    # No tight_layout: style.py turns constrained_layout ON, and calling both makes
+    # matplotlib warn and discard one of them. constrained_layout fits the content
+    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -512,7 +530,7 @@ def plot_method_vs_method_scatter(
         return _no_data_fig("no shared datasets between the two methods")
     fig, ax = _new_fig(
         f"{method_b} vs {method_a} — {metric} (track={track})",
-        figsize=(6.5, 6.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=1.000),
     )
     ax.scatter(a[mask], b[mask], s=55, alpha=0.85, edgecolor="black", linewidth=0.4)
     for ds in a[mask].index:
@@ -565,7 +583,7 @@ def plot_trained_vs_untuned(
 
     fig, ax = _new_fig(
         f"Trained vs untuned TabPFN — {metric} (track={track})",
-        figsize=(7, 7),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=1.000),
     )
     palette = _palette_for_methods(list(merged["base_short"].unique()))
     for base, grp in merged.groupby("base_short"):
@@ -603,7 +621,7 @@ def plot_fold_stability(track: str, *, metric: str | None = None):
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
         f"Fold-level stability — std({metric}) per (method × dataset)",
-        figsize=(max(8, 0.55 * len(order)), 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
     )
     data = [stds.loc[stds["method_name"] == m, metric].values for m in order]
     bp = ax.boxplot(data, labels=order, patch_artist=True,
@@ -630,7 +648,7 @@ def plot_time_vs_metric(track: str, *, metric: str | None = None):
         return _no_data_fig(f"no results / missing column")
     fig, ax = _new_fig(
         f"Inference time vs {metric} — track={track}",
-        figsize=(9, 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     methods = sorted(df["method_name"].unique())
     palette = _palette_for_methods(methods)
@@ -665,7 +683,7 @@ def plot_metric_correlation(track: str):
     if len(present) < 2:
         return _no_data_fig("need ≥ 2 metric columns")
     corr = df[present].corr()
-    fig, ax = plt.subplots(figsize=(0.6 * len(present) + 2, 0.6 * len(present) + 2))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=(0.6 * len(present) + 2) / (0.6 * len(present) + 2)))
     im = ax.imshow(corr.values, vmin=-1, vmax=1, cmap="RdBu_r")
     ax.set_xticks(range(len(present)))
     ax.set_xticklabels(present, rotation=45, ha="right")
@@ -679,7 +697,9 @@ def plot_metric_correlation(track: str):
                 ax.text(j, i, f"{v:.2f}", ha="center", va="center", fontsize=7,
                         color="white" if abs(v) > 0.6 else "black")
     fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02)
-    fig.tight_layout()
+    # No tight_layout: style.py turns constrained_layout ON, and calling both makes
+    # matplotlib warn and discard one of them. constrained_layout fits the content
+    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -695,7 +715,7 @@ def plot_threshold_distribution(track: str):
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
         "F1-tuned thresholds — per method (PD)",
-        figsize=(max(8, 0.55 * len(order)), 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
     )
     data = [sub.loc[sub["method_name"] == m, "optimal_threshold"].values for m in order]
     bp = ax.boxplot(data, labels=order, patch_artist=True,
@@ -736,7 +756,7 @@ def plot_top_method_per_dataset(track: str, *, metric: str | None = None):
     palette = _palette_for_methods(counts.index.tolist())
     fig, ax = _new_fig(
         f"Winning method per dataset — {metric} (track={track})",
-        figsize=(max(8, 0.4 * len(winner)), 4),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(4) / (max(8, 0.4 * len(winner)))),
     )
     for i, ds in enumerate(winner.index):
         m = winner.iloc[i]
@@ -774,7 +794,7 @@ def plot_dataset_difficulty(track: str, *, metric: str | None = None):
     worst = worst.loc[order]
     fig, ax = _new_fig(
         f"Per-dataset best vs worst — {metric}, track={track}",
-        figsize=(max(8, 0.32 * len(order)), 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.32 * len(order)))),
     )
     x = np.arange(len(order))
     ax.plot(x, best.values, marker="o", label="best method", linewidth=1.5)
@@ -809,7 +829,7 @@ def plot_baselines_vs_tabpfn(track: str, *, metric: str | None = None):
     direction = metric_direction(metric)
     fig, ax = _new_fig(
         f"Classical baselines vs foundation models — {metric}",
-        figsize=(7, 5.5),
+        figsize=style.figsize(style.WIDTH_FULL, ratio=0.786),
     )
     _groups = ("classical", "tabpfn", "tabicl", "other")
     data = [df.loc[df["group"] == g, metric].dropna().values

@@ -86,7 +86,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.data.preprocessing import DATASET_METADATA
+from src.data.preprocessing import DATASET_METADATA, write_csv_atomic
 from src.utils.paths import resolve_data_path, resolve_output_path
 
 LOGGER = logging.getLogger(__name__)
@@ -433,7 +433,7 @@ def main(cfg=None, pass_name: str = "pre") -> int:
             "dataset_path", "dataset_name", "duplicate_of",
             "detection_method", "confidence",
         ])
-        df.to_csv(out_path, index=False)
+        write_csv_atomic(df, out_path, index=False)
         LOGGER.info(
             "track=%s pass=%s: %d duplicate records → %s",
             track, pass_name, len(records), out_path,

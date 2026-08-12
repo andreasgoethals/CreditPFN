@@ -663,7 +663,7 @@ def test_compare_pair_subset_detection() -> None:
 def test_exploration_corpus_summary_shape() -> None:
     """corpus_summary_table runs and returns expected schema."""
     from src.data.exploration import corpus_summary_table
-    pd_manifest = REPO / "data" / "manifest_pd.csv"
+    pd_manifest = REPO / "output" / "manifests" / "manifest_pd.csv"
     if not pd_manifest.exists():
         pytest.skip("manifests not yet built")
     df = corpus_summary_table()
@@ -684,8 +684,8 @@ def test_exploration_resolves_paths_from_cfg() -> None:
     from src.data.exploration import _resolve_paths
     cfg = NS(paths=NS(
         processed="data/processed",
-        manifest_pd="data/manifest_pd.csv",
-        manifest_lgd="data/manifest_lgd.csv",
+        manifest_pd="output/manifests/manifest_pd.csv",
+        manifest_lgd="output/manifests/manifest_lgd.csv",
     ))
     paths = _resolve_paths(cfg)
     assert paths["processed"].name == "processed"

@@ -28,7 +28,7 @@
 #  Or via `run_full_pipeline.sh` (recommended).
 #
 #  All slurm-level output goes to /dev/null; the *real* log is a
-#  single timestamped file `${OUTPUT_ROOT}/logs/data_<YYYYMMDD>_<HHMMSS>.log`
+#  single timestamped file `${OUTPUT_ROOT}/output/logs/data_<YYYYMMDD>_<HHMMSS>.log`
 #  (slurm boilerplate + python output + final summary line all in
 #  one place).
 # =============================================================================
@@ -71,10 +71,10 @@ export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 #   3. VSC default ($VSC_SCRATCH/CreditPFN)
 # Setting a default here would silently shadow the yaml (bug fix 2026-05-21).
 
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/logs"
+mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs"
 
 TS=$(date +%Y%m%d_%H%M%S)
-LOG="${CREDITPFN_OUTPUT_ROOT}/logs/data_${TS}_j${SLURM_JOB_ID}.log"
+LOG="${CREDITPFN_OUTPUT_ROOT}/output/logs/data_${TS}_j${SLURM_JOB_ID}.log"
 
 # Redirect everything from this point on (echo, nvidia-smi, python
 # stdout/stderr) to a single log file. Slurm `--output=/dev/null`
