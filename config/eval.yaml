@@ -34,7 +34,7 @@ cv:
 # 'tabicl'; 'default' is the fallback. Classical baselines are uncapped.
 # v2.6 is 50k = its published envelope (100k blew the walltime, 2026-07-13);
 # v3 and tabicl are effectively uncapped for our <=532k-row corpus.
-# Rationale + the TabICL inference caveat: docs/ROW_CAPS.md §2.
+# Rationale + the TabICLv2 inference caveat: docs/METHOD.md §2.
 max_rows_per_model:
   v3:      1000000
   v2.6:    50000
@@ -58,7 +58,7 @@ hpo:
 # are directly comparable to the training curves.
 tabpfn_n_estimators: 32
 
-# TabICL inference ensemble — SEPARATE from TabPFN's because its attention is
+# TabICLv2 inference ensemble — SEPARATE from TabPFN's because its attention is
 # quadratic in rows; 8 is upstream's own default. Each family's untuned and
 # trained arms share their family's value, keeping every comparison paired.
 tabicl_n_estimators: 8

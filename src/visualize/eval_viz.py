@@ -96,20 +96,29 @@ def _decode_method_dirname(d: str) -> dict:
     where each is filled when the dirname encodes it.
     """
     if d in _CLASSICAL_BASELINES:
-        return {"source": "baseline", "base_short": d,
-                "lr": np.nan, "use_lora": False, "full_pass": False}
+        return {"source": "baseline", "base_short": d, "lr": np.nan,
+                "use_lora": False, "full_pass": False, "min_train_rows": 0}
     m_src = re.match(r"^(?P<src>(?:tabpfn|tabicl)-(?:untuned|trained))__", d)
     if m_src and m_src["src"].endswith("-untuned"):
         return {"source": m_src["src"],
                 "base_short": d.removeprefix(m_src["src"] + "__"),
-                "lr": np.nan, "use_lora": False, "full_pass": False}
+                "lr": np.nan, "use_lora": False, "full_pass": False,
+                "min_train_rows": 0}
     if m_src:   # <family>-trained
         rest = d.removeprefix(m_src["src"] + "__")
-        # Dirname layout: <base>[__lr<lr>][__fullpass][__lora|__iclhead]
-        # — strip the tags back-to-front. (``__iclhead`` is the tabicl
-        # family's freeze-backbone rendering of the use_lora axis.)
+        # Dirname layout:
+        #   <base>[__lr<lr>][__fullpass][__min<rows>][__lora|__iclhead]
+        # Tags are stripped BACK-TO-FRONT, so every tag has to be known here: an
+        # unrecognised one is absorbed into `base_short` and takes the learning rate
+        # with it, which mis-groups every figure instead of failing. (`__iclhead` is
+        # the tabicl family's freeze-backbone rendering of the use_lora axis;
+        # `__min<rows>` is the corpus-size arm swept since run-8.)
         lora = rest.endswith(("__lora", "__iclhead"))
         rest = rest.removesuffix("__lora").removesuffix("__iclhead")
+        m_rows = re.search(r"__min(\d+)$", rest)
+        min_train_rows = int(m_rows.group(1)) if m_rows else 0
+        if m_rows:
+            rest = rest[: m_rows.start()]
         full_pass = rest.endswith("__fullpass")
         rest = rest.removesuffix("__fullpass")
         m = re.search(r"__lr([0-9eE.+\-]+)$", rest)
@@ -119,10 +128,11 @@ def _decode_method_dirname(d: str) -> dict:
         else:
             lr = np.nan
             base = rest
-        return {"source": m_src["src"], "base_short": base,
-                "lr": lr, "use_lora": lora, "full_pass": full_pass}
-    return {"source": "unknown", "base_short": d,
-            "lr": np.nan, "use_lora": False, "full_pass": False}
+        return {"source": m_src["src"], "base_short": base, "lr": lr,
+                "use_lora": lora, "full_pass": full_pass,
+                "min_train_rows": min_train_rows}
+    return {"source": "unknown", "base_short": d, "lr": np.nan,
+            "use_lora": False, "full_pass": False, "min_train_rows": 0}
 
 
 def human_method_name(row: pd.Series) -> str:

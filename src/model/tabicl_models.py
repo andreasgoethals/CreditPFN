@@ -1,4 +1,4 @@
-"""TabICL wrappers: untuned (the published v2 checkpoint) and trained
+"""TabICLv2 wrappers: untuned (the published v2 checkpoint) and trained
 (any checkpoint produced by ``scripts/train_pipeline.py`` for the tabicl
 family).
 
@@ -12,7 +12,7 @@ checkpoint would use.
 
 Family differences that matter here
 -----------------------------------
-* **No categorical-indices parameter.** TabICL's wrappers preprocess raw
+* **No categorical-indices parameter.** TabICLv2's wrappers preprocess raw
   features themselves (ordinal-encode / normalize per ensemble variant);
   the ``categorical_idx`` argument is accepted for interface parity and
   ignored. Our eval matrices are already numeric-sanitized, so this is a
@@ -20,7 +20,7 @@ Family differences that matter here
 * **``allow_auto_download=False`` always.** VSC compute nodes have no
   outbound network; a missing checkpoint must fail loudly rather than
   attempt an HF download mid-job (pre-stage from a login node instead —
-  see docs/CHECKPOINTS.md).
+  see docs/METHOD.md).
 * **``neg_log_likelihood`` returns None.** The regressor outputs 999
   quantiles, not a bar-distribution density, so TabPFN-style exact NLL
   does not exist. NEVER compare density metrics across families anyway
@@ -48,7 +48,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _sanitize(X: np.ndarray, *, dead_cols: np.ndarray | None = None,
               ) -> tuple[np.ndarray, np.ndarray]:
-    """Make a feature matrix safe for TabICL's sklearn wrappers.
+    """Make a feature matrix safe for TabICLv2's sklearn wrappers.
 
     Two upstream input constraints that TabPFN does NOT have (both
     MEASURED on tabicl 2.1.1, 2026-08-04, and both reachable from real
@@ -95,7 +95,7 @@ def _make_tabicl(task_type: str, model_path: str | Path, *,
         "n_estimators": int(n_estimators),
         "allow_auto_download": False,
     }
-    # TabICL's device param has no "auto" sentinel (None = torch default
+    # TabICLv2's device param has no "auto" sentinel (None = torch default
     # resolution, cuda-if-available) — translate our registry convention.
     if device and device != "auto":
         kwargs["device"] = device
@@ -103,7 +103,7 @@ def _make_tabicl(task_type: str, model_path: str | Path, *,
 
 
 class TabICLUntuned:
-    """Stock TabICL v2: the published HF checkpoint, no continued
+    """Stock TabICLv2 v2: the published HF checkpoint, no continued
     pretraining — the control for the tabicl family, exactly parallel
     to ``TabPFNUntuned``."""
 
@@ -128,7 +128,7 @@ class TabICLUntuned:
         X_val: np.ndarray | None = None,
         y_val: np.ndarray | None = None,
     ) -> None:
-        del X_val, y_val, categorical_idx   # no HPO; TabICL preprocesses raw features itself
+        del X_val, y_val, categorical_idx   # no HPO; TabICLv2 preprocesses raw features itself
         self._tabicl = _make_tabicl(
             self.task_type, self.base_path,
             device=self._device, n_estimators=self._n_estimators,
@@ -151,7 +151,7 @@ class TabICLUntuned:
 
 
 class TabICLTrained:
-    """A continued-pretrained TabICL checkpoint (written by
+    """A continued-pretrained TabICLv2 checkpoint (written by
     ``save_finetuned_tabicl``). ``extra`` metadata is forwarded to the
     eval CSV row, exactly parallel to ``TabPFNTrained``."""
 

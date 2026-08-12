@@ -106,10 +106,10 @@ anything is finished.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe`; on the cluster the
   conda env named `CreditPFN`, printed as `Active conda env:` in every job log. An active
   virtualenv silently beats `conda activate` (`AGENTS_MEMORY.md`, 05-08-2026).
-- **Where the knowledge lives.** `RESULTS.md` — what each run measured. `CODE_NOTES.md` — code that
-  looks wrong but is deliberate. `ROW_CAPS.md` — the measured context caps, do not raise one
-  without re-running the probe. `CHECKPOINTS.md` — bases, naming, save formats.
-  `DATA_PIPELINE.md` — what happens to a dataset at every stage. `PAPER_ROADMAP.md` — what is
+- **Where the knowledge lives.** `RESULTS.md` — what each run measured. `METHOD.md` — code that
+  looks wrong but is deliberate. `METHOD.md` — the measured context caps, do not raise one
+  without re-running the probe. `METHOD.md` — bases, naming, save formats.
+  `METHOD.md` — what happens to a dataset at every stage. `PAPER_ROADMAP.md` — what is
   missing before writing.
 - **The experiments are `scripts/{data,train,eval}_pipeline.py` and `probe_row_cap.py`**, submitted
   through `scripts/slurm/`. Everything else is a utility under `src/utils/`, run with `python -m`.

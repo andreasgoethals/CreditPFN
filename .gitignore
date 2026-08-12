@@ -215,15 +215,15 @@ __marimo__/
 !/data/.gitkeep
 !/data/README.md
 
-# Model checkpoints — share the folder structure + CHECKPOINTS.md
+# Model checkpoints — share the folder structure + METHOD.md
 # (so collaborators see which weights go where) but never commit
-# the actual .ckpt files. The negation rules below let CHECKPOINTS.md,
+# the actual .ckpt files. The negation rules below let METHOD.md,
 # any README, and a .gitkeep stub through; the universal weight-file
 # globs at the bottom catch everything else.
 checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/README.md
-# CHECKPOINTS.md moved to docs/CHECKPOINTS.md; the negation below is kept
+# METHOD.md moved to docs/METHOD.md; the negation below is kept
 # as a no-op so legacy checkouts that still have the file don't lose it.
 !checkpoints/CHECKPOINTS.md
 *.ckpt
@@ -294,7 +294,7 @@ Thumbs.db
 
 # docs/AGENTS_MEMORY.md is TRACKED as of 11-08-2026 (the template makes it a
 # required doc): a dead end nobody else can see gets paid for twice. Durable
-# facts live in docs/RESULTS.md and docs/CODE_NOTES.md, also tracked.
+# facts live in docs/RESULTS.md and docs/METHOD.md, also tracked.
 
 # CLAUDE.md IS tracked: it is one line, `@AGENTS.md`, so Claude Code and every other
 # agent read the same rules with nothing duplicated. Only the personal scratch file

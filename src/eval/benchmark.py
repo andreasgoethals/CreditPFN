@@ -238,6 +238,9 @@ def load_trained_handles(
             # Keeps full_pass vs one_sample checkpoints in separate result
             # dirs (legacy manifests lack the column → "one_sample").
             "epoch_pass_mode":     str(row.get("epoch_pass_mode", "one_sample")),
+            # Same reason, for the corpus-size arm (swept since run-8). Legacy
+            # manifests lack the column → 0, which produces the old dirname.
+            "min_train_rows":      int(row.get("min_train_rows", 0) or 0),
         }
         # Family from the manifest's base_checkpoint column — the trained
         # ckpt filename inherits the base stem, but the base column is the
@@ -743,7 +746,7 @@ _NAME_RE = re.compile(r"[^A-Za-z0-9_.-]")
 _BASE_RE = re.compile(
     r"tabpfn-(?P<v>v\d+(?:\.\d+)?)-(?:classifier|regressor)-v\d+(?:\.\d+)?_(?P<variant>.+)"
 )
-# TabICL checkpoint stems: ``tabicl-<role>-v<major>-<yyyymmdd>``.
+# TabICLv2 checkpoint stems: ``tabicl-<role>-v<major>-<yyyymmdd>``.
 _TABICL_BASE_RE = re.compile(
     r"tabicl-(?:classifier|regressor)-(?P<v>v\d+)-\d+"
 )
@@ -782,9 +785,18 @@ def _method_dirname(handle: ModelHandle) -> str:
     # full_pass checkpoints get a distinct dir so they don't collide with
     # the one_sample variant of the same (base, lr, lora).
     fp_tag = "__fullpass" if extra.get("epoch_pass_mode") == "full_pass" else ""
+    # Corpus-size arm (swept since run-8). Two trials that trained on different corpora
+    # are different experiments and must not share a results directory — sharing one
+    # would make their scores indistinguishable AND make skip-existing treat the second
+    # arm as already scored. Absent / 0 reproduces the pre-run-8 dirname exactly.
+    try:
+        min_rows = int(extra.get("min_train_rows", 0) or 0)
+    except (TypeError, ValueError):
+        min_rows = 0
+    rows_tag = f"__min{min_rows}" if min_rows else ""
     if lr is not None:
-        return f"{handle.source}__{short}__lr{lr:.0e}{fp_tag}{lora_tag}"
-    return f"{handle.source}__{short}{fp_tag}{lora_tag}"
+        return f"{handle.source}__{short}__lr{lr:.0e}{fp_tag}{rows_tag}{lora_tag}"
+    return f"{handle.source}__{short}{fp_tag}{rows_tag}{lora_tag}"
 
 
 def _output_path_for(

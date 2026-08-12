@@ -9,12 +9,36 @@
 
 
 # --- Section 0 · Tunable sweep (cartesian product) ---------------------------
-# 3 bases x 3 LRs x 2 adapt-modes x 2 qf x 1 acc x 1 pass-mode = 36/track.
-# Reshaped 2026-08-06: fewer configurations, each trained ~7x longer. The
-# 2026-08-05 run swept 48/track and every one of them was undertrained.
-# Two FAMILIES: TabPFN (v2.6, v3) + TabICL v2, detected from the filename.
-# v2.5 is not swept. TabICL checkpoints must be pre-staged from a login node.
-# Rationale: README §7. Checkpoint inventory + staging: docs/CHECKPOINTS.md.
+# RESHAPED FOR RUN-8 (12-08-2026): 16 trials/track, each trained at Real-TabPFN's
+# full 20 000-step budget. Run-7 was 36 trials/track at 9 100 steps.
+#
+# Every axis below was cut, kept or added for a measured reason. In order:
+#
+#   DROPPED  the adapter arm for TabPFN (LoRA). Measured no-op in runs 4, 6 and 7
+#            (run-7 paired: v3 LoRA +0.0002 vs full-FT +0.0007; v2.6 both -0.0006),
+#            and the literature agrees from two directions — Rubachev 2025 finds
+#            full FT matches every PEFT variant and converges fastest, Tanna 2026
+#            finds LoRA outright unstable on TabPFN. Three runs is enough.
+#            KEPT for TabICLv2, where it is a different mechanism (freeze the
+#            backbone, train the ICL head) and where run-7 has it at +0.0036.
+#   DROPPED  query_fraction 0.20. NOT because run-7 preferred 0.40 — that
+#            comparison turned out CONFOUNDED (TabICLv2's qf20 cells were all
+#            full-FT and its qf40 cells all adapter, so the two axes were aliased).
+#            Dropped on the literature instead: Garg's Real-TabPFN recipe is a
+#            60/40 context/query split, i.e. exactly 0.40, and Rubachev reports
+#            that larger prediction batches demonstrably help.
+#   DROPPED  learning rate 3.0e-6. Run-7 paired deltas were flat across the whole
+#            range (3e-7 +0.0025, 1e-6 +0.0034, 3e-6 +0.0027 — all inside noise),
+#            and run-6 showed the hotter end degrading. Keeping the two ends that
+#            have an argument behind them and spending the budget on steps.
+#   ADDED    corpus.min_train_rows as a swept axis — see Section 1. This is the
+#            single most promising untested lever and it comes straight from
+#            Garg's own ablation.
+#
+#   3 bases x (1 or 2 adapt) x 2 LRs x 2 corpus sizes = 16 trials/track.
+# Two FAMILIES: TabPFN (v2.6, v3) + TabICLv2, detected from the filename.
+# v2.5 is not swept. TabICLv2 checkpoints must be pre-staged from a login node.
+# Rationale: README §7. Checkpoint inventory + staging: docs/METHOD.md.
 tunable:
   classifier_base_paths:
     - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
@@ -25,26 +49,37 @@ tunable:
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
     - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
 
-  # SWEEP DOWNWARD (08-08-2026). Run-6 was the first with a real step budget
-  # (9 100), and at that budget LOWER is decisively better: on BOTH tracks
-  # every 1e-6 variant beat its 1e-5 and 3e-5 siblings (PD 0.7620 vs 0.7576 /
-  # 0.7552; LGD 0.1335 vs 0.1376 / 0.1423). 3e-7 was dropped on 06-08 only
-  # because it was inert at 600 steps — with 9 100 it is Real-TabPFN's exact
-  # rate and back in play. This grid brackets the winner on both sides.
-  learning_rates: [3.0e-7, 1.0e-6, 3.0e-6]
+  # TWO RATES, both with an argument behind them:
+  #   3.0e-7  Real-TabPFN's exact value, and now paired with Real-TabPFN's exact
+  #           step count (20 000) for the first time. Garg's recipe end to end.
+  #   1.0e-6  the best rate in every run of ours that had a real step budget
+  #           (run-6 PD 0.7620 vs 0.7576/0.7552; run-7 paired mean +0.0034).
+  # The hotter end is gone: run-6 showed 1e-5 and 3e-5 degrading, run-7 showed
+  # 3e-6 no better than either neighbour. Kolberg (1e-5) and Tanna (1e-5) sit
+  # above this window, but both adapt on SYNTHETIC or single-dataset data, where
+  # a hotter rate is safe; Garg's conservatism is the right prior for 12 real
+  # tables (tfm-library/SYNTHESIS.md, "Adapting a pretrained TFM").
+  learning_rates: [3.0e-7, 1.0e-6]
 
-  # Adaptation mode, FAMILY-SPECIFIC: LoRA for TabPFN, freeze-backbone
-  # (train the ICL module only) for TabICL, whose checkpoints are tagged
-  # `_iclhead`. Why they differ: README §7 / src/train/tabicl_compat.py.
+  # Adaptation mode. `true` means LoRA for TabPFN and freeze-backbone (train the
+  # ICL head only) for TabICLv2 — one axis, two family meanings, tagged `_lora`
+  # vs `_iclhead`. See docs/METHOD.md.
+  #
+  # As of run-8 the `true` arm is applied to TabICLv2 ONLY, via
+  # `adapter_families` below: LoRA on TabPFN has been a measured no-op three
+  # times and costs a third of the grid. This is a per-family restriction on one
+  # shared axis rather than two axes, so the trial naming and every downstream
+  # parser stay unchanged.
   use_lora: [false, true]
+  #: Families for which the `use_lora: true` arm is generated at all. Empty list
+  #: = all families (the pre-run-8 behaviour).
+  adapter_families: ["tabicl"]
 
-  # ctx/query split: query_fraction of the per-step subsample is the
-  # loss-bearing query. 0.20 = TabPFN's default, 0.40 = Real-TabPFN's.
-  # SWEPT as an A/B from 08-08-2026: 0.40 doubles the loss signal per step at
-  # identical memory (the row budget is unchanged; only the ctx/query boundary
-  # moves), which is the cheapest remaining lever on the effective training
-  # budget. Held at 0.20 until now so run-6's other changes stayed attributable.
-  query_fractions: [0.20, 0.40]
+  # ctx/query split: query_fraction of the per-step subsample is the loss-bearing
+  # query. FIXED at Real-TabPFN's 60/40 for run-8 (see the header): the A/B we ran
+  # in run-7 was confounded with the adaptation axis and settled nothing, and the
+  # published recipe we are reproducing specifies 0.40.
+  query_fractions: [0.40]
 
   # Gradient accumulation: K=1 (TabPFN default, no accumulation) vs K=4
   # (smoother gradients, coarser LR schedule).
@@ -88,6 +123,30 @@ corpus:
   test_dataset_ids:
     lgd: ["0002.loss2", "0007.lgd_lendingclub"]
 
+  # MINIMUM ROWS FOR A TRAINING DATASET — swept in run-8, and the most promising
+  # untested lever in the project.
+  #
+  # Garg et al.'s Real-TabPFN ablation is unusually specific about this: during
+  # continued pretraining, gains rise MONOTONICALLY as context grows from 2 048 to
+  # 20 000 rows; curated large tables (10k-100k rows) give +0.022 normalised ROC-AUC;
+  # and a corpus of TINY tables measurably HURTS, at -0.003. Dataset size during CPT
+  # is described as the active ingredient, not a detail.
+  #
+  # Our corpora sit on both sides of that line:
+  #   PD  training: 12 tables, 3 under 5k rows (german 999, thomas 1 225, SBA 2 102)
+  #   LGD training:  6 tables, 4 under 3k rows (base_modelisation 594, SBA 686,
+  #                  base_model 762, axa 2 545) — squarely the harmful regime, and
+  #                  every LGD trial in run-7 lost to its untuned base.
+  #
+  # 5 000 is chosen as the threshold because it is the largest cut that still leaves
+  # PD a 9-table corpus, and because it is the point where our own LGD corpus splits
+  # cleanly into "Garg-like" (heloc 57 932, lgd_freddie 16 002) and "not".
+  #
+  # ONLY the TRAINING side is filtered. The test sets are identical in both arms, or
+  # the two arms would not be comparable. With the filter LGD trains on 2 datasets,
+  # which is thin — that is the point of sweeping it rather than assuming.
+  min_train_rows: [0, 5000]
+
 
 # --- Section 3 · Optimizer + LR schedule -------------------------------------
 # AdamW (betas 0.9/0.999) + linear-warmup → cosine-decay (hardcoded in loop).
@@ -120,7 +179,9 @@ lora:
 
 # --- Section 5 · Training loop -----------------------------------------------
 train:
-  # 50 -> 100 (2026-08-06). With full_pass this is ~9 100 steps for v3/tabicl
+  # 50 -> 100 (2026-08-06); superseded as the binding number by
+  # `target_total_steps` below, which now drives epochs in both directions.
+  # With full_pass, 100 epochs was ~9 100 steps for v3/tabicl
   # and ~20 300 for v2.6 — the first configuration in this project that
   # actually reaches Real-TabPFN's training budget. The 2026-08-05 run's
   # headline problem was not the recipe but that the model never moved.
@@ -132,7 +193,27 @@ train:
   # that confounds every cross-architecture comparison. 9 100 = what v3 and
   # tabicl reached, and is the value the good results came from. Set to null
   # to go back to pure epoch counting.
-  target_total_steps: 9100
+  # It is a TARGET in BOTH directions as of 11-08-2026: epochs are trimmed when a
+  # base would overshoot AND raised when it would undershoot. Trimming alone left
+  # LGD at 800 (tabicl) / 1 600 (v3) / 3 200 (v2.6) steps in run-7 — 3-11x under
+  # budget and still unequal across bases, and every LGD trial there lost to its
+  # untuned base.
+  #
+  # RAISED 9 100 -> 20 000 for run-8: this is Real-TabPFN's exact step count, and
+  # pairing it with Real-TabPFN's exact learning rate (3e-7, above) is the first
+  # time this project actually reproduces the published recipe rather than a
+  # shortened version of it. "Undertrained" has been the caveat on every negative
+  # result so far; at 20 000 steps it stops being available as an explanation.
+  # Paid for by the three axes dropped from the sweep — 36 trials at 9 100 steps
+  # and 16 trials at 20 000 cost about the same.
+  target_total_steps: 20000
+  # Safety rail for the "extend" direction. Measured epoch costs on the B200 put the
+  # worst case at LGD tabicl: 8 steps/epoch, so 1 138 epochs to reach the target, at
+  # 1.8 s/epoch = ~35 min. LGD v2.6 lands at 285 epochs x 23 s = ~1.8 h, v3 at 569 x
+  # 11 s = ~1.7 h. So the whole LGD track goes from ~14 to ~50 GPU-h — the price of
+  # LGD finally getting the same step budget PD has. This rail exists so a future
+  # tiny-corpus config cannot silently ask for 50 000 epochs.
+  max_epochs_for_step_budget: 1200
   grad_clip_norm: 1.0
   amp: true                               # AMP autocast (CUDA only)
   # "auto" prefers bfloat16 on Ampere-or-newer GPUs (including B200/H100)
@@ -148,13 +229,13 @@ train:
 
   # Ensemble members per training step (less gradient noise, ~linear cost).
   # Per-track, matching the official wrappers: pd=2, lgd=8. A scalar applies
-  # to both tracks; `default` covers an unlisted one. Memory: docs/ROW_CAPS.md.
+  # to both tracks; `default` covers an unlisted one. Memory: docs/METHOD.md.
   n_estimators_finetune:
     pd:      2
     lgd:     8
     default: 2
 
-  # TabICL uses 2 members on BOTH tracks (its own finetuning default), so the
+  # TabICLv2 uses 2 members on BOTH tracks (its own finetuning default), so the
   # lgd value of 8 above is deliberately not applied to tabicl trials.
   n_estimators_finetune_tabicl: 2
 
@@ -167,7 +248,7 @@ train:
   # epoch_eval_subsample_samples=0 to disable the monitor.
   epoch_eval_subsample_samples: 2000
   epoch_eval_n_estimators: 32
-  # TabICL monitors with its own inference-ensemble size so the curves match
+  # TabICLv2 monitors with its own inference-ensemble size so the curves match
   # what config/eval.yaml scores it with (tabicl_n_estimators: 8).
   epoch_eval_n_estimators_tabicl: 8
   # Monitor CADENCE: run the 32-estimator monitor eval only every k-th epoch

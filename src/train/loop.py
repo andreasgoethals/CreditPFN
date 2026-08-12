@@ -48,7 +48,12 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 
-from src.train.corpus import DatasetRef, CorpusSplit, split_from_cfg
+from src.train.corpus import (
+    CorpusSplit,
+    DatasetRef,
+    resolve_ids_for_track,
+    split_corpus,
+)
 from src.train.dataloader import (
     ProcessedDatasetLoader, TabPFNBatch, identity_collate, prepare_eval_chunk,
 )
@@ -116,7 +121,7 @@ class EpochRecord:
 
     # Relative weight drift ``‖w−w0‖/‖w0‖`` per top-level model stage, on
     # monitored epochs only (it needs a full pass over the parameters).
-    # Answers WHERE credit-specialisation lands: for TabICL the stages are
+    # Answers WHERE credit-specialisation lands: for TabICLv2 the stages are
     # col_embedder / row_interactor / icl_predictor, for TabPFN whatever its
     # top-level modules are. Empty on non-monitored epochs and under LoRA
     # (no anchor exists there).
@@ -153,6 +158,23 @@ class TrainingResult:
     primary_metric_name:   str = ""                # "roc_auc" / "rmse"
     secondary_metric_name: str = ""                # "brier_score" / "r2"
 
+    # NEW (12-08-2026) — what this trial ACTUALLY ran, as opposed to what the config
+    # asked for. Every one of these has been the subject of a wrong conclusion:
+    #   * realised steps    — run-7's LGD ran 800 of a 9 100 target and nobody saw it
+    #   * epochs            — trimmed or extended per base, so it is not cfg.train.epochs
+    #   * corpus rows/ids   — "17 datasets" means something different every quarter
+    #   * min_train_rows    — a swept axis as of run-8
+    #   * final drift       — the difference between "no effect" and "did not train"
+    total_optimizer_steps: int = 0
+    epochs_run:            int = 0
+    steps_per_epoch:       int = 0
+    min_train_rows:        int = 0
+    train_dataset_ids:     tuple[str, ...] = ()
+    test_dataset_ids:      tuple[str, ...] = ()
+    train_rows_total:      int = 0
+    test_rows_total:       int = 0
+    final_drift:           float = float("nan")   # ||w - w0|| at the last monitored epoch
+
 
 # --------------------------------------------------------------------------- #
 # Public utility: descriptive checkpoint name
@@ -176,9 +198,9 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
     if isinstance(mapping, int):
         return int(mapping)
     name = Path(str(base_checkpoint)).name
-    # Family key takes precedence over version parsing: a TabICL base like
+    # Family key takes precedence over version parsing: a TabICLv2 base like
     # "tabicl-classifier-v2-20260212.ckpt" would otherwise match "v2" (or
-    # fall to "default"), silently inheriting a TabPFN-derived cap. TabICL's
+    # fall to "default"), silently inheriting a TabPFN-derived cap. TabICLv2's
     # ICL stage is O(rows²) with its own memory profile → own config key.
     if "tabicl" in name.lower():
         key = "tabicl"
@@ -204,6 +226,7 @@ def descriptive_name(
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
     epoch_pass_mode: str | None = None,
+    min_train_rows: int | None = None,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
@@ -229,9 +252,14 @@ def descriptive_name(
     # Only the non-default "full_pass" mode adds a tag, so "one_sample"
     # (the default) keeps the exact pre-2026-06-01 filename.
     pass_tag = "_fullpass" if (epoch_pass_mode == "full_pass") else ""
+    # Corpus composition is a swept axis as of run-8, so it has to be in the name:
+    # two trials that differ only in which training datasets existed are different
+    # experiments, and without a tag they would overwrite each other's checkpoint.
+    # Absent / 0 keeps the pre-run-8 filename byte-for-byte.
+    rows_tag = f"_min{int(min_train_rows)}" if min_train_rows else ""
     # The `use_lora` grid axis means LoRA for the TabPFN family but
-    # FREEZE-BACKBONE / train-ICL-head-only for TabICL (its upstream
-    # stage-3 regime; full SFT collapsed TabICL in two independent
+    # FREEZE-BACKBONE / train-ICL-head-only for TabICLv2 (its upstream
+    # stage-3 regime; full SFT collapsed TabICLv2 in two independent
     # reports — see src/train/tabicl_compat.py). Tag names must be
     # honest about which adaptation actually ran. Derived from
     # `base_path` HERE so every caller (loop + train_pipeline
@@ -243,7 +271,7 @@ def descriptive_name(
         lora_tag = "_lora" if use_lora else ""
     return (
         f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}"
-        f"{qf_tag}{acc_tag}{pass_tag}{lora_tag}.ckpt"
+        f"{qf_tag}{acc_tag}{pass_tag}{rows_tag}{lora_tag}.ckpt"
     )
 
 
@@ -1100,7 +1128,7 @@ def evaluate_ensemble_on_split(
     metric_names: tuple[str, ...],
     family: str = "tabpfn",
 ) -> dict[str, float]:
-    """Evaluate one TabPFN or TabICL checkpoint via its sklearn API with
+    """Evaluate one TabPFN or TabICLv2 checkpoint via its sklearn API with
     full ensemble inference (``n_estimators`` forward passes per
     fit/predict, averaged with the package's standard ensembling strategy).
 
@@ -1163,7 +1191,7 @@ def evaluate_ensemble_on_split(
 
         try:
             if family == "tabicl":
-                # TabICL sklearn wrappers do their own preprocessing on raw
+                # TabICLv2 sklearn wrappers do their own preprocessing on raw
                 # features (no categorical-indices parameter exists).
                 # allow_auto_download=False: VSC compute nodes have no
                 # outbound network — a missing checkpoint must fail loudly,
@@ -1309,6 +1337,9 @@ def train_one_config(
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
     pass_mode: str | None = None,
+    #: Swept in run-8. Overrides `cfg.corpus.min_train_rows` for this trial, so the
+    #: whole grid can share one config while each trial trains on its own corpus.
+    min_train_rows: int | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
 ) -> TrainingResult:
@@ -1406,17 +1437,40 @@ def train_one_config(
     )
 
     # ---- 1) corpus split --------------------------------------------------- #
-    split: CorpusSplit = split_from_cfg(cfg, track=track)
+    # `min_train_rows` is a SWEPT axis, so the per-trial value wins over the config
+    # list. Resolved by writing it into a copy of cfg.corpus rather than threading a
+    # parameter through split_from_cfg, so every other caller keeps its behaviour.
+    if min_train_rows is None:
+        raw = getattr(cfg.corpus, "min_train_rows", 0) if hasattr(cfg, "corpus") else 0
+        # A config list means "sweep this"; a bare trial resolves to its first value.
+        min_train_rows = int(raw[0]) if isinstance(raw, (list, tuple)) else int(raw or 0)
+    split: CorpusSplit = split_corpus(
+        track=track,
+        train_fraction=float(cfg.corpus.train_fraction),
+        test_fraction=float(cfg.corpus.test_fraction),
+        train_dataset_ids=resolve_ids_for_track(
+            cfg.corpus.get("train_dataset_ids", None), track),
+        test_dataset_ids=resolve_ids_for_track(
+            cfg.corpus.get("test_dataset_ids", None), track),
+        seed=int(cfg.seed),
+        min_train_rows=int(min_train_rows),
+    )
     LOGGER.info("Corpus split: %s", split.summary)
     train_ids = sorted({c.dataset_id for c in split.train})
     test_ids  = sorted({c.dataset_id for c in split.test})
+    # WITH ROW COUNTS, and the totals. The corpus is an experimental variable now
+    # (min_train_rows) and will keep changing as datasets are added, so a log that
+    # records only the ids cannot be read back six months later: "17 datasets" in
+    # 08-2026 and "17 datasets" in 2027 will not be the same 17.
     LOGGER.info(
-        "Training datasets (n=%d): %s",
-        len(train_ids), ", ".join(train_ids) if train_ids else "<none>",
+        "Training datasets (n=%d, %s rows total, min_train_rows=%d): %s",
+        len(train_ids), f"{sum(c.n_rows for c in split.train):,}", int(min_train_rows),
+        ", ".join(f"{c.dataset_id}({c.n_rows:,})" for c in split.train) or "<none>",
     )
     LOGGER.info(
-        "Held-out test datasets (n=%d): %s",
-        len(test_ids), ", ".join(test_ids) if test_ids else "<none>",
+        "Held-out test datasets (n=%d, %s rows total): %s",
+        len(test_ids), f"{sum(c.n_rows for c in split.test):,}",
+        ", ".join(f"{c.dataset_id}({c.n_rows:,})" for c in split.test) or "<none>",
     )
     if not split.train:
         raise RuntimeError(
@@ -1428,7 +1482,7 @@ def train_one_config(
     # Two model families (2026-08-04). The grid's `use_lora` axis means:
     #   tabpfn → PEFT LoRA adapters (base frozen, adapters train);
     #   tabicl → FREEZE-BACKBONE / train-ICL-head-only (upstream stage-3;
-    #            full SFT collapsed TabICL in two independent reports —
+    #            full SFT collapsed TabICLv2 in two independent reports —
     #            see src/train/tabicl_compat.py). Checkpoint names tag the
     #            difference honestly (`_lora` vs `_iclhead`).
     family = model_family(base_checkpoint_config)
@@ -1488,7 +1542,7 @@ def train_one_config(
         )).item())
         # Group anchored tensors by TOP-LEVEL module so per-stage drift can be
         # reported. Grouping on the first dotted component is deliberately
-        # architecture-agnostic: TabICL yields col_embedder / row_interactor /
+        # architecture-agnostic: TabICLv2 yields col_embedder / row_interactor /
         # icl_predictor, TabPFN yields whatever its own top-level modules are,
         # and neither is hardcoded here.
         l2sp_stage_names: dict[str, list[str]] = {}
@@ -1570,7 +1624,7 @@ def train_one_config(
         n_estimators_finetune = int(_ne if _ne is not None else 2)
     n_estimators_finetune = max(1, n_estimators_finetune)
 
-    # TabICL family: upstream's finetuning uses n_estimators=2 for BOTH the
+    # TabICLv2 family: upstream's finetuning uses n_estimators=2 for BOTH the
     # classifier and the regressor (tabicl._finetune defaults) — override the
     # TabPFN-derived per-track mapping (pd=2/lgd=8) unless the config sets an
     # explicit tabicl value.
@@ -1671,24 +1725,41 @@ def train_one_config(
     # cross-architecture comparison with "who got more gradient steps".
     # With `target_total_steps` set, epochs are trimmed so each base runs the
     # SAME number of steps; `train.epochs` stays the upper bound.
+    # The budget is a TARGET, not a ceiling: epochs are trimmed when a base would
+    # overshoot it and RAISED when it would undershoot.
+    #
+    # WHY BOTH DIRECTIONS (measured, 10/11-08-2026 run). Trimming alone silently left
+    # LGD at a fraction of the budget, because steps/epoch is
+    # `sum_over_datasets(ceil(rows_i / row_cap))` and LGD has 6 small training tables:
+    # at 100 epochs tabicl got 800 steps, v3 1 600 and v2.6 3 200 against a 9 100-step
+    # target. So LGD was 3-11x undertrained AND still confounded across bases — exactly
+    # the problem the equalisation was added to remove, in the track nobody checked.
+    # Every LGD trial in that run was worse than its untuned baseline; 800 steps is not
+    # a fair test of whether continued pretraining works.
     target_steps = getattr(cfg.train, "target_total_steps", None)
+    max_epochs = getattr(cfg.train, "max_epochs_for_step_budget", None)
     if target_steps:
-        capped = max(1, math.ceil(int(target_steps) / steps_per_epoch))
-        if capped < epochs:
+        wanted = max(1, math.ceil(int(target_steps) / steps_per_epoch))
+        ceiling = int(max_epochs) if max_epochs else max(epochs, wanted)
+        capped = min(wanted, ceiling)
+        if capped != epochs:
             LOGGER.info(
-                "Step-budget equalisation: %d steps/epoch x %d epochs would be "
-                "%d steps; trimming to %d epochs to hit the %d-step target "
-                "shared by every base.",
+                "Step-budget equalisation: %d steps/epoch x %d configured epochs = "
+                "%d steps; %s to %d epochs (~%d steps) to hit the %d-step target "
+                "shared by every base.%s",
                 steps_per_epoch, epochs, steps_per_epoch * epochs,
-                capped, int(target_steps),
+                "trimming" if capped < epochs else "EXTENDING",
+                capped, steps_per_epoch * capped, int(target_steps),
+                "" if capped == wanted else
+                f" Capped at max_epochs_for_step_budget={ceiling}, so this trial "
+                f"runs {steps_per_epoch * capped} steps, SHORT of the target.",
             )
             epochs = capped
         else:
             LOGGER.info(
-                "Step-budget equalisation: %d steps/epoch x %d epochs = %d "
-                "steps, at or below the %d-step target — keeping all epochs.",
-                steps_per_epoch, epochs, steps_per_epoch * epochs,
-                int(target_steps),
+                "Step-budget equalisation: %d steps/epoch x %d epochs = %d steps, "
+                "already the %d-step target — keeping all epochs.",
+                steps_per_epoch, epochs, steps_per_epoch * epochs, int(target_steps),
             )
     total_steps = max(1, steps_per_epoch * epochs)
     optimizer, scheduler = _make_optimizer_and_scheduler(
@@ -1720,6 +1791,7 @@ def train_one_config(
             query_fraction=float(query_fraction),
             accumulate_grad_batches=int(accumulate),
             epoch_pass_mode=pass_mode,
+            min_train_rows=int(min_train_rows or 0),
         )
     )
 
@@ -1787,7 +1859,7 @@ def train_one_config(
     # timing lines showed the monitor dominating one_sample epochs ~3:1 —
     # config/train.yaml sets 5; code default 1 preserves legacy behaviour.
     epoch_eval_every = max(1, int(getattr(cfg.train, "epoch_eval_every", 1)))
-    # TabICL has no cheap single-forward monitor path (evaluate_on_split's
+    # TabICLv2 has no cheap single-forward monitor path (evaluate_on_split's
     # prepare_eval_chunk/_forward are TabPFN-specific), so its monitor always
     # goes through the sklearn ensemble path regardless of epoch_eval_ne.
     use_ensemble_eval = epoch_eval_ne > 1 or family == "tabicl"
@@ -1919,8 +1991,8 @@ def train_one_config(
 
     for epoch in range(epochs):
         model.train()
-        # NOTE (2026-08-06): do NOT snap TabICL's frozen stages back to eval()
-        # here. `.training` picks the ALGORITHM in TabICL (train forward vs the
+        # NOTE (2026-08-06): do NOT snap TabICLv2's frozen stages back to eval()
+        # here. `.training` picks the ALGORITHM in TabICLv2 (train forward vs the
         # no_grad, KV-cached inference forward that writes into its input in
         # place), so eval-ing them crashed every `_iclhead` trial in the
         # 2026-08-05 run. Freezing is requires_grad=False only — see
@@ -2002,7 +2074,7 @@ def train_one_config(
                 from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch
                 from src.train.dataloader import TabICLTrainBatch
                 if isinstance(batch, TabICLTrainBatch):
-                    # TabICL family (2026-08-04): one forward over all E
+                    # TabICLv2 family (2026-08-04): one forward over all E
                     # ensemble members — `TabICL._train_forward` routes on
                     # model.train(). Losses are verbatim tabicl's own
                     # finetuning objectives (`tabicl._finetune.{classifier,
@@ -2557,13 +2629,16 @@ def train_one_config(
             # checkpoint that does not record it is not reproducible.
             "context_sampling": context_sampling,
             # Per-step ensemble members actually used. Varies by track AND
-            # family (TabPFN pd=2 / lgd=8; TabICL 2 for both), and it drives
+            # family (TabPFN pd=2 / lgd=8; TabICLv2 2 for both), and it drives
             # both the gradient noise and the member-aware row scaling — so
             # a checkpoint that doesn't record it can't be reproduced from
             # its own provenance. (Added 2026-08-04.)
             "n_estimators_finetune": int(n_estimators_finetune),
             "query_fraction":      query_fraction,
             "epoch_pass_mode":     pass_mode,
+            # Swept since run-8. Without it in the provenance the eval cannot tell the
+            # two corpus arms apart and writes both to one results directory.
+            "min_train_rows":      int(min_train_rows or 0),
             "seed":                int(cfg.seed),
             "use_lora":            bool(use_lora),
             "lora": (
@@ -2744,5 +2819,18 @@ def train_one_config(
         secondary_metric_name=(
             str(last_good.secondary_metric_name) if last_good is not None
             else (str(baseline_row.secondary_metric_name) if baseline_row is not None else "")
+        ),
+        # What actually ran, for the manifest and for docs/RESULTS.md later.
+        total_optimizer_steps=int(sum(r.optimizer_steps for r in history)),
+        epochs_run=int(epochs),
+        steps_per_epoch=int(steps_per_epoch),
+        min_train_rows=int(min_train_rows or 0),
+        train_dataset_ids=tuple(c.dataset_id for c in split.train),
+        test_dataset_ids=tuple(c.dataset_id for c in split.test),
+        train_rows_total=int(sum(c.n_rows for c in split.train)),
+        test_rows_total=int(sum(c.n_rows for c in split.test)),
+        final_drift=float(
+            max((v for v in (last_good.stage_drift or {}).values()), default=float("nan"))
+            if last_good is not None else float("nan")
         ),
     )

@@ -12,7 +12,66 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 12-08-2026
+
+- **Run-8 sweep redesigned: 16 trials/track at 20 000 steps** (was 36 at 9 100). Dropped
+  LoRA-on-TabPFN (measured no-op in runs 4, 6 and 7; Rubachev and Tanna agree), dropped
+  `query_fraction` 0.20 (Real-TabPFN specifies the 60/40 split, and run-7's A/B was
+  confounded with the adaptation axis), dropped lr 3e-6 (flat across run-7's range). The
+  budget went into steps: 3e-7 at 20 000 steps is Garg's recipe exactly, for the first time.
+- **`corpus.min_train_rows` is a new swept axis** `[0, 5000]`, with the filter applied to
+  the TRAINING side only. Garg's ablation reports that continued-pretraining gains scale
+  with table size and that a corpus of tiny tables *hurts*; 4 of our 6 LGD training tables
+  are under 3 000 rows. At 5 000 the LGD corpus loses 4 datasets but only 6 % of its rows.
+- `use_lora: true` is now restricted to families named in `tunable.adapter_families`, so one
+  shared axis can mean LoRA on one family and nothing on another without a second axis.
+- **Manifests are self-describing.** 14 new columns: realised steps/epochs/steps-per-epoch,
+  the corpus (dataset ids, counts, total rows), `min_train_rows`, row caps, L2-SP λ, warmup,
+  LR floor, final drift, `git_commit` and the `tfm-library` pin. `docs/RESULTS.md` now
+  requires a Configuration table per run and says which column each field comes from.
+- Training logs print the corpus **with per-dataset row counts and totals** — "17 datasets"
+  will not mean the same thing once the corpus grows.
+- Fixed: the corpus arm reached neither the results directory nor the provenance, so the two
+  run-8 arms would have written to one directory and skip-existing would have treated the
+  second as already scored. Same class as the 04-08 asymmetric-cap bug.
+- Fixed: `_decode_method_dirname` strips tags back-to-front, so the new `__min<rows>` tag
+  silently absorbed the learning rate into `base_short` — every results figure would have
+  mis-grouped rather than failed.
+- **Docs consolidated 10 → 7.** `DATA_PIPELINE` + `CHECKPOINTS` + `ROW_CAPS` + `CODE_NOTES`
+  became `docs/METHOD.md` (§1 pipeline, §2 checkpoints, §3 caps, §4 deliberate oddities);
+  the old split ran across topics rather than between them.
+- **Renamed TabICL → TabICLv2 in prose** (256 occurrences). The model is v2 — the paper is
+  "TabICLv2" and the checkpoints are `tabicl-*-v2-*.ckpt`. Code identifiers keep upstream's
+  spelling (`TabICL`, `TabICLClassifier`), and the HuggingFace repo id is untouched.
+- Training walltime 10 h → 14 h (PD) and 4 h → 10 h (LGD) for the doubled step budget; LGD's
+  old 4 h only ever sufficed because it was undertrained.
+
 ## 11-08-2026
+
+- **Eval is now submitted as a few big array tasks, not hundreds of tiny ones.**
+  `eval_pipeline.py --tasks N` packs the `(model × dataset)` cells into N tasks of roughly
+  equal estimated cost (rows × a per-family rate measured from the run's own logs,
+  longest-processing-time-first). Default 16 via `EVAL_TASKS`. The 209-task arrays it
+  replaces averaged **0.73 concurrent jobs** — 6.7 GPU-h took 9.1 h of wall-clock.
+- Eval pools now stride over **packed tasks**. Striding over raw cells sent every even
+  index to dataset 0, so LGD's pool 0 scored `0002.loss2` and never saw
+  `0007.lgd_lendingclub`. Regression-tested.
+- `train.target_total_steps` raises epochs as well as trimming them, bounded by the new
+  `max_epochs_for_step_budget`. Trimming alone left LGD at 800–3 200 steps against a 9 100
+  target, so the whole LGD track was 3–11× undertrained.
+- Fixed `dump_resolved(cfg, …)` in `eval_pipeline.py` — `cfg` does not exist there; it would
+  have raised `NameError` on the first eval of the next run.
+- **One cleaner, not two.** `pipeline_clean.py` is deleted; its stage scoping is now
+  `python -m src.utils.clean_run --clean --stages data,train,eval`. Stages match at file
+  level because the three share directories.
+- All 79 notebook figures carry a caption, so `output/figures/CAPTIONS.md` is complete;
+  verified by a full `run_notebooks` pass (6/6, 79 figures, 0 missing).
+- README corrected: the project pretrains **two families** (TabPFN v2.6/v3 *and* TabICLv2),
+  36 trials/track, utilities live in `src/utils/`, `output/` is the only generated tree, and
+  the eval chapter now carries the measurement behind the task packing.
+- `PAPER_ROADMAP.md` trimmed 333 → 145 lines: kept the novelty/related-work analysis and the
+  "what is missing before writing" list, dropped the run history now held by `RESULTS.md`
+  and `AGENTS_MEMORY.md`.
 
 - **Brought the repository in line with the renewed `docs/TEMPLATE.md`** — a starting point rather
   than a contract, so the previous pass's compliance test, `scripts/check.py`, CI workflow and
@@ -59,7 +118,7 @@ day is never rewritten.
   training dataset and `drift__<stage>` for every top-level model stage, and
   monitored epochs log a `drift by stage:` line. Stages are grouped on the
   first dotted component of the parameter name, so it is architecture-agnostic
-  (TabICL → col_embedder / row_interactor / icl_predictor). The CSV writer
+  (TabICLv2 → col_embedder / row_interactor / icl_predictor). The CSV writer
   widens its header and pads earlier rows when a new column first appears,
   since the baseline row has no per-dataset losses and drift only exists on
   monitored epochs.
@@ -77,7 +136,7 @@ day is never rewritten.
 
 - **What:** `ctx_pos` is now measured in the batch builders from the ORIGINAL
   sampled labels and carried on every batch type (`TabPFNBatch`,
-  `TabPFNEnsembleBatch`, `TabICLTrainBatch`) through `.to(device)`.
+  `TabPFNEnsembleBatch`, `TabICLv2TrainBatch`) through `.to(device)`.
 - **Why:** The first version counted `y > 0` on the batch tensors, but both
   families class-permute per ensemble member — so on 25 %-positive fixture data
   it reported **74.7 %**. The metric added to verify balanced sampling was
@@ -172,7 +231,7 @@ day is never rewritten.
   beyond the fixes above.**
 - **Why:** First run where the pipeline, the budget and the eval all worked.
 - **Verified:** Half the eval roster is still missing (the a100 pool never
-  logged), so trained-vs-untuned is not yet computable for v3 or TabICL.
+  logged), so trained-vs-untuned is not yet computable for v3 or TabICLv2.
 
 ---
 
@@ -193,16 +252,16 @@ day is never rewritten.
 
 ## 06-08-2026
 
-### Fix the TabICL freeze-backbone crash that killed 16 trials — Claude
+### Fix the TabICLv2 freeze-backbone crash that killed 16 trials — Claude
 
-- **What:** Freezing used `.eval()`, but TabICL branches `if self.training:
+- **What:** Freezing used `.eval()`, but TabICLv2 branches `if self.training:
   _train_forward else: _inference_forward` in both ColEmbedder and
   RowInteractor, so eval mode routed the frozen stages onto the no_grad,
   KV-cached inference path — which writes CLS tokens into its input in place
   and raises "a view created in no_grad mode modified inplace". Freezing is
   now `requires_grad=False` only; the model stays on the train forward path.
-- **Why:** All 16 `_iclhead` trials failed on both tracks while all 16 TabICL
-  full-FT trials completed — the tell that the freeze, not TabICL, was wrong.
+- **Why:** All 16 `_iclhead` trials failed on both tracks while all 16 TabICLv2
+  full-FT trials completed — the tell that the freeze, not TabICLv2, was wrong.
 - **Verified:** New regression test runs 5 optimiser steps through the real
   freeze path with `recompute=True` and asserts the stages stay in train mode.
 
@@ -222,7 +281,7 @@ day is never rewritten.
   disables wandb.
 - **Why:** A 99 %-of-3 GB quota warning on `/user/leuven/383/…`. We set no
   cache variables, so every default landed in HOME — the ~225 MB HF copy of
-  the TabICL checkpoints, the pip wheel cache, and Triton/CUDA JIT caches from
+  the TabICLv2 checkpoints, the pip wheel cache, and Triton/CUDA JIT caches from
   96 GPU jobs.
 
 ### Retarget the sweep at the real problem: the model never moved — Claude
@@ -257,9 +316,9 @@ day is never rewritten.
 - **Verified:** On a synthetic 1 %-positive 500k-row set, 260 → 4 999
   positives at the same 26 000 rows; regression falls back to uniform.
 
-### Make the TabICL monitor match its eval settings — Claude
+### Make the TabICLv2 monitor match its eval settings — Claude
 
-- **What:** The per-epoch monitor scored TabICL with 32 ensemble members while
+- **What:** The per-epoch monitor scored TabICLv2 with 32 ensemble members while
   `config/eval.yaml` scores it with 8. Added
   `train.epoch_eval_n_estimators_tabicl: 8`.
 - **Why:** The monitor exists so its curves are comparable to the final eval
@@ -270,7 +329,7 @@ day is never rewritten.
 
 ## 05-08-2026
 
-### Correct the TabICL row caps from the paper — Claude
+### Correct the TabICLv2 row caps from the paper — Claude
 
 - **What:** Eval `max_rows_per_model.tabicl` 50 000 → **1 000 000** (= v3):
   Qu et al. 2026 report 1M samples × 500 features in ~450 s under 50 GB GPU,
@@ -305,7 +364,7 @@ day is never rewritten.
   GPU — on a login node it had grabbed the Quadro P6000 display card (sm_61,
   no kernels in this PyTorch) and died with a misleading CUDA OOM — and
   prints the sbatch command instead. New `train_pipeline.py --trial-family N`
-  lets the SLURM prolog run the TabICL preflight only for TabICL trials, so a
+  lets the SLURM prolog run the TabICLv2 preflight only for TabICLv2 trials, so a
   missing optional dep costs 16 trials rather than all 48.
 - **Why:** Each of these cost real cluster time, and a capacity probe on the
   wrong GPU is worse than none — its numbers get copied into `config/`.
@@ -362,13 +421,13 @@ day is never rewritten.
 - **Why:** The library became strictly project-neutral, and the old paper
   paths would 404 after its layout move.
 
-### Add TabICL v2 as a second continued-pretraining family — Claude
+### Add TabICLv2 as a second continued-pretraining family — Claude
 
 - **What:** New `src/train/tabicl_{compat,model}.py`,
   `src/model/tabicl_models.py`, `tests/test_tabicl.py`. Family is detected
   from the checkpoint filename and drives the loader, losses (upstream's own
   CE and 999-quantile pinball), row cap, and save schema. The `use_lora` grid
-  axis means freeze-backbone for TabICL — its own stage-3 regime, since full
+  axis means freeze-backbone for TabICLv2 — its own stage-3 regime, since full
   SFT collapsed it in two independent reports — tagged `_iclhead`. Grid is now
   48 trials/track.
 - **Why:** Every result so far came from one architecture and one synthetic
@@ -389,7 +448,7 @@ day is never rewritten.
     expanded to `--array=0--1`.
   - `_decode_method_dirname` folded `__fullpass` into the base tag, averaging
     one_sample and full_pass results together in the notebooks.
-  - ±inf reached the TabICL transformer, whose sklearn wrappers also reject an
+  - ±inf reached the TabICLv2 transformer, whose sklearn wrappers also reject an
     all-NaN column — both absorbed now.
   - Provenance did not record `n_estimators_finetune`.
 - **Why:** The first two silently bias results rather than failing loudly.

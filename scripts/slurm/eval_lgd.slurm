@@ -26,11 +26,13 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-399%32   # generous upper bound (raised from 200 on
-                          # 2026-08-04 with the TabICL family); surplus tasks exit 0
-                          # cleanly via the soft no-op in eval_pipeline.py.
-                          # Recompute the tight bound with:
-                          #   python scripts/eval_pipeline.py --list-tasks track=lgd
+#SBATCH --array=0-15%16   # 16 PACKED tasks — see eval_pd.slurm for the
+                          # measurement behind the change from one task per
+                          # (model x dataset) cell. LGD's whole eval is under
+                          # 1 GPU-hour, so most of these tasks are short; the
+                          # packing simply stops them being 40-second jobs.
+                          # Recompute with:
+                          #   python scripts/eval_pipeline.py --list-tasks --tasks 16 track=lgd
                           # …or just submit via scripts/slurm/run_full_pipeline.sh.
                           #
                           # `cpus-per-task=16` matches the documented gpu_h100
@@ -88,7 +90,11 @@ echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
 nvidia-smi || true
 echo "=========================================="
 
+# --tasks must MATCH the value --list-tasks was called with at submit time, or
+# the two disagree about which cells belong to task i. run_full_pipeline.sh
+# exports EVAL_TASKS so both sides read the same number.
 python -u scripts/eval_pipeline.py \
     --task-index "${SLURM_ARRAY_TASK_ID}" \
+    --tasks "${EVAL_TASKS:-16}" \
     --log-path "$LOG" \
     track=lgd

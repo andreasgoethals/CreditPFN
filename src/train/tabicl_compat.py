@@ -1,6 +1,6 @@
-"""Version-tolerant imports + family detection for TabICL (v2).
+"""Version-tolerant imports + family detection for TabICLv2 (v2).
 
-TabICL is the second model family CreditPFN continued-pretrains (2026-08-04),
+TabICLv2 is the second model family CreditPFN continued-pretrains (2026-08-04),
 next to TabPFN. It is fully open (code BSD-3, weights on HF `jingang/TabICL`)
 and ships official finetuning internals under ``tabicl._finetune`` — private
 modules, so every import is funneled through this file (mirroring
@@ -17,9 +17,9 @@ same pattern as the TabPFN bases.
 
 Adaptation-mode caveat (from the literature, 2026-08-04)
 --------------------------------------------------------
-Two independent reports show TabICL is fragile under aggressive full SFT
+Two independent reports show TabICLv2 is fragile under aggressive full SFT
 (Tanna 2026: TabZilla accuracy 0.873→0.567; Kolberg 2026: their CPT recipe
-"failed to train TabICL"), while TabICL's own pretraining stage 3 freezes
+"failed to train TabICLv2"), while TabICLv2's own pretraining stage 3 freezes
 everything except the ICL module. CreditPFN therefore maps the grid's
 ``use_lora`` axis, for this family, to **freeze-backbone / train-ICL-head-only**
 (the upstream-sanctioned adaptation) instead of LoRA — see
@@ -46,12 +46,12 @@ def model_family(base_path: str | Path) -> str:
 
 
 def import_tabicl_core():
-    """Return the bare ``TabICL`` nn.Module class (training forward)."""
+    """Return the bare ``TabICLv2`` nn.Module class (training forward)."""
     try:
         from tabicl._model.tabicl import TabICL
     except ImportError as exc:                                  # pragma: no cover
         raise ImportError(
-            "The `tabicl` package (>=2.1.1) is required for the TabICL model "
+            "The `tabicl` package (>=2.1.1) is required for the TabICLv2 model "
             "family. Install with `pip install 'tabicl[finetune]>=2.1.1,<3'`. "
             f"Underlying error: {exc}"
         ) from exc

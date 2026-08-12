@@ -728,12 +728,14 @@ def test_grid_full_cartesian_product() -> None:
     assert len(grid) == 3 * 3
     # No duplicates in a cartesian product of distinct lists.
     assert len(set(grid)) == len(grid)
-    # Every entry is the 6-tuple (base, lr, use_lora, query_fraction,
-    # accumulate, epoch_pass_mode); defaults when those axes are absent:
-    # use_lora=False, query_fraction=0.20, accumulate=1, pass="one_sample".
+    # Every entry is the 7-tuple (base, lr, use_lora, query_fraction, accumulate,
+    # epoch_pass_mode, min_train_rows); defaults when those axes are absent:
+    # use_lora=False, qf=0.20, accumulate=1, pass="one_sample", min_train_rows=0.
+    # min_train_rows joined the grid on 12-08-2026 — corpus composition is a swept
+    # variable now, so two trials can differ only in which datasets existed.
     assert all(
-        len(t) == 6 and t[2] is False and t[3] == 0.20 and t[4] == 1
-        and t[5] == "one_sample"
+        len(t) == 7 and t[2] is False and t[3] == 0.20 and t[4] == 1
+        and t[5] == "one_sample" and t[6] == 0
         for t in grid
     )
 
@@ -769,7 +771,7 @@ def test_grid_single_picks_first_value() -> None:
         ),
     )
     grid = tp._resolve_grid(cfg, single=True)
-    assert grid == [("P", 5e-6, False, 0.20, 1, "one_sample")]
+    assert grid == [("P", 5e-6, False, 0.20, 1, "one_sample", 0)]
     assert len(grid) == 1
 
 

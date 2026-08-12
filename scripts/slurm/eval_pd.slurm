@@ -52,15 +52,17 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-399%32   # generous upper bound; surplus tasks exit 0
+#SBATCH --array=0-15%16   # 16 PACKED tasks (see EVAL_TASKS in
+                          # run_full_pipeline.sh). Since 11-08-2026 a task is a
+                          # BATCH of (model x dataset) cells of roughly equal
+                          # estimated cost, not a single cell: the 209-task
+                          # arrays this replaced averaged 0.73 concurrent jobs
+                          # because each task computed for ~94 s and had to be
+                          # scheduled separately. Surplus indices still exit 0
                           # cleanly via the soft no-op in eval_pipeline.py.
-                          # RAISED from 200 (2026-08-04): with the TabICL
-                          # family the PD grid is 48 trials x ~5 test
-                          # datasets + baselines ~= 275 tasks, so 200 would
-                          # have SILENTLY dropped the tail on a bare sbatch.
-                          # Recompute the tight bound with:
-                          #   python scripts/eval_pipeline.py --list-tasks track=pd
-                          # …or just submit via scripts/slurm/run_full_pipeline.sh
+                          # Recompute with:
+                          #   python scripts/eval_pipeline.py --list-tasks --tasks 16 track=pd
+                          # …or submit via scripts/slurm/run_full_pipeline.sh,
                           # which sizes the array dynamically.
 
 sleep $((RANDOM % 15 + 1))
@@ -115,7 +117,11 @@ echo "CUDA_VISIBLE   : ${CUDA_VISIBLE_DEVICES:-?}"
 nvidia-smi || true
 echo "=========================================="
 
+# --tasks must MATCH the value --list-tasks was called with at submit time, or
+# the two disagree about which cells belong to task i. run_full_pipeline.sh
+# exports EVAL_TASKS so both sides read the same number.
 python -u scripts/eval_pipeline.py \
     --task-index "${SLURM_ARRAY_TASK_ID}" \
+    --tasks "${EVAL_TASKS:-16}" \
     --log-path "$LOG" \
     track=pd

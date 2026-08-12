@@ -418,13 +418,13 @@ def _build_step_batch(
 
 
 # --------------------------------------------------------------------------- #
-# TabICL step builder — uses tabicl's official finetuning preprocessing
+# TabICLv2 step builder — uses tabicl's official finetuning preprocessing
 # --------------------------------------------------------------------------- #
 
 
 @dataclass
 class TabICLTrainBatch:
-    """One training step for the TabICL family (2026-08-04).
+    """One training step for the TabICLv2 family (2026-08-04).
 
     Thin wrapper around tabicl's own ``MetaBatch`` fields (built by their
     ``_finetune.data._build_meta_batch`` — context/query split, per-member
@@ -514,7 +514,7 @@ def _build_tabicl_step_batch(
     )
     X_arr = np.asarray(X_arr, dtype=np.float64)
     # ±inf → NaN first, so the median impute below absorbs it. TabPFN clips
-    # inf inside its feature normaliser; TabICL does NOT (its sklearn path
+    # inf inside its feature normaliser; TabICLv2 does NOT (its sklearn path
     # raises on inf, and the raw training path would carry it into the
     # scalers). Credit features hit this via zero-denominator ratios.
     if np.isinf(X_arr).any():
@@ -719,7 +719,7 @@ class ProcessedDatasetLoader(Dataset):
             raise ValueError(f"unknown model_family: {model_family!r}")
         self.model_family = model_family
         # Context-construction strategy for the per-step subsample; see
-        # _stratified_subsample_indices and docs/ROW_CAPS.md.
+        # _stratified_subsample_indices and docs/METHOD.md.
         self.context_sampling = str(context_sampling)
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)
@@ -814,7 +814,7 @@ class ProcessedDatasetLoader(Dataset):
         ) & 0xFFFF_FFFF
         rng = np.random.default_rng(step_seed)
 
-        # ---- TabICL family path (official tabicl finetune preprocessing) --- #
+        # ---- TabICLv2 family path (official tabicl finetune preprocessing) --- #
         if self.model_family == "tabicl":
             return _build_tabicl_step_batch(
                 loaded,

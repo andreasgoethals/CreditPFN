@@ -24,7 +24,7 @@ TABICL (2026-08-04): its bases go through a separate probe path because the
 loader, batch layout and loss all differ. Its in-config cap (10 000 rows) is
 upstream's own chunk size, NOT a measurement — this probe is how to replace it
 with one. Both families are probed with the SAME per-step ensemble size the
-training loop would use (TabPFN: 1 member here, then scaled; TabICL: 2), since
+training loop would use (TabPFN: 1 member here, then scaled; TabICLv2: 2), since
 peak memory is roughly members x per-member cost.
 """
 
@@ -126,7 +126,7 @@ def probe_base(base_path: str, track: str, rows_grid: list[int], device: str) ->
 
 def probe_tabicl_base(base_path: str, track: str, rows_grid: list[int],
                       device: str, n_estimators: int = 2) -> None:
-    """TabICL variant of :func:`probe_base`.
+    """TabICLv2 variant of :func:`probe_base`.
 
     Differences that matter for the measurement: the meta-batch is
     ``(E, rows, features)`` with all E members forwarded in ONE graph before a

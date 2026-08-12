@@ -74,7 +74,7 @@ def build_baselines(
     device, n_estimators_tabpfn
         Forwarded to the TabPFN-untuned constructors.
     n_estimators_tabicl
-        Inference-ensemble size for TabICL-untuned entries. TabICL's ICL
+        Inference-ensemble size for TabICLv2-untuned entries. TabICLv2's ICL
         attention is quadratic in rows, so its useful ensemble size is
         much smaller than TabPFN's (upstream default 8 vs our 32);
         ``None`` → fall back to ``n_estimators_tabpfn``.

@@ -20,9 +20,11 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
-| 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICL. 54.9 GPU-h. `RESULTS.md` |
-| 05-08-2026 | run-5 · 48 trials/track, first two-family run (TabICL added) | **partial** | 80/96 trials OK; the 16 `_iclhead` trials crashed (freeze-via-`.eval()`, see dead ends 06-08-2026). Eval never ran — the 21 h gate expired — so every number is a 2 000-row monitor eval. Drift 0.02 % of ‖w₀‖ at 3e-7: the PD null was undertraining. 43.7 GPU-h. |
-| 05-08-2026 | probe · `probe_row_cap.slurm` j11509346, all three bases on B200 | **done** | The measurement the row caps come from: v3 2.49 GB/1k rows, v2.6 5.72, TabICL 0.51 per member. TabICL's ceiling is a cuDNN fused-attention failure between 26k and 40k, not memory. `ROW_CAPS.md` |
+| 12-08-2026 | run-8 · **PLANNED** — 16 trials/track, 20 000 steps, `min_train_rows` swept [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks | *not yet run* | The first run at Real-TabPFN's full step budget, and the first test of the corpus-size hypothesis. Replace this row with the outcome. |
+| 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `RESULTS.md` |
+| 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICLv2. 54.9 GPU-h. `RESULTS.md` |
+| 05-08-2026 | run-5 · 48 trials/track, first two-family run (TabICLv2 added) | **partial** | 80/96 trials OK; the 16 `_iclhead` trials crashed (freeze-via-`.eval()`, see dead ends 06-08-2026). Eval never ran — the 21 h gate expired — so every number is a 2 000-row monitor eval. Drift 0.02 % of ‖w₀‖ at 3e-7: the PD null was undertraining. 43.7 GPU-h. |
+| 05-08-2026 | probe · `probe_row_cap.slurm` j11509346, all three bases on B200 | **done** | The measurement the row caps come from: v3 2.49 GB/1k rows, v2.6 5.72, TabICLv2 0.51 per member. TabICLv2's ceiling is a cuDNN fused-attention failure between 26k and 40k, not memory. `ROW_CAPS.md` |
 | 11-07-2026 | run-4 · 64 trials/track, TabPFN v3 + v2.6, 50 epochs | **done** | The clean homogeneous sweep and still the reference for cross-version science. 64/64 trained, 63 checkpoints straight to staging. PD: continued pretraining ≈ zero effect on discrimination (best Δ +0.0004). LGD: NLL improves while RMSE worsens. 8 PD eval cells walltime-killed. `RESULTS.md` |
 | 10-07-2026 | rerun after `clean_run` · 64 trials/track | **contaminated** | 59/64 trials SKIPped on stale 09-07 FP16 checkpoints in the `$VSC_DATA` fallback dir. Only PD v3 a0–a4 actually retrained. Do not cite any number from this run. |
 | 09-07-2026 | run-3 · 64 trials/track, first BF16 run | **partial** | LGD 32/32; PD 27/32 (tasks 0–4 ended together without a traceback, consistent with external termination). Monitor deltas invalid — the monitor re-seeded every epoch. |
@@ -35,6 +37,49 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 11-08-2026
+
+**One slurm array task per (model × dataset) eval cell.**
+- **Tried:** the obvious decomposition — 209 PD array tasks, each scoring one model on one
+  dataset across 5 folds, submitted to `gpu_h100`.
+- **Result:** the median task computed for **94 seconds**, 19 tasks did nothing at all (already
+  scored, ~2 s) and still took a GPU allocation, and the array reached an **average concurrency
+  of 0.73** — 6.7 GPU-hours took 9.1 hours of wall-clock, 44 % of it with nothing running.
+- **Why:** every array task is scheduled independently. On a busy partition the wait to be
+  allocated dominates a 94-second job, and hundreds of them never build up concurrency. The
+  same day, on the same account, training went out as 36 big tasks and held 15-21 GPUs at once,
+  draining 90 GPU-hours in 5.1 hours. The scheduler rewards a few substantial jobs.
+- **Instead:** `eval_pipeline.py --tasks N` packs cells into N tasks of roughly equal estimated
+  cost (`rows × per-family rate`, longest-processing-time-first). At `--tasks 16` the PD eval is
+  16 tasks of ~50 minutes. Measure before assuming more parallelism is faster.
+
+**Splitting eval pools by a stride over raw cells.**
+- **Tried:** `i % pools == pool` over the model-major cell list — the 08-08-2026 replacement for
+  the model-parity split.
+- **Result:** LGD has exactly 2 test datasets and the eval ran on 2 pools, so pool 0 got every
+  even index, which is **dataset 0 every time**. Pool 0 scored `0002.loss2` and nothing else;
+  `0007.lgd_lendingclub` existed only in the other pool.
+- **Why:** with cells enumerated model-major, a stride of `pools` aligns exactly with the dataset
+  index whenever `n_datasets` is a multiple of `pools`. This is the 11-07-2026 dead end (a whole
+  dataset in one pool) reintroduced by a different mechanism — the fix for one split shape
+  recreated the failure of the other.
+- **Instead:** stride over **packed** tasks, each of which holds a cost-balanced mix of cells, so
+  no stride can isolate a dataset. Pinned by
+  `tests/test_eval.py::test_pools_over_packed_tasks_never_align_with_the_dataset_index`.
+
+**Equalising the step budget by trimming epochs only.**
+- **Tried:** `target_total_steps` reduced `epochs` when a base would overshoot the shared budget.
+- **Result:** PD equalised correctly (9 100 steps for every base), but **LGD ran 800 steps for
+  tabicl, 1 600 for v3 and 3 200 for v2.6** — 3-11× under budget, and still unequal across bases.
+  Every LGD trial in that run lost to its untuned baseline.
+- **Why:** trimming can only ever remove epochs. LGD's 6 small training tables give very few
+  steps per epoch, so 100 epochs was already far below the target and nothing fired. The check
+  was written and verified on PD, where it did fire, so the track it silently skipped was the
+  one nobody looked at.
+- **Instead:** the budget is a target in BOTH directions — epochs are raised as well as trimmed,
+  bounded by `train.max_epochs_for_step_budget`. Verify a budget mechanism on the track where it
+  is *least* likely to trigger.
+
 ### 08-08-2026
 
 **Splitting the eval pools by model parity.**
@@ -42,7 +87,7 @@ fixed, because the fix is one changelog line and the dead end was the hour.
   disjoint half of the models over all datasets.
 - **Result:** the `gpu_a100` pool (jobs …490/…492) never logged anything in run-6, and that lost
   **12 of 24 models outright — including `tabpfn-untuned[v3]` and `tabicl-untuned`.**
-  Trained-vs-untuned is therefore *not computable* for v3 or TabICL from run-6.
+  Trained-vs-untuned is therefore *not computable* for v3 or TabICLv2 from run-6.
 - **Why:** model-parity makes the two pools structurally non-overlapping in the model dimension, so
   losing one pool deletes whole models rather than degrading resolution. The headline comparison in
   this project is trained-vs-untuned; a split that can drop the untuned control is the one split
@@ -61,12 +106,12 @@ fixed, because the fix is one changelog line and the dead end was the hour.
 
 ### 06-08-2026
 
-**Freezing TabICL's backbone with `.eval()`.**
+**Freezing TabICLv2's backbone with `.eval()`.**
 - **Tried:** `model.col_embedder.eval()` (plus the row interactor) to freeze the backbone for the
   `_iclhead` adaptation arm.
 - **Result:** **all 16 `_iclhead` trials failed**, both tracks, a few steps in: *"A view was created
   in no_grad mode and is being modified inplace with grad mode enabled."*
-- **Why:** TabICL branches `if self.training: _train_forward() else: _inference_forward()` in
+- **Why:** TabICLv2 branches `if self.training: _train_forward() else: _inference_forward()` in
   **both** `ColEmbedder` and `RowInteractor`. Eval mode routes to the inference path, which runs
   under `torch.no_grad()` and writes CLS tokens into its own input in place
   (`interaction.py::_inference_forward`). Upstream's `_set_training_mode` has the same latent bug,
@@ -132,11 +177,11 @@ fixed, because the fix is one changelog line and the dead end was the hour.
 
 ### 04-08-2026
 
-**Reading TabICL's context limits off the library's default arguments.**
+**Reading TabICLv2's context limits off the library's default arguments.**
 - **Tried:** set `max_rows_per_epoch.tabicl: 10000` and `max_rows_per_model.tabicl: 50000` from
   `max_data_size=10_000` in their convenience finetune wrapper.
 - **Result:** wrong by 2.6× (training) and 20× (eval); the user challenged the values and was right.
-  It would have handicapped TabICL against v3 and thrown away its headline capability.
+  It would have handicapped TabICLv2 against v3 and thrown away its headline capability.
 - **Why:** **a library default is not a capability limit.** Their own stage-3 pretraining runs
   400–60 000 samples (grad-checkpointed above 20K), and Qu et al. 2026 report 1M samples × 500
   features in ~450 s under 50 GB GPU + 24 GB CPU via offloading; QASSMax exists precisely to keep
@@ -158,7 +203,7 @@ fixed, because the fix is one changelog line and the dead end was the hour.
   display name. Regression test in `tests/test_tabicl.py`.
 
 **Growing the grid without grepping for hardcoded bounds.**
-- **Tried:** adding the two TabICL bases (32 → 48 trials/track).
+- **Tried:** adding the two TabICLv2 bases (32 → 48 trials/track).
 - **Result:** two places still carried numbers derived from the old count — the
   `#SBATCH --array=0-199` fallback in `eval_{pd,lgd}.slurm` (PD now needs ~275 tasks, so the tail
   would have been **silently dropped**) and the trial-count comments.

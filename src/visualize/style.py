@@ -157,7 +157,7 @@ COLORS: dict[str, str] = {
     # three-way separation Okabe-Ito offers, in print and in greyscale.
     "v3":            "#0072B2",   # TabPFN v3
     "v2.6":          "#E69F00",   # TabPFN v2.6
-    "tabicl":        "#009E73",   # TabICL v2
+    "tabicl":        "#009E73",   # TabICLv2 v2
     # Baselines. Grey-purple-ish, deliberately duller than the families above: they are
     # the reference line, not the result.
     "xgboost":       "#7F7F7F",

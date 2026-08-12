@@ -3,7 +3,7 @@
 # =============================================================================
 #  Tunable knobs only; always-on policy is hardcoded in the stage modules.
 #  CLI overrides Hydra-style: `data_pipeline.py finetuning.max_rows_per_epoch=5000`.
-#  Full walkthrough of every stage in docs/DATA_PIPELINE.md.
+#  Full walkthrough of every stage in docs/METHOD.md.
 # =============================================================================
 
 # Global seed — every stage derives a deterministic local seed from this.
@@ -32,9 +32,9 @@ paths:
 # Per-architecture because memory cost per row differs ~11x across bases.
 # Values are the PD (2-member) caps; loop.py scales them by 2/n_estimators for
 # LGD's 8 members (TabPFN only — tabicl is pinned to 2 members on both tracks).
-# Measured on the B200 2026-08-05; TabICL must NOT exceed 26000 (cuDNN fused
+# Measured on the B200 2026-08-05; TabICLv2 must NOT exceed 26000 (cuDNN fused
 # attention fails between 26k and 40k) and matches v3 for cross-family parity.
-# Rationale, measurements, re-probe instructions: docs/ROW_CAPS.md §1.
+# Rationale, measurements, re-probe instructions: docs/METHOD.md §1.
 finetuning:
   max_rows_per_epoch:
     v3:      26000
@@ -43,7 +43,7 @@ finetuning:
     default: 26000
   # Optional rows x features budget: per-step rows become
   # min(max_rows_per_epoch, max_cells // n_features). null = off (the default).
-  # v3-only by design; wrong for v2.6. See docs/ROW_CAPS.md §1.
+  # v3-only by design; wrong for v2.6. See docs/METHOD.md §1.
   max_cells_per_epoch:
     v3:      null
     v2.6:    null
@@ -72,7 +72,7 @@ sanitize:
   # scale-free variance, greedily de-correlated) — NOT by averaging into
   # cluster means. Keeps real marginals/interactions so continued pretraining
   # specialises the prior toward genuine credit features. corr_threshold drops
-  # a column when |Pearson r| with a kept column exceeds it. See docs/DATA_PIPELINE.md.
+  # a column when |Pearson r| with a kept column exceeds it. See docs/METHOD.md.
   feature_selection:
     enabled: true
     corr_threshold: 0.95
@@ -84,7 +84,7 @@ sanitize:
 
 # --- dedup.py — within-track duplicate detection (diagnostic only) -----------
 # Writes a report per (track, pass); never removes datasets. See
-# docs/DATA_PIPELINE.md § dedup.
+# docs/METHOD.md § dedup.
 dedup:
   name_jaccard_threshold: 0.80            # check 2: col-name Jaccard + same shape
   row_hash_intersection_min: 1            # check 3: shared row hashes

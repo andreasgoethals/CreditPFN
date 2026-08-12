@@ -917,3 +917,96 @@ def test_eval_row_exposes_calibration_columns() -> None:
         fold_idx=0, n_train_rows=1, n_val_rows=1, n_test_rows=1)).keys())
     assert {"ece", "ece_platt", "ece_isotonic",
             "brier_score_platt", "log_loss_isotonic"} <= cols
+
+
+# =========================================================================== #
+# Eval task packing (11-08-2026)
+# =========================================================================== #
+
+
+def _fake_roster(n_models: int):
+    """A roster shaped like the real one: three model families plus baselines."""
+    from types import SimpleNamespace as NS
+    fams = ["tabpfn-v3-classifier-v3_default", "tabpfn-v2.6-classifier-v2.6_default",
+            "tabicl-classifier-v2", "xgboost"]
+    return [(NS(name=f"m{i}[{fams[i % len(fams)]}]",
+                base_checkpoint=fams[i % len(fams)],
+                source="tabpfn-untuned", base_path=None), None)
+            for i in range(n_models)]
+
+
+def test_packing_balances_tasks_and_keeps_every_cell() -> None:
+    """The whole point: fewer, evenly-sized array tasks, with nothing dropped.
+
+    One task per cell gave 209 PD tasks whose median compute was 94 s, and the array
+    averaged 0.73 concurrent jobs because each had to be scheduled separately.
+    """
+    from scripts.eval_pipeline import _pack_tasks
+
+    roster = _fake_roster(42)
+    datasets = [f"{i:04d}.ds" for i in range(5)]
+    pairs = [(m, d) for m in range(len(roster)) for d in datasets]
+
+    bins = _pack_tasks(pairs, roster, n_tasks=16, track="pd", max_rows_per_model=None)
+    assert len(bins) == 16
+    flat = sorted(i for b in bins for i in b)
+    assert flat == list(range(len(pairs))), "every cell must appear exactly once"
+    assert all(bins), "no empty task — an empty task is a wasted GPU allocation"
+
+
+def test_packing_puts_the_expensive_cells_in_different_tasks() -> None:
+    """LPT exists so the one 16-minute dataset does not land beside another one."""
+    from scripts.eval_pipeline import _pack_tasks
+
+    roster = _fake_roster(4)
+    pairs = [(m, d) for m in range(4) for d in ("0014.algorithmwatch", "0005.myhom")]
+    bins = _pack_tasks(pairs, roster, n_tasks=4, track="pd", max_rows_per_model=None)
+    big = {i for i, (_, d) in enumerate(pairs) if d == "0014.algorithmwatch"}
+    per_task = [len(big & set(b)) for b in bins]
+    assert max(per_task) <= 1, f"expensive cells clumped together: {per_task}"
+
+
+def test_packing_never_asks_for_more_tasks_than_cells() -> None:
+    """An over-sized --tasks would otherwise create empty array tasks that still
+    cost a GPU allocation to start and stop."""
+    from scripts.eval_pipeline import _pack_tasks
+
+    roster = _fake_roster(2)
+    pairs = [(0, "a"), (1, "b")]
+    assert len(_pack_tasks(pairs, roster, n_tasks=99, track="pd",
+                           max_rows_per_model=None)) == 2
+
+
+def test_a_task_index_beyond_the_packed_grid_is_a_soft_no_op() -> None:
+    """An over-sized slurm array is a legitimate pattern; surplus tasks must exit 0."""
+    from scripts.eval_pipeline import _filter_roster
+
+    roster = _fake_roster(3)
+    assert _filter_roster(roster, ["0001.ds"], method_filter=None, dataset_filter=None,
+                          task_index=99, n_tasks=4, track="pd") == []
+
+
+def test_pools_over_packed_tasks_never_align_with_the_dataset_index() -> None:
+    """REGRESSION (found in the 11-08-2026 logs). LGD has 2 test datasets and the eval
+    ran on 2 pools. Cells are enumerated model-major, so a `i % pools` stride over RAW
+    cells handed pool 0 every even index — which is dataset 0, every time. Pool 0 scored
+    `0002.loss2` and nothing else; `0007.lgd_lendingclub` existed only in the other pool.
+    That is the 11-07-2026 dead end (a whole dataset in one pool) reintroduced by a
+    different mechanism.
+
+    Packing fixes it structurally: each packed task holds a cost-balanced MIX of cells,
+    so no stride over tasks can isolate a dataset.
+    """
+    from scripts.eval_pipeline import _pack_tasks
+
+    roster = _fake_roster(42)
+    datasets = ["0002.loss2", "0007.lgd_lendingclub"]
+    pairs = [(m, d) for m in range(len(roster)) for d in datasets]
+
+    raw = {d for i, (_, d) in enumerate(pairs) if i % 2 == 0}
+    assert len(raw) == 1, "the raw-stride bug this test exists for should still reproduce"
+
+    bins = _pack_tasks(pairs, roster, n_tasks=16, track="lgd", max_rows_per_model=None)
+    for pool in (0, 1):
+        seen = {pairs[c][1] for t, b in enumerate(bins) if t % 2 == pool for c in b}
+        assert seen == set(datasets), f"pool {pool} lost a dataset: {seen}"

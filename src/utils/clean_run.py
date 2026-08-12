@@ -1,8 +1,9 @@
 """Wipe what the previous run produced, so the next one starts clean.
 
-    python -m src.utils.clean_run                        list what is there, delete nothing
-    python -m src.utils.clean_run --clean                 delete it
-    python -m src.utils.clean_run --clean --processed      ...and the data/processed cache too
+    python -m src.utils.clean_run                          list what is there, delete nothing
+    python -m src.utils.clean_run --clean                   delete it
+    python -m src.utils.clean_run --clean --processed       ...and the data/processed cache too
+    python -m src.utils.clean_run --clean --stages eval     only what the eval stage produced
 
 Clears the **whole `output/` tree on both storage tiers** — `$VSC_DATA` and project storage — so
 one invocation is enough whether you are on a laptop or on the cluster. Off-cluster both tiers
@@ -29,6 +30,12 @@ CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `ou
   * `.sentinels/` — the `data_done` / `train_ok_<track>_<i>` files the cross-cluster gate
     polls, plus the generated `eval_submit_*.sh`. Stale sentinels cannot release a NEW run
     (the submitter clears them first) but they make a log impossible to read.
+
+`--stages data,train,eval` narrows the wipe to what one stage produced, which is what you
+want when only the last stage needs redoing — re-running eval is minutes, re-running the
+data pipeline is not. Without it, everything goes. (This replaced a second cleaner,
+`pipeline_clean.py`, on 11-08-2026: two scripts that both delete things is one too many,
+and the stage list is an argument, not a program.)
 """
 
 from __future__ import annotations
@@ -61,6 +68,41 @@ def is_safe(root: Path) -> bool:
     return (root != Path(root.anchor)
             and len(root.parts) > 2
             and root.name not in FORBIDDEN_LEAVES)
+
+
+#: What each pipeline stage puts on disk, as (glob-root, patterns). A stage's targets are
+#: files, not directories, because the three stages share directories: `output/logs/` holds
+#: all three stages' logs and `output/manifests/` holds both the data manifests and the
+#: training ones. Wiping by directory would take another stage's work with it.
+STAGES = ("data", "train", "eval")
+
+
+def stage_targets(stage: str) -> list[Path]:
+    """Every file the named stage produced. See `STAGES` for why this is file-level."""
+    if stage not in STAGES:
+        raise ValueError(f"unknown stage {stage!r}; valid: {', '.join(STAGES)}")
+    out_root, logs = outputs_dir(), outputs_dir() / "logs"
+    found: list[Path] = []
+    if stage == "data":
+        found += list(processed_dir().glob("**/*.sanitized.csv"))
+        found += list(processed_dir().glob("**/*.sanitized.feature_groups.json"))
+        found += list((out_root / "manifests" / "dedup").glob("*.csv"))
+        found += list((out_root / "manifests").glob("manifest_*.csv"))
+        found += list(logs.glob("data_*.log"))
+    elif stage == "train":
+        trained = checkpoints_dir("trained")
+        found += [p for p in trained.glob("**/*.ckpt")]
+        found += list(trained.glob("**/*.provenance.json"))
+        found += list(resolve_output_path("checkpoints/trained").glob("**/*.ckpt"))
+        found += [p for p in (out_root / "manifests").glob("*.csv")
+                  if not p.name.startswith("manifest_")]
+        found += list((out_root / "manifests" / "epochs").glob("**/*.csv"))
+        found += list(logs.glob("train_*.log"))
+    else:                                                       # eval
+        found += list(results_dir().glob("**/*.csv"))
+        found += list((out_root / "figures").glob("**/*"))
+        found += list(logs.glob("eval_*.log"))
+    return [p for p in found if p.is_file() and p.name not in KEEP]
 
 
 def roots(*, processed: bool = False) -> list[Path]:
@@ -122,7 +164,34 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--clean", action="store_true", help="actually delete; default lists only")
     parser.add_argument("--processed", action="store_true",
                         help="also clear data/processed/, the preprocessing cache")
+    parser.add_argument("--stages", default=None,
+                        help="comma-separated subset of " + ",".join(STAGES) +
+                             " — clear only what those stages produced, instead of the "
+                             "whole output/ tree")
     args = parser.parse_args(argv)
+
+    if args.stages:
+        names = [x.strip() for x in args.stages.split(",") if x.strip()]
+        bad = [x for x in names if x not in STAGES]
+        if bad:
+            parser.error(f"unknown stage(s) {bad}; valid: {', '.join(STAGES)}")
+        files: list[Path] = []
+        print("Output of stage(s) " + ", ".join(names) + ":\n")
+        for name in names:
+            got = stage_targets(name)
+            size = sum(f.stat().st_size for f in got)
+            print(f"  {len(got):>6} files  {size / 1e6:>9.1f} MB  {name}")
+            files += got
+        total = sum(f.stat().st_size for f in files)
+        print(f"\nTOTAL: {len(files)} files, {total / 1e9:.2f} GB")
+        print("Never touched: data/raw/, the base checkpoints/*.ckpt, tfm-library/.")
+        if not args.clean:
+            print("\nNothing was deleted. Re-run with --clean to delete.")
+            return 0
+        for f in files:
+            f.unlink(missing_ok=True)
+        print(f"\nDeleted {len(files)} files. Clean.")
+        return 0
 
     targets = []
     for root in roots(processed=args.processed):

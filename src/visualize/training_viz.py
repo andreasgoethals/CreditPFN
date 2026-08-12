@@ -938,3 +938,81 @@ def trial_leaderboard(track: str, *, cfg=None) -> pd.DataFrame:
     if "best_test_metric" in df.columns:
         df = df.sort_values("best_test_metric", ascending=(direction == "min"))
     return df.reset_index(drop=True)
+
+
+# --------------------------------------------------------------------------- #
+# The two columns the 08-08-2026 logging added, and nothing plotted until now
+# --------------------------------------------------------------------------- #
+
+
+def plot_weight_drift(track: str, *, only_ok: bool = True, cfg=None):
+    """How far each trial's weights moved from the base checkpoint, per model stage.
+
+    ``drift__<stage>`` is ``||w - w0||`` over the parameters of one top-level module,
+    recorded on every monitored epoch. It answers the question that reframed run-5:
+    *did the model actually train?* A trial whose drift is flat near zero has not moved,
+    and its "no effect on the metric" result says nothing about continued pretraining.
+    """
+    histories = load_all_epoch_histories(track, cfg=cfg)
+    parsed = {n: t for n, t in ((n, parse_trial_name(n)) for n in histories) if t is not None}
+    if only_ok:
+        manifest = load_run_manifest(track, cfg=cfg)
+        if not manifest.empty:
+            ok = set(manifest.loc[manifest["status"] == "OK", "trial_name"])
+            parsed = {n: t for n, t in parsed.items() if n in ok}
+    drift_cols = sorted({c for n in parsed for c in histories[n].columns
+                         if c.startswith("drift__")})
+    if not parsed or not drift_cols:
+        return _no_data_fig(
+            f"no drift__* columns on track={track} — the per-stage drift logging "
+            "was added on 08-08-2026, so runs before it have none"
+        )
+
+    fig, ax = _new_fig(f"Weight drift from the base checkpoint (track={track})")
+    palette = _palette_for_bases([t.base for t in parsed.values()])
+    for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr)):
+        hist = histories[name]
+        cols = [c for c in drift_cols if c in hist.columns]
+        if not cols:
+            continue
+        # Max over stages: the loosest part of the model is what "did it move?" hangs on.
+        series = hist[cols].max(axis=1)
+        mask = series.notna()
+        ax.plot(hist.loc[mask, "epoch"], series[mask], **_style_for(trial, palette))
+    ax.set_xlabel("epoch")
+    ax.set_ylabel(r"$\|w - w_0\|$  (max over stages)")
+    ax.set_yscale("log")
+    ax.legend(loc="best", fontsize=7, ncol=2)
+    return fig
+
+
+def plot_per_dataset_loss(trial_name: str, track: str, *, cfg=None):
+    """Training loss per dataset over epochs, for one trial.
+
+    ``loss__<dataset_id>`` is that dataset's mean step loss within the epoch. The
+    aggregate `train_loss` hides which tables the model is actually learning: a corpus
+    loss that falls while one dataset's loss rises is the model trading one table for
+    the others, which is what a mixed-domain corpus does when one table dominates.
+    """
+    histories = load_all_epoch_histories(track, cfg=cfg)
+    if trial_name not in histories:
+        return _no_data_fig(f"no epoch history for {trial_name}")
+    hist = histories[trial_name]
+    cols = sorted(c for c in hist.columns if c.startswith("loss__"))
+    if not cols:
+        return _no_data_fig(
+            f"no loss__<dataset> columns for {trial_name} — the per-dataset loss "
+            "logging was added on 08-08-2026"
+        )
+
+    fig, ax = _new_fig(f"Per-dataset train loss — {trial_name}")
+    # Order the legend by final loss so the worst-fitting table is easy to find.
+    order = sorted(cols, key=lambda c: -hist[c].dropna().iloc[-1] if hist[c].notna().any() else 0)
+    for i, col in enumerate(order):
+        ax.plot(hist["epoch"], hist[col], linewidth=1.1,
+                color=style.color(col.removeprefix("loss__")),
+                label=col.removeprefix("loss__"))
+    ax.set_xlabel("epoch")
+    ax.set_ylabel("mean step loss")
+    ax.legend(loc="best", fontsize=6, ncol=2)
+    return fig

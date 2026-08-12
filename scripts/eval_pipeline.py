@@ -191,7 +191,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     hpo_cb  = _hpo_get("catboost")
     hpo_lr  = _hpo_get("logreg")
     hpo_lin = _hpo_get("linreg")
-    # TabICL's inference ensemble is quadratic in rows; upstream's default
+    # TabICLv2's inference ensemble is quadratic in rows; upstream's default
     # is 8 where our TabPFN setting is 32. Separate knob so one family's
     # cost decision can't silently be imposed on the other.
     n_est_tabicl = int(getattr(eval_cfg, "tabicl_n_estimators", 8))
@@ -238,8 +238,10 @@ def _build_roster(eval_cfg, train_cfg, track: str):
 
 
 def _enumerate_tasks(handles_and_models, cfg_test_ids: list[str]):
-    """Cartesian product of (model_idx, dataset_id) — one slurm-array
-    task scores one pair across all CV folds.
+    """Cartesian product of (model_idx, dataset_id) — one CELL, scored across all CV folds.
+
+    A cell is the unit of WORK, not the unit of a slurm array task: `_pack_tasks` groups
+    cells into far fewer, evenly-sized tasks. See that function for why.
 
     For tabpfn-trained models with provenance, the dataset list comes
     from their own provenance (each checkpoint scored on its own test
@@ -254,13 +256,102 @@ def _enumerate_tasks(handles_and_models, cfg_test_ids: list[str]):
     return pairs
 
 
+# --------------------------------------------------------------------------- #
+# Packing cells into array tasks
+# --------------------------------------------------------------------------- #
+#
+# MEASURED on the 10/11-08-2026 run (147 eval logs). Seconds to score one model on one
+# dataset, per 1 000 rows of that dataset, 5 folds:
+#
+#     baselines (xgboost/lightgbm/catboost/linear)   9.3   <- 50-trial Optuna, per fold
+#     tabpfn v2.6                                    5.0
+#     tabpfn v3                                      3.5
+#     tabicl                                         0.6   <- 6-8x cheaper than TabPFN
+#
+# Cost is close to linear in rows, so `rows x rate` is a good enough estimator: it only
+# has to get the ORDER right for the packing to be balanced.
+_COST_S_PER_1K_ROWS = {"tabicl": 0.7, "tabpfn-v3": 3.5, "tabpfn-v2.6": 5.0, "baseline": 9.3}
+
+
+def _cost_rate(handle) -> float:
+    """Seconds per 1 000 scored rows for this model's family."""
+    name = f"{getattr(handle, 'name', '')} {getattr(handle, 'base_checkpoint', '') or ''}".lower()
+    if "tabicl" in name:
+        return _COST_S_PER_1K_ROWS["tabicl"]
+    if "v2.6" in name:
+        return _COST_S_PER_1K_ROWS["tabpfn-v2.6"]
+    if "tabpfn" in name or "v3" in name:
+        return _COST_S_PER_1K_ROWS["tabpfn-v3"]
+    return _COST_S_PER_1K_ROWS["baseline"]
+
+
+def _dataset_rows(track: str) -> dict[str, int]:
+    """`{dataset_id: n_rows}` from the corpus manifest. Empty when it has not been built."""
+    path = manifests_dir() / f"manifest_{track}.csv"
+    if not path.is_file():
+        return {}
+    import pandas as pd
+    df = pd.read_csv(path, usecols=["dataset_id", "n_rows"])
+    return {str(r.dataset_id): int(r.n_rows) for r in df.itertuples()}
+
+
+def _estimate_cost_s(handle, dataset_id: str, rows_by_id: dict[str, int],
+                     max_rows_per_model: dict[str, int] | None) -> float:
+    """Rough seconds for one cell. Never zero, so an unknown dataset still gets packed."""
+    from src.eval.benchmark import resolve_max_rows_for_handle
+    rows = rows_by_id.get(dataset_id, 50_000)          # unknown -> a mid-sized guess
+    if max_rows_per_model:
+        cap = resolve_max_rows_for_handle(handle, max_rows_per_model=max_rows_per_model)
+        if cap:
+            rows = min(rows, int(cap))
+    return max(1.0, rows / 1000.0 * _cost_rate(handle))
+
+
+def _pack_tasks(pairs, handles_and_models, *, n_tasks: int, track: str,
+                max_rows_per_model: dict[str, int] | None) -> list[list[int]]:
+    """Group cells into `n_tasks` slurm array tasks of roughly equal cost.
+
+    WHY THIS EXISTS (measured, 10/11-08-2026 run). One cell per array task meant 209 PD
+    tasks for ~16 GPU-hours of work. The median task computed for **94 seconds**, 19 tasks
+    did nothing at all (already scored) and still took a GPU allocation, and the array
+    reached an average concurrency of **0.73** — 44 % of the elapsed time nothing was
+    computing at all, because every task had to be scheduled separately onto a busy
+    partition. 6.7 GPU-hours took 9.1 hours of wall-clock. Training, submitted as 36 big
+    tasks on the same day, held 15-21 GPUs at once and drained 90 GPU-hours in 5.1 hours.
+
+    The scheduler rewards a few substantial jobs; it punishes hundreds of tiny ones.
+
+    LPT (longest-processing-time-first): sort cells by descending estimated cost, put each
+    into the currently-lightest task. Greedy, but its makespan is provably within 4/3 of
+    optimal, and it keeps the one 16-minute dataset from landing beside another one.
+    """
+    rows_by_id = _dataset_rows(track)
+    costed = sorted(
+        ((_estimate_cost_s(handles_and_models[m][0], d, rows_by_id, max_rows_per_model), i)
+         for i, (m, d) in enumerate(pairs)),
+        reverse=True,
+    )
+    n_tasks = max(1, min(int(n_tasks), len(pairs)))
+    bins: list[list[int]] = [[] for _ in range(n_tasks)]
+    loads = [0.0] * n_tasks
+    for cost, i in costed:
+        j = loads.index(min(loads))
+        bins[j].append(i)
+        loads[j] += cost
+    return bins
+
+
 def _filter_roster(handles_and_models, cfg_test_ids, *,
-                   method_filter, dataset_filter, task_index):
+                   method_filter, dataset_filter, task_index,
+                   n_tasks: int | None = None, track: str = "pd",
+                   max_rows_per_model: dict[str, int] | None = None):
     """Apply --method / --test-dataset / --task-index filters."""
     pairs = _enumerate_tasks(handles_and_models, cfg_test_ids)
 
     if task_index is not None:
-        if not 0 <= task_index < len(pairs):
+        bins = _pack_tasks(pairs, handles_and_models, n_tasks=n_tasks or len(pairs),
+                           track=track, max_rows_per_model=max_rows_per_model)
+        if not 0 <= task_index < len(bins):
             # Soft no-op: an over-sized slurm array is a legitimate
             # pattern (the upper-bound computed at submit time may
             # exceed the final task count once training is done).
@@ -271,11 +362,13 @@ def _filter_roster(handles_and_models, cfg_test_ids, *,
             getLogger(__name__).info(
                 "task_index=%d is out of bounds for the %d-task grid "
                 "(valid indices 0..%d). Returning empty plan.",
-                task_index, len(pairs), len(pairs) - 1,
+                task_index, len(bins), len(bins) - 1,
             )
             return []
-        m_idx, ds_id = pairs[task_index]
-        return [(handles_and_models[m_idx], [ds_id])]
+        # One plan entry per CELL, so each still writes its own result file under the
+        # existing `task<i>_ds-<id>` name and the skip-existing scan keeps working at
+        # cell granularity — a task that dies halfway loses only its remaining cells.
+        return [(handles_and_models[pairs[i][0]], [pairs[i][1]]) for i in sorted(bins[task_index])]
 
     keep_models = (
         [(h, m) for h, m in handles_and_models if h.name in set(method_filter)]
@@ -305,6 +398,7 @@ def run(
     method_filter: list[str] | None = None,
     dataset_filter: list[str] | None = None,
     task_index: int | None = None,
+    n_tasks: int | None = None,
     rerun: bool = False,
 ) -> int:
     eval_cfg, train_cfg = _load_cfgs(eval_overrides or [], train_overrides or [])
@@ -319,7 +413,8 @@ def run(
     setup_logging(log.path)
 
     # The resolved config, next to the results it produced (see src/utils/config.py).
-    dump_resolved(cfg, f"eval_{track}")
+    dump_resolved(eval_cfg, f"eval_{track}", extra={"train_cfg": {
+        "run_name": str(train_cfg.run_name), "track": track, "seed": int(train_cfg.seed)}})
     LOGGER.info("eval_pipeline: log=%s  track=%s", log.path, track)
 
     handles_and_models, cfg_test_ids, manifest_csv = _build_roster(
@@ -334,6 +429,13 @@ def run(
         method_filter=method_filter or [],
         dataset_filter=dataset_filter or [],
         task_index=task_index,
+        n_tasks=n_tasks,
+        track=track,
+        max_rows_per_model=(
+            {str(k): int(v) for k, v in OmegaConf.to_container(
+                eval_cfg.max_rows_per_model, resolve=True).items()}
+            if getattr(eval_cfg, "max_rows_per_model", None) is not None else None
+        ),
     )
     LOGGER.info("After filtering: %d (model × dataset-list) pair(s)", len(plan))
 
@@ -490,6 +592,15 @@ def _parse_args(argv: list[str] | None = None):
                         "A100 pool and went unscored for hours).")
     p.add_argument("--pool", type=int, default=None,
                    help="With --pools: which pool's indices to print (0-based).")
+    p.add_argument("--tasks", type=int, default=None,
+                   help="Pack the (model x dataset) cells into this many slurm array "
+                        "tasks of roughly equal estimated cost, instead of one task per "
+                        "cell. MEASURED (11-08-2026): one-cell-per-task gave 209 PD tasks "
+                        "whose median compute was 94 s, and the array averaged 0.73 "
+                        "concurrent jobs because each had to be scheduled separately — "
+                        "44 %% of the wall-clock was dead time. Must be passed IDENTICALLY "
+                        "to --list-tasks and to --task-index, or the two disagree about "
+                        "which cells belong to task i.")
     p.add_argument("--list-tasks", action="store_true",
                    help="Print the total (model × dataset) task count for "
                         "the current cfg and exit.")
@@ -534,6 +645,16 @@ if __name__ == "__main__":
             eval_cfg, train_cfg, track,
         )
         pairs = _enumerate_tasks(handles_and_models, cfg_test_ids)
+        if args.tasks is not None:
+            caps = (
+                {str(k): int(v) for k, v in OmegaConf.to_container(
+                    eval_cfg.max_rows_per_model, resolve=True).items()}
+                if getattr(eval_cfg, "max_rows_per_model", None) is not None else None
+            )
+            n_units = len(_pack_tasks(pairs, handles_and_models, n_tasks=args.tasks,
+                                      track=track, max_rows_per_model=caps))
+        else:
+            n_units = len(pairs)
         if args.pools is not None:
             if args.pool is None or not (0 <= args.pool < args.pools):
                 raise SystemExit("--pools requires --pool in [0, pools)")
@@ -558,11 +679,11 @@ if __name__ == "__main__":
             # model's datasets across pools, which also preserves the original
             # reason model-parity existed (never send one whole dataset to the
             # slow pool).
-            idx = [str(i) for i in range(len(pairs))
+            idx = [str(i) for i in range(n_units)
                    if i % args.pools == args.pool]
             print(",".join(idx))
         else:
-            print(len(pairs))
+            print(n_units)
         raise SystemExit(0)
     raise SystemExit(run(
         eval_overrides=eval_overrides,
@@ -571,5 +692,6 @@ if __name__ == "__main__":
         method_filter=args.method,
         dataset_filter=args.test_dataset,
         task_index=args.task_index,
+        n_tasks=args.tasks,
         rerun=args.rerun,
     ))

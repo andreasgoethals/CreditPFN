@@ -14,9 +14,15 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=04:00:00   # Measured run-5: every LGD trial finished in <25 min
-                          # at 50 epochs, so <1 h at 100. Short requests backfill
-                          # far better — see train_pd.slurm for the rationale.
+#SBATCH --time=10:00:00   # RAISED from 4 h for run-8, and this one is not margin.
+                          # LGD used to finish in minutes because it was silently
+                          # undertrained: `target_total_steps` only trimmed epochs,
+                          # never extended them, so LGD ran 800-3 200 steps against
+                          # a 9 100 target. Now it reaches the full 20 000, which at
+                          # LGD's measured epoch costs is v2.6 ~4.0 h, v3 ~3.7 h,
+                          # tabicl ~0.6 h. 10 h covers the worst case with margin
+                          # for the smaller `min_train_rows=5000` corpus, where
+                          # fewer datasets mean more epochs for the same steps.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
@@ -27,8 +33,8 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-35%24   # 36 trials (3 bases incl. tabicl-v2). See
-                          # train_pd.slurm for the full rationale.
+#SBATCH --array=0-15%16   # 16 trials/track for run-8 — see train_pd.slurm for
+                          # which sweep axes were dropped and why.
 
 sleep $((RANDOM % 30 + 1))
 

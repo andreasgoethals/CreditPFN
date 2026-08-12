@@ -71,6 +71,11 @@ class DatasetRef:
     target_column: str
     categorical_columns: tuple[str, ...]
     processed_csv: Path      # data/processed/{track}/{id}.sanitized.csv
+    #: Rows in the sanitized CSV, read from the manifest. Carried because corpus
+    #: composition is a first-class experimental variable: `min_train_rows` filters on
+    #: it, and the run log records it so a result can be read against the corpus that
+    #: produced it. 0 when the manifest predates the column.
+    n_rows: int = 0
 
 
 @dataclass(frozen=True)
@@ -139,6 +144,10 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
             "task_type",
             "classification" if track == "pd" else "regression",
         )
+        try:
+            n_rows = int(row.get("n_rows", 0) or 0)
+        except (TypeError, ValueError):
+            n_rows = 0
         refs.append(DatasetRef(
             dataset_id=did,
             track=track,
@@ -146,6 +155,7 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
             target_column=row["target_column"],
             categorical_columns=cats,
             processed_csv=csv,
+            n_rows=n_rows,
         ))
     return refs
 
@@ -225,6 +235,7 @@ def split_corpus(
     train_dataset_ids: Sequence[str] = (),
     test_dataset_ids: Sequence[str] = (),
     seed: int = 42,
+    min_train_rows: int = 0,
 ) -> CorpusSplit:
     """Build a :class:`CorpusSplit` for one track.
 
@@ -316,6 +327,35 @@ def split_corpus(
             train.append(ref)
         elif b == "test":
             test.append(ref)
+
+    # TRAIN-SIDE ONLY size filter. The test set is never touched: dropping small test
+    # datasets would change what "held-out performance" means between two trials of the
+    # same sweep, which is the one thing that must stay fixed.
+    #
+    # WHY (Garg et al., Real-TabPFN, §ablations — tfm-library/papers/2025/): during
+    # continued pretraining "gains rise monotonically as context grows from 2 048 to
+    # 20 000 rows", curated LARGE tables (10k-100k rows) give +0.022 normalised ROC-AUC,
+    # and a corpus of TINY tables measurably HURTS (-0.003). Our LGD training corpus is
+    # 4 tables under 3 000 rows out of 6, which is exactly that harmful regime — and
+    # every LGD trial in the 10/11-08-2026 run lost to its untuned base.
+    if min_train_rows:
+        kept = [r for r in train if (r.n_rows or 0) >= int(min_train_rows)]
+        dropped = [r for r in train if r not in kept]
+        if dropped:
+            LOGGER.info(
+                "corpus.min_train_rows=%d: dropping %d of %d TRAINING datasets below the "
+                "threshold (%s). Test set unchanged (%d datasets).",
+                int(min_train_rows), len(dropped), len(train),
+                ", ".join(f"{r.dataset_id}:{r.n_rows}" for r in dropped), len(test),
+            )
+        if not kept:
+            LOGGER.warning(
+                "corpus.min_train_rows=%d removed EVERY training dataset for track=%s — "
+                "ignoring the filter rather than training on nothing.",
+                int(min_train_rows), track,
+            )
+        else:
+            train = kept
     return CorpusSplit(train=train, test=test)
 
 
@@ -346,6 +386,19 @@ def resolve_ids_for_track(raw, track: str) -> tuple[str, ...]:
     return tuple(raw or ())
 
 
+def _scalar_min_rows(raw) -> int:
+    """0 for a swept list, the value for a scalar. See `split_from_cfg`."""
+    try:
+        from omegaconf import OmegaConf
+        if OmegaConf.is_config(raw):
+            raw = OmegaConf.to_container(raw, resolve=True)
+    except Exception:                                          # pragma: no cover
+        pass
+    if isinstance(raw, (list, tuple)):
+        return 0
+    return int(raw or 0)
+
+
 def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
     """Apply :func:`split_corpus` using ``cfg.corpus``, ``cfg.seed``,
     and the active ``cfg.track`` (or the supplied override).
@@ -364,4 +417,10 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
         test_dataset_ids=resolve_ids_for_track(
             corpus.get("test_dataset_ids", None), track),
         seed=int(cfg.seed),
+        # A LIST here means "swept" (config/train.yaml since run-8). Outside a single
+        # trial there is no one value, so this convenience wrapper applies NO filter:
+        # its callers are the eval roster and the task planner, which only use the TEST
+        # split, and the filter is train-side only. `train_one_config` passes the
+        # trial's own value explicitly and does not come through here.
+        min_train_rows=_scalar_min_rows(corpus.get("min_train_rows", 0)),
     )

@@ -8,12 +8,14 @@
 #    [1] data  (wICE `batch`, CPU)            → writes a "data_done" sentinel on
 #                                               $VSC_DATA (NFS, seen everywhere)
 #         ⇣  train waits for the sentinel at startup (CREDITPFN_WAIT_DATA=1)
-#    [2] train pd + lgd (Mindwell `gpu_b200`, 48 trials each: TabPFN v3 +
-#        v2.6 + TabICL v2 bases; the exact count comes from --list-trials)
+#    [2] train pd + lgd (Mindwell `gpu_b200`, 16 trials each as of run-8: TabPFN
+#        v3 + v2.6 + TabICLv2 bases; the exact count comes from --list-trials)
 #         ⇣  an eval "gate" (wICE, 1 CPU) watches the train jobs via squeue
 #    [3] eval gate (wICE `batch`)             → finishes when training finishes
 #         ⇣  eval arrays `afterok` the gate → PENDING (no GPU held) until then
-#    [4] eval pd + lgd (wICE `gpu_h100` + `gpu_a100`)
+#    [4] eval pd + lgd (wICE `gpu_h100` + `gpu_a100`), with the (model x dataset)
+#        cells PACKED into EVAL_TASKS array tasks of roughly equal cost — see the
+#        measurement in that variable's comment below.
 #
 #  Fire it once and walk away; all results are ready in the morning. Datasets,
 #  checkpoints and results live in project staging; logs on $VSC_DATA.
@@ -24,7 +26,8 @@
 #      STAGES="data train" bash scripts/slurm/run_full_pipeline.sh   # skip eval
 #  Knobs (env): STAGES (any subset of "data train eval"), TRACKS,
 #      TRAIN_ACCOUNT (default lp_verbekelab), EVAL_ACCOUNT,
-#      TRAIN_CONCURRENCY, EVAL_CONCURRENCY, EVAL_PARTITIONS, CONDA_ENV.
+#      TRAIN_CONCURRENCY, EVAL_CONCURRENCY, EVAL_PARTITIONS, CONDA_ENV,
+#      EVAL_TASKS (how many array tasks the eval cells are packed into; 16).
 #  Stage coupling is handled automatically: train only waits for the data
 #  sentinel when data was submitted in the same invocation, and eval only
 #  goes through the training gate when train was submitted too (a bare
@@ -39,6 +42,20 @@ TRAIN_ACCOUNT="${TRAIN_ACCOUNT:-lp_verbekelab}"      # has Mindwell access
 EVAL_ACCOUNT="${EVAL_ACCOUNT:-lp_verbekelab}"
 TRAIN_CONCURRENCY="${TRAIN_CONCURRENCY:-24}"
 EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-32}"
+# How many array tasks the eval CELLS are packed into, per track. MEASURED on the
+# 10/11-08-2026 run: one task per (model x dataset) cell gave 209 PD tasks whose median
+# compute was 94 s, 19 of which did nothing at all, and the array averaged 0.73 concurrent
+# jobs -- 6.7 GPU-h took 9.1 h of wall-clock because every tiny task had to be scheduled
+# separately onto a busy partition. Training, submitted the same day as 36 big tasks, held
+# 15-21 GPUs and drained 90 GPU-h in 5.1 h. 16 tasks puts each one at ~50 min of work:
+# long enough that the scheduler treats it as a real job, short enough to backfill.
+EVAL_TASKS="${EVAL_TASKS:-16}"
+# EXPORTED, not just set: the eval job scripts read it too (`--tasks "${EVAL_TASKS:-16}"`),
+# and both sides must agree on the number or they disagree about which cells belong to
+# task i. With --export=ALL the submitting shell's environment is what the job sees, so a
+# plain shell variable here would leave an override like EVAL_TASKS=8 applying to the
+# index list at submit time and NOT inside the job.
+export EVAL_TASKS
 EVAL_PARTITIONS="${EVAL_PARTITIONS:-gpu_h100 gpu_a100}"
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
@@ -195,7 +212,7 @@ if [[ -n "${run_eval}" ]]; then
                 echo "  fi"
             fi
             indent=""; [[ "${gated}" == "1" ]] && indent="  "
-            echo "${indent}N=\$(python scripts/eval_pipeline.py --list-tasks track='${TR}')"
+            echo "${indent}N=\$(python scripts/eval_pipeline.py --list-tasks --tasks ${EVAL_TASKS} track='${TR}')"
             echo "${indent}if [[ ! \"\${N}\" =~ ^[0-9]+$ ]] || [[ \"\${N}\" -lt 1 ]]; then"
             echo "${indent}  echo \"eval ${TR}: ERROR - invalid/empty task count: \${N}\" >&2"
             echo "${indent}  exit 1"
@@ -210,7 +227,7 @@ if [[ -n "${run_eval}" ]]; then
                 # Distinguish "python failed" (must abort loudly) from "pool
                 # legitimately has zero tasks" (skip quietly) — previously a
                 # failing --pools call silently dropped the whole pool.
-                echo "${indent}  if ! IDX=\$(python scripts/eval_pipeline.py --list-tasks --pools ${K} --pool ${i} track='${TR}'); then"
+                echo "${indent}  if ! IDX=\$(python scripts/eval_pipeline.py --list-tasks --tasks ${EVAL_TASKS} --pools ${K} --pool ${i} track='${TR}'); then"
                 echo "${indent}    echo \"eval ${TR}: ERROR - pool-${i} index computation failed\" >&2"
                 echo "${indent}    exit 1"
                 echo "${indent}  fi"

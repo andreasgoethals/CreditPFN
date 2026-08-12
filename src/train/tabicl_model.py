@@ -1,4 +1,4 @@
-"""TabICL v2 load / save / loss for continued pretraining.
+"""TabICLv2 v2 load / save / loss for continued pretraining.
 
 Mirrors ``src/train/model.py`` (the TabPFN loader/saver) for the second model
 family. Everything here follows tabicl's OWN finetuning code
@@ -13,9 +13,9 @@ matches what the upstream wrappers would do:
   carry) because the ICL stage's attention is O(rows²) and checkpointing is
   the main training-time VRAM lever.
 * **Adaptation modes**: full-FT, or ``freeze_backbone=True`` = freeze the
-  column embedder + row interactor and train only the ICL module — TabICL's
+  column embedder + row interactor and train only the ICL module — TabICLv2's
   own pretraining stage-3 regime and the literature-sanctioned adaptation
-  (full SFT collapsed TabICL in two independent reports; see tabicl_compat).
+  (full SFT collapsed TabICLv2 in two independent reports; see tabicl_compat).
 * **Loss**: classification = CE over the first ``n_classes`` of the 10 logit
   columns (their ``_compute_batch_loss``); regression = mean pinball loss
   over 999 quantile levels ``linspace(0,1,Q+2)[1:-1]`` on z-normalized
@@ -48,7 +48,7 @@ def load_tabicl_for_training(
     device: str = "cuda",
     freeze_backbone: bool = False,
 ) -> tuple[torch.nn.Module, dict]:
-    """Load a TabICL v2 checkpoint as a bare trainable ``TabICL`` module.
+    """Load a TabICLv2 v2 checkpoint as a bare trainable ``TabICLv2`` module.
 
     Returns ``(model, model_config)`` — the config dict is needed again at
     save time (the checkpoint schema stores it). No criterion object exists
@@ -65,14 +65,14 @@ def load_tabicl_for_training(
     ckpt_path = Path(checkpoint_path)
     if not ckpt_path.exists():
         raise FileNotFoundError(
-            f"TabICL base checkpoint not found: {ckpt_path}. Download it once "
+            f"TabICLv2 base checkpoint not found: {ckpt_path}. Download it once "
             f"from https://huggingface.co/jingang/TabICL into the staging "
-            f"checkpoints/ dir (see docs/CHECKPOINTS.md)."
+            f"checkpoints/ dir (see docs/METHOD.md)."
         )
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=True)
     if "config" not in ckpt or "state_dict" not in ckpt:
         raise ValueError(
-            f"{ckpt_path} lacks the TabICL checkpoint schema "
+            f"{ckpt_path} lacks the TabICLv2 checkpoint schema "
             f"(keys: {sorted(ckpt.keys())}); expected 'config' + 'state_dict'."
         )
     model_config = dict(ckpt["config"])
@@ -89,12 +89,12 @@ def load_tabicl_for_training(
     is_regressor = int(model_config.get("max_classes", 10)) == 0
     if track == "lgd" and not is_regressor:
         raise ValueError(
-            f"{ckpt_path.name} is a TabICL CLASSIFIER checkpoint but "
+            f"{ckpt_path.name} is a TabICLv2 CLASSIFIER checkpoint but "
             f"track='lgd' needs the regressor (max_classes==0)."
         )
     if track == "pd" and is_regressor:
         raise ValueError(
-            f"{ckpt_path.name} is a TabICL REGRESSOR checkpoint but "
+            f"{ckpt_path.name} is a TabICLv2 REGRESSOR checkpoint but "
             f"track='pd' needs the classifier."
         )
 
@@ -102,7 +102,7 @@ def load_tabicl_for_training(
         n_frozen = 0
         for module_name in ("col_embedder", "row_interactor"):
             module = getattr(model, module_name)
-            # DO NOT call module.eval() here. In TabICL, `.training` selects the
+            # DO NOT call module.eval() here. In TabICLv2, `.training` selects the
             # ALGORITHM, not just dropout/BN: both `ColEmbedder.forward` and
             # `RowInteractor.forward` branch `if self.training: _train_forward
             # else: _inference_forward`. The inference branch runs through
@@ -116,12 +116,12 @@ def load_tabicl_for_training(
             #      inplace with grad mode enabled"
             # a few steps into training. That killed ALL 16 `_iclhead` trials
             # (both tracks) in the 2026-08-05 run while every full-FT trial
-            # passed — the tell that the freeze, not TabICL, was at fault.
+            # passed — the tell that the freeze, not TabICLv2, was at fault.
             #
             # Freezing is `requires_grad=False` alone. The module then runs the
             # SAME `_train_forward` as in full-FT, which makes freeze-backbone a
             # clean ablation of it (identical computation, gradients differ).
-            # Safe for regularisation too: TabICL's `dropout` defaults to 0.0 and
+            # Safe for regularisation too: TabICLv2's `dropout` defaults to 0.0 and
             # the architecture uses LayerNorm (no running statistics), so train
             # vs eval mode is behaviourally identical for the frozen stages —
             # we warn below if a checkpoint ever ships dropout > 0.
@@ -132,13 +132,13 @@ def load_tabicl_for_training(
         drop = float(model_config.get("dropout", 0.0) or 0.0)
         if drop > 0:
             LOGGER.warning(
-                "TabICL freeze-backbone: checkpoint has dropout=%.3g, so the "
+                "TabICLv2 freeze-backbone: checkpoint has dropout=%.3g, so the "
                 "FROZEN stages still apply dropout (they stay in train mode by "
                 "design — see the comment in load_tabicl_for_training). Their "
                 "weights are still fixed; only the forward noise differs.", drop,
             )
         LOGGER.info(
-            "TabICL freeze-backbone mode: col_embedder + row_interactor frozen "
+            "TabICLv2 freeze-backbone mode: col_embedder + row_interactor frozen "
             "(%d tensors, requires_grad=False, kept on the TRAIN forward path); "
             "training ICL module only (%d trainable tensors) — upstream stage-3 "
             "regime.", n_frozen, n_train,
@@ -169,9 +169,9 @@ def save_finetuned_tabicl(
     *,
     provenance: dict | None = None,
 ) -> Path:
-    """Persist a finetuned TabICL model in upstream's checkpoint schema.
+    """Persist a finetuned TabICLv2 model in upstream's checkpoint schema.
 
-    Written keys: ``config`` (TabICL init kwargs — ``recompute`` reset to
+    Written keys: ``config`` (TabICLv2 init kwargs — ``recompute`` reset to
     False so inference doesn't pay the checkpointing overhead) and
     ``state_dict`` (CPU tensors), plus our ``provenance``. Loadable directly
     via ``TabICLClassifier(model_path=...)`` / ``TabICLRegressor(...)``
@@ -197,5 +197,5 @@ def save_finetuned_tabicl(
         sidecar = save_path.with_suffix(save_path.suffix + ".provenance.json")
         sidecar.write_text(json.dumps(provenance, indent=2, default=str),
                            encoding="utf-8")
-    LOGGER.info("Saved finetuned TabICL checkpoint: %s", save_path)
+    LOGGER.info("Saved finetuned TabICLv2 checkpoint: %s", save_path)
     return save_path

@@ -110,7 +110,7 @@ def _resolve_grid(
     cfg, *, single: bool,
 ) -> list[tuple[str, float, bool, float, int, str]]:
     """Materialise the ``(base, lr, use_lora, query_fraction, accumulate,
-    epoch_pass_mode)`` tuples to train.
+    epoch_pass_mode, min_train_rows)`` tuples to train.
 
     ``single=True``: head of every tunable list (one trial).
     Otherwise: full cartesian product over
@@ -152,15 +152,38 @@ def _resolve_grid(
     else:
         pms = [str(x) for x in raw_pm]
 
+    raw_mtr = getattr(cfg.corpus, "min_train_rows", [0]) if hasattr(cfg, "corpus") else [0]
+    if isinstance(raw_mtr, (int, float)):
+        mtrs = [int(raw_mtr)]
+    else:
+        mtrs = [int(x) for x in raw_mtr]
+
+    #: Families for which the adapter arm (`use_lora: true`) is generated. Empty or
+    #: absent = every family, which is what every run before run-8 did. LoRA on TabPFN
+    #: was a measured no-op in runs 4, 6 and 7 and cost a third of the grid; on TabICLv2
+    #: the same flag means freeze-backbone, which is a different mechanism and still
+    #: worth measuring.
+    adapter_families = [str(x).lower() for x in
+                        (getattr(cfg.tunable, "adapter_families", None) or [])]
+
+    def _adapter_allowed(base_path: str) -> bool:
+        if not adapter_families:
+            return True
+        from src.train.tabicl_compat import model_family
+        fam = model_family(base_path)
+        name = str(base_path).lower()
+        return any(f in (fam, name) or f in name for f in adapter_families)
+
     if single:
         return [(
             str(bases[0]), float(lrs[0]), bool(loras[0]), float(qfs[0]),
-            int(accs[0]), str(pms[0]),
+            int(accs[0]), str(pms[0]), int(mtrs[0]),
         )]
     return [
-        (str(b), float(lr), bool(lo), float(qf), int(ac), str(pm))
-        for b, lr, lo, qf, ac, pm
-        in itertools.product(bases, lrs, loras, qfs, accs, pms)
+        (str(b), float(lr), bool(lo), float(qf), int(ac), str(pm), int(mtr))
+        for b, lr, lo, qf, ac, pm, mtr
+        in itertools.product(bases, lrs, loras, qfs, accs, pms, mtrs)
+        if not lo or _adapter_allowed(str(b))
     ]
 
 
@@ -287,6 +310,48 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
 # --------------------------------------------------------------------------- #
 
 
+def _run_provenance(cfg, base_checkpoint: str) -> dict:
+    """The settings that are NOT swept but still decide what a number means.
+
+    Recorded per row rather than per run because a manifest is read on its own, months
+    later, by someone reconstructing what produced a score. `git_commit` and the
+    submodule pin answer "which code and which literature snapshot" — the cluster pulls
+    `origin/main`, so the commit is the only reliable identifier of what actually ran.
+    """
+    import subprocess
+    from src.train.tabicl_compat import model_family
+
+    def _git(*args: str) -> str:
+        try:
+            return subprocess.run(("git", *args), cwd=_REPO, capture_output=True,
+                                  text=True, timeout=10).stdout.strip()
+        except Exception:                                      # pragma: no cover
+            return ""
+
+    fam = model_family(base_checkpoint)
+    tag = "tabicl" if fam == "tabicl" else ("v2.6" if "v2.6" in base_checkpoint else "v3")
+    caps = {}
+    try:
+        from omegaconf import OmegaConf
+        data_cfg = OmegaConf.load("config/data.yaml")
+        caps = OmegaConf.to_container(data_cfg.finetuning.max_rows_per_epoch, resolve=True)
+    except Exception:                                          # pragma: no cover
+        pass
+    opt = getattr(cfg, "optimizer", None)
+    sched = getattr(cfg, "scheduler", None)
+    return {
+        "max_rows_per_epoch": int(caps.get(tag, caps.get("default", 0)) or 0),
+        "l2sp_lambda": float(getattr(opt, "l2sp_lambda", float("nan"))
+                             if opt is not None else float("nan")),
+        "warmup_fraction": float(getattr(sched, "warmup_fraction", float("nan"))
+                                 if sched is not None else float("nan")),
+        "min_lr_fraction": float(getattr(sched, "min_lr_fraction", float("nan"))
+                                 if sched is not None else float("nan")),
+        "tfm_library_pin": _git("submodule", "status", "tfm-library")[:48],
+        "git_commit": _git("rev-parse", "--short", "HEAD"),
+    }
+
+
 @dataclass
 class RunRow:
     """One row of the per-track training manifest.
@@ -338,6 +403,25 @@ class RunRow:
     # Per-epoch step plan: "one_sample" (1 step/dataset/epoch) or
     # "full_pass" (size-proportional steps). See cfg.tunable.epoch_pass_modes.
     epoch_pass_mode:        str   = "one_sample"
+
+    # NEW (12-08-2026) — the run's own configuration, so the manifest is
+    # self-describing. docs/RESULTS.md is written from these columns; without them a
+    # score cannot be attributed to a setting, and the corpus keeps changing.
+    min_train_rows:         int   = 0
+    total_optimizer_steps:  int   = 0
+    epochs_run:             int   = 0
+    steps_per_epoch:        int   = 0
+    train_rows_total:       int   = 0
+    test_rows_total:        int   = 0
+    train_dataset_ids:      str   = ""      # ";"-joined, so one CSV cell holds the corpus
+    test_dataset_ids:       str   = ""
+    final_drift:            float = float("nan")
+    max_rows_per_epoch:     int   = 0       # the resolved per-step row cap for this base
+    l2sp_lambda:            float = float("nan")
+    warmup_fraction:        float = float("nan")
+    min_lr_fraction:        float = float("nan")
+    tfm_library_pin:        str   = ""      # which literature snapshot this ran against
+    git_commit:             str   = ""
 
 
 _MANIFEST_THREAD_LOCK = threading.Lock()
@@ -506,15 +590,18 @@ def run(
     divergences = 0
     t_outer = time.monotonic()
 
-    for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate, pass_mode) in enumerate(plan, start=1):
+    for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate, pass_mode,
+                         min_train_rows) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d  pass=%s ===",
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d  "
+            "pass=%s  min_train_rows=%d ===",
             trial_idx_local, len(plan), global_idx,
             Path(base).name, lr, use_lora, query_fraction, accumulate, pass_mode,
+            min_train_rows,
         )
         # Mini environment banner BEFORE any tabpfn import / model load, so a
         # crash during load still leaves version + path context in the log.
@@ -545,6 +632,7 @@ def run(
             base_path=base, learning_rate=lr, seed=int(cfg.seed),
             use_lora=use_lora, query_fraction=query_fraction,
             accumulate_grad_batches=accumulate, epoch_pass_mode=pass_mode,
+            min_train_rows=min_train_rows,
         ).removesuffix(".ckpt")
 
         # ---- Rename the log file to include the trial's HPs --------- #
@@ -584,7 +672,7 @@ def run(
         # successfully completed. We emit a one-line "SKIP" record into
         # the manifest (so it still appears in the summary) and move on.
         # To force a rerun, delete the .ckpt (or use
-        # `python -m src.utils.pipeline_clean --stages train`).
+        # `python -m src.utils.clean_run --clean --stages train`).
         # A finished checkpoint may live in staging OR — when staging wasn't
         # writable from the training node and the loop fell back — under the
         # output root. Check BOTH so re-submissions skip completed trials
@@ -605,7 +693,7 @@ def run(
         if expected_ckpt.exists() and expected_prov.exists():
             LOGGER.info(
                 "SKIP trial %d (global %d): checkpoint already exists at %s "
-                "— delete the file or use `pipeline_clean --stages train` "
+                "— delete the file or use `clean_run --clean --stages train` "
                 "to force a rerun.",
                 trial_idx_local, global_idx, expected_ckpt,
             )
@@ -694,6 +782,7 @@ def run(
                 query_fraction=query_fraction,
                 accumulate_grad_batches=accumulate,
                 pass_mode=pass_mode,
+                min_train_rows=min_train_rows,
                 on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
@@ -723,6 +812,17 @@ def run(
                 final_secondary_test=result.final_secondary_test,
                 diverged_at_epoch=result.diverged_at_epoch,
                 diverge_reason=result.diverge_reason,
+                # The run's own configuration — see the RunRow docstring.
+                min_train_rows=int(min_train_rows or 0),
+                total_optimizer_steps=result.total_optimizer_steps,
+                epochs_run=result.epochs_run,
+                steps_per_epoch=result.steps_per_epoch,
+                train_rows_total=result.train_rows_total,
+                test_rows_total=result.test_rows_total,
+                train_dataset_ids=";".join(result.train_dataset_ids),
+                test_dataset_ids=";".join(result.test_dataset_ids),
+                final_drift=result.final_drift,
+                **_run_provenance(cfg, base),
             ))
             if result.diverged:
                 # A numerically completed but diverged checkpoint is excluded

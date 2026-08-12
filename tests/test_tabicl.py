@@ -1,4 +1,4 @@
-"""Unit tests for the TabICL model family (second continued-pretraining
+"""Unit tests for the TabICLv2 model family (second continued-pretraining
 family, added 2026-08-04).
 
 Coverage map
@@ -17,7 +17,7 @@ Tests needing the `tabicl` package are guarded with
 ``pytest.importorskip("tabicl")``; everything else (naming, key lookup,
 dirname decoding) runs in a stripped-down image. No test needs a GPU or a
 real 27M-parameter checkpoint — the model-level tests build a deliberately
-tiny TabICL from a shrunken config.
+tiny TabICLv2 from a shrunken config.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ import torch
         ("checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt", "tabpfn"),
         # Case-insensitive, and only the BASENAME counts (a parent dir
         # called .../tabicl/... must not reclassify a TabPFN checkpoint).
-        ("/x/TabICL-Classifier-V2.ckpt", "tabicl"),
+        ("/x/TabICLv2-Classifier-V2.ckpt", "tabicl"),
         ("/data/tabicl/tabpfn-v3-classifier-v3_default.ckpt", "tabpfn"),
     ],
 )
@@ -144,7 +144,7 @@ def test_pinball_loss_is_zero_for_perfect_median_only_when_degenerate() -> None:
 
 
 def _tiny_tabicl(*, regressor: bool):
-    """Build a deliberately small TabICL so model-level tests are fast on
+    """Build a deliberately small TabICLv2 so model-level tests are fast on
     CPU. Only config keys the installed version accepts are passed."""
     import inspect
     from src.train.tabicl_compat import import_tabicl_core
@@ -225,7 +225,7 @@ def test_freeze_backbone_leaves_only_icl_trainable(tmp_path: Path) -> None:
     assert all(p.requires_grad for p in frozen.icl_predictor.parameters())
 
     # REGRESSION (2026-08-06): the frozen stages must stay on the TRAINING
-    # forward path. TabICL branches `if self.training: _train_forward else:
+    # forward path. TabICLv2 branches `if self.training: _train_forward else:
     # _inference_forward`, and the inference branch runs under no_grad and
     # writes CLS tokens into its input in place — which raised "A view was
     # created in no_grad mode and is being modified inplace with grad mode
@@ -327,7 +327,7 @@ def test_tabicl_batch_to_device_is_a_noop_on_cpu() -> None:
 
 @pytest.mark.parametrize("regressor", [False, True])
 def test_tabicl_forward_and_loss_are_finite_and_differentiable(regressor: bool) -> None:
-    """The exact forward/loss branch loop.py runs, on a tiny model: TabICL's
+    """The exact forward/loss branch loop.py runs, on a tiny model: TabICLv2's
     training forward, then CE over the first n_classes logits (classification)
     or mean pinball over the quantile head (regression)."""
     pytest.importorskip("tabicl")
@@ -362,7 +362,7 @@ def test_tabicl_forward_and_loss_are_finite_and_differentiable(regressor: bool) 
 
 def test_training_batch_absorbs_inf(monkeypatch) -> None:
     """±inf must never reach the transformer. TabPFN clips inf inside its
-    feature normaliser; TabICL does not, and credit features reach inf via
+    feature normaliser; TabICLv2 does not, and credit features reach inf via
     zero-denominator ratios."""
     pytest.importorskip("tabicl")
     from src.train.dataloader import _build_tabicl_step_batch
@@ -667,12 +667,12 @@ def test_train_one_config_end_to_end_tabicl(
     tmp_path: Path, monkeypatch, track: str, freeze_backbone: bool,
 ) -> None:
     """Drive the REAL ``train_one_config`` on a tabicl base — nothing mocked
-    except the checkpoint's size (a deliberately tiny TabICL so it runs on
+    except the checkpoint's size (a deliberately tiny TabICLv2 so it runs on
     CPU in seconds).
 
     This is the one test that exercises every seam at once: family
     detection, the loader, the batch builder, the forward/loss branch, the
-    L2-SP anchor, the monitor eval through TabICL's sklearn wrappers, the
+    L2-SP anchor, the monitor eval through TabICLv2's sklearn wrappers, the
     snapshot write + cleanup, the save schema, the provenance sidecar, and
     the `_iclhead` filename tag. The two parameter sets between them cover
     both losses (CE / pinball) and both adaptation modes.
@@ -750,7 +750,7 @@ def test_train_one_config_end_to_end_tabicl(
     assert prov["adaptation_mode"] == (
         "iclhead_only" if freeze_backbone else "full_ft")
     hp = prov["hyperparameters"]
-    # TabICL uses 2 members on BOTH tracks — the lgd-track value of 8 must
+    # TabICLv2 uses 2 members on BOTH tracks — the lgd-track value of 8 must
     # NOT leak into a tabicl trial.
     assert hp["n_estimators_finetune"] == 2
     # The tabicl row-cap key resolved (26 000 = v3's cap, for cross-family
@@ -774,7 +774,7 @@ def test_train_one_config_end_to_end_tabicl(
 
 
 def test_training_grid_contains_both_families() -> None:
-    """config/train.yaml must sweep TabPFN v3 + v2.6 + TabICL v2 on both
+    """config/train.yaml must sweep TabPFN v3 + v2.6 + TabICLv2 v2 on both
     tracks, and the pipeline's grid expansion must equal the cartesian
     product of the configured axes (whatever size that currently is)."""
     from omegaconf import OmegaConf
@@ -785,11 +785,23 @@ def test_training_grid_contains_both_families() -> None:
         bases = list(cfg.tunable[key])
         fams = {model_family(b) for b in bases}
         assert fams == {"tabpfn", "tabicl"}, (key, bases)
-        expected = (len(bases) * len(cfg.tunable.learning_rates)
-                    * len(cfg.tunable.use_lora)
-                    * len(cfg.tunable.query_fractions)
-                    * len(cfg.tunable.accumulate_grad_batches)
-                    * len(cfg.tunable.epoch_pass_modes))
+        # The product is NOT plain: two rules shrink it, and both are deliberate.
+        #   * `adapter_families` restricts the `use_lora: true` arm to named families
+        #     (run-8: TabICLv2 only — LoRA on TabPFN was a measured no-op three times).
+        #   * `corpus.min_train_rows` is a swept axis as of run-8.
+        n_other = (len(cfg.tunable.learning_rates)
+                   * len(cfg.tunable.query_fractions)
+                   * len(cfg.tunable.accumulate_grad_batches)
+                   * len(cfg.tunable.epoch_pass_modes)
+                   * max(1, len(list(cfg.corpus.get("min_train_rows", [0])))))
+        adapter_fams = [str(x).lower() for x in
+                        (cfg.tunable.get("adapter_families", None) or [])]
+        n_adapter_bases = (
+            len(bases) if not adapter_fams
+            else sum(1 for b in bases if any(f in str(b).lower() for f in adapter_fams))
+        )
+        arms = len(bases) + (n_adapter_bases if True in list(cfg.tunable.use_lora) else 0)
+        expected = arms * n_other
 
         # Assert the STRUCTURE, not a magic number. This test previously
         # hardcoded the trial count (48, then 18, then 36) and broke on every

@@ -1,26 +1,103 @@
 # Results — what each run measured
 
 The per-run measured record. Newest first. Numbers here are what the logs and `output/results/`
-actually contained; interpretation and paper framing live in `PAPER_ROADMAP.md`, the dead ends in
-`AGENTS_MEMORY.md`, the capacity measurements in `ROW_CAPS.md`.
+actually contained; interpretation and novelty framing live in `PAPER_ROADMAP.md`, the dead ends in
+`AGENTS_MEMORY.md`, the capacity measurements in `METHOD.md`.
+
+## How to write an entry
+
+**Every run gets a `Configuration` table before its findings.** A run is only interpretable
+against the settings and the corpus that produced it, and both change constantly: the sweep
+is reshaped between runs, and the corpus will grow from 25 datasets toward thousands. "PD
+mAUC 0.7620" with no configuration beside it is a number nobody can use or reproduce.
+
+Copy this block. Everything in it is recorded automatically — the per-track manifest
+(`output/manifests/<run>_<track>.csv`) carries one column per field, the resolved config is
+dumped to `output/manifests/resolved/`, and the training log prints the corpus with row
+counts — so filling it in is transcription, not archaeology.
+
+| field | where it comes from |
+|---|---|
+| trials/track, bases, LRs, adaptation, qf | `config/train.yaml` → manifest columns |
+| steps/trial, epochs, steps/epoch | manifest `total_optimizer_steps`, `epochs_run`, `steps_per_epoch` |
+| corpus: n datasets + total rows, train and test | manifest `n_train_datasets`, `train_rows_total`, `train_dataset_ids` |
+| `min_train_rows` | manifest column of the same name (swept since run-8) |
+| row caps per base, eval caps | manifest `max_rows_per_epoch`, `config/eval.yaml` |
+| L2-SP λ, warmup, LR floor | manifest `l2sp_lambda`, `warmup_fraction`, `min_lr_fraction` |
+| code + literature version | manifest `git_commit`, `tfm_library_pin` |
+| cost | GPU-hours and wall-clock from the logs |
 
 Two standing comparability rules, both learned the hard way:
 
-- **Never compare `neg_nll` across architectures.** v3, v2.6 and TabICL use different output
+- **Never compare `neg_nll` across architectures.** v3, v2.6 and TabICLv2 use different output
   parameterisations (v3-vs-v2.6 differ by ~3.3 nats of criterion granularity; v2.6 values carry ~1 %
-  clamped rows at +100 nats; TabICL's LGD head is a 999-quantile pinball, so `neg_nll` is NaN).
+  clamped rows at +100 nats; TabICLv2's LGD head is a 999-quantile pinball, so `neg_nll` is NaN).
   Use **CRPS** for cross-family density comparison.
 - **Never compare bases on `epochs`.** Steps/epoch depends on the per-base row cap, so equal epochs
   meant unequal steps until `train.target_total_steps` was introduced (08-08-2026).
 
 ---
 
+## Run-7 — 10/11-08-2026 — training clean, eval incomplete, LGD undertrained
+
+Training was the best it has been; the eval was not finished when the logs were collected, and
+the numbers below come from **one of the two eval pools**, so coverage is partial by design.
+
+### Configuration
+
+| | |
+|---|---|
+| trials/track | 36 = 3 bases × 3 LRs × 2 adaptation × 2 query_fraction × 1 acc × 1 pass-mode |
+| bases | TabPFN v3 default, TabPFN v2.6 default, TabICLv2 (`-v2-20260212`) |
+| learning rates | 3e-7, 1e-6, 3e-6 (AdamW, warmup 0.10 → cosine to 5 % of peak) |
+| adaptation | full-FT and adapter (LoRA for TabPFN, freeze-backbone for TabICLv2) |
+| query_fraction | 0.20 and 0.40 · `accumulate_grad_batches` 1 · `epoch_pass_mode` full_pass |
+| step budget | `target_total_steps` 9 100, `epochs` 100 — **realised**: PD 9 100/9 135, **LGD only 800–3 200** |
+| L2-SP λ | 0.003 · weight_decay 0.0 · grad_clip 1.0 · BF16 autocast |
+| row caps / step | v3 26 000 · v2.6 11 000 · TabICLv2 26 000 (PD, 2 members; LGD auto-scaled for TabPFN's 8) |
+| corpus PD | 17 datasets: 12 train (2 158 000 rows), 5 test. `min_train_rows` not yet implemented |
+| corpus LGD | 8 datasets: 6 train (78 500 rows, **4 of them under 3 000 rows**), 2 test |
+| eval | 5-fold CV, inner val 0.20; caps v3/TabICLv2 1M rows, v2.6 50k; ensembles TabPFN 32, TabICLv2 8; baselines 50-trial Optuna |
+| eval layout | 209 PD + 84 LGD array tasks (one per model × dataset), 2 pools by task stride |
+| cost | PD 76.2 GPU-h, LGD 13.5 GPU-h; training wall-clock 5.1 h at 15–21 concurrent GPUs |
+
+- **72/72 trials OK on both tracks.** 90 GPU-h drained in 5.1 h of wall-clock at 15–21 concurrent
+  GPUs. 0 AMP skips, 0 data skips, no divergence, no tracebacks in 219 logs.
+- **`target_total_steps` equalised PD but silently skipped LGD.** PD: tabicl 9 100, v3 9 100,
+  v2.6 9 135 steps (45 epochs — correctly trimmed). LGD: tabicl **800**, v3 **1 600**, v2.6
+  **3 200** — 3–11× under the 9 100 target, because trimming can only remove epochs. Fixed
+  11-08-2026; see `AGENTS_MEMORY.md`.
+- **Weight drift is real but small**, and scales with LR as expected: PD v3 ‖Δw‖ 0.0013 → 0.0054
+  across 3e-7 → 3e-6; LGD v2.6 the largest at 0.0198.
+- **PD, paired against each model's own untuned base on the same dataset — 17/39 wins:**
+
+  | family | adaptation | mean Δ mAUC | best Δ |
+  |---|---|---|---|
+  | TabICLv2 | full-FT | **+0.0163** | **+0.0353** |
+  | TabICLv2 | freeze-backbone | +0.0036 | +0.0295 |
+  | TabPFN v3 | full-FT | +0.0010 | +0.0016 |
+  | TabPFN v3 | LoRA | +0.0002 | +0.0007 |
+  | TabPFN v2.6 | either | −0.0007 | +0.0005 |
+
+  TabICLv2 starts from a much weaker base (myhom 0.5582) and continued pretraining moves it a long
+  way (0.5935); TabPFN v3 starts strong and barely moves. **The gain is inversely related to how
+  good the starting model already was.**
+- **LGD: 0 wins out of 18 paired comparisons.** Every trained model is worse on RMSE than its own
+  untuned base; v2.6 full-FT worst at −0.0138. Note this is at 800–3 200 steps, so it is evidence
+  that the LGD recipe is wrong, not that LGD cannot be improved.
+- **`qf=0.40` beats `qf=0.20` at the top of every PD dataset leaderboard.** More query rows per
+  step means more of each batch contributes gradient, and it costs nothing extra.
+- **Monitor vs real eval disagree in a specific way:** the 2 000-row monitor showed TabICLv2
+  *losing* AUC (−0.005) while the real 5-fold eval shows it gaining the most. Never judge a
+  large-context model on the monitor.
+- Cost: PD 76.2 GPU-h (v3 2.6 h/trial, v2.6 1.9, tabicl 1.8), LGD 13.5 GPU-h.
+
 ## Run-6 — 07-08-2026 — first fully green run, first real eval
 
 - **36/36 training trials + 84/84 eval cells OK, 0 failed folds.** The freeze-backbone fix held. The
   training array drained in **7.1 h** (run-5: 47 h) — the shorter walltime plus the smaller grid
   worked. The gate fired correctly and submitted eval.
-- **Steps went 600 → 9 100 (v3 / TabICL) and 20 300 (v2.6),** so drift is finally real:
+- **Steps went 600 → 9 100 (v3 / TabICLv2) and 20 300 (v2.6),** so drift is finally real:
   v3 @1e-6 `l2sp` 5.3e-4 (was 2.7e-5), v2.6 @3e-5 `l2sp` **0.61**. The LR floor works (final LR = 5 %
   of peak).
 - **PD (5 test sets, real 5-fold CV, higher mAUC better):**
@@ -46,16 +123,16 @@ Two standing comparability rules, both learned the hard way:
   0.0169–0.0224; trained v3 0.0194–0.0213; xgboost best at 0.0137. But trained v3 has the best
   **Brier** (0.1526), so it is better probabilistically overall. This is what motivated the post-hoc
   Platt/isotonic columns.
-- **TabICL is competitive in the real eval** (PD 0.7552, LGD 0.1338). The 2 000-row monitor had it at
-  0.694 and was badly underselling it — **never judge TabICL on the monitor**; large context is its
+- **TabICLv2 is competitive in the real eval** (PD 0.7552, LGD 0.1338). The 2 000-row monitor had it at
+  0.694 and was badly underselling it — **never judge TabICLv2 on the monitor**; large context is its
   design point.
-- Cost: 54.9 GPU-h for 18 PD trials (v2.6 4.5 h/trial, v3 2.8 h, TabICL 1.9 h).
+- Cost: 54.9 GPU-h for 18 PD trials (v2.6 4.5 h/trial, v3 2.8 h, TabICLv2 1.9 h).
 - **Caveat that limits this run:** half the eval pool never logged, so trained-vs-untuned is not
-  computable for v3 or TabICL (see `AGENTS_MEMORY.md`, 08-08-2026).
+  computable for v3 or TabICLv2 (see `AGENTS_MEMORY.md`, 08-08-2026).
 
 ## Run-5 — 05/06-08-2026 — first two-family run: trained, but undertrained
 
-- **80/96 trials OK; the 16 failures were all TabICL `_iclhead`** (see `AGENTS_MEMORY.md`,
+- **80/96 trials OK; the 16 failures were all TabICLv2 `_iclhead`** (see `AGENTS_MEMORY.md`,
   06-08-2026). **Eval never ran** — the gate expired — so every number below is a **2 000-row
   monitor** eval, not the real 5-fold CV.
 - **The headline finding was that the models never moved.** From the final-epoch `l2sp`,
@@ -72,16 +149,16 @@ Two standing comparability rules, both learned the hard way:
   (one_sample) / 4 550 (v3 full_pass) / 10 150 (v2.6 full_pass). **The PD null result was "we did not
   train", not "continued pretraining does not work"** — which is why run-6 raised the step budget.
 - Monitor deltas (test): PD v3 mean −0.0008 / best +0.0001; PD v2.6 mean +0.0005 / best +0.0021;
-  PD TabICL mean −0.0047 (all negative). LGD RMSE worse for all three (TabICL worst, +0.0075 mean,
+  PD TabICLv2 mean −0.0047 (all negative). LGD RMSE worse for all three (TabICLv2 worst, +0.0075 mean,
   r² −0.06).
-- TabICL's untuned baseline looked much weaker here (PD AUC 0.694 vs v3 0.728; LGD RMSE 0.187 vs
+- TabICLv2's untuned baseline looked much weaker here (PD AUC 0.694 vs v3 0.728; LGD RMSE 0.187 vs
   0.132) — an artefact of the 2 000-row monitor, as run-6 showed.
 - Cost: 43.7 GPU-h / 96 trials. PD v2.6 is the hog (19.5 h). The monitor is only 4–7 % of PD epoch
   time; **I/O was 20–33 %** at `dataloader_workers=0`.
 
 ## Run-4 — 11–13-07-2026 — the clean homogeneous 64-trial sweep
 
-The reference sweep for cross-version comparison. Full paper framing in `PAPER_ROADMAP.md` §4.
+The reference sweep for cross-version comparison.
 
 - **Pipeline fully green:** 64/64 trials genuinely trained (0 SKIPs), BF16, 0 amp/data skips, 0
   divergence; 63 checkpoints written straight to staging, 1 fallback (LGD a24, node-transient)

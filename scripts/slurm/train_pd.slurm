@@ -45,18 +45,18 @@
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=10:00:00   # SIZED FROM MEASUREMENT (2026-08-06), not guessed.
-                          # Run-5 per-trial wall-clock at 50 epochs, full_pass:
-                          #   v2.6 ~2.4 h | v3 ~1.4 h | tabicl ~0.5 h
-                          # At the new 100 epochs the worst case (v2.6) is ~5 h,
-                          # so 10 h is 2x margin.
-                          # WHY THIS MATTERS: the old 48 h request was the likely
-                          # cause of run-5's terrible concurrency — Slurm only
-                          # ever ran 1-2 of the 24 requested array tasks, so 43.7
-                          # GPU-h took 47 h of wall-clock. A short walltime is
-                          # far easier to BACKFILL into gaps between big jobs, so
-                          # it buys queue position. Re-measure if epochs, the row
-                          # caps, or the corpus change.
+#SBATCH --time=14:00:00   # SIZED FROM MEASUREMENT, not guessed.
+                          # Run-7 per-trial wall-clock at 9 100 steps, full_pass:
+                          #   v3 ~2.6 h | v2.6 ~1.9 h | tabicl ~1.8 h
+                          # Run-8 doubles the budget to 20 000 steps (Real-TabPFN
+                          # parity), so the worst case is v3 at ~5.7 h. 14 h is
+                          # ~2.5x margin and still short enough to backfill.
+                          # WHY WALLTIME MATTERS HERE: run-5 asked for 48 h and Slurm
+                          # ran 1-2 of 24 requested array tasks, turning 43.7 GPU-h
+                          # into 47 h of wall-clock. Run-7 asked for 10 h and held
+                          # 15-21 GPUs, draining 90 GPU-h in 5.1 h. A short request
+                          # buys queue position. Re-measure if the step budget, the
+                          # row caps or the corpus change.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24   # max CPU cores per B200 GPU on gpu_b200 (192 cores / 8 GPUs)
@@ -68,12 +68,16 @@
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
 # held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-35%24   # 36 trials (3 bases [v3, v2.6, tabicl-v2] x 3 LRs
-                          #            x 2 adapt-modes x 2 qf x 1 acc
-                          #            x 1 pass-mode). %24 saturates all 24
-                          #            Mindwell B200 GPUs. Recompute via
+#SBATCH --array=0-15%16   # 16 trials/track for run-8, down from 36. The sweep
+                          # dropped LoRA-on-TabPFN (a measured no-op three times),
+                          # query_fraction 0.20 (Real-TabPFN specifies 60/40) and
+                          # lr 3e-6 (flat across run-7's range), and spent the budget
+                          # on 20 000 steps per trial instead. Grid is
+                          #   3 bases x (1 or 2 adapt) x 2 LRs x 2 corpus sizes.
+                          # Recompute with:
                           #   python scripts/train_pipeline.py --list-trials track=pd
-                          # Over-sizing is safe (surplus tasks exit 0 cleanly).
+                          # …or submit via scripts/slurm/run_full_pipeline.sh, which
+                          # sizes the array dynamically. Surplus tasks exit 0.
 
 # Stagger array starts to avoid an I/O storm on the shared filesystem.
 sleep $((RANDOM % 30 + 1))
