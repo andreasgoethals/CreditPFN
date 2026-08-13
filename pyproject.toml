@@ -21,7 +21,7 @@
 #  Python: ** 3.11, 3.12, or 3.13 **. torch / scikit-learn now ship cp313
 #  wheels (the VSC base conda env is 3.13 and works). 3.14 is excluded —
 #  some compiled deps still lack cp314 wheels and fall back to a
-#  from-source build. See docs/VSC.md §0.4.
+#  from-source build. See docs/VSC.md §1.2.
 # =============================================================================
 
 [build-system]

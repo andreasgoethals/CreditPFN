@@ -328,6 +328,10 @@ def split_corpus(
         elif b == "test":
             test.append(ref)
 
+    # Leakage guard first: a training dataset that duplicates a held-out one invalidates
+    # the metric, so it goes regardless of how large it is.
+    train = _drop_train_leakage(train, test, track)
+
     # TRAIN-SIDE ONLY size filter. The test set is never touched: dropping small test
     # datasets would change what "held-out performance" means between two trials of the
     # same sweep, which is the one thing that must stay fixed.
@@ -384,6 +388,73 @@ def resolve_ids_for_track(raw, track: str) -> tuple[str, ...]:
     if isinstance(raw, dict):
         return tuple(raw.get(track, []) or ())
     return tuple(raw or ())
+
+
+def _flagged_duplicate_pairs(track: str) -> list[tuple[str, str]]:
+    """`(duplicate, original)` dataset-name pairs from the dedup report, or [].
+
+    Reads the POST pass — duplicates after sanitisation, which is the form the models
+    actually see. Two tables can differ raw and be identical once cleaned.
+    """
+    path = manifests_dir() / "dedup" / f"doubles_{track}_post.csv"
+    if not path.is_file():
+        return []
+    try:
+        df = pd.read_csv(path, dtype=str).fillna("")
+    except Exception:                                          # pragma: no cover
+        return []
+    if not {"dataset_name", "duplicate_of"} <= set(df.columns):
+        return []
+    return [(str(r.dataset_name), str(r.duplicate_of)) for r in df.itertuples()]
+
+
+def _drop_train_leakage(train: list[DatasetRef], test: list[DatasetRef],
+                        track: str) -> list[DatasetRef]:
+    """Remove training datasets flagged as duplicates of a HELD-OUT dataset.
+
+    A dataset in both buckets is not a split at all: the model would be evaluated on rows
+    it trained on, and every metric would be optimistic by an unknown amount.
+    `src/data/dedup.py` already detects this (row-hash intersection, subset relation,
+    column-hash, name+shape) — until now it only wrote a report.
+
+    Matching is on the dataset NAME as the report writes it, and on the `dataset_id`,
+    because the two have differed across pipeline versions.
+    """
+    if not train or not test:
+        return train
+    pairs = _flagged_duplicate_pairs(track)
+    if not pairs:
+        return train
+
+    def _keys(ref: DatasetRef) -> set[str]:
+        return {ref.dataset_id, Path(ref.processed_csv).stem.replace(".sanitized", "")}
+
+    test_keys = set().union(*(_keys(r) for r in test))
+    kept, dropped = [], []
+    for ref in train:
+        mine = _keys(ref)
+        leaks = any(
+            (dup in mine and orig in test_keys) or (orig in mine and dup in test_keys)
+            for dup, orig in pairs
+        )
+        (dropped if leaks else kept).append(ref)
+
+    if dropped:
+        LOGGER.error(
+            "LEAKAGE GUARD: dropping %d training dataset(s) flagged by the duplicate "
+            "report as duplicates of a HELD-OUT dataset: %s. The test set is never "
+            "modified. Review output/manifests/dedup/doubles_%s_post.csv — a pair that "
+            "straddles the split makes every metric optimistic.",
+            len(dropped), ", ".join(r.dataset_id for r in dropped), track,
+        )
+    if not kept:
+        LOGGER.error(
+            "LEAKAGE GUARD removed EVERY training dataset for track=%s. Keeping them "
+            "rather than training on nothing — but this run's numbers are NOT usable "
+            "until the corpus is fixed.", track,
+        )
+        return train
+    return kept
 
 
 def _scalar_min_rows(raw) -> int:

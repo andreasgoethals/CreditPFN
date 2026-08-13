@@ -10,8 +10,9 @@ what came out, and what is already known to fail.
 delete an entry: a run you would otherwise repeat and a dead end you already paid for are both
 evidence.
 
-Detail the table cannot hold lives in `RESULTS.md` (what each run measured), `ROW_CAPS.md` (the
-measured context caps) and `CODE_NOTES.md` (code that looks wrong but is deliberate).
+Detail the table cannot hold lives in `RESULTS.md` (what each run measured) and `METHOD.md`
+(the pipeline, the base checkpoints, the measured context caps, and the code that looks wrong
+but is deliberate).
 
 ## Runs
 
@@ -24,7 +25,7 @@ that configuration?"* is the question this table exists to answer.
 | 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `RESULTS.md` |
 | 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICLv2. 54.9 GPU-h. `RESULTS.md` |
 | 05-08-2026 | run-5 · 48 trials/track, first two-family run (TabICLv2 added) | **partial** | 80/96 trials OK; the 16 `_iclhead` trials crashed (freeze-via-`.eval()`, see dead ends 06-08-2026). Eval never ran — the 21 h gate expired — so every number is a 2 000-row monitor eval. Drift 0.02 % of ‖w₀‖ at 3e-7: the PD null was undertraining. 43.7 GPU-h. |
-| 05-08-2026 | probe · `probe_row_cap.slurm` j11509346, all three bases on B200 | **done** | The measurement the row caps come from: v3 2.49 GB/1k rows, v2.6 5.72, TabICLv2 0.51 per member. TabICLv2's ceiling is a cuDNN fused-attention failure between 26k and 40k, not memory. `ROW_CAPS.md` |
+| 05-08-2026 | probe · `probe_row_cap.slurm` j11509346, all three bases on B200 | **done** | The measurement the row caps come from: v3 2.49 GB/1k rows, v2.6 5.72, TabICLv2 0.51 per member. TabICLv2's ceiling is a cuDNN fused-attention failure between 26k and 40k, not memory. `METHOD.md` §3 |
 | 11-07-2026 | run-4 · 64 trials/track, TabPFN v3 + v2.6, 50 epochs | **done** | The clean homogeneous sweep and still the reference for cross-version science. 64/64 trained, 63 checkpoints straight to staging. PD: continued pretraining ≈ zero effect on discrimination (best Δ +0.0004). LGD: NLL improves while RMSE worsens. 8 PD eval cells walltime-killed. `RESULTS.md` |
 | 10-07-2026 | rerun after `clean_run` · 64 trials/track | **contaminated** | 59/64 trials SKIPped on stale 09-07 FP16 checkpoints in the `$VSC_DATA` fallback dir. Only PD v3 a0–a4 actually retrained. Do not cite any number from this run. |
 | 09-07-2026 | run-3 · 64 trials/track, first BF16 run | **partial** | LGD 32/32; PD 27/32 (tasks 0–4 ended together without a traceback, consistent with external termination). Monitor deltas invalid — the monitor re-seeded every epoch. |
@@ -117,7 +118,7 @@ fixed, because the fix is one changelog line and the dead end was the hour.
   (`interaction.py::_inference_forward`). Upstream's `_set_training_mode` has the same latent bug,
   so upstream code is not evidence that this is safe.
 - **Instead:** freeze with `requires_grad=False` **only**, never `.eval()`. Nothing is lost —
-  dropout defaults to 0.0 and there is no BatchNorm. See `CODE_NOTES.md` for the one place
+  dropout defaults to 0.0 and there is no BatchNorm. See `METHOD.md` §4 for the one place
   `.eval()` *is* still correct (`col_embedder` after `model.train()`).
 
 ### 05-08-2026
@@ -188,7 +189,7 @@ fixed, because the fix is one changelog line and the dead end was the hour.
   attention sharp at long context.
 - **Instead:** caps come from the paper, then get **measured** (`scripts/probe_row_cap.py`) — 26 000
   train (= v3 parity, so architecture is not confounded with context size) and 1 000 000 eval. Full
-  numbers in `ROW_CAPS.md`.
+  numbers in `METHOD.md` §3.
 
 **Resolving the untuned eval row cap by stripping a dirname-style prefix.**
 - **Tried:** `resolve_max_rows_for_handle` stripped `"tabpfn-untuned__"` off `handle.name` to find
@@ -320,7 +321,7 @@ fixed, because the fix is one changelog line and the dead end was the hour.
 - **Why:** the figure was a bad measurement (see 04-07-2026), and the real driver was missed
   entirely: a step forwards **all** `n_estimators_finetune` members and holds every member's graph
   for one backward, so per-step memory ≈ members × per-member. PD uses 2, LGD 8.
-- **Instead:** measured caps only (`ROW_CAPS.md`), member-aware scaling in `train_one_config`. **Do
+- **Instead:** measured caps only (`METHOD.md` §3), member-aware scaling in `train_one_config`. **Do
   not raise a cap without re-running the probe.**
 
 ### 04-07-2026

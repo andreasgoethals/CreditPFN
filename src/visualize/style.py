@@ -20,6 +20,7 @@ from __future__ import annotations
 import zlib
 
 import matplotlib as mpl
+import numpy as np
 
 # ---------------------------------------------------------------------------
 # FIGURE SIZES — A4, and nothing else.
@@ -205,3 +206,85 @@ def apply() -> None:
         color=[COLORS["v3"], COLORS["v2.6"], COLORS["tabicl"],
                COLORS["xgboost"], COLORS["lightgbm"], COLORS["linear"]]
     )
+
+
+# ---------------------------------------------------------------------------
+# SCALE — the corpus is 25 datasets today and is planned to reach hundreds.
+#
+# A figure with one bar, one row label or one panel per dataset is readable at 25 and
+# unreadable at 500: the labels overlap into a grey band, the figure grows past the page,
+# and the reader learns nothing. But collapsing everything to a histogram loses the
+# per-dataset detail that is genuinely useful at today's size.
+#
+# So figures ASK how many items they have and adapt. The thresholds below are set by what
+# fits an A4 text block at the point sizes in `_RC`: ~28 horizontal bars at 9 pt, ~14
+# rotated x labels, ~12 small-multiple panels.
+# ---------------------------------------------------------------------------
+
+#: Above this many items, a per-item bar chart becomes a distribution.
+MAX_BARS = 28
+#: Above this many, tick labels are thinned to every Nth.
+MAX_TICK_LABELS = 28
+#: Above this many, a small-multiples grid becomes an overlay or a summary.
+MAX_PANELS = 12
+
+
+def too_many(n: int, limit: int = MAX_BARS) -> bool:
+    """True when `n` items will not fit legibly on an A4-width figure."""
+    return int(n) > int(limit)
+
+
+def head_tail(items, k: int = MAX_BARS):
+    """The k most extreme items, half from each end, for a "top and bottom" bar chart.
+
+    Returns `(subset, n_hidden)`. Keeping both ends rather than the top k is deliberate:
+    the question a reader asks of a ranked corpus chart is "what is unusual?", and the
+    smallest datasets are as informative as the largest.
+    """
+    items = list(items)
+    if not too_many(len(items), k):
+        return items, 0
+    half = k // 2
+    return items[:half] + items[-half:], len(items) - 2 * half
+
+
+def thin_ticks(ax, axis: str = "y", max_labels: int = MAX_TICK_LABELS) -> None:
+    """Keep every Nth tick label so they stop overlapping. Ticks stay, labels thin out."""
+    getter = ax.get_yticklabels if axis == "y" else ax.get_xticklabels
+    labels = getter()
+    if len(labels) <= max_labels:
+        return
+    step = int(np.ceil(len(labels) / max_labels))
+    for i, lab in enumerate(labels):
+        if i % step:
+            lab.set_visible(False)
+
+
+def note(ax, text: str) -> None:
+    """A single small footnote inside the axes — for "43 of 500 shown", nothing else.
+
+    Figures in this project carry as little text as possible: the caption in
+    `output/figures/CAPTIONS.md` is where explanation belongs, because it travels with the
+    figure into the manuscript and can be edited without re-running anything.
+    """
+    ax.text(0.99, 0.01, text, transform=ax.transAxes, ha="right", va="bottom",
+            fontsize=6, color=COLORS["annotation"])
+
+
+#: Longest axes title that fits one line of an A4-width figure at `axes.titlesize`.
+MAX_TITLE = 52
+
+
+def title(ax, text: str) -> None:
+    """Set a SHORT axes title, wrapping rather than overrunning the figure.
+
+    Figures in this project end up in a paper, where the caption below the figure carries
+    the explanation — so the title is a label for browsing the PDF folder, not a sentence.
+    A title longer than the figure is wide silently overlaps the y tick labels, which is
+    where several collisions in the 12-08-2026 figure audit came from.
+    """
+    t = str(text)
+    if len(t) > MAX_TITLE:
+        cut = t.rfind(" ", 0, MAX_TITLE)
+        t = (t[:cut] + "\n" + t[cut + 1:]) if cut > 20 else (t[:MAX_TITLE - 1] + "…")
+    ax.set_title(t)

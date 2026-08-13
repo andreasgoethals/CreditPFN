@@ -272,6 +272,7 @@ The utilities, all `python -m src.utils.<name>`:
 
 | Module | What it does |
 |---|---|
+| [`src/visualize/paper_figures.py`](src/visualize/paper_figures.py) | The seven figures the manuscript is built from — paired effect, gain vs base quality, mean rank, calibration shift, regime, honest selection, forgetting. Everything else under `src/visualize/` is diagnostic. |
 | [`src/utils/clean_run.py`](src/utils/clean_run.py) | Wipes what a previous run produced, across both storage tiers. Lists by default; `--clean` deletes, `--processed` also drops the preprocessing cache, `--stages data,train,eval` limits it to one stage. See chapter 5. |
 | [`src/utils/run_notebooks.py`](src/utils/run_notebooks.py) | Runs every notebook in parallel, then rebuilds `output/figures/CAPTIONS.md` and `output/All_Results.md`. |
 | [`src/utils/update_tfm_library.py`](src/utils/update_tfm_library.py) | Reports (and with `--update` moves) the `tfm-library/` submodule pin. |
@@ -339,7 +340,7 @@ stripped-down CI image.
 | [`docs/PAPER_ROADMAP.md`](docs/PAPER_ROADMAP.md) | Whether the contribution is novel — the nearest-neighbour papers and how each differs — and the ordered list of evidence still missing before writing. |
 | [`docs/AGENTS_MEMORY.md`](docs/AGENTS_MEMORY.md) | **Read before starting.** One row per cluster run (config, outcome, headline number) and one four-line entry per dead end (Tried / Result / Why / Instead), so a configuration that failed last month is not resubmitted. |
 | [`docs/CHANGELOG.md`](docs/CHANGELOG.md) | What changed in the repository, newest first, one bullet per change. |
-| [`docs/VSC.md`](docs/VSC.md) | **VSC deployment guide** (KU Leuven's Vlaams Supercomputer Centrum): OnDemand portal, conda env, dataset upload, partition and GPU choice, the SLURM submit chain, failure-mode cheat sheet. Read this when you are about to deploy; everything else in this README applies to any SLURM cluster. |
+| [`docs/VSC.md`](docs/VSC.md) | **Everything you type to run this on the cluster**, in the order you do it: first-time setup, the five commands of a run, **downloading the results back to your laptop**, a failure cheat sheet, and a storage/cluster/cost reference. Read it when you are about to deploy; everything else in this README applies to any SLURM cluster. |
 | [`docs/TEMPLATE.md`](docs/TEMPLATE.md) | The repository template this project follows. A starting point, not a contract — deviations are allowed and are stated where they occur. |
 
 <a id="47-papers-and-repositories--reference-material"></a>

@@ -1076,3 +1076,112 @@ def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
         task_type="classification", dataset_id="d", ctx_pos_rate=0.07,
     )
     assert tb.to("cpu").ctx_pos_rate == 0.07
+
+
+# =========================================================================== #
+# Leakage guard (12-08-2026)
+# =========================================================================== #
+
+
+def test_leakage_guard_drops_a_train_dataset_that_duplicates_a_test_one(
+    isolated_output, monkeypatch,
+) -> None:
+    """`src/data/dedup.py` has always DETECTED duplicate/overlapping datasets and
+    written `doubles_<track>_post.csv`. Nothing read it: the count was printed in one
+    log line and that was all. A duplicated table with one copy in train and one in
+    test makes every metric optimistic by an unknown amount, and at the 500-dataset
+    scale this project is heading for, nobody would notice.
+    """
+    import pandas as pd
+    from src.train import corpus
+    from src.utils.paths import manifests_dir
+
+    # TWO training datasets: one flagged, one clean. With only the flagged one the
+    # guard would (correctly) keep it rather than empty the corpus — that fail-safe is
+    # the subject of the next test.
+    clean = corpus.DatasetRef("0003.c", "pd", "classification", "y", (),
+                              Path("c.csv"), n_rows=10_000)
+    dirty = corpus.DatasetRef("0001.a", "pd", "classification", "y", (),
+                              Path("a.csv"), n_rows=10_000)
+    train = [dirty, clean]
+    test = [corpus.DatasetRef("0002.b", "pd", "classification", "y", (),
+                              Path("b.csv"), n_rows=10_000)]
+
+    # No report -> nothing dropped.
+    assert corpus._drop_train_leakage(train, test, "pd") == train
+
+    d = manifests_dir() / "dedup"
+    d.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([{"dataset_path": "x", "dataset_name": "0001.a",
+                   "duplicate_of": "0002.b", "detection_method": "row_hash",
+                   "confidence": "high"}]).to_csv(d / "doubles_pd_post.csv", index=False)
+
+    assert corpus._drop_train_leakage(train, test, "pd") == [clean], (
+        "a training dataset flagged as a duplicate of a held-out one must be dropped"
+    )
+    # And the reverse direction (report lists the pair the other way round).
+    pd.DataFrame([{"dataset_path": "x", "dataset_name": "0002.b",
+                   "duplicate_of": "0001.a", "detection_method": "subset",
+                   "confidence": "high"}]).to_csv(d / "doubles_pd_post.csv", index=False)
+    assert corpus._drop_train_leakage(train, test, "pd") == [clean]
+
+
+def test_leakage_guard_never_empties_the_training_corpus(isolated_output) -> None:
+    """Failing safe beats failing closed: a best-effort guard that kills the run is the
+    08-07-2026 dead end. It logs an error and keeps the corpus instead."""
+    import pandas as pd
+    from src.train import corpus
+    from src.utils.paths import manifests_dir
+
+    train = [corpus.DatasetRef("0001.a", "pd", "classification", "y", (),
+                               Path("a.csv"), n_rows=10_000)]
+    test = [corpus.DatasetRef("0002.b", "pd", "classification", "y", (),
+                              Path("b.csv"), n_rows=10_000)]
+    d = manifests_dir() / "dedup"
+    d.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame([{"dataset_path": "x", "dataset_name": "0001.a",
+                   "duplicate_of": "0002.b", "detection_method": "row_hash",
+                   "confidence": "high"}]).to_csv(d / "doubles_pd_post.csv", index=False)
+    # The only training dataset is flagged, so dropping it would leave nothing: the
+    # guard keeps it and logs an error instead.
+    assert corpus._drop_train_leakage(train, test, "pd") == train
+    train2 = train + [corpus.DatasetRef("0003.c", "pd", "classification", "y", (),
+                                        Path("c.csv"), n_rows=10_000)]
+    pd.DataFrame([
+        {"dataset_path": "x", "dataset_name": "0001.a", "duplicate_of": "0002.b",
+         "detection_method": "row_hash", "confidence": "high"},
+        {"dataset_path": "x", "dataset_name": "0003.c", "duplicate_of": "0002.b",
+         "detection_method": "row_hash", "confidence": "high"},
+    ]).to_csv(d / "doubles_pd_post.csv", index=False)
+    assert corpus._drop_train_leakage(train2, test, "pd") == train2
+
+
+def test_trial_name_parser_handles_every_name_the_pipeline_writes() -> None:
+    """REGRESSION (12-08-2026). `parse_trial_name` used `Path(name).stem`, which strips
+    from the LAST dot — and the base stem contains one. Every v2.6 trial name was
+    truncated mid-name, failed the regex, and was labelled "?" in every training figure:
+    half the grid silently mislabelled and merged into a single colour. The regex also
+    knew nothing about `_iclhead` (TabICLv2's rendering of the adapter axis) or the
+    `_min<rows>` corpus arm added for run-8.
+    """
+    from src.visualize.training_viz import parse_trial_name
+
+    cases = {
+        "creditpfn_pd_tabpfn-v2.6-classifier-v2.6_default_lr1e-06_seed42_qf20_acc1_fullpass":
+            ("v2.6-classifier-v2.6", 1e-06, False, 0),
+        "creditpfn_pd_tabpfn-v2.6-classifier-v2.6_default_lr1e-06_seed42_qf20_acc1_fullpass_lora":
+            ("v2.6-classifier-v2.6", 1e-06, True, 0),
+        "creditpfn_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_fullpass_iclhead":
+            ("tabicl-classifier-v2-20260212", 3e-07, True, 0),
+        "creditpfn_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_fullpass_min5000_iclhead":
+            ("tabicl-classifier-v2-20260212", 3e-07, True, 5000),
+        "creditpfn_lgd_tabpfn-v3-regressor-v3_default_lr3e-07_seed42_qf40_acc1_fullpass":
+            ("v3-regressor-v3", 3e-07, False, 0),
+    }
+    for name, (base, lr, lora, min_rows) in cases.items():
+        t = parse_trial_name(name)
+        assert t is not None, f"unparsed: {name}"
+        assert (t.base_short, t.lr, t.lora, t.min_train_rows) == (base, lr, lora, min_rows), name
+    # And with the extensions the pipeline actually writes.
+    for ext in (".csv", ".ckpt"):
+        assert parse_trial_name(list(cases)[0] + ext) is not None

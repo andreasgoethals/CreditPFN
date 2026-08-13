@@ -551,7 +551,7 @@ probes staging writability first: if the compute node can't write staging
 — the 2026-07-03 Mindwell failure mode — checkpoints are saved under
 `$VSC_DATA/CreditPFN/checkpoints/trained/` instead, and the eval gate
 archives them into staging afterwards. Either way the durable copy ends
-up in project storage; see docs/VSC.md §0.2.)
+up in project storage; see docs/VSC.md §5 (Storage).)
 Alongside each `.ckpt` we write a `<name>.ckpt.provenance.json`
 sidecar (full training-time hyperparameters, the train/test dataset
 lists, walltime, GPU, library versions) so a checkpoint can be
@@ -865,6 +865,30 @@ they see the full training fold. Their HPO uses a separate
 `hpo.<model>.max_rows` subsample.
 
 ---
+
+## 3b. Leakage and what enforces it
+
+The split is by **dataset**, never by row: every row of a table goes to one bucket, so the
+test set never contains rows from a table the model trained on. Four things back that up,
+and each is checked rather than assumed:
+
+| risk | what prevents it |
+|---|---|
+| a table duplicated across the split | `dedup.py` detects duplicate/overlapping datasets (row-hash intersection, subset relation, column hash, name+shape); `split_corpus` **drops** any training dataset flagged against a held-out one. Train side only — changing the test set between arms would make them incomparable. |
+| preprocessing fitted on test rows | the ordinal encoder is fitted on the train fold alone, in both training (`dataloader._ordinal_encode`) and eval (`dataset_loader.encode_for_model`); unseen categories map to −1, which is the inference case the model was pretrained for |
+| the decision threshold tuned on test | tuned on the inner validation split, applied to test — `benchmark._best_f1_threshold(proba_val, y_val)` |
+| the context containing the query | the per-step context/query split is a disjoint prefix/suffix of one shuffled subsample; the eval never caps the test fold, only the context |
+
+Two honest limitations, both stated rather than hidden:
+
+- **Model selection is post-hoc on the test split.** There is no validation corpus — too
+  few datasets — so the best trial is currently chosen on the same data it is reported on,
+  which is optimistically biased. `paper_figures.plot_selection_honesty` measures the size
+  of that bias by leave-one-dataset-out selection, and it needs no new runs.
+- **Eval row caps differ by architecture** (v2.6 50k, v3 and TabICLv2 1M), because they are
+  the published envelopes. They are paired within a family — trained and untuned get the
+  same cap — so trained-vs-untuned is clean, while cross-version comparison is confounded
+  with context size and must be reported as such.
 
 ## 4. Deliberate oddities
 

@@ -1,730 +1,257 @@
-# CreditPFN on VSC — deployment guide
+# Running CreditPFN on the VSC
 
-End-to-end recipe for running the pipeline (**data → train → eval**) on
-a VSC site via the [Open OnDemand](https://openondemand.org/) web
-portal. The whole flow lives behind one command:
+Everything you type to get a run onto the KU Leuven cluster and the results back onto your
+laptop, in the order you do it. Nothing else — what the sweep contains and why is
+[`METHOD.md`](METHOD.md), what each run measured is [`RESULTS.md`](RESULTS.md).
 
-```bash
-bash scripts/slurm/run_full_pipeline.sh
-```
+Two facts that explain most of this document:
 
-The rest of this guide is the story of how to get there: where the code
-lives, where the data lives, how the SLURM stages chain together, and
-how to vary what gets trained.
+- **You always log in to Genius.** wICE and Mindwell have no login node of their own; you
+  submit to them from Genius with `--clusters=<name>`, which every `.slurm` here already
+  does.
+- **Big files live on project storage, readable files on `$VSC_DATA`.** You browse the
+  second directly; you have to pull the first down before you can look at it. That split
+  is why §3 exists.
 
 ---
 
-## 0 · One-time setup
+## 1 · First time only
 
-### 0.1 Open a shell on the cluster
+### 1.1 Get a shell
 
-In the OnDemand portal, click **Clusters → Login (Server) Shell Access**.
-A terminal opens in a new browser tab on a Genius login node — prompt
-looks like `[May/11 15:21] vscXXXXX@tier2-p-login-N $` (where `N` is
-1–4). **Neither wICE nor Mindwell has its own login node** — you always
-SSH into Genius and submit to the target cluster via `#SBATCH
---clusters=<name>` in the job script (every `.slurm` here already does).
-Every command below runs in that shell.
+OnDemand portal → **Clusters → Login (Server) Shell Access**. The prompt looks like
+`[Aug/12 15:21] vsc38338@tier2-p-login-3 $`. Every command in §1 and §2 runs there.
 
-### 0.1b The clusters (KU Leuven Tier-2)
-
-CreditPFN spans two GPU clusters. **Continued pretraining runs ONLY on
-Mindwell** (the B200's 192 GiB VRAM lets us train at a much larger
-in-context size); everything else runs on wICE.
-
-| Cluster | GPU partition | GPU | VRAM | GPUs | Cores/GPU | Account | Used for |
-|---------|---------------|-----|------|------|-----------|---------|----------|
-| **Mindwell** | `gpu_b200` | B200 (Blackwell) | **192 GiB** | 3×8 = **24** | 24 | `lp_verbekelab` | **Training** |
-| **wICE** | `gpu_h100` | H100 SXM5 | 80 GiB | 5×4 = 20 | 16 | `lp_verbekelab` | Eval |
-| **wICE** | `gpu_a100` | A100 SXM4 | 80 GiB | 4×4 = 16 | 18 | `lp_verbekelab` | Eval (extra capacity) |
-| **wICE** | `batch` | — (CPU) | — | — | — | `lp_verbekelab` | Data prep |
-
-Notes:
-- **GPU walltime caps at 72 h** on both clusters (there is no `gpu_*_long`
-  partition — only CPU partitions have 7-day `_long` variants).
-- **Backfill:** shorter `--time` ⇒ better queue position. Tighten your
-  walltime estimate after the first trial (read `epoch_dt` in the log).
-- **Account:** `lp_verbekelab` has Mindwell access (the free
-  `lp_mindwell_pilot` ended when Mindwell entered production —
-  confirmed 2026-07-02, it now rejects submissions). B200 credit
-  weight is 437.5/GPU-min (cheaper than H100's 569.4). Balance:
-  `sam-balance`.
-- **Maximum parallelism:** PD and LGD training run as independent 24-wide
-  arrays on Mindwell; eval runs as 32-wide arrays on wICE — so PD+LGD
-  train simultaneously while wICE eval churns through whatever's done.
-
-### 0.2 Three storage tiers, three purposes
-
-VSC gives every user three storage tiers. The crucial distinction —
-and the source of most confusion — is **personal data storage
-(`$VSC_DATA`) vs. project ("staging") storage**:
-
-| Tier | What it is | Holds (CreditPFN) | Backed up? | Purged? | Quota |
-|------|------------|-------------------|-----------|---------|-------|
-| **Project staging** (`/lustre1/project/stg_00211`) | Group/project share on the **Lustre** parallel filesystem (`$VSC_PROJECT_LUSTRE1`). The **big files** live here. | **Datasets** (raw + processed), **trained checkpoints**, **benchmark result CSVs** | No (single copy) | No | Large (≥ 1 TB); **low inode budget** — few big files, not many tiny ones |
-| **Personal data** (`$VSC_DATA`) | Your own NFS home-for-data. | Code + **small durable outputs**: logs, manifests, per-epoch CSVs, notebook figures | **Yes** (snapshots) | No | **75 GiB** (tight) |
-| **Scratch** (`$VSC_SCRATCH`) | Fast parallel FS (Lustre on wICE/Genius, GPFS on Mindwell). | Optional fast-I/O working copies | No | **~30 days** | 500 GiB |
-
-**Why datasets live in project staging, not `$VSC_DATA`:** the datasets
-are the single largest artefact in the project. `$VSC_DATA`'s 75 GiB
-quota is too small for the full corpus, and scratch gets purged every
-30 days. Project staging is large, persistent, and shared — so it is
-the canonical home for datasets, trained checkpoints, and results.
-`$VSC_DATA` is reserved for the small, frequently-rewritten, *backed-up*
-bookkeeping outputs (logs/manifests/figures).
-
-**Filesystem caveat (Lustre vs GPFS).** Staging is on **Lustre**, which
-wICE and Genius see natively. **Mindwell** (where training runs) is on
-**GPFS** and VSC asks that *sustained* I/O on Mindwell use GPFS. Our
-training only does a one-time read of the processed CSVs at startup
-(then caches them in RAM) plus a single checkpoint write at the end —
-not sustained I/O — so reading datasets directly from Lustre staging on
-Mindwell is fine. If a Mindwell job is ever killed for I/O, copy the
-processed data to `$VSC_SCRATCH` (GPFS) first and
-`export CREDITPFN_DATA_ROOT=$VSC_SCRATCH/CreditPFN` for that run.
-
-**How the split is configured.** `paths.data_source` in
-[`config/data.yaml`](../config/data.yaml) picks the dataset tier:
-`"staging"` (default), `"scratch"`, or `"data"`. Logs/manifests/figures
-always go to `$VSC_DATA`; trained checkpoints + results go to
-staging. The resolver finds the staging root from, in order:
-`$CREDITPFN_STAGING_ROOT` → `$TABPFN_STAGING_ROOT` → the built-in
-default `/lustre1/project/stg_00211`. So on VSC it **just works** with no
-env var set; override only if your allocation differs.
-
-**Writability fallback (added after the 2026-07-03 run).** Staging proved
-*readable but not writable* from the Mindwell compute nodes, which killed
-every checkpoint save. Training therefore now **probes** staging
-writability at startup (`resolve_writable_staging_path`) and, if it can't
-write, saves checkpoints to `$VSC_DATA` with a loud warning instead of
-failing. The eval gate — which runs on wICE, where staging *is* writable —
-then **automatically archives** any fallback checkpoints into
-`<staging>/CreditPFN/checkpoints/trained/` before releasing eval, so the
-project-storage guarantee ("all big files end up on staging") holds either
-way. Eval reads the manifest's recorded paths, so it works regardless of
-where the files landed; reclaim the temporary `$VSC_DATA` copies with
-`python -m src.utils.clean_run --clean` after verifying the staging archive.
-
-The env vars `$CREDITPFN_DATA_ROOT`, `$CREDITPFN_OUTPUT_ROOT` and
-`$CREDITPFN_STAGING_ROOT` remain available as escape-hatch overrides
-(highest precedence — honoured before the yaml).
-
-### 0.3 Clone the repo
-
-The code is public at
-[github.com/andreasgoethals/CreditPFN](https://github.com/andreasgoethals/CreditPFN).
-Clone it into `$VSC_DATA` (so it's backed up), then `git pull` before
-every run:
+### 1.2 Clone and build the environment
 
 ```bash
 cd $VSC_DATA
 git clone --recursive https://github.com/andreasgoethals/CreditPFN.git
 cd CreditPFN
-# (--recursive pulls the tfm-library knowledge-base submodule too. On an
-#  EXISTING checkout, after any `git pull` that bumps the submodule run:
-#  git submodule update --init)
+conda create -y -n CreditPFN --clone base    # reuses the base torch/CUDA stack
+conda activate CreditPFN
+pip install -e ".[dev,notebooks]"
 ```
 
-After the clone the layout is:
+The env **must** be called `CreditPFN` — that is the name the job scripts activate.
 
-```text
-$VSC_DATA/CreditPFN/
-├── src/                 all the pipeline code (data, train, eval, model, utils)
-├── scripts/             CLI entrypoints + SLURM templates
-├── config/              data.yaml, train.yaml, eval.yaml — the only knobs
-├── tfm-library/         SHARED knowledge base (git submodule): papers, summaries, code dumps
-├── docs/                this file + METHOD.md + METHOD.md
-├── tests/               pytest suite (236 tests)
-└── pyproject.toml       package metadata + dependencies
-```
-
-### 0.4 Create the conda env (one time)
+Two installs the `pip install` above cannot get right on its own:
 
 ```bash
-# The SLURM scripts activate an env named exactly "CreditPFN", so create that.
-# Fastest on VSC — clone the base env (reuses the torch/CUDA stack already
-# installed there, no multi-GB re-download):
-conda create -y -n CreditPFN --clone base
-# …or a clean env from scratch (mamba if you have it, else conda):
-#   conda create -y -n CreditPFN python=3.12
-conda activate CreditPFN                      # NOT `source activate` (deprecated)
-pip install -e ".[dev,notebooks]"             # deps from pyproject.toml
-```
-
-Python **3.11–3.13** are all supported (the VSC base env is 3.13, which works).
-
-**TabPFN caveat.** PyPI's `tabpfn` caps at `2.2.1`, which has an older
-API than the code expects. Install the matching Prior Labs release on
-top:
-
-```bash
+# PyPI's tabpfn is pinned at 2.2.x with an older API; training TypeErrors on first load.
 pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
+
+# The [finetune] extra is REQUIRED, not optional: it carries `transformers`. Without it
+# you get an install that works for inference and dies at training with
+# ModuleNotFoundError: transformers.
+pip install --upgrade "tabicl[finetune]>=2.1.1,<3"
 ```
 
-Without this, `train_pipeline.py` will `TypeError` on the first model
-load. Eval against pre-existing checkpoints is unaffected.
-
-**TabICLv2.** Installed by the `pip install -e` above as
-**`tabicl[finetune]>=2.1.1,<3`** — the `[finetune]` extra is **required, not
-optional**. Importing tabicl's finetuning internals pulls in
-`transformers`, which tabicl declares only under that extra. Without it you
-get an install that works perfectly for *inference* and fails at *training*
-with `ModuleNotFoundError: No module named 'transformers'`. If you installed
-`tabicl` by hand earlier, re-run:
+Verify before spending GPU time:
 
 ```bash
-pip install 'tabicl[finetune]>=2.1.1,<3'
+python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('pd'); smoke_test('lgd')"
+python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')"
 ```
 
-**Watch out: an active virtualenv silently beats `conda activate`.** If your
-shell has a venv active, its `bin/` sits ahead of the conda env on `PATH`, so
-`conda activate CreditPFN && pip install X` reports success while installing
-into the **venv**. Check where you actually are before installing:
+### 1.3 Upload the datasets
+
+Raw CSVs go to **project storage**, not `$VSC_DATA`. From your laptop:
 
 ```bash
-which python pip          # must be under the conda env, not a venv
-echo "${VIRTUAL_ENV:-no venv active}"
+rsync -ah --info=progress2 data/raw/ \
+  vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/data/raw/
 ```
 
-If a venv is active, `deactivate` first, then `conda activate CreditPFN`. The
-SLURM scripts now strip a shadowing venv from `PATH` automatically (and say
-so in the log), but an interactive install has no such protection — that is
-where the wrong-environment mistake actually happens.
+Layout the pipeline expects: `data/raw/pd/<id>.csv` and `data/raw/lgd/<id>.csv`.
 
-Verify both families import before submitting:
+### 1.4 Stage the base checkpoints
+
+**From a login node** — compute nodes have no outbound internet, and the loaders pass
+`allow_auto_download=False` so a missing file fails loudly instead of silently downloading
+mid-job.
 
 ```bash
-python -c "from src.train.tabpfn_compat import smoke_test as a; from src.train.tabicl_compat import smoke_test as b; a('pd'); b('pd')"
+python - <<'PY'
+import os, shutil
+from huggingface_hub import hf_hub_download
+dest = "/lustre1/project/stg_00211/CreditPFN/checkpoints"
+os.makedirs(dest, exist_ok=True)
+for repo, files in {
+    "jingang/TabICL": ("tabicl-classifier-v2-20260212.ckpt",
+                       "tabicl-regressor-v2-20260212.ckpt"),
+}.items():
+    for f in files:
+        shutil.copy2(hf_hub_download(repo, f), f"{dest}/{f}")
+        print("staged", f)
+PY
 ```
 
-The SLURM scripts run these checks in their pre-flight (the TabICLv2 one only
-for trials that use a TabICLv2 base), so a missing or upgrade-broken import
-costs seconds instead of a GPU job.
+TabPFN's v2.6 / v3 base weights go in the same directory — upload them with the same
+`rsync` as §1.3 if you already have them locally.
 
-### 0.5 Upload datasets and base checkpoints
+---
 
-The big files go to **project staging** (everything else is in git):
-
-| What                                                                    | Destination                                          | How                                                |
-|-------------------------------------------------------------------------|------------------------------------------------------|----------------------------------------------------|
-| Raw credit-risk datasets (`*.csv`)                                      | `/lustre1/project/stg_00211/CreditPFN/data/raw/{pd,lgd}/` | WinSCP / FileZilla / `scp` (Globus for >1 GB)      |
-| Base TabPFN checkpoints (`tabpfn-v3-*.ckpt`, `tabpfn-v2.6-*.ckpt`, …)    | `/lustre1/project/stg_00211/CreditPFN/checkpoints/`   | WinSCP, or `wget` from Hugging Face on a login node |
-| Base TabICLv2 checkpoints (`tabicl-{classifier,regressor}-v2-20260212.ckpt`, 110 + 114 MB) | `/lustre1/project/stg_00211/CreditPFN/checkpoints/`   | `hf_hub_download` on a **login** node — see [METHOD.md](METHOD.md#getting-the-tabicl-weights-onto-vsc-one-time-from-a-login-node) |
-
-Staging lives on Lustre (`$VSC_PROJECT_LUSTRE1/stg_00211`) and the big
-files **stay there forever** (no purge). Logs and other small outputs go
-to `$VSC_DATA` automatically — you never copy those by hand.
-
-**Concrete transfer commands (run on your laptop).** The Genius login
-node can write to the Lustre staging path, so you can `scp`/`rsync`
-straight there even though your file browser opens in `$VSC_DATA` — just
-give the absolute `/staging/...` path as the destination:
+## 2 · Every run
 
 ```bash
-# From your laptop, in the folder that holds your local data/ + checkpoints/.
-# Replace vsc38338 with your VSC id (and stg_00211 if your allocation differs).
+# 1. Get this run's code onto the cluster. The cluster pulls origin/main, so anything
+#    committed-but-unpushed does not exist here.
+cd $VSC_DATA/CreditPFN && git pull origin main && git submodule update --init
+
+# 2. See what the previous run left behind. Deletes nothing.
+python -m src.utils.clean_run
+
+# 3. Wipe it. Keeps data/raw/, the base checkpoints, and data/processed/.
+python -m src.utils.clean_run --clean
+
+# 4. Launch data → train → eval. Fire once and walk away.
+bash scripts/slurm/run_full_pipeline.sh
+
+# 5. Watch. Two controllers, so two queries.
+squeue -M mindwell -u $USER      # training  (gpu_b200)
+squeue -M wice     -u $USER      # data, gate, eval
+```
+
+Add `--processed` to step 3 only when the sanitising logic changed — rebuilding the cache
+costs far more than re-running the models.
+
+Useful variants:
+
+```bash
+STAGES="eval" bash scripts/slurm/run_full_pipeline.sh    # re-score, skip training
+STAGES="data train" bash scripts/slurm/run_full_pipeline.sh
+EVAL_TASKS=8 bash scripts/slurm/run_full_pipeline.sh     # fewer, longer eval tasks
+```
+
+Cancel everything:
+
+```bash
+scancel -M mindwell -u $USER ; scancel -M wice -u $USER
+```
+
+The three stages are sequenced by **sentinel files**, not by `--dependency`: VSC runs wICE
+and Mindwell as separate Slurm controllers and cross-cluster dependencies do not work.
+That is why the launcher looks more complicated than a dependency chain, and why you must
+not "simplify" it into one.
+
+---
+
+## 3 · Getting the results back
+
+A finished run is spread across both storage tiers, and the half you most want to read is
+the half you cannot browse. Pull it down **from your laptop**, into the repository, where
+the notebooks already look for it.
+
+### 3.1 The three things worth downloading
+
+| From | To (in your local checkout) | What it is | Size |
+|---|---|---|---|
+| `$VSC_DATA/CreditPFN/output/manifests/` | `output/manifests/` | one row per trial, per-epoch CSVs, the resolved configs | a few MB |
+| `$VSC_DATA/CreditPFN/output/logs/` | `output/logs/` | one `.log` per task — the only record of what happened | tens of MB |
+| `/lustre1/.../CreditPFN/output/results/` | `output/results/` | per-fold scores, one CSV per model × dataset | tens of MB |
+
+```bash
+VSC=vsc38338@login.hpc.kuleuven.be
+DATA=/data/leuven/383/vsc38338/CreditPFN
 STAGE=/lustre1/project/stg_00211/CreditPFN
 
-# 1) Raw datasets (the largest files) → staging
-scp -r data/raw/*       vsc38338@login.hpc.kuleuven.be:"$STAGE/data/raw/"
-# 2) Base TabPFN checkpoints → staging
-scp -r checkpoints/*.ckpt vsc38338@login.hpc.kuleuven.be:"$STAGE/checkpoints/"
-
-# rsync is better for big/resumable transfers if you have it (Git-Bash/WSL):
-rsync -ah --info=progress2 data/raw/ vsc38338@login.hpc.kuleuven.be:"$STAGE/data/raw/"
+rsync -ah --info=progress2 "$VSC:$DATA/output/manifests/" output/manifests/
+rsync -ah --info=progress2 "$VSC:$DATA/output/logs/"      output/logs/
+rsync -ah --info=progress2 "$VSC:$STAGE/output/results/"  output/results/
 ```
 
-For transfers larger than ~1 GB, prefer **Globus** (both Lustre and GPFS
-have endpoints) or a wICE `interactive`-partition transfer job; VSC
-recommends transfer jobs over Globus for >1 TB. Pack many small files
-into an archive first — staging's Lustre is bad at metadata storms and
-its inode budget is limited.
+**Do not download `checkpoints/trained/`.** It is 5–8 GB per sweep and nothing local reads
+it: the notebooks work from the manifests and results above. Pull one `.ckpt` by hand only
+if you intend to run inference with it.
 
-**If you truly cannot write to `/staging` from your transfer tool** (you
-can only reach `$VSC_DATA`): upload into `$VSC_DATA/CreditPFN/data/` and
-`$VSC_DATA/CreditPFN/checkpoints/`, then relocate to staging with the
-helper job (it runs on a wICE compute node, which mounts the Lustre that
-holds staging):
+### 3.2 Check what arrived
 
 ```bash
-scp -r data/raw/*        vsc38338@login.hpc.kuleuven.be:'$VSC_DATA/CreditPFN/data/raw/'
-scp -r checkpoints/*.ckpt vsc38338@login.hpc.kuleuven.be:'$VSC_DATA/CreditPFN/checkpoints/'
-# then, on the VSC login node:
-sbatch scripts/slurm/stage_to_project.slurm     # copies $VSC_DATA → staging
+python -m src.utils.clean_run          # lists every local tree with file counts
 ```
 
-If your project's staging allocation isn't `stg_00211`, set
-`export CREDITPFN_STAGING_ROOT=/lustre1/project/stg_XXXXX` (or
-`TABPFN_STAGING_ROOT`) and the whole pipeline — and the helper job —
-follows.
-
-Base checkpoints can also be fetched from Hugging Face directly on a
-VSC login node — see `docs/METHOD.md` for the exact `.ckpt`
-filenames the loader expects.
-
-### 0.6 The exact layout the pipeline expects (auto-detected)
-
-The data pipeline reads from `$CREDITPFN_DATA_ROOT/data/raw/{pd,lgd}/<id>.csv`.
-The submitter (`run_full_pipeline.sh`) auto-detects where you put
-the data and sets `CREDITPFN_DATA_ROOT` for the slurm jobs. The probe
-order (staging first — datasets' canonical home) is:
-
-  1. `/lustre1/project/stg_00211/CreditPFN/data/raw/{pd,lgd}/` — **canonical** (project staging)
-  2. `$VSC_SCRATCH/CreditPFN/data/raw/{pd,lgd}/`              — scratch project subdir
-  3. `$VSC_SCRATCH/data/raw/{pd,lgd}/`                        — straight-into-scratch
-  4. `$VSC_DATA/CreditPFN/data/raw/{pd,lgd}/`                 — repo-local
-
-Whichever directory actually contains CSVs wins — so if you uploaded to
-staging as in §0.5 (the canonical place), it is found automatically.
-After uploading, run `bash scripts/slurm/run_full_pipeline.sh` — it
-prints `CREDITPFN_DATA_ROOT: <resolved path>` so you can verify it picked
-the right one.
-
-To force a specific location (e.g. you staged data into scratch for a
-throughput experiment), set the env var explicitly — it always wins over
-autodetect:
+Then confirm the run is complete rather than half-transferred:
 
 ```bash
-export CREDITPFN_DATA_ROOT="$VSC_SCRATCH/CreditPFN"
-bash scripts/slurm/run_full_pipeline.sh
+python - <<'PY'
+import pandas as pd
+from src.utils.paths import manifests_dir, results_dir
+for track in ("pd", "lgd"):
+    m = manifests_dir() / f"creditpfn_{track}.csv"
+    if m.is_file():
+        df = pd.read_csv(m)
+        print(f"{track}: {len(df)} trials", df["status"].value_counts().to_dict())
+        print(f"      steps {df['total_optimizer_steps'].min()}–{df['total_optimizer_steps'].max()}"
+              f", corpus {df['n_train_datasets'].iloc[0]} train / {df['n_test_datasets'].iloc[0]} test")
+print("result CSVs:", sum(1 for _ in results_dir().rglob("*.csv")))
+PY
 ```
 
-### 0.7 Why staging, not scratch, is the default
+A trial count below the grid size, or a `total_optimizer_steps` far under
+`train.target_total_steps`, means the run is partial — check the logs before believing any
+number from it.
 
-Datasets default to **project staging** precisely because it is
-*not* purged. `$VSC_SCRATCH` auto-cleans files untouched for ~30 days
-(and `mv` / `rsync -a` don't refresh the access time, so a freshly
-*moved* file can still be purged — stage with `cp`). Staging avoids
-this entirely: upload your datasets once and they persist.
+### 3.3 Turn it into figures
 
-If you deliberately want the fast-but-ephemeral scratch tier (e.g. for a
-throughput experiment), set `paths.data_source: "scratch"` in
-`config/data.yaml`; for everything on `$VSC_DATA`, set `"data"`.
-`run_full_pipeline.sh` resolves the cfg and propagates
-`CREDITPFN_DATA_ROOT` / `CREDITPFN_OUTPUT_ROOT` / `CREDITPFN_STAGING_ROOT`
-through `sbatch --export` to every job.
+```bash
+python -m src.utils.run_notebooks
+```
+
+Writes `output/figures/<notebook>/*.pdf`, one shared `output/figures/CAPTIONS.md`, and
+`output/All_Results.md`. Those captions are the manuscript's captions.
+
+### 3.4 Write it down
+
+Add one row to the Runs table in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md) and one entry with
+its Configuration table to [`RESULTS.md`](RESULTS.md). Both are read before the next run is
+designed; a run nobody recorded gets repeated.
 
 ---
 
-## 1 · The full chain in one command
+## 4 · When it breaks
 
-From the cloned repo:
-
-```bash
-cd $VSC_DATA/CreditPFN
-source activate CreditPFN      # one-time per shell session
-git pull
-bash scripts/slurm/run_full_pipeline.sh
-```
-
-(The submitter auto-activates the env if it can find one, but doing it
-explicitly first avoids surprises on shells where conda isn't on
-`$PATH`.)
-
-That submits the pipeline across **two clusters** (training is
-Mindwell-only; data prep and eval run on wICE):
-
-```text
-data.slurm                          ──    CPU  (wICE batch)        → writes datasets to staging
-                                          │
-   (datasets persist in project staging, visible from both clusters)
-                                          │
-train_pd.slurm   (array, N jobs)    ──    GPU  (Mindwell gpu_b200) → continued pretraining ONLY here
-train_lgd.slurm  (array, N jobs)    ──    GPU  (Mindwell gpu_b200)
-                                          │
-   (trained checkpoints persist in project staging)
-                                          │
-eval_pd.slurm    (2 arrays)         ──    GPU  (wICE gpu_h100 + gpu_a100)
-eval_lgd.slurm   (2 arrays)         ──    GPU  (wICE gpu_h100 + gpu_a100)
-```
-
-**No cross-cluster `afterok` chain.** VSC runs wICE and Mindwell as
-separate Slurm clusters, and `--dependency` does **not** work across
-them. So the three stages are submitted independently and sequenced via
-the shared staging tier:
-- Run `data` first and let it finish (datasets land in staging).
-- `train` (Mindwell) reads those datasets; submit after data completes.
-- `eval` (wICE) is robust — it scores whatever checkpoints exist in
-  staging and skips the rest, so re-running `STAGES=eval` after training
-  finishes picks up late trials.
-
-Optional knobs (set before invoking):
-
-```bash
-STAGES="data train eval"   # submit a subset, e.g. STAGES=train
-TRACKS="pd lgd"            # one track only if you want
-TRAIN_CONCURRENCY=24       # max in-flight Mindwell B200 tasks (24 GPUs)
-EVAL_CONCURRENCY=32        # max in-flight wICE eval tasks
-bash scripts/slurm/run_full_pipeline.sh
-```
-
-Watch progress across both clusters with **Active Jobs** in OnDemand, or
-`squeue --me --clusters=wice,mindwell`. Every task writes a single log
-file at
-`$VSC_DATA/CreditPFN/logs/<task>_<YYYYMMDD>_<HHMMSS>_j<jid>_a<tid>.log`
-(including a full debug banner: host, cluster, GPU, VRAM, library
-versions, resolved storage roots, and every hyperparameter).
+| Symptom | Cause and fix |
+|---|---|
+| `ModuleNotFoundError: transformers` at training start | The `[finetune]` extra is missing. §1.2. Inference works without it, which is why this only shows up on the cluster. |
+| `TypeError` on the first model load | PyPI's stale `tabpfn`. Install the Prior Labs wheel, §1.2. |
+| `pip install` succeeded but the job disagrees | An active virtualenv silently beats `conda activate`. `deactivate`, then check `which python pip`. Every job log's `Active conda env:` line is the authority. |
+| "missing raw file … skipped" for every dataset | The CSVs are not where the resolver looked. The launcher prints the resolved `CREDITPFN_DATA_ROOT`; compare it with §1.3. |
+| Jobs sit `PENDING` for hours | Normal on a busy partition. A **shorter** `--time` backfills better than a longer one — the 48 h request in run-5 got 1–2 GPUs, the 10 h request in run-7 got 15–21. |
+| "user env retrieval failed requeued held" | A cross-cluster `sbatch` without `--export`. Every script here sets `#SBATCH --export=ALL`; do not remove it. |
+| Eval re-run produces no new CSVs | The skip-existing guard fired — everything was already scored. `--rerun` forces it. |
+| A trial has `status=FAIL` | The manifest keeps the row and the eval skips that checkpoint. Read its log; the grid is still usable, and partial grids are flagged as such. |
+| Out of memory during training | Lower `finetuning.max_rows_per_epoch` in `config/data.yaml`, then **re-run the probe** — the caps are measurements, not guesses ([`METHOD.md`](METHOD.md#3-context-size-caps)). |
+| Wrong test set scored for a checkpoint | The eval reads `<ckpt>.provenance.json`, not the live config. A mismatch warning names both. |
 
 ---
 
-## 2 · Stage 1 — data preprocessing
+## 5 · Reference
 
-CPU-only, on **wICE `batch`**. Reads from `<data_root>/data/raw/`
-(project staging by default), writes processed artefacts to the same
-root (the data pipeline has **no `.npz` chunking step** — sanitized CSVs
-are the canonical training input):
+### Storage
 
-```text
-data/raw/{pd,lgd}/<id>.csv          (you uploaded to staging)
-        ↓ dedup --pass pre          → output/manifests/dedup/doubles_{track}_pre.csv     ($VSC_DATA, durable)
-        ↓ register                  → output/manifests/manifest_{pd,lgd}.csv  ($VSC_DATA, durable)
-        ↓ sanitize                  → data/processed/{pd,lgd}/<id>.sanitized.csv  (staging, data_root)
-        ↓ dedup --pass post         → output/manifests/dedup/doubles_{track}_post.csv    ($VSC_DATA, durable)
-```
+| Tier | Path | Holds | Notes |
+|---|---|---|---|
+| **Personal data** | `$VSC_DATA/CreditPFN/` | the repo, `output/` except results | 75 GiB, backed up, browsable |
+| **Project storage** | `/lustre1/project/stg_00211/CreditPFN/` | datasets, checkpoints, `output/results/` | large, backed up, **low inode budget** — few big files, not thousands of small ones |
 
-The processed CSVs land in staging so the Mindwell training stage (a
-different cluster) can read them. Submit just this stage:
-`sbatch --clusters=wice scripts/slurm/data.slurm`.
+`$VSC_SCRATCH` is not used: it is purged after 30 days *without access*, and neither `mv`
+nor `rsync -a` counts as an access.
 
-**Idempotent.** Re-running detects existing processed CSVs and skips
-them; pass `--fresh` (uncomment the line in `data.slurm`) to rebuild
-from scratch.
+### Clusters
 
----
+| Cluster | Partition | Used for | Why |
+|---|---|---|---|
+| Genius | — | login and submission only | the only login node |
+| Mindwell | `gpu_b200` | continued pretraining | 192 GiB VRAM per GPU is what allows the large in-context sizes; 24 GPUs cluster-wide |
+| wICE | `gpu_h100`, `gpu_a100` | evaluation | the eval is inference-bound and fits comfortably |
+| wICE | `batch` | data stage, eval gate | CPU only |
 
-## 3 · Stage 2 — continued pretraining
+Account: `lp_verbekelab` (verify with `sacctmgr -s show user $USER cluster=mindwell` —
+note `sacctmgr` takes no `-M`, unlike `squeue`/`sinfo`/`scancel`).
 
-### 3.1 What gets swept
+### Cost
 
-`config/train.yaml` Section 0 declares the cartesian sweep:
-
-```yaml
-tunable:
-  classifier_base_paths:
-    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
-    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
-    - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
-  regressor_base_paths:
-    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
-    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
-    - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
-  learning_rates:    [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
-  use_lora:          [false, true]
-  query_fractions:   [0.20]
-  accumulate_grad_batches: [1]
-  epoch_pass_modes:  ["one_sample", "full_pass"]
-```
-
-Default = **3 bases × 4 LRs × 2 adapt-modes × 1 qf × 1 acc × 2
-epoch-pass-modes = 16 trials per track** as of run-8 (see `config/train.yaml` for which axes were dropped and why). (The `3e-7` rung matches
-Real-TabPFN, `1e-5` is TabICLv2's own finetuning default, and `3e-5`
-approaches Rubachev's separate single-dataset FT median. `1e-4` is excluded because it diverged on
-no-LoRA + qf=0.20 — revisit now that `weight_decay=0.0`; see the comment
-in [`config/train.yaml`](../config/train.yaml) and the hyperparameter
-rationale in the README. v2.5 was dropped on 2026-05-21 — see
-`docs/METHOD.md`. Regression uses `n_estimators_finetune: 8`,
-classification `2`, matching the official wrappers; TabICLv2 overrides
-both to `2`, matching *its* wrappers.)
-
-**Two model families since 2026-08-04.** The base list mixes TabPFN and
-TabICLv2; the family is detected from the filename and drives the loader,
-the loss, the row cap, and the save schema
-(`src/train/tabicl_compat.py`). On the TabICLv2 bases the `use_lora` axis
-means **freeze-backbone** (train the ICL module only) rather than LoRA
-— TabICLv2's own stage-3 regime, chosen because full SFT collapsed
-TabICLv2 in two independent reports. Those checkpoints are tagged
-`_iclhead`. Both TabICLv2 `.ckpt` files must be staged once from a login
-node (compute nodes have no outbound network) — the command is in
-[`docs/METHOD.md`](METHOD.md#getting-the-tabicl-weights-onto-vsc-one-time-from-a-login-node).
-One
-SLURM array task per trial. In `one_sample` mode each dataset contributes
-one step per epoch; in `full_pass`, it contributes
-`ceil(n_rows / max_rows_per_epoch)` size-proportional steps. Recompute the current trial count any
-time with:
-
-```bash
-python scripts/train_pipeline.py --list-trials track=pd
-```
-
-### 3.2 Which datasets to train on
-
-Section 2 of `config/train.yaml` — Mode A (fractions) or Mode B
-(explicit lists):
-
-```yaml
-corpus:
-  train_dataset_ids: ["0001.gmsc", "0002.taiwan_creditcard"]
-  test_dataset_ids:  ["0017.SBA_loans_case"]
-```
-
-Each saved checkpoint's `.provenance.json` records the test list so
-the eval pipeline knows which datasets to score it on later. The
-training log reports both lists up front:
-
-```text
-Training datasets (n=20): 0001.gmsc, 0002.taiwan_creditcard, …
-Held-out test datasets (n=5): 0017.SBA_loans_case, …
-```
-
-Unknown dataset IDs (typos) raise a clear error listing the valid IDs
-for the active track — no silent skips.
-
-### 3.3 Submit
-
-Training runs on **Mindwell B200** (the `#SBATCH --clusters=mindwell`
-header is already in the scripts):
-
-```bash
-N_PD=$(python scripts/train_pipeline.py --list-trials track=pd)
-sbatch --clusters=mindwell --array=0-$((N_PD - 1))%24 scripts/slurm/train_pd.slurm
-
-N_LGD=$(python scripts/train_pipeline.py --list-trials track=lgd)
-sbatch --clusters=mindwell --array=0-$((N_LGD - 1))%24 scripts/slurm/train_lgd.slurm
-```
-
-The `.slurm` files have generous default array bounds; over-sizing is
-safe (surplus array tasks exit zero cleanly). Each task writes (big
-files → staging; small bookkeeping → `$VSC_DATA`):
-
-| Artefact                                           | Tier        | Path                                                                |
-|----------------------------------------------------|-------------|---------------------------------------------------------------------|
-| Final-epoch weights                                | **staging**¹ | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
-| Provenance sidecar (HPs, train/test IDs, GPU, …)   | **staging**¹ | `<descriptive_name>.ckpt.provenance.json`                           |
-| Manifest row (consumed by the eval pipeline)       | `$VSC_DATA` | `output/training/manifests/<run_name>_<track>.csv`                  |
-| Per-epoch CSV (loss, lr, train/test metric, time)  | `$VSC_DATA` | `output/training/epochs/<track>/<descriptive_name>.csv`             |
-| Full run log (incl. debug banner)                  | `$VSC_DATA` | `logs/train_<track>_<ts>_j<jid>_a<tid>.log`                         |
-
-¹ If staging is not writable from the Mindwell node, training saves to
-`$VSC_DATA` instead (loud warning in the log) and the eval gate archives the
-files into staging afterwards — see §0.2 "Writability fallback".
-
-Filename schema:
-`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_lora].ckpt`.
-
----
-
-## 4 · Stage 3 — cross-model benchmark
-
-### 4.1 What gets compared
-
-| Source            | Models                                                                                |
-|-------------------|---------------------------------------------------------------------------------------|
-| `baseline`        | XGBoost + CatBoost (Optuna-tuned), LogReg (PD), LinReg (LGD)                          |
-| `tabpfn-untuned`  | One per checkpoint in `cfg.tunable.<track>_base_paths` — the "before" weights         |
-| `tabpfn-trained`  | Every OK row in `output/training/manifests/<run_name>_<track>.csv` — the "after" weights |
-
-Every continued-pretrained checkpoint is picked up automatically.
-
-### 4.2 Splits per (model × dataset × fold)
-
-5-fold stratified CV per test dataset. Each train fold is 80/20-split
-again into sub-train + inner-val; that inner-val is shared by the
-Optuna HPO objective (XGBoost / CatBoost) and the F1-threshold tuner
-(PD). For TabPFN-family models, only the **training partition** of
-each fold is capped at `cfg.max_rows_per_model[<v>]` (v3: 1 000 000,
-v2.x: 100 000) — the held-out test partition is **always full** and
-gets predicted in a single `predict_proba` call (TabPFN-v3's
-internal `inference_row_chunk_size = 2048` handles arbitrarily large
-test sets). Non-TabPFN baselines see the full dataset.
-
-### 4.3 Re-runs are idempotent
-
-Before scoring, each `(model × dataset)` pair is checked against the
-existing CSVs under
-`output/results/<TRACK>/<method-dirname>/`. Pairs whose **all
-folds** are already `OK` are skipped:
-
-- **First run** — scores every baseline + untuned + trained variant.
-- **Re-run after adding a new trained checkpoint** — scores only the
-  new checkpoint's pairs. XGBoost / CatBoost / LogReg / LinReg /
-  untuned-TabPFN are reused from disk.
-
-Force a fresh scoring with `--rerun`. To rescore a single method,
-delete its directory under `output/results/<TRACK>/` and re-submit.
-
-### 4.4 Submit (parallelised across BOTH wICE GPU pools)
-
-The easy path — `run_full_pipeline.sh` (or `STAGES=eval bash …`) — splits
-each track's task range into two arrays and launches one on **`gpu_h100`**
-(20 GPUs) and one on **`gpu_a100`** (16 GPUs), so eval drains across all 36
-wICE GPUs at once. The split is **stride-interleaved** (pool 0 gets
-`0,2,4,…`; pool 1 gets `1,3,5,…`) with no overlap. Control it
-with the `EVAL_PARTITIONS` knob (default `"gpu_h100 gpu_a100"`; set to
-`"gpu_h100"` for a single pool).
-
-To submit by hand with the same non-overlapping two-pool stride:
-
-```bash
-N_PD=$(python scripts/eval_pipeline.py --list-tasks track=pd)
-sbatch --array=0-$((N_PD - 1)):2%32 --partition=gpu_h100 scripts/slurm/eval_pd.slurm
-sbatch --array=1-$((N_PD - 1)):2%32 --partition=gpu_a100 scripts/slurm/eval_pd.slurm
-
-N_LGD=$(python scripts/eval_pipeline.py --list-tasks track=lgd)
-sbatch --array=0-$((N_LGD - 1)):2%32 --partition=gpu_h100 scripts/slurm/eval_lgd.slurm
-sbatch --array=1-$((N_LGD - 1)):2%32 --partition=gpu_a100 scripts/slurm/eval_lgd.slurm
-```
-
-Already-scored pairs exit zero in seconds; surplus array tasks (if the
-array is sized larger than the grid) do the same. Each task logs a
-one-line per-(model × dataset) score summary (`roc_auc`/`rmse` mean over
-OK folds), so the eval log alone shows the results without opening the CSVs.
-
-### 4.5 Output layout
-
-Benchmark result CSVs are **big, canonical artefacts** → they live in
-**project staging** (alongside datasets and trained checkpoints).
-Manifests, per-epoch CSVs, figures and logs are small, frequently
-rewritten bookkeeping → `$VSC_DATA`.
-
-```text
-/lustre1/project/stg_00211/CreditPFN/output/
-└── results/                                 eval-pipeline output (staging)
-    ├── PD/
-    │   ├── xgboost/                                  creditpfn_<ts>__task<N>_ds-<id>.csv
-    │   ├── catboost/                                 creditpfn_<ts>__task<N>_ds-<id>.csv
-    │   ├── logreg/                                   creditpfn_<ts>__task<N>_ds-<id>.csv
-    │   ├── tabpfn-untuned__v3-default/               creditpfn_<ts>__task<N>_ds-<id>.csv
-    │   └── tabpfn-trained__v3-default__lr1e-05/      creditpfn_<ts>__task<N>_ds-<id>.csv
-    └── LGD/  …
-
-$VSC_DATA/CreditPFN/output/
-├── training/
-│   ├── manifests/                           one row per trained checkpoint
-│   │   ├── creditpfn_pd.csv
-│   │   └── creditpfn_lgd.csv
-│   └── epochs/                              per-trial per-epoch CSVs
-│       ├── pd/   creditpfn_pd_<base-stem>_lr1e-05_seed42[_lora].csv
-│       └── lgd/  …
-└── figures/                                 notebook PDF dumps (wiped on each run)
-    ├── 0.0_raw_data_exploration/
-    ├── 0.1_processed_data_exploration/
-    ├── 1.0_training_visualization/
-    └── 2.0_final_results/
-```
-
-(Trained `*.ckpt` + `.provenance.json` files live in staging too, under
-`checkpoints/trained/<track>/` — see §3.3.) If
-`$CREDITPFN_STAGING_ROOT` does not resolve (e.g. on a laptop), the eval
-pipeline falls back to writing results under `$VSC_DATA` /
-`$CREDITPFN_OUTPUT_ROOT`.
-
-Every benchmark invocation gets a fresh `<timestamp>` — earlier runs
-are never overwritten. Aggregate across runs:
-
-```python
-import pandas as pd, glob
-files = glob.glob("/lustre1/project/stg_00211/CreditPFN/output/results/PD/*/creditpfn_*.csv")
-df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
-df.groupby(["model_name", "model_source"])[
-    ["roc_auc", "f1", "log_loss", "pr_auc"]
-].agg(["mean", "std", "count"])
-```
-
-Row schema (classification): `roc_auc, log_loss, pr_auc, brier_score,
-ece, optimal_threshold, f1, accuracy, precision, recall, specificity,
-balanced_accuracy, mcc, cohen_kappa`. Row schema (regression): `rmse,
-mae, median_ae, mape, r2, explained_variance, pearson_r, spearman_r,
-neg_nll`. `neg_nll` is populated for TabPFN regressors through their
-bar-distribution density; models without a predictive density report NaN.
-The threshold-tuned classification
-metrics (everything from `f1` onward) use the max-F1 threshold chosen on
-the inner-validation split and are NaN for multiclass.
-
----
-
-## 5 · Common workflows
-
-### 5.1 Add a new dataset
-
-1. Upload the raw CSV to
-   `/lustre1/project/stg_00211/CreditPFN/data/raw/{pd,lgd}/<id>.csv`
-   (the canonical, persistent home — see §0.5).
-2. On your laptop, register a metadata entry in
-   `src/data/preprocessing.py::_RAW_METADATA`. Add a surgical-fix
-   function only if the dataset needs one — clean datasets fall through
-   automatically.
-3. Commit + push, then on VSC:
-   `git pull && bash scripts/slurm/run_full_pipeline.sh`.
-
-The data stage processes only the new ID; training re-runs all
-variants; the eval reuses every baseline row that's already on disk
-and only scores the new (model × dataset) cells.
-
-### 5.2 Test a single LR across all bases
-
-Edit `config/train.yaml`:
-
-```yaml
-tunable:
-  learning_rates: [1.0e-5]
-```
-
-Grid drops to `3 bases × 1 LR × 2 adapt-modes × 1 qf × 1 acc × 2 pass-modes
-= 12` per track. Re-submit; `--list-trials` reflects the new count.
-
-### 5.3 Benchmark a subset
-
-```bash
-# Only XGBoost + one trained checkpoint:
-python scripts/eval_pipeline.py track=pd \
-    --method xgboost \
-    --method "tabpfn-trained[creditpfn_pd_tabpfn-v3-classifier-v3_default_lr1e-05_seed42]"
-
-# Only one test dataset:
-python scripts/eval_pipeline.py track=pd --test-dataset 0001.gmsc
-
-# Force re-scoring even if results exist:
-python scripts/eval_pipeline.py track=pd --method xgboost --rerun
-```
-
----
-
-## 6 · Failure-mode cheat sheet
-
-| Symptom                                                 | What to do                                                                                                       |
-|---------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
-| `ModuleNotFoundError: No module named 'omegaconf'` on submit | The conda env isn't active. Run `source activate CreditPFN` first; the submitter also tries to activate it itself. |
-| `sbatch: error: Batch job submission failed: Job dependency problem` | A stage targets a different cluster than its dependency — VSC runs wICE and Mindwell as separate Slurm controllers, so cross-cluster `afterok:` chains don't work. This is exactly why the data/train/eval stages carry **no** `--dependency` flag and are sequenced via shared staging instead (wICE scripts use `#SBATCH --clusters=wice`; Mindwell train scripts use `#SBATCH --clusters=mindwell`). (The `<jobid>;wice` or `<jobid>;mindwell` suffix in `sbatch --parsable` output on a Genius login is NOT this error — it just means the jobid lives in the target cluster's controller, which is normal; the submitter strips it.) |
-| Data preprocessing log shows `missing raw file: …/<id>.csv — skipped` for everything | The pipeline auto-probes for the CSVs (staging first — see §0.6); if none are found you'll get this. Re-upload to `/lustre1/project/stg_00211/CreditPFN/data/raw/{pd,lgd}/` (see §0.5). The submitter prints the resolved `CREDITPFN_DATA_ROOT` on launch — verify it matches where you actually uploaded. |
-| `TypeError` on first model load in training             | PyPI tabpfn 2.2.1 has the old API — install the Prior Labs wheel (see §0.4).                                     |
-| Array task produces no log file                         | The SLURM `--output=/dev/null` is set; check the `exec >` redirection in the `.slurm` script.                    |
-| One trial fails, the rest succeed                       | Manifest row gets `status=FAIL`; the eval auto-skips that checkpoint.                                            |
-| Eval task says `KeyError: <id> not in cache`            | The auto-cache hook re-runs the data pipeline for missing IDs — let it finish.                                   |
-| Out-of-memory on `gpu_b200` (training)                  | Lower `finetuning.max_rows_per_epoch` in `config/data.yaml` (B200 default v3 20 000 / v2.6 9 000). The per-epoch debug line reports `gpu_peak_alloc` — check it against the 192 GiB budget and adjust. |
-| Mindwell job killed for I/O                             | Direct Lustre-staging reads from Mindwell (GPFS) were throttled. Copy processed data to scratch first: `cp -r /lustre1/project/stg_00211/CreditPFN/data $VSC_SCRATCH/CreditPFN/` then `export CREDITPFN_DATA_ROOT=$VSC_SCRATCH/CreditPFN`. |
-| `sbatch: Job dependency problem` across clusters        | You tried to `afterok`-chain a wICE job to a Mindwell job. Cross-cluster deps don't work — submit the stages independently (the submitter already does). |
-| Wrong test set scored for a checkpoint                  | Check `<checkpoint>.ckpt.provenance.json` — the eval reads that, not the live cfg.                               |
-| Eval re-run produces 0 new CSVs                         | The skip-existing guard fired — every pair was already scored. Pass `--rerun` to force.                          |
-
----
-
-## TL;DR
-
-```bash
-# One-time, in an OnDemand shell:
-cd $VSC_DATA
-git clone https://github.com/andreasgoethals/CreditPFN.git && cd CreditPFN
-mamba create -y -n CreditPFN python=3.12 && source activate CreditPFN
-pip install -e ".[dev,notebooks]"
-pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
-
-# Upload raw datasets AND base .ckpt files to project staging:
-#   /lustre1/project/stg_00211/CreditPFN/data/raw/{pd,lgd}/
-#   /lustre1/project/stg_00211/CreditPFN/checkpoints/
-# (If your allocation differs: export CREDITPFN_STAGING_ROOT=/lustre1/project/stg_XXXXX)
-
-# Per experiment (training on Mindwell, data+eval on wICE):
-source activate CreditPFN     # if not already in this shell
-git pull
-bash scripts/slurm/run_full_pipeline.sh    # data → wICE; train → Mindwell; eval → wICE
-squeue --me --clusters=wice,mindwell
-```
-
-| Where to look | Tier        | Path                                                              |
-|---------------|-------------|-------------------------------------------------------------------|
-| Code          | `$VSC_DATA` | `$VSC_DATA/CreditPFN/src/`                                        |
-| Datasets      | **staging** | `/lustre1/project/stg_00211/CreditPFN/data/`                       |
-| Models        | **staging** | `/lustre1/project/stg_00211/CreditPFN/checkpoints/trained/<track>/*.ckpt` |
-| Results       | **staging** | `/lustre1/project/stg_00211/CreditPFN/output/results/<TRACK>/<method>/*.csv` |
-| Logs          | `$VSC_DATA` | `$VSC_DATA/CreditPFN/logs/<task>_<ts>_j<jid>_a<tid>.log`          |
-| Per-epoch     | `$VSC_DATA` | `$VSC_DATA/CreditPFN/output/training/epochs/<track>/*.csv`        |
+B200 time is charged at **437.5 credits per GPU-minute**. A full run at the current grid is
+roughly 120 GPU-hours ≈ 3.1 M credits. Check the balance with `sam-balance` before
+launching, and prefer a short `--time` — it costs the same and starts sooner.

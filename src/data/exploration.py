@@ -82,6 +82,8 @@ from typing import Iterable, Mapping
 import numpy as np
 import pandas as pd
 
+from src.visualize import style
+
 _REPO = Path(__file__).resolve().parents[2]
 
 
@@ -366,17 +368,17 @@ def _import_mpl():
 # --------------------------------------------------------------------------- #
 
 
-_TRACK_COLOR = {"pd": "#1f77b4", "lgd": "#ff7f0e"}     # tab:blue, tab:orange
+#: Track colours come from the shared palette — NOT matplotlib defaults. Two notebooks
+#: drawing the same corpus must not use different colours for PD and LGD.
+_TRACK_COLOR = {"pd": style.color("v3"), "lgd": style.color("v2.6")}
 
 
 def _apply_style(ax, *, title: str, xlabel: str, ylabel: str = "# datasets"):
-    """Consistent grid + spine + label style across plots."""
+    """Labels only. Grid, spines, fonts and sizes come from `style.apply()`, which every
+    notebook calls once — duplicating them here is how two figures drift apart."""
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.grid(axis="y", linestyle=":", linewidth=0.6, alpha=0.6)
-    ax.spines["top"].set_visible(False)
-    ax.spines["right"].set_visible(False)
 
 
 def _log_bins(values, *, n_bins: int = 25, eps: float = 1.0):
@@ -433,7 +435,7 @@ def plot_dataset_size_distribution(
         raise ValueError("source must be 'raw' or 'processed'")
 
     color = _TRACK_COLOR[track]
-    fig, axes = plt.subplots(1, 2, figsize=(13, 4.5))
+    fig, axes = plt.subplots(1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=0.346))
 
     rows = summary[rows_col].dropna()
     axes[0].hist(
@@ -459,7 +461,6 @@ def plot_dataset_size_distribution(
         xlabel="feature columns  (log-scaled)",
     )
 
-    fig.tight_layout()
     return fig
 
 
@@ -487,7 +488,7 @@ def plot_missing_rate_distribution(
         raise ValueError("source must be 'raw' or 'processed'")
 
     color = _TRACK_COLOR[track]
-    fig, ax = plt.subplots(figsize=(9, 4.5))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.500))
     ax.hist(summary[col].dropna(),
             bins=np.linspace(0.0, 1.0, 31),
             color=color, alpha=0.85, edgecolor="white", linewidth=0.6)
@@ -498,7 +499,6 @@ def plot_missing_rate_distribution(
         xlabel="missing rate  (fraction of NaN cells per dataset; "
                "denominator = rows × features)",
     )
-    fig.tight_layout()
     return fig
 
 
@@ -513,7 +513,7 @@ def plot_class_imbalance_distribution(cfg=None):
     """
     plt = _import_mpl()
     summary = corpus_summary_table("pd", cfg).dropna(subset=["minority_class_ratio"])
-    fig, ax = plt.subplots(figsize=(9, 4.5))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.500))
     ax.hist(summary["minority_class_ratio"],
             bins=np.linspace(0.0, 0.5, 26),
             color=_TRACK_COLOR["pd"], alpha=0.85,
@@ -527,7 +527,6 @@ def plot_class_imbalance_distribution(cfg=None):
         xlabel="minority-class share (n_minority / n_total)",
     )
     ax.legend(loc="upper right", frameon=False)
-    fig.tight_layout()
     return fig
 
 
@@ -541,7 +540,7 @@ def plot_target_mean_distribution_lgd(cfg=None):
     """
     plt = _import_mpl()
     summary = corpus_summary_table("lgd", cfg).dropna(subset=["target_mean"])
-    fig, ax = plt.subplots(figsize=(9, 4.5))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.500))
     ax.hist(summary["target_mean"],
             bins=np.linspace(0.0, 1.0, 26),
             color=_TRACK_COLOR["lgd"], alpha=0.85,
@@ -552,7 +551,6 @@ def plot_target_mean_distribution_lgd(cfg=None):
         title="LGD — target-mean distribution across the corpus",
         xlabel="dataset mean LGD",
     )
-    fig.tight_layout()
     return fig
 
 
@@ -577,17 +575,24 @@ def plot_source_breakdown(cfg=None):
     sources = list(counts.index)
     x = np.arange(len(sources))
     width = 0.38
-    fig, ax = plt.subplots(figsize=(max(7, 1.2 * len(sources)), 4.5))
-    ax.bar(x - width / 2, counts["pd"], width, label="PD",
+    # HORIZONTAL: source names are words, and rotating them still overlapped at 10
+    # sources. Horizontal bars read at full size and take one row each, so the figure
+    # grows down the page instead of squeezing labels.
+    fig, ax = plt.subplots(
+        figsize=style.figsize(style.WIDTH_FULL,
+                              ratio=max(0.30, 0.085 * len(sources) + 0.16)))
+    ax.barh(x - width / 2, counts["pd"], width, label="PD",
            color=_TRACK_COLOR["pd"], alpha=0.85, edgecolor="white", linewidth=0.6)
-    ax.bar(x + width / 2, counts["lgd"], width, label="LGD",
+    ax.barh(x + width / 2, counts["lgd"], width, label="LGD",
            color=_TRACK_COLOR["lgd"], alpha=0.85, edgecolor="white", linewidth=0.6)
-    ax.set_xticks(x)
-    ax.set_xticklabels(sources, rotation=20, ha="right")
-    _apply_style(ax, title="Corpus provenance — datasets per source",
-                 xlabel="source")
+    ax.set_yticks(x)
+    ax.set_yticklabels(sources, fontsize=7)
+    ax.grid(axis="x", linewidth=0.4, alpha=0.35)
+    ax.grid(axis="y", visible=False)
+    # Axes are transposed now that the bars are horizontal.
+    _apply_style(ax, title="Corpus provenance",
+                 xlabel="# datasets", ylabel="")
     ax.legend(frameon=False)
-    fig.tight_layout()
     return fig
 
 
@@ -631,7 +636,9 @@ def plot_size_scatter(
 
     who = track.upper() if track else "PD + LGD"
     tracks = [track] if track else ("pd", "lgd")
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
+    # Extra horizontal padding: at 160 mm the left panel's x tick labels ran into
+    # the right panel's y tick labels (3 collisions in the 12-08-2026 audit).
+    fig, axes = plt.subplots(1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=0.400))
     for ax, scale in zip(axes, ("linear", "log")):
         for tr in tracks:
             sub = df[df["track"] == tr]
@@ -670,7 +677,7 @@ def plot_size_scatter(
         leg.get_frame().set_linewidth(0.8)
     fig.suptitle(f"Shape space — {who}: features vs rows ({source})",
                  fontsize=12, fontweight="bold")
-    fig.tight_layout()
+    fig.get_layout_engine().set(w_pad=0.10)
     return fig
 
 
@@ -703,16 +710,31 @@ def plot_missing_cells_bar(
         return None
     df = df.sort_values(col, ascending=False)
     who = track.upper() if track else "PD + LGD"
+    # SCALE: one bar per dataset is the clearest form while the labels still fit, and
+    # useless past that. Beyond `style.MAX_BARS` keep the extremes — the question a
+    # reader asks of a ranked corpus chart is "what is unusual?", and both ends answer it.
+    n_all = len(df)
+    if style.too_many(n_all):
+        half = style.MAX_BARS // 2
+        df = pd.concat([df.head(half), df.tail(half)])
 
-    fig, ax = plt.subplots(figsize=(max(7, 0.32 * len(df)), 4.8))
+    # HORIZONTAL bars. Dataset ids are long, and rotating them 60 degrees put adjacent
+    # labels on top of each other (11 collisions in the 12-08-2026 figure audit).
+    # Horizontal labels read left-to-right at full size and cannot collide.
+    height = max(0.30, 0.052 * len(df) + 0.10)
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=height))
     colors = [_TRACK_COLOR[t] for t in df["track"]]
-    ax.bar(range(len(df)), df[col].to_numpy(), color=colors,
-           alpha=0.85, edgecolor="white", linewidth=0.5)
-    ax.set_xticks(range(len(df)))
-    ax.set_xticklabels(df["dataset_id"], rotation=60, ha="right", fontsize=7)
-    ax.set_ylim(0.0, max(0.01, float(df[col].max()) * 1.1))
-    _apply_style(ax, title=f"Missing-cell rate per dataset — {who} ({source})",
-                 xlabel="", ylabel="missing rate (NaN cells / rows×features)")
+    ypos = np.arange(len(df))[::-1]
+    ax.barh(ypos, df[col].to_numpy(), color=colors, height=0.74)
+    ax.set_yticks(ypos)
+    ax.set_yticklabels(df["dataset_id"], fontsize=7)
+    ax.grid(axis="x", linewidth=0.4, alpha=0.35)
+    ax.grid(axis="y", visible=False)
+    if n_all > len(df):
+        style.note(ax, f"{n_all - len(df)} mid-range of {n_all} hidden")
+    ax.set_xlim(0.0, max(0.01, float(df[col].max()) * 1.1))
+    _apply_style(ax, title=f"Missing cells per dataset — {who}",
+                 xlabel="missing-cell rate  (NaN cells / rows x features)", ylabel="")
     if track is None:
         import matplotlib.patches as mpatches
         ax.legend(
@@ -720,7 +742,6 @@ def plot_missing_cells_bar(
                      mpatches.Patch(color=_TRACK_COLOR["lgd"], label="LGD")],
             frameon=False,
         )
-    fig.tight_layout()
     return fig
 
 
@@ -741,7 +762,7 @@ def plot_feature_type_distribution(cfg=None):
     summary = summary.dropna(subset=["cat_share"])
     if summary.empty:
         return None
-    fig, ax = plt.subplots(figsize=(9, 4.5))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.500))
     bins = np.linspace(0.0, 1.0, 21)
     for tr in ("pd", "lgd"):
         sub = summary[summary["track"] == tr]
@@ -753,7 +774,6 @@ def plot_feature_type_distribution(cfg=None):
     _apply_style(ax, title="Feature-type composition — categorical share per dataset",
                  xlabel="categorical share  (n_categorical / n_features)")
     ax.legend(frameon=False)
-    fig.tight_layout()
     return fig
 
 
@@ -779,7 +799,7 @@ def plot_feature_reduction(cfg=None):
     df = summary[(summary["raw_features"] > 0) & (summary["post_features"] > 0)]
     if df.empty:
         return None
-    fig, ax = plt.subplots(figsize=(7, 6.5))
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=0.929))
     for tr in ("pd", "lgd"):
         sub = df[df["track"] == tr]
         if sub.empty:
@@ -797,14 +817,13 @@ def plot_feature_reduction(cfg=None):
                  xlabel="raw features  (log-scaled)",
                  ylabel="post-sanitise features  (log-scaled)")
     ax.legend(frameon=False, fontsize=8)
-    fig.tight_layout()
     return fig
 
 
 def plot_target_distribution_lgd(
     dataset_ids: Iterable[str] | None = None,
     *,
-    max_show: int = 30,
+    max_show: int = style.MAX_PANELS,
     cfg=None,
 ):
     """Grid of LGD target histograms.
@@ -829,7 +848,7 @@ def plot_target_distribution_lgd(
         return None
     ncols = 3
     nrows = (n + ncols - 1) // ncols
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows),
+    fig, axes = plt.subplots(nrows, ncols, figsize=style.figsize(style.WIDTH_FULL, ratio=(3 * nrows) / (4 * ncols)),
                              squeeze=False)
     for ax, (_, mrow) in zip(axes.flat, summary.iterrows()):
         df = load_sanitized_dataset("lgd", mrow["dataset_id"], cfg)
@@ -837,25 +856,22 @@ def plot_target_distribution_lgd(
         ax.hist(y, bins=40, color="tab:orange", alpha=0.85)
         frac_zero = float((y == 0).mean())
         frac_one = float((y == 1).mean())
-        ax.set_title(
-            f"{mrow['dataset_id']}\n"
-            f"n={len(y):,}, μ={y.mean():.3f}, σ={y.std():.3f}\n"
-            f"P(LGD=0)={frac_zero:.2%}  P(LGD=1)={frac_one:.2%}",
-            fontsize=9,
-        )
-        ax.set_xlabel("LGD")
-        ax.set_ylabel("count")
+        # Identifier only. Three lines of statistics per panel is what made these
+        # titles collide with the neighbouring panels' tick labels, and the numbers are
+        # already in the corpus summary table this notebook prints.
+        ax.set_title(str(mrow["dataset_id"]), fontsize=6)
+        ax.set_xlabel("LGD", fontsize=6)
+        ax.set_ylabel("count", fontsize=6)
         ax.set_xlim(-0.02, 1.02)
     for ax in axes.flat[n:]:
         ax.set_axis_off()
-    fig.tight_layout()
     return fig
 
 
 def plot_target_distribution_pd(
     dataset_ids: Iterable[str] | None = None,
     *,
-    max_show: int = 30,
+    max_show: int = style.MAX_PANELS,
     cfg=None,
 ):
     """Grid of PD class-proportion bar charts. See the LGD twin's
@@ -871,7 +887,7 @@ def plot_target_distribution_pd(
         return None
     ncols = 3
     nrows = (n + ncols - 1) // ncols
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows),
+    fig, axes = plt.subplots(nrows, ncols, figsize=style.figsize(style.WIDTH_FULL, ratio=(3 * nrows) / (4 * ncols)),
                              squeeze=False)
     for ax, (_, mrow) in zip(axes.flat, summary.iterrows()):
         df = load_sanitized_dataset("pd", mrow["dataset_id"], cfg)
@@ -888,7 +904,6 @@ def plot_target_distribution_pd(
         ax.set_ylim(0, 1.05)
     for ax in axes.flat[n:]:
         ax.set_axis_off()
-    fig.tight_layout()
     return fig
 
 

@@ -131,6 +131,8 @@ class TrialId:
     lr: float
     seed: int
     lora: bool
+    #: Corpus-size arm (`corpus.min_train_rows`), 0 when the trial predates run-8.
+    min_train_rows: int = 0
 
     @property
     def base_short(self) -> str:
@@ -166,14 +168,27 @@ _NAME_RE = re.compile(
     r"(?:_qf(?P<qf>\d+))?"
     r"(?:_acc(?P<acc>\d+))?"
     r"(?P<fullpass>_fullpass)?"
-    r"(?P<lora>_lora)?$"
+    # Corpus-size arm, swept since run-8. Sits between the pass mode and the adapter
+    # tag, exactly as `loop.descriptive_name` writes it.
+    r"(?:_min(?P<min_rows>\d+))?"
+    # `_lora` for TabPFN, `_iclhead` for TabICLv2 — ONE grid axis, two family
+    # renderings. Omitting `_iclhead` here made every frozen-backbone TabICLv2 trial
+    # unparseable, which is the same silent-drop failure the comment above describes.
+    r"(?P<lora>_lora|_iclhead)?$"
 )
 
 
 def parse_trial_name(name: str) -> TrialId | None:
     """Parse a descriptive_name (with or without extension)."""
-    stem = Path(name).stem      # strips .csv / .ckpt
-    stem = stem.removesuffix(".ckpt")  # belt-and-braces
+    # NOT Path(name).stem: it strips everything after the LAST dot, and the base stem
+    # contains one — `tabpfn-v2.6-classifier-v2.6_default` becomes
+    # `tabpfn-v2.6-classifier-v2`, taking the learning rate and seed with it. Every v2.6
+    # trial then failed to parse and was labelled "?" in every training figure, which is
+    # half the grid silently mislabelled and merged into one colour. Strip only the
+    # extensions this project actually writes.
+    stem = str(name)
+    for ext in (".csv", ".ckpt", ".json"):
+        stem = stem.removesuffix(ext)
     m = _NAME_RE.match(stem)
     if not m:
         return None
@@ -186,6 +201,7 @@ def parse_trial_name(name: str) -> TrialId | None:
             lr=float(m.group("lr")),
             seed=int(m.group("seed")),
             lora=bool(m.group("lora")),
+            min_train_rows=int(m.group("min_rows") or 0),
         )
     except (TypeError, ValueError):                     # pragma: no cover
         return None
@@ -366,8 +382,10 @@ def metric_direction(track: str, history: pd.DataFrame | None = None) -> str:
 def _new_fig(title: str, *, figsize=style.figsize(style.WIDTH_FULL, ratio=0.562)):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
-    ax.set_title(title)
-    ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
+    # `style.title` keeps it on one or two lines; a title wider than the figure overlaps
+    # the y tick labels. No grid call here — `style.apply()` owns the grid, and setting
+    # it again is how two figures in one project end up looking different.
+    style.title(ax, title)
     return fig, ax
 
 
@@ -486,12 +504,29 @@ def plot_trial_dashboard(trial_name: str, track: str, cfg=None):
 # =============================================================================
 
 
-def _style_for(trial: TrialId, base_palette: dict[str, tuple]) -> dict:
-    """Consistent style: color per base, linestyle per lora."""
-    color = base_palette.get(trial.base, (0.4, 0.4, 0.4))
+def _style_for(trial: TrialId, base_palette: dict[str, tuple],
+               seen: set | None = None) -> dict:
+    """Consistent style: colour per base, dashed for the adapter arm.
+
+    `seen` collapses the legend to ONE ENTRY PER (base, adapter) combination instead of
+    one per trial. With a 16-trial grid the per-trial legend was 16 long labels that
+    overlapped each other whether it sat inside the axes (covering the curves) or outside
+    (stacked past the figure) — 38 of the collisions in the 12-08-2026 audit. The colour
+    and the dash already say everything the legend was repeating; the learning rate is
+    what the reader reads off the curve, not off a label.
+    """
+    color = base_palette.get(trial.base, style.COLORS["annotation"])
     linestyle = "-" if not trial.lora else "--"
-    return dict(color=color, linestyle=linestyle, linewidth=1.6,
-                alpha=0.95, label=trial.label)
+    key = (trial.base_short, trial.lora)
+    label = None
+    if seen is not None:
+        if key not in seen:
+            seen.add(key)
+            label = f"{trial.base_short}{' · adapter' if trial.lora else ''}"
+    else:
+        label = trial.label
+    return dict(color=color, linestyle=linestyle, linewidth=1.3,
+                alpha=0.9, label=label)
 
 
 def _palette_for_bases(bases: Sequence[str]) -> dict[str, str]:
@@ -534,14 +569,15 @@ def plot_loss_overlay(track: str, *, only_ok: bool = True, cfg=None):
     if not parsed:
         return _no_data_fig(f"no training runs on track={track}")
 
-    fig, ax = _new_fig(f"All trials — train loss (track={track})", figsize=style.figsize(style.WIDTH_FULL, ratio=0.545))
+    fig, ax = _new_fig(f"All trials — train loss", figsize=style.figsize(style.WIDTH_FULL, ratio=0.545))
     palette = _palette_for_bases([t.base for t in parsed.values()])
+    seen: set = set()
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
-        ax.plot(hist["epoch"], hist["train_loss"], **_style_for(trial, palette))
+        ax.plot(hist["epoch"], hist["train_loss"], **_style_for(trial, palette, seen))
     ax.set_xlabel("epoch")
     ax.set_ylabel("train loss")
-    ax.legend(loc="best", fontsize=7, ncol=2)
+    ax.legend(loc="best", fontsize=7)
     return fig
 
 
@@ -569,19 +605,20 @@ def plot_metric_overlay(
             break
 
     fig, ax = _new_fig(
-        f"All trials — {split} {metric_name} (track={track})",
+        f"All trials — {split} {metric_name}",
         figsize=style.figsize(style.WIDTH_FULL, ratio=0.545),
     )
     palette = _palette_for_bases([t.base for t in parsed.values()])
+    seen: set = set()
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
         col = f"{split}_metric"
         if col not in hist.columns:
             continue
-        ax.plot(hist["epoch"], hist[col], **_style_for(trial, palette))
+        ax.plot(hist["epoch"], hist[col], **_style_for(trial, palette, seen))
     ax.set_xlabel("epoch")
     ax.set_ylabel(f"{split} {metric_name}")
-    ax.legend(loc="best", fontsize=7, ncol=2)
+    ax.legend(loc="best", fontsize=7)
     return fig
 
 
@@ -600,21 +637,22 @@ def plot_overfitting_diagnostic(track: str, *, cfg=None):
         return _no_data_fig(f"no training runs on track={track}")
 
     fig, ax = _new_fig(
-        f"Overfitting gap (train − test) — track={track}",
+        f"Overfitting gap (train − test)",
         figsize=style.figsize(style.WIDTH_FULL, ratio=0.545),
     )
     palette = _palette_for_bases([t.base for t in parsed.values()])
+    seen: set = set()
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
         if "train_metric" not in hist.columns or "test_metric" not in hist.columns:
             continue
         gap = pd.to_numeric(hist["train_metric"], errors="coerce") - \
               pd.to_numeric(hist["test_metric"],  errors="coerce")
-        ax.plot(hist["epoch"], gap, **_style_for(trial, palette))
+        ax.plot(hist["epoch"], gap, **_style_for(trial, palette, seen))
     ax.axhline(0, color="black", linewidth=0.8, alpha=0.5)
     ax.set_xlabel("epoch")
     ax.set_ylabel("train − test")
-    ax.legend(loc="best", fontsize=7, ncol=2)
+    ax.legend(loc="best", fontsize=7)
     return fig
 
 
@@ -665,7 +703,7 @@ def plot_lr_effect(
         return _no_data_fig(f"all NaN for {metric!r}")
 
     fig, ax = _new_fig(
-        f"Learning rate sweep — {metric} (track={track})",
+        f"Learning rate sweep — {metric}",
         figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
@@ -714,21 +752,27 @@ def plot_lora_effect(track: str, *, metric: str = "best_test_metric", cfg=None):
         return _no_data_fig("no paired (LoRA, no-LoRA) trials")
 
     fig, ax = _new_fig(
-        f"LoRA effect on {metric} — track={track}",
+        f"LoRA effect on {metric}",
         figsize=style.figsize(style.WIDTH_FULL, ratio=1.000),
     )
     palette = _palette_for_bases(list(pivot["base_short"].unique()))
+    # ONE LEGEND ENTRY PER BASE, not a text label per point. The per-point annotations
+    # this replaces produced 19 of the 70 overlaps in the 12-08-2026 figure audit, and a
+    # paper figure should not carry a label per marker anyway — the learning rate is
+    # readable from the marker's position along the diagonal.
+    seen = set()
     for _, row in pivot.iterrows():
+        base = row["base_short"]
         ax.scatter(row[False], row[True],
-                   color=palette.get(row["base_short"], (0.4, 0.4, 0.4)),
-                   s=60, alpha=0.85, edgecolor="black", linewidth=0.5)
-        ax.annotate(f"{row['base_short']}@{row['learning_rate']:.0e}",
-                    (row[False], row[True]),
-                    fontsize=7, alpha=0.7,
-                    xytext=(4, 4), textcoords="offset points")
+                   color=palette.get(base, style.COLORS["annotation"]),
+                   s=34, alpha=0.85, edgecolors="none",
+                   label=(base if base not in seen else None))
+        seen.add(base)
     lo = min(pivot[False].min(), pivot[True].min())
     hi = max(pivot[False].max(), pivot[True].max())
-    ax.plot([lo, hi], [lo, hi], "k--", alpha=0.4, linewidth=0.8)
+    ax.plot([lo, hi], [lo, hi], color=style.COLORS["reference"],
+            linestyle="--", alpha=0.5, linewidth=0.8)
+    ax.legend(loc="best", fontsize=7)
     ax.set_xlabel(f"{metric}  (no LoRA)")
     ax.set_ylabel(f"{metric}  (LoRA)")
     return fig
@@ -753,7 +797,7 @@ def plot_metric_heatmap(
         1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4, 0.5 * overview["base_short"].nunique())) / (12)),
         sharey=True,
     )
-    fig.suptitle(f"{metric} heatmap — track={track}")
+    fig.suptitle(f"{metric} heatmap")
     for ax, lora_flag in zip(axes, (False, True)):
         sub = overview[overview["use_lora"] == lora_flag]
         if sub.empty:
@@ -802,7 +846,7 @@ def plot_pareto_time_vs_metric(
         return _no_data_fig(f"need {metric} AND elapsed_sec")
 
     fig, ax = _new_fig(
-        f"Time / accuracy trade-off — track={track}", figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
+        f"Time / accuracy trade-off", figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
     for base, grp in df.groupby("base_short"):
@@ -841,7 +885,7 @@ def plot_base_ranking(
     )
     palette = _palette_for_bases(order)
     fig, ax = _new_fig(
-        f"{metric} by base checkpoint — track={track}",
+        f"{metric} by base checkpoint",
         figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(7, 1.1 * len(order)))),
     )
     data = [df.loc[df["base_short"] == b, metric].values for b in order]
@@ -869,7 +913,7 @@ def plot_convergence_speed(track: str, *, cfg=None):
         return _no_data_fig("no best_epoch info")
     df["best_epoch_pct"] = df["best_epoch"] / df["n_epochs"].clip(lower=1)
     fig, ax = _new_fig(
-        f"When does the best test metric land? — track={track}",
+        f"When does the best test metric land?",
         figsize=style.figsize(style.WIDTH_FULL, ratio=0.529),
     )
     ax.hist(df["best_epoch_pct"] * 100, bins=20, alpha=0.8,
@@ -890,7 +934,7 @@ def plot_epoch_time_overlay(track: str, *, cfg=None):
         return _no_data_fig("no epoch timing")
     df = df.sort_values("mean_epoch_sec", ascending=False)
     fig, ax = _new_fig(
-        f"Mean seconds / epoch per trial — track={track}",
+        f"Mean seconds / epoch per trial",
         figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4, 0.3 * len(df))) / (11)),
     )
     palette = _palette_for_bases(list(df["base_short"].unique()))
@@ -968,8 +1012,9 @@ def plot_weight_drift(track: str, *, only_ok: bool = True, cfg=None):
             "was added on 08-08-2026, so runs before it have none"
         )
 
-    fig, ax = _new_fig(f"Weight drift from the base checkpoint (track={track})")
+    fig, ax = _new_fig(f"Weight drift from the base checkpoint")
     palette = _palette_for_bases([t.base for t in parsed.values()])
+    seen: set = set()
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr)):
         hist = histories[name]
         cols = [c for c in drift_cols if c in hist.columns]
@@ -978,11 +1023,14 @@ def plot_weight_drift(track: str, *, only_ok: bool = True, cfg=None):
         # Max over stages: the loosest part of the model is what "did it move?" hangs on.
         series = hist[cols].max(axis=1)
         mask = series.notna()
-        ax.plot(hist.loc[mask, "epoch"], series[mask], **_style_for(trial, palette))
+        ax.plot(hist.loc[mask, "epoch"], series[mask], **_style_for(trial, palette, seen))
     ax.set_xlabel("epoch")
     ax.set_ylabel(r"$\|w - w_0\|$  (max over stages)")
-    ax.set_yscale("log")
-    ax.legend(loc="best", fontsize=7, ncol=2)
+    # Drift spans orders of magnitude across learning rates, so log is the readable
+    # scale — but a run where nothing moved is all zeros, and log would raise.
+    if any(ln.get_ydata().size and (ln.get_ydata() > 0).all() for ln in ax.lines):
+        ax.set_yscale("log")
+    ax.legend(loc="best", fontsize=7)
     return fig
 
 

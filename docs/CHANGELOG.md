@@ -14,6 +14,47 @@ day is never rewritten.
 
 ## 12-08-2026
 
+- **`docs/VSC.md` rewritten, 730 → 257 lines**, and reordered around the lifecycle of a
+  run rather than around the pipeline's stages: first-time setup, the five commands of a
+  run, getting the results back, failures, reference. The sweep contents, the CV split
+  design and the output layout moved out — they are `METHOD.md`'s job and were duplicated
+  there. A TL;DR that repeated the whole document is gone.
+- **New `docs/VSC.md` §3, "Getting the results back"** — the step the guide never covered
+  and the point of the whole exercise: which three trees to `rsync` down and which local
+  directory each belongs in so the notebooks find them, why `checkpoints/trained/` (5–8 GB)
+  is not one of them, and a snippet that checks the run is complete rather than
+  half-transferred before any number is believed.
+- **Leakage guard.** `src/data/dedup.py` has always detected duplicate and overlapping
+  datasets and written `doubles_<track>_post.csv`; nothing read it. `split_corpus` now
+  drops any TRAINING dataset flagged as a duplicate of a held-out one, and never touches
+  the test set. Empty on today's corpus — the point is the 500-dataset corpus, where a
+  straddling duplicate would inflate every number with no trace but a log line.
+- **`parse_trial_name` was broken for every v2.6 trial** — `Path(name).stem` strips from
+  the last dot, which sits inside `v2.6`, so 18 of 36 trials failed to parse and were
+  labelled `?` and merged into one colour in every training figure. The regex also knew
+  neither `_iclhead` nor the run-8 `_min<rows>` tag.
+- **Failed folds poisoned the aggregates.** A fold that fails is written with NaN metrics
+  by design; `paper_figures` averaged over folds without dropping them, so one failed fold
+  turned a whole (model, dataset) cell into NaN and it vanished from every figure.
+  `eval_viz` had an `_ok_only` filter; the new module now uses the same rule.
+- **New `src/visualize/paper_figures.py`** — the seven figures a manuscript needs, each
+  chosen against what the field reports: paired effect vs each model's own base, gain vs
+  base quality, mean rank, calibration shift, regime (Δ vs dataset size), honest
+  leave-one-dataset-out selection, and a Kolberg-style forgetting check. Added as a final
+  section to both results notebooks, with manuscript-ready captions.
+- **Figures are future-proofed for a 500-dataset corpus.** `style` gained `too_many`,
+  `head_tail`, `thin_ticks` and `note`; every figure that drew one bar, label or panel per
+  dataset now switches to a distribution above the legibility threshold. One was sizing
+  itself at 160 inches wide at that scale.
+- **Text collisions: 70 → 13** (measured by rendering all 53 figures and testing every
+  pair of text artists). Per-point labels replaced by legends, 18-entry trial legends
+  collapsed to one entry per (base, adapter), rotated tick labels replaced by horizontal
+  bars, three-line panel titles cut to the dataset id, log scales guarded against
+  non-positive data — the last of which crashed a whole notebook.
+- **`src/data/exploration.py` now uses the shared style.** It carried its own palette
+  (matplotlib's tab:blue/tab:orange, not the project's), its own `_apply_style`, and
+  `fig.tight_layout()` fighting the rc-level `constrained_layout`.
+
 - **Run-8 sweep redesigned: 16 trials/track at 20 000 steps** (was 36 at 9 100). Dropped
   LoRA-on-TabPFN (measured no-op in runs 4, 6 and 7; Rubachev and Tanna agree), dropped
   `query_fraction` 0.20 (Real-TabPFN specifies the 60/40 split, and run-7's A/B was

@@ -9,7 +9,7 @@
 #  ("staging") storage so they persist and don't eat the tiny 75 GiB $VSC_DATA
 #  quota. If you can upload from your laptop STRAIGHT to staging (scp/WinSCP to
 #  the absolute path /lustre1/project/stg_00211/CreditPFN/...), you do NOT need
-#  this script — see docs/VSC.md §0.
+#  this script — see docs/VSC.md §1.3.
 #
 #  Use this ONLY if you can reach $VSC_DATA from your transfer tool but NOT the
 #  project storage. Then: (1) upload from your laptop into

@@ -341,7 +341,7 @@ def winrate_matrix(
 def _new_fig(title: str, *, figsize=style.figsize(style.WIDTH_FULL, ratio=0.611)):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=figsize)
-    ax.set_title(title)
+    style.title(ax, title)
     ax.grid(True, alpha=0.3, linestyle="--", linewidth=0.5)
     return fig, ax
 
@@ -416,7 +416,7 @@ def plot_metric_boxplot(track: str, *, metric: str | None = None):
     )
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
-        f"{metric} by method — track={track}",
+        f"{metric} by method",
         figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
     )
     data = [df.loc[df["method_name"] == m, metric].dropna().values for m in order]
@@ -463,7 +463,8 @@ def plot_per_dataset_heatmap(track: str, *, metric: str | None = None):
     ax.set_xticklabels(pivot.columns, rotation=60, ha="right", fontsize=7)
     ax.set_yticks(range(pivot.shape[0]))
     ax.set_yticklabels(pivot.index, fontsize=8)
-    ax.set_title(f"{metric} per method × dataset — track={track}")
+    style.thin_ticks(ax, 'y')
+    style.title(ax, f"{metric} per method × dataset")
     for i in range(pivot.shape[0]):
         for j in range(pivot.shape[1]):
             v = pivot.values[i, j]
@@ -503,7 +504,8 @@ def plot_winrate_matrix(track: str, *, metric: str | None = None):
     ax.set_xticklabels(mat.columns, rotation=55, ha="right", fontsize=7)
     ax.set_yticks(range(mat.shape[0]))
     ax.set_yticklabels(mat.index, fontsize=8)
-    ax.set_title(f"Pairwise win rate — {metric}, track={track}\n(row beats column, % of datasets)")
+    style.thin_ticks(ax, 'y')
+    style.title(ax, f"Pairwise win rate — {metric}, track={track}\n(row beats column, % of datasets)")
     for i in range(mat.shape[0]):
         for j in range(mat.shape[1]):
             v = mat.values[i, j]
@@ -657,7 +659,7 @@ def plot_time_vs_metric(track: str, *, metric: str | None = None):
     if df.empty or metric not in df.columns or "elapsed_sec" not in df.columns:
         return _no_data_fig(f"no results / missing column")
     fig, ax = _new_fig(
-        f"Inference time vs {metric} — track={track}",
+        f"Inference time vs {metric}",
         figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     methods = sorted(df["method_name"].unique())
@@ -699,7 +701,8 @@ def plot_metric_correlation(track: str):
     ax.set_xticklabels(present, rotation=45, ha="right")
     ax.set_yticks(range(len(present)))
     ax.set_yticklabels(present)
-    ax.set_title(f"Metric correlation matrix — track={track}")
+    style.thin_ticks(ax, 'y')
+    style.title(ax, f"Metric correlation matrix")
     for i in range(len(present)):
         for j in range(len(present)):
             v = corr.values[i, j]
