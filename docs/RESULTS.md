@@ -38,6 +38,61 @@ Two standing comparability rules, both learned the hard way:
 
 ---
 
+## Run-8 — 12/13-08-2026 — full step budget reached on PD; more training made it worse
+
+The first run at Real-TabPFN's exact recipe (3e-7, 20 000 steps, 60/40 split). Training
+essentially clean; the eval is **half-missing** because one GPU pool never started, so every
+number below rests on 16 paired comparisons and should be read as a direction, not a result.
+
+### Configuration
+
+| | |
+|---|---|
+| trials/track | 16 = 3 bases × 2 LRs × 2 corpus arms, adapter arm on TabICLv2 only |
+| bases | TabPFN v3 default, TabPFN v2.6 default, TabICLv2 (`-v2-20260212`) |
+| learning rates | 3e-7, 1e-6 (AdamW, warmup 0.10 → cosine to 5 % of peak) |
+| adaptation | full-FT; freeze-backbone additionally for TabICLv2 |
+| query_fraction | 0.40 fixed · `accumulate_grad_batches` 1 · `epoch_pass_mode` full_pass |
+| corpus arm | `min_train_rows` ∈ {0, 5000} — **new swept axis** |
+| step budget | `target_total_steps` 20 000 — **realised**: PD 20 020–20 097 ✓; **LGD 4 800–20 020** ✗ (epoch cap) |
+| L2-SP λ | 0.003 · weight_decay 0.0 · grad_clip 1.0 · BF16 |
+| corpus PD | 17 datasets: 12 train (min 0) / 9 train (min 5000), 5 test |
+| corpus LGD | 8 datasets: 6 train (min 0) / **2 train** (min 5000), 2 test |
+| eval | 5-fold CV; 16 packed tasks per track across wICE `gpu_h100` + `gpu_a100` |
+| cost | training ~120 GPU-h; eval 4.3 GPU-h of the ~9 planned |
+
+### What happened
+
+- **31/32 trials trained.** The one failure is a **false-positive divergence abort** —
+  v2.6 @3e-7 was killed at epoch 19 for a flat loss while its drift was still rising. Fixed
+  13-08-2026; see `AGENTS_MEMORY.md`.
+- **PD reached the full budget** (20 020–20 097 steps for every base). Drift is real and
+  scales with LR: v3 0.0023 → 0.0050, v2.6 0.0027 → 0.0071, TabICLv2 0.0024 → 0.0061.
+- **LGD did not.** The 1 200-epoch rail bound first, and unevenly across the corpus arms —
+  TabICLv2 got 9 600 steps at `min_train_rows=0` and only **4 800** at 5 000. The corpus
+  experiment on LGD is therefore confounded with the training budget.
+- **PD: 2 wins out of 9 paired comparisons, and v3 got WORSE** — mean Δ mAUC −0.0048,
+  −0.0060 at 3e-7. At 9 100 steps (run-7) v3 was ≈ 0; at 20 000 it is clearly negative.
+  **More continued pretraining on this corpus actively damages the strongest base.**
+- **LGD: 0 wins out of 7**, unchanged from run-7 and now at a much larger budget for v2.6
+  and v3.
+- **The corpus filter helps, consistently.** Every base is better with
+  `min_train_rows=5000` than without: PD v3 −0.0019 vs −0.0090, LGD v2.6 −0.0108 vs
+  −0.0167, LGD v3 −0.0075 vs −0.0083; on the 2 000-row monitor TabICLv2's LGD degradation
+  goes from +0.0122 to −0.0001. **Caveat: on LGD the filtered arm also trained for fewer
+  steps**, so part of "less damage" may be "less training". Run-9 removes that confound.
+- **Eval concurrency collapsed to 0.20** despite the packing working exactly as designed
+  (median task 94 s → 28 min). The `gpu_a100` half never started. See `AGENTS_MEMORY.md`.
+
+### Reading it
+
+The three runs now line up into one story. Gains scale **inversely** with how good the base
+already is (run-7), and **negatively** with how much you train (run-8): v3 at 9 100 steps
+≈ 0, at 20 000 steps −0.005. That is not a recipe problem — the recipe is Garg's, executed
+exactly — it is a **corpus** problem. Garg used 71 real tables of 10k–100k rows; we have 12,
+of which 3 are under 2 200 rows. The filter arm pointing the same way on every base is the
+same signal from the other direction.
+
 ## Run-7 — 10/11-08-2026 — training clean, eval incomplete, LGD undertrained
 
 Training was the best it has been; the eval was not finished when the logs were collected, and

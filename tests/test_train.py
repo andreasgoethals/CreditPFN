@@ -1185,3 +1185,42 @@ def test_trial_name_parser_handles_every_name_the_pipeline_writes() -> None:
     # And with the extensions the pipeline actually writes.
     for ext in (".csv", ".ckpt"):
         assert parse_trial_name(list(cases)[0] + ext) is not None
+
+
+def test_a_flat_loss_with_growing_drift_is_not_divergence() -> None:
+    """REGRESSION (run-8). `loss_const` aborted a healthy trial: v2.6 @3e-7 full-FT held
+    its loss at 0.4689-0.4690 for five epochs — inside the 1e-4 window — while its weight
+    drift rose monotonically 0.042 % → 0.085 %, its held-out AUC sat at 0.7151 and its
+    gradients were normal. It was training slowly, which is what the lowest learning rate
+    in the sweep is FOR. The abort cost the trial and removed the one configuration the
+    run existed to test.
+
+    The detector now needs a flat loss AND flat drift, because a model that has actually
+    died stops moving.
+    """
+    import math
+
+    def trips(losses, drifts, patience=5):
+        """The rule as `train_one_config` applies it."""
+        recent_drift = [max(d.values()) for d in drifts if d]
+        drift_flat = (len(recent_drift) >= 2
+                      and (max(recent_drift) - min(recent_drift)) < 1e-6)
+        return (len(losses) == patience
+                and max(losses) - min(losses) < 1e-4
+                and (drift_flat or not recent_drift))
+
+    healthy_losses = [0.4689, 0.4689, 0.4690, 0.4689, 0.4689]
+    growing = [{"enc": d} for d in (0.042, 0.047, 0.052, 0.057, 0.062)]
+    assert not trips(healthy_losses, growing), (
+        "a slow-but-moving trial must not be aborted"
+    )
+
+    dead = [{"enc": 0.031} for _ in range(5)]
+    assert trips(healthy_losses, dead), (
+        "a flat loss AND flat weights is a genuinely dead model"
+    )
+    # No drift record at all (monitor disabled) -> fall back to the loss-only rule.
+    assert trips(healthy_losses, [{} for _ in range(5)])
+    # A moving loss is never divergence, whatever the drift does.
+    assert not trips([0.47, 0.44, 0.41, 0.39, 0.36], dead)
+    assert not math.isnan(0.0)

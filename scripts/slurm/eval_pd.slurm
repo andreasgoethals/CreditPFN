@@ -19,32 +19,38 @@
 #
 #  Submit with:
 #
-#      N=$(python scripts/eval_pipeline.py --list-tasks track=pd)
-#      sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm
+#      N=$(python scripts/eval_pipeline.py --list-tasks --tasks 16 track=pd)
+#      sbatch --array=0-$((N - 1))%16 scripts/slurm/eval_pd.slurm
 #
-#  TabPFN tasks need GPU (wICE gpu_h100). Boosting / linear baselines
-#  could in principle run on cheaper CPU partitions, but mixing
-#  partitions per array task is awkward; we use one GPU partition for
-#  everything and trust slurm's scheduling. CPU-only baselines just
-#  ignore the GPU.
+#  …or via scripts/slurm/run_full_pipeline.sh, which sizes the array and picks the
+#  cluster from EVAL_CLUSTER / EVAL_PARTITIONS.
+#
+#  WHY MINDWELL AND NOT wICE (measured, run-8). The eval ran on wICE gpu_h100 +
+#  gpu_a100 and reached an average concurrency of 0.20 — 3.6 GPU-h took 17.9 h of
+#  wall-clock, and the gpu_a100 half never started at all. The VSC scheduler weights
+#  fairshare on the user's walltime over the last SEVEN DAYS, so the ~120 GPU-h of
+#  training submitted days earlier is exactly what sinks the eval's priority; and
+#  wICE's 36 GPUs serve the whole university, with the cheapest of them (A100) the
+#  most contended. Mindwell's 24 B200s gave us 15-21 concurrent on the same days.
+#  Per GPU-minute: A100 141.7, B200 437.5, H100 569.4 — the partition that looked
+#  cheap was the most expensive one.
+#
+#  CPU-only baselines ignore the GPU; one partition for everything is simpler than
+#  routing per task, and the whole eval is under 10 GPU-h.
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-pd-eval
-#SBATCH --clusters=wice
+#SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100   # run_full_pipeline.sh launches a SECOND eval
-                               # array on gpu_a100 (via --partition override) so
-                               # eval drains across BOTH wICE GPU pools (20 H100
-                               # + 16 A100 = 36 GPUs). Both partitions cooperate
-                               # safely: each task skips already-scored pairs.
+#SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=05:00:00  # raised from 2h (2026-07-13): v2.6 x 100k-row
-                          # datasets on the A100 pool blew 2h (8 walltime
-                          # kills in the Jul-12 run); 5h + the 50k v2.6 row
-                          # cap gives ample margin.
+#SBATCH --time=02:00:00  # MEASURED run-8: packed tasks took 28-40 min.
+                         # A short request backfills into gaps between big
+                         # jobs, which is the only lever we have on a
+                         # partition where fairshare is against us.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=16   # <= 24, the gpu_b200 per-GPU limit
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null

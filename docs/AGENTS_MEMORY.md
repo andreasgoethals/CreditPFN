@@ -21,7 +21,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
-| 12-08-2026 | run-8 · **PLANNED** — 16 trials/track, 20 000 steps, `min_train_rows` swept [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks | *not yet run* | The first run at Real-TabPFN's full step budget, and the first test of the corpus-size hypothesis. Replace this row with the outcome. |
+| 12-08-2026 | run-8 · 16 trials/track, 20 000 steps, `min_train_rows` [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks | **partial** | Training 31/32 OK (1 false-positive divergence abort). Step budget reached on PD; LGD hit the 1 200-epoch cap and the two corpus arms got UNEQUAL budgets. Eval: packing worked (94 s → 28 min median) but concurrency fell to 0.20 and the gpu_a100 pool never started — only ~half the cells scored. PD 2/9 paired wins, LGD 0/7. `RESULTS.md` |
 | 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `RESULTS.md` |
 | 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICLv2. 54.9 GPU-h. `RESULTS.md` |
 | 05-08-2026 | run-5 · 48 trials/track, first two-family run (TabICLv2 added) | **partial** | 80/96 trials OK; the 16 `_iclhead` trials crashed (freeze-via-`.eval()`, see dead ends 06-08-2026). Eval never ran — the 21 h gate expired — so every number is a 2 000-row monitor eval. Drift 0.02 % of ‖w₀‖ at 3e-7: the PD null was undertraining. 43.7 GPU-h. |
@@ -37,6 +37,53 @@ that configuration?"* is the question this table exists to answer.
 
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
+
+### 13-08-2026
+
+**Treating a flat loss as divergence.**
+- **Tried:** aborting a trial when the training loss stays inside a 1e-4 window for five
+  consecutive epochs — a rule written against the 2026-05-28 collapse, where a dead model
+  emitted a constant loss.
+- **Result:** it killed a perfectly healthy run-8 trial (v2.6 @3e-7 full-FT) at epoch 19.
+  The loss was 0.4689–0.4690 across the window, so the rule fired — while weight drift rose
+  monotonically 0.042 % → 0.085 %, held-out AUC sat at 0.7151, gradients were normal and no
+  AMP step was skipped.
+- **Why:** the lowest learning rate in the sweep is *supposed* to move the loss slowly, and
+  v2.6's loss plateau is flat. The rule was calibrated on a hotter LR and never revisited
+  when 3e-7 was added back. It removed the exact configuration the run existed to test.
+- **Instead:** require a flat loss **and** flat weight drift — a model that has actually died
+  stops moving, one that is learning slowly does not. Falls back to the loss-only rule when
+  no drift is recorded. Pinned by
+  `tests/test_train.py::test_a_flat_loss_with_growing_drift_is_not_divergence`.
+
+**Capping the step budget by epochs, with a corpus that varies per arm.**
+- **Tried:** `max_epochs_for_step_budget: 1200` as a safety rail on the new "extend epochs
+  to reach the step target" behaviour.
+- **Result:** on LGD the cap bound before the target, and it bound UNEVENLY across the swept
+  corpus arms: tabicl got 9 600 steps at `min_train_rows=0` and **4 800** at 5 000; v3 got
+  19 200 vs 14 400. Only v2.6 reached the budget in both arms.
+- **Why:** steps/epoch is `sum(ceil(rows_i / cap))` over the TRAINING datasets, so the arm
+  with fewer datasets gets fewer steps per epoch and hits an epoch cap sooner. The corpus
+  experiment was therefore confounded with the training budget — and biased *against* the
+  filter, which is the hypothesis under test.
+- **Instead:** cap raised to 6 000, which covers the worst case (LGD tabicl at 4 steps/epoch
+  needs 5 000 epochs ≈ 2.5 h). A rail sized in epochs is only safe if every arm reaches the
+  target underneath it.
+
+**Splitting the eval across two wICE GPU partitions.**
+- **Tried:** `gpu_h100` + `gpu_a100`, on the theory that two pools drain twice as fast.
+- **Result:** average concurrency **0.20**, peak 2. 3.6 GPU-h took 17.9 h of wall-clock, and
+  the `gpu_a100` half never started at all — PENDING with Reason=Priority for days. Half the
+  eval cells were never scored, so the run has no complete trained-vs-untuned comparison.
+- **Why:** the VSC scheduler weights fairshare on the user's walltime over the last **seven
+  days**, so the ~120 GPU-h of training we submit immediately beforehand is precisely what
+  sinks the eval's priority. wICE's 36 GPUs serve the whole university and the *cheapest*
+  partition (A100 at 141.7 credits/GPU-min against H100's 569.4) is the most contended.
+  Splitting also doubles the number of queue positions being waited on. Packing the cells
+  fixed the task size — 94 s → 28 min — and the binding constraint simply moved.
+- **Instead:** one partition, on Mindwell `gpu_b200`, where the same account held 15–21 GPUs
+  concurrently on the same days. Cheaper per minute than H100 and faster. Walltime cut 5 h →
+  2 h so tasks backfill.
 
 ### 11-08-2026
 

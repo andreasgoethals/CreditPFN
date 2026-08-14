@@ -12,6 +12,24 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 13-08-2026
+
+- **Divergence detector no longer aborts on a flat loss alone.** It needs a flat loss AND
+  flat weight drift, because a model that has died stops moving. The old rule killed a
+  healthy v2.6 @3e-7 trial in run-8 whose drift was still rising — removing the exact
+  configuration the run existed to test.
+- **`max_epochs_for_step_budget` 1 200 → 6 000.** On LGD the rail bound before the step
+  target, and unevenly across the swept corpus arms (TabICLv2: 9 600 steps at
+  `min_train_rows=0` vs 4 800 at 5 000), confounding the corpus experiment with the
+  training budget. Every arm now reaches 20 000.
+- **Eval moved to one partition on Mindwell `gpu_b200`** (`EVAL_CLUSTER`/`EVAL_PARTITIONS`
+  to override). Run-8's two-pool wICE split averaged 0.20 concurrent jobs and the
+  `gpu_a100` half never started: fairshare is weighted on the last seven days' walltime,
+  so the training we submit beforehand is what sinks the eval's priority, and wICE's 36
+  GPUs serve the whole university. Eval walltime 5 h → 2 h (measured: packed tasks take
+  28–40 min) so tasks backfill.
+- Run-8 recorded in `RESULTS.md` and `AGENTS_MEMORY.md`, with the three dead ends above.
+
 ## 12-08-2026
 
 - **`docs/VSC.md` rewritten, 730 → 257 lines**, and reordered around the lifecycle of a

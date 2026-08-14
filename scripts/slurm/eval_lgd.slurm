@@ -6,19 +6,17 @@
 # =============================================================================
 
 #SBATCH --job-name=creditpfn-lgd-eval
-#SBATCH --clusters=wice
+#SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=gpu_h100   # run_full_pipeline.sh launches a SECOND eval
-                               # array on gpu_a100 (via --partition override) so
-                               # eval drains across BOTH wICE GPU pools.
+#SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=05:00:00  # raised from 2h (2026-07-13): v2.6 x 100k-row
-                          # datasets on the A100 pool blew 2h (8 walltime
-                          # kills in the Jul-12 run); 5h + the 50k v2.6 row
-                          # cap gives ample margin.
+#SBATCH --time=02:00:00  # MEASURED run-8: packed tasks took 28-40 min.
+                         # A short request backfills into gaps between big
+                         # jobs, which is the only lever we have on a
+                         # partition where fairshare is against us.
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16
+#SBATCH --cpus-per-task=16   # <= 24, the gpu_b200 per-GPU limit
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null

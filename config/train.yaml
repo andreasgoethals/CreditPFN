@@ -213,7 +213,16 @@ train:
   # 11 s = ~1.7 h. So the whole LGD track goes from ~14 to ~50 GPU-h — the price of
   # LGD finally getting the same step budget PD has. This rail exists so a future
   # tiny-corpus config cannot silently ask for 50 000 epochs.
-  max_epochs_for_step_budget: 1200
+  # RAISED 1200 -> 6000 after run-8, where the cap became the binding constraint on LGD
+  # and — worse — bound UNEVENLY across the swept corpus arms. steps/epoch is
+  # sum(ceil(rows_i / cap)) over the TRAINING datasets, so the `min_train_rows=5000` arm
+  # has fewer datasets, fewer steps per epoch, and therefore hits the epoch cap sooner:
+  #   LGD tabicl  9 600 steps (min 0) vs 4 800 (min 5000)   <- a 2x budget gap
+  #   LGD v3     19 200            vs 14 400
+  # The corpus experiment was thus confounded with the training budget, biased AGAINST
+  # the filter, which is the hypothesis under test. 6 000 epochs covers the worst case
+  # (LGD tabicl at 4 steps/epoch needs 5 000 to reach 20 000) at ~1.8 s/epoch = 2.5 h.
+  max_epochs_for_step_budget: 6000
   grad_clip_norm: 1.0
   amp: true                               # AMP autocast (CUDA only)
   # "auto" prefers bfloat16 on Ampere-or-newer GPUs (including B200/H100)

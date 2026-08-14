@@ -56,7 +56,20 @@ EVAL_TASKS="${EVAL_TASKS:-16}"
 # plain shell variable here would leave an override like EVAL_TASKS=8 applying to the
 # index list at submit time and NOT inside the job.
 export EVAL_TASKS
-EVAL_PARTITIONS="${EVAL_PARTITIONS:-gpu_h100 gpu_a100}"
+# ONE partition, on Mindwell. Run-8 split the eval across wICE gpu_h100 + gpu_a100 and
+# reached an average concurrency of 0.20: 3.6 GPU-h took 17.9 h of wall-clock and the
+# gpu_a100 half never started at all (PENDING/Priority for days).
+#
+# Two things in the VSC scheduler's priority formula explain it, and both point the same
+# way. Fairshare is computed on the user's walltime over the last SEVEN DAYS, so the
+# ~120 GPU-h of training we run immediately before submitting the eval is precisely what
+# sinks the eval's priority. And wICE's GPU partitions are 36 cards for the whole
+# university, with the cheapest of them (A100, 141.7 credits/GPU-min vs H100's 569.4) the
+# most contended. Mindwell's 24 B200s gave us 15-21 concurrent on the same days.
+#
+# Set EVAL_PARTITIONS="gpu_h100 gpu_a100" and EVAL_CLUSTER=wice to go back to wICE.
+EVAL_CLUSTER="${EVAL_CLUSTER:-mindwell}"
+EVAL_PARTITIONS="${EVAL_PARTITIONS:-gpu_b200}"
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
 cd "$(dirname "$0")/../.."
@@ -95,7 +108,7 @@ echo "=================================================================="
 echo "CreditPFN — one-shot full pipeline"
 echo "  STAGES        : ${STAGES}"
 echo "  TRAIN_ACCOUNT : ${TRAIN_ACCOUNT}   (Mindwell gpu_b200)"
-echo "  EVAL_ACCOUNT  : ${EVAL_ACCOUNT}    (wICE ${EVAL_PARTITIONS})"
+echo "  EVAL_ACCOUNT  : ${EVAL_ACCOUNT}    (${EVAL_CLUSTER} ${EVAL_PARTITIONS})"
 echo "  TRACKS        : ${TRACKS}"
 echo "  DATA_ROOT     : ${CREDITPFN_DATA_ROOT}"
 echo "  OUTPUT_ROOT   : ${CREDITPFN_OUTPUT_ROOT}"
@@ -232,7 +245,7 @@ if [[ -n "${run_eval}" ]]; then
                 echo "${indent}    exit 1"
                 echo "${indent}  fi"
                 echo "${indent}  if [[ -n \"\${IDX}\" ]]; then"
-                echo "${indent}    sbatch --clusters=wice --account='${EVAL_ACCOUNT}' --partition='${PARTS[$i]}' --export='${SBATCH_EXPORT}' --array=\"\${IDX}%${EVAL_CONCURRENCY}\" scripts/slurm/eval_${TR}.slurm"
+                echo "${indent}    sbatch --clusters='${EVAL_CLUSTER}' --account='${EVAL_ACCOUNT}' --partition='${PARTS[$i]}' --export='${SBATCH_EXPORT}' --array=\"\${IDX}%${EVAL_CONCURRENCY}\" scripts/slurm/eval_${TR}.slurm"
                 echo "${indent}    echo \"submitted eval ${TR} on ${PARTS[$i]} (pool ${i}/${K} of \${N} tasks)\""
                 echo "${indent}  fi"
             done
@@ -252,6 +265,16 @@ if [[ -n "${run_eval}" ]]; then
             --output="${CREDITPFN_OUTPUT_ROOT}/output/logs/eval_gate_%j.log" \
             --wrap="bash scripts/slurm/_wait_for_jobs.sh '${TRAIN_CSV}' 8400 '${EVAL_SCRIPT}'")")
         echo "  [3] eval gate (wICE batch)    : ${GATE_JID}  — submits eval AFTER training finishes"
+        if [[ "${EVAL_CLUSTER}" != "wice" ]]; then
+            # The gate runs on a wICE compute node and sbatches the eval to
+            # EVAL_CLUSTER. Submitting across clusters from a COMPUTE node is not
+            # something this pipeline has exercised before (training is submitted from a
+            # Genius LOGIN node). If the gate log shows the submit failing, the recovery
+            # needs no new training: re-run the eval stage by hand from a login node.
+            echo "      NOTE: the gate will sbatch to '${EVAL_CLUSTER}' from a wICE node."
+            echo "            If that submit fails, run this from a login node once training ends:"
+            echo "              STAGES=\"eval\" bash scripts/slurm/run_full_pipeline.sh"
+        fi
         echo "      (per-track, if >=1 trial trained; partial grids scored + flagged; no GPU eval queued meanwhile)"
     else
         echo "  [3+4] eval : no training in this batch — submitting eval now (re-score existing checkpoints)"

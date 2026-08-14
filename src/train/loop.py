@@ -2492,9 +2492,29 @@ def train_one_config(
             test_metrics_recent = [t for t, _ in monitored_recent]
             train_metrics_recent = [tr for _, tr in monitored_recent]
 
+            # A FLAT LOSS IS NOT A DEAD MODEL. This rule alone killed a perfectly healthy
+            # trial in run-8: v2.6 @3e-7 full-FT held loss at 0.4689-0.4690 for five
+            # epochs — inside the 1e-4 window — while its weight drift rose monotonically
+            # (0.042 % -> 0.085 %), its held-out AUC sat at 0.7151, and its gradients were
+            # normal. It was training, slowly, exactly as the lowest learning rate in the
+            # sweep is supposed to. The abort wasted the trial AND removed the one
+            # configuration the run existed to test (Garg's 3e-7).
+            #
+            # A model that has actually died does not move: its weights stop changing.
+            # So require BOTH a flat loss and flat drift. ||w - w0|| is monotone by
+            # construction, so "not growing" is the signal that nothing is being learnt.
+            recent_drift = [max(r.stage_drift.values()) for r in recent
+                            if getattr(r, "stage_drift", None)]
+            drift_flat = (
+                len(recent_drift) >= 2
+                and (max(recent_drift) - min(recent_drift)) < 1e-6
+            )
             loss_constant = (
                 len(losses) == diverge_patience
                 and max(losses) - min(losses) < 1e-4
+                # No drift record (monitor off) -> fall back to the loss-only rule rather
+                # than never tripping at all.
+                and (drift_flat or not recent_drift)
             )
             # For PD (ROC-AUC primary), AUC=0.5 means random — exact
             # equality after the dead-model collapse.
