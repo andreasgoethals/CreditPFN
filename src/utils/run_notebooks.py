@@ -1,7 +1,8 @@
 """Run every notebook in parallel, then rebuild the two summary documents.
 
     python -m src.utils.run_notebooks                     every notebook in notebooks/
-    python -m src.utils.run_notebooks --only exploration  just these, by stem
+    python -m src.utils.run_notebooks --only exploration  substring match on the stem
+    python -m src.utils.run_notebooks --only 2.0 2.1      several, e.g. both result notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
     output/figures/<notebook>/*.pdf   written by the notebooks themselves
@@ -62,10 +63,19 @@ class NotebookResult:
 
 
 def discover(names: tuple[str, ...] | None = None) -> tuple[str, ...]:
-    """Notebook stems, alphabetical. `names` overrides discovery for a partial rerun."""
-    if names:
-        return tuple(names)
-    return tuple(sorted(p.stem for p in notebooks_dir().glob("*.ipynb")))
+    """Notebook stems, alphabetical. `names` selects a subset for a partial rerun.
+
+    A selector matches by case-insensitive SUBSTRING against the discovered stems, not by
+    equality: the real stems carry a numeric prefix and a space (`0.0. raw_data_exploration`),
+    so an exact-match `--only` is unusable from a shell without quoting it precisely — and
+    `--only exploration`, the example this module's own docstring gives, silently became a
+    "notebook not found" failure instead of running the two exploration notebooks.
+    """
+    found = tuple(sorted(p.stem for p in notebooks_dir().glob("*.ipynb")))
+    if not names:
+        return found
+    return tuple(s for s in found
+                 if any(n.lower() in s.lower() for n in names))
 
 
 # ---------------------------------------------------------------------------
@@ -306,6 +316,12 @@ def main(argv: list[str] | None = None) -> int:
 
     names = discover(tuple(args.only) if args.only else None)
     if not names:
+        # Distinguish "the directory is empty" from "your --only matched nothing", which are
+        # very different problems and used to print the same sentence.
+        if args.only:
+            available = ", ".join(discover()) or "(none)"
+            print(f"--only {' '.join(args.only)} matched no notebook.\nAvailable: {available}")
+            return 1
         print("No notebooks found in notebooks/.")
         return 0
 

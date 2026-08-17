@@ -22,6 +22,14 @@ day is never rewritten.
   peak 12 concurrent, against 17.9 h for 8 tasks on wICE.
 - **`plot_regime_effect` no longer annotates `ρ = nan`** when the manifest property or the
   deltas are constant across the scored datasets — `spearmanr` warned and printed nan.
+- **`run_notebooks --only` now matches by substring**, which is what its own docstring always
+  claimed. The real stems carry a numeric prefix and a space (`0.0. raw_data_exploration`), so
+  the documented `--only exploration` resolved to a missing-file failure. An unmatched selector
+  now lists the available names and exits non-zero instead of printing "no notebooks found".
+- **README §4.4 rewritten** with how to run the notebooks in batch, and its stale table fixed:
+  it listed `1.0. training_visualization.ipynb` / `2.0. final_results.ipynb` (the files are
+  `_pd` / `_lgd` suffixed) and pointed at `src/utils/` for plotting code that lives in
+  `src/visualize/`.
 - **`VSC.md` laptop-side commands are PowerShell, not bash.** Every one of them was
   unrunnable: `rsync` does not exist on Windows and §3.2 used a bash heredoc. Downloading is
   now a single `cmd /c`-wrapped `ssh … tar | tar` that pulls all three trees from both storage

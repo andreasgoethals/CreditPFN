@@ -154,8 +154,14 @@ submitting any cluster jobs.
 ```bash
 pytest -q tests/                                   # ~5 min, no GPU needed
 python scripts/data_pipeline.py                    # ~10 min, builds data/processed/
-jupyter notebook notebooks/                        # open the data-exploration notebooks
+jupyter notebook notebooks/                        # open the notebooks interactively
+python -m src.utils.run_notebooks                  # or execute all six unattended (see 4.4)
 ```
+
+The last one is how you turn a finished run into figures: it executes every
+notebook in parallel and rebuilds `output/figures/CAPTIONS.md` and
+`output/All_Results.md`. Details and flags in
+[4.4](#44-notebooks--exploration-and-result-visualisations).
 
 <a id="33-real-training-and-eval-require-a-cuda-cluster"></a>
 
@@ -290,21 +296,71 @@ run after the respective pipeline. Every notebook drops its figures as PDFs into
 [`src/visualize/figures.py`](src/visualize/figures.py); the per-notebook
 directory is **wiped on each re-run**, so stale figures never linger.
 All plotting code lives in the corresponding helper module under
-`src/utils/`; the notebook cells contain only function calls so the
+[`src/visualize/`](src/visualize); the notebook cells contain only function calls so the
 narrative stays scannable and the logic stays testable.
 
 | Notebook | What it shows |
 |---|---|
 | `0.0. raw_data_exploration.ipynb`          | What did the vendor deliver? Corpus shape-space scatter (features vs rows, per-track → combined, log + linear), per-dataset missing-cell bars, target / class-balance landscape on the raw CSVs. |
 | `0.1. processed_data_exploration.ipynb`    | Did sanitisation produce sensible inputs? Same shape + missingness views on the post-sanitize CSVs, plus the 64-feature selection effect and feature-type composition. |
-| `1.0. training_visualization.ipynb`        | **PD** trained variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, LoRA effect, time/accuracy Pareto, convergence diagnostics, leaderboard. `TRACK='pd'`; consumes `output/training/`. |
-| `1.1. training_visualization.ipynb`        | **LGD** counterpart of 1.0 — identical dashboard with `TRACK='lgd'`. |
-| `2.0. final_results.ipynb`                 | **PD** eval leaderboard — per-method box plots, per-dataset heatmaps, pairwise win-rate matrix (à la TabPFN-3 Fig 3), trained-vs-untuned scatter (à la Real-TabPFN), fold stability, threshold calibration. `TRACK='pd'`; consumes `output/results/`. |
-| `2.1. final_results.ipynb`                 | **LGD** counterpart of 2.0 — identical leaderboard with `TRACK='lgd'`. |
+| `1.0. training_visualization_pd.ipynb`     | **PD** trained variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, adapter effect, weight drift, convergence diagnostics, leaderboard. Consumes `output/manifests/`. |
+| `1.1. training_visualization_lgd.ipynb`    | **LGD** counterpart of 1.0 — identical dashboard for the regression track. |
+| `2.0. final_results_pd.ipynb`              | **PD** eval leaderboard plus the paper figures — paired trained-vs-untuned delta, gain vs base quality, mean rank, reliability, regime effect, selection honesty, forgetting. Consumes `output/results/`. |
+| `2.1. final_results_lgd.ipynb`             | **LGD** counterpart of 2.0. |
 
 Corpus summaries in the data notebooks are memoised so the first
 cell pays the disk-read cost once and every subsequent plot reads
 from RAM.
+
+#### Running them all at once
+
+Interactively they are ordinary notebooks — *Run All* works and produces
+exactly the same PDFs. To execute all six unattended, which is what you
+want after pulling a finished run down from the cluster:
+
+```powershell
+python -m src.utils.run_notebooks
+```
+
+It runs the six in parallel as **separate processes** (matplotlib's figure
+registry is global, so two notebooks in one interpreter would silently
+capture each other's figures), and then rebuilds two documents that no
+single notebook owns:
+
+| Output | What it is |
+|---|---|
+| `output/figures/<notebook>/*.pdf` | one PDF per figure, written by the notebooks themselves |
+| `output/figures/CAPTIONS.md` | **one** file, every figure's caption, in notebook order — these are the manuscript's captions |
+| `output/All_Results.md` | every notebook's printed text summary, concatenated |
+
+You get a pass/fail line per notebook with its figure count, and a
+non-zero exit code if any failed — so it is safe to chain. Three flags
+matter:
+
+```powershell
+python -m src.utils.run_notebooks --only 2.0 2.1
+```
+
+`--only` takes **substrings** of the notebook names, so `--only exploration`
+runs both exploration notebooks and `--only _pd` runs both PD ones. If a
+selector matches nothing you get the list of available names rather than a
+silent no-op.
+
+```powershell
+python -m src.utils.run_notebooks --summaries-only
+```
+
+Rebuilds `CAPTIONS.md` and `All_Results.md` from what is already on disk
+without executing anything — seconds instead of minutes, and the reason
+each notebook's `_figures.json` is kept.
+
+`--workers N` caps the parallelism (default `min(n_notebooks, 4)`) and
+`--timeout S` the per-notebook wall clock (default 1800 s). A notebook that
+needs longer is doing work that belongs in a script.
+
+**Notebooks are discovered, not listed**, alphabetically — that same order
+is the order of both summary documents. Adding a notebook to `notebooks/`
+is all it takes for it to be covered.
 
 <a id="45-tests--unit-and-smoke-tests"></a>
 

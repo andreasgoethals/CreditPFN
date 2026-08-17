@@ -47,9 +47,25 @@ def test_discovery_is_alphabetical(tmp_path, monkeypatch) -> None:
     assert rn.discover() == ("alpha", "mid", "zeta")
 
 
-def test_discovery_can_be_overridden_for_a_partial_rerun(tmp_path, monkeypatch) -> None:
+def test_a_selector_matches_by_substring_not_by_equality(tmp_path, monkeypatch) -> None:
+    """`--only` has to accept a fragment. The real stems carry a numeric prefix and a space
+    (`0.0. raw_data_exploration`), so an equality match makes the flag unusable from a shell —
+    and `discover` used to return the selector verbatim, which turned `--only exploration`
+    into a "notebook not found" failure instead of running the two exploration notebooks."""
     monkeypatch.setattr(rn, "notebooks_dir", lambda: tmp_path)
-    assert rn.discover(("only_this",)) == ("only_this",)
+    for name in ("0.0. raw_data_exploration", "0.1. processed_data_exploration",
+                 "2.0. final_results_pd"):
+        make_notebook(tmp_path / f"{name}.ipynb", ["print(1)"])
+
+    assert rn.discover(("exploration",)) == ("0.0. raw_data_exploration",
+                                             "0.1. processed_data_exploration")
+    assert rn.discover(("2.0",)) == ("2.0. final_results_pd",)
+    assert rn.discover(("RAW_DATA",)) == ("0.0. raw_data_exploration",)   # case-insensitive
+    assert rn.discover(("2.0", "processed")) == ("0.1. processed_data_exploration",
+                                                 "2.0. final_results_pd")
+    # A selector that matches nothing yields nothing, so `main` can say so and exit non-zero
+    # rather than inventing a filename and failing deep inside execution.
+    assert rn.discover(("nonexistent",)) == ()
 
 
 def test_magics_are_stripped_from_the_flattened_script(tmp_path) -> None:
