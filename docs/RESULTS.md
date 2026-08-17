@@ -38,11 +38,17 @@ Two standing comparability rules, both learned the hard way:
 
 ---
 
-## Run-8 — 12/13-08-2026 — full step budget reached on PD; more training made it worse
+## Run-8 — 12/13-08-2026, eval completed 16-08-2026 — the first COMPLETE run
 
-The first run at Real-TabPFN's exact recipe (3e-7, 20 000 steps, 60/40 split). Training
-essentially clean; the eval is **half-missing** because one GPU pool never started, so every
-number below rests on 16 paired comparisons and should be read as a direction, not a result.
+The first run at Real-TabPFN's exact recipe (3e-7, 20 000 steps, 60/40 split), and **the first
+run in this project with a complete evaluation**: 105/105 PD cells and 44/44 LGD cells, 745/745
+folds OK, zero failures. Every number below is a full paired comparison, not a direction.
+
+The eval was finished in a second submission on Mindwell `gpu_b200` (16-08-2026) after the wICE
+`gpu_a100` half of the original split never started. **Re-scoring changed the headline**: on the
+half-eval PD looked like −0.0048 mean Δ mAUC, i.e. clear damage. On the complete grid it is
+−0.0013 with p = 0.78 — indistinguishable from zero. The missing half was not missing at random
+(it was one whole partition's worth of models), which is exactly how a partial eval misleads.
 
 ### Configuration
 
@@ -58,40 +64,54 @@ number below rests on 16 paired comparisons and should be read as a direction, n
 | L2-SP λ | 0.003 · weight_decay 0.0 · grad_clip 1.0 · BF16 |
 | corpus PD | 17 datasets: 12 train (min 0) / 9 train (min 5000), 5 test |
 | corpus LGD | 8 datasets: 6 train (min 0) / **2 train** (min 5000), 2 test |
-| eval | 5-fold CV; 16 packed tasks per track across wICE `gpu_h100` + `gpu_a100` |
-| cost | training ~120 GPU-h; eval 4.3 GPU-h of the ~9 planned |
+| eval | 5-fold CV; 21 PD / 22 LGD models × 5 / 2 test datasets = **105 + 44 cells, all OK** |
+| eval caps | v3 + TabICLv2 1M rows, v2.6 50k — **applied identically to trained and untuned**, so every pair is comparable |
+| cost | training ~120 GPU-h; eval 7.1 GPU-h (3.6 wICE `gpu_h100` + 2.8 Mindwell `gpu_b200`) |
 
 ### What happened
 
 - **31/32 trials trained.** The one failure is a **false-positive divergence abort** —
   v2.6 @3e-7 was killed at epoch 19 for a flat loss while its drift was still rising. Fixed
-  13-08-2026; see `AGENTS_MEMORY.md`.
+  13-08-2026; see `AGENTS_MEMORY.md`. It is the one hole in the 16-trial PD grid (15 scored).
 - **PD reached the full budget** (20 020–20 097 steps for every base). Drift is real and
   scales with LR: v3 0.0023 → 0.0050, v2.6 0.0027 → 0.0071, TabICLv2 0.0024 → 0.0061.
 - **LGD did not.** The 1 200-epoch rail bound first, and unevenly across the corpus arms —
-  TabICLv2 got 9 600 steps at `min_train_rows=0` and only **4 800** at 5 000. The corpus
-  experiment on LGD is therefore confounded with the training budget.
-- **PD: 2 wins out of 9 paired comparisons, and v3 got WORSE** — mean Δ mAUC −0.0048,
-  −0.0060 at 3e-7. At 9 100 steps (run-7) v3 was ≈ 0; at 20 000 it is clearly negative.
-  **More continued pretraining on this corpus actively damages the strongest base.**
-- **LGD: 0 wins out of 7**, unchanged from run-7 and now at a much larger budget for v2.6
-  and v3.
-- **The corpus filter helps, consistently.** Every base is better with
-  `min_train_rows=5000` than without: PD v3 −0.0019 vs −0.0090, LGD v2.6 −0.0108 vs
-  −0.0167, LGD v3 −0.0075 vs −0.0083; on the 2 000-row monitor TabICLv2's LGD degradation
-  goes from +0.0122 to −0.0001. **Caveat: on LGD the filtered arm also trained for fewer
-  steps**, so part of "less damage" may be "less training". Run-9 removes that confound.
-- **Eval concurrency collapsed to 0.20** despite the packing working exactly as designed
-  (median task 94 s → 28 min). The `gpu_a100` half never started. See `AGENTS_MEMORY.md`.
+  TabICLv2 got 9 600 steps at `min_train_rows=0` and only **4 800** at 5 000; v3 19 200 vs
+  14 400. The LGD corpus experiment is therefore **confounded with the training budget**.
+- **PD: 20 wins out of 75 paired comparisons, mean Δ mAUC −0.0013.** Aggregated to the
+  independent unit (5 test datasets) the mean is −0.0013 with **p = 0.78 — no detectable
+  effect**, in either direction. Best single cell +0.0340 (TabICLv2); 3/5 datasets have *some*
+  configuration that helps, which is the winner's curse, not a result.
+- **LGD: 0 wins out of 32**, mean Δ RMSE −0.0041, best cell −0.0000. Not one configuration on
+  either dataset improved on its own base. p = 0.105 at n = 2, so underpowered — but 0/32 is
+  itself the signal.
+- **The corpus filter helps on both tracks.** PD −0.0008 (min 5000) vs −0.0019 (no filter);
+  LGD −0.0032 vs −0.0049. **Caveat: on LGD the filtered arm also trained for fewer steps**, so
+  part of "less damage" may be "less training". Run-9's raised epoch cap removes that confound.
+- **Zero-shot beats tuned GBMs.** Untuned v3 beats the best of three Optuna-tuned GBMs
+  (50 trials each) on **4/5 PD datasets** (mean mAUC 0.7622 vs 0.7520, +0.0101) and **2/2 LGD**
+  (RMSE 0.1326 vs 0.1408, −0.0082). All three foundation models beat the GBMs on LGD. Neither
+  gap is significant at n = 5 / n = 2 (p = 0.24 / 0.44).
+- **Calibration barely moves.** Paired ΔECE: v3 −0.0018, v2.6 +0.0011, TabICLv2 −0.0084. The
+  TabICLv2 number is −27 % relative but comes almost entirely from one dataset (myhom, −0.0506)
+  and is not significant (p = 0.48). No forgetting catastrophe, and no calibration win either.
+- **The B200 eval drained in 21 min of wall-clock** once it started (16 tasks, peak 12
+  concurrent) against 17.9 h for 8 tasks on wICE. The partition change is validated.
 
 ### Reading it
 
-The three runs now line up into one story. Gains scale **inversely** with how good the base
-already is (run-7), and **negatively** with how much you train (run-8): v3 at 9 100 steps
-≈ 0, at 20 000 steps −0.005. That is not a recipe problem — the recipe is Garg's, executed
-exactly — it is a **corpus** problem. Garg used 71 real tables of 10k–100k rows; we have 12,
-of which 3 are under 2 200 rows. The filter arm pointing the same way on every base is the
-same signal from the other direction.
+**The honest headline is a null, not a harm.** With the full grid, continued pretraining on this
+corpus does nothing measurable to PD and consistently mild damage to LGD. The run-7 → run-8
+"more steps is worse" story does **not** survive completion of the eval: the −0.005 was an
+artifact of scoring only the partition that happened to hold the worse models.
+
+What does survive, and is now measured on a complete grid at Garg's exact recipe: **an
+untuned tabular foundation model already beats tuned GBMs on real credit-risk data, and 20 000
+steps of in-domain continued pretraining on 12 tables adds nothing to it.** Garg used 71 real
+tables of 10k–100k rows; we have 12, of which 3 are under 2 200. The filter arm helping on both
+tracks points the same way from the other direction. The binding constraint is the corpus, and
+with 5 PD / 2 LGD test datasets nothing here can reach significance — **n, not the recipe, is
+what the next run has to change.**
 
 ## Run-7 — 10/11-08-2026 — training clean, eval incomplete, LGD undertrained
 

@@ -362,10 +362,14 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
     ax.set_xlabel(prop.replace("_", " "))
     ax.set_ylabel(f"Δ {metric}")
     ax.legend(loc="best", fontsize=7)
-    if len(d) >= 4:
+    # A correlation needs both axes to vary. With one test dataset per property value —
+    # or a manifest column that is constant across the scored datasets — `spearmanr`
+    # returns NaN and warns; annotating "ρ = nan" is worse than annotating nothing.
+    if len(d) >= 4 and d[prop].nunique() > 1 and d["delta"].nunique() > 1:
         from scipy.stats import spearmanr
         rho, p = spearmanr(d[prop], d["delta"])
-        style.note(ax, f"Spearman ρ = {rho:+.2f} (p = {p:.2f}, n = {len(d)})")
+        if np.isfinite(rho):
+            style.note(ax, f"Spearman ρ = {rho:+.2f} (p = {p:.2f}, n = {len(d)})")
     return fig
 
 

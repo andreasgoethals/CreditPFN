@@ -56,11 +56,11 @@ python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')"
 
 ### 1.3 Upload the datasets
 
-Raw CSVs go to **project storage**, not `$VSC_DATA`. From your laptop:
+Raw CSVs go to **project storage**, not `$VSC_DATA`. From your laptop, in PowerShell, at the
+repository root:
 
-```bash
-rsync -ah --info=progress2 data/raw/ \
-  vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/data/raw/
+```powershell
+scp -r data\raw\pd data\raw\lgd vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/data/raw/
 ```
 
 Layout the pipeline expects: `data/raw/pd/<id>.csv` and `data/raw/lgd/<id>.csv`.
@@ -88,7 +88,7 @@ PY
 ```
 
 TabPFN's v2.6 / v3 base weights go in the same directory — upload them with the same
-`rsync` as §1.3 if you already have them locally.
+`scp` as §1.3 if you already have them locally.
 
 ---
 
@@ -143,22 +143,41 @@ A finished run is spread across both storage tiers, and the half you most want t
 the half you cannot browse. Pull it down **from your laptop**, into the repository, where
 the notebooks already look for it.
 
-### 3.1 The three things worth downloading
+### 3.1 Download everything — one command
+
+Three trees matter, spread across both tiers:
 
 | From | To (in your local checkout) | What it is | Size |
 |---|---|---|---|
-| `$VSC_DATA/CreditPFN/output/manifests/` | `output/manifests/` | one row per trial, per-epoch CSVs, the resolved configs | a few MB |
 | `$VSC_DATA/CreditPFN/output/logs/` | `output/logs/` | one `.log` per task — the only record of what happened | tens of MB |
+| `$VSC_DATA/CreditPFN/output/manifests/` | `output/manifests/` | one row per trial, per-epoch CSVs, the resolved configs | a few MB |
 | `/lustre1/.../CreditPFN/output/results/` | `output/results/` | per-fold scores, one CSV per model × dataset | tens of MB |
 
-```bash
-VSC=vsc38338@login.hpc.kuleuven.be
-DATA=/data/leuven/383/vsc38338/CreditPFN
-STAGE=/lustre1/project/stg_00211/CreditPFN
+**Run this from the repository root in PowerShell.** It pulls all three, from both tiers, in
+one SSH connection — so one authentication prompt, not three:
 
-rsync -ah --info=progress2 "$VSC:$DATA/output/manifests/" output/manifests/
-rsync -ah --info=progress2 "$VSC:$DATA/output/logs/"      output/logs/
-rsync -ah --info=progress2 "$VSC:$STAGE/output/results/"  output/results/
+```powershell
+cmd /c "ssh vsc38338@login.hpc.kuleuven.be ""tar czf - -C /data/leuven/383/vsc38338/CreditPFN output/logs output/manifests -C /lustre1/project/stg_00211/CreditPFN output/results"" | tar xzf - -C ."
+```
+
+Why it is wrapped in `cmd /c` rather than piped in PowerShell: a PowerShell 5.1 pipeline
+decodes bytes as text, which corrupts the gzip stream. Inside `cmd` the pipe is byte-clean.
+`tar` ships with Windows 11, and the remote `-C` switches make the archive paths land exactly
+as `output/logs`, `output/manifests` and `output/results` — so re-running it just refreshes
+in place.
+
+If the nested quoting fights you, three plain `scp` calls do the same job:
+
+```powershell
+scp -r vsc38338@login.hpc.kuleuven.be:/data/leuven/383/vsc38338/CreditPFN/output/logs output\
+```
+
+```powershell
+scp -r vsc38338@login.hpc.kuleuven.be:/data/leuven/383/vsc38338/CreditPFN/output/manifests output\
+```
+
+```powershell
+scp -r vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/output/results output\
 ```
 
 **Do not download `checkpoints/trained/`.** It is 5–8 GB per sweep and nothing local reads
@@ -167,25 +186,27 @@ if you intend to run inference with it.
 
 ### 3.2 Check what arrived
 
-```bash
-python -m src.utils.clean_run          # lists every local tree with file counts
+```powershell
+python -m src.utils.clean_run
 ```
 
-Then confirm the run is complete rather than half-transferred:
+That lists every local tree with file counts. Then confirm the run is complete rather than
+half-transferred — a PowerShell here-string into `python -`, since PowerShell has no heredoc:
 
-```bash
-python - <<'PY'
+```powershell
+@'
 import pandas as pd
 from src.utils.paths import manifests_dir, results_dir
 for track in ("pd", "lgd"):
     m = manifests_dir() / f"creditpfn_{track}.csv"
-    if m.is_file():
-        df = pd.read_csv(m)
-        print(f"{track}: {len(df)} trials", df["status"].value_counts().to_dict())
-        print(f"      steps {df['total_optimizer_steps'].min()}–{df['total_optimizer_steps'].max()}"
-              f", corpus {df['n_train_datasets'].iloc[0]} train / {df['n_test_datasets'].iloc[0]} test")
+    if not m.is_file():
+        print(f"{track}: MISSING {m.name}"); continue
+    df = pd.read_csv(m)
+    print(f"{track}: {len(df)} trials", df["status"].value_counts().to_dict())
+    print(f"      steps {df['total_optimizer_steps'].min()}-{df['total_optimizer_steps'].max()}"
+          f", corpus {df['n_train_datasets'].iloc[0]} train / {df['n_test_datasets'].iloc[0]} test")
 print("result CSVs:", sum(1 for _ in results_dir().rglob("*.csv")))
-PY
+'@ | python -
 ```
 
 A trial count below the grid size, or a `total_optimizer_steps` far under
@@ -194,7 +215,7 @@ number from it.
 
 ### 3.3 Turn it into figures
 
-```bash
+```powershell
 python -m src.utils.run_notebooks
 ```
 
@@ -236,7 +257,7 @@ designed; a run nobody recorded gets repeated.
 | **Project storage** | `/lustre1/project/stg_00211/CreditPFN/` | datasets, checkpoints, `output/results/` | large, backed up, **low inode budget** — few big files, not thousands of small ones |
 
 `$VSC_SCRATCH` is not used: it is purged after 30 days *without access*, and neither `mv`
-nor `rsync -a` counts as an access.
+nor `scp -p` counts as an access.
 
 ### Clusters
 

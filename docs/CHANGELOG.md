@@ -12,6 +12,24 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 17-08-2026
+
+- **Run-8's eval completed and recorded** — 105/105 PD + 44/44 LGD cells, 745/745 folds, zero
+  failures; the first complete evaluation in the project. `RESULTS.md` rewritten: on the full
+  grid PD is a **null** (mean Δ mAUC −0.0013, p = 0.78), not the −0.0048 damage the half-eval
+  showed. `AGENTS_MEMORY.md` run-8 row updated to **done**.
+- **Mindwell `gpu_b200` eval path validated:** the 16 remaining PD tasks drained in 21 min at
+  peak 12 concurrent, against 17.9 h for 8 tasks on wICE.
+- **`plot_regime_effect` no longer annotates `ρ = nan`** when the manifest property or the
+  deltas are constant across the scored datasets — `spearmanr` warned and printed nan.
+- **`VSC.md` laptop-side commands are PowerShell, not bash.** Every one of them was
+  unrunnable: `rsync` does not exist on Windows and §3.2 used a bash heredoc. Downloading is
+  now a single `cmd /c`-wrapped `ssh … tar | tar` that pulls all three trees from both storage
+  tiers in one connection. It is wrapped in `cmd` because a PowerShell 5.1 pipeline decodes
+  bytes as text and corrupts the gzip stream — measured, not assumed: the same archive
+  extracts 2/2 files through `cmd` and dies with "Unrecognized archive format" through
+  PowerShell's pipe.
+
 ## 13-08-2026
 
 - **Divergence detector no longer aborts on a flat loss alone.** It needs a flat loss AND
