@@ -274,17 +274,42 @@ def note(ax, text: str) -> None:
 #: Longest axes title that fits one line of an A4-width figure at `axes.titlesize`.
 MAX_TITLE = 52
 
+#: Characters per inch of figure width at `axes.titlesize`. Measured, not guessed: 52
+#: characters is the documented fit for the 6.30 in full width, so ~8.25 per inch.
+_TITLE_CHARS_PER_INCH = MAX_TITLE / WIDTH_FULL
+
 
 def title(ax, text: str) -> None:
-    """Set a SHORT axes title, wrapping rather than overrunning the figure.
+    """Set a SHORT axes title, wrapping to the width of THIS figure rather than overrunning.
 
     Figures in this project end up in a paper, where the caption below the figure carries
     the explanation — so the title is a label for browsing the PDF folder, not a sentence.
     A title longer than the figure is wide silently overlaps the y tick labels, which is
     where several collisions in the 12-08-2026 figure audit came from.
+
+    The budget is derived from the figure's OWN width. A fixed 52 characters is right only at
+    `WIDTH_FULL`: on a `WIDTH_HALF` panel it is twice the space available, which is how
+    "Calibration: trained vs its own base (ECE, lower is better)" came to be cut off mid-word
+    at the right edge of a 3.05 in figure. Wrapping is greedy over words and unlimited in
+    lines — a three-line title is ugly, but a clipped one loses information.
     """
-    t = str(text)
-    if len(t) > MAX_TITLE:
-        cut = t.rfind(" ", 0, MAX_TITLE)
-        t = (t[:cut] + "\n" + t[cut + 1:]) if cut > 20 else (t[:MAX_TITLE - 1] + "…")
-    ax.set_title(t)
+    t = " ".join(str(text).split())
+    fig = ax.get_figure()
+    budget = max(16, int(fig.get_size_inches()[0] * _TITLE_CHARS_PER_INCH))
+    if len(t) <= budget:
+        ax.set_title(t)
+        return
+
+    lines, cur = [], ""
+    for word in t.split(" "):
+        cand = f"{cur} {word}".strip()
+        if len(cand) <= budget or not cur:
+            cur = cand
+        else:
+            lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    # A trailing separator left dangling at a line end reads as a typo ("… (higher is better) ·").
+    lines = [ln.rstrip(" ·,;-") for ln in lines]
+    ax.set_title("\n".join(lines))

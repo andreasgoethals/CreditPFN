@@ -29,7 +29,8 @@ def test_a_pdf_and_only_a_pdf_is_written(isolated_output, fig) -> None:
     """PDF only: the paper uses it, and the notebook displays the figure inline instead of
     keeping a second raster copy on disk to go stale."""
     save = figures.FigureSaver("nb")
-    written = save(fig, "first figure", caption="A line from (0,0) to (1,1).")
+    save(fig, "first figure", caption="A line from (0,0) to (1,1).")
+    written = save.last_path
     assert written.suffix == ".pdf"
     assert written.is_file() and written.stat().st_size > 0
     assert not list(save.folder.glob("*.png"))
@@ -106,7 +107,8 @@ def test_a_figure_name_cannot_escape_the_folder(isolated_output, fig) -> None:
     invariant even if slugification is ever loosened.
     """
     save = figures.FigureSaver("nb")
-    pdf = save(fig, "../../escaped", caption="c")
+    save(fig, "../../escaped", caption="c")
+    pdf = save.last_path
     assert pdf.parent == save.folder
     assert ".." not in pdf.name
 
@@ -120,7 +122,8 @@ def test_the_write_guard_rejects_a_path_outside_the_folder(isolated_output) -> N
 
 def test_names_are_slugified_but_stay_readable(isolated_output, fig) -> None:
     save = figures.FigureSaver("nb")
-    pdf = save(fig, "Target Distribution (LGD)", caption="c")
+    save(fig, "Target Distribution (LGD)", caption="c")
+    pdf = save.last_path
     assert pdf.stem == "01_target_distribution__lgd"
 
 

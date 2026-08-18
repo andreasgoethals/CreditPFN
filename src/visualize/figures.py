@@ -27,7 +27,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from src.utils.paths import figures_dir
+from src.utils.paths import REPO_ROOT, figures_dir
 
 #: Vector already, but heatmaps and scatter clouds inside a PDF rasterise, so it still needs a
 #: print DPI.
@@ -109,14 +109,26 @@ class FigureSaver:
             clear(notebook)
         self.entries: list[dict] = [] if clear_first else read_manifest(notebook)
 
-    def __call__(self, fig: plt.Figure, name: str, caption: str = "", **kwargs) -> Path:
+    def __call__(self, fig: plt.Figure, name: str, caption: str = "", **kwargs) -> None:
         return self.save(fig, name, caption=caption, **kwargs)
 
-    def save(self, fig: plt.Figure, name: str, *, caption: str = "") -> Path:
+    @property
+    def last_path(self) -> Path | None:
+        """Where the most recent `save` wrote, for the rare caller that needs it."""
+        return self.folder / f"{self.entries[-1]['stem']}.pdf" if self.entries else None
+
+    def save(self, fig: plt.Figure, name: str, *, caption: str = "") -> None:
         """Write `<NN>_<name>.pdf` and record the caption.
 
         The figure is left open so it still displays in Jupyter — that inline render is the only
         raster copy there is, and the interactive run has to look the same as the runner's.
+
+        RETURNS NOTHING, deliberately. It used to return the `Path`, and since every notebook
+        cell here is a bare `sink.save(...)`, Jupyter echoed that return value as the cell's
+        result: an `Out[n]: WindowsPath('C:/Users/<name>/.../20_paper_zero_shot.pdf')` line
+        under all 22 figures. That is noise beside every figure, and — now that the executed
+        notebooks are saved with their outputs — it wrote an absolute path carrying the author's
+        username into a tracked file. Use `last_path` when a caller genuinely needs the path.
         """
         index = len(self.entries) + 1
         stem = f"{index:02d}_{_slug(name)}"
@@ -131,14 +143,21 @@ class FigureSaver:
         manifest_path(self.notebook).write_text(
             json.dumps(self.entries, indent=2), encoding="utf-8"
         )
-        return path
 
     def summary(self) -> str:
         """What was saved, for the notebook's final `print` — so `All_Results.md` says what the run
         drew, not only what it computed."""
         if not self.entries:
             return f"{self.notebook}: no figures saved."
-        lines = [f"{self.notebook}: {len(self.entries)} figures -> {self.folder}"]
+        # REPO-RELATIVE, never absolute. `All_Results.md` is tracked and shared, so an
+        # absolute path would publish the author's home directory and username — and would
+        # differ on every machine, so the file churned in the diff after each run (locally
+        # `C:\Users\<name>\...`, on the cluster `/data/leuven/383/<account>/...`).
+        try:
+            where = self.folder.resolve().relative_to(REPO_ROOT).as_posix()
+        except ValueError:
+            where = self.folder.name           # outside the repo (staging): name only
+        lines = [f"{self.notebook}: {len(self.entries)} figures -> {where}"]
         for e in self.entries:
             lines.append(f"  {e['index']:02d}  {e['name']}")
             if not e["caption"]:

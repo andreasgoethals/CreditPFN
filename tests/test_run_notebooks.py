@@ -37,6 +37,22 @@ def make_notebook(path, cells: list[str]) -> None:
     )
 
 
+_NB_TMP: dict = {}
+
+
+def _nb_dir_with(names: tuple[str, ...]):
+    """A throwaway notebooks/ holding one runnable one-cell notebook per name."""
+    import tempfile
+    from pathlib import Path
+    key = names
+    if key not in _NB_TMP:
+        d = Path(tempfile.mkdtemp())
+        for n in names:
+            make_notebook(d / f"{n}.ipynb", ["print('ran')"])
+        _NB_TMP[key] = d
+    return _NB_TMP[key]
+
+
 def test_discovery_is_alphabetical(tmp_path, monkeypatch) -> None:
     """Alphabetical order is also the order both summary documents use, so it has to be
     stable — and discovered rather than listed, because a hard-coded list stops covering a
@@ -209,3 +225,55 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     rn.write_all_results(("smoke",))
     assert "A line from (0,0) to (1,1)." in captions_path().read_text(encoding="utf-8")
     assert "SMOKE SUMMARY: 1 figure" in all_results_path().read_text(encoding="utf-8")
+
+
+def test_summaries_only_is_not_destructive(isolated_output) -> None:
+    """`--summaries-only` must rebuild `All_Results.md` in full, not gut it.
+
+    The captured stdout used to be deleted once folded into the document, so a rebuild found
+    nothing on disk and rewrote every block as "(no output captured)" — 490 lines to 53.
+    `output/All_Results.md` is a tracked file now, so that hollow version would be committed.
+    """
+    from src.utils.paths import figures_dir
+
+    folder = figures_dir("nb")
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / rn.STDOUT_FILE).write_text("## nb\nthe measured numbers\n", encoding="utf-8")
+
+    first = rn.write_all_results(("nb",)).read_text(encoding="utf-8")
+    assert "the measured numbers" in first
+
+    rn._cleanup(("nb",))                       # runs after every execution
+    second = rn.write_all_results(("nb",)).read_text(encoding="utf-8")
+    assert "the measured numbers" in second, "rebuild lost the captured summary"
+    assert "(no output captured)" not in second
+    assert first == second, "rebuilding from disk must be idempotent"
+
+
+def test_a_partial_run_does_not_narrow_the_shared_documents(isolated_output, monkeypatch) -> None:
+    """`--only` must not shrink CAPTIONS.md / All_Results.md to the notebooks it ran.
+
+    Both are single project-wide documents assembled from each notebook's `_figures.json` and
+    `_stdout.txt` on disk. `run_all` used to write them over the SUBSET it executed, so
+    `--only 2.0 2.1` cut CAPTIONS.md from 435 lines to 191 — deleting four notebooks' captions
+    from a file that is now tracked in git.
+    """
+    from src.utils.paths import figures_dir
+
+    for name in ("a_first", "b_second"):
+        folder = figures_dir(name)
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / "_figures.json").write_text(
+            json.dumps([{"index": 1, "stem": "01_x", "name": "x",
+                         "caption": f"Caption of {name}."}]), encoding="utf-8")
+        (folder / rn.STDOUT_FILE).write_text(f"SUMMARY OF {name}", encoding="utf-8")
+
+    monkeypatch.setattr(rn, "notebooks_dir", lambda: _nb_dir_with(("a_first", "b_second")))
+    # Run only ONE of the two; both must still appear in both documents.
+    rn.run_all(("a_first",), max_workers=1)
+
+    captions = rn.captions_path().read_text(encoding="utf-8")
+    results = rn.all_results_path().read_text(encoding="utf-8")
+    for name in ("a_first", "b_second"):
+        assert f"## {name}" in captions, f"{name} vanished from CAPTIONS.md"
+        assert f"SUMMARY OF {name}" in results, f"{name} vanished from All_Results.md"

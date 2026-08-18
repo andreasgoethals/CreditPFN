@@ -248,7 +248,15 @@ multirun/
 #   output/training/epochs/      — per-trial per-epoch CSVs
 #   output/results/              — eval-pipeline benchmark CSVs
 #   output/figures/<notebook>/   — notebook-generated PDFs
-/output/
+#
+# `/output/*` and NOT `/output/`: an excluded DIRECTORY is never descended into, so
+# `!/output/figures/CAPTIONS.md` under a bare `/output/` rule has no effect at all. Each
+# level of the path has to be opened before a file inside it can be re-included.
+/output/*
+!/output/All_Results.md
+!/output/figures/
+/output/figures/*
+!/output/figures/CAPTIONS.md
 
 # Legacy results/ directory (pre-output-paradigm). Keep ignored so an
 # old checkout containing leftover results/ files doesn't bleed into

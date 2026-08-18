@@ -181,14 +181,15 @@ def plot_paired_delta(df: pd.DataFrame, metric: str = "roc_auc"):
 
 
 def _base_key(base_short: str) -> str:
-    b = str(base_short).lower()
-    if "tabicl" in b:
-        return "tabicl"
-    if "v2.6" in b:
-        return "v2.6"
-    if "v3" in b:
-        return "v3"
-    return base_short
+    """Map a base tag or a method label onto a registered `style.COLORS` name.
+
+    Delegates to `eval_viz._method_series_name` so a method is the SAME colour in both
+    modules. It used to have its own three-way test, which knew nothing about the classical
+    baselines: `logreg` fell through to `style.color`'s crc32 fallback and came out orange in
+    the mean-rank figure while being grey in every `eval_viz` figure of the same notebook.
+    """
+    from src.visualize.eval_viz import _method_series_name
+    return _method_series_name(str(base_short))
 
 
 # --------------------------------------------------------------------------- #
@@ -218,7 +219,12 @@ def plot_gain_vs_base(df: pd.DataFrame, metric: str = "roc_auc"):
         xs = np.linspace(d["untuned"].min(), d["untuned"].max(), 50)
         ax.plot(xs, a + b * xs, color=style.COLORS["highlight"], linewidth=1.2, zorder=1)
         r = float(np.corrcoef(d["untuned"], d["delta"])[0, 1])
-        style.note(ax, f"slope {b:+.3f} · r = {r:+.2f} · n = {len(d)}")
+        # Report the number of DATASETS, not of points. The points come in one vertical
+        # cluster per dataset (every checkpoint shares that dataset's base score), so "n = 75"
+        # advertises 75 independent observations where there are 5 — and any reviewer checks
+        # this first. `r` is still over all points, which is what the drawn line fits.
+        n_ds = d["test_dataset_id"].nunique()
+        style.note(ax, f"slope {b:+.3f} · r = {r:+.2f} · {len(d)} pairs on {n_ds} datasets")
     ax.set_xlabel(f"untuned base {metric} on that dataset")
     ax.set_ylabel(f"Δ {metric}")
     ax.legend(loc="best", fontsize=7)
@@ -267,7 +273,16 @@ def plot_mean_rank(df: pd.DataFrame, metric: str = "roc_auc", *, label_map=None)
     if r.empty:
         return _empty("no dataset is scored by every method — cannot rank")
 
-    labels = [label_map(m) if label_map else m for m in r[_METHOD_COL]]
+    # Default to the frame's own display names. `load_eval_results` already computes
+    # `method_name` and every other figure uses it, so falling back to the raw directory
+    # name printed `tabpfn-trained__v3-default__lr3e-07__fullpass__min5000` down the y axis
+    # of the one figure a reader looks at first — and coloured it off-palette, because the
+    # colour key is derived from the label.
+    if label_map is None and _METHOD_COL in df.columns and "method_name" in df.columns:
+        lookup = dict(zip(df[_METHOD_COL], df["method_name"]))
+        labels = [lookup.get(m, m) for m in r[_METHOD_COL]]
+    else:
+        labels = [label_map(m) if label_map else m for m in r[_METHOD_COL]]
     r = r.assign(label=labels)
     shown, hidden = style.head_tail(list(r.itertuples()), style.MAX_BARS)
     h = max(2.0, 0.17 * len(shown) + 0.9)
@@ -302,7 +317,18 @@ def plot_calibration_shift(df: pd.DataFrame):
     """
     d = paired_deltas(df, "ece")
     if d.empty:
-        return _empty("no paired ECE cells")
+        # Distinguish "not applicable" from "went wrong". Expected calibration error is a
+        # classification quantity, so on the LGD track this panel can never be filled, and a
+        # bare "no paired ECE cells" reads as a broken figure rather than as a property of the
+        # task. The regression analogue is CRPS, which needs the predicted distribution and is
+        # not in the per-fold CSVs.
+        # The column EXISTS on both tracks — `EvalRow` carries every metric field — and is
+        # entirely NaN on the regression track. So test for a value, not for the column.
+        has_ece = (df is not None and "ece" in df.columns and df["ece"].notna().any())
+        if not has_ece:
+            return _empty("expected calibration error is defined for classification only —\n"
+                          "not applicable on a regression track")
+        return _empty("no paired trained/untuned cells carry an ECE value")
 
     fig, ax = _new("Calibration: trained vs its own base (ECE, lower is better)",
                    width=style.WIDTH_HALF, ratio=1.0)
@@ -357,19 +383,29 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
     # Log only when every value is positive. A manifest column that is missing or zero for
     # the matched datasets makes matplotlib raise "Data has no positive values", which
     # kills the whole notebook rather than degrading one panel.
-    if (d[prop] > 0).all():
+    # Log only when every value is positive AND the spread actually spans decades. Two
+    # dataset sizes 4 637 and 5 627 apart on a log axis produce a page of empty decade ticks
+    # around two touching clusters.
+    if (d[prop] > 0).all() and d[prop].max() / max(d[prop].min(), 1e-9) >= 10:
         ax.set_xscale("log")
     ax.set_xlabel(prop.replace("_", " "))
     ax.set_ylabel(f"Δ {metric}")
     ax.legend(loc="best", fontsize=7)
-    # A correlation needs both axes to vary. With one test dataset per property value —
-    # or a manifest column that is constant across the scored datasets — `spearmanr`
-    # returns NaN and warns; annotating "ρ = nan" is worse than annotating nothing.
-    if len(d) >= 4 and d[prop].nunique() > 1 and d["delta"].nunique() > 1:
+    # THE CORRELATION IS OVER DATASETS, NOT OVER POINTS. `prop` is a property of the dataset,
+    # so every checkpoint on a given dataset shares one x value: correlating the 32 raw pairs
+    # of a 2-dataset track yielded "Spearman rho = +0.39 (p = 0.03)" — a significant-looking
+    # result that says only "the second dataset scored slightly higher", with n = 2. Collapse
+    # to one point per dataset first, and refuse to report a coefficient below 4 of them,
+    # which is where a rank correlation stops meaning anything at all.
+    per_ds = d.groupby("test_dataset_id").agg(x=(prop, "first"), y=("delta", "mean"))
+    n_ds = len(per_ds)
+    if n_ds >= 4 and per_ds["x"].nunique() > 1 and per_ds["y"].nunique() > 1:
         from scipy.stats import spearmanr
-        rho, p = spearmanr(d[prop], d["delta"])
+        rho, p = spearmanr(per_ds["x"], per_ds["y"])
         if np.isfinite(rho):
-            style.note(ax, f"Spearman ρ = {rho:+.2f} (p = {p:.2f}, n = {len(d)})")
+            style.note(ax, f"Spearman ρ = {rho:+.2f} (p = {p:.2f}) over {n_ds} datasets")
+    else:
+        style.note(ax, f"{n_ds} datasets — too few for a correlation")
     return fig
 
 
@@ -487,4 +523,180 @@ def plot_forgetting(df: pd.DataFrame, metric: str = "roc_auc"):
     if len(d) >= 3:
         rho = float(pd.Series(d["untuned"]).corr(pd.Series(d["trained"]), method="spearman"))
         style.note(ax, f"Spearman ρ = {rho:.4f}")
+    return fig
+
+
+# --------------------------------------------------------------------------- #
+# 8. Zero-shot foundation model against tuned gradient boosting
+# --------------------------------------------------------------------------- #
+
+
+def zero_shot_vs_baseline(df: pd.DataFrame, metric: str = "roc_auc") -> pd.DataFrame:
+    """Per dataset: each untuned base against the BEST tuned classical baseline.
+
+    The comparison a credit-risk reader cares about most, and the one this project can make
+    most strongly — and it had no figure. `plot_baselines_vs_tabpfn` pools both groups into
+    two boxes, which mixes across datasets and so cannot answer "does it win on this table".
+    """
+    need = {"source", "base_short", "test_dataset_id", metric}
+    if df is None or df.empty or not need <= set(df.columns):
+        return pd.DataFrame()
+    d = _ok(df, metric)
+    if d.empty:
+        return pd.DataFrame()
+    cell = (d.groupby(["source", "base_short", "test_dataset_id"], dropna=False)[metric]
+             .mean().reset_index())
+    untuned = cell[cell["source"].str.endswith("-untuned", na=False)]
+    base = cell[cell["source"] == "baseline"]
+    if untuned.empty or base.empty:
+        return pd.DataFrame()
+    agg = "max" if higher_is_better(metric) else "min"
+    best = base.groupby("test_dataset_id")[metric].agg(agg)
+    rows = []
+    for r in untuned.itertuples():
+        if r.test_dataset_id not in best.index:
+            continue
+        ref = float(best.loc[r.test_dataset_id])
+        val = float(getattr(r, metric))
+        rows.append({"base_short": r.base_short, "test_dataset_id": r.test_dataset_id,
+                     "model": val, "baseline": ref,
+                     "delta": (val - ref) * _sign(metric)})
+    return pd.DataFrame(rows)
+
+
+def plot_zero_shot_vs_baseline(df: pd.DataFrame, metric: str = "roc_auc"):
+    """Untuned foundation model minus the best tuned baseline, per (base x dataset).
+
+    Grouped bars, one group per dataset, so the reader sees where the win comes from rather
+    than a mean a single easy table could carry. Above zero, a foundation model that was
+    never fitted to these data beat three Optuna-tuned baselines.
+    """
+    d = zero_shot_vs_baseline(df, metric)
+    if d.empty:
+        return _empty("need untuned foundation models and classical baselines")
+
+    bases = sorted(d["base_short"].unique())
+    datasets = sorted(d["test_dataset_id"].unique())
+    if style.too_many(len(datasets) * len(bases)):
+        # Too wide for a bar per pair: collapse to one distribution per base.
+        fig, ax = _new(f"Zero-shot vs best tuned baseline ({metric})")
+        ax.boxplot([d.loc[d["base_short"] == b, "delta"].values for b in bases],
+                   tick_labels=bases, showmeans=True)
+        ax.axhline(0, color=style.COLORS["reference"], linewidth=0.9)
+        ax.set_ylabel(f"Δ {metric} vs best baseline")
+        style.note(ax, f"{len(datasets)} datasets")
+        return fig
+
+    fig, ax = _new(f"Zero-shot vs best tuned baseline ({metric})", ratio=0.5)
+    width = 0.8 / len(bases)
+    x = np.arange(len(datasets))
+    for k, b in enumerate(bases):
+        sub = d[d["base_short"] == b].set_index("test_dataset_id").reindex(datasets)
+        ax.bar(x + k * width - 0.4 + width / 2, sub["delta"].values, width * 0.92,
+               color=style.color(_base_key(b)), label=b)
+    ax.axhline(0, color=style.COLORS["reference"], linewidth=0.9)
+    ax.set_xticks(x)
+    ax.set_xticklabels([s.split(".", 1)[-1] for s in datasets], rotation=30,
+                       ha="right", fontsize=7)
+    ax.set_ylabel(f"Δ {metric} vs best baseline")
+    # Symmetric about zero with headroom, so the bars read as signed deviations and the
+    # legend has somewhere to go. `loc="best"` put it straight on top of the tallest pair.
+    span = float(np.nanmax(np.abs(d["delta"]))) or 1.0
+    ax.set_ylim(-span * 1.25, span * 1.55)
+    ax.legend(loc="upper right", fontsize=7, ncol=len(bases), framealpha=0.9)
+    style.note(ax, f"{int((d['delta'] > 0).sum())}/{len(d)} pairs above zero")
+    return fig
+
+
+# --------------------------------------------------------------------------- #
+# 9. The corpus arm — run-8's swept axis
+# --------------------------------------------------------------------------- #
+
+
+def plot_corpus_arm(df: pd.DataFrame, metric: str = "roc_auc"):
+    """Paired Δ split by the `min_train_rows` corpus filter.
+
+    Garg's ablation reports that continued-pretraining gains scale with the SIZE of the
+    tables in the corpus, and that a corpus of tiny tables hurts. `min_train_rows` is this
+    project's test of that claim and the only axis of run-8 that moved the result, so it
+    deserves a figure rather than a suffix on a leaderboard row.
+    """
+    d = paired_deltas(df, metric)
+    if d.empty or _METHOD_COL not in d.columns:
+        return _empty("no paired trained/untuned cells")
+    d = d.copy()
+    d["arm"] = np.where(d[_METHOD_COL].str.contains("min5000", na=False),
+                        "≥ 5 000 rows", "no filter")
+    if d["arm"].nunique() < 2:
+        return _empty("only one corpus arm present — nothing to compare")
+
+    fig, ax = _new(f"Effect of the corpus size filter ({metric}, paired)", ratio=0.5)
+    bases = sorted(d["base_short"].unique())
+    arms = ["no filter", "≥ 5 000 rows"]
+    width = 0.36
+    x = np.arange(len(bases))
+    for k, arm in enumerate(arms):
+        sel = [d[(d["base_short"] == b) & (d["arm"] == arm)]["delta"] for b in bases]
+        ax.bar(x + k * width - width / 2, [s.mean() for s in sel], width * 0.9,
+               yerr=[s.sem() for s in sel],
+               color=[style.color(_base_key(b)) for b in bases],
+               alpha=0.95 if k else 0.45, edgecolor="black", linewidth=0.4,
+               error_kw={"linewidth": 0.7, "ecolor": style.COLORS["annotation"]})
+    ax.axhline(0, color=style.COLORS["reference"], linewidth=0.9)
+    ax.set_xticks(x)
+    ax.set_xticklabels(bases)
+    ax.set_ylabel(f"mean Δ {metric}  (trained − untuned)")
+    # Two arms of the same colour differ only in alpha, so the legend has to be built by
+    # hand rather than from the bar labels.
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(facecolor="grey", alpha=0.45, edgecolor="black", label=arms[0]),
+                       Patch(facecolor="grey", alpha=0.95, edgecolor="black", label=arms[1])],
+              loc="best", fontsize=7, title="training corpus", title_fontsize=7)
+    style.note(ax, "error bars: standard error over (checkpoint, dataset) pairs")
+    return fig
+
+
+# --------------------------------------------------------------------------- #
+# 10. The result as an effect size with a confidence interval
+# --------------------------------------------------------------------------- #
+
+
+def plot_effect_ci(df: pd.DataFrame, metric: str = "roc_auc"):
+    """Mean paired Δ per base with a 95 % CI over DATASETS, the independent unit.
+
+    When the finding is a null, the confidence interval IS the result: "the effect is
+    smaller than X" is a claim, "we measured -0.0013" is not. Aggregating to one value per
+    dataset first is what makes the interval honest — run-8's 75 (checkpoint, dataset) pairs
+    are 5 independent observations, not 75.
+    """
+    d = paired_deltas(df, metric)
+    if d.empty:
+        return _empty("no paired trained/untuned cells")
+    from scipy import stats
+
+    rows = []
+    for base in sorted(d["base_short"].unique()) + ["all bases"]:
+        sub = d if base == "all bases" else d[d["base_short"] == base]
+        per_ds = sub.groupby("test_dataset_id")["delta"].mean()
+        n = len(per_ds)
+        half = (float(stats.t.ppf(0.975, n - 1) * per_ds.std(ddof=1) / np.sqrt(n))
+                if n >= 2 else np.nan)
+        rows.append({"base": base, "mean": float(per_ds.mean()) if n else np.nan,
+                     "half": half, "n": n})
+    r = pd.DataFrame(rows)
+
+    fig, ax = _new(f"Effect of continued pretraining, 95 % CI ({metric})", ratio=0.42)
+    y = np.arange(len(r))[::-1]
+    ax.errorbar(r["mean"], y, xerr=r["half"], fmt="o", markersize=5,
+                color=style.COLORS["reference"], ecolor=style.COLORS["annotation"],
+                elinewidth=1.1, capsize=3, linestyle="none")
+    ax.axvline(0, color=style.COLORS["highlight"], linewidth=1.0, alpha=0.8)
+    ax.set_yticks(y)
+    ax.set_yticklabels([f"{t.base}  (n={t.n})" for t in r.itertuples()], fontsize=8)
+    ax.set_xlabel(f"mean Δ {metric}  (trained − untuned), 95 % CI over datasets")
+    ax.grid(axis="y", visible=False)
+    # `style.note` writes at the bottom-right INSIDE the axes, which is exactly where the
+    # last row's interval is drawn. Reserve a row's worth of space for it.
+    ax.set_ylim(-0.85, len(r) - 0.4)
+    style.note(ax, "CI crossing zero = no detectable effect")
     return fig

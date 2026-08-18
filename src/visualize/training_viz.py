@@ -552,6 +552,41 @@ def _base_series_name(base: str) -> str:
     return base
 
 
+def _progress(hist: pd.DataFrame) -> tuple[pd.Series, str]:
+    """The x axis for any CROSS-TRIAL curve: optimizer steps, falling back to epochs.
+
+    `RESULTS.md` states the rule this implements — "never compare bases on epochs" — and the
+    reason: steps per epoch is `sum(ceil(rows_i / cap))` over the training corpus, and the
+    row cap differs per base (v3 26 000, v2.6 11 000), so epoch 50 is 9 135 steps for v2.6
+    and 20 020 for v3. Overlaying curves against epoch silently stretches one base against
+    another; every overlay in this module used to do exactly that.
+
+    Per-trial figures keep epochs, where there is nothing to compare against.
+    """
+    if "optimizer_steps" in hist.columns and hist["optimizer_steps"].notna().any():
+        return hist["optimizer_steps"], "optimizer steps"
+    return hist["epoch"], "epoch"
+
+
+def compact_base(base_short: str) -> str:
+    """A base label short enough for a tick: `tabicl-classifier-v2-20260212` → `tabicl-v2`.
+
+    Axis labels are budgeted in inches, not characters. A 29-character tick label needs
+    ~1.6 in of the 6.3 in width, which is what made `plot_metric_heatmap` overflow the
+    default left margin and lose the start of every label. The task word is redundant on a
+    per-track figure (a PD figure has only classifiers) and the checkpoint date belongs in
+    `METHOD.md`, not on an axis. Matches the naming `eval_viz` uses, so the same checkpoint
+    reads the same in both notebooks.
+    """
+    s = str(base_short)
+    s = re.sub(r"-(classifier|regressor)", "", s)
+    s = re.sub(r"-(\d{8})$", "", s)
+    s = s.removesuffix("_default").removesuffix("-default")
+    s = re.sub(r"^(v\d+(?:\.\d+)?)-\1$", r"\1", s)      # v3-v3 → v3
+    s = re.sub(r"-(v\d+(?:\.\d+)?)-\1$", r"-\1", s)     # tabicl-v2-v2 → tabicl-v2
+    return s
+
+
 def plot_loss_overlay(track: str, *, only_ok: bool = True, cfg=None):
     """Overlay every trial's train-loss curve on one axes.
 
@@ -572,11 +607,22 @@ def plot_loss_overlay(track: str, *, only_ok: bool = True, cfg=None):
     fig, ax = _new_fig(f"All trials — train loss", figsize=style.figsize(style.WIDTH_FULL, ratio=0.545))
     palette = _palette_for_bases([t.base for t in parsed.values()])
     seen: set = set()
+    xlabel = "epoch"
+    xlabel = "epoch"
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
-        ax.plot(hist["epoch"], hist["train_loss"], **_style_for(trial, palette, seen))
-    ax.set_xlabel("epoch")
+        x, xlabel = _progress(hist)
+        ax.plot(x, hist["train_loss"], **_style_for(trial, palette, seen))
+    ax.set_xlabel(xlabel)
     ax.set_ylabel("train loss")
+    # TabICLv2 starts near 1.5 and TabPFN near 0.48, so a linear axis compresses every
+    # TabPFN curve into a flat band at the bottom where the differences between learning
+    # rates and corpus arms live. Log y separates them without hiding the descent.
+    lo = min(float(histories[n]["train_loss"].min()) for n in parsed)
+    hi = max(float(histories[n]["train_loss"].max()) for n in parsed)
+    if lo > 0 and hi / lo >= 2.0:
+        ax.set_yscale("log")
+        ax.set_ylabel("train loss  (log)")
     ax.legend(loc="best", fontsize=7)
     return fig
 
@@ -610,13 +656,15 @@ def plot_metric_overlay(
     )
     palette = _palette_for_bases([t.base for t in parsed.values()])
     seen: set = set()
+    xlabel = "epoch"
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
         col = f"{split}_metric"
         if col not in hist.columns:
             continue
-        ax.plot(hist["epoch"], hist[col], **_style_for(trial, palette, seen))
-    ax.set_xlabel("epoch")
+        x, xlabel = _progress(hist)
+        ax.plot(x, hist[col], **_style_for(trial, palette, seen))
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(f"{split} {metric_name}")
     ax.legend(loc="best", fontsize=7)
     return fig
@@ -642,15 +690,17 @@ def plot_overfitting_diagnostic(track: str, *, cfg=None):
     )
     palette = _palette_for_bases([t.base for t in parsed.values()])
     seen: set = set()
+    xlabel = "epoch"
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
         if "train_metric" not in hist.columns or "test_metric" not in hist.columns:
             continue
         gap = pd.to_numeric(hist["train_metric"], errors="coerce") - \
               pd.to_numeric(hist["test_metric"],  errors="coerce")
-        ax.plot(hist["epoch"], gap, **_style_for(trial, palette, seen))
+        x, xlabel = _progress(hist)
+        ax.plot(x, gap, **_style_for(trial, palette, seen))
     ax.axhline(0, color="black", linewidth=0.8, alpha=0.5)
-    ax.set_xlabel("epoch")
+    ax.set_xlabel(xlabel)
     ax.set_ylabel("train − test")
     ax.legend(loc="best", fontsize=7)
     return fig
@@ -793,11 +843,24 @@ def plot_metric_heatmap(
     direction = metric_direction(track)
     cmap = "viridis" if direction == "max" else "viridis_r"
 
+    # Height from CONTENT, not from a ratio expression. The old
+    # `max(4, 0.5 * n_bases) / 12` gave 4/12 for the three bases of run-8, i.e. a 2.1 in
+    # figure — and two side-by-side panels with rotated tick labels, a suptitle and a
+    # colourbar do not fit in 2.1 in, so constrained_layout gave up with "axes sizes
+    # collapsed to zero" and matplotlib drew an unreadable figure.
+    n_bases = int(overview["base_short"].nunique())
+    height = max(2.9, 0.34 * n_bases + 2.3)
+    # NOT sharey. The two panels index different sets of bases — run-8 ran the adapter arm on
+    # TabICLv2 only — so the right panel has 1 row where the left has 3. On a SHARED y axis
+    # the right panel's `set_yticks(range(1))` overwrote the left panel's ticks and its
+    # y limits, cropping two of the three bases out of view entirely and leaving one tick
+    # label for three rows. The figure was wrong, not merely ugly.
     fig, axes = plt.subplots(
-        1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=(max(4, 0.5 * overview["base_short"].nunique())) / (12)),
-        sharey=True,
+        1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=height / style.WIDTH_FULL),
     )
     fig.suptitle(f"{metric} heatmap")
+    vmin, vmax = float(overview[metric].min()), float(overview[metric].max())
+    images: list = []
     for ax, lora_flag in zip(axes, (False, True)):
         sub = overview[overview["use_lora"] == lora_flag]
         if sub.empty:
@@ -811,26 +874,30 @@ def plot_metric_heatmap(
             index="base_short", columns="learning_rate",
             values=metric, aggfunc="mean",
         ).sort_index()
-        im = ax.imshow(mat.values, aspect="auto", cmap=cmap)
+        # ONE colour scale for BOTH panels. Each `imshow` normalises to its own data by
+        # default, so the two panels of this side-by-side comparison were on different
+        # scales — the same colour meant a different score left and right, which is the one
+        # thing a paired comparison figure must not do.
+        im = ax.imshow(mat.values, aspect="auto", cmap=cmap, vmin=vmin, vmax=vmax)
+        images.append(im)
         ax.set_xticks(range(mat.shape[1]))
         ax.set_xticklabels([f"{c:.0e}" for c in mat.columns], rotation=30, ha="right")
         ax.set_yticks(range(mat.shape[0]))
-        ax.set_yticklabels(mat.index)
+        ax.set_yticklabels([compact_base(i) for i in mat.index], fontsize=8)
         ax.set_title(f"LoRA={lora_flag}")
+        cut = (np.nanpercentile(mat.values, 60) if direction == "max"
+               else np.nanpercentile(mat.values, 40))
         for i in range(mat.shape[0]):
             for j in range(mat.shape[1]):
                 v = mat.values[i, j]
                 if not np.isnan(v):
                     ax.text(j, i, f"{v:.3f}", ha="center", va="center",
-                            fontsize=7, color="white"
-                            if (np.isfinite(v) and v < (np.nanpercentile(mat.values, 60)
-                                                        if direction == "max"
-                                                        else np.nanpercentile(mat.values, 40)))
-                            else "black")
-        fig.colorbar(im, ax=ax, fraction=0.03)
-    # No tight_layout: style.py turns constrained_layout ON, and calling both makes
-    # matplotlib warn and discard one of them. constrained_layout fits the content
-    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
+                            fontsize=7, color="white" if v < cut else "black")
+    # ONE colourbar for the figure. Two of them, at `fraction=0.03` each, plus the 28-character
+    # base names on the y axis, left the two panels of a 6.3 in figure with no width at all —
+    # constrained_layout reported "axes sizes collapsed to zero" and drew nothing legible.
+    if images:
+        fig.colorbar(images[0], ax=list(axes), fraction=0.035, pad=0.02, label=metric)
     return fig
 
 
@@ -1015,6 +1082,7 @@ def plot_weight_drift(track: str, *, only_ok: bool = True, cfg=None):
     fig, ax = _new_fig(f"Weight drift from the base checkpoint")
     palette = _palette_for_bases([t.base for t in parsed.values()])
     seen: set = set()
+    xlabel = "epoch"
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr)):
         hist = histories[name]
         cols = [c for c in drift_cols if c in hist.columns]
@@ -1023,8 +1091,9 @@ def plot_weight_drift(track: str, *, only_ok: bool = True, cfg=None):
         # Max over stages: the loosest part of the model is what "did it move?" hangs on.
         series = hist[cols].max(axis=1)
         mask = series.notna()
-        ax.plot(hist.loc[mask, "epoch"], series[mask], **_style_for(trial, palette, seen))
-    ax.set_xlabel("epoch")
+        x, xlabel = _progress(hist)
+        ax.plot(x[mask], series[mask], **_style_for(trial, palette, seen))
+    ax.set_xlabel(xlabel)
     ax.set_ylabel(r"$\|w - w_0\|$  (max over stages)")
     # Drift spans orders of magnitude across learning rates, so log is the readable
     # scale — but a run where nothing moved is all zeros, and log would raise.

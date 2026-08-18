@@ -20,6 +20,97 @@ day is never rewritten.
   showed. `AGENTS_MEMORY.md` run-8 row updated to **done**.
 - **Mindwell `gpu_b200` eval path validated:** the 16 remaining PD tasks drained in 21 min at
   peak 12 concurrent, against 17.9 h for 8 tasks on wICE.
+- **Every notebook's printed summary now has a titled banner and numbered sections**, and a
+  markdown `## Summary` heading above the cell that prints it. `All_Results.md` blocks opened
+  with a bare `## PD training` and no statement of what followed.
+- **The two data-exploration notebooks have real summaries** (`summaries.data_summary`). They
+  printed three lines — an anomaly count and a figure list — for a notebook whose whole subject
+  is the corpus. Now 7-8 sections: corpus shape, the **size bands** continued-pretraining gains
+  scale on (13/25 datasets clear 10k rows; Garg's corpus was 71 tables all 10k-100k), per-track
+  target statistics, missingness or what sanitisation changed, feature types, provenance, and
+  the anomaly screen.
+- **Training and eval summaries expanded** with what the manifest already recorded and nothing
+  reported: the training corpus and its per-arm size, the grid actually run, in-loop movement
+  from baseline to final on the monitor split (with the standing caveat that it disagrees with
+  the held-out result), recipe constants and the code/library pins; and for the eval, the best
+  method per dataset, fold stability, and an explicit failures section.
+  `All_Results.md` 387 -> 620 lines.
+- **`run_notebooks` now executes the notebooks IN A KERNEL and saves them with their outputs.**
+  It flattened each notebook to a script, so it produced fresh PDFs but never touched the
+  `.ipynb` — opening a notebook showed whatever the last *interactive* Run All had stored.
+  That is why a rerun looked like nothing had changed: 22 current PDFs sat beside 20 stale
+  inline images and stub panels reading "the eval needs both arms", captured back when
+  `output/results/` was still empty locally. `--script-mode` keeps the old path for the
+  cluster, where no kernel is wanted and the `.ipynb` should not churn.
+- **`FigureSaver.save` returns nothing.** Every notebook cell is a bare `sink.save(...)`, so
+  Jupyter echoed the returned `Path` as `Out[n]: WindowsPath('C:/Users/<name>/.../20_paper_…')`
+  under all 22 figures — the numbers appearing "in front of" each figure. Use `last_path` if a
+  caller needs it. It also kept an absolute path with the author's username out of a tracked
+  notebook.
+- **A partial run no longer narrows the shared documents.** `run_all` wrote `CAPTIONS.md` and
+  `All_Results.md` over the subset it executed, so `--only 2.0 2.1` cut CAPTIONS.md from 435
+  lines to 191 — silently deleting four notebooks' captions from a tracked file. Both documents
+  are now always assembled over every discovered notebook. Pinned by
+  `tests/test_run_notebooks.py::test_a_partial_run_does_not_narrow_the_shared_documents`.
+- **The LGD calibration panel says why it is empty.** "no paired ECE cells" read as a broken
+  figure; expected calibration error is a classification quantity and the column is all-NaN on
+  a regression track, which the panel now states.
+- **`output/All_Results.md` and `output/figures/CAPTIONS.md` are tracked now**, so the run's
+  numbers and the manuscript captions are readable on GitHub. Everything else under `output/`
+  stays ignored. Needed `/output/*` rather than `/output/`: git never descends into an excluded
+  directory, so a negation for a file inside a bare `/output/` rule has no effect.
+- **Two things had to be fixed before those files could be shared.** `FigureSaver.summary`
+  printed an ABSOLUTE path, publishing the author's home directory and username and churning
+  the diff on every machine — now repo-relative. And `--summaries-only` was **destructive**: the
+  captured stdout was deleted once folded into `All_Results.md`, so rebuilding it wrote
+  "(no output captured)" for every notebook, cutting 490 lines to 53. The capture is kept now,
+  exactly like `_figures.json` and for the same stated reason. Pinned by
+  `tests/test_run_notebooks.py::test_summaries_only_is_not_destructive`.
+- **The corpus arm was missing from every eval figure's method label.** `min_train_rows` was
+  decoded from the results dirname but never copied onto the frame, so `human_method_name`
+  could not see it: the filtered and unfiltered runs of each (base, lr) pair shared one label
+  and **21 PD methods rendered as 14 rows**, silently averaging the two arms of the comparison
+  run-8 exists to make. Constant tags (`·fullpass` when every trial has it) are now stripped
+  instead, which shortens the labels rather than lengthening them.
+- **`plot_metric_heatmap` cropped two of its three bases out of view.** `sharey=True` across
+  panels that index different base sets — the adapter arm is TabICLv2-only — let the right
+  panel's `set_yticks(range(1))` overwrite the shared axis, so the left panel showed one row of
+  three and constrained_layout gave up ("axes sizes collapsed to zero"). The two panels also had
+  independent colour scales, so the same colour meant different scores left and right.
+- **Misleading p-values removed.** `plot_regime_effect` correlated 32 (checkpoint, dataset)
+  pairs sharing 2 distinct x values and reported "Spearman ρ = +0.39, p = 0.03" for a 2-dataset
+  track; it now aggregates to one point per dataset and refuses to report below 4 of them.
+  `plot_gain_vs_base` said "n = 75" where there are 5 independent datasets.
+- **Leaderboard reads as data.** Bars started at 0, so all 21 ROC-AUC bars looked identical
+  against a real spread of 0.70-0.76; the axis now starts at the data (floored at 0.5 = chance)
+  and the error bars are the standard error rather than a standard deviation dominated by
+  dataset difficulty.
+- **Per-method boxplots are horizontal** and sized one row per method. Measured 86, 92 and 80
+  overlapping tick-label pairs on the three of them; now 0. Their old height formula *shrank*
+  as methods were added.
+- **Per-dataset heatmap colours the gap to the best method on each dataset**, not the raw score
+  — every column used to be one flat colour reporting only which dataset is hard.
+- **Win-rate matrix drops its cell numbers above 12 methods**, where "100" in adjacent cells ran
+  together into `10010010080`.
+- **Cross-trial training overlays use optimizer steps, not epochs**, which is the project's own
+  documented rule (`RESULTS.md`): steps per epoch depends on the per-base row cap, so epoch 50
+  is 9 135 steps for v2.6 and 20 020 for v3. Train-loss overlay goes log when the bases span a
+  factor of two, which they do.
+- **`style.title` wraps to the figure's own width** — a fixed 52 characters clipped titles
+  mid-word on every `WIDTH_HALF` panel — and no longer leaves a dangling `·` at a line end.
+- **One colour per method across modules.** `paper_figures` had its own three-way base test that
+  knew nothing about the classical baselines, so `logreg` was orange there and grey in
+  `eval_viz`; it now delegates to `eval_viz._method_series_name`.
+- **Three new paper figures**, each with a manuscript caption: `plot_zero_shot_vs_baseline`
+  (untuned model vs the best Optuna-tuned baseline, paired per dataset — the project's strongest
+  result had no figure at all), `plot_corpus_arm`, and `plot_effect_ci` (mean effect with a 95 %
+  CI over datasets: when the finding is a null, the interval *is* the result).
+- **New `src/visualize/summaries.py`.** Every notebook's closing summary now restates the
+  headline of every figure — coverage, leaderboard, zero-shot comparison, paired effect with CI
+  and p-value, corpus arm, calibration, ranks, regime — so `All_Results.md` is quotable without
+  opening a PDF. It also flags automatically when a swept axis received unequal step budgets,
+  which is the confound that had to be found by hand in run-8's LGD track.
+- `plot_mean_rank` labelled its y axis with raw result-directory names.
 - **`plot_regime_effect` no longer annotates `ρ = nan`** when the manifest property or the
   deltas are constant across the scored datasets — `spearmanr` warned and printed nan.
 - **`run_notebooks --only` now matches by substring**, which is what its own docstring always

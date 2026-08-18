@@ -1,6 +1,8 @@
 """Run every notebook in parallel, then rebuild the two summary documents.
 
-    python -m src.utils.run_notebooks                     every notebook in notebooks/
+    python -m src.utils.run_notebooks                     every notebook, outputs written
+                                                          back into the .ipynb
+    python -m src.utils.run_notebooks --script-mode        PDFs only, notebooks untouched
     python -m src.utils.run_notebooks --only exploration  substring match on the stem
     python -m src.utils.run_notebooks --only 2.0 2.1      several, e.g. both result notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
@@ -13,9 +15,13 @@ SEPARATE PROCESSES, NOT THREADS: matplotlib's figure registry is global, so two 
 one interpreter would capture each other's figures — silently, giving plausible figures
 attributed to the wrong notebook.
 
-A FLATTENED SCRIPT, NOT A JUPYTER KERNEL: nothing extra to install, identical on the cluster,
-and a traceback points at a line number instead of a cell index. Magics are stripped, which is
-deliberate — a notebook needing one cannot be executed non-interactively at all.
+TWO EXECUTION PATHS. By default each notebook runs IN A KERNEL and is saved with its outputs,
+so opening it shows the run that just happened. `--script-mode` flattens it to a plain script
+instead: nothing extra to install, identical on the cluster, tracebacks point at a line number
+rather than a cell index, and the .ipynb is left untouched — but then the notebook's stored
+outputs are whatever the last interactive session left, which is a trap when the PDFs beside
+them are fresh. Magics are stripped in that path, which is deliberate: a notebook needing one
+cannot be executed non-interactively at all.
 
 THE RUNNER DOES NOT SAVE FIGURES; each notebook does, through `FigureSaver`, so an interactive
 *Run All* produces exactly the same PDFs. The runner adds parallelism and the two documents.
@@ -154,6 +160,88 @@ def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
     return NotebookResult(name, True, time.time() - started, n_figs)
 
 
+
+def _use_selector_event_loop() -> None:
+    """Windows only: pick the event loop pyzmq actually needs, before a kernel starts.
+
+    Python defaults to `ProactorEventLoop` on Windows, which has no `add_reader`. pyzmq needs
+    it to talk to the kernel, so `jupyter_client` registers an extra tornado selector thread
+    and emits a four-line `RuntimeWarning` per kernel — 4 workers, 4 copies, on every run.
+    Harmless, and the warning names this exact fix.
+
+    Silencing it matters only because a run that always prints warnings is a run whose
+    warnings nobody reads. Set inside the worker process, so it cannot affect anything else;
+    guarded by `getattr` because asyncio's policy API is on its way out.
+    """
+    if sys.platform != "win32":
+        return
+    import asyncio
+    policy = getattr(asyncio, "WindowsSelectorEventLoopPolicy", None)
+    if policy is None:
+        return
+    try:
+        asyncio.set_event_loop_policy(policy())
+    except Exception:                          # pragma: no cover — never worth failing a run
+        pass
+
+
+def run_one_in_place(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
+    """Execute one notebook IN A KERNEL and save it with its outputs.
+
+    This is what makes opening the notebook show the current run. The flattened-script path
+    (`run_one`) produces identical PDFs but cannot write outputs back, so the notebook's own
+    inline figures stayed frozen at whatever the last interactive session left there — which
+    is how 22 fresh PDFs came to sit beside 20 stale images and four stub panels reading
+    "the eval needs both arms".
+
+    `nbclient` ships with the `[notebooks]` extra. If it is missing we fall back to the
+    script path rather than failing, because the cluster only needs the PDFs.
+    """
+    started = time.time()
+    nb_path = notebooks_dir() / f"{name}.ipynb"
+    if not nb_path.is_file():
+        return NotebookResult(name, False, 0.0, 0, f"{nb_path} not found")
+    try:
+        import nbformat
+        from nbclient import NotebookClient
+        from nbclient.exceptions import CellExecutionError
+    except ImportError:
+        return run_one(name, timeout=timeout)
+
+    _use_selector_event_loop()
+
+    out_dir = figures_dir(name)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    nb = nbformat.read(nb_path, as_version=4)
+    client = NotebookClient(
+        nb, timeout=timeout, kernel_name="python3",
+        resources={"metadata": {"path": str(REPO_ROOT)}},   # so `from src...` resolves
+        allow_errors=False,
+    )
+    error = ""
+    try:
+        client.execute()
+    except CellExecutionError as exc:
+        error = "\n".join(str(exc).strip().splitlines()[-12:])
+    except Exception as exc:                                  # kernel died, timeout, ...
+        error = f"{type(exc).__name__}: {exc}"
+
+    # Save whatever ran, even on failure: a notebook that dies at cell 30 should still show
+    # the 29 cells that worked, and the traceback is then visible where it happened.
+    nbformat.write(nb, nb_path)
+
+    # `All_Results.md` reads the captured stdout from disk. In a kernel the prelude that
+    # writes that file never runs, so reconstruct it from the executed cells' stream output.
+    text = "".join(
+        "".join(o.get("text", "")) for cell in nb.cells if cell.get("cell_type") == "code"
+        for o in cell.get("outputs", []) if o.get("output_type") == "stream"
+    )
+    (out_dir / STDOUT_FILE).write_text(text, encoding="utf-8")
+
+    n_figs = len(list(out_dir.glob("*.pdf")))
+    return NotebookResult(name, not error, time.time() - started, n_figs, error)
+
 # ---------------------------------------------------------------------------
 # The two summary documents
 # ---------------------------------------------------------------------------
@@ -233,9 +321,19 @@ def write_all_results(notebooks: tuple[str, ...]) -> Path:
 
 
 def _cleanup(notebooks: tuple[str, ...]) -> None:
-    """Drop the captured-stdout scratch files once folded into `All_Results.md`."""
-    for name in notebooks:
-        (figures_dir(name) / STDOUT_FILE).unlink(missing_ok=True)
+    """Nothing to clean any more — kept so the call site reads the same.
+
+    `_stdout.txt` used to be deleted here, once folded into `All_Results.md`. That made
+    `--summaries-only` destructive: with no stdout on disk it rewrote every block as
+    "(no output captured)", turning a 490-line document into 53 lines. Now that
+    `All_Results.md` is a tracked file, that would be committed.
+
+    So the capture is KEPT, exactly like `_figures.json` beside it, and for the same stated
+    reason: both summary documents must be rebuildable from disk without re-executing
+    anything. `figures._OWNED` already lists `_stdout.txt`, so each notebook's own folder is
+    still cleared before it draws — the file never accumulates or goes stale.
+    """
+    return
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +344,7 @@ def _cleanup(notebooks: tuple[str, ...]) -> None:
 def run_all(
     notebooks: tuple[str, ...] | None = None,
     max_workers: int | None = None,
+    in_place: bool = True,
     timeout: int = DEFAULT_TIMEOUT,
 ) -> list[NotebookResult]:
     """Run every notebook in parallel, then rebuild both summary documents.
@@ -261,14 +360,21 @@ def run_all(
     workers = max_workers or min(len(names), 4)
 
     results: list[NotebookResult] = []
+    worker = run_one_in_place if in_place else run_one
     with ProcessPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(run_one, name, timeout): name for name in names}
+        futures = {pool.submit(worker, name, timeout): name for name in names}
         for fut in as_completed(futures):
             results.append(fut.result())
 
-    write_captions(names)
-    write_all_results(names)
-    _cleanup(names)
+    # ALWAYS over every notebook, never only the ones just run. `CAPTIONS.md` and
+    # `All_Results.md` are single project-wide documents assembled from each notebook's
+    # `_figures.json` and `_stdout.txt` on disk, so a partial run must not narrow them:
+    # `--only 2.0 2.1` used to cut CAPTIONS.md from 435 lines to 191, deleting four
+    # notebooks' captions from what is now a tracked file.
+    everything = discover()
+    write_captions(everything)
+    write_all_results(everything)
+    _cleanup(everything)
     return sorted(results, key=lambda r: names.index(r.name))
 
 
@@ -310,6 +416,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--only", nargs="+", metavar="STEM", help="notebook stems to run")
     parser.add_argument("--workers", type=int, default=None, help="parallel processes")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="seconds per notebook")
+    parser.add_argument("--script-mode", action="store_true",
+                        help="execute as flattened scripts; do NOT update the notebooks "
+                             "(what the cluster wants — no kernel, no .ipynb churn)")
     parser.add_argument("--summaries-only", action="store_true",
                         help="rebuild both documents from disk, run nothing")
     args = parser.parse_args(argv)
@@ -326,13 +435,17 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.summaries_only:
+        # Same rule as `run_all`: the two documents cover every notebook, whatever --only said.
+        names = discover()
         print(f"Rebuilding summaries from disk for: {', '.join(names)}")
         print(f"  captions  -> {write_captions(names)}")
         print(f"  summaries -> {write_all_results(names)}")
         return 0
 
-    print(f"Running {len(names)} notebook(s): {', '.join(names)}")
-    results = run_all(names, max_workers=args.workers, timeout=args.timeout)
+    how = "as scripts (notebooks NOT updated)" if args.script_mode else "in place"
+    print(f"Running {len(names)} notebook(s) {how}: {', '.join(names)}")
+    results = run_all(names, max_workers=args.workers, timeout=args.timeout,
+                      in_place=not args.script_mode)
     print(summarise(results))
     return 0 if all(r.ok for r in results) else 1
 

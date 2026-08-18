@@ -42,6 +42,11 @@ from src.visualize import style
 
 LOGGER = logging.getLogger(__name__)
 
+#: Metrics whose floor is 0.5 rather than 0 — a coin flip already scores 0.5, so a bar chart
+#: that starts at 0 wastes half its width on unreachable space. Used only to pick an axis
+#: floor, never to alter a value.
+_CHANCE_AT_HALF = frozenset({"roc_auc", "auc", "accuracy", "balanced_accuracy"})
+
 _REPO = Path(__file__).resolve().parents[2]
 
 
@@ -152,9 +157,15 @@ def human_method_name(row: pd.Series) -> str:
         else:
             adapt = ""
         fp = " ·fullpass" if row.get("full_pass") else ""
+        # The corpus arm MUST appear: without it the filtered and unfiltered runs of the
+        # same (base, lr) share a label, and every figure that groups by this name averages
+        # them together. `·fullpass` is dropped when it is the only mode present, since a
+        # constant tag on every bar is noise — see `compact_method_names`.
+        mtr = row.get("min_train_rows", 0)
+        arm = f" ·min{int(mtr) // 1000}k" if mtr and np.isfinite(mtr) else ""
         if np.isfinite(lr):
-            return f"trained ({base}) lr={lr:.0e}{fp}{adapt}"
-        return f"trained ({base}){fp}{adapt}"
+            return f"trained ({base}) lr={lr:.0e}{fp}{adapt}{arm}"
+        return f"trained ({base}){fp}{adapt}{arm}"
     return f"{src}({base})"
 
 
@@ -204,6 +215,11 @@ def load_eval_results(track: str) -> pd.DataFrame:
         # averaged one_sample and full_pass rows of the same (base, lr)
         # into one point. Decoded explicitly since 2026-08-04.
         df["full_pass"] = meta["full_pass"]
+        # ``min_train_rows`` is the run-8 corpus arm. It was decoded but never copied onto
+        # the frame, so `human_method_name` could not see it and the two arms of every swept
+        # (base, lr) pair collapsed to ONE label — 21 PD models showed as 14 rows, silently
+        # averaging the corpus comparison that the run exists to make.
+        df["min_train_rows"] = meta["min_train_rows"]
         df["family"] = (
             "tabicl" if meta["source"].startswith("tabicl")
             else "tabpfn" if meta["source"].startswith("tabpfn")
@@ -218,7 +234,31 @@ def load_eval_results(track: str) -> pd.DataFrame:
 
     # Human-friendly method name (used as the legend label everywhere).
     full["method_name"] = full.apply(human_method_name, axis=1)
+    full["method_name"] = _drop_constant_tags(full["method_name"])
     return full
+
+
+#: Tags `human_method_name` can append. Any of them carried by EVERY trained method in the
+#: frame distinguishes nothing, so it is removed — it only makes the labels longer, and label
+#: width is what forces the y axis of a 21-method leaderboard off an A4 page.
+_DROPPABLE_TAGS = (" ·fullpass", " ·ICLhead", " ·LoRA")
+
+
+def _drop_constant_tags(names: pd.Series) -> pd.Series:
+    """Strip tags shared by every trained method — they carry no information.
+
+    Run-8 set `epoch_pass_mode=full_pass` for all 32 trials, so `·fullpass` appeared on all
+    16 trained labels and cost ~10 characters of y-axis width for nothing. A tag present on
+    only SOME methods is the whole point of the label and is kept.
+    """
+    trained = names[names.str.startswith("trained (")]
+    if trained.empty:
+        return names
+    out = names
+    for tag in _DROPPABLE_TAGS:
+        if trained.str.contains(tag, regex=False).all():
+            out = out.str.replace(tag, "", regex=False)
+    return out
 
 
 def available_methods(track: str) -> list[str]:
@@ -355,6 +395,18 @@ def _no_data_fig(reason: str = "no data"):
     return fig
 
 
+def _rows_figsize(n_rows: int) -> tuple[float, float]:
+    """Figure size for a chart with ONE ROW PER METHOD, sized from the row count.
+
+    `style.figsize` clamps to `MAX_HEIGHT`, so this cannot overflow the page; below that it
+    gives each row a constant 0.19 in, which is what keeps an 8 pt label legible. The three
+    boxplots here used to derive their height from `5.5 / (0.55 * n)` — a ratio that SHRINKS
+    as methods are added, exactly backwards.
+    """
+    return style.figsize(style.WIDTH_FULL,
+                         ratio=(0.19 * max(n_rows, 3) + 1.0) / style.WIDTH_FULL)
+
+
 def _palette_for_methods(methods: Sequence[str]) -> dict[str, str]:
     """One colour per method, from `src/visualize/style.py`.
 
@@ -394,11 +446,33 @@ def plot_leaderboard(track: str, *, metric: str | None = None):
     )
     palette = _palette_for_methods(agg["method_name"].tolist())
     colors = [palette[m] for m in agg["method_name"]]
-    ax.barh(agg["method_name"], agg["mean"], xerr=agg["std"].fillna(0),
+
+    # STANDARD ERROR, NOT STANDARD DEVIATION. `std` here is the spread across datasets, which
+    # is dominated by how hard each dataset is, not by the method: on run-8 it drew every bar
+    # with a +-0.13 whisker on a field whose entire method spread is 0.06, so the figure said
+    # "nothing differs" about data in which things do differ. The standard error of the mean
+    # is the quantity that answers "how well do we know this bar's height".
+    n = agg["count"] if "count" in agg.columns else pd.Series(np.nan, index=agg.index)
+    err = (agg["std"] / np.sqrt(n.where(n > 0))).fillna(0) if n.notna().any() \
+        else agg["std"].fillna(0)
+    ax.barh(agg["method_name"], agg["mean"], xerr=err,
             color=colors, alpha=0.85, error_kw=dict(ecolor="black", capsize=2, alpha=0.6))
     ax.invert_yaxis()
-    ax.set_xlabel(f"mean ± std  {metric}")
+
+    # START THE AXIS AT THE DATA, NOT AT ZERO. A bar chart of ROC-AUC from 0 spends 90 % of
+    # its width on the region no model can occupy, and all 21 bars look identical; the real
+    # spread here is 0.70-0.76. Bars still reach the axis floor, so nothing is exaggerated
+    # beyond the honest statement "these are the values, magnified".
+    lo, hi = float((agg["mean"] - err).min()), float((agg["mean"] + err).max())
+    pad = max((hi - lo) * 0.12, 1e-6)
+    floor = 0.5 if metric in _CHANCE_AT_HALF and direction == "max" else None
+    left = max(lo - pad, floor) if floor is not None else lo - pad
+    if left < hi:
+        ax.set_xlim(left, hi + pad)
+    ax.set_xlabel(f"mean ± s.e.  {metric}"
+                  + ("  (axis starts at 0.5 = chance)" if left == floor else ""))
     ax.tick_params(axis="y", labelsize=8)
+    style.note(ax, "error bars: standard error over datasets × folds")
     return fig
 
 
@@ -417,23 +491,26 @@ def plot_metric_boxplot(track: str, *, metric: str | None = None):
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
         f"{metric} by method",
-        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
+        figsize=_rows_figsize(len(order)),
     )
     data = [df.loc[df["method_name"] == m, metric].dropna().values for m in order]
+    # HORIZONTAL. Method names are 20-46 characters; on a vertical boxplot they become 21
+    # rotated x tick labels that overlap each other and eat half the figure height. The
+    # leaderboard already reads left-to-right, so this also makes the two figures comparable
+    # row for row.
     bp = ax.boxplot(
-        data, labels=order, showmeans=True, patch_artist=True,
+        data, tick_labels=order, showmeans=True, patch_artist=True, vert=False,
         meanprops=dict(marker="D", markerfacecolor="white",
-                       markeredgecolor="black", markersize=5),
+                       markeredgecolor="black", markersize=4),
         flierprops=dict(marker="x", markersize=3, alpha=0.4),
     )
     for patch, m in zip(bp["boxes"], order):
         patch.set_facecolor(palette[m])
         patch.set_alpha(0.75)
-    ax.set_ylabel(metric)
-    ax.tick_params(axis="x", labelrotation=35)
-    for lbl in ax.get_xticklabels():
-        lbl.set_horizontalalignment("right")
-        lbl.set_fontsize(8)
+    ax.set_xlabel(metric)
+    ax.invert_yaxis()                      # best at the top, as in the leaderboard
+    ax.tick_params(axis="y", labelsize=8)
+    ax.grid(axis="y", visible=False)
     return fig
 
 
@@ -457,25 +534,33 @@ def plot_per_dataset_heatmap(track: str, *, metric: str | None = None):
     fig, ax = plt.subplots(
         figsize=style.figsize(style.WIDTH_FULL, ratio=(max(5, 0.32 * pivot.shape[0])) / (max(8, 0.45 * pivot.shape[1]))),
     )
-    cmap = "viridis" if direction == "max" else "viridis_r"
-    im = ax.imshow(pivot.values, aspect="auto", cmap=cmap)
+    # COLOUR THE GAP TO THE BEST METHOD ON EACH DATASET, NOT THE RAW VALUE. Absolute scores
+    # are dominated by how hard the dataset is: on run-8 every column came out a single flat
+    # colour, so the heatmap reported "myhom is hard, credit_risk is easy" — which the reader
+    # already knows — and said nothing about the methods, which is what it is for. Per-column
+    # normalisation makes each column a within-dataset comparison; the annotation still
+    # carries the absolute number, so nothing is hidden.
+    best = pivot.max(axis=0) if direction == "max" else pivot.min(axis=0)
+    gap = (pivot - best) if direction == "max" else (best - pivot)   # <= 0, 0 = best
+    im = ax.imshow(gap.values, aspect="auto", cmap="viridis")
     ax.set_xticks(range(pivot.shape[1]))
     ax.set_xticklabels(pivot.columns, rotation=60, ha="right", fontsize=7)
     ax.set_yticks(range(pivot.shape[0]))
     ax.set_yticklabels(pivot.index, fontsize=8)
     style.thin_ticks(ax, 'y')
-    style.title(ax, f"{metric} per method × dataset")
-    for i in range(pivot.shape[0]):
-        for j in range(pivot.shape[1]):
-            v = pivot.values[i, j]
-            if np.isfinite(v):
-                ax.text(j, i, f"{v:.2f}", ha="center", va="center",
-                        fontsize=6, color="white"
-                        if (v < np.nanmedian(pivot.values)
-                            if direction == "max"
-                            else v > np.nanmedian(pivot.values))
-                        else "black")
-    fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02)
+    style.title(ax, f"{metric} per method × dataset (colour = gap to best on that dataset)")
+    # Annotate only while the cells are big enough to read at print size. Above that the
+    # colour is the message and 300 numbers at 5 pt are a grey texture.
+    if pivot.shape[0] * pivot.shape[1] <= 160:
+        mid = float(np.nanmedian(gap.values))
+        for i in range(pivot.shape[0]):
+            for j in range(pivot.shape[1]):
+                v, g = pivot.values[i, j], gap.values[i, j]
+                if np.isfinite(v):
+                    ax.text(j, i, f"{v:.3f}".lstrip("0"), ha="center", va="center",
+                            fontsize=7, color="white" if g < mid else "black")
+    cb = fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02)
+    cb.set_label(f"{metric} − best on dataset", fontsize=7)
     # No tight_layout: style.py turns constrained_layout ON, and calling both makes
     # matplotlib warn and discard one of them. constrained_layout fits the content
     # INSIDE the declared A4 width, which is the whole point of drawing at final size.
@@ -505,15 +590,20 @@ def plot_winrate_matrix(track: str, *, metric: str | None = None):
     ax.set_yticks(range(mat.shape[0]))
     ax.set_yticklabels(mat.index, fontsize=8)
     style.thin_ticks(ax, 'y')
-    style.title(ax, f"Pairwise win rate — {metric}, track={track}\n(row beats column, % of datasets)")
-    for i in range(mat.shape[0]):
-        for j in range(mat.shape[1]):
-            v = mat.values[i, j]
-            if np.isfinite(v):
-                ax.text(j, i, f"{v*100:.0f}",
-                        ha="center", va="center",
-                        fontsize=7,
-                        color="black" if 0.2 < v < 0.8 else "white")
+    style.title(ax, f"Pairwise win rate — {metric}, row beats column (% of datasets)")
+    # Annotate only while three digits fit in a cell. At 21x21 on an A4 width each cell is
+    # ~14 pt wide, and "100" in the neighbouring cells ran together into "10010010080" —
+    # strictly worse than no numbers, since the colour already carries the value.
+    n = mat.shape[0]
+    if n <= 12:
+        for i in range(n):
+            for j in range(mat.shape[1]):
+                v = mat.values[i, j]
+                if np.isfinite(v):
+                    ax.text(j, i, f"{v*100:.0f}", ha="center", va="center",
+                            fontsize=7, color="black" if 0.2 < v < 0.8 else "white")
+    else:
+        style.note(ax, f"{n} methods — cell values in the colour bar only")
     fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02, label="row wins  (%)")
     # No tight_layout: style.py turns constrained_layout ON, and calling both makes
     # matplotlib warn and discard one of them. constrained_layout fits the content
@@ -633,15 +723,18 @@ def plot_fold_stability(track: str, *, metric: str | None = None):
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
         f"Fold-level stability — std({metric}) per (method × dataset)",
-        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
+        figsize=_rows_figsize(len(order)),
     )
     data = [stds.loc[stds["method_name"] == m, metric].values for m in order]
-    bp = ax.boxplot(data, labels=order, patch_artist=True,
+    bp = ax.boxplot(data, tick_labels=order, patch_artist=True, vert=False,
                     flierprops=dict(marker="x", markersize=3, alpha=0.4))
     for patch, m in zip(bp["boxes"], order):
         patch.set_facecolor(palette[m])
         patch.set_alpha(0.75)
-    ax.set_ylabel(f"std({metric}) across folds")
+    ax.set_xlabel(f"std({metric}) across folds")
+    ax.invert_yaxis()
+    ax.tick_params(axis="y", labelsize=8)
+    ax.grid(axis="y", visible=False)
     ax.tick_params(axis="x", labelrotation=35)
     for lbl in ax.get_xticklabels():
         lbl.set_horizontalalignment("right")
@@ -728,10 +821,10 @@ def plot_threshold_distribution(track: str):
     palette = _palette_for_methods(order)
     fig, ax = _new_fig(
         "F1-tuned thresholds — per method (PD)",
-        figsize=style.figsize(style.WIDTH_FULL, ratio=(5.5) / (max(8, 0.55 * len(order)))),
+        figsize=_rows_figsize(len(order)),
     )
     data = [sub.loc[sub["method_name"] == m, "optimal_threshold"].values for m in order]
-    bp = ax.boxplot(data, labels=order, patch_artist=True,
+    bp = ax.boxplot(data, tick_labels=order, patch_artist=True, vert=False,
                     showmeans=True,
                     meanprops=dict(marker="D", markerfacecolor="white",
                                    markeredgecolor="black", markersize=4),
@@ -739,13 +832,12 @@ def plot_threshold_distribution(track: str):
     for patch, m in zip(bp["boxes"], order):
         patch.set_facecolor(palette[m])
         patch.set_alpha(0.75)
-    ax.axhline(0.5, color="black", linestyle="--", alpha=0.45, linewidth=0.8)
-    ax.set_ylabel("optimal threshold (max-F1 on val)")
-    ax.set_ylim(0, 1)
-    ax.tick_params(axis="x", labelrotation=35)
-    for lbl in ax.get_xticklabels():
-        lbl.set_horizontalalignment("right")
-        lbl.set_fontsize(8)
+    ax.axvline(0.5, color="black", linestyle="--", alpha=0.45, linewidth=0.8)
+    ax.set_xlabel("optimal threshold (max-F1 on val)")
+    ax.set_xlim(0, 1)
+    ax.invert_yaxis()
+    ax.tick_params(axis="y", labelsize=8)
+    ax.grid(axis="y", visible=False)
     return fig
 
 
