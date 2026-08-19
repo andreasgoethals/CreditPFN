@@ -14,6 +14,23 @@ day is never rewritten.
 
 ## 19-08-2026
 
+- **New `docs/EXPERIMENT_PLAN.md`** — the strategy from here, and the diagnosis it rests on.
+  Headline: run-8's null is currently indistinguishable from "we never delivered a dose". The
+  models DO train (loss falls up to 92 %), but the weights move only **0.24-0.69 % of ||w0||** on
+  PD, drift is monotone in the learning rate with no saturation, and our LR range (3e-7 to 1e-6)
+  sits **5x below the bottom of the only tuned search in the literature** (Rubachev 5e-6 to
+  5e-4; Kolberg and Tanna both use 1e-5). Garg's 3e-7 is one untuned choice by one paper. Only
+  2 distinct doses exist in run-8, so no dose-response relationship is estimable.
+- **Dataset-level K-fold splits** (`corpus.n_folds`, `corpus.fold`) and a **`corpus.split_seed`
+  independent of `cfg.seed`**. PD was one 70/30 draw at seed 42 and LGD was hand-pinned, so every
+  number was conditional on a single partition; one seed also drove both the split and weight
+  init, confounding the two. K-fold tests every dataset (PD: 4 folds, 13 train, 4-5 test) and
+  trains on more tables than the old draw. The fraction path is untouched so earlier runs
+  reproduce.
+- **New figures `plot_drift_vs_lr` and `plot_drift_vs_effect`** — the dose actually delivered, and
+  whether the held-out effect tracks it. With reference lines at the literature's learning rates,
+  all of which are to the right of ours.
+
 - **The cross-trial training overlays drew almost nothing, and the cause was a NaN gap.** The
   monitor metric and the drift columns are written every 5th epoch, so 46 finite values sit
   inside 221 rows; `ax.plot` breaks a line at every NaN, so 15 curves rendered as two short

@@ -222,6 +222,41 @@ def _assign_buckets(
     return bucket
 
 
+def _assign_folds(
+    dataset_ids: list[str], *,
+    n_folds: int,
+    fold: int,
+    seed: int,
+) -> dict[str, str]:
+    """Dataset-level K-fold: fold `fold` is the test set, everything else trains.
+
+    Folds rather than repeated random draws, because with random draws over a 17-dataset corpus
+    some datasets never land in a test set and others land there repeatedly — the effect is then
+    estimated on an arbitrary subset and "how much does this depend on the split" stays
+    unanswerable. K folds cover every dataset exactly once, which is what turns n_test = 5 into an
+    effect estimated on all 17 (`docs/EXPERIMENT_PLAN.md` section 2).
+
+    NO dataset is dropped: the training set is the complement of the test fold, so a K-fold run
+    also trains on MORE tables than the old 70/30 draw (13 of 17 rather than 12). `seed` selects
+    the partition, so R repeats at different seeds give R x K configurations.
+    """
+    order = sorted(dataset_ids)
+    n = len(order)
+    if n == 0:
+        return {}
+    if not 2 <= n_folds <= n:
+        raise ValueError(f"n_folds must be in [2, corpus size = {n}]; got {n_folds}")
+    if not 0 <= fold < n_folds:
+        raise ValueError(f"fold must be in [0, {n_folds}); got {fold}")
+
+    rng = np.random.default_rng(seed)
+    shuffled = [order[i] for i in rng.permutation(n)]
+    # Contiguous blocks over the shuffled order, sizes differing by at most one.
+    edges = [round(k * n / n_folds) for k in range(n_folds + 1)]
+    test = set(shuffled[edges[fold]:edges[fold + 1]])
+    return {did: ("test" if did in test else "train") for did in order}
+
+
 # --------------------------------------------------------------------------- #
 # Public splitter
 # --------------------------------------------------------------------------- #
@@ -235,6 +270,8 @@ def split_corpus(
     train_dataset_ids: Sequence[str] = (),
     test_dataset_ids: Sequence[str] = (),
     seed: int = 42,
+    n_folds: int | None = None,
+    fold: int = 0,
     min_train_rows: int = 0,
 ) -> CorpusSplit:
     """Build a :class:`CorpusSplit` for one track.
@@ -310,12 +347,19 @@ def split_corpus(
         need_train = not explicit_train
         need_test  = not explicit_test
         if need_train or need_test:
-            count_buckets = _assign_buckets(
-                remaining,
-                train_fraction=train_fraction if need_train else 0.0,
-                test_fraction=test_fraction   if need_test  else 0.0,
-                seed=seed,
-            )
+            # K-FOLD when `n_folds` is set, otherwise the historic fraction draw. The
+            # fraction path is kept so every run before run-9 stays reproducible.
+            if n_folds:
+                count_buckets = _assign_folds(
+                    remaining, n_folds=int(n_folds), fold=int(fold), seed=seed,
+                )
+            else:
+                count_buckets = _assign_buckets(
+                    remaining,
+                    train_fraction=train_fraction if need_train else 0.0,
+                    test_fraction=test_fraction   if need_test  else 0.0,
+                    seed=seed,
+                )
             bucket.update(count_buckets)
 
     train: list[DatasetRef] = []
@@ -487,7 +531,12 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
             corpus.get("train_dataset_ids", None), track),
         test_dataset_ids=resolve_ids_for_track(
             corpus.get("test_dataset_ids", None), track),
-        seed=int(cfg.seed),
+        # SPLIT SEED, not the training seed. One seed used to drive both the dataset
+        # partition and weight initialisation, so changing the split also changed the init
+        # and the two effects were confounded. Defaults to cfg.seed so old runs reproduce.
+        seed=int(corpus.get("split_seed", None) or cfg.seed),
+        n_folds=corpus.get("n_folds", None),
+        fold=int(corpus.get("fold", 0) or 0),
         # A LIST here means "swept" (config/train.yaml since run-8). Outside a single
         # trial there is no one value, so this convenience wrapper applies NO filter:
         # its callers are the eval roster and the task planner, which only use the TEST

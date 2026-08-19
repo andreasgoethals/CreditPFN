@@ -849,3 +849,118 @@ def plot_scheme_metrics(df, metrics=("roc_auc", "brier", "ece", "f1")):
     axes[0][0].legend(loc="lower left", fontsize=6, title="metric", title_fontsize=6)
     fig.suptitle("Every adaptation scheme against its own base, across metrics")
     return fig
+
+
+# --------------------------------------------------------------------------- #
+# 12. Did we deliver a dose at all?
+# --------------------------------------------------------------------------- #
+#
+# `docs/EXPERIMENT_PLAN.md` section 1: a null has two explanations, "the model was moved and
+# nothing happened" and "the model was never moved". These two figures separate them, and they
+# are the reason the next run extends the learning-rate grid rather than the corpus.
+
+#: Learning rates used by the continued-pretraining literature, for reference lines. Garg is the
+#: value this project inherited; Rubachev is the only one that was actually tuned.
+_LITERATURE_LR = {
+    "Garg 2025": 3e-7,
+    "Kolberg / Tanna": 1e-5,
+    "Rubachev tuned range": 5e-4,
+}
+
+
+def plot_drift_vs_lr(manifest, track: str = ""):
+    """Weight distance from initialisation against learning rate, log-log, per base.
+
+    ||w - w0|| / ||w0|| is the dose actually delivered. Run-8 delivered 0.2-0.7 % on PD, and the
+    relationship is monotone in the learning rate with no sign of saturation — i.e. every trial
+    sat in the near-initial regime, so "continued pretraining did not help" cannot yet be
+    distinguished from "continued pretraining did not happen". The reference lines are what the
+    literature uses; ours are to the left of all of them.
+    """
+    need = {"learning_rate", "final_drift", "base_checkpoint"}
+    if manifest is None or manifest.empty or not need <= set(manifest.columns):
+        return _empty("manifest needs learning_rate, final_drift and base_checkpoint")
+    m = manifest.copy()
+    if "status" in m.columns:
+        m = m[m["status"] == "OK"]
+    m = m.dropna(subset=["learning_rate", "final_drift"])
+    if m.empty:
+        return _empty("no trial recorded a final drift")
+
+    from src.visualize.training_viz import compact_base
+    m["base"] = m["base_checkpoint"].map(
+        lambda s: compact_base(str(s).replace("\\", "/").split("/")[-1].replace(".ckpt", ""))
+    )
+    fig, ax = _new(f"Dose delivered: weight drift vs learning rate {track}".strip(),
+                   ratio=0.52)
+    for base, g in m.groupby("base"):
+        agg = g.groupby("learning_rate")["final_drift"].mean().sort_index()
+        ax.plot(agg.index, agg.values, marker="o", markersize=4, linewidth=1.3,
+                color=style.color(_base_key(base)), label=base)
+    for name, lr in _LITERATURE_LR.items():
+        ax.axvline(lr, color=style.COLORS["annotation"], linewidth=0.7,
+                   linestyle=":", alpha=0.8)
+        ax.text(lr, ax.get_ylim()[1], f" {name}", rotation=90, va="top", ha="left",
+                fontsize=5.5, color=style.COLORS["annotation"])
+    ax.set_xscale("log")
+    if (m["final_drift"] > 0).all():
+        ax.set_yscale("log")
+    ax.set_xlabel("learning rate")
+    ax.set_ylabel(r"$\|w-w_0\|\,/\,\|w_0\|$")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7, borderaxespad=0.0)
+    style.note(ax, "monotone with no plateau = still in the near-initial regime")
+    return fig
+
+
+def plot_drift_vs_effect(df, manifest, metric: str = "roc_auc"):
+    """Held-out effect against the distance the weights actually travelled.
+
+    The test that decides which kind of null this is. If the points are flat, models that moved
+    further did no better and the null is real. If they slope upward, the run was undertrained and
+    the answer lies at a higher learning rate. One point per (trial, dataset); trials are matched
+    to the manifest on the learning rate and the base, which is what both sides record.
+    """
+    d = paired_deltas(df, metric)
+    if d.empty:
+        return _empty("no paired trained/untuned cells")
+    need = {"learning_rate", "final_drift", "base_checkpoint"}
+    if manifest is None or manifest.empty or not need <= set(manifest.columns):
+        return _empty("manifest needs learning_rate, final_drift and base_checkpoint")
+
+    from src.visualize.training_viz import compact_base
+    m = manifest.copy()
+    if "status" in m.columns:
+        m = m[m["status"] == "OK"]
+    m["base"] = m["base_checkpoint"].map(
+        lambda s: compact_base(str(s).replace("\\", "/").split("/")[-1].replace(".ckpt", ""))
+    )
+    # Mean drift per (base, lr) is the join key: the results side knows the lr and the base from
+    # the directory name, and the manifest knows the drift.
+    drift = m.groupby(["base", "learning_rate"])["final_drift"].mean()
+
+    import re
+    d = d.copy()
+    d["base"] = d["base_short"].map(lambda b: compact_base(str(b)))
+    d["lr"] = d[_METHOD_COL].map(
+        lambda s: float(re.search(r"__lr([0-9eE.+\-]+)", str(s)).group(1))
+        if re.search(r"__lr([0-9eE.+\-]+)", str(s)) else np.nan
+    )
+    d["drift"] = [drift.get((r.base, r.lr), np.nan) for r in d.itertuples()]
+    d = d.dropna(subset=["drift", "delta"])
+    if d.empty:
+        return _empty("could not match any result to a manifest drift")
+
+    fig, ax = _new(f"Effect against dose ({metric})", ratio=0.52)
+    for base, g in d.groupby("base"):
+        ax.scatter(g["drift"], g["delta"], s=18, alpha=0.8, edgecolors="none",
+                   color=style.color(_base_key(base)), label=base)
+    ax.axhline(0, color=style.COLORS["reference"], linewidth=0.9)
+    if (d["drift"] > 0).all():
+        ax.set_xscale("log")
+    ax.set_xlabel(r"$\|w-w_0\|\,/\,\|w_0\|$  (dose)")
+    ax.set_ylabel(f"Δ {metric}")
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7, borderaxespad=0.0)
+    if d["drift"].nunique() >= 3:
+        r = float(np.corrcoef(np.log10(d["drift"]), d["delta"])[0, 1])
+        style.note(ax, f"r(log dose, effect) = {r:+.2f} over {len(d)} pairs")
+    return fig

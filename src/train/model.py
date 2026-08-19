@@ -39,10 +39,15 @@ import torch
 
 LOGGER = logging.getLogger(__name__)
 
-_VERSION_RE = re.compile(r"tabpfn-v(2\.5|2\.6|3)-")
+# `2` before `2.5`/`2.6` would match greedily on the shorter alternative, so the longer
+# ones come first. v2 and v2.5 are recognised but NOT in the default sweep — they are
+# the older generations the base-generation ladder needs
+# (`docs/EXPERIMENT_PLAN.md` section 5). Whether the installed `tabpfn` can still build a
+# v2 architecture is a separate question from whether we can name the file.
+_VERSION_RE = re.compile(r"tabpfn-v(2\.5|2\.6|2|3)-")
 
 
-def _infer_version(ckpt_path: Path) -> Literal["v2.5", "v2.6", "v3"]:
+def _infer_version(ckpt_path: Path) -> Literal["v2", "v2.5", "v2.6", "v3"]:
     """Return the version string TabPFN's loader expects (with leading 'v').
 
     The regex captures bare ``"2.5"`` / ``"2.6"`` / ``"3"``; we prepend
@@ -54,7 +59,8 @@ def _infer_version(ckpt_path: Path) -> Literal["v2.5", "v2.6", "v3"]:
     if not m:
         raise ValueError(
             f"Could not infer TabPFN version from filename {ckpt_path.name!r}. "
-            "Expected name to start with 'tabpfn-v2.5-', 'tabpfn-v2.6-', or 'tabpfn-v3-'."
+            "Expected name to start with 'tabpfn-v2-', 'tabpfn-v2.5-', "
+            "'tabpfn-v2.6-' or 'tabpfn-v3-'."
         )
     return f"v{m.group(1)}"  # type: ignore[return-value]
 
