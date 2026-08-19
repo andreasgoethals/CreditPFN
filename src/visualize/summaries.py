@@ -243,6 +243,24 @@ def training_summary(track: str) -> str:
                 out.append("  WARNING: arms received UNEQUAL step budgets — the corpus"
                            " comparison is confounded with training length.")
 
+    # PASSES OVER THE CORPUS, not epochs and not steps. One optimizer step is one dataset,
+    # so `steps / steps_per_epoch` is how many times the run walked the whole training corpus.
+    # This is the number that makes the budget comparable to the literature: Garg reaches
+    # 20 000 steps over 71 tables, about 280 passes. The same 20 000 steps over 12 tables is
+    # 220 passes — comparable — but a 1 200-epoch LGD trial over 6 tables is 1 200 passes,
+    # four times Garg's exposure to a twelfth of the data, which is plain overtraining and a
+    # second explanation for a null on that track.
+    if {"total_optimizer_steps", "steps_per_epoch"} <= set(man.columns):
+        pas = (man["total_optimizer_steps"] / man["steps_per_epoch"].replace(0, np.nan)).dropna()
+        if len(pas):
+            out.append(f"  passes over corpus : {pas.min():.0f} - {pas.max():.0f}"
+                       f"   (Garg 2025: ~280 over 71 tables)")
+            if pas.max() > 500:
+                out.append(f"  WARNING: up to {pas.max():.0f} passes over the same rows."
+                           f" The step budget was matched to the literature, but with a")
+                out.append("  smaller corpus that means many more repetitions of the same"
+                           " tables — treat this track as overtrained.")
+
     out += _rule("3. The corpus this sweep trained on")
     for col, label in (("n_train_datasets", "train datasets"),
                        ("n_test_datasets", "held-out datasets"),

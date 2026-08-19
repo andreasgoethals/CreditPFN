@@ -564,8 +564,25 @@ def _progress(hist: pd.DataFrame) -> tuple[pd.Series, str]:
     Per-trial figures keep epochs, where there is nothing to compare against.
     """
     if "optimizer_steps" in hist.columns and hist["optimizer_steps"].notna().any():
-        return hist["optimizer_steps"], "optimizer steps"
+        # CUMULATIVE. The column is the number of steps taken IN that epoch — a constant 91
+        # for a 12-dataset PD trial — so using it raw put all 220 epochs at x=91 and collapsed
+        # every curve into two vertical stacks. Its sum equals the manifest's
+        # `total_optimizer_steps` exactly, which is what makes the cumsum the correct reading.
+        return hist["optimizer_steps"].fillna(0).cumsum(), "cumulative optimizer steps"
     return hist["epoch"], "epoch"
+
+
+def _finite(x: pd.Series, y: pd.Series) -> tuple[pd.Series, pd.Series]:
+    """Drop rows where y is missing, so a sparse series draws as a CONNECTED line.
+
+    The monitor metric and the weight-drift columns are written every `monitor_every` epochs
+    (5 in run-8), leaving NaN in between. `ax.plot` breaks a line at every NaN, so a curve of
+    46 finite values inside 221 rows rendered as nothing at all except where two finite points
+    happened to be adjacent — which is why the cross-trial overlays showed two short marks near
+    the origin instead of fifteen curves, and why they looked "unclear and uninformative".
+    """
+    m = pd.to_numeric(y, errors="coerce").notna()
+    return x[m], pd.to_numeric(y, errors="coerce")[m]
 
 
 def compact_base(base_short: str) -> str:
@@ -612,7 +629,10 @@ def plot_loss_overlay(track: str, *, only_ok: bool = True, cfg=None):
     for name, trial in sorted(parsed.items(), key=lambda kv: (kv[1].base, kv[1].lr, kv[1].lora)):
         hist = histories[name]
         x, xlabel = _progress(hist)
-        ax.plot(x, hist["train_loss"], **_style_for(trial, palette, seen))
+        xf, yf = _finite(x, hist["train_loss"])
+        if xf.empty:
+            continue
+        ax.plot(xf, yf, **_style_for(trial, palette, seen))
     ax.set_xlabel(xlabel)
     ax.set_ylabel("train loss")
     # TabICLv2 starts near 1.5 and TabPFN near 0.48, so a linear axis compresses every
@@ -663,7 +683,10 @@ def plot_metric_overlay(
         if col not in hist.columns:
             continue
         x, xlabel = _progress(hist)
-        ax.plot(x, hist[col], **_style_for(trial, palette, seen))
+        xf, yf = _finite(x, hist[col])
+        if xf.empty:
+            continue
+        ax.plot(xf, yf, **_style_for(trial, palette, seen))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(f"{split} {metric_name}")
     ax.legend(loc="best", fontsize=7)
@@ -698,7 +721,10 @@ def plot_overfitting_diagnostic(track: str, *, cfg=None):
         gap = pd.to_numeric(hist["train_metric"], errors="coerce") - \
               pd.to_numeric(hist["test_metric"],  errors="coerce")
         x, xlabel = _progress(hist)
-        ax.plot(x, gap, **_style_for(trial, palette, seen))
+        xf, yf = _finite(x, gap)
+        if xf.empty:
+            continue
+        ax.plot(xf, yf, **_style_for(trial, palette, seen))
     ax.axhline(0, color="black", linewidth=0.8, alpha=0.5)
     ax.set_xlabel(xlabel)
     ax.set_ylabel("train − test")
@@ -1092,7 +1118,10 @@ def plot_weight_drift(track: str, *, only_ok: bool = True, cfg=None):
         series = hist[cols].max(axis=1)
         mask = series.notna()
         x, xlabel = _progress(hist)
-        ax.plot(x[mask], series[mask], **_style_for(trial, palette, seen))
+        xf, yf = _finite(x[mask], series[mask])
+        if xf.empty:
+            continue
+        ax.plot(xf, yf, **_style_for(trial, palette, seen))
     ax.set_xlabel(xlabel)
     ax.set_ylabel(r"$\|w - w_0\|$  (max over stages)")
     # Drift spans orders of magnitude across learning rates, so log is the readable
@@ -1122,14 +1151,38 @@ def plot_per_dataset_loss(trial_name: str, track: str, *, cfg=None):
             "logging was added on 08-08-2026"
         )
 
-    fig, ax = _new_fig(f"Per-dataset train loss — {trial_name}")
+    fig, ax = _new_fig(f"Per-dataset train loss — {compact_base(_base_of(trial_name))}",
+                       figsize=style.figsize(style.WIDTH_FULL, ratio=0.60))
     # Order the legend by final loss so the worst-fitting table is easy to find.
     order = sorted(cols, key=lambda c: -hist[c].dropna().iloc[-1] if hist[c].notna().any() else 0)
-    for i, col in enumerate(order):
-        ax.plot(hist["epoch"], hist[col], linewidth=1.1,
-                color=style.color(col.removeprefix("loss__")),
-                label=col.removeprefix("loss__"))
+    ids = [c.removeprefix("loss__") for c in order]
+    # DISTINCT colours by position. `style.color` keys on the name and has four fallback
+    # slots, so three of the six LGD datasets came out the same yellow.
+    palette = style.categorical(ids)
+    # The raw series is one point per epoch of a mean step loss, and over 1 200 epochs it is
+    # a solid band of noise. Draw the noise faintly and a rolling median on top, so the
+    # per-table trend — the thing this figure exists to show — is actually visible.
+    win = max(1, len(hist) // 60)
+    for col, name in zip(order, ids):
+        y = pd.to_numeric(hist[col], errors="coerce")
+        ax.plot(hist["epoch"], y, linewidth=0.5, alpha=0.25, color=palette[name])
+        if win > 1:
+            ax.plot(hist["epoch"], y.rolling(win, min_periods=1, center=True).median(),
+                    linewidth=1.4, color=palette[name], label=name)
+        else:
+            ax.plot(hist["epoch"], y, linewidth=1.4, color=palette[name], label=name)
     ax.set_xlabel("epoch")
     ax.set_ylabel("mean step loss")
-    ax.legend(loc="best", fontsize=6, ncol=2)
+    # OUTSIDE the axes. `loc="best"` put the six dataset ids straight over the curves in the
+    # top-left, which is exactly where the interesting early descent happens.
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.16), ncol=3, fontsize=6,
+              frameon=False, handlelength=1.6)
+    if win > 1:
+        style.note(ax, f"faint = per epoch · bold = rolling median over {win} epochs")
     return fig
+
+
+def _base_of(trial_name: str) -> str:
+    """The base tag of a trial, for a title that fits. Falls back to the full name."""
+    t = parse_trial_name(trial_name)
+    return t.base_short if t else trial_name

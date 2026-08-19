@@ -227,7 +227,8 @@ def plot_gain_vs_base(df: pd.DataFrame, metric: str = "roc_auc"):
         style.note(ax, f"slope {b:+.3f} · r = {r:+.2f} · {len(d)} pairs on {n_ds} datasets")
     ax.set_xlabel(f"untuned base {metric} on that dataset")
     ax.set_ylabel(f"Δ {metric}")
-    ax.legend(loc="best", fontsize=7)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7,
+              borderaxespad=0.0)
     return fig
 
 
@@ -344,7 +345,8 @@ def plot_calibration_shift(df: pd.DataFrame):
     ax.set_xlabel("untuned ECE")
     ax.set_ylabel("trained ECE")
     ax.set_aspect("equal", adjustable="box")
-    ax.legend(loc="best", fontsize=6)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=6,
+              borderaxespad=0.0)
     worse = int((d["trained"] > d["untuned"]).sum())
     style.note(ax, f"{worse}/{len(d)} worse")
     return fig
@@ -390,7 +392,8 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
         ax.set_xscale("log")
     ax.set_xlabel(prop.replace("_", " "))
     ax.set_ylabel(f"Δ {metric}")
-    ax.legend(loc="best", fontsize=7)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7,
+              borderaxespad=0.0)
     # THE CORRELATION IS OVER DATASETS, NOT OVER POINTS. `prop` is a property of the dataset,
     # so every checkpoint on a given dataset shares one x value: correlating the 32 raw pairs
     # of a 2-dataset track yielded "Spearman rho = +0.39 (p = 0.03)" — a significant-looking
@@ -483,7 +486,8 @@ def plot_selection_honesty(df: pd.DataFrame, metric: str = "roc_auc"):
     ax.set_xlabel(metric)
     ax.grid(axis="x", linewidth=0.4, alpha=0.35)
     ax.grid(axis="y", visible=False)
-    ax.legend(loc="best", fontsize=7)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7,
+              borderaxespad=0.0)
     gap = float((s["best_on_test"] - s["lodo_score"]).abs().mean())
     style.note(ax, f"mean gap {gap:.4f}")
     return fig
@@ -519,7 +523,8 @@ def plot_forgetting(df: pd.DataFrame, metric: str = "roc_auc"):
     ax.set_xlabel(f"untuned {metric}")
     ax.set_ylabel(f"trained {metric}")
     ax.set_aspect("equal", adjustable="box")
-    ax.legend(loc="best", fontsize=6)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=6,
+              borderaxespad=0.0)
     if len(d) >= 3:
         rho = float(pd.Series(d["untuned"]).corr(pd.Series(d["trained"]), method="spearman"))
         style.note(ax, f"Spearman ρ = {rho:.4f}")
@@ -699,4 +704,148 @@ def plot_effect_ci(df: pd.DataFrame, metric: str = "roc_auc"):
     # last row's interval is drawn. Reserve a row's worth of space for it.
     ax.set_ylim(-0.85, len(r) - 0.4)
     style.note(ax, "CI crossing zero = no detectable effect")
+    return fig
+
+
+# --------------------------------------------------------------------------- #
+# 11. The scheme benchmark: every adaptation scheme against ITS OWN base
+# --------------------------------------------------------------------------- #
+#
+# This project is NOT a benchmark of TabPFN against TabICL. Those differ in pretraining data,
+# architecture and parameter count, so a leaderboard across them measures the vendors, not us.
+# What it IS a benchmark of is ADAPTATION SCHEMES: learning rate, adapter vs full fine-tune, and
+# corpus filter, each scored against the base checkpoint it started from. The figures below hold
+# the base fixed and vary only the scheme, which is the comparison that answers "which way of
+# continuing to pretrain is best, and is any of them better than not doing it at all".
+
+
+def _scheme_label(dirname: str) -> str:
+    """The adaptation scheme of a result directory, with the base stripped out."""
+    import re
+    d = str(dirname)
+    bits = []
+    m = re.search(r"__lr([0-9eE.+\-]+)", d)
+    if m:
+        bits.append(f"lr {float(m.group(1)):.0e}")
+    bits.append("adapter" if ("__lora" in d or "__iclhead" in d) else "full-FT")
+    m = re.search(r"__min(\d+)", d)
+    bits.append(f"min{int(m.group(1)) // 1000}k" if m else "no filter")
+    return " · ".join(bits)
+
+
+def scheme_table(df, metric: str = "roc_auc"):
+    """(base, scheme, dataset) with the delta against that base. Signed so + is better."""
+    d = paired_deltas(df, metric)
+    if d.empty or _METHOD_COL not in d.columns:
+        return pd.DataFrame()
+    d = d.copy()
+    d["scheme"] = d[_METHOD_COL].map(_scheme_label)
+    return d
+
+
+def plot_scheme_grid(df, metric: str = "roc_auc"):
+    """One panel per base: adaptation scheme (rows) x held-out dataset (columns).
+
+    Colour is the change against THAT base's own untuned score on THAT dataset, so zero means
+    "continued pretraining changed nothing here", and the panels stay comparable even though the
+    bases sit at different absolute scores. This is the per-dataset, per-scheme view the
+    aggregates cannot give: a scheme that helps on one table and hurts on another averages to
+    nothing and is indistinguishable from a scheme that does nothing anywhere.
+    """
+    import matplotlib.pyplot as plt
+    d = scheme_table(df, metric)
+    if d.empty:
+        return _empty("no paired trained/untuned cells")
+
+    bases = sorted(d["base_short"].unique())
+    datasets = sorted(d["test_dataset_id"].unique())
+    schemes = sorted(d["scheme"].unique())
+    vmax = float(np.nanmax(np.abs(d["delta"]))) or 1e-6
+
+    h = max(2.8, 0.26 * len(schemes) * len(bases) + 1.5)
+    fig, axes = plt.subplots(
+        len(bases), 1, squeeze=False,
+        figsize=style.figsize(style.WIDTH_FULL, ratio=h / style.WIDTH_FULL),
+    )
+    im = None
+    for ax, base in zip(axes[:, 0], bases):
+        sub = d[d["base_short"] == base]
+        rows = [s for s in schemes if s in set(sub["scheme"])]
+        mat = (sub.pivot_table(index="scheme", columns="test_dataset_id", values="delta",
+                               aggfunc="mean")
+                  .reindex(index=rows, columns=datasets))
+        # A diverging map centred on zero, shared across panels: the sign is the message.
+        im = ax.imshow(mat.values, aspect="auto", cmap="RdBu_r", vmin=-vmax, vmax=vmax)
+        ax.set_yticks(range(mat.shape[0]))
+        ax.set_yticklabels(mat.index, fontsize=6)
+        ax.set_xticks(range(len(datasets)))
+        ax.set_xticklabels(([s.split(".", 1)[-1] for s in datasets]
+                            if base == bases[-1] else []),
+                           rotation=30, ha="right", fontsize=6)
+        ax.set_title(f"base: {base}", fontsize=8, loc="left")
+        ax.grid(False)
+        for i in range(mat.shape[0]):
+            for j in range(mat.shape[1]):
+                v = mat.values[i, j]
+                if np.isfinite(v):
+                    ax.text(j, i, f"{v:+.3f}", ha="center", va="center", fontsize=5.5,
+                            color="white" if abs(v) > 0.62 * vmax else "black")
+    if im is not None:
+        cb = fig.colorbar(im, ax=list(axes[:, 0]), fraction=0.03, pad=0.02)
+        cb.set_label(f"delta {metric} vs own base", fontsize=7)
+    fig.suptitle(f"Adaptation scheme x dataset, against each base ({metric})")
+    return fig
+
+
+def plot_scheme_metrics(df, metrics=("roc_auc", "brier", "ece", "f1")):
+    """Mean change per scheme across SEVERAL metrics, one panel per base.
+
+    Discrimination is not the only thing continued pretraining can move, and for credit risk it
+    is arguably not the most important one: Brier and ECE are what a validation function reads.
+    A scheme that leaves AUC alone while improving Brier is a result, and the AUC-only view
+    reports it as a null.
+    """
+    import matplotlib.pyplot as plt
+    present = [m for m in metrics
+               if df is not None and m in df.columns and df[m].notna().any()]
+    if not present:
+        return _empty("none of the requested metrics are present on this track")
+
+    frames = []
+    for m in present:
+        t = scheme_table(df, m)
+        if t.empty:
+            continue
+        g = t.groupby(["base_short", "scheme"])["delta"].mean().reset_index()
+        g["metric"] = m
+        frames.append(g)
+    if not frames:
+        return _empty("no paired cells for these metrics")
+    allg = pd.concat(frames, ignore_index=True)
+
+    bases = sorted(allg["base_short"].unique())
+    schemes = sorted(allg["scheme"].unique())
+    h = max(2.8, 0.24 * len(schemes) + 1.6)
+    fig, axes = plt.subplots(
+        1, len(bases), squeeze=False, sharey=True,
+        figsize=style.figsize(style.WIDTH_FULL, ratio=h / style.WIDTH_FULL),
+    )
+    y = np.arange(len(schemes))
+    width = 0.8 / len(present)
+    pal = style.categorical(present)
+    for ax, base in zip(axes[0], bases):
+        sub = allg[allg["base_short"] == base]
+        for k, m in enumerate(present):
+            s = sub[sub["metric"] == m].set_index("scheme").reindex(schemes)["delta"]
+            ax.barh(y + k * width - 0.4 + width / 2, s.values, width * 0.9,
+                    color=pal[m], label=(m if base == bases[0] else None))
+        ax.axvline(0, color=style.COLORS["reference"], linewidth=0.9)
+        ax.set_yticks(y)
+        ax.set_yticklabels(schemes if base == bases[0] else [], fontsize=6)
+        ax.set_title(base, fontsize=8)
+        ax.set_xlabel("mean delta (+ better)", fontsize=7)
+        ax.tick_params(axis="x", labelsize=6)
+        ax.grid(axis="y", visible=False)
+    axes[0][0].legend(loc="lower left", fontsize=6, title="metric", title_fontsize=6)
+    fig.suptitle("Every adaptation scheme against its own base, across metrics")
     return fig

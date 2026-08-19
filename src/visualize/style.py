@@ -194,6 +194,30 @@ def color(name: str) -> str:
     return _EXTRAS[zlib.crc32(name.encode()) % len(_EXTRAS)]
 
 
+#: A qualitative ramp for series that are NOT registered entities — dataset ids, corpus
+#: members, anything whose membership changes per figure. Okabe-Ito first (colour-blind safe),
+#: then Tol's bright set. Distinctness is by POSITION in the caller's list, which is what
+#: `color()` cannot offer: it keys on the name so one series keeps one colour everywhere, and
+#: with only four fallback slots a crc32 collision put three LGD datasets on the same yellow.
+_CATEGORICAL = (
+    "#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9",
+    "#332288", "#88CCEE", "#44AA99", "#117733", "#999933", "#DDCC77",
+    "#661100", "#882255", "#AA4499", "#6699CC",
+)
+
+
+def categorical(names) -> dict:
+    """One DISTINCT colour per name, assigned by position.
+
+    Use for dataset ids and other per-figure series sets; use `color()` for the fixed
+    entities (a base checkpoint, a baseline model) that must keep one colour project-wide.
+    Beyond the palette length colours repeat, so callers drawing more series than this should
+    switch to a distribution view — `too_many` is the check for that.
+    """
+    ordered = list(dict.fromkeys(names))
+    return {n: _CATEGORICAL[i % len(_CATEGORICAL)] for i, n in enumerate(ordered)}
+
+
 #: Remaining Okabe-Ito slots, for series that have not been registered yet.
 _EXTRAS = ("#CC79A7", "#56B4E9", "#F0E442", "#D55E00")
 

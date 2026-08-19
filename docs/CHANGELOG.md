@@ -12,6 +12,36 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 19-08-2026
+
+- **The cross-trial training overlays drew almost nothing, and the cause was a NaN gap.** The
+  monitor metric and the drift columns are written every 5th epoch, so 46 finite values sit
+  inside 221 rows; `ax.plot` breaks a line at every NaN, so 15 curves rendered as two short
+  marks near the origin. Measured: 0 coloured pixels between x=200 and x=450 before, 6 474
+  after. All four overlays now drop missing rows first.
+- **`_progress` returned the PER-EPOCH step count, not the cumulative one.** Introduced with the
+  steps axis on 17-08: the column is a constant 91 for a 12-dataset PD trial, so every epoch
+  landed at x=91. Its sum equals the manifest's `total_optimizer_steps` exactly, which is what
+  makes the cumsum the correct reading.
+- **`plot_per_dataset_loss`: distinct colours, legend outside, smoothed.** `style.color` has four
+  fallback slots keyed by crc32, so three of the six LGD datasets came out the same yellow; new
+  `style.categorical` assigns distinct colours by position. The legend sat on the curves it
+  described, and 1 200 epochs of raw per-step loss is a noise band — a rolling median is drawn
+  over a faint raw series.
+- **Passes over the corpus** is now reported per track, because it — not epochs and not steps —
+  is what makes the budget comparable to the literature. PD does 220 passes against Garg's ~280;
+  **LGD does 625-1 200 over six tables**, four times Garg's exposure to a twelfth of the data.
+  The summary warns above 500 passes: matching a step count on a small corpus is overtraining,
+  and it is a second explanation for the LGD null alongside corpus size.
+- **New: the scheme benchmark** (`plot_scheme_grid`, `plot_scheme_metrics`). This project
+  compares ADAPTATION SCHEMES against the base each one started from, not TabPFN against
+  TabICLv2 — ranking the vendors measures their pretraining, not ours. The grid is scheme x
+  dataset per base; the second figure repeats it across ROC-AUC, Brier, ECE and F1 (RMSE and R²
+  on LGD), because Brier and ECE are what a validation function reads and an AUC-only view calls
+  a calibration change a null.
+- **Legends moved out of the data.** `loc="best"` optimises against lines only, so on a scatter
+  it lands on the points; five paper figures placed it outside the axes instead.
+
 ## 17-08-2026
 
 - **Run-8's eval completed and recorded** — 105/105 PD + 44/44 LGD cells, 745/745 folds, zero

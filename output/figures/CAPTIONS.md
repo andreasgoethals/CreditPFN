@@ -344,6 +344,14 @@ Mean change in ROC-AUC from continued pretraining, per base checkpoint, split by
 
 Mean change in ROC-AUC from continued pretraining with a 95 % confidence interval, computed over held-out datasets after averaging within each dataset. An interval spanning zero indicates no effect detectable at this sample size.
 
+**23_paper_scheme_grid** — `paper_scheme_grid`
+
+Change in ROC-AUC from continued pretraining for every adaptation scheme (rows) on every held-out dataset (columns), one panel per base checkpoint, each measured against that base's own untuned score on the same dataset. Red is an improvement, blue a degradation; the colour scale is shared across panels.
+
+**24_paper_scheme_metrics** — `paper_scheme_metrics`
+
+Mean change from continued pretraining per adaptation scheme, one panel per base checkpoint, for ROC-AUC, Brier score, expected calibration error and F1. All differences are signed so that positive favours the adapted model, and are averaged over the held-out datasets.
+
 ## 2.1. final_results_lgd
 
 **01_leaderboard** — `leaderboard`
@@ -433,3 +441,11 @@ Mean change in RMSE from continued pretraining, per base checkpoint, split by th
 **22_paper_effect_ci** — `paper_effect_ci`
 
 Mean change in RMSE from continued pretraining with a 95 % confidence interval, computed over held-out datasets after averaging within each dataset and signed so that positive is an improvement. An interval spanning zero indicates no effect detectable at this sample size.
+
+**23_paper_scheme_grid** — `paper_scheme_grid`
+
+Change in RMSE from continued pretraining for every adaptation scheme (rows) on every held-out dataset (columns), one panel per base checkpoint, each measured against that base's own untuned score on the same dataset and signed so that red is an improvement. The colour scale is shared across panels.
+
+**24_paper_scheme_metrics** — `paper_scheme_metrics`
+
+Mean change from continued pretraining per adaptation scheme, one panel per base checkpoint, for RMSE and R-squared, signed so that positive favours the adapted model and averaged over the held-out datasets.
