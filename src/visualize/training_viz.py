@@ -133,6 +133,8 @@ class TrialId:
     lora: bool
     #: Corpus-size arm (`corpus.min_train_rows`), 0 when the trial predates run-8.
     min_train_rows: int = 0
+    #: L2-SP anchor strength. `None` when the trial predates run-9 and did not sweep it.
+    l2sp_lambda: float | None = None
 
     @property
     def base_short(self) -> str:
@@ -171,6 +173,8 @@ _NAME_RE = re.compile(
     # Corpus-size arm, swept since run-8. Sits between the pass mode and the adapter
     # tag, exactly as `loop.descriptive_name` writes it.
     r"(?:_min(?P<min_rows>\d+))?"
+    # Anchor strength, swept from run-9. Optional, so pre-run-9 names still match.
+    r"(?:_l2sp(?P<l2sp>[0-9.eE+-]+))?"
     # `_lora` for TabPFN, `_iclhead` for TabICLv2 — ONE grid axis, two family
     # renderings. Omitting `_iclhead` here made every frozen-backbone TabICLv2 trial
     # unparseable, which is the same silent-drop failure the comment above describes.
@@ -202,6 +206,8 @@ def parse_trial_name(name: str) -> TrialId | None:
             seed=int(m.group("seed")),
             lora=bool(m.group("lora")),
             min_train_rows=int(m.group("min_rows") or 0),
+            l2sp_lambda=(float(m.group("l2sp"))
+                         if m.group("l2sp") is not None else None),
         )
     except (TypeError, ValueError):                     # pragma: no cover
         return None

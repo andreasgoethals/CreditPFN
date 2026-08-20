@@ -102,13 +102,13 @@ def _decode_method_dirname(d: str) -> dict:
     """
     if d in _CLASSICAL_BASELINES:
         return {"source": "baseline", "base_short": d, "lr": np.nan,
-                "use_lora": False, "full_pass": False, "min_train_rows": 0}
+                "use_lora": False, "full_pass": False, "min_train_rows": 0, "l2sp_lambda": None}
     m_src = re.match(r"^(?P<src>(?:tabpfn|tabicl)-(?:untuned|trained))__", d)
     if m_src and m_src["src"].endswith("-untuned"):
         return {"source": m_src["src"],
                 "base_short": d.removeprefix(m_src["src"] + "__"),
                 "lr": np.nan, "use_lora": False, "full_pass": False,
-                "min_train_rows": 0}
+                "min_train_rows": 0, "l2sp_lambda": None}
     if m_src:   # <family>-trained
         rest = d.removeprefix(m_src["src"] + "__")
         # Dirname layout:
@@ -120,6 +120,12 @@ def _decode_method_dirname(d: str) -> dict:
         # `__min<rows>` is the corpus-size arm swept since run-8.)
         lora = rest.endswith(("__lora", "__iclhead"))
         rest = rest.removesuffix("__lora").removesuffix("__iclhead")
+        # Anchor strength, swept from run-9. Stripped BEFORE `__min` because
+        # `_method_dirname` writes it after: ...__min5000__l2sp0.003__lora.
+        m_l2 = re.search(r"__l2sp([0-9.eE+-]+)$", rest)
+        l2sp_lambda = float(m_l2.group(1)) if m_l2 else None
+        if m_l2:
+            rest = rest[: m_l2.start()]
         m_rows = re.search(r"__min(\d+)$", rest)
         min_train_rows = int(m_rows.group(1)) if m_rows else 0
         if m_rows:
@@ -135,9 +141,9 @@ def _decode_method_dirname(d: str) -> dict:
             base = rest
         return {"source": m_src["src"], "base_short": base, "lr": lr,
                 "use_lora": lora, "full_pass": full_pass,
-                "min_train_rows": min_train_rows}
+                "min_train_rows": min_train_rows, "l2sp_lambda": l2sp_lambda}
     return {"source": "unknown", "base_short": d, "lr": np.nan,
-            "use_lora": False, "full_pass": False, "min_train_rows": 0}
+            "use_lora": False, "full_pass": False, "min_train_rows": 0, "l2sp_lambda": None}
 
 
 def human_method_name(row: pd.Series) -> str:
@@ -163,9 +169,13 @@ def human_method_name(row: pd.Series) -> str:
         # constant tag on every bar is noise — see `compact_method_names`.
         mtr = row.get("min_train_rows", 0)
         arm = f" ·min{int(mtr) // 1000}k" if mtr and np.isfinite(mtr) else ""
+        # Anchor strength, for the same reason the corpus arm is here: two trials that differ
+        # only in lambda must not share a label, or every figure averages them together.
+        l2 = row.get("l2sp_lambda", None)
+        anch = "" if l2 is None or l2 != l2 else f" ·L2SP{float(l2):g}"
         if np.isfinite(lr):
-            return f"trained ({base}) lr={lr:.0e}{fp}{adapt}{arm}"
-        return f"trained ({base}){fp}{adapt}{arm}"
+            return f"trained ({base}) lr={lr:.0e}{fp}{adapt}{arm}{anch}"
+        return f"trained ({base}){fp}{adapt}{arm}{anch}"
     return f"{src}({base})"
 
 
@@ -220,6 +230,7 @@ def load_eval_results(track: str) -> pd.DataFrame:
         # (base, lr) pair collapsed to ONE label — 21 PD models showed as 14 rows, silently
         # averaging the corpus comparison that the run exists to make.
         df["min_train_rows"] = meta["min_train_rows"]
+        df["l2sp_lambda"] = meta["l2sp_lambda"]
         df["family"] = (
             "tabicl" if meta["source"].startswith("tabicl")
             else "tabpfn" if meta["source"].startswith("tabpfn")
@@ -242,6 +253,8 @@ def load_eval_results(track: str) -> pd.DataFrame:
 #: frame distinguishes nothing, so it is removed — it only makes the labels longer, and label
 #: width is what forces the y axis of a 21-method leaderboard off an A4 page.
 _DROPPABLE_TAGS = (" ·fullpass", " ·ICLhead", " ·LoRA")
+#: The anchor tag is dropped the same way when every trained method carries the
+#: same lambda — which is every run before run-9.
 
 
 def _drop_constant_tags(names: pd.Series) -> pd.Series:

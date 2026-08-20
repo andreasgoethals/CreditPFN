@@ -227,6 +227,7 @@ def descriptive_name(
     accumulate_grad_batches: int | None = None,
     epoch_pass_mode: str | None = None,
     min_train_rows: int | None = None,
+    l2sp_lambda: float | None = None,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
@@ -257,6 +258,10 @@ def descriptive_name(
     # experiments, and without a tag they would overwrite each other's checkpoint.
     # Absent / 0 keeps the pre-run-8 filename byte-for-byte.
     rows_tag = f"_min{int(min_train_rows)}" if min_train_rows else ""
+    # Anchor strength, swept from run-9. `None` = "not swept" and emits nothing, so every
+    # trial name written before run-9 is byte-identical and still parses. The tag sits
+    # BEFORE the adapter tag because `_NAME_RE` anchors `_lora|_iclhead` to the end.
+    l2sp_tag = "" if l2sp_lambda is None else f"_l2sp{float(l2sp_lambda):g}"
     # The `use_lora` grid axis means LoRA for the TabPFN family but
     # FREEZE-BACKBONE / train-ICL-head-only for TabICLv2 (its upstream
     # stage-3 regime; full SFT collapsed TabICLv2 in two independent
@@ -271,7 +276,7 @@ def descriptive_name(
         lora_tag = "_lora" if use_lora else ""
     return (
         f"{run_name}_{track}_{base_stem}_lr{lr_tag}_seed{seed}"
-        f"{qf_tag}{acc_tag}{pass_tag}{rows_tag}{lora_tag}.ckpt"
+        f"{qf_tag}{acc_tag}{pass_tag}{rows_tag}{l2sp_tag}{lora_tag}.ckpt"
     )
 
 
@@ -1337,6 +1342,10 @@ def train_one_config(
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
     pass_mode: str | None = None,
+    #: Swept from run-9. Overrides `cfg.finetuning.l2sp_lambda` for this trial. Same
+    #: contract as `min_train_rows`: the per-trial value wins, `None` falls back to the
+    #: config, so a run that does not sweep it behaves exactly as before.
+    l2sp_lambda: float | None = None,
     #: Swept in run-8. Overrides `cfg.corpus.min_train_rows` for this trial, so the
     #: whole grid can share one config while each trial trains on its own corpus.
     min_train_rows: int | None = None,
@@ -1518,7 +1527,13 @@ def train_one_config(
     #   tabicl (both modes)  → anchor the TRAINABLE weights (full-FT: all;
     #                          icl-head mode: the head only — it starts at the
     #                          pretrained weights and can drift, unlike LoRA).
-    l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
+    # SWEPT AXIS from run-9: the per-trial value wins over the config, exactly as
+    # `min_train_rows` does. Shadowing the parameter name is deliberate — everything
+    # below this line already reads `l2sp_lambda`.
+    if l2sp_lambda is None:
+        l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
+    else:
+        l2sp_lambda = float(l2sp_lambda)
     l2sp_applicable = (family == "tabicl") or (not use_lora)
     l2sp_anchor: dict[str, torch.Tensor] | None = None
     l2sp_w0_norm: float = 0.0

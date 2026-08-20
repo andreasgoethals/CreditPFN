@@ -241,6 +241,9 @@ def load_trained_handles(
             # Same reason, for the corpus-size arm (swept since run-8). Legacy
             # manifests lack the column → 0, which produces the old dirname.
             "min_train_rows":      int(row.get("min_train_rows", 0) or 0),
+            # Swept from run-9. The manifest has always written this column; it just was
+            # never read, so the two anchor arms would have collided in one results dir.
+            "l2sp_lambda":         row.get("l2sp_lambda", None),
         }
         # Family from the manifest's base_checkpoint column — the trained
         # ckpt filename inherits the base stem, but the base column is the
@@ -794,8 +797,13 @@ def _method_dirname(handle: ModelHandle) -> str:
     except (TypeError, ValueError):
         min_rows = 0
     rows_tag = f"__min{min_rows}" if min_rows else ""
+    # Anchor strength, swept from run-9. Without this tag the lambda=0 and lambda=0.003
+    # arms of one (base, lr) pair would share a results directory and silently average,
+    # which is exactly what happened to the corpus arm in run-8.
+    l2 = extra.get("l2sp_lambda", None)
+    l2_tag = "" if l2 is None or l2 != l2 else f"__l2sp{float(l2):g}"
     if lr is not None:
-        return f"{handle.source}__{short}__lr{lr:.0e}{fp_tag}{rows_tag}{lora_tag}"
+        return f"{handle.source}__{short}__lr{lr:.0e}{fp_tag}{rows_tag}{l2_tag}{lora_tag}"
     return f"{handle.source}__{short}{fp_tag}{rows_tag}{lora_tag}"
 
 

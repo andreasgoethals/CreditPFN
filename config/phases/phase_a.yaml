@@ -1,0 +1,89 @@
+# PHASE A — dose–response. Does a bigger learning rate move the model, and does it help?
+#
+#   python scripts/train_pipeline.py --config config/phases/phase_a.yaml --list-trials
+#   python scripts/train_pipeline.py --config config/phases/phase_a.yaml --trial-index $SLURM_ARRAY_TASK_ID
+#
+# WHY THIS PHASE EXISTS. Run-8's null (mean delta mAUC -0.0013, p = 0.78) was measured at
+# learning rates 3e-7 and 1e-6 only, where the weights moved 0.24-0.69 % of ||w0||. Runs 5-6 did
+# sample 1e-5 and 3e-5 and saw performance degrade monotonically, so an interior optimum probably
+# exists near 1e-6 — but those runs used 9 100 steps and half their eval pool never logged, so the
+# arc has never been measured on ONE complete paired grid. That is all this phase does.
+#
+# ONE dataset split, deliberately. The split axis is Phase B's job; mixing them here would make a
+# 30-trial phase into a 360-trial one and answer neither question cleanly.
+#
+# Grid: 5 learning rates x 2 anchors x 3 bases = 30 trials per track.
+
+run_name: phase_a
+track: pd
+seed: 42
+
+corpus:
+  train_fraction: 0.7
+  test_fraction: 0.3
+  # Phase A holds the split FIXED at run-8's, so its numbers are directly comparable to
+  # RESULTS.md. `split_seed` is separate from `seed` so Phase B can vary the partition without
+  # also varying weight initialisation.
+  split_seed: 42
+  train_dataset_ids:
+    lgd: ["0001.heloc", "0003.axa", "0004.base_model", "0005.base_modelisation",
+          "0006.lgd_freddie", "0008.SBA_loans_case"]
+  test_dataset_ids:
+    lgd: ["0002.loss2", "0007.lgd_lendingclub"]
+  # DROPPED as a swept axis. Resampling the dataset split (Phase B) already varies which table
+  # sizes are in the training corpus, so a separate size filter is redundant and confounded with
+  # it. The targeted size test lives in config/phases/experiment2.yaml instead.
+  min_train_rows: 0
+
+tunable:
+  classifier_base_paths:
+    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
+    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
+  regressor_base_paths:
+    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
+    - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
+    - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
+
+  # THE AXIS THIS PHASE EXISTS FOR. Five points spanning every value in the literature:
+  #   3e-7  Real-TabPFN's value (Garg 2025), never tuned by its authors
+  #   1e-6  our own best in runs 6 and 7
+  #   1e-5  TabPFN-Wide (Kolberg 2026) and TabTune (Tanna 2025) both converged here
+  #   1e-4  inside the tuned search range of "On Finetuning Tabular Foundation Models"
+  #         (Rubachev 2025), which swept 5e-6 to 5e-4 — the only paper that tuned it at all
+  #   1e-3  deliberately too hot. A configuration that visibly destroys the model is EVIDENCE
+  #         that the middle of the range was a fair test, and bounds the useful range.
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+
+  # Full fine-tune everywhere, plus frozen-backbone for TabICL only.
+  # "On Finetuning Tabular Foundation Models" finds full fine-tuning matches every
+  # parameter-efficient variant on TabPFN and converges fastest; "Exploring Fine-Tuning for
+  # Tabular Foundation Models" finds LoRA unstable for TabPFN specifically. Our runs 4, 6 and 7
+  # each measured LoRA-on-TabPFN as a no-op. The TabICL arm stays because the same paper reports
+  # full fine-tuning is near-catastrophic for that family (TabZilla 0.873 -> 0.567).
+  use_lora: [false]
+  adapter_families: ["tabicl"]
+
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
+  epoch_pass_modes: ["full_pass"]
+
+  # THE SECOND AXIS. Garg 2025 anchors to the starting weights with L2-SP at lambda = 0.003;
+  # TabPFN-Wide (Kolberg 2026) instead uses plain weight decay 1e-4 toward the origin and no
+  # L2-SP at all. Neither paper tuned its choice, and they differ by a factor of 33 in learning
+  # rate at the same time, so the two recipes have never been separated. 0.0 is the
+  # unconstrained control.
+  l2sp_lambdas: [0.0, 0.003]
+
+train:
+  # Garg's exact budget, so this phase is comparable to run-8 and to the paper we are testing.
+  target_total_steps: 20000
+  max_epochs_for_step_budget: 6000
+  monitor_every: 5
+  # NO early stopping in Phase A. Every trial gets the same number of steps, because the point
+  # is to compare TRAINING BEHAVIOUR across learning rates and a per-trial stopping rule would
+  # give each arm a different budget. The epoch a patience-20 rule *would* have fired is logged
+  # as a diagnostic instead — see docs/EXPERIMENT_PLAN.md.
+  early_stopping: false
+  early_stopping_patience: 20
+  log_would_stop: true

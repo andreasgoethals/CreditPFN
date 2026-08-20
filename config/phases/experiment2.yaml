@@ -1,0 +1,82 @@
+# EXPERIMENT 2 — does continued pretraining help when EVERY training table is large?
+#
+#   python scripts/train_pipeline.py --config config/phases/experiment2.yaml --list-trials
+#
+# THE CLAIM UNDER TEST. Real-TabPFN (Garg 2025) reports that continued-pretraining gains rise
+# monotonically with the size of the tables in the corpus, that curated large tables (10k-100k
+# rows) give +0.022 normalised ROC-AUC, and that a corpus of TINY tables measurably HURTS
+# (-0.003). Dataset size is described as the active ingredient, not a detail.
+#
+# Our PD corpus straddles that line, and it does so with a clean break. Sorted by row count there
+# is a 3.13x drop — the largest consecutive gap anywhere in the corpus — between rank 11
+# (taiwan_creditcard, 30 000 rows) and rank 12 (lendingclub, 9 578). Everything at rank 12 and
+# below is 9 578 rows or fewer; everything at rank 11 and above is 30 000 or more.
+#
+# So: keep the 11 datasets above the break, train on the biggest 6, test on the remaining 5.
+# Every training table is >= 150 000 rows, which is at or above the top of Garg's band, and every
+# test table is >= 30 000.
+#
+#   TRAIN (6)                            rows        TEST (5)                        rows
+#   0016.bondora_peer2peer            730,176        0011.loan_default            105,471
+#   0006.hackerearth                  532,428        0009.bank_status             100,000
+#   0012.home_credit                  307,511        0007.cobranded                80,000
+#   0003.vehicle_loan                 233,154        0015.credit_risk_dataset      32,581
+#   0014.algorithmwatch               158,700        0002.taiwan_creditcard        30,000
+#   0001.gmsc                         150,000
+#   -------------------------------------------      ------------------------------------
+#   2,111,969 training rows                          348,052 test rows
+#
+# ONE FIXED SPLIT, not resampled: this is a targeted test of a specific published claim, not an
+# estimate of an average effect. Resampling would mix large and small tables back together and
+# destroy the only thing the experiment varies.
+#
+# PD ONLY. The LGD corpus has 8 datasets totalling 88 785 rows with no comparable break, so there
+# is no large-table subset to construct.
+#
+# Grid: 2 learning rates x 3 bases = 6 trials.
+
+run_name: experiment2
+track: pd
+seed: 42
+
+corpus:
+  train_fraction: 0.7          # unused — both sides are pinned below
+  test_fraction: 0.3
+  split_seed: 42
+
+  train_dataset_ids:
+    pd: ["0016.bondora_peer2peer", "0006.hackerearth", "0012.home_credit",
+         "0003.vehicle_loan", "0014.algorithmwatch", "0001.gmsc"]
+  test_dataset_ids:
+    pd: ["0011.loan_default", "0009.bank_status", "0007.cobranded",
+         "0015.credit_risk_dataset", "0002.taiwan_creditcard"]
+
+  # The six datasets below the 3.13x break are excluded by simply not naming them: any dataset
+  # absent from both lists lands in the "unused" bucket. Excluded (rows): lendingclub 9 578,
+  # myhom 7 000, hmeq 5 960, SBA_loans_case 2 102, thomas 1 225, german 999.
+  min_train_rows: 0
+
+tunable:
+  classifier_base_paths:
+    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
+    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
+  regressor_base_paths: []      # PD only
+
+  # The two rates that bracket our observed optimum. The wider dose-response sweep is Phase A's
+  # job; here the learning rate is a control, not the variable.
+  learning_rates: [1.0e-6, 1.0e-5]
+
+  use_lora: [false]
+  adapter_families: ["tabicl"]
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
+  epoch_pass_modes: ["full_pass"]
+  l2sp_lambdas: [0.003]
+
+train:
+  target_total_steps: 20000
+  max_epochs_for_step_budget: 6000
+  monitor_every: 5
+  early_stopping: false
+  log_would_stop: true

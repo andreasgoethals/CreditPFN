@@ -97,10 +97,22 @@ LOGGER = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def _load_cfg(overrides: list[str] | None = None):
-    """Load ``config/train.yaml`` and apply ``key=value`` overrides."""
+#: The sweep this pipeline runs unless told otherwise. A PHASE config (see `config/phases/`)
+#: is a full replacement for it, not a patch: each phase answers one question and carries its
+#: own grid, so `docs/EXPERIMENT_PLAN.md` can be executed one file at a time without editing
+#: the default and without a pile of `key=value` overrides in a job script.
+DEFAULT_TRAIN_CONFIG = "config/train.yaml"
+
+
+def _load_cfg(overrides: list[str] | None = None, config_path: str | None = None):
+    """Load the training config and apply ``key=value`` overrides.
+
+    `config_path` selects a phase config; it defaults to `config/train.yaml`. Phase files are
+    self-contained rather than deltas, because a delta that silently inherits an axis is how a
+    run ends up sweeping something nobody intended.
+    """
     from omegaconf import OmegaConf
-    cfg = OmegaConf.load("config/train.yaml")
+    cfg = OmegaConf.load(config_path or DEFAULT_TRAIN_CONFIG)
     if overrides:
         cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(overrides))
     return cfg
@@ -158,6 +170,16 @@ def _resolve_grid(
     else:
         mtrs = [int(x) for x in raw_mtr]
 
+    # ANCHOR STRENGTH, swept from run-9. `tunable.l2sp_lambdas` absent means "use the
+    # single value in `finetuning.l2sp_lambda`", which is what every earlier run did.
+    raw_l2 = getattr(cfg.tunable, "l2sp_lambdas", None)
+    if raw_l2 is None:
+        l2sps: list = [None]
+    elif isinstance(raw_l2, (int, float)):
+        l2sps = [float(raw_l2)]
+    else:
+        l2sps = [float(x) for x in raw_l2]
+
     #: Families for which the adapter arm (`use_lora: true`) is generated. Empty or
     #: absent = every family, which is what every run before run-8 did. LoRA on TabPFN
     #: was a measured no-op in runs 4, 6 and 7 and cost a third of the grid; on TabICLv2
@@ -177,12 +199,12 @@ def _resolve_grid(
     if single:
         return [(
             str(bases[0]), float(lrs[0]), bool(loras[0]), float(qfs[0]),
-            int(accs[0]), str(pms[0]), int(mtrs[0]),
+            int(accs[0]), str(pms[0]), int(mtrs[0]), l2sps[0],
         )]
     return [
-        (str(b), float(lr), bool(lo), float(qf), int(ac), str(pm), int(mtr))
-        for b, lr, lo, qf, ac, pm, mtr
-        in itertools.product(bases, lrs, loras, qfs, accs, pms, mtrs)
+        (str(b), float(lr), bool(lo), float(qf), int(ac), str(pm), int(mtr), l2)
+        for b, lr, lo, qf, ac, pm, mtr, l2
+        in itertools.product(bases, lrs, loras, qfs, accs, pms, mtrs, l2sps)
         if not lo or _adapter_allowed(str(b))
     ]
 
@@ -349,7 +371,31 @@ def _run_provenance(cfg, base_checkpoint: str) -> dict:
                                  if sched is not None else float("nan")),
         "tfm_library_pin": _git("submodule", "status", "tfm-library")[:48],
         "git_commit": _git("rev-parse", "--short", "HEAD"),
+        **_device_snapshot(),
     }
+
+
+def _device_snapshot() -> dict:
+    """Which GPU this trial ran on, and how much of it was used.
+
+    Recorded per trial rather than per job because a slurm array can land its tasks on
+    different partitions, and `RESULTS.md` has to be able to say "120 GPU-hours on B200" without
+    anyone re-reading the logs.
+    """
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            return {"gpu_name": "cpu", "gpu_total_gb": float("nan"),
+                    "peak_gpu_gb": float("nan")}
+        props = torch.cuda.get_device_properties(0)
+        return {
+            "gpu_name": str(props.name),
+            "gpu_total_gb": round(props.total_memory / 1e9, 2),
+            "peak_gpu_gb": round(torch.cuda.max_memory_allocated() / 1e9, 3),
+        }
+    except Exception:                                          # pragma: no cover
+        return {"gpu_name": "", "gpu_total_gb": float("nan"),
+                "peak_gpu_gb": float("nan")}
 
 
 @dataclass
@@ -422,6 +468,16 @@ class RunRow:
     min_lr_fraction:        float = float("nan")
     tfm_library_pin:        str   = ""      # which literature snapshot this ran against
     git_commit:             str   = ""
+
+    # COMPUTE ACCOUNTING (19-08-2026). A paper reports what a result cost, and a reviewer asks
+    # whether the comparison was compute-matched. `elapsed_sec` alone cannot answer either:
+    # it hides which GPU ran the trial and how much of it was used, so two numbers from
+    # different partitions look comparable when they are not.
+    gpu_name:               str   = ""      # e.g. "NVIDIA B200"
+    gpu_total_gb:           float = float("nan")
+    peak_gpu_gb:            float = float("nan")   # torch.cuda.max_memory_allocated
+    sec_per_step:           float = float("nan")   # elapsed_sec / total_optimizer_steps
+    gpu_hours:              float = float("nan")   # elapsed_sec / 3600, the billable unit
 
 
 _MANIFEST_THREAD_LOCK = threading.Lock()
@@ -507,7 +563,7 @@ def run(
     ``0`` on full success, ``1`` if any trial raised.
     """
     if cfg is None:
-        cfg = _load_cfg(overrides)
+        cfg = _load_cfg(overrides, getattr(args, 'config', None))
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
@@ -591,17 +647,17 @@ def run(
     t_outer = time.monotonic()
 
     for trial_idx_local, (base, lr, use_lora, query_fraction, accumulate, pass_mode,
-                         min_train_rows) in enumerate(plan, start=1):
+                         min_train_rows, l2sp_lambda) in enumerate(plan, start=1):
         global_idx = (
             trial_index if trial_index is not None
             else (trial_idx_local - 1)
         )
         LOGGER.info(
             "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d  "
-            "pass=%s  min_train_rows=%d ===",
+            "pass=%s  min_train_rows=%d  l2sp=%s ===",
             trial_idx_local, len(plan), global_idx,
             Path(base).name, lr, use_lora, query_fraction, accumulate, pass_mode,
-            min_train_rows,
+            min_train_rows, "cfg" if l2sp_lambda is None else f"{l2sp_lambda:g}",
         )
         # Mini environment banner BEFORE any tabpfn import / model load, so a
         # crash during load still leaves version + path context in the log.
@@ -632,7 +688,7 @@ def run(
             base_path=base, learning_rate=lr, seed=int(cfg.seed),
             use_lora=use_lora, query_fraction=query_fraction,
             accumulate_grad_batches=accumulate, epoch_pass_mode=pass_mode,
-            min_train_rows=min_train_rows,
+            min_train_rows=min_train_rows, l2sp_lambda=l2sp_lambda,
         ).removesuffix(".ckpt")
 
         # ---- Rename the log file to include the trial's HPs --------- #
@@ -902,6 +958,11 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
         description="Continued pretraining for TabPFN on the credit corpus.",
     )
     p.add_argument(
+        "--config", default=None, metavar="PATH",
+        help="Training config to run. Defaults to config/train.yaml; point it at "
+             "config/phases/<phase>.yaml to run one phase of docs/EXPERIMENT_PLAN.md.",
+    )
+    p.add_argument(
         "--single", action="store_true",
         help="Train only ONE trial (the first value of every list under "
              "cfg.tunable). Default: cartesian product of all tunable lists.",
@@ -939,12 +1000,12 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
 if __name__ == "__main__":
     args, overrides = _parse_args()
     if args.list_trials:
-        cfg = _load_cfg(overrides)
+        cfg = _load_cfg(overrides, getattr(args, 'config', None))
         print(len(_resolve_grid(cfg, single=False)))
         raise SystemExit(0)
     if args.trial_family is not None:
         from src.train.tabicl_compat import model_family
-        cfg = _load_cfg(overrides)
+        cfg = _load_cfg(overrides, getattr(args, 'config', None))
         grid = _resolve_grid(cfg, single=False)
         if not 0 <= args.trial_family < len(grid):
             # Over-sized slurm arrays are a legitimate pattern; a surplus

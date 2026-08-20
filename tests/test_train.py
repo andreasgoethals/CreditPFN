@@ -728,14 +728,17 @@ def test_grid_full_cartesian_product() -> None:
     assert len(grid) == 3 * 3
     # No duplicates in a cartesian product of distinct lists.
     assert len(set(grid)) == len(grid)
-    # Every entry is the 7-tuple (base, lr, use_lora, query_fraction, accumulate,
-    # epoch_pass_mode, min_train_rows); defaults when those axes are absent:
-    # use_lora=False, qf=0.20, accumulate=1, pass="one_sample", min_train_rows=0.
-    # min_train_rows joined the grid on 12-08-2026 — corpus composition is a swept
-    # variable now, so two trials can differ only in which datasets existed.
+    # Every entry is the 8-tuple (base, lr, use_lora, query_fraction, accumulate,
+    # epoch_pass_mode, min_train_rows, l2sp_lambda); defaults when those axes are absent:
+    # use_lora=False, qf=0.20, accumulate=1, pass="one_sample", min_train_rows=0, l2sp=None.
+    # min_train_rows joined the grid on 12-08-2026 and l2sp_lambda on 19-08-2026 — corpus
+    # composition and anchor strength are both swept variables now, so two trials can differ
+    # only in which datasets existed or in how hard they were held to the base weights.
+    # `None` for l2sp means "not swept, fall back to the config", which is what keeps every
+    # pre-run-9 trial name and results directory byte-identical.
     assert all(
-        len(t) == 7 and t[2] is False and t[3] == 0.20 and t[4] == 1
-        and t[5] == "one_sample" and t[6] == 0
+        len(t) == 8 and t[2] is False and t[3] == 0.20 and t[4] == 1
+        and t[5] == "one_sample" and t[6] == 0 and t[7] is None
         for t in grid
     )
 
@@ -771,7 +774,7 @@ def test_grid_single_picks_first_value() -> None:
         ),
     )
     grid = tp._resolve_grid(cfg, single=True)
-    assert grid == [("P", 5e-6, False, 0.20, 1, "one_sample", 0)]
+    assert grid == [("P", 5e-6, False, 0.20, 1, "one_sample", 0, None)]
     assert len(grid) == 1
 
 
@@ -1224,3 +1227,35 @@ def test_a_flat_loss_with_growing_drift_is_not_divergence() -> None:
     # A moving loss is never divergence, whatever the drift does.
     assert not trips([0.47, 0.44, 0.41, 0.39, 0.36], dead)
     assert not math.isnan(0.0)
+
+
+def test_l2sp_lambda_is_a_swept_axis() -> None:
+    """`tunable.l2sp_lambdas` multiplies the grid, and its absence changes nothing.
+
+    Real-TabPFN (Garg 2025) anchors to the starting weights with L2-SP at lambda = 0.003;
+    TabPFN-Wide (Kolberg 2026) uses plain weight decay toward the origin and no L2-SP. Neither
+    tuned its choice and the two recipes differ in learning rate at the same time, so the anchor
+    has never been separated from the rate — which makes it an axis, not a constant.
+    """
+    import scripts.train_pipeline as tp
+
+    base = dict(classifier_base_paths=["a", "b"], regressor_base_paths=["x", "y"],
+                learning_rates=[1e-6, 1e-5])
+
+    # Absent -> one trial per (base, lr), and the slot carries None so the config value wins.
+    plain = tp._resolve_grid(NS(track="pd", tunable=NS(**base)), single=False)
+    assert len(plain) == 4
+    assert {t[7] for t in plain} == {None}
+
+    # Present -> the grid multiplies by the number of lambdas.
+    swept = tp._resolve_grid(
+        NS(track="pd", tunable=NS(**base, l2sp_lambdas=[0.0, 0.003])), single=False)
+    assert len(swept) == 8
+    assert {t[7] for t in swept} == {0.0, 0.003}
+    # Two trials may now differ ONLY in the anchor, which is the point.
+    assert len(set(swept)) == len(swept)
+
+    # A scalar is accepted as a one-value sweep.
+    scalar = tp._resolve_grid(
+        NS(track="pd", tunable=NS(**base, l2sp_lambdas=0.003)), single=False)
+    assert len(scalar) == 4 and {t[7] for t in scalar} == {0.003}
