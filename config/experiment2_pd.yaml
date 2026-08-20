@@ -1,14 +1,15 @@
 # EXPERIMENT 2 · PD — does it help when every training table is large?
-# The 11 PD datasets above the 3.13x row-count break; biggest 6 train, remaining 5 test.
-# One fixed split: this tests a published claim about table size, so resampling would
-# reintroduce the small tables the experiment exists to exclude.
+# The 11 PD datasets above the 3.13x row-count break; biggest 6 train, smallest 5 test.
+# One fixed split: resampling would reintroduce the small tables this excludes.
 
 # ---------------------------------------------------------------- SWEPT ------
 tunable:
-  learning_rates: [1.0e-6, 1.0e-5]                    # control, not the variable here
+  learning_rates: [1.0e-6, 1.0e-5]                    # control, not the variable
   l2sp_lambdas: [0.003]
   frozen_backbone: [false]
   epoch_pass_modes: ["full_pass"]
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
   classifier_base_paths:
     - "checkpoints/tabpfn-v2-classifier-v2_default.ckpt"
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
@@ -17,7 +18,9 @@ tunable:
   regressor_base_paths: []
 
 corpus:
-  n_splits: 1                 # pinned below, not drawn
+  min_train_rows: 0           # not an axis any more: the split draw varies table sizes
+  n_test_datasets: null       # pinned below
+  n_splits: 1
   train_dataset_ids:          # all >= 150 000 rows
     pd: ["0016.bondora_peer2peer", "0006.hackerearth", "0012.home_credit",
          "0003.vehicle_loan", "0014.algorithmwatch", "0001.gmsc"]
@@ -28,20 +31,11 @@ corpus:
 # ---------------------------------------------------------------- FIXED ------
 track: "pd"
 run_name: "exp2"
-seed: 42
-device: "auto"
 
 train:
   epochs: 100
+  target_total_steps: null
   monitor_every: 5
   early_stopping: false
-  log_would_stop: true
   early_stopping_patience: 20
-
-optimizer:
-  weight_decay: 0.0
-  grad_clip: 1.0
-
-scheduler:
-  warmup_fraction: 0.10
-  min_lr_fraction: 0.05
+  log_would_stop: true

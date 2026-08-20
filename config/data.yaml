@@ -39,6 +39,10 @@ finetuning:
   max_rows_per_epoch:
     v3:      26000
     v2.6:    11000
+    # TabPFN v2 (Nature) is a 7.2M-parameter model whose architecture caps at ~10k rows, well
+    # under v2.6's context. 9000 is a conservative start; replace it with a measured value from
+    # scripts/probe_row_cap.py before trusting a v2 result (docs/METHOD.md).
+    v2:      9000
     tabicl:  26000
     default: 26000
   # Optional rows x features budget: per-step rows become

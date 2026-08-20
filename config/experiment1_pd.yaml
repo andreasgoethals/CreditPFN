@@ -1,13 +1,16 @@
 # EXPERIMENT 1 · PD — does continued pretraining help, averaged over dataset splits?
-# Row caps, feature caps and eval settings live in config/data.yaml and config/eval.yaml.
+# Delta over config/train.yaml. Row/feature caps: config/data.yaml. Eval: config/eval.yaml.
 
 # ---------------------------------------------------------------- SWEPT ------
 tunable:
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]   # Garg 3e-7 → Rubachev's tuned range
-  l2sp_lambdas: [0.0, 0.003]                          # anchor to start weights; 0 = none
-  frozen_backbone: [false, true]                      # train head only, or everything
-  epoch_pass_modes: ["full_pass", "one_sample"]       # all rows/epoch, or 1 step per dataset
-  classifier_base_paths:                              # base generation ladder
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]   # Garg 3e-7 -> Rubachev's tuned range
+  l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
+  frozen_backbone: [false, true]                      # head only, or every weight
+  epoch_pass_modes: ["full_pass"]                     # one_sample tested on a subset only
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
+  adapter_families: []                                # frozen arm for every family
+  classifier_base_paths:
     - "checkpoints/tabpfn-v2-classifier-v2_default.ckpt"
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
     - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
@@ -15,26 +18,20 @@ tunable:
   regressor_base_paths: []
 
 corpus:
-  n_splits: 28                # random train/test dataset draws, averaged over in the analysis
-  n_test_datasets: 4          # 4 test / 13 train, of 17 PD datasets
+  min_train_rows: 0           # not an axis any more: the split draw varies table sizes
+  n_test_datasets: 4          # random draw: 4 test / 13 train, of 17 PD datasets
+  n_splits: 28                # how many draws --split-index iterates over
+  train_dataset_ids: null     # drawn, not pinned
+  test_dataset_ids: null
 
 # ---------------------------------------------------------------- FIXED ------
 track: "pd"
 run_name: "exp1"
-seed: 42                      # weight init + data draws
-device: "auto"
 
 train:
-  epochs: 100                 # EPOCHS, not steps: equalises data exposure across bases
-  monitor_every: 5            # epochs between held-out probes
-  early_stopping: false       # fixed budget so training curves stay comparable
-  log_would_stop: true        # record where patience-20 would have fired
+  epochs: 100                 # EPOCHS govern: equalises data exposure across bases
+  target_total_steps: null    # off, or it would override epochs
+  monitor_every: 5
+  early_stopping: false       # fixed budget keeps training curves comparable
   early_stopping_patience: 20
-
-optimizer:
-  weight_decay: 0.0           # L2-SP replaces decay-to-origin
-  grad_clip: 1.0
-
-scheduler:
-  warmup_fraction: 0.10
-  min_lr_fraction: 0.05
+  log_would_stop: true

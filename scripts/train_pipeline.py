@@ -112,7 +112,16 @@ def _load_cfg(overrides: list[str] | None = None, config_path: str | None = None
     run ends up sweeping something nobody intended.
     """
     from omegaconf import OmegaConf
-    cfg = OmegaConf.load(config_path or DEFAULT_TRAIN_CONFIG)
+    cfg = OmegaConf.load(DEFAULT_TRAIN_CONFIG)
+    if config_path and str(config_path) != DEFAULT_TRAIN_CONFIG:
+        # EXPERIMENT CONFIGS ARE DELTAS over config/train.yaml, not replacements. The training
+        # path requires ~25 keys (cfg.checkpoint.trained_dir, cfg.lora.*, cfg.train.amp,
+        # cfg.optimizer.lr, ...) that have nothing to do with the science of one experiment, so
+        # a self-contained experiment file is either 100 lines of machinery or it crashes at
+        # checkpoint-save time. The base holds the machinery; the experiment holds what differs.
+        # The silent-inheritance risk this trades against is covered by dumping the RESOLVED
+        # config to output/manifests/resolved/ and by the manifest recording every swept axis.
+        cfg = OmegaConf.merge(cfg, OmegaConf.load(str(config_path)))
     if overrides:
         cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(overrides))
     return cfg

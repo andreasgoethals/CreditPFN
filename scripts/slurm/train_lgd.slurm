@@ -112,7 +112,7 @@ python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" ||
 # TabICL preflight — ONLY for trials using a tabicl base, so a missing
 # `tabicl` install costs that family's trials rather than the whole grid.
 # See train_pd.slurm for the full rationale. (2026-08-05)
-TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" track=lgd 2>/dev/null || true)"
+TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" ${CREDITPFN_CONFIG:+--config "${CREDITPFN_CONFIG}"} track=lgd 2>/dev/null || true)"
 if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then
     python -c "from src.train.tabicl_compat import smoke_test; smoke_test('lgd')" || {
         echo "PREFLIGHT FAILED: tabicl import smoke test (trial ${SLURM_ARRAY_TASK_ID} uses a tabicl base)." >&2
@@ -126,9 +126,17 @@ fi
 # (Staging writability is probed in python — resolve_writable_staging_path —
 #  before any training compute; falls back to $VSC_DATA if unwritable.)
 
+# CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are exported by
+# scripts/slurm/run_experiment.sh. Unset means "the default sweep in
+# config/train.yaml", so every submission made before run-9 behaves as it did.
+EXTRA_ARGS=()
+[[ -n "${CREDITPFN_CONFIG:-}" ]] && EXTRA_ARGS+=(--config "${CREDITPFN_CONFIG}")
+[[ -n "${CREDITPFN_SPLIT_INDEX:-}" ]] && EXTRA_ARGS+=(--split-index "${CREDITPFN_SPLIT_INDEX}")
+
 python -u scripts/train_pipeline.py \
     --trial-index "${SLURM_ARRAY_TASK_ID}" \
     --log-path "$LOG" \
+    "${EXTRA_ARGS[@]}" \
     track=lgd
 
 # Reached ONLY on success (set -e) - per-task sentinel for the eval gate.

@@ -168,7 +168,7 @@ python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('pd')" || 
 # means a missing/broken `tabicl` install fails that family's 16 trials
 # instead of killing all 48, which matters because the tabicl bases are an
 # addition to an otherwise-working TabPFN sweep. (2026-08-05)
-TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" track=pd 2>/dev/null || true)"
+TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" ${CREDITPFN_CONFIG:+--config "${CREDITPFN_CONFIG}"} track=pd 2>/dev/null || true)"
 if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then
     python -c "from src.train.tabicl_compat import smoke_test; smoke_test('pd')" || {
         echo "PREFLIGHT FAILED: tabicl import smoke test (trial ${SLURM_ARRAY_TASK_ID} uses a tabicl base)." >&2
@@ -183,9 +183,17 @@ fi
 #  at save-path resolution, before any training compute; unwritable staging
 #  now falls back to $VSC_DATA with a loud warning instead of Errno 13.)
 
+# CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are exported by
+# scripts/slurm/run_experiment.sh. Unset means "the default sweep in
+# config/train.yaml", so every submission made before run-9 behaves as it did.
+EXTRA_ARGS=()
+[[ -n "${CREDITPFN_CONFIG:-}" ]] && EXTRA_ARGS+=(--config "${CREDITPFN_CONFIG}")
+[[ -n "${CREDITPFN_SPLIT_INDEX:-}" ]] && EXTRA_ARGS+=(--split-index "${CREDITPFN_SPLIT_INDEX}")
+
 python -u scripts/train_pipeline.py \
     --trial-index "${SLURM_ARRAY_TASK_ID}" \
     --log-path "$LOG" \
+    "${EXTRA_ARGS[@]}" \
     track=pd
 
 # Reached ONLY on success (set -e aborts on a python failure/exit 1) —
