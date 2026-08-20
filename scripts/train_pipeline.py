@@ -118,6 +118,20 @@ def _load_cfg(overrides: list[str] | None = None, config_path: str | None = None
     return cfg
 
 
+def _apply_split_index(cfg, split_index: int | None):
+    """Point the config at one of the random dataset splits.
+
+    The split is NOT a sweep axis: making it one would multiply the trial grid by 28 and put a
+    split tag inside every trial name. Instead it seeds the draw and tags the run name, so each
+    split writes its own manifest and the analysis averages across them.
+    """
+    if split_index is None:
+        return cfg
+    cfg.corpus.split_seed = int(split_index)
+    cfg.run_name = f"{cfg.run_name}_s{int(split_index):02d}"
+    return cfg
+
+
 def _resolve_grid(
     cfg, *, single: bool,
 ) -> list[tuple[str, float, bool, float, int, str]]:
@@ -143,7 +157,13 @@ def _resolve_grid(
         else list(cfg.tunable.regressor_base_paths)
     )
     lrs = [float(x) for x in cfg.tunable.learning_rates]
-    raw_lora = getattr(cfg.tunable, "use_lora", [False])
+    # `frozen_backbone` is the honest name for this axis and the accepted spelling from
+    # run-9: on TabICL it trains the head only, on TabPFN it means LoRA. `use_lora` is
+    # still read so older configs keep working, but a config setting NEITHER gets [False]
+    # rather than a silently dropped axis.
+    raw_lora = getattr(cfg.tunable, "frozen_backbone", None)
+    if raw_lora is None:
+        raw_lora = getattr(cfg.tunable, "use_lora", [False])
     if isinstance(raw_lora, bool):
         loras = [bool(raw_lora)]
     else:
@@ -563,7 +583,7 @@ def run(
     ``0`` on full success, ``1`` if any trial raised.
     """
     if cfg is None:
-        cfg = _load_cfg(overrides, getattr(args, 'config', None))
+        cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
@@ -963,6 +983,12 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
              "config/phases/<phase>.yaml to run one phase of docs/EXPERIMENT_PLAN.md.",
     )
     p.add_argument(
+        "--split-index", type=int, default=None, metavar="K",
+        help="Which random train/test dataset split to run (0..n_splits-1). Sets "
+             "corpus.split_seed and tags the run name, so 28 splits of one grid land in "
+             "28 distinct manifests instead of overwriting each other.",
+    )
+    p.add_argument(
         "--single", action="store_true",
         help="Train only ONE trial (the first value of every list under "
              "cfg.tunable). Default: cartesian product of all tunable lists.",
@@ -1000,12 +1026,12 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
 if __name__ == "__main__":
     args, overrides = _parse_args()
     if args.list_trials:
-        cfg = _load_cfg(overrides, getattr(args, 'config', None))
+        cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
         print(len(_resolve_grid(cfg, single=False)))
         raise SystemExit(0)
     if args.trial_family is not None:
         from src.train.tabicl_compat import model_family
-        cfg = _load_cfg(overrides, getattr(args, 'config', None))
+        cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
         grid = _resolve_grid(cfg, single=False)
         if not 0 <= args.trial_family < len(grid):
             # Over-sized slurm arrays are a legitimate pattern; a surplus

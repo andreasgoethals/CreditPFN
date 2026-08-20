@@ -222,6 +222,26 @@ def _assign_buckets(
     return bucket
 
 
+def _assign_random_split(
+    dataset_ids: list[str], *, n_test: int, seed: int,
+) -> dict[str, str]:
+    """Draw `n_test` datasets at random as the test set; the rest train.
+
+    One draw per `seed`, so `--split-index k` gives split k and the analysis averages over them.
+    Unlike K-fold this does not guarantee every dataset is tested exactly once, but with 28 draws
+    of 4 from 17 each dataset lands in a test set ~6.6 times, which is what the averaging needs.
+    """
+    order = sorted(dataset_ids)
+    n = len(order)
+    if n == 0:
+        return {}
+    if not 1 <= n_test < n:
+        raise ValueError(f"n_test must be in [1, {n}); got {n_test}")
+    rng = np.random.default_rng(seed)
+    test = set(rng.choice(order, size=int(n_test), replace=False).tolist())
+    return {d: ("test" if d in test else "train") for d in order}
+
+
 def _assign_folds(
     dataset_ids: list[str], *,
     n_folds: int,
@@ -272,6 +292,7 @@ def split_corpus(
     seed: int = 42,
     n_folds: int | None = None,
     fold: int = 0,
+    n_test_datasets: int | None = None,
     min_train_rows: int = 0,
 ) -> CorpusSplit:
     """Build a :class:`CorpusSplit` for one track.
@@ -349,7 +370,11 @@ def split_corpus(
         if need_train or need_test:
             # K-FOLD when `n_folds` is set, otherwise the historic fraction draw. The
             # fraction path is kept so every run before run-9 stays reproducible.
-            if n_folds:
+            if n_test_datasets:
+                count_buckets = _assign_random_split(
+                    remaining, n_test=int(n_test_datasets), seed=seed,
+                )
+            elif n_folds:
                 count_buckets = _assign_folds(
                     remaining, n_folds=int(n_folds), fold=int(fold), seed=seed,
                 )
@@ -525,8 +550,10 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
     corpus = cfg.corpus
     return split_corpus(
         track=track,
-        train_fraction=float(corpus.train_fraction),
-        test_fraction=float(corpus.test_fraction),
+        # Optional since run-9: a config that sets `n_test_datasets` or `n_folds` never uses
+        # the fractions, and requiring them forces dead knobs into every experiment file.
+        train_fraction=float(corpus.get("train_fraction", 0.70)),
+        test_fraction=float(corpus.get("test_fraction", 0.30)),
         train_dataset_ids=resolve_ids_for_track(
             corpus.get("train_dataset_ids", None), track),
         test_dataset_ids=resolve_ids_for_track(
@@ -536,6 +563,7 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
         # and the two effects were confounded. Defaults to cfg.seed so old runs reproduce.
         seed=int(corpus.get("split_seed", None) or cfg.seed),
         n_folds=corpus.get("n_folds", None),
+        n_test_datasets=corpus.get("n_test_datasets", None),
         fold=int(corpus.get("fold", 0) or 0),
         # A LIST here means "swept" (config/train.yaml since run-8). Outside a single
         # trial there is no one value, so this convenience wrapper applies NO filter:
