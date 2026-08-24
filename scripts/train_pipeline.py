@@ -104,6 +104,64 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_TRAIN_CONFIG = "config/train.yaml"
 
 
+def _refuse_unusable_gpu() -> None:
+    """Fail fast, with the reason, when the visible GPU cannot run this build.
+
+    Two cases, both seen in practice:
+      * a login node's display GPU (Quadro P6000, sm_61) — shared, tiny, and unsupported;
+      * any card whose compute capability is absent from `torch.cuda.get_arch_list()`.
+
+    Either way the symptom is a CUDA kernel error raised deep inside the first forward pass,
+    long after the config and corpus have been logged, which reads like a model bug.
+    """
+    import os
+    import socket
+
+    try:
+        import torch
+        if not torch.cuda.is_available():
+            return                       # CPU is a legitimate choice; the loop handles it
+        props = torch.cuda.get_device_properties(0)
+    except Exception:                                          # pragma: no cover
+        return
+
+    cap = f"sm_{props.major}{props.minor}"
+    supported = set(torch.cuda.get_arch_list())
+    host = socket.gethostname()
+    on_login = "login" in host and not os.environ.get("SLURM_JOB_ID")
+    if cap in supported and not on_login:
+        return
+
+    lines = [
+        "=" * 78,
+        "REFUSING TO TRAIN — the visible GPU cannot run this PyTorch build.",
+        "=" * 78,
+        f"  host             : {host}",
+        f"  slurm job        : {os.environ.get('SLURM_JOB_ID', '<none — interactive>')}",
+        f"  gpu              : {props.name} ({cap}, {props.total_memory / 1e9:.1f} GB)",
+        f"  pytorch supports : {' '.join(sorted(supported))}",
+    ]
+    if on_login:
+        lines.append("")
+        lines.append("  A login node's GPU is a shared DISPLAY device, not a compute GPU.")
+    if cap not in supported:
+        lines.append("")
+        lines.append(f"  This build has no {cap} kernels, so the first forward pass dies with")
+        lines.append("  'no kernel image is available for execution on the device'.")
+    lines += [
+        "",
+        "  Submit it as a batch job instead:",
+        "      bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml",
+        "  or, for a single trial:",
+        "      sbatch --array=0-0 --export=ALL,CREDITPFN_CONFIG=config/experiment1_pd.yaml \\",
+        "             scripts/slurm/train_pd.slurm",
+        "",
+        "  To train on CPU on purpose, pass device=cpu.",
+        "=" * 78,
+    ]
+    raise SystemExit("\n".join(lines))
+
+
 def _load_cfg(overrides: list[str] | None = None, config_path: str | None = None):
     """Load the training config and apply ``key=value`` overrides.
 
@@ -655,6 +713,7 @@ def run(
         plan_label = "cartesian grid"
         csv_append = False
 
+    _refuse_unusable_gpu()
     LOGGER.info(
         "Training plan: %d run(s) on track=%s (%s; full grid has %d)",
         len(plan), track, plan_label, len(full_grid),

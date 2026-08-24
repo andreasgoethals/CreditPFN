@@ -788,12 +788,24 @@ def test_training_grid_contains_both_families() -> None:
         # The product is NOT plain: two rules shrink it, and both are deliberate.
         #   * `adapter_families` restricts the `use_lora: true` arm to named families
         #     (run-8: TabICLv2 only — LoRA on TabPFN was a measured no-op three times).
-        #   * `corpus.min_train_rows` is a swept axis as of run-8.
+        #   * `corpus.min_train_rows` was a swept axis in run-8 and is a SCALAR again from
+        #     run-9 (the dataset-split draw varies table sizes instead). Mirror
+        #     `_resolve_grid`'s handling: a scalar is a one-value axis, a list is swept.
+        #   * `l2sp_lambdas` is an axis from run-9; null means "not swept".
+        def _n(axis, default=1):
+            raw = cfg.tunable.get(axis, None) if hasattr(cfg, "tunable") else None
+            if raw is None:
+                return default
+            return 1 if isinstance(raw, (int, float, str, bool)) else max(1, len(list(raw)))
+
+        raw_mtr = cfg.corpus.get("min_train_rows", 0)
+        n_mtr = 1 if isinstance(raw_mtr, (int, float)) else max(1, len(list(raw_mtr)))
         n_other = (len(cfg.tunable.learning_rates)
                    * len(cfg.tunable.query_fractions)
                    * len(cfg.tunable.accumulate_grad_batches)
                    * len(cfg.tunable.epoch_pass_modes)
-                   * max(1, len(list(cfg.corpus.get("min_train_rows", [0])))))
+                   * _n("l2sp_lambdas")
+                   * n_mtr)
         adapter_fams = [str(x).lower() for x in
                         (cfg.tunable.get("adapter_families", None) or [])]
         n_adapter_bases = (

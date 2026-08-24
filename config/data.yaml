@@ -1,110 +1,46 @@
-# =============================================================================
-#  CreditPFN — data-pipeline configuration
-# =============================================================================
-#  Tunable knobs only; always-on policy is hardcoded in the stage modules.
-#  CLI overrides Hydra-style: `data_pipeline.py finetuning.max_rows_per_epoch=5000`.
-#  Full walkthrough of every stage in docs/METHOD.md.
-# =============================================================================
+# Dataset preparation and per-step capacity. Training: config/train.yaml. Eval: config/eval.yaml.
 
-# Global seed — every stage derives a deterministic local seed from this.
 seed: 42
 
-# Paths (resolved by src.utils.paths):
-#   data_source picks the corpus tier on VSC:
-#     "staging" (DEFAULT) — project storage <staging>/CreditPFN. Datasets are
-#                           the largest files → they belong in project storage
-#                           (persistent, large, non-purged). See docs/VSC.md.
-#     "scratch"           — $VSC_SCRATCH/CreditPFN (fast parallel FS, purged ~30d).
-#     "data"              — $VSC_DATA/CreditPFN (NFS, backed up, tight quota).
-#   On a laptop the knob is ignored (repo root is the only data home).
-#   dedup + manifests ALWAYS resolve to the durable output root ($VSC_DATA).
 paths:
-  data_source:   "staging"         # "staging" | "scratch" | "data"
-  raw:           data/raw          # data/raw/{pd,lgd}/<id>.csv
-  processed:     data/processed    # sanitize.py output — the on-disk training input
-  dedup:         output/manifests/dedup   # doubles_*_{pre,post}.csv (always durable)
-  manifest_pd:   output/manifests/manifest_pd.csv
-  manifest_lgd:  output/manifests/manifest_lgd.csv
+  data_source: staging                    # staging | data — which storage tier to read/write
+  raw: data/raw
+  processed: data/processed
+  dedup: output/manifests/dedup
+  manifest_pd: output/manifests/manifest_pd.csv
+  manifest_lgd: output/manifests/manifest_lgd.csv
 
-
-# --- Finetuning subsample ----------------------------------------------------
-# Rows pulled per training step (the in-context set the model conditions on).
-# Per-architecture because memory cost per row differs ~11x across bases.
-# Values are the PD (2-member) caps; loop.py scales them by 2/n_estimators for
-# LGD's 8 members (TabPFN only — tabicl is pinned to 2 members on both tracks).
-# Measured on the B200 2026-08-05; TabICLv2 must NOT exceed 26000 (cuDNN fused
-# attention fails between 26k and 40k) and matches v3 for cross-family parity.
-# Rationale, measurements, re-probe instructions: docs/METHOD.md §1.
 finetuning:
-  max_rows_per_epoch:
-    v3:      26000
-    v2.6:    11000
-    # TabPFN v2 (Nature) is a 7.2M-parameter model whose architecture caps at ~10k rows, well
-    # under v2.6's context. 9000 is a conservative start; replace it with a measured value from
-    # scripts/probe_row_cap.py before trusting a v2 result (docs/METHOD.md).
-    v2:      9000
-    tabicl:  26000
-    default: 26000
-  # Optional rows x features budget: per-step rows become
-  # min(max_rows_per_epoch, max_cells // n_features). null = off (the default).
-  # v3-only by design; wrong for v2.6. See docs/METHOD.md §1.
-  max_cells_per_epoch:
-    v3:      null
-    v2.6:    null
+  max_rows_per_epoch:                     # rows per TRAINING step (context+query), PD 2-member
+    v2:      9000                         # UNPROBED — 7.2M params, architectural cap ~10k rows
+    v2.6:    18000                        # probed 30k=169G on a 183G B200; 18k leaves 45% free
+    v3:      40000                        # probed 50k=125G; 40k leaves 45% free
+    tabicl:  26000                        # cuDNN fused attention fails at 40k — not memory
+    default: 18000                        # the most conservative real value, not the largest
+  max_cells_per_epoch:                    # optional rows x features budget; null = off
+    v3: null
+    v2.6: null
     default: null
+  context_sampling: balanced              # stratified | balanced — per-class draw for the context
+  query_fraction: 0.2                     # default only; the sweep sets this per trial
 
-  # CONTEXT CONSTRUCTION for the per-step subsample. "stratified" keeps each
-  # class's natural frequency; "balanced" gives every class an equal quota
-  # capped by availability. Under credit's 1-3 % default rate, stratified puts
-  # ~260 positives in a 26 000-row context while balanced takes every positive
-  # there is. Tanna et al. 2026 measure balanced/hybrid context as worth 3-4
-  # AUC points over uniform on Home Credit + Lending Club (both in our
-  # training corpus) — a bigger effect than the choice of model. Applies to
-  # classification only (regression falls back to a uniform draw) and is
-  # shared by BOTH families so it never confounds a cross-family comparison.
-  context_sampling: "balanced"
-  query_fraction:     0.20
-
-
-# --- sanitize.py — dataset-agnostic cleaning ---------------------------------
 sanitize:
-  max_missing_rate: 0.90                  # drop columns more NaN than this
-  coerce_numeric_strings: true            # cast mostly-numeric object cols
-  coerce_numeric_threshold: 0.95          # ...if this fraction parses
-  max_columns: 64                         # feature-count cap (selection; see below)
-  # Cap the feature count by UNSUPERVISED SELECTION of real columns (top by
-  # scale-free variance, greedily de-correlated) — NOT by averaging into
-  # cluster means. Keeps real marginals/interactions so continued pretraining
-  # specialises the prior toward genuine credit features. corr_threshold drops
-  # a column when |Pearson r| with a kept column exceeds it. See docs/METHOD.md.
-  feature_selection:
-    enabled: true
-    corr_threshold: 0.95
-  lgd_target_clip:                        # LGD ∈ [0,1] by definition
-    enabled: true
-    lower: 0.0
-    upper: 1.0
+  max_missing_rate: 0.9                   # drop a column above this fraction of missing cells
+  coerce_numeric_strings: true
+  coerce_numeric_threshold: 0.95          # fraction parseable before a column is coerced
+  max_columns: 64                         # feature cap, applied by selection below
+  feature_selection: {enabled: true, corr_threshold: 0.95}
+  lgd_target_clip: {enabled: true, lower: 0.0, upper: 1.0}
 
-
-# --- dedup.py — within-track duplicate detection (diagnostic only) -----------
-# Writes a report per (track, pass); never removes datasets. See
-# docs/METHOD.md § dedup.
-dedup:
-  name_jaccard_threshold: 0.80            # check 2: col-name Jaccard + same shape
-  row_hash_intersection_min: 1            # check 3: shared row hashes
-  shared_columns_min: 3                   # check 4: shared non-trivial columns
+dedup:                                    # cross-dataset duplicate detection; see docs/METHOD.md
+  name_jaccard_threshold: 0.8
+  row_hash_intersection_min: 1
+  shared_columns_min: 3
   column_nontrivial_unique_min: 10
-  rounded_row:                            # extra A: float-precision near-dupes
-    enabled: true
-    decimals: 6
-  subset:                                 # extra B: |A∩B|/|A| ≥ frac ⇒ A ⊆ B
-    enabled: true
-    min_overlap_fraction: 0.95
-  column_name_fuzzy:                      # extra C: fuzzy col-name (pre-sanitize only)
-    enabled_pre: true
-    enabled_post: false
-    similarity_threshold: 90              # rapidfuzz token-set ratio 0–100
-  confidence_rules:                       # triggered-checks → label (first match wins)
-    high:   ["id_match",    "row_hash"]
-    medium: ["col_hash",    "name_jaccard_and_shape"]
-    low:    ["rounded_row", "subset", "fuzzy_names"]
+  rounded_row: {enabled: true, decimals: 6}
+  subset: {enabled: true, min_overlap_fraction: 0.95}
+  column_name_fuzzy: {enabled_pre: true, enabled_post: false, similarity_threshold: 90}
+  confidence_rules:
+    high: [id_match, row_hash]
+    medium: [col_hash, name_jaccard_and_shape]
+    low: [rounded_row, subset, fuzzy_names]

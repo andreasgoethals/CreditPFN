@@ -1,69 +1,30 @@
-# =============================================================================
-#  CreditPFN — eval / final-benchmark configuration
-# =============================================================================
-#  Drives scripts/eval_pipeline.py: for each (model × test dataset) it runs
-#  K-fold CV (outer 80/20, inner 80/20 of the train fold for HPO + F1-threshold
-#  tuning) and writes one CSV per (method, run, ts) under results.base_dir.
-#  Shared knobs (seed, run_name, track, corpus split) are inherited from
-#  train.yaml. Full rationale for every knob lives in README §8 (Eval pipeline).
-# =============================================================================
+# Held-out benchmark: how every model is scored. Training: config/train.yaml.
 
-# Shared knobs (seed, run_name, track, corpus split) come from here.
-train_cfg_path: "config/train.yaml"
+train_cfg_path: config/train.yaml         # where the trained-checkpoint roster comes from
 
-
-# Classical baselines to score. "logreg" is ignored on lgd; "linreg" on pd.
-# "<family>-untuned" expands to one entry per base of THAT family in
-# tunable.<track>_base_paths, giving each family a within-family control.
-# A baseline whose package or base .ckpt is missing is skipped with a warning.
 baselines:
-  enabled: ["xgboost", "catboost", "logreg", "linreg",
-            "tabpfn-untuned", "tabicl-untuned"]
+  enabled: [xgboost, catboost, logreg, linreg, tabpfn-untuned, tabicl-untuned]
 
-
-# Outer K-fold CV per test dataset (stratified for pd, plain KFold for lgd).
-# inner_val_fraction carves a val split out of each train fold, shared by
-# Optuna HPO and the F1-threshold tuner → 64/16/20 train/val/test.
 cv:
-  n_folds: 5
-  inner_val_fraction: 0.20
+  n_folds: 5                              # outer CV folds per dataset
+  inner_val_fraction: 0.2                 # of the train fold, for threshold tuning
 
-
-# Cap on the in-context TRAINING rows per eval fold (the held-out test
-# partition is never capped). Key = leading v<MAJOR> of the base stem, or
-# 'tabicl'; 'default' is the fallback. Classical baselines are uncapped.
-# v2.6 is 50k = its published envelope (100k blew the walltime, 2026-07-13);
-# v3 and tabicl are effectively uncapped for our <=532k-row corpus.
-# Rationale + the TabICLv2 inference caveat: docs/METHOD.md §2.
-max_rows_per_model:
-  v3:      1000000
-  v2.6:    50000
-  tabicl:  1000000
+max_rows_per_model:                       # inference context cap; forward-only, so >> training
+  v2: 50000
+  v2.6: 50000
+  v3: 1000000
+  tabicl: 1000000
   default: 50000
 
-
-# Per-fold Optuna budget. Objective is scored on the inner-val split;
-# max_rows subsamples the train fold during HPO only (final fit sees it all).
-# 50 trials for ALL four so a foundation-model win can't be dismissed as
-# under-tuned baselines — logreg/linreg tune C / alpha (2026-06-24).
-hpo:
-  xgboost:  {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
-  catboost: {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
-  logreg:   {n_trials: 50, timeout_seconds: 300}
-  linreg:   {n_trials: 50, timeout_seconds: 300}
-
-
-# TabPFN inference-time ensemble size (sklearn API), shared by untuned and
-# trained variants. Matches the per-epoch training monitor so eval numbers
-# are directly comparable to the training curves.
-tabpfn_n_estimators: 32
-
-# TabICLv2 inference ensemble — SEPARATE from TabPFN's because its attention is
-# quadratic in rows; 8 is upstream's own default. Each family's untuned and
-# trained arms share their family's value, keeping every comparison paired.
+tabpfn_n_estimators: 32                   # inference ensemble; 2 at training time is a memory limit
 tabicl_n_estimators: 8
 
+hpo:                                      # Optuna budget per classical baseline
+  xgboost: {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
+  catboost: {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
+  logreg: {n_trials: 50, timeout_seconds: 300}
+  linreg: {n_trials: 50, timeout_seconds: 300}
 
-# Output root. Benchmark CSVs land under <base_dir>/<TRACK>/<method>/...
 results:
-  base_dir: "output/results"
+  base_dir: output/results                # resolved onto project storage by paths.py
+  save_predictions: true                  # per-fold probabilities, for post-hoc analysis
