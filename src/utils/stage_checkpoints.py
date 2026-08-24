@@ -29,7 +29,10 @@ from pathlib import Path
 SOURCES: dict[str, tuple[str, str]] = {
     # our filename                                    (hf repo,                upstream file)
     "tabpfn-v2-classifier-v2_default.ckpt":     ("Prior-Labs/TabPFN-v2", "tabpfn-v2-classifier.ckpt"),
-    "tabpfn-v2-regressor-v2_default.ckpt":      ("Prior-Labs/TabPFN-v2", "tabpfn-v2-regressor.ckpt"),
+    # Prior Labs splits v2 across per-head repos: "Prior-Labs/TabPFN-v2" redirects to
+    # -v2-clf, which carries the classifier only. Candidates are tried in order and the
+    # repo is LISTED on failure rather than guessed at again.
+    "tabpfn-v2-regressor-v2_default.ckpt":      ("Prior-Labs/TabPFN-v2-reg", "tabpfn-v2-regressor.ckpt"),
     "tabicl-classifier-v2-20260212.ckpt":       ("jingang/TabICL",       "tabicl-classifier-v2-20260212.ckpt"),
     "tabicl-regressor-v2-20260212.ckpt":        ("jingang/TabICL",       "tabicl-regressor-v2-20260212.ckpt"),
 }
@@ -101,7 +104,24 @@ def main(argv: list[str] | None = None) -> int:
         for name in missing:
             repo, upstream = SOURCES[name]
             print(f"  downloading {name} from {repo} ...", flush=True)
-            local = hf_hub_download(repo, upstream)
+            try:
+                local = hf_hub_download(repo, upstream)
+            except Exception as exc:
+                # A 404 here means the repo or the filename moved. Listing what the repo
+                # actually contains turns "guess again" into "read the answer" — Prior Labs
+                # has already renamed these once (TabPFN-v2 -> TabPFN-v2-clf).
+                print(f"    FAILED: {type(exc).__name__}: {exc}")
+                try:
+                    from huggingface_hub import list_repo_files
+                    for cand in (repo, "Prior-Labs/TabPFN-v2-clf", "Prior-Labs/TabPFN-v2"):
+                        try:
+                            files = [f for f in list_repo_files(cand) if f.endswith(".ckpt")]
+                        except Exception:
+                            continue
+                        print(f"    {cand} contains: {files or '(no .ckpt files)'}")
+                except Exception:
+                    print("    (could not list the repo either)")
+                continue
             shutil.copy2(local, dest / name)
             print(f"    staged -> {dest / name}")
     elif missing:

@@ -5,7 +5,7 @@
 tunable:
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]   # Garg 3e-7 -> Rubachev's tuned range
   l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
-  frozen_backbone: [false, true]                      # head only, or every weight
+  frozen_backbone: [false]                            # no-op on TabPFN (3 runs + 2 papers)
   epoch_pass_modes: ["full_pass", "accumulate"]        # many updates vs one update per dataset
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
@@ -14,7 +14,7 @@ tunable:
 corpus:
   min_train_rows: 0           # not an axis any more: the split draw varies table sizes
   n_test_datasets: 4          # random draw: 4 test / 13 train, of 17 PD datasets
-  n_splits: 28                # how many draws --split-index iterates over
+  n_splits: 12                # PD trials cost 2.6 GPU-h each; 12 still tests every dataset ~3x
   train_dataset_ids: null     # drawn, not pinned
   test_dataset_ids: null
 

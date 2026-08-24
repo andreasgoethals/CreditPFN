@@ -14,13 +14,14 @@
 # WHY THREE CLUSTERS. They have SEPARATE queues and separate fairshare, so submitting to all
 # three multiplies the throughput of a 1 792-trial experiment — and the cheap partition is
 # genuinely cheap: A100 141.7 credits/GPU-min against B200 437.5 and H100 569.4.
-# What fits where, from the 20-08 probe (peak allocation during fwd+bwd):
-#   v3      40k rows -> ~100 GB  ] need the 183 GB B200
-#   v2.6    18k rows -> ~103 GB  ]
-#   tabicl  26k rows ->   27 GB  ] fit an 80 GB A100 or H100 with room to spare
-#   v2       9k rows ->  ~30 GB  ]
-# So the two big TabPFN bases go to Mindwell and the two small models go to wICE, where the
-# queue is shorter for small jobs and the credit rate is a third of B200's.
+# What fits where, at TWO ensemble members (24-08 probe, slopes GB per 1k rows per member):
+#   v3      26k x 2 x 2.51 = 131 GB  ] need the 183 GB B200
+#   v2.6    11k x 2 x 5.44 = 120 GB  ]
+#   v2      14k x 2 x 3.96 = 111 GB  ]  (does NOT fit an 80 GB A100)
+#   tabicl  26k x 2 x 0.52 =  27 GB  ] fits an 80 GB A100 with room to spare
+# Only TabICLv2 goes to wICE. An earlier version of this file also sent v2 there on the
+# strength of a single-member probe reading of ~30 GB; at two members it is 111 GB and every
+# such trial would have died on allocation.
 set -euo pipefail
 
 CONFIG="${1:?usage: run_experiment.sh <config.yaml>}"
@@ -63,8 +64,8 @@ route_for() {
     local base="$1"
     if [[ "${ROUTE:-1}" == "0" ]]; then echo "mindwell gpu_b200"; return; fi
     case "$base" in
-        *tabpfn-v3-*|*tabpfn-v2.6-*) echo "mindwell gpu_b200" ;;
-        *)                           echo "wice gpu_a100" ;;
+        *tabicl-*) echo "wice gpu_a100" ;;     # 27 GB — the only base that fits 80 GB
+        *)         echo "mindwell gpu_b200" ;; # every TabPFN base needs >100 GB
     esac
 }
 
