@@ -41,6 +41,34 @@ from src.train.tabicl_compat import import_tabicl_core
 LOGGER = logging.getLogger(__name__)
 
 
+def relax_attention_backend() -> str:
+    """Steer PyTorch away from cuDNN's fused attention kernel.
+
+    MEASURED (probe j11521064 and j11523173): TabICLv2 trains at 26 000 rows using 27 GB of a
+    183 GB card, and at 40 000 rows it does not run out of memory — it raises
+
+        Expected mha_graph.execute(...).is_good() to be true, but got false
+
+    which is cuDNN's fused multi-head-attention graph refusing the shape. So the 26 000 ceiling
+    is a KERNEL limit, not a capacity one, on the family whose entire design point is large
+    context. Disabling that one backend leaves the math and mem-efficient paths, which have no
+    such shape restriction; they are slower per step but allow a far larger context.
+
+    Returns a short description of what is enabled, for the trial log.
+    """
+    try:
+        import torch
+        if not hasattr(torch.backends.cuda, "enable_cudnn_sdp"):
+            return "unchanged (torch too old to select an SDPA backend)"
+        torch.backends.cuda.enable_cudnn_sdp(False)
+        torch.backends.cuda.enable_flash_sdp(True)
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
+        torch.backends.cuda.enable_math_sdp(True)
+        return "cudnn_sdp=off, flash/mem_efficient/math=on"
+    except Exception as exc:                                   # pragma: no cover
+        return f"unchanged ({type(exc).__name__})"
+
+
 def load_tabicl_for_training(
     checkpoint_path: str | Path,
     *,
@@ -62,6 +90,9 @@ def load_tabicl_for_training(
     """
     TabICL = import_tabicl_core()                               # noqa: N806
 
+    # Do this BEFORE the model is built: the backend choice is global and the fused
+    # kernel is what caps TabICLv2's context at 26k rows (see relax_attention_backend).
+    LOGGER.info("TabICLv2 attention backends: %s", relax_attention_backend())
     ckpt_path = Path(checkpoint_path)
     if not ckpt_path.exists():
         raise FileNotFoundError(

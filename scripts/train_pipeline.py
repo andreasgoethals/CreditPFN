@@ -594,6 +594,16 @@ class RunRow:
     peak_gpu_gb:            float = float("nan")   # torch.cuda.max_memory_allocated
     sec_per_step:           float = float("nan")   # elapsed_sec / total_optimizer_steps
     gpu_hours:              float = float("nan")   # elapsed_sec / 3600, the billable unit
+    # COMPUTE ACTUALLY DONE, not just time spent. A paper reports the cost of a result and a
+    # reviewer asks whether two arms were compute-matched; wall-clock cannot answer either,
+    # because a frozen-backbone trial does a fraction of the work per step at the same
+    # seconds-per-step. FLOPs are ESTIMATED as 2 x params x rows for the forward pass and 4 x
+    # for forward+backward (the standard convention: backward is ~2x forward), summed over the
+    # steps actually taken — an order-of-magnitude figure, not an instrumented count.
+    trainable_params:       int   = 0
+    total_params:           int   = 0
+    est_tflops:             float = float("nan")   # 10^12 FLOPs over the whole trial
+    rows_seen:              int   = 0              # sum of rows over all steps
 
 
 _MANIFEST_THREAD_LOCK = threading.Lock()
@@ -1004,6 +1014,15 @@ def run(
                 train_dataset_ids=";".join(result.train_dataset_ids),
                 test_dataset_ids=";".join(result.test_dataset_ids),
                 final_drift=result.final_drift,
+                # Compute accounting, so the manifest can answer "what did this cost"
+                # and "were these two arms compute-matched" without the logs.
+                trainable_params=int(getattr(result, 'trainable_params', 0) or 0),
+                total_params=int(getattr(result, 'total_params', 0) or 0),
+                est_tflops=float(getattr(result, 'est_tflops', float('nan'))),
+                rows_seen=int(getattr(result, 'rows_seen', 0) or 0),
+                sec_per_step=(float(result.elapsed_sec)
+                              / max(1, int(getattr(result, 'total_optimizer_steps', 0) or 1))),
+                gpu_hours=float(result.elapsed_sec) / 3600.0,
                 **_run_provenance(cfg, base),
             ))
             if result.diverged:

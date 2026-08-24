@@ -3,7 +3,7 @@
 
 # ---------------------------------------------------------------- SWEPT ------
 tunable:
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]   # Garg 3e-7 -> Rubachev's tuned range
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]            # Garg -> our best -> Kolberg/Tanna
   l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
   frozen_backbone: [false, true]                      # head only, or every weight
   epoch_pass_modes: ["full_pass", "accumulate"]        # many updates vs one update per dataset
@@ -23,9 +23,9 @@ track: "lgd"
 run_name: "exp1"
 
 train:
-  epochs: 100                 # EPOCHS govern: equalises data exposure across bases
+  epochs: 400                 # MEASURED on run-8: LGD banks 90% of its loss drop at epoch 317
   target_total_steps: null    # off, or it would override epochs
-  monitor_every: 5
+  monitor_every: 20           # 20 monitor evals, as at PD's 50/5
   early_stopping: false       # fixed budget keeps training curves comparable
   early_stopping_patience: 20
   log_would_stop: true

@@ -48,7 +48,8 @@ scheduler:
   warmup_fraction: 0.10                   # linear warmup, then cosine
   min_lr_fraction: 0.05                   # floor as a fraction of peak
 
-lora:                                     # used only on the frozen arm for TabPFN
+lora:                                     # OFF: frozen_backbone is a true freeze since 24-08
+  enabled: false                          # true = adapters inside the backbone instead
   r: 8
   alpha: 16
   dropout: 0.1

@@ -190,6 +190,14 @@ class TrainingResult:
     train_rows_total:      int = 0
     test_rows_total:       int = 0
     final_drift:           float = float("nan")   # ||w - w0|| at the last monitored epoch
+    #: Compute accounting. `est_tflops` uses the standard 2*params*tokens forward /
+    #: 4*params*tokens forward+backward convention, with "tokens" = rows presented, and
+    #: only TRAINABLE params for the backward term — which is what makes a frozen-backbone
+    #: trial show its true (much smaller) cost instead of looking identical to full-FT.
+    trainable_params:      int   = 0
+    total_params:          int   = 0
+    est_tflops:            float = float("nan")
+    rows_seen:             int   = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -200,7 +208,8 @@ class TrainingResult:
 _BASE_VERSION_RE = re.compile(r"tabpfn-(v\d+(?:\.\d+)?)-")
 
 
-def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
+def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping,
+                                frozen_backbone: bool = False) -> int:
     """Look up the per-version `max_rows_per_epoch` cap.
 
     Accepts either an int (legacy single-value config) or a mapping
@@ -224,10 +233,23 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping) -> int:
         m = _BASE_VERSION_RE.search(name)
         key = m.group(1) if m else "default"
     if hasattr(mapping, "get"):
-        if key in mapping:
-            return int(mapping[key])
-        if "default" in mapping:
-            return int(mapping["default"])
+        entry = mapping[key] if key in mapping else mapping.get("default")
+        if entry is not None:
+            # A per-base entry may be a plain int (one cap for both modes) or a mapping
+            # {full: N, frozen: M}. Frozen trials retain no backbone activations, so their
+            # ceiling is much higher; giving them the full-FT cap would leave most of the card
+            # idle on every frozen trial.
+            if hasattr(entry, "get"):
+                mode = "frozen" if frozen_backbone else "full"
+                if mode in entry:
+                    return int(entry[mode])
+                if "full" in entry:
+                    return int(entry["full"])
+                raise ValueError(
+                    f"max_rows_per_epoch[{key!r}] is a mapping without a "
+                    f"{mode!r} or 'full' key: {entry!r}"
+                )
+            return int(entry)
     raise ValueError(
         f"finetuning.max_rows_per_epoch is neither an int nor a mapping "
         f"with a usable key for base={name!r} (resolved version key={key!r}). "
@@ -1552,13 +1574,21 @@ def train_one_config(
         inference_config = None             # dataloader uses the tabicl path
     else:
         tabicl_model_config = None
+        # `use_lora` is the frozen-backbone axis. Since 24-08 it means a TRUE freeze on
+        # TabPFN too — the transformer stack held fixed, the head trained — which is what it
+        # has always meant on TabICLv2. LoRA was never a freeze: its adapters sit inside the
+        # backbone, so gradients traversed the whole network and the two families' "frozen"
+        # arms were measuring different things. Set `cfg.lora.enabled: true` to get the old
+        # LoRA behaviour back for a deliberate comparison.
+        _want_lora = bool(getattr(getattr(cfg, "lora", None), "enabled", False))
         lora_cfg_dict = (
-            dict(cfg.lora) if (use_lora and hasattr(cfg, "lora")) else None
+            dict(cfg.lora) if (use_lora and _want_lora and hasattr(cfg, "lora")) else None
         )
         model, criterion, architecture_config, inference_config = (
             load_tabpfn_for_training(
                 base_checkpoint_path, track=track, device=device,
                 lora_config=lora_cfg_dict,
+                freeze_backbone=bool(use_lora) and lora_cfg_dict is None,
             )
         )
 
@@ -1638,6 +1668,9 @@ def train_one_config(
     _data_cfg = OmegaConf.load("config/data.yaml")
     max_rows_per_epoch = _resolve_max_rows_per_epoch(
         base_checkpoint_config, _data_cfg.finetuning.max_rows_per_epoch,
+        # A frozen backbone retains no activations for the transformer stack, so its ceiling
+        # is much higher. `use_lora` is the frozen-backbone axis.
+        frozen_backbone=bool(use_lora),
     )
     # Optional per-architecture cell budget (rows × features). Off (null)
     # for both bases by default → pure row cap. Appropriate for v3 (whose
@@ -2891,12 +2924,25 @@ def train_one_config(
         LOGGER.info("")
 
     elapsed = time.monotonic() - t0
+    # Compute accounting. Rows presented = steps x rows-per-step, summed over epochs; FLOPs
+    # follow the 2*params*rows forward / +2*trainable*rows backward convention, so a frozen
+    # trial reports the fraction of the work it actually did rather than matching full-FT.
+    _n_total = sum(p_.numel() for p_ in model.parameters())
+    _n_train_p = sum(p_.numel() for p_ in model.parameters() if p_.requires_grad)
+    _rows_seen = int(sum(int(getattr(r, "optimizer_steps", 0) or 0) for r in history)
+                     * max_rows_per_epoch)
+    _tflops = (2.0 * _n_total + 2.0 * _n_train_p) * _rows_seen / 1e12
+
     return TrainingResult(
         final_ckpt_path=save_path,
         history=history,
         n_train_datasets=len(split.train),
         n_test_datasets=len(split.test),
         elapsed_sec=elapsed,
+        trainable_params=_n_train_p,
+        total_params=_n_total,
+        est_tflops=_tflops,
+        rows_seen=_rows_seen,
         descriptive_name=save_path.name,
         diverged=bool(diverged),
         diverged_at_epoch=diverged_at_epoch,

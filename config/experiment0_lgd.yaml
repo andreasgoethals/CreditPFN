@@ -1,0 +1,29 @@
+# EXPERIMENT 0 · LGD — the null control. lr=0 for one epoch, then save + reload + evaluate.
+# A reloaded lr=0 checkpoint IS the base checkpoint, so it must score EXACTLY like the untuned
+# arm. If it does not, the save/reload path is lossy and every "CPT did not help" result in
+# experiment 1 is an artefact of that, not a finding. Run this FIRST. Delta over train.yaml.
+
+# ---------------------------------------------------------------- SWEPT ------
+tunable:
+  learning_rates: [0.0]       # the whole point: no weight may move
+  l2sp_lambdas: [0.0]         # anchor to w0 is vacuous at lr=0
+  frozen_backbone: [false]    # full graph, so the control also exercises the real code path
+  epoch_pass_modes: ["full_pass"]
+
+corpus:
+  min_train_rows: 0
+  n_test_datasets: 2          # same draw as experiment 1 split 0, so the arms are comparable
+  n_splits: 1
+  train_dataset_ids: null
+  test_dataset_ids: null
+
+# ---------------------------------------------------------------- FIXED ------
+track: "lgd"
+run_name: "exp0"
+
+train:
+  epochs: 1                   # one pass is enough to exercise save + reload
+  target_total_steps: null
+  monitor_every: 1
+  early_stopping: false
+  log_would_stop: false

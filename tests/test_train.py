@@ -893,8 +893,11 @@ def test_train_one_config_end_to_end_mocked(
     n_feat = 4
     loaded_checkpoints: list[Path] = []
 
-    def fake_loader(checkpoint_path, *, track, device, lora_config=None):
-        del lora_config
+    def fake_loader(checkpoint_path, *, track, device, lora_config=None,
+                    freeze_backbone=False):
+        # `freeze_backbone` since 24-08: the frozen arm is a true freeze on TabPFN too, not
+        # LoRA, so the loader takes the mode explicitly.
+        del lora_config, freeze_backbone
         loaded_checkpoints.append(Path(checkpoint_path))
         model = _DummyClassifier(n_features=n_feat).to(device)
         criterion = torch.nn.CrossEntropyLoss().to(device)

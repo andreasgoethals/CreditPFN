@@ -27,7 +27,7 @@ track: "pd"
 run_name: "exp2"
 
 train:
-  epochs: 100
+  epochs: 50
   target_total_steps: null
   monitor_every: 5
   early_stopping: false

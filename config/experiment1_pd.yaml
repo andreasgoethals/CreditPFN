@@ -3,9 +3,9 @@
 
 # ---------------------------------------------------------------- SWEPT ------
 tunable:
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]   # Garg 3e-7 -> Rubachev's tuned range
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]            # Garg -> our best -> Kolberg/Tanna
   l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
-  frozen_backbone: [false]                            # no-op on TabPFN (3 runs + 2 papers)
+  frozen_backbone: [false, true]                      # true = freeze the stack, train the head
   epoch_pass_modes: ["full_pass", "accumulate"]        # many updates vs one update per dataset
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
@@ -23,7 +23,7 @@ track: "pd"
 run_name: "exp1"
 
 train:
-  epochs: 100                 # EPOCHS govern: equalises data exposure across bases
+  epochs: 50                  # run-8 curves flatten well before this; 100 was wasted
   target_total_steps: null    # off, or it would override epochs
   monitor_every: 5
   early_stopping: false       # fixed budget keeps training curves comparable

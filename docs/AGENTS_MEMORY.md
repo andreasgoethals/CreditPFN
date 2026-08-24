@@ -38,6 +38,48 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 24-08-2026
+
+**Equal epochs across TRACKS is not equal training — LGD was getting 1/8th of the dose it needs.**
+
+- **Tried.** Set `epochs: 50` for both tracks in experiment 1, on the reasoning that run-8's
+  curves "flatten well before 50".
+- **Result.** True for PD (96.8 % of the final loss drop banked by epoch 50, worst trial 71 %).
+  False for LGD by a wide margin: **40 %** median, worst trial **9.7 %**. LGD reaches 90 % only at
+  epoch ~317 and 95 % at ~506.
+- **Why.** `steps_per_epoch` = sum over training tables of ceil(rows / row_cap). PD has 13 tables
+  of 7k-307k rows -> 90-200 steps per epoch. LGD has 6 tables of 594-4 637 rows, nearly all under
+  the 26k cap -> **6-30 steps** per epoch. So an LGD epoch is one order of magnitude less training
+  than a PD epoch, and any single `epochs` value is wrong for one of the two tracks.
+- **Instead.** Per-track epochs, chosen from the measured curve: PD 400 -> stays at 50, LGD 400.
+  Do not copy an epoch count between tracks without recomputing `steps_per_epoch`.
+
+**The 26k TabICLv2 ceiling is not TabICLv2's arithmetic, and raising it is not free.**
+
+- **Tried.** Treated the "26k rows, 27 GB of a 183 GB card" ceiling as waste to be reclaimed.
+- **Result.** Verified in the installed source: TabICLv2's only row-length quadratic stage is
+  `icl_predictor.tf_icl` (12 blocks); the stage that would dominate, `col_embedder`, uses
+  `InducedSelfAttentionBlock` — documented O(n) via 16 inducing points — and `row_interactor`
+  attends over ~64 features, not rows. TabPFN v3/v2.6 by contrast run 24 blocks of full
+  row-quadratic attention. Hence the 5x lower memory slope (0.52 vs 2.51 GB/1k/member).
+- **Why.** Attention cost per epoch is (N/n) x O(n^2) = O(N x n): **linear in the row cap.**
+  Doubling the cap doubles the compute for the same data. "Only 27 GB of 183" is not idle capacity
+  waiting to be used for free; it is the cost of a design that scales sub-quadratically.
+- **Instead.** Keep 26k for experiment 1, where it is also the v3-parity value that makes the
+  cross-family comparison fair. `max_cells_per_epoch` (already in `data.yaml`, currently null) is
+  the right knob for experiment 2, whose question actually is context size.
+
+**Garg's "20 000 rows on one 11 GB 2080 Ti" is a CELL budget, not a row budget.**
+
+- **Tried.** Compared our measured 5.44 GB/1k rows/member against Real-TabPFN's setup and got a
+  ~10x contradiction.
+- **Result.** No contradiction: Garg caps each dataset at **400 000 total cells**, and that corpus
+  averages 7-9 features. Ours run 7 to 64 features (median 20) — a 9x spread.
+- **Why.** Memory tracks rows x features, not rows. A uniform row cap is therefore sized for the
+  widest table and leaves narrow tables using a fraction of the card.
+- **Instead.** Know which budget a literature number is quoting before comparing to it. Our row
+  cap stays for comparability in experiment 1; cells are the honest budget for experiment 2.
+
 ### 13-08-2026
 
 **Treating a flat loss as divergence.**

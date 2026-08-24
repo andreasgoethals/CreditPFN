@@ -569,12 +569,10 @@ def _progress(hist: pd.DataFrame) -> tuple[pd.Series, str]:
 
     Per-trial figures keep epochs, where there is nothing to compare against.
     """
-    if "optimizer_steps" in hist.columns and hist["optimizer_steps"].notna().any():
-        # CUMULATIVE. The column is the number of steps taken IN that epoch — a constant 91
-        # for a 12-dataset PD trial — so using it raw put all 220 epochs at x=91 and collapsed
-        # every curve into two vertical stacks. Its sum equals the manifest's
-        # `total_optimizer_steps` exactly, which is what makes the cumsum the correct reading.
-        return hist["optimizer_steps"].fillna(0).cumsum(), "cumulative optimizer steps"
+    # EPOCH, by request (24-08). Steps were used to equalise the x axis across bases, but the
+    # budget is now set in epochs, so epoch IS the controlled variable and the natural axis: at
+    # epoch 50 every base has seen the corpus 50 times. Cumulative steps stay available in the
+    # CSV (`optimizer_steps` summed) for anyone who wants the per-update view.
     return hist["epoch"], "epoch"
 
 

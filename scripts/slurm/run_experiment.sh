@@ -43,6 +43,10 @@ N_SPLITS="${SPLITS:-$(read_cfg corpus.n_splits)}"
 N_SPLITS="${N_SPLITS:-1}"
 N_TRIALS="$(python scripts/train_pipeline.py --config "$CONFIG" --list-trials | tail -1)"
 THROTTLE="${THROTTLE:-16}"
+# VSC rejects submissions past 500 QUEUED JOBS per user, and an array counts its tasks,
+# not itself. 48 trials x 12 splits = 576 tasks, so a naive loop loses the tail. Submit
+# in waves of at most this many tasks and wait for room between waves.
+MAX_QUEUED="${MAX_QUEUED:-450}"
 ACCOUNT="${CREDITPFN_ACCOUNT:-lp_verbekelab}"
 JOB="scripts/slurm/train_${TRACK}.slurm"
 
@@ -86,7 +90,25 @@ for key in "${!BUCKET[@]}"; do
 done
 echo "=============================================================="
 
+queued_tasks() {   # tasks this user currently has across both controllers
+    local n=0 c
+    for c in mindwell wice genius; do
+        n=$(( n + $(squeue -M "$c" -u "$USER" -h -t PD,R -o "%i" 2>/dev/null | wc -l) ))
+    done
+    echo "$n"
+}
+
 for (( k=0; k<N_SPLITS; k++ )); do
+    # WAIT FOR ROOM. Without this the 501st task is rejected and that split silently never
+    # runs — the failure mode is a gap in the results, not an error at the end of the sweep.
+    if [[ -z "${DRY:-}" ]]; then
+        while :; do
+            q=$(queued_tasks)
+            (( q + N_TRIALS <= MAX_QUEUED )) && break
+            echo "  queue at ${q} tasks; waiting for room for split ${k} (${N_TRIALS} tasks)..."
+            sleep 300
+        done
+    fi
     for key in "${!BUCKET[@]}"; do
         read -r cluster partition <<< "$key"
         CMD=(sbatch --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"

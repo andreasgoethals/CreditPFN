@@ -12,6 +12,26 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 24-08-2026
+
+- **LGD epochs 50 -> 400.** Measured on run-8's 32 epoch curves: PD banks 96.8 % of its final
+  loss drop by epoch 50, but LGD only **40 %** — LGD needs epoch ~317 for 90 % and ~506 for 95 %.
+  An LGD "epoch" is 6-30 optimizer steps (6 small tables) against PD's 90-200, so equal epochs
+  across tracks was never equal training. `monitor_every` 5 -> 20 to keep 20 monitor evals.
+- **New `config/experiment0_{pd,lgd}.yaml`** — the control experiment 1 needs: lr=0 for one
+  epoch, then save + reload + evaluate. A reloaded lr=0 checkpoint IS the base checkpoint, so it
+  must score exactly like the untuned arm; if it does not, the save/reload path is lossy and
+  run-8's null is an artefact of that rather than a finding. 4 trials per track. Run it first.
+- **New `scripts/cluster_report.py` + `scripts/slurm/cluster_report.slurm`** — one pre-campaign
+  report: environment, the SLURM/QOS limits that decide whether a submission is accepted, credit
+  rates, per-GPU precision and attention-shape ceilings, checkpoint inventory with the frozen
+  trainable fraction, and the row-cap probe. Section 6 tests the TabICLv2 26k ceiling directly at
+  seq 8k/26k/40k/60k with cuDNN SDPA on and off.
+- `frozen_backbone` now means the same thing in both families (freeze the transformer stack, train
+  the head) via `model.freeze_tabpfn_backbone`; LoRA is no longer what the sweep axis selects.
+- Row caps may be `{full: N, frozen: M}` per base; the probe measures both modes.
+- Training records `trainable_params`, `total_params`, `est_tflops` and `rows_seen` per trial.
+
 ## 19-08-2026
 
 - **New `docs/EXPERIMENT_PLAN.md`** — the strategy from here, and the diagnosis it rests on.
