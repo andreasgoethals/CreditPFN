@@ -919,6 +919,31 @@ def _csv_ok_folds_for(csv_path: Path, dataset_id: str) -> set[int | str]:
     return folds
 
 
+def _write_predictions(
+    records: list[dict],
+    out_path: "pathlib.Path",
+) -> "pathlib.Path | None":
+    """Write one row per (dataset, fold, test row): the truth and the prediction.
+
+    Parquet, not CSV: these are the biggest artefact the eval produces (one float per test row
+    per fold per model) and parquet is ~5x smaller and typed. Falls back to compressed CSV when
+    pyarrow is absent, because losing the predictions to a missing optional dependency would be
+    worse than a larger file.
+    """
+    if not records:
+        return None
+    import pandas as pd
+    df = pd.DataFrame.from_records(records)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        target = out_path.with_suffix(".parquet")
+        df.to_parquet(target, index=False)
+    except Exception:                                          # pragma: no cover
+        target = out_path.with_suffix(".csv.gz")
+        df.to_csv(target, index=False, compression="gzip")
+    return target
+
+
 def _write_csv(rows: list[EvalRow], path: Path) -> None:
     if not rows:
         return
@@ -960,6 +985,9 @@ def _bench_model_on_dataset(
     seed: int,
     timestamp: str,
     max_rows_for_handle: int | None = None,
+    # Predictions are appended to a caller-owned list rather than returned, so the fold loop
+    # stays a generator of metric rows and nothing has to change shape.
+    pred_records: list[dict] | None = None,
 ) -> list[EvalRow]:
     """Run K-fold CV (with inner train/val split) of one model on one
     test dataset and return the per-fold rows.
@@ -1102,6 +1130,24 @@ def _bench_model_on_dataset(
             )
             LOGGER.debug("traceback:\n%s", traceback.format_exc())
 
+        # PREDICTIONS, kept so a future metric or a calibration study does not need the GPU
+        # again. `pred_te` is the positive-class probability for classification and the point
+        # prediction for regression; both are one float per test row.
+        if pred_records is not None and status == "OK":
+            try:
+                _p = np.asarray(pred_te).reshape(-1)
+                _y = np.asarray(y_te).reshape(-1)
+                if _p.shape == _y.shape:
+                    pred_records.extend(
+                        {"test_dataset_id": ds.dataset_id, "model_name": handle.name,
+                         "fold_idx": int(fold_idx), "row_idx": int(i),
+                         "y_true": float(_y[i]), "y_pred": float(_p[i])}
+                        for i in range(_y.size)
+                    )
+            except Exception:                                  # pragma: no cover
+                LOGGER.debug("could not record predictions for %s/%s fold %d",
+                             ds.dataset_id, handle.name, fold_idx)
+
         rows.append(EvalRow(
             track=ds.track,
             task_type=ds.task_type,
@@ -1237,6 +1283,7 @@ def run_benchmark(
     results_base_dir: str | Path = "results",
     max_rows_per_model: dict[str, int] | None = None,
     per_task_tag: str | None = None,
+    save_predictions: bool = False,
 ) -> list[EvalRow]:
     """Score every (model × test_dataset × fold) and persist per-method CSVs.
 
@@ -1251,6 +1298,9 @@ def run_benchmark(
     Classical baselines bypass the cap entirely.
     """
     handles_and_models = list(handles_and_models)
+    # One record per (dataset, model, fold, test row). Accumulated across the whole benchmark
+    # and filtered per model at write time, so a model's predictions land beside its metrics.
+    pred_records: list[dict] = []
     if not test_dataset_ids:
         LOGGER.warning("test_dataset_ids is empty — nothing to benchmark.")
         return []
@@ -1300,6 +1350,7 @@ def run_benchmark(
                 n_folds=n_folds, inner_val_fraction=inner_val_fraction,
                 seed=seed, timestamp=timestamp,
                 max_rows_for_handle=max_rows_for_handle,
+                pred_records=pred_records if save_predictions else None,
             )
             rows.extend(fold_rows)
             rows_by_model[handle.name].extend(fold_rows)
@@ -1344,6 +1395,11 @@ def run_benchmark(
             base_dir=results_base_dir, per_task_tag=per_task_tag,
         )
         _write_csv(rows_by_model[handle.name], out_path)
+        if save_predictions:
+            _pred_path = _write_predictions(
+                [r for r in pred_records if r["model_name"] == handle.name], out_path)
+            if _pred_path is not None:
+                LOGGER.info("  → wrote predictions to %s", _pred_path)
         # Total wall-clock this model spent across all its folds/datasets —
         # surfaces which methods dominate eval cost (typically the XGBoost /
         # CatBoost per-fold Optuna HPO), so the eval log alone shows where to

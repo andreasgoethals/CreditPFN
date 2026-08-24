@@ -722,6 +722,9 @@ def test_grid_full_cartesian_product() -> None:
             classifier_base_paths=["a", "b", "c"],
             regressor_base_paths=["x", "y", "z"],
             learning_rates=[1e-6, 1e-5, 5e-5],
+            # Required since 24-08: config/train.yaml no longer defines these, so a
+            # grid built without them is a config error rather than a default.
+            l2sp_lambdas=None, frozen_backbone=[False],
         ),
     )
     grid = tp._resolve_grid(cfg, single=False)
@@ -752,6 +755,7 @@ def test_grid_full_cartesian_product_with_lora_axis() -> None:
             classifier_base_paths=["a", "b"],
             regressor_base_paths=["x", "y"],
             learning_rates=[1e-5, 1e-4],
+            l2sp_lambdas=None, frozen_backbone=[False, True],
             use_lora=[False, True],
         ),
     )
@@ -771,6 +775,7 @@ def test_grid_single_picks_first_value() -> None:
             classifier_base_paths=["a", "b"],
             regressor_base_paths=["P", "Q"],
             learning_rates=[5e-6, 1e-5],
+            l2sp_lambdas=None, frozen_backbone=[False],
         ),
     )
     grid = tp._resolve_grid(cfg, single=True)
@@ -1240,10 +1245,11 @@ def test_l2sp_lambda_is_a_swept_axis() -> None:
     import scripts.train_pipeline as tp
 
     base = dict(classifier_base_paths=["a", "b"], regressor_base_paths=["x", "y"],
-                learning_rates=[1e-6, 1e-5])
+                learning_rates=[1e-6, 1e-5], frozen_backbone=[False])
 
-    # Absent -> one trial per (base, lr), and the slot carries None so the config value wins.
-    plain = tp._resolve_grid(NS(track="pd", tunable=NS(**base)), single=False)
+    # null -> one trial per (base, lr), and the slot carries None so the config value wins.
+    plain = tp._resolve_grid(
+        NS(track="pd", tunable=NS(**base, l2sp_lambdas=None)), single=False)
     assert len(plain) == 4
     assert {t[7] for t in plain} == {None}
 
@@ -1259,3 +1265,26 @@ def test_l2sp_lambda_is_a_swept_axis() -> None:
     scalar = tp._resolve_grid(
         NS(track="pd", tunable=NS(**base, l2sp_lambdas=0.003)), single=False)
     assert len(scalar) == 4 and {t[7] for t in scalar} == {0.003}
+
+
+def test_required_axes_fail_loudly_when_absent() -> None:
+    """A grid must not be invented from defaults.
+
+    `learning_rates`, `l2sp_lambdas` and `frozen_backbone` differ in every experiment, so
+    config/train.yaml deliberately omits them. Silently defaulting has cost this project two
+    wrong runs already — `query_fractions` falling back to 0.20 when the sweep wanted 0.40, and
+    `min_train_rows` inherited as a stale two-value axis that doubled three grids.
+    """
+    import pytest
+
+    import scripts.train_pipeline as tp
+
+    for missing in ("learning_rates", "l2sp_lambdas", "frozen_backbone"):
+        tunable = dict(classifier_base_paths=["a"], regressor_base_paths=["x"],
+                       learning_rates=[1e-6], l2sp_lambdas=[0.003], frozen_backbone=[False])
+        # ABSENT, not null: `l2sp_lambdas: null` is a legitimate value meaning "not an axis",
+        # so only a missing key is a config error.
+        del tunable[missing]
+        with pytest.raises(SystemExit) as exc:
+            tp._resolve_grid(NS(track="pd", tunable=NS(**tunable)), single=False)
+        assert f"tunable.{missing}" in str(exc.value)

@@ -2,24 +2,24 @@
 # file, so anything an experiment does not mention is taken from here.
 # What each knob DOES and why it has this value: docs/METHOD.md.
 
-# ---------------------------------------------------------------- SWEPT ------
-# Overridden per experiment. These values reproduce run-8.
+# --------------------------------------------------- SHARED ACROSS EXPERIMENTS ----
+# `learning_rates`, `l2sp_lambdas` and `frozen_backbone` are NOT here on purpose: they differ in
+# every experiment, so a value here would only ever be a stale second copy. _resolve_grid raises
+# if an experiment omits them.
 tunable:
-  learning_rates: [3.0e-7, 1.0e-6]
-  l2sp_lambdas: null                      # null = use optimizer.l2sp_lambda, not an axis
-  frozen_backbone: [false, true]          # head only, or every weight
-  use_lora: [false, true]                 # legacy name for frozen_backbone
-  adapter_families: ["tabicl"]            # families that get the frozen arm; [] = all
   query_fractions: [0.40]                 # fraction of each step's rows that carry the loss
   accumulate_grad_batches: [1]            # steps summed into one optimizer update
   epoch_pass_modes: ["full_pass"]         # full_pass = all rows/epoch; one_sample = 1 step/dataset
-  classifier_base_paths:
-    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
+  adapter_families: []                    # families that get the frozen arm; [] = all
+  classifier_base_paths:                  # the base-generation ladder, same in every experiment
+    - "checkpoints/tabpfn-v2-classifier-v2_default.ckpt"
     - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
+    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
     - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
   regressor_base_paths:
-    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
+    - "checkpoints/tabpfn-v2-regressor-v2_default.ckpt"
     - "checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"
+    - "checkpoints/tabpfn-v3-regressor-v3_default.ckpt"
     - "checkpoints/tabicl-regressor-v2-20260212.ckpt"
 
 corpus:
@@ -63,7 +63,8 @@ train:
   amp_dtype: "auto"                       # BF16 where supported
   dataloader_workers: 0                   # >0 deadlocks with the per-step CSV loader
   step_log_interval: 10
-  n_estimators_finetune: {pd: 2, lgd: 8, default: 2}   # ensemble members per TRAINING step
+  n_estimators_finetune: {pd: 2, lgd: 2, default: 2}   # ensemble members per TRAINING step
+                                          # LGD was 8, which forced its row caps down 4x
   n_estimators_finetune_tabicl: 2         # TabICL's own finetuning default, both tracks
   epoch_eval_subsample_samples: 2000      # rows per dataset in the in-loop monitor
   epoch_eval_n_estimators: 32

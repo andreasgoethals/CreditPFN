@@ -111,6 +111,17 @@ class EpochRecord:
     amp_skipped_steps: int = 0
     data_skipped_steps: int = 0
 
+    # Gradient norm BEFORE clipping, over this epoch's steps. `clip_grad_norm_` returns it, so
+    # it costs nothing, and it is the most direct answer to "is the optimiser being pushed at
+    # all": a norm far above `grad_clip_norm` means the rate is too hot for the gradient noise,
+    # a norm near zero means there is nothing left to learn. Both were logged and discarded.
+    grad_norm_mean: float = float("nan")
+    grad_norm_max: float = float("nan")
+    clipped_frac: float = float("nan")
+    # The rate the optimiser ACTUALLY applied at the end of this epoch, after warmup and cosine
+    # decay. `lr` above is the trial's peak, which is not what any given epoch ran at.
+    lr_applied: float = float("nan")
+
     # Mean training loss for THIS epoch, per source dataset. The epoch's
     # scalar `train_loss` averages the whole corpus, which hides the question
     # continued pretraining actually raises: is the corpus being learned
@@ -126,6 +137,11 @@ class EpochRecord:
     # top-level modules are. Empty on non-monitored epochs and under LoRA
     # (no anchor exists there).
     stage_drift: dict[str, float] = field(default_factory=dict)
+
+    # Relative drift per individual PARAMETER TENSOR, written as `pdrift__<name>`, biggest
+    # movers only. The stage view says "something in the embedder moved 0.3 %"; this says which
+    # tensor did, which is what separates real adaptation from a shifted output bias.
+    layer_drift: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -318,6 +334,36 @@ def _stage_drift(
                              .pow(2).sum().item())
             out[stage] = math.sqrt(acc) / w0
     return out
+
+
+def _layer_drift(
+    model: torch.nn.Module,
+    anchor: dict[str, "torch.Tensor"],
+    *,
+    top_k: int = 24,
+) -> dict[str, float]:
+    """Relative drift per parameter tensor, biggest movers first.
+
+    `_stage_drift` aggregates to the three or four top-level modules, which is enough to say
+    "something in the embedder moved" and not enough to say what. Keeping only the `top_k`
+    largest holds the CSV to a fixed width — v3 has hundreds of tensors, and one column each
+    would make the file unreadable and the notebook unplottable.
+    """
+    if not anchor:
+        return {}
+    live = dict(model.named_parameters())
+    out: dict[str, float] = {}
+    with torch.no_grad():
+        for name, w0 in anchor.items():
+            p_now = live.get(name)
+            if p_now is None:
+                continue
+            base = float(w0.double().pow(2).sum().item())
+            if base <= 0:
+                continue
+            moved = float((p_now.detach().double() - w0.double()).pow(2).sum().item())
+            out[name] = math.sqrt(moved / base)
+    return dict(sorted(out.items(), key=lambda kv: -kv[1])[:top_k])
 
 
 def _drift_pct(l2sp_value: float, lam: float, w0_norm: float) -> str:
@@ -2042,6 +2088,7 @@ def train_one_config(
         # 07-08 run switched to balanced and the logs could not confirm it.
         epoch_ctx_pos_rate: list[float] = []
         stage_drift: dict[str, float] = {}
+        layer_drift: dict[str, float] = {}
         epoch_skipped_steps = 0
         epoch_optimizer_steps = 0
         epoch_amp_skipped_steps = 0
@@ -2344,6 +2391,7 @@ def train_one_config(
             # Per-stage drift: only on monitored epochs (needs a full pass over
             # the anchored parameters). Empty under LoRA, where no anchor exists.
             if l2sp_anchor is not None:
+                layer_drift = _layer_drift(model, l2sp_anchor or {})
                 stage_drift = _stage_drift(
                     model, l2sp_anchor, l2sp_stage_names, l2sp_stage_w0)
                 if stage_drift:
@@ -2444,9 +2492,16 @@ def train_one_config(
             epoch_time_sec=epoch_dt,
             per_dataset_loss=per_dataset_loss,
             stage_drift=stage_drift,
+            layer_drift=layer_drift,
             optimizer_steps=epoch_optimizer_steps,
             amp_skipped_steps=epoch_amp_skipped_steps,
             data_skipped_steps=epoch_skipped_steps,
+            grad_norm_mean=gnorm_mean,
+            grad_norm_max=gnorm_max,
+            clipped_frac=clipped_frac,
+            # The scheduler has already stepped for this epoch, so param_groups holds what was
+            # applied, not the peak in `lr`.
+            lr_applied=float(optimizer.param_groups[0].get("lr", float("nan"))),
         )
         history.append(record)
         if on_epoch_end is not None:

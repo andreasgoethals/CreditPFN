@@ -779,7 +779,12 @@ def test_training_grid_contains_both_families() -> None:
     product of the configured axes (whatever size that currently is)."""
     from omegaconf import OmegaConf
     repo = Path(__file__).resolve().parents[1]
-    cfg = OmegaConf.load(repo / "config" / "train.yaml")
+    # The base ladder lives in config/train.yaml; the swept axes now live in the experiment
+    # configs and train.yaml deliberately omits them. Merge one in, exactly as _load_cfg does.
+    cfg = OmegaConf.merge(
+        OmegaConf.load(repo / "config" / "train.yaml"),
+        OmegaConf.load(repo / "config" / "experiment1_pd.yaml"),
+    )
     from src.train.tabicl_compat import model_family
     for key in ("classifier_base_paths", "regressor_base_paths"):
         bases = list(cfg.tunable[key])
@@ -812,7 +817,7 @@ def test_training_grid_contains_both_families() -> None:
             len(bases) if not adapter_fams
             else sum(1 for b in bases if any(f in str(b).lower() for f in adapter_fams))
         )
-        arms = len(bases) + (n_adapter_bases if True in list(cfg.tunable.use_lora) else 0)
+        arms = len(bases) + (n_adapter_bases if True in list(cfg.tunable.get("frozen_backbone", cfg.tunable.get("use_lora", [False]))) else 0)
         expected = arms * n_other
 
         # Assert the STRUCTURE, not a magic number. This test previously

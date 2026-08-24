@@ -223,6 +223,35 @@ def _resolve_grid(
         list(cfg.tunable.classifier_base_paths) if track == "pd"
         else list(cfg.tunable.regressor_base_paths)
     )
+    # REQUIRED, not defaulted. These three differ in every experiment, so they live only in the
+    # experiment config — and a silent fallback here would run a grid nobody asked for. The
+    # project has been bitten twice by exactly that (`query_fractions` defaulting to 0.20 when
+    # the sweep wanted 0.40; `min_train_rows` inherited as a stale two-value axis).
+    # PRESENCE is required; the VALUE may be null where null means something.
+    # `l2sp_lambdas: null` legitimately means "not an axis, use optimizer.l2sp_lambda", so
+    # absence and null are different situations and only absence is an error.
+    def _present(key: str) -> bool:
+        try:
+            return key in cfg.tunable
+        except TypeError:                       # SimpleNamespace, used by the tests
+            return hasattr(cfg.tunable, key)
+
+    _absent = [k for k in ("learning_rates", "l2sp_lambdas", "frozen_backbone")
+               if not _present(k)]
+    _null = [k for k in ("learning_rates", "frozen_backbone")
+             if _present(k) and getattr(cfg.tunable, k, None) is None]
+    if _absent or _null:
+        _names = ", ".join(f"tunable.{k}" for k in _absent + _null)
+        raise SystemExit(
+            f"config error: {_names} must be set by the experiment config.\n"
+            "  These axes differ per experiment, so config/train.yaml deliberately\n"
+            "  does not define them - a silent fallback would run a grid nobody\n"
+            "  asked for. Add them to the --config file, e.g.\n"
+            "      tunable:\n"
+            "        learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]\n"
+            "        l2sp_lambdas: [0.0, 0.003]   # null = not an axis\n"
+            "        frozen_backbone: [false]\n"
+        )
     lrs = [float(x) for x in cfg.tunable.learning_rates]
     # `frozen_backbone` is the honest name for this axis and the accepted spelling from
     # run-9: on TabICL it trains the head only, on TabPFN it means LoRA. `use_lora` is
@@ -882,6 +911,13 @@ def run(
                 "optimizer_steps":           int(rec.optimizer_steps),
                 "amp_skipped_steps":         int(rec.amp_skipped_steps),
                 "data_skipped_steps":        int(rec.data_skipped_steps),
+                # Diagnostics that were computed every epoch and only ever printed. These are
+                # what distinguish "the model was moved and nothing happened" from "the model
+                # was never moved", which is the whole question of the project.
+                "grad_norm_mean":            float(rec.grad_norm_mean),
+                "grad_norm_max":             float(rec.grad_norm_max),
+                "clipped_frac":              float(rec.clipped_frac),
+                "lr_applied":                float(rec.lr_applied),
             }
             # Per-dataset loss and per-stage drift, one column each. The
             # column SET is fixed by the first row written (the epoch=-1
@@ -891,6 +927,8 @@ def run(
                         for k, v in sorted(rec.per_dataset_loss.items())})
             row.update({f"drift__{k}": float(v)
                         for k, v in sorted(rec.stage_drift.items())})
+            row.update({f"pdrift__{k}": float(v)
+                        for k, v in sorted(rec.layer_drift.items())})
 
             # The baseline row (epoch=-1) carries no per-dataset losses, and
             # stage drift only appears on MONITORED epochs — so the naive

@@ -543,6 +543,10 @@ def run(
             results_base_dir=results_base,
             max_rows_per_model=max_rows_per_model,
             per_task_tag=per_task_tag,
+            # Keep the raw predictions so a new metric, a calibration study, or a
+            # trained-vs-base agreement check never needs the GPU again.
+            save_predictions=bool(
+                getattr(getattr(eval_cfg, "results", None), "save_predictions", False)),
         )
         all_rows.extend(rows)
         n_fail += sum(1 for r in rows if r.status == "FAIL")

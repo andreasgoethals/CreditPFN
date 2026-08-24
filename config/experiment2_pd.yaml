@@ -10,12 +10,6 @@ tunable:
   epoch_pass_modes: ["full_pass"]
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
-  classifier_base_paths:
-    - "checkpoints/tabpfn-v2-classifier-v2_default.ckpt"
-    - "checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"
-    - "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"
-    - "checkpoints/tabicl-classifier-v2-20260212.ckpt"
-  regressor_base_paths: []
 
 corpus:
   min_train_rows: 0           # not an axis any more: the split draw varies table sizes
