@@ -126,6 +126,11 @@ class EvalRow:
     log_loss_platt:        float = float("nan")
     ece_isotonic:          float = float("nan")
     brier_score_isotonic:  float = float("nan")
+    # Threshold-tuned and ranking metrics AFTER recalibration. No `roc_auc_platt`: Platt is a
+    # strictly monotone map and cannot change the ranking, so it would always equal `roc_auc`.
+    f1_platt:              float = float("nan")
+    f1_isotonic:           float = float("nan")
+    roc_auc_isotonic:      float = float("nan")
     log_loss_isotonic:     float = float("nan")
     optimal_threshold:  float = float("nan")    # max-F1 on inner-val
     f1:                 float = float("nan")
@@ -618,6 +623,9 @@ def _classification_metrics(
                 out[f"ece_{method}"] = float("nan")
                 out[f"brier_score_{method}"] = float("nan")
                 out[f"log_loss_{method}"] = float("nan")
+                out[f"f1_{method}"] = float("nan")
+                if method == "isotonic":
+                    out["roc_auc_isotonic"] = float("nan")
                 continue
             out[f"ece_{method}"] = _binary_ece(cal, np.asarray(y_test))
             try:
@@ -630,11 +638,38 @@ def _classification_metrics(
                     _ll(y_test, np.column_stack([1 - cal, cal]), labels=[0, 1]))
             except ValueError:                                    # pragma: no cover
                 out[f"log_loss_{method}"] = float("nan")
+
+            # F1 AFTER recalibration, with the threshold RE-TUNED on the recalibrated
+            # validation probabilities. Reusing the raw threshold would measure the
+            # calibrator against a cut-off chosen for a different probability scale, which
+            # flatters or punishes it arbitrarily.
+            cal_val = _posthoc_calibrated(proba_val, proba_val, y_val, method)
+            try:
+                if cal_val is not None and len(np.unique(y_val)) >= 2:
+                    th = _best_f1_threshold(cal_val, np.asarray(y_val))
+                    from sklearn.metrics import f1_score
+                    out[f"f1_{method}"] = float(
+                        f1_score(y_test, (cal >= th).astype(int), zero_division=0))
+                else:
+                    out[f"f1_{method}"] = float("nan")
+            except Exception:                                     # pragma: no cover
+                out[f"f1_{method}"] = float("nan")
+
+            # Isotonic only: it is weakly monotone, so ties can shift the ranking. Platt is
+            # strictly monotone and its AUC is identical to the raw one by construction.
+            if method == "isotonic":
+                try:
+                    from sklearn.metrics import roc_auc_score
+                    out["roc_auc_isotonic"] = float(roc_auc_score(y_test, cal))
+                except ValueError:                                # pragma: no cover
+                    out["roc_auc_isotonic"] = float("nan")
     else:
         for method in ("platt", "isotonic"):
             out[f"ece_{method}"] = float("nan")
             out[f"brier_score_{method}"] = float("nan")
             out[f"log_loss_{method}"] = float("nan")
+            out[f"f1_{method}"] = float("nan")
+        out["roc_auc_isotonic"] = float("nan")
 
     # Threshold-tuned metrics — binary only.
     if K == 2 and len(np.unique(y_val)) >= 2:
@@ -1180,6 +1215,15 @@ def _bench_model_on_dataset(
                 "rmse", "mae", "median_ae", "mape",
                 "r2", "explained_variance", "pearson_r", "spearman_r",
                 "neg_nll",
+                # POST-HOC CALIBRATION. These were computed since 08-08-2026 and never
+                # transferred, so every calibration column in run-8 is NaN for no reason but
+                # this omission. `roc_auc_platt` is deliberately absent: Platt scaling is a
+                # strictly monotone map, so it cannot change the ranking and its AUC is equal
+                # to the raw AUC by construction. Isotonic is only weakly monotone — it creates
+                # ties — so its AUC can move and is worth recording.
+                "ece_platt", "brier_score_platt", "log_loss_platt", "f1_platt",
+                "ece_isotonic", "brier_score_isotonic", "log_loss_isotonic",
+                "f1_isotonic", "roc_auc_isotonic",
             )},
         ))
 

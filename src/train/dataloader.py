@@ -754,7 +754,11 @@ class ProcessedDatasetLoader(Dataset):
         #    in the big datasets without repeating it within a step; the small
         #    datasets stay at 1 step (no extra repetition / overfit pressure).
         #    The loop's steps-per-epoch auto-scales via len(self).
-        if self.pass_mode == "full_pass":
+        # "accumulate" walks the SAME plan as full_pass — every batch of every dataset —
+        # and differs only in when the optimizer steps, which the training loop decides
+        # from `self.is_dataset_end`. Keeping one plan means the two modes see byte-
+        # identical data and differ in exactly one thing.
+        if self.pass_mode in ("full_pass", "accumulate"):
             self._plan: list[tuple[int, int]] = []
             for ref_idx, ref in enumerate(self.refs):
                 try:
@@ -773,6 +777,15 @@ class ProcessedDatasetLoader(Dataset):
                 )
                 self.pass_mode = "one_sample"
             self._plan = [(i, 0) for i in range(len(self.refs))]
+
+        # True on the LAST batch of each dataset, so a caller can step the optimizer exactly at
+        # dataset boundaries ("accumulate" mode). Under one_sample every batch is a boundary,
+        # which makes accumulate and one_sample coincide there — correct, since there is nothing
+        # to accumulate over.
+        self.is_dataset_end: list[bool] = [
+            (i + 1 == len(self._plan)) or (self._plan[i + 1][0] != ref_idx)
+            for i, (ref_idx, _r) in enumerate(self._plan)
+        ]
 
     def set_epoch(self, epoch: int) -> None:
         """Bump the epoch counter so the next __getitem__ reshuffles."""

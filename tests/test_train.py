@@ -1288,3 +1288,21 @@ def test_required_axes_fail_loudly_when_absent() -> None:
         with pytest.raises(SystemExit) as exc:
             tp._resolve_grid(NS(track="pd", tunable=NS(**tunable)), single=False)
         assert f"tunable.{missing}" in str(exc.value)
+
+
+def test_accumulate_mode_steps_once_per_dataset() -> None:
+    """`accumulate` walks every batch but updates once per dataset.
+
+    It replaces `one_sample`, which it dominates: both give one optimizer update per dataset per
+    epoch, but `one_sample` discards ~96 % of a 730k-row table each epoch while `accumulate`
+    sums the gradient over all of it. The plan is byte-identical to `full_pass`; only the step
+    trigger differs, which is what `is_dataset_end` encodes.
+    """
+    # plan = (dataset_index, replica): three batches of ds0, one of ds1, two of ds2
+    plan = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 1)]
+    flags = [(i + 1 == len(plan)) or (plan[i + 1][0] != ref)
+             for i, (ref, _r) in enumerate(plan)]
+
+    assert flags == [False, False, True, True, False, True]
+    assert sum(flags) == 3, "one update per dataset"
+    assert len(plan) == 6, "every batch is still visited"

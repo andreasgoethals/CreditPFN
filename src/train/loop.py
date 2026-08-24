@@ -1774,7 +1774,13 @@ def train_one_config(
     # `ceil(L/A)` optimizer/scheduler steps per epoch. Floor here would
     # under-size ``total_steps`` and the cosine schedule would reach LR=0
     # before training ends.
-    steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
+    if str(pass_mode) == "accumulate":
+        # One update per dataset per epoch, so the step count is the dataset count — NOT
+        # len(loader)/accumulate, which would report the 91 micro-batches as 91 steps and
+        # make every steps-based budget and log line wrong.
+        steps_per_epoch = max(1, len(split.train))
+    else:
+        steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
 
     # EQUALISE THE TRAINING BUDGET ACROSS ARCHITECTURES (added 08-08-2026).
     # Under full_pass, steps/epoch = sum(ceil(n_rows / row_cap)) — so a base
@@ -2100,6 +2106,11 @@ def train_one_config(
         epoch_compute_s = 0.0                 # Σ forward+backward+step time
         epoch_l2sp: list[float] = []          # per-step L2-SP penalty values
 
+        # Boundary flags for "accumulate". Read once per epoch: the plan is rebuilt only
+        # by set_epoch, and an empty list makes the fallback below take the counter path.
+        _dataset_end_flags = list(
+            getattr(getattr(train_loader, "dataset", None), "is_dataset_end", []) or []
+        )
         for step, batch in enumerate(train_loader, start=1):
             step_t0 = time.monotonic()
             batch = batch.to(device)
@@ -2196,7 +2207,16 @@ def train_one_config(
 
             stepped = False
             pre_clip_norm: float | None = None
-            if micro_since_step >= accumulate:
+            # In "accumulate" mode the optimizer steps at DATASET boundaries instead of
+            # after a fixed count, so every dataset contributes exactly one update no
+            # matter how many batches it has. `_flush_now` falls back to the counter for
+            # every other mode, so nothing else changes.
+            _flush_now = (
+                bool(_dataset_end_flags[step - 1])
+                if (pass_mode == "accumulate" and step - 1 < len(_dataset_end_flags))
+                else micro_since_step >= accumulate
+            )
+            if _flush_now:
                 # We always unscale here (with or without grad_clip) so we
                 # can MEASURE the pre-clip gradient norm. This is the
                 # single most useful number for diagnosing the loss

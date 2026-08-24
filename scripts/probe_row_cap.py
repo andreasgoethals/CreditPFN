@@ -44,7 +44,8 @@ N_FEATURES = 64          # sanitize.max_columns — the corpus feature width
 QUERY_FRACTION = 0.20
 
 
-def probe_base(base_path: str, track: str, rows_grid: list[int], device: str) -> None:
+def probe_base(base_path: str, track: str, rows_grid: list[int], device: str,
+               n_estimators: int = 2) -> None:
     import torch
     from src.train.model import load_tabpfn_for_training
     from src.train.dataloader import TabPFNBatch
@@ -72,11 +73,16 @@ def probe_base(base_path: str, track: str, rows_grid: list[int], device: str) ->
         n_ctx = n_rows - n_query
         try:
             torch.manual_seed(0)
-            X = torch.randn(n_rows, 1, N_FEATURES, dtype=torch.float32)
+            # ENSEMBLE MEMBERS, not 1. This probe reported single-member peaks while
+            # training runs `train.n_estimators_finetune` members in one graph, so its
+            # numbers were half the truth and a cap read straight off them OOMs. The
+            # 24-08 caps had to be halved for exactly this reason.
+            E = int(n_estimators)
+            X = torch.randn(n_rows, E, N_FEATURES, dtype=torch.float32)
             if track == "pd":
-                y = (torch.rand(n_rows, 1, 1) < 0.15).long()   # ~credit default rate
+                y = (torch.rand(n_rows, E, 1) < 0.15).long()   # ~credit default rate
             else:
-                y = torch.rand(n_rows, 1, 1, dtype=torch.float32)  # LGD in [0,1]
+                y = torch.rand(n_rows, E, 1, dtype=torch.float32)  # LGD in [0,1]
             batch = TabPFNBatch(
                 X_context=X[:n_ctx], y_context=y[:n_ctx],
                 X_query=X[n_ctx:], y_query=y[n_ctx:],

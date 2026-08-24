@@ -11,12 +11,16 @@ paths:
   manifest_lgd: output/manifests/manifest_lgd.csv
 
 finetuning:
-  max_rows_per_epoch:                     # rows per TRAINING step (context+query), PD 2-member
-    v2:      9000                         # UNPROBED — 7.2M params, architectural cap ~10k rows
-    v2.6:    18000                        # probed 30k=169G on a 183G B200; 18k leaves 45% free
-    v3:      40000                        # probed 50k=125G; 40k leaves 45% free
+  # Rows per TRAINING step (context+query) at TWO ensemble members, which is what both tracks
+  # now use. The probe reports SINGLE-member peaks for TabPFN, so a cap is
+  # (target GB) / (2 x slope); the slopes measured 24-08-2026 are v2 3.96, v2.6 5.44, v3 2.51
+  # and tabicl 0.52 GB per 1k rows per member. v3 and v2.6 are the values run-8 completed on.
+  max_rows_per_epoch:
+    v2:      14000                        # 3.96 GB/1k/member -> ~111 GB of the 183 GB B200
+    v2.6:    11000                        # ~120 GB; validated by run-8 completing
+    v3:      26000                        # ~131 GB; validated by run-8 completing
     tabicl:  26000                        # cuDNN fused attention fails at 40k — not memory
-    default: 18000                        # the most conservative real value, not the largest
+    default: 11000                        # the most conservative real value, not the largest
   max_cells_per_epoch:                    # optional rows x features budget; null = off
     v3: null
     v2.6: null

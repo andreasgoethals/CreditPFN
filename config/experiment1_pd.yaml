@@ -6,7 +6,7 @@ tunable:
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]   # Garg 3e-7 -> Rubachev's tuned range
   l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
   frozen_backbone: [false, true]                      # head only, or every weight
-  epoch_pass_modes: ["full_pass"]                     # one_sample tested on a subset only
+  epoch_pass_modes: ["full_pass", "accumulate"]        # many updates vs one update per dataset
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
   adapter_families: []                                # frozen arm for every family

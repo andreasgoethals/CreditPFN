@@ -67,28 +67,17 @@ Layout the pipeline expects: `data/raw/pd/<id>.csv` and `data/raw/lgd/<id>.csv`.
 
 ### 1.4 Stage the base checkpoints
 
-**From a login node** — compute nodes have no outbound internet, and the loaders pass
-`allow_auto_download=False` so a missing file fails loudly instead of silently downloading
-mid-job.
+**From a login node** — compute nodes have no outbound internet, and every loader passes
+`allow_auto_download=False` so a missing file fails loudly at trial start instead of downloading
+mid-job on a GPU you are paying for.
 
 ```bash
-python - <<'PY'
-import os, shutil
-from huggingface_hub import hf_hub_download
-dest = "/lustre1/project/stg_00211/CreditPFN/checkpoints"
-os.makedirs(dest, exist_ok=True)
-for repo, files in {
-    "jingang/TabICL": ("tabicl-classifier-v2-20260212.ckpt",
-                       "tabicl-regressor-v2-20260212.ckpt"),
-}.items():
-    for f in files:
-        shutil.copy2(hf_hub_download(repo, f), f"{dest}/{f}")
-        print("staged", f)
-PY
+python -m src.utils.stage_checkpoints --download
 ```
 
-TabPFN's v2.6 / v3 base weights go in the same directory — upload them with the same
-`scp` as §1.3 if you already have them locally.
+It reads the base ladder from `config/train.yaml`, reports what is present and what is missing,
+and fetches whatever has a public source. TabPFN v2.6 and v3 have none — copy those in by hand
+with the same `scp` as §1.3. Adding a base to the config is enough for this to know about it.
 
 ---
 

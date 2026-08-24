@@ -9,7 +9,7 @@
 tunable:
   query_fractions: [0.40]                 # fraction of each step's rows that carry the loss
   accumulate_grad_batches: [1]            # steps summed into one optimizer update
-  epoch_pass_modes: ["full_pass"]         # full_pass = all rows/epoch; one_sample = 1 step/dataset
+  epoch_pass_modes: ["full_pass"]         # full_pass | accumulate (1 update/dataset) | one_sample
   adapter_families: []                    # families that get the frozen arm; [] = all
   classifier_base_paths:                  # the base-generation ladder, same in every experiment
     - "checkpoints/tabpfn-v2-classifier-v2_default.ckpt"
