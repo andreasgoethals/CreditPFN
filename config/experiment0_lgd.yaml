@@ -24,6 +24,6 @@ run_name: "exp0"
 train:
   epochs: 1                   # one pass is enough to exercise save + reload
   target_total_steps: null
-  monitor_every: 1
+  epoch_eval_count: 1
   early_stopping: false
   log_would_stop: false

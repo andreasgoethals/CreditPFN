@@ -14,7 +14,7 @@ tunable:
 corpus:
   min_train_rows: 0           # not an axis any more: the split draw varies table sizes
   n_test_datasets: 4          # random draw: 4 test / 13 train, of 17 PD datasets
-  n_splits: 12                # PD trials cost 2.6 GPU-h each; 12 still tests every dataset ~3x
+  n_splits: 10                # same count for both tracks, so the two error bars are comparable
   train_dataset_ids: null     # drawn, not pinned
   test_dataset_ids: null
 
@@ -23,9 +23,10 @@ track: "pd"
 run_name: "exp1"
 
 train:
-  epochs: 50                  # run-8 curves flatten well before this; 100 was wasted
-  target_total_steps: null    # off, or it would override epochs
-  monitor_every: 5
+  target_total_steps: 6000    # THE budget: equal optimizer updates in every cell of the grid
+  epochs: 50                  # only a fallback; the step budget derives the real epoch count
+  max_epochs_for_step_budget: 4000   # guard: a 1-step/epoch corpus must not spin forever
+  epoch_eval_count: 20        # monitor 20x per run whatever the derived epoch count is
   early_stopping: false       # fixed budget keeps training curves comparable
   early_stopping_patience: 20
   log_would_stop: true

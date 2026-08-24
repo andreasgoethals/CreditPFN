@@ -84,7 +84,15 @@ dependencies = [
     "rapidfuzz>=3.6,<4.0",         # fuzzy column-name matching in dedup
     # Configuration management (plain OmegaConf + Hydra-style CLI dot-overrides)
     "omegaconf>=2.3,<3.0",
-    "pyyaml>=6.0,<7.0",
+    "pyyaml>=6.0,<7.0",           # omegaconf's YAML backend; no direct import in src/
+    # Checkpoint staging from the Hugging Face Hub (src/utils/stage_checkpoints.py)
+    "huggingface_hub>=0.24,<1.0",
+    # Parquet writer for the per-row saved predictions (src/eval/benchmark.py
+    # _write_predictions). It is a RUNTIME dependency with no import statement:
+    # pandas .to_parquet dispatches to pyarrow. Without it the code falls back to
+    # gzipped CSV — which works, but is ~5x larger and was silently happening on
+    # the cluster until the 24-08-2026 report flagged it.
+    "pyarrow>=15.0",
     # Plotting (figure export in src/utils/figures.py + the notebooks)
     "matplotlib>=3.8,<4.0",
     # LoRA adapter (training-time only; merged into base weights at save time)
@@ -98,10 +106,13 @@ dev = [
     "ruff>=0.6",                   # step 1 of scripts/check.py
     "gitingest>=0.3,<1.0",         # pulls fresh tfm-library/repositories/*.txt dumps (alpha; capped <1.0)
 ]
-# Interactive notebooks under notebooks/.
+# Interactive notebooks under notebooks/, and the headless runner that executes
+# them in place (src/utils/run_notebooks.py imports nbformat + nbclient directly).
 notebooks = [
     "ipykernel>=6.29,<7.0",
     "jupyter>=1.0,<2.0",
+    "nbformat>=5.9,<6.0",
+    "nbclient>=0.9,<1.0",
 ]
 
 [project.urls]

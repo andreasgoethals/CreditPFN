@@ -32,6 +32,40 @@ day is never rewritten.
 - Row caps may be `{full: N, frozen: M}` per base; the probe measures both modes.
 - Training records `trainable_params`, `total_params`, `est_tflops` and `rows_seen` per trial.
 
+- **Experiment 1 is budgeted in OPTIMIZER STEPS, not epochs** (`target_total_steps: 6000`).
+  An epoch is one pass over the concatenated corpus, so equal epochs bought unequal
+  optimization in every direction: full_pass vs accumulate differed **7x** (v3) to **15x**
+  (v2.6), v3 vs v2.6 by 2.2x, PD vs LGD by 3-15x. Both continued-pretraining papers budget in
+  steps for this reason (Garg 20 000; Kolberg "we fixed the total training duration to 10 000
+  optimization steps"); only Tanna uses epochs, and Tanna fine-tunes one dataset at a time.
+  6 000 comes from our own curves (PD banked 95 % by ~3 550 steps). Every cell now lands within
+  1 % of 6 000 steps. The `epochs` knob stays as a fallback.
+- **`epoch_eval_count`** replaces the fixed monitor stride: monitor N times per run whatever the
+  derived epoch count is. Needed because the step budget makes epochs range from 30 to 1 000, and
+  a monitor evaluation is a full inference pass over every dataset.
+- **Dropped `monitor_every` from every experiment config** — it was never read by any code. The
+  real knob is `train.epoch_eval_every`.
+- **`frozen_backbone` now freezes TabICLv2's `icl_predictor`, not its front-end embedders.**
+  Measured: freezing `col_embedder`+`row_interactor` freezes 4.6 % of parameters and trains
+  95.4 %, while TabPFN's freeze does the reverse (88-99 % frozen, 0.9-36 % trainable). Those are
+  opposite operations under one column name. `icl_predictor` (12 blocks, 95.4 %) is the analogue
+  of TabPFN's `icl_blocks` (24 blocks, 96.6 %). Upstream's stage-3 regime stays reachable via
+  `freeze_modules=`, and both are now pinned by tests.
+- **Trials route across BOTH clusters** keyed on (family, freeze mode): full-FT TabPFN ->
+  mindwell `gpu_b200` (needs 183 GB), frozen TabPFN -> wice `gpu_h100`, TabICLv2 -> wice
+  `gpu_a100`. mindwell and wice run separate schedulers, so this buys real parallelism; balanced
+  load is 9.7 / 5.3 / 6.8 days at 4 concurrent GPUs each. `FROZEN_DEST`/`FULL_DEST`/`TABICL_DEST`
+  override, and the frozen-fits-80GB assumption is UNMEASURED until section 9 runs.
+- **`n_splits` 10 for both tracks** (was 12 PD / 28 LGD) so the two error bars are comparable.
+- **`pyproject.toml`: added `pyarrow`, `huggingface_hub`, and `nbformat`/`nbclient`.** Audited
+  every third-party import in `src/`, `scripts/` and `tests/` against the declared set; those
+  four were the only gaps. `pyarrow` has no import statement — `pandas.to_parquet` dispatches to
+  it — which is why the prediction writer had been silently falling back to gzipped CSV.
+- `cluster_report.slurm` takes its flags as trailing script arguments; `PROBE=1 sbatch` looked
+  like it worked and silently skipped section 9 in jobs 11524571/2.
+- v2's backbone module is `transformer_encoder`, not `blocks` — named explicitly instead of
+  relying on the largest-module fallback.
+
 ## 19-08-2026
 
 - **New `docs/EXPERIMENT_PLAN.md`** — the strategy from here, and the diagnosis it rests on.

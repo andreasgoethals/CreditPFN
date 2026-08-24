@@ -38,6 +38,45 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 24-08-2026 (second session)
+
+**`frozen_backbone` meant the OPPOSITE thing in the two model families for a whole day.**
+
+- **Tried.** "Unified" `frozen_backbone` across families by making both use
+  `requires_grad=False` instead of LoRA, and reported it as done.
+- **Result.** The mechanism was unified; the meaning was not. Measured from the shipped
+  checkpoints: TabPFN froze `icl_blocks`/`blocks` = 88-99 % of parameters, leaving 0.9-36 %
+  trainable. TabICLv2 froze `col_embedder`+`row_interactor` = **4.6 %**, leaving **95.4 %**
+  trainable. Same column name, opposite operation.
+- **Why.** "Backbone" was read as "whatever upstream's freeze knob freezes" rather than as a
+  structural claim. TabICLv2's parameters sit in the LAST stage (`icl_predictor`, 26.28M of
+  27.6M), not the first, so upstream's stage-3 freeze is a front-end freeze, not a backbone one.
+- **Instead.** Freeze `icl_predictor` (12 blocks, 95.4 %) as the analogue of TabPFN's
+  `icl_blocks` (24 blocks, 96.6 %). When a flag spans two architectures, check the PARAMETER
+  FRACTION it moves in each before claiming they are comparable.
+
+**A config knob that nothing reads: `monitor_every`.**
+
+- **Tried.** Set `monitor_every: 5` / `20` in four experiment configs to control monitor cadence.
+- **Result.** No code reads it. `grep -rn monitor_every src/ scripts/` matches one docstring in
+  `training_viz.py`. The real knob is `train.epoch_eval_every`.
+- **Why.** The name was carried over from a docstring rather than from the code.
+- **Instead.** `grep` for a knob before adding it to a config. Every knob in `config/` should be
+  greppable to a read site.
+
+**Equal epochs hid a 7-15x difference in optimizer updates between the two pass modes.**
+
+- **Tried.** Sweep `epoch_pass_modes: [full_pass, accumulate]` at a fixed epoch count.
+- **Result.** `accumulate` takes one update per DATASET, `full_pass` one per BATCH. At equal
+  epochs, PD gets 91 vs 13 updates (v3) or 202 vs 13 (v2.6) — so the axis under study was
+  confounded 7-15x with "how much optimization happened at all".
+- **Why.** An epoch is well defined for one dataset. Over a corpus of 13 tables of different
+  sizes it is just "one pass over the concatenation", and how many UPDATES that produces depends
+  on the row cap and the pass mode.
+- **Instead.** Budget continued pretraining in optimizer steps (`target_total_steps`), which is
+  what Garg (20 000) and Kolberg (10 000) both do. Equal steps costs a 2.4x data-exposure
+  imbalance across bases, replacing a 7-15x imbalance on the axis being measured.
+
 ### 24-08-2026
 
 **Equal epochs across TRACKS is not equal training — LGD was getting 1/8th of the dose it needs.**

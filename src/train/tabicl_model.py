@@ -69,12 +69,26 @@ def relax_attention_backend() -> str:
         return f"unchanged ({type(exc).__name__})"
 
 
+#: Which TabICLv2 modules ``freeze_backbone=True`` freezes, and WHY THIS ONE.
+#: `icl_predictor` is the 12-block in-context transformer holding 26.28M of TabICLv2's 27.6M
+#: parameters (95.4 %). It is the direct analogue of TabPFN's `icl_blocks` (24 blocks, 96.6 % of
+#: 53.2M), so freezing it makes `frozen_backbone` the same intervention in both families:
+#: freeze the deep pretrained representation, adapt the embedding/head interface around it.
+#:
+#: Upstream's stage-3 regime is the OPPOSITE - it freezes `col_embedder` + `row_interactor`
+#: (1.28M, 4.6 %) and trains `icl_predictor`. That is a valid scheme, just not the same one, and
+#: reporting the two under one "frozen" label would confound the axis. Pass
+#: ``freeze_modules=("col_embedder", "row_interactor")`` to get it.
+_TABICL_BACKBONE_MODULES: tuple[str, ...] = ("icl_predictor",)
+
+
 def load_tabicl_for_training(
     checkpoint_path: str | Path,
     *,
     track: Literal["pd", "lgd"],
     device: str = "cuda",
     freeze_backbone: bool = False,
+    freeze_modules: tuple[str, ...] | None = None,
 ) -> tuple[torch.nn.Module, dict]:
     """Load a TabICLv2 v2 checkpoint as a bare trainable ``TabICLv2`` module.
 
@@ -83,10 +97,13 @@ def load_tabicl_for_training(
     for this family (CE / pinball are functional losses; see
     :func:`tabicl_pinball_loss`).
 
-    ``freeze_backbone=True`` freezes ``col_embedder`` + ``row_interactor``
-    (requires_grad=False AND ``.eval()`` so dropout/norm statistics stay
-    inference-mode, matching tabicl's own ``freeze_col/freeze_row`` knobs)
-    and leaves only ``icl_predictor`` trainable — upstream's stage-3 regime.
+    ``freeze_backbone=True`` freezes ``_TABICL_BACKBONE_MODULES`` — by default
+    ``icl_predictor``, the 12-block in-context transformer that is 95.4 % of the
+    parameters and the analogue of TabPFN's ``icl_blocks``. This keeps the frozen arm
+    the SAME intervention in both families. ``requires_grad=False`` only, never
+    ``.eval()`` (see the comment below for why that matters here). Pass
+    ``freeze_modules`` to select a different set, e.g. upstream's stage-3 regime
+    ``("col_embedder", "row_interactor")``.
     """
     TabICL = import_tabicl_core()                               # noqa: N806
 
@@ -131,7 +148,14 @@ def load_tabicl_for_training(
 
     if freeze_backbone:
         n_frozen = 0
-        for module_name in ("col_embedder", "row_interactor"):
+        targets = tuple(freeze_modules or _TABICL_BACKBONE_MODULES)
+        missing = [m for m in targets if not hasattr(model, m)]
+        if missing:
+            raise ValueError(
+                f"TabICLv2 freeze targets not on the model: {missing}. "
+                f"Available: {[n for n, _ in model.named_children()]}"
+            )
+        for module_name in targets:
             module = getattr(model, module_name)
             # DO NOT call module.eval() here. In TabICLv2, `.training` selects the
             # ALGORITHM, not just dropout/BN: both `ColEmbedder.forward` and
@@ -168,11 +192,15 @@ def load_tabicl_for_training(
                 "design — see the comment in load_tabicl_for_training). Their "
                 "weights are still fixed; only the forward noise differs.", drop,
             )
+        n_frozen_p = sum(p.numel() for p in model.parameters() if not p.requires_grad)
+        n_train_p = sum(p.numel() for p in model.parameters() if p.requires_grad)
         LOGGER.info(
-            "TabICLv2 freeze-backbone mode: col_embedder + row_interactor frozen "
-            "(%d tensors, requires_grad=False, kept on the TRAIN forward path); "
-            "training ICL module only (%d trainable tensors) — upstream stage-3 "
-            "regime.", n_frozen, n_train,
+            "TabICLv2 freeze-backbone: froze %s (%d tensors, %.2fM params); %.2fM params "
+            "in %d tensors remain trainable (%.1f%%). requires_grad=False only, so the "
+            "frozen modules stay on the TRAIN forward path and this is a clean ablation "
+            "of full fine-tuning.",
+            ", ".join(targets), n_frozen, n_frozen_p / 1e6, n_train_p / 1e6, n_train,
+            100 * n_train_p / max(1, n_frozen_p + n_train_p),
         )
 
     model.to(device)

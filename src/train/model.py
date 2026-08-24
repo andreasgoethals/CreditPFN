@@ -188,7 +188,7 @@ _TABPFN_BACKBONE_MODULES: dict[str, tuple[str, ...]] = {
     "v3":   ("icl_blocks",),
     "v2.6": ("blocks",),
     "v2.5": ("blocks",),
-    "v2":   ("blocks",),
+    "v2":   ("transformer_encoder", "blocks"),   # v2 renamed it; both listed, only one exists
 }
 
 

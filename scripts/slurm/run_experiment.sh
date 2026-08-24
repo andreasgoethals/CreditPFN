@@ -59,25 +59,46 @@ sys.path.insert(0, ".")
 import scripts.train_pipeline as tp
 cfg = OmegaConf.merge(OmegaConf.load("config/train.yaml"), OmegaConf.load(sys.argv[1]))
 for t in tp._resolve_grid(cfg, single=False):
-    print(t[0].rsplit("/", 1)[-1])
+    # tuple is (base, lr, frozen, qf, accum, pass_mode, min_train_rows, l2sp)
+    print(t[0].rsplit("/", 1)[-1], "frozen" if t[2] else "full")
 PY
 )
 
-# Big-context TabPFN needs the B200; everything else fits an 80 GB card.
+# WHERE EACH TRIAL GOES, and why the complexity earns its keep: mindwell and wice run
+# SEPARATE schedulers, so a trial queued on one does not wait behind a trial queued on the
+# other. Queue time dominates wall-clock here, so spreading over both buys more than any
+# per-GPU speed difference does. Limits confirmed by the 24-08-2026 report: gpu_b200,
+# gpu_h100 and gpu_a100 all cap at 3-00:00:00, and the `normal` QOS allows 500 submitted jobs.
+#
+# Memory at TWO training members (measured GB per 1k rows per member x cap x 2 members):
+#   v3      26k x 2 x 2.51 = 131 GB ]
+#   v2.6    11k x 2 x 5.44 = 120 GB ] B200 (183 GB) only
+#   v2      14k x 2 x 3.96 = 111 GB ]
+#   tabicl  26k x 2 x 0.52 =  27 GB   fits an 80 GB A100 with room to spare
+#
+# A frozen backbone builds no autograd graph through the transformer stack, so those
+# activations are never retained and the same row cap fits a much smaller card. That is why
+# the frozen arm goes to wice: it is the half of the grid that does not need 183 GB. That
+# claim is still UNMEASURED until section 9 of cluster_report.py runs, so until then override
+# with FROZEN_DEST="mindwell gpu_b200".
 route_for() {
-    local base="$1"
+    local base="$1" mode="${2:-full}"
     if [[ "${ROUTE:-1}" == "0" ]]; then echo "mindwell gpu_b200"; return; fi
     case "$base" in
-        *tabicl-*) echo "wice gpu_a100" ;;     # 27 GB — the only base that fits 80 GB
-        *)         echo "mindwell gpu_b200" ;; # every TabPFN base needs >100 GB
+        *tabicl-*) echo "${TABICL_DEST:-wice gpu_a100}"; return ;;
     esac
+    if [[ "$mode" == "frozen" ]]; then
+        echo "${FROZEN_DEST:-wice gpu_h100}"
+    else
+        echo "${FULL_DEST:-mindwell gpu_b200}"
+    fi
 }
 
 # Group trial indices by destination so each destination gets ONE array with an explicit list,
 # rather than one job per trial.
 declare -A BUCKET
 for (( t=0; t<N_TRIALS; t++ )); do
-    key="$(route_for "${TRIAL_BASE[$t]:-unknown}")"
+    key="$(route_for ${TRIAL_BASE[$t]:-unknown full})"
     BUCKET["$key"]="${BUCKET[$key]:+${BUCKET[$key]},}$t"
 done
 

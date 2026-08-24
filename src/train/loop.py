@@ -1958,7 +1958,20 @@ def train_one_config(
     # every k-th epoch (+ always the first and last). The 2026-07-03 run's
     # timing lines showed the monitor dominating one_sample epochs ~3:1 —
     # config/train.yaml sets 5; code default 1 preserves legacy behaviour.
-    epoch_eval_every = max(1, int(getattr(cfg.train, "epoch_eval_every", 1)))
+    # `epoch_eval_count` wins when set: monitor this many times across the run, whatever the
+    # epoch count turned out to be. Under a step budget `epochs` is DERIVED (see the
+    # step-budget equalisation above), so a fixed stride gives wildly different numbers of
+    # monitor evaluations across the grid - and each one is a full inference pass over every
+    # dataset, so the expensive trials are exactly the ones a fixed stride over-monitors.
+    epoch_eval_count = getattr(cfg.train, "epoch_eval_count", None)
+    if epoch_eval_count:
+        epoch_eval_every = max(1, epochs // max(1, int(epoch_eval_count)))
+        LOGGER.info(
+            "Monitor cadence: %d epochs / %d requested evaluations -> every %d epoch(s).",
+            epochs, int(epoch_eval_count), epoch_eval_every,
+        )
+    else:
+        epoch_eval_every = max(1, int(getattr(cfg.train, "epoch_eval_every", 1)))
     # TabICLv2 has no cheap single-forward monitor path (evaluate_on_split's
     # prepare_eval_chunk/_forward are TabPFN-specific), so its monitor always
     # goes through the sklearn ensemble path regardless of epoch_eval_ne.

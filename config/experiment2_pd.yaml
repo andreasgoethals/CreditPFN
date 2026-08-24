@@ -27,9 +27,10 @@ track: "pd"
 run_name: "exp2"
 
 train:
-  epochs: 50
-  target_total_steps: null
-  monitor_every: 5
+  target_total_steps: 6000    # same budget as experiment 1, so the two are comparable
+  epochs: 50                  # fallback only
+  max_epochs_for_step_budget: 4000
+  epoch_eval_count: 20
   early_stopping: false
   early_stopping_patience: 20
   log_would_stop: true

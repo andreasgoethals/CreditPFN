@@ -14,7 +14,7 @@ tunable:
 corpus:
   min_train_rows: 0           # not an axis any more: the split draw varies table sizes
   n_test_datasets: 2          # 2 test / 6 train, of 8 LGD datasets
-  n_splits: 28                # C(8,2)=28, exhaustive — LGD trials cost 0.16 GPU-h
+  n_splits: 10                # same count for both tracks, so the two error bars are comparable
   train_dataset_ids: null     # drawn, not pinned
   test_dataset_ids: null
 
@@ -23,9 +23,10 @@ track: "lgd"
 run_name: "exp1"
 
 train:
-  epochs: 400                 # MEASURED on run-8: LGD banks 90% of its loss drop at epoch 317
-  target_total_steps: null    # off, or it would override epochs
-  monitor_every: 20           # 20 monitor evals, as at PD's 50/5
+  target_total_steps: 6000    # THE budget: equal optimizer updates in every cell of the grid
+  epochs: 50                  # only a fallback; the step budget derives the real epoch count
+  max_epochs_for_step_budget: 4000   # guard: a 1-step/epoch corpus must not spin forever
+  epoch_eval_count: 20        # monitor 20x per run whatever the derived epoch count is
   early_stopping: false       # fixed budget keeps training curves comparable
   early_stopping_patience: 20
   log_would_stop: true
