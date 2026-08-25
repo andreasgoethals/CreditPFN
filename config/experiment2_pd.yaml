@@ -31,6 +31,3 @@ train:
   epochs: 50                  # fallback only
   max_epochs_for_step_budget: 4000
   epoch_eval_count: 20
-  early_stopping: false
-  early_stopping_patience: 20
-  log_would_stop: true

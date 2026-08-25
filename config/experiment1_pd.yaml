@@ -4,10 +4,10 @@
 # ---------------------------------------------------------------- SWEPT ------
 tunable:
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]            # Garg -> our best -> Kolberg/Tanna
-  l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
+  l2sp_lambdas: [0.003]       # FIXED at Garg's value, not swept: the budget bought back `accumulate`
   frozen_backbone: [false, true]                      # true = freeze the stack, train the head
-  epoch_pass_modes: ["full_pass"]   # accumulate DROPPED: under a step budget it
-  #   confounds update granularity with a 7x difference in passes over the corpus
+  epoch_pass_modes: ["full_pass", "accumulate"]   # per-batch updates vs ONE averaged
+  #   update per dataset, so a 730k-row table cannot outvote a 999-row one
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
   adapter_families: []                                # frozen arm for every family
@@ -29,6 +29,3 @@ train:
   epochs: 50                  # only a fallback; the step budget derives the real epoch count
   max_epochs_for_step_budget: 4000   # guard: a 1-step/epoch corpus must not spin forever
   epoch_eval_count: 20        # monitor 20x per run whatever the derived epoch count is
-  early_stopping: false       # fixed budget keeps training curves comparable
-  early_stopping_patience: 20
-  log_would_stop: true

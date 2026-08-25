@@ -38,6 +38,110 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 25-08-2026 (second session)
+
+**A guard whose meaning changed under it: L2-SP silently off for half of experiment 1.**
+
+- **Tried.** Kept `l2sp_applicable = (family == "tabicl") or (not use_lora)` while renaming what
+  `use_lora` means, from "insert LoRA adapters" to "freeze the backbone".
+- **Result.** Every frozen TabPFN trial ran with no L2-SP penalty at all, while the manifest
+  recorded the configured `l2sp_lambda=0.003`. With lambda fixed and frozen swept that is half
+  the grid, and the frozen-vs-full contrast would have been confounded with anchor-on-vs-off —
+  unfalsifiable after the fact, because the manifest would have said the anchor was on.
+- **Why.** The guard was CORRECT for LoRA (randomly initialised adapters have no pretrained w0
+  to anchor to). Renaming the flag silently changed the guard's meaning; nothing re-derived it.
+- **Instead.** Gate on the thing the reasoning is actually about — `not lora_adapters_inserted` —
+  and add a preflight check that FAILS if `l2sp_applicable` ever mentions `use_lora` again. When
+  a flag's meaning changes, grep every use of it, not just its call sites.
+
+**Config knobs that nothing reads, round two.**
+
+- **Tried.** `early_stopping`, `early_stopping_patience`, `log_would_stop`, `log_grad_norm`,
+  `log_per_layer_drift` in the experiment configs.
+- **Result.** Zero reads for all five. Grad-norm and per-layer-drift logging is unconditional, so
+  those two knobs were decorative; the early-stopping trio described a feature that had never
+  been written, and I had described it to Andreas as implemented.
+- **Why.** Knobs were added alongside a plan, then the plan changed and the knob stayed.
+- **Instead.** `python -m src.utils.preflight` now FAILS on any config key absent from src/ and
+  scripts/. That check has caught six knobs across two days; it should run before every campaign.
+
+**Cross-cluster splitting is a congestion valve, not a speed-up — measured twice now.**
+
+- **Tried.** Reasoned (again) that mindwell and wICE having separate schedulers means splitting
+  work across them shortens wall-clock.
+- **Result.** Run-8 measured the opposite: eval on wICE gpu_h100 + gpu_a100 reached **0.20
+  average concurrency** — 3.6 GPU-h took 17.9 h, and the gpu_a100 half never started — while
+  mindwell's B200s gave **15-21 concurrent** on the same days. VSC fairshare weights the user's
+  walltime over the last SEVEN days, so training submitted earlier sinks the priority of
+  everything after it, and wICE's 36 GPUs serve the whole university with the cheapest (A100)
+  the most contended.
+- **Why.** "Separate queues" is true and irrelevant: what matters is which queue is congested,
+  and it is wICE's. Separately, only TabICLv2 (27 GB) fits an 80 GB card at all, so at most 17 %
+  of the work could move even if the queues were equal.
+- **Instead.** Default everything to mindwell gpu_b200. `TABICL_DEST` / `EVAL_CLUSTER` exist to
+  spill onto wICE if THIS run measures mindwell as congested — decide from the run's own
+  concurrency, not from the topology.
+
+### 25-08-2026
+
+**A frozen backbone saves TIME but not MEMORY. I assumed the opposite and built two things on it.**
+
+- **Tried.** Reasoned that `requires_grad=False` through the transformer stack means no autograd
+  graph, so no retained activations, so a much higher row cap and a much smaller card. Built
+  per-mode `{full, frozen}` row caps and routed the frozen arm to wice's 80 GB H100 on it.
+- **Result.** Measured peak allocation, frozen vs full, same rows, same card (job 11524668 §9):
+  v2 @10k 79.23 vs 79.23 GB; v2.6 @10k 109.42 vs 109.43; v3 @10k 51.50 vs 51.50; v3 @26k 131.48
+  vs 131.47; tabicl @26k 26.80 vs 26.81. Identical to two decimals in every case. Step TIME did
+  fall (v3 @26k 1.05 s vs 1.48 s = 0.71x; tabicl @26k 1.18 vs 1.17 = no change at all).
+- **Why.** Peak sits in the FORWARD pass, which is bit-identical between the modes because we
+  deliberately never call `.eval()`. And both families already recompute activations layer by
+  layer during backward (`recompute_each_layer` in TabPFN, `recompute=True` in the TabICL path),
+  so there were no retained activations to save in the first place.
+- **Instead.** ONE row cap per base, serving both modes. Route on measured memory only. And the
+  frozen arm is now known to cost ~0.8x a full trial, not 0.4x — which, with Rubachev's "partial
+  ~ full" finding, makes it a similar-cost/similar-result arm rather than a cheap one.
+
+**The A100 is 5.5x slower than the B200, not 2.2x, which inverts which card is cheaper.**
+
+- **Tried.** Estimated the A100 at 2.2x the B200's time and concluded it was the best value per
+  unit of work (8 500 x 2.2 = 18 700 vs the B200's 26 250), then split the campaign across
+  clusters partly on that basis.
+- **Result.** Measured bf16 8192^2 matmul: B200 **1586.3 TFLOP/s**, A100 **289.3** -> 5.48x. So
+  the A100 costs 8 500 x 5.48 = 46 580 per B200-hour-equivalent: the **B200 is 1.8x cheaper per
+  unit of work**, not more expensive. All-B200 is 702 GPU-h / 18.4M credits against 1237 / 20.6M
+  for the split, and saves only 0.3 days of wall-clock.
+- **Why.** A generation-gap guess. Blackwell's bf16 throughput over Ampere is much larger than
+  the intuition "one generation, maybe 2x".
+- **Instead.** Cross-cluster splitting on this pair is a QUEUE-CONGESTION valve, not an
+  efficiency measure. Never price hardware from a guessed speed ratio; §5 of the report measures
+  it in seconds.
+
+**Disabling cuDNN's SDPA backend did NOT lift TabICLv2's context ceiling.**
+
+- **Tried.** `relax_attention_backend()` turns off `cudnn_sdp` so the fused MHA graph that
+  refused 40k rows is never selected.
+- **Result.** TabICLv2 still fails above 26k, now with `CUDA error: invalid argument`
+  (cudaErrorInvalidValue) instead of cuDNN's `mha_graph.execute(...).is_good()`. And bare SDPA
+  at TabICLv2-like shapes runs fine to seq=60 000 on BOTH cards with cuDNN on or off, at 0.5 GB
+  — so the primitive was never the constraint.
+- **Why.** The failing shape is not the one the isolated SDPA test uses; something else in the
+  real forward (batch/head geometry, or a kernel outside SDPA) carries the limit.
+- **Instead.** Treat 26k as TabICLv2's working ceiling and stop attacking it — it is also the
+  v3-parity value that keeps the cross-family comparison fair. Revisit only for experiment 2,
+  where context size is the actual question, and measure with the REAL model, not with a
+  synthetic attention call.
+
+**`.item()` on a per-member statistic broke the whole LGD probe.**
+
+- **Tried.** `znorm_mean = float(mean.detach().cpu().item())` in `_forward`, where `mean` is
+  `(1, E, 1)`.
+- **Result.** `RuntimeError: a Tensor with 2 elements cannot be converted to Scalar` for every
+  TabPFN regressor probe — 12 of 16 probe cells lost, and no LGD row cap measured at all.
+  Classifier cells passed because that branch never runs.
+- **Why.** The code was written when the single-view path always had E=1, and nothing asserted it.
+- **Instead.** Collapse across members explicitly and WARN if they disagree. Any `.item()` on a
+  tensor whose shape depends on the ensemble size is a latent crash.
+
 ### 24-08-2026 (third session)
 
 **"Freeze the backbone" needs a STRUCTURAL definition, not a module name, and the first two

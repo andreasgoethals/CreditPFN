@@ -72,11 +72,6 @@ train:
   epoch_eval_n_estimators_tabicl: 8
   epoch_eval_every: 5                     # monitor cadence, in epochs
   divergence_patience: 5                  # epochs of flat loss AND flat drift before aborting
-  early_stopping: false                   # fixed budget keeps training curves comparable
-  early_stopping_patience: 20
-  log_would_stop: true                    # record where patience would have fired
-  log_grad_norm: true                     # per-step gradient norm, averaged per epoch
-  log_per_layer_drift: true               # ||w-w0|| per layer, not just per stage
 
 checkpoint:
   trained_dir: "checkpoints/trained"

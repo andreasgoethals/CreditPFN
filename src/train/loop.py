@@ -169,6 +169,10 @@ class TrainingResult:
     final_train_metric:    float = float("nan")    # last good epoch
     final_test_metric:     float = float("nan")
     final_train_loss:      float = float("nan")    # CE for PD, NLL for LGD
+    # Where a patience-based early-stopping rule WOULD have fired. Diagnostic only: this
+    # run always spends its full step budget. None = still improving at the end, i.e. the
+    # budget was the binding constraint and the next run should raise it.
+    would_stop_epoch: int | None = None
     final_secondary_train: float = float("nan")    # brier (PD) / r2 (LGD)
     final_secondary_test:  float = float("nan")
     primary_metric_name:   str = ""                # "roc_auc" / "rmse"
@@ -358,6 +362,37 @@ def _stage_drift(
     return out
 
 
+#: Patience, in MONITORED epochs, for the would-have-stopped diagnostic. Not a training knob —
+#: nothing stops early, this only reports where a patience-based rule would have fired.
+_WOULD_STOP_PATIENCE = 4
+
+
+def would_have_stopped(losses: "list[float]", patience: int = _WOULD_STOP_PATIENCE) -> int | None:
+    """The epoch a `patience`-epoch early-stopping rule would have fired at, or None.
+
+    Reports; never acts. Experiment 1 runs a FIXED step budget on purpose — a budget that
+    varies per trial makes loss curves incomparable across the grid, which is the whole point of
+    `target_total_steps`. But knowing where each trial stopped improving is how we choose the
+    budget for the NEXT run instead of guessing again, and it is free: the curve is already
+    recorded.
+
+    Definition: the first epoch after which `patience` consecutive recorded epochs failed to
+    improve on the best loss seen so far. Returns the epoch of that best value (1-indexed to
+    match the manifest's `epoch` column), or None if the loss was still improving at the end.
+    """
+    best, best_i, stale = float("inf"), None, 0
+    for i, v in enumerate(losses, start=1):
+        if v != v:                                  # NaN — an unmonitored epoch
+            continue
+        if v < best:
+            best, best_i, stale = v, i, 0
+        else:
+            stale += 1
+            if stale >= patience:
+                return best_i
+    return None
+
+
 def _layer_drift(
     model: torch.nn.Module,
     anchor: dict[str, "torch.Tensor"],
@@ -400,6 +435,30 @@ def _drift_pct(l2sp_value: float, lam: float, w0_norm: float) -> str:
         return "n/a"
     dw = math.sqrt(2.0 * l2sp_value / lam)
     return f"{100.0 * dw / w0_norm:.3f}%"
+
+
+def enable_tf32() -> str:
+    """Let fp32 matmuls use tensor cores. Free speed; call once per process.
+
+    MEASURED 24-08-2026 (cluster_report section 5) — `tf32 matmul` was OFF on both cards, and
+    the fp32 penalty is severe:
+
+        B200   fp32   66.2 TFLOP/s   vs  bf16  1586.3 TFLOP/s   (24x)
+        A100   fp32   19.0 TFLOP/s   vs  bf16   289.3 TFLOP/s   (15x)
+
+    Training runs under bf16 autocast, so the big matmuls are already bf16 and this changes
+    nothing for them. It matters for the ops autocast leaves in fp32 — loss reductions, the
+    bar-distribution criterion, norm statistics, the optimizer — and for any path where AMP is
+    disabled. tf32 keeps fp32 range with ~10 bits of mantissa, which is ample for these.
+
+    Returns a short string for the trial log.
+    """
+    try:
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.allow_tf32 = True
+        return "tf32: matmul=on cudnn=on"
+    except Exception as exc:                                        # pragma: no cover
+        return f"tf32: unchanged ({type(exc).__name__})"
 
 
 def make_warmup_cosine_schedule(
@@ -631,6 +690,9 @@ def _log_debug_banner(
     # --- hardware -------------------------------------------------------- #
     gpu_name, gpu_mem, cuda_cap = "cpu", None, None
     if device == "cuda" and torch.cuda.is_available():
+        # Free speed on the fp32 ops autocast leaves alone. Measured OFF on both the B200 and
+        # the A100 (cluster_report section 5), where fp32 runs 24x / 15x slower than bf16.
+        LOGGER.info("%s", enable_tf32())
         try:
             props = torch.cuda.get_device_properties(0)
             gpu_name = props.name
@@ -787,8 +849,30 @@ def _forward(
         std = train_y.std(dim=0, unbiased=False, keepdim=True).clamp_min(1e-8)
         train_y = (train_y - mean) / std
         y_target = (batch.y_query.float() - mean) / std
-        znorm_mean = float(mean.detach().cpu().item())
-        znorm_std = float(std.detach().cpu().item())
+        # `mean` and `std` are (1, E, 1) — one statistic per ensemble member. `.item()` on
+        # that raises "a Tensor with 2 elements cannot be converted to Scalar" for any E > 1,
+        # which is what killed ALL TWELVE TabPFN regressor probes in cluster job 11524668
+        # (every generation, every row count, both adaptation modes) while the classifier
+        # probes passed — the classifier branch never reaches this code.
+        #
+        # Collapsing to a scalar is exact rather than a fudge: ensemble members of a
+        # REGRESSION batch differ in feature order and preprocessing, never in y, so every
+        # member's target statistics are identical. `metrics.py` needs scalars to invert the
+        # transform (`preds * znorm_std + znorm_mean`), so we assert the members really do
+        # agree instead of quietly averaging away a discrepancy that would corrupt every
+        # reported RMSE.
+        if mean.numel() > 1:
+            spread = float((mean.max() - mean.min()).abs().detach().cpu())
+            tol = 1e-4 * max(1.0, float(std.mean().detach().cpu()))
+            if spread > tol:
+                LOGGER.warning(
+                    "regression z-norm statistics differ across the %d ensemble members "
+                    "(mean spread %.3g > tol %.3g). Members should share y, so this points "
+                    "at a batch-construction bug; metrics will use the member mean.",
+                    mean.numel(), spread, tol,
+                )
+        znorm_mean = float(mean.detach().mean().cpu().item())
+        znorm_std = float(std.detach().mean().cpu().item())
     else:
         y_target = batch.y_query
 
@@ -1556,12 +1640,15 @@ def train_one_config(
         )
 
     # ---- 2) base model + criterion ---------------------------------------- #
-    # Two model families (2026-08-04). The grid's `use_lora` axis means:
-    #   tabpfn → PEFT LoRA adapters (base frozen, adapters train);
-    #   tabicl → FREEZE-BACKBONE / train-ICL-head-only (upstream stage-3;
-    #            full SFT collapsed TabICLv2 in two independent reports —
-    #            see src/train/tabicl_compat.py). Checkpoint names tag the
-    #            difference honestly (`_lora` vs `_iclhead`).
+    # The grid's `use_lora` axis is the FROZEN-BACKBONE axis, and since 25-08-2026 it means
+    # the same operation in both families: freeze the repeated-block transformer stack that
+    # holds the bulk of the parameters, train the embedders / label encoder / head around
+    # it. One implementation, `src/train/freeze.py`. Set `cfg.lora.enabled: true` to get
+    # PEFT LoRA back for a deliberate comparison — that is a different scheme.
+    #
+    # Tracks whether ADAPTERS were inserted, which is NOT the same question as whether the
+    # frozen arm was selected. Only adapters make L2-SP meaningless; see l2sp_applicable.
+    lora_adapters_inserted = False
     family = model_family(base_checkpoint_config)
     if family == "tabicl":
         from src.train.tabicl_model import load_tabicl_for_training
@@ -1584,6 +1671,7 @@ def train_one_config(
         lora_cfg_dict = (
             dict(cfg.lora) if (use_lora and _want_lora and hasattr(cfg, "lora")) else None
         )
+        lora_adapters_inserted = lora_cfg_dict is not None
         model, criterion, architecture_config, inference_config = (
             load_tabpfn_for_training(
                 base_checkpoint_path, track=track, device=device,
@@ -1610,7 +1698,18 @@ def train_one_config(
         l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
     else:
         l2sp_lambda = float(l2sp_lambda)
-    l2sp_applicable = (family == "tabicl") or (not use_lora)
+    # L2-SP anchors trainable weights to their PRETRAINED values, which is meaningful for
+    # every arm we run — including the frozen one, whose trainable parameters (input
+    # embedders, label encoder, prediction head) all came out of w0.
+    #
+    # Meaningless ONLY for real LoRA, whose adapters are randomly initialised and have no
+    # pretrained counterpart; anchoring those would penalise distance from noise.
+    #
+    # This read `(family == "tabicl") or (not use_lora)` until 25-08-2026 — correct while
+    # `use_lora` meant LoRA, wrong the moment it came to mean frozen-backbone. Every frozen
+    # TabPFN trial then ran with the anchor silently off while the manifest still recorded
+    # the configured lambda. Caught before the full run, not after it.
+    l2sp_applicable = not lora_adapters_inserted
     l2sp_anchor: dict[str, torch.Tensor] | None = None
     l2sp_w0_norm: float = 0.0
     l2sp_stage_names: dict[str, list[str]] = {}
@@ -2956,6 +3055,9 @@ def train_one_config(
         total_params=_n_total,
         est_tflops=_tflops,
         rows_seen=_rows_seen,
+        # Diagnostic only — nothing stopped early. None means the loss was still falling when
+        # the step budget ran out, i.e. raise the budget next time rather than lower it.
+        would_stop_epoch=would_have_stopped([r.train_loss for r in history]),
         descriptive_name=save_path.name,
         diverged=bool(diverged),
         diverged_at_epoch=diverged_at_epoch,

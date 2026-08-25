@@ -15,11 +15,13 @@ finetuning:
   # now use. The probe reports SINGLE-member peaks for TabPFN, so a cap is
   # (target GB) / (2 x slope); the slopes measured 24-08-2026 are v2 3.96, v2.6 5.44, v3 2.51
   # and tabicl 0.52 GB per 1k rows per member. v3 and v2.6 are the values run-8 completed on.
-  max_rows_per_epoch:
-    v2:      14000                        # 3.96 GB/1k/member -> ~111 GB of the 183 GB B200
-    v2.6:    11000                        # ~120 GB; validated by run-8 completing
-    v3:      26000                        # ~131 GB; validated by run-8 completing
-    tabicl:  26000                        # cuDNN fused attention fails at 40k — not memory
+  max_rows_per_epoch:                     # MEASURED, job 11524668 §9, B200 183 GB, 2 members.
+                                          # Frozen mode measured IDENTICAL peak, so one cap serves
+                                          # both modes — do not split this per adaptation mode.
+    v2:      14000                        # 10k = 79 GB, 26k OOM  -> 14k ~ 111 GB
+    v2.6:    11000                        # 10k = 109 GB, 26k OOM -> 11k ~ 120 GB
+    v3:      26000                        # 26k = 131 GB measured; 50k OOM
+    tabicl:  26000                        # 26k = 27 GB; 50k dies on a kernel shape, not memory
     default: 11000                        # the most conservative real value, not the largest
   max_cells_per_epoch:                    # optional rows x features budget; null = off
     v3: null

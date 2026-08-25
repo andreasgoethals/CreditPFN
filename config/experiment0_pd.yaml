@@ -25,5 +25,3 @@ train:
   epochs: 1                   # one pass is enough to exercise save + reload
   target_total_steps: null
   epoch_eval_count: 1
-  early_stopping: false
-  log_would_stop: false

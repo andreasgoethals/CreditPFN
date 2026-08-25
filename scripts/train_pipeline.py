@@ -604,6 +604,10 @@ class RunRow:
     total_params:           int   = 0
     est_tflops:             float = float("nan")   # 10^12 FLOPs over the whole trial
     rows_seen:              int   = 0              # sum of rows over all steps
+    # Epoch a patience-4 early-stopping rule WOULD have fired at; -1 = still improving when
+    # the step budget ran out. Diagnostic only — nothing stops early. Use it to size the
+    # budget for the next run instead of guessing.
+    would_stop_epoch:       int   = -1
 
 
 _MANIFEST_THREAD_LOCK = threading.Lock()
@@ -1020,6 +1024,8 @@ def run(
                 total_params=int(getattr(result, 'total_params', 0) or 0),
                 est_tflops=float(getattr(result, 'est_tflops', float('nan'))),
                 rows_seen=int(getattr(result, 'rows_seen', 0) or 0),
+                would_stop_epoch=int(
+                    getattr(result, 'would_stop_epoch', None) or -1),
                 sec_per_step=(float(result.elapsed_sec)
                               / max(1, int(getattr(result, 'total_optimizer_steps', 0) or 1))),
                 gpu_hours=float(result.elapsed_sec) / 3600.0,

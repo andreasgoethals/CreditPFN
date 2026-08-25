@@ -109,13 +109,34 @@ python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" ||
     echo "PREFLIGHT FAILED: tabpfn import smoke test — aborting before training." >&2
     exit 1
 }
+# ---- this task's chunk of the trial grid -------------------------------------
+# CREDITPFN_TRIALS_PER_TASK (default 1) trials run SEQUENTIALLY in this one job, so a 768-cell
+# campaign fits under the 500 submitted-job ceiling and pays startup once per chunk instead of
+# once per trial. run_experiment.sh sizes --time to match and asserts that a chunk never
+# straddles two model families (the grid is base-major, so it does not when C divides the
+# per-base block).
+TPT="${CREDITPFN_TRIALS_PER_TASK:-1}"
+FIRST=$(( SLURM_ARRAY_TASK_ID * TPT ))
+LAST=$(( FIRST + TPT - 1 ))
+N_ALL="$(python scripts/train_pipeline.py --list-trials \
+         ${CREDITPFN_CONFIG:+--config "${CREDITPFN_CONFIG}"} track=lgd 2>/dev/null \
+         | tail -1 || echo 0)"
+if [[ "$N_ALL" =~ ^[0-9]+$ ]] && (( N_ALL > 0 )) && (( LAST > N_ALL - 1 )); then
+    LAST=$(( N_ALL - 1 ))
+fi
+echo "Task ${SLURM_ARRAY_TASK_ID}: trials ${FIRST}..${LAST} of ${N_ALL} (${TPT}/task)"
+if (( FIRST > LAST )); then
+    echo "Nothing to do for this task (chunk starts past the end of the grid)."
+    exit 0
+fi
+
 # TabICL preflight — ONLY for trials using a tabicl base, so a missing
 # `tabicl` install costs that family's trials rather than the whole grid.
 # See train_pd.slurm for the full rationale. (2026-08-05)
-TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${SLURM_ARRAY_TASK_ID}" ${CREDITPFN_CONFIG:+--config "${CREDITPFN_CONFIG}"} track=lgd 2>/dev/null || true)"
+TRIAL_FAMILY="$(python scripts/train_pipeline.py --trial-family "${FIRST}" ${CREDITPFN_CONFIG:+--config "${CREDITPFN_CONFIG}"} track=lgd 2>/dev/null || true)"
 if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then
     python -c "from src.train.tabicl_compat import smoke_test; smoke_test('lgd')" || {
-        echo "PREFLIGHT FAILED: tabicl import smoke test (trial ${SLURM_ARRAY_TASK_ID} uses a tabicl base)." >&2
+        echo "PREFLIGHT FAILED: tabicl import smoke test (chunk ${FIRST}..${LAST} uses a tabicl base)." >&2
         echo "  Fix: pip install 'tabicl[finetune]>=2.1.1,<3' INTO THE ENV THIS JOB ACTIVATES" >&2
         echo "       (the [finetune] extra carries 'transformers'; without it" >&2
         echo "        inference works and only TRAINING fails.)" >&2
@@ -133,12 +154,26 @@ EXTRA_ARGS=()
 [[ -n "${CREDITPFN_CONFIG:-}" ]] && EXTRA_ARGS+=(--config "${CREDITPFN_CONFIG}")
 [[ -n "${CREDITPFN_SPLIT_INDEX:-}" ]] && EXTRA_ARGS+=(--split-index "${CREDITPFN_SPLIT_INDEX}")
 
-python -u scripts/train_pipeline.py \
-    --trial-index "${SLURM_ARRAY_TASK_ID}" \
-    --log-path "$LOG" \
-    "${EXTRA_ARGS[@]}" \
-    track=lgd
-
-# Reached ONLY on success (set -e) - per-task sentinel for the eval gate.
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
-touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd_${SLURM_ARRAY_TASK_ID}"
+
+RC=0
+for TRIAL in $(seq "$FIRST" "$LAST"); do
+    echo "=============================================================="
+    echo " TRIAL ${TRIAL}   $(date)"
+    echo "=============================================================="
+    # `if` suspends set -e for this command on purpose: one bad trial must not discard the
+    # other trials packed into this task. The chunk still exits non-zero so the failure is
+    # visible, and eval is gated on the per-TRIAL sentinels below, never on the task.
+    if python -u scripts/train_pipeline.py \
+        --trial-index "${TRIAL}" \
+        --log-path "$LOG" \
+        "${EXTRA_ARGS[@]}" \
+        track=lgd
+    then
+        touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd_${TRIAL}"
+    else
+        RC=$?
+        echo "TRIAL ${TRIAL} FAILED (rc=${RC}) — continuing with the rest of this chunk." >&2
+    fi
+done
+exit "$RC"

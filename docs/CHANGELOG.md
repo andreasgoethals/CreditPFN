@@ -91,6 +91,70 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 25-08-2026 (second session)
+
+- **BUG, caught before the run: L2-SP was silently off for every frozen TabPFN trial.**
+  `l2sp_applicable = (family == "tabicl") or (not use_lora)` — but `use_lora` is the
+  frozen-backbone axis, so the penalty never ran on the frozen arm while the manifest still
+  recorded `l2sp_lambda=0.003`. With lambda now fixed and frozen swept, that is HALF of
+  experiment 1, and the frozen-vs-full contrast would have been confounded with
+  anchor-on-vs-off. Now gated on whether LoRA adapters were actually inserted, which is the
+  question that matters (adapters have no w0 to anchor to; a frozen head does).
+- **New `src/utils/preflight.py`** — every check that does not need a GPU, in one command:
+  grid size and swept axes, required axes present, checkpoint-name collisions across splits,
+  base checkpoints staged, step budget reachable in every cell, row caps against measured
+  memory, the L2-SP guard above, stale config knobs, `bash -n` over every SLURM script,
+  processed datasets, prediction writer, task count against the 500 ceiling, and whether trial
+  packing straddles model families. Exit 1 on any failure.
+- **Trials are packed: `TRIALS_PER_TASK=4`.** 768 cells at one task each blows the 500-job
+  ceiling and loses the tail silently; at 4 per task it is 192 tasks. Walltime is derived
+  (`4 x 90 + 30 min = 6:30:00`, capped at 72 h) and the submitter REFUSES a packing that would
+  put two model families in one task, because routing and the tabicl import preflight are both
+  per-base. A trial that fails no longer discards the rest of its chunk, and sentinels are
+  per-trial rather than per-task.
+- **`would_have_stopped()` implemented.** `train.log_would_stop` and `train.early_stopping` were
+  in every config and NOTHING read them — the config promised a feature that did not exist.
+  Now recorded per trial as `would_stop_epoch` (-1 = still improving when the budget ran out),
+  which is how we size the next run's budget instead of guessing. Nothing stops early; the fixed
+  step budget is deliberate.
+- **Five stale knobs deleted** — `early_stopping`, `early_stopping_patience`, `log_would_stop`,
+  `log_grad_norm`, `log_per_layer_drift`. The last two describe features that are unconditional,
+  so the knobs were decorative. Preflight now fails on any knob no code reads.
+- Cross-cluster splitting stays OFF by default. Run-8 measured wICE at **0.20 average
+  concurrency** (3.6 GPU-h stretched to 17.9 h wall-clock, the A100 half never starting) against
+  mindwell's **15-21 concurrent** on the same days — already documented in `eval_pd.slurm`.
+
+## 25-08-2026
+
+- **`accumulate` restored to the sweep; `l2sp_lambdas` fixed at 0.003 instead.** Cost-neutral
+  swap (both are 2-value full-price axes), and it keeps the dataset-size equalisation: one
+  averaged update per dataset means a 730k-row table cannot outvote a 999-row one. L2-SP stays at
+  Garg's published value, which he never tuned and Rubachev does not use at all.
+- **`_forward` crashed on every regression batch with more than one ensemble member** —
+  `float(mean.detach().cpu().item())` on a `(1, E, 1)` tensor. This killed all twelve TabPFN
+  regressor row-cap probes in job 11524668 (every generation, every row count, both modes) while
+  the classifier probes passed. Now collapses across members with a guard that warns if the
+  per-member statistics actually differ.
+- **Row caps CONFIRMED by measurement** (job 11524668 §9, B200, 2 members): v2 10k = 79 GB and
+  26k OOM; v2.6 10k = 109 GB and 26k OOM; v3 26k = 131 GB and 50k OOM; tabicl 26k = 27 GB. The
+  configured 14k / 11k / 26k / 26k all hold.
+- **Frozen mode uses IDENTICAL memory to full mode** — measured to two decimals at every
+  (base, rows). Peak sits in the forward pass, and both families already recompute activations
+  during backward, so there were no retained activations to save. Consequences: one row cap
+  serves both modes (do not split `max_rows_per_epoch` per mode), and the frozen arm cannot be
+  routed to a smaller card.
+- **Routing reverted to measured memory, default all-B200.** Frozen-arm-to-wice was wrong (it
+  would have sent 100+ GB trials to an 80 GB card). And the wice split no longer pays: measured
+  bf16 is B200 1586 TFLOP/s vs A100 289 — 5.5x, not the 2.2x estimated — which makes the B200
+  1.8x *cheaper* per unit of work. All-B200 is 702 GPU-h / 18.4M credits against 1237 / 20.6M
+  for the split, for 0.3 days. `TABICL_DEST` remains as a congestion valve.
+- **tf32 enabled for matmul and cuDNN** (`loop.enable_tf32`, called per trial). Measured OFF on
+  both cards, where fp32 runs at 66 TFLOP/s vs bf16's 1586 on the B200 (24x) and 19 vs 289 on the
+  A100 (15x). Training is bf16-autocast so the big matmuls are unaffected; this is for the fp32
+  ops autocast leaves alone.
+- Experiment 1 final: **48 trials x 8 splits x 2 tracks = 768 cells**, ~702 GPU-h, ~18.4M
+  credits, ~7 days on mindwell. Whole campaign incl. experiments 0 and 2: **784 cells**.
+
 ## 19-08-2026
 
 - **New `docs/EXPERIMENT_PLAN.md`** — the strategy from here, and the diagnosis it rests on.
