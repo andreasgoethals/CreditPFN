@@ -38,6 +38,36 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 25-08-2026 (fifth session)
+
+**Eval rebuilt the held-out dataset draw from the WRONG config, and nothing would have caught it.**
+
+- **Tried.** Added `--config` / `--split-index` to `train_pipeline.py` for the 8-split campaign
+  and assumed eval followed. It had neither flag.
+- **Result.** `eval_pipeline._load_cfgs` loads `eval_cfg.train_cfg_path` = config/train.yaml, and
+  `cfg_test_ids` comes from `split_from_cfg(train_cfg)`. So every split would have been evaluated
+  against the SAME five datasets (train.yaml has `n_test_datasets: null`, so it fell back to the
+  0.7/0.3 fractions). For split 7 — trained holding out thomas / loan_default / algorithmwatch /
+  bondora — eval would have used taiwan / myhom / bank_status / algorithmwatch / credit_risk, of
+  which **four were in its training set**.
+- **Why.** Two independent config-loading paths for one experiment. The manifest-name half of the
+  mismatch has a loud warning; the DRAW half has none, and it moves scores upward, so it would
+  have read as a positive result.
+- **Instead.** Both pipelines take the same two flags and merge identically, and
+  `check_train_eval_agree` in preflight compares the two real code paths per split. Whenever two
+  entry points must agree on something, assert it in preflight rather than trusting symmetry.
+
+**A 3 GB, 2 987-column raw CSV is not a hang.**
+
+- **Tried.** `python -m src.data.register` on a login node to rebuild the dataset registry.
+- **Result.** It stalled on `0014.algorithmwatch` — raw is 3.0 GB and 159 k x 2 987, ~475 M
+  cells, read with `pd.read_csv(low_memory=False)`. `register` also has NO flags and writes both
+  manifests only at the very end, so interrupting it saves nothing.
+- **Why.** The registry is rebuilt from RAW, and the widest dataset dominates.
+- **Instead.** The manifests are 194 KB + 10 KB of text that already exist locally and were
+  produced by this code from this raw data. Copy them; do not re-parse 3 GB on a shared login
+  node. If a rebuild is genuinely needed, `sbatch` it to a CPU partition.
+
 ### 25-08-2026 (fourth session)
 
 **Experiment 0 did its job on the first try — by failing.**

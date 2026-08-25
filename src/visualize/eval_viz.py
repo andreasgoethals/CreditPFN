@@ -156,12 +156,14 @@ def human_method_name(row: pd.Series) -> str:
         return f"untuned ({base})"
     if src.endswith("-trained"):
         lr = row.get("lr", np.nan)
-        # The use_lora axis means LoRA for tabpfn and freeze-backbone
-        # (ICL-head-only) for tabicl — label it truthfully per family.
-        if row.get("use_lora"):
-            adapt = " ·ICLhead" if src.startswith("tabicl") else " ·LoRA"
-        else:
-            adapt = ""
+        # ONE label for the frozen arm, both families. Since 25-08-2026 `use_lora` selects the
+        # same operation everywhere — freeze the repeated-block transformer stack, train the
+        # embedders and head (src/train/freeze.py) — so labelling it "·LoRA" for TabPFN and
+        # "·ICLhead" for TabICLv2 would put one scheme in two rows of every figure, under a
+        # name (LoRA) for a technique this project no longer uses. The on-disk filename tags
+        # still differ (`__lora` / `__iclhead`); `_method_series_name` already collapses both
+        # to one boolean, and the manifest's `use_lora` column is the ground truth.
+        adapt = " ·frozen" if row.get("use_lora") else ""
         fp = " ·fullpass" if row.get("full_pass") else ""
         # The corpus arm MUST appear: without it the filtered and unfiltered runs of the
         # same (base, lr) share a label, and every figure that groups by this name averages

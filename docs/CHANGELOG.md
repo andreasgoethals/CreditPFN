@@ -91,6 +91,42 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 25-08-2026 (fifth session — final pre-run audit)
+
+- **BLOCKER FIXED: eval could not be told which experiment or which split it was evaluating.**
+  `scripts/eval_pipeline.py` had no `--config` and no `--split-index`, so it always loaded
+  `config/train.yaml` (`run_name: creditpfn`). Two consequences, the second silent and severe:
+  1. It looked for `creditpfn_pd.csv`, a manifest experiment 1 never writes -> zero trained
+     handles and a baselines-only roster. Loudly warned about, but 1 536 checkpoints unevaluated.
+  2. `cfg_test_ids` comes from `split_from_cfg(train_cfg)`, so it RE-DREW the held-out datasets
+     from the wrong corpus block. Measured: the old path would have scored EVERY split against
+     the same fixed five datasets, and for split 7 **four of those five were in that model's
+     training set**. Direct train-on-test leakage, in the direction that inflates every score.
+  Both pipelines now take `--config` / `--split-index` and merge identically;
+  `scripts/slurm/eval_{pd,lgd}.slurm` pass them from `CREDITPFN_CONFIG` /
+  `CREDITPFN_SPLIT_INDEX`, the same contract the training jobs already use.
+- **New preflight check `check_train_eval_agree`** — for every experiment and every split, the
+  train and eval config paths must resolve the same `run_name`, `split_seed` AND held-out
+  dataset ids. It compares the two real code paths, so it cannot drift from either. This is the
+  check that would have caught the above.
+- **The frozen arm is labelled `·frozen` in figures for both families.** It was `·LoRA` for
+  TabPFN and `·ICLhead` for TabICLv2 — one scheme under two labels, one of them naming a
+  technique this project no longer uses. Grouping was already correct (`_method_series_name`
+  collapses both filename tags to one boolean); only the human-readable label was wrong. The
+  on-disk tags (`__lora` / `__iclhead`) are left alone deliberately: renaming 31 sites days
+  before the run buys nothing, and the manifest's `use_lora` column is the ground truth.
+
+Audited clean, no change needed:
+
+- Manifest categoricals that sanitize dropped are filtered at all three consumers
+  (`dataloader.py:136`, `loop.py:1346`, `dataset_loader.py:246`), so the 6 datasets whose raw
+  categorical lists exceed their processed columns are handled by design, not by luck.
+- All five configs dry-run through `run_experiment.sh`: 96 trials -> 24 tasks at 4/task, and 4
+  divides the 24-trial per-base block so no task straddles a model family.
+- All four (frozen x l2sp) cells produce distinct checkpoint names in both families.
+- `l2sp_lambda=0.0` builds no anchor (`if l2sp_lambda > 0.0 and l2sp_applicable`), so the new
+  arm is a true no-anchor control rather than a tiny-anchor one.
+
 ## 25-08-2026 (fourth session)
 
 - **Preflight prints the RESOLVED storage layout first** (`check_storage_layout`), both VSC

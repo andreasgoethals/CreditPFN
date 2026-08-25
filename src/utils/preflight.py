@@ -351,6 +351,59 @@ def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 4) -> 
             rep.ok(f"{name}: every packed task stays within one model family")
 
 
+def check_train_eval_agree(name: str, rep: Report) -> None:
+    """Train and eval must resolve the SAME run_name, split_seed and held-out datasets.
+
+    They are two separate config-loading paths — `train_pipeline._load_cfg` +
+    `_apply_split_index`, and `eval_pipeline._load_cfgs` — and both feed `split_from_cfg`. If
+    they disagree, eval scores each checkpoint against datasets it may have TRAINED on. Nothing
+    downstream catches that: the numbers just come out better.
+    """
+    sys.path.insert(0, str(REPO))
+    sys.path.insert(0, str(REPO / "scripts"))
+    try:
+        import importlib.util
+
+        from src.train.corpus import split_from_cfg
+        import scripts.train_pipeline as tp
+        spec = importlib.util.spec_from_file_location(
+            "_ep_preflight", REPO / "scripts" / "eval_pipeline.py")
+        ep = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ep)
+    except Exception as exc:
+        rep.warn(f"{name}: cannot compare train/eval config paths",
+                 f"{type(exc).__name__}: {exc}")
+        return
+
+    cfg_path = f"config/{name}.yaml"
+    try:
+        n_splits = int(tp._load_cfg(None, cfg_path).corpus.get("n_splits") or 1)
+    except Exception as exc:
+        rep.fail(f"{name}: train config will not load", f"{type(exc).__name__}: {exc}")
+        return
+
+    bad = []
+    for k in range(n_splits):
+        try:
+            t = tp._apply_split_index(tp._load_cfg(None, cfg_path), k)
+            _, e = ep._load_cfgs([], [], config_path=cfg_path, split_index=k)
+            t_ids = sorted(c.dataset_id for c in split_from_cfg(t).test)
+            e_ids = sorted(c.dataset_id for c in split_from_cfg(e).test)
+            if (t.run_name, int(t.corpus.split_seed), t_ids) != \
+               (e.run_name, int(e.corpus.split_seed), e_ids):
+                bad.append(
+                    f"split {k}: train {t.run_name}/seed={t.corpus.split_seed}/{t_ids} != "
+                    f"eval {e.run_name}/seed={e.corpus.split_seed}/{e_ids}")
+        except Exception as exc:
+            bad.append(f"split {k}: {type(exc).__name__}: {exc}")
+    if bad:
+        rep.fail(f"{name}: train and eval disagree on the dataset draw",
+                 "\n".join(bad[:4]) + "\neval would score checkpoints on data they trained on")
+    else:
+        rep.ok(f"{name}: train and eval agree on all {n_splits} split(s)",
+               "same run_name, split_seed and held-out datasets")
+
+
 def check_storage_layout(rep: Report) -> None:
     """Report every resolved path and which VSC tier it landed on.
 
@@ -503,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
         check_name_collisions(cfg, label, grid, rep)
         check_checkpoints(cfg, label, grid, rep, ckpt_dir)
         check_step_budget(cfg, label, rep)
+        check_train_eval_agree(label, rep)
 
     check_row_caps(rep)
     check_l2sp_applies(rep)

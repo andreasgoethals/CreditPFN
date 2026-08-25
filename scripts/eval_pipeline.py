@@ -89,14 +89,29 @@ LOGGER = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-def _load_cfgs(eval_overrides: list[str], train_overrides: list[str]):
+def _load_cfgs(eval_overrides: list[str], train_overrides: list[str],
+               config_path: str | None = None, split_index: int | None = None):
     from omegaconf import OmegaConf
     eval_cfg = OmegaConf.load("config/eval.yaml")
     if eval_overrides:
         eval_cfg = OmegaConf.merge(eval_cfg, OmegaConf.from_dotlist(eval_overrides))
     train_cfg = OmegaConf.load(eval_cfg.train_cfg_path)
+    # EXPERIMENT CONFIG, merged as a DELTA exactly as scripts/train_pipeline._load_cfg does.
+    # Without it eval reads config/train.yaml, whose run_name is "creditpfn", and then looks for
+    # a manifest experiment 1 never writes AND re-draws its test datasets from the wrong corpus
+    # block. Loading the experiment file alone would crash instead: it is a delta and omits ~25
+    # machinery keys.
+    if config_path and str(config_path) != str(eval_cfg.train_cfg_path):
+        train_cfg = OmegaConf.merge(train_cfg, OmegaConf.load(str(config_path)))
     if train_overrides:
         train_cfg = OmegaConf.merge(train_cfg, OmegaConf.from_dotlist(train_overrides))
+    # SPLIT INDEX, mirroring train_pipeline._apply_split_index so eval reconstructs the SAME
+    # dataset draw the checkpoint was trained under. `split_seed` drives the draw and the
+    # run_name suffix selects the manifest; getting either wrong evaluates a model on tables it
+    # was trained on, which no downstream check would catch.
+    if split_index is not None:
+        train_cfg.corpus.split_seed = int(split_index)
+        train_cfg.run_name = f"{train_cfg.run_name}_s{int(split_index):02d}"
     return eval_cfg, train_cfg
 
 
@@ -400,8 +415,14 @@ def run(
     task_index: int | None = None,
     n_tasks: int | None = None,
     rerun: bool = False,
+    # Which experiment, and which of its dataset splits. Both must match what the checkpoints
+    # were TRAINED with: `config` selects the manifest that lists them and `split_index` selects
+    # the held-out datasets. See _load_cfgs.
+    config: str | None = None,
+    split_index: int | None = None,
 ) -> int:
-    eval_cfg, train_cfg = _load_cfgs(eval_overrides or [], train_overrides or [])
+    eval_cfg, train_cfg = _load_cfgs(eval_overrides or [], train_overrides or [],
+                                     config_path=config, split_index=split_index)
     track = str(train_cfg.track)
 
     # Apply paths.data_source from config/data.yaml (single source of
@@ -574,6 +595,14 @@ def _parse_args(argv: list[str] | None = None):
     p = argparse.ArgumentParser(
         description="Cross-model benchmark on the held-out test datasets.",
     )
+    p.add_argument("--config", default=None,
+                   help="experiment config, merged as a DELTA over eval.train_cfg_path "
+                        "(e.g. config/experiment1_pd.yaml). Must match the config the "
+                        "checkpoints were TRAINED with, or the test-dataset draw differs.")
+    p.add_argument("--split-index", type=int, default=None,
+                   help="which random dataset split to evaluate; sets corpus.split_seed and "
+                        "the run_name suffix, mirroring train_pipeline. Must match the "
+                        "split the checkpoints were trained under.")
     p.add_argument("--log-path", default=None,
                    help="Append the run summary to this log file "
                         "(skip the auto-naming).")
@@ -635,7 +664,9 @@ def _parse_args(argv: list[str] | None = None):
 if __name__ == "__main__":
     args, eval_overrides, train_overrides = _parse_args()
     if args.list_tasks:
-        eval_cfg, train_cfg = _load_cfgs(eval_overrides, train_overrides)
+        eval_cfg, train_cfg = _load_cfgs(eval_overrides, train_overrides,
+                                        config_path=getattr(args, 'config', None),
+                                        split_index=getattr(args, 'split_index', None))
         track = str(train_cfg.track)
         # Apply paths.data_source from config/data.yaml here too — the
         # roster builder calls into the corpus splitter, which checks
@@ -698,4 +729,6 @@ if __name__ == "__main__":
         task_index=args.task_index,
         n_tasks=args.tasks,
         rerun=args.rerun,
+        config=args.config,
+        split_index=args.split_index,
     ))

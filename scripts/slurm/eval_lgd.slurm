@@ -91,8 +91,19 @@ echo "=========================================="
 # --tasks must MATCH the value --list-tasks was called with at submit time, or
 # the two disagree about which cells belong to task i. run_full_pipeline.sh
 # exports EVAL_TASKS so both sides read the same number.
+# CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are exported by run_experiment.sh, exactly as for
+# the training jobs. Eval NEEDS both: it rebuilds the held-out dataset draw from the training
+# corpus block, so the wrong split index evaluates a checkpoint on tables it was trained on —
+# silently, and in the direction that inflates every score. Unset means "the default sweep in
+# config/train.yaml", so older submissions behave as they did.
+EVAL_ARGS=()
+[[ -n "${CREDITPFN_CONFIG:-}" ]] && EVAL_ARGS+=(--config "${CREDITPFN_CONFIG}")
+[[ -n "${CREDITPFN_SPLIT_INDEX:-}" ]] && EVAL_ARGS+=(--split-index "${CREDITPFN_SPLIT_INDEX}")
+echo "eval args: ${EVAL_ARGS[*]:-<none: default sweep>}"
+
 python -u scripts/eval_pipeline.py \
     --task-index "${SLURM_ARRAY_TASK_ID}" \
     --tasks "${EVAL_TASKS:-16}" \
     --log-path "$LOG" \
+    "${EVAL_ARGS[@]}" \
     track=lgd
