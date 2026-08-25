@@ -561,7 +561,13 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
         # SPLIT SEED, not the training seed. One seed used to drive both the dataset
         # partition and weight initialisation, so changing the split also changed the init
         # and the two effects were confounded. Defaults to cfg.seed so old runs reproduce.
-        seed=int(corpus.get("split_seed", None) or cfg.seed),
+        # `or` would be wrong here: split_seed=0 is a LEGITIMATE value (it is split 0
+        # of n_splits, set by train_pipeline._apply_split_index) and `0 or 42` is 42 in
+        # Python. That silently made split 0 draw the same datasets as a no-split run,
+        # collapsing an 8-split campaign to 7 distinct draws with nothing in the output
+        # to show it. Test for None explicitly.
+        seed=int(cfg.seed if corpus.get("split_seed", None) is None
+                 else corpus.get("split_seed")),
         n_folds=corpus.get("n_folds", None),
         n_test_datasets=corpus.get("n_test_datasets", None),
         fold=int(corpus.get("fold", 0) or 0),

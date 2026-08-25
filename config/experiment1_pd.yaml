@@ -4,7 +4,8 @@
 # ---------------------------------------------------------------- SWEPT ------
 tunable:
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]            # Garg -> our best -> Kolberg/Tanna
-  l2sp_lambdas: [0.003]       # FIXED at Garg's value, not swept: the budget bought back `accumulate`
+  l2sp_lambdas: [0.0, 0.003]  # 0 = no anchor. Run-8 showed weights barely move (0.24-0.69% of
+  #   ||w0||) and L2-SP is the force holding them there, so lambda=0 is a prime suspect
   frozen_backbone: [false, true]                      # true = freeze the stack, train the head
   epoch_pass_modes: ["full_pass", "accumulate"]   # per-batch updates vs ONE averaged
   #   update per dataset, so a 730k-row table cannot outvote a 999-row one

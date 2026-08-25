@@ -954,6 +954,66 @@ def _csv_ok_folds_for(csv_path: Path, dataset_id: str) -> set[int | str]:
     return folds
 
 
+#: Quantile grid stored for every LGD prediction. Nine levels is enough for a CRPS estimate
+#: within ~1 % of the exact integral and for 80 % / 90 % interval coverage, while adding nine
+#: floats per row to the parquet. The grid is FIXED across families on purpose — that is what
+#: makes the resulting CRPS comparable between TabPFN's bar distribution and TabICLv2's
+#: quantile head, which `neg_nll` is not.
+PRED_QUANTILE_LEVELS: tuple[float, ...] = (
+    0.05, 0.10, 0.25, 0.40, 0.50, 0.60, 0.75, 0.90, 0.95)
+
+
+def _predict_quantiles(model, X, levels: tuple[float, ...] = PRED_QUANTILE_LEVELS):
+    """Predicted quantiles at `levels`, shape (n_rows, len(levels)), or None.
+
+    Two families, two APIs, one output shape:
+
+      * TabICLv2 exposes a quantile head directly — ``predict(X, output_type="quantiles")``.
+      * TabPFN carries a full bar distribution — ``predict(X, output_type="full")`` returns its
+        ``criterion`` plus ``logits``, and the criterion's inverse CDF turns those into
+        quantiles on the same grid.
+
+    Best-effort and version-tolerant by design: this runs inside a ~20M-credit campaign and
+    must never be the reason a fold fails. Every unexpected shape or missing attribute returns
+    None, and the caller then stores the point prediction alone, exactly as before.
+    """
+    import numpy as _np
+
+    # --- TabICLv2 (and anything else with a quantile head) ---
+    for kwargs in ({"output_type": "quantiles", "quantiles": list(levels)},
+                   {"output_type": "quantiles"}):
+        try:
+            out = model.predict(X, **kwargs)
+        except Exception:                                          # noqa: BLE001
+            continue
+        arr = _np.asarray(out, dtype=float)
+        if arr.ndim == 2 and levels and arr.shape[1] == len(levels):
+            return arr
+        if arr.ndim == 2 and arr.shape[0] == len(levels):          # (k, n) -> (n, k)
+            return arr.T
+    # --- TabPFN bar distribution ---
+    try:
+        import torch
+        out = model.predict(X, output_type="full")
+        if not isinstance(out, dict):
+            return None
+        crit, logits = out.get("criterion"), out.get("logits")
+        if crit is None or logits is None:
+            return None
+        logits_t = logits if torch.is_tensor(logits) else torch.as_tensor(logits)
+        cols = []
+        for q in levels:
+            icdf = getattr(crit, "icdf", None) or getattr(crit, "quantile", None)
+            if icdf is None:
+                return None
+            v = icdf(logits_t, q)
+            cols.append(_np.asarray(v.detach().cpu(), dtype=float).reshape(-1))
+        arr = _np.stack(cols, axis=1)
+        return arr if arr.ndim == 2 and arr.shape[1] == len(levels) else None
+    except Exception:                                              # noqa: BLE001
+        return None
+
+
 def _write_predictions(
     records: list[dict],
     out_path: "pathlib.Path",
@@ -1173,12 +1233,24 @@ def _bench_model_on_dataset(
                 _p = np.asarray(pred_te).reshape(-1)
                 _y = np.asarray(y_te).reshape(-1)
                 if _p.shape == _y.shape:
-                    pred_records.extend(
-                        {"test_dataset_id": ds.dataset_id, "model_name": handle.name,
-                         "fold_idx": int(fold_idx), "row_idx": int(i),
-                         "y_true": float(_y[i]), "y_pred": float(_p[i])}
-                        for i in range(_y.size)
-                    )
+                    # Regression only: capture the predictive DISTRIBUTION as a fixed quantile
+                    # grid so CRPS and interval coverage stay computable from the parquet after
+                    # the run. `neg_nll` is recorded too but is not comparable across families
+                    # (bar distribution vs quantile head), and CRPS is. None on any failure, in
+                    # which case the point prediction is stored alone, as before.
+                    _q = None
+                    if ds.task_type != "classification":
+                        _q = _predict_quantiles(model, X_te_arr)
+                        if _q is not None and _q.shape[0] != _y.size:
+                            _q = None
+                    for i in range(_y.size):
+                        _rec = {"test_dataset_id": ds.dataset_id, "model_name": handle.name,
+                                "fold_idx": int(fold_idx), "row_idx": int(i),
+                                "y_true": float(_y[i]), "y_pred": float(_p[i])}
+                        if _q is not None:
+                            _rec.update({f"q{int(round(lv * 100)):02d}": float(_q[i, j])
+                                         for j, lv in enumerate(PRED_QUANTILE_LEVELS)})
+                        pred_records.append(_rec)
             except Exception:                                  # pragma: no cover
                 LOGGER.debug("could not record predictions for %s/%s fold %d",
                              ds.dataset_id, handle.name, fold_idx)

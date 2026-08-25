@@ -43,6 +43,34 @@ CARD_HEADROOM = 0.90     # refuse a cap that needs more than this fraction
 _PASS, _FAIL, _WARN = "ok  ", "FAIL", "warn"
 
 
+def _resolved_roots() -> tuple["pathlib.Path | None", "dict[str, pathlib.Path]"]:
+    """(checkpoints_dir, {track: processed_dir}) as the PIPELINE resolves them.
+
+    Not repo-relative. On VSC these land on project storage via CREDITPFN_DATA_ROOT and
+    data.yaml's `paths.data_source`; checking REPO/checkpoints reported seven failures on a
+    perfectly staged cluster (25-08-2026).
+    """
+    sys.path.insert(0, str(REPO))
+    ck = None
+    proc: dict[str, pathlib.Path] = {}
+    try:
+        from omegaconf import OmegaConf
+
+        from src.utils.paths import apply_data_source_from_cfg, processed_dir
+        apply_data_source_from_cfg(OmegaConf.load(REPO / "config" / "data.yaml"))
+        for track in ("pd", "lgd"):
+            proc[track] = pathlib.Path(processed_dir(track))
+    except Exception:
+        for track in ("pd", "lgd"):
+            proc[track] = REPO / "data/processed" / track
+    try:
+        from src.utils.stage_checkpoints import checkpoints_root
+        ck = pathlib.Path(checkpoints_root())
+    except Exception:
+        ck = REPO / "checkpoints"
+    return ck, proc
+
+
 class Report:
     def __init__(self) -> None:
         self.rows: list[tuple[str, str, str]] = []
@@ -159,13 +187,24 @@ def check_name_collisions(cfg, name: str, grid: list[tuple], rep: Report) -> Non
         rep.ok(f"{name}: {len(seen)} distinct checkpoint names, no collisions")
 
 
-def check_checkpoints(cfg, name: str, grid: list[tuple], rep: Report) -> None:
-    missing = sorted({str(t[0]) for t in grid if not (REPO / str(t[0])).exists()})
+def check_checkpoints(cfg, name: str, grid: list[tuple], rep: Report,
+                      ckpt_dir: "pathlib.Path | None" = None) -> None:
+    """Resolve each base through the SAME roots the pipeline uses, not repo-relative."""
+    wanted = sorted({str(t[0]) for t in grid})
+    missing = []
+    for rel in wanted:
+        base = pathlib.Path(rel).name
+        cands = [REPO / rel]
+        if ckpt_dir is not None:
+            cands.append(ckpt_dir / base)
+        if not any(c.exists() for c in cands):
+            missing.append(f"{base}   (looked in {', '.join(str(c.parent) for c in cands)})")
     if missing:
-        rep.fail(f"{name}: {len(missing)} checkpoint(s) missing",
+        rep.fail(f"{name}: {len(missing)} of {len(wanted)} checkpoint(s) missing",
                  "\n".join(missing) + "\nstage them: python -m src.utils.stage_checkpoints")
     else:
-        rep.ok(f"{name}: all {len({str(t[0]) for t in grid})} base checkpoints present")
+        rep.ok(f"{name}: all {len(wanted)} base checkpoints present",
+               f"in {ckpt_dir}" if ckpt_dir else "")
 
 
 def check_row_caps(rep: Report) -> None:
@@ -312,15 +351,42 @@ def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 4) -> 
             rep.ok(f"{name}: every packed task stays within one model family")
 
 
-def check_data(rep: Report) -> None:
+def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
+    """Ask the TRAINING code what the corpus is, not the filesystem.
+
+    Globbing `data/processed/<track>/*.csv` reported "17 processed datasets" on a cluster where
+    training then died with "Corpus split contains no training chunks" (job 11525443, all four
+    experiment-0 trials). `corpus.build_dataset_pool` does not glob: it walks
+    `output/manifests/manifest_<track>.csv` — the dataset registry — and keeps only rows whose
+    sanitized CSV exists. The registry was missing, so the pool was empty while the CSVs sat
+    right there. Calling the real function is the only check that cannot drift from it.
+    """
+    sys.path.insert(0, str(REPO))
+    try:
+        from src.train.corpus import build_dataset_pool
+    except Exception as exc:                                       # pragma: no cover
+        rep.fail("cannot import build_dataset_pool", f"{type(exc).__name__}: {exc}")
+        return
+
     for track, need in (("pd", 5), ("lgd", 3)):
-        d = REPO / "data/processed" / track
-        n = len(list(d.glob("*.csv"))) if d.exists() else 0
+        d = proc.get(track, REPO / "data/processed" / track)
+        on_disk = len(list(d.glob("*.csv"))) if d.is_dir() else 0
+        try:
+            pool = build_dataset_pool(track)
+        except Exception as exc:
+            rep.fail(f"{track}: build_dataset_pool raised", f"{type(exc).__name__}: {exc}")
+            continue
+        n = len(pool)
         if n < need:
-            rep.fail(f"{track}: only {n} processed dataset(s)",
-                     f"need at least {need}; run scripts/data_pipeline.py")
+            hint = (f"{on_disk} sanitized CSV(s) ARE present in {d}, so the REGISTRY is what "
+                    f"is missing (output/manifests/manifest_{track}.csv). Rebuild it with "
+                    f"`python -m src.data.register` if data/raw is staged, or copy the two "
+                    f"manifest CSVs across." if on_disk >= need else
+                    f"only {on_disk} sanitized CSV(s) in {d}; run scripts/data_pipeline.py")
+            rep.fail(f"{track}: corpus has {n} usable dataset(s), need {need}", hint)
         else:
-            rep.ok(f"{track}: {n} processed datasets")
+            extra = f" ({on_disk} CSVs on disk)" if on_disk != n else ""
+            rep.ok(f"{track}: {n} datasets in the corpus{extra}", f"processed dir: {d}")
 
 
 def check_predictions_writer(rep: Report) -> None:
@@ -360,6 +426,7 @@ def main(argv: list[str] | None = None) -> int:
 
     names = args.config or list(EXPERIMENTS)
     rep = Report()
+    ckpt_dir, proc_dirs = _resolved_roots()
     loaded = []
     for n in names:
         try:
@@ -372,14 +439,14 @@ def main(argv: list[str] | None = None) -> int:
         check_required_axes(cfg, label, rep)
         grid = check_grid(cfg, label, rep)
         check_name_collisions(cfg, label, grid, rep)
-        check_checkpoints(cfg, label, grid, rep)
+        check_checkpoints(cfg, label, grid, rep, ckpt_dir)
         check_step_budget(cfg, label, rep)
 
     check_row_caps(rep)
     check_l2sp_applies(rep)
     check_stale_knobs(rep)
     check_slurm(rep)
-    check_data(rep)
+    check_data(rep, proc_dirs)
     check_predictions_writer(rep)
     if loaded:
         exp1 = [(c, n) for c, n in loaded if "experiment1" in n] or loaded

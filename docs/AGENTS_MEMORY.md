@@ -38,6 +38,75 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 25-08-2026 (fourth session)
+
+**Experiment 0 did its job on the first try — by failing.**
+
+- **Tried.** Ran the lr=0 save/reload control (job 11525443) as the first thing on the cluster.
+- **Result.** All four trials FAILED in 0.7 s each: `RuntimeError: Corpus split contains no
+  training chunks`. `build_dataset_pool` returned an empty pool because
+  `output/manifests/manifest_pd.csv` — the dataset REGISTRY — was not on the cluster, even
+  though all 17 sanitized CSVs were.
+- **Why.** The processed CSVs were staged to project storage; the registry that lists them lives
+  under the durable output root (`$VSC_DATA/CreditPFN/output/manifests/`) and was not. Two
+  different storage layers, one of them forgotten.
+- **Instead.** `python -m src.data.register` rebuilds the registry from `data/raw` without
+  re-sanitizing; if raw is not staged, copy the two manifest CSVs across. And the general lesson:
+  an 8-cell control caught, for 3 seconds of GPU time, a condition that would have failed all
+  1 536 cells of experiment 1.
+
+**A checker that does not call the code it checks is not a checker.**
+
+- **Tried.** Preflight verified the corpus by globbing `data/processed/<track>/*.csv`.
+- **Result.** "pd: 17 processed datasets — ok", immediately before training died with an empty
+  corpus. The glob and the pipeline disagreed because `build_dataset_pool` reads the registry,
+  not the directory.
+- **Why.** I re-implemented the check instead of invoking the thing being checked, so the two
+  could drift — and they already had.
+- **Instead.** Preflight calls `build_dataset_pool(track)` directly. Any check that can be
+  expressed as "call the real function and look at the answer" should be.
+
+**`x or default` is wrong whenever 0 is a legal value.**
+
+- **Tried.** `seed=int(corpus.get("split_seed", None) or cfg.seed)`.
+- **Result.** `split_seed=0` — split 0 of an 8-split campaign — evaluated to `cfg.seed` (42). So
+  split 0 and a no-split run drew identical datasets, giving 7 distinct draws out of 8 and no
+  trace of it in any output. Visible in experiment 0's resolved config as `split_seed: 0` while
+  the split was actually seeded 42.
+- **Why.** `or` tests truthiness, and 0 is falsy. The idiom is safe for names and paths and
+  unsafe for counts, indices and seeds.
+- **Instead.** `x if y is None else y` for anything whose valid range includes 0. Worth grepping
+  for the pattern elsewhere.
+
+### 25-08-2026 (third session)
+
+**A preflight that reports failures for correct state is worse than no preflight.**
+
+- **Tried.** Checked `REPO / "checkpoints"` and `REPO / "data/processed"` in
+  `src/utils/preflight.py`.
+- **Result.** On VSC those live on project storage (`/lustre1/project/stg_00211/CreditPFN/...`)
+  behind `CREDITPFN_DATA_ROOT` and data.yaml's `paths.data_source`. A fully staged cluster
+  reported **7 FAILURES** — 0 processed datasets, 0 checkpoints — for files that were present.
+- **Why.** Wrote the checker against the dev machine's layout. `cluster_report.py`, written a
+  day earlier, already resolved these correctly; I did not reuse it.
+- **Instead.** Any check that touches the filesystem goes through `src/utils/paths`, and prints
+  the directory it looked in so a false negative is self-diagnosing.
+
+**LGD was one config flag away from making CRPS impossible forever.**
+
+- **Tried.** `save_predictions: true`, assuming saved predictions meant the analysis was
+  future-proof.
+- **Result.** True for PD (probabilities saved -> every classification metric recomputable) and
+  false for LGD, where only the point prediction was stored. RMSE/MAE/R^2 survive; nothing
+  distributional does. And the distributional metric already in `EvalRow`, `neg_nll`, is a bar
+  distribution for TabPFN and a quantile head for TabICLv2 — not comparable across families,
+  which is exactly the comparison this project exists to make.
+- **Why.** "We save predictions" was treated as sufficient without asking WHICH prediction. For
+  a classifier the probability IS the distribution; for a regressor it is not.
+- **Instead.** Store a fixed 9-point quantile grid per LGD row. CRPS, interval coverage and
+  pinball at any level become post-hoc arithmetic, and the run does not have to be repeated to
+  get them. Ask "what can this file no longer answer?" before a run, not after.
+
 ### 25-08-2026 (second session)
 
 **A guard whose meaning changed under it: L2-SP silently off for half of experiment 1.**

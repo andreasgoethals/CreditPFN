@@ -91,6 +91,70 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 25-08-2026 (fourth session)
+
+- **`l2sp_lambdas: [0.0, 0.003]` — the anchor is now swept**, keeping every other axis. Run-8
+  showed the weights barely move (0.24-0.69 % of ||w0||) and L2-SP is the force holding them
+  there, so lambda=0 is a prime suspect for the null, second only to the learning rate. Nobody
+  has ablated it: Garg fixes 0.003 without tuning, Rubachev does not use L2-SP at all.
+  Experiment 1 is now **96 trials x 8 splits x 2 tracks = 1 536 cells**, 384 array tasks at
+  4 trials/task, ~1 485 GPU-h, ~39M credits, ~3.9 days at 16 concurrent B200s.
+- **BUG: `split_seed = 0` silently became 42.** `int(corpus.get("split_seed", None) or cfg.seed)`
+  — `0 or 42` is 42, because 0 is falsy. `_apply_split_index` sets `split_seed = split_index`, so
+  split 0 of 8 drew the same datasets as a run with no split index, and an 8-split campaign would
+  have had **7 distinct draws** with nothing in the output to reveal it. Confirmed live in
+  experiment 0's resolved config (`split_seed: 0`). Now tests for None explicitly.
+- **BUG: preflight's corpus check gave false confidence.** It globbed
+  `data/processed/<track>/*.csv` and reported "17 processed datasets"; training then failed with
+  "Corpus split contains no training chunks", because `corpus.build_dataset_pool` does not glob —
+  it walks `output/manifests/manifest_<track>.csv`, the dataset REGISTRY, and keeps only rows
+  whose sanitized CSV exists. Preflight now calls `build_dataset_pool` itself and, when the CSVs
+  are present but the pool is empty, says so and names the registry as the missing piece.
+
+Validated on real hardware by experiment 0 (job 11525443), which failed fast and cheaply:
+
+- Trial PACKING works: one array task ran trials 0, 1, 2 and 3 sequentially, continued past each
+  failure, and wrote a manifest row for every one — exactly the designed behaviour.
+- All FOUR base checkpoints resolve, one per trial (v2, v2.6, v3, TabICLv2), and the control's
+  axes came through as intended: lr [0.0], l2sp [0.0], frozen [false], full_pass, epochs 1.
+- Total cost of the failure: ~0.7 s per trial. Which is what a control is for.
+
+## 25-08-2026 (third session)
+
+- **Preflight was checking repo-relative paths**, so a correctly staged cluster reported 7
+  failures for files that were right there (0 datasets, 0 checkpoints). It now resolves through
+  `src/utils/paths.processed_dir` and `stage_checkpoints.checkpoints_root`, the same resolvers
+  `cluster_report.py` already used, and prints WHERE it looked. A preflight that cries wolf is
+  one nobody reads.
+- **LGD predictions now store a 9-point quantile grid** alongside the point prediction
+  (`q05 … q95`), so CRPS and interval coverage remain computable from the parquet after the run.
+  Before this, LGD saved only `y_pred`: RMSE/MAE/R² were recoverable and nothing distributional
+  ever would be. That matters because `neg_nll` IS recorded but is a bar-distribution likelihood
+  for TabPFN and a quantile-head score for TabICLv2, so it is not comparable across families —
+  CRPS is, and CRPS needs the distribution. `_predict_quantiles` handles TabICLv2's
+  `output_type="quantiles"` and TabPFN's `output_type="full"` bar distribution, returns None on
+  any failure, and never breaks a fold.
+- CRPS itself is still NOT computed in `EvalRow` — deliberately, to avoid touching both
+  families' inference days before the campaign. It becomes post-hoc arithmetic on the parquet.
+
+Verified this session, no change needed:
+
+- In-loop monitoring evaluates on the TRAIN and TEST datasets every `epoch_eval_count`-th epoch
+  (20 times per run) at a **60/40 context/query split** — the same `query_fraction` as training —
+  with 32 members (8 for TabICLv2) on 2 000-row subsamples.
+- Per epoch it records: train loss, **per-dataset** train loss, primary + secondary train/test
+  metric, optimizer steps, epoch time, AMP/data skipped steps, pre-clip gradient norm
+  (mean/max/clipped fraction), the LR actually applied, per-stage weight drift and per-tensor
+  drift for the biggest movers.
+- Final eval is stratified **5-fold CV (80/20)** on each held-out dataset, not 60/40 — the
+  Hollmann protocol Garg follows, identical for every method including the GBM baselines.
+- Metrics stored per (model × dataset × fold): roc_auc, log_loss, pr_auc, brier, ece, the Platt
+  and isotonic recalibrated variants of each, optimal threshold, f1/accuracy/precision/recall/
+  specificity/balanced_accuracy/mcc/cohen_kappa; rmse, mae, median_ae, mape, r2,
+  explained_variance, pearson_r, spearman_r, neg_nll; plus elapsed_sec, status, error.
+- Big files land on PROJECT storage: checkpoints via `resolve_writable_staging_path`, result CSVs
+  and prediction parquets via `resolve_staging_path`.
+
 ## 25-08-2026 (second session)
 
 - **BUG, caught before the run: L2-SP was silently off for every frozen TabPFN trial.**
