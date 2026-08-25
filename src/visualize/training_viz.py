@@ -569,10 +569,24 @@ def _progress(hist: pd.DataFrame) -> tuple[pd.Series, str]:
 
     Per-trial figures keep epochs, where there is nothing to compare against.
     """
-    # EPOCH, by request (24-08). Steps were used to equalise the x axis across bases, but the
-    # budget is now set in epochs, so epoch IS the controlled variable and the natural axis: at
-    # epoch 50 every base has seen the corpus 50 times. Cumulative steps stay available in the
-    # CSV (`optimizer_steps` summed) for anyone who wants the per-update view.
+    # OPTIMIZER STEPS again (24-08, second change today). Epoch was briefly the axis because the
+    # budget was set in epochs. It no longer is: experiment 1 budgets `target_total_steps: 6000`,
+    # so the STEP is the controlled variable — every cell of the grid lands within 1 % of 6 000 —
+    # while the derived epoch count ranges from 30 (PD v2.6 full_pass) to 1 000 (LGD accumulate).
+    # Plotting against epoch would now stretch a 30-epoch curve across the same width as a
+    # 1 000-epoch one and invite exactly the cross-base comparison this function exists to stop.
+    if "optimizer_steps" in hist.columns:
+        steps = pd.to_numeric(hist["optimizer_steps"], errors="coerce")
+        # Per-epoch counts in older manifests, cumulative in newer ones. A cumulative series is
+        # STRICTLY increasing (every epoch adds at least one update); a per-epoch series is
+        # roughly constant. `is_monotonic_increasing` is the wrong test here — pandas counts a
+        # constant series as monotonic, so [91, 91, 91] would be read as already cumulative.
+        if steps.notna().any():
+            d = steps.dropna().diff().dropna()
+            if not (len(d) == 0 or (d > 0).all()):
+                steps = steps.fillna(0).cumsum()
+            if steps.iloc[-1] > 0:
+                return steps, "optimizer steps"
     return hist["epoch"], "epoch"
 
 

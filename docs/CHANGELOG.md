@@ -66,6 +66,31 @@ day is never rewritten.
 - v2's backbone module is `transformer_encoder`, not `blocks` — named explicitly instead of
   relying on the largest-module fallback.
 
+- **New `src/train/freeze.py` — ONE frozen-backbone implementation for every family.** The rule
+  is structural, not a per-family list of module names: freeze the repeated-block transformer
+  stack holding the most parameters, train everything outside it (embedders, label encoder,
+  head). Resolves with no family-specific code to `icl_blocks` (v3, 24 blocks, 96.6 % frozen),
+  `blocks` (v2.6, 24, 99.1 %), `transformer_encoder` (v2) and **`icl_predictor.tf_icl.blocks`**
+  (TabICLv2, 12, 93.4 %). Both `model.freeze_tabpfn_backbone` and
+  `tabicl_model.load_tabicl_for_training` now delegate to it, and the two per-family module maps
+  are deleted.
+- **Corrected the TabICLv2 target from `icl_predictor` to `icl_predictor.tf_icl`.** Freezing all
+  of `icl_predictor` also froze its `decoder` head, which TabPFN keeps trainable — so the arms
+  were still different interventions (4.6 % vs 3.4 % trainable). Now 6.6 % vs 3.4 % for the
+  classifiers and 9.9 % vs 11.9 % for the regressors.
+- **Dropped the `epoch_pass_modes` sweep** (`accumulate` removed; `full_pass` only). Under a step
+  budget the axis no longer isolates update granularity: at 5 000 steps `accumulate` makes 385
+  passes over the corpus with 13 updates each against `full_pass`'s 55 passes with 91 each, a 7x
+  difference in data exposure. It is also the only axis with no precedent in the literature.
+- **Budget 5 000 steps, 8 splits** (from 6 000 / 10). Both measured: PD banked 95 % of its loss
+  drop by ~3 550 steps, LGD 90 % by ~4 400.
+  Experiment 1 is now **48 trials x 8 splits x 2 tracks = 768 cells, ~706 GPU-h, ~16M credits** —
+  down from 2 087 GPU-h / 47.3M. Whole campaign incl. experiments 0 and 2: **784 cells**.
+- **Training visualizations plot optimizer steps again**, since `target_total_steps` makes the
+  step the controlled variable and the derived epoch count now ranges 30-1 000 across the grid.
+  `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
+  column is absent or empty.
+
 ## 19-08-2026
 
 - **New `docs/EXPERIMENT_PLAN.md`** — the strategy from here, and the diagnosis it rests on.

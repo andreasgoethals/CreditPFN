@@ -27,7 +27,7 @@ track: "pd"
 run_name: "exp2"
 
 train:
-  target_total_steps: 6000    # same budget as experiment 1, so the two are comparable
+  target_total_steps: 5000    # same budget as experiment 1, so the two are comparable
   epochs: 50                  # fallback only
   max_epochs_for_step_budget: 4000
   epoch_eval_count: 20

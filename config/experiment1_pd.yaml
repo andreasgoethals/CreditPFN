@@ -6,7 +6,8 @@ tunable:
   learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]            # Garg -> our best -> Kolberg/Tanna
   l2sp_lambdas: [0.0, 0.003]                          # pull toward start weights; 0 = free
   frozen_backbone: [false, true]                      # true = freeze the stack, train the head
-  epoch_pass_modes: ["full_pass", "accumulate"]        # many updates vs one update per dataset
+  epoch_pass_modes: ["full_pass"]   # accumulate DROPPED: under a step budget it
+  #   confounds update granularity with a 7x difference in passes over the corpus
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
   adapter_families: []                                # frozen arm for every family
@@ -14,7 +15,7 @@ tunable:
 corpus:
   min_train_rows: 0           # not an axis any more: the split draw varies table sizes
   n_test_datasets: 4          # random draw: 4 test / 13 train, of 17 PD datasets
-  n_splits: 10                # same count for both tracks, so the two error bars are comparable
+  n_splits: 8                 # 8 draws per track; same count for both, so the error bars compare
   train_dataset_ids: null     # drawn, not pinned
   test_dataset_ids: null
 
@@ -23,7 +24,8 @@ track: "pd"
 run_name: "exp1"
 
 train:
-  target_total_steps: 6000    # THE budget: equal optimizer updates in every cell of the grid
+  target_total_steps: 5000    # THE budget. PD banked 95% of its loss drop by ~3550 steps,
+                              #   LGD 90% by ~4400, so 5000 clears both measured plateaus.
   epochs: 50                  # only a fallback; the step budget derives the real epoch count
   max_epochs_for_step_budget: 4000   # guard: a 1-step/epoch corpus must not spin forever
   epoch_eval_count: 20        # monitor 20x per run whatever the derived epoch count is

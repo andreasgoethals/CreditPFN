@@ -179,61 +179,21 @@ def load_tabpfn_for_training(
     return model, train_criterion, architecture_config, inference_config
 
 
-#: Modules that carry the bulk of each TabPFN generation's parameters. Frozen by
-#: `freeze_backbone`; everything else (the decoder / output projection / embedders) stays
-#: trainable. Measured from the shipped checkpoints: v3 icl_blocks is 96.5 % of 53.2M, v2.6
-#: blocks is 99.3 % of 10.7M. Falling back to "the single largest top-level module" keeps this
-#: working when a future generation renames things, and the choice is logged either way.
-_TABPFN_BACKBONE_MODULES: dict[str, tuple[str, ...]] = {
-    "v3":   ("icl_blocks",),
-    "v2.6": ("blocks",),
-    "v2.5": ("blocks",),
-    "v2":   ("transformer_encoder", "blocks"),   # v2 renamed it; both listed, only one exists
-}
-
-
 def freeze_tabpfn_backbone(model: "torch.nn.Module", version: str = "") -> dict:
-    """Freeze the transformer stack, leave the head trainable. Returns what it did.
+    """Freeze the transformer stack, leave embedders / label encoder / head trainable.
 
-    The TabICLv2 counterpart is `tabicl_model.load_tabicl_for_training(freeze_backbone=True)`,
-    which freezes `col_embedder` + `row_interactor` and trains `icl_predictor`. This is the same
-    operation on the same proportion of the network, so the two families' frozen arms finally
-    measure the same thing.
+    Thin wrapper over :func:`src.train.freeze.freeze_backbone`, which is the SINGLE
+    implementation shared with TabICLv2 — see that module for the rule, the literature it
+    corresponds to (Rubachev's "LayerNorm, Head and Embeddings", minus the LayerNorm affines,
+    deliberately), and why it is `requires_grad=False` only.
 
-    `requires_grad = False` ONLY — no `.eval()`. TabICLv2's modules branch on `self.training` to
-    select the ALGORITHM, and calling `.eval()` there produced in-place-write-on-a-no-grad-view
-    crashes that killed all 16 frozen trials in the 05-08-2026 run. TabPFN does not branch that
-    way, but keeping the two paths identical means the frozen arm is a clean ablation of the
-    full-FT arm: same computation, different gradients.
+    `version` is passed through for the log line; the stack is detected from the model, so no
+    per-generation module names are hard-coded here any more. That mattered: v2 names it
+    `transformer_encoder`, v2.6 `blocks`, v3 `icl_blocks`, and a stale map silently fell back to
+    a heuristic.
     """
-    names = _TABPFN_BACKBONE_MODULES.get(str(version), ())
-    top = {n.split(".")[0] for n, _ in model.named_parameters()}
-    if not names or not (set(names) & top):
-        # Largest top-level module by parameter count.
-        sizes: dict[str, int] = {}
-        for n, p in model.named_parameters():
-            sizes[n.split(".")[0]] = sizes.get(n.split(".")[0], 0) + p.numel()
-        names = (max(sizes, key=sizes.get),) if sizes else ()
-
-    frozen = trainable = 0
-    for n, p in model.named_parameters():
-        if n.split(".")[0] in names:
-            p.requires_grad = False
-            frozen += p.numel()
-        else:
-            trainable += p.numel()
-    info = {
-        "frozen_modules": tuple(names),
-        "frozen_params": frozen,
-        "trainable_params": trainable,
-        "trainable_fraction": trainable / max(1, frozen + trainable),
-    }
-    LOGGER.info(
-        "TabPFN freeze-backbone: froze %s (%.2fM params); %.2fM trainable (%.1f%%)",
-        ", ".join(names), frozen / 1e6, trainable / 1e6,
-        100 * info["trainable_fraction"],
-    )
-    return info
+    from src.train.freeze import freeze_backbone
+    return freeze_backbone(model, family=f"tabpfn-{version}" if version else "tabpfn")
 
 
 def _wrap_with_lora(model: torch.nn.Module, lora_config: dict) -> torch.nn.Module:

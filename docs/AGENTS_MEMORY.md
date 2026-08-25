@@ -38,6 +38,55 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 24-08-2026 (third session)
+
+**"Freeze the backbone" needs a STRUCTURAL definition, not a module name, and the first two
+attempts both got it wrong.**
+
+- **Tried.** (1) LoRA for TabPFN, a real freeze for TabICLv2. (2) `requires_grad=False` on
+  per-family module names: `icl_blocks`/`blocks` for TabPFN, `icl_predictor` for TabICLv2.
+- **Result.** (1) LoRA is not a freeze — adapters sit inside the stack, so gradients traverse the
+  whole network, activations are all retained, and it measured as a no-op that saved no memory.
+  (2) Freezing all of `icl_predictor` also froze its `decoder` HEAD, which the TabPFN side keeps
+  trainable: 4.6 % trainable vs TabPFN's 3.4 %, still not the same operation.
+- **Why.** A module name encodes an architecture's naming, not the role we mean. TabICLv2 keeps
+  95 % of its parameters in its LAST stage and bundles the head inside it; TabPFN keeps them in a
+  middle stack with the head outside.
+- **Instead.** State the rule structurally and derive it from the model: freeze the repeated-block
+  stack holding the most parameters. That picks `icl_predictor.tf_icl.blocks` (12 blocks, 25.7M)
+  over TabICLv2's 3-block `col_embedder.tf_col` (0.88M) and `row_interactor.tf_row` (0.40M), and
+  `icl_blocks` over TabPFN's `feature_distribution_embedder.layers`. Trainable fractions land at
+  6.6 / 0.9 / 3.4 % (classifiers) and 9.9 / 17.4 / 11.9 % (regressors) — matched, and the spread
+  that remains is real architecture, not implementation drift. `src/train/freeze.py`.
+
+**Where this sits in the literature (so it is not re-litigated).**
+
+- Rubachev et al., "On Finetuning Tabular Foundation Models", re-evaluates four partial
+  strategies for TabPFNv2: LoRA; "Last layers"; **"LayerNorm, Head and Embeddings - finetuning
+  only the feature and target linear embedding layers, MLP prediction head and the affine layer
+  normalization parameters"**; and learned numerical feature embeddings. Our arm is their third
+  strategy MINUS the LayerNorm affines.
+- **We deviate on the LayerNorms deliberately.** A trainable LayerNorm scale in block 0 forces
+  autograd to build a graph from the loss back to block 0, so every activation in the stack is
+  retained and the frozen arm costs what full fine-tuning costs while updating ~1 % of weights —
+  the exact trap LoRA fell into here. Freezing the stack completely is what makes the arm cheap.
+- **Their headline finding, worth knowing before we run:** "the difference between full
+  finetuning and all considered PEFT variations is minimal", and full fine-tuning converged about
+  twice as fast. Expect our frozen arm to land near the full arm, not beat it.
+- **Neither upstream offers this arm.** `tabpfn` ships no freeze option at all (full FT only).
+  `tabicl` ships three whole-stage flags (`freeze_col`/`freeze_row`/`freeze_icl`, all default
+  False) and no way to freeze the transformer while keeping the head. So the implementation is
+  necessarily ours; the SCHEME is standard, the code is not inherited.
+
+**A hard threshold in a detection heuristic broke every small model.**
+
+- **Tried.** Required a backbone stack to be >= 8 blocks deep, raising otherwise.
+- **Result.** Every tiny TabICL test fixture raised `no repeated-block stack of at least 8 blocks`.
+- **Why.** Depth was a proxy for "holds the bulk of the weights". The proxy fails on scaled-down
+  models; the property it stood for does not.
+- **Instead.** Select by parameter count and keep the depth check as a WARNING. Identical answers
+  on all six shipped checkpoints, and it degrades gracefully.
+
 ### 24-08-2026 (second session)
 
 **`frozen_backbone` meant the OPPOSITE thing in the two model families for a whole day.**

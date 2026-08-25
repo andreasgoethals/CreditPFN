@@ -69,19 +69,6 @@ def relax_attention_backend() -> str:
         return f"unchanged ({type(exc).__name__})"
 
 
-#: Which TabICLv2 modules ``freeze_backbone=True`` freezes, and WHY THIS ONE.
-#: `icl_predictor` is the 12-block in-context transformer holding 26.28M of TabICLv2's 27.6M
-#: parameters (95.4 %). It is the direct analogue of TabPFN's `icl_blocks` (24 blocks, 96.6 % of
-#: 53.2M), so freezing it makes `frozen_backbone` the same intervention in both families:
-#: freeze the deep pretrained representation, adapt the embedding/head interface around it.
-#:
-#: Upstream's stage-3 regime is the OPPOSITE - it freezes `col_embedder` + `row_interactor`
-#: (1.28M, 4.6 %) and trains `icl_predictor`. That is a valid scheme, just not the same one, and
-#: reporting the two under one "frozen" label would confound the axis. Pass
-#: ``freeze_modules=("col_embedder", "row_interactor")`` to get it.
-_TABICL_BACKBONE_MODULES: tuple[str, ...] = ("icl_predictor",)
-
-
 def load_tabicl_for_training(
     checkpoint_path: str | Path,
     *,
@@ -97,13 +84,12 @@ def load_tabicl_for_training(
     for this family (CE / pinball are functional losses; see
     :func:`tabicl_pinball_loss`).
 
-    ``freeze_backbone=True`` freezes ``_TABICL_BACKBONE_MODULES`` — by default
-    ``icl_predictor``, the 12-block in-context transformer that is 95.4 % of the
-    parameters and the analogue of TabPFN's ``icl_blocks``. This keeps the frozen arm
-    the SAME intervention in both families. ``requires_grad=False`` only, never
-    ``.eval()`` (see the comment below for why that matters here). Pass
-    ``freeze_modules`` to select a different set, e.g. upstream's stage-3 regime
-    ``("col_embedder", "row_interactor")``.
+    ``freeze_backbone=True`` delegates to :func:`src.train.freeze.freeze_backbone`, the
+    SINGLE implementation shared with TabPFN. It freezes the deepest repeated-block stack,
+    which here is ``icl_predictor.tf_icl.blocks`` (12 blocks, 93.3 % of parameters), leaving
+    the column embedder, row interactor, label encoder and ``decoder`` head trainable.
+    ``requires_grad=False`` only, never ``.eval()``. Pass ``freeze_modules`` for a different
+    regime, e.g. upstream's stage-3 ``("col_embedder", "row_interactor")``.
     """
     TabICL = import_tabicl_core()                               # noqa: N806
 
@@ -147,61 +133,31 @@ def load_tabicl_for_training(
         )
 
     if freeze_backbone:
-        n_frozen = 0
-        targets = tuple(freeze_modules or _TABICL_BACKBONE_MODULES)
-        missing = [m for m in targets if not hasattr(model, m)]
-        if missing:
-            raise ValueError(
-                f"TabICLv2 freeze targets not on the model: {missing}. "
-                f"Available: {[n for n, _ in model.named_children()]}"
-            )
-        for module_name in targets:
-            module = getattr(model, module_name)
-            # DO NOT call module.eval() here. In TabICLv2, `.training` selects the
-            # ALGORITHM, not just dropout/BN: both `ColEmbedder.forward` and
-            # `RowInteractor.forward` branch `if self.training: _train_forward
-            # else: _inference_forward`. The inference branch runs through
-            # InferenceManager (chunked, KV-cached, wrapped in torch.no_grad)
-            # and, at interaction.py `_inference_forward`, writes the CLS tokens
-            # into the incoming embeddings IN PLACE:
-            #     embeddings[:, :, : self.num_cls] = cls_tokens
-            # With the col_embedder also in eval mode that tensor is a view
-            # produced under no_grad, so the write raises
-            #     "A view was created in no_grad mode and is being modified
-            #      inplace with grad mode enabled"
-            # a few steps into training. That killed ALL 16 `_iclhead` trials
-            # (both tracks) in the 2026-08-05 run while every full-FT trial
-            # passed — the tell that the freeze, not TabICLv2, was at fault.
-            #
-            # Freezing is `requires_grad=False` alone. The module then runs the
-            # SAME `_train_forward` as in full-FT, which makes freeze-backbone a
-            # clean ablation of it (identical computation, gradients differ).
-            # Safe for regularisation too: TabICLv2's `dropout` defaults to 0.0 and
-            # the architecture uses LayerNorm (no running statistics), so train
-            # vs eval mode is behaviourally identical for the frozen stages —
-            # we warn below if a checkpoint ever ships dropout > 0.
-            for p in module.parameters():
-                p.requires_grad = False
-                n_frozen += 1
-        n_train = sum(1 for p in model.parameters() if p.requires_grad)
+        # ONE implementation, shared with TabPFN — see src/train/freeze.py for the rule, the
+        # literature it maps to, and why the LayerNorm affines stay frozen. The rule is
+        # structural, so neither family names modules here: it resolves to
+        # `icl_predictor.tf_icl.blocks` (12 blocks) for TabICLv2 and to
+        # `icl_blocks` / `blocks` / `transformer_encoder` for TabPFN v3 / v2.6 / v2.
+        #
+        # TabICLv2's `col_embedder.tf_col` and `row_interactor.tf_row` are also repeated-block
+        # stacks but only 3 deep, so the depth floor excludes them — on purpose. They are the
+        # input-embedding stages, the analogue of TabPFN's feature embedder, and stay trainable
+        # in both families.
+        #
+        # This is NOT upstream's `freeze_icl`, which freezes ALL of `icl_predictor` including
+        # its `decoder` head. That would freeze the head TabPFN keeps trainable, leaving the
+        # two arms different interventions again (4.6 % vs 3.4 % trainable instead of 6.7 %).
+        from src.train.freeze import freeze_backbone as _freeze_backbone
+        _freeze_backbone(model, modules=freeze_modules, family="tabicl-v2")
+
         drop = float(model_config.get("dropout", 0.0) or 0.0)
         if drop > 0:
             LOGGER.warning(
-                "TabICLv2 freeze-backbone: checkpoint has dropout=%.3g, so the "
-                "FROZEN stages still apply dropout (they stay in train mode by "
-                "design — see the comment in load_tabicl_for_training). Their "
-                "weights are still fixed; only the forward noise differs.", drop,
+                "TabICLv2 freeze-backbone: checkpoint has dropout=%.3g, so the FROZEN stack "
+                "still applies dropout — it stays on the TRAIN forward path by design (see "
+                "src/train/freeze.py). Its weights are fixed; only forward noise differs.",
+                drop,
             )
-        n_frozen_p = sum(p.numel() for p in model.parameters() if not p.requires_grad)
-        n_train_p = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        LOGGER.info(
-            "TabICLv2 freeze-backbone: froze %s (%d tensors, %.2fM params); %.2fM params "
-            "in %d tensors remain trainable (%.1f%%). requires_grad=False only, so the "
-            "frozen modules stay on the TRAIN forward path and this is a clean ablation "
-            "of full fine-tuning.",
-            ", ".join(targets), n_frozen, n_frozen_p / 1e6, n_train_p / 1e6, n_train,
-            100 * n_train_p / max(1, n_frozen_p + n_train_p),
-        )
 
     model.to(device)
     return model, model_config

@@ -224,8 +224,15 @@ def test_freeze_backbone_leaves_only_icl_trainable(tmp_path: Path) -> None:
     # around it — 95.4 % of TabICLv2's parameters live in `icl_predictor`, mirroring TabPFN's
     # `icl_blocks` at 96.6 %. Before 24-08-2026 this froze the front-end embedders instead,
     # which is the opposite operation and made the two families' "frozen" arms incomparable.
-    assert not any(p.requires_grad for p in frozen.icl_predictor.parameters())
+    # The shared rule (src/train/freeze.py) freezes the deepest repeated-block stack, which
+    # for TabICLv2 is `icl_predictor.tf_icl` (12 blocks). The `decoder` HEAD and the label
+    # encoder inside icl_predictor stay trainable, exactly as TabPFN's head does — freezing all
+    # of icl_predictor (upstream's `freeze_icl`) would freeze the head too and make the two
+    # families' frozen arms different interventions again.
+    assert not any(p.requires_grad for p in frozen.icl_predictor.tf_icl.parameters())
+    assert all(p.requires_grad for p in frozen.icl_predictor.decoder.parameters())
     assert any(p.requires_grad for p in frozen.col_embedder.parameters())
+    assert any(p.requires_grad for p in frozen.row_interactor.parameters())
 
     # Upstream's stage-3 regime is still selectable, and still means what it meant.
     stage3, _ = load_tabicl_for_training(
@@ -252,7 +259,7 @@ def test_freeze_backbone_leaves_only_icl_trainable(tmp_path: Path) -> None:
     # enabled" and killed all 16 `_iclhead` trials on the cluster. Freezing is
     # requires_grad=False ONLY; never .eval().
     frozen.train()
-    assert frozen.icl_predictor.training, "frozen icl_predictor must stay on the train path"
+    assert frozen.icl_predictor.tf_icl.training, "frozen stack must stay on the train path"
     stage3.train()
     assert stage3.col_embedder.training, "frozen col_embedder must stay on the train path"
     assert stage3.row_interactor.training, "frozen row_interactor must stay on the train path"
@@ -679,8 +686,8 @@ def test_freeze_backbone_survives_repeated_steps(tmp_path: Path) -> None:
         # The backbone must remain frozen AND on the train path throughout. Since
         # 24-08-2026 the backbone is `icl_predictor` (the deep in-context transformer),
         # matching what `frozen_backbone` freezes in TabPFN.
-        assert trained.icl_predictor.training
-        assert not any(p.requires_grad for p in trained.icl_predictor.parameters())
+        assert trained.icl_predictor.tf_icl.training
+        assert not any(p.requires_grad for p in trained.icl_predictor.tf_icl.parameters())
 
 
 @pytest.mark.parametrize(
