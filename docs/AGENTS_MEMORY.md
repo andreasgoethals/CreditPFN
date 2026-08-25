@@ -38,6 +38,24 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 25-08-2026 (sixth session)
+
+**Fixing the Python was not enough — nothing was setting the env vars it reads.**
+
+- **Tried.** Gave `eval_pipeline.py` `--config` / `--split-index` and had `eval_*.slurm` read
+  them from `CREDITPFN_CONFIG` / `CREDITPFN_SPLIT_INDEX`, then called the leakage bug fixed.
+- **Result.** No launcher set those for eval. `run_full_pipeline.sh` exports only the three
+  storage roots, so `EVAL_ARGS` would have been empty, eval would have fallen back to
+  config/train.yaml, and the wrong-held-out-datasets leakage would have returned intact — with
+  the Python-side fix present and correct the whole time.
+- **Why.** I fixed the layer I was looking at and assumed the plumbing above it. A three-layer
+  path (launcher -> job script -> Python) is only as correct as its weakest layer, and the
+  middle one had just been changed.
+- **Instead.** Put the eval submission in `run_experiment.sh`, which already holds `$CONFIG` and
+  the split loop, so train and eval cannot disagree by construction. And add a STATIC preflight
+  check over the shell scripts, because this failure mode never raises — it just improves the
+  numbers.
+
 ### 25-08-2026 (fifth session)
 
 **Eval rebuilt the held-out dataset draw from the WRONG config, and nothing would have caught it.**

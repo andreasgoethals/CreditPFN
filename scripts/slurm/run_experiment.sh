@@ -3,6 +3,8 @@
 # cluster suits the model.
 #
 #   bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
+#   STAGES=eval bash ...         # score an already-trained experiment
+#   STAGES="train eval" bash ... # both (eval is NOT chained — see below)
 #   SPLITS=4 bash ...            # only the first 4 splits
 #   DRY=1 bash ...               # print the sbatch lines, submit nothing
 #   ROUTE=0 bash ...             # everything on Mindwell, no per-model routing
@@ -57,7 +59,14 @@ MINUTES=$(( TRIALS_PER_TASK * 90 + 30 ))
 (( MINUTES > 4320 )) && MINUTES=4320
 WALLTIME="${WALLTIME:-$(printf '%d:%02d:00' $(( MINUTES / 60 )) $(( MINUTES % 60 )))}"
 ACCOUNT="${CREDITPFN_ACCOUNT:-lp_verbekelab}"
+STAGES="${STAGES:-train}"
 JOB="scripts/slurm/train_${TRACK}.slurm"
+EVAL_JOB="scripts/slurm/eval_${TRACK}.slurm"
+# Eval packs its (model x dataset x fold) cells into this many array tasks. Exported
+# because eval_*.slurm reads it too, and both sides must agree on the number or they
+# disagree about which cells belong to task i.
+export EVAL_TASKS="${EVAL_TASKS:-16}"
+EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-16}"
 
 # Which cluster each trial belongs on. `--trial-family` already tells us tabpfn vs tabicl, but
 # the split we need is by MEMORY, so ask for the base checkpoint of each trial instead.
@@ -154,6 +163,7 @@ queued_tasks() {   # tasks this user currently has across both controllers
     echo "$n"
 }
 
+if [[ " ${STAGES} " == *" train "* ]]; then
 for (( k=0; k<N_SPLITS; k++ )); do
     # WAIT FOR ROOM. Without this the 501st task is rejected and that split silently never
     # runs — the failure mode is a gap in the results, not an error at the end of the sweep.
@@ -174,4 +184,38 @@ for (( k=0; k<N_SPLITS; k++ )); do
         if [[ -n "${DRY:-}" ]]; then echo "DRY: ${CMD[*]}"; else "${CMD[@]}"; fi
     done
 done
-echo "submitted $((N_SPLITS * ${#BUCKET[@]})) array job(s) across ${#BUCKET[@]} destination(s)."
+echo "submitted $((N_SPLITS * ${#BUCKET[@]})) training array job(s) across ${#BUCKET[@]} destination(s)."
+fi
+
+# ----------------------------------------------------------------- eval ----
+# One eval array per split, carrying the SAME $CONFIG and split index the training half
+# used. That is the point of doing it here: eval_pipeline rebuilds the held-out dataset
+# draw from the training corpus block, so a mismatch scores each checkpoint against
+# datasets it may have TRAINED on — silently, and in the direction that inflates scores.
+#
+# No afterok dependency, deliberately: eval skips cells that already have results, so
+# re-running is how a partly-finished campaign gets completed. Chaining would let one
+# failed training task block the scoring of every sibling that succeeded.
+if [[ " ${STAGES} " == *" eval "* ]]; then
+    EVAL_DEST="${EVAL_DEST:-mindwell gpu_b200}"
+    read -r ecluster epartition <<< "$EVAL_DEST"
+    for (( k=0; k<N_SPLITS; k++ )); do
+        # Same queue-room guard as the training stage. 8 splits x 16 tasks x 2 tracks = 256
+        # eval tasks, and training may still be queued, so the 500 ceiling is reachable here
+        # too — and going over it silently drops a split's scoring.
+        if [[ -z "${DRY:-}" ]]; then
+            while :; do
+                q=$(queued_tasks)
+                (( q + EVAL_TASKS <= MAX_QUEUED )) && break
+                echo "  queue at ${q} tasks; waiting for room for eval split ${k}..."
+                sleep 300
+            done
+        fi
+        CMD=(sbatch --clusters="$ecluster" --partition="$epartition" --account="$ACCOUNT"
+             --array="0-$((EVAL_TASKS - 1))%${EVAL_CONCURRENCY}"
+             --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",EVAL_TASKS="$EVAL_TASKS"
+             "$EVAL_JOB")
+        if [[ -n "${DRY:-}" ]]; then echo "DRY: ${CMD[*]}"; else "${CMD[@]}"; fi
+    done
+    echo "submitted ${N_SPLITS} eval array job(s) of ${EVAL_TASKS} tasks to ${EVAL_DEST}."
+fi

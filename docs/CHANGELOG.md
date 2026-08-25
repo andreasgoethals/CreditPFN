@@ -93,6 +93,25 @@ day is never rewritten.
 
 ## 25-08-2026 (fifth session — final pre-run audit)
 
+- **`run_experiment.sh` gained an eval stage** (`STAGES=train` default, `eval`, or
+  `"train eval"`). It already holds `$CONFIG` and loops the same splits as training, so the eval
+  half CANNOT disagree with the train half about which datasets were held out — the mismatch is
+  structurally impossible rather than merely fixed. Nothing was setting
+  `CREDITPFN_CONFIG` / `CREDITPFN_SPLIT_INDEX` for eval: `run_full_pipeline.sh` exports only the
+  three storage roots, so an eval launched there would have fallen back to config/train.yaml and
+  reintroduced the leakage the previous fix removed. Eval is submitted with NO afterok
+  dependency, deliberately — it skips cells that already have results, so re-running is how a
+  partly-finished campaign completes, whereas chaining would let one failed training task block
+  the scoring of 95 successful siblings. The eval stage carries the same 500-task queue-room
+  guard as training (8 splits x 16 tasks x 2 tracks = 256 eval tasks).
+- `run_full_pipeline.sh` propagates `CREDITPFN_CONFIG` / `CREDITPFN_SPLIT_INDEX` too, for the
+  single-sweep path.
+- **New preflight check `check_launchers_pass_config`** — static: any launcher that submits
+  `eval_*.slurm` must export `CREDITPFN_CONFIG`, and both eval job scripts must forward
+  `--config` / `--split-index`. Verified to FAIL when the export is removed. This class of bug
+  lives in shell plumbing, not Python, and it yields better-looking numbers instead of an error,
+  so it needs a check that does not depend on anything running.
+
 - **BLOCKER FIXED: eval could not be told which experiment or which split it was evaluating.**
   `scripts/eval_pipeline.py` had no `--config` and no `--split-index`, so it always loaded
   `config/train.yaml` (`run_name: creditpfn`). Two consequences, the second silent and severe:

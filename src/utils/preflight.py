@@ -404,6 +404,36 @@ def check_train_eval_agree(name: str, rep: Report) -> None:
                "same run_name, split_seed and held-out datasets")
 
 
+def check_launchers_pass_config(rep: Report) -> None:
+    """Any launcher that submits eval_*.slurm must also export CREDITPFN_CONFIG.
+
+    eval_pipeline rebuilds the held-out dataset draw from the training corpus block, so an eval
+    job that never receives --config/--split-index silently falls back to config/train.yaml and
+    scores each checkpoint against a DIFFERENT four datasets than it was held out from.
+    Measured 25-08-2026: for split 7 of experiment 1, four of the five datasets the old path
+    would have used were in that model's own training set.
+
+    Static check, because the failure is in the shell plumbing rather than in Python, and it
+    yields better-looking numbers instead of an error.
+    """
+    slurm = REPO / "scripts/slurm"
+    problems = []
+    for sh in sorted(slurm.glob("*.sh")):
+        text = sh.read_text(encoding="utf-8", errors="ignore")
+        submits_eval = any(t in text for t in (
+            "eval_${TRACK}.slurm", "eval_${TR}.slurm", "eval_pd.slurm", "eval_lgd.slurm"))
+        if submits_eval and "CREDITPFN_CONFIG" not in text:
+            problems.append(f"{sh.name} submits an eval job without exporting CREDITPFN_CONFIG")
+    for job in ("eval_pd.slurm", "eval_lgd.slurm"):
+        text = (slurm / job).read_text(encoding="utf-8", errors="ignore")
+        if "--config" not in text or "--split-index" not in text:
+            problems.append(f"{job} does not forward --config / --split-index to eval_pipeline")
+    if problems:
+        rep.fail("eval launchers can lose the experiment config", "\n".join(problems))
+    else:
+        rep.ok("every eval launcher forwards the config and split index")
+
+
 def check_storage_layout(rep: Report) -> None:
     """Report every resolved path and which VSC tier it landed on.
 
@@ -542,6 +572,7 @@ def main(argv: list[str] | None = None) -> int:
     rep = Report()
     ckpt_dir, proc_dirs = _resolved_roots()
     check_storage_layout(rep)      # first: every later path failure reads against this
+    check_launchers_pass_config(rep)
     loaded = []
     for n in names:
         try:

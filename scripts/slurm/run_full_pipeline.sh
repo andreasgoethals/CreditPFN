@@ -93,7 +93,12 @@ apply_data_source_from_cfg(OmegaConf.load('config/data.yaml'))
 r = get_roots(); print(r['data_root'], r['output_root'], r['staging_root'])
 "
 )
-SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT},CREDITPFN_STAGING_ROOT=${CREDITPFN_STAGING_ROOT}"
+# CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are carried through because eval_*.slurm turns
+# them into --config / --split-index, and eval_pipeline rebuilds the HELD-OUT dataset draw
+# from the training corpus block. Unset means "the default sweep in config/train.yaml",
+# which is right for this launcher's single-sweep use; for a multi-split EXPERIMENT use
+# scripts/slurm/run_experiment.sh, which sets both per split and cannot mismatch them.
+SBATCH_EXPORT="ALL,CREDITPFN_DATA_ROOT=${CREDITPFN_DATA_ROOT},CREDITPFN_OUTPUT_ROOT=${CREDITPFN_OUTPUT_ROOT},CREDITPFN_STAGING_ROOT=${CREDITPFN_STAGING_ROOT},CREDITPFN_CONFIG=${CREDITPFN_CONFIG:-},CREDITPFN_SPLIT_INDEX=${CREDITPFN_SPLIT_INDEX:-}"
 
 strip() { echo "${1%%;*}"; }            # "<jid>;<cluster>" → "<jid>"
 
