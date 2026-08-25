@@ -38,6 +38,23 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 26-08-2026 (exp0 caught the v2 OOM a linear model hid)
+
+**A linear memory model is not just imprecise for attention — it is unsafe.**
+
+- **Tried.** Sized the v2 row cap at 14000 from `14k ~ 111 GB`, a linear extrapolation of the
+  measured 10k=79 GB probe point, and let preflight bless it with the same linear model.
+- **Result.** exp0 job 11527923 OOM'd on the very first v2 step (hackerearth @ 14000 rows):
+  176.71 GB in use on a 183 GB card. The real peak was ~177 GB, not 111.
+- **Why.** TabPFN's row attention is O(rows^2), so peak memory is QUADRATIC in the row cap.
+  79 GB x (14/10)^2 = 155 GB, plus baseline-eval residual and fragmentation -> OOM. A linear
+  slope always under-predicts above the measured point, and it under-predicts more the further
+  you extrapolate.
+- **Instead.** v2 -> 10000 (the only measured-safe point). Preflight now anchors to measured
+  (rows, GB, ok) points and REFUSES any cap at or beyond a known OOM, rather than trusting a
+  slope. Never linearly extrapolate a quantity whose true scaling is quadratic; anchor to a
+  measurement or re-probe.
+
 ### 25-08-2026 (sixth session)
 
 **Fixing the Python was not enough — nothing was setting the env vars it reads.**

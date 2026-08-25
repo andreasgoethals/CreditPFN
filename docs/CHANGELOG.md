@@ -91,6 +91,32 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 26-08-2026 (exp0 findings)
+
+- **BLOCKER FIXED: v2 row cap 14000 -> 10000.** exp0 (job 11527923) OOM'd on the first v2 step
+  (hackerearth, 14000 rows): tried to allocate 698 MiB with **176.71 GB already in use** on the
+  183 GB card. Cause: the `14k ~ 111 GB` in data.yaml was a LINEAR extrapolation from the 10k
+  probe, but TabPFN row-attention is O(rows^2), so 14k really needs ~155 GB + overhead. Only the
+  10k measurement (79 GB) is safe. Every v2 trial in experiment 1 would have died identically —
+  25 % of the grid. v2.6 @ 11k, v3 @ 26k, tabicl @ 26k are measured at/near their caps and all
+  ran OK.
+- **Preflight row-cap check rebuilt around MEASURED points, not a slope.** The linear
+  `MEM_PER_1K_PER_MEMBER` model predicted v2 @ 14k = 111 GB / "61 %, fits" and it OOM'd. Replaced
+  with `PROBE_POINTS` (rows, GB, ran_ok) per base: cap <= largest measured-OK -> OK; cap >=
+  smallest measured-OOM -> FAIL; in between -> WARN (untested, do not extrapolate quadratic
+  memory). Verified it FAILs on v2=14000 and passes on v2=10000.
+
+Verified from exp0, no change needed:
+
+- **lr=0 is a perfect in-loop no-op.** All three trials that ran (v2.6, v3, tabicl) show
+  baseline_test == final_test to 6 dp and drift=0.000 %. The training loop does not perturb the
+  model at lr=0. (The SAVE/RELOAD fidelity half still needs the eval stage — see below.)
+- **Packed-task failure tolerance works on real hardware.** v2 OOM'd (trial 0) and v2.6/v3/tabicl
+  (trials 1-3) still ran and were recorded OK. One bad trial does not poison its chunk.
+- **Append-only manifest + eval dedup are correct.** The exp0 manifest has 8 rows (two job runs);
+  `load_trained_handles` excludes FAIL and keeps the last row per checkpoint basename, so re-runs
+  (timeouts, the v2 refix) resolve to the latest checkpoint cleanly.
+
 ## 25-08-2026 (fifth session — final pre-run audit)
 
 - **`run_experiment.sh` gained an eval stage** (`STAGES=train` default, `eval`, or

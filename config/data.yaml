@@ -18,11 +18,13 @@ finetuning:
   max_rows_per_epoch:                     # MEASURED, job 11524668 §9, B200 183 GB, 2 members.
                                           # Frozen mode measured IDENTICAL peak, so one cap serves
                                           # both modes — do not split this per adaptation mode.
-    v2:      14000                        # 10k = 79 GB, 26k OOM  -> 14k ~ 111 GB
-    v2.6:    11000                        # 10k = 109 GB, 26k OOM -> 11k ~ 120 GB
-    v3:      26000                        # 26k = 131 GB measured; 50k OOM
+    v2:      10000                        # 10k=79GB measured OK. 14k OOM'd on real data (exp0
+    #                                       job 11527923): attention memory is QUADRATIC in rows,
+    #                                       so 14k~=155GB+overhead, not the 111GB a linear guess gave.
+    v2.6:    11000                        # 10k=109GB; 11k confirmed OK by exp0 (~132GB); 26k OOM
+    v3:      26000                        # 26k = 131 GB measured OK; 50k OOM
     tabicl:  26000                        # 26k = 27 GB; 50k dies on a kernel shape, not memory
-    default: 11000                        # the most conservative real value, not the largest
+    default: 10000                        # the most conservative real value, not the largest
   max_cells_per_epoch:                    # optional rows x features budget; null = off
     v3: null
     v2.6: null

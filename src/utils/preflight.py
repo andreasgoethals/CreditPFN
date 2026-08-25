@@ -34,11 +34,22 @@ REPO = pathlib.Path(__file__).resolve().parents[2]
 EXPERIMENTS = ("experiment0_pd", "experiment0_lgd", "experiment1_pd",
                "experiment1_lgd", "experiment2_pd")
 
-# MEASURED on the B200 at 2 training members, cluster job 11524668 section 9. GB per 1k rows
-# per member; multiply by rows/1000 and by the member count for the peak.
-MEM_PER_1K_PER_MEMBER = {"v2": 3.96, "v2.6": 5.47, "v3": 2.53, "tabicl": 0.52}
+# MEASURED probe points, (rows, peak_GB_or_None, ran_ok). B200 183 GB, 2 training members.
+# Sources: probe job 11524668 §9, plus the exp0 real-training run 11527923 that caught the v2
+# OOM a LINEAR model had waved through.
+#
+# The earlier linear model (GB = rows/1k x slope x members) was WRONG and dangerous: TabPFN's
+# row attention is O(rows^2), so peak memory is quadratic in the row cap, not linear. The linear
+# model predicted v2 @ 14k = 111 GB ("fits, 61%") and it OOM'd at ~177 GB. So do not extrapolate
+# a slope — anchor to measured points and refuse any cap at or beyond a known OOM.
+PROBE_POINTS = {
+    "v2":     [(10000, 79.2, True), (14000, None, False), (26000, None, False)],
+    "v2.6":   [(10000, 109.4, True), (11000, 132.0, True), (26000, None, False)],
+    "v3":     [(10000, 51.5, True), (26000, 131.5, True), (50000, None, False)],
+    # tabicl's 50k failure is a cuDNN kernel-shape error, not OOM; treat it as a hard ceiling too.
+    "tabicl": [(10000, 10.5, True), (26000, 27.0, True), (50000, None, False)],
+}
 CARD_GB = 183.0          # B200 usable
-CARD_HEADROOM = 0.90     # refuse a cap that needs more than this fraction
 
 _PASS, _FAIL, _WARN = "ok  ", "FAIL", "warn"
 
@@ -208,24 +219,48 @@ def check_checkpoints(cfg, name: str, grid: list[tuple], rep: Report,
 
 
 def check_row_caps(rep: Report) -> None:
+    """Every configured row cap must be at or below a MEASURED-safe row count for its base.
+
+    Anchored to real probe points, never a linear slope: TabPFN's row attention is O(rows^2), so
+    a slope model under-predicts and it already waved through v2 @ 14k (predicted 111 GB, OOM'd
+    at ~177 GB on real data). The rule:
+        cap <= largest measured-OK rows      -> OK  (measured safe)
+        cap >= smallest measured-OOM rows    -> FAIL (at/beyond a known failure)
+        in between                           -> WARN (untested; do not trust extrapolation)
+    """
     from omegaconf import OmegaConf
     data = OmegaConf.load(REPO / "config/data.yaml")
     caps = data.finetuning.max_rows_per_epoch
     train = OmegaConf.load(REPO / "config/train.yaml")
     est = train.train.get("n_estimators_finetune", 2)
     members = int(est.get("default", 2) if hasattr(est, "get") else est)
-    worst = []
-    for base, mem in MEM_PER_1K_PER_MEMBER.items():
+
+    lines, worst = [], []
+    for base, points in PROBE_POINTS.items():
         cap = caps.get(base)
         if cap is None or hasattr(cap, "get"):
             continue
-        need = int(cap) / 1000 * mem * members
-        worst.append(f"{base:7s} {int(cap):6d} rows x {members} members -> {need:6.1f} GB "
-                     f"({100 * need / CARD_GB:4.0f}% of {CARD_GB:.0f} GB)")
-        if need > CARD_GB * CARD_HEADROOM:
-            rep.fail(f"row cap for {base} needs {need:.0f} GB",
-                     f"over {100 * CARD_HEADROOM:.0f}% of the {CARD_GB:.0f} GB card")
-    rep.ok(f"row caps fit the B200 at {members} members", "\n".join(worst))
+        cap = int(cap)
+        ok_rows = [r for r, _gb, ok in points if ok]
+        oom_rows = [r for r, _gb, ok in points if not ok]
+        max_ok = max(ok_rows) if ok_rows else 0
+        min_oom = min(oom_rows) if oom_rows else None
+        gb_at = {r: gb for r, gb, ok in points if ok and gb is not None}
+        note = (f"measured OK to {max_ok}"
+                + (f" ({gb_at[max_ok]:.0f} GB)" if max_ok in gb_at else "")
+                + (f", OOM at {min_oom}" if min_oom else ""))
+        lines.append(f"{base:7s} cap={cap:6d}  {note}")
+        if min_oom is not None and cap >= min_oom:
+            worst.append(base)
+            rep.fail(f"row cap for {base} ({cap}) is at/above a MEASURED OOM ({min_oom})",
+                     "\n".join(lines))
+        elif cap > max_ok:
+            rep.warn(f"row cap for {base} ({cap}) exceeds the largest measured-OK "
+                     f"rows ({max_ok})",
+                     "untested region; attention memory is quadratic so do not trust a linear "
+                     "extrapolation — re-probe before trusting this cap")
+    if not worst:
+        rep.ok(f"row caps at/below measured-safe rows, {members} members", "\n".join(lines))
 
 
 def check_step_budget(cfg, name: str, rep: Report) -> None:
