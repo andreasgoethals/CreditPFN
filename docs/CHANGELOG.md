@@ -93,6 +93,15 @@ day is never rewritten.
 
 ## 25-08-2026 (fourth session)
 
+- **Preflight prints the RESOLVED storage layout first** (`check_storage_layout`), both VSC
+  tiers, with an entry count and a tier tag per path. Two debugging rounds were lost to guessing
+  which tier a path lives on: `ls data/raw/pd` from the repo on `$VSC_DATA` returns "No such
+  file" because data lives on PROJECT storage, and an scp of `output/manifests/*.csv` "from the
+  cluster" cannot work because that is where they are missing. Per docs/TEMPLATE.md: `data/`,
+  `checkpoints/` and `output/results/` are on project storage; the repo and the rest of
+  `output/` — including `output/manifests/`, which holds the dataset REGISTRY — are on
+  `$VSC_DATA`. The section warns when a path lands on the unexpected tier.
+
 - **`l2sp_lambdas: [0.0, 0.003]` — the anchor is now swept**, keeping every other axis. Run-8
   showed the weights barely move (0.24-0.69 % of ||w0||) and L2-SP is the force holding them
   there, so lambda=0 is a prime suspect for the null, second only to the learning rate. Nobody

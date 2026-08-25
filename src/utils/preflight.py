@@ -351,6 +351,67 @@ def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 4) -> 
             rep.ok(f"{name}: every packed task stays within one model family")
 
 
+def check_storage_layout(rep: Report) -> None:
+    """Report every resolved path and which VSC tier it landed on.
+
+    docs/TEMPLATE.md splits storage in two, and a path resolved against the wrong tier looks
+    exactly like a missing file. `data/`, `checkpoints/` and `output/results/` belong on PROJECT
+    storage (/lustre1/project/stg_00211/<Project>/); the repository and the rest of `output/` —
+    including `output/manifests/`, which holds the dataset REGISTRY the corpus is built from —
+    belong on $VSC_DATA. Two debugging rounds were lost to `ls`-ing the wrong one, so print the
+    map instead of inferring it.
+    """
+    sys.path.insert(0, str(REPO))
+    try:
+        from omegaconf import OmegaConf
+
+        from src.utils.paths import (
+            apply_data_source_from_cfg, data_root, manifests_dir, processed_dir, raw_dir,
+            results_dir, staging_root,
+        )
+        from src.utils.stage_checkpoints import checkpoints_root
+        apply_data_source_from_cfg(OmegaConf.load(REPO / "config" / "data.yaml"))
+    except Exception as exc:                                       # pragma: no cover
+        rep.fail("cannot resolve the storage layout", f"{type(exc).__name__}: {exc}")
+        return
+
+    stag, dat = pathlib.Path(staging_root()), pathlib.Path(data_root())
+    same = stag == dat                                             # true off-cluster
+
+    def tier(path: pathlib.Path) -> str:
+        if same:
+            return "local"
+        try:
+            path.relative_to(stag)
+            return "project"
+        except ValueError:
+            return "vsc_data"
+
+    entries = [
+        ("data/raw/pd", pathlib.Path(raw_dir("pd")), "project"),
+        ("data/raw/lgd", pathlib.Path(raw_dir("lgd")), "project"),
+        ("data/processed/pd", pathlib.Path(processed_dir("pd")), "project"),
+        ("data/processed/lgd", pathlib.Path(processed_dir("lgd")), "project"),
+        ("checkpoints", pathlib.Path(checkpoints_root()), "project"),
+        ("output/results", pathlib.Path(results_dir()), "project"),
+        ("output/manifests", pathlib.Path(manifests_dir()), "vsc_data"),
+    ]
+    lines = [f"project storage : {stag}", f"personal data   : {dat}", ""]
+    misplaced = []
+    for label, path, want in entries:
+        n = len(list(path.glob("*"))) if path.is_dir() else -1
+        got = tier(path)
+        flag = "" if (same or got == want) else f"  << expected {want}, got {got}"
+        lines.append(f"{label:20s} {'MISSING' if n < 0 else f'{n:4d} entries':>12s}  "
+                     f"[{got:8s}] {path}{flag}")
+        if flag:
+            misplaced.append(label)
+    if misplaced:
+        rep.warn(f"{len(misplaced)} path(s) on an unexpected storage tier", "\n".join(lines))
+    else:
+        rep.ok("storage layout resolved", "\n".join(lines))
+
+
 def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
     """Ask the TRAINING code what the corpus is, not the filesystem.
 
@@ -427,6 +488,7 @@ def main(argv: list[str] | None = None) -> int:
     names = args.config or list(EXPERIMENTS)
     rep = Report()
     ckpt_dir, proc_dirs = _resolved_roots()
+    check_storage_layout(rep)      # first: every later path failure reads against this
     loaded = []
     for n in names:
         try:
