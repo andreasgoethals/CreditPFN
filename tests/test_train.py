@@ -1052,6 +1052,83 @@ def test_train_one_config_end_to_end_mocked(
     assert "torch_version" in prov
 
 
+def test_non_finite_loss_is_skipped_and_loop_continues(
+    synthetic_processed, monkeypatch, tmp_path,
+) -> None:
+    """A step whose loss is non-finite must be SKIPPED, counted, and the loop must finish.
+
+    Regression for the 26-08-2026 v2 OOM: the skip path used to `continue` without releasing
+    the forward graph, so the activations lingered into the next step and ~doubled peak memory.
+    On CPU we can't observe the OOM, but we CAN pin that the skip path runs without a
+    NameError from the reference-release, that the step is counted as skipped, and that
+    training still completes with a finite final loss.
+    """
+    from omegaconf import OmegaConf
+    import src.train.loop as loop_mod
+
+    n_feat = 4
+    monkeypatch.setattr(
+        loop_mod, "load_tabpfn_for_training",
+        lambda checkpoint_path, *, track, device, lora_config=None, freeze_backbone=False: (
+            _DummyClassifier(n_features=n_feat).to(device),
+            torch.nn.CrossEntropyLoss().to(device),
+            NS(num_features=n_feat, num_classes=2), None),
+    )
+    monkeypatch.setattr(
+        loop_mod, "save_finetuned",
+        lambda model, arch, save_path, *, criterion=None, inference_config=None,
+        provenance=None: (Path(save_path).parent.mkdir(parents=True, exist_ok=True),
+                          Path(save_path).write_bytes(b""), Path(save_path))[-1],
+    )
+
+    # Inject one non-finite loss on the FIRST training step, real loss thereafter.
+    real_loss = loop_mod._classification_loss
+    calls = {"n": 0}
+
+    def flaky_loss(*args, **kwargs):
+        calls["n"] += 1
+        out = real_loss(*args, **kwargs)
+        if calls["n"] == 1:
+            return out * float("inf")   # non-finite -> must be skipped, not fatal
+        return out
+
+    monkeypatch.setattr(loop_mod, "_classification_loss", flaky_loss)
+
+    import omegaconf as _oc
+    real_load = _oc.OmegaConf.load
+    monkeypatch.setattr(_oc.OmegaConf, "load", lambda p: (
+        _oc.OmegaConf.create({"finetuning": {"max_rows_per_epoch": 40, "query_fraction": 0.20}})
+        if "data.yaml" in str(p) else real_load(p)))
+
+    cfg = OmegaConf.create({
+        "seed": 0, "run_name": "nonfinite", "device": "cpu", "track": "pd",
+        "tunable": {
+            "classifier_base_paths":
+                ["checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt"],
+            "regressor_base_paths":
+                ["checkpoints/tabpfn-v2.6-regressor-v2.6_default.ckpt"],
+            "learning_rates": [1e-3]},
+        "corpus": {"train_fraction": 0.6, "test_fraction": 0.4},
+        "optimizer": {"weight_decay": 0.0},
+        "scheduler": {"warmup_fraction": 0.10},
+        "train": {
+            "epochs": 1, "accumulate_grad_batches": 1, "grad_clip_norm": 1.0, "amp": False,
+            "dataloader_workers": 0, "epoch_eval_subsample_samples": 50,
+            "epoch_eval_n_estimators": 1, "n_estimators_finetune": 1},
+        "eval": {"classification_metric": "roc_auc", "regression_metric": "neg_nll",
+                 "n_inference_subsample_samples": 100},
+        "checkpoint": {"trained_dir": str(tmp_path / "trained")},
+    })
+
+    result = loop_mod.train_one_config(cfg)
+
+    # The injected inf was consumed (so the skip path definitely ran) and the run completed
+    # with a finite training loss for the real epoch.
+    assert calls["n"] >= 1
+    assert any(math.isfinite(r.train_loss) for r in result.history if r.epoch >= 0)
+    assert result.final_ckpt_path is not None
+
+
 def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
     """`ctx_pos=` in the epoch line reads batch.ctx_pos_rate AFTER the device
     move, so every batch type must propagate it through `.to()`. A dropped

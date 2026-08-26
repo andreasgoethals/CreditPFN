@@ -2277,6 +2277,9 @@ def train_one_config(
                 )
                 epoch_skipped_steps += 1
                 continue
+            # Pre-declare every tensor that will hold the forward autograd graph, so the
+            # non-finite-loss skip below can release them by name whichever branch ran.
+            pred_logits = y_target = out = _pen = None
             with torch.amp.autocast(
                 "cuda", enabled=use_amp, dtype=amp_dtype,
             ):
@@ -2344,6 +2347,14 @@ def train_one_config(
                     epoch, step, batch.dataset_id,
                 )
                 optimizer.zero_grad(set_to_none=True)
+                # CRITICAL: release the forward graph. On a normal step `backward()` frees the
+                # saved activations; here we skip backward, so unless we drop EVERY reference
+                # (the loss, the backprop tensor, AND the forward outputs, which each hold a
+                # grad_fn chain into the ~full-step activations) the graph lingers into the
+                # next step's forward and roughly DOUBLES peak memory. v2 OOM'd exactly this
+                # way at 10k rows the step after loan_default's non-finite loss (26-08-2026),
+                # having run 40 earlier steps — including 64-feature home_credit — cleanly.
+                loss = loss_to_backprop = pred_logits = y_target = out = _pen = None
                 epoch_skipped_steps += 1
                 continue
 

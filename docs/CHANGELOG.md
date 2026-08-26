@@ -91,6 +91,33 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 26-08-2026 (exp0 re-run: v2 OOM was a memory LEAK, not the row cap)
+
+- **BUG FIXED: the non-finite-loss skip path leaked the forward graph.** When a step's loss is
+  NaN/inf the loop zeroes grads and `continue`s WITHOUT calling `backward()` — but it never
+  released the forward autograd graph, so the ~full-step activations (held by `loss`,
+  `loss_to_backprop`, and the forward outputs `pred_logits`/`out`) lingered into the NEXT step's
+  forward and roughly DOUBLED peak memory. In exp0, v2 ran 40 clean steps at 10k rows (including
+  64-feature home_credit) and then OOM'd the step after `0011.loan_default` produced a non-finite
+  loss. v2.6/v3/tabicl never hit a non-finite loss, so they never leaked — which is also why the
+  synthetic probe (no non-finite losses) read v2 low. Fix: release every graph-holding reference
+  on the skip path (`loss = loss_to_backprop = pred_logits = y_target = out = _pen = None`).
+  This is a GENERAL fix — any base that hits a non-finite loss in experiment 1 would have leaked.
+- **v2 row cap stays at 10000.** The 40 clean steps prove 10k fits per-step; the OOM was the leak,
+  not capacity. (14k separately OOM'd at step 1 = genuine capacity, so it stays rejected.)
+- New regression test `test_non_finite_loss_is_skipped_and_loop_continues` drives the skip path
+  and asserts the loop completes with a finite loss. (CPU can't reproduce the OOM, so it pins the
+  logic, not the memory; the memory fix rests on the code review + the production evidence.)
+
+Confirmed GOOD from the exp0 training half (job 11532123):
+
+- lr=0 is a perfect in-loop no-op for v2.6/v3/tabicl: baseline == final to 4 dp, drift=0.000 %.
+- L2-SP now actually runs (`L2-SP enabled: lambda=3.00e-03, anchoring N tensors`) — the earlier
+  silent-off bug is fixed; drift is 0 only because lr=0.
+- The manifest-free corpus works on the cluster: `Processed-CSV check OK: all 17 candidate
+  dataset(s)`, with output/manifests MISSING.
+- tf32 on, packing + failure-tolerance worked (v2 failed, v2.6/v3/tabicl continued).
+
 ## 26-08-2026 (output/ is now purely derived — no manifest needed to run)
 
 - **The dataset registry is no longer a required input.** `corpus.build_dataset_pool` and
