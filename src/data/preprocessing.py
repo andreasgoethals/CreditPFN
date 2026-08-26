@@ -337,7 +337,11 @@ _RAW_METADATA: dict[str, dict] = {
         "track": "lgd",
         "task_type": "regression",
         "target_column": "_ELGD",
-        "categorical_columns": [],
+        # These three are integer CODES, not quantities, so dtype detection reads them as numeric
+        # and would treat them as continuous features. They were categorical in the manifest
+        # register built from the raw data; listing them here makes the CODE the authority so the
+        # dataset pool no longer needs that manifest file to reproduce the same categoricals.
+        "categorical_columns": ["Credit_Bureau", "documentation_type", "living_units_number"],
         "source": "local",
         "source_url": None,
     },

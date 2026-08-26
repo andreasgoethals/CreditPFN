@@ -29,7 +29,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from src.utils.paths import manifests_dir, processed_dir
+from src.utils.paths import processed_dir
 
 LOGGER = logging.getLogger(__name__)
 
@@ -74,23 +74,6 @@ class ProcessedDataset:
 # --------------------------------------------------------------------------- #
 
 
-def _read_manifest_row(track: str, dataset_id: str) -> dict:
-    """Look up one dataset_id's row in the per-track manifest."""
-    p = manifests_dir() / f"manifest_{track}.csv"
-    if not p.exists():
-        raise FileNotFoundError(
-            f"Manifest not found at {p}. Run the data pipeline first."
-        )
-    df = pd.read_csv(p, dtype=str).fillna("")
-    matches = df[df["dataset_id"] == dataset_id]
-    if matches.empty:
-        raise KeyError(
-            f"dataset_id={dataset_id!r} not found in {p} "
-            f"(have: {df['dataset_id'].head(5).tolist()}…)"
-        )
-    return matches.iloc[0].to_dict()
-
-
 # --------------------------------------------------------------------------- #
 # Load
 # --------------------------------------------------------------------------- #
@@ -108,19 +91,28 @@ def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
             "Run `python scripts/data_pipeline.py` first."
         )
 
-    row = _read_manifest_row(track, dataset_id)
-    target = row["target_column"]
-    task_type = row["task_type"]
-    cats_hint = (
-        row["categorical_columns"].split(";")
-        if row.get("categorical_columns") else []
-    )
+    # Metadata from CODE (DATASET_METADATA), not a manifest file — see
+    # src.train.corpus.build_dataset_pool for why. Categoricals are detected from the CSV we are
+    # already loading, so nothing under output/ is needed to score a dataset.
+    from src.data.preprocessing import DATASET_METADATA
+    from src.data.register import infer_categorical_numerical
+    meta = DATASET_METADATA.get(dataset_id)
+    if meta is None or meta.get("track") != track:
+        raise KeyError(
+            f"dataset_id={dataset_id!r} is not registered for track={track!r} in "
+            f"DATASET_METADATA (src/data/preprocessing.py)."
+        )
+    target = meta["target_column"]
+    task_type = meta.get(
+        "task_type", "classification" if track == "pd" else "regression")
 
     df = pd.read_csv(csv_path, low_memory=False)
     if target not in df.columns:
         raise ValueError(
             f"target column {target!r} missing from {csv_path}"
         )
+    cats_present, _ = infer_categorical_numerical(
+        df, target, list(meta.get("categorical_columns", [])))
 
     feature_cols = [c for c in df.columns if c != target]
     X = df[feature_cols].copy()
@@ -143,8 +135,6 @@ def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
         y = y_num.astype(np.int64).to_numpy()
     else:
         y = pd.to_numeric(y_raw, errors="coerce").astype(np.float32).to_numpy()
-
-    cats_present = [c for c in cats_hint if c in feature_cols]
 
     LOGGER.info(
         "loaded processed: track=%s id=%s rows=%d feats=%d cats=%d task=%s",

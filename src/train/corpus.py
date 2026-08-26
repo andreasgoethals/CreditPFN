@@ -97,65 +97,60 @@ class CorpusSplit:
 # --------------------------------------------------------------------------- #
 
 
-#: Filenames only — the DIRECTORY comes from `src/utils/paths.py`, which is the one
-#: module allowed to know which storage tier each of these lives on.
-_MANIFEST_NAME = "manifest_{track}.csv"
+#: Processed-CSV filename. The DIRECTORY comes from `src/utils/paths.py`, the one module
+#: allowed to know which storage tier it lives on. The dataset pool no longer reads a manifest
+#: file (26-08-2026) — see `build_dataset_pool`.
 _PROCESSED_NAME = "{dataset_id}.sanitized.csv"
 
 
-def _read_manifest(track: str) -> pd.DataFrame:
-    """Read ``output/manifests/manifest_{track}.csv`` from the durable output root."""
-    p = manifests_dir() / _MANIFEST_NAME.format(track=track)
-    if not p.exists():
-        return pd.DataFrame()
-    return pd.read_csv(p, dtype=str).fillna("")
-
-
 def build_dataset_pool(track: str) -> list[DatasetRef]:
-    """List every dataset for a track that has a sanitized CSV on disk.
+    """Every dataset for a track that has a sanitized CSV on disk.
 
-    Walks the manifest CSV (the authoritative list of registered
-    datasets) and only keeps rows whose sanitized CSV exists at
-    ``data/processed/{track}/{id}.sanitized.csv``. Silently skips
-    datasets that are in the manifest but missing their sanitized
-    output — the training pipeline's `_ensure_processed` hook is
-    responsible for filling those before training starts.
+    Built from CODE + DATA, never from a manifest FILE. The authority is
+    :data:`src.data.preprocessing.DATASET_METADATA` (track / task_type / target / categorical
+    hints — always present, versioned with the code) plus the processed CSV on disk. Categorical
+    columns are the code hints unioned with the string-dtype columns detected in the processed
+    CSV, exactly as :func:`src.data.register.infer_categorical_numerical` computes them for the
+    manifest.
+
+    This is deliberate (26-08-2026): the registry used to live in ``output/manifests/`` and had
+    to be rebuilt from raw (slow) or copied across whenever ``output/`` was wiped for a clean run.
+    Now nothing under ``output/`` is required to START a run — that folder holds only results the
+    code produces. A dataset with no processed CSV is skipped silently; the pipeline's
+    ``_ensure_processed`` hook materialises missing CSVs before training.
     """
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
 
-    df = _read_manifest(track)
-    if df.empty:
-        return []
+    from src.data.preprocessing import DATASET_METADATA
+    from src.data.register import infer_categorical_numerical
 
     refs: list[DatasetRef] = []
-    for _, row in df.iterrows():
-        did = row["dataset_id"]
+    for did, meta in sorted(DATASET_METADATA.items()):
+        if meta.get("track") != track:
+            continue
         csv = processed_dir(track, _PROCESSED_NAME.format(dataset_id=did))
         if not csv.exists():
-            LOGGER.warning(
-                "missing sanitized CSV for %s/%s at %s — skipped",
-                track, did, csv,
-            )
+            LOGGER.debug("no processed CSV for %s/%s at %s — skipped", track, did, csv)
             continue
-        cats_field = row.get("categorical_columns", "") or ""
-        cats = tuple(c for c in cats_field.split(";") if c)
-        task_type = row.get(
-            "task_type",
-            "classification" if track == "pd" else "regression",
-        )
-        try:
-            n_rows = int(row.get("n_rows", 0) or 0)
-        except (TypeError, ValueError):
-            n_rows = 0
+        target = meta["target_column"]
+        # Full read so a string column that only appears late is still typed correctly; ~0.3 s
+        # per big table, once per pipeline invocation.
+        df = pd.read_csv(csv, low_memory=False)
+        if target not in df.columns:
+            LOGGER.warning("target %r missing from %s — skipped", target, csv)
+            continue
+        cats, _ = infer_categorical_numerical(
+            df, target, list(meta.get("categorical_columns", [])))
         refs.append(DatasetRef(
             dataset_id=did,
             track=track,
-            task_type=task_type,
-            target_column=row["target_column"],
-            categorical_columns=cats,
+            task_type=meta.get(
+                "task_type", "classification" if track == "pd" else "regression"),
+            target_column=target,
+            categorical_columns=tuple(cats),
             processed_csv=csv,
-            n_rows=n_rows,
+            n_rows=len(df),
         ))
     return refs
 

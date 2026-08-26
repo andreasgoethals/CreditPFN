@@ -163,6 +163,14 @@ queued_tasks() {   # tasks this user currently has across both controllers
     echo "$n"
 }
 
+EVAL_DEST="${EVAL_DEST:-mindwell gpu_b200}"
+read -r ECLUSTER EPARTITION <<< "$EVAL_DEST"
+# Training job ids per split that are ON THE EVAL CLUSTER, for the dependency below. A
+# dependency can only reference jobs on the same controller, so cross-cluster training
+# (e.g. TABICL_DEST=wice) simply is not chained — eval for that split then runs without a
+# dependency and relies on skip-existing, exactly as STAGES=eval does.
+declare -A DEP_JOBS
+
 if [[ " ${STAGES} " == *" train "* ]]; then
 for (( k=0; k<N_SPLITS; k++ )); do
     # WAIT FOR ROOM. Without this the 501st task is rejected and that split silently never
@@ -177,11 +185,21 @@ for (( k=0; k<N_SPLITS; k++ )); do
     fi
     for key in "${!BUCKET[@]}"; do
         read -r cluster partition <<< "$key"
-        CMD=(sbatch --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
+        CMD=(sbatch --parsable --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
              --array="${BUCKET[$key]}%${THROTTLE}" --time="$WALLTIME"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK"
              "$JOB")
-        if [[ -n "${DRY:-}" ]]; then echo "DRY: ${CMD[*]}"; else "${CMD[@]}"; fi
+        if [[ -n "${DRY:-}" ]]; then
+            echo "DRY: ${CMD[*]}"
+        else
+            # --parsable prints "<jobid>;<cluster>"; keep the id only when it is on the
+            # eval cluster, so the eval dependency below can reference it.
+            out=$("${CMD[@]}")
+            jid="${out%%;*}"
+            if [[ "$cluster" == "$ECLUSTER" && -n "$jid" ]]; then
+                DEP_JOBS[$k]="${DEP_JOBS[$k]:+${DEP_JOBS[$k]}:}$jid"
+            fi
+        fi
     done
 done
 echo "submitted $((N_SPLITS * ${#BUCKET[@]})) training array job(s) across ${#BUCKET[@]} destination(s)."
@@ -197,8 +215,6 @@ fi
 # re-running is how a partly-finished campaign gets completed. Chaining would let one
 # failed training task block the scoring of every sibling that succeeded.
 if [[ " ${STAGES} " == *" eval "* ]]; then
-    EVAL_DEST="${EVAL_DEST:-mindwell gpu_b200}"
-    read -r ecluster epartition <<< "$EVAL_DEST"
     for (( k=0; k<N_SPLITS; k++ )); do
         # Same queue-room guard as the training stage. 8 splits x 16 tasks x 2 tracks = 256
         # eval tasks, and training may still be queued, so the 500 ceiling is reachable here
@@ -211,8 +227,15 @@ if [[ " ${STAGES} " == *" eval "* ]]; then
                 sleep 300
             done
         fi
-        CMD=(sbatch --clusters="$ecluster" --partition="$epartition" --account="$ACCOUNT"
-             --array="0-$((EVAL_TASKS - 1))%${EVAL_CONCURRENCY}"
+        DEP=()
+        # Chain onto this split's training only when we submitted it THIS run and it is on
+        # the eval cluster. afterany: wait for training to finish, success or not, so a
+        # partial failure still gets its good checkpoints scored (eval skips the rest).
+        if [[ " ${STAGES} " == *" train "* && -n "${DEP_JOBS[$k]:-}" ]]; then
+            DEP=(--dependency="afterany:${DEP_JOBS[$k]}")
+        fi
+        CMD=(sbatch --clusters="$ECLUSTER" --partition="$EPARTITION" --account="$ACCOUNT"
+             --array="0-$((EVAL_TASKS - 1))%${EVAL_CONCURRENCY}" "${DEP[@]}"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",EVAL_TASKS="$EVAL_TASKS"
              "$EVAL_JOB")
         if [[ -n "${DRY:-}" ]]; then echo "DRY: ${CMD[*]}"; else "${CMD[@]}"; fi

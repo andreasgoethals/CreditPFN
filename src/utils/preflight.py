@@ -533,12 +533,12 @@ def check_storage_layout(rep: Report) -> None:
 def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
     """Ask the TRAINING code what the corpus is, not the filesystem.
 
-    Globbing `data/processed/<track>/*.csv` reported "17 processed datasets" on a cluster where
-    training then died with "Corpus split contains no training chunks" (job 11525443, all four
-    experiment-0 trials). `corpus.build_dataset_pool` does not glob: it walks
-    `output/manifests/manifest_<track>.csv` — the dataset registry — and keeps only rows whose
-    sanitized CSV exists. The registry was missing, so the pool was empty while the CSVs sat
-    right there. Calling the real function is the only check that cannot drift from it.
+    Globbing `data/processed/<track>/*.csv` once reported "17 processed datasets" while training
+    then died with an empty corpus. `build_dataset_pool` is the real function, so calling it is
+    the only check that cannot drift from what training sees. Since 26-08-2026 the pool is built
+    from DATASET_METADATA (code) + the processed CSVs, with NO manifest file — so a missing
+    manifest can no longer produce this mismatch. The check remains as a guard against a genuinely
+    empty/unstaged `data/processed`.
     """
     sys.path.insert(0, str(REPO))
     try:
@@ -557,11 +557,11 @@ def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
             continue
         n = len(pool)
         if n < need:
-            hint = (f"{on_disk} sanitized CSV(s) ARE present in {d}, so the REGISTRY is what "
-                    f"is missing (output/manifests/manifest_{track}.csv). Rebuild it with "
-                    f"`python -m src.data.register` if data/raw is staged, or copy the two "
-                    f"manifest CSVs across." if on_disk >= need else
-                    f"only {on_disk} sanitized CSV(s) in {d}; run scripts/data_pipeline.py")
+            hint = (f"{on_disk} CSV(s) are in {d} but the pool has {n} — some processed CSV is "
+                    f"missing its DATASET_METADATA entry, or a target column is absent."
+                    if on_disk >= need else
+                    f"only {on_disk} sanitized CSV(s) in {d}; run scripts/data_pipeline.py "
+                    f"(processed data must be staged to project storage)")
             rep.fail(f"{track}: corpus has {n} usable dataset(s), need {need}", hint)
         else:
             extra = f" ({on_disk} CSVs on disk)" if on_disk != n else ""

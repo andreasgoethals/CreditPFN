@@ -81,6 +81,12 @@ def _write_processed_dataset(
         cols[target_col] = rng.uniform(0, 1, n_rows).astype(np.float32)
     pd.DataFrame(cols).to_csv(csv_path, index=False)
 
+    # Register in DATASET_METADATA — the eval loader reads metadata from CODE now, not the
+    # manifest. Reverted after each test by the autouse `_restore_dataset_metadata` fixture.
+    from tests.conftest import register_synthetic_dataset
+    register_synthetic_dataset(dataset_id, track=track, task_type=task_type,
+                               target_column=target_col, categorical_columns=cat_names)
+
     # Manifest row.
     manifest_path = out_root / "output" / "manifests" / f"manifest_{track}.csv"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)

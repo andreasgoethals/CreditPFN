@@ -91,6 +91,12 @@ def _write_synthetic_processed(
     task_type = task_type or (
         "classification" if track == "pd" else "regression"
     )
+    # Register in DATASET_METADATA — the pool/loader read metadata from CODE now, not the
+    # manifest file. Reverted after each test by the autouse `_restore_dataset_metadata`.
+    from tests.conftest import register_synthetic_dataset
+    register_synthetic_dataset(dataset_id, track=track, task_type=task_type,
+                               target_column=target_column,
+                               categorical_columns=categorical_columns)
     rng = rng or np.random.default_rng(abs(hash(dataset_id)) % (2**32))
 
     folder = data_root / "data" / "processed" / track
@@ -285,8 +291,11 @@ def test_split_corpus_fractions_sum_too_high() -> None:
                      train_fraction=0.9, test_fraction=0.5)
 
 
-def test_build_dataset_pool_picks_up_manifest(synthetic_processed) -> None:
-    """A synthetic 5-PD manifest results in 5 DatasetRefs on disk."""
+def test_build_dataset_pool_from_metadata_and_csvs(synthetic_processed) -> None:
+    """5 synthetic PD datasets (registered in DATASET_METADATA, CSVs on disk) -> 5 DatasetRefs.
+
+    No manifest file is consulted: the pool is built from DATASET_METADATA + the processed CSVs.
+    """
     refs = build_dataset_pool("pd")
     assert len(refs) == 5
     assert all(isinstance(r, DatasetRef) for r in refs)

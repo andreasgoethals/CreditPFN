@@ -91,7 +91,35 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 26-08-2026 (output/ is now purely derived — no manifest needed to run)
+
+- **The dataset registry is no longer a required input.** `corpus.build_dataset_pool` and
+  `eval.dataset_loader.load_processed_dataset` used to read
+  `output/manifests/manifest_{track}.csv` — a file that had to be rebuilt from raw (slow) or
+  copied across whenever `output/` was wiped for a clean run. They now build every DatasetRef
+  from `DATASET_METADATA` (code) + the processed CSVs, detecting categoricals with the same
+  `infer_categorical_numerical` register uses. Verified: the code-built categoricals are
+  IDENTICAL to the old manifest for all 25 datasets, and the pipeline runs with no manifest file
+  present at all. So `output/` can be deleted freely — nothing there is needed to START a run.
+- **loss2's 3 integer-code categoricals baked into `DATASET_METADATA`.** `Credit_Bureau`,
+  `documentation_type`, `living_units_number` read as numeric in the processed CSV, so dtype
+  detection alone would treat them as continuous. Listing them in the code hint makes the code
+  the authority and keeps the categoricals bit-identical to run-8. (Only these 3, across all 25
+  datasets, needed baking.)
+- `register.py` still writes the manifest, but purely as an optional human-readable summary.
+- Tests: synthetic datasets now register in `DATASET_METADATA` via a `register_synthetic_dataset`
+  helper + an autouse `_mutable_dataset_metadata` fixture (the production dict is a read-only
+  mappingproxy), instead of writing a manifest fixture.
+
 ## 26-08-2026 (exp0 findings)
+
+- **`STAGES="train eval"` now chains in one command.** Eval per split is submitted with
+  `--dependency=afterany:<that split's training job ids>`, so a single invocation trains then
+  scores without eval racing ahead of the checkpoints. `afterany` not `afterok`: a packed
+  training task that fails one trial still lets eval score the siblings that succeeded. Only job
+  ids ON THE EVAL CLUSTER are used (SLURM dependencies do not cross controllers); cross-cluster
+  training falls back to no-dependency + skip-existing, exactly as `STAGES=eval` does. Verified
+  by mock: train+eval injects the dependency, eval-only does not.
 
 - **BLOCKER FIXED: v2 row cap 14000 -> 10000.** exp0 (job 11527923) OOM'd on the first v2 step
   (hackerearth, 14000 rows): tried to allocate 698 MiB with **176.71 GB already in use** on the

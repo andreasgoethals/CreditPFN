@@ -630,6 +630,7 @@ def test_row_cap_for_handle_is_symmetric_between_trained_and_untuned() -> None:
 def _write_tabicl_corpus(root: Path, track: str, task_type: str) -> None:
     """Five synthetic sanitized CSVs + a manifest, mirroring the layout
     ``ProcessedDatasetLoader`` expects."""
+    from tests.conftest import register_synthetic_dataset
     rng = np.random.default_rng(42)
     folder = root / "data" / "processed" / track
     folder.mkdir(parents=True, exist_ok=True)
@@ -643,6 +644,9 @@ def _write_tabicl_corpus(root: Path, track: str, task_type: str) -> None:
                        if task_type == "classification"
                        else rng.uniform(0, 1, size=n).astype(np.float32))
         pd.DataFrame(d).to_csv(folder / f"{dataset_id}.sanitized.csv", index=False)
+        # Metadata now comes from code, not the manifest — register the synthetic dataset.
+        register_synthetic_dataset(dataset_id, track=track, task_type=task_type,
+                                   target_column="target", categorical_columns=("cat",))
         rows.append({"dataset_id": dataset_id, "track": track,
                      "task_type": task_type, "target_column": "target",
                      "categorical_columns": "cat", "n_rows": n, "n_cols": 6,
