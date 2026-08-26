@@ -349,41 +349,55 @@ def check_slurm(rep: Report) -> None:
         rep.ok("every SLURM script parses")
 
 
-def check_job_count(cfgs: list, rep: Report, trials_per_task: int = 4) -> None:
-    """VSC rejects submissions past 500 QUEUED TASKS, and the failure mode is a silent gap."""
-    total = 0
+def check_job_count(cfgs: list, rep: Report, trials_per_task: int = 2) -> None:
+    """VSC rejects submissions past 500 QUEUED TASKS, and the failure mode is a silent gap.
+
+    Each experiment is a SEPARATE `run_experiment.sh` call whose wave-submitter throttles itself
+    below the ceiling, so what must fit under 500 is the LARGEST single experiment's task count,
+    not the grand total across experiments (those never queue simultaneously). `trials_per_task`
+    is auto-clamped in the launcher to a divisor of the per-base block, so model it the same way.
+    """
+    worst_name, worst_tasks = "", 0
     detail = []
     for cfg, name in cfgs:
         trials = len(_grid(cfg))
         splits = cfg.corpus.get("n_splits") or 1
-        tasks = math.ceil(trials / trials_per_task) * splits
-        total += tasks
+        n_bases = len({t[0] for t in _grid(cfg)}) or 1
+        block = max(1, trials // n_bases)
+        tpt = next((d for d in range(trials_per_task, 0, -1) if block % d == 0), 1)
+        tasks = math.ceil(trials / tpt) * splits
+        if tasks > worst_tasks:
+            worst_name, worst_tasks = name, tasks
         detail.append(f"{name:16s} {trials:3d} trials x {splits} splits "
-                      f"-> {tasks:4d} tasks at {trials_per_task}/task")
-    detail.append(f"{'TOTAL':16s} {total:34d} tasks")
-    if total > 500:
-        rep.fail(f"{total} tasks exceeds the 500 submitted-job ceiling",
-                 "\n".join(detail) + f"\nraise TRIALS_PER_TASK above {trials_per_task}")
+                      f"-> {tasks:4d} tasks at {tpt}/task")
+    detail.append(f"{'MAX (per submission)':20s} {worst_tasks:26d} tasks  [{worst_name}]")
+    if worst_tasks > 500:
+        rep.fail(f"{worst_name}: {worst_tasks} tasks exceeds the 500 submitted-job ceiling",
+                 "\n".join(detail) + "\nsubmit fewer splits per wave, or raise TRIALS_PER_TASK")
     else:
-        rep.ok(f"{total} array tasks, under the 500 ceiling", "\n".join(detail))
+        rep.ok(f"largest submission {worst_tasks} tasks, under the 500 ceiling",
+               "\n".join(detail))
 
 
-def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 4) -> None:
+def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 2) -> None:
     """A packed task must not straddle two model families: routing and the tabicl import
     preflight are both per-base, and a chunk spanning families would send a 131 GB TabPFN
-    trial to whatever card the tabicl trial picked."""
+    trial to whatever card the tabicl trial picked. Models the launcher's auto-clamp of
+    `trials_per_task` to a divisor of the per-base block, so this verifies the invariant holds."""
     for cfg, name in cfgs:
         grid = _grid(cfg)
+        n_bases = len({t[0] for t in grid}) or 1
+        block = max(1, len(grid) // n_bases)
+        tpt = next((d for d in range(trials_per_task, 0, -1) if block % d == 0), 1)
         per_task_families = collections.defaultdict(set)
         for i, t in enumerate(grid):
-            per_task_families[i // trials_per_task].add(_base_key(t[0]))
+            per_task_families[i // tpt].add(_base_key(t[0]))
         bad = {k: v for k, v in per_task_families.items() if len(v) > 1}
         if bad:
-            rep.fail(f"{name}: {len(bad)} task(s) straddle model families at "
-                     f"{trials_per_task}/task",
+            rep.fail(f"{name}: {len(bad)} task(s) straddle model families at {tpt}/task",
                      f"e.g. task {min(bad)} covers {sorted(bad[min(bad)])}")
         else:
-            rep.ok(f"{name}: every packed task stays within one model family")
+            rep.ok(f"{name}: every packed task stays within one model family (at {tpt}/task)")
 
 
 def check_train_eval_agree(name: str, rep: Report) -> None:
@@ -600,7 +614,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", action="append", default=None,
                     help="experiment config(s); default = all five")
-    ap.add_argument("--trials-per-task", type=int, default=4)
+    ap.add_argument("--trials-per-task", type=int, default=2)
     args = ap.parse_args(argv)
 
     names = args.config or list(EXPERIMENTS)

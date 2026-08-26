@@ -49,10 +49,27 @@ THROTTLE="${THROTTLE:-16}"
 # not itself. Submit in waves of at most this many and wait for room between them.
 MAX_QUEUED="${MAX_QUEUED:-450}"
 # Trials packed into ONE array task, run sequentially. 48 trials x 8 splits x 2 tracks =
-# 768 tasks at 1/task, which blows the 500 ceiling; at 4/task it is 192, and each task
-# pays the 2-4 min startup once instead of four times. Bigger is fewer jobs but longer
-# jobs, and a long request backfills later — 4 is the balance point.
-TRIALS_PER_TASK="${TRIALS_PER_TASK:-4}"
+# Requested trials per array task. 2 keeps jobs ~3.5 h, which backfills far better than the old
+# 6.5 h at 4/task — VSC priority favours short walltime (official docs + measured: 48h -> 1-2
+# GPUs, 10h -> 15-21). It is AUTO-CLAMPED below to a divisor of the per-base block so a task
+# never straddles two model families; exp0 has 1 trial/base, so it falls back to 1 automatically.
+TRIALS_PER_TASK="${TRIALS_PER_TASK:-2}"
+# Per-base block: the grid is base-major, so this many consecutive trials share one base.
+N_BASES="$(python - "$CONFIG" <<'PY'
+import sys
+from omegaconf import OmegaConf
+sys.path.insert(0, ".")
+import scripts.train_pipeline as tp
+cfg = OmegaConf.merge(OmegaConf.load("config/train.yaml"), OmegaConf.load(sys.argv[1]))
+print(len({t[0] for t in tp._resolve_grid(cfg, single=False)}))
+PY
+)"
+BLOCK=$(( N_TRIALS / N_BASES ))
+_req="$TRIALS_PER_TASK"
+for (( d=_req; d>=1; d-- )); do (( BLOCK % d == 0 )) && { TRIALS_PER_TASK=$d; break; }; done
+if (( TRIALS_PER_TASK != _req )); then
+    echo "note: TRIALS_PER_TASK=${_req} does not divide the ${BLOCK}-trial per-base block; using ${TRIALS_PER_TASK}."
+fi
 # Worst measured trial is v3 PD full-FT: 5 000 steps x 0.93 s = 77 min. 90 min/trial plus
 # 30 min of startup and monitor evals, capped at the 72 h partition limit.
 MINUTES=$(( TRIALS_PER_TASK * 90 + 30 ))

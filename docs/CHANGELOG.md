@@ -91,6 +91,18 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 26-08-2026 (shorter jobs for the queue)
+
+- **`TRIALS_PER_TASK` default 4 -> 2** in `run_experiment.sh`: experiment 1 tasks drop from ~6.5 h
+  to ~3.5 h, which the VSC docs and our own measurements say backfills far better (short walltime
+  raises priority; 48h got 1-2 GPUs, 10h got 15-21). It is AUTO-CLAMPED to a divisor of the
+  per-base block, so exp0 (1 trial/base) falls back to 1/task automatically instead of straddling
+  two model families. Experiment 1 is now 48 tasks/split x 8 = 384 tasks per track.
+- **Preflight job-count check now models PER-SUBMISSION, not the grand total.** Each experiment is
+  a separate wave-throttled `run_experiment.sh` call, so what must fit under the 500 ceiling is the
+  largest single experiment (384), not exp1_pd + exp1_lgd summed (768, which never queue at once).
+  Both checks model the same auto-clamp.
+
 ## 26-08-2026 (exp0 re-run: v2 OOM was a memory LEAK, not the row cap)
 
 - **BUG FIXED: the non-finite-loss skip path leaked the forward graph.** When a step's loss is
