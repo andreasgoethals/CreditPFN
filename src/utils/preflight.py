@@ -404,10 +404,18 @@ def check_train_eval_agree(name: str, rep: Report) -> None:
     """Train and eval must resolve the SAME run_name, split_seed and held-out datasets.
 
     They are two separate config-loading paths — `train_pipeline._load_cfg` +
-    `_apply_split_index`, and `eval_pipeline._load_cfgs` — and both feed `split_from_cfg`. If
-    they disagree, eval scores each checkpoint against datasets it may have TRAINED on. Nothing
-    downstream catches that: the numbers just come out better.
+    `_apply_split_index`, and `eval_pipeline._load_cfgs` — and both must feed the SAME
+    `split_from_cfg`. If they disagree, eval scores each checkpoint against datasets it may have
+    TRAINED on. This check compares split_from_cfg on both, but that is only valid if the training
+    LOOP actually calls split_from_cfg — it did not until 26-08-2026 (it called `split_corpus`
+    directly and dropped n_test_datasets/split_seed), so the static guard below fails if
+    `train_one_config` reintroduces a direct `split_corpus(` call and bypasses the shared path.
     """
+    loop_src = (REPO / "src/train/loop.py").read_text(encoding="utf-8")
+    if re.search(r"\bsplit_corpus\s*\(", loop_src):
+        rep.fail("train_one_config calls split_corpus() directly",
+                 "it must use split_from_cfg (the shared path eval uses), or training and eval "
+                 "can resolve different held-out datasets — see the 26-08-2026 split-mismatch bug")
     sys.path.insert(0, str(REPO))
     sys.path.insert(0, str(REPO / "scripts"))
     try:

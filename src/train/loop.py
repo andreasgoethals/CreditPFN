@@ -51,8 +51,7 @@ from torch.utils.data import DataLoader
 from src.train.corpus import (
     CorpusSplit,
     DatasetRef,
-    resolve_ids_for_track,
-    split_corpus,
+    split_from_cfg,
 )
 from src.train.dataloader import (
     ProcessedDatasetLoader, TabPFNBatch, identity_collate, prepare_eval_chunk,
@@ -1605,16 +1604,14 @@ def train_one_config(
         raw = getattr(cfg.corpus, "min_train_rows", 0) if hasattr(cfg, "corpus") else 0
         # A config list means "sweep this"; a bare trial resolves to its first value.
         min_train_rows = int(raw[0]) if isinstance(raw, (list, tuple)) else int(raw or 0)
-    split: CorpusSplit = split_corpus(
-        track=track,
-        train_fraction=float(cfg.corpus.train_fraction),
-        test_fraction=float(cfg.corpus.test_fraction),
-        train_dataset_ids=resolve_ids_for_track(
-            cfg.corpus.get("train_dataset_ids", None), track),
-        test_dataset_ids=resolve_ids_for_track(
-            cfg.corpus.get("test_dataset_ids", None), track),
-        seed=int(cfg.seed),
-        min_train_rows=int(min_train_rows),
+    # THE single split path — the same `split_from_cfg` the eval pipeline uses, so training and
+    # eval cannot disagree on the held-out datasets. Calling `split_corpus` directly here used to
+    # drop `n_test_datasets` / `split_seed` / `n_folds` / `fold`, so every split trained on the
+    # same seed-42 fractional draw while eval scored a different `n_test_datasets`/`split_seed`
+    # draw (caught by exp0's pairing-risk guard, 26-08-2026). `min_train_rows` is the one swept
+    # axis, passed through explicitly.
+    split: CorpusSplit = split_from_cfg(
+        cfg, track=track, min_train_rows=int(min_train_rows),
     )
     LOGGER.info("Corpus split: %s", split.summary)
     train_ids = sorted({c.dataset_id for c in split.train})

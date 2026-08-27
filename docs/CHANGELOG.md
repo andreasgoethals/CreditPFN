@@ -91,6 +91,33 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 26-08-2026 (exp0 caught a train/eval SPLIT MISMATCH that would have wrecked exp1)
+
+- **BLOCKER FIXED: training and eval resolved DIFFERENT dataset splits.** `train_one_config`
+  called `split_corpus` directly and passed only `train_fraction`/`test_fraction` and
+  `seed=cfg.seed` — it DROPPED `n_test_datasets`, `split_seed`, `n_folds` and `fold`. So training
+  held out 5 datasets by fraction using seed 42 for EVERY split, while eval (via `split_from_cfg`)
+  honoured `n_test_datasets=4` and `split_seed=k`. Two consequences for experiment 1, both
+  silent: (1) all 8 splits would have TRAINED ON THE SAME seed-42 draw — the entire split design
+  collapses; (2) eval would score each checkpoint on different datasets than it was held out from
+  — leakage or a non-paired comparison. exp0's pairing-risk guard caught it (WARN + refused to
+  score). Fix: `train_one_config` now calls `split_from_cfg` (the one shared path eval uses), with
+  the swept `min_train_rows` passed through a new argument. Verified: exp0 training now yields the
+  same 4 test datasets as eval, and exp1 splits 0-7 now draw DIFFERENT test sets.
+- **Preflight `check_train_eval_agree` gains a static guard**: it now FAILS if `loop.py`
+  reintroduces a direct `split_corpus(` call, since the agree-check compares `split_from_cfg` on
+  both sides and is only valid while training actually uses it. (This is why the check passed
+  before yet the paths diverged — it never exercised the training loop's real split call.)
+
+Confirmed GOOD from the exp0 re-run training half (jobs 11532153/54):
+
+- **v2 now COMPLETES** (OK, final_test 0.7145) — the non-finite-loss leak fix works on real
+  hardware; v2 logs the skip on loan_default and continues without OOM.
+- All 4 bases lr=0 in-loop no-op holds (baseline == final).
+
+The exp0 checkpoints on disk are STALE (trained with the wrong 5-dataset seed-42 split), so the
+save/reload control still cannot be validated from them — re-run exp0 with this fix first.
+
 ## 26-08-2026 (shorter jobs for the queue)
 
 - **`TRIALS_PER_TASK` default 4 -> 2** in `run_experiment.sh`: experiment 1 tasks drop from ~6.5 h

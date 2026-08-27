@@ -534,12 +534,20 @@ def _scalar_min_rows(raw) -> int:
     return int(raw or 0)
 
 
-def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
+def split_from_cfg(cfg, *, track: str | None = None,
+                   min_train_rows: int | None = None) -> CorpusSplit:
     """Apply :func:`split_corpus` using ``cfg.corpus``, ``cfg.seed``,
     and the active ``cfg.track`` (or the supplied override).
 
     ``train_dataset_ids`` / ``test_dataset_ids`` may be a flat list or a
     per-track mapping — see :func:`resolve_ids_for_track`.
+
+    ``min_train_rows`` overrides the value read from ``cfg.corpus`` — training passes the
+    per-trial swept value here. This is THE single split path: ``train_one_config`` and the eval
+    pipeline both call it, so they cannot disagree on the held-out datasets (they did until
+    26-08-2026, when training called ``split_corpus`` directly and dropped ``n_test_datasets`` /
+    ``split_seed`` / ``n_folds`` / ``fold`` — every split then trained on the same seed-42 draw
+    while eval scored a different one).
     """
     track = track or cfg.track
     corpus = cfg.corpus
@@ -566,10 +574,10 @@ def split_from_cfg(cfg, *, track: str | None = None) -> CorpusSplit:
         n_folds=corpus.get("n_folds", None),
         n_test_datasets=corpus.get("n_test_datasets", None),
         fold=int(corpus.get("fold", 0) or 0),
-        # A LIST here means "swept" (config/train.yaml since run-8). Outside a single
-        # trial there is no one value, so this convenience wrapper applies NO filter:
-        # its callers are the eval roster and the task planner, which only use the TEST
-        # split, and the filter is train-side only. `train_one_config` passes the
-        # trial's own value explicitly and does not come through here.
-        min_train_rows=_scalar_min_rows(corpus.get("min_train_rows", 0)),
+        # A LIST here means "swept" (config/train.yaml since run-8). Outside a single trial
+        # there is no one value, so this wrapper applies NO filter when reading from cfg — its
+        # roster/task-planner callers only use the TEST split, and the filter is train-side.
+        # `train_one_config` passes its trial's own value via the `min_train_rows` argument.
+        min_train_rows=(int(min_train_rows) if min_train_rows is not None
+                        else _scalar_min_rows(corpus.get("min_train_rows", 0))),
     )
