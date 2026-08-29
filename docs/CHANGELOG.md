@@ -91,6 +91,22 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 28-08-2026 (exp0 eval: split fix CONFIRMED; v2 inference-cap bug found)
+
+- **The train/eval split mismatch is FIXED and confirmed on the cluster.** exp0 eval j11532735
+  logs `Cfg test split: 4 datasets` with NO pairing-risk warning — training and eval now resolve
+  the same held-out set. The control can finally be computed.
+- **BUG FIXED: v2 eval context cap 50000 -> 10000.** TabPFN v2's OFFICIAL inference limit is
+  10 000 rows; above it, `predict` raises `TabPFNValidationError` and every fold fails. Both
+  untuned AND trained v2 failed all 5 folds on the big test datasets (home_credit, bank_status)
+  at the 50k cap. v2.6 (50k) / v3 (1M) / tabicl (1M) are unaffected — each generation is now
+  evaluated at its native supported context. New preflight `check_eval_caps` FAILS if any cap
+  exceeds a model's official limit.
+- The full lr=0-vs-untuned comparison needs the result CSVs on PROJECT storage
+  (`/lustre1/.../output/results`), which a `$VSC_DATA`-only download does not include. The eval
+  logs carry the freshly-scored lr=0 numbers but the untuned scores are cached from an earlier
+  run and not re-logged.
+
 ## 26-08-2026 (exp0 caught a train/eval SPLIT MISMATCH that would have wrecked exp1)
 
 - **BLOCKER FIXED: training and eval resolved DIFFERENT dataset splits.** `train_one_config`

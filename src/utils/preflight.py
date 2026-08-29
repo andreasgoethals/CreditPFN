@@ -263,6 +263,37 @@ def check_row_caps(rep: Report) -> None:
         rep.ok(f"row caps at/below measured-safe rows, {members} members", "\n".join(lines))
 
 
+#: Official inference-context limits (max training/context rows a model accepts before raising).
+#: TabPFN v2 hard-raises TabPFNValidationError above 10k; v2.6/v3/tabicl support far more. Above
+#: these, eval fails ALL folds — untuned AND trained v2 failed on the big datasets at 50k
+#: (exp0 eval j11532735, 28-08-2026).
+_EVAL_CONTEXT_LIMIT = {"v2": 10000}
+
+
+def check_eval_caps(rep: Report) -> None:
+    """The eval's per-model context cap must not exceed the model's OFFICIAL inference limit."""
+    from omegaconf import OmegaConf
+    ev = OmegaConf.load(REPO / "config/eval.yaml")
+    caps = None
+    for node in (ev, ev.get("eval", {})):
+        if hasattr(node, "get") and node.get("max_rows_per_model") is not None:
+            caps = node.get("max_rows_per_model"); break
+    if caps is None:
+        rep.warn("eval max_rows_per_model not found", "cannot verify inference caps")
+        return
+    bad = []
+    for base, limit in _EVAL_CONTEXT_LIMIT.items():
+        cap = caps.get(base)
+        if cap is not None and int(cap) > limit:
+            bad.append(f"{base}: cap {int(cap)} > official limit {limit}")
+    if bad:
+        rep.fail("eval context cap exceeds a model's official limit",
+                 "\n".join(bad) + "\nabove this, eval raises TabPFNValidationError on every fold")
+    else:
+        rep.ok("eval context caps respect each model's official inference limit",
+               f"v2<={_EVAL_CONTEXT_LIMIT['v2']}, others larger by design")
+
+
 def check_step_budget(cfg, name: str, rep: Report) -> None:
     """Equal optimizer steps is the whole point of `target_total_steps`; verify every cell
     lands on it rather than being clipped by `max_epochs_for_step_budget`."""
@@ -647,6 +678,7 @@ def main(argv: list[str] | None = None) -> int:
         check_train_eval_agree(label, rep)
 
     check_row_caps(rep)
+    check_eval_caps(rep)
     check_l2sp_applies(rep)
     check_stale_knobs(rep)
     check_slurm(rep)

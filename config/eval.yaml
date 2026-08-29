@@ -10,7 +10,10 @@ cv:
   inner_val_fraction: 0.2                 # of the train fold, for threshold tuning
 
 max_rows_per_model:                       # inference context cap; forward-only, so >> training
-  v2: 50000
+  v2: 10000                               # v2's OFFICIAL limit: >10k raises TabPFNValidationError
+  #                                         (both untuned+trained v2 failed all folds on the big
+  #                                         datasets at 50k, exp0 eval j11532735). Each generation
+  #                                         is evaluated at its native supported context.
   v2.6: 50000
   v3: 1000000
   tabicl: 1000000
