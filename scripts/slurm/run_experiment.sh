@@ -180,6 +180,28 @@ queued_tasks() {   # tasks this user currently has across both controllers
     echo "$n"
 }
 
+# Submit one job, RETRYING when the QOS submit-limit rejects it. `queued_tasks` throttles up
+# front, but it counts PENDING+RUNNING while the QOS `MaxSubmitJobsPerUser` counts ALL submitted
+# states — and that quota is shared with any OTHER project on this account (e.g. CreditICL) — so
+# the two disagree and a raw sbatch failure would abort the whole loop (set -e) and silently lose
+# every later split AND the eval stage. Echoes sbatch's stdout ("<jobid>;<cluster>") on success.
+submit_retry() {
+    local out rc tries=0
+    while :; do
+        if out=$("$@" 2>&1); then echo "$out"; return 0; fi
+        rc=$?
+        if [[ "$out" == *QOSMaxSubmitJobPerUserLimit* || "$out" == *"job submit limit"* ]]; then
+            (( ++tries ))
+            echo "  submit-limit hit (attempt ${tries}); the 500-task quota (shared with your" >&2
+            echo "  other jobs) is full — waiting 300s for room..." >&2
+            sleep 300
+            continue
+        fi
+        echo "$out" >&2                       # a DIFFERENT error: surface it, do not mask
+        return "$rc"
+    done
+}
+
 EVAL_DEST="${EVAL_DEST:-mindwell gpu_b200}"
 read -r ECLUSTER EPARTITION <<< "$EVAL_DEST"
 # Training job ids per split that are ON THE EVAL CLUSTER, for the dependency below. A
@@ -188,8 +210,9 @@ read -r ECLUSTER EPARTITION <<< "$EVAL_DEST"
 # dependency and relies on skip-existing, exactly as STAGES=eval does.
 declare -A DEP_JOBS
 
+SPLIT_START="${SPLIT_START:-0}"   # resume from split k (recovery after a partial submission)
 if [[ " ${STAGES} " == *" train "* ]]; then
-for (( k=0; k<N_SPLITS; k++ )); do
+for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
     # WAIT FOR ROOM. Without this the 501st task is rejected and that split silently never
     # runs — the failure mode is a gap in the results, not an error at the end of the sweep.
     if [[ -z "${DRY:-}" ]]; then
@@ -211,7 +234,7 @@ for (( k=0; k<N_SPLITS; k++ )); do
         else
             # --parsable prints "<jobid>;<cluster>"; keep the id only when it is on the
             # eval cluster, so the eval dependency below can reference it.
-            out=$("${CMD[@]}")
+            out=$(submit_retry "${CMD[@]}")
             jid="${out%%;*}"
             if [[ "$cluster" == "$ECLUSTER" && -n "$jid" ]]; then
                 DEP_JOBS[$k]="${DEP_JOBS[$k]:+${DEP_JOBS[$k]}:}$jid"
@@ -219,7 +242,7 @@ for (( k=0; k<N_SPLITS; k++ )); do
         fi
     done
 done
-echo "submitted $((N_SPLITS * ${#BUCKET[@]})) training array job(s) across ${#BUCKET[@]} destination(s)."
+echo "submitted $(( (N_SPLITS - SPLIT_START) * ${#BUCKET[@]} )) training array job(s) across ${#BUCKET[@]} destination(s)."
 fi
 
 # ----------------------------------------------------------------- eval ----
@@ -232,7 +255,7 @@ fi
 # re-running is how a partly-finished campaign gets completed. Chaining would let one
 # failed training task block the scoring of every sibling that succeeded.
 if [[ " ${STAGES} " == *" eval "* ]]; then
-    for (( k=0; k<N_SPLITS; k++ )); do
+    for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         # Same queue-room guard as the training stage. 8 splits x 16 tasks x 2 tracks = 256
         # eval tasks, and training may still be queued, so the 500 ceiling is reachable here
         # too — and going over it silently drops a split's scoring.
@@ -255,7 +278,7 @@ if [[ " ${STAGES} " == *" eval "* ]]; then
              --array="0-$((EVAL_TASKS - 1))%${EVAL_CONCURRENCY}" "${DEP[@]}"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",EVAL_TASKS="$EVAL_TASKS"
              "$EVAL_JOB")
-        if [[ -n "${DRY:-}" ]]; then echo "DRY: ${CMD[*]}"; else "${CMD[@]}"; fi
+        if [[ -n "${DRY:-}" ]]; then echo "DRY: ${CMD[*]}"; else submit_retry "${CMD[@]}" >/dev/null; fi
     done
-    echo "submitted ${N_SPLITS} eval array job(s) of ${EVAL_TASKS} tasks to ${EVAL_DEST}."
+    echo "submitted $(( N_SPLITS - SPLIT_START )) eval array job(s) of ${EVAL_TASKS} tasks to ${EVAL_DEST}."
 fi

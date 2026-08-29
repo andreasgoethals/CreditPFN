@@ -91,6 +91,40 @@ day is never rewritten.
   `_progress` accumulates a per-epoch `optimizer_steps` column and falls back to epochs when the
   column is absent or empty.
 
+## 29-08-2026 (submitter hardened for a SHARED job quota)
+
+- **The 500-job quota is shared across all projects on the account** (CreditICL runs alongside
+  CreditPFN). exp1_pd submitted 6 of 8 splits (288 tasks), then splits 6-7 hit
+  `QOSMaxSubmitJobPerUserLimit` and — under `set -e` — the whole script ABORTED, so the eval
+  stage never ran either. Two fixes:
+  - **`submit_retry`**: every sbatch now retries on a submit-limit rejection (wait 300s, retry)
+    instead of aborting. The wave guard counts PENDING+RUNNING while the QOS counts all submitted
+    states, so they disagree by a few tasks; the retry absorbs that and the shared-quota
+    contention. A non-limit error is still surfaced, not masked. Verified by mock (2 failures ->
+    success).
+  - **`SPLIT_START`**: resume submission from split k, so a partial submission is recovered
+    without re-submitting (and duplicating) the splits already running.
+- Recovery for the current partial exp1_pd: `SPLIT_START=6 STAGES=train` submits the 2 missing
+  training splits; a single `STAGES=eval` pass scores all 8 once training finishes.
+
+## 28-08-2026 (exp0 PD control PASSES — save/reload is lossless)
+
+- **The exp0 PD control is satisfied.** lr=0 (save -> reload -> eval) vs untuned, all 4 bases x
+  4 held-out datasets x 5 folds, worst |Δroc_auc| = 1.1e-4, worst |Δbrier| = 1.0e-5:
+    v2      IDENTICAL (Δ=0 exactly, incl. the big datasets at the new 10k cap)
+    tabicl  IDENTICAL (Δ<=1.2e-8, machine epsilon)
+    v2.6    max Δauc 8.0e-5   (inference noise, negligible)
+    v3      max Δauc 1.1e-4   (inference noise, negligible)
+  Two bases are bit-identical, which rules out a systematic save/reload defect; the v2.6/v3
+  ~1e-4 is bf16 ensemble non-determinism, ~100-1000x below any finetuning effect we measure.
+  The save/reload path does not materially change predictions -> experiment 1 is trustworthy on
+  that dimension.
+- exp0 has now validated the whole PD pipeline end to end: training runs, lr=0 is an in-loop
+  no-op, all 4 bases train (v2 leak fixed), train/eval resolve the same split, v2 evals at its
+  10k limit, the manifest-free corpus works, and L2-SP runs. GREEN LIGHT for experiment 1 (PD).
+- Still worth doing before exp1_lgd: run exp0_lgd, since the regression path (pinball loss,
+  z-norm, quantile capture) is separate code the PD control does not exercise.
+
 ## 28-08-2026 (exp0 eval: split fix CONFIRMED; v2 inference-cap bug found)
 
 - **The train/eval split mismatch is FIXED and confirmed on the cluster.** exp0 eval j11532735
