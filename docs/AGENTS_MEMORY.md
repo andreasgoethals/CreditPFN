@@ -21,6 +21,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 29-08-2026 | exp1_pd · 96 trials/split × 8 splits, Option-B grid (lr{3e-7,1e-6,1e-5} × l2sp{0,0.003} × frozen{F,T} × pass{full,acc}), 4 bases; training only (eval not yet submitted) | **partial — frozen TabPFN arm lost** | Full-FT TabPFN + all TabICLv2 (both arms) trained OK; **all 168 frozen TabPFN `_lora` trials died in ~4 s with `NameError: ckpt_path`** (`load_tabpfn_for_training`). Splits 6–7 double-submitted by the SPLIT_START recovery (harmless). Results write to `/lustre1/…/stg_00211/…/results` (staging), not the `output/` download. Bug fixed 31-08; frozen TabPFN needs re-running. See dead end below. |
 | 12-08-2026 | run-8 · 16 trials/track, 20 000 steps, `min_train_rows` [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks; **eval completed 16-08-2026 on Mindwell `gpu_b200`** | **done — first complete run** | Training 31/32 OK (1 false-positive divergence abort). Eval 105/105 PD + 44/44 LGD cells, 745/745 folds, zero failures. **PD 20/75 paired wins, mean -0.0013, p=0.78 (null). LGD 0/32.** Untuned v3 beats best tuned GBM on 4/5 PD and 2/2 LGD. Completing the eval REVERSED the half-eval's -0.0048 'damage' finding. `RESULTS.md` |
 | 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `RESULTS.md` |
 | 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICLv2. 54.9 GPU-h. `RESULTS.md` |
@@ -37,6 +38,23 @@ that configuration?"* is the question this table exists to answer.
 
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
+
+### 31-08-2026 (one typo in the frozen branch cost the whole frozen TabPFN arm of exp1_pd)
+
+**A sweep axis that no control and no test ever executes will fail in production, once, expensively.**
+
+- **Tried.** The freeze refactor put TabPFN + TabICLv2 on one `freeze_backbone`;
+  `load_tabpfn_for_training` called it `freeze_tabpfn_backbone(model, version=_infer_version(ckpt_path))`.
+- **Result.** `NameError: name 'ckpt_path' is not defined` — the local is `ckpt` (`version` is already
+  computed). Only fires under `freeze_backbone=True`, so it killed **168/168 frozen TabPFN trials**
+  of exp1_pd in ~4 s each; full-FT TabPFN and TabICLv2 (a separate loader) were untouched.
+- **Why.** Three guards all missed it at once: the end-to-end test monkeypatches the whole loader
+  away (its fake even `del`s `freeze_backbone`); exp0 pinned `frozen_backbone=[false]`; and
+  ruff/pyflakes — whose F821 flags exactly this — is **not installed in the venv**, so
+  `scripts/check.py` step 1 has effectively never run.
+- **Instead.** `version=version`; a regression test that runs the REAL frozen branch; exp0 now sweeps
+  `frozen_backbone=[false,true]`. **Install ruff (`pip install 'ruff>=0.6'`) and run it before every
+  launch** — it is a declared dep that is not actually present.
 
 ### 26-08-2026 (exp0 caught the v2 OOM a linear model hid)
 

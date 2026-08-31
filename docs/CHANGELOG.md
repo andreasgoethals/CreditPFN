@@ -12,6 +12,17 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 31-08-2026
+
+- **Fix `NameError: ckpt_path` in `load_tabpfn_for_training`'s frozen branch** (`src/train/model.py`).
+  The local is `ckpt` and `version` is already computed above; the stray `ckpt_path` failed every
+  frozen TabPFN trial of exp1_pd (168/168 — see `AGENTS_MEMORY.md`). Now passes `version=version`.
+- **Regression test** `test_load_tabpfn_for_training_frozen_backbone_executes` — runs the REAL
+  loader body (only `load_model_criterion_config` stubbed) with `freeze_backbone=True`; the whole
+  loader was monkeypatched away before, so the frozen path had no coverage.
+- **exp0 `frozen_backbone: [false] -> [false, true]`** (both `experiment0_*.yaml`). The control now
+  exercises the frozen load/save path it was meant to; at lr=0 the frozen arm is still an identity.
+
 ## 24-08-2026
 
 - **LGD epochs 50 -> 400.** Measured on run-8's 32 epoch curves: PD banks 96.8 % of its final

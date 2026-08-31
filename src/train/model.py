@@ -170,7 +170,10 @@ def load_tabpfn_for_training(
     if freeze_backbone:
         # A true freeze, matching TabICLv2. Mutually exclusive with LoRA: wrapping a
         # frozen model in adapters would train the adapters and defeat the point.
-        freeze_tabpfn_backbone(model, version=_infer_version(ckpt_path))
+        # `version` is already inferred above (line ~128); the earlier `ckpt_path`
+        # here was a NameError that failed all 168 frozen TabPFN trials in exp1_pd
+        # (j11538779/796/797…, 29-08-2026) — the local is `ckpt`, not `ckpt_path`.
+        freeze_tabpfn_backbone(model, version=version)
     elif lora_config is not None:
         model = _wrap_with_lora(model, lora_config)
 

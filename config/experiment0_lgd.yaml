@@ -7,7 +7,11 @@
 tunable:
   learning_rates: [0.0]       # the whole point: no weight may move
   l2sp_lambdas: [0.0]         # anchor to w0 is vacuous at lr=0
-  frozen_backbone: [false]    # full graph, so the control also exercises the real code path
+  frozen_backbone: [false, true]  # BOTH arms. exp1 sweeps frozen, so the control MUST exercise
+  #                                  the frozen load/save path too — a NameError there (ckpt_path)
+  #                                  escaped an all-full-FT exp0 and failed every frozen TabPFN
+  #                                  trial of exp1_pd (29-08-2026). At lr=0 the frozen arm is also
+  #                                  a pure identity, so this only adds coverage.
   epoch_pass_modes: ["full_pass"]
 
 corpus:

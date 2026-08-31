@@ -1129,6 +1129,50 @@ def test_non_finite_loss_is_skipped_and_loop_continues(
     assert result.final_ckpt_path is not None
 
 
+def test_load_tabpfn_for_training_frozen_backbone_executes(tmp_path, monkeypatch) -> None:
+    """Regression: the frozen-backbone branch of ``load_tabpfn_for_training`` must RUN.
+
+    A NameError there (``_infer_version(ckpt_path)`` — the local is ``ckpt``, and ``version``
+    is already in scope) slipped past everything: the end-to-end tests monkeypatch the whole
+    loader away, exp0 pinned ``frozen_backbone=[false]``, and ruff (whose F821 flags it) was not
+    installed in the venv. It then failed all 168 frozen TabPFN trials of exp1_pd (29-08-2026,
+    j11538779/796/797…). This test executes the REAL loader body — only the heavy
+    ``load_model_criterion_config`` is stubbed — so the frozen path is actually exercised: the
+    detected backbone stack must end up frozen and the head trainable, with no exception.
+    """
+    import tabpfn.base as _tb
+    from src.train.model import load_tabpfn_for_training
+
+    class _Stand(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            # A repeated-block stack holding the bulk of the params, so
+            # freeze.find_backbone_stack selects `blocks` as the backbone (>= 8 blocks).
+            self.blocks = torch.nn.ModuleList(
+                [torch.nn.Linear(8, 8) for _ in range(12)]
+            )
+            self.head = torch.nn.Linear(8, 2)   # outside the stack → must stay trainable
+
+    def _fake_load_mcc(**kwargs):
+        # Signature-tolerant stub for tabpfn.base.load_model_criterion_config: returns the
+        # 4-tuple the real loader unpacks — (models, criterion, architecture_configs, infer_cfg).
+        return [_Stand()], object(), [object()], object()
+
+    monkeypatch.setattr(_tb, "load_model_criterion_config", _fake_load_mcc)
+
+    # Filename must carry the version (so _infer_version succeeds) and the file must exist.
+    ckpt = tmp_path / "tabpfn-v3-classifier-v3_default.ckpt"
+    ckpt.write_bytes(b"stub")
+
+    model, _criterion, _arch_cfg, _infer_cfg = load_tabpfn_for_training(
+        ckpt, track="pd", device="cpu", freeze_backbone=True,
+    )
+
+    # The whole point of the frozen arm: backbone stack frozen, head still trainable.
+    assert all(not p.requires_grad for p in model.blocks.parameters())
+    assert all(p.requires_grad for p in model.head.parameters())
+
+
 def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
     """`ctx_pos=` in the epoch line reads batch.ctx_pos_rate AFTER the device
     move, so every batch type must propagate it through `.to()`. A dropped
