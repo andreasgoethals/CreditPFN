@@ -70,11 +70,21 @@ for (( d=_req; d>=1; d-- )); do (( BLOCK % d == 0 )) && { TRIALS_PER_TASK=$d; br
 if (( TRIALS_PER_TASK != _req )); then
     echo "note: TRIALS_PER_TASK=${_req} does not divide the ${BLOCK}-trial per-base block; using ${TRIALS_PER_TASK}."
 fi
-# Worst measured trial is v3 PD full-FT: 5 000 steps x 0.93 s = 77 min. 90 min/trial plus
-# 30 min of startup and monitor evals, capped at the 72 h partition limit.
-MINUTES=$(( TRIALS_PER_TASK * 90 + 30 ))
-(( MINUTES > 4320 )) && MINUTES=4320
-WALLTIME="${WALLTIME:-$(printf '%d:%02d:00' $(( MINUTES / 60 )) $(( MINUTES % 60 )))}"
+# Walltime is sized PER PASS MODE, because the two differ ~6x in wall-clock for the SAME 5000-step
+# budget. full_pass reaches 5000 steps in ~25-57 epochs (v3 full-FT: 5000 x 0.93 s = 77 min), but
+# accumulate makes only ONE update per dataset, so it needs ~385 epochs -- each a full pass over
+# all datasets -- ~= 7 h (TabICLv2 measured, exp1_pd). A single flat walltime cannot serve both:
+# the old 3:30 sizing (90 min/trial) killed every accumulate trial at ~50% (exp1_pd 29-08 -> 0/384
+# accumulate ever completed), and sizing UP for accumulate would needlessly lower full_pass's
+# scheduling priority (shorter walltime backfills better: 48h -> 1-2 GPUs, 10h -> 15-21). So:
+# full_pass keeps the short, high-priority walltime; accumulate gets its own long one.
+hms() { printf '%d:%02d:00' $(( $1 / 60 )) $(( $1 % 60 )); }
+FULL_MIN=$(( TRIALS_PER_TASK * 90 + 30 ))                          # 90 min/trial + 30 startup
+ACC_MIN=$(( TRIALS_PER_TASK * ${ACC_MIN_PER_TRIAL:-600} + 30 ))    # ~10 h/trial (TabICL 7 h + margin)
+(( FULL_MIN > 4320 )) && FULL_MIN=4320                             # 72 h partition cap
+(( ACC_MIN  > 4320 )) && ACC_MIN=4320
+FULL_WALLTIME="${WALLTIME:-$(hms "$FULL_MIN")}"                    # WALLTIME= overrides full_pass
+ACC_WALLTIME="${ACC_WALLTIME:-$(hms "$ACC_MIN")}"                 # ACC_WALLTIME= overrides accumulate
 ACCOUNT="${CREDITPFN_ACCOUNT:-lp_verbekelab}"
 STAGES="${STAGES:-train}"
 JOB="scripts/slurm/train_${TRACK}.slurm"
@@ -85,9 +95,10 @@ EVAL_JOB="scripts/slurm/eval_${TRACK}.slurm"
 export EVAL_TASKS="${EVAL_TASKS:-16}"
 EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-16}"
 
-# Which cluster each trial belongs on. `--trial-family` already tells us tabpfn vs tabicl, but
-# the split we need is by MEMORY, so ask for the base checkpoint of each trial instead.
-mapfile -t TRIAL_BASE < <(python - "$CONFIG" "$N_TRIALS" <<'PY'
+# Per trial: the routing base + frozen flag (route_for keys placement on MEMORY, i.e. the base
+# checkpoint) AND the pass mode (walltime keys on it -- see above). `--trial-family` only tells us
+# tabpfn vs tabicl, so read the grid directly. One line/trial: "<base> <full|frozen> <pass_mode>".
+mapfile -t TRIAL_INFO < <(python - "$CONFIG" <<'PY'
 import sys
 from omegaconf import OmegaConf
 sys.path.insert(0, ".")
@@ -95,7 +106,7 @@ import scripts.train_pipeline as tp
 cfg = OmegaConf.merge(OmegaConf.load("config/train.yaml"), OmegaConf.load(sys.argv[1]))
 for t in tp._resolve_grid(cfg, single=False):
     # tuple is (base, lr, frozen, qf, accum, pass_mode, min_train_rows, l2sp)
-    print(t[0].rsplit("/", 1)[-1], "frozen" if t[2] else "full")
+    print(t[0].rsplit("/", 1)[-1], "frozen" if t[2] else "full", t[5])
 PY
 )
 
@@ -142,9 +153,11 @@ route_for() {
 # them. The grid is base-major (48 trials = 4 bases x 12), so any TRIALS_PER_TASK dividing the
 # per-base block keeps a task inside one base — but assert it rather than trust it, because
 # both the routing and the per-family tabicl preflight are keyed on the base.
-declare -A TASK_DEST
+declare -A TASK_DEST TASK_PASS
 for (( t=0; t<N_TRIALS; t++ )); do
-    d="$(route_for ${TRIAL_BASE[$t]:-unknown full})"
+    read -r _b _fr _pm <<< "${TRIAL_INFO[$t]}"
+    _pm="${_pm%$'\r'}"                         # defend against a \r if python emits CRLF
+    d="$(route_for "${_b:-unknown}" "${_fr:-full}")"
     task=$(( t / TRIALS_PER_TASK ))
     if [[ -n "${TASK_DEST[$task]:-}" && "${TASK_DEST[$task]}" != "$d" ]]; then
         echo "ERROR: TRIALS_PER_TASK=${TRIALS_PER_TASK} makes task ${task} span two" >&2
@@ -152,14 +165,23 @@ for (( t=0; t<N_TRIALS; t++ )); do
         echo "       divides the per-base block size (${N_TRIALS}/n_bases), e.g. 1, 2, 3, 4, 6." >&2
         exit 1
     fi
+    # A task must also not straddle pass modes, or one walltime cannot fit it. The grid runs
+    # ...FFAA... in pairs (pass mode is the axis just inside frozen), so any TRIALS_PER_TASK
+    # dividing 2 keeps a task single-mode; assert it rather than trust it.
+    if [[ -n "${TASK_PASS[$task]:-}" && "${TASK_PASS[$task]}" != "$_pm" ]]; then
+        echo "ERROR: TRIALS_PER_TASK=${TRIALS_PER_TASK} makes task ${task} span two pass modes" >&2
+        echo "       ('${TASK_PASS[$task]}' and '${_pm}'). Use a value that divides 2 (1 or 2)." >&2
+        exit 1
+    fi
     TASK_DEST[$task]="$d"
+    TASK_PASS[$task]="$_pm"
 done
 N_TASKS=${#TASK_DEST[@]}
-echo "${N_TRIALS} trials -> ${N_TASKS} array task(s) at ${TRIALS_PER_TASK}/task, walltime ${WALLTIME}"
+echo "${N_TRIALS} trials -> ${N_TASKS} array task(s) at ${TRIALS_PER_TASK}/task; walltime full_pass=${FULL_WALLTIME} accumulate=${ACC_WALLTIME}"
 
 declare -A BUCKET
 for task in $(printf '%s\n' "${!TASK_DEST[@]}" | sort -n); do
-    key="${TASK_DEST[$task]}"
+    key="${TASK_DEST[$task]}|${TASK_PASS[$task]}"   # destination AND pass mode -> each its own walltime
     BUCKET["$key"]="${BUCKET[$key]:+${BUCKET[$key]},}$task"
 done
 
@@ -168,7 +190,9 @@ echo " config : $CONFIG        track: $TRACK"
 echo " trials : $N_TRIALS per split     splits: $N_SPLITS     total: $((N_TRIALS * N_SPLITS))"
 for key in "${!BUCKET[@]}"; do
     n=$(awk -F, '{print NF}' <<< "${BUCKET[$key]}")
-    echo " route  : ${key}  <- ${n} tasks/split"
+    IFS='|' read -r _d _pm <<< "$key"
+    [[ "$_pm" == "accumulate" ]] && _wt="$ACC_WALLTIME" || _wt="$FULL_WALLTIME"
+    echo " route  : ${_d}  [${_pm}]  <- ${n} tasks/split, walltime ${_wt}"
 done
 echo "=============================================================="
 
@@ -224,9 +248,11 @@ for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         done
     fi
     for key in "${!BUCKET[@]}"; do
-        read -r cluster partition <<< "$key"
+        IFS='|' read -r dest pm <<< "$key"
+        read -r cluster partition <<< "$dest"
+        [[ "$pm" == "accumulate" ]] && wt="$ACC_WALLTIME" || wt="$FULL_WALLTIME"
         CMD=(sbatch --parsable --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
-             --array="${BUCKET[$key]}%${THROTTLE}" --time="$WALLTIME"
+             --array="${BUCKET[$key]}%${THROTTLE}" --time="$wt"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK"
              "$JOB")
         if [[ -n "${DRY:-}" ]]; then

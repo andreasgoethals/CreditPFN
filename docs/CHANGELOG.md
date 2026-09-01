@@ -22,6 +22,12 @@ day is never rewritten.
   loader was monkeypatched away before, so the frozen path had no coverage.
 - **exp0 `frozen_backbone: [false] -> [false, true]`** (both `experiment0_*.yaml`). The control now
   exercises the frozen load/save path it was meant to; at lr=0 the frozen arm is still an identity.
+- **`run_experiment.sh`: walltime is now sized PER PASS MODE.** accumulate needs ~385 epochs
+  (~7-10 h) vs full_pass's ~25-57 (~1.3 h) for the same 5000-step budget, so the old flat
+  `90 min/trial` (3:30) killed every accumulate trial at ~50% (exp1_pd: 0/384 accumulate completed).
+  Now full_pass keeps the short high-priority walltime and accumulate gets its own long one
+  (`ACC_MIN_PER_TRIAL`, default 600 min; `ACC_WALLTIME=` to override). The grid runs ...FFAA... in
+  pairs so tasks stay single-mode; the script asserts no task straddles modes.
 
 ## 24-08-2026
 
