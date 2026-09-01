@@ -196,10 +196,14 @@ for key in "${!BUCKET[@]}"; do
 done
 echo "=============================================================="
 
-queued_tasks() {   # tasks this user currently has across both controllers
+queued_tasks() {   # array TASKS this user has across all controllers. -r EXPANDS arrays, so a
+                   # pending [0-47] counts as 48 (how the QOS MaxSubmitJobsPerUser limit actually
+                   # counts it) rather than as 1 -- without -r the throttle under-counts by ~48x,
+                   # sails past the 500 cap, and every submit then bounces off submit_retry for
+                   # hours instead of waiting cleanly here (exp1_pd, 01-09-2026).
     local n=0 c
     for c in mindwell wice genius; do
-        n=$(( n + $(squeue -M "$c" -u "$USER" -h -t PD,R -o "%i" 2>/dev/null | wc -l) ))
+        n=$(( n + $(squeue -M "$c" -u "$USER" -h -r -t PD,R -o "%i" 2>/dev/null | wc -l) ))
     done
     echo "$n"
 }

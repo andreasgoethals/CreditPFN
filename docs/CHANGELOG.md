@@ -28,6 +28,9 @@ day is never rewritten.
   Now full_pass keeps the short high-priority walltime and accumulate gets its own long one
   (`ACC_MIN_PER_TRIAL`, default 600 min; `ACC_WALLTIME=` to override). The grid runs ...FFAA... in
   pairs so tasks stay single-mode; the script asserts no task straddles modes.
+- **`run_experiment.sh`: `queued_tasks` now counts array TASKS (`squeue -r`).** Without `-r` a
+  pending `[0-47]` array read as 1, so the up-front throttle under-counted ~48x, sailed past the
+  500-task QOS cap, and left `submit_retry` bouncing for hours. Now the throttle waits cleanly.
 
 ## 24-08-2026
 
