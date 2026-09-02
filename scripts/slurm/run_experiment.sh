@@ -259,8 +259,13 @@ for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         IFS='|' read -r dest pm <<< "$key"
         read -r cluster partition <<< "$dest"
         [[ "$pm" == "accumulate" ]] && wt="$ACC_WALLTIME" || wt="$FULL_WALLTIME"
+        # wICE gpu_h100/gpu_a100 cap at 16 cores/GPU; train_*.slurm asks for 24 (a B200 figure),
+        # so every wICE submit bounced with "Requested node configuration is not available"
+        # (exp1_pd 02-09). Cap cores per cluster -- the flag overrides the SBATCH directive; B200
+        # keeps 24. Memory (120G) is under wICE's 187G/GPU cap, so it needs no override.
+        [[ "$cluster" == "wice" ]] && cpus=16 || cpus=24
         CMD=(sbatch --parsable --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
-             --array="${BUCKET[$key]}%${THROTTLE}" --time="$wt"
+             --array="${BUCKET[$key]}%${THROTTLE}" --time="$wt" --cpus-per-task="$cpus"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK"
              "$JOB")
         if [[ -n "${DRY:-}" ]]; then

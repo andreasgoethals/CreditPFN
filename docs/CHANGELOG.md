@@ -20,6 +20,11 @@ day is never rewritten.
   margin. Uniform across bases, so it over-provisions v3/tabicl (priority cost); `ACC_WALLTIME=` to
   override, or make it per-base later. full_pass stays 2:00.
 
+- **`run_experiment.sh`: per-cluster `--cpus-per-task`** (wICE 16, B200 24). `train_*.slurm` hardcodes
+  24 (a B200 figure); wICE gpu_h100/gpu_a100 cap at 16 cores/GPU, so every TabICL submit there
+  bounced with "Requested node configuration is not available" (exp1_pd 02-09) — TabICL silently
+  never queued. The sbatch flag overrides the directive; memory (120G) is under wICE's cap.
+
 ## 31-08-2026
 
 - **Fix `NameError: ckpt_path` in `load_tabpfn_for_training`'s frozen branch** (`src/train/model.py`).
