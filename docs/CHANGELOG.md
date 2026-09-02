@@ -12,6 +12,13 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 02-09-2026
+
+- **accumulate walltime 10:30 -> 14:00** (`ACC_MIN_PER_TRIAL` 600 -> 810). Measured on the fixed
+  run: v2.6 accumulate was still mid-training at epoch 346/384 (628 min) when 10:30 killed it —
+  ~half the accumulate arm died at ~90% done. 14 h clears the ~11.6 h it needed; `ACC_WALLTIME=` to
+  raise further (v2 unmeasured). full_pass stays 2:00.
+
 ## 31-08-2026
 
 - **Fix `NameError: ckpt_path` in `load_tabpfn_for_training`'s frozen branch** (`src/train/model.py`).
