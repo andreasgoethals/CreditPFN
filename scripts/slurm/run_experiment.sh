@@ -80,10 +80,11 @@ fi
 # full_pass keeps the short, high-priority walltime; accumulate gets its own long one.
 hms() { printf '%d:%02d:00' $(( $1 / 60 )) $(( $1 % 60 )); }
 FULL_MIN=$(( TRIALS_PER_TASK * 90 + 30 ))                          # 90 min/trial + 30 startup
-ACC_MIN=$(( TRIALS_PER_TASK * ${ACC_MIN_PER_TRIAL:-810} + 30 ))    # ~14 h/trial: MEASURED worst is
-#   v2.6 accumulate at epoch 346/384 = 628 min still short of done (~11.6 h needed). 10:30 (600) killed
-#   ~half the accumulate arm at ~90% (exp1_pd 01-09); 810 -> 14:00 at 1/task. Bump ACC_WALLTIME= if a
-#   base still hits it (v2 is unmeasured). A re-kill wastes the whole ~12 h, so err generous.
+ACC_MIN=$(( TRIALS_PER_TASK * ${ACC_MIN_PER_TRIAL:-1170} + 30 ))   # ~20 h/trial. MEASURED, exp1_pd:
+#   v3 ~10 h, v2.6 ~11.6 h, tabicl ~7 h all fit -- but v2 accumulate runs ~2.74 min/epoch x 384 =
+#   ~17.6 h (02-09, epoch 249/384 at 683 min), so 14:00 (810) killed it at ~80%. 1170 -> 20:00 at
+#   1/task clears v2 with margin. Uniform across bases over-provisions the fast ones (priority cost);
+#   ACC_WALLTIME= to override. A re-kill wastes the whole run, so err generous.
 (( FULL_MIN > 4320 )) && FULL_MIN=4320                             # 72 h partition cap
 (( ACC_MIN  > 4320 )) && ACC_MIN=4320
 FULL_WALLTIME="${WALLTIME:-$(hms "$FULL_MIN")}"                    # WALLTIME= overrides full_pass

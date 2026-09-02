@@ -14,10 +14,11 @@ day is never rewritten.
 
 ## 02-09-2026
 
-- **accumulate walltime 10:30 -> 14:00** (`ACC_MIN_PER_TRIAL` 600 -> 810). Measured on the fixed
-  run: v2.6 accumulate was still mid-training at epoch 346/384 (628 min) when 10:30 killed it —
-  ~half the accumulate arm died at ~90% done. 14 h clears the ~11.6 h it needed; `ACC_WALLTIME=` to
-  raise further (v2 unmeasured). full_pass stays 2:00.
+- **accumulate walltime 10:30 -> 14:00 -> 20:00** (`ACC_MIN_PER_TRIAL` 600 -> 810 -> 1170). Measured
+  on the fixed run: v3 ~10 h, v2.6 ~11.6 h, tabicl ~7 h all fit 14 h, but **v2 accumulate runs ~2.74
+  min/epoch x 384 = ~17.6 h** (epoch 249/384 at 683 min) — 14 h killed it at ~80%. 20 h clears v2 with
+  margin. Uniform across bases, so it over-provisions v3/tabicl (priority cost); `ACC_WALLTIME=` to
+  override, or make it per-base later. full_pass stays 2:00.
 
 ## 31-08-2026
 
