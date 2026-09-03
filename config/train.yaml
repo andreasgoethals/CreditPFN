@@ -62,7 +62,10 @@ train:
   grad_clip_norm: 1.0
   amp: true
   amp_dtype: "auto"                       # BF16 where supported
-  dataloader_workers: 0                   # >0 deadlocks with the per-step CSV loader
+  dataloader_workers: 0                   # 0 = serial (default). >0 parallelises the per-step
+  #   TabPFN preprocessing across CPU workers so the GPU SMs don't idle waiting for it; loop.py
+  #   forces the `spawn` context, which fixes the old fork deadlock. -1 = auto (allocated cores-1),
+  #   capped per cluster. Override per-run without editing this file: CREDITPFN_DATALOADER_WORKERS.
   step_log_interval: 10
   n_estimators_finetune: {pd: 2, lgd: 2, default: 2}   # ensemble members per TRAINING step
                                           # LGD was 8, which forced its row caps down 4x

@@ -12,6 +12,19 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 03-09-2026
+
+- **Parallel data loading (fixes the low-GPU-utilization jobs VSC flagged).** Each step re-fits
+  TabPFN's preprocessor on CPU; with `num_workers=0` that ran inline and the GPU SMs idled. The old
+  `0` default was because ">0 deadlocks" — a fork trap (CUDA already initialised + the CSV loader's
+  `lru_cache` lock). `run`/`loop.py` now forces the **spawn** start method (no inherited CUDA/locks),
+  `persistent_workers`, `prefetch_factor=4`, and pins one BLAS thread/worker, so preprocessing
+  overlaps GPU compute. Off by default (`dataloader_workers: 0`); enable per-run with
+  `CREDITPFN_DATALOADER_WORKERS` (or `-1` = auto, cores-1), clamped to the allocated CPUs.
+  Correctness: every batch is a pure fn of `(index, epoch)` via the explicit per-step seed (no
+  global RNG on the data path), so workers are byte-identical to serial — asserted by new tests
+  (`getitem_is_pure`, `workers_match_serial_and_dont_hang` runs real spawn workers, `resolve_..._caps`).
+
 ## 02-09-2026
 
 - **accumulate walltime 10:30 -> 14:00 -> 20:00** (`ACC_MIN_PER_TRIAL` 600 -> 810 -> 1170). Measured

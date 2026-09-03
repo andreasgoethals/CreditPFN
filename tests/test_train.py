@@ -424,6 +424,85 @@ def test_dataloader_deterministic_within_epoch(synthetic_processed) -> None:
     assert torch.equal(a.X_query,   b.X_query)
 
 
+def test_dataloader_getitem_is_pure(synthetic_processed) -> None:
+    """``loader[i]`` called TWICE in the same process must be byte-identical.
+
+    This is THE property that makes ``num_workers>0`` safe: ``__getitem__`` is a pure function of
+    ``(index, epoch)``, seeded by the explicit per-step seed with no global-RNG progression. If any
+    step consumed a global RNG, the second call would differ and parallel workers would silently
+    change the training data. So it must hold for every batch field.
+    """
+    refs = build_dataset_pool("pd")
+    ds = ProcessedDatasetLoader(refs, max_rows_per_epoch=80, query_fraction=0.2, seed=7)
+    ds.set_epoch(3)
+    for idx in range(len(refs)):
+        a, b = ds[idx], ds[idx]
+        assert torch.equal(a.X_context, b.X_context)
+        assert torch.equal(a.y_context, b.y_context)
+        assert torch.equal(a.X_query, b.X_query)
+        assert torch.equal(a.y_query, b.y_query)
+
+
+def test_dataloader_workers_match_serial_and_dont_hang(synthetic_processed) -> None:
+    """``num_workers=2`` (spawn) yields a byte-identical batch sequence to ``num_workers=0`` and
+    completes (no deadlock).
+
+    End-to-end guarantee that the parallel-loading speedup changes NOTHING about the data — only
+    WHEN the CPU work happens. It really spawns worker processes (so it also proves the loader is
+    picklable, which the spawn start method requires, and that the old fork deadlock is gone).
+    ``shuffle=False`` so the two runs visit indices in the same order and can be compared 1:1.
+    """
+    import pickle
+    from torch.utils.data import DataLoader
+    from src.train.loop import _dl_worker_init
+
+    refs = build_dataset_pool("pd")
+
+    def _make():
+        ds = ProcessedDatasetLoader(refs, max_rows_per_epoch=80, query_fraction=0.2, seed=11)
+        ds.set_epoch(2)
+        return ds
+
+    # spawn ships the dataset to workers by pickle — verify that up front with a clear error.
+    pickle.loads(pickle.dumps(_make()))
+
+    def _drain(n_workers: int):
+        kw = dict(batch_size=1, shuffle=False, collate_fn=identity_collate, num_workers=n_workers)
+        if n_workers > 0:
+            kw.update(multiprocessing_context="spawn", persistent_workers=True,
+                      prefetch_factor=2, worker_init_fn=_dl_worker_init)
+        return list(DataLoader(_make(), **kw))
+
+    serial = _drain(0)
+    parallel = _drain(2)
+    assert len(serial) == len(parallel) == len(refs)
+    for s, p in zip(serial, parallel):
+        assert torch.equal(s.X_context, p.X_context)
+        assert torch.equal(s.y_context, p.y_context)
+        assert torch.equal(s.X_query, p.X_query)
+        assert torch.equal(s.y_query, p.y_query)
+        assert s.dataset_id == p.dataset_id
+
+
+def test_resolve_dataloader_workers_caps_to_allocated_cpus(monkeypatch) -> None:
+    """The worker count is clamped to ``[0, cpus_allocated-1]`` and honours the env override, so
+    the same config is safe on a 24-core B200 and a 16-core H100 node and never oversubscribes."""
+    from src.train.loop import _resolve_dataloader_workers
+    cfg = NS(train=NS(dataloader_workers=8))
+    monkeypatch.delenv("CREDITPFN_DATALOADER_WORKERS", raising=False)
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "24")
+    assert _resolve_dataloader_workers(cfg) == 8            # request under the cap
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "4")
+    assert _resolve_dataloader_workers(cfg) == 3            # clamped to cpus-1
+    monkeypatch.setenv("SLURM_CPUS_PER_TASK", "16")
+    monkeypatch.setenv("CREDITPFN_DATALOADER_WORKERS", "-1")  # auto = cores-1
+    assert _resolve_dataloader_workers(cfg) == 15
+    monkeypatch.setenv("CREDITPFN_DATALOADER_WORKERS", "0")   # env forces serial
+    assert _resolve_dataloader_workers(cfg) == 0
+    monkeypatch.setenv("CREDITPFN_DATALOADER_WORKERS", "6")   # env overrides the config's 8
+    assert _resolve_dataloader_workers(cfg) == 6
+
+
 def test_identity_collate_rejects_multi_batch() -> None:
     """TabPFN's meta_dataset_collator hard-asserts batch_size=1."""
     with pytest.raises(ValueError, match="batch_size=1"):

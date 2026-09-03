@@ -70,6 +70,60 @@ LOGGER = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
+# Parallel data loading
+# --------------------------------------------------------------------------- #
+# WHY THIS EXISTS. Each training step re-fits TabPFN's ensemble preprocessor on the context
+# (`fit_transform_ensemble_members`) on CPU. With `num_workers=0` that preprocessing runs
+# INLINE, so the GPU SMs idle while the CPU works — the low-utilization pattern the VSC
+# maintainers flagged (02-09-2026). Worker processes run the preprocessing in parallel and
+# PREFETCH the next batches while the GPU computes the current step, so the SMs stay fed.
+#
+# The old default was `num_workers=0` because ">0 deadlocks" — the deadlock is the classic
+# fork+state trap: by the time the DataLoader is built the model is already on the GPU (CUDA is
+# initialised) and `_load_processed_csv` holds an `lru_cache` lock, and forking such a process
+# hangs the children. We fix that STRUCTURALLY by forcing the `spawn` start method (clean
+# processes: no inherited CUDA context, no inherited locks). Correctness does not depend on the
+# worker count: every batch is a pure function of `(index, epoch)` via the explicit per-step
+# seed computed in `__getitem__` (no global RNG on the data path), so `num_workers>0` yields
+# byte-identical batches to `num_workers=0` (asserted in tests/test_train.py).
+
+
+def _dl_worker_init(_worker_id: int) -> None:
+    """Pin BLAS/torch to a single thread inside each DataLoader worker.
+
+    Without this, W workers each spin up a full BLAS/OMP threadpool over the same cores
+    (W x cores threads) and thrash — which would make parallel loading SLOWER, not faster.
+    One compute thread per worker is what we want: parallelism comes from the workers, not
+    from nested threadpools. Does NOT affect results, only speed.
+    """
+    try:
+        torch.set_num_threads(1)
+    except Exception:  # pragma: no cover - defensive; never fail a worker over this
+        pass
+    for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+        os.environ.setdefault(_v, "1")
+
+
+def _resolve_dataloader_workers(cfg) -> int:
+    """Number of training DataLoader workers, capped so we never oversubscribe the CPUs Slurm
+    allocated.
+
+    Source of the request, in order: the ``CREDITPFN_DATALOADER_WORKERS`` env var (so a run can
+    turn parallel loading on/off without editing the tracked config), else
+    ``cfg.train.dataloader_workers``. Semantics: ``0`` = serial (the safe default, unchanged
+    behaviour); ``N>0`` = request N; ``-1`` = auto (all allocated cores but one). The result is
+    clamped to ``[0, cpus_allocated - 1]`` — Mindwell gpu_b200 gives 24 cores/GPU, wICE gpu_h100
+    16, so the same config is safe on both. One core is always left for the main/training process.
+    """
+    raw = os.environ.get("CREDITPFN_DATALOADER_WORKERS")
+    want = int(raw) if raw not in (None, "") else int(cfg.train.dataloader_workers)
+    cpus = int(os.environ.get("SLURM_CPUS_PER_TASK") or (os.cpu_count() or 1))
+    if want < 0:                       # auto
+        want = cpus - 1
+    return max(0, min(want, cpus - 1))
+
+
+# --------------------------------------------------------------------------- #
 # Result containers
 # --------------------------------------------------------------------------- #
 
@@ -1871,14 +1925,30 @@ def train_one_config(
         model_family=family,
         context_sampling=context_sampling,
     )
-    train_loader = DataLoader(
-        train_ds,
+    n_workers = _resolve_dataloader_workers(cfg)
+    dl_kwargs: dict = dict(
         batch_size=1,
         shuffle=True,
-        num_workers=int(cfg.train.dataloader_workers),
+        num_workers=n_workers,
         collate_fn=identity_collate,
         pin_memory=device == "cuda",
     )
+    if n_workers > 0:
+        # MUST be spawn — see the "Parallel data loading" note above (fork hangs after CUDA init
+        # + the lru_cache lock). persistent_workers avoids paying spawn's startup cost every
+        # epoch; the worker init pins each worker to one BLAS thread so they don't fight for cores.
+        dl_kwargs.update(
+            multiprocessing_context="spawn",
+            persistent_workers=True,
+            prefetch_factor=4,
+            worker_init_fn=_dl_worker_init,
+        )
+    LOGGER.info(
+        "DataLoader: num_workers=%d%s", n_workers,
+        " (spawn, prefetch=4, persistent) — CPU preprocessing overlaps GPU" if n_workers > 0
+        else " (serial; set CREDITPFN_DATALOADER_WORKERS or train.dataloader_workers to parallelise)",
+    )
+    train_loader = DataLoader(train_ds, **dl_kwargs)
 
     epochs = int(cfg.train.epochs)
     # `accumulate_grad_batches` is a tunable as of 2026-05-27. Caller
