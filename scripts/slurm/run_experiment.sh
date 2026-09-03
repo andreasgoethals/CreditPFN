@@ -266,7 +266,7 @@ for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         [[ "$cluster" == "wice" ]] && cpus=16 || cpus=24
         CMD=(sbatch --parsable --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
              --array="${BUCKET[$key]}%${THROTTLE}" --time="$wt" --cpus-per-task="$cpus"
-             --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK"
+             --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK",CREDITPFN_DATALOADER_WORKERS="${CREDITPFN_DATALOADER_WORKERS:-0}"
              "$JOB")
         if [[ -n "${DRY:-}" ]]; then
             echo "DRY: ${CMD[*]}"

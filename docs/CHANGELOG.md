@@ -20,7 +20,8 @@ day is never rewritten.
   `lru_cache` lock). `run`/`loop.py` now forces the **spawn** start method (no inherited CUDA/locks),
   `persistent_workers`, `prefetch_factor=4`, and pins one BLAS thread/worker, so preprocessing
   overlaps GPU compute. Off by default (`dataloader_workers: 0`); enable per-run with
-  `CREDITPFN_DATALOADER_WORKERS` (or `-1` = auto, cores-1), clamped to the allocated CPUs.
+  `CREDITPFN_DATALOADER_WORKERS` (or `-1` = auto, cores-1), clamped to the allocated CPUs;
+  `run_experiment.sh` forwards it explicitly to every array task's `--export`.
   Correctness: every batch is a pure fn of `(index, epoch)` via the explicit per-step seed (no
   global RNG on the data path), so workers are byte-identical to serial — asserted by new tests
   (`getitem_is_pure`, `workers_match_serial_and_dont_hang` runs real spawn workers, `resolve_..._caps`).
