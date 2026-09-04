@@ -43,6 +43,7 @@ Two design contracts
 from __future__ import annotations
 
 import logging
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,6 +77,23 @@ def _load_default_cfg():
                    checkpoint=_NS(trained_dir=str(checkpoints_dir("trained"))))
 
 
+#: Run to visualise, overriding ``config/train.yaml``'s ``run_name``. A notebook sets this once
+#: (``training_viz.use_run("exp1")``) so every loader below reads that run's artefacts instead of
+#: the default. The env var ``CREDITPFN_VIZ_RUN`` does the same for ``run_notebooks`` / scripts.
+_RUN_OVERRIDE: str | None = None
+
+
+def use_run(name: str | None) -> None:
+    """Point every training loader at run ``name`` (e.g. ``"exp1"``); ``None`` restores the default.
+
+    Experiment 1 is submitted per split, so its manifests are ``<run>_s00_<track>.csv`` …
+    ``<run>_s07_<track>.csv`` rather than a single ``<run>_<track>.csv`` — :func:`load_run_manifest`
+    handles both, and tags each row with a ``split`` column when the per-split layout is found.
+    """
+    global _RUN_OVERRIDE
+    _RUN_OVERRIDE = str(name) if name else None
+
+
 def _resolve_paths(cfg=None) -> dict[str, Path]:
     """Resolve the on-disk roots for the training artefacts.
 
@@ -94,7 +112,8 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
     if cfg is None:
         cfg = _load_default_cfg()
 
-    run_name = str(getattr(cfg, "run_name", "creditpfn"))
+    run_name = (_RUN_OVERRIDE or os.environ.get("CREDITPFN_VIZ_RUN")
+                or str(getattr(cfg, "run_name", "creditpfn")))
     trained_dir = str(getattr(cfg, "checkpoint", _load_default_cfg().checkpoint)
                       .trained_dir if hasattr(cfg, "checkpoint")
                       else str(checkpoints_dir("trained")))
@@ -226,26 +245,66 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
     an empty DataFrame if the file doesn't exist yet (so notebook
     cells still render before any trial finishes).
     """
+    import re
     paths = _resolve_paths(cfg)
-    p = paths["manifest_dir"] / f"{paths['run_name']}_{track}.csv"
-    if not p.exists():
-        return pd.DataFrame()
+    run, mdir = paths["run_name"], paths["manifest_dir"]
 
-    df = pd.read_csv(p)
-    if df.empty:
-        return df
+    # Two on-disk layouts. A single-run sweep writes one manifest ``<run>_<track>.csv``. Experiment 1
+    # is submitted per dataset split (train_pipeline appends ``_s<NN>`` to run_name), so it writes
+    # ``<run>_s00_<track>.csv`` … ``<run>_s07_<track>.csv``. Read whichever exists; for the per-split
+    # layout, concatenate and tag each row with its ``split`` so downstream figures can aggregate.
+    single = mdir / f"{run}_{track}.csv"
+    if single.exists():
+        parts: list[tuple[Path, int | None]] = [(single, None)]
+    else:
+        parts = []
+        for pth in sorted(mdir.glob(f"{run}_s*_{track}.csv")):
+            m = re.search(rf"_s(\d+)_{re.escape(track)}\.csv$", pth.name)
+            parts.append((pth, int(m.group(1)) if m else None))
+
+    frames = []
+    for pth, split in parts:
+        try:
+            d = pd.read_csv(pth)
+        except Exception:                                # pragma: no cover
+            continue
+        if d.empty:
+            continue
+        frames.append(d.assign(split=split) if split is not None else d)
+    if not frames:
+        return pd.DataFrame()
+    df = pd.concat(frames, ignore_index=True)
+
+    # Drop stale pre-provenance rows. Re-submissions APPEND to the same per-split manifest, so it
+    # accumulates rows from every code version the run has seen. Rows written before the pipeline
+    # recorded git provenance carry an empty ``git_commit`` — in Experiment 1 these are the frozen-
+    # TabPFN trials that died with the since-fixed ``ckpt_path`` NameError (fingerprint: empty commit
+    # + ``l2sp_lambda`` NaN). They are pure noise — no checkpoint, no result — and would otherwise
+    # inflate the failure rate by ~50 %. Current code always stamps the commit, so an empty one is
+    # unambiguously old. (No ``git_commit`` column ⇒ a legacy single-run manifest; leave it as-is.)
+    if "git_commit" in df.columns:
+        commit = df["git_commit"].astype("string").str.strip()
+        stale = commit.isna() | (commit == "")
+        if bool(stale.any()):
+            LOGGER.debug("load_run_manifest(%s): dropping %d stale pre-provenance row(s)",
+                         track, int(stale.sum()))
+            df = df.loc[~stale].reset_index(drop=True)
+        if df.empty:
+            return pd.DataFrame()
 
     # Derive trial_name + base_short from ckpt path (when available) or
     # rebuild from columns.
     def _stem(row) -> str:
         if isinstance(row["final_ckpt_path"], str) and row["final_ckpt_path"]:
             return Path(row["final_ckpt_path"]).stem
-        # FAIL rows have no ckpt — reconstruct.
+        # FAIL rows have no ckpt — reconstruct (per-split run name when the split is known).
+        run_i = (f"{run}_s{int(row['split']):02d}"
+                 if "split" in row.index and pd.notna(row.get("split")) else run)
         base_stem = Path(str(row["base_checkpoint"])).stem
         lr_tag = f"{float(row['learning_rate']):.0e}".replace("+", "")
         lora_tag = "_lora" if bool(row.get("use_lora", False)) else ""
         return (
-            f"{paths['run_name']}_{row['track']}_{base_stem}_"
+            f"{run_i}_{row['track']}_{base_stem}_"
             f"lr{lr_tag}_seed{int(row['seed'])}{lora_tag}"
         )
 

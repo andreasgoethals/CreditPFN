@@ -12,6 +12,20 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 04-09-2026
+
+- **Experiment-1 notebooks `1.1`–`1.4`** (`training_pd`, `training_lgd`, `results_pd`,
+  `results_lgd`), replacing the run-8 `1.0`/`1.1`/`2.0`/`2.1`. Intros rewritten for exp1's actual
+  design (the 24-scheme grid × 8 dataset splits; the split average is the point), section
+  numbering fixed (the duplicate `## 9` in the results notebooks → 9/10/11; `## 8.` → `## 8 ·`).
+  All four execute clean in `--script-mode` (86 figures, graceful-empty until exp1 output lands).
+- **Run-targeting in the viz loaders.** `training_viz.use_run('exp1')` / `eval_viz.use_run('exp1')`
+  (env `CREDITPFN_VIZ_RUN`) aim every loader + text summary at one run. `load_run_manifest` now
+  pools per-split manifests `exp1_s00_<track>.csv … exp1_s07_<track>.csv` into one frame with a
+  `split` column (falls back to the single `<run>_<track>.csv` layout); `load_eval_results` keeps
+  only files whose name starts `<run>_`, so exp1's splits never average with run-8's older results
+  in the same tree. New `tests/test_viz_run_targeting.py` (4 tests) pins both; suite 341 passed.
+
 ## 03-09-2026
 
 - **Parallel data loading (fixes the low-GPU-utilization jobs VSC flagged).** Each step re-fits

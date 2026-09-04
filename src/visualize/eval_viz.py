@@ -31,6 +31,7 @@ Two design contracts (mirrors src/utils/training_viz):
 from __future__ import annotations
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -186,6 +187,22 @@ def human_method_name(row: pd.Series) -> str:
 # =============================================================================
 
 
+#: Restrict :func:`load_eval_results` to one run's result files. Eval writes
+#: ``<run>_<ts>__task<k>_ds-<id>.csv`` (run is per-split, e.g. ``exp1_s03``), so a run is selected
+#: by the ``<run>_`` filename prefix. A notebook sets ``eval_viz.use_run("exp1")`` so run-8's old
+#: results in the same ``output/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
+#: same for scripts. ``None`` (the default) pools everything, preserving the previous behaviour.
+_RUN_OVERRIDE: str | None = None
+
+
+def use_run(name: str | None) -> None:
+    """Show only run ``name``'s eval results (matched by the ``<name>_`` filename prefix); ``None``
+    pools every run. ``"exp1"`` matches its per-split files ``exp1_s00_…`` … ``exp1_s07_…`` and
+    excludes ``exp0_…`` / ``creditpfn_…`` / ``run-8``."""
+    global _RUN_OVERRIDE
+    _RUN_OVERRIDE = str(name) if name else None
+
+
 def load_eval_results(track: str) -> pd.DataFrame:
     """Pool every CSV under ``<benchmark_root>/<TRACK>/**/*.csv``.
 
@@ -208,7 +225,13 @@ def load_eval_results(track: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     frames: list[pd.DataFrame] = []
-    for csv in sorted(track_dir.rglob("*.csv")):
+    run = _RUN_OVERRIDE or os.environ.get("CREDITPFN_VIZ_RUN")
+    csv_files = sorted(track_dir.rglob("*.csv"))
+    if run:
+        # Eval names files ``<run>_<ts>__task…``; the ``<run>_`` prefix isolates one run's per-split
+        # files (``exp1_s00_…``) and excludes ``exp0_…`` / ``creditpfn_…`` sharing this tree.
+        csv_files = [c for c in csv_files if c.name.startswith(f"{run}_")]
+    for csv in csv_files:
         try:
             df = pd.read_csv(csv)
         except Exception as exc:                          # pragma: no cover
