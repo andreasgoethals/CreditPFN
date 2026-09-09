@@ -196,6 +196,13 @@ class EpochRecord:
     # tensor did, which is what separates real adaptation from a shifted output bias.
     layer_drift: dict[str, float] = field(default_factory=dict)
 
+    # Aggregate ‖w−w0‖/‖w0‖ derived from the L2-SP penalty, recorded EVERY epoch (unlike
+    # `stage_drift`, which is monitor-only). The divergence guard needs a per-epoch "is the model
+    # still moving?" signal: without one, its 5-epoch window almost never overlaps a monitor epoch,
+    # so it silently falls back to a loss-only rule and kills slow-but-healthy trials. NaN when no
+    # L2-SP anchor is active (λ=0 / no anchor), where the penalty carries no drift information.
+    weight_drift: float = float("nan")
+
 
 @dataclass
 class TrainingResult:
@@ -488,6 +495,96 @@ def _drift_pct(l2sp_value: float, lam: float, w0_norm: float) -> str:
         return "n/a"
     dw = math.sqrt(2.0 * l2sp_value / lam)
     return f"{100.0 * dw / w0_norm:.3f}%"
+
+
+def _drift_fraction(l2sp_value: float, lam: float, w0_norm: float) -> float:
+    """Numeric ``‖w−w0‖/‖w0‖`` — the value :func:`_drift_pct` renders as a percentage string.
+
+    Returns NaN when there is no usable anchor (λ≤0 or a zero start-norm), so callers can treat
+    "no drift signal" and "zero drift" distinctly. Used by the divergence guard, which must run on
+    every epoch and therefore cannot rely on the monitor-only per-stage drift.
+    """
+    if lam <= 0 or w0_norm <= 0 or l2sp_value < 0:
+        return float("nan")
+    return math.sqrt(2.0 * l2sp_value / lam) / w0_norm
+
+
+def _divergence_reason(
+    recent: "list[EpochRecord]",
+    monitored_metrics: "list[tuple[float, float]]",
+    diverge_patience: int,
+    track_primary_metric: str,
+    epoch_eval_n0: int,
+) -> str | None:
+    """Early-abort reason for a window of the last ``diverge_patience`` epoch records, or ``None``
+    if the trial looks healthy. A PURE FUNCTION so the collapse heuristics are unit-testable in
+    isolation — the in-loop copy of this logic once drifted from its test replica (a test asserting
+    a per-epoch drift signal that production only produced on monitor epochs), which is exactly how
+    the ``loss_const`` false-abort of every accumulate + L2-SP trial went unnoticed.
+
+    Reasons, in priority order:
+
+    * ``loss_const`` — flat loss AND flat weight-drift. A flat loss alone is NOT a dead model: in
+      run-8, v2.6 @3e-7 full-FT held its loss at 0.4689-0.4690 for five epochs (inside the 1e-4
+      window) while its drift rose 0.042 %→0.085 % — it was training slowly, which is what the
+      lowest LR in the sweep is FOR. A model that has actually died stops MOVING, so we require
+      both. ``weight_drift`` is the per-epoch ‖w−w0‖/‖w0‖ (NaN when no anchor); reading it here
+      rather than the monitor-only per-stage drift is what makes "is it still moving?" answerable
+      on every epoch instead of only every ~19th.
+    * ``auc_random`` — PD ROC-AUC pinned at 0.5 (train and test) across the monitored window.
+    * ``metric_nan`` — the monitor is on (``epoch_eval_n0 > 0``) yet every metric is NaN.
+    * ``amp_skip_storm`` — more than half the AMP steps in the window were skipped.
+    """
+    if len(recent) != diverge_patience:
+        return None
+    losses = [r.train_loss for r in recent if not math.isnan(r.train_loss)]
+    # Metric signals must look only at monitored epochs — skipped ones hold NaN by design.
+    monitored_recent = monitored_metrics[-diverge_patience:]
+    metrics_window_full = len(monitored_recent) == diverge_patience
+    test_metrics_recent = [t for t, _ in monitored_recent]
+    train_metrics_recent = [tr for _, tr in monitored_recent]
+
+    recent_drift = [r.weight_drift for r in recent if r.weight_drift == r.weight_drift]
+    drift_flat = (
+        len(recent_drift) >= 2
+        and (max(recent_drift) - min(recent_drift)) < 1e-6
+    )
+    loss_constant = (
+        len(losses) == diverge_patience
+        and max(losses) - min(losses) < 1e-4
+        # No drift signal at all (λ=0 / no anchor) -> fall back to the loss-only rule.
+        and (drift_flat or not recent_drift)
+    )
+    auc_random = (
+        track_primary_metric == "roc_auc"
+        and metrics_window_full
+        and all(
+            not math.isnan(t) and not math.isnan(tr)
+            and abs(t - 0.5) < 1e-4 and abs(tr - 0.5) < 1e-4
+            for t, tr in zip(test_metrics_recent, train_metrics_recent)
+        )
+    )
+    metric_nan = (
+        epoch_eval_n0 > 0
+        and metrics_window_full
+        and all(
+            math.isnan(t) and math.isnan(tr)
+            for t, tr in zip(test_metrics_recent, train_metrics_recent)
+        )
+    )
+    attempted_steps = sum(r.optimizer_steps for r in recent)
+    amp_skips = sum(r.amp_skipped_steps for r in recent)
+    amp_skip_storm = attempted_steps > 0 and amp_skips / attempted_steps > 0.50
+
+    if loss_constant:
+        return "loss_const"
+    if auc_random:
+        return "auc_random"
+    if metric_nan:
+        return "metric_nan"
+    if amp_skip_storm:
+        return "amp_skip_storm"
+    return None
 
 
 def enable_tf32() -> str:
@@ -2705,6 +2802,13 @@ def train_one_config(
         # Scientific notation: at conservative LRs the penalty is ~1e-6..1e-9
         # (‖w−w0‖² after tiny steps), which a %.4f rendered as a useless
         # "0.0000" in every Jul-10 log line.
+        # Per-epoch weight drift for the divergence guard (and the log line below). Derived from
+        # the L2-SP penalty, so it is free and available EVERY epoch — the monitor-only
+        # `stage_drift` is not, which is what let the guard fall back to a loss-only rule.
+        epoch_weight_drift = (
+            _drift_fraction(float(np.mean(epoch_l2sp)), l2sp_lambda, l2sp_w0_norm)
+            if epoch_l2sp else float("nan")
+        )
         l2sp_str = (
             (f"  ctx_pos={100 * float(np.mean(epoch_ctx_pos_rate)):.2f}%"
              if epoch_ctx_pos_rate else "")
@@ -2736,6 +2840,7 @@ def train_one_config(
             per_dataset_loss=per_dataset_loss,
             stage_drift=stage_drift,
             layer_drift=layer_drift,
+            weight_drift=epoch_weight_drift,
             optimizer_steps=epoch_optimizer_steps,
             amp_skipped_steps=epoch_amp_skipped_steps,
             data_skipped_steps=epoch_skipped_steps,
@@ -2793,92 +2898,25 @@ def train_one_config(
         # diverged=True on the TrainingResult, and STILL save the
         # checkpoint (so the user can inspect what went wrong). The
         # caller writes a status="DIVERGED" row to the manifest.
+        # The heuristics live in `_divergence_reason` (a pure, unit-tested function) so the in-loop
+        # logic can never again silently drift from what the tests assert — the `loss_const`
+        # false-abort of every accumulate + L2-SP trial hid behind exactly that gap.
         diverge_patience = int(getattr(cfg.train, "divergence_patience", 5))
         recent = [r for r in history if r.epoch >= 0][-diverge_patience:]
-        if len(recent) == diverge_patience:
-            losses = [r.train_loss for r in recent if not math.isnan(r.train_loss)]
-            # Metric-based collapse signals must only look at epochs where the
-            # monitor actually RAN — with `epoch_eval_every > 1` the skipped
-            # epochs hold NaN by design and would fake a `metric_nan` collapse.
-            monitored_recent = monitored_metrics[-diverge_patience:]
-            metrics_window_full = len(monitored_recent) == diverge_patience
-            test_metrics_recent = [t for t, _ in monitored_recent]
-            train_metrics_recent = [tr for _, tr in monitored_recent]
-
-            # A FLAT LOSS IS NOT A DEAD MODEL. This rule alone killed a perfectly healthy
-            # trial in run-8: v2.6 @3e-7 full-FT held loss at 0.4689-0.4690 for five
-            # epochs — inside the 1e-4 window — while its weight drift rose monotonically
-            # (0.042 % -> 0.085 %), its held-out AUC sat at 0.7151, and its gradients were
-            # normal. It was training, slowly, exactly as the lowest learning rate in the
-            # sweep is supposed to. The abort wasted the trial AND removed the one
-            # configuration the run existed to test (Garg's 3e-7).
-            #
-            # A model that has actually died does not move: its weights stop changing.
-            # So require BOTH a flat loss and flat drift. ||w - w0|| is monotone by
-            # construction, so "not growing" is the signal that nothing is being learnt.
-            recent_drift = [max(r.stage_drift.values()) for r in recent
-                            if getattr(r, "stage_drift", None)]
-            drift_flat = (
-                len(recent_drift) >= 2
-                and (max(recent_drift) - min(recent_drift)) < 1e-6
+        reason = _divergence_reason(
+            recent, monitored_metrics, diverge_patience,
+            track_primary_metric, epoch_eval_n0,
+        )
+        if reason:
+            LOGGER.error(
+                "DIVERGED at epoch=%d after %d-epoch patience window "
+                "(reason=%s). Aborting early. Last good epoch=%d.",
+                epoch, diverge_patience, reason, epoch - diverge_patience,
             )
-            loss_constant = (
-                len(losses) == diverge_patience
-                and max(losses) - min(losses) < 1e-4
-                # No drift record (monitor off) -> fall back to the loss-only rule rather
-                # than never tripping at all.
-                and (drift_flat or not recent_drift)
-            )
-            # For PD (ROC-AUC primary), AUC=0.5 means random — exact
-            # equality after the dead-model collapse.
-            # For LGD (RMSE primary), the analogue is NaN train/test.
-            auc_random = (
-                track_primary_metric == "roc_auc"
-                and metrics_window_full
-                and all(
-                    not math.isnan(t) and not math.isnan(tr)
-                    and abs(t - 0.5) < 1e-4 and abs(tr - 0.5) < 1e-4
-                    for t, tr in zip(test_metrics_recent, train_metrics_recent)
-                )
-            )
-            # `metric_nan` is a collapse signal ONLY when the per-epoch
-            # monitor is actually running. When it's disabled
-            # (epoch_eval_subsample_samples == 0) every metric is NaN BY
-            # DESIGN — not because the model died — so guarding on
-            # ``epoch_eval_n0 > 0`` prevents a spurious DIVERGED abort that
-            # would otherwise truncate every monitor-disabled run after
-            # `patience` epochs. (Bug fixed 2026-06-23.)
-            metric_nan = (
-                epoch_eval_n0 > 0
-                and metrics_window_full
-                and all(
-                    math.isnan(t) and math.isnan(tr)
-                    for t, tr in zip(test_metrics_recent, train_metrics_recent)
-                )
-            )
-            attempted_steps = sum(r.optimizer_steps for r in recent)
-            amp_skips = sum(r.amp_skipped_steps for r in recent)
-            amp_skip_storm = (
-                attempted_steps > 0
-                and amp_skips / attempted_steps > 0.50
-            )
-            if loss_constant or auc_random or metric_nan or amp_skip_storm:
-                reason = (
-                    "loss_const" if loss_constant
-                    else "auc_random" if auc_random
-                    else "metric_nan" if metric_nan
-                    else "amp_skip_storm"
-                )
-                LOGGER.error(
-                    "DIVERGED at epoch=%d after %d-epoch patience window "
-                    "(reason=%s). Aborting early. Last good epoch=%d.",
-                    epoch, diverge_patience, reason,
-                    epoch - diverge_patience,
-                )
-                diverged = True
-                diverged_at_epoch = max(0, epoch - diverge_patience)
-                diverge_reason = reason
-                break
+            diverged = True
+            diverged_at_epoch = max(0, epoch - diverge_patience)
+            diverge_reason = reason
+            break
 
     # ---- 5b) gather summary metrics from the history ------------------ #
     # Pulled out into local vars so the TrainingResult constructor below

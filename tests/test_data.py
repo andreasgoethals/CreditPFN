@@ -3,7 +3,7 @@
 Layout choice
 -------------
 One file per ``src/`` subpackage. ``test_data.py`` covers everything in
-``src/data/``: preprocessing, register, sanitize, dedup, and the
+``src/data/``: preprocessing, register, sanitize, and the
 exploration helpers. The ``.npz`` chunking stage and its module
 (``src/data/dataset.py``) were removed in the 2026-05-20 refactor —
 training reads sanitized CSVs directly now.
@@ -20,8 +20,7 @@ Coverage map
     Block 1  preprocessing.py — surgical fixes + low-level parsers
     Block 2  register.py      — manifest building blocks
     Block 3  sanitize.py      — agnostic-clean steps in isolation
-    Block 4  dedup.py         — fingerprint + pairwise checks
-    Block 5  exploration.py   — smoke tests for the data-exploration helpers
+    Block 4  exploration.py   — smoke tests for the data-exploration helpers
 
 Tests intentionally lean toward *failure-mode coverage* over
 behavioural completeness. Each block prefers a few sharp tests that
@@ -59,14 +58,6 @@ from src.data.sanitize import (
     _clip_lgd_target,
     _label_encode_classification_target,
     _select_to_max_columns,
-)
-from src.data.dedup import (
-    Fingerprint,
-    compare_pair,
-    confidence_for,
-    _column_hashes,
-    _jaccard,
-    _row_hashes,
 )
 
 
@@ -532,131 +523,7 @@ def test_label_encode_classification_target() -> None:
 
 
 # =============================================================================
-# Block 4 · dedup.py
-# =============================================================================
-
-
-def test_jaccard() -> None:
-    assert _jaccard(["a", "b", "c"], ["a", "b", "c"]) == 1.0
-    assert _jaccard(["a", "b"], ["b", "c"]) == pytest.approx(1 / 3)
-    assert _jaccard([], []) == 1.0
-
-
-def test_row_hashes_basic() -> None:
-    df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
-    h1 = _row_hashes(df, decimals=None)
-    h2 = _row_hashes(df, decimals=None)
-    assert h1 == h2
-    assert len(h1) == 3
-
-
-def test_row_hashes_invariant_to_column_order() -> None:
-    df1 = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
-    df2 = pd.DataFrame({"b": [3, 4], "a": [1, 2]})
-    assert _row_hashes(df1, decimals=None) == _row_hashes(df2, decimals=None)
-
-
-def test_row_hashes_rounded_collapses_near_duplicates() -> None:
-    df1 = pd.DataFrame({"x": [1.0000000, 2.0]})
-    df2 = pd.DataFrame({"x": [1.0000002, 2.0]})  # 7th decimal differs
-    assert _row_hashes(df1, decimals=None) != _row_hashes(df2, decimals=None)
-    assert _row_hashes(df1, decimals=6) & _row_hashes(df2, decimals=6)
-
-
-def test_column_hashes_skip_low_cardinality() -> None:
-    """Columns with ≤ N unique values are skipped from the column-hash set."""
-    n = 100
-    df = pd.DataFrame({
-        "few":  [1] * (n // 2) + [2] * (n - n // 2),   # 2 unique values
-        "many": list(range(n)),                         # n unique values
-    })
-    hashes = _column_hashes(df, nontrivial_unique_min=5)
-    # Only the 'many' column survives the > 5 unique-values threshold.
-    assert len(hashes) == 1
-
-
-def _mk_cfg() -> NS:
-    return NS(
-        seed=42,
-        dedup=NS(
-            name_jaccard_threshold=0.80,
-            row_hash_intersection_min=1,
-            shared_columns_min=3,
-            column_nontrivial_unique_min=10,
-            rounded_row=NS(enabled=True, decimals=6),
-            subset=NS(enabled=True, min_overlap_fraction=0.95),
-            column_name_fuzzy=NS(
-                enabled_pre=True, enabled_post=False, similarity_threshold=90,
-            ),
-            confidence_rules=NS(
-                high=["id_match", "row_hash"],
-                medium=["col_hash", "name_jaccard_and_shape"],
-                low=["rounded_row", "subset", "fuzzy_names"],
-            ),
-            overwrite_existing_pass_csv=True,
-        ),
-    )
-
-
-def _mk_fp(name: str, cols: list[str], rows: int = 100,
-           row_hashes: set[int] | None = None,
-           col_hashes: set[int] | None = None) -> Fingerprint:
-    return Fingerprint(
-        dataset_id=name, dataset_name=name, source="kaggle",
-        track="pd", task_type="classification",
-        path=Path(f"/tmp/{name}.csv"),
-        n_rows=rows, n_cols=len(cols), columns=cols,
-        row_hashes=row_hashes or set(),
-        rounded_row_hashes=set(),
-        column_hashes=col_hashes or set(),
-    )
-
-
-def test_compare_pair_id_match() -> None:
-    cfg = _mk_cfg()
-    a = _mk_fp("A", ["x", "y", "z"], rows=10)
-    b = _mk_fp("A", ["x", "y", "z"], rows=10)
-    triggered = compare_pair(a, b, cfg, enable_fuzzy_names=False)
-    assert "id_match" in triggered
-    assert confidence_for(triggered, cfg) == "high"
-
-
-def test_compare_pair_row_hash() -> None:
-    cfg = _mk_cfg()
-    a = _mk_fp("A", ["x"], row_hashes={1, 2})
-    b = _mk_fp("B", ["x"], row_hashes={2, 3})
-    triggered = compare_pair(a, b, cfg, enable_fuzzy_names=False)
-    assert "row_hash" in triggered
-    assert confidence_for(triggered, cfg) == "high"
-
-
-def test_compare_pair_disjoint_returns_empty() -> None:
-    cfg = _mk_cfg()
-    a = _mk_fp("A", ["a", "b"], row_hashes={1})
-    b = _mk_fp("B", ["c", "d"], row_hashes={2})
-    assert compare_pair(a, b, cfg, enable_fuzzy_names=False) == []
-
-
-def test_compare_pair_fuzzy_names_only_when_enabled() -> None:
-    cfg = _mk_cfg()
-    a = _mk_fp("A", ["loan_amount", "credit_score"])
-    b = _mk_fp("B", ["loanamount", "creditscore"])
-    assert "fuzzy_names" not in compare_pair(
-        a, b, cfg, enable_fuzzy_names=False,
-    )
-
-
-def test_compare_pair_subset_detection() -> None:
-    """A's row-hashes are 95%+ contained in B's → flag 'subset'."""
-    cfg = _mk_cfg()
-    a = _mk_fp("A", ["x"], row_hashes=set(range(100)))
-    b = _mk_fp("B", ["x"], row_hashes=set(range(200)))   # superset of A
-    triggered = compare_pair(a, b, cfg, enable_fuzzy_names=False)
-    assert "subset" in triggered or "row_hash" in triggered
-
-
-# =============================================================================
-# Block 5 · exploration.py — light smoke tests
+# Block 4 · exploration.py — light smoke tests
 # =============================================================================
 
 

@@ -4,7 +4,7 @@ Continued pretraining of **tabular foundation models** on a curated corpus
 of real-world credit-risk datasets. Two model families are swept, so a
 result is a property of the idea rather than of one architecture:
 
-* **TabPFN** v2.6 and v3 (Prior Labs) — classifier for PD, regressor for LGD.
+* **TabPFN** v2, v2.6 and v3 (Prior Labs) — classifier for PD, regressor for LGD.
 * **TabICLv2** v2 (Qu et al.) — a different architecture with a different
   pretraining prior, three stages (column embedder → row interactor → ICL
   predictor) and its own losses.
@@ -53,8 +53,8 @@ Three pipeline stages, each with one config yaml and one CLI script:
 
 | Stage | Config | Orchestrator | What it does |
 |---|---|---|---|
-| **Data**  | [`config/data.yaml`](config/data.yaml)   | [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Dedup → register → sanitize → dedup. Writes one sanitized CSV per dataset under `data/processed/`. CPU-only; ~10 minutes for the full 17 PD + 8 LGD corpus. |
-| **Train** | [`config/train.yaml`](config/train.yaml) | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Continued pretraining of every `(base × LR × adaptation × query_fraction × accumulate_grad_batches × pass-mode)` tuple in the `tunable` grid, plus the swept corpus size — **16 trials per track** as of run-8, spanning both model families, each trained to Real-TabPFN's 20 000-step budget. Reads sanitized CSVs directly, draws a fresh per-epoch subsample for each dataset, then applies TabPFN's official preprocessor (squashing scaler / quantile / SVD) to every step's data before the model sees it. Writes finetuned `.ckpt` files + provenance + per-epoch CSVs. **Requires a CUDA GPU.** |
+| **Data**  | [`config/data.yaml`](config/data.yaml)   | [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Register → sanitize. Writes one sanitized CSV per dataset under `data/processed/`. CPU-only; ~10 minutes for the full 17 PD + 8 LGD corpus. |
+| **Train** | [`config/train.yaml`](config/train.yaml) | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Continued pretraining of every `(base × LR × L2-SP λ × frozen_backbone × query_fraction × accumulate_grad_batches × pass-mode)` tuple in the `tunable` grid — the concrete swept values and the resulting trial count live in [`config/experiment*.yaml`](config/), spanning both model families and trained to a measured step budget (exp1: 5 000 steps). Reads sanitized CSVs directly, draws a fresh per-epoch subsample for each dataset, then applies TabPFN's official preprocessor (squashing scaler / quantile / SVD) to every step's data before the model sees it. Writes finetuned `.ckpt` files + provenance + per-epoch CSVs. **Requires a CUDA GPU.** |
 | **Eval**  | [`config/eval.yaml`](config/eval.yaml)   | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | K-fold cross-validation of every model on every held-out test dataset (XGBoost, CatBoost, LogReg / LinReg, and the untuned + trained variants of both families). Cells are packed into a small number of evenly-sized SLURM array tasks (`--tasks`, default 16). Writes one CSV per `(model × dataset × fold)`. **Requires a CUDA GPU.** |
 
 The notebooks under `notebooks/` consume the outputs of all three
@@ -78,10 +78,10 @@ The two have different weights and must be adapted independently.
 
 **Which base checkpoint?** Treated as a *training-stage
 hyperparameter*, not a decision baked in at the data-pipeline stage.
-The default sweep covers v3 (newest, synthetic-only) and v2.6
-(synthetic-only). The v2.5 family was dropped on 2026-05-21 — its
-loaded checkpoint exposes module names PEFT cannot suffix-match for
-LoRA and its internal scaler produces NaN on constant columns. The
+The sweep covers four bases — TabPFN **v2**, **v2.6** and **v3** (all
+synthetic-only) plus **TabICLv2** — so a result is a property of the
+idea, not of one architecture. The v2.5 family was dropped on
+2026-05-21 (its internal scaler produces NaN on constant columns). The
 full inventory plus the citation chain that grounds each provenance
 claim lives in [`docs/METHOD.md`](docs/METHOD.md#2-base-checkpoints).
 
@@ -167,16 +167,25 @@ notebook in parallel and rebuilds `output/figures/CAPTIONS.md` and
 
 ### 3.3 Real training and eval require a CUDA cluster
 
-The recommended entry point is the **multi-cluster submitter**. It
-loads [`config/data.yaml`](config/data.yaml), resolves the storage
-tiers, and submits each stage to the right cluster: **data prep →
-wICE (CPU)**, **continued pretraining → Mindwell B200 (GPU)**,
-**evaluation → wICE H100 (GPU)**:
+The entry point for an **experiment** — a grid swept over several dataset
+splits, which is what `config/experiment*.yaml` defines — is
+[`run_experiment.sh`](scripts/slurm/run_experiment.sh). It reads one experiment
+config, loops the splits, and submits every trial to the right cluster per model
+(**TabPFN → Mindwell B200**, **TabICLv2 → wICE H100**):
 
 ```bash
-# On a Genius login node, after cloning + installing + uploading raw CSVs:
-bash scripts/slurm/run_full_pipeline.sh
+# On a Genius login node, after cloning + installing + uploading raw CSVs.
+# Export the dataloader-workers knob first (it defaults to serial); run detached.
+export CREDITPFN_DATALOADER_WORKERS=-1
+bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
+bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
 ```
+
+For a **single sweep** end-to-end — one config, one split, data → train → eval
+self-sequenced across clusters (**data → wICE CPU**, **train → Mindwell B200**,
+**eval → wICE H100**) in one fire-and-forget command —
+[`run_full_pipeline.sh`](scripts/slurm/run_full_pipeline.sh) submits all three
+stages; see [`docs/VSC.md`](docs/VSC.md).
 
 Continued pretraining runs **only on Mindwell** — its B200 GPUs have
 192 GiB VRAM (2.4× an H100), which we use to train at a larger
@@ -230,11 +239,11 @@ CreditPFN/
 
 | Subpackage | Role | Public CLI |
 |---|---|---|
-| [`src/data/`](src/data)   | Four data-pipeline stages (dedup pre · register · sanitize · dedup post) plus `preprocessing.py` for per-dataset surgical fixes. Output is one sanitized CSV per dataset under `data/processed/`. | `python -m src.data.<stage>` for any one stage, or `scripts/data_pipeline.py` for the chain. |
-| [`src/train/`](src/train) | The continued-pretraining loop: corpus split (`corpus.py`), the on-the-fly dataloader (`dataloader.py`) that reads sanitized CSVs and draws a fresh random subsample every epoch, TabPFN load/save + LoRA wrapping (`model.py`), training loop with per-epoch monitor (`loop.py`), metrics (`metrics.py`). | `scripts/train_pipeline.py` |
+| [`src/data/`](src/data)   | Two data-pipeline stages (register · sanitize) plus `preprocessing.py` for per-dataset surgical fixes. Output is one sanitized CSV per dataset under `data/processed/`. | `python -m src.data.<stage>` for any one stage, or `scripts/data_pipeline.py` for the chain. |
+| [`src/train/`](src/train) | The continued-pretraining loop: corpus split (`corpus.py`), the on-the-fly dataloader (`dataloader.py`) that reads sanitized CSVs and draws a fresh random subsample every epoch, model load/save + frozen-backbone freezing (`model.py`, `freeze.py`), training loop with per-epoch monitor (`loop.py`), metrics (`metrics.py`). | `scripts/train_pipeline.py` |
 | [`src/model/`](src/model) | sklearn-style wrappers for every model the eval scores: XGBoost + CatBoost (with Optuna HPO), LogReg / LinReg (default-hyperparam baselines), TabPFN-untuned, TabPFN-trained. Single `base.py::BaselineModel` protocol so the eval loop stays model-agnostic. | importable only |
 | [`src/eval/`](src/eval)   | The cross-model benchmark: processed-CSV loader, K-fold splitter with inner train/val, comprehensive metrics computation, results-dir routing, skip-existing rerun guard. | `scripts/eval_pipeline.py` |
-| [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), notebook figure sink (`figures.py`), training / eval visualisation helpers (`training_viz.py`, `eval_viz.py`), upstream code refresh (`refresh_repositories.py`). | `python tfm-library/scripts/refresh_repositories.py` |
+| [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), notebook figure sink (`figures.py`), training / eval visualisation helpers (`training_viz.py`, `eval_viz.py`), submodule pin bump (`update_tfm_library.py`). | `python -m src.utils.update_tfm_library` |
 
 <a id="42-config--three-yaml-configs-one-per-stage"></a>
 
@@ -247,8 +256,8 @@ via OmegaConf and accepts Hydra-style overrides on the CLI
 
 | File | Drives | Main sections |
 |---|---|---|
-| [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths (incl. `data_source: "staging" \| "scratch" \| "data"`, default `"staging"`), `finetuning.max_rows_per_epoch` + `query_fraction`, dedup detection thresholds, sanitize knobs (max missing rate, ≤ 64-feature selection, LGD target clip) |
-| [`config/train.yaml`](config/train.yaml) | `src/train/*` + `scripts/train_pipeline.py` | `tunable.*` (sweep axes: base checkpoint × LR × LoRA × query_fraction × accumulate_grad_batches), corpus split (Mode A fractions / Mode B explicit IDs), optimizer + scheduler, LoRA cfg, train loop |
+| [`config/data.yaml`](config/data.yaml)   | `src/data/*` + `scripts/data_pipeline.py` | paths (incl. `data_source: "staging" \| "scratch" \| "data"`, default `"staging"`), `finetuning.max_rows_per_epoch` + `query_fraction`, sanitize knobs (max missing rate, ≤ 64-feature selection, LGD target clip) |
+| [`config/train.yaml`](config/train.yaml) | `src/train/*` + `scripts/train_pipeline.py` | machinery defaults for the sweep (base-checkpoint ladder, query_fraction, accumulate_grad_batches, pass-mode); the swept LR / L2-SP λ / `frozen_backbone` axes are deltas in [`config/experiment*.yaml`](config/). Corpus split (Mode A fractions / Mode B explicit IDs), optimizer + scheduler, train loop |
 | [`config/eval.yaml`](config/eval.yaml)   | `src/eval/*` + `scripts/eval_pipeline.py` | enabled baselines, K-fold + inner-val fractions, per-fold Optuna budget, `max_rows_per_model` (per-architecture training-context cap), results dir |
 
 What is **deliberately not in YAML**: anything that never changes
@@ -268,11 +277,11 @@ that do not.
 
 | File | What it does |
 |---|---|
-| [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Run all four data stages end-to-end, or just the ones you ask for (`--datasets ...`). Idempotent; `--fresh` rebuilds from scratch. |
+| [`scripts/data_pipeline.py`](scripts/data_pipeline.py)   | Run both data stages end-to-end, or just the datasets you ask for (`--datasets ...`). Idempotent; `--fresh` rebuilds from scratch. |
 | [`scripts/train_pipeline.py`](scripts/train_pipeline.py) | Iterate the `cfg.tunable` cartesian grid; one trial per call when `--single` or `--trial-index` (SLURM array). Auto-fills missing sanitized CSVs by invoking the data pipeline for just those IDs. **Skips trials whose finetuned checkpoint already exists** — re-submission is safe. |
 | [`scripts/eval_pipeline.py`](scripts/eval_pipeline.py)   | Score every model on every test dataset, K-fold CV. Skip-existing by default; `--rerun` to force. Filterable with `--method` / `--test-dataset` / `--task-index`. `--tasks N` packs the `(model × dataset)` cells into N evenly-sized array tasks — see §8. |
 | [`scripts/probe_row_cap.py`](scripts/probe_row_cap.py)   | Measures how many rows fit in one training step per base. Must be `sbatch`ed — run bare on a login node it grabs the display GPU and reports a fictional number. |
-| [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `run_full_pipeline.sh` for the chained submission. |
+| [`scripts/slurm/*.slurm`](scripts/slurm/)               | SLURM templates: one per data / train / eval stage, plus `run_experiment.sh` (per-split experiments) and `run_full_pipeline.sh` (single-sweep chained submission). |
 
 The utilities, all `python -m src.utils.<name>`:
 
@@ -303,10 +312,10 @@ narrative stays scannable and the logic stays testable.
 |---|---|
 | `0.0. raw_data_exploration.ipynb`          | What did the vendor deliver? Corpus shape-space scatter (features vs rows, per-track → combined, log + linear), per-dataset missing-cell bars, target / class-balance landscape on the raw CSVs. |
 | `0.1. processed_data_exploration.ipynb`    | Did sanitisation produce sensible inputs? Same shape + missingness views on the post-sanitize CSVs, plus the 64-feature selection effect and feature-type composition. |
-| `1.0. training_visualization_pd.ipynb`     | **PD** trained variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, adapter effect, weight drift, convergence diagnostics, leaderboard. Consumes `output/manifests/`. |
-| `1.1. training_visualization_lgd.ipynb`    | **LGD** counterpart of 1.0 — identical dashboard for the regression track. |
-| `2.0. final_results_pd.ipynb`              | **PD** eval leaderboard plus the paper figures — paired trained-vs-untuned delta, gain vs base quality, mean rank, reliability, regime effect, selection honesty, forgetting. Consumes `output/results/`. |
-| `2.1. final_results_lgd.ipynb`             | **LGD** counterpart of 2.0. |
+| `1.1. training_pd.ipynb`                   | **PD** trained variants in one dashboard — per-trial loss / lr / metric curves, cross-trial overlays, LR sweep, frozen-backbone effect, weight drift, convergence diagnostics, leaderboard. Consumes `output/manifests/`. |
+| `1.2. training_lgd.ipynb`                  | **LGD** counterpart of 1.1 — identical dashboard for the regression track. |
+| `1.3. results_pd.ipynb`                    | **PD** eval leaderboard plus the paper figures — paired trained-vs-untuned delta, gain vs base quality, mean rank, reliability, regime effect, selection honesty, forgetting. Consumes `output/results/`. |
+| `1.4. results_lgd.ipynb`                   | **LGD** counterpart of 1.3. |
 
 Corpus summaries in the data notebooks are memoised so the first
 cell pays the disk-read cost once and every subsequent plot reads
@@ -338,7 +347,7 @@ non-zero exit code if any failed — so it is safe to chain. Three flags
 matter:
 
 ```powershell
-python -m src.utils.run_notebooks --only 2.0 2.1
+python -m src.utils.run_notebooks --only 1.3 1.4
 ```
 
 `--only` takes **substrings** of the notebook names, so `--only exploration`
@@ -379,7 +388,7 @@ stripped-down CI image.
 
 | File | Coverage |
 |---|---|
-| [`tests/test_data.py`](tests/test_data.py)   | data pipeline (preprocessing → register → sanitize → dedup) + surgical-fix correctness per dataset |
+| [`tests/test_data.py`](tests/test_data.py)   | data pipeline (preprocessing → register → sanitize) + surgical-fix correctness per dataset |
 | [`tests/test_paths.py`](tests/test_paths.py) | env-aware path resolution (local-vs-cluster routing) + `data_source` cfg knob |
 | [`tests/test_train.py`](tests/test_train.py) | corpus split (`DatasetRef`), dataloader (`ProcessedDatasetLoader` including per-epoch reshuffle), LR schedule, descriptive name, end-to-end mocked training loop |
 | [`tests/test_model.py`](tests/test_model.py) | baseline wrappers on synthetic data, model registry |
@@ -391,7 +400,7 @@ stripped-down CI image.
 
 | File | What it is |
 |---|---|
-| [`docs/METHOD.md`](docs/METHOD.md) | **How the experiment is built.** One raw CSV's full journey through dedup → register → sanitize and the two divergent downstream preprocessing paths (§1); every base `.ckpt` we sweep, its training data, caps, save format and licence, plus the one-time TabICLv2 staging command (§2); the measured context caps — rows per training step and per eval fold, the B200 measurements behind each one, member-aware scaling, TabICLv2's cuDNN attention ceiling (§3); and the code that looks wrong but is deliberate (§4). |
+| [`docs/METHOD.md`](docs/METHOD.md) | **How the experiment is built.** One raw CSV's full journey through register → sanitize and the two divergent downstream preprocessing paths (§1); every base `.ckpt` we sweep, its training data, caps, save format and licence, plus the one-time TabICLv2 staging command (§2); the measured context caps — rows per training step and per eval fold, the B200 measurements behind each one, member-aware scaling, TabICLv2's cuDNN attention ceiling (§3); and the code that looks wrong but is deliberate (§4). |
 | [`docs/RESULTS.md`](docs/RESULTS.md) | **What every run measured**, newest first, each with the configuration that produced it and the corpus it used. Carries the two standing comparability rules: never compare `neg_nll` across architectures, never compare bases on `epochs`. |
 | [`docs/PAPER_ROADMAP.md`](docs/PAPER_ROADMAP.md) | Whether the contribution is novel — the nearest-neighbour papers and how each differs — and the ordered list of evidence still missing before writing. |
 | [`docs/AGENTS_MEMORY.md`](docs/AGENTS_MEMORY.md) | **Read before starting.** One row per cluster run (config, outcome, headline number) and one four-line entry per dead end (Tried / Result / Why / Instead), so a configuration that failed last month is not resubmitted. |
@@ -432,7 +441,8 @@ anything inside the mountpoint.
 ### 4.8 `checkpoints/` — base and trained TabPFN weights (gitignored)
 
 * `checkpoints/*.ckpt` — base weights downloaded from Prior Labs
-  (v2.6, v3 in both classifier and regressor flavours). The
+  (v2, v2.6, v3 in both classifier and regressor flavours; the
+  TabICLv2 bases are staged separately). The
   inventory and provenance live in
   [`docs/METHOD.md`](docs/METHOD.md#2-base-checkpoints). The actual `.ckpt`
   files are gitignored because they're large; collaborators download
@@ -469,7 +479,6 @@ output/                         # EVERYTHING the code writes (except trained .ck
 │   ├── manifest_{pd,lgd}.csv               per-track dataset manifest
 │   ├── <run>_<track>.csv                   one row per training trial
 │   ├── epochs/<track>/<descriptive>.csv    per-epoch loss, lr, metrics, drift
-│   ├── dedup/doubles_{track}_{pre,post}.csv
 │   └── resolved/<task>_<ts>.json           the config a run actually used
 ├── results/<TRACK>/<method>/<run>_<ts>.csv eval CSVs (one per model × dataset)
 └── figures/
@@ -486,7 +495,7 @@ repo root. On VSC they are split across three storage tiers:
   (`output/results/`). Persistent, large, non-purged.
 * **`$VSC_DATA/CreditPFN`** (small, NFS-backed) — logs, training
   manifests (`output/training/`), per-epoch CSVs, notebook figures
-  (`output/figures/`), dedup files.
+  (`output/figures/`).
 * **`$VSC_SCRATCH`** — optional fast-I/O working copy of datasets.
 
 The dataset tier is picked by `paths.data_source` in
@@ -547,7 +556,7 @@ mistakes are not symmetric, since a listing you meant as a deletion costs
 one more command and a deletion you meant as a listing costs the run.
 
 `--stages` deletes only the files the named stage produced: sanitized CSVs
-and dedup reports for `data`, checkpoints and per-epoch CSVs for `train`,
+for `data`, checkpoints and per-epoch CSVs for `train`,
 benchmark CSVs and figures for `eval`, plus that stage's `.log` files.
 Stages are matched at **file** level rather than by directory, because they
 share directories — `output/logs/` holds all three stages' logs and
@@ -560,7 +569,7 @@ touched, and a resolved path whose last component looks like an input
 directory is refused outright.
 
 > **Typical re-submit workflow.** You change something in
-> `config/train.yaml` (different LR sweep, different LoRA targets) and
+> `config/train.yaml` (different LR sweep, toggling `frozen_backbone`) and
 > want to retrain. The previous run's checkpoints would now be stale,
 > so:
 >
@@ -580,7 +589,7 @@ directory is refused outright.
 
 ## 6. Data pipeline
 
-Four stages, in order. The end-to-end driver is
+Two stages, in order. The end-to-end driver is
 [`scripts/data_pipeline.py`](scripts/data_pipeline.py); each stage can
 also run independently via `python -m src.data.<stage>`. There is
 **no `.npz` chunking step** — the sanitized CSV is the canonical
@@ -589,12 +598,10 @@ fly.
 
 | # | Module | Reads | Writes |
 |---|---|---|---|
-| 1 | [`src/data/dedup.py`](src/data/dedup.py) `--pass pre`        | `data/raw/{pd,lgd}/*.csv` | `output/manifests/dedup/doubles_{track}_pre.csv` |
-| 2 | [`src/data/register.py`](src/data/register.py)               | raw CSVs + `DATASET_METADATA` | `output/manifests/manifest_{pd,lgd}.csv` |
-| 3 | [`src/data/sanitize.py`](src/data/sanitize.py)               | raw CSVs + manifests | `data/processed/{pd,lgd}/<id>.sanitized.csv` |
-| 4 | [`src/data/dedup.py`](src/data/dedup.py) `--pass post`       | processed CSVs | `output/manifests/dedup/doubles_{track}_post.csv` |
+| 1 | [`src/data/register.py`](src/data/register.py)               | raw CSVs + `DATASET_METADATA` | `output/manifests/manifest_{pd,lgd}.csv` |
+| 2 | [`src/data/sanitize.py`](src/data/sanitize.py)               | raw CSVs + manifests | `data/processed/{pd,lgd}/<id>.sanitized.csv` |
 
-Plus one importable helper used by stages 2 and 3:
+Plus one importable helper used by both stages:
 
 * [`src/data/preprocessing.py`](src/data/preprocessing.py) —
   `DATASET_METADATA` (target column, categorical hints, source) and
@@ -606,18 +613,6 @@ Plus one importable helper used by stages 2 and 3:
 
 ### Stage descriptions
 
-* **`dedup.py`** — eight detection methods per pass per track
-  (identifier match, column-name Jaccard + identical shape,
-  row-level pandas hash, column-level hash, rounded-row hash, subset
-  detection, fuzzy column-name match). **Diagnostic only**: the stage
-  writes a `doubles_{track}_{pre,post}.csv` report listing every
-  flagged pair with the detection method and confidence label
-  (`high` / `medium` / `low`) but does NOT remove any dataset from
-  the corpus. The first occurrence of a dataset within a track is
-  always considered the canonical one; only subsequent duplicates
-  appear in the report. To act on findings, manually delete a CSV
-  from `data/raw/<track>/` and re-run `clean_run --clean --stages data`
-  followed by `sbatch scripts/slurm/data.slurm`.
 * **`register.py`** — applies surgical fixes, then computes
   per-dataset metadata (n_rows / n_cols, missing rate, class balance,
   target mean/std, content-aware shape hash). Idempotent: re-running
@@ -668,62 +663,57 @@ TabPFN's package handles these internally — see
 
 A thin orchestrator over `src/train/`. **Continued pretraining runs only
 on the Mindwell B200 cluster** (192 GiB VRAM) — see
-[`docs/VSC.md`](docs/VSC.md). The single source of truth for
-hyperparameters is [`config/train.yaml`](config/train.yaml), in three
-layers:
+[`docs/VSC.md`](docs/VSC.md). The machinery defaults for hyperparameters
+live in [`config/train.yaml`](config/train.yaml) — each experiment layers
+its swept axes on top via [`config/experiment*.yaml`](config/) — organised
+in three layers:
 
-* **Tunable HPs** (`tunable.*` lists at the top) — base checkpoint
-  (TabPFN v3 / TabPFN v2.6 / **TabICLv2**), learning rate
-  (`{3e-7, 1e-6, 1e-5, 3e-5}` — spans from a
-  direct reproduction of Real-TabPFN's `3e-7` through TabICLv2's own
-  finetuning default `1e-5` up to `3e-5`, near the
-  separate Rubachev single-dataset FT median (~3.9e-5); `1e-4` is excluded because it
-  diverged on no-LoRA + qf 0.20 — revisit now that `weight_decay=0.0`),
-  the parameter-efficient-adaptation flag, query_fraction,
-  accumulate_grad_batches, and epoch
-  pass-mode (`one_sample` / `full_pass`). Anything genuinely unknown in
-  advance. The full cartesian product is the default sweep (currently
-  **3 bases × 4 LRs × 2 adapt-modes × 1 qf × 1 acc × 2 epoch-pass-modes
-  = 16 trials per track** as of run-8, run as a 16-task SLURM array on the 24
-  Mindwell B200 GPUs). See "Hyperparameter rationale vs. the literature"
-  below.
+* **Tunable HPs** (`tunable.*` lists) — base checkpoint
+  (TabPFN v2 / v2.6 / v3 / **TabICLv2**), learning rate, L2-SP anchor
+  strength, the `frozen_backbone` adaptation flag, query_fraction,
+  accumulate_grad_batches, and epoch pass-mode
+  (`full_pass` / `accumulate`). The concrete grid is **not** baked into
+  this README: each experiment is a delta over `config/train.yaml`, so
+  the swept values and the resulting trial count live in
+  [`config/experiment*.yaml`](config/) and the rationale in
+  [`docs/METHOD.md`](docs/METHOD.md). The live experiment, **exp1**,
+  sweeps learning rate `{3e-7, 1e-6, 1e-5}` × L2-SP λ `{0, 0.003}` ×
+  `frozen_backbone {false, true}` × pass-mode `{full_pass, accumulate}` ×
+  4 bases = **up to 96 trials per track per split**, over **8 random
+  dataset splits** (`n_splits: 8`), each split submitted as its own
+  SLURM array. See "Hyperparameter rationale vs. the literature" below.
 * **Two model families.** The base list mixes **TabPFN** and **TabICLv2
   v2** (added 2026-08-04); the family is detected from the checkpoint
   filename (`src/train/tabicl_compat.py::model_family`) and selects the
-  loader, the loss, the row cap, and the save schema. The `use_lora`
-  axis is family-specific: LoRA for TabPFN, **freeze-backbone** (train
-  the ICL module only) for TabICLv2 — that family's own pretraining
+  loader, the loss, the row cap, and the save schema. The `frozen_backbone`
+  axis means the same thing for both families now — a **true freeze** of
+  the backbone stack that trains only the head (`src/train/freeze.py`);
+  LoRA has been retired. Freeze-only is TabICLv2's own pretraining
   stage-3 regime, chosen because full SFT collapsed TabICLv2 in two
   independent reports (TabZilla accuracy 0.873 → 0.567 in Tanna 2026;
-  "failed to train TabICLv2" in Kolberg 2026). TabICLv2 trials are tagged
-  `_iclhead` instead of `_lora`. TabICLv2 losses are upstream's own:
-  cross-entropy over the first `n_classes` of its 10 logit columns, and
-  mean pinball loss over its 999-quantile head. Because that head is
+  "failed to train TabICLv2" in Kolberg 2026). TabICLv2 losses are
+  upstream's own: cross-entropy over the first `n_classes` of its 10
+  logit columns, and mean pinball loss over its 999-quantile head.
+  Because that head is
   not a bar distribution, `neg_nll` is undefined for TabICLv2 — density
   numbers are never comparable across families (CRPS is the planned
   cross-family density metric).
 * **Fixed HPs** (single values under `train.*`) — epochs, AMP, gradient
   clipping, warmup fraction, per-epoch monitor subsample,
   `n_estimators_finetune` (ensemble members per training step —
-  **per-track: `pd: 2`, `lgd: 8`**, matching the official
-  `FinetunedTabPFNClassifier` / `FinetunedTabPFNRegressor` defaults;
-  TabICLv2 overrides both to `2` via `n_estimators_finetune_tabicl`,
-  matching *its* wrappers).
-  Follow each package's defaults where those are well-tuned. The per-step subsample size lives in
+  **2 for both tracks** now, TabICLv2 also `2` via
+  `n_estimators_finetune_tabicl`; LGD used to run 8, which forced its
+  row caps down 4×). The per-step subsample size lives in
   [`config/data.yaml`](config/data.yaml) (`finetuning.max_rows_per_epoch`,
-  PD/two-member caps: **26 000 for v3 and TabICLv2, 11 000 for v2.6**;
-  LGD's eight
-  members scale the TabPFN caps to 6 500 / 2 750 — sized from a B200
-  fwd+bwd probe
-  while chasing Real-TabPFN's "more context → bigger gains"; plus an
-  optional v3-only `max_cells_per_epoch` cell budget. TabICLv2 deliberately
-  matches v3's cap so a cross-family difference cannot be confounded with
-  context size; it sits inside TabICLv2's own stage-3 pretraining range
-  (400–60 000 samples) but is **not yet measured on a B200** — probe it
-  before trusting it for a full sweep). `weight_decay` is
-  **0.0** (matching Rubachev's study and the official wrappers; Garg et al.
-  do not report this value); anti-forgetting uses Real-TabPFN's L2-SP anchor
-  (`l2sp_lambda=0.003`), not decay-to-origin.
+  two-member caps: **v2 10 000, v2.6 11 000, v3 26 000, TabICLv2 26 000**,
+  feature cap 64 — B200-measured, and identical across tracks now that
+  both use two members; TabICLv2 deliberately matches v3 so a cross-family
+  difference cannot be confounded with context size). The measured
+  provenance behind every cap lives in [`docs/METHOD.md`](docs/METHOD.md).
+  `weight_decay` is **0.0** (matching Rubachev's study and the official
+  wrappers; Garg et al. do not report this value); anti-forgetting uses
+  Real-TabPFN's L2-SP anchor, swept `{0, 0.003}` in exp1, not
+  decay-to-origin.
 * **Hardcoded in code** — optimizer family (AdamW), betas
   ((0.9, 0.999)), scheduler family (linear-warmup → cosine-decay).
   Never change between runs.
@@ -784,7 +774,7 @@ Two paths into the train/test split, both in `cfg.corpus`:
 | 5 specific PD datasets, 1 HP set             | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0009.bank_status]'` |
 | Full corpus, 1 HP set                        | `python scripts/train_pipeline.py --single` |
 | Full corpus, full HP grid                    | `python scripts/train_pipeline.py` |
-| Full corpus, full HP grid, on the cluster    | `bash scripts/slurm/run_full_pipeline.sh` — see [`docs/VSC.md`](docs/VSC.md) |
+| An experiment's grid over all splits, cluster | `bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml` — see [`docs/VSC.md`](docs/VSC.md) |
 
 Hydra-style CLI overrides (`key=value`) write through the in-memory
 cfg; they are NOT persisted to `config/train.yaml`. A debug run does
@@ -803,9 +793,11 @@ Each trial writes:
 | Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                       |
 
 Filename schema:
-`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_lora].ckpt`.
-Identical re-runs overwrite in place; trials with different HPs land
-in distinct files.
+`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_l2sp<λ>][_lora|_iclhead].ckpt`.
+The trailing tag marks the **frozen-backbone** arm and keeps its legacy
+name — `_lora` on TabPFN, `_iclhead` on TabICLv2 (the internal flag is
+still `use_lora`, though LoRA itself is retired). Identical re-runs
+overwrite in place; trials with different HPs land in distinct files.
 
 ### Trained-checkpoint provenance
 
@@ -814,9 +806,9 @@ paired with a `<file>.ckpt.provenance.json` sidecar (and an identical
 copy embedded under the `"provenance"` key inside the `.ckpt` itself)
 recording:
 
-- All hyperparameters used (base, lr, weight_decay, betas, scheduler,
-  warmup fraction, epochs, accumulate, grad clip, amp, ctx/query
-  sample sizes, seed, `use_lora` + LoRA config).
+- All hyperparameters used (base, lr, weight_decay, l2sp_lambda, betas,
+  scheduler, warmup fraction, epochs, accumulate, grad clip, amp,
+  ctx/query sample sizes, seed, and the `frozen_backbone` adaptation flag).
 - Sorted training-dataset and test-dataset ID lists.
 - Counts of train/test datasets.
 - `training_time_seconds`, GPU name, `torch_version`, `tabpfn_version`,
@@ -858,21 +850,19 @@ without loading the model weights.
   This prevents wasting 3+ hours of GPU on a dead model (observed in
   `train_pd_*qf20_acc1*` runs of 2026-05-28 before the safeguard was
   added).
-* **L2-SP anti-forgetting penalty (optional)** — `optimizer.l2sp_lambda`
+* **L2-SP anti-forgetting penalty (swept)** — `optimizer.l2sp_lambda`
   adds `0.5·λ·‖w − w₀‖²` to the loss, penalising drift of the weights
   away from the **synthetic-prior start `w₀`** (not toward zero, which is
   what `weight_decay` does). This is the regularizer used by Garg et al.'s
   Real-TabPFN corpus-level continued pretraining, with the same `λ=0.003`;
   it is not part of Rubachev et al.'s separate single-dataset finetuning
-  study. It is **on by default for full-FT trials** at
-  `λ = 0.003` (set `optimizer.l2sp_lambda: 0.0` to disable) and is
-  **orthogonal to the LoRA axis but full-FT-only** — with LoRA the base
-  weights are frozen and cannot drift, so L2-SP is inert and silently
-  skipped (effectively: full-FT gets L2-SP, LoRA doesn't). The penalty
-  enters only the back-prop loss; the logged CE / NLL curves stay the pure
-  data loss. The effective λ is recorded in each checkpoint's provenance.
-  (`λ = 0.003` is a starting point chosen for this setup, not a tuned
-  constant — adjust if anti-forgetting is too strong or too weak.)
+  study. exp1 **sweeps it as an axis** (`l2sp_lambda ∈ {0, 0.003}`, set in
+  `config/experiment1_*.yaml`; the machinery default in `config/train.yaml`
+  is `0.003`). It is **orthogonal to the `frozen_backbone` axis but only
+  bites the full arm** — in the frozen arm the backbone weights cannot
+  drift, so L2-SP is inert and silently skipped. The penalty enters only
+  the back-prop loss; the logged CE / NLL curves stay the pure data loss.
+  The effective λ is recorded in each checkpoint's provenance.
 
 ### Hyperparameter rationale vs. the literature
 
@@ -886,22 +876,23 @@ They are not the same study or code release.
 |------|-----------|-----------|-----|
 | Optimizer | AdamW, β=(0.9, 0.999) | Garg: AdamW; Rubachev/wrappers: AdamW | match |
 | `weight_decay` | **0.0** | Garg: not reported; Rubachev + wrappers: 0.0 | avoids stacking decay-to-origin on L2-SP; do not claim this reproduces an unreported Garg setting |
-| LR grid | **{3e-7, 1e-6, 1e-5, 3e-5}** | Garg: fixed **3e-7**; Rubachev: tuned 5e-6–5e-4 (median ≈3.9e-5); wrappers: 2e-5 clf / 1e-5 reg | lowest rung reproduces Garg; upper rungs span transfer to newer bases and Rubachev's FT range |
+| LR grid | **{3e-7, 1e-6, 1e-5}** | Garg: fixed **3e-7**; Rubachev: tuned 5e-6–5e-4 (median ≈3.9e-5); wrappers: 2e-5 clf / 1e-5 reg | lowest rung reproduces Garg; `1e-5` is TabICLv2's finetuning default and our best rung |
 | Schedule | linear-warmup → cosine, warmup 0.10 | Garg: linear warmup → cosine; Rubachev: constant LR | matches Garg; differs from Rubachev |
-| Training budget | fixed 50 corpus epochs + divergence-abort | Garg: 20 000 steps; Rubachev: early-stop patience 16, eval every 10 steps | **OURS** — dataset-balanced epochs/full-pass ablation replace Garg's fixed step budget; no validation bucket is held out |
-| `n_estimators_finetune` | **pd 2 / lgd 8** | wrapper defaults: clf 2, reg 8 | match (per-track) |
+| Training budget | **5 000 optimizer steps** (`target_total_steps`; a 50-epoch count is only a fallback) + divergence-abort | Garg: 20 000 steps; Rubachev: early-stop patience 16, eval every 10 steps | a step budget like Garg's but smaller, sized to the measured loss-drop plateau (PD ~3 550, LGD ~4 400 steps); no validation bucket is held out |
+| `n_estimators_finetune` | **pd 2 / lgd 2** | wrapper defaults: clf 2, reg 8 | 2 for both tracks — keeps LGD's row cap up (the reg default 8 would force it down 4×) |
 | Loss | CE (PD) / bar-distribution NLL (LGD) | same | match — what TabPFN was pretrained with |
-| query_fraction | 0.20 (80 % context / 20 % query) | Garg: 0.40 (60/40); package default: 0.20 | deliberate deviation to package default |
-| Context size (`max_rows_per_epoch`) | PD: **v3 26 000 / v2.6 11 000**; LGD scaled to 6 500 / 2 750 for eight members | Garg: up to 20 000 rows and 400 000 cells; larger context helped | B200-measured member-aware caps, not a paper default |
-| L2-SP anchor | λ=0.003, full-FT only | Garg: **λ=0.003** | matches Garg for full FT; inert when LoRA freezes the base |
-| LoRA | swept on/off (r=8, α=16) | Rubachev studies LoRA; Garg reports full-model CPT only | parameter-efficient comparison point |
+| query_fraction | 0.40 (60 % context / 40 % query) | Garg: 0.40 (60/40); package default: 0.20 | matches Garg; deviates from the package default |
+| Context size (`max_rows_per_epoch`) | **v2 10 000 / v2.6 11 000 / v3 26 000 / TabICLv2 26 000** (two members, both tracks) | Garg: up to 20 000 rows and 400 000 cells; larger context helped | B200-measured caps, not a paper default |
+| L2-SP anchor | swept **{0, 0.003}**, full arm only | Garg: **λ=0.003** | 0.003 matches Garg; inert in the frozen arm (backbone can't drift) |
+| Adaptation | `frozen_backbone` swept on/off (a true freeze of the backbone) | Rubachev studies LoRA / partial FT; Garg reports full-model CPT only | full-FT vs. head-only comparison point (LoRA retired) |
 | Preprocessing | package ensemble preprocessing | Garg: ordinal categoricals + noisy-quantile numerics | analogous, not byte-for-byte identical |
 
 Like Real-TabPFN, CreditPFN performs corpus-level continued pretraining:
 each batch contains one table, but tables are repeatedly sampled from a
 multi-dataset corpus. CreditPFN changes the domain, adds an LGD track and
-LoRA/pass-mode ablations, uses newer v2.6/v3 bases, and replaces Garg's fixed
-20 000-step budget with 50 dataset-balanced epochs.
+frozen-backbone / pass-mode ablations, sweeps a second family (TabICLv2)
+alongside newer v2 / v2.6 / v3 bases, and runs a measured 5 000-step budget
+rather than Garg's fixed 20 000.
 
 ### Optimization objective — why CE / NLL, not AUC
 
@@ -955,9 +946,10 @@ test fold. The honest caveats below are limitations of the
   within-dataset estimate, but the across-dataset mean rests on a
   handful of datasets — report per-dataset results, not just the pooled
   mean.
-* **Best-of-48 selection on the test set (winner's curse).** With no
-  validation set, the best of 16 trials is picked by test performance;
-  the maximum over 48 noisy estimates is upward-biased. Prefer the
+* **Best-of-grid selection on the test set (winner's curse).** With no
+  validation set, the best of the sweep's trials (up to 96 per track per
+  split — see `config/experiment*.yaml`) is picked by test performance;
+  the maximum over many noisy estimates is upward-biased. Prefer the
   per-architecture trained-vs-untuned delta over the absolute best, and
   report the trial distribution.
 * **Within-domain split ≠ Real-TabPFN's external benchmark.** We split
@@ -997,7 +989,7 @@ sets gracefully).
 
 | Model family                          | Train-fold cap                                                              | Test fold      | HPO subsample                                                                 |
 |---------------------------------------|-----------------------------------------------------------------------------|----------------|--------------------------------------------------------------------------------|
-| `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_per_model[<v>]` (v3: 1 000 000; v2.6: 50 000)                 | **full**       | n/a                                                                            |
+| `tabpfn-untuned` / `tabpfn-trained`   | `cfg.max_rows_per_model[<v>]` (v2: 10 000; v2.6: 50 000; v3: 1 000 000)                 | **full**       | n/a                                                                            |
 | `tabicl-untuned` / `tabicl-trained`   | `cfg.max_rows_per_model["tabicl"]` (1 000 000 — TabICLv2 handles million-scale context natively) | **full**       | n/a                                                                            |
 | `xgboost` / `catboost`                | none                                                                        | full           | `cfg.hpo.<m>.max_rows = 50 000` (stratified subsample of inner-train; HPO only) |
 | `logreg` / `linreg`                   | none                                                                        | full           | `cfg.hpo.<m>.n_trials = 50` (tunes `C` / `alpha`)                              |
@@ -1120,8 +1112,9 @@ Method-directory names compress the published checkpoint filenames
 (`tabpfn-v3-classifier-v3_default.ckpt` → `v3-default`); the
 track-specific "classifier"/"regressor" infix is dropped because the
 parent `PD/` or `LGD/` already encodes it. Trained variants append
-`__lr<rate>[__lora]` so different HPs / LoRA modes land in different
-folders.
+`__lr<rate>` plus tags for the other swept axes (pass mode, L2-SP λ, and
+the frozen-backbone arm — `__lora` / `__iclhead`) so different HPs land in
+different folders.
 
 Every benchmark invocation gets a fresh `<timestamp>` — earlier runs
 are never overwritten. Aggregate with pandas:
@@ -1176,8 +1169,8 @@ Local code dumps under
 [`tfm-library/REPOSITORIES.md`](tfm-library/REPOSITORIES.md)) cover the public TabPFN
 package, the docs site, the v2.5 / v2.6 / v3 HuggingFace model cards (v2.5 kept for scholarly reference; not used in our sweep),
 NanoTabPFN, the V2-Finetuning recipe, and the underlying PFN
-framework. Read-only — refresh with
-`python tfm-library/scripts/refresh_repositories.py`.
+framework. Read-only — the pinned submodule is bumped with
+`python -m src.utils.update_tfm_library`.
 
 ## Based on the repository template
 

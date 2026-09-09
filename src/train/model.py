@@ -41,8 +41,8 @@ LOGGER = logging.getLogger(__name__)
 
 # `2` before `2.5`/`2.6` would match greedily on the shorter alternative, so the longer
 # ones come first. v2 and v2.5 are recognised but NOT in the default sweep — they are
-# the older generations the base-generation ladder needs
-# (`docs/EXPERIMENT_PLAN.md` section 5). Whether the installed `tabpfn` can still build a
+# the older generations the base-generation ladder needs. Whether the installed `tabpfn` can
+# still build a
 # v2 architecture is a separate question from whether we can name the file.
 _VERSION_RE = re.compile(r"tabpfn-v(2\.5|2\.6|2|3)-")
 

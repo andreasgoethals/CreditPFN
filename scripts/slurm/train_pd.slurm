@@ -7,8 +7,8 @@
 #  *** Continued pretraining of the TabPFN foundation models runs ONLY on
 #      Mindwell B200. *** The B200's 192 GiB VRAM (2.4x the 80 GiB H100) lets
 #      us train at a larger in-context size (config/data.yaml:
-#      finetuning.max_rows_per_epoch — v3: 26 000, v2.6: 11 000 for PD's
-#      two ensemble members; LGD scales these caps for eight members) to chase
+#      finetuning.max_rows_per_epoch — v3: 26 000, v2.6: 11 000 at
+#      two ensemble members, the count both tracks now use) to chase
 #      Real-TabPFN's "more context -> bigger gains". Data prep and evaluation
 #      stay on wICE (see data.slurm, eval_*.slurm).
 #

@@ -86,10 +86,6 @@ class RunLog:
         self.path = Path(log_path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
-    @property
-    def is_top_level(self) -> bool:
-        return False
-
     def write(self, message: str) -> None:
         ts = _dt.datetime.now().isoformat(timespec="seconds")
         with self.path.open("a", encoding="utf-8") as fh:

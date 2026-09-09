@@ -19,10 +19,11 @@ Two execution modes
 
        python scripts/eval_pipeline.py track=pd
 
-2. **Slurm-array (one (model × test_dataset) per task)** — at the
-   planned full ~3,000-dataset corpus scale, the cartesian product is
-   large and each cell includes an Optuna HPO study. Each task processes
-   ONE pair::
+2. **Slurm-array (one (model × test_dataset) per task)** — the
+   cartesian product of models × held-out datasets is modest, but each
+   cell includes an Optuna HPO study, so scoring one pair per task
+   parallelises the eval across the queue. Each task processes ONE
+   pair::
 
        N=$(python scripts/eval_pipeline.py --list-tasks track=pd)
        sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm
@@ -461,10 +462,10 @@ def run(
     LOGGER.info("After filtering: %d (model × dataset-list) pair(s)", len(plan))
 
     # Rerun-skip: drop (handle × dataset_id) pairs that already have an
-    # OK row on disk. The cartesian product over the 3 000-dataset corpus is
-    # ~25 models × ~3 datasets = 75 cells per re-run; skipping the
-    # already-scored ones means a new tabpfn-trained variant only triggers
-    # work for the new cells. Pass `--rerun` to force-rescore everything.
+    # OK row on disk. The cartesian product is models × held-out datasets;
+    # skipping the already-scored ones means a new tabpfn-trained variant
+    # only triggers work for the new cells. Pass `--rerun` to force-rescore
+    # everything.
     results_base_for_skip = (
         eval_cfg.results.base_dir if hasattr(eval_cfg, "results") else results_dir()
     )

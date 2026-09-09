@@ -855,9 +855,9 @@ def plot_scheme_metrics(df, metrics=("roc_auc", "brier", "ece", "f1")):
 # 12. Did we deliver a dose at all?
 # --------------------------------------------------------------------------- #
 #
-# `docs/EXPERIMENT_PLAN.md` section 1: a null has two explanations, "the model was moved and
-# nothing happened" and "the model was never moved". These two figures separate them, and they
-# are the reason the next run extends the learning-rate grid rather than the corpus.
+# A null result has two explanations — "the model was moved and nothing happened" and "the model
+# was never moved". These two figures separate them, and they are the reason exp1 extends the
+# learning-rate grid rather than the corpus.
 
 #: Learning rates used by the continued-pretraining literature, for reference lines. Garg is the
 #: value this project inherited; Rubachev is the only one that was actually tuned.

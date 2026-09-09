@@ -12,6 +12,40 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 08-09-2026
+
+- **Fixed the `loss_const` divergence guard aborting every `accumulate` + `L2-SP` trial** (100% of
+  that arm in exp1, ~25% of the PD grid). Root cause: the guard reads per-stage weight drift to
+  distinguish "slow but training" from "dead", but drift was recorded **only on monitor epochs**
+  (every ~19), so its 5-epoch window was almost always empty and it silently fell back to a
+  loss-only rule — killing exactly the slow, anchored trials the drift check exists to protect.
+  Fix: record a per-epoch `weight_drift` (‖w−w0‖/‖w0‖, derived free from the L2-SP penalty) on
+  every `EpochRecord` and read that. Also **extracted the guard into a pure, unit-tested
+  `_divergence_reason`** so the in-loop logic can't silently diverge from the test again (the old
+  regression test was a replica that assumed a per-epoch signal production didn't have). Suite green.
+
+## 06-09-2026
+
+- **Removed the cross-dataset deduplication subsystem.** The ~1000/3000-dataset corpus it was built
+  for is off the table; on the fixed 25-dataset set it flagged nothing (empty `doubles_*.csv`). Gone:
+  `src/data/dedup.py`, its two pipeline stages (the data pipeline is now register → sanitize), the
+  `dedup` config block + output path, the `rapidfuzz` dep, and the split-time leakage guard
+  (`_drop_train_leakage`/`_flagged_duplicate_pairs` in `corpus.py`) plus their tests. Kept: the
+  unrelated manifest-row dedup in `benchmark.py` and within-dataset row-dedup in `preprocessing.py`.
+- **Removed dead code** the ~3000-dataset plan had left behind: `preprocessing.register_from_records`
+  (+ `list_dataset_ids`, `get_metadata`), seven uncalled `paths.py` helpers (`data_search_paths`,
+  `find_input`, `config_path`, `library_dir`, `repo_dir_on_cluster`, `resolve_writable`,
+  `touch_tree`), and the vestigial `RunLog.is_top_level`. Stale "~3000-dataset scale" comments in
+  `eval_pipeline.py`, `eval_pd.slurm`, `exploration.py`, `preprocessing.py`, `cluster_report.py`
+  reworded to the fixed corpus.
+- **Docs brought up to date** with the current experiment (4 bases incl. TabPFN v2; 2 ensemble
+  members both tracks; `frozen_backbone` not LoRA; exp1's LR×L2-SP×frozen×pass grid over 8 splits;
+  notebooks 1.1–1.4). Deleted `docs/EXPERIMENT_PLAN.md` (superseded by `config/experiment*.yaml`;
+  code citations to it stripped). Refreshed README, METHOD, RESULTS, PAPER_ROADMAP, VSC,
+  CLAUDE.local (and the gitignored `tfm-library/PROJECT_SPECIFIC.md`); README + VSC launch commands
+  corrected to `run_experiment.sh`; fixed the four-way `METHOD.md` merge artifact in METHOD and
+  AGENTS. LoRA code-path removal deferred to a post-exp1 pass. Suite 330 passed.
+
 ## 04-09-2026
 
 - **Experiment-1 notebooks `1.1`–`1.4`** (`training_pd`, `training_lgd`, `results_pd`,

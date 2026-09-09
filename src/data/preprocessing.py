@@ -68,8 +68,8 @@ here — see :mod:`src.data.sanitize` for the rationale.
 
 Adding a new dataset
 --------------------
-Designed to scale to the 3000-dataset corpus we will buy. Every new
-dataset takes **exactly two changes** to this file (often just one):
+Every new dataset takes **exactly two changes** to this file (often
+just one):
 
 1. **Required.** Call :func:`_register` with the dataset's metadata:
 
@@ -103,10 +103,6 @@ dataset takes **exactly two changes** to this file (often just one):
 
    The decorator self-registers; you do **not** need to update any
    central dispatch table.
-
-A bootstrap helper :func:`register_from_records` is provided for
-bulk-importing metadata from a vendor-supplied CSV/JSON when scaling
-to 3000+ datasets — see its docstring for the contract.
 """
 
 from __future__ import annotations
@@ -433,23 +429,6 @@ def write_csv_atomic(df: pd.DataFrame, path: Path, **to_csv_kwargs) -> Path:
             except OSError:                                            # pragma: no cover
                 pass
     return path
-
-
-def list_dataset_ids(track: str | None = None) -> list[str]:
-    """Return all known dataset IDs, optionally filtered by track."""
-    if track is None:
-        return list(DATASET_METADATA.keys())
-    return [k for k, v in DATASET_METADATA.items() if v["track"] == track]
-
-
-def get_metadata(dataset_id: str) -> Mapping:
-    """Return the frozen metadata mapping for one dataset."""
-    if dataset_id not in DATASET_METADATA:
-        raise KeyError(
-            f"Unknown dataset_id={dataset_id!r}. Register it in "
-            f"src.data.preprocessing._RAW_METADATA."
-        )
-    return DATASET_METADATA[dataset_id]
 
 
 # =============================================================================
@@ -1170,48 +1149,6 @@ def _fix_sba_lgd(df: pd.DataFrame) -> pd.DataFrame:
     df = _clean_sba_categoricals(df)
 
     return df
-
-
-# =============================================================================
-# Bulk metadata import (helper for the 3000-dataset case)
-# =============================================================================
-
-
-def register_from_records(records: list[dict]) -> None:
-    """Bulk-add metadata entries from a vendor-provided list of dicts.
-
-    Each record must have at minimum ``dataset_id``, ``track``,
-    ``task_type``, and ``target_column``; ``categorical_columns``,
-    ``source``, and ``source_url`` are optional and default to empty.
-
-    The intended use is one-shot at module load time when scaling
-    beyond the hand-coded corpus, e.g.
-
-    .. code-block:: python
-
-        import json
-        with open("vendor_metadata.json") as f:
-            register_from_records(json.load(f))
-
-    Re-freezes ``DATASET_METADATA`` after insertion. **Never** mutate
-    metadata after it has been read by other modules.
-    """
-    global DATASET_METADATA
-    for r in records:
-        did = r["dataset_id"]
-        if did in _RAW_METADATA:
-            raise ValueError(f"register_from_records: {did!r} already known")
-        _RAW_METADATA[did] = {
-            "track":               r["track"],
-            "task_type":           r["task_type"],
-            "target_column":       r["target_column"],
-            "categorical_columns": list(r.get("categorical_columns", [])),
-            "source":              r.get("source", "local"),
-            "source_url":          r.get("source_url"),
-        }
-    DATASET_METADATA = MappingProxyType(
-        {k: MappingProxyType(v) for k, v in _RAW_METADATA.items()}
-    )
 
 
 def _validate_consistency() -> None:

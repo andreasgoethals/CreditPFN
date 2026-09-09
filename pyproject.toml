@@ -80,8 +80,6 @@ dependencies = [
     "xgboost>=2.0,<4.0",
     "catboost>=1.2,<2.0",
     "optuna>=3.6,<5.0",            # per-fold HPO (TPE) for the boosting baselines
-    # Deduplication helper
-    "rapidfuzz>=3.6,<4.0",         # fuzzy column-name matching in dedup
     # Configuration management (plain OmegaConf + Hydra-style CLI dot-overrides)
     "omegaconf>=2.3,<3.0",
     "pyyaml>=6.0,<7.0",           # omegaconf's YAML backend; no direct import in src/

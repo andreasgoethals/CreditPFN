@@ -7,9 +7,10 @@ actually contained; interpretation and novelty framing live in `PAPER_ROADMAP.md
 ## How to write an entry
 
 **Every run gets a `Configuration` table before its findings.** A run is only interpretable
-against the settings and the corpus that produced it, and both change constantly: the sweep
-is reshaped between runs, and the corpus will grow from 25 datasets toward thousands. "PD
-mAUC 0.7620" with no configuration beside it is a number nobody can use or reproduce.
+against the settings and the corpus that produced it, and both change between experiments: the
+sweep is reshaped per experiment and the train/test split is redrawn each run (the corpus is
+fixed at 25 datasets). "PD mAUC 0.7620" with no configuration beside it is a number nobody can
+use or reproduce.
 
 Copy this block. Everything in it is recorded automatically — the per-track manifest
 (`output/manifests/<run>_<track>.csv`) carries one column per field, the resolved config is
@@ -21,7 +22,7 @@ counts — so filling it in is transcription, not archaeology.
 | trials/track, bases, LRs, adaptation, qf | `config/train.yaml` → manifest columns |
 | steps/trial, epochs, steps/epoch | manifest `total_optimizer_steps`, `epochs_run`, `steps_per_epoch` |
 | corpus: n datasets + total rows, train and test | manifest `n_train_datasets`, `train_rows_total`, `train_dataset_ids` |
-| `min_train_rows` | manifest column of the same name (swept since run-8) |
+| `min_train_rows` | manifest column of the same name (fixed to 0 in exp1) |
 | row caps per base, eval caps | manifest `max_rows_per_epoch`, `config/eval.yaml` |
 | L2-SP λ, warmup, LR floor | manifest `l2sp_lambda`, `warmup_fraction`, `min_lr_fraction` |
 | code + literature version | manifest `git_commit`, `tfm_library_pin` |
@@ -279,15 +280,12 @@ base on PD AUC or LGD RMSE, and v3 3e-5 full-FT **collapsed** (AUC 0.50, ECE 0.4
 
 ## State of the world
 
-Updated **08-08-2026**.
+Updated **06-09-2026**.
 
-- **Run-6 is the current reference** for behaviour and cost; **run-4** remains the clean homogeneous
-  64-trial sweep for cross-version science. Staging has been writable since the user chmod'd it on
-  11-07-2026, so the fallback path is a safety net rather than the norm.
-- **The next sweep should go down in LR, not up** (3e-7…1e-6 at the full step budget), and should
-  keep `target_total_steps` fixed across bases.
-- **Best-epoch selection is deliberately not implemented** — there is no validation set yet. It
-  becomes possible once the corpus is large enough to hold one out; until then every trial reports
-  its final epoch.
-- **Balance was ~9.7 M credits** (`sam-balance`, 08-07-2026). B200 credit weight is 437.5 per
-  GPU-minute; run-4 spent ~4 h across up to 24 B200s plus two eval pools.
+- **Experiment 1 is running** (per-split; PD, then LGD). The newest *frozen* run above is **run-8**,
+  the first complete two-family eval; entries below it are history. Live run status and the full run
+  table live in `AGENTS_MEMORY.md` — this footer is not the place to track them.
+- **exp1 already acts on run-8's lessons**: the LR grid extends *down* (3e-7…1e-5) and
+  `target_total_steps` is fixed across bases.
+- **Best-epoch selection is deliberately not implemented** — there is no held-out validation set;
+  every trial reports its final epoch. exp1's 8 random splits give the cross-draw error bar instead.

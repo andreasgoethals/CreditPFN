@@ -97,10 +97,10 @@ LOGGER = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- #
 
 
-#: The sweep this pipeline runs unless told otherwise. A PHASE config (see `config/phases/`)
-#: is a full replacement for it, not a patch: each phase answers one question and carries its
-#: own grid, so `docs/EXPERIMENT_PLAN.md` can be executed one file at a time without editing
-#: the default and without a pile of `key=value` overrides in a job script.
+#: The sweep this pipeline runs unless told otherwise. An EXPERIMENT config (see
+#: `config/experiment*.yaml`) is a full replacement for it, not a patch: each experiment answers
+#: one question and carries its own grid, so it can be run one file at a time without editing the
+#: default and without a pile of `key=value` overrides in a job script.
 DEFAULT_TRAIN_CONFIG = "config/train.yaml"
 
 
@@ -1111,7 +1111,7 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
     p.add_argument(
         "--config", default=None, metavar="PATH",
         help="Training config to run. Defaults to config/train.yaml; point it at "
-             "config/phases/<phase>.yaml to run one phase of docs/EXPERIMENT_PLAN.md.",
+             "config/experiment<N>_<track>.yaml to run one experiment.",
     )
     p.add_argument(
         "--split-index", type=int, default=None, metavar="K",

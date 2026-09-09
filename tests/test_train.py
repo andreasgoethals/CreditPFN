@@ -1298,84 +1298,6 @@ def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
     assert tb.to("cpu").ctx_pos_rate == 0.07
 
 
-# =========================================================================== #
-# Leakage guard (12-08-2026)
-# =========================================================================== #
-
-
-def test_leakage_guard_drops_a_train_dataset_that_duplicates_a_test_one(
-    isolated_output, monkeypatch,
-) -> None:
-    """`src/data/dedup.py` has always DETECTED duplicate/overlapping datasets and
-    written `doubles_<track>_post.csv`. Nothing read it: the count was printed in one
-    log line and that was all. A duplicated table with one copy in train and one in
-    test makes every metric optimistic by an unknown amount, and at the 500-dataset
-    scale this project is heading for, nobody would notice.
-    """
-    import pandas as pd
-    from src.train import corpus
-    from src.utils.paths import manifests_dir
-
-    # TWO training datasets: one flagged, one clean. With only the flagged one the
-    # guard would (correctly) keep it rather than empty the corpus — that fail-safe is
-    # the subject of the next test.
-    clean = corpus.DatasetRef("0003.c", "pd", "classification", "y", (),
-                              Path("c.csv"), n_rows=10_000)
-    dirty = corpus.DatasetRef("0001.a", "pd", "classification", "y", (),
-                              Path("a.csv"), n_rows=10_000)
-    train = [dirty, clean]
-    test = [corpus.DatasetRef("0002.b", "pd", "classification", "y", (),
-                              Path("b.csv"), n_rows=10_000)]
-
-    # No report -> nothing dropped.
-    assert corpus._drop_train_leakage(train, test, "pd") == train
-
-    d = manifests_dir() / "dedup"
-    d.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame([{"dataset_path": "x", "dataset_name": "0001.a",
-                   "duplicate_of": "0002.b", "detection_method": "row_hash",
-                   "confidence": "high"}]).to_csv(d / "doubles_pd_post.csv", index=False)
-
-    assert corpus._drop_train_leakage(train, test, "pd") == [clean], (
-        "a training dataset flagged as a duplicate of a held-out one must be dropped"
-    )
-    # And the reverse direction (report lists the pair the other way round).
-    pd.DataFrame([{"dataset_path": "x", "dataset_name": "0002.b",
-                   "duplicate_of": "0001.a", "detection_method": "subset",
-                   "confidence": "high"}]).to_csv(d / "doubles_pd_post.csv", index=False)
-    assert corpus._drop_train_leakage(train, test, "pd") == [clean]
-
-
-def test_leakage_guard_never_empties_the_training_corpus(isolated_output) -> None:
-    """Failing safe beats failing closed: a best-effort guard that kills the run is the
-    08-07-2026 dead end. It logs an error and keeps the corpus instead."""
-    import pandas as pd
-    from src.train import corpus
-    from src.utils.paths import manifests_dir
-
-    train = [corpus.DatasetRef("0001.a", "pd", "classification", "y", (),
-                               Path("a.csv"), n_rows=10_000)]
-    test = [corpus.DatasetRef("0002.b", "pd", "classification", "y", (),
-                              Path("b.csv"), n_rows=10_000)]
-    d = manifests_dir() / "dedup"
-    d.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame([{"dataset_path": "x", "dataset_name": "0001.a",
-                   "duplicate_of": "0002.b", "detection_method": "row_hash",
-                   "confidence": "high"}]).to_csv(d / "doubles_pd_post.csv", index=False)
-    # The only training dataset is flagged, so dropping it would leave nothing: the
-    # guard keeps it and logs an error instead.
-    assert corpus._drop_train_leakage(train, test, "pd") == train
-    train2 = train + [corpus.DatasetRef("0003.c", "pd", "classification", "y", (),
-                                        Path("c.csv"), n_rows=10_000)]
-    pd.DataFrame([
-        {"dataset_path": "x", "dataset_name": "0001.a", "duplicate_of": "0002.b",
-         "detection_method": "row_hash", "confidence": "high"},
-        {"dataset_path": "x", "dataset_name": "0003.c", "duplicate_of": "0002.b",
-         "detection_method": "row_hash", "confidence": "high"},
-    ]).to_csv(d / "doubles_pd_post.csv", index=False)
-    assert corpus._drop_train_leakage(train2, test, "pd") == train2
-
-
 def test_trial_name_parser_handles_every_name_the_pipeline_writes() -> None:
     """REGRESSION (12-08-2026). `parse_trial_name` used `Path(name).stem`, which strips
     from the LAST dot — and the base stem contains one. Every v2.6 trial name was
@@ -1407,43 +1329,48 @@ def test_trial_name_parser_handles_every_name_the_pipeline_writes() -> None:
         assert parse_trial_name(list(cases)[0] + ext) is not None
 
 
-def test_a_flat_loss_with_growing_drift_is_not_divergence() -> None:
-    """REGRESSION (run-8). `loss_const` aborted a healthy trial: v2.6 @3e-7 full-FT held
-    its loss at 0.4689-0.4690 for five epochs — inside the 1e-4 window — while its weight
-    drift rose monotonically 0.042 % → 0.085 %, its held-out AUC sat at 0.7151 and its
-    gradients were normal. It was training slowly, which is what the lowest learning rate
-    in the sweep is FOR. The abort cost the trial and removed the one configuration the
-    run existed to test.
+def test_flat_loss_with_growing_drift_is_not_divergence() -> None:
+    """REGRESSION (run-8 + 08-09-2026). `loss_const` aborted slow-but-healthy trials: a low-LR /
+    L2-SP / accumulate trial holds its per-epoch loss inside the 1e-4 window while its weights keep
+    moving. The guard requires flat loss AND flat *weight drift* — and must read the PER-EPOCH
+    drift, because the monitor-only per-stage drift is absent from the 5-epoch window ~14 of every
+    19 epochs, which silently degraded the guard to a loss-only rule and killed EVERY accumulate +
+    L2-SP trial in exp1 (100% of that arm, `loss_const`).
 
-    The detector now needs a flat loss AND flat drift, because a model that has actually
-    died stops moving.
+    Exercises the REAL `_divergence_reason`, not a replica — the earlier replica assumed a
+    per-epoch drift signal that production only produced on monitor epochs, which is exactly how
+    the bug hid.
     """
     import math
+    from src.train.loop import EpochRecord, _divergence_reason
 
-    def trips(losses, drifts, patience=5):
-        """The rule as `train_one_config` applies it."""
-        recent_drift = [max(d.values()) for d in drifts if d]
-        drift_flat = (len(recent_drift) >= 2
-                      and (max(recent_drift) - min(recent_drift)) < 1e-6)
-        return (len(losses) == patience
-                and max(losses) - min(losses) < 1e-4
-                and (drift_flat or not recent_drift))
+    def rec(loss: float, drift: float) -> EpochRecord:
+        return EpochRecord(epoch=0, train_loss=loss, elapsed_sec=0.0, lr=1e-6,
+                           weight_drift=drift, optimizer_steps=13)
 
-    healthy_losses = [0.4689, 0.4689, 0.4690, 0.4689, 0.4689]
-    growing = [{"enc": d} for d in (0.042, 0.047, 0.052, 0.057, 0.062)]
-    assert not trips(healthy_losses, growing), (
-        "a slow-but-moving trial must not be aborted"
-    )
+    good = [(0.68, 0.79)] * 5   # (test, train) AUCs nowhere near 0.5
 
-    dead = [{"enc": 0.031} for _ in range(5)]
-    assert trips(healthy_losses, dead), (
-        "a flat loss AND flat weights is a genuinely dead model"
-    )
-    # No drift record at all (monitor disabled) -> fall back to the loss-only rule.
-    assert trips(healthy_losses, [{} for _ in range(5)])
-    # A moving loss is never divergence, whatever the drift does.
-    assert not trips([0.47, 0.44, 0.41, 0.39, 0.36], dead)
-    assert not math.isnan(0.0)
+    def reason(records, metrics=good):
+        return _divergence_reason(records, metrics, 5, "roc_auc", 1)
+
+    # THE exp1 bug: flat loss (0.4624), drift tiny but demonstrably GROWING (0.073%→0.076%).
+    moving = [rec(0.4624, d) for d in (7.3e-4, 7.3e-4, 7.4e-4, 7.5e-4, 7.6e-4)]
+    assert reason(moving) is None, "a slow-but-moving trial must not be aborted"
+
+    # A genuinely dead model: flat loss AND flat weights.
+    assert reason([rec(0.4624, 3.1e-4) for _ in range(5)]) == "loss_const"
+
+    # No anchor (weight_drift = NaN every epoch) + flat loss -> loss-only fallback still trips.
+    assert reason([rec(0.4624, math.nan) for _ in range(5)]) == "loss_const"
+
+    # A moving loss is never `loss_const`, whatever the drift does.
+    assert reason([rec(l, 3.1e-4) for l in (0.47, 0.44, 0.41, 0.39, 0.36)]) is None
+
+    # AUC pinned at 0.5 is a real collapse, caught even when loss/drift look fine.
+    assert reason(moving, [(0.5, 0.5)] * 5) == "auc_random"
+
+    # A window shorter than the patience never trips.
+    assert reason(moving[:3]) is None
 
 
 def test_l2sp_lambda_is_a_swept_axis() -> None:

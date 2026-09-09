@@ -1,4 +1,4 @@
-"""One report answering everything we need to know before committing a 3 000-trial campaign.
+"""One report answering everything we need to know before committing a multi-day GPU campaign.
 
     python scripts/cluster_report.py                 # everything that needs no GPU
     python scripts/cluster_report.py --gpu           # + the GPU sections (run under sbatch)

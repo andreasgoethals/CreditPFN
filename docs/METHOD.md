@@ -9,11 +9,6 @@ What each run *measured* is [`RESULTS.md`](RESULTS.md). What was tried and faile
 [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). How to run it on the cluster is
 [`VSC.md`](VSC.md).
 
-Merged on 12-08-2026 from four documents — `METHOD.md`, `METHOD.md`,
-`METHOD.md` and `METHOD.md` — which split along file boundaries rather than
-along topics: the row caps were half data-pipeline and half checkpoint, and the code
-notes belonged to all four.
-
 ---
 
 ## Contents
@@ -47,8 +42,8 @@ bottom is for revisits.
 > — `data/raw/` and the sanitized `data/processed/` CSVs — lives in
 > **project staging** `<staging>/CreditPFN` (large, persistent, the one
 > tier both wICE and Mindwell can see). The smaller, durable
-> diagnostics — the dedup reports (`output/manifests/dedup/`) and the manifests
-> (`output/manifests/manifest_{pd,lgd}.csv`) — ALWAYS resolve to the **output root**
+> diagnostics — the manifests (`output/manifests/manifest_{pd,lgd}.csv`) —
+> ALWAYS resolve to the **output root**
 > `$VSC_DATA/CreditPFN` (NFS, backed up). `data_source` can be flipped to
 > `"scratch"` (`$VSC_SCRATCH/CreditPFN`, purged ~30 d) or `"data"`
 > (`$VSC_DATA/CreditPFN`); on a laptop the knob is ignored and everything
@@ -69,15 +64,6 @@ bottom is for revisits.
                               │  scripts/data_pipeline.py
                               ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  STAGE 1 — Dedup PRE pass (diagnostic only)                       │
-│  src/data/dedup.py --pass pre                                     │
-│  Detects within-track dataset duplicates BEFORE any cleaning.     │
-│  Writes a report; does not remove anything.                       │
-│  → output/manifests/dedup/doubles_{pd,lgd}_pre.csv   [output root, durable]   │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
 │  STAGE 2 — Register                                               │
 │  src/data/register.py                                             │
 │  Reads each raw CSV. Applies surgical fixes (drop ID columns,     │
@@ -96,14 +82,6 @@ bottom is for revisits.
 │  → data/processed/{pd,lgd}/<id>.sanitized.csv  [staging on VSC]   │
 │    (the sanitized CSV is the only artefact; feature selection      │
 │     keeps real columns, so no synthetic-feature sidecar)          │
-└──────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  STAGE 4 — Dedup POST pass (diagnostic only)                      │
-│  src/data/dedup.py --pass post                                    │
-│  Catches duplicates that only become identical after sanitize.    │
-│  → output/manifests/dedup/doubles_{pd,lgd}_post.csv  [output root, durable]   │
 └──────────────────────────────────────────────────────────────────┘
                               │
             ┌─────────────────┴──────────────────┐
@@ -330,10 +308,8 @@ repo root.
 
 | Stage | Module | Reads | Writes |
 |---|---|---|---|
-| 1 | `src/data/dedup.py --pass pre`  | `data/raw/{pd,lgd}/<id>.csv` [stg] | `output/manifests/dedup/doubles_<track>_pre.csv` [out] |
 | 2 | `src/data/register.py`          | `data/raw/{pd,lgd}/` [stg]            | `output/manifests/manifest_{pd,lgd}.csv` [out] |
 | 3 | `src/data/sanitize.py`          | `data/raw/` [stg] + manifest          | `data/processed/{pd,lgd}/<id>.sanitized.csv` [stg] |
-| 4 | `src/data/dedup.py --pass post` | `data/processed/` [stg]               | `output/manifests/dedup/doubles_<track>_post.csv` [out] |
 | 5a | `src/train/dataloader.py` + `src/train/tabpfn_preprocessing.py` | `data/processed/.../*.sanitized.csv` [stg] | Live tensors (no disk artefact) |
 | 5b | `src/eval/benchmark.py` + `src/model/{boosting,linear,tabpfn_models}.py` | `data/processed/.../*.sanitized.csv` [stg] | Eval CSVs at `output/results/...` [stg] |
 
@@ -343,8 +319,8 @@ skips datasets whose sanitized CSV is already on disk.
 
 #### Cleanup
 `python -m src.utils.clean_run --clean --stages data` wipes everything
-the data pipeline produces — the processed CSVs (staging), the dedup
-reports + manifests + data logs (output root) — but **never** touches
+the data pipeline produces — the processed CSVs (staging), the manifests
++ data logs (output root) — but **never** touches
 `data/raw/`.
 
 ---
@@ -377,7 +353,7 @@ reports + manifests + data logs (output root) — but **never** touches
 
 Tabular-foundation-model weights used as starting points for continued
 pretraining on credit-risk data, plus the trained checkpoints our
-sweeps emit. Two families are swept: **TabPFN** (v2.6, v3) and
+sweeps emit. Two families are swept: **TabPFN** (v2, v2.6, v3) and
 **TabICLv2** (added 2026-08-04). **Do not edit or commit new
 checkpoints without updating this file.**
 
@@ -409,10 +385,10 @@ used to produce it, and a brief note on what role each plays in
 **our** continued pretraining experiments. Trained outputs and their
 on-disk format are documented further below.
 
-From the TabPFN family only the **v2.6** and **v3** synthetic-only
-bases are used (the older **v2.5** base has been dropped from the sweep
-entirely). Alongside them the sweep includes the **TabICLv2** base of
-the matching head — so both tracks run three bases.
+From the TabPFN family the **v2**, **v2.6** and **v3** synthetic-only
+bases are used (the intermediate **v2.5** base is not in the sweep).
+Alongside them the sweep includes the **TabICLv2** base of
+the matching head — so both tracks run four bases.
 
 TabICLv2 sources:
 
@@ -428,8 +404,8 @@ TabICLv2 sources:
 
 Every checkpoint we sweep was trained from scratch on millions of
 *synthetic* tabular datasets sampled from a structural-causal-model
-prior — no real-world data has touched the weights. **TabPFN-v3 and
-all v2.6 variants** ship synthetic-only, and neither has a released
+prior — no real-world data has touched the weights. **TabPFN v2, v2.6 and
+v3** all ship synthetic-only, and none has a released
 "real-finetuned" variant. That is exactly the clean starting point the
 Real-TabPFN recipe (Garg et al. 2025) assumes: begin from the synthetic
 prior, then continue-pretrain on real data — in our case the curated
@@ -444,6 +420,8 @@ that corpus.
 | `tabpfn-v3-regressor-v3_default.ckpt`          | 233 MB | HF `Prior-Labs/tabpfn_3` | **Synthetic-only.** Same v3 card statement applies; no real-finetuned v3 regressor yet. | **Default sweep base** for LGD. |
 | `tabpfn-v2.6-classifier-v2.6_default.ckpt`     | 43 MB  | HF `Prior-Labs/tabpfn_2_6` | **Synthetic-only** — the v2.6 card states *"TabPFN-2.6 is trained purely on synthetic tabular tasks"*; no real-finetuned v2.6 variant has been released. | Sweep base: the cleanest v2.6 base available. |
 | `tabpfn-v2.6-regressor-v2.6_default.ckpt`      | 51 MB  | HF `Prior-Labs/tabpfn_2_6` | **Synthetic-only** (same card statement). No real-finetuned v2.6 regressor yet. | Sweep base: cleanest v2.6 regressor base. |
+| `tabpfn-v2-classifier-v2_default.ckpt`         | ~29 MB | HF `Prior-Labs/TabPFN-v2` | **Synthetic-only.** The original TabPFN-v2 (Hollmann et al. 2025, *Nature*): 12-layer alternating feature/sample attention, ~7.2 M params — an order of magnitude smaller than v2.6/v3. | **Oldest sweep base.** Anchors the v2 → v2.6 → v3 lineage, so a gain can be read across three TabPFN generations. |
+| `tabpfn-v2-regressor-v2_default.ckpt`          | ~29 MB | HF `Prior-Labs/TabPFN-v2-reg` | **Synthetic-only**, same Nature architecture; no real-finetuned v2 regressor. | **Oldest sweep base** for LGD. |
 | `tabicl-classifier-v2-20260212.ckpt`           | 110 MB | HF `jingang/TabICL` | **Synthetic-only.** TabICLv2 is pretrained on synthetic tabular tasks; 3-stage architecture (column embedder → row interactor → ICL predictor), ~27 M params. Classifier head emits 10 logit columns. | **Second-family sweep base (PD).** Tests whether the CPT result generalises beyond one architecture/prior. |
 | `tabicl-regressor-v2-20260212.ckpt`            | 114 MB | HF `jingang/TabICL` | **Synthetic-only**, same architecture; regression head emits 999 quantiles on context-z-normalised targets (no bar distribution). | **Second-family sweep base (LGD).** |
 
@@ -481,31 +459,33 @@ mirrored at `tfm-library/repositories/Huggingface TabPFN.txt`.
 
 The training config (`config/train.yaml::tunable`) treats the base
 checkpoint as a tuneable knob and sweeps over the released
-synthetic-only bases for v2.6 and v3:
+synthetic-only bases for v2, v2.6 and v3:
 
 | Track           | Sweep includes (default)                        | What each tells us                                                        |
 |-----------------|-------------------------------------------------|---------------------------------------------------------------------------|
-| PD (classifier) | `v3_default` · `v2.6_default` · `tabicl-v2`     | v3 synthetic-only · v2.6 synthetic-only · second family (different prior + architecture) |
-| LGD (regressor) | `v3_default` · `v2.6_default` · `tabicl-v2`     | same three, regression heads                                              |
+| PD (classifier) | `v2_default` · `v2.6_default` · `v3_default` · `tabicl-v2` | three TabPFN generations (v2 Nature → v2.6 → v3) · second family (different prior + architecture) |
+| LGD (regressor) | `v2_default` · `v2.6_default` · `v3_default` · `tabicl-v2` | same four, regression heads                                              |
 
-The total grid per track is then `3 bases × 4 LRs × 2 adapt-modes ×
-1 qf × 1 acc × 2 epoch-pass-modes = 48 trials`. The current LR grid is
-`[3e-7, 1e-6, 1e-5, 3e-5]` — the bottom rung `3e-7` matches
-Real-TabPFN, `1e-5` is TabICLv2's own finetuning default, and `3e-5`
-approaches Rubachev's separate single-dataset finetuning median
-(~3.9e-5); `1e-4` is excluded because it diverged on the no-LoRA +
-`qf=0.20` setting (revisit now that `weight_decay=0.0`). See the
-hyperparameter-rationale table in the README for the full literature
-comparison.
+Experiments are **deltas over `config/train.yaml`**, defined in
+`config/experiment*.yaml`. The live experiment (`exp1`) sweeps, per track,
+learning-rate `{3e-7, 1e-6, 1e-5}` × L2-SP λ `{0, 0.003}` × `frozen_backbone`
+`{false, true}` × epoch-pass-mode `{full_pass, accumulate}` × the 4 bases, at a
+single query fraction (`0.40`) and `accumulate_grad_batches=1`. The LR rungs are
+`3e-7` (Real-TabPFN's value), `1e-6` (our best so far) and `1e-5` (TabICLv2's own
+finetuning default, ≈ Kolberg/Tanna). See the hyperparameter-rationale table in
+the README for the full literature comparison.
 
-**The adapt-mode axis is family-specific.** `use_lora=true` means LoRA
-for TabPFN, and **freeze-backbone** (train the ICL module only) for
-TabICLv2 — that family's own pretraining stage-3 regime. The reason is
-empirical: full SFT collapsed TabICLv2 in two independent reports
-(TabZilla accuracy 0.873 → 0.567 in Tanna 2026; "failed to train
-TabICLv2" in Kolberg 2026), so the freeze-backbone arm is TabICLv2's
-safe-adaptation arm rather than a parameter-count experiment. Its
-checkpoints are tagged `_iclhead` instead of `_lora`.
+**The adaptation axis is `frozen_backbone` — a true freeze, not LoRA.**
+`false` fine-tunes every weight; `true` freezes the repeated-block transformer
+stack (the bulk of the pretrained weights) and trains only the embedders, label
+encoder and prediction head. One implementation serves every family
+(`src/train/freeze.py`), so the arm means the same thing for TabPFN v2/v2.6/v3
+and for TabICLv2. Freezing matters most for TabICLv2: full SFT collapsed it in
+two independent reports (TabZilla accuracy 0.873 → 0.567 in Tanna 2026; "failed
+to train TabICLv2" in Kolberg 2026), so the frozen arm is also that family's
+safe-adaptation regime. On disk the frozen trials are tagged `_iclhead` for
+TabICLv2 and `_lora` for TabPFN (legacy tag names — no LoRA runs in the current
+sweep).
 
 Every base in this sweep follows the methodologically clean
 ablation recipe of Real-TabPFN (Garg et al. 2025): start from
@@ -524,16 +504,16 @@ below.
 
 ### Architecture differences across versions
 
-|                                       | v2.6                          | v3                                       |
-|---------------------------------------|-------------------------------|------------------------------------------|
-| Layers                                | 24 (fixed)                    | 24 main layers (multi-stage transformer) |
-| Attention pattern                     | TabPFNv2-style alternating    | Multi-stage transformer-based            |
-| Sample limit (intended)               | ≤ 50 000                      | ≤ 1 000 000                              |
-| Feature limit (intended)              | ≤ 2 000                       | ≤ 2 000                                  |
-| Real-finetuned variant published?     | No (only synthetic `_default`)| No (only synthetic `_default`)           |
-| Model technical report                | Grinsztajn et al. 2026 (arXiv:2511.08667, same architecture family) | Grinsztajn et al. 2026, *TabPFN-3 Technical Report* |
-| Approximate checkpoint size           | ~43–51 MB                     | ~213–233 MB                              |
-| License                               | `tabpfn-2.6-license-v1.0`     | `tabpfn-3-license-v1.0`                  |
+|                                       | v2                            | v2.6                          | v3                                       |
+|---------------------------------------|-------------------------------|-------------------------------|------------------------------------------|
+| Layers                                | 12                            | 24 (fixed)                    | 24 main layers (multi-stage transformer) |
+| Attention pattern                     | TabPFNv2-style alternating    | TabPFNv2-style alternating    | Multi-stage transformer-based            |
+| Sample limit (intended)               | ≤ 10 000                      | ≤ 50 000                      | ≤ 1 000 000                              |
+| Feature limit (intended)              | ≤ 100                         | ≤ 2 000                       | ≤ 2 000                                  |
+| Real-finetuned variant published?     | No (only synthetic `_default`)| No (only synthetic `_default`)| No (only synthetic `_default`)           |
+| Model technical report                | Hollmann et al. 2025, *Nature* | Grinsztajn et al. 2026 (arXiv:2511.08667, same architecture family) | Grinsztajn et al. 2026, *TabPFN-3 Technical Report* |
+| Approximate checkpoint size           | ~29 MB                        | ~43–51 MB                     | ~213–233 MB                              |
+| License                               | Prior Labs research licence   | `tabpfn-2.6-license-v1.0`     | `tabpfn-3-license-v1.0`                  |
 
 ### Trained checkpoints (our outputs)
 
@@ -579,8 +559,9 @@ The basename encodes the tunable hyperparameters
 - `acc<K>` — `accumulate_grad_batches`; omitted when `None`.
 - `_fullpass` — present only for `epoch_pass_mode == "full_pass"`; the
   default `one_sample` adds no tag.
-- `_lora` / `_iclhead` — present only when `use_lora` is true;
-  `_iclhead` for TabICLv2 bases (freeze-backbone), `_lora` for TabPFN.
+- `_lora` / `_iclhead` — present only for a **frozen-backbone** trial;
+  `_iclhead` for TabICLv2 bases, `_lora` for TabPFN (legacy tag names — the
+  axis is a true freeze, not LoRA).
 
 Optional segments are dropped when their value is the default/`None`,
 so the default one-step-per-dataset, full-FT sweep produces the same
@@ -594,7 +575,7 @@ short names as the original (pre-2026-06-01) runs.
 
 | Key | Contents |
 |---|---|
-| `state_dict` | the model weights (LoRA adapters merged back into the base via `merge_and_unload()`, so a LoRA trial is indistinguishable from a full-FT save and needs no PEFT at load time) |
+| `state_dict` | the model weights — a frozen-backbone trial saves the same full state_dict as a full-FT trial, so it loads with no special handling |
 | `config` | `asdict()` of the pydantic `ArchitectureConfig` |
 | `architecture_name` | one of `tabpfn_v2`, `tabpfn_v2_5`, `tabpfn_v2_6`, `tabpfn_v3` — tells the loader which architecture class to instantiate |
 | `inference_config` | `asdict()` of the `InferenceConfig` (pydantic `extra="forbid"`) |
@@ -720,48 +701,48 @@ holds every member's graph for one backward pass. So:
 peak memory  ≈  n_estimators  ×  rows  ×  (per-member cost per row)
 ```
 
-The values in `config/data.yaml` are the **PD (2-member) caps**. `loop.py`
-scales them down by `2/n_estimators` for LGD's 8 members, so both tracks hold
-roughly the same GPU memory ("member-aware row-cap scaling" in
-`train_one_config`). That scaling is **TabPFN-only** — it was calibrated on
-TabPFN's memory slope, and TabICLv2 is pinned to 2 members on both tracks anyway.
+The values in `config/data.yaml` are the **2-member caps**, and **both tracks now
+use 2 ensemble members** (`n_estimators_finetune: {pd: 2, lgd: 2}` in
+`config/train.yaml`), so one cap serves PD and LGD with no per-track scaling. A
+member-aware scaling still guards `train_one_config` (caps × 2 / `n_estimators`),
+but at 2 members it is a no-op — it only bites if the member count is raised.
 
-#### Measured — B200 (183 GiB), 2026-08-05, job 11509346
+#### Measured — B200 (183 GiB), 24-08-2026, job 11524668
 
-64 features, `query_fraction=0.20`, real forward+backward. TabPFN probed at
-**1 member**; TabICLv2 at **2 members with `recompute=True`** (its actual training
-configuration), so compare the per-member column, not the raw peaks.
+`config/data.yaml` is the source of truth for the caps; the per-step slopes it
+records — measured at **2 ensemble members** (the count both tracks now use), 64
+features, real forward+backward — are, in **GB per 1k rows per member**:
 
-| Base | Measurements | Slope /1k rows | Per member | First failure |
-|---|---|---|---|---|
-| TabPFN v3 | 20k → 50.3 GB · 50k → 124.9 GB | 2.49 GB | 2.49 GB | OOM at 100k |
-| TabPFN v2.6 | 9k → 49.2 GB · 20k → 108.8 GB · 30k → 169.3 GB | 5.72 GB | 5.72 GB | OOM at 50k |
-| TabICLv2 | 10k → 10.5 GB · 26k → 26.8 GB | 1.02 GB | **0.51 GB** | cuDNN at 40k |
+| Base | Per-member slope | Anchor point | First failure |
+|---|---|---|---|
+| TabPFN v2   | 3.96 GB | 10k → 79 GB   | OOM at 14k |
+| TabPFN v2.6 | 5.44 GB | 11k → ~132 GB | OOM at 26k |
+| TabPFN v3   | 2.51 GB | 26k → 131 GB  | OOM at 50k |
+| TabICLv2    | 0.52 GB | 26k → 27 GB   | cuDNN kernel shape above 26k (not memory) |
 
-Memory is ~linear in rows; the intercept is negligible (weights are tiny next
-to activations). Step times are 0.5–2.5 s throughout — **except** the first
-timed step of a job, which includes CUDA warm-up (v3 read 7.58 s at 20k and
-2.53 s at 50k; don't misread that as superlinear).
-
-The 2026-07-08 probe measured v3 and v2.6 within ~2 % of the above. An even
-earlier "0.93 GB per 1k rows" figure was a **bad measurement** — it timed the
-lightweight monitor eval, not a training step. Never trust the monitor's
-`gpu_peak_alloc` as the training peak.
+For **v2 and v2.6 the attention term is quadratic in rows**, so a single slope
+under-predicts the peak at higher row counts — the caps in `config/data.yaml` are
+the measured-OK values, not a linear extrapolation (v2 at 14k OOM'd near ~155 GB
+where a linear guess said ~111 GB). An earlier "0.93 GB per 1k rows" figure was a
+**bad measurement** — it timed the lightweight monitor eval, not a training step.
+Never trust the monitor's `gpu_peak_alloc` as the training peak.
 
 #### Derived caps
 
 Target ~130 GB peak, leaving ~53 GiB for optimizer state, fragmentation and the
-rolling eval snapshot.
+rolling eval snapshot. Both tracks run 2 members, so one cap per base serves PD
+and LGD alike:
 
-| Base | PD (2 members) | LGD (8 members, auto-scaled) | Predicted peak |
-|---|---|---|---|
-| v3 | **26 000** | 6 500 | ~129 GB |
-| v2.6 | **11 000** | 2 750 | ~126 GB |
-| TabICLv2 | **26 000** | 26 000 (2 members, not scaled) | ~27 GB |
+| Base | Cap (rows/step) | Predicted peak |
+|---|---|---|
+| TabPFN v2   | **10 000** | ~79 GB |
+| TabPFN v2.6 | **11 000** | ~132 GB |
+| TabPFN v3   | **26 000** | ~131 GB |
+| TabICLv2    | **26 000** | ~27 GB |
 
 PD's large datasets (hackerearth 532k, home_credit 307k, vehicle_loan 233k) bind
-on the cap, so 26k buys real context — the lever Real-TabPFN attributes gains
-to. LGD datasets are all ≤16k rows, so the LGD caps truncate only lgd_freddie.
+on the cap, so 26k buys real context — the lever Real-TabPFN attributes gains to.
+Every LGD dataset is ≤16k rows, so the caps truncate only lgd_freddie.
 
 Lookup key is the leading `v<MAJOR>[.<MINOR>]` of the base filename, or
 `tabicl` for that family; `default` is the fallback.
@@ -801,19 +782,6 @@ somewhere in 26k–40k. **Do not raise it** without first moving the attention
 backend off cuDNN (e.g. `torch.backends.cuda.enable_cudnn_sdp(False)`) *and*
 re-probing. Raising it blind produces that opaque error mid-sweep.
 
-#### Known confound: LGD context is not symmetric
-
-TabPFN uses 8 members on LGD, so its caps auto-scale to v3 6 500 / v2.6 2 750
-rows per step, while TabICLv2 keeps 2 members and therefore 26 000. Because every
-LGD dataset is ≤16k rows, **TabICLv2 sees complete tables while v3 sees 6 500-row
-samples.**
-
-This is deliberate: each family runs at its own official member count (the fair
-"as its authors intended" protocol), and changing TabPFN's LGD member count
-would break comparability with the run-4 results. But it means the **LGD
-cross-family comparison is entangled with context size and must be reported as
-such**, not presented as a pure architecture comparison.
-
 #### The cell budget (`max_cells_per_epoch`, currently off)
 
 When non-null for a base, per-step rows become
@@ -840,6 +808,7 @@ in one call.
 
 | Base | Cap | Why |
 |---|---|---|
+| v2 | 10 000 | TabPFN-v2's official limit — anything above 10k raises `TabPFNValidationError`. |
 | v3 | 1 000 000 | TabPFN-3's published envelope (report §2.4) |
 | v2.6 | 50 000 | Its published design envelope ("up to 50,000 data points"). Reduced from 100k on 2026-07-13: dual attention is O(rows²), and one v2.6 × algorithmwatch fold took ~40 min on an A100, blowing 8 cells past the old 2 h walltime. 50k stays in-envelope and cuts the quadratic term 4×. |
 | TabICLv2 | 1 000 000 | Million-scale in-context inference is TabICLv2's headline capability: Qu et al. report 1M samples × 500 features in ~450 s under 50 GB GPU + 24 GB CPU via hierarchical CPU/disk offloading, and QASSMax (scalable softmax, logits × `s·log n`) exists to keep attention sharp at long context. |
@@ -900,14 +869,16 @@ Dead ends live in `AGENTS_MEMORY.md`; what changed and when in `CHANGELOG.md`.
 
 ### Adaptation modes and regularisation
 
-- **`use_lora=True` means *freeze-backbone* for TabICLv2, LoRA for TabPFN.** One grid axis, two family
-  meanings; the run tags are `_iclhead` vs `_lora`. Do not unify them — the literature says full SFT
-  breaks TabICLv2, so this is that family's safe-adaptation arm. `descriptive_name()` derives the tag
+- **The swept axis is `frozen_backbone`; internally it still sets the legacy `use_lora` flag.**
+  `use_lora=True` is the **freeze-backbone** arm for *both* families — the backbone is frozen and only
+  the head/decoder trains. The run tags are `_iclhead` (TabICLv2) and `_lora` (TabPFN); `_lora` is a
+  legacy name — no LoRA adapters are built, that path is retired. `descriptive_name()` derives the tag
   from the base filename, so every call site stays consistent without call-site changes.
-- **L2-SP applies to TabICLv2 even in freeze-backbone mode**
-  (`l2sp_applicable = (family == "tabicl") or (not use_lora)`) because the trainable ICL head still
-  drifts from its pretrained values. For TabPFN + LoRA the base weights are frozen and the adapters
-  have no pretrained anchor, so L2-SP is genuinely inert there — hence the asymmetry.
+- **L2-SP still applies to TabICLv2 in the frozen arm**
+  (`l2sp_applicable = (family == "tabicl") or (not use_lora)`) because its trainable ICL head still
+  drifts from its pretrained values. For a frozen-backbone TabPFN trial the backbone carries no
+  gradient, so an L2-SP anchor on it is inert — hence the asymmetry. L2-SP is itself a swept axis
+  `{0, 0.003}`, so in the frozen arm λ has no effect.
 - **`model.col_embedder.eval()` is re-applied after every `model.train()`** in the epoch loop.
   TabICLv2 routes its forward pass on module training flags, so `train()` would silently restore the
   backbone's train-time behaviour. Looks redundant; is not. (Distinct from using `.eval()` *to
@@ -917,15 +888,9 @@ Dead ends live in `AGENTS_MEMORY.md`; what changed and when in `CHANGELOG.md`.
 
 ### Memory, capacity and context size
 
-- **Member-aware row scaling** in `train_one_config`: the `max_rows_per_epoch` values in
-  `config/data.yaml` are the **PD 2-member** caps, and the code divides by `n_estimators / 2` for
-  LGD. Removing this apparently redundant scaling re-introduces the LGD OOM.
-- **The LGD context asymmetry is a known confound, not a bug.** On LGD, TabPFN uses 8 ensemble
-  members so its caps auto-scale to v3 6 500 / v2.6 2 750, while TabICLv2 keeps 2 members and 26 000.
-  Since every LGD dataset is ≤16k rows, TabICLv2 sees full tables and v3 sees a 6.5k sample. Kept
-  deliberately — each family runs at its own official member count, and changing TabPFN's would
-  break run-4 comparability — but the LGD cross-family comparison is confounded with context size
-  and must be stated as such in the paper.
+- **Member-aware row scaling** in `train_one_config` guards the caps (`caps × 2 / n_estimators`),
+  but **both tracks now run 2 ensemble members**, so it is a no-op — it only bites if the member
+  count is raised. The `config/data.yaml` caps are the 2-member values, shared by PD and LGD.
 
 ### Paths, saving, eval
 

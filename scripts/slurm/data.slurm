@@ -7,9 +7,8 @@
 #  from $CREDITPFN_DATA_ROOT (auto-detected by src.utils.paths when
 #  unset — probes project STAGING first, then $VSC_SCRATCH/CreditPFN,
 #  $VSC_SCRATCH, $VSC_DATA/CreditPFN; whichever has CSVs wins), runs the
-#  five-stage pipeline, and writes:
+#  two-stage pipeline (register → sanitize), and writes:
 #    * data/processed/{pd,lgd}/<id>.sanitized.csv → DATA_ROOT (staging)
-#    * dedup/doubles_{track}_{pre,post}.csv   → OUTPUT_ROOT ($VSC_DATA, durable)
 #    * manifest_{pd,lgd}.csv                  → OUTPUT_ROOT ($VSC_DATA, durable)
 #
 #  CPU-only — uses the wICE `batch` partition (IceLake). wICE's scratch and

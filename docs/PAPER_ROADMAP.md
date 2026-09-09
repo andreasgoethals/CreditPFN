@@ -50,8 +50,9 @@ record is now `AGENTS_MEMORY.md` (the Runs table), the numbers are
   TFM families.) Our per-step sampler is deliberately identical across
   families so this axis is held constant — but it needs an explicit ablation,
   not just a claim.
-- *"12 training and 5 test datasets is small."* True. Per-dataset results
-  and paired statistics matter more than pooled means here.
+- *"17 PD and 8 LGD datasets is small."* True. Per-dataset results and paired
+  statistics — and averaging over the 8 random splits — matter more than pooled
+  means here.
 
 ---
 
@@ -61,12 +62,13 @@ Ordered by how much each one strengthens the paper per unit of effort.
 
 ### Must have
 
-1. **A complete two-family eval.** Every run so far has finished training and
-   then lost part of the eval to walltime or queueing. Nothing else on this
-   list can be judged until one full trained-vs-untuned grid exists.
-2. **Run the two-family sweep to the full step budget on BOTH tracks.**
-   36 trials/track. This is the single biggest
-   addition to the paper's claim.
+1. **A complete eval, averaged over splits.** Run-8 delivered the first full
+   trained-vs-untuned grid; exp1 now repeats it over 8 random dataset splits so
+   the headline numbers carry an honest cross-draw error bar. Nothing else on
+   this list can be judged until exp1's grid completes.
+2. **Run the scheme sweep to the full step budget on BOTH tracks.** exp1's grid
+   (LR × L2-SP × frozen × pass-mode × 4 bases) over 8 splits. This is the single
+   biggest addition to the paper's claim.
 3. **Temporal splits — but scope them first; the corpus mostly cannot support
    them.** Purucker et al. show that scoring grouped/temporal tasks with IID
    splits distorts model rankings badly (Kendall τ ≈ 0.5). Credit data is

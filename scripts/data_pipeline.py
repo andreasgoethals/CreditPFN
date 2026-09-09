@@ -1,13 +1,11 @@
-"""End-to-end orchestrator for the four data-pipeline stages.
+"""End-to-end orchestrator for the two data-pipeline stages.
 
 Calls, in order:
 
-    1. dedup    --pass pre   on data/raw/{pd,lgd}/
-    2. register              → output/manifests/manifest_{pd,lgd}.csv
-    3. sanitize              → data/processed/{pd,lgd}/<id>.sanitized.csv
-    4. dedup    --pass post  on data/processed/{pd,lgd}/
+    1. register              → output/manifests/manifest_{pd,lgd}.csv
+    2. sanitize              → data/processed/{pd,lgd}/<id>.sanitized.csv
 
-The four stage modules are each callable on their own (``python -m
+Both stage modules are each callable on their own (``python -m
 src.data.<name>``); this script is the convenience wrapper that
 chains them and writes a single summary line per run to ``logs/``.
 
@@ -22,11 +20,11 @@ Public entry point
 :func:`run` — the orchestration function. Parameters:
 
 ``fresh: bool`` (default ``False``)
-    ``True`` → wipe ``output/manifests/dedup``, ``data/processed`` and the two
-    manifest CSVs *before* anything runs. Use when you want the
-    corpus rebuilt from scratch.
-    ``False`` → leave existing artefacts in place. Register,
-    sanitize, and dedup refresh their outputs.
+    ``True`` → wipe ``data/processed`` and the two manifest CSVs
+    *before* anything runs. Use when you want the corpus rebuilt
+    from scratch.
+    ``False`` → leave existing artefacts in place. Register and
+    sanitize refresh their outputs.
 ``datasets: list[str] | None``
     ``None`` or empty list → process every dataset_id registered in
     :data:`src.data.preprocessing.DATASET_METADATA`. Otherwise: only
@@ -68,7 +66,7 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
-from src.data import dedup, register, sanitize  # noqa: E402
+from src.data import register, sanitize  # noqa: E402
 from src.data.preprocessing import DATASET_METADATA  # noqa: E402
 from src.utils.paths import (  # noqa: E402
     apply_data_source_from_cfg, resolve_data_path, resolve_output_path,
@@ -94,7 +92,6 @@ def _wipe(cfg) -> None:
     refuses to remove a directory that an editor has visited recently.
     """
     dirs = [
-        resolve_output_path(cfg.paths.dedup),         # OUTPUT_ROOT (durable)
         resolve_data_path(cfg.paths.processed),       # DATA_ROOT (scratch on VSC)
     ]
     for d in dirs:
@@ -137,14 +134,6 @@ def _count_files(folder: Path, pattern: str = "*") -> int:
     return sum(1 for _ in folder.glob(pattern))
 
 
-def _count_doubles(dedup_dir: Path, track: str, pass_name: str) -> int:
-    p = dedup_dir / f"doubles_{track}_{pass_name}.csv"
-    if not p.exists():
-        return 0
-    # one header line, one row per duplicate.
-    return max(0, sum(1 for _ in p.open(encoding="utf-8")) - 1)
-
-
 # --------------------------------------------------------------------------- #
 # Public entry point
 # --------------------------------------------------------------------------- #
@@ -156,7 +145,7 @@ def run(
     log_path: Path | str | None = None,
     cfg=None,
 ) -> int:
-    """Run the full five-stage data pipeline. See module docstring."""
+    """Run the full data pipeline. See module docstring."""
     if cfg is None:
         cfg = _load_cfg()
     # Resolve the data root from cfg.paths.data_source BEFORE any path
@@ -181,8 +170,8 @@ def run(
         _wipe(cfg)
 
     # NOTE: per-dataset filtering is applied by overriding DATASET_METADATA
-    # at the module level for the duration of the run. This keeps the five
-    # stage modules unchanged. We restore the original mapping in `finally`.
+    # at the module level for the duration of the run. This keeps the stage
+    # modules unchanged. We restore the original mapping in `finally`.
     if selected is not None:
         full_metadata = dict(DATASET_METADATA)  # snapshot
         # Patch the underlying dict (DATASET_METADATA is a MappingProxy).
@@ -196,20 +185,16 @@ def run(
         )
         # The stage modules already imported `DATASET_METADATA` by name; we
         # need to refresh those bindings too.
-        for mod in (dedup, register, sanitize):
+        for mod in (register, sanitize):
             mod.DATASET_METADATA = _pp.DATASET_METADATA
 
     t0 = time.monotonic()
     failures: list[str] = []
     try:
-        if dedup.main(cfg, pass_name="pre"):
-            failures.append("dedup_pre")
         if register.main(cfg):
             failures.append("register")
         if sanitize.main(cfg):
             failures.append("sanitize")
-        if dedup.main(cfg, pass_name="post"):
-            failures.append("dedup_post")
     finally:
         if selected is not None:
             # Restore.
@@ -219,11 +204,10 @@ def run(
             _pp.DATASET_METADATA = MappingProxyType(
                 {k: MappingProxyType(v) for k, v in _pp._RAW_METADATA.items()}
             )
-            for mod in (dedup, register, sanitize):
+            for mod in (register, sanitize):
                 mod.DATASET_METADATA = _pp.DATASET_METADATA
 
     elapsed = time.monotonic() - t0
-    dedup_dir = resolve_output_path(cfg.paths.dedup)
     proc_root = resolve_data_path(cfg.paths.processed)
     n_processed = sum(1 for _ in proc_root.rglob("*.sanitized.csv")) if proc_root.is_dir() else 0
 
@@ -233,10 +217,6 @@ def run(
         f"fresh={fresh}  "
         f"selected={'all' if selected is None else len(selected)} "
         f"(pd={n_pd}, lgd={n_lgd})  "
-        f"doubles_pre=[pd:{_count_doubles(dedup_dir, 'pd', 'pre')}, "
-        f"lgd:{_count_doubles(dedup_dir, 'lgd', 'pre')}]  "
-        f"doubles_post=[pd:{_count_doubles(dedup_dir, 'pd', 'post')}, "
-        f"lgd:{_count_doubles(dedup_dir, 'lgd', 'post')}]  "
         f"processed_csvs={n_processed}  "
         f"elapsed={elapsed:.1f}s"
     )
@@ -253,12 +233,11 @@ def run(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Run the full data pipeline (dedup pre / register / "
-                    "sanitize / dedup post) end-to-end.",
+        description="Run the full data pipeline (register / sanitize) end-to-end.",
     )
     p.add_argument(
         "--fresh", action="store_true",
-        help="Delete existing dedup/, processed/, and manifests "
+        help="Delete existing processed/ and manifests "
              "before running. Default: incremental (skip existing).",
     )
     p.add_argument(

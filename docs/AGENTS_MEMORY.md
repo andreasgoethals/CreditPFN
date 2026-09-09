@@ -39,6 +39,25 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 08-09-2026 (the divergence guard killed every accumulate + L2-SP trial — 25% of the PD grid)
+
+**A safeguard that reads a signal recorded on a different cadence than it runs will silently fall
+back to the cruder rule it was built to replace.**
+
+- **Tried.** The `loss_const` guard requires flat loss AND flat weight-drift (a fix from run-8, so
+  a slow-but-training trial isn't mistaken for a dead one). exp1 came back with ~25% of the PD grid
+  marked `DIVERGED`, all of it `accumulate` + `L2-SP=0.003`, aborting at epoch 5.
+- **Result.** The weights were demonstrably moving (drift 0.073%→0.076% across the 5 aborted
+  epochs) yet it died on flat loss alone — the drift half of the guard was inactive.
+- **Why.** `stage_drift` is computed only on monitor epochs (every ~19), but the guard runs every
+  epoch on a 5-epoch window, so `recent_drift` was ~always empty and the `not recent_drift`
+  fallback degraded it to loss-only — which kills exactly the flat-loss, slow-moving anchored
+  trials the drift check exists to protect. The regression test passed because it was a *replica*
+  that fed drift on every epoch, a signal production only produced every 19th.
+- **Instead.** Record a per-epoch `weight_drift` (free from the L2-SP penalty) and read that;
+  extract the guard into a pure `_divergence_reason` so the test exercises the real code. Redeploy,
+  clean the DIVERGED rows, resubmit (checkpoint-based resume re-runs the empty cells under the fix).
+
 ### 31-08-2026 (one typo in the frozen branch cost the whole frozen TabPFN arm of exp1_pd)
 
 **A sweep axis that no control and no test ever executes will fail in production, once, expensively.**

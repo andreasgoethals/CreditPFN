@@ -3,11 +3,10 @@
 #  CreditPFN — slurm array: cross-model benchmark (PD / classifier)
 # =============================================================================
 #
-#  ONE (model × test_dataset) PER ARRAY TASK. At the planned full corpus
-#  scale (~3 000 test datasets × ~25 models) the cartesian product is
-#  ~75 000 tasks; we
-#  parallelise the heavy ones (XGBoost / CatBoost with per-fold
-#  Optuna HPO) by running each in its own slurm task. Each task
+#  ONE (model × test_dataset) PER ARRAY TASK. The product of models ×
+#  held-out datasets is modest, but the heavy cells (XGBoost / CatBoost
+#  with per-fold Optuna HPO) are worth
+#  parallelising by running each in its own slurm task. Each task
 #  writes its own per-method file under
 #  ``results/PD/<method>/<run_name>_<timestamp>_<dataset>.csv``,
 #  so concurrent tasks NEVER touch the same file (no locking, no

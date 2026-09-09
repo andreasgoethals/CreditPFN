@@ -94,8 +94,12 @@ python -m src.utils.clean_run
 # 3. Wipe it. Keeps data/raw/, the base checkpoints, and data/processed/.
 python -m src.utils.clean_run --clean
 
-# 4. Launch data → train → eval. Fire once and walk away.
-bash scripts/slurm/run_full_pipeline.sh
+# 4. Launch an experiment — every trial of its grid, every dataset split, routed per model.
+#    Export the dataloader-workers knob FIRST (it defaults to serial), and run detached
+#    (nohup/tmux) because the submit loop waits for queue room under the 500-task cap.
+export CREDITPFN_DATALOADER_WORKERS=-1
+bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
+bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
 
 # 5. Watch. Two controllers, so two queries.
 squeue -M mindwell -u $USER      # training  (gpu_b200)
@@ -108,9 +112,9 @@ costs far more than re-running the models.
 Useful variants:
 
 ```bash
-STAGES="eval" bash scripts/slurm/run_full_pipeline.sh    # re-score, skip training
-STAGES="data train" bash scripts/slurm/run_full_pipeline.sh
-EVAL_TASKS=8 bash scripts/slurm/run_full_pipeline.sh     # fewer, longer eval tasks
+STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # score a trained experiment
+SPLITS=4    bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # only the first 4 splits
+DRY=1       bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # print the sbatch lines, submit nothing
 ```
 
 Cancel everything:

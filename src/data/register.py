@@ -27,8 +27,8 @@ metadata row:
   * ``target_mean`` / ``target_std`` — for regression only
   * ``date_added``           — UTC ISO date when the row was first
     inserted; preserved on idempotent re-runs
-  * ``sha256_shape_cols``    — stable shape-aware hash used by
-    :mod:`src.data.dedup`
+  * ``sha256_shape_cols``    — stable shape-aware hash of the
+    dataset's schema (row/col counts + column-name set)
 
 Public entry point
 ------------------
@@ -96,8 +96,8 @@ def shape_aware_sha256(n_rows: int, n_cols: int, columns: Iterable[str]) -> str:
     """Stable content-aware identifier for a dataset.
 
     Two datasets with the same row count, column count, and the same set
-    of column *names* (order-independent) hash identically. Used by the
-    dedup stage as a fast first-pass equivalence check.
+    of column *names* (order-independent) hash identically — a stable
+    content-aware identifier recorded in the manifest.
     """
     payload = f"{n_rows}|{n_cols}|{'|'.join(sorted(columns))}".encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
@@ -290,8 +290,8 @@ def main(cfg=None) -> int:  # noqa: C901
     # invoked on a subset (the train/eval auto-cache hook does this via
     # `data_pipeline.run(datasets=missing)`) — without the merge, the
     # previously-registered datasets would silently drop out of the
-    # manifest, which downstream consumers (corpus split, dedup tracking)
-    # rely on. The currently-visible DATASET_METADATA always wins for IDs
+    # manifest, which downstream consumers (corpus split) rely on.
+    # The currently-visible DATASET_METADATA always wins for IDs
     # it contains; only IDs not in the current snapshot are carried over.
     current_ids = set(DATASET_METADATA.keys())
     for track in ("pd", "lgd"):

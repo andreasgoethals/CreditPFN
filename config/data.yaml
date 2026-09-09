@@ -6,7 +6,6 @@ paths:
   data_source: staging                    # staging | data — which storage tier to read/write
   raw: data/raw
   processed: data/processed
-  dedup: output/manifests/dedup
   manifest_pd: output/manifests/manifest_pd.csv
   manifest_lgd: output/manifests/manifest_lgd.csv
 
@@ -39,16 +38,3 @@ sanitize:
   max_columns: 64                         # feature cap, applied by selection below
   feature_selection: {enabled: true, corr_threshold: 0.95}
   lgd_target_clip: {enabled: true, lower: 0.0, upper: 1.0}
-
-dedup:                                    # cross-dataset duplicate detection; see docs/METHOD.md
-  name_jaccard_threshold: 0.8
-  row_hash_intersection_min: 1
-  shared_columns_min: 3
-  column_nontrivial_unique_min: 10
-  rounded_row: {enabled: true, decimals: 6}
-  subset: {enabled: true, min_overlap_fraction: 0.95}
-  column_name_fuzzy: {enabled_pre: true, enabled_post: false, similarity_threshold: 90}
-  confidence_rules:
-    high: [id_match, row_hash]
-    medium: [col_hash, name_jaccard_and_shape]
-    low: [rounded_row, subset, fuzzy_names]

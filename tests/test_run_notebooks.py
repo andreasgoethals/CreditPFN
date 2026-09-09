@@ -70,15 +70,15 @@ def test_a_selector_matches_by_substring_not_by_equality(tmp_path, monkeypatch) 
     into a "notebook not found" failure instead of running the two exploration notebooks."""
     monkeypatch.setattr(rn, "notebooks_dir", lambda: tmp_path)
     for name in ("0.0. raw_data_exploration", "0.1. processed_data_exploration",
-                 "2.0. final_results_pd"):
+                 "1.3. results_pd"):
         make_notebook(tmp_path / f"{name}.ipynb", ["print(1)"])
 
     assert rn.discover(("exploration",)) == ("0.0. raw_data_exploration",
                                              "0.1. processed_data_exploration")
-    assert rn.discover(("2.0",)) == ("2.0. final_results_pd",)
+    assert rn.discover(("1.3",)) == ("1.3. results_pd",)
     assert rn.discover(("RAW_DATA",)) == ("0.0. raw_data_exploration",)   # case-insensitive
-    assert rn.discover(("2.0", "processed")) == ("0.1. processed_data_exploration",
-                                                 "2.0. final_results_pd")
+    assert rn.discover(("1.3", "processed")) == ("0.1. processed_data_exploration",
+                                                 "1.3. results_pd")
     # A selector that matches nothing yields nothing, so `main` can say so and exit non-zero
     # rather than inventing a filename and failing deep inside execution.
     assert rn.discover(("nonexistent",)) == ()

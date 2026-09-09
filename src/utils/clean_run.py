@@ -86,7 +86,6 @@ def stage_targets(stage: str) -> list[Path]:
     if stage == "data":
         found += list(processed_dir().glob("**/*.sanitized.csv"))
         found += list(processed_dir().glob("**/*.sanitized.feature_groups.json"))
-        found += list((out_root / "manifests" / "dedup").glob("*.csv"))
         found += list((out_root / "manifests").glob("manifest_*.csv"))
         found += list(logs.glob("data_*.log"))
     elif stage == "train":

@@ -2,8 +2,8 @@
 
 The pipeline produces three layers of data, each with a distinct shape
 and a distinct exploration story. All helpers here are designed to
-**scale to the 3 000-dataset corpus we will buy** — corpus-level views
-use aggregate histograms / sortable tables; per-dataset views are
+**stay legible as the corpus grows** — corpus-level views use
+aggregate histograms / sortable tables; per-dataset views are
 opt-in, paginated, and bounded by ``max_show``.
 
 Three layers
@@ -36,8 +36,8 @@ Glossary
 * **target_mean / target_std** — for regression: the target
   variable's empirical mean / standard deviation across the dataset.
 
-Public surface — corpus-level (scales to 3 000 datasets)
---------------------------------------------------------
+Public surface — corpus-level (aggregate views over the whole corpus)
+---------------------------------------------------------------------
 * :func:`raw_corpus_summary` — one row per raw CSV.
 * :func:`corpus_summary_table` — one row per dataset, manifest +
   on-disk processed shapes side-by-side.
@@ -400,7 +400,7 @@ def _log_bins(values, *, n_bins: int = 25, eps: float = 1.0):
 
 
 # --------------------------------------------------------------------------- #
-# Corpus-level (scale to 3 000)
+# Corpus-level (aggregate views over the whole corpus)
 # --------------------------------------------------------------------------- #
 
 
@@ -828,9 +828,9 @@ def plot_target_distribution_lgd(
 ):
     """Grid of LGD target histograms.
 
-    Designed for the 3 000-dataset case: by default shows the first
-    ``max_show=30`` datasets. To inspect a specific subset, pass
-    ``dataset_ids=[...]`` explicitly.
+    Bounded for legibility: by default shows the first ``max_show=30``
+    datasets. To inspect a specific subset, pass ``dataset_ids=[...]``
+    explicitly.
 
     Two structural facts each subplot reports in its title:
     fraction of mass at LGD = 0 (full recovery), and fraction at

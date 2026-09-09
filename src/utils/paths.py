@@ -188,25 +188,6 @@ def processed_dir(*parts: str) -> Path:
     return resolve_data_path(Path("data", "processed", *parts))
 
 
-def data_search_paths(*parts: str) -> list[Path]:
-    """Every root that might hold this input, **repo first** — so a laptop with the data checked
-    out works unconfigured, and the same code finds it on the cluster."""
-    roots = [REPO_ROOT.joinpath("data", *parts)]
-    if _use_staging():
-        staged = _under(staging_root(), "data", *parts)
-        if staged not in roots:
-            roots.append(staged)
-    return roots
-
-
-def find_input(*parts: str) -> Path | None:
-    """The first existing candidate from `data_search_paths`, or None."""
-    for candidate in data_search_paths(*parts):
-        if candidate.exists():
-            return candidate
-    return None
-
-
 def checkpoints_dir(*parts: str) -> Path:
     """Model weights. Big -> project storage. Never deleted by the cleaner: downloaded from
     upstream, or a training run to reproduce."""
@@ -215,24 +196,8 @@ def checkpoints_dir(*parts: str) -> Path:
     return resolve_staging_path(Path("checkpoints", *parts))
 
 
-def config_path(name: str) -> Path:
-    """`config/<name>.yaml`. Always in the repo — configs are code, not data."""
-    stem = name[:-5] if name.endswith(".yaml") else name
-    return REPO_ROOT / "config" / f"{stem}.yaml"
-
-
 def notebooks_dir() -> Path:
     return REPO_ROOT / "notebooks"
-
-
-def library_dir() -> Path:
-    """The read-only literature submodule. READ from it; never write inside it."""
-    return REPO_ROOT / "tfm-library"
-
-
-def repo_dir_on_cluster() -> Path:
-    """Where the code is checked out on the cluster: `$VSC_DATA/<Project>` — backed up."""
-    return _under(data_root())
 
 
 # ---------------------------------------------------------------------------
@@ -245,39 +210,6 @@ def ensure(path: Path) -> Path:
     target = path.parent if path.suffix else path
     target.mkdir(parents=True, exist_ok=True)
     return path
-
-
-def resolve_writable(preferred: Path, fallback: Path | None = None) -> Path:
-    """`preferred` if we can genuinely write there, else `fallback`, loudly.
-
-    Probes with a real create-and-delete: `mkdir(exist_ok=True)` is not enough, because a
-    directory on a shared tier can exist and still be unwritable. A completed run in the wrong
-    place beats a job that died at hour six with nothing to show.
-    """
-    fallback = fallback or (data_root() / PROJECT_NAME / "fallback")
-    try:
-        preferred.mkdir(parents=True, exist_ok=True)
-        probe = preferred / ".write_probe"
-        probe.write_text("ok", encoding="utf-8")
-        probe.unlink()
-        return preferred
-    except OSError as exc:
-        print(
-            f"WARNING: cannot write to {preferred} ({exc}).\n"
-            f"         Falling back to {fallback}. Move the output to project storage "
-            f"afterwards, or $VSC_DATA will fill up (75 GiB quota).",
-            flush=True,
-        )
-        fallback.mkdir(parents=True, exist_ok=True)
-        return fallback
-
-
-def touch_tree(path: Path) -> None:
-    """Refresh access times against scratch's 30-day purge. `mv` and `rsync -a` do NOT count as an
-    access, so freshly staged data can be purged almost immediately. Copy, then call this."""
-    for p in path.rglob("*"):
-        if p.is_file():
-            p.touch()
 
 
 def describe() -> dict[str, str]:
@@ -558,7 +490,7 @@ def resolve_data_path(p: str | os.PathLike) -> Path:
 
 
 def resolve_output_path(p: str | os.PathLike) -> Path:
-    """Resolve a *durable-output* path (logs, manifests, epoch snapshots, dedup CSVs).
+    """Resolve a *durable-output* path (logs, manifests, epoch snapshots).
 
     On VSC: ``$VSC_DATA/CreditPFN`` — NFS-backed, survives scratch purges.
     Or ``$CREDITPFN_OUTPUT_ROOT`` (explicit override).
@@ -681,9 +613,9 @@ def get_roots() -> dict[str, Path]:
 # data/ folder is always used — there is only one place data can live
 # locally, so the toggle is meaningless.
 #
-# Dedup CSVs and manifests always resolve via `resolve_output_path`, which
-# uses the independent `OUTPUT_ROOT_ENV` ($VSC_DATA/CreditPFN on VSC, repo
-# root locally). They are small, NFS-backed, and never move.
+# Manifests always resolve via `resolve_output_path`, which uses the independent
+# `OUTPUT_ROOT_ENV` ($VSC_DATA/CreditPFN on VSC, repo root locally). They are
+# small, NFS-backed, and never move.
 #
 # Implementation: this function sets CREDITPFN_DATA_ROOT before any path
 # resolution happens. It MUST run *immediately after* `_load_cfg()` in
