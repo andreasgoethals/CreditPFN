@@ -13,6 +13,14 @@ Two facts that explain most of this document:
   second directly; you have to pull the first down before you can look at it. That split
   is why §3 exists.
 
+## Contents
+
+1. [First time only](#1--first-time-only) — shell, environment, datasets, base checkpoints
+2. [Every run](#2--every-run) — pull, clean, launch, watch
+3. [Getting the results back](#3--getting-the-results-back) — download, check, figures, record
+4. [When it breaks](#4--when-it-breaks) — the failure cheat sheet
+5. [Reference](#5--reference) — storage, clusters, cost
+
 ---
 
 ## 1 · First time only
@@ -83,50 +91,60 @@ with the same `scp` as §1.3. Adding a base to the config is enough for this to 
 
 ## 2 · Every run
 
+Two launchers. **`run_experiment.sh`** submits one experiment's grid over every dataset
+split — what you usually want. **`run_full_pipeline.sh`** fires a single config's
+data → train → eval once and self-sequences it (see the end of this section).
+
 ```bash
-# 1. Get this run's code onto the cluster. The cluster pulls origin/main, so anything
-#    committed-but-unpushed does not exist here.
+# 1. Get this run's code onto the cluster — it pulls origin/main, so a commit you have not
+#    PUSHED does not exist here.
 cd $VSC_DATA/CreditPFN && git pull origin main && git submodule update --init
 
-# 2. See what the previous run left behind. Deletes nothing.
+# 2. See what the previous run left behind (deletes nothing), then wipe it. Keeps data/raw,
+#    the base checkpoints, and data/processed. Add --processed only if sanitising changed.
 python -m src.utils.clean_run
-
-# 3. Wipe it. Keeps data/raw/, the base checkpoints, and data/processed/.
 python -m src.utils.clean_run --clean
 
-# 4. Launch an experiment — every trial of its grid, every dataset split, routed per model.
-#    Export the dataloader-workers knob FIRST (it defaults to serial), and run detached
-#    (nohup/tmux) because the submit loop waits for queue room under the 500-task cap.
+# 3. Launch. Export the workers knob FIRST (it defaults to serial) and run DETACHED: the
+#    submit loop sleeps while it waits for queue room under the 500-task cap, so a foreground
+#    shell that closes would kill it. STAGES="train eval" chains eval after each split's
+#    training (same-cluster afterany); the default is train only.
 export CREDITPFN_DATALOADER_WORKERS=-1
-bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
-bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
+nohup bash -c 'STAGES="train eval" bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml \
+            && STAGES="train eval" bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml' \
+      > ~/pfn_submit.log 2>&1 &
 
-# 5. Watch. Two controllers, so two queries.
-squeue -M mindwell -u $USER      # training  (gpu_b200)
-squeue -M wice     -u $USER      # data, gate, eval
+# 4. Watch. Training AND eval run on Mindwell now; only the data stage is on wICE.
+squeue -M mindwell -u $USER      # training + eval (gpu_b200)
+tail -f ~/pfn_submit.log         # the submit loop's own progress
 ```
 
-Add `--processed` to step 3 only when the sanitising logic changed — rebuilding the cache
-costs far more than re-running the models.
+`run_experiment.sh` assumes the processed corpus exists; a missing `<id>.sanitized.csv` is
+sanitised on the fly by the training job (`train_pipeline.py`'s auto-process hook), or run
+the data stage yourself with `run_full_pipeline.sh` or `sbatch scripts/slurm/data.slurm`.
 
 Useful variants:
 
 ```bash
-STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # score a trained experiment
+STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # score an already-trained experiment
 SPLITS=4    bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # only the first 4 splits
 DRY=1       bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml   # print the sbatch lines, submit nothing
 ```
 
-Cancel everything:
+Cancel this project's jobs on both controllers (leaves any other project's jobs alone):
 
 ```bash
-scancel -M mindwell -u $USER ; scancel -M wice -u $USER
+for M in mindwell wice; do for J in creditpfn-pd-train creditpfn-lgd-train creditpfn-pd-eval creditpfn-lgd-eval
+  do scancel -M $M -u $USER --name=$J; done; done
 ```
 
-The three stages are sequenced by **sentinel files**, not by `--dependency`: VSC runs wICE
-and Mindwell as separate Slurm controllers and cross-cluster dependencies do not work.
-That is why the launcher looks more complicated than a dependency chain, and why you must
-not "simplify" it into one.
+**Why the launcher is not one `--dependency` chain.** VSC runs wICE and Mindwell as
+separate Slurm controllers, and a cross-cluster dependency does not work.
+`run_full_pipeline.sh` therefore sequences its data → train → eval across clusters by
+**sentinel files** on `$VSC_DATA` (visible everywhere) rather than `afterok`;
+`run_experiment.sh`, whose train and eval both land on Mindwell, chains eval after training
+with an ordinary same-cluster `afterany`. Do not "simplify" either into a cross-cluster
+dependency.
 
 ---
 
@@ -191,13 +209,14 @@ half-transferred — a PowerShell here-string into `python -`, since PowerShell 
 import pandas as pd
 from src.utils.paths import manifests_dir, results_dir
 for track in ("pd", "lgd"):
-    m = manifests_dir() / f"creditpfn_{track}.csv"
-    if not m.is_file():
-        print(f"{track}: MISSING {m.name}"); continue
-    df = pd.read_csv(m)
-    print(f"{track}: {len(df)} trials", df["status"].value_counts().to_dict())
-    print(f"      steps {df['total_optimizer_steps'].min()}-{df['total_optimizer_steps'].max()}"
-          f", corpus {df['n_train_datasets'].iloc[0]} train / {df['n_test_datasets'].iloc[0]} test")
+    # training manifests are <run>_<track>.csv (exp1 writes one per split, exp1_sNN_<track>.csv);
+    # manifest_<track>.csv is the DATASET manifest, so exclude it.
+    files = sorted(p for p in manifests_dir().glob(f"*_{track}.csv") if not p.name.startswith("manifest_"))
+    if not files:
+        print(f"{track}: no training manifest yet"); continue
+    df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
+    print(f"{track}: {len(files)} manifest(s), {len(df)} trial rows", df["status"].value_counts().to_dict())
+    print(f"      steps {df['total_optimizer_steps'].min()}-{df['total_optimizer_steps'].max()}")
 print("result CSVs:", sum(1 for _ in results_dir().rglob("*.csv")))
 '@ | python -
 ```
@@ -232,6 +251,7 @@ designed; a run nobody recorded gets repeated.
 | `pip install` succeeded but the job disagrees | An active virtualenv silently beats `conda activate`. `deactivate`, then check `which python pip`. Every job log's `Active conda env:` line is the authority. |
 | "missing raw file … skipped" for every dataset | The CSVs are not where the resolver looked. The launcher prints the resolved `CREDITPFN_DATA_ROOT`; compare it with §1.3. |
 | Jobs sit `PENDING` for hours | Normal on a busy partition. A **shorter** `--time` backfills better than a longer one — the 48 h request in run-5 got 1–2 GPUs, the 10 h request in run-7 got 15–21. |
+| GPU under-utilised; the log says `num_workers=0` | `CREDITPFN_DATALOADER_WORKERS` was not exported before submit, so the per-step preprocessing runs serial and starves the GPU. It cannot be changed on a running job — cancel, `export CREDITPFN_DATALOADER_WORKERS=-1`, resubmit, and confirm a new log says `num_workers>0`. |
 | "user env retrieval failed requeued held" | A cross-cluster `sbatch` without `--export`. Every script here sets `#SBATCH --export=ALL`; do not remove it. |
 | Eval re-run produces no new CSVs | The skip-existing guard fired — everything was already scored. `--rerun` forces it. |
 | A trial has `status=FAIL` | The manifest keeps the row and the eval skips that checkpoint. Read its log; the grid is still usable, and partial grids are flagged as such. |
@@ -256,10 +276,10 @@ nor `scp -p` counts as an access.
 
 | Cluster | Partition | Used for | Why |
 |---|---|---|---|
-| Genius | — | login and submission only | the only login node |
-| Mindwell | `gpu_b200` | continued pretraining | 192 GiB VRAM per GPU is what allows the large in-context sizes; 24 GPUs cluster-wide |
-| wICE | `gpu_h100`, `gpu_a100` | evaluation | the eval is inference-bound and fits comfortably |
-| wICE | `batch` | data stage, eval gate | CPU only |
+| Genius | — | login + submission only | the only login node |
+| Mindwell | `gpu_b200` | **training and eval** (default) | 192 GiB VRAM/GPU allows the large in-context sizes; and 24 B200s gave 15–21 concurrent jobs against wICE's ~0.2, so eval moved here too |
+| wICE | `batch` | data stage (CPU) | the only stage that needs no GPU |
+| wICE | `gpu_h100`, `gpu_a100` | optional eval / TabICL spill | set `EVAL_CLUSTER=wice` or `TABICL_DEST="wice gpu_a100"` when Mindwell is backed up; 36 GPUs university-wide and heavily contended |
 
 Account: `lp_verbekelab` (verify with `sacctmgr -s show user $USER cluster=mindwell` —
 note `sacctmgr` takes no `-M`, unlike `squeue`/`sinfo`/`scancel`).

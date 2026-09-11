@@ -2,11 +2,14 @@
 
 Two things that live nowhere else in `docs/`: **whether this has already been
 published** (§1) and **what evidence is still missing before writing** (§2).
+The run record is [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md), the measured numbers are
+[`RESULTS.md`](RESULTS.md), the method is [`METHOD.md`](METHOD.md) — so this file
+stays narrow: only the novelty case and the ordered to-do list.
 
-Trimmed on 11-08-2026. What used to be here as "state of the repo", "state of
-the experiments" and "next steps" was duplicated and going stale — the run
-record is now `AGENTS_MEMORY.md` (the Runs table), the numbers are
-`RESULTS.md`, and what changed is `CHANGELOG.md`.
+## Contents
+
+1. [Has someone already done this?](#1-has-someone-already-done-this) — nearest papers, defensible claims, reviewer objections
+2. [What is missing before writing](#2-what-is-missing-before-writing) — must-have · should-have · nice-to-have
 
 ---
 

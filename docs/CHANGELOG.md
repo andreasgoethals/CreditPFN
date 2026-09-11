@@ -5,12 +5,29 @@ change, as short as it can be — the *what*, plus the *why* only when it is not
 belongs in the commit.
 
 Two things do NOT go here: what a cluster run measured and what turned out not to work — both live
-in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Durable facts go in `RESULTS.md`, `CODE_NOTES.md` and
-`ROW_CAPS.md`.
+in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Durable facts go in [`RESULTS.md`](RESULTS.md) (what each
+run measured) and [`METHOD.md`](METHOD.md) (the method, base checkpoints, and context caps).
 
 Entries above 11-08-2026 follow this rule. Below it they use an older, longer house style
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
+
+## 09-09-2026
+
+- **Documentation consistency pass across `README` + all `docs/`** — reconciled every doc with the
+  current code, the pinned literature, and each other. Code-fact fixes: training manifests + per-epoch
+  CSVs live under `output/manifests/` (not `output/training/`); the leakage guard is dataset-level
+  splitting, not the removed `dedup.py`; both launchers now default **train + eval to Mindwell B200**
+  (wICE GPU is an opt-in spill, only the data stage is CPU-on-wICE); corrected `src/utils` vs
+  `src/visualize` module placement (+ added a `src/visualize` row to the README layout); the
+  checkpoint filename schema shows the `_min`/`_l2sp` segments; the divergence note reflects the
+  08-09 flat-loss-AND-drift guard. Literature fixes vs `tfm-library`: TabPFN-v2 feature cap is
+  **≤500** (≤100 is v1); TabICLv2 is **~20 M** params (27 M was unsourced); the full-SFT collapse
+  (TabZilla 0.873→0.567) and "unable to train" are **TabICL**, not TabICLv2 (Kolberg's is the
+  original TabICL, Qu 2025); added the missing **Qu et al. TabICLv2** reference (+ Tanna, Purucker),
+  and noted v2.6 is a paperless point release of the TabPFN-2.5 family. Added a table of contents to
+  VSC / RESULTS / METHOD / PAPER_ROADMAP; moved RESULTS' authoring template below the runs. No code
+  changed.
 
 ## 08-09-2026
 

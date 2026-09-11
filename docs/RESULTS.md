@@ -1,32 +1,18 @@
 # Results — what each run measured
 
-The per-run measured record. Newest first. Numbers here are what the logs and `output/results/`
-actually contained; interpretation and novelty framing live in `PAPER_ROADMAP.md`, the dead ends in
-`AGENTS_MEMORY.md`, the capacity measurements in `METHOD.md`.
+The per-run measured record, newest first. Numbers here are what the logs and `output/results/`
+actually contained; interpretation and novelty framing live in [`PAPER_ROADMAP.md`](PAPER_ROADMAP.md),
+the dead ends in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md), the capacity measurements in
+[`METHOD.md`](METHOD.md).
 
-## How to write an entry
+## Contents
 
-**Every run gets a `Configuration` table before its findings.** A run is only interpretable
-against the settings and the corpus that produced it, and both change between experiments: the
-sweep is reshaped per experiment and the train/test split is redrawn each run (the corpus is
-fixed at 25 datasets). "PD mAUC 0.7620" with no configuration beside it is a number nobody can
-use or reproduce.
+- [Reading these numbers](#reading-these-numbers) — two comparability rules that gate every result
+- **Runs, newest frozen first:** run-8 (first complete run) · run-7 · run-6 · run-5 · run-4 · two July snapshots
+- [State of the world](#state-of-the-world) — what is live now
+- [How to write an entry](#how-to-write-an-entry) — the Configuration table every run carries
 
-Copy this block. Everything in it is recorded automatically — the per-track manifest
-(`output/manifests/<run>_<track>.csv`) carries one column per field, the resolved config is
-dumped to `output/manifests/resolved/`, and the training log prints the corpus with row
-counts — so filling it in is transcription, not archaeology.
-
-| field | where it comes from |
-|---|---|
-| trials/track, bases, LRs, adaptation, qf | `config/train.yaml` → manifest columns |
-| steps/trial, epochs, steps/epoch | manifest `total_optimizer_steps`, `epochs_run`, `steps_per_epoch` |
-| corpus: n datasets + total rows, train and test | manifest `n_train_datasets`, `train_rows_total`, `train_dataset_ids` |
-| `min_train_rows` | manifest column of the same name (fixed to 0 in exp1) |
-| row caps per base, eval caps | manifest `max_rows_per_epoch`, `config/eval.yaml` |
-| L2-SP λ, warmup, LR floor | manifest `l2sp_lambda`, `warmup_fraction`, `min_lr_fraction` |
-| code + literature version | manifest `git_commit`, `tfm_library_pin` |
-| cost | GPU-hours and wall-clock from the logs |
+## Reading these numbers
 
 Two standing comparability rules, both learned the hard way:
 
@@ -280,12 +266,40 @@ base on PD AUC or LGD RMSE, and v3 3e-5 full-FT **collapsed** (AUC 0.50, ECE 0.4
 
 ## State of the world
 
-Updated **06-09-2026**.
+Updated **09-09-2026**.
 
-- **Experiment 1 is running** (per-split; PD, then LGD). The newest *frozen* run above is **run-8**,
-  the first complete two-family eval; entries below it are history. Live run status and the full run
-  table live in `AGENTS_MEMORY.md` — this footer is not the place to track them.
-- **exp1 already acts on run-8's lessons**: the LR grid extends *down* (3e-7…1e-5) and
-  `target_total_steps` is fixed across bases.
+- **Experiment 1 is running** on Mindwell (per-split, PD then LGD, dataloader workers on). It was
+  resubmitted 09-09 after fixing the divergence-guard bug that had aborted every `accumulate` +
+  L2-SP trial (~25% of the PD grid) and deleting the stale diverged checkpoints — see `CHANGELOG.md`
+  (08/09-09) and `AGENTS_MEMORY.md`.
+- The newest **frozen** run above is **run-8**, the first complete two-family eval; everything below
+  it is history. Live run status and the full run table live in `AGENTS_MEMORY.md`.
+- **exp1 acts on run-8's lessons**: the LR grid extends *down* (3e-7…1e-5), the step budget
+  (`target_total_steps` 5000) is fixed across bases, and the sweep adds L2-SP, frozen-backbone and
+  pass-mode axes over 8 random splits.
 - **Best-epoch selection is deliberately not implemented** — there is no held-out validation set;
   every trial reports its final epoch. exp1's 8 random splits give the cross-draw error bar instead.
+
+## How to write an entry
+
+**Every run gets a `Configuration` table before its findings.** A run is only interpretable
+against the settings and the corpus that produced it, and both change between experiments: the
+sweep is reshaped per experiment and the train/test split is redrawn each run (the corpus is
+fixed at 25 datasets). "PD mAUC 0.7620" with no configuration beside it is a number nobody can
+use or reproduce.
+
+Copy this block. Everything in it is recorded automatically — the per-track manifest
+(`output/manifests/<run>_<track>.csv`) carries one column per field, the resolved config is
+dumped to `output/manifests/resolved/`, and the training log prints the corpus with row
+counts — so filling it in is transcription, not archaeology.
+
+| field | where it comes from |
+|---|---|
+| trials/track, bases, LRs, adaptation, qf | `config/train.yaml` → manifest columns |
+| steps/trial, epochs, steps/epoch | manifest `total_optimizer_steps`, `epochs_run`, `steps_per_epoch` |
+| corpus: n datasets + total rows, train and test | manifest `n_train_datasets`, `train_rows_total`, `train_dataset_ids` |
+| `min_train_rows` | manifest column of the same name (fixed to 0 in exp1) |
+| row caps per base, eval caps | manifest `max_rows_per_epoch`, `config/eval.yaml` |
+| L2-SP λ, warmup, LR floor | manifest `l2sp_lambda`, `warmup_fraction`, `min_lr_fraction` |
+| code + literature version | manifest `git_commit`, `tfm_library_pin` |
+| cost | GPU-hours and wall-clock from the logs |

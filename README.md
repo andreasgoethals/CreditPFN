@@ -170,8 +170,10 @@ notebook in parallel and rebuilds `output/figures/CAPTIONS.md` and
 The entry point for an **experiment** — a grid swept over several dataset
 splits, which is what `config/experiment*.yaml` defines — is
 [`run_experiment.sh`](scripts/slurm/run_experiment.sh). It reads one experiment
-config, loops the splits, and submits every trial to the right cluster per model
-(**TabPFN → Mindwell B200**, **TabICLv2 → wICE H100**):
+config, loops the splits, and submits every trial. **By default both families
+train and eval on Mindwell B200** (its 24 GPUs backfill far better than wICE's);
+wICE GPUs are an opt-in spill valve (`TABICL_DEST`, `EVAL_CLUSTER`) for when
+Mindwell is backed up:
 
 ```bash
 # On a Genius login node, after cloning + installing + uploading raw CSVs.
@@ -181,11 +183,10 @@ bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
 bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
 ```
 
-For a **single sweep** end-to-end — one config, one split, data → train → eval
-self-sequenced across clusters (**data → wICE CPU**, **train → Mindwell B200**,
-**eval → wICE H100**) in one fire-and-forget command —
-[`run_full_pipeline.sh`](scripts/slurm/run_full_pipeline.sh) submits all three
-stages; see [`docs/VSC.md`](docs/VSC.md).
+For a **single config** end-to-end — data → train → eval self-sequenced across
+clusters (**data → wICE CPU**, **train + eval → Mindwell B200**) in one
+fire-and-forget command — [`run_full_pipeline.sh`](scripts/slurm/run_full_pipeline.sh)
+submits all three stages; see [`docs/VSC.md`](docs/VSC.md).
 
 Continued pretraining runs **only on Mindwell** — its B200 GPUs have
 192 GiB VRAM (2.4× an H100), which we use to train at a larger
@@ -241,9 +242,10 @@ CreditPFN/
 |---|---|---|
 | [`src/data/`](src/data)   | Two data-pipeline stages (register · sanitize) plus `preprocessing.py` for per-dataset surgical fixes. Output is one sanitized CSV per dataset under `data/processed/`. | `python -m src.data.<stage>` for any one stage, or `scripts/data_pipeline.py` for the chain. |
 | [`src/train/`](src/train) | The continued-pretraining loop: corpus split (`corpus.py`), the on-the-fly dataloader (`dataloader.py`) that reads sanitized CSVs and draws a fresh random subsample every epoch, model load/save + frozen-backbone freezing (`model.py`, `freeze.py`), training loop with per-epoch monitor (`loop.py`), metrics (`metrics.py`). | `scripts/train_pipeline.py` |
-| [`src/model/`](src/model) | sklearn-style wrappers for every model the eval scores: XGBoost + CatBoost (with Optuna HPO), LogReg / LinReg (default-hyperparam baselines), TabPFN-untuned, TabPFN-trained. Single `base.py::BaselineModel` protocol so the eval loop stays model-agnostic. | importable only |
+| [`src/model/`](src/model) | sklearn-style wrappers for every model the eval scores: XGBoost + CatBoost (Optuna HPO), LogReg / LinReg, and TabPFN / TabICLv2 in untuned + trained flavours, all behind one `base.py::BaselineModel` protocol (+ `registry.py`) so the eval loop stays model-agnostic. | importable only |
 | [`src/eval/`](src/eval)   | The cross-model benchmark: processed-CSV loader, K-fold splitter with inner train/val, comprehensive metrics computation, results-dir routing, skip-existing rerun guard. | `scripts/eval_pipeline.py` |
-| [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), one-file-per-task run logging (`run_log.py`), notebook figure sink (`figures.py`), training / eval visualisation helpers (`training_viz.py`, `eval_viz.py`), submodule pin bump (`update_tfm_library.py`). | `python -m src.utils.update_tfm_library` |
+| [`src/utils/`](src/utils) | Cross-cutting helpers: env-aware path resolver (`paths.py`), per-task run logging (`logging_setup.py`), config load + resolved-config dump (`config.py`), cleanup (`clean_run.py`), notebook runner (`run_notebooks.py`), base-checkpoint staging (`stage_checkpoints.py`), preflight smoke tests (`preflight.py`), submodule-pin bump (`update_tfm_library.py`). | `python -m src.utils.<name>` |
+| [`src/visualize/`](src/visualize) | The figure system: A4 sizes + project style (`style.py`), the `FigureSaver` PDF sink (`figures.py`), the seven paper figures (`paper_figures.py`), training / eval diagnostic plots (`training_viz.py`, `eval_viz.py`), and the `All_Results.md` / `CAPTIONS.md` rebuild (`summaries.py`). | driven by the notebooks + `run_notebooks` |
 
 <a id="42-config--three-yaml-configs-one-per-stage"></a>
 
@@ -493,9 +495,9 @@ repo root. On VSC they are split across three storage tiers:
   files) — **datasets** (`data/raw`, `data/processed`), **trained
   checkpoints** (`checkpoints/trained/`), and **eval results**
   (`output/results/`). Persistent, large, non-purged.
-* **`$VSC_DATA/CreditPFN`** (small, NFS-backed) — logs, training
-  manifests (`output/training/`), per-epoch CSVs, notebook figures
-  (`output/figures/`).
+* **`$VSC_DATA/CreditPFN`** (small, NFS-backed) — logs and all manifests
+  (`output/manifests/`, including the per-epoch CSVs under
+  `output/manifests/epochs/`), plus notebook figures (`output/figures/`).
 * **`$VSC_SCRATCH`** — optional fast-I/O working copy of datasets.
 
 The dataset tier is picked by `paths.data_source` in
@@ -689,9 +691,10 @@ in three layers:
   axis means the same thing for both families now — a **true freeze** of
   the backbone stack that trains only the head (`src/train/freeze.py`);
   LoRA has been retired. Freeze-only is TabICLv2's own pretraining
-  stage-3 regime, chosen because full SFT collapsed TabICLv2 in two
-  independent reports (TabZilla accuracy 0.873 → 0.567 in Tanna 2026;
-  "failed to train TabICLv2" in Kolberg 2026). TabICLv2 losses are
+  stage-3 regime, chosen because full SFT collapsed the **TabICL family**
+  in two independent reports (TabZilla accuracy 0.873 → 0.567 under SFT in
+  Tanna 2026, on TabICL; "unable to train" the original TabICL in Kolberg
+  2026). TabICLv2 losses are
   upstream's own: cross-entropy over the first `n_classes` of its 10
   logit columns, and mean pinball loss over its 999-quantile head.
   Because that head is
@@ -788,12 +791,12 @@ Each trial writes:
 |-----------------------------------------------------------------------|---------------------------------------------------------------------|
 | Final-epoch weights                                                   | `checkpoints/trained/<track>/<descriptive_name>.ckpt`               |
 | Provenance sidecar (HPs, train/test IDs, GPU, walltime, …)            | `<descriptive_name>.ckpt.provenance.json`                           |
-| Manifest row consumed by the eval pipeline                            | `output/training/manifests/<run_name>_<track>.csv`                  |
-| Per-epoch CSV (epoch incl. `-1` = pre-FT baseline; train_loss, lr, train/test primary + secondary metric, epoch_time)  | `output/training/epochs/<track>/<descriptive_name>.csv`             |
+| Manifest row consumed by the eval pipeline                            | `output/manifests/<run_name>_<track>.csv`                           |
+| Per-epoch CSV (epoch incl. `-1` = pre-FT baseline; train_loss, lr, train/test primary + secondary metric, epoch_time)  | `output/manifests/epochs/<track>/<descriptive_name>.csv`            |
 | Full run log (slurm stdout + python logger)                           | `logs/train_<track>_<ts>[_j<jid>_a<tid>].log`                       |
 
-Filename schema:
-`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_l2sp<λ>][_lora|_iclhead].ckpt`.
+Filename schema (full breakdown in [`docs/METHOD.md`](docs/METHOD.md#descriptive-filename-schema)):
+`<run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_min<rows>][_l2sp<λ>][_lora|_iclhead].ckpt`.
 The trailing tag marks the **frozen-backbone** arm and keeps its legacy
 name — `_lora` on TabPFN, `_iclhead` on TabICLv2 (the internal flag is
 still `use_lora`, though LoRA itself is retired). Identical re-runs
@@ -843,13 +846,14 @@ without loading the model weights.
   SLURM array/cluster/node, GPU + VRAM, library versions, and the base /
   save paths. It is logged early on purpose so the run is fully
   reconstructable even if the job is later OOM-killed or diverges.
-* **Divergence detection + early abort** — when the loss stays
-  constant, or AUC pegs at 0.5 (random), or the AMP scaler skips >50 %
-  of recent steps for `train.divergence_patience = 5` epochs, the
-  training loop aborts and records `status=DIVERGED` in the manifest.
-  This prevents wasting 3+ hours of GPU on a dead model (observed in
-  `train_pd_*qf20_acc1*` runs of 2026-05-28 before the safeguard was
-  added).
+* **Divergence detection + early abort** — the loop aborts and records
+  `status=DIVERGED` when, for `train.divergence_patience = 5` epochs, a
+  trial looks genuinely dead: flat loss **and** flat weight-drift together
+  (a slow-but-moving anchored trial is *not* aborted — the 08-09-2026 fix,
+  see [`docs/AGENTS_MEMORY.md`](docs/AGENTS_MEMORY.md)), or AUC pegged at
+  0.5, or the AMP scaler skipping >50 % of steps. This prevents wasting
+  3+ hours of GPU on a dead model. The rule is the pure, unit-tested
+  `_divergence_reason` in `loop.py`.
 * **L2-SP anti-forgetting penalty (swept)** — `optimizer.l2sp_lambda`
   adds `0.5·λ·‖w − w₀‖²` to the loss, penalising drift of the weights
   away from the **synthetic-prior start `w₀`** (not toward zero, which is
@@ -1144,25 +1148,44 @@ works for this project:
   [arXiv:2507.03971](https://arxiv.org/abs/2507.03971) — the recipe we
   follow.
 - **Hollmann et al., 2025.** *Accurate predictions on small data with
-  a tabular foundation model.* (Nature) — TabPFNv2 architecture.
+  a tabular foundation model.* (Nature) — the TabPFN **v2** architecture
+  (12 layers, ≤10 k samples, ≤500 features).
 - **Grinsztajn et al., 2026.** *TabPFN-2.5: Advancing the State of
   the Art in Tabular Foundation Models.*
-  [arXiv:2511.08667](https://arxiv.org/abs/2511.08667) — the
-  successor architecture used by our v2.6 / v3 checkpoints.
+  [arXiv:2511.08667](https://arxiv.org/abs/2511.08667) — the 24-layer
+  architecture family our **v2.6** checkpoint belongs to (v2.6 is a later
+  point release with no paper of its own).
 - **Grinsztajn et al., 2026.** *TabPFN-3: Technical Report.*
   [arXiv:2605.13986](https://arxiv.org/abs/2605.13986) — current
   generation, used by our `v3-default` base checkpoint.
+- **Qu et al., 2026.** *TabICLv2 — A better, faster, scalable, and open
+  tabular foundation model.*
+  [arXiv:2602.11139](https://arxiv.org/abs/2602.11139) — the **second
+  family** we sweep (3-stage architecture; 999-quantile regression head, so
+  no exact density and `neg_nll` is undefined for it).
 - **Rubachev et al., 2025.** *On Finetuning Tabular Foundation
-  Models.* — finetuning hyperparameter ranges that anchor our
+  Models.* [arXiv:2506.08982](https://arxiv.org/abs/2506.08982) — the
+  342-run finetuning study whose hyperparameter ranges anchor our
   training stage.
 - **Kolberg et al., 2026.** *TabPFN-Wide: Continued Pre-Training for
-  Extreme Feature Counts.* — continued-pretraining for >500-feature
-  data via a *feature-widening synthetic prior*. Note: TabPFN-Wide
-  argues *against* dimensionality reduction (it uses
-  `FeatureAgglomeration` only as a baseline to beat). Our `sanitize.py`
-  step is unsupervised feature **selection** (keep real columns, don't
-  average) — an independent, pragmatic feature cap, **not** derived from
-  this paper.
+  Extreme Feature Counts.*
+  [arXiv:2510.06162](https://arxiv.org/abs/2510.06162) —
+  continued-pretraining for >500-feature data via a *feature-widening
+  synthetic prior*. Note: TabPFN-Wide argues *against* dimensionality
+  reduction (it uses `FeatureAgglomeration` only as a baseline to beat).
+  Our `sanitize.py` step is unsupervised feature **selection** (keep real
+  columns, don't average) — an independent, pragmatic feature cap, **not**
+  derived from this paper.
+- **Tanna et al., 2026.** *Data Presentation Over Architecture.*
+  [arXiv:2605.18635](https://arxiv.org/abs/2605.18635) — in-context
+  resampling on Home Credit + Lending Club (balanced sampling worth 3–4
+  AUC points). The TabICL full-SFT-collapse figure we cite is from the
+  companion *Exploring Fine-Tuning for Tabular Foundation Models* (WWW '26).
+- **Purucker et al., 2026.** *Beyond IID: How General Are Tabular
+  Foundation Models, Really?*
+  [arXiv:2606.30410](https://arxiv.org/abs/2606.30410) — the split-protocol
+  study that explicitly names TFM continued-pretraining as untested future
+  work (the gap this project fills).
 
 Local code dumps under
 [`tfm-library/repositories/`](tfm-library/repositories/) (catalogued in
