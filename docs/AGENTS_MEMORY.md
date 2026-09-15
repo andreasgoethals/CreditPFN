@@ -39,6 +39,22 @@ that configuration?"* is the question this table exists to answer.
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
 
+### 11-09-2026 (the divergence guard fired on CONVERGED accumulate trials, near the budget)
+
+**A "flat loss AND flat drift" guard cannot tell a model that never trained from one that has
+converged — both are stationary. Gate it by how far into the step budget the trial is.**
+
+- **Tried.** After the 08-09 fix (per-epoch drift; no more epoch-5 aborts), exp1 still marked ~2/split
+  of the low-LR v2.6 `accumulate` arm DIVERGED — now at epoch ~330 (~90 % of the 5000-step budget).
+- **Result.** These are CONVERGED trials (flat loss + flat drift because they finished), not dead
+  ones — but a DIVERGED row is excluded from eval, so the grid quietly loses those cells.
+- **Why.** `loss_const` had no notion of *when*: a converged plateau near the budget looks identical
+  to a dead-from-start model. Dead trials trip at ~1-2 % of the budget; converged ones at ~90 %.
+- **Instead.** Gate `loss_const` to the first `divergence_min_progress` (0.7) of the budget. Also
+  provenance now carries `diverged`, so resume re-runs a diverged checkpoint instead of skipping it.
+  Workers-on accumulate wall-clock, for walltime tuning: **v2 16.3 h, v2.6 10.3, v3 8.9, tabicl 7.0**
+  (so `TRIALS_PER_TASK=1` gives a ~20 h walltime vs the 39.5 h at 2/task, same margin, better backfill).
+
 ### 08-09-2026 (the divergence guard killed every accumulate + L2-SP trial — 25% of the PD grid)
 
 **A safeguard that reads a signal recorded on a different cadence than it runs will silently fall

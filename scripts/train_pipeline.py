@@ -878,27 +878,45 @@ def run(
             expected_ckpt.suffix + ".provenance.json",
         )
         if expected_ckpt.exists() and expected_prov.exists():
+            # A DIVERGED checkpoint is saved for inspection but is NOT a completed trial, so
+            # RE-RUN it on resubmit instead of skipping — this is what makes "resubmit and the
+            # unfinished ones retrain" true. schema_version-1 provenance has no `diverged` key
+            # (reads as not-diverged), so a pre-2026-09 diverged checkpoint must be deleted by
+            # hand (clean_run --clean --stages train, or a manifest-driven sweep) to force it.
+            _diverged_ckpt = False
+            try:
+                import json as _json
+                with open(expected_prov, encoding="utf-8") as _pf:
+                    _diverged_ckpt = bool(_json.load(_pf).get("diverged", False))
+            except Exception:                                  # unreadable prov -> treat as complete
+                _diverged_ckpt = False
+            if not _diverged_ckpt:
+                LOGGER.info(
+                    "SKIP trial %d (global %d): checkpoint already exists at %s "
+                    "— delete the file or use `clean_run --clean --stages train` "
+                    "to force a rerun.",
+                    trial_idx_local, global_idx, expected_ckpt,
+                )
+                rows.append(RunRow(
+                    track=track, base_checkpoint=base, learning_rate=lr,
+                    use_lora=use_lora, query_fraction=query_fraction,
+                    accumulate_grad_batches=int(accumulate),
+                    epoch_pass_mode=pass_mode,
+                    seed=int(cfg.seed),
+                    n_train_datasets=0, n_test_datasets=0,
+                    final_ckpt_path=str(expected_ckpt),
+                    elapsed_sec=0.0,
+                    status="SKIP", error=None,
+                ))
+                _write_csv([rows[-1]], csv_path, append=csv_append)
+                if not csv_append:
+                    csv_append = True
+                continue
             LOGGER.info(
-                "SKIP trial %d (global %d): checkpoint already exists at %s "
-                "— delete the file or use `clean_run --clean --stages train` "
-                "to force a rerun.",
+                "RE-RUN trial %d (global %d): existing checkpoint at %s is marked DIVERGED "
+                "in its provenance — retraining it.",
                 trial_idx_local, global_idx, expected_ckpt,
             )
-            rows.append(RunRow(
-                track=track, base_checkpoint=base, learning_rate=lr,
-                use_lora=use_lora, query_fraction=query_fraction,
-                accumulate_grad_batches=int(accumulate),
-                epoch_pass_mode=pass_mode,
-                seed=int(cfg.seed),
-                n_train_datasets=0, n_test_datasets=0,
-                final_ckpt_path=str(expected_ckpt),
-                elapsed_sec=0.0,
-                status="SKIP", error=None,
-            ))
-            _write_csv([rows[-1]], csv_path, append=csv_append)
-            if not csv_append:
-                csv_append = True
-            continue
 
         epoch_csv = epoch_csv_dir / f"{run_basename}.csv"
         if epoch_csv.exists():

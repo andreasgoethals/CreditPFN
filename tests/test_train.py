@@ -1111,7 +1111,10 @@ def test_train_one_config_end_to_end_mocked(
 
     assert len(captured_provenance) == 1
     prov = captured_provenance[0]
-    assert prov["schema_version"] == 1
+    assert prov["schema_version"] == 2
+    # A healthy trial records diverged=False so the resume check skips it rather than re-running.
+    assert prov["diverged"] is False
+    assert prov["diverge_reason"] is None
     assert prov["track"] == "pd"
     assert prov["task_type"] == "classification"
     assert prov["hyperparameters"]["learning_rate"] == 1e-3
@@ -1371,6 +1374,36 @@ def test_flat_loss_with_growing_drift_is_not_divergence() -> None:
 
     # A window shorter than the patience never trips.
     assert reason(moving[:3]) is None
+
+
+def test_loss_const_gated_to_early_budget() -> None:
+    """11-09-2026. A flat loss is DEATH early in the run but CONVERGENCE near the step budget.
+    The 08-09 fix stopped the epoch-5 false-aborts, but a low-LR v2.6 accumulate trial still
+    plateaus ~epoch 330 (~90 % of the 5000-step budget) and tripped `loss_const` right before
+    finishing. Gate loss_const to the first `min_progress` of the budget: a converged trial then
+    trains to completion, while a dead-from-start trial (trips at ~1-2 % of the budget) is still
+    caught, and auc_random stays a real collapse at any phase.
+    """
+    from src.train.loop import EpochRecord, _divergence_reason
+
+    def rec(loss: float, drift: float) -> EpochRecord:
+        return EpochRecord(epoch=0, train_loss=loss, elapsed_sec=0.0, lr=1e-6,
+                           weight_drift=drift, optimizer_steps=13)
+
+    dead = [rec(0.4624, 3.1e-4) for _ in range(5)]      # flat loss AND flat drift
+    good = [(0.68, 0.79)] * 5
+
+    def reason(records, steps_done, metrics=good):
+        return _divergence_reason(records, metrics, 5, "roc_auc", 1,
+                                  steps_done=steps_done, target_total_steps=5000, min_progress=0.7)
+
+    assert reason(dead, 60) == "loss_const"             # ~1 % in: dead from the start -> caught
+    assert reason(dead, 3400) == "loss_const"           # just before the 70 % gate -> caught
+    assert reason(dead, 4500) is None                   # ~90 % in: converged plateau -> keep training
+    # No step budget set -> the gate is inert; behaves as the plain flat-loss-AND-flat-drift rule.
+    assert _divergence_reason(dead, good, 5, "roc_auc", 1) == "loss_const"
+    # A real collapse (AUC 0.5) fires even late in the budget — only loss_const is gated.
+    assert reason([rec(0.4624, 7.6e-4)] * 5, 4800, metrics=[(0.5, 0.5)] * 5) == "auc_random"
 
 
 def test_l2sp_lambda_is_a_swept_axis() -> None:

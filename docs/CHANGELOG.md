@@ -12,6 +12,24 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 11-09-2026
+
+- **Divergence guard: gated `loss_const` to the early step budget, so converged trials finish.**
+  The 08-09 fix stopped the epoch-5 false-aborts, but a low-LR v2.6 `accumulate` trial still
+  plateaus ~epoch 330 (~90 % of the 5000-step budget) and tripped `loss_const` right before
+  completing (flat loss AND flat drift = converged, which the guard cannot tell from dead). Now
+  `loss_const` fires only in the first `train.divergence_min_progress` (0.7) of the budget — a
+  dead-from-start trial still trips at ~1-2 %, while a converged one trains to the end; `auc_random`
+  / `metric_nan` / `amp_skip_storm` stay active at any phase. Test `test_loss_const_gated_to_early_budget`.
+- **Resume now re-runs DIVERGED checkpoints instead of skipping them.** Provenance gained a
+  `diverged` flag (`schema_version` 1 → 2); `train_pipeline`'s resume check skips a checkpoint only
+  when its provenance says the trial completed — so "resubmit and the unfinished ones retrain" is now
+  true. (schema-1 checkpoints from before this read as not-diverged, so trials that diverged under
+  the old code must still be deleted once, by a manifest-driven sweep, to force their rerun.)
+- **`run_experiment.sh`: recorded the workers-on accumulate wall-clock** (v2 16.3 h, v2.6 10.3, v3 8.9,
+  tabicl 7.0) and documented `TRIALS_PER_TASK=1` as the safe queue lever — per-trial ~20 h walltime
+  vs 2/task ~39.5 h at the same margin, so it backfills far better. No default changed.
+
 ## 09-09-2026
 
 - **Documentation consistency pass across `README` + all `docs/`** — reconciled every doc with the

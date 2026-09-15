@@ -80,11 +80,13 @@ fi
 # full_pass keeps the short, high-priority walltime; accumulate gets its own long one.
 hms() { printf '%d:%02d:00' $(( $1 / 60 )) $(( $1 % 60 )); }
 FULL_MIN=$(( TRIALS_PER_TASK * 90 + 30 ))                          # 90 min/trial + 30 startup
-ACC_MIN=$(( TRIALS_PER_TASK * ${ACC_MIN_PER_TRIAL:-1170} + 30 ))   # ~20 h/trial. MEASURED, exp1_pd:
-#   v3 ~10 h, v2.6 ~11.6 h, tabicl ~7 h all fit -- but v2 accumulate runs ~2.74 min/epoch x 384 =
-#   ~17.6 h (02-09, epoch 249/384 at 683 min), so 14:00 (810) killed it at ~80%. 1170 -> 20:00 at
-#   1/task clears v2 with margin. Uniform across bases over-provisions the fast ones (priority cost);
-#   ACC_WALLTIME= to override. A re-kill wastes the whole run, so err generous.
+ACC_MIN=$(( TRIALS_PER_TASK * ${ACC_MIN_PER_TRIAL:-1170} + 30 ))   # ~20 h/trial. MEASURED WITH
+#   WORKERS ON (exp1_pd, 11-09): v2 16.3 h, v2.6 10.3 h, v3 8.9 h, tabicl 7.0 h -- so 1170 (19.5 h)
+#   clears the slowest base (v2) with ~20% margin. TO GET EARLIER IN THE QUEUE, submit
+#   TRIALS_PER_TASK=1: the walltime is then per-trial (~20 h) instead of 2/task (~39.5 h), which
+#   backfills far better (VSC: 48h -> 1-2 GPUs, 10h -> 15-21) at the SAME per-trial margin, at the
+#   cost of 2x more array tasks. ACC_WALLTIME= overrides outright. A re-kill wastes the whole run,
+#   so err generous -- do NOT drop ACC_MIN_PER_TRIAL below ~1000 (v2 accumulate needs 16.3 h).
 (( FULL_MIN > 4320 )) && FULL_MIN=4320                             # 72 h partition cap
 (( ACC_MIN  > 4320 )) && ACC_MIN=4320
 FULL_WALLTIME="${WALLTIME:-$(hms "$FULL_MIN")}"                    # WALLTIME= overrides full_pass

@@ -515,6 +515,9 @@ def _divergence_reason(
     diverge_patience: int,
     track_primary_metric: str,
     epoch_eval_n0: int,
+    steps_done: int = 0,
+    target_total_steps: int | None = None,
+    min_progress: float = 0.7,
 ) -> str | None:
     """Early-abort reason for a window of the last ``diverge_patience`` epoch records, or ``None``
     if the trial looks healthy. A PURE FUNCTION so the collapse heuristics are unit-testable in
@@ -524,13 +527,18 @@ def _divergence_reason(
 
     Reasons, in priority order:
 
-    * ``loss_const`` — flat loss AND flat weight-drift. A flat loss alone is NOT a dead model: in
-      run-8, v2.6 @3e-7 full-FT held its loss at 0.4689-0.4690 for five epochs (inside the 1e-4
-      window) while its drift rose 0.042 %→0.085 % — it was training slowly, which is what the
-      lowest LR in the sweep is FOR. A model that has actually died stops MOVING, so we require
-      both. ``weight_drift`` is the per-epoch ‖w−w0‖/‖w0‖ (NaN when no anchor); reading it here
-      rather than the monitor-only per-stage drift is what makes "is it still moving?" answerable
-      on every epoch instead of only every ~19th.
+    * ``loss_const`` — flat loss AND flat weight-drift, AND only in the EARLY part of the step
+      budget. A flat loss alone is NOT a dead model: in run-8, v2.6 @3e-7 full-FT held its loss at
+      0.4689-0.4690 for five epochs (inside the 1e-4 window) while its drift rose 0.042 %→0.085 % —
+      it was training slowly, which is what the lowest LR in the sweep is FOR. A model that has
+      actually died stops MOVING, so we require both. ``weight_drift`` is the per-epoch ‖w−w0‖/‖w0‖
+      (NaN when no anchor); reading it here rather than the monitor-only per-stage drift is what
+      makes "is it still moving?" answerable on every epoch instead of only every ~19th. The
+      ``min_progress`` gate then distinguishes "dead from the start" from "converged near the end":
+      a flat loss past ``min_progress`` of ``target_total_steps`` is a plateau, not a death (PD
+      banks ~95 % of its loss drop by ~71 % of the budget), so we keep training it to completion
+      rather than aborting — a genuinely dead trial trips this at ~1-2 % of the budget, long before
+      the gate. Only ``loss_const`` is gated; the reasons below are unambiguous failures at any phase.
     * ``auc_random`` — PD ROC-AUC pinned at 0.5 (train and test) across the monitored window.
     * ``metric_nan`` — the monitor is on (``epoch_eval_n0 > 0``) yet every metric is NaN.
     * ``amp_skip_storm`` — more than half the AMP steps in the window were skipped.
@@ -549,8 +557,16 @@ def _divergence_reason(
         len(recent_drift) >= 2
         and (max(recent_drift) - min(recent_drift)) < 1e-6
     )
+    # A flat loss in the LATE part of the budget is convergence, not death — keep training it to
+    # the end rather than discarding a converged checkpoint. Gate loss_const only (the other
+    # reasons are genuine failures at any phase). See the docstring for why 0.7.
+    late_in_budget = (
+        target_total_steps is not None and target_total_steps > 0
+        and steps_done >= min_progress * target_total_steps
+    )
     loss_constant = (
-        len(losses) == diverge_patience
+        not late_in_budget
+        and len(losses) == diverge_patience
         and max(losses) - min(losses) < 1e-4
         # No drift signal at all (λ=0 / no anchor) -> fall back to the loss-only rule.
         and (drift_flat or not recent_drift)
@@ -2903,9 +2919,15 @@ def train_one_config(
         # false-abort of every accumulate + L2-SP trial hid behind exactly that gap.
         diverge_patience = int(getattr(cfg.train, "divergence_patience", 5))
         recent = [r for r in history if r.epoch >= 0][-diverge_patience:]
+        # Cumulative optimizer steps so far — gates loss_const to the early budget so a
+        # converged-late trial trains to completion instead of aborting (see _divergence_reason).
+        _steps_done = sum(int(r.optimizer_steps) for r in history if r.epoch >= 0)
         reason = _divergence_reason(
             recent, monitored_metrics, diverge_patience,
             track_primary_metric, epoch_eval_n0,
+            steps_done=_steps_done,
+            target_total_steps=getattr(cfg.train, "target_total_steps", None),
+            min_progress=float(getattr(cfg.train, "divergence_min_progress", 0.7)),
         )
         if reason:
             LOGGER.error(
@@ -2924,6 +2946,7 @@ def train_one_config(
     # also get written through to the manifest CSV.
     diverged = locals().get("diverged", False)
     diverged_at_epoch = locals().get("diverged_at_epoch", None)
+    diverge_reason = locals().get("diverge_reason", None)
     diverge_reason = locals().get("diverge_reason", "")
     # Baseline row (epoch=-1) is always the first entry in history when
     # the per-epoch monitor is enabled.
@@ -2962,10 +2985,16 @@ def train_one_config(
     except Exception:                                           # pragma: no cover
         tabicl_version = None
     provenance = {
-        "schema_version":      1,
+        "schema_version":      2,
         "run_name":            str(cfg.run_name),
         "track":               track,
         "model_family":        family,
+        # Divergence status — read by train_pipeline's resume check so a diverged checkpoint is
+        # RE-RUN on resubmit rather than skipped (it is saved for inspection, but it is NOT a
+        # completed trial). Absent in schema_version 1 checkpoints, which read as not-diverged.
+        "diverged":            bool(diverged),
+        "diverge_reason":      (str(diverge_reason) if diverged and diverge_reason else None),
+        "diverged_at_epoch":   (int(diverged_at_epoch) if diverged and diverged_at_epoch is not None else None),
         # What the grid's use_lora axis actually did for this family —
         # eval-side interpretation must not assume LoRA semantics.
         "adaptation_mode": (
