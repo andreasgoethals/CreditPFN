@@ -219,15 +219,15 @@ __marimo__/
 # This is the strongest secret (it de-anonymises published results). NEVER commit it.
 # The tracked accessor src/data/dataset_names.py degrades to raw slugs when it is absent.
 /src/data/_private_names.py
-# Per-dataset preprocessing holds the proprietary slugs + real column names (the provider's
-# internal schema). Keep it untracked; it lives on the machines that also hold the private data.
-# After `git rm --cached src/data/preprocessing.py`, restore the file on the cluster (it is
-# gitignored, so a pull will not bring it back) before the next resubmit.
-/src/data/preprocessing.py
-# Generated result artefacts that embed real slugs / private column names in text or
-# figure filenames — regenerated locally, never published.
-/output/All_Results.md
-/output/figures/
+# NOTE (21-09-2026): src/data/preprocessing.py is intentionally TRACKED for now. The cluster's
+# data/train/eval pipelines all import it, so a plain `git pull` must deliver it or the run breaks.
+# It still contains proprietary slugs + real column names — re-privatise it (uncomment the line
+# below, then `git rm --cached src/data/preprocessing.py`, and restore the file on the cluster
+# out-of-band) once the code is frozen. Until then it stays tracked so nothing on VSC breaks.
+# /src/data/preprocessing.py   <-- re-enable this line when re-privatising
+#
+# Generated result artefacts that embed real slugs are handled by the output/ rules further down
+# (output/All_Results.md + output/figures/*); notebooks regenerate them via the anonymising accessor.
 
 # Model checkpoints — share the folder structure + METHOD.md
 # (so collaborators see which weights go where) but never commit

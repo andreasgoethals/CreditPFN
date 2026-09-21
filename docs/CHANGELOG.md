@@ -12,6 +12,14 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 21-09-2026
+
+- **`src/data/preprocessing.py` un-ignored again — kept TRACKED so a plain `git pull` gives the
+  cluster a runnable tree.** Every pipeline imports it, so de-tracking it (the privacy plan) would
+  break the VSC resubmit. It stays tracked until the code is frozen, then re-privatised out-of-band;
+  the `.gitignore` line is left commented with that note. The mapping module `_private_names.py`
+  (the strongest secret) stays ignored. Deliberate deviation from the 21-09 privacy pass.
+
 ## 11-09-2026
 
 - **Divergence guard: gated `loss_const` to the early step budget, so converged trials finish.**
