@@ -262,7 +262,7 @@ day is never rewritten.
   the same held-out set. The control can finally be computed.
 - **BUG FIXED: v2 eval context cap 50000 -> 10000.** TabPFN v2's OFFICIAL inference limit is
   10 000 rows; above it, `predict` raises `TabPFNValidationError` and every fold fails. Both
-  untuned AND trained v2 failed all 5 folds on the big test datasets (home_credit, bank_status)
+  untuned AND trained v2 failed all 5 folds on the big test datasets (home_credit, PropPD1)
   at the 50k cap. v2.6 (50k) / v3 (1M) / tabicl (1M) are unaffected — each generation is now
   evaluated at its native supported context. New preflight `check_eval_caps` FAILS if any cap
   exceeds a model's official limit.
@@ -292,7 +292,7 @@ day is never rewritten.
 Confirmed GOOD from the exp0 re-run training half (jobs 11532153/54):
 
 - **v2 now COMPLETES** (OK, final_test 0.7145) — the non-finite-loss leak fix works on real
-  hardware; v2 logs the skip on loan_default and continues without OOM.
+  hardware; v2 logs the skip on PropPD2 and continues without OOM.
 - All 4 bases lr=0 in-loop no-op holds (baseline == final).
 
 The exp0 checkpoints on disk are STALE (trained with the wrong 5-dataset seed-42 split), so the
@@ -317,7 +317,7 @@ save/reload control still cannot be validated from them — re-run exp0 with thi
   released the forward autograd graph, so the ~full-step activations (held by `loss`,
   `loss_to_backprop`, and the forward outputs `pred_logits`/`out`) lingered into the NEXT step's
   forward and roughly DOUBLED peak memory. In exp0, v2 ran 40 clean steps at 10k rows (including
-  64-feature home_credit) and then OOM'd the step after `0011.loan_default` produced a non-finite
+  64-feature home_credit) and then OOM'd the step after a large PD table produced a non-finite
   loss. v2.6/v3/tabicl never hit a non-finite loss, so they never leaked — which is also why the
   synthetic probe (no non-finite losses) read v2 low. Fix: release every graph-holding reference
   on the skip path (`loss = loss_to_backprop = pred_logits = y_target = out = _pen = None`).
@@ -347,11 +347,10 @@ Confirmed GOOD from the exp0 training half (job 11532123):
   `infer_categorical_numerical` register uses. Verified: the code-built categoricals are
   IDENTICAL to the old manifest for all 25 datasets, and the pipeline runs with no manifest file
   present at all. So `output/` can be deleted freely — nothing there is needed to START a run.
-- **loss2's 3 integer-code categoricals baked into `DATASET_METADATA`.** `Credit_Bureau`,
-  `documentation_type`, `living_units_number` read as numeric in the processed CSV, so dtype
-  detection alone would treat them as continuous. Listing them in the code hint makes the code
-  the authority and keeps the categoricals bit-identical to run-8. (Only these 3, across all 25
-  datasets, needed baking.)
+- **PropLGD2's 3 integer-code categoricals baked into `DATASET_METADATA`.** Three columns read
+  as numeric in the processed CSV, so dtype detection alone would treat them as continuous.
+  Listing them in the code hint makes the code the authority and keeps the categoricals
+  bit-identical to run-8. (Only these 3, across all 25 datasets, needed baking.)
 - `register.py` still writes the manifest, but purely as an optional human-readable summary.
 - Tests: synthetic datasets now register in `DATASET_METADATA` via a `register_synthetic_dataset`
   helper + an autouse `_mutable_dataset_metadata` fixture (the production dict is a read-only
@@ -848,7 +847,7 @@ Verified this session, no change needed:
   longest-processing-time-first). Default 16 via `EVAL_TASKS`. The 209-task arrays it
   replaces averaged **0.73 concurrent jobs** — 6.7 GPU-h took 9.1 h of wall-clock.
 - Eval pools now stride over **packed tasks**. Striding over raw cells sent every even
-  index to dataset 0, so LGD's pool 0 scored `0002.loss2` and never saw
+  index to dataset 0, so LGD's pool 0 scored `PropLGD2` and never saw
   `0007.lgd_lendingclub`. Regression-tested.
 - `train.target_total_steps` raises epochs as well as trimming them, bounded by the new
   `max_epochs_for_step_budget`. Trimming alone left LGD at 800–3 200 steps against a 9 100
@@ -1196,8 +1195,8 @@ Verified this session, no change needed:
 
 - **What:** Measured that only 5 of 25 raw datasets carry a parseable date
   column, that `sanitize.py` drops them, and that **none of the 5 PD test
-  sets** has one (only LGD `loss2` does). Rewrote that roadmap item into three
-  scoped options: a `loss2`-only case study, re-pinning the corpus split, or
+  sets** has one (only one proprietary LGD set does). Rewrote that roadmap item into three
+  scoped options: a `PropLGD2`-only case study, re-pinning the corpus split, or
   re-sourcing fuller raw files.
 - **Why:** It had been listed as a scheduling task when it is really a corpus
   decision, and would have been discovered only mid-implementation.

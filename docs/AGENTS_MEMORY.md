@@ -135,8 +135,8 @@ back to the cruder rule it was built to replace.**
 - **Result.** `eval_pipeline._load_cfgs` loads `eval_cfg.train_cfg_path` = config/train.yaml, and
   `cfg_test_ids` comes from `split_from_cfg(train_cfg)`. So every split would have been evaluated
   against the SAME five datasets (train.yaml has `n_test_datasets: null`, so it fell back to the
-  0.7/0.3 fractions). For split 7 — trained holding out thomas / loan_default / algorithmwatch /
-  bondora — eval would have used taiwan / myhom / bank_status / algorithmwatch / credit_risk, of
+  0.7/0.3 fractions). For split 7 — trained holding out thomas / PropPD2 / algorithmwatch /
+  bondora — eval would have used taiwan / myhom / PropPD1 / algorithmwatch / credit_risk, of
   which **four were in its training set**.
 - **Why.** Two independent config-loading paths for one experiment. The manifest-name half of the
   mismatch has a loud warning; the DRAW half has none, and it moves scores upward, so it would
@@ -526,7 +526,7 @@ attempts both got it wrong.**
 - **Tried:** `i % pools == pool` over the model-major cell list — the 08-08-2026 replacement for
   the model-parity split.
 - **Result:** LGD has exactly 2 test datasets and the eval ran on 2 pools, so pool 0 got every
-  even index, which is **dataset 0 every time**. Pool 0 scored `0002.loss2` and nothing else;
+  even index, which is **dataset 0 every time**. Pool 0 scored `PropLGD2` and nothing else;
   `0007.lgd_lendingclub` existed only in the other pool.
 - **Why:** with cells enumerated model-major, a stride of `pools` aligns exactly with the dataset
   index whenever `n_datasets` is a multiple of `pools`. This is the 11-07-2026 dead end (a whole

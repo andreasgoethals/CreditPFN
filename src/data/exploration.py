@@ -727,7 +727,8 @@ def plot_missing_cells_bar(
     ypos = np.arange(len(df))[::-1]
     ax.barh(ypos, df[col].to_numpy(), color=colors, height=0.74)
     ax.set_yticks(ypos)
-    ax.set_yticklabels(df["dataset_id"], fontsize=7)
+    from src.data.dataset_names import display_name
+    ax.set_yticklabels([display_name(x) for x in df["dataset_id"]], fontsize=7)
     ax.grid(axis="x", linewidth=0.4, alpha=0.35)
     ax.grid(axis="y", visible=False)
     if n_all > len(df):
@@ -859,7 +860,8 @@ def plot_target_distribution_lgd(
         # Identifier only. Three lines of statistics per panel is what made these
         # titles collide with the neighbouring panels' tick labels, and the numbers are
         # already in the corpus summary table this notebook prints.
-        ax.set_title(str(mrow["dataset_id"]), fontsize=6)
+        from src.data.dataset_names import display_name
+        ax.set_title(display_name(mrow["dataset_id"]), fontsize=6)
         ax.set_xlabel("LGD", fontsize=6)
         ax.set_ylabel("count", fontsize=6)
         ax.set_xlim(-0.02, 1.02)
@@ -894,8 +896,9 @@ def plot_target_distribution_pd(
         y = df[mrow["target_column"]].dropna()
         vc = y.value_counts(normalize=True).sort_index()
         ax.bar(vc.index.astype(str), vc.values, color="tab:blue", alpha=0.85)
+        from src.data.dataset_names import display_name
         ax.set_title(
-            f"{mrow['dataset_id']}\n"
+            f"{display_name(mrow['dataset_id'])}\n"
             f"n={len(y):,}  classes={int(y.nunique())}\n"
             f"minority share={mrow['minority_class_ratio']:.3f}",
             fontsize=9,

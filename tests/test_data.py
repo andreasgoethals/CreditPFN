@@ -326,7 +326,7 @@ def test_two_digit_year_parser() -> None:
 
 
 def test_feature_selection_caps_categorical_heavy_dataset() -> None:
-    """The LGD base_model* regression: a categorical-heavy dataset (more
+    """The wide LGD regression sets: a categorical-heavy dataset (more
     categoricals than the cap) must still be capped — the earlier version
     skipped when categoricals alone exceeded the budget. The budget is split
     proportionally between the two feature types."""
@@ -414,12 +414,12 @@ def test_compute_manifest_row_classification() -> None:
 
 
 def test_compute_manifest_row_regression() -> None:
-    raw_path = REPO / "data" / "raw" / "lgd" / "0001.heloc.csv"
+    raw_path = REPO / "data" / "raw" / "lgd" / "0007.lgd_lendingclub.csv"
     if not raw_path.exists():
-        pytest.skip("missing raw: 0001.heloc.csv")
+        pytest.skip("missing raw: 0007.lgd_lendingclub.csv")
     df = pd.read_csv(raw_path, low_memory=False)
-    df = apply_dataset_specific_fixes(df, "0001.heloc")
-    row = compute_manifest_row(df, "0001.heloc")
+    df = apply_dataset_specific_fixes(df, "0007.lgd_lendingclub")
+    row = compute_manifest_row(df, "0007.lgd_lendingclub")
     assert row["task_type"] == "regression"
     assert row["minority_class_ratio"] == ""
     assert row["target_mean"] != ""

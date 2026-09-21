@@ -313,6 +313,15 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
         lambda n: (parse_trial_name(n).base_short if parse_trial_name(n) else "?")
     )
     df["lr_tag"] = df["learning_rate"].map(lambda x: f"{float(x):.0e}".replace("+", ""))
+    # PRIVACY: anonymise the corpus id-list columns so proprietary datasets never appear by their
+    # real slug in the training summaries/figures. See src/data/dataset_names.py.
+    from src.data.dataset_names import display_name, display_id_list
+    for _c in ("train_dataset_ids", "test_dataset_ids"):
+        if _c in df.columns:
+            df[_c] = df[_c].map(display_id_list)
+    for _c in ("test_dataset_id", "dataset_id"):
+        if _c in df.columns:
+            df[_c] = df[_c].map(display_name)
     return df
 
 
@@ -1232,7 +1241,11 @@ def plot_per_dataset_loss(trial_name: str, track: str, *, cfg=None):
                        figsize=style.figsize(style.WIDTH_FULL, ratio=0.60))
     # Order the legend by final loss so the worst-fitting table is easy to find.
     order = sorted(cols, key=lambda c: -hist[c].dropna().iloc[-1] if hist[c].notna().any() else 0)
-    ids = [c.removeprefix("loss__") for c in order]
+    # Reader-facing dataset names — proprietary tables must never appear by their real slug in
+    # this per-dataset loss figure. These ids are labels/palette keys only (no join), so mapping
+    # them fully is safe. See src/data/dataset_names.py.
+    from src.data.dataset_names import display_name
+    ids = [display_name(c.removeprefix("loss__")) for c in order]
     # DISTINCT colours by position. `style.color` keys on the name and has four fallback
     # slots, so three of the six LGD datasets came out the same yellow.
     palette = style.categorical(ids)

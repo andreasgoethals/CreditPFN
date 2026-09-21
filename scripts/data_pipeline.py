@@ -28,7 +28,7 @@ Public entry point
 ``datasets: list[str] | None``
     ``None`` or empty list → process every dataset_id registered in
     :data:`src.data.preprocessing.DATASET_METADATA`. Otherwise: only
-    the supplied dataset_ids (e.g. ``["0001.gmsc", "0001.heloc"]``).
+    the supplied dataset_ids (e.g. ``["0001.gmsc", "0002.taiwan_creditcard"]``).
 ``log_path: Path | str | None``
     ``None`` (default, CLI usage) → a fresh ``logs/<timestamp>.log``
     is created and the run summary is appended to it.

@@ -45,7 +45,7 @@
 # block needs ~4× the matrix size in scratch buffers — peak resident
 # size during sanitize was ~25 GB in the 2026-05-19 run that 16 GB
 # killed (job 66727474). 64 GB leaves headroom for the next-widest
-# dataset (0011.loan_default, 105k×769) and any future addition.
+# dataset (the largest PD table, ~105k×769) and any future addition.
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null

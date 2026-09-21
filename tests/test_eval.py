@@ -996,7 +996,7 @@ def test_pools_over_packed_tasks_never_align_with_the_dataset_index() -> None:
     """REGRESSION (found in the 11-08-2026 logs). LGD has 2 test datasets and the eval
     ran on 2 pools. Cells are enumerated model-major, so a `i % pools` stride over RAW
     cells handed pool 0 every even index — which is dataset 0, every time. Pool 0 scored
-    `0002.loss2` and nothing else; `0007.lgd_lendingclub` existed only in the other pool.
+    `0006.lgd_freddie` and nothing else; `0007.lgd_lendingclub` existed only in the other pool.
     That is the 11-07-2026 dead end (a whole dataset in one pool) reintroduced by a
     different mechanism.
 
@@ -1006,7 +1006,7 @@ def test_pools_over_packed_tasks_never_align_with_the_dataset_index() -> None:
     from scripts.eval_pipeline import _pack_tasks
 
     roster = _fake_roster(42)
-    datasets = ["0002.loss2", "0007.lgd_lendingclub"]
+    datasets = ["0006.lgd_freddie", "0007.lgd_lendingclub"]
     pairs = [(m, d) for m in range(len(roster)) for d in datasets]
 
     raw = {d for i, (_, d) in enumerate(pairs) if i % 2 == 0}

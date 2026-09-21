@@ -271,6 +271,13 @@ def load_eval_results(track: str) -> pd.DataFrame:
     # Human-friendly method name (used as the legend label everywhere).
     full["method_name"] = full.apply(human_method_name, axis=1)
     full["method_name"] = _drop_constant_tags(full["method_name"])
+    # PRIVACY: map the dataset id to its reader-facing name here, at the single loader every
+    # figure and summary flows from, so proprietary datasets never appear by their real slug in
+    # anything shared. Remapped uniformly, so downstream joins/pivots on test_dataset_id still
+    # match. See src/data/dataset_names.py.
+    from src.data.dataset_names import display_name
+    if "test_dataset_id" in full.columns:
+        full["test_dataset_id"] = full["test_dataset_id"].map(display_name)
     return full
 
 

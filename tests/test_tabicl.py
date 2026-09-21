@@ -176,7 +176,7 @@ def test_save_finetuned_tabicl_round_trips(tmp_path: Path, regressor: bool) -> N
     cfg = {**cfg, "recompute": True}          # as training would leave it
     path = tmp_path / "tabicl-test-v2.ckpt"
     prov = {"schema_version": 1, "model_family": "tabicl",
-            "test_datasets": ["0002.loss2"]}
+            "test_datasets": ["0007.lgd_lendingclub"]}
     save_finetuned_tabicl(model, cfg, path, provenance=prov)
 
     raw = torch.load(path, map_location="cpu", weights_only=True)
@@ -184,7 +184,7 @@ def test_save_finetuned_tabicl_round_trips(tmp_path: Path, regressor: bool) -> N
     assert raw["config"]["recompute"] is False
     assert set(raw["state_dict"]) == set(model.state_dict())
     sidecar = path.with_suffix(path.suffix + ".provenance.json")
-    assert json.loads(sidecar.read_text())["test_datasets"] == ["0002.loss2"]
+    assert json.loads(sidecar.read_text())["test_datasets"] == ["0007.lgd_lendingclub"]
 
 
 def test_load_tabicl_rejects_wrong_head_for_track(tmp_path: Path) -> None:

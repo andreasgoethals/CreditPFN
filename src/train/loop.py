@@ -2532,7 +2532,7 @@ def train_one_config(
                 # (the loss, the backprop tensor, AND the forward outputs, which each hold a
                 # grad_fn chain into the ~full-step activations) the graph lingers into the
                 # next step's forward and roughly DOUBLES peak memory. v2 OOM'd exactly this
-                # way at 10k rows the step after loan_default's non-finite loss (26-08-2026),
+                # way at 10k rows the step after a large PD table's non-finite loss (26-08-2026),
                 # having run 40 earlier steps — including 64-feature home_credit — cleanly.
                 loss = loss_to_backprop = pred_logits = y_target = out = _pen = None
                 epoch_skipped_steps += 1

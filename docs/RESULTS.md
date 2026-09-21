@@ -231,7 +231,7 @@ The reference sweep for cross-version comparison.
   v3 3e-5 full_pass); **LoRA was a no-op at every LR** (|Δ| ≤ 0.0007 on eval). A definitive negative
   at 12-dataset corpus scale — later reframed by run-5's drift measurement as *undertrained*.
 - **LGD: the NLL-vs-RMSE trade-off replicates on clean checkpoints.** v3 full-FT improves `neg_nll`
-  monotonically with LR/exposure (loss2 0.975 → 0.657 = −0.32 nats @3e-5 full_pass; lendingclub
+  monotonically with LR/exposure (PropLGD2 0.975 → 0.657 = −0.32 nats @3e-5 full_pass; lendingclub
   −0.21) while RMSE worsens (+0.009 / +0.003). v3 @1e-6 full_pass is a near-free density gain
   (−0.056 nats, +0.001 RMSE). **v2.6 degrades on both metrics at all LRs** — version matters.
   Untuned v3 still has the best RMSE (0.1399 / 0.1253).

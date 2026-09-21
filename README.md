@@ -774,7 +774,7 @@ Two paths into the train/test split, both in `cfg.corpus`:
 |---|---|
 | Debug, 1 dataset, 1 HP set                   | `python scripts/train_pipeline.py --single corpus.train_dataset_ids=[0001.gmsc] train.epochs=3` |
 | Debug, 1 dataset, HP grid                    | `python scripts/train_pipeline.py corpus.train_dataset_ids=[0001.gmsc] train.epochs=3` |
-| 5 specific PD datasets, 1 HP set             | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0009.bank_status]'` |
+| 5 specific PD datasets, 1 HP set             | `python scripts/train_pipeline.py --single track=pd corpus.train_dataset_ids='[0001.gmsc,0002.taiwan_creditcard,0003.vehicle_loan,0004.lendingclub,0006.hackerearth]'` |
 | Full corpus, 1 HP set                        | `python scripts/train_pipeline.py --single` |
 | Full corpus, full HP grid                    | `python scripts/train_pipeline.py` |
 | An experiment's grid over all splits, cluster | `bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml` — see [`docs/VSC.md`](docs/VSC.md) |

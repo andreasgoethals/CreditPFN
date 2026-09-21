@@ -773,7 +773,7 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
     save_path = tmp_path / "ckpt" / "test.ckpt"
     provenance = {
         "hyperparameters": {"learning_rate": 1e-5, "epochs": 30},
-        "training_datasets": ["0001.gmsc", "0002.heloc"],
+        "training_datasets": ["0001.gmsc", "0002.taiwan_creditcard"],
         "training_time_seconds": 123.4,
         "gpu": "NVIDIA H100 NVL",
     }
@@ -784,7 +784,7 @@ def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
     assert sidecar.exists()
     parsed = json.loads(sidecar.read_text(encoding="utf-8"))
     assert parsed["gpu"] == "NVIDIA H100 NVL"
-    assert parsed["training_datasets"] == ["0001.gmsc", "0002.heloc"]
+    assert parsed["training_datasets"] == ["0001.gmsc", "0002.taiwan_creditcard"]
 
     # The same provenance round-trips through the .ckpt file.
     loaded = load_provenance(save_path)

@@ -81,17 +81,16 @@ Ordered by how much each one strengthens the paper per unit of effort.
    **Measured 2026-08-04, and it is the binding constraint:** only 5 of our 25
    raw datasets carry a parseable date column at all — PD `vehicle_loan`
    (`DisbursalDate`) and `bondora_peer2peer` (outcome-side dates only, so
-   leakage-prone); LGD `loss2` (`Origination_Date`, `date_vintage_year` — the
-   cleanest one we have), `base_model` (`DEAL_TransactionStartDate`) and
-   `base_modelisation` (`DATE`). `sanitize.py` currently drops them, and the
-   pipeline has no datetime handling anywhere.
+   leakage-prone); and three proprietary LGD sets — **PropLGD2** (the cleanest
+   one we have), **PropLGD4** and **PropLGD5** — each with a date column that
+   `sanitize.py` currently drops (the pipeline has no datetime handling anywhere).
 
    Worse, of the **held-out** datasets: **none of the 5 PD test sets has a
-   date**, and only 1 of the 2 LGD test sets does (`loss2`). Both dated PD
+   date**, and only 1 of the 2 LGD test sets does (**PropLGD2**). Both dated PD
    datasets sit in the *training* split.
 
    So there are three options, in increasing cost:
-   - **(a) A temporal case study on `loss2`** — one held-out dataset, LGD
+   - **(a) A temporal case study on PropLGD2** — one held-out dataset, LGD
      only. Cheap, honest, and enough to say "the density gain survives a
      time-ordered split on the one dataset where we can test it."
    - **(b) Re-pin the corpus split** so `vehicle_loan` (and possibly

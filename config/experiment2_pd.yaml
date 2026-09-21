@@ -12,15 +12,13 @@ tunable:
   accumulate_grad_batches: [1]
 
 corpus:
-  min_train_rows: 0           # not an axis any more: the split draw varies table sizes
-  n_test_datasets: null       # pinned below
+  # Experiment intent: every TRAIN table is large. Selected BY ROW COUNT, never by name, so no
+  # dataset (least of all a proprietary one) is named in a tracked config — see the privacy rules.
+  # NOTE (21-09): this replaced explicit slug pins; exp2 is NOT the active experiment, so validate
+  # the resulting train/test composition (and assert the expected counts) before running it.
+  min_train_rows: 150000      # train = all PD tables at/above this row count
+  n_test_datasets: 5          # remaining large tables drawn as test
   n_splits: 1
-  train_dataset_ids:          # all >= 150 000 rows
-    pd: ["0016.bondora_peer2peer", "0006.hackerearth", "0012.home_credit",
-         "0003.vehicle_loan", "0014.algorithmwatch", "0001.gmsc"]
-  test_dataset_ids:           # all >= 30 000 rows
-    pd: ["0011.loan_default", "0009.bank_status", "0007.cobranded",
-         "0015.credit_risk_dataset", "0002.taiwan_creditcard"]
 
 # ---------------------------------------------------------------- FIXED ------
 track: "pd"

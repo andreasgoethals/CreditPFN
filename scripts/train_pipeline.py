@@ -335,7 +335,7 @@ def _validate_corpus_ids_or_raise(cfg, *, track: str) -> None:
     contain IDs that aren't registered in ``DATASET_METADATA`` for the
     active track.
 
-    Without this, a typo (e.g. ``0002.heloc`` instead of
+    Without this, a typo (e.g. ``0002.taiwan_creditcard`` instead of
     ``0002.taiwan_creditcard``) would be silently dropped by the
     auto-cache hook's set-intersection and then the corpus splitter's
     warn-and-continue, leaving the user with a quietly smaller training

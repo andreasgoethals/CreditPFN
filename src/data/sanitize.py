@@ -288,7 +288,7 @@ def _select_to_max_columns(
         variance score are ever considered; a predictive column ranked below
         that window is never selected.
       * Only fires when ``#features > max_columns`` — it affects only the few
-        wide datasets (the wide PD sets + the LGD ``base_model*`` sets); narrow
+        wide datasets (the wide PD sets + the wide LGD sets); narrow
         datasets pass through untouched.
 
     Returns ``(df_reduced, kept_numerical_columns, kept_categorical_columns)``
@@ -313,7 +313,7 @@ def _select_to_max_columns(
     # normalised to [0, 1] (near-constant → ~0; balanced → ~1). This lets a
     # categorical-heavy dataset be capped too — the previous version only
     # trimmed numericals and silently skipped when the categoricals alone
-    # exceeded the budget, leaving e.g. the LGD base_model* sets uncapped.
+    # exceeded the budget, leaving e.g. the wide LGD sets uncapped.
     for c in categorical_columns:
         vc = df[c].astype("object").value_counts(normalize=True, dropna=True)
         if len(vc) <= 1:

@@ -126,7 +126,7 @@ Hand-written in `src/data/preprocessing.py`. Examples:
   `emp_length`.
 - `home_credit`: drop columns flagged as label-leakage from the
   Kaggle competition writeups.
-- `heloc`: drop ~10 k artefactual duplicate rows.
+- one proprietary LGD set: drop ~10 k artefactual duplicate rows.
 
 Surgical fixes are dataset-specific and pre-registered — they do NOT
 change between runs.
@@ -150,8 +150,8 @@ TabPFN's downstream encoder treats `NaN` natively; `inf` it cannot.
 
 #### 3.6 Feature selection (only when n_features > `sanitize.max_columns`)
 When a dataset has more numerical features than the cap
-(`sanitize.max_columns`, currently **64**; e.g. `loan_default` 768,
-`home_credit` 119, `algorithmwatch` 2985, the LGD `base_model*` ~255),
+(`sanitize.max_columns`, currently **64**; e.g. `home_credit` 119,
+`algorithmwatch` 2985, and the wide proprietary sets at ~250–770),
 we **select a subset of the real columns** rather than averaging them:
 keep the top-`max_columns` by scale-free (min-max-normalised) variance,
 after greedily dropping columns whose `|Pearson r|` with an
