@@ -1858,6 +1858,11 @@ def train_one_config(
     # SWEPT AXIS from run-9: the per-trial value wins over the config, exactly as
     # `min_train_rows` does. Shadowing the parameter name is deliberate — everything
     # below this line already reads `l2sp_lambda`.
+    # Preserve the ORIGINAL swept value (None = "not an axis") for the checkpoint NAME, so the
+    # saved file's _l2sp tag matches run_basename, the epoch CSV, and the resume-skip check. The
+    # resolution below replaces None with the config default for the TRAINING math only — keeping
+    # the two separate is what stops the swept 0.0 arm silently training at the default (22-09-2026).
+    _l2sp_lambda_name = l2sp_lambda
     if l2sp_lambda is None:
         l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
     else:
@@ -2171,6 +2176,7 @@ def train_one_config(
             accumulate_grad_batches=int(accumulate),
             epoch_pass_mode=pass_mode,
             min_train_rows=int(min_train_rows or 0),
+            l2sp_lambda=_l2sp_lambda_name,
         )
     )
 

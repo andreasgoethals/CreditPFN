@@ -21,6 +21,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 22-09-2026 | exp1 · λ-sweep bug found in the 29-08 run (PD ~78 % of the base×lr×frozen×pass grid trained; no LGD; no eval) | **λ axis INVALID** | `run()` never forwarded the swept `l2sp_lambda` → every trial trained at the config default 0.003; the two "arms" overwrote one untagged checkpoint, and resume was broken so the grid re-ran on every resubmit. Fixed 22-09 (CHANGELOG + dead end below). Salvage: surviving ckpts are all valid λ=0.003 — rerun the λ=0 arms + remaining PD + all LGD. |
 | 29-08-2026 | exp1_pd · 96 trials/split × 8 splits, Option-B grid (lr{3e-7,1e-6,1e-5} × l2sp{0,0.003} × frozen{F,T} × pass{full,acc}), 4 bases; training only (eval not yet submitted) | **partial — frozen TabPFN arm lost** | Full-FT TabPFN + all TabICLv2 (both arms) trained OK; **all 168 frozen TabPFN `_lora` trials died in ~4 s with `NameError: ckpt_path`** (`load_tabpfn_for_training`). Splits 6–7 double-submitted by the SPLIT_START recovery (harmless). Results write to `/lustre1/…/stg_00211/…/results` (staging), not the `output/` download. Bug fixed 31-08; frozen TabPFN needs re-running. See dead end below. |
 | 12-08-2026 | run-8 · 16 trials/track, 20 000 steps, `min_train_rows` [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks; **eval completed 16-08-2026 on Mindwell `gpu_b200`** | **done — first complete run** | Training 31/32 OK (1 false-positive divergence abort). Eval 105/105 PD + 44/44 LGD cells, 745/745 folds, zero failures. **PD 20/75 paired wins, mean -0.0013, p=0.78 (null). LGD 0/32.** Untuned v3 beats best tuned GBM on 4/5 PD and 2/2 LGD. Completing the eval REVERSED the half-eval's -0.0048 'damage' finding. `RESULTS.md` |
 | 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `RESULTS.md` |
@@ -38,6 +39,19 @@ that configuration?"* is the question this table exists to answer.
 
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
+
+### 22-09-2026 — the L2-SP sweep silently never varied λ
+
+- **Tried.** exp1's `l2sp_lambdas: [0.0, 0.003]` axis, expecting two anchor strengths per cell.
+- **Result.** Every trial trained at the config default 0.003; the "λ=0" arm never ran at 0. Both
+  arms wrote the same untagged checkpoint (one overwrote the other), and the resume-skip check —
+  built from the *tagged* name it never found — never fired, so every resubmit re-ran the whole grid.
+- **Why.** `run()` built the swept λ into the plan and the epoch-CSV/skip name but omitted
+  `l2sp_lambda=` from the `train_one_config(...)` call, and the save-path `descriptive_name(...)`
+  omitted the `_l2sp` tag. Two independent omissions that masked each other (both arms = 0.003, so
+  the collision looked like a duplicate rather than a lost arm).
+- **Instead.** Forward the swept λ into training AND into the checkpoint name; record the swept
+  value (not `optimizer.l2sp_lambda`) in the manifest. Fixed 22-09; regression tests in `test_train.py`.
 
 ### 11-09-2026 (the divergence guard fired on CONVERGED accumulate trials, near the budget)
 

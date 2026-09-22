@@ -448,7 +448,7 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _run_provenance(cfg, base_checkpoint: str) -> dict:
+def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None) -> dict:
     """The settings that are NOT swept but still decide what a number means.
 
     Recorded per row rather than per run because a manifest is read on its own, months
@@ -479,8 +479,13 @@ def _run_provenance(cfg, base_checkpoint: str) -> dict:
     sched = getattr(cfg, "scheduler", None)
     return {
         "max_rows_per_epoch": int(caps.get(tag, caps.get("default", 0)) or 0),
-        "l2sp_lambda": float(getattr(opt, "l2sp_lambda", float("nan"))
-                             if opt is not None else float("nan")),
+        # The SWEPT per-trial value (what training actually used); falls back to the config
+        # default only when λ is not an axis. Reading `opt` unconditionally here is what made
+        # every row read 0.003 while the grid believed it swept {0, 0.003} (fixed 22-09-2026).
+        "l2sp_lambda": float(
+            l2sp_lambda if l2sp_lambda is not None
+            else (getattr(opt, "l2sp_lambda", float("nan")) if opt is not None else float("nan"))
+        ),
         "warmup_fraction": float(getattr(sched, "warmup_fraction", float("nan"))
                                  if sched is not None else float("nan")),
         "min_lr_fraction": float(getattr(sched, "min_lr_fraction", float("nan"))
@@ -997,6 +1002,7 @@ def run(
                 accumulate_grad_batches=accumulate,
                 pass_mode=pass_mode,
                 min_train_rows=min_train_rows,
+                l2sp_lambda=l2sp_lambda,
                 on_epoch_end=_on_epoch_end,
             )
             rows.append(RunRow(
@@ -1047,7 +1053,7 @@ def run(
                 sec_per_step=(float(result.elapsed_sec)
                               / max(1, int(getattr(result, 'total_optimizer_steps', 0) or 1))),
                 gpu_hours=float(result.elapsed_sec) / 3600.0,
-                **_run_provenance(cfg, base),
+                **_run_provenance(cfg, base, l2sp_lambda),
             ))
             if result.diverged:
                 # A numerically completed but diverged checkpoint is excluded

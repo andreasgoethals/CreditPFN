@@ -12,6 +12,16 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 22-09-2026
+
+- **Fixed the L2-SP sweep: the swept λ never reached training.** `run()` called `train_one_config`
+  without `l2sp_lambda`, so every exp1 trial trained at the config default (0.003) and the swept
+  {0, 0.003} axis did nothing; the checkpoint name also dropped the `_l2sp` tag, so the two arms
+  overwrote one file and the resume-skip check (built from the tagged name) never matched → every
+  resubmit re-ran the whole grid. Now `run()` forwards the swept λ, `descriptive_name` tags the
+  checkpoint with it (matching the epoch CSV + skip check), and the manifest records the swept
+  value not the default. Regression tests added; the λ=0 arms must be re-run (AGENTS_MEMORY 22-09).
+
 ## 21-09-2026
 
 - **`src/data/preprocessing.py` un-ignored again — kept TRACKED so a plain `git pull` gives the

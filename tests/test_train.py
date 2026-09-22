@@ -619,6 +619,39 @@ def test_descriptive_name_is_deterministic() -> None:
     assert descriptive_name(**kwargs) == descriptive_name(**kwargs)
 
 
+def test_descriptive_name_tags_l2sp_lambda() -> None:
+    """The swept L2-SP anchor must appear in the checkpoint name, so the two arms
+    (λ=0 vs λ=0.003) save to DISTINCT files instead of overwriting each other — the
+    22-09-2026 collision. ``None`` = not an axis = no tag, so legacy names stay
+    byte-identical."""
+    base = dict(
+        run_name="r", track="pd",
+        base_path="checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
+        learning_rate=1e-5, seed=0,
+    )
+    n_off = descriptive_name(**base, l2sp_lambda=0.0)
+    n_on = descriptive_name(**base, l2sp_lambda=0.003)
+    n_none = descriptive_name(**base, l2sp_lambda=None)
+    assert "_l2sp0" in n_off and "_l2sp0.003" not in n_off
+    assert "_l2sp0.003" in n_on
+    assert "l2sp" not in n_none
+    # Three distinct filenames → no arm can overwrite another's checkpoint.
+    assert len({n_off, n_on, n_none}) == 3
+
+
+def test_run_and_save_plumb_swept_l2sp_lambda() -> None:
+    """Regression for the 22-09-2026 silent-λ bug. The swept value must be forwarded
+    (a) from ``run`` into ``train_one_config`` — omitting it trained every arm at the
+    config default, so the {0, 0.003} sweep never varied λ — and (b) from
+    ``train_one_config`` into the checkpoint's ``descriptive_name``, so the two arms
+    don't collide on one filename."""
+    import inspect
+    import scripts.train_pipeline as tp
+    import src.train.loop as loop_mod
+    assert "l2sp_lambda=l2sp_lambda" in inspect.getsource(tp.run)
+    assert "l2sp_lambda=_l2sp_lambda_name" in inspect.getsource(loop_mod.train_one_config)
+
+
 # =============================================================================
 # Block 4 · metrics.py
 # =============================================================================
