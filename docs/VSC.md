@@ -2,7 +2,7 @@
 
 Everything you type to get a run onto the KU Leuven cluster and the results back onto your
 laptop, in the order you do it. Nothing else — what the sweep contains and why is
-[`METHOD.md`](METHOD.md), what each run measured is [`RESULTS.md`](RESULTS.md).
+[`METHOD.md`](METHOD.md), what each run measured is [`RESULTS.md`](RESULTS.md) .
 
 Two facts that explain most of this document:
 
