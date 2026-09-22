@@ -21,6 +21,11 @@ day is never rewritten.
   resubmit re-ran the whole grid. Now `run()` forwards the swept λ, `descriptive_name` tags the
   checkpoint with it (matching the epoch CSV + skip check), and the manifest records the swept
   value not the default. Regression tests added; the λ=0 arms must be re-run (AGENTS_MEMORY 22-09).
+- **Submit script: dataloader workers default on + per-base accumulate walltime.**
+  `run_experiment.sh` now exports `CREDITPFN_DATALOADER_WORKERS=-1` by default (was 0 → serial), and
+  sizes the accumulate `--time` per base instead of one worst-case value — at 1 trial/task v2 20h,
+  v2.6 14h, v3 12.5h, tabicl 10.5h (was a flat ~20h) — by splitting the accumulate array per base so
+  the faster three backfill better. `ACC_WALLTIME=` still overrides all.
 
 ## 21-09-2026
 

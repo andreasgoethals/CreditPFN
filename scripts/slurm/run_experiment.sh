@@ -90,7 +90,26 @@ ACC_MIN=$(( TRIALS_PER_TASK * ${ACC_MIN_PER_TRIAL:-1170} + 30 ))   # ~20 h/trial
 (( FULL_MIN > 4320 )) && FULL_MIN=4320                             # 72 h partition cap
 (( ACC_MIN  > 4320 )) && ACC_MIN=4320
 FULL_WALLTIME="${WALLTIME:-$(hms "$FULL_MIN")}"                    # WALLTIME= overrides full_pass
-ACC_WALLTIME="${ACC_WALLTIME:-$(hms "$ACC_MIN")}"                 # ACC_WALLTIME= overrides accumulate
+# Accumulate walltime is sized PER BASE (22-09): the four bases differ ~2.3x for the same
+# 5000-step budget (measured exp1_pd 11-09: v2 16.3h, v2.6 10.3h, v3 8.9h, tabicl 7.0h), and a
+# shorter request backfills better on VSC. `ACC_WALLTIME=` still overrides every base at once;
+# otherwise acc_walltime_for() gives each base's array its own `--time`. Margins ~30% because a
+# job killed for overrunning wastes the whole trial.
+_ACC_WT_OVERRIDE="${ACC_WALLTIME:-}"
+acc_walltime_for() {
+    [[ -n "$_ACC_WT_OVERRIDE" ]] && { echo "$_ACC_WT_OVERRIDE"; return; }
+    local base="$1" rate m
+    case "$base" in
+        *tabicl*) rate="${ACC_MIN_TABICL:-600}" ;;     # 7.0h measured -> 10h
+        *v2.6*)   rate="${ACC_MIN_V26:-810}" ;;        # 10.3h         -> 13.5h
+        *v3*)     rate="${ACC_MIN_V3:-720}" ;;         # 8.9h          -> 12h
+        *)        rate="${ACC_MIN_PER_TRIAL:-1170}" ;; # v2 16.3h (and any unknown) -> 19.5h; slowest is safe
+    esac
+    m=$(( TRIALS_PER_TASK * rate + 30 ))
+    (( m > 4320 )) && m=4320                           # 72h partition cap
+    hms "$m"
+}
+ACC_WALLTIME="${ACC_WALLTIME:-$(hms "$ACC_MIN")}"                 # legacy single value (banner / fallback)
 ACCOUNT="${CREDITPFN_ACCOUNT:-lp_verbekelab}"
 STAGES="${STAGES:-train}"
 JOB="scripts/slurm/train_${TRACK}.slurm"
@@ -159,7 +178,7 @@ route_for() {
 # them. The grid is base-major (48 trials = 4 bases x 12), so any TRIALS_PER_TASK dividing the
 # per-base block keeps a task inside one base — but assert it rather than trust it, because
 # both the routing and the per-family tabicl preflight are keyed on the base.
-declare -A TASK_DEST TASK_PASS
+declare -A TASK_DEST TASK_PASS TASK_BASE
 for (( t=0; t<N_TRIALS; t++ )); do
     read -r _b _fr _pm <<< "${TRIAL_INFO[$t]}"
     _pm="${_pm%$'\r'}"                         # defend against a \r if python emits CRLF
@@ -179,15 +198,23 @@ for (( t=0; t<N_TRIALS; t++ )); do
         echo "       ('${TASK_PASS[$task]}' and '${_pm}'). Use a value that divides 2 (1 or 2)." >&2
         exit 1
     fi
+    # Base must be single per task too, since accumulate walltime is now keyed on it. The grid is
+    # base-major and TRIALS_PER_TASK divides the per-base block, so this holds — assert it.
+    if [[ -n "${TASK_BASE[$task]:-}" && "${TASK_BASE[$task]}" != "$_b" ]]; then
+        echo "ERROR: TRIALS_PER_TASK=${TRIALS_PER_TASK} makes task ${task} span two bases" >&2
+        echo "       ('${TASK_BASE[$task]}' and '${_b}'). Use a value that divides the per-base block." >&2
+        exit 1
+    fi
     TASK_DEST[$task]="$d"
     TASK_PASS[$task]="$_pm"
+    TASK_BASE[$task]="$_b"
 done
 N_TASKS=${#TASK_DEST[@]}
-echo "${N_TRIALS} trials -> ${N_TASKS} array task(s) at ${TRIALS_PER_TASK}/task; walltime full_pass=${FULL_WALLTIME} accumulate=${ACC_WALLTIME}"
+echo "${N_TRIALS} trials -> ${N_TASKS} array task(s) at ${TRIALS_PER_TASK}/task; walltime full_pass=${FULL_WALLTIME} accumulate=per-base (v2 ${ACC_WALLTIME}, faster bases less)"
 
 declare -A BUCKET
 for task in $(printf '%s\n' "${!TASK_DEST[@]}" | sort -n); do
-    key="${TASK_DEST[$task]}|${TASK_PASS[$task]}"   # destination AND pass mode -> each its own walltime
+    key="${TASK_DEST[$task]}|${TASK_PASS[$task]}|${TASK_BASE[$task]}"   # dest + pass + base -> its own walltime
     BUCKET["$key"]="${BUCKET[$key]:+${BUCKET[$key]},}$task"
 done
 
@@ -196,9 +223,9 @@ echo " config : $CONFIG        track: $TRACK"
 echo " trials : $N_TRIALS per split     splits: $N_SPLITS     total: $((N_TRIALS * N_SPLITS))"
 for key in "${!BUCKET[@]}"; do
     n=$(awk -F, '{print NF}' <<< "${BUCKET[$key]}")
-    IFS='|' read -r _d _pm <<< "$key"
-    [[ "$_pm" == "accumulate" ]] && _wt="$ACC_WALLTIME" || _wt="$FULL_WALLTIME"
-    echo " route  : ${_d}  [${_pm}]  <- ${n} tasks/split, walltime ${_wt}"
+    IFS='|' read -r _d _pm _b <<< "$key"
+    [[ "$_pm" == "accumulate" ]] && _wt="$(acc_walltime_for "$_b")" || _wt="$FULL_WALLTIME"
+    echo " route  : ${_d}  [${_pm}] ${_b}  <- ${n} tasks/split, walltime ${_wt}"
 done
 echo "=============================================================="
 
@@ -258,9 +285,9 @@ for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         done
     fi
     for key in "${!BUCKET[@]}"; do
-        IFS='|' read -r dest pm <<< "$key"
+        IFS='|' read -r dest pm base <<< "$key"
         read -r cluster partition <<< "$dest"
-        [[ "$pm" == "accumulate" ]] && wt="$ACC_WALLTIME" || wt="$FULL_WALLTIME"
+        [[ "$pm" == "accumulate" ]] && wt="$(acc_walltime_for "$base")" || wt="$FULL_WALLTIME"
         # wICE gpu_h100/gpu_a100 cap at 16 cores/GPU; train_*.slurm asks for 24 (a B200 figure),
         # so every wICE submit bounced with "Requested node configuration is not available"
         # (exp1_pd 02-09). Cap cores per cluster -- the flag overrides the SBATCH directive; B200
@@ -268,7 +295,7 @@ for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         [[ "$cluster" == "wice" ]] && cpus=16 || cpus=24
         CMD=(sbatch --parsable --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
              --array="${BUCKET[$key]}%${THROTTLE}" --time="$wt" --cpus-per-task="$cpus"
-             --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK",CREDITPFN_DATALOADER_WORKERS="${CREDITPFN_DATALOADER_WORKERS:-0}"
+             --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK",CREDITPFN_DATALOADER_WORKERS="${CREDITPFN_DATALOADER_WORKERS:--1}"
              "$JOB")
         if [[ -n "${DRY:-}" ]]; then
             echo "DRY: ${CMD[*]}"
