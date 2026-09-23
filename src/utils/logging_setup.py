@@ -206,6 +206,38 @@ def configure_warning_filters() -> None:
     )
 
 
+class RepeatedWarnings:
+    """Bound known per-batch warnings while retaining counts and the first diagnostic.
+
+    Keys must describe a bounded set of conditions (optionally per dataset), never
+    step numbers. This deliberately does not filter exceptions or arbitrary errors.
+    Counts are per training process segment; epoch CSV counters survive recovery.
+    """
+
+    def __init__(self, logger: logging.Logger) -> None:
+        self.logger = logger
+        self.counts: dict[str, int] = {}
+
+    def warning(self, key: str, message: str, *args) -> None:
+        count = self.counts.get(key, 0) + 1
+        self.counts[key] = count
+        if count == 1:
+            self.logger.warning(message, *args)
+        elif count & (count - 1) == 0:
+            self.logger.warning(
+                "Repeated warning %s: %d occurrences in this segment; "
+                "per-step repetitions suppressed (exact skip totals in epoch records).",
+                key, count,
+            )
+
+    def summary(self) -> None:
+        if self.counts:
+            self.logger.warning(
+                "Warning totals for this training segment: %s",
+                "; ".join(f"{key}={count}" for key, count in sorted(self.counts.items())),
+            )
+
+
 class _StructuredFormatter(logging.Formatter):
     """Compact, aligned, optionally-colored log line.
 

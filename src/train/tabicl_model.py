@@ -101,7 +101,7 @@ def load_tabicl_for_training(
         raise FileNotFoundError(
             f"TabICLv2 base checkpoint not found: {ckpt_path}. Download it once "
             f"from https://huggingface.co/jingang/TabICL into the staging "
-            f"checkpoints/ dir (see docs/PAPER_ROADMAP.md)."
+            f"checkpoints/ dir (see docs/RESEARCH_BRIEF.md)."
         )
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=True)
     if "config" not in ckpt or "state_dict" not in ckpt:

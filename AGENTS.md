@@ -106,7 +106,7 @@ anything is finished.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe`; on the cluster the
   conda env named `CreditPFN`, printed as `Active conda env:` in every job log. An active
   virtualenv silently beats `conda activate` (`AGENTS_MEMORY.md`, 05-08-2026).
-- **Where the knowledge lives.** `docs/PAPER_ROADMAP.md` is the self-contained research brief and
+- **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and
   method authority: descriptive goals, partitions, sampling, adaptation and limitations.
   `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one
   without a new probe). `docs/LITERATURE.md` records primary-source support and differences.

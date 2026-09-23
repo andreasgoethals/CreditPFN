@@ -9,19 +9,20 @@ from omegaconf import OmegaConf
 from tests.test_train import synthetic_processed, _DummyClassifier
 
 
-def test_main_and_seed_grid_counts_and_shared_partitions():
+def test_main_and_sampling_grid_counts_and_shared_partitions():
     from scripts.train_pipeline import _load_cfg, _resolve_grid, _apply_split_index
     from src.train.corpus import _assign_folds
     for track, size in (("pd", 17), ("lgd", 8)):
         main = _load_cfg(config_path=f"config/experiment1_{track}.yaml")
-        seeds = _load_cfg(config_path=f"config/seed_check_{track}.yaml")
+        sampling = _load_cfg(config_path=f"config/sampling_{track}.yaml")
         assert len(_resolve_grid(main, single=False)) * main.corpus.n_splits == 256
-        assert len(_resolve_grid(seeds, single=False)) * seeds.corpus.n_splits == 64
+        assert len(_resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
+        assert set(sampling.tunable.epoch_pass_modes) == {"one_sample", "full_pass", "accumulate"}
         test_sets = []
         for index in range(4):
             cfg = _apply_split_index(OmegaConf.create(OmegaConf.to_container(main)), index)
-            repeat = _apply_split_index(OmegaConf.create(OmegaConf.to_container(seeds)), index + 4)
-            assert cfg.seed == 42 and repeat.seed == 44
+            repeat = _apply_split_index(OmegaConf.create(OmegaConf.to_container(sampling)), index)
+            assert cfg.seed == repeat.seed == 42
             assert cfg.corpus.fold == repeat.corpus.fold == index
             assert cfg.corpus.split_seed == repeat.corpus.split_seed == 1729
             assigned = _assign_folds([str(i) for i in range(size)], n_folds=4,

@@ -719,7 +719,7 @@ class ProcessedDatasetLoader(Dataset):
             raise ValueError(f"unknown model_family: {model_family!r}")
         self.model_family = model_family
         # Context-construction strategy for the per-step subsample; see
-        # _stratified_subsample_indices and docs/PAPER_ROADMAP.md.
+        # _stratified_subsample_indices and docs/RESEARCH_BRIEF.md.
         self.context_sampling = str(context_sampling)
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)

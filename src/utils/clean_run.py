@@ -16,8 +16,9 @@ run" should not silently throw it away.
 LISTS BY DEFAULT. The two mistakes are not symmetric: a listing you meant as a deletion costs one
 more command, and a deletion you meant as a listing costs the run.
 
-NEVER TOUCHES `data/raw/` or `checkpoints/` or `tfm-library/` — the inputs are irreplaceable and
-the weights are either downloaded or a training run to reproduce.
+NEVER TOUCHES `data/raw/`, original base weights, or `tfm-library/`.
+Trained weights ARE removed by a full clean. Stop all experiment writers first;
+download any historical output you want to keep before using `--clean`.
 
 CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output/`:
 
@@ -41,6 +42,7 @@ and the stage list is an argument, not a program.)
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 from src.utils.paths import (
@@ -48,6 +50,7 @@ from src.utils.paths import (
     outputs_dir,
     processed_dir,
     resolve_output_path,
+    resolve_staging_path,
     results_dir,
 )
 
@@ -89,31 +92,31 @@ def stage_targets(stage: str) -> list[Path]:
         found += list((out_root / "manifests").glob("manifest_*.csv"))
         found += list(logs.glob("data_*.log"))
     elif stage == "train":
-        trained = checkpoints_dir("trained")
-        found += [p for p in trained.glob("**/*.ckpt")]
-        found += list(trained.glob("**/*.provenance.json"))
-        found += list(resolve_output_path("checkpoints/trained").glob("**/*.ckpt"))
+        for trained in (checkpoints_dir("trained"), resolve_output_path("checkpoints/trained")):
+            # Includes provenance and optimizer recovery states on BOTH tiers.
+            found += list(trained.glob("**/*"))
         found += [p for p in (out_root / "manifests").glob("*.csv")
                   if not p.name.startswith("manifest_")]
         found += list((out_root / "manifests" / "epochs").glob("**/*.csv"))
         found += list(logs.glob("train_*.log"))
     else:                                                       # eval
-        found += list(results_dir().glob("**/*.csv"))
+        found += list(results_dir().glob("**/*"))
+        found += list(resolve_staging_path("output/evaluation_cache").glob("**/*"))
         found += list((out_root / "figures").glob("**/*"))
         found += list(logs.glob("eval_*.log"))
-    return [p for p in found if p.is_file() and p.name not in KEEP]
+    return list(dict.fromkeys(p for p in found if p.is_file() and p.name not in KEEP))
 
 
 def roots(*, processed: bool = False) -> list[Path]:
     """Every tree to clear. Two `output/` roots on the cluster, one locally, plus the cache.
 
-    `results_dir()` is listed separately because on the cluster it is the one part of `output/`
-    on project storage — clearing only `outputs_dir()` there would leave the largest files behind.
+    Project storage also holds consolidated tables, reusable evaluation caches and
+    any legacy archives. Clear its WHOLE output tree, not only output/results.
     """
     found = [outputs_dir()]
-    results = results_dir()
-    if not results.is_relative_to(found[0]):
-        found.append(results)
+    project_output = resolve_staging_path("output")
+    if not project_output.is_relative_to(found[0]):
+        found.append(project_output)
     # CreditPFN: trained weights on project storage AND the $VSC_DATA fallback, plus the
     # cross-cluster sentinels. See the module docstring for why both locations matter.
     for extra in (checkpoints_dir("trained"),
@@ -124,6 +127,23 @@ def roots(*, processed: bool = False) -> list[Path]:
     if processed:
         found.append(processed_dir())
     return found
+
+
+def validate_tree(root: Path) -> None:
+    """Preflight an entire deletion tree; never follow symlinks or Windows junctions."""
+    if not is_safe(root) or not is_safe(root.resolve()):
+        raise ValueError(f"Refusing unsafe cleanup root: {root}")
+    anchor = root.resolve()
+
+    def check(path: Path) -> None:
+        if (path.is_symlink() or getattr(path, "is_junction", lambda: False)()
+                or not path.resolve().is_relative_to(anchor)):
+            raise ValueError(f"Refusing linked or escaped cleanup path: {path}")
+
+    check(root)
+    for directory, folders, files in os.walk(root, followlinks=False):
+        for name in folders + files:
+            check(Path(directory) / name)
 
 
 def measure(root: Path) -> tuple[int, int]:
@@ -142,6 +162,7 @@ def wipe(root: Path) -> int:
     (`figures/<notebook>/`) that do not. An `rmtree` of the subtree would take
     `output/figures/.gitkeep` with it, and the next clone would have nowhere to write.
     """
+    validate_tree(root)
     if not root.is_dir():
         return 0
     removed = 0
@@ -169,6 +190,13 @@ def main(argv: list[str] | None = None) -> int:
                              "whole output/ tree")
     args = parser.parse_args(argv)
 
+    # Validate every tree before deleting ANY file, including stage-specific paths.
+    # No writers may be active during a clean; this is not a concurrent deletion service.
+    targets = roots(processed=args.processed or bool(
+        args.stages and "data" in [name.strip() for name in args.stages.split(",")]))
+    for root in targets:
+        validate_tree(root)
+
     if args.stages:
         names = [x.strip() for x in args.stages.split(",") if x.strip()]
         bad = [x for x in names if x not in STAGES]
@@ -181,6 +209,7 @@ def main(argv: list[str] | None = None) -> int:
             size = sum(f.stat().st_size for f in got)
             print(f"  {len(got):>6} files  {size / 1e6:>9.1f} MB  {name}")
             files += got
+        files = list(dict.fromkeys(files))
         total = sum(f.stat().st_size for f in files)
         print(f"\nTOTAL: {len(files)} files, {total / 1e9:.2f} GB")
         print("Never touched: data/raw/, the base checkpoints/*.ckpt, tfm-library/.")
@@ -192,12 +221,6 @@ def main(argv: list[str] | None = None) -> int:
         print(f"\nDeleted {len(files)} files. Clean.")
         return 0
 
-    targets = []
-    for root in roots(processed=args.processed):
-        if is_safe(root):
-            targets.append(root)
-        else:
-            print(f"  REFUSED (unsafe path, not a run output): {root}")
     total_files = total_bytes = 0
     print("Output from the previous run:\n")
     for root in targets:

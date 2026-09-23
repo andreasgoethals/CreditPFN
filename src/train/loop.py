@@ -2218,6 +2218,8 @@ def train_one_config(
     grad_clip = None if raw_grad_clip in (None, "null") else float(raw_grad_clip)
 
     history: list[EpochRecord] = []
+    from src.utils.logging_setup import RepeatedWarnings
+    repeated_warnings = RepeatedWarnings(LOGGER)
     t0 = time.monotonic()
 
     # Comprehensive debug banner — logged BEFORE the first forward pass so the
@@ -2636,6 +2638,7 @@ def train_one_config(
                               scaler=scaler, identity=recovery_identity, progress=progress)
                 last_saved_update = successful_updates
                 if interrupted:
+                    repeated_warnings.summary()
                     raise TrainingInterrupted(f"Saved update {successful_updates}: {recovery_path}")
 
         from src.train.optimization import step_mean_gradient
@@ -2656,7 +2659,10 @@ def train_one_config(
                 successful_updates += 1
             else:
                 epoch_amp_skipped_steps += 1
-                LOGGER.warning("epoch=%d: non-finite gradients; optimizer/scheduler update skipped", epoch)
+                repeated_warnings.warning(
+                    "nonfinite_gradients",
+                    "epoch=%d: non-finite gradients; optimizer/scheduler update skipped", epoch,
+                )
             micro_since_step = 0
             if did_step:
                 _record_trajectory(epoch)
@@ -2682,7 +2688,8 @@ def train_one_config(
             # with strong class imbalance (default rate ~1-3 %).
             if (batch.task_type == "classification"
                     and _query_missing_context_class(batch)):
-                LOGGER.warning(
+                repeated_warnings.warning(
+                    f"missing_context_class/{batch.dataset_id}",
                     "epoch=%d step=%d dataset=%s — query labels not subset of "
                     "context labels; skipped step.",
                     epoch, step, batch.dataset_id,
@@ -2757,7 +2764,8 @@ def train_one_config(
                     loss_to_backprop = loss
 
             if torch.isnan(loss).item() or torch.isinf(loss).item():
-                LOGGER.warning(
+                repeated_warnings.warning(
+                    f"nonfinite_loss/{batch.dataset_id}",
                     "epoch=%d step=%d dataset=%s — non-finite loss; skipped",
                     epoch, step, batch.dataset_id,
                 )
@@ -3130,6 +3138,7 @@ def train_one_config(
             break
 
     # ---- 5b) gather summary metrics from the history ------------------ #
+    repeated_warnings.summary()
     # Pulled out into local vars so the TrainingResult constructor below
     # has the per-trial baseline + last-good numbers in one place. These
     # also get written through to the manifest CSV.

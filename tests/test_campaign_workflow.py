@@ -1,4 +1,4 @@
-"""Archive safety, immutable inputs, reuse identities and descriptive summaries."""
+"""Immutable inputs, reuse identities and descriptive summaries."""
 import json
 from pathlib import Path
 from types import SimpleNamespace as NS
@@ -7,63 +7,6 @@ import pandas as pd
 import pytest
 import torch
 from omegaconf import OmegaConf
-
-
-def historical(tmp_path):
-    root = tmp_path / "live" / "output"
-    manifest = root / "manifests"
-    epochs = manifest / "epochs" / "pd"
-    epochs.mkdir(parents=True)
-    pd.DataFrame([dict(track="pd", base_checkpoint="base.ckpt", learning_rate=1e-6,
-        use_lora=False, seed=42, status="OK")]).to_csv(manifest / "exp1_s00_pd.csv", index=False)
-    pd.DataFrame([dict(epoch=0, train_loss=1.)]).to_csv(epochs / "exp1_s00_pd_trial.csv", index=False)
-    (root / "logs").mkdir()
-    (root / "logs" / "old.log").write_text("old log\n" * 20)
-    weights = tmp_path / "project" / "checkpoints" / "trained"
-    weights.mkdir(parents=True)
-    checkpoint = weights / "exp1_s00_pd_base_lr1e-6_seed42.ckpt"
-    checkpoint.write_bytes(b"historical weight bytes")
-    unrelated = weights / "other_s00_pd_base_lr1e-6_seed42.ckpt"
-    unrelated.write_bytes(b"keep")
-    kwargs = dict(manifest_root=manifest, result_root=tmp_path / "results", roots=[weights],
-                  destination=tmp_path / "archives", snapshot_root=tmp_path / "consolidated")
-    return root, checkpoint, unrelated, kwargs
-
-
-def test_evidence_archive_prune_and_separate_weight_retirement(tmp_path):
-    from src.utils.archive_experiment import create, prune_evidence, retire
-    from src.utils.archive_output import verify
-    root, checkpoint, unrelated, kwargs = historical(tmp_path)
-    preview = create("exp1", **kwargs)
-    assert preview["indexed_checkpoints"] == 1 and checkpoint.exists()
-    with pytest.raises(ValueError, match="quiescent"):
-        create("exp1", write=True, **kwargs)
-    result = create("exp1", write=True, quiescent=True, **kwargs)
-    archive = Path(result["archive"])
-    inventory = verify(archive)
-    assert not inventory["weights_in_archive"]
-    assert not any(f["path"].endswith(".ckpt") for f in inventory["files"])
-    assert not prune_evidence(archive, root=root)["deleted"]
-    assert prune_evidence(archive, root=root, apply=True, quiescent=True)["files"] == 2
-    assert (root / "manifests" / "exp1_s00_pd.csv").exists()
-    assert checkpoint.exists() and unrelated.exists()
-    assert not retire(archive, roots=kwargs["roots"])["deleted"]
-    assert retire(archive, apply=True, quiescent=True, roots=kwargs["roots"])["deleted"]
-    assert not checkpoint.exists() and unrelated.exists()
-
-
-def test_changed_checkpoint_and_log_block_all_deletion(tmp_path):
-    from src.utils.archive_experiment import create, prune_evidence, retire
-    root, checkpoint, _, kwargs = historical(tmp_path)
-    archive = Path(create("exp1", write=True, quiescent=True, **kwargs)["archive"])
-    checkpoint.write_bytes(b"changed weights")
-    with pytest.raises(RuntimeError, match="changed"):
-        retire(archive, apply=True, quiescent=True, roots=kwargs["roots"])
-    assert checkpoint.exists()
-    (root / "logs" / "old.log").write_text("changed log")
-    with pytest.raises(RuntimeError, match="changed"):
-        prune_evidence(archive, root=root, apply=True, quiescent=True)
-    assert (root / "manifests" / "epochs" / "pd" / "exp1_s00_pd_trial.csv").exists()
 
 
 def test_scratch_stage_is_immutable_and_pointer_cannot_escape(tmp_path):

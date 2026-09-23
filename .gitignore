@@ -229,16 +229,16 @@ __marimo__/
 # Generated result artefacts that embed real slugs are handled by the output/ rules further down
 # (output/All_Results.md + output/figures/*); notebooks regenerate them via the anonymising accessor.
 
-# Model checkpoints — share the folder structure + METHOD.md
+# Model checkpoints — share folder markers and any checkpoint README
 # (so collaborators see which weights go where) but never commit
-# the actual .ckpt files. The negation rules below let METHOD.md,
+# the actual .ckpt files. The negation rules below let a checkpoint note,
 # any README, and a .gitkeep stub through; the universal weight-file
 # globs at the bottom catch everything else.
 checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/README.md
-# METHOD.md moved to docs/METHOD.md; the negation below is kept
-# as a no-op so legacy checkouts that still have the file don't lose it.
+# Checkpoint formats are documented in docs/VSC.md; keep this legacy
+# note exception for older checkouts.
 !checkpoints/CHECKPOINTS.md
 *.ckpt
 *.pt
@@ -258,8 +258,8 @@ multirun/
 # CreditPFN's "everything the code writes" tree. Anchored to repo root
 # so a `src/output/` (if anyone ever created one) stays tracked, but
 # `<repo>/output/` does not. Subtree layout:
-#   output/training/manifests/   — per-run trial manifest CSVs
-#   output/training/epochs/      — per-trial per-epoch CSVs
+#   output/manifests/   — per-run trial manifest CSVs
+#   output/manifests/epochs/      — per-trial per-epoch CSVs
 #   output/results/              — eval-pipeline benchmark CSVs
 #   output/figures/<notebook>/   — notebook-generated PDFs
 #
@@ -316,7 +316,7 @@ Thumbs.db
 
 # docs/AGENTS_MEMORY.md is TRACKED as of 11-08-2026 (the template makes it a
 # required doc): a dead end nobody else can see gets paid for twice. Durable
-# facts live in docs/RESULTS.md and docs/METHOD.md, also tracked.
+# methodology lives in docs/RESEARCH_BRIEF.md and operations in docs/VSC.md.
 
 # CLAUDE.md IS tracked: it is one line, `@AGENTS.md`, so Claude Code and every other
 # agent read the same rules with nothing duplicated. Only the personal scratch file

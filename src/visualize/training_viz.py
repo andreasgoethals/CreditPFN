@@ -691,7 +691,7 @@ def compact_base(base_short: str) -> str:
     ~1.6 in of the 6.3 in width, which is what made `plot_metric_heatmap` overflow the
     default left margin and lose the start of every label. The task word is redundant on a
     per-track figure (a PD figure has only classifiers) and the checkpoint date belongs in
-    `PAPER_ROADMAP.md`, not on an axis. Matches the naming `eval_viz` uses, so the same checkpoint
+    `RESEARCH_BRIEF.md`, not on an axis. Matches the naming `eval_viz` uses, so the same checkpoint
     reads the same in both notebooks.
     """
     s = str(base_short)

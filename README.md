@@ -6,9 +6,9 @@ The corpus contains **25 datasets: 17 probability-of-default (PD) classification
 
 The study is descriptive: report the behavior of a specified grid, including unfavorable outcomes and failures. Selecting the best observed recipe and claiming its score as an unbiased generalization estimate would require additional evaluation.
 
-- [Paper roadmap and self-contained research brief](docs/PAPER_ROADMAP.md): question, design, implementation choices and remaining evidence.
+- [Research brief](docs/RESEARCH_BRIEF.md): question, design, implementation choices and remaining evidence; self-contained for sharing.
 - [Literature](docs/LITERATURE.md): the closest primary studies and what they support.
-- [VSC runbook](docs/VSC.md): phases, storage, archive, launch and recovery commands.
+- [VSC runbook](docs/VSC.md): phases, storage, download, fresh-start and recovery commands.
 - [Agent memory](docs/AGENTS_MEMORY.md) and [changelog](docs/CHANGELOG.md): historical runs, failures and changes.
 
 ## Workflow
@@ -32,12 +32,12 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 | `src/data/` | Registration, sanitization and display names |
 | `src/train/` | Dataset sampling, preprocessing, objectives, adaptation and recovery |
 | `src/model/`, `src/eval/` | Model wrappers, row splits, baseline tuning and metrics |
-| `src/utils/` | Plan preparation, staging, auditing, consolidation and archival |
+| `src/utils/` | Plan preparation, staging, auditing, consolidation and cleanup |
 | `src/visualize/`, `notebooks/` | Shared plotting logic and thin notebooks |
 | `tests/` | Unit, integration and synthetic training checks |
 | `tfm-library/` | Read-only pinned literature and upstream implementation snapshots |
 
-Raw data and weights are never committed. On VSC, project storage holds canonical data, weights and consolidated results; DATA holds the repository and live small output shards. The [runbook](docs/VSC.md) explains how to archive those shards without moving concurrent writers to a shared aggregate file.
+Raw data and weights are never committed. On VSC, project storage holds canonical data, current weights and consolidated results; DATA holds the repository and live small output shards. The [runbook](docs/VSC.md) explains how to download finished results and clear a previous experiment. Historical output is optional local evidence, not an input to a fresh run.
 
 ## Local inspection and validation
 

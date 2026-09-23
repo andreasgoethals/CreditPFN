@@ -5,11 +5,19 @@ change, as short as it can be — the *what*, plus the *why* only when it is not
 belongs in the commit.
 
 Two things do NOT go here: what a cluster run measured and what turned out not to work — both live
-in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Method lives in [`PAPER_ROADMAP.md`](PAPER_ROADMAP.md); operational details and measured caps live in [`VSC.md`](VSC.md).
+in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Method lives in [`RESEARCH_BRIEF.md`](RESEARCH_BRIEF.md); operational details and measured caps live in [`VSC.md`](VSC.md).
 
 Entries above 11-08-2026 follow this rule. Below it they use an older, longer house style
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
+
+## 23-09-2026
+
+- Removed custom archive/retirement tools; documented direct project-output download and a fresh start using the existing cleaner.
+- Fixed full cleanup to cover both complete output trees and trained recovery files; preflight linked/unsafe paths before deleting anything.
+- Bounded repeated numerical warnings while retaining first diagnostics, exact counts and fatal tracebacks; retained targeted worker deprecation filtering.
+- Removed the seed campaign; retained 512 main and 96 sampling trials including accumulation, and added 5k/10k/20k pilot timing estimates.
+- Renamed the standalone research brief to `RESEARCH_BRIEF.md` and documented the literature's limits on choosing an update budget.
 
 ## 22-09-2026
 
@@ -114,7 +122,7 @@ day is never rewritten.
   notebooks 1.1–1.4). Deleted `docs/EXPERIMENT_PLAN.md` (superseded by `config/experiment*.yaml`;
   code citations to it stripped). Refreshed README, METHOD, RESULTS, PAPER_ROADMAP, VSC,
   CLAUDE.local (and the gitignored `tfm-library/PROJECT_SPECIFIC.md`); README + VSC launch commands
-  corrected to `run_experiment.sh`; fixed the four-way `PAPER_ROADMAP.md` merge artifact in METHOD and
+  corrected to `run_experiment.sh`; fixed the four-way `RESEARCH_BRIEF.md` merge artifact in METHOD and
   AGENTS. LoRA code-path removal deferred to a post-exp1 pass. Suite 330 passed.
 
 ## 04-09-2026
@@ -805,7 +813,7 @@ Verified this session, no change needed:
 - **`docs/VSC.md` rewritten, 730 → 257 lines**, and reordered around the lifecycle of a
   run rather than around the pipeline's stages: first-time setup, the five commands of a
   run, getting the results back, failures, reference. The sweep contents, the CV split
-  design and the output layout moved out — they are `PAPER_ROADMAP.md`'s job and were duplicated
+  design and the output layout moved out — they are `RESEARCH_BRIEF.md`'s job and were duplicated
   there. A TL;DR that repeated the whole document is gone.
 - **New `docs/VSC.md` §3, "Getting the results back"** — the step the guide never covered
   and the point of the whole exercise: which three trees to `rsync` down and which local
@@ -867,7 +875,7 @@ Verified this session, no change needed:
   silently absorbed the learning rate into `base_short` — every results figure would have
   mis-grouped rather than failed.
 - **Docs consolidated 10 → 7.** `DATA_PIPELINE` + `CHECKPOINTS` + `ROW_CAPS` + `CODE_NOTES`
-  became `docs/PAPER_ROADMAP.md` (§1 pipeline, §2 checkpoints, §3 caps, §4 deliberate oddities);
+  became `docs/RESEARCH_BRIEF.md` (§1 pipeline, §2 checkpoints, §3 caps, §4 deliberate oddities);
   the old split ran across topics rather than between them.
 - **Renamed TabICL → TabICLv2 in prose** (256 occurrences). The model is v2 — the paper is
   "TabICLv2" and the checkpoints are `tabicl-*-v2-*.ckpt`. Code identifiers keep upstream's
@@ -898,7 +906,7 @@ Verified this session, no change needed:
 - README corrected: the project pretrains **two families** (TabPFN v2.6/v3 *and* TabICLv2),
   36 trials/track, utilities live in `src/utils/`, `output/` is the only generated tree, and
   the eval chapter now carries the measurement behind the task packing.
-- `PAPER_ROADMAP.md` trimmed 333 → 145 lines: kept the novelty/related-work analysis and the
+- `RESEARCH_BRIEF.md` trimmed 333 → 145 lines: kept the novelty/related-work analysis and the
   "what is missing before writing" list, dropped the run history now held by `AGENTS_MEMORY.md`
   and `AGENTS_MEMORY.md`.
 

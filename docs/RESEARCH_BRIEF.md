@@ -1,4 +1,4 @@
-# CreditPFN — research brief and paper roadmap
+# CreditPFN — research brief
 
 This document is intended to stand alone when shared with a collaborator or uploaded into another chat. Operational commands live in [VSC.md](VSC.md), primary evidence in [LITERATURE.md](LITERATURE.md), and historical runs in [AGENTS_MEMORY.md](AGENTS_MEMORY.md).
 
@@ -61,6 +61,8 @@ Two preprocessing ensemble members are used for training; their objectives are a
 
 ### Budget and trajectories
 
+The literature does not validate 5,000 as a universal budget. Real-TabPFN uses 20k; TabPFN-Wide uses 10k based on its own monitoring; target-table fine-tuning has different stopping rules. Keep 5k provisional until the long reference pilot and measured cost are reviewed; [LITERATURE.md](LITERATURE.md) gives the evidence and decision criteria. A bounded descriptive horizon is valid without proving convergence, provided that limitation is explicit.
+
 AdamW uses zero ordinary weight decay, gradient norm clipping at 1, a 10% warmup and cosine decay to 5% of peak. The complete successful-update budget fixes the schedule once. Recovery restores its position; a resubmission does not restart warmup.
 
 A trajectory point is a measurement of the same evolving weights, not a separately trained model or a new grid trial. For example, the point at update 1,000 of a 5,000-update run has followed the 5,000-update schedule; it is not equivalent to an independently trained 1,000-update run. Intermediate weights are transient. Only final weights and the latest optimizer recovery state persist.
@@ -69,13 +71,13 @@ Monitoring uses fixed seed **31415**, up to 2,000 rows/table and four inference 
 
 A finite but disappointing/flat curve does not stop training. Only numerical failure or inability to reach the budget produces a divergent outcome. Completed numerical failures are retained as outcomes for the descriptive grid instead of repeatedly rerunning them until one succeeds. Infrastructure failures and interruptions are recoverable work, not scientific successes.
 
-## Seed sensitivity and separate sampling study
+## Sampling comparison and training randomness
 
-**128 extra seed trials** repeat two recipes fixed in advance: LR `3e-7`, lambda `0.003`, with full updates and with a frozen backbone. Each runs with training seeds **43 and 44**, across four bases, four dataset folds and both tracks: `2 recipes × 2 additional seeds × 4 bases × 4 folds × 2 tracks = 128`. The seed-42 versions already exist in the main grid, giving three seeds per reference recipe.
-
-This yields **640 main-plus-seed trials**. The reference recipes are not selected from the main-grid winners. They can run after the main grid for simpler scheduling/cache reuse, or alongside it after the protocol is frozen. Seeds measure training randomness at those references; they do not prove robustness for every learning rate/lambda combination.
+**No seed-sensitivity campaign is included.** All main and sampling trials use training seed 42. The earlier proposal added 128 trials to 512, for 640 combined; it never meant 640 additional trials. Those extra trials would estimate variability from row draws, preprocessing and training randomness at two reference recipes. That is useful for a robustness question, but it is not the current research priority. Results are consequently conditional on the chosen training seed; dataset folds do not replace seed repetitions.
 
 `sampling_{pd,lgd}.yaml` defines an independent **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tracks. Its `one_sample` control is intentionally rerun under the separate phase name.
+
+The current research campaign therefore contains **512 main + 96 sampling = 608 trials**, plus the separate null controls and pilots. Accumulation remains in the sampling comparison; it is not part of every main-grid recipe.
 
 | Mode | Data draws and update rule | Interpretation |
 |---|---|---|
@@ -87,12 +89,12 @@ This yields **640 main-plus-seed trials**. The reference recipes are not selecte
 
 ## Phase gates before the main run
 
-1. Archive legacy evidence and verify quotas. Keep canonical raw/processed data and original model weights.
+1. Optionally download historical measurements to a local archive folder; clear old output and trained checkpoints from both VSC tiers once the wanted copy is verified. No legacy output is required by the new run. Keep canonical raw/processed data and original model weights, and verify quotas.
 2. Stage inputs, record content fingerprints and freeze the environment.
 3. **16 zero-LR trials**, both adaptation arms across bases/tasks: verify original versus saved tensors and fixed-monitor parity. This checks the actual installed save/reload paths.
 4. **32 short pilot trials**, 250 successful updates, conservative and high LR endpoints, both adaptations, one dataset fold, both tasks. Profile workers 0/4/8 only if needed (96 short trials for all three settings). Compare throughput, CPU memory, data wait and monitoring cost; worker count is a performance setting, not a scientific factor.
-5. **8 longer reference pilots**, one full-update reference per base/task on the first fold, up to 20,000 updates with measurements through 5k/10k/20k. This checks whether 5k would truncate substantial behavior. These pilots follow a 20k schedule, so their early points are not substitutes for the 5k-grid curves. Choose and document the main budget before preparing its immutable plans. Keep the same final budget/trajectory definitions in main, seed and sampling configs.
-6. Main grid, fixed reference-seed checks, separate sampling comparison, final evaluation and consolidation. The pilots and 96-trial sampling study are additional to the 640 count.
+5. **8 longer reference pilots**, one full-update reference per base/task on the first fold, up to 20,000 updates with measurements through 5k/10k/20k. This checks whether 5k would truncate substantial behavior. These pilots follow a 20k schedule, so their early points are not substitutes for the 5k-grid curves. Choose and document the main budget before preparing its immutable plans. Keep the same final budget/trajectory definitions in main and sampling configs.
+6. Main grid, separate sampling comparison, final evaluation and consolidation. The 16 null controls + 32 short pilots + 8 budget pilots are additional to the 608 research trials: **664 scheduled training trials** if all phases run once, before optional worker profiling or recovery canaries.
 
 Short jobs can resume from a successful-update boundary. Validate one interrupted/requeued positive-LR pilot on VSC before enabling automatic requeue for the campaign. Synthetic CPU tests establish the software contract; they do not establish CUDA determinism or throughput on B200 hardware.
 
@@ -101,7 +103,7 @@ Short jobs can resume from a successful-update boundary. Validate one interrupte
 - Show PD AUC changes and LGD fractional RMSE reductions **within dataset**, paired to the same base and row fold. Aggregate row folds/repetitions within dataset before giving datasets equal weight. Do not average raw LGD RMSE across incompatible target scales.
 - Show individual datasets and coverage, with failures and missing milestones. Trajectory plots leave a point missing when observations from known baseline trials are absent at that update, rather than silently averaging only survivors.
 - Report calibration/log loss/Brier and class-imbalance metrics for PD, RMSE/MAE and supported probabilistic diagnostics for LGD. Existing nine-quantile summaries do not establish an accurate full-distribution CRPS. TabPFN density scores are clipped for numerical stability; report that convention and do not treat unlike density/quantile objectives as interchangeable.
-- Do not count 640 trials, overlapping training folds or many CV rows as 640 independent datasets. Any dataset-level bootstrap is descriptive and conditional on this small, dependent corpus; avoid unqualified significance claims or post-hoc winner tests.
+- Do not count training trials, overlapping dataset folds or many CV rows as independent datasets. Any dataset-level bootstrap is descriptive and conditional on this small, dependent corpus; avoid unqualified significance claims or post-hoc winner tests.
 - Compare endpoint and trajectory effects for learning rate, anchoring and adaptation, including interactions. Separate step budget, row exposure, monitoring overhead and GPU allocation time.
 - A provenance audit of base pretraining and related data sources is still required for contamination/independence claims. The intended starting weights are upstream synthetic-pretrained bases, not Real-TabPFN adapted weights; content identity matters more than filename labels.
 - Temporal/grouped validation requires valid origination-time and loan/borrower keys, excluded from features. It is a future sensitivity study, not a property of current IID folds. Historical date-availability observations must be rechecked against the actual raw version.
@@ -114,4 +116,4 @@ On 22-09-2026 the user reported no running VSC jobs. The old experiment has an i
 
 Historical headline measurements, including the completed run-8 evaluation, remain in the agent-memory runs table as historical observations. They are not results of this redesigned experiment and cannot establish its conclusions. A clean rerun means new training and evaluation under new phase names; it does not require deleting the raw corpus or redownloading validated base weights.
 
-The current implementation uses training protocol **3**. Local tests exercise sampling, finite mean gradients, exact budgets, recovery, archive safety, identity checks and analysis. Cluster null controls, the pilot budget decision, real CUDA recovery and measured walltimes remain gates before launching the full campaign.
+The current implementation uses training protocol **3**. Local tests exercise sampling, finite mean gradients, exact budgets, recovery, cleanup boundaries, identity checks and analysis. Cluster null controls, the pilot budget decision, real CUDA recovery and measured walltimes remain gates before launching the full campaign.

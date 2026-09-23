@@ -5,6 +5,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from src.utils import clean_run
 
 
@@ -84,3 +88,53 @@ def test_processed_is_opt_in(isolated_output) -> None:
 
     assert processed_dir() not in clean_run.roots()
     assert processed_dir() in clean_run.roots(processed=True)
+
+
+def test_fresh_run_removes_all_project_output_and_trained_weights_but_keeps_inputs(isolated_output):
+    from src.utils.paths import resolve_staging_path, resolve_output_path, processed_dir
+    victims = [resolve_staging_path(f"output/{name}") for name in (
+        "results/pd/old.csv", "consolidated/old/LATEST.json",
+        "evaluation_cache/old.json.gz", "archives/old.tar.gz")]
+    for resolve in (resolve_staging_path, resolve_output_path):
+        victims += [resolve(f"checkpoints/trained/pd/old.ckpt{suffix}")
+                    for suffix in ("", ".provenance.json", ".resume.pt")]
+    inputs = [resolve_staging_path("checkpoints/original.ckpt"),
+              resolve_output_path("checkpoints/original.ckpt"),
+              resolve_staging_path("data/raw/original.csv"),
+              processed_dir() / "pd/processed.csv"]
+    for path in victims + inputs:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"keep or remove")
+    clean_run.main([])
+    assert all(p.exists() for p in victims + inputs)
+    clean_run.main(["--clean"])
+    assert all(not p.exists() for p in victims)
+    assert all(p.exists() for p in inputs)
+
+
+def test_cleanup_preflights_all_trees_before_deleting_anything(isolated_output, monkeypatch):
+    from src.utils.paths import resolve_staging_path, outputs_dir
+    first = outputs_dir() / "logs/keep.log"
+    linked = resolve_staging_path("output/results/linked.csv")
+    for path in (first, linked):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("keep")
+    # Simulate a symlink portably; Windows symlink creation can require elevation.
+    original = Path.is_symlink
+    monkeypatch.setattr(Path, "is_symlink", lambda p: p == linked or original(p))
+    with pytest.raises(ValueError, match="linked"):
+        clean_run.main(["--clean"])
+    assert first.exists() and linked.exists()
+
+
+def test_train_stage_cleanup_includes_recovery_on_both_tiers(isolated_output):
+    from src.utils.paths import resolve_staging_path, resolve_output_path
+    victims = []
+    for resolve in (resolve_staging_path, resolve_output_path):
+        for suffix in ("", ".provenance.json", ".resume.pt"):
+            p = resolve(f"checkpoints/trained/pd/trial.ckpt{suffix}")
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(b"old")
+            victims.append(p)
+    clean_run.main(["--stages", "train", "--clean"])
+    assert all(not p.exists() for p in victims)

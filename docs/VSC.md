@@ -1,13 +1,13 @@
 # CreditPFN on VSC
 
-The scientific design is in [PAPER_ROADMAP.md](PAPER_ROADMAP.md). This runbook covers storage, archive, launch and recovery. Use the **CreditPFN** conda environment and **$VSC_DATA/CreditPFN** repository. Commands below are Bash on VSC unless labeled PowerShell. The agent has not submitted any cluster jobs.
+The scientific design is in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md). This runbook covers storage, download, fresh starts, launch and recovery. Use the **CreditPFN** conda environment and **$VSC_DATA/CreditPFN** repository. Commands below are Bash on VSC unless labeled PowerShell. The agent has not submitted any cluster jobs.
 
 ## Storage and current inventory
 
 | Tier | Location | Role |
 |---|---|---|
 | DATA | `$VSC_DATA/CreditPFN` | Repository, live logs/CSV shards, immutable plans and small summaries |
-| Project | `/lustre1/project/stg_00211/CreditPFN` | Canonical data, original/final weights, recovery states, evaluation results, compact tables and archives |
+| Project | `/lustre1/project/stg_00211/CreditPFN` | Canonical data, original/current weights, recovery states, evaluation results and compact tables |
 | Mindwell GPFS | `$VSC_SCRATCH_GPFS1/CreditPFN/inputs/<hash>` | Verified working copies of processed tables and original weights |
 | Node scratch | `$VSC_SCRATCH_NODE` | Transient monitoring weights and job-local caches |
 
@@ -17,7 +17,7 @@ Intensive Mindwell I/O belongs on GPFS; wICE uses Lustre. `$VSC_SCRATCH` changes
 
 **User inventory, 22-09-2026:** DATA output 7.1 GB / 4,913 files: logs 7.1 GB, manifests 82 MB. DATA fallback checkpoints 2.6 GB. Project output 7.4 MB; project checkpoints 41 GB / 412 files. File counts are not verified completed trials. Retagging of 338 L2-SP survivors is already done. No jobs were running when reported.
 
-Logs caused most of the byte pressure. Warning filters now run inside spawned workers, thread pools are capped, and per-step logging is less frequent. Concurrent jobs retain independent shards; consolidation happens after writers stop. The modern launcher refuses to fall back to DATA for large weights when project storage is unwritable.
+Logs caused most of the byte pressure. Three sampled large local logs each contained 53,130 copies of the same scikit-learn deprecation warning, plus thousands of nonfinite-loss warnings. The known deprecation is filtered in the parent and spawned workers. Numerical warnings retain their first diagnostic, logarithmically spaced count summaries and final segment totals; exact skip totals remain in epoch records. Other warnings, fatal errors and tracebacks remain visible. Thread pools are capped and per-step logging is less frequent. Concurrent jobs retain independent shards; consolidation happens after writers stop. The modern launcher refuses to fall back to DATA for large weights when project storage is unwritable.
 
 ### Output layout
 
@@ -48,12 +48,9 @@ PROJECT/CreditPFN/
       trials_{pd,lgd}.csv.gz           latest recorded outcome and attempt count
       training_{pd,lgd}.csv.gz         epochs/trajectories via record_type
       eval_{pd,lgd}.csv.gz             row-fold metrics
-  output/archives/
-    <run>-evidence-<timestamp-id>.tar.gz
-    <run>-evidence-<timestamp-id>.tar.gz.json
 ```
 
-Local paths default to the repository. Consolidation writes eight compressed CSVs plus inventory into a new immutable snapshot and atomically publishes LATEST. It verifies source/readback checksums. Do not accumulate unbounded snapshots. After pruning raw histories, restore them from the archive before reconsolidating that run; incomplete replacement is deliberately refused.
+Local paths default to the repository. Consolidation writes eight compressed CSVs plus inventory into a new immutable snapshot and atomically publishes LATEST. It verifies source/readback checksums. Do not accumulate unbounded snapshots. After removing raw histories, restore them from a saved copy before reconsolidating that run; incomplete replacement is deliberately refused. A clean new run needs none of the old snapshots.
 
 Only final weights and the latest recovery state persist. Recovery is removed after successful final publication. Intermediate trajectory weights are transient. New configs disable raw prediction arrays while keeping computed metrics/calibration diagnostics. Enable predictions only for a separately named diagnostic evaluation with its own storage budget.
 
@@ -77,40 +74,56 @@ python -m src.utils.prepare_experiment --config config/experiment1_pd.yaml
 python -m src.utils.prepare_experiment --config config/experiment1_lgd.yaml
 ```
 
-Preview should show **256 trials per track**, four folds, with all 25 registered tables across tracks. The base-file-size estimate of final weights excludes serialization overhead and simultaneous recovery states. All main, seed and separate-study weights must fit the actual project quota. An active Python virtualenv can override conda: deactivate it first and inspect each job's printed environment.
+Preview should show **256 trials per track**, four folds, with all 25 registered tables across tracks. The base-file-size estimate of final weights excludes serialization overhead and simultaneous recovery states. All main and sampling-study weights must fit the actual project quota. An active Python virtualenv can override conda: deactivate it first and inspect each job's printed environment.
 
 Heavy copying, hashing, compression, data preparation and CPU baseline HPO belong on compute nodes. The previews above perform no training.
 
-## Archive and retire legacy output
+## Download old output, then start clean
 
-Keep a compact **evidence archive**: logs, raw measurements, resolved configs, provenance, compressed tables and a checksum/size index of old weights. This preserves debugging evidence and explains what old results mean. It cannot repair an invalid run or generate new predictions after its weights are deleted.
+**The new run needs no old output or trained checkpoints.** A small local historical copy is useful only for explaining earlier results and failures. There is no requirement to keep that copy on VSC or preserve invalid trained models. Recommended minimum: the project output (last reported 7.4 MB), DATA manifests/resolved configs (about 82 MB), and the existing agent-memory history. The downloaded DATA logs are already present locally; keeping all 7.1 GB or a few examples is a personal archival choice. Old trained weights need not be downloaded. Deleting them removes the ability to generate new predictions from those models.
 
-The archive contains all logs/resolved snapshots because historical names did not consistently identify their run. Measurements and weight retirement are scoped to the named run. It excludes checkpoint bytes, datasets, original bases and raw prediction arrays. The included docs/configs describe the **archiving checkout**, not necessarily historical training code. Keep both archive and adjacent JSON inventory, preferably with a second copy elsewhere before retirement.
+From the **local repository in PowerShell**, download the project output into a sibling folder outside Git:
 
-Stop all experiment writers, then preview and create:
-
-```bash
-python -m src.utils.archive_experiment --run exp1
-sbatch scripts/slurm/maintenance.slurm archive --run exp1 --write --quiescent
+```powershell
+$legacyArchive = '..\CreditPFN-archive\2026-09-23'
+New-Item -ItemType Directory -Force -Path "$legacyArchive\project-storage"
+scp -r 'vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/output' "$legacyArchive\project-storage"
+if ($LASTEXITCODE -ne 0) { throw 'Project output download failed; do not clean VSC yet.' }
 ```
 
-The CPU job prints the exact verified archive path in `maintenance_<jobid>.log`, outside the tree it archives. Review the counts and index. Set `ARCHIVE` to that exact printed `.tar.gz` path. These commands preview only:
+Project storage uses the same SSH login as DATA, with its absolute Lustre path after the colon. See [VSC scp/sftp instructions](https://docs.vscentrum.be/data/transfer/scp_sftp.html). In WinSCP, open `/lustre1/project/stg_00211/CreditPFN/output` in the existing VSC session. Nothing needs to be copied through DATA first.
 
-```bash
-python -m src.utils.archive_experiment --prune "$ARCHIVE"
-python -m src.utils.archive_experiment --retire "$ARCHIVE"
+For a current small DATA copy and the historical summary, optionally run locally:
+
+```powershell
+New-Item -ItemType Directory -Force -Path "$legacyArchive\data-storage"
+scp -r 'vsc38338@login.hpc.kuleuven.be:/data/leuven/383/vsc38338/CreditPFN/output/manifests' "$legacyArchive\data-storage"
+if ($LASTEXITCODE -ne 0) { throw 'Manifest download failed; do not clean VSC yet.' }
+Copy-Item -LiteralPath '.\docs\AGENTS_MEMORY.md' -Destination "$legacyArchive\HISTORY.md"
 ```
 
-After verification and deciding that the indexed old weights are no longer needed:
+Check that the transfer succeeded and the wanted files open before clearing the originals. These are private local records, not new-run measurements. Compress the local folder manually if desired; no custom archive tool is needed.
+
+On **VSC**, with all training/evaluation/submission writers stopped, inspect the existing cleaner's preview:
 
 ```bash
-sbatch scripts/slurm/maintenance.slurm archive --prune "$ARCHIVE" --apply --quiescent
-sbatch scripts/slurm/maintenance.slurm archive --retire "$ARCHIVE" --apply --quiescent
+cd "$VSC_DATA/CreditPFN"
+conda activate CreditPFN
+export CREDITPFN_OUTPUT_ROOT="$VSC_DATA/CreditPFN"
+export CREDITPFN_STAGING_ROOT="/lustre1/project/stg_00211/CreditPFN"
+squeue -M mindwell,wice -u "$USER"
+python -m src.utils.clean_run
 ```
 
-Pruning removes unchanged archived logs, resolved snapshots and epoch/trajectory shards. Root attempt manifests, plans and compact results remain. Retirement separately removes only indexed, unchanged checkpoint files within configured trained-weight roots. Both preflight the deletion set; changed sources abort. Other runs and original bases are untouched. **Weights cannot be recovered from this compact archive.**
+After verifying the wanted local copy and those target paths, this **deletes all previous output and trained weights on both tiers**:
 
-Repeat for other historical run names if needed. The index distinguishes trained weights from original bases in the DATA checkpoint tree. A corrected rerun needs fresh training/evaluation names, not deletion of validated raw data, processed tables or original weights.
+```bash
+sbatch --time=00:10:00 scripts/slurm/maintenance.slurm clean --clean
+```
+
+This clears logs, manifests/plans, results, compact snapshots, evaluation caches, legacy archives, trained weights/recovery states and old submission state. It preserves raw data, processed tables and original base weights. Do not add `--processed` for this restart. Do not use full cleanup once new work has started: it is deliberately a complete reset, not a per-run selector. The utility refuses symlinks/junctions and validates every target tree before deletion. No cleanup has been executed by the agent.
+
+The new output structure is created by the jobs. Stage inputs and prepare new plans only after cleanup finishes. Keep the local legacy folder outside active `output/` so notebooks show the new experiment alone.
 
 ## Stage inputs, null controls and pilots
 
@@ -135,13 +148,13 @@ done
 Wait for the plans. They are immutable: changed scientific settings/code/data/environment require a fresh named plan, not overwriting an active one. Start with the **16 zero-LR controls**:
 
 ```bash
-DRY=1 bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml
-DRY=1 bash scripts/slurm/run_experiment.sh config/experiment0_lgd.yaml
-bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml
-bash scripts/slurm/run_experiment.sh config/experiment0_lgd.yaml
+DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml
+DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_lgd.yaml
+WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml
+WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_lgd.yaml
 ```
 
-After they finish, these CPU audits must report `passed: true`, equal tensors and equal per-dataset monitors:
+The 30-minute null-control allocation is a provisional short request, not a measured runtime guarantee; inspect the first logs before adjusting it. After they finish, these CPU audits must report `passed: true`, equal tensors and equal per-dataset monitors:
 
 ```bash
 sbatch scripts/slurm/maintenance.slurm audit --config config/experiment0_pd.yaml --null
@@ -155,15 +168,15 @@ bash scripts/slurm/run_experiment.sh config/pilot_pd.yaml
 bash scripts/slurm/run_experiment.sh config/pilot_lgd.yaml
 ```
 
-Audit the pilot configs after completion. Reports separate training/monitoring time and extrapolate 5k walltime with margin; also inspect actual GPU peaks and CPU MaxRSS. If preparation is limiting throughput, use maintenance `prepare --profile-workers 0 4 8 --write` with the pilot config, then submit the printed generated YAML paths. All three worker settings across both tracks total 96 short trials. Choose measured throughput that fits memory, not the maximum worker count.
+Audit the pilot configs after completion. Reports separate training/monitoring time and extrapolate 5k/10k/20k walltimes with margin; also inspect actual GPU peaks and CPU MaxRSS. If preparation is limiting throughput, use maintenance `prepare --profile-workers 0 4 8 --write` with the pilot config, then submit the printed generated YAML paths. All three worker settings across both tracks total 96 short trials. Choose measured throughput that fits memory, not the maximum worker count.
 
 Before bulk automatic requeue, exercise one separately named positive-LR pilot with a short segment or Slurm warning. Verify resumption to the exact budget, unique trajectory points and recovery-file removal. Completed trials are skipped, so a deliberate canary needs its own config/plan name. CPU tests verify uninterrupted/resumed equality with dropout in all three modes; actual CUDA recovery is still a cluster gate.
 
-The **eight long reference pilots**, `budget_pilot_{pd,lgd}.yaml`, cover one full-update reference per base/task through 20k updates. Their 0/250/1k/2.5k/5k/10k/20k measurements show whether 5k truncates substantial behavior. Their schedule has a 20k horizon; early points do not substitute for 5k-schedule results. After the pilot decision, keep final budget/milestones consistent in main, seed and sampling configs before writing their plans.
+The **eight long reference pilots**, `budget_pilot_{pd,lgd}.yaml`, cover one full-update reference per base/task through 20k updates. Their 0/250/1k/2.5k/5k/10k/20k measurements show whether 5k truncates substantial behavior. Their schedule has a 20k horizon; early points do not substitute for 5k-schedule results. After the pilot decision, keep final budget/milestones consistent in main and sampling configs before writing their plans.
 
 ## Main grid and recovery
 
-Prepare `experiment1`, `seed_check` and `sampling` for both tracks using maintenance `prepare --write`, after the scientific choices are settled. Main = 512 trials; added reference seeds = 128; separate sampling = 96. Seed split indices 0–3 use seed 43; 4–7 use seed 44; dataset partitions match main.
+Prepare `experiment1` and `sampling` for both tracks using maintenance `prepare --write`, after the scientific choices are settled. Main = 512 trials; separate sampling = 96; total = 608, plus null controls and pilots. No seed-sensitivity phase is scheduled.
 
 After the gates, a typical short-segment submission is:
 
@@ -187,7 +200,7 @@ A 90-minute work segment requests 100 minutes, reserving time for monitoring/sav
 
 `SEGMENT_MINUTES=0` disables planned segmentation. `WALLTIME` and `ACC_WALLTIME` then override whole-trial requests; defaults are provisional historical estimates. One trial/task avoids repeating packed siblings on requeue. Measured two-member training caps remain **v2 14k, v2.6 11k, v3 26k, TabICLv2 26k**. Do not silently lower caps for failing recipes or raise them because a backbone is frozen.
 
-Launch seed configs after main for simple scheduling/cache reuse, or alongside once the protocol is fixed. Their two references are predetermined, not selected winners. The separate sampling study is more expensive in accumulate mode; use its own timing evidence.
+Launch the sampling comparison as a separate phase after the main protocol is fixed. It includes accumulation, which is more expensive per update; use its own timing evidence.
 
 ## Evaluation and compact results
 
@@ -200,7 +213,7 @@ STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/expe
 STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
 ```
 
-Repeat for seed/sampling configs after training finishes. Classical controls can be computed earlier to populate the cache; they do not require trained weights. Keep HPO budgets and evaluation seed fixed. `EVAL_TASKS` controls cost packing; `EVAL_CONCURRENCY` defaults to four and shares the controller pool. `EVAL_WALLTIME` defaults to two GPU/four CPU hours; profile large-table tasks. Successful cells survive resubmission.
+Repeat for sampling configs after training finishes. Classical controls can be computed earlier to populate the cache; they do not require trained weights. Keep HPO budgets and evaluation seed fixed. `EVAL_TASKS` controls cost packing; `EVAL_CONCURRENCY` defaults to four and shares the controller pool. `EVAL_WALLTIME` defaults to two GPU/four CPU hours; profile large-table tasks. Successful cells survive resubmission.
 
 Same-controller `STAGES="train eval"` can chain via `afterany`, so failed training siblings do not suppress scoring of good checkpoints. Mixed-controller combined submissions are refused. Do not start eval-only foundation scoring against a still-changing checkpoint roster: task packing assumes a stable roster.
 
@@ -208,13 +221,12 @@ With phase writers stopped:
 
 ```bash
 sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_main_v3 --apply
-sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_seeds_v3 --apply
 sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_sampling_v3 --apply
 ```
 
 Download the needed `output/consolidated/<run>` directories, including LATEST and the referenced snapshot, into local `output/consolidated/`. Keep final weights on project storage unless needed locally. In PowerShell, set `$env:CREDITPFN_VIZ_RUN = 'cpt_main_v3'`, then run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
 
-Archive completed new phases similarly, but keep final new weights needed for reproducibility; retirement is optional and separate.
+Download completed new results and retain the final new weights needed for the ongoing study. Historical records from previous experiments do not need to occupy VSC storage. Full cleanup deletes every phase, so use it only when deliberately retiring the whole campaign.
 
 ## Failure checks
 
@@ -225,6 +237,6 @@ Archive completed new phases similarly, but keep final new weights needed for re
 - Unwritable project storage: fix the mount/permissions; do not fill DATA with weights.
 - OOM/cuDNN failure: preserve the log and use a separately named capacity/kernel probe before revising the protocol.
 - Import failure: inspect the printed environment and compatibility smoke tests; do not install packages in a GPU job.
-- Quota pressure: stop writers, archive and verify, then prune indexed unchanged shards.
+- Quota pressure: stop writers, consolidate and download completed results, then remove only records you have chosen to retire. Full cleanup is a complete campaign reset, not a mid-run quota remedy.
 
 After a pilot, use `sacct -M mindwell -j JOBID --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode` and the trial logs. Allocation time, CPU memory and internal training time are distinct measurements. Record actual cluster runs in the agent-memory table; local validation cannot substitute for them.

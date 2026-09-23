@@ -1,6 +1,6 @@
 # Machinery defaults for continued pretraining. Every experiment config is a DELTA over this
 # file, so anything an experiment does not mention is taken from here.
-# Scientific definitions: docs/PAPER_ROADMAP.md. Use named phase configs for the campaign.
+# Scientific definitions: docs/RESEARCH_BRIEF.md. Use named phase configs for the campaign.
 
 # --------------------------------------------------- SHARED ACROSS EXPERIMENTS ----
 # `learning_rates`, `l2sp_lambdas` and `frozen_backbone` are NOT here on purpose: they differ in

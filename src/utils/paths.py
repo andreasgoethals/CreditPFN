@@ -12,7 +12,7 @@ DATA has site-documented snapshots. Project storage quotas and backup policy are
 allocation-specific; verify them instead of assuming that persistent means backed up.
 Both tiers can be inspected from the cluster shell.
 
-Results, consolidated tables and verified archives belong on project storage. Live
+Results and consolidated tables belong on project storage. Live
 logs and per-trial metadata stay on DATA until post-run consolidation; both bytes
 and inodes require monitoring. See docs/VSC.md.
 
@@ -131,7 +131,7 @@ def outputs_dir() -> Path:
 def results_dir(*parts: str) -> Path:
     """Fine-grained results: one row per prediction, per-fold scores, anything large.
 
-    Like compact tables and archives, this uses project storage. Per-row predictions would
+    Like compact tables, this uses project storage. Per-row predictions would
     fill $VSC_DATA's 75 GiB, and then every job that writes a log also fails.
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
@@ -152,11 +152,6 @@ def manifests_dir() -> Path:
 def consolidated_dir() -> Path:
     """Immutable analysis snapshots: a few compressed files on project storage."""
     return resolve_staging_path("output/consolidated")
-
-
-def archives_dir() -> Path:
-    """Verified bundles of inactive logs and detailed run records, on project storage."""
-    return resolve_staging_path("output/archives")
 
 
 def figures_dir(notebook: str | None = None) -> Path:
@@ -520,7 +515,7 @@ def resolve_staging_path(p: str | os.PathLike) -> Path:
 
     Use for: trained ``.ckpt`` files, benchmark result CSVs.
     Do NOT use for: logs, manifests, figures — those stay on ``$VSC_DATA``
-    via :func:`resolve_output_path`; archive inactive shards to limit inode pressure.
+    via :func:`resolve_output_path`; consolidate and download finished runs before cleanup.
 
     Absolute paths are returned unchanged.
     """

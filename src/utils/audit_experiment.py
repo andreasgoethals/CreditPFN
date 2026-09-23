@@ -96,11 +96,13 @@ def audit(config: Path, *, null=False) -> dict:
     for (base, mode, frozen), values in timings.items():
         rate = max(v[0] for v in values)
         monitor = max(v[1] for v in values if math.isfinite(v[1])) if any(math.isfinite(v[1]) for v in values) else 0
-        # Conservative extrapolation, not a measured guarantee; include five monitors/startup.
-        minutes = math.ceil((5000 * rate + 5 * monitor + 600) * 1.3 / 60)
+        # Compare candidate horizons before settling the main budget. Counts include
+        # update zero and the corresponding proposed trajectory milestones.
+        estimates = {str(steps): math.ceil((steps * rate + monitors * monitor + 600) * 1.3 / 60)
+                     for steps, monitors in ((5000, 5), (10000, 6), (20000, 7))}
         report["timing"].append({"base": base, "mode": mode, "frozen": frozen,
             "seconds_per_update": rate, "max_monitor_seconds": monitor,
-            "provisional_5000_update_walltime_minutes": minutes})
+            "estimated_walltime_minutes_by_updates": estimates})
     report["passed"] = report["pending"] == 0 and not report["problems"] and (not null or report["diverged"] == 0)
     return report
 

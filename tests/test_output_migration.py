@@ -5,7 +5,6 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.utils.archive_output import create, prune, verify
 from src.utils.consolidate_output import consolidate, load_consolidated
 
 
@@ -38,46 +37,15 @@ def test_snapshot_preserves_attempts_and_uses_latest_measurement(tmp_path, monke
     assert load_consolidated("exp1", "trials_pd") is None
 
 
-def test_archive_verifies_bytes_and_requires_explicit_cleanup(tmp_path):
-    root = tmp_path / "live"
-    log = root / "logs/job.log"
-    log.parent.mkdir(parents=True)
-    log.write_text("repeated warning\n" * 1000)
-    preview = create(root=root, destination=tmp_path / "archive")
-    assert preview["files"] == 1 and not (tmp_path / "archive").exists()
-    result = create(root=root, destination=tmp_path / "archive", apply=True)
-    archive = Path(result["archive"])
-    assert len(verify(archive)["files"]) == 1 and log.exists()
-    with pytest.raises(ValueError, match="quiescent"):
-        prune(archive, root=root, quiescent=False)
-    prune(archive, root=root, quiescent=True)
-    assert not log.exists() and archive.exists()
-
-
-def test_archive_refuses_changed_source_before_deleting_any_file(tmp_path):
-    root = tmp_path / "live"
-    (root / "logs").mkdir(parents=True)
-    a, b = root / "logs/a.log", root / "logs/b.log"
-    a.write_text("original"); b.write_text("original")
-    archive = Path(create(root=root, destination=tmp_path / "archives", apply=True)["archive"])
-    b.write_text("modified")
-    with pytest.raises(RuntimeError, match="changed"):
-        prune(archive, root=root, quiescent=True)
-    assert a.exists() and b.exists()
-
-
-def test_epoch_cleanup_requires_consolidated_history(tmp_path, monkeypatch):
+def test_missing_raw_history_cannot_replace_a_complete_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     root = tmp_path / "output"
     epochs = root / "manifests/epochs/pd"
     epochs.mkdir(parents=True)
     csv = epochs / "exp1_s00_pd_base_lr1e-06_seed42_l2sp0.003.csv"
     csv.write_text("epoch,train_loss\n0,0.5\n")
-    archive = Path(create(root=root, destination=tmp_path / "archives", apply=True, include_epochs=True)["archive"])
-    with pytest.raises(RuntimeError, match="Consolidate"):
-        prune(archive, root=root, quiescent=True)
     consolidate("exp1", apply=True)
-    prune(archive, root=root, quiescent=True)
+    csv.unlink()  # Simulate deliberate removal after preserving the compact tables.
     assert not csv.exists()
     assert len(load_consolidated("exp1", "training_pd")) == 1
     pointer = (root / "consolidated/exp1/LATEST.json").read_bytes()
