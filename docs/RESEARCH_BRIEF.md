@@ -93,7 +93,7 @@ Full-pass and accumulation use identical partitions for a fixed seed/epoch, but 
 
 ## Phase gates before the main run
 
-1. Optionally download historical measurements to the gitignored local `archive/run-september-2026/` folder; clear old output and trained checkpoints from both VSC tiers once the wanted copy is verified. No legacy output is required by the new run. Keep canonical raw/processed data and original model weights, and verify quotas.
+1. Establish a separate campaign identity and sufficient storage. A fresh run needs no historical output; retaining a compact local copy is optional. Keep canonical raw/processed data and original model weights. The full reset procedure belongs in VSC.md and is only for retiring an entire old campaign, not for each debugging round.
 2. Stage inputs, record content fingerprints and freeze the environment.
 3. **16 zero-LR trials**, both adaptation arms across bases/tasks: verify original versus saved tensors and fixed-monitor parity. This checks the actual installed save/reload paths.
 4. **32 short pilot trials**, 250 successful updates, conservative and high LR endpoints, both adaptations, one dataset fold, both tasks. Profile workers 0/4/8 only if needed (96 short trials for all three settings). Compare throughput, CPU memory, data wait and monitoring cost; worker count is a performance setting, not a scientific factor.

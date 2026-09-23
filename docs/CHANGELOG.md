@@ -13,6 +13,12 @@ day is never rewritten.
 
 ## 23-09-2026
 
+- Move shared config/grid/capacity logic into src; fix evaluation CLI precedence, filtered single trials and empty/scalar grid axes.
+- Consolidate PD/LGD Slurm job bodies and all job logging; propagate grid/family lookup errors and avoid wrong-tier result folders.
+- Repair frozen capacity probes, member/precision reporting and OOM cleanup; retain existing measured caps.
+- Remove completed migration/staging tools, unused imports and stale comments/local agent notes; simplify ignores and include all src subpackages in packaging.
+- Record successful check2 preparations and name fresh check3 null plans for the settled source; clarify roles and phase gates without adding documents.
+
 - Read notebook summaries from saved final-cell output, clear stale outputs before execution, and remove the transcript/script fallback; keep cluster debugging artifacts on VSC until final download.
 
 - Put all maintenance/classical/report logs under output, preserve cleanup's active log, and propagate setup/report failures.

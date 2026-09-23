@@ -30,7 +30,7 @@ train:
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_null_v4_check2
+run_name: cpt_null_v4_check3
 tunable:
   learning_rates: [0.0]
   l2sp_lambdas: [0.0]

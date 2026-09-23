@@ -1,9 +1,15 @@
 """Resolve moved/retagged checkpoint references without rewriting historical manifests."""
 from pathlib import Path
 import json
+import re
 
 from src.utils.paths import resolve_output_path, resolve_staging_path
-from src.utils.migrate_l2sp_checkpoints import retag
+
+
+def _retag_l2sp(name: str, value: float) -> str:
+    """Reconstruct a historical filename for lookup; never rename a file."""
+    return re.sub(r"(_lora|_iclhead)?\.ckpt$",
+                  lambda m: f"_l2sp{float(value):g}{m.group(1) or ''}.ckpt", name)
 
 
 def resolve_checkpoint(recorded: str, track: str) -> tuple[Path | None, dict]:
@@ -20,7 +26,7 @@ def resolve_checkpoint(recorded: str, track: str) -> tuple[Path | None, dict]:
                     continue
                 prov = json.loads(sidecar.read_text(encoding="utf-8"))
                 lam = prov.get("hyperparameters", {}).get("l2sp_lambda")
-                if lam is not None and retag(old.name, lam) == candidate.name:
+                if lam is not None and _retag_l2sp(old.name, lam) == candidate.name:
                     candidates.add(candidate)
     if not candidates:
         return None, {}

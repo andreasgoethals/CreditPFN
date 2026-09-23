@@ -54,7 +54,7 @@ import os
 import re
 import time
 import traceback
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Iterable, Literal
 
@@ -827,8 +827,8 @@ def _method_dirname(handle: ModelHandle) -> str:
     extra = handle.extra or {}
     short = _short_base_tag(extra.get("base_checkpoint"))
     lr = extra.get("learning_rate")
-    # For the tabicl family the grid's use_lora axis means freeze-backbone
-    # (train ICL head only) — tag accordingly so dirnames don't lie.
+    # Modern provenance names the adaptation explicitly. Old records retain their
+    # historical directory suffixes so archived evaluations remain discoverable.
     if extra.get("adaptation_mode") == "frozen_backbone":
         lora_tag = "__frozen"
     elif extra.get("use_lora"):

@@ -29,7 +29,6 @@ import os
 import pathlib
 import re
 import shutil
-import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 EXPERIMENTS = tuple(f"{phase}_{track}" for phase in (
@@ -63,7 +62,6 @@ def _resolved_roots() -> tuple["pathlib.Path | None", "dict[str, pathlib.Path]"]
     data.yaml's `paths.data_source`; checking REPO/checkpoints reported seven failures on a
     perfectly staged cluster (25-08-2026).
     """
-    sys.path.insert(0, str(REPO))
     ck = None
     proc: dict[str, pathlib.Path] = {}
     try:
@@ -118,15 +116,15 @@ class Report:
 
 
 def _load(name: str):
-    from scripts.train_pipeline import _load_cfg
+    from src.train.config import load_train_config
     path = REPO / (name if name.endswith(".yaml") else f"config/{name}.yaml")
-    return _load_cfg(config_path=str(path)), path
+    return load_train_config(config_path=str(path)), path
 
 
 def _grid(cfg) -> list[tuple]:
     """Resolve the actual training grid, including filters and adaptation families."""
-    from scripts.train_pipeline import _resolve_grid
-    return _resolve_grid(cfg, single=False)
+    from src.train.config import resolve_grid
+    return resolve_grid(cfg, single=False)
 
 
 def _base_key(path: str) -> str:
@@ -174,7 +172,6 @@ def check_required_axes(cfg, name: str, rep: Report) -> None:
 
 def check_name_collisions(cfg, name: str, grid: list[tuple], rep: Report) -> None:
     """Two trials mapping to one filename means one silently overwrites the other."""
-    sys.path.insert(0, str(REPO))
     from src.train.loop import descriptive_name
     splits = cfg.corpus.get("n_splits") or 1
     seen: collections.Counter[str] = collections.Counter()
@@ -425,8 +422,7 @@ def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 1) -> 
 def check_train_eval_agree(name: str, rep: Report) -> None:
     """Train and eval must resolve the SAME run_name, split_seed and held-out datasets.
 
-    They are two separate config-loading paths — `train_pipeline._load_cfg` +
-    `_apply_split_index`, and `eval_pipeline._load_cfgs` — and both must feed the SAME
+    The shared training and evaluation loaders must feed the same
     `split_from_cfg`. If they disagree, eval scores each checkpoint against datasets it may have
     TRAINED on. This check compares split_from_cfg on both, but that is only valid if the training
     LOOP actually calls split_from_cfg — it did not until 26-08-2026 (it called `split_corpus`
@@ -438,17 +434,11 @@ def check_train_eval_agree(name: str, rep: Report) -> None:
         rep.fail("train_one_config calls split_corpus() directly",
                  "it must use split_from_cfg (the shared path eval uses), or training and eval "
                  "can resolve different held-out datasets — see the 26-08-2026 split-mismatch bug")
-    sys.path.insert(0, str(REPO))
-    sys.path.insert(0, str(REPO / "scripts"))
     try:
-        import importlib.util
-
         from src.train.corpus import split_from_cfg
-        import scripts.train_pipeline as tp
-        spec = importlib.util.spec_from_file_location(
-            "_ep_preflight", REPO / "scripts" / "eval_pipeline.py")
-        ep = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(ep)
+        from src.train.config import load_train_config
+        from src.eval.config import load_eval_configs
+        from src.utils.experiment import apply_split_index
     except Exception as exc:
         rep.warn(f"{name}: cannot compare train/eval config paths",
                  f"{type(exc).__name__}: {exc}")
@@ -457,7 +447,7 @@ def check_train_eval_agree(name: str, rep: Report) -> None:
     cfg_path = str(REPO / (name if name.endswith(".yaml") else f"config/{name}.yaml"))
     name = pathlib.Path(cfg_path).stem
     try:
-        n_splits = int(tp._load_cfg(None, cfg_path).corpus.get("n_splits") or 1)
+        n_splits = int(load_train_config(None, cfg_path).corpus.get("n_splits") or 1)
     except Exception as exc:
         rep.fail(f"{name}: train config will not load", f"{type(exc).__name__}: {exc}")
         return
@@ -465,8 +455,8 @@ def check_train_eval_agree(name: str, rep: Report) -> None:
     bad = []
     for k in range(n_splits):
         try:
-            t = tp._apply_split_index(tp._load_cfg(None, cfg_path), k)
-            _, e = ep._load_cfgs([], [], config_path=cfg_path, split_index=k)
+            t = apply_split_index(load_train_config(None, cfg_path), k)
+            _, e = load_eval_configs([], [], config_path=cfg_path, split_index=k)
             t_ids = sorted(c.dataset_id for c in split_from_cfg(t).test)
             e_ids = sorted(c.dataset_id for c in split_from_cfg(e).test)
             if (t.run_name, int(t.corpus.split_seed), t_ids) != \
@@ -506,6 +496,8 @@ def check_launchers_pass_config(rep: Report) -> None:
             problems.append(f"{sh.name} submits an eval job without exporting CREDITPFN_CONFIG")
     for job in ("eval_pd.slurm", "eval_lgd.slurm"):
         text = (slurm / job).read_text(encoding="utf-8", errors="ignore")
+        if "source scripts/slurm/_eval_job.sh" in text:
+            text += (slurm / "_eval_job.sh").read_text(encoding="utf-8")
         if "--config" not in text or "--split-index" not in text:
             problems.append(f"{job} does not forward --config / --split-index to eval_pipeline")
     if problems:
@@ -524,7 +516,6 @@ def check_storage_layout(rep: Report) -> None:
     belong on $VSC_DATA. Two debugging rounds were lost to `ls`-ing the wrong one, so print the
     map instead of inferring it.
     """
-    sys.path.insert(0, str(REPO))
     try:
         from omegaconf import OmegaConf
 
@@ -585,7 +576,6 @@ def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
     manifest can no longer produce this mismatch. The check remains as a guard against a genuinely
     empty/unstaged `data/processed`.
     """
-    sys.path.insert(0, str(REPO))
     try:
         from src.train.corpus import build_dataset_pool
     except Exception as exc:                                       # pragma: no cover

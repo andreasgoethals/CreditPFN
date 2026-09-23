@@ -1,11 +1,7 @@
-"""Reading `config/`. EMPTY ON PURPOSE — this project fills it in.
+"""Persist resolved configurations and storage/job provenance.
 
-How a project reads its configuration is project-specific: what the knobs are, whether a file
-describes one run or a sweep, whether anything is validated. The template does not guess.
-
-What the template does ask: whatever you build here, a run should write the **fully resolved**
-configuration it used into `output/manifests/`. The YAML on disk may have been edited since, so
-that copy is the only reliable answer to "what produced this result?".
+Training phase/grid loading lives in src.train.config; src.eval.config composes
+that training phase with evaluation settings. Data preprocessing reads config/data.yaml.
 """
 
 from __future__ import annotations
@@ -17,12 +13,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from src.utils.paths import describe, ensure, manifests_dir
-
-#: What this project fills in is only the template's one ask. The knobs themselves are read
-#: with OmegaConf at each entry point (`scripts/{data,train,eval}_pipeline.py`), because a
-#: CreditPFN config describes a whole grid and the CLI can override any leaf — so there is no
-#: single "load" worth centralising, but there IS one snapshot worth writing.
-
 
 def dump_resolved(cfg, task_name: str, *, extra: dict | None = None) -> Path:
     """Write the fully resolved config a run used to `output/manifests/resolved/`.

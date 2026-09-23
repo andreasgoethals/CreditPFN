@@ -1,72 +1,22 @@
-"""End-to-end orchestrator for continued pretraining.
+"""Run a named continued-pretraining phase or inspect its trial grid.
 
-Mirrors ``scripts/data_pipeline.py``. The actual training math lives in
-:mod:`src.train.loop`; this script's job is to:
+Shared configuration and grid logic lives in src.train.config; training math,
+sampling and checkpoint recovery live in src.train. This entry point prepares
+missing processed inputs, runs selected trials and records independent attempt
+and epoch/trajectory files under output/manifests/. Model weights use checkpoints/.
 
-  1. **Resolve the training plan**: which (base_checkpoint, learning_rate)
-     tuples to train. By default this is the full cartesian product of
-     every list under ``cfg.tunable``. With ``--single`` the script uses
-     only the FIRST value of each list (one trial). With ``--trial-index
-     N`` only the Nth trial of the cartesian product is run — designed
-     for slurm arrays where each array task takes one trial.
+Examples (from the repository root):
+    python scripts/train_pipeline.py --config config/experiment0_pd.yaml --list-trials
+    python scripts/train_pipeline.py --config config/experiment0_pd.yaml --split-index 0 --trial-index 0
 
-     Each parent dataset contributes exactly one training step per
-     epoch (no chunking; see ``src/train/corpus.py`` for the rationale).
-
-  2. **Auto-process hook**: before training starts, check whether the
-     sanitized CSV exists under
-     ``data/processed/<track>/<id>.sanitized.csv`` for every dataset
-     the run will touch. If any are missing,
-     ``scripts/data_pipeline.py`` is invoked transparently for just
-     those IDs. This lets you train without ever calling the data
-     pipeline by hand — though running it once up-front is still the
-     recommended workflow for large corpora.
-
-  3. **Per-trial training**: call :func:`src.train.loop.train_one_config`.
-     Each trained checkpoint is saved to
-     ``cfg.checkpoint.trained_dir/<track>/<descriptive_name>.ckpt``.
-
-  4. **Manifest CSV** + **per-epoch CSV**:
-     * One row per trial appended to
-       ``output/manifests/<run_name>_<track>.csv`` (HP-tuple, checkpoint path,
-       walltime, OK/FAIL). The eval pipeline
-       (`scripts/eval_pipeline.py`) reads this to know which
-       checkpoints to benchmark against the baselines.
-     * One CSV per trial under
-       ``output/manifests/epochs/<track>/<descriptive_name>.csv`` with the
-       per-epoch ``(epoch, train_loss, lr, elapsed_sec)`` — useful
-       for diagnosing how the loss evolves across epochs.
-
-CLI usage
----------
-::
-
-    # Local: cartesian product over `cfg.tunable.*`
-    python scripts/train_pipeline.py
-
-    # Local: only one trial (first value of every tunable list)
-    python scripts/train_pipeline.py --single
-
-    # Slurm array (one task per trial):
-    #   sbatch --array=0-$(($(python scripts/train_pipeline.py --list-trials)-1)) \
-    #          scripts/slurm/train_pd.slurm
-    python scripts/train_pipeline.py --trial-index $SLURM_ARRAY_TASK_ID
-
-    # How many trials does the current cfg expand to?
-    python scripts/train_pipeline.py --list-trials
-
-    # Debug: train on one specific dataset only
-    python scripts/train_pipeline.py corpus.train_dataset_ids=[0001.gmsc]
-
-    # Hydra-style overrides (any cfg key)
-    python scripts/train_pipeline.py track=lgd train.epochs=10
+Use scripts/slurm/run_experiment.sh for prepared VSC jobs. --single chooses the
+first eligible grid entry; --trial-index selects its stable zero-based index.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
-import itertools
 import logging
 import os
 import sys as _sys
@@ -86,22 +36,12 @@ from src.utils.paths import (  # noqa: E402
     manifests_dir,
     resolve_staging_path,
 )
+from src.train.config import load_train_config, resolve_grid  # noqa: E402
+from src.utils.experiment import apply_split_index  # noqa: E402
 from src.utils.config import dump_resolved  # noqa: E402
 from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
-
-
-# --------------------------------------------------------------------------- #
-# Cfg loading + Hydra-style overrides
-# --------------------------------------------------------------------------- #
-
-
-#: The sweep this pipeline runs unless told otherwise. An EXPERIMENT config (see
-#: `config/experiment*.yaml`) is a full replacement for it, not a patch: each experiment answers
-#: one question and carries its own grid, so it can be run one file at a time without editing the
-#: default and without a pile of `key=value` overrides in a job script.
-DEFAULT_TRAIN_CONFIG = "config/train.yaml"
 
 
 def _refuse_unusable_gpu() -> None:
@@ -160,166 +100,6 @@ def _refuse_unusable_gpu() -> None:
         "=" * 78,
     ]
     raise SystemExit("\n".join(lines))
-
-
-def _load_cfg(overrides: list[str] | None = None, config_path: str | None = None):
-    """Load the training config and apply ``key=value`` overrides.
-
-    `config_path` selects a phase config; it defaults to `config/train.yaml`. Phase files are
-    self-contained rather than deltas, because a delta that silently inherits an axis is how a
-    run ends up sweeping something nobody intended.
-    """
-    from omegaconf import OmegaConf
-    cfg = OmegaConf.load(DEFAULT_TRAIN_CONFIG)
-    if config_path and str(config_path) != DEFAULT_TRAIN_CONFIG:
-        # EXPERIMENT CONFIGS ARE DELTAS over config/train.yaml, not replacements. The training
-        # path requires ~25 keys (cfg.checkpoint.trained_dir, cfg.lora.*, cfg.train.amp,
-        # cfg.optimizer.lr, ...) that have nothing to do with the science of one experiment, so
-        # a self-contained experiment file is either 100 lines of machinery or it crashes at
-        # checkpoint-save time. The base holds the machinery; the experiment holds what differs.
-        # The silent-inheritance risk this trades against is covered by dumping the RESOLVED
-        # config to output/manifests/resolved/ and by the manifest recording every swept axis.
-        cfg = OmegaConf.merge(cfg, OmegaConf.load(str(config_path)))
-    if overrides:
-        cfg = OmegaConf.merge(cfg, OmegaConf.from_dotlist(overrides))
-    return cfg
-
-
-def _apply_split_index(cfg, split_index: int | None):
-    """Point the config at one of the random dataset splits.
-
-    The split is NOT a sweep axis: making it one would multiply the trial grid by 28 and put a
-    split tag inside every trial name. Instead it seeds the draw and tags the run name, so each
-    split writes its own manifest and the analysis averages across them.
-    """
-    from src.utils.experiment import apply_split_index
-    return apply_split_index(cfg, split_index)
-
-
-def _resolve_grid(
-    cfg, *, single: bool,
-) -> list[tuple[str, float, bool, float, int, str]]:
-    """Materialise the ``(base, lr, use_lora, query_fraction, accumulate,
-    epoch_pass_mode, min_train_rows)`` tuples to train.
-
-    ``single=True``: head of every tunable list (one trial).
-    Otherwise: full cartesian product over
-    ``base × lr × use_lora × query_fraction × accumulate_grad_batches ×
-    epoch_pass_modes``.
-
-    All tunable lists accept either a scalar or a list. ``use_lora``
-    defaults to ``[False]`` when absent; ``query_fractions`` defaults
-    to ``[0.20]`` (the TabPFN documented default) when absent;
-    ``accumulate_grad_batches`` defaults to ``[1]`` (TabPFN's official
-    no-accumulation behaviour) when absent; ``epoch_pass_modes`` defaults
-    to ``["one_sample"]`` (one step per dataset per epoch — the original
-    behaviour) when absent.
-    """
-    track = str(cfg.track)
-    bases = (
-        list(cfg.tunable.classifier_base_paths) if track == "pd"
-        else list(cfg.tunable.regressor_base_paths)
-    )
-    # REQUIRED, not defaulted. These three differ in every experiment, so they live only in the
-    # experiment config — and a silent fallback here would run a grid nobody asked for. The
-    # project has been bitten twice by exactly that (`query_fractions` defaulting to 0.20 when
-    # the sweep wanted 0.40; `min_train_rows` inherited as a stale two-value axis).
-    # PRESENCE is required; the VALUE may be null where null means something.
-    # `l2sp_lambdas: null` legitimately means "not an axis, use optimizer.l2sp_lambda", so
-    # absence and null are different situations and only absence is an error.
-    def _present(key: str) -> bool:
-        try:
-            return key in cfg.tunable
-        except TypeError:                       # SimpleNamespace, used by the tests
-            return hasattr(cfg.tunable, key)
-
-    _absent = [k for k in ("learning_rates", "l2sp_lambdas", "frozen_backbone")
-               if not _present(k)]
-    _null = [k for k in ("learning_rates", "frozen_backbone")
-             if _present(k) and getattr(cfg.tunable, k, None) is None]
-    if _absent or _null:
-        _names = ", ".join(f"tunable.{k}" for k in _absent + _null)
-        raise SystemExit(
-            f"config error: {_names} must be set by the experiment config.\n"
-            "  These axes differ per experiment, so config/train.yaml deliberately\n"
-            "  does not define them - a silent fallback would run a grid nobody\n"
-            "  asked for. Add them to the --config file, e.g.\n"
-            "      tunable:\n"
-            "        learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 1.0e-4]\n"
-            "        l2sp_lambdas: [0.0, 0.003]   # null = not an axis\n"
-            "        frozen_backbone: [false]\n"
-        )
-    lrs = [float(x) for x in cfg.tunable.learning_rates]
-    # `frozen_backbone` is the honest name for this axis and the accepted spelling from
-    # run-9: on TabICL it trains the head only, on TabPFN it means LoRA. `use_lora` is
-    # still read so older configs keep working, but a config setting NEITHER gets [False]
-    # rather than a silently dropped axis.
-    raw_lora = getattr(cfg.tunable, "frozen_backbone", None)
-    if raw_lora is None:
-        raw_lora = getattr(cfg.tunable, "use_lora", [False])
-    if isinstance(raw_lora, bool):
-        loras = [bool(raw_lora)]
-    else:
-        loras = [bool(x) for x in raw_lora]
-    raw_qf = getattr(cfg.tunable, "query_fractions", [0.20])
-    if isinstance(raw_qf, (int, float)):
-        qfs = [float(raw_qf)]
-    else:
-        qfs = [float(x) for x in raw_qf]
-    raw_acc = getattr(cfg.tunable, "accumulate_grad_batches", [1])
-    if isinstance(raw_acc, int):
-        accs = [int(raw_acc)]
-    else:
-        accs = [int(x) for x in raw_acc]
-    raw_pm = getattr(cfg.tunable, "epoch_pass_modes", ["one_sample"])
-    if isinstance(raw_pm, str):
-        pms = [raw_pm]
-    else:
-        pms = [str(x) for x in raw_pm]
-
-    raw_mtr = getattr(cfg.corpus, "min_train_rows", [0]) if hasattr(cfg, "corpus") else [0]
-    if isinstance(raw_mtr, (int, float)):
-        mtrs = [int(raw_mtr)]
-    else:
-        mtrs = [int(x) for x in raw_mtr]
-
-    # ANCHOR STRENGTH, swept from run-9. `tunable.l2sp_lambdas` absent means "use the
-    # single value in `finetuning.l2sp_lambda`", which is what every earlier run did.
-    raw_l2 = getattr(cfg.tunable, "l2sp_lambdas", None)
-    if raw_l2 is None:
-        l2sps: list = [None]
-    elif isinstance(raw_l2, (int, float)):
-        l2sps = [float(raw_l2)]
-    else:
-        l2sps = [float(x) for x in raw_l2]
-
-    #: Families for which the adapter arm (`use_lora: true`) is generated. Empty or
-    #: absent = every family, which is what every run before run-8 did. LoRA on TabPFN
-    #: was a measured no-op in runs 4, 6 and 7 and cost a third of the grid; on TabICLv2
-    #: the same flag means freeze-backbone, which is a different mechanism and still
-    #: worth measuring.
-    adapter_families = [str(x).lower() for x in
-                        (getattr(cfg.tunable, "adapter_families", None) or [])]
-
-    def _adapter_allowed(base_path: str) -> bool:
-        if not adapter_families:
-            return True
-        from src.train.tabicl_compat import model_family
-        fam = model_family(base_path)
-        name = str(base_path).lower()
-        return any(f in (fam, name) or f in name for f in adapter_families)
-
-    if single:
-        return [(
-            str(bases[0]), float(lrs[0]), bool(loras[0]), float(qfs[0]),
-            int(accs[0]), str(pms[0]), int(mtrs[0]), l2sps[0],
-        )]
-    return [
-        (str(b), float(lr), bool(lo), float(qf), int(ac), str(pm), int(mtr), l2)
-        for b, lr, lo, qf, ac, pm, mtr, l2
-        in itertools.product(bases, lrs, loras, qfs, accs, pms, mtrs, l2sps)
-        if not lo or _adapter_allowed(str(b))
-    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -696,7 +476,7 @@ def run(
     ``0`` on full success, ``1`` if any trial raised.
     """
     if cfg is None:
-        cfg = _load_cfg(overrides)
+        cfg = load_train_config(overrides)
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
@@ -726,7 +506,7 @@ def run(
     _ensure_processed(cfg, log_path=log.path if hasattr(log, "path") else None)
 
     # ---- 2) resolve which trials to run
-    full_grid = _resolve_grid(cfg, single=False)
+    full_grid = resolve_grid(cfg, single=False)
 
     if trial_index is not None:
         if not 0 <= trial_index < len(full_grid):
@@ -787,7 +567,7 @@ def run(
             else (trial_idx_local - 1)
         )
         LOGGER.info(
-            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  lora=%s  qf=%.2f  acc=%d  "
+            "\n=== Trial %d/%d (global %d)  base=%s  lr=%g  frozen_axis=%s  qf=%.2f  acc=%d  "
             "pass=%s  min_train_rows=%d  l2sp=%s ===",
             trial_idx_local, len(plan), global_idx,
             Path(base).name, lr, use_lora, query_fraction, accumulate, pass_mode,
@@ -1157,7 +937,6 @@ def run(
 # --------------------------------------------------------------------------- #
 
 
-
 def _rewrite_epoch_csv(path, fieldnames: list[str]) -> None:
     """Re-emit an existing per-epoch CSV under a WIDER header.
 
@@ -1235,13 +1014,13 @@ if __name__ == "__main__":
         signal.signal(signal.SIGUSR1, lambda *_: os.environ.__setitem__("CREDITPFN_STOP_REQUESTED", "1"))
     args, overrides = _parse_args()
     if args.list_trials:
-        cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
-        print(len(_resolve_grid(cfg, single=False)))
+        cfg = apply_split_index(load_train_config(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
+        print(len(resolve_grid(cfg, single=False)))
         raise SystemExit(0)
     if args.trial_family is not None:
         from src.train.tabicl_compat import model_family
-        cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
-        grid = _resolve_grid(cfg, single=False)
+        cfg = apply_split_index(load_train_config(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
+        grid = resolve_grid(cfg, single=False)
         if not 0 <= args.trial_family < len(grid):
             # Over-sized slurm arrays are a legitimate pattern; a surplus
             # index is not an error. Print nothing and exit 0 so the caller's
@@ -1250,7 +1029,7 @@ if __name__ == "__main__":
         print(model_family(grid[args.trial_family][0]))
         raise SystemExit(0)
     raise SystemExit(run(
-        cfg=_apply_split_index(_load_cfg(overrides, args.config), args.split_index),
+        cfg=apply_split_index(load_train_config(overrides, args.config), args.split_index),
         single=args.single,
         trial_index=args.trial_index,
         overrides=overrides,

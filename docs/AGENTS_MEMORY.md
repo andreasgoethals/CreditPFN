@@ -12,7 +12,16 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 23-09-2026 output workflow and confirmed CPU preflight
+## Current handover — 23-09-2026 source cleanup and completed check2 preparation
+
+- Inspected Downloads logs in place: **62111400 (PD)** and **62111404 (LGD)** both report `END exit_code=0`, eight null trials each, correct CreditPFN conda environment; 39/32 seconds respectively. These are preparation logs, not GPU training evidence. No plan files were supplied this time, so their fingerprints were not independently checked.
+- Source cleanup is based on user HEAD `ca03eec`; library pin remains `e5ce01614eebe520af303f2b5bfd212298eab2be`. Shared training/grid and evaluation loaders now live in `src/train/config.py` and `src/eval/config.py`; capacity math lives in `src/train/capacity.py`. No reusable module imports scripts. Shared Slurm bodies remove PD/LGD duplication, all jobs use the same output/logs convention, and grid/family lookup errors stop jobs visibly.
+- Fixed evaluation CLI precedence, scalar/empty/filtered-single grid handling and the capacity report's silent full-update fallback for frozen probes. Probe measurements remain synthetic forward/backward screens, excluding optimizer/L2-SP/eval overhead; measured caps and the scientific grid are unchanged. Removed completed L2-SP migration and old storage-move commands; retained historical readers and necessary upstream compatibility. Replaced stale ignored CLAUDE.local.md claims (exp1 running, serial workers, col_embedder.eval) with pointers to shared current documents.
+- **Next:** user commits/pushes the final changes and pulls on VSC; run CPU preflight and prepare `experiment0_{pd,lgd}.yaml` as **cpt_null_v4_check3**. Source changes invalidate check2; preserve those tiny records but do not launch against them. No data restaging, downloads or full cleanup. After these CPU checks pass, run the 16 null controls, then positive-LR recovery and pilots before the main grid.
+- A read-only local inspection now finds the previously blocked 12 duplicate imports/transcripts absent; this turn did not delete or move them. Downloads/archive/data/weights remain untouched. Notebook execution creates only its expected figures, caption metadata and summaries.
+- Validation: **419 passed, 1 skipped**, nine known constant-input toy LGD warnings; skipped check needs optional on-disk data manifests. **6/6 notebooks, 75 PDFs**, zero private-name hits in extracted PDF text. Python syntax/import direction, 15 Bash files, 35 active documentation links, CLI help, both eight-control dry previews and git diff --check passed. Ruff is not installed; no lint pass is claimed. Local preflight passes its structural checks but reports the two absent local v2 weights across 12 phase checks; user VSC preflight already found all eight bases. Recheck on VSC after pulling. No pushes, installs, submitted cluster jobs or real model training by the agent.
+
+## Previous handover — 23-09-2026 output workflow and confirmed CPU preflight (superseded above)
 
 - User preference: cluster output stays on VSC during debugging. Read files in Downloads in place; never import them into local output without an explicit request. The user downloads the two complementary output trees for final local analysis. Notebook logs are unnecessary; the only locks are scheduler coordination on VSC. Figure-caption JSONs remain required for rebuilding CAPTIONS.md.
 - Removed the notebook script-only path and duplicate transcript writer. All_Results.md now reads the final saved code cell's stdout. Clear every old code-cell output before execution so an early failure cannot preserve a previous successful summary; errors remain in the notebook. Figure regeneration never deletes debugging logs.
@@ -72,6 +81,8 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 23-09-2026 | prepare cpt_null_v4_check2 PD · wICE 62111400 | **plan written (download log)** | Eight trials, one partition, four held-out tables; END exit 0 in 39 s. Superseded by source cleanup/check3 before GPU training. |
+| 23-09-2026 | prepare cpt_null_v4_check2 LGD · wICE 62111404 | **plan written (download log)** | Eight trials, one partition, two held-out tables; END exit 0 in 32 s. Superseded by source cleanup/check3 before GPU training. |
 | 23-09-2026 | CPU preflight · wICE 62110877 | **passed (user log)** | 0 failures, 0 warnings, END exit_code=0; 46 seconds from START/END. All 25 tables/eight bases and CPU configuration checks pass; GPU controls remain outstanding. |
 | 23-09-2026 | prepare cpt_null_v4 PD · wICE 62109753 | **plan written (download evidence)** | Eight identities; 13 train / 4 held-out tables; checksums/source verified against 65ea866. Superseded by check2 before GPU training. |
 | 23-09-2026 | prepare cpt_null_v4 LGD · wICE 62109754 | **plan written (download evidence)** | Eight identities; 6 train / 2 held-out tables; checksums/source verified against 65ea866. Superseded by check2 before GPU training. |
@@ -92,6 +103,27 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 23-09-2026 — capacity report silently changed the requested adaptation
+
+- **Tried.** Audited the report's full/frozen capacity comparison against the probe signatures.
+- **Result.** The frozen keyword was unsupported; catching TypeError retried every call as a default full-update probe. The report also reused PD member counts for LGD.
+- **Why.** A compatibility fallback hid an interface mismatch and changed the measurement being labeled.
+- **Instead.** Shared capacity helpers explicitly accept freezing, use the training member resolver, report BF16/query settings, release OOM graphs and propagate unexpected errors. Test dispatch without consuming GPUs; keep the existing caps until real pilots.
+
+### 23-09-2026 — evaluation settings overrode explicit CLI choices
+
+- **Tried.** Traced phase/config loading through planning, training and evaluation.
+- **Result.** Evaluation merged the phase block after CLI settings, silently undoing an explicit prediction-output override.
+- **Why.** Config loading was duplicated between scripts, with different precedence.
+- **Instead.** Share training config loading and merge evaluation CLI settings last. Regression tests preserve partitions and confirm unrelated phase/default values survive.
+
+### 23-09-2026 — new override test ignored planned training seeds
+
+- **Tried.** Used seed=123 as a generic CLI override in the new evaluation-loader test.
+- **Result.** The full suite's new fixture failed while the other checks passed; the partition correctly selected seed 42.
+- **Why.** apply_split_index selects experiment.training_seeds for a prepared campaign; the fixture also initially assumed a phase-owned CV block that actually comes from eval.yaml.
+- **Instead.** Test a plain training knob for merge precedence and separately assert the planned seed. Changing campaign seeds requires the explicit seed list and a fresh plan.
 
 ### 23-09-2026 — local debugging imports and duplicate transcripts
 

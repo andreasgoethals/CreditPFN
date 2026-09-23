@@ -1,18 +1,7 @@
-"""THE shared style. One place, every notebook in THIS project.
+"""Shared CreditPFN figure sizes, typography, colors and markers.
 
-MOSTLY EMPTY ON PURPOSE. What the template fixes is the part that follows from the output medium:
-**every figure ends up in a scientific paper printed on A4**, so it is drawn at the width it will
-occupy on the page and its text is sized to be readable there. That is the same in every project,
-so it is filled in below.
-
-WHAT THIS PROJECT FILLS IN is the *look*: the colours, the grid, the spines, the marker shapes.
-Two projects plotting different things have no reason to look alike, so the template does not
-pretend otherwise — the requirement is only that **every notebook inside one project shares one
-style**, defined here and nowhere else. A notebook never picks a colour or a size itself; if it
-needs a new one, it gets added here, once, and every figure gains it at the same time. (If a new
-project is close to an existing one, copying that project's `style.py` is the fastest start.)
-
-Call `apply()` once at the top of every notebook.
+Figures are drawn at their final A4 publication width. Notebooks call apply()
+and use these definitions rather than choosing their own sizes or colors.
 """
 
 from __future__ import annotations

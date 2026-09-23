@@ -848,7 +848,7 @@ def test_grid_full_cartesian_product() -> None:
             l2sp_lambdas=None, frozen_backbone=[False],
         ),
     )
-    grid = tp._resolve_grid(cfg, single=False)
+    grid = tp.resolve_grid(cfg, single=False)
     assert len(grid) == 3 * 3
     # No duplicates in a cartesian product of distinct lists.
     assert len(set(grid)) == len(grid)
@@ -880,7 +880,7 @@ def test_grid_full_cartesian_product_with_lora_axis() -> None:
             use_lora=[False, True],
         ),
     )
-    grid = tp._resolve_grid(cfg, single=False)
+    grid = tp.resolve_grid(cfg, single=False)
     assert len(grid) == 2 * 2 * 2
     # Both LoRA flavours represented.
     loras = {t[2] for t in grid}
@@ -899,7 +899,7 @@ def test_grid_single_picks_first_value() -> None:
             l2sp_lambdas=None, frozen_backbone=[False],
         ),
     )
-    grid = tp._resolve_grid(cfg, single=True)
+    grid = tp.resolve_grid(cfg, single=True)
     assert grid == [("P", 5e-6, False, 0.20, 1, "one_sample", 0, None)]
     assert len(grid) == 1
 
@@ -1459,13 +1459,13 @@ def test_l2sp_lambda_is_a_swept_axis() -> None:
                 learning_rates=[1e-6, 1e-5], frozen_backbone=[False])
 
     # null -> one trial per (base, lr), and the slot carries None so the config value wins.
-    plain = tp._resolve_grid(
+    plain = tp.resolve_grid(
         NS(track="pd", tunable=NS(**base, l2sp_lambdas=None)), single=False)
     assert len(plain) == 4
     assert {t[7] for t in plain} == {None}
 
     # Present -> the grid multiplies by the number of lambdas.
-    swept = tp._resolve_grid(
+    swept = tp.resolve_grid(
         NS(track="pd", tunable=NS(**base, l2sp_lambdas=[0.0, 0.003])), single=False)
     assert len(swept) == 8
     assert {t[7] for t in swept} == {0.0, 0.003}
@@ -1473,7 +1473,7 @@ def test_l2sp_lambda_is_a_swept_axis() -> None:
     assert len(set(swept)) == len(swept)
 
     # A scalar is accepted as a one-value sweep.
-    scalar = tp._resolve_grid(
+    scalar = tp.resolve_grid(
         NS(track="pd", tunable=NS(**base, l2sp_lambdas=0.003)), single=False)
     assert len(scalar) == 4 and {t[7] for t in scalar} == {0.003}
 
@@ -1497,7 +1497,7 @@ def test_required_axes_fail_loudly_when_absent() -> None:
         # so only a missing key is a config error.
         del tunable[missing]
         with pytest.raises(SystemExit) as exc:
-            tp._resolve_grid(NS(track="pd", tunable=NS(**tunable)), single=False)
+            tp.resolve_grid(NS(track="pd", tunable=NS(**tunable)), single=False)
         assert f"tunable.{missing}" in str(exc.value)
 
 

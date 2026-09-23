@@ -80,17 +80,3 @@ def test_checkpoint_failed_save_preserves_previous_completed_pair(tmp_path, monk
         atomic_save({}, path, {"complete": False})
     assert path.read_bytes() == before
     assert json.loads(Path(str(path) + ".provenance.json").read_text())["complete"]
-
-
-def test_l2sp_migration_refuses_missing_provenance_and_collision(tmp_path):
-    from src.utils.migrate_l2sp_checkpoints import plan_renames, apply_renames
-    old = tmp_path / "exp1_pd_base_lr1e-06_seed42.ckpt"
-    old.write_bytes(b"old")
-    with pytest.raises(ValueError, match="refusing to guess"):
-        plan_renames(tmp_path)
-    Path(str(old) + ".provenance.json").write_text(json.dumps({"hyperparameters": {"l2sp_lambda": .003}}))
-    plan = plan_renames(tmp_path)
-    plan[0][1].write_bytes(b"new")
-    with pytest.raises(FileExistsError):
-        apply_renames(plan, apply=True)
-    assert old.read_bytes() == b"old" and plan[0][1].read_bytes() == b"new"

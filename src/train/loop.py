@@ -1,33 +1,13 @@
-"""Single-config continued-pretraining loop.
+"""Train one continued-pretraining recipe for TabPFN or TabICL.
 
-One call to :func:`train_one_config` =
+Dataset-level partitions, sampling modes, objectives and adaptation are configured
+per trial. AdamW follows a fixed successful-update budget (or an explicit epoch
+budget), with trajectory monitoring that preserves training RNG state. Final
+weights and provenance are published atomically; interrupted trials save optimizer,
+scheduler, RNG and sampling state for exact recovery. The campaign disables
+metric-based early stopping; numerical failures remain explicit outcomes.
 
-    1. Build the corpus split (train / test by dataset_id) from cfg.
-    2. Load the requested base TabPFN checkpoint.
-    3. Wrap an AdamW optimiser around it + a linear-warmup-then-cosine-
-       decay LR scheduler over the total number of optimisation steps.
-       (See :func:`make_warmup_cosine_schedule` for the exact formula
-       — it matches HuggingFace's ``get_cosine_schedule_with_warmup``,
-       which is what TabPFN's own ``FinetunedTabPFNClassifier`` uses.)
-    4. Run ``cfg.train.epochs`` epochs of:
-         for chunk in train_chunks (shuffled):
-             forward → loss → backward → (optional grad-clip) → step
-       …with mixed precision on CUDA, gradient accumulation, and NO
-       validation. There is no early stopping — the user explicitly
-       chose fixed-epoch training (cf. discussion in chat 2026-05-04
-       on the val-set noise problem with ~10 datasets).
-    5. Save the FINAL-epoch weights to
-       ``cfg.checkpoint.trained_dir/<descriptive_name>.ckpt`` in
-       Prior Labs format (state_dict + config), so the file
-       round-trips through ``TabPFNClassifier(model_path=...)`` /
-       ``TabPFNRegressor(model_path=...)``.
-    6. Compute the test metric ONCE on the held-out test split and
-       return it. This number is reported but NEVER used to make any
-       within-training decision — there is no leak.
-
-The function is one config. Iterating over the cartesian product of
-``cfg.tunable`` lists lives in ``scripts/train_pipeline.py``, not
-here, because that's a script-level concern (the user's instruction).
+Grid construction lives in src.train.config and orchestration in scripts/train_pipeline.py.
 """
 
 from __future__ import annotations
@@ -38,7 +18,6 @@ import os
 import platform
 import re
 import socket
-import sys
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -62,9 +41,7 @@ from src.train.metrics import (
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
 from src.train.tabicl_compat import model_family
-from src.utils.paths import (
-    resolve_output_path, resolve_staging_path, resolve_writable_staging_path,
-)
+from src.utils.paths import resolve_writable_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -1143,7 +1120,7 @@ def _classification_loss(
     those drifted columns stole probability mass from the K active
     columns — the calibration-collapse failure mode that produces
     high log-loss while ROC-AUC stays reasonable. See chat 2026-05-27
-    and `_audit_2026-05-27_methodology.md` for the full derivation.
+    and docs/RESEARCH_BRIEF.md for the research protocol.
 
     The `n_classes` parameter is still required for downstream code
     (per-epoch eval, metric reporting) so we accept it but no longer
@@ -1677,7 +1654,7 @@ def train_one_config(
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
     pass_mode: str | None = None,
-    #: Swept from run-9. Overrides `cfg.finetuning.l2sp_lambda` for this trial. Same
+    #: Swept from run-9. Overrides `cfg.optimizer.l2sp_lambda` for this trial. Same
     #: contract as `min_train_rows`: the per-trial value wins, `None` falls back to the
     #: config, so a run that does not sweep it behaves exactly as before.
     l2sp_lambda: float | None = None,
@@ -1691,14 +1668,12 @@ def train_one_config(
 ) -> TrainingResult:
     """Run continued pretraining for one fixed (config, HP-tuple).
 
-    The four arguments ``track``, ``base_checkpoint``, ``learning_rate``,
-    ``use_lora`` are the ONLY things the script expects to vary per
-    run — see ``cfg.tunable`` in ``config/train.yaml``. Each defaults
-    to either the explicit ``cfg.<...>`` field if set, or the first
-    value of the corresponding tunable list.
+    Per-trial keyword arguments override the corresponding configuration values.
+    The shared grid includes base, learning rate, adaptation, query fraction,
+    accumulation, pass mode, corpus size filter and L2-SP strength.
 
-    Each parent dataset contributes EXACTLY ONE training step per epoch
-    (no chunking — see 2026-05-20 refactor in `src/train/corpus.py`).
+    The pass mode controls exposure: one_sample draws one batch per table;
+    full_pass visits disjoint chunks; accumulate averages chunk gradients per table.
 
     Parameters
     ----------
@@ -1986,34 +1961,8 @@ def train_one_config(
     if query_fraction is None:
         query_fraction = float(_data_cfg.finetuning.query_fraction)
 
-    # Resolve `n_estimators_finetune` (number of preprocessed ensemble
-    # members per training step). Accepts EITHER a scalar int (applied to
-    # both tracks) OR a per-track mapping {pd: 2, lgd: 8, default: 2} so the
-    # regressor can use more members (lower per-step gradient noise), matching
-    # the official FinetunedTabPFNClassifier (=2) / FinetunedTabPFNRegressor
-    # (=8) defaults.
-    _raw_ne = getattr(cfg.train, "n_estimators_finetune", 2)
-    if isinstance(_raw_ne, (int, float)):
-        n_estimators_finetune = int(_raw_ne)
-    else:  # per-track mapping (OmegaConf DictConfig or plain dict)
-        _ne = getattr(_raw_ne, track, None)
-        if _ne is None and hasattr(_raw_ne, "get"):
-            _ne = _raw_ne.get(track, None)
-        if _ne is None:
-            _ne = getattr(_raw_ne, "default", None)
-            if _ne is None and hasattr(_raw_ne, "get"):
-                _ne = _raw_ne.get("default", 2)
-        n_estimators_finetune = int(_ne if _ne is not None else 2)
-    n_estimators_finetune = max(1, n_estimators_finetune)
-
-    # TabICLv2 family: upstream's finetuning uses n_estimators=2 for BOTH the
-    # classifier and the regressor (tabicl._finetune defaults) — override the
-    # TabPFN-derived per-track mapping (pd=2/lgd=8) unless the config sets an
-    # explicit tabicl value.
-    if family == "tabicl":
-        n_estimators_finetune = max(
-            1, int(getattr(cfg.train, "n_estimators_finetune_tabicl", 2)),
-        )
+    from src.train.config import training_members
+    n_estimators_finetune = training_members(cfg, track, family)
 
     # ---- member-aware row-cap scaling (GPU-memory safety) ---------------- #
     # A training step forwards ALL `n_estimators_finetune` preprocessed

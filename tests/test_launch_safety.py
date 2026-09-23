@@ -9,7 +9,7 @@ from types import SimpleNamespace as NS
 from omegaconf import OmegaConf
 import pytest
 
-from scripts.train_pipeline import _load_cfg
+from src.train.config import load_train_config
 from src.utils.experiment import digest_json
 
 
@@ -29,7 +29,7 @@ def test_source_identity_normalizes_line_endings_and_includes_slurm(tmp_path):
 
 def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_plan(tmp_path, monkeypatch):
     import src.utils.prepare_experiment as module
-    cfg = _load_cfg(config_path="config/experiment0_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment0_pd.yaml")
     spec = {"code_sha256": "original", "versions": {"torch": "test"},
             "data_config": OmegaConf.to_container(OmegaConf.load("config/data.yaml"))["finetuning"]}
     key = digest_json(spec)
@@ -65,12 +65,12 @@ def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_p
 
 def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkeypatch):
     import src.utils.prepare_experiment as module
-    import scripts.train_pipeline as pipeline
+    import src.train.config as pipeline
     import src.train.corpus as corpus
-    cfg = _load_cfg(config_path="config/experiment0_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment0_pd.yaml")
     grid = [("missing.ckpt", 0., False, .4, 1, "one_sample", 0, 0.)]
-    monkeypatch.setattr(pipeline, "_load_cfg", lambda **kw: cfg)
-    monkeypatch.setattr(pipeline, "_resolve_grid", lambda *args, **kw: grid)
+    monkeypatch.setattr(pipeline, "load_train_config", lambda **kw: cfg)
+    monkeypatch.setattr(pipeline, "resolve_grid", lambda *args, **kw: grid)
     monkeypatch.setattr(corpus, "split_from_cfg", lambda *args, **kw: corpus.CorpusSplit(
         [NS(dataset_id="train")], [NS(dataset_id="test")]))
     identity = {"sha256": "original-input", "specification": {}}
@@ -89,7 +89,7 @@ def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkey
 def test_preflight_uses_smallest_partition_and_rejects_mixed_pass_packing(monkeypatch):
     from src.utils.preflight import Report, check_step_budget, check_packing_divides
     import src.train.corpus as corpus
-    cfg = _load_cfg(config_path="config/experiment1_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment1_pd.yaml")
     cfg.train.target_total_steps = 1201
     cfg.train.max_epochs_for_step_budget = 100
     monkeypatch.setattr(corpus, "split_from_cfg", lambda cfg, **kw: NS(
@@ -97,7 +97,7 @@ def test_preflight_uses_smallest_partition_and_rejects_mixed_pass_packing(monkey
     report = Report()
     check_step_budget(cfg, "synthetic", report)
     assert report.n_fail == 1  # 1201/13 fits; 1201/12 does not.
-    cfg = _load_cfg(config_path="config/sampling_pd.yaml")
+    cfg = load_train_config(config_path="config/sampling_pd.yaml")
     report = Report()
     check_packing_divides([(cfg, "synthetic")], report, trials_per_task=2)
     assert report.n_fail == 1
@@ -123,7 +123,9 @@ def test_preflight_does_not_accept_a_base_from_an_unused_storage_root(tmp_path, 
     assert report.n_fail == 1
 
 
-@pytest.mark.parametrize("job", ["maintenance", "eval_classical", "cluster_report"])
+@pytest.mark.parametrize("job", ["maintenance", "eval_classical", "cluster_report",
+                                "train_pd", "train_lgd", "eval_pd", "eval_lgd",
+                                "data", "probe_row_cap"])
 def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, job):
     bash = shutil.which("bash")
     if not bash and os.name == "nt":
@@ -135,7 +137,7 @@ def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, jo
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
-    for name in (f"{job}.slurm", "_job_log.sh"):
+    for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_activate_env.sh").write_text(
         'echo "synthetic activation failure" >&2\nreturn 17\n', encoding="utf-8")
@@ -149,3 +151,59 @@ def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, jo
     content = logs[0].read_text(encoding="utf-8")
     assert "synthetic activation failure" in content and "END exit_code=17" in content
     assert not list((node / "CreditPFN").glob("*.log"))
+
+
+@pytest.mark.parametrize("failure", ["--list-trials", "--trial-family"])
+def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failure):
+    bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /
+                                       "Programs/Git/bin/bash.exe")
+    if not Path(bash).is_file():
+        pytest.skip("Bash required")
+    repo = Path(__file__).resolve().parents[1]
+    node = tmp_path / "node"
+    scripts = node / "CreditPFN/scripts/slurm"
+    scripts.mkdir(parents=True)
+    for name in ("train_pd.slurm", "_train_job.sh", "_run_train.sh", "_job_log.sh"):
+        shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    (scripts / "_activate_env.sh").write_text('''python() {
+    if [[ "$*" == *"$FAIL_LOOKUP"* ]]; then echo 'lookup failed' >&2; return 29; fi
+    if [[ "$*" == *--list-trials* ]]; then echo 8; return; fi
+    echo 'UNEXPECTED_COMPUTE' >&2; return 31
+}
+''', encoding="utf-8")
+    result = subprocess.run([bash, (scripts / "train_pd.slurm").as_posix()],
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+                 CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
+                 CREDITPFN_CONFIG="config/experiment0_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
+                 SLURM_ARRAY_TASK_ID="0", FAIL_LOOKUP=failure), capture_output=True, text=True)
+    assert result.returncode == 29, result.stderr
+    log = (node / "CreditPFN/output/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
+    assert "lookup failed" in log and "END exit_code=29" in log
+    assert "UNEXPECTED_COMPUTE" not in log
+
+
+@pytest.mark.parametrize("track", ["pd", "lgd"])
+def test_eval_wrapper_forwards_phase_partition_and_packing(tmp_path, track):
+    bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /
+                                       "Programs/Git/bin/bash.exe")
+    if not Path(bash).is_file():
+        pytest.skip("Bash required")
+    repo = Path(__file__).resolve().parents[1]
+    node = tmp_path / "node"
+    scripts = node / "CreditPFN/scripts/slurm"
+    scripts.mkdir(parents=True)
+    for name in (f"eval_{track}.slurm", "_eval_job.sh", "_job_log.sh"):
+        shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    (scripts / "_activate_env.sh").write_text('python() { printf "ARG:%s\\n" "$@"; }\n',
+                                             encoding="utf-8")
+    result = subprocess.run([bash, (scripts / f"eval_{track}.slurm").as_posix()],
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+                 CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
+                 CREDITPFN_CONFIG=f"phase path/{track}.yaml", CREDITPFN_SPLIT_INDEX="3",
+                 SLURM_ARRAY_TASK_ID="5", EVAL_TASKS="12"), capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    log = (node / f"CreditPFN/output/logs/eval_{track}_synthetic_r0.log").read_text(encoding="utf-8")
+    assert f"ARG:--config\nARG:phase path/{track}.yaml" in log
+    assert "ARG:--split-index\nARG:3" in log and "ARG:--task-index\nARG:5" in log
+    assert "ARG:--tasks\nARG:12" in log and f"ARG:track={track}" in log
+    assert not (node / "CreditPFN/output/results").exists()

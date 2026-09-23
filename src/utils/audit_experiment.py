@@ -14,7 +14,7 @@ import pandas as pd
 from omegaconf import OmegaConf
 
 from src.utils.checkpoint_inventory import resolve_checkpoint
-from src.utils.experiment import apply_split_index, file_digest
+from src.utils.experiment import apply_split_index
 from src.utils.paths import manifests_dir, resolve_base_checkpoint, resolve_staging_path
 from src.utils.prepare_experiment import plan_path
 
@@ -39,16 +39,16 @@ def null_monitor_parity(frame: pd.DataFrame) -> bool:
 
 
 def audit(config: Path, *, null=False) -> dict:
-    from scripts.train_pipeline import _load_cfg, _resolve_grid
+    from src.train.config import load_train_config, resolve_grid
     from src.train.loop import descriptive_name
-    cfg = _load_cfg(config_path=str(config))
+    cfg = load_train_config(config_path=str(config))
     plan = json.loads(plan_path(str(cfg.run_name), str(cfg.track)).read_text(encoding="utf-8"))
     report = {"run": str(cfg.run_name), "track": str(cfg.track), "expected": len(plan["trials"]),
               "completed": 0, "diverged": 0, "pending": 0, "problems": [], "trials": [], "timing": []}
     timings = {}
     for index in range(int(cfg.corpus.n_splits)):
         current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), index)
-        for trial_index, trial in enumerate(_resolve_grid(current, single=False)):
+        for trial_index, trial in enumerate(resolve_grid(current, single=False)):
             base, lr, frozen, query, accum, mode, min_rows, l2sp = trial
             name = descriptive_name(run_name=current.run_name, track=current.track, base_path=base,
                 learning_rate=lr, seed=current.seed, use_lora=frozen, query_fraction=query,

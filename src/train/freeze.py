@@ -1,78 +1,15 @@
-"""ONE frozen-backbone implementation, shared by every model family.
+"""Freeze the repeated-block transformer stack holding the most parameters.
 
-WHY THIS FILE EXISTS
---------------------
-`frozen_backbone` is a sweep axis in experiment 1, so the arm has to mean the same thing for
-TabPFN v2 / v2.6 / v3 and for TabICLv2. Two earlier attempts did not:
+The rule is shared across model families. Everything outside the selected stack
+stays trainable, including TabICL's column embedder and row interactor. This is
+not head-only training or an exact reproduction of a literature PEFT recipe;
+see docs/RESEARCH_BRIEF.md and docs/LITERATURE.md for that distinction.
 
-  1. TabPFN got LoRA while TabICLv2 got a real freeze. LoRA is not a freeze — its adapters sit
-     INSIDE the transformer, so gradients still traverse the whole network and every activation
-     is still retained. That is why the LoRA arm measured as a no-op AND saved no memory in
-     runs 4, 6 and 7.
-  2. Both then got `requires_grad=False`, but on modules chosen per family by name. TabPFN froze
-     `icl_blocks`/`blocks` (88-99 % of parameters) while TabICLv2 froze
-     `col_embedder`+`row_interactor` (4.6 %) — opposite operations under one column name,
-     because TabICLv2's parameters live in its LAST stage, not its first.
-
-So the rule here is stated once, structurally, and derived from the model itself rather than from
-a per-family list of module names:
-
-    Freeze the repeated-block transformer stack holding the most parameters.
-    Train everything outside it: embedders, label encoder, prediction head.
-
-Applied to the shipped checkpoints that resolves to, with no family-specific code:
-
-    v3       icl_blocks                    24 blocks   ->  96.6 % frozen /  3.4 % trainable
-    v2.6     blocks                        24 blocks   ->  99.1 % frozen /  0.9 % trainable
-    v2       transformer_encoder.*         (cluster)   ->  ~97.7 % / ~2.3 %
-    tabicl   icl_predictor.tf_icl.blocks   12 blocks   ->  93.4 % frozen /  6.6 % trainable
-
-and for the regressors 88.1 / 82.6 / 90.1 % frozen respectively — the regressor heads are much
-larger, which is a real architectural fact rather than an inconsistency in this code.
-
-Note what the rule does NOT pick: TabICLv2's `col_embedder.tf_col.blocks` (0.88M) and
-`row_interactor.tf_row.blocks` (0.40M) are also repeated-block stacks, but they hold far
-fewer parameters than `icl_predictor.tf_icl` (25.7M), so selection by parameter count
-excludes them. That is the intent — they are the input-embedding stages, the analogue of
-TabPFN's `feature_distribution_embedder`, and they stay trainable in both families.
-
-WHAT THE LITERATURE CALLS THIS
-------------------------------
-Rubachev et al., "On Finetuning Tabular Foundation Models" (the only *tuned* finetuning search
-for TabPFNv2) re-evaluates four partial strategies against full fine-tuning:
-
-  * LoRA
-  * "Last layers - finetuning only the upper layer ... a popular partial finetuning method"
-  * "LayerNorm, Head and Embeddings - finetuning only the feature and target linear embedding
-    layers, MLP prediction head and the affine layer normalization parameters"
-  * learned numerical feature embeddings
-
-What this file implements is their third strategy MINUS the LayerNorm affines, and the omission
-is deliberate — see below. Their headline finding is worth knowing before we run it: "the
-difference between full finetuning and all considered PEFT variations is minimal", and full
-fine-tuning converged roughly twice as fast. So we should expect the frozen arm to land near the
-full arm rather than beat it; the interesting outcome is whether that holds on credit data, and
-whether it holds equally across four model generations.
-
-WHY THE LAYERNORM AFFINES STAY FROZEN (a deliberate deviation)
---------------------------------------------------------------
-Rubachev also trains LayerNorm affine parameters; this implementation leaves the selected
-stack fully frozen. That is a distinct adaptation recipe, not an exact replication.
-Trainable input embeddings still require gradients through the frozen stack, so autograd
-retains the activations needed for that path. Freezing removes parameter-gradient and
-optimizer-state work, but does not eliminate the stack's activation graph. Measure peak
-memory and throughput; do not raise row caps based only on the frozen parameter fraction.
-
-NEVER CALL .eval() HERE
------------------------
-Freezing is `requires_grad=False` and nothing else. In TabICLv2 `self.training` selects the
-ALGORITHM, not just dropout: `ColEmbedder.forward` and `RowInteractor.forward` branch
-`if self.training: _train_forward else: _inference_forward`, and the inference branch runs under
-`no_grad` and writes CLS tokens into its input in place. Putting a frozen module in eval mode
-therefore raised "A view was created in no_grad mode and is being modified inplace with grad
-mode enabled" and killed all 16 frozen trials in the 05-08-2026 run. Keeping every module on the
-train forward path also makes the frozen arm a clean ablation of the full arm: identical
-computation, different gradients.
+Freezing sets requires_grad=False, never eval(): TabICL's inference branch uses
+no_grad and in-place updates that are incompatible with this training path.
+Trainable input embeddings still require gradients through the frozen stack,
+so its activation memory does not disappear. Measure memory and throughput.
+Actual selected modules and trainable parameter counts are saved in provenance.
 """
 
 from __future__ import annotations

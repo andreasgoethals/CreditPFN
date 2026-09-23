@@ -1,255 +1,72 @@
-# Private historical runs, kept outside the active output tree.
-/archive/
-
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-#Pipfile.lock
-
-# UV
-#   For this application project we DO commit uv.lock for reproducibility.
-#   Leave uv.lock tracked; ignore uv's caches only.
-.uv-cache/
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-#poetry.lock
-#poetry.toml
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-#pdm.lock
-#pdm.toml
-.pdm-python
-.pdm-build/
-
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-#pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#.idea/
-
-# Abstra
-# Abstra is an AI-powered process automation framework.
-# Ignore directories containing user credentials, local state, and settings.
-# Learn more at https://abstra.io/docs
-.abstra/
-
-# Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#  you could uncomment the following to ignore the entire vscode folder
-# .vscode/
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Cursor
-#  Cursor is an AI-powered code editor. `.cursorignore` specifies files/directories to
-#  exclude from AI features like autocomplete and code analysis. Recommended for sensitive data
-#  refer to https://docs.cursor.com/context/ignore-files
-.cursorignore
-.cursorindexingignore
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-# ---------------------------------------------------------------------------
-# CreditPFN project-specific ignores
-# ---------------------------------------------------------------------------
-
-# Datasets — credit-risk data is sensitive and large; never commit.
-# Anchor to the repository root so src/data/ remains trackable source code.
+# Private inputs, weights and historical runs (never commit).
 /data/
-!/data/.gitkeep
-!/data/README.md
-
-# PRIVACY — the real-slug <-> display-name mapping for the 7 proprietary datasets.
-# This is the strongest secret (it de-anonymises published results). NEVER commit it.
-# The tracked accessor src/data/dataset_names.py degrades to raw slugs when it is absent.
+/archive/
 /src/data/_private_names.py
-# NOTE (21-09-2026): src/data/preprocessing.py is intentionally TRACKED for now. The cluster's
-# data/train/eval pipelines all import it, so a plain `git pull` must deliver it or the run breaks.
-# It still contains proprietary slugs + real column names — re-privatise it (uncomment the line
-# below, then `git rm --cached src/data/preprocessing.py`, and restore the file on the cluster
-# out-of-band) once the code is frozen. Until then it stays tracked so nothing on VSC breaks.
-# /src/data/preprocessing.py   <-- re-enable this line when re-privatising
-#
-# Generated result artefacts that embed real slugs are handled by the output/ rules further down
-# (output/All_Results.md + output/figures/*); notebooks regenerate them via the anonymising accessor.
-
-# Model checkpoints — share folder markers and any checkpoint README
-# (so collaborators see which weights go where) but never commit
-# the actual .ckpt files. The negation rules below let a checkpoint note,
-# any README, and a .gitkeep stub through; the universal weight-file
-# globs at the bottom catch everything else.
-checkpoints/*
-!checkpoints/.gitkeep
-!checkpoints/README.md
-# Checkpoint formats are documented in docs/VSC.md; keep this legacy
-# note exception for older checkouts.
-!checkpoints/CHECKPOINTS.md
+# preprocessing.py is intentionally tracked for cluster imports. Re-privatize
+# its proprietary names out of band when the preprocessing code is frozen.
+/checkpoints/*
+!/checkpoints/.gitkeep
+!/checkpoints/README.md
 *.ckpt
 *.pt
 *.pth
 *.bin
 *.safetensors
 
-# Experiment tracking
+# Generated output: only the anonymized notebook summaries are tracked.
+/output/*
+!/output/All_Results.md
+!/output/figures/
+/output/figures/*
+!/output/figures/CAPTIONS.md
+# Retain guards against output from older checkouts.
+/results/
+/logs/
+/.sentinels/
+/downloads/
+*.log
+slurm-*.out
+slurm-*.err
+
+# Environments, credentials and personal agent settings.
+.env
+.env.*
+.envrc
+.venv/
+venv/
+env/
+ENV/
+.pypirc
+CLAUDE.local.md
+/.claude/
+/.codex/
+
+# Python/build/test/tool caches.
+__pycache__/
+*.py[codz]
+*.so
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+.Python
+__pypackages__/
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.uv-cache/
+.cache/
+.tox/
+.nox/
+.coverage*
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
+docs/_build/
+
+# Optional experiment trackers must not leak separate output trees into Git.
 wandb/
 mlruns/
 lightning_logs/
@@ -258,40 +75,8 @@ tensorboard/
 outputs/
 multirun/
 
-# CreditPFN's "everything the code writes" tree. Anchored to repo root
-# so a `src/output/` (if anyone ever created one) stays tracked, but
-# `<repo>/output/` does not. Subtree layout:
-#   output/manifests/   — per-run trial manifest CSVs
-#   output/manifests/epochs/      — per-trial per-epoch CSVs
-#   output/results/              — eval-pipeline benchmark CSVs
-#   output/figures/<notebook>/   — notebook-generated PDFs
-#
-# `/output/*` and NOT `/output/`: an excluded DIRECTORY is never descended into, so
-# `!/output/figures/CAPTIONS.md` under a bare `/output/` rule has no effect at all. Each
-# level of the path has to be opened before a file inside it can be re-included.
-/output/*
-!/output/All_Results.md
-!/output/figures/
-/output/figures/*
-!/output/figures/CAPTIONS.md
-
-# Legacy results/ directory (pre-output-paradigm). Keep ignored so an
-# old checkout containing leftover results/ files doesn't bleed into
-# new commits.
-/results/
-
-# SLURM / VSC logs
-slurm-*.out
-slurm-*.err
-*.slurm.log
-/logs/
-
-# IDE / editor
+# Editors: share only the repository's import-path settings.
 .idea/
-# `.vscode/` is ignored EXCEPT settings.json + extensions.json, which the template
-# commits: without `python.analysis.extraPaths`, Pylance cannot resolve
-# `from src.utils...` in a fresh clone (flat `src/` package root), so every import is
-# underlined red until someone runs the editable install. Layout, not taste.
 /.vscode/*
 !/.vscode/settings.json
 *.swp
@@ -299,7 +84,7 @@ slurm-*.err
 .DS_Store
 Thumbs.db
 
-# Large-file guards (catch accidental commits of big artefacts)
+# Large artifact formats outside the designated trees.
 *.parquet
 *.feather
 *.h5
@@ -316,12 +101,3 @@ Thumbs.db
 *.pickle
 *.joblib
 *.onnx
-
-# docs/AGENTS_MEMORY.md is TRACKED as of 11-08-2026 (the template makes it a
-# required doc): a dead end nobody else can see gets paid for twice. Durable
-# methodology lives in docs/RESEARCH_BRIEF.md and operations in docs/VSC.md.
-
-# CLAUDE.md IS tracked: it is one line, `@AGENTS.md`, so Claude Code and every other
-# agent read the same rules with nothing duplicated. Only the personal scratch file
-# below stays local.
-CLAUDE.local.md

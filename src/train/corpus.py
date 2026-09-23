@@ -512,7 +512,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
         # partition and weight initialisation, so changing the split also changed the init
         # and the two effects were confounded. Defaults to cfg.seed so old runs reproduce.
         # `or` would be wrong here: split_seed=0 is a LEGITIMATE value (it is split 0
-        # of n_splits, set by train_pipeline._apply_split_index) and `0 or 42` is 42 in
+        # of n_splits, set by src.utils.experiment.apply_split_index) and `0 or 42` is 42 in
         # Python. That silently made split 0 draw the same datasets as a no-split run,
         # collapsing an 8-split campaign to 7 distinct draws with nothing in the output
         # to show it. Test for None explicitly.

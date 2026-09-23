@@ -1,30 +1,13 @@
-"""Version-tolerant imports + family detection for TabICLv2 (v2).
+"""Version-tolerant TabICLv2 imports and checkpoint-family detection.
 
-TabICLv2 is the second model family CreditPFN continued-pretrains (2026-08-04),
-next to TabPFN. It is fully open (code BSD-3, weights on HF `jingang/TabICL`)
-and ships official finetuning internals under ``tabicl._finetune`` — private
-modules, so every import is funneled through this file (mirroring
-``tabpfn_compat.py``) and pinned via ``pyproject.toml`` (``tabicl[finetune]>=2.1.1,<3``).
-If an upstream release moves these symbols, this is the ONE file to fix.
+Training uses private upstream finetuning APIs, isolated here and checked by
+smoke_test. The tabicl[finetune] dependency supplies their required extras; the
+prepared plan records the actual installed package version.
 
-Family detection
-----------------
-A base checkpoint belongs to the ``"tabicl"`` family iff its filename contains
-``tabicl`` (e.g. ``checkpoints/tabicl-classifier-v2-20260212.ckpt``); anything
-else is ``"tabpfn"``. The checkpoint files are downloaded once from
-https://huggingface.co/jingang/TabICL into the staging ``checkpoints/`` dir —
-same pattern as the TabPFN bases.
-
-Adaptation-mode caveat (from the literature, 2026-08-04)
---------------------------------------------------------
-Two independent reports show TabICLv2 is fragile under aggressive full SFT
-(Tanna 2026: TabZilla accuracy 0.873→0.567; Kolberg 2026: their CPT recipe
-"failed to train TabICLv2"), while TabICLv2's own pretraining stage 3 freezes
-everything except the ICL module. CreditPFN therefore maps the grid's
-``use_lora`` axis, for this family, to **freeze-backbone / train-ICL-head-only**
-(the upstream-sanctioned adaptation) instead of LoRA — see
-``load_tabicl_for_training(freeze_backbone=...)`` and the ``_iclhead`` tag in
-checkpoint names.
+Filenames containing 'tabicl' select this family. Frozen-backbone adaptation
+uses src.train.freeze, which freezes the largest repeated transformer stack
+and leaves all other modules trainable. It is not the upstream stage-3 freeze
+or head-only training. Old _iclhead filenames remain readable as historical data.
 """
 
 from __future__ import annotations

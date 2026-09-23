@@ -190,10 +190,7 @@ def processed_dir(*parts: str) -> Path:
 
 
 def checkpoints_dir(*parts: str) -> Path:
-    """Model weights. Big -> project storage. Never deleted by the cleaner: downloaded from
-    upstream, or a training run to reproduce."""
-    # PROJECT LAYER: weights are big, so staging, with the output-root fallback that saved
-    # run-1 when staging turned out to be read-only from the Mindwell compute nodes.
+    """Model weights on project storage; a full clean removes only the trained subtree."""
     return resolve_staging_path(Path("checkpoints", *parts))
 
 
@@ -540,20 +537,11 @@ def resolve_base_checkpoint(p: str | os.PathLike) -> Path:
 
 
 def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
-    """Like :func:`resolve_staging_path`, but VERIFIED writable — with an
-    automatic fallback to the output root (``$VSC_DATA``) when it isn't.
+    """Probe relative checkpoint directories before training, caching each result.
 
-    WHY (run post-mortem, 2026-07-04): all 32 PD training trials of the
-    Jul-3 run died at the FIRST checkpoint save with ``[Errno 13] Permission
-    denied: /lustre1/project/.../checkpoints/trained`` — project staging was
-    readable from the Mindwell compute nodes (data + base checkpoints loaded
-    fine) but not writable, and each trial burned ~6 minutes of B200 time
-    before hitting the wall. This resolver probes writability (mkdir -p +
-    touch + unlink) ONCE per process at path-resolution time — i.e. BEFORE
-    any training compute — and falls back to the durable output root with a
-    loud warning instead of failing 3 hours into an array.
-
-    The probe result is cached per resolved root, so repeated calls are free.
+    The named launcher sets CREDITPFN_REQUIRE_STAGING=1 and refuses DATA fallback.
+    Other callers may permit the historical output-root fallback explicitly by
+    leaving that guard unset. Absolute paths are caller-selected and returned as-is.
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -579,17 +567,15 @@ def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
             cache[key] = False
             logger.warning(
                 "Staging root %s is NOT writable from this node (%s). "
-                "Falling back to the output root for %s — artefacts will land "
-                "under %s instead. Move them to staging later with "
-                "scripts/slurm/stage_to_project.slurm, and check the staging "
-                "dir's permissions/mount on this cluster.",
-                staging, exc, p, resolve_output_path(p),
+                "Check the project's permissions/mount before running jobs.",
+                staging, exc,
             )
     if cache[key]:
         return staging / path
     if os.environ.get("CREDITPFN_REQUIRE_STAGING") == "1":
         raise PermissionError("Project storage is not writable; refusing to put large weights on DATA")
     fallback = resolve_output_path(p)
+    logger.warning("Using the explicitly permitted output-root fallback for %s: %s", p, fallback)
     fallback.mkdir(parents=True, exist_ok=True)
     return fallback
 

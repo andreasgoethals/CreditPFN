@@ -617,10 +617,9 @@ def plot_zero_shot_vs_baseline(df: pd.DataFrame, metric: str = "roc_auc"):
 def plot_corpus_arm(df: pd.DataFrame, metric: str = "roc_auc"):
     """Paired Δ split by the `min_train_rows` corpus filter.
 
-    Garg's ablation reports that continued-pretraining gains scale with the SIZE of the
-    tables in the corpus, and that a corpus of tiny tables hurts. `min_train_rows` is this
-    project's test of that claim and the only axis of run-8 that moved the result, so it
-    deserves a figure rather than a suffix on a leaderboard row.
+    Retained for historical size-filter comparisons. The current main grid has
+    one corpus definition, so this plot reports no comparison when only one
+    arm is present. Historical results belong in docs/AGENTS_MEMORY.md.
     """
     d = paired_deltas(df, metric)
     if d.empty or _METHOD_COL not in d.columns:
@@ -867,11 +866,9 @@ _LITERATURE_LR = {
 def plot_drift_vs_lr(manifest, track: str = ""):
     """Weight distance from initialisation against learning rate, log-log, per base.
 
-    ||w - w0|| / ||w0|| is the dose actually delivered. Run-8 delivered 0.2-0.7 % on PD, and the
-    relationship is monotone in the learning rate with no sign of saturation — i.e. every trial
-    sat in the near-initial regime, so "continued pretraining did not help" cannot yet be
-    distinguished from "continued pretraining did not happen". The reference lines are what the
-    literature uses; ours are to the left of all of them.
+    Relative weight drift measures how far optimization moved the parameters;
+    it does not by itself establish useful learning or undertraining. Literature
+    reference rates provide context, not predictions for the observed curves.
     """
     need = {"learning_rate", "final_drift", "base_checkpoint"}
     if manifest is None or manifest.empty or not need <= set(manifest.columns):

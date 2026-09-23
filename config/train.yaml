@@ -4,7 +4,7 @@
 
 # --------------------------------------------------- SHARED ACROSS EXPERIMENTS ----
 # `learning_rates`, `l2sp_lambdas` and `frozen_backbone` are NOT here on purpose: they differ in
-# every experiment, so a value here would only ever be a stale second copy. _resolve_grid raises
+# every experiment, so a value here would only ever be a stale second copy. src.train.config.resolve_grid raises
 # if an experiment omits them.
 tunable:
   query_fractions: [0.40]                 # fraction of each step's rows that carry the loss

@@ -1,65 +1,16 @@
-"""End-to-end orchestrator for the cross-model benchmark.
+"""Benchmark models on their held-out datasets using processed input tables.
 
-Scores every model on every held-out test dataset. The eval reads the
-**processed CSVs** under ``data/processed/{track}/<id>.sanitized.csv``
-— the same on-disk format the training pipeline uses since the
-2026-05-20 refactor.
+src.eval.config reconstructs the matching training phase/partition. Trained models
+use checkpoint provenance for their held-out datasets; untuned and classical
+controls use that same phase. Row-level evaluation settings come from config/eval.yaml,
+phase overrides and explicit CLI overrides, in increasing precedence order.
 
-Per (model × dataset) the eval runs ``cfg.cv.n_folds`` cross-validation
-with an INNER train/val split for HPO + F1-threshold tuning:
+Each task writes its own output/results files on project storage. Completed cells
+are reused only when their evaluation identity matches. --rerun forces fresh scoring.
+--tasks and --task-index control cost-based packing; a task may contain several
+model/dataset pairs. --method and --test-dataset restrict the roster.
 
-    outer split:  80% train,  20% test          (per fold)
-    inner split:  80% sub-train, 20% validation (within the train fold)
-
-Two execution modes
--------------------
-
-1. **Local / single process (default)** — iterate every model on
-   every test dataset in one process::
-
-       python scripts/eval_pipeline.py track=pd
-
-2. **Slurm-array (one (model × test_dataset) per task)** — the
-   cartesian product of models × held-out datasets is modest, but each
-   cell includes an Optuna HPO study, so scoring one pair per task
-   parallelises the eval across the queue. Each task processes ONE
-   pair::
-
-       N=$(python scripts/eval_pipeline.py --list-tasks track=pd)
-       sbatch --array=0-$((N - 1))%32 scripts/slurm/eval_pd.slurm
-
-   Each task writes its own
-   ``output/results/<TRACK>/<method>/<run>_<timestamp>__ds-<id>.csv``,
-   so concurrent tasks never write to the same file (no locking).
-
-Re-runs and skip-existing
--------------------------
-By default the eval is **idempotent across reruns**: before scoring,
-each (model × test_dataset) pair is checked against existing CSVs
-under ``<results.base_dir>/<TRACK>/<method-dirname>/``. If the existing
-files contain every required fold with ``status=OK``, the pair is skipped.
-This means adding a new trained checkpoint and resubmitting
-the eval only triggers work for the new (and any previously failed)
-cells — XGBoost, CatBoost, LogReg, LinReg, and untuned-TabPFN do not
-re-run. Pass ``--rerun`` to force fresh scoring.
-
-Optional filters
-----------------
-* ``--method <name>``         — score only this model.  Repeatable.
-* ``--test-dataset <id>``     — score only this test dataset.  Repeatable.
-* ``--task-index N``          — pick the Nth (model, dataset) pair.
-* ``--list-tasks``            — print the total task count and exit.
-* ``--rerun``                 — disable the skip-already-scored guard.
-
-Test-dataset resolution
------------------------
-For ``tabpfn-trained`` models the test datasets come from each
-checkpoint's ``.provenance.json`` (so every checkpoint is scored on
-its OWN held-out set — recorded at training time). For
-``tabpfn-untuned`` and classical baselines the test datasets come
-from the train.yaml corpus split. Both routes give the same set
-when the seed and fractions match (which they do by default), so
-the comparison is apples-to-apples.
+Use scripts/slurm/run_experiment.sh with STAGES=eval for a prepared VSC phase.
 """
 
 from __future__ import annotations
@@ -79,6 +30,7 @@ from src.utils.paths import (  # noqa: E402
     manifests_dir,
     results_dir,
 )
+from src.eval.config import load_eval_configs  # noqa: E402
 from src.utils.config import dump_resolved  # noqa: E402
 from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
@@ -86,39 +38,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
-# Cfg loading
-# --------------------------------------------------------------------------- #
-
-
-def _load_cfgs(eval_overrides: list[str], train_overrides: list[str],
-               config_path: str | None = None, split_index: int | None = None):
-    from omegaconf import OmegaConf
-    eval_cfg = OmegaConf.load("config/eval.yaml")
-    if eval_overrides:
-        eval_cfg = OmegaConf.merge(eval_cfg, OmegaConf.from_dotlist(eval_overrides))
-    train_cfg = OmegaConf.load(eval_cfg.train_cfg_path)
-    # EXPERIMENT CONFIG, merged as a DELTA exactly as scripts/train_pipeline._load_cfg does.
-    # Without it eval reads config/train.yaml, whose run_name is "creditpfn", and then looks for
-    # a manifest experiment 1 never writes AND re-draws its test datasets from the wrong corpus
-    # block. Loading the experiment file alone would crash instead: it is a delta and omits ~25
-    # machinery keys.
-    if config_path and str(config_path) != str(eval_cfg.train_cfg_path):
-        train_cfg = OmegaConf.merge(train_cfg, OmegaConf.load(str(config_path)))
-    if train_overrides:
-        train_cfg = OmegaConf.merge(train_cfg, OmegaConf.from_dotlist(train_overrides))
-    # SPLIT INDEX, mirroring train_pipeline._apply_split_index so eval reconstructs the SAME
-    # dataset draw the checkpoint was trained under. `split_seed` drives the draw and the
-    # run_name suffix selects the manifest; getting either wrong evaluates a model on tables it
-    # was trained on, which no downstream check would catch.
-    from src.utils.experiment import apply_split_index
-    train_cfg = apply_split_index(train_cfg, split_index)
-    if "evaluation" in train_cfg:
-        eval_cfg = OmegaConf.merge(eval_cfg, train_cfg.evaluation)
-    return eval_cfg, train_cfg
-
-
-# --------------------------------------------------------------------------- #
-# Auto-cache hook (Gemini's #2 fix)
+# Prepare missing processed inputs
 # --------------------------------------------------------------------------- #
 #
 # The eval reads PROCESSED CSVs under
@@ -429,11 +349,11 @@ def run(
     rerun: bool = False,
     # Which experiment, and which of its dataset splits. Both must match what the checkpoints
     # were TRAINED with: `config` selects the manifest that lists them and `split_index` selects
-    # the held-out datasets. See _load_cfgs.
+    # the held-out datasets. See load_eval_configs.
     config: str | None = None,
     split_index: int | None = None,
 ) -> int:
-    eval_cfg, train_cfg = _load_cfgs(eval_overrides or [], train_overrides or [],
+    eval_cfg, train_cfg = load_eval_configs(eval_overrides or [], train_overrides or [],
                                      config_path=config, split_index=split_index)
     track = str(train_cfg.track)
 
@@ -535,7 +455,7 @@ def run(
         print(line)
         return 0
 
-    # Auto-cache hook (Gemini's #2 fix) — the eval reads PROCESSED
+    # Prepare missing processed inputs — the eval reads PROCESSED
     # CSVs and the per-track manifest. If any of the datasets we're
     # about to score is missing on disk, run the data pipeline for
     # just those IDs. Idempotent if everything is already there.
@@ -634,24 +554,14 @@ def _parse_args(argv: list[str] | None = None):
                    help="Pick the Nth (model × dataset) pair. For SLURM "
                         "arrays — set to $SLURM_ARRAY_TASK_ID.")
     p.add_argument("--pools", type=int, default=None,
-                   help="With --list-tasks: number of GPU pools the eval is "
-                        "split across. Prints the comma-separated task indices "
-                        "for pool --pool instead of the total count. Pools are "
-                        "assigned by MODEL parity (model_idx %% pools), so every "
-                        "pool covers ALL test datasets — a raw index-parity "
-                        "stride assigns entire datasets to one pool whenever "
-                        "n_datasets shares a factor with the pool count (seen "
-                        "2026-07-11: ALL of lgd_lendingclub landed on the slow "
-                        "A100 pool and went unscored for hours).")
+                   help="With --list-tasks: print task indices for --pool using "
+                        "task-index stride (index %% pools), instead of a total count.")
     p.add_argument("--pool", type=int, default=None,
                    help="With --pools: which pool's indices to print (0-based).")
     p.add_argument("--tasks", type=int, default=None,
                    help="Pack the (model x dataset) cells into this many slurm array "
                         "tasks of roughly equal estimated cost, instead of one task per "
-                        "cell. MEASURED (11-08-2026): one-cell-per-task gave 209 PD tasks "
-                        "whose median compute was 94 s, and the array averaged 0.73 "
-                        "concurrent jobs because each had to be scheduled separately — "
-                        "44 %% of the wall-clock was dead time. Must be passed IDENTICALLY "
+                        "cell. Must be passed identically "
                         "to --list-tasks and to --task-index, or the two disagree about "
                         "which cells belong to task i.")
     p.add_argument("--list-tasks", action="store_true",
@@ -684,7 +594,7 @@ def _parse_args(argv: list[str] | None = None):
 if __name__ == "__main__":
     args, eval_overrides, train_overrides = _parse_args()
     if args.list_tasks:
-        eval_cfg, train_cfg = _load_cfgs(eval_overrides, train_overrides,
+        eval_cfg, train_cfg = load_eval_configs(eval_overrides, train_overrides,
                                         config_path=getattr(args, 'config', None),
                                         split_index=getattr(args, 'split_index', None))
         track = str(train_cfg.track)

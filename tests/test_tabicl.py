@@ -815,7 +815,7 @@ def test_training_grid_contains_both_families() -> None:
     from omegaconf import OmegaConf
     repo = Path(__file__).resolve().parents[1]
     # The base ladder lives in config/train.yaml; the swept axes now live in the experiment
-    # configs and train.yaml deliberately omits them. Merge one in, exactly as _load_cfg does.
+    # configs and train.yaml deliberately omits them. Merge one in, exactly as load_train_config does.
     cfg = OmegaConf.merge(
         OmegaConf.load(repo / "config" / "train.yaml"),
         OmegaConf.load(repo / "config" / "experiment1_pd.yaml"),
@@ -830,7 +830,7 @@ def test_training_grid_contains_both_families() -> None:
         #     (run-8: TabICLv2 only — LoRA on TabPFN was a measured no-op three times).
         #   * `corpus.min_train_rows` was a swept axis in run-8 and is a SCALAR again from
         #     run-9 (the dataset-split draw varies table sizes instead). Mirror
-        #     `_resolve_grid`'s handling: a scalar is a one-value axis, a list is swept.
+        #     `resolve_grid`'s handling: a scalar is a one-value axis, a list is swept.
         #   * `l2sp_lambdas` is an axis from run-9; null means "not swept".
         def _n(axis, default=1):
             raw = cfg.tunable.get(axis, None) if hasattr(cfg, "tunable") else None
@@ -867,8 +867,8 @@ def test_training_grid_contains_both_families() -> None:
         cfg_track = OmegaConf.create(OmegaConf.to_container(cfg, resolve=True))
         with open_dict(cfg_track):
             cfg_track.track = track
-        from scripts.train_pipeline import _resolve_grid
-        actual = len(_resolve_grid(cfg_track, single=False))
+        from src.train.config import resolve_grid
+        actual = len(resolve_grid(cfg_track, single=False))
         assert actual == expected, (key, actual, expected)
         # Every base must appear, so no family can be silently skipped.
-        assert {b for b, *_ in _resolve_grid(cfg_track, single=False)} == set(bases)
+        assert {b for b, *_ in resolve_grid(cfg_track, single=False)} == set(bases)

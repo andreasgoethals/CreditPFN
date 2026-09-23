@@ -57,7 +57,7 @@ Local paths default to the repository. Consolidation writes eight compressed CSV
 
 During debugging, keep cluster output on VSC and share the relevant log text. Files downloaded for inspection stay where the user put them; do not import them into local `output/` or create extra inspection manifests. The final campaign download combines DATA's logs/manifests and project's results/consolidated tables under local `output/`. Downloading only DATA's output folder does not include project results. Notebook execution is a local analysis step: stdout is already in `.ipynb`, and `All_Results.md` reads the final summary cell. No notebook logs or locks are generated. The small `manifests/figures/*.json` files record PDF captions and order, as required by FigureSaver; scheduler locks exist only for cluster submission coordination.
 
-Maintenance logs are `output/logs/maintenance_<job-id>_r<restart>.log`; environment activation errors and final exit status go into that same file. Direct `sbatch` works even when `output/logs/` did not exist at submission: the batch shell creates the directory before opening its log. A maintenance cleanup preserves its own active log. The retired default-grid launcher and root-level completion markers are no longer used; use `run_experiment.sh` with an explicit phase config. `checkpoints/` and `data/processed/` are explicit template extensions, not misplaced logs/results.
+All Slurm jobs use `output/logs/<task>_<job-id>_r<restart>.log` (for example `maintenance_62111400_r0.log`); environment activation errors and final exit status go into that same file. Direct `sbatch` works even when `output/logs/` did not exist at submission: the batch shell creates the directory before opening its log. A maintenance cleanup preserves its own active log. The retired default-grid launcher and root-level completion markers are no longer used; use `run_experiment.sh` with an explicit phase config. `checkpoints/` and `data/processed/` are explicit template extensions, not misplaced logs/results.
 
 Only final weights and the latest recovery state persist. Recovery is removed after successful final publication. Intermediate trajectory weights are transient. Corpus schema/count inspection is cached per unchanged file within each process, and plan generation reuses resolved partitions across recipes. New configs disable raw prediction arrays while keeping computed metrics/calibration diagnostics. Enable predictions only for a separately named diagnostic evaluation with its own storage budget.
 
@@ -132,7 +132,7 @@ sbatch --time=00:15:00 scripts/slurm/maintenance.slurm preflight
 
 Run commands one at a time and retain the job ID printed by `sbatch`. Submission returns before the job executes; a queued job is not a hung terminal. If a pasted block stalls, interrupt the foreground command with Ctrl+C, then inspect `squeue` and `sacct` before submitting again. Accepted jobs remain submitted. Avoid hiding the submission response in shell command substitution during debugging.
 
-Inspect the log and `sacct` state. Passing preflight does not establish GPU correctness. For an environment/hardware report use `python -m src.utils.cluster_report`; add GPU checks only through `scripts/slurm/cluster_report.slurm` when needed. The named conda environment must work; jobs no longer fall back to another environment.
+Inspect the log and `sacct` state. Passing preflight does not establish GPU correctness. For an environment/hardware report use `python -m src.utils.cluster_report`; add GPU checks only through `scripts/slurm/cluster_report.slurm` when needed. Capacity probes measure synthetic BF16 forward/backward memory in both full and frozen modes, with the configured member counts and query fraction. They exclude optimizer state, L2-SP anchors and evaluation overhead; retain the measured caps until real pilots establish sufficient margin. Unexpected probe errors fail the job instead of silently changing adaptation mode. The named conda environment must work; jobs no longer fall back to another environment.
 
 Prepare null/pilot plans on VSC, where package/data identities are known:
 
@@ -144,7 +144,7 @@ for track in pd lgd; do
 done
 ```
 
-Wait for the plans. They are immutable: changed settings/code/data/environment require a fresh named plan, not overwriting an active one. `experiment0_{pd,lgd}.yaml` now prepares `cpt_null_v4_check2`, leaving the earlier `cpt_null_v4` preparation records untouched. No input restaging is required for an output/launcher-only fix. The launcher checks plan integrity, configuration, source and package versions before submitting any jobs. A full read-only verification, including input hashes, is available on a CPU node:
+Wait for the plans. They are immutable: changed settings/code/data/environment require a fresh named plan, not overwriting an active one. The config's `run_name` identifies its immutable plan; use a new name whenever source changes after preparation. No input restaging is required for an output/launcher-only fix. The launcher checks plan integrity, configuration, source and package versions before submitting any jobs. A full read-only verification, including input hashes, is available on a CPU node:
 
 ```bash
 sbatch --time=00:15:00 scripts/slurm/maintenance.slurm prepare --config config/experiment0_pd.yaml --check

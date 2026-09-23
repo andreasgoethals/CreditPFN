@@ -271,9 +271,8 @@ def section_attention() -> None:
 
 # --------------------------------------------------------------------------- 7
 def section_checkpoints() -> None:
-    head(7, "checkpoints — present, size, and the frozen trainable fraction")
+    head(7, "checkpoints: presence, size and state-dictionary groups")
     try:
-        sys.path.insert(0, str(REPO))
         from src.utils.stage_checkpoints import checkpoints_root, wanted_checkpoints
         import torch
     except Exception as exc:
@@ -297,9 +296,9 @@ def section_checkpoints() -> None:
                         sizes[str(k).split(".")[0]] = sizes.get(str(k).split(".")[0], 0) + v.numel()
                 tot = sum(sizes.values())
                 big = max(sizes, key=sizes.get) if sizes else "?"
-                frac = 100 * (tot - sizes.get(big, 0)) / max(1, tot)
-                line += (f"  {tot / 1e6:6.1f}M params   backbone={big}"
-                         f"  trainable-if-frozen={frac:.2f}%")
+                frac = 100 * sizes.get(big, 0) / max(1, tot)
+                line += (f"  {tot / 1e6:6.1f}M params   largest_state_group={big}"
+                         f"  group_share={frac:.2f}%")
         except Exception as exc:
             line += f"  (unreadable: {type(exc).__name__})"
         print(line)
@@ -309,7 +308,6 @@ def section_checkpoints() -> None:
 def section_data() -> None:
     head(8, "data on disk")
     try:
-        sys.path.insert(0, str(REPO))
         from omegaconf import OmegaConf
         from src.utils.paths import apply_data_source_from_cfg, processed_dir
         apply_data_source_from_cfg(OmegaConf.load(REPO / "config" / "data.yaml"))
@@ -337,39 +335,18 @@ def section_data() -> None:
 
 # --------------------------------------------------------------------------- 9
 def section_row_caps(rows_grid: list[int]) -> None:
-    head(9, "row caps — measured at the REAL member count, both adaptation modes")
-    try:
-        sys.path.insert(0, str(REPO))
-        from omegaconf import OmegaConf
-        from scripts.probe_row_cap import probe_base, probe_tabicl_base
-        from src.train.tabicl_compat import model_family
-    except Exception as exc:
-        print(f"  cannot import the probe: {type(exc).__name__}: {exc}")
-        return
-    cfg = OmegaConf.load(REPO / "config" / "train.yaml")
-    members = int(OmegaConf.select(cfg, "train.n_estimators_finetune.pd") or 2)
-    print(f"  n_estimators_finetune = {members} (this is what training uses)")
-    for track, key in (("pd", "classifier_base_paths"), ("lgd", "regressor_base_paths")):
-        for base in (OmegaConf.select(cfg, f"tunable.{key}") or []):
-            for frozen in (False, True):
-                tag = "frozen" if frozen else "full  "
-                print(f"\n  --- {Path(str(base)).name}  track={track}  mode={tag}")
-                fn = (probe_tabicl_base if model_family(str(base)) == "tabicl"
-                      else probe_base)
-                try:
-                    fn(str(base), track, rows_grid, "cuda",
-                       n_estimators=members, freeze_backbone=frozen)
-                except TypeError:
-                    fn(str(base), track, rows_grid, "cuda")
-                except Exception as exc:
-                    print(f"    FAILED: {type(exc).__name__}: {exc}")
+    head(9, "synthetic forward/backward capacity, both adaptation modes")
+    from omegaconf import OmegaConf
+    from src.train.capacity import probe_configured_bases
+
+    cfg = OmegaConf.load(REPO / "config/train.yaml")
+    probe_configured_bases(cfg, ("pd", "lgd"), rows_grid)
 
 
 # --------------------------------------------------------------------------- 10
 def section_io() -> None:
     head(10, "filesystem throughput — what the per-step CSV loader is bounded by")
     try:
-        sys.path.insert(0, str(REPO))
         from omegaconf import OmegaConf
         from src.utils.paths import apply_data_source_from_cfg, processed_dir
         apply_data_source_from_cfg(OmegaConf.load(REPO / "config" / "data.yaml"))
@@ -406,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rows", default="10000,26000,50000,90000",
                     help="comma-separated row grid for --probe")
     args = ap.parse_args(argv)
+    if args.probe and not args.gpu:
+        ap.error("--probe requires --gpu and a GPU allocation")
 
     print(BAR)
     print("  CreditPFN CLUSTER REPORT")

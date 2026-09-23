@@ -85,7 +85,7 @@ dependencies = [
     # gzipped CSV — which works, but is ~5x larger and was silently happening on
     # the cluster until the 24-08-2026 report flagged it.
     "pyarrow>=15.0",
-    # Plotting (figure export in src/utils/figures.py + the notebooks)
+    # Plotting (figure export in src/visualize/figures.py + the notebooks)
     "matplotlib>=3.8,<4.0",
     # LoRA adapter (training-time only; merged into base weights at save time)
     "peft>=0.10,<1.0",
@@ -109,12 +109,12 @@ notebooks = [
 [project.urls]
 Repository = "https://github.com/andreasgoethals/CreditPFN"
 
-[tool.setuptools]
+[tool.setuptools.packages.find]
 # `src` is imported directly as a top-level package (e.g. `import src.train.loop`),
 # matching how the scripts and tests reference it. The YAML configs are NOT
 # package data — every entrypoint loads them by cwd-relative path
 # (`OmegaConf.load("config/data.yaml")`) after cd-ing into the repo root.
-packages = ["src"]
+include = ["src", "src.*"]
 
 [tool.ruff]
 line-length = 100

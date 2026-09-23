@@ -10,25 +10,26 @@ from tests.test_train import synthetic_processed, _DummyClassifier
 
 
 def test_main_and_sampling_grid_counts_and_shared_partitions():
-    from scripts.train_pipeline import _load_cfg, _resolve_grid, _apply_split_index
+    from src.train.config import load_train_config, resolve_grid
+    from src.utils.experiment import apply_split_index
     from src.train.corpus import _assign_folds
     for track, size in (("pd", 17), ("lgd", 8)):
-        main = _load_cfg(config_path=f"config/experiment1_{track}.yaml")
-        sampling = _load_cfg(config_path=f"config/sampling_{track}.yaml")
-        assert len(_resolve_grid(main, single=False)) * main.corpus.n_splits == 256
-        assert len(_resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
+        main = load_train_config(config_path=f"config/experiment1_{track}.yaml")
+        sampling = load_train_config(config_path=f"config/sampling_{track}.yaml")
+        assert len(resolve_grid(main, single=False)) * main.corpus.n_splits == 256
+        assert len(resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
         assert set(sampling.tunable.epoch_pass_modes) == {"one_sample", "full_pass", "accumulate"}
         assert sampling.train.context_sampling == "stratified"
-        seeds = _load_cfg(config_path=f"config/seeds_{track}.yaml")
-        assert len(_resolve_grid(seeds, single=False)) * seeds.corpus.n_splits == 16
+        seeds = load_train_config(config_path=f"config/seeds_{track}.yaml")
+        assert len(resolve_grid(seeds, single=False)) * seeds.corpus.n_splits == 16
         assert list(seeds.experiment.training_seeds) == [43]
         assert seeds.seed == 43
         assert seeds.corpus.split_seed == main.corpus.split_seed
         assert seeds.train.context_sampling == main.train.context_sampling
         assert seeds.train.monitor_seed == main.train.monitor_seed
-        from scripts.eval_pipeline import _load_cfgs
-        main_eval, _ = _load_cfgs([], [], config_path=f"config/experiment1_{track}.yaml")
-        seed_eval, _ = _load_cfgs([], [], config_path=f"config/seeds_{track}.yaml")
+        from src.eval.config import load_eval_configs
+        main_eval, _ = load_eval_configs([], [], config_path=f"config/experiment1_{track}.yaml")
+        seed_eval, _ = load_eval_configs([], [], config_path=f"config/seeds_{track}.yaml")
         assert seed_eval.seed == main_eval.seed == 99
         assert list(seeds.tunable.learning_rates) == [3e-7]
         assert list(seeds.tunable.l2sp_lambdas) == [.003]
@@ -36,8 +37,8 @@ def test_main_and_sampling_grid_counts_and_shared_partitions():
         assert list(seeds.tunable.epoch_pass_modes) == ['one_sample']
         test_sets = []
         for index in range(4):
-            cfg = _apply_split_index(OmegaConf.create(OmegaConf.to_container(main)), index)
-            repeat = _apply_split_index(OmegaConf.create(OmegaConf.to_container(sampling)), index)
+            cfg = apply_split_index(OmegaConf.create(OmegaConf.to_container(main)), index)
+            repeat = apply_split_index(OmegaConf.create(OmegaConf.to_container(sampling)), index)
             assert cfg.seed == repeat.seed == 42
             assert cfg.corpus.fold == repeat.corpus.fold == index
             assert cfg.corpus.split_seed == repeat.corpus.split_seed == 1729
@@ -63,9 +64,9 @@ def test_pass_modes_have_distinct_names_and_evaluation_directories():
 
 
 def test_fingerprint_covers_scientific_changes_but_not_workers():
-    from scripts.train_pipeline import _load_cfg
+    from src.train.config import load_train_config
     from src.utils.experiment import scientific_config, digest_json
-    cfg = _load_cfg(config_path="config/experiment1_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment1_pd.yaml")
     before = digest_json(scientific_config(cfg))
     cfg.train.dataloader_workers = 8
     assert digest_json(scientific_config(cfg)) == before

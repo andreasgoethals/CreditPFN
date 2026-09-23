@@ -29,16 +29,19 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 | `archive/` | Gitignored historical measurements, compact source records and log summaries |
 | `config/` | Data preparation, shared training/evaluation defaults, named experiment phases |
 | `scripts/{data,train,eval}_pipeline.py` | Experiment entry points |
-| `scripts/slurm/` | VSC jobs and bounded submission launcher |
+| `scripts/probe_row_cap.py` | GPU capacity experiment entry point |
+| `scripts/slurm/` | Resource wrappers, shared job bodies and bounded submission launcher |
 | `src/data/` | Registration, sanitization and display names |
-| `src/train/` | Dataset sampling, preprocessing, objectives, adaptation and recovery |
-| `src/model/`, `src/eval/` | Model wrappers, row splits, baseline tuning and metrics |
+| `src/train/` | Phase/grid resolution, sampling, objectives, adaptation, recovery and capacity measurements |
+| `src/model/`, `src/eval/` | Inference wrappers, evaluation configuration, row splits, baseline tuning and metrics |
 | `src/utils/` | Plan preparation, staging, auditing, consolidation and cleanup |
 | `src/visualize/`, `notebooks/` | Shared plotting logic and thin notebooks |
 | `tests/` | Unit, integration and synthetic training checks |
 | `tfm-library/` | Read-only pinned literature and upstream implementation snapshots |
 
 Raw data and weights are never committed. On VSC, project storage holds canonical data, current weights and consolidated results; DATA holds the repository and live small output shards. The [runbook](docs/VSC.md) explains how to download finished results and clear a previous experiment. Historical output is optional local evidence, not an input to a fresh run.
+
+Reusable Python logic belongs in `src/`; it does not import experiment entry points from `scripts/`. Utilities run as `python -m src.utils.<name>`. The stable `experiment0` and `experiment1` config names mean null controls and the main sweep; `pilot`, `budget_pilot`, `sampling` and `seeds` name the other phases.
 
 During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output/` at that final download.
 

@@ -32,8 +32,8 @@ def check_prepared(config: Path) -> dict:
     Full input checks belong in CPU preparation and each training process.
     This catches source/config/environment drift before allocating any GPU.
     """
-    from scripts.train_pipeline import _load_cfg
-    cfg = _load_cfg(config_path=str(config))
+    from src.train.config import load_train_config
+    cfg = load_train_config(config_path=str(config))
     payload = read_plan(plan_path(str(cfg.run_name), str(cfg.track)))
     if payload["config"] != OmegaConf.to_container(cfg, resolve=True):
         raise RuntimeError("Configuration differs from the prepared plan; prepare a fresh named phase")
@@ -66,12 +66,12 @@ def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
 
 
 def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
-    from scripts.train_pipeline import _load_cfg, _resolve_grid
+    from src.train.config import load_train_config, resolve_grid
     from src.train.corpus import split_from_cfg, _scalar_min_rows
     if write and check:
         raise ValueError("Choose write or check, not both")
-    cfg = _load_cfg(config_path=str(config))
-    grid = _resolve_grid(cfg, single=False)
+    cfg = load_train_config(config_path=str(config))
+    grid = resolve_grid(cfg, single=False)
     n_splits = int(cfg.corpus.n_splits)
     folds = int(cfg.corpus.n_folds or 0)
     seeds = list(OmegaConf.select(cfg, "experiment.training_seeds", default=[cfg.seed]))
@@ -143,12 +143,12 @@ def main(argv=None) -> int:
     if args.profile_workers:
         if not args.write:
             parser.error("--profile-workers creates named pilot configs and requires --write")
-        from scripts.train_pipeline import _load_cfg
+        from src.train.config import load_train_config
         reports = []
         for workers in args.profile_workers:
             if workers < 0:
                 raise ValueError("Worker profiles require explicit nonnegative worker counts")
-            cfg = _load_cfg(config_path=str(args.config))
+            cfg = load_train_config(config_path=str(args.config))
             cfg.run_name = f"{cfg.run_name}_w{workers}"
             cfg.train.dataloader_workers = workers
             folder = manifests_dir() / "pilot_configs"

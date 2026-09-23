@@ -12,12 +12,12 @@ cd "$(dirname "$0")/../.."
 mapfile -t META < <(python - "$CONFIG" <<'PYCFG'
 import sys
 from omegaconf import OmegaConf
-from scripts.train_pipeline import _load_cfg, _resolve_grid
-cfg = _load_cfg(config_path=sys.argv[1])
+from src.train.config import load_train_config, resolve_grid
+cfg = load_train_config(config_path=sys.argv[1])
 for key in ('track', 'run_name', 'corpus.n_splits', 'train.target_total_steps',
             'train.dataloader_workers', 'experiment.require_plan'):
     print(OmegaConf.select(cfg, key, default=''))
-for t in _resolve_grid(cfg, single=False):
+for t in resolve_grid(cfg, single=False):
     print(t[0].rsplit('/', 1)[-1], t[5])
 PYCFG
 )

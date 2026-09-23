@@ -41,8 +41,8 @@ def test_corpus_metadata_reuses_reads_and_invalidates_file_or_registry_changes(t
 def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, monkeypatch):
     import src.utils.prepare_experiment as module
     import src.train.corpus as corpus
-    import scripts.train_pipeline as pipeline
-    cfg = pipeline._load_cfg(config_path='config/experiment0_pd.yaml')
+    import src.train.config as pipeline
+    cfg = pipeline.load_train_config(config_path='config/experiment0_pd.yaml')
     grid = [('missing-base.ckpt', lr, False, .4, 1, 'one_sample', rows, 0.)
             for lr in (0., 1e-6) for rows in (0, 10)]
     calls, identities = [], []
@@ -56,8 +56,8 @@ def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, mon
         identities.append((trial[6], split.train[0].dataset_id))
         return {'sha256': f'{trial[1]}-{trial[6]}', 'specification': {}}
 
-    monkeypatch.setattr(pipeline, '_load_cfg', lambda **kwargs: cfg)
-    monkeypatch.setattr(pipeline, '_resolve_grid', lambda *args, **kwargs: grid)
+    monkeypatch.setattr(pipeline, 'load_train_config', lambda **kwargs: cfg)
+    monkeypatch.setattr(pipeline, 'resolve_grid', lambda *args, **kwargs: grid)
     monkeypatch.setattr(corpus, 'split_from_cfg', split)
     monkeypatch.setattr(module, 'trial_identity', identity)
     monkeypatch.setattr(module, 'plan_path', lambda *args: tmp_path / 'plan.json')
@@ -168,13 +168,13 @@ def test_null_control_detects_changed_tensor_and_monitor(tmp_path):
 
 def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
     import src.utils.audit_experiment as module
-    import scripts.train_pipeline as pipeline
+    import src.train.config as pipeline
     from src.train.loop import descriptive_name
-    cfg = pipeline._load_cfg(config_path="config/experiment0_pd.yaml")
+    cfg = pipeline.load_train_config(config_path="config/experiment0_pd.yaml")
     cfg.checkpoint.trained_dir = str(tmp_path / "weights")
     trial = ("base.ckpt", 0., False, .4, 1, "one_sample", 0, 0.)
-    monkeypatch.setattr(pipeline, "_load_cfg", lambda **kw: cfg)
-    monkeypatch.setattr(pipeline, "_resolve_grid", lambda *a, **kw: [trial])
+    monkeypatch.setattr(pipeline, "load_train_config", lambda **kw: cfg)
+    monkeypatch.setattr(pipeline, "resolve_grid", lambda *a, **kw: [trial])
     plan = tmp_path / "plan.json"
     plan.write_text(json.dumps({"trials": {f"{cfg.run_name}_s00/0": "expected"}}))
     monkeypatch.setattr(module, "plan_path", lambda *a: plan)

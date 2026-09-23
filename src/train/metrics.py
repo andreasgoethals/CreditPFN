@@ -40,7 +40,7 @@ def improvement_direction(metric: str) -> int:
     ``score = metric * direction`` so monitoring code can compare metrics
     direction-agnostically — e.g. picking the best epoch's checkpoint or
     sorting a leaderboard works the same whether the metric is roc_auc
-    (max) or rmse (min). Training itself is fixed-epoch (no early
+    (max) or rmse (min). The campaign uses a fixed update budget (no metric-based early
     stopping); see README §7 (Training pipeline).
     """
     if metric in ("roc_auc", "neg_nll", "r2"):
