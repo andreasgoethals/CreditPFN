@@ -26,6 +26,7 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 
 | Path | Responsibility |
 |---|---|
+| `archive/` | Gitignored historical measurements, compact source records and log summaries |
 | `config/` | Data preparation, shared training/evaluation defaults, named experiment phases |
 | `scripts/{data,train,eval}_pipeline.py` | Experiment entry points |
 | `scripts/slurm/` | VSC jobs and bounded submission launcher |
@@ -51,12 +52,7 @@ Use the existing local environment. In PowerShell:
 
 The first command previews the design without training. A complete source corpus is required. Plans for actual VSC runs must be written in the VSC environment after the pilot decisions, because data, weights and package versions form part of the identity.
 
-To view historical output instead of the new main experiment:
-
-```powershell
-$env:CREDITPFN_VIZ_RUN = 'exp1'
-.\.venv\Scripts\python.exe -m src.utils.run_notebooks
-```
+Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
 Notebooks use A4-sized PDF figures through `FigureSaver` and finish with a text summary. They handle missing results, retain failed attempts and prefer verified consolidated tables. The private display-name mapping must accompany private data when generating publication output.
 

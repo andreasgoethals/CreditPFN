@@ -1,43 +1,14 @@
-"""Training dataloader — read sanitized CSVs, subsample per epoch.
+"""Training batches from cached sanitized tables.
 
-Per-step recipe (one "batch" = one dataset, batch_size fixed at 1 by
-TabPFN's ``meta_dataset_collator`` assertion at
-``tfm-library/repositories/TabPFN .txt``):
+``one_sample`` draws one capped context/query batch per table visit.
+``full_pass`` and ``accumulate`` repartition all rows into disjoint capped
+chunks each epoch; their optimizer update rules differ. Every chunk splits
+into disjoint context/query rows. Persistent workers receive epoch-aware
+indices, so sampling is deterministic across worker counts and recovery.
 
-  1. Pick one parent dataset (one ``DatasetRef``) — every parent
-     contributes exactly one step per epoch. No more chunk splitting.
-
-  2. Load (memoised) the entire sanitized CSV. Cast features to a
-     pandas DataFrame; cast the target to ``int64`` (classification)
-     or ``float32`` (regression).
-
-  3. **Per-epoch reshuffle**: each epoch draws a fresh random
-     subsample of ``cfg.finetuning.max_rows_per_epoch`` rows from the
-     full dataset. Smaller datasets (rows ≤ the cap) are passed
-     through in full — the cap is non-binding. The RNG seed mixes
-     ``(base_seed, epoch, dataset_idx)`` so two epochs see two
-     different subsamples of the same large dataset, while the
-     subsample is still reproducible end-to-end if the same seed
-     is rerun.
-
-  4. Ordinal-encode categoricals **on the context split only**
-     (matching the train-fold-only-fit pattern that the eval pipeline
-     also uses — see ``src/eval/dataset_loader.encode_for_model``).
-
-  5. Random ``(1 − query_fraction) / query_fraction`` split between
-     context and query, drawn from the subsample.
-
-  6. Cast to ``torch.Tensor`` of shape ``(n_samples, batch_size=1, F)``.
-
-The DataLoader caller invokes :meth:`ProcessedDatasetLoader.set_epoch`
-at the top of each epoch so that ``__getitem__`` picks up the new
-epoch number. The CSV-loading is memoised behind a module-level cache
-so re-visiting a dataset doesn't re-read the CSV from disk every
-epoch — only re-subsamples it.
-
-For *test-time evaluation*, see :func:`prepare_eval_chunk` — it
-ignores the random subsample completely and uses the full dataset
-(callers cap rows externally via ``n_inference_subsample_samples``).
+The legacy single-view path encodes categoricals on context rows. The official
+TabPFN and TabICL preprocessing paths have their own contracts, documented in
+the corresponding builders below and in docs/RESEARCH_BRIEF.md.
 """
 
 from __future__ import annotations
@@ -54,6 +25,7 @@ import torch
 from torch.utils.data import Dataset
 
 from src.train.corpus import DatasetRef
+from src.train.sampling import partition_rows
 
 LOGGER = logging.getLogger(__name__)
 
@@ -359,6 +331,7 @@ def _build_step_batch(
     query_fraction: float,
     rng: np.random.Generator,
     context_sampling: str = "stratified",
+    row_indices: np.ndarray | None = None,
 ) -> TabPFNBatch:
     """Subsample → context/query split → ordinal-encode → tensorise.
 
@@ -375,7 +348,9 @@ def _build_step_batch(
         # Pathological tiny dataset — fall through with whatever we have.
         n_total = n
 
-    sel = _stratified_subsample_indices(loaded.y, n_total, rng, mode=context_sampling)
+    sel = (row_indices if row_indices is not None else
+           _stratified_subsample_indices(loaded.y, n_total, rng, mode=context_sampling))
+    n_total = len(sel)
 
     X_sub = loaded.X.iloc[sel].reset_index(drop=True)
     y_sub = loaded.y[sel]
@@ -476,6 +451,7 @@ def _build_tabicl_step_batch(
     replica: int,
     preprocessing_seed: int,
     context_sampling: str = "stratified",
+    row_indices: np.ndarray | None = None,
 ) -> TabICLTrainBatch:
     """Subsample → encode/impute → tabicl's official ``_build_meta_batch``.
 
@@ -502,7 +478,8 @@ def _build_tabicl_step_batch(
     n_total = min(n_total_target, n)
     if n_total <= 1:                                    # pathological tiny set
         n_total = n
-    sel = _stratified_subsample_indices(loaded.y, n_total, rng, mode=context_sampling)
+    sel = (row_indices if row_indices is not None else
+           _stratified_subsample_indices(loaded.y, n_total, rng, mode=context_sampling))
 
     X_sub = loaded.X.iloc[sel].reset_index(drop=True)
     y_sub = np.asarray(loaded.y[sel])
@@ -575,6 +552,7 @@ def _build_ensemble_step_batch(
     n_estimators: int,
     rng_seed: int,
     context_sampling: str = "stratified",
+    row_indices: np.ndarray | None = None,
 ):
     """N-estimator step batch with TabPFN's official preprocessing.
 
@@ -633,7 +611,9 @@ def _build_ensemble_step_batch(
     if n_total <= 1:
         n_total = n
 
-    sel = _stratified_subsample_indices(y_all, n_total, rng, mode=context_sampling)
+    sel = (row_indices if row_indices is not None else
+           _stratified_subsample_indices(y_all, n_total, rng, mode=context_sampling))
+    n_total = len(sel)
     X_sub = X_all[sel]
     y_sub = y_all[sel]
 
@@ -676,11 +656,11 @@ class ProcessedDatasetLoader(Dataset):
     Designed to be wrapped in ``torch.utils.data.DataLoader`` with
     ``batch_size=1`` and ``collate_fn=identity_collate``.
 
-    The training loop must call :meth:`set_epoch` before each new
-    epoch so the per-epoch reshuffle (epoch-aware RNG seed) produces
-    a fresh random subsample of large datasets every epoch. The
-    subsample is still deterministic given ``(base_seed, epoch, idx)``,
-    so a re-run with the same seed is bit-for-bit reproducible.
+    EpochSampler transports the epoch in each index, including to persistent
+    workers. Single-process callers may also use :meth:`set_epoch`.
+    Each epoch draws fresh samples or disjoint partitions according to the
+    pass mode. Rows are deterministic given ``(base_seed, epoch, idx)`` and
+    independent of worker access order.
 
     Parameters
     ----------
@@ -721,6 +701,8 @@ class ProcessedDatasetLoader(Dataset):
         # Context-construction strategy for the per-step subsample; see
         # _stratified_subsample_indices and docs/RESEARCH_BRIEF.md.
         self.context_sampling = str(context_sampling)
+        if self.context_sampling not in ("stratified", "balanced"):
+            raise ValueError(f"unknown context_sampling: {self.context_sampling!r}")
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)
         self.query_fraction = float(query_fraction)
@@ -729,6 +711,15 @@ class ProcessedDatasetLoader(Dataset):
         self._inference_config = inference_config
         self._n_estimators_finetune = max(1, int(n_estimators_finetune))
         self.pass_mode = str(pass_mode)
+        if self.pass_mode not in ("one_sample", "full_pass", "accumulate"):
+            raise ValueError(f"unknown pass_mode: {self.pass_mode!r}")
+        if (self.pass_mode != "one_sample" and self.context_sampling == "balanced"
+                and any(ref.task_type == "classification" for ref in self.refs)):
+            raise ValueError("Non-overlapping full_pass/accumulate require context_sampling='stratified'; "
+                             "class-balanced draws cannot also cover every row exactly once")
+        # At most one epoch's permutation per table in each worker. Reuse it
+        # across chunks instead of shuffling the whole table on every access.
+        self._row_partitions: dict[int, tuple[int, int, list[np.ndarray]]] = {}
         # Optional cell budget. When set (>0), the per-step row count for a
         # dataset is min(max_rows_per_epoch, max_cells_per_epoch // n_features)
         # — so narrow datasets get more rows and wide ones fewer, at roughly
@@ -747,35 +738,26 @@ class ProcessedDatasetLoader(Dataset):
         #    each step a fresh random subsample of <= max_rows_per_epoch rows.
         #    This is the original behaviour; nothing changes.
         #
-        #  * "full_pass": size-proportional steps. A dataset with n rows gets
-        #    ceil(n / max_rows_per_epoch) steps per epoch, so a large dataset
-        #    contributes MANY steps (each a different draw, seeded by the
-        #    replica index) instead of just one. This exploits the unused data
-        #    in the big datasets without repeating it within a step; the small
-        #    datasets stay at 1 step (no extra repetition / overfit pressure).
-        #    The loop's steps-per-epoch auto-scales via len(self).
+        #  * "full_pass": ceil(n / effective_cap) disjoint, nearly equal
+        #    chunks cover every row once per completed epoch. Repartition on
+        #    the next epoch. Larger tables contribute more optimizer updates.
         # "accumulate" walks the SAME plan as full_pass — every batch of every dataset —
         # and differs only in when the optimizer steps, which the training loop decides
-        # from `self.is_dataset_end`. Keeping one plan means the two modes see byte-
-        # identical data and differ in exactly one thing.
+        # from EpochSampler.dataset_end_flags (the actual emitted order).
+        # Both modes use the same row partitions for a given seed and epoch.
         if self.pass_mode in ("full_pass", "accumulate"):
             self._plan: list[tuple[int, int]] = []
             for ref_idx, ref in enumerate(self.refs):
-                try:
-                    loaded = _load_processed_csv(ref)
-                    n_rows = int(len(loaded.y))
-                    eff_cap = self._effective_cap(loaded)
-                except Exception:                                  # pragma: no cover
-                    n_rows = eff_cap = self.max_rows_per_epoch
+                loaded = _load_processed_csv(ref)
+                n_rows = int(len(loaded.y))
+                eff_cap = self._effective_cap(loaded)
+                if n_rows < 2 or eff_cap < 2:
+                    raise ValueError("Full-pass training requires at least two rows and a row cap >= 2")
                 k = max(1, math.ceil(n_rows / max(1, eff_cap)))
+                if n_rows // k < 2:
+                    raise ValueError("Row cap would leave a chunk without both context and query")
                 self._plan.extend((ref_idx, r) for r in range(k))
         else:
-            if self.pass_mode != "one_sample":
-                LOGGER.warning(
-                    "Unknown pass_mode=%r; falling back to 'one_sample'.",
-                    self.pass_mode,
-                )
-                self.pass_mode = "one_sample"
             self._plan = [(i, 0) for i in range(len(self.refs))]
 
         # True on the LAST batch of each dataset, so a caller can step the optimizer exactly at
@@ -819,9 +801,7 @@ class ProcessedDatasetLoader(Dataset):
         ref = self.refs[ref_idx]
         loaded = _load_processed_csv(ref)
         n_total_target = self._effective_cap(loaded)
-        # Epoch-aware seed: same chunk on epoch 0 ≠ epoch 1 ≠ …; the replica
-        # term makes each of a dataset's full_pass steps draw a distinct
-        # subsample within the same epoch.
+        # Stable preprocessing seed per chunk, independent of access order.
         step_seed = (
             self._base_seed * 1_000_003
             + epoch * 10_007
@@ -829,6 +809,16 @@ class ProcessedDatasetLoader(Dataset):
             + replica * 131_071
         ) & 0xFFFF_FFFF
         rng = np.random.default_rng(step_seed)
+        row_indices = None
+        if self.pass_mode in ("full_pass", "accumulate"):
+            cached = self._row_partitions.get(ref_idx)
+            if cached is None or cached[:2] != (epoch, n_total_target):
+                partition_seed = (self._base_seed * 1_000_003 + epoch * 10_007 + ref_idx * 31) & 0xFFFF_FFFF
+                chunks = partition_rows(loaded.y, row_cap=n_total_target,
+                                        rng=np.random.default_rng(partition_seed),
+                                        classification=loaded.task_type == "classification")
+                cached = self._row_partitions[ref_idx] = (epoch, n_total_target, chunks)
+            row_indices = cached[2][replica]
 
         # ---- TabICLv2 family path (official tabicl finetune preprocessing) --- #
         if self.model_family == "tabicl":
@@ -841,6 +831,7 @@ class ProcessedDatasetLoader(Dataset):
                 epoch_seed=step_seed,
                 replica=replica,
                 context_sampling=self.context_sampling,
+                row_indices=row_indices,
                 # Fixed per dataset across epochs (their design): coarse
                 # preprocessing choices stay stable, splits vary per epoch.
                 preprocessing_seed=self._base_seed * 7_919 + ref_idx,
@@ -855,6 +846,7 @@ class ProcessedDatasetLoader(Dataset):
                 query_fraction=self.query_fraction,
                 rng=rng,
                 context_sampling=self.context_sampling,
+                row_indices=row_indices,
             )
 
         # ---- TabPFN-preprocessed N-estimator path ------------------- #
@@ -873,6 +865,7 @@ class ProcessedDatasetLoader(Dataset):
             rng=rng,
             inference_config=self._inference_config,
             context_sampling=self.context_sampling,
+            row_indices=row_indices,
             n_estimators=self._n_estimators_finetune,
             rng_seed=int(step_seed),
         )

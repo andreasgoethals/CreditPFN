@@ -9,6 +9,63 @@ import torch
 from omegaconf import OmegaConf
 
 
+def test_corpus_metadata_reuses_reads_and_invalidates_file_or_registry_changes(tmp_path, monkeypatch):
+    import src.train.corpus as corpus
+    import src.data.preprocessing as registry
+    path = tmp_path / 'synthetic.sanitized.csv'
+    path.write_text('x,z,y\n1,5,0\n2,6,1\nlate-category,7,0\n', encoding='utf-8')
+    meta = {'synthetic': {'track': 'pd', 'target_column': 'y', 'categorical_columns': []}}
+    monkeypatch.setattr(registry, 'DATASET_METADATA', meta)
+    monkeypatch.setattr(corpus, 'processed_dir', lambda *parts: path)
+    original = pd.read_csv
+    reads = []
+
+    def read(*args, **kwargs):
+        reads.append(args[0])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(corpus.pd, 'read_csv', read)
+    first = corpus.build_dataset_pool('pd')
+    assert first == corpus.build_dataset_pool('pd')
+    assert first[0].n_rows == 3 and 'x' in first[0].categorical_columns
+    assert len(reads) == 1
+    with path.open('a', encoding='utf-8') as stream:
+        stream.write('another-category,8,1\n')
+    assert corpus.build_dataset_pool('pd')[0].n_rows == 4
+    assert len(reads) == 2
+    meta['synthetic']['target_column'] = 'absent'
+    assert corpus.build_dataset_pool('pd') == []
+    assert len(reads) == 3
+
+
+def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, monkeypatch):
+    import src.utils.prepare_experiment as module
+    import src.train.corpus as corpus
+    import scripts.train_pipeline as pipeline
+    cfg = pipeline._load_cfg(config_path='config/experiment0_pd.yaml')
+    grid = [('missing-base.ckpt', lr, False, .4, 1, 'one_sample', rows, 0.)
+            for lr in (0., 1e-6) for rows in (0, 10)]
+    calls, identities = [], []
+
+    def split(current, *, min_train_rows=None):
+        calls.append(min_train_rows)
+        return corpus.CorpusSplit([NS(dataset_id=f'train-{min_train_rows or 0}')],
+                                 [NS(dataset_id='held-out')])
+
+    def identity(current, trial, *, split):
+        identities.append((trial[6], split.train[0].dataset_id))
+        return {'sha256': f'{trial[1]}-{trial[6]}', 'specification': {}}
+
+    monkeypatch.setattr(pipeline, '_load_cfg', lambda **kwargs: cfg)
+    monkeypatch.setattr(pipeline, '_resolve_grid', lambda *args, **kwargs: grid)
+    monkeypatch.setattr(corpus, 'split_from_cfg', split)
+    monkeypatch.setattr(module, 'trial_identity', identity)
+    monkeypatch.setattr(module, 'plan_path', lambda *args: tmp_path / 'plan.json')
+    assert module.prepare(tmp_path / 'phase.yaml', write=True)['training_trials'] == 4
+    assert calls == [None, 10]
+    assert identities == [(0, 'train-0'), (10, 'train-10')] * 2
+
+
 def test_scratch_stage_is_immutable_and_pointer_cannot_escape(tmp_path):
     from src.data.preprocessing import DATASET_METADATA
     from src.utils.stage_inputs import stage, resolve

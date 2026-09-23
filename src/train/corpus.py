@@ -5,9 +5,9 @@ foundation models: every row of a given parent dataset goes to the
 same bucket, so the test split never sees rows from a dataset the
 model trained on.
 
-NO VALIDATION BUCKET. We do fixed-epoch training and pick between
-hyperparameter settings *post-hoc* on the test split (cf. discussion
-in chat 2026-05-04 — too few datasets for a meaningful val signal).
+NO VALIDATION BUCKET. The current study describes a prespecified grid
+and update horizon. A post-hoc winner does not have an unbiased test
+estimate; see docs/RESEARCH_BRIEF.md for the reporting contract.
 
 NO `.npz` CACHE. As of 2026-05-20 the data pipeline stops at
 ``data/processed/{track}/<id>.sanitized.csv``. The training pipeline
@@ -39,6 +39,7 @@ Public surface
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
@@ -60,10 +61,8 @@ LOGGER = logging.getLogger(__name__)
 class DatasetRef:
     """One processed dataset on disk; the atomic unit consumed by the loop.
 
-    Replaces the old `ChunkRef` (which pointed at a `.npz` chunk under
-    ``data/cached/``). Every consumer that used to enumerate chunks now
-    enumerates datasets, so each parent contributes EXACTLY ONE training
-    step per epoch — no over-weighting of giant datasets.
+    Replaces the old `ChunkRef`. The pass mode determines whether a
+    parent contributes one sampled batch or a complete set of partitions.
     """
     dataset_id: str
     track: str               # "pd" | "lgd"
@@ -103,6 +102,25 @@ class CorpusSplit:
 _PROCESSED_NAME = "{dataset_id}.sanitized.csv"
 
 
+@lru_cache(maxsize=256)
+def _processed_metadata(csv: Path, target: str, hints: tuple[str, ...],
+                        size: int, mtime_ns: int) -> tuple[tuple[str, ...], int] | None:
+    """Cache only schema/counts, never full frames; invalidate changed files.
+
+    Full CSV inspection catches categorical values appearing late in a table.
+    Repeated fold/trial resolution should not repeat that expensive read.
+    """
+    from src.data.register import infer_categorical_numerical
+    df = pd.read_csv(csv, low_memory=False)
+    after = csv.stat()
+    if (after.st_size, after.st_mtime_ns) != (size, mtime_ns):
+        raise RuntimeError("Processed CSV changed during schema inspection")
+    if target not in df.columns:
+        return None
+    cats, _ = infer_categorical_numerical(df, target, list(hints))
+    return tuple(cats), len(df)
+
+
 def build_dataset_pool(track: str) -> list[DatasetRef]:
     """Every dataset for a track that has a sanitized CSV on disk.
 
@@ -123,7 +141,6 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
 
     from src.data.preprocessing import DATASET_METADATA
-    from src.data.register import infer_categorical_numerical
 
     refs: list[DatasetRef] = []
     for did, meta in sorted(DATASET_METADATA.items()):
@@ -134,14 +151,13 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
             LOGGER.debug("no processed CSV for %s/%s at %s — skipped", track, did, csv)
             continue
         target = meta["target_column"]
-        # Full read so a string column that only appears late is still typed correctly; ~0.3 s
-        # per big table, once per pipeline invocation.
-        df = pd.read_csv(csv, low_memory=False)
-        if target not in df.columns:
+        stat = csv.stat()
+        metadata = _processed_metadata(csv.resolve(), target,
+            tuple(meta.get("categorical_columns", [])), stat.st_size, stat.st_mtime_ns)
+        if metadata is None:
             LOGGER.warning("target %r missing from %s — skipped", target, csv)
             continue
-        cats, _ = infer_categorical_numerical(
-            df, target, list(meta.get("categorical_columns", [])))
+        cats, n_rows = metadata
         refs.append(DatasetRef(
             dataset_id=did,
             track=track,
@@ -150,7 +166,7 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
             target_column=target,
             categorical_columns=tuple(cats),
             processed_csv=csv,
-            n_rows=len(df),
+            n_rows=n_rows,
         ))
     return refs
 
@@ -404,12 +420,9 @@ def split_corpus(
     # datasets would change what "held-out performance" means between two trials of the
     # same sweep, which is the one thing that must stay fixed.
     #
-    # WHY (Garg et al., Real-TabPFN, §ablations — tfm-library/papers/2025/): during
-    # continued pretraining "gains rise monotonically as context grows from 2 048 to
-    # 20 000 rows", curated LARGE tables (10k-100k rows) give +0.022 normalised ROC-AUC,
-    # and a corpus of TINY tables measurably HURTS (-0.003). Our LGD training corpus is
-    # 4 tables under 3 000 rows out of 6, which is exactly that harmful regime — and
-    # every LGD trial in the 10/11-08-2026 run lost to its untuned base.
+    # A size-filter ablation is motivated by Garg et al.'s corpus/context
+    # sensitivity, but their classification results do not establish the
+    # effect for this credit corpus or for LGD. It is inactive in the main grid.
     if min_train_rows:
         kept = [r for r in train if (r.n_rows or 0) >= int(min_train_rows)]
         dropped = [r for r in train if r not in kept]

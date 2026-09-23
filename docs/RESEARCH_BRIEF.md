@@ -35,7 +35,7 @@ Only schema-compatible, legally usable data belong in the corpus. Raw private da
 | Budget | Provisionally 5,000 successful optimizer updates | A finite gradient that is actually applied increments the counter; rejected updates do not |
 | Trajectories | 0, 250, 1,000, 2,500, 5,000 updates | Diagnostics during the same training trajectory, under one fixed schedule |
 
-The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `experiment1_pd.yaml` and `experiment1_lgd.yaml`, run family `cpt_main_v3`.
+The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `experiment1_pd.yaml` and `experiment1_lgd.yaml`, run family `cpt_main_v4`.
 
 A partial round at the last update is permitted; visitation counts then differ by at most one. One update is not equal FLOPs, rows or GPU seconds across models or sampling modes. Record processed rows, successful updates, measured training time, monitoring time and peak memory alongside model quality.
 
@@ -53,7 +53,7 @@ L2-SP is an unnormalized sum, matching the real-table reference form. The same l
 
 ### Sampling inside a table
 
-The current fixed preprocessing configuration uses **class-balanced batch subsampling for PD**, capped by available rows, then splits that sampled batch into disjoint 60% context and 40% query rows. Despite its inherited name `context_sampling`, this affects **both** context and query prevalence. It is not a context-only intervention. LGD uses uniform row subsampling. Sampling is without replacement within a draw; rows can recur across visits.
+The main grid and its seed/null/pilot configurations use **class-balanced batch subsampling for PD**, capped by available rows, then splits that sampled batch into disjoint 60% context and 40% query rows. Despite its inherited name `context_sampling`, this affects **both** context and query prevalence. It is not a context-only intervention. LGD uses uniform row subsampling. Sampling is without replacement within a draw; rows can recur across visits.
 
 This is a documented departure from Garg et al.'s uniform-row recipe. Hold it fixed in the main grid and treat proportional versus balanced sampling as a separate follow-up if calibration or prevalence effects become central. Evaluate probabilities at the natural prevalence of the outer test folds.
 
@@ -73,28 +73,32 @@ A finite but disappointing/flat curve does not stop training. Only numerical fai
 
 ## Sampling comparison and training randomness
 
-**No seed-sensitivity campaign is included.** All main and sampling trials use training seed 42. The earlier proposal added 128 trials to 512, for 640 combined; it never meant 640 additional trials. Those extra trials would estimate variability from row draws, preprocessing and training randomness at two reference recipes. That is useful for a robustness question, but it is not the current research priority. Results are consequently conditional on the chosen training seed; dataset folds do not replace seed repetitions.
+**32 additional seed trials** repeat the predefined full-update reference (LR `3e-7`, lambda `0.003`, `one_sample`) with training seed **43**: one recipe × one additional seed × four bases × four dataset folds × two tasks. Its seed-42 counterpart already exists in the main grid. Configs are `seeds_{pd,lgd}.yaml`, run family `cpt_seeds_v4`. Keep dataset partitions, monitor/evaluation seeds, row caps and all other settings identical to the main reference.
 
-`sampling_{pd,lgd}.yaml` defines an independent **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tracks. Its `one_sample` control is intentionally rerun under the separate phase name.
+This is a small paired sensitivity check: did changing the training randomness materially alter the reference behavior? Two seeds do not reliably estimate a seed distribution, and this check says nothing about robustness at every other recipe. Show paired differences and curves; do not count the repetitions as extra independent datasets. A future expansion to 64 additional trials would add seed 44 for the same recipe, only if the initial comparison warrants it.
 
-The current research campaign therefore contains **512 main + 96 sampling = 608 trials**, plus the separate null controls and pilots. Accumulation remains in the sampling comparison; it is not part of every main-grid recipe.
+`sampling_{pd,lgd}.yaml` defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
 
-| Mode | Data draws and update rule | Interpretation |
+The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. Run the seed check once the matching main references are available; it does not repeat the full grid. Use the same pilot-selected budget and trajectory points in all three phases.
+
+| Mode | Rows and update rule | Interpretation |
 |---|---|---|
-| `one_sample` | One draw and update per table visit | Equal table visitation |
-| `full_pass` | `ceil(table_rows / cap)` independently resampled draws per table/round; update after each draw | Larger tables receive more optimizer updates |
-| `accumulate` | Same number of draws as `full_pass`, kept together by table; mean finite gradients, then one update per table | More examples per update while keeping table-level update balance |
+| `one_sample` | One capped draw and update per table visit; rows can recur between visits | Equal table visitation |
+| `full_pass` | Partition each table into `ceil(rows / cap)` non-overlapping chunks; update after each chunk | Larger tables receive more optimizer updates |
+| `accumulate` | The same partitions, kept together by table; average finite chunk gradients before clipping and update once per table | More rows per update while keeping table-level update balance |
 
-**The historical name `full_pass` does not guarantee exhaustive, non-overlapping row coverage.** Each draw is a fresh subsample; rows can repeat or remain unseen in a round. Do not describe these modes as merely equivalent implementations. At equal updates they differ in row exposure, weighting and compute. Report both update-indexed and exposure/compute-indexed results; a separate equal-compute comparison would need its own fixed budget rule.
+**Protocol 4 makes full passes exhaustive.** For each completed epoch, shuffle and partition each table anew. Chunks differ in size by at most one, stay below the measured row cap and contain both context and query rows. Classification partitions spread each class approximately proportionally; extremely rare classes need not appear in every chunk. Within a chunk, context and query are disjoint. Workers cache one partition per table/epoch, and deterministic indices preserve partitions across worker counts and interruptions. Invalid sampling policies fail rather than silently changing the experiment.
+
+Full-pass and accumulation use identical partitions for a fixed seed/epoch, but their update order, model states and progress per update differ. Accumulation averages **finite chunk gradients**, not one joint forward over the whole table; slightly unequal query counts are not reweighted by row. Every row is assigned once in a completed epoch, not necessarily used successfully: numerical skips remain recorded, and an exact update budget may stop mid-epoch. Report row exposure and compute alongside update counts. Historical pre-protocol-4 `full_pass` used independent draws and did not guarantee coverage; keep those records in the local archive.
 
 ## Phase gates before the main run
 
-1. Optionally download historical measurements to a local archive folder; clear old output and trained checkpoints from both VSC tiers once the wanted copy is verified. No legacy output is required by the new run. Keep canonical raw/processed data and original model weights, and verify quotas.
+1. Optionally download historical measurements to the gitignored local `archive/run-september-2026/` folder; clear old output and trained checkpoints from both VSC tiers once the wanted copy is verified. No legacy output is required by the new run. Keep canonical raw/processed data and original model weights, and verify quotas.
 2. Stage inputs, record content fingerprints and freeze the environment.
 3. **16 zero-LR trials**, both adaptation arms across bases/tasks: verify original versus saved tensors and fixed-monitor parity. This checks the actual installed save/reload paths.
 4. **32 short pilot trials**, 250 successful updates, conservative and high LR endpoints, both adaptations, one dataset fold, both tasks. Profile workers 0/4/8 only if needed (96 short trials for all three settings). Compare throughput, CPU memory, data wait and monitoring cost; worker count is a performance setting, not a scientific factor.
-5. **8 longer reference pilots**, one full-update reference per base/task on the first fold, up to 20,000 updates with measurements through 5k/10k/20k. This checks whether 5k would truncate substantial behavior. These pilots follow a 20k schedule, so their early points are not substitutes for the 5k-grid curves. Choose and document the main budget before preparing its immutable plans. Keep the same final budget/trajectory definitions in main and sampling configs.
-6. Main grid, separate sampling comparison, final evaluation and consolidation. The 16 null controls + 32 short pilots + 8 budget pilots are additional to the 608 research trials: **664 scheduled training trials** if all phases run once, before optional worker profiling or recovery canaries.
+5. **8 longer reference pilots**, one full-update reference per base/task on the first fold, up to 20,000 updates with measurements through 5k/10k/20k. This checks whether 5k would truncate substantial behavior. These pilots follow a 20k schedule, so their early points are not substitutes for the 5k-grid curves. Choose and document the main budget before preparing its immutable plans. Keep the same final budget/trajectory definitions in main, seed and sampling configs; adjust the epoch safety rail if the chosen horizon increases.
+6. Main grid, 32 reference seed checks, separate sampling comparison, final evaluation and consolidation. The 16 null controls + 32 short pilots + 8 budget pilots are additional to the 640 research trials: **696 scheduled training trials** if all phases run once, before optional worker profiling or recovery canaries.
 
 Short jobs can resume from a successful-update boundary. Validate one interrupted/requeued positive-LR pilot on VSC before enabling automatic requeue for the campaign. Synthetic CPU tests establish the software contract; they do not establish CUDA determinism or throughput on B200 hardware.
 

@@ -100,6 +100,7 @@ def test_fresh_run_removes_all_project_output_and_trained_weights_but_keeps_inpu
                     for suffix in ("", ".provenance.json", ".resume.pt")]
     inputs = [resolve_staging_path("checkpoints/original.ckpt"),
               resolve_output_path("checkpoints/original.ckpt"),
+              resolve_output_path("archive/run-september-2026/tables/history.csv.gz"),
               resolve_staging_path("data/raw/original.csv"),
               processed_dir() / "pd/processed.csv"]
     for path in victims + inputs:

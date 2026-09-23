@@ -75,7 +75,7 @@ walltime_for() {
     if [[ "$mode" == accumulate && -n "${ACC_WALLTIME:-}" ]]; then echo "$ACC_WALLTIME"; return; fi
     if [[ -n "${WALLTIME:-}" ]]; then echo "$WALLTIME"; return; fi
     if (( BUDGET <= 250 )); then hms 60; return; fi
-    # Historical full_pass/accumulate measurements are provisional for protocol 3.
+    # Historical full_pass/accumulate measurements are provisional for protocol 4.
     # Override WALLTIME with the pilot report; never shorten measured context caps.
     rate=90
     if [[ "$mode" == accumulate ]]; then

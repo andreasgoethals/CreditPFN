@@ -30,7 +30,7 @@ def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
 
 def prepare(config: Path, *, write: bool = False) -> dict:
     from scripts.train_pipeline import _load_cfg, _resolve_grid
-    from src.train.corpus import split_from_cfg
+    from src.train.corpus import split_from_cfg, _scalar_min_rows
     cfg = _load_cfg(config_path=str(config))
     grid = _resolve_grid(cfg, single=False)
     n_splits = int(cfg.corpus.n_splits)
@@ -43,6 +43,7 @@ def prepare(config: Path, *, write: bool = False) -> dict:
     for index in range(n_splits):
         current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), index)
         split = split_from_cfg(current)
+        splits_by_min_rows = {_scalar_min_rows(current.corpus.get("min_train_rows", 0)): split}
         if not split.train or not split.test:
             raise ValueError("Both training and held-out dataset sets must be nonempty")
         payload["partitions"].append({"index": index, "training_seed": int(current.seed),
@@ -50,7 +51,10 @@ def prepare(config: Path, *, write: bool = False) -> dict:
             "train": [r.dataset_id for r in split.train], "test": [r.dataset_id for r in split.test]})
         if write:
             for i, trial in enumerate(grid):
-                identity = trial_identity(current, trial)
+                min_rows = int(trial[6])
+                if min_rows not in splits_by_min_rows:
+                    splits_by_min_rows[min_rows] = split_from_cfg(current, min_train_rows=min_rows)
+                identity = trial_identity(current, trial, split=splits_by_min_rows[min_rows])
                 payload["trials"][f"{current.run_name}/{i}"] = identity["sha256"]
                 payload["identities"][identity["sha256"]] = identity["specification"]
     if folds and n_splits >= folds:

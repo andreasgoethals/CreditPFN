@@ -12,7 +12,17 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 23-09-2026 fresh-start simplification
+## Current handover — 23-09-2026 local archive and exhaustive passes
+
+- User confirmed wICE cleanup **62109053 COMPLETED / 0:0 / 1m54s**: 6,394 files / 52.79 GB reported removed from both output trees, both trained trees and submission state. Raw/processed data and original bases remain. The unrelated `creditic` job was not touched. Next: pull these changes, stage inputs, prepare and dry-check null controls, then validate them before pilots/main work.
+- User requested `archive/run-september-2026/` inside the repository and gitignored. Consolidate the available older DATA download plus 579 project files; preserve small source records and history, reduce repetitive logs, clear active local output. This is a one-off organization, not a new maintained archive subsystem. The DATA download is not claimed to be the last cluster snapshot.
+- Protocol **4**, fresh `cpt_*_v4` names: full_pass/accumulate now use the same disjoint, nearly equal row partitions per table/epoch, with shuffled membership/order next epoch and worker-local caching. Reject balanced PD batches for exhaustive passes. Main/null/pilots/seed PD keep balanced one_sample; all sampling-study modes use proportional PD sampling to isolate pass mode within that study.
+- **512 main + 96 sampling + 32 additional seed = 640 research trials**. Seed 43 repeats one predetermined full-update recipe (3e-7, lambda .003, one_sample); seed 42 is already in main. Two seeds give a limited paired check, not grid-wide robustness. Null/short/budget phases add 16/32/8, totaling 696 if each phase runs once. The 5k budget remains provisional; keep main/seed/sampling horizons matched after the long pilot decision.
+- V2's actual configured cap is **10k**, not the runbook's stale 14k; retained the lower cap backed by the recorded OOM. No installs, pushes, real training or cluster submissions performed by the agent.
+- Compact archive verified: **65.93 MB**, eight merged tables, original small records, checksums and bounded summaries for 1,485 logs, from 5,403 available local source files / 7.166 GB. **Bulk deletion was rejected by automatic approval review ("blocked by policy").** No originals deleted; moved them into `archive/run-september-2026/unpruned-originals/` and verified their sizes/mtimes. That folder still occupies 7.166 GB and can be deleted manually; active `output/` is separate. The compact archive is complete but local space reclamation is not.
+- Plan preview exposed repeated full-CSV reads per corpus resolution. Added bounded metadata-only caching keyed by path/stat/schema hints, plus per-filter split reuse within plan preparation; no full frames retained in this cache. The twelve real phase/track previews completed in 10.91 s with exactly 25 CSV reads (one per table); counts 16 null + 32 short + 8 budget + 512 main + 32 seeds + 96 sampling. **Final validation: 387 passed, 1 skipped** (optional data manifests absent), nine known constant-input toy-regression warnings. All six notebooks executed successfully and regenerated 75 PDFs; PDF text and all 40 changed/new files had zero private-name matches. Bash syntax passed for 15 scripts; null/seed/sampling launcher previews submitted no jobs. Archive hashes and all 5,403 relocated-source stats verified. CUDA controls/recovery and pilot timing remain VSC gates.
+
+## Previous handover — 23-09-2026 fresh-start simplification (superseded above)
 
 - Current campaign: **512 main + 96 sampling = 608 research trials**, all train seed 42. Removed the two seed-check configs; accumulation remains one of the three sampling-study modes. Null/short/budget pilots add 16/32/8 trials, giving 664 if every phase runs once, before optional profiling/canaries.
 - **5,000 remains provisional.** Garg uses 20k CPT updates; Kolberg chooses 10k after monitoring his different synthetic adaptation task; Rubachev uses target-table validation stopping. None validates 5k for this corpus. Use the existing eight 20k reference pilots to review 5k/10k/20k trajectories and cost before fixing the main/sampling budget. Audit now estimates all three horizons.
@@ -42,6 +52,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 23-09-2026 | maintenance clean · wICE job 62109053 | **done (user evidence)** | Exit 0:0, 1m54s; deletion report 6,394 files / 52.79 GB across old outputs, trained weights and sentinels. Inputs/original bases preserved. |
 | 22-09-2026 | exp1 · λ-sweep bug found in the 29-08 run (PD ~78 % of the base×lr×frozen×pass grid trained; no LGD; no eval) | **λ axis INVALID** | `run()` never forwarded the swept `l2sp_lambda` → every trial trained at the config default 0.003; the two "arms" overwrote one untagged checkpoint, and resume was broken so the grid re-ran on every resubmit. Fixed 22-09 (CHANGELOG + dead end below). Salvage: surviving ckpts are all valid λ=0.003 — rerun the λ=0 arms + remaining PD + all LGD. |
 | 29-08-2026 | exp1_pd · 96 trials/split × 8 splits, Option-B grid (lr{3e-7,1e-6,1e-5} × l2sp{0,0.003} × frozen{F,T} × pass{full,acc}), 4 bases; training only (eval not yet submitted) | **partial — frozen TabPFN arm lost** | Full-FT TabPFN + all TabICLv2 (both arms) trained OK; **all 168 frozen TabPFN `_lora` trials died in ~4 s with `NameError: ckpt_path`** (`load_tabpfn_for_training`). Splits 6–7 double-submitted by the SPLIT_START recovery (harmless). Results write to `/lustre1/…/stg_00211/…/results` (staging), not the `output/` download. Bug fixed 31-08; frozen TabPFN needs re-running. See dead end below. |
 | 12-08-2026 | run-8 · 16 trials/track, 20 000 steps, `min_train_rows` [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks; **eval completed 16-08-2026 on Mindwell `gpu_b200`** | **done — first complete run** | Training 31/32 OK (1 false-positive divergence abort). Eval 105/105 PD + 44/44 LGD cells, 745/745 folds, zero failures. **PD 20/75 paired wins, mean -0.0013, p=0.78 (null). LGD 0/32.** Untuned v3 beats best tuned GBM on 4/5 PD and 2/2 LGD. Completing the eval REVERSED the half-eval's -0.0048 'damage' finding. `AGENTS_MEMORY.md` |
@@ -57,6 +68,27 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 23-09-2026 — bulk local archive cleanup blocked
+
+- **Tried.** Verified archive hashes/source stats, then requested one path-checked bulk deletion of old local output and the duplicate download.
+- **Result.** Automatic approval review rejected the command as "blocked by policy"; nothing was deleted.
+- **Why.** No more specific rejection reason was supplied; this was an execution-policy block, not a failed archive-integrity check.
+- **Instead.** Moved originals reversibly into the ignored archive's `unpruned-originals/`, verified every relocated source, and left manual pruning to the user. Keep the 66 MB compact archive.
+
+### 23-09-2026 — plan previews repeatedly parsed the corpus
+
+- **Tried.** Previewed the null/pilot/main/sampling/seed plans against all real local tables.
+- **Result.** Repeated CSV parsing dominated CPU time; every split resolution rebuilt schema/counts, and written plans repeated that work per trial.
+- **Why.** The corpus reader's "once per pipeline invocation" comment had no cache behind it; plan generation did not pass its already-resolved split to identity construction.
+- **Instead.** Cache only schema/count metadata with file/schema invalidation, reuse one split per size-filter setting, and test both invalidation and mixed-filter plan correctness.
+
+### 23-09-2026 — full-pass names did not imply row coverage
+
+- **Tried.** Compared the user-requested non-overlapping passes with the existing full_pass/accumulate loader.
+- **Result.** It drew independent samples, so some rows repeated and others were absent within an epoch; class-balanced draws were incompatible with exhaustive natural-prevalence coverage.
+- **Why.** Batch counts were size-proportional, but batches did not share a row partition.
+- **Instead.** Partition rows once per table/epoch, reuse across chunks/workers, and use proportional PD sampling for every arm of the separate pass-mode comparison. Preserve balanced sampling in the main grid and its seed check.
 
 ### 23-09-2026 — overbuilding historical retention
 

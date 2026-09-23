@@ -13,6 +13,13 @@ day is never rewritten.
 
 ## 23-09-2026
 
+- Cached unchanged corpus metadata and reused plan splits to avoid repeatedly parsing full CSVs per fold/trial.
+
+- Added a gitignored in-repository archive with merged legacy tables, verified source records and compact log diagnostics; moved originals aside after deletion was policy-blocked.
+- Replaced overlapping full-pass draws with deterministic, disjoint epoch partitions shared by accumulation; reject incompatible class balancing and invalid sampling modes.
+- Added 32 reference seed checks and explicit per-phase sampling policies; versioned fresh plans as protocol 4.
+- Corrected the VSC runbook's v2 cap to the configured/measured 10k and recorded successful cluster cleanup.
+
 - Removed custom archive/retirement tools; documented direct project-output download and a fresh start using the existing cleaner.
 - Fixed full cleanup to cover both complete output trees and trained recovery files; preflight linked/unsafe paths before deleting anything.
 - Bounded repeated numerical warnings while retaining first diagnostics, exact counts and fatal tracebacks; retained targeted worker deprecation filtering.

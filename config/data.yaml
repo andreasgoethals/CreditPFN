@@ -28,7 +28,7 @@ finetuning:
     v3: null
     v2.6: null
     default: null
-  context_sampling: balanced              # stratified | balanced — per-class draw for the context
+  context_sampling: balanced              # fallback batch policy (context AND query); named phases override in train.context_sampling
   query_fraction: 0.2                     # default only; the sweep sets this per trial
 
 sanitize:

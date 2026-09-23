@@ -25,6 +25,7 @@ track: "pd"
 run_name: "exp2"
 
 train:
+  context_sampling: stratified
   target_total_steps: 5000    # same budget as experiment 1, so the two are comparable
   epochs: 50                  # fallback only
   max_epochs_for_step_budget: 4000

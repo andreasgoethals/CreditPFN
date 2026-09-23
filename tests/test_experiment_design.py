@@ -18,6 +18,22 @@ def test_main_and_sampling_grid_counts_and_shared_partitions():
         assert len(_resolve_grid(main, single=False)) * main.corpus.n_splits == 256
         assert len(_resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
         assert set(sampling.tunable.epoch_pass_modes) == {"one_sample", "full_pass", "accumulate"}
+        assert sampling.train.context_sampling == "stratified"
+        seeds = _load_cfg(config_path=f"config/seeds_{track}.yaml")
+        assert len(_resolve_grid(seeds, single=False)) * seeds.corpus.n_splits == 16
+        assert list(seeds.experiment.training_seeds) == [43]
+        assert seeds.seed == 43
+        assert seeds.corpus.split_seed == main.corpus.split_seed
+        assert seeds.train.context_sampling == main.train.context_sampling
+        assert seeds.train.monitor_seed == main.train.monitor_seed
+        from scripts.eval_pipeline import _load_cfgs
+        main_eval, _ = _load_cfgs([], [], config_path=f"config/experiment1_{track}.yaml")
+        seed_eval, _ = _load_cfgs([], [], config_path=f"config/seeds_{track}.yaml")
+        assert seed_eval.seed == main_eval.seed == 99
+        assert list(seeds.tunable.learning_rates) == [3e-7]
+        assert list(seeds.tunable.l2sp_lambdas) == [.003]
+        assert list(seeds.tunable.frozen_backbone) == [False]
+        assert list(seeds.tunable.epoch_pass_modes) == ['one_sample']
         test_sets = []
         for index in range(4):
             cfg = _apply_split_index(OmegaConf.create(OmegaConf.to_container(main)), index)
@@ -82,7 +98,8 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     monkeypatch.setattr(loop, "save_finetuned", fake_save)
     real_load = OmegaConf.load
     monkeypatch.setattr(OmegaConf, "load", lambda p: OmegaConf.create({"finetuning": {
-        "max_rows_per_epoch": 80, "query_fraction": .4}}) if "data.yaml" in str(p) else real_load(p))
+        "max_rows_per_epoch": 80, "query_fraction": .4, "context_sampling": "balanced"}})
+        if "data.yaml" in str(p) else real_load(p))
     cfg = OmegaConf.create({"seed": 42, "run_name": "toy", "track": "pd", "device": "cpu",
         "tunable": {"classifier_base_paths": ["base.ckpt"], "learning_rates": [.001]},
         "corpus": {"train_fraction": .6, "test_fraction": .4},
@@ -90,6 +107,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         "scheduler": {"warmup_fraction": .1},
         "train": {"epochs": 2, "target_total_steps": 7, "max_epochs_for_step_budget": 20,
                   "grad_clip_norm": 1., "amp": False, "dataloader_workers": 0,
+                  "context_sampling": "stratified",
                   "epoch_eval_subsample_samples": 0, "n_estimators_finetune": 1,
                   "trajectory_steps": [0, 3, 7], "recovery_every_updates": 3,
                   "numerical_stopping_only": True},

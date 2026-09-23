@@ -1969,8 +1969,8 @@ def train_one_config(
     # Context-construction strategy for the per-step subsample. Shared by
     # BOTH families so a cross-family comparison never confounds this axis —
     # the axis Tanna et al. 2026 measure as worth more AUC than model choice.
-    context_sampling = str(
-        _data_cfg.finetuning.get("context_sampling", "stratified"))
+    context_sampling = str(cfg.train.get("context_sampling",
+        _data_cfg.finetuning.get("context_sampling", "stratified")))
     _max_cells_cfg = _data_cfg.finetuning.get("max_cells_per_epoch", None)
     if _max_cells_cfg is not None:
         try:
@@ -2063,7 +2063,7 @@ def train_one_config(
         model_family=family,
         context_sampling=context_sampling,
     )
-    from src.train.sampling import EpochSampler
+    from src.train.sampling import EpochSampler, PROTOCOL_VERSION
     train_sampler = EpochSampler(train_ds, seed=int(cfg.seed), accumulate=pass_mode == "accumulate")
     n_workers = _resolve_dataloader_workers(cfg)
     dl_kwargs: dict = dict(
@@ -3188,7 +3188,7 @@ def train_one_config(
     provenance = {
         "schema_version":      2,
         "run_name":            str(cfg.run_name),
-        "training_protocol_version": 3,
+        "training_protocol_version": PROTOCOL_VERSION,
         "trial_identity": trial_identity,
         "adaptation": getattr(model, "_creditpfn_freeze_info", {
             "frozen_modules": [], "trainable_parameter_names": [n for n, p in model.named_parameters() if p.requires_grad]}),
