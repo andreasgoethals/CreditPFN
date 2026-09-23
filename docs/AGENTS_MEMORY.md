@@ -12,7 +12,17 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 23-09-2026 downloaded preparation and launch audit
+## Current handover — 23-09-2026 output workflow and confirmed CPU preflight
+
+- User preference: cluster output stays on VSC during debugging. Read files in Downloads in place; never import them into local output without an explicit request. The user downloads the two complementary output trees for final local analysis. Notebook logs are unnecessary; the only locks are scheduler coordination on VSC. Figure-caption JSONs remain required for rebuilding CAPTIONS.md.
+- Removed the notebook script-only path and duplicate transcript writer. All_Results.md now reads the final saved code cell's stdout. Clear every old code-cell output before execution so an early failure cannot preserve a previous successful summary; errors remain in the notebook. Figure regeneration never deletes debugging logs.
+- User's 13:36 queue/accounting output showed no active wICE jobs and only the four earlier maintenance jobs. The pasted multi-command block had not submitted preflight/plans. Cause of the apparent stall is unconfirmed; a later single-command submission returned normally. Give commands in ordinary messages, one command per code block: the question UI flattens their formatting.
+- User submitted **62110877**, CPU preflight, and supplied its complete log: **0 failures, 0 warnings, exit 0**, 13:38:31–13:39:17. All 25 processed tables and eight original checkpoints resolve on project storage. Correct CreditPFN conda environment selected after stripping an unrelated active virtualenv. No evaluation results directory yet is expected. No GPU controls were run.
+- Next: finish/push the local edits as the user, pull on VSC, then prepare the two cpt_null_v4_check2 plans against the settled source. Do not repeat staging or full cleanup. No check2 preparation appears in the supplied accounting. GPU null parity, positive-LR interrupted recovery and pilot timing remain outstanding.
+- Cleanup of 12 local duplicate files was rejected by automatic approval review as "blocked by policy"; they remain: three copied maintenance logs, six notebook transcripts and three JSONs under output/manifests/imported/2026-09-23. Downloads, archive, datasets and weights were untouched. The local preflight log is useful retained debugging evidence.
+- Validation: **400 passed, 1 skipped**, nine known constant-input toy LGD warnings; skip is optional on-disk data manifests. **6/6 notebooks, 75 PDFs**, zero private-name hits in PDF text; both tracked-file privacy tests passed after regeneration. Both summaries rebuild byte-identically without transcripts, and figure folders contain PDFs only. PD/LGD null-launch previews show eight controls each and submit nothing. No new dependencies, pushes, agent-submitted cluster jobs or real training.
+
+## Previous handover — 23-09-2026 downloaded preparation and launch audit (superseded above)
 
 - Inspected the new Downloads output: stage job **62109541** reports 33 files / 1,246,187,891 bytes copied; prepare jobs **62109753/62109754** report eight null trials each. Both plan and all trial hashes validate; their source hash matches the LF-normalized `65ea866` tree. PD partition has 13 train / 4 held-out tables; LGD 6 / 2. Logs establish preparation, not successful GPU training; no fresh training/eval records were downloaded.
 - Copied the three logs into local `output/logs/` and the two superseded plans into `output/manifests/imported/2026-09-23/`, with checksums/inspection report. Downloads originals are intact. Did not replace locally regenerated captions with a downloaded captions-only summary.
@@ -62,6 +72,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 23-09-2026 | CPU preflight · wICE 62110877 | **passed (user log)** | 0 failures, 0 warnings, END exit_code=0; 46 seconds from START/END. All 25 tables/eight bases and CPU configuration checks pass; GPU controls remain outstanding. |
 | 23-09-2026 | prepare cpt_null_v4 PD · wICE 62109753 | **plan written (download evidence)** | Eight identities; 13 train / 4 held-out tables; checksums/source verified against 65ea866. Superseded by check2 before GPU training. |
 | 23-09-2026 | prepare cpt_null_v4 LGD · wICE 62109754 | **plan written (download evidence)** | Eight identities; 6 train / 2 held-out tables; checksums/source verified against 65ea866. Superseded by check2 before GPU training. |
 | 23-09-2026 | stage inputs · wICE 62109541 | **copy reported successful (download evidence)** | 25 processed tables + eight original bases, 1.246 GB; immutable GPFS pointer published. No new GPU results in this download. |
@@ -81,6 +92,13 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 23-09-2026 — local debugging imports and duplicate transcripts
+
+- **Tried.** Copied downloaded cluster preparation evidence into local output and persisted notebook stdout in separate logs.
+- **Result.** Unwanted local artifacts during cluster debugging. A later path-checked deletion of the 12 duplicates was rejected as "blocked by policy"; files remain.
+- **Why.** Inspection was treated as import, contrary to the user's desired final-download workflow; notebook stdout already lives in the executed notebook. The deletion review supplied no more specific reason.
+- **Instead.** Inspect Downloads in place, keep cluster evidence on VSC, derive summaries from notebooks, and let the user remove the exact duplicate files manually. Do not bypass the rejection with another deletion mechanism.
 
 ### 23-09-2026 — local preflight crashed before showing its report
 

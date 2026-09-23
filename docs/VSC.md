@@ -23,7 +23,7 @@ Logs caused most of the byte pressure. Three sampled large local logs each conta
 
 ```text
 DATA/CreditPFN/output/
-  logs/*.log                          all job logs and notebook transcripts
+  logs/*.log                          cluster and retained debugging logs
   manifests/<run>_sNN_<track>.csv       attempt records, retained for eval/resume
   manifests/plans/<run>_<track>.json   immutable identities and partitions
   manifests/resolved/                 per-entry-point configurations
@@ -55,6 +55,8 @@ PROJECT/CreditPFN/
 
 Local paths default to the repository. Consolidation writes eight compressed CSVs plus inventory into a new immutable snapshot and atomically publishes LATEST. It verifies source/readback checksums. Do not accumulate unbounded snapshots. After removing raw histories, restore them from a saved copy before reconsolidating that run; incomplete replacement is deliberately refused. A clean new run needs none of the old snapshots.
 
+During debugging, keep cluster output on VSC and share the relevant log text. Files downloaded for inspection stay where the user put them; do not import them into local `output/` or create extra inspection manifests. The final campaign download combines DATA's logs/manifests and project's results/consolidated tables under local `output/`. Downloading only DATA's output folder does not include project results. Notebook execution is a local analysis step: stdout is already in `.ipynb`, and `All_Results.md` reads the final summary cell. No notebook logs or locks are generated. The small `manifests/figures/*.json` files record PDF captions and order, as required by FigureSaver; scheduler locks exist only for cluster submission coordination.
+
 Maintenance logs are `output/logs/maintenance_<job-id>_r<restart>.log`; environment activation errors and final exit status go into that same file. Direct `sbatch` works even when `output/logs/` did not exist at submission: the batch shell creates the directory before opening its log. A maintenance cleanup preserves its own active log. The retired default-grid launcher and root-level completion markers are no longer used; use `run_experiment.sh` with an explicit phase config. `checkpoints/` and `data/processed/` are explicit template extensions, not misplaced logs/results.
 
 Only final weights and the latest recovery state persist. Recovery is removed after successful final publication. Intermediate trajectory weights are transient. Corpus schema/count inspection is cached per unchanged file within each process, and plan generation reuses resolved partitions across recipes. New configs disable raw prediction arrays while keeping computed metrics/calibration diagnostics. Enable predictions only for a separately named diagnostic evaluation with its own storage budget.
@@ -84,31 +86,11 @@ Preview should show **256 trials per track**, four folds, with all 25 registered
 
 Heavy copying, hashing, compression, data preparation and CPU baseline HPO belong on compute nodes. The previews above perform no training.
 
-## Download old output, then start clean
+## Historical output and full resets
 
 **The new run needs no old output or trained checkpoints.** A small local historical copy is useful only for explaining earlier results and failures. There is no requirement to keep that copy on VSC or preserve invalid trained models. The local September archive contains merged measurements, compressed original small records/configuration, and bounded log excerpts/counts, about 66 MB altogether. It contains the available local DATA snapshot and the downloaded project output, not a guaranteed last-minute copy of every cluster manifest. Old trained weights need not be downloaded. Deleting them removes the ability to generate new predictions from those models.
 
-From the **local repository in PowerShell**, download the project output into a gitignored folder inside this repository (for a future archive; the September download is already organized):
-
-```powershell
-$legacyArchive = '.\archive\run-september-2026'
-New-Item -ItemType Directory -Force -Path "$legacyArchive\project-storage"
-scp -r 'vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/output' "$legacyArchive\project-storage"
-if ($LASTEXITCODE -ne 0) { throw 'Project output download failed; do not clean VSC yet.' }
-```
-
-Project storage uses the same SSH login as DATA, with its absolute Lustre path after the colon. See [VSC scp/sftp instructions](https://docs.vscentrum.be/data/transfer/scp_sftp.html). In WinSCP, open `/lustre1/project/stg_00211/CreditPFN/output` in the existing VSC session. Nothing needs to be copied through DATA first.
-
-For a current small DATA copy and the historical summary, optionally run locally:
-
-```powershell
-New-Item -ItemType Directory -Force -Path "$legacyArchive\data-storage"
-scp -r 'vsc38338@login.hpc.kuleuven.be:/data/leuven/383/vsc38338/CreditPFN/output/manifests' "$legacyArchive\data-storage"
-if ($LASTEXITCODE -ne 0) { throw 'Manifest download failed; do not clean VSC yet.' }
-Copy-Item -LiteralPath '.\docs\AGENTS_MEMORY.md' -Destination "$legacyArchive\HISTORY.md"
-```
-
-Check that transfers succeeded and wanted files open before clearing their originals. Keep historical measurements under `archive/`, separate from active `output/`. The archive is gitignored and survives the full cleaner. No maintained archive utility is needed; its README and inventory describe the one-off consolidation.
+The September archive is already organized; its README and inventory describe that one-off consolidation. Leave it separate from active output. No new downloads, archive tools or copying through DATA are needed during debugging. For a future reset, verify any historical copy the user wants before deleting its originals. The ignored `archive/` folder survives the cleaner. Final analysis downloads are described below.
 
 On **VSC**, with all training/evaluation/submission writers stopped, inspect the existing cleaner's preview:
 
@@ -147,6 +129,8 @@ Run repository preflight on a CPU node before preparing plans. It uses the actua
 ```bash
 sbatch --time=00:15:00 scripts/slurm/maintenance.slurm preflight
 ```
+
+Run commands one at a time and retain the job ID printed by `sbatch`. Submission returns before the job executes; a queued job is not a hung terminal. If a pasted block stalls, interrupt the foreground command with Ctrl+C, then inspect `squeue` and `sacct` before submitting again. Accepted jobs remain submitted. Avoid hiding the submission response in shell command substitution during debugging.
 
 Inspect the log and `sacct` state. Passing preflight does not establish GPU correctness. For an environment/hardware report use `python -m src.utils.cluster_report`; add GPU checks only through `scripts/slurm/cluster_report.slurm` when needed. The named conda environment must work; jobs no longer fall back to another environment.
 
@@ -246,7 +230,7 @@ sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_sampling_v4 --apply
 sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_seeds_v4 --apply
 ```
 
-Download the needed `output/consolidated/<run>` directories, including LATEST and the referenced snapshot, into local `output/consolidated/`. Keep final weights on project storage unless needed locally. In PowerShell, set `$env:CREDITPFN_VIZ_RUN = 'cpt_main_v4'`, then run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
+Once the campaign is complete, the user downloads the contents of both cluster output folders into the same local `output/`: DATA supplies logs/manifests; project storage supplies results, evaluation caches and consolidated tables. For analysis alone, the compact `output/consolidated/<run>` directories, including LATEST and the referenced snapshot, are sufficient. Do not import a debug download during an active campaign. Project storage is accessible in the same WinSCP/SFTP session at `/lustre1/project/stg_00211/CreditPFN/output`; no intermediate DATA copy is necessary. Keep final weights on project storage unless needed locally. In PowerShell, set `$env:CREDITPFN_VIZ_RUN = 'cpt_main_v4'`, then run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
 
 Download completed new results and retain the final new weights needed for the ongoing study. Historical records from previous experiments do not need to occupy VSC storage. Full cleanup deletes every phase, so use it only when deliberately retiring the whole campaign.
 

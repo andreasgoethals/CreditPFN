@@ -13,6 +13,8 @@ day is never rewritten.
 
 ## 23-09-2026
 
+- Read notebook summaries from saved final-cell output, clear stale outputs before execution, and remove the transcript/script fallback; keep cluster debugging artifacts on VSC until final download.
+
 - Put all maintenance/classical/report logs under output, preserve cleanup's active log, and propagate setup/report failures.
 - Move figure metadata to manifests and notebook transcripts to logs; leave only PDFs in notebook figure folders.
 - Reject stale or corrupted plans before GPU submission; fingerprint shell code and normalize source line endings; prepare fresh check2 null controls.

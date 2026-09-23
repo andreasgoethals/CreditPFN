@@ -40,6 +40,8 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 
 Raw data and weights are never committed. On VSC, project storage holds canonical data, current weights and consolidated results; DATA holds the repository and live small output shards. The [runbook](docs/VSC.md) explains how to download finished results and clear a previous experiment. Historical output is optional local evidence, not an input to a fresh run.
 
+During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output/` at that final download.
+
 ## Local inspection and validation
 
 Use the existing local environment. In PowerShell:
@@ -66,4 +68,4 @@ This repository's code is MIT licensed. Dataset permissions and the individual f
 
 ## Based on the repository template
 
-The layout follows [Andreas' repository template](docs/TEMPLATE.md). Logs and notebook transcripts live in `output/logs/`, configurations and figure metadata in `output/manifests/`, metrics in `output/results/`, and PDFs in `output/figures/<notebook>/`. Model weights use the template's `checkpoints/` extension. The user-requested local `archive/` is the deliberate additional folder; cleanup also removes trained weights when explicitly requested, while preserving original bases.
+The layout follows [Andreas' repository template](docs/TEMPLATE.md). Cluster/debugging logs live in `output/logs/`, configurations and figure metadata in `output/manifests/`, metrics in `output/results/`, and PDFs in `output/figures/<notebook>/`. Notebook stdout stays in the executed notebook; `All_Results.md` is rebuilt from its final summary cell, without a separate transcript. Model weights use the template's `checkpoints/` extension: locally in this repository, permanently on project storage on VSC. The user-requested local `archive/` is the deliberate additional folder; cleanup also removes trained weights when explicitly requested, while preserving original bases.

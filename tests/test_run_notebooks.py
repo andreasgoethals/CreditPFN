@@ -1,5 +1,4 @@
-# Came with the template, and worth keeping: `src/utils/run_notebooks.py` is identical in every
-# project, and these pin the two documented contracts — notebooks discovered alphabetically, and
+# These pin the template contracts — notebooks discovered alphabetically, and
 # `All_Results.md` sorted alphabetically with each block verbatim.
 """`src/utils/run_notebooks.py` — the runner and the two summary documents.
 
@@ -24,9 +23,9 @@ def make_notebook(path, cells: list[str]) -> None:
         json.dumps(
             {
                 "cells": [
-                    {"cell_type": "code", "source": [c], "metadata": {}, "outputs": [],
+                    {"id": f"cell-{i}", "cell_type": "code", "source": [c], "metadata": {}, "outputs": [],
                      "execution_count": None}
-                    for c in cells
+                    for i, c in enumerate(cells)
                 ],
                 "metadata": {},
                 "nbformat": 4,
@@ -37,20 +36,20 @@ def make_notebook(path, cells: list[str]) -> None:
     )
 
 
-_NB_TMP: dict = {}
+@pytest.fixture
+def notebook_folder(tmp_path, monkeypatch):
+    folder = tmp_path / "notebooks"
+    folder.mkdir()
+    monkeypatch.setattr(rn, "notebooks_dir", lambda: folder)
+    return folder
 
 
-def _nb_dir_with(names: tuple[str, ...]):
-    """A throwaway notebooks/ holding one runnable one-cell notebook per name."""
-    import tempfile
-    from pathlib import Path
-    key = names
-    if key not in _NB_TMP:
-        d = Path(tempfile.mkdtemp())
-        for n in names:
-            make_notebook(d / f"{n}.ipynb", ["print('ran')"])
-        _NB_TMP[key] = d
-    return _NB_TMP[key]
+def save_summary(path, text):
+    make_notebook(path, [f"print({text!r})"])
+    nb = json.loads(path.read_text(encoding="utf-8"))
+    nb["cells"][-1]["execution_count"] = 1
+    nb["cells"][-1]["outputs"] = [{"output_type": "stream", "name": "stdout", "text": text}]
+    path.write_text(json.dumps(nb), encoding="utf-8")
 
 
 def test_discovery_is_alphabetical(tmp_path, monkeypatch) -> None:
@@ -84,31 +83,19 @@ def test_a_selector_matches_by_substring_not_by_equality(tmp_path, monkeypatch) 
     assert rn.discover(("nonexistent",)) == ()
 
 
-def test_magics_are_stripped_from_the_flattened_script(tmp_path) -> None:
-    """`%matplotlib inline` is a syntax error in a plain interpreter, and a notebook that
-    needs a magic to run cannot be executed non-interactively at all."""
-    nb = tmp_path / "nb.ipynb"
-    make_notebook(nb, ["%matplotlib inline\nprint('hello')", "!ls\nprint('two')"])
-    script = rn._build_script(nb, tmp_path / "out.txt")
-    assert "%matplotlib" not in script and "!ls" not in script
-    assert "print('hello')" in script and "print('two')" in script
-
-
-def test_markdown_cells_are_skipped(tmp_path) -> None:
-    nb = tmp_path / "nb.ipynb"
-    nb.write_text(
-        json.dumps({
-            "cells": [
-                {"cell_type": "markdown", "source": ["# a heading"]},
-                {"cell_type": "code", "source": ["print('code')"], "outputs": [],
-                 "execution_count": None, "metadata": {}},
-            ],
-            "metadata": {}, "nbformat": 4, "nbformat_minor": 5,
-        }),
-        encoding="utf-8",
-    )
-    script = rn._build_script(nb, tmp_path / "out.txt")
-    assert "a heading" not in script and "print('code')" in script
+def test_summary_reads_final_code_stdout_not_setup_messages_or_warnings(notebook_folder):
+    path = notebook_folder / "nb.ipynb"
+    save_summary(path, "SUMMARY: Δ = 0.1\n")
+    nb = json.loads(path.read_text(encoding="utf-8"))
+    setup = dict(nb["cells"][0], source=["print('setup')"], outputs=[
+        {"output_type": "stream", "name": "stdout", "text": "setup diagnostic"}])
+    nb["cells"].insert(0, setup)
+    nb["cells"][-1]["outputs"].append(
+        {"output_type": "stream", "name": "stderr", "text": "warning diagnostic"})
+    nb["cells"] += [{"cell_type": "markdown", "source": ["# trailing notes"]},
+                    {"cell_type": "code", "source": [], "outputs": []}]
+    path.write_text(json.dumps(nb), encoding="utf-8")
+    assert rn._notebook_summary("nb") == "SUMMARY: Δ = 0.1\n"
 
 
 def test_captions_are_grouped_per_notebook_in_order(isolated_output, monkeypatch) -> None:
@@ -150,14 +137,10 @@ def test_a_notebook_with_no_figures_still_gets_a_section(isolated_output) -> Non
     assert "_No figures produced._" in rn.write_captions(("empty",)).read_text(encoding="utf-8")
 
 
-def test_all_results_is_sorted_alphabetically_by_notebook(isolated_output) -> None:
+def test_all_results_is_sorted_alphabetically_by_notebook(isolated_output, notebook_folder) -> None:
     """One block per notebook, verbatim, alphabetical — even when passed out of order."""
-    from src.utils.paths import figures_dir
-
     for name, text in (("a", "SUMMARY A"), ("b", "SUMMARY B")):
-        folder = figures_dir(name)
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / rn.STDOUT_FILE).write_text(text, encoding="utf-8")
+        save_summary(notebook_folder / f"{name}.ipynb", text)
 
     # Passed b-then-a on purpose: the file must still come out a-then-b.
     written = rn.write_all_results(("b", "a")).read_text(encoding="utf-8")
@@ -218,7 +201,10 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     folder = figures_dir("smoke")
     assert (folder / "01_line.pdf").is_file()
     assert all(p.suffix == ".pdf" for p in folder.iterdir())
-    assert rn.stdout_path("smoke").suffix == ".log"
+    from src.utils.paths import logs_dir
+    assert not logs_dir().exists()
+    saved = json.loads((nb_dir / "smoke.ipynb").read_text(encoding="utf-8"))
+    assert saved["cells"][0]["execution_count"] == 1
 
     from src.utils.paths import all_results_path, captions_path
 
@@ -228,18 +214,12 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     assert "SMOKE SUMMARY: 1 figure" in all_results_path().read_text(encoding="utf-8")
 
 
-def test_summaries_only_is_not_destructive(isolated_output) -> None:
+def test_summaries_only_is_not_destructive(isolated_output, notebook_folder) -> None:
     """`--summaries-only` must rebuild `All_Results.md` in full, not gut it.
 
-    The captured stdout used to be deleted once folded into the document, so a rebuild found
-    nothing on disk and rewrote every block as "(no output captured)" — 490 lines to 53.
-    `output/All_Results.md` is a tracked file now, so that hollow version would be committed.
+    Saved notebook output is the source, so deleting redundant transcripts cannot erase it.
     """
-    from src.utils.paths import figures_dir
-
-    folder = figures_dir("nb")
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / rn.STDOUT_FILE).write_text("## nb\nthe measured numbers\n", encoding="utf-8")
+    save_summary(notebook_folder / "nb.ipynb", "## nb\nthe measured numbers\n")
 
     first = rn.write_all_results(("nb",)).read_text(encoding="utf-8")
     assert "the measured numbers" in first
@@ -250,11 +230,11 @@ def test_summaries_only_is_not_destructive(isolated_output) -> None:
     assert first == second, "rebuilding from disk must be idempotent"
 
 
-def test_a_partial_run_does_not_narrow_the_shared_documents(isolated_output, monkeypatch) -> None:
+def test_a_partial_run_does_not_narrow_the_shared_documents(isolated_output, notebook_folder, monkeypatch) -> None:
     """`--only` must not shrink CAPTIONS.md / All_Results.md to the notebooks it ran.
 
-    Both are single project-wide documents assembled from each notebook's `_figures.json` and
-    `_stdout.txt` on disk. `run_all` used to write them over the SUBSET it executed, so
+    Both are single project-wide documents assembled from caption metadata and notebook
+    output. `run_all` used to write them over the SUBSET it executed, so
     `--only 2.0 2.1` cut CAPTIONS.md from 435 lines to 191 — deleting four notebooks' captions
     from a file that is now tracked in git.
     """
@@ -266,14 +246,37 @@ def test_a_partial_run_does_not_narrow_the_shared_documents(isolated_output, mon
         (folder / "_figures.json").write_text(
             json.dumps([{"index": 1, "stem": "01_x", "name": "x",
                          "caption": f"Caption of {name}."}]), encoding="utf-8")
-        (folder / rn.STDOUT_FILE).write_text(f"SUMMARY OF {name}", encoding="utf-8")
+        save_summary(notebook_folder / f"{name}.ipynb", f"SUMMARY OF {name}")
 
-    monkeypatch.setattr(rn, "notebooks_dir", lambda: _nb_dir_with(("a_first", "b_second")))
+    # Keep the temporary path monkeypatch in this process; each notebook still executes in
+    # its own real Jupyter kernel. Production uses a process pool.
+    from concurrent.futures import ThreadPoolExecutor
+    monkeypatch.setattr(rn, "ProcessPoolExecutor", ThreadPoolExecutor)
     # Run only ONE of the two; both must still appear in both documents.
-    rn.run_all(("a_first",), max_workers=1)
+    ran = rn.run_all(("a_first",), max_workers=1)
+    assert ran[0].ok, ran[0].error
 
     captions = rn.captions_path().read_text(encoding="utf-8")
     results = rn.all_results_path().read_text(encoding="utf-8")
     for name in ("a_first", "b_second"):
         assert f"## {name}" in captions, f"{name} vanished from CAPTIONS.md"
         assert f"SUMMARY OF {name}" in results, f"{name} vanished from All_Results.md"
+
+
+@pytest.mark.slow
+def test_failed_rerun_cannot_publish_a_previous_success(isolated_output, notebook_folder):
+    path = notebook_folder / "fails.ipynb"
+    save_summary(path, "OLD SUCCESS")
+    nb = json.loads(path.read_text(encoding="utf-8"))
+    nb["cells"].insert(0, {"id": "failure", "cell_type": "code", "metadata": {},
+                           "source": ["raise ValueError('current failure')"],
+                           "outputs": [], "execution_count": None})
+    path.write_text(json.dumps(nb), encoding="utf-8")
+    result = rn.run_one("fails")
+    assert not result.ok and "current failure" in result.error
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert saved["cells"][-1]["outputs"] == []
+    assert saved["cells"][-1]["execution_count"] is None
+    summary = rn.write_all_results(("fails",)).read_text(encoding="utf-8")
+    assert "OLD SUCCESS" not in summary
+    assert "Notebook execution failed" in summary

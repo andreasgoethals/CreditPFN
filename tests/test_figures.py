@@ -154,15 +154,15 @@ def test_clear_returns_how_many_files_went(isolated_output, fig) -> None:
     assert figures.clear("never_existed") == 0
 
 
-def test_fresh_figures_clear_only_their_own_caption_metadata_and_transcript(isolated_output, fig):
-    from src.utils.run_notebooks import stdout_path
+def test_fresh_figures_clear_own_metadata_without_touching_debug_logs(isolated_output, fig):
+    from src.utils.paths import logs_dir
     for name in ("current", "other"):
         save = figures.FigureSaver(name)
         save(fig, "plot", caption="Caption.")
-        log = stdout_path(name)
+        log = logs_dir() / f"notebook_{name}.log"
         log.parent.mkdir(parents=True, exist_ok=True)
         log.write_text("previous summary", encoding="utf-8")
     figures.clear("current")
     assert not figures.manifest_path("current").exists()
-    assert not stdout_path("current").exists()
-    assert figures.manifest_path("other").exists() and stdout_path("other").exists()
+    assert (logs_dir() / "notebook_current.log").exists()
+    assert figures.manifest_path("other").exists() and (logs_dir() / "notebook_other.log").exists()

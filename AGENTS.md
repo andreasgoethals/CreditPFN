@@ -106,6 +106,11 @@ anything is finished.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe`; on the cluster the
   conda env named `CreditPFN`, printed as `Active conda env:` in every job log. An active
   virtualenv silently beats `conda activate` (`AGENTS_MEMORY.md`, 05-08-2026).
+- **Keep cluster debugging on VSC.** Read Downloads in place when asked; do not copy its files
+  into the repository. The user downloads the completed campaign at the final analysis stage.
+  Local notebook stdout stays in the executed `.ipynb`, with its final summary in
+  `output/All_Results.md`; no duplicate notebook logs or locks. Caption metadata remains in
+  `output/manifests/figures/`. Give VSC commands in ordinary messages, one command per code block.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and
   method authority: descriptive goals, partitions, sampling, adaptation and limitations.
   `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one

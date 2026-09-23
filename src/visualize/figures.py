@@ -27,7 +27,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from src.utils.paths import REPO_ROOT, figures_dir, logs_dir, manifests_dir
+from src.utils.paths import REPO_ROOT, figures_dir, manifests_dir
 
 #: Vector already, but heatmaps and scatter clouds inside a PDF rasterise, so it still needs a
 #: print DPI.
@@ -73,10 +73,10 @@ def clear(notebook: str) -> int:
             if path.is_file():
                 path.unlink()
                 removed += 1
-    for path in (manifest_path(notebook), logs_dir() / f"notebook_{notebook}.log"):
-        if path.is_file():
-            path.unlink()
-            removed += 1
+    path = manifest_path(notebook)
+    if path.is_file():
+        path.unlink()
+        removed += 1
     return removed
 
 

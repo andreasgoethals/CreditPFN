@@ -213,13 +213,6 @@ Positive effect = AUC increase (PD) or fractional RMSE reduction (LGD).
 ## 1.3. results_pd
 
 ```
-Primary metric for track=pd: roc_auc
-Methods on disk : 0
-Test datasets   : 0
-rows: 0
-Need at least two methods on disk to draw a scatter.
-No failed (method × dataset × fold) rows. ✔
-paper figures: metric=roc_auc, 0 datasets with regime metadata
 ==========================================================================
   2.0. PD FINAL RESULTS
 ==========================================================================
@@ -262,13 +255,6 @@ failed (method x dataset x fold) rows: 0
 ## 1.4. results_lgd
 
 ```
-Primary metric for track=lgd: rmse
-Methods on disk : 0
-Test datasets   : 0
-rows: 0
-Need at least two methods on disk to draw a scatter.
-No failed (method × dataset × fold) rows. ✔
-paper figures: metric=rmse, 0 datasets with regime metadata
 ==========================================================================
   2.1. LGD FINAL RESULTS
 ==========================================================================
