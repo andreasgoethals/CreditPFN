@@ -101,7 +101,7 @@ def load_tabicl_for_training(
         raise FileNotFoundError(
             f"TabICLv2 base checkpoint not found: {ckpt_path}. Download it once "
             f"from https://huggingface.co/jingang/TabICL into the staging "
-            f"checkpoints/ dir (see docs/METHOD.md)."
+            f"checkpoints/ dir (see docs/PAPER_ROADMAP.md)."
         )
     ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=True)
     if "config" not in ckpt or "state_dict" not in ckpt:
@@ -206,11 +206,7 @@ def save_finetuned_tabicl(
     }
     if provenance is not None:
         payload["provenance"] = provenance
-    torch.save(payload, save_path)
-
-    if provenance is not None:
-        sidecar = save_path.with_suffix(save_path.suffix + ".provenance.json")
-        sidecar.write_text(json.dumps(provenance, indent=2, default=str),
-                           encoding="utf-8")
+    from src.train.checkpoint_io import atomic_save
+    atomic_save(payload, save_path, provenance)
     LOGGER.info("Saved finetuned TabICLv2 checkpoint: %s", save_path)
     return save_path

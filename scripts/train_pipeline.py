@@ -192,11 +192,8 @@ def _apply_split_index(cfg, split_index: int | None):
     split tag inside every trial name. Instead it seeds the draw and tags the run name, so each
     split writes its own manifest and the analysis averages across them.
     """
-    if split_index is None:
-        return cfg
-    cfg.corpus.split_seed = int(split_index)
-    cfg.run_name = f"{cfg.run_name}_s{int(split_index):02d}"
-    return cfg
+    from src.utils.experiment import apply_split_index
+    return apply_split_index(cfg, split_index)
 
 
 def _resolve_grid(
@@ -467,7 +464,8 @@ def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None)
             return ""
 
     fam = model_family(base_checkpoint)
-    tag = "tabicl" if fam == "tabicl" else ("v2.6" if "v2.6" in base_checkpoint else "v3")
+    tag = "tabicl" if fam == "tabicl" else ("v2.6" if "v2.6" in base_checkpoint else
+                                           "v3" if "v3" in base_checkpoint else "v2")
     caps = {}
     try:
         from omegaconf import OmegaConf
@@ -500,7 +498,7 @@ def _device_snapshot() -> dict:
     """Which GPU this trial ran on, and how much of it was used.
 
     Recorded per trial rather than per job because a slurm array can land its tasks on
-    different partitions, and `RESULTS.md` has to be able to say "120 GPU-hours on B200" without
+    different partitions, and `AGENTS_MEMORY.md` has to be able to say "120 GPU-hours on B200" without
     anyone re-reading the logs.
     """
     try:
@@ -572,7 +570,7 @@ class RunRow:
     epoch_pass_mode:        str   = "one_sample"
 
     # NEW (12-08-2026) — the run's own configuration, so the manifest is
-    # self-describing. docs/RESULTS.md is written from these columns; without them a
+    # self-describing. docs/AGENTS_MEMORY.md is written from these columns; without them a
     # score cannot be attributed to a setting, and the corpus keeps changing.
     min_train_rows:         int   = 0
     total_optimizer_steps:  int   = 0
@@ -698,7 +696,7 @@ def run(
     ``0`` on full success, ``1`` if any trial raised.
     """
     if cfg is None:
-        cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
+        cfg = _load_cfg(overrides)
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
@@ -825,7 +823,18 @@ def run(
             use_lora=use_lora, query_fraction=query_fraction,
             accumulate_grad_batches=accumulate, epoch_pass_mode=pass_mode,
             min_train_rows=min_train_rows, l2sp_lambda=l2sp_lambda,
+            adaptation_mode=("frozen_backbone" if use_lora and (
+                not bool(getattr(cfg.lora, "enabled", False)) or "tabicl" in base) else None)
+                if OmegaConf.select(cfg, "experiment.fingerprint", default=False) else None,
         ).removesuffix(".ckpt")
+
+        identity = None
+        if OmegaConf.select(cfg, "experiment.fingerprint", default=False):
+            from src.utils.experiment import trial_identity
+            identity = trial_identity(cfg, full_grid[global_idx])
+            if OmegaConf.select(cfg, "experiment.require_plan", default=False):
+                from src.utils.prepare_experiment import assert_prepared
+                assert_prepared(cfg, global_idx, identity)
 
         # ---- Rename the log file to include the trial's HPs --------- #
         # On Linux, renaming a file that's currently the target of an
@@ -892,10 +901,19 @@ def run(
             try:
                 import json as _json
                 with open(expected_prov, encoding="utf-8") as _pf:
-                    _diverged_ckpt = bool(_json.load(_pf).get("diverged", False))
-            except Exception:                                  # unreadable prov -> treat as complete
-                _diverged_ckpt = False
-            if not _diverged_ckpt:
+                    _prov = _json.load(_pf)
+                    _diverged_ckpt = bool(_prov.get("diverged", False))
+            except (OSError, ValueError, TypeError) as exc:
+                raise RuntimeError(f"Unreadable checkpoint provenance: {expected_prov}. "
+                                   "Inspect it before resuming; no checkpoint was overwritten.") from exc
+            from src.train.sampling import PROTOCOL_VERSION
+            if _prov.get("training_protocol_version") != PROTOCOL_VERSION:
+                raise RuntimeError("Existing checkpoint uses an older training protocol. "
+                                   "Use a new run_name; preserve legacy results.")
+            if identity and _prov.get("trial_identity", {}).get("sha256") != identity["sha256"]:
+                raise RuntimeError("Existing checkpoint has a different configuration, corpus, base, "
+                                   "code or environment fingerprint. Use a new run_name.")
+            if not _diverged_ckpt or identity:
                 LOGGER.info(
                     "SKIP trial %d (global %d): checkpoint already exists at %s "
                     "— delete the file or use `clean_run --clean --stages train` "
@@ -911,7 +929,10 @@ def run(
                     n_train_datasets=0, n_test_datasets=0,
                     final_ckpt_path=str(expected_ckpt),
                     elapsed_sec=0.0,
-                    status="SKIP", error=None,
+                    status="DIVERGED" if _diverged_ckpt else "SKIP",
+                    error=_prov.get("diverge_reason") if _diverged_ckpt else None,
+                    min_train_rows=int(min_train_rows),
+                    **_run_provenance(cfg, base, l2sp_lambda),
                 ))
                 _write_csv([rows[-1]], csv_path, append=csv_append)
                 if not csv_append:
@@ -927,6 +948,9 @@ def run(
         if epoch_csv.exists():
             epoch_csv.unlink()              # fresh file per run
         _epoch_csv_init: dict[str, bool] = {"written_header": False}
+        trajectory_csv = epoch_csv.with_name(run_basename + ".trajectory.csv")
+        trajectory_csv.unlink(missing_ok=True)
+        _trajectory_csv_init = {"written_header": False}
 
         def _on_epoch_end(rec, _path=epoch_csv, _flag=_epoch_csv_init) -> None:
             # `secondary_*` is the optional per-track second metric — R²
@@ -948,6 +972,15 @@ def run(
                 "optimizer_steps":           int(rec.optimizer_steps),
                 "amp_skipped_steps":         int(rec.amp_skipped_steps),
                 "data_skipped_steps":        int(rec.data_skipped_steps),
+                "successful_updates":       int(rec.successful_updates),
+                "processed_rows":           int(rec.processed_rows),
+                "record_type":              rec.record_type,
+                "monitor_seconds":          float(rec.monitor_seconds),
+                "training_seconds":         float(rec.training_seconds),
+                "compute_seconds":          float(rec.compute_seconds),
+                "data_wait_seconds":        float(rec.data_wait_seconds),
+                "weight_drift":             float(rec.weight_drift),
+                "l2sp_penalty":             float(rec.l2sp_penalty),
                 # Diagnostics that were computed every epoch and only ever printed. These are
                 # what distinguish "the model was moved and nothing happened" from "the model
                 # was never moved", which is the whole question of the project.
@@ -962,6 +995,7 @@ def run(
             # trained epoch instead — see the header logic below).
             row.update({f"loss__{k}": float(v)
                         for k, v in sorted(rec.per_dataset_loss.items())})
+            row.update({f"metric__{k}": float(v) for k, v in sorted(rec.per_dataset_metric.items())})
             row.update({f"drift__{k}": float(v)
                         for k, v in sorted(rec.stage_drift.items())})
             row.update({f"pdrift__{k}": float(v)
@@ -1004,6 +1038,9 @@ def run(
                 min_train_rows=min_train_rows,
                 l2sp_lambda=l2sp_lambda,
                 on_epoch_end=_on_epoch_end,
+                on_trajectory_end=lambda rec: _on_epoch_end(
+                    rec, _path=trajectory_csv, _flag=_trajectory_csv_init),
+                trial_identity=identity,
             )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
@@ -1062,6 +1099,18 @@ def run(
                 # detect an incomplete scientific grid.
                 divergences += 1
         except Exception as exc:                           # noqa: BLE001
+            from src.train.recovery import TrainingInterrupted
+            if isinstance(exc, TrainingInterrupted):
+                LOGGER.warning("INTERRUPTED: %s. Resubmit the same configuration to continue.", exc)
+                row = RunRow(track=track, base_checkpoint=base, learning_rate=lr,
+                    use_lora=use_lora, query_fraction=query_fraction,
+                    accumulate_grad_batches=int(accumulate), epoch_pass_mode=pass_mode,
+                    seed=int(cfg.seed), n_train_datasets=0, n_test_datasets=0,
+                    final_ckpt_path="", elapsed_sec=time.monotonic() - t_trial,
+                    status="INTERRUPTED", error=str(exc), min_train_rows=int(min_train_rows),
+                    **_run_provenance(cfg, base, l2sp_lambda))
+                _write_csv([row], csv_path, append=csv_append)
+                return 75
             failures += 1
             LOGGER.error("Trial %d failed: %s", trial_idx_local, exc, exc_info=True)
             rows.append(RunRow(
@@ -1074,6 +1123,8 @@ def run(
                 final_ckpt_path=None,
                 elapsed_sec=time.monotonic() - t_trial,
                 status="FAIL", error=f"{type(exc).__name__}: {exc}",
+                min_train_rows=int(min_train_rows),
+                **_run_provenance(cfg, base, l2sp_lambda),
             ))
 
         # Write ONLY the row from this trial (not the full accumulated
@@ -1179,6 +1230,9 @@ def _parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list
 
 
 if __name__ == "__main__":
+    import signal
+    if hasattr(signal, "SIGUSR1"):
+        signal.signal(signal.SIGUSR1, lambda *_: os.environ.__setitem__("CREDITPFN_STOP_REQUESTED", "1"))
     args, overrides = _parse_args()
     if args.list_trials:
         cfg = _apply_split_index(_load_cfg(overrides, getattr(args, 'config', None)), getattr(args, 'split_index', None))
@@ -1196,6 +1250,7 @@ if __name__ == "__main__":
         print(model_family(grid[args.trial_family][0]))
         raise SystemExit(0)
     raise SystemExit(run(
+        cfg=_apply_split_index(_load_cfg(overrides, args.config), args.split_index),
         single=args.single,
         trial_index=args.trial_index,
         overrides=overrides,

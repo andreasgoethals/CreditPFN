@@ -1,148 +1,117 @@
-# From this repo to a paper
+# CreditPFN — research brief and paper roadmap
 
-Two things that live nowhere else in `docs/`: **whether this has already been
-published** (§1) and **what evidence is still missing before writing** (§2).
-The run record is [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md), the measured numbers are
-[`RESULTS.md`](RESULTS.md), the method is [`METHOD.md`](METHOD.md) — so this file
-stays narrow: only the novelty case and the ordered to-do list.
+This document is intended to stand alone when shared with a collaborator or uploaded into another chat. Operational commands live in [VSC.md](VSC.md), primary evidence in [LITERATURE.md](LITERATURE.md), and historical runs in [AGENTS_MEMORY.md](AGENTS_MEMORY.md).
 
-## Contents
+## Question and intended contribution
 
-1. [Has someone already done this?](#1-has-someone-already-done-this) — nearest papers, defensible claims, reviewer objections
-2. [What is missing before writing](#2-what-is-missing-before-writing) — must-have · should-have · nice-to-have
+**How does continued pretraining on a small credit-domain corpus change the behavior of tabular foundation models?** The aim is a descriptive account of learning rate, anchoring, adaptation scope and training progress across architectures and tasks. Improvements, degradation, negligible movement and numerical instability are all possible findings.
 
----
+The primary object is the response over the specified grid, not a winning model. Describe effect sizes, trajectories, variation across datasets and compute cost. The maximum observed score is an exploratory result; it is not an unbiased estimate for a selected deployment recipe. The current design does not need a separate selection corpus to describe its prespecified grid. A later champion claim, a redesigned grid chosen from these results, or a deployment recommendation needs fresh evaluation or explicitly exploratory wording.
 
-## 1. Has someone already done this?
+Compare each adapted model with its exact starting checkpoint. The paper can establish behavior on this corpus and budget; it cannot establish a universal benefit/null effect, domain specificity versus generic real-data adaptation, or absence of forgetting without the corresponding controls.
 
-**No.** The closest work in the literature, and how it differs:
+## Corpus, partitions and evaluation population
 
-| Paper | What it did | Why ours is different |
+- **25 registered tables: 17 PD classification and 8 LGD regression.** Every registered processed file must exist before a corrected run starts. Keep the corpus fixed throughout the campaign.
+- Four dataset folds, partition seed **1729**. PD held-out counts are **4, 4, 5, 4**; LGD counts are **2, 2, 2, 2**. Training uses the complement: 12/13 PD tables or 6 LGD tables. Balance means table count, not equal rows, default rates, countries or institutions.
+- Every dataset is held out exactly once per recipe/training seed. It may be a training dataset in the other folds. The four fitted models overlap substantially in their training corpora; they are not four independent statistical replications.
+- Distinct dataset names do not establish independent populations. Related releases, loans, borrowers and institutions require a source-level grouping audit before stronger independence or out-of-time claims. No automatic cross-dataset deduplication system is reinstated.
+- Held-out dataset evaluation currently uses five row-level outer CV folds, plus an inner validation split for classical tuning, decision thresholds and calibration. Evaluation seed **99** is fixed across training seeds. These are IID table benchmarks; they do not simulate future origination cohorts.
+- All outer test rows are scored. Inference context caps depend on the base, but are identical for that base's trained and untuned arms. Cross-base rankings therefore combine architecture, prior and native context capacity.
+
+Only schema-compatible, legally usable data belong in the corpus. Raw private data, names, contents and credentials do not belong in the paper or Git. Figures use the private display-name mapping; the temporary tracked preprocessing-slug exception is a source-code exception, not permission to publish those names in results.
+
+## Implemented main grid
+
+| Factor | Levels / rule | Meaning |
 |---|---|---|
-| **Garg et al. 2025 — Real-TabPFN** | Continued pretraining of TabPFN-v2 on 71 *general-purpose* OpenML/Kaggle tables | General-purpose corpus, not a domain. Classification only. Our recipe follows theirs; our question (does *domain* specialisation help?) is the one they left open |
-| **Kolberg et al. 2026 — TabPFN-Wide** | Continued pretraining for extreme feature counts | The target is a *data shape*, not a domain. Classifier only — no wide regressor exists |
-| **Rubachev et al. 2025 — On Finetuning TFMs** | 342 single-dataset finetuning runs | Per-dataset finetuning, not corpus-level continued pretraining. No domain specialisation |
-| **Tanna et al. 2026 — Data Presentation Over Architecture** | TFMs on Home Credit + Lending Club, 7 context-construction strategies | **Closest applied work, and it uses two of our datasets.** But it is in-context learning only — no finetuning, no continued pretraining — classification only, no temporal splits |
-| **Purucker et al. 2026 — Beyond IID** | 142 datasets, IID / temporal / grouped splits, 3 TFMs vs 8 tuned baselines | Tests in-context learning only. The paper **explicitly lists TFM finetuning and continued pretraining as untested future work** — which is precisely our contribution |
+| Base | TabPFN v2, v2.6, v3; TabICLv2 | Separate classifier/regressor weights, identified by SHA-256 |
+| Peak learning rate | `3e-7`, `1e-6`, `1e-5`, `3e-5` | From a conservative real-table CPT reference to a stress level |
+| L2-SP | `0`, `0.003` | Add `0.5 × lambda × sum((w - w0)^2)` over trainable pretrained parameters |
+| Adaptation | Full parameter updates; frozen backbone | Exact trainable names/counts recorded in checkpoint provenance |
+| Dataset sampling | `one_sample` | One sampled context/query batch per table visit; equal table visitation and a new random table order each round |
+| Dataset partitions | Four fixed folds | Every table is a held-out dataset once |
+| Training seed | `42` | Common randomness across recipes where compatible; different architectures/caps do not imply identical numerical computation |
+| Budget | Provisionally 5,000 successful optimizer updates | A finite gradient that is actually applied increments the counter; rejected updates do not |
+| Trajectories | 0, 250, 1,000, 2,500, 5,000 updates | Diagnostics during the same training trajectory, under one fixed schedule |
 
-**The defensible claims for a paper**, in descending strength:
+The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `experiment1_pd.yaml` and `experiment1_lgd.yaml`, run family `cpt_main_v3`.
 
-1. **First domain-specific continued pretraining of a tabular foundation
-   model on real domain data** — in any domain, and first in credit risk.
-2. **First continued pretraining for tabular regression.** Every prior CPT
-   paper is classifier-only. The LGD density result exists nowhere else.
-3. **Two architectures, two priors.** With TabICLv2 alongside TabPFN, a null
-   result becomes a statement about the approach rather than about one model.
-4. **Answers a named open question** from Purucker et al. — does adaptation
-   rescue TFMs where in-context learning loses? — with the split protocol
-   they showed to be decisive.
-5. **Density and calibration treated as first-class outcomes**, not
-   afterthoughts. Regulators care about the loss distribution, not just the
-   mean; the LGD finding is only visible if you measure likelihood.
+A partial round at the last update is permitted; visitation counts then differ by at most one. One update is not equal FLOPs, rows or GPU seconds across models or sampling modes. Record processed rows, successful updates, measured training time, monitoring time and peak memory alongside model quality.
 
-**Three objections a reviewer will raise, and the honest position:**
+### Adaptation is explicit
 
-- *"The synthetic prior already covers credit-like data, so there was no
-  headroom."* This is the strongest counter to the PD null, and it is partly
-  supported by Purucker's finding that TabPFN-2.6's native calibration is
-  already so good that post-hoc calibration makes it worse. Address it by
-  reporting corpus scale explicitly and by showing the LGD result — where
-  headroom clearly did exist.
-- *"Context construction, not the model, drives credit AUC."* (Tanna et al.:
-  balanced sampling is worth 3–4 AUC points, more than the spread between
-  TFM families.) Our per-step sampler is deliberately identical across
-  families so this axis is held constant — but it needs an explicit ablation,
-  not just a claim.
-- *"17 PD and 8 LGD datasets is small."* True. Per-dataset results and paired
-  statistics — and averaging over the 8 random splits — matter more than pooled
-  means here.
+Full updates optimize every normally trainable parameter. Architectural constants can remain nontrainable: TabICLv2's RoPE frequency parameter is one example.
 
----
+The frozen arm detects the repeated transformer stack containing the most parameters and freezes that stack, including its normalization affine parameters. It leaves the surrounding input/target embeddings and prediction machinery trainable. For the current architectures this selects TabPFN v3 `icl_blocks`, v2.6 `blocks`, the v2 transformer encoder stack, and TabICLv2 `icl_predictor.tf_icl.blocks`. TabICLv2's column embedder and row interactor remain trainable. The null/pilot audit must confirm the actual names/counts for each loaded checkpoint.
 
-## 2. What is missing before writing
+This is **not LoRA**, not only a final linear-head update, and not a literal replication of Rubachev's LayerNorm/head/embedding recipe. The inherited internal flag is still `use_lora`; modern filenames use `_frozen`, and provenance uses `adaptation_mode`. Legacy `_lora`/`_iclhead` names remain readable.
 
-Ordered by how much each one strengthens the paper per unit of effort.
+Freezing changes `requires_grad`, never `.training`. TabICLv2 uses different algorithms in training and inference mode. Gradients still propagate through a frozen stack to trainable embeddings, so the frozen parameter fraction does not predict activation-memory savings. Retain measured row caps.
 
-### Must have
+L2-SP is an unnormalized sum, matching the real-table reference form. The same lambda does not give equal effective regularization across architectures, task-loss scales or trainable subsets. Report its measured penalty and relative trainable-weight drift, including drift when lambda is zero; interpret interactions rather than treating lambda as a universal strength.
 
-1. **A complete eval, averaged over splits.** Run-8 delivered the first full
-   trained-vs-untuned grid; exp1 now repeats it over 8 random dataset splits so
-   the headline numbers carry an honest cross-draw error bar. Nothing else on
-   this list can be judged until exp1's grid completes.
-2. **Run the scheme sweep to the full step budget on BOTH tracks.** exp1's grid
-   (LR × L2-SP × frozen × pass-mode × 4 bases) over 8 splits. This is the single
-   biggest addition to the paper's claim.
-3. **Temporal splits — but scope them first; the corpus mostly cannot support
-   them.** Purucker et al. show that scoring grouped/temporal tasks with IID
-   splits distorts model rankings badly (Kendall τ ≈ 0.5). Credit data is
-   inherently temporal, and this is the axis where in-context learning loses
-   to tuned RealMLP — so it is exactly where adaptation might win.
+### Sampling inside a table
 
-   **Measured 2026-08-04, and it is the binding constraint:** only 5 of our 25
-   raw datasets carry a parseable date column at all — PD `vehicle_loan`
-   (`DisbursalDate`) and `bondora_peer2peer` (outcome-side dates only, so
-   leakage-prone); and three proprietary LGD sets — **PropLGD2** (the cleanest
-   one we have), **PropLGD4** and **PropLGD5** — each with a date column that
-   `sanitize.py` currently drops (the pipeline has no datetime handling anywhere).
+The current fixed preprocessing configuration uses **class-balanced batch subsampling for PD**, capped by available rows, then splits that sampled batch into disjoint 60% context and 40% query rows. Despite its inherited name `context_sampling`, this affects **both** context and query prevalence. It is not a context-only intervention. LGD uses uniform row subsampling. Sampling is without replacement within a draw; rows can recur across visits.
 
-   Worse, of the **held-out** datasets: **none of the 5 PD test sets has a
-   date**, and only 1 of the 2 LGD test sets does (**PropLGD2**). Both dated PD
-   datasets sit in the *training* split.
+This is a documented departure from Garg et al.'s uniform-row recipe. Hold it fixed in the main grid and treat proportional versus balanced sampling as a separate follow-up if calibration or prevalence effects become central. Evaluate probabilities at the natural prevalence of the outer test folds.
 
-   So there are three options, in increasing cost:
-   - **(a) A temporal case study on PropLGD2** — one held-out dataset, LGD
-     only. Cheap, honest, and enough to say "the density gain survives a
-     time-ordered split on the one dataset where we can test it."
-   - **(b) Re-pin the corpus split** so `vehicle_loan` (and possibly
-     `bondora`) become PD test sets. Costs a full retrain, and shrinks the
-     already-small training corpus.
-   - **(c) Re-source fuller raw files** — the complete Lending Club has
-     `issue_d`, Home Credit has relative day offsets. Most scientifically
-     satisfying, most work, and it changes the corpus mid-project.
+Two preprocessing ensemble members are used for training; their objectives are averaged. Categorical/transformation fits that are defined on the context must remain context-only. Dataset-level sanitization includes data-dependent feature filtering over the full table: the benchmark is consequently transductive with respect to that schema preparation, not a completely inductive preprocessing protocol. An inductive claim requires moving that selection inside the relevant folds.
 
-   Either way this needs: date-column preservation in `sanitize.py` as a
-   **split key, not a feature** (adding it as a feature would change the
-   feature space and break comparability with run-4), plus a time-ordered
-   fold generator in the eval. Recommendation: do (a) now, and treat (b)/(c)
-   as a decision to make deliberately rather than a task to schedule.
-4. **Multiple seeds.** Currently one seed per configuration, so "no effect"
-   and "effect smaller than seed noise" are indistinguishable. Three seeds on
-   the best few configurations is enough to state that properly.
-5. **CRPS for LGD.** The only density metric comparable between TabPFN's
-   histogram head and TabICLv2's quantile head. Without it the flagship result
-   cannot be stated across families.
-6. **A contamination audit.** Our test datasets are public Kaggle/OpenML
-   tables, and the base checkpoints are claimed synthetic-only. Garg et al.
-   run a tiered audit; reproduce it, because a reviewer will ask whether the
-   base model has seen Home Credit or Lending Club.
-7. **Paired statistical tests.** Wilcoxon signed-rank per dataset, Friedman
-   across models. With 5 test datasets, a raw mean difference is not evidence.
+### Budget and trajectories
 
-### Should have
+AdamW uses zero ordinary weight decay, gradient norm clipping at 1, a 10% warmup and cosine decay to 5% of peak. The complete successful-update budget fixes the schedule once. Recovery restores its position; a resubmission does not restart warmup.
 
-8. **RealMLP as a baseline.** It is the model that beat every TFM on
-   non-IID splits in BeyondArena. Omitting it invites the obvious objection.
-9. **A no-forgetting check.** Kolberg et al. report ρ = 0.9935 between their
-   continued-pretrained model and the base on out-of-domain data. Showing
-   credit specialisation did not damage general performance is cheap and
-   pre-empts a real concern.
-10. **A context-construction ablation** (uniform vs balanced sampling) —
-    directly addresses the Tanna confound.
-11. **A recalibration ablation.** Does post-hoc calibration on top of the
-    continued-pretrained model help or hurt? Purucker found TabPFN is one of
-    the few models it *hurts*; confirming that in credit is a small, quotable
-    result.
-12. **Compute cost reporting.** Continued pretraining is not free; a
-    cost-per-gain figure makes the negative PD result actionable rather than
-    merely disappointing.
+A trajectory point is a measurement of the same evolving weights, not a separately trained model or a new grid trial. For example, the point at update 1,000 of a 5,000-update run has followed the 5,000-update schedule; it is not equivalent to an independently trained 1,000-update run. Intermediate weights are transient. Only final weights and the latest optimizer recovery state persist.
 
-### Nice to have
+Monitoring uses fixed seed **31415**, up to 2,000 rows/table and four inference members. It records per-dataset primary metrics, aggregate diagnostics, elapsed time and movement from the initialization. Monitoring preserves training RNG and module modes. The final benchmark uses 32 TabPFN or 8 TabICLv2 members and full outer test folds. Keep the two evaluation fidelities separate in plots and text.
 
-13. **More training datasets.** The clearest test of "was the corpus too
-    small?" — the EDW ABS panel data was investigated for this, but its
-    January 2026 terms appear to prohibit AI training unless the university
-    agreement overrides them. That legal question is unresolved.
-14. **A recipe-sensitivity study** (L2-SP on/off, query fraction, warmup) to
-    show the null is not an artefact of one hyperparameter choice.
+A finite but disappointing/flat curve does not stop training. Only numerical failure or inability to reach the budget produces a divergent outcome. Completed numerical failures are retained as outcomes for the descriptive grid instead of repeatedly rerunning them until one succeeds. Infrastructure failures and interruptions are recoverable work, not scientific successes.
 
----
+## Seed sensitivity and separate sampling study
+
+**128 extra seed trials** repeat two recipes fixed in advance: LR `3e-7`, lambda `0.003`, with full updates and with a frozen backbone. Each runs with training seeds **43 and 44**, across four bases, four dataset folds and both tracks: `2 recipes × 2 additional seeds × 4 bases × 4 folds × 2 tracks = 128`. The seed-42 versions already exist in the main grid, giving three seeds per reference recipe.
+
+This yields **640 main-plus-seed trials**. The reference recipes are not selected from the main-grid winners. They can run after the main grid for simpler scheduling/cache reuse, or alongside it after the protocol is frozen. Seeds measure training randomness at those references; they do not prove robustness for every learning rate/lambda combination.
+
+`sampling_{pd,lgd}.yaml` defines an independent **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tracks. Its `one_sample` control is intentionally rerun under the separate phase name.
+
+| Mode | Data draws and update rule | Interpretation |
+|---|---|---|
+| `one_sample` | One draw and update per table visit | Equal table visitation |
+| `full_pass` | `ceil(table_rows / cap)` independently resampled draws per table/round; update after each draw | Larger tables receive more optimizer updates |
+| `accumulate` | Same number of draws as `full_pass`, kept together by table; mean finite gradients, then one update per table | More examples per update while keeping table-level update balance |
+
+**The historical name `full_pass` does not guarantee exhaustive, non-overlapping row coverage.** Each draw is a fresh subsample; rows can repeat or remain unseen in a round. Do not describe these modes as merely equivalent implementations. At equal updates they differ in row exposure, weighting and compute. Report both update-indexed and exposure/compute-indexed results; a separate equal-compute comparison would need its own fixed budget rule.
+
+## Phase gates before the main run
+
+1. Archive legacy evidence and verify quotas. Keep canonical raw/processed data and original model weights.
+2. Stage inputs, record content fingerprints and freeze the environment.
+3. **16 zero-LR trials**, both adaptation arms across bases/tasks: verify original versus saved tensors and fixed-monitor parity. This checks the actual installed save/reload paths.
+4. **32 short pilot trials**, 250 successful updates, conservative and high LR endpoints, both adaptations, one dataset fold, both tasks. Profile workers 0/4/8 only if needed (96 short trials for all three settings). Compare throughput, CPU memory, data wait and monitoring cost; worker count is a performance setting, not a scientific factor.
+5. **8 longer reference pilots**, one full-update reference per base/task on the first fold, up to 20,000 updates with measurements through 5k/10k/20k. This checks whether 5k would truncate substantial behavior. These pilots follow a 20k schedule, so their early points are not substitutes for the 5k-grid curves. Choose and document the main budget before preparing its immutable plans. Keep the same final budget/trajectory definitions in main, seed and sampling configs.
+6. Main grid, fixed reference-seed checks, separate sampling comparison, final evaluation and consolidation. The pilots and 96-trial sampling study are additional to the 640 count.
+
+Short jobs can resume from a successful-update boundary. Validate one interrupted/requeued positive-LR pilot on VSC before enabling automatic requeue for the campaign. Synthetic CPU tests establish the software contract; they do not establish CUDA determinism or throughput on B200 hardware.
+
+## Reporting and remaining evidence
+
+- Show PD AUC changes and LGD fractional RMSE reductions **within dataset**, paired to the same base and row fold. Aggregate row folds/repetitions within dataset before giving datasets equal weight. Do not average raw LGD RMSE across incompatible target scales.
+- Show individual datasets and coverage, with failures and missing milestones. Trajectory plots leave a point missing when observations from known baseline trials are absent at that update, rather than silently averaging only survivors.
+- Report calibration/log loss/Brier and class-imbalance metrics for PD, RMSE/MAE and supported probabilistic diagnostics for LGD. Existing nine-quantile summaries do not establish an accurate full-distribution CRPS. TabPFN density scores are clipped for numerical stability; report that convention and do not treat unlike density/quantile objectives as interchangeable.
+- Do not count 640 trials, overlapping training folds or many CV rows as 640 independent datasets. Any dataset-level bootstrap is descriptive and conditional on this small, dependent corpus; avoid unqualified significance claims or post-hoc winner tests.
+- Compare endpoint and trajectory effects for learning rate, anchoring and adaptation, including interactions. Separate step budget, row exposure, monitoring overhead and GPU allocation time.
+- A provenance audit of base pretraining and related data sources is still required for contamination/independence claims. The intended starting weights are upstream synthetic-pretrained bases, not Real-TabPFN adapted weights; content identity matters more than filename labels.
+- Temporal/grouped validation requires valid origination-time and loan/borrower keys, excluded from features. It is a future sensitivity study, not a property of current IID folds. Historical date-availability observations must be rechecked against the actual raw version.
+- A fixed non-credit panel is required to measure forgetting; a matched generic-data adaptation control is required to isolate a specifically credit-domain effect. Neither is part of the current 25-table grid.
+- Additional baselines such as RealMLP, context-prevalence sensitivity, longer horizons and more lambda levels are optional follow-ups, clearly separated from the main descriptive grid.
+
+## State of the evidence
+
+On 22-09-2026 the user reported no running VSC jobs. The old experiment has an invalid swept L2-SP axis and defects in worker sampling/accumulation. Retagging 338 surviving checkpoints recovered their lambda-0.003 identity, not a corrected training history. The user reported 412 checkpoint files on project storage; that is not a verified completed-trial count.
+
+Historical headline measurements, including the completed run-8 evaluation, remain in the agent-memory runs table as historical observations. They are not results of this redesigned experiment and cannot establish its conclusions. A clean rerun means new training and evaluation under new phase names; it does not require deleting the raw corpus or redownloading validated base weights.
+
+The current implementation uses training protocol **3**. Local tests exercise sampling, finite mean gradients, exact budgets, recovery, archive safety, identity checks and analysis. Cluster null controls, the pilot budget decision, real CUDA recovery and measured walltimes remain gates before launching the full campaign.

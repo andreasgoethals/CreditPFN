@@ -783,7 +783,7 @@ def test_train_one_config_end_to_end_tabicl(
         ckpt.with_suffix(ckpt.suffix + ".provenance.json").read_text())
     assert prov["model_family"] == "tabicl"
     assert prov["adaptation_mode"] == (
-        "iclhead_only" if freeze_backbone else "full_ft")
+        "frozen_backbone" if freeze_backbone else "full_ft")
     hp = prov["hyperparameters"]
     # TabICLv2 uses 2 members on BOTH tracks — the lgd-track value of 8 must
     # NOT leak into a tabicl trial.

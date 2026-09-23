@@ -5,14 +5,27 @@ change, as short as it can be — the *what*, plus the *why* only when it is not
 belongs in the commit.
 
 Two things do NOT go here: what a cluster run measured and what turned out not to work — both live
-in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Durable facts go in [`RESULTS.md`](RESULTS.md) (what each
-run measured) and [`METHOD.md`](METHOD.md) (the method, base checkpoints, and context caps).
+in [`AGENTS_MEMORY.md`](AGENTS_MEMORY.md). Method lives in [`PAPER_ROADMAP.md`](PAPER_ROADMAP.md); operational details and measured caps live in [`VSC.md`](VSC.md).
 
 Entries above 11-08-2026 follow this rule. Below it they use an older, longer house style
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
 ## 22-09-2026
+
+- Implemented the descriptive 512-trial main grid, 128 fixed reference-seed checks, separate 96-trial sampling study and gated null/short/budget pilots.
+- Added immutable dataset/base/code/environment plans, exact successful-update budgets, fixed trajectory monitors and optimizer/RNG/cursor recovery.
+- Added verified compact experiment archives with separate unchanged-source pruning and explicit checkpoint retirement; original data/base weights remain protected.
+- Bounded campaign concurrency across arrays, added short-segment Slurm recovery, immutable GPFS inputs, node-local caches and separate cached CPU/GPU evaluation.
+- Probe writability separately for each actual checkpoint directory, so a writable project root cannot mask an unwritable PD/LGD destination.
+- Added paired dataset-scale-aware trajectory views; consolidated documentation into the README, research brief, literature and VSC runbook, retaining both historical logs.
+
+- Added verified output consolidation and two-stage archival/cleanup; preserved raw evidence and checkpoint locations.
+- Fixed persistent-worker epoch sampling, dataset-local mean-gradient accumulation and BF16 nonfinite-gradient rejection; separated corrected runs as exp0v2/exp1v2.
+- Made checkpoint publication atomic, hardened provenance-based resume/migration, and restricted eval reuse/pairing to matching runs, splits and folds.
+- Applied worker warning/thread limits, restored exception tracebacks, fixed Slurm submission failure status and staging-probe races, and corrected eval cost packing.
+- Updated notebook loaders, optional metadata fallback, private-name displays and compact grid views; retained historical failures and reported completed epochs after aborts.
+- Confirmed the 25-dataset corpus, added a completeness guard, and updated storage, methodology, research-literature and restart documentation.
 
 - **Fixed the L2-SP sweep: the swept λ never reached training.** `run()` called `train_one_config`
   without `l2sp_lambda`, so every exp1 trial trained at the config default (0.003) and the swept
@@ -101,7 +114,7 @@ day is never rewritten.
   notebooks 1.1–1.4). Deleted `docs/EXPERIMENT_PLAN.md` (superseded by `config/experiment*.yaml`;
   code citations to it stripped). Refreshed README, METHOD, RESULTS, PAPER_ROADMAP, VSC,
   CLAUDE.local (and the gitignored `tfm-library/PROJECT_SPECIFIC.md`); README + VSC launch commands
-  corrected to `run_experiment.sh`; fixed the four-way `METHOD.md` merge artifact in METHOD and
+  corrected to `run_experiment.sh`; fixed the four-way `PAPER_ROADMAP.md` merge artifact in METHOD and
   AGENTS. LoRA code-path removal deferred to a post-exp1 pass. Suite 330 passed.
 
 ## 04-09-2026
@@ -655,7 +668,7 @@ Verified this session, no change needed:
 ## 17-08-2026
 
 - **Run-8's eval completed and recorded** — 105/105 PD + 44/44 LGD cells, 745/745 folds, zero
-  failures; the first complete evaluation in the project. `RESULTS.md` rewritten: on the full
+  failures; the first complete evaluation in the project. `AGENTS_MEMORY.md` rewritten: on the full
   grid PD is a **null** (mean Δ mAUC −0.0013, p = 0.78), not the −0.0048 damage the half-eval
   showed. `AGENTS_MEMORY.md` run-8 row updated to **done**.
 - **Mindwell `gpu_b200` eval path validated:** the 16 remaining PD tasks drained in 21 min at
@@ -733,7 +746,7 @@ Verified this session, no change needed:
 - **Win-rate matrix drops its cell numbers above 12 methods**, where "100" in adjacent cells ran
   together into `10010010080`.
 - **Cross-trial training overlays use optimizer steps, not epochs**, which is the project's own
-  documented rule (`RESULTS.md`): steps per epoch depends on the per-base row cap, so epoch 50
+  documented rule (`AGENTS_MEMORY.md`): steps per epoch depends on the per-base row cap, so epoch 50
   is 9 135 steps for v2.6 and 20 020 for v3. Train-loss overlay goes log when the bases span a
   factor of two, which they do.
 - **`style.title` wraps to the figure's own width** — a fixed 52 characters clipped titles
@@ -785,14 +798,14 @@ Verified this session, no change needed:
   so the training we submit beforehand is what sinks the eval's priority, and wICE's 36
   GPUs serve the whole university. Eval walltime 5 h → 2 h (measured: packed tasks take
   28–40 min) so tasks backfill.
-- Run-8 recorded in `RESULTS.md` and `AGENTS_MEMORY.md`, with the three dead ends above.
+- Run-8 recorded in `AGENTS_MEMORY.md` and `AGENTS_MEMORY.md`, with the three dead ends above.
 
 ## 12-08-2026
 
 - **`docs/VSC.md` rewritten, 730 → 257 lines**, and reordered around the lifecycle of a
   run rather than around the pipeline's stages: first-time setup, the five commands of a
   run, getting the results back, failures, reference. The sweep contents, the CV split
-  design and the output layout moved out — they are `METHOD.md`'s job and were duplicated
+  design and the output layout moved out — they are `PAPER_ROADMAP.md`'s job and were duplicated
   there. A TL;DR that repeated the whole document is gone.
 - **New `docs/VSC.md` §3, "Getting the results back"** — the step the guide never covered
   and the point of the whole exercise: which three trees to `rsync` down and which local
@@ -843,7 +856,7 @@ Verified this session, no change needed:
   shared axis can mean LoRA on one family and nothing on another without a second axis.
 - **Manifests are self-describing.** 14 new columns: realised steps/epochs/steps-per-epoch,
   the corpus (dataset ids, counts, total rows), `min_train_rows`, row caps, L2-SP λ, warmup,
-  LR floor, final drift, `git_commit` and the `tfm-library` pin. `docs/RESULTS.md` now
+  LR floor, final drift, `git_commit` and the `tfm-library` pin. `docs/AGENTS_MEMORY.md` now
   requires a Configuration table per run and says which column each field comes from.
 - Training logs print the corpus **with per-dataset row counts and totals** — "17 datasets"
   will not mean the same thing once the corpus grows.
@@ -854,7 +867,7 @@ Verified this session, no change needed:
   silently absorbed the learning rate into `base_short` — every results figure would have
   mis-grouped rather than failed.
 - **Docs consolidated 10 → 7.** `DATA_PIPELINE` + `CHECKPOINTS` + `ROW_CAPS` + `CODE_NOTES`
-  became `docs/METHOD.md` (§1 pipeline, §2 checkpoints, §3 caps, §4 deliberate oddities);
+  became `docs/PAPER_ROADMAP.md` (§1 pipeline, §2 checkpoints, §3 caps, §4 deliberate oddities);
   the old split ran across topics rather than between them.
 - **Renamed TabICL → TabICLv2 in prose** (256 occurrences). The model is v2 — the paper is
   "TabICLv2" and the checkpoints are `tabicl-*-v2-*.ckpt`. Code identifiers keep upstream's
@@ -886,7 +899,7 @@ Verified this session, no change needed:
   36 trials/track, utilities live in `src/utils/`, `output/` is the only generated tree, and
   the eval chapter now carries the measurement behind the task packing.
 - `PAPER_ROADMAP.md` trimmed 333 → 145 lines: kept the novelty/related-work analysis and the
-  "what is missing before writing" list, dropped the run history now held by `RESULTS.md`
+  "what is missing before writing" list, dropped the run history now held by `AGENTS_MEMORY.md`
   and `AGENTS_MEMORY.md`.
 
 - **Brought the repository in line with the renewed `docs/TEMPLATE.md`** — a starting point rather

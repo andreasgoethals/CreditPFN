@@ -1,32 +1,45 @@
-# EXPERIMENT 1 · PD — does continued pretraining help, averaged over dataset splits?
-# Delta over config/train.yaml. Row/feature caps: config/data.yaml. Eval: config/eval.yaml.
-
-# ---------------------------------------------------------------- SWEPT ------
+# Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
+track: pd
+seed: 42
+experiment:
+  fingerprint: true
+  require_plan: true
+  training_seeds: [42]
+corpus:
+  require_complete_registry: true
+  min_train_rows: 0
+  n_test_datasets: null
+  n_folds: 4
+  fold: 0
+  split_seed: 1729
+  n_splits: 4
+  train_dataset_ids: null
+  test_dataset_ids: null
+train:
+  target_total_steps: 5000
+  epochs: 50
+  max_epochs_for_step_budget: 2000
+  numerical_stopping_only: true
+  monitor_seed: 31415
+  trajectory_steps: [0, 250, 1000, 2500, 5000]
+  epoch_eval_subsample_samples: 2000
+  epoch_eval_n_estimators: 4
+  epoch_eval_n_estimators_tabicl: 4
+  recovery_every_updates: 500
+  dataloader_workers: 4
+  prefetch_factor: 2
+  step_log_interval: 100
+run_name: cpt_main_v3
 tunable:
-  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5]            # Garg -> our best -> Kolberg/Tanna
-  l2sp_lambdas: [0.0, 0.003]  # 0 = no anchor. Run-8 showed weights barely move (0.24-0.69% of
-  #   ||w0||) and L2-SP is the force holding them there, so lambda=0 is a prime suspect
-  frozen_backbone: [false, true]                      # true = freeze the stack, train the head
-  epoch_pass_modes: ["full_pass", "accumulate"]   # per-batch updates vs ONE averaged
-  #   update per dataset, so a 730k-row table cannot outvote a 999-row one
+  learning_rates: [3.0e-7, 1.0e-6, 1.0e-5, 3.0e-5]
+  l2sp_lambdas: [0.0, 0.003]
+  frozen_backbone: [false, true]
+  epoch_pass_modes: [one_sample]
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
-  adapter_families: []                                # frozen arm for every family
+  adapter_families: []
 
-corpus:
-  min_train_rows: 0           # not an axis any more: the split draw varies table sizes
-  n_test_datasets: 4          # random draw: 4 test / 13 train, of 17 PD datasets
-  n_splits: 8                 # 8 draws per track; same count for both, so the error bars compare
-  train_dataset_ids: null     # drawn, not pinned
-  test_dataset_ids: null
-
-# ---------------------------------------------------------------- FIXED ------
-track: "pd"
-run_name: "exp1"
-
-train:
-  target_total_steps: 5000    # THE budget. PD banked 95% of its loss drop by ~3550 steps,
-                              #   LGD 90% by ~4400, so 5000 clears both measured plateaus.
-  epochs: 50                  # only a fallback; the step budget derives the real epoch count
-  max_epochs_for_step_budget: 4000   # guard: a 1-step/epoch corpus must not spin forever
-  epoch_eval_count: 20        # monitor 20x per run whatever the derived epoch count is
+evaluation:
+  cache_controls: true
+  results:
+    save_predictions: false  # metrics include calibration; enable predictions for a separate diagnostic run

@@ -42,7 +42,11 @@ CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 # $VSC_HOME is only ~3 GB and is not meant for bulk data; $VSC_DATA is.
 # Exported before conda so every job and every child process inherits them.
 # --------------------------------------------------------------------------
-_CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_DATA:-$HOME}/.cache/creditpfn}"
+if [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
+    _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_SCRATCH_NODE:?}/creditpfn-cache-${SLURM_JOB_ID:-local}}"
+else
+    _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_DATA:-$HOME}/.cache/creditpfn}"
+fi
 mkdir -p "${_CACHE_ROOT}" 2>/dev/null || true
 export XDG_CACHE_HOME="${_CACHE_ROOT}"
 export HF_HOME="${_CACHE_ROOT}/huggingface"
@@ -203,6 +207,14 @@ echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
 #  If the user wants a one-off override they can set
 #  `CREDITPFN_DATA_ROOT=/some/path bash scripts/slurm/run_full_pipeline.sh`
 #  and the value will pass through unchanged.
+
+if [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
+    _input_pointer="${CREDITPFN_INPUT_POINTER:-${VSC_SCRATCH_GPFS1:?}/CreditPFN/ACTIVE_INPUTS.json}"
+    CREDITPFN_DATA_ROOT=$(python -m src.utils.stage_inputs --resolve "${_input_pointer}") || return 1
+    export CREDITPFN_DATA_ROOT
+    export CREDITPFN_BASE_CACHE_ROOT="${CREDITPFN_DATA_ROOT}"
+    unset _input_pointer
+fi
 
 _resolved_data_root=$(python -c "
 from omegaconf import OmegaConf

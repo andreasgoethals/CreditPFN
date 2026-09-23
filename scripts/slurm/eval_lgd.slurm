@@ -1,43 +1,21 @@
 #!/bin/bash -l
-# =============================================================================
-#  CreditPFN — slurm array: cross-model benchmark (LGD / regressor)
-#
-#  Same logic as eval_pd.slurm — see that file's header.
-# =============================================================================
-
+# CreditPFN eval: use the named-config run_experiment.sh launcher.
+# GPFS inputs; project weights/results; live DATA shards, consolidated post-run.
+# Array sizing, concurrency and walltime are supplied by the launcher.
 #SBATCH --job-name=creditpfn-lgd-eval
 #SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=02:00:00  # MEASURED run-8: packed tasks took 28-40 min.
-                         # A short request backfills into gaps between big
-                         # jobs, which is the only lever we have on a
-                         # partition where fairshare is against us.
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16   # <= 24, the gpu_b200 per-GPU limit
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
-# Slurm's login-shell env retrieval ("user env retrieval failed requeued
-# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-15%16   # 16 PACKED tasks — see eval_pd.slurm for the
-                          # measurement behind the change from one task per
-                          # (model x dataset) cell. LGD's whole eval is under
-                          # 1 GPU-hour, so most of these tasks are short; the
-                          # packing simply stops them being 40-second jobs.
-                          # Recompute with:
-                          #   python scripts/eval_pipeline.py --list-tasks --tasks 16 track=lgd
-                          # …or just submit via scripts/slurm/run_full_pipeline.sh.
-                          #
-                          # `cpus-per-task=16` matches the documented gpu_h100
-                          # per-GPU limit (VSC docs gpu_h100 row of the
-                          # cpu_resource_limits_in_gpu_jobs table).
-
-sleep $((RANDOM % 15 + 1))
+#SBATCH --array=0-0%1
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1

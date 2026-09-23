@@ -24,7 +24,7 @@ def _proprietary_stems() -> list[str] | None:
         from src.data._private_names import PROPRIETARY
     except Exception:
         return None
-    # longest first so 'base_modelisation' is reported before its substring 'base_model'
+    # Longest first so a longer identifier is reported before its prefix.
     return sorted(PROPRIETARY, key=len, reverse=True)
 
 
@@ -53,11 +53,13 @@ def test_no_proprietary_slug_in_tracked_files():
         ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True,
     ).stdout.splitlines()
     # Slug boundary that treats '_' and digits as part of the token (word-boundary \b would
-    # miss `corr_heloc` and `..._0009_bank_status_auc`, both of which reached a public repo).
+    # miss identifiers embedded in generated figure names).
     pats = [(s, re.compile(r"(?<![A-Za-z0-9])" + re.escape(s) + r"(?![A-Za-z0-9])")) for s in stems]
     offenders: dict[str, list[str]] = {}
     for rel in tracked:
-        if not rel or rel.startswith("tfm-library/"):
+        # Temporary, explicit project exception: preprocessing remains tracked
+        # with routing slugs until the code is frozen (user handover 22-09-2026).
+        if not rel or rel.startswith("tfm-library/") or rel == "src/data/preprocessing.py":
             continue
         try:
             text = (ROOT / rel).read_text(encoding="utf-8", errors="ignore")

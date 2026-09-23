@@ -289,6 +289,7 @@ def split_corpus(
     fold: int = 0,
     n_test_datasets: int | None = None,
     min_train_rows: int = 0,
+    require_complete_registry: bool = False,
 ) -> CorpusSplit:
     """Build a :class:`CorpusSplit` for one track.
 
@@ -329,6 +330,13 @@ def split_corpus(
         )
 
     pool = build_dataset_pool(track)
+    if require_complete_registry:
+        from src.data.preprocessing import DATASET_METADATA
+        expected = {d for d, m in DATASET_METADATA.items() if m["track"] == track}
+        actual = {r.dataset_id for r in pool}
+        if actual != expected:
+            raise ValueError(f"Incomplete {track} corpus: {len(actual)} available, {len(expected)} registered. "
+                             "Restore the confirmed dataset inventory before splitting; no silent omissions.")
     if not pool:
         LOGGER.warning("no processed CSVs found for track=%s", track)
         return CorpusSplit(train=[], test=[])
@@ -482,6 +490,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
     corpus = cfg.corpus
     return split_corpus(
         track=track,
+        require_complete_registry=bool(corpus.get("require_complete_registry", False)),
         # Optional since run-9: a config that sets `n_test_datasets` or `n_folds` never uses
         # the fractions, and requiring them forces dead knobs into every experiment file.
         train_fraction=float(corpus.get("train_fraction", 0.70)),

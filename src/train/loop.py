@@ -40,7 +40,7 @@ import re
 import socket
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Callable
 
@@ -101,7 +101,13 @@ def _dl_worker_init(_worker_id: int) -> None:
     except Exception:  # pragma: no cover - defensive; never fail a worker over this
         pass
     for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
-        os.environ.setdefault(_v, "1")
+        os.environ[_v] = "1"
+    # Spawn starts a new interpreter, so neither warning filters nor already-loaded
+    # BLAS pools inherit the parent's configuration.
+    from threadpoolctl import threadpool_limits
+    threadpool_limits(limits=1)
+    from src.utils.logging_setup import configure_warning_filters
+    configure_warning_filters()
 
 
 def _resolve_dataloader_workers(cfg) -> int:
@@ -163,6 +169,15 @@ class EpochRecord:
     optimizer_steps: int = 0
     amp_skipped_steps: int = 0
     data_skipped_steps: int = 0
+    successful_updates: int = 0
+    processed_rows: int = 0
+    record_type: str = "epoch"
+    monitor_seconds: float = 0.0
+    training_seconds: float = 0.0
+    compute_seconds: float = 0.0
+    data_wait_seconds: float = 0.0
+    l2sp_penalty: float = float("nan")
+    per_dataset_metric: dict[str, float] = field(default_factory=dict)
 
     # Gradient norm BEFORE clipping, over this epoch's steps. `clip_grad_norm_` returns it, so
     # it costs nothing, and it is the most direct answer to "is the optimiser being pushed at
@@ -330,6 +345,7 @@ def descriptive_name(
     epoch_pass_mode: str | None = None,
     min_train_rows: int | None = None,
     l2sp_lambda: float | None = None,
+    adaptation_mode: str | None = None,
 ) -> str:
     """Build the on-disk filename encoding the tunable HPs.
 
@@ -354,7 +370,8 @@ def descriptive_name(
         acc_tag = f"_acc{int(accumulate_grad_batches)}"
     # Only the non-default "full_pass" mode adds a tag, so "one_sample"
     # (the default) keeps the exact pre-2026-06-01 filename.
-    pass_tag = "_fullpass" if (epoch_pass_mode == "full_pass") else ""
+    pass_tag = {None: "", "one_sample": "", "full_pass": "_fullpass",
+                "accumulate": "_accumulate"}[epoch_pass_mode]
     # Corpus composition is a swept axis as of run-8, so it has to be in the name:
     # two trials that differ only in which training datasets existed are different
     # experiments, and without a tag they would overwrite each other's checkpoint.
@@ -372,7 +389,9 @@ def descriptive_name(
     # `base_path` HERE so every caller (loop + train_pipeline
     # idempotency + epoch CSVs) stays consistent with zero call-site
     # changes.
-    if use_lora and "tabicl" in base_stem.lower():
+    if adaptation_mode == "frozen_backbone":
+        lora_tag = "_frozen"
+    elif use_lora and "tabicl" in base_stem.lower():
         lora_tag = "_iclhead"
     else:
         lora_tag = "_lora" if use_lora else ""
@@ -539,8 +558,8 @@ def _divergence_reason(
       banks ~95 % of its loss drop by ~71 % of the budget), so we keep training it to completion
       rather than aborting — a genuinely dead trial trips this at ~1-2 % of the budget, long before
       the gate. Only ``loss_const`` is gated; the reasons below are unambiguous failures at any phase.
-    * ``auc_random`` — PD ROC-AUC pinned at 0.5 (train and test) across the monitored window.
-    * ``metric_nan`` — the monitor is on (``epoch_eval_n0 > 0``) yet every metric is NaN.
+    * ``auc_random`` — training PD ROC-AUC pinned at 0.5 across the monitored window.
+    * ``metric_nan`` — the monitor is on yet every training metric is NaN.
     * ``amp_skip_storm`` — more than half the AMP steps in the window were skipped.
     """
     if len(recent) != diverge_patience:
@@ -568,24 +587,22 @@ def _divergence_reason(
         not late_in_budget
         and len(losses) == diverge_patience
         and max(losses) - min(losses) < 1e-4
-        # No drift signal at all (λ=0 / no anchor) -> fall back to the loss-only rule.
-        and (drift_flat or not recent_drift)
+        # No drift signal (lambda=0) is insufficient evidence of a dead model.
+        and drift_flat
     )
     auc_random = (
         track_primary_metric == "roc_auc"
         and metrics_window_full
         and all(
-            not math.isnan(t) and not math.isnan(tr)
-            and abs(t - 0.5) < 1e-4 and abs(tr - 0.5) < 1e-4
-            for t, tr in zip(test_metrics_recent, train_metrics_recent)
+            not math.isnan(tr) and abs(tr - 0.5) < 1e-4
+            for tr in train_metrics_recent
         )
     )
     metric_nan = (
         epoch_eval_n0 > 0
         and metrics_window_full
         and all(
-            math.isnan(t) and math.isnan(tr)
-            for t, tr in zip(test_metrics_recent, train_metrics_recent)
+            math.isnan(tr) for tr in train_metrics_recent
         )
     )
     attempted_steps = sum(r.optimizer_steps for r in recent)
@@ -1669,6 +1686,8 @@ def train_one_config(
     min_train_rows: int | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
+    on_trajectory_end: Callable[[EpochRecord], None] | None = None,
+    trial_identity: dict | None = None,
 ) -> TrainingResult:
     """Run continued pretraining for one fixed (config, HP-tuple).
 
@@ -1721,7 +1740,8 @@ def train_one_config(
                  else cfg.tunable.regressor_base_paths)
         base_checkpoint = str(bases[0])
     base_checkpoint_config = str(base_checkpoint)
-    base_checkpoint_path = resolve_staging_path(base_checkpoint_config)
+    from src.utils.paths import resolve_base_checkpoint
+    base_checkpoint_path = resolve_base_checkpoint(base_checkpoint_config)
     if learning_rate is None:
         learning_rate = float(cfg.tunable.learning_rates[0])
     if use_lora is None:
@@ -2043,13 +2063,16 @@ def train_one_config(
         model_family=family,
         context_sampling=context_sampling,
     )
+    from src.train.sampling import EpochSampler
+    train_sampler = EpochSampler(train_ds, seed=int(cfg.seed), accumulate=pass_mode == "accumulate")
     n_workers = _resolve_dataloader_workers(cfg)
     dl_kwargs: dict = dict(
         batch_size=1,
-        shuffle=True,
+        sampler=train_sampler,
         num_workers=n_workers,
         collate_fn=identity_collate,
         pin_memory=device == "cuda",
+        generator=torch.Generator().manual_seed(int(cfg.seed) + 71_001),
     )
     if n_workers > 0:
         # MUST be spawn — see the "Parallel data loading" note above (fork hangs after CUDA init
@@ -2058,7 +2081,7 @@ def train_one_config(
         dl_kwargs.update(
             multiprocessing_context="spawn",
             persistent_workers=True,
-            prefetch_factor=4,
+            prefetch_factor=max(1, int(getattr(cfg.train, "prefetch_factor", 2))),
             worker_init_fn=_dl_worker_init,
         )
     LOGGER.info(
@@ -2145,7 +2168,16 @@ def train_one_config(
                 "already the %d-step target — keeping all epochs.",
                 steps_per_epoch, epochs, steps_per_epoch * epochs, int(target_steps),
             )
-    total_steps = max(1, steps_per_epoch * epochs)
+    # The schedule and stop condition use SUCCESSFUL updates, not rounded epochs.
+    total_steps = int(target_steps) if target_steps else max(1, steps_per_epoch * epochs)
+    if total_steps < 1:
+        raise ValueError("The optimizer update budget must be positive")
+    if target_steps:
+        wanted = math.ceil(total_steps / steps_per_epoch)
+        ceiling = int(max_epochs) if max_epochs else max(wanted * 2, epochs)
+        if ceiling < wanted:
+            raise ValueError("max_epochs_for_step_budget cannot reach target_total_steps")
+        epochs = ceiling  # retry skipped updates, but stop exactly at total_steps
     optimizer, scheduler = _make_optimizer_and_scheduler(
         model, cfg, total_steps=total_steps,
     )
@@ -2165,7 +2197,7 @@ def train_one_config(
     # with a loud warning if staging can't be written from this node (the
     # failure mode that killed all 32 PD trials on 2026-07-03).
     save_path = Path(save_path) if save_path is not None else (
-        resolve_writable_staging_path(cfg.checkpoint.trained_dir) / track / descriptive_name(
+        resolve_writable_staging_path(Path(cfg.checkpoint.trained_dir) / track) / descriptive_name(
             run_name=str(cfg.run_name),
             track=track,
             base_path=base_checkpoint_config,
@@ -2177,6 +2209,7 @@ def train_one_config(
             epoch_pass_mode=pass_mode,
             min_train_rows=int(min_train_rows or 0),
             l2sp_lambda=_l2sp_lambda_name,
+            adaptation_mode=("lora" if lora_adapters_inserted else "frozen_backbone" if use_lora else "full_ft") if trial_identity else None,
         )
     )
 
@@ -2261,7 +2294,10 @@ def train_one_config(
     # prepare_eval_chunk/_forward are TabPFN-specific), so its monitor always
     # goes through the sklearn ensemble path regardless of epoch_eval_ne.
     use_ensemble_eval = epoch_eval_ne > 1 or family == "tabicl"
-    snapshot_path = Path(str(save_path) + ".epoch_eval.ckpt") if use_ensemble_eval else None
+    import tempfile
+    snapshot_dir = tempfile.TemporaryDirectory(prefix="creditpfn-monitor-",
+        dir=os.environ.get("VSC_SCRATCH_NODE") or None) if use_ensemble_eval else None
+    snapshot_path = Path(snapshot_dir.name) / save_path.name if snapshot_dir else None
     # (test_metric, train_metric) pairs from epochs where the monitor RAN —
     # the divergence detector's metric window must only look at these, else
     # the by-design NaN metrics of skipped epochs would fake a collapse.
@@ -2273,8 +2309,9 @@ def train_one_config(
     # rows.  On only 2,000 rows per dataset that sampling noise created apparent
     # AUC/RMSE "lift" which disappeared in the full K-fold evaluation.  A
     # learning curve must change only the checkpoint, not its evaluation set.
-    monitor_train_seed = int(cfg.seed) + 10_000
-    monitor_test_seed = int(cfg.seed) + 20_000
+    monitor_seed = int(getattr(cfg.train, "monitor_seed", cfg.seed))
+    monitor_train_seed = monitor_seed + 10_000
+    monitor_test_seed = monitor_seed + 20_000
 
     # Picks the per-track primary + secondary metric names. For PD we
     # add brier_score as the calibration-collapse early-warning metric
@@ -2293,7 +2330,7 @@ def train_one_config(
         else (track_primary_metric, track_secondary_metric)
     )
 
-    def _do_eval(
+    def _do_eval_impl(
         ckpt_path: Path | str, refs: list[DatasetRef], *, seed: int,
     ) -> dict[str, float]:
         """Dispatcher: ensemble eval (sklearn API, n_estimators>1) or the
@@ -2321,7 +2358,96 @@ def train_one_config(
         # evaluate_on_split returns dict[str, float] when given a tuple.
         return result if isinstance(result, dict) else {track_primary_metric: float(result)}
 
-    if epoch_eval_n0 > 0:
+    from src.train.recovery import preserve_random_state, batch_rows
+
+    def _do_eval(*args, **kwargs):
+        with preserve_random_state(model):
+            return _do_eval_impl(*args, **kwargs)
+
+    def _monitor_group(ckpt, refs, *, seed):
+        import hashlib
+        scores = {}
+        for ref in refs:
+            offset = int(hashlib.sha256(ref.dataset_id.encode()).hexdigest()[:8], 16)
+            scores[ref.dataset_id] = _do_eval(ckpt, [ref], seed=(seed + offset) % (2**32 - 1))
+        averages = {metric: mean_ignore_nan([d.get(metric, float("nan")) for d in scores.values()])
+                    for metric in track_metric_names}
+        return averages, {key: float(d.get(track_primary_metric, float("nan"))) for key, d in scores.items()}
+
+    successful_updates = 0
+    processed_rows = 0
+    trajectory_history = []
+    trajectory_steps = {int(v) for v in getattr(cfg.train, "trajectory_steps", [])}
+    if any(v < 0 or v > total_steps for v in trajectory_steps):
+        raise ValueError("Trajectory updates must lie between zero and the training budget")
+
+    from src.train.recovery import load_recovery, save_recovery, TrainingInterrupted
+    recovery_every = int(getattr(cfg.train, "recovery_every_updates", 0))
+    recovery_path = Path(str(save_path) + ".resume.pt")
+    resuming = recovery_every > 0 and recovery_path.is_file()
+    resume = None
+    start_epoch = start_offset = 0
+    last_saved_update = 0
+    segment_started = time.monotonic()
+    segment_seconds = float(os.environ.get("CREDITPFN_SEGMENT_SECONDS")
+                            or getattr(cfg.train, "segment_seconds", 0))
+    if segment_seconds and not recovery_every:
+        raise ValueError("Segmented jobs require recovery_every_updates > 0")
+    recovery_identity = trial_identity
+    if recovery_every and recovery_identity is None:
+        from src.utils.experiment import scientific_config, digest_json
+        recovery_identity = {"sha256": digest_json({"config": scientific_config(cfg),
+                                                    "name": save_path.name})}
+
+    # Measure movement even when anchoring is OFF. Zero regularization is not zero drift.
+    drift_anchor = l2sp_anchor
+    if trajectory_steps and drift_anchor is None:
+        drift_anchor = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+
+    def _record_trajectory(epoch):
+        if successful_updates not in trajectory_steps:
+            return
+        if any(r.successful_updates == successful_updates for r in trajectory_history):
+            return
+        started = time.monotonic()
+        with preserve_random_state(model):
+            if use_ensemble_eval and snapshot_path is not None:
+                if family == "tabicl":
+                    from src.train.tabicl_model import save_finetuned_tabicl
+                    save_finetuned_tabicl(model, tabicl_model_config, snapshot_path)
+                else:
+                    _save_eval_snapshot(model, architecture_config, snapshot_path,
+                                        criterion=criterion, inference_config=inference_config)
+            train_metrics, train_by_dataset = _monitor_group(snapshot_path or save_path, split.train, seed=monitor_train_seed) if epoch_eval_n0 > 0 else ({}, {})
+            test_metrics, test_by_dataset = _monitor_group(snapshot_path or save_path, split.test, seed=monitor_test_seed) if epoch_eval_n0 > 0 else ({}, {})
+            drift = float("nan")
+            if drift_anchor:
+                denominator = sum(t.double().square().sum() for t in drift_anchor.values())
+                numerator = sum((p.detach().double() - drift_anchor[n].double()).square().sum()
+                                for n, p in model.named_parameters() if n in drift_anchor)
+                drift = float(torch.sqrt(numerator / denominator.clamp_min(1e-30)).item())
+            rec = EpochRecord(
+                epoch=epoch, train_loss=float("nan"), elapsed_sec=time.monotonic() - t0,
+                lr=float(optimizer.param_groups[0]["lr"]), record_type="trajectory",
+                successful_updates=successful_updates, processed_rows=processed_rows,
+                metric_name=track_primary_metric, secondary_metric_name=track_secondary_metric,
+                train_metric=float(train_metrics.get(track_primary_metric, float("nan"))),
+                test_metric=float(test_metrics.get(track_primary_metric, float("nan"))),
+                secondary_train_metric=float(train_metrics.get(track_secondary_metric, float("nan"))),
+                secondary_test_metric=float(test_metrics.get(track_secondary_metric, float("nan"))),
+                weight_drift=drift, monitor_seconds=time.monotonic() - started,
+                l2sp_penalty=0.5 * l2sp_lambda * float(numerator.item()) if drift_anchor else 0.0,
+                per_dataset_metric={**{f"train__{k}": v for k, v in train_by_dataset.items()},
+                                    **{f"test__{k}": v for k, v in test_by_dataset.items()}},
+            )
+        trajectory_history.append(rec)
+        if on_trajectory_end is not None:
+            on_trajectory_end(rec)
+        LOGGER.info("trajectory update=%d rows=%d %s(test)=%.6g drift=%.6g monitor=%.1fs",
+                    successful_updates, processed_rows, rec.metric_name, rec.test_metric,
+                    rec.weight_drift, rec.monitor_seconds)
+
+    if epoch_eval_n0 > 0 and not resuming:
         LOGGER.info(
             "Baseline eval (epoch=-1, model = unmodified base checkpoint, "
             "n_estimators=%d, qf=%.2f) — this is the score every finetuned "
@@ -2338,12 +2464,16 @@ def train_one_config(
             str(base_checkpoint_path) if use_ensemble_eval
             else save_path  # ignored on the cheap path; the live model is used
         )
-        baseline_train_d = _do_eval(
-            baseline_ckpt, split.train, seed=monitor_train_seed,
-        )
-        baseline_test_d = _do_eval(
-            baseline_ckpt, split.test, seed=monitor_test_seed,
-        )
+        baseline_by_dataset = {}
+        baseline_started = time.monotonic()
+        if trajectory_steps:
+            baseline_train_d, train_by_dataset = _monitor_group(baseline_ckpt, split.train, seed=monitor_train_seed)
+            baseline_test_d, test_by_dataset = _monitor_group(baseline_ckpt, split.test, seed=monitor_test_seed)
+            baseline_by_dataset = {**{f"train__{k}": v for k, v in train_by_dataset.items()},
+                                   **{f"test__{k}": v for k, v in test_by_dataset.items()}}
+        else:
+            baseline_train_d = _do_eval(baseline_ckpt, split.train, seed=monitor_train_seed)
+            baseline_test_d = _do_eval(baseline_ckpt, split.test, seed=monitor_test_seed)
         baseline_train_p = float(baseline_train_d.get(track_primary_metric, float("nan")))
         baseline_test_p  = float(baseline_test_d.get(track_primary_metric, float("nan")))
         baseline_train_s = (
@@ -2366,11 +2496,19 @@ def train_one_config(
             secondary_test_metric=baseline_test_s,
             secondary_metric_name=track_secondary_metric,
             epoch_time_sec=0.0,
+            per_dataset_metric=baseline_by_dataset,
         )
         history.append(baseline_record)
         monitored_metrics.append((baseline_test_p, baseline_train_p))
         if on_epoch_end is not None:
             on_epoch_end(baseline_record)
+        if 0 in trajectory_steps:
+            from dataclasses import replace
+            initial_trajectory = replace(baseline_record, record_type="trajectory", weight_drift=0.0,
+                                         l2sp_penalty=0.0, monitor_seconds=time.monotonic() - baseline_started)
+            trajectory_history.append(initial_trajectory)
+            if on_trajectory_end is not None:
+                on_trajectory_end(initial_trajectory)
         if track_secondary_metric:
             LOGGER.info(
                 "epoch=-1 BASELINE  %s(train)=%.4f  %s(test)=%.4f  "
@@ -2387,7 +2525,29 @@ def train_one_config(
                 track_primary_metric, baseline_test_p,
             )
 
-    for epoch in range(epochs):
+    if 0 in trajectory_steps and not resuming and not trajectory_history:
+        _record_trajectory(-1)
+
+    if resuming:
+        resume = load_recovery(recovery_path, model=model, optimizer=optimizer, scheduler=scheduler,
+                               scaler=scaler, identity=recovery_identity)
+        start_epoch, start_offset = resume["epoch"], resume["next_batch"]
+        successful_updates = last_saved_update = resume["successful_updates"]
+        processed_rows = resume["processed_rows"]
+        history = [EpochRecord(**r) for r in resume["history"]]
+        trajectory_history = [EpochRecord(**r) for r in resume["trajectories"]]
+        monitored_metrics = resume["monitored_metrics"]
+        t0 = time.monotonic() - resume["elapsed_sec"]
+        # Rebuild the compact progress files from the same recovery transaction.
+        for rec in history:
+            if on_epoch_end is not None:
+                on_epoch_end(rec)
+        for rec in trajectory_history:
+            if on_trajectory_end is not None:
+                on_trajectory_end(rec)
+        LOGGER.info("Recovered update=%d epoch=%d next_batch=%d", successful_updates, start_epoch, start_offset)
+
+    for epoch in range(start_epoch, epochs):
         model.train()
         # NOTE (2026-08-06): do NOT snap TabICLv2's frozen stages back to eval()
         # here. `.training` picks the ALGORITHM in TabICLv2 (train forward vs the
@@ -2399,6 +2559,8 @@ def train_one_config(
         # Per-epoch reshuffle: a fresh random subsample is drawn from each
         # dataset's full processed CSV (see ProcessedDatasetLoader.set_epoch).
         train_ds.set_epoch(epoch)
+        train_sampler.set_epoch(epoch)
+        train_sampler.start_offset = start_offset if epoch == start_epoch else 0
         running_loss = 0.0
         n_batches = 0
         # Number of real (.backward()-ed) micro-batches accumulated since the
@@ -2436,15 +2598,79 @@ def train_one_config(
         # L2-SP anchor actually contributing to the loss?
         epoch_compute_s = 0.0                 # Σ forward+backward+step time
         epoch_l2sp: list[float] = []          # per-step L2-SP penalty values
+        epoch_monitor_start = sum(r.monitor_seconds for r in trajectory_history)
 
-        # Boundary flags for "accumulate". Read once per epoch: the plan is rebuilt only
-        # by set_epoch, and an empty list makes the fallback below take the counter path.
-        _dataset_end_flags = list(
-            getattr(getattr(train_loader, "dataset", None), "is_dataset_end", []) or []
-        )
-        for step, batch in enumerate(train_loader, start=1):
+        if resume is not None and epoch == start_epoch:
+            s = resume["epoch_stats"]
+            running_loss, n_batches = s["running_loss"], s["n_batches"]
+            epoch_grad_norms, epoch_clipped_count = s["grad_norms"], s["clipped_count"]
+            epoch_step_losses, epoch_ctx_pos_rate = s["step_losses"], s["ctx_pos_rate"]
+            epoch_skipped_steps, epoch_optimizer_steps = s["skipped_steps"], s["optimizer_steps"]
+            epoch_amp_skipped_steps = s["amp_skipped_steps"]
+            epoch_compute_s, epoch_l2sp = s["compute_s"], s["l2sp"]
+            epoch_t0 = time.monotonic() - s["elapsed_sec"]
+            epoch_monitor_start -= s.get("monitor_s", 0.0)
+
+        def after_batch():
+            nonlocal last_saved_update
+            if micro_since_step or successful_updates >= total_steps:
+                return
+            interrupted = (os.environ.get("CREDITPFN_STOP_REQUESTED") == "1"
+                           or (segment_seconds and time.monotonic() - segment_started >= segment_seconds))
+            if recovery_every and (interrupted or successful_updates - last_saved_update >= recovery_every):
+                progress = {
+                    "epoch": epoch, "next_batch": step, "successful_updates": successful_updates,
+                    "processed_rows": processed_rows, "elapsed_sec": time.monotonic() - t0,
+                    "history": [asdict(r) for r in history],
+                    "trajectories": [asdict(r) for r in trajectory_history],
+                    "monitored_metrics": monitored_metrics,
+                    "epoch_stats": {"running_loss": running_loss, "n_batches": n_batches,
+                        "grad_norms": epoch_grad_norms, "clipped_count": epoch_clipped_count,
+                        "step_losses": epoch_step_losses, "ctx_pos_rate": epoch_ctx_pos_rate,
+                        "skipped_steps": epoch_skipped_steps, "optimizer_steps": epoch_optimizer_steps,
+                        "amp_skipped_steps": epoch_amp_skipped_steps, "compute_s": epoch_compute_s,
+                        "l2sp": epoch_l2sp, "elapsed_sec": time.monotonic() - epoch_t0,
+                        "monitor_s": sum(r.monitor_seconds for r in trajectory_history) - epoch_monitor_start},
+                }
+                save_recovery(recovery_path, model=model, optimizer=optimizer, scheduler=scheduler,
+                              scaler=scaler, identity=recovery_identity, progress=progress)
+                last_saved_update = successful_updates
+                if interrupted:
+                    raise TrainingInterrupted(f"Saved update {successful_updates}: {recovery_path}")
+
+        from src.train.optimization import step_mean_gradient
+
+        def flush_gradients():
+            nonlocal micro_since_step, epoch_optimizer_steps, epoch_amp_skipped_steps, epoch_clipped_count
+            nonlocal successful_updates
+            if micro_since_step == 0:
+                return None
+            norm, did_step = step_mean_gradient(
+                model, optimizer, scaler, microbatches=micro_since_step, max_norm=grad_clip,
+            )
+            epoch_grad_norms.append(norm)
+            epoch_clipped_count += int(grad_clip is not None and norm > grad_clip)
+            epoch_optimizer_steps += 1
+            if did_step:
+                scheduler.step()
+                successful_updates += 1
+            else:
+                epoch_amp_skipped_steps += 1
+                LOGGER.warning("epoch=%d: non-finite gradients; optimizer/scheduler update skipped", epoch)
+            micro_since_step = 0
+            if did_step:
+                _record_trajectory(epoch)
+            return norm
+
+        _dataset_end_flags = train_sampler.dataset_end_flags
+        for step, batch in enumerate(train_loader, start=train_sampler.start_offset + 1):
+            if successful_updates >= total_steps:
+                break
             step_t0 = time.monotonic()
+            monitor_before = sum(r.monitor_seconds for r in trajectory_history)
             batch = batch.to(device)
+            processed_rows += batch_rows(batch)
+            dataset_boundary = pass_mode == "accumulate" and _dataset_end_flags[step - 1]
             # Skip-on-missing-class check — mirrors the official
             # `FinetunedTabPFNClassifier._should_skip_batch` at
             # `TabPFN .txt`. If a stratified subsample
@@ -2462,6 +2688,9 @@ def train_one_config(
                     epoch, step, batch.dataset_id,
                 )
                 epoch_skipped_steps += 1
+                if dataset_boundary:
+                    flush_gradients()
+                after_batch()
                 continue
             # Pre-declare every tensor that will hold the forward autograd graph, so the
             # non-finite-loss skip below can release them by name whichever branch ran.
@@ -2513,7 +2742,7 @@ def train_one_config(
                         loss = _regression_loss(
                             pred_logits, y_target, criterion=criterion,
                         )
-                # L2-SP penalty (full-FT only; anchor is None under LoRA).
+                # L2-SP anchors trainable pretrained weights in both full and frozen modes.
                 # Added to the back-prop loss ONLY — `loss` stays the pure
                 # data loss (CE / NLL) for logging, curves, and the
                 # non-finite / divergence checks below.
@@ -2523,16 +2752,16 @@ def train_one_config(
                         epoch_l2sp.append(float(_pen.detach().cpu().item()))
                     loss_to_backprop = (
                         (loss + _pen) if _pen is not None else loss
-                    ) / accumulate
+                    )
                 else:
-                    loss_to_backprop = loss / accumulate
+                    loss_to_backprop = loss
 
             if torch.isnan(loss).item() or torch.isinf(loss).item():
                 LOGGER.warning(
                     "epoch=%d step=%d dataset=%s — non-finite loss; skipped",
                     epoch, step, batch.dataset_id,
                 )
-                optimizer.zero_grad(set_to_none=True)
+                # Preserve earlier finite microbatches; this forward has no backward.
                 # CRITICAL: release the forward graph. On a normal step `backward()` frees the
                 # saved activations; here we skip backward, so unless we drop EVERY reference
                 # (the loss, the backprop tensor, AND the forward outputs, which each hold a
@@ -2542,62 +2771,17 @@ def train_one_config(
                 # having run 40 earlier steps — including 64-feature home_credit — cleanly.
                 loss = loss_to_backprop = pred_logits = y_target = out = _pen = None
                 epoch_skipped_steps += 1
+                if dataset_boundary:
+                    flush_gradients()
+                after_batch()
                 continue
 
             scaler.scale(loss_to_backprop).backward()
             micro_since_step += 1
 
-            stepped = False
-            pre_clip_norm: float | None = None
-            # In "accumulate" mode the optimizer steps at DATASET boundaries instead of
-            # after a fixed count, so every dataset contributes exactly one update no
-            # matter how many batches it has. `_flush_now` falls back to the counter for
-            # every other mode, so nothing else changes.
-            _flush_now = (
-                bool(_dataset_end_flags[step - 1])
-                if (pass_mode == "accumulate" and step - 1 < len(_dataset_end_flags))
-                else micro_since_step >= accumulate
-            )
-            if _flush_now:
-                # We always unscale here (with or without grad_clip) so we
-                # can MEASURE the pre-clip gradient norm. This is the
-                # single most useful number for diagnosing the loss
-                # explosion: if pre-clip norm hits 100s of × the
-                # grad_clip threshold (= 1.0 in our cfg), the LR is too
-                # high for the current gradient noise.
-                scaler.unscale_(optimizer)
-                total_norm = torch.nn.utils.clip_grad_norm_(
-                    model.parameters(),
-                    max_norm=(grad_clip if grad_clip is not None else float("inf")),
-                )
-                pre_clip_norm = float(total_norm.detach().cpu().item())
-                epoch_grad_norms.append(pre_clip_norm)
-                if grad_clip is not None and pre_clip_norm > grad_clip:
-                    epoch_clipped_count += 1
-
-                # Inspect the AMP scaler's internal state BEFORE step:
-                # `scaler.step()` returns the optimizer's return value
-                # when the step ran, and None when it was skipped due to
-                # inf/NaN. We mirror this into `stepped` and only advance
-                # the LR scheduler when the optimizer actually stepped —
-                # otherwise the schedule drifts ahead of the real
-                # optimization trajectory (real bug found in pipeline
-                # review 2026-05-21).
-                epoch_optimizer_steps += 1
-                _ = scaler.step(optimizer)
-                stepped = not _amp_step_was_skipped(scaler)
-                scaler.update()
-                if stepped:
-                    scheduler.step()
-                else:
-                    epoch_amp_skipped_steps += 1
-                    LOGGER.warning(
-                        "epoch=%d step=%d: AMP scaler skipped optimizer step "
-                        "(inf/NaN grads). Scheduler NOT advanced this step.",
-                        epoch, step,
-                    )
-                optimizer.zero_grad(set_to_none=True)
-                micro_since_step = 0
+            pre_clip_norm = None
+            if dataset_boundary or (pass_mode != "accumulate" and micro_since_step >= accumulate):
+                pre_clip_norm = flush_gradients()
 
             loss_val = float(loss.detach().cpu().item())
             running_loss += loss_val
@@ -2611,7 +2795,7 @@ def train_one_config(
             if _cpr == _cpr:                      # not NaN → classification
                 epoch_ctx_pos_rate.append(float(_cpr))
 
-            step_dt = time.monotonic() - step_t0
+            step_dt = time.monotonic() - step_t0 - (sum(r.monitor_seconds for r in trajectory_history) - monitor_before)
             epoch_compute_s += step_dt
             cur_lr = float(scheduler.get_last_lr()[0])
             gpu_mb = ""
@@ -2632,8 +2816,7 @@ def train_one_config(
             )
             n_epoch_steps = len(train_loader)
             if (
-                n_epoch_steps <= 20
-                or step in (1, n_epoch_steps)
+                step in (1, n_epoch_steps)
                 or step % step_log_interval == 0
             ):
                 LOGGER.info(
@@ -2641,6 +2824,7 @@ def train_one_config(
                     step, n_epoch_steps, batch.dataset_id,
                     loss_val, cur_lr, grad_str, step_dt, gpu_mb,
                 )
+            after_batch()
 
         # Flush any pending gradients from a partial accumulation window
         # at the end of the epoch — otherwise the trailing micro-batches'
@@ -2650,28 +2834,7 @@ def train_one_config(
         # `accumulate == 1` (every backward already triggered a full step,
         # leaving the counter at 0).
         if micro_since_step > 0:
-            scaler.unscale_(optimizer)
-            total_norm = torch.nn.utils.clip_grad_norm_(
-                model.parameters(),
-                max_norm=(grad_clip if grad_clip is not None else float("inf")),
-            )
-            pre_clip_flush = float(total_norm.detach().cpu().item())
-            epoch_grad_norms.append(pre_clip_flush)
-            if grad_clip is not None and pre_clip_flush > grad_clip:
-                epoch_clipped_count += 1
-            epoch_optimizer_steps += 1
-            _ = scaler.step(optimizer)
-            stepped_flush = not _amp_step_was_skipped(scaler)
-            scaler.update()
-            if stepped_flush:
-                scheduler.step()
-            else:
-                epoch_amp_skipped_steps += 1
-                LOGGER.warning(
-                    "epoch=%d (flush): AMP scaler skipped optimizer step "
-                    "(inf/NaN grads). Scheduler NOT advanced.", epoch,
-                )
-            optimizer.zero_grad(set_to_none=True)
+            flush_gradients()
 
         # Pure training time for this epoch (data loading + forward/backward
         # + optimizer steps), measured BEFORE the monitoring eval so the two
@@ -2705,7 +2868,8 @@ def train_one_config(
         # (loss is always recorded) and skip the snapshot write too.
         monitor_this_epoch = (
             epoch_eval_n0 > 0
-            and (epoch % epoch_eval_every == 0 or epoch == epochs - 1)
+            and not trajectory_steps
+            and (epoch % epoch_eval_every == 0 or epoch == epochs - 1 or successful_updates >= total_steps)
         )
         if monitor_this_epoch:
             if use_ensemble_eval and snapshot_path is not None:
@@ -2765,6 +2929,10 @@ def train_one_config(
         else:
             train_metric = test_metric = float("nan")
             secondary_train = secondary_test = float("nan")
+            if trajectory_history and trajectory_history[-1].successful_updates == successful_updates:
+                tr = trajectory_history[-1]
+                train_metric, test_metric = tr.train_metric, tr.test_metric
+                secondary_train, secondary_test = tr.secondary_train_metric, tr.secondary_test_metric
 
         train_loss = running_loss / max(1, n_batches)
         epoch_dt = time.monotonic() - epoch_t0
@@ -2818,9 +2986,11 @@ def train_one_config(
             except Exception:                                      # pragma: no cover
                 gpu_peak = ""
         # Timing decomposition: where did the epoch's wall-clock go?
-        eval_phase_dt = max(0.0, epoch_dt - train_phase_dt)
-        data_io_s = max(0.0, train_phase_dt - epoch_compute_s)
-        steps_per_s = (n_batches / train_phase_dt) if train_phase_dt > 0 else float("nan")
+        trajectory_monitor_s = sum(r.monitor_seconds for r in trajectory_history) - epoch_monitor_start
+        eval_phase_dt = max(0.0, epoch_dt - train_phase_dt) + trajectory_monitor_s
+        training_s = max(0.0, train_phase_dt - trajectory_monitor_s)
+        data_io_s = max(0.0, training_s - epoch_compute_s)
+        steps_per_s = (n_batches / training_s) if training_s > 0 else float("nan")
         # Scientific notation: at conservative LRs the penalty is ~1e-6..1e-9
         # (‖w−w0‖² after tiny steps), which a %.4f rendered as a useless
         # "0.0000" in every Jul-10 log line.
@@ -2848,6 +3018,10 @@ def train_one_config(
             k: float(np.mean(v)) for k, v in sorted(_per_ds.items())
         }
         record = EpochRecord(
+            monitor_seconds=eval_phase_dt,
+            training_seconds=training_s,
+            compute_seconds=epoch_compute_s,
+            data_wait_seconds=data_io_s,
             epoch=epoch,
             train_loss=train_loss,
             elapsed_sec=elapsed,
@@ -2866,6 +3040,9 @@ def train_one_config(
             optimizer_steps=epoch_optimizer_steps,
             amp_skipped_steps=epoch_amp_skipped_steps,
             data_skipped_steps=epoch_skipped_steps,
+            successful_updates=successful_updates,
+            processed_rows=processed_rows,
+            l2sp_penalty=float(np.mean(epoch_l2sp)) if epoch_l2sp else 0.0,
             grad_norm_mean=gnorm_mean,
             grad_norm_max=gnorm_max,
             clipped_frac=clipped_frac,
@@ -2876,6 +3053,8 @@ def train_one_config(
         history.append(record)
         if on_epoch_end is not None:
             on_epoch_end(record)
+        if successful_updates >= total_steps:
+            break
 
         # ONE comprehensive line per epoch (user request 2026-07-11): every
         # number needed to diagnose a run lives on a single greppable line —
@@ -2927,7 +3106,7 @@ def train_one_config(
         recent = [r for r in history if r.epoch >= 0][-diverge_patience:]
         # Cumulative optimizer steps so far — gates loss_const to the early budget so a
         # converged-late trial trains to completion instead of aborting (see _divergence_reason).
-        _steps_done = sum(int(r.optimizer_steps) for r in history if r.epoch >= 0)
+        _steps_done = successful_updates
         reason = _divergence_reason(
             recent, monitored_metrics, diverge_patience,
             track_primary_metric, epoch_eval_n0,
@@ -2935,6 +3114,10 @@ def train_one_config(
             target_total_steps=getattr(cfg.train, "target_total_steps", None),
             min_progress=float(getattr(cfg.train, "divergence_min_progress", 0.7)),
         )
+        if getattr(cfg.train, "numerical_stopping_only", False):
+            # Descriptive experiments retain flat/poor trajectories. Only numerical failures stop them.
+            reason = "no_finite_updates" if recent and len(recent) >= diverge_patience and all(
+                r.optimizer_steps - r.amp_skipped_steps == 0 for r in recent) else None
         if reason:
             LOGGER.error(
                 "DIVERGED at epoch=%d after %d-epoch patience window "
@@ -2954,6 +3137,9 @@ def train_one_config(
     diverged_at_epoch = locals().get("diverged_at_epoch", None)
     diverge_reason = locals().get("diverge_reason", None)
     diverge_reason = locals().get("diverge_reason", "")
+    if target_steps and successful_updates < total_steps and not diverged:
+        diverged = True
+        diverge_reason = "update_budget_unreached"
     # Baseline row (epoch=-1) is always the first entry in history when
     # the per-epoch monitor is enabled.
     baseline_row = next(
@@ -2993,6 +3179,14 @@ def train_one_config(
     provenance = {
         "schema_version":      2,
         "run_name":            str(cfg.run_name),
+        "training_protocol_version": 3,
+        "trial_identity": trial_identity,
+        "adaptation": getattr(model, "_creditpfn_freeze_info", {
+            "frozen_modules": [], "trainable_parameter_names": [n for n, p in model.named_parameters() if p.requires_grad]}),
+        "successful_updates": successful_updates,
+        "processed_rows": processed_rows,
+        "trajectory_steps": sorted(trajectory_steps),
+        "dataloader_workers": n_workers,
         "track":               track,
         "model_family":        family,
         # Divergence status — read by train_pipeline's resume check so a diverged checkpoint is
@@ -3004,8 +3198,7 @@ def train_one_config(
         # What the grid's use_lora axis actually did for this family —
         # eval-side interpretation must not assume LoRA semantics.
         "adaptation_mode": (
-            ("iclhead_only" if use_lora else "full_ft") if family == "tabicl"
-            else ("lora" if use_lora else "full_ft")
+            "lora" if lora_adapters_inserted else ("frozen_backbone" if use_lora else "full_ft")
         ),
         "task_type":           "classification" if track == "pd" else "regression",
         "saved_at":            time.strftime("%Y-%m-%dT%H:%M:%S%z"),
@@ -3015,12 +3208,13 @@ def train_one_config(
             "learning_rate":       float(learning_rate),
             "weight_decay":        float(cfg.optimizer.weight_decay),
             # Effective L2-SP strength actually applied this trial (0.0 when
-            # off, or when use_lora makes it inert). See _l2sp_penalty.
+            # off, or when genuine inserted LoRA adapters leave no anchored weights).
             "l2sp_lambda":         (l2sp_lambda if l2sp_anchor is not None else 0.0),
             "betas":               [0.9, 0.999],          # hardcoded AdamW betas
             "scheduler_type":      "warmup_cosine",       # hardcoded schedule family
             "warmup_fraction":     float(cfg.scheduler.warmup_fraction),
-            "epochs":              int(cfg.train.epochs),
+            "epochs":              int(epochs),
+            "target_total_steps":   int(target_steps) if target_steps else None,
             "accumulate_grad_batches": int(accumulate),
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
@@ -3054,7 +3248,7 @@ def train_one_config(
                     "dropout":        float(cfg.lora.dropout),
                     "target_modules": list(cfg.lora.target_modules),
                 }
-                if (use_lora and hasattr(cfg, "lora")) else None
+                if lora_adapters_inserted else None
             ),
         },
         "training_datasets":   train_dataset_ids,
@@ -3192,10 +3386,11 @@ def train_one_config(
     # trial reports the fraction of the work it actually did rather than matching full-FT.
     _n_total = sum(p_.numel() for p_ in model.parameters())
     _n_train_p = sum(p_.numel() for p_ in model.parameters() if p_.requires_grad)
-    _rows_seen = int(sum(int(getattr(r, "optimizer_steps", 0) or 0) for r in history)
-                     * max_rows_per_epoch)
+    _rows_seen = processed_rows
     _tflops = (2.0 * _n_total + 2.0 * _n_train_p) * _rows_seen / 1e12
 
+    if recovery_path.exists() and not diverged:
+        recovery_path.unlink()
     return TrainingResult(
         final_ckpt_path=save_path,
         history=history,
@@ -3242,9 +3437,9 @@ def train_one_config(
             str(last_good.secondary_metric_name) if last_good is not None
             else (str(baseline_row.secondary_metric_name) if baseline_row is not None else "")
         ),
-        # What actually ran, for the manifest and for docs/RESULTS.md later.
-        total_optimizer_steps=int(sum(r.optimizer_steps for r in history)),
-        epochs_run=int(epochs),
+        # What actually ran, for the manifest and for docs/AGENTS_MEMORY.md later.
+        total_optimizer_steps=successful_updates,
+        epochs_run=sum(r.epoch >= 0 for r in history),
         steps_per_epoch=int(steps_per_epoch),
         min_train_rows=int(min_train_rows or 0),
         train_dataset_ids=tuple(c.dataset_id for c in split.train),
@@ -3252,7 +3447,8 @@ def train_one_config(
         train_rows_total=int(sum(c.n_rows for c in split.train)),
         test_rows_total=int(sum(c.n_rows for c in split.test)),
         final_drift=float(
-            max((v for v in (last_good.stage_drift or {}).values()), default=float("nan"))
-            if last_good is not None else float("nan")
+            trajectory_history[-1].weight_drift if trajectory_history else
+            (max((v for v in (last_good.stage_drift or {}).values()), default=float("nan"))
+             if last_good is not None else float("nan"))
         ),
     )

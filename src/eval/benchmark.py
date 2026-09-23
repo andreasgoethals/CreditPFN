@@ -166,6 +166,8 @@ class EvalRow:
     timestamp:       str = ""
     status:          str = "OK"
     error:           str | None = None
+    cache_hit:       bool = False
+    cached_elapsed_sec: float = 0.0
 
 
 # --------------------------------------------------------------------------- #
@@ -197,7 +199,6 @@ def load_trained_handles(
     # was skipped). Both have a usable checkpoint on disk. EXCLUDE "FAIL"
     # (no checkpoint) and "DIVERGED" (checkpoint exists but the weights
     # collapsed to random — scoring it would just add noise rows).
-    df = df[df["status"].isin(["OK", "SKIP"])]
     df = df[df["final_ckpt_path"].notna() & (df["final_ckpt_path"] != "")]
 
     # Manifests are append-only across resumptions. A completed task can
@@ -219,14 +220,21 @@ def load_trained_handles(
                 "using the latest row per checkpoint basename.",
                 n_before - len(df),
             )
+    df = df[df["status"].isin(["OK", "SKIP"])]
 
     out: list[tuple[ModelHandle, object]] = []
     task_type = "classification" if track == "pd" else "regression"
+    seen_checkpoints = set()
     for _, row in df.iterrows():
-        ckpt = str(row["final_ckpt_path"])
-        if not Path(ckpt).exists():
+        from src.utils.checkpoint_inventory import resolve_checkpoint
+        resolved, prov = resolve_checkpoint(str(row["final_ckpt_path"]), track)
+        ckpt = str(resolved) if resolved else str(row["final_ckpt_path"])
+        if resolved is None:
             LOGGER.warning("trained checkpoint missing on disk: %s — skipped", ckpt)
             continue
+        if prov.get("diverged") or resolved in seen_checkpoints:
+            continue
+        seen_checkpoints.add(resolved)
         # ``use_lora`` column is present on manifests produced after the
         # LoRA tuneable was added; older manifests don't have it. Default
         # missing → False so the eval still runs against legacy manifests.
@@ -236,6 +244,7 @@ def load_trained_handles(
         else:
             use_lora_val = bool(use_lora_raw)
         extra = {
+            "adaptation_mode": prov.get("adaptation_mode"),
             "base_checkpoint":     row["base_checkpoint"],
             "learning_rate":       float(row["learning_rate"]),
             "use_lora":            use_lora_val,
@@ -250,6 +259,12 @@ def load_trained_handles(
             # never read, so the two anchor arms would have collided in one results dir.
             "l2sp_lambda":         row.get("l2sp_lambda", None),
         }
+        # Saved effective values are authoritative after the historical L2-SP
+        # collision and after SKIP records with incomplete HP columns.
+        hp = prov.get("hyperparameters", {})
+        for key in ("l2sp_lambda", "min_train_rows", "epoch_pass_mode", "learning_rate"):
+            if key in hp:
+                extra[key] = hp[key]
         # Family from the manifest's base_checkpoint column — the trained
         # ckpt filename inherits the base stem, but the base column is the
         # canonical record.
@@ -300,6 +315,8 @@ def resolve_test_datasets(handle: ModelHandle,
     if handle.source.endswith("-trained") and handle.base_path:
         prov = load_provenance(handle.base_path)
         if prov and prov.get("test_datasets"):
+            if set(prov["test_datasets"]) & set(prov.get("training_datasets", prov.get("train_datasets", []))):
+                raise ValueError("Checkpoint provenance overlaps training and test datasets")
             # Guard the PAIRED comparison: a trained checkpoint is scored on its
             # own provenance test set, while untuned/classical use the cfg split.
             # These are identical only when the corpus seed + fractions match. If
@@ -316,11 +333,8 @@ def resolve_test_datasets(handle: ModelHandle,
                     handle.name, prov_ids, cfg_ids,
                 )
             return list(prov["test_datasets"])
-        LOGGER.warning(
-            "tabpfn-trained %s has no test_datasets in provenance — "
-            "falling back to cfg test split",
-            handle.name,
-        )
+        raise ValueError(f"Trained checkpoint {handle.name} has no verified test_datasets; "
+                         "refusing a potentially contaminated config fallback")
     return list(cfg_test_dataset_ids)
 
 
@@ -815,14 +829,17 @@ def _method_dirname(handle: ModelHandle) -> str:
     lr = extra.get("learning_rate")
     # For the tabicl family the grid's use_lora axis means freeze-backbone
     # (train ICL head only) — tag accordingly so dirnames don't lie.
-    if extra.get("use_lora"):
+    if extra.get("adaptation_mode") == "frozen_backbone":
+        lora_tag = "__frozen"
+    elif extra.get("use_lora"):
         lora_tag = ("__iclhead" if handle.source.startswith("tabicl")
                     else "__lora")
     else:
         lora_tag = ""
     # full_pass checkpoints get a distinct dir so they don't collide with
     # the one_sample variant of the same (base, lr, lora).
-    fp_tag = "__fullpass" if extra.get("epoch_pass_mode") == "full_pass" else ""
+    fp_tag = {"full_pass": "__fullpass", "accumulate": "__accumulate"}.get(
+        extra.get("epoch_pass_mode"), "")
     # Corpus-size arm (swept since run-8). Two trials that trained on different corpora
     # are different experiments and must not share a results directory — sharing one
     # would make their scores indistinguishable AND make skip-existing treat the second
@@ -879,6 +896,8 @@ def find_existing_results(
     handle: ModelHandle, dataset_id: str, *,
     track: str, results_base_dir: str | Path,
     n_folds_required: int | None = None,
+    run_name: str | None = None,
+    evaluation_key: str | None = None,
 ) -> list[Path]:
     """Return CSVs that contribute OK rows for this (handle, dataset).
 
@@ -904,6 +923,18 @@ def find_existing_results(
     ok_folds: set[int | str] = set()
     needle = f"ds-{dataset_id}"
     for csv_path in sorted(method_dir.glob("*.csv")):
+        if run_name and not csv_path.name.startswith(run_name + "_"):
+            continue
+        if evaluation_key is not None:
+            import json
+            sidecar = Path(str(csv_path) + ".evaluation.json")
+            if not sidecar.is_file():
+                continue
+            if json.loads(sidecar.read_text(encoding="utf-8")).get(dataset_id) != evaluation_key:
+                continue
+        checkpoint = getattr(handle, "base_path", None)
+        if checkpoint and Path(checkpoint).is_file() and csv_path.stat().st_mtime_ns < Path(checkpoint).stat().st_mtime_ns:
+            continue
         if needle not in csv_path.name and not _csv_might_have_dataset(csv_path, dataset_id):
             # Filename doesn't carry the id AND the file isn't a generic
             # multi-dataset CSV (skip the expensive open).
@@ -917,7 +948,7 @@ def find_existing_results(
         return []
     if n_folds_required is None:
         return hits
-    return hits if len(ok_folds) >= int(n_folds_required) else []
+    return hits if set(range(int(n_folds_required))).issubset(ok_folds) else []
 
 
 def _csv_might_have_dataset(csv_path: Path, dataset_id: str) -> bool:
@@ -955,7 +986,7 @@ def _csv_ok_folds_for(csv_path: Path, dataset_id: str) -> set[int | str]:
 
 
 #: Quantile grid stored for every LGD prediction. Nine levels is enough for a CRPS estimate
-#: within ~1 % of the exact integral and for 80 % / 90 % interval coverage, while adding nine
+#: for exploratory grid-based scoring and 80 % / 90 % interval coverage, while adding nine
 #: floats per row to the parquet. The grid is FIXED across families on purpose — that is what
 #: makes the resulting CRPS comparable between TabPFN's bar distribution and TabICLv2's
 #: quantile head, which `neg_nll` is not.
@@ -1400,6 +1431,8 @@ def run_benchmark(
     max_rows_per_model: dict[str, int] | None = None,
     per_task_tag: str | None = None,
     save_predictions: bool = False,
+    evaluation_config: dict | None = None,
+    use_control_cache: bool = False,
 ) -> list[EvalRow]:
     """Score every (model × test_dataset × fold) and persist per-method CSVs.
 
@@ -1448,6 +1481,7 @@ def run_benchmark(
     rows_by_model: dict[str, list[EvalRow]] = {}
 
     for m_idx, (handle, model) in enumerate(handles_and_models, start=1):
+        evaluation_keys = {}
         rows_by_model.setdefault(handle.name, [])
         max_rows_for_handle = resolve_max_rows_for_handle(
             handle, max_rows_per_model=max_rows_per_model,
@@ -1461,13 +1495,27 @@ def run_benchmark(
         for did, ds in datasets_full.items():
             LOGGER.info("  dataset %s  (n_rows=%d, n_features=%d)",
                         did, ds.n_rows, ds.n_features)
-            fold_rows = _bench_model_on_dataset(
-                handle=handle, model=model, ds=ds,
-                n_folds=n_folds, inner_val_fraction=inner_val_fraction,
-                seed=seed, timestamp=timestamp,
-                max_rows_for_handle=max_rows_for_handle,
-                pred_records=pred_records if save_predictions else None,
-            )
+            from src.eval import cache
+            key = cache.evaluation_key(handle, did, track=track, config=evaluation_config) if evaluation_config else None
+            if key:
+                evaluation_keys[did] = key
+            cacheable = key and use_control_cache and not save_predictions and not handle.source.endswith("-trained")
+            cached = cache.load(results_base_dir, key, n_folds=n_folds) if cacheable else None
+            if cached is not None:
+                from dataclasses import replace
+                fold_rows = [replace(EvalRow(**r), elapsed_sec=0.0, timestamp=timestamp,
+                                     cache_hit=True, cached_elapsed_sec=float(r["elapsed_sec"])) for r in cached]
+                LOGGER.info("Reused fingerprint-matched control for %s", did)
+            else:
+                fold_rows = _bench_model_on_dataset(
+                    handle=handle, model=model, ds=ds,
+                    n_folds=n_folds, inner_val_fraction=inner_val_fraction,
+                    seed=seed, timestamp=timestamp,
+                    max_rows_for_handle=max_rows_for_handle,
+                    pred_records=pred_records if save_predictions else None,
+                )
+                if cacheable:
+                    cache.save(results_base_dir, key, fold_rows, n_folds=n_folds)
             rows.extend(fold_rows)
             rows_by_model[handle.name].extend(fold_rows)
 
@@ -1511,6 +1559,12 @@ def run_benchmark(
             base_dir=results_base_dir, per_task_tag=per_task_tag,
         )
         _write_csv(rows_by_model[handle.name], out_path)
+        if evaluation_keys:
+            import json
+            marker = Path(str(out_path) + ".evaluation.json")
+            pending = marker.with_name(marker.name + f".tmp.{os.getpid()}")
+            pending.write_text(json.dumps(evaluation_keys, sort_keys=True), encoding="utf-8")
+            os.replace(pending, marker)
         if save_predictions:
             _pred_path = _write_predictions(
                 [r for r in pred_records if r["model_name"] == handle.name], out_path)

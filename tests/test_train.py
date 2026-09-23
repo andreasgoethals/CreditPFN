@@ -1166,6 +1166,12 @@ def test_train_one_config_end_to_end_mocked(
     assert prov["gpu"] == "cpu"
     assert "torch_version" in prov
 
+    # An early divergence abort must report completed epochs, not the planned budget.
+    monkeypatch.setattr(loop_mod, "_divergence_reason", lambda *args, **kwargs: "forced_test_abort")
+    stopped = loop_mod.train_one_config(cfg)
+    assert stopped.epochs_run == 1
+    assert stopped.epochs_run == sum(r.epoch >= 0 for r in stopped.history)
+
 
 def test_non_finite_loss_is_skipped_and_loop_continues(
     synthetic_processed, monkeypatch, tmp_path,
@@ -1396,8 +1402,8 @@ def test_flat_loss_with_growing_drift_is_not_divergence() -> None:
     # A genuinely dead model: flat loss AND flat weights.
     assert reason([rec(0.4624, 3.1e-4) for _ in range(5)]) == "loss_const"
 
-    # No anchor (weight_drift = NaN every epoch) + flat loss -> loss-only fallback still trips.
-    assert reason([rec(0.4624, math.nan) for _ in range(5)]) == "loss_const"
+    # No anchor provides no drift evidence; a flat low-LR loss alone is not divergence.
+    assert reason([rec(0.4624, math.nan) for _ in range(5)]) is None
 
     # A moving loss is never `loss_const`, whatever the drift does.
     assert reason([rec(l, 3.1e-4) for l in (0.47, 0.44, 0.41, 0.39, 0.36)]) is None

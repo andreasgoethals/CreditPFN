@@ -719,7 +719,7 @@ class ProcessedDatasetLoader(Dataset):
             raise ValueError(f"unknown model_family: {model_family!r}")
         self.model_family = model_family
         # Context-construction strategy for the per-step subsample; see
-        # _stratified_subsample_indices and docs/METHOD.md.
+        # _stratified_subsample_indices and docs/PAPER_ROADMAP.md.
         self.context_sampling = str(context_sampling)
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)
@@ -811,7 +811,10 @@ class ProcessedDatasetLoader(Dataset):
     def __len__(self) -> int:
         return len(self._plan)
 
-    def __getitem__(self, idx: int):
+    def __getitem__(self, idx: int | tuple[int, int]):
+        # A persistent worker owns a copy of this dataset. Main-process set_epoch()
+        # cannot update that copy; the sampler transports the epoch with the index.
+        epoch, idx = idx if isinstance(idx, tuple) else (self._epoch, idx)
         ref_idx, replica = self._plan[idx]
         ref = self.refs[ref_idx]
         loaded = _load_processed_csv(ref)
@@ -821,7 +824,7 @@ class ProcessedDatasetLoader(Dataset):
         # subsample within the same epoch.
         step_seed = (
             self._base_seed * 1_000_003
-            + self._epoch * 10_007
+            + epoch * 10_007
             + ref_idx * 31
             + replica * 131_071
         ) & 0xFFFF_FFFF

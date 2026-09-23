@@ -492,7 +492,7 @@ def test_resolve_test_datasets_falls_back_to_cfg_for_others() -> None:
     assert resolve_test_datasets(handle_untuned,  cfg_test_dataset_ids=cfg_test) == cfg_test
 
 
-def test_resolve_test_datasets_falls_back_when_provenance_missing(tmp_path: Path) -> None:
+def test_resolve_test_datasets_rejects_missing_provenance(tmp_path: Path) -> None:
     """tabpfn-trained whose ckpt has no provenance falls back to cfg."""
     handle = ModelHandle(
         name="tabpfn-trained[…]", track="pd",
@@ -501,8 +501,8 @@ def test_resolve_test_datasets_falls_back_when_provenance_missing(tmp_path: Path
         extra={},
     )
     cfg_test = ["0001.alpha"]
-    out = resolve_test_datasets(handle, cfg_test_dataset_ids=cfg_test)
-    assert out == cfg_test
+    with pytest.raises(ValueError, match="no verified test_datasets"):
+        resolve_test_datasets(handle, cfg_test_dataset_ids=cfg_test)
 
 
 # =============================================================================
@@ -960,12 +960,13 @@ def test_packing_balances_tasks_and_keeps_every_cell() -> None:
     assert all(bins), "no empty task — an empty task is a wasted GPU allocation"
 
 
-def test_packing_puts_the_expensive_cells_in_different_tasks() -> None:
+def test_packing_puts_the_expensive_cells_in_different_tasks(monkeypatch) -> None:
     """LPT exists so the one 16-minute dataset does not land beside another one."""
     from scripts.eval_pipeline import _pack_tasks
 
     roster = _fake_roster(4)
     pairs = [(m, d) for m in range(4) for d in ("0014.algorithmwatch", "0005.myhom")]
+    monkeypatch.setattr("scripts.eval_pipeline._dataset_rows", lambda track: {"0014.algorithmwatch": 1_000_000, "0005.myhom": 1_000})
     bins = _pack_tasks(pairs, roster, n_tasks=4, track="pd", max_rows_per_model=None)
     big = {i for i, (_, d) in enumerate(pairs) if d == "0014.algorithmwatch"}
     per_task = [len(big & set(b)) for b in bins]
@@ -1000,8 +1001,8 @@ def test_pools_over_packed_tasks_never_align_with_the_dataset_index() -> None:
     That is the 11-07-2026 dead end (a whole dataset in one pool) reintroduced by a
     different mechanism.
 
-    Packing fixes it structurally: each packed task holds a cost-balanced MIX of cells,
-    so no stride over tasks can isolate a dataset.
+    Stable tie diversification prevents this reproduced isolation pattern.
+    Cost balancing alone is not a general guarantee of dataset coverage per pool.
     """
     from scripts.eval_pipeline import _pack_tasks
 

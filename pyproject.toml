@@ -8,20 +8,14 @@
 #      pip install -e ".[dev]"          # + pytest, repo-refresh tooling
 #      pip install -e ".[dev,notebooks]"# + Jupyter/ipykernel for the notebooks
 #
-#  *** TabPFN caveat (read this) ***
-#  PyPI's `tabpfn` lags the Prior Labs `main` API this code is written against
-#  (4-tuple `load_model_criterion_config`, version="v2.6"/"v3",
-#  `download_if_not_exists`, `TabPFNEnsemblePreprocessor`). After the editable
-#  install above, ALWAYS override with the git source so the v2.6/v3 API is
-#  present (this is intentionally NOT a hard dependency below, to avoid a
-#  network git-clone on every reinstall):
-#
-#      pip install --upgrade "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main"
+#  Upstream training APIs change. Validate and record the existing environment
+#  with compatibility smoke tests and VSC null controls. Do not upgrade a
+#  floating upstream branch during an immutable experiment campaign.
 #
 #  Python: ** 3.11, 3.12, or 3.13 **. torch / scikit-learn now ship cp313
 #  wheels (the VSC base conda env is 3.13 and works). 3.14 is excluded —
 #  some compiled deps still lack cp314 wheels and fall back to a
-#  from-source build. See docs/VSC.md §1.2.
+#  from-source build. See docs/VSC.md.
 # =============================================================================
 
 [build-system]
@@ -31,7 +25,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "creditpfn"
 version = "0.1.0"
-description = "Continued pretraining of TabPFN tabular foundation models (v2.6 / v3) on real credit-risk data — PD (classification) and LGD (regression)."
+description = "Continued pretraining of TabPFN v2/v2.6/v3 and TabICLv2 on real credit-risk data — PD (classification) and LGD (regression)."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = { text = "MIT" }
@@ -51,7 +45,7 @@ classifiers = [
 dependencies = [
     # Core deep-learning stack
     "torch>=2.2,<3.0",
-    # TabPFN — see the caveat in the header; the git override supersedes this.
+    # TabPFN — validate the installed training API before preparing a campaign.
     "tabpfn>=2.2",
     # TabICL — the SECOND continued-pretraining family (added 2026-08-04).
     # Upper-bounded at <3 on purpose: src/train/tabicl_compat.py imports the

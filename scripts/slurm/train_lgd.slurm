@@ -1,42 +1,21 @@
 #!/bin/bash -l
-# =============================================================================
-#  CreditPFN — slurm array: continued pretraining (LGD / regressor)
-#  TARGET: Mindwell cluster — NVIDIA B200 SXM6 (Blackwell), 192 GiB VRAM
-#
-#  Same structure as train_pd.slurm — see that file's header for the full
-#  rationale (Mindwell-only training, storage tiers, pilot account, backfill).
-#  LGD has a smaller corpus (6 train + 2 test datasets), so trials finish
-#  faster; --time is set lower accordingly.
-# =============================================================================
-
+# CreditPFN train: use the named-config run_experiment.sh launcher.
+# GPFS inputs; project weights/results; live DATA shards, consolidated post-run.
+# Array sizing, concurrency and walltime are supplied by the launcher.
 #SBATCH --job-name=creditpfn-lgd-train
 #SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=10:00:00   # RAISED from 4 h for run-8, and this one is not margin.
-                          # LGD used to finish in minutes because it was silently
-                          # undertrained: `target_total_steps` only trimmed epochs,
-                          # never extended them, so LGD ran 800-3 200 steps against
-                          # a 9 100 target. Now it reaches the full 20 000, which at
-                          # LGD's measured epoch costs is v2.6 ~4.0 h, v3 ~3.7 h,
-                          # tabicl ~0.6 h. 10 h covers the worst case with margin
-                          # for the smaller `min_train_rows=5000` corpus, where
-                          # fewer datasets mean more epochs for the same steps.
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
 #SBATCH --mem=120G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
-# Slurm's login-shell env retrieval ("user env retrieval failed requeued
-# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-15%16   # 16 trials/track for run-8 — see train_pd.slurm for
-                          # which sweep axes were dropped and why.
-
-sleep $((RANDOM % 30 + 1))
+#SBATCH --array=0-0%1
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
@@ -156,6 +135,8 @@ EXTRA_ARGS=()
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
 
+source scripts/slurm/_run_train.sh
+
 RC=0
 for TRIAL in $(seq "$FIRST" "$LAST"); do
     echo "=============================================================="
@@ -164,7 +145,7 @@ for TRIAL in $(seq "$FIRST" "$LAST"); do
     # `if` suspends set -e for this command on purpose: one bad trial must not discard the
     # other trials packed into this task. The chunk still exits non-zero so the failure is
     # visible, and eval is gated on the per-TRIAL sentinels below, never on the task.
-    if python -u scripts/train_pipeline.py \
+    if run_training_python -u scripts/train_pipeline.py \
         --trial-index "${TRIAL}" \
         --log-path "$LOG" \
         "${EXTRA_ARGS[@]}" \
@@ -173,6 +154,13 @@ for TRIAL in $(seq "$FIRST" "$LAST"); do
         touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd_${TRIAL}"
     else
         RC=$?
+        if [[ "$RC" == 75 ]]; then
+            if [[ "${CREDITPFN_AUTO_REQUEUE:-0}" == 1 && "${SLURM_RESTART_COUNT:-0}" -lt "${CREDITPFN_MAX_REQUEUES:-20}" ]]; then
+                scontrol requeue "${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}" && exit 0
+            fi
+            echo "Recovery saved. Resubmit this task with the same configuration." >&2
+            exit 75
+        fi
         echo "TRIAL ${TRIAL} FAILED (rc=${RC}) — continuing with the rest of this chunk." >&2
     fi
 done

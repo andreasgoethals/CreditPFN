@@ -20,7 +20,7 @@ Family differences that matter here
 * **``allow_auto_download=False`` always.** VSC compute nodes have no
   outbound network; a missing checkpoint must fail loudly rather than
   attempt an HF download mid-job (pre-stage from a login node instead —
-  see docs/METHOD.md).
+  see docs/PAPER_ROADMAP.md).
 * **``neg_log_likelihood`` returns None.** The regressor outputs 999
   quantiles, not a bar-distribution density, so TabPFN-style exact NLL
   does not exist. NEVER compare density metrics across families anyway

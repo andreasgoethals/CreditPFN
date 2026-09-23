@@ -1,86 +1,21 @@
 #!/bin/bash -l
-# =============================================================================
-#  CreditPFN — slurm array: continued pretraining (PD / classifier)
-#  TARGET: Mindwell cluster — NVIDIA B200 SXM6 (Blackwell), 192 GiB VRAM
-# =============================================================================
-#
-#  *** Continued pretraining of the TabPFN foundation models runs ONLY on
-#      Mindwell B200. *** The B200's 192 GiB VRAM (2.4x the 80 GiB H100) lets
-#      us train at a larger in-context size (config/data.yaml:
-#      finetuning.max_rows_per_epoch — v3: 26 000, v2.6: 11 000 at
-#      two ensemble members, the count both tracks now use) to chase
-#      Real-TabPFN's "more context -> bigger gains". Data prep and evaluation
-#      stay on wICE (see data.slurm, eval_*.slurm).
-#
-#  ONE TRIAL PER ARRAY TASK. Trial = one
-#    (base_checkpoint x learning_rate x use_lora x query_fraction
-#     x accumulate x epoch_pass_mode) tuple from `cfg.tunable`.
-#  Compute the array size with:
-#      python scripts/train_pipeline.py --list-trials track=pd
-#
-#  Submit (from a Genius login node — Mindwell has no own login node):
-#      N=$(python scripts/train_pipeline.py --list-trials track=pd)
-#      sbatch --clusters=mindwell --array=0-$((N - 1))%24 scripts/slurm/train_pd.slurm
-#  …or just `bash scripts/slurm/run_full_pipeline.sh`, which sizes the
-#  array and targets the right cluster automatically.
-#
-#  STORAGE (see docs/VSC.md "Storage tiers"):
-#    * Datasets + base ckpts + trained ckpts -> project staging
-#      ($CREDITPFN_STAGING_ROOT, default /lustre1/project/stg_00211/CreditPFN).
-#      Staging is on Lustre. Mindwell prefers GPFS for SUSTAINED I/O, but our
-#      training only does a one-time startup read of the processed CSVs (then
-#      caches in RAM) + a single checkpoint write at the end — not sustained
-#      I/O — so direct Lustre access is fine. If a Mindwell job is ever killed
-#      for I/O, switch to the stage-in/out pattern documented in docs/VSC.md.
-#    * Logs + manifests + per-epoch CSVs -> $VSC_DATA/CreditPFN (NFS, backed up).
-#
-#  ACCOUNT: lp_verbekelab (has Mindwell access — verified via
-#  `sacctmgr -s show user $USER cluster=mindwell`). The free `lp_mindwell_pilot`
-#  is gone now that Mindwell is in production. B200 credit weight is
-#  437.5/GPU-min. Override at submit time with `sbatch --account=<acct> …`.
-# =============================================================================
-
+# CreditPFN train: use the named-config run_experiment.sh launcher.
+# GPFS inputs; project weights/results; live DATA shards, consolidated post-run.
+# Array sizing, concurrency and walltime are supplied by the launcher.
 #SBATCH --job-name=creditpfn-pd-train
 #SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=14:00:00   # SIZED FROM MEASUREMENT, not guessed.
-                          # Run-7 per-trial wall-clock at 9 100 steps, full_pass:
-                          #   v3 ~2.6 h | v2.6 ~1.9 h | tabicl ~1.8 h
-                          # Run-8 doubles the budget to 20 000 steps (Real-TabPFN
-                          # parity), so the worst case is v3 at ~5.7 h. 14 h is
-                          # ~2.5x margin and still short enough to backfill.
-                          # WHY WALLTIME MATTERS HERE: run-5 asked for 48 h and Slurm
-                          # ran 1-2 of 24 requested array tasks, turning 43.7 GPU-h
-                          # into 47 h of wall-clock. Run-7 asked for 10 h and held
-                          # 15-21 GPUs, draining 90 GPU-h in 5.1 h. A short request
-                          # buys queue position. Re-measure if the step budget, the
-                          # row caps or the corpus change.
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=24   # max CPU cores per B200 GPU on gpu_b200 (192 cores / 8 GPUs)
-#SBATCH --mem=120G           # B200 nodes have 1536 GiB / 8 GPUs ~= 190 GiB per GPU;
-                             # 120G covers the larger row cap + the in-RAM clean cache.
+#SBATCH --cpus-per-task=24
+#SBATCH --mem=120G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
-# Slurm's login-shell env retrieval ("user env retrieval failed requeued
-# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-15%16   # 16 trials/track for run-8, down from 36. The sweep
-                          # dropped LoRA-on-TabPFN (a measured no-op three times),
-                          # query_fraction 0.20 (Real-TabPFN specifies 60/40) and
-                          # lr 3e-6 (flat across run-7's range), and spent the budget
-                          # on 20 000 steps per trial instead. Grid is
-                          #   3 bases x (1 or 2 adapt) x 2 LRs x 2 corpus sizes.
-                          # Recompute with:
-                          #   python scripts/train_pipeline.py --list-trials track=pd
-                          # …or submit via scripts/slurm/run_full_pipeline.sh, which
-                          # sizes the array dynamically. Surplus tasks exit 0.
-
-# Stagger array starts to avoid an I/O storm on the shared filesystem.
-sleep $((RANDOM % 30 + 1))
+#SBATCH --array=0-0%1
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
@@ -213,6 +148,8 @@ EXTRA_ARGS=()
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
 
+source scripts/slurm/_run_train.sh
+
 RC=0
 for TRIAL in $(seq "$FIRST" "$LAST"); do
     echo "=============================================================="
@@ -221,7 +158,7 @@ for TRIAL in $(seq "$FIRST" "$LAST"); do
     # `if` suspends set -e for this command on purpose: one bad trial must not discard the
     # other trials packed into this task. The chunk still exits non-zero so the failure is
     # visible, and eval is gated on the per-TRIAL sentinels below, never on the task.
-    if python -u scripts/train_pipeline.py \
+    if run_training_python -u scripts/train_pipeline.py \
         --trial-index "${TRIAL}" \
         --log-path "$LOG" \
         "${EXTRA_ARGS[@]}" \
@@ -230,6 +167,13 @@ for TRIAL in $(seq "$FIRST" "$LAST"); do
         touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_pd_${TRIAL}"
     else
         RC=$?
+        if [[ "$RC" == 75 ]]; then
+            if [[ "${CREDITPFN_AUTO_REQUEUE:-0}" == 1 && "${SLURM_RESTART_COUNT:-0}" -lt "${CREDITPFN_MAX_REQUEUES:-20}" ]]; then
+                scontrol requeue "${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}" && exit 0
+            fi
+            echo "Recovery saved. Resubmit this task with the same configuration." >&2
+            exit 75
+        fi
         echo "TRIAL ${TRIAL} FAILED (rc=${RC}) — continuing with the rest of this chunk." >&2
     fi
 done

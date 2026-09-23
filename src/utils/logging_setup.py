@@ -246,6 +246,10 @@ class _StructuredFormatter(logging.Formatter):
         # ``WARNING[:5]`` used to render as the confusing ``[WARNI]``.
         lvl_short = _LEVEL_LABELS.get(lvl, lvl[:5].ljust(5))
         msg = record.getMessage()
+        if record.exc_info:
+            msg += "\n" + self.formatException(record.exc_info)
+        if record.stack_info:
+            msg += "\n" + self.formatStack(record.stack_info)
 
         if self.use_color:
             colored_lvl = (

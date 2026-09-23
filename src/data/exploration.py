@@ -140,12 +140,44 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
 
 
 def load_manifests(cfg=None) -> dict[str, pd.DataFrame]:
-    """Return ``{"pd": ..., "lgd": ...}`` as DataFrames."""
+    """Read optional manifests, or reconstruct their summaries in memory.
+
+    A download of training output need not contain data-pipeline manifests.
+    Reuse the registration calculation on raw data with its surgical fixes;
+    processed dimensions must never be presented as raw dimensions. Missing
+    raw files retain an explicit unknown shape, and no file is written here.
+    """
+    from src.data.preprocessing import DATASET_METADATA, apply_dataset_specific_fixes
+    from src.data.register import MANIFEST_COLUMNS, compute_manifest_row
+
     paths = _resolve_paths(cfg)
-    return {
-        "pd": pd.read_csv(paths["manifest_pd"]),
-        "lgd": pd.read_csv(paths["manifest_lgd"]),
-    }
+    result = {}
+    for track in ("pd", "lgd"):
+        path = paths[f"manifest_{track}"]
+        if path.is_file() and path.stat().st_size:
+            result[track] = pd.read_csv(path)
+            continue
+        key = _cache_key(f"reconstructed_manifest:{track}", cfg)
+        if key not in _SUMMARY_CACHE:
+            rows = []
+            for dataset_id, meta in DATASET_METADATA.items():
+                if meta["track"] != track:
+                    continue
+                raw_path = paths["raw"] / track / f"{dataset_id}.csv"
+                if raw_path.is_file():
+                    frame = pd.read_csv(raw_path, low_memory=False)
+                    frame = apply_dataset_specific_fixes(frame, dataset_id)
+                    row = compute_manifest_row(frame, dataset_id)
+                else:
+                    row = dict.fromkeys(MANIFEST_COLUMNS, "")
+                    row.update({k: meta[k] for k in (
+                        "track", "task_type", "target_column", "source", "source_url")})
+                    row.update(dataset_id=dataset_id, n_rows=-1, n_cols=-1,
+                               n_categorical=-1, n_numerical=-1, missing_rate=np.nan)
+                rows.append(row)
+            _SUMMARY_CACHE[key] = pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
+        result[track] = _SUMMARY_CACHE[key].copy()
+    return result
 
 
 def load_raw_dataset(track: str, dataset_id: str, cfg=None) -> pd.DataFrame:
@@ -178,8 +210,6 @@ _SUMMARY_CACHE: dict[tuple, pd.DataFrame] = {}
 
 def _cache_key(name: str, cfg) -> tuple:
     """Hashable key for the per-cfg summary cache."""
-    if cfg is None:
-        return (name, None)
     # Stringify the cfg paths block — that's all we depend on.
     paths = _resolve_paths(cfg)
     return (name, tuple(sorted((k, str(v)) for k, v in paths.items())))
@@ -311,6 +341,9 @@ def corpus_summary_table(
     if not refresh and key in _SUMMARY_CACHE:
         return _SUMMARY_CACHE[key].copy()
 
+    if refresh:
+        for tr in ("pd", "lgd"):
+            _SUMMARY_CACHE.pop(_cache_key(f"reconstructed_manifest:{tr}", cfg), None)
     manifests = load_manifests(cfg)
     rows: list[dict] = []
     tracks = ["pd", "lgd"] if track is None else [track]

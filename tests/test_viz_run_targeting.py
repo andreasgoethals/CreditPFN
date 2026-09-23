@@ -75,10 +75,8 @@ def test_training_loader_single_file_layout_still_works(tmp_path, monkeypatch):
     assert len(df) == 1
 
 
-def test_training_loader_drops_stale_pre_provenance_rows(tmp_path, monkeypatch):
-    """Rows with an empty ``git_commit`` are old-code noise (the pre-fix ``ckpt_path`` failures that
-    accumulate in the re-appended manifest) and must be dropped; rows stamped with a real commit are
-    kept. Without this the exp1 notebooks report a ~50 % failure rate that no longer exists."""
+def test_training_loader_keeps_failures_without_provenance(tmp_path, monkeypatch):
+    """Missing provenance is not evidence that a failure is obsolete."""
     monkeypatch.setattr("src.utils.paths.manifests_dir", lambda: tmp_path)
     rows = [
         {"track": "pd", "base_checkpoint": "tabpfn-v3-classifier-v3_default.ckpt",
@@ -93,8 +91,8 @@ def test_training_loader_drops_stale_pre_provenance_rows(tmp_path, monkeypatch):
 
     training_viz.use_run("exp1")
     df = training_viz.load_run_manifest("pd")
-    assert len(df) == 1, "the empty-commit FAIL row must be dropped"
-    assert set(df["status"]) == {"OK"}
+    assert len(df) == 2, "failures remain visible even without a git hash"
+    assert set(df["status"]) == {"OK", "FAIL"}
 
 
 def _write_eval_csv(root, method, run_prefix):

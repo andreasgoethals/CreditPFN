@@ -188,7 +188,7 @@ _NAME_RE = re.compile(
     r"_seed(?P<seed>\d+)"
     r"(?:_qf(?P<qf>\d+))?"
     r"(?:_acc(?P<acc>\d+))?"
-    r"(?P<fullpass>_fullpass)?"
+    r"(?P<fullpass>_fullpass|_accumulate)?"
     # Corpus-size arm, swept since run-8. Sits between the pass mode and the adapter
     # tag, exactly as `loop.descriptive_name` writes it.
     r"(?:_min(?P<min_rows>\d+))?"
@@ -197,7 +197,7 @@ _NAME_RE = re.compile(
     # `_lora` for TabPFN, `_iclhead` for TabICLv2 — ONE grid axis, two family
     # renderings. Omitting `_iclhead` here made every frozen-backbone TabICLv2 trial
     # unparseable, which is the same silent-drop failure the comment above describes.
-    r"(?P<lora>_lora|_iclhead)?$"
+    r"(?P<lora>_lora|_iclhead|_frozen)?$"
 )
 
 
@@ -270,27 +270,17 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
             continue
         if d.empty:
             continue
+        d["source_file"] = pth.name
+        d["source_row"] = range(len(d))
         frames.append(d.assign(split=split) if split is not None else d)
-    if not frames:
-        return pd.DataFrame()
-    df = pd.concat(frames, ignore_index=True)
-
-    # Drop stale pre-provenance rows. Re-submissions APPEND to the same per-split manifest, so it
-    # accumulates rows from every code version the run has seen. Rows written before the pipeline
-    # recorded git provenance carry an empty ``git_commit`` — in Experiment 1 these are the frozen-
-    # TabPFN trials that died with the since-fixed ``ckpt_path`` NameError (fingerprint: empty commit
-    # + ``l2sp_lambda`` NaN). They are pure noise — no checkpoint, no result — and would otherwise
-    # inflate the failure rate by ~50 %. Current code always stamps the commit, so an empty one is
-    # unambiguously old. (No ``git_commit`` column ⇒ a legacy single-run manifest; leave it as-is.)
-    if "git_commit" in df.columns:
-        commit = df["git_commit"].astype("string").str.strip()
-        stale = commit.isna() | (commit == "")
-        if bool(stale.any()):
-            LOGGER.debug("load_run_manifest(%s): dropping %d stale pre-provenance row(s)",
-                         track, int(stale.sum()))
-            df = df.loc[~stale].reset_index(drop=True)
-        if df.empty:
+    from src.utils.consolidate_output import load_consolidated, latest_trials
+    df = load_consolidated(run, f"trials_{track}", manifest_root=mdir)
+    if df is None:
+        if not frames:
             return pd.DataFrame()
+        df = latest_trials(pd.concat(frames, ignore_index=True))
+    if df.empty:
+        return df
 
     # Derive trial_name + base_short from ckpt path (when available) or
     # rebuild from columns.
@@ -300,13 +290,20 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
         # FAIL rows have no ckpt — reconstruct (per-split run name when the split is known).
         run_i = (f"{run}_s{int(row['split']):02d}"
                  if "split" in row.index and pd.notna(row.get("split")) else run)
-        base_stem = Path(str(row["base_checkpoint"])).stem
-        lr_tag = f"{float(row['learning_rate']):.0e}".replace("+", "")
-        lora_tag = "_lora" if bool(row.get("use_lora", False)) else ""
-        return (
-            f"{run_i}_{row['track']}_{base_stem}_"
-            f"lr{lr_tag}_seed{int(row['seed'])}{lora_tag}"
-        )
+        from src.train.loop import descriptive_name
+        def value(key, default):
+            v = row.get(key, default)
+            return default if pd.isna(v) else v
+        return descriptive_name(
+            run_name=run_i, track=row["track"], base_path=row["base_checkpoint"],
+            learning_rate=float(row["learning_rate"]), seed=int(row["seed"]),
+            use_lora=bool(value("use_lora", False)),
+            query_fraction=value("query_fraction", None),
+            accumulate_grad_batches=value("accumulate_grad_batches", None),
+            epoch_pass_mode=value("epoch_pass_mode", "one_sample"),
+            min_train_rows=int(value("min_train_rows", 0)),
+            l2sp_lambda=value("l2sp_lambda", None),
+        ).removesuffix(".ckpt")
 
     df["trial_name"] = df.apply(_stem, axis=1)
     df["base_short"] = df["trial_name"].map(
@@ -328,7 +325,13 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
 def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
     """Load one trial's per-epoch CSV."""
     paths = _resolve_paths(cfg)
-    stem = Path(trial_name).stem.removesuffix(".ckpt")
+    stem = str(trial_name).removesuffix(".ckpt").removesuffix(".csv")
+    from src.utils.consolidate_output import load_consolidated
+    compact = load_consolidated(paths["run_name"], f"training_{track}", manifest_root=paths["manifest_dir"])
+    if compact is not None and not compact.empty:
+        if "record_type" in compact:
+            compact = compact[compact["record_type"].fillna("epoch").eq("epoch")]
+        return compact.loc[compact["trial_name"].eq(stem)].reset_index(drop=True)
     p = paths["epoch_dir"] / track / f"{stem}.csv"
     if not p.exists():
         return pd.DataFrame()
@@ -341,11 +344,21 @@ def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
     Returns a dict keyed by the file stem (== descriptive_name).
     """
     paths = _resolve_paths(cfg)
+    from src.utils.consolidate_output import load_consolidated, matches_run
+    compact = load_consolidated(paths["run_name"], f"training_{track}", manifest_root=paths["manifest_dir"])
+    if compact is not None:
+        if "record_type" in compact:
+            compact = compact[compact["record_type"].fillna("epoch").eq("epoch")]
+        return {str(k): g.reset_index(drop=True) for k, g in compact.groupby("trial_name")} if not compact.empty else {}
     dir_ = paths["epoch_dir"] / track
     if not dir_.exists():
         return {}
     out: dict[str, pd.DataFrame] = {}
     for csv in sorted(dir_.glob("*.csv")):
+        if csv.name.endswith(".trajectory.csv"):
+            continue
+        if not matches_run(csv.name, paths["run_name"], track=track):
+            continue
         try:
             out[csv.stem] = pd.read_csv(csv)
         except Exception as exc:                         # pragma: no cover
@@ -629,7 +642,7 @@ def _base_series_name(base: str) -> str:
 def _progress(hist: pd.DataFrame) -> tuple[pd.Series, str]:
     """The x axis for any CROSS-TRIAL curve: optimizer steps, falling back to epochs.
 
-    `RESULTS.md` states the rule this implements — "never compare bases on epochs" — and the
+    `AGENTS_MEMORY.md` states the rule this implements — "never compare bases on epochs" — and the
     reason: steps per epoch is `sum(ceil(rows_i / cap))` over the training corpus, and the
     row cap differs per base (v3 26 000, v2.6 11 000), so epoch 50 is 9 135 steps for v2.6
     and 20 020 for v3. Overlaying curves against epoch silently stretches one base against
@@ -678,7 +691,7 @@ def compact_base(base_short: str) -> str:
     ~1.6 in of the 6.3 in width, which is what made `plot_metric_heatmap` overflow the
     default left margin and lose the start of every label. The task word is redundant on a
     per-track figure (a PD figure has only classifiers) and the checkpoint date belongs in
-    `METHOD.md`, not on an axis. Matches the naming `eval_viz` uses, so the same checkpoint
+    `PAPER_ROADMAP.md`, not on an axis. Matches the naming `eval_viz` uses, so the same checkpoint
     reads the same in both notebooks.
     """
     s = str(base_short)
@@ -821,6 +834,41 @@ def plot_overfitting_diagnostic(track: str, *, cfg=None):
 # =============================================================================
 # Final-metric comparisons
 # =============================================================================
+
+
+def plot_grid_summary(track: str, *, coverage: bool = False, cfg=None):
+    """Aggregate the large sweep by recipe, retaining LR, lambda, pass and freeze axes."""
+    import matplotlib.pyplot as plt
+    df = load_run_manifest(track, cfg=cfg)
+    needed = {"base_short", "learning_rate", "l2sp_lambda", "epoch_pass_mode", "use_lora"}
+    if df.empty or not needed.issubset(df):
+        return _no_data_fig(f"no complete grid metadata on track={track}")
+    df = df.copy()
+    df["recipe"] = df["base_short"].map(compact_base) + " / " + df["epoch_pass_mode"].astype(str) + df["use_lora"].map({True: " / frozen", False: " / full"}).fillna(" / unknown")
+    df["setting"] = df["learning_rate"].map(lambda x: f"LR {x:g}") + df["l2sp_lambda"].map(lambda x: f"\nL2 {x:g}" if pd.notna(x) else "\nL2 unknown")
+    df["value"] = df["status"].isin(["OK", "SKIP"]).astype(int) if coverage else df.get("final_test_metric", np.nan)
+    if not coverage:
+        df.loc[~df["status"].isin(["OK", "SKIP"]), "value"] = np.nan
+    grid = df.pivot_table(index="recipe", columns="setting", values="value", aggfunc="sum" if coverage else "mean")
+    if grid.empty or not grid.notna().any().any():
+        return _no_data_fig("no recorded grid measurements")
+    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, style.GRID_RATIO))
+    values = grid.to_numpy(dtype=float)
+    heatmap = ax.imshow(np.ma.masked_invalid(values), cmap=style.GRID_CMAP, aspect="auto")
+    ax.set_xticks(range(len(grid.columns)), grid.columns)
+    ax.set_yticks(range(len(grid.index)), grid.index)
+    for row, col in np.ndindex(values.shape):
+        value = values[row, col]
+        if np.isfinite(value):
+            ax.text(col, row, format(value, ".0f" if coverage else ".3f"),
+                    ha="center", va="center", fontsize=style.GRID_FONT,
+                    color=style.GRID_TEXT_LIGHT if heatmap.norm(value) < .5 else style.GRID_TEXT_DARK)
+    fig.colorbar(heatmap, ax=ax)
+    ax.grid(False)
+    ax.tick_params(axis="both", labelsize=style.GRID_FONT)
+    style.title(ax, "Recorded completed trials" if coverage else "Final monitor metric, mean across available splits")
+    ax.set_xlabel(""); ax.set_ylabel("")
+    return fig
 
 
 def plot_final_metric_bar(

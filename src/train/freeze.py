@@ -56,16 +56,12 @@ whether it holds equally across four model generations.
 
 WHY THE LAYERNORM AFFINES STAY FROZEN (a deliberate deviation)
 --------------------------------------------------------------
-Rubachev unfreezes the affine LayerNorm parameters inside the backbone. Doing that here would
-forfeit the entire operational reason we run a frozen arm. To compute a gradient for a LayerNorm
-scale in block 0, autograd has to build a graph from the loss all the way back to block 0 — so
-every intermediate activation in the stack is retained, exactly as in full fine-tuning. Since
-LayerNorms appear in every block, unfreezing them means the frozen arm costs what full
-fine-tuning costs while updating ~1 % of the weights: the same trap LoRA fell into here.
-
-Freezing the stack completely is what makes the arm cheap: no parameter inside it requires grad,
-so no graph is built through it and its activations are never kept. That is also why the frozen
-row cap can be higher than the full-FT one.
+Rubachev also trains LayerNorm affine parameters; this implementation leaves the selected
+stack fully frozen. That is a distinct adaptation recipe, not an exact replication.
+Trainable input embeddings still require gradients through the frozen stack, so autograd
+retains the activations needed for that path. Freezing removes parameter-gradient and
+optimizer-state work, but does not eliminate the stack's activation graph. Measure peak
+memory and throughput; do not raise row caps based only on the frozen parameter fraction.
 
 NEVER CALL .eval() HERE
 -----------------------
@@ -182,6 +178,7 @@ def freeze_backbone(
     for name, param in model.named_parameters():
         if name.startswith(prefixes) or name in targets:
             param.requires_grad = False
+        if not param.requires_grad:
             frozen += param.numel()
         else:
             trainable += param.numel()
@@ -193,7 +190,9 @@ def freeze_backbone(
         "frozen_params": frozen,
         "trainable_params": trainable,
         "trainable_fraction": trainable / max(1, total),
+        "trainable_parameter_names": [n for n, p in model.named_parameters() if p.requires_grad],
     }
+    model._creditpfn_freeze_info = info
     LOGGER.info(
         "freeze-backbone (%s): froze %s%s — %.2fM of %.2fM params (%.1f%%); "
         "%.2fM trainable (%.1f%%: embedders + label encoder + head). "

@@ -1,6 +1,7 @@
 # Held-out benchmark: how every model is scored. Training: config/train.yaml.
 
 train_cfg_path: config/train.yaml         # where the trained-checkpoint roster comes from
+seed: 99                                 # fixed across training-seed repetitions
 
 baselines:
   enabled: [xgboost, catboost, logreg, linreg, tabpfn-untuned, tabicl-untuned]

@@ -4,17 +4,17 @@ THE ONLY MODULE THAT BUILDS A PATH — everything else asks this one. A path ass
 site with `"output/" + name` is correct on a laptop and wrong on the cluster, and the failure
 shows up as a full quota or an empty results directory hours into a job.
 
-        project storage  /lustre1/project/stg_00211/<Project>/  big files, backed up, LOW INODES
+        project storage  /lustre1/project/stg_00211/<Project>/  big files, allocation-specific quotas
     personal data    $VSC_DATA/<Project>/                   repo + output/, backed up, 75 GiB
     scratch          $VSC_SCRATCH/                          purged after 30 days of no ACCESS
 
-Both tiers are backed up. They differ in size and in convenience: `$VSC_DATA` is only 75 GiB but
-can be browsed directly, while project storage is large but has to be pulled down locally first
-(PowerShell, `scp`/`rsync`) before you can look at anything in it.
+DATA has site-documented snapshots. Project storage quotas and backup policy are
+allocation-specific; verify them instead of assuming that persistent means backed up.
+Both tiers can be inspected from the cluster shell.
 
-`output/results/` is therefore the one part of `output/` on project storage: per-row predictions
-reach gigabytes. Everything else stays where you can read it without a download, and project
-storage wants few big files rather than thousands of small ones anyway.
+Results, consolidated tables and verified archives belong on project storage. Live
+logs and per-trial metadata stay on DATA until post-run consolidation; both bytes
+and inodes require monitoring. See docs/VSC.md.
 
 OFF-CLUSTER EVERY TIER COLLAPSES INTO THE REPO. Pretending `/lustre1` exists on a laptop would
 mean two code paths, and the one that only runs on the cluster is the one that breaks.
@@ -83,7 +83,7 @@ def _use_staging() -> bool:
 
 
 def staging_root() -> Path:
-    """Project storage — the big, unbacked-up tier."""
+    """Project storage — verify the allocation's quotas and backup policy separately."""
     override = staging_override()
     if override:
         return override
@@ -122,11 +122,7 @@ def _under(root: Path, *parts: str) -> Path:
 
 
 def outputs_dir() -> Path:
-    """THE root for generated files; nothing generated is written outside it.
-
-    Locally `<repo>/output/`, on the cluster `$VSC_DATA/<Project>/output/`. One root means "what
-    did this run produce?" and "what can I delete?" have one answer each.
-    """
+    """Root for live logs, metadata and figures; large outputs use project-tier helpers."""
     # PROJECT LAYER: routed through `resolve_output_path` so $CREDITPFN_OUTPUT_ROOT wins.
     # Without this, `logs_dir()` and `resolve_output_path("output/logs")` could disagree.
     return resolve_output_path("output")
@@ -135,7 +131,7 @@ def outputs_dir() -> Path:
 def results_dir(*parts: str) -> Path:
     """Fine-grained results: one row per prediction, per-fold scores, anything large.
 
-    THE ONE PART OF `output/` ON PROJECT STORAGE. A single sweep of per-row predictions would
+    Like compact tables and archives, this uses project storage. Per-row predictions would
     fill $VSC_DATA's 75 GiB, and then every job that writes a log also fails.
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
@@ -151,6 +147,16 @@ def logs_dir() -> Path:
 def manifests_dir() -> Path:
     """Per-run manifests: the small CSV/JSON record of what a run did."""
     return outputs_dir() / "manifests"
+
+
+def consolidated_dir() -> Path:
+    """Immutable analysis snapshots: a few compressed files on project storage."""
+    return resolve_staging_path("output/consolidated")
+
+
+def archives_dir() -> Path:
+    """Verified bundles of inactive logs and detailed run records, on project storage."""
+    return resolve_staging_path("output/archives")
 
 
 def figures_dir(notebook: str | None = None) -> Path:
@@ -514,7 +520,7 @@ def resolve_staging_path(p: str | os.PathLike) -> Path:
 
     Use for: trained ``.ckpt`` files, benchmark result CSVs.
     Do NOT use for: logs, manifests, figures — those stay on ``$VSC_DATA``
-    via :func:`resolve_output_path` (small, NFS-backed, no inode pressure).
+    via :func:`resolve_output_path`; archive inactive shards to limit inode pressure.
 
     Absolute paths are returned unchanged.
     """
@@ -525,6 +531,17 @@ def resolve_staging_path(p: str | os.PathLike) -> Path:
     if staging is not None:
         return staging / path
     return resolve_output_path(p)
+
+
+def resolve_base_checkpoint(p: str | os.PathLike) -> Path:
+    """Use the explicitly staged, immutable scratch copy for original weights."""
+    cache = os.environ.get("CREDITPFN_BASE_CACHE_ROOT")
+    if cache:
+        candidate = Path(cache) / "checkpoints" / Path(p).name
+        if not candidate.is_file():
+            raise FileNotFoundError(f"Original checkpoint missing from prepared scratch cache: {candidate}")
+        return candidate
+    return resolve_staging_path(p)
 
 
 def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
@@ -553,12 +570,13 @@ def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
         return resolve_output_path(p)
 
     cache = resolve_writable_staging_path.__dict__.setdefault("_probe_cache", {})
-    key = str(staging)
+    key = str(staging / path)
     if key not in cache:
         probe_dir = staging / path
         try:
             probe_dir.mkdir(parents=True, exist_ok=True)
-            probe = probe_dir / ".write_probe"
+            import uuid
+            probe = probe_dir / (".write_probe_" + uuid.uuid4().hex)
             probe.touch()
             probe.unlink()
             cache[key] = True
@@ -574,6 +592,8 @@ def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
             )
     if cache[key]:
         return staging / path
+    if os.environ.get("CREDITPFN_REQUIRE_STAGING") == "1":
+        raise PermissionError("Project storage is not writable; refusing to put large weights on DATA")
     fallback = resolve_output_path(p)
     fallback.mkdir(parents=True, exist_ok=True)
     return fallback

@@ -121,28 +121,22 @@ def paired_deltas(df: pd.DataFrame, metric: str = "roc_auc") -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
 
-    cell = (df.groupby([_METHOD_COL, "source", "base_short", "test_dataset_id"],
-                       dropna=False)[metric]
-              .mean().reset_index())
+    pairing = [c for c in ("eval_run", "split", "fold_idx") if c in df]
+    keys = ["base_short", "test_dataset_id", *pairing]
+    cell = df.groupby([_METHOD_COL, "source", *keys], dropna=False)[metric].mean().reset_index()
     untuned = cell[cell["source"].str.endswith("-untuned", na=False)]
     trained = cell[cell["source"].str.endswith("-trained", na=False)]
     if untuned.empty or trained.empty:
         return pd.DataFrame()
-
-    base_col = untuned.set_index(["base_short", "test_dataset_id"])[metric]
-    rows = []
-    for r in trained.itertuples():
-        key = (r.base_short, r.test_dataset_id)
-        if key not in base_col.index:
-            continue
-        ref = float(base_col.loc[key])
-        rows.append({
-            _METHOD_COL: getattr(r, _METHOD_COL), "base_short": r.base_short,
-            "test_dataset_id": r.test_dataset_id,
-            "untuned": ref, "trained": float(getattr(r, metric)),
-            "delta": (float(getattr(r, metric)) - ref) * _sign(metric),
-        })
-    return pd.DataFrame(rows)
+    refs = untuned.groupby(keys, dropna=False)[metric].mean().rename("untuned").reset_index()
+    paired = trained.merge(refs, on=keys, how="inner", validate="many_to_one")
+    if paired.empty:
+        return paired
+    paired["trained"] = paired[metric]
+    paired["delta"] = (paired["trained"] - paired["untuned"]) * _sign(metric)
+    # Pair folds/splits before averaging; a missing control never borrows another split.
+    return paired.groupby([_METHOD_COL, "base_short", "test_dataset_id"], dropna=False)[
+        ["untuned", "trained", "delta"]].mean().reset_index()
 
 
 # --------------------------------------------------------------------------- #
@@ -370,6 +364,8 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
     if d.empty or manifest is None or manifest.empty or prop not in manifest.columns:
         return _empty(f"need paired cells and a manifest with `{prop}`")
     m = manifest[["dataset_id", prop]].copy()
+    from src.data.dataset_names import display_name
+    m["dataset_id"] = m["dataset_id"].map(display_name)
     m[prop] = pd.to_numeric(m[prop], errors="coerce")
     d = (d.merge(m, left_on="test_dataset_id", right_on="dataset_id", how="inner")
            .dropna(subset=[prop, "delta"]))

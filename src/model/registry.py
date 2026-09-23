@@ -173,7 +173,8 @@ def build_baselines(
             # untuned model would FAIL every CV fold (polluting the
             # results with FAIL rows). The checkpoint path is resolved
             # against the output root so it works on the cluster too.
-            resolved = resolve_staging_path(str(base_path))
+            from src.utils.paths import resolve_base_checkpoint
+            resolved = resolve_base_checkpoint(str(base_path))
             if not Path(resolved).exists() and not Path(str(base_path)).exists():
                 LOGGER.warning(
                     "untuned base checkpoint not on disk: %s — skipping "

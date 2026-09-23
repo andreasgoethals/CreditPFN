@@ -43,6 +43,11 @@ WIDTH_THIRD = 1.95  # three side by side. Label sparingly at this width.
 MAX_HEIGHT = 4.80   # 122 mm
 
 GOLDEN = 0.618      # height = width * GOLDEN, unless the data wants otherwise
+GRID_CMAP = "viridis"
+GRID_FONT = 7
+GRID_RATIO = 0.76
+GRID_TEXT_LIGHT = "white"
+GRID_TEXT_DARK = "black"
 
 
 def figsize(width: float = WIDTH_FULL, ratio: float = GOLDEN) -> tuple[float, float]:
@@ -175,6 +180,8 @@ COLORS: dict[str, str] = {
 #: Sequential and diverging maps, so a heatmap is not chosen per notebook either.
 CMAP_SEQUENTIAL = "viridis"
 CMAP_DIVERGING = "RdBu_r"        # centred on 0 for delta-vs-untuned panels
+TRAJECTORY_LR_COLORS = {3e-7: "#0072B2", 1e-6: "#E69F00", 1e-5: "#009E73", 3e-5: "#CC79A7"}
+TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
 
 
 def color(name: str) -> str:

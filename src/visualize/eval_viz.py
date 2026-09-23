@@ -221,19 +221,21 @@ def load_eval_results(track: str) -> pd.DataFrame:
 
     paths = _resolve_paths()
     track_dir = paths["benchmark_root"] / ("PD" if track == "pd" else "LGD")
-    if not track_dir.exists():
-        return pd.DataFrame()
 
     frames: list[pd.DataFrame] = []
     run = _RUN_OVERRIDE or os.environ.get("CREDITPFN_VIZ_RUN")
+    from src.utils.consolidate_output import load_consolidated, matches_run
+    compact = load_consolidated(run, f"eval_{track}", result_root=paths["benchmark_root"]) if run else None
     csv_files = sorted(track_dir.rglob("*.csv"))
     if run:
         # Eval names files ``<run>_<ts>__task…``; the ``<run>_`` prefix isolates one run's per-split
         # files (``exp1_s00_…``) and excludes ``exp0_…`` / ``creditpfn_…`` sharing this tree.
-        csv_files = [c for c in csv_files if c.name.startswith(f"{run}_")]
-    for csv in csv_files:
+        csv_files = [c for c in csv_files if matches_run(c.name, run)]
+    items = ((track_dir.parent / str(k), g.copy()) for k, g in compact.groupby("source_file")) if compact is not None and not compact.empty else (
+        [] if compact is not None else ((p, None) for p in csv_files))
+    for csv, loaded in items:
         try:
-            df = pd.read_csv(csv)
+            df = loaded if loaded is not None else pd.read_csv(csv)
         except Exception as exc:                          # pragma: no cover
             LOGGER.warning("could not read %s: %s", csv, exc)
             continue
@@ -262,11 +264,21 @@ def load_eval_results(track: str) -> pd.DataFrame:
             else "classical"
         )
         df["source_file"] = str(csv.relative_to(paths["benchmark_root"]))
+        split_match = re.search(r"_s(\d+)_", csv.name)
+        if split_match:
+            df["split"] = int(split_match.group(1))
+        df["eval_run"] = csv.name.split("_20", 1)[0]
         frames.append(df)
 
     if not frames:
         return pd.DataFrame()
     full = pd.concat(frames, ignore_index=True)
+
+    # Rerunning a failed cell writes another file: count the latest fold once,
+    # retaining its latest FAIL instead of resurrecting an earlier success.
+    keys = [k for k in ("eval_run", "split", "method_dirname", "test_dataset_id", "fold_idx") if k in full]
+    if "fold_idx" in full and "test_dataset_id" in full:
+        full = full.drop_duplicates(keys, keep="last")
 
     # Human-friendly method name (used as the legend label everywhere).
     full["method_name"] = full.apply(human_method_name, axis=1)

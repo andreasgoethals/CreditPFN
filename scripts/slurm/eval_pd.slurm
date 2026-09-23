@@ -1,76 +1,21 @@
 #!/bin/bash -l
-# =============================================================================
-#  CreditPFN — slurm array: cross-model benchmark (PD / classifier)
-# =============================================================================
-#
-#  ONE (model × test_dataset) PER ARRAY TASK. The product of models ×
-#  held-out datasets is modest, but the heavy cells (XGBoost / CatBoost
-#  with per-fold Optuna HPO) are worth
-#  parallelising by running each in its own slurm task. Each task
-#  writes its own per-method file under
-#  ``results/PD/<method>/<run_name>_<timestamp>_<dataset>.csv``,
-#  so concurrent tasks NEVER touch the same file (no locking, no
-#  races). Aggregation downstream is `pd.read_csv` over a glob.
-#
-#  Compute the array size with:
-#
-#      python scripts/eval_pipeline.py --list-tasks track=pd
-#
-#  Submit with:
-#
-#      N=$(python scripts/eval_pipeline.py --list-tasks --tasks 16 track=pd)
-#      sbatch --array=0-$((N - 1))%16 scripts/slurm/eval_pd.slurm
-#
-#  …or via scripts/slurm/run_full_pipeline.sh, which sizes the array and picks the
-#  cluster from EVAL_CLUSTER / EVAL_PARTITIONS.
-#
-#  WHY MINDWELL AND NOT wICE (measured, run-8). The eval ran on wICE gpu_h100 +
-#  gpu_a100 and reached an average concurrency of 0.20 — 3.6 GPU-h took 17.9 h of
-#  wall-clock, and the gpu_a100 half never started at all. The VSC scheduler weights
-#  fairshare on the user's walltime over the last SEVEN DAYS, so the ~120 GPU-h of
-#  training submitted days earlier is exactly what sinks the eval's priority; and
-#  wICE's 36 GPUs serve the whole university, with the cheapest of them (A100) the
-#  most contended. Mindwell's 24 B200s gave us 15-21 concurrent on the same days.
-#  Per GPU-minute: A100 141.7, B200 437.5, H100 569.4 — the partition that looked
-#  cheap was the most expensive one.
-#
-#  CPU-only baselines ignore the GPU; one partition for everything is simpler than
-#  routing per task, and the whole eval is under 10 GPU-h.
-# =============================================================================
-
+# CreditPFN eval: use the named-config run_experiment.sh launcher.
+# GPFS inputs; project weights/results; live DATA shards, consolidated post-run.
+# Array sizing, concurrency and walltime are supplied by the launcher.
 #SBATCH --job-name=creditpfn-pd-eval
 #SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=gpu_b200
 #SBATCH --gpus-per-node=1
-#SBATCH --time=02:00:00  # MEASURED run-8: packed tasks took 28-40 min.
-                         # A short request backfills into gaps between big
-                         # jobs, which is the only lever we have on a
-                         # partition where fairshare is against us.
+#SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=16   # <= 24, the gpu_b200 per-GPU limit
+#SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
-# Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
-# Slurm's login-shell env retrieval ("user env retrieval failed requeued
-# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
 #SBATCH --export=ALL
-#SBATCH --array=0-15%16   # 16 PACKED tasks (see EVAL_TASKS in
-                          # run_full_pipeline.sh). Since 11-08-2026 a task is a
-                          # BATCH of (model x dataset) cells of roughly equal
-                          # estimated cost, not a single cell: the 209-task
-                          # arrays this replaced averaged 0.73 concurrent jobs
-                          # because each task computed for ~94 s and had to be
-                          # scheduled separately. Surplus indices still exit 0
-                          # cleanly via the soft no-op in eval_pipeline.py.
-                          # Recompute with:
-                          #   python scripts/eval_pipeline.py --list-tasks --tasks 16 track=pd
-                          # …or submit via scripts/slurm/run_full_pipeline.sh,
-                          # which sizes the array dynamically.
-
-sleep $((RANDOM % 15 + 1))
+#SBATCH --array=0-0%1
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1

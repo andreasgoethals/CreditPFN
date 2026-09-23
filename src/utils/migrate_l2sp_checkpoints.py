@@ -44,16 +44,18 @@ def retag(name: str, l2sp_lambda: float) -> str:
     return _TAIL.sub(lambda m: f"{tag}{m.group('adapter') or ''}.ckpt", name)
 
 
-def _lambda_from_provenance(prov_path: Path, default: float = _DEFAULT_LAMBDA) -> float:
+def _lambda_from_provenance(prov_path: Path) -> float:
     """The effective λ this checkpoint trained at, from its provenance sidecar."""
     try:
         blob = json.loads(prov_path.read_text(encoding="utf-8"))
         hp = (blob.get("provenance") or blob).get("hyperparameters", {})
-        return float(hp.get("l2sp_lambda", default))
+        import math
+        lam = float(hp["l2sp_lambda"])
+        if not math.isfinite(lam) or lam < 0:
+            raise ValueError("invalid L2-SP value")
+        return lam
     except Exception as exc:                                           # noqa: BLE001
-        LOGGER.warning("provenance unreadable (%s); assuming λ=%g for %s",
-                       exc, default, prov_path.name)
-        return default
+        raise ValueError(f"Cannot verify L2-SP provenance for {prov_path.name}; refusing to guess") from exc
 
 
 def plan_renames(root: Path) -> list[tuple[Path, Path, float]]:
@@ -72,6 +74,11 @@ def plan_renames(root: Path) -> list[tuple[Path, Path, float]]:
 
 
 def apply_renames(renames: list[tuple[Path, Path, float]], *, apply: bool) -> None:
+    # Validate the complete batch before any mutation. A target may be a newer run.
+    for ckpt, new, _ in renames:
+        for suffix in ("", ".provenance.json", ".epoch_eval.ckpt"):
+            if Path(str(new) + suffix).exists():
+                raise FileExistsError(f"Refusing to overwrite {new.name}{suffix}")
     for ckpt, new, lam in renames:
         LOGGER.info("%s  %s -> %s  (λ=%g)",
                     "RENAME" if apply else "DRY-RUN", ckpt.name, new.name, lam)
@@ -82,7 +89,11 @@ def apply_renames(renames: list[tuple[Path, Path, float]], *, apply: bool) -> No
             if src.exists():
                 dst = Path(str(new) + suffix)
                 dst.parent.mkdir(parents=True, exist_ok=True)
-                src.rename(dst)
+                # link() fails atomically if a concurrent writer creates dst; POSIX
+                # rename() would silently overwrite it. Source and target share a directory.
+                import os
+                os.link(src, dst)
+                src.unlink()
 
 
 def main(argv: list[str] | None = None) -> int:

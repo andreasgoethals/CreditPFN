@@ -243,23 +243,16 @@ def training_summary(track: str) -> str:
                 out.append("  WARNING: arms received UNEQUAL step budgets — the corpus"
                            " comparison is confounded with training length.")
 
-    # PASSES OVER THE CORPUS, not epochs and not steps. One optimizer step is one dataset,
-    # so `steps / steps_per_epoch` is how many times the run walked the whole training corpus.
-    # This is the number that makes the budget comparable to the literature: Garg reaches
-    # 20 000 steps over 71 tables, about 280 passes. The same 20 000 steps over 12 tables is
-    # 220 passes — comparable — but a 1 200-epoch LGD trial over 6 tables is 1 200 passes,
-    # four times Garg's exposure to a twelfth of the data, which is plain overtraining and a
-    # second explanation for a null on that track.
+    # Successful updates divided by nominal updates/epoch is an epoch equivalent.
+    # Independent subsample draws are not an exhaustive pass through unique rows.
     if {"total_optimizer_steps", "steps_per_epoch"} <= set(man.columns):
         pas = (man["total_optimizer_steps"] / man["steps_per_epoch"].replace(0, np.nan)).dropna()
         if len(pas):
-            out.append(f"  passes over corpus : {pas.min():.0f} - {pas.max():.0f}"
-                       f"   (Garg 2025: ~280 over 71 tables)")
+            out.append(f"  epoch equivalents  : {pas.min():.0f} - {pas.max():.0f}"
+                       "   (successful steps / nominal steps per epoch)")
             if pas.max() > 500:
-                out.append(f"  WARNING: up to {pas.max():.0f} passes over the same rows."
-                           f" The step budget was matched to the literature, but with a")
-                out.append("  smaller corpus that means many more repetitions of the same"
-                           " tables — treat this track as overtrained.")
+                out.append("  Repeated draws revisit the same tables; this count alone cannot")
+                out.append("  diagnose overtraining. Test shorter budgets on validation data.")
 
     out += _rule("3. The corpus this sweep trained on")
     for col, label in (("n_train_datasets", "train datasets"),
@@ -320,7 +313,7 @@ def training_summary(track: str) -> str:
                     and man["primary_metric_name"].notna().any() else "metric")
             out.append(f"  monitor {name}: mean change {delta.mean():+.4f}"
                        f"   range {delta.min():+.4f} to {delta.max():+.4f}")
-            out.append(f"  improved on the monitor split: {int((delta > 0).sum())}/{len(delta)}"
+            out.append(f"  improved on the monitor split: {int(((delta < 0) if track == "lgd" else (delta > 0)).sum())}/{len(delta)}"
                        f" trials")
             out.append("  NOTE this is a 2 000-row in-loop probe, not the benchmark. It exists")
             out.append("  to catch a dead run early; direction here has repeatedly disagreed")
@@ -400,6 +393,9 @@ def data_summary(stage: str) -> str:
         return "\n".join(out + ["", f"Corpus table unavailable: {type(exc).__name__}: {exc}"])
     if t.empty:
         return "\n".join(out + ["", "No datasets on disk."])
+    from src.data.dataset_names import display_name
+    t = t.assign(dataset_id=t["dataset_id"].map(display_name))
+    out.append("  Registry statistics include dataset-specific fixes before sanitisation.")
 
     rows_col = "raw_rows" if raw else "post_rows"
     feat_col = "raw_features" if raw else "post_features"
@@ -414,7 +410,7 @@ def data_summary(stage: str) -> str:
     out.append(f"  features per dataset: min {int(t[feat_col].min())}  "
                f"median {int(t[feat_col].median())}  max {int(t[feat_col].max())}")
 
-    out += sec("Size bands (the axis continued-pretraining gains scale on)")
+    out += sec("Size bands (an exploratory corpus characteristic)")
     out += _size_bands(t[rows_col])
     big = int((t[rows_col] >= 10_000).sum())
     out.append(f"  >= 10 000 rows      : {big}/{len(t)} datasets"
@@ -437,7 +433,7 @@ def data_summary(stage: str) -> str:
                        f"   std: {g['target_std'].min():.4f} - {g['target_std'].max():.4f}")
 
     if raw:
-        out += sec("Missingness in the delivered files")
+        out += sec("Missingness after dataset-specific fixes")
         if "missing_rate_raw" in t.columns and t["missing_rate_raw"].notna().any():
             m = t["missing_rate_raw"].dropna()
             out.append(f"  missing-cell rate  : min {m.min():.4f}  median {m.median():.4f}"
@@ -493,17 +489,14 @@ def data_summary(stage: str) -> str:
     else:
         out.append(f"  {len(a)} dataset(s) flagged:")
         for r in a.itertuples():
-            out.append(f"    {getattr(r, 'dataset_id', '?'):<28} "
+            out.append(f"    {display_name(getattr(r, 'dataset_id', '?')):<28} "
                        f"{getattr(r, 'reasons', '')}")
 
     out += sec("Reading it")
     if raw:
-        out.append("  This is the corpus as delivered — nothing here has been cleaned, so a")
-        out.append("  high missing rate or an odd target count is a fact about the vendor")
-        out.append("  file, not a bug. Notebook 0.1 shows what sanitisation made of it.")
+        out.append("  The earlier raw-file plots precede all fixes. This registry summary")
+        out.append("  includes dataset-specific fixes; notebook 0.1 adds sanitisation.")
     else:
-        out.append("  These are the tables the models actually see. The size bands in")
-        out.append("  section 2 are the binding constraint on continued pretraining: a")
-        out.append("  corpus of small tables is the one condition under which the")
-        out.append("  literature reports the method losing to its own starting checkpoint.")
+        out.append("  These are the processed tables. Dataset size may affect adaptation,")
+        out.append("  but these descriptive counts cannot establish its effect on performance.")
     return "\n".join(out)

@@ -110,9 +110,10 @@ def _load_cfgs(eval_overrides: list[str], train_overrides: list[str],
     # dataset draw the checkpoint was trained under. `split_seed` drives the draw and the
     # run_name suffix selects the manifest; getting either wrong evaluates a model on tables it
     # was trained on, which no downstream check would catch.
-    if split_index is not None:
-        train_cfg.corpus.split_seed = int(split_index)
-        train_cfg.run_name = f"{train_cfg.run_name}_s{int(split_index):02d}"
+    from src.utils.experiment import apply_split_index
+    train_cfg = apply_split_index(train_cfg, split_index)
+    if "evaluation" in train_cfg:
+        eval_cfg = OmegaConf.merge(eval_cfg, train_cfg.evaluation)
     return eval_cfg, train_cfg
 
 
@@ -194,6 +195,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     from src.eval.benchmark import load_trained_handles
 
     split = split_from_cfg(train_cfg, track=track)
+    _PACK_ROW_COUNTS[track] = {c.dataset_id: c.n_rows for c in (*split.train, *split.test)}
     cfg_test_ids = sorted({c.dataset_id for c in split.test})
 
     bases = (
@@ -218,7 +220,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         device=str(train_cfg.device),
         n_estimators_tabpfn=int(eval_cfg.tabpfn_n_estimators),
         n_estimators_tabicl=n_est_tabicl,
-        seed=int(train_cfg.seed),
+        seed=int(getattr(eval_cfg, "seed", 99)),
         hpo_xgboost=hpo_xgb,
         hpo_catboost=hpo_cb,
         hpo_logreg=hpo_lr,
@@ -250,7 +252,16 @@ def _build_roster(eval_cfg, train_cfg, track: str):
             track, len(baselines), manifest_csv,
         )
 
-    return baselines + trained, cfg_test_ids, manifest_csv
+    import os
+    kind = os.environ.get("CREDITPFN_EVAL_KIND", "all")
+    roster = baselines + trained
+    if kind == "classical":
+        roster = [(h, m) for h, m in roster if h.source == "baseline"]
+    elif kind == "foundation":
+        roster = [(h, m) for h, m in roster if h.source != "baseline"]
+    elif kind != "all":
+        raise ValueError("CREDITPFN_EVAL_KIND must be all, foundation or classical")
+    return roster, cfg_test_ids, manifest_csv
 
 
 def _enumerate_tasks(handles_and_models, cfg_test_ids: list[str]):
@@ -301,14 +312,12 @@ def _cost_rate(handle) -> float:
     return _COST_S_PER_1K_ROWS["baseline"]
 
 
+_PACK_ROW_COUNTS: dict[str, dict[str, int]] = {}
+
+
 def _dataset_rows(track: str) -> dict[str, int]:
-    """`{dataset_id: n_rows}` from the corpus manifest. Empty when it has not been built."""
-    path = manifests_dir() / f"manifest_{track}.csv"
-    if not path.is_file():
-        return {}
-    import pandas as pd
-    df = pd.read_csv(path, usecols=["dataset_id", "n_rows"])
-    return {str(r.dataset_id): int(r.n_rows) for r in df.itertuples()}
+    """Reuse sizes already read while building the roster; no obsolete data manifest."""
+    return _PACK_ROW_COUNTS.get(track, {}).copy()
 
 
 def _estimate_cost_s(handle, dataset_id: str, rows_by_id: dict[str, int],
@@ -341,17 +350,19 @@ def _pack_tasks(pairs, handles_and_models, *, n_tasks: int, track: str,
     into the currently-lightest task. Greedy, but its makespan is provably within 4/3 of
     optimal, and it keeps the one 16-minute dataset from landing beside another one.
     """
+    import hashlib
     rows_by_id = _dataset_rows(track)
     costed = sorted(
         ((_estimate_cost_s(handles_and_models[m][0], d, rows_by_id, max_rows_per_model), i)
          for i, (m, d) in enumerate(pairs)),
-        reverse=True,
+        key=lambda item: (-item[0], hashlib.sha256(repr(pairs[item[1]]).encode()).digest()),
     )
     n_tasks = max(1, min(int(n_tasks), len(pairs)))
     bins: list[list[int]] = [[] for _ in range(n_tasks)]
     loads = [0.0] * n_tasks
     for cost, i in costed:
-        j = loads.index(min(loads))
+        dataset = pairs[i][1]
+        j = min(range(n_tasks), key=lambda k: (loads[k], sum(pairs[c][1] == dataset for c in bins[k]), len(bins[k]), k))
         bins[j].append(i)
         loads[j] += cost
     return bins
@@ -472,6 +483,8 @@ def run(
     n_folds_required = (
         int(eval_cfg.cv.n_folds) if hasattr(eval_cfg, "cv") else 5
     )
+    fingerprint_eval = bool(OmegaConf.select(train_cfg, "experiment.fingerprint", default=False))
+    evaluation_config = OmegaConf.to_container(eval_cfg, resolve=True) if fingerprint_eval else None
     if rerun:
         LOGGER.info("--rerun set: existing CSVs will NOT be consulted.")
     else:
@@ -483,10 +496,14 @@ def run(
             handle, _ = handle_and_model
             keep_ids = []
             for did in ds_ids:
+                from src.eval.cache import evaluation_key
                 existing = find_existing_results(
                     handle, did, track=track,
                     results_base_dir=results_base_for_skip,
                     n_folds_required=n_folds_required,
+                    run_name=str(train_cfg.run_name),
+                    evaluation_key=evaluation_key(handle, did, track=track, config=evaluation_config)
+                        if evaluation_config else None,
                 )
                 if existing:
                     n_skipped += 1
@@ -561,7 +578,7 @@ def run(
             run_name=str(train_cfg.run_name),
             n_folds=n_folds,
             inner_val_fraction=inner,
-            seed=int(train_cfg.seed),
+            seed=int(getattr(eval_cfg, "seed", 99)),
             results_base_dir=results_base,
             max_rows_per_model=max_rows_per_model,
             per_task_tag=per_task_tag,
@@ -569,6 +586,8 @@ def run(
             # trained-vs-base agreement check never needs the GPU again.
             save_predictions=bool(
                 getattr(getattr(eval_cfg, "results", None), "save_predictions", False)),
+            evaluation_config=evaluation_config,
+            use_control_cache=bool(getattr(eval_cfg, "cache_controls", False)),
         )
         all_rows.extend(rows)
         n_fail += sum(1 for r in rows if r.status == "FAIL")

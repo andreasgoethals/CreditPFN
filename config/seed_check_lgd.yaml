@@ -1,0 +1,45 @@
+# Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
+track: lgd
+seed: 42
+experiment:
+  fingerprint: true
+  require_plan: true
+  training_seeds: [43, 44]
+corpus:
+  require_complete_registry: true
+  min_train_rows: 0
+  n_test_datasets: null
+  n_folds: 4
+  fold: 0
+  split_seed: 1729
+  n_splits: 8
+  train_dataset_ids: null
+  test_dataset_ids: null
+train:
+  target_total_steps: 5000
+  epochs: 50
+  max_epochs_for_step_budget: 2000
+  numerical_stopping_only: true
+  monitor_seed: 31415
+  trajectory_steps: [0, 250, 1000, 2500, 5000]
+  epoch_eval_subsample_samples: 2000
+  epoch_eval_n_estimators: 4
+  epoch_eval_n_estimators_tabicl: 4
+  recovery_every_updates: 500
+  dataloader_workers: 4
+  prefetch_factor: 2
+  step_log_interval: 100
+run_name: cpt_seeds_v3
+tunable:
+  learning_rates: [3.0e-7]
+  l2sp_lambdas: [0.003]
+  frozen_backbone: [false, true]
+  epoch_pass_modes: [one_sample]
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
+  adapter_families: []
+
+evaluation:
+  cache_controls: true
+  results:
+    save_predictions: false  # metrics include calibration; enable predictions for a separate diagnostic run

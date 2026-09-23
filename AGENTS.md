@@ -106,9 +106,10 @@ anything is finished.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe`; on the cluster the
   conda env named `CreditPFN`, printed as `Active conda env:` in every job log. An active
   virtualenv silently beats `conda activate` (`AGENTS_MEMORY.md`, 05-08-2026).
-- **Where the knowledge lives.** `RESULTS.md` — what each run measured. `METHOD.md` — the single
-  authority on method: code that looks wrong but is deliberate, the measured context caps (do not
-  raise one without re-running the probe), the base inventory / naming / save formats, and what
-  happens to a dataset at every stage. `PAPER_ROADMAP.md` — what is missing before writing.
+- **Where the knowledge lives.** `docs/PAPER_ROADMAP.md` is the self-contained research brief and
+  method authority: descriptive goals, partitions, sampling, adaptation and limitations.
+  `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one
+  without a new probe). `docs/LITERATURE.md` records primary-source support and differences.
+  Historical measurements and expensive dead ends stay in `docs/AGENTS_MEMORY.md`.
 - **The experiments are `scripts/{data,train,eval}_pipeline.py` and `probe_row_cap.py`**, submitted
   through `scripts/slurm/`. Everything else is a utility under `src/utils/`, run with `python -m`.

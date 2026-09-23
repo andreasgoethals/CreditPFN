@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -49,6 +50,6 @@ def dump_resolved(cfg, task_name: str, *, extra: dict | None = None) -> Path:
         **(extra or {}),
     }
     suffix = f"_a{slurm['SLURM_ARRAY_TASK_ID']}" if "SLURM_ARRAY_TASK_ID" in slurm else ""
-    path = ensure(manifests_dir() / "resolved" / f"{task_name}_{stamp}{suffix}.json")
+    path = ensure(manifests_dir() / "resolved" / f"{task_name}_{stamp}{suffix}_{uuid.uuid4().hex[:8]}.json")
     path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
     return path

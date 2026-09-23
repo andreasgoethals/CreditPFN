@@ -390,14 +390,8 @@ def save_finetuned(
             payload["inference_config"] = inference_config
     if provenance is not None:
         payload["provenance"] = provenance
-        # Sidecar JSON — always written next to the .ckpt for at-a-
-        # glance inspection (no torch.load needed).
-        sidecar = save_path.with_suffix(save_path.suffix + ".provenance.json")
-        sidecar.write_text(
-            json.dumps(provenance, indent=2, default=str), encoding="utf-8",
-        )
-
-    torch.save(payload, str(save_path))
+    from src.train.checkpoint_io import atomic_save
+    atomic_save(payload, save_path, provenance)
     return save_path
 
 

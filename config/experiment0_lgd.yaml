@@ -1,31 +1,45 @@
-# EXPERIMENT 0 · LGD — the null control. lr=0 for one epoch, then save + reload + evaluate.
-# A reloaded lr=0 checkpoint IS the base checkpoint, so it must score EXACTLY like the untuned
-# arm. If it does not, the save/reload path is lossy and every "CPT did not help" result in
-# experiment 1 is an artefact of that, not a finding. Run this FIRST. Delta over train.yaml.
-
-# ---------------------------------------------------------------- SWEPT ------
-tunable:
-  learning_rates: [0.0]       # the whole point: no weight may move
-  l2sp_lambdas: [0.0]         # anchor to w0 is vacuous at lr=0
-  frozen_backbone: [false, true]  # BOTH arms. exp1 sweeps frozen, so the control MUST exercise
-  #                                  the frozen load/save path too — a NameError there (ckpt_path)
-  #                                  escaped an all-full-FT exp0 and failed every frozen TabPFN
-  #                                  trial of exp1_pd (29-08-2026). At lr=0 the frozen arm is also
-  #                                  a pure identity, so this only adds coverage.
-  epoch_pass_modes: ["full_pass"]
-
+# Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
+track: lgd
+seed: 42
+experiment:
+  fingerprint: true
+  require_plan: true
+  training_seeds: [42]
 corpus:
+  require_complete_registry: true
   min_train_rows: 0
-  n_test_datasets: 2          # same draw as experiment 1 split 0, so the arms are comparable
+  n_test_datasets: null
+  n_folds: 4
+  fold: 0
+  split_seed: 1729
   n_splits: 1
   train_dataset_ids: null
   test_dataset_ids: null
-
-# ---------------------------------------------------------------- FIXED ------
-track: "lgd"
-run_name: "exp0"
-
 train:
-  epochs: 1                   # one pass is enough to exercise save + reload
-  target_total_steps: null
-  epoch_eval_count: 1
+  target_total_steps: 2
+  epochs: 50
+  max_epochs_for_step_budget: 2000
+  numerical_stopping_only: true
+  monitor_seed: 31415
+  trajectory_steps: [0, 2]
+  epoch_eval_subsample_samples: 2000
+  epoch_eval_n_estimators: 4
+  epoch_eval_n_estimators_tabicl: 4
+  recovery_every_updates: 1
+  dataloader_workers: 4
+  prefetch_factor: 2
+  step_log_interval: 100
+run_name: cpt_null_v3
+tunable:
+  learning_rates: [0.0]
+  l2sp_lambdas: [0.0]
+  frozen_backbone: [false, true]
+  epoch_pass_modes: [one_sample]
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
+  adapter_families: []
+
+evaluation:
+  cache_controls: true
+  results:
+    save_predictions: false  # metrics include calibration; enable predictions for a separate diagnostic run

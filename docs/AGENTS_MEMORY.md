@@ -10,9 +10,21 @@ what came out, and what is already known to fail.
 delete an entry: a run you would otherwise repeat and a dead end you already paid for are both
 evidence.
 
-Detail the table cannot hold lives in `RESULTS.md` (what each run measured) and `METHOD.md`
-(the pipeline, the base checkpoints, the measured context caps, and the code that looks wrong
-but is deliberate).
+Method and research context live in `PAPER_ROADMAP.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
+
+## Current handover — 22-09-2026 descriptive redesign
+
+- User retained **25 tables (17 PD + 8 LGD)** and clarified the goal: describe continued-pretraining behavior, including negative/flat results; do not turn the grid into a champion-selection claim.
+- Protocol **3**: `cpt_main_v3` = 512 trials across tracks; four fixed dataset folds, partition seed 1729, train seed 42, LR {3e-7,1e-6,1e-5,3e-5}, lambda {0,.003}, full/frozen updates, equal-table `one_sample` sampling.
+- `cpt_seeds_v3` adds 128 predetermined reference-recipe repetitions with seeds 43/44. `cpt_sampling_v3` is a separate 96-trial full-update study of one_sample/full_pass/accumulate, including a repeated control.
+- Budget remains **provisionally 5,000 successful updates**, trajectories 0/250/1k/2.5k/5k. The 16 null trials, 32 short endpoint pilots and eight 20k reference pilots precede the main launch. Main/seed/sampling plans should be prepared only after the budget decision.
+- Exact recovery includes optimizer, schedule, scaler, training RNG and dataset cursor. CPU dropout tests compare uninterrupted/resumed weights in all three sampling modes. Slurm supports short segments, warning forwarding and opt-in requeue; real CUDA recovery/null checks remain VSC gates.
+- Launcher defaults: one trial/task, four preprocessing workers, per-array concurrency four and a shared cap of 16 per controller. Classical evaluation has a CPU path; reusable controls are fingerprinted. Scratch input copies are content-addressed; large weights cannot silently fall back to DATA through the modern launcher.
+- User-reported cluster state: no jobs running; HEAD `cc42445`. DATA output 7.1 GB/4,913 files, mostly logs; manifests 82 MB; fallback weights 2.6 GB. Project weights 41 GB/412 files, not a verified completed-trial count. No VSC jobs, pushes, installs or raw experiment record/weight deletions were performed by Codex; derived local figures were regenerated.
+- The 338 retagged L2-SP survivors remain historical. Do not reuse them as protocol-3 trials. `archive_experiment` creates a verified compact evidence archive without weights, then separately previews/prunes archived shards or retires indexed weights. Retirement cannot be undone from this compact archive.
+- Earlier local exp1 consolidation preserved 1,451 attempts and 117,380 epoch rows: 708 CSVs/about 69 MB became eight tables plus inventory/about 28 MB. Source files and real weights remain intact.
+- Documentation is intentionally consolidated: README, AGENTS, TEMPLATE, this memory, CHANGELOG, VSC, LITERATURE and PAPER_ROADMAP. The roadmap is the uploadable research/method brief; VSC owns output/migration/caps. No separate METHOD/RESULTS/OUTPUT/research-review documents remain.
+- Final local validation: **376 passed, 1 skipped** (optional on-disk manifests absent), with nine constant-input warnings from toy regression tests. All six notebooks executed and produced 75 PDFs; extracted PDF text and tracked/untracked publication outputs passed the private-name scan. Bash syntax, launcher previews, signal/exit-status checks and `git diff --check` passed. A synthetic trajectory plot was visually inspected. This validates the local implementation, not CUDA throughput or cluster recovery; those remain null/pilot gates.
 
 ## Runs
 
@@ -23,12 +35,12 @@ that configuration?"* is the question this table exists to answer.
 |---|---|---|---|
 | 22-09-2026 | exp1 · λ-sweep bug found in the 29-08 run (PD ~78 % of the base×lr×frozen×pass grid trained; no LGD; no eval) | **λ axis INVALID** | `run()` never forwarded the swept `l2sp_lambda` → every trial trained at the config default 0.003; the two "arms" overwrote one untagged checkpoint, and resume was broken so the grid re-ran on every resubmit. Fixed 22-09 (CHANGELOG + dead end below). Salvage: surviving ckpts are all valid λ=0.003 — rerun the λ=0 arms + remaining PD + all LGD. |
 | 29-08-2026 | exp1_pd · 96 trials/split × 8 splits, Option-B grid (lr{3e-7,1e-6,1e-5} × l2sp{0,0.003} × frozen{F,T} × pass{full,acc}), 4 bases; training only (eval not yet submitted) | **partial — frozen TabPFN arm lost** | Full-FT TabPFN + all TabICLv2 (both arms) trained OK; **all 168 frozen TabPFN `_lora` trials died in ~4 s with `NameError: ckpt_path`** (`load_tabpfn_for_training`). Splits 6–7 double-submitted by the SPLIT_START recovery (harmless). Results write to `/lustre1/…/stg_00211/…/results` (staging), not the `output/` download. Bug fixed 31-08; frozen TabPFN needs re-running. See dead end below. |
-| 12-08-2026 | run-8 · 16 trials/track, 20 000 steps, `min_train_rows` [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks; **eval completed 16-08-2026 on Mindwell `gpu_b200`** | **done — first complete run** | Training 31/32 OK (1 false-positive divergence abort). Eval 105/105 PD + 44/44 LGD cells, 745/745 folds, zero failures. **PD 20/75 paired wins, mean -0.0013, p=0.78 (null). LGD 0/32.** Untuned v3 beats best tuned GBM on 4/5 PD and 2/2 LGD. Completing the eval REVERSED the half-eval's -0.0048 'damage' finding. `RESULTS.md` |
-| 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `RESULTS.md` |
-| 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICLv2. 54.9 GPU-h. `RESULTS.md` |
+| 12-08-2026 | run-8 · 16 trials/track, 20 000 steps, `min_train_rows` [0, 5000], adapter arm TabICLv2-only, eval packed into 16 tasks; **eval completed 16-08-2026 on Mindwell `gpu_b200`** | **done — first complete run** | Training 31/32 OK (1 false-positive divergence abort). Eval 105/105 PD + 44/44 LGD cells, 745/745 folds, zero failures. **PD 20/75 paired wins, mean -0.0013, p=0.78 (null). LGD 0/32.** Untuned v3 beats best tuned GBM on 4/5 PD and 2/2 LGD. Completing the eval REVERSED the half-eval's -0.0048 'damage' finding. `AGENTS_MEMORY.md` |
+| 10-08-2026 | run-7 · 36 trials/track, 3 bases, `target_total_steps` 9100, task-stride eval pools | **partial** | Training perfect: 72/72 OK, 90 GPU-h in 5.1 h wall-clock at 15-21 concurrent GPUs. Eval incomplete and slow: 0.73 average concurrency, 44 % dead time. PD paired trained-vs-untuned 17/39 wins, TabICLv2 full-FT +0.016 mean; **LGD 0/18 wins**. LGD ran only 800-3200 steps of the 9100 target. `AGENTS_MEMORY.md` |
+| 07-08-2026 | run-6 · 36 trials/track, 3 bases, 100 epochs, `target_total_steps` 9100 | **done** | First fully green run: 36/36 train + 84/84 eval cells, drained in 7.1 h. Best PD mAUC 0.7620 (v3 1e-6 LoRA), best LGD RMSE 0.1335 (v3 1e-6 full). Half the eval pool never logged, so trained-vs-untuned is not computable for v3/TabICLv2. 54.9 GPU-h. `AGENTS_MEMORY.md` |
 | 05-08-2026 | run-5 · 48 trials/track, first two-family run (TabICLv2 added) | **partial** | 80/96 trials OK; the 16 `_iclhead` trials crashed (freeze-via-`.eval()`, see dead ends 06-08-2026). Eval never ran — the 21 h gate expired — so every number is a 2 000-row monitor eval. Drift 0.02 % of ‖w₀‖ at 3e-7: the PD null was undertraining. 43.7 GPU-h. |
-| 05-08-2026 | probe · `probe_row_cap.slurm` j11509346, all three bases on B200 | **done** | The measurement the row caps come from: v3 2.49 GB/1k rows, v2.6 5.72, TabICLv2 0.51 per member. TabICLv2's ceiling is a cuDNN fused-attention failure between 26k and 40k, not memory. `METHOD.md` §3 |
-| 11-07-2026 | run-4 · 64 trials/track, TabPFN v3 + v2.6, 50 epochs | **done** | The clean homogeneous sweep and still the reference for cross-version science. 64/64 trained, 63 checkpoints straight to staging. PD: continued pretraining ≈ zero effect on discrimination (best Δ +0.0004). LGD: NLL improves while RMSE worsens. 8 PD eval cells walltime-killed. `RESULTS.md` |
+| 05-08-2026 | probe · `probe_row_cap.slurm` j11509346, all three bases on B200 | **done** | The measurement the row caps come from: v3 2.49 GB/1k rows, v2.6 5.72, TabICLv2 0.51 per member. TabICLv2's ceiling is a cuDNN fused-attention failure between 26k and 40k, not memory. `PAPER_ROADMAP.md` §3 |
+| 11-07-2026 | run-4 · 64 trials/track, TabPFN v3 + v2.6, 50 epochs | **done** | The clean homogeneous sweep and still the reference for cross-version science. 64/64 trained, 63 checkpoints straight to staging. PD: continued pretraining ≈ zero effect on discrimination (best Δ +0.0004). LGD: NLL improves while RMSE worsens. 8 PD eval cells walltime-killed. `AGENTS_MEMORY.md` |
 | 10-07-2026 | rerun after `clean_run` · 64 trials/track | **contaminated** | 59/64 trials SKIPped on stale 09-07 FP16 checkpoints in the `$VSC_DATA` fallback dir. Only PD v3 a0–a4 actually retrained. Do not cite any number from this run. |
 | 09-07-2026 | run-3 · 64 trials/track, first BF16 run | **partial** | LGD 32/32; PD 27/32 (tasks 0–4 ended together without a traceback, consistent with external termination). Monitor deltas invalid — the monitor re-seeded every epoch. |
 | 08-07-2026 | probe · `probe_row_cap.py` on B200, v3 + v2.6 | **done** | First real memory measurement; replaced the fictional 100k/30k caps. v3 ≈ 2.5 GB/1k rows, v2.6 ≈ 5.7. Per-step cost is × `n_estimators`. |
@@ -36,6 +48,64 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 22-09-2026 — exact-step trajectories exposed old epoch assumptions
+
+- **Tried.** Added update-indexed monitors and interruption recovery to the epoch-based loop.
+- **Result.** Legacy timing counted monitor work as data wait; final drift depended on an epoch-only field, and an audit initially looked for a doubled checkpoint extension.
+- **Why.** Epoch cadence, naming and completion fields had been reused for a different control clock.
+- **Instead.** Record successful updates, separate monitor/training/compute/wait times, use measured trajectory drift, and integration-test real trial filenames plus uninterrupted/resumed model equality.
+
+### 22-09-2026 — a per-array throttle does not bound a campaign
+
+- **Tried.** Reviewed submitting multiple base/track/split arrays with the same percentage limit.
+- **Result.** Every array owned its own limit; their combined concurrency was unbounded by that number.
+- **Why.** Slurm array percentages are not a user-wide campaign semaphore.
+- **Instead.** Use a persistent locked per-controller lane pool with afterany dependencies; fail closed on an uncertain submission response. Direct sbatch and other controllers remain outside that pool.
+
+
+### 22-09-2026 — reconsolidation after removing raw epoch shards
+
+- **Tried.** Reviewed and regression-tested archive → prune → consolidate again on temporary data.
+- **Result.** Rebuilding from only the surviving root manifests could replace the latest training table with an empty one.
+- **Why.** Pruned CSVs are deliberately absent, so a raw-only snapshot builder cannot distinguish archived histories from no history.
+- **Instead.** Refuse publication when any previous source is absent, preserve LATEST, and require verified restoration before reconsolidating that run. New run names remain independent.
+
+### 22-09-2026 — notebook checks exposed hidden metadata and plotting dependencies
+
+- **Tried.** Executed all six notebooks against the actual downloaded output after the focused training-notebook checks.
+- **Result.** Exploration/results still required absent `manifest_pd/lgd.csv`; the new grid plot imported unavailable seaborn.
+- **Why.** Dataset manifests had become optional for training but not exploration; the grid added an unnecessary dependency.
+- **Instead.** Reconstruct optional metadata in memory with the existing registration calculation and draw the grid using installed matplotlib. Keep unknown raw statistics explicit; install nothing.
+
+### 22-09-2026 — executed notebook outputs still exposed private names
+
+- **Tried.** Re-ran the full tests after executing the notebooks rather than only checking their source.
+- **Result.** Functional checks passed, but the privacy guard found a processed-data display and raw-data summary that still emitted original identifiers.
+- **Why.** Those display paths bypassed the shared name accessor; clearing old outputs alone could not fix regeneration.
+- **Instead.** Apply the accessor at both display boundaries and in regime-plot joins, then regenerate outputs and rerun the privacy guard.
+
+### 22-09-2026 — persistent workers and shuffled accumulation changed the experiment
+
+- **Tried.** Compared serial and persistent-worker sampling across epochs, and inspected actual dataset IDs within optimizer windows.
+- **Result.** Workers repeated epoch-zero samples; shuffled microbatches mixed datasets inside accumulation windows, with summed rather than averaged gradients.
+- **Why.** Worker dataset copies did not receive parent `set_epoch`; boundary flags described the unshuffled plan; the divisor used the unrelated accumulation setting.
+- **Instead.** Transport `(epoch,index)`, shuffle whole dataset groups, average finite microbatches before clipping, and record protocol 2 under new run names. Tests use the production loader/sampler.
+
+### 22-09-2026 — assuming Parquet support in the local environment
+
+- **Tried.** Published the compact output prototype as Parquet.
+- **Result.** Local tests and publication failed because neither pyarrow nor fastparquet is installed; no snapshot pointer was published.
+- **Why.** pandas does not include a Parquet engine. Package installation was outside the authorized scope.
+- **Instead.** Use portable `.csv.gz` tables with round-trip float parsing and SHA-256 verification. Empty `.building-*` directories from failed attempts are unpublished, not usable snapshots.
+
+### 22-09-2026 — snapshot loaders ignored custom input roots
+
+- **Tried.** Ran the full suite after publishing the local historical exp1 snapshot.
+- **Result.** Four visualization tests read the real exp1 snapshot instead of their temporary fixture data; two other tests expected obsolete adaptation/divergence semantics.
+- **Why.** The loader checked default raw roots even when a caller had selected another root. Earlier tests passed only while no snapshot existed.
+- **Instead.** Pass the actual source roots to snapshot freshness checks; retain explicit tests with a real snapshot present, and update expectations for frozen-backbone provenance and absent drift evidence.
+
 
 Anything that cost more than a couple of minutes and did not work — including what was eventually
 fixed, because the fix is one changelog line and the dead end was the hour.
@@ -600,7 +670,7 @@ attempts both got it wrong.**
   (`interaction.py::_inference_forward`). Upstream's `_set_training_mode` has the same latent bug,
   so upstream code is not evidence that this is safe.
 - **Instead:** freeze with `requires_grad=False` **only**, never `.eval()`. Nothing is lost —
-  dropout defaults to 0.0 and there is no BatchNorm. See `METHOD.md` §4 for the one place
+  dropout defaults to 0.0 and there is no BatchNorm. See `PAPER_ROADMAP.md` §4 for the one place
   `.eval()` *is* still correct (`col_embedder` after `model.train()`).
 
 ### 05-08-2026
@@ -671,7 +741,7 @@ attempts both got it wrong.**
   attention sharp at long context.
 - **Instead:** caps come from the paper, then get **measured** (`scripts/probe_row_cap.py`) — 26 000
   train (= v3 parity, so architecture is not confounded with context size) and 1 000 000 eval. Full
-  numbers in `METHOD.md` §3.
+  numbers in `PAPER_ROADMAP.md` §3.
 
 **Resolving the untuned eval row cap by stripping a dirname-style prefix.**
 - **Tried:** `resolve_max_rows_for_handle` stripped `"tabpfn-untuned__"` off `handle.name` to find
@@ -803,7 +873,7 @@ attempts both got it wrong.**
 - **Why:** the figure was a bad measurement (see 04-07-2026), and the real driver was missed
   entirely: a step forwards **all** `n_estimators_finetune` members and holds every member's graph
   for one backward, so per-step memory ≈ members × per-member. PD uses 2, LGD 8.
-- **Instead:** measured caps only (`METHOD.md` §3), member-aware scaling in `train_one_config`. **Do
+- **Instead:** measured caps only (`PAPER_ROADMAP.md` §3), member-aware scaling in `train_one_config`. **Do
   not raise a cap without re-running the probe.**
 
 ### 04-07-2026
