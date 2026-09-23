@@ -29,7 +29,7 @@
 # (Genius → Mindwell) makes Slurm reconstruct the login env by spawning the
 # user's login shell on the target node — which fails on this cluster with
 # "user env retrieval failed requeued held" (observed 2026-07-08, job
-# 10285206). --export=ALL skips that path. run_full_pipeline.sh passes its
+# 10285206). --export=ALL skips that path. run_experiment.sh passes its
 # own --export on the CLI, which overrides this line.
 #SBATCH --export=ALL
 

@@ -66,22 +66,6 @@ echo "PYTORCH_ALLOC  : ${PYTORCH_CUDA_ALLOC_CONF}"
 nvidia-smi || true
 echo "=========================================="
 
-# Cross-cluster self-sequencing (see train_pd.slurm): wait for the wICE data
-# stage's completion sentinel before reading processed CSVs. No-op unless
-# CREDITPFN_WAIT_DATA is set (run_full_pipeline.sh sets it).
-if [[ -n "${CREDITPFN_WAIT_DATA:-}" ]]; then
-    SENT="${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
-    echo "Waiting up to 90 min for data sentinel: ${SENT}"
-    for _i in $(seq 1 180); do
-        [[ -f "${SENT}" ]] && { echo "data sentinel found after $((_i*30))s."; break; }
-        sleep 30
-    done
-    if [[ ! -f "${SENT}" ]]; then
-        echo "ERROR: data sentinel not found after 90 min — aborting (data stage failed?)." >&2
-        exit 1
-    fi
-fi
-
 # PRE-FLIGHT SMOKE TEST (see train_pd.slurm) — the 'lgd' variant also checks
 # the bar-distribution import that killed all 32 LGD trials on 2026-07-03.
 python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" || {
@@ -89,11 +73,7 @@ python -c "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')" ||
     exit 1
 }
 # ---- this task's chunk of the trial grid -------------------------------------
-# CREDITPFN_TRIALS_PER_TASK (default 1) trials run SEQUENTIALLY in this one job, so a 768-cell
-# campaign fits under the 500 submitted-job ceiling and pays startup once per chunk instead of
-# once per trial. run_experiment.sh sizes --time to match and asserts that a chunk never
-# straddles two model families (the grid is base-major, so it does not when C divides the
-# per-base block).
+# One trial per task is the default; optional packing must stay within a base/mode.
 TPT="${CREDITPFN_TRIALS_PER_TASK:-1}"
 FIRST=$(( SLURM_ARRAY_TASK_ID * TPT ))
 LAST=$(( FIRST + TPT - 1 ))
@@ -123,17 +103,13 @@ if [[ "${TRIAL_FAMILY}" == "tabicl" ]]; then
         exit 1
     }
 fi
-# (Staging writability is probed in python — resolve_writable_staging_path —
-#  before any training compute; falls back to $VSC_DATA if unwritable.)
+# Checkpoint destinations are probed before training. The named launcher requires
+# writable project storage, so large weights cannot silently fill DATA.
 
-# CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are exported by
-# scripts/slurm/run_experiment.sh. Unset means "the default sweep in
-# config/train.yaml", so every submission made before run-9 behaves as it did.
+# The named launcher supplies this exact phase and dataset partition.
 EXTRA_ARGS=()
 [[ -n "${CREDITPFN_CONFIG:-}" ]] && EXTRA_ARGS+=(--config "${CREDITPFN_CONFIG}")
 [[ -n "${CREDITPFN_SPLIT_INDEX:-}" ]] && EXTRA_ARGS+=(--split-index "${CREDITPFN_SPLIT_INDEX}")
-
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
 
 source scripts/slurm/_run_train.sh
 
@@ -144,14 +120,14 @@ for TRIAL in $(seq "$FIRST" "$LAST"); do
     echo "=============================================================="
     # `if` suspends set -e for this command on purpose: one bad trial must not discard the
     # other trials packed into this task. The chunk still exits non-zero so the failure is
-    # visible, and eval is gated on the per-TRIAL sentinels below, never on the task.
+    # visible in the task status and the per-trial manifest.
     if run_training_python -u scripts/train_pipeline.py \
         --trial-index "${TRIAL}" \
         --log-path "$LOG" \
         "${EXTRA_ARGS[@]}" \
         track=lgd
     then
-        touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/train_ok_lgd_${TRIAL}"
+        echo "TRIAL ${TRIAL} completed."
     else
         RC=$?
         if [[ "$RC" == 75 ]]; then

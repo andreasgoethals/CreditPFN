@@ -92,11 +92,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Testing + the repository-corpus refresh utility (tfm-library/scripts/refresh_repositories.py).
+# Local tests and linting; maintain the shared library in its own checkout.
 dev = [
     "pytest>=8.0,<9.0",
-    "ruff>=0.6",                   # step 1 of scripts/check.py
-    "gitingest>=0.3,<1.0",         # pulls fresh tfm-library/repositories/*.txt dumps (alpha; capped <1.0)
+    "ruff>=0.6",
 ]
 # Interactive notebooks under notebooks/, and the headless runner that executes
 # them in place (src/utils/run_notebooks.py imports nbformat + nbclient directly).
@@ -125,6 +124,7 @@ extend-exclude = [
     "tfm-library",
     # Generated output and notebook JSON are not source.
     "output",
+    "archive",
     "notebooks",
     ".venv",
     "venv",

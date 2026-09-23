@@ -3,7 +3,7 @@
 #  ONE report per GPU type, before committing the campaign.
 #
 #      # login node only (sections 1-3, 7-8: env, slurm limits, credits, files)
-#      python scripts/cluster_report.py
+#      python -m src.utils.cluster_report
 #
 #      # then one job per card, so every GPU's characteristics are measured
 #      sbatch --clusters=mindwell --partition=gpu_b200 scripts/slurm/cluster_report.slurm
@@ -11,7 +11,7 @@
 #      sbatch --clusters=wice     --partition=gpu_h100 scripts/slurm/cluster_report.slurm
 #
 #      # add the row-cap sweep (slow, ~15-25 min, and the reason to give it 2 h).
-#      # Trailing args go to cluster_report.py, not to sbatch:
+#      # Trailing args go to the report, not to sbatch:
 #      sbatch --clusters=mindwell --partition=gpu_b200 \
 #             scripts/slurm/cluster_report.slurm --probe
 #
@@ -25,15 +25,17 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --gpus-per-node=1
 #SBATCH --time=02:00:00
-#SBATCH --output=output/logs/cluster_report_%j.log
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --export=ALL
 
-set -uo pipefail
-cd "${SLURM_SUBMIT_DIR:-$(pwd)}"
+set -euo pipefail
+cd "${VSC_DATA:?}/CreditPFN"
+source scripts/slurm/_job_log.sh
+start_job_log cluster_report
 
 # shellcheck source=/dev/null
 source scripts/slurm/_activate_env.sh
-
-mkdir -p output/logs
 
 echo "=========================================="
 echo " CreditPFN cluster report"
@@ -48,9 +50,5 @@ echo "=========================================="
 ARGS=(--gpu "$@")
 [[ -n "${PROBE:-}" ]] && ARGS+=(--probe)      # fallback, no longer relied on
 
-echo "+ cluster_report.py ${ARGS[*]}"
-python -u scripts/cluster_report.py "${ARGS[@]}"
-
-echo "=========================================="
-echo " END status=$? - $(date)"
-echo "=========================================="
+echo "+ python -m src.utils.cluster_report ${ARGS[*]}"
+python -u -m src.utils.cluster_report "${ARGS[@]}"

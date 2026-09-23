@@ -1,11 +1,11 @@
-"""Everything that can be checked WITHOUT a GPU, before spending ~20M credits.
+"""Repository checks before CPU preparation and small GPU controls.
 
     python -m src.utils.preflight                 # all experiment configs
     python -m src.utils.preflight --config config/experiment1_pd.yaml
 
-Exit code 0 = safe to submit. 1 = at least one FAIL.
+Exit code 0 = these static/CPU checks passed. GPU controls are still required.
 
-This complements `scripts/cluster_report.py`, which measures the MACHINE (memory, throughput,
+This complements `src.utils.cluster_report`, which measures the MACHINE (memory, throughput,
 SLURM limits) and must run on the cluster. This checks the REPOSITORY: that the grid is what we
 think it is, that nothing in it collides or is silently disabled, and that every file it will
 reach for exists.
@@ -24,15 +24,17 @@ from __future__ import annotations
 
 import argparse
 import collections
-import itertools
 import math
+import os
 import pathlib
 import re
+import shutil
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-EXPERIMENTS = ("experiment0_pd", "experiment0_lgd", "experiment1_pd",
-               "experiment1_lgd", "experiment2_pd")
+EXPERIMENTS = tuple(f"{phase}_{track}" for phase in (
+    "experiment0", "pilot", "budget_pilot", "experiment1", "sampling", "seeds")
+    for track in ("pd", "lgd"))
 
 # MEASURED probe points, (rows, peak_GB_or_None, ran_ok). B200 183 GB, 2 training members.
 # Sources: probe job 11524668 §9, plus the exp0 real-training run 11527923 that caught the v2
@@ -116,21 +118,15 @@ class Report:
 
 
 def _load(name: str):
-    from omegaconf import OmegaConf
-    base = OmegaConf.load(REPO / "config/train.yaml")
+    from scripts.train_pipeline import _load_cfg
     path = REPO / (name if name.endswith(".yaml") else f"config/{name}.yaml")
-    return OmegaConf.merge(base, OmegaConf.load(path)), path
+    return _load_cfg(config_path=str(path)), path
 
 
 def _grid(cfg) -> list[tuple]:
-    """The cartesian product, in the same order train_pipeline._resolve_grid builds it."""
-    t = cfg.tunable
-    bases = (t.classifier_base_paths if cfg.track == "pd" else t.regressor_base_paths)
-    return list(itertools.product(
-        bases, t.learning_rates, t.frozen_backbone, t.query_fractions,
-        t.accumulate_grad_batches, t.epoch_pass_modes, [cfg.corpus.get("min_train_rows", 0)],
-        t.l2sp_lambdas,
-    ))
+    """Resolve the actual training grid, including filters and adaptation families."""
+    from scripts.train_pipeline import _resolve_grid
+    return _resolve_grid(cfg, single=False)
 
 
 def _base_key(path: str) -> str:
@@ -182,12 +178,15 @@ def check_name_collisions(cfg, name: str, grid: list[tuple], rep: Report) -> Non
     from src.train.loop import descriptive_name
     splits = cfg.corpus.get("n_splits") or 1
     seen: collections.Counter[str] = collections.Counter()
+    from omegaconf import OmegaConf
+    from src.utils.experiment import apply_split_index
     for k in range(splits):
-        run_name = f"{cfg.run_name}_s{k:02d}" if splits > 1 else cfg.run_name
+        current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), k)
+        run_name = current.run_name
         for b, lr, fz, qf, ac, pm, mtr, l2 in grid:
             seen[descriptive_name(
                 run_name=run_name, track=cfg.track, base_path=b, learning_rate=lr,
-                seed=cfg.seed, use_lora=bool(fz), query_fraction=qf,
+                seed=current.seed, use_lora=bool(fz), query_fraction=qf,
                 accumulate_grad_batches=ac, epoch_pass_mode=pm, min_train_rows=mtr,
                 l2sp_lambda=l2)] += 1
     dupes = {k: v for k, v in seen.items() if v > 1}
@@ -201,15 +200,17 @@ def check_name_collisions(cfg, name: str, grid: list[tuple], rep: Report) -> Non
 def check_checkpoints(cfg, name: str, grid: list[tuple], rep: Report,
                       ckpt_dir: "pathlib.Path | None" = None) -> None:
     """Resolve each base through the SAME roots the pipeline uses, not repo-relative."""
+    from src.utils.paths import resolve_base_checkpoint
     wanted = sorted({str(t[0]) for t in grid})
     missing = []
     for rel in wanted:
         base = pathlib.Path(rel).name
-        cands = [REPO / rel]
-        if ckpt_dir is not None:
-            cands.append(ckpt_dir / base)
-        if not any(c.exists() for c in cands):
-            missing.append(f"{base}   (looked in {', '.join(str(c.parent) for c in cands)})")
+        try:
+            path = resolve_base_checkpoint(rel)
+            if not path.is_file():
+                missing.append(f"{base}   (required at {path})")
+        except FileNotFoundError as exc:
+            missing.append(str(exc))
     if missing:
         rep.fail(f"{name}: {len(missing)} of {len(wanted)} checkpoint(s) missing",
                  "\n".join(missing) + "\nstage them: python -m src.utils.stage_checkpoints")
@@ -309,17 +310,28 @@ def check_step_budget(cfg, name: str, rep: Report) -> None:
                      "an epoch buys a different number of updates in every cell")
         return
     cap = cfg.train.get("max_epochs_for_step_budget")
-    n_train = 13 if cfg.track == "pd" else 6
-    # steps/epoch is sum(ceil(rows/cap)); its extremes are the corpus size (full_pass) and the
-    # dataset count (accumulate). The accumulate arm is the one a low epoch cap can clip.
-    worst_spe = n_train
+    from omegaconf import OmegaConf
+    from src.train.corpus import split_from_cfg
+    from src.utils.experiment import apply_split_index
+    counts = []
+    for index in range(int(cfg.corpus.n_splits)):
+        current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), index)
+        for rows in {int(t[6]) for t in _grid(cfg)}:
+            split = split_from_cfg(current, min_train_rows=rows)
+            if not split.train or not split.test:
+                rep.fail(f"{name}: empty train/test partition {index}")
+                return
+            counts.append(len(split.train))
+    # Minimum table count is a conservative lower bound on updates/epoch. Failed
+    # numerical steps can still exhaust the rail; only GPU controls test that.
+    worst_spe = max(1, min(counts) // max(int(t[4]) for t in _grid(cfg)))
     need_epochs = math.ceil(int(budget) / worst_spe)
     if cap and need_epochs > int(cap):
-        rep.fail(f"{name}: accumulate needs {need_epochs} epochs for {budget} steps",
+        rep.fail(f"{name}: table sampling needs up to {need_epochs} epochs for {budget} steps",
                  f"max_epochs_for_step_budget={cap} clips it to {int(cap) * worst_spe} steps")
     else:
-        rep.ok(f"{name}: {budget} steps reachable in every cell",
-               f"accumulate worst case {need_epochs} epochs (cap {cap})")
+        rep.ok(f"{name}: epoch rail permits {budget} updates before numerical skips",
+               f"conservative {need_epochs} epochs (cap {cap}; smallest training corpus {min(counts)})")
 
 
 def check_l2sp_applies(rep: Report) -> None:
@@ -367,11 +379,19 @@ def check_stale_knobs(rep: Report) -> None:
 
 def check_slurm(rep: Report) -> None:
     import subprocess
+    bash = shutil.which("bash")
+    if bash is None and os.name == "nt":
+        candidates = [pathlib.Path(os.environ.get("LOCALAPPDATA", "")) / "Programs/Git/bin/bash.exe",
+                      pathlib.Path(os.environ.get("ProgramFiles", "C:/Program Files")) / "Git/bin/bash.exe"]
+        bash = next((str(p) for p in candidates if p.is_file()), None)
+    if bash is None:
+        rep.fail("Bash is unavailable; run syntax checks on VSC or with Git Bash")
+        return
     bad = []
     for sh in sorted((REPO / "scripts/slurm").glob("*")):
         if sh.suffix not in (".sh", ".slurm"):
             continue
-        r = subprocess.run(["bash", "-n", str(sh)], capture_output=True, text=True)
+        r = subprocess.run([bash, "-n", sh.as_posix()], capture_output=True, text=True)
         if r.returncode != 0:
             bad.append(f"{sh.name}: {r.stderr.strip().splitlines()[:1]}")
     if bad:
@@ -380,55 +400,26 @@ def check_slurm(rep: Report) -> None:
         rep.ok("every SLURM script parses")
 
 
-def check_job_count(cfgs: list, rep: Report, trials_per_task: int = 2) -> None:
-    """VSC rejects submissions past 500 QUEUED TASKS, and the failure mode is a silent gap.
-
-    Each experiment is a SEPARATE `run_experiment.sh` call whose wave-submitter throttles itself
-    below the ceiling, so what must fit under 500 is the LARGEST single experiment's task count,
-    not the grand total across experiments (those never queue simultaneously). `trials_per_task`
-    is auto-clamped in the launcher to a divisor of the per-base block, so model it the same way.
-    """
-    worst_name, worst_tasks = "", 0
-    detail = []
+def check_job_count(cfgs: list, rep: Report, trials_per_task: int = 1) -> None:
+    """Report current packing; the launcher waits below its configured queue ceiling."""
     for cfg, name in cfgs:
-        trials = len(_grid(cfg))
-        splits = cfg.corpus.get("n_splits") or 1
-        n_bases = len({t[0] for t in _grid(cfg)}) or 1
-        block = max(1, trials // n_bases)
-        tpt = next((d for d in range(trials_per_task, 0, -1) if block % d == 0), 1)
-        tasks = math.ceil(trials / tpt) * splits
-        if tasks > worst_tasks:
-            worst_name, worst_tasks = name, tasks
-        detail.append(f"{name:16s} {trials:3d} trials x {splits} splits "
-                      f"-> {tasks:4d} tasks at {tpt}/task")
-    detail.append(f"{'MAX (per submission)':20s} {worst_tasks:26d} tasks  [{worst_name}]")
-    if worst_tasks > 500:
-        rep.fail(f"{worst_name}: {worst_tasks} tasks exceeds the 500 submitted-job ceiling",
-                 "\n".join(detail) + "\nsubmit fewer splits per wave, or raise TRIALS_PER_TASK")
-    else:
-        rep.ok(f"largest submission {worst_tasks} tasks, under the 500 ceiling",
-               "\n".join(detail))
+        count = math.ceil(len(_grid(cfg)) / trials_per_task) * int(cfg.corpus.n_splits)
+        rep.ok(f"{name}: {count} training tasks at {trials_per_task}/task",
+               "launcher waits for queue room; confirm the live QOS limit on VSC")
 
 
-def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 2) -> None:
-    """A packed task must not straddle two model families: routing and the tabicl import
-    preflight are both per-base, and a chunk spanning families would send a 131 GB TabPFN
-    trial to whatever card the tabicl trial picked. Models the launcher's auto-clamp of
-    `trials_per_task` to a divisor of the per-base block, so this verifies the invariant holds."""
+def check_packing_divides(cfgs: list, rep: Report, trials_per_task: int = 1) -> None:
+    """The launcher rejects a task spanning bases OR pass modes; it does not auto-clamp."""
     for cfg, name in cfgs:
-        grid = _grid(cfg)
-        n_bases = len({t[0] for t in grid}) or 1
-        block = max(1, len(grid) // n_bases)
-        tpt = next((d for d in range(trials_per_task, 0, -1) if block % d == 0), 1)
-        per_task_families = collections.defaultdict(set)
-        for i, t in enumerate(grid):
-            per_task_families[i // tpt].add(_base_key(t[0]))
-        bad = {k: v for k, v in per_task_families.items() if len(v) > 1}
-        if bad:
-            rep.fail(f"{name}: {len(bad)} task(s) straddle model families at {tpt}/task",
-                     f"e.g. task {min(bad)} covers {sorted(bad[min(bad)])}")
+        groups = collections.defaultdict(set)
+        for index, trial in enumerate(_grid(cfg)):
+            groups[index // trials_per_task].add((trial[0], trial[5]))
+        mixed = [index for index, values in groups.items() if len(values) > 1]
+        if mixed:
+            rep.fail(f"{name}: packed tasks mix bases/pass modes at {trials_per_task}/task",
+                     "use TRIALS_PER_TASK=1")
         else:
-            rep.ok(f"{name}: every packed task stays within one model family (at {tpt}/task)")
+            rep.ok(f"{name}: task packing stays within one base and mode")
 
 
 def check_train_eval_agree(name: str, rep: Report) -> None:
@@ -463,7 +454,8 @@ def check_train_eval_agree(name: str, rep: Report) -> None:
                  f"{type(exc).__name__}: {exc}")
         return
 
-    cfg_path = f"config/{name}.yaml"
+    cfg_path = str(REPO / (name if name.endswith(".yaml") else f"config/{name}.yaml"))
+    name = pathlib.Path(cfg_path).stem
     try:
         n_splits = int(tp._load_cfg(None, cfg_path).corpus.get("n_splits") or 1)
     except Exception as exc:
@@ -600,7 +592,10 @@ def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
         rep.fail("cannot import build_dataset_pool", f"{type(exc).__name__}: {exc}")
         return
 
-    for track, need in (("pd", 5), ("lgd", 3)):
+    from src.data.preprocessing import DATASET_METADATA
+    for track in ("pd", "lgd"):
+        expected = {did for did, meta in DATASET_METADATA.items() if meta["track"] == track}
+        need = len(expected)
         d = proc.get(track, REPO / "data/processed" / track)
         on_disk = len(list(d.glob("*.csv"))) if d.is_dir() else 0
         try:
@@ -609,7 +604,7 @@ def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
             rep.fail(f"{track}: build_dataset_pool raised", f"{type(exc).__name__}: {exc}")
             continue
         n = len(pool)
-        if n < need:
+        if {ref.dataset_id for ref in pool} != expected:
             hint = (f"{on_disk} CSV(s) are in {d} but the pool has {n} — some processed CSV is "
                     f"missing its DATASET_METADATA entry, or a target column is absent."
                     if on_disk >= need else
@@ -621,10 +616,9 @@ def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
             rep.ok(f"{track}: {n} datasets in the corpus{extra}", f"processed dir: {d}")
 
 
-def check_predictions_writer(rep: Report) -> None:
+def check_predictions_writer(rep: Report, configs=()) -> None:
     from omegaconf import OmegaConf
     ev = OmegaConf.load(REPO / "config/eval.yaml")
-    flat = OmegaConf.to_container(ev, resolve=False)
 
     def _find(d, key):
         if isinstance(d, dict):
@@ -636,7 +630,9 @@ def check_predictions_writer(rep: Report) -> None:
                     return r
         return None
 
-    wants = bool(_find(flat, "save_predictions") or False)
+    effective = [OmegaConf.merge(ev, cfg.get("evaluation", {})) for cfg in configs] or [ev]
+    wants = any(bool(_find(OmegaConf.to_container(cfg, resolve=True), "save_predictions"))
+                for cfg in effective)
     try:
         import pyarrow  # noqa: F401
         have = True
@@ -652,9 +648,11 @@ def check_predictions_writer(rep: Report) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", action="append", default=None,
-                    help="experiment config(s); default = all five")
-    ap.add_argument("--trials-per-task", type=int, default=2)
+                    help="experiment config(s); default = all current phases")
+    ap.add_argument("--trials-per-task", type=int, default=1)
     args = ap.parse_args(argv)
+    if args.trials_per_task < 1:
+        ap.error("--trials-per-task must be positive")
 
     names = args.config or list(EXPERIMENTS)
     rep = Report()
@@ -671,11 +669,18 @@ def main(argv: list[str] | None = None) -> int:
         label = path.stem
         loaded.append((cfg, label))
         check_required_axes(cfg, label, rep)
-        grid = check_grid(cfg, label, rep)
+        try:
+            grid = check_grid(cfg, label, rep)
+        except (ValueError, KeyError, AttributeError) as exc:
+            rep.fail(f"{label}: invalid grid", str(exc))
+            continue
         check_name_collisions(cfg, label, grid, rep)
         check_checkpoints(cfg, label, grid, rep, ckpt_dir)
-        check_step_budget(cfg, label, rep)
-        check_train_eval_agree(label, rep)
+        try:
+            check_step_budget(cfg, label, rep)
+        except (ValueError, FileNotFoundError) as exc:
+            rep.fail(f"{label}: invalid corpus/budget", str(exc))
+        check_train_eval_agree(str(path), rep)
 
     check_row_caps(rep)
     check_eval_caps(rep)
@@ -683,7 +688,7 @@ def main(argv: list[str] | None = None) -> int:
     check_stale_knobs(rep)
     check_slurm(rep)
     check_data(rep, proc_dirs)
-    check_predictions_writer(rep)
+    check_predictions_writer(rep, [cfg for cfg, _ in loaded])
     if loaded:
         exp1 = [(c, n) for c, n in loaded if "experiment1" in n] or loaded
         check_job_count(exp1, rep, args.trials_per_task)
@@ -694,7 +699,7 @@ def main(argv: list[str] | None = None) -> int:
     if rep.n_fail:
         print(f"  {rep.n_fail} FAILURE(S), {rep.n_warn} warning(s) — DO NOT SUBMIT")
     else:
-        print(f"  0 failures, {rep.n_warn} warning(s) — safe to submit")
+        print(f"  0 failures, {rep.n_warn} warning(s) — CPU checks passed; GPU controls still required")
     print("=" * 78)
     return 1 if rep.n_fail else 0
 

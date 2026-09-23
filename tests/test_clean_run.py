@@ -1,5 +1,5 @@
-# Came with the template, and worth keeping: `src/utils/clean_run.py` is identical in every
-# project, and it deletes things. The one behaviour worth pinning is that a wipe leaves the tracked
+# Based on the template, extended for CreditPFN's two storage tiers and trained weights.
+# A wipe must leave the tracked
 # `.gitkeep` markers and their directories behind — without them a fresh clone has nowhere to write.
 """`src/utils/clean_run.py` — the wipe."""
 
@@ -139,3 +139,41 @@ def test_train_stage_cleanup_includes_recovery_on_both_tiers(isolated_output):
             victims.append(p)
     clean_run.main(["--stages", "train", "--clean"])
     assert all(not p.exists() for p in victims)
+
+
+def test_full_cleanup_preserves_only_its_active_log(isolated_output, monkeypatch, capsys):
+    from src.utils.paths import logs_dir
+    logs_dir().mkdir(parents=True)
+    active, old = logs_dir() / "maintenance_1.log", logs_dir() / "maintenance_0.log"
+    active.write_text("START\n")
+    old.write_text("old run\n")
+    monkeypatch.setenv("CREDITPFN_ACTIVE_LOG", str(active))
+    clean_run.main(["--clean"])
+    assert active.read_text() == "START\n" and not old.exists()
+    with active.open("a") as stream:
+        stream.write("END exit_code=0\n")
+    assert "Preserving active" in capsys.readouterr().out
+
+
+def test_cleanup_rejects_keep_log_outside_log_directory(isolated_output, monkeypatch):
+    from src.utils.paths import outputs_dir
+    victim = outputs_dir() / "keep.json"
+    victim.parent.mkdir(parents=True)
+    victim.write_text("keep")
+    monkeypatch.setenv("CREDITPFN_ACTIVE_LOG", str(victim))
+    with pytest.raises(SystemExit):
+        clean_run.main(["--clean"])
+    assert victim.exists()
+
+
+def test_eval_cleanup_invalidates_moved_figure_metadata_and_notebook_logs(isolated_output):
+    from src.utils.paths import outputs_dir
+    paths = [outputs_dir() / name for name in (
+        "figures/example/01_plot.pdf", "manifests/figures/example.json",
+        "logs/notebook_example.log", "manifests/train.csv")]
+    for path in paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("record", encoding="utf-8")
+    clean_run.main(["--clean", "--stages", "eval"])
+    assert all(not p.exists() for p in paths[:3])
+    assert paths[3].exists()

@@ -13,6 +13,13 @@ day is never rewritten.
 
 ## 23-09-2026
 
+- Put all maintenance/classical/report logs under output, preserve cleanup's active log, and propagate setup/report failures.
+- Move figure metadata to manifests and notebook transcripts to logs; leave only PDFs in notebook figure folders.
+- Reject stale or corrupted plans before GPU submission; fingerprint shell code and normalize source line endings; prepare fresh check2 null controls.
+- Remove the obsolete unnamed-grid launcher, sentinel gate and inactive exp2 config; move the machine-report utility into src/utils.
+- Correct preflight grid/packing/corpus/budget checks and Windows Bash discovery; refuse an empty training-size filter and environment fallback.
+- Verify/import downloaded preparation artifacts and update the runbook, research protocol reference and template summary.
+
 - Cached unchanged corpus metadata and reused plan splits to avoid repeatedly parsing full CSVs per fold/trial.
 
 - Added a gitignored in-repository archive with merged legacy tables, verified source records and compact log diagnostics; moved originals aside after deletion was policy-blocked.

@@ -5,7 +5,7 @@
     python -m src.utils.clean_run --clean --processed       ...and the data/processed cache too
     python -m src.utils.clean_run --clean --stages eval     only what the eval stage produced
 
-Clears the **whole `output/` tree on both storage tiers** — `$VSC_DATA` and project storage — so
+Clears `output/` on both storage tiers, preserving a maintenance job's active log — so
 one invocation is enough whether you are on a laptop or on the cluster. Off-cluster both tiers
 collapse into the repository and it is simply `output/`.
 
@@ -28,9 +28,8 @@ CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `ou
     resume-skip check pointing at the previous run's weights. That is exactly what
     contaminated the 10-07-2026 rerun: 59 of 64 trials silently reused stale checkpoints.
     Base `checkpoints/*.ckpt` are never touched — only the `trained/` subtree.
-  * `.sentinels/` — the `data_done` / `train_ok_<track>_<i>` files the cross-cluster gate
-    polls, plus the generated `eval_submit_*.sh`. Stale sentinels cannot release a NEW run
-    (the submitter clears them first) but they make a log impossible to read.
+  * Legacy `.sentinels/`, if present. The named launcher uses Slurm dependencies and
+    writes its submission state under `output/manifests/`; no new sentinels are created.
 
 `--stages data,train,eval` narrows the wipe to what one stage produced, which is what you
 want when only the last stage needs redoing — re-running eval is minutes, re-running the
@@ -103,6 +102,8 @@ def stage_targets(stage: str) -> list[Path]:
         found += list(results_dir().glob("**/*"))
         found += list(resolve_staging_path("output/evaluation_cache").glob("**/*"))
         found += list((out_root / "figures").glob("**/*"))
+        found += list((out_root / "manifests" / "figures").glob("*.json"))
+        found += list(logs.glob("notebook_*.log"))
         found += list(logs.glob("eval_*.log"))
     return list(dict.fromkeys(p for p in found if p.is_file() and p.name not in KEEP))
 
@@ -146,15 +147,16 @@ def validate_tree(root: Path) -> None:
             check(Path(directory) / name)
 
 
-def measure(root: Path) -> tuple[int, int]:
+def measure(root: Path, *, keep_paths: frozenset[Path] = frozenset()) -> tuple[int, int]:
     """(files, bytes) under a root, ignoring the structure markers."""
     if not root.is_dir():
         return 0, 0
-    files = [p for p in root.rglob("*") if p.is_file() and p.name not in KEEP]
+    files = [p for p in root.rglob("*")
+             if p.is_file() and p.name not in KEEP and p.resolve() not in keep_paths]
     return len(files), sum(p.stat().st_size for p in files)
 
 
-def wipe(root: Path) -> int:
+def wipe(root: Path, *, keep_paths: frozenset[Path] = frozenset()) -> int:
     """Delete everything under a root except the structure markers. Returns files removed.
 
     Two passes, and the order matters: files first, then empty directories bottom-up. That leaves
@@ -167,7 +169,7 @@ def wipe(root: Path) -> int:
         return 0
     removed = 0
     for path in root.rglob("*"):
-        if path.is_file() and path.name not in KEEP:
+        if path.is_file() and path.name not in KEEP and path.resolve() not in keep_paths:
             path.unlink()
             removed += 1
     for path in sorted((p for p in root.rglob("*") if p.is_dir()),
@@ -190,6 +192,17 @@ def main(argv: list[str] | None = None) -> int:
                              "whole output/ tree")
     args = parser.parse_args(argv)
 
+    # Unlinking a running job's stdout on Linux loses the cleanup report itself.
+    # Only the exact active .log inside our log directory may survive a reset.
+    active_log = os.environ.get("CREDITPFN_ACTIVE_LOG")
+    keep_paths = frozenset()
+    if active_log:
+        path = Path(active_log).resolve()
+        if path.parent != (outputs_dir() / "logs").resolve() or path.suffix != ".log":
+            parser.error("CREDITPFN_ACTIVE_LOG must name a .log directly inside output/logs")
+        keep_paths = frozenset({path})
+        print(f"Preserving active maintenance log: {path}")
+
     # Validate every tree before deleting ANY file, including stage-specific paths.
     # No writers may be active during a clean; this is not a concurrent deletion service.
     targets = roots(processed=args.processed or bool(
@@ -205,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
         files: list[Path] = []
         print("Output of stage(s) " + ", ".join(names) + ":\n")
         for name in names:
-            got = stage_targets(name)
+            got = [p for p in stage_targets(name) if p.resolve() not in keep_paths]
             size = sum(f.stat().st_size for f in got)
             print(f"  {len(got):>6} files  {size / 1e6:>9.1f} MB  {name}")
             files += got
@@ -224,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     total_files = total_bytes = 0
     print("Output from the previous run:\n")
     for root in targets:
-        files, size = measure(root)
+        files, size = measure(root, keep_paths=keep_paths)
         total_files += files
         total_bytes += size
         state = f"{files:>6} files  {size / 1e6:>9.1f} MB" if files else "         empty"
@@ -240,7 +253,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\nDeleting:")
     for root in targets:
-        print(f"  removed {wipe(root):>6} files from {root}")
+        print(f"  removed {wipe(root, keep_paths=keep_paths):>6} files from {root}")
     print("\nClean.")
     return 0
 

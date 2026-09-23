@@ -1,7 +1,7 @@
 """Saving figures. One folder per notebook, one PDF per figure, cleared before drawing.
 
     output/figures/<notebook>/01_<name>.pdf     the figure — vector, for the paper
-    output/figures/<notebook>/_figures.json     what was drawn, in order, with captions
+    output/manifests/figures/<notebook>.json   what was drawn, in order, with captions
 
 PDF ONLY, AND SIZED FOR A4. The PDF is what the paper uses: vector, text embedded as TrueType so
 journal systems accept it, drawn at the width it will occupy on the A4 page (see
@@ -27,7 +27,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from src.utils.paths import REPO_ROOT, figures_dir
+from src.utils.paths import REPO_ROOT, figures_dir, logs_dir, manifests_dir
 
 #: Vector already, but heatmaps and scatter clouds inside a PDF rasterise, so it still needs a
 #: print DPI.
@@ -42,12 +42,14 @@ MANIFEST = "_figures.json"
 
 
 def manifest_path(notebook: str) -> Path:
-    return figures_dir(notebook) / MANIFEST
+    return manifests_dir() / "figures" / f"{notebook}.json"
 
 
 def read_manifest(notebook: str) -> list[dict]:
     """What this notebook drew last time it ran, in order. `[]` if it never has."""
     path = manifest_path(notebook)
+    if not path.is_file():
+        path = figures_dir(notebook) / MANIFEST  # read older downloads without rewriting them
     if not path.is_file():
         return []
     try:
@@ -65,14 +67,16 @@ def clear(notebook: str) -> int:
     notebook's figures.
     """
     folder = figures_dir(notebook)
-    if not folder.is_dir():
-        return 0
     removed = 0
     for pattern in _OWNED:
         for path in folder.glob(pattern):
             if path.is_file():
                 path.unlink()
                 removed += 1
+    for path in (manifest_path(notebook), logs_dir() / f"notebook_{notebook}.log"):
+        if path.is_file():
+            path.unlink()
+            removed += 1
     return removed
 
 
@@ -103,6 +107,7 @@ class FigureSaver:
         self.notebook = notebook
         self.folder = figures_dir(notebook)
         self.folder.mkdir(parents=True, exist_ok=True)
+        manifest_path(notebook).parent.mkdir(parents=True, exist_ok=True)
         #: `clear_first=False` is for one case only: re-running a single cell mid-session without
         #: wiping what the earlier cells wrote. Never pass it in the setup cell.
         if clear_first:

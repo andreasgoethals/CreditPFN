@@ -33,7 +33,8 @@ def test_a_pdf_and_only_a_pdf_is_written(isolated_output, fig) -> None:
     written = save.last_path
     assert written.suffix == ".pdf"
     assert written.is_file() and written.stat().st_size > 0
-    assert not list(save.folder.glob("*.png"))
+    assert all(p.suffix == ".pdf" for p in save.folder.iterdir())
+    assert "manifests" in figures.manifest_path("nb").parts
 
 
 def test_filenames_are_numbered_in_drawing_order(isolated_output, fig) -> None:
@@ -151,3 +152,17 @@ def test_clear_returns_how_many_files_went(isolated_output, fig) -> None:
     save(fig, "b", caption="c")
     assert figures.clear("nb") == 3  # 2 pdfs + the manifest
     assert figures.clear("never_existed") == 0
+
+
+def test_fresh_figures_clear_only_their_own_caption_metadata_and_transcript(isolated_output, fig):
+    from src.utils.run_notebooks import stdout_path
+    for name in ("current", "other"):
+        save = figures.FigureSaver(name)
+        save(fig, "plot", caption="Caption.")
+        log = stdout_path(name)
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text("previous summary", encoding="utf-8")
+    figures.clear("current")
+    assert not figures.manifest_path("current").exists()
+    assert not stdout_path("current").exists()
+    assert figures.manifest_path("other").exists() and stdout_path("other").exists()

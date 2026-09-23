@@ -47,6 +47,7 @@ from src.utils.paths import (
     all_results_path,
     captions_path,
     figures_dir,
+    logs_dir,
     notebooks_dir,
 )
 
@@ -54,9 +55,12 @@ from src.utils.paths import (
 #: longer is doing work that belongs in a script.
 DEFAULT_TIMEOUT = 1800
 
-#: Captured stdout, parked between execution and assembly, then removed. `_figures.json` is
-#: KEPT: CAPTIONS.md must be rebuildable from disk without re-executing anything.
+#: Legacy location, readable for older downloads; new transcripts are .log files.
 STDOUT_FILE = "_stdout.txt"
+
+
+def stdout_path(name: str) -> Path:
+    return logs_dir() / f"notebook_{name}.log"
 
 
 @dataclass
@@ -131,7 +135,9 @@ def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
 
     out_dir = figures_dir(name)
     out_dir.mkdir(parents=True, exist_ok=True)
-    text_path = out_dir / STDOUT_FILE
+    text_path = stdout_path(name)
+    text_path.parent.mkdir(parents=True, exist_ok=True)
+    text_path.unlink(missing_ok=True)
 
     # The generated script goes to the system temp dir, NOT into the figure folder: the
     # notebook clears that folder as its first act, and on Windows a directory cannot be
@@ -212,6 +218,9 @@ def run_one_in_place(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResul
 
     out_dir = figures_dir(name)
     out_dir.mkdir(parents=True, exist_ok=True)
+    text_path = stdout_path(name)
+    text_path.parent.mkdir(parents=True, exist_ok=True)
+    text_path.unlink(missing_ok=True)
 
     nb = nbformat.read(nb_path, as_version=4)
     client = NotebookClient(
@@ -237,7 +246,7 @@ def run_one_in_place(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResul
         "".join(o.get("text", "")) for cell in nb.cells if cell.get("cell_type") == "code"
         for o in cell.get("outputs", []) if o.get("output_type") == "stream"
     )
-    (out_dir / STDOUT_FILE).write_text(text, encoding="utf-8")
+    text_path.write_text(text, encoding="utf-8")
 
     n_figs = len(list(out_dir.glob("*.pdf")))
     return NotebookResult(name, not error, time.time() - started, n_figs, error)
@@ -248,7 +257,9 @@ def run_one_in_place(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResul
 
 
 def _captured_text(name: str) -> str:
-    path = figures_dir(name) / STDOUT_FILE
+    path = stdout_path(name)
+    if not path.is_file():
+        path = figures_dir(name) / STDOUT_FILE
     return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
@@ -320,22 +331,6 @@ def write_all_results(notebooks: tuple[str, ...]) -> Path:
     return path
 
 
-def _cleanup(notebooks: tuple[str, ...]) -> None:
-    """Nothing to clean any more — kept so the call site reads the same.
-
-    `_stdout.txt` used to be deleted here, once folded into `All_Results.md`. That made
-    `--summaries-only` destructive: with no stdout on disk it rewrote every block as
-    "(no output captured)", turning a 490-line document into 53 lines. Now that
-    `All_Results.md` is a tracked file, that would be committed.
-
-    So the capture is KEPT, exactly like `_figures.json` beside it, and for the same stated
-    reason: both summary documents must be rebuildable from disk without re-executing
-    anything. `figures._OWNED` already lists `_stdout.txt`, so each notebook's own folder is
-    still cleared before it draws — the file never accumulates or goes stale.
-    """
-    return
-
-
 # ---------------------------------------------------------------------------
 # The one entry point
 # ---------------------------------------------------------------------------
@@ -368,13 +363,12 @@ def run_all(
 
     # ALWAYS over every notebook, never only the ones just run. `CAPTIONS.md` and
     # `All_Results.md` are single project-wide documents assembled from each notebook's
-    # `_figures.json` and `_stdout.txt` on disk, so a partial run must not narrow them:
+    # figure manifests and notebook logs, so a partial run must not narrow them:
     # `--only 2.0 2.1` used to cut CAPTIONS.md from 435 lines to 191, deleting four
     # notebooks' captions from what is now a tracked file.
     everything = discover()
     write_captions(everything)
     write_all_results(everything)
-    _cleanup(everything)
     return sorted(results, key=lambda r: names.index(r.name))
 
 

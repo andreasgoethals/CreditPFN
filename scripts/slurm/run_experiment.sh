@@ -59,12 +59,11 @@ if [[ "$STAGES" != train && "$STAGES" != eval && "$STAGES" != 'train eval' ]]; t
     echo 'STAGES must be train, eval, or "train eval"' >&2; exit 1
 fi
 if [[ -z "${DRY:-}" && "${META[5]}" == True ]]; then
-    python - "$RUN" "$TRACK" <<'PYPLAN'
+    python - "$CONFIG" <<'PYPLAN'
 import sys
-from src.utils.prepare_experiment import plan_path
-p = plan_path(sys.argv[1], sys.argv[2])
-if not p.is_file():
-    raise SystemExit('Prepare this experiment on VSC first; missing plan: ' + str(p))
+from pathlib import Path
+from src.utils.prepare_experiment import check_prepared
+check_prepared(Path(sys.argv[1]))
 PYPLAN
 fi
 

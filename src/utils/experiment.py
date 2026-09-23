@@ -68,11 +68,29 @@ def environment_versions() -> dict:
     return result
 
 
+@lru_cache(maxsize=256)
+def _source_digest(path: str, size: int, mtime_ns: int) -> str:
+    source = Path(path)
+    digest = hashlib.sha256(source.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    after = source.stat()
+    if (after.st_size, after.st_mtime_ns) != (size, mtime_ns):
+        raise RuntimeError(f"Source changed during fingerprinting: {path}")
+    return digest
+
+
 def code_identity(root: Path | None = None) -> str:
     root = root or Path(__file__).resolve().parents[2]
     paths = [p for folder in ("src/train", "src/data", "src/model", "src/eval", "src/utils", "scripts")
-             for p in (root / folder).rglob("*.py") if p.name != "_private_names.py"]
-    return digest_json({p.relative_to(root).as_posix(): file_digest(p) for p in sorted(paths)})
+             for p in (root / folder).rglob("*")
+             if p.suffix in {".py", ".sh", ".slurm"} and p.name != "_private_names.py"]
+    # Git checks out LF on VSC and may use CRLF on Windows. Hash source text
+    # consistently, while including the shell plumbing that routes each trial.
+    hashes = {}
+    for path in sorted(paths):
+        stat = path.stat()
+        hashes[path.relative_to(root).as_posix()] = _source_digest(
+            str(path.resolve()), stat.st_size, stat.st_mtime_ns)
+    return digest_json(hashes)
 
 
 def scientific_config(cfg) -> dict:

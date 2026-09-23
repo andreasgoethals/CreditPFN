@@ -1,8 +1,8 @@
 """One report answering everything we need to know before committing a multi-day GPU campaign.
 
-    python scripts/cluster_report.py                 # everything that needs no GPU
-    python scripts/cluster_report.py --gpu           # + the GPU sections (run under sbatch)
-    python scripts/cluster_report.py --gpu --probe   # + the row-cap sweep (slow, ~15 min)
+    python -m src.utils.cluster_report                 # everything that needs no GPU
+    python -m src.utils.cluster_report --gpu           # + GPU checks (under sbatch)
+    python -m src.utils.cluster_report --gpu --probe    # + the row-cap sweep
 
 WHY THIS EXISTS. Six of the last ten problems in this project were environment or accounting
 facts that no test could catch: a probe measuring one ensemble member while training used two,
@@ -47,7 +47,7 @@ import sys
 import time
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
+REPO = Path(__file__).resolve().parents[2]
 BAR = "=" * 78
 
 

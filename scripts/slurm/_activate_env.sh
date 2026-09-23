@@ -122,9 +122,8 @@ fi
 # then contributes nothing to PATH and `python` silently falls through to
 # /bin/python (observed on the 2026-07-07 probe_row_cap job: "Active python:
 # /bin/python"). So after activating we verify the interpreter really belongs
-# to the env AND carries the project deps; on failure we FALL BACK to the
-# base env (which may hold the full stack when the named env was never built)
-# before giving up — a running job with a loud warning beats a dead one.
+# to the env AND carries the project deps. Stop if the requested environment
+# is unusable: a fallback would change the prepared experiment.
 # --------------------------------------------------------------------------
 
 _prepend_conda_bin() {
@@ -133,7 +132,7 @@ _prepend_conda_bin() {
     # resolved to /apps/leuven/.../Python/3.12.3/bin/python while CONDA_PREFIX
     # correctly pointed at our env — so the health check below rejected a
     # perfectly good env and the launcher aborted (observed 2026-08-05 from
-    # run_full_pipeline.sh; the same activation worked on a compute node, which
+    # the old launcher; the same activation worked on a compute node, which
     # has no such module loaded). Forcing the env's bin to the front makes the
     # interpreter match CONDA_PREFIX. A duplicate PATH entry is harmless;
     # `hash -r` clears bash's cached location for an already-resolved `python`.
@@ -148,7 +147,7 @@ _env_is_healthy() {
     # The active python must live under $CONDA_PREFIX and import the deps.
     local py
     py="$(command -v python || true)"
-    if [[ -z "${CONDA_PREFIX:-}" || "${py}" != "${CONDA_PREFIX}"* ]]; then
+    if [[ -z "${CONDA_PREFIX:-}" || "${py}" != "${CONDA_PREFIX}/"* ]]; then
         echo "  [activate] python (${py:-none}) is NOT inside CONDA_PREFIX (${CONDA_PREFIX:-unset}) — env is broken/empty." >&2
         return 1
     fi
@@ -161,29 +160,10 @@ _env_is_healthy() {
     return 0
 }
 
-_activated=""
-if conda activate "${CONDA_ENV}" 2>/dev/null && _prepend_conda_bin && _env_is_healthy; then
-    _activated="${CONDA_ENV}"
-else
-    echo "WARNING: env '${CONDA_ENV}' is unusable — trying the 'base' env as a fallback." >&2
-    if conda activate base 2>/dev/null && _prepend_conda_bin && _env_is_healthy; then
-        _activated="base"
-        echo "WARNING: running in the BASE env. Repair the named env when convenient:" >&2
-        echo "         conda create -y -n ${CONDA_ENV} --clone base" >&2
-        echo "         conda activate ${CONDA_ENV} && pip install -e \".[dev]\"" >&2
-    fi
-fi
-
-if [[ -z "${_activated}" ]]; then
-    echo "ERROR: no usable conda env (tried '${CONDA_ENV}' and 'base')." >&2
-    echo "       Available envs:" >&2
-    conda env list >&2
-    echo "       Repair once from a login node:" >&2
-    echo "         conda create -y -n ${CONDA_ENV} --clone base      # reuses base's torch/CUDA stack" >&2
-    echo "         conda activate ${CONDA_ENV}" >&2
-    echo "         pip install -e \".[dev]\"" >&2
-    echo "         pip install --upgrade 'tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@main'" >&2
-    exit 1
+if ! conda activate "${CONDA_ENV}" || ! _prepend_conda_bin || ! _env_is_healthy; then
+    echo "ERROR: requested conda env '${CONDA_ENV}' is unusable; refusing another environment." >&2
+    echo "Inspect/repair it before preparing a plan or submitting GPU jobs." >&2
+    return 1
 fi
 
 echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
@@ -193,20 +173,8 @@ echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
 #  Resolve CREDITPFN_DATA_ROOT from config/data.yaml (one source of truth)
 # =============================================================================
 #
-#  The slurm boilerplate above set `CREDITPFN_DATA_ROOT` to either the user's
-#  explicit export or `$VSC_SCRATCH/CreditPFN`. Now that conda is active we
-#  can finally consult `config/data.yaml`'s `paths.data_source` knob and
-#  re-resolve. Precedence (mirroring src/utils/paths.apply_data_source_from_cfg):
-#
-#    1. Explicit user export (CREDITPFN_DATA_ROOT set on submission)
-#    2. `cfg.paths.data_source = "data"`    → $VSC_DATA/CreditPFN
-#    3. `cfg.paths.data_source = "scratch"` → $VSC_SCRATCH/CreditPFN  (VSC default)
-#
-#  We honour an explicit user export by checking whether the env var differs
-#  from the standard slurm default (the value the .slurm script just set).
-#  If the user wants a one-off override they can set
-#  `CREDITPFN_DATA_ROOT=/some/path bash scripts/slurm/run_full_pipeline.sh`
-#  and the value will pass through unchanged.
+#  Explicit CREDITPFN_DATA_ROOT wins unless the job requests the immutable
+#  scratch inputs. Otherwise config/data.yaml selects canonical project storage.
 
 if [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
     _input_pointer="${CREDITPFN_INPUT_POINTER:-${VSC_SCRATCH_GPFS1:?}/CreditPFN/ACTIVE_INPUTS.json}"

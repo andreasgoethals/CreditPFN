@@ -18,7 +18,7 @@ Future-comparison contract
 --------------------------
 The split is a deterministic function of:
 
-    (manifest CSV contents, track, train_fraction, test_fraction,
+    (registered datasets and processed metadata, track, train_fraction, test_fraction,
      pinned_train_dataset_ids, pinned_test_dataset_ids, seed)
 
 So every model in the future "TabPFN vs. XGBoost vs. CatBoost vs. …"
@@ -70,10 +70,10 @@ class DatasetRef:
     target_column: str
     categorical_columns: tuple[str, ...]
     processed_csv: Path      # data/processed/{track}/{id}.sanitized.csv
-    #: Rows in the sanitized CSV, read from the manifest. Carried because corpus
+    #: Rows in the sanitized CSV, read from the file. Carried because corpus
     #: composition is a first-class experimental variable: `min_train_rows` filters on
     #: it, and the run log records it so a result can be read against the corpus that
-    #: produced it. 0 when the manifest predates the column.
+    #: produced it.
     n_rows: int = 0
 
 
@@ -92,7 +92,7 @@ class CorpusSplit:
 
 
 # --------------------------------------------------------------------------- #
-# Manifest reading
+# Processed metadata inspection
 # --------------------------------------------------------------------------- #
 
 
@@ -434,13 +434,9 @@ def split_corpus(
                 ", ".join(f"{r.dataset_id}:{r.n_rows}" for r in dropped), len(test),
             )
         if not kept:
-            LOGGER.warning(
-                "corpus.min_train_rows=%d removed EVERY training dataset for track=%s — "
-                "ignoring the filter rather than training on nothing.",
-                int(min_train_rows), track,
-            )
-        else:
-            train = kept
+            raise ValueError(f"corpus.min_train_rows={min_train_rows} removed every training dataset "
+                             f"for track={track}; refusing to ignore the requested filter")
+        train = kept
     return CorpusSplit(train=train, test=test)
 
 

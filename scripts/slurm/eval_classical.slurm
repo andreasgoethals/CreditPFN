@@ -14,11 +14,10 @@
 #SBATCH --export=ALL
 set -euo pipefail
 cd "${VSC_DATA:?}/CreditPFN"
+source scripts/slurm/_job_log.sh
+start_job_log eval_classical
 export CREDITPFN_USE_SCRATCH=0 CREDITPFN_EVAL_KIND=classical
 source scripts/slurm/_activate_env.sh
-mkdir -p "${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}/output/logs"
-LOG="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}/output/logs/classical_${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}.log"
-exec > "$LOG" 2>&1
 python -u scripts/eval_pipeline.py --config "${CREDITPFN_CONFIG:?}" \
     --split-index "${CREDITPFN_SPLIT_INDEX:?}" --task-index "${SLURM_ARRAY_TASK_ID:?}" \
     --tasks "${EVAL_TASKS:-16}" --log-path "$LOG"

@@ -63,3 +63,7 @@ The project uses Python 3.11–3.13 and the dependencies in [pyproject.toml](pyp
 Read [AGENTS.md](AGENTS.md), [the template](docs/TEMPLATE.md) and [agent memory](docs/AGENTS_MEMORY.md) before editing. Do not push, install packages or start cluster training on the user's behalf without authorization. Never modify the library submodule here. Record substantive changes in both logs and run the relevant validation before reporting completion.
 
 This repository's code is MIT licensed. Dataset permissions and the individual foundation-model weight licenses are separate from the code license.
+
+## Based on the repository template
+
+The layout follows [Andreas' repository template](docs/TEMPLATE.md). Logs and notebook transcripts live in `output/logs/`, configurations and figure metadata in `output/manifests/`, metrics in `output/results/`, and PDFs in `output/figures/<notebook>/`. Model weights use the template's `checkpoints/` extension. The user-requested local `archive/` is the deliberate additional folder; cleanup also removes trained weights when explicitly requested, while preserving original bases.

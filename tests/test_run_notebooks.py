@@ -217,7 +217,8 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     assert result.n_figures == 1
     folder = figures_dir("smoke")
     assert (folder / "01_line.pdf").is_file()
-    assert not list(folder.glob("*.png"))  # PDF only
+    assert all(p.suffix == ".pdf" for p in folder.iterdir())
+    assert rn.stdout_path("smoke").suffix == ".log"
 
     from src.utils.paths import all_results_path, captions_path
 
@@ -243,7 +244,6 @@ def test_summaries_only_is_not_destructive(isolated_output) -> None:
     first = rn.write_all_results(("nb",)).read_text(encoding="utf-8")
     assert "the measured numbers" in first
 
-    rn._cleanup(("nb",))                       # runs after every execution
     second = rn.write_all_results(("nb",)).read_text(encoding="utf-8")
     assert "the measured numbers" in second, "rebuild lost the captured summary"
     assert "(no output captured)" not in second

@@ -2,7 +2,7 @@
 
 The scientific design is in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md). This runbook covers storage, download, fresh starts, launch and recovery. Use the **CreditPFN** conda environment and **$VSC_DATA/CreditPFN** repository. Commands below are Bash on VSC unless labeled PowerShell. The agent has not submitted any cluster jobs.
 
-## Storage and current inventory
+## Storage
 
 | Tier | Location | Role |
 |---|---|---|
@@ -15,7 +15,7 @@ Both bytes and inodes matter. The [official storage documentation](https://docs.
 
 Intensive Mindwell I/O belongs on GPFS; wICE uses Lustre. `$VSC_SCRATCH` changes with the compute cluster. Use the explicit GPFS variable when staging from a wICE CPU node for Mindwell. The pinned [VSC documentation](<../tfm-library/repositories/VSC Documentation.txt>) covers `KU Leuven storage` and `Transferring data between Lustre and GPFS`.
 
-**Cleanup confirmed, 23-09-2026:** the user supplied successful wICE job `62109053` accounting (exit `0:0`, 1m54s) and its deletion report: 6,394 files / 52.79 GB removed across DATA/project output, both trained-weight trees and submission state. Canonical data and original weights were preserved. Local historical measurements are in `archive/run-september-2026/`; this private archive is not an input to the fresh run. Another project's running job was shown in the queue; it was not part of this cleanup.
+Confirmed cluster jobs and the next outstanding gate are recorded in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Local historical measurements in `archive/` are not inputs to the fresh run.
 
 Logs caused most of the byte pressure. Three sampled large local logs each contained 53,130 copies of the same scikit-learn deprecation warning, plus thousands of nonfinite-loss warnings. The known deprecation is filtered in the parent and spawned workers. Numerical warnings retain their first diagnostic, logarithmically spaced count summaries and final segment totals; exact skip totals remain in epoch records. Other warnings, fatal errors and tracebacks remain visible. Thread pools are capped and per-step logging is less frequent. Concurrent jobs retain independent shards; consolidation happens after writers stop. The modern launcher refuses to fall back to DATA for large weights when project storage is unwritable.
 
@@ -23,10 +23,13 @@ Logs caused most of the byte pressure. Three sampled large local logs each conta
 
 ```text
 DATA/CreditPFN/output/
-  logs/
+  logs/*.log                          all job logs and notebook transcripts
   manifests/<run>_sNN_<track>.csv       attempt records, retained for eval/resume
   manifests/plans/<run>_<track>.json   immutable identities and partitions
   manifests/resolved/                 per-entry-point configurations
+  manifests/scheduler/                concurrency-pool records and locks
+  manifests/figures/<notebook>.json    caption metadata, separate from PDFs
+  figures/<notebook>/*.pdf            publication figures only
   manifests/epochs/<track>/
     <trial>.csv                        epoch diagnostics, updates and timing
     <trial>.trajectory.csv             fixed-update per-dataset monitors
@@ -51,6 +54,8 @@ PROJECT/CreditPFN/
 ```
 
 Local paths default to the repository. Consolidation writes eight compressed CSVs plus inventory into a new immutable snapshot and atomically publishes LATEST. It verifies source/readback checksums. Do not accumulate unbounded snapshots. After removing raw histories, restore them from a saved copy before reconsolidating that run; incomplete replacement is deliberately refused. A clean new run needs none of the old snapshots.
+
+Maintenance logs are `output/logs/maintenance_<job-id>_r<restart>.log`; environment activation errors and final exit status go into that same file. Direct `sbatch` works even when `output/logs/` did not exist at submission: the batch shell creates the directory before opening its log. A maintenance cleanup preserves its own active log. The retired default-grid launcher and root-level completion markers are no longer used; use `run_experiment.sh` with an explicit phase config. `checkpoints/` and `data/processed/` are explicit template extensions, not misplaced logs/results.
 
 Only final weights and the latest recovery state persist. Recovery is removed after successful final publication. Intermediate trajectory weights are transient. Corpus schema/count inspection is cached per unchanged file within each process, and plan generation reuses resolved partitions across recipes. New configs disable raw prediction arrays while keeping computed metrics/calibration diagnostics. Enable predictions only for a separately named diagnostic evaluation with its own storage budget.
 
@@ -81,7 +86,7 @@ Heavy copying, hashing, compression, data preparation and CPU baseline HPO belon
 
 ## Download old output, then start clean
 
-**The new run needs no old output or trained checkpoints.** A small local historical copy is useful only for explaining earlier results and failures. There is no requirement to keep that copy on VSC or preserve invalid trained models. The local September archive contains merged measurements, compressed original small records/configuration, and bounded log excerpts/counts. The compact portion is about 66 MB. Automatic approval review blocked bulk local deletion, so `unpruned-originals/` still holds 7.17 GB of verified originals for manual removal; it is outside active output. It contains the available local DATA snapshot and the downloaded project output, not a guaranteed last-minute copy of every cluster manifest. Old trained weights need not be downloaded. Deleting them removes the ability to generate new predictions from those models.
+**The new run needs no old output or trained checkpoints.** A small local historical copy is useful only for explaining earlier results and failures. There is no requirement to keep that copy on VSC or preserve invalid trained models. The local September archive contains merged measurements, compressed original small records/configuration, and bounded log excerpts/counts, about 66 MB altogether. It contains the available local DATA snapshot and the downloaded project output, not a guaranteed last-minute copy of every cluster manifest. Old trained weights need not be downloaded. Deleting them removes the ability to generate new predictions from those models.
 
 From the **local repository in PowerShell**, download the project output into a gitignored folder inside this repository (for a future archive; the September download is already organized):
 
@@ -123,7 +128,7 @@ After verifying the wanted local copy and those target paths, this **deletes all
 sbatch --time=00:10:00 scripts/slurm/maintenance.slurm clean --clean
 ```
 
-This clears logs, manifests/plans, results, compact snapshots, evaluation caches, legacy archives, trained weights/recovery states and old submission state. It preserves raw data, processed tables and original base weights. Do not add `--processed` for this restart. Do not use full cleanup once new work has started: it is deliberately a complete reset, not a per-run selector. The utility refuses symlinks/junctions and validates every target tree before deletion. The user completed cleanup job **62109053** on wICE on 23-09-2026 (exit 0, 1m54s; 6,394 files / 52.79 GB reported removed). Do not run cleanup again after preparing the fresh campaign.
+This clears old logs, manifests/plans, results, compact snapshots, evaluation caches, trained weights/recovery states and old submission state, while preserving the cleanup job's active log. It preserves raw data, processed tables and original base weights. Do not add `--processed` for a model-only restart. Do not use full cleanup once new work has started: it is deliberately a complete reset, not a per-run selector. The utility refuses symlinks/junctions and validates every target tree before deletion.
 
 The new output structure is created by the jobs. Stage inputs and prepare new plans only after cleanup finishes. Keep the local legacy folder outside active `output/` so notebooks show the new experiment alone.
 
@@ -137,6 +142,14 @@ sbatch scripts/slurm/maintenance.slurm stage --write
 
 Wait for success. Staging copies 25 processed tables and eight bases to an immutable GPFS cache and publishes `ACTIVE_INPUTS.json`. Jobs fingerprint the working copies. If scratch is purged, restage from canonical inputs. An intentional wICE GPU spill should instead stage to `$VSC_SCRATCH_LUSTRE1/CreditPFN` and export its `CREDITPFN_INPUT_POINTER`.
 
+Run repository preflight on a CPU node before preparing plans. It uses the actual training grid, verifies all registered datasets, compares train/eval partitions and checks epoch rails and measured caps:
+
+```bash
+sbatch --time=00:15:00 scripts/slurm/maintenance.slurm preflight
+```
+
+Inspect the log and `sacct` state. Passing preflight does not establish GPU correctness. For an environment/hardware report use `python -m src.utils.cluster_report`; add GPU checks only through `scripts/slurm/cluster_report.slurm` when needed. The named conda environment must work; jobs no longer fall back to another environment.
+
 Prepare null/pilot plans on VSC, where package/data identities are known:
 
 ```bash
@@ -147,7 +160,13 @@ for track in pd lgd; do
 done
 ```
 
-Wait for the plans. They are immutable: changed scientific settings/code/data/environment require a fresh named plan, not overwriting an active one. Start with the **16 zero-LR controls**:
+Wait for the plans. They are immutable: changed settings/code/data/environment require a fresh named plan, not overwriting an active one. `experiment0_{pd,lgd}.yaml` now prepares `cpt_null_v4_check2`, leaving the earlier `cpt_null_v4` preparation records untouched. No input restaging is required for an output/launcher-only fix. The launcher checks plan integrity, configuration, source and package versions before submitting any jobs. A full read-only verification, including input hashes, is available on a CPU node:
+
+```bash
+sbatch --time=00:15:00 scripts/slurm/maintenance.slurm prepare --config config/experiment0_pd.yaml --check
+```
+
+Start with the **16 zero-LR controls**:
 
 ```bash
 DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml

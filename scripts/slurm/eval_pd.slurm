@@ -25,7 +25,7 @@ export PYTHONIOENCODING=utf-8
 # go to project STAGING — resolved in src/utils/paths.py from
 # $CREDITPFN_STAGING_ROOT / $TABPFN_STAGING_ROOT / the built-in
 # /lustre1/project/stg_00211 default. wICE uses Lustre, where staging lives,
-# so eval reads checkpoints + writes results directly (no stage-in needed).
+# so final results can be read from either controller.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs"
@@ -68,7 +68,7 @@ nvidia-smi || true
 echo "=========================================="
 
 # --tasks must MATCH the value --list-tasks was called with at submit time, or
-# the two disagree about which cells belong to task i. run_full_pipeline.sh
+# the two disagree about which cells belong to task i. run_experiment.sh
 # exports EVAL_TASKS so both sides read the same number.
 # CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are exported by run_experiment.sh, exactly as for
 # the training jobs. Eval NEEDS both: it rebuilds the held-out dataset draw from the training

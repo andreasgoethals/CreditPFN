@@ -15,16 +15,8 @@
 #  the project staging dir are both on Lustre, so writing processed datasets
 #  to staging from here is on the right filesystem (compliant + fast).
 #
-#  MULTI-CLUSTER NOTE: continued pretraining (train_*.slurm) runs on the
-#  Mindwell `gpu_b200` cluster; data + eval run on wICE. VSC does NOT support
-#  cross-cluster Slurm dependencies, so the stages are submitted independently
-#  by `run_full_pipeline.sh` (which is why this script writes datasets to
-#  project staging — the one storage tier both clusters can see). Run data
-#  FIRST and let it finish before the Mindwell training tasks read.
-#
-#  Submit with:
-#      sbatch scripts/slurm/data.slurm
-#  Or via `run_full_pipeline.sh` (recommended).
+#  Submit with: sbatch scripts/slurm/data.slurm
+#  Wait for successful preprocessing before staging inputs and preparing plans.
 #
 #  All slurm-level output goes to /dev/null; the *real* log is a
 #  single timestamped file `${OUTPUT_ROOT}/output/logs/data_<YYYYMMDD>_<HHMMSS>.log`
@@ -51,15 +43,15 @@
 #SBATCH --error=/dev/null
 # Propagate submission env so a bare cross-cluster `sbatch` doesn't hit
 # Slurm's login-shell env retrieval ("user env retrieval failed requeued
-# held"). run_full_pipeline.sh's CLI --export overrides this. (2026-07-08)
+# held"). (2026-07-08)
 #SBATCH --export=ALL
 
 set -euo pipefail
 export PYTHONUNBUFFERED=1
+export CREDITPFN_USE_SCRATCH=0
 
 # OUTPUT_ROOT is always durable storage ($VSC_DATA on VSC) — it holds
-# the log file this script is about to open, manifests, training
-# checkpoints, eval CSVs, and notebook figures. Never on scratch.
+# the log file, manifests and notebook figures. Weights/results use project storage.
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 
 # DATA_ROOT is NOT defaulted here. It's resolved inside
@@ -67,7 +59,7 @@ export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA}/CreditPFN}"
 # `paths.data_source` knob (after conda activation). Precedence:
 #   1. Explicit `CREDITPFN_DATA_ROOT` exported by the user (highest)
 #   2. `cfg.paths.data_source` in config/data.yaml
-#   3. VSC default ($VSC_SCRATCH/CreditPFN)
+#   3. VSC default (project storage)
 # Setting a default here would silently shadow the yaml (bug fix 2026-05-21).
 
 mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs"
@@ -96,14 +88,6 @@ echo "STAGING_ROOT   : ${CREDITPFN_STAGING_ROOT:-${TABPFN_STAGING_ROOT:-<built-i
 echo "=========================================="
 
 python -u scripts/data_pipeline.py --log-path "$LOG"
-
-# Completion sentinel (only reached because `set -e` aborts on a python failure).
-# Written to $VSC_DATA (NFS, visible from every cluster) so the Mindwell training
-# tasks can self-sequence after data without a cross-cluster afterok dependency.
-# See scripts/slurm/run_full_pipeline.sh and the wait-loop in train_{pd,lgd}.slurm.
-mkdir -p "${CREDITPFN_OUTPUT_ROOT}/.sentinels"
-touch "${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
-echo "Wrote data-completion sentinel: ${CREDITPFN_OUTPUT_ROOT}/.sentinels/data_done"
 
 echo "=========================================="
 echo "DONE — $(date)"

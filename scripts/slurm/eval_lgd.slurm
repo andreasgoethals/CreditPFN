@@ -67,7 +67,7 @@ nvidia-smi || true
 echo "=========================================="
 
 # --tasks must MATCH the value --list-tasks was called with at submit time, or
-# the two disagree about which cells belong to task i. run_full_pipeline.sh
+# the two disagree about which cells belong to task i. run_experiment.sh
 # exports EVAL_TASKS so both sides read the same number.
 # CREDITPFN_CONFIG / CREDITPFN_SPLIT_INDEX are exported by run_experiment.sh, exactly as for
 # the training jobs. Eval NEEDS both: it rebuilds the held-out dataset draw from the training

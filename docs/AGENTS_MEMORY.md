@@ -12,7 +12,17 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 23-09-2026 local archive and exhaustive passes
+## Current handover — 23-09-2026 downloaded preparation and launch audit
+
+- Inspected the new Downloads output: stage job **62109541** reports 33 files / 1,246,187,891 bytes copied; prepare jobs **62109753/62109754** report eight null trials each. Both plan and all trial hashes validate; their source hash matches the LF-normalized `65ea866` tree. PD partition has 13 train / 4 held-out tables; LGD 6 / 2. Logs establish preparation, not successful GPU training; no fresh training/eval records were downloaded.
+- Copied the three logs into local `output/logs/` and the two superseded plans into `output/manifests/imported/2026-09-23/`, with checksums/inspection report. Downloads originals are intact. Did not replace locally regenerated captions with a downloaded captions-only summary.
+- Maintenance/classical/report jobs log activation failures and actual exit status under `output/logs/`; cleanup preserves only its own active log. Removed the obsolete default-grid launcher, cross-cluster sentinel gate and inactive exp2 config. Cluster reporting is now `python -m src.utils.cluster_report`. Figure folders contain PDFs only; metadata and transcripts use manifests/logs. Retained real probes, recovery checks and historical record readers.
+- **Next VSC gate:** user commits/pushes locally and pulls on VSC, runs CPU preflight, then prepares `experiment0_{pd,lgd}.yaml` as **cpt_null_v4_check2**. Old plans are left intact; unchanged staged inputs need no recopy and full cleanup must not be repeated. New source fingerprints include shell code and normalize CRLF/LF. Submission refuses stale code/config/environment plans before allocating GPUs; full input verification uses maintenance `prepare --check`.
+- Research design is unchanged: protocol 4, 512 main + 96 sampling + 32 seed checks; 16/32/8 null/short/budget controls. Five thousand successful updates remains provisional. GPU null parity, positive-LR interrupted recovery and measured pilot walltimes remain unverified for this revision; do not launch the large grid before those gates.
+- The compact September archive remains (~66 MB); `unpruned-originals/` is now absent on disk. No cluster submissions, installs, pushes or real training were performed by the agent. Local preflight correctly detects the two v2 base files absent locally; the downloaded cluster staging/plan artifacts include all eight bases. VSC preflight must confirm the current canonical copy before GPU work.
+- Validation: full suite **397 passed, 1 skipped**, then **60 targeted checks passed** after the final source-cache, figure-cleanup and storage-resolution refinements. The skip is optional on-disk data manifests; nine warnings are constant-input toy LGD metrics. **6/6 notebooks, 75 PDFs**, no private-name hits in PDF text or tracked/new source, Python/Bash syntax and eight launcher previews passed. No VSC jobs were submitted. Ruff is absent from the local environment; no installation attempted.
+
+## Previous handover — 23-09-2026 local archive and exhaustive passes (superseded above)
 
 - User confirmed wICE cleanup **62109053 COMPLETED / 0:0 / 1m54s**: 6,394 files / 52.79 GB reported removed from both output trees, both trained trees and submission state. Raw/processed data and original bases remain. The unrelated `creditic` job was not touched. Next: pull these changes, stage inputs, prepare and dry-check null controls, then validate them before pilots/main work.
 - User requested `archive/run-september-2026/` inside the repository and gitignored. Consolidate the available older DATA download plus 579 project files; preserve small source records and history, reduce repetitive logs, clear active local output. This is a one-off organization, not a new maintained archive subsystem. The DATA download is not claimed to be the last cluster snapshot.
@@ -52,6 +62,9 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 23-09-2026 | prepare cpt_null_v4 PD · wICE 62109753 | **plan written (download evidence)** | Eight identities; 13 train / 4 held-out tables; checksums/source verified against 65ea866. Superseded by check2 before GPU training. |
+| 23-09-2026 | prepare cpt_null_v4 LGD · wICE 62109754 | **plan written (download evidence)** | Eight identities; 6 train / 2 held-out tables; checksums/source verified against 65ea866. Superseded by check2 before GPU training. |
+| 23-09-2026 | stage inputs · wICE 62109541 | **copy reported successful (download evidence)** | 25 processed tables + eight original bases, 1.246 GB; immutable GPFS pointer published. No new GPU results in this download. |
 | 23-09-2026 | maintenance clean · wICE job 62109053 | **done (user evidence)** | Exit 0:0, 1m54s; deletion report 6,394 files / 52.79 GB across old outputs, trained weights and sentinels. Inputs/original bases preserved. |
 | 22-09-2026 | exp1 · λ-sweep bug found in the 29-08 run (PD ~78 % of the base×lr×frozen×pass grid trained; no LGD; no eval) | **λ axis INVALID** | `run()` never forwarded the swept `l2sp_lambda` → every trial trained at the config default 0.003; the two "arms" overwrote one untagged checkpoint, and resume was broken so the grid re-ran on every resubmit. Fixed 22-09 (CHANGELOG + dead end below). Salvage: surviving ckpts are all valid λ=0.003 — rerun the λ=0 arms + remaining PD + all LGD. |
 | 29-08-2026 | exp1_pd · 96 trials/split × 8 splits, Option-B grid (lr{3e-7,1e-6,1e-5} × l2sp{0,0.003} × frozen{F,T} × pass{full,acc}), 4 bases; training only (eval not yet submitted) | **partial — frozen TabPFN arm lost** | Full-FT TabPFN + all TabICLv2 (both arms) trained OK; **all 168 frozen TabPFN `_lora` trials died in ~4 s with `NameError: ckpt_path`** (`load_tabpfn_for_training`). Splits 6–7 double-submitted by the SPLIT_START recovery (harmless). Results write to `/lustre1/…/stg_00211/…/results` (staging), not the `output/` download. Bug fixed 31-08; frozen TabPFN needs re-running. See dead end below. |
@@ -68,6 +81,14 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 23-09-2026 — local preflight crashed before showing its report
+
+- **Tried.** Ran the existing full repository preflight before changing the launcher.
+- **Result.** `FileNotFoundError` from `subprocess.run(["bash", ...])`; readiness findings were not printed.
+- **Why.** Git Bash existed but was not on Windows PATH; the checker also retained old grid, packing and corpus assumptions.
+- **Instead.** Resolve installed Git Bash, report a missing shell as a failed check, reuse the training grid and inspect actual partition sizes. Keep GPU controls separate from CPU readiness.
+
 
 ### 23-09-2026 — bulk local archive cleanup blocked
 
