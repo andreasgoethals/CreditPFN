@@ -2,8 +2,8 @@
 
     python -m src.utils.run_notebooks                     every notebook, outputs written
                                                           back into the .ipynb
-    python -m src.utils.run_notebooks --only exploration  substring match on the stem
-    python -m src.utils.run_notebooks --only 1.3 1.4      both result notebooks
+    python -m src.utils.run_notebooks --only 00_general   corpus notebooks
+    python -m src.utils.run_notebooks --only experiment1  the main-sweep notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
     output CreditPFN/figures/<notebook>/*.pdf   written by the notebooks themselves
@@ -57,15 +57,16 @@ class NotebookResult:
 
 
 def discover(names: tuple[str, ...] | None = None) -> tuple[str, ...]:
-    """Notebook stems, alphabetical. `names` selects a subset for a partial rerun.
+    """Relative notebook names, alphabetical, excluding hidden backup folders.
 
-    A selector matches by case-insensitive SUBSTRING against the discovered stems, not by
-    equality: the real stems carry a numeric prefix and a space (`0.0. raw_data_exploration`),
-    so an exact-match `--only` is unusable from a shell without quoting it precisely — and
-    `--only exploration`, the example this module's own docstring gives, silently became a
-    "notebook not found" failure instead of running the two exploration notebooks.
+    Selectors match case-insensitive substrings of the complete relative name:
+    ``experiment1`` selects a study and ``results_pd`` selects its PD benchmark.
+    Including the folder also distinguishes identically named notebooks in different studies.
     """
-    found = tuple(sorted(p.stem for p in notebooks_dir().glob("*.ipynb")))
+    root = notebooks_dir()
+    found = tuple(sorted(p.relative_to(root).with_suffix("").as_posix()
+                         for p in root.rglob("*.ipynb")
+                         if not any(part.startswith(".") for part in p.relative_to(root).parts)))
     if not names:
         return found
     return tuple(s for s in found
@@ -216,7 +217,7 @@ def write_all_results(notebooks: tuple[str, ...]) -> Path:
     """Every notebook's printed summary, concatenated. The shape is fixed:
 
     one block per notebook, **sorted alphabetically by notebook name**; each block is that
-    notebook's printed summary **verbatim**, not a rewrite; and that summary follows the
+    notebook's printed summary (only trailing line padding removed), not a rewrite; it follows the
     notebook's own section order, so the file and the notebook read the same way round.
 
     Verbatim matters: the moment this file paraphrases, the two disagree and the notebook wins —
@@ -232,7 +233,7 @@ def write_all_results(notebooks: tuple[str, ...]) -> Path:
         "",
     ]
     for name in names:
-        text = _notebook_summary(name).strip()
+        text = "\n".join(line.rstrip() for line in _notebook_summary(name).strip().splitlines())
         lines += ["---", "", f"## {name}", "", "```", text or "(no output captured)", "```", ""]
     path = all_results_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -314,7 +315,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--only", nargs="+", metavar="STEM", help="notebook stems to run")
+    parser.add_argument("--only", nargs="+", metavar="SELECTOR", help="substrings of notebook-relative paths")
     parser.add_argument("--workers", type=int, default=None, help="parallel processes")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="seconds per code cell")
     parser.add_argument("--summaries-only", action="store_true",

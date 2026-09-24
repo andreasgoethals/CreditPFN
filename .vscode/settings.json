@@ -27,7 +27,7 @@
   // 100 columns, matching [tool.ruff] line-length in pyproject.toml.
   "editor.rulers": [100],
 
-  // Notebooks run from the repository root, the same as `scripts/run_notebooks.py` does.
+  // Nested notebooks run from the repository root, as `src.utils.run_notebooks` does.
   // Without this a notebook's cwd is notebooks/ and `from src...` fails only interactively —
   // the worst kind of difference, because interactive is where figures are iterated on.
   "jupyter.notebookFileRoot": "${workspaceFolder}",

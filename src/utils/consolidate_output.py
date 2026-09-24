@@ -194,9 +194,9 @@ def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = N
 
 
 def load_consolidated(run: str, table: str, *, manifest_root: Path | None = None,
-                      result_root: Path | None = None) -> pd.DataFrame | None:
+                      result_root: Path | None = None, snapshot_root: Path | None = None) -> pd.DataFrame | None:
     """Read the published snapshot if raw sources are absent or still match its inventory."""
-    parent = consolidated_dir() / run
+    parent = (snapshot_root or consolidated_dir()) / run
     pointer = parent / "LATEST.json"
     if not pointer.exists():
         return None
@@ -211,7 +211,8 @@ def load_consolidated(run: str, table: str, *, manifest_root: Path | None = None
     default_root = results_dir() if root_kind == "results" else manifests_dir()
     # Default roots support downloaded snapshots from another machine. A custom
     # root must explicitly belong to this snapshot, even when it contains no files.
-    if (root.resolve() != default_root.resolve()
+    external_sibling = snapshot_root is not None and root.resolve().parent == snapshot_root.resolve().parent
+    if (not external_sibling and root.resolve() != default_root.resolve()
             and str(root.resolve()) != info.get("source_roots", {}).get(root_kind)):
         return None
     recorded = info["sources"].get(source_key, [])

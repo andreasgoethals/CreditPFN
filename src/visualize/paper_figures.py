@@ -79,7 +79,12 @@ def _empty(reason: str):
 
 
 def effect_label(metric: str) -> str:
-    return "fractional RMSE reduction" if metric == "rmse" else f"signed change in {metric} (+ better)"
+    if metric == "rmse":
+        return "Fractional RMSE reduction (+ better)"
+    names = {"roc_auc": "AUC", "pr_auc": "PR-AUC", "brier_score": "Brier score",
+             "mae": "MAE", "log_loss": "log loss", "ece": "ECE", "r2": "R²"}
+    direction = "Increase" if higher_is_better(metric) else "Reduction"
+    return f"{direction} in {names.get(metric, metric.replace('_', ' '))} (+ better)"
 
 
 def _effect(trained, untuned, metric):

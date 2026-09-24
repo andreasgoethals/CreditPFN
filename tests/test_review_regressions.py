@@ -218,19 +218,14 @@ def test_null_audit_canonicalizes_legacy_keys_but_checks_weights_and_borders(tmp
     assert compare_states(before, after, tabpfn_track="lgd")["changed"] == ["model.weight"]
 
 
-def test_results_notebooks_save_method_comparison_and_use_real_brier_column():
-    import ast
-    for path in Path("notebooks").glob("1.[34]*.ipynb"):
+def test_results_notebooks_save_paired_figures_and_use_real_brier_column():
+    paths = list(Path("notebooks/experiment1").glob("*_results_*.ipynb"))
+    assert len(paths) == 2
+    for path in paths:
         notebook = json.loads(path.read_text(encoding="utf-8"))
-        calls = []
-        for cell in notebook["cells"]:
-            source = "".join(cell["source"])
-            if cell["cell_type"] == "code" and "plot_method_vs_method_scatter(TRACK," in source:
-                calls += [n for n in ast.walk(ast.parse(source)) if isinstance(n, ast.Call)
-                          and isinstance(n.func, ast.Attribute) and n.func.attr == "save"]
-        assert calls, path
-        if path.name.startswith("1.3"):
-            assert "'brier'," not in json.dumps(notebook)
+        source = "\n".join("".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code")
+        assert "cp.show(sink, cp.plot_secondary_tradeoff(run))" in source
+        assert "'brier_score'" in source and "'brier'," not in source
 
 
 def test_submission_keeps_successful_stderr_out_of_dependency_id():

@@ -547,7 +547,7 @@ def _parse_args(argv: list[str] | None = None):
     )
     p.add_argument("--config", default=None,
                    help="experiment config, merged as a DELTA over eval.train_cfg_path "
-                        "(e.g. config/experiment1_pd.yaml). Must match the config the "
+                        "(e.g. config/experiment1/pd.yaml). Must match the config the "
                         "checkpoints were TRAINED with, or the test-dataset draw differs.")
     p.add_argument("--split-index", type=int, default=None,
                    help="which random dataset split to evaluate; sets corpus.split_seed and "

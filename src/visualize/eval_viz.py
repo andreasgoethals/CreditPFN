@@ -80,8 +80,10 @@ def _resolve_paths():
     from src.utils.paths import resolve_staging_path, results_dir
     cfg = _load_eval_cfg()
     base = str(cfg.results.base_dir) if hasattr(cfg, "results") else str(results_dir())
+    from src.visualize.inputs import analysis_root
+    source = analysis_root()
     return {
-        "benchmark_root": resolve_staging_path(base),
+        "benchmark_root": source / "results" if source is not None else resolve_staging_path(base),
     }
 
 
@@ -191,7 +193,8 @@ def load_eval_results(track: str) -> pd.DataFrame:
 
     frames: list[pd.DataFrame] = []
     run = _RUN_OVERRIDE or os.environ.get("CREDITPFN_VIZ_RUN")
-    from src.utils.consolidate_output import load_consolidated, matches_run
+    from src.utils.consolidate_output import matches_run
+    from src.visualize.inputs import load_consolidated
     compact = load_consolidated(run, f"eval_{track}", result_root=paths["benchmark_root"]) if run else None
     csv_files = sorted(track_dir.rglob("*.csv"))
     if run:

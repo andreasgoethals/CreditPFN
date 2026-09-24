@@ -1,5 +1,6 @@
+# Experiment 0: Debugging and pilot controls.
 # Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
-track: lgd
+track: pd
 seed: 42
 experiment:
   fingerprint: true
@@ -16,7 +17,7 @@ corpus:
   train_dataset_ids: null
   test_dataset_ids: null
 train:
-  context_sampling: stratified
+  context_sampling: balanced
   target_total_steps: 20000
   epochs: 50
   max_epochs_for_step_budget: 6000

@@ -7,11 +7,11 @@ from src.train.config import load_train_config, resolve_grid, training_members
 
 
 def test_eval_cli_overrides_phase_but_retains_partition_and_other_phase_defaults():
-    phase = load_train_config(config_path="config/experiment0_pd.yaml")
+    phase = load_train_config(config_path="config/experiment0/null_pd.yaml")
     requested = not bool(phase.evaluation.results.save_predictions)
     eval_cfg, train_cfg = load_eval_configs(
         [f"results.save_predictions={str(requested).lower()}"], ["train.grad_clip_norm=2.5"],
-        config_path="config/experiment0_pd.yaml", split_index=0)
+        config_path="config/experiment0/null_pd.yaml", split_index=0)
     assert eval_cfg.results.save_predictions == requested
     assert eval_cfg.cache_controls == phase.evaluation.cache_controls
     assert eval_cfg.cv.n_folds == OmegaConf.load("config/eval.yaml").cv.n_folds
@@ -21,7 +21,7 @@ def test_eval_cli_overrides_phase_but_retains_partition_and_other_phase_defaults
 
 
 def test_scalar_learning_rate_and_single_respect_family_filter():
-    cfg = load_train_config(config_path="config/experiment0_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
     cfg.tunable.learning_rates = 1e-6
     cfg.tunable.frozen_backbone = [True]
     cfg.tunable.adapter_families = ["tabicl"]
@@ -36,7 +36,7 @@ def test_scalar_learning_rate_and_single_respect_family_filter():
 @pytest.mark.parametrize("axis", ["learning_rates", "l2sp_lambdas", "frozen_backbone",
                                 "classifier_base_paths", "epoch_pass_modes"])
 def test_empty_grid_axis_fails_before_launch(axis):
-    cfg = load_train_config(config_path="config/experiment0_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
     cfg.tunable[axis] = []
     with pytest.raises(SystemExit, match="at least one value"):
         resolve_grid(cfg, single=False)

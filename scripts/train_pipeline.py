@@ -6,8 +6,8 @@ missing processed inputs, runs selected trials and records independent attempt
 and epoch/trajectory files under output CreditPFN/manifests/. Model weights use checkpoints/.
 
 Examples (from the repository root):
-    python scripts/train_pipeline.py --config config/experiment0_pd.yaml --list-trials
-    python scripts/train_pipeline.py --config config/experiment0_pd.yaml --split-index 0 --trial-index 0
+    python scripts/train_pipeline.py --config config/experiment0/null_pd.yaml --list-trials
+    python scripts/train_pipeline.py --config config/experiment0/null_pd.yaml --split-index 0 --trial-index 0
 
 Use scripts/slurm/run_experiment.sh for prepared VSC jobs. --single chooses the
 first eligible grid entry; --trial-index selects its stable zero-based index.
@@ -91,9 +91,9 @@ def _refuse_unusable_gpu() -> None:
     lines += [
         "",
         "  Submit it as a batch job instead:",
-        "      bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml",
+        "      bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml",
         "  or, for a single trial:",
-        "      sbatch --array=0-0 --export=ALL,CREDITPFN_CONFIG=config/experiment1_pd.yaml \\",
+        "      sbatch --array=0-0 --export=ALL,CREDITPFN_CONFIG=config/experiment1/pd.yaml \\",
         "             scripts/slurm/train_pd.slurm",
         "",
         "  To train on CPU on purpose, pass device=cpu.",

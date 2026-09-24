@@ -41,7 +41,16 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 
 Raw data and weights are never committed. On VSC, project storage holds canonical data, current weights and consolidated results; DATA holds the repository and live small output shards. The [runbook](docs/VSC.md) explains how to download finished results and clear a previous experiment. Historical output is optional local evidence, not an input to a fresh run.
 
-Reusable Python logic belongs in `src/`; it does not import experiment entry points from `scripts/`. Utilities run as `python -m src.utils.<name>`. The stable `experiment0` and `experiment1` config names mean null controls and the main sweep; `pilot`, `budget_pilot`, `sampling` and `seeds` name the other phases.
+Reusable Python logic belongs in `src/`; it does not import experiment entry points from `scripts/`. Utilities run as `python -m src.utils.<name>`.
+
+| Experiment | Configs | Purpose | Trials across PD + LGD |
+|---|---|---|---|
+| 0 | `config/experiment0/{null,pilot,budget}_{pd,lgd}.yaml` | Debugging, zero-LR controls, timing and horizon decisions | 16 null + 32 short + 8 budget pilots |
+| 1 | `config/experiment1/{pd,lgd}.yaml` | Full learning-rate × L2-SP × adaptation sweep | 512 |
+| 2 | `config/experiment2/{pd,lgd}.yaml` | One additional training seed at a predefined reference | 32 additional; seed 42 is reused from experiment 1 |
+| 3 | `config/experiment3/{pd,lgd}.yaml` | One sample versus full pass versus accumulation | 96 |
+
+`data.yaml`, `train.yaml` and `eval.yaml` retain shared defaults at the config root. Config paths organize the study; stable `cpt_*_v4` run names identify existing artifacts. Moving a config does not rename checkpoints or imply another training run.
 
 During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
 
@@ -50,7 +59,7 @@ During cluster debugging, output stays on VSC. Download finished output for loca
 Use the existing local environment. In PowerShell:
 
 ```powershell
-.\.venv\Scripts\python.exe -m src.utils.prepare_experiment --config config/experiment1_pd.yaml
+.\.venv\Scripts\python.exe -m src.utils.prepare_experiment --config config/experiment1/pd.yaml
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m src.utils.run_notebooks
 ```
@@ -59,7 +68,11 @@ The first command previews the design without training. A complete source corpus
 
 Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output CreditPFN/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
-Notebooks use A4-sized PDF figures through `FigureSaver` and finish with a text summary. They handle missing results, retain failed attempts and prefer verified consolidated tables. The private display-name mapping must accompany private data when generating publication output.
+The notebook reading order is `00_general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots), `experiment1/` (training then benchmark, each task separately), `experiment2/` (paired seed sensitivity), and `experiment3/` (sampling and accumulation). The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
+
+Notebooks use A4-sized PDFs through `FigureSaver`, with matching experiment subfolders under figures and caption manifests. Coverage precedes effects; at most four learning-rate curves share a panel and dataset matrices are paginated. Missing measurements produce an explicit message, not a fabricated result or a directory of empty PDFs. Each final text summary follows the notebook's section order. The private display-name mapping must accompany private data when generating publication output.
+
+For a supplied download, set `CREDITPFN_ANALYSIS_ROOT` to the **output folder itself** before running notebooks. Analysis reads that folder without copying or changing it; PDFs and summaries still use the repository's normal output directory. Unset the variable to read local campaign output. This is distinct from the storage-root variables used by cluster jobs.
 
 ## Environment and contribution rules
 

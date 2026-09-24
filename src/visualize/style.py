@@ -94,7 +94,7 @@ _RC = {
 }
 
 # ---------------------------------------------------------------------------
-# THIS PROJECT'S OWN LOOK — fill this in.
+# THIS PROJECT'S OWN LOOK
 #
 # Colours, grid, spines, line widths, marker shapes, colormaps: whatever this project's figures
 # need. Put them here rather than in a notebook, so every figure changes together and a reader
@@ -133,7 +133,7 @@ _PROJECT_RC: dict = {
 # ---------------------------------------------------------------------------
 # COLOUR — by entity, never by position.
 #
-# Every figure in this project compares the same handful of things: three model families,
+# Every figure in this project compares the same handful of things: four model bases,
 # their untuned controls, and the GBM/linear baselines. So each one gets ONE colour, fixed
 # here, and a reader who has learnt the legend once never re-learns it.
 #
@@ -148,11 +148,14 @@ _PROJECT_RC: dict = {
 #: Registered series. APPEND, never insert — inserting repaints every figure after it,
 #: including ones already in a paper.
 COLORS: dict[str, str] = {
-    # The three continued-pretraining families. Blue/orange/green is the widest
-    # three-way separation Okabe-Ito offers, in print and in greyscale.
+    # Four foundation-model bases, fixed across every experiment.
+    "v2":            "#CC79A7",
     "v3":            "#0072B2",   # TabPFN v3
     "v2.6":          "#E69F00",   # TabPFN v2.6
     "tabicl":        "#009E73",   # TabICLv2 v2
+    "tabicl-v2":     "#009E73",   # compact checkpoint label
+    "pd":            "#0072B2",
+    "lgd":           "#E69F00",
     # Baselines. Grey-purple-ish, deliberately duller than the families above: they are
     # the reference line, not the result.
     "xgboost":       "#7F7F7F",
@@ -171,6 +174,24 @@ CMAP_SEQUENTIAL = "viridis"
 CMAP_DIVERGING = "RdBu_r"        # centred on 0 for delta-vs-untuned panels
 TRAJECTORY_LR_COLORS = {3e-7: "#0072B2", 1e-6: "#E69F00", 1e-5: "#009E73", 3e-5: "#CC79A7"}
 TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
+
+# Bounded pages keep the 64-recipe sweep legible at its final A4 width.
+PAGE_ROWS = 12
+PAGE_COLUMNS = 8
+SERIES_PER_PANEL = 4
+CURVE_BINS = 50
+PANEL_RATIO = 0.72
+SMALL_RATIO = 0.48
+POINT_SIZE = 20
+POINT_ALPHA = 0.65
+THIN_LINE = 0.8
+ANNOTATION_SIZE = 7
+SAMPLING_LABELS = {"one_sample": "One sample", "full_pass": "Full pass", "accumulate": "Accumulate"}
+SAMPLING_COLORS = {"one_sample": "#0072B2", "full_pass": "#E69F00", "accumulate": "#009E73"}
+SAMPLING_STYLES = {"one_sample": "-", "full_pass": "--", "accumulate": ":"}
+STATUS_COLORS = {"OK": "#009E73", "PENDING": "#CCCCCC", "FAIL": "#D55E00",
+                 "DIVERGED": "#CC79A7", "INTERRUPTED": "#E69F00", "SKIP": "#56B4E9"}
+SEED_MARKERS = ("o", "s", "^")
 
 
 def color(name: str) -> str:

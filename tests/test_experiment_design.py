@@ -14,13 +14,13 @@ def test_main_and_sampling_grid_counts_and_shared_partitions():
     from src.utils.experiment import apply_split_index
     from src.train.corpus import _assign_folds
     for track, size in (("pd", 17), ("lgd", 8)):
-        main = load_train_config(config_path=f"config/experiment1_{track}.yaml")
-        sampling = load_train_config(config_path=f"config/sampling_{track}.yaml")
+        main = load_train_config(config_path=f"config/experiment1/{track}.yaml")
+        sampling = load_train_config(config_path=f"config/experiment3/{track}.yaml")
         assert len(resolve_grid(main, single=False)) * main.corpus.n_splits == 256
         assert len(resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
         assert set(sampling.tunable.epoch_pass_modes) == {"one_sample", "full_pass", "accumulate"}
         assert sampling.train.context_sampling == "stratified"
-        seeds = load_train_config(config_path=f"config/seeds_{track}.yaml")
+        seeds = load_train_config(config_path=f"config/experiment2/{track}.yaml")
         assert len(resolve_grid(seeds, single=False)) * seeds.corpus.n_splits == 16
         assert list(seeds.experiment.training_seeds) == [43]
         assert seeds.seed == 43
@@ -28,8 +28,8 @@ def test_main_and_sampling_grid_counts_and_shared_partitions():
         assert seeds.train.context_sampling == main.train.context_sampling
         assert seeds.train.monitor_seed == main.train.monitor_seed
         from src.eval.config import load_eval_configs
-        main_eval, _ = load_eval_configs([], [], config_path=f"config/experiment1_{track}.yaml")
-        seed_eval, _ = load_eval_configs([], [], config_path=f"config/seeds_{track}.yaml")
+        main_eval, _ = load_eval_configs([], [], config_path=f"config/experiment1/{track}.yaml")
+        seed_eval, _ = load_eval_configs([], [], config_path=f"config/experiment2/{track}.yaml")
         assert seed_eval.seed == main_eval.seed == 99
         assert list(seeds.tunable.learning_rates) == [3e-7]
         assert list(seeds.tunable.l2sp_lambdas) == [.003]
@@ -66,7 +66,7 @@ def test_pass_modes_have_distinct_names_and_evaluation_directories():
 def test_fingerprint_covers_scientific_changes_but_not_workers():
     from src.train.config import load_train_config
     from src.utils.experiment import scientific_config, digest_json
-    cfg = load_train_config(config_path="config/experiment1_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment1/pd.yaml")
     before = digest_json(scientific_config(cfg))
     cfg.train.dataloader_workers = 8
     assert digest_json(scientific_config(cfg)) == before

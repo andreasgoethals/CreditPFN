@@ -10,314 +10,184 @@ These are the paper's captions: paste one straight under its figure. Pure descri
 Figures are PDFs, drawn at the width they will occupy on an A4 page; never rescale one
 in the document, because that rescales its text with it.
 
-## 0.0. raw_data_exploration
+## 00_general/01_raw_data
 
-**01_shape_pd** — `shape_pd`
+**01_corpus_geometry** — `corpus_geometry`
 
-Number of features against number of rows for every PD dataset in the corpus, linear axes on the left and log-log on the right. One point per dataset.
+Predictor count versus row count in the raw corpus, on logarithmic axes. Each point is one available dataset; PD and LGD use separate panels. Raw columns exclude the registered target when present, but can include identifiers later removed during cleaning.
 
-**02_shape_lgd** — `shape_lgd`
+**02_dataset_profiles_lgd_1** — `dataset_profiles_lgd_1`
 
-Number of features against number of rows for every LGD dataset, linear axes on the left and log-log on the right. One point per dataset.
+Row counts and missing-cell percentages for 8 LGD datasets, sorted by decreasing size and continued across pages. Raw missingness uses all delivered columns, including a target column when present. Missing files remain unknown.
 
-**03_shape_combined** — `shape_combined`
+**03_dataset_profiles_pd_1** — `dataset_profiles_pd_1`
 
-Number of features against number of rows for the whole corpus, PD and LGD together, linear axes on the left and log-log on the right.
+Row counts and missing-cell percentages for 12 PD datasets, sorted by decreasing size and continued across pages. Raw missingness uses all delivered columns, including a target column when present. Missing files remain unknown.
 
-**04_missing_pd** — `missing_pd`
+**04_dataset_profiles_pd_2** — `dataset_profiles_pd_2`
 
-Fraction of missing cells per PD dataset, sorted descending. The denominator is rows times features.
+Row counts and missing-cell percentages for 5 PD datasets, sorted by decreasing size and continued across pages. Raw missingness uses all delivered columns, including a target column when present. Missing files remain unknown.
 
-**05_missing_lgd** — `missing_lgd`
+**05_row_concentration** — `row_concentration`
 
-Fraction of missing cells per LGD dataset, sorted descending. The denominator is rows times features.
+Cumulative fraction of corpus rows contributed by datasets ordered from largest to smallest, separately for PD and LGD. The diagonal represents equal table sizes. This summarizes row imbalance; it does not by itself give model-specific batch or optimizer-update counts.
 
-**06_missing_combined** — `missing_combined`
+**06_sources** — `sources`
 
-Fraction of missing cells per dataset across the whole corpus, sorted descending, PD and LGD distinguished by colour.
+Registered dataset counts by source and task. Dataset counts describe provenance, not statistical independence between related sources.
 
-**07_class_imbalance_pd** — `class_imbalance_pd`
+## 00_general/02_processed_data
 
-Distribution of the minority-class share across the PD datasets. One observation per dataset.
+**01_cleaning_rows** — `cleaning_rows`
 
-**08_target_mean_lgd** — `target_mean_lgd`
+Processed versus registered rows for each dataset, on logarithmic axes; the diagonal is equality. Registration includes dataset-specific corrections, so this comparison is distinct from the unmodified raw-file inventory. Unknown shapes are omitted.
 
-Distribution of the dataset-level mean loss-given-default across the LGD datasets. One observation per dataset.
+**02_cleaning_features** — `cleaning_features`
 
-**09_target_distribution_lgd** — `target_distribution_lgd`
+Processed versus registered predictors for each dataset, on logarithmic axes; the diagonal is equality. Registration includes dataset-specific corrections, so this comparison is distinct from the unmodified raw-file inventory. Unknown shapes are omitted.
 
-Histogram of the loss-given-default target within each LGD dataset, one panel per dataset, targets clipped to [0, 1].
+**03_corpus_geometry** — `corpus_geometry`
 
-**10_source_breakdown** — `source_breakdown`
+Predictor count versus row count in the processed corpus, on logarithmic axes. Each point is one available dataset; PD and LGD use separate panels. Raw columns exclude the registered target when present, but can include identifiers later removed during cleaning.
 
-Number of datasets per source repository, split by track.
+**04_dataset_profiles_lgd_1** — `dataset_profiles_lgd_1`
 
-## 0.1. processed_data_exploration
+Row counts and missing-cell percentages for 8 LGD datasets, sorted by decreasing size and continued across pages. Processed missingness uses predictor cells only, excluding the target. Missing files remain unknown.
 
-**01_shape_pd** — `shape_pd`
+**05_dataset_profiles_pd_1** — `dataset_profiles_pd_1`
 
-Number of features against number of rows for every PD dataset in the corpus, linear axes on the left and log-log on the right. One point per dataset.
+Row counts and missing-cell percentages for 12 PD datasets, sorted by decreasing size and continued across pages. Processed missingness uses predictor cells only, excluding the target. Missing files remain unknown.
 
-**02_shape_lgd** — `shape_lgd`
+**06_dataset_profiles_pd_2** — `dataset_profiles_pd_2`
 
-Number of features against number of rows for every LGD dataset, linear axes on the left and log-log on the right. One point per dataset.
+Row counts and missing-cell percentages for 5 PD datasets, sorted by decreasing size and continued across pages. Processed missingness uses predictor cells only, excluding the target. Missing files remain unknown.
 
-**03_shape_combined** — `shape_combined`
+**07_target_profiles_pd_1** — `target_profiles_pd_1`
 
-Number of features against number of rows for the whole corpus, PD and LGD together, linear axes on the left and log-log on the right.
+Registered minority-class fraction for each available PD dataset, ordered by value and paginated. Each dataset has equal visual weight, regardless of its row count.
 
-**04_missing_pd** — `missing_pd`
+**08_target_profiles_pd_2** — `target_profiles_pd_2`
 
-Fraction of missing cells per PD dataset, sorted descending. The denominator is rows times features.
+Registered minority-class fraction for each available PD dataset, ordered by value and paginated. Each dataset has equal visual weight, regardless of its row count.
 
-**05_missing_lgd** — `missing_lgd`
+**09_target_profiles_lgd_1** — `target_profiles_lgd_1`
 
-Fraction of missing cells per LGD dataset, sorted descending. The denominator is rows times features.
+Registered mean lgd for each available LGD dataset, ordered by value and paginated. Each dataset has equal visual weight, regardless of its row count.
 
-**06_missing_combined** — `missing_combined`
+**10_lgd_distributions_1** — `lgd_distributions_1`
 
-Fraction of missing cells per dataset across the whole corpus, sorted descending, PD and LGD distinguished by colour.
+Processed LGD target distributions, four datasets per page. Bars show fractions of rows within each dataset. Values are neither pooled across tables nor clipped to the unit interval.
 
-**07_feature_reduction** — `feature_reduction`
+**11_lgd_distributions_2** — `lgd_distributions_2`
 
-Feature count before and after sanitisation for every dataset that exceeded the 64-column cap, showing what unsupervised feature selection removed.
+Processed LGD target distributions, four datasets per page. Bars show fractions of rows within each dataset. Values are neither pooled across tables nor clipped to the unit interval.
 
-**08_feature_type_distribution** — `feature_type_distribution`
+**12_partitions_lgd_1** — `partitions_lgd_1`
 
-Distribution of the categorical-feature share per dataset, one panel per track. The share is categorical columns divided by total feature columns.
+Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 
-**09_class_imbalance_pd** — `class_imbalance_pd`
+**13_partitions_pd_1** — `partitions_pd_1`
 
-Distribution of the minority-class share across the PD datasets. One observation per dataset.
+Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 
-**10_target_mean_lgd** — `target_mean_lgd`
+**14_partitions_pd_2** — `partitions_pd_2`
 
-Distribution of the dataset-level mean loss-given-default across the LGD datasets. One observation per dataset.
+Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 
-**11_target_distribution_lgd** — `target_distribution_lgd`
+**15_planned_exposure_lgd_1** — `planned_exposure_lgd_1`
 
-Histogram of the loss-given-default target within each LGD dataset, one panel per dataset, targets clipped to [0, 1].
+Illustrative optimizer-step shares using a 10,000-row batch cap, all registered processed tables and no skipped updates. One-sample and accumulation assign one update per table visit; full pass assigns one per disjoint chunk. Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal.
 
-## 1.1. training_pd
+**16_planned_exposure_pd_1** — `planned_exposure_pd_1`
 
-**01_grid_coverage** — `grid_coverage`
+Illustrative optimizer-step shares using a 10,000-row batch cap, all registered processed tables and no skipped updates. One-sample and accumulation assign one update per table visit; full pass assigns one per disjoint chunk. Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal.
 
-Recorded completed trials per recipe across available dataset partitions. Empty cells have no completed measurement.
+**17_planned_exposure_pd_2** — `planned_exposure_pd_2`
 
-**02_loss_overlay** — `loss_overlay`
+Illustrative optimizer-step shares using a 10,000-row batch cap, all registered processed tables and no skipped updates. One-sample and accumulation assign one update per table visit; full pass assigns one per disjoint chunk. Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal.
 
-Training loss by progress for recorded trials, including unsuccessful attempts where a history is available.
+## experiment0/01_null_controls
 
-**03_epoch_time_overlay** — `epoch_time_overlay`
+**01_coverage_pd** — `coverage_pd`
 
-Median epoch duration per recorded trial. Dataset sampling modes can perform different numbers of optimizer updates per epoch.
+Status of 8 planned PD trials by base model. Pending trials include identities with no recorded attempt.
 
-## 1.2. training_lgd
+**02_coverage_lgd** — `coverage_lgd`
 
-**01_grid_coverage** — `grid_coverage`
+Status of 8 planned LGD trials by base model. Pending trials include identities with no recorded attempt.
 
-Recorded completed trials per recipe across available dataset partitions. Empty cells have no completed measurement.
+**03_null_audit_lgd** — `null_audit_lgd`
 
-**02_loss_overlay** — `loss_overlay`
+Recorded CPU audit checks on saved zero-learning-rate checkpoints: canonical model/inference-state equality, per-dataset monitoring parity and whole-audit outcome. Missing audit logs are not treated as successful checks.
 
-Training loss by progress for recorded trials, including unsuccessful attempts where a history is available.
+**04_null_audit_pd** — `null_audit_pd`
 
-**03_epoch_time_overlay** — `epoch_time_overlay`
+Recorded CPU audit checks on saved zero-learning-rate checkpoints: canonical model/inference-state equality, per-dataset monitoring parity and whole-audit outcome. Missing audit logs are not treated as successful checks.
 
-Median epoch duration per recorded trial. Dataset sampling modes can perform different numbers of optimizer updates per epoch.
+**05_null_monitor_pd** — `null_monitor_pd`
 
-## 1.3. results_pd
+Largest absolute change from update zero over recorded datasets, separately for training and held-out tables. Zero indicates unchanged monitoring scores. This check complements rather than replaces exact saved-state audits.
 
-**01_leaderboard** — `leaderboard`
+**06_null_monitor_lgd** — `null_monitor_lgd`
 
-Mean primary metric per method over all held-out datasets and cross-validation folds, sorted, with one standard deviation as error bars.
+Largest absolute change from update zero over recorded datasets, separately for training and held-out tables. Zero indicates unchanged monitoring scores. This check complements rather than replaces exact saved-state audits.
 
-**02_metric_boxplot** — `metric_boxplot`
+## experiment0/02_short_pilots
 
-Distribution of the primary metric per method over all (dataset, fold) cells.
+**01_coverage_pd** — `coverage_pd`
 
-**03_baselines_vs_tabpfn** — `baselines_vs_tabpfn`
+Status of 16 planned PD trials by base model. Pending trials include identities with no recorded attempt.
 
-Distribution of the primary metric for the classical baselines and for the foundation-model family, side by side, over all (dataset, fold) cells.
+**02_coverage_lgd** — `coverage_lgd`
 
-**04_per_dataset_heatmap** — `per_dataset_heatmap`
+Status of 16 planned LGD trials by base model. Pending trials include identities with no recorded attempt.
 
-Mean primary metric for every method on every held-out dataset, averaged over folds.
+## experiment0/03_budget_pilots
 
-**05_top_method_per_dataset** — `top_method_per_dataset`
+**01_coverage_pd** — `coverage_pd`
 
-The best-scoring method on each held-out dataset, one bar per dataset.
+Status of 4 planned PD trials by base model. Pending trials include identities with no recorded attempt.
 
-**06_dataset_difficulty** — `dataset_difficulty`
+**02_coverage_lgd** — `coverage_lgd`
 
-Best and worst primary metric achieved on each held-out dataset, ordered by the best score.
+Status of 4 planned LGD trials by base model. Pending trials include identities with no recorded attempt.
 
-**07_winrate_matrix** — `winrate_matrix`
+## experiment1/01_training_pd
 
-Pairwise win rate: the fraction of shared (dataset, fold) cells on which the row method beat the column method.
+**01_coverage_pd** — `coverage_pd`
 
-**08_trained_vs_untuned** — `trained_vs_untuned`
+Status of 256 planned PD trials by base model. Pending trials include identities with no recorded attempt.
 
-Primary metric of each trained checkpoint against its own untuned base on the same dataset. Points above the diagonal are datasets where continued pretraining helped.
+## experiment1/02_training_lgd
 
-**09_fold_stability** — `fold_stability`
+**01_coverage_lgd** — `coverage_lgd`
 
-Distribution of the across-fold standard deviation of the primary metric, per method — how repeatable a score is.
+Status of 256 planned LGD trials by base model. Pending trials include identities with no recorded attempt.
 
-**10_metric_correlation** — `metric_correlation`
+## experiment1/03_results_pd
 
-Correlation between the recorded metrics over all scored cells.
+_No figures produced._
 
-**11_threshold_distribution** — `threshold_distribution`
+## experiment1/04_results_lgd
 
-Distribution of the F1-tuned decision thresholds per method, over all (dataset, fold) cells.
+_No figures produced._
 
-**12_time_vs_metric** — `time_vs_metric`
+## experiment2/01_seed_sensitivity
 
-Per-row inference time against primary metric, one point per (method, dataset), coloured by method.
+**01_coverage_pd** — `coverage_pd`
 
-**13_paper_paired_effect** — `paper_paired_effect`
+Status of 16 planned PD trials by base model. Pending trials include identities with no recorded attempt.
 
-Change in roc_auc from continued pretraining, each trained checkpoint against its own untuned base on the same dataset. One point per (checkpoint, dataset); horizontal bars mark the per-base mean; the line at zero is no change.
+**02_coverage_lgd** — `coverage_lgd`
 
-**14_paper_gain_vs_base** — `paper_gain_vs_base`
+Status of 16 planned LGD trials by base model. Pending trials include identities with no recorded attempt.
 
-Change in roc_auc against the untuned base's score on the same dataset, one point per (checkpoint, dataset), coloured by base checkpoint. The line is an ordinary least-squares fit over all points.
+## experiment3/01_sampling_comparison
 
-**15_paper_mean_rank** — `paper_mean_rank`
+**01_coverage_pd** — `coverage_pd`
 
-Mean rank of each method across the held-out datasets scored by every method, computed per dataset and then averaged; bars show one standard deviation. Rank 1 is best.
+Status of 48 planned PD trials by base model. Pending trials include identities with no recorded attempt.
 
-**16_paper_calibration** — `paper_calibration`
+**02_coverage_lgd** — `coverage_lgd`
 
-Expected calibration error of each trained checkpoint against its own untuned base on the same dataset. Points above the diagonal are worse calibrated after continued pretraining.
-
-**17_paper_regime** — `paper_regime`
-
-Change in roc_auc against dataset size, one point per (checkpoint, dataset), log x axis. Spearman correlation and its p-value are computed over all points shown.
-
-**18_paper_selection** — `paper_selection`
-
-Per dataset, the roc_auc of the configuration selected on the other datasets only (leave-one-dataset-out) against the best roc_auc achievable on that dataset. The gap is the optimism of selecting on the test set.
-
-**19_paper_score_agreement** — `paper_score_agreement`
-
-Trained against untuned roc_auc for every (checkpoint, dataset) pair, with the identity line. Spearman correlation summarizes the ordering of dataset-level scores across the plotted pairs.
-
-**20_paper_zero_shot** — `paper_zero_shot`
-
-Difference in ROC-AUC between each untuned tabular foundation model and the best of three hyperparameter-tuned classical baselines (XGBoost, CatBoost, logistic regression; 50 Optuna trials each) on the same held-out dataset. Bars above zero are datasets on which a model that was never fitted to credit data outperforms a tuned baseline. Grouped by dataset; one bar per base checkpoint.
-
-**21_paper_corpus_arm** — `paper_corpus_arm`
-
-Mean change in ROC-AUC from continued pretraining, per base checkpoint, split by the minimum training-table size admitted to the corpus. Error bars are one standard error over (checkpoint, dataset) pairs. The filtered arm excludes training tables below 5 000 rows.
-
-**22_paper_effect_ci** — `paper_effect_ci`
-
-Mean change in ROC-AUC from continued pretraining with a 95 % confidence interval, computed over held-out datasets after averaging within each dataset. An interval spanning zero indicates no effect detectable at this sample size.
-
-**23_paper_scheme_grid** — `paper_scheme_grid`
-
-Change in ROC-AUC from continued pretraining for every adaptation scheme (rows) on every held-out dataset (columns), one panel per base checkpoint, each measured against that base's own untuned score on the same dataset. Red is an improvement, blue a degradation; the colour scale is shared across panels.
-
-**24_paper_scheme_metrics** — `paper_scheme_metrics`
-
-Mean change from continued pretraining per adaptation scheme, one panel per base checkpoint, for ROC-AUC, Brier score, expected calibration error and F1. All differences are signed so that positive favours the adapted model, and are averaged over the held-out datasets.
-
-## 1.4. results_lgd
-
-**01_leaderboard** — `leaderboard`
-
-Mean primary metric per method over all held-out datasets and cross-validation folds, sorted, with one standard deviation as error bars.
-
-**02_metric_boxplot** — `metric_boxplot`
-
-Distribution of the primary metric per method over all (dataset, fold) cells.
-
-**03_baselines_vs_tabpfn** — `baselines_vs_tabpfn`
-
-Distribution of the primary metric for the classical baselines and for the foundation-model family, side by side, over all (dataset, fold) cells.
-
-**04_per_dataset_heatmap** — `per_dataset_heatmap`
-
-Mean primary metric for every method on every held-out dataset, averaged over folds.
-
-**05_top_method_per_dataset** — `top_method_per_dataset`
-
-The best-scoring method on each held-out dataset, one bar per dataset.
-
-**06_dataset_difficulty** — `dataset_difficulty`
-
-Best and worst primary metric achieved on each held-out dataset, ordered by the best score.
-
-**07_winrate_matrix** — `winrate_matrix`
-
-Pairwise win rate: the fraction of shared (dataset, fold) cells on which the row method beat the column method.
-
-**08_trained_vs_untuned** — `trained_vs_untuned`
-
-Primary metric of each trained checkpoint against its own untuned base on the same dataset. Points above the diagonal are datasets where continued pretraining helped.
-
-**09_fold_stability** — `fold_stability`
-
-Distribution of the across-fold standard deviation of the primary metric, per method — how repeatable a score is.
-
-**10_metric_correlation** — `metric_correlation`
-
-Correlation between the recorded metrics over all scored cells.
-
-**11_threshold_distribution** — `threshold_distribution`
-
-Distribution of the F1-tuned decision thresholds per method, over all (dataset, fold) cells.
-
-**12_time_vs_metric** — `time_vs_metric`
-
-Per-row inference time against primary metric, one point per (method, dataset), coloured by method.
-
-**13_paper_paired_effect** — `paper_paired_effect`
-
-Fractional RMSE reduction from continued pretraining, each trained checkpoint against its own untuned base on the same dataset. One point per (checkpoint, dataset); horizontal bars mark the per-base mean; the line at zero is no change.
-
-**14_paper_gain_vs_base** — `paper_gain_vs_base`
-
-Change in rmse against the untuned base's score on the same dataset, one point per (checkpoint, dataset), coloured by base checkpoint. The line is an ordinary least-squares fit over all points.
-
-**15_paper_mean_rank** — `paper_mean_rank`
-
-Mean rank of each method across the held-out datasets scored by every method, computed per dataset and then averaged; bars show one standard deviation. Rank 1 is best.
-
-**16_paper_calibration** — `paper_calibration`
-
-Expected calibration error of each trained checkpoint against its own untuned base on the same dataset. Points above the diagonal are worse calibrated after continued pretraining.
-
-**17_paper_regime** — `paper_regime`
-
-Change in rmse against dataset size, one point per (checkpoint, dataset), log x axis. Spearman correlation and its p-value are computed over all points shown.
-
-**18_paper_selection** — `paper_selection`
-
-Per dataset, the rmse of the configuration selected on the other datasets only (leave-one-dataset-out) against the best rmse achievable on that dataset. The gap is the optimism of selecting on the test set.
-
-**19_paper_score_agreement** — `paper_score_agreement`
-
-Trained against untuned rmse for every (checkpoint, dataset) pair, with the identity line. Spearman correlation summarizes the ordering of dataset-level scores across the plotted pairs.
-
-**20_paper_zero_shot** — `paper_zero_shot`
-
-Fractional RMSE reduction for each untuned tabular foundation model and the best of three hyperparameter-tuned classical baselines (XGBoost, CatBoost, ridge regression; 50 Optuna trials each) on the same held-out dataset, signed so that bars above zero favour the foundation model. Grouped by dataset; one bar per base checkpoint.
-
-**21_paper_corpus_arm** — `paper_corpus_arm`
-
-Mean fractional RMSE reduction from continued pretraining, per base checkpoint, split by the minimum training-table size admitted to the corpus, signed so that positive is an improvement. Error bars are one standard error over (checkpoint, dataset) pairs.
-
-**22_paper_effect_ci** — `paper_effect_ci`
-
-Mean fractional RMSE reduction from continued pretraining with a 95 % confidence interval, computed over held-out datasets after averaging within each dataset and signed so that positive is an improvement. An interval spanning zero indicates no effect detectable at this sample size.
-
-**23_paper_scheme_grid** — `paper_scheme_grid`
-
-Fractional RMSE reduction from continued pretraining for every adaptation scheme (rows) on every held-out dataset (columns), one panel per base checkpoint, each measured against that base's own untuned score on the same dataset and signed so that red is an improvement. The colour scale is shared across panels.
-
-**24_paper_scheme_metrics** — `paper_scheme_metrics`
-
-Mean change from continued pretraining per adaptation scheme, one panel per base checkpoint, for fractional RMSE reduction and change in R-squared, signed so that positive favours the adapted model and averaged over the held-out datasets.
+Status of 48 planned LGD trials by base model. Pending trials include identities with no recorded attempt.

@@ -818,7 +818,7 @@ def test_training_grid_contains_both_families() -> None:
     # configs and train.yaml deliberately omits them. Merge one in, exactly as load_train_config does.
     cfg = OmegaConf.merge(
         OmegaConf.load(repo / "config" / "train.yaml"),
-        OmegaConf.load(repo / "config" / "experiment1_pd.yaml"),
+        OmegaConf.load(repo / "config" / "experiment1" / "pd.yaml"),
     )
     from src.train.tabicl_compat import model_family
     for key in ("classifier_base_paths", "regressor_base_paths"):

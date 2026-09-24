@@ -21,7 +21,13 @@ Compare each adapted model with its exact starting checkpoint. The paper can est
 
 Only schema-compatible, legally usable data belong in the corpus. Raw private data, names, contents and credentials do not belong in the paper or Git. Figures use the private display-name mapping; the temporary tracked preprocessing-slug exception is a source-code exception, not permission to publish those names in results.
 
-## Implemented main grid
+## Experiment organization
+
+Experiment **0** owns debugging and readiness: null controls, positive-LR/recovery checks, short timing pilots and long budget pilots. Experiment **1** is the full descriptive sweep. Experiment **2** repeats one predefined reference at an additional training seed. Experiment **3** compares one-sample, full-pass and accumulated-gradient training. The general notebooks describe the corpus independently of these outcomes.
+
+Configs are grouped under `config/experiment0/` through `config/experiment3/`; notebooks use the same groups plus `00_general/`. Existing run families remain `cpt_null_v4_check3`, `cpt_pilot_v4`, `cpt_budget_v4`, `cpt_main_v4`, `cpt_seeds_v4` and `cpt_sampling_v4`, preserving provenance of completed work.
+
+## Experiment 1: implemented main grid
 
 | Factor | Levels / rule | Meaning |
 |---|---|---|
@@ -35,7 +41,7 @@ Only schema-compatible, legally usable data belong in the corpus. Raw private da
 | Budget | Provisionally 5,000 successful optimizer updates | A finite gradient that is actually applied increments the counter; rejected updates do not |
 | Trajectories | 0, 250, 1,000, 2,500, 5,000 updates | Diagnostics during the same training trajectory, under one fixed schedule |
 
-The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `experiment1_pd.yaml` and `experiment1_lgd.yaml`, run family `cpt_main_v4`.
+The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `config/experiment1/pd.yaml` and `config/experiment1/lgd.yaml`, run family `cpt_main_v4`.
 
 A partial round at the last update is permitted; visitation counts then differ by at most one. One update is not equal FLOPs, rows or GPU seconds across models or sampling modes. Record processed rows, successful updates, measured training time, monitoring time and peak memory alongside model quality.
 
@@ -73,11 +79,11 @@ A finite but disappointing/flat curve does not stop training. Only numerical fai
 
 ## Sampling comparison and training randomness
 
-**32 additional seed trials** repeat the predefined full-update reference (LR `3e-7`, lambda `0.003`, `one_sample`) with training seed **43**: one recipe × one additional seed × four bases × four dataset folds × two tasks. Its seed-42 counterpart already exists in the main grid. Configs are `seeds_{pd,lgd}.yaml`, run family `cpt_seeds_v4`. Keep dataset partitions, monitor/evaluation seeds, row caps and all other settings identical to the main reference.
+**Experiment 2 adds 32 seed trials** repeating the predefined full-update reference (LR `3e-7`, lambda `0.003`, `one_sample`) with training seed **43**: one recipe × one additional seed × four bases × four dataset folds × two tasks. Its seed-42 counterpart already exists in experiment 1. Configs are `config/experiment2/{pd,lgd}.yaml`, run family `cpt_seeds_v4`. Keep dataset partitions, monitor/evaluation seeds, row caps and all other settings identical to the main reference.
 
 This is a small paired sensitivity check: did changing the training randomness materially alter the reference behavior? Two seeds do not reliably estimate a seed distribution, and this check says nothing about robustness at every other recipe. Show paired differences and curves; do not count the repetitions as extra independent datasets. A future expansion to 64 additional trials would add seed 44 for the same recipe, only if the initial comparison warrants it.
 
-`sampling_{pd,lgd}.yaml` defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
+**Experiment 3**, `config/experiment3/{pd,lgd}.yaml`, defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
 
 The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. Run the seed check once the matching main references are available; it does not repeat the full grid. Use the same pilot-selected budget and trajectory points in all three phases.
 

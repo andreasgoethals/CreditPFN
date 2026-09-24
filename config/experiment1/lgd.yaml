@@ -1,3 +1,4 @@
+# Experiment 1: Full descriptive sweep.
 # Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
 track: lgd
 seed: 42

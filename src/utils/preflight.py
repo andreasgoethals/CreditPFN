@@ -1,7 +1,7 @@
 """Repository checks before CPU preparation and small GPU controls.
 
     python -m src.utils.preflight                 # all experiment configs
-    python -m src.utils.preflight --config config/experiment1_pd.yaml
+    python -m src.utils.preflight --config config/experiment1/pd.yaml
 
 Exit code 0 = these static/CPU checks passed. GPU controls are still required.
 
@@ -31,9 +31,9 @@ import re
 import shutil
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-EXPERIMENTS = tuple(f"{phase}_{track}" for phase in (
-    "experiment0", "pilot", "budget_pilot", "experiment1", "sampling", "seeds")
-    for track in ("pd", "lgd"))
+EXPERIMENTS = tuple(f"config/experiment0/{phase}_{track}.yaml"
+                    for phase in ("null", "pilot", "budget") for track in ("pd", "lgd")) + tuple(
+    f"config/experiment{number}/{track}.yaml" for number in (1, 2, 3) for track in ("pd", "lgd"))
 
 # MEASURED probe points, (rows, peak_GB_or_None, ran_ok). B200 183 GB, 2 training members.
 # Sources: probe job 11524668 §9, plus the exp0 real-training run 11527923 that caught the v2
@@ -363,7 +363,7 @@ def check_stale_knobs(rep: Report) -> None:
                     yield f"{prefix}{k}", str(k)
 
     stale = []
-    for cfg_file in sorted((REPO / "config").glob("*.yaml")):
+    for cfg_file in sorted((REPO / "config").rglob("*.yaml")):
         for full, leaf in leaves(OmegaConf.load(cfg_file)):
             if not re.search(rf'[\."\']{re.escape(leaf)}["\'\s\),\]:]|\.{re.escape(leaf)}\b',
                              code):
@@ -656,7 +656,7 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as exc:
             rep.fail(f"{n}: will not load", f"{type(exc).__name__}: {exc}")
             continue
-        label = path.stem
+        label = path.relative_to(REPO).with_suffix("").as_posix() if path.is_relative_to(REPO) else str(path)
         loaded.append((cfg, label))
         check_required_axes(cfg, label, rep)
         try:

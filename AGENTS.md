@@ -78,6 +78,9 @@ Newest first, dates `DD-MM-YYYY`.
 
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
+- Notebooks and phase configs are grouped by `experiment0` (debugging/pilots), `experiment1`
+  (main grid), `experiment2` (seed check) and `experiment3` (sampling/accumulation); corpus notebooks
+  live in `notebooks/00_general/`. Preserve existing run identities when moving config files.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, into that notebook's own

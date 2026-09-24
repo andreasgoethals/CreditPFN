@@ -1,3 +1,4 @@
+# Experiment 3: One-sample, full-pass and accumulation comparison.
 # Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
 track: lgd
 seed: 42
@@ -12,30 +13,30 @@ corpus:
   n_folds: 4
   fold: 0
   split_seed: 1729
-  n_splits: 1
+  n_splits: 4
   train_dataset_ids: null
   test_dataset_ids: null
 train:
   context_sampling: stratified
-  target_total_steps: 250
+  target_total_steps: 5000
   epochs: 50
   max_epochs_for_step_budget: 2000
   numerical_stopping_only: true
   monitor_seed: 31415
-  trajectory_steps: [0, 250]
+  trajectory_steps: [0, 250, 1000, 2500, 5000]
   epoch_eval_subsample_samples: 2000
   epoch_eval_n_estimators: 4
   epoch_eval_n_estimators_tabicl: 4
-  recovery_every_updates: 100
+  recovery_every_updates: 500
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_pilot_v4
+run_name: cpt_sampling_v4
 tunable:
-  learning_rates: [3.0e-7, 3.0e-5]
+  learning_rates: [3.0e-7]
   l2sp_lambdas: [0.003]
-  frozen_backbone: [false, true]
-  epoch_pass_modes: [one_sample]
+  frozen_backbone: [false]
+  epoch_pass_modes: [one_sample, full_pass, accumulate]
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
   adapter_families: []

@@ -86,8 +86,7 @@ _RUN_OVERRIDE: str | None = None
 def use_run(name: str | None) -> None:
     """Point every training loader at run ``name`` (e.g. ``"exp1"``); ``None`` restores the default.
 
-    Experiment 1 is submitted per split, so its manifests are ``<run>_s00_<track>.csv`` …
-    ``<run>_s07_<track>.csv`` rather than a single ``<run>_<track>.csv`` — :func:`load_run_manifest`
+    Experiment 1 is submitted per split, so its manifests are ``<run>_sNN_<track>.csv`` rather than a single ``<run>_<track>.csv`` — :func:`load_run_manifest`
     handles both, and tags each row with a ``split`` column when the per-split layout is found.
     """
     global _RUN_OVERRIDE
@@ -118,9 +117,12 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
                       .trained_dir if hasattr(cfg, "checkpoint")
                       else str(checkpoints_dir("trained")))
 
+    from src.visualize.inputs import analysis_root
+    source = analysis_root()
+    manifest_root = source / "manifests" if source is not None else manifests_dir()
     return {
-        "epoch_dir":     manifests_dir() / "epochs",
-        "manifest_dir":  manifests_dir(),
+        "epoch_dir":     manifest_root / "epochs",
+        "manifest_dir":  manifest_root,
         "trained_dir":   resolve_staging_path(trained_dir),
         "run_name":      run_name,
     }
@@ -251,7 +253,7 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
 
     # Two on-disk layouts. A single-run sweep writes one manifest ``<run>_<track>.csv``. Experiment 1
     # is submitted per dataset split (train_pipeline appends ``_s<NN>`` to run_name), so it writes
-    # ``<run>_s00_<track>.csv`` … ``<run>_s07_<track>.csv``. Read whichever exists; for the per-split
+    # ``<run>_sNN_<track>.csv``. Read whichever exists; for the per-split
     # layout, concatenate and tag each row with its ``split`` so downstream figures can aggregate.
     single = mdir / f"{run}_{track}.csv"
     if single.exists():
@@ -273,7 +275,8 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
         d["source_file"] = pth.name
         d["source_row"] = range(len(d))
         frames.append(d.assign(split=split) if split is not None else d)
-    from src.utils.consolidate_output import load_consolidated, latest_trials
+    from src.utils.consolidate_output import latest_trials
+    from src.visualize.inputs import load_consolidated
     df = load_consolidated(run, f"trials_{track}", manifest_root=mdir)
     if df is None:
         if not frames:
@@ -327,7 +330,7 @@ def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
     """Load one trial's per-epoch CSV."""
     paths = _resolve_paths(cfg)
     stem = str(trial_name).removesuffix(".ckpt").removesuffix(".csv")
-    from src.utils.consolidate_output import load_consolidated
+    from src.visualize.inputs import load_consolidated
     compact = load_consolidated(paths["run_name"], f"training_{track}", manifest_root=paths["manifest_dir"])
     if compact is not None and not compact.empty:
         if "record_type" in compact:
@@ -345,7 +348,8 @@ def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
     Returns a dict keyed by the file stem (== descriptive_name).
     """
     paths = _resolve_paths(cfg)
-    from src.utils.consolidate_output import load_consolidated, matches_run
+    from src.utils.consolidate_output import matches_run
+    from src.visualize.inputs import load_consolidated
     compact = load_consolidated(paths["run_name"], f"training_{track}", manifest_root=paths["manifest_dir"])
     if compact is not None:
         if "record_type" in compact:

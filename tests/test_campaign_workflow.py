@@ -42,7 +42,7 @@ def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, mon
     import src.utils.prepare_experiment as module
     import src.train.corpus as corpus
     import src.train.config as pipeline
-    cfg = pipeline.load_train_config(config_path='config/experiment0_pd.yaml')
+    cfg = pipeline.load_train_config(config_path='config/experiment0/null_pd.yaml')
     grid = [('missing-base.ckpt', lr, False, .4, 1, 'one_sample', rows, 0.)
             for lr in (0., 1e-6) for rows in (0, 10)]
     calls, identities = [], []
@@ -170,7 +170,7 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
     import src.utils.audit_experiment as module
     import src.train.config as pipeline
     from src.train.loop import descriptive_name
-    cfg = pipeline.load_train_config(config_path="config/experiment0_pd.yaml")
+    cfg = pipeline.load_train_config(config_path="config/experiment0/null_pd.yaml")
     cfg.checkpoint.trained_dir = str(tmp_path / "weights")
     trial = ("base.ckpt", 0., False, .4, 1, "one_sample", 0, 0.)
     monkeypatch.setattr(pipeline, "load_train_config", lambda **kw: cfg)

@@ -29,7 +29,7 @@ def test_source_identity_normalizes_line_endings_and_includes_slurm(tmp_path):
 
 def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_plan(tmp_path, monkeypatch):
     import src.utils.prepare_experiment as module
-    cfg = load_train_config(config_path="config/experiment0_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
     spec = {"code_sha256": "original", "versions": {"torch": "test"},
             "data_config": OmegaConf.to_container(OmegaConf.load("config/data.yaml"))["finetuning"]}
     key = digest_json(spec)
@@ -44,19 +44,19 @@ def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_p
         path.write_text(json.dumps(dict(payload, sha256=digest_json(payload))), encoding="utf-8")
 
     save()
-    assert module.check_prepared(Path("config/experiment0_pd.yaml"))["checked"]
+    assert module.check_prepared(Path("config/experiment0/null_pd.yaml"))["checked"]
     monkeypatch.setattr(module, "code_identity", lambda: "changed")
     with pytest.raises(RuntimeError, match="Code/environment"):
-        module.check_prepared(Path("config/experiment0_pd.yaml"))
-    assert module.check_prepared(Path("config/experiment0_pd.yaml"), stage="eval")["checked"]
+        module.check_prepared(Path("config/experiment0/null_pd.yaml"))
+    assert module.check_prepared(Path("config/experiment0/null_pd.yaml"), stage="eval")["checked"]
     monkeypatch.setattr(module, "code_identity", lambda: "original")
     monkeypatch.setattr(module, "environment_versions", lambda: {"torch": "changed"})
     with pytest.raises(RuntimeError, match="Code/environment"):
-        module.check_prepared(Path("config/experiment0_pd.yaml"))
+        module.check_prepared(Path("config/experiment0/null_pd.yaml"))
     payload["config"]["seed"] += 1
     save()
     with pytest.raises(RuntimeError, match="Configuration"):
-        module.check_prepared(Path("config/experiment0_pd.yaml"))
+        module.check_prepared(Path("config/experiment0/null_pd.yaml"))
     contents = json.loads(path.read_text())
     contents["sha256"] = "corrupt"
     path.write_text(json.dumps(contents))
@@ -68,7 +68,7 @@ def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkey
     import src.utils.prepare_experiment as module
     import src.train.config as pipeline
     import src.train.corpus as corpus
-    cfg = load_train_config(config_path="config/experiment0_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
     grid = [("missing.ckpt", 0., False, .4, 1, "one_sample", 0, 0.)]
     monkeypatch.setattr(pipeline, "load_train_config", lambda **kw: cfg)
     monkeypatch.setattr(pipeline, "resolve_grid", lambda *args, **kw: grid)
@@ -90,7 +90,7 @@ def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkey
 def test_preflight_uses_smallest_partition_and_rejects_mixed_pass_packing(monkeypatch):
     from src.utils.preflight import Report, check_step_budget, check_packing_divides
     import src.train.corpus as corpus
-    cfg = load_train_config(config_path="config/experiment1_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment1/pd.yaml")
     cfg.train.target_total_steps = 1201
     cfg.train.max_epochs_for_step_budget = 100
     monkeypatch.setattr(corpus, "split_from_cfg", lambda cfg, **kw: NS(
@@ -98,7 +98,7 @@ def test_preflight_uses_smallest_partition_and_rejects_mixed_pass_packing(monkey
     report = Report()
     check_step_budget(cfg, "synthetic", report)
     assert report.n_fail == 1  # 1201/13 fits; 1201/12 does not.
-    cfg = load_train_config(config_path="config/sampling_pd.yaml")
+    cfg = load_train_config(config_path="config/experiment3/pd.yaml")
     report = Report()
     check_packing_divides([(cfg, "synthetic")], report, trials_per_task=2)
     assert report.n_fail == 1
@@ -175,7 +175,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     result = subprocess.run([bash, (scripts / "train_pd.slurm").as_posix()],
         env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
-                 CREDITPFN_CONFIG="config/experiment0_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
+                 CREDITPFN_CONFIG="config/experiment0/null_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
                  SLURM_ARRAY_TASK_ID="0", FAIL_LOOKUP=failure), capture_output=True, text=True)
     assert result.returncode == 29, result.stderr
     log = (node / "CreditPFN/output CreditPFN/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")

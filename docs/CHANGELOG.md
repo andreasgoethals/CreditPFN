@@ -13,6 +13,7 @@ day is never rewritten.
 
 ## 24-09-2026
 
+- Organize configs and 11 rewritten notebooks around experiments 0–3; preserve run identities and add bounded, matched analysis views plus read-only download input.
 - Rename generated output to `output CreditPFN/` on both tiers; add collision-safe migration and retain template weight locations.
 - Fix training/evaluation identity boundaries, dependency-aware evaluation reuse, retry coverage, stable task packing, terminal recovery cleanup and visible submission errors.
 - Correct null-control comparisons for upstream checkpoint conversion; print actual prefetch and update-budget labels.

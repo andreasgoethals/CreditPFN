@@ -1,5 +1,6 @@
+# Experiment 0: Debugging and pilot controls.
 # Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
-track: pd
+track: lgd
 seed: 42
 experiment:
   fingerprint: true
@@ -12,17 +13,17 @@ corpus:
   n_folds: 4
   fold: 0
   split_seed: 1729
-  n_splits: 4
+  n_splits: 1
   train_dataset_ids: null
   test_dataset_ids: null
 train:
   context_sampling: stratified
-  target_total_steps: 5000
+  target_total_steps: 20000
   epochs: 50
-  max_epochs_for_step_budget: 2000
+  max_epochs_for_step_budget: 6000
   numerical_stopping_only: true
   monitor_seed: 31415
-  trajectory_steps: [0, 250, 1000, 2500, 5000]
+  trajectory_steps: [0, 250, 1000, 2500, 5000, 10000, 20000]
   epoch_eval_subsample_samples: 2000
   epoch_eval_n_estimators: 4
   epoch_eval_n_estimators_tabicl: 4
@@ -30,12 +31,12 @@ train:
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_sampling_v4
+run_name: cpt_budget_v4
 tunable:
   learning_rates: [3.0e-7]
   l2sp_lambdas: [0.003]
   frozen_backbone: [false]
-  epoch_pass_modes: [one_sample, full_pass, accumulate]
+  epoch_pass_modes: [one_sample]
   query_fractions: [0.40]
   accumulate_grad_batches: [1]
   adapter_families: []

@@ -9,7 +9,8 @@ from src.visualize.training_viz import _resolve_paths, parse_trial_name, compact
 
 
 def load_trajectories(track: str, cfg=None) -> pd.DataFrame:
-    from src.utils.consolidate_output import load_consolidated, matches_run, read_table
+    from src.utils.consolidate_output import matches_run, read_table
+    from src.visualize.inputs import load_consolidated
     paths = _resolve_paths(cfg)
     frame = load_consolidated(paths["run_name"], f"training_{track}", manifest_root=paths["manifest_dir"])
     if frame is None:

@@ -1,3 +1,4 @@
+# Experiment 0: Debugging and pilot controls.
 # Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
 track: pd
 seed: 42

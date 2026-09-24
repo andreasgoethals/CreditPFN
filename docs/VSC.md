@@ -102,8 +102,8 @@ myquota
 sam-balance
 squeue -M mindwell,wice -u "$USER"
 python -m src.utils.stage_checkpoints
-python -m src.utils.prepare_experiment --config config/experiment1_pd.yaml
-python -m src.utils.prepare_experiment --config config/experiment1_lgd.yaml
+python -m src.utils.prepare_experiment --config config/experiment1/pd.yaml
+python -m src.utils.prepare_experiment --config config/experiment1/lgd.yaml
 ```
 
 Preview should show **256 trials per track**, four folds, with all 25 registered tables across tracks. The base-file-size estimate of final weights excludes serialization overhead and simultaneous recovery states. All main, seed and sampling-study weights must fit the actual project quota. An active Python virtualenv can override conda: deactivate it first and inspect each job's printed environment.
@@ -162,8 +162,8 @@ Prepare null/pilot plans on VSC, where package/data identities are known:
 
 ```bash
 for track in pd lgd; do
-  for phase in experiment0 pilot budget_pilot; do
-    sbatch scripts/slurm/maintenance.slurm prepare --config "config/${phase}_${track}.yaml" --write
+  for phase in null pilot budget; do
+    sbatch scripts/slurm/maintenance.slurm prepare --config "config/experiment0/${phase}_${track}.yaml" --write
   done
 done
 ```
@@ -171,41 +171,41 @@ done
 Wait for the plans. They are immutable: changes to training settings, training sources, input bytes or the training environment require a fresh named plan. Evaluation and maintenance fixes have separate identities and do not invalidate training. No input restaging is required for a change confined to output routing or submission. The launcher checks the relevant plan before submitting any jobs, and dry previews report that check too. A full read-only verification, including input hashes, is available on a CPU node:
 
 ```bash
-sbatch --time=00:15:00 scripts/slurm/maintenance.slurm prepare --config config/experiment0_pd.yaml --check
+sbatch --time=00:15:00 scripts/slurm/maintenance.slurm prepare --config config/experiment0/null_pd.yaml --check
 ```
 
 Start with the **16 zero-LR controls**:
 
 ```bash
-DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml
-DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_lgd.yaml
-WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_pd.yaml
-WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0_lgd.yaml
+DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0/null_pd.yaml
+DRY=1 WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0/null_lgd.yaml
+WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0/null_pd.yaml
+WALLTIME=00:30:00 bash scripts/slurm/run_experiment.sh config/experiment0/null_lgd.yaml
 ```
 
 The 30-minute null-control allocation is a provisional short request, not a measured runtime guarantee; inspect the first logs before adjusting it. After they finish, these CPU audits must report `passed: true`, equal tensors and equal per-dataset monitors:
 
 ```bash
-sbatch scripts/slurm/maintenance.slurm audit --config config/experiment0_pd.yaml --null
-sbatch scripts/slurm/maintenance.slurm audit --config config/experiment0_lgd.yaml --null
+sbatch scripts/slurm/maintenance.slurm audit --config config/experiment0/null_pd.yaml --null
+sbatch scripts/slurm/maintenance.slurm audit --config config/experiment0/null_lgd.yaml --null
 ```
 
 Then run the **32 short pilots**, 250 successful updates, conservative/high LR endpoints, both adaptations:
 
 ```bash
-bash scripts/slurm/run_experiment.sh config/pilot_pd.yaml
-bash scripts/slurm/run_experiment.sh config/pilot_lgd.yaml
+bash scripts/slurm/run_experiment.sh config/experiment0/pilot_pd.yaml
+bash scripts/slurm/run_experiment.sh config/experiment0/pilot_lgd.yaml
 ```
 
 Audit the pilot configs after completion. Reports separate training/monitoring time and extrapolate 5k/10k/20k walltimes with margin; also inspect actual GPU peaks and CPU MaxRSS. If preparation is limiting throughput, use maintenance `prepare --profile-workers 0 4 8 --write` with the pilot config, then submit the printed generated YAML paths. All three worker settings across both tracks total 96 short trials. Choose measured throughput that fits memory, not the maximum worker count.
 
 Before bulk automatic requeue, exercise one separately named positive-LR pilot with a short segment or Slurm warning. Verify resumption to the exact budget, unique trajectory points and recovery-file removal. Completed trials are skipped, so a deliberate canary needs its own config/plan name. CPU tests verify uninterrupted/resumed equality with dropout in all three modes; actual CUDA recovery is still a cluster gate.
 
-The **eight long reference pilots**, `budget_pilot_{pd,lgd}.yaml`, cover one full-update reference per base/task through 20k updates. Their 0/250/1k/2.5k/5k/10k/20k measurements show whether 5k truncates substantial behavior. Their schedule has a 20k horizon; early points do not substitute for 5k-schedule results. After the pilot decision, keep final budget/milestones consistent in main, seed and sampling configs before writing their plans. If increasing the budget, also raise `max_epochs_for_step_budget` enough to cover six LGD table visits per epoch (the existing 2,000-epoch rail cannot reach 20k one_sample updates).
+The **eight long reference pilots**, `config/experiment0/budget_{pd,lgd}.yaml`, cover one full-update reference per base/task through 20k updates. Their 0/250/1k/2.5k/5k/10k/20k measurements show whether 5k truncates substantial behavior. Their schedule has a 20k horizon; early points do not substitute for 5k-schedule results. After the pilot decision, keep final budget/milestones consistent in main, seed and sampling configs before writing their plans. If increasing the budget, also raise `max_epochs_for_step_budget` enough to cover six LGD table visits per epoch (the existing 2,000-epoch rail cannot reach 20k one_sample updates).
 
 ## Main grid and recovery
 
-Prepare `experiment1`, `seeds` and `sampling` for both tracks using maintenance `prepare --write`, after the scientific choices are settled. Main = 512 trials; separate sampling = 96; reference seed check = 32; total = 640, plus 56 null/pilot trials. Seed 43 repeats only the predefined full-update reference from the main grid. Protocol 4 uses disjoint row partitions for full-pass/accumulation; create fresh `cpt_*_v4` plans and do not reuse protocol-3 plans or weights.
+Prepare `config/experiment{1,2,3}/{pd,lgd}.yaml` for the main, seed and sampling studies using maintenance `prepare --write`, after the scientific choices are settled. Main = 512 trials; separate sampling = 96; reference seed check = 32; total = 640, plus 56 null/pilot trials. Seed 43 repeats only the predefined full-update reference from the main grid. Protocol 4 uses disjoint row partitions for full-pass/accumulation; create fresh `cpt_*_v4` plans and do not reuse protocol-3 plans or weights.
 
 After the gates, a typical short-segment submission is:
 
@@ -215,10 +215,10 @@ export THROTTLE=4
 export TRIALS_PER_TASK=1
 export SEGMENT_MINUTES=90
 export CREDITPFN_AUTO_REQUEUE=1
-DRY=1 bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
-DRY=1 bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
-bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
-bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
+DRY=1 bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
+DRY=1 bash scripts/slurm/run_experiment.sh config/experiment1/lgd.yaml
+bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
+bash scripts/slurm/run_experiment.sh config/experiment1/lgd.yaml
 ```
 
 Use `tmux`/screen for long submission loops: they can wait for quota room. The 450-task headroom is conservative for the historical 500-task limit; verify current QOS limits. `THROTTLE` applies per array. **GLOBAL_CONCURRENCY bounds arrays submitted through this launcher per controller**, across tracks/phases. It does not cover unrelated projects, direct sbatch or the combined count across controllers.
@@ -229,17 +229,17 @@ A 90-minute work segment requests 100 minutes, reserving time for monitoring/sav
 
 `SEGMENT_MINUTES=0` disables planned segmentation. `WALLTIME` and `ACC_WALLTIME` then override whole-trial requests; defaults are provisional historical estimates. One trial/task avoids repeating packed siblings on requeue. Measured two-member training caps remain **v2 10k, v2.6 11k, v3 26k, TabICLv2 26k**. Do not silently lower caps for failing recipes or raise them because a backbone is frozen.
 
-Launch `seeds_{pd,lgd}.yaml` after matching main references are available. Launch the sampling comparison as a separate phase after the main protocol is fixed. It includes accumulation, which is more expensive per update; use its own timing evidence.
+Launch experiment 2 (`config/experiment2/{pd,lgd}.yaml`) after matching main references are available. Launch experiment 3 (`config/experiment3/{pd,lgd}.yaml`) as a separate sampling comparison after the main protocol is fixed. It includes accumulation, which is more expensive per update; use its own timing evidence.
 
 ## Evaluation and compact results
 
 Audit training coverage before evaluation. A completed descriptive grid can include recorded divergence, but pending/infrastructure failures are not successes. Foundation scoring uses GPUs and classical HPO uses CPUs. Untuned/classical controls are cached by data, weights, settings, code and environment; hits are re-emitted under the current run for correct pairing, not counted as new independent measurements.
 
 ```bash
-STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
-STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
-STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1_pd.yaml
-STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1_lgd.yaml
+STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
+STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1/lgd.yaml
+STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
+STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1/lgd.yaml
 ```
 
 Repeat for seed and sampling configs after their training finishes. Classical controls can be computed earlier to populate the cache; they do not require trained weights. Keep HPO budgets and evaluation seed fixed. `EVAL_TASKS` controls cost packing; `EVAL_CONCURRENCY` defaults to four and shares the controller pool. `EVAL_WALLTIME` defaults to two GPU/four CPU hours; profile large-table tasks. Successful cells survive resubmission.
@@ -254,7 +254,7 @@ sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_sampling_v4 --apply
 sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_seeds_v4 --apply
 ```
 
-Once the campaign is complete, the user downloads the contents of both cluster output folders into the same local `output CreditPFN/`: DATA supplies logs/manifests; project storage supplies results, evaluation caches and consolidated tables. For analysis alone, the compact `output CreditPFN/consolidated/<run>` directories, including LATEST and the referenced snapshot, are sufficient. Do not import a debug download during an active campaign. Project storage is accessible in the same WinSCP/SFTP session at `/lustre1/project/stg_00211/CreditPFN/output CreditPFN`; no intermediate DATA copy is necessary. Keep final weights on project storage unless needed locally. In PowerShell, set `$env:CREDITPFN_VIZ_RUN = 'cpt_main_v4'`, then run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
+Once the campaign is complete, the user downloads the contents of both cluster output folders into the same local `output CreditPFN/`: DATA supplies logs/manifests; project storage supplies results, evaluation caches and consolidated tables. For analysis alone, the compact `output CreditPFN/consolidated/<run>` directories, including LATEST and the referenced snapshot, are sufficient. Do not import a debug download during an active campaign. Project storage is accessible in the same WinSCP/SFTP session at `/lustre1/project/stg_00211/CreditPFN/output CreditPFN`; no intermediate DATA copy is necessary. Keep final weights on project storage unless needed locally. Each notebook selects its own experiment from its config; do not set a global run filter. In PowerShell, run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
 
 Download completed new results and retain the final new weights needed for the ongoing study. Historical records from previous experiments do not need to occupy VSC storage. Full cleanup deletes every phase, so use it only when deliberately retiring the whole campaign.
 
@@ -270,3 +270,26 @@ Download completed new results and retain the final new weights needed for the o
 - Quota pressure: stop writers, consolidate and download completed results, then remove only records you have chosen to retire. Full cleanup is a complete campaign reset, not a mid-run quota remedy.
 
 After a pilot, use `sacct -M mindwell -j JOBID --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode` and the trial logs. Allocation time, CPU memory and internal training time are distinct measurements. Record actual cluster runs in the agent-memory table; local validation cannot substitute for them.
+
+
+## Notebook organization and read-only inspection
+
+`notebooks/00_general/` describes raw and processed inputs. `experiment0/` covers null controls, short pilots and budget pilots; `experiment1/` separates training and final benchmark for PD/LGD; `experiment2/` compares the extra seed with the main reference; `experiment3/` compares all three sampling modes. The runner discovers subfolders and mirrors notebook-relative paths under `figures/` and `manifests/figures/`.
+
+To inspect a supplied download without moving it, set the analysis-only variable to the downloaded **output directory**, not its parent:
+
+```powershell
+$env:CREDITPFN_ANALYSIS_ROOT = Join-Path $env:USERPROFILE 'Downloads/output CreditPFN'
+```
+
+```powershell
+.\.venv\Scripts\python.exe -m src.utils.run_notebooks
+```
+
+The source folder remains read-only. Generated PDFs, caption metadata and summaries stay in the repository's `output CreditPFN/`; executed notebook outputs stay in the notebooks. Raw/processed corpus exploration still reads the canonical local data. A DATA-only download has no project-tier benchmark results; those sections report unavailable evidence. To return to local campaign input:
+
+```powershell
+Remove-Item Env:CREDITPFN_ANALYSIS_ROOT
+```
+
+Config relocation alone preserves scientific settings and run names. Existing null controls can still be audited with `config/experiment0/null_{pd,lgd}.yaml`. Do not reprepare their immutable plans merely because the file moved. Subsequent training phases need plans prepared against the source and environment they will actually run.
