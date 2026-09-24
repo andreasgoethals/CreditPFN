@@ -13,10 +13,10 @@ Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed clu
 
 Both bytes and inodes matter. The [official KU Leuven storage documentation](https://docs.vscentrum.be/leuven/tier2_hardware/kuleuven_storage.html) describes DATA's 75 GiB default and scratch policy. It does not establish the current quota or backup policy of `stg_00211`; inspect `myquota` and the allocation's limits. Intensive Mindwell reads belong on GPFS; wICE uses Lustre. The explicit GPFS path is used even when staging from a wICE CPU job. See the pinned [VSC snapshot](<../tfm-library/repositories/VSC Documentation.txt>), symbols `KU Leuven storage` and `Transferring data between Lustre and GPFS`.
 
-The template's `output/` name is restored, with the requested experiment layer:
+The user requires `output CreditPFN/`, with the experiment layer below it. The name intentionally differs from the template's generic `output/`; quote paths containing the space:
 
 ```text
-DATA/CreditPFN/output/
+DATA/CreditPFN/output CreditPFN/
   general/
     logs/                       data preparation and general maintenance
     manifests/scheduler/        shared per-controller capacity pool, cluster locks
@@ -39,7 +39,7 @@ PROJECT/CreditPFN/
     <trial>.ckpt                final weights
     <trial>.ckpt.provenance.json
     <trial>.ckpt.resume.pt      latest optimizer/RNG/cursor state while unfinished
-  output/<experiment>/
+  output CreditPFN/<experiment>/
     training/<track>/
       <trial>.csv               epoch objectives, gradients, skips and timings
       <trial>.trajectory.csv    fixed-update credit/non-credit scores and drift
@@ -50,9 +50,9 @@ PROJECT/CreditPFN/
     consolidated/<run>/        LATEST + immutable compressed analysis snapshot
 ```
 
-Locally both tiers collapse into one `output/` tree. Keep `CREDITPFN_OUTPUT_ROOT` and `CREDITPFN_STAGING_ROOT` pointing to the enclosing **CreditPFN project roots**, not `output/`. Weights retain the template's explicit `checkpoints/` exception. This experiment layer and project-tier training diagnostics are intentional template extensions.
+Locally both tiers collapse into one `output CreditPFN/` tree. Keep `CREDITPFN_OUTPUT_ROOT` and `CREDITPFN_STAGING_ROOT` pointing to the enclosing **CreditPFN project roots**, not `output CreditPFN/`. Weights retain the template's explicit `checkpoints/` exception. This experiment layer and project-tier training diagnostics are intentional template extensions.
 
-New `cpt_*_v5` plans are independent of old `output CreditPFN/` records and v4 weights. No old-output migration is needed for the authorized rerun. The obsolete rename utility has been removed. Keep any historical copy only if wanted; the new run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
+Fresh `cpt_*_v5` plans are independent of v4 records and weights. Both tiers create `output CreditPFN/` automatically. Relative legacy `output/...` settings resolve to the canonical name rather than creating another tree. Keep any historical copy only if wanted; a fresh run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
 
 Only final weights and the most recent recovery state persist. Intermediate milestone weights are transient; numeric measurements persist. After final publication (including numerical divergence), recovery state is removed. Known repetitive deprecation messages are filtered and repeated numerical errors are counted with bounded log summaries; fatal errors remain visible. Do not hide errors to make a run look successful.
 
@@ -93,11 +93,11 @@ This is the only experiment-0 part-1 launch command. It downloads/reuses the two
 3. **32 short pilots**, 250 updates; initially one-hour requests.
 4. CPU audit: complete identities, budgets, trajectories and no divergence.
 5. **Eight recovery pairs**, four bases × two tasks: 12 uninterrupted updates versus stop at 5 and resume to 12; eight one-hour GPU allocations. Each also runs five-fold scoring on its small packaged non-credit table, checking metrics, requested quantiles and complete row-prediction output through the final evaluation code.
-6. CPU audit and `output/experiment0/manifests/workflow/part1_passed.json`.
+6. CPU audit and `output CreditPFN/experiment0/manifests/workflow/part1_passed.json`.
 
 GPU completion callbacks update a locked DATA ledger. The last successful task submits a short CPU audit; that audit alone releases the next stage. Stages advance without a polling allocation and without assuming cross-controller dependency support. Submission can still pause if the user submit quota is full; no GPU allocation waits for another stage. Incomplete/failed tasks stop progression. A unique submission claim prevents accidentally launching the same part twice. Do not delete claims or pool state while jobs run; inspect failed/uncertain submission logs before arranging recovery.
 
-Each ledger folder contains `state.json` and structured audit reports. Job IDs appear in the preparation/audit job logs. Read `output/experiment0/logs/`; no files need downloading during debugging. Check the queue separately:
+Each ledger folder contains `state.json` and structured audit reports. Job IDs appear in the preparation/audit job logs. Read `output CreditPFN/experiment0/logs/`; no files need downloading during debugging. Check the queue separately:
 
 ```bash
 squeue -M mindwell,wice -u "$USER" -o "%.18i %.28j %.10T %.12M %R"
@@ -165,7 +165,7 @@ sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_main_v5 --apply
 
 Consolidation verifies input/readback checksums and atomically publishes one snapshot: attempts, latest trials, training curves, parameter summaries, resources and evaluation tables for each task. Keep tensor/resource tables separate to avoid a large sparse join. Raw predictions and weights remain in place. Do not accumulate unlimited snapshots; a previous snapshot with missing raw sources cannot be overwritten by a partial reconstruction.
 
-At final analysis, download the contents of **both** cluster `output/` folders into the same local `output/`. Project storage can be browsed/downloaded directly through the same SFTP session; no intermediate DATA copy is needed. Analysis-only compact snapshots must include `LATEST.json` and its referenced directory. Keep datasets/private display mappings locally for corpus notebooks; keep final weights on project storage unless needed elsewhere. A supplied download can be read without moving it using `CREDITPFN_ANALYSIS_ROOT`, pointing to the downloaded output directory containing the experiment folders.
+At final analysis, download the contents of **both** cluster `output CreditPFN/` folders into the same local `output CreditPFN/`. Project storage can be browsed/downloaded directly through the same SFTP session; no intermediate DATA copy is needed. Analysis-only compact snapshots must include `LATEST.json` and its referenced directory. Keep datasets/private display mappings locally for corpus notebooks; keep final weights on project storage unless needed elsewhere. A supplied download can be read without moving it using `CREDITPFN_ANALYSIS_ROOT`, pointing to the downloaded output directory containing the experiment folders.
 
 ## Cleanup and failure inspection
 
@@ -175,7 +175,7 @@ Historical output is not required for the new run. The old `output CreditPFN/` t
 - Workflow failure: inspect its state/audit and the named logs; later stages were not released.
 - Exit 75: saved interruption, not success; inspect requeue count and resume the same identity.
 - Numerical divergence: retain the outcome; do not repeat until a favorable result appears.
-- `pending_submission`: acceptance is uncertain; reconcile the queue with `output/general/manifests/scheduler/` before retrying.
+- `pending_submission`: acceptance is uncertain; reconcile the queue with `output CreditPFN/general/manifests/scheduler/` before retrying.
 - Unwritable project storage: fix the mount/permissions; modern jobs refuse large-file fallback to DATA.
 - Missing scratch: restage verified canonical inputs on a CPU node.
 - OOM or kernel error: retain the first diagnostic and run a separate named probe; never silently change row caps.

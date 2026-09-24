@@ -5,7 +5,7 @@ use checkpoint provenance for their held-out datasets; untuned and classical
 controls use that same phase. Row-level evaluation settings come from config/eval.yaml,
 phase overrides and explicit CLI overrides, in increasing precedence order.
 
-Each task writes its own output/<experiment>/results files on project storage. Completed cells
+Each task writes its own output CreditPFN/<experiment>/results files on project storage. Completed cells
 are reused only when their evaluation identity matches. --rerun forces fresh scoring.
 --tasks and --task-index control cost-based packing; a task may contain several
 model/dataset pairs. --method and --test-dataset restrict the roster.

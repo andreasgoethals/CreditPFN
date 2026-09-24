@@ -305,7 +305,7 @@ def note(ax, text: str) -> None:
     """A single small footnote inside the axes — for "43 of 500 shown", nothing else.
 
     Figures in this project carry as little text as possible: the caption in
-    `output/general/figures/CAPTIONS.md` is where explanation belongs, because it travels with the
+    `output CreditPFN/general/figures/CAPTIONS.md` is where explanation belongs, because it travels with the
     figure into the manuscript and can be edited without re-running anything.
     """
     ax.text(0.99, 0.01, text, transform=ax.transAxes, ha="right", va="bottom",

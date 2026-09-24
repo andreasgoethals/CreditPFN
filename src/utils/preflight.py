@@ -30,6 +30,8 @@ import pathlib
 import re
 import shutil
 
+from omegaconf import OmegaConf
+
 REPO = pathlib.Path(__file__).resolve().parents[2]
 EXPERIMENTS = tuple(f"config/experiment0/{phase}_{track}.yaml"
                     for phase in ("null", "pilot", "recovery", "budget") for track in ("pd", "lgd")) + tuple(
@@ -65,8 +67,6 @@ def _resolved_roots() -> tuple["pathlib.Path | None", "dict[str, pathlib.Path]"]
     ck = None
     proc: dict[str, pathlib.Path] = {}
     try:
-        from omegaconf import OmegaConf
-
         from src.utils.paths import apply_data_source_from_cfg, processed_dir
         apply_data_source_from_cfg(OmegaConf.load(REPO / "config" / "data.yaml"))
         for track in ("pd", "lgd"):
@@ -175,7 +175,6 @@ def check_name_collisions(cfg, name: str, grid: list[tuple], rep: Report) -> Non
     from src.train.loop import descriptive_name
     splits = cfg.corpus.get("n_splits") or 1
     seen: collections.Counter[str] = collections.Counter()
-    from omegaconf import OmegaConf
     from src.utils.experiment import apply_split_index
     for k in range(splits):
         current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), k)
@@ -226,7 +225,6 @@ def check_row_caps(rep: Report) -> None:
         cap >= smallest measured-OOM rows    -> FAIL (at/beyond a known failure)
         in between                           -> WARN (untested; do not trust extrapolation)
     """
-    from omegaconf import OmegaConf
     data = OmegaConf.load(REPO / "config/data.yaml")
     caps = data.finetuning.max_rows_per_epoch
     train = OmegaConf.load(REPO / "config/train.yaml")
@@ -270,7 +268,6 @@ _EVAL_CONTEXT_LIMIT = {"v2": 10000}
 
 def check_eval_caps(rep: Report) -> None:
     """The eval's per-model context cap must not exceed the model's OFFICIAL inference limit."""
-    from omegaconf import OmegaConf
     ev = OmegaConf.load(REPO / "config/eval.yaml")
     caps = None
     for node in (ev, ev.get("eval", {})):
@@ -307,7 +304,6 @@ def check_step_budget(cfg, name: str, rep: Report) -> None:
                      "an epoch buys a different number of updates in every cell")
         return
     cap = cfg.train.get("max_epochs_for_step_budget")
-    from omegaconf import OmegaConf
     from src.train.corpus import split_from_cfg
     from src.utils.experiment import apply_split_index
     counts = []
@@ -349,7 +345,6 @@ def check_l2sp_applies(rep: Report) -> None:
 
 def check_stale_knobs(rep: Report) -> None:
     """A knob nothing reads is a lie: setting it changes nothing, silently."""
-    from omegaconf import OmegaConf
     code = "\n".join(
         p.read_text(encoding="utf-8", errors="ignore")
         for p in list((REPO / "src").rglob("*.py")) + list((REPO / "scripts").rglob("*.py"))
@@ -515,8 +510,6 @@ def check_storage_layout(rep: Report) -> None:
     membership comes from the source registry, not generated manifests. Print the resolved map.
     """
     try:
-        from omegaconf import OmegaConf
-
         from src.utils.paths import (
             apply_data_source_from_cfg, data_root, manifests_dir, processed_dir, raw_dir,
             results_dir, staging_root, training_dir,
@@ -606,7 +599,6 @@ def check_data(rep: Report, proc: "dict[str, pathlib.Path]") -> None:
 
 
 def check_predictions_writer(rep: Report, configs=()) -> None:
-    from omegaconf import OmegaConf
     ev = OmegaConf.load(REPO / "config/eval.yaml")
 
     def _find(d, key):

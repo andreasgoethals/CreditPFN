@@ -3,7 +3,7 @@
 Consumes the wide-format CSVs written by ``scripts/eval_pipeline.py``
 (via ``src.eval.benchmark.EvalRow``) at::
 
-    output/<experiment>/results/<TRACK>/<method-dirname>/<run>_<ts>[__ds-<id>].csv
+    output CreditPFN/<experiment>/results/<TRACK>/<method-dirname>/<run>_<ts>[__ds-<id>].csv
 
 Each row is one ``(model × dataset × fold)`` tuple with all metric
 columns side-by-side. We pool every CSV under one DataFrame, then
@@ -160,7 +160,7 @@ def human_method_name(row: pd.Series) -> str:
 #: Restrict :func:`load_eval_results` to one run's result files. Eval writes
 #: ``<run>_<ts>__task<k>_ds-<id>.csv`` (run is per-split, e.g. ``exp1_s03``), so a run is selected
 #: by the ``<run>_`` filename prefix. A notebook sets ``eval_viz.use_run("exp1")`` so run-8's old
-#: results in the same ``output/<experiment>/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
+#: results in the same ``output CreditPFN/<experiment>/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
 #: same for scripts. ``None`` (the default) pools everything, preserving the previous behaviour.
 _RUN_OVERRIDE: str | None = None
 

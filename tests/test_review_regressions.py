@@ -171,8 +171,8 @@ def test_legacy_relative_output_paths_cannot_create_a_second_tree(tmp_path, monk
     from src.utils.paths import resolve_output_path, resolve_staging_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path / "project"))
-    assert resolve_output_path("output/logs/test.log") == tmp_path / "output/general/logs/test.log"
-    assert resolve_staging_path("output/results").parts[-3:] == ("output", "general", "results")
+    assert resolve_output_path("output CreditPFN/logs/test.log") == tmp_path / "output CreditPFN/general/logs/test.log"
+    assert resolve_staging_path("output CreditPFN/results").parts[-3:] == ("output CreditPFN", "general", "results")
 
 
 def test_null_audit_canonicalizes_legacy_keys_but_checks_weights_and_borders(tmp_path, monkeypatch):

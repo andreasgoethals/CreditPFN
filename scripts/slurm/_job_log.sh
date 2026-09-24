@@ -10,8 +10,8 @@ start_job_log() {
     esac
     export CREDITPFN_EXPERIMENT="$group"
     case "$group" in general|experiment[0-3]) ;; *) echo "Invalid output group: $group" >&2; return 2 ;; esac
-    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/${group}/logs"
-    LOG="${CREDITPFN_OUTPUT_ROOT}/output/${group}/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
+    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${group}/logs"
+    LOG="${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${group}/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
     export CREDITPFN_ACTIVE_LOG="$LOG"
     exec >> "$LOG" 2>&1
     trap 'rc=$?; echo "END exit_code=${rc} - $(date)"' EXIT

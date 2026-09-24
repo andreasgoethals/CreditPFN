@@ -12,7 +12,15 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 24-09-2026 fresh protocol 5 and bundled experiment 0
+## Current handover — 24-09-2026 named output and CPU preflight repair
+
+- The user reconfirmed **`output CreditPFN/<experiment>/`** on DATA, project storage and locally. This supersedes the bare `output/` name in the preceding handover. Python resolvers, shell logs, configuration and current documentation use the name with its space; relative legacy aliases cannot create a second output tree. `docs/TEMPLATE.md` remains the generic template, and AGENTS/README/VSC document the deliberate naming difference. Checkpoints retain their existing experiment directories.
+- Read `Downloads/output/` in place: **8 files / 6,384 bytes**. Workflow `fedcc296871349599a8a6015f0ae9065`, wICE preparation job **62134902**, failed with `NameError: OmegaConf` in the newly added retention preflight check; ledger phase `prepare`, status `failed`, only the CPU job recorded. No GPU stage or plan preparation was reached. The ten public inputs were prepared according to the user's login-node output; the rerun reuses verified downloads.
+- Reproduced the exact error in two CLI regression cases, then consolidated the dependency import at module scope. Fresh part-1 submission after the user commits/pushes and pulls on VSC creates plans and a new workflow under the correct directory. The failed workflow is not resumed or migrated; no successful v5 weights from this attempt need preserving. Experiment 4 remains deferred, and experiment 1's scientific grid is unchanged.
+- Local output directories were already absent at the start of this repair. Downloads and historical archives remain untouched. Verification writes to temporary storage; no repository output clutter, VSC submissions, installs or pushes by the agent.
+- Validation: **509 passed, 1 skipped** (optional absent manifests); **93 focused checks passed** including shell logging with spaces and legacy aliases on both storage tiers. All **17 shell/Slurm files parse**. All **11 notebooks passed**, producing **35 PDFs** under temporary `output CreditPFN/`; original notebook bytes were restored, and no bare `output/` tree was created. The real local preflight completes all 14 configurations and verifies both retention panels; its only failures are the two v2 original weights absent locally, repeated across the relevant configs. VSC must verify the actual project-storage weights before GPU release.
+
+## Previous handover — 24-09-2026 fresh protocol 5 and bundled experiment 0
 
 - User explicitly requested a fresh rerun and `output/<experiment>/{logs,manifests,...}` on both tiers. This supersedes the earlier instruction to reuse v4 preparation/null controls. Every current phase is `cpt_*_v5`; do not rename/reuse old v4 weights as current controls. No v5 VSC jobs have been submitted by this agent.
 - `bash scripts/slurm/run_experiment0.sh part1` downloads verified public inputs on the login node, then stages/prepares on CPU and releases 16 null controls, 32 short pilots and eight uninterrupted/resumed GPU pairs with CPU audit gates. Each recovery pair also checks five-fold final scoring/prediction output. `part2` separately submits eight 20k-update pilots after a current part-1 receipt; two-hour resumable work segments. Research counts remain 512 + 32 + 96 = 640; experiment 0 adds 72 training arms, not counting resumed segments twice.
@@ -119,6 +127,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 24-09-2026 | experiment-0 part1 prepare · wICE 62134902 | **crashed (download verified)** | Exit 1: missing `OmegaConf` import in retention preflight; failed ledger still at preparation, no GPU work released. |
 | 24-09-2026 | prepare cpt_pilot_v4 LGD · wICE 62129269 | **plan written (download verified)** | 16 trials, 250 updates, one partition; exit 0. Plan/trial checksums and current training source match; no pilot training evidenced. |
 | 24-09-2026 | prepare cpt_pilot_v4 PD · wICE 62129268 | **plan written (download verified)** | 16 trials, 250 updates, one partition; exit 0. Plan/trial checksums and current training source match; no pilot training evidenced. |
 | 24-09-2026 | corrected check3 null audit LGD · wICE 62124957 | **passed (download evidence)** | 8 complete; all exact saved-state and monitor checks pass; 0 problems, exit 0. |
@@ -154,6 +163,13 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 24-09-2026 — preflight orchestration was not exercised by helper tests
+
+**Tried:** Start bundled experiment 0 after the public monitoring inputs were downloaded.
+**Result:** CPU job 62134902 exited 1 on `NameError: OmegaConf`; the workflow correctly stopped before GPU submission.
+**Why:** Other preflight helpers imported OmegaConf locally, but the new retention check in `main()` lacked an import. Existing helper tests missed the CLI path.
+**Instead:** Import once at module scope; test the actual CLI loop with available and missing retention inputs, and execute the full local preflight before handing over the rerun.
 
 ### 24-09-2026 — local output deletion rejected
 

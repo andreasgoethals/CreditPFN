@@ -29,7 +29,7 @@ def test_lists_by_default_and_deletes_only_when_asked(isolated_output, capsys) -
 
 
 def test_a_wipe_keeps_the_directory_skeleton(isolated_output) -> None:
-    """`rmtree` would take `output/general/figures/.gitkeep` with it, and the next clone would have
+    """`rmtree` would take `output CreditPFN/general/figures/.gitkeep` with it, and the next clone would have
     nowhere to write."""
     from src.utils.paths import figures_dir, logs_dir
 
@@ -58,7 +58,7 @@ def test_gitkeep_is_never_counted(isolated_output) -> None:
 
 
 def test_both_storage_tiers_are_cleared_on_the_cluster(isolated_output) -> None:
-    """`output/general/results/` lives on project storage there, so clearing only `$VSC_DATA` would leave
+    """`output CreditPFN/general/results/` lives on project storage there, so clearing only `$VSC_DATA` would leave
     the largest files behind.
 
     DEVIATION from the template's version, which asserts exactly two roots: CreditPFN adds
@@ -92,7 +92,7 @@ def test_processed_is_opt_in(isolated_output) -> None:
 
 def test_fresh_run_removes_all_project_output_and_trained_weights_but_keeps_inputs(isolated_output):
     from src.utils.paths import resolve_staging_path, resolve_output_path, processed_dir
-    victims = [resolve_staging_path(f"output/general/{name}") for name in (
+    victims = [resolve_staging_path(f"output CreditPFN/general/{name}") for name in (
         "results/pd/old.csv", "consolidated/old/LATEST.json",
         "evaluation_cache/old.json.gz", "archives/old.tar.gz")]
     for resolve in (resolve_staging_path, resolve_output_path):
@@ -116,7 +116,7 @@ def test_fresh_run_removes_all_project_output_and_trained_weights_but_keeps_inpu
 def test_cleanup_preflights_all_trees_before_deleting_anything(isolated_output, monkeypatch):
     from src.utils.paths import resolve_staging_path, outputs_dir
     first = outputs_dir() / "logs/keep.log"
-    linked = resolve_staging_path("output/general/results/linked.csv")
+    linked = resolve_staging_path("output CreditPFN/general/results/linked.csv")
     for path in (first, linked):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("keep")

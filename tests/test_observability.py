@@ -16,11 +16,11 @@ def test_experiment_outputs_use_both_tiers_without_cross_experiment_leaks(tmp_pa
     for i in range(4):
         group = f"experiment{i}"
         activate_experiment(OmegaConf.create({"experiment": {"output_group": group}}))
-        assert logs_dir() == tmp_path / "data/output" / group / "logs"
-        assert manifests_dir() == tmp_path / "data/output" / group / "manifests"
-        assert training_dir("pd") == tmp_path / "project/CreditPFN/output" / group / "training/pd"
-        assert results_dir("PD") == tmp_path / "project/CreditPFN/output" / group / "results/PD"
-        assert figures_dir(f"{group}/01_test") == tmp_path / "data/output" / group / "figures/01_test"
+        assert logs_dir() == tmp_path / "data/output CreditPFN" / group / "logs"
+        assert manifests_dir() == tmp_path / "data/output CreditPFN" / group / "manifests"
+        assert training_dir("pd") == tmp_path / "project/CreditPFN/output CreditPFN" / group / "training/pd"
+        assert results_dir("PD") == tmp_path / "project/CreditPFN/output CreditPFN" / group / "results/PD"
+        assert figures_dir(f"{group}/01_test") == tmp_path / "data/output CreditPFN" / group / "figures/01_test"
 
 
 def test_training_entry_selects_experiment_before_opening_its_first_log(tmp_path, monkeypatch):
@@ -39,7 +39,7 @@ def test_training_entry_selects_experiment_before_opening_its_first_log(tmp_path
                                 experiment=dict(output_group="experiment1")))
     with pytest.raises(StopBeforeTraining):
         train_pipeline.run(cfg=cfg)
-    assert observed == [tmp_path / "output/experiment1/logs"]
+    assert observed == [tmp_path / "output CreditPFN/experiment1/logs"]
 
 
 def test_monitor_splits_are_fixed_disjoint_and_shuffled_for_small_tables():

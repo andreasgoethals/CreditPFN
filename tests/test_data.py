@@ -530,7 +530,7 @@ def test_label_encode_classification_target() -> None:
 def test_exploration_corpus_summary_shape() -> None:
     """corpus_summary_table runs and returns expected schema."""
     from src.data.exploration import corpus_summary_table
-    pd_manifest = REPO / "output" / "general" / "manifests" / "manifest_pd.csv"
+    pd_manifest = REPO / "output CreditPFN" / "general" / "manifests" / "manifest_pd.csv"
     if not pd_manifest.exists():
         pytest.skip("manifests not yet built")
     df = corpus_summary_table()
@@ -551,8 +551,8 @@ def test_exploration_resolves_paths_from_cfg() -> None:
     from src.data.exploration import _resolve_paths
     cfg = NS(paths=NS(
         processed="data/processed",
-        manifest_pd="output/general/manifests/manifest_pd.csv",
-        manifest_lgd="output/general/manifests/manifest_lgd.csv",
+        manifest_pd="output CreditPFN/general/manifests/manifest_pd.csv",
+        manifest_lgd="output CreditPFN/general/manifests/manifest_lgd.csv",
     ))
     paths = _resolve_paths(cfg)
     assert paths["processed"].name == "processed"

@@ -5,9 +5,9 @@
     python -m src.utils.clean_run --clean --processed       ...and the data/processed cache too
     python -m src.utils.clean_run --clean --stages eval     only what the eval stage produced
 
-Clears `output/` on both storage tiers, preserving a maintenance job's active log — so
+Clears `output CreditPFN/` on both storage tiers, preserving a maintenance job's active log — so
 one invocation is enough whether you are on a laptop or on the cluster. Off-cluster both tiers
-collapse into the repository and it is simply `output/`.
+collapse into the repository and it is simply `output CreditPFN/`.
 
 `--processed` additionally clears `data/processed/`, the preprocessing cache. It is separate
 because rebuilding that cache can cost far more than re-running the notebooks, so "clean the last
@@ -20,14 +20,14 @@ NEVER TOUCHES `data/raw/`, original base weights, or `tfm-library/`.
 Trained weights ARE removed by a full clean. Stop all experiment writers first;
 download any historical output you want to keep before using `--clean`.
 
-CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output/`:
+CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output CreditPFN/`:
 
   * `checkpoints/trained/` on **both** tiers. Current cluster jobs require project storage,
     but historical versions allowed a DATA fallback. Include any such remnants so a clean
     start cannot accidentally reuse their weights.
     Base `checkpoints/*.ckpt` are never touched — only the `trained/` subtree.
   * Legacy `.sentinels/`, if present. The named launcher uses Slurm dependencies and
-    writes shared pool state under `output/general/manifests/`; no new sentinels are created.
+    writes shared pool state under `output CreditPFN/general/manifests/`; no new sentinels are created.
 
 `--stages data,train,eval` narrows the wipe to what one stage produced, which is what you
 want when only the last stage needs redoing — re-running eval is minutes, re-running the
@@ -43,6 +43,7 @@ import os
 from pathlib import Path
 
 from src.utils.paths import (
+    OUTPUT_DIR_NAME,
     checkpoints_dir,
     outputs_dir,
     processed_dir,
@@ -95,7 +96,7 @@ def stage_targets(stage: str) -> list[Path]:
     else:
         for group in EXPERIMENTS:
             found += list(results_dir(experiment=group).glob("**/*"))
-            found += list(resolve_staging_path(f"output/{group}/evaluation_cache").glob("**/*"))
+            found += list(resolve_staging_path(f"output CreditPFN/{group}/evaluation_cache").glob("**/*"))
             found += list((outputs_dir() / group / "figures").glob("**/*"))
             found += list((manifests_dir(group) / "figures").glob("**/*.json"))
             found += list(logs_dir(group).glob("eval_*.log"))
@@ -103,13 +104,13 @@ def stage_targets(stage: str) -> list[Path]:
 
 
 def roots(*, processed: bool = False) -> list[Path]:
-    """Every tree to clear. Two `output/` roots on the cluster, one locally, plus the cache.
+    """Every tree to clear. Two `output CreditPFN/` roots on the cluster, one locally, plus the cache.
 
     Project storage also holds consolidated tables, reusable evaluation caches and
     any legacy archives. Clear its whole output tree, not only result subdirectories.
     """
     found = [outputs_dir()]
-    project_output = resolve_staging_path("output")
+    project_output = resolve_staging_path(OUTPUT_DIR_NAME)
     if not project_output.is_relative_to(found[0]):
         found.append(project_output)
     # CreditPFN: trained weights on project storage AND the $VSC_DATA fallback, plus the
@@ -181,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stages", default=None,
                         help="comma-separated subset of " + ",".join(STAGES) +
                              " — clear only what those stages produced, instead of the "
-                             "whole output/ tree")
+                             "whole output CreditPFN/ tree")
     args = parser.parse_args(argv)
 
     # Unlinking a running job's stdout on Linux loses the cleanup report itself.
@@ -193,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
         from src.utils.paths import EXPERIMENTS
         allowed = {(outputs_dir() / g / "logs").resolve() for g in EXPERIMENTS}
         if path.parent not in allowed or path.suffix != ".log":
-            parser.error("CREDITPFN_ACTIVE_LOG must name a .log inside output/<experiment>/logs")
+            parser.error("CREDITPFN_ACTIVE_LOG must name a .log inside output CreditPFN/<experiment>/logs")
         keep_paths = frozenset({path})
         print(f"Preserving active maintenance log: {path}")
 

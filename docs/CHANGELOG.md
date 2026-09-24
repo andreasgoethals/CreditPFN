@@ -13,6 +13,8 @@ day is never rewritten.
 
 ## 24-09-2026
 
+- Restore the requested `output CreditPFN/<experiment>/` name across both tiers, launchers, configs and analysis; retain relative legacy-path aliases.
+- Fix the preflight retention check's missing `OmegaConf` import and cover the CLI success/failure paths before another GPU launch.
 - Restore `output/<experiment>/` on both storage tiers; move detailed histories to project storage and retire the obsolete rename utility.
 - Bundle experiment-0 null, short-pilot and recovery/benchmark gates; keep 20k budget pilots separate and use fresh protocol-5 identities.
 - Add a pinned public non-credit panel, parameter/resource diagnostics and five-fold calibration/distribution/prediction records.

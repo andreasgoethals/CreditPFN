@@ -68,6 +68,22 @@ def test_absolute_path_passes_through(monkeypatch, tmp_path) -> None:
     assert resolve_output_path(abs_path) == abs_path
 
 
+@pytest.mark.parametrize("name", ["output", "output CreditPFN"])
+def test_output_aliases_share_one_named_directory_on_both_tiers(monkeypatch, tmp_path, name):
+    from src.utils.paths import resolve_staging_path
+
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path / "personal/CreditPFN"))
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path / "project/CreditPFN"))
+    monkeypatch.setenv("CREDITPFN_EXPERIMENT", "experiment0")
+    personal = tmp_path / "personal/CreditPFN/output CreditPFN"
+    project = tmp_path / "project/CreditPFN/output CreditPFN"
+    assert resolve_output_path(name) == personal
+    assert resolve_output_path(f"{name}/logs") == personal / "experiment0/logs"
+    assert resolve_output_path(f"{name}/experiment2/manifests") == personal / "experiment2/manifests"
+    assert resolve_staging_path(f"{name}/results") == project / "experiment0/results"
+    assert resolve_staging_path(f"{name}/experiment3/training") == project / "experiment3/training"
+
+
 def test_get_roots_reflects_env(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("CREDITPFN_DATA_ROOT",   str(tmp_path / "s"))
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path / "d"))
@@ -219,7 +235,7 @@ def test_resolve_staging_path_uses_staging_root_when_set(monkeypatch) -> None:
     staging = "/staging/leuven/stg_00001/CreditPFN"
     monkeypatch.setenv("CREDITPFN_STAGING_ROOT", staging)
     assert resolve_staging_path("checkpoints/trained") == Path(staging) / "checkpoints/trained"
-    assert resolve_staging_path("output/general/results") == Path(staging) / "output/general/results"
+    assert resolve_staging_path("output CreditPFN/general/results") == Path(staging) / "output CreditPFN/general/results"
 
 
 def test_resolve_staging_path_passes_absolute_through(monkeypatch) -> None:
@@ -408,9 +424,9 @@ def test_explicit_envvar_wins_over_autodetect(monkeypatch, tmp_path) -> None:
 
 
 def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -> None:
-    """``output/general/logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, flat inside that directory.
+    """``output CreditPFN/general/logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, flat inside that directory.
 
-    Under `output/general/` since 11-08-2026, like everything else the code generates."""
+    Under `output CreditPFN/general/` since 11-08-2026, like everything else the code generates."""
     from src.utils.logging_setup import make_task_log_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
@@ -418,7 +434,7 @@ def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -
     monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
 
     p = make_task_log_path("train_pd")
-    assert p.parent == tmp_path / "output" / "general" / "logs"
+    assert p.parent == tmp_path / "output CreditPFN" / "general" / "logs"
     assert p.name.startswith("train_pd_")
     assert p.suffix == ".log"
     # YYYYMMDD_HHMMSS — 15 chars between "train_pd_" and ".log".

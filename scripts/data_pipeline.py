@@ -2,7 +2,7 @@
 
 Calls, in order:
 
-    1. register              → output/general/manifests/manifest_{pd,lgd}.csv
+    1. register              → output CreditPFN/general/manifests/manifest_{pd,lgd}.csv
     2. sanitize              → data/processed/{pd,lgd}/<id>.sanitized.csv
 
 Both stage modules are each callable on their own (``python -m

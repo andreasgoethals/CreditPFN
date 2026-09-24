@@ -13,9 +13,10 @@
 *.bin
 *.safetensors
 
-# Generated output, partitioned by experiment. Rebuilt from the finished campaign.
-/output/
+# Canonical generated output, partitioned by experiment.
 /output CreditPFN/
+# Historical output remains ignored; current writers use the name above.
+/output/
 /results/
 /logs/
 /.sentinels/

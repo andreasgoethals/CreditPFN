@@ -4,7 +4,7 @@ The training pipeline (``scripts/train_pipeline.py``) writes two
 kinds of artefacts that this module consumes:
 
 * **Per-trial epoch CSV** — one file per trial under
-  ``output/<experiment>/training/<track>/<descriptive_name>.csv`` with columns::
+  ``output CreditPFN/<experiment>/training/<track>/<descriptive_name>.csv`` with columns::
 
       epoch, train_loss, lr, metric_name,
       train_metric, test_metric, epoch_time_sec, elapsed_sec
@@ -13,7 +13,7 @@ kinds of artefacts that this module consumes:
   ``scripts/train_pipeline.py``.)
 
 * **Run manifest CSV** — one file per track at
-  ``output/<experiment>/manifests/<run_name>_<track>.csv``. Each row is one trial::
+  ``output CreditPFN/<experiment>/manifests/<run_name>_<track>.csv``. Each row is one trial::
 
       track, base_checkpoint, learning_rate, use_lora, seed,
       n_train_datasets, n_test_datasets,
@@ -345,7 +345,7 @@ def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
 
 
 def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
-    """Load every per-epoch CSV under ``output/<experiment>/training/<track>/``.
+    """Load every per-epoch CSV under ``output CreditPFN/<experiment>/training/<track>/``.
 
     Returns a dict keyed by the file stem (== descriptive_name).
     """

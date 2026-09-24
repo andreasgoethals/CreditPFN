@@ -1,11 +1,11 @@
 """Every path in the project. Two VSC tiers, one resolver, relative to the repository root.
 
 THE ONLY MODULE THAT BUILDS A PATH — everything else asks this one. A path assembled at a call
-site with `"output/" + name` is correct on a laptop and wrong on the cluster, and the failure
+site with `"output CreditPFN/" + name` is correct on a laptop and wrong on the cluster, and the failure
 shows up as a full quota or an empty results directory hours into a job.
 
         project storage  /lustre1/project/stg_00211/<Project>/  big files, allocation-specific quotas
-    personal data    $VSC_DATA/<Project>/                   repo + output/, backed up, 75 GiB
+    personal data    $VSC_DATA/<Project>/                   repo + output CreditPFN/, backed up, 75 GiB
     scratch          $VSC_SCRATCH/                          purged after 30 days of no ACCESS
 
 DATA has site-documented snapshots. Project storage quotas and backup policy are
@@ -28,7 +28,7 @@ from pathlib import Path
 
 #: Per-project folder names; overrides always name the enclosing project root.
 PROJECT_NAME = "CreditPFN"
-OUTPUT_DIR_NAME = "output"
+OUTPUT_DIR_NAME = "output CreditPFN"
 EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3")
 
 
@@ -144,14 +144,14 @@ def _under(root: Path, *parts: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# output/ — the single root for everything the code generates.
+# output CreditPFN/ — the single root for everything the code generates.
 # ---------------------------------------------------------------------------
 
 
 def outputs_dir() -> Path:
     """Root for live logs, metadata and figures; large outputs use project-tier helpers."""
     # PROJECT LAYER: routed through `resolve_output_path` so $CREDITPFN_OUTPUT_ROOT wins.
-    # Without this, `logs_dir()` and `resolve_output_path("output/logs")` could disagree.
+    # Without this, `logs_dir()` and `resolve_output_path("output CreditPFN/logs")` could disagree.
     return resolve_output_path(OUTPUT_DIR_NAME)
 
 
@@ -187,7 +187,7 @@ def training_dir(*parts: str, experiment: str | None = None) -> Path:
 
 
 def figures_dir(notebook: str | None = None) -> Path:
-    """`output/<experiment>/figures/`, or one notebook's own folder — a notebook clears its own before drawing
+    """`output CreditPFN/<experiment>/figures/`, or one notebook's own folder — a notebook clears its own before drawing
     and must not be able to reach another's."""
     group, name = notebook_parts(notebook) if notebook else ("general", Path())
     return outputs_dir() / group / "figures" / name

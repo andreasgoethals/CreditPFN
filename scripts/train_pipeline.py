@@ -3,7 +3,7 @@
 Shared configuration and grid logic lives in src.train.config; training math,
 sampling and checkpoint recovery live in src.train. This entry point prepares
 missing processed inputs, runs selected trials and records independent attempt
-and detailed histories under output/<experiment>/training/ on project storage.
+and detailed histories under output CreditPFN/<experiment>/training/ on project storage.
 Model weights use checkpoints/trained/<experiment>/.
 
 Examples (from the repository root):
@@ -554,7 +554,7 @@ def run(
     # ---- 3) per-trial training
     from src.train.loop import descriptive_name, train_one_config
 
-    # Per-epoch CSVs live in output/<experiment>/training/<track>/<descriptive_name>.csv
+    # Per-epoch CSVs live in output CreditPFN/<experiment>/training/<track>/<descriptive_name>.csv
     from src.utils.paths import training_dir
     epoch_csv_dir = training_dir(track)
     epoch_csv_dir.mkdir(parents=True, exist_ok=True)

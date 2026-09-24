@@ -124,6 +124,39 @@ def test_preflight_does_not_accept_a_base_from_an_unused_storage_root(tmp_path, 
     assert report.n_fail == 1
 
 
+@pytest.mark.parametrize("missing_panel", [False, True])
+def test_preflight_entry_point_checks_retention_and_reports_missing_inputs(monkeypatch, capsys, missing_panel):
+    """Exercise the CLI orchestration, where a missing import stopped every VSC workflow."""
+    import src.data.retention as retention
+    import src.utils.preflight as module
+
+    # Hardware, storage and the individual scientific checks have separate tests.
+    # Keep real config loading/grid expansion and the CLI's retention check here.
+    monkeypatch.setattr(module, "_resolved_roots", lambda: (None, {}))
+    for name in ("check_storage_layout", "check_launchers_pass_config", "check_name_collisions",
+                 "check_checkpoints", "check_step_budget", "check_train_eval_agree",
+                 "check_row_caps", "check_eval_caps", "check_l2sp_applies", "check_stale_knobs",
+                 "check_slurm", "check_data", "check_predictions_writer", "check_job_count",
+                 "check_packing_divides"):
+        monkeypatch.setattr(module, name, lambda *args: None)
+    calls = []
+
+    def load_refs(panel, track):
+        calls.append((panel, track))
+        if missing_panel:
+            raise FileNotFoundError("synthetic missing retention input")
+        return [NS(dataset_id="synthetic-retention")]
+
+    monkeypatch.setattr(retention, "load_refs", load_refs)
+    result = module.main(["--config", "config/experiment0/null_pd.yaml",
+                          "--config", "config/experiment0/pilot_lgd.yaml"])
+    assert calls == [("smoke", "pd"), ("research", "lgd")]
+    assert result == int(missing_panel)
+    output = capsys.readouterr().out
+    assert ("retention inputs unavailable" if missing_panel else
+            "verified non-credit monitoring tables") in output
+
+
 @pytest.mark.parametrize("job", ["maintenance", "eval_classical", "cluster_report",
                                 "train_pd", "train_lgd", "eval_pd", "eval_lgd",
                                 "data", "probe_row_cap"])
@@ -147,7 +180,7 @@ def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, jo
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="test-job"),
         capture_output=True, text=True)
     assert result.returncode == 17, result.stderr
-    logs = list((node / "CreditPFN/output/general/logs").glob("*.log"))
+    logs = list((node / "CreditPFN/output CreditPFN/general/logs").glob("*.log"))
     assert len(logs) == 1
     content = logs[0].read_text(encoding="utf-8")
     assert "synthetic activation failure" in content and "END exit_code=17" in content
@@ -178,7 +211,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
                  CREDITPFN_CONFIG="config/experiment0/null_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
                  SLURM_ARRAY_TASK_ID="0", FAIL_LOOKUP=failure), capture_output=True, text=True)
     assert result.returncode == 29, result.stderr
-    log = (node / "CreditPFN/output/experiment0/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
+    log = (node / "CreditPFN/output CreditPFN/experiment0/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
     assert "lookup failed" in log and "END exit_code=29" in log
     assert "UNEXPECTED_COMPUTE" not in log
 
@@ -203,8 +236,8 @@ def test_eval_wrapper_forwards_phase_partition_and_packing(tmp_path, track):
                  CREDITPFN_CONFIG=f"phase path/{track}.yaml", CREDITPFN_SPLIT_INDEX="3",
                  SLURM_ARRAY_TASK_ID="5", EVAL_TASKS="12"), capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    log = (node / f"CreditPFN/output/general/logs/eval_{track}_synthetic_r0.log").read_text(encoding="utf-8")
+    log = (node / f"CreditPFN/output CreditPFN/general/logs/eval_{track}_synthetic_r0.log").read_text(encoding="utf-8")
     assert f"ARG:--config\nARG:phase path/{track}.yaml" in log
     assert "ARG:--split-index\nARG:3" in log and "ARG:--task-index\nARG:5" in log
     assert "ARG:--tasks\nARG:12" in log and f"ARG:track={track}" in log
-    assert not (node / "CreditPFN/output/general/results").exists()
+    assert not (node / "CreditPFN/output CreditPFN/general/results").exists()

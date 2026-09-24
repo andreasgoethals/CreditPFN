@@ -1,7 +1,7 @@
-"""Per-task logging utility (one file per task, flat ``output/<experiment>/logs/`` dir).
+"""Per-task logging utility (one file per task, flat ``output CreditPFN/<experiment>/logs/`` dir).
 
 This is the project's filled-in version of the template's `logging_setup.py` slot: same
-role — one logger, console **and** `output/<experiment>/logs/` — with the two things this project needs
+role — one logger, console **and** `output CreditPFN/<experiment>/logs/` — with the two things this project needs
 on top, namely SLURM-array-aware filenames and a structured formatter. The template ships a
 minimal version; keeping both would be two modules configuring logging.
 
@@ -10,16 +10,16 @@ Naming convention
 Every task — one slurm job, one local script invocation — produces
 **exactly one** log file with the naming convention:
 
-    output/<experiment>/logs/<task>_<YYYYMMDD>_<HHMMSS>.log
+    output CreditPFN/<experiment>/logs/<task>_<YYYYMMDD>_<HHMMSS>.log
 
 where ``<task>`` is one of: ``data``, ``train_pd``, ``train_lgd``,
 ``eval_pd``, ``eval_lgd``, etc. Slurm tasks append the array IDs to
 the basename to keep array tasks distinct:
 
-    output/<experiment>/logs/train_pd_<YYYYMMDD>_<HHMMSS>_j<JOBID>_a<TASKID>.log
+    output CreditPFN/<experiment>/logs/train_pd_<YYYYMMDD>_<HHMMSS>_j<JOBID>_a<TASKID>.log
 
-The log file lives under ``$CREDITPFN_OUTPUT_ROOT/output/<experiment>/logs/`` (on VSC =
-``$VSC_DATA/CreditPFN/output/<experiment>/logs``, locally = the repo's ``output/<experiment>/logs/``).
+The log file lives under ``$CREDITPFN_OUTPUT_ROOT/output CreditPFN/<experiment>/logs/`` (on VSC =
+``$VSC_DATA/CreditPFN/output CreditPFN/<experiment>/logs``, locally = the repo's ``output CreditPFN/<experiment>/logs/``).
 
 Two callers
 -----------
@@ -56,9 +56,9 @@ from typing import Iterable
 
 from src.utils.paths import resolve_output_path
 
-#: Under `output/`, like everything else the code generates (11-08-2026 — logs used
-#: to land in `<output_root>/logs`, a second generated tree outside `output/`).
-DEFAULT_LOG_DIR = "output/logs"
+#: Under `output CreditPFN/`, like everything else the code generates (11-08-2026 — logs used
+#: to land in `<output_root>/logs`, a second generated tree outside `output CreditPFN/`).
+DEFAULT_LOG_DIR = "output CreditPFN/logs"
 
 # Detection: bash's `exec > $LOG 2>&1` in a slurm script means stdout
 # already lands in the log file. Adding a Python FileHandler on top
