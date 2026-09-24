@@ -58,13 +58,18 @@ fi
 if [[ "$STAGES" != train && "$STAGES" != eval && "$STAGES" != 'train eval' ]]; then
     echo 'STAGES must be train, eval, or "train eval"' >&2; exit 1
 fi
-if [[ -z "${DRY:-}" && "${META[5]}" == True ]]; then
-    python - "$CONFIG" <<'PYPLAN'
+if [[ "${META[5]}" == True ]]; then
+    if python - "$CONFIG" "$STAGES" <<'PYPLAN'
 import sys
 from pathlib import Path
 from src.utils.prepare_experiment import check_prepared
-check_prepared(Path(sys.argv[1]))
+check_prepared(Path(sys.argv[1]), stage="eval" if sys.argv[2] == "eval" else "train")
+print("Prepared-plan check passed.")
 PYPLAN
+    then :; else
+        [[ -n "${DRY:-}" ]] || exit 1
+        echo 'NOT READY: prepared-plan check failed; showing submission shape only.' >&2
+    fi
 fi
 
 hms() { printf '%d:%02d:00' $(( $1 / 60 )) $(( $1 % 60 )); }
@@ -139,13 +144,22 @@ wait_for_room() {
     done
 }
 submit_retry() {
-    local out rc
+    local out rc err_file errors
+    err_file=$(mktemp) || return 1
     while :; do
-        if out=$("$@" 2>&1); then echo "$out"; return 0; else rc=$?; fi
-        if [[ "$out" == *QOSMaxSubmitJobPerUserLimit* || "$out" == *'job submit limit'* ]]; then
+        if out=$("$@" 2>"$err_file"); then
+            cat "$err_file" >&2; rm -f -- "$err_file"
+            [[ "$out" =~ ^[0-9]+(\;[A-Za-z0-9_-]+)?$ ]] || {
+                echo "Invalid submission response: $out" >&2; return 1;
+            }
+            echo "$out"; return 0
+        else rc=$?; fi
+        errors=$(cat "$err_file")
+        if [[ "$out $errors" == *QOSMaxSubmitJobPerUserLimit* || "$out $errors" == *'job submit limit'* ]]; then
             echo 'Submission quota reached; waiting for room.' >&2; sleep 60; continue
         fi
-        echo "$out" >&2; return "$rc"
+        printf '%s\n%s\n' "$out" "$errors" >&2
+        rm -f -- "$err_file"; return "$rc"
     done
 }
 submit_array() {

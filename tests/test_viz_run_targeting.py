@@ -2,7 +2,7 @@
 
 Experiment 1 writes **per-split** artefacts — a manifest ``exp1_s00_pd.csv`` …
 ``exp1_s07_pd.csv`` per split, and eval CSVs named ``exp1_s<NN>_<ts>__task…`` — into
-the same ``output/`` tree that already holds run-8's single-run files. The notebooks call
+the same ``output CreditPFN/`` tree that already holds run-8's single-run files. The notebooks call
 ``training_viz.use_run('exp1')`` / ``eval_viz.use_run('exp1')`` so every loader sees exactly
 one run. These tests pin that contract: the training loader must **pool all splits** into one
 frame with a ``split`` column, and the eval loader must **keep only** the selected run's files.

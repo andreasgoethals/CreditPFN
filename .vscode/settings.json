@@ -32,7 +32,7 @@
   // the worst kind of difference, because interactive is where figures are iterated on.
   "jupyter.notebookFileRoot": "${workspaceFolder}",
 
-  // Never index or search these. tfm-library/ is a 749 MB read-only submodule; output/ is
+  // Never index or search these. tfm-library/ is a 749 MB read-only submodule; output CreditPFN/ is
   // regenerated. Searching them buries every real result.
   "files.exclude": {
     "**/__pycache__": true,
@@ -41,11 +41,11 @@
   },
   "search.exclude": {
     "tfm-library": true,
-    "output": true,
+    "output CreditPFN": true,
     "data": true,
     ".venv": true
   },
-  "python.analysis.exclude": ["tfm-library", "output", "data"],
+  "python.analysis.exclude": ["tfm-library", "output CreditPFN", "data"],
 
   // The submodule is READ-ONLY by rule. This makes the editor enforce what the rule asks,
   // so an accidental edit there is not even possible.

@@ -3,7 +3,7 @@
 Shared configuration and grid logic lives in src.train.config; training math,
 sampling and checkpoint recovery live in src.train. This entry point prepares
 missing processed inputs, runs selected trials and records independent attempt
-and epoch/trajectory files under output/manifests/. Model weights use checkpoints/.
+and epoch/trajectory files under output CreditPFN/manifests/. Model weights use checkpoints/.
 
 Examples (from the repository root):
     python scripts/train_pipeline.py --config config/experiment0_pd.yaml --list-trials
@@ -551,7 +551,7 @@ def run(
     # ---- 3) per-trial training
     from src.train.loop import descriptive_name, train_one_config
 
-    # Per-epoch CSVs live in output/manifests/epochs/<track>/<descriptive_name>.csv
+    # Per-epoch CSVs live in output CreditPFN/manifests/epochs/<track>/<descriptive_name>.csv
     epoch_csv_dir = manifests_dir() / "epochs" / track
     epoch_csv_dir.mkdir(parents=True, exist_ok=True)
 

@@ -188,7 +188,7 @@ _resolved_data_root=$(python -c "
 from omegaconf import OmegaConf
 from src.utils.paths import apply_data_source_from_cfg
 print(apply_data_source_from_cfg(OmegaConf.load('config/data.yaml')))
-" 2>/dev/null)
+") || { echo 'Could not resolve the configured data root.' >&2; return 1; }
 
 if [[ -n "${_resolved_data_root}" ]]; then
     export CREDITPFN_DATA_ROOT="${_resolved_data_root}"

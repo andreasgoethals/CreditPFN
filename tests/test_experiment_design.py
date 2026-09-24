@@ -75,8 +75,9 @@ def test_fingerprint_covers_scientific_changes_but_not_workers():
 
 
 @pytest.mark.parametrize("mode", ["one_sample", "full_pass", "accumulate"])
+@pytest.mark.parametrize("terminal_divergence", [False, True])
 def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
-        mode, synthetic_processed, tmp_path, monkeypatch):
+        mode, terminal_divergence, synthetic_processed, tmp_path, monkeypatch):
     import src.train.loop as loop
     import src.train.recovery as recovery
     snapshots = {}
@@ -113,7 +114,19 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
                   "trajectory_steps": [0, 3, 7], "recovery_every_updates": 3,
                   "numerical_stopping_only": True},
         "checkpoint": {"trained_dir": str(tmp_path / "weights")}})
-    expected = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "continuous.ckpt")
+    if terminal_divergence:
+        import src.train.optimization as optimization
+        original_step = optimization.step_mean_gradient
+        cfg.train.divergence_patience = 1
+        def fail_after_three(model, optimizer, scaler, **kwargs):
+            if optimizer.state and max(float(s.get("step", 0)) for s in optimizer.state.values()) >= 3:
+                optimizer.zero_grad(set_to_none=True)
+                return float("nan"), False
+            return original_step(model, optimizer, scaler, **kwargs)
+        monkeypatch.setattr(optimization, "step_mean_gradient", fail_after_three)
+    expected_trajectory = []
+    expected = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "continuous.ckpt",
+                                     on_trajectory_end=expected_trajectory.append)
     real_save = recovery.save_recovery
 
     def interrupt_after_three(*args, **kwargs):
@@ -128,9 +141,12 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     trajectory = []
     actual = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "resumed.ckpt",
                                   on_trajectory_end=trajectory.append)
-    assert actual.total_optimizer_steps == expected.total_optimizer_steps == 7
+    assert actual.total_optimizer_steps == expected.total_optimizer_steps
+    assert actual.diverged == expected.diverged == terminal_divergence
+    if not terminal_divergence:
+        assert actual.total_optimizer_steps == 7
     assert actual.rows_seen == expected.rows_seen
-    assert [r.successful_updates for r in trajectory] == [0, 3, 7]
+    assert [r.successful_updates for r in trajectory] == [r.successful_updates for r in expected_trajectory]
     assert all(torch.equal(snapshots["continuous.ckpt"][k], v)
                for k, v in snapshots["resumed.ckpt"].items())
     assert not (tmp_path / "resumed.ckpt.resume.pt").exists()

@@ -43,7 +43,7 @@ Raw data and weights are never committed. On VSC, project storage holds canonica
 
 Reusable Python logic belongs in `src/`; it does not import experiment entry points from `scripts/`. Utilities run as `python -m src.utils.<name>`. The stable `experiment0` and `experiment1` config names mean null controls and the main sweep; `pilot`, `budget_pilot`, `sampling` and `seeds` name the other phases.
 
-During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output/` at that final download.
+During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
 
 ## Local inspection and validation
 
@@ -57,7 +57,7 @@ Use the existing local environment. In PowerShell:
 
 The first command previews the design without training. A complete source corpus is required. Plans for actual VSC runs must be written in the VSC environment after the pilot decisions, because data, weights and package versions form part of the identity.
 
-Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
+Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output CreditPFN/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
 Notebooks use A4-sized PDF figures through `FigureSaver` and finish with a text summary. They handle missing results, retain failed attempts and prefer verified consolidated tables. The private display-name mapping must accompany private data when generating publication output.
 
@@ -71,4 +71,4 @@ This repository's code is MIT licensed. Dataset permissions and the individual f
 
 ## Based on the repository template
 
-The layout follows [Andreas' repository template](docs/TEMPLATE.md). Cluster/debugging logs live in `output/logs/`, configurations and figure metadata in `output/manifests/`, metrics in `output/results/`, and PDFs in `output/figures/<notebook>/`. Notebook stdout stays in the executed notebook; `All_Results.md` is rebuilt from its final summary cell, without a separate transcript. Model weights use the template's `checkpoints/` extension: locally in this repository, permanently on project storage on VSC. The user-requested local `archive/` is the deliberate additional folder; cleanup also removes trained weights when explicitly requested, while preserving original bases.
+The layout follows [Andreas' repository template](docs/TEMPLATE.md), with the user-requested output directory name `output CreditPFN/` replacing the template's `output/`. Cluster/debugging logs live in `output CreditPFN/logs/`, configurations and figure metadata in `output CreditPFN/manifests/`, metrics in `output CreditPFN/results/`, and PDFs in `output CreditPFN/figures/<notebook>/`. Notebook stdout stays in the executed notebook; `All_Results.md` is rebuilt from its final summary cell, without a separate transcript. Model weights use the template's `checkpoints/` extension: locally in this repository, permanently on project storage on VSC. The user-requested local `archive/` is the deliberate additional folder; cleanup also removes trained weights when explicitly requested, while preserving original bases.

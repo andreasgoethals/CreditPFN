@@ -18,12 +18,12 @@ def write_manifest(root):
 
 def test_snapshot_preserves_attempts_and_uses_latest_measurement(tmp_path, monkeypatch):
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
-    manifests = tmp_path / "output/manifests"
+    manifests = tmp_path / "output CreditPFN/manifests"
     write_manifest(manifests)
     before = (manifests / "exp1_s00_pd.csv").read_bytes()
     preview = consolidate("exp1")
     assert preview["counts"]["attempts_pd"] == 1
-    assert not (tmp_path / "output/consolidated").exists()
+    assert not (tmp_path / "output CreditPFN/consolidated").exists()
     result = consolidate("exp1", apply=True)
     snap = Path(result["snapshot"])
     assert result["rows"]["attempts_pd"] == 3
@@ -39,7 +39,7 @@ def test_snapshot_preserves_attempts_and_uses_latest_measurement(tmp_path, monke
 
 def test_missing_raw_history_cannot_replace_a_complete_snapshot(tmp_path, monkeypatch):
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
-    root = tmp_path / "output"
+    root = tmp_path / "output CreditPFN"
     epochs = root / "manifests/epochs/pd"
     epochs.mkdir(parents=True)
     csv = epochs / "exp1_s00_pd_base_lr1e-06_seed42_l2sp0.003.csv"

@@ -3,7 +3,7 @@
 Consumes the wide-format CSVs written by ``scripts/eval_pipeline.py``
 (via ``src.eval.benchmark.EvalRow``) at::
 
-    output/results/<TRACK>/<method-dirname>/<run>_<ts>[__ds-<id>].csv
+    output CreditPFN/results/<TRACK>/<method-dirname>/<run>_<ts>[__ds-<id>].csv
 
 Each row is one ``(model × dataset × fold)`` tuple with all metric
 columns side-by-side. We pool every CSV under one DataFrame, then
@@ -94,57 +94,33 @@ _CLASSICAL_BASELINES = {"xgboost", "catboost", "logreg", "linreg"}
 
 
 def _decode_method_dirname(d: str) -> dict:
-    """Unpack a method directory name into structured fields.
-
-    Returns
-    -------
-    dict with keys ``source``, ``base_short``, ``lr``, ``use_lora``,
-    where each is filled when the dirname encodes it.
-    """
+    """Decode the writer's tags without swallowing unknown tags into the base."""
+    meta = dict(source="unknown", base_short=d, lr=np.nan, use_lora=False,
+                full_pass=False, min_train_rows=0, l2sp_lambda=None,
+                adaptation_mode="full", epoch_pass_mode="one_sample")
     if d in _CLASSICAL_BASELINES:
-        return {"source": "baseline", "base_short": d, "lr": np.nan,
-                "use_lora": False, "full_pass": False, "min_train_rows": 0, "l2sp_lambda": None}
-    m_src = re.match(r"^(?P<src>(?:tabpfn|tabicl)-(?:untuned|trained))__", d)
-    if m_src and m_src["src"].endswith("-untuned"):
-        return {"source": m_src["src"],
-                "base_short": d.removeprefix(m_src["src"] + "__"),
-                "lr": np.nan, "use_lora": False, "full_pass": False,
-                "min_train_rows": 0, "l2sp_lambda": None}
-    if m_src:   # <family>-trained
-        rest = d.removeprefix(m_src["src"] + "__")
-        # Dirname layout:
-        #   <base>[__lr<lr>][__fullpass][__min<rows>][__lora|__iclhead]
-        # Tags are stripped BACK-TO-FRONT, so every tag has to be known here: an
-        # unrecognised one is absorbed into `base_short` and takes the learning rate
-        # with it, which mis-groups every figure instead of failing. (`__iclhead` is
-        # the tabicl family's freeze-backbone rendering of the use_lora axis;
-        # `__min<rows>` is the corpus-size arm swept since run-8.)
-        lora = rest.endswith(("__lora", "__iclhead"))
-        rest = rest.removesuffix("__lora").removesuffix("__iclhead")
-        # Anchor strength, swept from run-9. Stripped BEFORE `__min` because
-        # `_method_dirname` writes it after: ...__min5000__l2sp0.003__lora.
-        m_l2 = re.search(r"__l2sp([0-9.eE+-]+)$", rest)
-        l2sp_lambda = float(m_l2.group(1)) if m_l2 else None
-        if m_l2:
-            rest = rest[: m_l2.start()]
-        m_rows = re.search(r"__min(\d+)$", rest)
-        min_train_rows = int(m_rows.group(1)) if m_rows else 0
-        if m_rows:
-            rest = rest[: m_rows.start()]
-        full_pass = rest.endswith("__fullpass")
-        rest = rest.removesuffix("__fullpass")
-        m = re.search(r"__lr([0-9eE.+\-]+)$", rest)
-        if m:
-            lr = float(m.group(1))
-            base = rest[: m.start()]
+        return dict(meta, source="baseline")
+    match = re.match(r"^((?:tabpfn|tabicl)-(?:untuned|trained))__(.*)$", d)
+    if not match:
+        return meta
+    source, rest = match.groups()
+    parts = rest.split("__")
+    meta.update(source=source, base_short=parts[0])
+    for tag in parts[1:]:
+        if tag in {"frozen", "lora", "iclhead"}:
+            meta.update(use_lora=True, adaptation_mode="frozen_backbone" if tag == "frozen" else "legacy_adapter")
+        elif tag in {"fullpass", "accumulate"}:
+            meta["epoch_pass_mode"] = "full_pass" if tag == "fullpass" else "accumulate"
+            meta["full_pass"] = tag == "fullpass"
+        elif tag.startswith("l2sp"):
+            meta["l2sp_lambda"] = float(tag[4:])
+        elif tag.startswith("lr"):
+            meta["lr"] = float(tag[2:])
+        elif tag.startswith("min"):
+            meta["min_train_rows"] = int(tag[3:])
         else:
-            lr = np.nan
-            base = rest
-        return {"source": m_src["src"], "base_short": base, "lr": lr,
-                "use_lora": lora, "full_pass": full_pass,
-                "min_train_rows": min_train_rows, "l2sp_lambda": l2sp_lambda}
-    return {"source": "unknown", "base_short": d, "lr": np.nan,
-            "use_lora": False, "full_pass": False, "min_train_rows": 0, "l2sp_lambda": None}
+            raise ValueError(f"Unknown evaluation method tag: {tag!r}")
+    return meta
 
 
 def human_method_name(row: pd.Series) -> str:
@@ -157,19 +133,10 @@ def human_method_name(row: pd.Series) -> str:
         return f"untuned ({base})"
     if src.endswith("-trained"):
         lr = row.get("lr", np.nan)
-        # ONE label for the frozen arm, both families. Since 25-08-2026 `use_lora` selects the
-        # same operation everywhere — freeze the repeated-block transformer stack, train the
-        # embedders and head (src/train/freeze.py) — so labelling it "·LoRA" for TabPFN and
-        # "·ICLhead" for TabICLv2 would put one scheme in two rows of every figure, under a
-        # name (LoRA) for a technique this project no longer uses. The on-disk filename tags
-        # still differ (`__lora` / `__iclhead`); `_method_series_name` already collapses both
-        # to one boolean, and the manifest's `use_lora` column is the ground truth.
-        adapt = " ·frozen" if row.get("use_lora") else ""
-        fp = " ·fullpass" if row.get("full_pass") else ""
-        # The corpus arm MUST appear: without it the filtered and unfiltered runs of the
-        # same (base, lr) share a label, and every figure that groups by this name averages
-        # them together. `·fullpass` is dropped when it is the only mode present, since a
-        # constant tag on every bar is noise — see `compact_method_names`.
+        mode = row.get("adaptation_mode", "frozen_backbone" if row.get("use_lora") else "full")
+        adapt = " ·frozen" if mode == "frozen_backbone" else (" ·legacy adapter" if mode == "legacy_adapter" else "")
+        sampling = row.get("epoch_pass_mode", "full_pass" if row.get("full_pass") else "one_sample")
+        fp = "" if sampling == "one_sample" else f" ·{sampling}"
         mtr = row.get("min_train_rows", 0)
         arm = f" ·min{int(mtr) // 1000}k" if mtr and np.isfinite(mtr) else ""
         # Anchor strength, for the same reason the corpus arm is here: two trials that differ
@@ -190,7 +157,7 @@ def human_method_name(row: pd.Series) -> str:
 #: Restrict :func:`load_eval_results` to one run's result files. Eval writes
 #: ``<run>_<ts>__task<k>_ds-<id>.csv`` (run is per-split, e.g. ``exp1_s03``), so a run is selected
 #: by the ``<run>_`` filename prefix. A notebook sets ``eval_viz.use_run("exp1")`` so run-8's old
-#: results in the same ``output/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
+#: results in the same ``output CreditPFN/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
 #: same for scripts. ``None`` (the default) pools everything, preserving the previous behaviour.
 _RUN_OVERRIDE: str | None = None
 
@@ -252,6 +219,8 @@ def load_eval_results(track: str) -> pd.DataFrame:
         # averaged one_sample and full_pass rows of the same (base, lr)
         # into one point. Decoded explicitly since 2026-08-04.
         df["full_pass"] = meta["full_pass"]
+        df["adaptation_mode"] = meta["adaptation_mode"]
+        df["epoch_pass_mode"] = meta["epoch_pass_mode"]
         # ``min_train_rows`` is the run-8 corpus arm. It was decoded but never copied onto
         # the frame, so `human_method_name` could not see it and the two arms of every swept
         # (base, lr) pair collapsed to ONE label — 21 PD models showed as 14 rows, silently
@@ -290,7 +259,8 @@ def load_eval_results(track: str) -> pd.DataFrame:
     from src.data.dataset_names import display_name
     if "test_dataset_id" in full.columns:
         full["test_dataset_id"] = full["test_dataset_id"].map(display_name)
-    return full
+    from src.data.dataset_names import display_frame
+    return display_frame(full)
 
 
 #: Tags `human_method_name` can append. Any of them carried by EVERY trained method in the
@@ -718,25 +688,8 @@ def plot_trained_vs_untuned(
     df = _ok(load_eval_results(track))
     if df.empty or metric not in df.columns:
         return _no_data_fig(f"no results / metric={metric!r}")
-    # base_short encodes the family (``v3-default`` vs ``tabicl-v2``), so
-    # merging on it keeps the trained-vs-untuned comparison within-family.
-    untuned = (
-        df[df["source"].str.endswith("-untuned")]
-        .groupby(["base_short", "test_dataset_id"])[metric]
-        .mean()
-        .rename("untuned")
-        .reset_index()
-    )
-    trained = (
-        df[df["source"].str.endswith("-trained")]
-        .groupby(["base_short", "test_dataset_id", "lr", "use_lora", "full_pass"])[metric]
-        .mean()
-        .rename("trained")
-        .reset_index()
-    )
-    if untuned.empty or trained.empty:
-        return _no_data_fig("need both trained AND untuned rows")
-    merged = trained.merge(untuned, on=["base_short", "test_dataset_id"], how="inner")
+    from src.visualize.paper_figures import paired_deltas
+    merged = paired_deltas(df, metric)
     if merged.empty:
         return _no_data_fig("no shared base × dataset between trained / untuned")
 
@@ -800,7 +753,7 @@ def plot_fold_stability(track: str, *, metric: str | None = None):
 
 
 def plot_time_vs_metric(track: str, *, metric: str | None = None):
-    """Per-row inference time (x) vs metric (y), coloured by method.
+    """Original evaluation cost per fold (including fitting/HPO), coloured by method.
 
     Sanity check that "the best model" isn't 100× slower than the runner-up.
     """
@@ -808,8 +761,16 @@ def plot_time_vs_metric(track: str, *, metric: str | None = None):
     df = _ok(load_eval_results(track))
     if df.empty or metric not in df.columns or "elapsed_sec" not in df.columns:
         return _no_data_fig(f"no results / missing column")
+    df = df.copy()
+    cached = pd.to_numeric(df.get("cached_elapsed_sec", pd.Series(np.nan, index=df.index)), errors="coerce")
+    df["evaluation_seconds"] = pd.to_numeric(df["elapsed_sec"], errors="coerce")
+    hit = df.get("cache_hit", pd.Series(False, index=df.index)).astype(str).str.lower().isin(["true", "1"])
+    df.loc[hit, "evaluation_seconds"] = cached[hit]
+    df = df[df["evaluation_seconds"].gt(0)]
+    if df.empty:
+        return _no_data_fig("no positive evaluation timings")
     fig, ax = _new_fig(
-        f"Inference time vs {metric}",
+        f"Evaluation time vs {metric}",
         figsize=style.figsize(style.WIDTH_FULL, ratio=0.611),
     )
     methods = sorted(df["method_name"].unique())
@@ -817,12 +778,12 @@ def plot_time_vs_metric(track: str, *, metric: str | None = None):
     for m in methods:
         sub = df[df["method_name"] == m]
         ax.scatter(
-            sub["elapsed_sec"], sub[metric],
+            sub["evaluation_seconds"], sub[metric],
             color=palette[m], alpha=0.7, s=30,
             edgecolor="black", linewidth=0.3, label=m,
         )
     ax.set_xscale("log")
-    ax.set_xlabel("elapsed seconds (per fold)")
+    ax.set_xlabel("evaluation seconds per fold (original cost)")
     ax.set_ylabel(metric)
     ax.legend(loc="best", fontsize=7, ncol=2)
     return fig
@@ -1023,7 +984,8 @@ def failed_pairs(track: str) -> pd.DataFrame:
         "method_name", "test_dataset_id", "fold_idx",
         "status", "error", "elapsed_sec", "source_file",
     ) if c in df.columns]
-    return df[df.get("status", "OK") != "OK"][cols].reset_index(drop=True)
+    from src.data.dataset_names import display_frame
+    return display_frame(df[df.get("status", "OK") != "OK"][cols].reset_index(drop=True))
 
 
 def eval_leaderboard(track: str, *, metric: str | None = None) -> pd.DataFrame:

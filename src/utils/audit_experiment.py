@@ -19,14 +19,42 @@ from src.utils.paths import manifests_dir, resolve_base_checkpoint, resolve_stag
 from src.utils.prepare_experiment import plan_path
 
 
-def compare_states(base: Path, trained: Path) -> dict:
+def _inference_state(path: Path, track: str | None) -> dict:
+    """Load TabPFN's canonical representation, including inference criterion buffers.
+
+    Upstream converts legacy v2 attention/MLP keys and constructs v3 criterion
+    borders at load time. Serialized key names alone cannot establish parity.
+    losses_per_bucket is a loss diagnostic updated by criterion.forward, not an
+    inference parameter; every other buffer, including borders, remains checked.
+    """
     import torch
-    # These are the trusted, explicitly configured upstream/project checkpoint files.
-    before = torch.load(base, map_location="cpu", weights_only=False)["state_dict"]
-    after = torch.load(trained, map_location="cpu", weights_only=False)["state_dict"]
+    if track is None:
+        return torch.load(path, map_location="cpu", weights_only=False)["state_dict"]
+    from tabpfn.base import load_model_criterion_config
+    from src.train.model import _infer_version
+    import inspect
+    parameters = inspect.signature(load_model_criterion_config).parameters
+    options = {"estimator_type" if "estimator_type" in parameters else "which":
+               "classifier" if track == "pd" else "regressor",
+               "download_if_not_exists" if "download_if_not_exists" in parameters else "download": False}
+    models, criterion, *_ = load_model_criterion_config(model_path=path,
+        check_bar_distribution_criterion=False, cache_trainset_representation=False,
+        version=_infer_version(path), **options)
+    model = models[0] if isinstance(models, (list, tuple)) else models
+    state = {f"model.{key}": value for key, value in model.state_dict().items()}
+    if criterion is not None:
+        state.update({f"criterion.{key}": value for key, value in criterion.state_dict().items()
+                      if key != "losses_per_bucket"})
+    return state
+
+
+def compare_states(base: Path, trained: Path, *, tabpfn_track: str | None = None) -> dict:
+    import torch
+    before = _inference_state(base, tabpfn_track)
+    after = _inference_state(trained, tabpfn_track)
     missing, added = sorted(before.keys() - after.keys()), sorted(after.keys() - before.keys())
-    changed = [k for k in before.keys() & after.keys()
-               if before[k].shape != after[k].shape or not torch.equal(before[k], after[k])]
+    changed = sorted(k for k in before.keys() & after.keys()
+                     if before[k].shape != after[k].shape or not torch.equal(before[k], after[k]))
     return {"equal": not (missing or added or changed), "missing": missing, "added": added, "changed": changed}
 
 
@@ -79,7 +107,8 @@ def audit(config: Path, *, null=False) -> dict:
             if null:
                 if lr != 0:
                     raise ValueError("--null requires a zero-learning-rate configuration")
-                state = compare_states(resolve_base_checkpoint(base), path)
+                state = compare_states(resolve_base_checkpoint(base), path,
+                    tabpfn_track=str(cfg.track) if "tabpfn-" in Path(base).name.lower() else None)
                 row.update(null_state=state, null_monitor_equal=null_monitor_parity(frame))
                 if not state["equal"] or not row["null_monitor_equal"]:
                     report["problems"].append(f"{name}: zero-LR state or monitor parity failed")

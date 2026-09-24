@@ -19,10 +19,34 @@ Confirmed cluster jobs and the next outstanding gate are recorded in [AGENTS_MEM
 
 Logs caused most of the byte pressure. Three sampled large local logs each contained 53,130 copies of the same scikit-learn deprecation warning, plus thousands of nonfinite-loss warnings. The known deprecation is filtered in the parent and spawned workers. Numerical warnings retain their first diagnostic, logarithmically spaced count summaries and final segment totals; exact skip totals remain in epoch records. Other warnings, fatal errors and tracebacks remain visible. Thread pools are capped and per-step logging is less frequent. Concurrent jobs retain independent shards; consolidation happens after writers stop. The modern launcher refuses to fall back to DATA for large weights when project storage is unwritable.
 
+### Rename an existing output tree
+
+`output CreditPFN/` is an explicit project override of the generic template's `output/` name. Keep the `CREDITPFN_OUTPUT_ROOT` and `CREDITPFN_STAGING_ROOT` variables pointing at the **CreditPFN project roots**, not at this subdirectory. Model weights remain in `checkpoints/`, on project storage on VSC.
+
+With CreditPFN writers stopped, commit/push locally and pull on VSC. Git moves the tracked summary files; ignored logs/manifests/results need migration on both tiers. Preview the merge:
+
+```bash
+sbatch --time=00:10:00 scripts/slurm/maintenance.slurm migrate-output
+```
+
+After the preview succeeds, apply it:
+
+```bash
+sbatch --time=00:10:00 scripts/slurm/maintenance.slurm migrate-output --apply
+```
+
+Read each maintenance log under `output CreditPFN/logs/` and wait for exit 0 before the next step. The migration moves within each tier, checks identical duplicates before removing them, and refuses different contents sharing a destination. It is safe to rerun after interruption. Data, weights and Downloads are outside its scope. Legacy relative configuration paths beginning with `output/` resolve to the new name; explicit absolute paths retain their meaning and must be updated by their owner.
+
+### Identity and null-audit semantics
+
+Training identities cover training/data sources, shared numerical metrics and runtime dependencies. Evaluation code, consolidation, plotting and other maintenance changes do not invalidate training. Changes to actual training logic or scientific settings still require a new named plan. Evaluation checks the original plan against each trained checkpoint's provenance and uses a separate code/environment fingerprint, including classical learners and HPO, to invalidate stale cached scores. A dry submission reports a failed plan check even while showing the proposed submission shape.
+
+The zero-LR audit loads both TabPFN checkpoints through the installed upstream loader before comparing tensors. Legacy v2 serialized names convert to a newer architecture; v3 regression borders may originate in the model instead of a separate criterion. All loaded model tensors and inference criterion buffers, including borders, must match exactly. Only `criterion.losses_per_bucket`, an accumulated training-loss diagnostic, is excluded. The per-dataset monitoring comparison remains required. Format conversion alone is not evidence of changed weights.
+
 ### Output layout
 
 ```text
-DATA/CreditPFN/output/
+DATA/CreditPFN/output CreditPFN/
   logs/*.log                          cluster and retained debugging logs
   manifests/<run>_sNN_<track>.csv       attempt records, retained for eval/resume
   manifests/plans/<run>_<track>.json   immutable identities and partitions
@@ -41,9 +65,9 @@ PROJECT/CreditPFN/
     <trial>.ckpt
     <trial>.ckpt.provenance.json       completion marker and effective identity
     <trial>.ckpt.resume.pt             latest optimizer/RNG/cursor state
-  output/results/<PD|LGD>/<method>/    final fold metrics and identity sidecars
-  output/evaluation_cache/             reusable controls
-  output/consolidated/<run>/
+  output CreditPFN/results/<PD|LGD>/<method>/    final fold metrics and identity sidecars
+  output CreditPFN/evaluation_cache/             reusable controls
+  output CreditPFN/consolidated/<run>/
     LATEST.json
     <timestamp-id>/
       inventory.json
@@ -55,11 +79,11 @@ PROJECT/CreditPFN/
 
 Local paths default to the repository. Consolidation writes eight compressed CSVs plus inventory into a new immutable snapshot and atomically publishes LATEST. It verifies source/readback checksums. Do not accumulate unbounded snapshots. After removing raw histories, restore them from a saved copy before reconsolidating that run; incomplete replacement is deliberately refused. A clean new run needs none of the old snapshots.
 
-During debugging, keep cluster output on VSC and share the relevant log text. Files downloaded for inspection stay where the user put them; do not import them into local `output/` or create extra inspection manifests. The final campaign download combines DATA's logs/manifests and project's results/consolidated tables under local `output/`. Downloading only DATA's output folder does not include project results. Notebook execution is a local analysis step: stdout is already in `.ipynb`, and `All_Results.md` reads the final summary cell. No notebook logs or locks are generated. The small `manifests/figures/*.json` files record PDF captions and order, as required by FigureSaver; scheduler locks exist only for cluster submission coordination.
+During debugging, keep cluster output on VSC and share the relevant log text. Files downloaded for inspection stay where the user put them; do not import them into local `output CreditPFN/` or create extra inspection manifests. The final campaign download combines DATA's logs/manifests and project's results/consolidated tables under local `output CreditPFN/`. Downloading only DATA's output folder does not include project results. Notebook execution is a local analysis step: stdout is already in `.ipynb`, and `All_Results.md` reads the final summary cell. No notebook logs or locks are generated. The small `manifests/figures/*.json` files record PDF captions and order, as required by FigureSaver; scheduler locks exist only for cluster submission coordination.
 
-All Slurm jobs use `output/logs/<task>_<job-id>_r<restart>.log` (for example `maintenance_62111400_r0.log`); environment activation errors and final exit status go into that same file. Direct `sbatch` works even when `output/logs/` did not exist at submission: the batch shell creates the directory before opening its log. A maintenance cleanup preserves its own active log. The retired default-grid launcher and root-level completion markers are no longer used; use `run_experiment.sh` with an explicit phase config. `checkpoints/` and `data/processed/` are explicit template extensions, not misplaced logs/results.
+All Slurm jobs use `output CreditPFN/logs/<task>_<job-id>_r<restart>.log` (for example `maintenance_62111400_r0.log`); environment activation errors and final exit status go into that same file. Direct `sbatch` works even when `output CreditPFN/logs/` did not exist at submission: the batch shell creates the directory before opening its log. A maintenance cleanup preserves its own active log. The retired default-grid launcher and root-level completion markers are no longer used; use `run_experiment.sh` with an explicit phase config. `checkpoints/` and `data/processed/` are explicit template extensions, not misplaced logs/results.
 
-Only final weights and the latest recovery state persist. Recovery is removed after successful final publication. Intermediate trajectory weights are transient. Corpus schema/count inspection is cached per unchanged file within each process, and plan generation reuses resolved partitions across recipes. New configs disable raw prediction arrays while keeping computed metrics/calibration diagnostics. Enable predictions only for a separately named diagnostic evaluation with its own storage budget.
+Only final weights and the latest recovery state persist. Recovery is removed after final publication, including a terminal divergent outcome. Intermediate trajectory weights are transient. Corpus schema/count inspection is cached per unchanged file within each process, and plan generation reuses resolved partitions across recipes. New configs disable raw prediction arrays while keeping computed metrics/calibration diagnostics. Enable predictions only for a separately named diagnostic evaluation with its own storage budget.
 
 ## Update and inspect
 
@@ -112,7 +136,7 @@ sbatch --time=00:10:00 scripts/slurm/maintenance.slurm clean --clean
 
 This clears old logs, manifests/plans, results, compact snapshots, evaluation caches, trained weights/recovery states and old submission state, while preserving the cleanup job's active log. It preserves raw data, processed tables and original base weights. Do not add `--processed` for a model-only restart. Do not use full cleanup once new work has started: it is deliberately a complete reset, not a per-run selector. The utility refuses symlinks/junctions and validates every target tree before deletion.
 
-The new output structure is created by the jobs. Stage inputs and prepare new plans only after cleanup finishes. Keep the local legacy folder outside active `output/` so notebooks show the new experiment alone.
+The new output structure is created by the jobs. Stage inputs and prepare new plans only after cleanup finishes. Keep the local legacy folder outside active `output CreditPFN/` so notebooks show the new experiment alone.
 
 ## Stage inputs, null controls and pilots
 
@@ -144,7 +168,7 @@ for track in pd lgd; do
 done
 ```
 
-Wait for the plans. They are immutable: changed settings/code/data/environment require a fresh named plan, not overwriting an active one. The config's `run_name` identifies its immutable plan; use a new name whenever source changes after preparation. No input restaging is required for an output/launcher-only fix. The launcher checks plan integrity, configuration, source and package versions before submitting any jobs. A full read-only verification, including input hashes, is available on a CPU node:
+Wait for the plans. They are immutable: changes to training settings, training sources, input bytes or the training environment require a fresh named plan. Evaluation and maintenance fixes have separate identities and do not invalidate training. No input restaging is required for a change confined to output routing or submission. The launcher checks the relevant plan before submitting any jobs, and dry previews report that check too. A full read-only verification, including input hashes, is available on a CPU node:
 
 ```bash
 sbatch --time=00:15:00 scripts/slurm/maintenance.slurm prepare --config config/experiment0_pd.yaml --check
@@ -230,7 +254,7 @@ sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_sampling_v4 --apply
 sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_seeds_v4 --apply
 ```
 
-Once the campaign is complete, the user downloads the contents of both cluster output folders into the same local `output/`: DATA supplies logs/manifests; project storage supplies results, evaluation caches and consolidated tables. For analysis alone, the compact `output/consolidated/<run>` directories, including LATEST and the referenced snapshot, are sufficient. Do not import a debug download during an active campaign. Project storage is accessible in the same WinSCP/SFTP session at `/lustre1/project/stg_00211/CreditPFN/output`; no intermediate DATA copy is necessary. Keep final weights on project storage unless needed locally. In PowerShell, set `$env:CREDITPFN_VIZ_RUN = 'cpt_main_v4'`, then run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
+Once the campaign is complete, the user downloads the contents of both cluster output folders into the same local `output CreditPFN/`: DATA supplies logs/manifests; project storage supplies results, evaluation caches and consolidated tables. For analysis alone, the compact `output CreditPFN/consolidated/<run>` directories, including LATEST and the referenced snapshot, are sufficient. Do not import a debug download during an active campaign. Project storage is accessible in the same WinSCP/SFTP session at `/lustre1/project/stg_00211/CreditPFN/output CreditPFN`; no intermediate DATA copy is necessary. Keep final weights on project storage unless needed locally. In PowerShell, set `$env:CREDITPFN_VIZ_RUN = 'cpt_main_v4'`, then run `.\.venv\Scripts\python.exe -m src.utils.run_notebooks`. Exploration requires local data; training/results plots use compact tables. Keep the private-name mapping with the private-data checkout.
 
 Download completed new results and retain the final new weights needed for the ongoing study. Historical records from previous experiments do not need to occupy VSC storage. Full cleanup deletes every phase, so use it only when deliberately retiring the whole campaign.
 
@@ -239,7 +263,7 @@ Download completed new results and retain the final new weights needed for the o
 - Identity mismatch: check environment, code, inputs and plan. Do not bypass the guard.
 - Exit 75 / INTERRUPTED: resume the same trial; inspect restart count if automatic requeue stopped.
 - DIVERGED: report the numerical outcome; do not repeatedly rerun until success.
-- Scheduler `pending_submission`: the response was uncertain. Reconcile squeue with `output/manifests/scheduler/pool-<cluster>.json` before another submission. Never delete active pool state.
+- Scheduler `pending_submission`: the response was uncertain. Reconcile squeue with `output CreditPFN/manifests/scheduler/pool-<cluster>.json` before another submission. Never delete active pool state.
 - Unwritable project storage: fix the mount/permissions; do not fill DATA with weights.
 - OOM/cuDNN failure: preserve the log and use a separately named capacity/kernel probe before revising the protocol.
 - Import failure: inspect the printed environment and compatibility smoke tests; do not install packages in a GPU job.

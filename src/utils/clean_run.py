@@ -5,9 +5,9 @@
     python -m src.utils.clean_run --clean --processed       ...and the data/processed cache too
     python -m src.utils.clean_run --clean --stages eval     only what the eval stage produced
 
-Clears `output/` on both storage tiers, preserving a maintenance job's active log — so
+Clears `output CreditPFN/` on both storage tiers, preserving a maintenance job's active log — so
 one invocation is enough whether you are on a laptop or on the cluster. Off-cluster both tiers
-collapse into the repository and it is simply `output/`.
+collapse into the repository and it is simply `output CreditPFN/`.
 
 `--processed` additionally clears `data/processed/`, the preprocessing cache. It is separate
 because rebuilding that cache can cost far more than re-running the notebooks, so "clean the last
@@ -20,7 +20,7 @@ NEVER TOUCHES `data/raw/`, original base weights, or `tfm-library/`.
 Trained weights ARE removed by a full clean. Stop all experiment writers first;
 download any historical output you want to keep before using `--clean`.
 
-CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output/`:
+CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output CreditPFN/`:
 
   * `checkpoints/trained/` on **both** tiers. Trained checkpoints normally go to project
     storage, but `resolve_writable_staging_path` falls back to `$VSC_DATA` when staging is
@@ -29,7 +29,7 @@ CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `ou
     contaminated the 10-07-2026 rerun: 59 of 64 trials silently reused stale checkpoints.
     Base `checkpoints/*.ckpt` are never touched — only the `trained/` subtree.
   * Legacy `.sentinels/`, if present. The named launcher uses Slurm dependencies and
-    writes its submission state under `output/manifests/`; no new sentinels are created.
+    writes its submission state under `output CreditPFN/manifests/`; no new sentinels are created.
 
 `--stages data,train,eval` narrows the wipe to what one stage produced, which is what you
 want when only the last stage needs redoing — re-running eval is minutes, re-running the
@@ -73,8 +73,8 @@ def is_safe(root: Path) -> bool:
 
 
 #: What each pipeline stage puts on disk, as (glob-root, patterns). A stage's targets are
-#: files, not directories, because the three stages share directories: `output/logs/` holds
-#: all three stages' logs and `output/manifests/` holds both the data manifests and the
+#: files, not directories, because the three stages share directories: `output CreditPFN/logs/` holds
+#: all three stages' logs and `output CreditPFN/manifests/` holds both the data manifests and the
 #: training ones. Wiping by directory would take another stage's work with it.
 STAGES = ("data", "train", "eval")
 
@@ -100,7 +100,7 @@ def stage_targets(stage: str) -> list[Path]:
         found += list(logs.glob("train_*.log"))
     else:                                                       # eval
         found += list(results_dir().glob("**/*"))
-        found += list(resolve_staging_path("output/evaluation_cache").glob("**/*"))
+        found += list(resolve_staging_path("output CreditPFN/evaluation_cache").glob("**/*"))
         found += list((out_root / "figures").glob("**/*"))
         found += list((out_root / "manifests" / "figures").glob("*.json"))
         found += list(logs.glob("notebook_*.log"))
@@ -109,13 +109,13 @@ def stage_targets(stage: str) -> list[Path]:
 
 
 def roots(*, processed: bool = False) -> list[Path]:
-    """Every tree to clear. Two `output/` roots on the cluster, one locally, plus the cache.
+    """Every tree to clear. Two `output CreditPFN/` roots on the cluster, one locally, plus the cache.
 
     Project storage also holds consolidated tables, reusable evaluation caches and
-    any legacy archives. Clear its WHOLE output tree, not only output/results.
+    any legacy archives. Clear its WHOLE output tree, not only output CreditPFN/results.
     """
     found = [outputs_dir()]
-    project_output = resolve_staging_path("output")
+    project_output = resolve_staging_path("output CreditPFN")
     if not project_output.is_relative_to(found[0]):
         found.append(project_output)
     # CreditPFN: trained weights on project storage AND the $VSC_DATA fallback, plus the
@@ -162,7 +162,7 @@ def wipe(root: Path, *, keep_paths: frozenset[Path] = frozenset()) -> int:
     Two passes, and the order matters: files first, then empty directories bottom-up. That leaves
     exactly the directories holding a tracked `.gitkeep` and removes the per-run ones
     (`figures/<notebook>/`) that do not. An `rmtree` of the subtree would take
-    `output/figures/.gitkeep` with it, and the next clone would have nowhere to write.
+    `output CreditPFN/figures/.gitkeep` with it, and the next clone would have nowhere to write.
     """
     validate_tree(root)
     if not root.is_dir():
@@ -189,7 +189,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stages", default=None,
                         help="comma-separated subset of " + ",".join(STAGES) +
                              " — clear only what those stages produced, instead of the "
-                             "whole output/ tree")
+                             "whole output CreditPFN/ tree")
     args = parser.parse_args(argv)
 
     # Unlinking a running job's stdout on Linux loses the cleanup report itself.
@@ -199,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
     if active_log:
         path = Path(active_log).resolve()
         if path.parent != (outputs_dir() / "logs").resolve() or path.suffix != ".log":
-            parser.error("CREDITPFN_ACTIVE_LOG must name a .log directly inside output/logs")
+            parser.error("CREDITPFN_ACTIVE_LOG must name a .log directly inside output CreditPFN/logs")
         keep_paths = frozenset({path})
         print(f"Preserving active maintenance log: {path}")
 

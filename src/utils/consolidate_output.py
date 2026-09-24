@@ -96,6 +96,14 @@ def latest_trials(attempts: pd.DataFrame) -> pd.DataFrame:
                        "min_train_rows", "l2sp_lambda") if k in df]
     df["attempt_count"] = df.groupby(keys, dropna=False)["source_row"].transform("size")
     df["_skip"] = df["status"].eq("SKIP")
+    # The legacy resume writer also emitted an empty DIVERGED row when it found
+    # a terminal divergent checkpoint. Keep the measured failure it refers to.
+    if "elapsed_sec" in df:
+        empty_resume = df["status"].eq("DIVERGED") & pd.to_numeric(df["elapsed_sec"], errors="coerce").eq(0)
+        for column in ("train_loss", "test_metric", "init_test_metric", "final_train_loss", "final_test_metric"):
+            if column in df:
+                empty_resume &= df[column].isna()
+        df["_skip"] |= empty_resume
     df = df.sort_values(["_skip", "source_row"], ascending=[False, True])
     df = df.drop_duplicates(keys, keep="last").drop(columns="_skip")
     df["evidence_status"] = "recorded_only"

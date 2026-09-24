@@ -93,7 +93,7 @@ def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
 
     # Metadata from CODE (DATASET_METADATA), not a manifest file — see
     # src.train.corpus.build_dataset_pool for why. Categoricals are detected from the CSV we are
-    # already loading, so nothing under output/ is needed to score a dataset.
+    # already loading, so nothing under output CreditPFN/ is needed to score a dataset.
     from src.data.preprocessing import DATASET_METADATA
     from src.data.register import infer_categorical_numerical
     meta = DATASET_METADATA.get(dataset_id)

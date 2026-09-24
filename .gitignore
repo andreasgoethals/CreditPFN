@@ -14,12 +14,13 @@
 *.safetensors
 
 # Generated output: only the anonymized notebook summaries are tracked.
-/output/*
-!/output/All_Results.md
-!/output/figures/
-/output/figures/*
-!/output/figures/CAPTIONS.md
+/output CreditPFN/*
+!/output CreditPFN/All_Results.md
+!/output CreditPFN/figures/
+/output CreditPFN/figures/*
+!/output CreditPFN/figures/CAPTIONS.md
 # Retain guards against output from older checkouts.
+/output/
 /results/
 /logs/
 /.sentinels/

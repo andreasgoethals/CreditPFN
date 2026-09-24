@@ -5,7 +5,7 @@ use checkpoint provenance for their held-out datasets; untuned and classical
 controls use that same phase. Row-level evaluation settings come from config/eval.yaml,
 phase overrides and explicit CLI overrides, in increasing precedence order.
 
-Each task writes its own output/results files on project storage. Completed cells
+Each task writes its own output CreditPFN/results files on project storage. Completed cells
 are reused only when their evaluation identity matches. --rerun forces fresh scoring.
 --tasks and --task-index control cost-based packing; a task may contain several
 model/dataset pairs. --method and --test-dataset restrict the roster.
@@ -48,9 +48,8 @@ LOGGER = logging.getLogger(__name__)
 # data pipeline for just those IDs.
 
 
-def _ensure_processed(plan, *, log_path):
-    """Materialise any missing processed-CSV / manifest entry before
-    the eval loop starts.
+def _ensure_processed(track: str, *, log_path):
+    """Materialise the registered track before partitioning or fingerprinting.
 
     A processed CSV is considered "present" iff
     `data/processed/{track}/{dataset_id}.sanitized.csv` exists. We
@@ -61,9 +60,9 @@ def _ensure_processed(plan, *, log_path):
     from src.data.preprocessing import DATASET_METADATA
     from src.utils.paths import resolve_data_path
 
-    needed: set[str] = set()
-    for (handle_and_model, ds_ids) in plan:
-        needed.update(ds_ids)
+    # Fold assignment needs the complete corpus, including training tables; a
+    # missing input must not silently change which datasets are held out.
+    needed = {d for d, m in DATASET_METADATA.items() if m["track"] == track}
 
     tracks = {d: m["track"] for d, m in DATASET_METADATA.items()}
     missing: list[str] = []
@@ -79,7 +78,7 @@ def _ensure_processed(plan, *, log_path):
 
     if not missing:
         LOGGER.info(
-            "Auto-cache OK: every test dataset's processed CSV is on disk."
+            "Auto-cache OK: every registered dataset for this track is on disk."
         )
         return
 
@@ -156,6 +155,15 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         n_estimators=int(eval_cfg.tabpfn_n_estimators),
         n_estimators_tabicl=n_est_tabicl,
     )
+    if OmegaConf.select(train_cfg, "experiment.require_plan", default=False):
+        from src.utils.prepare_experiment import plan_path, read_plan
+        prepared = read_plan(plan_path(str(train_cfg.run_name), track))
+        expected = {identity for key, identity in prepared["trials"].items()
+                    if key.startswith(str(train_cfg.run_name) + "/")}
+        for handle, _ in trained:
+            identity = (handle.extra or {}).get("provenance", {}).get("trial_identity", {}).get("sha256")
+            if identity not in expected:
+                raise RuntimeError(f"Checkpoint does not belong to the prepared training plan: {handle.name}")
 
     # LOUD guard (post-mortem, 2026-07-04): in the Jul-3 run all 64 training
     # trials failed and eval silently benchmarked a baselines-only roster —
@@ -181,7 +189,12 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         roster = [(h, m) for h, m in roster if h.source != "baseline"]
     elif kind != "all":
         raise ValueError("CREDITPFN_EVAL_KIND must be all, foundation or classical")
-    return roster, cfg_test_ids, manifest_csv
+    return sorted(roster, key=lambda pair: _handle_key(pair[0])), cfg_test_ids, manifest_csv
+
+
+def _handle_key(handle) -> tuple[str, str, str]:
+    """Stable across manifest row order, resume rows and storage relocation."""
+    return (str(handle.source), str(handle.name), Path(handle.base_path).name if handle.base_path else "")
 
 
 def _enumerate_tasks(handles_and_models, cfg_test_ids: list[str]):
@@ -275,7 +288,9 @@ def _pack_tasks(pairs, handles_and_models, *, n_tasks: int, track: str,
     costed = sorted(
         ((_estimate_cost_s(handles_and_models[m][0], d, rows_by_id, max_rows_per_model), i)
          for i, (m, d) in enumerate(pairs)),
-        key=lambda item: (-item[0], hashlib.sha256(repr(pairs[item[1]]).encode()).digest()),
+        key=lambda item: (-item[0], hashlib.sha256(repr((
+            _handle_key(handles_and_models[pairs[item[1]][0]][0]), pairs[item[1]][1]
+        )).encode()).digest()),
     )
     n_tasks = max(1, min(int(n_tasks), len(pairs)))
     bins: list[list[int]] = [[] for _ in range(n_tasks)]
@@ -370,6 +385,7 @@ def run(
         "run_name": str(train_cfg.run_name), "track": track, "seed": int(train_cfg.seed)}})
     LOGGER.info("eval_pipeline: log=%s  track=%s", log.path, track)
 
+    _ensure_processed(track, log_path=log.path)
     handles_and_models, cfg_test_ids, manifest_csv = _build_roster(
         eval_cfg, train_cfg, track,
     )
@@ -454,12 +470,6 @@ def run(
         log.write(line)
         print(line)
         return 0
-
-    # Prepare missing processed inputs — the eval reads PROCESSED
-    # CSVs and the per-track manifest. If any of the datasets we're
-    # about to score is missing on disk, run the data pipeline for
-    # just those IDs. Idempotent if everything is already there.
-    _ensure_processed(plan, log_path=log.path)
 
     # Per-method row caps and CV settings.
     n_folds = int(eval_cfg.cv.n_folds)             if hasattr(eval_cfg, "cv") else 5

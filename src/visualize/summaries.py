@@ -1,7 +1,7 @@
 """Printed text summaries — one per notebook, in that notebook's own section order.
 
 Every notebook's last cell prints a summary (`AGENTS.md` §7), and the runner concatenates
-those into `output/All_Results.md`. That document is the only place the run's numbers exist as
+those into `output CreditPFN/All_Results.md`. That document is the only place the run's numbers exist as
 text rather than as pixels inside a PDF, so it has to carry **the headline of every figure**,
 not just a file count: a reader who cannot open the figures should still be able to state what
 the run found, and a figure whose number is not restated here is a figure nobody can quote.
@@ -51,7 +51,7 @@ def _rule(title: str) -> list[str]:
 
 
 # --------------------------------------------------------------------------- #
-# Final-results notebooks (2.0 / 2.1)
+# Final-results notebooks (1.3 / 1.4)
 # --------------------------------------------------------------------------- #
 
 
@@ -59,7 +59,7 @@ def eval_summary(track: str) -> str:
     """Text summary of the eval notebook, section by section, in notebook order."""
     metric = ev.primary_metric(track)
     raw = ev.load_eval_results(track)
-    out = _header(f"{'2.0' if track == 'pd' else '2.1'}. "
+    out = _header(f"{'1.3' if track == 'pd' else '1.4'}. "
                   f"{track.upper()} final results",
                   f"held-out benchmark · primary metric = {metric}")
     if raw.empty:
@@ -172,9 +172,10 @@ def eval_summary(track: str) -> str:
             row = g.loc[g[metric].idxmax() if hib else g[metric].idxmin()]
             out.append(f"  {ds:<28} {row[metric]:.4f}  {row['method_name'][:40]}")
 
-    out += _rule("10. Fold stability (std across the 5 folds, median over datasets)")
-    if not ok.empty and "fold" in ok.columns:
-        stds = (ok.groupby(["method_name", "test_dataset_id"])[metric].std()
+    out += _rule("10. Fold stability (std across folds, median over dataset partitions)")
+    if not ok.empty and "fold_idx" in ok.columns:
+        groups = ["method_name", "test_dataset_id", *[c for c in ("eval_run", "split") if c in ok]]
+        stds = (ok.groupby(groups, dropna=False)[metric].std()
                   .groupby("method_name").median().sort_values())
         for name, v in list(stds.items())[:3]:
             out.append(f"  most stable   {name[:44]:<44} {v:.4f}")
@@ -194,7 +195,7 @@ def eval_summary(track: str) -> str:
     if not d.empty:
         direction = "helped" if d["delta"].mean() > 0 else "did not help"
         out.append(f"  Continued pretraining {direction} on average"
-                   f" ({_fmt(d['delta'].mean())} {metric}).")
+                   f" ({_fmt(d['delta'].mean())} {pf.effect_label(metric)}).")
     if not z.empty:
         out.append(f"  Untuned foundation models beat the best tuned baseline on"
                    f" {int((z['delta'] > 0).sum())}/{len(z)} (base, dataset) pairs.")

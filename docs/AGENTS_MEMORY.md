@@ -12,7 +12,25 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 23-09-2026 source cleanup and completed check2 preparation
+## Current handover — 24-09-2026 review fixes and output rename; CPU audits still required
+
+- User-authorized template deviation: generated artifacts now use `output CreditPFN/` on DATA and project storage; original/trained weights remain in `checkpoints/`. The local tree was renamed. Downloads was already user-renamed and was read in place; no downloaded files were moved, copied or removed.
+- Read the expanded Downloads copy: **89 files / 1,055,974 bytes**, including 27 logs and 16 check3 trajectory CSVs. Recomputed all 16 `[0, 2]` milestone/per-dataset parity checks successfully. All six downloaded plan checksums pass, including check3. The 16 GPU controls completed at user HEAD **eb6e016**, so the review's statement that no GPU work had run is stale. New CPU audits **62112998 (PD)** and **62113000 (LGD)** report 8 completed / 0 pending / 0 divergent each, with **all 16 per-dataset monitoring comparisons equal**, but exit 1 on raw serialized-state comparisons.
+- Raw audit differences: v2 conversion changes serialized attention/MLP key names; LGD additionally changes the loss diagnostic `criterion.losses_per_bucket`, and v3 publishes criterion buffers derived from its model. The corrected audit compares canonical upstream-loaded states, excluding only the accumulated loss diagnostic while retaining exact weight/border checks. Upstream evidence: `load_model_criterion_config`, `_resolve_regression_borders`, `FullSupportBarDistribution.forward`; library pin **e5ce01614eebe520af303f2b5bfd212298eab2be**. Local TabPFN differs from the cluster version; corrected checks against actual trained weights remain a VSC gate.
+- Independently checked the 20 review findings. Fixed identity scope, cache dependencies, empty divergence resume rows, stable packing, latest-fold retry semantics, preprocessing-before-hashing, terminal recovery cleanup, stderr/job-ID separation, dry readiness, analysis labels/grouping/scale/privacy/columns/timing/saves/missing sizes. Cosmetic logs now print configured prefetch and distinguish successful-update targets from the epoch safety rail. Shared metrics moved to `src/eval/metrics.py` so evaluation orchestration changes do not invalidate training.
+- Two obsolete untracked local files were removed: `config/experiment2_pd.yaml` and `scripts/slurm/stage_to_project.slurm`. Compared with their last tracked versions, they only lacked the later sampling setting/referenced the retired launcher. No Downloads, archive, datasets or checkpoints were deleted.
+- Validation so far: full suite **466 passed, 1 skipped** (optional on-disk manifests), followed by **163 passing focused checks** after final corrections. Nine pre-existing constant-input toy regression warnings in the full suite. All 15 current Bash/Slurm scripts parse; local migration preview reports no remaining legacy output directory. **6/6 notebooks passed, 75 PDFs**; both result notebooks reran after caption/interpretation cleanup. The publication scan checked **89 artifacts, zero private-name matches**; every notebook has a final stdout summary and no function/class definitions. Final review/privacy/visualization tests: **52 passed**. All five extracted metric functions are AST-identical to the previous implementations. No legacy output directory, root-level logs or notebook locks were created.
+- **Next:** user commits/pushes, pulls on VSC, previews/applies `maintenance.slurm migrate-output` with CreditPFN writers stopped; verify exit 0. Rerun the two CPU `audit --config config/experiment0_{pd,lgd}.yaml --null` jobs against existing check3 checkpoints. Do not reprepare check3 under this source or launch the main grid. Retain its controls until corrected audits pass; then plan the next short positive-LR/recovery and pilot checks against settled source. No cluster job, install, push or real model training was performed by the agent.
+
+## Previous handover — 23-09-2026 check3 GPU controls completed; checkpoint audits next
+
+- Read three Downloads logs in place: **62112231** passes CPU preflight with zero failures/warnings; **62112290/62112294** write the PD/LGD **cpt_null_v4_check3** plans, eight trials each. All three report END exit 0 and the correct CreditPFN conda environment. No plan JSONs were supplied, so their fingerprints were not independently checked here; submission validates the prepared identity before allocating GPUs.
+- Local source is user commit **eb6e016**. No code/config changes are needed, so do not rename the phase, prepare it again, restage inputs or repeat cleanup. This update only records the supplied evidence.
+- User supplied completed Slurm accounting and Downloads/logs: **all 16 controls COMPLETED / 0:0**, each matched to one log, update 2, drift 0, matching displayed baseline/final metrics and a project-storage save message. PD arrays **11599282/11599283/11599284/11599285** took 67–79 s/task; LGD **11599304/11599305/11599306/11599307** took 45–49 s/task. All used source eb6e016, CreditPFN conda, B200 CUDA, GPFS inputs, workers 4 and the intended dataset split. No logged numerical/OOM/traceback failures; the sole warning is the handled unrelated virtualenv, once per job. The 25 supplied logs total 200,155 bytes (16 training logs: 173,081 bytes); read in place, never copied.
+- **Next:** submit two short CPU maintenance audits with `--config config/experiment0_{pd,lgd}.yaml --null`. Require eight completed/zero pending, no problems, exact saved tensor equality and per-dataset monitor parity for both tracks. Logs only show rounded aggregate metrics and reported drift; checkpoint/trajectory files remain on VSC and were not independently inspected locally. Do not repeat controls or launch pilots before these audits. Both bounded login diagnostics and explicit main-terminal activation passed; the earlier shared-activator stall remains unexplained. Positive-LR recovery, 32 short pilots and eight budget pilots precede the 512/32/96 main/seed/sampling trials; their 5k horizon remains provisional.
+- Diagnostic cleanup to address after checkpoint audits, before preparing pilots: the DataLoader log hardcodes `prefetch=4` while the actual loader receives configured 2; `Starting 2000 epochs` prints the safety ceiling despite the exact two-update stop. These labels do not change training, and source/plans stay fixed for the current audit.
+
+## Previous handover — 23-09-2026 source cleanup and completed check2 preparation (superseded above)
 
 - Inspected Downloads logs in place: **62111400 (PD)** and **62111404 (LGD)** both report `END exit_code=0`, eight null trials each, correct CreditPFN conda environment; 39/32 seconds respectively. These are preparation logs, not GPU training evidence. No plan files were supplied this time, so their fingerprints were not independently checked.
 - Source cleanup is based on user HEAD `ca03eec`; library pin remains `e5ce01614eebe520af303f2b5bfd212298eab2be`. Shared training/grid and evaluation loaders now live in `src/train/config.py` and `src/eval/config.py`; capacity math lives in `src/train/capacity.py`. No reusable module imports scripts. Shared Slurm bodies remove PD/LGD duplication, all jobs use the same output/logs convention, and grid/family lookup errors stop jobs visibly.
@@ -81,6 +99,13 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 23-09-2026 | null audit LGD · wICE 62113000 | **failed comparison (download log)** | 8 completed, 0 pending/divergent; all monitor pairs equal. Raw v2 key conversion, diagnostic-loss buffer and v3 criterion initialization differences; canonical comparison rerun required. |
+| 23-09-2026 | null audit PD · wICE 62112998 | **failed comparison (download log)** | 8 completed, 0 pending/divergent; all monitor pairs equal. Only v2 raw key-set conversion flagged; canonical comparison rerun required. |
+| 23-09-2026 | cpt_null_v4_check3 LGD · Mindwell 11599304/11599305/11599306/11599307 | **8/8 completed (accounting + logs)** | 0:0; 45–49 s/task; update 2, drift 0, displayed monitors unchanged. Initially all pending. Saved tensor/per-dataset parity audit outstanding. |
+| 23-09-2026 | cpt_null_v4_check3 PD · Mindwell 11599282/11599283/11599284/11599285 | **8/8 completed (accounting + logs)** | 0:0; 67–79 s/task; update 2, drift 0, displayed monitors unchanged. Initially five running/three pending. Saved tensor/per-dataset parity audit outstanding. |
+| 23-09-2026 | prepare cpt_null_v4_check3 LGD · wICE 62112294 | **plan written (download log)** | Eight trials, one partition, two held-out tables; END exit 0 in 28 s. GPU controls not yet evidenced. |
+| 23-09-2026 | prepare cpt_null_v4_check3 PD · wICE 62112290 | **plan written (download log)** | Eight trials, one partition, four held-out tables; END exit 0 in 37 s. GPU controls not yet evidenced. |
+| 23-09-2026 | CPU preflight · wICE 62112231 | **passed (download log)** | 0 failures, 0 warnings; END exit 0 in 42 s. All 25 tables/eight bases and CPU checks pass; GPU validation remains outstanding. |
 | 23-09-2026 | prepare cpt_null_v4_check2 PD · wICE 62111400 | **plan written (download log)** | Eight trials, one partition, four held-out tables; END exit 0 in 39 s. Superseded by source cleanup/check3 before GPU training. |
 | 23-09-2026 | prepare cpt_null_v4_check2 LGD · wICE 62111404 | **plan written (download log)** | Eight trials, one partition, two held-out tables; END exit 0 in 32 s. Superseded by source cleanup/check3 before GPU training. |
 | 23-09-2026 | CPU preflight · wICE 62110877 | **passed (user log)** | 0 failures, 0 warnings, END exit_code=0; 46 seconds from START/END. All 25 tables/eight bases and CPU configuration checks pass; GPU controls remain outstanding. |
@@ -103,6 +128,27 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 24-09-2026 — raw serialized keys are not null-control inference state
+
+**Tried:** Compared upstream original `state_dict` keys/tensors directly with saved continued-pretraining files.
+**Result:** Both check3 CPU audits failed after 16 completed GPU controls; all monitoring comparisons were equal.
+**Why:** The upstream loader converts v2 keys, v3 can reconstruct criterion borders, and criterion forward accumulates a diagnostic loss buffer independently of learning rate.
+**Instead:** Load both checkpoints through the same upstream loader, require exact model/inference-buffer equality and monitor parity, and exclude only the verified loss accumulator. Reaudit existing weights before spending more GPU credits.
+
+### 24-09-2026 — recovery test must exercise numerical failure, not an impossible budget
+
+**Tried:** Extended the interrupted-recovery test with an epoch cap too short to reach its configured budget.
+**Result:** The intended terminal-divergence test failed at the existing pretraining capacity guard.
+**Why:** An impossible configuration is correctly rejected before training, so it creates no terminal checkpoint or recovery state to inspect.
+**Instead:** Inject rejected numerical updates after three successful toy updates; compare interrupted/uninterrupted outcomes and verify recovery removal after terminal publication.
+
+### 23-09-2026 — silent interactive activation stall
+
+- **Tried.** Sourced the shared activator with scratch disabled on tier2-p-login-1 after successful CPU preflight/preparation jobs.
+- **Result.** User interrupted with Ctrl+C after the unrelated-virtualenv warning; no Active conda env confirmation appeared. Prompt timestamps span 14:48 to 15:08, but do not independently time execution. Subsequent bounded checks passed: all four package imports and explicit conda.sh/activation, correct CreditPFN prefix/interpreter, both exit 0.
+- **Why.** Unconfirmed. Conda hook/activation and the captured numpy/torch/omegaconf/tabpfn import check occur before confirmation and provide no intermediate progress.
+- **Instead.** Use the tested explicit conda.sh/activation route in the main terminal, verify its Python path, then launch the prepared null controls. The temporary diagnostic shell did not activate its parent. Retain the original stall as unexplained; avoid installs or source/plan changes unsupported by evidence.
 
 ### 23-09-2026 — capacity report silently changed the requested adaptation
 

@@ -64,6 +64,10 @@ import pandas as pd
 from src.eval.dataset_loader import (
     ProcessedDataset, encode_for_model, load_processed_dataset, subsample,
 )
+from src.eval.metrics import (
+    _best_f1_threshold, _binary_ece, _posthoc_calibrated,
+    _classification_metrics, _regression_metrics,
+)
 from src.model.base import ModelHandle
 from src.model.tabpfn_models import TabPFNTrained
 from src.train.model import load_provenance
@@ -442,350 +446,6 @@ def _inner_split(train_idx: np.ndarray, y_train: np.ndarray, *,
 
 
 # --------------------------------------------------------------------------- #
-# Metric computation
-# --------------------------------------------------------------------------- #
-
-
-def _best_f1_threshold(
-    proba_val_pos: np.ndarray, y_val: np.ndarray,
-) -> float:
-    """Return the threshold τ ∈ [0,1] that maximises F1 on the val set.
-
-    Uses ``sklearn.metrics.precision_recall_curve`` so we evaluate F1
-    only at the O(n) breakpoints sklearn returns (sorted by predicted
-    score). The old "np.unique over all probas" approach was O(n²) on
-    large val sets — Gemini's #3 bottleneck.
-    """
-    # A one-class validation fold has no meaningful ranking threshold and
-    # sklearn warns for the all-negative case. Use the documented neutral
-    # fallback directly; the outer metric code already handles one-class folds.
-    if np.unique(np.asarray(y_val)).size < 2:
-        return 0.5
-
-    from sklearn.metrics import precision_recall_curve
-    precisions, recalls, thresholds = precision_recall_curve(
-        y_val, proba_val_pos,
-    )
-    # precision_recall_curve returns one fewer threshold than (p, r);
-    # match them by dropping the final p/r pair (which has threshold = ∞).
-    p, r = precisions[:-1], recalls[:-1]
-    with np.errstate(divide="ignore", invalid="ignore"):
-        f1 = 2 * p * r / (p + r)
-        f1 = np.nan_to_num(f1, nan=0.0)
-    if len(thresholds) == 0 or f1.max() <= 0:
-        return 0.5
-    return float(thresholds[int(np.argmax(f1))])
-
-
-def _binary_ece(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> float:
-    """10-bin expected calibration error for binary positive-class probs."""
-    try:
-        bins = np.linspace(0.0, 1.0, n_bins + 1)
-        idx = np.digitize(p, bins[1:-1], right=True)
-        N = len(p)
-        ece = 0.0
-        for b in range(n_bins):
-            mask = idx == b
-            nb = int(mask.sum())
-            if nb == 0:
-                continue
-            ece += (nb / N) * abs(float((y[mask] == 1).mean()) - float(p[mask].mean()))
-        return float(ece)
-    except (ValueError, IndexError):                              # pragma: no cover
-        return float("nan")
-
-
-def _posthoc_calibrated(
-    proba_test: np.ndarray, proba_val: np.ndarray, y_val: np.ndarray,
-    method: str,
-) -> np.ndarray | None:
-    """Fit a post-hoc probability calibrator on the INNER-VAL split and
-    apply it to the test probabilities. Binary only; returns None if it
-    cannot be fitted.
-
-    The model itself is never refitted or retrained — only its output
-    probabilities are remapped, which is what makes this "post-hoc" and
-    cheap. Fitting on inner-val (never on test) keeps the test fold clean.
-
-    * ``platt``    — logistic regression on the log-odds (Platt scaling).
-      A smooth, 2-parameter monotone squash; robust on small validation
-      splits, but can only fix a systematic over/under-confidence.
-    * ``isotonic`` — non-parametric monotone fit. Strictly more flexible,
-      so it can correct odd calibration curves, but it overfits a small
-      validation split and produces a step function.
-
-    WHY (08-08-2026): continued pretraining consistently WORSENS calibration
-    in our runs (untuned v2.6 ECE 0.0159 → trained 0.0169-0.0224, replicated
-    across run-4 and run-6) while leaving discrimination flat. Whether that
-    cost is recoverable for free decides how the finding reads: "use CPT and
-    recalibrate" versus "CPT damages calibration irreparably". Purucker et al.
-    2026 found TabPFN one of only two models post-hoc calibration made WORSE,
-    so the answer is genuinely open — and it matters more than AUC for credit
-    risk, where the probability itself is the regulated quantity.
-    """
-    if proba_test.shape[1] != 2 or len(np.unique(y_val)) < 2:
-        return None
-    pv = np.clip(proba_val[:, 1], 1e-6, 1 - 1e-6)
-    pt = np.clip(proba_test[:, 1], 1e-6, 1 - 1e-6)
-    try:
-        if method == "platt":
-            from sklearn.linear_model import LogisticRegression
-            z = np.log(pv / (1 - pv)).reshape(-1, 1)
-            lr = LogisticRegression(C=1e10, solver="lbfgs")
-            lr.fit(z, y_val)
-            zt = np.log(pt / (1 - pt)).reshape(-1, 1)
-            return lr.predict_proba(zt)[:, 1]
-        if method == "isotonic":
-            from sklearn.isotonic import IsotonicRegression
-            iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
-            iso.fit(pv, y_val)
-            return np.clip(iso.predict(pt), 0.0, 1.0)
-    except (ValueError, RuntimeError):                            # pragma: no cover
-        return None
-    return None
-
-
-def _classification_metrics(
-    proba_test: np.ndarray, y_test: np.ndarray,
-    proba_val: np.ndarray, y_val: np.ndarray,
-    n_classes_seen: int,
-) -> dict[str, float]:
-    """All classification metrics in one place. F1 / accuracy /
-    precision / recall use the threshold that MAXIMISES F1 on the
-    inner-validation split (binary only); multiclass returns NaN
-    for those four columns.
-    """
-    from sklearn.metrics import (
-        roc_auc_score, log_loss, average_precision_score,
-        f1_score, accuracy_score, precision_score, recall_score,
-        brier_score_loss, matthews_corrcoef, balanced_accuracy_score,
-        cohen_kappa_score, confusion_matrix,
-    )
-    out: dict[str, float] = {}
-    K = proba_test.shape[1]
-
-    # Threshold-free metrics on test fold.
-    try:
-        if K == 2:
-            out["roc_auc"] = float(roc_auc_score(y_test, proba_test[:, 1]))
-            out["pr_auc"]  = float(average_precision_score(y_test, proba_test[:, 1]))
-        elif n_classes_seen >= 2:
-            out["roc_auc"] = float(
-                roc_auc_score(y_test, proba_test, multi_class="ovr", average="macro")
-            )
-            out["pr_auc"]  = float("nan")
-        else:
-            out["roc_auc"] = float("nan")
-            out["pr_auc"]  = float("nan")
-    except ValueError:
-        out["roc_auc"] = float("nan")
-        out["pr_auc"]  = float("nan")
-    try:
-        out["log_loss"] = float(
-            log_loss(y_test, proba_test, labels=list(range(K)))
-        )
-    except ValueError:
-        out["log_loss"] = float("nan")
-
-    # Brier score on positive-class probability (binary only). Proper
-    # score, lower = better; combines calibration + sharpness.
-    if K == 2:
-        try:
-            out["brier_score"] = float(brier_score_loss(y_test, proba_test[:, 1]))
-        except ValueError:
-            out["brier_score"] = float("nan")
-    else:
-        out["brier_score"] = float("nan")
-
-    # Expected Calibration Error (binary): 10 equal-width confidence bins on
-    # the positive-class probability. ECE = Σ_b (n_b/N)·|acc_b − conf_b|;
-    # lower = better calibrated. Distinct from Brier (which mixes calibration
-    # and sharpness) — ECE isolates calibration, which Basel-III PD models
-    # require and which Tanna et al. 2026 show fine-tuning can silently
-    # degrade even when ROC-AUC holds.
-    if K == 2:
-        try:
-            p = np.asarray(proba_test[:, 1], dtype=float)
-            yt = np.asarray(y_test).astype(int)
-            n_bins = 10
-            edges = np.linspace(0.0, 1.0, n_bins + 1)
-            bin_idx = np.clip(np.digitize(p, edges[1:-1]), 0, n_bins - 1)
-            N = len(p)
-            ece = 0.0
-            for b in range(n_bins):
-                mask = bin_idx == b
-                nb = int(mask.sum())
-                if nb == 0:
-                    continue
-                conf = float(p[mask].mean())
-                acc = float((yt[mask] == 1).mean())
-                ece += (nb / N) * abs(acc - conf)
-            out["ece"] = float(ece)
-        except (ValueError, IndexError):
-            out["ece"] = float("nan")
-    else:
-        out["ece"] = float("nan")
-
-    # POST-HOC CALIBRATION (binary only). Recorded ALONGSIDE the raw metrics,
-    # never replacing them, so every row carries the before/after pair and the
-    # ablation is a column subtraction rather than a second run.
-    if K == 2:
-        from sklearn.metrics import brier_score_loss, log_loss as _ll
-        for method in ("platt", "isotonic"):
-            cal = _posthoc_calibrated(proba_test, proba_val, y_val, method)
-            if cal is None:
-                out[f"ece_{method}"] = float("nan")
-                out[f"brier_score_{method}"] = float("nan")
-                out[f"log_loss_{method}"] = float("nan")
-                out[f"f1_{method}"] = float("nan")
-                if method == "isotonic":
-                    out["roc_auc_isotonic"] = float("nan")
-                continue
-            out[f"ece_{method}"] = _binary_ece(cal, np.asarray(y_test))
-            try:
-                out[f"brier_score_{method}"] = float(
-                    brier_score_loss(y_test, cal))
-            except ValueError:                                    # pragma: no cover
-                out[f"brier_score_{method}"] = float("nan")
-            try:
-                out[f"log_loss_{method}"] = float(
-                    _ll(y_test, np.column_stack([1 - cal, cal]), labels=[0, 1]))
-            except ValueError:                                    # pragma: no cover
-                out[f"log_loss_{method}"] = float("nan")
-
-            # F1 AFTER recalibration, with the threshold RE-TUNED on the recalibrated
-            # validation probabilities. Reusing the raw threshold would measure the
-            # calibrator against a cut-off chosen for a different probability scale, which
-            # flatters or punishes it arbitrarily.
-            cal_val = _posthoc_calibrated(proba_val, proba_val, y_val, method)
-            try:
-                if cal_val is not None and len(np.unique(y_val)) >= 2:
-                    th = _best_f1_threshold(cal_val, np.asarray(y_val))
-                    from sklearn.metrics import f1_score
-                    out[f"f1_{method}"] = float(
-                        f1_score(y_test, (cal >= th).astype(int), zero_division=0))
-                else:
-                    out[f"f1_{method}"] = float("nan")
-            except Exception:                                     # pragma: no cover
-                out[f"f1_{method}"] = float("nan")
-
-            # Isotonic only: it is weakly monotone, so ties can shift the ranking. Platt is
-            # strictly monotone and its AUC is identical to the raw one by construction.
-            if method == "isotonic":
-                try:
-                    from sklearn.metrics import roc_auc_score
-                    out["roc_auc_isotonic"] = float(roc_auc_score(y_test, cal))
-                except ValueError:                                # pragma: no cover
-                    out["roc_auc_isotonic"] = float("nan")
-    else:
-        for method in ("platt", "isotonic"):
-            out[f"ece_{method}"] = float("nan")
-            out[f"brier_score_{method}"] = float("nan")
-            out[f"log_loss_{method}"] = float("nan")
-            out[f"f1_{method}"] = float("nan")
-        out["roc_auc_isotonic"] = float("nan")
-
-    # Threshold-tuned metrics — binary only.
-    if K == 2 and len(np.unique(y_val)) >= 2:
-        best_th = _best_f1_threshold(proba_val[:, 1], y_val)
-        out["optimal_threshold"] = best_th
-        preds_t = (proba_test[:, 1] >= best_th).astype(int)
-        out["f1"]        = float(f1_score(y_test, preds_t, zero_division=0))
-        out["accuracy"]  = float(accuracy_score(y_test, preds_t))
-        out["precision"] = float(precision_score(y_test, preds_t, zero_division=0))
-        out["recall"]    = float(recall_score(y_test, preds_t, zero_division=0))
-
-        # Specificity = TN / (TN + FP). Companion to recall (TPR).
-        try:
-            cm = confusion_matrix(y_test, preds_t, labels=[0, 1])
-            tn, fp = float(cm[0, 0]), float(cm[0, 1])
-            out["specificity"] = (
-                float("nan") if (tn + fp) == 0.0 else tn / (tn + fp)
-            )
-        except ValueError:
-            out["specificity"] = float("nan")
-
-        out["balanced_accuracy"] = float(balanced_accuracy_score(y_test, preds_t))
-
-        # MCC — handles imbalance gracefully; undefined when ANY of
-        # TP/TN/FP/FN combinations make the denominator zero, in which
-        # case sklearn returns 0 and emits a runtime warning. We accept
-        # the sklearn behaviour (returns 0 rather than NaN) since the
-        # warning is suppressed at the loop level.
-        out["mcc"] = float(matthews_corrcoef(y_test, preds_t))
-
-        out["cohen_kappa"] = float(cohen_kappa_score(y_test, preds_t))
-    else:
-        for k in ("optimal_threshold", "f1", "accuracy", "precision", "recall",
-                  "specificity", "balanced_accuracy", "mcc", "cohen_kappa"):
-            out[k] = float("nan")
-
-    return out
-
-
-def _regression_metrics(
-    pred_test: np.ndarray, y_test: np.ndarray,
-    *, neg_nll: float | None,
-) -> dict[str, float]:
-    """Full regression-metric block.
-
-    On top of RMSE / MAE / R² / neg-NLL we emit:
-
-    * ``median_ae``           — outlier-robust point error.
-    * ``mape``                — mean absolute percentage error in
-      decimal units (NOT multiplied by 100; multiply downstream if you
-      want %). NaN when any target equals zero — divide-by-zero would
-      poison the mean.
-    * ``explained_variance``  — sklearn's ``explained_variance_score``;
-      equals R² when prediction is unbiased.
-    * ``pearson_r``           — linear correlation. NaN on a constant
-      target or constant prediction.
-    * ``spearman_r``          — rank correlation; robust to monotone
-      nonlinearities. NaN under the same degenerate cases.
-    """
-    from sklearn.metrics import (
-        mean_squared_error, mean_absolute_error, r2_score,
-        median_absolute_error, explained_variance_score,
-    )
-    out: dict[str, float] = {
-        "rmse":               float(np.sqrt(mean_squared_error(y_test, pred_test))),
-        "mae":                float(mean_absolute_error(y_test, pred_test)),
-        "median_ae":          float(median_absolute_error(y_test, pred_test)),
-        "r2":                 float(r2_score(y_test, pred_test)),
-        "explained_variance": float(explained_variance_score(y_test, pred_test)),
-        "neg_nll":            float("nan") if neg_nll is None else float(neg_nll),
-    }
-
-    # MAPE — undefined where any target is zero; we emit NaN rather
-    # than +inf so the column aggregates cleanly across folds.
-    if np.any(y_test == 0):
-        out["mape"] = float("nan")
-    else:
-        out["mape"] = float(
-            np.mean(np.abs((y_test - pred_test) / y_test))
-        )
-
-    # Pearson / Spearman — guard against constant-vector inputs which
-    # make the correlation undefined (the denominator is zero).
-    if np.std(y_test) == 0 or np.std(pred_test) == 0:
-        out["pearson_r"] = float("nan")
-    else:
-        out["pearson_r"] = float(np.corrcoef(y_test, pred_test)[0, 1])
-
-    try:
-        from scipy.stats import spearmanr
-        if np.std(y_test) == 0 or np.std(pred_test) == 0:
-            out["spearman_r"] = float("nan")
-        else:
-            rho, _ = spearmanr(y_test, pred_test)
-            out["spearman_r"] = float(rho) if not np.isnan(rho) else float("nan")
-    except ImportError:                                                # pragma: no cover
-        out["spearman_r"] = float("nan")
-
-    return out
-
-
-# --------------------------------------------------------------------------- #
 # Output paths
 # --------------------------------------------------------------------------- #
 
@@ -899,17 +559,10 @@ def find_existing_results(
     run_name: str | None = None,
     evaluation_key: str | None = None,
 ) -> list[Path]:
-    """Return CSVs that contribute OK rows for this (handle, dataset).
+    """Return contributing CSVs only when each required fold's latest row is OK.
 
-    Walks every CSV under the method's results directory; opens each
-    one with ``csv.DictReader`` and collects the set of distinct
-    ``fold_idx`` values with ``status == "OK"`` for ``dataset_id``.
-    The pair is considered "complete" — and the returned list is
-    non-empty — iff the OK fold count is at least ``n_folds_required``
-    (or, when ``n_folds_required`` is None, at least one OK row exists).
-
-    A pair with some failed folds will return an empty list, so the
-    caller re-runs and the missing folds get retried.
+    Files and rows are read in the same order as the visualization loader. A
+    later failed retry invalidates an earlier success for that fold.
     """
     method_dir = (
         resolve_staging_path(results_base_dir)
@@ -920,7 +573,7 @@ def find_existing_results(
         return []
 
     hits: list[Path] = []
-    ok_folds: set[int | str] = set()
+    latest: dict[int | str, str] = {}
     needle = f"ds-{dataset_id}"
     for csv_path in sorted(method_dir.glob("*.csv")):
         if run_name and not csv_path.name.startswith(run_name + "_"):
@@ -939,12 +592,13 @@ def find_existing_results(
             # Filename doesn't carry the id AND the file isn't a generic
             # multi-dataset CSV (skip the expensive open).
             continue
-        new_folds = _csv_ok_folds_for(csv_path, dataset_id)
-        if new_folds:
+        statuses = _csv_fold_statuses(csv_path, dataset_id)
+        if statuses:
             hits.append(csv_path)
-            ok_folds.update(new_folds)
+            latest.update(statuses)
 
-    if not hits:
+    ok_folds = {fold for fold, status in latest.items() if status == "OK"}
+    if not ok_folds:
         return []
     if n_folds_required is None:
         return hits
@@ -967,21 +621,24 @@ def _csv_might_have_dataset(csv_path: Path, dataset_id: str) -> bool:
 
 
 def _csv_ok_folds_for(csv_path: Path, dataset_id: str) -> set[int | str]:
-    """Return the set of distinct ``fold_idx`` values with status=OK
-    for ``dataset_id`` in this CSV (empty if none / on read error)."""
-    folds: set[int | str] = set()
+    """Only the latest row per fold is authoritative."""
+    return {fold for fold, status in _csv_fold_statuses(csv_path, dataset_id).items() if status == "OK"}
+
+
+def _csv_fold_statuses(csv_path: Path, dataset_id: str) -> dict[int | str, str]:
+    folds: dict[int | str, str] = {}
     try:
         with csv_path.open("r", newline="", encoding="utf-8") as fh:
             reader = csv.DictReader(fh)
             for row in reader:
-                if (row.get("test_dataset_id") == dataset_id
-                        and row.get("status") == "OK"):
+                if row.get("test_dataset_id") == dataset_id:
                     try:
-                        folds.add(int(row.get("fold_idx", "")))
+                        fold = int(row.get("fold_idx", ""))
                     except (TypeError, ValueError):
-                        folds.add(row.get("fold_idx", ""))
+                        fold = row.get("fold_idx", "")
+                    folds[fold] = row.get("status", "")
     except (OSError, csv.Error):
-        return set()
+        return {}
     return folds
 
 

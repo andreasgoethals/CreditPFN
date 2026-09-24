@@ -131,9 +131,9 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
     CSV, exactly as :func:`src.data.register.infer_categorical_numerical` computes them for the
     manifest.
 
-    This is deliberate (26-08-2026): the registry used to live in ``output/manifests/`` and had
-    to be rebuilt from raw (slow) or copied across whenever ``output/`` was wiped for a clean run.
-    Now nothing under ``output/`` is required to START a run — that folder holds only results the
+    This is deliberate (26-08-2026): the registry used to live in ``output CreditPFN/manifests/`` and had
+    to be rebuilt from raw (slow) or copied across whenever ``output CreditPFN/`` was wiped for a clean run.
+    Now nothing under ``output CreditPFN/`` is required to START a run — that folder holds only results the
     code produces. A dataset with no processed CSV is skipped silently; the pipeline's
     ``_ensure_processed`` hook materialises missing CSVs before training.
     """

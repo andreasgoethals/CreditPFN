@@ -510,9 +510,9 @@ def check_storage_layout(rep: Report) -> None:
     """Report every resolved path and which VSC tier it landed on.
 
     docs/TEMPLATE.md splits storage in two, and a path resolved against the wrong tier looks
-    exactly like a missing file. `data/`, `checkpoints/` and `output/results/` belong on PROJECT
-    storage (/lustre1/project/stg_00211/<Project>/); the repository and the rest of `output/` —
-    including `output/manifests/`, which holds the dataset REGISTRY the corpus is built from —
+    exactly like a missing file. `data/`, `checkpoints/` and `output CreditPFN/results/` belong on PROJECT
+    storage (/lustre1/project/stg_00211/<Project>/); the repository and the rest of `output CreditPFN/` —
+    including `output CreditPFN/manifests/`, which holds the dataset REGISTRY the corpus is built from —
     belong on $VSC_DATA. Two debugging rounds were lost to `ls`-ing the wrong one, so print the
     map instead of inferring it.
     """
@@ -547,8 +547,8 @@ def check_storage_layout(rep: Report) -> None:
         ("data/processed/pd", pathlib.Path(processed_dir("pd")), "project"),
         ("data/processed/lgd", pathlib.Path(processed_dir("lgd")), "project"),
         ("checkpoints", pathlib.Path(checkpoints_root()), "project"),
-        ("output/results", pathlib.Path(results_dir()), "project"),
-        ("output/manifests", pathlib.Path(manifests_dir()), "vsc_data"),
+        ("output CreditPFN/results", pathlib.Path(results_dir()), "project"),
+        ("output CreditPFN/manifests", pathlib.Path(manifests_dir()), "vsc_data"),
     ]
     lines = [f"project storage : {stag}", f"personal data   : {dat}", ""]
     misplaced = []

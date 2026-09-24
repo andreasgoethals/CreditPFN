@@ -877,7 +877,7 @@ def _log_debug_banner(
         f"qf={query_fraction:.2f} accumulate={accumulate} pass_mode={pass_mode} "
         f"seed={seed}",
         "[hyperparams] "
-        f"epochs={epochs} steps/epoch={steps_per_epoch} total_steps={total_steps} "
+        f"epoch_safety_limit={epochs} estimated_updates/epoch={steps_per_epoch} successful_update_target={total_steps} "
         f"n_estimators_finetune={n_estimators_finetune} amp={use_amp} "
         f"amp_dtype={amp_dtype} "
         f"max_rows_per_epoch={max_rows_per_epoch} max_cells_per_epoch={max_cells_per_epoch} "
@@ -1463,7 +1463,7 @@ def evaluate_ensemble_on_split(
     # Local imports — the function is called once per epoch from the
     # training loop, so we can afford the lazy-load overhead in exchange
     # for keeping `loop.py`'s module-level import cost low.
-    from src.eval.benchmark import _classification_metrics, _regression_metrics
+    from src.eval.metrics import _classification_metrics, _regression_metrics
     from src.train.dataloader import _load_processed_csv
     from src.train.dataloader import _stratified_subsample_indices  # type: ignore[attr-defined]
     from src.model.tabpfn_models import _make_tabpfn
@@ -2035,7 +2035,7 @@ def train_one_config(
         )
     LOGGER.info(
         "DataLoader: num_workers=%d%s", n_workers,
-        " (spawn, prefetch=4, persistent) — CPU preprocessing overlaps GPU" if n_workers > 0
+        f" (spawn, prefetch={dl_kwargs['prefetch_factor']}, persistent) — CPU preprocessing overlaps GPU" if n_workers > 0
         else " (serial; set CREDITPFN_DATALOADER_WORKERS or train.dataloader_workers to parallelise)",
     )
     train_loader = DataLoader(train_ds, **dl_kwargs)
@@ -2071,52 +2071,15 @@ def train_one_config(
     else:
         steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
 
-    # EQUALISE THE TRAINING BUDGET ACROSS ARCHITECTURES (added 08-08-2026).
-    # Under full_pass, steps/epoch = sum(ceil(n_rows / row_cap)) — so a base
-    # with a SMALLER memory-driven row cap silently gets MORE optimizer steps
-    # for the same `epochs`. In the 07-08 run that gave v2.6 20 300 steps and
-    # v3/tabicl 9 100 at identical `epochs: 100`: v2.6 was trained 2.2x longer
-    # purely because its row cap is 11k instead of 26k. The drift showed it —
-    # v2.6 @3e-5 reached l2sp 0.61 against v3's 0.0045 — which confounds every
-    # cross-architecture comparison with "who got more gradient steps".
-    # With `target_total_steps` set, epochs are trimmed so each base runs the
-    # SAME number of steps; `train.epochs` stays the upper bound.
-    # The budget is a TARGET, not a ceiling: epochs are trimmed when a base would
-    # overshoot it and RAISED when it would undershoot.
-    #
-    # WHY BOTH DIRECTIONS (measured, 10/11-08-2026 run). Trimming alone silently left
-    # LGD at a fraction of the budget, because steps/epoch is
-    # `sum_over_datasets(ceil(rows_i / row_cap))` and LGD has 6 small training tables:
-    # at 100 epochs tabicl got 800 steps, v3 1 600 and v2.6 3 200 against a 9 100-step
-    # target. So LGD was 3-11x undertrained AND still confounded across bases — exactly
-    # the problem the equalisation was added to remove, in the track nobody checked.
-    # Every LGD trial in that run was worse than its untuned baseline; 800 steps is not
-    # a fair test of whether continued pretraining works.
+    # All architectures share an exact successful-update budget. The epoch limit
+    # is a safety rail for skipped numerical updates, not the requested run length.
     target_steps = getattr(cfg.train, "target_total_steps", None)
     max_epochs = getattr(cfg.train, "max_epochs_for_step_budget", None)
     if target_steps:
         wanted = max(1, math.ceil(int(target_steps) / steps_per_epoch))
         ceiling = int(max_epochs) if max_epochs else max(epochs, wanted)
         capped = min(wanted, ceiling)
-        if capped != epochs:
-            LOGGER.info(
-                "Step-budget equalisation: %d steps/epoch x %d configured epochs = "
-                "%d steps; %s to %d epochs (~%d steps) to hit the %d-step target "
-                "shared by every base.%s",
-                steps_per_epoch, epochs, steps_per_epoch * epochs,
-                "trimming" if capped < epochs else "EXTENDING",
-                capped, steps_per_epoch * capped, int(target_steps),
-                "" if capped == wanted else
-                f" Capped at max_epochs_for_step_budget={ceiling}, so this trial "
-                f"runs {steps_per_epoch * capped} steps, SHORT of the target.",
-            )
-            epochs = capped
-        else:
-            LOGGER.info(
-                "Step-budget equalisation: %d steps/epoch x %d epochs = %d steps, "
-                "already the %d-step target — keeping all epochs.",
-                steps_per_epoch, epochs, steps_per_epoch * epochs, int(target_steps),
-            )
+        epochs = capped
     # The schedule and stop condition use SUCCESSFUL updates, not rounded epochs.
     total_steps = int(target_steps) if target_steps else max(1, steps_per_epoch * epochs)
     if total_steps < 1:
@@ -2197,8 +2160,8 @@ def train_one_config(
         ),
     )
     LOGGER.info(
-        "Starting %d epochs | %d train steps/epoch | accumulate=%d | "
-        "total_steps=%d | lr=%.1e | base=%s | seed=%d | device=%s | "
+        "Epoch safety limit=%d | %d batches/epoch | accumulate=%d | "
+        "successful update target=%d | lr=%.1e | base=%s | seed=%d | device=%s | "
         "max_rows_per_epoch=%d | query_fraction=%.2f",
         epochs, len(train_loader), accumulate, total_steps, float(learning_rate),
         Path(base_checkpoint_config).name, int(cfg.seed), device,
@@ -2207,12 +2170,7 @@ def train_one_config(
     LOGGER.info("Save target   : %s", save_path)
 
     # ---- 5a) BASELINE eval — pre-finetuning snapshot ----------------------- #
-    # This is the reference point against which every finetuned epoch must
-    # beat. We emit it as ``epoch=-1`` in the per-epoch CSV / on_epoch_end
-    # callback. If the final epoch's metrics are NOT clearly above this row,
-    # the finetuning has not improved over the unmodified base — likely a
-    # sign that the LR is too high, the trial diverged, or the corpus is
-    # too small to move the prior.
+    # The unmodified checkpoint provides a paired reference for the trajectory.
     epoch_eval_n0 = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
     epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators", 1))
     if family == "tabicl":
@@ -2401,8 +2359,7 @@ def train_one_config(
     if epoch_eval_n0 > 0 and not resuming:
         LOGGER.info(
             "Baseline eval (epoch=-1, model = unmodified base checkpoint, "
-            "n_estimators=%d, qf=%.2f) — this is the score every finetuned "
-            "epoch must beat. Ensemble path: %s.",
+            "n_estimators=%d, qf=%.2f) — paired monitoring reference. Ensemble path: %s.",
             epoch_eval_ne, query_fraction,
             "TabPFNClassifier/Regressor sklearn API" if use_ensemble_eval
             else "single forward pass (cheap)",
@@ -3147,9 +3104,8 @@ def train_one_config(
         "dataloader_workers": n_workers,
         "track":               track,
         "model_family":        family,
-        # Divergence status — read by train_pipeline's resume check so a diverged checkpoint is
-        # RE-RUN on resubmit rather than skipped (it is saved for inspection, but it is NOT a
-        # completed trial). Absent in schema_version 1 checkpoints, which read as not-diverged.
+        # Divergence is a terminal scientific outcome in fingerprinted runs, preserved
+        # on resubmission. Legacy non-fingerprinted runs may retry it.
         "diverged":            bool(diverged),
         "diverge_reason":      (str(diverge_reason) if diverged and diverge_reason else None),
         "diverged_at_epoch":   (int(diverged_at_epoch) if diverged and diverged_at_epoch is not None else None),
@@ -3347,7 +3303,7 @@ def train_one_config(
     _rows_seen = processed_rows
     _tflops = (2.0 * _n_total + 2.0 * _n_train_p) * _rows_seen / 1e12
 
-    if recovery_path.exists() and not diverged:
+    if recovery_path.exists():
         recovery_path.unlink()
     return TrainingResult(
         final_ckpt_path=save_path,

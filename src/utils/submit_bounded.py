@@ -69,6 +69,9 @@ def submit(command: list[str], *, slots: int, limit: int, cluster: str, pool_pat
         if result.returncode:
             write_json(path, old)
             raise RuntimeError(result.stderr.strip() or result.stdout.strip())
+        if result.stderr:
+            import sys
+            print(result.stderr, end="", file=sys.stderr)
         job = result.stdout.strip().split(";", 1)[0]
         if not job.isdigit():
             raise RuntimeError("Submission response is ambiguous; inspect squeue before retrying")

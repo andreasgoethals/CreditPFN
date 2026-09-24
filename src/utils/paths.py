@@ -1,11 +1,11 @@
 """Every path in the project. Two VSC tiers, one resolver, relative to the repository root.
 
 THE ONLY MODULE THAT BUILDS A PATH — everything else asks this one. A path assembled at a call
-site with `"output/" + name` is correct on a laptop and wrong on the cluster, and the failure
+site with `"output CreditPFN/" + name` is correct on a laptop and wrong on the cluster, and the failure
 shows up as a full quota or an empty results directory hours into a job.
 
         project storage  /lustre1/project/stg_00211/<Project>/  big files, allocation-specific quotas
-    personal data    $VSC_DATA/<Project>/                   repo + output/, backed up, 75 GiB
+    personal data    $VSC_DATA/<Project>/                   repo + output CreditPFN/, backed up, 75 GiB
     scratch          $VSC_SCRATCH/                          purged after 30 days of no ACCESS
 
 DATA has site-documented snapshots. Project storage quotas and backup policy are
@@ -26,22 +26,13 @@ import functools
 import os
 from pathlib import Path
 
-#: Filled in by `_template/init_project.py`. The per-project folder name on BOTH shared tiers.
+#: Per-project folder names; overrides always name the enclosing project root.
 PROJECT_NAME = "CreditPFN"
-
-#: Fallback for project storage when the site variable is not set. The literal path is a
-#: last resort, not the primary source — VSC has moved it before.
-STAGING_FALLBACK = "/lustre1/project/stg_00211"
+OUTPUT_DIR_NAME = "output CreditPFN"
 
 #: `parents[2]` because this file is `<root>/src/utils/paths.py`. From __file__, not the working
 #: directory, so a script, a test and a notebook agree wherever they were launched from.
 REPO_ROOT = Path(__file__).resolve().parents[2]
-
-#: Overrides for project storage, in priority order. The supported way to put big files on an
-#: external drive locally, and how the tests exercise the staging branch without a cluster.
-#: `TABPFN_STAGING_ROOT` is the allocation-wide variable this project inherited from its
-#: predecessor and every SLURM script still exports one of the first two.
-STAGING_ENV_VARS = ("CREDITPFN_STAGING_ROOT", "TABPFN_STAGING_ROOT", "VSC_STAGING_ROOT")
 
 
 def _env_path(name: str) -> Path | None:
@@ -91,7 +82,7 @@ def staging_root() -> Path:
     if lustre:
         return lustre / "stg_00211"
     if on_vsc():
-        return Path(STAGING_FALLBACK)
+        return Path(DEFAULT_STAGING_ROOT)
     return REPO_ROOT
 
 
@@ -117,15 +108,15 @@ def _under(root: Path, *parts: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# output/ — the single root for everything the code generates.
+# output CreditPFN/ — the single root for everything the code generates.
 # ---------------------------------------------------------------------------
 
 
 def outputs_dir() -> Path:
     """Root for live logs, metadata and figures; large outputs use project-tier helpers."""
     # PROJECT LAYER: routed through `resolve_output_path` so $CREDITPFN_OUTPUT_ROOT wins.
-    # Without this, `logs_dir()` and `resolve_output_path("output/logs")` could disagree.
-    return resolve_output_path("output")
+    # Without this, `logs_dir()` and `resolve_output_path("output CreditPFN/logs")` could disagree.
+    return resolve_output_path(OUTPUT_DIR_NAME)
 
 
 def results_dir(*parts: str) -> Path:
@@ -136,7 +127,7 @@ def results_dir(*parts: str) -> Path:
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
     # project env vars, and falls back to the output root when staging is unavailable.
-    return resolve_staging_path(Path("output", "results", *parts))
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, "results", *parts))
 
 
 def logs_dir() -> Path:
@@ -151,11 +142,11 @@ def manifests_dir() -> Path:
 
 def consolidated_dir() -> Path:
     """Immutable analysis snapshots: a few compressed files on project storage."""
-    return resolve_staging_path("output/consolidated")
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, "consolidated"))
 
 
 def figures_dir(notebook: str | None = None) -> Path:
-    """`output/figures/`, or one notebook's own folder — a notebook clears its own before drawing
+    """`output CreditPFN/figures/`, or one notebook's own folder — a notebook clears its own before drawing
     and must not be able to reach another's."""
     root = outputs_dir() / "figures"
     return root / notebook if notebook else root
@@ -230,15 +221,13 @@ def describe() -> dict[str, str]:
 #  PROJECT LAYER — CreditPFN
 # =========================================================================== #
 #
-# Everything above is the template's, unchanged apart from the five helpers marked
-# "PROJECT LAYER", which delegate here instead of duplicating the rule.
+# Public path helpers delegate to these project-specific storage rules.
 #
 # WHY THIS EXISTS. The template resolves a tier from $VSC_DATA alone. This project
 # additionally has to honour three things it cannot drop:
 #
-#   1. $CREDITPFN_DATA_ROOT / $CREDITPFN_OUTPUT_ROOT — exported by all seven SLURM
-#      scripts, and the only way the data stage on wICE and the training stage on
-#      Mindwell agree on where the corpus is.
+#   1. $CREDITPFN_DATA_ROOT / $CREDITPFN_OUTPUT_ROOT — set by shared job setup so
+#      data preparation on wICE and training on Mindwell agree on the corpus.
 #   2. `paths.data_source` in config/data.yaml (staging | scratch | data), applied by
 #      `apply_data_source_from_cfg` at every entry point.
 #   3. A writability PROBE before any compute (`resolve_writable_staging_path`):
@@ -277,9 +266,6 @@ DEFAULT_STAGING_ROOT = "/lustre1/project/stg_00211"
 # defaults when the user hasn't set the explicit CREDITPFN_* overrides.
 VSC_DATA_ENV    = "VSC_DATA"
 VSC_SCRATCH_ENV = "VSC_SCRATCH"
-
-# Subdir under VSC_DATA / VSC_SCRATCH / staging that this project owns.
-PROJECT_NAME = "CreditPFN"
 
 
 def is_vsc_environment() -> bool:
@@ -497,7 +483,15 @@ def resolve_output_path(p: str | os.PathLike) -> Path:
     For *large* durable artefacts (trained checkpoints, bulk eval results)
     use :func:`resolve_staging_path` instead so they land on project staging.
     """
-    return _resolve(p, env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
+    return _resolve(_output_alias(p), env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
+
+
+def _output_alias(p: str | os.PathLike) -> Path:
+    """Old relative configuration paths write to the current directory, never a second tree."""
+    path = Path(p)
+    if not path.is_absolute() and path.parts and path.parts[0] == "output":
+        return Path(OUTPUT_DIR_NAME, *path.parts[1:])
+    return path
 
 
 def resolve_staging_path(p: str | os.PathLike) -> Path:
@@ -516,7 +510,7 @@ def resolve_staging_path(p: str | os.PathLike) -> Path:
 
     Absolute paths are returned unchanged.
     """
-    path = Path(p)
+    path = _output_alias(p)
     if path.is_absolute():
         return path
     staging = _vsc_staging_root()
@@ -545,7 +539,7 @@ def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
     """
     import logging
     logger = logging.getLogger(__name__)
-    path = Path(p)
+    path = _output_alias(p)
     if path.is_absolute():
         return path
     staging = _vsc_staging_root()

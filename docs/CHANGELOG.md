@@ -11,8 +11,18 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 24-09-2026
+
+- Rename generated output to `output CreditPFN/` on both tiers; add collision-safe migration and retain template weight locations.
+- Fix training/evaluation identity boundaries, dependency-aware evaluation reuse, retry coverage, stable task packing, terminal recovery cleanup and visible submission errors.
+- Correct null-control comparisons for upstream checkpoint conversion; print actual prefetch and update-budget labels.
+- Keep every analysis factor distinct, normalize paired LGD effects, redact failure text and fix Brier/fold/timing/PDF omissions.
+- Remove two obsolete local config/transfer-script remnants and stale source comments; describe score agreement without claiming out-of-domain retention.
+
 ## 23-09-2026
 
+- Record the interactive activation stall, passing bounded diagnostics and explicit activation route; leave prepared code/configs unchanged.
+- Advance the operational handover to checkpoint audits after completed check3 controls; record misleading diagnostic labels and preserve prepared source/configs.
 - Move shared config/grid/capacity logic into src; fix evaluation CLI precedence, filtered single trials and empty/scalar grid axes.
 - Consolidate PD/LGD Slurm job bodies and all job logging; propagate grid/family lookup errors and avoid wrong-tier result folders.
 - Repair frozen capacity probes, member/precision reporting and OOM cleanup; retain existing measured caps.

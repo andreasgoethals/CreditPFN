@@ -4,7 +4,7 @@ The training pipeline (``scripts/train_pipeline.py``) writes two
 kinds of artefacts that this module consumes:
 
 * **Per-trial epoch CSV** — one file per trial under
-  ``output/manifests/epochs/<track>/<descriptive_name>.csv`` with columns::
+  ``output CreditPFN/manifests/epochs/<track>/<descriptive_name>.csv`` with columns::
 
       epoch, train_loss, lr, metric_name,
       train_metric, test_metric, epoch_time_sec, elapsed_sec
@@ -13,7 +13,7 @@ kinds of artefacts that this module consumes:
   ``scripts/train_pipeline.py``.)
 
 * **Run manifest CSV** — one file per track at
-  ``output/manifests/<run_name>_<track>.csv``. Each row is one trial::
+  ``output CreditPFN/manifests/<run_name>_<track>.csv``. Each row is one trial::
 
       track, base_checkpoint, learning_rate, use_lora, seed,
       n_train_datasets, n_test_datasets,
@@ -303,6 +303,7 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
             epoch_pass_mode=value("epoch_pass_mode", "one_sample"),
             min_train_rows=int(value("min_train_rows", 0)),
             l2sp_lambda=value("l2sp_lambda", None),
+            adaptation_mode=value("adaptation_mode", None),
         ).removesuffix(".ckpt")
 
     df["trial_name"] = df.apply(_stem, axis=1)
@@ -339,7 +340,7 @@ def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
 
 
 def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
-    """Load every per-epoch CSV under ``output/manifests/epochs/<track>/``.
+    """Load every per-epoch CSV under ``output CreditPFN/manifests/epochs/<track>/``.
 
     Returns a dict keyed by the file stem (== descriptive_name).
     """
@@ -1183,10 +1184,11 @@ def failed_trials(track: str, cfg=None) -> pd.DataFrame:
     manifest = load_run_manifest(track, cfg=cfg)
     if manifest.empty:
         return pd.DataFrame()
-    return manifest[manifest["status"] != "OK"][
+    from src.data.dataset_names import display_frame
+    return display_frame(manifest[manifest["status"] != "OK"][
         ["trial_name", "base_short", "learning_rate", "use_lora",
          "seed", "elapsed_sec", "status", "error"]
-    ].reset_index(drop=True)
+    ].reset_index(drop=True))
 
 
 def trial_leaderboard(track: str, *, cfg=None) -> pd.DataFrame:

@@ -25,7 +25,7 @@ def evaluation_key(handle, dataset_id: str, *, track: str, config: dict) -> str:
         "base_sha256": base_hash, "track": track, "dataset_id": dataset_id,
         "dataset_sha256": file_digest(data), "config": clean,
         "data_config": OmegaConf.to_container(OmegaConf.load("config/data.yaml"), resolve=True)["finetuning"],
-        "code": code_identity(), "versions": environment_versions()})
+        "code": code_identity(stage="eval"), "versions": environment_versions(stage="eval")})
 
 
 def cache_path(base_dir, key: str) -> Path:

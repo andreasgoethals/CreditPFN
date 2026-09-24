@@ -48,3 +48,22 @@ def display_id_list(ids: object, sep: str = ";") -> object:
 def sort_key(slug: object) -> tuple[int, str]:
     """(is_proprietary, display_name) — public datasets first, then alphabetical."""
     return (int(is_proprietary(slug)), display_name(slug))
+
+
+def redact_private_names(value: object) -> object:
+    """Remove private identifiers embedded in reader-facing errors and filenames."""
+    if not isinstance(value, str):
+        return value
+    for slug in sorted(_PROPRIETARY, key=len, reverse=True):
+        # Underscores are filename separators, not identifier boundaries here.
+        pattern = rf"(?<![A-Za-z0-9])(?:\d+\.)?{re.escape(slug)}(?![A-Za-z0-9])"
+        value = re.sub(pattern, lambda _: _DISPLAY.get(slug, "[private dataset]"), value)
+    return value
+
+
+def display_frame(frame):
+    """Sanitize free text only at presentation boundaries, after internal joins."""
+    result = frame.copy()
+    for column in result.select_dtypes(include=["object", "string"]):
+        result[column] = result[column].map(redact_private_names)
+    return result

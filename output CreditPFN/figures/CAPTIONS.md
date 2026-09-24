@@ -200,9 +200,9 @@ Change in roc_auc against dataset size, one point per (checkpoint, dataset), log
 
 Per dataset, the roc_auc of the configuration selected on the other datasets only (leave-one-dataset-out) against the best roc_auc achievable on that dataset. The gap is the optimism of selecting on the test set.
 
-**19_paper_forgetting** — `paper_forgetting`
+**19_paper_score_agreement** — `paper_score_agreement`
 
-Trained against untuned roc_auc for every (checkpoint, dataset) pair, with the identity line. Spearman correlation over all pairs quantifies how far adaptation reordered the model's behaviour.
+Trained against untuned roc_auc for every (checkpoint, dataset) pair, with the identity line. Spearman correlation summarizes the ordering of dataset-level scores across the plotted pairs.
 
 **20_paper_zero_shot** — `paper_zero_shot`
 
@@ -276,7 +276,7 @@ Per-row inference time against primary metric, one point per (method, dataset), 
 
 **13_paper_paired_effect** — `paper_paired_effect`
 
-Change in rmse from continued pretraining, each trained checkpoint against its own untuned base on the same dataset. One point per (checkpoint, dataset); horizontal bars mark the per-base mean; the line at zero is no change.
+Fractional RMSE reduction from continued pretraining, each trained checkpoint against its own untuned base on the same dataset. One point per (checkpoint, dataset); horizontal bars mark the per-base mean; the line at zero is no change.
 
 **14_paper_gain_vs_base** — `paper_gain_vs_base`
 
@@ -298,26 +298,26 @@ Change in rmse against dataset size, one point per (checkpoint, dataset), log x 
 
 Per dataset, the rmse of the configuration selected on the other datasets only (leave-one-dataset-out) against the best rmse achievable on that dataset. The gap is the optimism of selecting on the test set.
 
-**19_paper_forgetting** — `paper_forgetting`
+**19_paper_score_agreement** — `paper_score_agreement`
 
-Trained against untuned rmse for every (checkpoint, dataset) pair, with the identity line. Spearman correlation over all pairs quantifies how far adaptation reordered the model's behaviour.
+Trained against untuned rmse for every (checkpoint, dataset) pair, with the identity line. Spearman correlation summarizes the ordering of dataset-level scores across the plotted pairs.
 
 **20_paper_zero_shot** — `paper_zero_shot`
 
-Difference in RMSE between each untuned tabular foundation model and the best of three hyperparameter-tuned classical baselines (XGBoost, CatBoost, ridge regression; 50 Optuna trials each) on the same held-out dataset, signed so that bars above zero favour the foundation model. Grouped by dataset; one bar per base checkpoint.
+Fractional RMSE reduction for each untuned tabular foundation model and the best of three hyperparameter-tuned classical baselines (XGBoost, CatBoost, ridge regression; 50 Optuna trials each) on the same held-out dataset, signed so that bars above zero favour the foundation model. Grouped by dataset; one bar per base checkpoint.
 
 **21_paper_corpus_arm** — `paper_corpus_arm`
 
-Mean change in RMSE from continued pretraining, per base checkpoint, split by the minimum training-table size admitted to the corpus, signed so that positive is an improvement. Error bars are one standard error over (checkpoint, dataset) pairs.
+Mean fractional RMSE reduction from continued pretraining, per base checkpoint, split by the minimum training-table size admitted to the corpus, signed so that positive is an improvement. Error bars are one standard error over (checkpoint, dataset) pairs.
 
 **22_paper_effect_ci** — `paper_effect_ci`
 
-Mean change in RMSE from continued pretraining with a 95 % confidence interval, computed over held-out datasets after averaging within each dataset and signed so that positive is an improvement. An interval spanning zero indicates no effect detectable at this sample size.
+Mean fractional RMSE reduction from continued pretraining with a 95 % confidence interval, computed over held-out datasets after averaging within each dataset and signed so that positive is an improvement. An interval spanning zero indicates no effect detectable at this sample size.
 
 **23_paper_scheme_grid** — `paper_scheme_grid`
 
-Change in RMSE from continued pretraining for every adaptation scheme (rows) on every held-out dataset (columns), one panel per base checkpoint, each measured against that base's own untuned score on the same dataset and signed so that red is an improvement. The colour scale is shared across panels.
+Fractional RMSE reduction from continued pretraining for every adaptation scheme (rows) on every held-out dataset (columns), one panel per base checkpoint, each measured against that base's own untuned score on the same dataset and signed so that red is an improvement. The colour scale is shared across panels.
 
 **24_paper_scheme_metrics** — `paper_scheme_metrics`
 
-Mean change from continued pretraining per adaptation scheme, one panel per base checkpoint, for RMSE and R-squared, signed so that positive favours the adapted model and averaged over the held-out datasets.
+Mean change from continued pretraining per adaptation scheme, one panel per base checkpoint, for fractional RMSE reduction and change in R-squared, signed so that positive favours the adapted model and averaged over the held-out datasets.

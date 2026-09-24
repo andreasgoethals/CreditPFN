@@ -58,9 +58,14 @@ def file_digest(path: Path) -> str:
     return _file_digest(str(p), stat.st_size, stat.st_mtime_ns)
 
 
-def environment_versions() -> dict:
+def environment_versions(*, stage: str = "train") -> dict:
     result = {}
-    for package in ("torch", "tabpfn", "tabicl", "numpy", "scikit-learn", "scipy"):
+    packages = ["torch", "tabpfn", "tabicl", "numpy", "scikit-learn", "scipy", "pandas", "omegaconf"]
+    if stage == "eval":
+        packages += ["xgboost", "catboost", "optuna", "pyarrow"]
+    elif stage != "train":
+        raise ValueError(f"Unknown identity stage: {stage}")
+    for package in packages:
         try:
             result[package] = version(package)
         except PackageNotFoundError:
@@ -78,11 +83,31 @@ def _source_digest(path: str, size: int, mtime_ns: int) -> str:
     return digest
 
 
-def code_identity(root: Path | None = None) -> str:
+def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
     root = root or Path(__file__).resolve().parents[2]
-    paths = [p for folder in ("src/train", "src/data", "src/model", "src/eval", "src/utils", "scripts")
-             for p in (root / folder).rglob("*")
-             if p.suffix in {".py", ".sh", ".slurm"} and p.name != "_private_names.py"]
+    if stage == "train":
+        # Training identity excludes plotting, audits, consolidation, evaluation
+        # orchestration and submitters. Shared numerical metrics remain covered.
+        folders = ("src/train",)
+        files = ("scripts/train_pipeline.py", "src/eval/metrics.py",
+                 "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py",
+                 "src/data/register.py", "src/data/sanitize.py", "src/model/__init__.py",
+                 "src/__init__.py", "src/eval/__init__.py", "src/utils/__init__.py",
+                 "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabicl_models.py",
+                 "src/utils/experiment.py", "src/utils/prepare_experiment.py", "src/utils/atomic.py",
+                 "src/utils/checkpoint_inventory.py", "src/utils/paths.py", "src/utils/config.py",
+                 "src/utils/logging_setup.py", "src/utils/stage_inputs.py",
+                 "scripts/slurm/_train_job.sh", "scripts/slurm/_run_train.sh",
+                 "scripts/slurm/_activate_env.sh", "scripts/slurm/_job_log.sh",
+                 "scripts/slurm/train_pd.slurm", "scripts/slurm/train_lgd.slurm")
+    elif stage == "eval":
+        folders = ("src/train", "src/data", "src/model", "src/eval", "src/utils")
+        files = ("scripts/eval_pipeline.py",)
+    else:
+        raise ValueError(f"Unknown identity stage: {stage}")
+    paths = {p for folder in folders for p in (root / folder).rglob("*.py")
+             if p.name != "_private_names.py"}
+    paths.update(root / name for name in files if (root / name).is_file())
     # Git checks out LF on VSC and may use CRLF on Windows. Hash source text
     # consistently, while including the shell plumbing that routes each trial.
     hashes = {}

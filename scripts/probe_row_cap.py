@@ -64,7 +64,7 @@ def _gpu_is_usable() -> bool:
         print("\n  Submit it as a batch job on a real compute GPU instead:")
         print("      sbatch scripts/slurm/probe_row_cap.slurm")
         print("  (Mindwell gpu_b200, 1 GPU, ~1 h; log lands in "
-              "$VSC_DATA/CreditPFN/output/logs/.)")
+              "$VSC_DATA/CreditPFN/output CreditPFN/logs/.)")
         print("=" * 78)
         return False
     return True

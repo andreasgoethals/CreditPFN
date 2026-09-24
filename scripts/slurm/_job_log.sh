@@ -3,8 +3,8 @@
 start_job_log() {
     local task="${1:?log task name required}"
     export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA:?}/CreditPFN}"
-    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output/logs"
-    LOG="${CREDITPFN_OUTPUT_ROOT}/output/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
+    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/logs"
+    LOG="${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
     export CREDITPFN_ACTIVE_LOG="$LOG"
     exec >> "$LOG" 2>&1
     trap 'rc=$?; echo "END exit_code=${rc} - $(date)"' EXIT

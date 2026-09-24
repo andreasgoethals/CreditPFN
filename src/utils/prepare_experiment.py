@@ -9,7 +9,7 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 from src.utils.experiment import (
-    apply_split_index, code_identity, digest_json, environment_versions, trial_identity,
+    apply_split_index, code_identity, digest_json, environment_versions, scientific_config, trial_identity,
 )
 from src.utils.paths import manifests_dir
 
@@ -26,7 +26,7 @@ def read_plan(path: Path) -> dict:
     return payload
 
 
-def check_prepared(config: Path) -> dict:
+def check_prepared(config: Path, *, stage: str = "train") -> dict:
     """Cheap submission gate: no CSV/weight reads, jobs, or output writes.
 
     Full input checks belong in CPU preparation and each training process.
@@ -35,8 +35,15 @@ def check_prepared(config: Path) -> dict:
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=str(config))
     payload = read_plan(plan_path(str(cfg.run_name), str(cfg.track)))
-    if payload["config"] != OmegaConf.to_container(cfg, resolve=True):
+    def training_settings(config):
+        raw = OmegaConf.to_container(config, resolve=True)
+        return {"scientific": scientific_config(config), "run_name": raw["run_name"],
+                "tunable": raw["tunable"], "experiment": raw.get("experiment", {}),
+                "n_splits": raw["corpus"].get("n_splits", 1)}
+    if training_settings(OmegaConf.create(payload["config"])) != training_settings(cfg):
         raise RuntimeError("Configuration differs from the prepared plan; prepare a fresh named phase")
+    if stage not in {"train", "eval"}:
+        raise ValueError(f"Unknown preparation stage: {stage}")
     code, versions = code_identity(), environment_versions()
     data_config = OmegaConf.to_container(OmegaConf.load("config/data.yaml"), resolve=True)["finetuning"]
     identities = payload["identities"]
@@ -45,12 +52,12 @@ def check_prepared(config: Path) -> dict:
     for key, spec in identities.items():
         if digest_json(spec) != key:
             raise RuntimeError("Prepared trial identity failed its checksum")
-        if spec["code_sha256"] != code or spec["versions"] != versions:
+        if stage == "train" and (spec["code_sha256"] != code or spec["versions"] != versions):
             raise RuntimeError("Code/environment differs from the prepared plan; prepare a fresh named phase")
         if spec["data_config"] != data_config:
             raise RuntimeError("Data settings differ from the prepared plan; prepare a fresh named phase")
     return {"run": str(cfg.run_name), "track": str(cfg.track), "checked": True,
-            "training_trials": len(payload["trials"])}
+            "training_trials": len(payload["trials"]), "stage": stage}
 
 
 def assert_prepared(cfg, trial_index: int, identity: dict) -> None:

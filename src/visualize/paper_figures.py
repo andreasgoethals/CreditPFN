@@ -1,35 +1,10 @@
-"""The figures a paper about this project actually needs.
+"""Descriptive figures pairing adapted models with their own untuned controls.
 
-`training_viz` and `eval_viz` answer "did the run behave?" — a hundred diagnostic views,
-most of which belong in an appendix or nowhere. This module holds the small set that
-carries the argument, chosen against what the field reports (`tfm-library/SYNTHESIS.md`):
-
-1. `plot_paired_delta`        the headline. Trained minus its OWN untuned base, per
-                              dataset. Every continued-pretraining paper reports this and
-                              nothing else answers "did it help?".
-2. `plot_gain_vs_base`        our own finding: the weaker the base, the larger the gain.
-                              The synthesis predicts exactly this ("continued pretraining
-                              should help most where the domain is distinctive relative to
-                              the prior, while a sufficiently good synthetic backbone may
-                              erase the headroom").
-3. `plot_mean_rank`           mean rank across datasets, the field's standard aggregate
-                              (Hollmann 2025, Garg 2025, Purucker 2026). Immune to one
-                              dataset's scale dominating a mean of raw metrics.
-4. `plot_reliability`         calibration, the differentiator. TabPFN's selling point is
-                              calibrated probabilities; Tanna 2026 shows naive finetuning
-                              triples ECE elsewhere, and neither TabICLv2, TabDPT nor Mitra
-                              reports ECE at all.
-5. `plot_regime_effect`       where the method wins as a function of dataset property —
-                              Purucker's analysis (margin vs n rows, ρ=+0.60). The figure
-                              that tells a practitioner when to use this.
-6. `plot_selection_honesty`   leave-one-dataset-out hyperparameter selection vs the
-                              best-on-test number. The winner's-curse correction, computable
-                              from results we already have.
-7. `plot_forgetting`          rank correlation between trained and base predictions —
-                              Kolberg's ρ=0.9935 check, "worth copying".
-
-Every function here degrades gracefully as the corpus grows: nothing draws one bar or one
-label per dataset without asking `style.too_many` first.
+Experimental factors remain separate in scheme plots. PD effects use signed
+metric differences; LGD RMSE effects use within-fold fractional reductions before
+averaging within datasets. Dataset-level intervals summarize the observed corpus,
+whose partitions share training data; they are not independent replications.
+Selection and retention plots are optional diagnostics, not confirmation tests.
 """
 
 from __future__ import annotations
@@ -103,6 +78,15 @@ def _empty(reason: str):
 # --------------------------------------------------------------------------- #
 
 
+def effect_label(metric: str) -> str:
+    return "fractional RMSE reduction" if metric == "rmse" else f"signed change in {metric} (+ better)"
+
+
+def _effect(trained, untuned, metric):
+    delta = (trained - untuned) * _sign(metric)
+    return delta / untuned.where(untuned > 0) if metric == "rmse" else delta
+
+
 def paired_deltas(df: pd.DataFrame, metric: str = "roc_auc") -> pd.DataFrame:
     """One row per (trained model × dataset) with the delta against its OWN base.
 
@@ -133,10 +117,12 @@ def paired_deltas(df: pd.DataFrame, metric: str = "roc_auc") -> pd.DataFrame:
     if paired.empty:
         return paired
     paired["trained"] = paired[metric]
-    paired["delta"] = (paired["trained"] - paired["untuned"]) * _sign(metric)
+    paired["absolute_delta"] = (paired["trained"] - paired["untuned"]) * _sign(metric)
+    paired["delta"] = _effect(paired["trained"], paired["untuned"], metric)
+    paired = paired[np.isfinite(paired["delta"])]  # zero RMSE references have no fractional effect
     # Pair folds/splits before averaging; a missing control never borrows another split.
     return paired.groupby([_METHOD_COL, "base_short", "test_dataset_id"], dropna=False)[
-        ["untuned", "trained", "delta"]].mean().reset_index()
+        ["untuned", "trained", "delta", "absolute_delta"]].mean().reset_index()
 
 
 # --------------------------------------------------------------------------- #
@@ -168,7 +154,7 @@ def plot_paired_delta(df: pd.DataFrame, metric: str = "roc_auc"):
     ax.axhline(0, color=style.COLORS["reference"], linewidth=0.8, alpha=0.6)
     ax.set_xticks(range(len(bases)))
     ax.set_xticklabels(bases)
-    ax.set_ylabel(f"Δ {metric}  (trained − untuned)")
+    ax.set_ylabel(effect_label(metric))
     ax.set_xlabel("")
     style.note(ax, f"n={len(d)} pairs · bar = mean")
     return fig
@@ -220,7 +206,7 @@ def plot_gain_vs_base(df: pd.DataFrame, metric: str = "roc_auc"):
         n_ds = d["test_dataset_id"].nunique()
         style.note(ax, f"slope {b:+.3f} · r = {r:+.2f} · {len(d)} pairs on {n_ds} datasets")
     ax.set_xlabel(f"untuned base {metric} on that dataset")
-    ax.set_ylabel(f"Δ {metric}")
+    ax.set_ylabel(effect_label(metric))
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7,
               borderaxespad=0.0)
     return fig
@@ -367,6 +353,8 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
     from src.data.dataset_names import display_name
     m["dataset_id"] = m["dataset_id"].map(display_name)
     m[prop] = pd.to_numeric(m[prop], errors="coerce")
+    if prop in {"n_rows", "n_features"}:
+        m.loc[m[prop] <= 0, prop] = np.nan
     d = (d.merge(m, left_on="test_dataset_id", right_on="dataset_id", how="inner")
            .dropna(subset=[prop, "delta"]))
     if d.empty:
@@ -387,7 +375,7 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
     if (d[prop] > 0).all() and d[prop].max() / max(d[prop].min(), 1e-9) >= 10:
         ax.set_xscale("log")
     ax.set_xlabel(prop.replace("_", " "))
-    ax.set_ylabel(f"Δ {metric}")
+    ax.set_ylabel(effect_label(metric))
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7,
               borderaxespad=0.0)
     # THE CORRELATION IS OVER DATASETS, NOT OVER POINTS. `prop` is a property of the dataset,
@@ -414,15 +402,10 @@ def plot_regime_effect(df: pd.DataFrame, manifest: pd.DataFrame,
 
 
 def selection_honesty(df: pd.DataFrame, metric: str = "roc_auc") -> pd.DataFrame:
-    """Best-on-test vs leave-one-dataset-out selection, per dataset.
+    """Optional descriptive comparison of selection rules across datasets.
 
-    This project has no validation corpus — too few datasets — so the best trial is
-    currently picked on the test set, which is optimistically biased by the winner's
-    curse: with 16 trials and a handful of datasets, the maximum is partly noise.
-
-    LODO fixes it without new runs. For each held-out dataset, pick the configuration
-    that ranks best on the OTHER datasets, then report that configuration's score on the
-    held-out one. The gap between the two columns is the size of the bias.
+    A configuration selected on other datasets can still have training overlap
+    with the focal dataset. This is not an independent validation estimate.
     """
     need = {_METHOD_COL, "test_dataset_id", "source", metric}
     if df is None or df.empty or not need <= set(df.columns):
@@ -490,23 +473,21 @@ def plot_selection_honesty(df: pd.DataFrame, metric: str = "roc_auc"):
 
 
 # --------------------------------------------------------------------------- #
-# 7. Forgetting
+# 7. Base/adapted score agreement
 # --------------------------------------------------------------------------- #
 
 
-def plot_forgetting(df: pd.DataFrame, metric: str = "roc_auc"):
-    """Trained score against untuned score, per (model × dataset), with the identity line.
+def plot_score_agreement(df: pd.DataFrame, metric: str = "roc_auc"):
+    """Compare adapted and base scores on held-out in-domain datasets.
 
-    Kolberg 2026 checks continued pretraining for catastrophic forgetting by correlating
-    the adapted model against its base on the base's original tasks (ρ = 0.9935) and the
-    synthesis calls it "a forgetting check worth copying". Points far below the diagonal
-    are datasets where adaptation destroyed what the prior already knew.
+    This does not measure retention on the foundation model's original domain;
+    that requires a separate out-of-domain benchmark.
     """
     d = paired_deltas(df, metric)
     if d.empty:
         return _empty("no paired trained/untuned cells")
 
-    fig, ax = _new(f"Forgetting check ({metric})", width=style.WIDTH_HALF, ratio=1.0)
+    fig, ax = _new(f"Base/adapted score agreement ({metric})", width=style.WIDTH_HALF, ratio=1.0)
     lo = float(min(d["untuned"].min(), d["trained"].min()))
     hi = float(max(d["untuned"].max(), d["trained"].max()))
     pad = 0.03 * (hi - lo or 1.0)
@@ -561,7 +542,7 @@ def zero_shot_vs_baseline(df: pd.DataFrame, metric: str = "roc_auc") -> pd.DataF
         val = float(getattr(r, metric))
         rows.append({"base_short": r.base_short, "test_dataset_id": r.test_dataset_id,
                      "model": val, "baseline": ref,
-                     "delta": (val - ref) * _sign(metric)})
+                     "delta": ((ref - val) / ref if ref > 0 else np.nan) if metric == "rmse" else (val - ref) * _sign(metric)})
     return pd.DataFrame(rows)
 
 
@@ -584,7 +565,7 @@ def plot_zero_shot_vs_baseline(df: pd.DataFrame, metric: str = "roc_auc"):
         ax.boxplot([d.loc[d["base_short"] == b, "delta"].values for b in bases],
                    tick_labels=bases, showmeans=True)
         ax.axhline(0, color=style.COLORS["reference"], linewidth=0.9)
-        ax.set_ylabel(f"Δ {metric} vs best baseline")
+        ax.set_ylabel(f"{effect_label(metric)} vs best baseline")
         style.note(ax, f"{len(datasets)} datasets")
         return fig
 
@@ -599,7 +580,7 @@ def plot_zero_shot_vs_baseline(df: pd.DataFrame, metric: str = "roc_auc"):
     ax.set_xticks(x)
     ax.set_xticklabels([s.split(".", 1)[-1] for s in datasets], rotation=30,
                        ha="right", fontsize=7)
-    ax.set_ylabel(f"Δ {metric} vs best baseline")
+    ax.set_ylabel(f"{effect_label(metric)} vs best baseline")
     # Symmetric about zero with headroom, so the bars read as signed deviations and the
     # legend has somewhere to go. `loc="best"` put it straight on top of the tallest pair.
     span = float(np.nanmax(np.abs(d["delta"]))) or 1.0
@@ -645,7 +626,7 @@ def plot_corpus_arm(df: pd.DataFrame, metric: str = "roc_auc"):
     ax.axhline(0, color=style.COLORS["reference"], linewidth=0.9)
     ax.set_xticks(x)
     ax.set_xticklabels(bases)
-    ax.set_ylabel(f"mean Δ {metric}  (trained − untuned)")
+    ax.set_ylabel(f"mean {effect_label(metric)}")
     # Two arms of the same colour differ only in alpha, so the legend has to be built by
     # hand rather than from the bar labels.
     from matplotlib.patches import Patch
@@ -693,7 +674,7 @@ def plot_effect_ci(df: pd.DataFrame, metric: str = "roc_auc"):
     ax.axvline(0, color=style.COLORS["highlight"], linewidth=1.0, alpha=0.8)
     ax.set_yticks(y)
     ax.set_yticklabels([f"{t.base}  (n={t.n})" for t in r.itertuples()], fontsize=8)
-    ax.set_xlabel(f"mean Δ {metric}  (trained − untuned), 95 % CI over datasets")
+    ax.set_xlabel(f"mean {effect_label(metric)}, 95 % CI over datasets")
     ax.grid(axis="y", visible=False)
     # `style.note` writes at the bottom-right INSIDE the axes, which is exactly where the
     # last row's interval is drawn. Reserve a row's worth of space for it.
@@ -715,16 +696,13 @@ def plot_effect_ci(df: pd.DataFrame, metric: str = "roc_auc"):
 
 
 def _scheme_label(dirname: str) -> str:
-    """The adaptation scheme of a result directory, with the base stripped out."""
-    import re
-    d = str(dirname)
-    bits = []
-    m = re.search(r"__lr([0-9eE.+\-]+)", d)
-    if m:
-        bits.append(f"lr {float(m.group(1)):.0e}")
-    bits.append("adapter" if ("__lora" in d or "__iclhead" in d) else "full-FT")
-    m = re.search(r"__min(\d+)", d)
-    bits.append(f"min{int(m.group(1)) // 1000}k" if m else "no filter")
+    """Every varied factor remains visible; base is shown by the panel."""
+    from src.visualize.eval_viz import _decode_method_dirname
+    meta = _decode_method_dirname(str(dirname))
+    bits = [f"lr {meta['lr']:.0e}", meta["adaptation_mode"], meta["epoch_pass_mode"]]
+    if meta["l2sp_lambda"] is not None:
+        bits.append(f"L2SP {meta['l2sp_lambda']:g}")
+    bits.append(f"min {meta['min_train_rows']}" if meta["min_train_rows"] else "no filter")
     return " · ".join(bits)
 
 
@@ -787,12 +765,12 @@ def plot_scheme_grid(df, metric: str = "roc_auc"):
                             color="white" if abs(v) > 0.62 * vmax else "black")
     if im is not None:
         cb = fig.colorbar(im, ax=list(axes[:, 0]), fraction=0.03, pad=0.02)
-        cb.set_label(f"delta {metric} vs own base", fontsize=7)
+        cb.set_label(effect_label(metric), fontsize=7)
     fig.suptitle(f"Adaptation scheme x dataset, against each base ({metric})")
     return fig
 
 
-def plot_scheme_metrics(df, metrics=("roc_auc", "brier", "ece", "f1")):
+def plot_scheme_metrics(df, metrics=("roc_auc", "brier_score", "ece", "f1")):
     """Mean change per scheme across SEVERAL metrics, one panel per base.
 
     Discrimination is not the only thing continued pretraining can move, and for credit risk it
@@ -833,7 +811,7 @@ def plot_scheme_metrics(df, metrics=("roc_auc", "brier", "ece", "f1")):
         for k, m in enumerate(present):
             s = sub[sub["metric"] == m].set_index("scheme").reindex(schemes)["delta"]
             ax.barh(y + k * width - 0.4 + width / 2, s.values, width * 0.9,
-                    color=pal[m], label=(m if base == bases[0] else None))
+                    color=pal[m], label=((effect_label(m) if m == "rmse" else m) if base == bases[0] else None))
         ax.axvline(0, color=style.COLORS["reference"], linewidth=0.9)
         ax.set_yticks(y)
         ax.set_yticklabels(schemes if base == bases[0] else [], fontsize=6)
@@ -951,7 +929,7 @@ def plot_drift_vs_effect(df, manifest, metric: str = "roc_auc"):
     if (d["drift"] > 0).all():
         ax.set_xscale("log")
     ax.set_xlabel(r"$\|w-w_0\|\,/\,\|w_0\|$  (dose)")
-    ax.set_ylabel(f"Δ {metric}")
+    ax.set_ylabel(effect_label(metric))
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7, borderaxespad=0.0)
     if d["drift"].nunique() >= 3:
         r = float(np.corrcoef(np.log10(d["drift"]), d["delta"])[0, 1])
