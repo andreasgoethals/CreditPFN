@@ -43,8 +43,8 @@ def close_figures():
 def test_new_config_paths_preserve_grid_sizes_and_ids():
     for track in ("pd","lgd"):
         expected = [(1,None,256,"cpt_main_v5"),(2,None,16,"cpt_seeds_v5"),
-                    (3,None,48,"cpt_sampling_v5"),(0,"null",8,"cpt_null_v5"),
-                    (0,"pilot",16,"cpt_pilot_v5"),(0,"budget",4,"cpt_budget_v5")]
+                    (3,None,48,"cpt_sampling_v5"),(0,"null",8,"cpt_null_v5_check2"),
+                    (0,"pilot",16,"cpt_pilot_v5_check2"),(0,"budget",4,"cpt_budget_v5_check2")]
         for experiment,phase,count,run in expected:
             cfg = load_train_config(config_path=str(cp.config_path(experiment,track,phase)))
             planned = cp.planned_trials(cfg)

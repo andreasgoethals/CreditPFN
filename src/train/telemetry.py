@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import math
 import os
 import subprocess
 import threading
@@ -14,6 +15,19 @@ from pathlib import Path
 import torch
 
 _ACTIVE = ContextVar("creditpfn_resource_monitor", default=None)
+
+
+def allocated_gpu_uuid() -> str | None:
+    """Select CUDA's current device without assuming its physical NVIDIA index."""
+    if not torch.cuda.is_available():
+        return None
+    props = torch.cuda.get_device_properties(torch.cuda.current_device())
+    value = getattr(props, "uuid", None)
+    identifier = str(value).strip() if value is not None else ""
+    if not identifier:
+        return None
+    # PyTorch's CUuuid string omits NVIDIA's required GPU- prefix.
+    return identifier if identifier.startswith(("GPU-", "MIG-")) else "GPU-" + identifier
 
 
 def progress(updates: int, rows: int, phase="training"):
@@ -36,6 +50,7 @@ class ResourceMonitor:
         self.segment = uuid.uuid4().hex[:12]
         self.gpu = None
         self.process = None
+        self.warned = False
 
     def __enter__(self):
         self.token = _ACTIVE.set(self)
@@ -47,10 +62,7 @@ class ResourceMonitor:
             self.process.cpu_percent()
         except ImportError:
             pass
-        if torch.cuda.is_available():
-            props = torch.cuda.get_device_properties(torch.cuda.current_device())
-            # A UUID avoids confusing CUDA_VISIBLE_DEVICES with nvidia-smi's physical index.
-            self.gpu = str(getattr(props, "uuid", "")) or None
+        self.gpu = allocated_gpu_uuid()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
@@ -62,7 +74,8 @@ class ResourceMonitor:
                       successful_updates=update, processed_rows=rows, phase=phase,
                       process_tree_rss_bytes="", process_cpu_percent="", gpu_uuid=self.gpu or "",
                       gpu_utilization_percent="", memory_utilization_percent="", device_memory_used_mib="",
-                      power_watts="", temperature_c="", gpu_status="unavailable")
+                      power_watts="", temperature_c="", gpu_status="unavailable",
+                      gpu_exit_code="", gpu_error="")
         if self.process is not None:
             try:
                 record["process_tree_rss_bytes"] = sum(p.memory_info().rss for p in
@@ -75,16 +88,35 @@ class ResourceMonitor:
                 result = subprocess.run(["nvidia-smi", "-i", self.gpu,
                     "--query-gpu=utilization.gpu,utilization.memory,memory.used,power.draw,temperature.gpu",
                     "--format=csv,noheader,nounits"], capture_output=True, text=True, timeout=3, check=True)
-                values = result.stdout.strip().split(",")
+                lines = result.stdout.strip().splitlines()
+                if len(lines) != 1:
+                    raise ValueError("Expected counters for exactly one GPU")
+                values = lines[0].split(",")
+                if len(values) != 5:
+                    raise ValueError("Expected five GPU counters")
                 for key, value in zip(("gpu_utilization_percent", "memory_utilization_percent",
                     "device_memory_used_mib", "power_watts", "temperature_c"), values, strict=True):
                     try:
-                        record[key] = float(value)
+                        number = float(value)
+                        record[key] = number if math.isfinite(number) else ""
                     except ValueError:
                         record[key] = ""
-                record["gpu_status"] = "sampled"
+                if all(record[key] != "" for key in ("gpu_utilization_percent", "device_memory_used_mib")):
+                    record["gpu_status"] = "sampled"
+                else:
+                    record.update(gpu_status="unsupported", gpu_error="GPU utilization or memory-used counter unavailable")
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
                 record["gpu_status"] = type(exc).__name__
+                record["gpu_exit_code"] = getattr(exc, "returncode", "")
+                details = []
+                for value in (getattr(exc, "stderr", None), getattr(exc, "stdout", None)):
+                    if value:
+                        details.append(value.decode(errors="replace") if isinstance(value, bytes) else str(value))
+                record["gpu_error"] = " ".join((" ".join(details) or str(exc)).split())[:384]
+            if record["gpu_status"] != "sampled" and not self.warned:
+                logging.getLogger(__name__).warning("GPU resource sampling failed (%s): %s",
+                    record["gpu_status"], record["gpu_error"])
+                self.warned = True
         return record
 
     def _run(self):

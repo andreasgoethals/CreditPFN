@@ -12,7 +12,16 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 24-09-2026 named output and CPU preflight repair
+## Current handover — 24-09-2026 null controls pass; GPU counters block progression
+
+- Read `Downloads/output CreditPFN/` in place: **56 files / 1,125,299 bytes**, from user commit `c74610c`. Workflow `0865da430fbe433ca16ad6118017bdb7`: CPU prepare **62140639** passed with zero preflight failures/warnings; all **16 null GPU jobs exited 0**, each with two successful updates. CPU audit **62140691** then exited 1 and left phase `null`, status `failed`. No short pilots, recovery checks, budget pilots or main sweep were released.
+- Both downloaded null audits report **8 complete, 0 pending, 0 divergent**; all 16 canonical saved states match exactly and all 16 credit/non-credit monitor comparisons pass. The only 16 audit problems are missing successful GPU resource samples: **25 `CalledProcessError` samples** in total. Detailed CSVs remain on project storage and were not part of this DATA download. Output/weight paths in the logs use the intended experiment folders and storage tiers.
+- Confirmed a device-selector bug: PyTorch 2.12's `CUuuid.__str__` uses `uuid_to_string`, which emits a bare UUID, but the sampler passed it directly to NVIDIA's tool. A local read-only NVIDIA query reproduced exit 6 (`No devices were found`) for the bare UUID and exit 0 with `GPU-`. Primary evidence: PyTorch `registerCudaDeviceProperties` and [`uuid_to_string`](https://github.com/pytorch/pytorch/blob/v2.12.0/torch/csrc/utils.cpp). The B200 fix still requires the standalone cluster resource check.
+- Normalize the GPU prefix, preserve explicit prefixed selectors, record bounded subprocess details/exit codes and warn once per trial. A sample requires actual utilization and memory-use values; unavailable counters cannot pass. `preflight --gpu-resources` checks the same sampler without loading datasets/models or writing measurement files. Its Slurm log remains under experiment 0.
+- Experiment-0 configs now use **`cpt_*_v5_check2`** so corrected source cannot overwrite immutable v5 plans/checkpoints. Only those run names changed; grids, budgets and experiments 1–3 are unchanged. First run the standalone GPU check, then rerun part 1 to verify the corrected measurement path with fresh records. Keep the existing successful null evidence; do not bypass its failed resource gate or relabel old weights. No Downloads copies, output deletions, installs, commits, pushes or VSC submissions by the agent.
+- Validation: reproduced the old selector failure in a regression test, then **16 resource tests passed**. Full suite **525 passed, 1 skipped** (local manifests absent). The standalone entry point returned real local NVIDIA counters using a mocked PyTorch device identifier because local Torch is CPU-only; this is not B200 validation or model training. All **17 shell/Slurm files** and the proposed standalone submission command parse. All eight config payloads differ only in `run_name`; no local output tree was generated and notebooks were untouched.
+
+## Previous handover — 24-09-2026 named output and CPU preflight repair
 
 - The user reconfirmed **`output CreditPFN/<experiment>/`** on DATA, project storage and locally. This supersedes the bare `output/` name in the preceding handover. Python resolvers, shell logs, configuration and current documentation use the name with its space; relative legacy aliases cannot create a second output tree. `docs/TEMPLATE.md` remains the generic template, and AGENTS/README/VSC document the deliberate naming difference. Checkpoints retain their existing experiment directories.
 - Read `Downloads/output/` in place: **8 files / 6,384 bytes**. Workflow `fedcc296871349599a8a6015f0ae9065`, wICE preparation job **62134902**, failed with `NameError: OmegaConf` in the newly added retention preflight check; ledger phase `prepare`, status `failed`, only the CPU job recorded. No GPU stage or plan preparation was reached. The ten public inputs were prepared according to the user's login-node output; the rerun reuses verified downloads.
@@ -127,6 +136,24 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 24-09-2026 | v5 null audit · wICE 62140691 | **resource gate failed (download verified)** | 16 exact state/monitor matches; only missing GPU counters, 25 CalledProcessError samples; exit 1 stopped part 1. |
+| 24-09-2026 | v5 null LGD v3 full · Mindwell 11614316 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD v2 full · Mindwell 11614315 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD v2.6 full · Mindwell 11614314 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD TabICL full · Mindwell 11614313 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD v3 full · Mindwell 11614312 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD v3 frozen · Mindwell 11614309 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD v2 frozen · Mindwell 11614308 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD v2.6 frozen · Mindwell 11614307 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null LGD TabICL frozen · Mindwell 11614306 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD v2 full · Mindwell 11614305 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD v3 frozen · Mindwell 11614304 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD v2 frozen · Mindwell 11614303 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD v2.6 full · Mindwell 11614302 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD TabICL full · Mindwell 11614301 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD v2.6 frozen · Mindwell 11614300 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | v5 null PD TabICL frozen · Mindwell 11614299 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
+| 24-09-2026 | experiment-0 part1 prepare · wICE 62140639 | **passed (download verified)** | Zero CPU failures/warnings; plans/staging completed, 16 null GPU controls released; exit 0. |
 | 24-09-2026 | experiment-0 part1 prepare · wICE 62134902 | **crashed (download verified)** | Exit 1: missing `OmegaConf` import in retention preflight; failed ledger still at preparation, no GPU work released. |
 | 24-09-2026 | prepare cpt_pilot_v4 LGD · wICE 62129269 | **plan written (download verified)** | 16 trials, 250 updates, one partition; exit 0. Plan/trial checksums and current training source match; no pilot training evidenced. |
 | 24-09-2026 | prepare cpt_pilot_v4 PD · wICE 62129268 | **plan written (download verified)** | 16 trials, 250 updates, one partition; exit 0. Plan/trial checksums and current training source match; no pilot training evidenced. |
@@ -163,6 +190,13 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 24-09-2026 — GPU counters received PyTorch's bare UUID
+
+**Tried:** Run v5 bundled experiment 0 with periodic NVIDIA counters alongside the null controls.
+**Result:** All 16 training jobs and state/monitor comparisons passed, but every resource sample failed; the CPU gate stopped progression.
+**Why:** PyTorch supplies an unprefixed UUID; NVIDIA's selector requires `GPU-`. The sampler retained only the exception class, hiding the actual command failure, and unit tests had not exercised resource collection.
+**Instead:** Normalize the selector, retain bounded error details with one console warning, test actual sampler/CLI behavior, and verify a standalone B200 resource query before fresh `check2` controls.
 
 ### 24-09-2026 — preflight orchestration was not exercised by helper tests
 

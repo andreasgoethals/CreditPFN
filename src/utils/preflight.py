@@ -2,6 +2,7 @@
 
     python -m src.utils.preflight                 # all experiment configs
     python -m src.utils.preflight --config config/experiment1/pd.yaml
+    python -m src.utils.preflight --gpu-resources  # inside a GPU allocation
 
 Exit code 0 = these static/CPU checks passed. GPU controls are still required.
 
@@ -24,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import json
 import math
 import os
 import pathlib
@@ -630,7 +632,18 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", action="append", default=None,
                     help="experiment config(s); default = all current phases")
     ap.add_argument("--trials-per-task", type=int, default=1)
+    ap.add_argument("--gpu-resources", action="store_true",
+                    help="only query this allocation's GPU counters; no data, training or CSV writes")
     args = ap.parse_args(argv)
+    if args.gpu_resources:
+        if args.config:
+            ap.error("--gpu-resources is a standalone check; omit --config")
+        from src.train.telemetry import ResourceMonitor, allocated_gpu_uuid
+        monitor = ResourceMonitor(pathlib.Path(os.devnull))
+        monitor.gpu = allocated_gpu_uuid()
+        row = monitor.sample()  # No context entry: no thread or file is opened.
+        print(json.dumps(row, indent=2))
+        return 0 if row["gpu_status"] == "sampled" else 1
     if args.trials_per_task < 1:
         ap.error("--trials-per-task must be positive")
 

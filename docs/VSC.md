@@ -54,6 +54,8 @@ Locally both tiers collapse into one `output CreditPFN/` tree. Keep `CREDITPFN_O
 
 Fresh `cpt_*_v5` plans are independent of v4 records and weights. Both tiers create `output CreditPFN/` automatically. Relative legacy `output/...` settings resolve to the canonical name rather than creating another tree. Keep any historical copy only if wanted; a fresh run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
 
+Experiment 0 currently uses `cpt_*_v5_check2` identities after the GPU-counter repair. The preceding v5 null weights passed exact model/monitor checks, but their resource measurements failed. Preserve that evidence separately; changed source must not overwrite its immutable plans or reuse those measurements as successful samples. The research grids and budgets are unchanged.
+
 Only final weights and the most recent recovery state persist. Intermediate milestone weights are transient; numeric measurements persist. After final publication (including numerical divergence), recovery state is removed. Known repetitive deprecation messages are filtered and repeated numerical errors are counted with bounded log summaries; fatal errors remain visible. Do not hide errors to make a run look successful.
 
 ## One-command experiment 0
@@ -82,6 +84,14 @@ command -v python
 
 Confirm this points to `miniconda3/envs/CreditPFN/bin/python`. The job activator also removes an inherited virtualenv that would shadow conda, verifies imports, and fails rather than using a different environment. Use explicit interactive activation: sourcing the complete job activator interactively previously stalled.
 
+Before the corrected part-1 rerun, verify GPU counters with one allocation capped at three minutes. It loads no model or dataset and creates only the normal experiment-0 maintenance log:
+
+```bash
+CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus=1 --time=00:03:00 scripts/slurm/maintenance.slurm preflight --gpu-resources
+```
+
+Read `output CreditPFN/experiment0/logs/maintenance_<JOBID>_r0.log`. Require `gpu_status: sampled` in the JSON and `END exit_code=0`; idle utilization may correctly be zero. On failure, inspect `gpu_error`/`gpu_exit_code` before allocating training jobs. The sampler uses the allocated GPU's UUID with NVIDIA's prefix, logs a bounded failure message once per trial, and leaves unsupported counters empty. After the standalone check passes:
+
 ```bash
 bash scripts/slurm/run_experiment0.sh part1
 ```
@@ -89,7 +99,7 @@ bash scripts/slurm/run_experiment0.sh part1
 This is the only experiment-0 part-1 launch command. It downloads/reuses the two packaged and eight pinned public non-credit datasets on the network-enabled login node. No installation occurs. Compute nodes never download. A short wICE CPU job checks configuration, prepares plans and stages inputs. It then releases, in order:
 
 1. **16 null controls**, 2 successful zero-LR updates each; initially 30-minute requests.
-2. CPU audit: exact upstream-loaded weights/inference buffers and fixed-monitor parity.
+2. CPU audit: exact upstream-loaded weights/inference buffers, fixed-monitor parity, parameter records and successful GPU resource measurements.
 3. **32 short pilots**, 250 updates; initially one-hour requests.
 4. CPU audit: complete identities, budgets, trajectories and no divergence.
 5. **Eight recovery pairs**, four bases × two tasks: 12 uninterrupted updates versus stop at 5 and resume to 12; eight one-hour GPU allocations. Each also runs five-fold scoring on its small packaged non-credit table, checking metrics, requested quantiles and complete row-prediction output through the final evaluation code.

@@ -32,7 +32,7 @@ train:
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_pilot_v5
+run_name: cpt_pilot_v5_check2
 tunable:
   learning_rates: [3.0e-7, 3.0e-5]
   l2sp_lambdas: [0.003]
