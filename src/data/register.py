@@ -3,7 +3,7 @@
 The manifest is now an OPTIONAL, human-readable summary — since 26-08-2026 nothing needs it to
 RUN. `src.train.corpus.build_dataset_pool` and the eval loader build their per-dataset metadata
 from :data:`src.data.preprocessing.DATASET_METADATA` (code) plus the processed CSVs, so a wiped
-``output CreditPFN/`` no longer has to be rebuilt from raw or copied across before a run. This stage is
+``output/`` no longer has to be rebuilt from raw or copied across before a run. This stage is
 still useful for `AGENTS_MEMORY.md`-style inspection and dataset stats.
 
 For every dataset under ``data/raw/{pd,lgd}/<id>.csv``, applies the

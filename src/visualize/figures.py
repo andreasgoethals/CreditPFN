@@ -1,7 +1,7 @@
 """Saving figures. One folder per notebook, one PDF per figure, cleared before drawing.
 
-    output CreditPFN/figures/<notebook>/01_<name>.pdf     the figure — vector, for the paper
-    output CreditPFN/manifests/figures/<notebook>.json   what was drawn, in order, with captions
+    output/<experiment>/figures/<notebook>/01_<name>.pdf     the figure — vector, for the paper
+    output/<experiment>/manifests/figures/<notebook>.json   what was drawn, in order, with captions
 
 PDF ONLY, AND SIZED FOR A4. The PDF is what the paper uses: vector, text embedded as TrueType so
 journal systems accept it, drawn at the width it will occupy on the A4 page (see
@@ -42,7 +42,9 @@ MANIFEST = "_figures.json"
 
 
 def manifest_path(notebook: str) -> Path:
-    return manifests_dir() / "figures" / f"{notebook}.json"
+    from src.utils.paths import notebook_parts
+    group, name = notebook_parts(notebook)
+    return manifests_dir(group) / "figures" / f"{name.as_posix()}.json"
 
 
 def read_manifest(notebook: str) -> list[dict]:
@@ -178,7 +180,7 @@ def _slug(name: str) -> str:
 
 def _guard(path: Path, folder: Path) -> None:
     """Refuse to write outside this notebook's own folder — a `..` in a figure name would put a
-    generated file outside `output CreditPFN/`, the one rule the layout rests on."""
+    generated file outside `output/`, the one rule the layout rests on."""
     if folder.resolve() != path.resolve().parent:
         raise ValueError(
             f"figure would be written to {path.resolve()}, outside {folder.resolve()}. "

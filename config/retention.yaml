@@ -1,0 +1,15 @@
+# Fixed non-credit retention panel. No panel table enters credit pretraining.
+# OpenML IDs are the curated versions in TabArena-v0.1 (study 457).
+# This is an eight-table panel, not the complete TabArena benchmark.
+smoke:
+  - {id: package_breast_cancer, track: pd, source: sklearn, name: breast_cancer}
+  - {id: package_diabetes, track: lgd, source: sklearn, name: diabetes}
+research:
+  - {id: openml_46905, track: pd, source: openml, data_id: 46905, name: Amazon_employee_access, version: 3, license: Public Domain}
+  - {id: openml_46947, track: pd, source: openml, data_id: 46947, name: online_shoppers_intention, version: 1, license: CC BY 4.0}
+  - {id: openml_46952, track: pd, source: openml, data_id: 46952, name: qsar-biodeg, version: 2, license: CC BY 4.0}
+  - {id: openml_46956, track: pd, source: openml, data_id: 46956, name: seismic-bumps, version: 4, license: CC BY 4.0}
+  - {id: openml_46904, track: lgd, source: openml, data_id: 46904, name: airfoil_self_noise, version: 9, license: CC BY 4.0}
+  - {id: openml_46917, track: lgd, source: openml, data_id: 46917, name: concrete_compressive_strength, version: 8, license: CC BY 4.0}
+  - {id: openml_46949, track: lgd, source: openml, data_id: 46949, name: physiochemical_protein, version: 8, license: CC BY 4.0}
+  - {id: openml_46961, track: lgd, source: openml, data_id: 46961, name: superconductivity, version: 8, license: CC BY 4.0}

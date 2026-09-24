@@ -3,6 +3,7 @@
 track: pd
 seed: 42
 experiment:
+  output_group: experiment0
   fingerprint: true
   require_plan: true
   training_seeds: [42]
@@ -31,7 +32,7 @@ train:
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_pilot_v4
+run_name: cpt_pilot_v5
 tunable:
   learning_rates: [3.0e-7, 3.0e-5]
   l2sp_lambdas: [0.003]
@@ -44,4 +45,7 @@ tunable:
 evaluation:
   cache_controls: true
   results:
-    save_predictions: false  # metrics include calibration; enable predictions for a separate diagnostic run
+    save_predictions: true  # compressed per-row predictions on project storage
+
+checkpoint:
+  trained_dir: checkpoints/trained/experiment0

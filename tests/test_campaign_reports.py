@@ -42,9 +42,9 @@ def close_figures():
 
 def test_new_config_paths_preserve_grid_sizes_and_ids():
     for track in ("pd","lgd"):
-        expected = [(1,None,256,"cpt_main_v4"),(2,None,16,"cpt_seeds_v4"),
-                    (3,None,48,"cpt_sampling_v4"),(0,"null",8,"cpt_null_v4_check3"),
-                    (0,"pilot",16,"cpt_pilot_v4"),(0,"budget",4,"cpt_budget_v4")]
+        expected = [(1,None,256,"cpt_main_v5"),(2,None,16,"cpt_seeds_v5"),
+                    (3,None,48,"cpt_sampling_v5"),(0,"null",8,"cpt_null_v5"),
+                    (0,"pilot",16,"cpt_pilot_v5"),(0,"budget",4,"cpt_budget_v5")]
         for experiment,phase,count,run in expected:
             cfg = load_train_config(config_path=str(cp.config_path(experiment,track,phase)))
             planned = cp.planned_trials(cfg)
@@ -162,8 +162,8 @@ def test_external_analysis_does_not_redirect_generated_figures(tmp_path,monkeypa
     from src.visualize.figures import FigureSaver
     external=tmp_path/"download"; external.mkdir()
     monkeypatch.setenv("CREDITPFN_ANALYSIS_ROOT",str(external))
-    assert training_viz._resolve_paths()["manifest_dir"] == external/"manifests"
-    assert eval_viz._resolve_paths()["benchmark_root"] == external/"results"
+    assert training_viz._resolve_paths()["manifest_dir"] == external/"general/manifests"
+    assert eval_viz._resolve_paths()["benchmark_root"] == external/"general/results"
     sink=FigureSaver("experiment0/controls")
     assert not sink.folder.is_relative_to(external)
     assert list(external.iterdir()) == []
@@ -182,7 +182,7 @@ def test_downloaded_compact_snapshot_is_read_without_import(tmp_path, monkeypatc
     consolidate("test", apply=True, manifest_root=manifests, result_root=original/"results",
                 destination=original/"consolidated")
     download = tmp_path / "download"
-    shutil.copytree(original/"consolidated", download/"consolidated")
+    shutil.copytree(original/"consolidated", download/"general/consolidated")
     monkeypatch.setenv("CREDITPFN_ANALYSIS_ROOT", str(download))
     before = {p.relative_to(download): hashlib.sha256(p.read_bytes()).hexdigest()
               for p in download.rglob("*") if p.is_file()}
@@ -254,7 +254,7 @@ def test_optimization_bins_average_within_trial_before_summarizing_trials():
 def test_null_audit_does_not_promote_failed_log_to_pass(tmp_path,monkeypatch):
     cfg=load_train_config(config_path=str(cp.config_path(0,"pd","null")))
     run=cp.Campaign(cfg,cp.planned_trials(cfg),pd.DataFrame(),pd.DataFrame(),pd.DataFrame())
-    folder=tmp_path/"logs"; folder.mkdir()
+    folder=tmp_path/"experiment0/logs"; folder.mkdir(parents=True)
     monkeypatch.setenv("CREDITPFN_ANALYSIS_ROOT",str(tmp_path))
     report=dict(run=str(cfg.run_name),track="pd",passed=True,trials=[dict(trial=run.trials.trial_name.iloc[0],null_state={"equal":True},null_monitor_equal=True,successful_updates=2)])
     (folder/"maintenance_01.log").write_text(json.dumps(report,indent=2)+"\nEND exit_code=1")

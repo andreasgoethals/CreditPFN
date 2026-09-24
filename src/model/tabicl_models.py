@@ -23,10 +23,8 @@ Family differences that matter here
   see docs/RESEARCH_BRIEF.md).
 * **``neg_log_likelihood`` returns None.** The regressor outputs 999
   quantiles, not a bar-distribution density, so TabPFN-style exact NLL
-  does not exist. NEVER compare density metrics across families anyway
-  (different output spaces); the planned cross-family density metric is
-  CRPS, computable from ``predict(X, output_type="quantiles")`` — not
-  wired up yet.
+  is not computed here. Cross-family distribution summaries use a fixed
+  quantile grid for interval coverage and mean pinball loss, not exact CRPS.
 * **Loading is ``weights_only=True``-safe.** Upstream's loader reads only
   ``{config, state_dict}`` (+ ignores extras such as our provenance), so
   no ``_trust_local_checkpoints`` monkeypatch is needed for this family.
@@ -144,6 +142,11 @@ class TabICLUntuned:
         X_clean, _ = _sanitize(X, dead_cols=self._dead_cols)
         return self._tabicl.predict(X_clean)
 
+    def predict_distribution(self, X, y, levels):
+        X_clean, _ = _sanitize(X, dead_cols=self._dead_cols)
+        output = self._tabicl.predict(X_clean, output_type=["mean", "quantiles"], alphas=list(levels))
+        return dict(output, neg_nll=None)
+
     def neg_log_likelihood(self, X: np.ndarray, y: np.ndarray) -> float | None:
         """No exact predictive density for the quantile head — see module
         docstring. Returns None so the eval records NaN."""
@@ -193,6 +196,11 @@ class TabICLTrained:
     def predict(self, X: np.ndarray) -> np.ndarray:
         X_clean, _ = _sanitize(X, dead_cols=self._dead_cols)
         return self._tabicl.predict(X_clean)
+
+    def predict_distribution(self, X, y, levels):
+        X_clean, _ = _sanitize(X, dead_cols=self._dead_cols)
+        output = self._tabicl.predict(X_clean, output_type=["mean", "quantiles"], alphas=list(levels))
+        return dict(output, neg_nll=None)
 
     def neg_log_likelihood(self, X: np.ndarray, y: np.ndarray) -> float | None:
         """No exact predictive density for the quantile head — see module

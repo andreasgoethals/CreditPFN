@@ -45,14 +45,16 @@ Reusable Python logic belongs in `src/`; it does not import experiment entry poi
 
 | Experiment | Configs | Purpose | Trials across PD + LGD |
 |---|---|---|---|
-| 0 | `config/experiment0/{null,pilot,budget}_{pd,lgd}.yaml` | Debugging, zero-LR controls, timing and horizon decisions | 16 null + 32 short + 8 budget pilots |
+| 0 | `config/experiment0/{null,pilot,recovery,budget}_{pd,lgd}.yaml` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots |
 | 1 | `config/experiment1/{pd,lgd}.yaml` | Full learning-rate × L2-SP × adaptation sweep | 512 |
 | 2 | `config/experiment2/{pd,lgd}.yaml` | One additional training seed at a predefined reference | 32 additional; seed 42 is reused from experiment 1 |
 | 3 | `config/experiment3/{pd,lgd}.yaml` | One sample versus full pass versus accumulation | 96 |
 
-`data.yaml`, `train.yaml` and `eval.yaml` retain shared defaults at the config root. Config paths organize the study; stable `cpt_*_v4` run names identify existing artifacts. Moving a config does not rename checkpoints or imply another training run.
+`data.yaml`, `train.yaml`, `eval.yaml` and `retention.yaml` hold shared defaults and the fixed public monitoring panel. Named configs provide only experiment differences. Fresh `cpt_*_v5` identities distinguish this protocol from earlier output.
 
-During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
+From an active CreditPFN environment on a VSC login node, `bash scripts/slurm/run_experiment0.sh part1` prepares inputs and runs the first three controls with automatic audit gates. Run `part2` separately for the long budget pilots. The launcher never starts experiment 1 automatically; see [the runbook](docs/VSC.md).
+
+During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output/` at that final download.
 
 ## Local inspection and validation
 
@@ -66,7 +68,7 @@ Use the existing local environment. In PowerShell:
 
 The first command previews the design without training. A complete source corpus is required. Plans for actual VSC runs must be written in the VSC environment after the pilot decisions, because data, weights and package versions form part of the identity.
 
-Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output CreditPFN/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
+Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
 The notebook reading order is `00_general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots), `experiment1/` (training then benchmark, each task separately), `experiment2/` (paired seed sensitivity), and `experiment3/` (sampling and accumulation). The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
 
@@ -84,4 +86,4 @@ This repository's code is MIT licensed. Dataset permissions and the individual f
 
 ## Based on the repository template
 
-The layout follows [Andreas' repository template](docs/TEMPLATE.md), with the user-requested output directory name `output CreditPFN/` replacing the template's `output/`. Cluster/debugging logs live in `output CreditPFN/logs/`, configurations and figure metadata in `output CreditPFN/manifests/`, metrics in `output CreditPFN/results/`, and PDFs in `output CreditPFN/figures/<notebook>/`. Notebook stdout stays in the executed notebook; `All_Results.md` is rebuilt from its final summary cell, without a separate transcript. Model weights use the template's `checkpoints/` extension: locally in this repository, permanently on project storage on VSC. The user-requested local `archive/` is the deliberate additional folder; cleanup also removes trained weights when explicitly requested, while preserving original bases.
+The layout follows [Andreas' repository template](docs/TEMPLATE.md), with an explicit experiment layer: `output/<experiment>/{logs,manifests,training,results,consolidated,figures}`. General exploration and shared summaries use `output/general/`. Detailed training diagnostics, predictions and benchmark results use project storage on VSC; logs and small manifests use DATA. Locally these complementary trees share one `output/` directory. Model weights remain in `checkpoints/`, with trained weights grouped by experiment. The gitignored `archive/` remains a separate historical reference. Notebook stdout stays in the executed notebook; the runner rebuilds one `output/general/All_Results.md` and one shared caption index.

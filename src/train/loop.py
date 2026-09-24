@@ -194,6 +194,10 @@ class EpochRecord:
     # so it silently falls back to a loss-only rule and kills slow-but-healthy trials. NaN when no
     # L2-SP anchor is active (λ=0 / no anchor), where the penalty carries no drift information.
     weight_drift: float = float("nan")
+    per_dataset_scores: dict[str, float] = field(default_factory=dict)
+    parameter_statistics: list[dict] = field(default_factory=list)
+    cuda_peak_allocated_bytes: int = 0
+    cuda_peak_reserved_bytes: int = 0
 
 
 @dataclass
@@ -1449,11 +1453,9 @@ def evaluate_ensemble_on_split(
     full ensemble inference (``n_estimators`` forward passes per
     fit/predict, averaged with the package's standard ensembling strategy).
 
-    This is what ``scripts/eval_pipeline.py`` does at the end of
-    training, just on a smaller per-epoch sample. Reusing the same code
-    path guarantees per-epoch and final-eval numbers are directly
-    comparable (same model, same context/query geometry, same
-    n_estimators).
+    Uses the same upstream inference API as the final benchmark, but with
+    smaller contexts and ensembles and one fixed monitoring split. These
+    descriptive trajectories are separate from five-fold benchmark estimates.
 
     Returns a ``{metric_name: mean_over_datasets}`` dict. NaN-skips
     datasets where a metric is undefined (single-class query,
@@ -1490,15 +1492,11 @@ def evaluate_ensemble_on_split(
             X_sub = loaded.X.reset_index(drop=True)
             y_sub = loaded.y
 
-        n_total = len(X_sub)
-        n_query = max(1, int(round(n_total * float(query_fraction))))
-        n_query = min(n_query, n_total - 1)
-        n_ctx = n_total - n_query
-
-        X_ctx = X_sub.iloc[:n_ctx].values
-        y_ctx = y_sub[:n_ctx]
-        X_qry = X_sub.iloc[n_ctx:].values
-        y_qry = y_sub[n_ctx:]
+        from src.train.monitoring import monitor_indices
+        ctx, val, qry = monitor_indices(y_sub, task_type, query_fraction, seed+i)
+        X_ctx, y_ctx = X_sub.iloc[ctx].values, y_sub[ctx]
+        X_val, y_val = X_sub.iloc[val].values, y_sub[val]
+        X_qry, y_qry = X_sub.iloc[qry].values, y_sub[qry]
 
         # Categorical feature INDICES (positional) into the dataframe.
         cat_idx = [
@@ -1532,16 +1530,10 @@ def evaluate_ensemble_on_split(
             tabpfn.fit(X_ctx, y_ctx)
             if task_type == "classification":
                 proba = tabpfn.predict_proba(X_qry)
-                # Note: passing proba twice (test + "val") means the
-                # F1-tuned classification metrics (f1/accuracy/...) use
-                # an in-sample threshold here, biased toward optimism.
-                # That's fine for a monitor — the unbiased threshold
-                # comes from the full eval pipeline. We DO get unbiased
-                # threshold-free metrics: roc_auc, log_loss, pr_auc,
-                # brier_score.
+                proba_val = tabpfn.predict_proba(X_val)
                 metrics = _classification_metrics(
                     proba_test=proba, y_test=y_qry,
-                    proba_val=proba,  y_val=y_qry,
+                    proba_val=proba_val, y_val=y_val,
                     n_classes_seen=int(len(np.unique(y_ctx))),
                 )
             else:
@@ -1556,10 +1548,11 @@ def evaluate_ensemble_on_split(
             )
             metrics = {m: float("nan") for m in metric_names}
 
-        for m in metric_names:
-            per_dataset[m].append(float(metrics.get(m, float("nan"))))
+        for m, value in metrics.items():
+            if isinstance(value, (int, float, np.number)):
+                per_dataset.setdefault(m, []).append(float(value))
 
-    return {m: mean_ignore_nan(per_dataset[m]) for m in metric_names}
+    return {m: mean_ignore_nan(values) for m, values in per_dataset.items()}
 
 
 # --------------------------------------------------------------------------- #
@@ -2234,10 +2227,19 @@ def train_one_config(
         track_primary_metric = "rmse"
         track_secondary_metric = "r2"
         track_task_type = "regression"
-    track_metric_names: tuple[str, ...] = (
-        (track_primary_metric,) if not track_secondary_metric
-        else (track_primary_metric, track_secondary_metric)
-    )
+    track_metric_names = (("roc_auc", "brier_score", "log_loss", "pr_auc", "ece",
+        "f1", "optimal_threshold", "precision", "recall", "specificity", "balanced_accuracy",
+        "mcc", "f1_at_05", "prediction_mean", "prediction_std", "prediction_entropy",
+        "ece_platt", "brier_score_platt", "log_loss_platt", "ece_isotonic", "brier_score_isotonic")
+        if track_task_type == "classification" and use_ensemble_eval
+        else ("rmse", "r2", "mae", "median_ae", "pearson_r", "spearman_r")
+        if use_ensemble_eval else (track_primary_metric,))
+    from src.data.retention import load_refs
+    retention_refs = load_refs(str(getattr(cfg.train, "retention_panel", "none")), track)
+    if retention_refs and not use_ensemble_eval:
+        raise ValueError("Non-credit retention monitoring requires the ensemble inference path")
+    monitor_details = {}
+
 
     def _do_eval_impl(
         ckpt_path: Path | str, refs: list[DatasetRef], *, seed: int,
@@ -2274,11 +2276,14 @@ def train_one_config(
             return _do_eval_impl(*args, **kwargs)
 
     def _monitor_group(ckpt, refs, *, seed):
+        scope = "train" if seed == monitor_train_seed else "test" if seed == monitor_test_seed else "ood"
         import hashlib
         scores = {}
         for ref in refs:
             offset = int(hashlib.sha256(ref.dataset_id.encode()).hexdigest()[:8], 16)
             scores[ref.dataset_id] = _do_eval(ckpt, [ref], seed=(seed + offset) % (2**32 - 1))
+        monitor_details.update({f"{scope}__{key}__{metric}": float(value)
+                                for key, metrics in scores.items() for metric, value in metrics.items()})
         averages = {metric: mean_ignore_nan([d.get(metric, float("nan")) for d in scores.values()])
                     for metric in track_metric_names}
         return averages, {key: float(d.get(track_primary_metric, float("nan"))) for key, d in scores.items()}
@@ -2319,6 +2324,9 @@ def train_one_config(
         if any(r.successful_updates == successful_updates for r in trajectory_history):
             return
         started = time.monotonic()
+        from src.train.telemetry import progress, parameter_statistics
+        progress(successful_updates, processed_rows, "monitoring")
+        monitor_details.clear()
         with preserve_random_state(model):
             if use_ensemble_eval and snapshot_path is not None:
                 if family == "tabicl":
@@ -2329,6 +2337,8 @@ def train_one_config(
                                         criterion=criterion, inference_config=inference_config)
             train_metrics, train_by_dataset = _monitor_group(snapshot_path or save_path, split.train, seed=monitor_train_seed) if epoch_eval_n0 > 0 else ({}, {})
             test_metrics, test_by_dataset = _monitor_group(snapshot_path or save_path, split.test, seed=monitor_test_seed) if epoch_eval_n0 > 0 else ({}, {})
+            _, ood_by_dataset = _monitor_group(snapshot_path or save_path, retention_refs, seed=monitor_seed+30000) if retention_refs else ({}, {})
+            stats = parameter_statistics(model, drift_anchor or {}, optimizer) if bool(getattr(cfg.train, "parameter_diagnostics", False)) else []
             drift = float("nan")
             if drift_anchor:
                 denominator = sum(t.double().square().sum() for t in drift_anchor.values())
@@ -2345,10 +2355,15 @@ def train_one_config(
                 secondary_train_metric=float(train_metrics.get(track_secondary_metric, float("nan"))),
                 secondary_test_metric=float(test_metrics.get(track_secondary_metric, float("nan"))),
                 weight_drift=drift, monitor_seconds=time.monotonic() - started,
+                per_dataset_scores=dict(monitor_details), parameter_statistics=stats,
+                cuda_peak_allocated_bytes=torch.cuda.max_memory_allocated() if str(device).startswith("cuda") else 0,
+                cuda_peak_reserved_bytes=torch.cuda.max_memory_reserved() if str(device).startswith("cuda") else 0,
                 l2sp_penalty=0.5 * l2sp_lambda * float(numerator.item()) if drift_anchor else 0.0,
                 per_dataset_metric={**{f"train__{k}": v for k, v in train_by_dataset.items()},
-                                    **{f"test__{k}": v for k, v in test_by_dataset.items()}},
+                                    **{f"test__{k}": v for k, v in test_by_dataset.items()},
+                                    **{f"ood__{k}": v for k, v in ood_by_dataset.items()}},
             )
+        progress(successful_updates, processed_rows, "training")
         trajectory_history.append(rec)
         if on_trajectory_end is not None:
             on_trajectory_end(rec)
@@ -2392,6 +2407,10 @@ def train_one_config(
             float(baseline_test_d.get(track_secondary_metric, float("nan")))
             if track_secondary_metric else float("nan")
         )
+        _, initial_ood = _monitor_group(baseline_ckpt, retention_refs, seed=monitor_seed+30000) if retention_refs else ({}, {})
+        baseline_by_dataset.update({f"ood__{k}": v for k,v in initial_ood.items()})
+        from src.train.telemetry import parameter_statistics
+        initial_stats = parameter_statistics(model, drift_anchor or {}, optimizer) if bool(getattr(cfg.train, "parameter_diagnostics", False)) else []
         baseline_record = EpochRecord(
             epoch=-1,
             train_loss=float("nan"),       # no training has happened yet
@@ -2405,6 +2424,9 @@ def train_one_config(
             secondary_metric_name=track_secondary_metric,
             epoch_time_sec=0.0,
             per_dataset_metric=baseline_by_dataset,
+            per_dataset_scores=dict(monitor_details), parameter_statistics=initial_stats,
+            cuda_peak_allocated_bytes=torch.cuda.max_memory_allocated() if str(device).startswith("cuda") else 0,
+            cuda_peak_reserved_bytes=torch.cuda.max_memory_reserved() if str(device).startswith("cuda") else 0,
         )
         history.append(baseline_record)
         monitored_metrics.append((baseline_test_p, baseline_train_p))
@@ -2524,6 +2546,8 @@ def train_one_config(
             if micro_since_step or successful_updates >= total_steps:
                 return
             interrupted = (os.environ.get("CREDITPFN_STOP_REQUESTED") == "1"
+                           or (int(os.environ.get("CREDITPFN_STOP_AFTER_UPDATES", "0")) > 0
+                               and successful_updates >= int(os.environ["CREDITPFN_STOP_AFTER_UPDATES"]))
                            or (segment_seconds and time.monotonic() - segment_started >= segment_seconds))
             if recovery_every and (interrupted or successful_updates - last_saved_update >= recovery_every):
                 progress = {
@@ -2563,6 +2587,8 @@ def train_one_config(
             if did_step:
                 scheduler.step()
                 successful_updates += 1
+                from src.train.telemetry import progress
+                progress(successful_updates, processed_rows)
             else:
                 epoch_amp_skipped_steps += 1
                 repeated_warnings.warning(

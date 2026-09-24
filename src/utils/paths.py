@@ -1,11 +1,11 @@
 """Every path in the project. Two VSC tiers, one resolver, relative to the repository root.
 
 THE ONLY MODULE THAT BUILDS A PATH — everything else asks this one. A path assembled at a call
-site with `"output CreditPFN/" + name` is correct on a laptop and wrong on the cluster, and the failure
+site with `"output/" + name` is correct on a laptop and wrong on the cluster, and the failure
 shows up as a full quota or an empty results directory hours into a job.
 
         project storage  /lustre1/project/stg_00211/<Project>/  big files, allocation-specific quotas
-    personal data    $VSC_DATA/<Project>/                   repo + output CreditPFN/, backed up, 75 GiB
+    personal data    $VSC_DATA/<Project>/                   repo + output/, backed up, 75 GiB
     scratch          $VSC_SCRATCH/                          purged after 30 days of no ACCESS
 
 DATA has site-documented snapshots. Project storage quotas and backup policy are
@@ -28,7 +28,43 @@ from pathlib import Path
 
 #: Per-project folder names; overrides always name the enclosing project root.
 PROJECT_NAME = "CreditPFN"
-OUTPUT_DIR_NAME = "output CreditPFN"
+OUTPUT_DIR_NAME = "output"
+EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3")
+
+
+def experiment_group(value: str | None = None) -> str:
+    group = value or os.environ.get("CREDITPFN_EXPERIMENT", "general")
+    if group not in EXPERIMENTS:
+        raise ValueError(f"Unknown output experiment: {group!r}")
+    return group
+
+
+def group_for_run(run: str) -> str:
+    for prefix, group in (("cpt_null", "experiment0"), ("cpt_pilot", "experiment0"),
+                          ("cpt_budget", "experiment0"), ("cpt_recovery", "experiment0"),
+                          ("cpt_main", "experiment1"), ("cpt_seeds", "experiment2"),
+                          ("cpt_sampling", "experiment3")):
+        if str(run).startswith(prefix + "_"):
+            return group
+    return "general"
+
+
+def activate_experiment(cfg) -> str:
+    """Set routing once at an entry point, before opening its log or manifest."""
+    group = getattr(getattr(cfg, "experiment", None), "output_group", None)
+    group = experiment_group(group or group_for_run(str(getattr(cfg, "run_name", ""))))
+    os.environ["CREDITPFN_EXPERIMENT"] = group
+    return group
+
+
+def notebook_parts(notebook: str) -> tuple[str, Path]:
+    path = Path(notebook)
+    if path.is_absolute() or ".." in path.parts:
+        raise ValueError("Notebook name must be a relative path without parent traversal")
+    first = path.parts[0]
+    if first == "00_general" or first in EXPERIMENTS:
+        return ("general" if first == "00_general" else first), Path(*path.parts[1:])
+    return "general", path
 
 #: `parents[2]` because this file is `<root>/src/utils/paths.py`. From __file__, not the working
 #: directory, so a script, a test and a notebook agree wherever they were launched from.
@@ -108,18 +144,18 @@ def _under(root: Path, *parts: str) -> Path:
 
 
 # ---------------------------------------------------------------------------
-# output CreditPFN/ — the single root for everything the code generates.
+# output/ — the single root for everything the code generates.
 # ---------------------------------------------------------------------------
 
 
 def outputs_dir() -> Path:
     """Root for live logs, metadata and figures; large outputs use project-tier helpers."""
     # PROJECT LAYER: routed through `resolve_output_path` so $CREDITPFN_OUTPUT_ROOT wins.
-    # Without this, `logs_dir()` and `resolve_output_path("output CreditPFN/logs")` could disagree.
+    # Without this, `logs_dir()` and `resolve_output_path("output/logs")` could disagree.
     return resolve_output_path(OUTPUT_DIR_NAME)
 
 
-def results_dir(*parts: str) -> Path:
+def results_dir(*parts: str, experiment: str | None = None) -> Path:
     """Fine-grained results: one row per prediction, per-fold scores, anything large.
 
     Like compact tables, this uses project storage. Per-row predictions would
@@ -127,29 +163,34 @@ def results_dir(*parts: str) -> Path:
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
     # project env vars, and falls back to the output root when staging is unavailable.
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, "results", *parts))
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "results", *parts))
 
 
-def logs_dir() -> Path:
+def logs_dir(experiment: str | None = None) -> Path:
     """Timestamped run logs. Small, many files -> `$VSC_DATA`, not the inode-poor tier."""
-    return outputs_dir() / "logs"
+    return outputs_dir() / experiment_group(experiment) / "logs"
 
 
-def manifests_dir() -> Path:
+def manifests_dir(experiment: str | None = None) -> Path:
     """Per-run manifests: the small CSV/JSON record of what a run did."""
-    return outputs_dir() / "manifests"
+    return outputs_dir() / experiment_group(experiment) / "manifests"
 
 
-def consolidated_dir() -> Path:
+def consolidated_dir(experiment: str | None = None) -> Path:
     """Immutable analysis snapshots: a few compressed files on project storage."""
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, "consolidated"))
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "consolidated"))
+
+
+def training_dir(*parts: str, experiment: str | None = None) -> Path:
+    """Per-trial numeric histories and resource measurements on project storage."""
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "training", *parts))
 
 
 def figures_dir(notebook: str | None = None) -> Path:
-    """`output CreditPFN/figures/`, or one notebook's own folder — a notebook clears its own before drawing
+    """`output/<experiment>/figures/`, or one notebook's own folder — a notebook clears its own before drawing
     and must not be able to reach another's."""
-    root = outputs_dir() / "figures"
-    return root / notebook if notebook else root
+    group, name = notebook_parts(notebook) if notebook else ("general", Path())
+    return outputs_dir() / group / "figures" / name
 
 
 def captions_path() -> Path:
@@ -159,7 +200,7 @@ def captions_path() -> Path:
 
 def all_results_path() -> Path:
     """Every notebook's printed text summary, concatenated in notebook order."""
-    return outputs_dir() / "All_Results.md"
+    return outputs_dir() / "general" / "All_Results.md"
 
 
 # ---------------------------------------------------------------------------
@@ -489,8 +530,11 @@ def resolve_output_path(p: str | os.PathLike) -> Path:
 def _output_alias(p: str | os.PathLike) -> Path:
     """Old relative configuration paths write to the current directory, never a second tree."""
     path = Path(p)
-    if not path.is_absolute() and path.parts and path.parts[0] == "output":
-        return Path(OUTPUT_DIR_NAME, *path.parts[1:])
+    if not path.is_absolute() and path.parts and path.parts[0] in ("output", "output CreditPFN"):
+        tail = path.parts[1:]
+        if tail and tail[0] not in EXPERIMENTS:
+            tail = (experiment_group(), *tail)
+        return Path(OUTPUT_DIR_NAME, *tail)
     return path
 
 

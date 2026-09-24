@@ -32,7 +32,7 @@ import shutil
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 EXPERIMENTS = tuple(f"config/experiment0/{phase}_{track}.yaml"
-                    for phase in ("null", "pilot", "budget") for track in ("pd", "lgd")) + tuple(
+                    for phase in ("null", "pilot", "recovery", "budget") for track in ("pd", "lgd")) + tuple(
     f"config/experiment{number}/{track}.yaml" for number in (1, 2, 3) for track in ("pd", "lgd"))
 
 # MEASURED probe points, (rows, peak_GB_or_None, ran_ok). B200 183 GB, 2 training members.
@@ -510,18 +510,16 @@ def check_storage_layout(rep: Report) -> None:
     """Report every resolved path and which VSC tier it landed on.
 
     docs/TEMPLATE.md splits storage in two, and a path resolved against the wrong tier looks
-    exactly like a missing file. `data/`, `checkpoints/` and `output CreditPFN/results/` belong on PROJECT
-    storage (/lustre1/project/stg_00211/<Project>/); the repository and the rest of `output CreditPFN/` —
-    including `output CreditPFN/manifests/`, which holds the dataset REGISTRY the corpus is built from —
-    belong on $VSC_DATA. Two debugging rounds were lost to `ls`-ing the wrong one, so print the
-    map instead of inferring it.
+    exactly like a missing file. Data, weights and each experiment's detailed training/results
+    belong on PROJECT; the repository, logs and small manifests belong on DATA. Dataset
+    membership comes from the source registry, not generated manifests. Print the resolved map.
     """
     try:
         from omegaconf import OmegaConf
 
         from src.utils.paths import (
             apply_data_source_from_cfg, data_root, manifests_dir, processed_dir, raw_dir,
-            results_dir, staging_root,
+            results_dir, staging_root, training_dir,
         )
         from src.utils.stage_checkpoints import checkpoints_root
         apply_data_source_from_cfg(OmegaConf.load(REPO / "config" / "data.yaml"))
@@ -547,8 +545,9 @@ def check_storage_layout(rep: Report) -> None:
         ("data/processed/pd", pathlib.Path(processed_dir("pd")), "project"),
         ("data/processed/lgd", pathlib.Path(processed_dir("lgd")), "project"),
         ("checkpoints", pathlib.Path(checkpoints_root()), "project"),
-        ("output CreditPFN/results", pathlib.Path(results_dir()), "project"),
-        ("output CreditPFN/manifests", pathlib.Path(manifests_dir()), "vsc_data"),
+        ("experiment/results", pathlib.Path(results_dir()), "project"),
+        ("experiment/training", pathlib.Path(training_dir()), "project"),
+        ("experiment/manifests", pathlib.Path(manifests_dir()), "vsc_data"),
     ]
     lines = [f"project storage : {stag}", f"personal data   : {dat}", ""]
     misplaced = []
@@ -629,8 +628,7 @@ def check_predictions_writer(rep: Report, configs=()) -> None:
     except ImportError:
         have = False
     if wants and not have:
-        rep.warn("save_predictions is on but pyarrow is absent",
-                 "falls back to gzipped CSV (~5x larger); pip install -e '.[dev,notebooks]'")
+        rep.ok("prediction writer ready: compressed CSV fallback (pyarrow absent)")
     else:
         rep.ok(f"prediction writer ready (save_predictions={wants}, pyarrow={have})")
 
@@ -671,6 +669,13 @@ def main(argv: list[str] | None = None) -> int:
         except (ValueError, FileNotFoundError) as exc:
             rep.fail(f"{label}: invalid corpus/budget", str(exc))
         check_train_eval_agree(str(path), rep)
+        try:
+            from src.data.retention import load_refs
+            panel = str(OmegaConf.select(cfg, "train.retention_panel", default="none"))
+            refs = load_refs(panel, str(cfg.track))
+            rep.ok(f"{label}: {len(refs)} verified non-credit monitoring tables ({panel})")
+        except (ValueError, FileNotFoundError) as exc:
+            rep.fail(f"{label}: retention inputs unavailable", str(exc))
 
     check_row_caps(rep)
     check_eval_caps(rep)

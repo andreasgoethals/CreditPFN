@@ -4,7 +4,7 @@ The training pipeline (``scripts/train_pipeline.py``) writes two
 kinds of artefacts that this module consumes:
 
 * **Per-trial epoch CSV** — one file per trial under
-  ``output CreditPFN/manifests/epochs/<track>/<descriptive_name>.csv`` with columns::
+  ``output/<experiment>/training/<track>/<descriptive_name>.csv`` with columns::
 
       epoch, train_loss, lr, metric_name,
       train_metric, test_metric, epoch_time_sec, elapsed_sec
@@ -13,7 +13,7 @@ kinds of artefacts that this module consumes:
   ``scripts/train_pipeline.py``.)
 
 * **Run manifest CSV** — one file per track at
-  ``output CreditPFN/manifests/<run_name>_<track>.csv``. Each row is one trial::
+  ``output/<experiment>/manifests/<run_name>_<track>.csv``. Each row is one trial::
 
       track, base_checkpoint, learning_rate, use_lora, seed,
       n_train_datasets, n_test_datasets,
@@ -107,7 +107,7 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
     except Exception:  # pragma: no cover  — local fallback
         pass
 
-    from src.utils.paths import checkpoints_dir, manifests_dir, resolve_staging_path
+    from src.utils.paths import checkpoints_dir, manifests_dir, resolve_staging_path, training_dir, group_for_run
     if cfg is None:
         cfg = _load_default_cfg()
 
@@ -119,9 +119,11 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
 
     from src.visualize.inputs import analysis_root
     source = analysis_root()
-    manifest_root = source / "manifests" if source is not None else manifests_dir()
+    group = group_for_run(run_name)
+    manifest_root = source / group / "manifests" if source is not None else manifests_dir(group)
+    history_root = source / group / "training" if source is not None else training_dir(experiment=group)
     return {
-        "epoch_dir":     manifest_root / "epochs",
+        "epoch_dir":     history_root,
         "manifest_dir":  manifest_root,
         "trained_dir":   resolve_staging_path(trained_dir),
         "run_name":      run_name,
@@ -343,7 +345,7 @@ def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
 
 
 def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
-    """Load every per-epoch CSV under ``output CreditPFN/manifests/epochs/<track>/``.
+    """Load every per-epoch CSV under ``output/<experiment>/training/<track>/``.
 
     Returns a dict keyed by the file stem (== descriptive_name).
     """
@@ -360,6 +362,8 @@ def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
         return {}
     out: dict[str, pd.DataFrame] = {}
     for csv in sorted(dir_.glob("*.csv")):
+        if csv.name.endswith(".resources.csv"):
+            continue
         if csv.name.endswith(".trajectory.csv"):
             continue
         if not matches_run(csv.name, paths["run_name"], track=track):

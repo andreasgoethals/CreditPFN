@@ -6,9 +6,9 @@
     python -m src.utils.run_notebooks --only experiment1  the main-sweep notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
-    output CreditPFN/figures/<notebook>/*.pdf   written by the notebooks themselves
-    output CreditPFN/figures/CAPTIONS.md        ONE file, all notebooks, notebook order
-    output CreditPFN/All_Results.md             every notebook's printed summary, alphabetical
+    output/<experiment>/figures/<notebook>/*.pdf   written by the notebooks themselves
+    output/general/figures/CAPTIONS.md        ONE file, all notebooks, notebook order
+    output/general/All_Results.md             every notebook's printed summary, alphabetical
 
 SEPARATE PROCESSES, NOT THREADS: matplotlib's figure registry is global, so two notebooks in
 one interpreter would capture each other's figures — silently, giving plausible figures

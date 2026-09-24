@@ -167,30 +167,12 @@ def test_unknown_dataset_size_is_not_plotted():
     plt.close(fig)
 
 
-def test_output_migration_is_lossless_idempotent_and_refuses_conflicts(tmp_path):
-    from src.utils.migrate_output import migrate
-    old, new = tmp_path / "output", tmp_path / "output CreditPFN"
-    (old / "logs").mkdir(parents=True)
-    (new / "logs").mkdir(parents=True)
-    (old / "logs/a.log").write_bytes(b"log")
-    (old / "logs/b.log").write_bytes(b"identical")
-    (new / "logs/b.log").write_bytes(b"conflict")
-    with pytest.raises(FileExistsError):
-        migrate([tmp_path], apply=True)
-    assert (old / "logs/a.log").is_file()
-    (new / "logs/b.log").write_bytes(b"identical")
-    assert migrate([tmp_path])["files_to_move"] == 1 and old.exists()
-    migrate([tmp_path], apply=True)
-    assert not old.exists() and (new / "logs/a.log").read_bytes() == b"log"
-    assert migrate([tmp_path], apply=True)["files_to_move"] == 0
-
-
 def test_legacy_relative_output_paths_cannot_create_a_second_tree(tmp_path, monkeypatch):
     from src.utils.paths import resolve_output_path, resolve_staging_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path / "project"))
-    assert resolve_output_path("output/logs/test.log") == tmp_path / "output CreditPFN/logs/test.log"
-    assert resolve_staging_path("output/results").parts[-2:] == ("output CreditPFN", "results")
+    assert resolve_output_path("output/logs/test.log") == tmp_path / "output/general/logs/test.log"
+    assert resolve_staging_path("output/results").parts[-3:] == ("output", "general", "results")
 
 
 def test_null_audit_canonicalizes_legacy_keys_but_checks_weights_and_borders(tmp_path, monkeypatch):

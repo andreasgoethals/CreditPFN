@@ -1,7 +1,7 @@
 """Printed text summaries — one per notebook, in that notebook's own section order.
 
 Every notebook's last cell prints a summary (`AGENTS.md` §7), and the runner concatenates
-those into `output CreditPFN/All_Results.md`. That document is the only place the run's numbers exist as
+those into `output/general/All_Results.md`. That document is the only place the run's numbers exist as
 text rather than as pixels inside a PDF, so it has to carry **the headline of every figure**,
 not just a file count: a reader who cannot open the figures should still be able to state what
 the run found, and a figure whose number is not restated here is a figure nobody can quote.

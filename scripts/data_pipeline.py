@@ -2,7 +2,7 @@
 
 Calls, in order:
 
-    1. register              → output CreditPFN/manifests/manifest_{pd,lgd}.csv
+    1. register              → output/general/manifests/manifest_{pd,lgd}.csv
     2. sanitize              → data/processed/{pd,lgd}/<id>.sanitized.csv
 
 Both stage modules are each callable on their own (``python -m
@@ -148,6 +148,8 @@ def run(
     """Run the full data pipeline. See module docstring."""
     if cfg is None:
         cfg = _load_cfg()
+    from src.utils.paths import activate_experiment
+    activate_experiment(cfg)
     # Resolve the data root from cfg.paths.data_source BEFORE any path
     # resolution downstream. The yaml knob is a no-op if the env var is
     # already set (slurm wins); see paths.apply_data_source_from_cfg.

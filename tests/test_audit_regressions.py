@@ -12,13 +12,13 @@ def test_eval_resume_does_not_borrow_another_split(tmp_path, monkeypatch):
     from src.model.base import ModelHandle
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     h = ModelHandle(name="xgboost", track="pd", source="baseline", task_type="classification")
-    folder = tmp_path / "output CreditPFN/results/PD" / _method_dirname(h)
+    folder = tmp_path / "output/general/results/PD" / _method_dirname(h)
     folder.mkdir(parents=True)
     pd.DataFrame([dict(test_dataset_id="demo", fold_idx=0, status="OK")]).to_csv(
         folder / "exp1v2_s00_20260922_120000.csv", index=False)
-    assert not find_existing_results(h, "demo", track="pd", results_base_dir="output CreditPFN/results",
+    assert not find_existing_results(h, "demo", track="pd", results_base_dir="output/general/results",
                                      n_folds_required=1, run_name="exp1v2_s01")
-    assert find_existing_results(h, "demo", track="pd", results_base_dir="output CreditPFN/results",
+    assert find_existing_results(h, "demo", track="pd", results_base_dir="output/general/results",
                                  n_folds_required=1, run_name="exp1v2_s00")
 
 

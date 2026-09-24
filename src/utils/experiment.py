@@ -91,7 +91,7 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
         folders = ("src/train",)
         files = ("scripts/train_pipeline.py", "src/eval/metrics.py",
                  "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py",
-                 "src/data/register.py", "src/data/sanitize.py", "src/model/__init__.py",
+                 "src/data/register.py", "src/data/sanitize.py", "src/data/retention.py", "config/retention.yaml", "src/model/__init__.py",
                  "src/__init__.py", "src/eval/__init__.py", "src/utils/__init__.py",
                  "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabicl_models.py",
                  "src/utils/experiment.py", "src/utils/prepare_experiment.py", "src/utils/atomic.py",
@@ -144,7 +144,11 @@ def trial_identity(cfg, trial, *, split=None) -> dict:
         datasets[bucket] = [{"id": r.dataset_id, "sha256": file_digest(r.processed_csv),
                              "target": r.target_column, "categorical": list(r.categorical_columns)}
                             for r in sorted(getattr(split, bucket), key=lambda r: r.dataset_id)]
+    from src.data.retention import load_refs
+    retention = load_refs(str(getattr(cfg.train, "retention_panel", "none")), str(cfg.track))
     payload = {
+        "retention": [{"id": r.dataset_id, "sha256": file_digest(r.processed_csv),
+                       "target": r.target_column, "categorical": list(r.categorical_columns)} for r in retention],
         "protocol": PROTOCOL_VERSION,
         "config": scientific_config(cfg),
         "trial": [Path(base).name, float(lr), bool(frozen), float(query), int(accumulation),

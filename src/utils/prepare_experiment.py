@@ -11,11 +11,11 @@ from omegaconf import OmegaConf
 from src.utils.experiment import (
     apply_split_index, code_identity, digest_json, environment_versions, scientific_config, trial_identity,
 )
-from src.utils.paths import manifests_dir
+from src.utils.paths import manifests_dir, activate_experiment, group_for_run
 
 
 def plan_path(run_name: str, track: str) -> Path:
-    return manifests_dir() / "plans" / (re.sub(r"_s\d+$", "", run_name) + f"_{track}.json")
+    return manifests_dir(group_for_run(run_name)) / "plans" / (re.sub(r"_s\d+$", "", run_name) + f"_{track}.json")
 
 
 def read_plan(path: Path) -> dict:
@@ -34,6 +34,7 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     """
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=str(config))
+    activate_experiment(cfg)
     payload = read_plan(plan_path(str(cfg.run_name), str(cfg.track)))
     def training_settings(config):
         raw = OmegaConf.to_container(config, resolve=True)
@@ -78,6 +79,7 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
     if write and check:
         raise ValueError("Choose write or check, not both")
     cfg = load_train_config(config_path=str(config))
+    activate_experiment(cfg)
     grid = resolve_grid(cfg, single=False)
     n_splits = int(cfg.corpus.n_splits)
     folds = int(cfg.corpus.n_folds or 0)
@@ -156,6 +158,7 @@ def main(argv=None) -> int:
             if workers < 0:
                 raise ValueError("Worker profiles require explicit nonnegative worker counts")
             cfg = load_train_config(config_path=str(args.config))
+            activate_experiment(cfg)
             cfg.run_name = f"{cfg.run_name}_w{workers}"
             cfg.train.dataloader_workers = workers
             folder = manifests_dir() / "pilot_configs"

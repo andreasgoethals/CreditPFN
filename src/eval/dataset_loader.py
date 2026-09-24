@@ -84,6 +84,10 @@ def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
 
+    from src.data.retention import is_retention, processed_dataset
+    if is_retention(dataset_id):
+        return processed_dataset(track, dataset_id)
+
     csv_path = processed_dir(track, f"{dataset_id}.sanitized.csv")
     if not csv_path.exists():
         raise FileNotFoundError(
@@ -93,7 +97,7 @@ def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
 
     # Metadata from CODE (DATASET_METADATA), not a manifest file — see
     # src.train.corpus.build_dataset_pool for why. Categoricals are detected from the CSV we are
-    # already loading, so nothing under output CreditPFN/ is needed to score a dataset.
+    # already loading, so nothing under output/ is needed to score a dataset.
     from src.data.preprocessing import DATASET_METADATA
     from src.data.register import infer_categorical_numerical
     meta = DATASET_METADATA.get(dataset_id)

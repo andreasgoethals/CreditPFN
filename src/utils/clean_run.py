@@ -5,9 +5,9 @@
     python -m src.utils.clean_run --clean --processed       ...and the data/processed cache too
     python -m src.utils.clean_run --clean --stages eval     only what the eval stage produced
 
-Clears `output CreditPFN/` on both storage tiers, preserving a maintenance job's active log — so
+Clears `output/` on both storage tiers, preserving a maintenance job's active log — so
 one invocation is enough whether you are on a laptop or on the cluster. Off-cluster both tiers
-collapse into the repository and it is simply `output CreditPFN/`.
+collapse into the repository and it is simply `output/`.
 
 `--processed` additionally clears `data/processed/`, the preprocessing cache. It is separate
 because rebuilding that cache can cost far more than re-running the notebooks, so "clean the last
@@ -20,16 +20,14 @@ NEVER TOUCHES `data/raw/`, original base weights, or `tfm-library/`.
 Trained weights ARE removed by a full clean. Stop all experiment writers first;
 download any historical output you want to keep before using `--clean`.
 
-CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output CreditPFN/`:
+CREDITPFN ADDS TWO TREES the generic version cannot know about, both outside `output/`:
 
-  * `checkpoints/trained/` on **both** tiers. Trained checkpoints normally go to project
-    storage, but `resolve_writable_staging_path` falls back to `$VSC_DATA` when staging is
-    unwritable from the compute node — and a clean that misses the fallback leaves the
-    resume-skip check pointing at the previous run's weights. That is exactly what
-    contaminated the 10-07-2026 rerun: 59 of 64 trials silently reused stale checkpoints.
+  * `checkpoints/trained/` on **both** tiers. Current cluster jobs require project storage,
+    but historical versions allowed a DATA fallback. Include any such remnants so a clean
+    start cannot accidentally reuse their weights.
     Base `checkpoints/*.ckpt` are never touched — only the `trained/` subtree.
   * Legacy `.sentinels/`, if present. The named launcher uses Slurm dependencies and
-    writes its submission state under `output CreditPFN/manifests/`; no new sentinels are created.
+    writes shared pool state under `output/general/manifests/`; no new sentinels are created.
 
 `--stages data,train,eval` narrows the wipe to what one stage produced, which is what you
 want when only the last stage needs redoing — re-running eval is minutes, re-running the
@@ -53,8 +51,7 @@ from src.utils.paths import (
     results_dir,
 )
 
-#: Tracked so an empty directory survives a clone. Not run output, so never counted or deleted —
-#: removing them would leave a fresh clone with nowhere to write.
+#: Preserve optional structure markers. Writers create missing directories themselves.
 KEEP = frozenset({".gitkeep", ".gitignore"})
 
 #: A resolved root whose last component is one of these is REFUSED, however it got there.
@@ -72,10 +69,8 @@ def is_safe(root: Path) -> bool:
             and root.name not in FORBIDDEN_LEAVES)
 
 
-#: What each pipeline stage puts on disk, as (glob-root, patterns). A stage's targets are
-#: files, not directories, because the three stages share directories: `output CreditPFN/logs/` holds
-#: all three stages' logs and `output CreditPFN/manifests/` holds both the data manifests and the
-#: training ones. Wiping by directory would take another stage's work with it.
+#: Stage selection operates on files because experiment log/manifest directories can contain
+#: records from several stages. Removing those directories would erase another stage's work.
 STAGES = ("data", "train", "eval")
 
 
@@ -83,39 +78,38 @@ def stage_targets(stage: str) -> list[Path]:
     """Every file the named stage produced. See `STAGES` for why this is file-level."""
     if stage not in STAGES:
         raise ValueError(f"unknown stage {stage!r}; valid: {', '.join(STAGES)}")
-    out_root, logs = outputs_dir(), outputs_dir() / "logs"
+    from src.utils.paths import EXPERIMENTS, manifests_dir, logs_dir, training_dir
     found: list[Path] = []
     if stage == "data":
         found += list(processed_dir().glob("**/*.sanitized.csv"))
         found += list(processed_dir().glob("**/*.sanitized.feature_groups.json"))
-        found += list((out_root / "manifests").glob("manifest_*.csv"))
-        found += list(logs.glob("data_*.log"))
+        found += list(manifests_dir("general").glob("manifest_*.csv"))
+        found += list(logs_dir("general").glob("data_*.log"))
     elif stage == "train":
         for trained in (checkpoints_dir("trained"), resolve_output_path("checkpoints/trained")):
-            # Includes provenance and optimizer recovery states on BOTH tiers.
             found += list(trained.glob("**/*"))
-        found += [p for p in (out_root / "manifests").glob("*.csv")
-                  if not p.name.startswith("manifest_")]
-        found += list((out_root / "manifests" / "epochs").glob("**/*.csv"))
-        found += list(logs.glob("train_*.log"))
-    else:                                                       # eval
-        found += list(results_dir().glob("**/*"))
-        found += list(resolve_staging_path("output CreditPFN/evaluation_cache").glob("**/*"))
-        found += list((out_root / "figures").glob("**/*"))
-        found += list((out_root / "manifests" / "figures").glob("*.json"))
-        found += list(logs.glob("notebook_*.log"))
-        found += list(logs.glob("eval_*.log"))
+        for group in EXPERIMENTS:
+            found += [p for p in manifests_dir(group).glob("*.csv") if not p.name.startswith("manifest_")]
+            found += list(training_dir(experiment=group).glob("**/*"))
+            found += list(logs_dir(group).glob("train_*.log"))
+    else:
+        for group in EXPERIMENTS:
+            found += list(results_dir(experiment=group).glob("**/*"))
+            found += list(resolve_staging_path(f"output/{group}/evaluation_cache").glob("**/*"))
+            found += list((outputs_dir() / group / "figures").glob("**/*"))
+            found += list((manifests_dir(group) / "figures").glob("**/*.json"))
+            found += list(logs_dir(group).glob("eval_*.log"))
     return list(dict.fromkeys(p for p in found if p.is_file() and p.name not in KEEP))
 
 
 def roots(*, processed: bool = False) -> list[Path]:
-    """Every tree to clear. Two `output CreditPFN/` roots on the cluster, one locally, plus the cache.
+    """Every tree to clear. Two `output/` roots on the cluster, one locally, plus the cache.
 
     Project storage also holds consolidated tables, reusable evaluation caches and
-    any legacy archives. Clear its WHOLE output tree, not only output CreditPFN/results.
+    any legacy archives. Clear its whole output tree, not only result subdirectories.
     """
     found = [outputs_dir()]
-    project_output = resolve_staging_path("output CreditPFN")
+    project_output = resolve_staging_path("output")
     if not project_output.is_relative_to(found[0]):
         found.append(project_output)
     # CreditPFN: trained weights on project storage AND the $VSC_DATA fallback, plus the
@@ -160,9 +154,7 @@ def wipe(root: Path, *, keep_paths: frozenset[Path] = frozenset()) -> int:
     """Delete everything under a root except the structure markers. Returns files removed.
 
     Two passes, and the order matters: files first, then empty directories bottom-up. That leaves
-    exactly the directories holding a tracked `.gitkeep` and removes the per-run ones
-    (`figures/<notebook>/`) that do not. An `rmtree` of the subtree would take
-    `output CreditPFN/figures/.gitkeep` with it, and the next clone would have nowhere to write.
+    directories holding optional structure markers and removes empty per-run directories.
     """
     validate_tree(root)
     if not root.is_dir():
@@ -189,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--stages", default=None,
                         help="comma-separated subset of " + ",".join(STAGES) +
                              " — clear only what those stages produced, instead of the "
-                             "whole output CreditPFN/ tree")
+                             "whole output/ tree")
     args = parser.parse_args(argv)
 
     # Unlinking a running job's stdout on Linux loses the cleanup report itself.
@@ -198,8 +190,10 @@ def main(argv: list[str] | None = None) -> int:
     keep_paths = frozenset()
     if active_log:
         path = Path(active_log).resolve()
-        if path.parent != (outputs_dir() / "logs").resolve() or path.suffix != ".log":
-            parser.error("CREDITPFN_ACTIVE_LOG must name a .log directly inside output CreditPFN/logs")
+        from src.utils.paths import EXPERIMENTS
+        allowed = {(outputs_dir() / g / "logs").resolve() for g in EXPERIMENTS}
+        if path.parent not in allowed or path.suffix != ".log":
+            parser.error("CREDITPFN_ACTIVE_LOG must name a .log inside output/<experiment>/logs")
         keep_paths = frozenset({path})
         print(f"Preserving active maintenance log: {path}")
 

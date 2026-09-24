@@ -15,7 +15,7 @@ from omegaconf import OmegaConf
 
 from src.utils.checkpoint_inventory import resolve_checkpoint
 from src.utils.experiment import apply_split_index
-from src.utils.paths import manifests_dir, resolve_base_checkpoint, resolve_staging_path
+from src.utils.paths import manifests_dir, resolve_base_checkpoint, resolve_staging_path, training_dir, activate_experiment
 from src.utils.prepare_experiment import plan_path
 
 
@@ -70,6 +70,7 @@ def audit(config: Path, *, null=False) -> dict:
     from src.train.config import load_train_config, resolve_grid
     from src.train.loop import descriptive_name
     cfg = load_train_config(config_path=str(config))
+    activate_experiment(cfg)
     plan = json.loads(plan_path(str(cfg.run_name), str(cfg.track)).read_text(encoding="utf-8"))
     report = {"run": str(cfg.run_name), "track": str(cfg.track), "expected": len(plan["trials"]),
               "completed": 0, "diverged": 0, "pending": 0, "problems": [], "trials": [], "timing": []}
@@ -99,11 +100,37 @@ def audit(config: Path, *, null=False) -> dict:
             target = int(cfg.train.target_total_steps)
             if not divergent and prov.get("successful_updates") != target:
                 report["problems"].append(f"{name}: incorrect successful-update budget")
-            trajectory = manifests_dir() / "epochs" / current.track / (name + ".trajectory.csv")
+            trajectory = training_dir(current.track) / (name + ".trajectory.csv")
             frame = pd.read_csv(trajectory) if trajectory.is_file() else pd.DataFrame()
             observed = frame.get("successful_updates", pd.Series(dtype=int)).tolist()
             if not divergent and observed != list(cfg.train.trajectory_steps):
                 report["problems"].append(f"{name}: missing/duplicate trajectory measurements")
+            panel = str(OmegaConf.select(cfg, "train.retention_panel", default="none"))
+            if panel != "none" and not divergent:
+                from src.data.retention import panel_config
+                expected_ood = {"metric__ood__" + d["id"] for d in panel_config(panel) if d["track"] == current.track}
+                primary = [c for c in frame if c.startswith("metric__")]
+                if (not expected_ood.issubset(frame.columns) or not primary
+                        or not np.isfinite(frame[primary].to_numpy(dtype=float)).all()):
+                    report["problems"].append(f"{name}: missing/nonfinite credit or retention monitor scores")
+            if not divergent and OmegaConf.select(cfg, "train.parameter_diagnostics", default=False):
+                statistics = trajectory.with_name(name + ".parameters.csv.gz")
+                params = pd.read_csv(statistics) if statistics.is_file() else pd.DataFrame()
+                required = {"successful_updates", "parameter", "elements", "relative_change"}
+                if (not required.issubset(params) or params.empty
+                        or sorted(params.successful_updates.unique()) != list(cfg.train.trajectory_steps)
+                        or params.duplicated(["successful_updates", "parameter"]).any()):
+                    report["problems"].append(f"{name}: incomplete/duplicate parameter diagnostics")
+            if not divergent and OmegaConf.select(cfg, "train.resource_diagnostics", default=False):
+                resource_path = trajectory.with_name(name + ".resources.csv")
+                resources = pd.read_csv(resource_path) if resource_path.is_file() else pd.DataFrame()
+                if resources.empty or "gpu_status" not in resources:
+                    report["problems"].append(f"{name}: missing resource measurements")
+                else:
+                    row["resource_samples"] = len(resources)
+                    row["gpu_counter_status"] = resources.gpu_status.value_counts().to_dict()
+                    if not resources.gpu_status.eq("sampled").any():
+                        report["problems"].append(f"{name}: no successful GPU resource sample")
             if null:
                 if lr != 0:
                     raise ValueError("--null requires a zero-learning-rate configuration")

@@ -33,7 +33,7 @@ def reserve(pool: dict, *, slots: int, limit: int, active: set[str]):
 def submit(command: list[str], *, slots: int, limit: int, cluster: str, pool_path: Path | None = None) -> str:
     if not re.fullmatch(r"[A-Za-z0-9_-]+", cluster) or not command or command[0] != "sbatch":
         raise ValueError("Expected a named Slurm controller and an sbatch command")
-    path = pool_path or manifests_dir() / "scheduler" / f"pool-{cluster}.json"
+    path = pool_path or manifests_dir("general") / "scheduler" / f"pool-{cluster}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     # Production is Linux. A failed lock must stop submission, never silently overrun the cap.
     import fcntl

@@ -12,14 +12,25 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 24-09-2026 experiment folders and analysis notebooks
+## Current handover — 24-09-2026 fresh protocol 5 and bundled experiment 0
+
+- User explicitly requested a fresh rerun and `output/<experiment>/{logs,manifests,...}` on both tiers. This supersedes the earlier instruction to reuse v4 preparation/null controls. Every current phase is `cpt_*_v5`; do not rename/reuse old v4 weights as current controls. No v5 VSC jobs have been submitted by this agent.
+- `bash scripts/slurm/run_experiment0.sh part1` downloads verified public inputs on the login node, then stages/prepares on CPU and releases 16 null controls, 32 short pilots and eight uninterrupted/resumed GPU pairs with CPU audit gates. Each recovery pair also checks five-fold final scoring/prediction output. `part2` separately submits eight 20k-update pilots after a current part-1 receipt; two-hour resumable work segments. Research counts remain 512 + 32 + 96 = 640; experiment 0 adds 72 training arms, not counting resumed segments twice.
+- Fixed research retention panel: four classification and four regression OpenML versions from TabArena-v0.1; two packaged datasets for null/recovery. All ten inputs downloaded and checksum-verified locally under gitignored `data/retention/`. They are excluded from the credit registry and staged explicitly on VSC. This is our declared subset/protocol, not the full official benchmark; base-pretraining contamination is unverified. Library pin remains `e5ce01614eebe520af303f2b5bfd212298eab2be`.
+- Project storage now holds per-trial epochs, trajectories, compressed parameter summaries and periodic resources under each experiment, plus final metrics/predictions and narrow consolidated tables. DATA holds job logs/small manifests/cluster locks. Weights use `checkpoints/trained/<experiment>/`. Downloads were not moved. Local notebook verification artifacts go to a temporary directory; notebooks are cleared afterwards for the fresh start.
+- Monitoring now separates context/validation/query; query labels cannot select F1 thresholds or calibrators. Fixed-milestone records retain complementary metrics. Final scoring retains five outer folds, validation-only HPO/thresholds/calibration and original row indices. Quantiles use the explicit native APIs (`TabPFNRegressor.predict` full output; `TabICLRegressor.predict` with `alphas`), sharing one regression forward.
+- Local deletion of `output CreditPFN/` was rejected by automatic approval review. Its 51 files / 742,235 bytes remain pending manual user removal; no alternate deletion route was attempted. The new active `output/` is absent until its first actual run; verified notebook cell outputs were cleared for the fresh start. The obsolete `src.utils.migrate_output` was removed; old output is unnecessary for a fresh v5 run.
+- Validation: full suite **504 passed, 1 skipped** (optional absent manifests); **167 focused checks passed** after the quantile/monitor/recovery changes; **41 audit/launch/consolidation checks passed** after the final resource gate. **295 entry-point/data/training/report checks passed, 1 optional skip**, after moving experiment selection ahead of the first log; **24 consolidation/observability checks passed** after the test-file rename. All 17 shell/Slurm files parse and Python compilation/diff checks passed. All 11 notebooks executed successfully to temporary output; one previously observed Windows ZeroMQ shutdown assertion appeared after successful cell execution. Local preflight cannot certify the two absent v2 base files; VSC part-1 preflight checks the actual eight bases before any GPU submission. No real-model training or package installation was performed locally.
+
+## Previous handover — 24-09-2026 experiment folders and analysis notebooks
 
 - Read Downloads in place: **93 files / 1,306,137 bytes**. Migration **62124946** moved 87 files on both tiers and exited 0; preflight **62124955** reports zero failures/warnings and exit 0. Corrected null audits **62124956 (PD)** and **62124957 (LGD)** each report eight complete, zero pending/diverged/problems, eight exact canonical saved-state matches, eight monitor matches and `passed: true`, exit 0. The 16 check3 controls are now audited; do not spend GPUs repeating them merely because configs moved. Two-update cost extrapolations are not production walltime evidence.
 - User requested experiment 0 = debugging/pilots; 1 = main sweep; 2 = seed sensitivity; 3 = sampling/accumulation. Moved all 12 phase configs into those four directories and verified their parsed payloads are identical to the preceding HEAD. Shared data/train/eval defaults remain at the config root. Existing run names remain intact. Main/seed/sampling counts remain **512 / 32 additional / 96**; experiment 0 retains 16 null + 32 short + 8 budget pilots.
 - Replaced six flat notebooks with **11 ordered notebooks** under `00_general/` and experiments 0–3. New reports cover corpus geometry/quality/partitions/exposure, operational gates, update-indexed trajectories, matched factor/seed/sampling effects, complete-fold benchmark comparisons, complementary metrics and cost. Figures use bounded pages, shared A4 style, PDF-only FigureSaver and final section-ordered text summaries. No result PDFs are fabricated for unavailable measurements. Runner discovery and figure/caption paths support nested notebook names.
 - Added optional **CREDITPFN_ANALYSIS_ROOT**, naming the downloaded output directory itself, for read-only analysis without import. Only visualization readers use it; generated figures/summaries still go to the repository output. Normal cluster storage variables and checkpoint locations are unchanged.
 - Validation: full suite **479 passed, 1 skipped** (optional on-disk manifests), nine known constant-input toy-regression warnings; **102 focused checks passed** after the final analysis corrections. All **11 notebooks passed**, producing **39 PDFs** from local corpus data and downloaded null-control evidence; unstarted phases retain planned coverage without fabricated result figures. The publication scan covered 61 artifacts with zero private-name matches. Actual notebook figures and synthetic full-grid heatmaps/trajectories were visually inspected at A4 width. All nine experiment notebooks passed a final serial rerun. Downloads' 93-file content digest is unchanged. No install, real model training, cluster submission, push or Downloads mutation by the agent.
-- **Next operational phase:** positive-LR/recovery verification and short pilots under experiment 0, with fresh source-matched VSC plans. Main horizon/walltimes still require the pilots. Config moves do not rename completed controls.
+- **Update — pilot preparation complete:** downloaded CPU jobs **62129268 (PD)** and **62129269 (LGD)** each wrote 16-trial `cpt_pilot_v4` plans and exited 0. Both downloaded plan checksums, all 32 trial checksums and training-source hashes match the current checkout `fbf7041`. The download contains 97 files / 1,575,241 bytes: 33 logs, 62 manifest/history/plan files and two summary files. Read in place; no files moved or removed. Pilot training has not yet been evidenced.
+- **Next operational phase:** launch the existing 32 short, positive-LR experiment-0 pilots (250 updates each), using the prepared plans. Do not repeat preparation or null controls. A one-hour request per pilot is the current provisional launcher default. CUDA recovery verification and measured budget/walltime decisions still precede the main sweep. Output grouping by experiment is a proposed cleanup, not implemented in this runtime review; changing hashed routing before launch would invalidate the newly prepared plans.
 
 ## Previous handover — 24-09-2026 review fixes and output rename; CPU audits still required
 
@@ -108,6 +119,8 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 24-09-2026 | prepare cpt_pilot_v4 LGD · wICE 62129269 | **plan written (download verified)** | 16 trials, 250 updates, one partition; exit 0. Plan/trial checksums and current training source match; no pilot training evidenced. |
+| 24-09-2026 | prepare cpt_pilot_v4 PD · wICE 62129268 | **plan written (download verified)** | 16 trials, 250 updates, one partition; exit 0. Plan/trial checksums and current training source match; no pilot training evidenced. |
 | 24-09-2026 | corrected check3 null audit LGD · wICE 62124957 | **passed (download evidence)** | 8 complete; all exact saved-state and monitor checks pass; 0 problems, exit 0. |
 | 24-09-2026 | corrected check3 null audit PD · wICE 62124956 | **passed (download evidence)** | 8 complete; all exact saved-state and monitor checks pass; 0 problems, exit 0. |
 | 24-09-2026 | CPU preflight · wICE 62124955 | **passed (download evidence)** | 0 failures / 0 warnings; exit 0. |
@@ -141,6 +154,20 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 24-09-2026 — local output deletion rejected
+
+**Tried:** Remove only the resolved repository-local `output CreditPFN/` tree with PowerShell after the user's fresh-start request.
+**Result:** Automatic approval review rejected the bounded removal with “blocked by policy”; the files remain.
+**Why:** No more specific reason was supplied. Filesystem permissions did not authorize bypassing the review decision.
+**Instead:** Stop deletion attempts, keep active verification output in temporary storage and give the user the manual removal command.
+
+### 24-09-2026 — sparse quantiles never reached the native API
+
+**Tried:** Record a fixed nine-quantile grid through the model wrappers during the extended evaluation audit.
+**Result:** Wrappers accepted only `X`, so distribution requests were swallowed as unavailable; TabICL's fallback default grid also differed from our declared levels.
+**Why:** TabPFN uses `quantiles`, TabICL uses `alphas`, and TabPFN returns a list of quantile arrays rather than a row-major matrix.
+**Instead:** Use explicit native multi-output calls, reuse one forward, test square-matrix orientation/levels and exercise distribution scoring in each GPU recovery canary.
 
 ### 24-09-2026 — Windows notebook-kernel shutdown diagnostic
 

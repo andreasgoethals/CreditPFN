@@ -2,6 +2,16 @@
 from __future__ import annotations
 
 import numpy as np
+import json
+
+
+def calibration_bins(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> str:
+    """Sufficient statistics for pooled reliability plots; identical bins for all models."""
+    index = np.digitize(p, np.linspace(0, 1, n_bins + 1)[1:-1], right=True)
+    return json.dumps([{"bin": b, "count": int((index == b).sum()),
+        "probability_sum": float(np.asarray(p)[index == b].sum()),
+        "positive_count": int((np.asarray(y)[index == b] == 1).sum())}
+        for b in range(n_bins)], separators=(",", ":"))
 
 
 def _best_f1_threshold(
@@ -10,9 +20,7 @@ def _best_f1_threshold(
     """Return the threshold τ ∈ [0,1] that maximises F1 on the val set.
 
     Uses ``sklearn.metrics.precision_recall_curve`` so we evaluate F1
-    only at the O(n) breakpoints sklearn returns (sorted by predicted
-    score). The old "np.unique over all probas" approach was O(n²) on
-    large val sets — Gemini's #3 bottleneck.
+    only at the O(n) breakpoints sklearn returns after sorting predicted scores.
     """
     # A one-class validation fold has no meaningful ranking threshold and
     # sklearn warns for the all-negative case. Use the documented neutral
@@ -72,14 +80,6 @@ def _posthoc_calibrated(
       so it can correct odd calibration curves, but it overfits a small
       validation split and produces a step function.
 
-    WHY (08-08-2026): continued pretraining consistently WORSENS calibration
-    in our runs (untuned v2.6 ECE 0.0159 → trained 0.0169-0.0224, replicated
-    across run-4 and run-6) while leaving discrimination flat. Whether that
-    cost is recoverable for free decides how the finding reads: "use CPT and
-    recalibrate" versus "CPT damages calibration irreparably". Purucker et al.
-    2026 found TabPFN one of only two models post-hoc calibration made WORSE,
-    so the answer is genuinely open — and it matters more than AUC for credit
-    risk, where the probability itself is the regulated quantity.
     """
     if proba_test.shape[1] != 2 or len(np.unique(y_val)) < 2:
         return None
@@ -107,7 +107,7 @@ def _classification_metrics(
     proba_test: np.ndarray, y_test: np.ndarray,
     proba_val: np.ndarray, y_val: np.ndarray,
     n_classes_seen: int,
-) -> dict[str, float]:
+) -> dict:
     """All classification metrics in one place. F1 / accuracy /
     precision / recall use the threshold that MAXIMISES F1 on the
     inner-validation split (binary only); multiclass returns NaN
@@ -121,6 +121,13 @@ def _classification_metrics(
     )
     out: dict[str, float] = {}
     K = proba_test.shape[1]
+    if K == 2:
+        p = np.clip(proba_test[:, 1], 1e-15, 1 - 1e-15)
+        out.update(f1_at_05=float(f1_score(y_test, proba_test[:, 1] >= .5, zero_division=0)),
+            prediction_mean=float(p.mean()), prediction_std=float(p.std()),
+            prediction_entropy=float(-(p * np.log(p) + (1-p) * np.log1p(-p)).mean()),
+            target_prevalence=float(np.mean(np.asarray(y_test) == 1)),
+            calibration_bins=calibration_bins(proba_test[:, 1], y_test))
 
     # Threshold-free metrics on test fold.
     try:
@@ -167,7 +174,7 @@ def _classification_metrics(
             yt = np.asarray(y_test).astype(int)
             n_bins = 10
             edges = np.linspace(0.0, 1.0, n_bins + 1)
-            bin_idx = np.clip(np.digitize(p, edges[1:-1]), 0, n_bins - 1)
+            bin_idx = np.clip(np.digitize(p, edges[1:-1], right=True), 0, n_bins - 1)
             N = len(p)
             ece = 0.0
             for b in range(n_bins):
@@ -190,6 +197,9 @@ def _classification_metrics(
     if K == 2:
         from sklearn.metrics import brier_score_loss, log_loss as _ll
         for method in ("platt", "isotonic"):
+            out[f"optimal_threshold_{method}"] = float("nan")
+            out[f"calibration_bins_{method}"] = "[]"
+            out[f"roc_auc_{method}"] = float("nan")
             cal = _posthoc_calibrated(proba_test, proba_val, y_val, method)
             if cal is None:
                 out[f"ece_{method}"] = float("nan")
@@ -200,6 +210,7 @@ def _classification_metrics(
                     out["roc_auc_isotonic"] = float("nan")
                 continue
             out[f"ece_{method}"] = _binary_ece(cal, np.asarray(y_test))
+            out[f"calibration_bins_{method}"] = calibration_bins(cal, y_test)
             try:
                 out[f"brier_score_{method}"] = float(
                     brier_score_loss(y_test, cal))
@@ -219,6 +230,7 @@ def _classification_metrics(
             try:
                 if cal_val is not None and len(np.unique(y_val)) >= 2:
                     th = _best_f1_threshold(cal_val, np.asarray(y_val))
+                    out[f"optimal_threshold_{method}"] = th
                     from sklearn.metrics import f1_score
                     out[f"f1_{method}"] = float(
                         f1_score(y_test, (cal >= th).astype(int), zero_division=0))
@@ -227,14 +239,11 @@ def _classification_metrics(
             except Exception:                                     # pragma: no cover
                 out[f"f1_{method}"] = float("nan")
 
-            # Isotonic only: it is weakly monotone, so ties can shift the ranking. Platt is
-            # strictly monotone and its AUC is identical to the raw one by construction.
-            if method == "isotonic":
-                try:
-                    from sklearn.metrics import roc_auc_score
-                    out["roc_auc_isotonic"] = float(roc_auc_score(y_test, cal))
-                except ValueError:                                # pragma: no cover
-                    out["roc_auc_isotonic"] = float("nan")
+            # Platt's fitted slope may be negative; isotonic may create ties.
+            try:
+                out[f"roc_auc_{method}"] = float(roc_auc_score(y_test, cal))
+            except ValueError:                                    # pragma: no cover
+                pass
     else:
         for method in ("platt", "isotonic"):
             out[f"ece_{method}"] = float("nan")
@@ -257,6 +266,8 @@ def _classification_metrics(
         try:
             cm = confusion_matrix(y_test, preds_t, labels=[0, 1])
             tn, fp = float(cm[0, 0]), float(cm[0, 1])
+            out.update(true_negative=tn, false_positive=fp,
+                       false_negative=float(cm[1, 0]), true_positive=float(cm[1, 1]))
             out["specificity"] = (
                 float("nan") if (tn + fp) == 0.0 else tn / (tn + fp)
             )
@@ -283,7 +294,8 @@ def _classification_metrics(
 
 def _regression_metrics(
     pred_test: np.ndarray, y_test: np.ndarray,
-    *, neg_nll: float | None,
+    *, neg_nll: float | None, quantiles: np.ndarray | None = None,
+    quantile_levels: tuple[float, ...] = (),
 ) -> dict[str, float]:
     """Full regression-metric block.
 
@@ -325,14 +337,14 @@ def _regression_metrics(
 
     # Pearson / Spearman — guard against constant-vector inputs which
     # make the correlation undefined (the denominator is zero).
-    if np.std(y_test) == 0 or np.std(pred_test) == 0:
+    if np.ptp(y_test) == 0 or np.ptp(pred_test) == 0:
         out["pearson_r"] = float("nan")
     else:
         out["pearson_r"] = float(np.corrcoef(y_test, pred_test)[0, 1])
 
     try:
         from scipy.stats import spearmanr
-        if np.std(y_test) == 0 or np.std(pred_test) == 0:
+        if np.ptp(y_test) == 0 or np.ptp(pred_test) == 0:
             out["spearman_r"] = float("nan")
         else:
             rho, _ = spearmanr(y_test, pred_test)
@@ -340,5 +352,18 @@ def _regression_metrics(
     except ImportError:                                                # pragma: no cover
         out["spearman_r"] = float("nan")
 
-    return out
+    if quantiles is not None:
+        q = np.asarray(quantiles)
+        levels = np.asarray(quantile_levels)
+        if q.shape != (len(y_test), len(levels)) or not np.isfinite(q).all():
+            raise ValueError("Invalid predictive quantile matrix")
+        residual = np.asarray(y_test)[:, None] - q
+        out["mean_pinball_loss"] = float(np.maximum(levels * residual, (levels - 1) * residual).mean())
+        out["quantile_crossing_fraction"] = float(np.any(np.diff(q, axis=1) < 0, axis=1).mean())
+        for coverage, lo, hi in ((80, .10, .90), (90, .05, .95)):
+            if lo in quantile_levels and hi in quantile_levels:
+                lower, upper = q[:, quantile_levels.index(lo)], q[:, quantile_levels.index(hi)]
+                out[f"interval_coverage_{coverage}"] = float(((y_test >= lower) & (y_test <= upper)).mean())
+                out[f"interval_width_{coverage}"] = float((upper - lower).mean())
 
+    return out

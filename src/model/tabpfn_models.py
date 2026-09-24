@@ -77,7 +77,7 @@ def _trust_local_checkpoints():
         torch.load = orig_load
 
 
-def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray) -> float | None:
+def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, output=None) -> float | None:
     """Mean log-density (= −NLL) of ``y`` under TabPFN's predictive
     bar-distribution on ``X``. Higher = better (matches the ``neg_*``
     convention of the ``neg_nll`` eval column).
@@ -100,7 +100,7 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray) -> fl
         return None
     try:
         with _trust_local_checkpoints():
-            out = tabpfn_model.predict(X, output_type="full")
+            out = output if output is not None else tabpfn_model.predict(X, output_type="full")
     except Exception as exc:                                       # noqa: BLE001
         LOGGER.warning("neg_nll: predict(output_type='full') unavailable (%s: %s)",
                        type(exc).__name__, exc)
@@ -156,6 +156,16 @@ def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
         return cls(model_path=str(model_path), **extra)
 
 
+def _regression_distribution(model, X, y, levels):
+    """One ensemble forward supplies point, quantile and density measurements."""
+    with _trust_local_checkpoints():
+        output = model.predict(X, output_type="full", quantiles=list(levels))
+    # TabPFN returns one array per quantile, including when n_rows == n_quantiles.
+    quantiles = np.column_stack(output["quantiles"])
+    return {"mean": output["mean"], "quantiles": quantiles,
+            "neg_nll": _tabpfn_regression_neg_nll(model, X, y, output=output)}
+
+
 # --------------------------------------------------------------------------- #
 # TabPFN-untuned — the base checkpoint, no continued pretraining
 # --------------------------------------------------------------------------- #
@@ -206,6 +216,9 @@ class TabPFNUntuned:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self._tabpfn.predict(X)
+
+    def predict_distribution(self, X, y, levels):
+        return _regression_distribution(self._tabpfn, X, y, levels)
 
     def neg_log_likelihood(self, X: np.ndarray, y: np.ndarray) -> float | None:
         """Mean log-density (−NLL) of ``y`` under the predictive
@@ -272,6 +285,9 @@ class TabPFNTrained:
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         return self._tabpfn.predict(X)
+
+    def predict_distribution(self, X, y, levels):
+        return _regression_distribution(self._tabpfn, X, y, levels)
 
     def neg_log_likelihood(self, X: np.ndarray, y: np.ndarray) -> float | None:
         """Mean log-density (−NLL) of ``y`` under the predictive

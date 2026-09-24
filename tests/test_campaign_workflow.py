@@ -179,6 +179,7 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
     plan.write_text(json.dumps({"trials": {f"{cfg.run_name}_s00/0": "expected"}}))
     monkeypatch.setattr(module, "plan_path", lambda *a: plan)
     monkeypatch.setattr(module, "manifests_dir", lambda: tmp_path / "manifests")
+    monkeypatch.setattr(module, "training_dir", lambda track: tmp_path / "manifests" / "epochs" / track)
     filename = descriptive_name(run_name=f"{cfg.run_name}_s00", track="pd", base_path=trial[0],
         learning_rate=0., seed=42, query_fraction=.4, accumulate_grad_batches=1,
         epoch_pass_mode="one_sample", l2sp_lambda=0.)
@@ -190,9 +191,18 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
         "trial_identity": {"sha256": "expected"}, "successful_updates": 2}))
     curve = tmp_path / "manifests" / "epochs" / "pd" / filename.replace(".ckpt", ".trajectory.csv")
     curve.parent.mkdir(parents=True)
-    pd.DataFrame({"successful_updates": [0, 2], "metric__test__table": [.7, .7]}).to_csv(curve, index=False)
+    pd.DataFrame({"successful_updates": [0, 2], "metric__test__table": [.7, .7],
+                  "metric__ood__package_breast_cancer": [.8, .8]}).to_csv(curve, index=False)
+    pd.DataFrame({"successful_updates": [0, 2], "parameter": ["weight", "weight"],
+                  "elements": [1, 1], "relative_change": [0., 0.]}).to_csv(
+                      curve.with_name(curve.name.replace(".trajectory.csv", ".parameters.csv.gz")), index=False)
+    pd.DataFrame({"gpu_status": ["sampled"]}).to_csv(
+        curve.with_name(curve.name.replace(".trajectory.csv", ".resources.csv")), index=False)
     result = module.audit(Path("unused"), null=True)
     assert result["passed"] and result["completed"] == 1
+    pd.DataFrame({"gpu_status": ["unavailable"]}).to_csv(
+        curve.with_name(curve.name.replace(".trajectory.csv", ".resources.csv")), index=False)
+    assert not module.audit(Path("unused"), null=True)["passed"]
 
 
 def test_lgd_trajectory_effects_are_scale_invariant_and_require_baseline():

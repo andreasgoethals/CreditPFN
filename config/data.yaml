@@ -6,8 +6,8 @@ paths:
   data_source: staging                    # staging | data — which storage tier to read/write
   raw: data/raw
   processed: data/processed
-  manifest_pd: output CreditPFN/manifests/manifest_pd.csv
-  manifest_lgd: output CreditPFN/manifests/manifest_lgd.csv
+  manifest_pd: output/general/manifests/manifest_pd.csv
+  manifest_lgd: output/general/manifests/manifest_lgd.csv
 
 finetuning:
   # Rows per TRAINING step (context+query) at TWO ensemble members, which is what both tracks

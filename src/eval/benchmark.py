@@ -130,8 +130,7 @@ class EvalRow:
     log_loss_platt:        float = float("nan")
     ece_isotonic:          float = float("nan")
     brier_score_isotonic:  float = float("nan")
-    # Threshold-tuned and ranking metrics AFTER recalibration. No `roc_auc_platt`: Platt is a
-    # strictly monotone map and cannot change the ranking, so it would always equal `roc_auc`.
+    # Thresholds are selected on validation after each calibration mapping.
     f1_platt:              float = float("nan")
     f1_isotonic:           float = float("nan")
     roc_auc_isotonic:      float = float("nan")
@@ -145,6 +144,21 @@ class EvalRow:
     balanced_accuracy:  float = float("nan")
     mcc:                float = float("nan")
     cohen_kappa:        float = float("nan")
+    f1_at_05: float = float("nan")
+    roc_auc_platt: float = float("nan")
+    optimal_threshold_platt: float = float("nan")
+    optimal_threshold_isotonic: float = float("nan")
+    prediction_mean: float = float("nan")
+    prediction_std: float = float("nan")
+    prediction_entropy: float = float("nan")
+    target_prevalence: float = float("nan")
+    true_negative: float = float("nan")
+    false_positive: float = float("nan")
+    false_negative: float = float("nan")
+    true_positive: float = float("nan")
+    calibration_bins: str = "[]"
+    calibration_bins_platt: str = "[]"
+    calibration_bins_isotonic: str = "[]"
 
     # Regression metrics (NaN for classification). On top of RMSE / MAE
     # / R² / neg-NLL the block below adds:
@@ -165,8 +179,18 @@ class EvalRow:
     pearson_r:           float = float("nan")
     spearman_r:          float = float("nan")
     neg_nll:             float = float("nan")    # TabPFN-* only
+    mean_pinball_loss: float = float("nan")
+    quantile_crossing_fraction: float = float("nan")
+    interval_coverage_80: float = float("nan")
+    interval_coverage_90: float = float("nan")
+    interval_width_80: float = float("nan")
+    interval_width_90: float = float("nan")
 
     elapsed_sec:     float = 0.0
+    fit_seconds: float = 0.0
+    predict_score_seconds: float = 0.0
+    domain: str = "credit"
+    split_seed: int = 99
     timestamp:       str = ""
     status:          str = "OK"
     error:           str | None = None
@@ -327,7 +351,9 @@ def resolve_test_datasets(handle: ModelHandle,
             # they diverge, trained-vs-untuned is silently scored on DIFFERENT
             # datasets and the headline delta is not apples-to-apples — warn loud.
             prov_ids = sorted(set(str(x) for x in prov["test_datasets"]))
-            cfg_ids = sorted(set(str(x) for x in cfg_test_dataset_ids))
+            from src.data.retention import is_retention
+            retention_ids = [d for d in cfg_test_dataset_ids if is_retention(d)]
+            cfg_ids = sorted(set(str(x) for x in cfg_test_dataset_ids) - set(retention_ids))
             if cfg_ids and prov_ids != cfg_ids:
                 LOGGER.warning(
                     "PAIRING RISK: trained model %s was held out on %s, but the "
@@ -336,7 +362,7 @@ def resolve_test_datasets(handle: ModelHandle,
                     "against the current corpus split, or align config/train.yaml.",
                     handle.name, prov_ids, cfg_ids,
                 )
-            return list(prov["test_datasets"])
+            return list(prov["test_datasets"]) + retention_ids
         raise ValueError(f"Trained checkpoint {handle.name} has no verified test_datasets; "
                          "refusing a potentially contaminated config fallback")
     return list(cfg_test_dataset_ids)
@@ -380,8 +406,8 @@ def _make_outer_folds(y: np.ndarray, *, task_type: str,
     """Outer K-fold (per dataset). Yields ``(train_idx, test_idx)``.
 
     The user contract: each outer fold is **80% train / 20% test**
-    (with `n_folds=5`). Stratified for classification, plain KFold
-    for regression.
+    (with `n_folds=5`). Stratified for classification and feasible regression
+    quantile strata; regression otherwise uses plain KFold.
     """
     from sklearn.model_selection import KFold, StratifiedKFold
     n = len(y)
@@ -642,11 +668,8 @@ def _csv_fold_statuses(csv_path: Path, dataset_id: str) -> dict[int | str, str]:
     return folds
 
 
-#: Quantile grid stored for every LGD prediction. Nine levels is enough for a CRPS estimate
-#: for exploratory grid-based scoring and 80 % / 90 % interval coverage, while adding nine
-#: floats per row to the parquet. The grid is FIXED across families on purpose — that is what
-#: makes the resulting CRPS comparable between TabPFN's bar distribution and TabICLv2's
-#: quantile head, which `neg_nll` is not.
+#: Fixed cross-family grid for mean pinball loss and 80%/90% interval coverage.
+#: Nine quantiles do not establish an accurate full-distribution CRPS.
 PRED_QUANTILE_LEVELS: tuple[float, ...] = (
     0.05, 0.10, 0.25, 0.40, 0.50, 0.60, 0.75, 0.90, 0.95)
 
@@ -669,16 +692,14 @@ def _predict_quantiles(model, X, levels: tuple[float, ...] = PRED_QUANTILE_LEVEL
 
     # --- TabICLv2 (and anything else with a quantile head) ---
     for kwargs in ({"output_type": "quantiles", "quantiles": list(levels)},
-                   {"output_type": "quantiles"}):
+                   {"output_type": "quantiles", "alphas": list(levels)}):
         try:
             out = model.predict(X, **kwargs)
+            arr = _np.column_stack(out) if isinstance(out, list) else _np.asarray(out, dtype=float)
         except Exception:                                          # noqa: BLE001
             continue
-        arr = _np.asarray(out, dtype=float)
-        if arr.ndim == 2 and levels and arr.shape[1] == len(levels):
+        if arr.shape == (len(X), len(levels)) and _np.isfinite(arr).all():
             return arr
-        if arr.ndim == 2 and arr.shape[0] == len(levels):          # (k, n) -> (n, k)
-            return arr.T
     # --- TabPFN bar distribution ---
     try:
         import torch
@@ -846,13 +867,16 @@ def _bench_model_on_dataset(
         status = "OK"
         error: str | None = None
         metrics: dict[str, float] = {}
+        fit_seconds = 0.0
+        quantiles = None
 
         try:
             # Pass the val split through to the model. Wrappers that do
-            # HPO (XGBoost/CatBoost) use it as the Optuna objective —
-            # Gemini's #1 fix. Wrappers without HPO ignore the args.
+            # HPO (XGBoost/CatBoost) use it as the Optuna objective.
+            # Wrappers without HPO ignore the args.
             model.fit(X_tr_arr, y_tr, cat_idx,
                       X_val=X_va_arr, y_val=y_va)
+            fit_seconds = time.monotonic() - t0
             if ds.task_type == "classification":
                 proba_va = np.asarray(model.predict_proba(X_va_arr))
                 proba_te = np.asarray(model.predict_proba(X_te_arr))
@@ -884,25 +908,30 @@ def _bench_model_on_dataset(
 
                 proba_va = _pad(proba_va, K_total)
                 proba_te = _pad(proba_te, K_total)
+                pred_te = proba_te[:, 1] if K_total == 2 else proba_te.argmax(axis=1)
                 metrics = _classification_metrics(
                     proba_test=proba_te, y_test=y_te,
                     proba_val=proba_va,  y_val=y_va,
                     n_classes_seen=K_total,
                 )
             else:
-                pred_te = np.asarray(model.predict(X_te_arr)).reshape(-1)
-                # Bar-distribution NLL is TabPFN-only: it rewards the full
-                # predictive DISTRIBUTION (not just the mean), which is the
-                # point of TabPFN's regression head. Models that expose
-                # `neg_log_likelihood` (the TabPFN wrappers) compute the mean
-                # log-density of y under their predictive bar-distribution;
-                # everything else (Ridge/XGBoost/CatBoost) has no distribution,
-                # so neg_nll stays NaN. Best-effort: the wrapper returns None if
-                # the installed tabpfn's full-output API differs.
-                nll_fn = getattr(model, "neg_log_likelihood", None)
-                neg_nll = nll_fn(X_te_arr, y_te) if callable(nll_fn) else None
+                distribution_fn = getattr(model, "predict_distribution", None)
+                if callable(distribution_fn):
+                    # Both foundation families expose point and requested quantile
+                    # outputs in one ensemble forward. TabPFN also reuses its logits
+                    # for density scoring. An incompatible API fails this fold visibly.
+                    output = distribution_fn(X_te_arr, y_te, PRED_QUANTILE_LEVELS)
+                    pred_te = np.asarray(output["mean"]).reshape(-1)
+                    quantiles = np.asarray(output["quantiles"])
+                    neg_nll = output.get("neg_nll")
+                else:
+                    pred_te = np.asarray(model.predict(X_te_arr)).reshape(-1)
+                    nll_fn = getattr(model, "neg_log_likelihood", None)
+                    neg_nll = nll_fn(X_te_arr, y_te) if callable(nll_fn) else None
+                    quantiles = _predict_quantiles(model, X_te_arr)
                 metrics = _regression_metrics(
                     pred_test=pred_te, y_test=y_te, neg_nll=neg_nll,
+                    quantiles=quantiles, quantile_levels=PRED_QUANTILE_LEVELS,
                 )
         except Exception as exc:                              # noqa: BLE001
             status = "FAIL"
@@ -922,18 +951,12 @@ def _bench_model_on_dataset(
                 _y = np.asarray(y_te).reshape(-1)
                 if _p.shape == _y.shape:
                     # Regression only: capture the predictive DISTRIBUTION as a fixed quantile
-                    # grid so CRPS and interval coverage stay computable from the parquet after
-                    # the run. `neg_nll` is recorded too but is not comparable across families
-                    # (bar distribution vs quantile head), and CRPS is. None on any failure, in
-                    # which case the point prediction is stored alone, as before.
-                    _q = None
-                    if ds.task_type != "classification":
-                        _q = _predict_quantiles(model, X_te_arr)
-                        if _q is not None and _q.shape[0] != _y.size:
-                            _q = None
+                    # grid for interval coverage and mean pinball loss. A sparse quantile grid
+                    # is not an exact CRPS calculation; models without quantiles store points only.
+                    _q = quantiles
                     for i in range(_y.size):
                         _rec = {"test_dataset_id": ds.dataset_id, "model_name": handle.name,
-                                "fold_idx": int(fold_idx), "row_idx": int(i),
+                                "fold_idx": int(fold_idx), "row_idx": int(te_idx[i]),
                                 "y_true": float(_y[i]), "y_pred": float(_p[i])}
                         if _q is not None:
                             _rec.update({f"q{int(round(lv * 100)):02d}": float(_q[i, j])
@@ -962,29 +985,13 @@ def _bench_model_on_dataset(
             n_val_rows=int(len(X_va_df)),
             n_test_rows=int(len(te_idx)),
             elapsed_sec=time.monotonic() - t0,
+            fit_seconds=fit_seconds,
+            predict_score_seconds=time.monotonic() - t0 - fit_seconds,
+            split_seed=seed,
+            domain="noncredit" if ds.dataset_id.startswith(("openml_", "package_")) else "credit",
             timestamp=timestamp,
             status=status, error=error,
-            **{k: metrics.get(k, float("nan")) for k in (
-                # Classification — threshold-free / probabilistic
-                "roc_auc", "log_loss", "pr_auc", "brier_score", "ece",
-                # Classification — threshold-tuned (max-F1 on val)
-                "optimal_threshold",
-                "f1", "accuracy", "precision", "recall", "specificity",
-                "balanced_accuracy", "mcc", "cohen_kappa",
-                # Regression
-                "rmse", "mae", "median_ae", "mape",
-                "r2", "explained_variance", "pearson_r", "spearman_r",
-                "neg_nll",
-                # POST-HOC CALIBRATION. These were computed since 08-08-2026 and never
-                # transferred, so every calibration column in run-8 is NaN for no reason but
-                # this omission. `roc_auc_platt` is deliberately absent: Platt scaling is a
-                # strictly monotone map, so it cannot change the ranking and its AUC is equal
-                # to the raw AUC by construction. Isotonic is only weakly monotone — it creates
-                # ties — so its AUC can move and is worth recording.
-                "ece_platt", "brier_score_platt", "log_loss_platt", "f1_platt",
-                "ece_isotonic", "brier_score_isotonic", "log_loss_isotonic",
-                "f1_isotonic", "roc_auc_isotonic",
-            )},
+            **{k: v for k, v in metrics.items() if k in EvalRow.__dataclass_fields__},
         ))
 
     return rows
@@ -1132,7 +1139,7 @@ def run_benchmark(
         try:
             datasets_full[did] = load_processed_dataset(track=track, dataset_id=did)
         except (FileNotFoundError, KeyError) as exc:
-            LOGGER.warning("skipping %s: %s", did, exc)
+            raise RuntimeError(f"Required evaluation dataset unavailable: {did}") from exc
 
     rows: list[EvalRow] = []
     rows_by_model: dict[str, list[EvalRow]] = {}
@@ -1156,14 +1163,20 @@ def run_benchmark(
             key = cache.evaluation_key(handle, did, track=track, config=evaluation_config) if evaluation_config else None
             if key:
                 evaluation_keys[did] = key
-            cacheable = key and use_control_cache and not save_predictions and not handle.source.endswith("-trained")
+            cacheable = key and use_control_cache and not handle.source.endswith("-trained")
             cached = cache.load(results_base_dir, key, n_folds=n_folds) if cacheable else None
+            cached_predictions = cache.load_predictions(results_base_dir, key) if cached is not None and save_predictions else None
+            if save_predictions and cached_predictions is None:
+                cached = None
             if cached is not None:
                 from dataclasses import replace
                 fold_rows = [replace(EvalRow(**r), elapsed_sec=0.0, timestamp=timestamp,
                                      cache_hit=True, cached_elapsed_sec=float(r["elapsed_sec"])) for r in cached]
                 LOGGER.info("Reused fingerprint-matched control for %s", did)
+                if cached_predictions is not None:
+                    pred_records.extend(cached_predictions)
             else:
+                prediction_start = len(pred_records)
                 fold_rows = _bench_model_on_dataset(
                     handle=handle, model=model, ds=ds,
                     n_folds=n_folds, inner_val_fraction=inner_val_fraction,
@@ -1172,7 +1185,8 @@ def run_benchmark(
                     pred_records=pred_records if save_predictions else None,
                 )
                 if cacheable:
-                    cache.save(results_base_dir, key, fold_rows, n_folds=n_folds)
+                    cache.save(results_base_dir, key, fold_rows, n_folds=n_folds,
+                               predictions=pred_records[prediction_start:] if save_predictions else None)
             rows.extend(fold_rows)
             rows_by_model[handle.name].extend(fold_rows)
 

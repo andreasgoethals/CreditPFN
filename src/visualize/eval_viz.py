@@ -3,7 +3,7 @@
 Consumes the wide-format CSVs written by ``scripts/eval_pipeline.py``
 (via ``src.eval.benchmark.EvalRow``) at::
 
-    output CreditPFN/results/<TRACK>/<method-dirname>/<run>_<ts>[__ds-<id>].csv
+    output/<experiment>/results/<TRACK>/<method-dirname>/<run>_<ts>[__ds-<id>].csv
 
 Each row is one ``(model × dataset × fold)`` tuple with all metric
 columns side-by-side. We pool every CSV under one DataFrame, then
@@ -77,13 +77,14 @@ def _resolve_paths():
     except Exception:  # pragma: no cover
         pass
 
-    from src.utils.paths import resolve_staging_path, results_dir
+    from src.utils.paths import resolve_staging_path, results_dir, group_for_run
     cfg = _load_eval_cfg()
     base = str(cfg.results.base_dir) if hasattr(cfg, "results") else str(results_dir())
     from src.visualize.inputs import analysis_root
     source = analysis_root()
+    group = group_for_run(_RUN_OVERRIDE or os.environ.get("CREDITPFN_VIZ_RUN", ""))
     return {
-        "benchmark_root": source / "results" if source is not None else resolve_staging_path(base),
+        "benchmark_root": source / group / "results" if source is not None else results_dir(experiment=group),
     }
 
 
@@ -159,7 +160,7 @@ def human_method_name(row: pd.Series) -> str:
 #: Restrict :func:`load_eval_results` to one run's result files. Eval writes
 #: ``<run>_<ts>__task<k>_ds-<id>.csv`` (run is per-split, e.g. ``exp1_s03``), so a run is selected
 #: by the ``<run>_`` filename prefix. A notebook sets ``eval_viz.use_run("exp1")`` so run-8's old
-#: results in the same ``output CreditPFN/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
+#: results in the same ``output/<experiment>/results/`` tree are not pooled in; ``CREDITPFN_VIZ_RUN`` does the
 #: same for scripts. ``None`` (the default) pools everything, preserving the previous behaviour.
 _RUN_OVERRIDE: str | None = None
 
@@ -172,7 +173,7 @@ def use_run(name: str | None) -> None:
     _RUN_OVERRIDE = str(name) if name else None
 
 
-def load_eval_results(track: str) -> pd.DataFrame:
+def load_eval_results(track: str, *, include_retention=False) -> pd.DataFrame:
     """Pool every CSV under ``<benchmark_root>/<TRACK>/**/*.csv``.
 
     Adds structured columns derived from the parent directory name:
@@ -245,6 +246,10 @@ def load_eval_results(track: str) -> pd.DataFrame:
     if not frames:
         return pd.DataFrame()
     full = pd.concat(frames, ignore_index=True)
+    if not include_retention and "domain" in full:
+        full = full[full.domain.fillna("credit").eq("credit")].copy()
+    if full.empty:
+        return full
 
     # Rerunning a failed cell writes another file: count the latest fold once,
     # retaining its latest FAIL instead of resurrecting an earlier success.

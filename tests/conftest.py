@@ -72,3 +72,8 @@ def isolated_output(tmp_path, monkeypatch):
     monkeypatch.setenv("VSC_DATA", str(tmp_path / "vsc_data"))
     monkeypatch.setenv(paths.STAGING_ENV_VARS[0], str(tmp_path / "staging"))
     return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def _experiment_routing(monkeypatch):
+    monkeypatch.delenv("CREDITPFN_EXPERIMENT", raising=False)

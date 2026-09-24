@@ -15,7 +15,7 @@ from pathlib import Path
 from src.utils.paths import describe, ensure, manifests_dir
 
 def dump_resolved(cfg, task_name: str, *, extra: dict | None = None) -> Path:
-    """Write the fully resolved config a run used to `output CreditPFN/manifests/resolved/`.
+    """Write the fully resolved config a run used to `output/<experiment>/manifests/resolved/`.
 
     Called once per entry point, right after logging is set up. The YAML in `config/` may
     have been edited — or overridden on the command line — since, so this copy is the only

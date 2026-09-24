@@ -40,6 +40,10 @@ for (( TRIAL=FIRST; TRIAL<=LAST; TRIAL++ )); do
         --log-path "$LOG" "${EXTRA_ARGS[@]}" "track=$TRACK"
     then
         echo "TRIAL ${TRIAL} completed."
+        if [[ -n "${CREDITPFN_FLOW_ID:-}" ]]; then
+            python -m src.utils.experiment0 complete --id "$CREDITPFN_FLOW_ID" \
+                --phase "$CREDITPFN_FLOW_PHASE" --track "$TRACK" --trial "$TRIAL" --rc 0
+        fi
     else
         RC=$?
         if [[ "$RC" == 75 ]]; then
@@ -50,6 +54,10 @@ for (( TRIAL=FIRST; TRIAL<=LAST; TRIAL++ )); do
             exit 75
         fi
         echo "TRIAL ${TRIAL} FAILED (rc=${RC}); continuing this task's remaining trials." >&2
+        if [[ -n "${CREDITPFN_FLOW_ID:-}" ]]; then
+            python -m src.utils.experiment0 complete --id "$CREDITPFN_FLOW_ID" \
+                --phase "$CREDITPFN_FLOW_PHASE" --track "$TRACK" --trial "$TRIAL" --rc "$RC"
+        fi
     fi
 done
 exit "$RC"

@@ -88,7 +88,7 @@ def _write_processed_dataset(
                                target_column=target_col, categorical_columns=cat_names)
 
     # Manifest row.
-    manifest_path = out_root / "output CreditPFN" / "manifests" / f"manifest_{track}.csv"
+    manifest_path = out_root / "output" / "general" / "manifests" / f"manifest_{track}.csv"
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     row = {
         "dataset_id":     dataset_id,

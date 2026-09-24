@@ -5,7 +5,7 @@ use checkpoint provenance for their held-out datasets; untuned and classical
 controls use that same phase. Row-level evaluation settings come from config/eval.yaml,
 phase overrides and explicit CLI overrides, in increasing precedence order.
 
-Each task writes its own output CreditPFN/results files on project storage. Completed cells
+Each task writes its own output/<experiment>/results files on project storage. Completed cells
 are reused only when their evaluation identity matches. --rerun forces fresh scoring.
 --tasks and --task-index control cost-based packing; a task may contain several
 model/dataset pairs. --method and --test-dataset restrict the roster.
@@ -116,6 +116,10 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     split = split_from_cfg(train_cfg, track=track)
     _PACK_ROW_COUNTS[track] = {c.dataset_id: c.n_rows for c in (*split.train, *split.test)}
     cfg_test_ids = sorted({c.dataset_id for c in split.test})
+    from src.data.retention import load_refs
+    retention = load_refs(str(OmegaConf.select(train_cfg, "train.retention_panel", default="none")), track)
+    cfg_test_ids.extend(r.dataset_id for r in retention)
+    _PACK_ROW_COUNTS[track].update({r.dataset_id: r.n_rows for r in retention})
 
     bases = (
         list(train_cfg.tunable.classifier_base_paths) if track == "pd"
@@ -370,6 +374,8 @@ def run(
 ) -> int:
     eval_cfg, train_cfg = load_eval_configs(eval_overrides or [], train_overrides or [],
                                      config_path=config, split_index=split_index)
+    from src.utils.paths import activate_experiment
+    activate_experiment(train_cfg)
     track = str(train_cfg.track)
 
     # Apply paths.data_source from config/data.yaml (single source of
@@ -607,6 +613,8 @@ if __name__ == "__main__":
         eval_cfg, train_cfg = load_eval_configs(eval_overrides, train_overrides,
                                         config_path=getattr(args, 'config', None),
                                         split_index=getattr(args, 'split_index', None))
+        from src.utils.paths import activate_experiment
+        activate_experiment(train_cfg)
         track = str(train_cfg.track)
         # Apply paths.data_source from config/data.yaml here too — the
         # roster builder calls into the corpus splitter, which checks

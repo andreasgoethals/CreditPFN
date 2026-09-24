@@ -3,7 +3,8 @@
 Shared configuration and grid logic lives in src.train.config; training math,
 sampling and checkpoint recovery live in src.train. This entry point prepares
 missing processed inputs, runs selected trials and records independent attempt
-and epoch/trajectory files under output CreditPFN/manifests/. Model weights use checkpoints/.
+and detailed histories under output/<experiment>/training/ on project storage.
+Model weights use checkpoints/trained/<experiment>/.
 
 Examples (from the repository root):
     python scripts/train_pipeline.py --config config/experiment0/null_pd.yaml --list-trials
@@ -477,6 +478,8 @@ def run(
     """
     if cfg is None:
         cfg = load_train_config(overrides)
+    from src.utils.paths import activate_experiment
+    activate_experiment(cfg)
     track = str(cfg.track)
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
@@ -551,8 +554,9 @@ def run(
     # ---- 3) per-trial training
     from src.train.loop import descriptive_name, train_one_config
 
-    # Per-epoch CSVs live in output CreditPFN/manifests/epochs/<track>/<descriptive_name>.csv
-    epoch_csv_dir = manifests_dir() / "epochs" / track
+    # Per-epoch CSVs live in output/<experiment>/training/<track>/<descriptive_name>.csv
+    from src.utils.paths import training_dir
+    epoch_csv_dir = training_dir(track)
     epoch_csv_dir.mkdir(parents=True, exist_ok=True)
 
     rows: list[RunRow] = []
@@ -781,6 +785,21 @@ def run(
             row.update({f"pdrift__{k}": float(v)
                         for k, v in sorted(rec.layer_drift.items())})
 
+            row.update({f"score__{k}": float(v) for k,v in sorted(rec.per_dataset_scores.items())})
+            row["cuda_peak_allocated_bytes"] = rec.cuda_peak_allocated_bytes
+            row["cuda_peak_reserved_bytes"] = rec.cuda_peak_reserved_bytes
+            if rec.record_type == "trajectory" and rec.parameter_statistics:
+                import gzip
+                parameter_path = _path.with_name(run_basename + ".parameters.csv.gz")
+                first = not _flag.get("parameters_started", False)
+                with gzip.open(parameter_path, "wt" if first else "at", newline="", encoding="utf-8") as stream:
+                    values = [dict(successful_updates=rec.successful_updates, **entry) for entry in rec.parameter_statistics]
+                    writer = csv.DictWriter(stream, fieldnames=list(values[0]))
+                    if first:
+                        writer.writeheader()
+                    writer.writerows(values)
+                _flag["parameters_started"] = True
+
             # The baseline row (epoch=-1) carries no per-dataset losses, and
             # stage drift only appears on MONITORED epochs — so the naive
             # "header = keys of the first row" rule would lock in a schema
@@ -807,21 +826,25 @@ def run(
 
         t_trial = time.monotonic()
         try:
-            result = train_one_config(
-                cfg, track=track,
-                base_checkpoint=base,
-                learning_rate=lr,
-                use_lora=use_lora,
-                query_fraction=query_fraction,
-                accumulate_grad_batches=accumulate,
-                pass_mode=pass_mode,
-                min_train_rows=min_train_rows,
-                l2sp_lambda=l2sp_lambda,
-                on_epoch_end=_on_epoch_end,
-                on_trajectory_end=lambda rec: _on_epoch_end(
-                    rec, _path=trajectory_csv, _flag=_trajectory_csv_init),
-                trial_identity=identity,
-            )
+            from src.train.telemetry import ResourceMonitor
+            with ResourceMonitor(epoch_csv_dir / (run_basename + ".resources.csv"),
+                    enabled=bool(getattr(cfg.train, "resource_diagnostics", False)),
+                    interval=float(getattr(cfg.train, "resource_interval_seconds", 20))):
+                result = train_one_config(
+                    cfg, track=track,
+                    base_checkpoint=base,
+                    learning_rate=lr,
+                    use_lora=use_lora,
+                    query_fraction=query_fraction,
+                    accumulate_grad_batches=accumulate,
+                    pass_mode=pass_mode,
+                    min_train_rows=min_train_rows,
+                    l2sp_lambda=l2sp_lambda,
+                    on_epoch_end=_on_epoch_end,
+                    on_trajectory_end=lambda rec: _on_epoch_end(
+                        rec, _path=trajectory_csv, _flag=_trajectory_csv_init),
+                    trial_identity=identity,
+                )
             rows.append(RunRow(
                 track=track, base_checkpoint=base, learning_rate=lr,
                 use_lora=use_lora, query_fraction=query_fraction,

@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 from torch.utils.data import Sampler
 
-PROTOCOL_VERSION = 4
+PROTOCOL_VERSION = 5
 
 
 def partition_rows(y, *, row_cap: int, rng: np.random.Generator,

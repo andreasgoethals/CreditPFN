@@ -13,6 +13,11 @@ day is never rewritten.
 
 ## 24-09-2026
 
+- Restore `output/<experiment>/` on both storage tiers; move detailed histories to project storage and retire the obsolete rename utility.
+- Bundle experiment-0 null, short-pilot and recovery/benchmark gates; keep 20k budget pilots separate and use fresh protocol-5 identities.
+- Add a pinned public non-credit panel, parameter/resource diagnostics and five-fold calibration/distribution/prediction records.
+- Fix monitor threshold leakage, lost classification predictions, row indices, Platt AUC and blocked/mislabeled quantiles; reuse regression forward passes.
+- Clarify the experiment-0 handover: use the prepared short pilots without repeating null controls or preparation.
 - Organize configs and 11 rewritten notebooks around experiments 0–3; preserve run identities and add bounded, matched analysis views plus read-only download input.
 - Rename generated output to `output CreditPFN/` on both tiers; add collision-safe migration and retain template weight locations.
 - Fix training/evaluation identity boundaries, dependency-aware evaluation reuse, retry coverage, stable task packing, terminal recovery cleanup and visible submission errors.

@@ -2,7 +2,7 @@
 
 Experiment 1 writes **per-split** artefacts — a manifest ``exp1_s00_pd.csv`` …
 ``exp1_s07_pd.csv`` per split, and eval CSVs named ``exp1_s<NN>_<ts>__task…`` — into
-the same ``output CreditPFN/`` tree that already holds run-8's single-run files. The notebooks call
+the same ``output/general/`` tree that already holds run-8's single-run files. The notebooks call
 ``training_viz.use_run('exp1')`` / ``eval_viz.use_run('exp1')`` so every loader sees exactly
 one run. These tests pin that contract: the training loader must **pool all splits** into one
 frame with a ``split`` column, and the eval loader must **keep only** the selected run's files.
@@ -45,7 +45,7 @@ def test_training_loader_pools_per_split_manifests(tmp_path, monkeypatch):
     row with its integer ``split`` and preserving the per-split trial name."""
     # ``_resolve_paths`` does ``from src.utils.paths import ... manifests_dir`` at call time, so
     # patching the source symbol is enough.
-    monkeypatch.setattr("src.utils.paths.manifests_dir", lambda: tmp_path)
+    monkeypatch.setattr("src.utils.paths.manifests_dir", lambda *args: tmp_path)
     for s in range(3):
         _write_manifest(tmp_path / f"exp1_s{s:02d}_pd.csv",
                         f"exp1_s{s:02d}_pd_tabpfn-v3-classifier-v3_default_lr1e-06_seed42")
@@ -67,7 +67,7 @@ def test_training_loader_pools_per_split_manifests(tmp_path, monkeypatch):
 def test_training_loader_single_file_layout_still_works(tmp_path, monkeypatch):
     """A run written as one ``<run>_pd.csv`` (the run-8 layout) must still load — the per-split
     branch is a fallback, not a replacement."""
-    monkeypatch.setattr("src.utils.paths.manifests_dir", lambda: tmp_path)
+    monkeypatch.setattr("src.utils.paths.manifests_dir", lambda *args: tmp_path)
     _write_manifest(tmp_path / "creditpfn_pd.csv", "creditpfn_pd_base_lr1e-06_seed42")
 
     training_viz.use_run("creditpfn")
@@ -77,7 +77,7 @@ def test_training_loader_single_file_layout_still_works(tmp_path, monkeypatch):
 
 def test_training_loader_keeps_failures_without_provenance(tmp_path, monkeypatch):
     """Missing provenance is not evidence that a failure is obsolete."""
-    monkeypatch.setattr("src.utils.paths.manifests_dir", lambda: tmp_path)
+    monkeypatch.setattr("src.utils.paths.manifests_dir", lambda *args: tmp_path)
     rows = [
         {"track": "pd", "base_checkpoint": "tabpfn-v3-classifier-v3_default.ckpt",
          "learning_rate": 1e-6, "use_lora": True, "seed": 42, "final_ckpt_path": "",

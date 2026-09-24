@@ -219,7 +219,7 @@ def test_resolve_staging_path_uses_staging_root_when_set(monkeypatch) -> None:
     staging = "/staging/leuven/stg_00001/CreditPFN"
     monkeypatch.setenv("CREDITPFN_STAGING_ROOT", staging)
     assert resolve_staging_path("checkpoints/trained") == Path(staging) / "checkpoints/trained"
-    assert resolve_staging_path("output CreditPFN/results") == Path(staging) / "output CreditPFN/results"
+    assert resolve_staging_path("output/general/results") == Path(staging) / "output/general/results"
 
 
 def test_resolve_staging_path_passes_absolute_through(monkeypatch) -> None:
@@ -408,9 +408,9 @@ def test_explicit_envvar_wins_over_autodetect(monkeypatch, tmp_path) -> None:
 
 
 def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -> None:
-    """``output CreditPFN/logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, flat inside that directory.
+    """``output/general/logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, flat inside that directory.
 
-    Under `output CreditPFN/` since 11-08-2026, like everything else the code generates."""
+    Under `output/general/` since 11-08-2026, like everything else the code generates."""
     from src.utils.logging_setup import make_task_log_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
@@ -418,7 +418,7 @@ def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -
     monkeypatch.delenv("SLURM_ARRAY_TASK_ID", raising=False)
 
     p = make_task_log_path("train_pd")
-    assert p.parent == tmp_path / "output CreditPFN" / "logs"
+    assert p.parent == tmp_path / "output" / "general" / "logs"
     assert p.name.startswith("train_pd_")
     assert p.suffix == ".log"
     # YYYYMMDD_HHMMSS — 15 chars between "train_pd_" and ".log".

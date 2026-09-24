@@ -18,6 +18,9 @@ def evaluation_key(handle, dataset_id: str, *, track: str, config: dict) -> str:
     base = getattr(handle, "base_path", None)
     base_hash = file_digest(resolve_staging_path(base)) if base else None
     data = resolve_data_path(f"data/processed/{track}/{dataset_id}.sanitized.csv")
+    from src.data.retention import is_retention
+    if is_retention(dataset_id):
+        data = resolve_data_path(f"data/retention/{dataset_id}.csv.gz")
     clean = dict(config)
     clean.pop("train_cfg_path", None)
     clean["results"] = {"save_predictions": bool(clean.get("results", {}).get("save_predictions", False))}
@@ -46,7 +49,12 @@ def load(base_dir, key: str, *, n_folds: int):
     return rows
 
 
-def save(base_dir, key: str, rows, *, n_folds: int) -> None:
+def load_predictions(base_dir, key: str):
+    with gzip.open(cache_path(base_dir, key), "rt", encoding="utf-8") as stream:
+        return json.load(stream).get("predictions")
+
+
+def save(base_dir, key: str, rows, *, n_folds: int, predictions=None) -> None:
     if len(rows) != n_folds or any(r.status != "OK" for r in rows):
         return
     path = cache_path(base_dir, key)
@@ -54,7 +62,7 @@ def save(base_dir, key: str, rows, *, n_folds: int) -> None:
     pending = path.with_name("." + path.name + "." + uuid.uuid4().hex)
     try:
         with gzip.open(pending, "wt", encoding="utf-8") as stream:
-            json.dump({"key": key, "rows": [asdict(r) for r in rows]}, stream)
+            json.dump({"key": key, "rows": [asdict(r) for r in rows], "predictions": predictions}, stream)
         os.replace(pending, path)
     finally:
         pending.unlink(missing_ok=True)

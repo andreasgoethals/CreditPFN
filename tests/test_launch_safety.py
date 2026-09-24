@@ -147,7 +147,7 @@ def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, jo
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="test-job"),
         capture_output=True, text=True)
     assert result.returncode == 17, result.stderr
-    logs = list((node / "CreditPFN/output CreditPFN/logs").glob("*.log"))
+    logs = list((node / "CreditPFN/output/general/logs").glob("*.log"))
     assert len(logs) == 1
     content = logs[0].read_text(encoding="utf-8")
     assert "synthetic activation failure" in content and "END exit_code=17" in content
@@ -178,7 +178,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
                  CREDITPFN_CONFIG="config/experiment0/null_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
                  SLURM_ARRAY_TASK_ID="0", FAIL_LOOKUP=failure), capture_output=True, text=True)
     assert result.returncode == 29, result.stderr
-    log = (node / "CreditPFN/output CreditPFN/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
+    log = (node / "CreditPFN/output/experiment0/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
     assert "lookup failed" in log and "END exit_code=29" in log
     assert "UNEXPECTED_COMPUTE" not in log
 
@@ -203,8 +203,8 @@ def test_eval_wrapper_forwards_phase_partition_and_packing(tmp_path, track):
                  CREDITPFN_CONFIG=f"phase path/{track}.yaml", CREDITPFN_SPLIT_INDEX="3",
                  SLURM_ARRAY_TASK_ID="5", EVAL_TASKS="12"), capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
-    log = (node / f"CreditPFN/output CreditPFN/logs/eval_{track}_synthetic_r0.log").read_text(encoding="utf-8")
+    log = (node / f"CreditPFN/output/general/logs/eval_{track}_synthetic_r0.log").read_text(encoding="utf-8")
     assert f"ARG:--config\nARG:phase path/{track}.yaml" in log
     assert "ARG:--split-index\nARG:3" in log and "ARG:--task-index\nARG:5" in log
     assert "ARG:--tasks\nARG:12" in log and f"ARG:track={track}" in log
-    assert not (node / "CreditPFN/output CreditPFN/results").exists()
+    assert not (node / "CreditPFN/output/general/results").exists()

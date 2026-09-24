@@ -30,5 +30,5 @@ hpo:                                      # Optuna budget per classical baseline
   linreg: {n_trials: 50, timeout_seconds: 300}
 
 results:
-  base_dir: output CreditPFN/results                # resolved onto project storage by paths.py
+  base_dir: output/results                # resolved onto project storage by paths.py
   save_predictions: true                  # per-fold probabilities, for post-hoc analysis

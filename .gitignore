@@ -13,14 +13,9 @@
 *.bin
 *.safetensors
 
-# Generated output: only the anonymized notebook summaries are tracked.
-/output CreditPFN/*
-!/output CreditPFN/All_Results.md
-!/output CreditPFN/figures/
-/output CreditPFN/figures/*
-!/output CreditPFN/figures/CAPTIONS.md
-# Retain guards against output from older checkouts.
+# Generated output, partitioned by experiment. Rebuilt from the finished campaign.
 /output/
+/output CreditPFN/
 /results/
 /logs/
 /.sentinels/

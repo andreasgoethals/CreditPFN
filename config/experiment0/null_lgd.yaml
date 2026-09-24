@@ -3,6 +3,7 @@
 track: lgd
 seed: 42
 experiment:
+  output_group: experiment0
   fingerprint: true
   require_plan: true
   training_seeds: [42]
@@ -17,6 +18,7 @@ corpus:
   train_dataset_ids: null
   test_dataset_ids: null
 train:
+  retention_panel: smoke
   context_sampling: stratified
   target_total_steps: 2
   epochs: 50
@@ -31,7 +33,7 @@ train:
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_null_v4_check3
+run_name: cpt_null_v5
 tunable:
   learning_rates: [0.0]
   l2sp_lambdas: [0.0]
@@ -44,4 +46,7 @@ tunable:
 evaluation:
   cache_controls: true
   results:
-    save_predictions: false  # metrics include calibration; enable predictions for a separate diagnostic run
+    save_predictions: true  # compressed per-row predictions on project storage
+
+checkpoint:
+  trained_dir: checkpoints/trained/experiment0

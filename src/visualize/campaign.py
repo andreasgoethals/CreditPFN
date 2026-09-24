@@ -125,7 +125,7 @@ def load_campaign(experiment: int, track: str, phase: str | None = None) -> Camp
         observed = training_viz.load_run_manifest(track, cfg)
         trajectories = load_trajectories(track, cfg)
         histories = training_viz.load_all_epoch_histories(track, cfg)
-        evaluation = eval_viz.load_eval_results(track)
+        evaluation = eval_viz.load_eval_results(track, include_retention=True)
     finally:
         training_viz.use_run(old_train)
         eval_viz.use_run(old_eval)
@@ -368,10 +368,12 @@ def _complete_folds(data: pd.DataFrame, metric: str, *, fractional_reference=Fal
     return good.merge(complete[complete.complete][keys], on=keys, how="inner", validate="many_to_one")
 
 
-def benchmark_effects(campaign: Campaign, metric: str | None = None) -> pd.DataFrame:
+def benchmark_effects(campaign: Campaign, metric: str | None = None, *, domain="credit") -> pd.DataFrame:
     """Paired outer-fold effects with a complete-fold requirement per dataset/recipe."""
     metric = metric or campaign.metric
     data = campaign.evaluation
+    if "domain" in data:
+        data = data[data.domain.fillna("credit").eq(domain)]
     if data.empty or metric not in data:
         return pd.DataFrame()
     good = _complete_folds(data, metric, fractional_reference=metric == "rmse")
@@ -511,7 +513,7 @@ def null_audits(campaigns: list[Campaign]) -> pd.DataFrame:
     reports = {}
     from src.visualize.inputs import analysis_root
     root = analysis_root()
-    folder = root / "logs" if root is not None else logs_dir()
+    folder = root / "experiment0" / "logs" if root is not None else logs_dir("experiment0")
     for path in sorted(folder.glob("maintenance_*.log")):
         text = path.read_text(encoding="utf-8", errors="replace")
         for match in re.finditer(r"^\{", text, flags=re.MULTILINE):
@@ -522,6 +524,13 @@ def null_audits(campaigns: list[Campaign]) -> pd.DataFrame:
             key = (report.get("run"), report.get("track"))
             if key in wanted and "trials" in report:
                 reports[key] = (report, "END exit_code=0" in text)
+    from src.utils.paths import manifests_dir
+    workflow = root / "experiment0/manifests/workflow" if root is not None else manifests_dir("experiment0") / "workflow"
+    for path in sorted(workflow.glob("*/null_audit.json"), key=lambda p: p.stat().st_mtime_ns):
+        for report in json.loads(path.read_text(encoding="utf-8")):
+            key = (report.get("run"), report.get("track"))
+            if key in wanted:
+                reports[key] = (report, bool(report.get("passed")))
     rows = []
     for (run, track), (report, exit_ok) in reports.items():
         for trial in report["trials"]:
@@ -707,6 +716,8 @@ def plot_secondary_tradeoff(campaign: Campaign) -> list[Page]:
 def plot_control_context(campaign: Campaign) -> list[Page]:
     """Show untuned/classical context separately from the dense adapted grid."""
     d = campaign.evaluation
+    if "domain" in d:
+        d = d[d.domain.fillna("credit").eq("credit")]
     if d.empty or campaign.metric not in d:
         return []
     d = d[d.status.eq("OK") & ~d.source.str.endswith("-trained",na=False)].copy()

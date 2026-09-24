@@ -3,7 +3,7 @@
 # drawing, and only ever this notebook's own folder.
 """`src/visualize/figures.py` — the saver.
 
-Every test redirects `output CreditPFN/` into `tmp_path` via `isolated_output`, so the suite never
+Every test redirects `output/general/` into `tmp_path` via `isolated_output`, so the suite never
 writes a real figure into the repository.
 """
 
@@ -101,7 +101,7 @@ def test_a_truncated_manifest_reads_as_missing_not_as_a_crash(isolated_output) -
 
 def test_a_figure_name_cannot_escape_the_folder(isolated_output, fig) -> None:
     """A `..` or a separator in a figure name must not put a generated file outside
-    `output CreditPFN/` — the one rule the whole layout rests on.
+    `output/general/` — the one rule the whole layout rests on.
 
     Slugification neutralises it before it can become a path, so the file lands inside the
     folder rather than raising. `_guard` behind it is defence in depth: it asserts the

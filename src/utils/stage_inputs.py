@@ -20,6 +20,7 @@ def stage(destination: Path, *, write=False, source: Path | None = None) -> dict
     cfg = OmegaConf.load("config/train.yaml")
     names = [f"data/processed/{m['track']}/{did}.sanitized.csv" for did, m in DATASET_METADATA.items()]
     names += list(cfg.tunable.classifier_base_paths) + list(cfg.tunable.regressor_base_paths)
+    names += [p.relative_to(source).as_posix() for p in (source / "data/retention").glob("*") if p.is_file() and (p.suffix == ".json" or p.name.endswith(".csv.gz"))]
     names = sorted(set(names))
     missing = [n for n in names if not (source / n).is_file()]
     if missing:

@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.utils.paths import consolidated_dir, manifests_dir, results_dir
+from src.utils.paths import consolidated_dir, manifests_dir, results_dir, training_dir, group_for_run
 
 
 def sha256(path: Path) -> str:
@@ -49,13 +49,18 @@ def matches_run(name: str, run: str, *, track: str | None = None) -> bool:
     return bool(re.match(re.escape(run) + suffix, name))
 
 
-def source_files(run: str, manifest_root: Path, result_root: Path) -> dict[str, list[Path]]:
+def source_files(run: str, manifest_root: Path, result_root: Path, training_root: Path | None = None) -> dict[str, list[Path]]:
     files = {}
     for track in ("pd", "lgd"):
         files[f"attempts_{track}"] = [p for p in sorted(manifest_root.glob("*.csv"))
                                      if matches_run(p.name, run, track=track)]
-        files[f"training_{track}"] = [p for p in sorted((manifest_root / "epochs" / track).glob("*.csv"))
-                                     if matches_run(p.name, run, track=track)]
+        train_folder = (training_root or manifest_root / "epochs") / track
+        files[f"training_{track}"] = [p for p in sorted(train_folder.glob("*.csv"))
+            if matches_run(p.name, run, track=track) and not p.name.endswith(".resources.csv")]
+        files[f"parameters_{track}"] = [p for p in sorted(train_folder.glob("*.parameters.csv.gz"))
+            if matches_run(p.name, run, track=track)]
+        files[f"resources_{track}"] = [p for p in sorted(train_folder.glob("*.resources.csv"))
+            if matches_run(p.name, run, track=track)]
         files[f"eval_{track}"] = [p for p in sorted((result_root / track.upper()).glob("*/*.csv"))
                                  if matches_run(p.name, run)]
     return files
@@ -69,10 +74,12 @@ def read_frames(files: list[Path], *, root: Path, kind: str) -> pd.DataFrame:
             continue
         df["source_file"] = path.relative_to(root).as_posix()
         df["source_row"] = range(len(df))
-        if kind == "training":
-            df["trial_name"] = path.name.removesuffix(".csv").removesuffix(".trajectory")
+        if kind in ("training", "parameters", "resources"):
+            stem = path.name.removesuffix(".gz").removesuffix(".csv")
+            kind_suffix = next((k for k in ("trajectory", "parameters", "resources") if stem.endswith("." + k)), "epoch")
+            df["trial_name"] = stem.removesuffix("." + kind_suffix)
             if "record_type" not in df:
-                df["record_type"] = "epoch"
+                df["record_type"] = kind_suffix
         if kind == "eval":
             df["method_dir"] = path.parent.name
         split = re.search(r"_s(\d+)_", path.name)
@@ -111,15 +118,17 @@ def latest_trials(attempts: pd.DataFrame) -> pd.DataFrame:
 
 
 def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = None,
-                result_root: Path | None = None, destination: Path | None = None) -> dict:
+                result_root: Path | None = None, destination: Path | None = None, training_root: Path | None = None) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", run) or ".." in run:
         raise ValueError("run must be a plain experiment name")
-    manifest_root = manifest_root or manifests_dir()
-    result_root = result_root or results_dir()
-    destination = destination or consolidated_dir()
-    files = source_files(run, manifest_root, result_root)
+    group = group_for_run(run)
+    training_root = training_root or (training_dir(experiment=group) if manifest_root is None else manifest_root / "epochs")
+    manifest_root = manifest_root or manifests_dir(group)
+    result_root = result_root or results_dir(experiment=group)
+    destination = destination or consolidated_dir(group)
+    files = source_files(run, manifest_root, result_root, training_root)
     report = {"schema_version": 1, "run": run, "counts": {k: len(v) for k, v in files.items()},
-              "source_roots": {"manifests": str(manifest_root.resolve()), "results": str(result_root.resolve())},
+              "source_roots": {"manifests": str(manifest_root.resolve()), "results": str(result_root.resolve()), "training": str(training_root.resolve())},
               "source_bytes": sum(p.stat().st_size for group in files.values() for p in group),
               "notes": ["Legacy records remain exploratory; L2-SP retagging does not repair sampling or accumulation.",
                         "Training curves retain recorded filenames. No inferred link to overwritten checkpoints.",
@@ -132,7 +141,7 @@ def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = N
         folder = previous.parent / json.loads(previous.read_text(encoding="utf-8"))["snapshot"]
         prior = json.loads((folder / "inventory.json").read_text(encoding="utf-8"))
         for name, records in prior["sources"].items():
-            root = result_root if name.startswith("eval_") else manifest_root
+            root = result_root if name.startswith("eval_") else training_root if name.startswith(("training_", "parameters_", "resources_")) else manifest_root
             missing.extend(record["path"] for record in records if not (root / record["path"]).is_file())
     report["missing_previous_sources"] = len(missing)
     if not apply:
@@ -150,7 +159,7 @@ def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = N
     report["rows"] = {}
     report["tables"] = {}
     for name, paths in files.items():
-        root = result_root if name.startswith("eval_") else manifest_root
+        root = result_root if name.startswith("eval_") else training_root if name.startswith(("training_", "parameters_", "resources_")) else manifest_root
         before = {str(p): (p.stat().st_size, p.stat().st_mtime_ns, sha256(p)) for p in paths}
         kind, track = name.split("_", 1)
         df = read_frames(paths, root=root, kind=kind)
@@ -170,11 +179,11 @@ def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = N
                 raise RuntimeError(f"Row-count verification failed: {table}")
             report["rows"][table] = len(frame)
             report["tables"][table] = sha256(path)
-    if files != source_files(run, manifest_root, result_root):
+    if files != source_files(run, manifest_root, result_root, training_root):
         raise RuntimeError("Source inventory changed during consolidation; stop writers and retry")
     # Recheck the entire transaction, including groups read near the start.
     for name, records in sources.items():
-        root = result_root if name.startswith("eval_") else manifest_root
+        root = result_root if name.startswith("eval_") else training_root if name.startswith(("training_", "parameters_", "resources_")) else manifest_root
         for record in records:
             p = root / record["path"]
             if (p.stat().st_size, p.stat().st_mtime_ns, sha256(p)) != (
@@ -194,21 +203,23 @@ def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = N
 
 
 def load_consolidated(run: str, table: str, *, manifest_root: Path | None = None,
-                      result_root: Path | None = None, snapshot_root: Path | None = None) -> pd.DataFrame | None:
+                      result_root: Path | None = None, snapshot_root: Path | None = None, training_root: Path | None = None) -> pd.DataFrame | None:
     """Read the published snapshot if raw sources are absent or still match its inventory."""
-    parent = (snapshot_root or consolidated_dir()) / run
+    parent = (snapshot_root or consolidated_dir(group_for_run(run))) / run
     pointer = parent / "LATEST.json"
     if not pointer.exists():
         return None
     snapshot = parent / json.loads(pointer.read_text(encoding="utf-8"))["snapshot"]
     info = json.loads((snapshot / "inventory.json").read_text(encoding="utf-8"))
     source_key = table.replace("trials_", "attempts_")
-    manifest_root = manifest_root or manifests_dir()
-    result_root = result_root or results_dir()
-    actual = source_files(run, manifest_root, result_root).get(source_key, [])
-    root = result_root if source_key.startswith("eval_") else manifest_root
-    root_kind = "results" if source_key.startswith("eval_") else "manifests"
-    default_root = results_dir() if root_kind == "results" else manifests_dir()
+    group = group_for_run(run)
+    training_root = training_root or (training_dir(experiment=group) if manifest_root is None else manifest_root / "epochs")
+    manifest_root = manifest_root or manifests_dir(group)
+    result_root = result_root or results_dir(experiment=group)
+    actual = source_files(run, manifest_root, result_root, training_root).get(source_key, [])
+    root = result_root if source_key.startswith("eval_") else training_root if source_key.startswith(("training_", "parameters_", "resources_")) else manifest_root
+    root_kind = "results" if source_key.startswith("eval_") else "training" if source_key.startswith(("training_", "parameters_", "resources_")) else "manifests"
+    default_root = results_dir(experiment=group) if root_kind == "results" else training_dir(experiment=group) if root_kind == "training" else manifests_dir(group)
     # Default roots support downloaded snapshots from another machine. A custom
     # root must explicitly belong to this snapshot, even when it contains no files.
     external_sibling = snapshot_root is not None and root.resolve().parent == snapshot_root.resolve().parent
@@ -232,10 +243,11 @@ def main(argv=None) -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--manifest-root", type=Path)
     parser.add_argument("--result-root", type=Path)
+    parser.add_argument("--training-root", type=Path)
     parser.add_argument("--destination", type=Path)
     args = parser.parse_args(argv)
     result = consolidate(args.run, apply=args.apply, manifest_root=args.manifest_root,
-                         result_root=args.result_root, destination=args.destination)
+                         result_root=args.result_root, training_root=args.training_root, destination=args.destination)
     print(json.dumps({k: v for k, v in result.items() if k not in ("sources", "tables")}, indent=2))
     return 0
 

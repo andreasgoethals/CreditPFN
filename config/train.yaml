@@ -56,6 +56,10 @@ lora:                                     # OFF: frozen_backbone is a true freez
   target_modules: ["q_projection", "k_projection", "v_projection", "out_projection"]
 
 train:
+  retention_panel: research
+  parameter_diagnostics: true
+  resource_diagnostics: true
+  resource_interval_seconds: 20
   epochs: 100                             # one epoch = one pass over the training corpus
   target_total_steps: 20000               # null = epochs govern; else epochs are trimmed/extended
   max_epochs_for_step_budget: 6000        # rail on the above, so no arm runs away

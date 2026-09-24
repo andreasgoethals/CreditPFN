@@ -652,7 +652,7 @@ def _write_tabicl_corpus(root: Path, track: str, task_type: str) -> None:
                      "categorical_columns": "cat", "n_rows": n, "n_cols": 6,
                      "source": "synthetic"})
     (root / "data").mkdir(parents=True, exist_ok=True)
-    manifest_dir = root / "output CreditPFN" / "manifests"
+    manifest_dir = root / "output" / "general" / "manifests"
     manifest_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(manifest_dir / f"manifest_{track}.csv", index=False)
 

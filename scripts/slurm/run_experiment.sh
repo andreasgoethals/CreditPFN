@@ -25,6 +25,13 @@ PYCFG
 # Python on Windows emits CRLF, including during local dry checks.
 for i in "${!META[@]}"; do META[$i]="${META[$i]%$'\r'}"; done
 TRACK="${META[0]}"; RUN="${META[1]}"; BUDGET="${META[3]}"
+case "$RUN" in
+ cpt_null_*|cpt_pilot_*|cpt_recovery_*|cpt_budget_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
+ cpt_main_*) export CREDITPFN_EXPERIMENT=experiment1 ;;
+ cpt_seeds_*) export CREDITPFN_EXPERIMENT=experiment2 ;;
+ cpt_sampling_*) export CREDITPFN_EXPERIMENT=experiment3 ;;
+ *) export CREDITPFN_EXPERIMENT=general ;;
+esac
 [[ "$TRACK" == pd || "$TRACK" == lgd ]] || exit 1
 N_SPLITS="${SPLITS:-${META[2]}}"; N_SPLITS="${N_SPLITS:-1}"
 N_TRIALS=$(( ${#META[@]} - 6 ))
@@ -79,7 +86,7 @@ walltime_for() {
     if [[ "$mode" == accumulate && -n "${ACC_WALLTIME:-}" ]]; then echo "$ACC_WALLTIME"; return; fi
     if [[ -n "${WALLTIME:-}" ]]; then echo "$WALLTIME"; return; fi
     if (( BUDGET <= 250 )); then hms 60; return; fi
-    # Historical full_pass/accumulate measurements are provisional for protocol 4.
+    # Historical full_pass/accumulate measurements are provisional for the current protocol.
     # Override WALLTIME with the pilot report; never shorten measured context caps.
     rate=90
     if [[ "$mode" == accumulate ]]; then
@@ -188,6 +195,7 @@ if [[ " $STAGES " == *' train '* ]]; then
             out="$(submit_array "$cluster" "$limit" "${CMD[@]}")"
             if [[ -n "${DRY:-}" ]]; then echo "$out"; else
                 jid="${out%%;*}"; DEP_JOBS[$k]="${DEP_JOBS[$k]:+${DEP_JOBS[$k]}:}$jid"
+                echo "Submitted train array $jid on $cluster ($TRACK split=$k base=$base time=$wt)"
             fi
         done
     done

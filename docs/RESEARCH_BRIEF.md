@@ -25,7 +25,7 @@ Only schema-compatible, legally usable data belong in the corpus. Raw private da
 
 Experiment **0** owns debugging and readiness: null controls, positive-LR/recovery checks, short timing pilots and long budget pilots. Experiment **1** is the full descriptive sweep. Experiment **2** repeats one predefined reference at an additional training seed. Experiment **3** compares one-sample, full-pass and accumulated-gradient training. The general notebooks describe the corpus independently of these outcomes.
 
-Configs are grouped under `config/experiment0/` through `config/experiment3/`; notebooks use the same groups plus `00_general/`. Existing run families remain `cpt_null_v4_check3`, `cpt_pilot_v4`, `cpt_budget_v4`, `cpt_main_v4`, `cpt_seeds_v4` and `cpt_sampling_v4`, preserving provenance of completed work.
+Configs are grouped under `config/experiment0/` through `config/experiment3/`; notebooks use the same groups plus `00_general/`. All current run families use `cpt_*_v5`, including `cpt_recovery_v5`. This is a fresh protocol: it adds disjoint validation rows for monitoring, a fixed public retention panel and experiment-scoped output. Earlier v4 controls remain historical evidence, not passing controls for v5.
 
 ## Experiment 1: implemented main grid
 
@@ -41,7 +41,7 @@ Configs are grouped under `config/experiment0/` through `config/experiment3/`; n
 | Budget | Provisionally 5,000 successful optimizer updates | A finite gradient that is actually applied increments the counter; rejected updates do not |
 | Trajectories | 0, 250, 1,000, 2,500, 5,000 updates | Diagnostics during the same training trajectory, under one fixed schedule |
 
-The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `config/experiment1/pd.yaml` and `config/experiment1/lgd.yaml`, run family `cpt_main_v4`.
+The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `config/experiment1/pd.yaml` and `config/experiment1/lgd.yaml`, run family `cpt_main_v5`.
 
 A partial round at the last update is permitted; visitation counts then differ by at most one. One update is not equal FLOPs, rows or GPU seconds across models or sampling modes. Record processed rows, successful updates, measured training time, monitoring time and peak memory alongside model quality.
 
@@ -73,13 +73,13 @@ AdamW uses zero ordinary weight decay, gradient norm clipping at 1, a 10% warmup
 
 A trajectory point is a measurement of the same evolving weights, not a separately trained model or a new grid trial. For example, the point at update 1,000 of a 5,000-update run has followed the 5,000-update schedule; it is not equivalent to an independently trained 1,000-update run. Intermediate weights are transient. Only final weights and the latest optimizer recovery state persist.
 
-Monitoring uses fixed seed **31415**, up to 2,000 rows/table and four inference members. It records per-dataset primary metrics, aggregate diagnostics, elapsed time and movement from the initialization. Monitoring preserves training RNG and module modes. The final benchmark uses 32 TabPFN or 8 TabICLv2 members and full outer test folds. Keep the two evaluation fidelities separate in plots and text.
+Monitoring uses fixed seed **31415**, up to 2,000 rows/table and four inference members. Every table has fixed, disjoint context/validation/query rows (48%/12%/40% before rounding). Thresholds and calibrators use only validation rows. This differs deliberately from the training batch's 60% context/40% query. It records per-table discrimination, calibration and error metrics, plus timing and movement from initialization. Monitoring preserves training RNG and module modes. The final benchmark uses 32 TabPFN or 8 TabICLv2 members and full outer test folds. Keep the two evaluation fidelities separate in plots and text.
 
 A finite but disappointing/flat curve does not stop training. Only numerical failure or inability to reach the budget produces a divergent outcome. Completed numerical failures are retained as outcomes for the descriptive grid instead of repeatedly rerunning them until one succeeds. Infrastructure failures and interruptions are recoverable work, not scientific successes.
 
 ## Sampling comparison and training randomness
 
-**Experiment 2 adds 32 seed trials** repeating the predefined full-update reference (LR `3e-7`, lambda `0.003`, `one_sample`) with training seed **43**: one recipe × one additional seed × four bases × four dataset folds × two tasks. Its seed-42 counterpart already exists in experiment 1. Configs are `config/experiment2/{pd,lgd}.yaml`, run family `cpt_seeds_v4`. Keep dataset partitions, monitor/evaluation seeds, row caps and all other settings identical to the main reference.
+**Experiment 2 adds 32 seed trials** repeating the predefined full-update reference (LR `3e-7`, lambda `0.003`, `one_sample`) with training seed **43**: one recipe × one additional seed × four bases × four dataset folds × two tasks. Its seed-42 counterpart already exists in experiment 1. Configs are `config/experiment2/{pd,lgd}.yaml`, run family `cpt_seeds_v5`. Keep dataset partitions, monitor/evaluation seeds, row caps and all other settings identical to the main reference.
 
 This is a small paired sensitivity check: did changing the training randomness materially alter the reference behavior? Two seeds do not reliably estimate a seed distribution, and this check says nothing about robustness at every other recipe. Show paired differences and curves; do not count the repetitions as extra independent datasets. A future expansion to 64 additional trials would add seed 44 for the same recipe, only if the initial comparison warrants it.
 
@@ -99,14 +99,31 @@ Full-pass and accumulation use identical partitions for a fixed seed/epoch, but 
 
 ## Phase gates before the main run
 
-1. Establish a separate campaign identity and sufficient storage. A fresh run needs no historical output; retaining a compact local copy is optional. Keep canonical raw/processed data and original model weights. The full reset procedure belongs in VSC.md and is only for retiring an entire old campaign, not for each debugging round.
-2. Stage inputs, record content fingerprints and freeze the environment.
-3. **16 zero-LR trials**, both adaptation arms across bases/tasks: verify original versus saved tensors and fixed-monitor parity. This checks the actual installed save/reload paths.
-4. **32 short pilot trials**, 250 successful updates, conservative and high LR endpoints, both adaptations, one dataset fold, both tasks. Profile workers 0/4/8 only if needed (96 short trials for all three settings). Compare throughput, CPU memory, data wait and monitoring cost; worker count is a performance setting, not a scientific factor.
-5. **8 longer reference pilots**, one full-update reference per base/task on the first fold, up to 20,000 updates with measurements through 5k/10k/20k. This checks whether 5k would truncate substantial behavior. These pilots follow a 20k schedule, so their early points are not substitutes for the 5k-grid curves. Choose and document the main budget before preparing its immutable plans. Keep the same final budget/trajectory definitions in main, seed and sampling configs; adjust the epoch safety rail if the chosen horizon increases.
-6. Main grid, 32 reference seed checks, separate sampling comparison, final evaluation and consolidation. The 16 null controls + 32 short pilots + 8 budget pilots are additional to the 640 research trials: **696 scheduled training trials** if all phases run once, before optional worker profiling or recovery canaries.
+**Experiment 0 part 1 is one submission command**, implemented by `run_experiment0.sh part1`. Public monitoring inputs download on the login node; CPU preparation verifies and stages all inputs, writes immutable plans and runs preflight. It then releases:
 
-Short jobs can resume from a successful-update boundary. Validate one interrupted/requeued positive-LR pilot on VSC before enabling automatic requeue for the campaign. Synthetic CPU tests establish the software contract; they do not establish CUDA determinism or throughput on B200 hardware.
+1. **16 zero-LR controls**: four bases × two adaptations × two tasks, two optimizer updates. CPU audits require exact canonical inference-state equality and fixed-monitor parity.
+2. **32 positive-LR pilots**: conservative/high LR endpoints × both adaptations × four bases × two tasks, 250 updates, first dataset fold. Record real training, monitoring, memory and preparation costs. These pilots are operational checks, not a recipe-selection exercise.
+3. **Eight GPU recovery pairs**: one full-update reference per base/task. Compare 12 uninterrupted updates with stop/save at update 5 and resume to update 12. Report bitwise equality as well as predefined tensor tolerances (`rtol=1e-6`, `atol=1e-7`) and score tolerances (`rtol=1e-5`, `atol=1e-7`). A tolerance pass is not a claim of bitwise CUDA determinism. Each pair also exercises five-fold final scoring, distribution metrics and prediction persistence on its packaged non-credit table. These 16 tiny training arms are additional controls, not main-grid observations.
+
+Only successful completions release a CPU audit, and only a passing audit releases the next stage. No GPU allocation waits for another job. Failure stops progression; the workflow never silently retries numerical failures. An ambiguous submission requires inspection, not another launch.
+
+**Experiment 0 part 2 is separate**, via `run_experiment0.sh part2`: eight full-update reference pilots, one per base/task, through 20k successful updates with 0/250/1k/2.5k/5k/10k/20k measurements. A current part-1 receipt and unchanged input/environment identities are required. These longer jobs use resumable two-hour work segments plus a save/monitor margin. They follow a 20k schedule; their early points are not substitutes for a 5k schedule.
+
+Review these curves and measured costs, then fix the common budget/milestones in experiments 1–3 before preparing their plans. A longer budget also needs a sufficient epoch safety rail. The default research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **72 control/pilot training arms** if every experiment-0 stage runs once. Interrupted execution adds a segment, not a new scientific trial.
+
+## Retention and measurement protocol
+
+`config/retention.yaml` fixes a research panel of eight non-credit datasets from the curated **TabArena-v0.1 OpenML versions**: Amazon employee access, online shopping intention, QSAR biodegradation and seismic bumps (classification); airfoil noise, concrete strength, protein structure and superconductivity (regression). Null/recovery controls use the small packaged breast-cancer/diabetes pair. Data identifiers, versions, source/license metadata and byte hashes are recorded; no panel table enters the 25-table adaptation corpus.
+
+This panel is not the full TabArena benchmark. We apply CreditPFN's own fixed monitoring and five-fold final evaluation, not TabArena's official benchmark protocol. Prior exposure of base checkpoints to these datasets is not established. Report **change from each base on a declared panel**, not universal retention, benchmark leadership or guaranteed novel-data generalization.
+
+At milestones record trainable parameter names/counts, whole-model relative movement, and per-tensor norm, mean, standard deviation, maximum absolute value, bounded sampled quantiles, anchored absolute/relative movement, cosine similarity and optimizer-moment norms. Unanchored frozen-tensor movement remains unavailable rather than being invented as zero. Epoch records retain data loss, regularization, gradient/clipping/skips, update/row counts and training/data-wait/monitor time. Every 20 seconds record process memory and allocated-device utilization, memory, power and temperature when available. Counters describe sampled device behavior, not exact process energy or billed allocation time.
+
+Final evaluation uses **five outer row folds** on each held-out credit table and each non-credit panel table. Inside each outer training fold, a disjoint 20% validation split supplies classical HPO, maximum-F1 threshold selection and Platt/isotonic calibration. No outer test labels enter those choices. F1 at threshold 0.5 is retained for context. Foundation models use their capped context; classical controls use the full inner training fold. This compares practical native-context settings, not equal row exposure.
+
+Record fold-level discrimination/error scores, confusion counts, prevalence, raw/calibrated proper scores, ECE and reliability-bin sufficient statistics, and fitting versus prediction/scoring time. Compressed row predictions preserve the original dataset row index. Supported regression distributions add 80%/90% interval coverage/width, a fixed-grid mean pinball loss and quantile-crossing rate. Unsupported quantities remain missing. Nine quantiles do not produce an exact CRPS. Untuned/classical scores and predictions are reusable only with matching data/model/config/code/environment identities.
+
+Detailed measurements live on project storage under each experiment. Resource and tensor records consolidate into separate narrow tables so they do not expand the wide trajectory table into a large mostly-empty matrix. Notebook credit and non-credit averages remain separate.
 
 ## Reporting and remaining evidence
 
@@ -117,7 +134,7 @@ Short jobs can resume from a successful-update boundary. Validate one interrupte
 - Compare endpoint and trajectory effects for learning rate, anchoring and adaptation, including interactions. Separate step budget, row exposure, monitoring overhead and GPU allocation time.
 - A provenance audit of base pretraining and related data sources is still required for contamination/independence claims. The intended starting weights are upstream synthetic-pretrained bases, not Real-TabPFN adapted weights; content identity matters more than filename labels.
 - Temporal/grouped validation requires valid origination-time and loan/borrower keys, excluded from features. It is a future sensitivity study, not a property of current IID folds. Historical date-availability observations must be rechecked against the actual raw version.
-- A fixed non-credit panel is required to measure forgetting; a matched generic-data adaptation control is required to isolate a specifically credit-domain effect. Neither is part of the current 25-table grid.
+- A fixed public non-credit retention panel is monitored and evaluated separately as described above. A matched generic-data adaptation control would still be required to isolate a specifically credit-domain effect; it is not part of the current grid.
 - Additional baselines such as RealMLP, context-prevalence sensitivity, longer horizons and more lambda levels are optional follow-ups, clearly separated from the main descriptive grid.
 
 ## State of the evidence
@@ -126,4 +143,4 @@ On 22-09-2026 the user reported no running VSC jobs. The old experiment has an i
 
 Historical headline measurements, including the completed run-8 evaluation, remain in the agent-memory runs table as historical observations. They are not results of this redesigned experiment and cannot establish its conclusions. A clean rerun means new training and evaluation under new phase names; it does not require deleting the raw corpus or redownloading validated base weights.
 
-The current implementation uses training protocol **4**. Local tests exercise sampling, finite mean gradients, exact budgets, recovery, cleanup boundaries, identity checks and analysis. Cluster null controls, the pilot budget decision, real CUDA recovery and measured walltimes remain gates before launching the full campaign. Preparation logs establish that inputs and plans were written; they are not completed training or evaluation results. Current cluster status belongs in the agent-memory runs table.
+The current implementation uses training protocol **5**. No v5 cluster outcome is claimed yet. Local tests exercise sampling, finite mean gradients, exact budgets, recovery, cleanup boundaries, identity checks and analysis. Cluster null controls, the pilot budget decision, real CUDA recovery and measured walltimes remain gates before launching the full campaign. Preparation logs establish that inputs and plans were written; they are not completed training or evaluation results. Current cluster status belongs in the agent-memory runs table.
