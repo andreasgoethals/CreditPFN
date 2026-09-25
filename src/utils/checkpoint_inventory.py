@@ -3,7 +3,7 @@ from pathlib import Path
 import json
 import re
 
-from src.utils.paths import resolve_output_path, resolve_staging_path
+from src.utils.paths import group_for_run, resolve_output_path, resolve_staging_path
 
 
 def _retag_l2sp(name: str, value: float) -> str:
@@ -14,8 +14,10 @@ def _retag_l2sp(name: str, value: float) -> str:
 
 def resolve_checkpoint(recorded: str, track: str) -> tuple[Path | None, dict]:
     old = Path(recorded)
+    relative = Path("checkpoints/trained") / group_for_run(old.name) / track
     roots = {old.parent, resolve_staging_path("checkpoints/trained") / track,
-             resolve_output_path("checkpoints/trained") / track}
+             resolve_output_path("checkpoints/trained") / track,
+             resolve_staging_path(relative), resolve_output_path(relative)}
     candidates = {root / old.name for root in roots if (root / old.name).is_file()}
     if not candidates and "_l2sp" not in old.name:
         # Glob broadly, but verify exact spelling against provenance below.

@@ -538,6 +538,20 @@ def test_eval_wrapper_sanitizes_inf_and_dead_columns(tmp_path: Path) -> None:
     assert np.isfinite(proba).all()
 
 
+def test_sanitization_uses_training_columns_not_prediction_batch():
+    """A missing query value must reach the fitted imputer in every batch."""
+    from src.model.tabicl_models import _sanitize
+    train = np.array([[2., np.nan], [4., np.nan]])
+    _, dead = _sanitize(train)
+    query = np.array([[np.nan, 7.], [3., 8.]])
+    together, _ = _sanitize(query, dead_cols=dead)
+    alone, _ = _sanitize(query[:1], dead_cols=dead)
+    np.testing.assert_equal(alone, together[:1])
+    assert np.isnan(alone[0, 0])
+    assert alone[0, 1] == 0
+    np.testing.assert_equal(query, [[np.nan, 7.], [3., 8.]])
+
+
 def test_method_dirname_and_decoding_round_trip() -> None:
     """`_method_dirname` (writer) and `_decode_method_dirname` (reader) must
     agree — they are the on-disk contract between eval and the notebooks."""

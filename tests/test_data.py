@@ -64,6 +64,17 @@ from src.data.sanitize import (
 REPO = Path(__file__).resolve().parents[1]
 
 
+def test_duplicate_columns_do_not_confuse_missing_sentinels_or_delimiters():
+    from src.data.sanitize import _drop_exact_duplicate_feature_columns
+    df = pd.DataFrame({"target": [0, 1], "missing": [np.nan, 1.],
+        "extreme": [-1e308, 1.], "text_missing": [None, "z"],
+        "sentinel_text": ["__NAN__", "z"], "left": ["a\x00b", "c"],
+        "right": ["a", "b\x00c"], "duplicate": [np.nan, 1.]})
+    result, dropped = _drop_exact_duplicate_feature_columns(df, "target")
+    assert dropped == ["duplicate"]
+    pd.testing.assert_frame_equal(result, df.drop(columns="duplicate"))
+
+
 # =============================================================================
 # Block 1 · preprocessing.py
 # =============================================================================

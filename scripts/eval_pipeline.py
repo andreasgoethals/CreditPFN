@@ -447,6 +447,7 @@ def run(
                     run_name=str(train_cfg.run_name),
                     evaluation_key=evaluation_key(handle, did, track=track, config=evaluation_config)
                         if evaluation_config else None,
+                    require_predictions=bool(OmegaConf.select(eval_cfg, "results.save_predictions", default=False)),
                 )
                 if existing:
                     n_skipped += 1

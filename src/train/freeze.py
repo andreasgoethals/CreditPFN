@@ -82,7 +82,7 @@ def freeze_backbone(
         ``("col_embedder", "row_interactor")``, which freezes the front end instead and is a
         different scheme, not this one.
     min_blocks
-        Depth floor for automatic detection.
+        Warning threshold for the selected stack's depth.
     family
         Only used in the log line.
 

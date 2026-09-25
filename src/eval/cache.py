@@ -5,7 +5,7 @@ import gzip
 import json
 import os
 import uuid
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 from pathlib import Path
 
 from omegaconf import OmegaConf
@@ -54,9 +54,33 @@ def load_predictions(base_dir, key: str):
         return json.load(stream).get("predictions")
 
 
+def predictions_complete(rows, predictions) -> bool:
+    """Require one unique prediction per test row in every successful fold."""
+    if rows is None or predictions is None:
+        return False
+    try:
+        expected = {}
+        for row in rows:
+            row = asdict(row) if is_dataclass(row) else row
+            if row["status"] == "OK":
+                expected[(row["model_name"], row["test_dataset_id"], int(row["fold_idx"]))] = int(row["n_test_rows"])
+        actual = {key: set() for key in expected}
+        for row in predictions:
+            key = (row["model_name"], row["test_dataset_id"], int(row["fold_idx"]))
+            index = int(row["row_idx"])
+            if key not in actual or index in actual[key]:
+                return False
+            actual[key].add(index)
+        return all(len(actual[key]) == count for key, count in expected.items())
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 def save(base_dir, key: str, rows, *, n_folds: int, predictions=None) -> None:
     if len(rows) != n_folds or any(r.status != "OK" for r in rows):
         return
+    if predictions is not None and not predictions_complete(rows, predictions):
+        raise ValueError("Cannot cache incomplete predictions")
     path = cache_path(base_dir, key)
     path.parent.mkdir(parents=True, exist_ok=True)
     pending = path.with_name("." + path.name + "." + uuid.uuid4().hex)

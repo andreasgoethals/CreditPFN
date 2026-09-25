@@ -9,6 +9,15 @@ import pytest
 import torch
 
 
+def test_preflight_rejects_missing_requested_tuning_dependency(monkeypatch):
+    import importlib.util
+    from src.utils.preflight import Report, check_baseline_dependencies
+    monkeypatch.setattr(importlib.util, "find_spec", lambda name: None if name == "optuna" else object())
+    report = Report()
+    check_baseline_dependencies(report)
+    assert report.n_fail == 1
+
+
 def test_evaluation_changes_do_not_change_training_identity(tmp_path):
     from src.utils.experiment import code_identity
     for name in ("src/train/loop.py", "src/eval/benchmark.py", "src/utils/consolidate_output.py",

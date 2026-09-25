@@ -85,7 +85,7 @@ def load_tabicl_for_training(
     :func:`tabicl_pinball_loss`).
 
     ``freeze_backbone=True`` delegates to :func:`src.train.freeze.freeze_backbone`, the
-    SINGLE implementation shared with TabPFN. It freezes the deepest repeated-block stack,
+    implementation shared with TabPFN. It freezes the largest repeated-block stack,
     which here is ``icl_predictor.tf_icl.blocks`` (12 blocks, 93.3 % of parameters), leaving
     the column embedder, row interactor, label encoder and ``decoder`` head trainable.
     ``requires_grad=False`` only, never ``.eval()``. Pass ``freeze_modules`` for a different
@@ -140,7 +140,7 @@ def load_tabicl_for_training(
         # `icl_blocks` / `blocks` / `transformer_encoder` for TabPFN v3 / v2.6 / v2.
         #
         # TabICLv2's `col_embedder.tf_col` and `row_interactor.tf_row` are also repeated-block
-        # stacks but only 3 deep, so the depth floor excludes them — on purpose. They are the
+        # stacks but have fewer parameters, so the ICL stack is selected. They are the
         # input-embedding stages, the analogue of TabPFN's feature embedder, and stay trainable
         # in both families.
         #

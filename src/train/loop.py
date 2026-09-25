@@ -923,45 +923,6 @@ def _log_debug_banner(
     LOGGER.info("\n".join(str(x) for x in lines))
 
 
-def _amp_step_was_skipped(scaler: "torch.amp.GradScaler") -> bool:
-    """Return True if the most recent ``scaler.step(optimizer)`` was a no-op.
-
-    ``GradScaler.step()`` silently skips the optimizer step when any
-    gradient was inf/NaN (the dynamic-loss-scaling escape hatch). The
-    public API doesn't expose a return value indicating skip / no-skip
-    when AMP is disabled, so we look at the scaler's private
-    per-optimizer ``_per_optimizer_states`` dict, which records
-    ``"found_inf_per_device"`` as a tensor of 0 / 1 per device. Any 1 ⇒
-    the step was skipped.
-
-    Falls back to ``False`` when AMP is disabled (the scaler is a no-op
-    that always lets the step through).
-    """
-    if not getattr(scaler, "_enabled", True):
-        return False
-    try:
-        states = scaler._per_optimizer_states                          # type: ignore[attr-defined]
-        for state in states.values():
-            found = state.get("found_inf_per_device", {})
-            for v in found.values():
-                if float(v.item() if hasattr(v, "item") else v) != 0.0:
-                    return True
-    except Exception:                                                  # pragma: no cover
-        # Best-effort probe — if the private API ever moves we degrade to the
-        # old behaviour (assume the step happened). Warn ONCE so a silently
-        # broken probe (which would re-introduce the LR-scheduler desync this
-        # guards against) is visible in the log rather than invisible.
-        if not getattr(_amp_step_was_skipped, "_warned", False):
-            LOGGER.warning(
-                "Could not read GradScaler private state to detect AMP-skipped "
-                "steps; assuming steps were taken. If inf/NaN grad skips occur, "
-                "the LR schedule may drift. (PyTorch internals may have changed.)"
-            )
-            _amp_step_was_skipped._warned = True                       # type: ignore[attr-defined]
-        return False
-    return False
-
-
 # --------------------------------------------------------------------------- #
 # Forward pass + loss
 # --------------------------------------------------------------------------- #

@@ -198,7 +198,7 @@ def _clean_one_dataset(
     )
     # X_clean is a 2-D numpy array, float64, with categoricals as
     # integer codes and NaNs preserved. Exactly what TabPFN's
-    # ensemble preprocessor expects (line 26244-26258 of the dump).
+    # ensemble preprocessor expects in DatasetCollectionWithPreprocessing.__getitem__.
 
     outlier_removal_std = inference_config.get_resolved_outlier_removal_std(
         estimator_type=tabpfn_task_type,
@@ -504,8 +504,7 @@ def build_ensemble_members(
 
     # ---- 2) ensemble configs come from the per-dataset cache ----------- #
     # Mirrors the official path: `_initialize_dataset_preprocessing` runs
-    # ONCE per parent dataset (TabPFN .txt cls, 13270-13298
-    # reg) and stores configs on the `DatasetConfig`. Per-step
+    # ONCE per parent dataset and stores configs on `DatasetConfig`. Per-step
     # `__getitem__` reuses these — only the per-step RNG seed differs.
     # Re-rolling per step would change class permutations and feature
     # shifts every step, adding gradient noise the published pipeline
@@ -517,8 +516,8 @@ def build_ensemble_members(
     )
 
     # ---- 3) regression: pre-z-norm y on context-only stats ------------ #
-    # Matches `DatasetCollectionWithPreprocessing.__getitem__` lines
-    # 26220-26240 — the official multi-dataset finetune path. Critical
+    # Matches `DatasetCollectionWithPreprocessing.__getitem__`, the official
+    # multi-dataset finetune path. Critical
     # detail: when `train_std < 1e-8` we use 1e-8 (with a warning),
     # NOT a tiny epsilon like 1e-20. Adding 1e-20 to a near-zero std
     # produces z-scores of ~1e+20, which immediately overflow fp16
@@ -550,7 +549,7 @@ def build_ensemble_members(
     # ---- 4) build the TabPFNEnsemblePreprocessor ---------------------- #
     # The constructor signature is wide; most kwargs read from
     # inference_config. n_preprocessing_jobs=1 keeps everything in this
-    # process (we already have DataLoader workers disabled).
+    # process (the outer DataLoader already supplies worker parallelism).
     # enable_gpu_preprocessing=False so the soft-clip step is built
     # but not run until the forward pass (we apply it manually in
     # `_forward_one_member`).

@@ -627,6 +627,23 @@ def check_predictions_writer(rep: Report, configs=()) -> None:
         rep.ok(f"prediction writer ready (save_predictions={wants}, pyarrow={have})")
 
 
+def check_baseline_dependencies(rep: Report) -> None:
+    """Check the declared final benchmark before any campaign GPU allocation."""
+    from importlib.util import find_spec
+    cfg = OmegaConf.load(REPO / "config/eval.yaml")
+    enabled = set(cfg.baselines.enabled)
+    required = enabled & {"xgboost", "catboost"}
+    if any(int(settings.get("n_trials", 0)) > 0
+           for name, settings in cfg.hpo.items() if name in enabled):
+        required.add("optuna")
+    for name in sorted(required):
+        if find_spec(name) is None:
+            rep.fail(f"Required benchmark dependency missing: {name}",
+                     "Use the CreditPFN environment; requested baselines/tuning cannot be silently omitted")
+        else:
+            rep.ok(f"benchmark dependency available: {name}")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", action="append", default=None,
@@ -689,6 +706,7 @@ def main(argv: list[str] | None = None) -> int:
     check_slurm(rep)
     check_data(rep, proc_dirs)
     check_predictions_writer(rep, [cfg for cfg, _ in loaded])
+    check_baseline_dependencies(rep)
     if loaded:
         exp1 = [(c, n) for c, n in loaded if "experiment1" in n] or loaded
         check_job_count(exp1, rep, args.trials_per_task)

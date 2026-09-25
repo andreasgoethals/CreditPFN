@@ -13,6 +13,14 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Fix TabICL's batch-dependent missing-value handling and reject ambiguous classification probability columns.
+- Publish predictions atomically before completion receipts; reject incomplete cached/missing/truncated prediction artifacts.
+- One-hot encode linear-model categories within each training fold; record fitted parameters and actual HPO trials, and fail requested tuning without Optuna.
+- Verify duplicate columns by values and find relocated checkpoints under their experiment folders.
+- Remove unused AMP/CSV helpers and stale method claims; clarify descriptive inference limits and final-evaluation capacity checks.
+
+- Refresh the run handover after the successful recovery audit; retain the clean full-validation and budget-pilot gates.
+
 - Flatten ensemble classification samples for deterministic CUDA loss; exercise that production loss path in the repeatability probe.
 - Fix evaluation's missing OmegaConf import and carry checkpoint identities into the prepared-plan roster check.
 - Reconstruct unfinished frozen trials from their actual manifest schema and phase config so notebooks remain usable during resumptions.

@@ -213,6 +213,10 @@ STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/expe
 
 Repeat for LGD and completed experiments 2/3. GPU foundation scoring and CPU classical HPO are separate allocations. Start foundation evaluation only against a stable trained roster. Defaults are two GPU/four CPU hours; profile actual packed tasks. Successful cells survive resubmission. Predictions use parquet when available and gzip CSV otherwise; no installation is required for the fallback.
 
+Evaluation writes predictions atomically and publishes its identity receipt last. With prediction saving enabled, resumption also requires the recorded prediction artifact and matching byte count; incomplete output is retried. An unavailable Parquet engine permits gzip CSV, but storage errors remain failures. Classical rows record selected parameters and completed/requested HPO trials; requesting tuning without Optuna fails visibly.
+
+Before the full evaluation arrays, profile one representative large-table foundation task at its actual context/member settings and one classical HPO task. Experiment 0's small five-fold recovery benchmark checks correctness, not the memory or runtime of those production-size evaluations. Use the measured task times to set requests; short requests improve possible backfill, not scheduling priority itself.
+
 With a run's writers stopped, consolidate it:
 
 ```bash

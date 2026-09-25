@@ -37,6 +37,8 @@ A point on a 20k-schedule trajectory is not equivalent to a fresh run whose enti
 
 **What the study can conclude.** A fixed descriptive grid can map behavior without claiming a winner. It must still show incomplete coverage and numerical failures, preserve paired base controls, and avoid treating dependent folds/seeds as independent datasets. A generalization claim about a selected recipe, no-forgetting claim, specifically domain-driven benefit, or temporal credit deployment needs corresponding additional evidence.
 
+**Baseline preprocessing and descriptive correlations.** The linear controls one-hot encode nominal categories using only their training context, rather than imposing the arbitrary ordering of ordinal codes. This is a declared baseline recipe, consistent with the [scikit-learn encoder's intended use for linear models](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html), not a claim that it dominates all categorical encodings. For a higher-is-better score, the change-versus-base plot has `Cov(base, adapted - base) = Cov(base, adapted) - Var(base)`. A negative association can therefore arise without an adaptation mechanism. Show paired per-table effects and factor contrasts; do not interpret that correlation causally.
+
 ## Upstream implementation anchors
 
 Use symbol names when referring to code snapshots because line numbers change on refresh:

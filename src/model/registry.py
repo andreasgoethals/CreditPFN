@@ -1,18 +1,17 @@
 """Model registry: build the list of models the eval pipeline scores.
 
-Two layers:
+Three model groups:
 
-1. **Classical baselines** built from cfg knobs (which baselines to
-   include, their per-model params if any). These are deterministic
-   given the cfg — same cfg → same baselines on every machine.
+1. **Classical baselines** built from configuration and a fixed search
+   seed. HPO time limits and library versions can change the fitted result.
 
-2. **TabPFN-untuned** built from the same paths the training pipeline
+2. **Untuned foundation models** built from the same paths the training pipeline
    reads (``cfg.tunable.<track>_base_paths``), one entry per base
    checkpoint. Lets the eval cleanly compare "the base weights"
    against "the continued-pretrained weights".
 
-3. **TabPFN-trained** is NOT built here — those come from the
-   training manifest CSV (``logs/runs/<run_name>_<track>.csv``),
+3. **Trained foundation models** are loaded separately from the
+   experiment's ``manifests/<run_name>_<track>.csv``,
    one row per trained checkpoint. The eval pipeline pulls them
    in separately because the manifest is the canonical record of
    what was actually trained.

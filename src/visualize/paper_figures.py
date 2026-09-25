@@ -185,9 +185,9 @@ def _base_key(base_short: str) -> str:
 def plot_gain_vs_base(df: pd.DataFrame, metric: str = "roc_auc"):
     """Δ from continued pretraining against how good the base already was.
 
-    One point per (trained model × dataset); x is the untuned base's score on that
-    dataset. A downward trend is the paper's mechanism: adaptation buys most where the
-    pretrained prior fits the domain worst.
+    One point per (trained model × dataset). The base score occurs on both
+    axes, so mathematical coupling, noise and ceiling effects can induce a
+    trend. This descriptive plot cannot establish an adaptation mechanism.
     """
     d = paired_deltas(df, metric)
     if d.empty:
@@ -199,17 +199,8 @@ def plot_gain_vs_base(df: pd.DataFrame, metric: str = "roc_auc"):
         ax.scatter(sub["untuned"], sub["delta"], s=18, alpha=0.8,
                    color=style.color(_base_key(base)), label=base, edgecolors="none")
     ax.axhline(0, color=style.COLORS["reference"], linewidth=0.8, alpha=0.6)
-    if len(d) >= 3 and d["untuned"].nunique() >= 2:
-        b, a = np.polyfit(d["untuned"], d["delta"], 1)
-        xs = np.linspace(d["untuned"].min(), d["untuned"].max(), 50)
-        ax.plot(xs, a + b * xs, color=style.COLORS["highlight"], linewidth=1.2, zorder=1)
-        r = float(np.corrcoef(d["untuned"], d["delta"])[0, 1])
-        # Report the number of DATASETS, not of points. The points come in one vertical
-        # cluster per dataset (every checkpoint shares that dataset's base score), so "n = 75"
-        # advertises 75 independent observations where there are 5 — and any reviewer checks
-        # this first. `r` is still over all points, which is what the drawn line fits.
-        n_ds = d["test_dataset_id"].nunique()
-        style.note(ax, f"slope {b:+.3f} · r = {r:+.2f} · {len(d)} pairs on {n_ds} datasets")
+    style.note(ax, f"{len(d)} pairs on {d['test_dataset_id'].nunique()} datasets; "
+                   "base score shared by both axes")
     ax.set_xlabel(f"untuned base {metric} on that dataset")
     ax.set_ylabel(effect_label(metric))
     ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), fontsize=7,
@@ -296,10 +287,9 @@ def plot_mean_rank(df: pd.DataFrame, metric: str = "roc_auc", *, label_map=None)
 def plot_calibration_shift(df: pd.DataFrame):
     """ECE of every trained model against its own untuned base, one point per dataset.
 
-    The diagonal is "calibration unchanged". Below it continued pretraining improved
-    calibration; above it, the model became more confident and less right — which is what
-    Tanna 2026 reports for naive finetuning, and what a credit-risk regulator would ask
-    about first.
+    The diagonal is unchanged empirical ECE. Above it the estimated
+    calibration error increased; ECE alone does not identify overconfidence
+    or reduced discrimination.
     """
     d = paired_deltas(df, "ece")
     if d.empty:

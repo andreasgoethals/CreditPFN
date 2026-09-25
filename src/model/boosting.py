@@ -1,9 +1,7 @@
 """XGBoost and CatBoost wrappers (with optional Optuna HPO).
 
-Both libraries handle NaN natively (no imputation needed) and accept
-an explicit categorical-features index list, which we forward
-straight from the cached chunk's ``categorical_idx`` array. So the
-wrappers are mostly thin: ``fit(X, y, ...) → predict_proba(X)``.
+Both libraries handle NaN natively. Categorical treatment differs
+between these two configured baselines, as described below.
 
 Optional per-dataset HPO
 ------------------------
@@ -19,9 +17,9 @@ the box" baseline. Both modes are exposed as eval-cfg knobs in
 
 For categorical handling:
 
-* **XGBoost** — passes the ordinal-encoded cats through as numerics.
-  XGBoost's standard tree-splitting handles them well and matches
-  what TabPFN sees too.
+* **XGBoost** — passes ordinal-encoded categories through as numeric
+  features. This is a particular baseline recipe, not native categorical
+  splitting or evidence that category order is harmless.
 * **CatBoost** — uses first-class categorical support; we stringify
   the ordinal codes (NaN → "nan") so CatBoost's native cat encoding
   kicks in.
@@ -126,9 +124,8 @@ class XGBoostModel:
             return dict(self._params)
         try:
             import optuna
-        except ImportError:
-            LOGGER.warning("optuna not installed; skipping XGBoost HPO")
-            return dict(self._params)
+        except ImportError as exc:
+            raise RuntimeError("Optuna is required for requested XGBoost tuning") from exc
         from sklearn.metrics import roc_auc_score, mean_squared_error
 
         # Fall back to an internal split only if the caller supplied no
@@ -189,6 +186,7 @@ class XGBoostModel:
         merged = dict(self._params)
         merged.update(study.best_params)
         self.best_params = study.best_params
+        self.hpo_trials_completed = sum(t.state.name == "COMPLETE" for t in study.trials)
         return merged
 
     def fit(
@@ -197,6 +195,8 @@ class XGBoostModel:
         y_val: np.ndarray | None = None,
     ) -> None:
         del categorical_idx
+        self.best_params = {}
+        self.hpo_trials_completed = 0
         X = replace_inf_with_nan(X)
         if X_val is not None:
             X_val = replace_inf_with_nan(X_val)
@@ -298,9 +298,8 @@ class CatBoostModel:
             return dict(self._params)
         try:
             import optuna
-        except ImportError:
-            LOGGER.warning("optuna not installed; skipping CatBoost HPO")
-            return dict(self._params)
+        except ImportError as exc:
+            raise RuntimeError("Optuna is required for requested CatBoost tuning") from exc
         from sklearn.metrics import roc_auc_score, mean_squared_error
 
         if X_val is None or y_val is None:
@@ -359,6 +358,7 @@ class CatBoostModel:
         merged = dict(self._params)
         merged.update(study.best_params)
         self.best_params = study.best_params
+        self.hpo_trials_completed = sum(t.state.name == "COMPLETE" for t in study.trials)
         return merged
 
     def fit(
@@ -367,6 +367,8 @@ class CatBoostModel:
         y_val: np.ndarray | None = None,
     ) -> None:
         self._cat_features = list(categorical_idx or [])
+        self.best_params = {}
+        self.hpo_trials_completed = 0
         X = replace_inf_with_nan(X)
         if X_val is not None:
             X_val = replace_inf_with_nan(X_val)

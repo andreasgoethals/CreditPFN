@@ -10,20 +10,14 @@ correspond to the steps in ``cfg.sanitize`` in ``config/data.yaml``:
   (f) coerce object columns that are mostly numeric strings to numeric
   (g) cast numerical features to ``numeric_dtype``  (default float32)
   (h) replace ±inf with NaN                         (uniform NaN handling)
-  (i) **unsupervised feature SELECTION** to at most ``max_columns``
-       features (``sanitize.max_columns``, currently 64); restricted to
-       numerical features,
-       categoricals always pass through. Keeps a subset of the *real*
-       columns (top by scale-free variance, greedily de-correlated at
-       ``corr_threshold``) — NOT cluster means. This preserves real
-       marginals + interactions so continued pretraining specialises the
-       prior toward genuine credit features (the old FeatureAgglomeration
-       averaged columns into synthetic means, which defeated that goal).
+  (i) unsupervised feature selection to at most ``max_columns`` features
+       (currently 64), allocating slots to numerical and categorical
+       columns in proportion to their counts; see ``_select_to_max_columns``.
   (j) classification targets → contiguous ``int64`` labels
   (k) regression targets — left in their raw scale (TabPFN's
       ``RegressorBatch.znorm_space_bardist_`` standardises internally).
-      LGD targets are domain-clipped to ``[0, 1]`` here because that
-      bound is a definition of the metric, not a statistical operation.
+      Credit LGD targets are clipped to ``[0, 1]`` as this study's bounded
+      target convention. Economic LGD including costs can exceed those bounds.
 
 What this module deliberately does NOT do:
 
@@ -54,6 +48,7 @@ Public entry point
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 from pathlib import Path
 
@@ -85,26 +80,17 @@ def _drop_exact_duplicate_feature_columns(
     """
     feat = [c for c in df.columns if c != target]
     keep, dropped = [], []
-    seen: dict[bytes, str] = {}
+    seen: dict[bytes, list[str]] = {}
     for col in feat:
-        # Hash the column's bytes (NaN-aware via repr-ish encoding).
         s = df[col]
-        # Use pandas' .equals semantics by comparing tobytes after
-        # filling NaNs with a sentinel; fast for moderate widths.
-        sentinel = np.frombuffer(b"NaN_placeholder_xX", dtype=np.uint8)
-        if s.dtype.kind in "biufc":
-            buf = np.where(s.isna(), -np.float64(1e308), s.astype(np.float64)).tobytes()
-        else:
-            # Fill NaNs *before* casting to str. On pandas 2.x,
-            # astype(str) silently converts NaN to the literal string
-            # "nan", so fillna() afterwards finds nothing to fill —
-            # the order matters for portability across pandas versions.
-            buf = "\x00".join(s.fillna("__NAN__").astype(str).tolist()).encode()
-        key = buf + sentinel.tobytes()
-        if key in seen:
+        # Hashes only narrow candidates. Verify actual values to avoid
+        # confusing missingness with sentinel values or embedded delimiters.
+        key = hashlib.sha256(pd.util.hash_pandas_object(s, index=False).to_numpy().tobytes()).digest()
+        candidates = seen.setdefault(key, [])
+        if any(s.equals(df[other]) for other in candidates):
             dropped.append(col)
         else:
-            seen[key] = col
+            candidates.append(col)
             keep.append(col)
     new_cols = ([target] if target in df.columns else []) + keep
     return df[new_cols].copy(), dropped
@@ -251,9 +237,9 @@ def _select_to_max_columns(
     distributions and interactions of credit-risk data. The old
     ``FeatureAgglomeration`` averaged columns into cluster means, destroying
     both the real marginals and the match to what the model sees at
-    inference. Selection instead keeps genuine columns with genuine
-    distributions, and is **unsupervised** (never looks at ``y``) so it
-    cannot leak the label into feature choice.
+    inference. Selection keeps original columns and never looks at ``y``.
+    It does inspect the full table's features before CV, making this schema
+    preparation transductive rather than fully inductive.
 
     HOW it scores + selects (three steps)
     -------------------------------------
@@ -279,9 +265,8 @@ def _select_to_max_columns(
         whose min-maxed variance is modest ~0.02–0.1) can be out-ranked by a
         spiky one.
       * **Min-max normalisation is outlier-sensitive.** A single extreme value
-        compresses a column's bulk toward 0, so heavy-tailed / near-binary /
-        ID-like numeric columns tend to score *high*. (A rank- or MAD-based
-        dispersion would be more robust — a candidate future improvement.)
+        compresses most scaled values near one endpoint and can reduce
+        the score sharply. This score does not measure predictive value.
       * **The de-correlation candidate set is bounded** to the top
         ``2 * max_columns`` numericals for an O(k²) cost. On very wide
         datasets (e.g. algorithmwatch ≈ 2985 cols) only the top ~128 by the

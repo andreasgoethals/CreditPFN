@@ -34,6 +34,35 @@ from src.model.linear import LinRegModel, LogRegModel
 from src.model.registry import build_baselines
 
 
+@pytest.mark.parametrize("model_class", [LogRegModel, LinRegModel])
+def test_linear_nominal_categories_are_invariant_to_code_order(model_class):
+    codes = np.tile(np.arange(4), 25)
+    targets = (codes % 2).astype(float)
+    permutation = np.array([0, 2, 1, 3])
+    original, relabeled = model_class(), model_class()
+    original.fit(codes[:, None].astype(float), targets, [0])
+    relabeled.fit(permutation[codes, None].astype(float), targets, [0])
+    left = original.predict(np.arange(4.)[:, None])
+    right = relabeled.predict(permutation[:, None].astype(float))
+    np.testing.assert_allclose(left, right, atol=1e-6)
+    if model_class is LogRegModel:
+        np.testing.assert_allclose(original.predict_proba(np.arange(4.)[:, None]),
+            relabeled.predict_proba(permutation[:, None].astype(float)), atol=1e-6)
+    assert np.isfinite(original.predict(np.array([[np.nan], [9.]]))).all()
+
+
+@pytest.mark.parametrize("model", [LogRegModel(hpo_trials=1), LinRegModel(hpo_trials=1),
+    XGBoostModel(task_type="classification", hpo_trials=1),
+    CatBoostModel(task_type="classification", hpo_trials=1)])
+def test_requested_tuning_cannot_silently_run_untuned(model, monkeypatch):
+    import sys
+    monkeypatch.setitem(sys.modules, "optuna", None)
+    X = np.arange(160.).reshape(80, 2)
+    y = np.arange(80) % 2
+    with pytest.raises(RuntimeError, match="Optuna"):
+        model.fit(X, y, [], X_val=X[:20], y_val=y[:20])
+
+
 # =============================================================================
 # Block 1 · src.model.base
 # =============================================================================

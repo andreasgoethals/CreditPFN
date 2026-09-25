@@ -72,9 +72,12 @@ def _sanitize(X: np.ndarray, *, dead_cols: np.ndarray | None = None,
     if not np.issubdtype(X.dtype, np.floating):
         X = X.astype(np.float64)
     X = replace_inf_with_nan(X)
-    all_nan = np.isnan(X).all(axis=0)
-    if dead_cols is not None:
-        all_nan = all_nan | dead_cols
+    # Learn this mask on the context only. A live feature may happen to be
+    # missing throughout a query batch; it must still use the fitted imputer.
+    all_nan = (np.isnan(X).all(axis=0) if dead_cols is None
+               else np.asarray(dead_cols, dtype=bool))
+    if all_nan.shape != (X.shape[1],):
+        raise ValueError("Training and prediction feature widths differ")
     if all_nan.any():
         X = X.copy()
         X[:, all_nan] = 0.0

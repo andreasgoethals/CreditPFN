@@ -54,6 +54,20 @@ def test_missing_raw_history_cannot_replace_a_complete_snapshot(tmp_path, monkey
     assert (root / "consolidated/exp1/LATEST.json").read_bytes() == pointer
 
 
+def test_resolve_relocated_checkpoint_in_experiment_folder(tmp_path, monkeypatch):
+    from src.utils.checkpoint_inventory import resolve_checkpoint
+    storage = tmp_path / "CreditPFN"
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(storage))
+    name = "cpt_main_v5_s00_pd_v2_lr3e-07_l2sp0.003.ckpt"
+    path = storage / "checkpoints/trained/experiment1/pd" / name
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"checkpoint")
+    Path(str(path) + ".provenance.json").write_text(json.dumps({"marker": "original"}))
+    found, provenance = resolve_checkpoint("/previous/project/checkpoints/trained/experiment1/pd/" + name, "pd")
+    assert found == path
+    assert provenance == {"marker": "original"}
+
+
 def test_resolve_previously_retagged_checkpoint(tmp_path, monkeypatch):
     from src.utils.checkpoint_inventory import resolve_checkpoint
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))

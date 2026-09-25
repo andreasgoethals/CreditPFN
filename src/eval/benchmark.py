@@ -6,21 +6,22 @@ the roster, this module:
   1. Loads the processed CSV via
      :func:`src.eval.dataset_loader.load_processed_dataset`.
   2. Runs `cfg.cv.n_folds` cross-validation on the **full** dataset.
-     Inside each fold, **only the training partition is capped** at
-     the architectural per-model row limit (TabPFN family only —
+     Inside each fold, context and validation are capped at
+     the configured per-model row limit (foundation models only —
      see ``cfg.max_rows_per_model``). The held-out test partition is
      never capped; we call `predict_proba(X_test)` once on the full
      test fold and TabPFN-v3's internal row chunking handles it.
      Classical baselines (XGBoost/CatBoost/LogReg/LinReg) bypass the
-     cap and see the full train + test rows.
+     cap, fit the full inner training split and predict every test row.
   3. Per outer fold:
 
          outer:  80% train  /  20% test
          inner:  80% sub-train  /  20% validation     (split of the train fold)
 
      The validation split is used for:
-       * Optuna HPO objective (XGBoost / CatBoost)
+       * Optuna HPO objective (boosting and linear controls)
        * F1-threshold tuning for classification (PD)
+       * Platt/isotonic calibration for classification
 
      Final metrics are computed on the held-out test fold AT the
      threshold chosen on validation.
@@ -38,17 +39,16 @@ the roster, this module:
   5. Persists each model's results to its own CSV under
      ``results/<TRACK>/<method>/<run>_<timestamp>[_<task_tag>].csv``.
 
-The CSV is wide-format (one row per model × dataset × fold, all
-metric columns side-by-side); reviewers find this much easier to
-aggregate than the previous long format. Aggregation:
-
-    pd.read_csv(...).groupby(["model_name"])[["roc_auc", "f1"]].agg(["mean", "std"])
+The CSV has one row per model × dataset × fold. Pair trained models to
+their own bases within folds, then aggregate within dataset before
+giving datasets equal weight; report missing/failed cells separately.
 """
 
 from __future__ import annotations
 
 import csv
 import datetime as _dt
+import json
 import logging
 import os
 import re
@@ -196,6 +196,9 @@ class EvalRow:
     error:           str | None = None
     cache_hit:       bool = False
     cached_elapsed_sec: float = 0.0
+    fitted_parameters: str = "{}"
+    hpo_trials_requested: int = 0
+    hpo_trials_completed: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -585,6 +588,7 @@ def find_existing_results(
     n_folds_required: int | None = None,
     run_name: str | None = None,
     evaluation_key: str | None = None,
+    require_predictions: bool = False,
 ) -> list[Path]:
     """Return contributing CSVs only when each required fold's latest row is OK.
 
@@ -601,23 +605,29 @@ def find_existing_results(
 
     hits: list[Path] = []
     latest: dict[int | str, str] = {}
-    needle = f"ds-{dataset_id}"
     for csv_path in sorted(method_dir.glob("*.csv")):
         if run_name and not csv_path.name.startswith(run_name + "_"):
             continue
-        if evaluation_key is not None:
-            import json
+        if evaluation_key is not None or require_predictions:
             sidecar = Path(str(csv_path) + ".evaluation.json")
             if not sidecar.is_file():
                 continue
-            if json.loads(sidecar.read_text(encoding="utf-8")).get(dataset_id) != evaluation_key:
+            try:
+                receipt = json.loads(sidecar.read_text(encoding="utf-8"))
+                if evaluation_key is not None and receipt.get(dataset_id) != evaluation_key:
+                    continue
+                if require_predictions:
+                    prediction = receipt.get("__predictions__") or {}
+                    name = prediction.get("file", "")
+                    if not name or Path(name).name != name:
+                        continue
+                    artifact = csv_path.parent / name
+                    if not artifact.is_file() or artifact.stat().st_size != prediction.get("bytes"):
+                        continue
+            except (OSError, ValueError, AttributeError, TypeError):
                 continue
         checkpoint = getattr(handle, "base_path", None)
         if checkpoint and Path(checkpoint).is_file() and csv_path.stat().st_mtime_ns < Path(checkpoint).stat().st_mtime_ns:
-            continue
-        if needle not in csv_path.name and not _csv_might_have_dataset(csv_path, dataset_id):
-            # Filename doesn't carry the id AND the file isn't a generic
-            # multi-dataset CSV (skip the expensive open).
             continue
         statuses = _csv_fold_statuses(csv_path, dataset_id)
         if statuses:
@@ -630,26 +640,6 @@ def find_existing_results(
     if n_folds_required is None:
         return hits
     return hits if set(range(int(n_folds_required))).issubset(ok_folds) else []
-
-
-def _csv_might_have_dataset(csv_path: Path, dataset_id: str) -> bool:
-    """Permissive pre-filter for non-tagged (single-process) CSVs.
-
-    Per-task slurm filenames always encode ``ds-<id>`` and are matched by
-    the caller's filename check. A non-tagged file (single-process run,
-    all datasets in one CSV) carries no id in its name, so we cannot rule
-    it out cheaply — it might hold any dataset's rows. We therefore accept
-    every ``.csv`` here and let the authoritative header scan in
-    :func:`_csv_ok_folds_for` decide. (I.e. this is intentionally a
-    pass-through, not a filter — the only files it would ever reject are
-    non-``.csv``, which the caller's ``glob("*.csv")`` already excludes.)
-    """
-    return csv_path.suffix == ".csv"
-
-
-def _csv_ok_folds_for(csv_path: Path, dataset_id: str) -> set[int | str]:
-    """Only the latest row per fold is authoritative."""
-    return {fold for fold, status in _csv_fold_statuses(csv_path, dataset_id).items() if status == "OK"}
 
 
 def _csv_fold_statuses(csv_path: Path, dataset_id: str) -> dict[int | str, str]:
@@ -726,27 +716,31 @@ def _predict_quantiles(model, X, levels: tuple[float, ...] = PRED_QUANTILE_LEVEL
 
 def _write_predictions(
     records: list[dict],
-    out_path: "pathlib.Path",
-) -> "pathlib.Path | None":
+    out_path: Path,
+) -> Path | None:
     """Write one row per (dataset, fold, test row): the truth and the prediction.
 
-    Parquet, not CSV: these are the biggest artefact the eval produces (one float per test row
-    per fold per model) and parquet is ~5x smaller and typed. Falls back to compressed CSV when
-    pyarrow is absent, because losing the predictions to a missing optional dependency would be
-    worse than a larger file.
+    Publish atomically. Prefer Parquet; use compressed CSV only when no
+    Parquet engine is installed. Storage failures must propagate to the job.
     """
     if not records:
         return None
     import pandas as pd
     df = pd.DataFrame.from_records(records)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    import uuid
+    target = out_path.with_suffix(".parquet")
+    pending = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
     try:
-        target = out_path.with_suffix(".parquet")
-        df.to_parquet(target, index=False)
-    except Exception:                                          # pragma: no cover
-        target = out_path.with_suffix(".csv.gz")
-        df.to_csv(target, index=False, compression="gzip")
-    return target
+        try:
+            df.to_parquet(pending, index=False)
+        except ImportError:
+            target = out_path.with_suffix(".csv.gz")
+            df.to_csv(pending, index=False, compression="gzip")
+        os.replace(pending, target)
+        return target
+    finally:
+        pending.unlink(missing_ok=True)
 
 
 def _write_csv(rows: list[EvalRow], path: Path) -> None:
@@ -881,34 +875,19 @@ def _bench_model_on_dataset(
             if ds.task_type == "classification":
                 proba_va = np.asarray(model.predict_proba(X_va_arr))
                 proba_te = np.asarray(model.predict_proba(X_te_arr))
-                # If the model only saw a subset of classes during fit,
-                # its predict_proba returns fewer columns than the dataset
-                # has classes. Pad with zero columns so the column index
-                # matches the actual class label — required for log_loss
-                # with labels=[0..K-1] and multiclass roc_auc.
-                #
-                # K is sized from the predicted-probability widths and the
-                # VALIDATION labels only — NOT from the held-out TEST
-                # labels. Reading `y_te.max()` here would leak test-set
-                # information into the metric-column geometry. For binary
-                # PD (our only classification track) this is a no-op
-                # (proba always has ≥2 cols), but the train-only sizing is
-                # the correct, leak-free form. (Audit fix 2026-05-29.)
-                K_total = max(
-                    int(proba_va.shape[1]),
-                    int(proba_te.shape[1]),
-                    int(y_va.max()) + 1 if len(y_va) else 0,
-                )
-
-                def _pad(p: np.ndarray, K: int) -> np.ndarray:
-                    if p.shape[1] >= K:
-                        return p
-                    pad_cols = np.zeros((p.shape[0], K - p.shape[1]),
-                                        dtype=p.dtype)
-                    return np.hstack([p, pad_cols])
-
-                proba_va = _pad(proba_va, K_total)
-                proba_te = _pad(proba_te, K_total)
+                # Wrappers return columns in encoded-label order. Missing
+                # columns do not reveal which labels they represent; padding
+                # them could silently score the opposite class as positive.
+                classes = np.unique(y_tr)
+                K_total = len(classes)
+                if K_total < 2 or not np.array_equal(classes, np.arange(K_total)):
+                    raise ValueError("Training labels cannot establish probability column order")
+                for probabilities, n_rows in ((proba_va, len(y_va)), (proba_te, len(y_te))):
+                    if probabilities.shape != (n_rows, K_total):
+                        raise ValueError("Unexpected probability matrix shape for training classes")
+                    if (not np.isfinite(probabilities).all() or (probabilities < 0).any()
+                            or (probabilities > 1).any()):
+                        raise ValueError("Invalid class probability values")
                 pred_te = proba_te[:, 1] if K_total == 2 else proba_te.argmax(axis=1)
                 metrics = _classification_metrics(
                     proba_test=proba_te, y_test=y_te,
@@ -950,22 +929,26 @@ def _bench_model_on_dataset(
             try:
                 _p = np.asarray(pred_te).reshape(-1)
                 _y = np.asarray(y_te).reshape(-1)
-                if _p.shape == _y.shape:
-                    # Regression only: capture the predictive DISTRIBUTION as a fixed quantile
-                    # grid for interval coverage and mean pinball loss. A sparse quantile grid
-                    # is not an exact CRPS calculation; models without quantiles store points only.
-                    _q = quantiles
-                    for i in range(_y.size):
-                        _rec = {"test_dataset_id": ds.dataset_id, "model_name": handle.name,
-                                "fold_idx": int(fold_idx), "row_idx": int(te_idx[i]),
-                                "y_true": float(_y[i]), "y_pred": float(_p[i])}
-                        if _q is not None:
-                            _rec.update({f"q{int(round(lv * 100)):02d}": float(_q[i, j])
-                                         for j, lv in enumerate(PRED_QUANTILE_LEVELS)})
-                        pred_records.append(_rec)
-            except Exception:                                  # pragma: no cover
-                LOGGER.debug("could not record predictions for %s/%s fold %d",
-                             ds.dataset_id, handle.name, fold_idx)
+                if _p.shape != _y.shape:
+                    raise ValueError("Prediction and test-target shapes differ")
+                fold_predictions = []
+                # Regression only: capture the predictive DISTRIBUTION as a fixed quantile
+                # grid for interval coverage and mean pinball loss. A sparse quantile grid
+                # is not an exact CRPS calculation; models without quantiles store points only.
+                _q = quantiles
+                for i in range(_y.size):
+                    _rec = {"test_dataset_id": ds.dataset_id, "model_name": handle.name,
+                            "fold_idx": int(fold_idx), "row_idx": int(te_idx[i]),
+                            "y_true": float(_y[i]), "y_pred": float(_p[i])}
+                    if _q is not None:
+                        _rec.update({f"q{int(round(lv * 100)):02d}": float(_q[i, j])
+                                     for j, lv in enumerate(PRED_QUANTILE_LEVELS)})
+                    fold_predictions.append(_rec)
+                pred_records.extend(fold_predictions)
+            except Exception as exc:
+                status = "FAIL"
+                error = f"Prediction recording failed: {type(exc).__name__}: {exc}"
+                LOGGER.warning("%s/%s fold %d: %s", ds.dataset_id, handle.name, fold_idx, error)
 
         rows.append(EvalRow(
             track=ds.track,
@@ -992,6 +975,10 @@ def _bench_model_on_dataset(
             domain="noncredit" if ds.dataset_id.startswith(("openml_", "package_")) else "credit",
             timestamp=timestamp,
             status=status, error=error,
+            fitted_parameters=json.dumps({**getattr(model, "_params", {}),
+                **(getattr(model, "best_params", None) or {})}, sort_keys=True, default=str),
+            hpo_trials_requested=int(getattr(model, "_hpo_trials", 0)),
+            hpo_trials_completed=int(getattr(model, "hpo_trials_completed", 0)),
             **{k: v for k, v in metrics.items() if k in EvalRow.__dataclass_fields__},
         ))
 
@@ -1009,7 +996,7 @@ def resolve_max_rows_for_handle(
 ) -> int | None:
     """Look up the architectural row-cap for one handle.
 
-    The cap applies to TabPFN-family models only (in-context learning
+    The cap applies to foundation models (in-context learning
     has a hard memory budget tied to the training-context size). For
     classical baselines (XGBoost / CatBoost / LogReg / LinReg) the
     cap is unset — they see the full training fold.
@@ -1105,9 +1092,9 @@ def run_benchmark(
     with ``status="FAIL"`` so the comparison table is robust to a
     single bad cell.
 
-    ``max_rows_per_model`` is the per-architecture training-context
-    cap (TabPFN-v3 → 1 M, TabPFN-v2.x → 100 k, etc.). Looked up by the
-    base-stem key. Applied to the training fold only — the test fold
+    ``max_rows_per_model`` supplies architecture-specific context caps
+    from the evaluation configuration, looked up by base-stem key.
+    Applied to the context and validation partitions — the test fold
     is **always full** and predict_proba is called on it in one go.
     Classical baselines bypass the cap entirely.
     """
@@ -1167,7 +1154,8 @@ def run_benchmark(
             cacheable = key and use_control_cache and not handle.source.endswith("-trained")
             cached = cache.load(results_base_dir, key, n_folds=n_folds) if cacheable else None
             cached_predictions = cache.load_predictions(results_base_dir, key) if cached is not None and save_predictions else None
-            if save_predictions and cached_predictions is None:
+            if save_predictions and (cached_predictions is None
+                    or not cache.predictions_complete(cached, cached_predictions)):
                 cached = None
             if cached is not None:
                 from dataclasses import replace
@@ -1230,18 +1218,21 @@ def run_benchmark(
             handle, track=track, run_name=run_name, timestamp=timestamp,
             base_dir=results_base_dir, per_task_tag=per_task_tag,
         )
+        marker = Path(str(out_path) + ".evaluation.json")
+        marker.unlink(missing_ok=True)
         _write_csv(rows_by_model[handle.name], out_path)
-        if evaluation_keys:
-            import json
-            marker = Path(str(out_path) + ".evaluation.json")
-            pending = marker.with_name(marker.name + f".tmp.{os.getpid()}")
-            pending.write_text(json.dumps(evaluation_keys, sort_keys=True), encoding="utf-8")
-            os.replace(pending, marker)
         if save_predictions:
-            _pred_path = _write_predictions(
-                [r for r in pred_records if r["model_name"] == handle.name], out_path)
+            model_predictions = [r for r in pred_records if r["model_name"] == handle.name]
+            if not cache.predictions_complete(rows_by_model[handle.name], model_predictions):
+                raise RuntimeError("Incomplete predictions for successful evaluation folds")
+            _pred_path = _write_predictions(model_predictions, out_path)
             if _pred_path is not None:
+                evaluation_keys["__predictions__"] = {"file": _pred_path.name, "bytes": _pred_path.stat().st_size}
                 LOGGER.info("  → wrote predictions to %s", _pred_path)
+        # This receipt is the commit point: never publish it before required artifacts.
+        if evaluation_keys:
+            from src.utils.atomic import write_json
+            write_json(marker, evaluation_keys)
         # Total wall-clock this model spent across all its folds/datasets —
         # surfaces which methods dominate eval cost (typically the XGBoost /
         # CatBoost per-fold Optuna HPO), so the eval log alone shows where to

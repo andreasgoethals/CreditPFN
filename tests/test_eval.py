@@ -871,6 +871,106 @@ def test_find_existing_results_requires_all_folds_when_count_given(
 # --------------------------------------------------------------------------- #
 
 
+def test_failed_prediction_write_cannot_mark_evaluation_complete(env_isolated, monkeypatch):
+    from src.eval import benchmark, cache
+    _write_processed_dataset(env_isolated, track="pd", dataset_id="synthetic", n_rows=50)
+    handle = ModelHandle(name="logreg", source="baseline", base_path=None,
+                         track="pd", task_type="classification")
+    monkeypatch.setattr(cache, "evaluation_key", lambda *args, **kwargs: "identity")
+
+    def fail_write(*args, **kwargs):
+        raise OSError("simulated quota exhaustion")
+
+    monkeypatch.setattr(benchmark, "_write_predictions", fail_write)
+    with pytest.raises(OSError, match="quota exhaustion"):
+        run_benchmark(test_dataset_ids=["synthetic"], handles_and_models=[(handle, LogRegModel())],
+            track="pd", run_name="test", results_base_dir=env_isolated / "results",
+            save_predictions=True, evaluation_config={"seed": 99})
+    assert find_existing_results(handle, "synthetic", track="pd",
+        results_base_dir=env_isolated / "results", n_folds_required=5,
+        run_name="test", evaluation_key="identity") == []
+
+
+def test_prediction_receipt_rejects_removed_or_truncated_artifacts(env_isolated, monkeypatch):
+    from src.eval import cache
+    _write_processed_dataset(env_isolated, track="pd", dataset_id="synthetic", n_rows=50)
+    handle = ModelHandle(name="logreg", source="baseline", base_path=None,
+                         track="pd", task_type="classification")
+    monkeypatch.setattr(cache, "evaluation_key", lambda *args, **kwargs: "identity")
+    root = env_isolated / "results"
+    run_benchmark(test_dataset_ids=["synthetic"], handles_and_models=[(handle, LogRegModel())],
+        track="pd", run_name="test", results_base_dir=root,
+        save_predictions=True, evaluation_config={"seed": 99})
+    kwargs = dict(track="pd", results_base_dir=root, n_folds_required=5,
+                  evaluation_key="identity", require_predictions=True)
+    hits = find_existing_results(handle, "synthetic", **kwargs)
+    assert len(hits) == 1
+    receipt = json.loads(Path(str(hits[0]) + ".evaluation.json").read_text())
+    artifact = hits[0].parent / receipt["__predictions__"]["file"]
+    artifact.write_bytes(b"truncated")
+    assert find_existing_results(handle, "synthetic", **kwargs) == []
+    artifact.unlink()
+    assert find_existing_results(handle, "synthetic", **kwargs) == []
+
+
+def test_prediction_storage_failure_never_falls_back_or_leaves_partial_file(tmp_path, monkeypatch):
+    from src.eval.benchmark import _write_predictions
+
+    def fail_write(self, path, **kwargs):
+        Path(path).write_bytes(b"partial parquet")
+        raise OSError("quota exhausted")
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", fail_write)
+    with pytest.raises(OSError, match="quota exhausted"):
+        _write_predictions([{"y_pred": .5}], tmp_path / "scores.csv")
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_prediction_completeness_rejects_missing_and_duplicate_rows():
+    from src.eval.cache import predictions_complete
+    row = {"model_name": "dummy", "test_dataset_id": "synthetic", "fold_idx": 0}
+    scores = [{**row, "status": "OK", "n_test_rows": 2}]
+    predictions = [{**row, "row_idx": i} for i in range(2)]
+    assert predictions_complete(scores, predictions)
+    assert not predictions_complete(scores, predictions[:1])
+    assert not predictions_complete(scores, [predictions[0]] * 2)
+
+
+def test_missing_probability_column_fails_instead_of_inventing_label_order():
+    from src.eval.benchmark import _bench_model_on_dataset
+
+    class BrokenClassifier:
+        def fit(self, *args, **kwargs):
+            pass
+
+        def predict_proba(self, X):
+            return np.ones((len(X), 1))
+
+    ds = ProcessedDataset(pd.DataFrame({"x": np.arange(50)}), np.arange(50) % 2,
+                          [], "classification", "synthetic", "pd")
+    handle = ModelHandle(name="broken", source="baseline", base_path=None,
+                         track="pd", task_type="classification")
+    rows = _bench_model_on_dataset(handle=handle, model=BrokenClassifier(), ds=ds,
+        n_folds=5, inner_val_fraction=.2, seed=99, timestamp="test")
+    assert all(row.status == "FAIL" for row in rows)
+    assert all("probability" in row.error for row in rows)
+
+
+def test_benchmark_records_selected_baseline_parameters_and_actual_tuning_budget():
+    from src.eval.benchmark import _bench_model_on_dataset
+    from src.model.linear import LinRegModel
+    ds = ProcessedDataset(pd.DataFrame({"x": np.arange(50.)}), np.arange(50.) / 10,
+                          [], "regression", "synthetic", "lgd")
+    model = LinRegModel(hpo_trials=2)
+    handle = ModelHandle(name="linreg", source="baseline", base_path=None,
+                         track="lgd", task_type="regression")
+    rows = _bench_model_on_dataset(handle=handle, model=model, ds=ds,
+        n_folds=5, inner_val_fraction=.2, seed=99, timestamp="test")
+    assert all(row.status == "OK" for row in rows)
+    assert all(row.hpo_trials_requested == row.hpo_trials_completed == 2 for row in rows)
+    assert all(1e-3 <= json.loads(row.fitted_parameters)["alpha"] <= 1e3 for row in rows)
+
+
 def test_posthoc_calibration_repairs_overconfident_probabilities() -> None:
     """Continued pretraining consistently worsens calibration in our runs, so
     the eval records post-hoc-recalibrated metrics ALONGSIDE the raw ones.
