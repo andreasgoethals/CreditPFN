@@ -12,7 +12,18 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 24-09-2026 controls/pilots passed; recovery comparison failed
+## Current handover — 25-09-2026 CPU inspection complete; isolate GPU repeatability
+
+- User committed the preceding changes as **ccaa866**. Read the new `Downloads/output CreditPFN/` in place: **239 files / 4,691,286 bytes**; only one additional maintenance log. Job **62143430** ran on wICE in the correct environment, 08:54:19–08:54:37, **exit 0**. Inspection completed; it did not change workflow **720955dab94c457fa23e23d8eba06c50**, which remains failed at recovery. The **16 null + 32 short pilots** and eight packaged five-fold smoke checks remain passed; no long pilots or experiment 1 were launched by that workflow.
+- All eight selected checkpoint identity/diagnostic audits passed, with no missing or extra tensor keys. Maximum learned-state differences: PD **6.79e-6 / 7.58e-6 / 9.00e-6 / 8.33e-6** and LGD **5.71e-6 / 5.24e-6 / 6.21e-6 / 7.27e-6**, for v2/v2.6/v3/TabICL. The three much larger LGD deltas (**0.0167 / 0.0365 / 0.0254**) are confirmed as `criterion.losses_per_bucket`; they are not weight drift.
+- Every pair differs at update 5, before the pause. Seven pairs have identical update-zero monitor values; PD TabICL already differs in three isotonic-calibration score fields at update zero (primary scores match). The scalar maximum over all score fields mixes counts and metric units; do not describe it as an AUC or RMSE difference. This evidence isolates a repeatability problem but does not identify its numerical cause or prove correct resumption.
+- Added **`maintenance.slurm probe-repeatability`**: one synthetic batch through the actual loader/loss, three identical-state/RNG forward/backward repeats under default, deterministic, and deterministic math-attention settings. Default target: **PD v2, 512 rows, 16 features, two members**, one B200 allocation capped at five minutes. No optimizer, model updates, checkpoint writes, plans, receipts or submissions from the diagnostic itself; only the usual maintenance log. Deterministic-kernel refusals are recorded as errors, never passes. A successful small-batch probe is not full recovery validation.
+- Training code identity is still **f234507aef0bc738f9178085dc56878c6b6b5bd1b23a934bd327d0182f3a24a7**; no training/config changes or repeated completed trials. User must commit/push, pull on VSC and submit the one diagnostic. No local GPU verification, install, push or real training by the agent. A later recovery retry must deliberately verify/reuse passed stages, not erase claims or bypass source guards.
+- User's project-storage inventory confirms **legacy `/lustre1/project/stg_00211/CreditPFN/output` is absent**; named output contains only **experiment0**, about **12 MB training diagnostics + 320 KB results** (rounded total 12 MB). DATA download contains about **1.88 MB logs / 2.81 MB manifests**, plus two tiny general scheduler files. Checkpoints are separate and not included in those totals. Experiment 1 is already empty; no cleanup is needed now. Preserve stage receipts/plans, parameter/resource/trajectory measurements and budget evidence. Consider obsolete failed-attempt weights/logs only after experiment 0 is accepted, with exact inventories and no active writers; do not run the whole-tree cleaner to start experiment 1.
+- ZIP input can be read directly without extracting; user need not unzip future transfers. Downloads were not changed or imported. The library remains read-only at pin **e5ce01614eebe520af303f2b5bfd212298eab2be**; storage guidance checked against `VSC Documentation.txt`, symbols `Managing storage usage` and `KU Leuven storage`.
+- Validation: full suite **554 passed, 1 skipped** (optional local manifests absent), **49 focused tests passed**, and **13 diagnostic tests passed** after the final report-wording refinement. Coverage includes RNG/buffer/weight restoration, detection of uncontrolled variation and nonfinite/missing gradients, restoration after kernel errors, CPU refusal, and both model families' batch axes/loss paths. Maintenance/submission syntax, CLI help and diff checks passed. Downloads still contains exactly 239 files / 4,691,286 bytes; no local output tree was created. No notebook changes; actual GPU repeatability remains unverified.
+
+## Previous handover — 24-09-2026 controls/pilots passed; recovery comparison failed
 
 - Read `Downloads/output CreditPFN/` in place: **238 files / 4,662,669 bytes**. Workflow **720955dab94c457fa23e23d8eba06c50** is stopped at `recovery`, status `failed`, eight failed pairs. CPU prepare **62141115**, null audit **62141138** and pilot audit **62141239** passed. All **16 null controls** (two updates) and **32 short pilots** (250 updates) completed; both track audits have zero pending/divergent/problem entries. GPU sampling now works in training: 24 null and 211 pilot samples. Preserve these successful trials.
 - All eight recovery jobs reached 12 updates and passed the packaged **five-fold benchmark smoke** (569 PD / 442 LGD predictions per model), but every state/trajectory equivalence comparison failed. This is not the full held-out credit benchmark. No part-1 receipt, long budget pilot or main sweep was released.
@@ -149,6 +160,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | inspect-recovery · wICE 62143430 | **inspection passed; recovery still failed** | 18 s, exit 0; all eight identities valid, model deltas 5.24e-6–9.00e-6, pre-pause differences in all pairs; larger LGD deltas are diagnostic buffers. |
 | 24-09-2026 | v5 check2 recovery LGD TabICL · Mindwell 11614392 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
 | 24-09-2026 | v5 check2 recovery LGD v3 · Mindwell 11614838 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
 | 24-09-2026 | v5 check2 recovery LGD v2.6 · Mindwell 11614834 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
@@ -265,6 +277,13 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — CPU state inspection cannot establish GPU kernel repeatability
+
+**Tried:** Read the existing B200 checkpoints/trajectories on wICE with per-tensor and per-milestone comparisons.
+**Result:** All identities pass, the misleading LGD maximum is explained, but all eight actual model/trajectory comparisons still fail before the pause.
+**Why:** The two independent training paths were not repeatable before interruption; seven initial monitors match, while TabICL PD already differs in three calibrated fields. GPU kernels or other uncontrolled variation remain hypotheses.
+**Instead:** Run one bounded synthetic forward/backward repeatability diagnostic from identical weights/buffers/RNG under three kernel settings, with no optimizer steps or checkpoint writes. Keep the successful controls/pilots and the failed recovery gate.
 
 ### 24-09-2026 — recovery comparison conflates independent-run and resume differences
 

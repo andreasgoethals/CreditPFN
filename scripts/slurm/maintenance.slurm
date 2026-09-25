@@ -1,5 +1,5 @@
 #!/bin/bash -l
-# CPU work: stage inputs, fingerprint plans, consolidate, clean and audit outcomes.
+# Maintenance and diagnostics; GPU probes require an explicit Mindwell GPU override.
 # Submit from the repository; cleanup preserves this job's active log.
 #SBATCH --job-name=creditpfn-maintenance
 #SBATCH --clusters=wice
@@ -22,10 +22,11 @@ source scripts/slurm/_job_log.sh
 start_job_log maintenance
 export CREDITPFN_USE_SCRATCH=0
 source scripts/slurm/_activate_env.sh
-action="${1:?Choose stage, prepare, preflight, consolidate, experiment0, inspect-recovery, clean or audit}"; shift
+action="${1:?Choose stage, prepare, preflight, consolidate, experiment0, inspect-recovery, probe-repeatability, clean or audit}"; shift
 case "$action" in
     experiment0) python -u -m src.utils.experiment0 "$@" ;;
     inspect-recovery) python -u -m src.utils.recovery_check --inspect "$@" ;;
+    probe-repeatability) python -u -m src.utils.gpu_repeatability "$@" ;;
     stage) python -m src.utils.stage_inputs --destination "${VSC_SCRATCH_GPFS1:?}/CreditPFN" "$@" ;;
     prepare) python -m src.utils.prepare_experiment "$@" ;;
     preflight) python -m src.utils.preflight "$@" ;;

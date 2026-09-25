@@ -58,6 +58,20 @@ Experiment 0 currently uses `cpt_*_v5_check2` identities after the GPU-counter r
 
 Only final weights and the most recent recovery state persist. Intermediate milestone weights are transient; numeric measurements persist. After final publication (including numerical divergence), recovery state is removed. Known repetitive deprecation messages are filtered and repeated numerical errors are counted with bounded log summaries; fatal errors remain visible. Do not hide errors to make a run look successful.
 
+A clean experiment 1 means an empty `experiment1/`, not erasing experiment 0. Keep the accepted workflow receipts, plans, audits and numerical trajectories/resources/parameter summaries: they establish the controls and justify the selected budget. After both experiment-0 parts are accepted, obsolete failed-attempt logs and null/recovery-only weights can be considered for removal using exact inventories, with writers stopped. Preserve the long-pilot scientific evidence. **Do not use `clean --clean` merely to start experiment 1:** it clears every experiment and trained-weight tree. Tiny general scheduler state belongs to the shared launcher and should not be manually reset while jobs are active.
+
+For read-only project-output inspection, run each separately:
+
+```bash
+du -h --max-depth=2 /lustre1/project/stg_00211/CreditPFN/output "/lustre1/project/stg_00211/CreditPFN/output CreditPFN"
+```
+
+```bash
+find /lustre1/project/stg_00211/CreditPFN -maxdepth 2 -type d
+```
+
+A missing legacy `output/` is expected after the rename. These totals exclude weights; inspect `checkpoints/trained/` separately when assessing space. ZIP downloads of logs/manifests can be inspected directly, without extracting or copying their contents into the repository.
+
 ## One-command experiment 0
 
 Commit and push the reviewed changes locally yourself, then pull on VSC. The agent never pushes. With CreditPFN writers stopped, run each command separately:
@@ -138,6 +152,16 @@ CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --time=00:10:00 script
 ```
 
 The log separates the largest non-diagnostic state difference from `criterion.losses_per_bucket`, checks selected checkpoint identities, and reports monitor differences at updates 0, 5 and 12. Exit 0 means inspection completed; check the comparison fields for failures. A difference already at update 5 predates the pause and cannot be attributed solely to resuming. Preserve successful null/pilot trials and investigate independent-run repeatability before allocating another full recovery stage. Do not weaken tolerances or delete immutable plans to get past this gate.
+
+To isolate GPU arithmetic after a pre-pause mismatch, use one small model/batch diagnostic:
+
+```bash
+CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus-per-node=1 --time=00:05:00 scripts/slurm/maintenance.slurm probe-repeatability --track pd --base v2
+```
+
+It uses 512 synthetic rows, 16 features and the configured member count. Each of the three profiles repeats the forward/backward calculation three times, restoring weights, criterion buffers and Python/NumPy/Torch/CUDA RNG each time. No optimizer step or checkpoint write occurs. The profiles are default kernels, deterministic kernels, and deterministic math attention without TF32; BF16 autocast remains enabled. `CUBLAS_WORKSPACE_CONFIG` is fixed before CUDA initialization and printed in the report, so this is a controlled diagnostic, not an exact recreation of an unspecified production environment.
+
+Read the experiment-0 maintenance log's `profiles`: `repeatable: false` demonstrates variation in that calculation; `status: error` can identify a kernel lacking a deterministic implementation. Exit 0 means at least one profile was measured, not that recovery passed. Even three repeatable profiles on this small batch do not certify all production shapes, preprocessing, monitoring or resume behavior. No workflow receipt is changed. `--base` also accepts `v2.6`, `v3` and `tabicl`, and `--track lgd` selects regression; widen the diagnostic only when the first result warrants it.
 
 Each optimizer-boundary recovery saves weights, optimizer, scheduler, scaler, Python/NumPy/Torch/CUDA RNG, sampler cursor and accumulated history. Restoring preserves the full-budget learning-rate schedule. Slurm's warning reaches Python; it saves and exits 75. Abrupt node failure can lose work since the last periodic checkpoint. One trial/task prevents rerunning packed siblings.
 

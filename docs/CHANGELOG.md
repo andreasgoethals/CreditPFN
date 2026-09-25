@@ -11,6 +11,11 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 25-09-2026
+
+- Add a bounded GPU repeatability diagnostic with restored weights/buffers/RNG and no optimizer updates; preserve passed experiment-0 evidence.
+- Clarify ZIP inspection and experiment-specific retention; starting experiment 1 does not require deleting experiment 0.
+
 ## 24-09-2026
 
 - Add read-only recovery inspection, separate detached loss diagnostics from model-state checks, and enforce selected-arm identities; retain failed recovery and successful pilot evidence.
