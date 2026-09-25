@@ -28,6 +28,21 @@
 
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 
+# Slurm reserves cores but native libraries do not all detect that reservation.
+# Recompute on EVERY job: an audit submitted by a GPU job must not inherit its
+# larger pools, nor should its next GPU stage inherit the audit's two threads.
+if [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
+    [[ "$SLURM_CPUS_PER_TASK" =~ ^[1-9][0-9]*$ ]] || {
+        echo 'Invalid SLURM_CPUS_PER_TASK' >&2; return 1;
+    }
+    export OMP_NUM_THREADS="$SLURM_CPUS_PER_TASK"
+    export MKL_NUM_THREADS="$SLURM_CPUS_PER_TASK"
+    export OPENBLAS_NUM_THREADS="$SLURM_CPUS_PER_TASK"
+    export BLIS_NUM_THREADS="$SLURM_CPUS_PER_TASK"
+    export NUMEXPR_NUM_THREADS="$SLURM_CPUS_PER_TASK"
+    export OMP_MAX_ACTIVE_LEVELS=1
+fi
+
 # --------------------------------------------------------------------------
 # KEEP CACHES OUT OF $VSC_HOME (added 2026-08-06 after a 99%-of-3 GB quota
 # warning on /user/leuven/383/<id>).
@@ -110,8 +125,8 @@ else
         echo "ERROR: could not locate a conda/mamba installation." >&2
         echo "       Searched \$CONDA_EXE, \$PATH, then:" >&2
         echo "         \$VSC_DATA / \$HOME under {miniconda3, miniforge3, mambaforge}" >&2
-        echo "       Either run 'conda init bash' in your ~/.bashrc, or" >&2
-        echo "       install miniforge at \$VSC_DATA/miniforge3 and re-submit." >&2
+        echo "       Source the existing installation's etc/profile.d/conda.sh," >&2
+        echo "       then activate CreditPFN; do not auto-activate conda in ~/.bashrc." >&2
         exit 1
     }
 fi
@@ -177,11 +192,22 @@ echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
 #  scratch inputs. Otherwise config/data.yaml selects canonical project storage.
 
 if [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
-    _input_pointer="${CREDITPFN_INPUT_POINTER:-${VSC_SCRATCH_GPFS1:?}/CreditPFN/ACTIVE_INPUTS.json}"
+    # Inputs must follow the compute cluster, including optional wICE GPU routes.
+    # CPU preparation stages Mindwell's GPFS cache explicitly; wICE routes need
+    # an equivalent prepared cache on Lustre, never repeated cross-fabric reads.
+    _input_pointer="${CREDITPFN_INPUT_POINTER:-}"
+    if [[ -z "$_input_pointer" ]]; then
+        case "${SLURM_CLUSTER_NAME:-mindwell}" in
+            mindwell) _input_scratch="${VSC_SCRATCH_GPFS1:?}" ;;
+            wice|genius) _input_scratch="${VSC_SCRATCH_LUSTRE1:?}" ;;
+            *) echo 'Unsupported cluster for prepared CreditPFN inputs' >&2; return 1 ;;
+        esac
+        _input_pointer="${_input_scratch}/CreditPFN/ACTIVE_INPUTS.json"
+    fi
     CREDITPFN_DATA_ROOT=$(python -m src.utils.stage_inputs --resolve "${_input_pointer}") || return 1
     export CREDITPFN_DATA_ROOT
     export CREDITPFN_BASE_CACHE_ROOT="${CREDITPFN_DATA_ROOT}"
-    unset _input_pointer
+    unset _input_pointer _input_scratch
 fi
 
 _resolved_data_root=$(python -c "

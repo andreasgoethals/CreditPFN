@@ -23,5 +23,6 @@ start_job_log() {
     trap 'echo "SIGNAL INT - $(date)"; exit 130' INT
     echo "START task=${task} job=${SLURM_JOB_ID} restart=${SLURM_RESTART_COUNT:-0} - $(date)"
     echo "cluster=${SLURM_CLUSTER_NAME:-?} partition=${SLURM_JOB_PARTITION:-?} node=${SLURMD_NODENAME:-?}"
+    echo "cpus_per_task=${SLURM_CPUS_PER_TASK:-?} cpus_per_node=${SLURM_JOB_CPUS_PER_NODE:-?} mem_per_node_mib=${SLURM_MEM_PER_NODE:-?} gpus=${SLURM_JOB_GPUS:-none}"
     echo "log=${LOG}"
 }

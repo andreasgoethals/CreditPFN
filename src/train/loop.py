@@ -102,7 +102,8 @@ def _resolve_dataloader_workers(cfg) -> int:
     """
     raw = os.environ.get("CREDITPFN_DATALOADER_WORKERS")
     want = int(raw) if raw not in (None, "") else int(cfg.train.dataloader_workers)
-    cpus = int(os.environ.get("SLURM_CPUS_PER_TASK") or (os.cpu_count() or 1))
+    from src.utils.cpu import allocated_cpus
+    cpus = allocated_cpus() or os.cpu_count() or 1
     if want < 0:                       # auto
         want = cpus - 1
     return max(0, min(want, cpus - 1))
@@ -1662,6 +1663,10 @@ def train_one_config(
         pipeline's job, not this loop's.
     """
     # ---- resolve every tunable parameter ---------------------------------- #
+    from src.utils.cpu import configure_training_threads
+    cpu_threads = configure_training_threads(_resolve_dataloader_workers(cfg))
+    if cpu_threads is not None:
+        LOGGER.info("Main-process CPU threads=%d; remaining cores reserved for data workers", cpu_threads)
     track = track or cfg.track
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")

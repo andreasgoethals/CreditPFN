@@ -186,6 +186,16 @@ def training_dir(*parts: str, experiment: str | None = None) -> Path:
     return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "training", *parts))
 
 
+def training_work_dir() -> Path | None:
+    """Temporary numeric diagnostics on Mindwell's filesystem; publish via training_dir."""
+    if os.environ.get("SLURM_CLUSTER_NAME") != "mindwell":
+        return None
+    scratch = _env_path("VSC_SCRATCH_GPFS1")
+    if scratch is None:
+        raise RuntimeError("Mindwell diagnostics require VSC_SCRATCH_GPFS1")
+    return scratch / PROJECT_NAME / OUTPUT_DIR_NAME / experiment_group() / "training_work"
+
+
 def figures_dir(notebook: str | None = None) -> Path:
     """`output CreditPFN/<experiment>/figures/`, or one notebook's own folder — a notebook clears its own before drawing
     and must not be able to reach another's."""

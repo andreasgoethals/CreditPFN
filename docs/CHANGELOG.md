@@ -13,6 +13,13 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Record the blocked signal-fix retry and clarify that a fresh campaign must clear trained checkpoints as well as both output folders.
+
+- Bound native/boosting CPU threads to each Slurm allocation and reserve cores for training data workers.
+- Stage frequent Mindwell diagnostics on GPFS and publish them to project storage; choose prepared inputs by compute cluster.
+- Bound scheduler response waits, retain uncertain-submission protection, and complete Leuven batch headers/resource logging.
+- Document the VSC execution/storage contract and require stopped writers before deploying fingerprinted runtime changes.
+
 - Reserve Slurm's ten-minute warning for resumable segments; log startup signals as failures and restore handlers after training children.
 
 - Fix TabICL's batch-dependent missing-value handling and reject ambiguous classification probability columns.

@@ -2,7 +2,7 @@
 # CPU data registration/sanitization. Prepare inputs before staging/plans.
 # 64 GB retains the measured margin for wide-table feature agglomeration.
 #SBATCH --job-name=creditpfn-data
-#SBATCH --cluster=wice
+#SBATCH --clusters=wice
 #SBATCH --account=lp_verbekelab
 #SBATCH --partition=batch
 #SBATCH --time=02:00:00

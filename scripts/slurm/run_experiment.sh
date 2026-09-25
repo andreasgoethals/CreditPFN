@@ -144,7 +144,7 @@ echo "workers=$CREDITPFN_DATALOADER_WORKERS scratch=$CREDITPFN_USE_SCRATCH segme
 
 queued_tasks() {
     # Array elements, not array headers. Count all states against the submit quota.
-    squeue -M "$1" -u "$USER" -h -r -o '%i' | wc -l
+    timeout --kill-after=5s 45s squeue -M "$1" -u "$USER" -h -r -o '%i' | wc -l
 }
 wait_for_room() {
     [[ -n "${DRY:-}" ]] && return

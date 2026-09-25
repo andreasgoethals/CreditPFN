@@ -727,7 +727,9 @@ def run(
                 trial_idx_local, global_idx, expected_ckpt,
             )
 
-        epoch_csv = epoch_csv_dir / f"{run_basename}.csv"
+        from src.utils.training_files import TrainingFiles
+        diagnostic_files = TrainingFiles(epoch_csv_dir, run_basename)
+        epoch_csv = diagnostic_files.directory / f"{run_basename}.csv"
         if epoch_csv.exists():
             epoch_csv.unlink()              # fresh file per run
         _epoch_csv_init: dict[str, bool] = {"written_header": False}
@@ -826,7 +828,7 @@ def run(
         t_trial = time.monotonic()
         try:
             from src.train.telemetry import ResourceMonitor
-            with ResourceMonitor(epoch_csv_dir / (run_basename + ".resources.csv"),
+            with diagnostic_files, ResourceMonitor(diagnostic_files.directory / (run_basename + ".resources.csv"),
                     enabled=bool(getattr(cfg.train, "resource_diagnostics", False)),
                     interval=float(getattr(cfg.train, "resource_interval_seconds", 20))):
                 result = train_one_config(

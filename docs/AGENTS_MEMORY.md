@@ -12,7 +12,26 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 short-job signal defect confirmed; part 1 needs a corrected retry
+## Current handover — 25-09-2026 signal retry reaches training; four old checkpoints block part 1
+
+- Read `Downloads/output CreditPFN.zip` in place: **54 files / 852,196 uncompressed bytes**, 127,533-byte ZIP; SHA256 `4ab77c4d955562349841832ed2c8be0850cb2c005e858071ab50e337315a16fa`. CRC, 27 JSON records, two CSVs and all eight plan checksums pass. DATA-side output only; project diagnostics/weights are not included. Downloads were not modified or copied.
+- Workflow **588ddf3d0790427690dc8cc742c259f2** on deployed **f914f29** stopped at `null`, status **failed**. Its ledger has **12 done / 4 failed**, matching all 16 task logs. Preparation **62152033** exited 0 with zero preflight failures/warnings. No null audit, short pilots, recovery jobs or `part1_passed.json` followed; no budget pilots ran.
+- All eight LGD controls and PD v2/v3 in both adaptation modes completed: **two successful zero-LR updates, zero drift, finite scores and exact reported before/after monitor parity**. Job log durations were **90–156 seconds**, training-loop durations 10–35 seconds. No new numerical/OOM/signal failure appears in these logs; tensor-state/resource audits were not released, so completion is not a full null-control pass.
+- Four PD v2.6/TabICL tasks refused existing checkpoint identities before training (30–65 s, exit 1). These are exactly the four arms completed before the signal fix. The guard prevents mixing versions; project checkpoint sidecars themselves were not supplied, so their old exact hash is not independently re-read here. Prepared training code is `97d4de5e28ae...`, workflow `dd97c09b06c7...`; local pending VSC fixes remain `9a85958d0285...` / `e852f032cab5...` and were not deployed.
+- Next: commit/push pending local fixes, confirm stopped CreditPFN writers, pull on VSC, preview then perform the complete two-tier cleaner (including trained weights), and wait for successful cleanup before launching **part1** with 10/15/10-minute null/pilot/recovery requests. Do not bypass identities or delete only `output CreditPFN/`. Review the new part-1 receipt before the **first** part-2 run; no long run needs repeating.
+- This inspection changes documentation only. **48 cleanup/path tests passed** in 1.67 s; downloaded-record checks and Bash syntax checks of the proposed commands pass. Runtime identity is unchanged since the preceding full **642-pass/1-skip** audit; that full suite was not repeated for this documentation-only update. No cluster actions, installs, runtime edits, local output files or submodule changes.
+
+## Previous handover — 25-09-2026 VSC execution audit; resubmission outcome pending
+
+- User reports resubmitting part 1 after `f914f29` (signal fix); no new job IDs/results supplied. Leave those jobs and their checkout unchanged until they finish. The earlier 4/16 snapshot below is not the status of this resubmission.
+- Inventoried the 322-file VSC documentation dump and screened its requirements across sites; read the applicable Leuven, job submission, storage and Conda/Python sections in full. Library pin remains `e5ce01614eebe520af303f2b5bfd212298eab2be`, unchanged. Cross-checked current official Leuven storage/Slurm pages. Mindwell one-GPU training requests of 24 cores/120 GiB are within documented limits; live QOS, project quota and GPU runtime remain cluster measurements.
+- Reproduced native CPU over-allocation with a simulated two-core task (Torch retained 16 threads; boosting defaults could use all host cores). Batch activation now resets native pools per allocation; training reserves worker cores and respects affinity; boosting fits, CatBoost pools and predictions have explicit ceilings. Thread settings must be reset rather than merely inherited across GPU → CPU audit → GPU stages.
+- Frequent training diagnostics previously opened/updated project-Lustre files from Mindwell. They now accumulate under GPFS `output CreditPFN/<experiment>/training_work/<attempt>`, then publish atomically per file to the existing project `training/<track>` folder on completion/interruption/error. Publication failure retains working files and fails the trial. A hard kill can leave unpublished resource samples on GPFS; inspect before retrying/cleanup. No permanent third output archive or Downloads copy was created.
+- Corrected the default scratch pointer for optional wICE GPU routes; capped queue/submission response waits at 45 s without allowing duplicate retries after uncertain acceptance. Added a login-shell header and explicit defaults to the standalone hardware report, plus CPU/GPU/memory fields in job logs. Production GPU caps/settings and all scientific configs remain unchanged.
+- These local runtime changes alter prepared training/workflow identities (training `9a85958d0285...`, workflow `e852f032cab5...`). Do not pull while the reported resubmission runs. Review its results first; with writers stopped, deploy and use the requested clean part-1 validation before part 2. Never bypass fingerprints or manually reset active workflow/pool state.
+- Validation: **642 tests passed, 1 skipped** (optional local manifests absent), in **468.56 s**; all 17 shell/Slurm files parse and retain LF endings; `git diff --check` passes. Focused checks cover actual Bash setup, per-stage CPU budgets, GPFS publication/interruption/failure and uncertain scheduler responses. No notebooks/visualization changes. No VSC jobs, installs, cleanup, push, local output files or submodule changes by this audit.
+
+## Previous handover — 25-09-2026 short-job signal defect confirmed; part 1 needs a corrected retry
 
 - Read the new `Downloads/output CreditPFN.zip` directly: **38 files / 695,716 uncompressed bytes**, ZIP SHA256 `53a673f4dde69edf37ac484fb1dbdda7aedd7a448e4fa29e598c27aecfae27e4`. CRC, 15 JSON files, the one CSV and all eight prepared-plan checksums pass. Plans match the deployed `20bc8a8` training identity. DATA records only; project training/results/weights are not in this download. Downloads remain unchanged.
 - Workflow **9278d539651d4342add4a6e1495e5091**, fingerprint `4f3952f7...`, reached `null`. CPU preparation **62151928** passed with zero failures/warnings. Only **4/16 null trials** completed: PD v2.6/TabICL, full and frozen, each two updates and reported zero drift. No null audit, short pilots, recovery comparisons, part-1 receipt or budget pilots were released. The ledger still says `running` because the other jobs died before their callbacks; it is not a live scheduler status.
@@ -223,6 +242,24 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | Null LGD v3 full · Mindwell 11618316 | **completed; unaudited** | Two updates, zero drift/monitor change; log 133 s, exit 0. |
+| 25-09-2026 | Null LGD v2 full · Mindwell 11618315 | **completed; unaudited** | Two updates, zero drift/monitor change; log 126 s, exit 0. |
+| 25-09-2026 | Null LGD v2.6 full · Mindwell 11618314 | **completed; unaudited** | Two updates, zero drift/monitor change; log 128 s, exit 0. |
+| 25-09-2026 | Null LGD v3 frozen · Mindwell 11618313 | **completed; unaudited** | Two updates, zero drift/monitor change; log 133 s, exit 0. |
+| 25-09-2026 | Null LGD v2 frozen · Mindwell 11618312 | **completed; unaudited** | Two updates, zero drift/monitor change; log 156 s, exit 0. |
+| 25-09-2026 | Null LGD v2.6 frozen · Mindwell 11618311 | **completed; unaudited** | Two updates, zero drift/monitor change; log 129 s, exit 0. |
+| 25-09-2026 | Null LGD TabICL full · Mindwell 11618310 | **completed; unaudited** | Two updates, zero drift/monitor change; log 127 s, exit 0. |
+| 25-09-2026 | Null LGD TabICL frozen · Mindwell 11618309 | **completed; unaudited** | Two updates, zero drift/monitor change; log 156 s, exit 0. |
+| 25-09-2026 | Null PD v3 full · Mindwell 11618308 | **completed; unaudited** | Two updates, zero drift/monitor change; log 90 s, exit 0. |
+| 25-09-2026 | Null PD v2 full · Mindwell 11618307 | **completed; unaudited** | Two updates, zero drift/monitor change; log 91 s, exit 0. |
+| 25-09-2026 | Null PD v2.6 full · Mindwell 11618306 | **blocked by checkpoint identity** | Old checkpoint occupied the same filename; log 57 s, exit 1. |
+| 25-09-2026 | Null PD TabICL full · Mindwell 11618305 | **blocked by checkpoint identity** | Old checkpoint occupied the same filename; log 62 s, exit 1. |
+| 25-09-2026 | Null PD v3 frozen · Mindwell 11618304 | **completed; unaudited** | Two updates, zero drift/monitor change; log 129 s, exit 0. |
+| 25-09-2026 | Null PD v2 frozen · Mindwell 11618303 | **completed; unaudited** | Two updates, zero drift/monitor change; log 93 s, exit 0. |
+| 25-09-2026 | Null PD v2.6 frozen · Mindwell 11618302 | **blocked by checkpoint identity** | Old checkpoint occupied the same filename; log 30 s, exit 1. |
+| 25-09-2026 | Null PD TabICL frozen · Mindwell 11618301 | **blocked by checkpoint identity** | Old checkpoint occupied the same filename; log 65 s, exit 1. |
+| 25-09-2026 | Corrected part-1 preparation · wICE 62152033 | **done** | Workflow 588ddf3d; preflight zero failures/warnings; released 16 null tasks; log 86 s, exit 0. |
+| 25-09-2026 | Corrected experiment-0 part 1 · workflow 588ddf3d | **failed at null** | Previously user-reported resubmission now verified: 12 done, four identity conflicts; later stages not released. |
 | 25-09-2026 | Null LGD v3 array · Mindwell 11618184 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s; ten-minute warning on ten-minute allocation. |
 | 25-09-2026 | Null LGD v2 array · Mindwell 11618183 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s. |
 | 25-09-2026 | Null LGD v2.6 array · Mindwell 11618182 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s. |
@@ -369,6 +406,20 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — New plans do not remove incompatible project checkpoints
+
+**Tried:** Retry part 1 with the corrected launcher and newly prepared identities while four existing final checkpoint filenames remained.
+**Result:** Twelve null controls complete; four PD v2.6/TabICL tasks refuse mismatched identities and stop workflow progression.
+**Why:** Prepared plans describe the new source but do not delete existing weights; cleaning output folders alone cannot clear `checkpoints/trained/` on project storage.
+**Instead:** Keep identity checks, preview the complete two-tier cleaner, wait for successful cleanup, and start one fresh part 1 after deploying the pending runtime fixes. Original data and base weights stay intact.
+
+### 25-09-2026 — Editing loaded code invalidated a local full-suite run
+
+**Tried:** Continue moving the GPFS path helper and adding tests while pytest was already running.
+**Result:** Four failures after 635 passes: an already-imported module lacked the new helper, and source inspection used line positions from the previous file contents.
+**Why:** The process mixed old imported objects with edited source. This was an invalid local validation run, not evidence of those failures on VSC.
+**Instead:** Finish runtime edits before starting the full suite; the 55 focused checks passed on the finished files, then restart the full suite with runtime code held fixed.
 
 ### 25-09-2026 — A repeatable single-forward probe missed the ensemble loss refusal
 

@@ -35,6 +35,7 @@ from typing import Literal
 import numpy as np
 
 from src.model.base import replace_inf_with_nan
+from src.utils.cpu import bounded_threads
 
 LOGGER = logging.getLogger(__name__)
 
@@ -100,6 +101,9 @@ class XGBoostModel:
         self._params.setdefault("random_state", random_state)
         self._params.setdefault("n_estimators", 200)
         self._params.setdefault("tree_method", "hist")
+        threads = bounded_threads(self._params.get("n_jobs"))
+        if threads is not None:
+            self._params["n_jobs"] = threads
         self._random_state = random_state
         self._hpo_trials = int(hpo_trials)
         self._hpo_timeout = hpo_timeout_seconds
@@ -244,6 +248,9 @@ class CatBoostModel:
         self._params.setdefault("iterations", 500)
         self._params.setdefault("verbose", False)
         self._params.setdefault("allow_writing_files", False)
+        threads = bounded_threads(self._params.get("thread_count"))
+        if threads is not None:
+            self._params["thread_count"] = threads
         self._random_state = random_state
         self._hpo_trials = int(hpo_trials)
         self._hpo_timeout = hpo_timeout_seconds
@@ -269,7 +276,7 @@ class CatBoostModel:
         """
         from catboost import Pool
         if not self._cat_features:
-            return Pool(X, label=y)
+            return Pool(X, label=y, thread_count=self._params.get("thread_count", -1))
         import pandas as pd
         df = pd.DataFrame(X)
         for ci in self._cat_features:
@@ -278,7 +285,8 @@ class CatBoostModel:
             df[ci] = df[ci].apply(
                 lambda v: "nan" if pd.isna(v) else str(int(v))
             )
-        return Pool(df, label=y, cat_features=self._cat_features)
+        return Pool(df, label=y, cat_features=self._cat_features,
+                    thread_count=self._params.get("thread_count", -1))
 
     def _make(self, params: dict):
         from catboost import CatBoostClassifier, CatBoostRegressor
@@ -339,13 +347,13 @@ class CatBoostModel:
             model.fit(pool_tr)
             pool_va = self._to_catboost_pool(X_va)
             if self.task_type == "classification":
-                proba = model.predict_proba(pool_va)
+                proba = model.predict_proba(pool_va, thread_count=self._params.get("thread_count", -1))
                 if len(np.unique(y_va)) < 2:
                     return 0.5
                 if proba.shape[1] == 2:
                     return -roc_auc_score(y_va, proba[:, 1])
                 return -roc_auc_score(y_va, proba, multi_class="ovr", average="macro")
-            preds = np.asarray(model.predict(pool_va)).reshape(-1)
+            preds = np.asarray(model.predict(pool_va, thread_count=self._params.get("thread_count", -1))).reshape(-1)
             return float(np.sqrt(mean_squared_error(y_va, preds)))
 
         sampler = optuna.samplers.TPESampler(seed=self._random_state)
@@ -380,8 +388,8 @@ class CatBoostModel:
 
     def predict_proba(self, X: np.ndarray) -> np.ndarray:
         pool = self._to_catboost_pool(replace_inf_with_nan(X))
-        return self._model.predict_proba(pool)
+        return self._model.predict_proba(pool, thread_count=self._params.get("thread_count", -1))
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         pool = self._to_catboost_pool(replace_inf_with_nan(X))
-        return np.asarray(self._model.predict(pool)).reshape(-1)
+        return np.asarray(self._model.predict(pool, thread_count=self._params.get("thread_count", -1))).reshape(-1)

@@ -2,6 +2,10 @@
 
 Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. Use the `CreditPFN` conda environment and `$VSC_DATA/CreditPFN` checkout. Local tests cannot certify the installed B200 runtime.
 
+Operational reference: [VSC documentation snapshot](<../tfm-library/repositories/VSC Documentation.txt>) at library pin `e5ce01614eebe520af303f2b5bfd212298eab2be`, especially embedded `source/leuven/slurm_specifics.rst`, `source/leuven/tier2_hardware/kuleuven_storage.rst`, `source/compute/jobs/running_jobs.rst` and `source/compute/software/installing_software/python_package_management.rst`. The snapshot covers multiple universities and retired systems; apply KU Leuven/Mindwell rules to this deployment. Site rules can change; current account/QOS limits and project quota still require live inspection.
+
+Publications using these resources must acknowledge VSC using the wording in the snapshot's `source/how_do_i_acknowledge_the_vsc_in_publications.rst`; KU Leuven also requests adding the paper to the `KUL-HPC` collection in Lirias.
+
 ## Storage and output
 
 | Tier | Location | Contents |
@@ -9,9 +13,10 @@ Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed clu
 | DATA | `$VSC_DATA/CreditPFN` | Repository, logs, small manifests/plans and workflow state |
 | Project | `/lustre1/project/stg_00211/CreditPFN` | Canonical data, weights, detailed measurements, predictions and consolidated tables |
 | Mindwell GPFS | `$VSC_SCRATCH_GPFS1/CreditPFN/inputs/<hash>` | Verified immutable working copies of processed/public tables and base weights |
+| Mindwell GPFS | `$VSC_SCRATCH_GPFS1/CreditPFN/output CreditPFN/<experiment>/training_work/<attempt>` | Frequent diagnostic writes, published to project storage at allocation/trial exit |
 | Node scratch | `$VSC_SCRATCH_NODE` | Transient monitor weights and runtime caches |
 
-Both bytes and inodes matter. The [official KU Leuven storage documentation](https://docs.vscentrum.be/leuven/tier2_hardware/kuleuven_storage.html) describes DATA's 75 GiB default and scratch policy. It does not establish the current quota or backup policy of `stg_00211`; inspect `myquota` and the allocation's limits. Intensive Mindwell reads belong on GPFS; wICE uses Lustre. The explicit GPFS path is used even when staging from a wICE CPU job. See the pinned [VSC snapshot](<../tfm-library/repositories/VSC Documentation.txt>), symbols `KU Leuven storage` and `Transferring data between Lustre and GPFS`.
+Both bytes and inodes matter. The [official KU Leuven storage documentation](https://docs.vscentrum.be/leuven/tier2_hardware/kuleuven_storage.html) describes DATA's 75 GiB default and scratch policy. It does not establish the current quota or backup policy of `stg_00211`; inspect `myquota` and the allocation's limits. Intensive Mindwell reads **and writes** belong on GPFS; wICE uses Lustre. Bulk transfers between filesystems are allowed when they occupy a small fraction of the job. The explicit GPFS path is used even when preparing Mindwell inputs from a wICE CPU job. An optional wICE GPU route selects a separately prepared `$VSC_SCRATCH_LUSTRE1/CreditPFN/ACTIVE_INPUTS.json`; it must not reuse Mindwell's cache by default. See the snapshot's `KU Leuven storage` and `Transferring data between Lustre and GPFS` sections.
 
 The user requires `output CreditPFN/`, with the experiment layer below it. The name intentionally differs from the template's generic `output/`; quote paths containing the space:
 
@@ -52,6 +57,8 @@ PROJECT/CreditPFN/
 
 Locally both tiers collapse into one `output CreditPFN/` tree. Keep `CREDITPFN_OUTPUT_ROOT` and `CREDITPFN_STAGING_ROOT` pointing to the enclosing **CreditPFN project roots**, not `output CreditPFN/`. Weights retain the template's explicit `checkpoints/` exception. This experiment layer and project-tier training diagnostics are intentional template extensions.
 
+Mindwell accumulates epoch, trajectory, parameter and resource files on GPFS. Normal completion, a saved interruption and ordinary Python errors publish complete files to project storage using temporary files and atomic replacement. Resource samples carry forward between allocations; other histories are reconstructed from recovery state. Project diagnostics therefore update at segment/trial exit, while the DATA log remains live. A publication failure fails the trial and retains the GPFS work directory named in the log; inspect it before retrying. An abrupt kill/node failure can also leave unpublished samples there. These temporary directories are not a third permanent output archive and are not removed by the two-tier campaign cleaner; recover or remove leftovers only after checking stopped jobs. GPFS scratch has a 30-day no-access purge policy, not backup protection.
+
 Fresh `cpt_*_v5` plans are independent of v4 records and weights. Both tiers create `output CreditPFN/` automatically. Relative legacy `output/...` settings resolve to the canonical name rather than creating another tree. Keep any historical copy only if wanted; a fresh run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
 
 Null, short and budget configs use `cpt_*_v5_check2`; corrected deterministic recovery uses `cpt_recovery_v5_check3`. Standalone recovery probes add a unique workflow suffix. Changed source must not overwrite existing immutable plans: use the isolated recovery launch during debugging, then the requested full cleanup before the fresh part 1. The research grids and budgets are unchanged.
@@ -60,7 +67,7 @@ Only final weights and the most recent recovery state persist. Intermediate mile
 
 Shell-owned logs keep their original `<task>_<job>_r<restart>.log` filename throughout every child process. Trial identities appear inside the log and in manifests. Do not rename an active job log: later recovery children would recreate the old path as a separate summary file.
 
-Experiment 1 writes to its own directory. Keep the final accepted experiment-0 receipts, plans, audits and numerical measurements: they establish the controls and justify the selected budget. The user requests a complete clean rerun after debugging. First pass the isolated recovery check below; then stop CreditPFN writers, inspect the cleanup preview, clear both output tiers and trained weights, and rerun part 1 followed by part 2. Keep the downloaded debugging ZIP locally if desired. **Do not clean again between the accepted fresh experiment 0 and experiment 1:** the full cleaner removes every experiment, receipt and trained-weight tree. Tiny general scheduler state should not be manually reset while jobs are active.
+Experiment 1 writes to its own directory. Keep the final accepted experiment-0 receipts, plans, audits and numerical measurements: they establish the controls and justify the selected budget. For the requested clean validation after debugging, first stop CreditPFN writers, inspect the cleanup preview, clear both output tiers and trained weights, and rerun part 1 followed by part 2. Use the isolated recovery check below only when investigating a recovery failure. Keep the downloaded debugging ZIP locally if desired. **Do not clean again between the accepted fresh experiment 0 and experiment 1:** the full cleaner removes every experiment, receipt and trained-weight tree. Tiny general scheduler state should not be manually reset while jobs are active.
 
 For read-only project-output inspection, run each separately:
 
@@ -147,6 +154,8 @@ The long pilots measure 0/250/1k/2.5k/5k/10k/20k updates. Their cosine schedule 
 
 Training plans fingerprint scientific settings, code, package versions, base bytes, credit inputs and the public monitoring panel. Incompatible completed checkpoints are rejected. Evaluation has its own fingerprints, so plot/benchmark orchestration changes need not alter training identity. Never bypass a mismatch; use a new run identity for changed training semantics.
 
+Do not pull source changes into a running campaign's checkout: jobs and callbacks read it after submission. Threading, scratch publication and launcher changes are included in the training/workflow identities too. Deploy them only with CreditPFN writers stopped, then validate the updated executable through a fresh part 1; an earlier receipt cannot certify it.
+
 Null audits compare canonical upstream-loaded tensors because TabPFN v2 may convert serialized key names and v3 may construct inference criterion borders. All inference tensors/borders must match. The accumulated diagnostic `criterion.losses_per_bucket` affects neither returned loss nor predictions and is excluded from the inference-state gate. Recovery audits report its delta separately, together with complete saved tensor-state equality, and gate on the remaining tensors plus fixed monitor trajectories with explicit tolerances. Tolerant equality does not prove bitwise CUDA determinism.
 
 If recovery fails, first inspect the existing pairs on a CPU node, substituting the identifier from the workflow folder. This creates only the normal maintenance log and never trains, changes a ledger or grants a passing receipt:
@@ -183,7 +192,13 @@ Each optimizer-boundary recovery saves weights, optimizer, scheduler, scaler, Py
 
 Measured two-member training caps remain **v2 10k, v2.6 11k, v3 26k, TabICLv2 26k**. Keep them until a new probe and actual training show enough margin; frozen weights do not imply cheap activations. Four data workers are the initial compromise. Compare 0/4/8 only if recorded data waiting or CPU pressure warrants it. GPU samples and internal training time are not billed allocation time: inspect `sacct` as well.
 
+All batch files use Leuven's login-shell header, explicit controller/partition/account, one task, and `--gpus-per-node=1` for GPU work. The default training/recovery request is **24 CPU cores, 120 GiB host RAM and one B200**. This fits the documented B200 limit of 24 cores/194,400 MiB per GPU; requested walltimes stay below its 72-hour maximum. GPU memory capacity is a separate limit. Optional A100/H100 routes need their own row-cap measurements and Lustre staging; B200 measurements do not certify an 80-GB card. See [KU Leuven Slurm specifics](https://docs.vscentrum.be/leuven/slurm_specifics.html).
+
+Every batch activation resets native numerical thread pools to that job's CPU allocation. Training then reserves one core per data worker and limits the main process to the remainder, respecting narrower CPU affinity. XGBoost and CatBoost fitting, pools and predictions also honor the allocation. This matters for two-core CPU audits as well as GPU jobs, and prevents inherited thread settings from crossing CPU/GPU workflow stages. Logs retain per-task/per-node CPU counts, host-memory settings and allocated GPU IDs (`gpus=0` means device index zero); `sacct` remains the source for actual allocated/billed resources. Host-memory requests can cause Slurm to allocate and charge additional CPU cores on wICE: reduce them only after observing peak memory.
+
 `GLOBAL_CONCURRENCY` defaults to 16 per controller for jobs submitted through the bounded launcher. `THROTTLE` defaults to four per array. This does not cap unrelated projects or combine both controllers. Shared lane reservations can leave capacity idle behind stragglers; inspect throughput before expanding them. The 450 queued-task headroom is provisional against historical limits; verify live QOS. Shorter realistic requests improve [backfill opportunities](https://slurm.schedmd.com/sched_config.html), not guaranteed priority.
+
+Scheduler queries and submissions have a 45-second response timeout. A queue-query failure stops submission. An uncertain `sbatch` result retains the pool's pending marker and blocks automatic retries, because the controller may already have accepted the job. Waiting for known quota pressure still intentionally checks once per minute; do not replace that with rapid polling.
 
 ## Experiments 1–3 and evaluation
 
@@ -232,6 +247,8 @@ At final analysis, download the contents of **both** cluster `output CreditPFN/`
 ## Cleanup and failure inspection
 
 `output CreditPFN/` is the active output directory on both tiers. `python -m src.utils.clean_run` previews those trees and trained weights. `maintenance.slurm clean --clean` deletes the whole campaign, preserving the current maintenance log and all original data/base weights; processed inputs are retained unless `--processed` is explicitly requested. Use this for the user-requested fresh validation run only after debugging passes, with writers stopped and the preview inspected. It also deletes plans, recovery state and submission state. No notebook locks exist.
+
+Deleting only the output directories is insufficient: incompatible final weights can still occupy `checkpoints/trained/<experiment>/` on project storage. Prepared plans do not remove them, and a successful CPU preflight does not certify their compatibility. Use the complete cleaner for a requested fresh campaign, and wait for its successful completion before launching part 1. `sbatch --wait` can provide that ordering; it intentionally waits through queueing and execution and returns the cleanup job's exit status. Do not automatically start training after a failed cleanup.
 
 - Identity mismatch: reconcile code, config, inputs and environment; do not disable fingerprinting.
 - Workflow failure: inspect its state/audit and the named logs; later stages were not released.

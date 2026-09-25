@@ -96,7 +96,8 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
                  "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabicl_models.py",
                  "src/utils/experiment.py", "src/utils/prepare_experiment.py", "src/utils/atomic.py",
                  "src/utils/checkpoint_inventory.py", "src/utils/paths.py", "src/utils/config.py",
-                 "src/utils/logging_setup.py", "src/utils/stage_inputs.py",
+                 "src/utils/logging_setup.py", "src/utils/stage_inputs.py", "src/utils/cpu.py",
+                 "src/utils/training_files.py",
                  "scripts/slurm/_train_job.sh", "scripts/slurm/_run_train.sh",
                  "scripts/slurm/_activate_env.sh", "scripts/slurm/_job_log.sh",
                  "scripts/slurm/train_pd.slurm", "scripts/slurm/train_lgd.slurm")

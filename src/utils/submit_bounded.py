@@ -40,7 +40,8 @@ def submit(command: list[str], *, slots: int, limit: int, cluster: str, pool_pat
     with path.with_suffix(".lock").open("a+b") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         queue = subprocess.run(["squeue", "--clusters", cluster, "--user", os.environ["USER"],
-                                "--noheader", "--format=%F"], capture_output=True, text=True, check=True)
+                                "--noheader", "--format=%F"], capture_output=True, text=True,
+                               check=True, timeout=45)
         active = set(queue.stdout.split())
         old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
         if old.get("pending_submission"):
@@ -65,7 +66,10 @@ def submit(command: list[str], *, slots: int, limit: int, cluster: str, pool_pat
         # is recorded. Never silently exceed the cap after an uncertain submission.
         pending_pool = dict(pool, pending_submission=cmd)
         write_json(path, pending_pool)
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # A stalled controller must not hold this lock (or a completion callback's
+        # GPU allocation) indefinitely. Keep the pending marker on timeout:
+        # acceptance may have occurred even when no response reached this client.
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
         if result.returncode:
             write_json(path, old)
             raise RuntimeError(result.stderr.strip() or result.stdout.strip())
@@ -91,6 +95,13 @@ def main(argv=None) -> int:
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     try:
         print(submit(command, slots=args.slots, limit=args.limit, cluster=args.cluster))
+    except subprocess.TimeoutExpired as exc:
+        import sys
+        action = Path(exc.cmd[0]).name
+        detail = ("Submission may have succeeded; inspect the queue and pool state before retrying."
+                  if action == "sbatch" else "Queue state is unknown; nothing was submitted.")
+        print(f"{action} did not respond within 45 seconds. {detail}", file=sys.stderr)
+        return 1
     except (RuntimeError, subprocess.CalledProcessError) as exc:
         import sys
         print(str(exc), file=sys.stderr)

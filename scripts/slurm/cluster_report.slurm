@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash -l
 # =============================================================================
 #  ONE report per GPU type, before committing the campaign.
 #
@@ -19,10 +19,13 @@
 #  need the sacctmgr/sam-* clients, which compute nodes do not have.
 # =============================================================================
 #SBATCH --job-name=creditpfn-report
+#SBATCH --clusters=mindwell
+#SBATCH --partition=gpu_b200
 #SBATCH --account=lp_verbekelab
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
+#SBATCH --mem=120G
 #SBATCH --gpus-per-node=1
 #SBATCH --time=02:00:00
 #SBATCH --output=/dev/null
