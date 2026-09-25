@@ -12,7 +12,24 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 final local audit before the clean experiment-0 rerun
+## Current handover — 25-09-2026 short-job signal defect confirmed; part 1 needs a corrected retry
+
+- Read the new `Downloads/output CreditPFN.zip` directly: **38 files / 695,716 uncompressed bytes**, ZIP SHA256 `53a673f4dde69edf37ac484fb1dbdda7aedd7a448e4fa29e598c27aecfae27e4`. CRC, 15 JSON files, the one CSV and all eight prepared-plan checksums pass. Plans match the deployed `20bc8a8` training identity. DATA records only; project training/results/weights are not in this download. Downloads remain unchanged.
+- Workflow **9278d539651d4342add4a6e1495e5091**, fingerprint `4f3952f7...`, reached `null`. CPU preparation **62151928** passed with zero failures/warnings. Only **4/16 null trials** completed: PD v2.6/TabICL, full and frozen, each two updates and reported zero drift. No null audit, short pilots, recovery comparisons, part-1 receipt or budget pilots were released. The ledger still says `running` because the other jobs died before their callbacks; it is not a live scheduler status.
+- User's `sacct` confirms the other **12 array tasks FAILED with ExitCode 0:10 (SIGUSR1)** after 27–30 s; both queues were empty at 15:39. Ten downloaded startup-only logs misleadingly say exit 0; two failed tasks left no included log. The launcher unconditionally requested `--signal=B:USR1@600` even with the recommended `00:10:00` null allocation. The resulting immediate warning killed jobs before the training handler was installed. Synthetic Bash tests reproduce the misleading footer; this is a launch defect, not evidence of a model or CUDA numerical failure.
+- Request warnings/requeue only for positive `SEGMENT_MINUTES`, whose walltime adds the ten-minute publication margin; install nonzero signal handlers before activation and restore them after training children. No scientific config, model, dataset or notebook changes. New training identity `97d4de5e28ae3ee4ac23b21f1ba75f3a6ce0bfdef27fd6ed8143b3a1e0d1bf8f`; workflow identity `dd97c09b06c7e0c3f270b99feddc8b10213772aaec399102096d4272f67aa5fb`. User commits/pushes/pulls after validation, confirms no writers, performs the requested clean restart, then retries **part1** with the same 10/15/10-minute requests. Do not reuse the old immutable plans or launch part2 yet.
+- Preliminary part-2 planning estimate: historical 250-update pilots took **83–207 s**. Multiplying by 80 for 20k gives **1.8–4.6 GPU-hours per trial**, roughly **15–40 GPU-hours for eight**, before additional segment/queue overhead. This is a coarse extrapolation across prior recipes, including fixed startup/monitor time, not a measured long-run ETA. Fresh full-update short pilots should refine it. Default segments request 2 h 10 min; completed work resumes without resetting the 20k schedule.
+- Validation: **627 tests passed, 1 skipped** (optional local manifests absent), in **479.07 s**. The old code failed ten focused cases; repaired tests cover short/segmented submission arguments, startup signals, restored handlers and warning forwarding that preserves recovery exit 75. All **17 shell/Slurm files** and proposed retry commands parse; LF endings are intact. Notebooks/visualization were untouched. No VSC submissions, cleanup, installs, pushes or local output generation by the agent.
+
+**Tried:** Shorten null allocations to ten minutes while retaining the launcher's unconditional ten-minute warning.
+
+**Result:** Twelve of sixteen controls terminated with SIGUSR1 before training; old log footers incorrectly displayed exit 0 and callbacks never ran.
+
+**Why:** The warning lead time equaled the allocation; the shell had no startup signal handler. Earlier syntax checks and longer allocations did not exercise this interaction.
+
+**Instead:** Emit the warning only for resumable segments with an added margin; test real submission arguments, startup signals, handler restoration and forwarding to the training child. Confirm success through audits and scheduler accounting.
+
+## Previous handover — 25-09-2026 final local audit before the clean experiment-0 rerun
 
 - Reviewed splitting, preprocessing, sampling/gradients, frozen modules, update budgets/recovery, monitoring, five-fold scoring, tuning/calibration, output publication, analysis and VSC launch/cleanup boundaries. Confirmed primary literature at unchanged library pin `e5ce01614eebe520af303f2b5bfd212298eab2be`. The descriptive design remains **512 main + 32 seed + 96 sampling trials**, with 5k still provisional pending the eight 20k reference pilots. Equal updates do not equal exposure/compute; IID/transductive schema preparation, source dependence, a small retention panel and non-independent folds remain explicit limits.
 - Fixed reproduced defects: query-batch-dependent TabICL zero-filling; evaluation completion published before required predictions; ambiguous class-column padding; sentinel/delimiter collisions in feature deduplication; missing experiment layer in checkpoint relocation. Linear controls now use context-fitted one-hot categories, with a category-renumbering regression test. Requested HPO no longer silently falls back when Optuna is absent; result rows retain selected settings and actual trial counts, and CPU preflight checks declared baseline dependencies. Removed unused private AMP/CSV helpers and the mechanistic interpretation/fitted trend from gain-versus-base plots.
@@ -206,6 +223,15 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | Null LGD v3 array · Mindwell 11618184 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s; ten-minute warning on ten-minute allocation. |
+| 25-09-2026 | Null LGD v2 array · Mindwell 11618183 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s. |
+| 25-09-2026 | Null LGD v2.6 array · Mindwell 11618182 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s. |
+| 25-09-2026 | Null LGD TabICL array · Mindwell 11618181 | **failed before training** | Both tasks 0:10/SIGUSR1 after 27 s. |
+| 25-09-2026 | Null PD v3 array · Mindwell 11618178 | **failed before training** | Both tasks 0:10/SIGUSR1 after 30 s. |
+| 25-09-2026 | Null PD v2 array · Mindwell 11618176 | **failed before training** | Both tasks 0:10/SIGUSR1 after 30 s. |
+| 25-09-2026 | Null PD v2.6 array · Mindwell 11618173 | **completed; unaudited** | Two updates in each adaptation mode; reported drift 0; 67–68 s, exit 0. |
+| 25-09-2026 | Null PD TabICL array · Mindwell 11618172 | **completed; unaudited** | Two updates in each adaptation mode; reported drift 0; 67–71 s, exit 0. |
+| 25-09-2026 | Fresh part-1 preparation · wICE 62151928 | **done** | Workflow 9278d539; preflight 0 failures/warnings; 42 s in log, exit 0; released 16 null tasks. |
 | 25-09-2026 | Isolated recovery final audit · wICE 62149461 | **passed** | Workflow 22af7599; 8/8 pairs, diagnostic recovery receipt only; 20 s, exit 0. |
 | 25-09-2026 | Deterministic recovery LGD TabICL · Mindwell 11617313 | **passed** | Exact state/0-5-12 monitors; five-fold smoke, 442 predictions; 83 s, exit 0. |
 | 25-09-2026 | Deterministic recovery LGD v3 · Mindwell 11617323 | **passed** | Exact model/monitors; detached criterion diagnostic differs; five-fold smoke, 442 predictions; 87 s, exit 0. |

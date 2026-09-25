@@ -52,6 +52,12 @@ export CREDITPFN_REQUIRE_STAGING="${CREDITPFN_REQUIRE_STAGING:-1}"
 SEGMENT_MINUTES="${SEGMENT_MINUTES:-0}"
 export CREDITPFN_SEGMENT_SECONDS=$(( SEGMENT_MINUTES * 60 ))
 export CREDITPFN_AUTO_REQUEUE="${CREDITPFN_AUTO_REQUEUE:-0}"
+# The warning reserves the ten-minute margin added by walltime_for. A fixed
+# ten-minute warning on a ten-minute control fires during environment setup.
+RECOVERY_ARGS=()
+if (( SEGMENT_MINUTES > 0 )); then
+    RECOVERY_ARGS=(--signal=B:USR1@600 --requeue)
+fi
 (( TRIALS_PER_TASK > 0 && GLOBAL_CONCURRENCY > 0 && THROTTLE > 0 && EVAL_CONCURRENCY > 0 )) || exit 1
 (( THROTTLE <= GLOBAL_CONCURRENCY && EVAL_CONCURRENCY <= GLOBAL_CONCURRENCY )) || {
     echo 'Array concurrency exceeds GLOBAL_CONCURRENCY' >&2; exit 1;
@@ -189,7 +195,7 @@ if [[ " $STAGES " == *' train '* ]]; then
             wait_for_room "$cluster" "$n"
             CMD=(sbatch --parsable --clusters="$cluster" --partition="$partition" --account="$ACCOUNT"
                  --array="${BUCKET[$key]}%${limit}" --time="$wt" --cpus-per-task="$cpus"
-                 --signal=B:USR1@600 --requeue
+                 "${RECOVERY_ARGS[@]}"
                  --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",CREDITPFN_TRIALS_PER_TASK="$TRIALS_PER_TASK"
                  "scripts/slurm/train_${TRACK}.slurm")
             out="$(submit_array "$cluster" "$limit" "${CMD[@]}")"

@@ -13,6 +13,8 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Reserve Slurm's ten-minute warning for resumable segments; log startup signals as failures and restore handlers after training children.
+
 - Fix TabICL's batch-dependent missing-value handling and reject ambiguous classification probability columns.
 - Publish predictions atomically before completion receipts; reject incomplete cached/missing/truncated prediction artifacts.
 - One-hot encode linear-model categories within each training fold; record fitted parameters and actual HPO trials, and fail requested tuning without Optuna.

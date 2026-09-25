@@ -15,6 +15,12 @@ start_job_log() {
     export CREDITPFN_ACTIVE_LOG="$LOG"
     exec >> "$LOG" 2>&1
     trap 'rc=$?; echo "END exit_code=${rc} - $(date)"' EXIT
+    # Install before setup. Without explicit handlers, Bash's EXIT trap can
+    # print the preceding command's zero status after an unhandled signal.
+    # Training temporarily replaces USR1/TERM with checkpoint forwarding.
+    trap 'echo "SIGNAL USR1 outside training - $(date)"; exit 138' USR1
+    trap 'echo "SIGNAL TERM outside training - $(date)"; exit 143' TERM
+    trap 'echo "SIGNAL INT - $(date)"; exit 130' INT
     echo "START task=${task} job=${SLURM_JOB_ID} restart=${SLURM_RESTART_COUNT:-0} - $(date)"
     echo "cluster=${SLURM_CLUSTER_NAME:-?} partition=${SLURM_JOB_PARTITION:-?} node=${SLURMD_NODENAME:-?}"
     echo "log=${LOG}"

@@ -216,6 +216,125 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     assert "UNEXPECTED_COMPUTE" not in log
 
 
+@pytest.mark.parametrize("walltime,segment", [("00:03:00", 0), ("00:10:00", 0),
+                                             ("00:15:00", 0), ("02:00:00", 0),
+                                             ("00:10:00", 120)])
+def test_walltime_warning_is_reserved_for_segmented_training(tmp_path, walltime, segment):
+    """Exercise actual command construction without Slurm, models or a prepared plan."""
+    bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /
+                                       "Programs/Git/bin/bash.exe")
+    if not Path(bash).is_file():
+        pytest.skip("Bash required")
+    config = tmp_path / "phase config.yaml"
+    config.write_text("track: pd\n", encoding="utf-8")
+    launcher = Path("scripts/slurm/run_experiment.sh").resolve()
+    script = '''python() {
+    cat >/dev/null
+    printf '%s\\n' pd cpt_null_synthetic 1 2 4 False 'base.ckpt one_sample'
+}
+export -f python
+bash "$1" "$2"
+'''
+    result = subprocess.run([bash, "--noprofile", "--norc", "-c", script, "test",
+                             launcher.as_posix(), config.as_posix()],
+        env=dict(os.environ, DRY="1", WALLTIME=walltime, SEGMENT_MINUTES=str(segment),
+                 STAGES="train", TRIALS_PER_TASK="1", SPLITS="1", SPLIT_START="0",
+                 GLOBAL_CONCURRENCY="16", THROTTLE="4", EVAL_CONCURRENCY="4"),
+        capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    command = next(line for line in result.stdout.splitlines() if line.startswith("DRY:"))
+    if segment:
+        assert "--signal=B:USR1@600" in command and "--requeue" in command
+        assert "--time=2:10:00" in command
+    else:
+        assert "--signal=" not in command
+        assert f"--time={walltime}" in command
+
+
+@pytest.mark.parametrize("signal,code", [("USR1", 138), ("TERM", 143), ("INT", 130)])
+def test_signal_during_environment_setup_is_logged_as_failure(tmp_path, signal, code):
+    bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /
+                                       "Programs/Git/bin/bash.exe")
+    if not Path(bash).is_file():
+        pytest.skip("Bash required")
+    repo = Path(__file__).resolve().parents[1]
+    node = tmp_path / "node"
+    scripts = node / "CreditPFN/scripts/slurm"
+    scripts.mkdir(parents=True)
+    for name in ("train_pd.slurm", "_train_job.sh", "_job_log.sh"):
+        shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    (scripts / "_activate_env.sh").write_text(
+        'echo "setup started"\nkill -s "$TEST_SIGNAL" "$$"\necho UNEXPECTED_CONTINUATION\n',
+        encoding="utf-8")
+    result = subprocess.run([bash, (scripts / "train_pd.slurm").as_posix()],
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+                 CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
+                 CREDITPFN_EXPERIMENT="experiment0", CREDITPFN_CONFIG="", TEST_SIGNAL=signal),
+        capture_output=True, text=True, timeout=20)
+    log = (node / "CreditPFN/output CreditPFN/experiment0/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
+    assert result.returncode == code, result.stderr
+    assert f"SIGNAL {signal}" in log and f"END exit_code={code}" in log
+    assert "UNEXPECTED_CONTINUATION" not in log
+
+
+@pytest.mark.parametrize("child_code", [0, 75, 19])
+def test_training_child_restores_outer_signal_handlers(tmp_path, child_code):
+    bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /
+                                       "Programs/Git/bin/bash.exe")
+    if not Path(bash).is_file():
+        pytest.skip("Bash required")
+    runner = Path("scripts/slurm/_run_train.sh").resolve()
+    script = '''set -euo pipefail
+trap 'exit 138' USR1
+trap 'exit 143' TERM
+before=$(trap -p USR1 TERM)
+source "$1"
+python() { return "$CHILD_CODE"; }
+if run_training_python unused; then rc=0; else rc=$?; fi
+[[ "$rc" == "$CHILD_CODE" ]]
+[[ "$(trap -p USR1 TERM)" == "$before" ]]
+'''
+    result = subprocess.run([bash, "--noprofile", "--norc", "-c", script, "test", runner.as_posix()],
+        env=dict(os.environ, CHILD_CODE=str(child_code)), capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+
+
+def test_training_warning_reaches_child_and_preserves_recovery_exit(tmp_path):
+    bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /
+                                       "Programs/Git/bin/bash.exe")
+    if not Path(bash).is_file():
+        pytest.skip("Bash required")
+    runner = Path("scripts/slurm/_run_train.sh").resolve()
+    script = '''set -euo pipefail
+source "$1"
+python() {
+    trap 'echo checkpoint_requested; exit 75' USR1
+    touch "$READY"
+    for ((i=0; i<100; i++)); do sleep 0.02; done
+    exit 42
+}
+sent=0
+wait() {
+    for ((i=0; i<100 && ! sent; i++)); do
+        if [[ -f "$READY" ]]; then
+            sent=1
+            kill -USR1 "$$"
+        else sleep 0.02; fi
+    done
+    builtin wait "$@"
+}
+if run_training_python unused; then rc=0; else rc=$?; fi
+echo "child_exit=$rc"
+[[ "$rc" == 75 ]]
+[[ -z "$(trap -p USR1 TERM)" ]]
+'''
+    result = subprocess.run([bash, "--noprofile", "--norc", "-c", script, "test", runner.as_posix()],
+        env=dict(os.environ, READY=(tmp_path / "child-ready").as_posix()),
+        capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "checkpoint_requested" in result.stdout and "child_exit=75" in result.stdout
+
+
 @pytest.mark.parametrize("track", ["pd", "lgd"])
 def test_eval_wrapper_forwards_phase_partition_and_packing(tmp_path, track):
     bash = shutil.which("bash") or str(Path(os.environ.get("LOCALAPPDATA", "")) /

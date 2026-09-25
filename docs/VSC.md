@@ -139,6 +139,8 @@ bash scripts/slurm/run_experiment0.sh part2
 
 Part 2 checks the current part-1 receipt and unchanged prepared input/environment identities. Its 20k-update runs use two-hour work segments plus ten minutes for monitoring/checkpoint publication. They automatically requeue up to the configured limit (default 20); reaching that limit leaves a resumable checkpoint for inspection, not a claimed completion. `BUDGET_SEGMENT_MINUTES` may change segment length after reviewing pilot costs. `NULL_WALLTIME` and `PILOT_WALLTIME` override the initial part-1 allocations.
 
+Only segmented training requests `--signal=B:USR1@600`; its allocation includes the extra ten-minute margin. Ordinary null/short jobs do not request this warning. Combining a ten-minute allocation with a ten-minute warning sends it during startup, before checkpoint handling exists. Setup signals now log their name and exit nonzero; child training temporarily forwards warnings to Python, then restores the outer handlers. An `END exit_code=0` from the old logger is insufficient evidence of success: require trial records/audits and check Slurm's `State` and `ExitCode` (the suffix is the terminating signal). See [Slurm's signal semantics](https://slurm.schedmd.com/sbatch.html#OPT_signal).
+
 The long pilots measure 0/250/1k/2.5k/5k/10k/20k updates. Their cosine schedule spans 20k: a point at 5k is not a 5k-schedule experiment. Inspect curves and cost, then choose and freeze the research horizon. 5k remains provisional.
 
 ## Identity, recovery and resource choices
