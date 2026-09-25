@@ -18,6 +18,8 @@ corpus:
   train_dataset_ids: null
   test_dataset_ids: null
 train:
+  deterministic: true
+  max_rows_per_step: 2048
   retention_panel: smoke
   context_sampling: balanced
   target_total_steps: 12
@@ -33,7 +35,7 @@ train:
   dataloader_workers: 4
   prefetch_factor: 2
   step_log_interval: 100
-run_name: cpt_recovery_v5_check2
+run_name: cpt_recovery_v5_check3
 tunable:
   learning_rates: [1.0e-6]
   l2sp_lambdas: [0.0]

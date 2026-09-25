@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import random
+import os
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -13,6 +14,29 @@ from src.train.checkpoint_io import atomic_save
 
 class TrainingInterrupted(RuntimeError):
     """The trial can continue from a verified recovery checkpoint (CLI exit 75)."""
+
+
+def configure_execution(deterministic: bool) -> dict:
+    """Set the trial's numerical policy before the first CUDA operation.
+
+    Strict recovery comparisons must isolate serialization from nondeterministic
+    kernels. Normal pilots/grid runs retain fast kernels and do not promise bitwise
+    equality. Unsupported strict operations fail instead of silently falling back.
+    """
+    if deterministic:
+        workspace = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
+        if workspace not in {":16:8", ":4096:8"}:
+            if torch.cuda.is_initialized():
+                raise RuntimeError("Set CUBLAS_WORKSPACE_CONFIG=:4096:8 before initializing CUDA for deterministic recovery")
+            os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    torch.use_deterministic_algorithms(deterministic, warn_only=False)
+    torch.backends.cudnn.deterministic = deterministic
+    torch.backends.cudnn.benchmark = False
+    return {"deterministic_algorithms": bool(deterministic),
+            "cublas_workspace_config": os.environ.get("CUBLAS_WORKSPACE_CONFIG", ""),
+            "cudnn_benchmark": bool(torch.backends.cudnn.benchmark),
+            "matmul_allow_tf32": bool(torch.backends.cuda.matmul.allow_tf32),
+            "cudnn_allow_tf32": bool(torch.backends.cudnn.allow_tf32)}
 
 
 def capture_rng() -> dict:

@@ -4,7 +4,8 @@ Dataset-level partitions, sampling modes, objectives and adaptation are configur
 per trial. AdamW follows a fixed successful-update budget (or an explicit epoch
 budget), with trajectory monitoring that preserves training RNG state. Final
 weights and provenance are published atomically; interrupted trials save optimizer,
-scheduler, RNG and sampling state for exact recovery. The campaign disables
+scheduler, RNG and sampling state for recovery; bitwise numerical equivalence
+also requires deterministic kernels. The campaign disables
 metric-based early stopping; numerical failures remain explicit outcomes.
 
 Grid construction lives in src.train.config and orchestration in scripts/train_pipeline.py.
@@ -16,6 +17,7 @@ import logging
 import math
 import os
 import platform
+import random
 import re
 import socket
 import time
@@ -790,6 +792,7 @@ def _resolve_amp_dtype(cfg, device: str) -> tuple[bool, torch.dtype | None]:
 
 
 def _seed_everything(seed: int) -> None:
+    random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -1739,8 +1742,11 @@ def train_one_config(
     # (corpus split, optimizer factory) read them via the usual path.
     cfg.optimizer.lr = float(learning_rate)
 
+    from src.train.recovery import configure_execution
+    execution = configure_execution(bool(getattr(cfg.train, "deterministic", False)))
     _seed_everything(int(cfg.seed))
     device = _resolve_device(cfg)
+    LOGGER.info("Numerical execution: %s", execution)
     LOGGER.info(
         "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | qf=%.2f | seed=%d",
         track, device, Path(base_checkpoint_config).name, learning_rate,
@@ -1924,8 +1930,8 @@ def train_one_config(
     _data_cfg = OmegaConf.load("config/data.yaml")
     max_rows_per_epoch = _resolve_max_rows_per_epoch(
         base_checkpoint_config, _data_cfg.finetuning.max_rows_per_epoch,
-        # A frozen backbone retains no activations for the transformer stack, so its ceiling
-        # is much higher. `use_lora` is the frozen-backbone axis.
+        # Use a separately measured frozen cap only when explicitly configured.
+        # Frozen weights can still need activations for trainable upstream modules.
         frozen_backbone=bool(use_lora),
     )
     # Optional per-architecture cell budget (rows × features). Off (null)
@@ -1954,7 +1960,7 @@ def train_one_config(
     if query_fraction is None:
         query_fraction = float(_data_cfg.finetuning.query_fraction)
 
-    from src.train.config import training_members
+    from src.train.config import training_members, limit_training_rows
     n_estimators_finetune = training_members(cfg, track, family)
 
     # ---- member-aware row-cap scaling (GPU-memory safety) ---------------- #
@@ -1982,6 +1988,8 @@ def train_one_config(
                 max_rows_per_epoch, _scaled, n_estimators_finetune,
             )
             max_rows_per_epoch = _scaled
+
+    max_rows_per_epoch = limit_training_rows(cfg, max_rows_per_epoch)
 
     # Resolve the per-epoch step plan. None → head of the sweep list
     # (default "one_sample" = one step per dataset per epoch).
@@ -3158,6 +3166,7 @@ def train_one_config(
             "accumulate_grad_batches": int(accumulate),
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
+            "execution":           execution,
             "amp_dtype":           (
                 str(amp_dtype).removeprefix("torch.")
                 if use_amp and amp_dtype is not None else "disabled"
@@ -3169,7 +3178,7 @@ def train_one_config(
             # checkpoint that does not record it is not reproducible.
             "context_sampling": context_sampling,
             # Per-step ensemble members actually used. Varies by track AND
-            # family (TabPFN pd=2 / lgd=8; TabICLv2 2 for both), and it drives
+            # family (currently two for both tracks/families), and it drives
             # both the gradient noise and the member-aware row scaling — so
             # a checkpoint that doesn't record it can't be reproduced from
             # its own provenance. (Added 2026-08-04.)

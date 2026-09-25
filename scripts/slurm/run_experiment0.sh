@@ -3,7 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 PART="${1:-part1}"
-[[ "$PART" == part1 || "$PART" == part2 ]] || { echo 'Choose part1 or part2' >&2; exit 2; }
+[[ "$PART" == part1 || "$PART" == part2 || "$PART" == recovery ]] || { echo 'Choose part1, part2 or recovery' >&2; exit 2; }
+# The workflow chooses its own task configs; an inherited one can reroute job logs.
+unset CREDITPFN_CONFIG
 export CREDITPFN_EXPERIMENT=experiment0
 export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA:?}/CreditPFN}"
 export CREDITPFN_STAGING_ROOT="${CREDITPFN_STAGING_ROOT:-/lustre1/project/stg_00211/CreditPFN}"

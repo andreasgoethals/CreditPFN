@@ -56,6 +56,8 @@ lora:                                     # OFF: frozen_backbone is a true freez
   target_modules: ["q_projection", "k_projection", "v_projection", "out_projection"]
 
 train:
+  deterministic: false                  # strict kernels only for the recovery control
+  max_rows_per_step: null                # optional lower debug cap; never raises measured caps
   retention_panel: research
   parameter_diagnostics: true
   resource_diagnostics: true

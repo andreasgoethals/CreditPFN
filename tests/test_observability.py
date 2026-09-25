@@ -1,5 +1,6 @@
 """Data separation, held-out scoring, output routing and release-gate contracts."""
 import json
+from contextlib import contextmanager
 from pathlib import Path
 
 import numpy as np
@@ -148,6 +149,60 @@ def test_workflow_never_releases_on_partial_submission_or_failure(tmp_path, monk
     flow._advance(path, state)
     flow._advance(path, state)
     assert len(submitted) == 1 and state["status"] == "auditing"
+
+
+def test_recovery_only_workflow_prepares_no_null_or_pilot_trials(tmp_path, monkeypatch):
+    from src.utils import experiment0 as flow, prepare_experiment, stage_inputs, preflight
+    folder = tmp_path / "ab12cd34"
+    folder.mkdir()
+    state = {"part": "recovery"}
+
+    @contextmanager
+    def locked(identifier):
+        assert identifier == folder.name
+        yield folder / "state.json", state
+
+    monkeypatch.setattr(flow, "locked", locked)
+    monkeypatch.setattr(flow, "root", lambda: tmp_path)
+    prepared, launched = [], []
+    monkeypatch.setattr(prepare_experiment, "prepare", lambda p, **kw: prepared.append((p, kw)))
+    monkeypatch.setattr(preflight, "main", lambda argv: 0)
+    monkeypatch.setattr(stage_inputs, "stage", lambda *a, **kw: None)
+    monkeypatch.setenv("VSC_SCRATCH_GPFS1", str(tmp_path / "scratch"))
+    monkeypatch.setattr(flow, "launch", lambda *a: launched.append(a))
+    flow.prepare(folder.name)
+    assert launched == [(folder.name, "recovery")]
+    assert len(prepared) == 4 and all(kw == {"write": True} for p, kw in prepared)
+    configs = [OmegaConf.load(p) for p, _ in prepared]
+    assert all("_probe_ab12cd34_" in cfg.run_name and cfg.train.deterministic for cfg in configs)
+    assert {cfg.track for cfg in configs} == {"pd", "lgd"}
+
+
+def test_recovery_only_receipt_cannot_release_budget_pilots(tmp_path, monkeypatch):
+    from src.utils import experiment0 as flow
+    folder = tmp_path / "testflow"
+    folder.mkdir()
+    state = {"id": folder.name, "part": "recovery", "phase": "recovery", "status": "auditing",
+             "fingerprint": "source"}
+
+    @contextmanager
+    def locked(identifier):
+        yield folder / "state.json", state
+
+    monkeypatch.setattr(flow, "locked", locked)
+    monkeypatch.setattr(flow, "root", lambda: tmp_path)
+    monkeypatch.setattr(flow, "fingerprint", lambda: "source")
+    monkeypatch.setenv("VSC_DATA", str(tmp_path))
+    monkeypatch.setattr(flow, "launch", lambda *a: pytest.fail("A diagnostic must stop here"))
+    monkeypatch.setattr(flow, "_submit", lambda *a: pytest.fail("No later GPU stage may start"))
+    for track in ("pd", "lgd"):
+        for trial in range(4):
+            (folder / f"recovery_{track}_{trial}.json").write_text(json.dumps({"passed": True}))
+    flow.audit(folder.name, "recovery")
+    assert state["status"] == "passed" and (tmp_path / "recovery_passed.json").is_file()
+    assert not (tmp_path / "part1_passed.json").exists()
+    with pytest.raises(RuntimeError, match="passing part-1 receipt"):
+        flow.start("part2")
 
 
 def test_recovery_check_detects_changed_weights(tmp_path):
@@ -386,6 +441,11 @@ def test_gpu_canary_also_gates_five_fold_benchmark_outputs(tmp_path, monkeypatch
     monkeypatch.setattr(models, "TabPFNTrained", Model)
     monkeypatch.setattr(retention, "processed_dataset", lambda *args: ds)
     monkeypatch.setattr(recovery_check, "results_dir", lambda *parts, **kw: tmp_path.joinpath(*parts))
-    report = recovery_check.benchmark_smoke(Path("tabpfn-v3.ckpt"), track, 2)
+    report = recovery_check.benchmark_smoke(Path("tabpfn-v3.ckpt"), track, 2, workflow="first")
     assert report["passed"] and report["predictions"] == 60
-    assert (tmp_path / track.upper() / "recovery_smoke/base_2.csv").is_file()
+    first = tmp_path / track.upper() / "recovery_smoke/first/base_2.csv"
+    assert first.is_file()
+    before = first.read_bytes()
+    recovery_check.benchmark_smoke(Path("tabpfn-v3.ckpt"), track, 2, workflow="second")
+    assert (first.parent.parent / "second/base_2.csv").is_file()
+    assert first.read_bytes() == before

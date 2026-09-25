@@ -256,8 +256,9 @@ def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None)
         pass
     opt = getattr(cfg, "optimizer", None)
     sched = getattr(cfg, "scheduler", None)
+    from src.train.config import limit_training_rows
     return {
-        "max_rows_per_epoch": int(caps.get(tag, caps.get("default", 0)) or 0),
+        "max_rows_per_epoch": limit_training_rows(cfg, int(caps.get(tag, caps.get("default", 0)) or 0)),
         # The SWEPT per-trial value (what training actually used); falls back to the config
         # default only when λ is not an axis. Reading `opt` unconditionally here is what made
         # every row read 0.003 while the grid believed it swept {0, 0.003} (fixed 22-09-2026).
@@ -542,6 +543,9 @@ def run(
         plan_label = "cartesian grid"
         csv_append = False
 
+    # Workspace settings must precede the device probe's CUDA initialization.
+    from src.train.recovery import configure_execution
+    configure_execution(bool(getattr(cfg.train, "deterministic", False)))
     _refuse_unusable_gpu()
     LOGGER.info(
         "Training plan: %d run(s) on track=%s (%s; full grid has %d)",

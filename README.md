@@ -54,6 +54,8 @@ Reusable Python logic belongs in `src/`; it does not import experiment entry poi
 
 From an active CreditPFN environment on a VSC login node, `bash scripts/slurm/run_experiment0.sh part1` prepares inputs and runs the first three controls with automatic audit gates. Run `part2` separately for the long budget pilots. The launcher never starts experiment 1 automatically; see [the runbook](docs/VSC.md).
 
+For targeted debugging, `bash scripts/slurm/run_experiment0.sh recovery` runs only the eight deterministic recovery pairs in a separate workflow. It cannot replace the complete part-1 validation or authorize budget pilots. Recovery uses smaller batches; the ordinary pilots check production sizes and performance.
+
 During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
 
 ## Local inspection and validation

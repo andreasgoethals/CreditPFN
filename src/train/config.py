@@ -41,6 +41,16 @@ def training_members(cfg, track: str, family: str) -> int:
     return max(1, int(value))
 
 
+def limit_training_rows(cfg, measured_cap: int) -> int:
+    """Allow small debugging batches without raising a measured capacity limit."""
+    limit = getattr(getattr(cfg, "train", None), "max_rows_per_step", None)
+    if limit is None:
+        return int(measured_cap)
+    if isinstance(limit, bool) or not isinstance(limit, int) or limit < 4:
+        raise ValueError("train.max_rows_per_step must be null or an integer >= 4")
+    return min(int(measured_cap), limit)
+
+
 def _axis(value, convert, name: str) -> list:
     values = list(value) if isinstance(value, (list, tuple, ListConfig)) else [value]
     if not values:

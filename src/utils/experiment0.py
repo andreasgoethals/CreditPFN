@@ -19,6 +19,7 @@ from src.utils.experiment import code_identity, digest_json, file_digest
 from src.utils.paths import REPO_ROOT, manifests_dir
 
 COUNTS = {"null": 8, "pilot": 16, "recovery": 4, "budget": 4}  # per track
+PARTS = ("part1", "part2", "recovery")
 
 
 def root() -> Path:
@@ -66,6 +67,8 @@ def _cpu(identifier: str, action: str, phase: str = "") -> str:
 
 
 def start(part: str) -> str:
+    if part not in PARTS:
+        raise ValueError(f"Unknown experiment-0 part: {part}")
     if not os.environ.get("VSC_DATA"):
         raise RuntimeError("Submit experiment 0 from a VSC login node")
     identity = fingerprint()
@@ -96,11 +99,11 @@ def prepare(identifier: str):
     from src.utils.preflight import main as preflight
     with locked(identifier) as (_, state):
         part = state["part"]
-    phases = ("null", "pilot") if part == "part1" else ("budget",)
+    phases = {"part1": ("null", "pilot"), "part2": ("budget",), "recovery": ()}[part]
     configs = [Path(f"config/experiment0/{p}_{t}.yaml") for p in phases for t in ("pd", "lgd")]
-    if part == "part1":
+    if part in ("part1", "recovery"):
         from src.utils.recovery_check import make_configs
-        configs.extend(make_configs(root() / identifier))
+        configs.extend(make_configs(root() / identifier, diagnostic=part == "recovery"))
     else:
         for phase in ("null", "pilot"):
             for track in ("pd", "lgd"):
@@ -110,7 +113,7 @@ def prepare(identifier: str):
     for config in configs:
         prepare_plan(config, write=True)
     stage(Path(os.environ["VSC_SCRATCH_GPFS1"]) / "CreditPFN", write=True)
-    launch(identifier, phases[0])
+    launch(identifier, "recovery" if part == "recovery" else phases[0])
 
 
 def launch(identifier: str, phase: str):
@@ -124,7 +127,7 @@ def launch(identifier: str, phase: str):
     if phase == "recovery":
         from src.utils.submit_bounded import submit
         cmd = ["sbatch", "--parsable", "--clusters=mindwell", "--partition=gpu_b200",
-               "--array=0-7%4", "--time=01:00:00",
+               "--array=0-7%4", f"--time={os.environ.get('RECOVERY_WALLTIME', '00:30:00')}",
                f"--export=ALL,CREDITPFN_FLOW_ID={identifier},CREDITPFN_EXPERIMENT=experiment0,CREDITPFN_USE_SCRATCH=1",
                "scripts/slurm/recovery.slurm"]
         response = submit(cmd, slots=int(os.environ.get("GLOBAL_CONCURRENCY", "16")), limit=4, cluster="mindwell")
@@ -206,7 +209,7 @@ def audit(identifier: str, phase: str):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("start", "prepare", "complete", "audit"))
-    parser.add_argument("--part", choices=("part1", "part2"), default="part1")
+    parser.add_argument("--part", choices=PARTS, default="part1")
     parser.add_argument("--id")
     parser.add_argument("--phase", choices=tuple(COUNTS))
     parser.add_argument("--track", choices=("pd", "lgd"))

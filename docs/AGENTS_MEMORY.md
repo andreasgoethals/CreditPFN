@@ -12,7 +12,16 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 CPU inspection complete; isolate GPU repeatability
+## Current handover — 25-09-2026 GPU variation reproduced; deterministic recovery validation next
+
+- User committed the preceding diagnostic as **d7dff7c**. Read `Downloads/output CreditPFN.zip` directly, without extracting: **240 files / 4,694,936 uncompressed bytes**, ZIP CRC validation passed. New diagnostic: **Mindwell 11615820**, 09:24:45–09:24:55, correct CreditPFN environment, B200/Torch 2.12.0+cu130, exit 0. The preceding extracted directory is absent; no byte-for-byte comparison against it is claimed. No Downloads files were changed or imported.
+- Confirmed PD v2 GPU arithmetic variation: identical state/RNG/batch produced **110/129 different gradient tensors**, maximum absolute delta **0.000244140625**, in both default-kernel comparisons. Both deterministic profiles had **zero** loss/gradient differences across the three repeats. This identifies one real source of non-repeatability; it does not prove the cause of every previous pair mismatch or establish correct resumption. The small first-call timings are not throughput benchmarks. Previous full-workflow recovery is still failed; 16 null/32 short pilots and eight benchmark smoke checks remain historical passed evidence.
+- Recovery configs now request strict deterministic kernels and a **2,048-row cap**, with `cpt_recovery_v5_check3` identities. Configure the CUDA workspace before device initialization; unsupported deterministic operations fail. Seed Python's RNG alongside NumPy/Torch, and log/store numerical execution settings. Normal pilots and research grids retain fast kernels and measured production caps; the lower cap cannot raise capacity. Scientific fingerprints cover both new settings. Model/trajectory tolerances are unchanged.
+- Added **`bash scripts/slurm/run_experiment0.sh recovery`**: CPU preparation of uniquely named probe arms, eight GPU pairs (four concurrent, 30-minute requests), and a diagnostic-only `recovery_passed.json`. Benchmark files now live under their workflow ID to prevent retry collisions. It never reuses the failed ledger or releases part 2. User must commit/push and pull before submitting. Training source identity is **9df9c258be3cdb6979aad5f45bbd132b3d3e179884c72e7aba39f79e2c183a26**; prior plans are historical and must not be relabeled or bypassed.
+- **User's new cleanup preference supersedes the earlier retention recommendation:** after debugging passes, clear the old output and trained weights on both tiers, then rerun **all of experiment 0**, part 1 followed by the eight long part-2 pilots. Stop CreditPFN writers and inspect the cleanup preview first; preserve original data/base weights and reusable processed/retention inputs. Keep the completed clean experiment-0 evidence when advancing to experiment 1. No cleanup has been performed or newly authorized to execute before the recovery result.
+- Validation: full retry **567 passed, 1 skipped** (optional local manifests absent), **72 focused tests passed**, and **38 observability tests passed** after benchmark-output scoping. Recovery integration cases cover all three sampling modes, terminal divergence, Python/Torch randomness, state restoration, actual lowered row caps and saved execution provenance. Workflow tests verify isolated preparation and that its receipt cannot release budget pilots. A mocked Bash launch confirms inherited experiment-1 config is cleared and both commands keep experiment-0 routing; no job was submitted. Shell/CLI/diff checks pass. ZIP stays 714,860 bytes; no local output tree or notebook changes. No installs, real-model training or VSC submissions by the agent. Library pin unchanged: **e5ce01614eebe520af303f2b5bfd212298eab2be**.
+
+## Previous handover — 25-09-2026 CPU inspection complete; isolate GPU repeatability
 
 - User committed the preceding changes as **ccaa866**. Read the new `Downloads/output CreditPFN/` in place: **239 files / 4,691,286 bytes**; only one additional maintenance log. Job **62143430** ran on wICE in the correct environment, 08:54:19–08:54:37, **exit 0**. Inspection completed; it did not change workflow **720955dab94c457fa23e23d8eba06c50**, which remains failed at recovery. The **16 null + 32 short pilots** and eight packaged five-fold smoke checks remain passed; no long pilots or experiment 1 were launched by that workflow.
 - All eight selected checkpoint identity/diagnostic audits passed, with no missing or extra tensor keys. Maximum learned-state differences: PD **6.79e-6 / 7.58e-6 / 9.00e-6 / 8.33e-6** and LGD **5.71e-6 / 5.24e-6 / 6.21e-6 / 7.27e-6**, for v2/v2.6/v3/TabICL. The three much larger LGD deltas (**0.0167 / 0.0365 / 0.0254**) are confirmed as `criterion.losses_per_bucket`; they are not weight drift.
@@ -160,6 +169,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | PD v2 repeatability probe · Mindwell 11615820 | **GPU variation isolated** | 10 s, exit 0; default: 110/129 gradient tensors differ, max 2.44e-4; deterministic and deterministic math: exact repeats. No optimizer steps/checkpoints. |
 | 25-09-2026 | inspect-recovery · wICE 62143430 | **inspection passed; recovery still failed** | 18 s, exit 0; all eight identities valid, model deltas 5.24e-6–9.00e-6, pre-pause differences in all pairs; larger LGD deltas are diagnostic buffers. |
 | 24-09-2026 | v5 check2 recovery LGD TabICL · Mindwell 11614392 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
 | 24-09-2026 | v5 check2 recovery LGD v3 · Mindwell 11614838 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
@@ -277,6 +287,20 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — Local full-suite stall at the persistent-worker test
+
+**Tried:** Run the full Windows CPU suite after the deterministic-recovery changes.
+**Result:** No assertions failed, but the process stopped progressing before the final 20 tests and remained idle for several minutes; stopped only that verified pytest process. All final 20 tests then passed in isolation in 16.57 s.
+**Why:** The stall did not reproduce in isolation; its cause is unconfirmed. Do not describe an interrupted suite as a passing full run or infer a VSC failure from it.
+**Instead:** Reran the complete suite with a 90-second faulthandler traceback timer: **567 passed, 1 skipped in 553.20 s**. The worker stall did not recur; one timer dump showed a slow large-CSV read in an existing data test, which subsequently passed.
+
+### 25-09-2026 — Matching seeds do not make the GPU recovery comparison deterministic
+
+**Tried:** Compare independently started uninterrupted/resumed training with matching seeds and default B200 kernels.
+**Result:** All eight recovery pairs differed before the pause; the targeted PD v2 probe reproduced unequal gradients despite restoring state and every RNG.
+**Why:** The default GPU calculation is nondeterministic in the measured case; checkpoint serialization alone cannot explain differences already present before interruption.
+**Instead:** Enforce strict kernels for the small recovery control, complete Python RNG seeding and test all eight pairs in an isolated workflow. Keep production-sized pilots for memory/throughput evidence; perform the user's full clean rerun only after recovery validation.
 
 ### 25-09-2026 — CPU state inspection cannot establish GPU kernel repeatability
 

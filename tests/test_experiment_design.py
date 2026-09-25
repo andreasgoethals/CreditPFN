@@ -1,5 +1,7 @@
 """Scientific identities, exact budgets and uninterrupted-versus-recovered training."""
 from pathlib import Path
+import os
+import random
 from types import SimpleNamespace as NS
 
 import pytest
@@ -7,6 +9,81 @@ import torch
 from omegaconf import OmegaConf
 
 from tests.test_train import synthetic_processed, _DummyClassifier
+
+
+@pytest.fixture
+def execution_settings(monkeypatch):
+    deterministic = torch.are_deterministic_algorithms_enabled()
+    warn_only = torch.is_deterministic_algorithms_warn_only_enabled()
+    cudnn = torch.backends.cudnn.deterministic
+    benchmark = torch.backends.cudnn.benchmark
+    workspace = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
+    monkeypatch.delenv("CUBLAS_WORKSPACE_CONFIG", raising=False)
+    try:
+        yield
+    finally:
+        torch.use_deterministic_algorithms(deterministic, warn_only=warn_only)
+        torch.backends.cudnn.deterministic = cudnn
+        torch.backends.cudnn.benchmark = benchmark
+        if workspace is None:
+            os.environ.pop("CUBLAS_WORKSPACE_CONFIG", None)
+        else:
+            os.environ["CUBLAS_WORKSPACE_CONFIG"] = workspace
+
+
+def test_execution_policy_sets_workspace_before_cuda_and_keeps_errors_strict(monkeypatch, execution_settings):
+    from src.train.recovery import configure_execution
+    monkeypatch.setattr(torch.cuda, "is_initialized", lambda: False)
+    torch.use_deterministic_algorithms(True, warn_only=True)
+    result = configure_execution(True)
+    assert result["deterministic_algorithms"]
+    assert os.environ["CUBLAS_WORKSPACE_CONFIG"] == ":4096:8"
+    assert torch.are_deterministic_algorithms_enabled()
+    assert not torch.is_deterministic_algorithms_warn_only_enabled()
+    assert torch.backends.cudnn.deterministic and not torch.backends.cudnn.benchmark
+    configure_execution(False)
+    assert not torch.are_deterministic_algorithms_enabled()
+    assert not torch.backends.cudnn.deterministic
+
+
+def test_execution_policy_refuses_to_change_workspace_after_cuda_init(monkeypatch, execution_settings):
+    from src.train.recovery import configure_execution
+    monkeypatch.setattr(torch.cuda, "is_initialized", lambda: True)
+    with pytest.raises(RuntimeError, match="before initializing CUDA"):
+        configure_execution(True)
+    assert "CUBLAS_WORKSPACE_CONFIG" not in os.environ
+    monkeypatch.setenv("CUBLAS_WORKSPACE_CONFIG", ":16:8")
+    assert configure_execution(True)["cublas_workspace_config"] == ":16:8"
+
+
+@pytest.mark.parametrize("value,expected", [(None, 1000), (200, 200), (2000, 1000)])
+def test_debug_row_limit_only_lowers_measured_cap(value, expected):
+    from src.train.config import limit_training_rows
+    assert limit_training_rows(OmegaConf.create({"train": {"max_rows_per_step": value}}), 1000) == expected
+
+
+@pytest.mark.parametrize("value", [0, 3, True, 12.5, "200"])
+def test_debug_row_limit_rejects_invalid_values(value):
+    from src.train.config import limit_training_rows
+    with pytest.raises(ValueError, match="integer >= 4"):
+        limit_training_rows(OmegaConf.create({"train": {"max_rows_per_step": value}}), 1000)
+
+
+def test_only_recovery_controls_request_strict_numerics_and_small_batches():
+    from src.train.config import load_train_config
+    from src.utils.experiment import digest_json, scientific_config
+    for path in Path("config").glob("experiment*/*.yaml"):
+        cfg = load_train_config(config_path=str(path))
+        recovery = path.stem.startswith("recovery_")
+        assert cfg.train.deterministic is recovery
+        assert cfg.train.max_rows_per_step == (2048 if recovery else None)
+    cfg = load_train_config(config_path="config/experiment0/recovery_pd.yaml")
+    before = digest_json(scientific_config(cfg))
+    cfg.train.deterministic = False
+    assert digest_json(scientific_config(cfg)) != before
+    cfg.train.deterministic = True
+    cfg.train.max_rows_per_step = 1024
+    assert digest_json(scientific_config(cfg)) != before
 
 
 def test_main_and_sampling_grid_counts_and_shared_partitions():
@@ -77,14 +154,15 @@ def test_fingerprint_covers_scientific_changes_but_not_workers():
 @pytest.mark.parametrize("mode", ["one_sample", "full_pass", "accumulate"])
 @pytest.mark.parametrize("terminal_divergence", [False, True])
 def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
-        mode, terminal_divergence, synthetic_processed, tmp_path, monkeypatch):
+        mode, terminal_divergence, synthetic_processed, tmp_path, monkeypatch, execution_settings):
     import src.train.loop as loop
     import src.train.recovery as recovery
     snapshots = {}
+    provenances = {}
 
     class DropoutModel(_DummyClassifier):
         def forward(self, x, y, **kwargs):
-            return super().forward(torch.nn.functional.dropout(x, p=.2, training=self.training), y, **kwargs)
+            return super().forward(torch.nn.functional.dropout(x, p=.2, training=self.training), y, **kwargs) * (0.5 + random.random())
 
     def fake_loader(path, **kwargs):
         return DropoutModel(4), torch.nn.CrossEntropyLoss(), NS(num_features=4, num_classes=2), None
@@ -94,6 +172,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b"toy")
         snapshots[path.name] = {k: v.detach().clone() for k, v in model.state_dict().items()}
+        provenances[path.name] = kwargs.get("provenance", {})
         return path
 
     monkeypatch.setattr(loop, "load_tabpfn_for_training", fake_loader)
@@ -108,6 +187,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         "optimizer": {"weight_decay": 0., "l2sp_lambda": .003},
         "scheduler": {"warmup_fraction": .1},
         "train": {"epochs": 2, "target_total_steps": 7, "max_epochs_for_step_budget": 20,
+                  "deterministic": True, "max_rows_per_step": 40,
                   "grad_clip_norm": 1., "amp": False, "dataloader_workers": 0,
                   "context_sampling": "stratified",
                   "epoch_eval_subsample_samples": 0, "n_estimators_finetune": 1,
@@ -149,6 +229,8 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     assert [r.successful_updates for r in trajectory] == [r.successful_updates for r in expected_trajectory]
     assert all(torch.equal(snapshots["continuous.ckpt"][k], v)
                for k, v in snapshots["resumed.ckpt"].items())
+    assert provenances["resumed.ckpt"]["hyperparameters"]["execution"]["deterministic_algorithms"]
+    assert provenances["resumed.ckpt"]["hyperparameters"]["max_rows_per_epoch"] == 40
     assert not (tmp_path / "resumed.ckpt.resume.pt").exists()
 
 

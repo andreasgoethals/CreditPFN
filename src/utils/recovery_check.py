@@ -17,11 +17,13 @@ from src.utils.atomic import write_json
 from src.utils.paths import training_dir, results_dir
 
 
-def make_configs(folder: Path) -> list[Path]:
+def make_configs(folder: Path, *, diagnostic: bool = False) -> list[Path]:
     paths = []
     for track in ("pd", "lgd"):
         for arm in ("reference", "resumed"):
             cfg = OmegaConf.load(f"config/experiment0/recovery_{track}.yaml")
+            if diagnostic:
+                cfg.run_name += "_probe_" + folder.name[:8]
             cfg.run_name += "_" + arm
             path = folder / f"recovery_{track}_{arm}.yaml"
             OmegaConf.save(cfg, path)
@@ -165,7 +167,7 @@ def inspect_existing(folder: Path, tasks: list[int]) -> dict:
             "comparisons": comparisons}
 
 
-def benchmark_smoke(path: Path, track: str, trial: int) -> dict:
+def benchmark_smoke(path: Path, track: str, trial: int, *, workflow: str | None = None) -> dict:
     """Exercise the real five-fold scoring/prediction path on a small packaged table."""
     from src.eval.benchmark import _bench_model_on_dataset, _write_csv, _write_predictions
     from src.data.retention import processed_dataset
@@ -184,6 +186,10 @@ def benchmark_smoke(path: Path, track: str, trial: int) -> dict:
     rows = _bench_model_on_dataset(handle=handle, model=model, ds=ds, n_folds=5,
         inner_val_fraction=.2, seed=99, timestamp="recovery_smoke", pred_records=predictions)
     folder = results_dir(track.upper(), "recovery_smoke", experiment="experiment0")
+    if workflow is not None:
+        if not workflow.isalnum():
+            raise ValueError("Invalid benchmark workflow identifier")
+        folder = folder / workflow
     _write_csv(rows, folder / f"base_{trial}.csv")
     _write_predictions(predictions, folder / f"base_{trial}.predictions")
     required = ("roc_auc", "f1", "brier_score") if track == "pd" else (
@@ -191,16 +197,27 @@ def benchmark_smoke(path: Path, track: str, trial: int) -> dict:
     passed = (len(rows) == 5 and all(row.status == "OK" for row in rows)
         and all(np.isfinite(getattr(row, name)) for row in rows for name in required)
         and sorted(p["row_idx"] for p in predictions) == list(range(len(ds.y))))
-    return {"passed": bool(passed), "folds": len(rows), "predictions": len(predictions), "dataset": dataset}
+    return {"passed": bool(passed), "folds": len(rows), "predictions": len(predictions),
+            "dataset": dataset, "directory": str(folder)}
 
 
 def run(folder: Path, track: str, trial: int):
     from src.utils.audit_experiment import audit
     paths = {arm: folder / f"recovery_{track}_{arm}.yaml" for arm in ("reference", "resumed")}
+    from src.train.config import load_train_config
+    from src.train.recovery import configure_execution
+    cfg = load_train_config(config_path=str(paths["reference"]))
+    if not cfg.train.deterministic:
+        raise ValueError("Recovery equivalence requires train.deterministic=true in both arms")
+    other = load_train_config(config_path=str(paths["resumed"]))
+    if not other.train.deterministic:
+        raise ValueError("Recovery equivalence requires train.deterministic=true in both arms")
+    execution = configure_execution(True)
     common = [sys.executable, "-u", "scripts/train_pipeline.py", "--split-index", "0", "--trial-index", str(trial)]
     if os.environ.get("CREDITPFN_ACTIVE_LOG"):
         common += ["--log-path", os.environ["CREDITPFN_ACTIVE_LOG"]]
     env = dict(os.environ)
+    env["PYTHONHASHSEED"] = str(int(cfg.seed))
     env.pop("CREDITPFN_STOP_AFTER_UPDATES", None)
     env.pop("CREDITPFN_STOP_REQUESTED", None)
     env["CREDITPFN_SEGMENT_SECONDS"] = "0"
@@ -217,9 +234,10 @@ def run(folder: Path, track: str, trial: int):
     reports = {arm: audit(path) for arm, path in paths.items()}
     rows = {arm: report["trials"][trial] for arm, report in reports.items()}
     report = comparison_report(rows, track, trial)
+    report["execution"] = execution
     report["arm_audit_problems"] = selected_audit_problems(reports, rows)
     report["arm_audits_passed"] = not report["arm_audit_problems"]
-    report["benchmark_smoke"] = benchmark_smoke(Path(rows["resumed"]["path"]), track, trial)
+    report["benchmark_smoke"] = benchmark_smoke(Path(rows["resumed"]["path"]), track, trial, workflow=folder.name)
     report["passed"] &= report["arm_audits_passed"] and report["benchmark_smoke"]["passed"]
     write_json(folder / f"recovery_{track}_{trial}.json", report)
     print(json.dumps(compact_report(report), indent=2), flush=True)

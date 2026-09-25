@@ -13,6 +13,10 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Make recovery controls deterministic with 2,048-row batches, seed Python randomness, and add an isolated recovery-only launch before the requested clean rerun.
+- Record numerical execution settings in weights/logs and refresh cleanup/readiness guidance.
+- Scope recovery benchmark output by workflow so debugging retries cannot overwrite earlier scores.
+- Clear inherited experiment configs in the experiment-0 launcher to keep its job logs correctly routed.
 - Add a bounded GPU repeatability diagnostic with restored weights/buffers/RNG and no optimizer updates; preserve passed experiment-0 evidence.
 - Clarify ZIP inspection and experiment-specific retention; starting experiment 1 does not require deleting experiment 0.
 

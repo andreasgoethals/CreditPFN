@@ -54,11 +54,11 @@ Locally both tiers collapse into one `output CreditPFN/` tree. Keep `CREDITPFN_O
 
 Fresh `cpt_*_v5` plans are independent of v4 records and weights. Both tiers create `output CreditPFN/` automatically. Relative legacy `output/...` settings resolve to the canonical name rather than creating another tree. Keep any historical copy only if wanted; a fresh run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
 
-Experiment 0 currently uses `cpt_*_v5_check2` identities after the GPU-counter repair. The preceding v5 null weights passed exact model/monitor checks, but their resource measurements failed. Preserve that evidence separately; changed source must not overwrite its immutable plans or reuse those measurements as successful samples. The research grids and budgets are unchanged.
+Null, short and budget configs use `cpt_*_v5_check2`; corrected deterministic recovery uses `cpt_recovery_v5_check3`. Standalone recovery probes add a unique workflow suffix. Changed source must not overwrite existing immutable plans: use the isolated recovery launch during debugging, then the requested full cleanup before the fresh part 1. The research grids and budgets are unchanged.
 
 Only final weights and the most recent recovery state persist. Intermediate milestone weights are transient; numeric measurements persist. After final publication (including numerical divergence), recovery state is removed. Known repetitive deprecation messages are filtered and repeated numerical errors are counted with bounded log summaries; fatal errors remain visible. Do not hide errors to make a run look successful.
 
-A clean experiment 1 means an empty `experiment1/`, not erasing experiment 0. Keep the accepted workflow receipts, plans, audits and numerical trajectories/resources/parameter summaries: they establish the controls and justify the selected budget. After both experiment-0 parts are accepted, obsolete failed-attempt logs and null/recovery-only weights can be considered for removal using exact inventories, with writers stopped. Preserve the long-pilot scientific evidence. **Do not use `clean --clean` merely to start experiment 1:** it clears every experiment and trained-weight tree. Tiny general scheduler state belongs to the shared launcher and should not be manually reset while jobs are active.
+Experiment 1 writes to its own directory. Keep the final accepted experiment-0 receipts, plans, audits and numerical measurements: they establish the controls and justify the selected budget. The user requests a complete clean rerun after debugging. First pass the isolated recovery check below; then stop CreditPFN writers, inspect the cleanup preview, clear both output tiers and trained weights, and rerun part 1 followed by part 2. Keep the downloaded debugging ZIP locally if desired. **Do not clean again between the accepted fresh experiment 0 and experiment 1:** the full cleaner removes every experiment, receipt and trained-weight tree. Tiny general scheduler state should not be manually reset while jobs are active.
 
 For read-only project-output inspection, run each separately:
 
@@ -116,7 +116,7 @@ This is the only experiment-0 part-1 launch command. It downloads/reuses the two
 2. CPU audit: exact upstream-loaded weights/inference buffers, fixed-monitor parity, parameter records and successful GPU resource measurements.
 3. **32 short pilots**, 250 updates; initially one-hour requests.
 4. CPU audit: complete identities, budgets, trajectories and no divergence.
-5. **Eight recovery pairs**, four bases × two tasks: 12 uninterrupted updates versus stop at 5 and resume to 12; eight one-hour GPU allocations. Each also runs five-fold scoring on its small packaged non-credit table, checking metrics, requested quantiles and complete row-prediction output through the final evaluation code.
+5. **Eight recovery pairs**, four bases × two tasks: 12 uninterrupted updates versus stop at 5 and resume to 12; eight GPU allocations capped at 30 minutes, up to four concurrent. These controls request strict deterministic kernels and at most 2,048 training rows per step. The preceding pilots exercise production row caps and fast kernels. Each recovery pair also runs five-fold scoring on its small packaged non-credit table, checking metrics, requested quantiles and complete row-prediction output through the final evaluation code.
 6. CPU audit and `output CreditPFN/experiment0/manifests/workflow/part1_passed.json`.
 
 GPU completion callbacks update a locked DATA ledger. The last successful task submits a short CPU audit; that audit alone releases the next stage. Stages advance without a polling allocation and without assuming cross-controller dependency support. Submission can still pause if the user submit quota is full; no GPU allocation waits for another stage. Incomplete/failed tasks stop progression. A unique submission claim prevents accidentally launching the same part twice. Do not delete claims or pool state while jobs run; inspect failed/uncertain submission logs before arranging recovery.
@@ -152,6 +152,16 @@ CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --time=00:10:00 script
 ```
 
 The log separates the largest non-diagnostic state difference from `criterion.losses_per_bucket`, checks selected checkpoint identities, and reports monitor differences at updates 0, 5 and 12. Exit 0 means inspection completed; check the comparison fields for failures. A difference already at update 5 predates the pause and cannot be attributed solely to resuming. Preserve successful null/pilot trials and investigate independent-run repeatability before allocating another full recovery stage. Do not weaken tolerances or delete immutable plans to get past this gate.
+
+After correcting recovery behavior, validate only that stage before a clean full rerun:
+
+```bash
+bash scripts/slurm/run_experiment0.sh recovery
+```
+
+This creates its own source-checked workflow and uniquely named probe arms, prepares four reference/resumed plans on CPU, and submits the eight GPU pairs. It never reuses the failed workflow or repeats null/pilot trials. Benchmark outputs use `results/<PD|LGD>/recovery_smoke/<workflow>/`, preventing retry collisions. Its audit writes `recovery_passed.json`; that diagnostic receipt **cannot** release part 2. The fresh full part 1 must independently produce `part1_passed.json`. `RECOVERY_WALLTIME` overrides the 30-minute request when actual measurements justify it.
+
+`train.deterministic: true` is limited to recovery configs and is fingerprinted along with their lower `train.max_rows_per_step` cap. Strict execution applies to training, monitoring and the benchmark smoke; unsupported nondeterministic operations raise an error. Python, NumPy and Torch seeds are initialized, and the CUDA workspace is configured before device initialization. Effective settings are recorded in checkpoint provenance and logs. Strict mode does not force math attention globally. Normal research runs use the fast backend policy: their seed identifies stochastic inputs, not a guarantee of bitwise GPU equality. See [PyTorch reproducibility](https://docs.pytorch.org/docs/2.12/notes/randomness.html); deterministic kernels can change performance, so synthetic first-call timings must not be used as production throughput estimates.
 
 To isolate GPU arithmetic after a pre-pause mismatch, use one small model/batch diagnostic:
 
@@ -211,7 +221,7 @@ At final analysis, download the contents of **both** cluster `output CreditPFN/`
 
 ## Cleanup and failure inspection
 
-Historical output is not required for the new run. The old `output CreditPFN/` tree is no longer active; removing it is a separate deliberate action. `python -m src.utils.clean_run` previews the **new** output trees and trained weights on both tiers. `maintenance.slurm clean --clean` deletes that whole campaign, preserving the current maintenance log and all original data/base weights. Stop writers and inspect the preview first. Never use full cleanup midway through a campaign; it also deletes plans, recovery state and submission state. No notebook locks exist.
+`output CreditPFN/` is the active output directory on both tiers. `python -m src.utils.clean_run` previews those trees and trained weights. `maintenance.slurm clean --clean` deletes the whole campaign, preserving the current maintenance log and all original data/base weights; processed inputs are retained unless `--processed` is explicitly requested. Use this for the user-requested fresh validation run only after debugging passes, with writers stopped and the preview inspected. It also deletes plans, recovery state and submission state. No notebook locks exist.
 
 - Identity mismatch: reconcile code, config, inputs and environment; do not disable fingerprinting.
 - Workflow failure: inspect its state/audit and the named logs; later stages were not released.
