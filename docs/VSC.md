@@ -138,7 +138,7 @@ squeue -M mindwell,wice -u "$USER" -o "%.18i %.28j %.10T %.12M %R"
 
 A queued job is not a hung shell. If submission fails to return within about 45 seconds, do not blindly repeat it: acceptance may be uncertain. Inspect queue/accounting first. Do not cancel unrelated CreditICL/TabPFNCredit jobs.
 
-Part 1 never launches the large sweep. After reviewing its timing/diagnostics, launch the **eight longer budget pilots** separately:
+Part 1 never launches the large sweep. Review numerical skip summaries as well as the automated receipt: reaching the update target does not establish that every training table contributed. Repeated failures on one table must be diagnosed before the long pilots; the current audit does not enforce per-table coverage. After resolving such failures and reviewing timing/diagnostics, launch the **eight longer budget pilots** separately:
 
 ```bash
 bash scripts/slurm/run_experiment0.sh part2
@@ -185,6 +185,14 @@ CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --
 ```
 
 It uses 512 synthetic rows, 16 features and the configured member count. TabPFN follows the production ensemble forward/loss; synthetic views bypass CPU preprocessing. Each of the three profiles repeats the forward/backward calculation three times, restoring weights, criterion buffers and Python/NumPy/Torch/CUDA RNG each time. No optimizer step or checkpoint write occurs. The profiles are default kernels, deterministic kernels, and deterministic math attention without TF32; BF16 autocast remains enabled. `CUBLAS_WORKSPACE_CONFIG` is fixed before CUDA initialization and printed in the report, so this is a controlled diagnostic, not an exact recreation of an unspecified production environment.
+
+For repeated non-finite losses on a particular TabPFN training table, the same utility accepts its numeric registry prefix. This example probes PD table 0011 at the 2,048-row recovery size where the failure also occurred:
+
+```bash
+CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus-per-node=1 --cpus-per-task=4 --mem=32G --time=00:05:00 scripts/slurm/maintenance.slurm probe-repeatability --track pd --base v2 --rows 2048 --table-number 11
+```
+
+This uses the real epoch-zero batch, retaining its position in the complete training corpus so sampling/preprocessing seeds agree. It compares current versus installed upstream clipping under BF16 and FP32, restoring model/criterion/RNG before each attempt. It prints only aggregate input and loss/gradient diagnostics in the maintenance log; no optimizer updates, checkpoints, manifests or workflow changes. A completed diagnostic may exit zero even when every profile reports an error: those failures are the evidence to inspect. It is not a new passing control. Preserve the existing output and receipt while investigating. The utility is included in the broader workflow source fingerprint, so deploying diagnostic changes alone does not authorize reuse of the previous receipt; never bypass that check.
 
 Read the experiment-0 maintenance log's `profiles`: `repeatable: false` demonstrates variation in that calculation; `status: error` can identify a kernel lacking a deterministic implementation. Exit 0 means at least one profile was measured, not that recovery passed. Even three repeatable profiles on this small batch do not certify all production shapes, preprocessing, monitoring or resume behavior. No workflow receipt is changed. `--base` also accepts `v2.6`, `v3` and `tabicl`, and `--track lgd` selects regression; widen the diagnostic only when the first result warrants it.
 

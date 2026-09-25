@@ -12,7 +12,18 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 signal retry reaches training; four old checkpoints block part 1
+## Current handover — 25-09-2026 part 1 passes its gates; systematic PD v2 skips need diagnosis
+
+- Read `Downloads/output CreditPFN.zip` in place: **176 files / 3,270,286 uncompressed bytes**, 539,594-byte ZIP; SHA256 `d3473aa17724c1b2e542fef79cfb0202c4819005852e4f99b6d05c6a535cb222`. CRC, all **94 JSON / eight CSV** files and all **eight plans / 64 trial identities** verify. DATA-side output only; project diagnostics/weights were inspected by cluster audits, not downloaded here.
+- Deployed **a50c38d**, workflow **5433645ed42e42f4825d441c1c2e6309**: **16/16 null controls, 32/32 short pilots and 8/8 recovery pairs passed the automated gates**. `part1_passed.json` matches that checkout's workflow identity `e852f032cab5...`. All 60 logs end with exit 0; final audit **62154541** finished **17:17:44 CEST**. No part-2 run exists. Nulls have exact canonical state/monitor parity; pilots each reached 250 successful updates; 228 null/pilot GPU samples all report `sampled`.
+- Recovery checks report zero model-tensor differences, matching 0/5/12 trajectories, and eight passing five-fold benchmark smoke checks (**4,044 predictions**). Three LGD TabPFN detached loss-diagnostic buffers differ as documented. Expected interruption rows and `[no-monitor]` placeholders are not failures.
+- **Hold part 2 despite the automated receipt:** every PD v2 pilot skipped **21 non-finite losses on table 0011**, across both LRs and adaptation modes. With 13 one-sample visits per epoch and 21 epochs, this means every visit to that table was skipped; the 250 updates came from the other tables. PD v2 recovery also skipped it once per comparison arm. Update-count/parity gates do not certify per-table training coverage. Other pilots log no numerical skips.
+- Local table bytes match the cluster plan after CRLF-to-LF normalization. The table has two numeric columns above 1e30 and a maximum magnitude about **3.403e38**. These are candidate numerical triggers, not a proved GPU root cause. Reproduced a separate source discrepancy: `apply_outlier_clip` changes in-bound values using a rational shrinkage, whereas upstream `TorchSoftClipOutliers` uses two-pass context-fitted logarithmic clipping. The local helper also restores extreme inputs after overflowing its variance calculation. Library pin **e5ce01614eebe520af303f2b5bfd212298eab2be**; production clipping remains unchanged pending the targeted diagnostic.
+- Extended the existing `gpu_repeatability` utility with `--table-number`: keep the original corpus index/seed, use at most 2,048 rows, compare current/upstream clipping under BF16/FP32, restore state/RNG, and print numerical aggregates only. **Zero optimizer updates, no checkpoint or workflow writes.** User commits/pushes, pulls with writers stopped, then runs the bounded maintenance probe documented in VSC.md. Keep all current output/weights; do not clean, rerun part 1, or launch part 2 before reviewing that probe. Training identity stays `9a85958d0285...`; the diagnostic utility changes the broader workflow identity, so the old receipt must not be bypassed.
+- Measured job times: null **27–57 s**, pilots **82–202 s**, recovery **55–142 s**. Audit estimates for the eight 20k full-update recipes total **26.5 GPU-hours**: PD about **3.9–4.8 h/trial**, LGD **2.0–2.7 h/trial**, plus queue/segment delays. These extrapolate 250-update measurements and do not justify launching with unresolved table exclusion.
+- Validation: **650 passed, 1 skipped** (optional local data manifests absent), **529.34 s**; includes 21 diagnostic tests. CLI help, proposed Bash commands, maintenance syntax and diff checks pass. New workflow identity `c0e523e4fd77f2a03b3ced6709efa212c1c42d33cbe3a04aca3362249006faf5`; training identity remains unchanged. The old receipt is retained as evidence of the deployed run, not rewritten for the diagnostic revision. No production loss/preprocessing/config edits, real-model training, VSC submission, install, cleanup, push, submodule change or Downloads mutation. Local output still has zero files. Actual real-table GPU diagnosis is the next user-run step.
+
+## Previous handover — 25-09-2026 signal retry reaches training; four old checkpoints block part 1
 
 - Read `Downloads/output CreditPFN.zip` in place: **54 files / 852,196 uncompressed bytes**, 127,533-byte ZIP; SHA256 `4ab77c4d955562349841832ed2c8be0850cb2c005e858071ab50e337315a16fa`. CRC, 27 JSON records, two CSVs and all eight plan checksums pass. DATA-side output only; project diagnostics/weights are not included. Downloads were not modified or copied.
 - Workflow **588ddf3d0790427690dc8cc742c259f2** on deployed **f914f29** stopped at `null`, status **failed**. Its ledger has **12 done / 4 failed**, matching all 16 task logs. Preparation **62152033** exited 0 with zero preflight failures/warnings. No null audit, short pilots, recovery jobs or `part1_passed.json` followed; no budget pilots ran.
@@ -242,6 +253,66 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | Part 1 recovery audit · wICE 62154541 | **passed** | 8/8 pairs and five-fold smoke passed; wrote part1_passed.json. 19 s, exit 0. |
+| 25-09-2026 | Recovery LGD TabICL full · Mindwell 11618827 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 69 s, exit 0. |
+| 25-09-2026 | Recovery LGD v3 full · Mindwell 11618834 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 85 s, exit 0. |
+| 25-09-2026 | Recovery LGD v2.6 full · Mindwell 11618833 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 66 s, exit 0. |
+| 25-09-2026 | Recovery LGD v2 full · Mindwell 11618832 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 55 s, exit 0. |
+| 25-09-2026 | Recovery PD v2 full · Mindwell 11618828 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 569 predictions. One nonfinite batch skipped per arm. 112 s, exit 0. |
+| 25-09-2026 | Recovery PD v2.6 full · Mindwell 11618829 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 569 predictions. 112 s, exit 0. |
+| 25-09-2026 | Recovery PD TabICL full · Mindwell 11618831 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 569 predictions. 105 s, exit 0. |
+| 25-09-2026 | Recovery PD v3 full · Mindwell 11618830 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 569 predictions. 142 s, exit 0. |
+| 25-09-2026 | Part 1 pilot audit · wICE 62154202 | **passed** | 32/32 reached 250 updates; recorded trajectories/parameters/resources; skips require review. 13 s, exit 0. |
+| 25-09-2026 | Pilot LGD v3 full · Mindwell 11618826 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 98 s, exit 0. |
+| 25-09-2026 | Pilot LGD v3 frozen · Mindwell 11618825 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 89 s, exit 0. |
+| 25-09-2026 | Pilot LGD v3 full · Mindwell 11618824 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 101 s, exit 0. |
+| 25-09-2026 | Pilot LGD v3 frozen · Mindwell 11618759 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 90 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2 frozen · Mindwell 11618758 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 82 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2 full · Mindwell 11618822 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 89 s, exit 0. |
+| 25-09-2026 | Pilot LGD TabICL frozen · Mindwell 11618755 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 82 s, exit 0. |
+| 25-09-2026 | Pilot LGD TabICL full · Mindwell 11618821 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 88 s, exit 0. |
+| 25-09-2026 | Pilot LGD TabICL frozen · Mindwell 11618820 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 83 s, exit 0. |
+| 25-09-2026 | Pilot LGD TabICL full · Mindwell 11618803 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 90 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2 frozen · Mindwell 11618802 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 82 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2.6 frozen · Mindwell 11618757 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 101 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2 full · Mindwell 11618801 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 85 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2.6 full · Mindwell 11618800 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 112 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2.6 frozen · Mindwell 11618799 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 99 s, exit 0. |
+| 25-09-2026 | Pilot LGD v2.6 full · Mindwell 11618798 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 111 s, exit 0. |
+| 25-09-2026 | Pilot PD v3 frozen · Mindwell 11618751 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 187 s, exit 0. |
+| 25-09-2026 | Pilot PD v3 full · Mindwell 11618797 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 201 s, exit 0. |
+| 25-09-2026 | Pilot PD v3 frozen · Mindwell 11618794 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 192 s, exit 0. |
+| 25-09-2026 | Pilot PD v3 full · Mindwell 11618781 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 200 s, exit 0. |
+| 25-09-2026 | Pilot PD TabICL frozen · Mindwell 11618742 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 188 s, exit 0. |
+| 25-09-2026 | Pilot PD v2 full · Mindwell 11618754 | **completed; skips** | 250 updates, lr=3e-05; 21 nonfinite losses skipped on table 0011. 178 s, exit 0. |
+| 25-09-2026 | Pilot PD v2 full · Mindwell 11618752 | **completed; skips** | 250 updates, lr=3e-07; 21 nonfinite losses skipped on table 0011. 180 s, exit 0. |
+| 25-09-2026 | Pilot PD v2.6 full · Mindwell 11618749 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 166 s, exit 0. |
+| 25-09-2026 | Pilot PD v2.6 full · Mindwell 11618747 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 165 s, exit 0. |
+| 25-09-2026 | Pilot PD v2.6 frozen · Mindwell 11618748 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 153 s, exit 0. |
+| 25-09-2026 | Pilot PD v2 frozen · Mindwell 11618753 | **completed; skips** | 250 updates, lr=3e-07; 21 nonfinite losses skipped on table 0011. 176 s, exit 0. |
+| 25-09-2026 | Pilot PD v2 frozen · Mindwell 11618750 | **completed; skips** | 250 updates, lr=3e-05; 21 nonfinite losses skipped on table 0011. 175 s, exit 0. |
+| 25-09-2026 | Pilot PD TabICL full · Mindwell 11618746 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 200 s, exit 0. |
+| 25-09-2026 | Pilot PD TabICL full · Mindwell 11618744 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 202 s, exit 0. |
+| 25-09-2026 | Pilot PD TabICL frozen · Mindwell 11618745 | **passed** | 250 updates, lr=3e-07; no numerical skips logged. 195 s, exit 0. |
+| 25-09-2026 | Pilot PD v2.6 frozen · Mindwell 11618743 | **passed** | 250 updates, lr=3e-05; no numerical skips logged. 154 s, exit 0. |
+| 25-09-2026 | Part 1 null audit · wICE 62153798 | **passed** | 16/16 exact saved-state and monitor checks; all GPU counters sampled. 36 s, exit 0. |
+| 25-09-2026 | Null LGD v3 full · Mindwell 11618741 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 32 s, exit 0. |
+| 25-09-2026 | Null LGD v3 frozen · Mindwell 11618738 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 31 s, exit 0. |
+| 25-09-2026 | Null LGD v2 full · Mindwell 11618740 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 27 s, exit 0. |
+| 25-09-2026 | Null LGD v2 frozen · Mindwell 11618737 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 28 s, exit 0. |
+| 25-09-2026 | Null PD v3 frozen · Mindwell 11618732 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 56 s, exit 0. |
+| 25-09-2026 | Null PD v2.6 frozen · Mindwell 11618727 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 43 s, exit 0. |
+| 25-09-2026 | Null PD v2 full · Mindwell 11618731 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 44 s, exit 0. |
+| 25-09-2026 | Null PD TabICL frozen · Mindwell 11618726 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 41 s, exit 0. |
+| 25-09-2026 | Null LGD v2.6 full · Mindwell 11618739 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 31 s, exit 0. |
+| 25-09-2026 | Null LGD TabICL full · Mindwell 11618735 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 28 s, exit 0. |
+| 25-09-2026 | Null LGD v2.6 frozen · Mindwell 11618736 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 29 s, exit 0. |
+| 25-09-2026 | Null PD v3 full · Mindwell 11618734 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 57 s, exit 0. |
+| 25-09-2026 | Null LGD TabICL frozen · Mindwell 11618733 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 31 s, exit 0. |
+| 25-09-2026 | Null PD v2.6 full · Mindwell 11618729 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 45 s, exit 0. |
+| 25-09-2026 | Null PD v2 frozen · Mindwell 11618730 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 48 s, exit 0. |
+| 25-09-2026 | Null PD TabICL full · Mindwell 11618728 | **passed** | 2 updates; exact saved-state/monitor parity; zero drift. 44 s, exit 0. |
+| 25-09-2026 | Part 1 preparation · wICE 62153693 | **passed** | Preflight 0 failures/warnings; prepared plans and released nulls. 50 s, exit 0. |
 | 25-09-2026 | Null LGD v3 full · Mindwell 11618316 | **completed; unaudited** | Two updates, zero drift/monitor change; log 133 s, exit 0. |
 | 25-09-2026 | Null LGD v2 full · Mindwell 11618315 | **completed; unaudited** | Two updates, zero drift/monitor change; log 126 s, exit 0. |
 | 25-09-2026 | Null LGD v2.6 full · Mindwell 11618314 | **completed; unaudited** | Two updates, zero drift/monitor change; log 128 s, exit 0. |
@@ -406,6 +477,13 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — Successful-update budgets can conceal a missing training table
+
+**Tried:** Accept null/pilot/recovery gates based on finite monitors, exact recovery and completed update budgets.
+**Result:** All automated gates passed, but each of four PD v2 pilots skipped all 21 visits to one credit table.
+**Why:** The skip guard protects weights from non-finite gradients but the current audit does not require successful exposure to every training table; aggregate update counts conceal systematic exclusions.
+**Instead:** Hold the long pilots; compare real-table preprocessing and precision with zero optimizer updates, fix the verified cause, and verify per-table coverage before accepting a production run. Do not hide warnings or bypass identities.
 
 ### 25-09-2026 — New plans do not remove incompatible project checkpoints
 

@@ -13,6 +13,7 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Add a zero-update real-table precision/clipping probe to investigate systematic numerical skips before longer pilots.
 - Record the blocked signal-fix retry and clarify that a fresh campaign must clear trained checkpoints as well as both output folders.
 
 - Bound native/boosting CPU threads to each Slurm allocation and reserve cores for training data workers.

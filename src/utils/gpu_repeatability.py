@@ -1,7 +1,8 @@
-"""Isolate GPU forward/backward repeatability without optimizer updates or output files.
+"""Isolate GPU forward/backward failures without optimizer updates or output files.
 
-This synthetic-batch diagnostic is not a recovery audit. It cannot grant a passing
-experiment-0 receipt or establish repeatability for every production batch shape.
+The default uses a synthetic batch. A numbered training table instead compares
+production preprocessing with upstream clipping, at BF16 and FP32 precision.
+Neither diagnostic can grant a passing experiment-0 receipt.
 """
 from __future__ import annotations
 
@@ -48,7 +49,8 @@ def kernel_profile(name: str):
         torch.backends.cudnn.allow_tf32 = cudnn_tf32
 
 
-def repeated_backward(model, make_loss, *, device: str, auxiliary=(), repeats: int = 3) -> dict:
+def repeated_backward(model, make_loss, *, device: str, auxiliary=(), repeats: int = 3,
+                      amp: bool = True) -> dict:
     """Restore parameters, buffers and RNG before each backward; compare CPU gradients."""
     if repeats < 2:
         raise ValueError("At least two repeats are needed")
@@ -73,7 +75,7 @@ def repeated_backward(model, make_loss, *, device: str, auxiliary=(), repeats: i
     try:
         for index in range(repeats):
             reset()
-            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=cuda):
+            with torch.amp.autocast("cuda", dtype=torch.bfloat16, enabled=cuda and amp):
                 loss = make_loss()
             if loss.numel() != 1 or not torch.isfinite(loss).all():
                 raise RuntimeError("Nonfinite or nonscalar probe loss")
@@ -159,14 +161,106 @@ def probe_loss(checkpoint: Path, track: str, *, rows: int, features: int, member
     return model, make_loss, auxiliary
 
 
+def tensor_summary(value: torch.Tensor) -> dict:
+    """Aggregate numerical diagnostics only; never emit feature values or rows."""
+    finite = torch.isfinite(value)
+    return {"shape": list(value.shape), "nan": int(torch.isnan(value).sum()),
+            "inf": int(torch.isinf(value).sum()),
+            "max_finite_absolute": float(value[finite].abs().max()) if finite.any() else None}
+
+
+def upstream_clip(x, *, n_sigma, categorical_idx, context_rows):
+    """Exercise the installed upstream transform without changing production code."""
+    from tabpfn.preprocessing.torch.torch_soft_clip_outliers import TorchSoftClipOutliers
+
+    if n_sigma is None:
+        return x
+    numerical = [i for i in range(x.shape[-1]) if i not in categorical_idx]
+    result = x.clone()
+    if numerical:
+        result[..., numerical] = TorchSoftClipOutliers(n_sigma=n_sigma)(
+            x[..., numerical], num_train_rows=context_rows)
+    return result
+
+
+def compare_table_batch(model, criterion, batch, *, device: str) -> dict:
+    """Compare the same batch/RNG/state; only clipping and precision may differ."""
+    from unittest.mock import patch
+    from src.train import loop, tabpfn_preprocessing
+
+    context_rows = batch.members[0].X_context.shape[0]
+    inputs = [{"context": tensor_summary(m.X_context), "query": tensor_summary(m.X_query),
+               "context_labels": tensor_summary(m.y_context),
+               "categorical_columns": len(m.categorical_idx),
+               "outlier_removal_std": m.outlier_removal_std} for m in batch.members]
+    report = {"inputs": inputs, "query_labels": tensor_summary(batch.y_query), "profiles": {}}
+    original_clip = tabpfn_preprocessing.apply_outlier_clip
+    for clipping in ("current", "upstream"):
+        for amp in (True, False):
+            name = f"{clipping}_{'bf16' if amp else 'fp32'}"
+            clipped_inputs = []
+
+            def clip(x, *, n_sigma, categorical_idx):
+                result = (original_clip(x, n_sigma=n_sigma, categorical_idx=categorical_idx)
+                          if clipping == "current" else upstream_clip(x, n_sigma=n_sigma,
+                              categorical_idx=categorical_idx, context_rows=context_rows))
+                # Only the first forward's member summaries are needed.
+                if len(clipped_inputs) < len(batch.members):
+                    clipped_inputs.append(tensor_summary(result))
+                return result
+
+            print(f"Checking real table: {name}", flush=True)
+            try:
+                with patch.object(tabpfn_preprocessing, "apply_outlier_clip", clip):
+                    result = repeated_backward(model,
+                        lambda: loop._ensemble_step_loss(model, batch, criterion=criterion),
+                        device=device, auxiliary=(criterion,), repeats=2, amp=amp)
+            except (RuntimeError, ImportError) as exc:
+                result = {"status": "error", "error_type": type(exc).__name__, "error": str(exc)[:1200]}
+            result["clipped_inputs"] = clipped_inputs
+            report["profiles"][name] = result
+            print(f"{name}: {result['status']}", flush=True)
+            model.zero_grad(set_to_none=True)
+            gc.collect()
+            if torch.device(device).type == "cuda":
+                torch.cuda.empty_cache()
+    return report
+
+
+def table_probe(checkpoint, cfg, *, table_number: int, rows: int, members: int, device: str) -> dict:
+    from src.train.corpus import split_from_cfg
+    from src.train.dataloader import ProcessedDatasetLoader
+    from src.train.model import load_tabpfn_for_training
+
+    # Keep the entire ordered training corpus: its index participates in each
+    # table's sampling/preprocessing seed. Filtering it first changes the batch.
+    refs = split_from_cfg(cfg).train
+    indices = [i for i, ref in enumerate(refs) if ref.dataset_id.split('.', 1)[0] == f"{table_number:04d}"]
+    if len(indices) != 1:
+        raise ValueError("Table number must identify exactly one training table in this partition")
+    model, criterion, _, inference_config = load_tabpfn_for_training(
+        str(checkpoint), track=str(cfg.track), device=device)
+    loader = ProcessedDatasetLoader(refs, max_rows_per_epoch=rows,
+        query_fraction=float(cfg.tunable.query_fractions[0]), seed=int(cfg.seed),
+        inference_config=inference_config, n_estimators_finetune=members,
+        context_sampling=str(cfg.train.context_sampling))
+    batch = loader[(0, indices[0])].to(device)
+    model.train()
+    return compare_table_batch(model, criterion, batch, device=device)
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--track", choices=("pd", "lgd"), default="pd")
     parser.add_argument("--base", choices=("v2", "v2.6", "v3", "tabicl"), default="v2")
     parser.add_argument("--rows", type=int, default=512)
+    parser.add_argument("--table-number", type=int,
+        help="Use this numbered credit training table instead of synthetic inputs (TabPFN only)")
     args = parser.parse_args(argv)
     if not 4 <= args.rows <= 2048:
         parser.error("Diagnostic row count must be between 4 and 2048; this is not a capacity probe")
+    if args.table_number is not None and (args.table_number < 1 or args.base == "tabicl"):
+        parser.error("Real-table diagnosis requires a positive table number and a TabPFN base")
     # Set before creating a CUDA/cuBLAS context. This workspace applies to all profiles.
     os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
     if not torch.cuda.is_available():
@@ -189,6 +283,18 @@ def main(argv=None) -> int:
     np.random.seed(seed)
     torch.manual_seed(seed)
     members = training_members(cfg, args.track, "tabicl" if args.base == "tabicl" else "tabpfn")
+    if args.table_number is not None:
+        with kernel_profile("default_kernels"):
+            report = table_probe(checkpoint, cfg, table_number=args.table_number,
+                rows=args.rows, members=members, device="cuda")
+        report.update(action="table_loss_diagnostic", base=checkpoint.name, track=args.track,
+            table_number=args.table_number, epoch=0, row_cap=args.rows, members=members, seed=seed,
+            torch=torch.__version__, cuda=torch.version.cuda, gpu=torch.cuda.get_device_name(),
+            optimizer_updates=0, checkpoint_writes=0, workflow_modified=False)
+        print(json.dumps(report, indent=2, allow_nan=False), flush=True)
+        # A complete diagnostic is useful even when every profile exposes a failure.
+        # The individual statuses are measurements, never a passing training receipt.
+        return 0
     model, make_loss, auxiliary = probe_loss(checkpoint, args.track, rows=args.rows,
         features=16, members=members, query_fraction=float(cfg.tunable.query_fractions[0]), device="cuda")
     report = {"action": "gpu_repeatability", "base": checkpoint.name, "track": args.track,
