@@ -84,13 +84,13 @@ command -v python
 
 Confirm this points to `miniconda3/envs/CreditPFN/bin/python`. The job activator also removes an inherited virtualenv that would shadow conda, verifies imports, and fails rather than using a different environment. Use explicit interactive activation: sourcing the complete job activator interactively previously stalled.
 
-Before the corrected part-1 rerun, verify GPU counters with one allocation capped at three minutes. It loads no model or dataset and creates only the normal experiment-0 maintenance log:
+For a new GPU environment or a resource-sampling failure, verify counters with one allocation capped at three minutes. Do not repeat this after successful training resource audits. It loads no model or dataset and creates only the normal experiment-0 maintenance log:
 
 ```bash
-CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus=1 --time=00:03:00 scripts/slurm/maintenance.slurm preflight --gpu-resources
+CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus-per-node=1 --time=00:03:00 scripts/slurm/maintenance.slurm preflight --gpu-resources
 ```
 
-Read `output CreditPFN/experiment0/logs/maintenance_<JOBID>_r0.log`. Require `gpu_status: sampled` in the JSON and `END exit_code=0`; idle utilization may correctly be zero. On failure, inspect `gpu_error`/`gpu_exit_code` before allocating training jobs. The sampler uses the allocated GPU's UUID with NVIDIA's prefix, logs a bounded failure message once per trial, and leaves unsupported counters empty. After the standalone check passes:
+Mindwell requires `--gpus-per-node`; its submission plugin rejects `--gpus` before creating a job. Read `output CreditPFN/experiment0/logs/maintenance_<JOBID>_r0.log`. Require `gpu_status: sampled` in the JSON and `END exit_code=0`; idle utilization may correctly be zero. On failure, inspect `gpu_error`/`gpu_exit_code` before allocating training jobs. The sampler uses the allocated GPU's UUID with NVIDIA's prefix, logs a bounded failure message once per trial, and leaves unsupported counters empty. After the standalone check passes:
 
 ```bash
 bash scripts/slurm/run_experiment0.sh part1
@@ -129,7 +129,15 @@ The long pilots measure 0/250/1k/2.5k/5k/10k/20k updates. Their cosine schedule 
 
 Training plans fingerprint scientific settings, code, package versions, base bytes, credit inputs and the public monitoring panel. Incompatible completed checkpoints are rejected. Evaluation has its own fingerprints, so plot/benchmark orchestration changes need not alter training identity. Never bypass a mismatch; use a new run identity for changed training semantics.
 
-Null audits compare canonical upstream-loaded tensors because TabPFN v2 may convert serialized key names and v3 may construct inference criterion borders. All inference tensors/borders must match. Only the accumulated diagnostic `criterion.losses_per_bucket` is excluded. Recovery audits additionally compare fixed monitor trajectories and report exact equality plus explicit tolerances; tolerant equality does not prove bitwise CUDA determinism.
+Null audits compare canonical upstream-loaded tensors because TabPFN v2 may convert serialized key names and v3 may construct inference criterion borders. All inference tensors/borders must match. The accumulated diagnostic `criterion.losses_per_bucket` affects neither returned loss nor predictions and is excluded from the inference-state gate. Recovery audits report its delta separately, together with complete saved tensor-state equality, and gate on the remaining tensors plus fixed monitor trajectories with explicit tolerances. Tolerant equality does not prove bitwise CUDA determinism.
+
+If recovery fails, first inspect the existing pairs on a CPU node, substituting the identifier from the workflow folder. This creates only the normal maintenance log and never trains, changes a ledger or grants a passing receipt:
+
+```bash
+CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --time=00:10:00 scripts/slurm/maintenance.slurm inspect-recovery --id WORKFLOW_ID
+```
+
+The log separates the largest non-diagnostic state difference from `criterion.losses_per_bucket`, checks selected checkpoint identities, and reports monitor differences at updates 0, 5 and 12. Exit 0 means inspection completed; check the comparison fields for failures. A difference already at update 5 predates the pause and cannot be attributed solely to resuming. Preserve successful null/pilot trials and investigate independent-run repeatability before allocating another full recovery stage. Do not weaken tolerances or delete immutable plans to get past this gate.
 
 Each optimizer-boundary recovery saves weights, optimizer, scheduler, scaler, Python/NumPy/Torch/CUDA RNG, sampler cursor and accumulated history. Restoring preserves the full-budget learning-rate schedule. Slurm's warning reaches Python; it saves and exits 75. Abrupt node failure can lose work since the last periodic checkpoint. One trial/task prevents rerunning packed siblings.
 

@@ -13,6 +13,10 @@ day is never rewritten.
 
 ## 24-09-2026
 
+- Add read-only recovery inspection, separate detached loss diagnostics from model-state checks, and enforce selected-arm identities; retain failed recovery and successful pilot evidence.
+- Remove an exact stale copy of the retired output-migration test; its updated consolidation tests remain.
+- Advance the operational handover to the corrected experiment-0 part-1 launch after the B200 resource check passed.
+- Correct the standalone GPU-check command to Mindwell's required `--gpus-per-node`; executable code and prepared identities are unchanged.
 - Fix NVIDIA GPU UUID selection and bounded resource-error reporting; add a standalone GPU counter check and fresh experiment-0 `check2` identities.
 - Restore the requested `output CreditPFN/<experiment>/` name across both tiers, launchers, configs and analysis; retain relative legacy-path aliases.
 - Fix the preflight retention check's missing `OmegaConf` import and cover the CLI success/failure paths before another GPU launch.

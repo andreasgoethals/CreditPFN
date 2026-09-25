@@ -160,6 +160,127 @@ def test_recovery_check_detects_changed_weights(tmp_path):
     assert not compare(before, after)["passed"]
 
 
+def test_recovery_differences_separate_loss_diagnostic_and_preserve_model_gate(tmp_path):
+    from src.utils.recovery_check import compare, compact_report
+    before, after = tmp_path / "a.ckpt", tmp_path / "b.ckpt"
+    state = {"weight": torch.ones(3), "criterion.borders": torch.arange(3.),
+             "criterion.losses_per_bucket": torch.zeros(2)}
+    torch.save({"state_dict": state}, before)
+    state["criterion.losses_per_bucket"] += .1
+    torch.save({"state_dict": state}, after)
+    report = compare(before, after)
+    assert report["passed"]  # Detached loss diagnostics are not inference/training parameters.
+    assert not report["all_saved_state_close"] and not report["bitwise_equal"]
+    assert report["diagnostic_buffers_different"] == ["criterion.losses_per_bucket"]
+    assert report["max_non_diagnostic_difference"] == 0
+    assert report["diagnostic_buffer_differences"]["criterion.losses_per_bucket"] > .09
+    state["criterion.borders"] += .001
+    torch.save({"state_dict": state}, after)
+    report = compare(before, after)
+    assert not report["passed"]  # Inference criterion borders must still be checked.
+    assert report["max_non_diagnostic_tensor"] == "criterion.borders"
+    assert report["max_non_diagnostic_difference"] > .0009
+    compact = compact_report(dict(report, different_tensors=[str(i) for i in range(500)]))
+    assert "different_tensors" not in compact
+    assert compact["different_tensor_count"] == 500
+    assert len(compact["first_different_tensors"]) == 5
+
+
+@pytest.mark.parametrize("change", ["shape", "dtype", "nonfinite", "missing", "added"])
+def test_recovery_state_comparison_reports_invalid_tensors(tmp_path, change):
+    from src.utils.recovery_check import compare
+    before, after = tmp_path / "a.ckpt", tmp_path / "b.ckpt"
+    torch.save({"state_dict": {"w": torch.ones(3)}}, before)
+    state = {"w": torch.ones(3)}
+    if change == "shape":
+        state["w"] = torch.ones(2)
+    elif change == "dtype":
+        state["w"] = state["w"].double()
+    elif change == "nonfinite":
+        state["w"][0] = float("nan")
+    elif change == "missing":
+        state = {}
+    else:
+        state["added"] = torch.zeros(1)
+    torch.save({"state_dict": state}, after)
+    report = compare(before, after)
+    assert not report["passed"] and not report["bitwise_equal"]
+
+
+@pytest.mark.parametrize("step", [0, 5, 12])
+def test_recovery_trajectory_identifies_when_runs_already_differ(step):
+    from src.utils.recovery_check import compare_trajectories
+    before = pd.DataFrame({"successful_updates": [0, 5, 12],
+                           "metric__heldout": [.6, .7, .8], "score__optional": [np.nan] * 3})
+    after = before.copy()
+    after.loc[after.successful_updates == step, "metric__heldout"] += .001
+    report = compare_trajectories(before, after)
+    assert not report["passed"]
+    assert report["pre_interruption_equal"] == (step == 12)
+    assert [r["successful_updates"] for r in report["by_update"] if not r["passed"]] == [step]
+    assert compare_trajectories(before, before)["passed"]
+
+
+@pytest.mark.parametrize("change", ["missing_step", "duplicate_step", "missing_metric", "nan", "inf"])
+def test_recovery_trajectory_rejects_incomplete_or_nonfinite_primary_metrics(change):
+    from src.utils.recovery_check import compare_trajectories
+    before = pd.DataFrame({"successful_updates": [0, 5, 12], "metric__heldout": [.6, .7, .8]})
+    after = before.copy()
+    if change == "missing_step":
+        after = after.iloc[:2]
+    elif change == "duplicate_step":
+        after.loc[2, "successful_updates"] = 5
+    elif change == "missing_metric":
+        after = after.drop(columns="metric__heldout")
+    else:
+        before.loc[0, "metric__heldout"] = after.loc[0, "metric__heldout"] = float(change)
+    assert not compare_trajectories(before, after)["passed"]
+
+
+def test_recovery_inspection_is_read_only_and_never_runs_models(tmp_path, monkeypatch, capsys):
+    from src.utils import recovery_check, audit_experiment, experiment0
+    folder = tmp_path / "workflow123"
+    folder.mkdir()
+    state_path = folder / "state.json"
+    state_path.write_text('{"status": "failed"}')
+    state_before = state_path.read_bytes()
+    for arm in ("reference", "resumed"):
+        torch.save({"state_dict": {"weight": torch.ones(2)}}, folder / f"{arm}.ckpt")
+        pd.DataFrame({"successful_updates": [0, 5, 12], "metric__heldout": [.6, .7, .8]}
+                     ).to_csv(folder / f"{arm}.trajectory.csv", index=False)
+
+    def fake_audit(config):
+        arm = config.stem.rsplit("_", 1)[1]
+        return {"passed": False, "problems": ["other_trial: missing measurements"],
+                "trials": [{"trial": arm, "path": str(folder / f"{arm}.ckpt"),
+                            "status": "OK", "successful_updates": 12}]}
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Read-only inspection must not train, run a benchmark, write a report or advance the workflow")
+
+    monkeypatch.setattr(audit_experiment, "audit", fake_audit)
+    monkeypatch.setattr(recovery_check, "training_dir", lambda track, name, **kw: folder / name)
+    monkeypatch.setattr(experiment0, "root", lambda: tmp_path)
+    monkeypatch.setattr(experiment0, "complete", forbidden)
+    monkeypatch.setattr(recovery_check, "benchmark_smoke", forbidden)
+    monkeypatch.setattr(recovery_check, "write_json", forbidden)
+    monkeypatch.setattr(recovery_check.subprocess, "run", forbidden)
+    assert recovery_check.main(["--inspect", "--id", folder.name, "--task", "0"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["diagnostic_completed"] and not report["workflow_modified"]
+    assert report["comparisons"][0]["arm_audits_passed"]
+    assert report["comparisons"][0]["recorded_benchmark_smoke"] is None
+    assert state_path.read_bytes() == state_before
+    assert not (tmp_path / "part1_passed.json").exists()
+
+
+def test_recovery_audit_ignores_pending_siblings_but_checks_selected_identity():
+    from src.utils.recovery_check import selected_audit_problems
+    audits = {"reference": {"problems": ["trial0: identity mismatch", "trial1: missing"]}}
+    assert selected_audit_problems(audits, {"reference": {"trial": "trial0"}}) == {
+        "reference": ["trial0: identity mismatch"]}
+
+
 @pytest.mark.parametrize("family", ["tabpfn", "tabicl"])
 @pytest.mark.parametrize("trained", [False, True])
 def test_distribution_wrappers_use_explicit_levels_in_one_forward(family, trained):

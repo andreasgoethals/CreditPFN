@@ -22,9 +22,10 @@ source scripts/slurm/_job_log.sh
 start_job_log maintenance
 export CREDITPFN_USE_SCRATCH=0
 source scripts/slurm/_activate_env.sh
-action="${1:?Choose stage, prepare, preflight, consolidate, experiment0, clean or audit}"; shift
+action="${1:?Choose stage, prepare, preflight, consolidate, experiment0, inspect-recovery, clean or audit}"; shift
 case "$action" in
     experiment0) python -u -m src.utils.experiment0 "$@" ;;
+    inspect-recovery) python -u -m src.utils.recovery_check --inspect "$@" ;;
     stage) python -m src.utils.stage_inputs --destination "${VSC_SCRATCH_GPFS1:?}/CreditPFN" "$@" ;;
     prepare) python -m src.utils.prepare_experiment "$@" ;;
     preflight) python -m src.utils.preflight "$@" ;;

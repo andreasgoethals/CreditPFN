@@ -12,13 +12,26 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 24-09-2026 null controls pass; GPU counters block progression
+## Current handover — 24-09-2026 controls/pilots passed; recovery comparison failed
 
+- Read `Downloads/output CreditPFN/` in place: **238 files / 4,662,669 bytes**. Workflow **720955dab94c457fa23e23d8eba06c50** is stopped at `recovery`, status `failed`, eight failed pairs. CPU prepare **62141115**, null audit **62141138** and pilot audit **62141239** passed. All **16 null controls** (two updates) and **32 short pilots** (250 updates) completed; both track audits have zero pending/divergent/problem entries. GPU sampling now works in training: 24 null and 211 pilot samples. Preserve these successful trials.
+- All eight recovery jobs reached 12 updates and passed the packaged **five-fold benchmark smoke** (569 PD / 442 LGD predictions per model), but every state/trajectory equivalence comparison failed. This is not the full held-out credit benchmark. No part-1 receipt, long budget pilot or main sweep was released.
+- Crucial distinction: the independent arms already differ at update **5 before interruption**, with matching row counts. PD v2's held-out AUC is 0.762554 versus 0.762875; its first rounded gradient norms also differ. A final mismatch alone therefore does not isolate a checkpoint-resume defect. CUDA/backward nondeterminism or uncontrolled randomness are hypotheses, not confirmed causes; the current loop does not request deterministic kernels. See [PyTorch 2.12 reproducibility guidance](https://docs.pytorch.org/docs/2.12/notes/randomness.html).
+- Downloaded maximum state differences: approximately 6.8e-6–9.0e-6 for PD and 7.3e-6 for LGD TabICL; LGD TabPFN reports 0.017–0.037 across **all state tensors**, including a changed `criterion.losses_per_bucket` diagnostic. These maxima cannot be described as learned-weight drift without identifying their tensors. The read-only library snapshot confirms that `FullSupportBarDistribution.forward` updates this buffer separately from its returned loss (`tfm-library/repositories/TabPFN .txt`, pin `e5ce01614eebe520af303f2b5bfd212298eab2be`). Actual weights and detailed trajectories remain on project storage, outside this DATA download.
+- Added **CPU-only `maintenance.slurm inspect-recovery --id <workflow>`** to compare the existing pairs: separate diagnostic-buffer deltas, name the largest tensor differences and compare monitors at 0/5/12. It reads existing data, prints a bounded normal experiment-0 log, and never trains, writes a receipt or alters the workflow. Existing model/trajectory tolerances remain intact; selected-arm identity errors now also fail the GPU check. The detached `criterion.losses_per_bucket` lives outside the saved model recovery state and resets on resume; report its difference without treating it as an inference/training parameter, consistently with null audits. Whole-saved-state equality remains explicitly reported. Actual model/trajectory mismatches still fail. Do not rerun part 1 or launch part 2 until the recovery issue is resolved.
+- Training code identity remains **f234507aef0bc738f9178085dc56878c6b6b5bd1b23a934bd327d0182f3a24a7**; no training/config/weight changes. The workflow/evaluation fingerprint changes with the diagnostic utility, so a later recovery retry must explicitly preserve and verify the successful earlier stages; do not bypass the old ledger's source guard. User must commit/push and pull before the CPU inspection. No agent installs, pushes, VSC submissions or real training.
+- Removed an untracked reappearance of obsolete `tests/test_output_migration.py` only after its Git blob exactly matched the deleted predecessor (`d5a5378...`, before `6777eb1`); current coverage already lives in `tests/test_consolidate_output.py`. `Downloads/output/` is a separate **CreditICL** download, not a CreditPFN output-naming regression; do not mix or remove it. No Downloads files were moved or deleted; no local output tree was created.
+- Validation: full suite **541 passed, 1 skipped** (optional manifests absent), followed by **40 focused tests passed** after the final diagnostic-buffer comparison refinement. The maintenance wrapper and proposed submission command parse; CLI help and unchanged training fingerprint checked. Tests cover missing/different state keys, dtype/shape/nonfinite values, criterion borders, pre/post-pause mismatches, incomplete monitor records, selected identity failures, bounded logs and inspection without training/callbacks/writes. Notebooks were untouched. Local CPU tests do not establish GPU recovery equivalence.
+
+## Previous handover — 24-09-2026 B200 counter check passed; corrected part 1 ready
+
+- **B200 check passed (20:22):** Read `Downloads/maintenance_11614332_r0.log` in place. Mindwell job **11614332**, node `r11g22`, used the CreditPFN environment, returned `gpu_status: sampled`, empty GPU error fields and `END exit_code=0`. Counters: 0% idle utilization, 4 MiB device memory, 196.41 W, 32 C. This verifies the corrected query on the cluster; no training occurred. Next: `bash scripts/slurm/run_experiment0.sh part1` from the activated CreditPFN environment. No new code, pull or repeat standalone check is needed; only handover documentation changed locally.
+- **Submission correction (20:19):** Mindwell rejected the standalone resource check's `--gpus=1` option before creating a job. Use **`--gpus-per-node=1`**, as the existing training wrappers do. No GPU allocation occurred; no cleanup, code change, new identity or pull is needed to retry the corrected command. Shell syntax validation does not validate the site's Slurm submission policy.
 - Read `Downloads/output CreditPFN/` in place: **56 files / 1,125,299 bytes**, from user commit `c74610c`. Workflow `0865da430fbe433ca16ad6118017bdb7`: CPU prepare **62140639** passed with zero preflight failures/warnings; all **16 null GPU jobs exited 0**, each with two successful updates. CPU audit **62140691** then exited 1 and left phase `null`, status `failed`. No short pilots, recovery checks, budget pilots or main sweep were released.
 - Both downloaded null audits report **8 complete, 0 pending, 0 divergent**; all 16 canonical saved states match exactly and all 16 credit/non-credit monitor comparisons pass. The only 16 audit problems are missing successful GPU resource samples: **25 `CalledProcessError` samples** in total. Detailed CSVs remain on project storage and were not part of this DATA download. Output/weight paths in the logs use the intended experiment folders and storage tiers.
-- Confirmed a device-selector bug: PyTorch 2.12's `CUuuid.__str__` uses `uuid_to_string`, which emits a bare UUID, but the sampler passed it directly to NVIDIA's tool. A local read-only NVIDIA query reproduced exit 6 (`No devices were found`) for the bare UUID and exit 0 with `GPU-`. Primary evidence: PyTorch `registerCudaDeviceProperties` and [`uuid_to_string`](https://github.com/pytorch/pytorch/blob/v2.12.0/torch/csrc/utils.cpp). The B200 fix still requires the standalone cluster resource check.
+- Confirmed a device-selector bug: PyTorch 2.12's `CUuuid.__str__` uses `uuid_to_string`, which emits a bare UUID, but the sampler passed it directly to NVIDIA's tool. A local read-only NVIDIA query reproduced exit 6 (`No devices were found`) for the bare UUID and exit 0 with `GPU-`. Primary evidence: PyTorch `registerCudaDeviceProperties` and [`uuid_to_string`](https://github.com/pytorch/pytorch/blob/v2.12.0/torch/csrc/utils.cpp). The standalone query now passes on B200; collection during training remains part of the fresh null-control audit.
 - Normalize the GPU prefix, preserve explicit prefixed selectors, record bounded subprocess details/exit codes and warn once per trial. A sample requires actual utilization and memory-use values; unavailable counters cannot pass. `preflight --gpu-resources` checks the same sampler without loading datasets/models or writing measurement files. Its Slurm log remains under experiment 0.
-- Experiment-0 configs now use **`cpt_*_v5_check2`** so corrected source cannot overwrite immutable v5 plans/checkpoints. Only those run names changed; grids, budgets and experiments 1–3 are unchanged. First run the standalone GPU check, then rerun part 1 to verify the corrected measurement path with fresh records. Keep the existing successful null evidence; do not bypass its failed resource gate or relabel old weights. No Downloads copies, output deletions, installs, commits, pushes or VSC submissions by the agent.
+- Experiment-0 configs now use **`cpt_*_v5_check2`** so corrected source cannot overwrite immutable v5 plans/checkpoints. Only those run names changed; grids, budgets and experiments 1–3 are unchanged. The standalone GPU check passed; rerun part 1 to verify the corrected measurement path with fresh records. Keep the existing successful null evidence; do not bypass its failed resource gate or relabel old weights. No Downloads copies, output deletions, installs, commits, pushes or VSC submissions by the agent.
 - Validation: reproduced the old selector failure in a regression test, then **16 resource tests passed**. Full suite **525 passed, 1 skipped** (local manifests absent). The standalone entry point returned real local NVIDIA counters using a mocked PyTorch device identifier because local Torch is CPU-only; this is not B200 validation or model training. All **17 shell/Slurm files** and the proposed standalone submission command parse. All eight config payloads differ only in `run_name`; no local output tree was generated and notebooks were untouched.
 
 ## Previous handover — 24-09-2026 named output and CPU preflight repair
@@ -136,6 +149,68 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 24-09-2026 | v5 check2 recovery LGD TabICL · Mindwell 11614392 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery LGD v3 · Mindwell 11614838 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery LGD v2.6 · Mindwell 11614834 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery PD v3 · Mindwell 11614824 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery PD TabICL · Mindwell 11614829 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery LGD v2 · Mindwell 11614830 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery PD v2 · Mindwell 11614817 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 recovery PD v2.6 · Mindwell 11614818 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
+| 24-09-2026 | v5 check2 pilot audit · wICE 62141239 | **passed** | 32 complete, 0 pending/divergent/problems; exit 0; recovery released. |
+| 24-09-2026 | v5 check2 pilot LGD v3 full LR 3e-05 · Mindwell 11614385 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v3 full LR 3e-07 · Mindwell 11614383 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v3 frozen LR 3e-05 · Mindwell 11614363 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v3 frozen LR 3e-07 · Mindwell 11614384 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2 full LR 3e-05 · Mindwell 11614382 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2 frozen LR 3e-05 · Mindwell 11614362 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2 frozen LR 3e-07 · Mindwell 11614381 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2.6 full LR 3e-05 · Mindwell 11614379 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2 full LR 3e-07 · Mindwell 11614380 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2.6 frozen LR 3e-05 · Mindwell 11614361 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2.6 full LR 3e-07 · Mindwell 11614375 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD v2.6 frozen LR 3e-07 · Mindwell 11614378 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD TabICL full LR 3e-05 · Mindwell 11614374 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v3 full LR 3e-05 · Mindwell 11614371 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD TabICL frozen LR 3e-05 · Mindwell 11614360 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v3 frozen LR 3e-05 · Mindwell 11614359 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v3 full LR 3e-07 · Mindwell 11614369 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v3 frozen LR 3e-07 · Mindwell 11614370 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD TabICL full LR 3e-07 · Mindwell 11614372 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot LGD TabICL frozen LR 3e-07 · Mindwell 11614373 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2 full LR 3e-05 · Mindwell 11614367 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2 frozen LR 3e-05 · Mindwell 11614358 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2 full LR 3e-07 · Mindwell 11614365 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2 frozen LR 3e-07 · Mindwell 11614366 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2.6 full LR 3e-05 · Mindwell 11614364 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2.6 frozen LR 3e-05 · Mindwell 11614352 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD TabICL full LR 3e-07 · Mindwell 11614353 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD TabICL full LR 3e-05 · Mindwell 11614355 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD TabICL frozen LR 3e-05 · Mindwell 11614351 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD TabICL frozen LR 3e-07 · Mindwell 11614354 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2.6 full LR 3e-07 · Mindwell 11614356 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 pilot PD v2.6 frozen LR 3e-07 · Mindwell 11614357 | **passed audit** | 250 updates, complete diagnostics, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null audit · wICE 62141138 | **passed** | 16 exact state/monitor matches, resource audit passed; exit 0; pilots released. |
+| 24-09-2026 | v5 check2 null LGD v3 full LR 0e00 · Mindwell 11614349 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD v3 frozen LR 0e00 · Mindwell 11614344 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD v2 frozen LR 0e00 · Mindwell 11614343 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD v2 full LR 0e00 · Mindwell 11614348 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD v3 frozen LR 0e00 · Mindwell 11614338 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD v3 full LR 0e00 · Mindwell 11614345 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD v2.6 full LR 0e00 · Mindwell 11614347 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD v2.6 frozen LR 0e00 · Mindwell 11614342 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD TabICL frozen LR 0e00 · Mindwell 11614341 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null LGD TabICL full LR 0e00 · Mindwell 11614346 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD v2 full LR 0e00 · Mindwell 11614340 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD v2 frozen LR 0e00 · Mindwell 11614337 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD v2.6 full LR 0e00 · Mindwell 11614339 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD v2.6 frozen LR 0e00 · Mindwell 11614336 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD TabICL frozen LR 0e00 · Mindwell 11614334 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 null PD TabICL full LR 0e00 · Mindwell 11614335 | **passed audit** | 2 updates, exact state/monitor parity, valid GPU samples; exit 0. |
+| 24-09-2026 | v5 check2 part1 prepare · wICE 62141115 | **passed** | CPU preparation passed, null controls released; exit 0. |
+| 24-09-2026 | standalone GPU resource check · Mindwell 11614333 | **passed** | Second supplied counter check returned sampled GPU counters, exit 0; no training. |
+| 24-09-2026 | standalone GPU resource check · Mindwell 11614332 | **passed (download verified)** | Correct env, `gpu_status: sampled`, valid utilization/memory/power/temperature, exit 0; ready for corrected part-1 rerun. |
+| 24-09-2026 | standalone GPU resource check · Mindwell, 20:19 | **submission rejected; no job** | Site plugin rejects `--gpus=1`; retry with `--gpus-per-node=1`. No GPU work occurred. |
 | 24-09-2026 | v5 null audit · wICE 62140691 | **resource gate failed (download verified)** | 16 exact state/monitor matches; only missing GPU counters, 25 CalledProcessError samples; exit 1 stopped part 1. |
 | 24-09-2026 | v5 null LGD v3 full · Mindwell 11614316 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
 | 24-09-2026 | v5 null LGD v2 full · Mindwell 11614315 | **model checks passed** | 2 updates, exact state/monitor parity; GPU counters unavailable. |
@@ -190,6 +265,20 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 24-09-2026 — recovery comparison conflates independent-run and resume differences
+
+**Tried:** Eight B200 pairs, 12 uninterrupted updates versus stop at 5 and resume to 12, then strict final-state/monitor comparison.
+**Result:** All eight comparisons failed; all eight five-fold benchmark smoke checks passed. The earlier 16 null controls and 32 short pilots passed their audits.
+**Why:** Logs show the independent arms already differ before the interruption. Final differences cannot isolate a resume defect, and the largest LGD state delta mixes weights and loss-diagnostic buffers. The numerical root cause is not yet confirmed.
+**Instead:** Inspect existing project-storage checkpoints/trajectories on CPU with per-tensor deltas and per-milestone comparisons. Preserve the passed stages; establish repeatability before interpreting or repeating the GPU recovery test. Never loosen tolerances simply to release the long pilots.
+
+### 24-09-2026 — generic Slurm GPU option rejected by Mindwell
+
+**Tried:** Submit the standalone GPU resource check with `--gpus=1` from the agent's command.
+**Result:** Mindwell's submission plugin rejected it before assigning a job ID or allocating a GPU.
+**Why:** The site requires `--gpus-per-node`; Bash syntax checks cannot validate cluster-specific submission restrictions.
+**Instead:** Use `--gpus-per-node=1`, matching the repository's working training wrappers; retry only this unsubmitted check.
 
 ### 24-09-2026 — GPU counters received PyTorch's bare UUID
 
