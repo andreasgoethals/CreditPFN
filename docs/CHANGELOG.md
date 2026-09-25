@@ -13,6 +13,7 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Keep real-table probes running after encoder NaN errors, stream partial evidence, and compare float64 clipping without changing model precision.
 - Add a zero-update real-table precision/clipping probe to investigate systematic numerical skips before longer pilots.
 - Record the blocked signal-fix retry and clarify that a fresh campaign must clear trained checkpoints as well as both output folders.
 

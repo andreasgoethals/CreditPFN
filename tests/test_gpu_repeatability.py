@@ -148,7 +148,8 @@ def test_synthetic_batch_uses_native_axis_order_and_training_loss(monkeypatch, f
     assert auxiliary == ((criterion,) if family == "tabpfn" else ())
 
 
-def test_table_comparison_preserves_state_and_reports_nonfinite_profiles(monkeypatch):
+@pytest.fixture
+def table_case():
     from src.train import tabpfn_preprocessing as preprocessing
 
     class Classifier(torch.nn.Module):
@@ -167,6 +168,13 @@ def test_table_comparison_preserves_state_and_reports_nonfinite_profiles(monkeyp
         X_query=torch.ones(3, 1, 4), categorical_idx=[], class_permutation=None,
         outlier_removal_std=12.)], y_query=torch.tensor([0, 1, 0]).reshape(-1, 1, 1),
         task_type="classification", dataset_id="synthetic", n_classes=2)
+    return model, batch
+
+
+def test_table_comparison_preserves_state_and_reports_nonfinite_profiles(monkeypatch, table_case):
+    from src.train import tabpfn_preprocessing as preprocessing
+
+    model, batch = table_case
     initial = {k: v.clone() for k, v in model.state_dict().items()}
     rng = torch.get_rng_state().clone()
     original = preprocessing.apply_outlier_clip
@@ -175,13 +183,60 @@ def test_table_comparison_preserves_state_and_reports_nonfinite_profiles(monkeyp
     result = probe.compare_table_batch(model, torch.nn.CrossEntropyLoss(), batch, device="cpu")
     assert result["profiles"]["current_bf16"]["status"] == "measured"
     assert result["profiles"]["current_fp32"]["status"] == "measured"
-    for name in ("upstream_bf16", "upstream_fp32"):
+    for name in ("upstream_bf16", "upstream_fp32", "upstream_float64_bf16", "upstream_float64_fp32"):
         assert result["profiles"][name]["status"] == "error"
         assert result["profiles"][name]["clipped_inputs"][0]["nan"] == 28
     assert preprocessing.apply_outlier_clip is original
     assert all(torch.equal(value, initial[key]) for key, value in model.state_dict().items())
     assert torch.equal(torch.get_rng_state(), rng)
     assert all(p.grad is None for p in model.parameters())
+
+
+def test_table_comparison_continues_after_encoder_value_error(monkeypatch, table_case, capsys):
+    import json
+    from src.train import tabpfn_preprocessing as preprocessing
+
+    model, batch = table_case
+    forward = model.forward
+    initial = {k: v.clone() for k, v in model.state_dict().items()}
+    rng = torch.get_rng_state().clone()
+    observed_profiles = []
+
+    def encoder(x, y, **kwargs):
+        result = forward(x, y, **kwargs)
+        if torch.isnan(x).any():
+            torch.rand(1)
+            raise ValueError("Found NaNs in the encoded x and y")
+        return result
+
+    def broken_clip(x, **kwargs):
+        return x * float("nan")
+
+    def healthy_clip(x, **kwargs):
+        observed_profiles.append(kwargs.get("wide_stats", False))
+        return x.clone()
+
+    monkeypatch.setattr(model, "forward", encoder)
+    monkeypatch.setattr(preprocessing, "apply_outlier_clip", broken_clip)
+    monkeypatch.setattr(probe, "upstream_clip", healthy_clip)
+    result = probe.compare_table_batch(model, torch.nn.CrossEntropyLoss(), batch, device="cpu")
+    for name in ("current_bf16", "current_fp32"):
+        assert result["profiles"][name]["error_type"] == "ValueError"
+        assert result["profiles"][name]["clipped_inputs"][0]["nan"] == 28
+    assert result["profiles"]["upstream_bf16"]["status"] == "measured"
+    assert result["profiles"]["upstream_fp32"]["status"] == "measured"
+    assert result["profiles"]["upstream_float64_bf16"]["status"] == "measured"
+    assert result["profiles"]["upstream_float64_fp32"]["status"] == "measured"
+    assert set(observed_profiles) == {False, True}
+    assert preprocessing.apply_outlier_clip is broken_clip
+    assert all(torch.equal(value, initial[key]) for key, value in model.state_dict().items())
+    assert torch.equal(torch.get_rng_state(), rng)
+    assert all(p.grad is None for p in model.parameters())
+    lines = capsys.readouterr().out.splitlines()
+    assert json.loads(lines[0])["event"] == "table_inputs"
+    emitted = [json.loads(line) for line in lines if line.startswith('{"profile":')]
+    assert [entry["profile"] for entry in emitted] == list(result["profiles"])
+    assert emitted[0]["error_type"] == "ValueError"
 
 
 def test_table_probe_keeps_corpus_index_seed_and_bounds_rows(monkeypatch):
@@ -216,7 +271,8 @@ def test_table_probe_keeps_corpus_index_seed_and_bounds_rows(monkeypatch):
         probe.table_probe(Path("unused"), cfg, table_number=1, rows=2048, members=2, device="cpu")
 
 
-def test_upstream_clip_fits_context_and_preserves_categoricals(monkeypatch):
+@pytest.mark.parametrize("wide_stats", [False, True])
+def test_upstream_clip_fits_context_and_preserves_categoricals(monkeypatch, wide_stats):
     import sys
     from types import SimpleNamespace
 
@@ -226,14 +282,30 @@ def test_upstream_clip_fits_context_and_preserves_categoricals(monkeypatch):
 
         def __call__(self, x, num_train_rows):
             assert x.shape == (6, 1, 2) and num_train_rows == 4
+            assert x.dtype == (torch.float64 if wide_stats else torch.float32)
             return x / 2
 
     monkeypatch.setitem(sys.modules, "tabpfn.preprocessing.torch.torch_soft_clip_outliers",
                         SimpleNamespace(TorchSoftClipOutliers=Clip))
     x = torch.ones(6, 1, 3)
-    actual = probe.upstream_clip(x, n_sigma=12, categorical_idx=[1], context_rows=4)
+    actual = probe.upstream_clip(x, n_sigma=12, categorical_idx=[1], context_rows=4,
+                                wide_stats=wide_stats)
+    assert actual.dtype == x.dtype
     assert torch.equal(actual[..., 1], x[..., 1])
     assert (actual[..., [0, 2]] == .5).all() and (x == 1).all()
+
+
+def test_table_probe_prints_inputs_before_an_unexpected_failure(monkeypatch, table_case, capsys):
+    import json
+
+    def fail(*args, **kwargs):
+        raise KeyError("unexpected defect")
+
+    monkeypatch.setattr(probe, "repeated_backward", fail)
+    model, batch = table_case
+    with pytest.raises(KeyError, match="unexpected defect"):
+        probe.compare_table_batch(model, torch.nn.CrossEntropyLoss(), batch, device="cpu")
+    assert json.loads(capsys.readouterr().out.splitlines()[0])["inputs"][0]["context"]["shape"] == [4, 1, 4]
 
 
 @pytest.mark.parametrize("args", [["--table-number", "0"], ["--table-number", "11", "--base", "tabicl"]])

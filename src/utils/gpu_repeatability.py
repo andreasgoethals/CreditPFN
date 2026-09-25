@@ -1,7 +1,8 @@
 """Isolate GPU forward/backward failures without optimizer updates or output files.
 
 The default uses a synthetic batch. A numbered training table instead compares
-production preprocessing with upstream clipping, at BF16 and FP32 precision.
+production and upstream clipping (including float64 clipping calculations),
+with BF16 and FP32 model arithmetic.
 Neither diagnostic can grant a passing experiment-0 receipt.
 """
 from __future__ import annotations
@@ -169,17 +170,22 @@ def tensor_summary(value: torch.Tensor) -> dict:
             "max_finite_absolute": float(value[finite].abs().max()) if finite.any() else None}
 
 
-def upstream_clip(x, *, n_sigma, categorical_idx, context_rows):
-    """Exercise the installed upstream transform without changing production code."""
-    from tabpfn.preprocessing.torch.torch_soft_clip_outliers import TorchSoftClipOutliers
-
+def upstream_clip(x, *, n_sigma, categorical_idx, context_rows, wide_stats=False):
+    """Test upstream clipping; optionally widen its calculations, not model inputs."""
     if n_sigma is None:
         return x
+    from tabpfn.preprocessing.torch.torch_soft_clip_outliers import TorchSoftClipOutliers
+
     numerical = [i for i in range(x.shape[-1]) if i not in categorical_idx]
     result = x.clone()
     if numerical:
-        result[..., numerical] = TorchSoftClipOutliers(n_sigma=n_sigma)(
-            x[..., numerical], num_train_rows=context_rows)
+        values = x[..., numerical]
+        # Squaring extreme finite float32 values can overflow during bound fitting.
+        # This diagnostic tests wider clipping math without changing model precision.
+        if wide_stats:
+            values = values.double()
+        clipped = TorchSoftClipOutliers(n_sigma=n_sigma)(values, num_train_rows=context_rows)
+        result[..., numerical] = clipped.to(x.dtype)
     return result
 
 
@@ -194,8 +200,10 @@ def compare_table_batch(model, criterion, batch, *, device: str) -> dict:
                "categorical_columns": len(m.categorical_idx),
                "outlier_removal_std": m.outlier_removal_std} for m in batch.members]
     report = {"inputs": inputs, "query_labels": tensor_summary(batch.y_query), "profiles": {}}
+    print(json.dumps({"event": "table_inputs", "inputs": inputs,
+                      "query_labels": report["query_labels"]}, allow_nan=False), flush=True)
     original_clip = tabpfn_preprocessing.apply_outlier_clip
-    for clipping in ("current", "upstream"):
+    for clipping in ("current", "upstream", "upstream_float64"):
         for amp in (True, False):
             name = f"{clipping}_{'bf16' if amp else 'fp32'}"
             clipped_inputs = []
@@ -203,7 +211,8 @@ def compare_table_batch(model, criterion, batch, *, device: str) -> dict:
             def clip(x, *, n_sigma, categorical_idx):
                 result = (original_clip(x, n_sigma=n_sigma, categorical_idx=categorical_idx)
                           if clipping == "current" else upstream_clip(x, n_sigma=n_sigma,
-                              categorical_idx=categorical_idx, context_rows=context_rows))
+                              categorical_idx=categorical_idx, context_rows=context_rows,
+                              wide_stats=clipping == "upstream_float64"))
                 # Only the first forward's member summaries are needed.
                 if len(clipped_inputs) < len(batch.members):
                     clipped_inputs.append(tensor_summary(result))
@@ -215,11 +224,13 @@ def compare_table_batch(model, criterion, batch, *, device: str) -> dict:
                     result = repeated_backward(model,
                         lambda: loop._ensemble_step_loss(model, batch, criterion=criterion),
                         device=device, auxiliary=(criterion,), repeats=2, amp=amp)
-            except (RuntimeError, ImportError) as exc:
+            except (RuntimeError, ValueError, ImportError) as exc:
+                # TabPFN reports encoded-input NaNs as ValueError, not RuntimeError.
+                # Retain the failed measurement and continue the other settings.
                 result = {"status": "error", "error_type": type(exc).__name__, "error": str(exc)[:1200]}
             result["clipped_inputs"] = clipped_inputs
             report["profiles"][name] = result
-            print(f"{name}: {result['status']}", flush=True)
+            print(json.dumps({"profile": name, **result}, allow_nan=False), flush=True)
             model.zero_grad(set_to_none=True)
             gc.collect()
             if torch.device(device).type == "cuda":
@@ -267,8 +278,10 @@ def main(argv=None) -> int:
         parser.error("This diagnostic requires an allocated CUDA GPU; no model was loaded")
     if not torch.cuda.is_bf16_supported():
         parser.error("The campaign's BF16 diagnostic requires BF16 GPU support")
+    from src.utils.logging_setup import configure_warning_filters
     from src.train.config import load_train_config, training_members
     from src.utils.paths import resolve_base_checkpoint
+    configure_warning_filters()
     cfg = load_train_config(config_path=f"config/experiment0/recovery_{args.track}.yaml")
     prefix = "tabicl-" if args.base == "tabicl" else f"tabpfn-{args.base}-"
     bases = cfg.tunable.classifier_base_paths if args.track == "pd" else cfg.tunable.regressor_base_paths

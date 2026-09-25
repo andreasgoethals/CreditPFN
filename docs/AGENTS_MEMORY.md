@@ -12,7 +12,15 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 part 1 passes its gates; systematic PD v2 skips need diagnosis
+## Current handover — 25-09-2026 real-table probe stopped before its comparisons
+
+- Read `Downloads/output CreditPFN.zip` in place: **177 files / 3,274,266 uncompressed bytes**, 541,171-byte ZIP; SHA256 `42ede171922b02ec2016e5f41ccb7827ad62434ca16b9cacc8a5cee46e196c13`, CRC valid. The only addition to the preceding part-1 bundle is maintenance log **11618868**. Downloads and local output remain untouched.
+- On deployed **16ffeec**, the zero-update PD v2/table-0011 probe failed in **16 seconds**, **17:47:23–17:47:39 CEST**, exit 1. TabPFN raised `ValueError` for NaNs in encoded inputs during `current_bf16`; the probe caught only runtime/import errors and never reached FP32 or upstream comparisons. This confirms an encoder failure, not its preprocessing/precision root cause. No training updates or checkpoint/receipt writes occurred.
+- Reproduced the same early exception locally. The probe now records `ValueError` alongside expected runtime/import errors, prints aggregate inputs before the first forward and each result immediately, then continues. Six settings compare current clipping, upstream clipping, and upstream clipping with float64 calculations, each with BF16/FP32 model arithmetic. Wider clipping is diagnostic only; model inputs retain their original dtype. State/RNG restoration remains tested; unexpected programming exceptions still propagate. Reuse the exact known-warning filter without hiding model errors.
+- **Next: rerun only the five-minute maintenance probe after deployment.** Keep part 2 blocked by the systematic PD v2 table exclusion documented below. Once the real training correction is established and verified, use a fresh part 1 to certify one consistent executable; part 2 has never run. The diagnostic edit changes the broad workflow fingerprint, not training identity `9a85958d0285...`; do not rewrite the previous receipt to authorize longer jobs. No production training/config/preprocessing edits, cleanup, submissions, installs, push or library changes this turn.
+- Validation: **653 passed, 1 skipped** (optional local manifests absent), **453.01 s**, including 24 diagnostic tests. The encoder-error regression failed before the fix and passes afterward. CLI help, proposed Bash syntax and diff checks pass. Training identity is unchanged; new workflow identity **208f1d7936d883ec635a6ef33f676c3e8e22c3f4d1b27bc06047d3f2a93f6938**. Real-table GPU comparisons still require the user-run probe; local tests do not certify that outcome.
+
+## Previous handover — 25-09-2026 part 1 passes its gates; systematic PD v2 skips need diagnosis
 
 - Read `Downloads/output CreditPFN.zip` in place: **176 files / 3,270,286 uncompressed bytes**, 539,594-byte ZIP; SHA256 `d3473aa17724c1b2e542fef79cfb0202c4819005852e4f99b6d05c6a535cb222`. CRC, all **94 JSON / eight CSV** files and all **eight plans / 64 trial identities** verify. DATA-side output only; project diagnostics/weights were inspected by cluster audits, not downloaded here.
 - Deployed **a50c38d**, workflow **5433645ed42e42f4825d441c1c2e6309**: **16/16 null controls, 32/32 short pilots and 8/8 recovery pairs passed the automated gates**. `part1_passed.json` matches that checkout's workflow identity `e852f032cab5...`. All 60 logs end with exit 0; final audit **62154541** finished **17:17:44 CEST**. No part-2 run exists. Nulls have exact canonical state/monitor parity; pilots each reached 250 successful updates; 228 null/pilot GPU samples all report `sampled`.
@@ -253,6 +261,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | PD v2/table 0011 precision/clipping probe · Mindwell 11618868 | **failed** | Uncaught encoder ValueError in first setting; comparisons incomplete. Zero updates/writes; 16 s, exit 1. |
 | 25-09-2026 | Part 1 recovery audit · wICE 62154541 | **passed** | 8/8 pairs and five-fold smoke passed; wrote part1_passed.json. 19 s, exit 0. |
 | 25-09-2026 | Recovery LGD TabICL full · Mindwell 11618827 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 69 s, exit 0. |
 | 25-09-2026 | Recovery LGD v3 full · Mindwell 11618834 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 85 s, exit 0. |
@@ -477,6 +486,13 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — An encoder validation error aborted the numerical diagnostic
+
+**Tried:** Compare current/upstream clipping with BF16/FP32 on the real table that training repeatedly skipped.
+**Result:** The first profile raised `ValueError`; the job stopped before printing its input aggregates or trying the other profiles.
+**Why:** The diagnostic caught `RuntimeError` and `ImportError`, while TabPFN uses `ValueError` for encoded-input NaNs; the final-only report hid partial evidence.
+**Instead:** Record expected validation failures per profile, stream aggregates/results before continuing, and test the exact exception path locally. Add wider clipping arithmetic in the same bounded allocation; do not interpret this diagnostic as a passing training control.
 
 ### 25-09-2026 — Successful-update budgets can conceal a missing training table
 
