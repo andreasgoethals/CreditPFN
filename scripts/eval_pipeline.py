@@ -21,6 +21,8 @@ import sys as _sys
 import time
 from pathlib import Path
 
+from omegaconf import OmegaConf
+
 _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
@@ -165,7 +167,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         expected = {identity for key, identity in prepared["trials"].items()
                     if key.startswith(str(train_cfg.run_name) + "/")}
         for handle, _ in trained:
-            identity = (handle.extra or {}).get("provenance", {}).get("trial_identity", {}).get("sha256")
+            identity = (handle.extra or {}).get("trial_identity_sha256")
             if identity not in expected:
                 raise RuntimeError(f"Checkpoint does not belong to the prepared training plan: {handle.name}")
 
@@ -380,7 +382,6 @@ def run(
 
     # Apply paths.data_source from config/data.yaml (single source of
     # truth) BEFORE any resolve_*_path calls below.
-    from omegaconf import OmegaConf
     apply_data_source_from_cfg(OmegaConf.load("config/data.yaml"))
 
     log, _ = resolve_run_log(log_path, task_name=f"eval_{track}")
@@ -483,9 +484,8 @@ def run(
     # Per-model architectural cap (TabPFN family only — see
     # src.eval.benchmark.resolve_max_rows_for_handle for the lookup rule).
     if hasattr(eval_cfg, "max_rows_per_model") and eval_cfg.max_rows_per_model is not None:
-        from omegaconf import OmegaConf as _OC
         max_rows_per_model = {
-            str(k): int(v) for k, v in _OC.to_container(
+            str(k): int(v) for k, v in OmegaConf.to_container(
                 eval_cfg.max_rows_per_model, resolve=True,
             ).items()
         }
@@ -621,7 +621,6 @@ if __name__ == "__main__":
         # for sanitized CSVs via `resolve_data_path`. Without this the
         # task count is computed against the wrong storage tier on VSC.
         # Reported by Codex on 2026-05-21.
-        from omegaconf import OmegaConf
         apply_data_source_from_cfg(OmegaConf.load("config/data.yaml"))
         logging.basicConfig(level=logging.WARNING, force=True)
         handles_and_models, cfg_test_ids, _ = _build_roster(

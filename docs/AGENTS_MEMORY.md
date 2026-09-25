@@ -12,7 +12,18 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 GPU variation reproduced; deterministic recovery validation next
+## Current handover — 25-09-2026 five recovery pairs pass; PD ensemble loss and review fixes
+
+- User committed the previous repair as **d0c3929**. Read `Downloads/CreditPFN-20260925-111056/output CreditPFN/` in place: **694 files / 18,457,489 bytes**, comprising 103 logs, 191 manifest/workflow files, 372 training files, 26 result/prediction files and two general scheduler files. All **149 JSON and 412 CSV/compressed CSV files parse**. Both storage tiers are represented; no Downloads files were modified or copied into the repository.
+- Isolated workflow **1338dabf6e9541d4b4c20813f2e7e065** is finished but **failed**, with five successful and three failed tasks. All four LGD bases and PD TabICL pass recovery, selected-arm audits and five-fold smoke scoring. Their actual model tensors and monitored values at updates 0/5/12 match exactly. LGD TabPFN's detached `criterion.losses_per_bucket` differs and remains separately reported; it is not learned-state drift. The three PD TabPFN reference arms fail at their first training loss with `nll_loss2d_forward_out_cuda_template` lacking a deterministic implementation.
+- Experiment 0 is **not complete**: the earlier 16 null and 32 short pilots passed, but no accepted full-part-1 receipt or part-2 budget run exists in this snapshot. Read-only downloaded records are not a live scheduler query. Experiment 1 remains unreleased.
+- Flatten ensemble member/query pairs before classification CE, preserving the objective/all output columns and loss gradients while using the non-spatial reduction. Strictness/tolerances, budgets, row caps and the research grid are unchanged. The earlier synthetic probe used the single-forward loss and missed this shape-specific refusal; it now follows the production ensemble forward/loss. Confirmed against PyTorch 2.12 `nll_loss2d_forward_out_cuda_template` (atomic mean/sum reduction).
+- Independently reproduced both Claude findings: evaluation dropped saved trial identity from model handles, and unfinished frozen manifest rows were reconstructed with legacy adapter tags. Also reproduced an earlier evaluation failure from a function-local OmegaConf import. Carry the saved identity into roster membership checks, import OmegaConf at module scope, and reconstruct absent adaptation metadata from the fingerprinted phase configuration. Regression cases use the actual `RunRow` schema, both families/tracks and valid/foreign/missing checkpoint identities.
+- Download also exposes **13 one-line orphan recovery summaries**: the first child renamed the shell-owned file, while later children reused its old path. Keep the active job filename stable; trial names remain logged. Completed historical logs are untouched.
+- Next: user commits/pushes and pulls on VSC, runs the isolated recovery check with the corrected source, and supplies its result. Only after all eight pass: inspect/stop CreditPFN writers, preview and clear both output tiers plus trained weights, rerun full part 1 and then part 2, review the horizon, prepare experiment 1. Training source is **4de2b3ad4ba05cbb7cbe399779cdc0308d5aa0d0474b1a455230fd45e0a94488**; new training/evaluation fingerprints invalidate old plans, so never bypass or relabel them. Preserve original data/base weights and downloaded historical evidence. No agent training, installation, push, cleanup or VSC submission.
+- Validation: **599 passed, 1 skipped** (optional local manifests absent) in **461.16 s**, plus **142 focused tests passed**. Coverage includes numerical loss/gradient equivalence, both reported regressions, actual ensemble probe wiring and shared child-log paths. All **11 notebooks passed**, using the download in place and producing **113 temporary PDFs**; original notebook bytes were restored. All **17 shell files** parse with LF endings; a read-only symbol-table scan finds no unresolved global candidates in src/scripts. A 120-second diagnostic timer printed a slow existing large-CSV test stack; the test and full suite subsequently passed. Downloads still contains exactly 694 files / 18,457,489 bytes; no local output tree or new debug files. Library remains read-only at **e5ce01614eebe520af303f2b5bfd212298eab2be**. Actual B200 validation of the corrected PD loss remains pending.
+
+## Previous handover — 25-09-2026 GPU variation reproduced; deterministic recovery validation next
 
 - User committed the preceding diagnostic as **d7dff7c**. Read `Downloads/output CreditPFN.zip` directly, without extracting: **240 files / 4,694,936 uncompressed bytes**, ZIP CRC validation passed. New diagnostic: **Mindwell 11615820**, 09:24:45–09:24:55, correct CreditPFN environment, B200/Torch 2.12.0+cu130, exit 0. The preceding extracted directory is absent; no byte-for-byte comparison against it is claimed. No Downloads files were changed or imported.
 - Confirmed PD v2 GPU arithmetic variation: identical state/RNG/batch produced **110/129 different gradient tensors**, maximum absolute delta **0.000244140625**, in both default-kernel comparisons. Both deterministic profiles had **zero** loss/gradient differences across the three repeats. This identifies one real source of non-repeatability; it does not prove the cause of every previous pair mismatch or establish correct resumption. The small first-call timings are not throughput benchmarks. Previous full-workflow recovery is still failed; 16 null/32 short pilots and eight benchmark smoke checks remain historical passed evidence.
@@ -169,6 +180,15 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | Deterministic recovery LGD TabICL · Mindwell 11615916 | **passed** | Exact saved state and 0/5/12 monitors; five-fold smoke, 442 predictions; exit 0. |
+| 25-09-2026 | Deterministic recovery LGD v3 · Mindwell 11615923 | **passed** | Exact model/monitors; only detached criterion diagnostic differs; 442 predictions; exit 0. |
+| 25-09-2026 | Deterministic recovery LGD v2.6 · Mindwell 11615922 | **passed** | Exact model/monitors; only detached criterion diagnostic differs; 442 predictions; exit 0. |
+| 25-09-2026 | Deterministic recovery LGD v2 · Mindwell 11615921 | **passed** | Exact model/monitors; only detached criterion diagnostic differs; 442 predictions; exit 0. |
+| 25-09-2026 | Deterministic recovery PD TabICL · Mindwell 11615920 | **passed** | Exact saved state and 0/5/12 monitors; five-fold smoke, 569 predictions; exit 0. |
+| 25-09-2026 | Deterministic recovery PD v3 · Mindwell 11615919 | **crashed** | Spatial CUDA CE reduction lacks deterministic implementation; reference stops before its first update; exit 1. |
+| 25-09-2026 | Deterministic recovery PD v2.6 · Mindwell 11615918 | **crashed** | Same spatial CUDA CE refusal at first training loss; exit 1. |
+| 25-09-2026 | Deterministic recovery PD v2 · Mindwell 11615917 | **crashed** | Same spatial CUDA CE refusal at first training loss; exit 1. |
+| 25-09-2026 | Isolated recovery preparation · wICE 62144804 | **done** | Four uniquely named reference/resumed plans, workflow 1338dabf; 64 s, exit 0. |
 | 25-09-2026 | PD v2 repeatability probe · Mindwell 11615820 | **GPU variation isolated** | 10 s, exit 0; default: 110/129 gradient tensors differ, max 2.44e-4; deterministic and deterministic math: exact repeats. No optimizer steps/checkpoints. |
 | 25-09-2026 | inspect-recovery · wICE 62143430 | **inspection passed; recovery still failed** | 18 s, exit 0; all eight identities valid, model deltas 5.24e-6–9.00e-6, pre-pause differences in all pairs; larger LGD deltas are diagnostic buffers. |
 | 24-09-2026 | v5 check2 recovery LGD TabICL · Mindwell 11614392 | **comparison failed** | Both arms reached 12 updates; state/trajectory mismatch, five-fold smoke passed; exit 1. |
@@ -287,6 +307,20 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — A repeatable single-forward probe missed the ensemble loss refusal
+
+**Tried:** Apply strict kernels to all eight recovery pairs after a successful small PD v2 repeatability probe.
+**Result:** Five pairs pass exactly for model tensors/monitors; all three PD TabPFN arms abort at the first loss.
+**Why:** The probe flattened logits to 2D, while the production ensemble used 3D logits and selected CUDA's nondeterministic spatial NLL reduction. It was a loss-shape coverage gap, not evidence of another resume-state mismatch.
+**Instead:** Reuse the 2D CE path after correctly aligning all member/query samples, test loss/gradient equivalence, and make the probe use the ensemble path. Revalidate on B200 without relaxing determinism.
+
+### 25-09-2026 — Mocked analysis metadata and direct benchmark smoke bypassed integration failures
+
+**Tried:** Rely on a frozen-failure fixture with adaptation_mode and on benchmark smoke calls that bypass the final evaluation roster.
+**Result:** Actual unfinished manifests still crashed notebooks; final evaluation had an undefined OmegaConf and rejected valid planned checkpoint identities.
+**Why:** RunRow never writes adaptation_mode; a local import is invisible to another function; loaded handles omitted provenance used by the guard. The original fixtures did not exercise these boundaries.
+**Instead:** Reproduce from real RunRow fields and the actual manifest/sidecar loader, test valid/foreign/missing identities, and keep both the roster guard and strict notebook membership check.
 
 ### 25-09-2026 — Local full-suite stall at the persistent-worker test
 

@@ -1181,10 +1181,10 @@ def _ensemble_step_loss(
               the logit columns by ``logits[..., perm]`` so they land back
               in canonical class order
       2. Stack the per-member logits into ``(Q, B, E, L)``.
-      3. CE classifier loss: reshape to ``(B*E, L, Q)``, targets to
-         ``(B*E, Q)`` via ``y_query.repeat(B*E, 1)``, single call to
-         ``cross_entropy``. CE then averages over ``E*Q`` samples — exactly
-         the official behaviour.
+      3. CE classifier loss: align ``(B*E, L, Q)`` logits and ``(B*E, Q)``
+         targets, then flatten member/query pairs into samples. This keeps
+         the official mean loss over ``E*Q`` samples and all ``L`` columns,
+         while avoiding CUDA's nondeterministic spatial NLL reduction.
       4. Regression NLL: stack to ``(B*E, Q, L)``, ``criterion(logits, y)``
          then ``.mean()``.
 
@@ -1260,17 +1260,16 @@ def _classification_loss_BE_LQ(
     logits_BLQ: torch.Tensor, targets_BQ: torch.Tensor,
     *, n_classes: int, criterion: torch.nn.Module,
 ) -> torch.Tensor:
-    """CE on the (B*E, L, Q) / (B*E, Q) shape — matches official
-    ``F.cross_entropy(input, target)`` where the class dim is at axis 1
-    of `input`. See `_compute_classification_loss` at
-    ``TabPFN .txt``.
+    """Preserve ensemble CE using the deterministic-compatible 2D loss path.
+
+    Move classes last before flattening samples so every target retains its
+    member/query logits. Passing 3D logits directly selects CUDA's spatial
+    NLL reduction, which strict deterministic algorithms reject (Torch 2.12).
     """
-    if __debug__:
-        max_t = int(targets_BQ.max().item()) if targets_BQ.numel() else -1
-        assert max_t < int(n_classes), (
-            f"target label {max_t} >= n_classes={n_classes}"
-        )
-    return criterion(logits_BLQ.float(), targets_BQ.long())
+    return _classification_loss(
+        logits_BLQ.transpose(1, 2), targets_BQ,
+        n_classes=n_classes, criterion=criterion,
+    )
 
 
 def _n_classes(batch: TabPFNBatch) -> int:

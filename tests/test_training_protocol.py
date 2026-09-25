@@ -13,6 +13,33 @@ from src.train.sampling import EpochSampler, partition_rows
 from src.train.optimization import step_mean_gradient
 
 
+@pytest.mark.parametrize("members, queries, classes", [(1, 3, 2), (2, 17, 2), (4, 23, 5)])
+@pytest.mark.parametrize("weighted, smoothing", [(False, 0.), (True, .1)])
+def test_ensemble_classification_loss_preserves_objective_and_gradients(members, queries, classes, weighted, smoothing):
+    from src.train.loop import _classification_loss_BE_LQ
+
+    # Non-contiguous, class-first ensemble logits, including unused head columns.
+    generator = torch.Generator().manual_seed(54)
+    logits = torch.randn(members, queries, 10, generator=generator).transpose(1, 2).requires_grad_()
+    targets = torch.randint(classes, (members, queries), generator=generator)
+    weight = torch.arange(1., 11.) if weighted else None
+    criterion = torch.nn.CrossEntropyLoss(weight=weight, label_smoothing=smoothing)
+    expected = criterion(logits, targets)
+    expected_grad, = torch.autograd.grad(expected, logits)
+
+    # The spatial NLL reduction is forbidden by strict CUDA determinism. A CPU
+    # fixture can enforce the same input contract without claiming GPU coverage.
+    def nonspatial_loss(values, labels):
+        assert values.ndim == 2 and labels.ndim == 1, "spatial NLL kernel would be selected"
+        return criterion(values, labels)
+
+    actual = _classification_loss_BE_LQ(logits, targets, n_classes=classes, criterion=nonspatial_loss)
+    actual_grad, = torch.autograd.grad(actual, logits)
+    torch.testing.assert_close(actual, expected)
+    torch.testing.assert_close(actual_grad, expected_grad)
+    assert (actual_grad[:, classes:] != 0).any(), "Keep all ten output columns in the loss"
+
+
 def make_dataset(tmp_path):
     refs = []
     for i, n in enumerate((240, 80, 160)):

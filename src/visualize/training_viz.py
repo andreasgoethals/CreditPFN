@@ -249,7 +249,9 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
     an empty DataFrame if the file doesn't exist yet (so notebook
     cells still render before any trial finishes).
     """
-    import re
+    from omegaconf import OmegaConf
+    if cfg is None:
+        cfg = _load_default_cfg()
     paths = _resolve_paths(cfg)
     run, mdir = paths["run_name"], paths["manifest_dir"]
 
@@ -292,23 +294,31 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
     def _stem(row) -> str:
         if isinstance(row["final_ckpt_path"], str) and row["final_ckpt_path"]:
             return Path(row["final_ckpt_path"]).stem
-        # FAIL rows have no ckpt — reconstruct (per-split run name when the split is known).
+        # Interrupted/failed rows have no checkpoint or adaptation_mode column.
+        # Reconstruct using the same config-dependent naming as train_pipeline.
         run_i = (f"{run}_s{int(row['split']):02d}"
                  if "split" in row.index and pd.notna(row.get("split")) else run)
         from src.train.loop import descriptive_name
         def value(key, default):
             v = row.get(key, default)
             return default if pd.isna(v) else v
+        frozen = value("use_lora", False)
+        frozen = frozen.strip().lower() in ("true", "1", "yes") if isinstance(frozen, str) else bool(frozen)
+        adaptation = value("adaptation_mode", None)
+        if adaptation is None and OmegaConf.select(cfg, "experiment.fingerprint", default=False):
+            if frozen and (not bool(OmegaConf.select(cfg, "lora.enabled", default=False))
+                           or "tabicl" in str(row["base_checkpoint"])):
+                adaptation = "frozen_backbone"
         return descriptive_name(
             run_name=run_i, track=row["track"], base_path=row["base_checkpoint"],
             learning_rate=float(row["learning_rate"]), seed=int(row["seed"]),
-            use_lora=bool(value("use_lora", False)),
+            use_lora=frozen,
             query_fraction=value("query_fraction", None),
             accumulate_grad_batches=value("accumulate_grad_batches", None),
             epoch_pass_mode=value("epoch_pass_mode", "one_sample"),
             min_train_rows=int(value("min_train_rows", 0)),
             l2sp_lambda=value("l2sp_lambda", None),
-            adaptation_mode=value("adaptation_mode", None),
+            adaptation_mode=adaptation,
         ).removesuffix(".ckpt")
 
     df["trial_name"] = df.apply(_stem, axis=1)

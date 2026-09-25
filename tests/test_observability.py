@@ -43,6 +43,37 @@ def test_training_entry_selects_experiment_before_opening_its_first_log(tmp_path
     assert observed == [tmp_path / "output CreditPFN/experiment1/logs"]
 
 
+def test_recovery_children_keep_the_shell_log_path(tmp_path, monkeypatch):
+    from scripts import train_pipeline
+    from src.train.config import load_train_config
+    from src.train import loop
+
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path))
+    log = tmp_path / "output CreditPFN/experiment0/logs/recovery_123_r0.log"
+    log.parent.mkdir(parents=True)
+    log.write_text("START task=recovery\n")
+    monkeypatch.setenv("CREDITPFN_ACTIVE_LOG", str(log))
+    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
+    cfg.device = "cpu"
+    cfg.experiment.fingerprint = cfg.experiment.require_plan = False
+    cfg.train.resource_diagnostics = False
+    monkeypatch.setattr(train_pipeline, "setup_logging", lambda *a: None)
+    monkeypatch.setattr(train_pipeline, "_ensure_processed", lambda *a, **kw: None)
+    monkeypatch.setattr(train_pipeline, "_run_provenance", lambda *a: {})
+
+    def failed_trial(*a, **kw):
+        raise RuntimeError("synthetic child failure; no model loaded")
+
+    monkeypatch.setattr(loop, "train_one_config", failed_trial)
+    # Three invocations share the parent's path, as in a recovery pair.
+    for _ in range(3):
+        assert train_pipeline.run(cfg=cfg, trial_index=0, log_path=log) == 1
+    assert list(log.parent.iterdir()) == [log]
+    assert log.read_text().startswith("START task=recovery\n")
+    assert log.read_text().count("train_pipeline: status=FAIL") == 3
+
+
 def test_monitor_splits_are_fixed_disjoint_and_shuffled_for_small_tables():
     from src.train.monitoring import monitor_indices
     y = np.repeat([0, 1], 50)

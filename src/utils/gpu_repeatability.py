@@ -138,18 +138,21 @@ def probe_loss(checkpoint: Path, track: str, *, rows: int, features: int, member
         auxiliary = ()
     else:
         from src.train.model import load_tabpfn_for_training
-        from src.train.dataloader import TabPFNBatch
-        from src.train.loop import _forward, _classification_loss, _regression_loss
+        from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch, _PerEstimatorView
+        from src.train.loop import _ensemble_step_loss
         model, criterion, _, _ = load_tabpfn_for_training(str(checkpoint), track=track, device=device)
-        batch = TabPFNBatch(X_context=x[:n_context], y_context=y[:n_context],
-            X_query=x[n_context:], y_query=y[n_context:], categorical_idx=[],
-            task_type="classification" if track == "pd" else "regression", dataset_id="synthetic_repeatability")
+        # Synthetic views bypass CPU preprocessing but use the production
+        # ensemble forward/loss, including its member/query reduction shape.
+        views = [_PerEstimatorView(X_context=x[:n_context, i:i+1],
+            y_context=y[:n_context, :1], X_query=x[n_context:, i:i+1],
+            categorical_idx=[], class_permutation=None, outlier_removal_std=None)
+            for i in range(members)]
+        batch = TabPFNEnsembleBatch(members=views, y_query=y[n_context:, :1],
+            task_type="classification" if track == "pd" else "regression",
+            dataset_id="synthetic_repeatability", n_classes=2 if track == "pd" else None)
 
         def make_loss():
-            logits, target, _, _ = _forward(model, batch)
-            if track == "pd":
-                return _classification_loss(logits, batch.y_query, n_classes=2, criterion=criterion)
-            return _regression_loss(logits, target, criterion=criterion)
+            return _ensemble_step_loss(model, batch, criterion=criterion)
 
         auxiliary = (criterion,)
     model.train()

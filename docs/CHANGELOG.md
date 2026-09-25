@@ -13,6 +13,10 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Flatten ensemble classification samples for deterministic CUDA loss; exercise that production loss path in the repeatability probe.
+- Fix evaluation's missing OmegaConf import and carry checkpoint identities into the prepared-plan roster check.
+- Reconstruct unfinished frozen trials from their actual manifest schema and phase config so notebooks remain usable during resumptions.
+- Keep shell-owned training logs at a stable path so recovery children do not create stray summary files.
 - Make recovery controls deterministic with 2,048-row batches, seed Python randomness, and add an isolated recovery-only launch before the requested clean rerun.
 - Record numerical execution settings in weights/logs and refresh cleanup/readiness guidance.
 - Scope recovery benchmark output by workflow so debugging retries cannot overwrite earlier scores.

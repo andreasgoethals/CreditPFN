@@ -121,21 +121,28 @@ def test_synthetic_batch_uses_native_axis_order_and_training_loss(monkeypatch, f
             return torch.ones(2, 8, 10)
 
     model = Network()
-    criterion = torch.nn.CrossEntropyLoss()
+    class RegressionLoss(torch.nn.Module):
+        def forward(self, *, logits, y):
+            assert logits.shape == (8, 2, 10) and y.shape == (8, 2)
+            return logits.mean(-1) - y
+
+    criterion = torch.nn.CrossEntropyLoss() if track == "pd" else RegressionLoss()
     monkeypatch.setattr(icl, "load_tabicl_for_training", lambda *a, **kw: (model, {}))
     monkeypatch.setattr(pfn, "load_tabpfn_for_training", lambda *a, **kw: (model, criterion, {}, {}))
     monkeypatch.setattr(icl, "tabicl_pinball_loss", lambda out, target: target.mean())
 
-    def forward(network, batch):
-        assert batch.X_context.shape == (12, 2, 4)
-        assert batch.X_query.shape == (8, 2, 4)
+    forwarded = []
+    def forward(network, *, X_ctx, y_ctx, X_qry, **kwargs):
+        assert X_ctx.shape == (12, 1, 4)
+        assert X_qry.shape == (8, 1, 4)
         if track == "pd":
-            assert (batch.y_context[0] == 0).all() and (batch.y_context[1] == 1).all()
-        return torch.ones(8, 2, 10), batch.y_query, None, None
+            assert (y_ctx[0] == 0).all() and (y_ctx[1] == 1).all()
+        forwarded.append(X_ctx)
+        return torch.ones(8, 1, 10)
 
-    monkeypatch.setattr(loop, "_forward", forward)
-    monkeypatch.setattr(loop, "_regression_loss", lambda logits, target, **kw: target.mean())
+    monkeypatch.setattr(loop, "_forward_one_member", forward)
     loaded, make_loss, auxiliary = probe.probe_loss(Path(f"{family}-v2.ckpt"), track,
         rows=20, features=4, members=2, query_fraction=.4, device="cpu")
     assert loaded is model and torch.isfinite(make_loss())
+    assert len(forwarded) == (2 if family == "tabpfn" else 0)
     assert auxiliary == ((criterion,) if family == "tabpfn" else ())

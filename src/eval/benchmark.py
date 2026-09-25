@@ -272,6 +272,7 @@ def load_trained_handles(
         else:
             use_lora_val = bool(use_lora_raw)
         extra = {
+            "trial_identity_sha256": prov.get("trial_identity", {}).get("sha256"),
             "adaptation_mode": prov.get("adaptation_mode"),
             "base_checkpoint":     row["base_checkpoint"],
             "learning_rate":       float(row["learning_rate"]),

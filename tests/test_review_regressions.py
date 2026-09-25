@@ -258,15 +258,66 @@ def test_missing_inputs_are_prepared_before_skip_fingerprints(tmp_path, monkeypa
     assert module.run() == 0
 
 
-def test_failed_frozen_trial_retains_its_real_epoch_stem(tmp_path, monkeypatch):
-    from src.visualize import training_viz as module
-    monkeypatch.setattr(module, "_resolve_paths", lambda *a: dict(run_name="phase", manifest_dir=tmp_path))
-    pd.DataFrame([dict(track="pd", base_checkpoint="tabpfn-v3-classifier-v3_default.ckpt",
-        learning_rate=1e-5, seed=42, use_lora=True, adaptation_mode="frozen_backbone",
-        status="FAIL", final_ckpt_path="", epoch_pass_mode="one_sample", l2sp_lambda=0.,
-        query_fraction=.4, accumulate_grad_batches=1)]).to_csv(tmp_path / "phase_s00_pd.csv", index=False)
-    frame = module.load_run_manifest("pd")
-    assert frame.trial_name.iloc[0].endswith("_frozen")
+@pytest.mark.parametrize("status", ["INTERRUPTED", "FAIL"])
+@pytest.mark.parametrize("track", ["pd", "lgd"])
+@pytest.mark.parametrize("family", ["tabpfn", "tabicl"])
+def test_failed_frozen_trial_retains_its_real_epoch_stem(tmp_path, monkeypatch, status, track, family):
+    from dataclasses import asdict
+    from scripts.train_pipeline import RunRow
+    from src.train.config import load_train_config, resolve_grid
+    from src.visualize.campaign import config_path, load_campaign
+
+    # Exercise the actual writer schema: RunRow does NOT record adaptation_mode.
+    cfg = load_train_config(config_path=str(config_path(1, track)))
+    base, lr, frozen, query, accum, sampling, minimum, lam = next(
+        row for row in resolve_grid(cfg, single=False) if row[2] and family in row[0])
+    row = RunRow(track=track, base_checkpoint=base, learning_rate=lr, use_lora=frozen,
+        query_fraction=query, accumulate_grad_batches=accum, seed=int(cfg.seed),
+        n_train_datasets=6, n_test_datasets=2, final_ckpt_path="" if status == "INTERRUPTED" else None,
+        elapsed_sec=1., status=status, error=None, epoch_pass_mode=sampling,
+        min_train_rows=minimum, l2sp_lambda=lam)
+    output = tmp_path / "output CreditPFN"
+    manifests = output / "experiment1/manifests"
+    manifests.mkdir(parents=True)
+    pd.DataFrame([asdict(row)]).to_csv(manifests / f"{cfg.run_name}_s00_{track}.csv", index=False)
+    monkeypatch.setenv("CREDITPFN_ANALYSIS_ROOT", str(output))
+    campaign = load_campaign(1, track)
+    measured = campaign.trials[campaign.trials.status != "PENDING"]
+    assert len(campaign.trials) == 256 and len(measured) == 1
+    assert measured.iloc[0].status == status
+    assert measured.iloc[0].trial_name.endswith("_frozen")
+
+
+@pytest.mark.parametrize("family", ["tabpfn", "tabicl"])
+@pytest.mark.parametrize("kind", ["all", "foundation", "classical"])
+@pytest.mark.parametrize("identity", ["planned", "foreign", None])
+def test_eval_roster_enforces_saved_training_identity(tmp_path, monkeypatch, family, kind, identity):
+    from omegaconf import OmegaConf
+    from scripts import eval_pipeline
+    from src.utils import prepare_experiment
+
+    cfg = OmegaConf.create(dict(run_name="planned_s00", device="cpu", train=dict(retention_panel="none"),
+        experiment=dict(require_plan=True), tunable=dict(classifier_base_paths=[])))
+    eval_cfg = OmegaConf.create(dict(baselines=dict(enabled=[]), tabpfn_n_estimators=2))
+    monkeypatch.setenv("CREDITPFN_EVAL_KIND", kind)
+    monkeypatch.setattr("src.train.corpus.split_from_cfg", lambda *a, **kw: NS(train=[], test=[]))
+    monkeypatch.setattr("src.model.build_baselines", lambda **kw: [])
+    monkeypatch.setattr(eval_pipeline, "manifests_dir", lambda: tmp_path)
+    monkeypatch.setattr(prepare_experiment, "read_plan", lambda _: {
+        "trials": {"planned_s00/0": "planned", "planned_s01/0": "foreign"}})
+    checkpoint = tmp_path / "trained.ckpt"
+    checkpoint.write_bytes(b"fixture; no model is loaded")
+    provenance = {"trial_identity": {"sha256": identity}} if identity is not None else {}
+    Path(str(checkpoint) + ".provenance.json").write_text(json.dumps(provenance))
+    pd.DataFrame([dict(track="pd", base_checkpoint=f"{family}-classifier.ckpt", learning_rate=1e-6,
+        seed=42, final_ckpt_path=str(checkpoint), status="OK")]).to_csv(
+            tmp_path / "planned_s00_pd.csv", index=False)
+    if identity != "planned":
+        with pytest.raises(RuntimeError, match="does not belong to the prepared training plan"):
+            eval_pipeline._build_roster(eval_cfg, cfg, "pd")
+    else:
+        roster, _, _ = eval_pipeline._build_roster(eval_cfg, cfg, "pd")
+        assert len(roster) == (0 if kind == "classical" else 1)
 
 
 def test_fold_stability_summary_uses_actual_fold_column(monkeypatch):

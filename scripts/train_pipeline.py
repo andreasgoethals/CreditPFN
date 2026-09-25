@@ -624,17 +624,12 @@ def run(
                 from src.utils.prepare_experiment import assert_prepared
                 assert_prepared(cfg, global_idx, identity)
 
-        # ---- Rename the log file to include the trial's HPs --------- #
-        # On Linux, renaming a file that's currently the target of an
-        # `exec > $LOG` redirection works cleanly: the slurm shell holds
-        # an open file descriptor on the inode, not on the directory
-        # entry, so subsequent writes follow the renamed file. This
-        # makes it trivial to find a specific (base × lr × qf × lora)
-        # log: just glob for `*_<run_basename>.log` instead of having to
-        # cross-reference the array task ID with the manifest.
+        # Enrich a standalone log, but keep the shell-owned job path stable:
+        # recovery children all receive that same path from their parent.
+        # Renaming it leaves later children writing orphan summary files.
         try:
             current_log = log.path if hasattr(log, "path") else log_path
-            if current_log is not None:
+            if current_log is not None and not os.environ.get("CREDITPFN_ACTIVE_LOG"):
                 cur = Path(str(current_log))
                 if cur.exists():
                     enriched = cur.with_name(
