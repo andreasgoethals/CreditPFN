@@ -12,7 +12,17 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
-## Current handover — 25-09-2026 real-table probe stopped before its comparisons
+## Current handover — 25-09-2026 probe isolates range and clipping defects
+
+- Read `Downloads/output CreditPFN.zip` in place: **178 files / 3,284,185 uncompressed bytes**, 543,040-byte ZIP; SHA256 `ad7d49a6e1590921fd6915ac58573e3eb03e15ce910d25afa8d9dc9defcca6c3`, CRC valid; all **94 JSON** records parse. New maintenance job **11618877** ran **18:09:26–18:09:44 CEST**, **18 s**, exit 0, after user commit **e151e7f**. Zero optimizer updates/checkpoint writes; old part-1 receipt **5433645ed42e42f4825d441c1c2e6309** is unchanged. No part 2 exists.
+- All six comparisons completed: current clipping fails under both precisions; upstream float32 clipping yields finite losses **0.654919 BF16 / 0.653881 FP32** but adds **1,888 NaNs per member**. Float64 clipping preserves the large finite values and still produces a nonfinite model loss. Inputs reach **3.392e38**. This isolates numerical preprocessing; changing BF16 alone does not cure it. Upstream's finite loss is not evidence of preserved information. Non-bitwise gradients under the default fast kernel profile are not a failed deterministic recovery test.
+- Checked the two affected public raw columns: each has **104,773 finite values**, with maxima up to **8.993e41**. The old float32 cast lost **53,049 + 58,304 = 111,353 finite cells**; surviving values then overflow clipping/encoder statistics. Sanitization now changes extreme column units by recorded powers of two before casting, preserves actual missingness, and rejects underflow in rescaled columns. The rule uses whole-table range metadata and is explicitly part of the existing transductive schema preparation; it is not claimed to be an inductive fitted normalization.
+- Corrected training clipping to the upstream two-pass logarithmic rule with sample standard deviation and **context-only** fitted bounds. It now refuses overflowing bounds rather than silently erasing features. Experiment-0 audits require valid zero data/optimizer skip counts; successful-update budgets alone cannot hide systematic exclusions. Factors go into the existing general dataset manifests; no new output directory or per-trial metadata shard. Fixed the data CLI's stale claim that existing tables were skipped.
+- In-memory preparation of the complete affected raw table completed in **42.625 s**, with **105,471 rows, 64 selected features, identical targets** and **48 unit conversions before selection**. The two previously corrupted retained features are no longer selected after correcting the underlying values; this is a data/feature identity change, not just a logging fix. Local raw/processed files and Downloads remain unchanged. Production GPU behavior still requires validation.
+- **Next:** user commits/pushes and pulls with writers stopped; rebuild all processed inputs on the CPU using the refreshed data pipeline, then run the five-minute real-table probe after that job succeeds. Preserve current evidence meanwhile. Once accepted, perform the requested clean restart and a fresh full part 1; a complete output wipe also removes the general dataset manifests, so rerun CPU data preparation after cleanup to restore that provenance before part 1. Do not reuse old plans, checkpoints or receipts, or launch part 2 early. Training identity **8e7e5a23d24ce1eddcf7ad90809fd4f5cc6dfc6d1f3a267857f46ede03ff37ed**; workflow **da6b75f824979fc03d9e8fd1c04b3ab60d29a0f27f6270cbb325ddfbf8f2a2fb**.
+- Validation: the three initial regression tests reproduced finite-data loss, unintended in-bound shrinkage and the missing context boundary. **40 focused tests pass** after correcting a missing default in the extended manifest schema; the full suite passes **667 tests, 1 skipped** (optional local manifests absent), **513.59 s**. Bash syntax and diff checks pass. Source edits, tests and existing docs only; no VSC actions, real-model training, installs, push, notebook/output files or library changes. Library pin remains **e5ce01614eebe520af303f2b5bfd212298eab2be**; numerical source anchors are in LITERATURE.md.
+
+## Previous handover — 25-09-2026 real-table probe stopped before its comparisons
 
 - Read `Downloads/output CreditPFN.zip` in place: **177 files / 3,274,266 uncompressed bytes**, 541,171-byte ZIP; SHA256 `42ede171922b02ec2016e5f41ccb7827ad62434ca16b9cacc8a5cee46e196c13`, CRC valid. The only addition to the preceding part-1 bundle is maintenance log **11618868**. Downloads and local output remain untouched.
 - On deployed **16ffeec**, the zero-update PD v2/table-0011 probe failed in **16 seconds**, **17:47:23–17:47:39 CEST**, exit 1. TabPFN raised `ValueError` for NaNs in encoded inputs during `current_bf16`; the probe caught only runtime/import errors and never reached FP32 or upstream comparisons. This confirms an encoder failure, not its preprocessing/precision root cause. No training updates or checkpoint/receipt writes occurred.
@@ -261,6 +271,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 25-09-2026 | PD v2/table 0011 six-setting probe · Mindwell 11618877 | **diagnosed** | 6/6 settings completed; only upstream float32 clipping had finite losses, while adding 1,888 NaNs/member. Zero updates/writes; 18 s, exit 0. |
 | 25-09-2026 | PD v2/table 0011 precision/clipping probe · Mindwell 11618868 | **failed** | Uncaught encoder ValueError in first setting; comparisons incomplete. Zero updates/writes; 16 s, exit 1. |
 | 25-09-2026 | Part 1 recovery audit · wICE 62154541 | **passed** | 8/8 pairs and five-fold smoke passed; wrote part1_passed.json. 19 s, exit 0. |
 | 25-09-2026 | Recovery LGD TabICL full · Mindwell 11618827 | **passed** | Exact model/0-5-12 monitors; five-fold smoke, 442 predictions. 69 s, exit 0. |
@@ -486,6 +497,20 @@ that configuration?"* is the question this table exists to answer.
 | 03-07-2026 | run-1 · first full sweep attempt | **crashed** | 0 usable trials. The run that produced the writability probe, the import compat layer, and the preflight smoke tests. |
 
 ## Dead ends
+
+### 25-09-2026 — A finite loss can conceal overflow-induced feature erasure
+
+**Tried:** Compare the current clip, upstream float32 clip and upstream float64 clip under BF16/FP32 arithmetic.
+**Result:** Only the float32 upstream clip produces finite loss, while introducing 1,888 extra missing values per member. Retaining the values with float64 clipping still fails in subsequent model arithmetic.
+**Why:** Finite raw values exceed float32 storage and encoder statistical range; the old cast erased 111,353 cells across two columns, and upstream float32 statistics can turn additional observations into NaNs that the model then imputes.
+**Instead:** Preserve finite inputs through recorded numerical unit changes before dtype casting, match the actual context-fitted clipping algorithm, reject overflowing bounds, and require zero numerical skips in debugging gates. Rebuild data and validate before accepting fresh controls.
+
+### 25-09-2026 — Adding a manifest column requires a complete row schema
+
+**Tried:** Persist numerical unit exponents through the existing dataset manifest columns.
+**Result:** The focused suite reports 146 passes, one skip and one schema test failure before GPU work.
+**Why:** The new column was listed in MANIFEST_COLUMNS but absent from the registration row constructor.
+**Instead:** Initialize it as empty until sanitization succeeds; verify the full registration/sanitization/CSV round trip and rerun validation on the completed source.
 
 ### 25-09-2026 — An encoder validation error aborted the numerical diagnostic
 

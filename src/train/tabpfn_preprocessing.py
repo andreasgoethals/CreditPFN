@@ -680,49 +680,51 @@ def apply_outlier_clip(
     x: torch.Tensor, *,
     n_sigma: float | None,
     categorical_idx: Sequence[int] | None = None,
+    context_rows: int | None = None,
 ) -> torch.Tensor:
-    """Mirror of TabPFN's ``TorchSoftClipOutliersStep`` (see
-    ``TabPFN .txt``).
+    """Context-fitted, two-pass logarithmic clipping of numerical features.
 
-    Applied per training step on the combined ``(context+query)`` tensor
-    just before model forward. The official pipeline runs this on
-    NUMERICAL columns only; categoricals pass through unmodified.
+    Matches upstream ``TorchSoftClipOutliers`` and ``torch_nanstd`` in
+    ``tfm-library/repositories/TabPFN .txt``: use sample standard deviation,
+    refit bounds excluding first-pass outliers, then soften only values outside
+    the bounds. Training passes the context length; query rows never fit bounds.
+    The small local implementation also supports older installed TabPFN APIs.
 
-    Math: for each numerical column j, compute column μ, σ on the
-    finite rows; soft-clip to ``±n_sigma·σ`` via ``z / sqrt(1 + (z/B)^2)``
-    where ``z = (x - μ) / σ``, ``B = n_sigma``.
-
-    ``n_sigma=None`` → no-op (regression default). Returns a new tensor
-    when clipping is active; the input ``x`` when not.
+    NaNs and categorical columns retain their meaning. Extreme numerical units
+    must be corrected during data preparation, not silently erased here. A
+    nonfinite bound for a feature with finite observations is an explicit error.
     """
     if n_sigma is None or n_sigma <= 0:
         return x
 
-    # Identify numerical columns. The categorical_idx is positional in
-    # the POST-preprocessing feature space — see
-    # `_PerEstimatorView.categorical_idx`.
     n_features = x.shape[-1]
     cat_set = set(int(i) for i in (categorical_idx or []))
     num_idx = [i for i in range(n_features) if i not in cat_set]
     if not num_idx:
         return x
 
+    if context_rows is not None and not 1 <= context_rows <= x.shape[0]:
+        raise ValueError("context_rows must identify a nonempty context inside the batch")
+    values = x[..., num_idx]
+    fit = values if context_rows is None else values[:context_rows]
+    if len(fit) <= 1:
+        return x
+
+    def bounds(data):
+        valid = ~torch.isnan(data)
+        count = valid.sum(dim=0).clamp_min(1)
+        mean = torch.where(valid, data, 0).sum(dim=0) / count
+        variance = torch.where(valid, (data - mean).square(), 0).sum(dim=0) / (count - 1).clamp_min(1)
+        cutoff = variance.sqrt() * float(n_sigma)
+        return mean - cutoff, mean + cutoff
+
+    lower, upper = bounds(fit)
+    cleaned = torch.where((fit < lower) | (fit > upper), float("nan"), fit)
+    lower, upper = bounds(cleaned)
+    if not (torch.isfinite(lower).all() and torch.isfinite(upper).all()):
+        raise ValueError("Nonfinite outlier bounds; rebuild processed data with numerical unit conversion")
+    clipped = torch.maximum(-torch.log(1 + values.abs()) + lower, values)
+    clipped = torch.minimum(torch.log(1 + clipped.abs()) + upper, clipped)
     out = x.clone()
-    num_tensor = out[..., num_idx].float()
-    # Stats over the row axis (axis 0) per (batch, feature).
-    # Standard `unbiased=False` to match numpy `np.std`.
-    mu = num_tensor.nanmean(dim=0, keepdim=True)
-    sd = (
-        (num_tensor - mu).square().nanmean(dim=0, keepdim=True)
-        .sqrt().clamp_min(1e-6)
-    )
-    z = (num_tensor - mu) / sd
-    soft = z / torch.sqrt(1.0 + (z / float(n_sigma)) ** 2) * sd + mu
-    # An all-NaN numerical column (nanmean over zero non-NaN entries -> NaN)
-    # would poison `soft` with NaN and trip the model-forward NaN assertion.
-    # Restore the original values for any non-finite soft-clip output so a
-    # degenerate column passes through untouched rather than crashing.
-    # (Hardened 2026-06-23.)
-    soft = torch.where(torch.isfinite(soft), soft, num_tensor)
-    out[..., num_idx] = soft.to(out.dtype)
+    out[..., num_idx] = clipped
     return out

@@ -83,7 +83,7 @@ MANIFEST_COLUMNS: list[str] = [
     "categorical_columns", "numerical_columns",
     "n_missing_total", "missing_rate",
     "minority_class_ratio", "target_mean", "target_std",
-    "date_added", "sha256_shape_cols",
+    "date_added", "sha256_shape_cols", "numeric_unit_shifts",
 ]
 
 
@@ -206,6 +206,7 @@ def compute_manifest_row(
         "target_std": target_std,
         "date_added": "",  # filled in main() to preserve existing rows
         "sha256_shape_cols": shape_aware_sha256(n_rows, n_feat, feature_df.columns),
+        "numeric_unit_shifts": "",  # sanitizer fills this after writing the processed table
     }
 
 

@@ -1,6 +1,6 @@
 #!/bin/bash -l
 # CPU data registration/sanitization. Prepare inputs before staging/plans.
-# 64 GB retains the measured margin for wide-table feature agglomeration.
+# 64 GB retains the measured margin for wide-table preparation.
 #SBATCH --job-name=creditpfn-data
 #SBATCH --clusters=wice
 #SBATCH --account=lp_verbekelab

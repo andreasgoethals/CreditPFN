@@ -240,7 +240,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--fresh", action="store_true",
         help="Delete existing processed/ and manifests "
-             "before running. Default: incremental (skip existing).",
+             "before running. Default: refresh the selected datasets without deleting other outputs.",
     )
     p.add_argument(
         "--datasets", nargs="*", default=None,

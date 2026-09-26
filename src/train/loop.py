@@ -1041,17 +1041,15 @@ def _forward_one_member(
     ``L`` is the per-row output dimensionality (= ``MAX_NUMBER_OF_CLASSES=10``
     for classifier, = bar-distribution buckets for regressor).
     """
-    # Apply GPU soft-clip on numerical columns. Done on combined tensor
-    # so the column-wise μ/σ uses both context AND query rows
-    # (matching TabPFN's GPU pipeline which sees the concatenated tensor
-    # inside `_call_model`).
+    # Fit outlier bounds on context, then transform context and query together.
+    # Upstream passes num_train_rows to TorchSoftClipOutliersStep as well.
     from src.train.tabpfn_preprocessing import apply_outlier_clip
 
     combined_x = torch.cat([X_ctx, X_qry], dim=0)
     if outlier_removal_std is not None:
         combined_x = apply_outlier_clip(
             combined_x, n_sigma=outlier_removal_std,
-            categorical_idx=cat_idx,
+            categorical_idx=cat_idx, context_rows=X_ctx.shape[0],
         )
 
     cat_inds: list[list[int]] | None = (

@@ -13,6 +13,9 @@ day is never rewritten.
 
 ## 25-09-2026
 
+- Preserve extreme finite measurements through recorded numerical unit conversion before float32 preparation.
+- Match TabPFN's context-fitted, two-pass logarithmic clipping; refuse overflowing bounds instead of erasing features.
+- Require valid zero skip counts before experiment-0 audits can certify completed update budgets.
 - Keep real-table probes running after encoder NaN errors, stream partial evidence, and compare float64 clipping without changing model precision.
 - Add a zero-update real-table precision/clipping probe to investigate systematic numerical skips before longer pilots.
 - Record the blocked signal-fix retry and clarify that a fresh campaign must clear trained checkpoints as well as both output folders.

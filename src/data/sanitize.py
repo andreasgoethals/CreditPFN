@@ -8,7 +8,7 @@ correspond to the steps in ``cfg.sanitize`` in ``config/data.yaml``:
   (d) drop all-NaN feature columns                  (edge case of (c))
   (e) drop constant feature columns                 (TabPFN errors on these)
   (f) coerce object columns that are mostly numeric strings to numeric
-  (g) cast numerical features to ``numeric_dtype``  (default float32)
+  (g) change units of extreme-range features, then cast to float32
   (h) replace ±inf with NaN                         (uniform NaN handling)
   (i) unsupervised feature selection to at most ``max_columns`` features
        (currently 64), allocating slots to numerical and categorical
@@ -49,6 +49,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import logging
 from pathlib import Path
 
@@ -167,22 +168,21 @@ def _coerce_numeric_strings(
 
 def _cast_numericals_to(
     df: pd.DataFrame, target: str, numerical_columns: list[str], dtype: str,
+    *, unit_shifts: dict[str, int] | None = None,
 ) -> pd.DataFrame:
-    """Cast every column listed in ``numerical_columns`` to ``dtype``.
+    """Keep finite measurements finite when preparing lower-precision inputs.
 
-    Existing NaNs are preserved (float dtypes only — ``int64``-typed
-    targets are handled separately).
+    A column above 2**40 in magnitude is divided by a power of two so its
+    largest finite magnitude is below one. This prevents overflowing both
+    float32 storage and later sums/squared deviations. It preserves ordering,
+    signs and ratios up to dtype rounding; it neither clips nor imputes values.
+    True NaN/Inf values remain missing. Ordinary columns are only dtype-cast.
 
-    When casting to a smaller float dtype (e.g. ``float32``), values
-    above the target's range — e.g. credit-risk features like
-    debt-to-income with a near-zero denominator — would silently
-    overflow to ``±inf`` AND emit a noisy
-    ``RuntimeWarning: overflow encountered in cast`` from NumPy.
-    Both effects are unhelpful: we want those out-of-range values to
-    become NaN (the standard "this is a data issue, treat as missing"
-    contract) cleanly, with no warning. So we explicitly replace
-    ``±inf`` with NaN at the float64 stage — before the cast that
-    would have produced the overflow.
+    Exponents are recorded as whole-table schema preparation, alongside the
+    existing unsupervised feature selection. This is a unit conversion, not
+    context-fitted standardization; no targets enter it. Float64 inputs need
+    no unit conversion. A rescaled column with an unrepresentable dynamic range
+    fails explicitly instead of silently turning nonzero measurements into zeros.
     """
     np_dtype = np.dtype(dtype)
     is_narrow_float = (
@@ -191,17 +191,26 @@ def _cast_numericals_to(
     for col in numerical_columns:
         if col not in df.columns or col == target:
             continue
-        # Force float64 first; integer columns become floats (NaN-compatible).
         coerced = pd.to_numeric(df[col], errors="coerce")
         if is_narrow_float:
-            # Catch both pre-existing ±inf in the source AND any value
-            # that would overflow the narrower target dtype.
-            target_max = np.finfo(np_dtype).max
-            mask = ~np.isfinite(coerced.to_numpy(dtype=np.float64, na_value=np.nan))
-            mask |= coerced.abs().to_numpy(dtype=np.float64, na_value=0.0) > target_max
-            if mask.any():
-                coerced = coerced.mask(mask, np.nan)
-        df[col] = coerced.astype(np_dtype)
+            values = coerced.to_numpy(dtype=np.float64, na_value=np.nan, copy=True)
+            finite = np.isfinite(values)
+            values[~finite] = np.nan
+            largest = float(np.max(np.abs(values[finite]))) if finite.any() else 0.0
+            safe_limit = min(2.0**40, float(np.sqrt(np.finfo(np_dtype).max)) / 1024)
+            shift = int(np.frexp(largest)[1]) if largest > safe_limit else 0
+            if shift:
+                # ldexp avoids constructing 2**1024 for a float64-scale input.
+                values = np.ldexp(values, -shift)
+                if unit_shifts is not None:
+                    unit_shifts[col] = shift
+            converted = values.astype(np_dtype)
+            if shift and np.any(finite & (coerced.to_numpy(dtype=np.float64, na_value=np.nan) != 0)
+                                & (converted == 0)):
+                raise ValueError(f"Feature {col!r} has too wide a finite range for {dtype}")
+            df[col] = converted
+        else:
+            df[col] = coerced.astype(np_dtype)
     return df
 
 
@@ -422,7 +431,7 @@ def sanitize_dataset(
         if manifest_row["numerical_columns"] else []
     )
 
-    log: dict[str, list[str] | int] = {}
+    log: dict = {}
     n_rows_before = len(df)
 
     # --- (b) exact-duplicate columns (always on — TabPFN doesn't want them) -
@@ -466,8 +475,10 @@ def sanitize_dataset(
             skip_cols=cats,
         )
 
-    # --- (g) numerical dtype cast — always float32 (TabPFN default) --------
-    df = _cast_numericals_to(df, target, nums, "float32")
+    # --- (g) represent extreme finite values safely before the dtype cast -
+    log["numeric_unit_shifts"] = {}
+    df = _cast_numericals_to(df, target, nums, "float32",
+                             unit_shifts=log["numeric_unit_shifts"])
 
     # --- (h) ±inf → NaN — always on (downstream NaN handler cleans up) -----
     df = _replace_inf_with_nan(df, target)
@@ -568,6 +579,7 @@ def main(cfg=None) -> int:  # noqa: C901
         return 1
 
     failures = 0
+    updated_tracks = set()
     for dataset_id, meta in DATASET_METADATA.items():
         track = meta["track"]
         raw_path = raw_root / track / f"{dataset_id}.csv"
@@ -592,6 +604,11 @@ def main(cfg=None) -> int:  # noqa: C901
             out_dir.mkdir(parents=True, exist_ok=True)
             out_path = out_dir / f"{dataset_id}.sanitized.csv"
             write_csv_atomic(df_clean, out_path, index=False)
+            shifts = json.dumps(log["numeric_unit_shifts"], sort_keys=True)
+            manifests[track].loc[mrow["dataset_id"] == dataset_id, "numeric_unit_shifts"] = shifts
+            updated_tracks.add(track)
+            if log["numeric_unit_shifts"]:
+                LOGGER.info("%s numerical units (divide by 2**exponent): %s", dataset_id, shifts)
             LOGGER.info(
                 "%-26s rows=%d→%d cols(features)=%d  → %s",
                 dataset_id,
@@ -602,6 +619,8 @@ def main(cfg=None) -> int:  # noqa: C901
             LOGGER.error("%s failed: %s", dataset_id, exc, exc_info=True)
             failures += 1
 
+    for track in sorted(updated_tracks):
+        write_csv_atomic(manifests[track], resolve_output_path(cfg.paths[f"manifest_{track}"]), index=False)
     return 1 if failures else 0
 
 

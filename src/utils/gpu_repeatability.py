@@ -208,8 +208,9 @@ def compare_table_batch(model, criterion, batch, *, device: str) -> dict:
             name = f"{clipping}_{'bf16' if amp else 'fp32'}"
             clipped_inputs = []
 
-            def clip(x, *, n_sigma, categorical_idx):
-                result = (original_clip(x, n_sigma=n_sigma, categorical_idx=categorical_idx)
+            def clip(x, *, n_sigma, categorical_idx, context_rows=context_rows):
+                result = (original_clip(x, n_sigma=n_sigma, categorical_idx=categorical_idx,
+                                        context_rows=context_rows)
                           if clipping == "current" else upstream_clip(x, n_sigma=n_sigma,
                               categorical_idx=categorical_idx, context_rows=context_rows,
                               wide_stats=clipping == "upstream_float64"))

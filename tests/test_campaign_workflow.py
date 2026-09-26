@@ -198,8 +198,20 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
                       curve.with_name(curve.name.replace(".trajectory.csv", ".parameters.csv.gz")), index=False)
     pd.DataFrame({"gpu_status": ["sampled"]}).to_csv(
         curve.with_name(curve.name.replace(".trajectory.csv", ".resources.csv")), index=False)
+    history = curve.with_name(curve.name.replace(".trajectory.csv", ".csv"))
+    pd.DataFrame({"data_skipped_steps": [0], "amp_skipped_steps": [0]}).to_csv(history, index=False)
     result = module.audit(Path("unused"), null=True)
     assert result["passed"] and result["completed"] == 1
+    for counter in ("data_skipped_steps", "amp_skipped_steps"):
+        pd.DataFrame({"data_skipped_steps": [0], "amp_skipped_steps": [0], counter: [21]}).to_csv(history, index=False)
+        result = module.audit(Path("unused"), null=True)
+        assert not result["passed"]
+        assert any("skipped training" in problem for problem in result["problems"])
+    history.unlink()
+    result = module.audit(Path("unused"), null=True)
+    assert not result["passed"]
+    assert any("measurements" in problem for problem in result["problems"])
+    pd.DataFrame({"data_skipped_steps": [0], "amp_skipped_steps": [0]}).to_csv(history, index=False)
     pd.DataFrame({"gpu_status": ["unavailable"]}).to_csv(
         curve.with_name(curve.name.replace(".trajectory.csv", ".resources.csv")), index=False)
     assert not module.audit(Path("unused"), null=True)["passed"]

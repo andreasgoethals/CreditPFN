@@ -66,11 +66,23 @@ def null_monitor_parity(frame: pd.DataFrame) -> bool:
     return bool(np.isfinite(values).all() and np.allclose(values[0], values[1], rtol=1e-6, atol=1e-7))
 
 
+def numerical_skip_counts(epochs: pd.DataFrame) -> dict[str, int]:
+    """Require observable, valid skip counts before certifying debugging runs."""
+    counts = {}
+    for column in ("data_skipped_steps", "amp_skipped_steps"):
+        values = pd.to_numeric(epochs.get(column, pd.Series(dtype=float)), errors="coerce")
+        if (values.empty or not np.isfinite(values).all() or (values < 0).any()
+                or (values != np.floor(values)).any()):
+            raise ValueError(f"missing/invalid {column} measurements")
+        counts[column] = int(values.sum())
+    return counts
+
+
 def audit(config: Path, *, null=False) -> dict:
     from src.train.config import load_train_config, resolve_grid
     from src.train.loop import descriptive_name
     cfg = load_train_config(config_path=str(config))
-    activate_experiment(cfg)
+    experiment = activate_experiment(cfg)
     plan = json.loads(plan_path(str(cfg.run_name), str(cfg.track)).read_text(encoding="utf-8"))
     report = {"run": str(cfg.run_name), "track": str(cfg.track), "expected": len(plan["trials"]),
               "completed": 0, "diverged": 0, "pending": 0, "problems": [], "trials": [], "timing": []}
@@ -140,8 +152,15 @@ def audit(config: Path, *, null=False) -> dict:
                 if not state["equal"] or not row["null_monitor_equal"]:
                     report["problems"].append(f"{name}: zero-LR state or monitor parity failed")
             history_path = trajectory.with_name(name + ".csv")
+            epochs = pd.read_csv(history_path) if history_path.is_file() else pd.DataFrame()
+            if experiment == "experiment0" and not divergent:
+                try:
+                    row["numerical_skips"] = numerical_skip_counts(epochs)
+                    if any(row["numerical_skips"].values()):
+                        report["problems"].append(f"{name}: skipped training batches/updates require investigation")
+                except ValueError as exc:
+                    report["problems"].append(f"{name}: {exc}")
             if history_path.is_file():
-                epochs = pd.read_csv(history_path)
                 seconds = float(epochs.get("training_seconds", pd.Series(dtype=float)).sum())
                 updates = int(prov.get("successful_updates", 0))
                 if updates and seconds > 0:
