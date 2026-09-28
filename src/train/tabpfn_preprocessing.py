@@ -344,6 +344,9 @@ class _PerEstimatorView:
     * ``outlier_removal_std`` — float | None
         The σ threshold for the GPU soft-clip step that runs at forward
         time. The loop passes this to its own outlier-clip helper.
+    * ``y_query`` — (n_query, 1, 1) float32 | None
+        Regression targets in this member's fitted target-transform space;
+        classification uses the batch's canonical labels instead.
     """
     X_context: torch.Tensor
     y_context: torch.Tensor
@@ -351,6 +354,7 @@ class _PerEstimatorView:
     categorical_idx: list[int]
     class_permutation: np.ndarray | None
     outlier_removal_std: float | None
+    y_query: torch.Tensor | None = None
 
 
 @dataclass
@@ -365,8 +369,8 @@ class TabPFNEnsembleBatch:
          ``TabPFN .txt``.
       2. Apply the per-member class-permutation undo on each logit
          tensor before the CE loss sees it.
-      3. Compute the CE / NLL loss against the canonical-class-order
-         ``y_query`` (which is repeated E times across the batch dim).
+      3. Compute CE against shared canonical labels, or NLL against each
+         member's query targets in its fitted target-transform space.
     """
     members: list[_PerEstimatorView]
     y_query: torch.Tensor                 # (n_query, 1, 1) long / float32
@@ -395,6 +399,8 @@ class TabPFNEnsembleBatch:
                 categorical_idx=m.categorical_idx,
                 class_permutation=m.class_permutation,
                 outlier_removal_std=m.outlier_removal_std,
+                y_query=(m.y_query.to(device, non_blocking=True)
+                         if m.y_query is not None else None),
             )
             for m in self.members
         ]
@@ -611,6 +617,19 @@ def build_ensemble_members(
         else:
             y_ctx_t = torch.as_tensor(y_ctx_np, dtype=torch.float32).reshape(-1, 1, 1).contiguous()
 
+        member_y_query = None
+        if task_type == "regression":
+            # The upstream preprocessor fitted this transform on context only.
+            # Use its returned config, not the possibly unfitted cached template;
+            # refitting on query targets would both leak labels and change units.
+            target_transform = member.config.target_transform
+            member_query = y_qry_for_loss
+            if target_transform is not None:
+                member_query = target_transform.transform(y_qry_for_loss.reshape(-1, 1)).ravel()
+            member_y_query = torch.as_tensor(
+                np.asarray(member_query, dtype=np.float32), dtype=torch.float32,
+            ).reshape(-1, 1, 1).contiguous()
+
         # Categorical indices in the POST-preprocessing feature space.
         # FeatureSchema is mutated by the pipeline (new columns added by
         # SVD / polynomial, columns dropped by subsampling). The
@@ -641,6 +660,7 @@ def build_ensemble_members(
             outlier_removal_std=(
                 float(outlier_removal_std) if outlier_removal_std is not None else None
             ),
+            y_query=member_y_query,
         ))
 
     # ---- 7) build the canonical-order y_query for the loss ----------- #

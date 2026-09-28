@@ -1072,33 +1072,17 @@ def _classification_loss(
     pred_logits: torch.Tensor, targets: torch.Tensor,
     *, n_classes: int, criterion: torch.nn.Module,
 ) -> torch.Tensor:
-    """CrossEntropyLoss on TabPFN's full ``MAX_NUMBER_OF_CLASSES`` (=10)
-    logit columns.
+    """Cross entropy over the dataset's active, canonically ordered classes.
 
-    **CHANGE 2026-05-27** — previously we sliced the logits to the first
-    K=n_classes columns before calling cross_entropy. That was a
-    methodological bug: TabPFN's classifier head emits 10 logits
-    (the pretraining max-classes; ``tfm-library/repositories/TabPFN .txt``),
-    and the official `FinetunedTabPFNClassifier` computes CE over ALL
-    10 columns so the softmax denominator regularises every column
-    every step (gradient on z_k for k ≥ K is proportional to that
-    column's softmax probability — i.e. a push-down signal).
-
-    Slicing meant columns K..9 received zero gradient signal during
-    training and were free to drift to arbitrary values. At inference
-    (which softmaxes over all 10 columns then keeps the first K),
-    those drifted columns stole probability mass from the K active
-    columns — the calibration-collapse failure mode that produces
-    high log-loss while ROC-AUC stays reasonable. See chat 2026-05-27
-    and docs/RESEARCH_BRIEF.md for the research protocol.
-
-    The `n_classes` parameter is still required for downstream code
-    (per-epoch eval, metric reporting) so we accept it but no longer
-    slice with it. We do, however, sanity-check that targets are in
-    `[0, n_classes)` — out-of-range targets would silently push the
-    K..9 columns up (the wrong direction).
+    Upstream ``TabPFNClassifier.forward`` selects these columns before
+    ``FinetunedTabPFNClassifier._forward_with_loss`` applies CE (see
+    ``tfm-library/repositories/TabPFN .txt``). The direct model forward here
+    still exposes the full head, so the loss must discard unused outputs.
+    Inference also selects active columns before softmax.
     """
-    logits = pred_logits.float()
+    if not 1 <= n_classes <= pred_logits.shape[-1]:
+        raise ValueError(f"n_classes must be in [1, {pred_logits.shape[-1]}], got {n_classes}")
+    logits = pred_logits[..., :n_classes].float()
     logits = logits.reshape(-1, logits.shape[-1])
     target = targets.long().flatten()
     if __debug__:
@@ -1146,13 +1130,13 @@ def _ensemble_step_loss(
       2. Stack the per-member logits into ``(Q, B, E, L)``.
       3. CE classifier loss: align ``(B*E, L, Q)`` logits and ``(B*E, Q)``
          targets, then flatten member/query pairs into samples. This keeps
-         the official mean loss over ``E*Q`` samples and all ``L`` columns,
+         the official mean loss over ``E*Q`` samples and active class columns,
          while avoiding CUDA's nondeterministic spatial NLL reduction.
       4. Regression NLL: stack to ``(B*E, Q, L)``, ``criterion(logits, y)``
          then ``.mean()``.
 
-    Returns a scalar tensor (the loss). Caller divides by accumulation
-    before backward.
+    Returns a scalar tensor. Finite microbatch gradients are averaged by
+    the optimizer helper before clipping and stepping.
     """
     members = batch.members
     is_classification = batch.task_type == "classification"
@@ -1177,19 +1161,23 @@ def _ensemble_step_loss(
             # the same here so the CE loss sees logits already aligned
             # with `y_query` (which stays in canonical order).
             perm = m.class_permutation
-            L = pred_logits.shape[-1]
-            if len(perm) < L:
-                # Pad permutation to full L=10 by leaving extra columns
-                # in place — they receive gradient via the softmax
-                # denominator but don't get swapped.
-                use_perm = np.arange(L)
+            n_classes = int(batch.n_classes or 2)
+            if len(perm) != n_classes:
+                # Match the upstream active-class ordering, including a
+                # partial permutation that leaves later active classes fixed.
+                use_perm = np.arange(n_classes)
                 use_perm[: len(perm)] = perm
             else:
-                use_perm = np.asarray(perm[:L])
+                use_perm = np.asarray(perm)
             use_perm_t = torch.as_tensor(
                 use_perm, device=pred_logits.device, dtype=torch.long,
             )
             pred_logits = pred_logits.index_select(-1, use_perm_t)
+
+        if is_classification:
+            # All ensemble members must have the same active head width,
+            # whether or not they use a class permutation.
+            pred_logits = pred_logits[..., :int(batch.n_classes or 2)]
 
         per_member_logits.append(pred_logits)
 
@@ -1209,7 +1197,11 @@ def _ensemble_step_loss(
         )
     # Regression: stack to (B*E, Q, L) for the bar-distribution criterion.
     logits_BQL = logits_QBEL.permute(1, 2, 0, 3).reshape(B * E, Q, L)
-    targets_BQ_reg = batch.y_query.reshape(B, Q).repeat(B * E, 1).float()
+    if any(getattr(m, "y_query", None) is None for m in members):
+        raise ValueError("Regression ensemble members require query targets in their fitted target space")
+    # Context target transformations can differ across members (e.g. safepower).
+    # Each density predicts in that member's units, not the shared z-score space.
+    targets_BQ_reg = torch.stack([m.y_query.reshape(Q) for m in members]).float()
     # criterion's `__call__(logits=..., y=...)` expects logits shape
     # (Q, batch, L) for `FullSupportBarDistribution.__call__`; pass with
     # the batch dim as B*E and Q on axis 0.

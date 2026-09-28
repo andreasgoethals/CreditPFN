@@ -13,6 +13,10 @@ day is never rewritten.
 
 ## 28-09-2026
 
+- Apply each fitted TabPFN regression target transform to its query labels before NLL; test context-only fitting and per-member loss/gradient alignment.
+- Restrict TabPFN classification loss to active classes, matching upstream; replace the incorrect full-head rationale and add loss/gradient regressions.
+- Set experiments 1–3 to 10k updates and six milestones after reviewing late pilot changes; double the epoch safety rail.
+- Update the launch handover after the final experiment-0 audit passed; preserve its accepted evidence.
 - Preserve failed status when revisiting diverged trials; record the actual applied learning rate across recovery and clarify independent experiment launch order.
 - Check live VSC maintenance before diagnosing inaccessible storage or resubmitting jobs.
 - Document transfer-endpoint path, symlink and silent-search checks after the project-trajectory download failed.

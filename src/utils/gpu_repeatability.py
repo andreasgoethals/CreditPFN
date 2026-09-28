@@ -148,7 +148,8 @@ def probe_loss(checkpoint: Path, track: str, *, rows: int, features: int, member
         # ensemble forward/loss, including its member/query reduction shape.
         views = [_PerEstimatorView(X_context=x[:n_context, i:i+1],
             y_context=y[:n_context, :1], X_query=x[n_context:, i:i+1],
-            categorical_idx=[], class_permutation=None, outlier_removal_std=None)
+            categorical_idx=[], class_permutation=None, outlier_removal_std=None,
+            y_query=y[n_context:, :1] if track == "lgd" else None)
             for i in range(members)]
         batch = TabPFNEnsembleBatch(members=views, y_query=y[n_context:, :1],
             task_type="classification" if track == "pd" else "regression",

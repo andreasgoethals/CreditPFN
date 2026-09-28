@@ -15,16 +15,18 @@ from src.train.optimization import step_mean_gradient
 
 @pytest.mark.parametrize("members, queries, classes", [(1, 3, 2), (2, 17, 2), (4, 23, 5)])
 @pytest.mark.parametrize("weighted, smoothing", [(False, 0.), (True, .1)])
-def test_ensemble_classification_loss_preserves_objective_and_gradients(members, queries, classes, weighted, smoothing):
+def test_ensemble_classification_loss_matches_active_class_objective(members, queries, classes, weighted, smoothing):
     from src.train.loop import _classification_loss_BE_LQ
 
     # Non-contiguous, class-first ensemble logits, including unused head columns.
     generator = torch.Generator().manual_seed(54)
     logits = torch.randn(members, queries, 10, generator=generator).transpose(1, 2).requires_grad_()
     targets = torch.randint(classes, (members, queries), generator=generator)
-    weight = torch.arange(1., 11.) if weighted else None
+    weight = torch.arange(1., classes + 1.) if weighted else None
     criterion = torch.nn.CrossEntropyLoss(weight=weight, label_smoothing=smoothing)
-    expected = criterion(logits, targets)
+    # Upstream TabPFNClassifier.forward selects the dataset's classes before
+    # FinetunedTabPFNClassifier._forward_with_loss computes cross entropy.
+    expected = criterion(logits[:, :classes], targets)
     expected_grad, = torch.autograd.grad(expected, logits)
 
     # The spatial NLL reduction is forbidden by strict CUDA determinism. A CPU
@@ -37,7 +39,76 @@ def test_ensemble_classification_loss_preserves_objective_and_gradients(members,
     actual_grad, = torch.autograd.grad(actual, logits)
     torch.testing.assert_close(actual, expected)
     torch.testing.assert_close(actual_grad, expected_grad)
-    assert (actual_grad[:, classes:] != 0).any(), "Keep all ten output columns in the loss"
+    assert torch.count_nonzero(actual_grad[:, classes:]) == 0
+
+
+def test_classification_loss_ignores_unused_outputs():
+    from src.train.loop import _classification_loss
+
+    active_logits = torch.tensor([[2., -1.], [-.5, 1.]])
+    targets = torch.tensor([0, 1])
+    expected = torch.nn.functional.cross_entropy(active_logits, targets)
+    for unused_value in (0., 100., -100.):
+        logits = torch.cat((active_logits, torch.full((2, 8), unused_value)), dim=-1).requires_grad_()
+        loss = _classification_loss(logits, targets, n_classes=2,
+                                    criterion=torch.nn.CrossEntropyLoss())
+        gradient, = torch.autograd.grad(loss, logits)
+        torch.testing.assert_close(loss, expected)
+        assert torch.count_nonzero(gradient[:, 2:]) == 0
+
+
+def test_ensemble_classification_class_permutation_matches_upstream(monkeypatch):
+    from src.train import loop
+
+    generator = torch.Generator().manual_seed(104)
+    outputs = [torch.randn(7, 1, 10, generator=generator).requires_grad_() for _ in range(2)]
+    targets = torch.tensor([0, 1, 1, 0, 0, 1, 0])
+    members = [SimpleNamespace(X_context=None, y_context=None, X_query=output,
+                               categorical_idx=(), outlier_removal_std=None,
+                               class_permutation=permutation)
+               for output, permutation in zip(outputs, (None, np.array([1, 0])))]
+    batch = SimpleNamespace(members=members, y_query=targets, n_classes=2,
+                            task_type="classification")
+    monkeypatch.setattr(loop, "_forward_one_member", lambda model, **kwargs: kwargs["X_qry"])
+    actual = loop._ensemble_step_loss(None, batch, criterion=torch.nn.CrossEntropyLoss())
+    # The upstream forward selects/permutates just the active columns for each
+    # member, then its loss averages over all member/query pairs.
+    canonical = torch.cat((outputs[0][:, 0, :2], outputs[1][:, 0, [1, 0]]))
+    expected = torch.nn.functional.cross_entropy(canonical, targets.repeat(2))
+    actual_grad = torch.autograd.grad(actual, outputs, retain_graph=True)
+    expected_grad = torch.autograd.grad(expected, outputs)
+    torch.testing.assert_close(actual, expected)
+    for actual_member, expected_member in zip(actual_grad, expected_grad):
+        torch.testing.assert_close(actual_member, expected_member)
+        assert torch.count_nonzero(actual_member[..., 2:]) == 0
+
+
+def test_regression_ensemble_uses_each_members_target_space(monkeypatch):
+    from src.train import loop
+    from src.train.tabpfn_compat import import_bar_distribution
+
+    generator = torch.Generator().manual_seed(208)
+    outputs = [torch.randn(3, 1, 2, generator=generator).requires_grad_() for _ in range(2)]
+    canonical = torch.tensor([-1., .25, 1.])
+    # The second member's monotone fitted transform shifts the middle target
+    # across a bin boundary. Repeating canonical targets changes its gradient.
+    member_targets = [canonical, canonical - .5]
+    members = [SimpleNamespace(X_context=None, y_context=None, X_query=output,
+                               categorical_idx=(), outlier_removal_std=None,
+                               class_permutation=None, y_query=target.reshape(-1, 1, 1))
+               for output, target in zip(outputs, member_targets)]
+    batch = SimpleNamespace(members=members, y_query=canonical.reshape(-1, 1, 1),
+                            n_classes=None, task_type="regression")
+    monkeypatch.setattr(loop, "_forward_one_member", lambda model, **kwargs: kwargs["X_qry"])
+    criterion = import_bar_distribution().FullSupportBarDistribution(borders=torch.tensor([-4., 0., 4.]))
+    actual = loop._ensemble_step_loss(None, batch, criterion=criterion)
+    expected = torch.stack([criterion(logits=output, y=target[:, None]).mean()
+                            for output, target in zip(outputs, member_targets)]).mean()
+    actual_grad = torch.autograd.grad(actual, outputs, retain_graph=True)
+    expected_grad = torch.autograd.grad(expected, outputs)
+    torch.testing.assert_close(actual, expected)
+    for actual_member, expected_member in zip(actual_grad, expected_grad):
+        torch.testing.assert_close(actual_member, expected_member)
 
 
 def make_dataset(tmp_path):

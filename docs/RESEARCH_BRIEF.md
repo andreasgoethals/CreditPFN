@@ -40,8 +40,8 @@ Configs are grouped under `config/experiment0/` through `config/experiment3/`; n
 | Dataset sampling | `one_sample` | One sampled context/query batch per table visit; equal table visitation and a new random table order each round |
 | Dataset partitions | Four fixed folds | Every table is a held-out dataset once |
 | Training seed | `42` | Common randomness across recipes where compatible; different architectures/caps do not imply identical numerical computation |
-| Budget | Provisionally 5,000 successful optimizer updates | A finite gradient that is actually applied increments the counter; rejected updates do not |
-| Trajectories | 0, 250, 1,000, 2,500, 5,000 updates | Diagnostics during the same training trajectory, under one fixed schedule |
+| Budget | 10,000 successful optimizer updates | A finite gradient that is actually applied increments the counter; rejected updates do not |
+| Trajectories | 0, 250, 1,000, 2,500, 5,000, 10,000 updates | Diagnostics during the same training trajectory, under one fixed schedule |
 
 The count is **4 × 4 × 2 × 2 × 4 × 2 tracks = 512 training trials**. PD and LGD remain separate tasks and analyses. Configs are `config/experiment1/pd.yaml` and `config/experiment1/lgd.yaml`, run family `cpt_main_v5`.
 
@@ -59,6 +59,14 @@ Freezing changes `requires_grad`, never `.training`. TabICLv2 uses different alg
 
 L2-SP is an unnormalized sum, matching the real-table reference form. The same lambda does not give equal effective regularization across architectures, task-loss scales or trainable subsets. Report its measured penalty and relative trainable-weight drift, including drift when lambda is zero; interpret interactions rather than treating lambda as a universal strength.
 
+### Training objectives
+
+PD uses cross-entropy over the dataset's active classes; binary credit tables therefore use two logits. TabPFN regression uses its native bar-distribution negative log-likelihood on context-normalized targets, followed by each member's context-fitted target transform where configured. TabICLv2 regression uses mean pinball loss across 999 native quantiles on normalized targets. Each objective is averaged over query rows and the two preprocessing members, then adds the selected L2-SP penalty. Epoch records keep the pure data loss and penalty separate.
+
+These objectives retain each model family's probabilistic prediction task. They do not directly optimize AUC, thresholded F1 or point RMSE, and no reviewed evidence establishes one universally best credit CPT loss. Reducing a distributional loss need not reduce RMSE. Compare effects within a family and dataset; raw loss magnitudes across families/tasks are not comparable.
+
+The 28-09-2026 audit corrected TabPFN PD's previous loss over all output-head columns. Upstream `TabPFNClassifier.forward` selects active classes before fine-tuning CE and inference softmax, contrary to the old CreditPFN comment. It also corrected regression query targets: members with a fitted target transform previously saw transformed context labels but untransformed z-scored query labels in their loss. Query labels now receive that same already-fitted transform, following upstream `_targets_in_estimator_space`; query rows never fit it. These are optimization changes: earlier TabPFN budget curves remain historical evidence under the old objectives. TabICL losses are unchanged. Preserve original identities, prepare fresh plans and validate the affected TabPFN paths on GPU before the main launch; a reporting-only waiver does not apply to these corrections.
+
 ### Sampling inside a table
 
 The main grid and its seed/null/pilot configurations use **class-balanced batch subsampling for PD**, capped by available rows, then splits that sampled batch into disjoint 60% context and 40% query rows. Despite its inherited name `context_sampling`, this affects **both** context and query prevalence. It is not a context-only intervention. LGD uses uniform row subsampling. Sampling is without replacement within a draw; rows can recur across visits.
@@ -71,11 +79,15 @@ Finite measurements must not become missing solely because their units exceed fl
 
 ### Budget and trajectories
 
-The literature does not validate 5,000 as a universal budget. Real-TabPFN uses 20k; TabPFN-Wide uses 10k based on its own monitoring; target-table fine-tuning has different stopping rules. Keep 5k provisional until the long reference pilot and measured cost are reviewed; [LITERATURE.md](LITERATURE.md) gives the evidence and decision criteria. A bounded descriptive horizon is valid without proving convergence, provided that limitation is explicit.
+The common research budget is **10,000 updates**, increased from the provisional 5,000 after reviewing the eight 20k reference pilots. The extra observation window matters: on the tested schedule, TabICL's mean non-credit classification AUC changes from above baseline at 5k to below it at 10k; several credit and non-credit regression curves also continue moving. Ten thousand is a compute-conscious descriptive horizon, not a convergence claim or a budget selected to maximize credit scores. Deterioration remains part of the result; all completed trials use the same endpoint.
+
+The TabICL PD reversal and LGD curve use objectives unchanged by the subsequent TabPFN corrections. They still motivate the 10k window; old TabPFN trajectories cannot certify the corrected losses' behavior. A repeat of all eight long pilots is not required solely to retain this descriptive horizon, which makes no architecture-wide convergence claim.
+
+The literature establishes no universal update count: Real-TabPFN uses 20k; TabPFN-Wide uses 10k based on its own monitoring; target-table fine-tuning has different stopping rules. [LITERATURE.md](LITERATURE.md) gives the source evidence. These pilots cover one reference recipe, one dataset fold and one training seed per base/task. Their monitored fold is reused in the descriptive main grid, so the horizon choice is pilot-informed rather than independent of the reporting corpus. They do not establish the behavior of every grid recipe. Preserve the 20k pilot trajectories as longer-run evidence; some changes continue after 10k, so the main study cannot claim to characterize eventual convergence or all late forgetting.
 
 AdamW uses zero ordinary weight decay, gradient norm clipping at 1, a 10% warmup and cosine decay to 5% of peak. The complete successful-update budget fixes the schedule once. Recovery restores its position; a resubmission does not restart warmup.
 
-A trajectory point is a measurement of the same evolving weights, not a separately trained model or a new grid trial. For example, the point at update 1,000 of a 5,000-update run has followed the 5,000-update schedule; it is not equivalent to an independently trained 1,000-update run. Intermediate weights are transient. Only final weights and the latest optimizer recovery state persist.
+A trajectory point is a measurement of the same evolving weights, not a separately trained model or a new grid trial. For example, the point at update 5,000 of a 10,000-update run has followed the 10,000-update schedule; it is not equivalent to an independently trained 5,000-update run. Likewise, the pilot's 10k point follows a 20k schedule and is not a numerical prediction of the main endpoint. Intermediate weights are transient. Only final weights and the latest optimizer recovery state persist.
 
 Monitoring uses fixed seed **31415**, up to 2,000 rows/table and four inference members. Every table has fixed, disjoint context/validation/query rows (48%/12%/40% before rounding). Thresholds and calibrators use only validation rows. This differs deliberately from the training batch's 60% context/40% query. It records per-table discrimination, calibration and error metrics, plus timing and movement from initialization. Monitoring preserves training RNG and module modes. The final benchmark uses 32 TabPFN or 8 TabICLv2 members and full outer test folds. Keep the two evaluation fidelities separate in plots and text.
 
@@ -113,7 +125,7 @@ Only successful completions release a CPU audit, and only a passing audit releas
 
 **Experiment 0 part 2 is separate**, via `run_experiment0.sh part2`: eight full-update reference pilots, one per base/task, through 20k successful updates with 0/250/1k/2.5k/5k/10k/20k measurements. A current part-1 receipt and unchanged input/environment identities are required. These longer jobs use resumable two-hour work segments plus a save/monitor margin. They follow a 20k schedule; their early points are not substitutes for a 5k schedule.
 
-Review these curves and measured costs, then fix the common budget/milestones in experiments 1–3 before preparing their plans. A longer budget also needs a sufficient epoch safety rail. The default research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **72 control/pilot training arms** if every experiment-0 stage runs once. Interrupted execution adds a segment, not a new scientific trial.
+The reviewed pilots inform the common **10k budget and six milestones** in experiments 1–3; prepare fresh plans with those settings. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **72 control/pilot training arms** if every experiment-0 stage runs once. Interrupted execution adds a segment, not a new scientific trial.
 
 ## Retention and measurement protocol
 

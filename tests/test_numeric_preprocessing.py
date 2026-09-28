@@ -8,6 +8,61 @@ from src.data.sanitize import _cast_numericals_to
 from src.train.tabpfn_preprocessing import apply_outlier_clip
 
 
+def test_regression_query_uses_fitted_member_transform_without_refitting(monkeypatch):
+    import copy
+    import sys
+    from types import ModuleType, SimpleNamespace
+    from sklearn.preprocessing import PowerTransformer
+    from src.train.tabpfn_preprocessing import build_ensemble_members
+
+    # Exercise our builder against the upstream member contract. The fitted
+    # member holds a separate config: the cached template is not fitted.
+    schema = SimpleNamespace(indices_for=lambda modality: [])
+    configs = [SimpleNamespace(target_transform=None),
+               SimpleNamespace(target_transform=PowerTransformer())]
+
+    class Preprocessor:
+        def __init__(self, **kwargs):
+            self.configs = copy.deepcopy(kwargs["configs"])
+
+        def fit_transform_ensemble_members(self, *, X_train, y_train):
+            result = []
+            for config in self.configs:
+                y = y_train if config.target_transform is None else config.target_transform.fit_transform(y_train[:, None]).ravel()
+                result.append(SimpleNamespace(config=config, X_train=X_train, y_train=y,
+                              feature_schema=schema, transform_X_test=lambda X: X))
+            return result
+
+    preprocessing = ModuleType("tabpfn.preprocessing")
+    preprocessing.FeatureSubsamplingMethod = lambda value: value
+    ensemble = ModuleType("tabpfn.preprocessing.ensemble")
+    ensemble.TabPFNEnsemblePreprocessor = Preprocessor
+    datamodel = ModuleType("tabpfn.preprocessing.datamodel")
+    datamodel.FeatureModality = SimpleNamespace(CATEGORICAL="categorical")
+    for module in (preprocessing, ensemble, datamodel):
+        monkeypatch.setitem(sys.modules, module.__name__, module)
+    inference = SimpleNamespace(FEATURE_SUBSAMPLING_METHOD="random",
+        FEATURE_SUBSAMPLING_CONSTANT_FEATURE_COUNT=50, SUBSAMPLE_SAMPLES=None,
+        FEATURE_SUBSAMPLING_IMPORTANCE_TOP_K_COUNT="auto")
+    context = np.array([0., .2, .3, .9, 1.6, 3.])
+    query = np.array([.1, 5.])
+    batch = build_ensemble_members(X_ctx=np.ones((6, 2)), y_ctx_raw=context,
+        X_qry=np.ones((2, 2)), y_qry_raw=query, feature_schema=schema,
+        ensemble_configs=configs, outlier_removal_std=None, task_type="regression",
+        n_classes=None, inference_config=inference, n_estimators=2, rng_seed=42,
+        dataset_id="synthetic_regression")
+    context_z = ((context - context.mean()) / context.std()).astype(np.float32)
+    query_z = ((query - context.mean()) / context.std()).astype(np.float32)
+    transform = PowerTransformer().fit(context_z[:, None])
+    expected = transform.transform(query_z[:, None]).ravel()
+    np.testing.assert_allclose(batch.members[0].y_query.flatten(), query_z)
+    np.testing.assert_allclose(batch.members[1].y_query.flatten(), expected, rtol=1e-6)
+    np.testing.assert_allclose(batch.y_query.flatten(), query_z)
+    for original, moved in zip(batch.members, batch.to("cpu").members):
+        torch.testing.assert_close(original.y_query, moved.y_query)
+    assert not hasattr(configs[1].target_transform, "lambdas_"), "Fit only the member's copy"
+
+
 def test_float32_preparation_preserves_extreme_finite_values():
     source = pd.DataFrame({"large": [-9e41, -2e37, 0., 4e28, 7e41, np.nan],
                            "ordinary": [1., 2., 3., 4., 5., 6.], "target": [0, 1, 0, 1, 0, 1]})
