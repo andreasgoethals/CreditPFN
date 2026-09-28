@@ -236,6 +236,131 @@ def test_recovery_only_receipt_cannot_release_budget_pilots(tmp_path, monkeypatc
         flow.start("part2")
 
 
+def test_selected_pilots_preserve_recipes_and_never_replace_configs(tmp_path):
+    from src.utils import experiment0 as flow
+    from src.train.config import load_train_config, resolve_grid
+    from src.utils.experiment import scientific_config
+    folder = tmp_path / "fresh123"
+    folder.mkdir()
+    flow._make_pilot_configs(folder, {"pd": ["v2", "v2.6", "v3"], "lgd": ["v2", "v3"]})
+    for track, expected_bases, count in (("pd", 3, 12), ("lgd", 2, 8)):
+        before = load_train_config(config_path=f"config/experiment0/pilot_{track}.yaml")
+        after = load_train_config(config_path=str(folder / f"pilot_{track}.yaml"))
+        assert scientific_config(after) == scientific_config(before)
+        assert after.run_name == before.run_name + "_probe_fresh123"
+        grid = resolve_grid(after, single=False)
+        assert len(grid) == count and len({t[0] for t in grid}) == expected_bases
+        assert all("tabpfn-" in t[0] for t in grid)
+        if track == "lgd":
+            assert all("v2.6" not in t[0] for t in grid)
+        assert {t[1] for t in grid} == {3e-7, 3e-5}
+        assert {t[2] for t in grid} == {False, True}
+        assert after.train.target_total_steps == 250 and after.train.max_rows_per_step is None
+        assert not after.train.deterministic and after.train.retention_panel == "research"
+    with pytest.raises(FileExistsError):
+        flow._make_pilot_configs(folder, {"pd": ["v2"], "lgd": ["v3"]})
+
+
+def test_pilot_only_preparation_and_callbacks_use_selected_counts(tmp_path, monkeypatch):
+    from src.utils import experiment0 as flow, prepare_experiment, stage_inputs, preflight
+    folder = tmp_path / "fresh123"
+    folder.mkdir()
+    state = {"id": folder.name, "part": "pilot", "jobs": [],
+             "pilot_bases": {"pd": ["v2", "v2.6", "v3"], "lgd": ["v2", "v3"]}}
+
+    @contextmanager
+    def locked(identifier):
+        assert identifier == folder.name
+        yield folder / "state.json", state
+
+    monkeypatch.setattr(flow, "locked", locked)
+    monkeypatch.setattr(flow, "root", lambda: tmp_path)
+    prepared, submitted, audits = [], [], []
+    monkeypatch.setattr(prepare_experiment, "prepare", lambda p, **kw: prepared.append((p, kw)))
+    monkeypatch.setattr(preflight, "main", lambda argv: 0)
+    monkeypatch.setattr(stage_inputs, "stage", lambda *a, **kw: None)
+    monkeypatch.setenv("VSC_SCRATCH_GPFS1", str(tmp_path / "scratch"))
+    monkeypatch.setattr(flow, "_cpu", lambda *a: audits.append(a) or "123")
+
+    def launch_track(command, *, env, check):
+        assert check and env["CREDITPFN_FLOW_PHASE"] == "pilot"
+        assert env["CREDITPFN_AUTO_REQUEUE"] == "0" and env["SEGMENT_MINUTES"] == "0"
+        assert Path(command[-1]).parent == folder
+        track = OmegaConf.load(command[-1]).track
+        submitted.append(track)
+        for trial in range(state["trial_counts"][track]):
+            flow.complete(folder.name, "pilot", track, trial, 0)
+        assert not audits  # Completion before all submissions must not advance.
+
+    monkeypatch.setattr(flow.subprocess, "run", launch_track)
+    flow.prepare(folder.name)
+    assert len(prepared) == 2 and all(kw == {"write": True} for _, kw in prepared)
+    assert submitted == ["pd", "lgd"] and state["trial_counts"] == {"pd": 12, "lgd": 8}
+    assert len(state["done"]) == 20 and state["status"] == "auditing"
+    assert audits == [(folder.name, "audit", "pilot")]
+    with pytest.raises(ValueError, match="Unexpected completion"):
+        flow.complete(folder.name, "pilot", "lgd", 8, 0)
+
+
+@pytest.mark.parametrize("passed", [False, True])
+def test_pilot_only_audit_stops_and_preserves_other_receipts(tmp_path, monkeypatch, passed):
+    from src.utils import experiment0 as flow, audit_experiment
+    folder = tmp_path / "fresh123"
+    folder.mkdir()
+    state = {"id": folder.name, "part": "pilot", "phase": "pilot", "status": "auditing"}
+    old = {name: json.dumps({"historical": name}) for name in ("part1", "part2", "recovery")}
+    for name, value in old.items():
+        (tmp_path / f"{name}_passed.json").write_text(value)
+
+    @contextmanager
+    def locked(identifier):
+        yield folder / "state.json", state
+
+    monkeypatch.setattr(flow, "locked", locked)
+    monkeypatch.setattr(flow, "root", lambda: tmp_path)
+    monkeypatch.setattr(flow, "launch", lambda *a: pytest.fail("No next GPU stage may start"))
+    audited = []
+
+    def audit(path, *, null):
+        assert path.parent == folder and not null
+        audited.append(path.name)
+        return {"passed": passed, "diverged": 0}
+
+    monkeypatch.setattr(audit_experiment, "audit", audit)
+    if passed:
+        flow.audit(folder.name, "pilot")
+        assert state["status"] == "passed" and (tmp_path / "pilot_passed.json").is_file()
+    else:
+        with pytest.raises(RuntimeError, match="Training audit failed"):
+            flow.audit(folder.name, "pilot")
+        assert not (tmp_path / "pilot_passed.json").exists()
+    assert audited == ["pilot_pd.yaml", "pilot_lgd.yaml"]
+    for name, value in old.items():
+        assert (tmp_path / f"{name}_passed.json").read_text() == value
+
+
+def test_pilot_selection_claims_prevent_duplicate_submissions(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+    from src.utils import experiment0 as flow
+    monkeypatch.setitem(sys.modules, "fcntl", SimpleNamespace(LOCK_EX=1, flock=lambda *a: None))
+    monkeypatch.setattr(flow, "root", lambda: tmp_path)
+    monkeypatch.setattr(flow, "fingerprint", lambda: "same-source")
+    monkeypatch.setenv("VSC_DATA", str(tmp_path))
+    submitted = []
+    monkeypatch.setattr(flow, "_cpu", lambda *a: submitted.append(a) or "123")
+    with pytest.raises(ValueError, match="standalone pilot"):
+        flow.start("part1", pilot_bases={"pd": ["v2"]})
+    with pytest.raises(ValueError, match="Invalid"):
+        flow.start("pilot", pilot_bases={"pd": []})
+    first = flow.start("pilot", pilot_bases={"pd": ["v3", "v2"], "lgd": ["v2"]})
+    state = json.loads((tmp_path / first / "state.json").read_text())
+    assert state["pilot_bases"] == {"pd": ["v2", "v3"], "lgd": ["v2"]}
+    with pytest.raises(FileExistsError):
+        flow.start("pilot", pilot_bases={"pd": ["v2", "v3"], "lgd": ["v2"]})
+    assert len(submitted) == 1
+
+
 def test_recovery_check_detects_changed_weights(tmp_path):
     from src.utils.recovery_check import compare
     before, after = tmp_path / "a.ckpt", tmp_path / "b.ckpt"

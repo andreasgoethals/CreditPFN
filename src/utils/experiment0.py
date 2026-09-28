@@ -19,7 +19,8 @@ from src.utils.experiment import code_identity, digest_json, file_digest
 from src.utils.paths import REPO_ROOT, manifests_dir
 
 COUNTS = {"null": 8, "pilot": 16, "recovery": 4, "budget": 4}  # per track
-PARTS = ("part1", "part2", "recovery")
+PARTS = ("part1", "part2", "recovery", "pilot")
+BASES = ("v2", "v2.6", "v3", "tabicl")
 
 
 def root() -> Path:
@@ -66,9 +67,52 @@ def _cpu(identifier: str, action: str, phase: str = "") -> str:
         "--id", identifier, *( ["--phase", phase] if phase else [])])
 
 
-def start(part: str) -> str:
+def _pilot_selection(bases: dict | None) -> dict:
+    bases = bases or {}
+    if set(bases) - {"pd", "lgd"}:
+        raise ValueError("Pilot bases must be selected by pd/lgd track")
+    selected = {}
+    for track in ("pd", "lgd"):
+        requested = list(bases.get(track, BASES))
+        if not requested or len(set(requested)) != len(requested) or set(requested) - set(BASES):
+            raise ValueError(f"Invalid {track} pilot base selection")
+        selected[track] = [base for base in BASES if base in requested]
+    return selected
+
+
+def _phase_configs(identifier: str, phase: str, part: str) -> list[Path]:
+    folder = root() / identifier if part == "pilot" else Path("config/experiment0")
+    return [folder / f"{phase}_{track}.yaml" for track in ("pd", "lgd")]
+
+
+def _make_pilot_configs(folder: Path, bases: dict):
+    """Copy the existing pilot recipe, selecting bases without replacing old plans."""
+    from omegaconf import OmegaConf
+    from src.train.config import load_train_config
+    for track, selected in _pilot_selection(bases).items():
+        cfg = load_train_config(config_path=f"config/experiment0/pilot_{track}.yaml")
+        axis = "classifier_base_paths" if track == "pd" else "regressor_base_paths"
+        prefixes = ["tabicl-" if base == "tabicl" else f"tabpfn-{base}-" for base in selected]
+        paths = [p for p in cfg.tunable[axis] if Path(p).name.startswith(tuple(prefixes))]
+        if len(paths) != len(selected):
+            raise ValueError(f"Pilot selection does not match configured {track} checkpoints")
+        cfg.tunable[axis] = paths
+        cfg.run_name += "_probe_" + folder.name[:8]
+        with (folder / f"pilot_{track}.yaml").open("x", encoding="utf-8") as stream:
+            OmegaConf.save(cfg, stream)
+
+
+def _expected(state: dict) -> set[str]:
+    counts = state.get("trial_counts", {track: COUNTS[state["phase"]] for track in ("pd", "lgd")})
+    return {f"{track}:{i}" for track, count in counts.items() for i in range(count)}
+
+
+def start(part: str, *, pilot_bases: dict | None = None) -> str:
     if part not in PARTS:
         raise ValueError(f"Unknown experiment-0 part: {part}")
+    if pilot_bases and part != "pilot":
+        raise ValueError("Base selection is only available for the standalone pilot stage")
+    selected = _pilot_selection(pilot_bases) if part == "pilot" else None
     if not os.environ.get("VSC_DATA"):
         raise RuntimeError("Submit experiment 0 from a VSC login node")
     identity = fingerprint()
@@ -81,9 +125,12 @@ def start(part: str) -> str:
     folder.mkdir(parents=True, exist_ok=False)
     state = {"id": identifier, "part": part, "fingerprint": identity,
              "phase": "prepare", "status": "submitting", "jobs": [], "done": [], "failed": []}
+    if selected is not None:
+        state["pilot_bases"] = selected
     write_json(folder / "state.json", state, exclusive=True)
     # One workflow per part/source prevents duplicate writers to the same trial files.
-    claim = root() / f"{part}_{identity[:20]}.json"
+    claim_identity = digest_json({"fingerprint": identity, "bases": selected}) if selected is not None else identity
+    claim = root() / f"{part}_{claim_identity[:20]}.json"
     write_json(claim, {"id": identifier}, exclusive=True)
     with locked(identifier) as (path, state):
         state["jobs"].append({"phase": "prepare", "cluster": "wice", "id": _cpu(identifier, "prepare")})
@@ -99,12 +146,14 @@ def prepare(identifier: str):
     from src.utils.preflight import main as preflight
     with locked(identifier) as (_, state):
         part = state["part"]
-    phases = {"part1": ("null", "pilot"), "part2": ("budget",), "recovery": ()}[part]
-    configs = [Path(f"config/experiment0/{p}_{t}.yaml") for p in phases for t in ("pd", "lgd")]
+    phases = {"part1": ("null", "pilot"), "part2": ("budget",), "recovery": (), "pilot": ("pilot",)}[part]
+    if part == "pilot":
+        _make_pilot_configs(root() / identifier, state["pilot_bases"])
+    configs = [config for phase in phases for config in _phase_configs(identifier, phase, part)]
     if part in ("part1", "recovery"):
         from src.utils.recovery_check import make_configs
         configs.extend(make_configs(root() / identifier, diagnostic=part == "recovery"))
-    else:
+    elif part == "part2":
         for phase in ("null", "pilot"):
             for track in ("pd", "lgd"):
                 prepare_plan(Path(f"config/experiment0/{phase}_{track}.yaml"), check=True)
@@ -118,7 +167,15 @@ def prepare(identifier: str):
 
 def launch(identifier: str, phase: str):
     with locked(identifier) as (path, state):
+        configs = _phase_configs(identifier, phase, state["part"])
+        if state["part"] == "pilot":
+            from src.train.config import load_train_config, resolve_grid
+            counts = {track: len(resolve_grid(load_train_config(config_path=str(config)), single=False))
+                      for track, config in zip(("pd", "lgd"), configs)}
+        else:
+            counts = {track: COUNTS[phase] for track in ("pd", "lgd")}
         state.update(phase=phase, status="submitting", done=[], failed=[], submissions_complete=False)
+        state["trial_counts"] = counts
         write_json(path, state)
     env = dict(os.environ, CREDITPFN_FLOW_ID=identifier, CREDITPFN_FLOW_PHASE=phase,
                CREDITPFN_EXPERIMENT="experiment0", CREDITPFN_USE_SCRATCH="1",
@@ -141,8 +198,8 @@ def launch(identifier: str, phase: str):
             # Each allocation requests only one segment plus the save/monitor margin.
             env["SEGMENT_MINUTES"] = os.environ.get("BUDGET_SEGMENT_MINUTES", "120")
             env["CREDITPFN_AUTO_REQUEUE"] = "1"
-        for track in ("pd", "lgd"):
-            subprocess.run(["bash", "scripts/slurm/run_experiment.sh", f"config/experiment0/{phase}_{track}.yaml"],
+        for config in configs:
+            subprocess.run(["bash", "scripts/slurm/run_experiment.sh", str(config)],
                            env=env, check=True)
     with locked(identifier) as (path, state):
         state["submissions_complete"] = True
@@ -153,7 +210,7 @@ def launch(identifier: str, phase: str):
 
 def _advance(path: Path, state: dict):
     phase = state["phase"]
-    expected = {f"{track}:{i}" for track in ("pd", "lgd") for i in range(COUNTS[phase])}
+    expected = _expected(state)
     if (state["status"] != "running" or not state.get("submissions_complete")
             or state["failed"] or set(state["done"]) != expected):
         return
@@ -167,11 +224,13 @@ def _advance(path: Path, state: dict):
 
 def complete(identifier: str, phase: str, track: str, trial: int, rc: int):
     key = f"{track}:{trial}"
-    if phase not in COUNTS or track not in ("pd", "lgd") or not 0 <= trial < COUNTS[phase]:
+    if phase not in COUNTS or track not in ("pd", "lgd") or trial < 0:
         raise ValueError("Unexpected completion callback")
     with locked(identifier) as (path, state):
         if state["phase"] != phase:
             raise RuntimeError("Callback belongs to a different workflow phase")
+        if key not in _expected(state):
+            raise ValueError("Unexpected completion callback")
         if rc:
             state["failed"] = sorted(set(state["failed"]) | {key})
             state["status"] = "failed"
@@ -186,17 +245,19 @@ def audit(identifier: str, phase: str):
     with locked(identifier) as (_, state):
         if state["phase"] != phase or state["status"] != "auditing":
             raise RuntimeError("Audit does not belong to the current completed workflow stage")
+        part = state["part"]
     folder = root() / identifier
     if phase == "recovery":
         reports = [json.loads(p.read_text()) for p in sorted(folder.glob("recovery_*_*.json"))]
         if len(reports) != 8 or not all(r["passed"] for r in reports):
             raise RuntimeError("Recovery checks incomplete or unequal; workflow stopped")
     else:
-        reports = [audit_trials(Path(f"config/experiment0/{phase}_{t}.yaml"), null=phase == "null") for t in ("pd", "lgd")]
+        reports = [audit_trials(config, null=phase == "null")
+                   for config in _phase_configs(identifier, phase, part)]
         write_json(folder / f"{phase}_audit.json", reports)
         if not all(r["passed"] and r["diverged"] == 0 for r in reports):
             raise RuntimeError("Training audit failed or contains divergence; workflow stopped")
-    if phase in ("null", "pilot"):
+    if phase in ("null", "pilot") and part != "pilot":
         launch(identifier, "pilot" if phase == "null" else "recovery")
     else:
         with locked(identifier) as (path, state):
@@ -210,14 +271,19 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("start", "prepare", "complete", "audit"))
     parser.add_argument("--part", choices=PARTS, default="part1")
+    parser.add_argument("--pd-bases", nargs="+", choices=BASES)
+    parser.add_argument("--lgd-bases", nargs="+", choices=BASES)
     parser.add_argument("--id")
     parser.add_argument("--phase", choices=tuple(COUNTS))
     parser.add_argument("--track", choices=("pd", "lgd"))
     parser.add_argument("--trial", type=int)
     parser.add_argument("--rc", type=int, default=0)
     args = parser.parse_args(argv)
+    selection = {track: bases for track in ("pd", "lgd") if (bases := getattr(args, f"{track}_bases")) is not None}
+    if selection and (args.action != "start" or args.part != "pilot"):
+        parser.error("Base selection is only available for start --part pilot")
     if args.action == "start":
-        start(args.part)
+        start(args.part, pilot_bases=selection or None)
     else:
         try:
             if args.action == "prepare":

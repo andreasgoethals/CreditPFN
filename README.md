@@ -56,6 +56,8 @@ From an active CreditPFN environment on a VSC login node, `bash scripts/slurm/ru
 
 For targeted debugging, `bash scripts/slurm/run_experiment0.sh recovery` runs only the eight deterministic recovery pairs in a separate workflow. It cannot replace the complete part-1 validation or authorize budget pilots. Recovery uses smaller batches; the ordinary pilots check production sizes and performance.
 
+`bash scripts/slurm/run_experiment0.sh pilot` runs the short production-size pilots alone with fresh run names and an automatic audit. Optional `--pd-bases` and `--lgd-bases` select `v2`, `v2.6`, `v3` or `tabicl`; omitted selections retain all bases. Generated configs stay with the workflow in manifests. This diagnostic preserves earlier output and stops after its own audit.
+
 During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
 
 ## Local inspection and validation

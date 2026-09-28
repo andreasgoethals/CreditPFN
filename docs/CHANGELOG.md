@@ -13,6 +13,7 @@ day is never rewritten.
 
 ## 28-09-2026
 
+- Add an isolated, base-selectable pilot stage with fresh plans and its own audit; document environment cleanup and pinned-submodule synchronization.
 - Apply each fitted TabPFN regression target transform to its query labels before NLL; test context-only fitting and per-member loss/gradient alignment.
 - Restrict TabPFN classification loss to active classes, matching upstream; replace the incorrect full-head rationale and add loss/gradient regressions.
 - Set experiments 1–3 to 10k updates and six milestones after reviewing late pilot changes; double the epoch safety rail.

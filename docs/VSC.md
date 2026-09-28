@@ -73,7 +73,7 @@ Finish an in-flight audit with its original checkout before deploying any runtim
 
 Shell-owned logs keep their original `<task>_<job>_r<restart>.log` filename throughout every child process. Trial identities appear inside the log and in manifests. Do not rename an active job log: later recovery children would recreate the old path as a separate summary file.
 
-Experiment 1 writes to its own directory. Keep the final accepted experiment-0 receipts, plans, audits and numerical measurements: they establish the controls and justify the selected budget. For fresh validation after debugging, first stop CreditPFN writers, clear experiment 0's output and trained weights on both tiers as described under cleanup, then rerun part 1 followed by part 2. Preserve general dataset manifests when the processed corpus has already been rebuilt. Use the isolated recovery check below only when investigating a recovery failure. Keep the downloaded debugging ZIP locally if desired. **Do not clean again between the accepted fresh experiment 0 and experiment 1:** the full cleaner removes every experiment, receipt and trained-weight tree. Tiny general scheduler state should not be manually reset while jobs are active.
+Experiment 1 writes to its own directory. Keep the final accepted experiment-0 receipts, plans, audits and numerical measurements: they establish the controls and justify the selected budget. If a protocol change requires a complete fresh validation, stop CreditPFN writers before the targeted experiment-0 cleanup and rerun part 1 followed by part 2. Preserve general dataset manifests when the processed corpus has already been rebuilt. Scoped repairs can instead use the isolated recovery/pilot stages below without deleting earlier evidence. Keep the downloaded debugging ZIP locally if desired. **Do not clean again between accepted experiment-0 checks and experiment 1:** the full cleaner removes every experiment, receipt and trained-weight tree. Tiny general scheduler state should not be manually reset while jobs are active.
 
 For read-only project-output inspection, run each separately:
 
@@ -99,12 +99,34 @@ cd "$VSC_DATA/CreditPFN"
 git pull --ff-only
 ```
 
+Synchronize the read-only library checkout to the repository's recorded pin; fetching its objects during `git pull` alone may leave the old checkout in place:
+
+```bash
+git submodule update --init tfm-library
+```
+
 ```bash
 source "$VSC_DATA/miniconda3/etc/profile.d/conda.sh"
 ```
 
+Deactivate an unrelated virtualenv if its shell function is present:
+
+```bash
+if declare -F deactivate >/dev/null; then deactivate; fi
+```
+
 ```bash
 conda activate CreditPFN
+```
+
+An already-active conda environment can retain a shadowing PATH entry. Make the selected interpreter explicit and clear Bash's command cache:
+
+```bash
+export PATH="$VSC_DATA/miniconda3/envs/CreditPFN/bin:$PATH"
+```
+
+```bash
+hash -r
 ```
 
 ```bash
@@ -186,9 +208,19 @@ bash scripts/slurm/run_experiment0.sh recovery
 
 This creates its own source-checked workflow and uniquely named probe arms, prepares four reference/resumed plans on CPU, and submits the eight GPU pairs. It never reuses the failed workflow or repeats null/pilot trials. Benchmark outputs use `results/<PD|LGD>/recovery_smoke/<workflow>/`, preventing retry collisions. Its audit writes `recovery_passed.json`; that diagnostic receipt **cannot** release part 2. The fresh full part 1 must independently produce `part1_passed.json`. `RECOVERY_WALLTIME` overrides the 30-minute request when actual measurements justify it.
 
+For production-size validation after a scoped repair, the standalone `pilot` stage copies the existing 250-update recipes into a fresh workflow, preserving all scientific settings except the requested base selection. CPU preparation writes new plans, selected trials run on B200, and the final CPU audit requires full budgets, finite required monitor scores, recorded diagnostics and zero numerical skips. It writes `pilot_passed.json` and never starts recovery, budget pilots or research experiments. Prior receipts remain unchanged; inspect `pilot_bases` and `trial_counts` for coverage. Omitting the base options runs all 32 short pilots.
+
+The 28-09 loss repairs require **20** selected pilots: PD v2/v2.6/v3 and LGD v2/v3, each at LR `{3e-7, 3e-5}` and full/frozen adaptation, L2-SP `0.003`, the first dataset fold and production row caps. The corrected recovery checks already passed under training identity `6d309cc1f4db21d3ff6897f7fb1f64bd69cfd395dbe6c6289b90f87506a3dd28`. Adding this launch option changes workflow identity but not that training identity; it does not require repeating those recovery checks. After pushing/pulling the launcher changes, use:
+
+```bash
+PILOT_WALLTIME=00:15:00 bash scripts/slurm/run_experiment0.sh pilot --pd-bases v2 v2.6 v3 --lgd-bases v2 v3
+```
+
+The earlier equivalent-size trials took 66–179 seconds of recorded trial time each; a 15-minute request leaves startup/monitoring margin without requesting the previous hour. This is a walltime ceiling, not a queue-time estimate. Wait for `Experiment 0 pilot PASSED` before preparing the research plans. The selected pilot receipt supplements the historical controls and current recovery evidence; it does not relabel either as a fresh complete part 1 or authorize part 2.
+
 `train.deterministic: true` is limited to recovery configs and is fingerprinted along with their lower `train.max_rows_per_step` cap. Strict execution applies to training, monitoring and the benchmark smoke; unsupported nondeterministic operations raise an error. Python, NumPy and Torch seeds are initialized, and the CUDA workspace is configured before device initialization. Effective settings are recorded in checkpoint provenance and logs. Strict mode does not force math attention globally. Normal research runs use the fast backend policy: their seed identifies stochastic inputs, not a guarantee of bitwise GPU equality. See [PyTorch reproducibility](https://docs.pytorch.org/docs/2.12/notes/randomness.html); deterministic kernels can change performance, so synthetic first-call timings must not be used as production throughput estimates.
 
-The TabPFN ensemble classification loss moves the class axis last and flattens member/query pairs into samples before cross-entropy. This preserves every class column and the mean objective, avoiding Torch 2.12's spatial NLL reduction, which [explicitly rejects strict determinism](https://github.com/pytorch/pytorch/blob/v2.12.0/aten/src/ATen/native/cuda/NLLLoss2d.cu). Do not switch to warning-only mode to pass recovery. Local loss/gradient checks do not certify the installed B200 runtime; all eight pairs must pass there.
+The TabPFN ensemble classification loss selects/permutates the active classes, then flattens member/query pairs into samples before cross-entropy. This preserves the mean objective over active classes, avoiding Torch 2.12's spatial NLL reduction, which [explicitly rejects strict determinism](https://github.com/pytorch/pytorch/blob/v2.12.0/aten/src/ATen/native/cuda/NLLLoss2d.cu). Do not switch to warning-only mode to pass recovery. Local loss/gradient checks do not certify the installed B200 runtime; all eight pairs must pass there.
 
 To isolate GPU arithmetic after a pre-pause mismatch, use one small model/batch diagnostic:
 
