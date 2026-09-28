@@ -1,6 +1,7 @@
 """Exercise device selection, measurement failures and the standalone GPU check."""
 import csv
 import json
+import math
 import subprocess
 from types import SimpleNamespace
 
@@ -9,6 +10,59 @@ import pytest
 from src.train import telemetry
 
 BARE_UUID = "01234567-89ab-cdef-0123-456789abcdef"
+
+
+def test_trial_memory_peak_survives_epoch_reset_resume_and_next_trial(monkeypatch):
+    cuda = telemetry.torch.cuda
+    counters = {"allocated": 900, "reserved": 1000}
+    devices = []
+
+    def reset(device):
+        devices.append(str(device))
+        counters.update(allocated=10, reserved=20)
+
+    monkeypatch.setattr(cuda, "is_available", lambda: True)
+    monkeypatch.setattr(cuda, "reset_peak_memory_stats", reset)
+    monkeypatch.setattr(cuda, "max_memory_allocated", lambda device: counters["allocated"])
+    monkeypatch.setattr(cuda, "max_memory_reserved", lambda device: counters["reserved"])
+    trial = telemetry.CudaMemoryPeaks("cuda:1")
+    assert trial.capture() == (10, 20)  # Excludes the preceding trial's counters.
+    counters.update(allocated=180, reserved=210)
+    assert trial.capture(reset=True) == (180, 210)
+    counters.update(allocated=100, reserved=130)
+    saved = trial.state_dict()  # Interrupted halfway through the next epoch.
+    resumed = telemetry.CudaMemoryPeaks("cuda:1")
+    resumed.restore(saved)
+    counters.update(allocated=30, reserved=40)
+    assert resumed.capture(reset=True) == (100, 130)
+    assert (resumed.allocated, resumed.reserved) == (180, 210)
+    counters.update(allocated=250, reserved=270)  # Final monitoring can set a new peak.
+    resumed.capture()
+    assert (resumed.allocated, resumed.reserved) == (250, 270)
+    next_trial = telemetry.CudaMemoryPeaks("cuda:1")
+    assert next_trial.capture() == (10, 20)
+    assert set(devices) == {"cuda:1"}
+
+
+def test_cpu_memory_tracking_does_not_access_cuda(monkeypatch):
+    monkeypatch.setattr(telemetry.torch.cuda, "is_available",
+                        lambda: pytest.fail("CPU trial must not query CUDA"))
+    trial = telemetry.CudaMemoryPeaks("cpu")
+    assert trial.capture(reset=True) == (0, 0)
+    assert trial.state_dict() == dict(allocated=0, reserved=0, interval_allocated=0, interval_reserved=0)
+
+
+def test_manifest_memory_uses_trial_peak_and_keeps_unmeasured_rows_unknown(monkeypatch):
+    from scripts.train_pipeline import _device_snapshot
+    fake_cuda(monkeypatch)
+    monkeypatch.setattr(telemetry.torch.cuda, "get_device_properties",
+                        lambda _: SimpleNamespace(name="Test GPU", total_memory=192_000_000_000))
+    monkeypatch.setattr(telemetry.torch.cuda, "max_memory_allocated",
+                        lambda *a: pytest.fail("The counter was reset; use the trial result"))
+    assert _device_snapshot(peak_allocated_bytes=181_080_000_000)["peak_gpu_gb"] == 181.08
+    assert math.isnan(_device_snapshot()["peak_gpu_gb"])
+    monkeypatch.setattr(telemetry.torch.cuda, "is_available", lambda: False)
+    assert math.isnan(_device_snapshot(peak_allocated_bytes=0)["peak_gpu_gb"])
 
 
 def fake_cuda(monkeypatch, identifier=BARE_UUID):
@@ -122,4 +176,3 @@ def test_gpu_check_uses_same_sampler_without_inputs_training_or_files(monkeypatc
     assert preflight.main(["--gpu-resources"]) == expected
     row = json.loads(capsys.readouterr().out)
     assert row["gpu_status"] == ("sampled" if expected == 0 else "unsupported" if available else "unavailable")
-

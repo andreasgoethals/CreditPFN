@@ -17,6 +17,47 @@ import torch
 _ACTIVE = ContextVar("creditpfn_resource_monitor", default=None)
 
 
+class CudaMemoryPeaks:
+    """Trial and interval allocator peaks, retained across epoch resets and recovery.
+
+    These are PyTorch allocator bytes, not sampled whole-device usage. Construct
+    before loading each model to exclude the preceding trial's peak counter.
+    """
+    def __init__(self, device):
+        self.device = torch.device(device)
+        self.enabled = self.device.type == "cuda" and torch.cuda.is_available()
+        self.allocated = self.reserved = 0
+        self.interval_allocated = self.interval_reserved = 0
+        if self.enabled:
+            torch.cuda.reset_peak_memory_stats(self.device)
+
+    def capture(self, *, reset=False) -> tuple[int, int]:
+        if self.enabled:
+            self.interval_allocated = max(self.interval_allocated,
+                                         torch.cuda.max_memory_allocated(self.device))
+            self.interval_reserved = max(self.interval_reserved,
+                                        torch.cuda.max_memory_reserved(self.device))
+        self.allocated = max(self.allocated, self.interval_allocated)
+        self.reserved = max(self.reserved, self.interval_reserved)
+        interval = self.interval_allocated, self.interval_reserved
+        if reset:
+            if self.enabled:
+                torch.cuda.reset_peak_memory_stats(self.device)
+            self.interval_allocated = self.interval_reserved = 0
+        return interval
+
+    def state_dict(self) -> dict[str, int]:
+        self.capture()
+        return {key: getattr(self, key) for key in
+                ("allocated", "reserved", "interval_allocated", "interval_reserved")}
+
+    def restore(self, state: dict[str, int]) -> None:
+        # The new process may already have used more memory during model loading.
+        self.capture()
+        for key in ("allocated", "reserved", "interval_allocated", "interval_reserved"):
+            setattr(self, key, max(getattr(self, key), int(state.get(key, 0))))
+
+
 def allocated_gpu_uuid() -> str | None:
     """Select CUDA's current device without assuming its physical NVIDIA index."""
     if not torch.cuda.is_available():

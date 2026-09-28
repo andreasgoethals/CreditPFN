@@ -226,7 +226,8 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None) -> dict:
+def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None,
+                    *, peak_allocated_bytes: int | None = None) -> dict:
     """The settings that are NOT swept but still decide what a number means.
 
     Recorded per row rather than per run because a manifest is read on its own, months
@@ -272,11 +273,11 @@ def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None)
                                  if sched is not None else float("nan")),
         "tfm_library_pin": _git("submodule", "status", "tfm-library")[:48],
         "git_commit": _git("rev-parse", "--short", "HEAD"),
-        **_device_snapshot(),
+        **_device_snapshot(peak_allocated_bytes=peak_allocated_bytes),
     }
 
 
-def _device_snapshot() -> dict:
+def _device_snapshot(*, peak_allocated_bytes: int | None = None) -> dict:
     """Which GPU this trial ran on, and how much of it was used.
 
     Recorded per trial rather than per job because a slurm array can land its tasks on
@@ -288,11 +289,14 @@ def _device_snapshot() -> dict:
         if not torch.cuda.is_available():
             return {"gpu_name": "cpu", "gpu_total_gb": float("nan"),
                     "peak_gpu_gb": float("nan")}
-        props = torch.cuda.get_device_properties(0)
+        props = torch.cuda.get_device_properties(torch.cuda.current_device())
         return {
             "gpu_name": str(props.name),
             "gpu_total_gb": round(props.total_memory / 1e9, 2),
-            "peak_gpu_gb": round(torch.cuda.max_memory_allocated() / 1e9, 3),
+            # The live CUDA counter may already have been reset for epoch logging.
+            # Missing trial measurements (e.g. SKIP/FAIL) must stay unknown.
+            "peak_gpu_gb": (round(peak_allocated_bytes / 1e9, 3)
+                            if peak_allocated_bytes is not None else float("nan")),
         }
     except Exception:                                          # pragma: no cover
         return {"gpu_name": "", "gpu_total_gb": float("nan"),
@@ -376,7 +380,7 @@ class RunRow:
     # different partitions look comparable when they are not.
     gpu_name:               str   = ""      # e.g. "NVIDIA B200"
     gpu_total_gb:           float = float("nan")
-    peak_gpu_gb:            float = float("nan")   # torch.cuda.max_memory_allocated
+    peak_gpu_gb:            float = float("nan")   # whole-trial allocator peak, decimal GB
     sec_per_step:           float = float("nan")   # elapsed_sec / total_optimizer_steps
     gpu_hours:              float = float("nan")   # elapsed_sec / 3600, the billable unit
     # COMPUTE ACTUALLY DONE, not just time spent. A paper reports the cost of a result and a
@@ -675,11 +679,9 @@ def run(
             expected_ckpt.suffix + ".provenance.json",
         )
         if expected_ckpt.exists() and expected_prov.exists():
-            # A DIVERGED checkpoint is saved for inspection but is NOT a completed trial, so
-            # RE-RUN it on resubmit instead of skipping — this is what makes "resubmit and the
-            # unfinished ones retrain" true. schema_version-1 provenance has no `diverged` key
-            # (reads as not-diverged), so a pre-2026-09 diverged checkpoint must be deleted by
-            # hand (clean_run --clean --stages train, or a manifest-driven sweep) to force it.
+            # Fingerprinted numerical failures are terminal scientific outcomes:
+            # preserve them and their failed exit status on resubmission. Only
+            # legacy, non-fingerprinted trials retain the old retry behavior.
             _diverged_ckpt = False
             try:
                 import json as _json
@@ -720,6 +722,7 @@ def run(
                 _write_csv([rows[-1]], csv_path, append=csv_append)
                 if not csv_append:
                     csv_append = True
+                divergences += int(_diverged_ckpt)
                 continue
             LOGGER.info(
                 "RE-RUN trial %d (global %d): existing checkpoint at %s is marked DIVERGED "
@@ -894,7 +897,8 @@ def run(
                 sec_per_step=(float(result.elapsed_sec)
                               / max(1, int(getattr(result, 'total_optimizer_steps', 0) or 1))),
                 gpu_hours=float(result.elapsed_sec) / 3600.0,
-                **_run_provenance(cfg, base, l2sp_lambda),
+                **_run_provenance(cfg, base, l2sp_lambda,
+                                  peak_allocated_bytes=getattr(result, "cuda_peak_allocated_bytes", None)),
             ))
             if result.diverged:
                 # A numerically completed but diverged checkpoint is excluded

@@ -89,7 +89,7 @@ This is a small paired sensitivity check: did changing the training randomness m
 
 **Experiment 3**, `config/experiment3/{pd,lgd}.yaml`, defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
 
-The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. Run the seed check once the matching main references are available; it does not repeat the full grid. Use the same pilot-selected budget and trajectory points in all three phases.
+The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. All three experiments initialize from the original base weights; neither experiment 2 nor experiment 3 requires an experiment-1 checkpoint or a selected winner. Their training can overlap after fixing the shared budget, inputs and code. The seed comparison needs the matching seed-42 main references before analysis, not before seed-43 training. Experiment 3 has its own one-sample controls. Use the same pilot-selected budget and trajectory points throughout; measure full-pass/accumulation GPU behavior and cost before launching that grid, because experiment 0's production pilots use one_sample.
 
 | Mode | Rows and update rule | Interpretation |
 |---|---|---|

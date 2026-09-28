@@ -946,6 +946,48 @@ def test_manifest_concurrent_first_writers_keep_every_row(tmp_path) -> None:
     assert all(r["track"] == "pd" for r in parsed)
 
 
+@pytest.mark.parametrize("diverged", [False, True])
+def test_existing_fingerprinted_outcome_preserves_exit_status(tmp_path, monkeypatch, diverged):
+    """Revisiting a terminal failure must neither retrain nor report success."""
+    import json
+    import scripts.train_pipeline as pipeline
+    import src.train.loop as loop
+    import src.utils.experiment as experiment
+    from src.train.sampling import PROTOCOL_VERSION
+
+    cfg = pipeline.load_train_config(config_path="config/experiment1/pd.yaml")
+    cfg.experiment.require_plan = False
+    identity = {"sha256": "verified-test-trial"}
+    checkpoint = tmp_path / "weights/pd/existing.ckpt"
+    checkpoint.parent.mkdir(parents=True)
+    checkpoint.write_bytes(b"unchanged-test-checkpoint")
+    Path(str(checkpoint) + ".provenance.json").write_text(json.dumps({
+        "training_protocol_version": PROTOCOL_VERSION, "trial_identity": identity,
+        "diverged": diverged, "diverge_reason": "no_finite_updates" if diverged else None,
+    }), encoding="utf-8")
+    monkeypatch.setattr(loop, "descriptive_name", lambda **kwargs: checkpoint.name)
+    monkeypatch.setattr(loop, "train_one_config", lambda *a, **kw: pytest.fail("Do not retrain"))
+    monkeypatch.setattr(experiment, "trial_identity", lambda *a, **kw: identity)
+    monkeypatch.setattr(pipeline, "resolve_staging_path", lambda _: checkpoint.parent.parent)
+    monkeypatch.setattr(pipeline, "manifests_dir", lambda: tmp_path / "manifests")
+    monkeypatch.setattr("src.utils.paths.training_dir", lambda *a: tmp_path / "training")
+    monkeypatch.setattr(pipeline, "apply_data_source_from_cfg", lambda *a: None)
+    monkeypatch.setattr(pipeline, "dump_resolved", lambda *a: None)
+    monkeypatch.setattr(pipeline, "setup_logging", lambda *a: None)
+    monkeypatch.setattr(pipeline, "_validate_corpus_ids_or_raise", lambda *a, **kw: None)
+    monkeypatch.setattr(pipeline, "_ensure_processed", lambda *a, **kw: None)
+    monkeypatch.setattr(pipeline, "_refuse_unusable_gpu", lambda: None)
+    monkeypatch.setattr(pipeline, "_run_provenance", lambda *a, **kw: {})
+    monkeypatch.setattr("src.train.recovery.configure_execution", lambda *a: {})
+    log = NS(path=tmp_path / "task.log", write=lambda _: None)
+    monkeypatch.setattr(pipeline, "resolve_run_log", lambda *a, **kw: (log, None))
+
+    assert pipeline.run(cfg=cfg, trial_index=0) == (1 if diverged else 0)
+    rows = pd.read_csv(tmp_path / "manifests" / f"{cfg.run_name}_pd.csv")
+    assert rows.iloc[0]["status"] == ("DIVERGED" if diverged else "SKIP")
+    assert checkpoint.read_bytes() == b"unchanged-test-checkpoint"
+
+
 def test_resolve_amp_dtype_cpu_disables_amp() -> None:
     cfg = NS(train=NS(amp=True, amp_dtype="auto"))
     assert _resolve_amp_dtype(cfg, "cpu") == (False, None)

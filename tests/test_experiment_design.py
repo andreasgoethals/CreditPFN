@@ -157,14 +157,31 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         mode, terminal_divergence, synthetic_processed, tmp_path, monkeypatch, execution_settings):
     import src.train.loop as loop
     import src.train.recovery as recovery
+    import src.train.telemetry as telemetry
     snapshots = {}
     provenances = {}
+    trackers = []
+    observed_rates = []
+    simulated_allocation = [181_080_000_000]
+    real_tracker = telemetry.CudaMemoryPeaks
+
+    def cpu_tracker(device):
+        tracker = real_tracker("cpu")
+        trackers.append(tracker)
+        return tracker
+
+    monkeypatch.setattr(telemetry, "CudaMemoryPeaks", cpu_tracker)
 
     class DropoutModel(_DummyClassifier):
         def forward(self, x, y, **kwargs):
+            # Synthetic allocator measurements exercise the real loop's epoch
+            # records and recovery transaction without requiring a local GPU.
+            trackers[-1].interval_allocated = max(trackers[-1].interval_allocated, simulated_allocation[0])
+            trackers[-1].interval_reserved = max(trackers[-1].interval_reserved, simulated_allocation[0] + 100)
             return super().forward(torch.nn.functional.dropout(x, p=.2, training=self.training), y, **kwargs) * (0.5 + random.random())
 
     def fake_loader(path, **kwargs):
+        observed_rates.append([])
         return DropoutModel(4), torch.nn.CrossEntropyLoss(), NS(num_features=4, num_classes=2), None
 
     def fake_save(model, arch, path, **kwargs):
@@ -194,16 +211,23 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
                   "trajectory_steps": [0, 3, 7], "recovery_every_updates": 3,
                   "numerical_stopping_only": True},
         "checkpoint": {"trained_dir": str(tmp_path / "weights")}})
+    import src.train.optimization as optimization
+    original_step = optimization.step_mean_gradient
     if terminal_divergence:
-        import src.train.optimization as optimization
-        original_step = optimization.step_mean_gradient
         cfg.train.divergence_patience = 1
-        def fail_after_three(model, optimizer, scaler, **kwargs):
-            if optimizer.state and max(float(s.get("step", 0)) for s in optimizer.state.values()) >= 3:
-                optimizer.zero_grad(set_to_none=True)
-                return float("nan"), False
-            return original_step(model, optimizer, scaler, **kwargs)
-        monkeypatch.setattr(optimization, "step_mean_gradient", fail_after_three)
+
+    def observe_step(model, optimizer, scaler, **kwargs):
+        if terminal_divergence and optimizer.state and max(
+                float(s.get("step", 0)) for s in optimizer.state.values()) >= 3:
+            optimizer.zero_grad(set_to_none=True)
+            return float("nan"), False
+        applied = float(optimizer.param_groups[0]["lr"])
+        result = original_step(model, optimizer, scaler, **kwargs)
+        if result[1]:
+            observed_rates[-1].append(applied)
+        return result
+
+    monkeypatch.setattr(optimization, "step_mean_gradient", observe_step)
     expected_trajectory = []
     expected = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "continuous.ckpt",
                                      on_trajectory_end=expected_trajectory.append)
@@ -218,6 +242,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     with pytest.raises(recovery.TrainingInterrupted):
         loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "resumed.ckpt")
     monkeypatch.setattr(recovery, "save_recovery", real_save)
+    simulated_allocation[0] = 1_000_000_000
     trajectory = []
     actual = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "resumed.ckpt",
                                   on_trajectory_end=trajectory.append)
@@ -226,6 +251,20 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     if not terminal_divergence:
         assert actual.total_optimizer_steps == 7
     assert actual.rows_seen == expected.rows_seen
+    assert observed_rates[0] == observed_rates[1] + observed_rates[2]
+    for result in (expected, actual):
+        for record in result.history:
+            if record.optimizer_steps > record.amp_skipped_steps:
+                assert record.lr_applied == observed_rates[0][record.successful_updates - 1]
+            else:
+                assert record.lr_applied != record.lr_applied  # No applied rate: NaN.
+    for record in trajectory:
+        if record.successful_updates:
+            assert record.lr_applied == observed_rates[0][record.successful_updates - 1]
+    assert actual.cuda_peak_allocated_bytes == expected.cuda_peak_allocated_bytes == 181_080_000_000
+    assert actual.cuda_peak_reserved_bytes == expected.cuda_peak_reserved_bytes == 181_080_000_100
+    assert max(r.cuda_peak_allocated_bytes for r in actual.history) == 181_080_000_000
+    assert actual.history[-1].cuda_peak_allocated_bytes > 0
     assert [r.successful_updates for r in trajectory] == [r.successful_updates for r in expected_trajectory]
     assert all(torch.equal(snapshots["continuous.ckpt"][k], v)
                for k, v in snapshots["resumed.ckpt"].items())

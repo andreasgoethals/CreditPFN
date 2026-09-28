@@ -11,6 +11,19 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 28-09-2026
+
+- Preserve failed status when revisiting diverged trials; record the actual applied learning rate across recovery and clarify independent experiment launch order.
+- Check live VSC maintenance before diagnosing inaccessible storage or resubmitting jobs.
+- Document transfer-endpoint path, symlink and silent-search checks after the project-trajectory download failed.
+- Preserve trial GPU-memory peaks across epoch resets and recovery; populate epoch CSV peaks and leave unmeasured summaries unknown.
+- Document recovery of a Slurm environment-startup hold without repeating completed training.
+
+## 26-09-2026
+
+- Clarify part-2 timing estimates and preservation of the accepted part-1 evidence.
+- Clarify experiment-0 cleanup that preserves prepared-data provenance; correct stale skip-audit guidance.
+
 ## 25-09-2026
 
 - Preserve extreme finite measurements through recorded numerical unit conversion before float32 preparation.

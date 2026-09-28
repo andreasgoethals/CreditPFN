@@ -166,8 +166,8 @@ class EpochRecord:
     grad_norm_mean: float = float("nan")
     grad_norm_max: float = float("nan")
     clipped_frac: float = float("nan")
-    # The rate the optimiser ACTUALLY applied at the end of this epoch, after warmup and cosine
-    # decay. `lr` above is the trial's peak, which is not what any given epoch ran at.
+    # Rate used by the last successful update in this epoch/trajectory point.
+    # NaN for an epoch with no successful update. `lr` is the next scheduled rate.
     lr_applied: float = float("nan")
 
     # Mean training loss for THIS epoch, per source dataset. The epoch's
@@ -261,6 +261,9 @@ class TrainingResult:
     total_params:          int   = 0
     est_tflops:            float = float("nan")
     rows_seen:             int   = 0
+    # Whole-trial allocator peaks, including monitoring and earlier resume segments.
+    cuda_peak_allocated_bytes: int = 0
+    cuda_peak_reserved_bytes: int = 0
 
 
 # --------------------------------------------------------------------------- #
@@ -1709,6 +1712,8 @@ def train_one_config(
     execution = configure_execution(bool(getattr(cfg.train, "deterministic", False)))
     _seed_everything(int(cfg.seed))
     device = _resolve_device(cfg)
+    from src.train.telemetry import CudaMemoryPeaks
+    memory_peaks = CudaMemoryPeaks(device)
     LOGGER.info("Numerical execution: %s", execution)
     LOGGER.info(
         "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | qf=%.2f | seed=%d",
@@ -2260,6 +2265,7 @@ def train_one_config(
         return averages, {key: float(d.get(track_primary_metric, float("nan"))) for key, d in scores.items()}
 
     successful_updates = 0
+    last_applied_lr = float("nan")
     processed_rows = 0
     trajectory_history = []
     trajectory_steps = {int(v) for v in getattr(cfg.train, "trajectory_steps", [])}
@@ -2316,9 +2322,11 @@ def train_one_config(
                 numerator = sum((p.detach().double() - drift_anchor[n].double()).square().sum()
                                 for n, p in model.named_parameters() if n in drift_anchor)
                 drift = float(torch.sqrt(numerator / denominator.clamp_min(1e-30)).item())
+            allocated_bytes, reserved_bytes = memory_peaks.capture()
             rec = EpochRecord(
                 epoch=epoch, train_loss=float("nan"), elapsed_sec=time.monotonic() - t0,
                 lr=float(optimizer.param_groups[0]["lr"]), record_type="trajectory",
+                lr_applied=last_applied_lr,
                 successful_updates=successful_updates, processed_rows=processed_rows,
                 metric_name=track_primary_metric, secondary_metric_name=track_secondary_metric,
                 train_metric=float(train_metrics.get(track_primary_metric, float("nan"))),
@@ -2327,8 +2335,8 @@ def train_one_config(
                 secondary_test_metric=float(test_metrics.get(track_secondary_metric, float("nan"))),
                 weight_drift=drift, monitor_seconds=time.monotonic() - started,
                 per_dataset_scores=dict(monitor_details), parameter_statistics=stats,
-                cuda_peak_allocated_bytes=torch.cuda.max_memory_allocated() if str(device).startswith("cuda") else 0,
-                cuda_peak_reserved_bytes=torch.cuda.max_memory_reserved() if str(device).startswith("cuda") else 0,
+                cuda_peak_allocated_bytes=allocated_bytes,
+                cuda_peak_reserved_bytes=reserved_bytes,
                 l2sp_penalty=0.5 * l2sp_lambda * float(numerator.item()) if drift_anchor else 0.0,
                 per_dataset_metric={**{f"train__{k}": v for k, v in train_by_dataset.items()},
                                     **{f"test__{k}": v for k, v in test_by_dataset.items()},
@@ -2382,6 +2390,7 @@ def train_one_config(
         baseline_by_dataset.update({f"ood__{k}": v for k,v in initial_ood.items()})
         from src.train.telemetry import parameter_statistics
         initial_stats = parameter_statistics(model, drift_anchor or {}, optimizer) if bool(getattr(cfg.train, "parameter_diagnostics", False)) else []
+        allocated_bytes, reserved_bytes = memory_peaks.capture()
         baseline_record = EpochRecord(
             epoch=-1,
             train_loss=float("nan"),       # no training has happened yet
@@ -2396,8 +2405,8 @@ def train_one_config(
             epoch_time_sec=0.0,
             per_dataset_metric=baseline_by_dataset,
             per_dataset_scores=dict(monitor_details), parameter_statistics=initial_stats,
-            cuda_peak_allocated_bytes=torch.cuda.max_memory_allocated() if str(device).startswith("cuda") else 0,
-            cuda_peak_reserved_bytes=torch.cuda.max_memory_reserved() if str(device).startswith("cuda") else 0,
+            cuda_peak_allocated_bytes=allocated_bytes,
+            cuda_peak_reserved_bytes=reserved_bytes,
         )
         history.append(baseline_record)
         monitored_metrics.append((baseline_test_p, baseline_train_p))
@@ -2434,9 +2443,11 @@ def train_one_config(
                                scaler=scaler, identity=recovery_identity)
         start_epoch, start_offset = resume["epoch"], resume["next_batch"]
         successful_updates = last_saved_update = resume["successful_updates"]
+        last_applied_lr = resume.get("last_applied_lr", float("nan"))
         processed_rows = resume["processed_rows"]
         history = [EpochRecord(**r) for r in resume["history"]]
         trajectory_history = [EpochRecord(**r) for r in resume["trajectories"]]
+        memory_peaks.restore(resume.get("cuda_memory_peaks", {}))
         monitored_metrics = resume["monitored_metrics"]
         t0 = time.monotonic() - resume["elapsed_sec"]
         # Rebuild the compact progress files from the same recovery transaction.
@@ -2523,10 +2534,12 @@ def train_one_config(
             if recovery_every and (interrupted or successful_updates - last_saved_update >= recovery_every):
                 progress = {
                     "epoch": epoch, "next_batch": step, "successful_updates": successful_updates,
+                    "last_applied_lr": last_applied_lr,
                     "processed_rows": processed_rows, "elapsed_sec": time.monotonic() - t0,
                     "history": [asdict(r) for r in history],
                     "trajectories": [asdict(r) for r in trajectory_history],
                     "monitored_metrics": monitored_metrics,
+                    "cuda_memory_peaks": memory_peaks.state_dict(),
                     "epoch_stats": {"running_loss": running_loss, "n_batches": n_batches,
                         "grad_norms": epoch_grad_norms, "clipped_count": epoch_clipped_count,
                         "step_losses": epoch_step_losses, "ctx_pos_rate": epoch_ctx_pos_rate,
@@ -2546,9 +2559,10 @@ def train_one_config(
 
         def flush_gradients():
             nonlocal micro_since_step, epoch_optimizer_steps, epoch_amp_skipped_steps, epoch_clipped_count
-            nonlocal successful_updates
+            nonlocal successful_updates, last_applied_lr
             if micro_since_step == 0:
                 return None
+            applied_lr = float(optimizer.param_groups[0]["lr"])
             norm, did_step = step_mean_gradient(
                 model, optimizer, scaler, microbatches=micro_since_step, max_norm=grad_clip,
             )
@@ -2556,6 +2570,7 @@ def train_one_config(
             epoch_clipped_count += int(grad_clip is not None and norm > grad_clip)
             epoch_optimizer_steps += 1
             if did_step:
+                last_applied_lr = applied_lr
                 scheduler.step()
                 successful_updates += 1
                 from src.train.telemetry import progress
@@ -2881,10 +2896,11 @@ def train_one_config(
         # B200's 192 GiB). Reset after reading so each epoch reports its own
         # peak rather than a running max.
         gpu_peak = ""
-        if device == "cuda" and torch.cuda.is_available():
+        allocated_bytes, reserved_bytes = memory_peaks.capture(reset=True)
+        if memory_peaks.enabled:
             try:
-                peak_gb = torch.cuda.max_memory_allocated() / 1e9
-                resv_gb = torch.cuda.max_memory_reserved() / 1e9
+                peak_gb = allocated_bytes / 1e9
+                resv_gb = reserved_bytes / 1e9
                 total_gb = _gpu_total_mem_gb(device) or 0.0
                 pct = (100.0 * peak_gb / total_gb) if total_gb else float("nan")
                 # peak/total headroom makes the max_rows_per_epoch tuning
@@ -2893,7 +2909,6 @@ def train_one_config(
                     f"  gpu_peak_alloc={peak_gb:.2f}GB gpu_peak_reserved={resv_gb:.2f}GB"
                     f" gpu_total={total_gb:.0f}GB ({pct:.0f}% of VRAM)"
                 )
-                torch.cuda.reset_peak_memory_stats()
             except Exception:                                      # pragma: no cover
                 gpu_peak = ""
         # Timing decomposition: where did the epoch's wall-clock go?
@@ -2929,6 +2944,8 @@ def train_one_config(
             k: float(np.mean(v)) for k, v in sorted(_per_ds.items())
         }
         record = EpochRecord(
+            cuda_peak_allocated_bytes=allocated_bytes,
+            cuda_peak_reserved_bytes=reserved_bytes,
             monitor_seconds=eval_phase_dt,
             training_seconds=training_s,
             compute_seconds=epoch_compute_s,
@@ -2957,9 +2974,8 @@ def train_one_config(
             grad_norm_mean=gnorm_mean,
             grad_norm_max=gnorm_max,
             clipped_frac=clipped_frac,
-            # The scheduler has already stepped for this epoch, so param_groups holds what was
-            # applied, not the peak in `lr`.
-            lr_applied=float(optimizer.param_groups[0].get("lr", float("nan"))),
+            lr_applied=(last_applied_lr if epoch_optimizer_steps > epoch_amp_skipped_steps
+                        else float("nan")),
         )
         history.append(record)
         if on_epoch_end is not None:
@@ -3303,7 +3319,10 @@ def train_one_config(
 
     if recovery_path.exists():
         recovery_path.unlink()
+    memory_peaks.capture()
     return TrainingResult(
+        cuda_peak_allocated_bytes=memory_peaks.allocated,
+        cuda_peak_reserved_bytes=memory_peaks.reserved,
         final_ckpt_path=save_path,
         history=history,
         n_train_datasets=len(split.train),
