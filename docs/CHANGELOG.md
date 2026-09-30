@@ -13,6 +13,9 @@ day is never rewritten.
 
 ## 30-09-2026
 
+- Add eight short seed/sampling/recovery GPU controls and an auxiliary notebook before experiments 2/3, with bounded CPU preparation and strict completion audits.
+- Refine corpus/pilot plots, add matched training-factor summaries and readable clipping scales, and read drift from milestone records instead of empty epoch placeholders.
+
 - Collect all PDF figures in one folder, rebuild owned outputs on rerun, separate training/results notebooks, and clarify corpus exposure, partial-traversal losses and shared LR schedules.
 
 - Exclude encoded binary notebook images from the text privacy scan while retaining source, output text, SVG and metadata checks.

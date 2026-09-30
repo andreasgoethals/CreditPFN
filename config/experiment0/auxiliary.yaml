@@ -1,0 +1,9 @@
+# Functional checks only. Research recipes retain their own budgets and row caps.
+target_updates: 6
+interrupt_after: 3
+row_cap: 256
+max_training_rows: 8192
+training_tables: 2
+held_out_tables: 1
+monitor_rows: 256
+monitor_members: 2

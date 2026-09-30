@@ -69,6 +69,20 @@ def plot_horizon(campaign, *, x="updates"):
             domains.append((label, curves))
     if not domains:
         return []
+    seen = cp.effects(campaign, "train")
+    gaps = []
+    if not seen.empty:
+        held = {base: curve for label, curves in domains if label == "Held-out credit" for base, curve in curves}
+        for base, group in seen.groupby("base"):
+            if base not in held:
+                continue
+            curve = cp.trajectory_curve(campaign, group, split="train", x=x)
+            pair = curve.merge(held[base][["updates", "mean"]], on="updates", suffixes=("_train", "_held"), validate="one_to_one")
+            pair["mean"] = pair.mean_train - pair.mean_held
+            gaps.append((base, pair))
+            tables.append(pair.assign(base=base, domain="Training minus held-out credit change"))
+        if gaps:
+            domains.append(("Train − held-out change", gaps))
     fig, axes = cp._subplots(f"{campaign.track.upper()}: budget-pilot learning horizon", len(domains), sharey=True)
     for ax, (label, curves) in zip(axes, domains):
         for i, (base, curve) in enumerate(curves):
@@ -83,7 +97,10 @@ def plot_horizon(campaign, *, x="updates"):
         f"{campaign.track.upper()} budget-pilot changes relative to the same trial and dataset at update zero. "
         "Each curve is one base model at the fixed pilot recipe; points show equally weighted dataset means "
         "and lines connect recorded milestones without smoothing. Missing scheduled measurements remain gaps. "
-        "The two panels use distinct dataset sets. Row exposures count repeated rows. Historical TabPFN objective "
+        "Credit and non-credit panels use distinct dataset sets. The third panel subtracts mean held-out-credit improvement "
+        "from mean training-credit improvement; positive values indicate greater adaptation on seen tables. This is a between-table "
+        "transfer gap, not an unbiased overfitting estimate, since the training monitor reuses adaptation rows and table sets differ. "
+        "Row exposures count repeated rows. Historical TabPFN objective "
         "differences limit comparison with the corrected main experiment; these curves do not establish an optimal budget.",
         {"Milestone means, quartiles and support": pd.concat(tables, ignore_index=True)})]
 
@@ -99,8 +116,6 @@ def plot_loss(campaign):
                              figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO))
     fig.suptitle(f"{campaign.track.upper()}: recorded training loss")
     tables = []
-    support = cp.loss_epoch_support(campaign)
-    partial = support[~support.complete_pass]
     width = cp.optimization_window(campaign)
     windows = np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target))
     for ax, base in zip(axes.flat, bases):
@@ -109,16 +124,13 @@ def plot_loss(campaign):
             curve = recipe.groupby("window_end").train_loss.agg(mean="mean", trials="size").reindex(windows)
             ax.plot(curve.index, curve["mean"], color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))),
                     linestyle="--" if frozen else "-", marker=style.SEED_MARKERS[int(frozen)],
-                    markersize=style.CURVE_MARKER_SIZE,
+                    markersize=style.CURVE_MARKER_SIZE, linewidth=style.THIN_LINE,
+                    markevery=(int(frozen)*2, style.CURVE_MARKER_INTERVAL),
                     label=f"LR {lr:.0e} / {'frozen' if frozen else 'full'}")
             tables.append(curve.rename_axis("window_end").reset_index().assign(base=base, learning_rate=lr, frozen=frozen))
-            tail = partial[partial.base.eq(base) & partial.learning_rate.eq(lr) & partial.frozen.eq(frozen)]
-            if not tail.empty:
-                ax.scatter(tail.successful_updates, tail.train_loss, marker="x",
-                           color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))), s=style.POINT_SIZE)
         ax.set_title(base)
         ax.set_xlabel("Successful-update window end")
-        ax.set_ylabel("Data loss")
+        ax.set_ylabel(cp.loss_label(campaign.track, base))
         ax.legend()
     for ax in list(axes.flat)[len(bases):]:
         ax.remove()
@@ -128,7 +140,8 @@ def plot_loss(campaign):
         "Markers show observed windows; missing windows remain gaps. L2-SP is excluded. PD uses cross-entropy; "
         "LGD uses TabPFN bar-distribution NLL or TabICLv2 quantile pinball loss. Separate vertical scales "
         "preserve each model's loss evolution; their numerical magnitudes are not comparable. "
-        "Crosses mark epochs with incomplete table coverage and are not joined to the full-traversal loss curves.",
+        "Epochs with incomplete table coverage are excluded from the curves and retained in the accompanying tables. "
+        "Markers are thinned for readability; all recorded window means remain in the line and text summary.",
         {"Window means and counts": pd.concat(tables, ignore_index=True),
          **cp.loss_coverage_tables(campaign)})]
 
@@ -211,12 +224,22 @@ def plot_process_overview(campaign):
         for ax, (field, data) in zip(axes.flat, curves.items()):
             for mode, group in data[data.base.eq(base)].groupby("sampling"):
                 curve = group.groupby("window_end")[field].agg(median="median", trials="size")
-                width = cp.optimization_window(campaign)
-                curve = curve.reindex(np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target)))
-                ax.plot(curve.index, curve["median"], label=style.SAMPLING_LABELS[mode], color=style.SAMPLING_COLORS[mode])
+                curve = curve.reindex(cp.optimization_grid(campaign, field))
+                ax.plot(curve.index, curve["median"], label=style.SAMPLING_LABELS[mode], color=style.SAMPLING_COLORS[mode],
+                        linestyle=style.SAMPLING_STYLES[mode], linewidth=style.THIN_LINE)
                 tables.append(curve.rename_axis("window_end").reset_index().assign(metric=field, sampling=mode))
             ax.set_xlabel("Successful-update window end")
-            ax.set_ylabel(fields[field])
+            ax.set_ylabel(cp.loss_label(campaign.track, base) if field == "train_loss" else fields[field])
+            if field == "clipped_frac":
+                from matplotlib.ticker import PercentFormatter
+                maximum = pd.to_numeric(data[field], errors="coerce").max()
+                if maximum > 0:
+                    ax.set_yscale("symlog", linthresh=style.CLIP_LINEAR_THRESHOLD)
+                    ax.set_ylim(0, min(style.CLIP_DISPLAY_CEILING, maximum*1.1))
+                    ax.yaxis.set_major_formatter(PercentFormatter(1, decimals=2))
+                else:
+                    ax.text(.5, .5, "No clipped updates recorded", ha="center", va="center", transform=ax.transAxes)
+                    ax.set_ylim(0,1)
             ax.legend()
         for ax in list(axes.flat)[len(curves):]:
             ax.remove()
@@ -224,6 +247,7 @@ def plot_process_overview(campaign):
             "Optimization diagnostics at the fixed reference recipe. Each curve is the median of trial-window "
             "means for one sampling protocol across available dataset partitions; counts are retained in the text. "
             "Incomplete table-coverage loss epochs are tabulated separately; missing windows remain gaps. "
+            "Clipping uses a shared percentage range, linear through 0.1% and logarithmic above. Drift follows exact measured milestones. "
             "Loss excludes L2-SP and retains the native objective scale, which is not comparable across architectures.",
             {"Window medians and support": pd.concat(tables, ignore_index=True)}))
     return pages
@@ -235,7 +259,9 @@ def health_table(campaign):
     if h.empty:
         return pd.DataFrame()
     h = h[h.successful_updates.gt(0)]
-    fields = [f for f in ("train_loss", "l2sp_penalty", "grad_norm_mean", "clipped_frac", "weight_drift") if f in h]
+    # Drift is a scheduled milestone measurement; its epoch NaNs mean "not sampled".
+    fields = [f for f in ("train_loss", "l2sp_penalty", "grad_norm_mean", "clipped_frac") if f in h]
+    drift = cp.optimization_curves(campaign, "weight_drift")
     for trial, group in h.groupby("trial_name"):
         record = dict(trial_name=trial, epochs=len(group))
         values = group[fields].apply(pd.to_numeric, errors="coerce")
@@ -243,13 +269,16 @@ def health_table(campaign):
         for field, name, reducer in (("grad_norm_mean", "peak_epoch_gradient", "max"),
                                      ("clipped_frac", "peak_epoch_clipped_fraction", "max"),
                                      ("l2sp_penalty", "peak_l2sp_penalty", "max"),
-                                     ("weight_drift", "peak_weight_drift", "max"),
                                      ("amp_skipped_steps", "amp_skips", "sum"),
                                      ("data_skipped_steps", "data_skips", "sum")):
             if field in group:
                 record[name] = getattr(pd.to_numeric(group[field], errors="coerce"), reducer)()
+        if not drift.empty:
+            measured = drift.loc[drift.trial_name.eq(trial), "weight_drift"]
+            record["peak_weight_drift"] = measured.max() if not measured.empty else np.nan
         rows.append(record)
-    return campaign.trials[["trial_name", "base", "learning_rate", "frozen"]].merge(
+    keys = ["trial_name", *cp.FACTORS, *[c for c in ("partition", "seed") if c in campaign.trials]]
+    return campaign.trials[keys].merge(
         pd.DataFrame(rows), on="trial_name", validate="one_to_one").drop(columns="trial_name")
 
 

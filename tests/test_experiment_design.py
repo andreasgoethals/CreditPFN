@@ -73,6 +73,8 @@ def test_only_recovery_controls_request_strict_numerics_and_small_batches():
     from src.train.config import load_train_config
     from src.utils.experiment import digest_json, scientific_config
     for path in Path("config").glob("experiment*/*.yaml"):
+        if path.name == "auxiliary.yaml":  # Control-generation policy, not a train-pipeline config.
+            continue
         cfg = load_train_config(config_path=str(path))
         recovery = path.stem.startswith("recovery_")
         assert cfg.train.deterministic is recovery
@@ -153,8 +155,9 @@ def test_fingerprint_covers_scientific_changes_but_not_workers():
 
 @pytest.mark.parametrize("mode", ["one_sample", "full_pass", "accumulate"])
 @pytest.mark.parametrize("terminal_divergence", [False, True])
+@pytest.mark.parametrize("seed", [42, 43])
 def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
-        mode, terminal_divergence, synthetic_processed, tmp_path, monkeypatch, execution_settings):
+        mode, terminal_divergence, seed, synthetic_processed, tmp_path, monkeypatch, execution_settings):
     import src.train.loop as loop
     import src.train.recovery as recovery
     import src.train.telemetry as telemetry
@@ -198,7 +201,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     monkeypatch.setattr(OmegaConf, "load", lambda p: OmegaConf.create({"finetuning": {
         "max_rows_per_epoch": 80, "query_fraction": .4, "context_sampling": "balanced"}})
         if "data.yaml" in str(p) else real_load(p))
-    cfg = OmegaConf.create({"seed": 42, "run_name": "toy", "track": "pd", "device": "cpu",
+    cfg = OmegaConf.create({"seed": seed, "run_name": "toy", "track": "pd", "device": "cpu",
         "tunable": {"classifier_base_paths": ["base.ckpt"], "learning_rates": [.001]},
         "corpus": {"train_fraction": .6, "test_fraction": .4},
         "optimizer": {"weight_decay": 0., "l2sp_lambda": .003},

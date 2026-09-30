@@ -32,7 +32,9 @@ WIDTH_THIRD = (WIDTH_FULL - 0.50) / 3
 MAX_HEIGHT = 4.80   # 122 mm
 BAR_LABEL_PAD = 3
 BAR_LIMIT_FACTOR = 1.35
+LOG_BAR_LIMIT_FACTOR = 4
 EXPOSURE_LABEL_PAD = 5
+EXPOSURE_COLLISION_LIFT = 6
 EXPOSURE_LIMIT_FACTOR = 1.30
 SCHEDULE_POINTS = 400
 
@@ -172,6 +174,10 @@ COLORS: dict[str, str] = {
     "reference":     "#000000",   # the y=0 / y=x rule a panel is read against
     "highlight":     "#D55E00",   # the one arm a figure is about
     "annotation":    "#888888",   # "no data" text, footnotes on an axis
+    "improvement":   "#16834B",
+    "deterioration": "#BC3535",
+    "mean":          "#000000",
+    "median":        "#CC79A7",
     "full":          "#0072B2",
     "frozen":        "#E69F00",
     "Untuned":       "#999999",
@@ -180,7 +186,7 @@ COLORS: dict[str, str] = {
 
 #: Sequential and diverging maps, so a heatmap is not chosen per notebook either.
 CMAP_SEQUENTIAL = "viridis"
-CMAP_DIVERGING = "RdBu_r"        # centred on 0 for delta-vs-untuned panels
+CMAP_DIVERGING = "RdYlGn"        # positive effects indicate improvement
 TRAJECTORY_LR_COLORS = {3e-7: "#0072B2", 1e-6: "#E69F00", 1e-5: "#009E73", 3e-5: "#CC79A7"}
 TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
 
@@ -198,7 +204,10 @@ CURVE_BINS = 50
 PANEL_RATIO = 0.72
 SMALL_RATIO = 0.48
 POINT_SIZE = 20
-CURVE_MARKER_SIZE = 3
+CURVE_MARKER_SIZE = 2
+CURVE_MARKER_INTERVAL = 5
+CLIP_LINEAR_THRESHOLD = 0.001  # Fraction: linear from zero to 0.1%, logarithmic above.
+CLIP_DISPLAY_CEILING = 1.1  # Leave visible headroom above a 100% curve.
 POINT_ALPHA = 0.65
 THIN_LINE = 0.8
 BAR_HEIGHT = 0.72

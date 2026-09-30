@@ -18,8 +18,8 @@ from src.utils.atomic import write_json
 from src.utils.experiment import code_identity, digest_json, file_digest
 from src.utils.paths import REPO_ROOT, manifests_dir
 
-COUNTS = {"null": 8, "pilot": 16, "recovery": 4, "budget": 4}  # per track
-PARTS = ("part1", "part2", "recovery", "pilot")
+COUNTS = {"null": 8, "pilot": 16, "recovery": 4, "budget": 4, "auxiliary": 4}  # per track
+PARTS = ("part1", "part2", "recovery", "pilot", "auxiliary")
 BASES = ("v2", "v2.6", "v3", "tabicl")
 
 
@@ -32,8 +32,11 @@ def fingerprint() -> str:
              REPO_ROOT / "src/utils/experiment0.py", REPO_ROOT / "src/utils/recovery_check.py"]
     files += [REPO_ROOT / f"config/experiment0/{phase}_{track}.yaml"
               for phase in ("null", "pilot", "recovery") for track in ("pd", "lgd")]
+    files += [REPO_ROOT / "config/experiment0/auxiliary.yaml", REPO_ROOT / "src/utils/auxiliary_check.py",
+              REPO_ROOT / "scripts/slurm/auxiliary.slurm"]
+    files += [REPO_ROOT / f"config/experiment{exp}/{track}.yaml" for exp in (1, 2, 3) for track in ("pd", "lgd")]
     return digest_json({"training_code": code_identity(), "evaluation_code": code_identity(stage="eval"),
-                        "configs": {p.name: file_digest(p) for p in files}})
+                        "configs": {p.relative_to(REPO_ROOT).as_posix(): file_digest(p) for p in files}})
 
 
 @contextmanager
@@ -146,10 +149,13 @@ def prepare(identifier: str):
     from src.utils.preflight import main as preflight
     with locked(identifier) as (_, state):
         part = state["part"]
-    phases = {"part1": ("null", "pilot"), "part2": ("budget",), "recovery": (), "pilot": ("pilot",)}[part]
+    phases = {"part1": ("null", "pilot"), "part2": ("budget",), "recovery": (), "pilot": ("pilot",), "auxiliary": ()}[part]
     if part == "pilot":
         _make_pilot_configs(root() / identifier, state["pilot_bases"])
     configs = [config for phase in phases for config in _phase_configs(identifier, phase, part)]
+    if part == "auxiliary":
+        from src.utils.auxiliary_check import make_configs
+        configs.extend(make_configs(root() / identifier))
     if part in ("part1", "recovery"):
         from src.utils.recovery_check import make_configs
         configs.extend(make_configs(root() / identifier, diagnostic=part == "recovery"))
@@ -162,7 +168,7 @@ def prepare(identifier: str):
     for config in configs:
         prepare_plan(config, write=True)
     stage(Path(os.environ["VSC_SCRATCH_GPFS1"]) / "CreditPFN", write=True)
-    launch(identifier, "recovery" if part == "recovery" else phases[0])
+    launch(identifier, part if part in ("recovery", "auxiliary") else phases[0])
 
 
 def launch(identifier: str, phase: str):
@@ -181,14 +187,17 @@ def launch(identifier: str, phase: str):
                CREDITPFN_EXPERIMENT="experiment0", CREDITPFN_USE_SCRATCH="1",
                CREDITPFN_REQUIRE_STAGING="1", STAGES="train", TRIALS_PER_TASK="1",
                SEGMENT_MINUTES="0", CREDITPFN_AUTO_REQUEUE="0")
-    if phase == "recovery":
+    if phase in ("recovery", "auxiliary"):
         from src.utils.submit_bounded import submit
         cmd = ["sbatch", "--parsable", "--clusters=mindwell", "--partition=gpu_b200",
-               "--array=0-7%4", f"--time={os.environ.get('RECOVERY_WALLTIME', '00:30:00')}",
+               "--array=0-7%4", f"--time={os.environ.get(phase.upper() + '_WALLTIME', '00:15:00' if phase == 'auxiliary' else '00:30:00')}",
                f"--export=ALL,CREDITPFN_FLOW_ID={identifier},CREDITPFN_EXPERIMENT=experiment0,CREDITPFN_USE_SCRATCH=1",
-               "scripts/slurm/recovery.slurm"]
+               f"scripts/slurm/{phase}.slurm"]
         response = submit(cmd, slots=int(os.environ.get("GLOBAL_CONCURRENCY", "16")), limit=4, cluster="mindwell")
-        print(f"Recovery array {response}", flush=True)
+        print(f"{phase.capitalize()} array {response}", flush=True)
+        with locked(identifier) as (path, state):
+            state["jobs"].append({"phase": phase, "cluster": "mindwell", "id": response.split(";", 1)[0]})
+            write_json(path, state)
     else:
         # Null controls are short. Positive-LR pilots retain a one-hour rail until measured.
         env["WALLTIME"] = os.environ.get(f"{phase.upper()}_WALLTIME", "00:30:00" if phase == "null" else "01:00:00")
@@ -247,7 +256,10 @@ def audit(identifier: str, phase: str):
             raise RuntimeError("Audit does not belong to the current completed workflow stage")
         part = state["part"]
     folder = root() / identifier
-    if phase == "recovery":
+    if phase == "auxiliary":
+        from src.utils.auxiliary_check import audit_reports
+        write_json(folder / "auxiliary_audit.json", audit_reports(folder))
+    elif phase == "recovery":
         reports = [json.loads(p.read_text()) for p in sorted(folder.glob("recovery_*_*.json"))]
         if len(reports) != 8 or not all(r["passed"] for r in reports):
             raise RuntimeError("Recovery checks incomplete or unequal; workflow stopped")

@@ -45,7 +45,7 @@ Reusable Python logic belongs in `src/`; it does not import experiment entry poi
 
 | Experiment | Configs | Purpose | Trials across PD + LGD |
 |---|---|---|---|
-| 0 | `config/experiment0/{null,pilot,recovery,budget}_{pd,lgd}.yaml` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots |
+| 0 | `config/experiment0/` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots; auxiliary: 52 tiny arms in 8 tasks |
 | 1 | `config/experiment1/{pd,lgd}.yaml` | Full learning-rate × L2-SP × adaptation sweep | 512 |
 | 2 | `config/experiment2/{pd,lgd}.yaml` | One additional training seed at a predefined reference | 32 additional; seed 42 is reused from experiment 1 |
 | 3 | `config/experiment3/{pd,lgd}.yaml` | One sample versus full pass versus accumulation | 96 |
@@ -57,6 +57,8 @@ From an active CreditPFN environment on a VSC login node, `bash scripts/slurm/ru
 For targeted debugging, `bash scripts/slurm/run_experiment0.sh recovery` runs only the eight deterministic recovery pairs in a separate workflow. It cannot replace the complete part-1 validation or authorize budget pilots. Recovery uses smaller batches; the ordinary pilots check production sizes and performance.
 
 `bash scripts/slurm/run_experiment0.sh pilot` runs the short production-size pilots alone with fresh run names and an automatic audit. Optional `--pd-bases` and `--lgd-bases` select `v2`, `v2.6`, `v3` or `tabicl`; omitted selections retain all bases. Generated configs stay with the workflow in manifests. This diagnostic preserves earlier output and stops after its own audit.
+
+`bash scripts/slurm/run_experiment0.sh auxiliary` checks experiments 2 and 3 with six-update seed/sampling/recovery controls. The eight tasks stop at their own audit; research submissions remain separate. The small limits in `config/experiment0/auxiliary.yaml` generate immutable per-case configs in the workflow manifest folder. Notebook `04_auxiliary_experiments` reports the evidence.
 
 During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
 
@@ -74,7 +76,7 @@ The first command previews the design without training. A complete source corpus
 
 Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output CreditPFN/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
-The notebook reading order is `00_general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots), `experiment1/` (training then results, each task separately), `experiment2/` (seed-check training then results), and `experiment3/` (sampling/accumulation training then results). Training notebooks follow losses, monitored performance, parameter movement and device counters over updates. Results notebooks distinguish fixed-context monitor endpoints from final five-fold evaluation. The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
+The notebook reading order is `00_general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots, then auxiliary controls), `experiment1/` (training then results, each task separately), `experiment2/` (seed-check training then results), and `experiment3/` (sampling/accumulation training then results). Training notebooks follow losses, monitored performance, parameter movement and device counters over updates. Results notebooks distinguish fixed-context monitor endpoints from final five-fold evaluation. The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
 
 Notebooks export PDFs through `FigureSaver` at the actual ICML paper widths: **6.75 inches full width or 3.25 inches single column**, with embedded TrueType fonts. This is a deliberate, user-approved departure from the template's A4 dimensions. All PDFs share **`output CreditPFN/figures/`**, with experiment/notebook prefixes and drawing-order numbers. Each rerun clears its own previous PDFs; a full run also removes generated figures from retired notebooks and the previous caption index, then rebuilds them. Scientific logs, training diagnostics and evaluation results are preserved. Coverage precedes effects; at most four learning-rate curves share a panel and dataset matrices are paginated. Every caption is displayed below its figure and indexed in `output CreditPFN/figures/CAPTIONS.md`.
 

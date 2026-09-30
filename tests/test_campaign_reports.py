@@ -195,7 +195,7 @@ def test_downloaded_compact_snapshot_is_read_without_import(tmp_path, monkeypatc
 
 def test_all_notebooks_are_thin_ordered_and_use_owned_savers():
     notebooks=sorted(Path("notebooks").rglob("*.ipynb"))
-    assert len(notebooks) == 13
+    assert len(notebooks) == 14
     for path in notebooks:
         nb=json.loads(path.read_text(encoding="utf8"))
         code=["".join(c["source"]) for c in nb["cells"] if c["cell_type"]=="code"]

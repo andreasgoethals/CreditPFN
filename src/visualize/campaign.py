@@ -478,6 +478,8 @@ def plot_diagnostics(campaign: Campaign) -> list[Page]:
     for column, label in fields.items():
         if column not in data or not pd.to_numeric(data[column], errors="coerce").notna().any():
             continue
+        if column == "amp_skipped_steps" and pd.to_numeric(data[column], errors="coerce").dropna().eq(0).all():
+            continue  # Exact zero counts remain in the notebook's optimizer-health table.
         fig, axes = _subplots(f"{campaign.track.upper()}: {label}")
         labels = []
         for i, ((base, frozen), group) in enumerate(data.groupby(["base", "frozen"])):
@@ -547,7 +549,7 @@ def loss_coverage_tables(campaign: Campaign) -> dict[str, pd.DataFrame]:
 
 def optimization_curves(campaign: Campaign, field: str) -> pd.DataFrame:
     """Bound dense epoch histories without giving prolific histories more trial weight."""
-    h = campaign.histories
+    h = campaign.trajectories if field == "weight_drift" and not campaign.trajectories.empty else campaign.histories
     if h.empty or not {field,"successful_updates","trial_name"} <= set(h):
         return pd.DataFrame()
     if field == "train_loss":
@@ -559,8 +561,28 @@ def optimization_curves(campaign: Campaign, field: str) -> pd.DataFrame:
     data[field] = pd.to_numeric(data[field], errors="coerce")
     data = data[np.isfinite(data[field]) & data.successful_updates.gt(0)]
     width = optimization_window(campaign)
-    data["window_end"] = np.minimum(np.ceil(data.successful_updates/width)*width, campaign.target)
+    data["window_end"] = (data.successful_updates if field == "weight_drift" else
+                          np.minimum(np.ceil(data.successful_updates/width)*width, campaign.target))
     return data.groupby(["trial_name",*FACTORS,"window_end"],dropna=False)[field].mean().reset_index()
+
+
+def optimization_grid(campaign, field):
+    """Parameter drift has milestone cadence; other quantities have epoch windows."""
+    if field == "weight_drift":
+        steps = OmegaConf.select(campaign.cfg, "train.trajectory_steps", default=None)
+        if steps is None:
+            data = campaign.trajectories if not campaign.trajectories.empty else campaign.histories
+            steps = data.get("successful_updates", pd.Series(dtype=int)).unique()
+        return np.array(sorted({int(u) for u in steps if 0 < u <= campaign.target}))
+    width = optimization_window(campaign)
+    return np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target))
+
+
+def loss_label(track, base):
+    """Native query objective; no anchoring term is included."""
+    if track == "pd":
+        return "Query cross-entropy"
+    return "Mean quantile pinball loss" if "tabicl" in base.lower() else "Bar-distribution NLL"
 
 
 def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
@@ -573,33 +595,44 @@ def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
     data = optimization_curves(campaign, field)
     if data.empty:
         return []
+    if field == "l2sp_penalty":
+        data = data[data.l2sp_lambda.gt(0)]
     pages = []
+    clip_top = min(style.CLIP_DISPLAY_CEILING, float(data[field].max())*1.1) if field == "clipped_frac" and not data.empty else None
     for (base, frozen, sampling), group in data.groupby(["base", "frozen", "sampling"]):
         lambdas = sorted(group.l2sp_lambda.unique())
-        fig, axes = _subplots(f"{base}: {labels[field]} / {'frozen' if frozen else 'full'}", len(lambdas), sharey=True)
+        label = loss_label(campaign.track, base) if field == "train_loss" else labels[field]
+        if field == "clipped_frac" and group[field].eq(0).all():
+            continue
+        fig, axes = _subplots(f"{base}: {label} / {'frozen' if frozen else 'full'}", len(lambdas), sharey=True)
         tables = []
         for ax, lam in zip(axes, lambdas):
             for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
                 curve = recipe.groupby("window_end")[field].agg(
                     median="median", q25=lambda v: v.quantile(.25), q75=lambda v: v.quantile(.75), trials="size")
-                width = optimization_window(campaign)
-                curve = curve.reindex(np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target)))
+                curve = curve.reindex(optimization_grid(campaign, field))
                 color = style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr)))
-                ax.plot(curve.index, curve["median"], marker=style.PANEL_MARKERS[i % 4], markersize=style.CURVE_MARKER_SIZE, label=f"LR {lr:.0e}", color=color)
+                ax.plot(curve.index, curve["median"], marker=style.PANEL_MARKERS[i % 4], markersize=style.CURVE_MARKER_SIZE,
+                        markevery=style.CURVE_MARKER_INTERVAL, linewidth=style.THIN_LINE, label=f"LR {lr:.0e}", color=color)
                 ax.fill_between(curve.index.to_numpy(float), curve.q25.to_numpy(float), curve.q75.to_numpy(float),
                                 color=color, alpha=style.INTERVAL_ALPHA)
                 tables.append(curve.rename_axis("window_end").reset_index().assign(learning_rate=lr, l2sp_lambda=lam))
             ax.set_title(f"L2-SP = {lam:g}"); ax.set_xlabel("Successful-update window end"); ax.legend()
-        axes[0].set_ylabel(labels[field])
+        axes[0].set_ylabel(label)
         if field == "clipped_frac":
-            axes[0].set_ylim(0,1)
+            from matplotlib.ticker import PercentFormatter
+            axes[0].set_yscale("symlog", linthresh=style.CLIP_LINEAR_THRESHOLD)
+            axes[0].set_ylim(0, clip_top)
+            axes[0].yaxis.set_major_formatter(PercentFormatter(1, decimals=2))
         pages.append(Page(f"optimization_{campaign.track}_{field}_{base}_{frozen}_{sampling}", fig,
             f"{labels[field]} summarized in successful-update windows of width {optimization_window(campaign):,}, with a shorter final window when necessary. "
             "Epoch values are averaged within trial and window; lines and bands show the median and interquartile range "
             "across available trials. Counts are retained in the text summary. Gaps are not interpolated. "
             "The data loss excludes the separately reported L2-SP term; numerical loss scales differ across tasks, architectures "
             "and target transforms, and a density NLL may be negative. Loss curves exclude epochs with fewer "
-            "observed tables than the same trial's fullest recorded traversal; these partial-coverage values are tabulated separately.",
+            "observed tables than the same trial's fullest recorded traversal; these partial-coverage values are tabulated separately. "
+            + ("Clipping panels share a zero-based range across the entire task. The percentage axis is linear up to 0.1% and logarithmic above, preserving small differences alongside heavy clipping; exact-zero groups are tabulated instead. " if field == "clipped_frac" else "")
+            + ("Only nonzero anchoring settings are drawn; the zero-penalty control is identically zero by definition." if field == "l2sp_penalty" else ""),
             {"Window statistics": pd.concat(tables, ignore_index=True)}))
     return pages
 

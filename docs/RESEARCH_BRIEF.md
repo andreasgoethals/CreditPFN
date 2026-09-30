@@ -27,7 +27,7 @@ Experiment **0** owns debugging and readiness: null controls, positive-LR/recove
 
 Recovery equivalence uses strict deterministic execution and a 2,048-row training cap to separate serialization correctness from GPU arithmetic variation. Null/short/budget pilots and the research grid retain production row caps and fast kernels. A fixed seed controls stochastic inputs; it does not guarantee bitwise equality on nondeterministic GPU kernels. Numerical execution settings are recorded. Small recovery controls establish state restoration under their tested conditions, not capacity or cross-platform reproducibility.
 
-Configs are grouped under `config/experiment0/` through `config/experiment3/`; notebooks use the same groups plus `00_general/`. All current run families use `cpt_*_v5`, including `cpt_recovery_v5`. This is a fresh protocol: it adds disjoint validation rows for monitoring, a fixed public retention panel and experiment-scoped output. Earlier v4 controls remain historical evidence, not passing controls for v5.
+Configs are grouped under `config/experiment0/` through `config/experiment3/`; notebooks use the same groups plus `00_general/`. Research run families use `cpt_*_v5`, including `cpt_recovery_v5`; isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. This is a fresh protocol: it adds disjoint validation rows for monitoring, a fixed public retention panel and experiment-scoped output. Earlier v4 controls remain historical evidence, not passing controls for v5.
 
 ## Experiment 1: implemented main grid
 
@@ -125,7 +125,15 @@ Only successful completions release a CPU audit, and only a passing audit releas
 
 **Experiment 0 part 2 is separate**, via `run_experiment0.sh part2`: eight full-update reference pilots, one per base/task, through 20k successful updates with 0/250/1k/2.5k/5k/10k/20k measurements. A current part-1 receipt and unchanged input/environment identities are required. These longer jobs use resumable two-hour work segments plus a save/monitor margin. They follow a 20k schedule; their early points are not substitutes for a 5k schedule.
 
-The reviewed pilots inform the common **10k budget and six milestones** in experiments 1–3; prepare fresh plans with those settings. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **72 control/pilot training arms** if every experiment-0 stage runs once. Interrupted execution adds a segment, not a new scientific trial.
+The reviewed pilots inform the common **10k budget and six milestones** in experiments 1–3; prepare fresh plans with those settings. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **124 control/pilot training arms** if every experiment-0 stage including the auxiliary checks runs once (72 original arms + 52 auxiliary arms). Interrupted execution adds a segment, not a new scientific trial.
+
+### Auxiliary gate for experiments 2 and 3
+
+Run `run_experiment0.sh auxiliary` after local validation, before submitting the seed and sampling studies. Eight GPU tasks (four bases × two tasks) run 52 six-update arms: 36 continuous cases and 16 interrupted/resumed counterparts. Seed 42/43 checks hold the monitor and corpus split seeds fixed. Sampling checks use the experiment-3 stratified policy in every arm; LGD reuses its identical seed-42 one-sample case, while PD needs a separate stratified control.
+
+Only the two smallest eligible training tables and smallest held-out table in partition zero are used, preserving their original roles. Selection uses row count, not outcomes. The 256-row cap forces multiple disjoint chunks; total training rows are capped at 8,192 before GPU submission. Recovery checks stop after update 3, resume to 6 and compare weights, fixed monitor scores and exposure against continuous arms. Every completed arm must pass identity, finite-monitor, exact-budget, zero-skip and positive-parameter-movement checks. The seed-43 endpoint also passes five-fold package-data scoring. A final CPU audit requires all eight task reports.
+
+This is an engineering gate, not a performance or capacity estimate. It neither reruns the historical budget pilots nor changes the main grid. Deterministic small-shape recovery does not certify production-shape speed or bitwise reproducibility. Experiments 2 and 3 start from original weights, so training can overlap experiment 1 after this gate; seed comparison still needs the matching seed-42 reference outputs. Keep row exposure, time and failed updates in the sampling analysis. Slightly unequal chunk query counts are equally weighted as chunk means, not exactly row weighted.
 
 ## Retention and measurement protocol
 

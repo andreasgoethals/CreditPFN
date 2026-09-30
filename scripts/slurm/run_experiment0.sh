@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 PART="${1:-part1}"
-[[ "$PART" == part1 || "$PART" == part2 || "$PART" == recovery || "$PART" == pilot ]] || { echo 'Choose part1, part2, recovery or pilot' >&2; exit 2; }
+[[ "$PART" == part1 || "$PART" == part2 || "$PART" == recovery || "$PART" == pilot || "$PART" == auxiliary ]] || { echo 'Choose part1, part2, recovery, pilot or auxiliary' >&2; exit 2; }
 if (( $# )); then shift; fi
 # The workflow chooses its own task configs; an inherited one can reroute job logs.
 unset CREDITPFN_CONFIG

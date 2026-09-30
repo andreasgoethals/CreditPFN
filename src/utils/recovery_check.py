@@ -78,17 +78,17 @@ def compare(reference: Path, resumed: Path) -> dict:
             "rtol": 1e-6, "atol": 1e-7}
 
 
-def compare_trajectories(reference: pd.DataFrame, resumed: pd.DataFrame) -> dict:
-    """Separate independent-run differences at update 5 from differences after resume."""
+def compare_trajectories(reference: pd.DataFrame, resumed: pd.DataFrame, *, milestones=None) -> dict:
+    """Compare the specified fixed monitor milestones, including before interruption."""
     columns = sorted(c for c in reference if c.startswith(("metric__", "score__")))
     other_columns = sorted(c for c in resumed if c.startswith(("metric__", "score__")))
-    milestones = [0, 5, 12]
+    milestones = [0, 5, 12] if milestones is None else list(milestones)
     problems = []
     if not columns or columns != other_columns:
         problems.append("Missing or different monitor columns")
     if any(frame.get("successful_updates", pd.Series(dtype=int)).tolist() != milestones
            for frame in (reference, resumed)):
-        problems.append("Expected exactly one measurement at each of updates 0, 5 and 12")
+        problems.append(f"Expected exactly one measurement at each of updates {milestones}")
     if problems:
         return {"passed": False, "problems": problems, "by_update": [],
                 "pre_interruption_equal": None}
@@ -167,7 +167,7 @@ def inspect_existing(folder: Path, tasks: list[int]) -> dict:
             "comparisons": comparisons}
 
 
-def benchmark_smoke(path: Path, track: str, trial: int, *, workflow: str | None = None) -> dict:
+def benchmark_smoke(path: Path, track: str, trial: int, *, workflow: str | None = None, kind="recovery_smoke") -> dict:
     """Exercise the real five-fold scoring/prediction path on a small packaged table."""
     from src.eval.benchmark import _bench_model_on_dataset, _write_csv, _write_predictions
     from src.data.retention import processed_dataset
@@ -175,6 +175,8 @@ def benchmark_smoke(path: Path, track: str, trial: int, *, workflow: str | None 
     from src.train.tabicl_compat import model_family
     from src.model.tabpfn_models import TabPFNTrained
     from src.model.tabicl_models import TabICLTrained
+    if kind not in ("recovery_smoke", "auxiliary_smoke"):
+        raise ValueError("Unknown benchmark smoke-test scope")
     family = model_family(str(path))
     task = "classification" if track == "pd" else "regression"
     wrapper = TabICLTrained if family == "tabicl" else TabPFNTrained
@@ -184,8 +186,8 @@ def benchmark_smoke(path: Path, track: str, trial: int, *, workflow: str | None 
     ds = processed_dataset(track, dataset)
     predictions = []
     rows = _bench_model_on_dataset(handle=handle, model=model, ds=ds, n_folds=5,
-        inner_val_fraction=.2, seed=99, timestamp="recovery_smoke", pred_records=predictions)
-    folder = results_dir(track.upper(), "recovery_smoke", experiment="experiment0")
+        inner_val_fraction=.2, seed=99, timestamp=kind, pred_records=predictions)
+    folder = results_dir(track.upper(), kind, experiment="experiment0")
     if workflow is not None:
         if not workflow.isalnum():
             raise ValueError("Invalid benchmark workflow identifier")
