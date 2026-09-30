@@ -209,14 +209,21 @@ def test_null_audit_canonicalizes_legacy_keys_but_checks_weights_and_borders(tmp
     assert compare_states(before, after, tabpfn_track="lgd")["changed"] == ["model.weight"]
 
 
-def test_results_notebooks_save_paired_figures_and_use_real_brier_column():
+def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeypatch):
     paths = list(Path("notebooks/experiment1").glob("*_results_*.ipynb"))
     assert len(paths) == 2
     for path in paths:
         notebook = json.loads(path.read_text(encoding="utf-8"))
         source = "\n".join("".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code")
         assert "cp.show(sink, cp.plot_secondary_tradeoff(run))" in source
-        assert "'brier_score'" in source and "'brier'," not in source
+        assert "cp.show(sink, pub.plot_metric_profile(run))" in source
+    # Metric selection lives in src, keeping the notebooks free of analysis logic.
+    from src.visualize import publication
+    requested = []
+    monkeypatch.setattr(publication.cp, "benchmark_effects",
+                        lambda run, metric: requested.append(metric) or pd.DataFrame())
+    publication.plot_metric_profile(NS(track="pd"))
+    assert "brier_score" in requested and "brier" not in requested
 
 
 def test_submission_keeps_successful_stderr_out_of_dependency_id():

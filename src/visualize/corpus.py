@@ -17,6 +17,7 @@ def raw_inventory() -> pd.DataFrame:
     data["rows"] = data.raw_rows.where(data.raw_rows > 0)
     data["features"] = data.features.where(data.features > 0)
     data["missing"] = data.missing_cells_rate
+    data["dataset_id"] = data.dataset_id.map(display_name)
     return display_frame(data)
 
 
@@ -33,7 +34,9 @@ def processed_inventory() -> pd.DataFrame:
         except FileNotFoundError:
             extra.update(rows=np.nan, features=np.nan, missing=np.nan)
         records.append(extra)
-    return display_frame(pd.DataFrame(records).drop(columns="target_column", errors="ignore"))
+    result = pd.DataFrame(records).drop(columns="target_column", errors="ignore")
+    result["dataset_id"] = result.dataset_id.map(display_name)
+    return display_frame(result)
 
 
 def inventory_summary(data: pd.DataFrame, stage: str) -> str:
@@ -64,6 +67,9 @@ def plot_profiles(data: pd.DataFrame, stage: str) -> list[Page]:
             y = np.arange(len(page))
             axes[0].scatter(page.rows, y, color=style.color(track), s=style.POINT_SIZE)
             axes[0].set_xscale("log"); axes[0].set_xlabel("Rows (log scale)")
+            available = group.rows.dropna()
+            if not available.empty:
+                axes[0].set_xlim(available.min()*.8, available.max()*1.2)
             axes[0].set_yticks(y, page.dataset_id)
             axes[0].invert_yaxis()
             axes[1].barh(y, page.missing*100, color=style.color(track))
@@ -154,7 +160,7 @@ def plot_lgd_distributions() -> list[Page]:
             ax.set_xlabel("LGD"); ax.set_ylabel("Fraction of rows")
         for ax in list(axes.flat)[len(ids[start:start+4]):]:
             ax.set_visible(False)
-        pages.append(Page(f"lgd_distributions_{start//4+1}",fig,"Processed LGD target distributions, four datasets per page. Bars show fractions of rows within each dataset. Values are neither pooled across tables nor clipped to the unit interval."))
+        pages.append(Page(f"lgd_distributions_{start//4+1}",fig,"Processed LGD target distributions, four datasets per page. Bars show fractions of rows within each dataset. Values follow the registered preprocessing, including LGD target clipping; this plot applies no additional clipping and does not pool tables."))
     return pages
 
 
@@ -208,7 +214,8 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
                 axes[0].scatter(page[f"{mode}_step_share"], y+(offset-1)*.16, marker=style.SEED_MARKERS[offset], color=style.SAMPLING_COLORS[mode],label=style.SAMPLING_LABELS[mode],s=style.POINT_SIZE)
             axes[0].set_yticks(y,page.dataset_id)
             axes[0].set_xlabel("Share of optimizer steps in one complete corpus traversal")
-            axes[0].set_xlim(left=0); axes[0].legend()
+            maximum = group[[f"{mode}_step_share" for mode in style.SAMPLING_LABELS]].max().max()
+            axes[0].set_xlim(0, maximum*1.05); axes[0].legend()
             pages.append(Page(f"planned_exposure_{track}_{start//style.PAGE_ROWS+1}",fig,
                 f"Illustrative optimizer-step shares using a {int(page.illustrative_row_cap.iloc[0]):,}-row batch cap, all registered processed tables and no skipped updates. "
                 "One-sample and accumulation assign one update per table visit; full pass assigns one per disjoint chunk. Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal."))

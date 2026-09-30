@@ -1,6 +1,6 @@
 """Experiment-scoped, dataset-paired reports for the four research experiments.
 
-Notebooks choose sections; this module performs joins and builds bounded A4 pages.
+Notebooks choose sections; this module performs joins and builds bounded publication pages.
 Unavailable outcomes stay unavailable. Synthetic fixtures belong in tests, never reports.
 """
 from __future__ import annotations
@@ -21,6 +21,7 @@ from src.utils.paths import REPO_ROOT, logs_dir
 from src.visualize import eval_viz, style, training_viz
 from src.visualize.paper_figures import effect_label, paired_deltas
 from src.visualize.trajectories import load_trajectories, trajectory_effects
+from src.visualize.reporting import NotebookReport, page_text
 
 FACTORS = ["base", "learning_rate", "l2sp_lambda", "frozen", "sampling"]
 
@@ -51,34 +52,31 @@ class Page:
     name: str
     figure: object
     caption: str
+    tables: dict = field(default_factory=dict)
 
-
-@dataclass
-class NotebookReport:
-    """Accumulate section summaries in the same order the notebook presents them."""
-    title: str
-    sections: list = field(default_factory=list)
-
-    def add(self, title: str, text: str):
-        self.sections.append((title, str(text)))
-
-    def summary(self, sink) -> str:
-        parts = [self.title]
-        for title, text in self.sections:
-            parts.extend(("", title, text))
-        parts.extend(("", sink.summary()))
-        return "\n".join(parts)
+    def __post_init__(self):
+        style.finish_figure(self.figure)
+        # Keep the object for explicit inline display/export without accumulating
+        # pyplot managers (or implicit duplicate notebook renders) across pages.
+        plt.close(self.figure)
 
 
 def show(sink, pages):
     """Save and display each page immediately, releasing it before the next section."""
-    from IPython.display import display
+    from IPython.display import display, Markdown
     pages = list(pages)
     if not pages:
         print("No measurements available for this section yet.")
+        if getattr(sink, "report", None) is not None:
+            sink.report._pending.append("No measurements available for this figure group.")
     for page in pages:
+        if not page.caption.strip():
+            raise ValueError(f"Figure {page.name} needs a manuscript caption")
+        if getattr(sink, "report", None) is not None:
+            sink.report._pending.append(page_text(page))
         sink.save(page.figure, page.name, caption=page.caption)
         display(page.figure)
+        display(Markdown(page.caption))
         plt.close(page.figure)
 
 
@@ -115,8 +113,8 @@ def planned_trials(cfg) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def load_campaign(experiment: int, track: str, phase: str | None = None) -> Campaign:
-    cfg = load_train_config(config_path=str(config_path(experiment, track, phase)))
+def load_campaign(experiment: int, track: str, phase: str | None = None, *, cfg_override=None) -> Campaign:
+    cfg = cfg_override if cfg_override is not None else load_train_config(config_path=str(config_path(experiment, track, phase)))
     # Explicit selection prevents a notebook's seed comparison from changing later loaders.
     old_train, old_eval = training_viz._RUN_OVERRIDE, eval_viz._RUN_OVERRIDE
     try:
@@ -149,7 +147,8 @@ def coverage_summary(campaign: Campaign) -> str:
     counts = campaign.trials.status.value_counts().sort_index()
     return (f"Run {campaign.cfg.run_name}; {campaign.track.upper()}; {len(campaign.trials)} planned trials; "
             f"target {campaign.target:,} successful updates.\n" + counts.to_string()
-            + f"\n{len(campaign.trajectories)} trajectory records; {len(campaign.evaluation)} benchmark fold records.")
+            + f"\n{len(campaign.trajectories)} trajectory records; {len(campaign.evaluation)} benchmark fold records."
+            + "\nPENDING means no recorded outcome; it can include running or queued work. This is not live scheduler state.")
 
 
 def effects(campaign: Campaign, split="test") -> pd.DataFrame:
@@ -219,7 +218,7 @@ def plot_coverage(campaign: Campaign) -> list[Page]:
     axes[0].set_xlabel("Number of planned trials")
     axes[0].legend(ncol=3)
     return [Page(f"coverage_{campaign.track}", fig,
-        f"Status of {len(campaign.trials)} planned {campaign.track.upper()} trials by base model. Pending trials include identities with no recorded attempt.")]
+        f"Recorded status of {len(campaign.trials)} planned {campaign.track.upper()} trials by base model. PENDING denotes no manifest outcome and can include currently running or queued jobs. INTERRUPTED denotes saved progress, not a numerical failure. This figure does not query the scheduler.", {"Planned trial counts": table})]
 
 
 def plot_coverage_grid(campaign: Campaign) -> list[Page]:
@@ -251,6 +250,28 @@ def plot_coverage_grid(campaign: Campaign) -> list[Page]:
     return pages
 
 
+def trajectory_curve(campaign, recipe, *, split="test", x="updates"):
+    """Require the planned trials and the same finite baseline observations at every milestone."""
+    planned = campaign.trials.merge(recipe[FACTORS].drop_duplicates(), on=FACTORS, validate="many_to_one")
+    baseline = recipe[recipe.updates.eq(0)]
+    expected = set(zip(baseline.trial, baseline.dataset))
+    baseline_complete = set(baseline.trial) == set(planned.trial_name)
+    count_column = {"test": "n_test_datasets", "train": "n_train_datasets"}.get(split)
+    if count_column and count_column in planned and planned[count_column].notna().all():
+        baseline_complete &= len(baseline) == int(planned[count_column].sum())
+    rows = []
+    for update in sorted({0, *map(int, campaign.cfg.train.trajectory_steps)}):
+        point = recipe[recipe.updates.eq(update)]
+        complete = baseline_complete and bool(expected) and set(zip(point.trial, point.dataset)) == expected
+        values = point.groupby("dataset").effect.mean()
+        position = update if x == "updates" else point[x].median()
+        rows.append(dict(x=position, updates=update, mean=values.mean() if complete else np.nan,
+                         q25=values.quantile(.25) if complete else np.nan,
+                         q75=values.quantile(.75) if complete else np.nan,
+                         datasets=len(values), observations=len(point), complete=complete))
+    return pd.DataFrame(rows)
+
+
 def plot_trajectory_pages(campaign: Campaign, *, x="updates", split="test") -> list[Page]:
     data = effects(campaign, split)
     if data.empty:
@@ -259,27 +280,28 @@ def plot_trajectory_pages(campaign: Campaign, *, x="updates", split="test") -> l
     for (base, frozen, sampling), group in data.groupby(["base", "frozen", "sampling"]):
         lambdas = sorted(group.l2sp_lambda.unique())
         fig, axes = _subplots(f"{base}: {'frozen backbone' if frozen else 'full updates'}", len(lambdas), sharey=True)
+        records = []
         for ax, lam in zip(axes, lambdas):
-            for lr, recipe in group[group.l2sp_lambda.eq(lam)].groupby("learning_rate"):
-                expected = set(zip(recipe.loc[recipe.updates.eq(0), "trial"], recipe.loc[recipe.updates.eq(0), "dataset"]))
-                rows = []
-                for update in campaign.cfg.train.trajectory_steps:
-                    point = recipe[recipe.updates.eq(update)]
-                    actual = set(zip(point.trial, point.dataset))
-                    value = point.groupby("dataset").effect.mean().mean() if actual == expected and expected else np.nan
-                    position = update if x == "updates" else point[x].median()
-                    rows.append((position, value))
-                curve = pd.DataFrame(rows, columns=["x", "effect"])
-                ax.plot(curve.x, curve.effect, marker="o", label=f"{lr:.0e}", color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))))
+            for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
+                curve = trajectory_curve(campaign, recipe, split=split, x=x).assign(learning_rate=lr, l2sp_lambda=lam)
+                records.append(curve)
+                color = style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr)))
+                ax.plot(curve.x, curve["mean"], marker=style.PANEL_MARKERS[i % 4], label=f"LR {lr:.0e}", color=color)
+                ax.fill_between(curve.x.to_numpy(float), curve.q25.to_numpy(float), curve.q75.to_numpy(float),
+                                color=color, alpha=style.INTERVAL_ALPHA)
             ax.axhline(0, color=style.color("reference"), linestyle=":")
             ax.set_title(f"L2-SP = {lam:g}")
             ax.set_xlabel("Successful updates" if x == "updates" else "Median processed row exposures")
-            ax.legend(title="Peak learning rate", ncol=2)
+            ax.legend()
         axes[0].set_ylabel(effect_label(campaign.metric))
         pages.append(Page(f"trajectory_{split}_{base}_{frozen}_{sampling}_{x}", fig,
-            f"{campaign.track.upper()} {split}-dataset monitoring effects relative to update zero for {base}, {style.SAMPLING_LABELS[sampling].lower()}. "
-            "Each panel fixes adaptation and L2-SP and shows at most four learning rates. Repetitions are averaged within dataset before equally weighting datasets. "
-            "A milestone is missing when an update-zero observation is absent there. Row exposures, when shown, count repeated visits and are not unique rows."))
+            f"{campaign.track.upper()} monitoring on {'non-credit' if split == 'ood' else 'held-out' if split == 'test' else 'training'} tables, "
+            "paired with update zero within trial and dataset. Lines show the equally weighted dataset mean; "
+            "shading spans dataset quartiles and is not a confidence interval. Repeated observations are averaged within dataset first. "
+            "A point requires baseline coverage of every planned trial in that recipe and unchanged observation support at the milestone. "
+            "Missing points are gaps, not interpolated improvements. Processed row exposures include repeated rows.",
+            {"Curve statistics and coverage": pd.concat(records, ignore_index=True),
+             "Paired dataset observations": group.reset_index(drop=True)}))
     return pages
 
 
@@ -288,16 +310,27 @@ def plot_response_surfaces(data: pd.DataFrame, metric: str, *, value="effect") -
         return []
     pages = []
     for (base, sampling), group in data.groupby(["base", "sampling"]):
-        means = group.groupby(["frozen", "learning_rate", "l2sp_lambda", "dataset"])[value].mean().groupby(level=[0,1,2]).mean()
+        per = group.groupby(["frozen", "learning_rate", "l2sp_lambda", "dataset"])[value].mean().reset_index()
+        means = per.groupby(["frozen", "learning_rate", "l2sp_lambda"])[value].mean()
+        counts = per.groupby(["frozen", "learning_rate", "l2sp_lambda"]).dataset.nunique()
         extent = max(float(means.abs().max()), 1e-8)
         for frozen in sorted(group.frozen.unique()):
             matrix = means.loc[frozen].unstack("l2sp_lambda").sort_index()
+            n = counts.loc[frozen].unstack("l2sp_lambda").reindex_like(matrix)
             matrix.index = [f"{lr:.0e}" for lr in matrix.index]
-            matrix.columns = [f"λ={lam:g}" for lam in matrix.columns]
-            fig = _heatmap(matrix, f"{base}: {'frozen' if frozen else 'full'} / {style.SAMPLING_LABELS[sampling]}", limits=(-extent, extent), label=effect_label(metric))
+            matrix.columns = [f"L2-SP {lam:g}" for lam in matrix.columns]
+            fig = _heatmap(matrix, f"{base}: {'frozen' if frozen else 'full'} / {style.SAMPLING_LABELS[sampling]}",
+                           limits=(-extent, extent), label=effect_label(metric))
+            present = np.isfinite(matrix.to_numpy())
+            for text, count in zip(fig.axes[0].texts, n.to_numpy()[present]):
+                text.set_text(text.get_text()+f"\nn={int(count)}")
+            n.index, n.columns = matrix.index, matrix.columns
             pages.append(Page(f"response_{base}_{frozen}_{sampling}", fig,
-                "Mean paired dataset effects at the configured endpoint, with peak learning rate by row and L2-SP by column. Dataset means receive equal weight. "
-                "The two adaptation panels for a base share a color scale; missing recipes remain blank. Partial coverage is reported separately."))
+                "Equally weighted means of paired dataset effects at the prescribed endpoint. "
+                "Each cell reports its dataset count; unequal counts indicate partial support and prevent an unqualified recipe ranking. "
+                "The full and frozen panels within each base share a symmetric color scale. Positive effects favor adaptation. "
+                "Blank cells have no matched observations, not zero effect.",
+                {"Mean effect": matrix, "Dataset counts": n}))
     return pages
 
 
@@ -356,6 +389,8 @@ def _complete_folds(data: pd.DataFrame, metric: str, *, fractional_reference=Fal
     """Require the exact configured fold set and finite, interpretable metric values."""
     expected_folds = set(range(int(OmegaConf.load(REPO_ROOT / "config/eval.yaml").cv.n_folds)))
     keys = [c for c in ("eval_run", "split", "method_dirname", "test_dataset_id") if c in data]
+    if data.duplicated([*keys, "fold_idx"]).any():
+        raise ValueError("Duplicate evaluation folds: reconcile outcomes before analysis")
     values = pd.to_numeric(data[metric], errors="coerce")
     valid = data.status.eq("OK") & np.isfinite(values)
     if fractional_reference:
@@ -423,7 +458,7 @@ def diagnostics(campaign: Campaign) -> pd.DataFrame:
 def plot_diagnostics(campaign: Campaign) -> list[Page]:
     data = diagnostics(campaign)
     fields = {"sec_per_step": "Seconds per optimizer update", "final_drift": "Final relative weight drift",
-              "peak_gpu_gb": "Peak GPU memory (GB)", "gpu_hours": "GPU allocation hours",
+              "peak_gpu_gb": "Peak allocated tensor memory (GB)", "gpu_hours": "Training wall time (GPU hours)",
               "data_wait_fraction": "Data-wait / training time", "amp_skipped_steps": "Skipped AMP updates"}
     pages = []
     for column, label in fields.items():
@@ -434,12 +469,15 @@ def plot_diagnostics(campaign: Campaign) -> list[Page]:
         for i, ((base, frozen), group) in enumerate(data.groupby(["base", "frozen"])):
             vals = pd.to_numeric(group[column], errors="coerce").dropna()
             labels.append(f"{base} / {'frozen' if frozen else 'full'}")
-            axes[0].scatter(vals, np.full(len(vals), i), color=style.color(base), alpha=style.POINT_ALPHA, s=style.POINT_SIZE)
+            jitter = np.linspace(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(vals)) if len(vals)>1 else np.zeros(len(vals))
+            axes[0].scatter(vals, i+jitter, color=style.color(base), alpha=style.POINT_ALPHA, s=style.POINT_SIZE)
         axes[0].set_yticks(range(len(labels)), labels)
         axes[0].set_xlabel(label)
         axes[0].set_xlim(left=0)
         pages.append(Page(f"diagnostic_{column}", fig,
-            f"{label} by base and adaptation. Each point is a recorded trial, including unsuccessful attempts where the measurement is available. Unknown values are omitted, not replaced with zero."))
+            f"{label} by base and adaptation. Each point is a recorded trial, including unsuccessful attempts where the measurement is available. "
+            "Vertical offsets separate coincident marks and have no numerical meaning. Unknown values are omitted, not replaced with zero.",
+            {"Trial measurements": data[["trial_name","base","frozen","status",column]].reset_index(drop=True)}))
     return pages
 
 
@@ -458,29 +496,39 @@ def optimization_curves(campaign: Campaign, field: str) -> pd.DataFrame:
 
 
 def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
-    labels = {"train_loss":"Training objective", "clipped_frac":"Fraction of clipped updates",
-              "grad_norm_mean":"Mean gradient norm", "lr_applied":"Applied learning rate"}
-    data = optimization_curves(campaign,field)
+    labels = {"train_loss": "Data loss", "clipped_frac": "Fraction of clipped updates",
+              "grad_norm_mean": "Mean gradient norm", "lr_applied": "Applied learning rate",
+              "l2sp_penalty": "L2-SP penalty", "weight_drift": "Relative weight drift"}
+    data = optimization_curves(campaign, field)
     if data.empty:
         return []
-    pages=[]
-    for (base,frozen,sampling),group in data.groupby(["base","frozen","sampling"]):
-        lambdas=sorted(group.l2sp_lambda.unique())
-        fig,axes=_subplots(f"{base}: {labels[field]} / {'frozen' if frozen else 'full'}",len(lambdas),sharey=True)
-        for ax,lam in zip(axes,lambdas):
-            for lr,recipe in group[group.l2sp_lambda.eq(lam)].groupby("learning_rate"):
-                curve=recipe.groupby("window_end")[field].median()
-                ax.plot(curve.index,curve,label=f"{lr:.0e}",color=style.TRAJECTORY_LR_COLORS.get(lr,style.color(str(lr))))
-            ax.set_title(f"L2-SP = {lam:g}")
-            ax.set_xlabel("Successful-update window end")
-            ax.legend(title="Peak LR",ncol=2)
+    pages = []
+    for (base, frozen, sampling), group in data.groupby(["base", "frozen", "sampling"]):
+        lambdas = sorted(group.l2sp_lambda.unique())
+        fig, axes = _subplots(f"{base}: {labels[field]} / {'frozen' if frozen else 'full'}", len(lambdas), sharey=True)
+        tables = []
+        for ax, lam in zip(axes, lambdas):
+            for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
+                curve = recipe.groupby("window_end")[field].agg(
+                    median="median", q25=lambda v: v.quantile(.25), q75=lambda v: v.quantile(.75), trials="size")
+                width = max(1, campaign.target/style.CURVE_BINS)
+                curve = curve.reindex(np.arange(width, campaign.target+width/2, width))
+                color = style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr)))
+                ax.plot(curve.index, curve["median"], label=f"LR {lr:.0e}", color=color)
+                ax.fill_between(curve.index.to_numpy(float), curve.q25.to_numpy(float), curve.q75.to_numpy(float),
+                                color=color, alpha=style.INTERVAL_ALPHA)
+                tables.append(curve.rename_axis("window_end").reset_index().assign(learning_rate=lr, l2sp_lambda=lam))
+            ax.set_title(f"L2-SP = {lam:g}"); ax.set_xlabel("Successful-update window end"); ax.legend()
         axes[0].set_ylabel(labels[field])
-        if field=="clipped_frac":
+        if field == "clipped_frac":
             axes[0].set_ylim(0,1)
-        pages.append(Page(f"optimization_{campaign.track}_{field}_{base}_{frozen}_{sampling}",fig,
-            f"{labels[field]} from recorded epoch summaries, binned into at most {style.CURVE_BINS} equal successful-update windows. "
-            "Epoch values are averaged within trial/window, then the median across available trials is plotted. Panels fix base, adaptation, sampling and L2-SP; each line is a peak learning rate. "
-            "These are optimization diagnostics; objectives are not directly comparable across architectures or tasks and bins with no observations are omitted."))
+        pages.append(Page(f"optimization_{campaign.track}_{field}_{base}_{frozen}_{sampling}", fig,
+            f"{labels[field]} summarized in {style.CURVE_BINS} equal successful-update windows. "
+            "Epoch values are averaged within trial and window; lines and bands show the median and interquartile range "
+            "across available trials. Counts are retained in the text summary. Gaps are not interpolated. "
+            "The data loss excludes the separately reported L2-SP term; numerical loss scales differ across tasks, architectures "
+            "and target transforms, and a density NLL may be negative.",
+            {"Window statistics": pd.concat(tables, ignore_index=True)}))
     return pages
 
 
@@ -619,24 +667,28 @@ def plot_seed_pairs(pairs: pd.DataFrame, metric: str, *, endpoint: int | None = 
     return pages
 
 
-def plot_seed_trajectories(pairs: pd.DataFrame, metric: str) -> list[Page]:
+def plot_seed_trajectories(pairs: pd.DataFrame, metric: str, *, milestones=None) -> list[Page]:
     if pairs.empty or "updates" not in pairs:
         return []
     pages = []
     for base, group in pairs.groupby("base"):
         fig, axes = _subplots(f"{base}: seed difference through training")
+        updates = sorted(milestones if milestones is not None else pairs.updates.unique())
         for dataset, series in group.groupby("dataset"):
-            axes[0].plot(series.updates, series.difference, color=style.color("annotation"), alpha=style.POINT_ALPHA, linewidth=style.THIN_LINE)
+            values = series.set_index("updates").difference.reindex(updates)
+            axes[0].plot(values.index, values.values, color=style.color("annotation"), alpha=style.POINT_ALPHA, linewidth=style.THIN_LINE)
         mean = group.groupby("updates").difference.mean()
         expected = set(group.loc[group.updates.eq(0), "dataset"])
         complete = group.groupby("updates").dataset.agg(lambda values: set(values) == expected and bool(expected))
-        mean = mean.where(complete)
+        mean = mean.where(complete).reindex(updates)
         axes[0].plot(mean.index, mean, color=style.color(base), label="Dataset mean", marker="o")
         axes[0].axhline(0, color=style.color("reference"), linestyle=":")
         axes[0].set_xlabel("Successful optimizer updates")
         axes[0].set_ylabel("Repeat minus reference effect")
         axes[0].legend()
-        pages.append(Page(f"seed_trajectory_{base}", fig, "Change in the paired seed difference across recorded update milestones. Thin gray lines are matched datasets; the colored line is their equally weighted mean. Positive values favor the additional seed, rather than indicating a larger average pretraining benefit."))
+        pages.append(Page(f"seed_trajectory_{base}", fig, "Change in the paired seed difference across recorded update milestones. Thin gray lines are matched datasets; the colored line is their equally weighted mean. Positive values favor the additional seed, rather than indicating a larger average pretraining benefit. Missing milestones remain gaps.",
+            {"Matched seed observations": group.reset_index(drop=True),
+             "Dataset mean difference": mean.rename("difference").rename_axis("updates").reset_index()}))
     return pages
 
 
@@ -647,30 +699,32 @@ def plot_sampling_trajectories(campaign: Campaign, *, row_exposure=False) -> lis
     pages = []
     for base, group in data.groupby("base"):
         fig, axes = _subplots(f"{base}: sampling protocols")
+        records = []
         for mode in style.SAMPLING_LABELS:
             arm = group[group.sampling.eq(mode)]
             if arm.empty:
                 continue
-            expected = len(arm[arm.updates.eq(0)])
-            points = arm.groupby(["dataset", "updates"]).effect.mean().groupby("updates").mean()
-            points = points.where(arm.groupby("updates").size().eq(expected))
-            x = arm.groupby("updates").processed_rows.median().reindex(points.index) if row_exposure else points.index
-            axes[0].plot(x, points, marker="o", color=style.SAMPLING_COLORS[mode], linestyle=style.SAMPLING_STYLES[mode], label=style.SAMPLING_LABELS[mode])
+            curve = trajectory_curve(campaign, arm, x="processed_rows" if row_exposure else "updates")
+            records.append(curve.assign(sampling=mode))
+            axes[0].plot(curve.x, curve["mean"], marker="o", color=style.SAMPLING_COLORS[mode],
+                         linestyle=style.SAMPLING_STYLES[mode], label=style.SAMPLING_LABELS[mode])
         axes[0].axhline(0, color=style.color("reference"), linestyle=":")
         axes[0].set_xlabel("Median processed row exposures" if row_exposure else "Successful optimizer updates")
         axes[0].set_ylabel(effect_label(campaign.metric))
         axes[0].legend()
         pages.append(Page(f"sampling_{base}_{'rows' if row_exposure else 'updates'}", fig,
             "Monitoring effects for one sampled batch, a disjoint full pass with per-batch updates, and a disjoint full pass with one averaged-gradient update. "
-            "All three use the experiment-3 prevalence policy. Curves require complete update-zero observation coverage at each milestone. "
-            "Row exposures count repeats; equal optimizer-update budgets do not imply equal data or compute budgets."))
+            "All three use the experiment-3 prevalence policy. Each point requires every planned trial and unchanged baseline observation coverage. "
+            "Missing milestones remain gaps. Row exposures count repeats; equal optimizer-update budgets do not imply equal data or compute budgets.",
+            {"Protocol curve statistics and coverage": pd.concat(records,ignore_index=True),
+             "Paired dataset effects": group.reset_index(drop=True)}))
     return pages
 
 
 def plot_sampling_cost(campaign: Campaign) -> list[Page]:
     d = campaign.trials[campaign.trials.status.eq("OK")]
     pages = []
-    for column, label in (("sec_per_step", "Seconds per optimizer update"), ("rows_seen", "Processed row exposures"), ("gpu_hours", "GPU allocation hours")):
+    for column, label in (("sec_per_step", "Seconds per optimizer update"), ("rows_seen", "Processed row exposures"), ("gpu_hours", "Training wall time (GPU hours)")):
         if column not in d or d[column].dropna().empty:
             continue
         fig, axes = _subplots(f"{campaign.track.upper()}: {label}")
@@ -754,8 +808,8 @@ def plot_cost_effect(campaign: Campaign) -> list[Page]:
         fig,axes = _subplots(f"{base}: training cost and benchmark effect")
         for frozen,arm in group.groupby("frozen"):
             axes[0].scatter(arm.gpu_hours,arm.effect,marker="s" if frozen else "o",label="Frozen" if frozen else "Full",s=style.POINT_SIZE)
-        axes[0].set_xscale("log"); axes[0].set_xlabel("Median training GPU allocation hours")
+        axes[0].set_xscale("log"); axes[0].set_xlabel("Median training wall time (hours)")
         axes[0].set_ylabel(effect_label(campaign.metric)); axes[0].legend()
         axes[0].axhline(0,color=style.color("reference"),linestyle=":")
-        pages.append(Page(f"cost_effect_{base}",fig,"Dataset-mean paired benchmark effect versus median training GPU allocation hours across completed partitions of each recipe. The horizontal axis excludes evaluation/HPO cost and is logarithmic. Partial coverage is shown separately; no efficiency frontier is selected."))
+        pages.append(Page(f"cost_effect_{base}",fig,"Dataset-mean paired benchmark effect versus median training wall time (hours) across completed partitions of each recipe. The horizontal axis excludes evaluation/HPO cost and is logarithmic. Partial coverage is shown separately; no efficiency frontier is selected."))
     return pages

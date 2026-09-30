@@ -42,6 +42,8 @@ Two design contracts
 
 from __future__ import annotations
 
+from src.visualize.inputs import read_csv
+
 import logging
 import os
 import re
@@ -117,11 +119,11 @@ def _resolve_paths(cfg=None) -> dict[str, Path]:
                       .trained_dir if hasattr(cfg, "checkpoint")
                       else str(checkpoints_dir("trained")))
 
-    from src.visualize.inputs import analysis_root
+    from src.visualize.inputs import analysis_root, analysis_location
     source = analysis_root()
     group = group_for_run(run_name)
     manifest_root = source / group / "manifests" if source is not None else manifests_dir(group)
-    history_root = source / group / "training" if source is not None else training_dir(experiment=group)
+    history_root = analysis_location(group, "training", training_dir(experiment=group))
     return {
         "epoch_dir":     history_root,
         "manifest_dir":  manifest_root,
@@ -271,7 +273,7 @@ def load_run_manifest(track: str, cfg=None) -> pd.DataFrame:
     frames = []
     for pth, split in parts:
         try:
-            d = pd.read_csv(pth)
+            d = read_csv(pth)
         except Exception:                                # pragma: no cover
             continue
         if d.empty:
@@ -351,7 +353,7 @@ def load_epoch_history(trial_name: str, track: str, cfg=None) -> pd.DataFrame:
     p = paths["epoch_dir"] / track / f"{stem}.csv"
     if not p.exists():
         return pd.DataFrame()
-    return pd.read_csv(p)
+    return read_csv(p)
 
 
 def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
@@ -379,7 +381,7 @@ def load_all_epoch_histories(track: str, cfg=None) -> dict[str, pd.DataFrame]:
         if not matches_run(csv.name, paths["run_name"], track=track):
             continue
         try:
-            out[csv.stem] = pd.read_csv(csv)
+            out[csv.stem] = read_csv(csv)
         except Exception as exc:                         # pragma: no cover
             LOGGER.warning("could not read %s: %s", csv, exc)
     return out
@@ -601,7 +603,7 @@ def plot_trial_dashboard(trial_name: str, track: str, cfg=None):
         axes[1, 1].grid(True, alpha=0.3, linestyle="--", axis="y")
     # No tight_layout: style.py turns constrained_layout ON, and calling both makes
     # matplotlib warn and discard one of them. constrained_layout fits the content
-    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
+    # INSIDE the declared publication width, which is the whole point of drawing at final size.
     return fig
 
 

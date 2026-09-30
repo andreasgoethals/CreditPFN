@@ -30,6 +30,8 @@ Two design contracts (mirrors src/utils/training_viz):
 
 from __future__ import annotations
 
+from src.visualize.inputs import read_csv
+
 import logging
 import os
 import re
@@ -80,11 +82,11 @@ def _resolve_paths():
     from src.utils.paths import resolve_staging_path, results_dir, group_for_run
     cfg = _load_eval_cfg()
     base = str(cfg.results.base_dir) if hasattr(cfg, "results") else str(results_dir())
-    from src.visualize.inputs import analysis_root
+    from src.visualize.inputs import analysis_root, analysis_location
     source = analysis_root()
     group = group_for_run(_RUN_OVERRIDE or os.environ.get("CREDITPFN_VIZ_RUN", ""))
     return {
-        "benchmark_root": source / group / "results" if source is not None else results_dir(experiment=group),
+        "benchmark_root": analysis_location(group, "results", results_dir(experiment=group)),
     }
 
 
@@ -206,7 +208,7 @@ def load_eval_results(track: str, *, include_retention=False) -> pd.DataFrame:
         [] if compact is not None else ((p, None) for p in csv_files))
     for csv, loaded in items:
         try:
-            df = loaded if loaded is not None else pd.read_csv(csv)
+            df = loaded if loaded is not None else read_csv(csv)
         except Exception as exc:                          # pragma: no cover
             LOGGER.warning("could not read %s: %s", csv, exc)
             continue
@@ -273,7 +275,7 @@ def load_eval_results(track: str, *, include_retention=False) -> pd.DataFrame:
 
 #: Tags `human_method_name` can append. Any of them carried by EVERY trained method in the
 #: frame distinguishes nothing, so it is removed — it only makes the labels longer, and label
-#: width is what forces the y axis of a 21-method leaderboard off an A4 page.
+#: width is what forces the y axis of a 21-method leaderboard off an publication page.
 _DROPPABLE_TAGS = (" ·fullpass", " ·ICLhead", " ·LoRA")
 #: The anchor tag is dropped the same way when every trained method carries the
 #: same lambda — which is every run before run-9.
@@ -598,7 +600,7 @@ def plot_per_dataset_heatmap(track: str, *, metric: str | None = None):
     cb.set_label(f"{metric} − best on dataset", fontsize=7)
     # No tight_layout: style.py turns constrained_layout ON, and calling both makes
     # matplotlib warn and discard one of them. constrained_layout fits the content
-    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
+    # INSIDE the declared publication width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -626,7 +628,7 @@ def plot_winrate_matrix(track: str, *, metric: str | None = None):
     ax.set_yticklabels(mat.index, fontsize=8)
     style.thin_ticks(ax, 'y')
     style.title(ax, f"Pairwise win rate — {metric}, row beats column (% of datasets)")
-    # Annotate only while three digits fit in a cell. At 21x21 on an A4 width each cell is
+    # Annotate only while three digits fit in a cell. At 21x21 on the publication width each cell is
     # ~14 pt wide, and "100" in the neighbouring cells ran together into "10010010080" —
     # strictly worse than no numbers, since the colour already carries the value.
     n = mat.shape[0]
@@ -642,7 +644,7 @@ def plot_winrate_matrix(track: str, *, metric: str | None = None):
     fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02, label="row wins  (%)")
     # No tight_layout: style.py turns constrained_layout ON, and calling both makes
     # matplotlib warn and discard one of them. constrained_layout fits the content
-    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
+    # INSIDE the declared publication width, which is the whole point of drawing at final size.
     return fig
 
 
@@ -831,7 +833,7 @@ def plot_metric_correlation(track: str):
     fig.colorbar(im, ax=ax, fraction=0.04, pad=0.02)
     # No tight_layout: style.py turns constrained_layout ON, and calling both makes
     # matplotlib warn and discard one of them. constrained_layout fits the content
-    # INSIDE the declared A4 width, which is the whole point of drawing at final size.
+    # INSIDE the declared publication width, which is the whole point of drawing at final size.
     return fig
 
 

@@ -156,6 +156,30 @@ Detailed measurements live on project storage under each experiment. Resource an
 - A fixed public non-credit retention panel is monitored and evaluated separately as described above. A matched generic-data adaptation control would still be required to isolate a specifically credit-domain effect; it is not part of the current grid.
 - Additional baselines such as RealMLP, context-prevalence sensitivity, longer horizons and more lambda levels are optional follow-ups, clearly separated from the main descriptive grid.
 
+## Reporting the descriptive study
+
+The notebook sequence follows the paper's questions: corpus geometry and partitions; engineering
+controls and budget evidence; main-grid dynamics and final paired effects; focused seed sensitivity;
+sampling, exposure and cost. Coverage accompanies every experiment. DATA-only partition-mean
+monitors remain separate from per-dataset project trajectories and five-fold final evaluation.
+Corrected short pilots use their saved generated configuration; affected historical budget curves
+retain their objective-provenance limitation.
+
+Main figures use small factorial surfaces and matched factor contrasts, paired dataset distributions,
+credit/non-credit trajectories and cost diagnostics. Complete dataset matrices are paginated for
+the appendix. Dataset means carry equal weight; RMSE reductions are normalized against the paired
+base before aggregation, while AUC differences retain their native scale. Quartile bands describe
+observed dataset or trial spread, explicitly not confidence intervals over independent seeds.
+Aggregate trajectory points require every planned trial and the same baseline observations;
+missing milestones are gaps. Benchmark effects require complete matching outer folds. Reliability
+panels compare the fixed adapted reference and its base separately by dataset and calibration
+method; F1 thresholds remain validation-selected.
+
+The final notebook text records every displayed table, plotted value and caption. Figures use the
+actual ICML dimensions rather than the generic A4 template; the adjacent manuscript is not rewritten
+by the notebook runner. Literature motivation and limits of these presentation choices are recorded
+in LITERATURE.md.
+
 ## State of the evidence
 
 On 22-09-2026 the user reported no running VSC jobs. The old experiment has an invalid swept L2-SP axis and defects in worker sampling/accumulation. Retagging 338 surviving checkpoints recovered their lambda-0.003 identity, not a corrected training history. The user reported 412 checkpoint files on project storage; that is not a verified completed-trial count.

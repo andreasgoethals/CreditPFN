@@ -1,6 +1,8 @@
 """Milestone parameter summaries and bounded resource views, separated from score curves."""
 from __future__ import annotations
 
+from src.visualize.inputs import read_csv
+
 import numpy as np
 import pandas as pd
 import json
@@ -22,7 +24,7 @@ def load(campaign, kind):
         suffix = f".{kind}.csv" + (".gz" if kind == "parameters" else "")
         for path in sorted((paths["epoch_dir"] / campaign.track).glob("*" + suffix)):
             if matches_run(path.name, paths["run_name"], track=campaign.track):
-                data = pd.read_csv(path)
+                data = read_csv(path)
                 data["trial_name"] = path.name.removesuffix(suffix)
                 frames.append(data)
         frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
@@ -57,13 +59,15 @@ def plot_resources(campaign):
         labels = []
         for i, ((base, frozen), group) in enumerate(medians.groupby(["base", "frozen"])):
             labels.append(f"{base} / {'frozen' if frozen else 'full'}")
-            axes[0].scatter(group[column], np.full(len(group), i), color=style.color(base),
+            jitter = np.linspace(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(group)) if len(group) > 1 else np.zeros(1)
+            axes[0].scatter(group[column], i+jitter, color=style.color(base),
                             s=style.POINT_SIZE, alpha=style.POINT_ALPHA)
         axes[0].set_yticks(range(len(labels)), labels)
         axes[0].set_xlabel(label)
         pages.append(Page(f"resource_{campaign.track}_{column}", fig,
             f"Per-trial median {label.lower()} over sampled training-phase observations, grouped by base and adaptation. "
-            "Device counters are periodic samples, not precise process-level utilization or integrated energy. Missing counters are omitted."))
+            "Vertical offsets separate coincident trials. Device counters are periodic samples, not precise process-level utilization or integrated energy. Missing counters are omitted.",
+            {"Per-trial sampled medians": medians}))
     return pages
 
 
@@ -104,40 +108,76 @@ def plot_retention_benchmark(campaign):
 
 
 def plot_reliability(campaign):
-    """Reference recipe only: bound the view rather than overlaying the entire sweep."""
+    """Bounded per-dataset reliability panels with paired, complete outer folds."""
+    from src.visualize.campaign import _complete_folds
+    from src.visualize.training_viz import compact_base
+    import matplotlib.pyplot as plt
     data = campaign.evaluation
     if campaign.track != "pd" or data.empty or "calibration_bins" not in data:
         return []
-    data = data[data.status.eq("OK")]
+    data = data[data.status.eq("OK")].copy()
     if "domain" in data:
-        data = data[data.domain.eq("credit")]
+        data = data[data.domain.fillna("credit").eq("credit")]
     raw = data.source.str.endswith("-untuned", na=False)
-    trained = (data.source.str.endswith("-trained", na=False) & np.isclose(data.lr, 3e-7, atol=0, rtol=1e-8)
-               & np.isclose(data.l2sp_lambda, .003) & ~data.use_lora.astype(bool))
-    data = data[raw | trained]
+    trained = (data.source.str.endswith("-trained", na=False)
+               & np.isclose(data.lr, 3e-7, atol=0, rtol=1e-8)
+               & np.isclose(data.l2sp_lambda, .003)
+               & ~data.use_lora.astype(bool) & data.epoch_pass_mode.eq("one_sample"))
+    data = _complete_folds(data[raw | trained], "roc_auc")
     pages = []
-    for (base, dataset), group in data.groupby(["base_short", "test_dataset_id"]):
-        fig, axes = _subplots(f"{base}: {dataset}")
-        for source, selected in group.groupby("source"):
-            role = "Untuned" if source.endswith("-untuned") else "Adapted reference"
-            for suffix, calibration in (("", "raw"), ("_platt", "Platt"), ("_isotonic", "isotonic")):
-                column = "calibration_bins" + suffix
-                if column not in selected:
+    for base, group in data.groupby("base_short"):
+        for suffix, calibration in (("", "raw"), ("_platt", "Platt"), ("_isotonic", "isotonic")):
+            column = "calibration_bins" + suffix
+            if column not in group:
+                continue
+            records, eligible = [], []
+            for dataset, part in group.groupby("test_dataset_id"):
+                if part[column].isna().any() or not part.source.str.endswith("-trained").any() or not part.source.str.endswith("-untuned").any():
                     continue
-                records = [b for value in selected[column].dropna() for b in json.loads(value)]
-                if not records:
+                pair_keys = [c for c in ("eval_run", "split", "fold_idx") if c in part]
+                untreated = part[part.source.str.endswith("-untuned")]
+                adapted = part[part.source.str.endswith("-trained")]
+                if set(map(tuple, untreated[pair_keys].to_numpy())) != set(map(tuple, adapted[pair_keys].to_numpy())):
                     continue
-                bins = pd.DataFrame(records).groupby("bin").sum()
-                bins = bins[bins["count"] > 0]
-                axes[0].plot(bins.probability_sum/bins["count"], bins.positive_count/bins["count"],
-                    marker="o", label=f"{role}: {calibration}",
-                    color=style.color(role), linestyle={"raw":"-", "Platt":"--", "isotonic":":"}[calibration])
-        axes[0].plot([0,1],[0,1],color=style.color("reference"),linestyle=":")
-        axes[0].set_xlabel("Mean predicted probability")
-        axes[0].set_ylabel("Observed positive fraction")
-        axes[0].legend(ncol=2)
-        pages.append(Page(f"reliability_{base}_{dataset}",fig,
-            "Reliability curves for the predefined full-update reference (learning rate 3e-7, L2-SP 0.003) and its untuned base. "
-            "Ten equal-width probability bins pool outer-test counts within this dataset. Platt and isotonic mappings are fitted on each inner validation set; "
-            "no test labels select a threshold or mapping. Empty bins are omitted; these curves do not display uncertainty intervals."))
+                dataset_records = []
+                for source, selected in part.groupby("source"):
+                    bins = [b for value in selected[column] for b in json.loads(value)]
+                    if not bins:
+                        continue
+                    merged = pd.DataFrame(bins).groupby("bin").sum(numeric_only=True)
+                    merged = merged[merged["count"].gt(0)].reset_index()
+                    merged["predicted"] = merged.probability_sum / merged["count"]
+                    merged["observed"] = merged.positive_count / merged["count"]
+                    merged["dataset"], merged["role"] = dataset, "Untuned" if source.endswith("-untuned") else "Adapted reference"
+                    if not merged.empty:
+                        dataset_records.append(merged)
+                if len(dataset_records) == 2:
+                    records.extend(dataset_records)
+                    eligible.append(dataset)
+            if not records:
+                continue
+            binned = pd.concat(records, ignore_index=True)
+            for start in range(0, len(eligible), 4):
+                datasets = eligible[start:start+4]
+                fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO),
+                                         layout="constrained", sharex=True, sharey=True)
+                fig.suptitle(f"{compact_base(base)}: {calibration} reliability")
+                for ax, dataset in zip(axes.flat, datasets):
+                    for role, bins in binned[binned.dataset.eq(dataset)].groupby("role"):
+                        ax.plot(bins.predicted, bins.observed, marker="s" if role == "Untuned" else "o",
+                                linestyle="--" if role == "Untuned" else "-", label=role, color=style.color(role))
+                    ax.plot([0,1], [0,1], color=style.color("reference"), linestyle=":")
+                    ax.set_xlim(0,1); ax.set_ylim(0,1)
+                    ax.set_title(str(dataset), fontsize=style.ANNOTATION_SIZE)
+                    ax.set_xlabel("Mean probability"); ax.set_ylabel("Observed fraction"); ax.legend()
+                for ax in list(axes.flat)[len(datasets):]:
+                    ax.set_visible(False)
+                pages.append(Page(f"reliability_{compact_base(base)}_{calibration}_{start//4+1}", fig,
+                    f"{calibration.capitalize()} positive-class reliability for the predefined full-update reference "
+                    "(LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. "
+                    "Each panel is a separate dataset, requiring the same five completed outer folds for both models. "
+                    "Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts "
+                    "are retained in the text summary. Calibrators are fitted only on inner validation rows. "
+                    "The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.",
+                    {"Probability bins and counts": binned[binned.dataset.isin(datasets)].reset_index(drop=True)}))
     return pages

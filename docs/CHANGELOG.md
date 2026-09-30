@@ -11,8 +11,20 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 30-09-2026
+
+- Rebuild all 11 notebooks with complete numerical summaries, paired publication views, read-only two-tier ZIP inputs and the user-selected ICML figure widths.
+- Record the main-grid progress audit and isolate an entropy diagnostic defect for repair after active training.
+
+## 29-09-2026
+
+- Record the first main-training progress audit, completed background submission, verified recovery behavior and normal queue throttling; keep the running implementation unchanged.
+
 ## 28-09-2026
 
+- Record the main-grid submission, expected quota pause and background continuation for LGD's final fold.
+- Record successful experiment-1 CPU preparation, verified plans and submission previews; the main training launch is ready.
+- Record corrected-loss pilot validation and input/loop overhead; proceed to main-plan preparation without another full experiment-0 rerun.
 - Add an isolated, base-selectable pilot stage with fresh plans and its own audit; document environment cleanup and pinned-submodule synchronization.
 - Apply each fitted TabPFN regression target transform to its query labels before NLL; test context-only fitting and per-member loss/gradient alignment.
 - Restrict TabPFN classification loss to active classes, matching upstream; replace the incorrect full-head rationale and add loss/gradient regressions.

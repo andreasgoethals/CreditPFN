@@ -3,8 +3,8 @@
     output CreditPFN/<experiment>/figures/<notebook>/01_<name>.pdf     the figure — vector, for the paper
     output CreditPFN/<experiment>/manifests/figures/<notebook>.json   what was drawn, in order, with captions
 
-PDF ONLY, AND SIZED FOR A4. The PDF is what the paper uses: vector, text embedded as TrueType so
-journal systems accept it, drawn at the width it will occupy on the A4 page (see
+PDF ONLY, AT THE FINAL PUBLICATION WIDTH. The PDF is what the paper uses: vector, text embedded as TrueType so
+journal systems accept it, drawn at the width it will occupy on the publication page (see
 `src/visualize/style.py`). The notebook *displays* each figure inline, so a reader sees them by
 scrolling the notebook — there is no second raster copy on disk to go stale.
 

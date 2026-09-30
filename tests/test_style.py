@@ -1,8 +1,4 @@
-# Came with the template, and worth keeping: `src/visualize/style.py` ships mostly empty — a
-# project fills in its own look — but the A4 geometry and the print settings are the same
-# everywhere, and they are what these pin. A figure that comes out the wrong size, or with Type 3
-# fonts, is a figure the paper cannot use.
-"""`src/visualize/style.py` — the A4 half of the shared style."""
+"""Publication geometry follows the actual ICML template, with print-safe exports."""
 
 from __future__ import annotations
 
@@ -11,23 +7,23 @@ import matplotlib as mpl
 from src.visualize import style
 
 
-def test_figsize_uses_the_a4_widths_and_clamps_the_height() -> None:
-    """Every figure is drawn at the width it will occupy on an A4 page, and never taller than half
+def test_figsize_uses_the_icml_widths_and_clamps_the_height() -> None:
+    """Every figure is drawn at the width it will occupy on an ICML page, and never taller than half
     of it — a full-height figure leaves no room for its caption."""
     assert style.figsize(style.WIDTH_HALF)[0] == style.WIDTH_HALF
-    assert style.WIDTH_THIRD < style.WIDTH_HALF < style.WIDTH_FULL <= 6.4  # 160 mm text block
+    assert style.WIDTH_THIRD < style.WIDTH_HALF == 3.25 < style.WIDTH_FULL == 6.75
     w, h = style.figsize()
     assert h < w
     assert style.figsize(style.WIDTH_FULL, ratio=3.0)[1] == style.MAX_HEIGHT
 
 
-def test_apply_defaults_to_the_full_a4_width() -> None:
+def test_apply_defaults_to_the_full_icml_width() -> None:
     """So a figure saved without thinking about its size is already right for the page."""
     style.apply()
     assert tuple(mpl.rcParams["figure.figsize"]) == style.figsize()
 
 
-def test_apply_sets_what_a4_output_requires() -> None:
+def test_apply_sets_what_icml_output_requires() -> None:
     """TrueType because journals reject Type 3; constrained_layout rather than a tight bbox because
     tight-bbox crops to the content, so two figures declared the same width come out different."""
     style.apply()
@@ -53,9 +49,23 @@ def test_apply_is_idempotent() -> None:
     style.apply()
 
 
-def test_a_project_can_override_without_editing_the_a4_part() -> None:
-    """`_PROJECT_RC` is applied last, so this project's look wins over the defaults but the A4
+def test_fraction_axes_keep_fractional_ticks_even_when_the_label_names_datasets():
+    import matplotlib.pyplot as plt
+    style.apply()
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [0, 1])
+    ax.set_xlabel("Fraction of datasets, largest first")
+    ax.set_ylabel("Fraction of clipped updates")
+    style.finish_figure(fig)
+    assert any(0 < tick < 1 for tick in ax.get_xticks())
+    assert any(0 < tick < 1 for tick in ax.get_yticks())
+    plt.close(fig)
+
+
+def test_a_project_can_override_without_editing_the_icml_part() -> None:
+    """`_PROJECT_RC` is applied last, so this project's look wins over the defaults but the ICML
     geometry stays where the template put it."""
+    original = style._PROJECT_RC.copy()
     style._PROJECT_RC["axes.grid"] = True
     try:
         style.apply()
@@ -63,3 +73,4 @@ def test_a_project_can_override_without_editing_the_a4_part() -> None:
         assert mpl.rcParams["pdf.fonttype"] == 42
     finally:
         style._PROJECT_RC.clear()
+        style._PROJECT_RC.update(original)

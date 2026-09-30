@@ -1,6 +1,6 @@
 """Shared CreditPFN figure sizes, typography, colors and markers.
 
-Figures are drawn at their final A4 publication width. Notebooks call apply()
+Figures are drawn at their final ICML publication width. Notebooks call apply()
 and use these definitions rather than choosing their own sizes or colors.
 """
 
@@ -12,21 +12,20 @@ import matplotlib as mpl
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# FIGURE SIZES — A4, and nothing else.
-#
-# A4 is 210 x 297 mm. With 25 mm margins that leaves a 160 x 247 mm text block, and the numbers
-# below are that block in inches.
+# FIGURE SIZES — verified against ../CreditPFN Paper/styles/icml2026.sty.
+# ICML uses US Letter, a 6.75-inch text block and a 0.25-inch column gap.
+# This deliberately replaces the generic template's 160-mm A4 text block.
 #
 # DRAW AT FINAL WIDTH, and never rescale a figure in the document. Rescaling carries the text with
 # it: 9pt squeezed to 70% arrives as 6.3pt, under the ~7pt floor where small print stops being
 # legible on paper. So the point sizes in `_RC` are the point sizes ON THE PRINTED PAGE.
 # ---------------------------------------------------------------------------
 
-WIDTH_FULL = 6.30   # 160 mm — the full A4 text width
-WIDTH_HALF = 3.05   # two side by side, with a ~5 mm gutter
-WIDTH_THIRD = 1.95  # three side by side. Label sparingly at this width.
+WIDTH_FULL = 6.75
+WIDTH_HALF = 3.25
+WIDTH_THIRD = (WIDTH_FULL - 0.50) / 3
 
-#: The A4 text block is 247 mm tall, but a figure taking all of it leaves no room for its caption
+#: A full-height figure leaves no room for its caption
 #: and pushes every surrounding paragraph onto another page. Half a page is the practical ceiling,
 #: and `figsize` clamps to it rather than letting a tall panel grid silently overflow.
 MAX_HEIGHT = 4.80   # 122 mm
@@ -49,7 +48,7 @@ def figsize(width: float = WIDTH_FULL, ratio: float = GOLDEN) -> tuple[float, fl
 
 
 # ---------------------------------------------------------------------------
-# What A4 output requires. Everything here is about the figure being correct on paper, so it is
+# What publication output requires. Everything here is about the figure being correct on paper, so it is
 # the same in every project.
 # ---------------------------------------------------------------------------
 
@@ -60,7 +59,7 @@ def figsize(width: float = WIDTH_FULL, ratio: float = GOLDEN) -> tuple[float, fl
 _FONT_STACK = ["Source Sans 3", "Segoe UI", "Helvetica", "Arial", "DejaVu Sans"]
 
 _RC = {
-    # A4 full text width by default, so a figure saved without thinking about it is already the
+    # ICML full text width by default, so a figure saved without thinking about it is already the
     # right size for the page.
     "figure.figsize": figsize(),
     "figure.dpi": 110,
@@ -79,7 +78,7 @@ _RC = {
     "pdf.fonttype": 42,
     "ps.fonttype": 42,
 
-    # Point sizes ON THE PRINTED A4 PAGE, since the figure is drawn at final width. 9pt sits just
+    # Point sizes ON THE PRINTED PAGE, since the figure is drawn at final width. 9pt sits just
     # under a paper's own 10-11pt, which reads as "part of the document" rather than shrunken;
     # 7pt is the floor below which small print stops being legible on paper.
     "font.family": "sans-serif",
@@ -118,7 +117,7 @@ _PROJECT_RC: dict = {
     "axes.spines.top": False,
     "axes.spines.right": False,
     "axes.linewidth": 0.8,
-    # Thin lines and small markers survive being printed at 160 mm; the defaults are
+    # Thin lines and small markers survive being printed at the final text width; the defaults are
     # sized for a screen and turn a 6-trial epoch curve into a solid band.
     "lines.linewidth": 1.4,
     "lines.markersize": 3.0,
@@ -167,6 +166,10 @@ COLORS: dict[str, str] = {
     "reference":     "#000000",   # the y=0 / y=x rule a panel is read against
     "highlight":     "#D55E00",   # the one arm a figure is about
     "annotation":    "#888888",   # "no data" text, footnotes on an axis
+    "full":          "#0072B2",
+    "frozen":        "#E69F00",
+    "Untuned":       "#999999",
+    "Adapted reference": "#0072B2",
 }
 
 #: Sequential and diverging maps, so a heatmap is not chosen per notebook either.
@@ -175,10 +178,15 @@ CMAP_DIVERGING = "RdBu_r"        # centred on 0 for delta-vs-untuned panels
 TRAJECTORY_LR_COLORS = {3e-7: "#0072B2", 1e-6: "#E69F00", 1e-5: "#009E73", 3e-5: "#CC79A7"}
 TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
 
-# Bounded pages keep the 64-recipe sweep legible at its final A4 width.
+# Bounded pages keep the 64-recipe sweep legible at its final ICML width.
 PAGE_ROWS = 12
 PAGE_COLUMNS = 8
 SERIES_PER_PANEL = 4
+PANEL_MARKERS = ("o", "s", "^", "D")
+CONTINUOUS_TICKS = 4
+INTERVAL_ALPHA = 0.12
+LEGEND_COLUMNS = 4
+JITTER_WIDTH = 0.16
 CURVE_BINS = 50
 PANEL_RATIO = 0.72
 SMALL_RATIO = 0.48
@@ -250,7 +258,7 @@ def apply() -> None:
 
 
 # ---------------------------------------------------------------------------
-# SCALE — the corpus is 25 datasets today and is planned to reach hundreds.
+# SCALE — keep per-dataset detail legible as the number of plotted items grows.
 #
 # A figure with one bar, one row label or one panel per dataset is readable at 25 and
 # unreadable at 500: the labels overlap into a grey band, the figure grows past the page,
@@ -258,7 +266,7 @@ def apply() -> None:
 # per-dataset detail that is genuinely useful at today's size.
 #
 # So figures ASK how many items they have and adapt. The thresholds below are set by what
-# fits an A4 text block at the point sizes in `_RC`: ~28 horizontal bars at 9 pt, ~14
+# fits a publication text block at the point sizes in `_RC`: ~28 horizontal bars at 9 pt, ~14
 # rotated x labels, ~12 small-multiple panels.
 # ---------------------------------------------------------------------------
 
@@ -271,7 +279,7 @@ MAX_PANELS = 12
 
 
 def too_many(n: int, limit: int = MAX_BARS) -> bool:
-    """True when `n` items will not fit legibly on an A4-width figure."""
+    """True when `n` items will not fit legibly on a publication-width figure."""
     return int(n) > int(limit)
 
 
@@ -312,11 +320,10 @@ def note(ax, text: str) -> None:
             fontsize=6, color=COLORS["annotation"])
 
 
-#: Longest axes title that fits one line of an A4-width figure at `axes.titlesize`.
+#: Longest axes title that fits one line of a publication-width figure at `axes.titlesize`.
 MAX_TITLE = 52
 
-#: Characters per inch of figure width at `axes.titlesize`. Measured, not guessed: 52
-#: characters is the documented fit for the 6.30 in full width, so ~8.25 per inch.
+#: Conservative title budget per inch at the configured full publication width.
 _TITLE_CHARS_PER_INCH = MAX_TITLE / WIDTH_FULL
 
 
@@ -331,7 +338,7 @@ def title(ax, text: str) -> None:
     The budget is derived from the figure's OWN width. A fixed 52 characters is right only at
     `WIDTH_FULL`: on a `WIDTH_HALF` panel it is twice the space available, which is how
     "Calibration: trained vs its own base (ECE, lower is better)" came to be cut off mid-word
-    at the right edge of a 3.05 in figure. Wrapping is greedy over words and unlimited in
+    at the right edge of a single-column figure. Wrapping is greedy over words and unlimited in
     lines — a three-line title is ugly, but a clipped one loses information.
     """
     t = " ".join(str(text).split())
@@ -354,3 +361,42 @@ def title(ax, text: str) -> None:
     # A trailing separator left dangling at a line end reads as a typo ("… (higher is better) ·").
     lines = [ln.rstrip(" ·,;-") for ln in lines]
     ax.set_title("\n".join(lines))
+
+
+def finish_figure(fig):
+    """Reserve a separate legend band so legends never obscure data marks."""
+    import textwrap
+    from matplotlib.ticker import AutoLocator, MaxNLocator, LogLocator, LogFormatterSciNotation, NullFormatter
+    handles, labels = [], []
+    for ax in fig.axes:
+        if not ax.get_visible() or ax.get_label() == "<colorbar>":
+            continue
+        for axis, scale, limits in ((ax.xaxis, ax.get_xscale(), ax.get_xlim()),
+                                    (ax.yaxis, ax.get_yscale(), ax.get_ylim())):
+            if scale == "linear" and isinstance(axis.get_major_locator(), AutoLocator):
+                label = axis.get_label_text().lower()
+                count = any(word in label for word in ("number of", "datasets", "outcomes", "updates"))
+                fraction = any(word in label for word in ("fraction", "share", "percent", "%"))
+                integer = count and not fraction
+                axis.set_major_locator(MaxNLocator(nbins=CONTINUOUS_TICKS, integer=integer))
+            elif scale == "log":
+                low, high = sorted(limits)
+                subs = (1, 2, 5) if low > 0 and np.log10(high / low) < 2 else (1,)
+                axis.set_major_locator(LogLocator(base=10, subs=subs))
+                axis.set_major_formatter(LogFormatterSciNotation(base=10, labelOnlyBase=False, minor_thresholds=(np.inf,np.inf)))
+                axis.set_minor_formatter(NullFormatter())
+        legend = ax.get_legend()
+        if legend is not None:
+            current_handles, current_labels = ax.get_legend_handles_labels()
+            for handle, label in zip(current_handles, current_labels):
+                if label and not label.startswith("_") and label not in labels:
+                    handles.append(handle); labels.append(label)
+            legend.remove()
+        if ax.get_title():
+            panel_width = fig.get_figwidth() * ax.get_position().width
+            ax.set_title(textwrap.fill(ax.get_title(), max(20, int(panel_width * 11))),
+                         fontsize=ax.title.get_fontsize())
+    if handles:
+        fig.legend(handles, labels, loc="outside lower center",
+                   ncol=min(LEGEND_COLUMNS, len(labels)), frameon=False)
+    return fig

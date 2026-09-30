@@ -86,8 +86,13 @@ Newest first, dates `DD-MM-YYYY`.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, into that notebook's own
   folder, which it clears before drawing. The notebook displays each figure inline.
 - Use `style.figsize(style.WIDTH_FULL)` or `WIDTH_HALF`: every figure is drawn at the width it
-  will occupy on an **A4** page, and never rescaled afterwards — rescaling carries the text with it.
+  will occupy in the **ICML paper** (6.75 inches full width, 3.25 inches single column), and never
+  rescaled afterwards. The user explicitly chose the actual ICML US Letter geometry over the
+  template's generic A4 dimensions on 30-09-2026.
 - Captions are the **paper's** captions: pure description, ready to paste under the figure.
+- Bind `NotebookReport(..., sink=sink)` and display tables through `report.table`. The final
+  summary must contain every plotted value and displayed table without truncation, not just
+  aggregate conclusions. Read supplied DATA/project folders or ZIPs through `src/visualize/inputs.py`.
 
 ## 8. Say you are done only when it runs
 

@@ -9,7 +9,8 @@ from src.visualize.training_viz import _resolve_paths, parse_trial_name, compact
 
 
 def load_trajectories(track: str, cfg=None) -> pd.DataFrame:
-    from src.utils.consolidate_output import matches_run, read_table
+    from src.utils.consolidate_output import matches_run
+    from src.visualize.inputs import read_csv as read_table
     from src.visualize.inputs import load_consolidated
     paths = _resolve_paths(cfg)
     frame = load_consolidated(paths["run_name"], f"training_{track}", manifest_root=paths["manifest_dir"])
@@ -36,6 +37,8 @@ def trajectory_effects(frame: pd.DataFrame, track: str, *, split="test") -> pd.D
     reduction. Missing baselines/nonfinite values remain unavailable, never zero.
     """
     from src.data.dataset_names import display_name
+    if split not in ("train", "test", "ood"):
+        raise ValueError("Trajectory split must be train, test or ood")
     if frame.empty:
         return pd.DataFrame()
     prefix = f"metric__{split}__"

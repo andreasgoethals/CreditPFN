@@ -51,6 +51,35 @@ A point on a 20k-schedule trajectory is not equivalent to a fresh run whose enti
 
 **Baseline preprocessing and descriptive correlations.** The linear controls one-hot encode nominal categories using only their training context, rather than imposing the arbitrary ordering of ordinal codes. This is a declared baseline recipe, consistent with the [scikit-learn encoder's intended use for linear models](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.OneHotEncoder.html), not a claim that it dominates all categorical encodings. For a higher-is-better score, the change-versus-base plot has `Cov(base, adapted - base) = Cov(base, adapted) - Var(base)`. A negative association can therefore arise without an adaptation mechanism. Show paired per-table effects and factor contrasts; do not interpret that correlation causally.
 
+## Figures and interpretation
+
+Visualization review: 30-09-2026, library pin **`81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`**.
+These are presentation choices for this descriptive design, not claims that the literature prescribes
+one sufficient figure set.
+
+- **Corpus geometry, exposure and learning curves:** Real-TabPFN's corpus/context comparisons,
+  Rubachev et al.'s adaptation/convergence analysis, and TabPFN-Wide's retention checks motivate
+  showing table sizes, optimizer progress, parameter movement, credit/non-credit changes and cost
+  together. They do not establish a universal update budget or broad retention from a small panel.
+- **Paired dataset effects:** [Demšar (2006), Statistical Comparisons of Classifiers over Multiple
+  Data Sets](https://www.jmlr.org/papers/v7/demsar06a.html) analyzes comparisons across datasets.
+  CreditPFN therefore keeps the dataset as its reporting unit and pairs folds before aggregating.
+  We show absolute AUC changes, fractional RMSE reductions, matched factor contrasts and the full
+  dataset spread. This normalization is our design choice. Ranks are secondary context; no critical
+  difference diagram or independent-fold confidence interval is claimed for this correlated grid.
+- **Probability quality:** [Guo et al. (2017), On Calibration of Modern Neural
+  Networks](https://proceedings.mlr.press/v70/guo17a.html) motivates inspecting calibration separately
+  from classification accuracy. Its experiments concern image/document models; our binary
+  positive-class reliability panels use observed event rates and predicted probabilities within
+  each credit dataset. They are not a reproduction of multiclass top-confidence diagrams.
+  Brier/log loss, bin counts and validation-selected F1 thresholds accompany ECE; a small ECE alone
+  does not establish probability quality. Raw, Platt and isotonic curves are separated, with the
+  fixed adapted recipe paired to its base on the same outer folds.
+- **Honest partial reports:** at most four LR curves share a panel; dataset matrices are paginated;
+  missing measurements remain gaps; complete planned coverage is required for aggregate learning
+  curves. Quartiles describe observed spread rather than sampling uncertainty. A DATA-only
+  partition-mean endpoint plot is explicitly distinct from a project-storage per-table result.
+
 ## Upstream implementation anchors
 
 Use symbol names when referring to code snapshots because line numbers change on refresh:
