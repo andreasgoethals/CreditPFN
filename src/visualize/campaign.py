@@ -61,7 +61,7 @@ class Page:
         plt.close(self.figure)
 
 
-def show(sink, pages):
+def show(sink, pages, *, track=None):
     """Save and display each page immediately, releasing it before the next section."""
     from IPython.display import display, Markdown
     pages = list(pages)
@@ -70,6 +70,15 @@ def show(sink, pages):
         if getattr(sink, "report", None) is not None:
             sink.report._pending.append("No measurements available for this figure group.")
     for page in pages:
+        if track is not None:
+            if track not in ("pd", "lgd"):
+                raise ValueError("Figure track must be pd or lgd")
+            page.name = f"{track}_{page.name}"
+            title = page.figure._suptitle
+            if title is not None and not title.get_text().startswith(track.upper()):
+                title.set_text(f"{track.upper()}: {title.get_text()}")
+            if not page.caption.startswith(track.upper()):
+                page.caption = f"{track.upper()}. {page.caption}"
         if not page.caption.strip():
             raise ValueError(f"Figure {page.name} needs a manuscript caption")
         if getattr(sink, "report", None) is not None:
@@ -278,13 +287,18 @@ def plot_trajectory_pages(campaign: Campaign, *, x="updates", split="test") -> l
         return []
     pages = []
     for (base, frozen, sampling), group in data.groupby(["base", "frozen", "sampling"]):
-        lambdas = sorted(group.l2sp_lambda.unique())
+        curves = {}
+        for (lam, lr), recipe in group.groupby(["l2sp_lambda", "learning_rate"]):
+            curves[(lam, lr)] = trajectory_curve(campaign, recipe, split=split, x=x).assign(learning_rate=lr, l2sp_lambda=lam)
+        lambdas = sorted({lam for (lam, lr), curve in curves.items()
+                          if np.isfinite(curve.loc[curve.updates.gt(0), "mean"]).any()})
+        if not lambdas:
+            continue
         fig, axes = _subplots(f"{base}: {'frozen backbone' if frozen else 'full updates'}", len(lambdas), sharey=True)
-        records = []
+        records = list(curves.values())
         for ax, lam in zip(axes, lambdas):
             for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
-                curve = trajectory_curve(campaign, recipe, split=split, x=x).assign(learning_rate=lr, l2sp_lambda=lam)
-                records.append(curve)
+                curve = curves[(lam, lr)]
                 color = style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr)))
                 ax.plot(curve.x, curve["mean"], marker=style.PANEL_MARKERS[i % 4], label=f"LR {lr:.0e}", color=color)
                 ax.fill_between(curve.x.to_numpy(float), curve.q25.to_numpy(float), curve.q75.to_numpy(float),
@@ -344,10 +358,10 @@ def plot_dataset_pages(data: pd.DataFrame, metric: str, *, value="effect") -> li
         recipe_order = group.sort_values(["learning_rate", "l2sp_lambda"]).recipe.drop_duplicates()
         matrix = matrix.reindex(columns=recipe_order)
         extent = max(float(np.nanmax(np.abs(matrix.to_numpy()))), 1e-8)
-        for start in range(0, len(matrix), style.PAGE_ROWS):
-            page = matrix.iloc[start:start+style.PAGE_ROWS]
+        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
+            page = matrix.iloc[start:stop]
             fig = _heatmap(page, f"{base}: {'frozen' if frozen else 'full'} / datasets {start+1}–{start+len(page)}", limits=(-extent, extent), label=effect_label(metric))
-            pages.append(Page(f"datasets_{base}_{frozen}_{sampling}_{start//style.PAGE_ROWS+1}", fig,
+            pages.append(Page(f"datasets_{base}_{frozen}_{sampling}_{page_no}", fig,
                 f"Paired effects for {len(page)} datasets, one column per peak-learning-rate / L2-SP recipe. "
                 "Panels fix model, adaptation and sampling; pages use a common scale within that combination. No dataset is discarded to shorten the display."))
     return pages
@@ -481,6 +495,18 @@ def plot_diagnostics(campaign: Campaign) -> list[Page]:
     return pages
 
 
+def optimization_window(campaign: Campaign) -> int:
+    """Avoid empty windows finer than the observed epoch recording interval."""
+    history = campaign.histories
+    width = max(1, int(np.ceil(campaign.target / style.CURVE_BINS)))
+    if {"trial_name", "successful_updates"} <= set(history):
+        gaps = history.sort_values(["trial_name", "successful_updates"]).groupby("trial_name").successful_updates.diff()
+        gaps = gaps[gaps.gt(0)]
+        if not gaps.empty:
+            width = max(width, int(np.ceil(gaps.median())))
+    return width
+
+
 def optimization_curves(campaign: Campaign, field: str) -> pd.DataFrame:
     """Bound dense epoch histories without giving prolific histories more trial weight."""
     h = campaign.histories
@@ -490,12 +516,15 @@ def optimization_curves(campaign: Campaign, field: str) -> pd.DataFrame:
     data[field] = pd.to_numeric(data[field], errors="coerce")
     data = data[np.isfinite(data[field]) & data.successful_updates.gt(0)]
     data = data.merge(campaign.trials[["trial_name",*FACTORS]],on="trial_name",validate="many_to_one")
-    width = max(1,campaign.target/style.CURVE_BINS)
-    data["window_end"] = np.ceil(data.successful_updates/width)*width
+    width = optimization_window(campaign)
+    data["window_end"] = np.minimum(np.ceil(data.successful_updates/width)*width, campaign.target)
     return data.groupby(["trial_name",*FACTORS,"window_end"],dropna=False)[field].mean().reset_index()
 
 
 def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
+    if field == "lr_applied":
+        from src.visualize.pilots import plot_schedule
+        return plot_schedule([campaign])
     labels = {"train_loss": "Data loss", "clipped_frac": "Fraction of clipped updates",
               "grad_norm_mean": "Mean gradient norm", "lr_applied": "Applied learning rate",
               "l2sp_penalty": "L2-SP penalty", "weight_drift": "Relative weight drift"}
@@ -511,10 +540,10 @@ def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
             for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
                 curve = recipe.groupby("window_end")[field].agg(
                     median="median", q25=lambda v: v.quantile(.25), q75=lambda v: v.quantile(.75), trials="size")
-                width = max(1, campaign.target/style.CURVE_BINS)
-                curve = curve.reindex(np.arange(width, campaign.target+width/2, width))
+                width = optimization_window(campaign)
+                curve = curve.reindex(np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target)))
                 color = style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr)))
-                ax.plot(curve.index, curve["median"], label=f"LR {lr:.0e}", color=color)
+                ax.plot(curve.index, curve["median"], marker=style.PANEL_MARKERS[i % 4], markersize=style.CURVE_MARKER_SIZE, label=f"LR {lr:.0e}", color=color)
                 ax.fill_between(curve.index.to_numpy(float), curve.q25.to_numpy(float), curve.q75.to_numpy(float),
                                 color=color, alpha=style.INTERVAL_ALPHA)
                 tables.append(curve.rename_axis("window_end").reset_index().assign(learning_rate=lr, l2sp_lambda=lam))
@@ -523,7 +552,7 @@ def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
         if field == "clipped_frac":
             axes[0].set_ylim(0,1)
         pages.append(Page(f"optimization_{campaign.track}_{field}_{base}_{frozen}_{sampling}", fig,
-            f"{labels[field]} summarized in {style.CURVE_BINS} equal successful-update windows. "
+            f"{labels[field]} summarized in successful-update windows of width {optimization_window(campaign):,}, with a shorter final window when necessary. "
             "Epoch values are averaged within trial and window; lines and bands show the median and interquartile range "
             "across available trials. Counts are retained in the text summary. Gaps are not interpolated. "
             "The data loss excludes the separately reported L2-SP term; numerical loss scales differ across tasks, architectures "
@@ -644,9 +673,10 @@ def plot_seed_pairs(pairs: pd.DataFrame, metric: str, *, endpoint: int | None = 
         return []
     data = pairs[pairs.updates.eq(endpoint)] if endpoint is not None and "updates" in pairs else pairs
     pages = []
-    groups = ((base, group.sort_values("dataset").iloc[start:start+style.PAGE_ROWS], start)
-              for base, group in data.groupby("base") for start in range(0,len(group),style.PAGE_ROWS))
-    for base, group, start in groups:
+    groups = ((base, group.sort_values("dataset").iloc[start:stop], page_no)
+              for base, group in data.groupby("base")
+              for page_no, (start, stop) in enumerate(style.page_slices(len(group)), 1))
+    for base, group, page_no in groups:
         fig, axes = _subplots(f"{base}: matched training seeds", 2)
         axes[0].scatter(group.reference, group.repeat, color=style.color(base), s=style.POINT_SIZE)
         low = min(group.reference.min(), group.repeat.min(), 0)
@@ -661,7 +691,7 @@ def plot_seed_pairs(pairs: pd.DataFrame, metric: str, *, endpoint: int | None = 
         axes[1].set_yticks(range(len(ordered)), ordered.dataset)
         axes[1].axvline(0, color=style.color("reference"), linestyle=":")
         axes[1].set_xlabel("Repeat minus reference effect")
-        pages.append(Page(f"seed_pair_{base}_{start//style.PAGE_ROWS+1}", fig,
+        pages.append(Page(f"seed_pair_{base}_{page_no}", fig,
             f"Matched dataset effects at two training seeds for the predefined full-update, LR 3e-7, L2-SP 0.003 reference. Effects use {effect_label(metric)}. "
             "Both seeds must be available for a dataset. This is a sensitivity check at one recipe, not a seed-variance estimate for the grid."))
     return pages
@@ -786,10 +816,10 @@ def plot_control_context(campaign: Campaign) -> list[Page]:
         return []
     ranks = scores.rank(axis=1,ascending=campaign.track=="lgd",method="average")
     pages = []
-    for start in range(0,len(ranks),style.PAGE_ROWS):
-        page = ranks.iloc[start:start+style.PAGE_ROWS]
+    for page_no, (start, stop) in enumerate(style.page_slices(len(ranks)), 1):
+        page = ranks.iloc[start:stop]
         fig = _heatmap(page,f"{campaign.track.upper()}: reference model context",diverging=False,limits=(1,len(ranks.columns)),label="Rank within dataset (1 = best)")
-        pages.append(Page(f"control_context_{start//style.PAGE_ROWS+1}",fig,
+        pages.append(Page(f"control_context_{page_no}",fig,
             "Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect."))
     return pages
 

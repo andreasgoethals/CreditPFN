@@ -1,8 +1,8 @@
 """Reader-facing dataset names — the ONLY place display names are resolved.
 
-Maps a dataset slug (or its bare stem) to the name a reader/figure should show. The real
-slug ↔ name mapping lives in the GITIGNORED ``src/data/_private_names.py``; this tracked
-module imports it when present and DEGRADES to the raw slug when it is absent. A public
+Maps a dataset slug (or its bare stem) to the name a reader/figure should show. Public
+aliases are tracked here; confidential aliases live in the GITIGNORED
+``src/data/_private_names.py``. Unknown names fall back to their original identifier. A public
 clone has neither the mapping nor the private data, so it never sees a private slug to
 leak; a checkout WITH the private data also has the mapping, so private datasets render as
 ``Prop*`` in every figure and summary.
@@ -14,6 +14,12 @@ from __future__ import annotations
 import re
 
 _INDEX_PREFIX = re.compile(r"^\d+\.")
+_PUBLIC_DISPLAY = {
+    "credit_risk_dataset": "Credit Risk",
+    "bondora_peer2peer": "Bondora Peer-to-Peer",
+    "SBA_loans_case": "SBA Loans Case",
+}
+_PUBLIC_TRACK_DISPLAY = {"0008.SBA_loans_case": "SBA Loans Case (LGD)"}
 
 
 def _stem(slug: object) -> str:
@@ -28,8 +34,9 @@ except Exception:  # public clone / mapping absent -> degrade to raw slugs
 
 
 def display_name(slug: object) -> str:
-    """Reader-facing name for one dataset id; the raw slug if unknown or mapping absent."""
-    return _DISPLAY.get(_stem(slug), str(slug))
+    """Reader-facing public/private alias for one dataset id; its raw value if unknown."""
+    return _PUBLIC_TRACK_DISPLAY.get(str(slug),
+        _PUBLIC_DISPLAY.get(_stem(slug), _DISPLAY.get(_stem(slug), str(slug))))
 
 
 def is_proprietary(slug: object) -> bool:

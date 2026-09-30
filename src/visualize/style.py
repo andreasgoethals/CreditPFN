@@ -7,6 +7,7 @@ and use these definitions rather than choosing their own sizes or colors.
 from __future__ import annotations
 
 import zlib
+import re
 
 import matplotlib as mpl
 import numpy as np
@@ -180,6 +181,7 @@ TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
 
 # Bounded pages keep the 64-recipe sweep legible at its final ICML width.
 PAGE_ROWS = 12
+SIMPLE_PAGE_ROWS = 20
 PAGE_COLUMNS = 8
 SERIES_PER_PANEL = 4
 PANEL_MARKERS = ("o", "s", "^", "D")
@@ -191,8 +193,10 @@ CURVE_BINS = 50
 PANEL_RATIO = 0.72
 SMALL_RATIO = 0.48
 POINT_SIZE = 20
+CURVE_MARKER_SIZE = 3
 POINT_ALPHA = 0.65
 THIN_LINE = 0.8
+BAR_HEIGHT = 0.72
 ANNOTATION_SIZE = 7
 SAMPLING_LABELS = {"one_sample": "One sample", "full_pass": "Full pass", "accumulate": "Accumulate"}
 SAMPLING_COLORS = {"one_sample": "#0072B2", "full_pass": "#E69F00", "accumulate": "#009E73"}
@@ -200,6 +204,31 @@ SAMPLING_STYLES = {"one_sample": "-", "full_pass": "--", "accumulate": ":"}
 STATUS_COLORS = {"OK": "#009E73", "PENDING": "#CCCCCC", "FAIL": "#D55E00",
                  "DIVERGED": "#CC79A7", "INTERRUPTED": "#E69F00", "SKIP": "#56B4E9"}
 SEED_MARKERS = ("o", "s", "^")
+
+MODEL_LABELS = {"v2": "TabPFN v2", "v2.6": "TabPFN v2.6", "v3": "TabPFN v3", "tabicl-v2": "TabICLv2"}
+_MODEL_TOKEN = re.compile(r"(?<!TabPFN )(?<![\w.-])(?:tabicl-v2|v2\.6|v2|v3)(?![\w.-])")
+
+
+def model_label(text):
+    """Expand standalone display tokens without modifying checkpoint identifiers."""
+    if not isinstance(text, str):
+        return text
+    return _MODEL_TOKEN.sub(lambda match: MODEL_LABELS[match.group()], text)
+
+
+def page_slices(length, limit=PAGE_ROWS):
+    """Balanced pages: 17 rows at a limit of 12 become 9 + 8, not 12 + 5."""
+    if limit < 1:
+        raise ValueError("Page limit must be positive")
+    pages = int(np.ceil(length / limit))
+    if not pages:
+        return
+    size, remainder = divmod(length, pages)
+    start = 0
+    for page in range(pages):
+        stop = start + size + int(page < remainder)
+        yield start, stop
+        start = stop
 
 
 def color(name: str) -> str:
@@ -368,9 +397,16 @@ def finish_figure(fig):
     import textwrap
     from matplotlib.ticker import AutoLocator, MaxNLocator, LogLocator, LogFormatterSciNotation, NullFormatter
     handles, labels = [], []
+    if fig._suptitle is not None:
+        fig._suptitle.set_text(model_label(fig._suptitle.get_text()))
     for ax in fig.axes:
         if not ax.get_visible() or ax.get_label() == "<colorbar>":
             continue
+        for axis in (ax.xaxis, ax.yaxis):
+            axis.label.set_text(model_label(axis.label.get_text()))
+            ticks = axis.get_ticklabels()
+            if any(model_label(t.get_text()) != t.get_text() for t in ticks):
+                axis.set_ticks(axis.get_ticklocs(), [model_label(t.get_text()) for t in ticks])
         for axis, scale, limits in ((ax.xaxis, ax.get_xscale(), ax.get_xlim()),
                                     (ax.yaxis, ax.get_yscale(), ax.get_ylim())):
             if scale == "linear" and isinstance(axis.get_major_locator(), AutoLocator):
@@ -389,12 +425,13 @@ def finish_figure(fig):
         if legend is not None:
             current_handles, current_labels = ax.get_legend_handles_labels()
             for handle, label in zip(current_handles, current_labels):
+                label = model_label(label)
                 if label and not label.startswith("_") and label not in labels:
                     handles.append(handle); labels.append(label)
             legend.remove()
         if ax.get_title():
             panel_width = fig.get_figwidth() * ax.get_position().width
-            ax.set_title(textwrap.fill(ax.get_title(), max(20, int(panel_width * 11))),
+            ax.set_title(textwrap.fill(model_label(ax.get_title()), max(20, int(panel_width * 11))),
                          fontsize=ax.title.get_fontsize())
     if handles:
         fig.legend(handles, labels, loc="outside lower center",

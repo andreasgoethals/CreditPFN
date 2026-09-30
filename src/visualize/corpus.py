@@ -14,11 +14,36 @@ from src.visualize.campaign import Page, _subplots, _heatmap, config_path
 def raw_inventory() -> pd.DataFrame:
     data = exploration.raw_corpus_summary().copy()
     data["features"] = data.raw_cols - data.target_in_raw.astype(int)
+    # German Credit's last delivered column is the label even before renaming.
+    german = data.dataset_id.eq("0008.german") & ~data.target_in_raw & data.raw_cols.gt(0)
+    data.loc[german, "features"] = data.loc[german, "raw_cols"] - 1
     data["rows"] = data.raw_rows.where(data.raw_rows > 0)
     data["features"] = data.features.where(data.features > 0)
     data["missing"] = data.missing_cells_rate
     data["dataset_id"] = data.dataset_id.map(display_name)
     return display_frame(data)
+
+
+def delivery_checks(data: pd.DataFrame) -> pd.DataFrame:
+    """Distinguish expected target construction from genuinely missing inputs."""
+    from src.data.preprocessing import DATASET_METADATA
+    processed = exploration._resolve_paths()["processed"]
+    metadata = {(m["track"], display_name(key)): (key, m) for key, m in DATASET_METADATA.items()}
+    notes = {
+        "0008.german": "The final raw column is the label; preprocessing renames it to target and maps 1/2 to 0/1.",
+        "0008.SBA_loans_case": "Preprocessing selects defaulted loans and derives LGD as charge-off divided by disbursement.",
+    }
+    rows = []
+    for row in data[data.rows.isna() | ~data.target_in_raw].itertuples():
+        key, meta = metadata[(row.track, row.dataset_id)]
+        path = processed / row.track / (key + ".sanitized.csv")
+        present = path.is_file() and meta["target_column"] in pd.read_csv(path, nrows=0).columns
+        expected = key in notes and pd.notna(row.rows)
+        rows.append(dict(track=row.track, dataset=row.dataset_id, target_in_raw=row.target_in_raw,
+                         target_in_processed=present,
+                         status="Expected preprocessing" if expected and present else "Inspect delivery",
+                         explanation=notes.get(key, "The registered raw file or target column is missing.")))
+    return pd.DataFrame(rows, columns=["track", "dataset", "target_in_raw", "target_in_processed", "status", "explanation"])
 
 
 def processed_inventory() -> pd.DataFrame:
@@ -54,15 +79,15 @@ def plot_geometry(data: pd.DataFrame, stage: str) -> list[Page]:
         ax.set_xscale("log"); ax.set_yscale("log")
         ax.set_xlabel("Rows (log scale)"); ax.set_ylabel("Predictors (log scale)")
         ax.set_title(f"{track.upper()} / {len(group)} datasets")
-    return [Page("corpus_geometry", fig, f"Predictor count versus row count in the {stage.lower()} corpus, on logarithmic axes. Each point is one available dataset; PD and LGD use separate panels. Raw columns exclude the registered target when present, but can include identifiers later removed during cleaning.")]
+    return [Page("corpus_geometry", fig, f"Predictor count versus row count in the {stage.lower()} corpus, on logarithmic axes. Each point is one available dataset; PD and LGD use separate panels. Raw columns exclude the registered target or the recognized final label column in German Credit, but can include identifiers later removed during cleaning.")]
 
 
 def plot_profiles(data: pd.DataFrame, stage: str) -> list[Page]:
     pages = []
     for track, group in data.groupby("track"):
         group = group.sort_values(["rows", "dataset_id"], ascending=[False, True], na_position="last")
-        for start in range(0, len(group), style.PAGE_ROWS):
-            page = group.iloc[start:start+style.PAGE_ROWS]
+        for number, (start, stop) in enumerate(style.page_slices(len(group)), 1):
+            page = group.iloc[start:stop]
             fig, axes = _subplots(f"{stage} / {track.upper()} / datasets {start+1}–{start+len(page)}", 2, sharey=True)
             y = np.arange(len(page))
             axes[0].scatter(page.rows, y, color=style.color(track), s=style.POINT_SIZE)
@@ -74,7 +99,7 @@ def plot_profiles(data: pd.DataFrame, stage: str) -> list[Page]:
             axes[0].invert_yaxis()
             axes[1].barh(y, page.missing*100, color=style.color(track))
             axes[1].set_xlabel("Missing cells (%)"); axes[1].set_xlim(0,100)
-            pages.append(Page(f"dataset_profiles_{track}_{start//style.PAGE_ROWS+1}", fig,
+            pages.append(Page(f"dataset_profiles_{track}_{number}", fig,
                 f"Row counts and missing-cell percentages for {len(page)} {track.upper()} datasets, sorted by decreasing size and continued across pages. "
                 + ("Raw missingness uses all delivered columns, including a target column when present." if stage == "Raw" else "Processed missingness uses predictor cells only, excluding the target.")
                 + " Missing files remain unknown."))
@@ -129,15 +154,15 @@ def plot_target_profiles(data: pd.DataFrame) -> list[Page]:
     pages = []
     for track, column, label in (("pd", "minority_class_ratio", "Minority-class fraction"), ("lgd", "target_mean", "Mean LGD")):
         group = data[data.track.eq(track)].dropna(subset=[column]).sort_values(column)
-        for start in range(0,len(group),style.PAGE_ROWS):
-            page = group.iloc[start:start+style.PAGE_ROWS]
+        for number, (start, stop) in enumerate(style.page_slices(len(group), style.SIMPLE_PAGE_ROWS), 1):
+            page = group.iloc[start:stop]
             fig, axes = _subplots(f"{track.upper()}: target profiles")
-            axes[0].scatter(page[column], np.arange(len(page)), color=style.color(track), s=style.POINT_SIZE)
+            axes[0].barh(np.arange(len(page)), page[column], color=style.color(track), height=style.BAR_HEIGHT)
             axes[0].set_yticks(range(len(page)), page.dataset_id)
             axes[0].set_xlabel(label)
             axes[0].set_xlim(min(0,float(page[column].min())),max(.5 if track == "pd" else 1,float(page[column].max())))
-            pages.append(Page(f"target_profiles_{track}_{start//style.PAGE_ROWS+1}", fig,
-                f"Registered {label.lower()} for each available {track.upper()} dataset, ordered by value and paginated. Each dataset has equal visual weight, regardless of its row count."))
+            pages.append(Page(f"target_profiles_{track}_{number}", fig,
+                f"Registered {label.lower()} for each available {track.upper()} dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count."))
     return pages
 
 
@@ -183,10 +208,10 @@ def plot_partitions(data: pd.DataFrame) -> list[Page]:
     for track, group in data.groupby("track"):
         matrix = pd.crosstab(group.dataset,group.fold).reindex(columns=range(1,5),fill_value=0)
         matrix.columns = [f"Fold {c}" for c in matrix.columns]
-        for start in range(0,len(matrix),style.PAGE_ROWS):
-            page = matrix.iloc[start:start+style.PAGE_ROWS]
+        for number, (start, stop) in enumerate(style.page_slices(len(matrix), style.SIMPLE_PAGE_ROWS), 1):
+            page = matrix.iloc[start:stop]
             fig = _heatmap(page,f"{track.upper()}: dataset hold-out assignment",diverging=False,limits=(0,1),label="Held out (1) / training (0)")
-            pages.append(Page(f"partitions_{track}_{start//style.PAGE_ROWS+1}",fig,"Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset."))
+            pages.append(Page(f"partitions_{track}_{number}",fig,"Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset."))
     return pages
 
 
@@ -206,8 +231,8 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
     pages = []
     for track, group in data.groupby("track"):
         group = group.sort_values("rows",ascending=False)
-        for start in range(0,len(group),style.PAGE_ROWS):
-            page = group.iloc[start:start+style.PAGE_ROWS]
+        for number, (start, stop) in enumerate(style.page_slices(len(group), style.SIMPLE_PAGE_ROWS), 1):
+            page = group.iloc[start:stop]
             fig, axes = _subplots(f"{track.upper()}: planned table weight per visit")
             y = np.arange(len(page))
             for offset,mode in enumerate(style.SAMPLING_LABELS):
@@ -216,7 +241,7 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
             axes[0].set_xlabel("Share of optimizer steps in one complete corpus traversal")
             maximum = group[[f"{mode}_step_share" for mode in style.SAMPLING_LABELS]].max().max()
             axes[0].set_xlim(0, maximum*1.05); axes[0].legend()
-            pages.append(Page(f"planned_exposure_{track}_{start//style.PAGE_ROWS+1}",fig,
+            pages.append(Page(f"planned_exposure_{track}_{number}",fig,
                 f"Illustrative optimizer-step shares using a {int(page.illustrative_row_cap.iloc[0]):,}-row batch cap, all registered processed tables and no skipped updates. "
                 "One-sample and accumulation assign one update per table visit; full pass assigns one per disjoint chunk. Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal."))
     return pages

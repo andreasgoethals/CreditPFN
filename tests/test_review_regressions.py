@@ -210,13 +210,17 @@ def test_null_audit_canonicalizes_legacy_keys_but_checks_weights_and_borders(tmp
 
 
 def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeypatch):
+    import ast
     paths = list(Path("notebooks/experiment1").glob("*_results_*.ipynb"))
     assert len(paths) == 2
     for path in paths:
         notebook = json.loads(path.read_text(encoding="utf-8"))
         source = "\n".join("".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code")
-        assert "cp.show(sink, cp.plot_secondary_tradeoff(run))" in source
-        assert "cp.show(sink, pub.plot_metric_profile(run))" in source
+        tree = ast.parse("\n".join(line for line in source.splitlines() if not line.startswith("%")))
+        shown = [ast.unparse(node.args[1]) for node in ast.walk(tree)
+                 if isinstance(node, ast.Call) and ast.unparse(node.func) == "cp.show" and len(node.args) >= 2]
+        assert "cp.plot_secondary_tradeoff(run)" in shown
+        assert "pub.plot_metric_profile(run)" in shown
     # Metric selection lives in src, keeping the notebooks free of analysis logic.
     from src.visualize import publication
     requested = []

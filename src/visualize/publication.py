@@ -242,10 +242,10 @@ def plot_metric_profile(campaign):
             continue
         matrix = data.pivot(index="dataset", columns="base", values="effect").sort_index()
         extent = max(float(np.nanmax(abs(matrix.to_numpy()))), 1e-8)
-        for start in range(0, len(matrix), style.PAGE_ROWS):
-            part = matrix.iloc[start:start+style.PAGE_ROWS]
+        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
+            part = matrix.iloc[start:stop]
             fig = cp._heatmap(part, f"Reference recipe: {metric}", limits=(-extent, extent), label=effect_label(metric))
-            pages.append(cp.Page(f"reference_{metric}_{start//style.PAGE_ROWS+1}", fig,
+            pages.append(cp.Page(f"reference_{metric}_{page_no}", fig,
                 f"Dataset-level {metric} changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, "
                 "relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. "
                 "Positive values indicate improvement; only RMSE is expressed as a fractional reduction. "
@@ -272,11 +272,11 @@ def plot_thresholds(campaign):
     pages = []
     for base, group in data.groupby("base_short"):
         matrix = group.pivot(index="test_dataset_id", columns="fold_idx", values=column).sort_index()
-        for start in range(0,len(matrix),style.PAGE_ROWS):
-            part = matrix.iloc[start:start+style.PAGE_ROWS]
+        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
+            part = matrix.iloc[start:stop]
             fig = cp._heatmap(part, f"{base}: validation-selected thresholds",
                               diverging=False, limits=(0,1), label="F1 threshold")
-            pages.append(cp.Page(f"thresholds_{base}_{start//style.PAGE_ROWS+1}", fig,
+            pages.append(cp.Page(f"thresholds_{base}_{page_no}", fig,
                 "F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. "
                 "The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, "
                 "and threshold variation is not itself evidence of poor discrimination.",
@@ -301,11 +301,11 @@ def plot_sampling_endpoint(campaign, *, benchmark=False):
     for base, group in data.groupby("base"):
         matrix = group.pivot_table(index="dataset", columns="sampling", values="effect", aggfunc="mean")
         matrix = matrix.reindex(columns=list(style.SAMPLING_LABELS))
-        for start in range(0,len(matrix),style.PAGE_ROWS):
-            part = matrix.iloc[start:start+style.PAGE_ROWS]
+        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
+            part = matrix.iloc[start:stop]
             fig=cp._heatmap(part.rename(columns=style.SAMPLING_LABELS), f"{base}: protocol effects",
                             label=effect_label(campaign.metric))
-            pages.append(cp.Page(f"sampling_endpoint_{campaign.track}_{base}_{benchmark}_{start//style.PAGE_ROWS+1}", fig,
+            pages.append(cp.Page(f"sampling_endpoint_{campaign.track}_{base}_{benchmark}_{page_no}", fig,
                 "Dataset-level endpoint effects for the three sampling protocols within experiment 3. "
                 "Each effect is paired with that dataset's own base result. The shared proportional-PD sampling policy "
                 "makes these within-experiment comparisons distinct from the balanced-PD main sweep. Missing cells are unavailable.",

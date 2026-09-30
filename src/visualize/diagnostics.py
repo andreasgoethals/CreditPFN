@@ -157,8 +157,8 @@ def plot_reliability(campaign):
             if not records:
                 continue
             binned = pd.concat(records, ignore_index=True)
-            for start in range(0, len(eligible), 4):
-                datasets = eligible[start:start+4]
+            for page_no, (start, stop) in enumerate(style.page_slices(len(eligible), 4), 1):
+                datasets = eligible[start:stop]
                 fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO),
                                          layout="constrained", sharex=True, sharey=True)
                 fig.suptitle(f"{compact_base(base)}: {calibration} reliability")
@@ -172,7 +172,7 @@ def plot_reliability(campaign):
                     ax.set_xlabel("Mean probability"); ax.set_ylabel("Observed fraction"); ax.legend()
                 for ax in list(axes.flat)[len(datasets):]:
                     ax.set_visible(False)
-                pages.append(Page(f"reliability_{compact_base(base)}_{calibration}_{start//4+1}", fig,
+                pages.append(Page(f"reliability_{compact_base(base)}_{calibration}_{page_no}", fig,
                     f"{calibration.capitalize()} positive-class reliability for the predefined full-update reference "
                     "(LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. "
                     "Each panel is a separate dataset, requiring the same five completed outer folds for both models. "

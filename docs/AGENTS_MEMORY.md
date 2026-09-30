@@ -12,6 +12,31 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
+## Notebook presentation follow-up — 30-09-2026
+
+- The user downloaded both output tiers into the local repository. Analysis now reads that merged tree; no Downloads files were moved by the agent. Rechecked 16/16 null audits, the exact corrected 12 PD + 8 LGD short-pilot cohort, and 8/8 historical budget pilots. All selected pilots have finite recorded optimizer diagnostics and zero AMP/data skips; the historical budget-objective caveat remains necessary.
+- Added tracked public aliases for Credit Risk, Bondora and the PD/LGD SBA copies, and expanded model labels at display boundaries while preserving join keys/checkpoint names. Balanced dense pages; the 17-table PD holdout and target bars fit one figure each. Removed notebook production notes and explained final-setting averages versus variation across datasets in plain language.
+- Raw `target_in_raw=False` is expected for German Credit (last-column rename and 1/2-to-0/1 recoding) and SBA LGD (charge-off/disbursement for defaults). The raw report now verifies target-column presence in processed files and explains these transformations. German's recognized raw label is excluded from its predictor count; no data or preprocessing code changed.
+- Compact pilot reports show paired endpoint matrices, model panels for recorded losses, shared measured schedules, and numerical optimizer/resource summaries: **107 to 5** short-pilot figures and **74 to 7** budget figures on the merged local snapshot. Budget reports combine credit and non-credit curves. PD/LGD tags are explicit in exports and captions. Numbered FigureSaver prefixes already prevented physical file collisions; the earlier issue was ambiguous unqualified names, not overwritten exports.
+- Training identity remains `6d309cc1f4db21d3ff6897f7fb1f64bd69cfd395dbe6c6289b90f87506a3dd28`; no training, cluster submission, install or push. The deferred entropy diagnostic repair is outside this presentation change.
+
+- Validation: final full suite **711 passed / 1 skipped** (unbuilt data manifests); **11/11 notebooks executed successfully**, including reruns after the final label and prose fixes. All **296 PDFs** were visually reviewed; automated checks found no off-page text or proprietary names, and every caption/figure summary is present in All_Results.md. Temporary review images were removed. Raw and processed inventories both cover 25/25 datasets, and both expected target transformations have their processed target columns.
+
+**Tried:** Apply the main-grid 50-window curve layout to 250-update pilots and reuse per-recipe plots throughout experiment 0.
+**Result:** Short histories had isolated unmarked points and fragmented lines, while repeated one-recipe budget figures obscured valid available measurements.
+**Why:** Plot windows were narrower than the epoch recording cadence; splitting every base/adaptation/diagnostic into a separate figure produced excessive repetition.
+**Instead:** Bound window width by the recorded epoch interval, show observed-point markers, retain genuine missing-data gaps, and use compact pilot-specific panels/tables. Empty cohort curves are omitted instead of exported as empty axes.
+
+**Tried:** Run the full suite after adding explicit task labels to notebook figure calls.
+**Result:** 707 passed, one skipped, and one exact-source-string assertion failed despite the same figures still being saved and displayed.
+**Why:** The assertion included the call's closing parenthesis and rejected the new optional `track` keyword.
+**Instead:** Inspect the notebook call AST to verify that both expected figure functions are passed to `cp.show`, independently of presentation keywords; retain the actual Brier-field check.
+
+**Tried:** Scan the regenerated notebook JSON verbatim for proprietary names during the full test suite.
+**Result:** 708 passed and one skipped; the privacy guard flagged one short identifier inside an embedded PNG's base64 bytes.
+**Why:** Random encoded image bytes can match a short text token; the sole match was in image/png, not in source, displayed text or a label.
+**Instead:** Parse notebook MIME bundles, omit valid binary encodings from the text scan, retain source/text/SVG/metadata and malformed payloads, and inspect rendered figures plus exported PDF text separately. Regression tests cover both exclusions and retained readable content.
+
 ## Notebook/publication review — 30-09-2026
 
 - Rebuilt all 11 notebooks around coverage, paired credit effects, learning trajectories, retention, parameter movement, cost and final five-fold evaluation. Analysis and reporting logic remains in `src/visualize/`; each final printed summary includes all plotted values and displayed tables in section order. `All_Results.md` preserves that text with trailing line whitespace removed. Captions describe the measurement, pairing and aggregation, without claiming results from missing files.

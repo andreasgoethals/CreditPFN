@@ -9,15 +9,24 @@ from matplotlib.collections import PathCollection
 from matplotlib.container import BarContainer
 
 from src.data.dataset_names import display_frame, redact_private_names
+from src.visualize.style import model_label
+
+
+def display_table(frame):
+    """Apply reader-facing aliases only after analytical joins are complete."""
+    result = display_frame(frame.copy())
+    for column in result.select_dtypes(include=["object", "string"]):
+        result[column] = result[column].map(model_label)
+    result.index = [model_label(redact_private_names(str(x))) for x in result.index]
+    result.columns = [model_label(redact_private_names(str(x))) for x in result.columns]
+    return result
 
 
 def table_text(frame):
     """No pandas ellipses, row truncation or private identifiers in final summaries."""
     if isinstance(frame, pd.Series):
         frame = frame.to_frame()
-    frame = display_frame(frame.copy())
-    frame.index = [redact_private_names(str(x)) for x in frame.index]
-    frame.columns = [redact_private_names(str(x)) for x in frame.columns]
+    frame = display_table(frame)
     return frame.to_string(index=True, max_rows=None, max_cols=None,
                            max_colwidth=None, float_format=lambda value: f"{value:.8g}",
                            na_rep="unavailable")
@@ -107,12 +116,12 @@ class NotebookReport:
 
     def table(self, label, frame):
         from IPython.display import display
-        safe = display_frame(frame)
+        safe = display_table(frame)
         display(safe)
         self._pending.append(f"Table: {label}\n{table_text(safe)}")
 
     def add(self, title, text):
-        self.sections.append((title, "\n\n".join([str(text), *self._pending])))
+        self.sections.append((title, "\n\n".join([model_label(str(text)), *self._pending])))
         self._pending.clear()
 
     def summary(self, sink):
