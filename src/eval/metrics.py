@@ -122,7 +122,9 @@ def _classification_metrics(
     out: dict[str, float] = {}
     K = proba_test.shape[1]
     if K == 2:
-        p = np.clip(proba_test[:, 1], 1e-15, 1 - 1e-15)
+        # In float32, 1 - 1e-15 rounds to one and entropy evaluates 0 * log(0).
+        # Promote before clipping; keep model probabilities unchanged for scoring.
+        p = np.clip(np.asarray(proba_test[:, 1], dtype=np.float64), 1e-15, 1 - 1e-15)
         out.update(f1_at_05=float(f1_score(y_test, proba_test[:, 1] >= .5, zero_division=0)),
             prediction_mean=float(p.mean()), prediction_std=float(p.std()),
             prediction_entropy=float(-(p * np.log(p) + (1-p) * np.log1p(-p)).mean()),

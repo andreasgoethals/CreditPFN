@@ -310,6 +310,18 @@ Evaluation writes predictions atomically and publishes its identity receipt last
 
 Before the full evaluation arrays, profile one representative large-table foundation task at its actual context/member settings and one classical HPO task. Experiment 0's small five-fold recovery benchmark checks correctness, not the memory or runtime of those production-size evaluations. Use the measured task times to set requests; short requests improve possible backfill, not scheduling priority itself.
 
+To start with one real packed task from each track and execution kind, use the existing wrappers with `--array=0-0%1`, `EVAL_TASKS=16`, and split index zero. The task pack includes expensive cells first; these are retained benchmark results, not a separate smoke experiment. For example, after checking the PD prepared plan and checkpoint audit:
+
+```bash
+CREDITPFN_USE_SCRATCH=1 CREDITPFN_CONFIG=config/experiment1/pd.yaml CREDITPFN_SPLIT_INDEX=0 CREDITPFN_EVAL_KIND=foundation EVAL_TASKS=16 sbatch --array=0-0%1 scripts/slurm/eval_pd.slurm
+```
+
+```bash
+CREDITPFN_CONFIG=config/experiment1/pd.yaml CREDITPFN_SPLIT_INDEX=0 EVAL_TASKS=16 sbatch --array=0-0%1 scripts/slurm/eval_classical.slurm
+```
+
+Repeat with the LGD config and, for foundation models, `eval_lgd.slurm`. The wrappers request time limits of two hours for GPU jobs and four hours for CPU jobs; these are ceilings, not measured runtimes. Only four initial jobs are submitted this way, outside the bounded full-array launcher. Keep the source fixed until they finish. After their logs confirm complete cells and acceptable resource use, use `EVAL_WALLTIME` with the measured margin in the full launch commands above. Completed five-fold cells and compatible baseline caches are reused, including across task repacking; an individual packed task does not certify every table/model's memory requirements.
+
 With a run's writers stopped, consolidate it:
 
 ```bash

@@ -13,6 +13,7 @@ day is never rewritten.
 
 ## 30-09-2026
 
+- Fix float32 endpoint-probability entropy reporting without changing predictions or trained weights; verify the completed main grid before final benchmarking.
 - Add eight short seed/sampling/recovery GPU controls and an auxiliary notebook before experiments 2/3, with bounded CPU preparation and strict completion audits.
 - Refine corpus/pilot plots, add matched training-factor summaries and readable clipping scales, and read drift from milestone records instead of empty epoch placeholders.
 

@@ -971,6 +971,22 @@ def test_benchmark_records_selected_baseline_parameters_and_actual_tuning_budget
     assert all(1e-3 <= json.loads(row.fitted_parameters)["alpha"] <= 1e3 for row in rows)
 
 
+@pytest.mark.parametrize("dtype", [np.float32, np.float64])
+def test_prediction_entropy_handles_exact_zero_and_one(dtype) -> None:
+    from src.eval.metrics import _classification_metrics
+
+    probabilities = np.array([[1, 0], [0, 1], [.5, .5], [.5, .5]], dtype=dtype)
+    original = probabilities.copy()
+    target = np.array([0, 1, 0, 1])
+    with np.errstate(divide="raise", invalid="raise"):
+        metrics = _classification_metrics(probabilities, target, probabilities, target, 2)
+
+    assert metrics["prediction_entropy"] == pytest.approx(np.log(2) / 2, abs=1e-12)
+    assert metrics["prediction_mean"] == pytest.approx(.5)
+    assert metrics["brier_score"] == pytest.approx(.125)
+    np.testing.assert_array_equal(probabilities, original)
+
+
 def test_posthoc_calibration_repairs_overconfident_probabilities() -> None:
     """Continued pretraining consistently worsens calibration in our runs, so
     the eval records post-hoc-recalibrated metrics ALONGSIDE the raw ones.
