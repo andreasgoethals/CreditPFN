@@ -88,7 +88,8 @@ def test_short_history_uses_observed_cadence_and_one_shared_schedule():
         assert len(ax.lines)==1 and np.isfinite(ax.lines[0].get_ydata()).all()
     schedule = cp.plot_optimization(run,"lr_applied")
     assert len(schedule)==1 and len(schedule[0].figure.axes[0].lines)==1
-    assert schedule[0].tables["Schedule statistics"].trials.eq(2).all()
+    assert schedule[0].figure.axes[0].get_yscale() == "log"
+    assert schedule[0].tables["Observed trial windows"].trial_name.nunique() == 2
     run.histories.loc[:,"train_loss"] = np.nan
     assert pilots.plot_loss(run) == []
 
@@ -106,3 +107,71 @@ def test_track_scopes_export_name_title_and_caption(monkeypatch):
         assert fig._suptitle.get_text().startswith(track.upper())
     assert [name for name,_ in saved] == ["pd_same_name","lgd_same_name"]
     assert [caption for _,caption in saved] == ["PD. Recorded values.","LGD. Recorded values."]
+
+
+def test_profile_bars_and_shared_geometry_keep_both_tracks():
+    data = pd.DataFrame(dict(track=["pd", "pd", "lgd"], dataset_id=["A", "B", "C"],
+        rows=[100, 1000, 250], features=[3, 5, 4], missing=[0, .1, .2]))
+    geometry = corpus.plot_geometry(data, "Processed")[0].figure
+    assert len(geometry.axes) == 1 and len(geometry.axes[0].collections) == 2
+    for page in corpus.plot_profiles(data, "Processed"):
+        for ax in page.figure.axes:
+            assert ax.patches and ax.get_xlim()[0] == 0 and ax.get_xscale() == "linear"
+
+
+def test_exposure_merges_equal_markers_and_labels_step_share_ratio():
+    data = pd.DataFrame(dict(track=["pd", "pd"], dataset_id=["A", "B"], rows=[100, 90000]))
+    table = corpus.planned_exposure(data, row_cap=10000)
+    assert table.full_pass_share_ratio.tolist() == pytest.approx([.2, 1.8])
+    page = corpus.plot_exposure(table)[0]
+    ax = page.figure.axes[0]
+    assert len(ax.get_legend_handles_labels()[1]) == 2
+    assert {text.get_text() for text in ax.texts} == {"0.20×", "1.80×"}
+
+
+def test_partial_table_traversal_does_not_create_a_loss_cliff():
+    run = _short_campaign()
+    for i in range(13):
+        run.histories[f"loss__table{i}"] = .5
+        if i >= 3:
+            run.histories.loc[run.histories.successful_updates.eq(250), f"loss__table{i}"] = np.nan
+    run.histories.loc[run.histories.successful_updates.eq(250), "train_loss"] = .1
+    support = cp.loss_epoch_support(run)
+    assert support.loc[~support.complete_pass, "observed_tables"].eq(3).all()
+    tables = cp.loss_coverage_tables(run)
+    counts = tables["Loss coverage by trial"]
+    assert len(counts) == run.trials.trial_name.nunique()
+    assert counts.partial_coverage_epochs.eq(1).all()
+    assert counts.recorded_epochs.sum() == len(support)
+    assert tables["Partial-coverage epoch losses"].train_loss.eq(.1).all()
+    assert cp.optimization_curves(run, "train_loss").window_end.max() == 247
+    page = pilots.plot_loss(run)[0]
+    assert page.tables["Partial-coverage epoch losses"].train_loss.eq(.1).all()
+    assert all(ax.collections for ax in page.figure.axes)
+
+
+def test_equal_configured_schedules_merge_despite_different_epoch_cadences():
+    import copy
+    pd_run = _short_campaign()
+    lgd_run = copy.deepcopy(pd_run)
+    lgd_run.cfg.track = "lgd"
+    lgd_run.histories = lgd_run.histories[lgd_run.histories.successful_updates.mod(26).eq(0)]
+    page = pilots.plot_schedule([pd_run, lgd_run])[0]
+    assert len(page.figure.axes) == 1 and len(page.figure.axes[0].lines) == 1
+    schedule = page.tables["Configured applied schedules"]
+    assert schedule.tracks.eq("PD + LGD").all()
+    assert schedule.iloc[0].applied_lr == 0
+    assert set(page.tables["Observed trial windows"].track) == {"PD", "LGD"}
+
+
+def test_device_curves_give_each_trial_one_contribution(monkeypatch):
+    from src.visualize import diagnostics
+    run = _short_campaign()
+    data = pd.DataFrame([dict(trial_name="long", base="v2", frozen=False,
+        sampling="one_sample", successful_updates=13, phase="training", gpu_utilization_percent=0.)]*100 +
+        [dict(trial_name="short", base="v2", frozen=False, sampling="one_sample",
+              successful_updates=13, phase="training", gpu_utilization_percent=100.)])
+    monkeypatch.setattr(diagnostics, "load", lambda *args: data.copy())
+    page = diagnostics.plot_resource_curves(run)[0]
+    shown = page.tables["Window medians and trial counts"].dropna(subset=["median"])
+    assert shown.iloc[0]["median"] == 50 and shown.iloc[0]["count"] == 2

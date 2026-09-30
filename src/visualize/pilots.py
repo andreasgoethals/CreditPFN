@@ -40,7 +40,8 @@ def plot_endpoints(campaign):
     data["arm"] = np.where(data.frozen, "Frozen / ", "Full / ") + data.domain
     matrix = data.pivot(index="recipe", columns="arm", values="effect")
     matrix = matrix.reindex(columns=[c for c in ("Full / Credit", "Frozen / Credit", "Full / Non-credit", "Frozen / Non-credit") if c in matrix])
-    fig = cp._heatmap(matrix, f"{campaign.track.upper()}: changes after {campaign.target:,} updates",
+    metric = "change in AUC" if campaign.metric == "roc_auc" else "fractional RMSE reduction"
+    fig = cp._heatmap(matrix, f"{campaign.track.upper()}: {metric} after {campaign.target:,} updates",
                       label=effect_label(campaign.metric))
     return [cp.Page(f"pilot_endpoints_{campaign.track}", fig,
         f"{campaign.track.upper()} changes from each dataset's unmodified baseline after {campaign.target:,} successful updates. "
@@ -98,6 +99,8 @@ def plot_loss(campaign):
                              figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO))
     fig.suptitle(f"{campaign.track.upper()}: recorded training loss")
     tables = []
+    support = cp.loss_epoch_support(campaign)
+    partial = support[~support.complete_pass]
     width = cp.optimization_window(campaign)
     windows = np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target))
     for ax, base in zip(axes.flat, bases):
@@ -109,6 +112,10 @@ def plot_loss(campaign):
                     markersize=style.CURVE_MARKER_SIZE,
                     label=f"LR {lr:.0e} / {'frozen' if frozen else 'full'}")
             tables.append(curve.rename_axis("window_end").reset_index().assign(base=base, learning_rate=lr, frozen=frozen))
+            tail = partial[partial.base.eq(base) & partial.learning_rate.eq(lr) & partial.frozen.eq(frozen)]
+            if not tail.empty:
+                ax.scatter(tail.successful_updates, tail.train_loss, marker="x",
+                           color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))), s=style.POINT_SIZE)
         ax.set_title(base)
         ax.set_xlabel("Successful-update window end")
         ax.set_ylabel("Data loss")
@@ -120,49 +127,106 @@ def plot_loss(campaign):
         f"Window width is {width:,} updates, no finer than the typical epoch recording interval. "
         "Markers show observed windows; missing windows remain gaps. L2-SP is excluded. PD uses cross-entropy; "
         "LGD uses TabPFN bar-distribution NLL or TabICLv2 quantile pinball loss. Separate vertical scales "
-        "preserve each model's loss evolution; their numerical magnitudes are not comparable.",
-        {"Window means and counts": pd.concat(tables, ignore_index=True)})]
+        "preserve each model's loss evolution; their numerical magnitudes are not comparable. "
+        "Crosses mark epochs with incomplete table coverage and are not joined to the full-traversal loss curves.",
+        {"Window means and counts": pd.concat(tables, ignore_index=True),
+         **cp.loss_coverage_tables(campaign)})]
 
 
 def plot_schedule(campaigns):
-    """Pool measured schedules instead of repeating the same recipe for each base."""
-    tables = []
-    curves = []
+    """Show identical configured schedules once; retain measured epoch values separately."""
+    import torch
+    from omegaconf import OmegaConf
+    from src.train.loop import make_warmup_cosine_schedule
+
+    schedules = {}
+    measured = []
     for run in campaigns:
-        data = cp.optimization_curves(run, "lr_applied")
-        if data.empty:
-            continue
-        tables.append(data.assign(track=run.track.upper()))
-        for lr, recipe in data.groupby("learning_rate"):
-            curve = recipe.groupby("window_end").lr_applied.agg(
-                median="median", q25=lambda v: v.quantile(.25), q75=lambda v: v.quantile(.75), trials="size")
-            curves.append((run.track, lr, curve))
+        observed = cp.optimization_curves(run, "lr_applied")
+        if not observed.empty:
+            measured.append(observed.assign(track=run.track.upper()))
+        warmup = float(OmegaConf.select(run.cfg, "scheduler.warmup_fraction", default=.1))
+        floor = float(OmegaConf.select(run.cfg, "scheduler.min_lr_fraction", default=.05))
+        for lr in sorted(run.trials.learning_rate.unique()):
+            schedules.setdefault((run.target, warmup, floor, float(lr)), []).append(run.track.upper())
+    if not schedules:
+        return []
+    tracks = [t for t in ("PD", "LGD") if any(r.track.upper() == t for r in campaigns)]
+    fig, (ax,) = cp._subplots("Applied learning-rate schedule: " + " + ".join(tracks))
+    tables = []
+    for (target, warmup, floor, lr), owners in schedules.items():
+        optimizer = torch.optim.SGD([torch.nn.Parameter(torch.zeros(()))], lr=lr)
+        schedule = make_warmup_cosine_schedule(optimizer, total_steps=target,
+            warmup_fraction=warmup, min_lr_fraction=floor, schedule_type="warmup_cosine")
+        updates = np.unique(np.r_[np.linspace(1, target, min(target, style.SCHEDULE_POINTS)).astype(int),
+                                   min(2, target), min(target, max(1, round(target * warmup)) + 1)])
+        rates = np.array([lr * schedule.lr_lambdas[0](int(u)-1) for u in updates])
+        owners = [t for t in tracks if t in owners]
+        table = pd.DataFrame(dict(successful_update=updates, applied_lr=rates,
+            peak_lr=lr, tracks=" + ".join(owners), target=target,
+            warmup_fraction=warmup, min_lr_fraction=floor))
+        tables.append(table)
+        label = f"Peak LR {lr:.0e}"
+        if owners != tracks:
+            label += " / " + " + ".join(owners)
+        ax.plot(updates, np.where(rates > 0, rates, np.nan), label=label,
+                color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))))
+    ax.set_yscale("log")
+    ax.set_xlabel("Successful optimizer update")
+    ax.set_ylabel("Applied learning rate (log scale)")
+    ax.legend()
+    return [cp.Page("shared_schedule_" + "_".join(t.lower() for t in tracks), fig,
+        "Learning rates evaluated from the recorded campaign configuration using the training scheduler. "
+        "Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. "
+        "The rate for update u is the scheduler value before that update (index u minus one). "
+        "The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. "
+        "These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.",
+        {"Configured applied schedules": pd.concat(tables, ignore_index=True),
+         "Observed trial windows": pd.concat(measured, ignore_index=True) if measured else pd.DataFrame()})]
+
+
+def load_schedule_plan(experiment, track):
+    """Read the companion task's schedule without loading its training histories."""
+    cfg = cp.load_train_config(config_path=str(cp.config_path(experiment, track)))
+    return cp.Campaign(cfg, cp.planned_trials(cfg), pd.DataFrame(), pd.DataFrame(), pd.DataFrame())
+
+
+def plot_process_overview(campaign):
+    """Compact dynamics for fixed-recipe seed and sampling experiments."""
+    if len(campaign.trials[["learning_rate", "l2sp_lambda", "frozen"]].drop_duplicates()) != 1:
+        raise ValueError("Process overview requires one LR, L2-SP and adaptation recipe")
+    fields = {"train_loss": "Data loss", "grad_norm_mean": "Gradient norm",
+              "clipped_frac": "Clipped fraction", "weight_drift": "Relative weight drift"}
+    curves = {field: cp.optimization_curves(campaign, field) for field in fields}
+    curves = {field: data for field, data in curves.items() if not data.empty}
     if not curves:
         return []
-    tracks = list(dict.fromkeys(track for track, _, _ in curves))
-    # Merge tracks only when their recorded window statistics are identical.
-    signatures = {track: [(lr, curve.to_json()) for tr, lr, curve in curves if tr == track] for track in tracks}
-    same = len(tracks) > 1 and len({str(v) for v in signatures.values()}) == 1
-    panels = [tracks[0]] if same else tracks
-    fig, axes = cp._subplots("PD and LGD: applied learning rate" if len(tracks)>1 else f"{tracks[0].upper()}: applied learning rate", len(panels))
-    stats = []
-    for ax, track in zip(axes, panels):
-        for tr, lr, curve in curves:
-            if tr != track:
-                continue
-            color = style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr)))
-            ax.plot(curve.index, curve["median"], color=color, label=f"Peak LR {lr:.0e}")
-            ax.fill_between(curve.index.to_numpy(float), curve.q25.to_numpy(float), curve.q75.to_numpy(float), color=color, alpha=style.INTERVAL_ALPHA)
-            stats.append(curve.rename_axis("window_end").reset_index().assign(track="PD + LGD" if same else track.upper(), peak_lr=lr))
-        ax.set_title("PD + LGD" if same else track.upper())
-        ax.set_xlabel("Successful-update window end"); ax.set_ylabel("Applied learning rate")
-        ax.legend()
-    return [cp.Page("shared_schedule_" + "_".join(tracks), fig,
-        "Observed learning rates grouped by peak rate and task, pooling base models and adaptation modes. "
-        "Lines and shading give trial-window medians and interquartile ranges; unequal epoch sampling can create "
-        "small differences despite identical configured schedules. Identical task summaries share a panel. "
-        "Full window observations and counts are retained in the text summary.",
-        {"Schedule statistics": pd.concat(stats, ignore_index=True), "Observed trial windows": pd.concat(tables, ignore_index=True)})]
+    pages = []
+    for base in sorted(campaign.trials.base.unique()):
+        if not any(data.base.eq(base).any() for data in curves.values()):
+            continue
+        fig, axes = plt.subplots(2, 2, layout="constrained", figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO))
+        fig.suptitle(f"{campaign.track.upper()} / {base}: optimization dynamics")
+        tables = []
+        for ax, (field, data) in zip(axes.flat, curves.items()):
+            for mode, group in data[data.base.eq(base)].groupby("sampling"):
+                curve = group.groupby("window_end")[field].agg(median="median", trials="size")
+                width = cp.optimization_window(campaign)
+                curve = curve.reindex(np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target)))
+                ax.plot(curve.index, curve["median"], label=style.SAMPLING_LABELS[mode], color=style.SAMPLING_COLORS[mode])
+                tables.append(curve.rename_axis("window_end").reset_index().assign(metric=field, sampling=mode))
+            ax.set_xlabel("Successful-update window end")
+            ax.set_ylabel(fields[field])
+            ax.legend()
+        for ax in list(axes.flat)[len(curves):]:
+            ax.remove()
+        pages.append(cp.Page(f"process_{campaign.track}_{base}", fig,
+            "Optimization diagnostics at the fixed reference recipe. Each curve is the median of trial-window "
+            "means for one sampling protocol across available dataset partitions; counts are retained in the text. "
+            "Incomplete table-coverage loss epochs are tabulated separately; missing windows remain gaps. "
+            "Loss excludes L2-SP and retains the native objective scale, which is not comparable across architectures.",
+            {"Window medians and support": pd.concat(tables, ignore_index=True)}))
+    return pages
 
 
 def health_table(campaign):

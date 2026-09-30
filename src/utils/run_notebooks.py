@@ -6,8 +6,8 @@
     python -m src.utils.run_notebooks --only experiment1  the main-sweep notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
-    output CreditPFN/<experiment>/figures/<notebook>/*.pdf   written by the notebooks themselves
-    output CreditPFN/general/figures/CAPTIONS.md        ONE file, all notebooks, notebook order
+    output CreditPFN/figures/*.pdf                     notebook-prefixed PDFs
+    output CreditPFN/figures/CAPTIONS.md                all captions in notebook order
     output CreditPFN/general/All_Results.md             every notebook's printed summary, alphabetical
 
 SEPARATE PROCESSES, NOT THREADS: matplotlib's figure registry is global, so two notebooks in
@@ -38,10 +38,9 @@ from pathlib import Path
 from src.utils.paths import (
     REPO_ROOT,
     all_results_path,
-    captions_path,
-    figures_dir,
     notebooks_dir,
 )
+from src.visualize.paths import captions_path, figures_dir
 
 #: Per-cell kernel timeout, as enforced by nbclient. Model training belongs in scripts.
 DEFAULT_TIMEOUT = 1800
@@ -102,6 +101,13 @@ def _use_selector_event_loop() -> None:
         pass
 
 
+def _clear_code_outputs(notebook: dict) -> None:
+    for cell in notebook.get("cells", []):
+        if cell.get("cell_type") == "code":
+            cell["outputs"] = []
+            cell["execution_count"] = None
+
+
 def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
     """Execute one notebook IN A KERNEL and save it with its outputs.
 
@@ -122,15 +128,15 @@ def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
 
     _use_selector_event_loop()
 
-    out_dir = figures_dir(name)
+    from src.visualize.figures import clear, owned_pdfs
+    clear(name)  # also clear stale figures if execution fails before the setup cell
+    out_dir = figures_dir()
     out_dir.mkdir(parents=True, exist_ok=True)
     nb = nbformat.read(nb_path, as_version=4)
     # Clear ALL old outputs first. If an early cell fails, a later unexecuted summary must
     # not survive from a previous successful run and be published as the current result.
-    for cell in nb.cells:
-        if cell.get("cell_type") == "code":
-            cell["outputs"] = []
-            cell["execution_count"] = None
+    _clear_code_outputs(nb)
+    nbformat.write(nb, nb_path)  # cancellation cannot leave a previous successful summary
     client = NotebookClient(
         nb, timeout=timeout, kernel_name="python3",
         resources={"metadata": {"path": str(REPO_ROOT)}},   # so `from src...` resolves
@@ -148,7 +154,7 @@ def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
     # the 29 cells that worked, and the traceback is then visible where it happened.
     nbformat.write(nb, nb_path)
 
-    n_figs = len(list(out_dir.glob("*.pdf")))
+    n_figs = len(owned_pdfs(name))
     return NotebookResult(name, not error, time.time() - started, n_figs, error)
 
 # ---------------------------------------------------------------------------
@@ -259,6 +265,22 @@ def run_all(
     names = discover(notebooks)
     if not names:
         return []
+    from src.visualize.figures import clear, clear_collection
+    everything = discover()
+    for name in names:
+        path = notebooks_dir() / f"{name}.ipynb"
+        nb = json.loads(path.read_text(encoding="utf-8"))
+        _clear_code_outputs(nb)
+        path.write_text(json.dumps(nb, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        clear(name)
+    if set(names) == set(everything):
+        clear_collection(names)
+        all_results_path().unlink(missing_ok=True)
+    else:
+        # Even if cancelled before a worker starts, selected notebooks cannot
+        # retain previous summaries/captions beside their cleared outputs.
+        write_captions(everything)
+        write_all_results(everything)
     # Capped at 4: notebooks are numpy-heavy and each already uses several threads, so more
     # workers than this trades parallelism for cache thrashing.
     workers = max_workers or min(len(names), 4)

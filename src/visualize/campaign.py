@@ -507,15 +507,57 @@ def optimization_window(campaign: Campaign) -> int:
     return width
 
 
+def loss_epoch_support(campaign: Campaign) -> pd.DataFrame:
+    """Retain loss provenance without joining means over different table subsets."""
+    h = campaign.histories
+    if h.empty or "train_loss" not in h:
+        return pd.DataFrame()
+    data = h[["trial_name", "successful_updates", "train_loss"]].copy()
+    columns = [c for c in h if c.startswith("loss__")]
+    if columns:
+        data["observed_tables"] = h[columns].notna().sum(axis=1)
+        data["full_observed_tables"] = data.groupby("trial_name").observed_tables.transform("max")
+        data["complete_pass"] = data.observed_tables.eq(data.full_observed_tables)
+    else:
+        data["observed_tables"] = np.nan
+        data["full_observed_tables"] = np.nan
+        data["complete_pass"] = True  # coverage unknown; do not infer a missing table
+    data["train_loss"] = pd.to_numeric(data.train_loss, errors="coerce")
+    data = data[np.isfinite(data.train_loss) & data.successful_updates.gt(0)]
+    return data.merge(campaign.trials[["trial_name", *FACTORS]], on="trial_name", validate="many_to_one")
+
+
+def loss_coverage_tables(campaign: Campaign) -> dict[str, pd.DataFrame]:
+    """Report coverage and exceptions without duplicating the full epoch archive."""
+    data = loss_epoch_support(campaign)
+    if data.empty:
+        return {"Loss-coverage availability": pd.DataFrame()}
+    grouped = data.groupby(["trial_name", *FACTORS], dropna=False)
+    coverage = grouped.agg(
+        recorded_epochs=("successful_updates", "size"),
+        full_coverage_epochs=("complete_pass", "sum"),
+        fullest_observed_tables=("full_observed_tables", "max"),
+        min_observed_tables=("observed_tables", "min"),
+        last_update=("successful_updates", "max"),
+    ).reset_index()
+    coverage["partial_coverage_epochs"] = coverage.recorded_epochs - coverage.full_coverage_epochs
+    return {"Loss coverage by trial": coverage,
+            "Partial-coverage epoch losses": data[~data.complete_pass].reset_index(drop=True)}
+
+
 def optimization_curves(campaign: Campaign, field: str) -> pd.DataFrame:
     """Bound dense epoch histories without giving prolific histories more trial weight."""
     h = campaign.histories
     if h.empty or not {field,"successful_updates","trial_name"} <= set(h):
         return pd.DataFrame()
-    data = h[["trial_name","successful_updates",field]].copy()
+    if field == "train_loss":
+        support = loss_epoch_support(campaign)
+        data = support[support.complete_pass].copy()
+    else:
+        data = h[["trial_name","successful_updates",field]].copy()
+        data = data.merge(campaign.trials[["trial_name",*FACTORS]],on="trial_name",validate="many_to_one")
     data[field] = pd.to_numeric(data[field], errors="coerce")
     data = data[np.isfinite(data[field]) & data.successful_updates.gt(0)]
-    data = data.merge(campaign.trials[["trial_name",*FACTORS]],on="trial_name",validate="many_to_one")
     width = optimization_window(campaign)
     data["window_end"] = np.minimum(np.ceil(data.successful_updates/width)*width, campaign.target)
     return data.groupby(["trial_name",*FACTORS,"window_end"],dropna=False)[field].mean().reset_index()
@@ -556,7 +598,8 @@ def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
             "Epoch values are averaged within trial and window; lines and bands show the median and interquartile range "
             "across available trials. Counts are retained in the text summary. Gaps are not interpolated. "
             "The data loss excludes the separately reported L2-SP term; numerical loss scales differ across tasks, architectures "
-            "and target transforms, and a density NLL may be negative.",
+            "and target transforms, and a density NLL may be negative. Loss curves exclude epochs with fewer "
+            "observed tables than the same trial's fullest recorded traversal; these partial-coverage values are tabulated separately.",
             {"Window statistics": pd.concat(tables, ignore_index=True)}))
     return pages
 

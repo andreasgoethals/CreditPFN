@@ -1,23 +1,10 @@
-"""Saving figures. One folder per notebook, one PDF per figure, cleared before drawing.
+"""One flat PDF collection, with disjoint notebook ownership and paper captions.
 
-    output CreditPFN/<experiment>/figures/<notebook>/01_<name>.pdf     the figure — vector, for the paper
-    output CreditPFN/<experiment>/manifests/figures/<notebook>.json   what was drawn, in order, with captions
+PDFs: output CreditPFN/figures/<experiment>__<notebook>__<NN>_<name>.pdf
+Metadata: output CreditPFN/<experiment>/manifests/figures/<notebook>.json
 
-PDF ONLY, AT THE FINAL PUBLICATION WIDTH. The PDF is what the paper uses: vector, text embedded as TrueType so
-journal systems accept it, drawn at the width it will occupy on the publication page (see
-`src/visualize/style.py`). The notebook *displays* each figure inline, so a reader sees them by
-scrolling the notebook — there is no second raster copy on disk to go stale.
-
-THE NOTEBOOK SAVES ITS OWN FIGURES, not the runner: a runner that captures them on the notebook's
-behalf only works inside the runner, so *Run All* in Jupyter — where figures are actually iterated
-on — produces nothing, and the two paths silently disagree.
-
-THE FOLDER IS CLEARED ON CONSTRUCTION, before anything is drawn, and only ever this notebook's
-own: a stale PDF beside a fresh one is how a paper ends up with a figure that no longer matches
-the code that made it.
-
-THE NUMBERED PREFIX makes alphabetical order equal drawing order, so `CAPTIONS.md` is rebuildable
-from disk without re-executing anything.
+Constructing a saver removes that notebook's previous figures, including the old
+folder layout. Other notebooks and scientific evidence are never cleared by it.
 """
 
 from __future__ import annotations
@@ -27,15 +14,15 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from src.utils.paths import REPO_ROOT, figures_dir, manifests_dir
+from src.utils.paths import REPO_ROOT, EXPERIMENTS, manifests_dir
+from src.utils.paths import figures_dir as legacy_figures_dir
+from src.visualize.paths import figures_dir, figure_prefix
 
 #: Vector already, but heatmaps and scatter clouds inside a PDF rasterise, so it still needs a
 #: print DPI.
 DPI = 300
 
-#: The only things ever deleted from a notebook's folder. Anything else a person put there
-#: survives: a cleaner that removes what it does not recognise eventually removes something
-#: irreplaceable.
+# Only these generated files are removed from a legacy notebook folder.
 _OWNED = ("*.pdf", "_figures.json", "_stdout.txt")
 
 MANIFEST = "_figures.json"
@@ -51,7 +38,7 @@ def read_manifest(notebook: str) -> list[dict]:
     """What this notebook drew last time it ran, in order. `[]` if it never has."""
     path = manifest_path(notebook)
     if not path.is_file():
-        path = figures_dir(notebook) / MANIFEST  # read older downloads without rewriting them
+        path = legacy_figures_dir(notebook) / MANIFEST
     if not path.is_file():
         return []
     try:
@@ -63,23 +50,41 @@ def read_manifest(notebook: str) -> list[dict]:
 
 
 def clear(notebook: str) -> int:
-    """Delete this notebook's own figures and manifest; returns how many went.
-
-    Scoped to one folder, to the patterns above, and non-recursive, so it cannot reach a sibling
-    notebook's figures.
-    """
-    folder = figures_dir(notebook)
+    """Remove owned PDFs and metadata, preserving other notebooks and run evidence."""
     removed = 0
-    for pattern in _OWNED:
-        for path in folder.glob(pattern):
-            if path.is_file():
-                path.unlink()
-                removed += 1
+    for folder, patterns in ((figures_dir(), (figure_prefix(notebook) + "*.pdf",)),
+                             (legacy_figures_dir(notebook), _OWNED)):
+        for pattern in patterns:
+            for path in folder.glob(pattern):
+                _guard(path, folder)
+                if path.is_file():
+                    path.unlink()
+                    removed += 1
     path = manifest_path(notebook)
     if path.is_file():
         path.unlink()
         removed += 1
     return removed
+
+
+def clear_collection(notebooks: tuple[str, ...]) -> None:
+    """Full reruns also retire figures from notebooks that were renamed or removed."""
+    owners = set(notebooks)
+    for group in EXPERIMENTS:
+        root = manifests_dir(group) / "figures"
+        owners.update(group + "/" + p.relative_to(root).with_suffix("").as_posix()
+                      for p in root.rglob("*.json"))
+    for name in sorted(owners):
+        clear(name)
+    # Caption indexes are generated from scratch after execution. The old shared
+    # index is removed during migration; no training/result directories are visited.
+    for path in (figures_dir() / "CAPTIONS.md", legacy_figures_dir() / "CAPTIONS.md"):
+        if path.is_file():
+            path.unlink()
+
+
+def owned_pdfs(notebook: str) -> list[Path]:
+    return sorted(figures_dir().glob(figure_prefix(notebook) + "*.pdf"))
 
 
 class FigureSaver:
@@ -89,7 +94,7 @@ class FigureSaver:
 
         from src.visualize import figures, style
         style.apply()
-        save = figures.FigureSaver("example_analysis")   # clears its own folder here
+        save = figures.FigureSaver("example_analysis")   # clears its own PDFs here
 
         fig, ax = plt.subplots()
         ...
@@ -107,7 +112,8 @@ class FigureSaver:
 
     def __init__(self, notebook: str, *, clear_first: bool = True) -> None:
         self.notebook = notebook
-        self.folder = figures_dir(notebook)
+        self.prefix = figure_prefix(notebook)
+        self.folder = figures_dir()
         self.folder.mkdir(parents=True, exist_ok=True)
         manifest_path(notebook).parent.mkdir(parents=True, exist_ok=True)
         #: `clear_first=False` is for one case only: re-running a single cell mid-session without
@@ -125,7 +131,7 @@ class FigureSaver:
         return self.folder / f"{self.entries[-1]['stem']}.pdf" if self.entries else None
 
     def save(self, fig: plt.Figure, name: str, *, caption: str = "") -> None:
-        """Write `<NN>_<name>.pdf` and record the caption.
+        """Write a notebook-prefixed, numbered PDF and record the caption.
 
         The figure is left open so it still displays in Jupyter — that inline render is the only
         raster copy there is, and the interactive run has to look the same as the runner's.
@@ -138,7 +144,7 @@ class FigureSaver:
         username into a tracked file. Use `last_path` when a caller genuinely needs the path.
         """
         index = len(self.entries) + 1
-        stem = f"{index:02d}_{_slug(name)}"
+        stem = f"{self.prefix}{index:02d}_{_slug(name)}"
         path = self.folder / f"{stem}.pdf"
         _guard(path, self.folder)
         fig.savefig(path, format="pdf", dpi=DPI)

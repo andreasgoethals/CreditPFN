@@ -13,6 +13,8 @@ day is never rewritten.
 
 ## 30-09-2026
 
+- Collect all PDF figures in one folder, rebuild owned outputs on rerun, separate training/results notebooks, and clarify corpus exposure, partial-traversal losses and shared LR schedules.
+
 - Exclude encoded binary notebook images from the text privacy scan while retaining source, output text, SVG and metadata checks.
 - Standardize public dataset/model labels, balance figure pages, explain derived targets and replace repetitive pilot plots with compact, task-labelled figures and tables.
 - Rebuild all 11 notebooks with complete numerical summaries, paired publication views, read-only two-tier ZIP inputs and the user-selected ICML figure widths.

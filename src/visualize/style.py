@@ -30,6 +30,11 @@ WIDTH_THIRD = (WIDTH_FULL - 0.50) / 3
 #: and pushes every surrounding paragraph onto another page. Half a page is the practical ceiling,
 #: and `figsize` clamps to it rather than letting a tall panel grid silently overflow.
 MAX_HEIGHT = 4.80   # 122 mm
+BAR_LABEL_PAD = 3
+BAR_LIMIT_FACTOR = 1.35
+EXPOSURE_LABEL_PAD = 5
+EXPOSURE_LIMIT_FACTOR = 1.30
+SCHEDULE_POINTS = 400
 
 GOLDEN = 0.618      # height = width * GOLDEN, unless the data wants otherwise
 GRID_CMAP = "viridis"
@@ -342,7 +347,7 @@ def note(ax, text: str) -> None:
     """A single small footnote inside the axes — for "43 of 500 shown", nothing else.
 
     Figures in this project carry as little text as possible: the caption in
-    `output CreditPFN/general/figures/CAPTIONS.md` is where explanation belongs, because it travels with the
+    `output CreditPFN/figures/CAPTIONS.md` is where explanation belongs, because it travels with the
     figure into the manuscript and can be edited without re-running anything.
     """
     ax.text(0.99, 0.01, text, transform=ax.transAxes, ha="right", va="bottom",

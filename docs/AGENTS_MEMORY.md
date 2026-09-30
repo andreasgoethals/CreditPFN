@@ -12,6 +12,27 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
+## Notebook layout and training-process follow-up — 30-09-2026
+
+- User now requests all publication PDFs in one flat `output CreditPFN/figures/` folder. Experiment/notebook prefixes retain ownership; reruns clear generated PDFs/metadata, and full reruns also retire renamed notebooks' figures. Training records/results are preserved. Caption metadata remains experiment-scoped, with the shared index beside the PDFs. This supersedes the older per-notebook folder descriptions below.
+- Publication path helpers are isolated under `src/visualize/paths.py`, using the shared output root. The legacy helpers in runtime-fingerprinted `src/utils/paths.py` are retained for migration so active training plans are not invalidated. Training source identity stays `6d309cc1f4db21d3ff6897f7fb1f64bd69cfd395dbe6c6289b90f87506a3dd28`.
+- Corpus counts/missingness use zero-based bars; geometry combines both tasks. The sampling illustration combines one-sample/accumulate markers and labels the full-pass/equal-table *step-share* ratio, explicitly distinct from absolute updates and row exposure.
+- Short PD pilot loss drops at update 250 reflect an incomplete final traversal: three tables versus thirteen at update 247. Plots retain incomplete-coverage losses as separate crosses/tables rather than joining them into a full-corpus learning curve. Configured schedules use the actual training scheduler, share a logarithmic plot across identical tasks, and retain observed epoch rates separately.
+- Experiments 1–3 now separate training dynamics and endpoint results; monitor endpoints remain distinct from five-fold benchmarks. Experiments 2/3 have `01_training` and `02_results` notebooks. Resource diagnostics include update-window trajectories. No training implementation, scientific configuration, dataset, checkpoint, cluster job or Downloads file was changed.
+- Loss-coverage summaries retain per-trial counts and partial-pass exceptions, with every plotted window still tabulated; they do not duplicate the full epoch archive in notebook stdout. This reduced the executed LGD training notebook from 115 MB to 12 MB on this snapshot.
+- Rechecked experiment 2: 32 seed-43 trials; experiment 3: 96 protocol trials, both at 10k updates. Neither needs experiment 1 completion to train. Seed comparisons need matching main reference cells. Experiment 3 still needs production-cap full-pass/accumulation timing and resume evidence; the bounded first-partition launch described in VSC.md preserves its final scientific schedule.
+- Validation: **719 passed / 1 skipped** (unbuilt local data manifests), then **67 focused checks passed** after compacting coverage tables. All **13 notebooks** executed successfully, with affected notebooks rerun after final edits. All **303 PDFs** were visually reviewed; final checks found matching captions and verbatim summaries, no off-page text or proprietary names, and no PDFs outside the flat folder. `All_Results.md` is 14.15 MB. Automatic approval review blocked removing empty legacy figure directories and the temporary review images in `general/manifests/figure_review/`; manual cleanup remains. No install, training, submission, commit or push.
+
+**Tried:** Run the full suite after splitting the seed and sampling notebooks into training/results pairs.
+**Result:** The notebook-layout guard failed on its historical count of eleven notebooks.
+**Why:** The requested separation intentionally expands the collection to thirteen; the guard hard-coded the former count.
+**Instead:** Update the expected count while retaining AST checks for thin notebooks, matching saver ownership and final summaries; rerun the affected tests and full suite.
+
+**Tried:** Print the full loss-coverage archive in the training summary while adding partial-traversal diagnostics.
+**Result:** Hundreds of thousands of raw epoch rows bloated the notebook and shared summary.
+**Why:** Those rows duplicated stored training evidence beyond the window statistics and exceptions shown in the figures.
+**Instead:** Print complete plotted statistics, per-trial coverage counts and partial-coverage epoch values; keep full raw histories in their existing training files.
+
 ## Notebook presentation follow-up — 30-09-2026
 
 - The user downloaded both output tiers into the local repository. Analysis now reads that merged tree; no Downloads files were moved by the agent. Rechecked 16/16 null audits, the exact corrected 12 PD + 8 LGD short-pilot cohort, and 8/8 historical budget pilots. All selected pilots have finite recorded optimizer diagnostics and zero AMP/data skips; the historical budget-objective caveat remains necessary.

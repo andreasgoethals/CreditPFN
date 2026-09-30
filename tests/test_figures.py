@@ -1,6 +1,3 @@
-# Came with the template, and worth keeping: `src/visualize/figures.py` is identical in every
-# project. These pin the behaviour the layout depends on — PDF only, the folder cleared before
-# drawing, and only ever this notebook's own folder.
 """`src/visualize/figures.py` — the saver.
 
 Every test redirects `output CreditPFN/general/` into `tmp_path` via `isolated_output`, so the suite never
@@ -44,7 +41,7 @@ def test_filenames_are_numbered_in_drawing_order(isolated_output, fig) -> None:
     save(fig, "alpha", caption="c")
     save(fig, "beta", caption="c")
     stems = sorted(p.stem for p in save.folder.glob("*.pdf"))
-    assert stems == ["01_alpha", "02_beta"]
+    assert stems == ["general__nb__01_alpha", "general__nb__02_beta"]
 
 
 def test_the_folder_is_cleared_before_anything_is_drawn(isolated_output, fig) -> None:
@@ -52,10 +49,10 @@ def test_the_folder_is_cleared_before_anything_is_drawn(isolated_output, fig) ->
     matches the code that made it."""
     first = figures.FigureSaver("nb")
     first(fig, "old", caption="c")
-    assert (first.folder / "01_old.pdf").is_file()
+    assert (first.folder / "general__nb__01_old.pdf").is_file()
 
     figures.FigureSaver("nb")  # constructing it clears
-    assert not (first.folder / "01_old.pdf").exists()
+    assert not (first.folder / "general__nb__01_old.pdf").exists()
 
 
 def test_clearing_touches_only_this_notebook(isolated_output, fig) -> None:
@@ -63,7 +60,7 @@ def test_clearing_touches_only_this_notebook(isolated_output, fig) -> None:
     a = figures.FigureSaver("nb_a")
     a(fig, "keep", caption="c")
     figures.FigureSaver("nb_b")
-    assert (a.folder / "01_keep.pdf").is_file()
+    assert (a.folder / "general__nb_a__01_keep.pdf").is_file()
 
 
 def test_clearing_leaves_unrecognised_files_alone(isolated_output, fig) -> None:
@@ -125,7 +122,7 @@ def test_names_are_slugified_but_stay_readable(isolated_output, fig) -> None:
     save = figures.FigureSaver("nb")
     save(fig, "Target Distribution (LGD)", caption="c")
     pdf = save.last_path
-    assert pdf.stem == "01_target_distribution__lgd"
+    assert pdf.stem == "general__nb__01_target_distribution__lgd"
 
 
 def test_summary_flags_a_missing_caption(isolated_output, fig) -> None:
@@ -166,3 +163,40 @@ def test_fresh_figures_clear_own_metadata_without_touching_debug_logs(isolated_o
     assert not figures.manifest_path("current").exists()
     assert (logs_dir() / "notebook_current.log").exists()
     assert figures.manifest_path("other").exists() and (logs_dir() / "notebook_other.log").exists()
+
+
+def test_flat_collection_migration_and_notebook_ownership(isolated_output, fig):
+    from src.utils.paths import figures_dir as legacy, results_dir
+    a = figures.FigureSaver("experiment1/01_training")
+    b = figures.FigureSaver("experiment2/01_training")
+    a(fig, "same", caption="A.")
+    b(fig, "same", caption="B.")
+    assert a.folder == b.folder and a.last_path != b.last_path
+    assert a.folder.name == "figures" and a.folder.parent.name == "output CreditPFN"
+    old = legacy("experiment1/01_training")
+    old.mkdir(parents=True)
+    (old / "01_old.pdf").write_text("old")
+    evidence = results_dir(experiment="experiment1") / "keep.csv"
+    evidence.parent.mkdir(parents=True, exist_ok=True)
+    evidence.write_text("measurement")
+    figures.clear("experiment1/01_training")
+    assert not a.last_path.exists() and not (old / "01_old.pdf").exists()
+    assert b.last_path.exists() and evidence.read_text() == "measurement"
+    figures.clear_collection(("experiment1/01_training",))
+    assert not b.last_path.exists()  # retired notebook's metadata identifies its files
+    assert evidence.exists()
+
+
+def test_shared_folder_names_cannot_alias_other_notebooks(isolated_output, fig):
+    from src.visualize.paths import figure_prefix
+    with pytest.raises(ValueError):
+        figure_prefix("experiment1/a__b")
+    with pytest.raises(ValueError):
+        figures.clear("../elsewhere")
+    assert figure_prefix("experiment1/a/b") != figure_prefix("experiment1/a_b")
+    parent = figures.FigureSaver("experiment1/a")
+    nested = figures.FigureSaver("experiment1/a/b")
+    parent(fig, "same", caption="Parent.")
+    nested(fig, "same", caption="Nested.")
+    figures.clear("experiment1/a")
+    assert not parent.last_path.exists() and nested.last_path.exists()

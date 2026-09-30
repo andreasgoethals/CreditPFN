@@ -176,7 +176,8 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     still keeps the figures out of the repository. `run_all` is exactly these three calls
     plus the pool, and each is covered.
     """
-    from src.utils.paths import REPO_ROOT, figures_dir
+    from src.utils.paths import REPO_ROOT
+    from src.visualize.paths import figures_dir
 
     nb_dir = isolated_output / "notebooks"
     monkeypatch.setattr(rn, "notebooks_dir", lambda: nb_dir)
@@ -198,15 +199,16 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     result = rn.run_one("smoke")
     assert result.ok, result.error
     assert result.n_figures == 1
-    folder = figures_dir("smoke")
-    assert (folder / "01_line.pdf").is_file()
+    folder = figures_dir()
+    assert (folder / "general__smoke__01_line.pdf").is_file()
     assert all(p.suffix == ".pdf" for p in folder.iterdir())
     from src.utils.paths import logs_dir
     assert not logs_dir().exists()
     saved = json.loads((nb_dir / "smoke.ipynb").read_text(encoding="utf-8"))
     assert saved["cells"][0]["execution_count"] == 1
 
-    from src.utils.paths import all_results_path, captions_path
+    from src.utils.paths import all_results_path
+    from src.visualize.paths import captions_path
 
     rn.write_captions(("smoke",))
     rn.write_all_results(("smoke",))
@@ -280,3 +282,27 @@ def test_failed_rerun_cannot_publish_a_previous_success(isolated_output, noteboo
     summary = rn.write_all_results(("fails",)).read_text(encoding="utf-8")
     assert "OLD SUCCESS" not in summary
     assert "Notebook execution failed" in summary
+
+
+def test_full_run_invalidates_old_outputs_before_starting_workers(isolated_output, notebook_folder, monkeypatch):
+    from src.visualize.figures import FigureSaver
+    import matplotlib.pyplot as plt
+    save_summary(notebook_folder / "nb.ipynb", "OLD SUCCESS")
+    fig, ax = plt.subplots()
+    ax.plot([0, 1], [0, 1])
+    saver = FigureSaver("nb")
+    saver(fig, "old", caption="Old caption.")
+    plt.close(fig)
+    rn.write_all_results(("nb",))
+    rn.write_captions(("nb",))
+
+    def stop_before_workers(**kwargs):
+        assert not rn.all_results_path().exists()
+        assert not rn.captions_path().exists()
+        assert not saver.last_path.exists()
+        assert rn._notebook_summary("nb") == ""
+        raise RuntimeError("cancelled before workers")
+
+    monkeypatch.setattr(rn, "ProcessPoolExecutor", stop_before_workers)
+    with pytest.raises(RuntimeError, match="cancelled before workers"):
+        rn.run_all()

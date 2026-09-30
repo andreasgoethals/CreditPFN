@@ -6,6 +6,7 @@ from src.visualize.inputs import read_csv
 import numpy as np
 import pandas as pd
 import json
+import matplotlib.pyplot as plt
 
 from src.visualize import style
 from src.visualize.campaign import Page, _subplots
@@ -17,6 +18,11 @@ from src.utils.consolidate_output import matches_run
 def load(campaign, kind):
     if kind not in ("parameters", "resources"):
         raise ValueError(kind)
+    cache = getattr(campaign, "_diagnostic_cache", None)
+    if cache is None:
+        cache = campaign._diagnostic_cache = {}
+    if kind in cache:
+        return cache[kind].copy()
     paths = _resolve_paths(campaign.cfg)
     frame = load_consolidated(paths["run_name"], f"{kind}_{campaign.track}")
     if frame is None:
@@ -28,9 +34,55 @@ def load(campaign, kind):
                 data["trial_name"] = path.name.removesuffix(suffix)
                 frames.append(data)
         frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    if frame.empty:
-        return frame
-    return frame.merge(campaign.trials[["trial_name", "base", "frozen"]], on="trial_name", validate="many_to_one")
+    if not frame.empty:
+        frame = frame.merge(campaign.trials[["trial_name", "base", "frozen", "sampling"]],
+                            on="trial_name", validate="many_to_one")
+    cache[kind] = frame
+    return frame.copy()
+
+
+def plot_resource_curves(campaign):
+    """Device counters along training, one trial contribution per update window."""
+    from src.visualize.campaign import optimization_window
+    data = load(campaign, "resources")
+    if data.empty:
+        return []
+    data = data[data.phase.eq("training") & data.successful_updates.gt(0)].copy()
+    width = optimization_window(campaign)
+    data["window_end"] = np.minimum(np.ceil(data.successful_updates / width) * width, campaign.target)
+    fields = {"gpu_utilization_percent": "Utilization (%)", "power_watts": "Power (W)",
+              "device_memory_used_mib": "Memory in use (MiB)"}
+    fields = {k: v for k, v in fields.items() if k in data and pd.to_numeric(data[k], errors="coerce").notna().any()}
+    if not fields:
+        return []
+    pages = []
+    factor = "sampling" if data.sampling.nunique() > 1 else "frozen"
+    for base, group in data.groupby("base"):
+        fig, axes = plt.subplots(len(fields), 1, sharex=True, squeeze=False, layout="constrained",
+                                 figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO))
+        fig.suptitle(f"{campaign.track.upper()} / {base}: device counters during training")
+        tables = []
+        for ax, (column, label) in zip(axes.flat, fields.items()):
+            values = group.assign(**{column: pd.to_numeric(group[column], errors="coerce")})
+            per_trial = values.groupby(["trial_name", factor, "window_end"])[column].median().reset_index()
+            for arm, observations in per_trial.groupby(factor):
+                curve = observations.groupby("window_end")[column].agg(median="median", count="count")
+                windows = np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target))
+                curve = curve.reindex(windows)
+                name = style.SAMPLING_LABELS[arm] if factor == "sampling" else ("Frozen" if arm else "Full")
+                color = style.SAMPLING_COLORS[arm] if factor == "sampling" else style.color("frozen" if arm else "full")
+                ax.plot(curve.index, curve["median"], label=name, color=color)
+                tables.append(curve.rename_axis("window_end").reset_index().assign(metric=column, arm=name))
+            ax.set_ylabel(label)
+        axes.flat[0].legend()
+        axes.flat[-1].set_xlabel("Successful-update window end")
+        pages.append(Page(f"resource_curves_{campaign.track}_{base}", fig,
+            f"Sampled training-phase device counters in {width:,}-update windows. Each line is the median of "
+            "within-trial medians for an adaptation or sampling arm; learning-rate and anchoring recipes are pooled. "
+            "Counts accompany every window in the text summary. Missing windows remain gaps; changing support "
+            "can affect the curve. Counters are device-level samples, not integrated energy or billed allocation time.",
+            {"Window medians and trial counts": pd.concat(tables, ignore_index=True)}))
+    return pages
 
 
 def summary(campaign):

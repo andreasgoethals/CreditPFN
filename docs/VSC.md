@@ -22,10 +22,11 @@ The user requires `output CreditPFN/`, with the experiment layer below it. The n
 
 ```text
 DATA/CreditPFN/output CreditPFN/
+  figures/                     flat local publication PDF collection
+    CAPTIONS.md                shared caption index after local analysis
   general/
     logs/                       data preparation and general maintenance
     manifests/scheduler/        shared per-controller capacity pool, cluster locks
-    figures/CAPTIONS.md         shared caption index after local analysis
     All_Results.md              shared notebook summaries after local analysis
   experiment0/                  likewise experiment1, experiment2, experiment3
     logs/                       one file per job/attempt, including setup and exit status
@@ -35,7 +36,6 @@ DATA/CreditPFN/output CreditPFN/
       resolved/                 effective entry-point configurations
       workflow/                 experiment-0 stage state and audit receipts
       figures/                  local notebook caption metadata
-    figures/<notebook>/         local publication PDFs
 
 PROJECT/CreditPFN/
   data/{raw,processed,retention}/
@@ -267,6 +267,8 @@ Scheduler queries and submissions have a 45-second response timeout. A queue-que
 After the accepted experiment-0 audits, prepare immutable plans on CPU nodes for `config/experiment{1,2,3}/{pd,lgd}.yaml`. The pilot-informed research budget is **10,000 successful updates**, with measurements at **0/250/1k/2.5k/5k/10k** and a 4,000-epoch safety rail. Counts are **512 main, 32 additional seed, 96 sampling**. Experiment 0 adds 72 training arms across both parts, including the 16 small recovery arms. Never count a requeued segment as another scientific trial. A pre-existing 5k research plan is incompatible: preparation must reject it; do not overwrite it or relabel any weights. Preserve accepted experiment-0 evidence and use a new run identity if an incompatible research plan already exists.
 
 Experiments 2 and 3 can be submitted before experiment 1 finishes: each starts from original base weights and has separate output/weight directories. Only experiment-2 analysis waits for its corresponding seed-42 reference cells. Keep source and all six prepared plans fixed while overlapping work runs. The shared pool defaults to 16 concurrent tasks per controller across these launchers, not 16 for each experiment; dependencies may put later submissions behind earlier arrays. Overlap shares the allocation rather than multiplying capacity. Before the sampling grid, profile its full-pass/accumulation paths, including a saved segment, at production caps; the one-sample budget pilots do not establish their time per update.
+
+A bounded experiment-3 start can use its first partition as real research work: after preparing the full plan, set `SPLITS=1 SEGMENT_MINUTES=20 CREDITPFN_AUTO_REQUEUE=1 CREDITPFN_MAX_REQUEUES=1 STAGES=train`. This submits 12 trials per track (all bases and all three sampling modes) with 30-minute allocations, at most two allocations per task through the application requeue mechanism. The second allocation exercises recovery where the first saved an interruption. The scientific schedule remains 10,000 updates. If two segments do not finish a trial, exit 75 with an `INTERRUPTED` outcome is expected: inspect progress, resume evidence, timing and logs before continuing. Scheduler-initiated retries can differ from this application limit. Do not launch the remaining partitions until these checks pass; `SPLIT_START=1` later selects partitions 1–3. Resume unfinished first-partition work separately, only after its jobs have stopped. No new pilot run identity or altered sampling policy is needed.
 
 Example main-PD preparation:
 

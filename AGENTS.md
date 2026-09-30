@@ -83,8 +83,11 @@ Newest first, dates `DD-MM-YYYY`.
   live in `notebooks/00_general/`. Preserve existing run identities when moving config files.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
-- Save through `src/visualize/figures.FigureSaver`: **PDF only**, into that notebook's own
-  folder, which it clears before drawing. The notebook displays each figure inline.
+- Save through `src/visualize/figures.FigureSaver`: **PDF only**, all in
+  `output CreditPFN/figures/`. Experiment/notebook filename prefixes identify ownership;
+  each notebook clears only its own files before drawing. Full reruns also retire figures
+  from renamed notebooks. This flat collection deliberately overrides the template's folders.
+  The notebook displays each figure inline.
 - Use `style.figsize(style.WIDTH_FULL)` or `WIDTH_HALF`: every figure is drawn at the width it
   will occupy in the **ICML paper** (6.75 inches full width, 3.25 inches single column), and never
   rescaled afterwards. The user explicitly chose the actual ICML US Letter geometry over the
@@ -120,6 +123,12 @@ anything is finished.
   Local notebook stdout stays in the executed `.ipynb`, with its final summary in
   `output CreditPFN/general/All_Results.md`; no duplicate notebook logs or locks. Caption metadata remains in
   `output CreditPFN/<experiment>/manifests/figures/`. Give VSC commands in ordinary messages, one command per code block.
+- Publication paths live in `src/visualize/paths.py`, using the output root from
+  `src/utils/paths.py`. Its legacy figure helpers remain for migration: changing that
+  runtime-fingerprinted file during active training would invalidate prepared plans.
+- Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
+  cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
+  from five-fold evaluation. Experiments 1–3 follow this separation.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and
   method authority: descriptive goals, partitions, sampling, adaptation and limitations.
   `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one

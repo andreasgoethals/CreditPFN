@@ -72,14 +72,17 @@ def inventory_summary(data: pd.DataFrame, stage: str) -> str:
 
 
 def plot_geometry(data: pd.DataFrame, stage: str) -> list[Page]:
-    fig, axes = _subplots(f"{stage}: corpus geometry", 2)
-    for ax, track in zip(axes, ("pd", "lgd")):
+    fig, (ax,) = _subplots(f"{stage}: corpus geometry")
+    for track in ("pd", "lgd"):
         group = data[data.track.eq(track)].dropna(subset=["rows", "features"])
-        ax.scatter(group.rows, group.features, s=style.POINT_SIZE, color=style.color(track))
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xlabel("Rows (log scale)"); ax.set_ylabel("Predictors (log scale)")
-        ax.set_title(f"{track.upper()} / {len(group)} datasets")
-    return [Page("corpus_geometry", fig, f"Predictor count versus row count in the {stage.lower()} corpus, on logarithmic axes. Each point is one available dataset; PD and LGD use separate panels. Raw columns exclude the registered target or the recognized final label column in German Credit, but can include identifiers later removed during cleaning.")]
+        ax.scatter(group.rows, group.features, s=style.POINT_SIZE, color=style.color(track),
+                   marker=style.SEED_MARKERS[int(track == "lgd")], label=f"{track.upper()} ({len(group)} datasets)")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("Rows (log scale)"); ax.set_ylabel("Predictors (log scale)")
+    ax.legend()
+    return [Page("corpus_geometry", fig, f"Predictor count versus row count in the {stage.lower()} corpus, on logarithmic axes. Each point is one available dataset; color and marker distinguish PD and LGD on common axes. "
+        + ("Raw columns exclude the registered target or the recognized final label column in German Credit, but can include identifiers later removed during cleaning." if stage == "Raw" else "Predictor counts exclude the target after registered preprocessing."),
+        {"Dataset geometry": data[["track", "dataset_id", "rows", "features"]]})]
 
 
 def plot_profiles(data: pd.DataFrame, stage: str) -> list[Page]:
@@ -90,19 +93,22 @@ def plot_profiles(data: pd.DataFrame, stage: str) -> list[Page]:
             page = group.iloc[start:stop]
             fig, axes = _subplots(f"{stage} / {track.upper()} / datasets {start+1}–{start+len(page)}", 2, sharey=True)
             y = np.arange(len(page))
-            axes[0].scatter(page.rows, y, color=style.color(track), s=style.POINT_SIZE)
-            axes[0].set_xscale("log"); axes[0].set_xlabel("Rows (log scale)")
+            bars = axes[0].barh(y, page.rows, color=style.color(track), height=style.BAR_HEIGHT)
+            axes[0].bar_label(bars, labels=[f"{int(v):,}" if pd.notna(v) else "Unavailable" for v in page.rows],
+                              padding=style.BAR_LABEL_PAD, fontsize=style.ANNOTATION_SIZE)
+            axes[0].set_xlabel("Rows")
             available = group.rows.dropna()
             if not available.empty:
-                axes[0].set_xlim(available.min()*.8, available.max()*1.2)
+                axes[0].set_xlim(0, available.max()*style.BAR_LIMIT_FACTOR)
             axes[0].set_yticks(y, page.dataset_id)
             axes[0].invert_yaxis()
-            axes[1].barh(y, page.missing*100, color=style.color(track))
+            axes[1].barh(y, page.missing*100, color=style.color(track), height=style.BAR_HEIGHT)
             axes[1].set_xlabel("Missing cells (%)"); axes[1].set_xlim(0,100)
             pages.append(Page(f"dataset_profiles_{track}_{number}", fig,
                 f"Row counts and missing-cell percentages for {len(page)} {track.upper()} datasets, sorted by decreasing size and continued across pages. "
                 + ("Raw missingness uses all delivered columns, including a target column when present." if stage == "Raw" else "Processed missingness uses predictor cells only, excluding the target.")
-                + " Missing files remain unknown."))
+                + " Both bar axes start at zero; count labels retain the sizes of small tables. Missing files remain unknown.",
+                {"Dataset sizes and missingness": page[["dataset_id", "rows", "missing"]]}))
     return pages
 
 
@@ -223,6 +229,7 @@ def planned_exposure(data: pd.DataFrame, row_cap=10000) -> pd.DataFrame:
     d["full_pass_step_share"] = d.chunks / d.groupby("track").chunks.transform("sum")
     d["one_sample_step_share"] = 1/d.groupby("track").rows.transform("count")
     d["accumulate_step_share"] = d.one_sample_step_share
+    d["full_pass_share_ratio"] = d.full_pass_step_share / d.one_sample_step_share
     d["illustrative_row_cap"] = row_cap
     return d
 
@@ -233,15 +240,29 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
         group = group.sort_values("rows",ascending=False)
         for number, (start, stop) in enumerate(style.page_slices(len(group), style.SIMPLE_PAGE_ROWS), 1):
             page = group.iloc[start:stop]
-            fig, axes = _subplots(f"{track.upper()}: planned table weight per visit")
+            fig, axes = _subplots(f"{track.upper()}: optimizer-step shares by sampling protocol")
             y = np.arange(len(page))
-            for offset,mode in enumerate(style.SAMPLING_LABELS):
-                axes[0].scatter(page[f"{mode}_step_share"], y+(offset-1)*.16, marker=style.SEED_MARKERS[offset], color=style.SAMPLING_COLORS[mode],label=style.SAMPLING_LABELS[mode],s=style.POINT_SIZE)
+            equal, full = page.one_sample_step_share, page.full_pass_step_share
+            axes[0].hlines(y, np.minimum(equal, full), np.maximum(equal, full), color=style.color("reference"))
+            for mode, label in (("one_sample", "One sample / accumulate"), ("full_pass", "Full pass")):
+                axes[0].scatter(page[f"{mode}_step_share"], y, marker=style.SEED_MARKERS[int(mode == "full_pass")],
+                                color=style.SAMPLING_COLORS[mode], label=label, s=style.POINT_SIZE)
+            for pos, (_, row) in enumerate(page.iterrows()):
+                axes[0].annotate(f"{row.full_pass_share_ratio:.2f}×",
+                    (max(row.one_sample_step_share, row.full_pass_step_share), pos),
+                    xytext=(style.EXPOSURE_LABEL_PAD, 0), textcoords="offset points",
+                    va="center", fontsize=style.ANNOTATION_SIZE)
             axes[0].set_yticks(y,page.dataset_id)
+            axes[0].invert_yaxis()
             axes[0].set_xlabel("Share of optimizer steps in one complete corpus traversal")
             maximum = group[[f"{mode}_step_share" for mode in style.SAMPLING_LABELS]].max().max()
-            axes[0].set_xlim(0, maximum*1.05); axes[0].legend()
+            axes[0].set_xlim(0, maximum*style.EXPOSURE_LIMIT_FACTOR)
+            axes[0].legend(loc="lower center", bbox_to_anchor=(.5, 1), ncol=2)
             pages.append(Page(f"planned_exposure_{track}_{number}",fig,
                 f"Illustrative optimizer-step shares using a {int(page.illustrative_row_cap.iloc[0]):,}-row batch cap, all registered processed tables and no skipped updates. "
-                "One-sample and accumulation assign one update per table visit; full pass assigns one per disjoint chunk. Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal."))
+                "One sample and accumulation share one marker because both assign one update per table visit; full pass assigns one per disjoint chunk. "
+                "Labels give full-pass step share divided by equal-table step share, not the ratio of total update counts. "
+                "Accumulation consumes all chunks whereas one sample consumes one; equal step shares therefore do not imply equal row exposure. "
+                "Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal.",
+                {"Step shares and full-pass share ratios": page[["dataset_id", "rows", "chunks", "one_sample_step_share", "full_pass_step_share", "accumulate_step_share", "full_pass_share_ratio"]]}))
     return pages
