@@ -199,21 +199,34 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     result = rn.run_one("smoke")
     assert result.ok, result.error
     assert result.n_figures == 1
-    folder = figures_dir()
+    folder = figures_dir() / "00_general"
     assert (folder / "general__smoke__01_line.pdf").is_file()
-    assert all(p.suffix == ".pdf" for p in folder.iterdir())
+    assert all(p.suffix == ".pdf" for p in folder.iterdir() if p.is_file())
     from src.utils.paths import logs_dir
     assert not logs_dir().exists()
     saved = json.loads((nb_dir / "smoke.ipynb").read_text(encoding="utf-8"))
     assert saved["cells"][0]["execution_count"] == 1
 
-    from src.utils.paths import all_results_path
-    from src.visualize.paths import captions_path
+    from src.visualize.paths import all_results_path, captions_path
 
     rn.write_captions(("smoke",))
     rn.write_all_results(("smoke",))
     assert "A line from (0,0) to (1,1)." in captions_path().read_text(encoding="utf-8")
     assert "SMOKE SUMMARY: 1 figure" in all_results_path().read_text(encoding="utf-8")
+
+
+def test_root_summary_retires_legacy_copy_and_folder_order(isolated_output, notebook_folder):
+    from src.utils.paths import all_results_path as legacy
+    legacy().parent.mkdir(parents=True, exist_ok=True)
+    legacy().write_text("OLD SUMMARY")
+    names = ("experiment2/01_training", "00_general/02_processed", "experiment1/02_results")
+    for name in names:
+        save_summary(notebook_folder / (name + ".ipynb"), "SUMMARY " + name)
+    path = rn.write_all_results(names)
+    assert path.parent.name == "output CreditPFN"
+    assert not legacy().exists()
+    text = path.read_text(encoding="utf-8")
+    assert text.index("## 00_general/") < text.index("## experiment1/") < text.index("## experiment2/")
 
 
 def test_summaries_only_is_not_destructive(isolated_output, notebook_folder) -> None:
@@ -306,3 +319,82 @@ def test_full_run_invalidates_old_outputs_before_starting_workers(isolated_outpu
     monkeypatch.setattr(rn, "ProcessPoolExecutor", stop_before_workers)
     with pytest.raises(RuntimeError, match="cancelled before workers"):
         rn.run_all()
+
+
+def test_invalid_worker_count_preserves_previous_outputs(isolated_output, notebook_folder):
+    save_summary(notebook_folder / "nb.ipynb", "OLD SUCCESS")
+    with pytest.raises(ValueError, match="workers"):
+        rn.run_all(max_workers=0)
+    assert rn._notebook_summary("nb") == "OLD SUCCESS"
+
+
+def test_previous_runtime_ignores_missing_or_invalid_timestamps():
+    notebook = {"cells": [{"metadata": {"execution": timing}} for timing in (
+        {"iopub.status.busy": "2026-10-01T10:00:00Z",
+         "iopub.status.idle": "2026-10-01T10:00:12Z"},
+        {}, {"iopub.status.busy": "invalid"},
+    )]}
+    assert rn._previous_seconds(notebook) == 12
+
+
+@pytest.mark.slow
+def test_two_real_workers_overlap_and_report_progress(isolated_output, notebook_folder, capsys):
+    """Use actual spawned workers/kernels, not a thread-pool replacement."""
+    import sys
+    for name in ("a", "b"):
+        make_notebook(notebook_folder / f"{name}.ipynb", [
+            "import os, sys, time, json, numpy\n"
+            "from threadpoolctl import threadpool_info\n"
+            "started = time.time()\n"
+            "time.sleep(4)\n"
+            "print(json.dumps(dict(start=started, end=time.time(), pid=os.getpid(), "
+            "python=sys.executable, threads=os.environ['OPENBLAS_NUM_THREADS'], "
+            "native_threads=[pool['num_threads'] for pool in threadpool_info()])))",
+        ])
+    results = rn.run_all(max_workers=2, progress_interval=.5)
+    assert all(result.ok for result in results), [r.error for r in results]
+    saved = [json.loads(rn._notebook_summary(name)) for name in ("a", "b")]
+    assert saved[0]["pid"] != saved[1]["pid"]
+    assert max(row["start"] for row in saved) < min(row["end"] for row in saved)
+    assert all(row["python"].casefold() == sys.executable.casefold() for row in saved)
+    assert all(row["threads"] == "1" for row in saved)
+    assert all(row["native_threads"] and set(row["native_threads"]) == {1} for row in saved)
+    output = capsys.readouterr().out
+    for marker in ("[start] a", "[start] b", "cell 1/1", "[progress]", "[finished 2/2]"):
+        assert marker in output
+
+
+def test_failed_notebook_does_not_stop_other_workers(isolated_output, notebook_folder, capsys):
+    make_notebook(notebook_folder / "a_fails.ipynb", ["raise ValueError('expected failure')"])
+    make_notebook(notebook_folder / "b_ok.ipynb", ["print('CURRENT SUCCESS')"])
+    results = rn.run_all(max_workers=2)
+    assert [result.ok for result in results] == [False, True]
+    assert "expected failure" in results[0].error
+    assert "CURRENT SUCCESS" in rn.all_results_path().read_text(encoding="utf-8")
+    assert "[finished 2/2]" in capsys.readouterr().out
+
+
+def test_expensive_notebooks_start_first_but_reports_stay_sorted(isolated_output, notebook_folder, monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    calls = []
+    for name, seconds in (("a_short", 5), ("b_long", 30)):
+        path = notebook_folder / f"{name}.ipynb"
+        make_notebook(path, ["print('summary')"])
+        notebook = json.loads(path.read_text(encoding="utf-8"))
+        notebook['cells'][0]['metadata']['execution'] = {
+            "iopub.status.busy": "2026-10-01T10:00:00Z",
+            "iopub.status.idle": f"2026-10-01T10:00:{seconds:02d}Z",
+        }
+        path.write_text(json.dumps(notebook), encoding="utf-8")
+
+    def fake_run(name, timeout, **kwargs):
+        calls.append(name)
+        return rn.NotebookResult(name, True, 0, 0)
+
+    monkeypatch.setattr(rn, "ProcessPoolExecutor", ThreadPoolExecutor)
+    monkeypatch.setattr(rn, "run_one", fake_run)
+    results = rn.run_all(max_workers=1)
+    assert calls == ["b_long", "a_short"]
+    assert [result.name for result in results] == ["a_short", "b_long"]
+    summary = rn.all_results_path().read_text(encoding="utf-8")
+    assert summary.index("## a_short") < summary.index("## b_long")

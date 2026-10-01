@@ -347,6 +347,7 @@ def test_eval_wrapper_forwards_phase_partition_and_packing(tmp_path, track):
     scripts.mkdir(parents=True)
     for name in (f"eval_{track}.slurm", "_eval_job.sh", "_job_log.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    (scripts / "_eval_cache.sh").write_text('share_eval_controls() { :; }\n', encoding="utf-8")
     (scripts / "_activate_env.sh").write_text('python() { printf "ARG:%s\\n" "$@"; }\n',
                                              encoding="utf-8")
     result = subprocess.run([bash, (scripts / f"eval_{track}.slurm").as_posix()],

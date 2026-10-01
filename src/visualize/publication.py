@@ -67,7 +67,7 @@ def plot_manifest_monitors(campaign):
     if not data.empty and data.learning_rate.eq(0).all():
         data["monitor_change"] = data.final_test_metric - data.baseline_test_metric
         matrix = data.pivot_table(index="base", columns="frozen", values="monitor_change", aggfunc="mean")
-        matrix = matrix.rename(columns={False: "Full updates", True: "Frozen backbone"})
+        matrix = matrix.rename(columns={False: style.adaptation_label(False), True: style.adaptation_label(True)})
         fig = cp._heatmap(matrix, f"{campaign.track.upper()}: null-control endpoint changes",
                          label=f"Endpoint minus initial {campaign.metric}")
         return [cp.Page(f"null_manifest_{campaign.track}", fig,
@@ -92,7 +92,7 @@ def plot_manifest_monitors(campaign):
                     color=style.color("reference"), linestyle=":")
             ax.set_xlim(lower-padding, upper+padding); ax.set_ylim(lower-padding, upper+padding)
             ax.set_xlabel("Initial monitor score")
-            ax.set_title("Frozen backbone" if frozen else "Full updates")
+            ax.set_title(style.adaptation_label(frozen))
             if not arm.empty:
                 ax.legend()
         axes[0].set_ylabel("Endpoint monitor score")
@@ -137,7 +137,7 @@ def plot_recipe_distributions(data, metric, *, prefix="effects"):
                            color=style.color("reference"))
             ax.set_yticks(range(len(arm)), [cp._recipe_label(lr, lam) for lr, lam in zip(arm.learning_rate, arm.l2sp_lambda)])
             ax.axvline(0, color=style.color("reference"), linestyle=":")
-            ax.set_title("Frozen backbone" if frozen else "Full updates")
+            ax.set_title(style.adaptation_label(frozen))
             ax.set_xlabel(effect_label(metric))
         axes[0].set_ylabel("Peak LR / L2-SP")
         pages.append(cp.Page(f"{prefix}_distribution_{base}_{sampling}", fig,
@@ -167,7 +167,7 @@ def plot_retention_tradeoff(campaign):
                            marker=style.PANEL_MARKERS[i % 4], s=style.POINT_SIZE, alpha=style.POINT_ALPHA)
             ax.axhline(0, color=style.color("reference"), linestyle=":")
             ax.axvline(0, color=style.color("reference"), linestyle=":")
-            ax.set_title("Frozen backbone" if frozen else "Full updates")
+            ax.set_title(style.adaptation_label(frozen))
             ax.set_xlabel("Credit: "+effect_label(campaign.metric)); ax.legend()
         axes[0].set_ylabel("Non-credit: "+effect_label(campaign.metric))
         pages.append(cp.Page(f"retention_tradeoff_{campaign.track}_{base}", fig,
@@ -190,7 +190,7 @@ def plot_trainable_fraction(campaign):
     values = data.groupby(["base", "frozen"])[["trainable_params", "total_params"]].median().reset_index()
     values["percent_trainable"] = 100 * values.trainable_params / values.total_params
     fig, axes = cp._subplots(f"{campaign.track.upper()}: trainable parameter fraction")
-    labels = values.base + values.frozen.map({False: " / full", True: " / frozen"})
+    labels = values.base + values.frozen.map({False: " / " + style.adaptation_label(False), True: " / " + style.adaptation_label(True)})
     axes[0].barh(labels, values.percent_trainable, color=[style.color(b) for b in values.base])
     axes[0].set_xlim(0, 100); axes[0].set_xlabel("Trainable parameters (%)")
     return [cp.Page(f"trainable_fraction_{campaign.track}", fig,
@@ -211,7 +211,7 @@ def plot_drift_effect(campaign):
     for base, group in data.groupby("base"):
         fig, axes = cp._subplots(f"{base}: movement and held-out effect")
         for frozen, arm in group.groupby("frozen"):
-            axes[0].scatter(arm.final_drift, arm.effect, label="Frozen" if frozen else "Full",
+            axes[0].scatter(arm.final_drift, arm.effect, label=style.adaptation_label(frozen),
                            marker="s" if frozen else "o", color=style.color("frozen" if frozen else "full"),
                            s=style.POINT_SIZE, alpha=style.POINT_ALPHA)
         axes[0].axhline(0, color=style.color("reference"), linestyle=":")

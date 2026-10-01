@@ -5,7 +5,7 @@ from src.utils.paths import notebook_parts, outputs_dir
 
 
 def figures_dir() -> Path:
-    """All notebook PDFs share one folder on the local analysis output tier."""
+    """Root of the complete local publication collection."""
     return outputs_dir() / "figures"
 
 
@@ -13,8 +13,18 @@ def captions_path() -> Path:
     return figures_dir() / "CAPTIONS.md"
 
 
+def all_results_path() -> Path:
+    return outputs_dir() / "All_Results.md"
+
+
+def notebook_figures_dir(notebook: str) -> Path:
+    """Use notebook folder order, including 00_general, for the publication tree."""
+    group, _ = notebook_parts(notebook)
+    return figures_dir() / ("00_general" if group == "general" else group)
+
+
 def figure_prefix(notebook: str) -> str:
-    """Unique notebook ownership without subdirectories or ambiguous separators."""
+    """Unique notebook ownership within an experiment folder."""
     group, name = notebook_parts(notebook)
     parts = (group, *name.parts)
     if len(parts) < 2 or any(not p or "__" in p or not all(

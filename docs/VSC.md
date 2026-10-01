@@ -22,12 +22,14 @@ The user requires `output CreditPFN/`, with the experiment layer below it. The n
 
 ```text
 DATA/CreditPFN/output CreditPFN/
-  figures/                     flat local publication PDF collection
-    CAPTIONS.md                shared caption index after local analysis
+  All_Results.md               all notebook summaries in folder/name order
+  figures/                      complete local publication collection
+    CAPTIONS.md                 all captions in notebook/drawing order
+    00_general/                 corpus PDFs; likewise experiment0–experiment3
+      _metadata/                per-notebook caption records
   general/
     logs/                       data preparation and general maintenance
     manifests/scheduler/        shared per-controller capacity pool, cluster locks
-    All_Results.md              shared notebook summaries after local analysis
   experiment0/                  likewise experiment1, experiment2, experiment3
     logs/                       one file per job/attempt, including setup and exit status
     manifests/
@@ -35,7 +37,6 @@ DATA/CreditPFN/output CreditPFN/
       plans/                    immutable code/data/config/environment identities
       resolved/                 effective entry-point configurations
       workflow/                 experiment-0 stage state and audit receipts
-      figures/                  local notebook caption metadata
 
 PROJECT/CreditPFN/
   data/{raw,processed,retention}/
@@ -306,6 +307,12 @@ STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/expe
 
 Repeat for LGD and completed experiments 2/3. GPU foundation scoring and CPU classical HPO are separate allocations. Start foundation evaluation only against a stable trained roster. Defaults are two GPU/four CPU hours; profile actual packed tasks. Successful cells survive resubmission. Predictions use parquet when available and gzip CSV otherwise; no installation is required for the fallback.
 
+For each completed follow-up, first run the existing checkpoint audit against its PD/LGD prepared plans. Then use the same two evaluation launches above with `config/experiment2/<track>.yaml` or `config/experiment3/<track>.yaml`. This scores all 32 seed checkpoints or all 96 sampling checkpoints; neither experiment selects a winning main-grid checkpoint. Reuse the measured production walltime with `EVAL_WALLTIME`: the two-hour default has already timed out on a main-PD shard containing multiple large-table comparisons. Completion of a small control does not certify that request.
+
+Both evaluation wrappers import already-published controls from the other research experiments through `_eval_cache.sh`. It creates non-overwriting hard links between sibling `experiment{1,2,3}/evaluation_cache/` directories on project storage, avoiding another copy of their prediction payloads. Experiment 0 is excluded. The existing reader still requires the exact data/model/config/code/environment key, all five successful folds and complete predictions before reuse. Only controls are cached; adapted checkpoints are evaluated separately. Atomic writers replace directory entries, preserving the linked published bytes. No training or evaluation source fingerprint changes are needed for this storage operation.
+
+Sharing happens when each job starts. Schedule follow-up benchmarks after the relevant experiment-1 controls are published to avoid recomputing them; concurrent cache misses can still perform duplicate work. Running the classical follow-up stage remains useful: it materializes the cached controls under that experiment's result tree and computes any genuinely missing cells. Do not delete caches while evaluation writers are active.
+
 Evaluation writes predictions atomically and publishes its identity receipt last. With prediction saving enabled, resumption also requires the recorded prediction artifact and matching byte count; incomplete output is retried. An unavailable Parquet engine permits gzip CSV, but storage errors remain failures. Classical rows record selected parameters and completed/requested HPO trials; requesting tuning without Optuna fails visibly.
 
 Before the full evaluation arrays, profile one representative large-table foundation task at its actual context/member settings and one classical HPO task. Experiment 0's small five-fold recovery benchmark checks correctness, not the memory or runtime of those production-size evaluations. Use the measured task times to set requests; short requests improve possible backfill, not scheduling priority itself.
@@ -321,6 +328,8 @@ CREDITPFN_CONFIG=config/experiment1/pd.yaml CREDITPFN_SPLIT_INDEX=0 EVAL_TASKS=1
 ```
 
 Repeat with the LGD config and, for foundation models, `eval_lgd.slurm`. The wrappers request time limits of two hours for GPU jobs and four hours for CPU jobs; these are ceilings, not measured runtimes. Only four initial jobs are submitted this way, outside the bounded full-array launcher. Keep the source fixed until they finish. After their logs confirm complete cells and acceptable resource use, use `EVAL_WALLTIME` with the measured margin in the full launch commands above. Completed five-fold cells and compatible baseline caches are reused, including across task repacking; an individual packed task does not certify every table/model's memory requirements.
+
+Those four profiling jobs are **not the complete benchmark arrays**: `--array=0-0` runs shard zero of the 16-way task packing, and `CREDITPFN_SPLIT_INDEX=0` selects only the first training-dataset partition. With the default 16 shards and four training partitions, each ordinary full `STAGES=eval` launch submits four arrays containing 64 task elements in total. PD/LGD × foundation/classical therefore uses four launch commands, 16 array submissions and 256 task elements. The five outer evaluation folds run inside each model–dataset comparison; they are distinct from the four training-dataset partitions. Existing complete comparisons are retained on resubmission.
 
 With a run's writers stopped, consolidate it:
 

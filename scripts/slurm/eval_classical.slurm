@@ -18,6 +18,8 @@ source scripts/slurm/_job_log.sh
 start_job_log eval_classical
 export CREDITPFN_USE_SCRATCH=0 CREDITPFN_EVAL_KIND=classical
 source scripts/slurm/_activate_env.sh
+source scripts/slurm/_eval_cache.sh
+share_eval_controls
 python -u scripts/eval_pipeline.py --config "${CREDITPFN_CONFIG:?}" \
     --split-index "${CREDITPFN_SPLIT_INDEX:?}" --task-index "${SLURM_ARRAY_TASK_ID:?}" \
     --tasks "${EVAL_TASKS:-16}" --log-path "$LOG"

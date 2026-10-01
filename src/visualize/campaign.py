@@ -243,7 +243,7 @@ def plot_coverage_grid(campaign: Campaign) -> list[Page]:
         recipe_order = group.sort_values(["learning_rate", "l2sp_lambda"]).recipe.drop_duplicates()
         statuses = statuses.reindex(recipe_order)
         statuses.columns = [f"Fold {int(c)+1}" for c in statuses.columns]
-        fig, axes = _subplots(f"{base}: {'frozen' if frozen else 'full'} / {style.SAMPLING_LABELS[sampling]}")
+        fig, axes = _subplots(f"{base}: {style.adaptation_label(frozen)} / {style.SAMPLING_LABELS[sampling]}")
         matrix = statuses.apply(lambda column: column.map(codes)).to_numpy(dtype=float)
         color_map = ListedColormap([style.STATUS_COLORS[s] for s in states])
         image = axes[0].imshow(matrix, cmap=color_map, vmin=-.5, vmax=len(states)-.5, aspect="auto")
@@ -294,7 +294,7 @@ def plot_trajectory_pages(campaign: Campaign, *, x="updates", split="test") -> l
                           if np.isfinite(curve.loc[curve.updates.gt(0), "mean"]).any()})
         if not lambdas:
             continue
-        fig, axes = _subplots(f"{base}: {'frozen backbone' if frozen else 'full updates'}", len(lambdas), sharey=True)
+        fig, axes = _subplots(f"{base}: {style.adaptation_label(frozen)}", len(lambdas), sharey=True)
         records = list(curves.values())
         for ax, lam in zip(axes, lambdas):
             for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
@@ -333,7 +333,7 @@ def plot_response_surfaces(data: pd.DataFrame, metric: str, *, value="effect") -
             n = counts.loc[frozen].unstack("l2sp_lambda").reindex_like(matrix)
             matrix.index = [f"{lr:.0e}" for lr in matrix.index]
             matrix.columns = [f"L2-SP {lam:g}" for lam in matrix.columns]
-            fig = _heatmap(matrix, f"{base}: {'frozen' if frozen else 'full'} / {style.SAMPLING_LABELS[sampling]}",
+            fig = _heatmap(matrix, f"{base}: {style.adaptation_label(frozen)} / {style.SAMPLING_LABELS[sampling]}",
                            limits=(-extent, extent), label=effect_label(metric))
             present = np.isfinite(matrix.to_numpy())
             for text, count in zip(fig.axes[0].texts, n.to_numpy()[present]):
@@ -360,7 +360,7 @@ def plot_dataset_pages(data: pd.DataFrame, metric: str, *, value="effect") -> li
         extent = max(float(np.nanmax(np.abs(matrix.to_numpy()))), 1e-8)
         for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
             page = matrix.iloc[start:stop]
-            fig = _heatmap(page, f"{base}: {'frozen' if frozen else 'full'} / datasets {start+1}–{start+len(page)}", limits=(-extent, extent), label=effect_label(metric))
+            fig = _heatmap(page, f"{base}: {style.adaptation_label(frozen)} / datasets {start+1}–{start+len(page)}", limits=(-extent, extent), label=effect_label(metric))
             pages.append(Page(f"datasets_{base}_{frozen}_{sampling}_{page_no}", fig,
                 f"Paired effects for {len(page)} datasets, one column per peak-learning-rate / L2-SP recipe. "
                 "Panels fix model, adaptation and sampling; pages use a common scale within that combination. No dataset is discarded to shorten the display."))
@@ -413,20 +413,31 @@ def _complete_folds(data: pd.DataFrame, metric: str, *, fractional_reference=Fal
         valid &= ~data.source.str.endswith("-untuned", na=False) | values.gt(0)
     good = data[valid].copy()
     good[metric] = values[valid]
+    if good.empty:
+        return good
     complete = good.groupby(keys).fold_idx.agg(lambda folds: set(folds) == expected_folds).rename("complete").reset_index()
-    return good.merge(complete[complete.complete][keys], on=keys, how="inner", validate="many_to_one")
+    return good.merge(complete.loc[complete.complete.eq(True), keys], on=keys, how="inner", validate="many_to_one")
 
 
-def benchmark_effects(campaign: Campaign, metric: str | None = None, *, domain="credit") -> pd.DataFrame:
+def benchmark_effects(campaign: Campaign, metric: str | None = None, *, domain="credit", by_partition=False) -> pd.DataFrame:
     """Paired outer-fold effects with a complete-fold requirement per dataset/recipe."""
     metric = metric or campaign.metric
     data = campaign.evaluation
     if "domain" in data:
         data = data[data.domain.fillna("credit").eq(domain)]
+    elif domain != "credit":
+        return pd.DataFrame()
     if data.empty or metric not in data:
         return pd.DataFrame()
     good = _complete_folds(data, metric, fractional_reference=metric == "rmse")
-    paired = paired_deltas(good, metric)
+    if by_partition:
+        if "split" not in good or good["split"].isna().any():
+            raise ValueError("Paired experiment comparisons require dataset-partition identities")
+        parts = [paired_deltas(part, metric).assign(partition=int(partition))
+                 for partition, part in good.groupby("split")]
+        paired = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+    else:
+        paired = paired_deltas(good, metric)
     if paired.empty:
         return paired
     rows = []
@@ -484,7 +495,7 @@ def plot_diagnostics(campaign: Campaign) -> list[Page]:
         labels = []
         for i, ((base, frozen), group) in enumerate(data.groupby(["base", "frozen"])):
             vals = pd.to_numeric(group[column], errors="coerce").dropna()
-            labels.append(f"{base} / {'frozen' if frozen else 'full'}")
+            labels.append(f"{base} / {style.adaptation_label(frozen)}")
             jitter = np.linspace(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(vals)) if len(vals)>1 else np.zeros(len(vals))
             axes[0].scatter(vals, i+jitter, color=style.color(base), alpha=style.POINT_ALPHA, s=style.POINT_SIZE)
         axes[0].set_yticks(range(len(labels)), labels)
@@ -604,7 +615,7 @@ def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
         label = loss_label(campaign.track, base) if field == "train_loss" else labels[field]
         if field == "clipped_frac" and group[field].eq(0).all():
             continue
-        fig, axes = _subplots(f"{base}: {label} / {'frozen' if frozen else 'full'}", len(lambdas), sharey=True)
+        fig, axes = _subplots(f"{base}: {label}\n{style.adaptation_label(frozen)}", len(lambdas), sharey=True)
         tables = []
         for ax, lam in zip(axes, lambdas):
             for i, (lr, recipe) in enumerate(group[group.l2sp_lambda.eq(lam)].groupby("learning_rate")):
@@ -626,7 +637,7 @@ def plot_optimization(campaign: Campaign, field="train_loss") -> list[Page]:
             axes[0].yaxis.set_major_formatter(PercentFormatter(1, decimals=2))
         pages.append(Page(f"optimization_{campaign.track}_{field}_{base}_{frozen}_{sampling}", fig,
             f"{labels[field]} summarized in successful-update windows of width {optimization_window(campaign):,}, with a shorter final window when necessary. "
-            "Epoch values are averaged within trial and window; lines and bands show the median and interquartile range "
+            "The all-parameter condition updates every normally trainable parameter; the frozen condition freezes the repeated transformer stack while surrounding input/target embeddings and prediction modules remain trainable. Epoch values are averaged within trial and window; lines and bands show the median and interquartile range "
             "across available trials. Counts are retained in the text summary. Gaps are not interpolated. "
             "The data loss excludes the separately reported L2-SP term; numerical loss scales differ across tasks, architectures "
             "and target transforms, and a density NLL may be negative. Loss curves exclude epochs with fewer "
@@ -648,7 +659,7 @@ def plot_train_test(campaign: Campaign) -> list[Page]:
     for base, group in pair.groupby("base"):
         fig, axes = _subplots(f"{base}: seen versus held-out monitoring")
         for frozen, arm in group.groupby("frozen"):
-            axes[0].scatter(arm.seen, arm.held, marker="s" if frozen else "o", label="Frozen" if frozen else "Full", s=style.POINT_SIZE, alpha=style.POINT_ALPHA)
+            axes[0].scatter(arm.seen, arm.held, marker="s" if frozen else "o", label=style.adaptation_label(frozen), s=style.POINT_SIZE, alpha=style.POINT_ALPHA)
         axes[0].axhline(0, color=style.color("reference"), linestyle=":")
         axes[0].axvline(0, color=style.color("reference"), linestyle=":")
         axes[0].set_xlabel("Mean effect on training tables")
@@ -700,7 +711,7 @@ def plot_null_audits(frame: pd.DataFrame) -> list[Page]:
         return []
     pages = []
     for track, data in frame.groupby("track"):
-        matrix = data.assign(label=data.base + data.frozen.map({True: " / frozen", False: " / full"})).set_index("label")[["weight_equal", "monitor_equal", "audit_passed"]].astype(int)
+        matrix = data.assign(label=data.base + data.frozen.map({True: " / " + style.adaptation_label(True), False: " / " + style.adaptation_label(False)})).set_index("label")[["weight_equal", "monitor_equal", "audit_passed"]].astype(int)
         matrix.columns = ["Saved weights", "Monitor parity", "Audit passed"]
         fig = _heatmap(matrix, f"{track.upper()}: zero-LR controls", diverging=False, limits=(0,1), label="Passed (1) / failed (0)")
         pages.append(Page(f"null_audit_{track}", fig, "Recorded CPU audit checks on saved zero-learning-rate checkpoints: canonical model/inference-state equality, per-dataset monitoring parity and whole-audit outcome. Missing audit logs are not treated as successful checks."))
@@ -714,7 +725,7 @@ def plot_null_monitor(campaign: Campaign) -> list[Page]:
         if data.empty:
             continue
         for (base, frozen), group in data.groupby(["base", "frozen"]):
-            rows.append(dict(label=f"{base} / {'frozen' if frozen else 'full'}", split=split, difference=group.effect.abs().max()))
+            rows.append(dict(label=f"{base} / {style.adaptation_label(frozen)}", split=split, difference=group.effect.abs().max()))
     if not rows:
         return []
     matrix = pd.DataFrame(rows).pivot(index="label",columns="split",values="difference")
@@ -864,7 +875,7 @@ def plot_secondary_tradeoff(campaign: Campaign) -> list[Page]:
             ax.axhline(0,color=style.color("reference"),linestyle=":")
             ax.axvline(0,color=style.color("reference"),linestyle=":")
             ax.set_xlabel(effect_label(campaign.metric))
-            ax.set_title("Frozen backbone" if frozen else "Full updates")
+            ax.set_title(style.adaptation_label(frozen))
             if not arm.empty:
                 ax.legend(title="Peak LR",ncol=2)
         axes[0].set_ylabel(effect_label(secondary_metric))
@@ -913,7 +924,7 @@ def plot_cost_effect(campaign: Campaign) -> list[Page]:
             continue
         fig,axes = _subplots(f"{base}: training cost and benchmark effect")
         for frozen,arm in group.groupby("frozen"):
-            axes[0].scatter(arm.gpu_hours,arm.effect,marker="s" if frozen else "o",label="Frozen" if frozen else "Full",s=style.POINT_SIZE)
+            axes[0].scatter(arm.gpu_hours,arm.effect,marker="s" if frozen else "o",label=style.adaptation_label(frozen),s=style.POINT_SIZE)
         axes[0].set_xscale("log"); axes[0].set_xlabel("Median training wall time (hours)")
         axes[0].set_ylabel(effect_label(campaign.metric)); axes[0].legend()
         axes[0].axhline(0,color=style.color("reference"),linestyle=":")

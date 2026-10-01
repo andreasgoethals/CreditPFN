@@ -11,8 +11,24 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 01-10-2026
+
+- Add live notebook/cell progress and heartbeats, schedule expensive notebooks first, bound numerical threads, and explicitly use the runner's Python kernel.
+
+- Handle absent calibration references in partial benchmark reports and fit longer adaptation legends without shrinking text.
+
+- Group all publication artifacts under `figures/<experiment>/`, move the combined notebook summaries to the output root, prune empty legacy folders, and spell out parameter-update regimes in plots.
+
+- Share compatible published benchmark controls across experiments 1–3 without duplicating cache payloads or changing scientific identities.
+- Rebuild seed/sampling notebooks around matched credit/non-credit comparisons, training dynamics, calibration metrics and measured cost; retain complete text summaries.
+- Fix ZIP workflow timestamps and empty/missing-time handling in sampling-cost reports.
+- Record completed seed training, successful sampling recovery segments and measured costs; document targeted recovery of the timed-out PD benchmark.
+
 ## 30-09-2026
 
+- Verify seed/sampling plans against main-run inputs and record the bounded production launch plus initial benchmark outcomes.
+- Record passed auxiliary controls and research-grid checks; retain full-input comparison and production accumulation timing before the next launches.
+- Record passed VSC audits for all 512 main checkpoints and the running auxiliary controls; the first benchmark tasks are ready.
 - Fix float32 endpoint-probability entropy reporting without changing predictions or trained weights; verify the completed main grid before final benchmarking.
 - Add eight short seed/sampling/recovery GPU controls and an auxiliary notebook before experiments 2/3, with bounded CPU preparation and strict completion audits.
 - Refine corpus/pilot plots, add matched training-factor summaries and readable clipping scales, and read drift from milestone records instead of empty epoch placeholders.

@@ -90,7 +90,7 @@ def plot_trajectories(track: str, *, cfg=None, sampling="one_sample") -> dict:
                 ax.plot(curve.index, curve, color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))),
                         linestyle=style.TRAJECTORY_LINESTYLES.get(lam, ":"), label=f"{lr:.0e}, {lam:g}")
             ax.axhline(0, color=style.color("reference"), linestyle=":")
-            style.title(ax, f"{base}: {'frozen backbone' if frozen else 'full updates'}")
+            style.title(ax, f"{base}: {style.adaptation_label(frozen)}")
             ax.set_xlabel("Successful optimizer updates")
             if not selected.empty:
                 ax.legend(title="Peak LR, L2-SP", ncol=2)

@@ -6,13 +6,14 @@
     python -m src.utils.run_notebooks --only experiment1  the main-sweep notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
-    output CreditPFN/figures/*.pdf                     notebook-prefixed PDFs
+    output CreditPFN/figures/<experiment>/*.pdf        notebook-prefixed PDFs
     output CreditPFN/figures/CAPTIONS.md                all captions in notebook order
-    output CreditPFN/general/All_Results.md             every notebook's printed summary, alphabetical
+    output CreditPFN/All_Results.md                     every notebook's printed summary, alphabetical
 
-SEPARATE PROCESSES, NOT THREADS: matplotlib's figure registry is global, so two notebooks in
-one interpreter would capture each other's figures — silently, giving plausible figures
-attributed to the wrong notebook.
+Separate worker processes supervise independent Jupyter kernels. Progress is collected by
+the parent process, so simultaneous cell messages do not interleave. Previously expensive
+notebooks start first; alphabetical publication order is unaffected. Kernel numerical-library
+threads default to one to avoid nesting unrestricted BLAS pools inside parallel notebooks.
 
 Each notebook runs in a fresh kernel and is saved with its outputs. All_Results.md reads the
 final code cell's stdout directly from that notebook, including after an interactive Run All.
@@ -29,21 +30,66 @@ documents. A hard-coded list silently stops covering a notebook someone added.
 from __future__ import annotations
 
 import json
+import multiprocessing
+import os
+import queue
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from src.utils.paths import (
     REPO_ROOT,
-    all_results_path,
     notebooks_dir,
 )
-from src.visualize.paths import captions_path, figures_dir
+from src.visualize.paths import all_results_path, captions_path, figures_dir
 
 #: Per-cell kernel timeout, as enforced by nbclient. Model training belongs in scripts.
 DEFAULT_TIMEOUT = 1800
+DEFAULT_PROGRESS_INTERVAL = 15.0
+_EVENT_QUEUE = None
+
+
+def _initialize_worker(events) -> None:
+    global _EVENT_QUEUE
+    _EVENT_QUEUE = events
+
+
+def _emit(name: str, kind: str, **details) -> None:
+    if _EVENT_QUEUE is not None:
+        _EVENT_QUEUE.put(dict(name=name, kind=kind, **details))
+
+
+def _previous_seconds(notebook: dict) -> float:
+    """Estimate kernel work from nbclient's existing cell timing metadata."""
+    seconds = 0.0
+    for cell in notebook.get("cells", []):
+        timing = cell.get("metadata", {}).get("execution", {})
+        try:
+            start = datetime.fromisoformat(timing["iopub.status.busy"])
+            end = datetime.fromisoformat(timing["iopub.status.idle"])
+            seconds += max(0.0, (end - start).total_seconds())
+        except (KeyError, TypeError, ValueError):
+            continue
+    return seconds
+
+
+def _cell_sections(notebook: dict) -> dict[int, str]:
+    heading = "Setup"
+    sections = {}
+    for index, cell in enumerate(notebook.get("cells", [])):
+        source = cell.get("source", "")
+        source = source if isinstance(source, str) else "".join(source)
+        if cell.get("cell_type") == "markdown":
+            for line in source.splitlines():
+                if line.startswith("#"):
+                    heading = line.lstrip("#").strip()
+        elif cell.get("cell_type") == "code" and source.strip():
+            if "skip-execution" not in cell.get("metadata", {}).get("tags", []):
+                sections[index] = " ".join(heading.split())[:90]
+    return sections
 
 
 @dataclass
@@ -108,14 +154,16 @@ def _clear_code_outputs(notebook: dict) -> None:
             cell["execution_count"] = None
 
 
-def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
+def run_one(name: str, timeout: int = DEFAULT_TIMEOUT, *,
+            notebook_root: Path | None = None, threads_per_worker: int = 1) -> NotebookResult:
     """Execute one notebook IN A KERNEL and save it with its outputs.
 
     Notebook execution belongs to the local analysis stage. nbclient and nbformat come with
     the notebooks extra. A failure is returned and the partially executed notebook is saved.
     """
     started = time.time()
-    nb_path = notebooks_dir() / f"{name}.ipynb"
+    _emit(name, "start", pid=os.getpid())
+    nb_path = (notebook_root or notebooks_dir()) / f"{name}.ipynb"
     if not nb_path.is_file():
         return NotebookResult(name, False, 0.0, 0, f"{nb_path} not found")
     try:
@@ -137,14 +185,33 @@ def run_one(name: str, timeout: int = DEFAULT_TIMEOUT) -> NotebookResult:
     # not survive from a previous successful run and be published as the current result.
     _clear_code_outputs(nb)
     nbformat.write(nb, nb_path)  # cancellation cannot leave a previous successful summary
+    sections = _cell_sections(nb)
+    positions = {index: position for position, index in enumerate(sections, 1)}
+
+    def cell_execute(cell, cell_index):
+        _emit(name, "cell", position=positions[cell_index], total=len(sections),
+              section=sections[cell_index])
+
+    def cell_executed(cell, cell_index, execute_reply):
+        if positions[cell_index] == len(sections):
+            _emit(name, "saving")
+
     client = NotebookClient(
         nb, timeout=timeout, kernel_name="python3",
         resources={"metadata": {"path": str(REPO_ROOT)}},   # so `from src...` resolves
         allow_errors=False,
+        on_cell_execute=cell_execute, on_cell_executed=cell_executed,
     )
+    # Use the runner's interpreter, even if PATH points at another Python or kernelspec.
+    client.create_kernel_manager()
+    client.km.kernel_spec.argv[0] = sys.executable
+    kernel_env = os.environ.copy()
+    for variable in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
+                     "NUMEXPR_NUM_THREADS", "VECLIB_MAXIMUM_THREADS", "BLIS_NUM_THREADS"):
+        kernel_env[variable] = str(threads_per_worker)
     error = ""
     try:
-        client.execute()
+        client.execute(env=kernel_env)
     except CellExecutionError as exc:
         error = "\n".join(str(exc).strip().splitlines()[-12:])
     except Exception as exc:                                  # kernel died, timeout, ...
@@ -186,7 +253,10 @@ def write_captions(notebooks: tuple[str, ...]) -> Path:
     figure with no caption gets a loud placeholder rather than being skipped — a gap should be
     visible in the document meant to contain it.
     """
-    from src.visualize.figures import read_manifest
+    from src.visualize.figures import read_manifest, migrate_collection
+    from src.visualize.paths import notebook_figures_dir
+
+    migrate_collection(notebooks)
 
     lines = [
         "# Figure captions",
@@ -202,14 +272,15 @@ def write_captions(notebooks: tuple[str, ...]) -> Path:
         "in the document, because that rescales its text with it.",
         "",
     ]
-    for name in notebooks:
-        entries = read_manifest(name)
+    for name in sorted(notebooks):
+        entries = sorted(read_manifest(name), key=lambda e: e["index"])
         lines += [f"## {name}", ""]
         if not entries:
             lines += ["_No figures produced._", ""]
             continue
         for e in entries:
-            lines.append(f"**{e['stem']}** — `{e['name']}`")
+            relative = (notebook_figures_dir(name) / (e['stem'] + '.pdf')).relative_to(figures_dir()).as_posix()
+            lines.append(f"**[{e['stem']}]({relative})** — `{e['name']}`")
             lines.append("")
             lines.append(e["caption"] or "> MISSING CAPTION. Add one at the `save()` call.")
             lines.append("")
@@ -244,6 +315,12 @@ def write_all_results(notebooks: tuple[str, ...]) -> Path:
     path = all_results_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
+    from src.utils.paths import all_results_path as legacy_all_results_path
+    from src.visualize.figures import _prune_empty
+    old = legacy_all_results_path()
+    if old != path:
+        old.unlink(missing_ok=True)
+        _prune_empty(old.parent)
     return path
 
 
@@ -256,40 +333,103 @@ def run_all(
     notebooks: tuple[str, ...] | None = None,
     max_workers: int | None = None,
     timeout: int = DEFAULT_TIMEOUT,
+    threads_per_worker: int = 1,
+    progress_interval: float = DEFAULT_PROGRESS_INTERVAL,
 ) -> list[NotebookResult]:
     """Run every notebook in parallel, then rebuild both summary documents.
 
     Rebuilt even when a notebook failed, from whatever the successful ones wrote: a
     half-updated summary beats a stale one, and the failure is reported separately.
     """
+    if max_workers is not None and max_workers < 1:
+        raise ValueError("workers must be at least 1")
+    if timeout < 1 or threads_per_worker < 1 or progress_interval <= 0:
+        raise ValueError("timeout, threads-per-worker and progress-interval must be positive")
     names = discover(notebooks)
     if not names:
         return []
     from src.visualize.figures import clear, clear_collection
     everything = discover()
-    for name in names:
+    workers = min(max_workers or 4, len(names))
+    print(f"Using {workers} parallel notebook kernels; {threads_per_worker} numerical "
+          "thread(s) per kernel. Progress counts cells, not equal amounts of work.", flush=True)
+    estimates = {}
+    for index, name in enumerate(names, 1):
+        print(f"[prepare {index}/{len(names)}] {name}", flush=True)
         path = notebooks_dir() / f"{name}.ipynb"
         nb = json.loads(path.read_text(encoding="utf-8"))
+        estimates[name] = _previous_seconds(nb)
         _clear_code_outputs(nb)
         path.write_text(json.dumps(nb, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-        clear(name)
     if set(names) == set(everything):
         clear_collection(names)
         all_results_path().unlink(missing_ok=True)
     else:
+        for name in names:
+            clear(name)
         # Even if cancelled before a worker starts, selected notebooks cannot
         # retain previous summaries/captions beside their cleared outputs.
         write_captions(everything)
         write_all_results(everything)
-    # Capped at 4: notebooks are numpy-heavy and each already uses several threads, so more
-    # workers than this trades parallelism for cache thrashing.
-    workers = max_workers or min(len(names), 4)
-
+    # Start previously expensive notebooks first to reduce the idle tail. Publication order
+    # stays alphabetical. Independent kernels do not share scientific state.
+    scheduled = sorted(names, key=lambda name: (-estimates[name], name))
+    print("Starting workers (longest previous execution first).", flush=True)
     results: list[NotebookResult] = []
-    with ProcessPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(run_one, name, timeout): name for name in names}
-        for fut in as_completed(futures):
-            results.append(fut.result())
+    active = {}
+    started = last_heartbeat = time.monotonic()
+    try:
+        with multiprocessing.Manager() as manager:
+            events = manager.Queue()
+            with ProcessPoolExecutor(max_workers=workers, initializer=_initialize_worker,
+                                     initargs=(events,)) as pool:
+                futures = {pool.submit(run_one, name, timeout, notebook_root=notebooks_dir(),
+                                       threads_per_worker=threads_per_worker): name
+                           for name in scheduled}
+                pending = set(futures)
+                while pending:
+                    done, pending = wait(pending, timeout=.25, return_when=FIRST_COMPLETED)
+                    while True:
+                        try:
+                            event = events.get_nowait()
+                        except queue.Empty:
+                            break
+                        name, kind = event["name"], event["kind"]
+                        if kind == "start":
+                            active[name] = dict(start=time.monotonic(), cell="starting kernel")
+                            print(f"[start] {name} (worker PID {event['pid']})", flush=True)
+                        elif name in active and kind == "cell":
+                            active[name]["cell"] = f"cell {event['position']}/{event['total']}: {event['section']}"
+                            print(f"[running] {name} | {active[name]['cell']}", flush=True)
+                        elif name in active and kind == "saving":
+                            active[name]["cell"] = "saving notebook outputs"
+                    for future in done:
+                        name = futures[future]
+                        try:
+                            result = future.result()
+                        except Exception as exc:
+                            result = NotebookResult(name, False,
+                                time.monotonic() - active.get(name, {}).get("start", started),
+                                0, f"Worker failed: {type(exc).__name__}: {exc}")
+                        results.append(result)
+                        active.pop(name, None)
+                        print(f"[finished {len(results)}/{len(names)}] {name} | "
+                              f"{'OK' if result.ok else 'FAILED'} | {result.seconds:.1f}s | "
+                              f"{result.n_figures} figures", flush=True)
+                        if not result.ok:
+                            print(result.error, flush=True)
+                    now = time.monotonic()
+                    if now - last_heartbeat >= progress_interval:
+                        print(f"[progress] {len(results)}/{len(names)} finished; "
+                              f"{len(active)} running; {len(pending) - len(active)} waiting; "
+                              f"elapsed {now - started:.0f}s", flush=True)
+                        for name, status in active.items():
+                            print(f"  {name} | {now - status['start']:.0f}s | {status['cell']}", flush=True)
+                        last_heartbeat = now
+    finally:
+        # Also permits isolated tests using a thread executor without retaining a closed queue.
+        global _EVENT_QUEUE
+        _EVENT_QUEUE = None
 
     # ALWAYS over every notebook, never only the ones just run. `CAPTIONS.md` and
     # `All_Results.md` are single project-wide documents assembled from each notebook's
@@ -297,6 +437,7 @@ def run_all(
     # `--only 2.0 2.1` used to cut CAPTIONS.md from 435 lines to 191, deleting four
     # notebooks' captions from what is now a tracked file.
     everything = discover()
+    print("Rebuilding CAPTIONS.md and All_Results.md for every notebook...", flush=True)
     write_captions(everything)
     write_all_results(everything)
     return sorted(results, key=lambda r: names.index(r.name))
@@ -339,10 +480,17 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--only", nargs="+", metavar="SELECTOR", help="substrings of notebook-relative paths")
     parser.add_argument("--workers", type=int, default=None, help="parallel processes")
+    parser.add_argument("--threads-per-worker", type=int, default=1,
+                        help="numerical-library threads per notebook kernel (default: 1)")
+    parser.add_argument("--progress-interval", type=float, default=DEFAULT_PROGRESS_INTERVAL,
+                        help="seconds between running-cell heartbeats (default: 15)")
     parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="seconds per code cell")
     parser.add_argument("--summaries-only", action="store_true",
                         help="rebuild both documents from disk, run nothing")
     args = parser.parse_args(argv)
+    if ((args.workers is not None and args.workers < 1) or args.timeout < 1
+            or args.threads_per_worker < 1 or args.progress_interval <= 0):
+        parser.error("workers, timeout, threads-per-worker and progress-interval must be positive")
 
     names = discover(tuple(args.only) if args.only else None)
     if not names:
@@ -363,8 +511,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  summaries -> {write_all_results(names)}")
         return 0
 
-    print(f"Running {len(names)} notebook(s) in place: {', '.join(names)}")
-    results = run_all(names, max_workers=args.workers, timeout=args.timeout)
+    print(f"Running {len(names)} notebook(s) in place: {', '.join(names)}", flush=True)
+    results = run_all(names, max_workers=args.workers, timeout=args.timeout,
+                      threads_per_worker=args.threads_per_worker,
+                      progress_interval=args.progress_interval)
     print(summarise(results))
     return 0 if all(r.ok for r in results) else 1
 

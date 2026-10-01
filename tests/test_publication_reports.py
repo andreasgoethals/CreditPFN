@@ -62,6 +62,24 @@ def test_ambiguous_or_unsafe_archives_fail_explicitly(tmp_path, monkeypatch, mem
         inputs.analysis_root()
 
 
+def test_archive_member_times_select_latest_auxiliary_workflow(tmp_path, monkeypatch):
+    from src.visualize import auxiliary
+    path = tmp_path / "output.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        for name, year in (("older", 2025), ("newer", 2026)):
+            entry = zipfile.ZipInfo(f"experiment0/manifests/workflow/{name}/state.json",
+                                    date_time=(year, 1, 1, 0, 0, 0))
+            archive.writestr(entry, json.dumps(dict(part="auxiliary", id=name,
+                                status="gpu_running", fingerprint="test")))
+    monkeypatch.setenv("CREDITPFN_ANALYSIS_ROOT", str(path))
+    monkeypatch.delenv("CREDITPFN_ANALYSIS_PROJECT_ROOT", raising=False)
+    scope, checks, arms = auxiliary.evidence()
+    assert scope["workflow"] == "newer" and scope["reported_tasks"] == 0
+    assert checks.empty and arms.empty
+    stat = (inputs.analysis_root() / "experiment0/manifests/workflow/newer/state.json").stat()
+    assert stat.st_mtime * 1e9 == stat.st_mtime_ns
+
+
 def test_summary_repeats_all_displayed_values_in_section_order(isolated_output):
     sink = FigureSaver("experiment1/text_contract")
     report = cp.NotebookReport("Report", sink=sink)
@@ -96,11 +114,11 @@ def test_corrected_pilot_uses_receipt_config_not_static_grid(tmp_path, monkeypat
         pub.pilot_campaigns("lgd")
 
 
-def research_campaign(track="pd", experiment=1):
+def research_campaign(track="pd", experiment=1, *, bases=("v3",)):
     """Synthetic future project evidence. Never used as research results."""
     cfg = cp.load_train_config(config_path=str(cp.config_path(experiment, track)))
     trials = cp.planned_trials(cfg)
-    trials = trials[trials.base.eq("v3")].reset_index(drop=True).assign(
+    trials = trials[trials.base.isin(bases)].reset_index(drop=True).assign(
         status="OK", n_train_datasets=4, n_test_datasets=4, trainable_params=1000, total_params=2000,
         sec_per_step=1., elapsed_sec=10000., gpu_hours=10000./3600, peak_gpu_gb=80.,
         rows_seen=100000, final_drift=.02, baseline_test_metric=.7, final_test_metric=.71)
@@ -127,11 +145,12 @@ def research_campaign(track="pd", experiment=1):
                 weight_drift=.02*update/cfg.train.target_total_steps,training_seconds=2.,compute_seconds=1.9,
                 data_wait_seconds=.1,amp_skipped_steps=0,data_skipped_steps=0))
         for index in range(4):
-            for source in ("tabpfn-untuned","tabpfn-trained"):
+            family = "tabicl" if trial.base.startswith("tabicl") else "tabpfn"
+            for source in (f"{family}-untuned", f"{family}-trained"):
                 suffix = (f"__lr{trial.learning_rate:.0e}__l2sp{trial.l2sp_lambda:g}"
                           + ("__frozen" if trial.frozen else "")
                           + (f"__{trial.sampling.replace('full_pass','fullpass')}" if trial.sampling!="one_sample" else ""))
-                method = f"{source}__v3-default" + (suffix if source.endswith("-trained") else "")
+                method = f"{source}__{trial.base}-default" + (suffix if source.endswith("-trained") else "")
                 for fold in range(5):
                     evaluation.append(dict(
                         method_dirname=method,**_decode_method_dirname(method),test_dataset_id=f"Dataset {trial.partition*4+index:02d}",
@@ -182,6 +201,18 @@ def test_reliability_uses_complete_identically_paired_folds():
     run.evaluation = pd.concat([run.evaluation,run.evaluation.iloc[[0]]])
     with pytest.raises(ValueError, match="Duplicate evaluation"):
         cp.benchmark_effects(run)
+
+
+def test_partial_benchmark_without_calibration_reference_stays_unavailable():
+    run = research_campaign()
+    run.evaluation = run.evaluation[run.evaluation.source.str.endswith("-trained")
+                                    & ~np.isclose(run.evaluation.lr, 3e-7, atol=0, rtol=1e-8)]
+    assert not run.evaluation.empty
+    assert dg.plot_reliability(run) == []
+    empty = cp._complete_folds(run.evaluation.iloc[:0], "roc_auc")
+    assert empty.empty and empty.columns.equals(run.evaluation.columns)
+    invalid = run.evaluation.assign(roc_auc=np.nan)
+    assert cp._complete_folds(invalid, "roc_auc").empty
 
 
 @pytest.mark.parametrize("track", ["pd","lgd"])

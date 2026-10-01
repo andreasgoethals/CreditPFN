@@ -865,7 +865,7 @@ def plot_grid_summary(track: str, *, coverage: bool = False, cfg=None):
     if df.empty or not needed.issubset(df):
         return _no_data_fig(f"no complete grid metadata on track={track}")
     df = df.copy()
-    df["recipe"] = df["base_short"].map(compact_base) + " / " + df["epoch_pass_mode"].astype(str) + df["use_lora"].map({True: " / frozen", False: " / full"}).fillna(" / unknown")
+    df["recipe"] = df["base_short"].map(compact_base) + " / " + df["epoch_pass_mode"].astype(str) + df["use_lora"].map({True: " / " + style.adaptation_label(True), False: " / " + style.adaptation_label(False)}).fillna(" / unknown")
     df["setting"] = df["learning_rate"].map(lambda x: f"LR {x:g}") + df["l2sp_lambda"].map(lambda x: f"\nL2 {x:g}" if pd.notna(x) else "\nL2 unknown")
     df["value"] = df["status"].isin(["OK", "SKIP"]).astype(int) if coverage else df.get("final_test_metric", np.nan)
     if not coverage:

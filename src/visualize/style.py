@@ -230,6 +230,11 @@ def model_label(text):
     return _MODEL_TOKEN.sub(lambda match: MODEL_LABELS[match.group()], text)
 
 
+def adaptation_label(frozen: bool) -> str:
+    """Reader-facing parameter-update regimes, independent of internal flag names."""
+    return "Transformer backbone frozen" if frozen else "All trainable parameters updated"
+
+
 def page_slices(length, limit=PAGE_ROWS):
     """Balanced pages: 17 rows at a limit of 12 become 9 + 8, not 12 + 5."""
     if limit < 1:
@@ -288,6 +293,8 @@ def categorical(names) -> dict:
 
 #: Remaining Okabe-Ito slots, for series that have not been registered yet.
 _EXTRAS = ("#CC79A7", "#56B4E9", "#F0E442", "#D55E00")
+SEED_COLORS = {42: "#0072B2", 43: "#D55E00"}
+SEED_STYLES = {42: "-", 43: "--"}
 
 
 def apply() -> None:
@@ -406,13 +413,34 @@ def title(ax, text: str) -> None:
     ax.set_title("\n".join(lines))
 
 
+def _legend_columns(fig, labels):
+    """Fit measured legend text inside the declared publication width."""
+    from matplotlib.font_manager import FontProperties
+    from matplotlib.backends.backend_agg import RendererAgg
+    font = FontProperties(size=mpl.rcParams["legend.fontsize"])
+    renderer = (fig.canvas.get_renderer() if hasattr(fig.canvas, "get_renderer")
+                else RendererAgg(int(fig.bbox.width), int(fig.bbox.height), fig.dpi))
+    widths = [max(renderer.get_text_width_height_descent(line, font, False)[0]
+                  for line in label.splitlines()) for label in labels]
+    pixels = font.get_size_in_points() * fig.dpi / 72
+    handle = (mpl.rcParams["legend.handlelength"] + mpl.rcParams["legend.handletextpad"]) * pixels
+    for columns in range(min(LEGEND_COLUMNS, len(labels)), 0, -1):
+        required = sum(max(column) + handle for column in np.array_split(widths, columns))
+        required += (columns-1) * mpl.rcParams["legend.columnspacing"] * pixels
+        required += 2 * mpl.rcParams["legend.borderpad"] * pixels
+        if required <= fig.bbox.width or columns == 1:
+            return columns
+
+
 def finish_figure(fig):
     """Reserve a separate legend band so legends never obscure data marks."""
     import textwrap
     from matplotlib.ticker import AutoLocator, MaxNLocator, LogLocator, LogFormatterSciNotation, NullFormatter
     handles, labels = [], []
     if fig._suptitle is not None:
-        fig._suptitle.set_text(model_label(fig._suptitle.get_text()))
+        budget = max(20, int(fig.get_figwidth() * _TITLE_CHARS_PER_INCH))
+        fig._suptitle.set_text("\n".join(textwrap.fill(line, budget) for line in
+                               model_label(fig._suptitle.get_text()).splitlines()))
     for ax in fig.axes:
         if not ax.get_visible() or ax.get_label() == "<colorbar>":
             continue
@@ -449,5 +477,5 @@ def finish_figure(fig):
                          fontsize=ax.title.get_fontsize())
     if handles:
         fig.legend(handles, labels, loc="outside lower center",
-                   ncol=min(LEGEND_COLUMNS, len(labels)), frameon=False)
+                   ncol=_legend_columns(fig, labels), frameon=False)
     return fig

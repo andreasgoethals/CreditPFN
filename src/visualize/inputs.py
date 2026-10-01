@@ -108,7 +108,7 @@ class ArchivePath:
     def stat(self):
         info = self.zip.getinfo(self.member)
         stamp = dt.datetime(*info.date_time, tzinfo=dt.timezone.utc).timestamp()
-        return SimpleNamespace(st_size=info.file_size, st_mtime_ns=int(stamp * 1e9))
+        return SimpleNamespace(st_size=info.file_size, st_mtime=stamp, st_mtime_ns=int(stamp * 1e9))
 
 
 def analysis_root(*, project=False):

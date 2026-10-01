@@ -77,7 +77,7 @@ def plot_factor_effects(campaign):
                     label = cp.loss_label(campaign.track, base) if field == "train_loss" else "Relative weight drift"
                     ax.set_ylabel("Change in " + label)
                     ax.set_xlabel("Successful updates" if field == "weight_drift" else "Successful-update window end")
-                    ax.set_title("Frozen backbone" if frozen else "Full updates")
+                    ax.set_title(style.adaptation_label(frozen))
                     ax.legend()
             pages.append(cp.Page(f"factor_dynamics_{campaign.track}_{base}_{factor}", fig,
                 "Paired changes in optimization diagnostics when one training factor changes. Each pair holds the base, "
@@ -110,7 +110,7 @@ def plot_movement(campaign):
         for ax, metric in zip(axes, metrics):
             for frozen, arm in group[group.metric.eq(metric)].groupby("frozen"):
                 curve = arm.groupby("updates").value.agg(median="median", trials="count")
-                ax.plot(curve.index, curve["median"], label="Frozen" if frozen else "Full",
+                ax.plot(curve.index, curve["median"], label=style.adaptation_label(frozen),
                         color=style.color("frozen" if frozen else "full"))
                 tables.append(curve.reset_index().assign(metric=metric, frozen=frozen))
             ax.set_ylabel(metric); ax.set_xlabel("Successful updates"); ax.legend()

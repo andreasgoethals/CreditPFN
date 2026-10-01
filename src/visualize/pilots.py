@@ -126,7 +126,7 @@ def plot_loss(campaign):
                     linestyle="--" if frozen else "-", marker=style.SEED_MARKERS[int(frozen)],
                     markersize=style.CURVE_MARKER_SIZE, linewidth=style.THIN_LINE,
                     markevery=(int(frozen)*2, style.CURVE_MARKER_INTERVAL),
-                    label=f"LR {lr:.0e} / {'frozen' if frozen else 'full'}")
+                    label=f"LR {lr:.0e} / {style.adaptation_label(frozen)}")
             tables.append(curve.rename_axis("window_end").reset_index().assign(base=base, learning_rate=lr, frozen=frozen))
         ax.set_title(base)
         ax.set_xlabel("Successful-update window end")
@@ -204,13 +204,15 @@ def load_schedule_plan(experiment, track):
     return cp.Campaign(cfg, cp.planned_trials(cfg), pd.DataFrame(), pd.DataFrame(), pd.DataFrame())
 
 
-def plot_process_overview(campaign):
+def plot_process_overview(campaign, *, reference=None):
     """Compact dynamics for fixed-recipe seed and sampling experiments."""
     if len(campaign.trials[["learning_rate", "l2sp_lambda", "frozen"]].drop_duplicates()) != 1:
         raise ValueError("Process overview requires one LR, L2-SP and adaptation recipe")
     fields = {"train_loss": "Data loss", "grad_norm_mean": "Gradient norm",
               "clipped_frac": "Clipped fraction", "weight_drift": "Relative weight drift"}
-    curves = {field: cp.optimization_curves(campaign, field) for field in fields}
+    runs = [campaign] if reference is None else [reference, campaign]
+    curves = {field: pd.concat([cp.optimization_curves(run, field).assign(seed=int(run.cfg.seed))
+                               for run in runs], ignore_index=True) for field in fields}
     curves = {field: data for field, data in curves.items() if not data.empty}
     if not curves:
         return []
@@ -222,12 +224,13 @@ def plot_process_overview(campaign):
         fig.suptitle(f"{campaign.track.upper()} / {base}: optimization dynamics")
         tables = []
         for ax, (field, data) in zip(axes.flat, curves.items()):
-            for mode, group in data[data.base.eq(base)].groupby("sampling"):
+            for (mode, seed), group in data[data.base.eq(base)].groupby(["sampling", "seed"]):
                 curve = group.groupby("window_end")[field].agg(median="median", trials="size")
                 curve = curve.reindex(cp.optimization_grid(campaign, field))
-                ax.plot(curve.index, curve["median"], label=style.SAMPLING_LABELS[mode], color=style.SAMPLING_COLORS[mode],
-                        linestyle=style.SAMPLING_STYLES[mode], linewidth=style.THIN_LINE)
-                tables.append(curve.rename_axis("window_end").reset_index().assign(metric=field, sampling=mode))
+                ax.plot(curve.index, curve["median"], label=f"Seed {seed}" if reference is not None else style.SAMPLING_LABELS[mode],
+                        color=style.SEED_COLORS[seed] if reference is not None else style.SAMPLING_COLORS[mode],
+                        linestyle=style.SEED_STYLES[seed] if reference is not None else style.SAMPLING_STYLES[mode], linewidth=style.THIN_LINE)
+                tables.append(curve.rename_axis("window_end").reset_index().assign(metric=field, sampling=mode, seed=seed))
             ax.set_xlabel("Successful-update window end")
             ax.set_ylabel(cp.loss_label(campaign.track, base) if field == "train_loss" else fields[field])
             if field == "clipped_frac":
@@ -245,7 +248,7 @@ def plot_process_overview(campaign):
             ax.remove()
         pages.append(cp.Page(f"process_{campaign.track}_{base}", fig,
             "Optimization diagnostics at the fixed reference recipe. Each curve is the median of trial-window "
-            "means for one sampling protocol across available dataset partitions; counts are retained in the text. "
+            "means for each displayed training seed and sampling protocol across available dataset partitions; counts are retained in the text. "
             "Incomplete table-coverage loss epochs are tabulated separately; missing windows remain gaps. "
             "Clipping uses a shared percentage range, linear through 0.1% and logarithmic above. Drift follows exact measured milestones. "
             "Loss excludes L2-SP and retains the native objective scale, which is not comparable across architectures.",

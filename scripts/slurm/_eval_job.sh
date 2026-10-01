@@ -6,6 +6,8 @@ start_job_log "eval_${TRACK}"
 export PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
 source scripts/slurm/_activate_env.sh
 trap 'exit 143' TERM INT
+source scripts/slurm/_eval_cache.sh
+share_eval_controls
 
 # Python resolves project storage and creates result directories at the point of use.
 python -u scripts/eval_pipeline.py \

@@ -69,7 +69,7 @@ def plot_resource_curves(campaign):
                 curve = observations.groupby("window_end")[column].agg(median="median", count="count")
                 windows = np.unique(np.minimum(np.arange(width, campaign.target+width, width), campaign.target))
                 curve = curve.reindex(windows)
-                name = style.SAMPLING_LABELS[arm] if factor == "sampling" else ("Frozen" if arm else "Full")
+                name = style.SAMPLING_LABELS[arm] if factor == "sampling" else style.adaptation_label(arm)
                 color = style.SAMPLING_COLORS[arm] if factor == "sampling" else style.color("frozen" if arm else "full")
                 ax.plot(curve.index, curve["median"], label=name, color=color)
                 tables.append(curve.rename_axis("window_end").reset_index().assign(metric=column, arm=name))
@@ -110,7 +110,7 @@ def plot_resources(campaign):
         fig, axes = _subplots(f"{campaign.track.upper()}: {label}")
         labels = []
         for i, ((base, frozen), group) in enumerate(medians.groupby(["base", "frozen"])):
-            labels.append(f"{base} / {'frozen' if frozen else 'full'}")
+            labels.append(f"{base} / {style.adaptation_label(frozen)}")
             jitter = np.linspace(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(group)) if len(group) > 1 else np.zeros(1)
             axes[0].scatter(group[column], i+jitter, color=style.color(base),
                             s=style.POINT_SIZE, alpha=style.POINT_ALPHA)
@@ -137,7 +137,7 @@ def plot_parameters(campaign):
         fig, axes = _subplots(f"{base}: parameter movement")
         for frozen, arm in group.groupby("frozen"):
             curve = arm.groupby("successful_updates").relative_change.median()
-            axes[0].plot(curve.index, curve, label="Frozen backbone" if frozen else "Full updates",
+            axes[0].plot(curve.index, curve, label=style.adaptation_label(frozen),
                          color=style.color("frozen" if frozen else "full"))
         axes[0].set_xlabel("Successful optimizer updates")
         axes[0].set_ylabel("Median relative tensor movement")

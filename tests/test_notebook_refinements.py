@@ -30,6 +30,32 @@ def test_public_model_names_are_idempotent_and_do_not_change_file_ids():
     assert "TabPFN v2" in reporting.table_text(pd.DataFrame({"base": ["v2"]}))
 
 
+def test_optimization_titles_explain_parameter_update_conditions():
+    run = _short_campaign()
+    run.trials["frozen"] = [False, True]
+    pages = cp.plot_optimization(run)
+    titles = [page.figure._suptitle.get_text() for page in pages]
+    assert any("All trainable parameters updated" in title for title in titles)
+    assert any("Transformer backbone frozen" in title for title in titles)
+    assert all("surrounding input/target embeddings" in page.caption for page in pages)
+
+
+def test_long_adaptation_legends_fit_without_reducing_font_size():
+    style.apply()
+    fig, ax = plt.subplots(figsize=style.figsize())
+    for frozen in (False, True):
+        for lr in (3e-7, 3e-5):
+            ax.plot([0,1], [0,1], label=f"{lr:.0e} / {style.adaptation_label(frozen)}")
+    ax.legend()
+    style.finish_figure(fig)
+    fig.canvas.draw()
+    legend = fig.legends[0]
+    bounds = legend.get_window_extent(fig.canvas.get_renderer())
+    assert legend._ncols == 2
+    assert bounds.x0 >= fig.bbox.x0 and bounds.x1 <= fig.bbox.x1
+    assert all(text.get_fontsize() == 8 for text in legend.get_texts())
+
+
 @pytest.mark.parametrize("length,limit", [(17,12), (16,12), (25,12), (5,4), (17,20), (0,12)])
 def test_balanced_pages_cover_every_item_once(length, limit):
     pages = list(style.page_slices(length, limit))
