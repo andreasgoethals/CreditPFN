@@ -1,0 +1,11 @@
+# Separate experiment-0 workflow for context curves, DiagScale and large tables.
+target_updates: 6
+interrupt_after: 3
+row_cap: 256
+monitor_rows: 128
+monitor_members: 2
+training_tables: 2
+held_out_tables: 1
+max_training_rows: 100000
+adapter_rates: [0.0001, 0.001, 0.03]
+context_probe_rows: [8, 256, 2048, 8192, 32768, 50000]

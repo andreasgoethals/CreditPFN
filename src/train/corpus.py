@@ -497,7 +497,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
     """
     track = track or cfg.track
     corpus = cfg.corpus
-    return split_corpus(
+    split = split_corpus(
         track=track,
         require_complete_registry=bool(corpus.get("require_complete_registry", False)),
         # Optional since run-9: a config that sets `n_test_datasets` or `n_folds` never uses
@@ -528,3 +528,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
         min_train_rows=(int(min_train_rows) if min_train_rows is not None
                         else _scalar_min_rows(corpus.get("min_train_rows", 0))),
     )
+    from src.train.size_studies import validate_split
+    validate_split(cfg, split, int(min_train_rows) if min_train_rows is not None
+                   else _scalar_min_rows(corpus.get("min_train_rows", 0)))
+    return split

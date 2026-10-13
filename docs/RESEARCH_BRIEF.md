@@ -27,7 +27,7 @@ Experiment **0** owns debugging and readiness: null controls, positive-LR/recove
 
 Recovery equivalence uses strict deterministic execution and a 2,048-row training cap to separate serialization correctness from GPU arithmetic variation. Null/short/budget pilots and the research grid retain production row caps and fast kernels. A fixed seed controls stochastic inputs; it does not guarantee bitwise equality on nondeterministic GPU kernels. Numerical execution settings are recorded. Small recovery controls establish state restoration under their tested conditions, not capacity or cross-platform reproducibility.
 
-Configs are grouped under `config/experiment0/` through `config/experiment3/`; notebooks use the same groups plus `00_general/`. Research run families use `cpt_*_v5`, including `cpt_recovery_v5`; isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. This is a fresh protocol: it adds disjoint validation rows for monitoring, a fixed public retention panel and experiment-scoped output. Earlier v4 controls remain historical evidence, not passing controls for v5.
+Configs are grouped under `config/experiment0/` through `config/experiment7/`; notebooks use experiment groups plus `general/`. Experiments 1–3 retain their `cpt_*_v5` identities; experiments 4–7 have separate run names and the additional validation gate described below. Isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. Earlier v4 controls remain historical evidence, not passing controls for v5.
 
 ## Experiment 1: implemented main grid
 
@@ -201,3 +201,229 @@ Historical headline measurements, including the completed run-8 evaluation, rema
 The current implementation uses training protocol **5**. Debugging outcomes are recorded in the agent-memory runs table; they are not results of the main scientific grid. Local tests exercise sampling, finite mean gradients, exact budgets, recovery, cleanup boundaries, identity checks and analysis. Accepted cluster controls, the pilot budget decision, real CUDA recovery and measured walltimes are prerequisites for the full campaign. Preparation logs establish that inputs and plans were written; they are not completed training or evaluation results.
 
 A passing experiment 0 establishes the tested controls, not the capacity of every final evaluation task. Before scheduling all final benchmarks, measure a representative large-table evaluation with the intended inference ensemble/context cap and a classical HPO task. Training-cap pilots and the small packaged recovery benchmark do not validate million-row inference or its walltime.
+
+
+## Follow-up experiments 4–7
+
+These implementations require new experiment-0 validation receipts before research submission.
+No follow-up has yet been run on VSC. Experiments 1–3 retain their configurations and identities.
+The earlier generic-data control and prevalence proposal are excluded. The remaining designs
+are renumbered consecutively as follows; historical dated records retain their original numbers.
+
+| Experiment | Fixed question | Design |
+|---|---|---|
+| 4: labeled context | Does credit CPT change the learning curve as labeled context becomes scarce? | Original versus fixed CPT, TabPFN v3 and TabICLv2, 25 tables, five outer folds, 29 nested context sizes; no new CPT. |
+| 5: DiagScale CPT | Can small query-scaling adapters produce useful cross-table adaptation? | Two modern bases × three rates × four dataset partitions × PD/LGD = 48 training trials. |
+| 6: training-corpus policy | Does excluding small training tables change transfer at a fixed episode cap? | Two modern bases × four partitions × all/large-only training tables = 16 PD trials, capped at 8,192 rows. |
+| 7: episode size | Does a larger training episode change transfer on an identical large-table corpus? | Two modern bases × four partitions × three episode sizes = 24 PD comparisons: 16 new trials and eight shared controls from experiment 6. |
+
+### Experiment 4: context learning curves
+
+The fixed CPT reference is experiment 1 (`cpt_main_v5`), full-parameter adaptation,
+peak LR `3e-7`, L2-SP `0.003`, seed 42 and the 10,000-update endpoint. Each table uses
+only the checkpoint whose training partition excluded it. This gives eight reference
+checkpoints per task (two families × four partitions), not a checkpoint selected by its
+held-out score. Original-weight, dataset and saved-provenance hashes are checked before use.
+TabPFN uses explicit `tabpfn-v3-*-v3_default.ckpt` paths; package default-version selection
+is never used. TabICL uses the existing dated v2 checkpoints.
+
+Contexts contain 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1,024,
+1,536, 2,048, 3,072, 4,096, 6,144, 8,192, 12,288, 16,384, 20,480, 24,576, 32,768,
+40,960, 49,152 and 50,000 rows when available. Include the
+available-pool endpoint up to the declared cap, deduplicating coincident sizes. Never replace
+missing rows by duplicates. The shared 50,000-row maximum is a compute cap for this study,
+not v3's architectural limit: both pinned local v3 checkpoints declare a one-million-row
+inference limit and no internal row subsampling. Keep the package's size guard enabled.
+The upper end still requires the separate GPU capacity gate at the configured inference-view
+count. Classification prefixes preserve class coverage and approximately
+proportional prevalence; their order uses context-pool labels only. Regression prefixes are random.
+
+Five outer folds cover every test row exactly once. The outer-training fold is divided into a
+context pool and a fixed 20% inner-validation subset for threshold/calibration measurements.
+Thus the x-axis counts **context labels**, not total labels acquired: validation labels are an
+additional fixed resource. Each context budget and both weight states use exactly the same
+validation/test rows. All test rows are predicted in memory-bounded chunks. No test-row cap,
+inference-view sweep, target-table weight training or held-out checkpoint selection is involved.
+Use 32 TabPFN and eight TabICL inference views throughout. Numerical/categorical preprocessing
+fits the selected context, retaining the existing corpus-level sanitization limitation.
+
+One task per dataset/family/fold gives 250 tasks. Each task commits its metrics and compressed
+row-index/prediction arrays to one project-storage SQLite file and exports a compact metrics CSV.
+Interrupted cells can be retried without repeating committed cells. The experiment asks whether
+CPT substitutes for some labeled context; interpret the paired AUC/R² and proper-score changes,
+not only the highest-context endpoint. Large-context aggregate curves require a common dataset
+cohort or explicit support counts, because small tables cannot populate the rightmost points.
+
+### Experiment 5: restricted query-scale adaptation
+
+Use the TTC paper's DiagScale mechanism, not its complete target-table fine-tuning protocol:
+TabPFN wraps `SoftmaxScalingMLP` after the original transform; TabICL scales final queries after
+SSMax on fresh and cached paths. Learn FP32 zero-initialized multipliers `1 + delta`. Store only
+adapter state plus an immutable original-weight reference. Only adapter tensors enter the
+optimizer/clipping operation. TabICL retains original backbone autograd flags for CUDA parity,
+clears their gradients, and never steps those weights.
+
+The rate grid is `1e-4`, `1e-3`, `3e-2`. The additional `1e-4` is a conservative cross-table
+hypothesis; the source paper does not establish an optimal rate for this regime. AdamW uses
+weight decay 0.01 on zero-centered deltas, with original-weight L2-SP disabled. Training is FP32,
+with a provisional 8,192 total context-plus-query row cap, two training views, proportional
+one-sample table visitation, 60/40 context/query and 10,000 successful updates. Use the existing
+warmup/cosine schedule, four dataset partitions, seed 42 and fixed credit/non-credit monitors.
+No validation-best epoch selection or fallback to original weights is used in cross-table CPT.
+
+TabICL evaluation fixes `use_amp=False` and `use_fa3=False` for **both base and adapter**.
+The benchmark uses the existing five-fold metrics, calibration and prediction writers within
+experiment 5. Comparing against the base measures this adapter recipe. Cross-experiment
+comparisons with full/frozen CPT also change rate, regularization, precision, sampling or episode
+size; they are descriptive recipe comparisons, not a pure causal effect of parameter count.
+The FP32 episode cap and deployment precision need the new capacity gate; old BF16 tests do not
+validate them. Do not describe PEFT as computationally free based on optimizer parameter count.
+
+### Experiment 6: training-corpus policy at a fixed episode cap
+
+First partition the **complete 17-table PD registry**, with the existing seed 1729 and four
+balanced whole-dataset folds. For each fold, exclude its test tables, then compare the full
+training complement against its subset with `n_rows >= 10001`. Never filter the test set or
+redraw a fold after eligibility changes. Every PD dataset, including every small dataset,
+therefore remains a test dataset exactly once. These corpus partitions are distinct from the
+five row-level CV folds used later within each held-out table.
+
+Use TabPFN v3 and TabICLv2, full updates, LR `3e-7`, L2-SP `0.003`, seed 42, proportional
+one-sample visitation, two training views, 60/40 context/query and 10,000 successful updates.
+Fix the total episode cap at **8,192 rows** in both arms. A traversal visits each eligible table
+once in random order; one sampled episode gives one optimizer update. Small tables use their
+available rows without padding or duplicates. This gives 2 bases × 2 corpus policies × 4 folds
+= **16 new trials**, run `cpt_corpus_v1` in `config/experiment6/pd.yaml`.
+
+The local processed corpus gives full/large training counts **13/9, 13/8, 12/7, 13/9**;
+held-out counts remain **4, 4, 5, 4**. All currently eligible large tables exceed 26,000 rows.
+These are local inventory checks, not evidence about VSC's exact bytes: cluster preparation
+records and validates its own membership and row counts. LGD is excluded because its
+large-only corpus is empty in one partition. Require at least three eligible training tables
+per partition, preserve the complete registry and reject explicit dataset/split overrides.
+
+The estimand is the **effect of this training-corpus policy**, not the isolated causal effect
+of table size. Removing small tables also changes identities, diversity, revisit frequency
+and actual rows per update. Record each table's available rows, episode/query rows and visit
+share in the prepared plan, plus actual exposure and cost during training. This limitation
+cannot be removed simply by naming the study a large-data ablation.
+
+### Experiment 7: episode size on one fixed large-table corpus
+
+Keep experiment 6's large-only training membership, test assignments, bases, recipe, seed,
+update budget and schedule. Vary **total context-plus-query rows**: 2,048, 8,192 or 26,000.
+With the same 60/40 split, both labeled context and loss-evaluated query counts increase.
+This tests the training-episode budget, not context length alone or exposure at equal GPU time.
+Experiment 4 separately varies inference context while keeping the complete test sets fixed.
+
+Reuse the eight 8,192-row large-arm trials of experiment 6 as the shared control. Train only
+the 2,048- and 26,000-row levels: 2 bases × 2 new sizes × 4 folds = **16 additional trials**.
+The configurations are `config/experiment7/pd_rows{2048,26000}.yaml`, with run names
+`cpt_episode_rows2048_v1` and `cpt_episode_rows26000_v1`. There are 24 analyzed cells in this
+experiment but only **32 distinct new training trials across experiments 6 and 7**. The
+previous, unrun 48-cell factorial design is retired. The smaller design does not estimate
+corpus-policy × episode-size interactions.
+
+Prepare experiment 6 first. Experiment 7 binds its reference plan hash and exact trial mapping;
+data bytes/membership, base-weight hashes, code, environment, seed, update budget, schedule,
+sampling and evaluation settings must match. Resolved benchmark defaults, implementation and
+package versions are frozen too, checked again inside each evaluation task; CLI overrides
+cannot change inference views, context caps or folds. Only the declared episode cap changes in the
+matched large-arm trials. Reference files stay in experiment 6; no copying, hidden rerunning
+or reuse of differently configured experiment-1/3 checkpoints occurs. Cleanup refuses to
+delete experiment 6 while a saved experiment-7 plan still depends on it.
+
+Every eligible training table must supply every requested episode size. If a future dataset
+version cannot fill 26,000 rows, preparation fails rather than dropping another table,
+padding rows or changing test assignments. Runtime member/cell caps must not silently shorten
+the declared episode. The 26k cap is the existing measured ceiling for these bases, extending
+Real-TabPFN's 20k recipe; it is not a literal reproduction of that paper. Its safety under the
+new recipe still requires the experiment-0 capacity gate.
+
+Both studies monitor updates 0/250/1k/2.5k/5k/10k and use the same final five-fold credit and
+non-credit benchmark with original/classical controls. Train and benchmark phases remain
+separate. After all plans are prepared, their new training trials may run concurrently;
+experiment-7 benchmarking additionally requires experiment-6 training completion. Analysis
+needs both studies' results and all three matched arms, with complete paired folds. Report
+AUC/proper-score effects alongside rows, queries, GPU allocation time, memory and throughput;
+equal successful updates do not equalize compute or unique-row exposure.
+
+### Validation and publication scope
+
+The isolated experiment-0 follow-up workflow first checks all four base/task combinations:
+zero-adapter identity, original-weight immutability, nonzero save/reload, cached prediction,
+three learning rates and uninterrupted versus interrupted/resumed updates. A tiny synthetic
+five-fold context test loads the actual original/CPT reference pair and verifies complete test
+coverage. A separate capacity array tests FP32 adapter episodes, both corpus policies at 8,192
+rows, the other two sizes on the identical large-table pool, and long-context inference. Its
+episode checks verify recorded row exposure as well as completion. Eight successful, current
+code/config/environment receipts with unchanged detailed evidence are required before experiments 4–7 can launch. A failed workflow
+can be cleaned by its identifier without deleting earlier experiment-0 controls or research runs.
+
+The main manuscript should emphasize the factorial behavior, credit/non-credit trade-off and
+cost. Follow-up curves and mechanism/corpus sensitivities mainly belong in the appendix. Finish
+matched benchmarks before drawing conclusions from missing cells. Treat tables as the units of
+comparison and CV folds/configurations as dependent observations. Audit shared source populations,
+feature timing and temporal/grouped applicability; the corpus is not 25 independent lending
+populations. Without the excluded generic-data adaptation control, avoid a causal claim that
+credit-domain specialization itself is responsible. Retain the documented transductive schema
+sanitization limitation. None of the proposed extra experiments removes these limitations.
+
+### Manuscript and reproducible release
+
+The number of experiments is not a publication criterion. The contribution should be
+a supported account of when cross-table adaptation helps or harms, how this depends on labeled
+context and adaptation capacity, and whether corpus/episode size explains the behavior. A negative
+average alone is insufficient evidence of general impossibility. Describe the chosen training
+horizon, evaluated corpus and inference protocol explicitly; avoid selecting a favorable recipe
+from the reported test grid and presenting it as an independently validated winner.
+
+Before drafting conclusions, reconcile every planned trial and benchmark cell with its actual
+outcome, preserve failed/unfinished cells in coverage, and quantify paired effects at the table
+level. Five CV folds, recipes and overlapping training partitions are not independent samples.
+Audit related dataset populations and base-pretraining overlap; report uncertainty and robustness
+to source grouping where that audit identifies dependence. The limited two-seed reference and
+small non-credit panel bound the claims even if every planned run finishes.
+
+Sharpening the contribution means organizing completed evidence around a few answerable claims,
+not adding experiments until an average becomes positive:
+
+| Question for the main text | Required evidence | Interpretation boundary |
+|---|---|---|
+| How do the adaptation knobs change transfer, retention and cost? | Complete experiment-1 paired benchmarks; prespecified factor contrasts; trajectories and failure coverage; experiments 2/3 as sensitivity checks | Describe this grid, corpus and horizon; do not promote the best tested recipe into an independently selected winner. |
+| Does CPT help when labeled context is scarce? | Experiment-4 paired curves with unchanged test rows and explicit dataset support at each context size | The fixed validation-label budget and inference views remain part of the evaluated protocol. |
+| What explains the observed response? | Adapter recipe (5), corpus policy (6) and episode budget (7), each compared with its matched control | Different recipes do not isolate only parameter count; corpus filtering changes composition; episode growth changes query exposure and compute too. |
+
+Before inspecting these new outcomes, keep the endpoint, reference arms and signs fixed: large
+minus all for experiment 6, and 2,048/26,000 minus 8,192 for experiment 7. Present paired AUC
+changes and Brier improvements, the table distribution, non-credit retention and resource costs.
+Show table/source-aware uncertainty rather than treating 5 CV folds or 4 overlapping training
+partitions as independent replications. A statistically inconclusive difference is not evidence
+of equivalence; an eventual negligible-effect claim needs an explicit, justified practical margin.
+Do not collapse unlike task metrics or unequal table support into one favorable headline.
+
+The current scope is broad enough to support a focused empirical paper if the completed results
+yield defensible insight. Prioritize completeness, provenance/source audit and synthesis over
+new grids. For example, a corpus-policy benefit without an episode-size benefit points to the
+eligibility/composition policy at this budget; the converse points to the episode budget on this
+fixed large-table corpus. Neither identifies a universal mechanism. If both are inconclusive,
+report the detectable effect range and tested limits rather than claiming CPT never helps.
+
+The verified [ICML 2026 author instructions](https://icml.cc/Conferences/2026/AuthorInstructions)
+allow eight main-text pages at submission (nine for camera-ready), with references/appendices
+outside that limit; they require the official LaTeX format, anonymous submission and anonymous
+supplementary code. Reviewers need not read appendices, so the central design, main evidence and
+limitations belong in the main text. The [reviewer guidance](https://icml.cc/Conferences/2026/ReviewerInstructions)
+explicitly recognizes insight from evaluating existing methods as originality. These are 2026
+rules checked on 13-10-2026, not confirmation of the next edition's dates or requirements.
+
+Use the existing adjacent paper project: introduce the question and related work, specify the
+dataset-level transfer design, present the main response/retention/cost results and whichever
+follow-up changes the interpretation, then discuss limits. Detailed seed, sampling, capacity and
+secondary-metric evidence can occupy the appendix. Freeze a reproducible artifact with exact
+configs, checkpoint/data identities, environment, code/library pins, aggregate results, captions
+and regeneration commands. Audit private aliases, paths and data/weight redistribution terms
+before preparing the anonymous submission copy. Keep proprietary rows and unlicensed weights
+out of the public release. Include a credit-risk-specific impact discussion (miscalibration,
+fairness, privacy and inappropriate deployment), rather than claiming these benchmarks validate
+automated lending decisions. Authors remain responsible for validating all analysis and text.

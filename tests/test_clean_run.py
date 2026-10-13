@@ -12,6 +12,12 @@ import pytest
 from src.utils import clean_run
 
 
+@pytest.fixture(autouse=True)
+def no_live_scheduler(monkeypatch):
+    # This file exercises deletion in temporary DATA/PROJECT trees only.
+    monkeypatch.setattr(clean_run, 'check_cluster_writers', lambda *args: None)
+
+
 def test_lists_by_default_and_deletes_only_when_asked(isolated_output, capsys) -> None:
     """A listing you meant as a deletion costs one more command; the reverse costs the run."""
     from src.utils.paths import logs_dir
@@ -24,7 +30,7 @@ def test_lists_by_default_and_deletes_only_when_asked(isolated_output, capsys) -
     assert victim.exists(), "the default must not delete anything"
     assert "Nothing was deleted" in capsys.readouterr().out
 
-    clean_run.main(["--clean"])
+    clean_run.main(["--clean", "--all-experiments"])
     assert not victim.exists()
 
 
@@ -108,7 +114,7 @@ def test_fresh_run_removes_all_project_output_and_trained_weights_but_keeps_inpu
         path.write_bytes(b"keep or remove")
     clean_run.main([])
     assert all(p.exists() for p in victims + inputs)
-    clean_run.main(["--clean"])
+    clean_run.main(["--clean", "--all-experiments"])
     assert all(not p.exists() for p in victims)
     assert all(p.exists() for p in inputs)
 
@@ -124,7 +130,7 @@ def test_cleanup_preflights_all_trees_before_deleting_anything(isolated_output, 
     original = Path.is_symlink
     monkeypatch.setattr(Path, "is_symlink", lambda p: p == linked or original(p))
     with pytest.raises(ValueError, match="linked"):
-        clean_run.main(["--clean"])
+        clean_run.main(["--clean", "--all-experiments"])
     assert first.exists() and linked.exists()
 
 
@@ -137,7 +143,7 @@ def test_train_stage_cleanup_includes_recovery_on_both_tiers(isolated_output):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(b"old")
             victims.append(p)
-    clean_run.main(["--stages", "train", "--clean"])
+    clean_run.main(["--stages", "train", "--clean", "--all-experiments"])
     assert all(not p.exists() for p in victims)
 
 
@@ -148,7 +154,7 @@ def test_full_cleanup_preserves_only_its_active_log(isolated_output, monkeypatch
     active.write_text("START\n")
     old.write_text("old run\n")
     monkeypatch.setenv("CREDITPFN_ACTIVE_LOG", str(active))
-    clean_run.main(["--clean"])
+    clean_run.main(["--clean", "--all-experiments"])
     assert active.read_text() == "START\n" and not old.exists()
     with active.open("a") as stream:
         stream.write("END exit_code=0\n")
@@ -162,7 +168,7 @@ def test_cleanup_rejects_keep_log_outside_log_directory(isolated_output, monkeyp
     victim.write_text("keep")
     monkeypatch.setenv("CREDITPFN_ACTIVE_LOG", str(victim))
     with pytest.raises(SystemExit):
-        clean_run.main(["--clean"])
+        clean_run.main(["--clean", "--all-experiments"])
     assert victim.exists()
 
 
@@ -174,6 +180,6 @@ def test_eval_cleanup_removes_figures_and_eval_logs_but_keeps_training(isolated_
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("record", encoding="utf-8")
-    clean_run.main(["--clean", "--stages", "eval"])
+    clean_run.main(["--clean", "--stages", "eval", "--all-experiments"])
     assert all(not p.exists() for p in paths[:3])
     assert paths[3].exists()

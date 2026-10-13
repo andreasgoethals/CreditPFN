@@ -23,13 +23,17 @@ def display_table(frame):
 
 
 def table_text(frame):
-    """No pandas ellipses, row truncation or private identifiers in final summaries."""
+    """Complete CSV tables without alignment padding or private identifiers.
+
+    Quoting preserves commas and newlines in labels. Every row, column and index
+    remains present, at the same precision as the former aligned text tables.
+    """
     if isinstance(frame, pd.Series):
         frame = frame.to_frame()
     frame = display_table(frame)
-    return frame.to_string(index=True, max_rows=None, max_cols=None,
-                           max_colwidth=None, float_format=lambda value: f"{value:.8g}",
-                           na_rep="unavailable")
+    return "CSV (first column: row index)\n" + frame.to_csv(
+        index=True, index_label="row", float_format="%.8g", na_rep="unavailable",
+        lineterminator="\n").rstrip("\n")
 
 
 def figure_tables(fig):

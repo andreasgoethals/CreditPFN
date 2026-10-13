@@ -42,9 +42,16 @@ def _legacy_manifest_path(notebook: str) -> Path:
     return manifests_dir(group) / "figures" / f"{name.as_posix()}.json"
 
 
+def _renamed_corpus_folder(notebook: str) -> Path:
+    # Read-only compatibility for artifacts drawn before the corpus group rename.
+    return figures_dir() / "00_general"
+
+
 def read_manifest(notebook: str) -> list[dict]:
     """What this notebook drew last time it ran, in order. `[]` if it never has."""
     path = manifest_path(notebook)
+    if not path.is_file() and notebook.startswith(("general/", "00_general/")):
+        path = _renamed_corpus_folder(notebook) / "_metadata" / manifest_path(notebook).name
     if not path.is_file():
         path = _legacy_manifest_path(notebook)
     if not path.is_file():
@@ -63,6 +70,7 @@ def clear(notebook: str) -> int:
     """Remove owned PDFs and metadata, preserving other notebooks and run evidence."""
     removed = 0
     for folder, patterns in ((notebook_figures_dir(notebook), (figure_prefix(notebook) + "*.pdf",)),
+                             (_renamed_corpus_folder(notebook), (figure_prefix(notebook) + "*.pdf",)),
                              (figures_dir(), (figure_prefix(notebook) + "*.pdf",)),
                              (legacy_figures_dir(notebook), _OWNED)):
         for pattern in patterns:
@@ -79,6 +87,11 @@ def clear(notebook: str) -> int:
             removed += 1
         if path == _legacy_manifest_path(notebook):
             _prune_empty(path.parent)
+    if notebook.startswith(("general/", "00_general/")):
+        old = _renamed_corpus_folder(notebook) / "_metadata" / manifest_path(notebook).name
+        if old.is_file():
+            old.unlink()
+        _prune_empty(old.parent)
     return removed
 
 
@@ -127,7 +140,7 @@ def migrate_collection(notebooks: tuple[str, ...]) -> None:
             filename = entry["stem"] + ".pdf"
             target = destination / filename
             _guard(target, destination)
-            for folder in (figures_dir(), legacy_figures_dir(name)):
+            for folder in (figures_dir(), legacy_figures_dir(name), _renamed_corpus_folder(name)):
                 source = folder / filename
                 _guard(source, folder)
                 if source.is_file():
@@ -141,7 +154,8 @@ def migrate_collection(notebooks: tuple[str, ...]) -> None:
         path = manifest_path(name)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
-        for old in (_legacy_manifest_path(name), legacy_figures_dir(name) / MANIFEST):
+        for old in (_legacy_manifest_path(name), legacy_figures_dir(name) / MANIFEST,
+                    _renamed_corpus_folder(name) / "_metadata" / path.name):
             if old.is_file():
                 old.unlink()
     _prune_legacy_trees()
@@ -150,6 +164,9 @@ def migrate_collection(notebooks: tuple[str, ...]) -> None:
 def clear_collection(notebooks: tuple[str, ...]) -> None:
     """Full reruns also retire figures from notebooks that were renamed or removed."""
     owners = set(notebooks)
+    old_metadata = figures_dir() / "00_general" / "_metadata"
+    owners.update("general/" + p.relative_to(old_metadata).with_suffix("").as_posix()
+                  for p in old_metadata.rglob("*.json"))
     for group in EXPERIMENTS:
         for root in (manifests_dir(group) / "figures",
                      notebook_figures_dir(f"{group}/placeholder") / "_metadata"):

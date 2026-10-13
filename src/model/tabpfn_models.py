@@ -144,6 +144,9 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
 
 def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
     """Construct ``TabPFNClassifier`` or ``TabPFNRegressor`` from a path."""
+    if "_diagscale" in Path(model_path).stem:
+        from src.model.diagscale import make_estimator
+        return make_estimator(task_type, model_path, family="tabpfn", **extra)
     from tabpfn import TabPFNClassifier, TabPFNRegressor
     cls = (
         TabPFNClassifier if task_type == "classification"
@@ -238,12 +241,10 @@ class TabPFNTrained:
     ``name`` (the checkpoint's filename) and ``extra`` metadata
     forwarded to the eval CSV.
 
-    ``ckpt_path`` is a path under ``checkpoints/trained/<track>/``
-    written by ``src.train.model.save_finetuned`` (invoked from
-    ``src.train.loop``). Because that function writes the full Prior
-    Labs format (``state_dict + config + architecture_name +
-    inference_config``), the file round-trips cleanly through
-    ``TabPFNClassifier(model_path=...)``.
+    ``ckpt_path`` is under ``checkpoints/trained/<experiment>/<track>/``.
+    Full-weight checkpoints use the native Prior Labs format. DiagScale
+    bundles use our explicit loader, which checks the original checkpoint
+    hash and restores adapters before inference caches are populated.
     """
 
     def __init__(

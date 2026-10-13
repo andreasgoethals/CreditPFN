@@ -87,8 +87,12 @@ def _sanitize(X: np.ndarray, *, dead_cols: np.ndarray | None = None,
 
 
 def _make_tabicl(task_type: str, model_path: str | Path, *,
-                 device: str = "auto", n_estimators: int = 8):
+                 device: str = "auto", n_estimators: int = 8, **inference_options):
     """Construct ``TabICLClassifier`` or ``TabICLRegressor`` from a path."""
+    if "_diagscale" in Path(model_path).stem:
+        from src.model.diagscale import make_estimator
+        return make_estimator(task_type, model_path, family="tabicl", device=device,
+                              n_estimators=int(n_estimators), **inference_options)
     clf_cls, reg_cls = import_tabicl_sklearn()
     cls = clf_cls if task_type == "classification" else reg_cls
     kwargs: dict = {
@@ -100,6 +104,7 @@ def _make_tabicl(task_type: str, model_path: str | Path, *,
     # resolution, cuda-if-available) — translate our registry convention.
     if device and device != "auto":
         kwargs["device"] = device
+    kwargs.update(inference_options)
     return cls(**kwargs)
 
 
@@ -115,12 +120,14 @@ class TabICLUntuned:
         base_path: str | Path,
         device: str = "auto",
         n_estimators: int = 8,
+        inference_options: dict | None = None,
     ) -> None:
         self.task_type = task_type
         self.base_path = str(base_path)
         self.name = f"tabicl-untuned[{Path(base_path).stem}]"
         self._device = device
         self._n_estimators = n_estimators
+        self._inference_options = dict(inference_options or {})
         self._tabicl = None
         self._dead_cols: np.ndarray | None = None
 
@@ -133,6 +140,7 @@ class TabICLUntuned:
         self._tabicl = _make_tabicl(
             self.task_type, self.base_path,
             device=self._device, n_estimators=self._n_estimators,
+            **self._inference_options,
         )
         X_clean, self._dead_cols = _sanitize(X)
         self._tabicl.fit(X_clean, y)
@@ -169,6 +177,7 @@ class TabICLTrained:
         device: str = "auto",
         n_estimators: int = 8,
         extra: dict | None = None,
+        inference_options: dict | None = None,
     ) -> None:
         self.task_type = task_type
         self.ckpt_path = str(ckpt_path)
@@ -176,6 +185,7 @@ class TabICLTrained:
         self.extra = dict(extra or {})
         self._device = device
         self._n_estimators = n_estimators
+        self._inference_options = dict(inference_options or {})
         self._tabicl = None
         self._dead_cols: np.ndarray | None = None
 
@@ -188,6 +198,7 @@ class TabICLTrained:
         self._tabicl = _make_tabicl(
             self.task_type, self.ckpt_path,
             device=self._device, n_estimators=self._n_estimators,
+            **self._inference_options,
         )
         X_clean, self._dead_cols = _sanitize(X)
         self._tabicl.fit(X_clean, y)

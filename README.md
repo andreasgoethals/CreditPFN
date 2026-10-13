@@ -28,7 +28,7 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 |---|---|
 | `archive/` | Gitignored historical measurements, compact source records and log summaries |
 | `config/` | Data preparation, shared training/evaluation defaults, named experiment phases |
-| `scripts/{data,train,eval}_pipeline.py` | Experiment entry points |
+| `scripts/{data,train,eval,context}_pipeline.py` | Experiment entry points |
 | `scripts/probe_row_cap.py` | GPU capacity experiment entry point |
 | `scripts/slurm/` | Resource wrappers, shared job bodies and bounded submission launcher |
 | `src/data/` | Registration, sanitization and display names |
@@ -45,12 +45,16 @@ Reusable Python logic belongs in `src/`; it does not import experiment entry poi
 
 | Experiment | Configs | Purpose | Trials across PD + LGD |
 |---|---|---|---|
-| 0 | `config/experiment0/` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots; auxiliary: 52 tiny arms in 8 tasks |
+| 0 | `config/experiment0/` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots; auxiliary: 52 tiny arms in 8 tasks; follow-ups: 4 correctness + 4 capacity tasks |
 | 1 | `config/experiment1/{pd,lgd}.yaml` | Full learning-rate × L2-SP × adaptation sweep | 512 |
 | 2 | `config/experiment2/{pd,lgd}.yaml` | One additional training seed at a predefined reference | 32 additional; seed 42 is reused from experiment 1 |
 | 3 | `config/experiment3/{pd,lgd}.yaml` | One sample versus full pass versus accumulation | 96 |
+| 4 | `config/experiment4/context.yaml` | Original/CPT learning curves across 29 context sizes, five folds, complete test sets | 250 inference tasks; no CPT |
+| 5 | `config/experiment5/{pd,lgd}.yaml` | DiagScale cross-table adaptation at three learning rates | 48 |
+| 6 | `config/experiment6/pd.yaml` | All versus large PD training tables at a fixed 8,192-row episode cap | 16 PD |
+| 7 | `config/experiment7/pd_rows*.yaml` | 2,048 / 8,192 / 26,000-row episodes on the same large-table corpus | 16 new PD + 8 shared controls from experiment 6 |
 
-`data.yaml`, `train.yaml`, `eval.yaml` and `retention.yaml` hold shared defaults and the fixed public monitoring panel. Named configs provide only experiment differences. Fresh `cpt_*_v5` identities distinguish this protocol from earlier output.
+`data.yaml`, `train.yaml`, `eval.yaml` and `retention.yaml` hold shared defaults and the fixed public monitoring panel. Named configs provide only experiment differences. Experiments 1–3 use `cpt_*_v5` identities; follow-ups use separate named plans and output groups.
 
 From an active CreditPFN environment on a VSC login node, `bash scripts/slurm/run_experiment0.sh part1` prepares inputs and runs the first three controls with automatic audit gates. Run `part2` separately for the long budget pilots. The launcher never starts experiment 1 automatically; see [the runbook](docs/VSC.md).
 
@@ -59,6 +63,14 @@ For targeted debugging, `bash scripts/slurm/run_experiment0.sh recovery` runs on
 `bash scripts/slurm/run_experiment0.sh pilot` runs the short production-size pilots alone with fresh run names and an automatic audit. Optional `--pd-bases` and `--lgd-bases` select `v2`, `v2.6`, `v3` or `tabicl`; omitted selections retain all bases. Generated configs stay with the workflow in manifests. This diagnostic preserves earlier output and stops after its own audit.
 
 `bash scripts/slurm/run_experiment0.sh auxiliary` checks experiments 2 and 3 with six-update seed/sampling/recovery controls. The eight tasks stop at their own audit; research submissions remain separate. The small limits in `config/experiment0/auxiliary.yaml` generate immutable per-case configs in the workflow manifest folder. Notebook `04_auxiliary_experiments` reports the evidence.
+
+Experiments 4–7 require the separate `run_experiment0_followups.sh` correctness/capacity workflow.
+Its receipts bind the code, configuration, environment and detailed evidence. Production launchers
+refuse missing or stale receipts. See the research brief for fixed recipes and the VSC runbook
+for the preparation and launch sequence. Existing experiments keep their original outputs.
+Experiments 6 and 7 preserve the original four held-out dataset partitions. Eligibility filters
+only their training complements. Experiment 7 binds its 8,192-row control to experiment 6's
+immutable plan; it does not duplicate those weights or benchmark results.
 
 During cluster debugging, output stays on VSC. Download finished output for local analysis once the campaign is complete; files supplied for inspection in Downloads remain there. The two cluster output trees are complementary and are combined under local `output CreditPFN/` at that final download.
 
@@ -76,7 +88,9 @@ The first command previews the design without training. A complete source corpus
 
 Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output CreditPFN/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
-The notebook reading order is `00_general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots, then auxiliary controls), `experiment1/` (training then results, each task separately), `experiment2/` (seed-check training then results), and `experiment3/` (sampling/accumulation training then results). Training notebooks follow losses, monitored performance, parameter movement and device counters over updates. Results notebooks distinguish fixed-context monitor endpoints from final five-fold evaluation. The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
+The notebook reading order is `general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots, then auxiliary controls), `experiment1/` (training then results, each task separately), `experiment2/` (seed-check training then results), `experiment3/` (sampling/accumulation training then results), `experiment4/01_context_curves` (paired context-budget evaluation), and `experiment5/` (DiagScale training then results). Training notebooks follow losses, monitored performance, parameter movement and device counters over updates. Results notebooks distinguish fixed-context monitor endpoints from final five-fold evaluation. The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
+
+Experiment 4 reads project `task_*.csv.gz` metric exports only when their DATA completion receipts match the immutable plan. Unexported SQLite cells remain recovery evidence rather than completed publication records. Its context curves require all five paired folds and keep the table cohort fixed over each displayed range. Experiment 5 labels query-scale movement separately from backbone drift and requires matched original/adapter evaluation within its own inference protocol. New notebooks show unavailable measurements explicitly until their campaigns run; synthetic plot tests never supply research results.
 
 The runner prints preparation, worker starts, each executing cell/section, completion counts and a heartbeat every 15 seconds. `--workers 2` runs two independent kernels using this Python environment; each kernel defaults to one numerical-library thread to avoid nested CPU oversubscription. Increase `--workers` for more simultaneous notebooks, subject to available memory; `--threads-per-worker` controls numerical threading. Previously expensive notebooks start first, while summaries and captions retain filesystem order. Cell counts show activity, not an estimate of remaining time.
 
@@ -84,9 +98,9 @@ The runner prints preparation, worker starts, each executing cell/section, compl
 .\.venv\Scripts\python.exe -m src.utils.run_notebooks --workers 2
 ```
 
-Notebooks export PDFs through `FigureSaver` at the actual ICML paper widths: **6.75 inches full width or 3.25 inches single column**, with embedded TrueType fonts. This is a deliberate, user-approved departure from the template's A4 dimensions. All PDFs live under **`output CreditPFN/figures/<experiment>/`** (corpus exploration uses `figures/00_general/`), with notebook prefixes and drawing-order numbers. Caption metadata lives beside them in `_metadata/`. Each rerun clears its own previous PDFs; a full run also removes generated figures from retired notebooks and the previous caption index, then rebuilds them. Scientific logs, training diagnostics and evaluation results are preserved. Coverage precedes effects; at most four learning-rate curves share a panel and dataset matrices are paginated. Every caption is displayed below its figure and indexed in `output CreditPFN/figures/CAPTIONS.md`.
+Notebooks export PDFs through `FigureSaver` at the actual ICML paper widths: **6.75 inches full width or 3.25 inches single column**, with embedded TrueType fonts. This is a deliberate, user-approved departure from the template's A4 dimensions. All PDFs live under **`output CreditPFN/figures/<experiment>/`** (corpus exploration uses `figures/general/`), with notebook prefixes and drawing-order numbers. Caption metadata lives beside them in `_metadata/`. Each rerun clears its own previous PDFs; a full run also removes generated figures from retired notebooks and the previous caption index, then rebuilds them. Scientific logs, training diagnostics and evaluation results are preserved. Coverage precedes effects; at most four learning-rate curves share a panel and dataset matrices are paginated. Every caption is displayed below its figure and indexed in `output CreditPFN/figures/CAPTIONS.md`.
 
-Each notebook's final text repeats **every plotted numerical value and displayed table**, without truncation and in section order. The runner copies that text verbatim into `output CreditPFN/All_Results.md`. All report logic lives in `src/visualize/`. The private display-name mapping must accompany private data when generating publication output.
+Each notebook's final text repeats **every plotted numerical value and displayed table**, without truncation and in section order. Numerical tables use compact CSV rather than wide alignment padding. The runner copies that text verbatim into `output CreditPFN/All_Results.md`. This report and `figures/CAPTIONS.md` are eligible for Git tracking; scientific output and generated PDFs remain ignored. All report logic lives in `src/visualize/`. The private display-name mapping must accompany private data when generating publication output.
 
 For supplied downloads, set `CREDITPFN_ANALYSIS_ROOT` to the **DATA output folder or ZIP**. Optionally set `CREDITPFN_ANALYSIS_PROJECT_ROOT` to the complementary **project output folder or ZIP**. Both accept experiment folders at their root; ZIPs may also contain an enclosing `output CreditPFN/` directory. Nothing is copied, extracted or changed in those inputs. Generated PDFs and summaries remain in this repository's `output CreditPFN/`. A selected external source never silently fills missing evidence from unrelated local output. Unset both variables to read local campaign output; these are analysis settings, separate from cluster storage-root settings.
 

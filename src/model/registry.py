@@ -47,6 +47,7 @@ def build_baselines(
     device: str = "auto",
     n_estimators_tabpfn: int = 4,
     n_estimators_tabicl: int | None = None,
+    tabicl_inference_options: dict | None = None,
     seed: int = 42,
     hpo_xgboost: dict | None = None,    # {"n_trials": int, "timeout_seconds": float}
     hpo_catboost: dict | None = None,
@@ -186,6 +187,7 @@ def build_baselines(
                 from src.model.tabicl_models import TabICLUntuned
                 m = TabICLUntuned(
                     task_type=task_type, base_path=resolved,
+                    inference_options=tabicl_inference_options,
                     device=device,
                     n_estimators=int(
                         n_estimators_tabicl if n_estimators_tabicl is not None

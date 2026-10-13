@@ -28,9 +28,15 @@ def observations(run, *, domain="credit", benchmark=False, metric=None, endpoint
     if benchmark:
         data = cp.benchmark_effects(run, metric, domain=domain, by_partition=True)
     else:
-        if metric != run.metric:
-            raise ValueError("Trajectory comparisons use the recorded primary monitor")
-        data = cp.effects(run, "test" if domain == "credit" else "ood")
+        split = "test" if domain == "credit" else "ood"
+        if metric == run.metric:
+            data = cp.effects(run, split)
+        elif metric in ("roc_auc", "r2", "brier_score"):
+            from src.visualize.dashboards import monitor_observations
+            data = monitor_observations(run, split, metric)
+            data = data.drop(columns=["partition", "seed"], errors="ignore")
+        else:
+            raise ValueError("Unsupported recorded trajectory metric")
         if not data.empty:
             data = data.merge(run.trials[["trial_name", "partition"]], left_on="trial", right_on="trial_name",
                               validate="many_to_one")
@@ -112,11 +118,12 @@ def benchmark_scores(run):
         mean="mean", minimum="min", maximum="max", folds="size").reset_index().assign(metric=run.metric)
 
 
-def plot_seed_endpoints(main, repeat, *, benchmark=False):
+def plot_seed_endpoints(main, repeat, *, benchmark=False, metric=None):
     pages = []
     stage = "benchmark" if benchmark else "monitor"
     for domain, label in DOMAINS.items():
-        raw = seed_pairs(main, repeat, domain=domain, benchmark=benchmark, endpoint=True)
+        metric = metric or repeat.metric
+        raw = seed_pairs(main, repeat, domain=domain, benchmark=benchmark, endpoint=True, metric=metric)
         data = dataset_means(raw, repeat, ["reference", "repeat", "difference"])
         if data.empty:
             continue
@@ -139,7 +146,7 @@ def plot_seed_endpoints(main, repeat, *, benchmark=False):
         axes[1].set_xlabel("Seed 43 minus seed 42 effect")
         pages.append(cp.Page(f"seed_{stage}_{domain}", fig,
             f"{label}: {'five-fold benchmark' if benchmark else str(repeat.target)+ '-update monitor'} effects for the predefined full-update reference, "
-            f"LR 3e-7 and L2-SP 0.003. Effects are {effect_label(repeat.metric)} relative to each model's original weights. "
+            f"LR 3e-7 and L2-SP 0.003. Effects are {effect_label(metric)} relative to each model's original weights. "
             "Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; "
             "credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. "
             "Positive differences favor seed 43; two seeds do not estimate a general seed distribution.",
@@ -222,11 +229,12 @@ def _intervals(ax, data, *, value, factor, labels, colors):
     ax.axvline(0, linestyle=":", color=style.color("reference")); ax.legend()
 
 
-def plot_sampling_endpoints(run, *, benchmark=False):
+def plot_sampling_endpoints(run, *, benchmark=False, metric=None):
     pages = []
     stage = "benchmark" if benchmark else "monitor"
     for domain, label in DOMAINS.items():
-        raw = sampling_matched(run, domain=domain, benchmark=benchmark)
+        metric = metric or run.metric
+        raw = sampling_matched(run, domain=domain, benchmark=benchmark, metric=metric)
         effects = dataset_means(raw, run, ["effect"])
         contrasts = dataset_means(sampling_contrasts(raw), run, ["difference"])
         if effects.empty or contrasts.empty:
@@ -235,13 +243,13 @@ def plot_sampling_endpoints(run, *, benchmark=False):
         _intervals(axes[0], effects, value="effect", factor="sampling", labels=style.SAMPLING_LABELS, colors=style.SAMPLING_COLORS)
         _intervals(axes[1], contrasts, value="difference", factor="comparison",
                    labels={m: style.SAMPLING_LABELS[m] for m in MODES if m != "one_sample"}, colors=style.SAMPLING_COLORS)
-        axes[0].set_title("Effect relative to original weights"); axes[0].set_xlabel(effect_label(run.metric))
+        axes[0].set_title("Effect relative to original weights"); axes[0].set_xlabel(effect_label(metric))
         axes[1].set_title("Difference relative to one sample"); axes[1].set_xlabel("Difference in paired effect (+ better)")
         pages.append(cp.Page(f"sampling_{stage}_{domain}", fig,
             f"{label}: {'five-fold benchmark' if benchmark else str(run.target)+'-update monitor'} effects and within-experiment protocol contrasts. "
             "Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. "
             "All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. "
-            f"Effects use {effect_label(run.metric)}. Every arm preserves the same experiment-3 prevalence policy.",
+            f"Effects use {effect_label(metric)}. Every arm preserves the same experiment-3 prevalence policy.",
             {"Matched partition effects": raw, "Dataset effects": effects, "Dataset protocol contrasts": contrasts,
              "Descriptive effects": descriptive_summary(effects), "Descriptive contrasts": descriptive_summary(contrasts, "difference")}))
     return pages

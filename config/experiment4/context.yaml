@@ -1,0 +1,25 @@
+# Only labeled context size changes; all outer-test rows are predicted.
+experiment: experiment4
+run_name: context_v1
+source_run: cpt_main_v5
+source_recipe:
+  learning_rate: 3.0e-7
+  l2sp_lambda: 0.003
+  seed: 42
+  frozen_backbone: false
+  successful_updates: 10000
+families: [tabpfn, tabicl]
+tracks: [pd, lgd]
+outer_folds: 5
+inner_validation_fraction: 0.20
+split_seed: 99
+context_seed: 271828
+context_rows: [8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 12288, 16384, 20480, 24576, 32768, 40960, 49152, 50000]
+include_full_available: true
+# Shared compute cap for this label-scarcity study, below v3's checkpoint limit.
+# This never truncates test rows; GPU capacity still needs validation.
+max_context_rows: 50000
+query_batch_rows: 4096
+inference_views:
+  tabpfn: 32
+  tabicl: 8

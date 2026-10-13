@@ -275,6 +275,15 @@ def test_pilot_only_preparation_and_callbacks_use_selected_counts(tmp_path, monk
 
     monkeypatch.setattr(flow, "locked", locked)
     monkeypatch.setattr(flow, "root", lambda: tmp_path)
+    publications = []
+
+    def publish(path, payload):
+        assert path == folder / "state.json"
+        publications.append(json.loads(json.dumps(payload)))
+
+    # This test checks callback ordering with an in-memory lock/state. Atomic
+    # filesystem publication is exercised separately in test_campaign_workflow.
+    monkeypatch.setattr(flow, "write_json", publish)
     prepared, submitted, audits = [], [], []
     monkeypatch.setattr(prepare_experiment, "prepare", lambda p, **kw: prepared.append((p, kw)))
     monkeypatch.setattr(preflight, "main", lambda argv: 0)
@@ -297,6 +306,8 @@ def test_pilot_only_preparation_and_callbacks_use_selected_counts(tmp_path, monk
     assert len(prepared) == 2 and all(kw == {"write": True} for _, kw in prepared)
     assert submitted == ["pd", "lgd"] and state["trial_counts"] == {"pd": 12, "lgd": 8}
     assert len(state["done"]) == 20 and state["status"] == "auditing"
+    assert publications[-1] == state
+    assert [len(p["done"]) for p in publications if p["status"] == "submitting"] == list(range(21))
     assert audits == [(folder.name, "audit", "pilot")]
     with pytest.raises(ValueError, match="Unexpected completion"):
         flow.complete(folder.name, "pilot", "lgd", 8, 0)

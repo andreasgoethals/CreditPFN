@@ -152,6 +152,23 @@ def test_atomic_plan_cannot_replace_existing_plan(tmp_path):
     assert json.loads(p.read_text()) == {"original": True}
 
 
+def test_atomic_replacement_failure_preserves_existing_state(tmp_path, monkeypatch):
+    from src.utils import atomic
+    path = tmp_path / "state.json"
+    path.write_text('{"original": true}', encoding="utf-8")
+
+    def deny_replacement(source, destination):
+        assert destination == path
+        assert json.loads(source.read_text()) == {"original": False}
+        raise PermissionError("destination temporarily unavailable")
+
+    monkeypatch.setattr(atomic.os, "replace", deny_replacement)
+    with pytest.raises(PermissionError, match="temporarily unavailable"):
+        atomic.write_json(path, {"original": False})
+    assert json.loads(path.read_text()) == {"original": True}
+    assert list(tmp_path.iterdir()) == [path]
+
+
 def test_null_control_detects_changed_tensor_and_monitor(tmp_path):
     from src.utils.audit_experiment import compare_states, null_monitor_parity
     a, b = tmp_path / "a.ckpt", tmp_path / "b.ckpt"

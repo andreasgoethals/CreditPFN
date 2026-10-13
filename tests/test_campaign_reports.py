@@ -138,10 +138,10 @@ def test_analysis_rejects_a_wrong_fold_set_with_the_right_count():
 def test_nested_notebooks_are_discovered_and_hidden_backups_ignored(tmp_path,monkeypatch):
     from src.utils import run_notebooks as rn
     for path in ("experiment1/01_report.ipynb","experiment2/01_report.ipynb",
-                 "00_general/01_data.ipynb","experiment1/.ipynb_checkpoints/01_report.ipynb"):
+                 "general/01_data.ipynb","experiment1/.ipynb_checkpoints/01_report.ipynb"):
         p=tmp_path/path; p.parent.mkdir(parents=True,exist_ok=True); p.write_text("{}")
     monkeypatch.setattr(rn,"notebooks_dir",lambda:tmp_path)
-    assert rn.discover() == ("00_general/01_data","experiment1/01_report","experiment2/01_report")
+    assert rn.discover() == ("experiment1/01_report","experiment2/01_report","general/01_data")
     assert rn.discover(("experiment2",)) == ("experiment2/01_report",)
 
 
@@ -195,7 +195,7 @@ def test_downloaded_compact_snapshot_is_read_without_import(tmp_path, monkeypatc
 
 def test_all_notebooks_are_thin_ordered_and_use_owned_savers():
     notebooks=sorted(Path("notebooks").rglob("*.ipynb"))
-    assert len(notebooks) == 14
+    assert len(notebooks) == 21
     for path in notebooks:
         nb=json.loads(path.read_text(encoding="utf8"))
         code=["".join(c["source"]) for c in nb["cells"] if c["cell_type"]=="code"]
@@ -259,3 +259,11 @@ def test_null_audit_does_not_promote_failed_log_to_pass(tmp_path,monkeypatch):
     report=dict(run=str(cfg.run_name),track="pd",passed=True,trials=[dict(trial=run.trials.trial_name.iloc[0],null_state={"equal":True},null_monitor_equal=True,successful_updates=2)])
     (folder/"maintenance_01.log").write_text(json.dumps(report,indent=2)+"\nEND exit_code=1")
     assert not cp.null_audits([run]).audit_passed.any()
+
+
+def test_dashboard_labels_are_valid_unicode():
+    from types import SimpleNamespace
+    from src.visualize import dashboards
+
+    assert dashboards.monitor_label(SimpleNamespace(track="pd")) == "AUC"
+    assert dashboards.monitor_label(SimpleNamespace(track="lgd")) == "R\u00b2"

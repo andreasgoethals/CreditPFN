@@ -26,6 +26,24 @@ def read_plan(path: Path) -> dict:
     return payload
 
 
+def check_shared_reference(payload):
+    """An episode study must retain the exact planned anchor, never a later replacement."""
+    link = payload.get("shared_reference")
+    if link is None:
+        return
+    from src.train.size_studies import match_reference
+    reference = read_plan(plan_path(link["run"], link["track"]))
+    if reference["sha256"] != link["sha256"] or match_reference(payload, reference) != link["trials"]:
+        raise RuntimeError("Shared experiment-6 reference changed; restore the original plan")
+
+
+def check_size_evaluation(cfg, payload, eval_cfg=None):
+    from src.train.size_studies import study, evaluation_protocol
+    if study(cfg) and payload.get("evaluation_protocol") != evaluation_protocol(cfg, eval_cfg):
+        raise RuntimeError("Size-study benchmark protocol differs from its immutable plan; "
+                           "restore the planned evaluation settings/code/environment")
+
+
 def check_prepared(config: Path, *, stage: str = "train") -> dict:
     """Cheap submission gate: no CSV/weight reads, jobs, or output writes.
 
@@ -35,7 +53,12 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=str(config))
     activate_experiment(cfg)
+    if OmegaConf.select(cfg, 'experiment.followup_gate', default=False):
+        from src.utils.followup_checks import require_gate
+        require_gate()
     payload = read_plan(plan_path(str(cfg.run_name), str(cfg.track)))
+    check_shared_reference(payload)
+    check_size_evaluation(cfg, payload)
     def training_settings(config):
         raw = OmegaConf.to_container(config, resolve=True)
         return {"scientific": scientific_config(config), "run_name": raw["run_name"],
@@ -62,11 +85,16 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
 
 
 def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
+    if OmegaConf.select(cfg, 'experiment.followup_gate', default=False):
+        from src.utils.followup_checks import require_gate
+        require_gate()
     path = plan_path(str(cfg.run_name), str(cfg.track))
     if not path.is_file():
         raise RuntimeError("Prepare this experiment first: python -m src.utils.prepare_experiment "
                            "--config <experiment.yaml> --write")
     payload = read_plan(path)
+    check_shared_reference(payload)
+    check_size_evaluation(cfg, payload)
     expected = payload["trials"].get(f"{cfg.run_name}/{trial_index}")
     if expected != identity["sha256"]:
         raise RuntimeError("The prepared plan differs from this trial. Recheck code, data, environment "
@@ -81,6 +109,8 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
     cfg = load_train_config(config_path=str(config))
     activate_experiment(cfg)
     grid = resolve_grid(cfg, single=False)
+    from src.train.size_studies import study, validate_config, arm_inventory, match_reference, REFERENCE_CONFIG
+    validate_config(cfg)
     n_splits = int(cfg.corpus.n_splits)
     folds = int(cfg.corpus.n_folds or 0)
     seeds = list(OmegaConf.select(cfg, "experiment.training_seeds", default=[cfg.seed]))
@@ -88,20 +118,29 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
         raise ValueError("n_splits exceeds dataset folds × training seeds")
     payload = {"schema_version": 1, "run": str(cfg.run_name), "config": OmegaConf.to_container(cfg, resolve=True),
                "trials": {}, "partitions": [], "identities": {}}
+    if study(cfg) and (write or check):
+        from src.train.size_studies import evaluation_protocol
+        payload["evaluation_protocol"] = evaluation_protocol(cfg)
     for index in range(n_splits):
         current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), index)
         split = split_from_cfg(current)
         splits_by_min_rows = {_scalar_min_rows(current.corpus.get("min_train_rows", 0)): split}
+        for minimum in {int(t[6]) for t in grid}:
+            if minimum not in splits_by_min_rows:
+                splits_by_min_rows[minimum] = split_from_cfg(current, min_train_rows=minimum)
+            if not splits_by_min_rows[minimum].train:
+                raise ValueError(f"Empty training corpus in fold {index} at min_train_rows={minimum}")
         if not split.train or not split.test:
             raise ValueError("Both training and held-out dataset sets must be nonempty")
         payload["partitions"].append({"index": index, "training_seed": int(current.seed),
             "partition_seed": int(current.corpus.split_seed), "fold": int(current.corpus.fold),
             "train": [r.dataset_id for r in split.train], "test": [r.dataset_id for r in split.test]})
+        if study(cfg):
+            payload["partitions"][-1]["corpus_arms"] = [
+                arm_inventory(current, splits_by_min_rows[m], m) for m in sorted({int(t[6]) for t in grid})]
         if write or check:
             for i, trial in enumerate(grid):
                 min_rows = int(trial[6])
-                if min_rows not in splits_by_min_rows:
-                    splits_by_min_rows[min_rows] = split_from_cfg(current, min_train_rows=min_rows)
                 identity = trial_identity(current, trial, split=splits_by_min_rows[min_rows])
                 payload["trials"][f"{current.run_name}/{i}"] = identity["sha256"]
                 payload["identities"][identity["sha256"]] = identity["specification"]
@@ -111,13 +150,24 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
             if len(group) != folds:
                 raise ValueError("A complete phase cannot end halfway through a dataset partition")
             tests = [d for p in group for d in p["test"]]
-            universe = set(group[0]["train"] + group[0]["test"])
+            # Filtering the training corpus must not remove held-out datasets
+            # from the fold-coverage universe.
+            unfiltered = split_from_cfg(current, min_train_rows=0)
+            universe = {r.dataset_id for r in unfiltered.train + unfiltered.test}
             if len(tests) != len(set(tests)) or set(tests) != universe:
                 raise ValueError("Dataset folds must cover every dataset exactly once per training seed")
+    if study(cfg) == "episode_size" and cfg.experiment.output_group == "experiment7" and (write or check):
+        reference_cfg = load_train_config(config_path=REFERENCE_CONFIG)
+        reference = read_plan(plan_path(str(reference_cfg.run_name), str(reference_cfg.track)))
+        payload["shared_reference"] = {"run": str(reference_cfg.run_name), "track": "pd",
+            "sha256": reference["sha256"], "trials": match_reference(payload, reference)}
     report = {"run": str(cfg.run_name), "track": str(cfg.track), "trials_per_partition": len(grid),
               "partitions": n_splits, "training_trials": len(grid) * n_splits,
               "training_seeds": seeds, "dataset_folds": folds,
               "test_counts": [len(p["test"]) for p in payload["partitions"]], "written": write}
+    if study(cfg):
+        report["corpus_arms"] = [{"partition": p["index"], **{k: v for k, v in arm.items() if k != "tables"}}
+                                 for p in payload["partitions"] for arm in p["corpus_arms"]]
     from src.utils.paths import resolve_base_checkpoint
     bases = [resolve_base_checkpoint(trial[0]) for trial in grid]
     if all(p.is_file() for p in bases):

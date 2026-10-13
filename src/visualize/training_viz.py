@@ -160,6 +160,7 @@ class TrialId:
     min_train_rows: int = 0
     #: L2-SP anchor strength. `None` when the trial predates run-9 and did not sweep it.
     l2sp_lambda: float | None = None
+    adaptation_mode: str = "full"
 
     @property
     def base_short(self) -> str:
@@ -176,8 +177,9 @@ class TrialId:
     @property
     def label(self) -> str:
         """Compact label for plot legends."""
-        lora_tag = " ·LoRA" if self.lora else ""
-        return f"{self.base_short}  lr={self.lr:.0e}{lora_tag}"
+        tag = {"diagscale": " ·DiagScale", "legacy_adapter": " ·legacy adapter",
+               "frozen_backbone": " ·frozen backbone"}.get(self.adaptation_mode, "")
+        return f"{self.base_short}  lr={self.lr:.0e}{tag}"
 
 
 # Matches descriptive_name (src/train/loop.py):
@@ -203,7 +205,7 @@ _NAME_RE = re.compile(
     # `_lora` for TabPFN, `_iclhead` for TabICLv2 — ONE grid axis, two family
     # renderings. Omitting `_iclhead` here made every frozen-backbone TabICLv2 trial
     # unparseable, which is the same silent-drop failure the comment above describes.
-    r"(?P<lora>_lora|_iclhead|_frozen)?$"
+    r"(?P<adaptation>_lora|_iclhead|_frozen|_diagscale)?$"
 )
 
 
@@ -229,7 +231,9 @@ def parse_trial_name(name: str) -> TrialId | None:
             base=m.group("base"),
             lr=float(m.group("lr")),
             seed=int(m.group("seed")),
-            lora=bool(m.group("lora")),
+            lora=m.group("adaptation") in ("_lora", "_iclhead", "_frozen"),
+            adaptation_mode={"_diagscale": "diagscale", "_frozen": "frozen_backbone",
+                             "_lora": "legacy_adapter", "_iclhead": "legacy_adapter"}.get(m.group("adaptation"), "full"),
             min_train_rows=int(m.group("min_rows") or 0),
             l2sp_lambda=(float(m.group("l2sp"))
                          if m.group("l2sp") is not None else None),

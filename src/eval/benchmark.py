@@ -213,6 +213,7 @@ def load_trained_handles(
     device: str = "auto",
     n_estimators: int = 4,
     n_estimators_tabicl: int | None = None,
+    tabicl_inference_options: dict | None = None,
 ) -> list[tuple[ModelHandle, object]]:
     """Read the training manifest and build a trained-model handle per
     successful (status=OK, ckpt-on-disk) row — TabPFNTrained or
@@ -305,6 +306,7 @@ def load_trained_handles(
             from src.model.tabicl_models import TabICLTrained
             model: object = TabICLTrained(
                 task_type=task_type, ckpt_path=ckpt,
+                inference_options=tabicl_inference_options,
                 device=device,
                 n_estimators=int(
                     n_estimators_tabicl if n_estimators_tabicl is not None
@@ -519,7 +521,9 @@ def _method_dirname(handle: ModelHandle) -> str:
     lr = extra.get("learning_rate")
     # Modern provenance names the adaptation explicitly. Old records retain their
     # historical directory suffixes so archived evaluations remain discoverable.
-    if extra.get("adaptation_mode") == "frozen_backbone":
+    if extra.get("adaptation_mode") == "diagscale":
+        lora_tag = "__diagscale"
+    elif extra.get("adaptation_mode") == "frozen_backbone":
         lora_tag = "__frozen"
     elif extra.get("use_lora"):
         lora_tag = ("__iclhead" if handle.source.startswith("tabicl")

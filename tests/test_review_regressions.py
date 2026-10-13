@@ -219,7 +219,10 @@ def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeyp
         tree = ast.parse("\n".join(line for line in source.splitlines() if not line.startswith("%")))
         shown = [ast.unparse(node.args[1]) for node in ast.walk(tree)
                  if isinstance(node, ast.Call) and ast.unparse(node.func) == "cp.show" and len(node.args) >= 2]
-        assert "cp.plot_secondary_tradeoff(run)" in shown
+        assert "db.plot_endpoints(run)" in shown
+        assert "db.plot_endpoints(run, by_partition=True)" in shown
+        if path.stem.endswith("_pd"):
+            assert "db.plot_brier(run)" in shown
         assert "pub.plot_metric_profile(run)" in shown
     # Metric selection lives in src, keeping the notebooks free of analysis logic.
     from src.visualize import publication
@@ -228,6 +231,21 @@ def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeyp
                         lambda run, metric: requested.append(metric) or pd.DataFrame())
     publication.plot_metric_profile(NS(track="pd"))
     assert "brier_score" in requested and "brier" not in requested
+
+    # The compact dashboard must retain the actual paired probability error,
+    # including its improvement direction, rather than relabelling primary AUC.
+    from src.visualize import dashboards
+    run = NS(track="pd", target=250,
+             trials=pd.DataFrame([dict(trial_name="paired", base="v2", learning_rate=1e-6,
+                                      l2sp_lambda=0., frozen=False, sampling="one_sample",
+                                      partition=0, seed=42)]),
+             trajectories=pd.DataFrame([
+                 dict(trial_name="paired", successful_updates=0,
+                      score__test__synthetic__brier_score=.20),
+                 dict(trial_name="paired", successful_updates=250,
+                      score__test__synthetic__brier_score=.13)]))
+    observed = dashboards.monitor_observations(run, metric="brier_score")
+    assert observed.loc[observed.updates.eq(250), "effect"].tolist() == pytest.approx([.07])
 
 
 def test_submission_keeps_successful_stderr_out_of_dependency_id():

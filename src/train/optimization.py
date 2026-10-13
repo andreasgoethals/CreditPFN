@@ -10,11 +10,12 @@ def step_mean_gradient(model, optimizer, scaler, *, microbatches: int,
     if microbatches < 1:
         raise ValueError("Cannot step an empty gradient window")
     scaler.unscale_(optimizer)
-    for p in model.parameters():
+    parameters = [p for group in optimizer.param_groups for p in group['params']]
+    for p in parameters:
         if p.grad is not None:
             p.grad.div_(microbatches)
     norm = float(torch.nn.utils.clip_grad_norm_(
-        model.parameters(), max_norm=max_norm if max_norm is not None else float('inf'),
+        parameters, max_norm=max_norm if max_norm is not None else float('inf'),
     ).item())
     # BF16 uses a disabled GradScaler: scaler.step alone does NOT reject NaN gradients.
     finite = math.isfinite(norm)
@@ -22,4 +23,6 @@ def step_mean_gradient(model, optimizer, scaler, *, microbatches: int,
         scaler.step(optimizer)
     scaler.update()
     optimizer.zero_grad(set_to_none=True)
+    if hasattr(model, '_creditpfn_adapter'):
+        model.zero_grad(set_to_none=True)
     return norm, finite

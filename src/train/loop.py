@@ -376,7 +376,9 @@ def descriptive_name(
     # `base_path` HERE so every caller (loop + train_pipeline
     # idempotency + epoch CSVs) stays consistent with zero call-site
     # changes.
-    if adaptation_mode == "frozen_backbone":
+    if adaptation_mode == "diagscale" or run_name.startswith("cpt_diagscale"):
+        lora_tag = "_diagscale"
+    elif adaptation_mode == "frozen_backbone":
         lora_tag = "_frozen"
     elif use_lora and "tabicl" in base_stem.lower():
         lora_tag = "_iclhead"
@@ -725,8 +727,10 @@ def _make_optimizer_and_scheduler(
     if lr is None:
         lr = float(cfg.tunable.learning_rates[0])
 
+    from src.model.diagscale import adapter_parameters
+    params = adapter_parameters(model) if hasattr(model, '_creditpfn_adapter') else model.parameters()
     optim = torch.optim.AdamW(
-        model.parameters(),
+        params,
         lr=lr,
         weight_decay=float(cfg.optimizer.weight_decay),
         betas=(0.9, 0.999),
@@ -1310,6 +1314,9 @@ def _save_eval_snapshot(
     weights — observed in every snapshot-load attempt in the
     2026-05-27 PD/LGD logs.
     """
+    from src.model.diagscale import save_if_adapter
+    if save_if_adapter(model, snapshot_path):
+        return
     snapshot_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Pull TabPFN's helpers lazily — they require tabpfn import.
@@ -1471,13 +1478,19 @@ def evaluate_ensemble_on_split(
                 from src.train.tabicl_compat import import_tabicl_sklearn
                 ticl_clf, ticl_reg = import_tabicl_sklearn()
                 wrapper_cls = ticl_clf if task_type == "classification" else ticl_reg
-                tabpfn = wrapper_cls(
-                    model_path=str(ckpt_path),
-                    device=device,
-                    n_estimators=int(n_estimators),
-                    allow_auto_download=False,
-                    random_state=int(seed),
-                )
+                if "_diagscale" in Path(ckpt_path).stem:
+                    from src.model.diagscale import make_estimator
+                    tabpfn = make_estimator(task_type, ckpt_path, family="tabicl",
+                                           device=device, n_estimators=int(n_estimators),
+                                           random_state=int(seed))
+                else:
+                    tabpfn = wrapper_cls(
+                        model_path=str(ckpt_path),
+                        device=device,
+                        n_estimators=int(n_estimators),
+                        allow_auto_download=False,
+                        random_state=int(seed),
+                    )
             else:
                 tabpfn = _make_tabpfn(
                     task_type, ckpt_path,
@@ -1798,6 +1811,18 @@ def train_one_config(
             )
         )
 
+    diagscale = str(getattr(cfg.train, "adaptation_mode", "")) == "diagscale"
+    if diagscale:
+        from src.model.diagscale import inject
+        from src.utils.experiment import file_digest
+        effective_l2sp = l2sp_lambda if l2sp_lambda is not None else cfg.optimizer.l2sp_lambda
+        if use_lora or lora_adapters_inserted or float(effective_l2sp) != 0:
+            raise ValueError("DiagScale requires frozen_backbone=false, no LoRA and L2-SP=0")
+        if family == "tabpfn" and not Path(base_checkpoint_config).name.startswith("tabpfn-v3-"):
+            raise ValueError("DiagScale requires explicit TabPFN v3 weights")
+        inject(model, family=family, base_path=base_checkpoint_config,
+               base_sha256=file_digest(base_checkpoint_path))
+
     # L2-SP anchor (Li et al. 2018): snapshot the pretrained weights w0 right
     # after load, so the loss can penalise drift away from them (see
     # _l2sp_penalty). λ=0.003 matches Real-TabPFN's corpus-CPT regularizer
@@ -1950,6 +1975,8 @@ def train_one_config(
             max_rows_per_epoch = _scaled
 
     max_rows_per_epoch = limit_training_rows(cfg, max_rows_per_epoch)
+    from src.train.size_studies import validate_runtime_cap
+    validate_runtime_cap(cfg, max_rows_per_epoch, max_cells_per_epoch)
 
     # Resolve the per-epoch step plan. None → head of the sweep list
     # (default "one_sample" = one step per dataset per epoch).
@@ -2285,7 +2312,8 @@ def train_one_config(
     # Measure movement even when anchoring is OFF. Zero regularization is not zero drift.
     drift_anchor = l2sp_anchor
     if trajectory_steps and drift_anchor is None:
-        drift_anchor = {n: p.detach().clone() for n, p in model.named_parameters() if p.requires_grad}
+        drift_anchor = {n: p.detach().clone() for n, p in model.named_parameters()
+                        if (n.endswith('.delta') if diagscale else p.requires_grad)}
 
     def _record_trajectory(epoch):
         if successful_updates not in trajectory_steps:
@@ -2311,6 +2339,10 @@ def train_one_config(
             drift = float("nan")
             if drift_anchor:
                 denominator = sum(t.double().square().sum() for t in drift_anchor.values())
+                if diagscale:
+                    # Delta starts at zero; normalize movement by the identity scale
+                    # (ones), not by a zero anchor. This is RMS query-scale change.
+                    denominator = denominator.new_tensor(sum(t.numel() for t in drift_anchor.values()))
                 numerator = sum((p.detach().double() - drift_anchor[n].double()).square().sum()
                                 for n, p in model.named_parameters() if n in drift_anchor)
                 drift = float(torch.sqrt(numerator / denominator.clamp_min(1e-30)).item())
@@ -2792,11 +2824,9 @@ def train_one_config(
         if monitor_this_epoch:
             if use_ensemble_eval and snapshot_path is not None:
                 if family == "tabicl":
-                    # Non-destructive by construction: state_dict tensors are
-                    # detach().cpu() copies, no adapter merge exists for this
-                    # family. Written in upstream's {config, state_dict}
-                    # schema so TabICLClassifier/Regressor(model_path=...)
-                    # loads it directly.
+                    # Full weights retain the native schema; DiagScale stores
+                    # an adapter bundle. Both loaders leave the training model
+                    # unchanged and reconstruct the matching inference state.
                     from src.train.tabicl_model import save_finetuned_tabicl
                     assert tabicl_model_config is not None
                     save_finetuned_tabicl(
@@ -3117,8 +3147,11 @@ def train_one_config(
         # What the grid's use_lora axis actually did for this family —
         # eval-side interpretation must not assume LoRA semantics.
         "adaptation_mode": (
-            "lora" if lora_adapters_inserted else ("frozen_backbone" if use_lora else "full_ft")
+            "diagscale" if diagscale else "lora" if lora_adapters_inserted else ("frozen_backbone" if use_lora else "full_ft")
         ),
+        "optimized_parameters": sum(p.numel() for g in optimizer.param_groups for p in g['params']),
+        "gradient_enabled_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad),
+        "movement_definition": "RMS query-scale change" if diagscale else "relative weight norm change",
         "task_type":           "classification" if track == "pd" else "regression",
         "saved_at":            time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "hyperparameters": {
@@ -3305,9 +3338,12 @@ def train_one_config(
     # follow the 2*params*rows forward / +2*trainable*rows backward convention, so a frozen
     # trial reports the fraction of the work it actually did rather than matching full-FT.
     _n_total = sum(p_.numel() for p_ in model.parameters())
-    _n_train_p = sum(p_.numel() for p_ in model.parameters() if p_.requires_grad)
+    _n_train_p = sum(p.numel() for g in optimizer.param_groups for p in g['params']) if diagscale else sum(p_.numel() for p_ in model.parameters() if p_.requires_grad)
     _rows_seen = processed_rows
-    _tflops = (2.0 * _n_total + 2.0 * _n_train_p) * _rows_seen / 1e12
+    # TabICL DiagScale retains backbone autograd for kernel parity, even though
+    # those weights are excluded from the optimizer. Do not count it as free.
+    _gradient_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    _tflops = (2.0 * _n_total + 2.0 * _gradient_params) * _rows_seen / 1e12
 
     if recovery_path.exists():
         recovery_path.unlink()

@@ -183,7 +183,8 @@ def plot_schedule(campaigns):
         if owners != tracks:
             label += " / " + " + ".join(owners)
         ax.plot(updates, np.where(rates > 0, rates, np.nan), label=label,
-                color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))))
+                color=style.TRAJECTORY_LR_COLORS.get(lr,
+                    style.ADAPTER_LR_COLORS.get(lr, style.color(str(lr)))))
     ax.set_yscale("log")
     ax.set_xlabel("Successful optimizer update")
     ax.set_ylabel("Applied learning rate (log scale)")
@@ -209,7 +210,8 @@ def plot_process_overview(campaign, *, reference=None):
     if len(campaign.trials[["learning_rate", "l2sp_lambda", "frozen"]].drop_duplicates()) != 1:
         raise ValueError("Process overview requires one LR, L2-SP and adaptation recipe")
     fields = {"train_loss": "Data loss", "grad_norm_mean": "Gradient norm",
-              "clipped_frac": "Clipped fraction", "weight_drift": "Relative weight drift"}
+              ("clipped_frac" if campaign.track == "pd" else "l2sp_penalty"):
+              ("Clipped fraction" if campaign.track == "pd" else "L2-SP penalty"), "weight_drift": "Relative weight drift"}
     runs = [campaign] if reference is None else [reference, campaign]
     curves = {field: pd.concat([cp.optimization_curves(run, field).assign(seed=int(run.cfg.seed))
                                for run in runs], ignore_index=True) for field in fields}

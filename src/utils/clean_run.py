@@ -1,9 +1,9 @@
 """Wipe what the previous run produced, so the next one starts clean.
 
     python -m src.utils.clean_run                          list what is there, delete nothing
-    python -m src.utils.clean_run --clean                   delete it
-    python -m src.utils.clean_run --clean --processed       ...and the data/processed cache too
-    python -m src.utils.clean_run --clean --stages eval     only what the eval stage produced
+    python -m src.utils.clean_run --experiment experiment5 --clean   delete one experiment
+    python -m src.utils.clean_run --all-experiments --clean          explicit global deletion
+    python -m src.utils.clean_run --all-experiments --clean --stages eval   all evaluations
 
 Clears `output CreditPFN/` on both storage tiers, preserving a maintenance job's active log — so
 one invocation is enough whether you are on a laptop or on the cluster. Off-cluster both tiers
@@ -125,6 +125,86 @@ def roots(*, processed: bool = False) -> list[Path]:
     return found
 
 
+def experiment_roots(experiment: str, scope: str = "all") -> list[Path]:
+    """Explicit experiment ownership on both tiers; exclude shared caches/data."""
+    from src.utils.paths import experiment_group
+    group = experiment_group(experiment)
+    if group == "general":
+        raise ValueError("General contains shared submission state; select a numbered experiment")
+    if scope not in {"all", "training", "benchmark", "figures"}:
+        raise ValueError("Unknown cleanup scope")
+    selected = []
+    for root in (outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME)):
+        if scope == "all":
+            selected.append(root / group)
+        elif scope == "training":
+            selected.append(root / group / "training")
+        elif scope == "benchmark":
+            selected += [root / group / "results", root / group / "evaluation_cache"]
+        if scope in {"all", "figures"}:
+            selected.append(root / "figures" / group)
+    if scope in {"all", "training"}:
+        selected += [checkpoints_dir("trained", group), resolve_output_path(f"checkpoints/trained/{group}")]
+    return list(dict.fromkeys(selected))
+
+
+def check_cluster_writers(experiment=None):
+    """Protect writers and cross-experiment inputs; unknown ownership fails closed."""
+    if not os.environ.get("VSC_DATA"):
+        return
+    import subprocess
+    own = os.environ.get("SLURM_JOB_ID", "")
+    import re
+    active = []
+    consumers = {experiment}
+    if experiment == "experiment0":
+        # New jobs recheck these validation receipts, including on recovery.
+        consumers.update({"experiment4", "experiment5", "experiment6", "experiment7"})
+    elif experiment == "experiment1":
+        # Context curves load the fixed experiment-1 checkpoints at every cell.
+        consumers.add("experiment4")
+    elif experiment == "experiment6":
+        # The episode study reuses this exact large-table control and plan.
+        consumers.add("experiment7")
+    for cluster in ("mindwell", "wice"):
+        result = subprocess.run(["squeue", "-M", cluster, "-u", os.environ["USER"],
+                                 "-h", "-o", "%i|%j"], text=True, capture_output=True, timeout=45, check=True)
+        seen = set()
+        for line in result.stdout.splitlines():
+            if "creditpfn" not in line.lower():
+                continue
+            job, name = line.split("|", 1)
+            job = job.strip().split('_')[0]
+            if job == own or job in seen:
+                continue
+            seen.add(job)
+            owner = ("experiment4" if "context-eval" in name else
+                     "experiment0" if "followup-" in name else None)
+            if experiment and owner is None:
+                details = subprocess.run(["scontrol", "-M", cluster, "show", "job", "-o", job],
+                                         text=True, capture_output=True, timeout=45, check=True).stdout
+                groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-7])(?:/|,|\s|$)", details))
+                if len(groups) == 1:
+                    owner = groups.pop()
+            if experiment is None or owner is None or owner in consumers:
+                active.append(job)
+    if active:
+        raise RuntimeError("CreditPFN jobs are still queued/running; stop the selected writers/input consumers before cleanup: "
+                           + ", ".join(active[:12]))
+
+
+def check_saved_consumers(experiment, scope):
+    """Preserve a shared scientific control even when its consumer is not running."""
+    if experiment != "experiment6" or scope == "figures":
+        return
+    import json
+    plans = outputs_dir() / "experiment7" / "manifests" / "plans"
+    for path in plans.glob("*.json"):
+        if json.loads(path.read_text(encoding="utf-8")).get("shared_reference"):
+            raise RuntimeError("Experiment 7 still references experiment 6. Preserve the shared control, "
+                               "or explicitly retire experiment 7 first; scoped cleanup deleted nothing.")
+
+
 def validate_tree(root: Path) -> None:
     """Preflight an entire deletion tree; never follow symlinks or Windows junctions."""
     if not is_safe(root) or not is_safe(root.resolve()):
@@ -137,6 +217,9 @@ def validate_tree(root: Path) -> None:
             raise ValueError(f"Refusing linked or escaped cleanup path: {path}")
 
     check(root)
+    for parent in root.parents:
+        if parent.is_symlink() or getattr(parent, "is_junction", lambda: False)():
+            raise ValueError(f"Refusing linked cleanup ancestor: {parent}")
     for directory, folders, files in os.walk(root, followlinks=False):
         for name in folders + files:
             check(Path(directory) / name)
@@ -177,6 +260,10 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--clean", action="store_true", help="actually delete; default lists only")
+    parser.add_argument("--experiment", help="only this experiment on both storage tiers")
+    parser.add_argument("--scope", choices=["all", "training", "benchmark", "figures"], default="all")
+    parser.add_argument("--workflow", help="only the named experiment-0 follow-up workflow")
+    parser.add_argument("--all-experiments", action="store_true", help="explicitly permit a global clean")
     parser.add_argument("--processed", action="store_true",
                         help="also clear data/processed/, the preprocessing cache")
     parser.add_argument("--stages", default=None,
@@ -184,6 +271,17 @@ def main(argv: list[str] | None = None) -> int:
                              " — clear only what those stages produced, instead of the "
                              "whole output CreditPFN/ tree")
     args = parser.parse_args(argv)
+    if args.experiment and (args.processed or args.stages or args.all_experiments):
+        parser.error("Experiment cleanup cannot include shared data/stages/all-experiments")
+    if args.workflow and (args.experiment != "experiment0" or not args.workflow.isalnum()):
+        parser.error("--workflow requires --experiment experiment0 and an alphanumeric ID")
+    if args.scope != "all" and not args.experiment:
+        parser.error("--scope requires --experiment")
+    if args.clean and not args.experiment and not args.all_experiments:
+        parser.error("Deletion requires --experiment or --all-experiments; preview is unchanged")
+    if args.clean:
+        check_cluster_writers(args.experiment)
+        check_saved_consumers(args.experiment, args.scope)
 
     # Unlinking a running job's stdout on Linux loses the cleanup report itself.
     # Only the exact active .log inside our log directory may survive a reset.
@@ -200,10 +298,28 @@ def main(argv: list[str] | None = None) -> int:
 
     # Validate every tree before deleting ANY file, including stage-specific paths.
     # No writers may be active during a clean; this is not a concurrent deletion service.
-    targets = roots(processed=args.processed or bool(
-        args.stages and "data" in [name.strip() for name in args.stages.split(",")]))
+    clean_processed = args.processed or bool(args.stages and "data" in args.stages.split(","))
+    targets = experiment_roots(args.experiment, args.scope) if args.experiment else roots(processed=clean_processed)
     for root in targets:
         validate_tree(root)
+
+    if args.workflow:
+        # New workflow IDs appear in generated run names and workflow directories.
+        # Match a complete path component or an underscore-delimited token only.
+        import re
+        pattern = re.compile(r"(^|_)" + re.escape(args.workflow) + r"(_|\.|$)")
+        files = list(dict.fromkeys(p for root in targets for p in root.rglob("*")
+                     if p.is_file() and p.name not in KEEP and p.resolve() not in keep_paths
+                     and (args.workflow in p.parts or pattern.search(p.name))))
+        print(f"Workflow {args.workflow}: {len(files)} files, {sum(p.stat().st_size for p in files)/1e6:.1f} MB")
+        if args.clean:
+            for path in files:
+                path.unlink()
+        else:
+            for path in files:
+                print(path)
+            print("Nothing deleted. Add --clean after inspection.")
+        return 0
 
     if args.stages:
         names = [x.strip() for x in args.stages.split(",") if x.strip()]

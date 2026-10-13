@@ -79,12 +79,13 @@ Newest first, dates `DD-MM-YYYY`.
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
 - Notebooks and phase configs are grouped by `experiment0` (debugging/pilots), `experiment1`
-  (main grid), `experiment2` (seed check) and `experiment3` (sampling/accumulation); corpus notebooks
-  live in `notebooks/00_general/`. Preserve existing run identities when moving config files.
+  (main grid), `experiment2` (seed check) and `experiment3` (sampling/accumulation); follow-ups are `experiment4` (context curves), `experiment5`
+  (DiagScale), `experiment6` (PD training-corpus policy) and `experiment7` (episode size on a fixed large-table corpus). Corpus notebooks
+  live in `notebooks/general/`. Preserve existing run identities when moving config files.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, all in
-  `output CreditPFN/figures/<experiment>/` (corpus figures use `00_general/`). Notebook filename prefixes identify ownership;
+  `output CreditPFN/figures/<experiment>/` (corpus figures use `general/`). Notebook filename prefixes identify ownership;
   each notebook clears only its own files before drawing. Full reruns also retire figures
   from renamed notebooks. This shared publication tree deliberately overrides the template's per-notebook folders.
   The notebook displays each figure inline.
@@ -128,11 +129,11 @@ anything is finished.
   runtime-fingerprinted file during active training would invalidate prepared plans.
 - Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
   cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
-  from five-fold evaluation. Experiments 1–3 follow this separation.
+  from five-fold evaluation. Experiments 1–3 and 5 follow this separation; experiment 4 is evaluation only.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and
   method authority: descriptive goals, partitions, sampling, adaptation and limitations.
   `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one
   without a new probe). `docs/LITERATURE.md` records primary-source support and differences.
   Historical measurements and expensive dead ends stay in `docs/AGENTS_MEMORY.md`.
-- **The experiments are `scripts/{data,train,eval}_pipeline.py` and `probe_row_cap.py`**, submitted
+- **The experiments are `scripts/{data,train,eval,context}_pipeline.py` and `probe_row_cap.py`**, submitted
   through `scripts/slurm/`. Everything else is a utility under `src/utils/`, run with `python -m`.

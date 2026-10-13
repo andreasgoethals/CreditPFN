@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "${VSC_DATA:?}/CreditPFN"
 for arg in "$@"; do
- case "$arg" in *config/experiment[0-3]/*) export CREDITPFN_EXPERIMENT="$(basename "$(dirname "$arg")")" ;; esac
+ case "$arg" in *config/experiment[0-6]/*) export CREDITPFN_EXPERIMENT="$(basename "$(dirname "$arg")")" ;; esac
 done
 source scripts/slurm/_job_log.sh
 start_job_log maintenance
@@ -29,6 +29,7 @@ case "$action" in
     probe-repeatability) python -u -m src.utils.gpu_repeatability "$@" ;;
     stage) python -m src.utils.stage_inputs --destination "${VSC_SCRATCH_GPFS1:?}/CreditPFN" "$@" ;;
     prepare) python -m src.utils.prepare_experiment "$@" ;;
+    prepare-context) python -u scripts/context_pipeline.py prepare "$@" ;;
     preflight) python -m src.utils.preflight "$@" ;;
     consolidate) python -m src.utils.consolidate_output "$@" ;;
     clean) python -m src.utils.clean_run "$@" ;;

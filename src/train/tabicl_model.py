@@ -196,6 +196,9 @@ def save_finetuned_tabicl(
     ``torch.load``.
     """
     save_path = Path(save_path)
+    from src.model.diagscale import save_if_adapter
+    if save_if_adapter(model, save_path, provenance):
+        return save_path
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
     config_out = dict(model_config)

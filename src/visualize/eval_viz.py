@@ -112,7 +112,9 @@ def _decode_method_dirname(d: str) -> dict:
     parts = rest.split("__")
     meta.update(source=source, base_short=parts[0])
     for tag in parts[1:]:
-        if tag in {"frozen", "lora", "iclhead"}:
+        if tag == "diagscale":
+            meta["adaptation_mode"] = "diagscale"
+        elif tag in {"frozen", "lora", "iclhead"}:
             meta.update(use_lora=True, adaptation_mode="frozen_backbone" if tag == "frozen" else "legacy_adapter")
         elif tag in {"fullpass", "accumulate"}:
             meta["epoch_pass_mode"] = "full_pass" if tag == "fullpass" else "accumulate"
@@ -139,7 +141,8 @@ def human_method_name(row: pd.Series) -> str:
     if src.endswith("-trained"):
         lr = row.get("lr", np.nan)
         mode = row.get("adaptation_mode", "frozen_backbone" if row.get("use_lora") else "full")
-        adapt = " ·frozen" if mode == "frozen_backbone" else (" ·legacy adapter" if mode == "legacy_adapter" else "")
+        adapt = {"frozen_backbone": " ·frozen backbone", "legacy_adapter": " ·legacy adapter",
+                 "diagscale": " ·DiagScale"}.get(mode, "")
         sampling = row.get("epoch_pass_mode", "full_pass" if row.get("full_pass") else "one_sample")
         fp = "" if sampling == "one_sample" else f" ·{sampling}"
         mtr = row.get("min_train_rows", 0)

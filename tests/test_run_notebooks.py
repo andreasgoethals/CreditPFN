@@ -199,7 +199,7 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     result = rn.run_one("smoke")
     assert result.ok, result.error
     assert result.n_figures == 1
-    folder = figures_dir() / "00_general"
+    folder = figures_dir() / "general"
     assert (folder / "general__smoke__01_line.pdf").is_file()
     assert all(p.suffix == ".pdf" for p in folder.iterdir() if p.is_file())
     from src.utils.paths import logs_dir
@@ -219,14 +219,14 @@ def test_root_summary_retires_legacy_copy_and_folder_order(isolated_output, note
     from src.utils.paths import all_results_path as legacy
     legacy().parent.mkdir(parents=True, exist_ok=True)
     legacy().write_text("OLD SUMMARY")
-    names = ("experiment2/01_training", "00_general/02_processed", "experiment1/02_results")
+    names = ("experiment2/01_training", "general/02_processed", "experiment1/02_results")
     for name in names:
         save_summary(notebook_folder / (name + ".ipynb"), "SUMMARY " + name)
     path = rn.write_all_results(names)
     assert path.parent.name == "output CreditPFN"
     assert not legacy().exists()
     text = path.read_text(encoding="utf-8")
-    assert text.index("## 00_general/") < text.index("## experiment1/") < text.index("## experiment2/")
+    assert text.index("## experiment1/") < text.index("## experiment2/") < text.index("## general/")
 
 
 def test_summaries_only_is_not_destructive(isolated_output, notebook_folder) -> None:

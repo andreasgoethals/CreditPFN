@@ -42,6 +42,9 @@ GOLDEN = 0.618      # height = width * GOLDEN, unless the data wants otherwise
 GRID_CMAP = "viridis"
 GRID_FONT = 7
 GRID_RATIO = 0.76
+DASHBOARD_RATIO = 0.76
+FACTOR_ARM_STYLES = ("--", "-")
+DIFFERENCE_STYLE = ":"
 GRID_TEXT_LIGHT = "white"
 GRID_TEXT_DARK = "black"
 
@@ -220,6 +223,12 @@ STATUS_COLORS = {"OK": "#009E73", "PENDING": "#CCCCCC", "FAIL": "#D55E00",
 SEED_MARKERS = ("o", "s", "^")
 
 MODEL_LABELS = {"v2": "TabPFN v2", "v2.6": "TabPFN v2.6", "v3": "TabPFN v3", "tabicl-v2": "TabICLv2"}
+ADAPTER_LR_COLORS = {1e-4: "#0072B2", 1e-3: "#E69F00", 3e-2: "#009E73"}
+SIZE_STUDY_COLORS = {"All tables": "#0072B2", "Large tables": "#E69F00",
+                     "2,048 rows": "#0072B2", "8,192 rows": "#E69F00", "26,000 rows": "#009E73"}
+SIZE_STUDY_STYLES = {"All tables": "-", "Large tables": "--", "2,048 rows": "-",
+                     "8,192 rows": "--", "26,000 rows": ":"}
+ADAPTER_LR_STYLES = {1e-4: "-", 1e-3: "--", 3e-2: ":"}
 _MODEL_TOKEN = re.compile(r"(?<!TabPFN )(?<![\w.-])(?:tabicl-v2|v2\.6|v2|v3)(?![\w.-])")
 
 

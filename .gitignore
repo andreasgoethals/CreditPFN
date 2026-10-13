@@ -14,7 +14,11 @@
 *.safetensors
 
 # Canonical generated output, partitioned by experiment.
-/output CreditPFN/
+/output CreditPFN/*
+!/output CreditPFN/All_Results.md
+!/output CreditPFN/figures/
+/output CreditPFN/figures/*
+!/output CreditPFN/figures/CAPTIONS.md
 # Historical output remains ignored; current writers use the name above.
 /output/
 /results/

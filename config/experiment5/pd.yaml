@@ -1,0 +1,59 @@
+# DiagScale corpus adaptation; released only by experiment-0 follow-up receipts.
+track: pd
+seed: 42
+run_name: cpt_diagscale_v1
+experiment:
+  output_group: experiment5
+  fingerprint: true
+  require_plan: true
+  followup_gate: true
+  training_seeds: [42]
+corpus:
+  require_complete_registry: true
+  min_train_rows: 0
+  n_test_datasets: null
+  n_folds: 4
+  fold: 0
+  split_seed: 1729
+  n_splits: 4
+  train_dataset_ids: null
+  test_dataset_ids: null
+train:
+  adaptation_mode: diagscale
+  amp: false
+  max_rows_per_step: 8192
+  context_sampling: stratified
+  target_total_steps: 10000
+  epochs: 50
+  max_epochs_for_step_budget: 4000
+  numerical_stopping_only: true
+  monitor_seed: 31415
+  epoch_eval_subsample_samples: 2000
+  epoch_eval_n_estimators: 4
+  epoch_eval_n_estimators_tabicl: 4
+  trajectory_steps: [0, 250, 1000, 2500, 5000, 10000]
+  recovery_every_updates: 500
+  dataloader_workers: 4
+  prefetch_factor: 2
+  step_log_interval: 100
+optimizer:
+  weight_decay: 0.01
+  l2sp_lambda: 0.0
+tunable:
+  classifier_base_paths:
+    - checkpoints/tabpfn-v3-classifier-v3_default.ckpt
+    - checkpoints/tabicl-classifier-v2-20260212.ckpt
+  learning_rates: [1.0e-4, 1.0e-3, 3.0e-2]
+  l2sp_lambdas: [0.0]
+  frozen_backbone: [false]
+  epoch_pass_modes: [one_sample]
+  query_fractions: [0.40]
+  accumulate_grad_batches: [1]
+  adapter_families: []
+evaluation:
+  tabicl_inference_options: {use_amp: false, use_fa3: false}
+  cache_controls: true
+  results:
+    save_predictions: true
+checkpoint:
+  trained_dir: checkpoints/trained/experiment5

@@ -1,6 +1,6 @@
 # Literature — continued pretraining and adaptation behavior
 
-Reviewed against primary text at library pin **`e5ce01614eebe520af303f2b5bfd212298eab2be`**. This is a focused reading list for CreditPFN, not a systematic proof of novelty. A library folder year/date can describe a later revision rather than the first publication date. The library is read-only in this repository.
+Initial review against primary text at library pin **`e5ce01614eebe520af303f2b5bfd212298eab2be`**; closest-work and appendix review refreshed on 12-10-2026 at **`1ac6e6783f24b2d5cd058af7ad8cad7c1bfaf7ae`**. This is a focused reading list for CreditPFN, not a systematic proof of novelty. A library folder year/date can describe a later revision rather than the first publication date. The library is read-only in this repository.
 
 The training-objective check below additionally uses the updated pin **`81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`** (28-09-2026).
 
@@ -99,3 +99,113 @@ Before publication, refresh the closest-work search and verify the exact upstrea
 The TabPFN-Wide retention study and Real-TabPFN's evaluations motivate measuring the starting model and adapted model on the same external tables; neither prescribes CreditPFN's eight-table panel. We use a fixed non-credit subset of [TabArena-v0.1, OpenML study 457](https://www.openml.org/search?type=study&id=457), with exact dataset/version IDs in `config/retention.yaml`. The [TabArena primary paper and supplement](https://openreview.net/forum?id=jZqCqpCLdU) describe the benchmark's curated tasks. [TALENT's official repository](https://github.com/LAMDA-Tabular/TALENT) was also examined; its much broader collection is not necessary for the initial bounded retention panel.
 
 The panel choice is a project design decision, not a literature-validated sufficient sample of all non-credit domains. We use our own five outer folds and fixed milestone subsets; this is not an official TabArena benchmark score. The two sklearn packaged datasets used for null/recovery controls provide a small inference/debugging check only. Base-checkpoint exposure remains unverified; paired changes are interpretable without claiming these are entirely new datasets to every base.
+
+
+## October test-time-compute paper: relevance and limits
+
+Read on 12-10-2026. Local library pin: `1ac6e6783f24b2d5cd058af7ad8cad7c1bfaf7ae`.
+The requested paper is absent from this pinned library; the primary paper and its public
+implementation were inspected directly, without changing the submodule.
+
+[Ning et al., Test-Time Compute for Tabular Foundation Models: Mechanisms, Gains, and Limits](https://arxiv.org/html/2610.12005v1)
+separates adaptation, aggregation and context construction. Its adaptation is **target-table
+fine-tuning**, with inner validation, early stopping and fallback to the original weights.
+That differs from CreditPFN's cross-table domain adaptation and fixed endpoint budget.
+
+The released [implementation](https://github.com/kanghui-learning/test-time-compute-for-tabular-foundation-models/tree/45fb141b2acf15518e70885aa149c8e1898cd15c)
+was inspected at commit `45fb141b2acf15518e70885aa149c8e1898cd15c`:
+
+- `DiagScale`, `inject_diagscale`, `select_trainable` in the TabPFN patches implement
+  zero-initialized query-scaling adapters and freeze the original weights. The TabICL
+  `finetune_tabicl`/`_finetune` runner restores the validation-best state, including the
+  untouched starting state. This is not our current frozen-backbone mode.
+- `configs/tabpfn3/full_ft.yaml` uses peak LR `1e-6`, at most 30 epochs, two training/validation
+  views and eight deployment views. DiagScale configurations use `3e-2`; that rate is for
+  tiny adapters, not a recommendation for full-weight credit CPT.
+- The TabICL KV-cache patch and its `test_ia3_cached_kv_matches_fresh_path` illustrate why
+  a nonzero adapter must be tested on cached and fresh prediction paths, not only at
+  zero initialization. Any future integration needs save/reload and resumed-update controls.
+- Study-level LR selection uses aggregate benchmark test performance (Appendices A.4/B.3),
+  with a separate across-dataset sensitivity analysis. Task-level checkpoint/ensemble
+  selection uses training-side validation. These two selection levels must not be conflated.
+  Our post-hoc ablations likewise remain exploratory unless evaluation is reserved separately.
+
+Implications for this project: compare inference budgets for original and adapted checkpoints;
+consider a narrowly scoped similarity-adapter study; and separate domain adaptation from
+subsequent target-table adaptation. Do not transfer its positive results into a claim that
+credit-corpus CPT must help. The context-retrieval evidence motivates a bounded large-table
+inference sensitivity, not an untested assertion that CPT benefits only large datasets.
+
+### Local primary-source refresh — 13-10-2026
+
+Library pin: `de324efcca55be392feb0c01830b3b6ce364587f`. The earlier absence statement above
+describes the 12-10-2026 pin only; both the TTC primary text and its released code are now
+available locally in `papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt`
+and `repositories/Test-Time Compute for Tabular Foundation Models.txt`.
+
+Verified symbols: TabPFN `DiagScale`, `inject_diagscale`, `select_trainable`; TabICL
+`sdpa_with_flattened_batch`, `inject_diagscale`, `select_trainable`, `finetune_tabicl`/`_finetune`.
+TabPFN scales the output of each frozen `SoftmaxScalingMLP`; TabICL applies the multiplier
+after SSMax. The latter runner uses `freeze_others=False`, clears all model gradients and
+clips only optimizer-selected tensors, preserving CUDA forward flag parity. This is not
+equivalent to putting the backbone in inference mode. The snapshot patches TabPFN 8.0.7 and
+a post-2.1.1 TabICL source; current VSC plans record TabPFN 8.0.8 / TabICL 2.1.1, so compatibility
+must be tested rather than assuming a drop-in install. No library files or environments were changed.
+
+Real-TabPFN Section 4 reports TabPFNv2, 71 curated OpenML/Kaggle tables, AdamW peak LR
+3e-7, linear warmup/cosine schedule, L2-SP alpha 0.003, 20k updates, one table per batch,
+up to 20k total rows split 60/40 context/query and a 400k-cell cap. Appendix C reports
+mean raw ROC-AUC 0.929 → 0.932 (about +0.003), distinct from Section 5's normalized
+0.954 → 0.976 (+0.022). The episode-size ablation reports normalized gains +0.010 at
+2,048/4,096, +0.016 at 8,192/16,384 and +0.022 at 20,000. Source comparisons additionally
+change curation, features and diversity; they do not isolate table size alone.
+
+The Real-TabPFN primary text's Section 3 explicitly selects training tables above 10k rows as
+part of its contamination safeguards while evaluating smaller tables. It is not a controlled
+large-versus-small training-corpus experiment. The source/grouped split warnings in Beyond IID
+also apply to credit tables that share loan populations or releases.
+
+
+### Implemented follow-ups and deliberate differences — 13-10-2026
+
+At the same `de324efcca55be392feb0c01830b3b6ce364587f` pin, experiment 4 is now the
+context-only curve; experiment 5 is DiagScale CPT; experiment 6 tests PD training-corpus
+eligibility at a fixed episode cap; experiment 7 tests episode size on the same large-table
+pool. The formerly numbered generic-data and prevalence proposals are excluded.
+
+The independent adapter implementation follows `DiagScale`, `inject_diagscale`,
+`sdpa_with_flattened_batch` and `finetune_tabicl` in the local TTC snapshot. It does not
+install or alter the authors' forks. Preserve query-scaling order, TabICL autograd parity,
+optimizer-only clipping and nonzero cached/reloaded inference. TabPFN's wrapper uses tensor
+dtype promotion; TabICL explicitly casts the multiplier to the query dtype. Keep that
+distinction, while preserving FP32 adapter storage. Match TabICL FP32 deployment
+for original and adapted weights so precision is not a hidden within-experiment confound.
+The paper uses target-table validation-best selection/base fallback; our cross-table experiment
+uses fixed endpoints. Its additional `1e-4` rate and provisional 8,192-row FP32 episodes are
+new choices to be validated, not published optimal CPT settings. Comparing this recipe with
+old full-weight CPT does not isolate only parameterization. Numerical and protocol tests
+precede any cluster claim of equivalence or capacity.
+
+### Separating training-corpus eligibility from episode size — 13-10-2026
+
+Reread the complete Real-TabPFN primary text and TabICLv2's training-schedule section at
+`de324efcca55be392feb0c01830b3b6ce364587f`. Real-TabPFN's above-10k training-table rule is
+part of its contamination safeguards. Its smaller held-out tables are still evaluated: the
+paper does not say CPT helps only large downstream datasets. Its episode-size ablation is
+more direct evidence for testing a larger context-plus-query budget than its data-source
+comparison is for attributing gains to table size alone.
+
+TabICLv2 Section 4.1 uses 500k updates with 1,024-row tasks, then 40k with 400–10,240 rows,
+then 10k with 400–60k rows. Learning rates change from 8e-4 to 1e-4 to 2e-5; the context
+fraction changes from 30–90% to 80%. That staged recipe motivates studying episode size,
+but it does not isolate its effect or establish a credit-CPT optimum.
+
+Accordingly, experiment 6 changes only the eligibility policy within each fixed training
+complement, with an 8,192-row cap. It measures the combined policy effect, including changed
+table identities/diversity, exposure and revisit frequency. Experiment 7 keeps that large-table
+pool fixed and changes total rows to 2,048/8,192/26,000, preserving the 60/40 split and update
+schedule. It changes both context and query counts; equal updates do not match compute.
+These experiments test a conservative reference on modern bases, not a literal replication
+of Real-TabPFN's v2/20k-update/20k-row/cell-capped recipe. The matching 8,192-row control is
+shared by identity, reducing 48 previously proposed fresh trials to 32, at the deliberate
+cost of no longer estimating the full corpus-policy × episode-size interaction.

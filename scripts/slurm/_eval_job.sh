@@ -13,5 +13,5 @@ share_eval_controls
 python -u scripts/eval_pipeline.py \
     --config "${CREDITPFN_CONFIG:?use run_experiment.sh with a named config}" \
     --split-index "${CREDITPFN_SPLIT_INDEX:?dataset partition required}" \
-    --task-index "${SLURM_ARRAY_TASK_ID:?}" --tasks "${EVAL_TASKS:-16}" \
+    --task-index "${CREDITPFN_EVAL_TASK_INDEX:-${SLURM_ARRAY_TASK_ID:?}}" --tasks "${EVAL_TASKS:-16}" \
     --log-path "$LOG" "track=$TRACK"

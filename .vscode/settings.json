@@ -14,8 +14,7 @@
   "python.testing.unittestEnabled": false,
   "python.testing.pytestArgs": ["tests"],
 
-  // Ruff for both linting and formatting, so the editor agrees with `scripts/check.py`.
-  // An editor that formats differently from CI turns every commit into a diff of whitespace.
+  // Use the repository's Python formatter for interactive edits.
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
@@ -26,6 +25,14 @@
 
   // 100 columns, matching [tool.ruff] line-length in pyproject.toml.
   "editor.rulers": [100],
+
+  // Full numerical reports contain large tables; avoid wrapping and bracket decoration.
+  "[markdown]": {
+    "editor.wordWrap": "off",
+    "editor.semanticHighlighting.enabled": false,
+    "editor.bracketPairColorization.enabled": false,
+    "editor.guides.bracketPairs": false
+  },
 
   // Nested notebooks run from the repository root, as `src.utils.run_notebooks` does.
   // Without this a notebook's cwd is notebooks/ and `from src...` fails only interactively —

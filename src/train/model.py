@@ -317,6 +317,9 @@ def save_finetuned(
     from dataclasses import asdict, is_dataclass
 
     save_path = Path(save_path)
+    from src.model.diagscale import save_if_adapter
+    if save_if_adapter(model, save_path, provenance):
+        return save_path
     save_path.parent.mkdir(parents=True, exist_ok=True)
 
     if is_dataclass(architecture_config):

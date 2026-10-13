@@ -72,8 +72,10 @@ def test_debug_row_limit_rejects_invalid_values(value):
 def test_only_recovery_controls_request_strict_numerics_and_small_batches():
     from src.train.config import load_train_config
     from src.utils.experiment import digest_json, scientific_config
-    for path in Path("config").glob("experiment*/*.yaml"):
-        if path.name == "auxiliary.yaml":  # Control-generation policy, not a train-pipeline config.
+    # This invariant describes the established campaigns. New context policies
+    # and episode-size ablations have their own explicit design tests.
+    for path in Path("config").glob("experiment[0-3]/*.yaml"):
+        if path.name in {"auxiliary.yaml", "followups.yaml"}:
             continue
         cfg = load_train_config(config_path=str(path))
         recovery = path.stem.startswith("recovery_")

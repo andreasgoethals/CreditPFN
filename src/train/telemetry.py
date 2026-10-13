@@ -189,6 +189,8 @@ class ResourceMonitor:
 def parameter_statistics(model, anchor: dict, optimizer=None) -> list[dict]:
     """All parameter tensors at fixed milestones; exact norms, bounded sampled quantiles."""
     records = []
+    selected = ({id(p) for group in optimizer.param_groups for p in group['params']}
+                if optimizer is not None and hasattr(model, '_creditpfn_adapter') else None)
     for name, parameter in model.named_parameters():
         value = parameter.detach().float()
         flat = value.reshape(-1)
@@ -196,7 +198,8 @@ def parameter_statistics(model, anchor: dict, optimizer=None) -> list[dict]:
             continue
         sampled = flat[::max(1, (flat.numel()+4095)//4096)]
         quantiles = torch.quantile(sampled, torch.tensor([.05,.5,.95],device=value.device)).cpu().tolist()
-        record = dict(parameter=name, stage=name.split(".")[0], trainable=parameter.requires_grad,
+        record = dict(parameter=name, stage=name.split(".")[0],
+            trainable=id(parameter) in selected if selected is not None else parameter.requires_grad,
             elements=parameter.numel(), norm=float(value.norm()), mean=float(value.mean()),
             std=float(value.std(unbiased=False)), abs_max=float(value.abs().max()),
             sampled_q05=quantiles[0], sampled_q50=quantiles[1], sampled_q95=quantiles[2],

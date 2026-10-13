@@ -115,6 +115,16 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     from src.model import build_baselines
     from src.eval.benchmark import load_trained_handles
 
+    if OmegaConf.select(train_cfg, "experiment.followup_gate", default=False):
+        from src.utils.followup_checks import require_gate
+        require_gate()
+    from src.train.size_studies import study
+    if study(train_cfg):
+        from src.utils.prepare_experiment import plan_path, read_plan, check_shared_reference, check_size_evaluation
+        prepared = read_plan(plan_path(str(train_cfg.run_name), track))
+        check_shared_reference(prepared)
+        check_size_evaluation(train_cfg, prepared, eval_cfg)
+
     split = split_from_cfg(train_cfg, track=track)
     _PACK_ROW_COUNTS[track] = {c.dataset_id: c.n_rows for c in (*split.train, *split.test)}
     cfg_test_ids = sorted({c.dataset_id for c in split.test})
@@ -138,6 +148,8 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     # is 8 where our TabPFN setting is 32. Separate knob so one family's
     # cost decision can't silently be imposed on the other.
     n_est_tabicl = int(getattr(eval_cfg, "tabicl_n_estimators", 8))
+    tabicl_options = OmegaConf.select(eval_cfg, "tabicl_inference_options")
+    extra_inference = {"tabicl_inference_options": dict(tabicl_options)} if tabicl_options is not None else {}
     baselines = build_baselines(
         track=track,
         base_paths_for_tabpfn_untuned=bases,
@@ -150,6 +162,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         hpo_catboost=hpo_cb,
         hpo_logreg=hpo_lr,
         hpo_linreg=hpo_lin,
+        **extra_inference,
     )
 
     manifest_csv = (
@@ -160,6 +173,7 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         device=str(train_cfg.device),
         n_estimators=int(eval_cfg.tabpfn_n_estimators),
         n_estimators_tabicl=n_est_tabicl,
+        **extra_inference,
     )
     if OmegaConf.select(train_cfg, "experiment.require_plan", default=False):
         from src.utils.prepare_experiment import plan_path, read_plan

@@ -18,9 +18,9 @@ def all_results_path() -> Path:
 
 
 def notebook_figures_dir(notebook: str) -> Path:
-    """Use notebook folder order, including 00_general, for the publication tree."""
+    """Use the notebook group as the publication folder."""
     group, _ = notebook_parts(notebook)
-    return figures_dir() / ("00_general" if group == "general" else group)
+    return figures_dir() / group
 
 
 def figure_prefix(notebook: str) -> str:

@@ -29,7 +29,8 @@ from pathlib import Path
 #: Per-project folder names; overrides always name the enclosing project root.
 PROJECT_NAME = "CreditPFN"
 OUTPUT_DIR_NAME = "output CreditPFN"
-EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3")
+EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3",
+               "experiment4", "experiment5", "experiment6", "experiment7")
 
 
 def experiment_group(value: str | None = None) -> str:
@@ -40,7 +41,11 @@ def experiment_group(value: str | None = None) -> str:
 
 
 def group_for_run(run: str) -> str:
-    for prefix, group in (("cpt_null", "experiment0"), ("cpt_pilot", "experiment0"),
+    for prefix, group in (("cpt_diagscale_debug", "experiment0"), ("cpt_large_debug", "experiment0"),
+                          ("cpt_context", "experiment4"), ("cpt_diagscale", "experiment5"),
+                          ("cpt_large", "experiment6"), ("cpt_corpus", "experiment6"),
+                          ("cpt_episode", "experiment7"),
+                          ("cpt_null", "experiment0"), ("cpt_pilot", "experiment0"),
                           ("cpt_budget", "experiment0"), ("cpt_recovery", "experiment0"),
                           ("cpt_main", "experiment1"), ("cpt_seeds", "experiment2"),
                           ("cpt_sampling", "experiment3")):

@@ -11,6 +11,27 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 13-10-2026
+
+- Separate corpus policy (6) from episode size (7), with fixed holdouts, a verified shared control, scoped benchmarks/notebooks and capacity/cleanup guards; reduce new trials from 48 to 32.
+- Add context-curve and DiagScale notebooks with paired coverage checks, complete summaries and shared PDF/caption output; recognize adapter filenames in analysis.
+- Clarify the large-PD experiment sequence and evidence needed for an ICML manuscript.
+- Add gated context curves (4), DiagScale CPT (5), large-PD episode ablations (6), isolated experiment-0 controls and regression tests.
+- Scope cleanup by experiment/workflow across both storage tiers; protect active writers/input consumers and require explicit global deletion.
+
+- Record experiment 4's exclusion, refine follow-up designs from local primary code/papers, and distinguish raw from normalized Real-TabPFN AUC gains.
+
+## 12-10-2026
+
+- Make shared result/caption reports Git-visible; preserve complete CSV tables without alignment padding and lighten Markdown editor settings.
+- Label incomplete sampling-curve cohorts and record a prioritized, literature-supported appendix plan without changing active numerical code.
+- Separate mocked callback-order tests from filesystem publication; verify denied atomic replacement preserves the original state.
+
+- Document a single PowerShell transfer for both output tiers and clear stale ZIP selectors before local notebook analysis.
+- Correct dashboard Unicode labels and test combined benchmark routing/readiness without submitting jobs.
+- Refresh the VSC reference/current cluster topology and document recovery of held tasks blocking shared concurrency dependencies.
+- Align the notebook regression with compact paired endpoint figures; retain a numerical check for correctly directed Brier-score improvements.
+
 ## 01-10-2026
 
 - Add live notebook/cell progress and heartbeats, schedule expensive notebooks first, bound numerical threads, and explicitly use the runner's Python kernel.

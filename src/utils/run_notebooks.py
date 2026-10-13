@@ -2,7 +2,7 @@
 
     python -m src.utils.run_notebooks                     every notebook, outputs written
                                                           back into the .ipynb
-    python -m src.utils.run_notebooks --only 00_general   corpus notebooks
+    python -m src.utils.run_notebooks --only general   corpus notebooks
     python -m src.utils.run_notebooks --only experiment1  the main-sweep notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
