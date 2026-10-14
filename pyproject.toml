@@ -5,17 +5,15 @@
 #
 #      python -m pip install --upgrade pip
 #      pip install -e .                 # runtime only
-#      pip install -e ".[dev]"          # + pytest, repo-refresh tooling
-#      pip install -e ".[dev,notebooks]"# + Jupyter/ipykernel for the notebooks
+#      pip install -e ".[dev]"          # + pytest and lint tooling
+#      pip install -e ".[dev,notebooks]" # + Jupyter/ipykernel for the notebooks
 #
 #  Upstream training APIs change. Validate and record the existing environment
 #  with compatibility smoke tests and VSC null controls. Do not upgrade a
 #  floating upstream branch during an immutable experiment campaign.
 #
-#  Python: ** 3.11, 3.12, or 3.13 **. torch / scikit-learn now ship cp313
-#  wheels (the VSC base conda env is 3.13 and works). 3.14 is excluded —
-#  some compiled deps still lack cp314 wheels and fall back to a
-#  from-source build. See docs/VSC.md.
+#  Supported Python versions: 3.11–3.13. Expanding this range requires
+#  validating the complete compiled stack and upstream training interfaces.
 # =============================================================================
 
 [build-system]
@@ -39,37 +37,25 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-# Runtime dependencies — everything needed to run the data → train → eval
-# pipelines. Pinned to conservative major-version ranges; audited against the
-# actual `import` statements in src/ and the verified TabPFN API.
+# Runtime compatibility ranges, not a reproducible environment lock. Prepared
+# plans record installed versions; upstream training APIs still require the
+# experiment-0 compatibility controls before a new environment is used.
 dependencies = [
     # Core deep-learning stack
-    "torch>=2.2,<3.0",
+    "torch>=2.3,<3.0",            # torch.amp.GradScaler is exported starting in 2.3
     # TabPFN — validate the installed training API before preparing a campaign.
     "tabpfn>=2.2",
-    # TabICL — the SECOND continued-pretraining family (added 2026-08-04).
-    # Upper-bounded at <3 on purpose: src/train/tabicl_compat.py imports the
-    # PRIVATE `tabicl._finetune.data` internals (MetaBatch, _build_meta_batch)
-    # so our per-step preprocessing matches upstream's finetuning exactly. A
-    # major release may move them; that one shim file is where to fix it.
-    #
-    # THE `[finetune]` EXTRA IS REQUIRED, not optional (corrected 2026-08-05).
-    # Importing `tabicl._finetune.data` runs `tabicl._finetune/__init__.py` →
-    # `base.py` → `tabicl.train._optim` → `from transformers import
-    # get_*_schedule*`. `transformers` is declared by tabicl only under its
-    # `finetune` / `pretrain` / `all` extras, so a plain `pip install tabicl`
-    # imports fine for INFERENCE (the sklearn wrappers are lazy) and then
-    # fails at training time with ModuleNotFoundError: transformers.
-    # Declaring the extra — rather than pinning `transformers` ourselves —
-    # keeps us correct if upstream changes what the finetune path needs.
-    # The extra also pulls `wandb`, which tabicl never imports at module
-    # scope (only inside its own trainer functions, which we don't call).
+    # The compatibility shim uses private MetaBatch/preprocessing APIs.
+    # The finetune extra supplies their optimizer/transformers dependencies;
+    # inference-only installations are insufficient. Revalidate API changes.
     "tabicl[finetune]>=2.1.1,<3",
     # Scientific / tabular stack
     "numpy>=1.26,<3.0",
     "pandas>=2.1,<3.0",
     "scipy>=1.11,<2.0",            # spatial.distance, stats.spearmanr (eval metrics)
     "scikit-learn>=1.4,<2.0",      # FeatureAgglomeration, OrdinalEncoder, KFold, metrics
+    "threadpoolctl>=3.1,<4.0",    # direct CPU-thread controls in training and evaluation
+    "psutil>=5.9,<8.0",           # process memory / CPU telemetry
     # Baseline models for the eval benchmark
     "xgboost>=2.0,<4.0",
     "catboost>=1.2,<2.0",
@@ -79,11 +65,8 @@ dependencies = [
     "pyyaml>=6.0,<7.0",           # omegaconf's YAML backend; no direct import in src/
     # Checkpoint staging from the Hugging Face Hub (src/utils/stage_checkpoints.py)
     "huggingface_hub>=0.24,<1.0",
-    # Parquet writer for the per-row saved predictions (src/eval/benchmark.py
-    # _write_predictions). It is a RUNTIME dependency with no import statement:
-    # pandas .to_parquet dispatches to pyarrow. Without it the code falls back to
-    # gzipped CSV — which works, but is ~5x larger and was silently happening on
-    # the cluster until the 24-08-2026 report flagged it.
+    # pandas dispatches prediction .to_parquet to pyarrow. The writer retains
+    # a gzipped-CSV fallback; record the actual format rather than assuming it.
     "pyarrow>=15.0",
     # Plotting (figure export in src/visualize/figures.py + the notebooks)
     "matplotlib>=3.8,<4.0",
@@ -124,6 +107,7 @@ extend-exclude = [
     "tfm-library",
     # Generated output and notebook JSON are not source.
     "output",
+    "output CreditPFN",
     "archive",
     "notebooks",
     ".venv",
@@ -150,7 +134,7 @@ addopts = "-ra --strict-markers"
 # WHY: without this, pytest walks tfm-library/ and tries to collect the upstream
 # code snapshots as tests. It finds "test" in filenames there and fails on imports
 # of packages this project does not have.
-norecursedirs = ["tfm-library", "output", "data", ".venv", "venv", "notebooks"]
+norecursedirs = ["tfm-library", "output", "output CreditPFN", "archive", "data", "checkpoints", ".venv", "venv", "notebooks"]
 markers = [
     "slow: takes more than a few seconds",
     "gpu: requires CUDA; skipped on the local dev machine",

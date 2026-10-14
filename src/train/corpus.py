@@ -238,9 +238,8 @@ def _assign_random_split(
 ) -> dict[str, str]:
     """Draw `n_test` datasets at random as the test set; the rest train.
 
-    One draw per `seed`, so `--split-index k` gives split k and the analysis averages over them.
-    Unlike K-fold this does not guarantee every dataset is tested exactly once, but with 28 draws
-    of 4 from 17 each dataset lands in a test set ~6.6 times, which is what the averaging needs.
+    Retained for historical configurations. Unlike K-fold, random draws do not
+    guarantee that every dataset is tested or has equal evaluation coverage.
     """
     order = sorted(dataset_ids)
     n = len(order)
@@ -261,15 +260,9 @@ def _assign_folds(
 ) -> dict[str, str]:
     """Dataset-level K-fold: fold `fold` is the test set, everything else trains.
 
-    Folds rather than repeated random draws, because with random draws over a 17-dataset corpus
-    some datasets never land in a test set and others land there repeatedly — the effect is then
-    estimated on an arbitrary subset and "how much does this depend on the split" stays
-    unanswerable. K folds cover every dataset exactly once, which is what turns n_test = 5 into an
-    effect estimated on all 17.
-
-    NO dataset is dropped: the training set is the complement of the test fold, so a K-fold run
-    also trains on MORE tables than the old 70/30 draw (13 of 17 rather than 12). `seed` selects
-    the partition, so R repeats at different seeds give R x K configurations.
+    Every dataset is tested once and the other datasets form its training
+    complement. Fold sizes differ by at most one; the seed selects this fixed
+    assignment independently of the training seed.
     """
     order = sorted(dataset_ids)
     n = len(order)
@@ -315,18 +308,18 @@ def split_corpus(
 
     Two modes, controlled by the explicit-list arguments:
 
-    * **Mode A** (both lists empty) — fraction-based split.
-      ``train_fraction + test_fraction`` should sum to ≤ 1.0; any
-      slack is unused (lets you train on a subset of the corpus
-      without code changes).
+    * **Mode A** (both lists empty) — count-based random holdout when
+      ``n_test_datasets`` is set, otherwise dataset K-fold when ``n_folds``
+      is set, otherwise a fraction-based split with any slack unused.
 
     * **Mode B** (at least one list non-empty) — explicit override.
 
       - ``train_dataset_ids`` non-empty → train = *exactly* these IDs.
       - ``test_dataset_ids``  non-empty → test  = *exactly* these IDs.
       - If only one list is given, the *other* bucket is filled
-        count-wise from the remaining IDs using its fraction.
-      - An ID may not appear in both lists.
+        from the remaining IDs using its fraction. Explicit lists override
+        inherited fold/count defaults; the supplied bucket stays exact.
+      - An ID may not appear in both lists; unknown IDs are errors.
     """
     if track not in ("pd", "lgd"):
         raise ValueError(f"track must be 'pd' or 'lgd'; got {track!r}")
@@ -353,6 +346,9 @@ def split_corpus(
         if actual != expected:
             raise ValueError(f"Incomplete {track} corpus: {len(actual)} available, {len(expected)} registered. "
                              "Restore the confirmed dataset inventory before splitting; no silent omissions.")
+    unknown = (set(train_dataset_ids) | set(test_dataset_ids)) - {r.dataset_id for r in pool}
+    if unknown:
+        raise ValueError(f"Unknown explicit dataset ID(s) for {track}: {sorted(unknown)}")
     if not pool:
         LOGGER.warning("no processed CSVs found for track=%s", track)
         return CorpusSplit(train=[], test=[])
@@ -361,20 +357,6 @@ def split_corpus(
     unique_ids = sorted(refs_by_id.keys())
     explicit_train = set(train_dataset_ids) & set(unique_ids)
     explicit_test  = set(test_dataset_ids)  & set(unique_ids)
-
-    # Warn loudly on typos.
-    for did in train_dataset_ids:
-        if did not in unique_ids:
-            LOGGER.warning(
-                "train_dataset_ids: %r not found on disk for track=%s — skipped",
-                did, track,
-            )
-    for did in test_dataset_ids:
-        if did not in unique_ids:
-            LOGGER.warning(
-                "test_dataset_ids: %r not found on disk for track=%s — skipped",
-                did, track,
-            )
 
     bucket: dict[str, str] = {}
     for did in explicit_train:
@@ -387,13 +369,11 @@ def split_corpus(
         need_train = not explicit_train
         need_test  = not explicit_test
         if need_train or need_test:
-            # K-FOLD when `n_folds` is set, otherwise the historic fraction draw. The
-            # fraction path is kept so every run before run-9 stays reproducible.
-            if n_test_datasets:
+            if need_train and need_test and n_test_datasets:
                 count_buckets = _assign_random_split(
                     remaining, n_test=int(n_test_datasets), seed=seed,
                 )
-            elif n_folds:
+            elif need_train and need_test and n_folds:
                 count_buckets = _assign_folds(
                     remaining, n_folds=int(n_folds), fold=int(fold), seed=seed,
                 )

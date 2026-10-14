@@ -160,7 +160,7 @@ def plot_retention_benchmark(campaign):
 
 
 def plot_reliability(campaign):
-    """Bounded per-dataset reliability panels with paired, complete outer folds."""
+    """Compare calibration methods side by side, requiring bins from every fold."""
     from src.visualize.campaign import _complete_folds
     from src.visualize.training_viz import compact_base
     import matplotlib.pyplot as plt
@@ -178,11 +178,12 @@ def plot_reliability(campaign):
     data = _complete_folds(data[raw | trained], "roc_auc")
     pages = []
     for base, group in data.groupby("base_short"):
+        all_records = []
         for suffix, calibration in (("", "raw"), ("_platt", "Platt"), ("_isotonic", "isotonic")):
             column = "calibration_bins" + suffix
             if column not in group:
                 continue
-            records, eligible = [], []
+            records = []
             for dataset, part in group.groupby("test_dataset_id"):
                 if part[column].isna().any() or not part.source.str.endswith("-trained").any() or not part.source.str.endswith("-untuned").any():
                     continue
@@ -193,41 +194,60 @@ def plot_reliability(campaign):
                     continue
                 dataset_records = []
                 for source, selected in part.groupby("source"):
-                    bins = [b for value in selected[column] for b in json.loads(value)]
-                    if not bins:
+                    fold_bins = [json.loads(value) for value in selected[column]]
+                    # A successful AUC fold need not have a fitted calibrator.
+                    # One missing calibration fold must not look like five-fold evidence.
+                    if not all(fold_bins):
                         continue
+                    bins = [b for items in fold_bins for b in items]
                     merged = pd.DataFrame(bins).groupby("bin").sum(numeric_only=True)
                     merged = merged[merged["count"].gt(0)].reset_index()
                     merged["predicted"] = merged.probability_sum / merged["count"]
                     merged["observed"] = merged.positive_count / merged["count"]
                     merged["dataset"], merged["role"] = dataset, "Untuned" if source.endswith("-untuned") else "Adapted reference"
+                    merged["calibration"] = calibration
                     if not merged.empty:
                         dataset_records.append(merged)
                 if len(dataset_records) == 2:
                     records.extend(dataset_records)
-                    eligible.append(dataset)
-            if not records:
-                continue
-            binned = pd.concat(records, ignore_index=True)
-            for page_no, (start, stop) in enumerate(style.page_slices(len(eligible), 4), 1):
-                datasets = eligible[start:stop]
-                fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO),
-                                         layout="constrained", sharex=True, sharey=True)
-                fig.suptitle(f"{compact_base(base)}: {calibration} reliability")
-                for ax, dataset in zip(axes.flat, datasets):
-                    for role, bins in binned[binned.dataset.eq(dataset)].groupby("role"):
+            all_records.extend(records)
+        if not all_records:
+            continue
+        binned = pd.concat(all_records, ignore_index=True)
+        eligible = sorted(binned.dataset.unique())
+        for page_no, (start, stop) in enumerate(style.page_slices(len(eligible), style.RELIABILITY_ROWS), 1):
+            datasets = eligible[start:stop]
+            ratio = style.PANEL_RATIO if len(datasets) > 1 else style.SMALL_RATIO
+            fig, axes = plt.subplots(len(datasets), 3, squeeze=False,
+                                     figsize=style.figsize(style.WIDTH_FULL, ratio),
+                                     layout="constrained", sharex=True, sharey=True)
+            fig.suptitle(f"PD / {compact_base(base)}: probability calibration")
+            for row, dataset in enumerate(datasets):
+                for col, calibration in enumerate(("raw", "Platt", "isotonic")):
+                    ax = axes[row, col]
+                    part = binned[binned.dataset.eq(dataset) & binned.calibration.eq(calibration)]
+                    for role, bins in part.groupby("role"):
                         ax.plot(bins.predicted, bins.observed, marker="s" if role == "Untuned" else "o",
+                                markersize=style.CURVE_MARKER_SIZE, linewidth=style.THIN_LINE,
                                 linestyle="--" if role == "Untuned" else "-", label=role, color=style.color(role))
                     ax.plot([0,1], [0,1], color=style.color("reference"), linestyle=":")
                     ax.set_xlim(0,1); ax.set_ylim(0,1)
-                    ax.set_title(str(dataset), fontsize=style.ANNOTATION_SIZE)
-                    ax.set_xlabel("Mean probability"); ax.set_ylabel("Observed fraction"); ax.legend()
-                for ax in list(axes.flat)[len(datasets):]:
-                    ax.set_visible(False)
-                pages.append(Page(f"reliability_{compact_base(base)}_{calibration}_{page_no}", fig,
-                    f"{calibration.capitalize()} positive-class reliability for the predefined full-update reference "
+                    ax.set_title(f"{dataset}\n{calibration.capitalize()}", fontsize=style.ANNOTATION_SIZE)
+                    if row == len(datasets)-1: ax.set_xlabel("Mean probability")
+                    if col == 0: ax.set_ylabel("Observed fraction")
+                    if part.empty:
+                        ax.text(.5, .5, "Five paired folds\nunavailable", transform=ax.transAxes,
+                                ha="center", va="center", fontsize=style.ANNOTATION_SIZE)
+            handles = {}
+            for ax in axes.flat:
+                artists, labels = ax.get_legend_handles_labels()
+                handles.update(zip(labels, artists))
+            fig.legend(handles.values(), handles.keys(), loc="outside lower center", ncol=2)
+            pages.append(Page(f"reliability_{compact_base(base)}_{page_no}", fig,
+                    "Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference "
                     "(LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. "
-                    "Each panel is a separate dataset, requiring the same five completed outer folds for both models. "
+                    "Rows identify datasets and columns identify calibration methods. Each populated panel requires "
+                    "bin records from the same five completed outer folds for both models; missing panels are labeled. "
                     "Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts "
                     "are retained in the text summary. Calibrators are fitted only on inner validation rows. "
                     "The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.",

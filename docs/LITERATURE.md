@@ -4,6 +4,10 @@ Initial review against primary text at library pin **`e5ce01614eebe520af303f2b5b
 
 The training-objective check below additionally uses the updated pin **`81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`** (28-09-2026).
 
+The current follow-up-design and implementation review uses **`de324efcca55be392feb0c01830b3b6ce364587f`**
+(13-10-2026), including the Real-TabPFN, TabICLv2 and TTC primary text and code snapshots.
+Older pins above identify the historical checks; no library content is changed here.
+
 ## Closest evidence
 
 | Primary study | What was evaluated | Implication for CreditPFN |
@@ -18,6 +22,22 @@ The training-objective check below additionally uses the updated pin **`81c749bd
 | [Grinsztajn et al., TabPFN-3 Technical Report](../tfm-library/papers/text/2026/05_Grinsztajn_et_al._TabPFN_3_Technical_Report.txt) | New architecture, synthetic prior training and broader inference capacity/evaluation | Changes in base prior and context capacity can change adaptation behavior. A published inference envelope is not a measured continued-pretraining row cap for our GPU/configuration |
 
 ## Recipe choices and their limits
+
+The following general evaluation principles complement the local TFM sources:
+
+- [Cawley and Talbot (2010)](https://jmlr.org/papers/v11/cawley10a.html) show how optimizing
+  a noisy selection criterion can bias the reported winner. The fixed descriptive grid and
+  prespecified contrasts are defensible; selecting a recipe after seeing this same benchmark
+  does not give an independently validated deployment score.
+- [Bengio and Grandvalet (2004)](https://jmlr.org/papers/v5/grandvalet04a.html) establish that
+  no universal unbiased estimator of K-fold CV variance exists and explain the effect of fold
+  dependence. CreditPFN therefore aggregates paired folds within a table and does not treat
+  CV folds, overlapping training corpora or grid cells as independent statistical replications.
+  Dataset/source grouping must be assessed before an inferential analysis.
+
+These principles and the TFM papers motivate the design; they do not prove that the chosen
+objectives, learning rates or budget are optimal for credit transfer. The study measures those
+choices within its stated scope.
 
 **Reference rate and anchoring.** Garg et al. use LR `3e-7`, AdamW, warmup/cosine, L2-SP strength `0.003` in the form `0.5 × lambda × ||w - w0||²`, 20,000 optimizer steps, one dataset batch per step and a 60/40 context/query split. They sample up to 20,000 rows uniformly. CreditPFN's equal table visitation is an explicit design choice; do not misread uniform **row** sampling as a documented equal-table schedule in that paper.
 

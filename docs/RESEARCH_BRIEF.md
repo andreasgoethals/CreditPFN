@@ -19,6 +19,11 @@ Compare each adapted model with its exact starting checkpoint. The paper can est
 - Held-out dataset evaluation currently uses five row-level outer CV folds, plus an inner validation split for classical tuning, decision thresholds and calibration. Evaluation seed **99** is fixed across training seeds. These are IID table benchmarks; they do not simulate future origination cohorts.
 - All outer test rows are scored. Inference context caps depend on the base, but are identical for that base's trained and untuned arms. Cross-base rankings therefore combine architecture, prior and native context capacity.
 
+Explicit train/test lists used by isolated controls are exact: unknown IDs fail, and specifying
+only one side fills only its complement. Inherited fold/count defaults cannot expand a pinned
+side. Research experiments use the fixed folds above; corpus-policy filters apply only after
+those held-out assignments are fixed.
+
 Only schema-compatible, legally usable data belong in the corpus. Raw private data, names, contents and credentials do not belong in the paper or Git. Figures use the private display-name mapping; the temporary tracked preprocessing-slug exception is a source-code exception, not permission to publish those names in results.
 
 ## Experiment organization
@@ -65,7 +70,7 @@ PD uses cross-entropy over the dataset's active classes; binary credit tables th
 
 These objectives retain each model family's probabilistic prediction task. They do not directly optimize AUC, thresholded F1 or point RMSE, and no reviewed evidence establishes one universally best credit CPT loss. Reducing a distributional loss need not reduce RMSE. Compare effects within a family and dataset; raw loss magnitudes across families/tasks are not comparable.
 
-The 28-09-2026 audit corrected TabPFN PD's previous loss over all output-head columns. Upstream `TabPFNClassifier.forward` selects active classes before fine-tuning CE and inference softmax, contrary to the old CreditPFN comment. It also corrected regression query targets: members with a fitted target transform previously saw transformed context labels but untransformed z-scored query labels in their loss. Query labels now receive that same already-fitted transform, following upstream `_targets_in_estimator_space`; query rows never fit it. These are optimization changes: earlier TabPFN budget curves remain historical evidence under the old objectives. TabICL losses are unchanged. Preserve original identities, prepare fresh plans and validate the affected TabPFN paths on GPU before the main launch; a reporting-only waiver does not apply to these corrections.
+The 28-09-2026 audit corrected TabPFN PD's previous loss over all output-head columns. Upstream `TabPFNClassifier.forward` selects active classes before fine-tuning CE and inference softmax, contrary to the old CreditPFN comment. It also corrected regression query targets: members with a fitted target transform previously saw transformed context labels but untransformed z-scored query labels in their loss. Query labels now receive that same already-fitted transform, following upstream `_targets_in_estimator_space`; query rows never fit it. These are optimization changes: earlier TabPFN budget curves remain historical evidence under the old objectives. TabICL losses are unchanged. The main campaign uses separately prepared identities and the subsequent GPU controls recorded in agent memory; earlier pilots must not be relabeled as measurements of the corrected objective.
 
 ### Sampling inside a table
 
@@ -125,7 +130,7 @@ Only successful completions release a CPU audit, and only a passing audit releas
 
 **Experiment 0 part 2 is separate**, via `run_experiment0.sh part2`: eight full-update reference pilots, one per base/task, through 20k successful updates with 0/250/1k/2.5k/5k/10k/20k measurements. A current part-1 receipt and unchanged input/environment identities are required. These longer jobs use resumable two-hour work segments plus a save/monitor margin. They follow a 20k schedule; their early points are not substitutes for a 5k schedule.
 
-The reviewed pilots inform the common **10k budget and six milestones** in experiments 1–3; prepare fresh plans with those settings. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **124 control/pilot training arms** if every experiment-0 stage including the auxiliary checks runs once (72 original arms + 52 auxiliary arms). Interrupted execution adds a segment, not a new scientific trial.
+The reviewed pilots inform the common **10k budget and six milestones** in experiments 1–3, recorded in their immutable plans. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **124 control/pilot training arms** if every experiment-0 stage including the auxiliary checks runs once (72 original arms + 52 auxiliary arms). Interrupted execution adds a segment, not a new scientific trial.
 
 ### Auxiliary gate for experiments 2 and 3
 
@@ -185,7 +190,11 @@ observed dataset or trial spread, explicitly not confidence intervals over indep
 Aggregate trajectory points require every planned trial and the same baseline observations;
 missing milestones are gaps. Benchmark effects require complete matching outer folds. Reliability
 panels compare the fixed adapted reference and its base separately by dataset and calibration
-method; F1 thresholds remain validation-selected.
+method; all five folds must contain valid bin records for the displayed pair. Raw, Platt and
+isotonic panels share a figure; absent calibration folds are marked unavailable even if AUC
+is complete. F1 thresholds remain validation-selected. Cross-validation fold scores are
+dependent; their standard deviation divided by the square root of five is not a justified
+standard error for this study. Primary methodological support is summarized in the literature notes.
 
 The final notebook text records every displayed table, plotted value and caption. Figures use the
 actual ICML dimensions rather than the generic A4 template; the adjacent manuscript is not rewritten

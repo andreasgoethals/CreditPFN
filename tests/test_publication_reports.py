@@ -189,7 +189,7 @@ def test_planned_coverage_and_missing_milestones_cannot_be_hidden():
 def test_reliability_uses_complete_identically_paired_folds():
     run = research_campaign()
     pages = dg.plot_reliability(run)
-    assert len(pages)==12  # 16 datasets, four per page, three calibrations
+    assert len(pages)==8  # 16 datasets, two per page, three calibration columns
     for page in pages:
         bins = page.tables["Probability bins and counts"]
         assert bins.groupby("dataset").role.nunique().eq(2).all()
@@ -289,8 +289,21 @@ def test_reliability_requires_bins_for_both_models():
     run = research_campaign()
     run.evaluation.loc[(run.evaluation.source=="tabpfn-untuned") &
                       (run.evaluation.test_dataset_id=="Dataset 00"),"calibration_bins"]="[]"
-    raw = [p for p in dg.plot_reliability(run) if "_raw_" in p.name]
-    assert raw and all("Dataset 00" not in p.tables["Probability bins and counts"].dataset.values for p in raw)
+    tables = [p.tables["Probability bins and counts"] for p in dg.plot_reliability(run)]
+    raw = pd.concat(tables).query("calibration == 'raw'")
+    assert not raw.empty and "Dataset 00" not in raw.dataset.values
+
+
+def test_reliability_cannot_pool_four_calibration_folds_as_five():
+    run = research_campaign()
+    selected = ((run.evaluation.source == "tabpfn-untuned") &
+                (run.evaluation.test_dataset_id == "Dataset 00") & (run.evaluation.fold_idx == 1))
+    run.evaluation.loc[selected, "calibration_bins_platt"] = "[]"
+    pages = dg.plot_reliability(run)
+    bins = pd.concat([p.tables["Probability bins and counts"] for p in pages])
+    assert bins[(bins.dataset == "Dataset 00") & (bins.calibration == "Platt")].empty
+    assert not bins[(bins.dataset == "Dataset 00") & (bins.calibration == "raw")].empty
+    assert any("unavailable" in text.get_text() for p in pages for ax in p.figure.axes for text in ax.texts)
 
 
 def test_partial_response_surface_keeps_counts_on_the_correct_cells():

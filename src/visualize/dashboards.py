@@ -52,8 +52,11 @@ def monitor_observations(run, split="test", metric=None):
     return data.rename(columns={"trial_name": "trial", "successful_updates": "updates"})
 
 
-def _grid(title):
-    fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO),
+def _grid(title, panels=4):
+    rows, columns = (2, 2) if panels > 2 else (1, panels)
+    ratio = style.DASHBOARD_RATIO if rows == 2 else style.SMALL_RATIO
+    fig, axes = plt.subplots(rows, columns, squeeze=False,
+                             figsize=style.figsize(style.WIDTH_FULL, ratio),
                              layout="constrained")
     fig.suptitle(title)
     return fig, list(axes.flat)
@@ -326,22 +329,25 @@ def plot_resources(run):
     if data.empty: return []
     data = data[data.phase.eq("training") & data.successful_updates.gt(0)].copy()
     fields = {"gpu_utilization_percent": "GPU utilization (%)", "power_watts": "Device power (W)",
-              "device_memory_used_mib": "Device memory (MiB)"}
+              "device_memory_used_mib": "Device memory (GiB)"}
     width = cp.optimization_window(run)
     data["window_end"] = np.minimum(np.ceil(data.successful_updates/width)*width, run.target)
     pages = []
     for field, label in fields.items():
         if field not in data: continue
         data[field] = pd.to_numeric(data[field], errors="coerce")
+        if field == "device_memory_used_mib":
+            data[field] = data[field] / 1024
         values = data.dropna(subset=[field]).groupby(["trial_name", "base", "window_end"])[field].median().reset_index()
         if values.empty: continue
-        fig, axes = _grid(f"{run.track.upper()}: sampled {label.lower()}")
+        fig, axes = _grid(f"{run.track.upper()}: sampled {label}", values.base.nunique())
         tables = []
         for ax, (base, part) in zip(axes, values.groupby("base")):
             curve = part.groupby("window_end")[field].agg(median="median", count="count").reindex(cp.optimization_grid(run, "grad_norm_mean"))
             ax.plot(curve.index, curve["median"], color=style.color(base), linewidth=style.THIN_LINE)
             ax.set_title(base); ax.set_ylabel(label); ax.set_xlabel("Successful updates")
-            tables.append(curve.reset_index().assign(base=base))
+            ax.ticklabel_format(axis="y", style="plain", useOffset=False)
+            tables.append(curve.reset_index().assign(base=base, measure=label))
         for ax in axes[values.base.nunique():]: ax.remove()
         pages.append(cp.Page(f"resource_dashboard_{run.track}_{field}", fig,
             "Device counters during training, summarized first by a within-trial window median, then by the median "

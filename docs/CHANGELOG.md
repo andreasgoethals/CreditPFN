@@ -11,8 +11,15 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 14-10-2026
+
+- Record complete training/main-and-seed benchmark log coverage and the remaining sampling benchmark/project-artifact checks.
+
 ## 13-10-2026
 
+- Keep explicit corpus lists exact and reject unknown IDs instead of silently changing the experiment population.
+- Require calibration bins from all paired folds; combine calibration panels and improve resource units/layouts.
+- Correct the PyTorch minimum and direct telemetry dependencies; refresh methodology, notebook scope and deployment guidance.
 - Separate corpus policy (6) from episode size (7), with fixed holdouts, a verified shared control, scoped benchmarks/notebooks and capacity/cleanup guards; reduce new trials from 48 to 32.
 - Add context-curve and DiagScale notebooks with paired coverage checks, complete summaries and shared PDF/caption output; recognize adapter filenames in analysis.
 - Clarify the large-PD experiment sequence and evidence needed for an ICML manuscript.

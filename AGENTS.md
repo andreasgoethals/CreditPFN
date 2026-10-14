@@ -129,7 +129,7 @@ anything is finished.
   runtime-fingerprinted file during active training would invalidate prepared plans.
 - Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
   cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
-  from five-fold evaluation. Experiments 1–3 and 5 follow this separation; experiment 4 is evaluation only.
+  from five-fold evaluation. Experiments 1–3 and 5–7 follow this separation; experiment 4 is evaluation only.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and
   method authority: descriptive goals, partitions, sampling, adaptation and limitations.
   `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one

@@ -2,7 +2,7 @@
 
 Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. Use the `CreditPFN` conda environment and `$VSC_DATA/CreditPFN` checkout. Local tests cannot certify the installed B200 runtime.
 
-Operational reference: [VSC documentation snapshot](<../tfm-library/repositories/VSC Documentation.txt>) at library pin `1ac6e6783f24b2d5cd058af7ad8cad7c1bfaf7ae`, especially embedded `source/leuven/slurm_specifics.rst`, `source/leuven/tier2_hardware/kuleuven_storage.rst`, `source/leuven/tier2_hardware/parallel_filesystems.rst`, `source/compute/jobs/job_submission.rst` and `source/compute/software/installing_software/python_package_management.rst`. The snapshot covers multiple universities and retired systems; apply KU Leuven/Mindwell rules to this deployment. Site rules can change; current account/QOS limits and project quota still require live inspection.
+Operational reference: [VSC documentation snapshot](<../tfm-library/repositories/VSC Documentation.txt>) at library pin `de324efcca55be392feb0c01830b3b6ce364587f`, especially embedded `source/leuven/slurm_specifics.rst`, `source/leuven/tier2_hardware/kuleuven_storage.rst`, `source/leuven/tier2_hardware/parallel_filesystems.rst`, `source/compute/jobs/job_submission.rst` and `source/compute/software/installing_software/python_package_management.rst`. Relative to the prior reviewed pin, the additions concern Sofia membership and its visualization partition; they do not change these Mindwell/wICE wrappers. The snapshot covers multiple universities and retired systems; apply KU Leuven/Mindwell rules to this deployment. Site rules can change; current account/QOS limits and project quota still require live inspection.
 
 The current KU Leuven Tier-2 systems are **wICE and Mindwell**, both on Rocky Linux 9.6. `login.hpc.kuleuven.be` selects one of four wICE login nodes; Mindwell has no dedicated login nodes. Genius documentation is historical. Our batch wrappers already select wICE for CPU maintenance/classical evaluation and Mindwell `gpu_b200` for production GPU work, with explicit clusters, account and `--gpus-per-node=1`. The older Genius activation anecdote and scratch alias do not route current submissions there. Do not change fingerprinted activation code merely to remove historical wording during a live campaign.
 
@@ -64,7 +64,7 @@ Mindwell accumulates epoch, trajectory, parameter and resource files on GPFS. No
 
 Fresh `cpt_*_v5` plans are independent of v4 records and weights. Both tiers create `output CreditPFN/` automatically. Relative legacy `output/...` settings resolve to the canonical name rather than creating another tree. Keep any historical copy only if wanted; a fresh run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
 
-Null, short and budget configs use `cpt_*_v5_check2`; corrected deterministic recovery uses `cpt_recovery_v5_check3`. Standalone recovery probes add a unique workflow suffix. Changed source must not overwrite existing immutable plans: use the isolated recovery launch when diagnosing recovery, then clear previous experiment-0 output and trained weights before the fresh part 1. The research grids and budgets are unchanged.
+Null, short and budget configs use `cpt_*_v5_check2`; corrected deterministic recovery uses `cpt_recovery_v5_check3`. Standalone recovery probes add a unique workflow suffix. Changed source must not overwrite existing immutable plans. Use an isolated recovery launch for a recovery diagnosis, and the separate follow-up workflow for experiments 4–7. A complete fresh part 1 requires explicitly retiring its old output/plans first; it is not needed merely to add a new isolated control. Preserve accepted evidence and completed research weights.
 
 Only final weights and the most recent recovery state persist. Intermediate milestone weights are transient; numeric measurements persist. After final publication (including numerical divergence), recovery state is removed. Known repetitive deprecation messages are filtered and repeated numerical errors are counted with bounded log summaries; fatal errors remain visible. Do not hide errors to make a run look successful.
 
@@ -186,6 +186,13 @@ The long pilots measure 0/250/1k/2.5k/5k/10k/20k updates. Their cosine schedule 
 ## Identity, recovery and resource choices
 
 Training plans fingerprint scientific settings, code, package versions, base bytes, credit inputs and the public monitoring panel. Incompatible completed checkpoints are rejected. Evaluation has its own fingerprints, so plot/benchmark orchestration changes need not alter training identity. Never bypass a mismatch; use a new run identity for changed training semantics.
+
+Package ranges in `pyproject.toml` are compatibility declarations, not a reproducible lockfile.
+PyTorch must expose `torch.amp.GradScaler` (2.3 or later); direct process/thread telemetry
+dependencies are declared as well. Keep the recorded environment throughout accepted jobs.
+Do not install upgrades or pull shared runtime changes into their checkout while training or
+benchmarks still need it. After those jobs finish, deploy the reviewed source and use the new
+isolated experiment-0 receipts to validate the actual VSC APIs and capacities.
 
 The 28-09 TabPFN loss corrections change classification from full-head CE to active-class CE, and align regression query targets with each member's context-fitted target transform before NLL. The earlier reporting-only assessment does **not** cover them. Preserve accepted old experiment-0 artifacts with their original identities; short positive-LR/recovery validation of the affected TabPFN PD/LGD paths is required before research submission. Old TabICL results retain their objective interpretation, and its unchanged trajectories still motivate the 10k descriptive horizon. Do not rerun the bundled command over existing immutable plans or rewrite passing receipts to the new fingerprint; validation needs fresh control run names and plans. No repeat of every 20k pilot is implied solely to retain that horizon.
 

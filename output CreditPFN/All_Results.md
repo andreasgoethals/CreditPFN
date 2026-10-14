@@ -13,7 +13,7 @@ Experiment 0: zero-learning-rate controls
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Workflow receipts
@@ -226,7 +226,7 @@ Experiment 0: positive-rate pilots
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Exact pilot cohort and coverage
@@ -2189,7 +2189,7 @@ Experiment 0: budget and learning-horizon pilots
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Budget cohort and coverage
@@ -3952,7 +3952,7 @@ Experiment 0: auxiliary experiment checks
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Planned checks
@@ -4061,7 +4061,7 @@ Experiment 1: PD training dynamics
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:45:06+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Training coverage
@@ -40781,619 +40781,619 @@ Figure: pd_resource_dashboard_pd_gpu_utilization_percent
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,99.5,64,TabICLv2
-1,400,100,64,TabICLv2
-2,600,99.75,64,TabICLv2
-3,800,99.5,64,TabICLv2
-4,1000,100,64,TabICLv2
-5,1200,100,64,TabICLv2
-6,1400,100,64,TabICLv2
-7,1600,99.5,64,TabICLv2
-8,1800,100,64,TabICLv2
-9,2000,99.75,64,TabICLv2
-10,2200,99.5,64,TabICLv2
-11,2400,100,64,TabICLv2
-12,2600,99.25,64,TabICLv2
-13,2800,100,64,TabICLv2
-14,3000,100,64,TabICLv2
-15,3200,99.5,64,TabICLv2
-16,3400,100,64,TabICLv2
-17,3600,99.5,64,TabICLv2
-18,3800,100,64,TabICLv2
-19,4000,99.5,64,TabICLv2
-20,4200,100,64,TabICLv2
-21,4400,99.5,64,TabICLv2
-22,4600,99.5,64,TabICLv2
-23,4800,99.5,64,TabICLv2
-24,5000,99,64,TabICLv2
-25,5200,99.5,64,TabICLv2
-26,5400,100,64,TabICLv2
-27,5600,100,64,TabICLv2
-28,5800,100,64,TabICLv2
-29,6000,99.5,64,TabICLv2
-30,6200,100,64,TabICLv2
-31,6400,100,64,TabICLv2
-32,6600,99.5,64,TabICLv2
-33,6800,99.5,64,TabICLv2
-34,7000,99.5,64,TabICLv2
-35,7200,99.5,64,TabICLv2
-36,7400,100,64,TabICLv2
-37,7600,99.5,64,TabICLv2
-38,7800,99.5,64,TabICLv2
-39,8000,99.5,64,TabICLv2
-40,8200,100,64,TabICLv2
-41,8400,99.25,64,TabICLv2
-42,8600,99.5,64,TabICLv2
-43,8800,99.5,64,TabICLv2
-44,9000,100,64,TabICLv2
-45,9200,100,64,TabICLv2
-46,9400,100,64,TabICLv2
-47,9600,99.5,64,TabICLv2
-48,9800,99.5,64,TabICLv2
-49,10000,99.5,64,TabICLv2
-50,200,98.5,64,TabPFN v2
-51,400,99,64,TabPFN v2
-52,600,100,64,TabPFN v2
-53,800,100,64,TabPFN v2
-54,1000,100,64,TabPFN v2
-55,1200,100,64,TabPFN v2
-56,1400,100,64,TabPFN v2
-57,1600,100,64,TabPFN v2
-58,1800,100,64,TabPFN v2
-59,2000,100,64,TabPFN v2
-60,2200,100,64,TabPFN v2
-61,2400,100,64,TabPFN v2
-62,2600,99.5,64,TabPFN v2
-63,2800,99.5,64,TabPFN v2
-64,3000,100,64,TabPFN v2
-65,3200,100,64,TabPFN v2
-66,3400,99.25,64,TabPFN v2
-67,3600,99,64,TabPFN v2
-68,3800,99.75,64,TabPFN v2
-69,4000,100,64,TabPFN v2
-70,4200,99.5,64,TabPFN v2
-71,4400,100,64,TabPFN v2
-72,4600,100,64,TabPFN v2
-73,4800,99,64,TabPFN v2
-74,5000,99.25,64,TabPFN v2
-75,5200,100,64,TabPFN v2
-76,5400,100,64,TabPFN v2
-77,5600,100,64,TabPFN v2
-78,5800,99,64,TabPFN v2
-79,6000,99.75,64,TabPFN v2
-80,6200,100,64,TabPFN v2
-81,6400,100,64,TabPFN v2
-82,6600,100,64,TabPFN v2
-83,6800,99.5,64,TabPFN v2
-84,7000,100,64,TabPFN v2
-85,7200,100,64,TabPFN v2
-86,7400,100,64,TabPFN v2
-87,7600,100,64,TabPFN v2
-88,7800,99.5,64,TabPFN v2
-89,8000,99.25,64,TabPFN v2
-90,8200,100,64,TabPFN v2
-91,8400,99,64,TabPFN v2
-92,8600,99.5,64,TabPFN v2
-93,8800,100,64,TabPFN v2
-94,9000,100,64,TabPFN v2
-95,9200,100,64,TabPFN v2
-96,9400,100,64,TabPFN v2
-97,9600,100,64,TabPFN v2
-98,9800,100,64,TabPFN v2
-99,10000,100,64,TabPFN v2
-100,200,99,64,TabPFN v2.6
-101,400,99,64,TabPFN v2.6
-102,600,98.75,64,TabPFN v2.6
-103,800,99.5,64,TabPFN v2.6
-104,1000,98.5,64,TabPFN v2.6
-105,1200,98.5,64,TabPFN v2.6
-106,1400,98.5,64,TabPFN v2.6
-107,1600,98.5,64,TabPFN v2.6
-108,1800,98.75,64,TabPFN v2.6
-109,2000,99,64,TabPFN v2.6
-110,2200,98.5,64,TabPFN v2.6
-111,2400,98.5,64,TabPFN v2.6
-112,2600,99.25,64,TabPFN v2.6
-113,2800,98.5,64,TabPFN v2.6
-114,3000,99,64,TabPFN v2.6
-115,3200,99,64,TabPFN v2.6
-116,3400,99,64,TabPFN v2.6
-117,3600,98.25,64,TabPFN v2.6
-118,3800,98.75,64,TabPFN v2.6
-119,4000,98,64,TabPFN v2.6
-120,4200,99,64,TabPFN v2.6
-121,4400,98.25,64,TabPFN v2.6
-122,4600,98.5,64,TabPFN v2.6
-123,4800,98.75,64,TabPFN v2.6
-124,5000,99,64,TabPFN v2.6
-125,5200,98,64,TabPFN v2.6
-126,5400,99,64,TabPFN v2.6
-127,5600,98.5,64,TabPFN v2.6
-128,5800,98.75,64,TabPFN v2.6
-129,6000,98.5,64,TabPFN v2.6
-130,6200,99,64,TabPFN v2.6
-131,6400,99,64,TabPFN v2.6
-132,6600,99.5,64,TabPFN v2.6
-133,6800,99,64,TabPFN v2.6
-134,7000,99,64,TabPFN v2.6
-135,7200,99,64,TabPFN v2.6
-136,7400,98.5,64,TabPFN v2.6
-137,7600,98.5,64,TabPFN v2.6
-138,7800,98.25,64,TabPFN v2.6
-139,8000,98.25,64,TabPFN v2.6
-140,8200,99,64,TabPFN v2.6
-141,8400,98.5,64,TabPFN v2.6
-142,8600,99,64,TabPFN v2.6
-143,8800,99,64,TabPFN v2.6
-144,9000,98,64,TabPFN v2.6
-145,9200,99,64,TabPFN v2.6
-146,9400,99,64,TabPFN v2.6
-147,9600,98.5,64,TabPFN v2.6
-148,9800,99.5,64,TabPFN v2.6
-149,10000,99.25,64,TabPFN v2.6
-150,200,100,64,TabPFN v3
-151,400,100,64,TabPFN v3
-152,600,100,64,TabPFN v3
-153,800,100,64,TabPFN v3
-154,1000,99.75,64,TabPFN v3
-155,1200,100,64,TabPFN v3
-156,1400,99.5,64,TabPFN v3
-157,1600,100,64,TabPFN v3
-158,1800,100,64,TabPFN v3
-159,2000,100,64,TabPFN v3
-160,2200,100,64,TabPFN v3
-161,2400,100,64,TabPFN v3
-162,2600,100,64,TabPFN v3
-163,2800,99,64,TabPFN v3
-164,3000,100,64,TabPFN v3
-165,3200,100,64,TabPFN v3
-166,3400,100,64,TabPFN v3
-167,3600,99,64,TabPFN v3
-168,3800,100,64,TabPFN v3
-169,4000,100,64,TabPFN v3
-170,4200,100,64,TabPFN v3
-171,4400,100,64,TabPFN v3
-172,4600,100,64,TabPFN v3
-173,4800,98.5,64,TabPFN v3
-174,5000,100,64,TabPFN v3
-175,5200,100,64,TabPFN v3
-176,5400,100,64,TabPFN v3
-177,5600,100,64,TabPFN v3
-178,5800,100,64,TabPFN v3
-179,6000,99,64,TabPFN v3
-180,6200,100,64,TabPFN v3
-181,6400,100,64,TabPFN v3
-182,6600,99.75,64,TabPFN v3
-183,6800,100,64,TabPFN v3
-184,7000,98,64,TabPFN v3
-185,7200,100,64,TabPFN v3
-186,7400,100,64,TabPFN v3
-187,7600,100,64,TabPFN v3
-188,7800,100,64,TabPFN v3
-189,8000,100,64,TabPFN v3
-190,8200,100,64,TabPFN v3
-191,8400,100,64,TabPFN v3
-192,8600,98.25,64,TabPFN v3
-193,8800,100,64,TabPFN v3
-194,9000,100,64,TabPFN v3
-195,9200,100,64,TabPFN v3
-196,9400,100,64,TabPFN v3
-197,9600,100,64,TabPFN v3
-198,9800,100,64,TabPFN v3
-199,10000,100,64,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,99.5,64,TabICLv2,GPU utilization (%)
+1,400,100,64,TabICLv2,GPU utilization (%)
+2,600,99.75,64,TabICLv2,GPU utilization (%)
+3,800,99.5,64,TabICLv2,GPU utilization (%)
+4,1000,100,64,TabICLv2,GPU utilization (%)
+5,1200,100,64,TabICLv2,GPU utilization (%)
+6,1400,100,64,TabICLv2,GPU utilization (%)
+7,1600,99.5,64,TabICLv2,GPU utilization (%)
+8,1800,100,64,TabICLv2,GPU utilization (%)
+9,2000,99.75,64,TabICLv2,GPU utilization (%)
+10,2200,99.5,64,TabICLv2,GPU utilization (%)
+11,2400,100,64,TabICLv2,GPU utilization (%)
+12,2600,99.25,64,TabICLv2,GPU utilization (%)
+13,2800,100,64,TabICLv2,GPU utilization (%)
+14,3000,100,64,TabICLv2,GPU utilization (%)
+15,3200,99.5,64,TabICLv2,GPU utilization (%)
+16,3400,100,64,TabICLv2,GPU utilization (%)
+17,3600,99.5,64,TabICLv2,GPU utilization (%)
+18,3800,100,64,TabICLv2,GPU utilization (%)
+19,4000,99.5,64,TabICLv2,GPU utilization (%)
+20,4200,100,64,TabICLv2,GPU utilization (%)
+21,4400,99.5,64,TabICLv2,GPU utilization (%)
+22,4600,99.5,64,TabICLv2,GPU utilization (%)
+23,4800,99.5,64,TabICLv2,GPU utilization (%)
+24,5000,99,64,TabICLv2,GPU utilization (%)
+25,5200,99.5,64,TabICLv2,GPU utilization (%)
+26,5400,100,64,TabICLv2,GPU utilization (%)
+27,5600,100,64,TabICLv2,GPU utilization (%)
+28,5800,100,64,TabICLv2,GPU utilization (%)
+29,6000,99.5,64,TabICLv2,GPU utilization (%)
+30,6200,100,64,TabICLv2,GPU utilization (%)
+31,6400,100,64,TabICLv2,GPU utilization (%)
+32,6600,99.5,64,TabICLv2,GPU utilization (%)
+33,6800,99.5,64,TabICLv2,GPU utilization (%)
+34,7000,99.5,64,TabICLv2,GPU utilization (%)
+35,7200,99.5,64,TabICLv2,GPU utilization (%)
+36,7400,100,64,TabICLv2,GPU utilization (%)
+37,7600,99.5,64,TabICLv2,GPU utilization (%)
+38,7800,99.5,64,TabICLv2,GPU utilization (%)
+39,8000,99.5,64,TabICLv2,GPU utilization (%)
+40,8200,100,64,TabICLv2,GPU utilization (%)
+41,8400,99.25,64,TabICLv2,GPU utilization (%)
+42,8600,99.5,64,TabICLv2,GPU utilization (%)
+43,8800,99.5,64,TabICLv2,GPU utilization (%)
+44,9000,100,64,TabICLv2,GPU utilization (%)
+45,9200,100,64,TabICLv2,GPU utilization (%)
+46,9400,100,64,TabICLv2,GPU utilization (%)
+47,9600,99.5,64,TabICLv2,GPU utilization (%)
+48,9800,99.5,64,TabICLv2,GPU utilization (%)
+49,10000,99.5,64,TabICLv2,GPU utilization (%)
+50,200,98.5,64,TabPFN v2,GPU utilization (%)
+51,400,99,64,TabPFN v2,GPU utilization (%)
+52,600,100,64,TabPFN v2,GPU utilization (%)
+53,800,100,64,TabPFN v2,GPU utilization (%)
+54,1000,100,64,TabPFN v2,GPU utilization (%)
+55,1200,100,64,TabPFN v2,GPU utilization (%)
+56,1400,100,64,TabPFN v2,GPU utilization (%)
+57,1600,100,64,TabPFN v2,GPU utilization (%)
+58,1800,100,64,TabPFN v2,GPU utilization (%)
+59,2000,100,64,TabPFN v2,GPU utilization (%)
+60,2200,100,64,TabPFN v2,GPU utilization (%)
+61,2400,100,64,TabPFN v2,GPU utilization (%)
+62,2600,99.5,64,TabPFN v2,GPU utilization (%)
+63,2800,99.5,64,TabPFN v2,GPU utilization (%)
+64,3000,100,64,TabPFN v2,GPU utilization (%)
+65,3200,100,64,TabPFN v2,GPU utilization (%)
+66,3400,99.25,64,TabPFN v2,GPU utilization (%)
+67,3600,99,64,TabPFN v2,GPU utilization (%)
+68,3800,99.75,64,TabPFN v2,GPU utilization (%)
+69,4000,100,64,TabPFN v2,GPU utilization (%)
+70,4200,99.5,64,TabPFN v2,GPU utilization (%)
+71,4400,100,64,TabPFN v2,GPU utilization (%)
+72,4600,100,64,TabPFN v2,GPU utilization (%)
+73,4800,99,64,TabPFN v2,GPU utilization (%)
+74,5000,99.25,64,TabPFN v2,GPU utilization (%)
+75,5200,100,64,TabPFN v2,GPU utilization (%)
+76,5400,100,64,TabPFN v2,GPU utilization (%)
+77,5600,100,64,TabPFN v2,GPU utilization (%)
+78,5800,99,64,TabPFN v2,GPU utilization (%)
+79,6000,99.75,64,TabPFN v2,GPU utilization (%)
+80,6200,100,64,TabPFN v2,GPU utilization (%)
+81,6400,100,64,TabPFN v2,GPU utilization (%)
+82,6600,100,64,TabPFN v2,GPU utilization (%)
+83,6800,99.5,64,TabPFN v2,GPU utilization (%)
+84,7000,100,64,TabPFN v2,GPU utilization (%)
+85,7200,100,64,TabPFN v2,GPU utilization (%)
+86,7400,100,64,TabPFN v2,GPU utilization (%)
+87,7600,100,64,TabPFN v2,GPU utilization (%)
+88,7800,99.5,64,TabPFN v2,GPU utilization (%)
+89,8000,99.25,64,TabPFN v2,GPU utilization (%)
+90,8200,100,64,TabPFN v2,GPU utilization (%)
+91,8400,99,64,TabPFN v2,GPU utilization (%)
+92,8600,99.5,64,TabPFN v2,GPU utilization (%)
+93,8800,100,64,TabPFN v2,GPU utilization (%)
+94,9000,100,64,TabPFN v2,GPU utilization (%)
+95,9200,100,64,TabPFN v2,GPU utilization (%)
+96,9400,100,64,TabPFN v2,GPU utilization (%)
+97,9600,100,64,TabPFN v2,GPU utilization (%)
+98,9800,100,64,TabPFN v2,GPU utilization (%)
+99,10000,100,64,TabPFN v2,GPU utilization (%)
+100,200,99,64,TabPFN v2.6,GPU utilization (%)
+101,400,99,64,TabPFN v2.6,GPU utilization (%)
+102,600,98.75,64,TabPFN v2.6,GPU utilization (%)
+103,800,99.5,64,TabPFN v2.6,GPU utilization (%)
+104,1000,98.5,64,TabPFN v2.6,GPU utilization (%)
+105,1200,98.5,64,TabPFN v2.6,GPU utilization (%)
+106,1400,98.5,64,TabPFN v2.6,GPU utilization (%)
+107,1600,98.5,64,TabPFN v2.6,GPU utilization (%)
+108,1800,98.75,64,TabPFN v2.6,GPU utilization (%)
+109,2000,99,64,TabPFN v2.6,GPU utilization (%)
+110,2200,98.5,64,TabPFN v2.6,GPU utilization (%)
+111,2400,98.5,64,TabPFN v2.6,GPU utilization (%)
+112,2600,99.25,64,TabPFN v2.6,GPU utilization (%)
+113,2800,98.5,64,TabPFN v2.6,GPU utilization (%)
+114,3000,99,64,TabPFN v2.6,GPU utilization (%)
+115,3200,99,64,TabPFN v2.6,GPU utilization (%)
+116,3400,99,64,TabPFN v2.6,GPU utilization (%)
+117,3600,98.25,64,TabPFN v2.6,GPU utilization (%)
+118,3800,98.75,64,TabPFN v2.6,GPU utilization (%)
+119,4000,98,64,TabPFN v2.6,GPU utilization (%)
+120,4200,99,64,TabPFN v2.6,GPU utilization (%)
+121,4400,98.25,64,TabPFN v2.6,GPU utilization (%)
+122,4600,98.5,64,TabPFN v2.6,GPU utilization (%)
+123,4800,98.75,64,TabPFN v2.6,GPU utilization (%)
+124,5000,99,64,TabPFN v2.6,GPU utilization (%)
+125,5200,98,64,TabPFN v2.6,GPU utilization (%)
+126,5400,99,64,TabPFN v2.6,GPU utilization (%)
+127,5600,98.5,64,TabPFN v2.6,GPU utilization (%)
+128,5800,98.75,64,TabPFN v2.6,GPU utilization (%)
+129,6000,98.5,64,TabPFN v2.6,GPU utilization (%)
+130,6200,99,64,TabPFN v2.6,GPU utilization (%)
+131,6400,99,64,TabPFN v2.6,GPU utilization (%)
+132,6600,99.5,64,TabPFN v2.6,GPU utilization (%)
+133,6800,99,64,TabPFN v2.6,GPU utilization (%)
+134,7000,99,64,TabPFN v2.6,GPU utilization (%)
+135,7200,99,64,TabPFN v2.6,GPU utilization (%)
+136,7400,98.5,64,TabPFN v2.6,GPU utilization (%)
+137,7600,98.5,64,TabPFN v2.6,GPU utilization (%)
+138,7800,98.25,64,TabPFN v2.6,GPU utilization (%)
+139,8000,98.25,64,TabPFN v2.6,GPU utilization (%)
+140,8200,99,64,TabPFN v2.6,GPU utilization (%)
+141,8400,98.5,64,TabPFN v2.6,GPU utilization (%)
+142,8600,99,64,TabPFN v2.6,GPU utilization (%)
+143,8800,99,64,TabPFN v2.6,GPU utilization (%)
+144,9000,98,64,TabPFN v2.6,GPU utilization (%)
+145,9200,99,64,TabPFN v2.6,GPU utilization (%)
+146,9400,99,64,TabPFN v2.6,GPU utilization (%)
+147,9600,98.5,64,TabPFN v2.6,GPU utilization (%)
+148,9800,99.5,64,TabPFN v2.6,GPU utilization (%)
+149,10000,99.25,64,TabPFN v2.6,GPU utilization (%)
+150,200,100,64,TabPFN v3,GPU utilization (%)
+151,400,100,64,TabPFN v3,GPU utilization (%)
+152,600,100,64,TabPFN v3,GPU utilization (%)
+153,800,100,64,TabPFN v3,GPU utilization (%)
+154,1000,99.75,64,TabPFN v3,GPU utilization (%)
+155,1200,100,64,TabPFN v3,GPU utilization (%)
+156,1400,99.5,64,TabPFN v3,GPU utilization (%)
+157,1600,100,64,TabPFN v3,GPU utilization (%)
+158,1800,100,64,TabPFN v3,GPU utilization (%)
+159,2000,100,64,TabPFN v3,GPU utilization (%)
+160,2200,100,64,TabPFN v3,GPU utilization (%)
+161,2400,100,64,TabPFN v3,GPU utilization (%)
+162,2600,100,64,TabPFN v3,GPU utilization (%)
+163,2800,99,64,TabPFN v3,GPU utilization (%)
+164,3000,100,64,TabPFN v3,GPU utilization (%)
+165,3200,100,64,TabPFN v3,GPU utilization (%)
+166,3400,100,64,TabPFN v3,GPU utilization (%)
+167,3600,99,64,TabPFN v3,GPU utilization (%)
+168,3800,100,64,TabPFN v3,GPU utilization (%)
+169,4000,100,64,TabPFN v3,GPU utilization (%)
+170,4200,100,64,TabPFN v3,GPU utilization (%)
+171,4400,100,64,TabPFN v3,GPU utilization (%)
+172,4600,100,64,TabPFN v3,GPU utilization (%)
+173,4800,98.5,64,TabPFN v3,GPU utilization (%)
+174,5000,100,64,TabPFN v3,GPU utilization (%)
+175,5200,100,64,TabPFN v3,GPU utilization (%)
+176,5400,100,64,TabPFN v3,GPU utilization (%)
+177,5600,100,64,TabPFN v3,GPU utilization (%)
+178,5800,100,64,TabPFN v3,GPU utilization (%)
+179,6000,99,64,TabPFN v3,GPU utilization (%)
+180,6200,100,64,TabPFN v3,GPU utilization (%)
+181,6400,100,64,TabPFN v3,GPU utilization (%)
+182,6600,99.75,64,TabPFN v3,GPU utilization (%)
+183,6800,100,64,TabPFN v3,GPU utilization (%)
+184,7000,98,64,TabPFN v3,GPU utilization (%)
+185,7200,100,64,TabPFN v3,GPU utilization (%)
+186,7400,100,64,TabPFN v3,GPU utilization (%)
+187,7600,100,64,TabPFN v3,GPU utilization (%)
+188,7800,100,64,TabPFN v3,GPU utilization (%)
+189,8000,100,64,TabPFN v3,GPU utilization (%)
+190,8200,100,64,TabPFN v3,GPU utilization (%)
+191,8400,100,64,TabPFN v3,GPU utilization (%)
+192,8600,98.25,64,TabPFN v3,GPU utilization (%)
+193,8800,100,64,TabPFN v3,GPU utilization (%)
+194,9000,100,64,TabPFN v3,GPU utilization (%)
+195,9200,100,64,TabPFN v3,GPU utilization (%)
+196,9400,100,64,TabPFN v3,GPU utilization (%)
+197,9600,100,64,TabPFN v3,GPU utilization (%)
+198,9800,100,64,TabPFN v3,GPU utilization (%)
+199,10000,100,64,TabPFN v3,GPU utilization (%)
 
 Figure: pd_resource_dashboard_pd_power_watts
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,630.63,22,TabICLv2
-1,400,642.0025,22,TabICLv2
-2,600,638.73,22,TabICLv2
-3,800,636.675,22,TabICLv2
-4,1000,633.2675,22,TabICLv2
-5,1200,632.1025,22,TabICLv2
-6,1400,635.4225,22,TabICLv2
-7,1600,635.35,22,TabICLv2
-8,1800,630.395,22,TabICLv2
-9,2000,635.36,22,TabICLv2
-10,2200,638.51,22,TabICLv2
-11,2400,633.045,22,TabICLv2
-12,2600,632.3775,22,TabICLv2
-13,2800,637.4125,22,TabICLv2
-14,3000,637.7225,22,TabICLv2
-15,3200,636.995,22,TabICLv2
-16,3400,634.505,22,TabICLv2
-17,3600,638.4725,22,TabICLv2
-18,3800,636.4975,22,TabICLv2
-19,4000,632.205,22,TabICLv2
-20,4200,640.63,22,TabICLv2
-21,4400,633.575,22,TabICLv2
-22,4600,636.87,22,TabICLv2
-23,4800,644.5175,22,TabICLv2
-24,5000,636.21,22,TabICLv2
-25,5200,636.27,22,TabICLv2
-26,5400,631.34,22,TabICLv2
-27,5600,633.0625,22,TabICLv2
-28,5800,642.2875,22,TabICLv2
-29,6000,641.785,22,TabICLv2
-30,6200,638.285,22,TabICLv2
-31,6400,634.5525,22,TabICLv2
-32,6600,633.2425,22,TabICLv2
-33,6800,636.995,22,TabICLv2
-34,7000,637.59,22,TabICLv2
-35,7200,629.5425,22,TabICLv2
-36,7400,631.125,22,TabICLv2
-37,7600,638.695,22,TabICLv2
-38,7800,635.04,22,TabICLv2
-39,8000,634.6225,22,TabICLv2
-40,8200,639.14,22,TabICLv2
-41,8400,637.195,22,TabICLv2
-42,8600,634.1,22,TabICLv2
-43,8800,631.585,25,TabICLv2
-44,9000,636.025,26,TabICLv2
-45,9200,633.515,31,TabICLv2
-46,9400,646.31,25,TabICLv2
-47,9600,634.7275,26,TabICLv2
-48,9800,636,27,TabICLv2
-49,10000,638.935,27,TabICLv2
-50,200,770.72,27,TabPFN v2
-51,400,793.99,27,TabPFN v2
-52,600,795.86,27,TabPFN v2
-53,800,811.66,27,TabPFN v2
-54,1000,805.535,27,TabPFN v2
-55,1200,809.67,27,TabPFN v2
-56,1400,808.87,27,TabPFN v2
-57,1600,813.26,27,TabPFN v2
-58,1800,798.655,27,TabPFN v2
-59,2000,820.44,27,TabPFN v2
-60,2200,800.77,27,TabPFN v2
-61,2400,808.255,27,TabPFN v2
-62,2600,815.655,27,TabPFN v2
-63,2800,804.02,27,TabPFN v2
-64,3000,812.06,27,TabPFN v2
-65,3200,811.24,27,TabPFN v2
-66,3400,822.61,27,TabPFN v2
-67,3600,811.72,27,TabPFN v2
-68,3800,818.115,27,TabPFN v2
-69,4000,798.63,27,TabPFN v2
-70,4200,815.11,27,TabPFN v2
-71,4400,815.45,27,TabPFN v2
-72,4600,812.23,27,TabPFN v2
-73,4800,798.02,27,TabPFN v2
-74,5000,805.29,27,TabPFN v2
-75,5200,811.88,27,TabPFN v2
-76,5400,812.19,27,TabPFN v2
-77,5600,791.6,27,TabPFN v2
-78,5800,806.95,27,TabPFN v2
-79,6000,812.03,27,TabPFN v2
-80,6200,825.46,27,TabPFN v2
-81,6400,799.615,27,TabPFN v2
-82,6600,816.25,27,TabPFN v2
-83,6800,801.255,27,TabPFN v2
-84,7000,803.83,27,TabPFN v2
-85,7200,800.76,27,TabPFN v2
-86,7400,810.86,27,TabPFN v2
-87,7600,807.16,27,TabPFN v2
-88,7800,807.36,27,TabPFN v2
-89,8000,805.01,27,TabPFN v2
-90,8200,810.14,27,TabPFN v2
-91,8400,803.41,27,TabPFN v2
-92,8600,806.34,27,TabPFN v2
-93,8800,803.19,27,TabPFN v2
-94,9000,802.56,27,TabPFN v2
-95,9200,812.545,27,TabPFN v2
-96,9400,808.96,27,TabPFN v2
-97,9600,810.94,27,TabPFN v2
-98,9800,816.27,27,TabPFN v2
-99,10000,817.43,27,TabPFN v2
-100,200,710.175,39,TabPFN v2.6
-101,400,739.42,39,TabPFN v2.6
-102,600,750.905,39,TabPFN v2.6
-103,800,742.035,39,TabPFN v2.6
-104,1000,752.045,39,TabPFN v2.6
-105,1200,727.98,39,TabPFN v2.6
-106,1400,745.18,39,TabPFN v2.6
-107,1600,753.005,39,TabPFN v2.6
-108,1800,734.67,39,TabPFN v2.6
-109,2000,755.43,39,TabPFN v2.6
-110,2200,741.13,39,TabPFN v2.6
-111,2400,731.6,39,TabPFN v2.6
-112,2600,736.825,39,TabPFN v2.6
-113,2800,729.51,39,TabPFN v2.6
-114,3000,730.08,39,TabPFN v2.6
-115,3200,723.07,39,TabPFN v2.6
-116,3400,735.895,39,TabPFN v2.6
-117,3600,737.93,39,TabPFN v2.6
-118,3800,754.855,39,TabPFN v2.6
-119,4000,719.41,39,TabPFN v2.6
-120,4200,747.245,39,TabPFN v2.6
-121,4400,743.66,39,TabPFN v2.6
-122,4600,736.595,39,TabPFN v2.6
-123,4800,752.055,39,TabPFN v2.6
-124,5000,727.72,39,TabPFN v2.6
-125,5200,736.965,39,TabPFN v2.6
-126,5400,743.525,39,TabPFN v2.6
-127,5600,721.64,39,TabPFN v2.6
-128,5800,745.31,39,TabPFN v2.6
-129,6000,745.98,39,TabPFN v2.6
-130,6200,746.825,39,TabPFN v2.6
-131,6400,745.12,39,TabPFN v2.6
-132,6600,743.345,39,TabPFN v2.6
-133,6800,738.14,39,TabPFN v2.6
-134,7000,730.74,39,TabPFN v2.6
-135,7200,738.92,39,TabPFN v2.6
-136,7400,744.945,39,TabPFN v2.6
-137,7600,734.16,39,TabPFN v2.6
-138,7800,741.315,39,TabPFN v2.6
-139,8000,750.95,39,TabPFN v2.6
-140,8200,747.42,39,TabPFN v2.6
-141,8400,731.98,39,TabPFN v2.6
-142,8600,748.44,39,TabPFN v2.6
-143,8800,747.145,39,TabPFN v2.6
-144,9000,721.23,39,TabPFN v2.6
-145,9200,743.92,39,TabPFN v2.6
-146,9400,746.725,39,TabPFN v2.6
-147,9600,733.215,39,TabPFN v2.6
-148,9800,729.555,39,TabPFN v2.6
-149,10000,751.49,39,TabPFN v2.6
-150,200,692.51,18,TabPFN v3
-151,400,703.2,18,TabPFN v3
-152,600,690.4925,18,TabPFN v3
-153,800,703.385,18,TabPFN v3
-154,1000,697.8425,18,TabPFN v3
-155,1200,698.4375,18,TabPFN v3
-156,1400,688.255,18,TabPFN v3
-157,1600,709.565,18,TabPFN v3
-158,1800,680.015,18,TabPFN v3
-159,2000,700.5575,18,TabPFN v3
-160,2200,704.23,18,TabPFN v3
-161,2400,682.805,18,TabPFN v3
-162,2600,676.42,18,TabPFN v3
-163,2800,689.365,18,TabPFN v3
-164,3000,693.38,18,TabPFN v3
-165,3200,671.16,18,TabPFN v3
-166,3400,697.5025,18,TabPFN v3
-167,3600,692.795,18,TabPFN v3
-168,3800,704.845,18,TabPFN v3
-169,4000,705.51,18,TabPFN v3
-170,4200,702.07,18,TabPFN v3
-171,4400,699.215,18,TabPFN v3
-172,4600,699.2425,18,TabPFN v3
-173,4800,687.095,18,TabPFN v3
-174,5000,687.665,18,TabPFN v3
-175,5200,693.305,18,TabPFN v3
-176,5400,690.1125,18,TabPFN v3
-177,5600,699.64,18,TabPFN v3
-178,5800,704.7225,18,TabPFN v3
-179,6000,692.795,18,TabPFN v3
-180,6200,711.005,18,TabPFN v3
-181,6400,700.1,18,TabPFN v3
-182,6600,714.01,18,TabPFN v3
-183,6800,691.705,18,TabPFN v3
-184,7000,696.545,18,TabPFN v3
-185,7200,687.96,18,TabPFN v3
-186,7400,699.5375,18,TabPFN v3
-187,7600,687.21,18,TabPFN v3
-188,7800,703.5475,18,TabPFN v3
-189,8000,696.735,18,TabPFN v3
-190,8200,689.735,18,TabPFN v3
-191,8400,706.5,18,TabPFN v3
-192,8600,699.0125,18,TabPFN v3
-193,8800,697.785,18,TabPFN v3
-194,9000,700.6725,18,TabPFN v3
-195,9200,705.52,18,TabPFN v3
-196,9400,684.645,18,TabPFN v3
-197,9600,695.405,18,TabPFN v3
-198,9800,697.2775,18,TabPFN v3
-199,10000,684.135,18,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,630.63,22,TabICLv2,Device power (W)
+1,400,642.0025,22,TabICLv2,Device power (W)
+2,600,638.73,22,TabICLv2,Device power (W)
+3,800,636.675,22,TabICLv2,Device power (W)
+4,1000,633.2675,22,TabICLv2,Device power (W)
+5,1200,632.1025,22,TabICLv2,Device power (W)
+6,1400,635.4225,22,TabICLv2,Device power (W)
+7,1600,635.35,22,TabICLv2,Device power (W)
+8,1800,630.395,22,TabICLv2,Device power (W)
+9,2000,635.36,22,TabICLv2,Device power (W)
+10,2200,638.51,22,TabICLv2,Device power (W)
+11,2400,633.045,22,TabICLv2,Device power (W)
+12,2600,632.3775,22,TabICLv2,Device power (W)
+13,2800,637.4125,22,TabICLv2,Device power (W)
+14,3000,637.7225,22,TabICLv2,Device power (W)
+15,3200,636.995,22,TabICLv2,Device power (W)
+16,3400,634.505,22,TabICLv2,Device power (W)
+17,3600,638.4725,22,TabICLv2,Device power (W)
+18,3800,636.4975,22,TabICLv2,Device power (W)
+19,4000,632.205,22,TabICLv2,Device power (W)
+20,4200,640.63,22,TabICLv2,Device power (W)
+21,4400,633.575,22,TabICLv2,Device power (W)
+22,4600,636.87,22,TabICLv2,Device power (W)
+23,4800,644.5175,22,TabICLv2,Device power (W)
+24,5000,636.21,22,TabICLv2,Device power (W)
+25,5200,636.27,22,TabICLv2,Device power (W)
+26,5400,631.34,22,TabICLv2,Device power (W)
+27,5600,633.0625,22,TabICLv2,Device power (W)
+28,5800,642.2875,22,TabICLv2,Device power (W)
+29,6000,641.785,22,TabICLv2,Device power (W)
+30,6200,638.285,22,TabICLv2,Device power (W)
+31,6400,634.5525,22,TabICLv2,Device power (W)
+32,6600,633.2425,22,TabICLv2,Device power (W)
+33,6800,636.995,22,TabICLv2,Device power (W)
+34,7000,637.59,22,TabICLv2,Device power (W)
+35,7200,629.5425,22,TabICLv2,Device power (W)
+36,7400,631.125,22,TabICLv2,Device power (W)
+37,7600,638.695,22,TabICLv2,Device power (W)
+38,7800,635.04,22,TabICLv2,Device power (W)
+39,8000,634.6225,22,TabICLv2,Device power (W)
+40,8200,639.14,22,TabICLv2,Device power (W)
+41,8400,637.195,22,TabICLv2,Device power (W)
+42,8600,634.1,22,TabICLv2,Device power (W)
+43,8800,631.585,25,TabICLv2,Device power (W)
+44,9000,636.025,26,TabICLv2,Device power (W)
+45,9200,633.515,31,TabICLv2,Device power (W)
+46,9400,646.31,25,TabICLv2,Device power (W)
+47,9600,634.7275,26,TabICLv2,Device power (W)
+48,9800,636,27,TabICLv2,Device power (W)
+49,10000,638.935,27,TabICLv2,Device power (W)
+50,200,770.72,27,TabPFN v2,Device power (W)
+51,400,793.99,27,TabPFN v2,Device power (W)
+52,600,795.86,27,TabPFN v2,Device power (W)
+53,800,811.66,27,TabPFN v2,Device power (W)
+54,1000,805.535,27,TabPFN v2,Device power (W)
+55,1200,809.67,27,TabPFN v2,Device power (W)
+56,1400,808.87,27,TabPFN v2,Device power (W)
+57,1600,813.26,27,TabPFN v2,Device power (W)
+58,1800,798.655,27,TabPFN v2,Device power (W)
+59,2000,820.44,27,TabPFN v2,Device power (W)
+60,2200,800.77,27,TabPFN v2,Device power (W)
+61,2400,808.255,27,TabPFN v2,Device power (W)
+62,2600,815.655,27,TabPFN v2,Device power (W)
+63,2800,804.02,27,TabPFN v2,Device power (W)
+64,3000,812.06,27,TabPFN v2,Device power (W)
+65,3200,811.24,27,TabPFN v2,Device power (W)
+66,3400,822.61,27,TabPFN v2,Device power (W)
+67,3600,811.72,27,TabPFN v2,Device power (W)
+68,3800,818.115,27,TabPFN v2,Device power (W)
+69,4000,798.63,27,TabPFN v2,Device power (W)
+70,4200,815.11,27,TabPFN v2,Device power (W)
+71,4400,815.45,27,TabPFN v2,Device power (W)
+72,4600,812.23,27,TabPFN v2,Device power (W)
+73,4800,798.02,27,TabPFN v2,Device power (W)
+74,5000,805.29,27,TabPFN v2,Device power (W)
+75,5200,811.88,27,TabPFN v2,Device power (W)
+76,5400,812.19,27,TabPFN v2,Device power (W)
+77,5600,791.6,27,TabPFN v2,Device power (W)
+78,5800,806.95,27,TabPFN v2,Device power (W)
+79,6000,812.03,27,TabPFN v2,Device power (W)
+80,6200,825.46,27,TabPFN v2,Device power (W)
+81,6400,799.615,27,TabPFN v2,Device power (W)
+82,6600,816.25,27,TabPFN v2,Device power (W)
+83,6800,801.255,27,TabPFN v2,Device power (W)
+84,7000,803.83,27,TabPFN v2,Device power (W)
+85,7200,800.76,27,TabPFN v2,Device power (W)
+86,7400,810.86,27,TabPFN v2,Device power (W)
+87,7600,807.16,27,TabPFN v2,Device power (W)
+88,7800,807.36,27,TabPFN v2,Device power (W)
+89,8000,805.01,27,TabPFN v2,Device power (W)
+90,8200,810.14,27,TabPFN v2,Device power (W)
+91,8400,803.41,27,TabPFN v2,Device power (W)
+92,8600,806.34,27,TabPFN v2,Device power (W)
+93,8800,803.19,27,TabPFN v2,Device power (W)
+94,9000,802.56,27,TabPFN v2,Device power (W)
+95,9200,812.545,27,TabPFN v2,Device power (W)
+96,9400,808.96,27,TabPFN v2,Device power (W)
+97,9600,810.94,27,TabPFN v2,Device power (W)
+98,9800,816.27,27,TabPFN v2,Device power (W)
+99,10000,817.43,27,TabPFN v2,Device power (W)
+100,200,710.175,39,TabPFN v2.6,Device power (W)
+101,400,739.42,39,TabPFN v2.6,Device power (W)
+102,600,750.905,39,TabPFN v2.6,Device power (W)
+103,800,742.035,39,TabPFN v2.6,Device power (W)
+104,1000,752.045,39,TabPFN v2.6,Device power (W)
+105,1200,727.98,39,TabPFN v2.6,Device power (W)
+106,1400,745.18,39,TabPFN v2.6,Device power (W)
+107,1600,753.005,39,TabPFN v2.6,Device power (W)
+108,1800,734.67,39,TabPFN v2.6,Device power (W)
+109,2000,755.43,39,TabPFN v2.6,Device power (W)
+110,2200,741.13,39,TabPFN v2.6,Device power (W)
+111,2400,731.6,39,TabPFN v2.6,Device power (W)
+112,2600,736.825,39,TabPFN v2.6,Device power (W)
+113,2800,729.51,39,TabPFN v2.6,Device power (W)
+114,3000,730.08,39,TabPFN v2.6,Device power (W)
+115,3200,723.07,39,TabPFN v2.6,Device power (W)
+116,3400,735.895,39,TabPFN v2.6,Device power (W)
+117,3600,737.93,39,TabPFN v2.6,Device power (W)
+118,3800,754.855,39,TabPFN v2.6,Device power (W)
+119,4000,719.41,39,TabPFN v2.6,Device power (W)
+120,4200,747.245,39,TabPFN v2.6,Device power (W)
+121,4400,743.66,39,TabPFN v2.6,Device power (W)
+122,4600,736.595,39,TabPFN v2.6,Device power (W)
+123,4800,752.055,39,TabPFN v2.6,Device power (W)
+124,5000,727.72,39,TabPFN v2.6,Device power (W)
+125,5200,736.965,39,TabPFN v2.6,Device power (W)
+126,5400,743.525,39,TabPFN v2.6,Device power (W)
+127,5600,721.64,39,TabPFN v2.6,Device power (W)
+128,5800,745.31,39,TabPFN v2.6,Device power (W)
+129,6000,745.98,39,TabPFN v2.6,Device power (W)
+130,6200,746.825,39,TabPFN v2.6,Device power (W)
+131,6400,745.12,39,TabPFN v2.6,Device power (W)
+132,6600,743.345,39,TabPFN v2.6,Device power (W)
+133,6800,738.14,39,TabPFN v2.6,Device power (W)
+134,7000,730.74,39,TabPFN v2.6,Device power (W)
+135,7200,738.92,39,TabPFN v2.6,Device power (W)
+136,7400,744.945,39,TabPFN v2.6,Device power (W)
+137,7600,734.16,39,TabPFN v2.6,Device power (W)
+138,7800,741.315,39,TabPFN v2.6,Device power (W)
+139,8000,750.95,39,TabPFN v2.6,Device power (W)
+140,8200,747.42,39,TabPFN v2.6,Device power (W)
+141,8400,731.98,39,TabPFN v2.6,Device power (W)
+142,8600,748.44,39,TabPFN v2.6,Device power (W)
+143,8800,747.145,39,TabPFN v2.6,Device power (W)
+144,9000,721.23,39,TabPFN v2.6,Device power (W)
+145,9200,743.92,39,TabPFN v2.6,Device power (W)
+146,9400,746.725,39,TabPFN v2.6,Device power (W)
+147,9600,733.215,39,TabPFN v2.6,Device power (W)
+148,9800,729.555,39,TabPFN v2.6,Device power (W)
+149,10000,751.49,39,TabPFN v2.6,Device power (W)
+150,200,692.51,18,TabPFN v3,Device power (W)
+151,400,703.2,18,TabPFN v3,Device power (W)
+152,600,690.4925,18,TabPFN v3,Device power (W)
+153,800,703.385,18,TabPFN v3,Device power (W)
+154,1000,697.8425,18,TabPFN v3,Device power (W)
+155,1200,698.4375,18,TabPFN v3,Device power (W)
+156,1400,688.255,18,TabPFN v3,Device power (W)
+157,1600,709.565,18,TabPFN v3,Device power (W)
+158,1800,680.015,18,TabPFN v3,Device power (W)
+159,2000,700.5575,18,TabPFN v3,Device power (W)
+160,2200,704.23,18,TabPFN v3,Device power (W)
+161,2400,682.805,18,TabPFN v3,Device power (W)
+162,2600,676.42,18,TabPFN v3,Device power (W)
+163,2800,689.365,18,TabPFN v3,Device power (W)
+164,3000,693.38,18,TabPFN v3,Device power (W)
+165,3200,671.16,18,TabPFN v3,Device power (W)
+166,3400,697.5025,18,TabPFN v3,Device power (W)
+167,3600,692.795,18,TabPFN v3,Device power (W)
+168,3800,704.845,18,TabPFN v3,Device power (W)
+169,4000,705.51,18,TabPFN v3,Device power (W)
+170,4200,702.07,18,TabPFN v3,Device power (W)
+171,4400,699.215,18,TabPFN v3,Device power (W)
+172,4600,699.2425,18,TabPFN v3,Device power (W)
+173,4800,687.095,18,TabPFN v3,Device power (W)
+174,5000,687.665,18,TabPFN v3,Device power (W)
+175,5200,693.305,18,TabPFN v3,Device power (W)
+176,5400,690.1125,18,TabPFN v3,Device power (W)
+177,5600,699.64,18,TabPFN v3,Device power (W)
+178,5800,704.7225,18,TabPFN v3,Device power (W)
+179,6000,692.795,18,TabPFN v3,Device power (W)
+180,6200,711.005,18,TabPFN v3,Device power (W)
+181,6400,700.1,18,TabPFN v3,Device power (W)
+182,6600,714.01,18,TabPFN v3,Device power (W)
+183,6800,691.705,18,TabPFN v3,Device power (W)
+184,7000,696.545,18,TabPFN v3,Device power (W)
+185,7200,687.96,18,TabPFN v3,Device power (W)
+186,7400,699.5375,18,TabPFN v3,Device power (W)
+187,7600,687.21,18,TabPFN v3,Device power (W)
+188,7800,703.5475,18,TabPFN v3,Device power (W)
+189,8000,696.735,18,TabPFN v3,Device power (W)
+190,8200,689.735,18,TabPFN v3,Device power (W)
+191,8400,706.5,18,TabPFN v3,Device power (W)
+192,8600,699.0125,18,TabPFN v3,Device power (W)
+193,8800,697.785,18,TabPFN v3,Device power (W)
+194,9000,700.6725,18,TabPFN v3,Device power (W)
+195,9200,705.52,18,TabPFN v3,Device power (W)
+196,9400,684.645,18,TabPFN v3,Device power (W)
+197,9600,695.405,18,TabPFN v3,Device power (W)
+198,9800,697.2775,18,TabPFN v3,Device power (W)
+199,10000,684.135,18,TabPFN v3,Device power (W)
 
 Figure: pd_resource_dashboard_pd_device_memory_used_mib
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,28173,64,TabICLv2
-1,400,28102,64,TabICLv2
-2,600,28103,64,TabICLv2
-3,800,28103,64,TabICLv2
-4,1000,28103,64,TabICLv2
-5,1200,28103,64,TabICLv2
-6,1400,28103,64,TabICLv2
-7,1600,28103,64,TabICLv2
-8,1800,28103.5,64,TabICLv2
-9,2000,28104,64,TabICLv2
-10,2200,28104,64,TabICLv2
-11,2400,28104,64,TabICLv2
-12,2600,28104,64,TabICLv2
-13,2800,28154,64,TabICLv2
-14,3000,28154,64,TabICLv2
-15,3200,28154,64,TabICLv2
-16,3400,28154,64,TabICLv2
-17,3600,28154,64,TabICLv2
-18,3800,28154,64,TabICLv2
-19,4000,28154,64,TabICLv2
-20,4200,28154,64,TabICLv2
-21,4400,28154,64,TabICLv2
-22,4600,28154,64,TabICLv2
-23,4800,28154,64,TabICLv2
-24,5000,28154,64,TabICLv2
-25,5200,28163,64,TabICLv2
-26,5400,28164,64,TabICLv2
-27,5600,28164,64,TabICLv2
-28,5800,28164,64,TabICLv2
-29,6000,28164,64,TabICLv2
-30,6200,28164,64,TabICLv2
-31,6400,28164,64,TabICLv2
-32,6600,28164,64,TabICLv2
-33,6800,28164,64,TabICLv2
-34,7000,28164,64,TabICLv2
-35,7200,28164,64,TabICLv2
-36,7400,28164,64,TabICLv2
-37,7600,28164,64,TabICLv2
-38,7800,28164,64,TabICLv2
-39,8000,28164,64,TabICLv2
-40,8200,28164,64,TabICLv2
-41,8400,28164,64,TabICLv2
-42,8600,28164,64,TabICLv2
-43,8800,28080,64,TabICLv2
-44,9000,28080,64,TabICLv2
-45,9200,28224,64,TabICLv2
-46,9400,28224,64,TabICLv2
-47,9600,28225,64,TabICLv2
-48,9800,28225,64,TabICLv2
-49,10000,28226,64,TabICLv2
-50,200,139773,64,TabPFN v2
-51,400,139774,64,TabPFN v2
-52,600,139774,64,TabPFN v2
-53,800,139775,64,TabPFN v2
-54,1000,139775,64,TabPFN v2
-55,1200,139775,64,TabPFN v2
-56,1400,139775,64,TabPFN v2
-57,1600,139775,64,TabPFN v2
-58,1800,139775,64,TabPFN v2
-59,2000,139776,64,TabPFN v2
-60,2200,139776,64,TabPFN v2
-61,2400,139776,64,TabPFN v2
-62,2600,139776,64,TabPFN v2
-63,2800,139776,64,TabPFN v2
-64,3000,139776,64,TabPFN v2
-65,3200,139776,64,TabPFN v2
-66,3400,139776,64,TabPFN v2
-67,3600,139776,64,TabPFN v2
-68,3800,139776,64,TabPFN v2
-69,4000,139776,64,TabPFN v2
-70,4200,139776,64,TabPFN v2
-71,4400,139776,64,TabPFN v2
-72,4600,139776,64,TabPFN v2
-73,4800,139776,64,TabPFN v2
-74,5000,139776,64,TabPFN v2
-75,5200,139776,64,TabPFN v2
-76,5400,139776,64,TabPFN v2
-77,5600,139776,64,TabPFN v2
-78,5800,139776,64,TabPFN v2
-79,6000,139776,64,TabPFN v2
-80,6200,139776,64,TabPFN v2
-81,6400,139776,64,TabPFN v2
-82,6600,139776,64,TabPFN v2
-83,6800,139776,64,TabPFN v2
-84,7000,139776,64,TabPFN v2
-85,7200,139776,64,TabPFN v2
-86,7400,139776,64,TabPFN v2
-87,7600,139776,64,TabPFN v2
-88,7800,139776,64,TabPFN v2
-89,8000,139776,64,TabPFN v2
-90,8200,139776,64,TabPFN v2
-91,8400,139776,64,TabPFN v2
-92,8600,139776,64,TabPFN v2
-93,8800,139776,64,TabPFN v2
-94,9000,139776,64,TabPFN v2
-95,9200,139776,64,TabPFN v2
-96,9400,139776,64,TabPFN v2
-97,9600,139776,64,TabPFN v2
-98,9800,139776,64,TabPFN v2
-99,10000,139776,64,TabPFN v2
-100,200,101392,64,TabPFN v2.6
-101,400,101399,64,TabPFN v2.6
-102,600,101399,64,TabPFN v2.6
-103,800,101399,64,TabPFN v2.6
-104,1000,101399,64,TabPFN v2.6
-105,1200,101399,64,TabPFN v2.6
-106,1400,101399,64,TabPFN v2.6
-107,1600,101399,64,TabPFN v2.6
-108,1800,101399,64,TabPFN v2.6
-109,2000,101399,64,TabPFN v2.6
-110,2200,101399,64,TabPFN v2.6
-111,2400,101399,64,TabPFN v2.6
-112,2600,101399,64,TabPFN v2.6
-113,2800,101399,64,TabPFN v2.6
-114,3000,101399,64,TabPFN v2.6
-115,3200,101399,64,TabPFN v2.6
-116,3400,101399,64,TabPFN v2.6
-117,3600,101399,64,TabPFN v2.6
-118,3800,101399,64,TabPFN v2.6
-119,4000,101399,64,TabPFN v2.6
-120,4200,101399,64,TabPFN v2.6
-121,4400,101399,64,TabPFN v2.6
-122,4600,101399,64,TabPFN v2.6
-123,4800,101399,64,TabPFN v2.6
-124,5000,101399,64,TabPFN v2.6
-125,5200,101399,64,TabPFN v2.6
-126,5400,101399,64,TabPFN v2.6
-127,5600,101399,64,TabPFN v2.6
-128,5800,101399,64,TabPFN v2.6
-129,6000,101399,64,TabPFN v2.6
-130,6200,101399,64,TabPFN v2.6
-131,6400,101399,64,TabPFN v2.6
-132,6600,101399,64,TabPFN v2.6
-133,6800,101399,64,TabPFN v2.6
-134,7000,101399,64,TabPFN v2.6
-135,7200,101399,64,TabPFN v2.6
-136,7400,101399,64,TabPFN v2.6
-137,7600,101399,64,TabPFN v2.6
-138,7800,101399,64,TabPFN v2.6
-139,8000,101399,64,TabPFN v2.6
-140,8200,101399,64,TabPFN v2.6
-141,8400,101399,64,TabPFN v2.6
-142,8600,101399,64,TabPFN v2.6
-143,8800,101399,64,TabPFN v2.6
-144,9000,101399,64,TabPFN v2.6
-145,9200,101399,64,TabPFN v2.6
-146,9400,101399,64,TabPFN v2.6
-147,9600,101399,64,TabPFN v2.6
-148,9800,101399,64,TabPFN v2.6
-149,10000,101399,64,TabPFN v2.6
-150,200,111832,64,TabPFN v3
-151,400,111832,64,TabPFN v3
-152,600,111832,64,TabPFN v3
-153,800,111832,64,TabPFN v3
-154,1000,111832,64,TabPFN v3
-155,1200,111832,64,TabPFN v3
-156,1400,111832,64,TabPFN v3
-157,1600,111832,64,TabPFN v3
-158,1800,111832,64,TabPFN v3
-159,2000,111832,64,TabPFN v3
-160,2200,111834,64,TabPFN v3
-161,2400,111834,64,TabPFN v3
-162,2600,111834,64,TabPFN v3
-163,2800,111834,64,TabPFN v3
-164,3000,111834,64,TabPFN v3
-165,3200,111834,64,TabPFN v3
-166,3400,111834,64,TabPFN v3
-167,3600,111834,64,TabPFN v3
-168,3800,111834,64,TabPFN v3
-169,4000,111834,64,TabPFN v3
-170,4200,111834,64,TabPFN v3
-171,4400,111834,64,TabPFN v3
-172,4600,111834,64,TabPFN v3
-173,4800,111834,64,TabPFN v3
-174,5000,111834,64,TabPFN v3
-175,5200,111834,64,TabPFN v3
-176,5400,111834,64,TabPFN v3
-177,5600,111834,64,TabPFN v3
-178,5800,111834,64,TabPFN v3
-179,6000,111834,64,TabPFN v3
-180,6200,111834,64,TabPFN v3
-181,6400,111834,64,TabPFN v3
-182,6600,111834,64,TabPFN v3
-183,6800,111834,64,TabPFN v3
-184,7000,111834,64,TabPFN v3
-185,7200,111834,64,TabPFN v3
-186,7400,111834,64,TabPFN v3
-187,7600,111834,64,TabPFN v3
-188,7800,111834,64,TabPFN v3
-189,8000,111834,64,TabPFN v3
-190,8200,111834,64,TabPFN v3
-191,8400,111834,64,TabPFN v3
-192,8600,111834,64,TabPFN v3
-193,8800,111834,64,TabPFN v3
-194,9000,111834,64,TabPFN v3
-195,9200,111834,64,TabPFN v3
-196,9400,111834,64,TabPFN v3
-197,9600,111834,64,TabPFN v3
-198,9800,111834,64,TabPFN v3
-199,10000,111809,64,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,27.512695,64,TabICLv2,Device memory (GiB)
+1,400,27.443359,64,TabICLv2,Device memory (GiB)
+2,600,27.444336,64,TabICLv2,Device memory (GiB)
+3,800,27.444336,64,TabICLv2,Device memory (GiB)
+4,1000,27.444336,64,TabICLv2,Device memory (GiB)
+5,1200,27.444336,64,TabICLv2,Device memory (GiB)
+6,1400,27.444336,64,TabICLv2,Device memory (GiB)
+7,1600,27.444336,64,TabICLv2,Device memory (GiB)
+8,1800,27.444824,64,TabICLv2,Device memory (GiB)
+9,2000,27.445312,64,TabICLv2,Device memory (GiB)
+10,2200,27.445312,64,TabICLv2,Device memory (GiB)
+11,2400,27.445312,64,TabICLv2,Device memory (GiB)
+12,2600,27.445312,64,TabICLv2,Device memory (GiB)
+13,2800,27.494141,64,TabICLv2,Device memory (GiB)
+14,3000,27.494141,64,TabICLv2,Device memory (GiB)
+15,3200,27.494141,64,TabICLv2,Device memory (GiB)
+16,3400,27.494141,64,TabICLv2,Device memory (GiB)
+17,3600,27.494141,64,TabICLv2,Device memory (GiB)
+18,3800,27.494141,64,TabICLv2,Device memory (GiB)
+19,4000,27.494141,64,TabICLv2,Device memory (GiB)
+20,4200,27.494141,64,TabICLv2,Device memory (GiB)
+21,4400,27.494141,64,TabICLv2,Device memory (GiB)
+22,4600,27.494141,64,TabICLv2,Device memory (GiB)
+23,4800,27.494141,64,TabICLv2,Device memory (GiB)
+24,5000,27.494141,64,TabICLv2,Device memory (GiB)
+25,5200,27.50293,64,TabICLv2,Device memory (GiB)
+26,5400,27.503906,64,TabICLv2,Device memory (GiB)
+27,5600,27.503906,64,TabICLv2,Device memory (GiB)
+28,5800,27.503906,64,TabICLv2,Device memory (GiB)
+29,6000,27.503906,64,TabICLv2,Device memory (GiB)
+30,6200,27.503906,64,TabICLv2,Device memory (GiB)
+31,6400,27.503906,64,TabICLv2,Device memory (GiB)
+32,6600,27.503906,64,TabICLv2,Device memory (GiB)
+33,6800,27.503906,64,TabICLv2,Device memory (GiB)
+34,7000,27.503906,64,TabICLv2,Device memory (GiB)
+35,7200,27.503906,64,TabICLv2,Device memory (GiB)
+36,7400,27.503906,64,TabICLv2,Device memory (GiB)
+37,7600,27.503906,64,TabICLv2,Device memory (GiB)
+38,7800,27.503906,64,TabICLv2,Device memory (GiB)
+39,8000,27.503906,64,TabICLv2,Device memory (GiB)
+40,8200,27.503906,64,TabICLv2,Device memory (GiB)
+41,8400,27.503906,64,TabICLv2,Device memory (GiB)
+42,8600,27.503906,64,TabICLv2,Device memory (GiB)
+43,8800,27.421875,64,TabICLv2,Device memory (GiB)
+44,9000,27.421875,64,TabICLv2,Device memory (GiB)
+45,9200,27.5625,64,TabICLv2,Device memory (GiB)
+46,9400,27.5625,64,TabICLv2,Device memory (GiB)
+47,9600,27.563477,64,TabICLv2,Device memory (GiB)
+48,9800,27.563477,64,TabICLv2,Device memory (GiB)
+49,10000,27.564453,64,TabICLv2,Device memory (GiB)
+50,200,136.49707,64,TabPFN v2,Device memory (GiB)
+51,400,136.49805,64,TabPFN v2,Device memory (GiB)
+52,600,136.49805,64,TabPFN v2,Device memory (GiB)
+53,800,136.49902,64,TabPFN v2,Device memory (GiB)
+54,1000,136.49902,64,TabPFN v2,Device memory (GiB)
+55,1200,136.49902,64,TabPFN v2,Device memory (GiB)
+56,1400,136.49902,64,TabPFN v2,Device memory (GiB)
+57,1600,136.49902,64,TabPFN v2,Device memory (GiB)
+58,1800,136.49902,64,TabPFN v2,Device memory (GiB)
+59,2000,136.5,64,TabPFN v2,Device memory (GiB)
+60,2200,136.5,64,TabPFN v2,Device memory (GiB)
+61,2400,136.5,64,TabPFN v2,Device memory (GiB)
+62,2600,136.5,64,TabPFN v2,Device memory (GiB)
+63,2800,136.5,64,TabPFN v2,Device memory (GiB)
+64,3000,136.5,64,TabPFN v2,Device memory (GiB)
+65,3200,136.5,64,TabPFN v2,Device memory (GiB)
+66,3400,136.5,64,TabPFN v2,Device memory (GiB)
+67,3600,136.5,64,TabPFN v2,Device memory (GiB)
+68,3800,136.5,64,TabPFN v2,Device memory (GiB)
+69,4000,136.5,64,TabPFN v2,Device memory (GiB)
+70,4200,136.5,64,TabPFN v2,Device memory (GiB)
+71,4400,136.5,64,TabPFN v2,Device memory (GiB)
+72,4600,136.5,64,TabPFN v2,Device memory (GiB)
+73,4800,136.5,64,TabPFN v2,Device memory (GiB)
+74,5000,136.5,64,TabPFN v2,Device memory (GiB)
+75,5200,136.5,64,TabPFN v2,Device memory (GiB)
+76,5400,136.5,64,TabPFN v2,Device memory (GiB)
+77,5600,136.5,64,TabPFN v2,Device memory (GiB)
+78,5800,136.5,64,TabPFN v2,Device memory (GiB)
+79,6000,136.5,64,TabPFN v2,Device memory (GiB)
+80,6200,136.5,64,TabPFN v2,Device memory (GiB)
+81,6400,136.5,64,TabPFN v2,Device memory (GiB)
+82,6600,136.5,64,TabPFN v2,Device memory (GiB)
+83,6800,136.5,64,TabPFN v2,Device memory (GiB)
+84,7000,136.5,64,TabPFN v2,Device memory (GiB)
+85,7200,136.5,64,TabPFN v2,Device memory (GiB)
+86,7400,136.5,64,TabPFN v2,Device memory (GiB)
+87,7600,136.5,64,TabPFN v2,Device memory (GiB)
+88,7800,136.5,64,TabPFN v2,Device memory (GiB)
+89,8000,136.5,64,TabPFN v2,Device memory (GiB)
+90,8200,136.5,64,TabPFN v2,Device memory (GiB)
+91,8400,136.5,64,TabPFN v2,Device memory (GiB)
+92,8600,136.5,64,TabPFN v2,Device memory (GiB)
+93,8800,136.5,64,TabPFN v2,Device memory (GiB)
+94,9000,136.5,64,TabPFN v2,Device memory (GiB)
+95,9200,136.5,64,TabPFN v2,Device memory (GiB)
+96,9400,136.5,64,TabPFN v2,Device memory (GiB)
+97,9600,136.5,64,TabPFN v2,Device memory (GiB)
+98,9800,136.5,64,TabPFN v2,Device memory (GiB)
+99,10000,136.5,64,TabPFN v2,Device memory (GiB)
+100,200,99.015625,64,TabPFN v2.6,Device memory (GiB)
+101,400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+102,600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+103,800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+104,1000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+105,1200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+106,1400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+107,1600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+108,1800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+109,2000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+110,2200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+111,2400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+112,2600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+113,2800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+114,3000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+115,3200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+116,3400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+117,3600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+118,3800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+119,4000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+120,4200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+121,4400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+122,4600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+123,4800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+124,5000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+125,5200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+126,5400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+127,5600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+128,5800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+129,6000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+130,6200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+131,6400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+132,6600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+133,6800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+134,7000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+135,7200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+136,7400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+137,7600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+138,7800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+139,8000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+140,8200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+141,8400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+142,8600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+143,8800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+144,9000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+145,9200,99.022461,64,TabPFN v2.6,Device memory (GiB)
+146,9400,99.022461,64,TabPFN v2.6,Device memory (GiB)
+147,9600,99.022461,64,TabPFN v2.6,Device memory (GiB)
+148,9800,99.022461,64,TabPFN v2.6,Device memory (GiB)
+149,10000,99.022461,64,TabPFN v2.6,Device memory (GiB)
+150,200,109.21094,64,TabPFN v3,Device memory (GiB)
+151,400,109.21094,64,TabPFN v3,Device memory (GiB)
+152,600,109.21094,64,TabPFN v3,Device memory (GiB)
+153,800,109.21094,64,TabPFN v3,Device memory (GiB)
+154,1000,109.21094,64,TabPFN v3,Device memory (GiB)
+155,1200,109.21094,64,TabPFN v3,Device memory (GiB)
+156,1400,109.21094,64,TabPFN v3,Device memory (GiB)
+157,1600,109.21094,64,TabPFN v3,Device memory (GiB)
+158,1800,109.21094,64,TabPFN v3,Device memory (GiB)
+159,2000,109.21094,64,TabPFN v3,Device memory (GiB)
+160,2200,109.21289,64,TabPFN v3,Device memory (GiB)
+161,2400,109.21289,64,TabPFN v3,Device memory (GiB)
+162,2600,109.21289,64,TabPFN v3,Device memory (GiB)
+163,2800,109.21289,64,TabPFN v3,Device memory (GiB)
+164,3000,109.21289,64,TabPFN v3,Device memory (GiB)
+165,3200,109.21289,64,TabPFN v3,Device memory (GiB)
+166,3400,109.21289,64,TabPFN v3,Device memory (GiB)
+167,3600,109.21289,64,TabPFN v3,Device memory (GiB)
+168,3800,109.21289,64,TabPFN v3,Device memory (GiB)
+169,4000,109.21289,64,TabPFN v3,Device memory (GiB)
+170,4200,109.21289,64,TabPFN v3,Device memory (GiB)
+171,4400,109.21289,64,TabPFN v3,Device memory (GiB)
+172,4600,109.21289,64,TabPFN v3,Device memory (GiB)
+173,4800,109.21289,64,TabPFN v3,Device memory (GiB)
+174,5000,109.21289,64,TabPFN v3,Device memory (GiB)
+175,5200,109.21289,64,TabPFN v3,Device memory (GiB)
+176,5400,109.21289,64,TabPFN v3,Device memory (GiB)
+177,5600,109.21289,64,TabPFN v3,Device memory (GiB)
+178,5800,109.21289,64,TabPFN v3,Device memory (GiB)
+179,6000,109.21289,64,TabPFN v3,Device memory (GiB)
+180,6200,109.21289,64,TabPFN v3,Device memory (GiB)
+181,6400,109.21289,64,TabPFN v3,Device memory (GiB)
+182,6600,109.21289,64,TabPFN v3,Device memory (GiB)
+183,6800,109.21289,64,TabPFN v3,Device memory (GiB)
+184,7000,109.21289,64,TabPFN v3,Device memory (GiB)
+185,7200,109.21289,64,TabPFN v3,Device memory (GiB)
+186,7400,109.21289,64,TabPFN v3,Device memory (GiB)
+187,7600,109.21289,64,TabPFN v3,Device memory (GiB)
+188,7800,109.21289,64,TabPFN v3,Device memory (GiB)
+189,8000,109.21289,64,TabPFN v3,Device memory (GiB)
+190,8200,109.21289,64,TabPFN v3,Device memory (GiB)
+191,8400,109.21289,64,TabPFN v3,Device memory (GiB)
+192,8600,109.21289,64,TabPFN v3,Device memory (GiB)
+193,8800,109.21289,64,TabPFN v3,Device memory (GiB)
+194,9000,109.21289,64,TabPFN v3,Device memory (GiB)
+195,9200,109.21289,64,TabPFN v3,Device memory (GiB)
+196,9400,109.21289,64,TabPFN v3,Device memory (GiB)
+197,9600,109.21289,64,TabPFN v3,Device memory (GiB)
+198,9800,109.21289,64,TabPFN v3,Device memory (GiB)
+199,10000,109.18848,64,TabPFN v3,Device memory (GiB)
 
 Table: Trial costs and numerical diagnostics
 CSV (first column: row index)
@@ -41707,7 +41707,7 @@ Experiment 1: LGD training dynamics
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:45:06+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Training coverage
@@ -59530,619 +59530,619 @@ Figure: lgd_resource_dashboard_lgd_gpu_utilization_percent
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,93.5,64,TabICLv2
-1,400,94,64,TabICLv2
-2,600,90.5,64,TabICLv2
-3,800,96.75,60,TabICLv2
-4,1000,92,63,TabICLv2
-5,1200,94,63,TabICLv2
-6,1400,90.75,64,TabICLv2
-7,1600,92,62,TabICLv2
-8,1800,95.5,62,TabICLv2
-9,2000,93,64,TabICLv2
-10,2200,93,61,TabICLv2
-11,2400,94,62,TabICLv2
-12,2600,90.75,62,TabICLv2
-13,2800,90,63,TabICLv2
-14,3000,92,64,TabICLv2
-15,3200,93.5,62,TabICLv2
-16,3400,90.25,64,TabICLv2
-17,3600,90.5,63,TabICLv2
-18,3800,95.5,61,TabICLv2
-19,4000,92.5,62,TabICLv2
-20,4200,89.5,61,TabICLv2
-21,4400,94,64,TabICLv2
-22,4600,95,64,TabICLv2
-23,4800,92,62,TabICLv2
-24,5000,91,63,TabICLv2
-25,5200,94,62,TabICLv2
-26,5400,94.25,62,TabICLv2
-27,5600,92.5,63,TabICLv2
-28,5800,94,64,TabICLv2
-29,6000,91.25,64,TabICLv2
-30,6200,92.5,64,TabICLv2
-31,6400,93,61,TabICLv2
-32,6600,92,61,TabICLv2
-33,6800,92,62,TabICLv2
-34,7000,92.75,64,TabICLv2
-35,7200,92.75,64,TabICLv2
-36,7400,94,63,TabICLv2
-37,7600,89,64,TabICLv2
-38,7800,91.25,62,TabICLv2
-39,8000,96,63,TabICLv2
-40,8200,94.5,62,TabICLv2
-41,8400,93,62,TabICLv2
-42,8600,94,62,TabICLv2
-43,8800,95,64,TabICLv2
-44,9000,94,63,TabICLv2
-45,9200,95,62,TabICLv2
-46,9400,88.25,64,TabICLv2
-47,9600,92,63,TabICLv2
-48,9800,95,63,TabICLv2
-49,10000,90.5,63,TabICLv2
-50,200,98,64,TabPFN v2
-51,400,98,64,TabPFN v2
-52,600,98,64,TabPFN v2
-53,800,97.75,64,TabPFN v2
-54,1000,98,64,TabPFN v2
-55,1200,97,64,TabPFN v2
-56,1400,97.25,64,TabPFN v2
-57,1600,97.5,64,TabPFN v2
-58,1800,98,64,TabPFN v2
-59,2000,97.5,64,TabPFN v2
-60,2200,98,64,TabPFN v2
-61,2400,98,64,TabPFN v2
-62,2600,96.5,59,TabPFN v2
-63,2800,98,64,TabPFN v2
-64,3000,98,64,TabPFN v2
-65,3200,98,64,TabPFN v2
-66,3400,98,64,TabPFN v2
-67,3600,97.5,64,TabPFN v2
-68,3800,97,64,TabPFN v2
-69,4000,98,64,TabPFN v2
-70,4200,97.25,64,TabPFN v2
-71,4400,98,64,TabPFN v2
-72,4600,97,64,TabPFN v2
-73,4800,98,64,TabPFN v2
-74,5000,98,64,TabPFN v2
-75,5200,98,64,TabPFN v2
-76,5400,98,64,TabPFN v2
-77,5600,98,64,TabPFN v2
-78,5800,97.25,64,TabPFN v2
-79,6000,97,64,TabPFN v2
-80,6200,98,64,TabPFN v2
-81,6400,98,64,TabPFN v2
-82,6600,98,64,TabPFN v2
-83,6800,97.75,64,TabPFN v2
-84,7000,98,64,TabPFN v2
-85,7200,97,64,TabPFN v2
-86,7400,98,64,TabPFN v2
-87,7600,98,64,TabPFN v2
-88,7800,97,64,TabPFN v2
-89,8000,97.5,64,TabPFN v2
-90,8200,97,64,TabPFN v2
-91,8400,98,64,TabPFN v2
-92,8600,98,64,TabPFN v2
-93,8800,98,64,TabPFN v2
-94,9000,98,64,TabPFN v2
-95,9200,98,64,TabPFN v2
-96,9400,98,64,TabPFN v2
-97,9600,97.25,64,TabPFN v2
-98,9800,97,64,TabPFN v2
-99,10000,98,64,TabPFN v2
-100,200,96,64,TabPFN v2.6
-101,400,96.5,64,TabPFN v2.6
-102,600,96.5,64,TabPFN v2.6
-103,800,96,64,TabPFN v2.6
-104,1000,96,64,TabPFN v2.6
-105,1200,97,64,TabPFN v2.6
-106,1400,97,64,TabPFN v2.6
-107,1600,97,64,TabPFN v2.6
-108,1800,98,64,TabPFN v2.6
-109,2000,97,64,TabPFN v2.6
-110,2200,97.25,64,TabPFN v2.6
-111,2400,98,64,TabPFN v2.6
-112,2600,97.5,61,TabPFN v2.6
-113,2800,97,64,TabPFN v2.6
-114,3000,97,64,TabPFN v2.6
-115,3200,97.25,64,TabPFN v2.6
-116,3400,96,64,TabPFN v2.6
-117,3600,97,64,TabPFN v2.6
-118,3800,97,64,TabPFN v2.6
-119,4000,98.25,64,TabPFN v2.6
-120,4200,97.5,64,TabPFN v2.6
-121,4400,97,64,TabPFN v2.6
-122,4600,96.25,64,TabPFN v2.6
-123,4800,97,64,TabPFN v2.6
-124,5000,97,64,TabPFN v2.6
-125,5200,96,64,TabPFN v2.6
-126,5400,96.5,64,TabPFN v2.6
-127,5600,97,64,TabPFN v2.6
-128,5800,96.75,64,TabPFN v2.6
-129,6000,97,64,TabPFN v2.6
-130,6200,98,64,TabPFN v2.6
-131,6400,96,64,TabPFN v2.6
-132,6600,96,64,TabPFN v2.6
-133,6800,96,64,TabPFN v2.6
-134,7000,98,64,TabPFN v2.6
-135,7200,96.25,64,TabPFN v2.6
-136,7400,97,64,TabPFN v2.6
-137,7600,96,64,TabPFN v2.6
-138,7800,97,64,TabPFN v2.6
-139,8000,96,64,TabPFN v2.6
-140,8200,96,64,TabPFN v2.6
-141,8400,97.5,64,TabPFN v2.6
-142,8600,97,64,TabPFN v2.6
-143,8800,97,64,TabPFN v2.6
-144,9000,97,64,TabPFN v2.6
-145,9200,97,64,TabPFN v2.6
-146,9400,97.25,64,TabPFN v2.6
-147,9600,96,64,TabPFN v2.6
-148,9800,97.75,64,TabPFN v2.6
-149,10000,96.25,64,TabPFN v2.6
-150,200,83.75,64,TabPFN v3
-151,400,84.25,64,TabPFN v3
-152,600,81,64,TabPFN v3
-153,800,81,64,TabPFN v3
-154,1000,80.25,64,TabPFN v3
-155,1200,89.5,64,TabPFN v3
-156,1400,81.75,64,TabPFN v3
-157,1600,80.5,64,TabPFN v3
-158,1800,86,64,TabPFN v3
-159,2000,78,64,TabPFN v3
-160,2200,84,64,TabPFN v3
-161,2400,79.25,64,TabPFN v3
-162,2600,83.5,61,TabPFN v3
-163,2800,81,64,TabPFN v3
-164,3000,83.75,64,TabPFN v3
-165,3200,85.25,64,TabPFN v3
-166,3400,82.75,64,TabPFN v3
-167,3600,83,64,TabPFN v3
-168,3800,84.75,64,TabPFN v3
-169,4000,79.5,64,TabPFN v3
-170,4200,86.25,64,TabPFN v3
-171,4400,82,64,TabPFN v3
-172,4600,84.5,64,TabPFN v3
-173,4800,85.25,64,TabPFN v3
-174,5000,87.5,64,TabPFN v3
-175,5200,80.75,64,TabPFN v3
-176,5400,87.75,64,TabPFN v3
-177,5600,79.5,64,TabPFN v3
-178,5800,78.25,64,TabPFN v3
-179,6000,79,64,TabPFN v3
-180,6200,84.25,64,TabPFN v3
-181,6400,81.5,64,TabPFN v3
-182,6600,82,64,TabPFN v3
-183,6800,82.75,64,TabPFN v3
-184,7000,83.75,64,TabPFN v3
-185,7200,79.5,64,TabPFN v3
-186,7400,82,64,TabPFN v3
-187,7600,84.5,64,TabPFN v3
-188,7800,80,64,TabPFN v3
-189,8000,81.75,64,TabPFN v3
-190,8200,80,64,TabPFN v3
-191,8400,86,64,TabPFN v3
-192,8600,79.75,64,TabPFN v3
-193,8800,85,64,TabPFN v3
-194,9000,81,64,TabPFN v3
-195,9200,82.5,64,TabPFN v3
-196,9400,79,64,TabPFN v3
-197,9600,84.75,64,TabPFN v3
-198,9800,80.75,64,TabPFN v3
-199,10000,81,64,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,93.5,64,TabICLv2,GPU utilization (%)
+1,400,94,64,TabICLv2,GPU utilization (%)
+2,600,90.5,64,TabICLv2,GPU utilization (%)
+3,800,96.75,60,TabICLv2,GPU utilization (%)
+4,1000,92,63,TabICLv2,GPU utilization (%)
+5,1200,94,63,TabICLv2,GPU utilization (%)
+6,1400,90.75,64,TabICLv2,GPU utilization (%)
+7,1600,92,62,TabICLv2,GPU utilization (%)
+8,1800,95.5,62,TabICLv2,GPU utilization (%)
+9,2000,93,64,TabICLv2,GPU utilization (%)
+10,2200,93,61,TabICLv2,GPU utilization (%)
+11,2400,94,62,TabICLv2,GPU utilization (%)
+12,2600,90.75,62,TabICLv2,GPU utilization (%)
+13,2800,90,63,TabICLv2,GPU utilization (%)
+14,3000,92,64,TabICLv2,GPU utilization (%)
+15,3200,93.5,62,TabICLv2,GPU utilization (%)
+16,3400,90.25,64,TabICLv2,GPU utilization (%)
+17,3600,90.5,63,TabICLv2,GPU utilization (%)
+18,3800,95.5,61,TabICLv2,GPU utilization (%)
+19,4000,92.5,62,TabICLv2,GPU utilization (%)
+20,4200,89.5,61,TabICLv2,GPU utilization (%)
+21,4400,94,64,TabICLv2,GPU utilization (%)
+22,4600,95,64,TabICLv2,GPU utilization (%)
+23,4800,92,62,TabICLv2,GPU utilization (%)
+24,5000,91,63,TabICLv2,GPU utilization (%)
+25,5200,94,62,TabICLv2,GPU utilization (%)
+26,5400,94.25,62,TabICLv2,GPU utilization (%)
+27,5600,92.5,63,TabICLv2,GPU utilization (%)
+28,5800,94,64,TabICLv2,GPU utilization (%)
+29,6000,91.25,64,TabICLv2,GPU utilization (%)
+30,6200,92.5,64,TabICLv2,GPU utilization (%)
+31,6400,93,61,TabICLv2,GPU utilization (%)
+32,6600,92,61,TabICLv2,GPU utilization (%)
+33,6800,92,62,TabICLv2,GPU utilization (%)
+34,7000,92.75,64,TabICLv2,GPU utilization (%)
+35,7200,92.75,64,TabICLv2,GPU utilization (%)
+36,7400,94,63,TabICLv2,GPU utilization (%)
+37,7600,89,64,TabICLv2,GPU utilization (%)
+38,7800,91.25,62,TabICLv2,GPU utilization (%)
+39,8000,96,63,TabICLv2,GPU utilization (%)
+40,8200,94.5,62,TabICLv2,GPU utilization (%)
+41,8400,93,62,TabICLv2,GPU utilization (%)
+42,8600,94,62,TabICLv2,GPU utilization (%)
+43,8800,95,64,TabICLv2,GPU utilization (%)
+44,9000,94,63,TabICLv2,GPU utilization (%)
+45,9200,95,62,TabICLv2,GPU utilization (%)
+46,9400,88.25,64,TabICLv2,GPU utilization (%)
+47,9600,92,63,TabICLv2,GPU utilization (%)
+48,9800,95,63,TabICLv2,GPU utilization (%)
+49,10000,90.5,63,TabICLv2,GPU utilization (%)
+50,200,98,64,TabPFN v2,GPU utilization (%)
+51,400,98,64,TabPFN v2,GPU utilization (%)
+52,600,98,64,TabPFN v2,GPU utilization (%)
+53,800,97.75,64,TabPFN v2,GPU utilization (%)
+54,1000,98,64,TabPFN v2,GPU utilization (%)
+55,1200,97,64,TabPFN v2,GPU utilization (%)
+56,1400,97.25,64,TabPFN v2,GPU utilization (%)
+57,1600,97.5,64,TabPFN v2,GPU utilization (%)
+58,1800,98,64,TabPFN v2,GPU utilization (%)
+59,2000,97.5,64,TabPFN v2,GPU utilization (%)
+60,2200,98,64,TabPFN v2,GPU utilization (%)
+61,2400,98,64,TabPFN v2,GPU utilization (%)
+62,2600,96.5,59,TabPFN v2,GPU utilization (%)
+63,2800,98,64,TabPFN v2,GPU utilization (%)
+64,3000,98,64,TabPFN v2,GPU utilization (%)
+65,3200,98,64,TabPFN v2,GPU utilization (%)
+66,3400,98,64,TabPFN v2,GPU utilization (%)
+67,3600,97.5,64,TabPFN v2,GPU utilization (%)
+68,3800,97,64,TabPFN v2,GPU utilization (%)
+69,4000,98,64,TabPFN v2,GPU utilization (%)
+70,4200,97.25,64,TabPFN v2,GPU utilization (%)
+71,4400,98,64,TabPFN v2,GPU utilization (%)
+72,4600,97,64,TabPFN v2,GPU utilization (%)
+73,4800,98,64,TabPFN v2,GPU utilization (%)
+74,5000,98,64,TabPFN v2,GPU utilization (%)
+75,5200,98,64,TabPFN v2,GPU utilization (%)
+76,5400,98,64,TabPFN v2,GPU utilization (%)
+77,5600,98,64,TabPFN v2,GPU utilization (%)
+78,5800,97.25,64,TabPFN v2,GPU utilization (%)
+79,6000,97,64,TabPFN v2,GPU utilization (%)
+80,6200,98,64,TabPFN v2,GPU utilization (%)
+81,6400,98,64,TabPFN v2,GPU utilization (%)
+82,6600,98,64,TabPFN v2,GPU utilization (%)
+83,6800,97.75,64,TabPFN v2,GPU utilization (%)
+84,7000,98,64,TabPFN v2,GPU utilization (%)
+85,7200,97,64,TabPFN v2,GPU utilization (%)
+86,7400,98,64,TabPFN v2,GPU utilization (%)
+87,7600,98,64,TabPFN v2,GPU utilization (%)
+88,7800,97,64,TabPFN v2,GPU utilization (%)
+89,8000,97.5,64,TabPFN v2,GPU utilization (%)
+90,8200,97,64,TabPFN v2,GPU utilization (%)
+91,8400,98,64,TabPFN v2,GPU utilization (%)
+92,8600,98,64,TabPFN v2,GPU utilization (%)
+93,8800,98,64,TabPFN v2,GPU utilization (%)
+94,9000,98,64,TabPFN v2,GPU utilization (%)
+95,9200,98,64,TabPFN v2,GPU utilization (%)
+96,9400,98,64,TabPFN v2,GPU utilization (%)
+97,9600,97.25,64,TabPFN v2,GPU utilization (%)
+98,9800,97,64,TabPFN v2,GPU utilization (%)
+99,10000,98,64,TabPFN v2,GPU utilization (%)
+100,200,96,64,TabPFN v2.6,GPU utilization (%)
+101,400,96.5,64,TabPFN v2.6,GPU utilization (%)
+102,600,96.5,64,TabPFN v2.6,GPU utilization (%)
+103,800,96,64,TabPFN v2.6,GPU utilization (%)
+104,1000,96,64,TabPFN v2.6,GPU utilization (%)
+105,1200,97,64,TabPFN v2.6,GPU utilization (%)
+106,1400,97,64,TabPFN v2.6,GPU utilization (%)
+107,1600,97,64,TabPFN v2.6,GPU utilization (%)
+108,1800,98,64,TabPFN v2.6,GPU utilization (%)
+109,2000,97,64,TabPFN v2.6,GPU utilization (%)
+110,2200,97.25,64,TabPFN v2.6,GPU utilization (%)
+111,2400,98,64,TabPFN v2.6,GPU utilization (%)
+112,2600,97.5,61,TabPFN v2.6,GPU utilization (%)
+113,2800,97,64,TabPFN v2.6,GPU utilization (%)
+114,3000,97,64,TabPFN v2.6,GPU utilization (%)
+115,3200,97.25,64,TabPFN v2.6,GPU utilization (%)
+116,3400,96,64,TabPFN v2.6,GPU utilization (%)
+117,3600,97,64,TabPFN v2.6,GPU utilization (%)
+118,3800,97,64,TabPFN v2.6,GPU utilization (%)
+119,4000,98.25,64,TabPFN v2.6,GPU utilization (%)
+120,4200,97.5,64,TabPFN v2.6,GPU utilization (%)
+121,4400,97,64,TabPFN v2.6,GPU utilization (%)
+122,4600,96.25,64,TabPFN v2.6,GPU utilization (%)
+123,4800,97,64,TabPFN v2.6,GPU utilization (%)
+124,5000,97,64,TabPFN v2.6,GPU utilization (%)
+125,5200,96,64,TabPFN v2.6,GPU utilization (%)
+126,5400,96.5,64,TabPFN v2.6,GPU utilization (%)
+127,5600,97,64,TabPFN v2.6,GPU utilization (%)
+128,5800,96.75,64,TabPFN v2.6,GPU utilization (%)
+129,6000,97,64,TabPFN v2.6,GPU utilization (%)
+130,6200,98,64,TabPFN v2.6,GPU utilization (%)
+131,6400,96,64,TabPFN v2.6,GPU utilization (%)
+132,6600,96,64,TabPFN v2.6,GPU utilization (%)
+133,6800,96,64,TabPFN v2.6,GPU utilization (%)
+134,7000,98,64,TabPFN v2.6,GPU utilization (%)
+135,7200,96.25,64,TabPFN v2.6,GPU utilization (%)
+136,7400,97,64,TabPFN v2.6,GPU utilization (%)
+137,7600,96,64,TabPFN v2.6,GPU utilization (%)
+138,7800,97,64,TabPFN v2.6,GPU utilization (%)
+139,8000,96,64,TabPFN v2.6,GPU utilization (%)
+140,8200,96,64,TabPFN v2.6,GPU utilization (%)
+141,8400,97.5,64,TabPFN v2.6,GPU utilization (%)
+142,8600,97,64,TabPFN v2.6,GPU utilization (%)
+143,8800,97,64,TabPFN v2.6,GPU utilization (%)
+144,9000,97,64,TabPFN v2.6,GPU utilization (%)
+145,9200,97,64,TabPFN v2.6,GPU utilization (%)
+146,9400,97.25,64,TabPFN v2.6,GPU utilization (%)
+147,9600,96,64,TabPFN v2.6,GPU utilization (%)
+148,9800,97.75,64,TabPFN v2.6,GPU utilization (%)
+149,10000,96.25,64,TabPFN v2.6,GPU utilization (%)
+150,200,83.75,64,TabPFN v3,GPU utilization (%)
+151,400,84.25,64,TabPFN v3,GPU utilization (%)
+152,600,81,64,TabPFN v3,GPU utilization (%)
+153,800,81,64,TabPFN v3,GPU utilization (%)
+154,1000,80.25,64,TabPFN v3,GPU utilization (%)
+155,1200,89.5,64,TabPFN v3,GPU utilization (%)
+156,1400,81.75,64,TabPFN v3,GPU utilization (%)
+157,1600,80.5,64,TabPFN v3,GPU utilization (%)
+158,1800,86,64,TabPFN v3,GPU utilization (%)
+159,2000,78,64,TabPFN v3,GPU utilization (%)
+160,2200,84,64,TabPFN v3,GPU utilization (%)
+161,2400,79.25,64,TabPFN v3,GPU utilization (%)
+162,2600,83.5,61,TabPFN v3,GPU utilization (%)
+163,2800,81,64,TabPFN v3,GPU utilization (%)
+164,3000,83.75,64,TabPFN v3,GPU utilization (%)
+165,3200,85.25,64,TabPFN v3,GPU utilization (%)
+166,3400,82.75,64,TabPFN v3,GPU utilization (%)
+167,3600,83,64,TabPFN v3,GPU utilization (%)
+168,3800,84.75,64,TabPFN v3,GPU utilization (%)
+169,4000,79.5,64,TabPFN v3,GPU utilization (%)
+170,4200,86.25,64,TabPFN v3,GPU utilization (%)
+171,4400,82,64,TabPFN v3,GPU utilization (%)
+172,4600,84.5,64,TabPFN v3,GPU utilization (%)
+173,4800,85.25,64,TabPFN v3,GPU utilization (%)
+174,5000,87.5,64,TabPFN v3,GPU utilization (%)
+175,5200,80.75,64,TabPFN v3,GPU utilization (%)
+176,5400,87.75,64,TabPFN v3,GPU utilization (%)
+177,5600,79.5,64,TabPFN v3,GPU utilization (%)
+178,5800,78.25,64,TabPFN v3,GPU utilization (%)
+179,6000,79,64,TabPFN v3,GPU utilization (%)
+180,6200,84.25,64,TabPFN v3,GPU utilization (%)
+181,6400,81.5,64,TabPFN v3,GPU utilization (%)
+182,6600,82,64,TabPFN v3,GPU utilization (%)
+183,6800,82.75,64,TabPFN v3,GPU utilization (%)
+184,7000,83.75,64,TabPFN v3,GPU utilization (%)
+185,7200,79.5,64,TabPFN v3,GPU utilization (%)
+186,7400,82,64,TabPFN v3,GPU utilization (%)
+187,7600,84.5,64,TabPFN v3,GPU utilization (%)
+188,7800,80,64,TabPFN v3,GPU utilization (%)
+189,8000,81.75,64,TabPFN v3,GPU utilization (%)
+190,8200,80,64,TabPFN v3,GPU utilization (%)
+191,8400,86,64,TabPFN v3,GPU utilization (%)
+192,8600,79.75,64,TabPFN v3,GPU utilization (%)
+193,8800,85,64,TabPFN v3,GPU utilization (%)
+194,9000,81,64,TabPFN v3,GPU utilization (%)
+195,9200,82.5,64,TabPFN v3,GPU utilization (%)
+196,9400,79,64,TabPFN v3,GPU utilization (%)
+197,9600,84.75,64,TabPFN v3,GPU utilization (%)
+198,9800,80.75,64,TabPFN v3,GPU utilization (%)
+199,10000,81,64,TabPFN v3,GPU utilization (%)
 
 Figure: lgd_resource_dashboard_lgd_power_watts
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,552.365,18,TabICLv2
-1,400,464.51,18,TabICLv2
-2,600,510.205,18,TabICLv2
-3,800,540.6825,16,TabICLv2
-4,1000,516.195,17,TabICLv2
-5,1200,527,17,TabICLv2
-6,1400,513.9925,18,TabICLv2
-7,1600,514.705,17,TabICLv2
-8,1800,520.875,17,TabICLv2
-9,2000,542.095,18,TabICLv2
-10,2200,522.555,16,TabICLv2
-11,2400,545.82,17,TabICLv2
-12,2600,455.0275,18,TabICLv2
-13,2800,534.365,17,TabICLv2
-14,3000,516.4375,18,TabICLv2
-15,3200,529.775,17,TabICLv2
-16,3400,523.6725,18,TabICLv2
-17,3600,508.14,18,TabICLv2
-18,3800,557.165,16,TabICLv2
-19,4000,521.03,17,TabICLv2
-20,4200,542.065,16,TabICLv2
-21,4400,502.835,18,TabICLv2
-22,4600,502.08,18,TabICLv2
-23,4800,540.11,17,TabICLv2
-24,5000,533.23,17,TabICLv2
-25,5200,530,16,TabICLv2
-26,5400,525.73,17,TabICLv2
-27,5600,519.11,17,TabICLv2
-28,5800,487.455,18,TabICLv2
-29,6000,521.5875,18,TabICLv2
-30,6200,509.3375,18,TabICLv2
-31,6400,522.055,17,TabICLv2
-32,6600,534.695,17,TabICLv2
-33,6800,551.655,16,TabICLv2
-34,7000,530.47,18,TabICLv2
-35,7200,532.2275,18,TabICLv2
-36,7400,537.445,17,TabICLv2
-37,7600,544.22,18,TabICLv2
-38,7800,544.66,17,TabICLv2
-39,8000,535.575,18,TabICLv2
-40,8200,521.5075,16,TabICLv2
-41,8400,525.73,17,TabICLv2
-42,8600,531.23,18,TabICLv2
-43,8800,528.795,18,TabICLv2
-44,9000,526.19,18,TabICLv2
-45,9200,534.35,17,TabICLv2
-46,9400,507.9325,18,TabICLv2
-47,9600,529.68,17,TabICLv2
-48,9800,538.13,17,TabICLv2
-49,10000,523.66,17,TabICLv2
-50,200,702.72,18,TabPFN v2
-51,400,711.515,18,TabPFN v2
-52,600,733.955,18,TabPFN v2
-53,800,716.5675,18,TabPFN v2
-54,1000,699.565,18,TabPFN v2
-55,1200,704.92,18,TabPFN v2
-56,1400,707.375,18,TabPFN v2
-57,1600,708.3725,18,TabPFN v2
-58,1800,700.58,18,TabPFN v2
-59,2000,705.43,18,TabPFN v2
-60,2200,725.0575,18,TabPFN v2
-61,2400,716.365,18,TabPFN v2
-62,2600,715.54,18,TabPFN v2
-63,2800,717.015,18,TabPFN v2
-64,3000,714.7975,18,TabPFN v2
-65,3200,726.745,18,TabPFN v2
-66,3400,718.45,18,TabPFN v2
-67,3600,716.5675,18,TabPFN v2
-68,3800,724.96,18,TabPFN v2
-69,4000,707.4375,18,TabPFN v2
-70,4200,715.6825,18,TabPFN v2
-71,4400,737.57,18,TabPFN v2
-72,4600,718.4725,18,TabPFN v2
-73,4800,720.9875,18,TabPFN v2
-74,5000,726.045,18,TabPFN v2
-75,5200,723.3875,18,TabPFN v2
-76,5400,721.3875,18,TabPFN v2
-77,5600,730.905,18,TabPFN v2
-78,5800,716.1275,18,TabPFN v2
-79,6000,715.4,18,TabPFN v2
-80,6200,723.8825,18,TabPFN v2
-81,6400,714.595,18,TabPFN v2
-82,6600,713.3925,18,TabPFN v2
-83,6800,714.2725,18,TabPFN v2
-84,7000,722.6225,18,TabPFN v2
-85,7200,721.2,18,TabPFN v2
-86,7400,712.805,18,TabPFN v2
-87,7600,723.7575,18,TabPFN v2
-88,7800,726.965,18,TabPFN v2
-89,8000,711.9075,18,TabPFN v2
-90,8200,712.77,18,TabPFN v2
-91,8400,716.2175,18,TabPFN v2
-92,8600,722.6075,18,TabPFN v2
-93,8800,724.13,18,TabPFN v2
-94,9000,718.9025,18,TabPFN v2
-95,9200,721.3175,18,TabPFN v2
-96,9400,728.24,18,TabPFN v2
-97,9600,726.755,18,TabPFN v2
-98,9800,717.04,18,TabPFN v2
-99,10000,720.73,18,TabPFN v2
-100,200,681.52,21,TabPFN v2.6
-101,400,693.72,21,TabPFN v2.6
-102,600,648.925,21,TabPFN v2.6
-103,800,692.81,21,TabPFN v2.6
-104,1000,656.09,21,TabPFN v2.6
-105,1200,707.78,21,TabPFN v2.6
-106,1400,676.64,21,TabPFN v2.6
-107,1600,689.94,21,TabPFN v2.6
-108,1800,670.09,21,TabPFN v2.6
-109,2000,643.31,21,TabPFN v2.6
-110,2200,650.14,21,TabPFN v2.6
-111,2400,653.54,21,TabPFN v2.6
-112,2600,679.12,20,TabPFN v2.6
-113,2800,671.005,21,TabPFN v2.6
-114,3000,674.17,21,TabPFN v2.6
-115,3200,652.87,21,TabPFN v2.6
-116,3400,673.47,21,TabPFN v2.6
-117,3600,665.57,21,TabPFN v2.6
-118,3800,653.64,21,TabPFN v2.6
-119,4000,677.04,21,TabPFN v2.6
-120,4200,658.34,21,TabPFN v2.6
-121,4400,679.27,21,TabPFN v2.6
-122,4600,678.2,21,TabPFN v2.6
-123,4800,672.32,21,TabPFN v2.6
-124,5000,685.95,21,TabPFN v2.6
-125,5200,643.43,21,TabPFN v2.6
-126,5400,657.57,21,TabPFN v2.6
-127,5600,672.87,21,TabPFN v2.6
-128,5800,672.44,21,TabPFN v2.6
-129,6000,682.09,21,TabPFN v2.6
-130,6200,682.7,21,TabPFN v2.6
-131,6400,680.295,21,TabPFN v2.6
-132,6600,652.37,21,TabPFN v2.6
-133,6800,655.23,21,TabPFN v2.6
-134,7000,661.69,21,TabPFN v2.6
-135,7200,653.35,21,TabPFN v2.6
-136,7400,680.41,21,TabPFN v2.6
-137,7600,649.275,21,TabPFN v2.6
-138,7800,660.08,21,TabPFN v2.6
-139,8000,664.26,21,TabPFN v2.6
-140,8200,681.21,21,TabPFN v2.6
-141,8400,667.74,21,TabPFN v2.6
-142,8600,681.01,21,TabPFN v2.6
-143,8800,664.25,21,TabPFN v2.6
-144,9000,665.655,21,TabPFN v2.6
-145,9200,666.62,21,TabPFN v2.6
-146,9400,670.715,21,TabPFN v2.6
-147,9600,671.43,21,TabPFN v2.6
-148,9800,655.14,21,TabPFN v2.6
-149,10000,664.37,21,TabPFN v2.6
-150,200,460.675,18,TabPFN v3
-151,400,396.8775,18,TabPFN v3
-152,600,413.98,18,TabPFN v3
-153,800,449.9675,18,TabPFN v3
-154,1000,430.9175,18,TabPFN v3
-155,1200,449.02,18,TabPFN v3
-156,1400,433.61,18,TabPFN v3
-157,1600,438.1875,18,TabPFN v3
-158,1800,428.275,18,TabPFN v3
-159,2000,446.7825,18,TabPFN v3
-160,2200,466.55,18,TabPFN v3
-161,2400,443.3775,18,TabPFN v3
-162,2600,513.915,15,TabPFN v3
-163,2800,423.025,18,TabPFN v3
-164,3000,424.0125,18,TabPFN v3
-165,3200,427.775,18,TabPFN v3
-166,3400,439.305,18,TabPFN v3
-167,3600,409.51,18,TabPFN v3
-168,3800,462.44,18,TabPFN v3
-169,4000,399.2875,18,TabPFN v3
-170,4200,455.3325,18,TabPFN v3
-171,4400,432.5925,18,TabPFN v3
-172,4600,397.25,18,TabPFN v3
-173,4800,450.31,18,TabPFN v3
-174,5000,452.29,18,TabPFN v3
-175,5200,421.2525,18,TabPFN v3
-176,5400,432.7475,18,TabPFN v3
-177,5600,437.9125,18,TabPFN v3
-178,5800,419.0825,18,TabPFN v3
-179,6000,442.16,18,TabPFN v3
-180,6200,432.5,18,TabPFN v3
-181,6400,405.815,18,TabPFN v3
-182,6600,401.8625,18,TabPFN v3
-183,6800,423.15,18,TabPFN v3
-184,7000,433.595,18,TabPFN v3
-185,7200,430.4425,18,TabPFN v3
-186,7400,421.1825,18,TabPFN v3
-187,7600,424.42,18,TabPFN v3
-188,7800,426.96,18,TabPFN v3
-189,8000,436.7075,18,TabPFN v3
-190,8200,387.79,18,TabPFN v3
-191,8400,420.47,18,TabPFN v3
-192,8600,398.695,18,TabPFN v3
-193,8800,436.355,18,TabPFN v3
-194,9000,437.9,18,TabPFN v3
-195,9200,412.4775,18,TabPFN v3
-196,9400,415.4275,18,TabPFN v3
-197,9600,415.885,18,TabPFN v3
-198,9800,403.0775,18,TabPFN v3
-199,10000,410.635,18,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,552.365,18,TabICLv2,Device power (W)
+1,400,464.51,18,TabICLv2,Device power (W)
+2,600,510.205,18,TabICLv2,Device power (W)
+3,800,540.6825,16,TabICLv2,Device power (W)
+4,1000,516.195,17,TabICLv2,Device power (W)
+5,1200,527,17,TabICLv2,Device power (W)
+6,1400,513.9925,18,TabICLv2,Device power (W)
+7,1600,514.705,17,TabICLv2,Device power (W)
+8,1800,520.875,17,TabICLv2,Device power (W)
+9,2000,542.095,18,TabICLv2,Device power (W)
+10,2200,522.555,16,TabICLv2,Device power (W)
+11,2400,545.82,17,TabICLv2,Device power (W)
+12,2600,455.0275,18,TabICLv2,Device power (W)
+13,2800,534.365,17,TabICLv2,Device power (W)
+14,3000,516.4375,18,TabICLv2,Device power (W)
+15,3200,529.775,17,TabICLv2,Device power (W)
+16,3400,523.6725,18,TabICLv2,Device power (W)
+17,3600,508.14,18,TabICLv2,Device power (W)
+18,3800,557.165,16,TabICLv2,Device power (W)
+19,4000,521.03,17,TabICLv2,Device power (W)
+20,4200,542.065,16,TabICLv2,Device power (W)
+21,4400,502.835,18,TabICLv2,Device power (W)
+22,4600,502.08,18,TabICLv2,Device power (W)
+23,4800,540.11,17,TabICLv2,Device power (W)
+24,5000,533.23,17,TabICLv2,Device power (W)
+25,5200,530,16,TabICLv2,Device power (W)
+26,5400,525.73,17,TabICLv2,Device power (W)
+27,5600,519.11,17,TabICLv2,Device power (W)
+28,5800,487.455,18,TabICLv2,Device power (W)
+29,6000,521.5875,18,TabICLv2,Device power (W)
+30,6200,509.3375,18,TabICLv2,Device power (W)
+31,6400,522.055,17,TabICLv2,Device power (W)
+32,6600,534.695,17,TabICLv2,Device power (W)
+33,6800,551.655,16,TabICLv2,Device power (W)
+34,7000,530.47,18,TabICLv2,Device power (W)
+35,7200,532.2275,18,TabICLv2,Device power (W)
+36,7400,537.445,17,TabICLv2,Device power (W)
+37,7600,544.22,18,TabICLv2,Device power (W)
+38,7800,544.66,17,TabICLv2,Device power (W)
+39,8000,535.575,18,TabICLv2,Device power (W)
+40,8200,521.5075,16,TabICLv2,Device power (W)
+41,8400,525.73,17,TabICLv2,Device power (W)
+42,8600,531.23,18,TabICLv2,Device power (W)
+43,8800,528.795,18,TabICLv2,Device power (W)
+44,9000,526.19,18,TabICLv2,Device power (W)
+45,9200,534.35,17,TabICLv2,Device power (W)
+46,9400,507.9325,18,TabICLv2,Device power (W)
+47,9600,529.68,17,TabICLv2,Device power (W)
+48,9800,538.13,17,TabICLv2,Device power (W)
+49,10000,523.66,17,TabICLv2,Device power (W)
+50,200,702.72,18,TabPFN v2,Device power (W)
+51,400,711.515,18,TabPFN v2,Device power (W)
+52,600,733.955,18,TabPFN v2,Device power (W)
+53,800,716.5675,18,TabPFN v2,Device power (W)
+54,1000,699.565,18,TabPFN v2,Device power (W)
+55,1200,704.92,18,TabPFN v2,Device power (W)
+56,1400,707.375,18,TabPFN v2,Device power (W)
+57,1600,708.3725,18,TabPFN v2,Device power (W)
+58,1800,700.58,18,TabPFN v2,Device power (W)
+59,2000,705.43,18,TabPFN v2,Device power (W)
+60,2200,725.0575,18,TabPFN v2,Device power (W)
+61,2400,716.365,18,TabPFN v2,Device power (W)
+62,2600,715.54,18,TabPFN v2,Device power (W)
+63,2800,717.015,18,TabPFN v2,Device power (W)
+64,3000,714.7975,18,TabPFN v2,Device power (W)
+65,3200,726.745,18,TabPFN v2,Device power (W)
+66,3400,718.45,18,TabPFN v2,Device power (W)
+67,3600,716.5675,18,TabPFN v2,Device power (W)
+68,3800,724.96,18,TabPFN v2,Device power (W)
+69,4000,707.4375,18,TabPFN v2,Device power (W)
+70,4200,715.6825,18,TabPFN v2,Device power (W)
+71,4400,737.57,18,TabPFN v2,Device power (W)
+72,4600,718.4725,18,TabPFN v2,Device power (W)
+73,4800,720.9875,18,TabPFN v2,Device power (W)
+74,5000,726.045,18,TabPFN v2,Device power (W)
+75,5200,723.3875,18,TabPFN v2,Device power (W)
+76,5400,721.3875,18,TabPFN v2,Device power (W)
+77,5600,730.905,18,TabPFN v2,Device power (W)
+78,5800,716.1275,18,TabPFN v2,Device power (W)
+79,6000,715.4,18,TabPFN v2,Device power (W)
+80,6200,723.8825,18,TabPFN v2,Device power (W)
+81,6400,714.595,18,TabPFN v2,Device power (W)
+82,6600,713.3925,18,TabPFN v2,Device power (W)
+83,6800,714.2725,18,TabPFN v2,Device power (W)
+84,7000,722.6225,18,TabPFN v2,Device power (W)
+85,7200,721.2,18,TabPFN v2,Device power (W)
+86,7400,712.805,18,TabPFN v2,Device power (W)
+87,7600,723.7575,18,TabPFN v2,Device power (W)
+88,7800,726.965,18,TabPFN v2,Device power (W)
+89,8000,711.9075,18,TabPFN v2,Device power (W)
+90,8200,712.77,18,TabPFN v2,Device power (W)
+91,8400,716.2175,18,TabPFN v2,Device power (W)
+92,8600,722.6075,18,TabPFN v2,Device power (W)
+93,8800,724.13,18,TabPFN v2,Device power (W)
+94,9000,718.9025,18,TabPFN v2,Device power (W)
+95,9200,721.3175,18,TabPFN v2,Device power (W)
+96,9400,728.24,18,TabPFN v2,Device power (W)
+97,9600,726.755,18,TabPFN v2,Device power (W)
+98,9800,717.04,18,TabPFN v2,Device power (W)
+99,10000,720.73,18,TabPFN v2,Device power (W)
+100,200,681.52,21,TabPFN v2.6,Device power (W)
+101,400,693.72,21,TabPFN v2.6,Device power (W)
+102,600,648.925,21,TabPFN v2.6,Device power (W)
+103,800,692.81,21,TabPFN v2.6,Device power (W)
+104,1000,656.09,21,TabPFN v2.6,Device power (W)
+105,1200,707.78,21,TabPFN v2.6,Device power (W)
+106,1400,676.64,21,TabPFN v2.6,Device power (W)
+107,1600,689.94,21,TabPFN v2.6,Device power (W)
+108,1800,670.09,21,TabPFN v2.6,Device power (W)
+109,2000,643.31,21,TabPFN v2.6,Device power (W)
+110,2200,650.14,21,TabPFN v2.6,Device power (W)
+111,2400,653.54,21,TabPFN v2.6,Device power (W)
+112,2600,679.12,20,TabPFN v2.6,Device power (W)
+113,2800,671.005,21,TabPFN v2.6,Device power (W)
+114,3000,674.17,21,TabPFN v2.6,Device power (W)
+115,3200,652.87,21,TabPFN v2.6,Device power (W)
+116,3400,673.47,21,TabPFN v2.6,Device power (W)
+117,3600,665.57,21,TabPFN v2.6,Device power (W)
+118,3800,653.64,21,TabPFN v2.6,Device power (W)
+119,4000,677.04,21,TabPFN v2.6,Device power (W)
+120,4200,658.34,21,TabPFN v2.6,Device power (W)
+121,4400,679.27,21,TabPFN v2.6,Device power (W)
+122,4600,678.2,21,TabPFN v2.6,Device power (W)
+123,4800,672.32,21,TabPFN v2.6,Device power (W)
+124,5000,685.95,21,TabPFN v2.6,Device power (W)
+125,5200,643.43,21,TabPFN v2.6,Device power (W)
+126,5400,657.57,21,TabPFN v2.6,Device power (W)
+127,5600,672.87,21,TabPFN v2.6,Device power (W)
+128,5800,672.44,21,TabPFN v2.6,Device power (W)
+129,6000,682.09,21,TabPFN v2.6,Device power (W)
+130,6200,682.7,21,TabPFN v2.6,Device power (W)
+131,6400,680.295,21,TabPFN v2.6,Device power (W)
+132,6600,652.37,21,TabPFN v2.6,Device power (W)
+133,6800,655.23,21,TabPFN v2.6,Device power (W)
+134,7000,661.69,21,TabPFN v2.6,Device power (W)
+135,7200,653.35,21,TabPFN v2.6,Device power (W)
+136,7400,680.41,21,TabPFN v2.6,Device power (W)
+137,7600,649.275,21,TabPFN v2.6,Device power (W)
+138,7800,660.08,21,TabPFN v2.6,Device power (W)
+139,8000,664.26,21,TabPFN v2.6,Device power (W)
+140,8200,681.21,21,TabPFN v2.6,Device power (W)
+141,8400,667.74,21,TabPFN v2.6,Device power (W)
+142,8600,681.01,21,TabPFN v2.6,Device power (W)
+143,8800,664.25,21,TabPFN v2.6,Device power (W)
+144,9000,665.655,21,TabPFN v2.6,Device power (W)
+145,9200,666.62,21,TabPFN v2.6,Device power (W)
+146,9400,670.715,21,TabPFN v2.6,Device power (W)
+147,9600,671.43,21,TabPFN v2.6,Device power (W)
+148,9800,655.14,21,TabPFN v2.6,Device power (W)
+149,10000,664.37,21,TabPFN v2.6,Device power (W)
+150,200,460.675,18,TabPFN v3,Device power (W)
+151,400,396.8775,18,TabPFN v3,Device power (W)
+152,600,413.98,18,TabPFN v3,Device power (W)
+153,800,449.9675,18,TabPFN v3,Device power (W)
+154,1000,430.9175,18,TabPFN v3,Device power (W)
+155,1200,449.02,18,TabPFN v3,Device power (W)
+156,1400,433.61,18,TabPFN v3,Device power (W)
+157,1600,438.1875,18,TabPFN v3,Device power (W)
+158,1800,428.275,18,TabPFN v3,Device power (W)
+159,2000,446.7825,18,TabPFN v3,Device power (W)
+160,2200,466.55,18,TabPFN v3,Device power (W)
+161,2400,443.3775,18,TabPFN v3,Device power (W)
+162,2600,513.915,15,TabPFN v3,Device power (W)
+163,2800,423.025,18,TabPFN v3,Device power (W)
+164,3000,424.0125,18,TabPFN v3,Device power (W)
+165,3200,427.775,18,TabPFN v3,Device power (W)
+166,3400,439.305,18,TabPFN v3,Device power (W)
+167,3600,409.51,18,TabPFN v3,Device power (W)
+168,3800,462.44,18,TabPFN v3,Device power (W)
+169,4000,399.2875,18,TabPFN v3,Device power (W)
+170,4200,455.3325,18,TabPFN v3,Device power (W)
+171,4400,432.5925,18,TabPFN v3,Device power (W)
+172,4600,397.25,18,TabPFN v3,Device power (W)
+173,4800,450.31,18,TabPFN v3,Device power (W)
+174,5000,452.29,18,TabPFN v3,Device power (W)
+175,5200,421.2525,18,TabPFN v3,Device power (W)
+176,5400,432.7475,18,TabPFN v3,Device power (W)
+177,5600,437.9125,18,TabPFN v3,Device power (W)
+178,5800,419.0825,18,TabPFN v3,Device power (W)
+179,6000,442.16,18,TabPFN v3,Device power (W)
+180,6200,432.5,18,TabPFN v3,Device power (W)
+181,6400,405.815,18,TabPFN v3,Device power (W)
+182,6600,401.8625,18,TabPFN v3,Device power (W)
+183,6800,423.15,18,TabPFN v3,Device power (W)
+184,7000,433.595,18,TabPFN v3,Device power (W)
+185,7200,430.4425,18,TabPFN v3,Device power (W)
+186,7400,421.1825,18,TabPFN v3,Device power (W)
+187,7600,424.42,18,TabPFN v3,Device power (W)
+188,7800,426.96,18,TabPFN v3,Device power (W)
+189,8000,436.7075,18,TabPFN v3,Device power (W)
+190,8200,387.79,18,TabPFN v3,Device power (W)
+191,8400,420.47,18,TabPFN v3,Device power (W)
+192,8600,398.695,18,TabPFN v3,Device power (W)
+193,8800,436.355,18,TabPFN v3,Device power (W)
+194,9000,437.9,18,TabPFN v3,Device power (W)
+195,9200,412.4775,18,TabPFN v3,Device power (W)
+196,9400,415.4275,18,TabPFN v3,Device power (W)
+197,9600,415.885,18,TabPFN v3,Device power (W)
+198,9800,403.0775,18,TabPFN v3,Device power (W)
+199,10000,410.635,18,TabPFN v3,Device power (W)
 
 Figure: lgd_resource_dashboard_lgd_device_memory_used_mib
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,11481,64,TabICLv2
-1,400,11500,64,TabICLv2
-2,600,11501,64,TabICLv2
-3,800,11502,60,TabICLv2
-4,1000,11500,63,TabICLv2
-5,1200,11502,63,TabICLv2
-6,1400,11492,64,TabICLv2
-7,1600,11502,62,TabICLv2
-8,1800,11502,62,TabICLv2
-9,2000,11492,64,TabICLv2
-10,2200,11502,61,TabICLv2
-11,2400,11502,62,TabICLv2
-12,2600,11502,62,TabICLv2
-13,2800,11502,63,TabICLv2
-14,3000,11492,64,TabICLv2
-15,3200,11502,62,TabICLv2
-16,3400,11492,64,TabICLv2
-17,3600,11502,63,TabICLv2
-18,3800,11502,61,TabICLv2
-19,4000,11502,62,TabICLv2
-20,4200,11502,61,TabICLv2
-21,4400,11492,64,TabICLv2
-22,4600,11492,64,TabICLv2
-23,4800,11502,62,TabICLv2
-24,5000,11502,63,TabICLv2
-25,5200,11502,62,TabICLv2
-26,5400,11562,62,TabICLv2
-27,5600,11562,63,TabICLv2
-28,5800,11532,64,TabICLv2
-29,6000,11532,64,TabICLv2
-30,6200,11532,64,TabICLv2
-31,6400,11562,61,TabICLv2
-32,6600,11562,61,TabICLv2
-33,6800,11562,62,TabICLv2
-34,7000,11532,64,TabICLv2
-35,7200,11532,64,TabICLv2
-36,7400,11562,63,TabICLv2
-37,7600,11532,64,TabICLv2
-38,7800,11562,62,TabICLv2
-39,8000,11562,63,TabICLv2
-40,8200,11562,62,TabICLv2
-41,8400,11562,62,TabICLv2
-42,8600,11562,62,TabICLv2
-43,8800,11532,64,TabICLv2
-44,9000,11562,63,TabICLv2
-45,9200,11562,62,TabICLv2
-46,9400,11532,64,TabICLv2
-47,9600,11562,63,TabICLv2
-48,9800,11562,63,TabICLv2
-49,10000,11502,63,TabICLv2
-50,200,58724,64,TabPFN v2
-51,400,58724,64,TabPFN v2
-52,600,58724,64,TabPFN v2
-53,800,58724,64,TabPFN v2
-54,1000,58724,64,TabPFN v2
-55,1200,58724,64,TabPFN v2
-56,1400,58724,64,TabPFN v2
-57,1600,58724,64,TabPFN v2
-58,1800,58724,64,TabPFN v2
-59,2000,58724,64,TabPFN v2
-60,2200,58724,64,TabPFN v2
-61,2400,58724,64,TabPFN v2
-62,2600,69946,59,TabPFN v2
-63,2800,58724,64,TabPFN v2
-64,3000,58724,64,TabPFN v2
-65,3200,58724,64,TabPFN v2
-66,3400,58724,64,TabPFN v2
-67,3600,58724,64,TabPFN v2
-68,3800,58724,64,TabPFN v2
-69,4000,58724,64,TabPFN v2
-70,4200,58724,64,TabPFN v2
-71,4400,58724,64,TabPFN v2
-72,4600,58724,64,TabPFN v2
-73,4800,58724,64,TabPFN v2
-74,5000,58724,64,TabPFN v2
-75,5200,58724,64,TabPFN v2
-76,5400,58724,64,TabPFN v2
-77,5600,58724,64,TabPFN v2
-78,5800,58724,64,TabPFN v2
-79,6000,58724,64,TabPFN v2
-80,6200,58724,64,TabPFN v2
-81,6400,58724,64,TabPFN v2
-82,6600,58724,64,TabPFN v2
-83,6800,58724,64,TabPFN v2
-84,7000,58724,64,TabPFN v2
-85,7200,58724,64,TabPFN v2
-86,7400,58724,64,TabPFN v2
-87,7600,58724,64,TabPFN v2
-88,7800,58724,64,TabPFN v2
-89,8000,58724,64,TabPFN v2
-90,8200,58724,64,TabPFN v2
-91,8400,58724,64,TabPFN v2
-92,8600,58724,64,TabPFN v2
-93,8800,58724,64,TabPFN v2
-94,9000,58724,64,TabPFN v2
-95,9200,58724,64,TabPFN v2
-96,9400,58724,64,TabPFN v2
-97,9600,58724,64,TabPFN v2
-98,9800,58724,64,TabPFN v2
-99,10000,58724,64,TabPFN v2
-100,200,63434,64,TabPFN v2.6
-101,400,63434,64,TabPFN v2.6
-102,600,63435,64,TabPFN v2.6
-103,800,63435,64,TabPFN v2.6
-104,1000,63435,64,TabPFN v2.6
-105,1200,63435,64,TabPFN v2.6
-106,1400,63435,64,TabPFN v2.6
-107,1600,63435,64,TabPFN v2.6
-108,1800,63435,64,TabPFN v2.6
-109,2000,63435,64,TabPFN v2.6
-110,2200,63435,64,TabPFN v2.6
-111,2400,63435,64,TabPFN v2.6
-112,2600,70332,61,TabPFN v2.6
-113,2800,63435,64,TabPFN v2.6
-114,3000,63435,64,TabPFN v2.6
-115,3200,63435,64,TabPFN v2.6
-116,3400,63435,64,TabPFN v2.6
-117,3600,63435,64,TabPFN v2.6
-118,3800,63435,64,TabPFN v2.6
-119,4000,63435,64,TabPFN v2.6
-120,4200,63435,64,TabPFN v2.6
-121,4400,63435,64,TabPFN v2.6
-122,4600,63435,64,TabPFN v2.6
-123,4800,63435,64,TabPFN v2.6
-124,5000,63435,64,TabPFN v2.6
-125,5200,63435,64,TabPFN v2.6
-126,5400,63435,64,TabPFN v2.6
-127,5600,63435,64,TabPFN v2.6
-128,5800,63435,64,TabPFN v2.6
-129,6000,63435,64,TabPFN v2.6
-130,6200,63435,64,TabPFN v2.6
-131,6400,63435,64,TabPFN v2.6
-132,6600,63435,64,TabPFN v2.6
-133,6800,63435,64,TabPFN v2.6
-134,7000,63435,64,TabPFN v2.6
-135,7200,63435,64,TabPFN v2.6
-136,7400,63435,64,TabPFN v2.6
-137,7600,63435,64,TabPFN v2.6
-138,7800,63435,64,TabPFN v2.6
-139,8000,63435,64,TabPFN v2.6
-140,8200,63435,64,TabPFN v2.6
-141,8400,63435,64,TabPFN v2.6
-142,8600,63435,64,TabPFN v2.6
-143,8800,63435,64,TabPFN v2.6
-144,9000,63435,64,TabPFN v2.6
-145,9200,63435,64,TabPFN v2.6
-146,9400,63435,64,TabPFN v2.6
-147,9600,63435,64,TabPFN v2.6
-148,9800,63435,64,TabPFN v2.6
-149,10000,63435,64,TabPFN v2.6
-150,200,35764,64,TabPFN v3
-151,400,35764,64,TabPFN v3
-152,600,35764,64,TabPFN v3
-153,800,35764,64,TabPFN v3
-154,1000,35764,64,TabPFN v3
-155,1200,35764,64,TabPFN v3
-156,1400,35764,64,TabPFN v3
-157,1600,35764,64,TabPFN v3
-158,1800,35764,64,TabPFN v3
-159,2000,35764,64,TabPFN v3
-160,2200,35764,64,TabPFN v3
-161,2400,35764,64,TabPFN v3
-162,2600,35764,61,TabPFN v3
-163,2800,35764,64,TabPFN v3
-164,3000,35764,64,TabPFN v3
-165,3200,35764,64,TabPFN v3
-166,3400,35764,64,TabPFN v3
-167,3600,35764,64,TabPFN v3
-168,3800,35764,64,TabPFN v3
-169,4000,35764,64,TabPFN v3
-170,4200,35764,64,TabPFN v3
-171,4400,35764,64,TabPFN v3
-172,4600,35764,64,TabPFN v3
-173,4800,35764,64,TabPFN v3
-174,5000,35764,64,TabPFN v3
-175,5200,35764,64,TabPFN v3
-176,5400,35764,64,TabPFN v3
-177,5600,35764,64,TabPFN v3
-178,5800,35764,64,TabPFN v3
-179,6000,35764,64,TabPFN v3
-180,6200,35764,64,TabPFN v3
-181,6400,35764,64,TabPFN v3
-182,6600,35764,64,TabPFN v3
-183,6800,35764,64,TabPFN v3
-184,7000,35764,64,TabPFN v3
-185,7200,35764,64,TabPFN v3
-186,7400,35764,64,TabPFN v3
-187,7600,35764,64,TabPFN v3
-188,7800,35764,64,TabPFN v3
-189,8000,35764,64,TabPFN v3
-190,8200,35764,64,TabPFN v3
-191,8400,35764,64,TabPFN v3
-192,8600,35764,64,TabPFN v3
-193,8800,35764,64,TabPFN v3
-194,9000,35764,64,TabPFN v3
-195,9200,35764,64,TabPFN v3
-196,9400,35764,64,TabPFN v3
-197,9600,35764,64,TabPFN v3
-198,9800,35764,64,TabPFN v3
-199,10000,35764,64,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,11.211914,64,TabICLv2,Device memory (GiB)
+1,400,11.230469,64,TabICLv2,Device memory (GiB)
+2,600,11.231445,64,TabICLv2,Device memory (GiB)
+3,800,11.232422,60,TabICLv2,Device memory (GiB)
+4,1000,11.230469,63,TabICLv2,Device memory (GiB)
+5,1200,11.232422,63,TabICLv2,Device memory (GiB)
+6,1400,11.222656,64,TabICLv2,Device memory (GiB)
+7,1600,11.232422,62,TabICLv2,Device memory (GiB)
+8,1800,11.232422,62,TabICLv2,Device memory (GiB)
+9,2000,11.222656,64,TabICLv2,Device memory (GiB)
+10,2200,11.232422,61,TabICLv2,Device memory (GiB)
+11,2400,11.232422,62,TabICLv2,Device memory (GiB)
+12,2600,11.232422,62,TabICLv2,Device memory (GiB)
+13,2800,11.232422,63,TabICLv2,Device memory (GiB)
+14,3000,11.222656,64,TabICLv2,Device memory (GiB)
+15,3200,11.232422,62,TabICLv2,Device memory (GiB)
+16,3400,11.222656,64,TabICLv2,Device memory (GiB)
+17,3600,11.232422,63,TabICLv2,Device memory (GiB)
+18,3800,11.232422,61,TabICLv2,Device memory (GiB)
+19,4000,11.232422,62,TabICLv2,Device memory (GiB)
+20,4200,11.232422,61,TabICLv2,Device memory (GiB)
+21,4400,11.222656,64,TabICLv2,Device memory (GiB)
+22,4600,11.222656,64,TabICLv2,Device memory (GiB)
+23,4800,11.232422,62,TabICLv2,Device memory (GiB)
+24,5000,11.232422,63,TabICLv2,Device memory (GiB)
+25,5200,11.232422,62,TabICLv2,Device memory (GiB)
+26,5400,11.291016,62,TabICLv2,Device memory (GiB)
+27,5600,11.291016,63,TabICLv2,Device memory (GiB)
+28,5800,11.261719,64,TabICLv2,Device memory (GiB)
+29,6000,11.261719,64,TabICLv2,Device memory (GiB)
+30,6200,11.261719,64,TabICLv2,Device memory (GiB)
+31,6400,11.291016,61,TabICLv2,Device memory (GiB)
+32,6600,11.291016,61,TabICLv2,Device memory (GiB)
+33,6800,11.291016,62,TabICLv2,Device memory (GiB)
+34,7000,11.261719,64,TabICLv2,Device memory (GiB)
+35,7200,11.261719,64,TabICLv2,Device memory (GiB)
+36,7400,11.291016,63,TabICLv2,Device memory (GiB)
+37,7600,11.261719,64,TabICLv2,Device memory (GiB)
+38,7800,11.291016,62,TabICLv2,Device memory (GiB)
+39,8000,11.291016,63,TabICLv2,Device memory (GiB)
+40,8200,11.291016,62,TabICLv2,Device memory (GiB)
+41,8400,11.291016,62,TabICLv2,Device memory (GiB)
+42,8600,11.291016,62,TabICLv2,Device memory (GiB)
+43,8800,11.261719,64,TabICLv2,Device memory (GiB)
+44,9000,11.291016,63,TabICLv2,Device memory (GiB)
+45,9200,11.291016,62,TabICLv2,Device memory (GiB)
+46,9400,11.261719,64,TabICLv2,Device memory (GiB)
+47,9600,11.291016,63,TabICLv2,Device memory (GiB)
+48,9800,11.291016,63,TabICLv2,Device memory (GiB)
+49,10000,11.232422,63,TabICLv2,Device memory (GiB)
+50,200,57.347656,64,TabPFN v2,Device memory (GiB)
+51,400,57.347656,64,TabPFN v2,Device memory (GiB)
+52,600,57.347656,64,TabPFN v2,Device memory (GiB)
+53,800,57.347656,64,TabPFN v2,Device memory (GiB)
+54,1000,57.347656,64,TabPFN v2,Device memory (GiB)
+55,1200,57.347656,64,TabPFN v2,Device memory (GiB)
+56,1400,57.347656,64,TabPFN v2,Device memory (GiB)
+57,1600,57.347656,64,TabPFN v2,Device memory (GiB)
+58,1800,57.347656,64,TabPFN v2,Device memory (GiB)
+59,2000,57.347656,64,TabPFN v2,Device memory (GiB)
+60,2200,57.347656,64,TabPFN v2,Device memory (GiB)
+61,2400,57.347656,64,TabPFN v2,Device memory (GiB)
+62,2600,68.306641,59,TabPFN v2,Device memory (GiB)
+63,2800,57.347656,64,TabPFN v2,Device memory (GiB)
+64,3000,57.347656,64,TabPFN v2,Device memory (GiB)
+65,3200,57.347656,64,TabPFN v2,Device memory (GiB)
+66,3400,57.347656,64,TabPFN v2,Device memory (GiB)
+67,3600,57.347656,64,TabPFN v2,Device memory (GiB)
+68,3800,57.347656,64,TabPFN v2,Device memory (GiB)
+69,4000,57.347656,64,TabPFN v2,Device memory (GiB)
+70,4200,57.347656,64,TabPFN v2,Device memory (GiB)
+71,4400,57.347656,64,TabPFN v2,Device memory (GiB)
+72,4600,57.347656,64,TabPFN v2,Device memory (GiB)
+73,4800,57.347656,64,TabPFN v2,Device memory (GiB)
+74,5000,57.347656,64,TabPFN v2,Device memory (GiB)
+75,5200,57.347656,64,TabPFN v2,Device memory (GiB)
+76,5400,57.347656,64,TabPFN v2,Device memory (GiB)
+77,5600,57.347656,64,TabPFN v2,Device memory (GiB)
+78,5800,57.347656,64,TabPFN v2,Device memory (GiB)
+79,6000,57.347656,64,TabPFN v2,Device memory (GiB)
+80,6200,57.347656,64,TabPFN v2,Device memory (GiB)
+81,6400,57.347656,64,TabPFN v2,Device memory (GiB)
+82,6600,57.347656,64,TabPFN v2,Device memory (GiB)
+83,6800,57.347656,64,TabPFN v2,Device memory (GiB)
+84,7000,57.347656,64,TabPFN v2,Device memory (GiB)
+85,7200,57.347656,64,TabPFN v2,Device memory (GiB)
+86,7400,57.347656,64,TabPFN v2,Device memory (GiB)
+87,7600,57.347656,64,TabPFN v2,Device memory (GiB)
+88,7800,57.347656,64,TabPFN v2,Device memory (GiB)
+89,8000,57.347656,64,TabPFN v2,Device memory (GiB)
+90,8200,57.347656,64,TabPFN v2,Device memory (GiB)
+91,8400,57.347656,64,TabPFN v2,Device memory (GiB)
+92,8600,57.347656,64,TabPFN v2,Device memory (GiB)
+93,8800,57.347656,64,TabPFN v2,Device memory (GiB)
+94,9000,57.347656,64,TabPFN v2,Device memory (GiB)
+95,9200,57.347656,64,TabPFN v2,Device memory (GiB)
+96,9400,57.347656,64,TabPFN v2,Device memory (GiB)
+97,9600,57.347656,64,TabPFN v2,Device memory (GiB)
+98,9800,57.347656,64,TabPFN v2,Device memory (GiB)
+99,10000,57.347656,64,TabPFN v2,Device memory (GiB)
+100,200,61.947266,64,TabPFN v2.6,Device memory (GiB)
+101,400,61.947266,64,TabPFN v2.6,Device memory (GiB)
+102,600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+103,800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+104,1000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+105,1200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+106,1400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+107,1600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+108,1800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+109,2000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+110,2200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+111,2400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+112,2600,68.683594,61,TabPFN v2.6,Device memory (GiB)
+113,2800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+114,3000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+115,3200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+116,3400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+117,3600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+118,3800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+119,4000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+120,4200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+121,4400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+122,4600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+123,4800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+124,5000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+125,5200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+126,5400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+127,5600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+128,5800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+129,6000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+130,6200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+131,6400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+132,6600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+133,6800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+134,7000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+135,7200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+136,7400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+137,7600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+138,7800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+139,8000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+140,8200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+141,8400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+142,8600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+143,8800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+144,9000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+145,9200,61.948242,64,TabPFN v2.6,Device memory (GiB)
+146,9400,61.948242,64,TabPFN v2.6,Device memory (GiB)
+147,9600,61.948242,64,TabPFN v2.6,Device memory (GiB)
+148,9800,61.948242,64,TabPFN v2.6,Device memory (GiB)
+149,10000,61.948242,64,TabPFN v2.6,Device memory (GiB)
+150,200,34.925781,64,TabPFN v3,Device memory (GiB)
+151,400,34.925781,64,TabPFN v3,Device memory (GiB)
+152,600,34.925781,64,TabPFN v3,Device memory (GiB)
+153,800,34.925781,64,TabPFN v3,Device memory (GiB)
+154,1000,34.925781,64,TabPFN v3,Device memory (GiB)
+155,1200,34.925781,64,TabPFN v3,Device memory (GiB)
+156,1400,34.925781,64,TabPFN v3,Device memory (GiB)
+157,1600,34.925781,64,TabPFN v3,Device memory (GiB)
+158,1800,34.925781,64,TabPFN v3,Device memory (GiB)
+159,2000,34.925781,64,TabPFN v3,Device memory (GiB)
+160,2200,34.925781,64,TabPFN v3,Device memory (GiB)
+161,2400,34.925781,64,TabPFN v3,Device memory (GiB)
+162,2600,34.925781,61,TabPFN v3,Device memory (GiB)
+163,2800,34.925781,64,TabPFN v3,Device memory (GiB)
+164,3000,34.925781,64,TabPFN v3,Device memory (GiB)
+165,3200,34.925781,64,TabPFN v3,Device memory (GiB)
+166,3400,34.925781,64,TabPFN v3,Device memory (GiB)
+167,3600,34.925781,64,TabPFN v3,Device memory (GiB)
+168,3800,34.925781,64,TabPFN v3,Device memory (GiB)
+169,4000,34.925781,64,TabPFN v3,Device memory (GiB)
+170,4200,34.925781,64,TabPFN v3,Device memory (GiB)
+171,4400,34.925781,64,TabPFN v3,Device memory (GiB)
+172,4600,34.925781,64,TabPFN v3,Device memory (GiB)
+173,4800,34.925781,64,TabPFN v3,Device memory (GiB)
+174,5000,34.925781,64,TabPFN v3,Device memory (GiB)
+175,5200,34.925781,64,TabPFN v3,Device memory (GiB)
+176,5400,34.925781,64,TabPFN v3,Device memory (GiB)
+177,5600,34.925781,64,TabPFN v3,Device memory (GiB)
+178,5800,34.925781,64,TabPFN v3,Device memory (GiB)
+179,6000,34.925781,64,TabPFN v3,Device memory (GiB)
+180,6200,34.925781,64,TabPFN v3,Device memory (GiB)
+181,6400,34.925781,64,TabPFN v3,Device memory (GiB)
+182,6600,34.925781,64,TabPFN v3,Device memory (GiB)
+183,6800,34.925781,64,TabPFN v3,Device memory (GiB)
+184,7000,34.925781,64,TabPFN v3,Device memory (GiB)
+185,7200,34.925781,64,TabPFN v3,Device memory (GiB)
+186,7400,34.925781,64,TabPFN v3,Device memory (GiB)
+187,7600,34.925781,64,TabPFN v3,Device memory (GiB)
+188,7800,34.925781,64,TabPFN v3,Device memory (GiB)
+189,8000,34.925781,64,TabPFN v3,Device memory (GiB)
+190,8200,34.925781,64,TabPFN v3,Device memory (GiB)
+191,8400,34.925781,64,TabPFN v3,Device memory (GiB)
+192,8600,34.925781,64,TabPFN v3,Device memory (GiB)
+193,8800,34.925781,64,TabPFN v3,Device memory (GiB)
+194,9000,34.925781,64,TabPFN v3,Device memory (GiB)
+195,9200,34.925781,64,TabPFN v3,Device memory (GiB)
+196,9400,34.925781,64,TabPFN v3,Device memory (GiB)
+197,9600,34.925781,64,TabPFN v3,Device memory (GiB)
+198,9800,34.925781,64,TabPFN v3,Device memory (GiB)
+199,10000,34.925781,64,TabPFN v3,Device memory (GiB)
 
 Table: Trial costs and numerical diagnostics
 CSV (first column: row index)
@@ -60455,7 +60455,7 @@ Experiment 1: PD outcomes and evaluation
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:45:06+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Evidence and benchmark eligibility
@@ -64452,1142 +64452,1070 @@ Myhom,0.00014113275,-0.0007766532,0.00027448206,0.00078484018
 PropPD1,0.0044429052,0.005113006,-0.0011122751,0.0014604888
 PropPD2,-0.0013639908,0.0039211738,-0.0011135255,0.00012808349
 
-Figure: pd_reliability_tabicl-v2_raw_1
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_tabicl-v2_1
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20642,673.30544,632,0.032618227,0.030617188,Credit Risk,Adapted reference
-1,1,3966,558.85211,537,0.14091077,0.13540091,Credit Risk,Adapted reference
-2,2,1475,356.84025,353,0.24192559,0.23932203,Credit Risk,Adapted reference
-3,3,679,234.28652,231,0.34504642,0.34020619,Credit Risk,Adapted reference
-4,4,366,163.28101,160,0.44612297,0.43715847,Credit Risk,Adapted reference
-5,5,249,137.0203,140,0.55028234,0.562249,Credit Risk,Adapted reference
-6,6,227,147.20731,159,0.64849037,0.70044053,Credit Risk,Adapted reference
-7,7,240,180.72127,187,0.75300531,0.77916667,Credit Risk,Adapted reference
-8,8,435,372.49112,415,0.85630142,0.95402299,Credit Risk,Adapted reference
-9,9,4302,4233.5677,4294,0.98409292,0.9981404,Credit Risk,Adapted reference
-10,0,22383,572.82407,759,0.025591925,0.033909664,Credit Risk,Untuned
-11,1,3001,419.22758,470,0.13969596,0.15661446,Credit Risk,Untuned
-12,2,1034,251.44302,291,0.24317507,0.28143133,Credit Risk,Untuned
-13,3,460,159.37619,171,0.34646997,0.37173913,Credit Risk,Untuned
-14,4,262,117.11551,138,0.44700577,0.52671756,Credit Risk,Untuned
-15,5,187,102.21952,115,0.54662847,0.61497326,Credit Risk,Untuned
-16,6,135,87.073798,99,0.6449911,0.73333333,Credit Risk,Untuned
-17,7,138,103.51781,106,0.75012908,0.76811594,Credit Risk,Untuned
-18,8,177,150.78493,163,0.85189226,0.92090395,Credit Risk,Untuned
-19,9,4804,4781.7966,4796,0.99537815,0.99833472,Credit Risk,Untuned
-20,0,323770,12226.28,10014,0.037762237,0.030929363,Hackerearth,Adapted reference
-21,1,63570,8885.4818,8540,0.13977477,0.1343401,Hackerearth,Adapted reference
-22,2,23363,5694.5515,6393,0.24374231,0.2736378,Hackerearth,Adapted reference
-23,3,11910,4108.9382,5058,0.34499901,0.42468514,Hackerearth,Adapted reference
-24,4,7353,3291.3153,4251,0.4476153,0.57813137,Hackerearth,Adapted reference
-25,5,6304,3467.2448,4338,0.55000711,0.68813452,Hackerearth,Adapted reference
-26,6,6760,4407.4081,5108,0.65198345,0.7556213,Hackerearth,Adapted reference
-27,7,9647,7273.9591,7833,0.75401255,0.81196227,Hackerearth,Adapted reference
-28,8,19751,16941.659,17019,0.85776208,0.86167789,Hackerearth,Adapted reference
-29,9,60000,57789.792,57273,0.9631632,0.95455,Hackerearth,Adapted reference
-30,0,357871,8345.3812,10226,0.023319524,0.028574542,Hackerearth,Untuned
-31,1,33418,4713.687,5595,0.14105234,0.16742474,Hackerearth,Untuned
-32,2,14646,3580.1118,4150,0.24444298,0.28335382,Hackerearth,Untuned
-33,3,8569,2963.8269,3432,0.3458778,0.40051348,Hackerearth,Untuned
-34,4,6095,2730.6097,3175,0.44800815,0.52091879,Hackerearth,Untuned
-35,5,4882,2682.921,2976,0.54955367,0.60958624,Hackerearth,Untuned
-36,6,5545,3610.561,3754,0.65113815,0.67700631,Hackerearth,Untuned
-37,7,7814,5897.2058,5921,0.75469744,0.75774251,Hackerearth,Untuned
-38,8,17528,15057.172,14483,0.85903536,0.82627796,Hackerearth,Untuned
-39,9,76060,73476.182,72115,0.96602921,0.94813305,Hackerearth,Untuned
-40,1,135,24.701931,31,0.18297726,0.22962963,Myhom,Adapted reference
-41,2,1166,303.53287,337,0.26031979,0.2890223,Myhom,Adapted reference
-42,3,2281,806.26387,796,0.35346947,0.34896975,Myhom,Adapted reference
-43,4,2804,1256.5037,1344,0.44811117,0.47931526,Myhom,Adapted reference
-44,5,610,320.55754,290,0.52550416,0.47540984,Myhom,Adapted reference
-45,6,4,2.4171969,2,0.60429923,0.5,Myhom,Adapted reference
-46,0,447,22.784933,173,0.050973004,0.38702461,Myhom,Untuned
-47,1,311,49.354406,103,0.15869584,0.33118971,Myhom,Untuned
-48,2,1143,293.77228,337,0.25701862,0.29483815,Myhom,Untuned
-49,3,1850,653.47276,673,0.35322852,0.36378378,Myhom,Untuned
-50,4,1947,868.11822,891,0.44587479,0.45762712,Myhom,Untuned
-51,5,667,362.96229,323,0.54417135,0.48425787,Myhom,Untuned
-52,6,321,206.75195,148,0.64408706,0.46105919,Myhom,Untuned
-53,7,214,159.94568,104,0.74740971,0.48598131,Myhom,Untuned
-54,8,98,81.729088,47,0.83397028,0.47959184,Myhom,Untuned
-55,9,2,1.8120856,1,0.90604281,0.5,Myhom,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,20642,673.30544,632,0.032618227,0.030617188,Credit Risk,Adapted reference,raw
+1,1,3966,558.85211,537,0.14091077,0.13540091,Credit Risk,Adapted reference,raw
+2,2,1475,356.84025,353,0.24192559,0.23932203,Credit Risk,Adapted reference,raw
+3,3,679,234.28652,231,0.34504642,0.34020619,Credit Risk,Adapted reference,raw
+4,4,366,163.28101,160,0.44612297,0.43715847,Credit Risk,Adapted reference,raw
+5,5,249,137.0203,140,0.55028234,0.562249,Credit Risk,Adapted reference,raw
+6,6,227,147.20731,159,0.64849037,0.70044053,Credit Risk,Adapted reference,raw
+7,7,240,180.72127,187,0.75300531,0.77916667,Credit Risk,Adapted reference,raw
+8,8,435,372.49112,415,0.85630142,0.95402299,Credit Risk,Adapted reference,raw
+9,9,4302,4233.5677,4294,0.98409292,0.9981404,Credit Risk,Adapted reference,raw
+10,0,22383,572.82407,759,0.025591925,0.033909664,Credit Risk,Untuned,raw
+11,1,3001,419.22758,470,0.13969596,0.15661446,Credit Risk,Untuned,raw
+12,2,1034,251.44302,291,0.24317507,0.28143133,Credit Risk,Untuned,raw
+13,3,460,159.37619,171,0.34646997,0.37173913,Credit Risk,Untuned,raw
+14,4,262,117.11551,138,0.44700577,0.52671756,Credit Risk,Untuned,raw
+15,5,187,102.21952,115,0.54662847,0.61497326,Credit Risk,Untuned,raw
+16,6,135,87.073798,99,0.6449911,0.73333333,Credit Risk,Untuned,raw
+17,7,138,103.51781,106,0.75012908,0.76811594,Credit Risk,Untuned,raw
+18,8,177,150.78493,163,0.85189226,0.92090395,Credit Risk,Untuned,raw
+19,9,4804,4781.7966,4796,0.99537815,0.99833472,Credit Risk,Untuned,raw
+20,0,323770,12226.28,10014,0.037762237,0.030929363,Hackerearth,Adapted reference,raw
+21,1,63570,8885.4818,8540,0.13977477,0.1343401,Hackerearth,Adapted reference,raw
+22,2,23363,5694.5515,6393,0.24374231,0.2736378,Hackerearth,Adapted reference,raw
+23,3,11910,4108.9382,5058,0.34499901,0.42468514,Hackerearth,Adapted reference,raw
+24,4,7353,3291.3153,4251,0.4476153,0.57813137,Hackerearth,Adapted reference,raw
+25,5,6304,3467.2448,4338,0.55000711,0.68813452,Hackerearth,Adapted reference,raw
+26,6,6760,4407.4081,5108,0.65198345,0.7556213,Hackerearth,Adapted reference,raw
+27,7,9647,7273.9591,7833,0.75401255,0.81196227,Hackerearth,Adapted reference,raw
+28,8,19751,16941.659,17019,0.85776208,0.86167789,Hackerearth,Adapted reference,raw
+29,9,60000,57789.792,57273,0.9631632,0.95455,Hackerearth,Adapted reference,raw
+30,0,357871,8345.3812,10226,0.023319524,0.028574542,Hackerearth,Untuned,raw
+31,1,33418,4713.687,5595,0.14105234,0.16742474,Hackerearth,Untuned,raw
+32,2,14646,3580.1118,4150,0.24444298,0.28335382,Hackerearth,Untuned,raw
+33,3,8569,2963.8269,3432,0.3458778,0.40051348,Hackerearth,Untuned,raw
+34,4,6095,2730.6097,3175,0.44800815,0.52091879,Hackerearth,Untuned,raw
+35,5,4882,2682.921,2976,0.54955367,0.60958624,Hackerearth,Untuned,raw
+36,6,5545,3610.561,3754,0.65113815,0.67700631,Hackerearth,Untuned,raw
+37,7,7814,5897.2058,5921,0.75469744,0.75774251,Hackerearth,Untuned,raw
+38,8,17528,15057.172,14483,0.85903536,0.82627796,Hackerearth,Untuned,raw
+39,9,76060,73476.182,72115,0.96602921,0.94813305,Hackerearth,Untuned,raw
+40,0,20883,605.17035,663,0.028979091,0.031748312,Credit Risk,Adapted reference,Platt
+41,1,3518,497.78882,466,0.14149768,0.13246163,Credit Risk,Adapted reference,Platt
+42,2,1443,351.77478,333,0.24378017,0.23076923,Credit Risk,Adapted reference,Platt
+43,3,681,235.21918,199,0.34540261,0.29221733,Credit Risk,Adapted reference,Platt
+44,4,425,189.39266,177,0.44562979,0.41647059,Credit Risk,Adapted reference,Platt
+45,5,259,141.51909,120,0.54640575,0.46332046,Credit Risk,Adapted reference,Platt
+46,6,235,152.76685,136,0.65007168,0.5787234,Credit Risk,Adapted reference,Platt
+47,7,231,173.35821,169,0.75046844,0.73160173,Credit Risk,Adapted reference,Platt
+48,8,336,288.10001,287,0.85744052,0.85416667,Credit Risk,Adapted reference,Platt
+49,9,4570,4513.3011,4558,0.98759324,0.99737418,Credit Risk,Adapted reference,Platt
+50,0,21072,585.96689,597,0.027807844,0.028331435,Credit Risk,Untuned,Platt
+51,1,3563,503.87827,496,0.14141967,0.13920853,Credit Risk,Untuned,Platt
+52,2,1357,330.19032,298,0.24332375,0.21960206,Credit Risk,Untuned,Platt
+53,3,615,210.19196,187,0.34177554,0.30406504,Credit Risk,Untuned,Platt
+54,4,364,161.4737,157,0.44360907,0.43131868,Credit Risk,Untuned,Platt
+55,5,248,135.96108,139,0.54823014,0.56048387,Credit Risk,Untuned,Platt
+56,6,170,110.07608,114,0.64750634,0.67058824,Credit Risk,Untuned,Platt
+57,7,158,118.75281,116,0.75160007,0.73417722,Credit Risk,Untuned,Platt
+58,8,180,153.80597,159,0.85447762,0.88333333,Credit Risk,Untuned,Platt
+59,9,4854,4831.7639,4845,0.99541902,0.99814586,Credit Risk,Untuned,Platt
+60,0,326812,11621.301,10292,0.035559591,0.031492112,Hackerearth,Adapted reference,Platt
+61,1,59279,8302.5034,8009,0.14005809,0.13510687,Hackerearth,Adapted reference,Platt
+62,2,22722,5544.0861,6016,0.2439964,0.26476543,Hackerearth,Adapted reference,Platt
+63,3,11967,4132.6318,4786,0.34533566,0.39993315,Hackerearth,Adapted reference,Platt
+64,4,7414,3317.0929,4057,0.44740934,0.54720798,Hackerearth,Adapted reference,Platt
+65,5,6052,3330.0989,4000,0.55024767,0.66093853,Hackerearth,Adapted reference,Platt
+66,6,6246,4069.3485,4580,0.65151272,0.73326929,Hackerearth,Adapted reference,Platt
+67,7,8424,6348.0475,6697,0.75356689,0.7949905,Hackerearth,Adapted reference,Platt
+68,8,16781,14393.454,14171,0.85772328,0.84446696,Hackerearth,Adapted reference,Platt
+69,9,66731,64476.388,63219,0.96621343,0.94737079,Hackerearth,Adapted reference,Platt
+70,0,345617,9724.2657,8916,0.028135959,0.025797342,Hackerearth,Untuned,Platt
+71,1,41189,5797.4197,5913,0.14075165,0.14355775,Hackerearth,Untuned,Platt
+72,2,17161,4197.3768,4466,0.24458813,0.26024124,Hackerearth,Untuned,Platt
+73,3,9858,3408.8743,3786,0.34579775,0.38405356,Hackerearth,Untuned,Platt
+74,4,6754,3024.9693,3481,0.44787818,0.51539828,Hackerearth,Untuned,Platt
+75,5,5374,2954.2935,3272,0.54973827,0.60885746,Hackerearth,Untuned,Platt
+76,6,6142,4001.297,4261,0.65146483,0.69374796,Hackerearth,Untuned,Platt
+77,7,9064,6845.4218,6941,0.75523189,0.7657767,Hackerearth,Untuned,Platt
+78,8,21255,18258.731,17931,0.85903228,0.84361327,Hackerearth,Untuned,Platt
+79,9,70014,67366.994,66860,0.96219319,0.95495187,Hackerearth,Untuned,Platt
+80,0,19619,495.25535,518,0.025243659,0.026402977,Credit Risk,Adapted reference,isotonic
+81,1,5346,748.04324,726,0.13992578,0.13580247,Credit Risk,Adapted reference,isotonic
+82,2,1066,268.18082,272,0.25157675,0.25515947,Credit Risk,Adapted reference,isotonic
+83,3,841,298.66838,289,0.35513481,0.34363853,Credit Risk,Adapted reference,isotonic
+84,4,234,112.31076,102,0.4799605,0.43589744,Credit Risk,Adapted reference,isotonic
+85,5,189,103.57597,96,0.54802102,0.50793651,Credit Risk,Adapted reference,isotonic
+86,6,164,103.34546,103,0.63015527,0.62804878,Credit Risk,Adapted reference,isotonic
+87,7,130,101.29447,97,0.77918821,0.74615385,Credit Risk,Adapted reference,isotonic
+88,8,301,251.43288,239,0.83532518,0.79401993,Credit Risk,Adapted reference,isotonic
+89,9,4691,4661.3706,4666,0.99368378,0.99467065,Credit Risk,Adapted reference,isotonic
+90,0,20118,470.91966,521,0.023407877,0.025897206,Credit Risk,Untuned,isotonic
+91,1,4486,628.2711,559,0.14005152,0.1246099,Credit Risk,Untuned,isotonic
+92,2,1561,355.57794,377,0.22778856,0.24151185,Credit Risk,Untuned,isotonic
+93,3,546,184.30029,172,0.33754631,0.31501832,Credit Risk,Untuned,isotonic
+94,4,357,158.03865,158,0.44268529,0.44257703,Credit Risk,Untuned,isotonic
+95,5,96,55.201916,53,0.57501996,0.55208333,Credit Risk,Untuned,isotonic
+96,6,71,47.714268,50,0.67203195,0.70422535,Credit Risk,Untuned,isotonic
+97,7,115,85.690119,79,0.74513147,0.68695652,Credit Risk,Untuned,isotonic
+98,8,456,389.82864,371,0.85488736,0.81359649,Credit Risk,Untuned,isotonic
+99,9,4775,4765.8328,4768,0.99808016,0.99853403,Credit Risk,Untuned,isotonic
+100,0,339465,11306.082,11504,0.033305589,0.033888619,Hackerearth,Adapted reference,isotonic
+101,1,43820,6155.9286,6249,0.14048217,0.14260612,Hackerearth,Adapted reference,isotonic
+102,2,20814,5057.0775,5029,0.24296519,0.24161622,Hackerearth,Adapted reference,isotonic
+103,3,11038,3844.8825,3863,0.34833145,0.34997282,Hackerearth,Adapted reference,isotonic
+104,4,7166,3232.0082,3237,0.45101985,0.45171644,Hackerearth,Adapted reference,isotonic
+105,5,5452,3039.5185,2982,0.55750523,0.54695525,Hackerearth,Adapted reference,isotonic
+106,6,6036,3937.3706,3996,0.65231455,0.66202783,Hackerearth,Adapted reference,isotonic
+107,7,12288,9296.2274,9274,0.75652892,0.75472005,Hackerearth,Adapted reference,isotonic
+108,8,33515,28829.677,28847,0.8602022,0.86071908,Hackerearth,Adapted reference,isotonic
+109,9,52834,50844.961,50846,0.96235305,0.96237271,Hackerearth,Adapted reference,isotonic
+110,0,349924,9162.6652,9365,0.026184729,0.026762954,Hackerearth,Untuned,isotonic
+111,1,35105,5088.3357,5124,0.14494618,0.14596211,Hackerearth,Untuned,isotonic
+112,2,17288,4352.1264,4318,0.25174262,0.24976863,Hackerearth,Untuned,isotonic
+113,3,7561,2696.415,2653,0.35662148,0.35087951,Hackerearth,Untuned,isotonic
+114,4,6011,2636.2189,2607,0.43856578,0.43370487,Hackerearth,Untuned,isotonic
+115,5,7180,3901.6183,3983,0.54340088,0.55473538,Hackerearth,Untuned,isotonic
+116,6,6023,3903.9938,3905,0.64818094,0.648348,Hackerearth,Untuned,isotonic
+117,7,12422,9343.0079,9402,0.75213395,0.75688295,Hackerearth,Untuned,isotonic
+118,8,26343,22483.237,22492,0.85348052,0.85381316,Hackerearth,Untuned,isotonic
+119,9,64571,62028.91,61978,0.96063109,0.95984265,Hackerearth,Untuned,isotonic
 
-Figure: pd_reliability_tabicl-v2_raw_2
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_tabicl-v2_2
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,33124,667.57758,853,0.020153894,0.025751721,PropPD1,Adapted reference
-1,1,27657,4210.8573,5376,0.15225286,0.19438117,PropPD1,Adapted reference
-2,2,21372,5215.709,6312,0.24404403,0.2953397,PropPD1,Adapted reference
-3,3,8561,2930.1729,3249,0.34226993,0.37951174,PropPD1,Adapted reference
-4,4,3361,1487.9768,1567,0.44271849,0.46623029,PropPD1,Adapted reference
-5,5,1181,636.90635,622,0.53929411,0.52667231,PropPD1,Adapted reference
-6,6,186,116.78276,107,0.62786428,0.57526882,PropPD1,Adapted reference
-7,7,7,5.0976118,2,0.72823026,0.28571429,PropPD1,Adapted reference
-8,9,4551,4550.0034,4551,0.99978102,1,PropPD1,Adapted reference
-9,0,33296,769.81592,861,0.023120372,0.025858962,PropPD1,Untuned
-10,1,26979,4092.1181,5307,0.1516779,0.19670855,PropPD1,Untuned
-11,2,21141,5178.0217,6161,0.24492795,0.29142425,PropPD1,Untuned
-12,3,9257,3165.3384,3407,0.34193998,0.3680458,PropPD1,Untuned
-13,4,3522,1553.9914,1676,0.44122412,0.47586599,PropPD1,Untuned
-14,5,1108,596.70046,583,0.53853832,0.52617329,PropPD1,Untuned
-15,6,139,87.506722,89,0.62954477,0.64028777,PropPD1,Untuned
-16,7,7,5.0234692,4,0.71763846,0.57142857,PropPD1,Untuned
-17,9,4551,4550.84,4551,0.99996484,1,PropPD1,Untuned
-18,0,73555,4024.6191,5026,0.054715778,0.068329821,PropPD2,Adapted reference
-19,1,31849,4129.1285,4747,0.12964704,0.14904707,PropPD2,Adapted reference
-20,2,67,13.912435,10,0.20764829,0.14925373,PropPD2,Adapted reference
-21,0,73277,3950.2799,4980,0.053908865,0.067961298,PropPD2,Untuned
-22,1,32103,4141.9898,4784,0.12902189,0.14902034,PropPD2,Untuned
-23,2,91,19.017836,19,0.20898721,0.20879121,PropPD2,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,1,135,24.701931,31,0.18297726,0.22962963,Myhom,Adapted reference,raw
+1,2,1166,303.53287,337,0.26031979,0.2890223,Myhom,Adapted reference,raw
+2,3,2281,806.26387,796,0.35346947,0.34896975,Myhom,Adapted reference,raw
+3,4,2804,1256.5037,1344,0.44811117,0.47931526,Myhom,Adapted reference,raw
+4,5,610,320.55754,290,0.52550416,0.47540984,Myhom,Adapted reference,raw
+5,6,4,2.4171969,2,0.60429923,0.5,Myhom,Adapted reference,raw
+6,0,447,22.784933,173,0.050973004,0.38702461,Myhom,Untuned,raw
+7,1,311,49.354406,103,0.15869584,0.33118971,Myhom,Untuned,raw
+8,2,1143,293.77228,337,0.25701862,0.29483815,Myhom,Untuned,raw
+9,3,1850,653.47276,673,0.35322852,0.36378378,Myhom,Untuned,raw
+10,4,1947,868.11822,891,0.44587479,0.45762712,Myhom,Untuned,raw
+11,5,667,362.96229,323,0.54417135,0.48425787,Myhom,Untuned,raw
+12,6,321,206.75195,148,0.64408706,0.46105919,Myhom,Untuned,raw
+13,7,214,159.94568,104,0.74740971,0.48598131,Myhom,Untuned,raw
+14,8,98,81.729088,47,0.83397028,0.47959184,Myhom,Untuned,raw
+15,9,2,1.8120856,1,0.90604281,0.5,Myhom,Untuned,raw
+16,0,33124,667.57758,853,0.020153894,0.025751721,PropPD1,Adapted reference,raw
+17,1,27657,4210.8573,5376,0.15225286,0.19438117,PropPD1,Adapted reference,raw
+18,2,21372,5215.709,6312,0.24404403,0.2953397,PropPD1,Adapted reference,raw
+19,3,8561,2930.1729,3249,0.34226993,0.37951174,PropPD1,Adapted reference,raw
+20,4,3361,1487.9768,1567,0.44271849,0.46623029,PropPD1,Adapted reference,raw
+21,5,1181,636.90635,622,0.53929411,0.52667231,PropPD1,Adapted reference,raw
+22,6,186,116.78276,107,0.62786428,0.57526882,PropPD1,Adapted reference,raw
+23,7,7,5.0976118,2,0.72823026,0.28571429,PropPD1,Adapted reference,raw
+24,9,4551,4550.0034,4551,0.99978102,1,PropPD1,Adapted reference,raw
+25,0,33296,769.81592,861,0.023120372,0.025858962,PropPD1,Untuned,raw
+26,1,26979,4092.1181,5307,0.1516779,0.19670855,PropPD1,Untuned,raw
+27,2,21141,5178.0217,6161,0.24492795,0.29142425,PropPD1,Untuned,raw
+28,3,9257,3165.3384,3407,0.34193998,0.3680458,PropPD1,Untuned,raw
+29,4,3522,1553.9914,1676,0.44122412,0.47586599,PropPD1,Untuned,raw
+30,5,1108,596.70046,583,0.53853832,0.52617329,PropPD1,Untuned,raw
+31,6,139,87.506722,89,0.62954477,0.64028777,PropPD1,Untuned,raw
+32,7,7,5.0234692,4,0.71763846,0.57142857,PropPD1,Untuned,raw
+33,9,4551,4550.84,4551,0.99996484,1,PropPD1,Untuned,raw
+34,1,70,12.267459,21,0.17524941,0.3,Myhom,Adapted reference,Platt
+35,2,848,223.71314,229,0.26381266,0.27004717,Myhom,Adapted reference,Platt
+36,3,2314,820.49984,789,0.35458074,0.34096802,Myhom,Adapted reference,Platt
+37,4,3068,1375.2143,1410,0.44824457,0.45958279,Myhom,Adapted reference,Platt
+38,5,686,361.83574,344,0.52745735,0.50145773,Myhom,Adapted reference,Platt
+39,6,14,8.6963423,7,0.62116731,0.5,Myhom,Adapted reference,Platt
+40,1,35,5.9906662,11,0.17116189,0.31428571,Myhom,Untuned,Platt
+41,2,295,77.503834,74,0.26272486,0.25084746,Myhom,Untuned,Platt
+42,3,3120,1148.8807,1113,0.36823099,0.35673077,Myhom,Untuned,Platt
+43,4,3136,1350.5589,1389,0.4306629,0.44292092,Myhom,Untuned,Platt
+44,5,401,210.1798,207,0.52413915,0.51620948,Myhom,Untuned,Platt
+45,6,13,8.1083448,6,0.62371883,0.46153846,Myhom,Untuned,Platt
+46,0,28698,386.19125,295,0.013457079,0.010279462,PropPD1,Adapted reference,Platt
+47,1,20451,3193.864,3330,0.15617153,0.16282822,PropPD1,Adapted reference,Platt
+48,2,24908,6166.3737,6271,0.24756599,0.2517665,PropPD1,Adapted reference,Platt
+49,3,13443,4602.4783,4569,0.34236988,0.33987949,PropPD1,Adapted reference,Platt
+50,4,5377,2378.2209,2301,0.44229512,0.42793379,PropPD1,Adapted reference,Platt
+51,5,2092,1132.3739,1058,0.54128773,0.50573614,PropPD1,Adapted reference,Platt
+52,6,460,291.08854,254,0.63280118,0.55217391,PropPD1,Adapted reference,Platt
+53,7,20,14.560005,10,0.72800023,0.5,PropPD1,Adapted reference,Platt
+54,9,4551,4549.6673,4551,0.99970716,1,PropPD1,Adapted reference,Platt
+55,0,29686,561.80164,422,0.018924801,0.014215455,PropPD1,Untuned,Platt
+56,1,20975,3254.7166,3542,0.15517123,0.1688677,PropPD1,Untuned,Platt
+57,2,23041,5712.772,5876,0.24793941,0.25502365,PropPD1,Untuned,Platt
+58,3,13388,4598.4933,4494,0.34347874,0.33567374,PropPD1,Untuned,Platt
+59,4,5692,2519.7224,2372,0.44267786,0.41672523,PropPD1,Untuned,Platt
+60,5,2148,1162.6741,1083,0.54128218,0.50418994,PropPD1,Untuned,Platt
+61,6,493,312.20548,282,0.63327683,0.57200811,PropPD1,Untuned,Platt
+62,7,26,18.860079,17,0.72538765,0.65384615,PropPD1,Untuned,Platt
+63,9,4551,4550.8425,4551,0.99996539,1,PropPD1,Untuned,Platt
+64,0,32,0.062388521,16,0.0019496413,0.5,Myhom,Adapted reference,isotonic
+65,1,66,10.374545,13,0.15719008,0.1969697,Myhom,Adapted reference,isotonic
+66,2,1054,275.11773,287,0.26102251,0.27229602,Myhom,Adapted reference,isotonic
+67,3,1827,619.88184,646,0.33928946,0.35358511,Myhom,Adapted reference,isotonic
+68,4,3188,1429.1217,1437,0.4482816,0.45075282,Myhom,Adapted reference,isotonic
+69,5,745,398.18724,351,0.53447951,0.47114094,Myhom,Adapted reference,isotonic
+70,6,21,12.923079,12,0.61538474,0.57142857,Myhom,Adapted reference,isotonic
+71,7,55,40.201739,30,0.73094071,0.54545455,Myhom,Adapted reference,isotonic
+72,8,9,7.4886045,5,0.83206717,0.55555556,Myhom,Adapted reference,isotonic
+73,9,3,3,3,1,1,Myhom,Adapted reference,isotonic
+74,0,15,0.027484367,6,0.0018322911,0.4,Myhom,Untuned,isotonic
+75,1,92,17.402599,24,0.18915869,0.26086957,Myhom,Untuned,isotonic
+76,2,425,99.845607,109,0.23493084,0.25647059,Myhom,Untuned,isotonic
+77,3,3282,1217.4501,1188,0.37094762,0.36197441,Myhom,Untuned,isotonic
+78,4,2481,1073.0229,1103,0.43249614,0.4445788,Myhom,Untuned,isotonic
+79,5,664,359.66885,348,0.54166995,0.52409639,Myhom,Untuned,isotonic
+80,6,25,16.969697,14,0.67878786,0.56,Myhom,Untuned,isotonic
+81,7,1,0.70078349,1,0.70078349,1,Myhom,Untuned,isotonic
+82,8,13,10.776582,6,0.82896783,0.46153846,Myhom,Untuned,isotonic
+83,9,2,1.9331149,1,0.96655744,0.5,Myhom,Untuned,isotonic
+84,0,28665,255.00747,297,0.0088961266,0.010361068,PropPD1,Adapted reference,isotonic
+85,1,20160,3262.5462,3296,0.16183265,0.16349206,PropPD1,Adapted reference,isotonic
+86,2,25398,6393.5388,6393,0.25173395,0.25171273,PropPD1,Adapted reference,isotonic
+87,3,14162,4910.0991,4842,0.34670944,0.34190086,PropPD1,Adapted reference,isotonic
+88,4,5421,2422.6005,2410,0.44689181,0.44456742,PropPD1,Adapted reference,isotonic
+89,5,1204,640.84926,607,0.53226683,0.50415282,PropPD1,Adapted reference,isotonic
+90,6,403,252.86207,227,0.6274493,0.56327543,PropPD1,Adapted reference,isotonic
+91,7,17,12.36355,8,0.72726762,0.47058824,PropPD1,Adapted reference,isotonic
+92,8,19,15.272404,8,0.80381075,0.42105263,PropPD1,Adapted reference,isotonic
+93,9,4551,4550.9623,4551,0.99999173,1,PropPD1,Adapted reference,isotonic
+94,0,28588,267.0097,336,0.0093399224,0.011753183,PropPD1,Untuned,isotonic
+95,1,19812,3169.192,3157,0.15996326,0.15934787,PropPD1,Untuned,isotonic
+96,2,24979,6231.7395,6301,0.24947914,0.25225189,PropPD1,Untuned,isotonic
+97,3,14138,4774.6874,4691,0.33772014,0.33180082,PropPD1,Untuned,isotonic
+98,4,6203,2734.6199,2703,0.4408544,0.43575689,PropPD1,Untuned,isotonic
+99,5,1304,692.59923,658,0.53113438,0.50460123,PropPD1,Untuned,isotonic
+100,6,399,256.24632,228,0.64222135,0.57142857,PropPD1,Untuned,isotonic
+101,7,10,7.4355919,4,0.74355919,0.4,PropPD1,Untuned,isotonic
+102,8,12,9.6067209,7,0.80056008,0.58333333,PropPD1,Untuned,isotonic
+103,9,4555,4554.9994,4554,0.99999987,0.99978046,PropPD1,Untuned,isotonic
 
-Figure: pd_reliability_tabicl-v2_Platt_1
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_tabicl-v2_3
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20883,605.17035,663,0.028979091,0.031748312,Credit Risk,Adapted reference
-1,1,3518,497.78882,466,0.14149768,0.13246163,Credit Risk,Adapted reference
-2,2,1443,351.77478,333,0.24378017,0.23076923,Credit Risk,Adapted reference
-3,3,681,235.21918,199,0.34540261,0.29221733,Credit Risk,Adapted reference
-4,4,425,189.39266,177,0.44562979,0.41647059,Credit Risk,Adapted reference
-5,5,259,141.51909,120,0.54640575,0.46332046,Credit Risk,Adapted reference
-6,6,235,152.76685,136,0.65007168,0.5787234,Credit Risk,Adapted reference
-7,7,231,173.35821,169,0.75046844,0.73160173,Credit Risk,Adapted reference
-8,8,336,288.10001,287,0.85744052,0.85416667,Credit Risk,Adapted reference
-9,9,4570,4513.3011,4558,0.98759324,0.99737418,Credit Risk,Adapted reference
-10,0,21072,585.96689,597,0.027807844,0.028331435,Credit Risk,Untuned
-11,1,3563,503.87827,496,0.14141967,0.13920853,Credit Risk,Untuned
-12,2,1357,330.19032,298,0.24332375,0.21960206,Credit Risk,Untuned
-13,3,615,210.19196,187,0.34177554,0.30406504,Credit Risk,Untuned
-14,4,364,161.4737,157,0.44360907,0.43131868,Credit Risk,Untuned
-15,5,248,135.96108,139,0.54823014,0.56048387,Credit Risk,Untuned
-16,6,170,110.07608,114,0.64750634,0.67058824,Credit Risk,Untuned
-17,7,158,118.75281,116,0.75160007,0.73417722,Credit Risk,Untuned
-18,8,180,153.80597,159,0.85447762,0.88333333,Credit Risk,Untuned
-19,9,4854,4831.7639,4845,0.99541902,0.99814586,Credit Risk,Untuned
-20,0,326812,11621.301,10292,0.035559591,0.031492112,Hackerearth,Adapted reference
-21,1,59279,8302.5034,8009,0.14005809,0.13510687,Hackerearth,Adapted reference
-22,2,22722,5544.0861,6016,0.2439964,0.26476543,Hackerearth,Adapted reference
-23,3,11967,4132.6318,4786,0.34533566,0.39993315,Hackerearth,Adapted reference
-24,4,7414,3317.0929,4057,0.44740934,0.54720798,Hackerearth,Adapted reference
-25,5,6052,3330.0989,4000,0.55024767,0.66093853,Hackerearth,Adapted reference
-26,6,6246,4069.3485,4580,0.65151272,0.73326929,Hackerearth,Adapted reference
-27,7,8424,6348.0475,6697,0.75356689,0.7949905,Hackerearth,Adapted reference
-28,8,16781,14393.454,14171,0.85772328,0.84446696,Hackerearth,Adapted reference
-29,9,66731,64476.388,63219,0.96621343,0.94737079,Hackerearth,Adapted reference
-30,0,345617,9724.2657,8916,0.028135959,0.025797342,Hackerearth,Untuned
-31,1,41189,5797.4197,5913,0.14075165,0.14355775,Hackerearth,Untuned
-32,2,17161,4197.3768,4466,0.24458813,0.26024124,Hackerearth,Untuned
-33,3,9858,3408.8743,3786,0.34579775,0.38405356,Hackerearth,Untuned
-34,4,6754,3024.9693,3481,0.44787818,0.51539828,Hackerearth,Untuned
-35,5,5374,2954.2935,3272,0.54973827,0.60885746,Hackerearth,Untuned
-36,6,6142,4001.297,4261,0.65146483,0.69374796,Hackerearth,Untuned
-37,7,9064,6845.4218,6941,0.75523189,0.7657767,Hackerearth,Untuned
-38,8,21255,18258.731,17931,0.85903228,0.84361327,Hackerearth,Untuned
-39,9,70014,67366.994,66860,0.96219319,0.95495187,Hackerearth,Untuned
-40,1,70,12.267459,21,0.17524941,0.3,Myhom,Adapted reference
-41,2,848,223.71314,229,0.26381266,0.27004717,Myhom,Adapted reference
-42,3,2314,820.49984,789,0.35458074,0.34096802,Myhom,Adapted reference
-43,4,3068,1375.2143,1410,0.44824457,0.45958279,Myhom,Adapted reference
-44,5,686,361.83574,344,0.52745735,0.50145773,Myhom,Adapted reference
-45,6,14,8.6963423,7,0.62116731,0.5,Myhom,Adapted reference
-46,1,35,5.9906662,11,0.17116189,0.31428571,Myhom,Untuned
-47,2,295,77.503834,74,0.26272486,0.25084746,Myhom,Untuned
-48,3,3120,1148.8807,1113,0.36823099,0.35673077,Myhom,Untuned
-49,4,3136,1350.5589,1389,0.4306629,0.44292092,Myhom,Untuned
-50,5,401,210.1798,207,0.52413915,0.51620948,Myhom,Untuned
-51,6,13,8.1083448,6,0.62371883,0.46153846,Myhom,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,73555,4024.6191,5026,0.054715778,0.068329821,PropPD2,Adapted reference,raw
+1,1,31849,4129.1285,4747,0.12964704,0.14904707,PropPD2,Adapted reference,raw
+2,2,67,13.912435,10,0.20764829,0.14925373,PropPD2,Adapted reference,raw
+3,0,73277,3950.2799,4980,0.053908865,0.067961298,PropPD2,Untuned,raw
+4,1,32103,4141.9898,4784,0.12902189,0.14902034,PropPD2,Untuned,raw
+5,2,91,19.017836,19,0.20898721,0.20879121,PropPD2,Untuned,raw
+6,0,61904,3764.5958,3742,0.060813451,0.060448436,PropPD2,Adapted reference,Platt
+7,1,42929,5905.376,5916,0.13756146,0.13780894,PropPD2,Adapted reference,Platt
+8,2,638,133.48557,125,0.20922503,0.19592476,PropPD2,Adapted reference,Platt
+9,0,60523,3645.0919,3600,0.060226557,0.059481519,PropPD2,Untuned,Platt
+10,1,44402,6040.2561,6077,0.13603568,0.1368632,PropPD2,Untuned,Platt
+11,2,546,114.68456,106,0.21004498,0.19413919,PropPD2,Untuned,Platt
+12,0,62921,3872.7921,3872,0.061550072,0.061537484,PropPD2,Adapted reference,isotonic
+13,1,41850,5759.2356,5783,0.13761614,0.13818399,PropPD2,Adapted reference,isotonic
+14,2,642,142.2602,123,0.2215891,0.19158879,PropPD2,Adapted reference,isotonic
+15,3,58,19.361738,5,0.33382306,0.086206897,PropPD2,Adapted reference,isotonic
+16,0,62701,3835.2609,3835,0.06116746,0.061163299,PropPD2,Untuned,isotonic
+17,1,41687,5706.7935,5732,0.13689624,0.1375009,PropPD2,Untuned,isotonic
+18,2,950,205.35885,189,0.21616721,0.19894737,PropPD2,Untuned,isotonic
+19,3,119,38.878158,25,0.32670721,0.21008403,PropPD2,Untuned,isotonic
+20,4,4,1.7142857,0,0.42857143,0,PropPD2,Untuned,isotonic
+21,6,1,0.648206,0,0.648206,0,PropPD2,Untuned,isotonic
+22,7,3,2.2453008,0,0.74843359,0,PropPD2,Untuned,isotonic
+23,9,6,6,2,1,0.33333333,PropPD2,Untuned,isotonic
 
-Figure: pd_reliability_tabicl-v2_Platt_2
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v2_1
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,28698,386.19125,295,0.013457079,0.010279462,PropPD1,Adapted reference
-1,1,20451,3193.864,3330,0.15617153,0.16282822,PropPD1,Adapted reference
-2,2,24908,6166.3737,6271,0.24756599,0.2517665,PropPD1,Adapted reference
-3,3,13443,4602.4783,4569,0.34236988,0.33987949,PropPD1,Adapted reference
-4,4,5377,2378.2209,2301,0.44229512,0.42793379,PropPD1,Adapted reference
-5,5,2092,1132.3739,1058,0.54128773,0.50573614,PropPD1,Adapted reference
-6,6,460,291.08854,254,0.63280118,0.55217391,PropPD1,Adapted reference
-7,7,20,14.560005,10,0.72800023,0.5,PropPD1,Adapted reference
-8,9,4551,4549.6673,4551,0.99970716,1,PropPD1,Adapted reference
-9,0,29686,561.80164,422,0.018924801,0.014215455,PropPD1,Untuned
-10,1,20975,3254.7166,3542,0.15517123,0.1688677,PropPD1,Untuned
-11,2,23041,5712.772,5876,0.24793941,0.25502365,PropPD1,Untuned
-12,3,13388,4598.4933,4494,0.34347874,0.33567374,PropPD1,Untuned
-13,4,5692,2519.7224,2372,0.44267786,0.41672523,PropPD1,Untuned
-14,5,2148,1162.6741,1083,0.54128218,0.50418994,PropPD1,Untuned
-15,6,493,312.20548,282,0.63327683,0.57200811,PropPD1,Untuned
-16,7,26,18.860079,17,0.72538765,0.65384615,PropPD1,Untuned
-17,9,4551,4550.8425,4551,0.99996539,1,PropPD1,Untuned
-18,0,61904,3764.5958,3742,0.060813451,0.060448436,PropPD2,Adapted reference
-19,1,42929,5905.376,5916,0.13756146,0.13780894,PropPD2,Adapted reference
-20,2,638,133.48557,125,0.20922503,0.19592476,PropPD2,Adapted reference
-21,0,60523,3645.0919,3600,0.060226557,0.059481519,PropPD2,Untuned
-22,1,44402,6040.2561,6077,0.13603568,0.1368632,PropPD2,Untuned
-23,2,546,114.68456,106,0.21004498,0.19413919,PropPD2,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,20632,793.94818,875,0.038481397,0.042409849,Credit Risk,Adapted reference,raw
+1,1,4533,625.46262,656,0.13797984,0.14471652,Credit Risk,Adapted reference,raw
+2,2,1227,297.32661,254,0.24231998,0.20700896,Credit Risk,Adapted reference,raw
+3,3,573,196.81976,151,0.34348999,0.26352531,Credit Risk,Adapted reference,raw
+4,4,290,129.05832,99,0.4450287,0.34137931,Credit Risk,Adapted reference,raw
+5,5,208,114.01043,102,0.54812707,0.49038462,Credit Risk,Adapted reference,raw
+6,6,166,107.95457,113,0.65032875,0.68072289,Credit Risk,Adapted reference,raw
+7,7,243,182.61514,200,0.75150261,0.82304527,Credit Risk,Adapted reference,raw
+8,8,481,412.13253,436,0.85682439,0.90644491,Credit Risk,Adapted reference,raw
+9,9,4228,4151.2401,4222,0.98184487,0.99858089,Credit Risk,Adapted reference,raw
+10,0,19371,800.69913,790,0.04133494,0.040782613,Credit Risk,Untuned,raw
+11,1,5864,809.32426,758,0.13801573,0.1292633,Credit Risk,Untuned,raw
+12,2,1431,346.38474,303,0.24205782,0.21174004,Credit Risk,Untuned,raw
+13,3,465,158.99579,139,0.34192644,0.29892473,Credit Risk,Untuned,raw
+14,4,266,118.72071,115,0.44631847,0.43233083,Credit Risk,Untuned,raw
+15,5,177,97.330602,111,0.54989041,0.62711864,Credit Risk,Untuned,raw
+16,6,169,110.40883,129,0.65330667,0.76331361,Credit Risk,Untuned,raw
+17,7,276,207.83693,243,0.75303236,0.88043478,Credit Risk,Untuned,raw
+18,8,540,461.74934,502,0.85509138,0.92962963,Credit Risk,Untuned,raw
+19,9,4022,3948.2118,4018,0.98165385,0.99900547,Credit Risk,Untuned,raw
+20,0,284448,12207.434,10261,0.042916224,0.036073377,Hackerearth,Adapted reference,raw
+21,1,91851,13013.36,11327,0.14167902,0.12331929,Hackerearth,Adapted reference,raw
+22,2,35043,8490.4901,8124,0.24228776,0.23182947,Hackerearth,Adapted reference,raw
+23,3,15887,5478.0599,5696,0.34481399,0.35853213,Hackerearth,Adapted reference,raw
+24,4,9488,4245.6835,5270,0.44747929,0.55543845,Hackerearth,Adapted reference,raw
+25,5,7737,4248.9958,5436,0.54917873,0.70259791,Hackerearth,Adapted reference,raw
+26,6,8430,5492.219,6700,0.65150878,0.79478055,Hackerearth,Adapted reference,raw
+27,7,12115,9139.4065,10210,0.75438766,0.84275691,Hackerearth,Adapted reference,raw
+28,8,22804,19510.624,20234,0.855579,0.88730047,Hackerearth,Adapted reference,raw
+29,9,44625,42768.846,42569,0.95840551,0.95392717,Hackerearth,Adapted reference,raw
+30,0,160404,8587.2584,4095,0.053535189,0.025529289,Hackerearth,Untuned,raw
+31,1,146002,21363.974,10619,0.14632659,0.07273188,Hackerearth,Untuned,raw
+32,2,80090,19492.851,10285,0.24338682,0.12841803,Hackerearth,Untuned,raw
+33,3,32191,10986.681,6845,0.34129668,0.21263707,Hackerearth,Untuned,raw
+34,4,12901,5739.2721,5246,0.44487033,0.40663514,Hackerearth,Untuned,raw
+35,5,9225,5068.7151,6053,0.54945422,0.65615176,Hackerearth,Untuned,raw
+36,6,10085,6575.6844,7956,0.65202622,0.7888944,Hackerearth,Untuned,raw
+37,7,14772,11141.772,12508,0.75424937,0.84673707,Hackerearth,Untuned,raw
+38,8,26487,22641.395,23740,0.8548116,0.89628875,Hackerearth,Untuned,raw
+39,9,40271,38455.813,38480,0.95492572,0.95552631,Hackerearth,Untuned,raw
+40,0,20380,759.79761,849,0.037281532,0.041658489,Credit Risk,Adapted reference,Platt
+41,1,4546,630.222,635,0.1386322,0.13968324,Credit Risk,Adapted reference,Platt
+42,2,1289,313.11754,266,0.24291508,0.20636152,Credit Risk,Adapted reference,Platt
+43,3,622,215.24741,150,0.34605692,0.24115756,Credit Risk,Adapted reference,Platt
+44,4,322,143.6888,95,0.44623851,0.29503106,Credit Risk,Adapted reference,Platt
+45,5,208,113.74376,87,0.54684498,0.41826923,Credit Risk,Adapted reference,Platt
+46,6,190,122.63245,115,0.64543397,0.60526316,Credit Risk,Adapted reference,Platt
+47,7,216,163.06914,165,0.75494972,0.76388889,Credit Risk,Adapted reference,Platt
+48,8,401,343.33646,359,0.85620065,0.89526185,Credit Risk,Adapted reference,Platt
+49,9,4407,4335.8788,4387,0.98386176,0.99546177,Credit Risk,Adapted reference,Platt
+50,0,19922,741.97259,831,0.037243881,0.041712679,Credit Risk,Untuned,Platt
+51,1,5044,699.70407,663,0.13872008,0.1314433,Credit Risk,Untuned,Platt
+52,2,1420,342.41269,296,0.2411357,0.2084507,Credit Risk,Untuned,Platt
+53,3,586,200.16295,153,0.341575,0.26109215,Credit Risk,Untuned,Platt
+54,4,262,116.79679,82,0.44578926,0.3129771,Credit Risk,Untuned,Platt
+55,5,192,104.12345,96,0.54230961,0.5,Credit Risk,Untuned,Platt
+56,6,179,115.948,117,0.64775418,0.65363128,Credit Risk,Untuned,Platt
+57,7,189,142.61105,146,0.75455581,0.77248677,Credit Risk,Untuned,Platt
+58,8,402,344.89836,364,0.85795613,0.90547264,Credit Risk,Untuned,Platt
+59,9,4385,4322.3306,4360,0.98570824,0.99429875,Credit Risk,Untuned,Platt
+60,0,295832,11482.911,11198,0.03881565,0.037852565,Hackerearth,Adapted reference,Platt
+61,1,80834,11463.515,10425,0.14181551,0.12896801,Hackerearth,Adapted reference,Platt
+62,2,32267,7841.5231,7371,0.2430199,0.22843772,Hackerearth,Adapted reference,Platt
+63,3,15444,5330.3225,5166,0.34513872,0.33449883,Hackerearth,Adapted reference,Platt
+64,4,9397,4198.6256,4707,0.44680489,0.50090454,Hackerearth,Adapted reference,Platt
+65,5,7427,4076.9405,4839,0.54893503,0.65154167,Hackerearth,Adapted reference,Platt
+66,6,7406,4822.5356,5637,0.65116603,0.76113962,Hackerearth,Adapted reference,Platt
+67,7,9827,7408.6188,8088,0.75390443,0.82303857,Hackerearth,Adapted reference,Platt
+68,8,18812,16119.307,16351,0.85686299,0.86917925,Hackerearth,Adapted reference,Platt
+69,9,55182,53101.316,52045,0.96229416,0.94315175,Hackerearth,Adapted reference,Platt
+70,0,282222,11547.183,12251,0.040915248,0.043409089,Hackerearth,Untuned,Platt
+71,1,98337,13939.651,11717,0.14175387,0.11915149,Hackerearth,Untuned,Platt
+72,2,33809,8151.8884,6505,0.24111593,0.19240439,Hackerearth,Untuned,Platt
+73,3,12760,4388.7895,4376,0.34394902,0.34294671,Hackerearth,Untuned,Platt
+74,4,7689,3439.6755,4124,0.44735018,0.53635063,Hackerearth,Untuned,Platt
+75,5,6798,3739.2928,4790,0.55005778,0.70461901,Hackerearth,Untuned,Platt
+76,6,7456,4859.9576,5810,0.65181834,0.7792382,Hackerearth,Untuned,Platt
+77,7,10443,7868.2642,8721,0.75344865,0.83510485,Hackerearth,Untuned,Platt
+78,8,19176,16420.408,16853,0.85629996,0.87885899,Hackerearth,Untuned,Platt
+79,9,53738,51752.175,50680,0.96304618,0.94309427,Hackerearth,Untuned,Platt
+80,0,18693,640.50997,679,0.034264696,0.036323758,Credit Risk,Adapted reference,isotonic
+81,1,7231,1029.3498,1001,0.14235235,0.13843175,Credit Risk,Adapted reference,isotonic
+82,2,914,219.96645,231,0.24066351,0.25273523,Credit Risk,Adapted reference,isotonic
+83,3,288,96.427864,82,0.33481897,0.28472222,Credit Risk,Adapted reference,isotonic
+84,4,187,80.677854,68,0.43143237,0.36363636,Credit Risk,Adapted reference,isotonic
+85,5,139,75.76992,80,0.54510734,0.57553957,Credit Risk,Adapted reference,isotonic
+86,6,129,84.943926,74,0.65848005,0.57364341,Credit Risk,Adapted reference,isotonic
+87,7,75,54.711371,49,0.72948494,0.65333333,Credit Risk,Adapted reference,isotonic
+88,8,215,179.53895,186,0.83506489,0.86511628,Credit Risk,Adapted reference,isotonic
+89,9,4710,4671.6569,4658,0.99185921,0.98895966,Credit Risk,Adapted reference,isotonic
+90,0,19453,757.57062,787,0.038943639,0.040456485,Credit Risk,Untuned,isotonic
+91,1,6720,969.92026,963,0.14433337,0.14330357,Credit Risk,Untuned,isotonic
+92,2,504,120.02334,105,0.23814155,0.20833333,Credit Risk,Untuned,isotonic
+93,3,428,139.67495,129,0.32634335,0.30140187,Credit Risk,Untuned,isotonic
+94,4,250,109.40819,106,0.43763276,0.424,Credit Risk,Untuned,isotonic
+95,5,153,84.216454,90,0.55043434,0.58823529,Credit Risk,Untuned,isotonic
+96,6,84,56.153168,48,0.6684901,0.57142857,Credit Risk,Untuned,isotonic
+97,7,13,9.7494466,10,0.74995743,0.76923077,Credit Risk,Untuned,isotonic
+98,8,321,265.60339,264,0.82742488,0.82242991,Credit Risk,Untuned,isotonic
+99,9,4655,4616.4062,4606,0.99170918,0.98947368,Credit Risk,Untuned,isotonic
+100,0,308893,12460.945,12497,0.040340651,0.040457375,Hackerearth,Adapted reference,isotonic
+101,1,69066,9269.5608,9397,0.13421308,0.13605826,Hackerearth,Adapted reference,isotonic
+102,2,33422,7841.764,7808,0.23462881,0.23361857,Hackerearth,Adapted reference,isotonic
+103,3,11983,4369.2207,4043,0.36461827,0.33739464,Hackerearth,Adapted reference,isotonic
+104,4,4395,1911.4444,1912,0.43491341,0.43503982,Hackerearth,Adapted reference,isotonic
+105,5,6516,3515.1831,3548,0.53946947,0.54450583,Hackerearth,Adapted reference,isotonic
+106,6,7682,4976.0494,5054,0.64775441,0.65790159,Hackerearth,Adapted reference,isotonic
+107,7,5992,4468.8871,4593,0.74580893,0.76652203,Hackerearth,Adapted reference,isotonic
+108,8,39338,33624.293,33988,0.85475349,0.86399919,Hackerearth,Adapted reference,isotonic
+109,9,45141,43383.489,42987,0.96106619,0.95228285,Hackerearth,Adapted reference,isotonic
+110,0,283832,12270.223,12669,0.043230583,0.044635559,Hackerearth,Untuned,isotonic
+111,1,118143,15668.814,15032,0.13262583,0.12723564,Hackerearth,Untuned,isotonic
+112,2,16373,3876.6371,3963,0.23677011,0.24204483,Hackerearth,Untuned,isotonic
+113,3,4335,1501.2866,1433,0.34631755,0.33056517,Hackerearth,Untuned,isotonic
+114,4,5571,2477.549,2233,0.4447225,0.4008257,Hackerearth,Untuned,isotonic
+115,5,7244,4096.8942,4080,0.56555691,0.56322474,Hackerearth,Untuned,isotonic
+116,6,2941,1973.5327,2018,0.67104138,0.68616117,Hackerearth,Untuned,isotonic
+117,7,10089,7697.7652,7783,0.76298594,0.77143424,Hackerearth,Untuned,isotonic
+118,8,34115,29298.927,29532,0.85882829,0.86566027,Hackerearth,Untuned,isotonic
+119,9,49785,47302.601,47084,0.9501376,0.94574671,Hackerearth,Untuned,isotonic
 
-Figure: pd_reliability_tabicl-v2_isotonic_1
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v2_2
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,19619,495.25535,518,0.025243659,0.026402977,Credit Risk,Adapted reference
-1,1,5346,748.04324,726,0.13992578,0.13580247,Credit Risk,Adapted reference
-2,2,1066,268.18082,272,0.25157675,0.25515947,Credit Risk,Adapted reference
-3,3,841,298.66838,289,0.35513481,0.34363853,Credit Risk,Adapted reference
-4,4,234,112.31076,102,0.4799605,0.43589744,Credit Risk,Adapted reference
-5,5,189,103.57597,96,0.54802102,0.50793651,Credit Risk,Adapted reference
-6,6,164,103.34546,103,0.63015527,0.62804878,Credit Risk,Adapted reference
-7,7,130,101.29447,97,0.77918821,0.74615385,Credit Risk,Adapted reference
-8,8,301,251.43288,239,0.83532518,0.79401993,Credit Risk,Adapted reference
-9,9,4691,4661.3706,4666,0.99368378,0.99467065,Credit Risk,Adapted reference
-10,0,20118,470.91966,521,0.023407877,0.025897206,Credit Risk,Untuned
-11,1,4486,628.2711,559,0.14005152,0.1246099,Credit Risk,Untuned
-12,2,1561,355.57794,377,0.22778856,0.24151185,Credit Risk,Untuned
-13,3,546,184.30029,172,0.33754631,0.31501832,Credit Risk,Untuned
-14,4,357,158.03865,158,0.44268529,0.44257703,Credit Risk,Untuned
-15,5,96,55.201916,53,0.57501996,0.55208333,Credit Risk,Untuned
-16,6,71,47.714268,50,0.67203195,0.70422535,Credit Risk,Untuned
-17,7,115,85.690119,79,0.74513147,0.68695652,Credit Risk,Untuned
-18,8,456,389.82864,371,0.85488736,0.81359649,Credit Risk,Untuned
-19,9,4775,4765.8328,4768,0.99808016,0.99853403,Credit Risk,Untuned
-20,0,339465,11306.082,11504,0.033305589,0.033888619,Hackerearth,Adapted reference
-21,1,43820,6155.9286,6249,0.14048217,0.14260612,Hackerearth,Adapted reference
-22,2,20814,5057.0775,5029,0.24296519,0.24161622,Hackerearth,Adapted reference
-23,3,11038,3844.8825,3863,0.34833145,0.34997282,Hackerearth,Adapted reference
-24,4,7166,3232.0082,3237,0.45101985,0.45171644,Hackerearth,Adapted reference
-25,5,5452,3039.5185,2982,0.55750523,0.54695525,Hackerearth,Adapted reference
-26,6,6036,3937.3706,3996,0.65231455,0.66202783,Hackerearth,Adapted reference
-27,7,12288,9296.2274,9274,0.75652892,0.75472005,Hackerearth,Adapted reference
-28,8,33515,28829.677,28847,0.8602022,0.86071908,Hackerearth,Adapted reference
-29,9,52834,50844.961,50846,0.96235305,0.96237271,Hackerearth,Adapted reference
-30,0,349924,9162.6652,9365,0.026184729,0.026762954,Hackerearth,Untuned
-31,1,35105,5088.3357,5124,0.14494618,0.14596211,Hackerearth,Untuned
-32,2,17288,4352.1264,4318,0.25174262,0.24976863,Hackerearth,Untuned
-33,3,7561,2696.415,2653,0.35662148,0.35087951,Hackerearth,Untuned
-34,4,6011,2636.2189,2607,0.43856578,0.43370487,Hackerearth,Untuned
-35,5,7180,3901.6183,3983,0.54340088,0.55473538,Hackerearth,Untuned
-36,6,6023,3903.9938,3905,0.64818094,0.648348,Hackerearth,Untuned
-37,7,12422,9343.0079,9402,0.75213395,0.75688295,Hackerearth,Untuned
-38,8,26343,22483.237,22492,0.85348052,0.85381316,Hackerearth,Untuned
-39,9,64571,62028.91,61978,0.96063109,0.95984265,Hackerearth,Untuned
-40,0,32,0.062388521,16,0.0019496413,0.5,Myhom,Adapted reference
-41,1,66,10.374545,13,0.15719008,0.1969697,Myhom,Adapted reference
-42,2,1054,275.11773,287,0.26102251,0.27229602,Myhom,Adapted reference
-43,3,1827,619.88184,646,0.33928946,0.35358511,Myhom,Adapted reference
-44,4,3188,1429.1217,1437,0.4482816,0.45075282,Myhom,Adapted reference
-45,5,745,398.18724,351,0.53447951,0.47114094,Myhom,Adapted reference
-46,6,21,12.923079,12,0.61538474,0.57142857,Myhom,Adapted reference
-47,7,55,40.201739,30,0.73094071,0.54545455,Myhom,Adapted reference
-48,8,9,7.4886045,5,0.83206717,0.55555556,Myhom,Adapted reference
-49,9,3,3,3,1,1,Myhom,Adapted reference
-50,0,15,0.027484367,6,0.0018322911,0.4,Myhom,Untuned
-51,1,92,17.402599,24,0.18915869,0.26086957,Myhom,Untuned
-52,2,425,99.845607,109,0.23493084,0.25647059,Myhom,Untuned
-53,3,3282,1217.4501,1188,0.37094762,0.36197441,Myhom,Untuned
-54,4,2481,1073.0229,1103,0.43249614,0.4445788,Myhom,Untuned
-55,5,664,359.66885,348,0.54166995,0.52409639,Myhom,Untuned
-56,6,25,16.969697,14,0.67878786,0.56,Myhom,Untuned
-57,7,1,0.70078349,1,0.70078349,1,Myhom,Untuned
-58,8,13,10.776582,6,0.82896783,0.46153846,Myhom,Untuned
-59,9,2,1.9331149,1,0.96655744,0.5,Myhom,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,1,112,20.186945,29,0.18024058,0.25892857,Myhom,Adapted reference,raw
+1,2,1147,297.63232,311,0.25948763,0.27114211,Myhom,Adapted reference,raw
+2,3,2367,836.95453,858,0.35359296,0.36248416,Myhom,Adapted reference,raw
+3,4,2697,1206.8699,1285,0.44748605,0.47645532,Myhom,Adapted reference,raw
+4,5,665,350.30091,310,0.52676829,0.46616541,Myhom,Adapted reference,raw
+5,6,12,7.3444142,7,0.61203452,0.58333333,Myhom,Adapted reference,raw
+6,1,47,8.5465059,18,0.18184055,0.38297872,Myhom,Untuned,raw
+7,2,1041,274.04967,274,0.26325617,0.26320845,Myhom,Untuned,raw
+8,3,2444,864.64285,865,0.35378185,0.35392799,Myhom,Untuned,raw
+9,4,2928,1302.4509,1386,0.44482614,0.47336066,Myhom,Untuned,raw
+10,5,534,281.58274,253,0.52730851,0.47378277,Myhom,Untuned,raw
+11,6,6,3.683933,4,0.61398884,0.66666667,Myhom,Untuned,raw
+12,0,18118,535.48409,565,0.029555364,0.031184457,PropPD1,Adapted reference,raw
+13,1,41426,6422.1771,6876,0.15502769,0.16598272,PropPD1,Adapted reference,raw
+14,2,27497,6576.5555,7309,0.23917357,0.26581082,PropPD1,Adapted reference,raw
+15,3,6770,2295.5268,2513,0.33907338,0.37119645,PropPD1,Adapted reference,raw
+16,4,1548,673.2579,773,0.43492112,0.49935401,PropPD1,Adapted reference,raw
+17,5,89,46.538054,52,0.52289949,0.58426966,PropPD1,Adapted reference,raw
+18,6,2,1.2869484,1,0.64347419,0.5,PropPD1,Adapted reference,raw
+19,7,2,1.5405273,2,0.77026367,1,PropPD1,Adapted reference,raw
+20,8,1,0.89740616,1,0.89740616,1,PropPD1,Adapted reference,raw
+21,9,4547,4545.063,4547,0.999574,1,PropPD1,Adapted reference,raw
+22,0,17845,524.62785,591,0.029399151,0.033118521,PropPD1,Untuned,raw
+23,1,51821,8121.4598,9426,0.1567214,0.18189537,PropPD1,Untuned,raw
+24,2,21339,4960.9769,6159,0.23248404,0.28862646,PropPD1,Untuned,raw
+25,3,4115,1392.8014,1746,0.33846936,0.42430134,PropPD1,Untuned,raw
+26,4,328,137.39966,166,0.4189014,0.50609756,PropPD1,Untuned,raw
+27,5,1,0.50878906,0,0.50878906,0,PropPD1,Untuned,raw
+28,7,3,2.2315385,3,0.74384618,1,PropPD1,Untuned,raw
+29,9,4548,4545.9278,4548,0.99954437,1,PropPD1,Untuned,raw
+30,1,66,11.733605,20,0.1777819,0.3030303,Myhom,Adapted reference,Platt
+31,2,823,218.1403,217,0.26505505,0.2636695,Myhom,Adapted reference,Platt
+32,3,2402,854.39843,815,0.35570293,0.33930058,Myhom,Adapted reference,Platt
+33,4,2992,1337.2548,1386,0.44694346,0.46323529,Myhom,Adapted reference,Platt
+34,5,691,364.65931,345,0.52772693,0.49927641,Myhom,Adapted reference,Platt
+35,6,26,16.22505,17,0.62404039,0.65384615,Myhom,Adapted reference,Platt
+36,1,43,7.7817284,12,0.18097043,0.27906977,Myhom,Untuned,Platt
+37,2,789,209.00849,205,0.26490303,0.25982256,Myhom,Untuned,Platt
+38,3,2415,856.61265,829,0.35470503,0.34327122,Myhom,Untuned,Platt
+39,4,3148,1405.2212,1448,0.4463854,0.45997459,Myhom,Untuned,Platt
+40,5,579,307.59672,291,0.53125514,0.50259067,Myhom,Untuned,Platt
+41,6,26,16.266774,15,0.62564517,0.57692308,Myhom,Untuned,Platt
+42,0,16560,412.86084,397,0.02493121,0.02397343,PropPD1,Adapted reference,Platt
+43,1,34656,5420.9892,5312,0.15642282,0.15327793,PropPD1,Adapted reference,Platt
+44,2,31544,7644.2808,7698,0.24233708,0.24404007,PropPD1,Adapted reference,Platt
+45,3,9475,3221.8,3187,0.34003167,0.33635884,PropPD1,Adapted reference,Platt
+46,4,2793,1222.265,1261,0.43761726,0.45148586,PropPD1,Adapted reference,Platt
+47,5,411,216.80648,229,0.52750968,0.55717762,PropPD1,Adapted reference,Platt
+48,6,11,6.8816202,5,0.62560184,0.45454545,PropPD1,Adapted reference,Platt
+49,7,2,1.5428056,2,0.77140279,1,PropPD1,Adapted reference,Platt
+50,8,1,0.8989714,1,0.8989714,1,PropPD1,Adapted reference,Platt
+51,9,4547,4545.3817,4547,0.9996441,1,PropPD1,Adapted reference,Platt
+52,0,16093,372.18901,394,0.023127385,0.024482694,PropPD1,Untuned,Platt
+53,1,33974,5422.3114,5259,0.1596018,0.15479484,PropPD1,Untuned,Platt
+54,2,34627,8324.0677,8467,0.2403924,0.24452017,PropPD1,Untuned,Platt
+55,3,7400,2525.4925,2448,0.34128276,0.33081081,PropPD1,Untuned,Platt
+56,4,3051,1340.2111,1360,0.43926945,0.44575549,PropPD1,Untuned,Platt
+57,5,302,158.34417,160,0.52431845,0.52980132,PropPD1,Untuned,Platt
+58,6,2,1.2246884,0,0.61234419,0,PropPD1,Untuned,Platt
+59,7,1,0.77253267,1,0.77253267,1,PropPD1,Untuned,Platt
+60,8,2,1.6296327,2,0.81481633,1,PropPD1,Untuned,Platt
+61,9,4548,4547.3363,4548,0.99985408,1,PropPD1,Untuned,Platt
+62,0,19,0.11969407,11,0.006299688,0.57894737,Myhom,Adapted reference,isotonic
+63,1,115,18.802009,27,0.16349573,0.23478261,Myhom,Adapted reference,isotonic
+64,2,1233,324.7089,336,0.26334866,0.27250608,Myhom,Adapted reference,isotonic
+65,3,1609,574.05508,576,0.35677755,0.35798633,Myhom,Adapted reference,isotonic
+66,4,3261,1459.3823,1474,0.44752601,0.45200859,Myhom,Adapted reference,isotonic
+67,5,660,349.31092,314,0.52925898,0.47575758,Myhom,Adapted reference,isotonic
+68,6,46,28.950981,27,0.62936914,0.58695652,Myhom,Adapted reference,isotonic
+69,7,41,30.37825,24,0.74093293,0.58536585,Myhom,Adapted reference,isotonic
+70,9,16,15.996255,11,0.99976595,0.6875,Myhom,Adapted reference,isotonic
+71,0,9,0.077596098,4,0.0086217887,0.44444444,Myhom,Untuned,isotonic
+72,1,172,27.403437,39,0.15932231,0.22674419,Myhom,Untuned,isotonic
+73,2,868,221.28991,236,0.25494229,0.2718894,Myhom,Untuned,isotonic
+74,3,2174,785.31261,760,0.36122935,0.34958602,Myhom,Untuned,isotonic
+75,4,2926,1300.3889,1347,0.44442548,0.46035543,Myhom,Untuned,isotonic
+76,5,762,404.62438,357,0.53100313,0.46850394,Myhom,Untuned,isotonic
+77,6,47,29.56727,30,0.62909084,0.63829787,Myhom,Untuned,isotonic
+78,7,32,24.60622,19,0.76894437,0.59375,Myhom,Untuned,isotonic
+79,8,5,4.084058,4,0.81681161,0.8,Myhom,Untuned,isotonic
+80,9,5,4.9393759,4,0.98787518,0.8,Myhom,Untuned,isotonic
+81,0,17080,413.48569,468,0.024208764,0.027400468,PropPD1,Adapted reference,isotonic
+82,1,32554,4991.6085,4936,0.15333319,0.15162499,PropPD1,Adapted reference,isotonic
+83,2,34591,8521.7345,8493,0.24635699,0.24552629,PropPD1,Adapted reference,isotonic
+84,3,7349,2406.2431,2445,0.32742457,0.33269833,PropPD1,Adapted reference,isotonic
+85,4,3360,1483.5668,1462,0.44153773,0.43511905,PropPD1,Adapted reference,isotonic
+86,5,319,174.92638,173,0.54835857,0.54231975,PropPD1,Adapted reference,isotonic
+87,6,153,100.10022,87,0.65424983,0.56862745,PropPD1,Adapted reference,isotonic
+88,7,37,27.0747,21,0.73174864,0.56756757,PropPD1,Adapted reference,isotonic
+89,8,2,1.6673056,1,0.83365279,0.5,PropPD1,Adapted reference,isotonic
+90,9,4555,4554.9257,4553,0.99998368,0.99956092,PropPD1,Adapted reference,isotonic
+91,0,15927,330.59117,400,0.02075665,0.025114585,PropPD1,Untuned,isotonic
+92,1,33876,5274.6358,5206,0.15570421,0.15367812,PropPD1,Untuned,isotonic
+93,2,36142,8904.9919,8898,0.24638902,0.24619556,PropPD1,Untuned,isotonic
+94,3,6316,2104.26,2127,0.33316339,0.33676377,PropPD1,Untuned,isotonic
+95,4,2284,995.28432,997,0.43576371,0.43651489,PropPD1,Untuned,isotonic
+96,5,572,313.37952,279,0.54786629,0.48776224,PropPD1,Untuned,isotonic
+97,6,328,206.93378,180,0.63089568,0.54878049,PropPD1,Untuned,isotonic
+98,7,3,2.2242696,1,0.74142321,0.33333333,PropPD1,Untuned,isotonic
+99,8,3,2.4627426,3,0.82091419,1,PropPD1,Untuned,isotonic
+100,9,4549,4548.9044,4548,0.99997898,0.99978017,PropPD1,Untuned,isotonic
 
-Figure: pd_reliability_tabicl-v2_isotonic_2
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v2_3
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,28665,255.00747,297,0.0088961266,0.010361068,PropPD1,Adapted reference
-1,1,20160,3262.5462,3296,0.16183265,0.16349206,PropPD1,Adapted reference
-2,2,25398,6393.5388,6393,0.25173395,0.25171273,PropPD1,Adapted reference
-3,3,14162,4910.0991,4842,0.34670944,0.34190086,PropPD1,Adapted reference
-4,4,5421,2422.6005,2410,0.44689181,0.44456742,PropPD1,Adapted reference
-5,5,1204,640.84926,607,0.53226683,0.50415282,PropPD1,Adapted reference
-6,6,403,252.86207,227,0.6274493,0.56327543,PropPD1,Adapted reference
-7,7,17,12.36355,8,0.72726762,0.47058824,PropPD1,Adapted reference
-8,8,19,15.272404,8,0.80381075,0.42105263,PropPD1,Adapted reference
-9,9,4551,4550.9623,4551,0.99999173,1,PropPD1,Adapted reference
-10,0,28588,267.0097,336,0.0093399224,0.011753183,PropPD1,Untuned
-11,1,19812,3169.192,3157,0.15996326,0.15934787,PropPD1,Untuned
-12,2,24979,6231.7395,6301,0.24947914,0.25225189,PropPD1,Untuned
-13,3,14138,4774.6874,4691,0.33772014,0.33180082,PropPD1,Untuned
-14,4,6203,2734.6199,2703,0.4408544,0.43575689,PropPD1,Untuned
-15,5,1304,692.59923,658,0.53113438,0.50460123,PropPD1,Untuned
-16,6,399,256.24632,228,0.64222135,0.57142857,PropPD1,Untuned
-17,7,10,7.4355919,4,0.74355919,0.4,PropPD1,Untuned
-18,8,12,9.6067209,7,0.80056008,0.58333333,PropPD1,Untuned
-19,9,4555,4554.9994,4554,0.99999987,0.99978046,PropPD1,Untuned
-20,0,62921,3872.7921,3872,0.061550072,0.061537484,PropPD2,Adapted reference
-21,1,41850,5759.2356,5783,0.13761614,0.13818399,PropPD2,Adapted reference
-22,2,642,142.2602,123,0.2215891,0.19158879,PropPD2,Adapted reference
-23,3,58,19.361738,5,0.33382306,0.086206897,PropPD2,Adapted reference
-24,0,62701,3835.2609,3835,0.06116746,0.061163299,PropPD2,Untuned
-25,1,41687,5706.7935,5732,0.13689624,0.1375009,PropPD2,Untuned
-26,2,950,205.35885,189,0.21616721,0.19894737,PropPD2,Untuned
-27,3,119,38.878158,25,0.32670721,0.21008403,PropPD2,Untuned
-28,4,4,1.7142857,0,0.42857143,0,PropPD2,Untuned
-29,6,1,0.648206,0,0.648206,0,PropPD2,Untuned
-30,7,3,2.2453008,0,0.74843359,0,PropPD2,Untuned
-31,9,6,6,2,1,0.33333333,PropPD2,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,78319,4356.7483,5650,0.055628242,0.07214086,PropPD2,Adapted reference,raw
+1,1,27021,3455.5798,4102,0.12788497,0.15180785,PropPD2,Adapted reference,raw
+2,2,131,27.624421,31,0.21087345,0.23664122,PropPD2,Adapted reference,raw
+3,0,95436,4893.0271,8077,0.051270245,0.084632633,PropPD2,Untuned,raw
+4,1,10035,1127.0038,1706,0.1123073,0.17000498,PropPD2,Untuned,raw
+5,0,63833,4070.5917,4010,0.063769394,0.062820171,PropPD2,Adapted reference,Platt
+6,1,40682,5524.7531,5585,0.13580338,0.1372843,PropPD2,Adapted reference,Platt
+7,2,956,202.51096,188,0.21183155,0.19665272,PropPD2,Adapted reference,Platt
+8,0,65939,4309.5209,4305,0.065356176,0.065287614,PropPD2,Untuned,Platt
+9,1,39297,5430.841,5423,0.13819989,0.13800036,PropPD2,Untuned,Platt
+10,2,235,48.472702,55,0.20626682,0.23404255,PropPD2,Untuned,Platt
+11,0,59582,3585.293,3644,0.060174096,0.061159411,PropPD2,Adapted reference,isotonic
+12,1,43707,5728.601,5735,0.13106827,0.13121468,PropPD2,Adapted reference,isotonic
+13,2,2134,466.24868,394,0.21848579,0.1846298,PropPD2,Adapted reference,isotonic
+14,3,21,6.5733857,4,0.31301837,0.19047619,PropPD2,Adapted reference,isotonic
+15,4,26,12.714286,6,0.48901099,0.23076923,PropPD2,Adapted reference,isotonic
+16,9,1,1,0,1,0,PropPD2,Adapted reference,isotonic
+17,0,59571,3636.6198,3716,0.061046815,0.062379346,PropPD2,Untuned,isotonic
+18,1,44345,5808.1631,5750,0.13097673,0.12966513,PropPD2,Untuned,isotonic
+19,2,1491,326.56704,304,0.21902551,0.20389001,PropPD2,Untuned,isotonic
+20,3,43,14.272012,9,0.33190726,0.20930233,PropPD2,Untuned,isotonic
+21,4,20,8,4,0.4,0.2,PropPD2,Untuned,isotonic
+22,9,1,1,0,1,0,PropPD2,Untuned,isotonic
 
-Figure: pd_reliability_v2_raw_1
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v2.6_1
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20632,793.94818,875,0.038481397,0.042409849,Credit Risk,Adapted reference
-1,1,4533,625.46262,656,0.13797984,0.14471652,Credit Risk,Adapted reference
-2,2,1227,297.32661,254,0.24231998,0.20700896,Credit Risk,Adapted reference
-3,3,573,196.81976,151,0.34348999,0.26352531,Credit Risk,Adapted reference
-4,4,290,129.05832,99,0.4450287,0.34137931,Credit Risk,Adapted reference
-5,5,208,114.01043,102,0.54812707,0.49038462,Credit Risk,Adapted reference
-6,6,166,107.95457,113,0.65032875,0.68072289,Credit Risk,Adapted reference
-7,7,243,182.61514,200,0.75150261,0.82304527,Credit Risk,Adapted reference
-8,8,481,412.13253,436,0.85682439,0.90644491,Credit Risk,Adapted reference
-9,9,4228,4151.2401,4222,0.98184487,0.99858089,Credit Risk,Adapted reference
-10,0,19371,800.69913,790,0.04133494,0.040782613,Credit Risk,Untuned
-11,1,5864,809.32426,758,0.13801573,0.1292633,Credit Risk,Untuned
-12,2,1431,346.38474,303,0.24205782,0.21174004,Credit Risk,Untuned
-13,3,465,158.99579,139,0.34192644,0.29892473,Credit Risk,Untuned
-14,4,266,118.72071,115,0.44631847,0.43233083,Credit Risk,Untuned
-15,5,177,97.330602,111,0.54989041,0.62711864,Credit Risk,Untuned
-16,6,169,110.40883,129,0.65330667,0.76331361,Credit Risk,Untuned
-17,7,276,207.83693,243,0.75303236,0.88043478,Credit Risk,Untuned
-18,8,540,461.74934,502,0.85509138,0.92962963,Credit Risk,Untuned
-19,9,4022,3948.2118,4018,0.98165385,0.99900547,Credit Risk,Untuned
-20,0,284448,12207.434,10261,0.042916224,0.036073377,Hackerearth,Adapted reference
-21,1,91851,13013.36,11327,0.14167902,0.12331929,Hackerearth,Adapted reference
-22,2,35043,8490.4901,8124,0.24228776,0.23182947,Hackerearth,Adapted reference
-23,3,15887,5478.0599,5696,0.34481399,0.35853213,Hackerearth,Adapted reference
-24,4,9488,4245.6835,5270,0.44747929,0.55543845,Hackerearth,Adapted reference
-25,5,7737,4248.9958,5436,0.54917873,0.70259791,Hackerearth,Adapted reference
-26,6,8430,5492.219,6700,0.65150878,0.79478055,Hackerearth,Adapted reference
-27,7,12115,9139.4065,10210,0.75438766,0.84275691,Hackerearth,Adapted reference
-28,8,22804,19510.624,20234,0.855579,0.88730047,Hackerearth,Adapted reference
-29,9,44625,42768.846,42569,0.95840551,0.95392717,Hackerearth,Adapted reference
-30,0,160404,8587.2584,4095,0.053535189,0.025529289,Hackerearth,Untuned
-31,1,146002,21363.974,10619,0.14632659,0.07273188,Hackerearth,Untuned
-32,2,80090,19492.851,10285,0.24338682,0.12841803,Hackerearth,Untuned
-33,3,32191,10986.681,6845,0.34129668,0.21263707,Hackerearth,Untuned
-34,4,12901,5739.2721,5246,0.44487033,0.40663514,Hackerearth,Untuned
-35,5,9225,5068.7151,6053,0.54945422,0.65615176,Hackerearth,Untuned
-36,6,10085,6575.6844,7956,0.65202622,0.7888944,Hackerearth,Untuned
-37,7,14772,11141.772,12508,0.75424937,0.84673707,Hackerearth,Untuned
-38,8,26487,22641.395,23740,0.8548116,0.89628875,Hackerearth,Untuned
-39,9,40271,38455.813,38480,0.95492572,0.95552631,Hackerearth,Untuned
-40,1,112,20.186945,29,0.18024058,0.25892857,Myhom,Adapted reference
-41,2,1147,297.63232,311,0.25948763,0.27114211,Myhom,Adapted reference
-42,3,2367,836.95453,858,0.35359296,0.36248416,Myhom,Adapted reference
-43,4,2697,1206.8699,1285,0.44748605,0.47645532,Myhom,Adapted reference
-44,5,665,350.30091,310,0.52676829,0.46616541,Myhom,Adapted reference
-45,6,12,7.3444142,7,0.61203452,0.58333333,Myhom,Adapted reference
-46,1,47,8.5465059,18,0.18184055,0.38297872,Myhom,Untuned
-47,2,1041,274.04967,274,0.26325617,0.26320845,Myhom,Untuned
-48,3,2444,864.64285,865,0.35378185,0.35392799,Myhom,Untuned
-49,4,2928,1302.4509,1386,0.44482614,0.47336066,Myhom,Untuned
-50,5,534,281.58274,253,0.52730851,0.47378277,Myhom,Untuned
-51,6,6,3.683933,4,0.61398884,0.66666667,Myhom,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,22625,740.40399,1033,0.032725038,0.045657459,Credit Risk,Adapted reference,raw
+1,1,3533,470.03893,590,0.13304244,0.16699689,Credit Risk,Adapted reference,raw
+2,2,717,172.71009,178,0.24087878,0.24825662,Credit Risk,Adapted reference,raw
+3,3,280,96.382915,91,0.3442247,0.325,Credit Risk,Adapted reference,raw
+4,4,147,65.221028,63,0.44368046,0.42857143,Credit Risk,Adapted reference,raw
+5,5,121,66.143202,74,0.54663803,0.61157025,Credit Risk,Adapted reference,raw
+6,6,109,70.561554,74,0.64735371,0.67889908,Credit Risk,Adapted reference,raw
+7,7,122,92.293673,101,0.75650551,0.82786885,Credit Risk,Adapted reference,raw
+8,8,177,151.24572,162,0.85449557,0.91525424,Credit Risk,Adapted reference,raw
+9,9,4750,4720.3494,4742,0.99375777,0.99831579,Credit Risk,Adapted reference,raw
+10,0,21993,760.39368,917,0.03457435,0.041695085,Credit Risk,Untuned,raw
+11,1,4085,550.14136,681,0.13467353,0.16670747,Credit Risk,Untuned,raw
+12,2,806,195.02406,193,0.24196533,0.23945409,Credit Risk,Untuned,raw
+13,3,310,106.2083,102,0.34260742,0.32903226,Credit Risk,Untuned,raw
+14,4,133,59.811019,65,0.44970691,0.4887218,Credit Risk,Untuned,raw
+15,5,122,67.764302,75,0.5554451,0.6147541,Credit Risk,Untuned,raw
+16,6,102,66.190508,80,0.64892655,0.78431373,Credit Risk,Untuned,raw
+17,7,135,101.65937,114,0.7530324,0.84444444,Credit Risk,Untuned,raw
+18,8,151,129.49961,141,0.85761333,0.93377483,Credit Risk,Untuned,raw
+19,9,4744,4717.0671,4740,0.99432274,0.99915683,Credit Risk,Untuned,raw
+20,0,341679,10321.286,11050,0.030207552,0.032340296,Hackerearth,Adapted reference,raw
+21,1,52713,7423.1564,8878,0.14082212,0.16842145,Hackerearth,Adapted reference,raw
+22,2,20049,4867.4169,6463,0.24277605,0.32236022,Hackerearth,Adapted reference,raw
+23,3,9534,3290.0331,4451,0.34508424,0.46685546,Hackerearth,Adapted reference,raw
+24,4,6133,2744.7053,3618,0.44753062,0.58992337,Hackerearth,Adapted reference,raw
+25,5,4998,2745.0422,3392,0.54922814,0.67867147,Hackerearth,Adapted reference,raw
+26,6,5087,3313.0306,3850,0.65127395,0.75683114,Hackerearth,Adapted reference,raw
+27,7,7820,5905.9043,6115,0.75523073,0.78196931,Hackerearth,Adapted reference,raw
+28,8,19625,16875.715,16455,0.85990906,0.83847134,Hackerearth,Adapted reference,raw
+29,9,64790,62343.115,61555,0.9622336,0.95006946,Hackerearth,Adapted reference,raw
+30,0,327547,10999.501,9140,0.033581444,0.027904392,Hackerearth,Untuned,raw
+31,1,59554,8398.0496,8513,0.14101571,0.1429459,Hackerearth,Untuned,raw
+32,2,23748,5774.65,6765,0.24316364,0.28486609,Hackerearth,Untuned,raw
+33,3,11057,3806.6375,4840,0.34427399,0.43773175,Hackerearth,Untuned,raw
+34,4,6814,3046.7975,4010,0.44713788,0.58849428,Hackerearth,Untuned,raw
+35,5,5524,3034.7538,3768,0.54937614,0.68211441,Hackerearth,Untuned,raw
+36,6,5946,3880.8079,4473,0.6526754,0.75227043,Hackerearth,Untuned,raw
+37,7,9514,7189.9927,7424,0.75572763,0.78032373,Hackerearth,Untuned,raw
+38,8,22680,19486.545,19407,0.85919509,0.85568783,Hackerearth,Untuned,raw
+39,9,60044,57631.665,57487,0.95982388,0.95741456,Hackerearth,Untuned,raw
+40,0,20138,707.93168,744,0.035154021,0.036945079,Credit Risk,Adapted reference,Platt
+41,1,5255,726.19087,719,0.13819046,0.13682207,Credit Risk,Adapted reference,Platt
+42,2,1128,270.99576,244,0.24024447,0.21631206,Credit Risk,Adapted reference,Platt
+43,3,459,157.34817,128,0.34280646,0.2788671,Credit Risk,Adapted reference,Platt
+44,4,225,101.03537,78,0.44904607,0.34666667,Credit Risk,Adapted reference,Platt
+45,5,131,71.897093,63,0.54883277,0.48091603,Credit Risk,Adapted reference,Platt
+46,6,123,80.18211,76,0.65188707,0.61788618,Credit Risk,Adapted reference,Platt
+47,7,122,91.838603,92,0.75277543,0.75409836,Credit Risk,Adapted reference,Platt
+48,8,183,156.28139,161,0.85399668,0.87978142,Credit Risk,Adapted reference,Platt
+49,9,4817,4788.6199,4803,0.99410834,0.99709363,Credit Risk,Adapted reference,Platt
+50,0,20200,695.09643,722,0.034410714,0.035742574,Credit Risk,Untuned,Platt
+51,1,5103,704.4588,696,0.13804797,0.13639036,Credit Risk,Untuned,Platt
+52,2,1201,288.17053,274,0.23994215,0.22814321,Credit Risk,Untuned,Platt
+53,3,481,164.62762,128,0.34226117,0.26611227,Credit Risk,Untuned,Platt
+54,4,228,101.07443,84,0.44330891,0.36842105,Credit Risk,Untuned,Platt
+55,5,120,65.824631,56,0.54853859,0.46666667,Credit Risk,Untuned,Platt
+56,6,127,83.737925,85,0.65935374,0.66929134,Credit Risk,Untuned,Platt
+57,7,122,92.359234,96,0.7570429,0.78688525,Credit Risk,Untuned,Platt
+58,8,158,135.01449,138,0.85452207,0.87341772,Credit Risk,Untuned,Platt
+59,9,4841,4818.2215,4829,0.99529468,0.99752117,Credit Risk,Untuned,Platt
+60,0,324790,10838.627,9346,0.033371183,0.028775516,Hackerearth,Adapted reference,Platt
+61,1,60242,8519.5722,8418,0.14142247,0.1397364,Hackerearth,Adapted reference,Platt
+62,2,24420,5944.7632,6714,0.2434383,0.27493857,Hackerearth,Adapted reference,Platt
+63,3,11666,4023.7571,4875,0.34491317,0.41788102,Hackerearth,Adapted reference,Platt
+64,4,6997,3131.6235,3833,0.44756661,0.5478062,Hackerearth,Adapted reference,Platt
+65,5,5365,2945.4987,3508,0.5490212,0.65386766,Hackerearth,Adapted reference,Platt
+66,6,5263,3425.7738,3863,0.65091656,0.73399202,Hackerearth,Adapted reference,Platt
+67,7,7391,5583.8354,5773,0.75549119,0.7810851,Hackerearth,Adapted reference,Platt
+68,8,18608,16002.406,15406,0.85997451,0.82792347,Hackerearth,Adapted reference,Platt
+69,9,67686,65123.607,64091,0.96214294,0.9468871,Hackerearth,Adapted reference,Platt
+70,0,327496,10506.91,9152,0.032082559,0.027945379,Hackerearth,Untuned,Platt
+71,1,57003,8059.063,7916,0.14137963,0.13886988,Hackerearth,Untuned,Platt
+72,2,23842,5816.8483,6434,0.24397485,0.26985991,Hackerearth,Untuned,Platt
+73,3,11516,3967.0112,4694,0.34447822,0.40760681,Hackerearth,Untuned,Platt
+74,4,7034,3147.0419,3907,0.4474043,0.55544498,Hackerearth,Untuned,Platt
+75,5,5429,2981.4557,3583,0.54917218,0.65997421,Hackerearth,Untuned,Platt
+76,6,5423,3530.8861,3944,0.65109461,0.72727273,Hackerearth,Untuned,Platt
+77,7,7968,6013.0272,6135,0.75464699,0.76995482,Hackerearth,Untuned,Platt
+78,8,18485,15876.266,15310,0.85887294,0.82823911,Hackerearth,Untuned,Platt
+79,9,68232,65672.955,64752,0.96249495,0.94899754,Hackerearth,Untuned,Platt
+80,0,19417,628.67076,673,0.032377337,0.034660349,Credit Risk,Adapted reference,isotonic
+81,1,6127,862.96042,828,0.14084551,0.13513955,Credit Risk,Adapted reference,isotonic
+82,2,1327,336.99017,304,0.25394888,0.22908817,Credit Risk,Adapted reference,isotonic
+83,3,361,125.6176,116,0.34797119,0.32132964,Credit Risk,Adapted reference,isotonic
+84,4,67,27.860461,39,0.41582778,0.58208955,Credit Risk,Adapted reference,isotonic
+85,5,62,34.007719,36,0.5485116,0.58064516,Credit Risk,Adapted reference,isotonic
+86,6,110,72.961657,69,0.66328779,0.62727273,Credit Risk,Adapted reference,isotonic
+87,7,45,33.284819,30,0.73966264,0.66666667,Credit Risk,Adapted reference,isotonic
+88,8,276,237.49609,238,0.86049309,0.86231884,Credit Risk,Adapted reference,isotonic
+89,9,4789,4783.3124,4775,0.99881236,0.99707663,Credit Risk,Adapted reference,isotonic
+90,0,20560,708.80754,774,0.034475075,0.037645914,Credit Risk,Untuned,isotonic
+91,1,4781,711.09213,650,0.14873293,0.13595482,Credit Risk,Untuned,isotonic
+92,2,1253,296.81339,298,0.2368822,0.23782921,Credit Risk,Untuned,isotonic
+93,3,505,167.80681,147,0.33229071,0.29108911,Credit Risk,Untuned,isotonic
+94,4,207,91.33727,90,0.44124285,0.43478261,Credit Risk,Untuned,isotonic
+95,5,52,29.891682,32,0.57484004,0.61538462,Credit Risk,Untuned,isotonic
+96,6,105,69.957214,58,0.66625918,0.55238095,Credit Risk,Untuned,isotonic
+97,7,25,18.5,20,0.74,0.8,Credit Risk,Untuned,isotonic
+98,8,273,232.52374,229,0.85173532,0.83882784,Credit Risk,Untuned,isotonic
+99,9,4820,4814.6898,4810,0.99889829,0.99792531,Credit Risk,Untuned,isotonic
+100,0,339210,10658.11,10819,0.031420388,0.031894697,Hackerearth,Adapted reference,isotonic
+101,1,43894,6427.4563,6582,0.14643132,0.14995216,Hackerearth,Adapted reference,isotonic
+102,2,17286,4136.0343,4203,0.23927076,0.24314474,Hackerearth,Adapted reference,isotonic
+103,3,13465,4639.4493,4553,0.34455621,0.33813591,Hackerearth,Adapted reference,isotonic
+104,4,9139,4086.8089,4153,0.44718338,0.45442609,Hackerearth,Adapted reference,isotonic
+105,5,4658,2608.4449,2657,0.55999247,0.57041649,Hackerearth,Adapted reference,isotonic
+106,6,5597,3760.9666,3572,0.67196116,0.63819904,Hackerearth,Adapted reference,isotonic
+107,7,12371,9310.1401,9383,0.75257781,0.75846738,Hackerearth,Adapted reference,isotonic
+108,8,34232,29332.683,29270,0.85687902,0.85504791,Hackerearth,Adapted reference,isotonic
+109,9,52576,50629.422,50635,0.96297592,0.96308201,Hackerearth,Adapted reference,isotonic
+110,0,339209,10175.216,10303,0.029996894,0.030373604,Hackerearth,Untuned,isotonic
+111,1,42878,6121.2272,6315,0.14275916,0.14727832,Hackerearth,Untuned,isotonic
+112,2,18075,4274.6443,4297,0.23649485,0.23773167,Hackerearth,Untuned,isotonic
+113,3,13488,4641.7463,4591,0.34413896,0.34037663,Hackerearth,Untuned,isotonic
+114,4,6826,3048.2459,3008,0.44656401,0.44066803,Hackerearth,Untuned,isotonic
+115,5,5558,3035.5205,3116,0.54615338,0.56063332,Hackerearth,Untuned,isotonic
+116,6,5551,3624.3352,3546,0.65291573,0.63880382,Hackerearth,Untuned,isotonic
+117,7,15152,11360.55,11370,0.74977233,0.75039599,Hackerearth,Untuned,isotonic
+118,8,27351,23394.27,23363,0.85533507,0.8541918,Hackerearth,Untuned,isotonic
+119,9,58340,55908.686,55918,0.95832509,0.95848474,Hackerearth,Untuned,isotonic
 
-Figure: pd_reliability_v2_raw_2
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v2.6_2
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,18118,535.48409,565,0.029555364,0.031184457,PropPD1,Adapted reference
-1,1,41426,6422.1771,6876,0.15502769,0.16598272,PropPD1,Adapted reference
-2,2,27497,6576.5555,7309,0.23917357,0.26581082,PropPD1,Adapted reference
-3,3,6770,2295.5268,2513,0.33907338,0.37119645,PropPD1,Adapted reference
-4,4,1548,673.2579,773,0.43492112,0.49935401,PropPD1,Adapted reference
-5,5,89,46.538054,52,0.52289949,0.58426966,PropPD1,Adapted reference
-6,6,2,1.2869484,1,0.64347419,0.5,PropPD1,Adapted reference
-7,7,2,1.5405273,2,0.77026367,1,PropPD1,Adapted reference
-8,8,1,0.89740616,1,0.89740616,1,PropPD1,Adapted reference
-9,9,4547,4545.063,4547,0.999574,1,PropPD1,Adapted reference
-10,0,17845,524.62785,591,0.029399151,0.033118521,PropPD1,Untuned
-11,1,51821,8121.4598,9426,0.1567214,0.18189537,PropPD1,Untuned
-12,2,21339,4960.9769,6159,0.23248404,0.28862646,PropPD1,Untuned
-13,3,4115,1392.8014,1746,0.33846936,0.42430134,PropPD1,Untuned
-14,4,328,137.39966,166,0.4189014,0.50609756,PropPD1,Untuned
-15,5,1,0.50878906,0,0.50878906,0,PropPD1,Untuned
-16,7,3,2.2315385,3,0.74384618,1,PropPD1,Untuned
-17,9,4548,4545.9278,4548,0.99954437,1,PropPD1,Untuned
-18,0,78319,4356.7483,5650,0.055628242,0.07214086,PropPD2,Adapted reference
-19,1,27021,3455.5798,4102,0.12788497,0.15180785,PropPD2,Adapted reference
-20,2,131,27.624421,31,0.21087345,0.23664122,PropPD2,Adapted reference
-21,0,95436,4893.0271,8077,0.051270245,0.084632633,PropPD2,Untuned
-22,1,10035,1127.0038,1706,0.1123073,0.17000498,PropPD2,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,1,125,22.453439,31,0.17962751,0.248,Myhom,Adapted reference,raw
+1,2,1292,333.76484,360,0.25833192,0.27863777,Myhom,Adapted reference,raw
+2,3,2159,763.71695,790,0.35373643,0.36591014,Myhom,Adapted reference,raw
+3,4,2709,1217.6223,1274,0.44947299,0.47028424,Myhom,Adapted reference,raw
+4,5,712,374.68802,344,0.52624723,0.48314607,Myhom,Adapted reference,raw
+5,6,3,1.8167467,1,0.60558224,0.33333333,Myhom,Adapted reference,raw
+6,1,124,22.462531,31,0.18114944,0.25,Myhom,Untuned,raw
+7,2,1242,318.42545,353,0.2563812,0.284219,Myhom,Untuned,raw
+8,3,2009,711.52283,718,0.35416766,0.35739174,Myhom,Untuned,raw
+9,4,2904,1308.0041,1348,0.45041465,0.46418733,Myhom,Untuned,raw
+10,5,721,375.85733,350,0.52130004,0.48543689,Myhom,Untuned,raw
+11,0,23529,863.09673,1022,0.036682253,0.04343576,PropPD1,Adapted reference,raw
+12,1,38443,5677.8842,6538,0.14769618,0.17006997,PropPD1,Adapted reference,raw
+13,2,22085,5352.7822,5935,0.24237185,0.26873444,PropPD1,Adapted reference,raw
+14,3,7662,2615.6567,2823,0.34138041,0.36844166,PropPD1,Adapted reference,raw
+15,4,2773,1225.8485,1243,0.44206582,0.44825099,PropPD1,Adapted reference,raw
+16,5,837,450.04154,460,0.53768404,0.54958184,PropPD1,Adapted reference,raw
+17,6,119,74.403236,69,0.62523728,0.57983193,PropPD1,Adapted reference,raw
+18,7,12,8.9807243,9,0.74839369,0.75,PropPD1,Adapted reference,raw
+19,8,14,12.162528,14,0.86875199,1,PropPD1,Adapted reference,raw
+20,9,4526,4522.9353,4526,0.99932287,1,PropPD1,Adapted reference,raw
+21,0,24036,903.9675,1064,0.037608899,0.044266933,PropPD1,Untuned,raw
+22,1,35969,5318.142,6010,0.14785348,0.16708833,PropPD1,Untuned,raw
+23,2,23446,5714.4315,6205,0.24372735,0.26465069,PropPD1,Untuned,raw
+24,3,8421,2869.3992,3087,0.34074329,0.36658354,PropPD1,Untuned,raw
+25,4,2821,1243.3395,1304,0.44074425,0.46224743,PropPD1,Untuned,raw
+26,5,707,378.15195,395,0.53486839,0.55869873,PropPD1,Untuned,raw
+27,6,57,35.938461,32,0.63049932,0.56140351,PropPD1,Untuned,raw
+28,7,7,5.1474704,6,0.73535291,0.85714286,PropPD1,Untuned,raw
+29,8,15,12.77332,15,0.85155465,1,PropPD1,Untuned,raw
+30,9,4521,4517.7095,4521,0.99927218,1,PropPD1,Untuned,raw
+31,1,66,11.829676,23,0.17923751,0.34848485,Myhom,Adapted reference,Platt
+32,2,856,225.85133,225,0.26384501,0.26285047,Myhom,Adapted reference,Platt
+33,3,2314,819.57891,785,0.35418276,0.33923941,Myhom,Adapted reference,Platt
+34,4,3069,1376.315,1407,0.44845716,0.45845552,Myhom,Adapted reference,Platt
+35,5,680,357.84805,352,0.52624713,0.51764706,Myhom,Adapted reference,Platt
+36,6,15,9.1830533,8,0.61220355,0.53333333,Myhom,Adapted reference,Platt
+37,1,71,12.730584,23,0.179304,0.32394366,Myhom,Untuned,Platt
+38,2,870,228.91979,221,0.26312619,0.25402299,Myhom,Untuned,Platt
+39,3,2191,776.79998,752,0.3545413,0.34322227,Myhom,Untuned,Platt
+40,4,3270,1468.9196,1501,0.44921089,0.45902141,Myhom,Untuned,Platt
+41,5,598,312.4615,303,0.52251088,0.50668896,Myhom,Untuned,Platt
+42,0,19040,540.79815,546,0.028403264,0.028676471,PropPD1,Adapted reference,Platt
+43,1,35209,5351.3721,5307,0.15198876,0.15072851,PropPD1,Adapted reference,Platt
+44,2,25917,6338.1068,6427,0.24455403,0.24798395,PropPD1,Adapted reference,Platt
+45,3,10243,3492.7182,3488,0.34098586,0.34052524,PropPD1,Adapted reference,Platt
+46,4,3661,1617.2268,1583,0.44174456,0.43239552,PropPD1,Adapted reference,Platt
+47,5,1199,645.36308,638,0.53825111,0.53211009,PropPD1,Adapted reference,Platt
+48,6,176,110.5115,100,0.62790623,0.56818182,PropPD1,Adapted reference,Platt
+49,7,15,11.137878,10,0.74252518,0.66666667,PropPD1,Adapted reference,Platt
+50,8,14,12.072164,14,0.86229741,1,PropPD1,Adapted reference,Platt
+51,9,4526,4522.5209,4526,0.99923131,1,PropPD1,Adapted reference,Platt
+52,0,19934,610.13219,635,0.030607615,0.031855122,PropPD1,Untuned,Platt
+53,1,33451,5035.2318,5045,0.1505256,0.15081761,PropPD1,Untuned,Platt
+54,2,26102,6416.117,6383,0.2458094,0.24454065,PropPD1,Untuned,Platt
+55,3,11073,3770.2318,3766,0.34048874,0.34010657,PropPD1,Untuned,Platt
+56,4,3736,1647.1595,1641,0.44088852,0.43923983,PropPD1,Untuned,Platt
+57,5,1058,567.0705,567,0.53598346,0.53591682,PropPD1,Untuned,Platt
+58,6,101,63.320115,59,0.62693183,0.58415842,PropPD1,Untuned,Platt
+59,7,10,7.4225863,8,0.74225863,0.8,PropPD1,Untuned,Platt
+60,8,14,11.899897,14,0.84999266,1,PropPD1,Untuned,Platt
+61,9,4521,4517.4924,4521,0.99922415,1,PropPD1,Untuned,Platt
+62,0,12,0.22362703,7,0.018635586,0.58333333,Myhom,Adapted reference,isotonic
+63,1,108,19.187511,27,0.17766214,0.25,Myhom,Adapted reference,isotonic
+64,2,853,209.64917,228,0.24577863,0.26729191,Myhom,Adapted reference,isotonic
+65,3,2492,885.20026,873,0.3552168,0.35032103,Myhom,Adapted reference,isotonic
+66,4,2961,1350.4042,1368,0.45606357,0.46200608,Myhom,Adapted reference,isotonic
+67,5,472,260.41457,239,0.55172579,0.50635593,Myhom,Adapted reference,isotonic
+68,6,59,40.116725,32,0.6799445,0.54237288,Myhom,Adapted reference,isotonic
+69,7,19,14.529398,11,0.76470517,0.57894737,Myhom,Adapted reference,isotonic
+70,8,4,3.3432897,2,0.83582243,0.5,Myhom,Adapted reference,isotonic
+71,9,20,20,13,1,0.65,Myhom,Adapted reference,isotonic
+72,0,16,0.1169024,10,0.0073063998,0.625,Myhom,Untuned,isotonic
+73,1,46,5.6595669,14,0.12303406,0.30434783,Myhom,Untuned,isotonic
+74,2,1373,363.42343,384,0.26469296,0.27967953,Myhom,Untuned,isotonic
+75,3,2087,762.41843,761,0.36531789,0.36463824,Myhom,Untuned,isotonic
+76,4,2782,1270.9803,1268,0.4568585,0.4557872,Myhom,Untuned,isotonic
+77,5,610,330.08052,313,0.54111561,0.51311475,Myhom,Untuned,isotonic
+78,6,55,36.179928,30,0.65781687,0.54545455,Myhom,Untuned,isotonic
+79,7,2,1.5048001,1,0.75240007,0.5,Myhom,Untuned,isotonic
+80,8,9,7.2000003,5,0.80000003,0.55555556,Myhom,Untuned,isotonic
+81,9,20,19.954264,14,0.99771318,0.7,Myhom,Untuned,isotonic
+82,0,21156,706.87743,766,0.033412622,0.036207223,PropPD1,Adapted reference,isotonic
+83,1,30906,4651.7938,4684,0.15051426,0.15155633,PropPD1,Adapted reference,isotonic
+84,2,29931,7408.8705,7433,0.24753167,0.24833784,PropPD1,Adapted reference,isotonic
+85,3,8535,2990.2281,2987,0.35034893,0.34997071,PropPD1,Adapted reference,isotonic
+86,4,3979,1787.6682,1695,0.44927575,0.42598643,PropPD1,Adapted reference,isotonic
+87,5,675,372.91231,383,0.55246267,0.56740741,PropPD1,Adapted reference,isotonic
+88,6,226,141.84811,122,0.62764649,0.53982301,PropPD1,Adapted reference,isotonic
+89,7,17,12.778323,9,0.75166606,0.52941176,PropPD1,Adapted reference,isotonic
+90,8,24,19.956443,12,0.83151846,0.5,PropPD1,Adapted reference,isotonic
+91,9,4551,4550.9029,4548,0.99997866,0.9993408,PropPD1,Adapted reference,isotonic
+92,0,20983,683.97667,749,0.032596705,0.035695563,PropPD1,Untuned,isotonic
+93,1,33329,5133.212,5148,0.15401638,0.15446008,PropPD1,Untuned,isotonic
+94,2,26230,6504.0719,6505,0.24796309,0.24799848,PropPD1,Untuned,isotonic
+95,3,9755,3338.3157,3356,0.34221586,0.3440287,PropPD1,Untuned,isotonic
+96,4,4073,1823.4886,1734,0.44770159,0.42573042,PropPD1,Untuned,isotonic
+97,5,928,503.88393,513,0.54297838,0.55280172,PropPD1,Untuned,isotonic
+98,6,95,60.746841,54,0.63944043,0.56842105,PropPD1,Untuned,isotonic
+99,7,20,14.849019,13,0.74245096,0.65,PropPD1,Untuned,isotonic
+100,8,30,25.465255,19,0.84884183,0.63333333,PropPD1,Untuned,isotonic
+101,9,4557,4556.8749,4548,0.99997256,0.99802502,PropPD1,Untuned,isotonic
 
-Figure: pd_reliability_v2_Platt_1
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v2.6_3
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20380,759.79761,849,0.037281532,0.041658489,Credit Risk,Adapted reference
-1,1,4546,630.222,635,0.1386322,0.13968324,Credit Risk,Adapted reference
-2,2,1289,313.11754,266,0.24291508,0.20636152,Credit Risk,Adapted reference
-3,3,622,215.24741,150,0.34605692,0.24115756,Credit Risk,Adapted reference
-4,4,322,143.6888,95,0.44623851,0.29503106,Credit Risk,Adapted reference
-5,5,208,113.74376,87,0.54684498,0.41826923,Credit Risk,Adapted reference
-6,6,190,122.63245,115,0.64543397,0.60526316,Credit Risk,Adapted reference
-7,7,216,163.06914,165,0.75494972,0.76388889,Credit Risk,Adapted reference
-8,8,401,343.33646,359,0.85620065,0.89526185,Credit Risk,Adapted reference
-9,9,4407,4335.8788,4387,0.98386176,0.99546177,Credit Risk,Adapted reference
-10,0,19922,741.97259,831,0.037243881,0.041712679,Credit Risk,Untuned
-11,1,5044,699.70407,663,0.13872008,0.1314433,Credit Risk,Untuned
-12,2,1420,342.41269,296,0.2411357,0.2084507,Credit Risk,Untuned
-13,3,586,200.16295,153,0.341575,0.26109215,Credit Risk,Untuned
-14,4,262,116.79679,82,0.44578926,0.3129771,Credit Risk,Untuned
-15,5,192,104.12345,96,0.54230961,0.5,Credit Risk,Untuned
-16,6,179,115.948,117,0.64775418,0.65363128,Credit Risk,Untuned
-17,7,189,142.61105,146,0.75455581,0.77248677,Credit Risk,Untuned
-18,8,402,344.89836,364,0.85795613,0.90547264,Credit Risk,Untuned
-19,9,4385,4322.3306,4360,0.98570824,0.99429875,Credit Risk,Untuned
-20,0,295832,11482.911,11198,0.03881565,0.037852565,Hackerearth,Adapted reference
-21,1,80834,11463.515,10425,0.14181551,0.12896801,Hackerearth,Adapted reference
-22,2,32267,7841.5231,7371,0.2430199,0.22843772,Hackerearth,Adapted reference
-23,3,15444,5330.3225,5166,0.34513872,0.33449883,Hackerearth,Adapted reference
-24,4,9397,4198.6256,4707,0.44680489,0.50090454,Hackerearth,Adapted reference
-25,5,7427,4076.9405,4839,0.54893503,0.65154167,Hackerearth,Adapted reference
-26,6,7406,4822.5356,5637,0.65116603,0.76113962,Hackerearth,Adapted reference
-27,7,9827,7408.6188,8088,0.75390443,0.82303857,Hackerearth,Adapted reference
-28,8,18812,16119.307,16351,0.85686299,0.86917925,Hackerearth,Adapted reference
-29,9,55182,53101.316,52045,0.96229416,0.94315175,Hackerearth,Adapted reference
-30,0,282222,11547.183,12251,0.040915248,0.043409089,Hackerearth,Untuned
-31,1,98337,13939.651,11717,0.14175387,0.11915149,Hackerearth,Untuned
-32,2,33809,8151.8884,6505,0.24111593,0.19240439,Hackerearth,Untuned
-33,3,12760,4388.7895,4376,0.34394902,0.34294671,Hackerearth,Untuned
-34,4,7689,3439.6755,4124,0.44735018,0.53635063,Hackerearth,Untuned
-35,5,6798,3739.2928,4790,0.55005778,0.70461901,Hackerearth,Untuned
-36,6,7456,4859.9576,5810,0.65181834,0.7792382,Hackerearth,Untuned
-37,7,10443,7868.2642,8721,0.75344865,0.83510485,Hackerearth,Untuned
-38,8,19176,16420.408,16853,0.85629996,0.87885899,Hackerearth,Untuned
-39,9,53738,51752.175,50680,0.96304618,0.94309427,Hackerearth,Untuned
-40,1,66,11.733605,20,0.1777819,0.3030303,Myhom,Adapted reference
-41,2,823,218.1403,217,0.26505505,0.2636695,Myhom,Adapted reference
-42,3,2402,854.39843,815,0.35570293,0.33930058,Myhom,Adapted reference
-43,4,2992,1337.2548,1386,0.44694346,0.46323529,Myhom,Adapted reference
-44,5,691,364.65931,345,0.52772693,0.49927641,Myhom,Adapted reference
-45,6,26,16.22505,17,0.62404039,0.65384615,Myhom,Adapted reference
-46,1,43,7.7817284,12,0.18097043,0.27906977,Myhom,Untuned
-47,2,789,209.00849,205,0.26490303,0.25982256,Myhom,Untuned
-48,3,2415,856.61265,829,0.35470503,0.34327122,Myhom,Untuned
-49,4,3148,1405.2212,1448,0.4463854,0.45997459,Myhom,Untuned
-50,5,579,307.59672,291,0.53125514,0.50259067,Myhom,Untuned
-51,6,26,16.266774,15,0.62564517,0.57692308,Myhom,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,73299,3926.017,4961,0.053561672,0.067681687,PropPD2,Adapted reference,raw
+1,1,32127,4057.4877,4815,0.12629526,0.14987394,PropPD2,Adapted reference,raw
+2,2,45,9.3253854,7,0.20723079,0.15555556,PropPD2,Adapted reference,raw
+3,0,73244,4054.7717,4924,0.05535978,0.06722735,PropPD2,Untuned,raw
+4,1,32192,4071.1944,4853,0.12646603,0.15075174,PropPD2,Untuned,raw
+5,2,35,7.3129764,6,0.20894218,0.17142857,PropPD2,Untuned,raw
+6,0,60827,3610.734,3635,0.059360712,0.059759646,PropPD2,Adapted reference,Platt
+7,1,44103,6079.7861,6041,0.13785425,0.13697481,PropPD2,Adapted reference,Platt
+8,2,541,114.00612,107,0.2107322,0.19778189,PropPD2,Adapted reference,Platt
+9,0,60762,3607.5311,3616,0.0593715,0.059510879,PropPD2,Untuned,Platt
+10,1,44200,6092.0422,6070,0.13782901,0.13733032,PropPD2,Untuned,Platt
+11,2,509,106.57154,97,0.20937434,0.19056974,PropPD2,Untuned,Platt
+12,0,59011,3453.459,3456,0.058522292,0.058565352,PropPD2,Adapted reference,isotonic
+13,1,44436,5915.7745,5920,0.13313022,0.13322531,PropPD2,Adapted reference,isotonic
+14,2,2003,426.82006,406,0.21309039,0.20269596,PropPD2,Adapted reference,isotonic
+15,3,7,2.3550435,1,0.33643478,0.14285714,PropPD2,Adapted reference,isotonic
+16,4,2,0.90878037,0,0.45439018,0,PropPD2,Adapted reference,isotonic
+17,5,1,0.5318464,0,0.5318464,0,PropPD2,Adapted reference,isotonic
+18,7,1,0.75383782,0,0.75383782,0,PropPD2,Adapted reference,isotonic
+19,9,10,10,0,1,0,PropPD2,Adapted reference,isotonic
+20,0,58458,3380.9871,3412,0.057836175,0.058366691,PropPD2,Untuned,isotonic
+21,1,44792,5932.7714,5952,0.13245158,0.13288087,PropPD2,Untuned,isotonic
+22,2,2194,474.60536,416,0.21631967,0.18960802,PropPD2,Untuned,isotonic
+23,3,1,0.39832428,0,0.39832428,0,PropPD2,Untuned,isotonic
+24,4,13,5.8277669,2,0.44828976,0.15384615,PropPD2,Untuned,isotonic
+25,5,3,1.6273807,0,0.54246024,0,PropPD2,Untuned,isotonic
+26,6,1,0.63257289,0,0.63257289,0,PropPD2,Untuned,isotonic
+27,8,1,0.89607728,0,0.89607728,0,PropPD2,Untuned,isotonic
+28,9,8,7.9121683,1,0.98902103,0.125,PropPD2,Untuned,isotonic
 
-Figure: pd_reliability_v2_Platt_2
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v3_1
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,16560,412.86084,397,0.02493121,0.02397343,PropPD1,Adapted reference
-1,1,34656,5420.9892,5312,0.15642282,0.15327793,PropPD1,Adapted reference
-2,2,31544,7644.2808,7698,0.24233708,0.24404007,PropPD1,Adapted reference
-3,3,9475,3221.8,3187,0.34003167,0.33635884,PropPD1,Adapted reference
-4,4,2793,1222.265,1261,0.43761726,0.45148586,PropPD1,Adapted reference
-5,5,411,216.80648,229,0.52750968,0.55717762,PropPD1,Adapted reference
-6,6,11,6.8816202,5,0.62560184,0.45454545,PropPD1,Adapted reference
-7,7,2,1.5428056,2,0.77140279,1,PropPD1,Adapted reference
-8,8,1,0.8989714,1,0.8989714,1,PropPD1,Adapted reference
-9,9,4547,4545.3817,4547,0.9996441,1,PropPD1,Adapted reference
-10,0,16093,372.18901,394,0.023127385,0.024482694,PropPD1,Untuned
-11,1,33974,5422.3114,5259,0.1596018,0.15479484,PropPD1,Untuned
-12,2,34627,8324.0677,8467,0.2403924,0.24452017,PropPD1,Untuned
-13,3,7400,2525.4925,2448,0.34128276,0.33081081,PropPD1,Untuned
-14,4,3051,1340.2111,1360,0.43926945,0.44575549,PropPD1,Untuned
-15,5,302,158.34417,160,0.52431845,0.52980132,PropPD1,Untuned
-16,6,2,1.2246884,0,0.61234419,0,PropPD1,Untuned
-17,7,1,0.77253267,1,0.77253267,1,PropPD1,Untuned
-18,8,2,1.6296327,2,0.81481633,1,PropPD1,Untuned
-19,9,4548,4547.3363,4548,0.99985408,1,PropPD1,Untuned
-20,0,63833,4070.5917,4010,0.063769394,0.062820171,PropPD2,Adapted reference
-21,1,40682,5524.7531,5585,0.13580338,0.1372843,PropPD2,Adapted reference
-22,2,956,202.51096,188,0.21183155,0.19665272,PropPD2,Adapted reference
-23,0,65939,4309.5209,4305,0.065356176,0.065287614,PropPD2,Untuned
-24,1,39297,5430.841,5423,0.13819989,0.13800036,PropPD2,Untuned
-25,2,235,48.472702,55,0.20626682,0.23404255,PropPD2,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,22573,678.87241,843,0.030074532,0.037345501,Credit Risk,Adapted reference,raw
+1,1,3360,463.59897,597,0.13797588,0.17767857,Credit Risk,Adapted reference,raw
+2,2,888,213.52594,264,0.24045714,0.2972973,Credit Risk,Adapted reference,raw
+3,3,299,102.37017,104,0.34237517,0.34782609,Credit Risk,Adapted reference,raw
+4,4,157,70.130654,94,0.44669207,0.59872611,Credit Risk,Adapted reference,raw
+5,5,84,45.751741,48,0.54466359,0.57142857,Credit Risk,Adapted reference,raw
+6,6,104,67.65306,74,0.65051019,0.71153846,Credit Risk,Adapted reference,raw
+7,7,126,95.159207,112,0.7552318,0.88888889,Credit Risk,Adapted reference,raw
+8,8,184,157.32741,170,0.85504028,0.92391304,Credit Risk,Adapted reference,raw
+9,9,4806,4777.3627,4802,0.99404135,0.99916771,Credit Risk,Adapted reference,raw
+10,0,21966,677.8864,764,0.030860712,0.034781025,Credit Risk,Untuned,raw
+11,1,4071,556.66173,716,0.13673833,0.17587816,Credit Risk,Untuned,raw
+12,2,891,214.04195,261,0.24022666,0.29292929,Credit Risk,Untuned,raw
+13,3,243,82.657366,89,0.34015377,0.36625514,Credit Risk,Untuned,raw
+14,4,116,51.96722,65,0.44799328,0.56034483,Credit Risk,Untuned,raw
+15,5,73,40.229266,46,0.55108583,0.63013699,Credit Risk,Untuned,raw
+16,6,84,54.495218,60,0.6487526,0.71428571,Credit Risk,Untuned,raw
+17,7,90,67.694406,72,0.75216006,0.8,Credit Risk,Untuned,raw
+18,8,100,85.579564,91,0.85579564,0.91,Credit Risk,Untuned,raw
+19,9,4947,4932.4794,4944,0.99706476,0.99939357,Credit Risk,Untuned,raw
+20,0,340320,9470.2928,7781,0.027827612,0.022863775,Hackerearth,Adapted reference,raw
+21,1,46338,6528.7439,6371,0.14089395,0.13748975,Hackerearth,Adapted reference,raw
+22,2,18454,4502.939,5107,0.24400883,0.27674217,Hackerearth,Adapted reference,raw
+23,3,10172,3518.0483,4297,0.3458561,0.42243413,Hackerearth,Adapted reference,raw
+24,4,7023,3143.1954,3879,0.44755736,0.55232806,Hackerearth,Adapted reference,raw
+25,5,6496,3573.4843,4265,0.55010533,0.65655788,Hackerearth,Adapted reference,raw
+26,6,7401,4828.6111,5393,0.65242685,0.72868531,Hackerearth,Adapted reference,raw
+27,7,10565,7962.0176,8357,0.75362211,0.79100805,Hackerearth,Adapted reference,raw
+28,8,20411,17482.138,17721,0.8565057,0.86820832,Hackerearth,Adapted reference,raw
+29,9,65248,63009.07,62656,0.96568585,0.96027464,Hackerearth,Adapted reference,raw
+30,0,351723,8290.924,8103,0.023572311,0.023038016,Hackerearth,Untuned,raw
+31,1,38072,5394.1809,5722,0.14168368,0.15029418,Hackerearth,Untuned,raw
+32,2,16170,3938.4869,4733,0.24356752,0.29270254,Hackerearth,Untuned,raw
+33,3,8492,2940.1802,3747,0.34622942,0.44123881,Hackerearth,Untuned,raw
+34,4,6315,2833.0475,3615,0.44862193,0.57244656,Hackerearth,Untuned,raw
+35,5,6019,3314.5489,3879,0.55068099,0.64445921,Hackerearth,Untuned,raw
+36,6,7164,4672.869,5122,0.65227094,0.71496371,Hackerearth,Untuned,raw
+37,7,10482,7908.9658,8213,0.75452832,0.78353368,Hackerearth,Untuned,raw
+38,8,21392,18330.012,18493,0.85686293,0.86448205,Hackerearth,Untuned,raw
+39,9,66599,64218.499,64200,0.96425621,0.96397844,Hackerearth,Untuned,raw
+40,0,20776,626.74341,631,0.030166702,0.030371583,Credit Risk,Adapted reference,Platt
+41,1,4150,583.31297,584,0.14055734,0.14072289,Credit Risk,Adapted reference,Platt
+42,2,1342,325.72458,322,0.24271578,0.23994039,Credit Risk,Adapted reference,Platt
+43,3,575,197.40818,174,0.34331857,0.3026087,Credit Risk,Adapted reference,Platt
+44,4,255,113.39683,91,0.44469344,0.35686275,Credit Risk,Adapted reference,Platt
+45,5,150,82.197023,80,0.54798015,0.53333333,Credit Risk,Adapted reference,Platt
+46,6,96,62.115324,56,0.64703463,0.58333333,Credit Risk,Adapted reference,Platt
+47,7,112,84.130114,79,0.75116173,0.70535714,Credit Risk,Adapted reference,Platt
+48,8,177,151.03796,157,0.8533218,0.88700565,Credit Risk,Adapted reference,Platt
+49,9,4948,4924.6752,4934,0.99528601,0.99717057,Credit Risk,Adapted reference,Platt
+50,0,20420,622.03064,589,0.030461834,0.02884427,Credit Risk,Untuned,Platt
+51,1,4699,660.99431,680,0.14066702,0.14471164,Credit Risk,Untuned,Platt
+52,2,1366,328.52524,318,0.24050164,0.23279649,Credit Risk,Untuned,Platt
+53,3,503,171.0479,175,0.34005546,0.34791252,Credit Risk,Untuned,Platt
+54,4,184,81.280067,66,0.44173949,0.35869565,Credit Risk,Untuned,Platt
+55,5,108,59.110529,61,0.54731971,0.56481481,Credit Risk,Untuned,Platt
+56,6,70,45.41038,46,0.64871972,0.65714286,Credit Risk,Untuned,Platt
+57,7,103,76.704656,76,0.7447054,0.73786408,Credit Risk,Untuned,Platt
+58,8,114,97.50004,95,0.85526351,0.83333333,Credit Risk,Untuned,Platt
+59,9,5014,5001.392,5002,0.99748543,0.9976067,Credit Risk,Untuned,Platt
+60,0,341742,8963.103,7918,0.026227689,0.023169526,Hackerearth,Adapted reference,Platt
+61,1,43898,6192.4879,6005,0.14106538,0.13679439,Hackerearth,Adapted reference,Platt
+62,2,18003,4393.2107,4856,0.24402659,0.26973282,Hackerearth,Adapted reference,Platt
+63,3,10160,3514.6433,4069,0.34592946,0.40049213,Hackerearth,Adapted reference,Platt
+64,4,7025,3148.3598,3703,0.4481651,0.52711744,Hackerearth,Adapted reference,Platt
+65,5,6079,3347.0521,3872,0.55059255,0.63694687,Hackerearth,Adapted reference,Platt
+66,6,6768,4410.0023,4766,0.65159609,0.70419622,Hackerearth,Adapted reference,Platt
+67,7,9516,7167.0712,7373,0.75316007,0.77480034,Hackerearth,Adapted reference,Platt
+68,8,18195,15593.746,15443,0.85703467,0.84874966,Hackerearth,Adapted reference,Platt
+69,9,71042,68776.445,67822,0.96810964,0.9546747,Hackerearth,Adapted reference,Platt
+70,0,346647,8291.4935,7615,0.023919127,0.021967592,Hackerearth,Untuned,Platt
+71,1,38876,5526.1045,5294,0.14214694,0.13617656,Hackerearth,Untuned,Platt
+72,2,17390,4245.0809,4547,0.24411046,0.26147211,Hackerearth,Untuned,Platt
+73,3,9206,3184.5323,3719,0.34591921,0.40397567,Hackerearth,Untuned,Platt
+74,4,6438,2885.5551,3417,0.44820676,0.53075489,Hackerearth,Untuned,Platt
+75,5,5873,3231.3206,3632,0.55019932,0.61842329,Hackerearth,Untuned,Platt
+76,6,6690,4362.0547,4602,0.65202612,0.68789238,Hackerearth,Untuned,Platt
+77,7,9423,7103.0699,7159,0.75380133,0.75973681,Hackerearth,Untuned,Platt
+78,8,19388,16621.543,16393,0.85731084,0.845523,Hackerearth,Untuned,Platt
+79,9,72497,70038.97,69449,0.96609474,0.95795688,Hackerearth,Untuned,Platt
+80,0,20614,604.49213,646,0.029324349,0.031337926,Credit Risk,Adapted reference,isotonic
+81,1,4087,558.26564,533,0.13659546,0.13041351,Credit Risk,Adapted reference,isotonic
+82,2,1572,378.6133,366,0.24084816,0.23282443,Credit Risk,Adapted reference,isotonic
+83,3,712,236.01216,222,0.33147776,0.31179775,Credit Risk,Adapted reference,isotonic
+84,4,146,67.470151,65,0.46212432,0.44520548,Credit Risk,Adapted reference,isotonic
+85,5,106,57.433658,48,0.54182696,0.45283019,Credit Risk,Adapted reference,isotonic
+86,6,110,72.18632,67,0.65623927,0.60909091,Credit Risk,Adapted reference,isotonic
+87,7,71,53.003591,53,0.74652945,0.74647887,Credit Risk,Adapted reference,isotonic
+88,8,191,164.58638,152,0.86170879,0.79581152,Credit Risk,Adapted reference,isotonic
+89,9,4972,4958.6669,4956,0.99731836,0.99678198,Credit Risk,Adapted reference,isotonic
+90,0,20283,568.37408,583,0.02802219,0.028743283,Credit Risk,Untuned,isotonic
+91,1,4995,724.84457,716,0.14511403,0.14334334,Credit Risk,Untuned,isotonic
+92,2,1237,319.309,307,0.25813177,0.24818108,Credit Risk,Untuned,isotonic
+93,3,501,170.31892,165,0.33995792,0.32934132,Credit Risk,Untuned,isotonic
+94,4,184,84.22646,76,0.4577525,0.41304348,Credit Risk,Untuned,isotonic
+95,5,22,12.593142,15,0.57241557,0.68181818,Credit Risk,Untuned,isotonic
+96,6,136,90.976747,89,0.66894667,0.65441176,Credit Risk,Untuned,isotonic
+97,7,100,75.594766,66,0.75594766,0.66,Credit Risk,Untuned,isotonic
+98,8,159,139.0627,130,0.8746082,0.81761006,Credit Risk,Untuned,isotonic
+99,9,4964,4958.7515,4961,0.99894269,0.99939565,Credit Risk,Untuned,isotonic
+100,0,347873,8328.2423,8530,0.023940468,0.024520443,Hackerearth,Adapted reference,isotonic
+101,1,37269,5213.2557,5303,0.13988182,0.14228984,Hackerearth,Adapted reference,isotonic
+102,2,13788,3438.8344,3434,0.24940778,0.24905715,Hackerearth,Adapted reference,isotonic
+103,3,10647,3676.1312,3740,0.3452739,0.35127266,Hackerearth,Adapted reference,isotonic
+104,4,5643,2546.1577,2522,0.45120639,0.44692539,Hackerearth,Adapted reference,isotonic
+105,5,5526,3059.6975,2977,0.55369119,0.53872602,Hackerearth,Adapted reference,isotonic
+106,6,9746,6330.0903,6381,0.64950649,0.65473015,Hackerearth,Adapted reference,isotonic
+107,7,11321,8545.3464,8573,0.75482258,0.75726526,Hackerearth,Adapted reference,isotonic
+108,8,25936,22155.944,22246,0.85425448,0.85772671,Hackerearth,Adapted reference,isotonic
+109,9,64679,62201.378,62121,0.96169356,0.96045084,Hackerearth,Adapted reference,isotonic
+110,0,351150,7873.7769,8042,0.02242283,0.022901894,Hackerearth,Untuned,isotonic
+111,1,34153,4714.77,4846,0.13804849,0.1418909,Hackerearth,Untuned,isotonic
+112,2,15477,3905.4201,3898,0.25233702,0.2518576,Hackerearth,Untuned,isotonic
+113,3,6858,2430.4554,2397,0.35439711,0.34951881,Hackerearth,Untuned,isotonic
+114,4,5546,2514.9086,2496,0.45346351,0.45005409,Hackerearth,Untuned,isotonic
+115,5,6679,3692.7497,3715,0.55288961,0.55622099,Hackerearth,Untuned,isotonic
+116,6,9199,5967.7803,5980,0.64874228,0.65007066,Hackerearth,Untuned,isotonic
+117,7,13638,10340.783,10387,0.75823308,0.76162194,Hackerearth,Untuned,isotonic
+118,8,22176,18984.526,19016,0.85608433,0.85750361,Hackerearth,Untuned,isotonic
+119,9,67552,65090.521,65050,0.96356171,0.96296187,Hackerearth,Untuned,isotonic
 
-Figure: pd_reliability_v2_isotonic_1
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v3_2
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,18693,640.50997,679,0.034264696,0.036323758,Credit Risk,Adapted reference
-1,1,7231,1029.3498,1001,0.14235235,0.13843175,Credit Risk,Adapted reference
-2,2,914,219.96645,231,0.24066351,0.25273523,Credit Risk,Adapted reference
-3,3,288,96.427864,82,0.33481897,0.28472222,Credit Risk,Adapted reference
-4,4,187,80.677854,68,0.43143237,0.36363636,Credit Risk,Adapted reference
-5,5,139,75.76992,80,0.54510734,0.57553957,Credit Risk,Adapted reference
-6,6,129,84.943926,74,0.65848005,0.57364341,Credit Risk,Adapted reference
-7,7,75,54.711371,49,0.72948494,0.65333333,Credit Risk,Adapted reference
-8,8,215,179.53895,186,0.83506489,0.86511628,Credit Risk,Adapted reference
-9,9,4710,4671.6569,4658,0.99185921,0.98895966,Credit Risk,Adapted reference
-10,0,19453,757.57062,787,0.038943639,0.040456485,Credit Risk,Untuned
-11,1,6720,969.92026,963,0.14433337,0.14330357,Credit Risk,Untuned
-12,2,504,120.02334,105,0.23814155,0.20833333,Credit Risk,Untuned
-13,3,428,139.67495,129,0.32634335,0.30140187,Credit Risk,Untuned
-14,4,250,109.40819,106,0.43763276,0.424,Credit Risk,Untuned
-15,5,153,84.216454,90,0.55043434,0.58823529,Credit Risk,Untuned
-16,6,84,56.153168,48,0.6684901,0.57142857,Credit Risk,Untuned
-17,7,13,9.7494466,10,0.74995743,0.76923077,Credit Risk,Untuned
-18,8,321,265.60339,264,0.82742488,0.82242991,Credit Risk,Untuned
-19,9,4655,4616.4062,4606,0.99170918,0.98947368,Credit Risk,Untuned
-20,0,308893,12460.945,12497,0.040340651,0.040457375,Hackerearth,Adapted reference
-21,1,69066,9269.5608,9397,0.13421308,0.13605826,Hackerearth,Adapted reference
-22,2,33422,7841.764,7808,0.23462881,0.23361857,Hackerearth,Adapted reference
-23,3,11983,4369.2207,4043,0.36461827,0.33739464,Hackerearth,Adapted reference
-24,4,4395,1911.4444,1912,0.43491341,0.43503982,Hackerearth,Adapted reference
-25,5,6516,3515.1831,3548,0.53946947,0.54450583,Hackerearth,Adapted reference
-26,6,7682,4976.0494,5054,0.64775441,0.65790159,Hackerearth,Adapted reference
-27,7,5992,4468.8871,4593,0.74580893,0.76652203,Hackerearth,Adapted reference
-28,8,39338,33624.293,33988,0.85475349,0.86399919,Hackerearth,Adapted reference
-29,9,45141,43383.489,42987,0.96106619,0.95228285,Hackerearth,Adapted reference
-30,0,283832,12270.223,12669,0.043230583,0.044635559,Hackerearth,Untuned
-31,1,118143,15668.814,15032,0.13262583,0.12723564,Hackerearth,Untuned
-32,2,16373,3876.6371,3963,0.23677011,0.24204483,Hackerearth,Untuned
-33,3,4335,1501.2866,1433,0.34631755,0.33056517,Hackerearth,Untuned
-34,4,5571,2477.549,2233,0.4447225,0.4008257,Hackerearth,Untuned
-35,5,7244,4096.8942,4080,0.56555691,0.56322474,Hackerearth,Untuned
-36,6,2941,1973.5327,2018,0.67104138,0.68616117,Hackerearth,Untuned
-37,7,10089,7697.7652,7783,0.76298594,0.77143424,Hackerearth,Untuned
-38,8,34115,29298.927,29532,0.85882829,0.86566027,Hackerearth,Untuned
-39,9,49785,47302.601,47084,0.9501376,0.94574671,Hackerearth,Untuned
-40,0,19,0.11969407,11,0.006299688,0.57894737,Myhom,Adapted reference
-41,1,115,18.802009,27,0.16349573,0.23478261,Myhom,Adapted reference
-42,2,1233,324.7089,336,0.26334866,0.27250608,Myhom,Adapted reference
-43,3,1609,574.05508,576,0.35677755,0.35798633,Myhom,Adapted reference
-44,4,3261,1459.3823,1474,0.44752601,0.45200859,Myhom,Adapted reference
-45,5,660,349.31092,314,0.52925898,0.47575758,Myhom,Adapted reference
-46,6,46,28.950981,27,0.62936914,0.58695652,Myhom,Adapted reference
-47,7,41,30.37825,24,0.74093293,0.58536585,Myhom,Adapted reference
-48,9,16,15.996255,11,0.99976595,0.6875,Myhom,Adapted reference
-49,0,9,0.077596098,4,0.0086217887,0.44444444,Myhom,Untuned
-50,1,172,27.403437,39,0.15932231,0.22674419,Myhom,Untuned
-51,2,868,221.28991,236,0.25494229,0.2718894,Myhom,Untuned
-52,3,2174,785.31261,760,0.36122935,0.34958602,Myhom,Untuned
-53,4,2926,1300.3889,1347,0.44442548,0.46035543,Myhom,Untuned
-54,5,762,404.62438,357,0.53100313,0.46850394,Myhom,Untuned
-55,6,47,29.56727,30,0.62909084,0.63829787,Myhom,Untuned
-56,7,32,24.60622,19,0.76894437,0.59375,Myhom,Untuned
-57,8,5,4.084058,4,0.81681161,0.8,Myhom,Untuned
-58,9,5,4.9393759,4,0.98787518,0.8,Myhom,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,1,156,28.047527,38,0.17979184,0.24358974,Myhom,Adapted reference,raw
+1,2,1092,281.24285,300,0.2575484,0.27472527,Myhom,Adapted reference,raw
+2,3,2265,806.00809,811,0.35585346,0.3580574,Myhom,Adapted reference,raw
+3,4,2769,1236.509,1298,0.44655434,0.46876129,Myhom,Adapted reference,raw
+4,5,701,370.16993,343,0.52805981,0.489301,Myhom,Adapted reference,raw
+5,6,17,10.623975,10,0.62493971,0.58823529,Myhom,Adapted reference,raw
+6,1,142,25.92667,38,0.18258218,0.26760563,Myhom,Untuned,raw
+7,2,1185,302.64571,323,0.25539722,0.27257384,Myhom,Untuned,raw
+8,3,2075,737.98193,742,0.35565394,0.35759036,Myhom,Untuned,raw
+9,4,2881,1292.5883,1356,0.44865959,0.47066991,Myhom,Untuned,raw
+10,5,706,372.48228,334,0.5275953,0.47308782,Myhom,Untuned,raw
+11,6,11,6.8003863,7,0.61821694,0.63636364,Myhom,Untuned,raw
+12,0,34427,667.38075,1001,0.019385388,0.029076016,PropPD1,Adapted reference,raw
+13,1,25509,3859.1066,5014,0.15128412,0.19655808,PropPD1,Adapted reference,raw
+14,2,20438,5012.3012,5921,0.24524421,0.28970545,PropPD1,Adapted reference,raw
+15,3,9651,3305.1574,3521,0.34246787,0.36483266,PropPD1,Adapted reference,raw
+16,4,3880,1717.1259,1764,0.44255823,0.45463918,PropPD1,Adapted reference,raw
+17,5,1250,675.36458,692,0.54029166,0.5536,PropPD1,Adapted reference,raw
+18,6,267,169.63226,156,0.63532682,0.58426966,PropPD1,Adapted reference,raw
+19,7,27,19.75894,19,0.73181259,0.7037037,PropPD1,Adapted reference,raw
+20,8,1,0.83719468,1,0.83719468,1,PropPD1,Adapted reference,raw
+21,9,4550,4549.6952,4550,0.99993301,1,PropPD1,Adapted reference,raw
+22,0,35415,749.71503,1174,0.02116942,0.033149795,PropPD1,Untuned,raw
+23,1,27136,4074.9866,5554,0.15016902,0.20467276,PropPD1,Untuned,raw
+24,2,19855,4864.0712,5917,0.24497966,0.29801058,PropPD1,Untuned,raw
+25,3,8688,2971.6218,3301,0.3420375,0.37994936,PropPD1,Untuned,raw
+26,4,3237,1429.0568,1515,0.44147569,0.46802595,PropPD1,Untuned,raw
+27,5,954,512.68345,523,0.53740403,0.54821803,PropPD1,Untuned,raw
+28,6,150,94.425289,98,0.62950193,0.65333333,PropPD1,Untuned,raw
+29,7,13,9.5768178,6,0.73667829,0.46153846,PropPD1,Untuned,raw
+30,8,1,0.83230847,0,0.83230847,0,PropPD1,Untuned,raw
+31,9,4551,4550.91,4551,0.99998023,1,PropPD1,Untuned,raw
+32,1,109,19.161787,32,0.17579621,0.29357798,Myhom,Adapted reference,Platt
+33,2,818,214.75169,213,0.26253262,0.2603912,Myhom,Adapted reference,Platt
+34,3,2294,820.21941,785,0.35754987,0.34219704,Myhom,Adapted reference,Platt
+35,4,3052,1360.9801,1398,0.44593057,0.45806029,Myhom,Adapted reference,Platt
+36,5,706,372.41478,358,0.52749968,0.50708215,Myhom,Adapted reference,Platt
+37,6,21,12.99414,14,0.61876858,0.66666667,Myhom,Adapted reference,Platt
+38,1,107,18.766146,27,0.17538454,0.25233645,Myhom,Untuned,Platt
+39,2,869,227.68013,224,0.26200245,0.25776755,Myhom,Untuned,Platt
+40,3,2199,784.74422,765,0.35686413,0.3478854,Myhom,Untuned,Platt
+41,4,3149,1412.3099,1440,0.44849474,0.45728803,Myhom,Untuned,Platt
+42,5,668,350.88591,340,0.52527831,0.50898204,Myhom,Untuned,Platt
+43,6,8,4.8483217,4,0.60604021,0.5,Myhom,Untuned,Platt
+44,0,28610,293.30932,274,0.010251986,0.009577071,PropPD1,Adapted reference,Platt
+45,1,19452,3059.2594,3104,0.15727223,0.15957228,PropPD1,Adapted reference,Platt
+46,2,25263,6271.1351,6318,0.24823398,0.25008906,PropPD1,Adapted reference,Platt
+47,3,14824,5085.4616,5001,0.34305597,0.33735834,PropPD1,Adapted reference,Platt
+48,4,5453,2408.978,2395,0.44177114,0.43920778,PropPD1,Adapted reference,Platt
+49,5,1593,856.67069,839,0.53777193,0.52667922,PropPD1,Adapted reference,Platt
+50,6,242,153.01331,149,0.63228639,0.61570248,PropPD1,Adapted reference,Platt
+51,7,12,8.7890156,8,0.73241797,0.66666667,PropPD1,Adapted reference,Platt
+52,8,1,0.80441831,1,0.80441831,1,PropPD1,Adapted reference,Platt
+53,9,4550,4548.9503,4550,0.9997693,1,PropPD1,Adapted reference,Platt
+54,0,28315,275.21042,237,0.0097195981,0.0083701218,PropPD1,Untuned,Platt
+55,1,19947,3137.9309,3219,0.15731342,0.16137765,PropPD1,Untuned,Platt
+56,2,24934,6193.5972,6198,0.24839966,0.24857624,PropPD1,Untuned,Platt
+57,3,14956,5127.2182,5101,0.34282015,0.34106713,PropPD1,Untuned,Platt
+58,4,5527,2439.0302,2392,0.44129368,0.43278451,PropPD1,Untuned,Platt
+59,5,1548,831.67615,813,0.53725849,0.5251938,PropPD1,Untuned,Platt
+60,6,211,132.65564,124,0.62869973,0.58767773,PropPD1,Untuned,Platt
+61,7,10,7.3209902,4,0.73209902,0.4,PropPD1,Untuned,Platt
+62,8,1,0.83490363,0,0.83490363,0,PropPD1,Untuned,Platt
+63,9,4551,4550.5976,4551,0.99991159,1,PropPD1,Untuned,Platt
+64,0,17,0.065840885,11,0.0038729932,0.64705882,Myhom,Adapted reference,isotonic
+65,1,236,41.631867,52,0.17640622,0.22033898,Myhom,Adapted reference,isotonic
+66,2,821,205.57708,219,0.25039839,0.26674787,Myhom,Adapted reference,isotonic
+67,3,1794,622.48506,625,0.34698164,0.3483835,Myhom,Adapted reference,isotonic
+68,4,3600,1615.5489,1615,0.44876358,0.44861111,Myhom,Adapted reference,isotonic
+69,5,378,202.56766,189,0.53589329,0.5,Myhom,Adapted reference,isotonic
+70,6,108,68.81564,61,0.63718185,0.56481481,Myhom,Adapted reference,isotonic
+71,7,27,19.859906,14,0.73555206,0.51851852,Myhom,Adapted reference,isotonic
+72,8,1,0.86131161,1,0.86131161,1,Myhom,Adapted reference,isotonic
+73,9,18,17.981902,13,0.99899454,0.72222222,Myhom,Adapted reference,isotonic
+74,0,11,0.20110654,7,0.018282413,0.63636364,Myhom,Untuned,isotonic
+75,1,240,42.284526,52,0.17618552,0.21666667,Myhom,Untuned,isotonic
+76,2,712,170.63711,194,0.23965886,0.27247191,Myhom,Untuned,isotonic
+77,3,2684,960.72342,977,0.35794464,0.36400894,Myhom,Untuned,isotonic
+78,4,2732,1258.5237,1244,0.46066023,0.45534407,Myhom,Untuned,isotonic
+79,5,562,314.47719,287,0.55956795,0.51067616,Myhom,Untuned,isotonic
+80,6,19,12.042865,14,0.633835,0.73684211,Myhom,Untuned,isotonic
+81,7,23,17.25,12,0.75,0.52173913,Myhom,Untuned,isotonic
+82,8,1,0.83458018,1,0.83458018,1,Myhom,Untuned,isotonic
+83,9,16,15.973238,12,0.99832737,0.75,Myhom,Untuned,isotonic
+84,0,29088,287.35039,330,0.0098786576,0.011344884,PropPD1,Adapted reference,isotonic
+85,1,18788,2990.3093,3039,0.1591606,0.16175218,PropPD1,Adapted reference,isotonic
+86,2,25655,6429.3944,6412,0.2506098,0.24993179,PropPD1,Adapted reference,isotonic
+87,3,14498,4918.5386,4905,0.33925636,0.33832253,PropPD1,Adapted reference,isotonic
+88,4,5723,2543.6732,2496,0.44446501,0.43613489,PropPD1,Adapted reference,isotonic
+89,5,1371,737.87504,709,0.53820207,0.51714077,PropPD1,Adapted reference,isotonic
+90,6,202,129.15027,123,0.63935776,0.60891089,PropPD1,Adapted reference,isotonic
+91,7,95,67.940031,51,0.71515822,0.53684211,PropPD1,Adapted reference,isotonic
+92,8,13,10.581818,10,0.81398601,0.76923077,PropPD1,Adapted reference,isotonic
+93,9,4567,4566.9016,4564,0.99997844,0.99934311,PropPD1,Adapted reference,isotonic
+94,0,28077,191.61533,232,0.006824637,0.0082629911,PropPD1,Untuned,isotonic
+95,1,18411,2843.3152,2858,0.15443567,0.15523328,PropPD1,Untuned,isotonic
+96,2,26432,6498.9707,6515,0.2458751,0.24648154,PropPD1,Untuned,isotonic
+97,3,15394,5235.6512,5210,0.34010986,0.33844355,PropPD1,Untuned,isotonic
+98,4,5042,2235.6122,2186,0.4433979,0.43355811,PropPD1,Untuned,isotonic
+99,5,1741,906.71733,885,0.5208026,0.50832855,PropPD1,Untuned,isotonic
+100,6,274,170.44267,160,0.62205354,0.58394161,PropPD1,Untuned,isotonic
+101,7,54,41.54184,30,0.76929333,0.55555556,PropPD1,Untuned,isotonic
+102,8,15,12.603223,11,0.84021484,0.73333333,PropPD1,Untuned,isotonic
+103,9,4560,4559.7993,4552,0.99995599,0.99824561,PropPD1,Untuned,isotonic
 
-Figure: pd_reliability_v2_isotonic_2
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+Figure: pd_reliability_v3_3
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 Probability bins and counts
 CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,17080,413.48569,468,0.024208764,0.027400468,PropPD1,Adapted reference
-1,1,32554,4991.6085,4936,0.15333319,0.15162499,PropPD1,Adapted reference
-2,2,34591,8521.7345,8493,0.24635699,0.24552629,PropPD1,Adapted reference
-3,3,7349,2406.2431,2445,0.32742457,0.33269833,PropPD1,Adapted reference
-4,4,3360,1483.5668,1462,0.44153773,0.43511905,PropPD1,Adapted reference
-5,5,319,174.92638,173,0.54835857,0.54231975,PropPD1,Adapted reference
-6,6,153,100.10022,87,0.65424983,0.56862745,PropPD1,Adapted reference
-7,7,37,27.0747,21,0.73174864,0.56756757,PropPD1,Adapted reference
-8,8,2,1.6673056,1,0.83365279,0.5,PropPD1,Adapted reference
-9,9,4555,4554.9257,4553,0.99998368,0.99956092,PropPD1,Adapted reference
-10,0,15927,330.59117,400,0.02075665,0.025114585,PropPD1,Untuned
-11,1,33876,5274.6358,5206,0.15570421,0.15367812,PropPD1,Untuned
-12,2,36142,8904.9919,8898,0.24638902,0.24619556,PropPD1,Untuned
-13,3,6316,2104.26,2127,0.33316339,0.33676377,PropPD1,Untuned
-14,4,2284,995.28432,997,0.43576371,0.43651489,PropPD1,Untuned
-15,5,572,313.37952,279,0.54786629,0.48776224,PropPD1,Untuned
-16,6,328,206.93378,180,0.63089568,0.54878049,PropPD1,Untuned
-17,7,3,2.2242696,1,0.74142321,0.33333333,PropPD1,Untuned
-18,8,3,2.4627426,3,0.82091419,1,PropPD1,Untuned
-19,9,4549,4548.9044,4548,0.99997898,0.99978017,PropPD1,Untuned
-20,0,59582,3585.293,3644,0.060174096,0.061159411,PropPD2,Adapted reference
-21,1,43707,5728.601,5735,0.13106827,0.13121468,PropPD2,Adapted reference
-22,2,2134,466.24868,394,0.21848579,0.1846298,PropPD2,Adapted reference
-23,3,21,6.5733857,4,0.31301837,0.19047619,PropPD2,Adapted reference
-24,4,26,12.714286,6,0.48901099,0.23076923,PropPD2,Adapted reference
-25,9,1,1,0,1,0,PropPD2,Adapted reference
-26,0,59571,3636.6198,3716,0.061046815,0.062379346,PropPD2,Untuned
-27,1,44345,5808.1631,5750,0.13097673,0.12966513,PropPD2,Untuned
-28,2,1491,326.56704,304,0.21902551,0.20389001,PropPD2,Untuned
-29,3,43,14.272012,9,0.33190726,0.20930233,PropPD2,Untuned
-30,4,20,8,4,0.4,0.2,PropPD2,Untuned
-31,9,1,1,0,1,0,PropPD2,Untuned
-
-Figure: pd_reliability_v2.6_raw_1
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,22625,740.40399,1033,0.032725038,0.045657459,Credit Risk,Adapted reference
-1,1,3533,470.03893,590,0.13304244,0.16699689,Credit Risk,Adapted reference
-2,2,717,172.71009,178,0.24087878,0.24825662,Credit Risk,Adapted reference
-3,3,280,96.382915,91,0.3442247,0.325,Credit Risk,Adapted reference
-4,4,147,65.221028,63,0.44368046,0.42857143,Credit Risk,Adapted reference
-5,5,121,66.143202,74,0.54663803,0.61157025,Credit Risk,Adapted reference
-6,6,109,70.561554,74,0.64735371,0.67889908,Credit Risk,Adapted reference
-7,7,122,92.293673,101,0.75650551,0.82786885,Credit Risk,Adapted reference
-8,8,177,151.24572,162,0.85449557,0.91525424,Credit Risk,Adapted reference
-9,9,4750,4720.3494,4742,0.99375777,0.99831579,Credit Risk,Adapted reference
-10,0,21993,760.39368,917,0.03457435,0.041695085,Credit Risk,Untuned
-11,1,4085,550.14136,681,0.13467353,0.16670747,Credit Risk,Untuned
-12,2,806,195.02406,193,0.24196533,0.23945409,Credit Risk,Untuned
-13,3,310,106.2083,102,0.34260742,0.32903226,Credit Risk,Untuned
-14,4,133,59.811019,65,0.44970691,0.4887218,Credit Risk,Untuned
-15,5,122,67.764302,75,0.5554451,0.6147541,Credit Risk,Untuned
-16,6,102,66.190508,80,0.64892655,0.78431373,Credit Risk,Untuned
-17,7,135,101.65937,114,0.7530324,0.84444444,Credit Risk,Untuned
-18,8,151,129.49961,141,0.85761333,0.93377483,Credit Risk,Untuned
-19,9,4744,4717.0671,4740,0.99432274,0.99915683,Credit Risk,Untuned
-20,0,341679,10321.286,11050,0.030207552,0.032340296,Hackerearth,Adapted reference
-21,1,52713,7423.1564,8878,0.14082212,0.16842145,Hackerearth,Adapted reference
-22,2,20049,4867.4169,6463,0.24277605,0.32236022,Hackerearth,Adapted reference
-23,3,9534,3290.0331,4451,0.34508424,0.46685546,Hackerearth,Adapted reference
-24,4,6133,2744.7053,3618,0.44753062,0.58992337,Hackerearth,Adapted reference
-25,5,4998,2745.0422,3392,0.54922814,0.67867147,Hackerearth,Adapted reference
-26,6,5087,3313.0306,3850,0.65127395,0.75683114,Hackerearth,Adapted reference
-27,7,7820,5905.9043,6115,0.75523073,0.78196931,Hackerearth,Adapted reference
-28,8,19625,16875.715,16455,0.85990906,0.83847134,Hackerearth,Adapted reference
-29,9,64790,62343.115,61555,0.9622336,0.95006946,Hackerearth,Adapted reference
-30,0,327547,10999.501,9140,0.033581444,0.027904392,Hackerearth,Untuned
-31,1,59554,8398.0496,8513,0.14101571,0.1429459,Hackerearth,Untuned
-32,2,23748,5774.65,6765,0.24316364,0.28486609,Hackerearth,Untuned
-33,3,11057,3806.6375,4840,0.34427399,0.43773175,Hackerearth,Untuned
-34,4,6814,3046.7975,4010,0.44713788,0.58849428,Hackerearth,Untuned
-35,5,5524,3034.7538,3768,0.54937614,0.68211441,Hackerearth,Untuned
-36,6,5946,3880.8079,4473,0.6526754,0.75227043,Hackerearth,Untuned
-37,7,9514,7189.9927,7424,0.75572763,0.78032373,Hackerearth,Untuned
-38,8,22680,19486.545,19407,0.85919509,0.85568783,Hackerearth,Untuned
-39,9,60044,57631.665,57487,0.95982388,0.95741456,Hackerearth,Untuned
-40,1,125,22.453439,31,0.17962751,0.248,Myhom,Adapted reference
-41,2,1292,333.76484,360,0.25833192,0.27863777,Myhom,Adapted reference
-42,3,2159,763.71695,790,0.35373643,0.36591014,Myhom,Adapted reference
-43,4,2709,1217.6223,1274,0.44947299,0.47028424,Myhom,Adapted reference
-44,5,712,374.68802,344,0.52624723,0.48314607,Myhom,Adapted reference
-45,6,3,1.8167467,1,0.60558224,0.33333333,Myhom,Adapted reference
-46,1,124,22.462531,31,0.18114944,0.25,Myhom,Untuned
-47,2,1242,318.42545,353,0.2563812,0.284219,Myhom,Untuned
-48,3,2009,711.52283,718,0.35416766,0.35739174,Myhom,Untuned
-49,4,2904,1308.0041,1348,0.45041465,0.46418733,Myhom,Untuned
-50,5,721,375.85733,350,0.52130004,0.48543689,Myhom,Untuned
-
-Figure: pd_reliability_v2.6_raw_2
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,23529,863.09673,1022,0.036682253,0.04343576,PropPD1,Adapted reference
-1,1,38443,5677.8842,6538,0.14769618,0.17006997,PropPD1,Adapted reference
-2,2,22085,5352.7822,5935,0.24237185,0.26873444,PropPD1,Adapted reference
-3,3,7662,2615.6567,2823,0.34138041,0.36844166,PropPD1,Adapted reference
-4,4,2773,1225.8485,1243,0.44206582,0.44825099,PropPD1,Adapted reference
-5,5,837,450.04154,460,0.53768404,0.54958184,PropPD1,Adapted reference
-6,6,119,74.403236,69,0.62523728,0.57983193,PropPD1,Adapted reference
-7,7,12,8.9807243,9,0.74839369,0.75,PropPD1,Adapted reference
-8,8,14,12.162528,14,0.86875199,1,PropPD1,Adapted reference
-9,9,4526,4522.9353,4526,0.99932287,1,PropPD1,Adapted reference
-10,0,24036,903.9675,1064,0.037608899,0.044266933,PropPD1,Untuned
-11,1,35969,5318.142,6010,0.14785348,0.16708833,PropPD1,Untuned
-12,2,23446,5714.4315,6205,0.24372735,0.26465069,PropPD1,Untuned
-13,3,8421,2869.3992,3087,0.34074329,0.36658354,PropPD1,Untuned
-14,4,2821,1243.3395,1304,0.44074425,0.46224743,PropPD1,Untuned
-15,5,707,378.15195,395,0.53486839,0.55869873,PropPD1,Untuned
-16,6,57,35.938461,32,0.63049932,0.56140351,PropPD1,Untuned
-17,7,7,5.1474704,6,0.73535291,0.85714286,PropPD1,Untuned
-18,8,15,12.77332,15,0.85155465,1,PropPD1,Untuned
-19,9,4521,4517.7095,4521,0.99927218,1,PropPD1,Untuned
-20,0,73299,3926.017,4961,0.053561672,0.067681687,PropPD2,Adapted reference
-21,1,32127,4057.4877,4815,0.12629526,0.14987394,PropPD2,Adapted reference
-22,2,45,9.3253854,7,0.20723079,0.15555556,PropPD2,Adapted reference
-23,0,73244,4054.7717,4924,0.05535978,0.06722735,PropPD2,Untuned
-24,1,32192,4071.1944,4853,0.12646603,0.15075174,PropPD2,Untuned
-25,2,35,7.3129764,6,0.20894218,0.17142857,PropPD2,Untuned
-
-Figure: pd_reliability_v2.6_Platt_1
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20138,707.93168,744,0.035154021,0.036945079,Credit Risk,Adapted reference
-1,1,5255,726.19087,719,0.13819046,0.13682207,Credit Risk,Adapted reference
-2,2,1128,270.99576,244,0.24024447,0.21631206,Credit Risk,Adapted reference
-3,3,459,157.34817,128,0.34280646,0.2788671,Credit Risk,Adapted reference
-4,4,225,101.03537,78,0.44904607,0.34666667,Credit Risk,Adapted reference
-5,5,131,71.897093,63,0.54883277,0.48091603,Credit Risk,Adapted reference
-6,6,123,80.18211,76,0.65188707,0.61788618,Credit Risk,Adapted reference
-7,7,122,91.838603,92,0.75277543,0.75409836,Credit Risk,Adapted reference
-8,8,183,156.28139,161,0.85399668,0.87978142,Credit Risk,Adapted reference
-9,9,4817,4788.6199,4803,0.99410834,0.99709363,Credit Risk,Adapted reference
-10,0,20200,695.09643,722,0.034410714,0.035742574,Credit Risk,Untuned
-11,1,5103,704.4588,696,0.13804797,0.13639036,Credit Risk,Untuned
-12,2,1201,288.17053,274,0.23994215,0.22814321,Credit Risk,Untuned
-13,3,481,164.62762,128,0.34226117,0.26611227,Credit Risk,Untuned
-14,4,228,101.07443,84,0.44330891,0.36842105,Credit Risk,Untuned
-15,5,120,65.824631,56,0.54853859,0.46666667,Credit Risk,Untuned
-16,6,127,83.737925,85,0.65935374,0.66929134,Credit Risk,Untuned
-17,7,122,92.359234,96,0.7570429,0.78688525,Credit Risk,Untuned
-18,8,158,135.01449,138,0.85452207,0.87341772,Credit Risk,Untuned
-19,9,4841,4818.2215,4829,0.99529468,0.99752117,Credit Risk,Untuned
-20,0,324790,10838.627,9346,0.033371183,0.028775516,Hackerearth,Adapted reference
-21,1,60242,8519.5722,8418,0.14142247,0.1397364,Hackerearth,Adapted reference
-22,2,24420,5944.7632,6714,0.2434383,0.27493857,Hackerearth,Adapted reference
-23,3,11666,4023.7571,4875,0.34491317,0.41788102,Hackerearth,Adapted reference
-24,4,6997,3131.6235,3833,0.44756661,0.5478062,Hackerearth,Adapted reference
-25,5,5365,2945.4987,3508,0.5490212,0.65386766,Hackerearth,Adapted reference
-26,6,5263,3425.7738,3863,0.65091656,0.73399202,Hackerearth,Adapted reference
-27,7,7391,5583.8354,5773,0.75549119,0.7810851,Hackerearth,Adapted reference
-28,8,18608,16002.406,15406,0.85997451,0.82792347,Hackerearth,Adapted reference
-29,9,67686,65123.607,64091,0.96214294,0.9468871,Hackerearth,Adapted reference
-30,0,327496,10506.91,9152,0.032082559,0.027945379,Hackerearth,Untuned
-31,1,57003,8059.063,7916,0.14137963,0.13886988,Hackerearth,Untuned
-32,2,23842,5816.8483,6434,0.24397485,0.26985991,Hackerearth,Untuned
-33,3,11516,3967.0112,4694,0.34447822,0.40760681,Hackerearth,Untuned
-34,4,7034,3147.0419,3907,0.4474043,0.55544498,Hackerearth,Untuned
-35,5,5429,2981.4557,3583,0.54917218,0.65997421,Hackerearth,Untuned
-36,6,5423,3530.8861,3944,0.65109461,0.72727273,Hackerearth,Untuned
-37,7,7968,6013.0272,6135,0.75464699,0.76995482,Hackerearth,Untuned
-38,8,18485,15876.266,15310,0.85887294,0.82823911,Hackerearth,Untuned
-39,9,68232,65672.955,64752,0.96249495,0.94899754,Hackerearth,Untuned
-40,1,66,11.829676,23,0.17923751,0.34848485,Myhom,Adapted reference
-41,2,856,225.85133,225,0.26384501,0.26285047,Myhom,Adapted reference
-42,3,2314,819.57891,785,0.35418276,0.33923941,Myhom,Adapted reference
-43,4,3069,1376.315,1407,0.44845716,0.45845552,Myhom,Adapted reference
-44,5,680,357.84805,352,0.52624713,0.51764706,Myhom,Adapted reference
-45,6,15,9.1830533,8,0.61220355,0.53333333,Myhom,Adapted reference
-46,1,71,12.730584,23,0.179304,0.32394366,Myhom,Untuned
-47,2,870,228.91979,221,0.26312619,0.25402299,Myhom,Untuned
-48,3,2191,776.79998,752,0.3545413,0.34322227,Myhom,Untuned
-49,4,3270,1468.9196,1501,0.44921089,0.45902141,Myhom,Untuned
-50,5,598,312.4615,303,0.52251088,0.50668896,Myhom,Untuned
-
-Figure: pd_reliability_v2.6_Platt_2
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,19040,540.79815,546,0.028403264,0.028676471,PropPD1,Adapted reference
-1,1,35209,5351.3721,5307,0.15198876,0.15072851,PropPD1,Adapted reference
-2,2,25917,6338.1068,6427,0.24455403,0.24798395,PropPD1,Adapted reference
-3,3,10243,3492.7182,3488,0.34098586,0.34052524,PropPD1,Adapted reference
-4,4,3661,1617.2268,1583,0.44174456,0.43239552,PropPD1,Adapted reference
-5,5,1199,645.36308,638,0.53825111,0.53211009,PropPD1,Adapted reference
-6,6,176,110.5115,100,0.62790623,0.56818182,PropPD1,Adapted reference
-7,7,15,11.137878,10,0.74252518,0.66666667,PropPD1,Adapted reference
-8,8,14,12.072164,14,0.86229741,1,PropPD1,Adapted reference
-9,9,4526,4522.5209,4526,0.99923131,1,PropPD1,Adapted reference
-10,0,19934,610.13219,635,0.030607615,0.031855122,PropPD1,Untuned
-11,1,33451,5035.2318,5045,0.1505256,0.15081761,PropPD1,Untuned
-12,2,26102,6416.117,6383,0.2458094,0.24454065,PropPD1,Untuned
-13,3,11073,3770.2318,3766,0.34048874,0.34010657,PropPD1,Untuned
-14,4,3736,1647.1595,1641,0.44088852,0.43923983,PropPD1,Untuned
-15,5,1058,567.0705,567,0.53598346,0.53591682,PropPD1,Untuned
-16,6,101,63.320115,59,0.62693183,0.58415842,PropPD1,Untuned
-17,7,10,7.4225863,8,0.74225863,0.8,PropPD1,Untuned
-18,8,14,11.899897,14,0.84999266,1,PropPD1,Untuned
-19,9,4521,4517.4924,4521,0.99922415,1,PropPD1,Untuned
-20,0,60827,3610.734,3635,0.059360712,0.059759646,PropPD2,Adapted reference
-21,1,44103,6079.7861,6041,0.13785425,0.13697481,PropPD2,Adapted reference
-22,2,541,114.00612,107,0.2107322,0.19778189,PropPD2,Adapted reference
-23,0,60762,3607.5311,3616,0.0593715,0.059510879,PropPD2,Untuned
-24,1,44200,6092.0422,6070,0.13782901,0.13733032,PropPD2,Untuned
-25,2,509,106.57154,97,0.20937434,0.19056974,PropPD2,Untuned
-
-Figure: pd_reliability_v2.6_isotonic_1
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,19417,628.67076,673,0.032377337,0.034660349,Credit Risk,Adapted reference
-1,1,6127,862.96042,828,0.14084551,0.13513955,Credit Risk,Adapted reference
-2,2,1327,336.99017,304,0.25394888,0.22908817,Credit Risk,Adapted reference
-3,3,361,125.6176,116,0.34797119,0.32132964,Credit Risk,Adapted reference
-4,4,67,27.860461,39,0.41582778,0.58208955,Credit Risk,Adapted reference
-5,5,62,34.007719,36,0.5485116,0.58064516,Credit Risk,Adapted reference
-6,6,110,72.961657,69,0.66328779,0.62727273,Credit Risk,Adapted reference
-7,7,45,33.284819,30,0.73966264,0.66666667,Credit Risk,Adapted reference
-8,8,276,237.49609,238,0.86049309,0.86231884,Credit Risk,Adapted reference
-9,9,4789,4783.3124,4775,0.99881236,0.99707663,Credit Risk,Adapted reference
-10,0,20560,708.80754,774,0.034475075,0.037645914,Credit Risk,Untuned
-11,1,4781,711.09213,650,0.14873293,0.13595482,Credit Risk,Untuned
-12,2,1253,296.81339,298,0.2368822,0.23782921,Credit Risk,Untuned
-13,3,505,167.80681,147,0.33229071,0.29108911,Credit Risk,Untuned
-14,4,207,91.33727,90,0.44124285,0.43478261,Credit Risk,Untuned
-15,5,52,29.891682,32,0.57484004,0.61538462,Credit Risk,Untuned
-16,6,105,69.957214,58,0.66625918,0.55238095,Credit Risk,Untuned
-17,7,25,18.5,20,0.74,0.8,Credit Risk,Untuned
-18,8,273,232.52374,229,0.85173532,0.83882784,Credit Risk,Untuned
-19,9,4820,4814.6898,4810,0.99889829,0.99792531,Credit Risk,Untuned
-20,0,339210,10658.11,10819,0.031420388,0.031894697,Hackerearth,Adapted reference
-21,1,43894,6427.4563,6582,0.14643132,0.14995216,Hackerearth,Adapted reference
-22,2,17286,4136.0343,4203,0.23927076,0.24314474,Hackerearth,Adapted reference
-23,3,13465,4639.4493,4553,0.34455621,0.33813591,Hackerearth,Adapted reference
-24,4,9139,4086.8089,4153,0.44718338,0.45442609,Hackerearth,Adapted reference
-25,5,4658,2608.4449,2657,0.55999247,0.57041649,Hackerearth,Adapted reference
-26,6,5597,3760.9666,3572,0.67196116,0.63819904,Hackerearth,Adapted reference
-27,7,12371,9310.1401,9383,0.75257781,0.75846738,Hackerearth,Adapted reference
-28,8,34232,29332.683,29270,0.85687902,0.85504791,Hackerearth,Adapted reference
-29,9,52576,50629.422,50635,0.96297592,0.96308201,Hackerearth,Adapted reference
-30,0,339209,10175.216,10303,0.029996894,0.030373604,Hackerearth,Untuned
-31,1,42878,6121.2272,6315,0.14275916,0.14727832,Hackerearth,Untuned
-32,2,18075,4274.6443,4297,0.23649485,0.23773167,Hackerearth,Untuned
-33,3,13488,4641.7463,4591,0.34413896,0.34037663,Hackerearth,Untuned
-34,4,6826,3048.2459,3008,0.44656401,0.44066803,Hackerearth,Untuned
-35,5,5558,3035.5205,3116,0.54615338,0.56063332,Hackerearth,Untuned
-36,6,5551,3624.3352,3546,0.65291573,0.63880382,Hackerearth,Untuned
-37,7,15152,11360.55,11370,0.74977233,0.75039599,Hackerearth,Untuned
-38,8,27351,23394.27,23363,0.85533507,0.8541918,Hackerearth,Untuned
-39,9,58340,55908.686,55918,0.95832509,0.95848474,Hackerearth,Untuned
-40,0,12,0.22362703,7,0.018635586,0.58333333,Myhom,Adapted reference
-41,1,108,19.187511,27,0.17766214,0.25,Myhom,Adapted reference
-42,2,853,209.64917,228,0.24577863,0.26729191,Myhom,Adapted reference
-43,3,2492,885.20026,873,0.3552168,0.35032103,Myhom,Adapted reference
-44,4,2961,1350.4042,1368,0.45606357,0.46200608,Myhom,Adapted reference
-45,5,472,260.41457,239,0.55172579,0.50635593,Myhom,Adapted reference
-46,6,59,40.116725,32,0.6799445,0.54237288,Myhom,Adapted reference
-47,7,19,14.529398,11,0.76470517,0.57894737,Myhom,Adapted reference
-48,8,4,3.3432897,2,0.83582243,0.5,Myhom,Adapted reference
-49,9,20,20,13,1,0.65,Myhom,Adapted reference
-50,0,16,0.1169024,10,0.0073063998,0.625,Myhom,Untuned
-51,1,46,5.6595669,14,0.12303406,0.30434783,Myhom,Untuned
-52,2,1373,363.42343,384,0.26469296,0.27967953,Myhom,Untuned
-53,3,2087,762.41843,761,0.36531789,0.36463824,Myhom,Untuned
-54,4,2782,1270.9803,1268,0.4568585,0.4557872,Myhom,Untuned
-55,5,610,330.08052,313,0.54111561,0.51311475,Myhom,Untuned
-56,6,55,36.179928,30,0.65781687,0.54545455,Myhom,Untuned
-57,7,2,1.5048001,1,0.75240007,0.5,Myhom,Untuned
-58,8,9,7.2000003,5,0.80000003,0.55555556,Myhom,Untuned
-59,9,20,19.954264,14,0.99771318,0.7,Myhom,Untuned
-
-Figure: pd_reliability_v2.6_isotonic_2
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,21156,706.87743,766,0.033412622,0.036207223,PropPD1,Adapted reference
-1,1,30906,4651.7938,4684,0.15051426,0.15155633,PropPD1,Adapted reference
-2,2,29931,7408.8705,7433,0.24753167,0.24833784,PropPD1,Adapted reference
-3,3,8535,2990.2281,2987,0.35034893,0.34997071,PropPD1,Adapted reference
-4,4,3979,1787.6682,1695,0.44927575,0.42598643,PropPD1,Adapted reference
-5,5,675,372.91231,383,0.55246267,0.56740741,PropPD1,Adapted reference
-6,6,226,141.84811,122,0.62764649,0.53982301,PropPD1,Adapted reference
-7,7,17,12.778323,9,0.75166606,0.52941176,PropPD1,Adapted reference
-8,8,24,19.956443,12,0.83151846,0.5,PropPD1,Adapted reference
-9,9,4551,4550.9029,4548,0.99997866,0.9993408,PropPD1,Adapted reference
-10,0,20983,683.97667,749,0.032596705,0.035695563,PropPD1,Untuned
-11,1,33329,5133.212,5148,0.15401638,0.15446008,PropPD1,Untuned
-12,2,26230,6504.0719,6505,0.24796309,0.24799848,PropPD1,Untuned
-13,3,9755,3338.3157,3356,0.34221586,0.3440287,PropPD1,Untuned
-14,4,4073,1823.4886,1734,0.44770159,0.42573042,PropPD1,Untuned
-15,5,928,503.88393,513,0.54297838,0.55280172,PropPD1,Untuned
-16,6,95,60.746841,54,0.63944043,0.56842105,PropPD1,Untuned
-17,7,20,14.849019,13,0.74245096,0.65,PropPD1,Untuned
-18,8,30,25.465255,19,0.84884183,0.63333333,PropPD1,Untuned
-19,9,4557,4556.8749,4548,0.99997256,0.99802502,PropPD1,Untuned
-20,0,59011,3453.459,3456,0.058522292,0.058565352,PropPD2,Adapted reference
-21,1,44436,5915.7745,5920,0.13313022,0.13322531,PropPD2,Adapted reference
-22,2,2003,426.82006,406,0.21309039,0.20269596,PropPD2,Adapted reference
-23,3,7,2.3550435,1,0.33643478,0.14285714,PropPD2,Adapted reference
-24,4,2,0.90878037,0,0.45439018,0,PropPD2,Adapted reference
-25,5,1,0.5318464,0,0.5318464,0,PropPD2,Adapted reference
-26,7,1,0.75383782,0,0.75383782,0,PropPD2,Adapted reference
-27,9,10,10,0,1,0,PropPD2,Adapted reference
-28,0,58458,3380.9871,3412,0.057836175,0.058366691,PropPD2,Untuned
-29,1,44792,5932.7714,5952,0.13245158,0.13288087,PropPD2,Untuned
-30,2,2194,474.60536,416,0.21631967,0.18960802,PropPD2,Untuned
-31,3,1,0.39832428,0,0.39832428,0,PropPD2,Untuned
-32,4,13,5.8277669,2,0.44828976,0.15384615,PropPD2,Untuned
-33,5,3,1.6273807,0,0.54246024,0,PropPD2,Untuned
-34,6,1,0.63257289,0,0.63257289,0,PropPD2,Untuned
-35,8,1,0.89607728,0,0.89607728,0,PropPD2,Untuned
-36,9,8,7.9121683,1,0.98902103,0.125,PropPD2,Untuned
-
-Figure: pd_reliability_v3_raw_1
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,22573,678.87241,843,0.030074532,0.037345501,Credit Risk,Adapted reference
-1,1,3360,463.59897,597,0.13797588,0.17767857,Credit Risk,Adapted reference
-2,2,888,213.52594,264,0.24045714,0.2972973,Credit Risk,Adapted reference
-3,3,299,102.37017,104,0.34237517,0.34782609,Credit Risk,Adapted reference
-4,4,157,70.130654,94,0.44669207,0.59872611,Credit Risk,Adapted reference
-5,5,84,45.751741,48,0.54466359,0.57142857,Credit Risk,Adapted reference
-6,6,104,67.65306,74,0.65051019,0.71153846,Credit Risk,Adapted reference
-7,7,126,95.159207,112,0.7552318,0.88888889,Credit Risk,Adapted reference
-8,8,184,157.32741,170,0.85504028,0.92391304,Credit Risk,Adapted reference
-9,9,4806,4777.3627,4802,0.99404135,0.99916771,Credit Risk,Adapted reference
-10,0,21966,677.8864,764,0.030860712,0.034781025,Credit Risk,Untuned
-11,1,4071,556.66173,716,0.13673833,0.17587816,Credit Risk,Untuned
-12,2,891,214.04195,261,0.24022666,0.29292929,Credit Risk,Untuned
-13,3,243,82.657366,89,0.34015377,0.36625514,Credit Risk,Untuned
-14,4,116,51.96722,65,0.44799328,0.56034483,Credit Risk,Untuned
-15,5,73,40.229266,46,0.55108583,0.63013699,Credit Risk,Untuned
-16,6,84,54.495218,60,0.6487526,0.71428571,Credit Risk,Untuned
-17,7,90,67.694406,72,0.75216006,0.8,Credit Risk,Untuned
-18,8,100,85.579564,91,0.85579564,0.91,Credit Risk,Untuned
-19,9,4947,4932.4794,4944,0.99706476,0.99939357,Credit Risk,Untuned
-20,0,340320,9470.2928,7781,0.027827612,0.022863775,Hackerearth,Adapted reference
-21,1,46338,6528.7439,6371,0.14089395,0.13748975,Hackerearth,Adapted reference
-22,2,18454,4502.939,5107,0.24400883,0.27674217,Hackerearth,Adapted reference
-23,3,10172,3518.0483,4297,0.3458561,0.42243413,Hackerearth,Adapted reference
-24,4,7023,3143.1954,3879,0.44755736,0.55232806,Hackerearth,Adapted reference
-25,5,6496,3573.4843,4265,0.55010533,0.65655788,Hackerearth,Adapted reference
-26,6,7401,4828.6111,5393,0.65242685,0.72868531,Hackerearth,Adapted reference
-27,7,10565,7962.0176,8357,0.75362211,0.79100805,Hackerearth,Adapted reference
-28,8,20411,17482.138,17721,0.8565057,0.86820832,Hackerearth,Adapted reference
-29,9,65248,63009.07,62656,0.96568585,0.96027464,Hackerearth,Adapted reference
-30,0,351723,8290.924,8103,0.023572311,0.023038016,Hackerearth,Untuned
-31,1,38072,5394.1809,5722,0.14168368,0.15029418,Hackerearth,Untuned
-32,2,16170,3938.4869,4733,0.24356752,0.29270254,Hackerearth,Untuned
-33,3,8492,2940.1802,3747,0.34622942,0.44123881,Hackerearth,Untuned
-34,4,6315,2833.0475,3615,0.44862193,0.57244656,Hackerearth,Untuned
-35,5,6019,3314.5489,3879,0.55068099,0.64445921,Hackerearth,Untuned
-36,6,7164,4672.869,5122,0.65227094,0.71496371,Hackerearth,Untuned
-37,7,10482,7908.9658,8213,0.75452832,0.78353368,Hackerearth,Untuned
-38,8,21392,18330.012,18493,0.85686293,0.86448205,Hackerearth,Untuned
-39,9,66599,64218.499,64200,0.96425621,0.96397844,Hackerearth,Untuned
-40,1,156,28.047527,38,0.17979184,0.24358974,Myhom,Adapted reference
-41,2,1092,281.24285,300,0.2575484,0.27472527,Myhom,Adapted reference
-42,3,2265,806.00809,811,0.35585346,0.3580574,Myhom,Adapted reference
-43,4,2769,1236.509,1298,0.44655434,0.46876129,Myhom,Adapted reference
-44,5,701,370.16993,343,0.52805981,0.489301,Myhom,Adapted reference
-45,6,17,10.623975,10,0.62493971,0.58823529,Myhom,Adapted reference
-46,1,142,25.92667,38,0.18258218,0.26760563,Myhom,Untuned
-47,2,1185,302.64571,323,0.25539722,0.27257384,Myhom,Untuned
-48,3,2075,737.98193,742,0.35565394,0.35759036,Myhom,Untuned
-49,4,2881,1292.5883,1356,0.44865959,0.47066991,Myhom,Untuned
-50,5,706,372.48228,334,0.5275953,0.47308782,Myhom,Untuned
-51,6,11,6.8003863,7,0.61821694,0.63636364,Myhom,Untuned
-
-Figure: pd_reliability_v3_raw_2
-PD. Raw positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,34427,667.38075,1001,0.019385388,0.029076016,PropPD1,Adapted reference
-1,1,25509,3859.1066,5014,0.15128412,0.19655808,PropPD1,Adapted reference
-2,2,20438,5012.3012,5921,0.24524421,0.28970545,PropPD1,Adapted reference
-3,3,9651,3305.1574,3521,0.34246787,0.36483266,PropPD1,Adapted reference
-4,4,3880,1717.1259,1764,0.44255823,0.45463918,PropPD1,Adapted reference
-5,5,1250,675.36458,692,0.54029166,0.5536,PropPD1,Adapted reference
-6,6,267,169.63226,156,0.63532682,0.58426966,PropPD1,Adapted reference
-7,7,27,19.75894,19,0.73181259,0.7037037,PropPD1,Adapted reference
-8,8,1,0.83719468,1,0.83719468,1,PropPD1,Adapted reference
-9,9,4550,4549.6952,4550,0.99993301,1,PropPD1,Adapted reference
-10,0,35415,749.71503,1174,0.02116942,0.033149795,PropPD1,Untuned
-11,1,27136,4074.9866,5554,0.15016902,0.20467276,PropPD1,Untuned
-12,2,19855,4864.0712,5917,0.24497966,0.29801058,PropPD1,Untuned
-13,3,8688,2971.6218,3301,0.3420375,0.37994936,PropPD1,Untuned
-14,4,3237,1429.0568,1515,0.44147569,0.46802595,PropPD1,Untuned
-15,5,954,512.68345,523,0.53740403,0.54821803,PropPD1,Untuned
-16,6,150,94.425289,98,0.62950193,0.65333333,PropPD1,Untuned
-17,7,13,9.5768178,6,0.73667829,0.46153846,PropPD1,Untuned
-18,8,1,0.83230847,0,0.83230847,0,PropPD1,Untuned
-19,9,4551,4550.91,4551,0.99998023,1,PropPD1,Untuned
-20,0,73678,3973.4632,4985,0.053930117,0.067659274,PropPD2,Adapted reference
-21,1,31477,4117.8207,4736,0.13081999,0.15045907,PropPD2,Adapted reference
-22,2,316,66.708921,62,0.21110418,0.19620253,PropPD2,Adapted reference
-23,0,74937,4047.8226,5138,0.054016341,0.068564261,PropPD2,Untuned
-24,1,30527,3869.8104,4643,0.12676681,0.15209487,PropPD2,Untuned
-25,2,7,1.4301589,2,0.20430841,0.28571429,PropPD2,Untuned
-
-Figure: pd_reliability_v3_Platt_1
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20776,626.74341,631,0.030166702,0.030371583,Credit Risk,Adapted reference
-1,1,4150,583.31297,584,0.14055734,0.14072289,Credit Risk,Adapted reference
-2,2,1342,325.72458,322,0.24271578,0.23994039,Credit Risk,Adapted reference
-3,3,575,197.40818,174,0.34331857,0.3026087,Credit Risk,Adapted reference
-4,4,255,113.39683,91,0.44469344,0.35686275,Credit Risk,Adapted reference
-5,5,150,82.197023,80,0.54798015,0.53333333,Credit Risk,Adapted reference
-6,6,96,62.115324,56,0.64703463,0.58333333,Credit Risk,Adapted reference
-7,7,112,84.130114,79,0.75116173,0.70535714,Credit Risk,Adapted reference
-8,8,177,151.03796,157,0.8533218,0.88700565,Credit Risk,Adapted reference
-9,9,4948,4924.6752,4934,0.99528601,0.99717057,Credit Risk,Adapted reference
-10,0,20420,622.03064,589,0.030461834,0.02884427,Credit Risk,Untuned
-11,1,4699,660.99431,680,0.14066702,0.14471164,Credit Risk,Untuned
-12,2,1366,328.52524,318,0.24050164,0.23279649,Credit Risk,Untuned
-13,3,503,171.0479,175,0.34005546,0.34791252,Credit Risk,Untuned
-14,4,184,81.280067,66,0.44173949,0.35869565,Credit Risk,Untuned
-15,5,108,59.110529,61,0.54731971,0.56481481,Credit Risk,Untuned
-16,6,70,45.41038,46,0.64871972,0.65714286,Credit Risk,Untuned
-17,7,103,76.704656,76,0.7447054,0.73786408,Credit Risk,Untuned
-18,8,114,97.50004,95,0.85526351,0.83333333,Credit Risk,Untuned
-19,9,5014,5001.392,5002,0.99748543,0.9976067,Credit Risk,Untuned
-20,0,341742,8963.103,7918,0.026227689,0.023169526,Hackerearth,Adapted reference
-21,1,43898,6192.4879,6005,0.14106538,0.13679439,Hackerearth,Adapted reference
-22,2,18003,4393.2107,4856,0.24402659,0.26973282,Hackerearth,Adapted reference
-23,3,10160,3514.6433,4069,0.34592946,0.40049213,Hackerearth,Adapted reference
-24,4,7025,3148.3598,3703,0.4481651,0.52711744,Hackerearth,Adapted reference
-25,5,6079,3347.0521,3872,0.55059255,0.63694687,Hackerearth,Adapted reference
-26,6,6768,4410.0023,4766,0.65159609,0.70419622,Hackerearth,Adapted reference
-27,7,9516,7167.0712,7373,0.75316007,0.77480034,Hackerearth,Adapted reference
-28,8,18195,15593.746,15443,0.85703467,0.84874966,Hackerearth,Adapted reference
-29,9,71042,68776.445,67822,0.96810964,0.9546747,Hackerearth,Adapted reference
-30,0,346647,8291.4935,7615,0.023919127,0.021967592,Hackerearth,Untuned
-31,1,38876,5526.1045,5294,0.14214694,0.13617656,Hackerearth,Untuned
-32,2,17390,4245.0809,4547,0.24411046,0.26147211,Hackerearth,Untuned
-33,3,9206,3184.5323,3719,0.34591921,0.40397567,Hackerearth,Untuned
-34,4,6438,2885.5551,3417,0.44820676,0.53075489,Hackerearth,Untuned
-35,5,5873,3231.3206,3632,0.55019932,0.61842329,Hackerearth,Untuned
-36,6,6690,4362.0547,4602,0.65202612,0.68789238,Hackerearth,Untuned
-37,7,9423,7103.0699,7159,0.75380133,0.75973681,Hackerearth,Untuned
-38,8,19388,16621.543,16393,0.85731084,0.845523,Hackerearth,Untuned
-39,9,72497,70038.97,69449,0.96609474,0.95795688,Hackerearth,Untuned
-40,1,109,19.161787,32,0.17579621,0.29357798,Myhom,Adapted reference
-41,2,818,214.75169,213,0.26253262,0.2603912,Myhom,Adapted reference
-42,3,2294,820.21941,785,0.35754987,0.34219704,Myhom,Adapted reference
-43,4,3052,1360.9801,1398,0.44593057,0.45806029,Myhom,Adapted reference
-44,5,706,372.41478,358,0.52749968,0.50708215,Myhom,Adapted reference
-45,6,21,12.99414,14,0.61876858,0.66666667,Myhom,Adapted reference
-46,1,107,18.766146,27,0.17538454,0.25233645,Myhom,Untuned
-47,2,869,227.68013,224,0.26200245,0.25776755,Myhom,Untuned
-48,3,2199,784.74422,765,0.35686413,0.3478854,Myhom,Untuned
-49,4,3149,1412.3099,1440,0.44849474,0.45728803,Myhom,Untuned
-50,5,668,350.88591,340,0.52527831,0.50898204,Myhom,Untuned
-51,6,8,4.8483217,4,0.60604021,0.5,Myhom,Untuned
-
-Figure: pd_reliability_v3_Platt_2
-PD. Platt positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,28610,293.30932,274,0.010251986,0.009577071,PropPD1,Adapted reference
-1,1,19452,3059.2594,3104,0.15727223,0.15957228,PropPD1,Adapted reference
-2,2,25263,6271.1351,6318,0.24823398,0.25008906,PropPD1,Adapted reference
-3,3,14824,5085.4616,5001,0.34305597,0.33735834,PropPD1,Adapted reference
-4,4,5453,2408.978,2395,0.44177114,0.43920778,PropPD1,Adapted reference
-5,5,1593,856.67069,839,0.53777193,0.52667922,PropPD1,Adapted reference
-6,6,242,153.01331,149,0.63228639,0.61570248,PropPD1,Adapted reference
-7,7,12,8.7890156,8,0.73241797,0.66666667,PropPD1,Adapted reference
-8,8,1,0.80441831,1,0.80441831,1,PropPD1,Adapted reference
-9,9,4550,4548.9503,4550,0.9997693,1,PropPD1,Adapted reference
-10,0,28315,275.21042,237,0.0097195981,0.0083701218,PropPD1,Untuned
-11,1,19947,3137.9309,3219,0.15731342,0.16137765,PropPD1,Untuned
-12,2,24934,6193.5972,6198,0.24839966,0.24857624,PropPD1,Untuned
-13,3,14956,5127.2182,5101,0.34282015,0.34106713,PropPD1,Untuned
-14,4,5527,2439.0302,2392,0.44129368,0.43278451,PropPD1,Untuned
-15,5,1548,831.67615,813,0.53725849,0.5251938,PropPD1,Untuned
-16,6,211,132.65564,124,0.62869973,0.58767773,PropPD1,Untuned
-17,7,10,7.3209902,4,0.73209902,0.4,PropPD1,Untuned
-18,8,1,0.83490363,0,0.83490363,0,PropPD1,Untuned
-19,9,4551,4550.5976,4551,0.99991159,1,PropPD1,Untuned
-20,0,61218,3678.105,3671,0.060082084,0.059966023,PropPD2,Adapted reference
-21,1,43111,5883.1354,5891,0.13646483,0.13664726,PropPD2,Adapted reference
-22,2,1142,242.57744,221,0.21241457,0.19352014,PropPD2,Adapted reference
-23,0,60780,3648.7838,3630,0.060032639,0.059723593,PropPD2,Untuned
-24,1,44234,6059.3102,6064,0.13698309,0.13708912,PropPD2,Untuned
-25,2,457,95.195786,89,0.20830588,0.19474836,PropPD2,Untuned
-
-Figure: pd_reliability_v3_isotonic_1
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,20614,604.49213,646,0.029324349,0.031337926,Credit Risk,Adapted reference
-1,1,4087,558.26564,533,0.13659546,0.13041351,Credit Risk,Adapted reference
-2,2,1572,378.6133,366,0.24084816,0.23282443,Credit Risk,Adapted reference
-3,3,712,236.01216,222,0.33147776,0.31179775,Credit Risk,Adapted reference
-4,4,146,67.470151,65,0.46212432,0.44520548,Credit Risk,Adapted reference
-5,5,106,57.433658,48,0.54182696,0.45283019,Credit Risk,Adapted reference
-6,6,110,72.18632,67,0.65623927,0.60909091,Credit Risk,Adapted reference
-7,7,71,53.003591,53,0.74652945,0.74647887,Credit Risk,Adapted reference
-8,8,191,164.58638,152,0.86170879,0.79581152,Credit Risk,Adapted reference
-9,9,4972,4958.6669,4956,0.99731836,0.99678198,Credit Risk,Adapted reference
-10,0,20283,568.37408,583,0.02802219,0.028743283,Credit Risk,Untuned
-11,1,4995,724.84457,716,0.14511403,0.14334334,Credit Risk,Untuned
-12,2,1237,319.309,307,0.25813177,0.24818108,Credit Risk,Untuned
-13,3,501,170.31892,165,0.33995792,0.32934132,Credit Risk,Untuned
-14,4,184,84.22646,76,0.4577525,0.41304348,Credit Risk,Untuned
-15,5,22,12.593142,15,0.57241557,0.68181818,Credit Risk,Untuned
-16,6,136,90.976747,89,0.66894667,0.65441176,Credit Risk,Untuned
-17,7,100,75.594766,66,0.75594766,0.66,Credit Risk,Untuned
-18,8,159,139.0627,130,0.8746082,0.81761006,Credit Risk,Untuned
-19,9,4964,4958.7515,4961,0.99894269,0.99939565,Credit Risk,Untuned
-20,0,347873,8328.2423,8530,0.023940468,0.024520443,Hackerearth,Adapted reference
-21,1,37269,5213.2557,5303,0.13988182,0.14228984,Hackerearth,Adapted reference
-22,2,13788,3438.8344,3434,0.24940778,0.24905715,Hackerearth,Adapted reference
-23,3,10647,3676.1312,3740,0.3452739,0.35127266,Hackerearth,Adapted reference
-24,4,5643,2546.1577,2522,0.45120639,0.44692539,Hackerearth,Adapted reference
-25,5,5526,3059.6975,2977,0.55369119,0.53872602,Hackerearth,Adapted reference
-26,6,9746,6330.0903,6381,0.64950649,0.65473015,Hackerearth,Adapted reference
-27,7,11321,8545.3464,8573,0.75482258,0.75726526,Hackerearth,Adapted reference
-28,8,25936,22155.944,22246,0.85425448,0.85772671,Hackerearth,Adapted reference
-29,9,64679,62201.378,62121,0.96169356,0.96045084,Hackerearth,Adapted reference
-30,0,351150,7873.7769,8042,0.02242283,0.022901894,Hackerearth,Untuned
-31,1,34153,4714.77,4846,0.13804849,0.1418909,Hackerearth,Untuned
-32,2,15477,3905.4201,3898,0.25233702,0.2518576,Hackerearth,Untuned
-33,3,6858,2430.4554,2397,0.35439711,0.34951881,Hackerearth,Untuned
-34,4,5546,2514.9086,2496,0.45346351,0.45005409,Hackerearth,Untuned
-35,5,6679,3692.7497,3715,0.55288961,0.55622099,Hackerearth,Untuned
-36,6,9199,5967.7803,5980,0.64874228,0.65007066,Hackerearth,Untuned
-37,7,13638,10340.783,10387,0.75823308,0.76162194,Hackerearth,Untuned
-38,8,22176,18984.526,19016,0.85608433,0.85750361,Hackerearth,Untuned
-39,9,67552,65090.521,65050,0.96356171,0.96296187,Hackerearth,Untuned
-40,0,17,0.065840885,11,0.0038729932,0.64705882,Myhom,Adapted reference
-41,1,236,41.631867,52,0.17640622,0.22033898,Myhom,Adapted reference
-42,2,821,205.57708,219,0.25039839,0.26674787,Myhom,Adapted reference
-43,3,1794,622.48506,625,0.34698164,0.3483835,Myhom,Adapted reference
-44,4,3600,1615.5489,1615,0.44876358,0.44861111,Myhom,Adapted reference
-45,5,378,202.56766,189,0.53589329,0.5,Myhom,Adapted reference
-46,6,108,68.81564,61,0.63718185,0.56481481,Myhom,Adapted reference
-47,7,27,19.859906,14,0.73555206,0.51851852,Myhom,Adapted reference
-48,8,1,0.86131161,1,0.86131161,1,Myhom,Adapted reference
-49,9,18,17.981902,13,0.99899454,0.72222222,Myhom,Adapted reference
-50,0,11,0.20110654,7,0.018282413,0.63636364,Myhom,Untuned
-51,1,240,42.284526,52,0.17618552,0.21666667,Myhom,Untuned
-52,2,712,170.63711,194,0.23965886,0.27247191,Myhom,Untuned
-53,3,2684,960.72342,977,0.35794464,0.36400894,Myhom,Untuned
-54,4,2732,1258.5237,1244,0.46066023,0.45534407,Myhom,Untuned
-55,5,562,314.47719,287,0.55956795,0.51067616,Myhom,Untuned
-56,6,19,12.042865,14,0.633835,0.73684211,Myhom,Untuned
-57,7,23,17.25,12,0.75,0.52173913,Myhom,Untuned
-58,8,1,0.83458018,1,0.83458018,1,Myhom,Untuned
-59,9,16,15.973238,12,0.99832737,0.75,Myhom,Untuned
-
-Figure: pd_reliability_v3_isotonic_2
-PD. Isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Each panel is a separate dataset, requiring the same five completed outer folds for both models. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-Probability bins and counts
-CSV (first column: row index)
-row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role
-0,0,29088,287.35039,330,0.0098786576,0.011344884,PropPD1,Adapted reference
-1,1,18788,2990.3093,3039,0.1591606,0.16175218,PropPD1,Adapted reference
-2,2,25655,6429.3944,6412,0.2506098,0.24993179,PropPD1,Adapted reference
-3,3,14498,4918.5386,4905,0.33925636,0.33832253,PropPD1,Adapted reference
-4,4,5723,2543.6732,2496,0.44446501,0.43613489,PropPD1,Adapted reference
-5,5,1371,737.87504,709,0.53820207,0.51714077,PropPD1,Adapted reference
-6,6,202,129.15027,123,0.63935776,0.60891089,PropPD1,Adapted reference
-7,7,95,67.940031,51,0.71515822,0.53684211,PropPD1,Adapted reference
-8,8,13,10.581818,10,0.81398601,0.76923077,PropPD1,Adapted reference
-9,9,4567,4566.9016,4564,0.99997844,0.99934311,PropPD1,Adapted reference
-10,0,28077,191.61533,232,0.006824637,0.0082629911,PropPD1,Untuned
-11,1,18411,2843.3152,2858,0.15443567,0.15523328,PropPD1,Untuned
-12,2,26432,6498.9707,6515,0.2458751,0.24648154,PropPD1,Untuned
-13,3,15394,5235.6512,5210,0.34010986,0.33844355,PropPD1,Untuned
-14,4,5042,2235.6122,2186,0.4433979,0.43355811,PropPD1,Untuned
-15,5,1741,906.71733,885,0.5208026,0.50832855,PropPD1,Untuned
-16,6,274,170.44267,160,0.62205354,0.58394161,PropPD1,Untuned
-17,7,54,41.54184,30,0.76929333,0.55555556,PropPD1,Untuned
-18,8,15,12.603223,11,0.84021484,0.73333333,PropPD1,Untuned
-19,9,4560,4559.7993,4552,0.99995599,0.99824561,PropPD1,Untuned
-20,0,58100,3377.8754,3379,0.058138992,0.058158348,PropPD2,Adapted reference
-21,1,46047,6126.0151,6150,0.13303831,0.13355919,PropPD2,Adapted reference
-22,2,1296,290.35901,247,0.22404245,0.19058642,PropPD2,Adapted reference
-23,3,20,6.7147444,6,0.33573722,0.3,PropPD2,Adapted reference
-24,4,1,0.43826154,0,0.43826154,0,PropPD2,Adapted reference
-25,9,7,7,1,1,0.14285714,PropPD2,Adapted reference
-26,0,61683,3720.1968,3722,0.060311541,0.060340775,PropPD2,Untuned
-27,1,41855,5662.3094,5686,0.13528394,0.13584996,PropPD2,Untuned
-28,2,1856,394.08566,361,0.21233064,0.19450431,PropPD2,Untuned
-29,3,54,17.259031,9,0.31961169,0.16666667,PropPD2,Untuned
-30,4,19,8.0272942,4,0.42248917,0.21052632,PropPD2,Untuned
-31,6,1,0.62253588,1,0.62253588,1,PropPD2,Untuned
-32,7,1,0.76988959,0,0.76988959,0,PropPD2,Untuned
-33,9,2,2,0,1,0,PropPD2,Untuned
+row,bin,count,probability_sum,positive_count,predicted,observed,dataset,role,calibration
+0,0,73678,3973.4632,4985,0.053930117,0.067659274,PropPD2,Adapted reference,raw
+1,1,31477,4117.8207,4736,0.13081999,0.15045907,PropPD2,Adapted reference,raw
+2,2,316,66.708921,62,0.21110418,0.19620253,PropPD2,Adapted reference,raw
+3,0,74937,4047.8226,5138,0.054016341,0.068564261,PropPD2,Untuned,raw
+4,1,30527,3869.8104,4643,0.12676681,0.15209487,PropPD2,Untuned,raw
+5,2,7,1.4301589,2,0.20430841,0.28571429,PropPD2,Untuned,raw
+6,0,61218,3678.105,3671,0.060082084,0.059966023,PropPD2,Adapted reference,Platt
+7,1,43111,5883.1354,5891,0.13646483,0.13664726,PropPD2,Adapted reference,Platt
+8,2,1142,242.57744,221,0.21241457,0.19352014,PropPD2,Adapted reference,Platt
+9,0,60780,3648.7838,3630,0.060032639,0.059723593,PropPD2,Untuned,Platt
+10,1,44234,6059.3102,6064,0.13698309,0.13708912,PropPD2,Untuned,Platt
+11,2,457,95.195786,89,0.20830588,0.19474836,PropPD2,Untuned,Platt
+12,0,58100,3377.8754,3379,0.058138992,0.058158348,PropPD2,Adapted reference,isotonic
+13,1,46047,6126.0151,6150,0.13303831,0.13355919,PropPD2,Adapted reference,isotonic
+14,2,1296,290.35901,247,0.22404245,0.19058642,PropPD2,Adapted reference,isotonic
+15,3,20,6.7147444,6,0.33573722,0.3,PropPD2,Adapted reference,isotonic
+16,4,1,0.43826154,0,0.43826154,0,PropPD2,Adapted reference,isotonic
+17,9,7,7,1,1,0.14285714,PropPD2,Adapted reference,isotonic
+18,0,61683,3720.1968,3722,0.060311541,0.060340775,PropPD2,Untuned,isotonic
+19,1,41855,5662.3094,5686,0.13528394,0.13584996,PropPD2,Untuned,isotonic
+20,2,1856,394.08566,361,0.21233064,0.19450431,PropPD2,Untuned,isotonic
+21,3,54,17.259031,9,0.31961169,0.16666667,PropPD2,Untuned,isotonic
+22,4,19,8.0272942,4,0.42248917,0.21052632,PropPD2,Untuned,isotonic
+23,6,1,0.62253588,1,0.62253588,1,PropPD2,Untuned,isotonic
+24,7,1,0.76988959,0,0.76988959,0,PropPD2,Untuned,isotonic
+25,9,2,2,0,1,0,PropPD2,Untuned,isotonic
 
 Figure: pd_thresholds_tabicl-v2_1
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
@@ -65919,7 +65847,7 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,5222.861,4837.4361,5610.2462,32,0.5222861,0.48374361,0.56102462,32,121.0455,120.994,121.097,32,1.8578545e+08,168231937,195157151,32,53153136,53153136,53153136,32,0.0062993886,0.0014844263,0.052169715
 "('TabPFN v3', True)",32,4818.2725,4506.7621,5040.1654,32,0.48182725,0.45067621,0.50401654,32,109.999,109.999,109.999,32,1.8578545e+08,168231937,195157151,32,1795440,1795440,1795440,32,0.0064213491,0.0013048735,0.037843075
 
-experiment1/03_results_pd: 41 figures -> output CreditPFN/figures/experiment1
+experiment1/03_results_pd: 29 figures -> output CreditPFN/figures/experiment1
   01  pd_evaluation_coverage
   02  pd_endpoint_dashboard_pd_means
   03  pd_endpoint_dashboard_pd_partitions
@@ -65932,35 +65860,23 @@ experiment1/03_results_pd: 41 figures -> output CreditPFN/figures/experiment1
   10  pd_reference_log_loss_1
   11  pd_reference_ece_1
   12  pd_reference_f1_1
-  13  pd_reliability_tabicl-v2_raw_1
-  14  pd_reliability_tabicl-v2_raw_2
-  15  pd_reliability_tabicl-v2_Platt_1
-  16  pd_reliability_tabicl-v2_Platt_2
-  17  pd_reliability_tabicl-v2_isotonic_1
-  18  pd_reliability_tabicl-v2_isotonic_2
-  19  pd_reliability_v2_raw_1
-  20  pd_reliability_v2_raw_2
-  21  pd_reliability_v2_Platt_1
-  22  pd_reliability_v2_Platt_2
-  23  pd_reliability_v2_isotonic_1
-  24  pd_reliability_v2_isotonic_2
-  25  pd_reliability_v2.6_raw_1
-  26  pd_reliability_v2.6_raw_2
-  27  pd_reliability_v2.6_Platt_1
-  28  pd_reliability_v2.6_Platt_2
-  29  pd_reliability_v2.6_isotonic_1
-  30  pd_reliability_v2.6_isotonic_2
-  31  pd_reliability_v3_raw_1
-  32  pd_reliability_v3_raw_2
-  33  pd_reliability_v3_Platt_1
-  34  pd_reliability_v3_Platt_2
-  35  pd_reliability_v3_isotonic_1
-  36  pd_reliability_v3_isotonic_2
-  37  pd_thresholds_tabicl-v2_1
-  38  pd_thresholds_v2-default_1
-  39  pd_thresholds_v2.6-default_1
-  40  pd_thresholds_v3-default_1
-  41  pd_control_context_1
+  13  pd_reliability_tabicl-v2_1
+  14  pd_reliability_tabicl-v2_2
+  15  pd_reliability_tabicl-v2_3
+  16  pd_reliability_v2_1
+  17  pd_reliability_v2_2
+  18  pd_reliability_v2_3
+  19  pd_reliability_v2.6_1
+  20  pd_reliability_v2.6_2
+  21  pd_reliability_v2.6_3
+  22  pd_reliability_v3_1
+  23  pd_reliability_v3_2
+  24  pd_reliability_v3_3
+  25  pd_thresholds_tabicl-v2_1
+  26  pd_thresholds_v2-default_1
+  27  pd_thresholds_v2.6-default_1
+  28  pd_thresholds_v3-default_1
+  29  pd_control_context_1
 ```
 
 ---
@@ -65972,7 +65888,7 @@ Experiment 1: LGD outcomes and evaluation
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Evidence and benchmark eligibility
@@ -68174,7 +68090,7 @@ Experiment 2: seed sensitivity during training
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:45:06+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Reference recipe and training coverage
@@ -73972,619 +73888,619 @@ Figure: pd_resource_dashboard_pd_gpu_utilization_percent
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,99.75,4,TabICLv2
-1,400,99.5,4,TabICLv2
-2,600,99.75,4,TabICLv2
-3,800,99,4,TabICLv2
-4,1000,97.5,4,TabICLv2
-5,1200,93,4,TabICLv2
-6,1400,99.5,4,TabICLv2
-7,1600,99.75,4,TabICLv2
-8,1800,99.5,4,TabICLv2
-9,2000,99.5,4,TabICLv2
-10,2200,96.75,4,TabICLv2
-11,2400,99.5,4,TabICLv2
-12,2600,97.5,4,TabICLv2
-13,2800,98.5,4,TabICLv2
-14,3000,99.5,4,TabICLv2
-15,3200,99.25,4,TabICLv2
-16,3400,100,4,TabICLv2
-17,3600,98.5,4,TabICLv2
-18,3800,99,4,TabICLv2
-19,4000,100,4,TabICLv2
-20,4200,99.5,4,TabICLv2
-21,4400,99,4,TabICLv2
-22,4600,98,4,TabICLv2
-23,4800,99.5,4,TabICLv2
-24,5000,98.5,4,TabICLv2
-25,5200,99.25,4,TabICLv2
-26,5400,99.75,4,TabICLv2
-27,5600,99,4,TabICLv2
-28,5800,99.5,4,TabICLv2
-29,6000,98.25,4,TabICLv2
-30,6200,99,4,TabICLv2
-31,6400,100,4,TabICLv2
-32,6600,99.25,4,TabICLv2
-33,6800,98.25,4,TabICLv2
-34,7000,97.25,4,TabICLv2
-35,7200,99.5,4,TabICLv2
-36,7400,100,4,TabICLv2
-37,7600,99.75,4,TabICLv2
-38,7800,99.75,4,TabICLv2
-39,8000,100,4,TabICLv2
-40,8200,99.25,4,TabICLv2
-41,8400,99.5,4,TabICLv2
-42,8600,99.25,4,TabICLv2
-43,8800,99.5,4,TabICLv2
-44,9000,96.75,4,TabICLv2
-45,9200,99,4,TabICLv2
-46,9400,100,4,TabICLv2
-47,9600,99.75,4,TabICLv2
-48,9800,98.75,4,TabICLv2
-49,10000,97.25,4,TabICLv2
-50,200,98.75,4,TabPFN v2
-51,400,98.25,4,TabPFN v2
-52,600,99.5,4,TabPFN v2
-53,800,100,4,TabPFN v2
-54,1000,100,4,TabPFN v2
-55,1200,99.5,4,TabPFN v2
-56,1400,100,4,TabPFN v2
-57,1600,98.5,4,TabPFN v2
-58,1800,100,4,TabPFN v2
-59,2000,98.25,4,TabPFN v2
-60,2200,100,4,TabPFN v2
-61,2400,99.5,4,TabPFN v2
-62,2600,98.25,4,TabPFN v2
-63,2800,99.75,4,TabPFN v2
-64,3000,99.75,4,TabPFN v2
-65,3200,99.5,4,TabPFN v2
-66,3400,99.75,4,TabPFN v2
-67,3600,100,4,TabPFN v2
-68,3800,99,4,TabPFN v2
-69,4000,99.5,4,TabPFN v2
-70,4200,98.5,4,TabPFN v2
-71,4400,98,4,TabPFN v2
-72,4600,98.5,4,TabPFN v2
-73,4800,99.5,4,TabPFN v2
-74,5000,99.5,4,TabPFN v2
-75,5200,99,4,TabPFN v2
-76,5400,99.5,4,TabPFN v2
-77,5600,98.75,4,TabPFN v2
-78,5800,98.75,4,TabPFN v2
-79,6000,100,4,TabPFN v2
-80,6200,99.75,4,TabPFN v2
-81,6400,100,4,TabPFN v2
-82,6600,100,4,TabPFN v2
-83,6800,100,4,TabPFN v2
-84,7000,98.25,4,TabPFN v2
-85,7200,98.5,4,TabPFN v2
-86,7400,98.5,4,TabPFN v2
-87,7600,99.75,4,TabPFN v2
-88,7800,98.5,4,TabPFN v2
-89,8000,100,4,TabPFN v2
-90,8200,99.75,4,TabPFN v2
-91,8400,100,4,TabPFN v2
-92,8600,100,4,TabPFN v2
-93,8800,100,4,TabPFN v2
-94,9000,99.5,4,TabPFN v2
-95,9200,99,4,TabPFN v2
-96,9400,100,4,TabPFN v2
-97,9600,99.5,4,TabPFN v2
-98,9800,99.25,4,TabPFN v2
-99,10000,100,4,TabPFN v2
-100,200,95.5,4,TabPFN v2.6
-101,400,97,4,TabPFN v2.6
-102,600,99.25,4,TabPFN v2.6
-103,800,93.5,4,TabPFN v2.6
-104,1000,97.5,4,TabPFN v2.6
-105,1200,96,4,TabPFN v2.6
-106,1400,98.25,4,TabPFN v2.6
-107,1600,99.75,4,TabPFN v2.6
-108,1800,94.75,4,TabPFN v2.6
-109,2000,98.75,4,TabPFN v2.6
-110,2200,98.25,4,TabPFN v2.6
-111,2400,98.25,4,TabPFN v2.6
-112,2600,99.75,4,TabPFN v2.6
-113,2800,97.25,4,TabPFN v2.6
-114,3000,96,4,TabPFN v2.6
-115,3200,98,4,TabPFN v2.6
-116,3400,96,4,TabPFN v2.6
-117,3600,99.5,4,TabPFN v2.6
-118,3800,98.5,4,TabPFN v2.6
-119,4000,93.25,4,TabPFN v2.6
-120,4200,98.25,4,TabPFN v2.6
-121,4400,100,4,TabPFN v2.6
-122,4600,99.75,4,TabPFN v2.6
-123,4800,95.5,4,TabPFN v2.6
-124,5000,97.75,4,TabPFN v2.6
-125,5200,99,4,TabPFN v2.6
-126,5400,97,4,TabPFN v2.6
-127,5600,97.5,4,TabPFN v2.6
-128,5800,97.75,4,TabPFN v2.6
-129,6000,100,4,TabPFN v2.6
-130,6200,96.5,4,TabPFN v2.6
-131,6400,94,4,TabPFN v2.6
-132,6600,93.25,4,TabPFN v2.6
-133,6800,98.5,4,TabPFN v2.6
-134,7000,97.75,4,TabPFN v2.6
-135,7200,92.5,4,TabPFN v2.6
-136,7400,95.75,4,TabPFN v2.6
-137,7600,96.5,4,TabPFN v2.6
-138,7800,99.5,4,TabPFN v2.6
-139,8000,98,4,TabPFN v2.6
-140,8200,98.75,4,TabPFN v2.6
-141,8400,97.25,4,TabPFN v2.6
-142,8600,96.75,4,TabPFN v2.6
-143,8800,97.75,4,TabPFN v2.6
-144,9000,95.5,4,TabPFN v2.6
-145,9200,99.5,4,TabPFN v2.6
-146,9400,99.5,4,TabPFN v2.6
-147,9600,98.5,4,TabPFN v2.6
-148,9800,98.75,4,TabPFN v2.6
-149,10000,96.75,4,TabPFN v2.6
-150,200,97.5,4,TabPFN v3
-151,400,97.5,4,TabPFN v3
-152,600,96,4,TabPFN v3
-153,800,94,4,TabPFN v3
-154,1000,100,4,TabPFN v3
-155,1200,100,4,TabPFN v3
-156,1400,100,4,TabPFN v3
-157,1600,100,4,TabPFN v3
-158,1800,97,4,TabPFN v3
-159,2000,100,4,TabPFN v3
-160,2200,96.5,4,TabPFN v3
-161,2400,98,4,TabPFN v3
-162,2600,94,4,TabPFN v3
-163,2800,100,4,TabPFN v3
-164,3000,95.75,4,TabPFN v3
-165,3200,100,4,TabPFN v3
-166,3400,97.25,4,TabPFN v3
-167,3600,97.25,4,TabPFN v3
-168,3800,100,4,TabPFN v3
-169,4000,100,4,TabPFN v3
-170,4200,99.25,4,TabPFN v3
-171,4400,100,4,TabPFN v3
-172,4600,97.5,4,TabPFN v3
-173,4800,97,4,TabPFN v3
-174,5000,100,4,TabPFN v3
-175,5200,93.25,4,TabPFN v3
-176,5400,93.5,4,TabPFN v3
-177,5600,100,4,TabPFN v3
-178,5800,98.5,4,TabPFN v3
-179,6000,90,4,TabPFN v3
-180,6200,93.5,4,TabPFN v3
-181,6400,86.5,4,TabPFN v3
-182,6600,93,4,TabPFN v3
-183,6800,93.5,4,TabPFN v3
-184,7000,100,4,TabPFN v3
-185,7200,96.5,4,TabPFN v3
-186,7400,96.5,4,TabPFN v3
-187,7600,100,4,TabPFN v3
-188,7800,99.5,4,TabPFN v3
-189,8000,97.5,4,TabPFN v3
-190,8200,100,4,TabPFN v3
-191,8400,99.5,4,TabPFN v3
-192,8600,90,4,TabPFN v3
-193,8800,97.5,4,TabPFN v3
-194,9000,100,4,TabPFN v3
-195,9200,97.5,4,TabPFN v3
-196,9400,100,4,TabPFN v3
-197,9600,97,4,TabPFN v3
-198,9800,99.75,4,TabPFN v3
-199,10000,99,4,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,99.75,4,TabICLv2,GPU utilization (%)
+1,400,99.5,4,TabICLv2,GPU utilization (%)
+2,600,99.75,4,TabICLv2,GPU utilization (%)
+3,800,99,4,TabICLv2,GPU utilization (%)
+4,1000,97.5,4,TabICLv2,GPU utilization (%)
+5,1200,93,4,TabICLv2,GPU utilization (%)
+6,1400,99.5,4,TabICLv2,GPU utilization (%)
+7,1600,99.75,4,TabICLv2,GPU utilization (%)
+8,1800,99.5,4,TabICLv2,GPU utilization (%)
+9,2000,99.5,4,TabICLv2,GPU utilization (%)
+10,2200,96.75,4,TabICLv2,GPU utilization (%)
+11,2400,99.5,4,TabICLv2,GPU utilization (%)
+12,2600,97.5,4,TabICLv2,GPU utilization (%)
+13,2800,98.5,4,TabICLv2,GPU utilization (%)
+14,3000,99.5,4,TabICLv2,GPU utilization (%)
+15,3200,99.25,4,TabICLv2,GPU utilization (%)
+16,3400,100,4,TabICLv2,GPU utilization (%)
+17,3600,98.5,4,TabICLv2,GPU utilization (%)
+18,3800,99,4,TabICLv2,GPU utilization (%)
+19,4000,100,4,TabICLv2,GPU utilization (%)
+20,4200,99.5,4,TabICLv2,GPU utilization (%)
+21,4400,99,4,TabICLv2,GPU utilization (%)
+22,4600,98,4,TabICLv2,GPU utilization (%)
+23,4800,99.5,4,TabICLv2,GPU utilization (%)
+24,5000,98.5,4,TabICLv2,GPU utilization (%)
+25,5200,99.25,4,TabICLv2,GPU utilization (%)
+26,5400,99.75,4,TabICLv2,GPU utilization (%)
+27,5600,99,4,TabICLv2,GPU utilization (%)
+28,5800,99.5,4,TabICLv2,GPU utilization (%)
+29,6000,98.25,4,TabICLv2,GPU utilization (%)
+30,6200,99,4,TabICLv2,GPU utilization (%)
+31,6400,100,4,TabICLv2,GPU utilization (%)
+32,6600,99.25,4,TabICLv2,GPU utilization (%)
+33,6800,98.25,4,TabICLv2,GPU utilization (%)
+34,7000,97.25,4,TabICLv2,GPU utilization (%)
+35,7200,99.5,4,TabICLv2,GPU utilization (%)
+36,7400,100,4,TabICLv2,GPU utilization (%)
+37,7600,99.75,4,TabICLv2,GPU utilization (%)
+38,7800,99.75,4,TabICLv2,GPU utilization (%)
+39,8000,100,4,TabICLv2,GPU utilization (%)
+40,8200,99.25,4,TabICLv2,GPU utilization (%)
+41,8400,99.5,4,TabICLv2,GPU utilization (%)
+42,8600,99.25,4,TabICLv2,GPU utilization (%)
+43,8800,99.5,4,TabICLv2,GPU utilization (%)
+44,9000,96.75,4,TabICLv2,GPU utilization (%)
+45,9200,99,4,TabICLv2,GPU utilization (%)
+46,9400,100,4,TabICLv2,GPU utilization (%)
+47,9600,99.75,4,TabICLv2,GPU utilization (%)
+48,9800,98.75,4,TabICLv2,GPU utilization (%)
+49,10000,97.25,4,TabICLv2,GPU utilization (%)
+50,200,98.75,4,TabPFN v2,GPU utilization (%)
+51,400,98.25,4,TabPFN v2,GPU utilization (%)
+52,600,99.5,4,TabPFN v2,GPU utilization (%)
+53,800,100,4,TabPFN v2,GPU utilization (%)
+54,1000,100,4,TabPFN v2,GPU utilization (%)
+55,1200,99.5,4,TabPFN v2,GPU utilization (%)
+56,1400,100,4,TabPFN v2,GPU utilization (%)
+57,1600,98.5,4,TabPFN v2,GPU utilization (%)
+58,1800,100,4,TabPFN v2,GPU utilization (%)
+59,2000,98.25,4,TabPFN v2,GPU utilization (%)
+60,2200,100,4,TabPFN v2,GPU utilization (%)
+61,2400,99.5,4,TabPFN v2,GPU utilization (%)
+62,2600,98.25,4,TabPFN v2,GPU utilization (%)
+63,2800,99.75,4,TabPFN v2,GPU utilization (%)
+64,3000,99.75,4,TabPFN v2,GPU utilization (%)
+65,3200,99.5,4,TabPFN v2,GPU utilization (%)
+66,3400,99.75,4,TabPFN v2,GPU utilization (%)
+67,3600,100,4,TabPFN v2,GPU utilization (%)
+68,3800,99,4,TabPFN v2,GPU utilization (%)
+69,4000,99.5,4,TabPFN v2,GPU utilization (%)
+70,4200,98.5,4,TabPFN v2,GPU utilization (%)
+71,4400,98,4,TabPFN v2,GPU utilization (%)
+72,4600,98.5,4,TabPFN v2,GPU utilization (%)
+73,4800,99.5,4,TabPFN v2,GPU utilization (%)
+74,5000,99.5,4,TabPFN v2,GPU utilization (%)
+75,5200,99,4,TabPFN v2,GPU utilization (%)
+76,5400,99.5,4,TabPFN v2,GPU utilization (%)
+77,5600,98.75,4,TabPFN v2,GPU utilization (%)
+78,5800,98.75,4,TabPFN v2,GPU utilization (%)
+79,6000,100,4,TabPFN v2,GPU utilization (%)
+80,6200,99.75,4,TabPFN v2,GPU utilization (%)
+81,6400,100,4,TabPFN v2,GPU utilization (%)
+82,6600,100,4,TabPFN v2,GPU utilization (%)
+83,6800,100,4,TabPFN v2,GPU utilization (%)
+84,7000,98.25,4,TabPFN v2,GPU utilization (%)
+85,7200,98.5,4,TabPFN v2,GPU utilization (%)
+86,7400,98.5,4,TabPFN v2,GPU utilization (%)
+87,7600,99.75,4,TabPFN v2,GPU utilization (%)
+88,7800,98.5,4,TabPFN v2,GPU utilization (%)
+89,8000,100,4,TabPFN v2,GPU utilization (%)
+90,8200,99.75,4,TabPFN v2,GPU utilization (%)
+91,8400,100,4,TabPFN v2,GPU utilization (%)
+92,8600,100,4,TabPFN v2,GPU utilization (%)
+93,8800,100,4,TabPFN v2,GPU utilization (%)
+94,9000,99.5,4,TabPFN v2,GPU utilization (%)
+95,9200,99,4,TabPFN v2,GPU utilization (%)
+96,9400,100,4,TabPFN v2,GPU utilization (%)
+97,9600,99.5,4,TabPFN v2,GPU utilization (%)
+98,9800,99.25,4,TabPFN v2,GPU utilization (%)
+99,10000,100,4,TabPFN v2,GPU utilization (%)
+100,200,95.5,4,TabPFN v2.6,GPU utilization (%)
+101,400,97,4,TabPFN v2.6,GPU utilization (%)
+102,600,99.25,4,TabPFN v2.6,GPU utilization (%)
+103,800,93.5,4,TabPFN v2.6,GPU utilization (%)
+104,1000,97.5,4,TabPFN v2.6,GPU utilization (%)
+105,1200,96,4,TabPFN v2.6,GPU utilization (%)
+106,1400,98.25,4,TabPFN v2.6,GPU utilization (%)
+107,1600,99.75,4,TabPFN v2.6,GPU utilization (%)
+108,1800,94.75,4,TabPFN v2.6,GPU utilization (%)
+109,2000,98.75,4,TabPFN v2.6,GPU utilization (%)
+110,2200,98.25,4,TabPFN v2.6,GPU utilization (%)
+111,2400,98.25,4,TabPFN v2.6,GPU utilization (%)
+112,2600,99.75,4,TabPFN v2.6,GPU utilization (%)
+113,2800,97.25,4,TabPFN v2.6,GPU utilization (%)
+114,3000,96,4,TabPFN v2.6,GPU utilization (%)
+115,3200,98,4,TabPFN v2.6,GPU utilization (%)
+116,3400,96,4,TabPFN v2.6,GPU utilization (%)
+117,3600,99.5,4,TabPFN v2.6,GPU utilization (%)
+118,3800,98.5,4,TabPFN v2.6,GPU utilization (%)
+119,4000,93.25,4,TabPFN v2.6,GPU utilization (%)
+120,4200,98.25,4,TabPFN v2.6,GPU utilization (%)
+121,4400,100,4,TabPFN v2.6,GPU utilization (%)
+122,4600,99.75,4,TabPFN v2.6,GPU utilization (%)
+123,4800,95.5,4,TabPFN v2.6,GPU utilization (%)
+124,5000,97.75,4,TabPFN v2.6,GPU utilization (%)
+125,5200,99,4,TabPFN v2.6,GPU utilization (%)
+126,5400,97,4,TabPFN v2.6,GPU utilization (%)
+127,5600,97.5,4,TabPFN v2.6,GPU utilization (%)
+128,5800,97.75,4,TabPFN v2.6,GPU utilization (%)
+129,6000,100,4,TabPFN v2.6,GPU utilization (%)
+130,6200,96.5,4,TabPFN v2.6,GPU utilization (%)
+131,6400,94,4,TabPFN v2.6,GPU utilization (%)
+132,6600,93.25,4,TabPFN v2.6,GPU utilization (%)
+133,6800,98.5,4,TabPFN v2.6,GPU utilization (%)
+134,7000,97.75,4,TabPFN v2.6,GPU utilization (%)
+135,7200,92.5,4,TabPFN v2.6,GPU utilization (%)
+136,7400,95.75,4,TabPFN v2.6,GPU utilization (%)
+137,7600,96.5,4,TabPFN v2.6,GPU utilization (%)
+138,7800,99.5,4,TabPFN v2.6,GPU utilization (%)
+139,8000,98,4,TabPFN v2.6,GPU utilization (%)
+140,8200,98.75,4,TabPFN v2.6,GPU utilization (%)
+141,8400,97.25,4,TabPFN v2.6,GPU utilization (%)
+142,8600,96.75,4,TabPFN v2.6,GPU utilization (%)
+143,8800,97.75,4,TabPFN v2.6,GPU utilization (%)
+144,9000,95.5,4,TabPFN v2.6,GPU utilization (%)
+145,9200,99.5,4,TabPFN v2.6,GPU utilization (%)
+146,9400,99.5,4,TabPFN v2.6,GPU utilization (%)
+147,9600,98.5,4,TabPFN v2.6,GPU utilization (%)
+148,9800,98.75,4,TabPFN v2.6,GPU utilization (%)
+149,10000,96.75,4,TabPFN v2.6,GPU utilization (%)
+150,200,97.5,4,TabPFN v3,GPU utilization (%)
+151,400,97.5,4,TabPFN v3,GPU utilization (%)
+152,600,96,4,TabPFN v3,GPU utilization (%)
+153,800,94,4,TabPFN v3,GPU utilization (%)
+154,1000,100,4,TabPFN v3,GPU utilization (%)
+155,1200,100,4,TabPFN v3,GPU utilization (%)
+156,1400,100,4,TabPFN v3,GPU utilization (%)
+157,1600,100,4,TabPFN v3,GPU utilization (%)
+158,1800,97,4,TabPFN v3,GPU utilization (%)
+159,2000,100,4,TabPFN v3,GPU utilization (%)
+160,2200,96.5,4,TabPFN v3,GPU utilization (%)
+161,2400,98,4,TabPFN v3,GPU utilization (%)
+162,2600,94,4,TabPFN v3,GPU utilization (%)
+163,2800,100,4,TabPFN v3,GPU utilization (%)
+164,3000,95.75,4,TabPFN v3,GPU utilization (%)
+165,3200,100,4,TabPFN v3,GPU utilization (%)
+166,3400,97.25,4,TabPFN v3,GPU utilization (%)
+167,3600,97.25,4,TabPFN v3,GPU utilization (%)
+168,3800,100,4,TabPFN v3,GPU utilization (%)
+169,4000,100,4,TabPFN v3,GPU utilization (%)
+170,4200,99.25,4,TabPFN v3,GPU utilization (%)
+171,4400,100,4,TabPFN v3,GPU utilization (%)
+172,4600,97.5,4,TabPFN v3,GPU utilization (%)
+173,4800,97,4,TabPFN v3,GPU utilization (%)
+174,5000,100,4,TabPFN v3,GPU utilization (%)
+175,5200,93.25,4,TabPFN v3,GPU utilization (%)
+176,5400,93.5,4,TabPFN v3,GPU utilization (%)
+177,5600,100,4,TabPFN v3,GPU utilization (%)
+178,5800,98.5,4,TabPFN v3,GPU utilization (%)
+179,6000,90,4,TabPFN v3,GPU utilization (%)
+180,6200,93.5,4,TabPFN v3,GPU utilization (%)
+181,6400,86.5,4,TabPFN v3,GPU utilization (%)
+182,6600,93,4,TabPFN v3,GPU utilization (%)
+183,6800,93.5,4,TabPFN v3,GPU utilization (%)
+184,7000,100,4,TabPFN v3,GPU utilization (%)
+185,7200,96.5,4,TabPFN v3,GPU utilization (%)
+186,7400,96.5,4,TabPFN v3,GPU utilization (%)
+187,7600,100,4,TabPFN v3,GPU utilization (%)
+188,7800,99.5,4,TabPFN v3,GPU utilization (%)
+189,8000,97.5,4,TabPFN v3,GPU utilization (%)
+190,8200,100,4,TabPFN v3,GPU utilization (%)
+191,8400,99.5,4,TabPFN v3,GPU utilization (%)
+192,8600,90,4,TabPFN v3,GPU utilization (%)
+193,8800,97.5,4,TabPFN v3,GPU utilization (%)
+194,9000,100,4,TabPFN v3,GPU utilization (%)
+195,9200,97.5,4,TabPFN v3,GPU utilization (%)
+196,9400,100,4,TabPFN v3,GPU utilization (%)
+197,9600,97,4,TabPFN v3,GPU utilization (%)
+198,9800,99.75,4,TabPFN v3,GPU utilization (%)
+199,10000,99,4,TabPFN v3,GPU utilization (%)
 
 Figure: pd_resource_dashboard_pd_power_watts
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,628.87,1,TabICLv2
-1,400,630.995,1,TabICLv2
-2,600,627.405,1,TabICLv2
-3,800,637.225,1,TabICLv2
-4,1000,618.07,1,TabICLv2
-5,1200,616.42,1,TabICLv2
-6,1400,610.5,1,TabICLv2
-7,1600,623.615,1,TabICLv2
-8,1800,627.4,1,TabICLv2
-9,2000,614.28,1,TabICLv2
-10,2200,632.955,1,TabICLv2
-11,2400,608.7,1,TabICLv2
-12,2600,601.155,1,TabICLv2
-13,2800,612.365,1,TabICLv2
-14,3000,610.42,1,TabICLv2
-15,3200,624.12,1,TabICLv2
-16,3400,625.32,1,TabICLv2
-17,3600,622.805,1,TabICLv2
-18,3800,626.345,1,TabICLv2
-19,4000,593.595,1,TabICLv2
-20,4200,613.68,1,TabICLv2
-21,4400,626.54,1,TabICLv2
-22,4600,624.825,1,TabICLv2
-23,4800,615.825,1,TabICLv2
-24,5000,629.545,1,TabICLv2
-25,5200,603.695,1,TabICLv2
-26,5400,602.465,1,TabICLv2
-27,5600,616.58,1,TabICLv2
-28,5800,627.865,1,TabICLv2
-29,6000,630.49,1,TabICLv2
-30,6200,610.615,1,TabICLv2
-31,6400,630.34,1,TabICLv2
-32,6600,614.16,1,TabICLv2
-33,6800,608.09,1,TabICLv2
-34,7000,608.305,1,TabICLv2
-35,7200,601.61,1,TabICLv2
-36,7400,634.005,1,TabICLv2
-37,7600,620.165,1,TabICLv2
-38,7800,609.85,1,TabICLv2
-39,8000,618.98,1,TabICLv2
-40,8200,592.99,1,TabICLv2
-41,8400,605.525,1,TabICLv2
-42,8600,617.04,1,TabICLv2
-43,8800,627.63,1,TabICLv2
-44,9000,628.85,1,TabICLv2
-45,9200,619.04,1,TabICLv2
-46,9400,599.61,1,TabICLv2
-47,9600,606.665,1,TabICLv2
-48,9800,621.33,1,TabICLv2
-49,10000,624.005,1,TabICLv2
-50,200,834.325,1,TabPFN v2
-51,400,770.1,1,TabPFN v2
-52,600,810.625,1,TabPFN v2
-53,800,792.59,1,TabPFN v2
-54,1000,822.18,1,TabPFN v2
-55,1200,784.88,1,TabPFN v2
-56,1400,808.78,1,TabPFN v2
-57,1600,807.965,1,TabPFN v2
-58,1800,843.26,1,TabPFN v2
-59,2000,748.43,1,TabPFN v2
-60,2200,820.93,1,TabPFN v2
-61,2400,838.05,1,TabPFN v2
-62,2600,781.355,1,TabPFN v2
-63,2800,748.435,1,TabPFN v2
-64,3000,792.6,1,TabPFN v2
-65,3200,837.68,1,TabPFN v2
-66,3400,807.105,1,TabPFN v2
-67,3600,853.88,1,TabPFN v2
-68,3800,811.405,1,TabPFN v2
-69,4000,831.56,1,TabPFN v2
-70,4200,822.41,1,TabPFN v2
-71,4400,801.76,1,TabPFN v2
-72,4600,750.92,1,TabPFN v2
-73,4800,783.3,1,TabPFN v2
-74,5000,754.17,1,TabPFN v2
-75,5200,826.24,1,TabPFN v2
-76,5400,781.88,1,TabPFN v2
-77,5600,780.24,1,TabPFN v2
-78,5800,785.52,1,TabPFN v2
-79,6000,746.83,1,TabPFN v2
-80,6200,729.36,1,TabPFN v2
-81,6400,840.99,1,TabPFN v2
-82,6600,810.79,1,TabPFN v2
-83,6800,832.66,1,TabPFN v2
-84,7000,797.51,1,TabPFN v2
-85,7200,795.98,1,TabPFN v2
-86,7400,784.835,1,TabPFN v2
-87,7600,817.3,1,TabPFN v2
-88,7800,813.88,1,TabPFN v2
-89,8000,844.03,1,TabPFN v2
-90,8200,748.665,1,TabPFN v2
-91,8400,836.79,1,TabPFN v2
-92,8600,832.25,1,TabPFN v2
-93,8800,798.15,1,TabPFN v2
-94,9000,833.04,1,TabPFN v2
-95,9200,811.06,1,TabPFN v2
-96,9400,850.77,1,TabPFN v2
-97,9600,804.1,1,TabPFN v2
-98,9800,760.255,1,TabPFN v2
-99,10000,787.36,1,TabPFN v2
-100,200,707.19,1,TabPFN v2.6
-101,400,692.145,1,TabPFN v2.6
-102,600,772.19,1,TabPFN v2.6
-103,800,637.405,1,TabPFN v2.6
-104,1000,773.55,1,TabPFN v2.6
-105,1200,635.27,1,TabPFN v2.6
-106,1400,676.05,1,TabPFN v2.6
-107,1600,737.215,1,TabPFN v2.6
-108,1800,711.285,1,TabPFN v2.6
-109,2000,764.67,1,TabPFN v2.6
-110,2200,588.26,1,TabPFN v2.6
-111,2400,743.85,1,TabPFN v2.6
-112,2600,698.085,1,TabPFN v2.6
-113,2800,713.34,1,TabPFN v2.6
-114,3000,684.545,1,TabPFN v2.6
-115,3200,687.33,1,TabPFN v2.6
-116,3400,658.9,1,TabPFN v2.6
-117,3600,776.08,1,TabPFN v2.6
-118,3800,701.3,1,TabPFN v2.6
-119,4000,646.71,1,TabPFN v2.6
-120,4200,715.67,1,TabPFN v2.6
-121,4400,712.29,1,TabPFN v2.6
-122,4600,719.515,1,TabPFN v2.6
-123,4800,737.27,1,TabPFN v2.6
-124,5000,740.565,1,TabPFN v2.6
-125,5200,724.42,1,TabPFN v2.6
-126,5400,740.175,1,TabPFN v2.6
-127,5600,712.515,1,TabPFN v2.6
-128,5800,675.22,1,TabPFN v2.6
-129,6000,747.4,1,TabPFN v2.6
-130,6200,669.665,1,TabPFN v2.6
-131,6400,685.17,1,TabPFN v2.6
-132,6600,789.645,1,TabPFN v2.6
-133,6800,714.86,1,TabPFN v2.6
-134,7000,680.625,1,TabPFN v2.6
-135,7200,703.715,1,TabPFN v2.6
-136,7400,673.105,1,TabPFN v2.6
-137,7600,710.22,1,TabPFN v2.6
-138,7800,650.66,1,TabPFN v2.6
-139,8000,691.945,1,TabPFN v2.6
-140,8200,694.075,1,TabPFN v2.6
-141,8400,661.945,1,TabPFN v2.6
-142,8600,589.965,1,TabPFN v2.6
-143,8800,666.875,1,TabPFN v2.6
-144,9000,679.585,1,TabPFN v2.6
-145,9200,577.865,1,TabPFN v2.6
-146,9400,636.72,1,TabPFN v2.6
-147,9600,750.685,1,TabPFN v2.6
-148,9800,734.925,1,TabPFN v2.6
-149,10000,750.585,1,TabPFN v2.6
-150,200,707.71,1,TabPFN v3
-151,400,682.43,1,TabPFN v3
-152,600,681.72,1,TabPFN v3
-153,800,658.53,1,TabPFN v3
-154,1000,685.69,1,TabPFN v3
-155,1200,713,1,TabPFN v3
-156,1400,681.74,1,TabPFN v3
-157,1600,707.98,1,TabPFN v3
-158,1800,698.84,1,TabPFN v3
-159,2000,648.67,1,TabPFN v3
-160,2200,687.46,1,TabPFN v3
-161,2400,631.14,1,TabPFN v3
-162,2600,692.66,1,TabPFN v3
-163,2800,640.43,1,TabPFN v3
-164,3000,651.1,1,TabPFN v3
-165,3200,652.32,1,TabPFN v3
-166,3400,649.12,1,TabPFN v3
-167,3600,688.89,1,TabPFN v3
-168,3800,613.42,1,TabPFN v3
-169,4000,676.26,1,TabPFN v3
-170,4200,694.6,1,TabPFN v3
-171,4400,693.86,1,TabPFN v3
-172,4600,703.54,1,TabPFN v3
-173,4800,689.9,1,TabPFN v3
-174,5000,667.16,1,TabPFN v3
-175,5200,677.28,1,TabPFN v3
-176,5400,685.24,1,TabPFN v3
-177,5600,696.11,1,TabPFN v3
-178,5800,642.3,1,TabPFN v3
-179,6000,682.46,1,TabPFN v3
-180,6200,703.5,1,TabPFN v3
-181,6400,700.53,1,TabPFN v3
-182,6600,684.58,1,TabPFN v3
-183,6800,688.78,1,TabPFN v3
-184,7000,676.76,1,TabPFN v3
-185,7200,677.71,1,TabPFN v3
-186,7400,687.62,1,TabPFN v3
-187,7600,692.98,1,TabPFN v3
-188,7800,657.56,1,TabPFN v3
-189,8000,698.78,1,TabPFN v3
-190,8200,673.99,1,TabPFN v3
-191,8400,659.79,1,TabPFN v3
-192,8600,648.86,1,TabPFN v3
-193,8800,673.03,1,TabPFN v3
-194,9000,594.425,1,TabPFN v3
-195,9200,721.81,1,TabPFN v3
-196,9400,710.47,1,TabPFN v3
-197,9600,671.25,1,TabPFN v3
-198,9800,675.0425,2,TabPFN v3
-199,10000,656.8825,2,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,628.87,1,TabICLv2,Device power (W)
+1,400,630.995,1,TabICLv2,Device power (W)
+2,600,627.405,1,TabICLv2,Device power (W)
+3,800,637.225,1,TabICLv2,Device power (W)
+4,1000,618.07,1,TabICLv2,Device power (W)
+5,1200,616.42,1,TabICLv2,Device power (W)
+6,1400,610.5,1,TabICLv2,Device power (W)
+7,1600,623.615,1,TabICLv2,Device power (W)
+8,1800,627.4,1,TabICLv2,Device power (W)
+9,2000,614.28,1,TabICLv2,Device power (W)
+10,2200,632.955,1,TabICLv2,Device power (W)
+11,2400,608.7,1,TabICLv2,Device power (W)
+12,2600,601.155,1,TabICLv2,Device power (W)
+13,2800,612.365,1,TabICLv2,Device power (W)
+14,3000,610.42,1,TabICLv2,Device power (W)
+15,3200,624.12,1,TabICLv2,Device power (W)
+16,3400,625.32,1,TabICLv2,Device power (W)
+17,3600,622.805,1,TabICLv2,Device power (W)
+18,3800,626.345,1,TabICLv2,Device power (W)
+19,4000,593.595,1,TabICLv2,Device power (W)
+20,4200,613.68,1,TabICLv2,Device power (W)
+21,4400,626.54,1,TabICLv2,Device power (W)
+22,4600,624.825,1,TabICLv2,Device power (W)
+23,4800,615.825,1,TabICLv2,Device power (W)
+24,5000,629.545,1,TabICLv2,Device power (W)
+25,5200,603.695,1,TabICLv2,Device power (W)
+26,5400,602.465,1,TabICLv2,Device power (W)
+27,5600,616.58,1,TabICLv2,Device power (W)
+28,5800,627.865,1,TabICLv2,Device power (W)
+29,6000,630.49,1,TabICLv2,Device power (W)
+30,6200,610.615,1,TabICLv2,Device power (W)
+31,6400,630.34,1,TabICLv2,Device power (W)
+32,6600,614.16,1,TabICLv2,Device power (W)
+33,6800,608.09,1,TabICLv2,Device power (W)
+34,7000,608.305,1,TabICLv2,Device power (W)
+35,7200,601.61,1,TabICLv2,Device power (W)
+36,7400,634.005,1,TabICLv2,Device power (W)
+37,7600,620.165,1,TabICLv2,Device power (W)
+38,7800,609.85,1,TabICLv2,Device power (W)
+39,8000,618.98,1,TabICLv2,Device power (W)
+40,8200,592.99,1,TabICLv2,Device power (W)
+41,8400,605.525,1,TabICLv2,Device power (W)
+42,8600,617.04,1,TabICLv2,Device power (W)
+43,8800,627.63,1,TabICLv2,Device power (W)
+44,9000,628.85,1,TabICLv2,Device power (W)
+45,9200,619.04,1,TabICLv2,Device power (W)
+46,9400,599.61,1,TabICLv2,Device power (W)
+47,9600,606.665,1,TabICLv2,Device power (W)
+48,9800,621.33,1,TabICLv2,Device power (W)
+49,10000,624.005,1,TabICLv2,Device power (W)
+50,200,834.325,1,TabPFN v2,Device power (W)
+51,400,770.1,1,TabPFN v2,Device power (W)
+52,600,810.625,1,TabPFN v2,Device power (W)
+53,800,792.59,1,TabPFN v2,Device power (W)
+54,1000,822.18,1,TabPFN v2,Device power (W)
+55,1200,784.88,1,TabPFN v2,Device power (W)
+56,1400,808.78,1,TabPFN v2,Device power (W)
+57,1600,807.965,1,TabPFN v2,Device power (W)
+58,1800,843.26,1,TabPFN v2,Device power (W)
+59,2000,748.43,1,TabPFN v2,Device power (W)
+60,2200,820.93,1,TabPFN v2,Device power (W)
+61,2400,838.05,1,TabPFN v2,Device power (W)
+62,2600,781.355,1,TabPFN v2,Device power (W)
+63,2800,748.435,1,TabPFN v2,Device power (W)
+64,3000,792.6,1,TabPFN v2,Device power (W)
+65,3200,837.68,1,TabPFN v2,Device power (W)
+66,3400,807.105,1,TabPFN v2,Device power (W)
+67,3600,853.88,1,TabPFN v2,Device power (W)
+68,3800,811.405,1,TabPFN v2,Device power (W)
+69,4000,831.56,1,TabPFN v2,Device power (W)
+70,4200,822.41,1,TabPFN v2,Device power (W)
+71,4400,801.76,1,TabPFN v2,Device power (W)
+72,4600,750.92,1,TabPFN v2,Device power (W)
+73,4800,783.3,1,TabPFN v2,Device power (W)
+74,5000,754.17,1,TabPFN v2,Device power (W)
+75,5200,826.24,1,TabPFN v2,Device power (W)
+76,5400,781.88,1,TabPFN v2,Device power (W)
+77,5600,780.24,1,TabPFN v2,Device power (W)
+78,5800,785.52,1,TabPFN v2,Device power (W)
+79,6000,746.83,1,TabPFN v2,Device power (W)
+80,6200,729.36,1,TabPFN v2,Device power (W)
+81,6400,840.99,1,TabPFN v2,Device power (W)
+82,6600,810.79,1,TabPFN v2,Device power (W)
+83,6800,832.66,1,TabPFN v2,Device power (W)
+84,7000,797.51,1,TabPFN v2,Device power (W)
+85,7200,795.98,1,TabPFN v2,Device power (W)
+86,7400,784.835,1,TabPFN v2,Device power (W)
+87,7600,817.3,1,TabPFN v2,Device power (W)
+88,7800,813.88,1,TabPFN v2,Device power (W)
+89,8000,844.03,1,TabPFN v2,Device power (W)
+90,8200,748.665,1,TabPFN v2,Device power (W)
+91,8400,836.79,1,TabPFN v2,Device power (W)
+92,8600,832.25,1,TabPFN v2,Device power (W)
+93,8800,798.15,1,TabPFN v2,Device power (W)
+94,9000,833.04,1,TabPFN v2,Device power (W)
+95,9200,811.06,1,TabPFN v2,Device power (W)
+96,9400,850.77,1,TabPFN v2,Device power (W)
+97,9600,804.1,1,TabPFN v2,Device power (W)
+98,9800,760.255,1,TabPFN v2,Device power (W)
+99,10000,787.36,1,TabPFN v2,Device power (W)
+100,200,707.19,1,TabPFN v2.6,Device power (W)
+101,400,692.145,1,TabPFN v2.6,Device power (W)
+102,600,772.19,1,TabPFN v2.6,Device power (W)
+103,800,637.405,1,TabPFN v2.6,Device power (W)
+104,1000,773.55,1,TabPFN v2.6,Device power (W)
+105,1200,635.27,1,TabPFN v2.6,Device power (W)
+106,1400,676.05,1,TabPFN v2.6,Device power (W)
+107,1600,737.215,1,TabPFN v2.6,Device power (W)
+108,1800,711.285,1,TabPFN v2.6,Device power (W)
+109,2000,764.67,1,TabPFN v2.6,Device power (W)
+110,2200,588.26,1,TabPFN v2.6,Device power (W)
+111,2400,743.85,1,TabPFN v2.6,Device power (W)
+112,2600,698.085,1,TabPFN v2.6,Device power (W)
+113,2800,713.34,1,TabPFN v2.6,Device power (W)
+114,3000,684.545,1,TabPFN v2.6,Device power (W)
+115,3200,687.33,1,TabPFN v2.6,Device power (W)
+116,3400,658.9,1,TabPFN v2.6,Device power (W)
+117,3600,776.08,1,TabPFN v2.6,Device power (W)
+118,3800,701.3,1,TabPFN v2.6,Device power (W)
+119,4000,646.71,1,TabPFN v2.6,Device power (W)
+120,4200,715.67,1,TabPFN v2.6,Device power (W)
+121,4400,712.29,1,TabPFN v2.6,Device power (W)
+122,4600,719.515,1,TabPFN v2.6,Device power (W)
+123,4800,737.27,1,TabPFN v2.6,Device power (W)
+124,5000,740.565,1,TabPFN v2.6,Device power (W)
+125,5200,724.42,1,TabPFN v2.6,Device power (W)
+126,5400,740.175,1,TabPFN v2.6,Device power (W)
+127,5600,712.515,1,TabPFN v2.6,Device power (W)
+128,5800,675.22,1,TabPFN v2.6,Device power (W)
+129,6000,747.4,1,TabPFN v2.6,Device power (W)
+130,6200,669.665,1,TabPFN v2.6,Device power (W)
+131,6400,685.17,1,TabPFN v2.6,Device power (W)
+132,6600,789.645,1,TabPFN v2.6,Device power (W)
+133,6800,714.86,1,TabPFN v2.6,Device power (W)
+134,7000,680.625,1,TabPFN v2.6,Device power (W)
+135,7200,703.715,1,TabPFN v2.6,Device power (W)
+136,7400,673.105,1,TabPFN v2.6,Device power (W)
+137,7600,710.22,1,TabPFN v2.6,Device power (W)
+138,7800,650.66,1,TabPFN v2.6,Device power (W)
+139,8000,691.945,1,TabPFN v2.6,Device power (W)
+140,8200,694.075,1,TabPFN v2.6,Device power (W)
+141,8400,661.945,1,TabPFN v2.6,Device power (W)
+142,8600,589.965,1,TabPFN v2.6,Device power (W)
+143,8800,666.875,1,TabPFN v2.6,Device power (W)
+144,9000,679.585,1,TabPFN v2.6,Device power (W)
+145,9200,577.865,1,TabPFN v2.6,Device power (W)
+146,9400,636.72,1,TabPFN v2.6,Device power (W)
+147,9600,750.685,1,TabPFN v2.6,Device power (W)
+148,9800,734.925,1,TabPFN v2.6,Device power (W)
+149,10000,750.585,1,TabPFN v2.6,Device power (W)
+150,200,707.71,1,TabPFN v3,Device power (W)
+151,400,682.43,1,TabPFN v3,Device power (W)
+152,600,681.72,1,TabPFN v3,Device power (W)
+153,800,658.53,1,TabPFN v3,Device power (W)
+154,1000,685.69,1,TabPFN v3,Device power (W)
+155,1200,713,1,TabPFN v3,Device power (W)
+156,1400,681.74,1,TabPFN v3,Device power (W)
+157,1600,707.98,1,TabPFN v3,Device power (W)
+158,1800,698.84,1,TabPFN v3,Device power (W)
+159,2000,648.67,1,TabPFN v3,Device power (W)
+160,2200,687.46,1,TabPFN v3,Device power (W)
+161,2400,631.14,1,TabPFN v3,Device power (W)
+162,2600,692.66,1,TabPFN v3,Device power (W)
+163,2800,640.43,1,TabPFN v3,Device power (W)
+164,3000,651.1,1,TabPFN v3,Device power (W)
+165,3200,652.32,1,TabPFN v3,Device power (W)
+166,3400,649.12,1,TabPFN v3,Device power (W)
+167,3600,688.89,1,TabPFN v3,Device power (W)
+168,3800,613.42,1,TabPFN v3,Device power (W)
+169,4000,676.26,1,TabPFN v3,Device power (W)
+170,4200,694.6,1,TabPFN v3,Device power (W)
+171,4400,693.86,1,TabPFN v3,Device power (W)
+172,4600,703.54,1,TabPFN v3,Device power (W)
+173,4800,689.9,1,TabPFN v3,Device power (W)
+174,5000,667.16,1,TabPFN v3,Device power (W)
+175,5200,677.28,1,TabPFN v3,Device power (W)
+176,5400,685.24,1,TabPFN v3,Device power (W)
+177,5600,696.11,1,TabPFN v3,Device power (W)
+178,5800,642.3,1,TabPFN v3,Device power (W)
+179,6000,682.46,1,TabPFN v3,Device power (W)
+180,6200,703.5,1,TabPFN v3,Device power (W)
+181,6400,700.53,1,TabPFN v3,Device power (W)
+182,6600,684.58,1,TabPFN v3,Device power (W)
+183,6800,688.78,1,TabPFN v3,Device power (W)
+184,7000,676.76,1,TabPFN v3,Device power (W)
+185,7200,677.71,1,TabPFN v3,Device power (W)
+186,7400,687.62,1,TabPFN v3,Device power (W)
+187,7600,692.98,1,TabPFN v3,Device power (W)
+188,7800,657.56,1,TabPFN v3,Device power (W)
+189,8000,698.78,1,TabPFN v3,Device power (W)
+190,8200,673.99,1,TabPFN v3,Device power (W)
+191,8400,659.79,1,TabPFN v3,Device power (W)
+192,8600,648.86,1,TabPFN v3,Device power (W)
+193,8800,673.03,1,TabPFN v3,Device power (W)
+194,9000,594.425,1,TabPFN v3,Device power (W)
+195,9200,721.81,1,TabPFN v3,Device power (W)
+196,9400,710.47,1,TabPFN v3,Device power (W)
+197,9600,671.25,1,TabPFN v3,Device power (W)
+198,9800,675.0425,2,TabPFN v3,Device power (W)
+199,10000,656.8825,2,TabPFN v3,Device power (W)
 
 Figure: pd_resource_dashboard_pd_device_memory_used_mib
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,28533,4,TabICLv2
-1,400,28532,4,TabICLv2
-2,600,28532,4,TabICLv2
-3,800,28533,4,TabICLv2
-4,1000,28534,4,TabICLv2
-5,1200,28532,4,TabICLv2
-6,1400,28532,4,TabICLv2
-7,1600,28532,4,TabICLv2
-8,1800,28532,4,TabICLv2
-9,2000,28533.5,4,TabICLv2
-10,2200,28534,4,TabICLv2
-11,2400,28534,4,TabICLv2
-12,2600,28533.5,4,TabICLv2
-13,2800,28532,4,TabICLv2
-14,3000,28532,4,TabICLv2
-15,3200,28532,4,TabICLv2
-16,3400,28532,4,TabICLv2
-17,3600,28532,4,TabICLv2
-18,3800,28532,4,TabICLv2
-19,4000,28532,4,TabICLv2
-20,4200,28532,4,TabICLv2
-21,4400,28532,4,TabICLv2
-22,4600,28532,4,TabICLv2
-23,4800,28532,4,TabICLv2
-24,5000,28532,4,TabICLv2
-25,5200,28402,4,TabICLv2
-26,5400,28402,4,TabICLv2
-27,5600,28402,4,TabICLv2
-28,5800,28402,4,TabICLv2
-29,6000,28402,4,TabICLv2
-30,6200,28402,4,TabICLv2
-31,6400,28402,4,TabICLv2
-32,6600,28402,4,TabICLv2
-33,6800,28402,4,TabICLv2
-34,7000,28402,4,TabICLv2
-35,7200,28403,4,TabICLv2
-36,7400,28403,4,TabICLv2
-37,7600,28403,4,TabICLv2
-38,7800,28403,4,TabICLv2
-39,8000,28403,4,TabICLv2
-40,8200,28403,4,TabICLv2
-41,8400,28403,4,TabICLv2
-42,8600,28403,4,TabICLv2
-43,8800,28409,4,TabICLv2
-44,9000,28409,4,TabICLv2
-45,9200,28594,4,TabICLv2
-46,9400,28594.5,4,TabICLv2
-47,9600,28595,4,TabICLv2
-48,9800,28596,4,TabICLv2
-49,10000,28596,4,TabICLv2
-50,200,174438,4,TabPFN v2
-51,400,174438,4,TabPFN v2
-52,600,174439,4,TabPFN v2
-53,800,174439,4,TabPFN v2
-54,1000,174439,4,TabPFN v2
-55,1200,174439,4,TabPFN v2
-56,1400,174439,4,TabPFN v2
-57,1600,174439,4,TabPFN v2
-58,1800,174439,4,TabPFN v2
-59,2000,174439,4,TabPFN v2
-60,2200,174439,4,TabPFN v2
-61,2400,174439,4,TabPFN v2
-62,2600,174439,4,TabPFN v2
-63,2800,174439,4,TabPFN v2
-64,3000,174439,4,TabPFN v2
-65,3200,174439,4,TabPFN v2
-66,3400,174439,4,TabPFN v2
-67,3600,174439,4,TabPFN v2
-68,3800,174439,4,TabPFN v2
-69,4000,174439,4,TabPFN v2
-70,4200,174439,4,TabPFN v2
-71,4400,174439,4,TabPFN v2
-72,4600,174439,4,TabPFN v2
-73,4800,174439,4,TabPFN v2
-74,5000,174439,4,TabPFN v2
-75,5200,174439,4,TabPFN v2
-76,5400,174439,4,TabPFN v2
-77,5600,174439,4,TabPFN v2
-78,5800,174439,4,TabPFN v2
-79,6000,174439,4,TabPFN v2
-80,6200,174439,4,TabPFN v2
-81,6400,174439,4,TabPFN v2
-82,6600,174439,4,TabPFN v2
-83,6800,174439,4,TabPFN v2
-84,7000,174439,4,TabPFN v2
-85,7200,174439,4,TabPFN v2
-86,7400,174439,4,TabPFN v2
-87,7600,174439,4,TabPFN v2
-88,7800,174439,4,TabPFN v2
-89,8000,174439,4,TabPFN v2
-90,8200,174439,4,TabPFN v2
-91,8400,174439,4,TabPFN v2
-92,8600,174439,4,TabPFN v2
-93,8800,174439,4,TabPFN v2
-94,9000,174439,4,TabPFN v2
-95,9200,174439,4,TabPFN v2
-96,9400,174439,4,TabPFN v2
-97,9600,174439,4,TabPFN v2
-98,9800,174439,4,TabPFN v2
-99,10000,174439,4,TabPFN v2
-100,200,123534,4,TabPFN v2.6
-101,400,123534,4,TabPFN v2.6
-102,600,123536,4,TabPFN v2.6
-103,800,123538,4,TabPFN v2.6
-104,1000,123538,4,TabPFN v2.6
-105,1200,123538,4,TabPFN v2.6
-106,1400,123538,4,TabPFN v2.6
-107,1600,123538,4,TabPFN v2.6
-108,1800,123538,4,TabPFN v2.6
-109,2000,123538,4,TabPFN v2.6
-110,2200,123538,4,TabPFN v2.6
-111,2400,123538,4,TabPFN v2.6
-112,2600,123538,4,TabPFN v2.6
-113,2800,123538,4,TabPFN v2.6
-114,3000,123538,4,TabPFN v2.6
-115,3200,123538,4,TabPFN v2.6
-116,3400,123538,4,TabPFN v2.6
-117,3600,123538,4,TabPFN v2.6
-118,3800,123538,4,TabPFN v2.6
-119,4000,123538,4,TabPFN v2.6
-120,4200,123538,4,TabPFN v2.6
-121,4400,123538,4,TabPFN v2.6
-122,4600,123538,4,TabPFN v2.6
-123,4800,123538,4,TabPFN v2.6
-124,5000,123538,4,TabPFN v2.6
-125,5200,123538,4,TabPFN v2.6
-126,5400,123538,4,TabPFN v2.6
-127,5600,123538,4,TabPFN v2.6
-128,5800,123538,4,TabPFN v2.6
-129,6000,123538,4,TabPFN v2.6
-130,6200,123538,4,TabPFN v2.6
-131,6400,123538,4,TabPFN v2.6
-132,6600,123538,4,TabPFN v2.6
-133,6800,123538,4,TabPFN v2.6
-134,7000,123538,4,TabPFN v2.6
-135,7200,123538,4,TabPFN v2.6
-136,7400,123538,4,TabPFN v2.6
-137,7600,123538,4,TabPFN v2.6
-138,7800,123538,4,TabPFN v2.6
-139,8000,123538,4,TabPFN v2.6
-140,8200,123538,4,TabPFN v2.6
-141,8400,123538,4,TabPFN v2.6
-142,8600,123538,4,TabPFN v2.6
-143,8800,123538,4,TabPFN v2.6
-144,9000,123538,4,TabPFN v2.6
-145,9200,123538,4,TabPFN v2.6
-146,9400,123538,4,TabPFN v2.6
-147,9600,123538,4,TabPFN v2.6
-148,9800,123538,4,TabPFN v2.6
-149,10000,123538,4,TabPFN v2.6
-150,200,117359,4,TabPFN v3
-151,400,117359,4,TabPFN v3
-152,600,117359,4,TabPFN v3
-153,800,117359,4,TabPFN v3
-154,1000,117359,4,TabPFN v3
-155,1200,117359,4,TabPFN v3
-156,1400,117359,4,TabPFN v3
-157,1600,117359,4,TabPFN v3
-158,1800,117359,4,TabPFN v3
-159,2000,117359,4,TabPFN v3
-160,2200,117359,4,TabPFN v3
-161,2400,117359,4,TabPFN v3
-162,2600,117359,4,TabPFN v3
-163,2800,117359,4,TabPFN v3
-164,3000,117359,4,TabPFN v3
-165,3200,117359,4,TabPFN v3
-166,3400,117359,4,TabPFN v3
-167,3600,117359,4,TabPFN v3
-168,3800,117359,4,TabPFN v3
-169,4000,117359,4,TabPFN v3
-170,4200,117359,4,TabPFN v3
-171,4400,117359,4,TabPFN v3
-172,4600,117359,4,TabPFN v3
-173,4800,117359,4,TabPFN v3
-174,5000,117359,4,TabPFN v3
-175,5200,117359,4,TabPFN v3
-176,5400,117359,4,TabPFN v3
-177,5600,117359,4,TabPFN v3
-178,5800,117359,4,TabPFN v3
-179,6000,117359,4,TabPFN v3
-180,6200,117359,4,TabPFN v3
-181,6400,117359,4,TabPFN v3
-182,6600,117359,4,TabPFN v3
-183,6800,117359,4,TabPFN v3
-184,7000,117359,4,TabPFN v3
-185,7200,117359,4,TabPFN v3
-186,7400,117359,4,TabPFN v3
-187,7600,117359,4,TabPFN v3
-188,7800,117359,4,TabPFN v3
-189,8000,117359,4,TabPFN v3
-190,8200,117359,4,TabPFN v3
-191,8400,117359,4,TabPFN v3
-192,8600,117360,4,TabPFN v3
-193,8800,117360,4,TabPFN v3
-194,9000,117360,4,TabPFN v3
-195,9200,117360,4,TabPFN v3
-196,9400,117360,4,TabPFN v3
-197,9600,117360,4,TabPFN v3
-198,9800,117302,4,TabPFN v3
-199,10000,117297,4,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,27.864258,4,TabICLv2,Device memory (GiB)
+1,400,27.863281,4,TabICLv2,Device memory (GiB)
+2,600,27.863281,4,TabICLv2,Device memory (GiB)
+3,800,27.864258,4,TabICLv2,Device memory (GiB)
+4,1000,27.865234,4,TabICLv2,Device memory (GiB)
+5,1200,27.863281,4,TabICLv2,Device memory (GiB)
+6,1400,27.863281,4,TabICLv2,Device memory (GiB)
+7,1600,27.863281,4,TabICLv2,Device memory (GiB)
+8,1800,27.863281,4,TabICLv2,Device memory (GiB)
+9,2000,27.864746,4,TabICLv2,Device memory (GiB)
+10,2200,27.865234,4,TabICLv2,Device memory (GiB)
+11,2400,27.865234,4,TabICLv2,Device memory (GiB)
+12,2600,27.864746,4,TabICLv2,Device memory (GiB)
+13,2800,27.863281,4,TabICLv2,Device memory (GiB)
+14,3000,27.863281,4,TabICLv2,Device memory (GiB)
+15,3200,27.863281,4,TabICLv2,Device memory (GiB)
+16,3400,27.863281,4,TabICLv2,Device memory (GiB)
+17,3600,27.863281,4,TabICLv2,Device memory (GiB)
+18,3800,27.863281,4,TabICLv2,Device memory (GiB)
+19,4000,27.863281,4,TabICLv2,Device memory (GiB)
+20,4200,27.863281,4,TabICLv2,Device memory (GiB)
+21,4400,27.863281,4,TabICLv2,Device memory (GiB)
+22,4600,27.863281,4,TabICLv2,Device memory (GiB)
+23,4800,27.863281,4,TabICLv2,Device memory (GiB)
+24,5000,27.863281,4,TabICLv2,Device memory (GiB)
+25,5200,27.736328,4,TabICLv2,Device memory (GiB)
+26,5400,27.736328,4,TabICLv2,Device memory (GiB)
+27,5600,27.736328,4,TabICLv2,Device memory (GiB)
+28,5800,27.736328,4,TabICLv2,Device memory (GiB)
+29,6000,27.736328,4,TabICLv2,Device memory (GiB)
+30,6200,27.736328,4,TabICLv2,Device memory (GiB)
+31,6400,27.736328,4,TabICLv2,Device memory (GiB)
+32,6600,27.736328,4,TabICLv2,Device memory (GiB)
+33,6800,27.736328,4,TabICLv2,Device memory (GiB)
+34,7000,27.736328,4,TabICLv2,Device memory (GiB)
+35,7200,27.737305,4,TabICLv2,Device memory (GiB)
+36,7400,27.737305,4,TabICLv2,Device memory (GiB)
+37,7600,27.737305,4,TabICLv2,Device memory (GiB)
+38,7800,27.737305,4,TabICLv2,Device memory (GiB)
+39,8000,27.737305,4,TabICLv2,Device memory (GiB)
+40,8200,27.737305,4,TabICLv2,Device memory (GiB)
+41,8400,27.737305,4,TabICLv2,Device memory (GiB)
+42,8600,27.737305,4,TabICLv2,Device memory (GiB)
+43,8800,27.743164,4,TabICLv2,Device memory (GiB)
+44,9000,27.743164,4,TabICLv2,Device memory (GiB)
+45,9200,27.923828,4,TabICLv2,Device memory (GiB)
+46,9400,27.924316,4,TabICLv2,Device memory (GiB)
+47,9600,27.924805,4,TabICLv2,Device memory (GiB)
+48,9800,27.925781,4,TabICLv2,Device memory (GiB)
+49,10000,27.925781,4,TabICLv2,Device memory (GiB)
+50,200,170.34961,4,TabPFN v2,Device memory (GiB)
+51,400,170.34961,4,TabPFN v2,Device memory (GiB)
+52,600,170.35059,4,TabPFN v2,Device memory (GiB)
+53,800,170.35059,4,TabPFN v2,Device memory (GiB)
+54,1000,170.35059,4,TabPFN v2,Device memory (GiB)
+55,1200,170.35059,4,TabPFN v2,Device memory (GiB)
+56,1400,170.35059,4,TabPFN v2,Device memory (GiB)
+57,1600,170.35059,4,TabPFN v2,Device memory (GiB)
+58,1800,170.35059,4,TabPFN v2,Device memory (GiB)
+59,2000,170.35059,4,TabPFN v2,Device memory (GiB)
+60,2200,170.35059,4,TabPFN v2,Device memory (GiB)
+61,2400,170.35059,4,TabPFN v2,Device memory (GiB)
+62,2600,170.35059,4,TabPFN v2,Device memory (GiB)
+63,2800,170.35059,4,TabPFN v2,Device memory (GiB)
+64,3000,170.35059,4,TabPFN v2,Device memory (GiB)
+65,3200,170.35059,4,TabPFN v2,Device memory (GiB)
+66,3400,170.35059,4,TabPFN v2,Device memory (GiB)
+67,3600,170.35059,4,TabPFN v2,Device memory (GiB)
+68,3800,170.35059,4,TabPFN v2,Device memory (GiB)
+69,4000,170.35059,4,TabPFN v2,Device memory (GiB)
+70,4200,170.35059,4,TabPFN v2,Device memory (GiB)
+71,4400,170.35059,4,TabPFN v2,Device memory (GiB)
+72,4600,170.35059,4,TabPFN v2,Device memory (GiB)
+73,4800,170.35059,4,TabPFN v2,Device memory (GiB)
+74,5000,170.35059,4,TabPFN v2,Device memory (GiB)
+75,5200,170.35059,4,TabPFN v2,Device memory (GiB)
+76,5400,170.35059,4,TabPFN v2,Device memory (GiB)
+77,5600,170.35059,4,TabPFN v2,Device memory (GiB)
+78,5800,170.35059,4,TabPFN v2,Device memory (GiB)
+79,6000,170.35059,4,TabPFN v2,Device memory (GiB)
+80,6200,170.35059,4,TabPFN v2,Device memory (GiB)
+81,6400,170.35059,4,TabPFN v2,Device memory (GiB)
+82,6600,170.35059,4,TabPFN v2,Device memory (GiB)
+83,6800,170.35059,4,TabPFN v2,Device memory (GiB)
+84,7000,170.35059,4,TabPFN v2,Device memory (GiB)
+85,7200,170.35059,4,TabPFN v2,Device memory (GiB)
+86,7400,170.35059,4,TabPFN v2,Device memory (GiB)
+87,7600,170.35059,4,TabPFN v2,Device memory (GiB)
+88,7800,170.35059,4,TabPFN v2,Device memory (GiB)
+89,8000,170.35059,4,TabPFN v2,Device memory (GiB)
+90,8200,170.35059,4,TabPFN v2,Device memory (GiB)
+91,8400,170.35059,4,TabPFN v2,Device memory (GiB)
+92,8600,170.35059,4,TabPFN v2,Device memory (GiB)
+93,8800,170.35059,4,TabPFN v2,Device memory (GiB)
+94,9000,170.35059,4,TabPFN v2,Device memory (GiB)
+95,9200,170.35059,4,TabPFN v2,Device memory (GiB)
+96,9400,170.35059,4,TabPFN v2,Device memory (GiB)
+97,9600,170.35059,4,TabPFN v2,Device memory (GiB)
+98,9800,170.35059,4,TabPFN v2,Device memory (GiB)
+99,10000,170.35059,4,TabPFN v2,Device memory (GiB)
+100,200,120.63867,4,TabPFN v2.6,Device memory (GiB)
+101,400,120.63867,4,TabPFN v2.6,Device memory (GiB)
+102,600,120.64062,4,TabPFN v2.6,Device memory (GiB)
+103,800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+104,1000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+105,1200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+106,1400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+107,1600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+108,1800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+109,2000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+110,2200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+111,2400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+112,2600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+113,2800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+114,3000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+115,3200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+116,3400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+117,3600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+118,3800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+119,4000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+120,4200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+121,4400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+122,4600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+123,4800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+124,5000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+125,5200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+126,5400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+127,5600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+128,5800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+129,6000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+130,6200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+131,6400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+132,6600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+133,6800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+134,7000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+135,7200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+136,7400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+137,7600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+138,7800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+139,8000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+140,8200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+141,8400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+142,8600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+143,8800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+144,9000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+145,9200,120.64258,4,TabPFN v2.6,Device memory (GiB)
+146,9400,120.64258,4,TabPFN v2.6,Device memory (GiB)
+147,9600,120.64258,4,TabPFN v2.6,Device memory (GiB)
+148,9800,120.64258,4,TabPFN v2.6,Device memory (GiB)
+149,10000,120.64258,4,TabPFN v2.6,Device memory (GiB)
+150,200,114.6084,4,TabPFN v3,Device memory (GiB)
+151,400,114.6084,4,TabPFN v3,Device memory (GiB)
+152,600,114.6084,4,TabPFN v3,Device memory (GiB)
+153,800,114.6084,4,TabPFN v3,Device memory (GiB)
+154,1000,114.6084,4,TabPFN v3,Device memory (GiB)
+155,1200,114.6084,4,TabPFN v3,Device memory (GiB)
+156,1400,114.6084,4,TabPFN v3,Device memory (GiB)
+157,1600,114.6084,4,TabPFN v3,Device memory (GiB)
+158,1800,114.6084,4,TabPFN v3,Device memory (GiB)
+159,2000,114.6084,4,TabPFN v3,Device memory (GiB)
+160,2200,114.6084,4,TabPFN v3,Device memory (GiB)
+161,2400,114.6084,4,TabPFN v3,Device memory (GiB)
+162,2600,114.6084,4,TabPFN v3,Device memory (GiB)
+163,2800,114.6084,4,TabPFN v3,Device memory (GiB)
+164,3000,114.6084,4,TabPFN v3,Device memory (GiB)
+165,3200,114.6084,4,TabPFN v3,Device memory (GiB)
+166,3400,114.6084,4,TabPFN v3,Device memory (GiB)
+167,3600,114.6084,4,TabPFN v3,Device memory (GiB)
+168,3800,114.6084,4,TabPFN v3,Device memory (GiB)
+169,4000,114.6084,4,TabPFN v3,Device memory (GiB)
+170,4200,114.6084,4,TabPFN v3,Device memory (GiB)
+171,4400,114.6084,4,TabPFN v3,Device memory (GiB)
+172,4600,114.6084,4,TabPFN v3,Device memory (GiB)
+173,4800,114.6084,4,TabPFN v3,Device memory (GiB)
+174,5000,114.6084,4,TabPFN v3,Device memory (GiB)
+175,5200,114.6084,4,TabPFN v3,Device memory (GiB)
+176,5400,114.6084,4,TabPFN v3,Device memory (GiB)
+177,5600,114.6084,4,TabPFN v3,Device memory (GiB)
+178,5800,114.6084,4,TabPFN v3,Device memory (GiB)
+179,6000,114.6084,4,TabPFN v3,Device memory (GiB)
+180,6200,114.6084,4,TabPFN v3,Device memory (GiB)
+181,6400,114.6084,4,TabPFN v3,Device memory (GiB)
+182,6600,114.6084,4,TabPFN v3,Device memory (GiB)
+183,6800,114.6084,4,TabPFN v3,Device memory (GiB)
+184,7000,114.6084,4,TabPFN v3,Device memory (GiB)
+185,7200,114.6084,4,TabPFN v3,Device memory (GiB)
+186,7400,114.6084,4,TabPFN v3,Device memory (GiB)
+187,7600,114.6084,4,TabPFN v3,Device memory (GiB)
+188,7800,114.6084,4,TabPFN v3,Device memory (GiB)
+189,8000,114.6084,4,TabPFN v3,Device memory (GiB)
+190,8200,114.6084,4,TabPFN v3,Device memory (GiB)
+191,8400,114.6084,4,TabPFN v3,Device memory (GiB)
+192,8600,114.60938,4,TabPFN v3,Device memory (GiB)
+193,8800,114.60938,4,TabPFN v3,Device memory (GiB)
+194,9000,114.60938,4,TabPFN v3,Device memory (GiB)
+195,9200,114.60938,4,TabPFN v3,Device memory (GiB)
+196,9400,114.60938,4,TabPFN v3,Device memory (GiB)
+197,9600,114.60938,4,TabPFN v3,Device memory (GiB)
+198,9800,114.55273,4,TabPFN v3,Device memory (GiB)
+199,10000,114.54785,4,TabPFN v3,Device memory (GiB)
 
 Figure: pd_movement_pd_tabicl-v2
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
@@ -74678,469 +74594,469 @@ Figure: lgd_resource_dashboard_lgd_gpu_utilization_percent
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,92.25,4,TabICLv2
-1,400,95,3,TabICLv2
-2,600,93.25,4,TabICLv2
-3,800,84.25,4,TabICLv2
-4,1000,84,4,TabICLv2
-5,1200,85,4,TabICLv2
-6,1400,94,4,TabICLv2
-7,1600,74.25,4,TabICLv2
-8,1800,98.25,4,TabICLv2
-9,2000,75.25,4,TabICLv2
-10,2200,81.75,4,TabICLv2
-11,2400,93.5,4,TabICLv2
-12,2600,84,4,TabICLv2
-13,2800,89,4,TabICLv2
-14,3000,86.25,4,TabICLv2
-15,3200,88.5,4,TabICLv2
-16,3400,91.25,4,TabICLv2
-17,3600,85.25,4,TabICLv2
-18,3800,96,4,TabICLv2
-19,4000,91.75,4,TabICLv2
-20,4200,81.5,4,TabICLv2
-21,4400,85.75,4,TabICLv2
-22,4600,94.5,4,TabICLv2
-23,4800,91,4,TabICLv2
-24,5000,89,4,TabICLv2
-25,5200,73.5,4,TabICLv2
-26,5400,71.75,4,TabICLv2
-27,5600,93,4,TabICLv2
-28,5800,74.75,4,TabICLv2
-29,6000,92.5,4,TabICLv2
-30,6200,66,4,TabICLv2
-31,6400,94.5,4,TabICLv2
-32,6600,80,4,TabICLv2
-33,6800,92.75,4,TabICLv2
-34,7000,98.25,4,TabICLv2
-35,7200,94.75,4,TabICLv2
-36,7400,83.75,4,TabICLv2
-37,7600,85.25,4,TabICLv2
-38,7800,92.25,4,TabICLv2
-39,8000,99.5,4,TabICLv2
-40,8200,84.75,4,TabICLv2
-41,8400,98.25,4,TabICLv2
-42,8600,90.25,4,TabICLv2
-43,8800,83.75,4,TabICLv2
-44,9000,92.5,4,TabICLv2
-45,9200,74.5,4,TabICLv2
-46,9400,85.75,4,TabICLv2
-47,9600,87.5,4,TabICLv2
-48,9800,97.5,4,TabICLv2
-49,10000,92,4,TabICLv2
-50,200,81.5,4,TabPFN v2
-51,400,97,4,TabPFN v2
-52,600,97.5,4,TabPFN v2
-53,800,98,4,TabPFN v2
-54,1000,100,4,TabPFN v2
-55,1200,96.25,4,TabPFN v2
-56,1400,100,4,TabPFN v2
-57,1600,93.75,4,TabPFN v2
-58,1800,95.75,4,TabPFN v2
-59,2000,98,4,TabPFN v2
-60,2200,95.5,4,TabPFN v2
-61,2400,56,4,TabPFN v2
-62,2600,95.75,4,TabPFN v2
-63,2800,100,4,TabPFN v2
-64,3000,86.25,4,TabPFN v2
-65,3200,96.5,4,TabPFN v2
-66,3400,79.25,4,TabPFN v2
-67,3600,96.75,4,TabPFN v2
-68,3800,97.5,4,TabPFN v2
-69,4000,94,4,TabPFN v2
-70,4200,98.75,4,TabPFN v2
-71,4400,97,4,TabPFN v2
-72,4600,92.75,4,TabPFN v2
-73,4800,94.5,4,TabPFN v2
-74,5000,95.75,4,TabPFN v2
-75,5200,94.25,4,TabPFN v2
-76,5400,99,4,TabPFN v2
-77,5600,99,4,TabPFN v2
-78,5800,96.25,4,TabPFN v2
-79,6000,97.25,4,TabPFN v2
-80,6200,98.25,4,TabPFN v2
-81,6400,92,4,TabPFN v2
-82,6600,90.5,4,TabPFN v2
-83,6800,95.5,4,TabPFN v2
-84,7000,98,4,TabPFN v2
-85,7200,90,4,TabPFN v2
-86,7400,96.5,4,TabPFN v2
-87,7600,98.25,4,TabPFN v2
-88,7800,98.5,4,TabPFN v2
-89,8000,98.5,4,TabPFN v2
-90,8200,98.5,4,TabPFN v2
-91,8400,97,4,TabPFN v2
-92,8600,96,4,TabPFN v2
-93,8800,95.75,4,TabPFN v2
-94,9000,98.5,4,TabPFN v2
-95,9200,97,4,TabPFN v2
-96,9400,84.5,4,TabPFN v2
-97,9600,96.25,4,TabPFN v2
-98,9800,99.5,4,TabPFN v2
-99,10000,99,4,TabPFN v2
-100,200,94.25,4,TabPFN v2.6
-101,400,92,4,TabPFN v2.6
-102,600,100,4,TabPFN v2.6
-103,800,92.5,4,TabPFN v2.6
-104,1000,92,4,TabPFN v2.6
-105,1200,100,4,TabPFN v2.6
-106,1400,94.25,4,TabPFN v2.6
-107,1600,98,4,TabPFN v2.6
-108,1800,98,4,TabPFN v2.6
-109,2000,92.5,4,TabPFN v2.6
-110,2200,96.25,4,TabPFN v2.6
-111,2400,94.5,4,TabPFN v2.6
-112,2600,90,4,TabPFN v2.6
-113,2800,95.75,4,TabPFN v2.6
-114,3000,89.5,4,TabPFN v2.6
-115,3200,99,4,TabPFN v2.6
-116,3400,83.25,4,TabPFN v2.6
-117,3600,92.75,4,TabPFN v2.6
-118,3800,97.5,4,TabPFN v2.6
-119,4000,88.25,4,TabPFN v2.6
-120,4200,97.25,4,TabPFN v2.6
-121,4400,94,4,TabPFN v2.6
-122,4600,98.75,4,TabPFN v2.6
-123,4800,96,4,TabPFN v2.6
-124,5000,93.5,4,TabPFN v2.6
-125,5200,94,4,TabPFN v2.6
-126,5400,94.75,4,TabPFN v2.6
-127,5600,99.25,4,TabPFN v2.6
-128,5800,94.25,4,TabPFN v2.6
-129,6000,97,4,TabPFN v2.6
-130,6200,100,4,TabPFN v2.6
-131,6400,93.5,4,TabPFN v2.6
-132,6600,94,4,TabPFN v2.6
-133,6800,93.75,4,TabPFN v2.6
-134,7000,99,4,TabPFN v2.6
-135,7200,94,4,TabPFN v2.6
-136,7400,98,4,TabPFN v2.6
-137,7600,92.5,4,TabPFN v2.6
-138,7800,93.75,4,TabPFN v2.6
-139,8000,100,4,TabPFN v2.6
-140,8200,100,4,TabPFN v2.6
-141,8400,95,4,TabPFN v2.6
-142,8600,97.5,4,TabPFN v2.6
-143,8800,91.5,4,TabPFN v2.6
-144,9000,98,4,TabPFN v2.6
-145,9200,94.5,4,TabPFN v2.6
-146,9400,93,4,TabPFN v2.6
-147,9600,94.5,4,TabPFN v2.6
-148,9800,100,4,TabPFN v2.6
-149,10000,96.5,4,TabPFN v2.6
-150,200,80.25,4,TabPFN v3
-151,400,59.25,4,TabPFN v3
-152,600,78.75,4,TabPFN v3
-153,800,70.25,4,TabPFN v3
-154,1000,82,4,TabPFN v3
-155,1200,94,4,TabPFN v3
-156,1400,73,4,TabPFN v3
-157,1600,84.75,4,TabPFN v3
-158,1800,57,4,TabPFN v3
-159,2000,86.75,4,TabPFN v3
-160,2200,72,4,TabPFN v3
-161,2400,97.75,4,TabPFN v3
-162,2600,74.5,3,TabPFN v3
-163,2800,89.75,4,TabPFN v3
-164,3000,73.5,4,TabPFN v3
-165,3200,71.5,4,TabPFN v3
-166,3400,74.25,4,TabPFN v3
-167,3600,85.75,4,TabPFN v3
-168,3800,90.75,4,TabPFN v3
-169,4000,61.75,4,TabPFN v3
-170,4200,69.75,4,TabPFN v3
-171,4400,74.25,4,TabPFN v3
-172,4600,79,4,TabPFN v3
-173,4800,63,4,TabPFN v3
-174,5000,63.25,4,TabPFN v3
-175,5200,66.25,4,TabPFN v3
-176,5400,73.25,4,TabPFN v3
-177,5600,76.25,4,TabPFN v3
-178,5800,95.5,4,TabPFN v3
-179,6000,85,4,TabPFN v3
-180,6200,73,4,TabPFN v3
-181,6400,78.75,4,TabPFN v3
-182,6600,72.75,4,TabPFN v3
-183,6800,83.5,4,TabPFN v3
-184,7000,88.5,4,TabPFN v3
-185,7200,74.75,4,TabPFN v3
-186,7400,89.5,4,TabPFN v3
-187,7600,94,4,TabPFN v3
-188,7800,69,4,TabPFN v3
-189,8000,81.25,4,TabPFN v3
-190,8200,71.5,4,TabPFN v3
-191,8400,74.25,4,TabPFN v3
-192,8600,74.5,4,TabPFN v3
-193,8800,89.5,4,TabPFN v3
-194,9000,72,4,TabPFN v3
-195,9200,89.25,4,TabPFN v3
-196,9400,73,4,TabPFN v3
-197,9600,81.25,4,TabPFN v3
-198,9800,77,4,TabPFN v3
-199,10000,79.5,4,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,92.25,4,TabICLv2,GPU utilization (%)
+1,400,95,3,TabICLv2,GPU utilization (%)
+2,600,93.25,4,TabICLv2,GPU utilization (%)
+3,800,84.25,4,TabICLv2,GPU utilization (%)
+4,1000,84,4,TabICLv2,GPU utilization (%)
+5,1200,85,4,TabICLv2,GPU utilization (%)
+6,1400,94,4,TabICLv2,GPU utilization (%)
+7,1600,74.25,4,TabICLv2,GPU utilization (%)
+8,1800,98.25,4,TabICLv2,GPU utilization (%)
+9,2000,75.25,4,TabICLv2,GPU utilization (%)
+10,2200,81.75,4,TabICLv2,GPU utilization (%)
+11,2400,93.5,4,TabICLv2,GPU utilization (%)
+12,2600,84,4,TabICLv2,GPU utilization (%)
+13,2800,89,4,TabICLv2,GPU utilization (%)
+14,3000,86.25,4,TabICLv2,GPU utilization (%)
+15,3200,88.5,4,TabICLv2,GPU utilization (%)
+16,3400,91.25,4,TabICLv2,GPU utilization (%)
+17,3600,85.25,4,TabICLv2,GPU utilization (%)
+18,3800,96,4,TabICLv2,GPU utilization (%)
+19,4000,91.75,4,TabICLv2,GPU utilization (%)
+20,4200,81.5,4,TabICLv2,GPU utilization (%)
+21,4400,85.75,4,TabICLv2,GPU utilization (%)
+22,4600,94.5,4,TabICLv2,GPU utilization (%)
+23,4800,91,4,TabICLv2,GPU utilization (%)
+24,5000,89,4,TabICLv2,GPU utilization (%)
+25,5200,73.5,4,TabICLv2,GPU utilization (%)
+26,5400,71.75,4,TabICLv2,GPU utilization (%)
+27,5600,93,4,TabICLv2,GPU utilization (%)
+28,5800,74.75,4,TabICLv2,GPU utilization (%)
+29,6000,92.5,4,TabICLv2,GPU utilization (%)
+30,6200,66,4,TabICLv2,GPU utilization (%)
+31,6400,94.5,4,TabICLv2,GPU utilization (%)
+32,6600,80,4,TabICLv2,GPU utilization (%)
+33,6800,92.75,4,TabICLv2,GPU utilization (%)
+34,7000,98.25,4,TabICLv2,GPU utilization (%)
+35,7200,94.75,4,TabICLv2,GPU utilization (%)
+36,7400,83.75,4,TabICLv2,GPU utilization (%)
+37,7600,85.25,4,TabICLv2,GPU utilization (%)
+38,7800,92.25,4,TabICLv2,GPU utilization (%)
+39,8000,99.5,4,TabICLv2,GPU utilization (%)
+40,8200,84.75,4,TabICLv2,GPU utilization (%)
+41,8400,98.25,4,TabICLv2,GPU utilization (%)
+42,8600,90.25,4,TabICLv2,GPU utilization (%)
+43,8800,83.75,4,TabICLv2,GPU utilization (%)
+44,9000,92.5,4,TabICLv2,GPU utilization (%)
+45,9200,74.5,4,TabICLv2,GPU utilization (%)
+46,9400,85.75,4,TabICLv2,GPU utilization (%)
+47,9600,87.5,4,TabICLv2,GPU utilization (%)
+48,9800,97.5,4,TabICLv2,GPU utilization (%)
+49,10000,92,4,TabICLv2,GPU utilization (%)
+50,200,81.5,4,TabPFN v2,GPU utilization (%)
+51,400,97,4,TabPFN v2,GPU utilization (%)
+52,600,97.5,4,TabPFN v2,GPU utilization (%)
+53,800,98,4,TabPFN v2,GPU utilization (%)
+54,1000,100,4,TabPFN v2,GPU utilization (%)
+55,1200,96.25,4,TabPFN v2,GPU utilization (%)
+56,1400,100,4,TabPFN v2,GPU utilization (%)
+57,1600,93.75,4,TabPFN v2,GPU utilization (%)
+58,1800,95.75,4,TabPFN v2,GPU utilization (%)
+59,2000,98,4,TabPFN v2,GPU utilization (%)
+60,2200,95.5,4,TabPFN v2,GPU utilization (%)
+61,2400,56,4,TabPFN v2,GPU utilization (%)
+62,2600,95.75,4,TabPFN v2,GPU utilization (%)
+63,2800,100,4,TabPFN v2,GPU utilization (%)
+64,3000,86.25,4,TabPFN v2,GPU utilization (%)
+65,3200,96.5,4,TabPFN v2,GPU utilization (%)
+66,3400,79.25,4,TabPFN v2,GPU utilization (%)
+67,3600,96.75,4,TabPFN v2,GPU utilization (%)
+68,3800,97.5,4,TabPFN v2,GPU utilization (%)
+69,4000,94,4,TabPFN v2,GPU utilization (%)
+70,4200,98.75,4,TabPFN v2,GPU utilization (%)
+71,4400,97,4,TabPFN v2,GPU utilization (%)
+72,4600,92.75,4,TabPFN v2,GPU utilization (%)
+73,4800,94.5,4,TabPFN v2,GPU utilization (%)
+74,5000,95.75,4,TabPFN v2,GPU utilization (%)
+75,5200,94.25,4,TabPFN v2,GPU utilization (%)
+76,5400,99,4,TabPFN v2,GPU utilization (%)
+77,5600,99,4,TabPFN v2,GPU utilization (%)
+78,5800,96.25,4,TabPFN v2,GPU utilization (%)
+79,6000,97.25,4,TabPFN v2,GPU utilization (%)
+80,6200,98.25,4,TabPFN v2,GPU utilization (%)
+81,6400,92,4,TabPFN v2,GPU utilization (%)
+82,6600,90.5,4,TabPFN v2,GPU utilization (%)
+83,6800,95.5,4,TabPFN v2,GPU utilization (%)
+84,7000,98,4,TabPFN v2,GPU utilization (%)
+85,7200,90,4,TabPFN v2,GPU utilization (%)
+86,7400,96.5,4,TabPFN v2,GPU utilization (%)
+87,7600,98.25,4,TabPFN v2,GPU utilization (%)
+88,7800,98.5,4,TabPFN v2,GPU utilization (%)
+89,8000,98.5,4,TabPFN v2,GPU utilization (%)
+90,8200,98.5,4,TabPFN v2,GPU utilization (%)
+91,8400,97,4,TabPFN v2,GPU utilization (%)
+92,8600,96,4,TabPFN v2,GPU utilization (%)
+93,8800,95.75,4,TabPFN v2,GPU utilization (%)
+94,9000,98.5,4,TabPFN v2,GPU utilization (%)
+95,9200,97,4,TabPFN v2,GPU utilization (%)
+96,9400,84.5,4,TabPFN v2,GPU utilization (%)
+97,9600,96.25,4,TabPFN v2,GPU utilization (%)
+98,9800,99.5,4,TabPFN v2,GPU utilization (%)
+99,10000,99,4,TabPFN v2,GPU utilization (%)
+100,200,94.25,4,TabPFN v2.6,GPU utilization (%)
+101,400,92,4,TabPFN v2.6,GPU utilization (%)
+102,600,100,4,TabPFN v2.6,GPU utilization (%)
+103,800,92.5,4,TabPFN v2.6,GPU utilization (%)
+104,1000,92,4,TabPFN v2.6,GPU utilization (%)
+105,1200,100,4,TabPFN v2.6,GPU utilization (%)
+106,1400,94.25,4,TabPFN v2.6,GPU utilization (%)
+107,1600,98,4,TabPFN v2.6,GPU utilization (%)
+108,1800,98,4,TabPFN v2.6,GPU utilization (%)
+109,2000,92.5,4,TabPFN v2.6,GPU utilization (%)
+110,2200,96.25,4,TabPFN v2.6,GPU utilization (%)
+111,2400,94.5,4,TabPFN v2.6,GPU utilization (%)
+112,2600,90,4,TabPFN v2.6,GPU utilization (%)
+113,2800,95.75,4,TabPFN v2.6,GPU utilization (%)
+114,3000,89.5,4,TabPFN v2.6,GPU utilization (%)
+115,3200,99,4,TabPFN v2.6,GPU utilization (%)
+116,3400,83.25,4,TabPFN v2.6,GPU utilization (%)
+117,3600,92.75,4,TabPFN v2.6,GPU utilization (%)
+118,3800,97.5,4,TabPFN v2.6,GPU utilization (%)
+119,4000,88.25,4,TabPFN v2.6,GPU utilization (%)
+120,4200,97.25,4,TabPFN v2.6,GPU utilization (%)
+121,4400,94,4,TabPFN v2.6,GPU utilization (%)
+122,4600,98.75,4,TabPFN v2.6,GPU utilization (%)
+123,4800,96,4,TabPFN v2.6,GPU utilization (%)
+124,5000,93.5,4,TabPFN v2.6,GPU utilization (%)
+125,5200,94,4,TabPFN v2.6,GPU utilization (%)
+126,5400,94.75,4,TabPFN v2.6,GPU utilization (%)
+127,5600,99.25,4,TabPFN v2.6,GPU utilization (%)
+128,5800,94.25,4,TabPFN v2.6,GPU utilization (%)
+129,6000,97,4,TabPFN v2.6,GPU utilization (%)
+130,6200,100,4,TabPFN v2.6,GPU utilization (%)
+131,6400,93.5,4,TabPFN v2.6,GPU utilization (%)
+132,6600,94,4,TabPFN v2.6,GPU utilization (%)
+133,6800,93.75,4,TabPFN v2.6,GPU utilization (%)
+134,7000,99,4,TabPFN v2.6,GPU utilization (%)
+135,7200,94,4,TabPFN v2.6,GPU utilization (%)
+136,7400,98,4,TabPFN v2.6,GPU utilization (%)
+137,7600,92.5,4,TabPFN v2.6,GPU utilization (%)
+138,7800,93.75,4,TabPFN v2.6,GPU utilization (%)
+139,8000,100,4,TabPFN v2.6,GPU utilization (%)
+140,8200,100,4,TabPFN v2.6,GPU utilization (%)
+141,8400,95,4,TabPFN v2.6,GPU utilization (%)
+142,8600,97.5,4,TabPFN v2.6,GPU utilization (%)
+143,8800,91.5,4,TabPFN v2.6,GPU utilization (%)
+144,9000,98,4,TabPFN v2.6,GPU utilization (%)
+145,9200,94.5,4,TabPFN v2.6,GPU utilization (%)
+146,9400,93,4,TabPFN v2.6,GPU utilization (%)
+147,9600,94.5,4,TabPFN v2.6,GPU utilization (%)
+148,9800,100,4,TabPFN v2.6,GPU utilization (%)
+149,10000,96.5,4,TabPFN v2.6,GPU utilization (%)
+150,200,80.25,4,TabPFN v3,GPU utilization (%)
+151,400,59.25,4,TabPFN v3,GPU utilization (%)
+152,600,78.75,4,TabPFN v3,GPU utilization (%)
+153,800,70.25,4,TabPFN v3,GPU utilization (%)
+154,1000,82,4,TabPFN v3,GPU utilization (%)
+155,1200,94,4,TabPFN v3,GPU utilization (%)
+156,1400,73,4,TabPFN v3,GPU utilization (%)
+157,1600,84.75,4,TabPFN v3,GPU utilization (%)
+158,1800,57,4,TabPFN v3,GPU utilization (%)
+159,2000,86.75,4,TabPFN v3,GPU utilization (%)
+160,2200,72,4,TabPFN v3,GPU utilization (%)
+161,2400,97.75,4,TabPFN v3,GPU utilization (%)
+162,2600,74.5,3,TabPFN v3,GPU utilization (%)
+163,2800,89.75,4,TabPFN v3,GPU utilization (%)
+164,3000,73.5,4,TabPFN v3,GPU utilization (%)
+165,3200,71.5,4,TabPFN v3,GPU utilization (%)
+166,3400,74.25,4,TabPFN v3,GPU utilization (%)
+167,3600,85.75,4,TabPFN v3,GPU utilization (%)
+168,3800,90.75,4,TabPFN v3,GPU utilization (%)
+169,4000,61.75,4,TabPFN v3,GPU utilization (%)
+170,4200,69.75,4,TabPFN v3,GPU utilization (%)
+171,4400,74.25,4,TabPFN v3,GPU utilization (%)
+172,4600,79,4,TabPFN v3,GPU utilization (%)
+173,4800,63,4,TabPFN v3,GPU utilization (%)
+174,5000,63.25,4,TabPFN v3,GPU utilization (%)
+175,5200,66.25,4,TabPFN v3,GPU utilization (%)
+176,5400,73.25,4,TabPFN v3,GPU utilization (%)
+177,5600,76.25,4,TabPFN v3,GPU utilization (%)
+178,5800,95.5,4,TabPFN v3,GPU utilization (%)
+179,6000,85,4,TabPFN v3,GPU utilization (%)
+180,6200,73,4,TabPFN v3,GPU utilization (%)
+181,6400,78.75,4,TabPFN v3,GPU utilization (%)
+182,6600,72.75,4,TabPFN v3,GPU utilization (%)
+183,6800,83.5,4,TabPFN v3,GPU utilization (%)
+184,7000,88.5,4,TabPFN v3,GPU utilization (%)
+185,7200,74.75,4,TabPFN v3,GPU utilization (%)
+186,7400,89.5,4,TabPFN v3,GPU utilization (%)
+187,7600,94,4,TabPFN v3,GPU utilization (%)
+188,7800,69,4,TabPFN v3,GPU utilization (%)
+189,8000,81.25,4,TabPFN v3,GPU utilization (%)
+190,8200,71.5,4,TabPFN v3,GPU utilization (%)
+191,8400,74.25,4,TabPFN v3,GPU utilization (%)
+192,8600,74.5,4,TabPFN v3,GPU utilization (%)
+193,8800,89.5,4,TabPFN v3,GPU utilization (%)
+194,9000,72,4,TabPFN v3,GPU utilization (%)
+195,9200,89.25,4,TabPFN v3,GPU utilization (%)
+196,9400,73,4,TabPFN v3,GPU utilization (%)
+197,9600,81.25,4,TabPFN v3,GPU utilization (%)
+198,9800,77,4,TabPFN v3,GPU utilization (%)
+199,10000,79.5,4,TabPFN v3,GPU utilization (%)
 
 Figure: lgd_resource_dashboard_lgd_power_watts
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,467.13,1,TabPFN v3
-1,400,525.07,1,TabPFN v3
-2,600,536.555,1,TabPFN v3
-3,800,484.37,1,TabPFN v3
-4,1000,531.92,1,TabPFN v3
-5,1200,471.9,1,TabPFN v3
-6,1400,565.72,1,TabPFN v3
-7,1600,597.97,1,TabPFN v3
-8,1800,505.975,1,TabPFN v3
-9,2000,515.085,1,TabPFN v3
-10,2200,545.96,1,TabPFN v3
-11,2400,569.85,1,TabPFN v3
-12,2600,544.225,1,TabPFN v3
-13,2800,468.15,1,TabPFN v3
-14,3000,535.25,1,TabPFN v3
-15,3200,438.425,1,TabPFN v3
-16,3400,604.09,1,TabPFN v3
-17,3600,522.325,1,TabPFN v3
-18,3800,590.63,1,TabPFN v3
-19,4000,440.305,1,TabPFN v3
-20,4200,533.33,1,TabPFN v3
-21,4400,460.245,1,TabPFN v3
-22,4600,542.18,1,TabPFN v3
-23,4800,593.55,1,TabPFN v3
-24,5000,414.55,1,TabPFN v3
-25,5200,496.34,1,TabPFN v3
-26,5400,427.205,1,TabPFN v3
-27,5600,520.63,1,TabPFN v3
-28,5800,473.77,1,TabPFN v3
-29,6000,484.05,1,TabPFN v3
-30,6200,549.545,1,TabPFN v3
-31,6400,548.875,1,TabPFN v3
-32,6600,513.29,1,TabPFN v3
-33,6800,487.43,1,TabPFN v3
-34,7000,531.215,1,TabPFN v3
-35,7200,430.35,1,TabPFN v3
-36,7400,578.435,1,TabPFN v3
-37,7600,458.09,1,TabPFN v3
-38,7800,555.63,1,TabPFN v3
-39,8000,455.64,1,TabPFN v3
-40,8200,594.25,1,TabPFN v3
-41,8400,582.48,1,TabPFN v3
-42,8600,540.96,1,TabPFN v3
-43,8800,514.81,1,TabPFN v3
-44,9000,465.14,1,TabPFN v3
-45,9200,500.05,1,TabPFN v3
-46,9400,509.16,1,TabPFN v3
-47,9600,447.715,1,TabPFN v3
-48,9800,542.59,1,TabPFN v3
-49,10000,502.87,1,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,467.13,1,TabPFN v3,Device power (W)
+1,400,525.07,1,TabPFN v3,Device power (W)
+2,600,536.555,1,TabPFN v3,Device power (W)
+3,800,484.37,1,TabPFN v3,Device power (W)
+4,1000,531.92,1,TabPFN v3,Device power (W)
+5,1200,471.9,1,TabPFN v3,Device power (W)
+6,1400,565.72,1,TabPFN v3,Device power (W)
+7,1600,597.97,1,TabPFN v3,Device power (W)
+8,1800,505.975,1,TabPFN v3,Device power (W)
+9,2000,515.085,1,TabPFN v3,Device power (W)
+10,2200,545.96,1,TabPFN v3,Device power (W)
+11,2400,569.85,1,TabPFN v3,Device power (W)
+12,2600,544.225,1,TabPFN v3,Device power (W)
+13,2800,468.15,1,TabPFN v3,Device power (W)
+14,3000,535.25,1,TabPFN v3,Device power (W)
+15,3200,438.425,1,TabPFN v3,Device power (W)
+16,3400,604.09,1,TabPFN v3,Device power (W)
+17,3600,522.325,1,TabPFN v3,Device power (W)
+18,3800,590.63,1,TabPFN v3,Device power (W)
+19,4000,440.305,1,TabPFN v3,Device power (W)
+20,4200,533.33,1,TabPFN v3,Device power (W)
+21,4400,460.245,1,TabPFN v3,Device power (W)
+22,4600,542.18,1,TabPFN v3,Device power (W)
+23,4800,593.55,1,TabPFN v3,Device power (W)
+24,5000,414.55,1,TabPFN v3,Device power (W)
+25,5200,496.34,1,TabPFN v3,Device power (W)
+26,5400,427.205,1,TabPFN v3,Device power (W)
+27,5600,520.63,1,TabPFN v3,Device power (W)
+28,5800,473.77,1,TabPFN v3,Device power (W)
+29,6000,484.05,1,TabPFN v3,Device power (W)
+30,6200,549.545,1,TabPFN v3,Device power (W)
+31,6400,548.875,1,TabPFN v3,Device power (W)
+32,6600,513.29,1,TabPFN v3,Device power (W)
+33,6800,487.43,1,TabPFN v3,Device power (W)
+34,7000,531.215,1,TabPFN v3,Device power (W)
+35,7200,430.35,1,TabPFN v3,Device power (W)
+36,7400,578.435,1,TabPFN v3,Device power (W)
+37,7600,458.09,1,TabPFN v3,Device power (W)
+38,7800,555.63,1,TabPFN v3,Device power (W)
+39,8000,455.64,1,TabPFN v3,Device power (W)
+40,8200,594.25,1,TabPFN v3,Device power (W)
+41,8400,582.48,1,TabPFN v3,Device power (W)
+42,8600,540.96,1,TabPFN v3,Device power (W)
+43,8800,514.81,1,TabPFN v3,Device power (W)
+44,9000,465.14,1,TabPFN v3,Device power (W)
+45,9200,500.05,1,TabPFN v3,Device power (W)
+46,9400,509.16,1,TabPFN v3,Device power (W)
+47,9600,447.715,1,TabPFN v3,Device power (W)
+48,9800,542.59,1,TabPFN v3,Device power (W)
+49,10000,502.87,1,TabPFN v3,Device power (W)
 
 Figure: lgd_resource_dashboard_lgd_device_memory_used_mib
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,11588,4,TabICLv2
-1,400,11590,3,TabICLv2
-2,600,11560,4,TabICLv2
-3,800,11560,4,TabICLv2
-4,1000,11560,4,TabICLv2
-5,1200,11560,4,TabICLv2
-6,1400,11560,4,TabICLv2
-7,1600,11560,4,TabICLv2
-8,1800,11560,4,TabICLv2
-9,2000,11560,4,TabICLv2
-10,2200,11560,4,TabICLv2
-11,2400,11560,4,TabICLv2
-12,2600,11560,4,TabICLv2
-13,2800,11560,4,TabICLv2
-14,3000,11560,4,TabICLv2
-15,3200,11560,4,TabICLv2
-16,3400,11560,4,TabICLv2
-17,3600,11560,4,TabICLv2
-18,3800,11560,4,TabICLv2
-19,4000,11560,4,TabICLv2
-20,4200,11560,4,TabICLv2
-21,4400,11560,4,TabICLv2
-22,4600,11560,4,TabICLv2
-23,4800,11560,4,TabICLv2
-24,5000,11560,4,TabICLv2
-25,5200,11560,4,TabICLv2
-26,5400,11560,4,TabICLv2
-27,5600,11560,4,TabICLv2
-28,5800,11560,4,TabICLv2
-29,6000,11560,4,TabICLv2
-30,6200,11560,4,TabICLv2
-31,6400,11560,4,TabICLv2
-32,6600,11560,4,TabICLv2
-33,6800,11560,4,TabICLv2
-34,7000,11560,4,TabICLv2
-35,7200,11560,4,TabICLv2
-36,7400,11560,4,TabICLv2
-37,7600,11560,4,TabICLv2
-38,7800,11560,4,TabICLv2
-39,8000,11560,4,TabICLv2
-40,8200,11560,4,TabICLv2
-41,8400,11560,4,TabICLv2
-42,8600,11560,4,TabICLv2
-43,8800,11560,4,TabICLv2
-44,9000,11560,4,TabICLv2
-45,9200,11560,4,TabICLv2
-46,9400,11560,4,TabICLv2
-47,9600,11560,4,TabICLv2
-48,9800,11560,4,TabICLv2
-49,10000,11560,4,TabICLv2
-50,200,77282,4,TabPFN v2
-51,400,77282,4,TabPFN v2
-52,600,77282,4,TabPFN v2
-53,800,77282,4,TabPFN v2
-54,1000,77282,4,TabPFN v2
-55,1200,77282,4,TabPFN v2
-56,1400,77282,4,TabPFN v2
-57,1600,77282,4,TabPFN v2
-58,1800,77282,4,TabPFN v2
-59,2000,77282,4,TabPFN v2
-60,2200,77282,4,TabPFN v2
-61,2400,77282,4,TabPFN v2
-62,2600,77282,4,TabPFN v2
-63,2800,77282,4,TabPFN v2
-64,3000,77282,4,TabPFN v2
-65,3200,77282,4,TabPFN v2
-66,3400,77282,4,TabPFN v2
-67,3600,77282,4,TabPFN v2
-68,3800,77282,4,TabPFN v2
-69,4000,77282,4,TabPFN v2
-70,4200,77282,4,TabPFN v2
-71,4400,77282,4,TabPFN v2
-72,4600,77282,4,TabPFN v2
-73,4800,77282,4,TabPFN v2
-74,5000,77282,4,TabPFN v2
-75,5200,77282,4,TabPFN v2
-76,5400,77282,4,TabPFN v2
-77,5600,77282,4,TabPFN v2
-78,5800,77282,4,TabPFN v2
-79,6000,77282,4,TabPFN v2
-80,6200,77282,4,TabPFN v2
-81,6400,77282,4,TabPFN v2
-82,6600,77282,4,TabPFN v2
-83,6800,77282,4,TabPFN v2
-84,7000,77282,4,TabPFN v2
-85,7200,77282,4,TabPFN v2
-86,7400,77282,4,TabPFN v2
-87,7600,77282,4,TabPFN v2
-88,7800,77282,4,TabPFN v2
-89,8000,77282,4,TabPFN v2
-90,8200,77282,4,TabPFN v2
-91,8400,77282,4,TabPFN v2
-92,8600,77282,4,TabPFN v2
-93,8800,77282,4,TabPFN v2
-94,9000,77282,4,TabPFN v2
-95,9200,77282,4,TabPFN v2
-96,9400,77282,4,TabPFN v2
-97,9600,77282,4,TabPFN v2
-98,9800,77282,4,TabPFN v2
-99,10000,77282,4,TabPFN v2
-100,200,86860,4,TabPFN v2.6
-101,400,86860,4,TabPFN v2.6
-102,600,86860,4,TabPFN v2.6
-103,800,86860,4,TabPFN v2.6
-104,1000,86860,4,TabPFN v2.6
-105,1200,86860,4,TabPFN v2.6
-106,1400,86860,4,TabPFN v2.6
-107,1600,86860,4,TabPFN v2.6
-108,1800,86860,4,TabPFN v2.6
-109,2000,86860,4,TabPFN v2.6
-110,2200,86860,4,TabPFN v2.6
-111,2400,86860,4,TabPFN v2.6
-112,2600,86860,4,TabPFN v2.6
-113,2800,86860,4,TabPFN v2.6
-114,3000,86860,4,TabPFN v2.6
-115,3200,86860,4,TabPFN v2.6
-116,3400,86860,4,TabPFN v2.6
-117,3600,86860,4,TabPFN v2.6
-118,3800,86860,4,TabPFN v2.6
-119,4000,86860,4,TabPFN v2.6
-120,4200,86860,4,TabPFN v2.6
-121,4400,86860,4,TabPFN v2.6
-122,4600,86860,4,TabPFN v2.6
-123,4800,86860,4,TabPFN v2.6
-124,5000,86860,4,TabPFN v2.6
-125,5200,86860,4,TabPFN v2.6
-126,5400,86860,4,TabPFN v2.6
-127,5600,86860,4,TabPFN v2.6
-128,5800,86860,4,TabPFN v2.6
-129,6000,86860,4,TabPFN v2.6
-130,6200,86860,4,TabPFN v2.6
-131,6400,86860,4,TabPFN v2.6
-132,6600,86860,4,TabPFN v2.6
-133,6800,86860,4,TabPFN v2.6
-134,7000,86860,4,TabPFN v2.6
-135,7200,86860,4,TabPFN v2.6
-136,7400,86860,4,TabPFN v2.6
-137,7600,86860,4,TabPFN v2.6
-138,7800,86860,4,TabPFN v2.6
-139,8000,86860,4,TabPFN v2.6
-140,8200,86860,4,TabPFN v2.6
-141,8400,86860,4,TabPFN v2.6
-142,8600,86860,4,TabPFN v2.6
-143,8800,86860,4,TabPFN v2.6
-144,9000,86860,4,TabPFN v2.6
-145,9200,86860,4,TabPFN v2.6
-146,9400,86860,4,TabPFN v2.6
-147,9600,86860,4,TabPFN v2.6
-148,9800,86860,4,TabPFN v2.6
-149,10000,86860,4,TabPFN v2.6
-150,200,46496,4,TabPFN v3
-151,400,46496,4,TabPFN v3
-152,600,46496,4,TabPFN v3
-153,800,46496,4,TabPFN v3
-154,1000,46496,4,TabPFN v3
-155,1200,46496,4,TabPFN v3
-156,1400,46496,4,TabPFN v3
-157,1600,46496,4,TabPFN v3
-158,1800,46496,4,TabPFN v3
-159,2000,46496,4,TabPFN v3
-160,2200,46496,4,TabPFN v3
-161,2400,46496,4,TabPFN v3
-162,2600,46560,3,TabPFN v3
-163,2800,46496,4,TabPFN v3
-164,3000,46496,4,TabPFN v3
-165,3200,46496,4,TabPFN v3
-166,3400,46496,4,TabPFN v3
-167,3600,46496,4,TabPFN v3
-168,3800,46496,4,TabPFN v3
-169,4000,46496,4,TabPFN v3
-170,4200,46496,4,TabPFN v3
-171,4400,46496,4,TabPFN v3
-172,4600,46496,4,TabPFN v3
-173,4800,46496,4,TabPFN v3
-174,5000,46496,4,TabPFN v3
-175,5200,46496,4,TabPFN v3
-176,5400,46496,4,TabPFN v3
-177,5600,46496,4,TabPFN v3
-178,5800,46496,4,TabPFN v3
-179,6000,46496,4,TabPFN v3
-180,6200,46496,4,TabPFN v3
-181,6400,46496,4,TabPFN v3
-182,6600,46496,4,TabPFN v3
-183,6800,46496,4,TabPFN v3
-184,7000,46496,4,TabPFN v3
-185,7200,46496,4,TabPFN v3
-186,7400,46496,4,TabPFN v3
-187,7600,46496,4,TabPFN v3
-188,7800,46496,4,TabPFN v3
-189,8000,46496,4,TabPFN v3
-190,8200,46496,4,TabPFN v3
-191,8400,46496,4,TabPFN v3
-192,8600,46496,4,TabPFN v3
-193,8800,46496,4,TabPFN v3
-194,9000,46496,4,TabPFN v3
-195,9200,46496,4,TabPFN v3
-196,9400,46496,4,TabPFN v3
-197,9600,46496,4,TabPFN v3
-198,9800,46496,4,TabPFN v3
-199,10000,46496,4,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,11.316406,4,TabICLv2,Device memory (GiB)
+1,400,11.318359,3,TabICLv2,Device memory (GiB)
+2,600,11.289062,4,TabICLv2,Device memory (GiB)
+3,800,11.289062,4,TabICLv2,Device memory (GiB)
+4,1000,11.289062,4,TabICLv2,Device memory (GiB)
+5,1200,11.289062,4,TabICLv2,Device memory (GiB)
+6,1400,11.289062,4,TabICLv2,Device memory (GiB)
+7,1600,11.289062,4,TabICLv2,Device memory (GiB)
+8,1800,11.289062,4,TabICLv2,Device memory (GiB)
+9,2000,11.289062,4,TabICLv2,Device memory (GiB)
+10,2200,11.289062,4,TabICLv2,Device memory (GiB)
+11,2400,11.289062,4,TabICLv2,Device memory (GiB)
+12,2600,11.289062,4,TabICLv2,Device memory (GiB)
+13,2800,11.289062,4,TabICLv2,Device memory (GiB)
+14,3000,11.289062,4,TabICLv2,Device memory (GiB)
+15,3200,11.289062,4,TabICLv2,Device memory (GiB)
+16,3400,11.289062,4,TabICLv2,Device memory (GiB)
+17,3600,11.289062,4,TabICLv2,Device memory (GiB)
+18,3800,11.289062,4,TabICLv2,Device memory (GiB)
+19,4000,11.289062,4,TabICLv2,Device memory (GiB)
+20,4200,11.289062,4,TabICLv2,Device memory (GiB)
+21,4400,11.289062,4,TabICLv2,Device memory (GiB)
+22,4600,11.289062,4,TabICLv2,Device memory (GiB)
+23,4800,11.289062,4,TabICLv2,Device memory (GiB)
+24,5000,11.289062,4,TabICLv2,Device memory (GiB)
+25,5200,11.289062,4,TabICLv2,Device memory (GiB)
+26,5400,11.289062,4,TabICLv2,Device memory (GiB)
+27,5600,11.289062,4,TabICLv2,Device memory (GiB)
+28,5800,11.289062,4,TabICLv2,Device memory (GiB)
+29,6000,11.289062,4,TabICLv2,Device memory (GiB)
+30,6200,11.289062,4,TabICLv2,Device memory (GiB)
+31,6400,11.289062,4,TabICLv2,Device memory (GiB)
+32,6600,11.289062,4,TabICLv2,Device memory (GiB)
+33,6800,11.289062,4,TabICLv2,Device memory (GiB)
+34,7000,11.289062,4,TabICLv2,Device memory (GiB)
+35,7200,11.289062,4,TabICLv2,Device memory (GiB)
+36,7400,11.289062,4,TabICLv2,Device memory (GiB)
+37,7600,11.289062,4,TabICLv2,Device memory (GiB)
+38,7800,11.289062,4,TabICLv2,Device memory (GiB)
+39,8000,11.289062,4,TabICLv2,Device memory (GiB)
+40,8200,11.289062,4,TabICLv2,Device memory (GiB)
+41,8400,11.289062,4,TabICLv2,Device memory (GiB)
+42,8600,11.289062,4,TabICLv2,Device memory (GiB)
+43,8800,11.289062,4,TabICLv2,Device memory (GiB)
+44,9000,11.289062,4,TabICLv2,Device memory (GiB)
+45,9200,11.289062,4,TabICLv2,Device memory (GiB)
+46,9400,11.289062,4,TabICLv2,Device memory (GiB)
+47,9600,11.289062,4,TabICLv2,Device memory (GiB)
+48,9800,11.289062,4,TabICLv2,Device memory (GiB)
+49,10000,11.289062,4,TabICLv2,Device memory (GiB)
+50,200,75.470703,4,TabPFN v2,Device memory (GiB)
+51,400,75.470703,4,TabPFN v2,Device memory (GiB)
+52,600,75.470703,4,TabPFN v2,Device memory (GiB)
+53,800,75.470703,4,TabPFN v2,Device memory (GiB)
+54,1000,75.470703,4,TabPFN v2,Device memory (GiB)
+55,1200,75.470703,4,TabPFN v2,Device memory (GiB)
+56,1400,75.470703,4,TabPFN v2,Device memory (GiB)
+57,1600,75.470703,4,TabPFN v2,Device memory (GiB)
+58,1800,75.470703,4,TabPFN v2,Device memory (GiB)
+59,2000,75.470703,4,TabPFN v2,Device memory (GiB)
+60,2200,75.470703,4,TabPFN v2,Device memory (GiB)
+61,2400,75.470703,4,TabPFN v2,Device memory (GiB)
+62,2600,75.470703,4,TabPFN v2,Device memory (GiB)
+63,2800,75.470703,4,TabPFN v2,Device memory (GiB)
+64,3000,75.470703,4,TabPFN v2,Device memory (GiB)
+65,3200,75.470703,4,TabPFN v2,Device memory (GiB)
+66,3400,75.470703,4,TabPFN v2,Device memory (GiB)
+67,3600,75.470703,4,TabPFN v2,Device memory (GiB)
+68,3800,75.470703,4,TabPFN v2,Device memory (GiB)
+69,4000,75.470703,4,TabPFN v2,Device memory (GiB)
+70,4200,75.470703,4,TabPFN v2,Device memory (GiB)
+71,4400,75.470703,4,TabPFN v2,Device memory (GiB)
+72,4600,75.470703,4,TabPFN v2,Device memory (GiB)
+73,4800,75.470703,4,TabPFN v2,Device memory (GiB)
+74,5000,75.470703,4,TabPFN v2,Device memory (GiB)
+75,5200,75.470703,4,TabPFN v2,Device memory (GiB)
+76,5400,75.470703,4,TabPFN v2,Device memory (GiB)
+77,5600,75.470703,4,TabPFN v2,Device memory (GiB)
+78,5800,75.470703,4,TabPFN v2,Device memory (GiB)
+79,6000,75.470703,4,TabPFN v2,Device memory (GiB)
+80,6200,75.470703,4,TabPFN v2,Device memory (GiB)
+81,6400,75.470703,4,TabPFN v2,Device memory (GiB)
+82,6600,75.470703,4,TabPFN v2,Device memory (GiB)
+83,6800,75.470703,4,TabPFN v2,Device memory (GiB)
+84,7000,75.470703,4,TabPFN v2,Device memory (GiB)
+85,7200,75.470703,4,TabPFN v2,Device memory (GiB)
+86,7400,75.470703,4,TabPFN v2,Device memory (GiB)
+87,7600,75.470703,4,TabPFN v2,Device memory (GiB)
+88,7800,75.470703,4,TabPFN v2,Device memory (GiB)
+89,8000,75.470703,4,TabPFN v2,Device memory (GiB)
+90,8200,75.470703,4,TabPFN v2,Device memory (GiB)
+91,8400,75.470703,4,TabPFN v2,Device memory (GiB)
+92,8600,75.470703,4,TabPFN v2,Device memory (GiB)
+93,8800,75.470703,4,TabPFN v2,Device memory (GiB)
+94,9000,75.470703,4,TabPFN v2,Device memory (GiB)
+95,9200,75.470703,4,TabPFN v2,Device memory (GiB)
+96,9400,75.470703,4,TabPFN v2,Device memory (GiB)
+97,9600,75.470703,4,TabPFN v2,Device memory (GiB)
+98,9800,75.470703,4,TabPFN v2,Device memory (GiB)
+99,10000,75.470703,4,TabPFN v2,Device memory (GiB)
+100,200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+101,400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+102,600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+103,800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+104,1000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+105,1200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+106,1400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+107,1600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+108,1800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+109,2000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+110,2200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+111,2400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+112,2600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+113,2800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+114,3000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+115,3200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+116,3400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+117,3600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+118,3800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+119,4000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+120,4200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+121,4400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+122,4600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+123,4800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+124,5000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+125,5200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+126,5400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+127,5600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+128,5800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+129,6000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+130,6200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+131,6400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+132,6600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+133,6800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+134,7000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+135,7200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+136,7400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+137,7600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+138,7800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+139,8000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+140,8200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+141,8400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+142,8600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+143,8800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+144,9000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+145,9200,84.824219,4,TabPFN v2.6,Device memory (GiB)
+146,9400,84.824219,4,TabPFN v2.6,Device memory (GiB)
+147,9600,84.824219,4,TabPFN v2.6,Device memory (GiB)
+148,9800,84.824219,4,TabPFN v2.6,Device memory (GiB)
+149,10000,84.824219,4,TabPFN v2.6,Device memory (GiB)
+150,200,45.40625,4,TabPFN v3,Device memory (GiB)
+151,400,45.40625,4,TabPFN v3,Device memory (GiB)
+152,600,45.40625,4,TabPFN v3,Device memory (GiB)
+153,800,45.40625,4,TabPFN v3,Device memory (GiB)
+154,1000,45.40625,4,TabPFN v3,Device memory (GiB)
+155,1200,45.40625,4,TabPFN v3,Device memory (GiB)
+156,1400,45.40625,4,TabPFN v3,Device memory (GiB)
+157,1600,45.40625,4,TabPFN v3,Device memory (GiB)
+158,1800,45.40625,4,TabPFN v3,Device memory (GiB)
+159,2000,45.40625,4,TabPFN v3,Device memory (GiB)
+160,2200,45.40625,4,TabPFN v3,Device memory (GiB)
+161,2400,45.40625,4,TabPFN v3,Device memory (GiB)
+162,2600,45.46875,3,TabPFN v3,Device memory (GiB)
+163,2800,45.40625,4,TabPFN v3,Device memory (GiB)
+164,3000,45.40625,4,TabPFN v3,Device memory (GiB)
+165,3200,45.40625,4,TabPFN v3,Device memory (GiB)
+166,3400,45.40625,4,TabPFN v3,Device memory (GiB)
+167,3600,45.40625,4,TabPFN v3,Device memory (GiB)
+168,3800,45.40625,4,TabPFN v3,Device memory (GiB)
+169,4000,45.40625,4,TabPFN v3,Device memory (GiB)
+170,4200,45.40625,4,TabPFN v3,Device memory (GiB)
+171,4400,45.40625,4,TabPFN v3,Device memory (GiB)
+172,4600,45.40625,4,TabPFN v3,Device memory (GiB)
+173,4800,45.40625,4,TabPFN v3,Device memory (GiB)
+174,5000,45.40625,4,TabPFN v3,Device memory (GiB)
+175,5200,45.40625,4,TabPFN v3,Device memory (GiB)
+176,5400,45.40625,4,TabPFN v3,Device memory (GiB)
+177,5600,45.40625,4,TabPFN v3,Device memory (GiB)
+178,5800,45.40625,4,TabPFN v3,Device memory (GiB)
+179,6000,45.40625,4,TabPFN v3,Device memory (GiB)
+180,6200,45.40625,4,TabPFN v3,Device memory (GiB)
+181,6400,45.40625,4,TabPFN v3,Device memory (GiB)
+182,6600,45.40625,4,TabPFN v3,Device memory (GiB)
+183,6800,45.40625,4,TabPFN v3,Device memory (GiB)
+184,7000,45.40625,4,TabPFN v3,Device memory (GiB)
+185,7200,45.40625,4,TabPFN v3,Device memory (GiB)
+186,7400,45.40625,4,TabPFN v3,Device memory (GiB)
+187,7600,45.40625,4,TabPFN v3,Device memory (GiB)
+188,7800,45.40625,4,TabPFN v3,Device memory (GiB)
+189,8000,45.40625,4,TabPFN v3,Device memory (GiB)
+190,8200,45.40625,4,TabPFN v3,Device memory (GiB)
+191,8400,45.40625,4,TabPFN v3,Device memory (GiB)
+192,8600,45.40625,4,TabPFN v3,Device memory (GiB)
+193,8800,45.40625,4,TabPFN v3,Device memory (GiB)
+194,9000,45.40625,4,TabPFN v3,Device memory (GiB)
+195,9200,45.40625,4,TabPFN v3,Device memory (GiB)
+196,9400,45.40625,4,TabPFN v3,Device memory (GiB)
+197,9600,45.40625,4,TabPFN v3,Device memory (GiB)
+198,9800,45.40625,4,TabPFN v3,Device memory (GiB)
+199,10000,45.40625,4,TabPFN v3,Device memory (GiB)
 
 Figure: lgd_movement_lgd_tabicl-v2
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
@@ -75251,7 +75167,7 @@ Experiment 2: paired seed outcomes
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Checkpoint and benchmark coverage
@@ -75872,7 +75788,7 @@ Experiment 3: sampling and accumulation during training
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:45:06+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Protocol coverage
@@ -90400,619 +90316,619 @@ Figure: pd_resource_dashboard_pd_gpu_utilization_percent
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,100,12,TabICLv2
-1,400,99.75,12,TabICLv2
-2,600,99.5,12,TabICLv2
-3,800,99.5,12,TabICLv2
-4,1000,100,12,TabICLv2
-5,1200,100,12,TabICLv2
-6,1400,100,11,TabICLv2
-7,1600,99.5,11,TabICLv2
-8,1800,100,11,TabICLv2
-9,2000,100,11,TabICLv2
-10,2200,100,11,TabICLv2
-11,2400,99.5,11,TabICLv2
-12,2600,99.5,11,TabICLv2
-13,2800,100,11,TabICLv2
-14,3000,100,11,TabICLv2
-15,3200,100,11,TabICLv2
-16,3400,100,11,TabICLv2
-17,3600,99.5,11,TabICLv2
-18,3800,99,11,TabICLv2
-19,4000,100,11,TabICLv2
-20,4200,100,11,TabICLv2
-21,4400,100,11,TabICLv2
-22,4600,99.5,11,TabICLv2
-23,4800,100,11,TabICLv2
-24,5000,100,11,TabICLv2
-25,5200,99.5,11,TabICLv2
-26,5400,100,11,TabICLv2
-27,5600,100,11,TabICLv2
-28,5800,100,11,TabICLv2
-29,6000,100,11,TabICLv2
-30,6200,99,11,TabICLv2
-31,6400,100,11,TabICLv2
-32,6600,100,11,TabICLv2
-33,6800,100,11,TabICLv2
-34,7000,100,11,TabICLv2
-35,7200,100,11,TabICLv2
-36,7400,100,11,TabICLv2
-37,7600,100,11,TabICLv2
-38,7800,100,11,TabICLv2
-39,8000,100,11,TabICLv2
-40,8200,100,11,TabICLv2
-41,8400,100,11,TabICLv2
-42,8600,100,11,TabICLv2
-43,8800,100,11,TabICLv2
-44,9000,99.5,11,TabICLv2
-45,9200,100,11,TabICLv2
-46,9400,100,11,TabICLv2
-47,9600,100,11,TabICLv2
-48,9800,100,11,TabICLv2
-49,10000,100,11,TabICLv2
-50,200,100,8,TabPFN v2
-51,400,100,8,TabPFN v2
-52,600,99.5,8,TabPFN v2
-53,800,99,8,TabPFN v2
-54,1000,100,8,TabPFN v2
-55,1200,100,8,TabPFN v2
-56,1400,100,8,TabPFN v2
-57,1600,100,8,TabPFN v2
-58,1800,100,7,TabPFN v2
-59,2000,100,7,TabPFN v2
-60,2200,100,7,TabPFN v2
-61,2400,100,7,TabPFN v2
-62,2600,100,7,TabPFN v2
-63,2800,100,6,TabPFN v2
-64,3000,99.5,6,TabPFN v2
-65,3200,100,6,TabPFN v2
-66,3400,100,6,TabPFN v2
-67,3600,99,6,TabPFN v2
-68,3800,99,6,TabPFN v2
-69,4000,99.5,6,TabPFN v2
-70,4200,100,6,TabPFN v2
-71,4400,100,6,TabPFN v2
-72,4600,100,6,TabPFN v2
-73,4800,100,6,TabPFN v2
-74,5000,99.5,6,TabPFN v2
-75,5200,99.25,6,TabPFN v2
-76,5400,100,6,TabPFN v2
-77,5600,100,6,TabPFN v2
-78,5800,100,6,TabPFN v2
-79,6000,100,6,TabPFN v2
-80,6200,100,6,TabPFN v2
-81,6400,100,6,TabPFN v2
-82,6600,100,6,TabPFN v2
-83,6800,100,6,TabPFN v2
-84,7000,100,6,TabPFN v2
-85,7200,100,6,TabPFN v2
-86,7400,100,6,TabPFN v2
-87,7600,100,6,TabPFN v2
-88,7800,100,6,TabPFN v2
-89,8000,100,6,TabPFN v2
-90,8200,100,6,TabPFN v2
-91,8400,100,6,TabPFN v2
-92,8600,99.75,6,TabPFN v2
-93,8800,100,6,TabPFN v2
-94,9000,100,6,TabPFN v2
-95,9200,100,6,TabPFN v2
-96,9400,100,6,TabPFN v2
-97,9600,100,6,TabPFN v2
-98,9800,98.25,6,TabPFN v2
-99,10000,100,6,TabPFN v2
-100,200,100,10,TabPFN v2.6
-101,400,98.5,10,TabPFN v2.6
-102,600,98.5,10,TabPFN v2.6
-103,800,100,10,TabPFN v2.6
-104,1000,100,10,TabPFN v2.6
-105,1200,100,10,TabPFN v2.6
-106,1400,100,10,TabPFN v2.6
-107,1600,100,10,TabPFN v2.6
-108,1800,100,10,TabPFN v2.6
-109,2000,99.75,10,TabPFN v2.6
-110,2200,100,10,TabPFN v2.6
-111,2400,100,10,TabPFN v2.6
-112,2600,100,10,TabPFN v2.6
-113,2800,100,10,TabPFN v2.6
-114,3000,99,9,TabPFN v2.6
-115,3200,100,9,TabPFN v2.6
-116,3400,100,9,TabPFN v2.6
-117,3600,100,9,TabPFN v2.6
-118,3800,97,9,TabPFN v2.6
-119,4000,100,9,TabPFN v2.6
-120,4200,100,9,TabPFN v2.6
-121,4400,100,9,TabPFN v2.6
-122,4600,99,9,TabPFN v2.6
-123,4800,100,9,TabPFN v2.6
-124,5000,100,9,TabPFN v2.6
-125,5200,100,9,TabPFN v2.6
-126,5400,100,9,TabPFN v2.6
-127,5600,100,9,TabPFN v2.6
-128,5800,100,9,TabPFN v2.6
-129,6000,100,9,TabPFN v2.6
-130,6200,98.5,9,TabPFN v2.6
-131,6400,100,9,TabPFN v2.6
-132,6600,99,9,TabPFN v2.6
-133,6800,99,9,TabPFN v2.6
-134,7000,100,9,TabPFN v2.6
-135,7200,97,9,TabPFN v2.6
-136,7400,98.5,9,TabPFN v2.6
-137,7600,100,9,TabPFN v2.6
-138,7800,100,9,TabPFN v2.6
-139,8000,99,9,TabPFN v2.6
-140,8200,100,9,TabPFN v2.6
-141,8400,100,9,TabPFN v2.6
-142,8600,100,9,TabPFN v2.6
-143,8800,100,9,TabPFN v2.6
-144,9000,100,9,TabPFN v2.6
-145,9200,100,9,TabPFN v2.6
-146,9400,100,9,TabPFN v2.6
-147,9600,98.5,9,TabPFN v2.6
-148,9800,100,9,TabPFN v2.6
-149,10000,100,9,TabPFN v2.6
-150,200,98.75,10,TabPFN v3
-151,400,100,10,TabPFN v3
-152,600,100,10,TabPFN v3
-153,800,100,10,TabPFN v3
-154,1000,100,10,TabPFN v3
-155,1200,100,10,TabPFN v3
-156,1400,99.75,10,TabPFN v3
-157,1600,99,10,TabPFN v3
-158,1800,100,10,TabPFN v3
-159,2000,100,10,TabPFN v3
-160,2200,100,10,TabPFN v3
-161,2400,100,10,TabPFN v3
-162,2600,100,10,TabPFN v3
-163,2800,100,10,TabPFN v3
-164,3000,100,9,TabPFN v3
-165,3200,98,9,TabPFN v3
-166,3400,100,9,TabPFN v3
-167,3600,100,9,TabPFN v3
-168,3800,100,9,TabPFN v3
-169,4000,99.5,9,TabPFN v3
-170,4200,100,9,TabPFN v3
-171,4400,100,9,TabPFN v3
-172,4600,100,9,TabPFN v3
-173,4800,100,9,TabPFN v3
-174,5000,100,9,TabPFN v3
-175,5200,99.5,8,TabPFN v3
-176,5400,99.75,8,TabPFN v3
-177,5600,99,8,TabPFN v3
-178,5800,100,8,TabPFN v3
-179,6000,99.5,8,TabPFN v3
-180,6200,100,8,TabPFN v3
-181,6400,99.5,8,TabPFN v3
-182,6600,99,8,TabPFN v3
-183,6800,100,8,TabPFN v3
-184,7000,100,8,TabPFN v3
-185,7200,99.5,8,TabPFN v3
-186,7400,97.25,8,TabPFN v3
-187,7600,100,8,TabPFN v3
-188,7800,99,8,TabPFN v3
-189,8000,100,8,TabPFN v3
-190,8200,99.75,8,TabPFN v3
-191,8400,99.5,8,TabPFN v3
-192,8600,100,8,TabPFN v3
-193,8800,100,8,TabPFN v3
-194,9000,100,8,TabPFN v3
-195,9200,100,8,TabPFN v3
-196,9400,99.5,8,TabPFN v3
-197,9600,98.75,8,TabPFN v3
-198,9800,100,8,TabPFN v3
-199,10000,99.5,8,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,100,12,TabICLv2,GPU utilization (%)
+1,400,99.75,12,TabICLv2,GPU utilization (%)
+2,600,99.5,12,TabICLv2,GPU utilization (%)
+3,800,99.5,12,TabICLv2,GPU utilization (%)
+4,1000,100,12,TabICLv2,GPU utilization (%)
+5,1200,100,12,TabICLv2,GPU utilization (%)
+6,1400,100,11,TabICLv2,GPU utilization (%)
+7,1600,99.5,11,TabICLv2,GPU utilization (%)
+8,1800,100,11,TabICLv2,GPU utilization (%)
+9,2000,100,11,TabICLv2,GPU utilization (%)
+10,2200,100,11,TabICLv2,GPU utilization (%)
+11,2400,99.5,11,TabICLv2,GPU utilization (%)
+12,2600,99.5,11,TabICLv2,GPU utilization (%)
+13,2800,100,11,TabICLv2,GPU utilization (%)
+14,3000,100,11,TabICLv2,GPU utilization (%)
+15,3200,100,11,TabICLv2,GPU utilization (%)
+16,3400,100,11,TabICLv2,GPU utilization (%)
+17,3600,99.5,11,TabICLv2,GPU utilization (%)
+18,3800,99,11,TabICLv2,GPU utilization (%)
+19,4000,100,11,TabICLv2,GPU utilization (%)
+20,4200,100,11,TabICLv2,GPU utilization (%)
+21,4400,100,11,TabICLv2,GPU utilization (%)
+22,4600,99.5,11,TabICLv2,GPU utilization (%)
+23,4800,100,11,TabICLv2,GPU utilization (%)
+24,5000,100,11,TabICLv2,GPU utilization (%)
+25,5200,99.5,11,TabICLv2,GPU utilization (%)
+26,5400,100,11,TabICLv2,GPU utilization (%)
+27,5600,100,11,TabICLv2,GPU utilization (%)
+28,5800,100,11,TabICLv2,GPU utilization (%)
+29,6000,100,11,TabICLv2,GPU utilization (%)
+30,6200,99,11,TabICLv2,GPU utilization (%)
+31,6400,100,11,TabICLv2,GPU utilization (%)
+32,6600,100,11,TabICLv2,GPU utilization (%)
+33,6800,100,11,TabICLv2,GPU utilization (%)
+34,7000,100,11,TabICLv2,GPU utilization (%)
+35,7200,100,11,TabICLv2,GPU utilization (%)
+36,7400,100,11,TabICLv2,GPU utilization (%)
+37,7600,100,11,TabICLv2,GPU utilization (%)
+38,7800,100,11,TabICLv2,GPU utilization (%)
+39,8000,100,11,TabICLv2,GPU utilization (%)
+40,8200,100,11,TabICLv2,GPU utilization (%)
+41,8400,100,11,TabICLv2,GPU utilization (%)
+42,8600,100,11,TabICLv2,GPU utilization (%)
+43,8800,100,11,TabICLv2,GPU utilization (%)
+44,9000,99.5,11,TabICLv2,GPU utilization (%)
+45,9200,100,11,TabICLv2,GPU utilization (%)
+46,9400,100,11,TabICLv2,GPU utilization (%)
+47,9600,100,11,TabICLv2,GPU utilization (%)
+48,9800,100,11,TabICLv2,GPU utilization (%)
+49,10000,100,11,TabICLv2,GPU utilization (%)
+50,200,100,8,TabPFN v2,GPU utilization (%)
+51,400,100,8,TabPFN v2,GPU utilization (%)
+52,600,99.5,8,TabPFN v2,GPU utilization (%)
+53,800,99,8,TabPFN v2,GPU utilization (%)
+54,1000,100,8,TabPFN v2,GPU utilization (%)
+55,1200,100,8,TabPFN v2,GPU utilization (%)
+56,1400,100,8,TabPFN v2,GPU utilization (%)
+57,1600,100,8,TabPFN v2,GPU utilization (%)
+58,1800,100,7,TabPFN v2,GPU utilization (%)
+59,2000,100,7,TabPFN v2,GPU utilization (%)
+60,2200,100,7,TabPFN v2,GPU utilization (%)
+61,2400,100,7,TabPFN v2,GPU utilization (%)
+62,2600,100,7,TabPFN v2,GPU utilization (%)
+63,2800,100,6,TabPFN v2,GPU utilization (%)
+64,3000,99.5,6,TabPFN v2,GPU utilization (%)
+65,3200,100,6,TabPFN v2,GPU utilization (%)
+66,3400,100,6,TabPFN v2,GPU utilization (%)
+67,3600,99,6,TabPFN v2,GPU utilization (%)
+68,3800,99,6,TabPFN v2,GPU utilization (%)
+69,4000,99.5,6,TabPFN v2,GPU utilization (%)
+70,4200,100,6,TabPFN v2,GPU utilization (%)
+71,4400,100,6,TabPFN v2,GPU utilization (%)
+72,4600,100,6,TabPFN v2,GPU utilization (%)
+73,4800,100,6,TabPFN v2,GPU utilization (%)
+74,5000,99.5,6,TabPFN v2,GPU utilization (%)
+75,5200,99.25,6,TabPFN v2,GPU utilization (%)
+76,5400,100,6,TabPFN v2,GPU utilization (%)
+77,5600,100,6,TabPFN v2,GPU utilization (%)
+78,5800,100,6,TabPFN v2,GPU utilization (%)
+79,6000,100,6,TabPFN v2,GPU utilization (%)
+80,6200,100,6,TabPFN v2,GPU utilization (%)
+81,6400,100,6,TabPFN v2,GPU utilization (%)
+82,6600,100,6,TabPFN v2,GPU utilization (%)
+83,6800,100,6,TabPFN v2,GPU utilization (%)
+84,7000,100,6,TabPFN v2,GPU utilization (%)
+85,7200,100,6,TabPFN v2,GPU utilization (%)
+86,7400,100,6,TabPFN v2,GPU utilization (%)
+87,7600,100,6,TabPFN v2,GPU utilization (%)
+88,7800,100,6,TabPFN v2,GPU utilization (%)
+89,8000,100,6,TabPFN v2,GPU utilization (%)
+90,8200,100,6,TabPFN v2,GPU utilization (%)
+91,8400,100,6,TabPFN v2,GPU utilization (%)
+92,8600,99.75,6,TabPFN v2,GPU utilization (%)
+93,8800,100,6,TabPFN v2,GPU utilization (%)
+94,9000,100,6,TabPFN v2,GPU utilization (%)
+95,9200,100,6,TabPFN v2,GPU utilization (%)
+96,9400,100,6,TabPFN v2,GPU utilization (%)
+97,9600,100,6,TabPFN v2,GPU utilization (%)
+98,9800,98.25,6,TabPFN v2,GPU utilization (%)
+99,10000,100,6,TabPFN v2,GPU utilization (%)
+100,200,100,10,TabPFN v2.6,GPU utilization (%)
+101,400,98.5,10,TabPFN v2.6,GPU utilization (%)
+102,600,98.5,10,TabPFN v2.6,GPU utilization (%)
+103,800,100,10,TabPFN v2.6,GPU utilization (%)
+104,1000,100,10,TabPFN v2.6,GPU utilization (%)
+105,1200,100,10,TabPFN v2.6,GPU utilization (%)
+106,1400,100,10,TabPFN v2.6,GPU utilization (%)
+107,1600,100,10,TabPFN v2.6,GPU utilization (%)
+108,1800,100,10,TabPFN v2.6,GPU utilization (%)
+109,2000,99.75,10,TabPFN v2.6,GPU utilization (%)
+110,2200,100,10,TabPFN v2.6,GPU utilization (%)
+111,2400,100,10,TabPFN v2.6,GPU utilization (%)
+112,2600,100,10,TabPFN v2.6,GPU utilization (%)
+113,2800,100,10,TabPFN v2.6,GPU utilization (%)
+114,3000,99,9,TabPFN v2.6,GPU utilization (%)
+115,3200,100,9,TabPFN v2.6,GPU utilization (%)
+116,3400,100,9,TabPFN v2.6,GPU utilization (%)
+117,3600,100,9,TabPFN v2.6,GPU utilization (%)
+118,3800,97,9,TabPFN v2.6,GPU utilization (%)
+119,4000,100,9,TabPFN v2.6,GPU utilization (%)
+120,4200,100,9,TabPFN v2.6,GPU utilization (%)
+121,4400,100,9,TabPFN v2.6,GPU utilization (%)
+122,4600,99,9,TabPFN v2.6,GPU utilization (%)
+123,4800,100,9,TabPFN v2.6,GPU utilization (%)
+124,5000,100,9,TabPFN v2.6,GPU utilization (%)
+125,5200,100,9,TabPFN v2.6,GPU utilization (%)
+126,5400,100,9,TabPFN v2.6,GPU utilization (%)
+127,5600,100,9,TabPFN v2.6,GPU utilization (%)
+128,5800,100,9,TabPFN v2.6,GPU utilization (%)
+129,6000,100,9,TabPFN v2.6,GPU utilization (%)
+130,6200,98.5,9,TabPFN v2.6,GPU utilization (%)
+131,6400,100,9,TabPFN v2.6,GPU utilization (%)
+132,6600,99,9,TabPFN v2.6,GPU utilization (%)
+133,6800,99,9,TabPFN v2.6,GPU utilization (%)
+134,7000,100,9,TabPFN v2.6,GPU utilization (%)
+135,7200,97,9,TabPFN v2.6,GPU utilization (%)
+136,7400,98.5,9,TabPFN v2.6,GPU utilization (%)
+137,7600,100,9,TabPFN v2.6,GPU utilization (%)
+138,7800,100,9,TabPFN v2.6,GPU utilization (%)
+139,8000,99,9,TabPFN v2.6,GPU utilization (%)
+140,8200,100,9,TabPFN v2.6,GPU utilization (%)
+141,8400,100,9,TabPFN v2.6,GPU utilization (%)
+142,8600,100,9,TabPFN v2.6,GPU utilization (%)
+143,8800,100,9,TabPFN v2.6,GPU utilization (%)
+144,9000,100,9,TabPFN v2.6,GPU utilization (%)
+145,9200,100,9,TabPFN v2.6,GPU utilization (%)
+146,9400,100,9,TabPFN v2.6,GPU utilization (%)
+147,9600,98.5,9,TabPFN v2.6,GPU utilization (%)
+148,9800,100,9,TabPFN v2.6,GPU utilization (%)
+149,10000,100,9,TabPFN v2.6,GPU utilization (%)
+150,200,98.75,10,TabPFN v3,GPU utilization (%)
+151,400,100,10,TabPFN v3,GPU utilization (%)
+152,600,100,10,TabPFN v3,GPU utilization (%)
+153,800,100,10,TabPFN v3,GPU utilization (%)
+154,1000,100,10,TabPFN v3,GPU utilization (%)
+155,1200,100,10,TabPFN v3,GPU utilization (%)
+156,1400,99.75,10,TabPFN v3,GPU utilization (%)
+157,1600,99,10,TabPFN v3,GPU utilization (%)
+158,1800,100,10,TabPFN v3,GPU utilization (%)
+159,2000,100,10,TabPFN v3,GPU utilization (%)
+160,2200,100,10,TabPFN v3,GPU utilization (%)
+161,2400,100,10,TabPFN v3,GPU utilization (%)
+162,2600,100,10,TabPFN v3,GPU utilization (%)
+163,2800,100,10,TabPFN v3,GPU utilization (%)
+164,3000,100,9,TabPFN v3,GPU utilization (%)
+165,3200,98,9,TabPFN v3,GPU utilization (%)
+166,3400,100,9,TabPFN v3,GPU utilization (%)
+167,3600,100,9,TabPFN v3,GPU utilization (%)
+168,3800,100,9,TabPFN v3,GPU utilization (%)
+169,4000,99.5,9,TabPFN v3,GPU utilization (%)
+170,4200,100,9,TabPFN v3,GPU utilization (%)
+171,4400,100,9,TabPFN v3,GPU utilization (%)
+172,4600,100,9,TabPFN v3,GPU utilization (%)
+173,4800,100,9,TabPFN v3,GPU utilization (%)
+174,5000,100,9,TabPFN v3,GPU utilization (%)
+175,5200,99.5,8,TabPFN v3,GPU utilization (%)
+176,5400,99.75,8,TabPFN v3,GPU utilization (%)
+177,5600,99,8,TabPFN v3,GPU utilization (%)
+178,5800,100,8,TabPFN v3,GPU utilization (%)
+179,6000,99.5,8,TabPFN v3,GPU utilization (%)
+180,6200,100,8,TabPFN v3,GPU utilization (%)
+181,6400,99.5,8,TabPFN v3,GPU utilization (%)
+182,6600,99,8,TabPFN v3,GPU utilization (%)
+183,6800,100,8,TabPFN v3,GPU utilization (%)
+184,7000,100,8,TabPFN v3,GPU utilization (%)
+185,7200,99.5,8,TabPFN v3,GPU utilization (%)
+186,7400,97.25,8,TabPFN v3,GPU utilization (%)
+187,7600,100,8,TabPFN v3,GPU utilization (%)
+188,7800,99,8,TabPFN v3,GPU utilization (%)
+189,8000,100,8,TabPFN v3,GPU utilization (%)
+190,8200,99.75,8,TabPFN v3,GPU utilization (%)
+191,8400,99.5,8,TabPFN v3,GPU utilization (%)
+192,8600,100,8,TabPFN v3,GPU utilization (%)
+193,8800,100,8,TabPFN v3,GPU utilization (%)
+194,9000,100,8,TabPFN v3,GPU utilization (%)
+195,9200,100,8,TabPFN v3,GPU utilization (%)
+196,9400,99.5,8,TabPFN v3,GPU utilization (%)
+197,9600,98.75,8,TabPFN v3,GPU utilization (%)
+198,9800,100,8,TabPFN v3,GPU utilization (%)
+199,10000,99.5,8,TabPFN v3,GPU utilization (%)
 
 Figure: pd_resource_dashboard_pd_power_watts
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,639.585,1,TabICLv2
-1,400,640.87,1,TabICLv2
-2,600,638.825,1,TabICLv2
-3,800,640.54,1,TabICLv2
-4,1000,638.45,1,TabICLv2
-5,1200,644.17,1,TabICLv2
-6,1400,642.91,1,TabICLv2
-7,1600,642.69,1,TabICLv2
-8,1800,644.18,1,TabICLv2
-9,2000,622.495,2,TabICLv2
-10,2200,611.27,2,TabICLv2
-11,2400,608.52,2,TabICLv2
-12,2600,637.0325,2,TabICLv2
-13,2800,637.58,2,TabICLv2
-14,3000,417.16,2,TabICLv2
-15,3200,631.3325,2,TabICLv2
-16,3400,609.715,2,TabICLv2
-17,3600,619.5175,2,TabICLv2
-18,3800,623.6025,2,TabICLv2
-19,4000,630.8075,2,TabICLv2
-20,4200,628.3725,2,TabICLv2
-21,4400,617.87,2,TabICLv2
-22,4600,624.34,1,TabICLv2
-23,4800,637.145,1,TabICLv2
-24,5000,635.765,1,TabICLv2
-25,5200,635.04,1,TabICLv2
-26,5400,621.2,2,TabICLv2
-27,5600,617.395,2,TabICLv2
-28,5800,622.74,2,TabICLv2
-29,6000,619.2825,2,TabICLv2
-30,6200,626.47,2,TabICLv2
-31,6400,620.06,2,TabICLv2
-32,6600,626.965,1,TabICLv2
-33,6800,636.97,1,TabICLv2
-34,7000,633.285,1,TabICLv2
-35,7200,616.6725,2,TabICLv2
-36,7400,630.925,2,TabICLv2
-37,7600,627.82,2,TabICLv2
-38,7800,631.34,2,TabICLv2
-39,8000,631.7275,2,TabICLv2
-40,8200,630.625,2,TabICLv2
-41,8400,620.0575,2,TabICLv2
-42,8600,618.9975,2,TabICLv2
-43,8800,628.33,2,TabICLv2
-44,9000,620.5675,2,TabICLv2
-45,9200,632.64,2,TabICLv2
-46,9400,609.22,2,TabICLv2
-47,9600,628.0175,2,TabICLv2
-48,9800,628.9425,2,TabICLv2
-49,10000,614.025,2,TabICLv2
-50,200,853.96,1,TabPFN v2
-51,400,850.64,1,TabPFN v2
-52,600,859.35,1,TabPFN v2
-53,800,unavailable,unavailable,TabPFN v2
-54,1000,unavailable,unavailable,TabPFN v2
-55,1200,unavailable,unavailable,TabPFN v2
-56,1400,unavailable,unavailable,TabPFN v2
-57,1600,unavailable,unavailable,TabPFN v2
-58,1800,unavailable,unavailable,TabPFN v2
-59,2000,unavailable,unavailable,TabPFN v2
-60,2200,847.21,1,TabPFN v2
-61,2400,838.77,1,TabPFN v2
-62,2600,822.48,1,TabPFN v2
-63,2800,848.82,1,TabPFN v2
-64,3000,844.44,1,TabPFN v2
-65,3200,772.82,1,TabPFN v2
-66,3400,815.34,1,TabPFN v2
-67,3600,745.88,1,TabPFN v2
-68,3800,709.945,1,TabPFN v2
-69,4000,822.38,1,TabPFN v2
-70,4200,803.27,1,TabPFN v2
-71,4400,817.45,1,TabPFN v2
-72,4600,844.64,1,TabPFN v2
-73,4800,782.19,1,TabPFN v2
-74,5000,762.58,1,TabPFN v2
-75,5200,831.295,1,TabPFN v2
-76,5400,828.45,1,TabPFN v2
-77,5600,817.16,1,TabPFN v2
-78,5800,808.22,1,TabPFN v2
-79,6000,847.12,1,TabPFN v2
-80,6200,806.05,1,TabPFN v2
-81,6400,749.455,1,TabPFN v2
-82,6600,834.48,1,TabPFN v2
-83,6800,826.58,1,TabPFN v2
-84,7000,822.99,1,TabPFN v2
-85,7200,808.27,1,TabPFN v2
-86,7400,833.145,1,TabPFN v2
-87,7600,795.49,1,TabPFN v2
-88,7800,761.87,1,TabPFN v2
-89,8000,840.62,1,TabPFN v2
-90,8200,838.77,1,TabPFN v2
-91,8400,825.03,2,TabPFN v2
-92,8600,826.9725,2,TabPFN v2
-93,8800,818.2625,2,TabPFN v2
-94,9000,846.1325,2,TabPFN v2
-95,9200,833.45,2,TabPFN v2
-96,9400,832.38,2,TabPFN v2
-97,9600,814.61,2,TabPFN v2
-98,9800,820.355,2,TabPFN v2
-99,10000,833.78,2,TabPFN v2
-100,200,770.2325,2,TabPFN v2.6
-101,400,762.27,2,TabPFN v2.6
-102,600,772.675,2,TabPFN v2.6
-103,800,777.5575,2,TabPFN v2.6
-104,1000,777.52,3,TabPFN v2.6
-105,1200,774.02,2,TabPFN v2.6
-106,1400,778.12,2,TabPFN v2.6
-107,1600,777.345,2,TabPFN v2.6
-108,1800,776.5075,2,TabPFN v2.6
-109,2000,776.425,2,TabPFN v2.6
-110,2200,774.3425,2,TabPFN v2.6
-111,2400,772.58,1,TabPFN v2.6
-112,2600,690.29,2,TabPFN v2.6
-113,2800,686.19,1,TabPFN v2.6
-114,3000,748.865,1,TabPFN v2.6
-115,3200,699.4,1,TabPFN v2.6
-116,3400,704.225,1,TabPFN v2.6
-117,3600,203.06,1,TabPFN v2.6
-118,3800,727.26,1,TabPFN v2.6
-119,4000,788.68,1,TabPFN v2.6
-120,4200,659.575,1,TabPFN v2.6
-121,4400,720.08,1,TabPFN v2.6
-122,4600,779.675,1,TabPFN v2.6
-123,4800,688.99,1,TabPFN v2.6
-124,5000,706.755,1,TabPFN v2.6
-125,5200,711.895,1,TabPFN v2.6
-126,5400,722.42,1,TabPFN v2.6
-127,5600,733.235,1,TabPFN v2.6
-128,5800,765.58,1,TabPFN v2.6
-129,6000,779.94,1,TabPFN v2.6
-130,6200,643.555,1,TabPFN v2.6
-131,6400,787.92,1,TabPFN v2.6
-132,6600,722.635,1,TabPFN v2.6
-133,6800,727.8,1,TabPFN v2.6
-134,7000,704.42,1,TabPFN v2.6
-135,7200,726.68,1,TabPFN v2.6
-136,7400,700.085,1,TabPFN v2.6
-137,7600,693.66,1,TabPFN v2.6
-138,7800,733.09,1,TabPFN v2.6
-139,8000,750.19,1,TabPFN v2.6
-140,8200,655.82,1,TabPFN v2.6
-141,8400,729.885,1,TabPFN v2.6
-142,8600,768.1,1,TabPFN v2.6
-143,8800,748.725,1,TabPFN v2.6
-144,9000,724.06,1,TabPFN v2.6
-145,9200,730.44,1,TabPFN v2.6
-146,9400,744.97,1,TabPFN v2.6
-147,9600,783.5,1,TabPFN v2.6
-148,9800,677.53,1,TabPFN v2.6
-149,10000,686.45,1,TabPFN v2.6
-150,200,693.7125,2,TabPFN v3
-151,400,694.91,2,TabPFN v3
-152,600,687.715,1,TabPFN v3
-153,800,690.17,1,TabPFN v3
-154,1000,695.17,1,TabPFN v3
-155,1200,683.3,1,TabPFN v3
-156,1400,676.435,1,TabPFN v3
-157,1600,unavailable,unavailable,TabPFN v3
-158,1800,unavailable,unavailable,TabPFN v3
-159,2000,687.91,1,TabPFN v3
-160,2200,700.1975,2,TabPFN v3
-161,2400,669.81,2,TabPFN v3
-162,2600,689.2775,2,TabPFN v3
-163,2800,656.95,2,TabPFN v3
-164,3000,682.3625,2,TabPFN v3
-165,3200,684.88,2,TabPFN v3
-166,3400,676.44,2,TabPFN v3
-167,3600,684.555,2,TabPFN v3
-168,3800,692.56,2,TabPFN v3
-169,4000,669.165,2,TabPFN v3
-170,4200,688.77,2,TabPFN v3
-171,4400,681.34,2,TabPFN v3
-172,4600,662.79,2,TabPFN v3
-173,4800,680.67,2,TabPFN v3
-174,5000,681.9325,2,TabPFN v3
-175,5200,701.79,1,TabPFN v3
-176,5400,701.18,1,TabPFN v3
-177,5600,638.59,1,TabPFN v3
-178,5800,668.73,1,TabPFN v3
-179,6000,645.53,1,TabPFN v3
-180,6200,642.76,1,TabPFN v3
-181,6400,646.03,1,TabPFN v3
-182,6600,668.35,1,TabPFN v3
-183,6800,700.93,1,TabPFN v3
-184,7000,701.335,1,TabPFN v3
-185,7200,681.7,1,TabPFN v3
-186,7400,664.2,1,TabPFN v3
-187,7600,696.46,1,TabPFN v3
-188,7800,680.025,1,TabPFN v3
-189,8000,658.42,2,TabPFN v3
-190,8200,681.1125,2,TabPFN v3
-191,8400,687.175,2,TabPFN v3
-192,8600,691.55,2,TabPFN v3
-193,8800,688.905,2,TabPFN v3
-194,9000,690.82,2,TabPFN v3
-195,9200,680.845,2,TabPFN v3
-196,9400,681.19,2,TabPFN v3
-197,9600,703.45,1,TabPFN v3
-198,9800,677.33,1,TabPFN v3
-199,10000,687.785,1,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,639.585,1,TabICLv2,Device power (W)
+1,400,640.87,1,TabICLv2,Device power (W)
+2,600,638.825,1,TabICLv2,Device power (W)
+3,800,640.54,1,TabICLv2,Device power (W)
+4,1000,638.45,1,TabICLv2,Device power (W)
+5,1200,644.17,1,TabICLv2,Device power (W)
+6,1400,642.91,1,TabICLv2,Device power (W)
+7,1600,642.69,1,TabICLv2,Device power (W)
+8,1800,644.18,1,TabICLv2,Device power (W)
+9,2000,622.495,2,TabICLv2,Device power (W)
+10,2200,611.27,2,TabICLv2,Device power (W)
+11,2400,608.52,2,TabICLv2,Device power (W)
+12,2600,637.0325,2,TabICLv2,Device power (W)
+13,2800,637.58,2,TabICLv2,Device power (W)
+14,3000,417.16,2,TabICLv2,Device power (W)
+15,3200,631.3325,2,TabICLv2,Device power (W)
+16,3400,609.715,2,TabICLv2,Device power (W)
+17,3600,619.5175,2,TabICLv2,Device power (W)
+18,3800,623.6025,2,TabICLv2,Device power (W)
+19,4000,630.8075,2,TabICLv2,Device power (W)
+20,4200,628.3725,2,TabICLv2,Device power (W)
+21,4400,617.87,2,TabICLv2,Device power (W)
+22,4600,624.34,1,TabICLv2,Device power (W)
+23,4800,637.145,1,TabICLv2,Device power (W)
+24,5000,635.765,1,TabICLv2,Device power (W)
+25,5200,635.04,1,TabICLv2,Device power (W)
+26,5400,621.2,2,TabICLv2,Device power (W)
+27,5600,617.395,2,TabICLv2,Device power (W)
+28,5800,622.74,2,TabICLv2,Device power (W)
+29,6000,619.2825,2,TabICLv2,Device power (W)
+30,6200,626.47,2,TabICLv2,Device power (W)
+31,6400,620.06,2,TabICLv2,Device power (W)
+32,6600,626.965,1,TabICLv2,Device power (W)
+33,6800,636.97,1,TabICLv2,Device power (W)
+34,7000,633.285,1,TabICLv2,Device power (W)
+35,7200,616.6725,2,TabICLv2,Device power (W)
+36,7400,630.925,2,TabICLv2,Device power (W)
+37,7600,627.82,2,TabICLv2,Device power (W)
+38,7800,631.34,2,TabICLv2,Device power (W)
+39,8000,631.7275,2,TabICLv2,Device power (W)
+40,8200,630.625,2,TabICLv2,Device power (W)
+41,8400,620.0575,2,TabICLv2,Device power (W)
+42,8600,618.9975,2,TabICLv2,Device power (W)
+43,8800,628.33,2,TabICLv2,Device power (W)
+44,9000,620.5675,2,TabICLv2,Device power (W)
+45,9200,632.64,2,TabICLv2,Device power (W)
+46,9400,609.22,2,TabICLv2,Device power (W)
+47,9600,628.0175,2,TabICLv2,Device power (W)
+48,9800,628.9425,2,TabICLv2,Device power (W)
+49,10000,614.025,2,TabICLv2,Device power (W)
+50,200,853.96,1,TabPFN v2,Device power (W)
+51,400,850.64,1,TabPFN v2,Device power (W)
+52,600,859.35,1,TabPFN v2,Device power (W)
+53,800,unavailable,unavailable,TabPFN v2,Device power (W)
+54,1000,unavailable,unavailable,TabPFN v2,Device power (W)
+55,1200,unavailable,unavailable,TabPFN v2,Device power (W)
+56,1400,unavailable,unavailable,TabPFN v2,Device power (W)
+57,1600,unavailable,unavailable,TabPFN v2,Device power (W)
+58,1800,unavailable,unavailable,TabPFN v2,Device power (W)
+59,2000,unavailable,unavailable,TabPFN v2,Device power (W)
+60,2200,847.21,1,TabPFN v2,Device power (W)
+61,2400,838.77,1,TabPFN v2,Device power (W)
+62,2600,822.48,1,TabPFN v2,Device power (W)
+63,2800,848.82,1,TabPFN v2,Device power (W)
+64,3000,844.44,1,TabPFN v2,Device power (W)
+65,3200,772.82,1,TabPFN v2,Device power (W)
+66,3400,815.34,1,TabPFN v2,Device power (W)
+67,3600,745.88,1,TabPFN v2,Device power (W)
+68,3800,709.945,1,TabPFN v2,Device power (W)
+69,4000,822.38,1,TabPFN v2,Device power (W)
+70,4200,803.27,1,TabPFN v2,Device power (W)
+71,4400,817.45,1,TabPFN v2,Device power (W)
+72,4600,844.64,1,TabPFN v2,Device power (W)
+73,4800,782.19,1,TabPFN v2,Device power (W)
+74,5000,762.58,1,TabPFN v2,Device power (W)
+75,5200,831.295,1,TabPFN v2,Device power (W)
+76,5400,828.45,1,TabPFN v2,Device power (W)
+77,5600,817.16,1,TabPFN v2,Device power (W)
+78,5800,808.22,1,TabPFN v2,Device power (W)
+79,6000,847.12,1,TabPFN v2,Device power (W)
+80,6200,806.05,1,TabPFN v2,Device power (W)
+81,6400,749.455,1,TabPFN v2,Device power (W)
+82,6600,834.48,1,TabPFN v2,Device power (W)
+83,6800,826.58,1,TabPFN v2,Device power (W)
+84,7000,822.99,1,TabPFN v2,Device power (W)
+85,7200,808.27,1,TabPFN v2,Device power (W)
+86,7400,833.145,1,TabPFN v2,Device power (W)
+87,7600,795.49,1,TabPFN v2,Device power (W)
+88,7800,761.87,1,TabPFN v2,Device power (W)
+89,8000,840.62,1,TabPFN v2,Device power (W)
+90,8200,838.77,1,TabPFN v2,Device power (W)
+91,8400,825.03,2,TabPFN v2,Device power (W)
+92,8600,826.9725,2,TabPFN v2,Device power (W)
+93,8800,818.2625,2,TabPFN v2,Device power (W)
+94,9000,846.1325,2,TabPFN v2,Device power (W)
+95,9200,833.45,2,TabPFN v2,Device power (W)
+96,9400,832.38,2,TabPFN v2,Device power (W)
+97,9600,814.61,2,TabPFN v2,Device power (W)
+98,9800,820.355,2,TabPFN v2,Device power (W)
+99,10000,833.78,2,TabPFN v2,Device power (W)
+100,200,770.2325,2,TabPFN v2.6,Device power (W)
+101,400,762.27,2,TabPFN v2.6,Device power (W)
+102,600,772.675,2,TabPFN v2.6,Device power (W)
+103,800,777.5575,2,TabPFN v2.6,Device power (W)
+104,1000,777.52,3,TabPFN v2.6,Device power (W)
+105,1200,774.02,2,TabPFN v2.6,Device power (W)
+106,1400,778.12,2,TabPFN v2.6,Device power (W)
+107,1600,777.345,2,TabPFN v2.6,Device power (W)
+108,1800,776.5075,2,TabPFN v2.6,Device power (W)
+109,2000,776.425,2,TabPFN v2.6,Device power (W)
+110,2200,774.3425,2,TabPFN v2.6,Device power (W)
+111,2400,772.58,1,TabPFN v2.6,Device power (W)
+112,2600,690.29,2,TabPFN v2.6,Device power (W)
+113,2800,686.19,1,TabPFN v2.6,Device power (W)
+114,3000,748.865,1,TabPFN v2.6,Device power (W)
+115,3200,699.4,1,TabPFN v2.6,Device power (W)
+116,3400,704.225,1,TabPFN v2.6,Device power (W)
+117,3600,203.06,1,TabPFN v2.6,Device power (W)
+118,3800,727.26,1,TabPFN v2.6,Device power (W)
+119,4000,788.68,1,TabPFN v2.6,Device power (W)
+120,4200,659.575,1,TabPFN v2.6,Device power (W)
+121,4400,720.08,1,TabPFN v2.6,Device power (W)
+122,4600,779.675,1,TabPFN v2.6,Device power (W)
+123,4800,688.99,1,TabPFN v2.6,Device power (W)
+124,5000,706.755,1,TabPFN v2.6,Device power (W)
+125,5200,711.895,1,TabPFN v2.6,Device power (W)
+126,5400,722.42,1,TabPFN v2.6,Device power (W)
+127,5600,733.235,1,TabPFN v2.6,Device power (W)
+128,5800,765.58,1,TabPFN v2.6,Device power (W)
+129,6000,779.94,1,TabPFN v2.6,Device power (W)
+130,6200,643.555,1,TabPFN v2.6,Device power (W)
+131,6400,787.92,1,TabPFN v2.6,Device power (W)
+132,6600,722.635,1,TabPFN v2.6,Device power (W)
+133,6800,727.8,1,TabPFN v2.6,Device power (W)
+134,7000,704.42,1,TabPFN v2.6,Device power (W)
+135,7200,726.68,1,TabPFN v2.6,Device power (W)
+136,7400,700.085,1,TabPFN v2.6,Device power (W)
+137,7600,693.66,1,TabPFN v2.6,Device power (W)
+138,7800,733.09,1,TabPFN v2.6,Device power (W)
+139,8000,750.19,1,TabPFN v2.6,Device power (W)
+140,8200,655.82,1,TabPFN v2.6,Device power (W)
+141,8400,729.885,1,TabPFN v2.6,Device power (W)
+142,8600,768.1,1,TabPFN v2.6,Device power (W)
+143,8800,748.725,1,TabPFN v2.6,Device power (W)
+144,9000,724.06,1,TabPFN v2.6,Device power (W)
+145,9200,730.44,1,TabPFN v2.6,Device power (W)
+146,9400,744.97,1,TabPFN v2.6,Device power (W)
+147,9600,783.5,1,TabPFN v2.6,Device power (W)
+148,9800,677.53,1,TabPFN v2.6,Device power (W)
+149,10000,686.45,1,TabPFN v2.6,Device power (W)
+150,200,693.7125,2,TabPFN v3,Device power (W)
+151,400,694.91,2,TabPFN v3,Device power (W)
+152,600,687.715,1,TabPFN v3,Device power (W)
+153,800,690.17,1,TabPFN v3,Device power (W)
+154,1000,695.17,1,TabPFN v3,Device power (W)
+155,1200,683.3,1,TabPFN v3,Device power (W)
+156,1400,676.435,1,TabPFN v3,Device power (W)
+157,1600,unavailable,unavailable,TabPFN v3,Device power (W)
+158,1800,unavailable,unavailable,TabPFN v3,Device power (W)
+159,2000,687.91,1,TabPFN v3,Device power (W)
+160,2200,700.1975,2,TabPFN v3,Device power (W)
+161,2400,669.81,2,TabPFN v3,Device power (W)
+162,2600,689.2775,2,TabPFN v3,Device power (W)
+163,2800,656.95,2,TabPFN v3,Device power (W)
+164,3000,682.3625,2,TabPFN v3,Device power (W)
+165,3200,684.88,2,TabPFN v3,Device power (W)
+166,3400,676.44,2,TabPFN v3,Device power (W)
+167,3600,684.555,2,TabPFN v3,Device power (W)
+168,3800,692.56,2,TabPFN v3,Device power (W)
+169,4000,669.165,2,TabPFN v3,Device power (W)
+170,4200,688.77,2,TabPFN v3,Device power (W)
+171,4400,681.34,2,TabPFN v3,Device power (W)
+172,4600,662.79,2,TabPFN v3,Device power (W)
+173,4800,680.67,2,TabPFN v3,Device power (W)
+174,5000,681.9325,2,TabPFN v3,Device power (W)
+175,5200,701.79,1,TabPFN v3,Device power (W)
+176,5400,701.18,1,TabPFN v3,Device power (W)
+177,5600,638.59,1,TabPFN v3,Device power (W)
+178,5800,668.73,1,TabPFN v3,Device power (W)
+179,6000,645.53,1,TabPFN v3,Device power (W)
+180,6200,642.76,1,TabPFN v3,Device power (W)
+181,6400,646.03,1,TabPFN v3,Device power (W)
+182,6600,668.35,1,TabPFN v3,Device power (W)
+183,6800,700.93,1,TabPFN v3,Device power (W)
+184,7000,701.335,1,TabPFN v3,Device power (W)
+185,7200,681.7,1,TabPFN v3,Device power (W)
+186,7400,664.2,1,TabPFN v3,Device power (W)
+187,7600,696.46,1,TabPFN v3,Device power (W)
+188,7800,680.025,1,TabPFN v3,Device power (W)
+189,8000,658.42,2,TabPFN v3,Device power (W)
+190,8200,681.1125,2,TabPFN v3,Device power (W)
+191,8400,687.175,2,TabPFN v3,Device power (W)
+192,8600,691.55,2,TabPFN v3,Device power (W)
+193,8800,688.905,2,TabPFN v3,Device power (W)
+194,9000,690.82,2,TabPFN v3,Device power (W)
+195,9200,680.845,2,TabPFN v3,Device power (W)
+196,9400,681.19,2,TabPFN v3,Device power (W)
+197,9600,703.45,1,TabPFN v3,Device power (W)
+198,9800,677.33,1,TabPFN v3,Device power (W)
+199,10000,687.785,1,TabPFN v3,Device power (W)
 
 Figure: pd_resource_dashboard_pd_device_memory_used_mib
 PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,28165,12,TabICLv2
-1,400,28425,12,TabICLv2
-2,600,28425,12,TabICLv2
-3,800,28425,12,TabICLv2
-4,1000,28426,12,TabICLv2
-5,1200,28477,12,TabICLv2
-6,1400,28396,11,TabICLv2
-7,1600,28466,11,TabICLv2
-8,1800,28466,11,TabICLv2
-9,2000,28466,11,TabICLv2
-10,2200,28466,11,TabICLv2
-11,2400,28396,11,TabICLv2
-12,2600,28208,11,TabICLv2
-13,2800,28312,11,TabICLv2
-14,3000,28312,11,TabICLv2
-15,3200,28312,11,TabICLv2
-16,3400,28312,11,TabICLv2
-17,3600,28312,11,TabICLv2
-18,3800,28312,11,TabICLv2
-19,4000,28288,11,TabICLv2
-20,4200,28288,11,TabICLv2
-21,4400,28286,11,TabICLv2
-22,4600,28286,11,TabICLv2
-23,4800,28286,11,TabICLv2
-24,5000,28286,11,TabICLv2
-25,5200,28392,11,TabICLv2
-26,5400,28392,11,TabICLv2
-27,5600,28392,11,TabICLv2
-28,5800,28392,11,TabICLv2
-29,6000,28392,11,TabICLv2
-30,6200,28392,11,TabICLv2
-31,6400,28352,11,TabICLv2
-32,6600,28392,11,TabICLv2
-33,6800,28392,11,TabICLv2
-34,7000,28392,11,TabICLv2
-35,7200,28392,11,TabICLv2
-36,7400,28416,11,TabICLv2
-37,7600,28406,11,TabICLv2
-38,7800,28392,11,TabICLv2
-39,8000,28406,11,TabICLv2
-40,8200,28406,11,TabICLv2
-41,8400,28406,11,TabICLv2
-42,8600,28406,11,TabICLv2
-43,8800,28406,11,TabICLv2
-44,9000,28406,11,TabICLv2
-45,9200,28576,11,TabICLv2
-46,9400,28576,11,TabICLv2
-47,9600,28626,11,TabICLv2
-48,9800,28626,11,TabICLv2
-49,10000,28626,11,TabICLv2
-50,200,173571,8,TabPFN v2
-51,400,173576,8,TabPFN v2
-52,600,173576,8,TabPFN v2
-53,800,173784,8,TabPFN v2
-54,1000,173785,8,TabPFN v2
-55,1200,173599,8,TabPFN v2
-56,1400,173572,8,TabPFN v2
-57,1600,173572,8,TabPFN v2
-58,1800,173572,7,TabPFN v2
-59,2000,173586,7,TabPFN v2
-60,2200,173612,7,TabPFN v2
-61,2400,173612,7,TabPFN v2
-62,2600,173612,7,TabPFN v2
-63,2800,173649,6,TabPFN v2
-64,3000,173649,6,TabPFN v2
-65,3200,173649,6,TabPFN v2
-66,3400,173599,6,TabPFN v2
-67,3600,173599,6,TabPFN v2
-68,3800,173599,6,TabPFN v2
-69,4000,173815,6,TabPFN v2
-70,4200,173816,6,TabPFN v2
-71,4400,173816,6,TabPFN v2
-72,4600,173639,6,TabPFN v2
-73,4800,173639,6,TabPFN v2
-74,5000,173639,6,TabPFN v2
-75,5200,173635,6,TabPFN v2
-76,5400,173636,6,TabPFN v2
-77,5600,173636,6,TabPFN v2
-78,5800,173627,6,TabPFN v2
-79,6000,173589,6,TabPFN v2
-80,6200,173589,6,TabPFN v2
-81,6400,173579,6,TabPFN v2
-82,6600,173579,6,TabPFN v2
-83,6800,173579,6,TabPFN v2
-84,7000,173589,6,TabPFN v2
-85,7200,173589,6,TabPFN v2
-86,7400,173589,6,TabPFN v2
-87,7600,173579,6,TabPFN v2
-88,7800,173579,6,TabPFN v2
-89,8000,173579,6,TabPFN v2
-90,8200,173579,6,TabPFN v2
-91,8400,173815,6,TabPFN v2
-92,8600,173816,6,TabPFN v2
-93,8800,173817,6,TabPFN v2
-94,9000,173579,6,TabPFN v2
-95,9200,173579,6,TabPFN v2
-96,9400,173579,6,TabPFN v2
-97,9600,173771,6,TabPFN v2
-98,9800,173775,6,TabPFN v2
-99,10000,173776,6,TabPFN v2
-100,200,124140,10,TabPFN v2.6
-101,400,124144,10,TabPFN v2.6
-102,600,124144,10,TabPFN v2.6
-103,800,124144,10,TabPFN v2.6
-104,1000,124144,10,TabPFN v2.6
-105,1200,124144,10,TabPFN v2.6
-106,1400,124144,10,TabPFN v2.6
-107,1600,124145,10,TabPFN v2.6
-108,1800,124148,10,TabPFN v2.6
-109,2000,124148,10,TabPFN v2.6
-110,2200,124148,10,TabPFN v2.6
-111,2400,124148,10,TabPFN v2.6
-112,2600,124146,10,TabPFN v2.6
-113,2800,124145,10,TabPFN v2.6
-114,3000,123546,9,TabPFN v2.6
-115,3200,123546,9,TabPFN v2.6
-116,3400,123546,9,TabPFN v2.6
-117,3600,123552,9,TabPFN v2.6
-118,3800,123552,9,TabPFN v2.6
-119,4000,123552,9,TabPFN v2.6
-120,4200,123552,9,TabPFN v2.6
-121,4400,123552,9,TabPFN v2.6
-122,4600,123552,9,TabPFN v2.6
-123,4800,123552,9,TabPFN v2.6
-124,5000,123552,9,TabPFN v2.6
-125,5200,123552,9,TabPFN v2.6
-126,5400,123552,9,TabPFN v2.6
-127,5600,123552,9,TabPFN v2.6
-128,5800,123552,9,TabPFN v2.6
-129,6000,123552,9,TabPFN v2.6
-130,6200,123552,9,TabPFN v2.6
-131,6400,123552,9,TabPFN v2.6
-132,6600,123552,9,TabPFN v2.6
-133,6800,123552,9,TabPFN v2.6
-134,7000,123552,9,TabPFN v2.6
-135,7200,123552,9,TabPFN v2.6
-136,7400,123552,9,TabPFN v2.6
-137,7600,123552,9,TabPFN v2.6
-138,7800,123552,9,TabPFN v2.6
-139,8000,123552,9,TabPFN v2.6
-140,8200,123552,9,TabPFN v2.6
-141,8400,123552,9,TabPFN v2.6
-142,8600,123552,9,TabPFN v2.6
-143,8800,123552,9,TabPFN v2.6
-144,9000,123552,9,TabPFN v2.6
-145,9200,123552,9,TabPFN v2.6
-146,9400,123552,9,TabPFN v2.6
-147,9600,123552,9,TabPFN v2.6
-148,9800,123552,9,TabPFN v2.6
-149,10000,123552,9,TabPFN v2.6
-150,200,115838,10,TabPFN v3
-151,400,115838,10,TabPFN v3
-152,600,115780,10,TabPFN v3
-153,800,115780,10,TabPFN v3
-154,1000,115780,10,TabPFN v3
-155,1200,115832,10,TabPFN v3
-156,1400,115826,10,TabPFN v3
-157,1600,115759,10,TabPFN v3
-158,1800,115701,10,TabPFN v3
-159,2000,115701,10,TabPFN v3
-160,2200,115701,10,TabPFN v3
-161,2400,115701,10,TabPFN v3
-162,2600,115722.5,10,TabPFN v3
-163,2800,115814,10,TabPFN v3
-164,3000,115870,9,TabPFN v3
-165,3200,115758,9,TabPFN v3
-166,3400,115758,9,TabPFN v3
-167,3600,115746,9,TabPFN v3
-168,3800,115746,9,TabPFN v3
-169,4000,115746,9,TabPFN v3
-170,4200,115746,9,TabPFN v3
-171,4400,115746,9,TabPFN v3
-172,4600,115746,9,TabPFN v3
-173,4800,115746,9,TabPFN v3
-174,5000,115746,9,TabPFN v3
-175,5200,115867,8,TabPFN v3
-176,5400,115867,8,TabPFN v3
-177,5600,115867,8,TabPFN v3
-178,5800,115867,8,TabPFN v3
-179,6000,115809,8,TabPFN v3
-180,6200,115809,8,TabPFN v3
-181,6400,115809,8,TabPFN v3
-182,6600,115754,8,TabPFN v3
-183,6800,115754,8,TabPFN v3
-184,7000,115754,8,TabPFN v3
-185,7200,115754,8,TabPFN v3
-186,7400,115754,8,TabPFN v3
-187,7600,115754,8,TabPFN v3
-188,7800,115754,8,TabPFN v3
-189,8000,115754,8,TabPFN v3
-190,8200,115754,8,TabPFN v3
-191,8400,115754,8,TabPFN v3
-192,8600,115754,8,TabPFN v3
-193,8800,115754,8,TabPFN v3
-194,9000,115754,8,TabPFN v3
-195,9200,115754,8,TabPFN v3
-196,9400,115754,8,TabPFN v3
-197,9600,115748,8,TabPFN v3
-198,9800,115748,8,TabPFN v3
-199,10000,115748,8,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,27.504883,12,TabICLv2,Device memory (GiB)
+1,400,27.758789,12,TabICLv2,Device memory (GiB)
+2,600,27.758789,12,TabICLv2,Device memory (GiB)
+3,800,27.758789,12,TabICLv2,Device memory (GiB)
+4,1000,27.759766,12,TabICLv2,Device memory (GiB)
+5,1200,27.80957,12,TabICLv2,Device memory (GiB)
+6,1400,27.730469,11,TabICLv2,Device memory (GiB)
+7,1600,27.798828,11,TabICLv2,Device memory (GiB)
+8,1800,27.798828,11,TabICLv2,Device memory (GiB)
+9,2000,27.798828,11,TabICLv2,Device memory (GiB)
+10,2200,27.798828,11,TabICLv2,Device memory (GiB)
+11,2400,27.730469,11,TabICLv2,Device memory (GiB)
+12,2600,27.546875,11,TabICLv2,Device memory (GiB)
+13,2800,27.648438,11,TabICLv2,Device memory (GiB)
+14,3000,27.648438,11,TabICLv2,Device memory (GiB)
+15,3200,27.648438,11,TabICLv2,Device memory (GiB)
+16,3400,27.648438,11,TabICLv2,Device memory (GiB)
+17,3600,27.648438,11,TabICLv2,Device memory (GiB)
+18,3800,27.648438,11,TabICLv2,Device memory (GiB)
+19,4000,27.625,11,TabICLv2,Device memory (GiB)
+20,4200,27.625,11,TabICLv2,Device memory (GiB)
+21,4400,27.623047,11,TabICLv2,Device memory (GiB)
+22,4600,27.623047,11,TabICLv2,Device memory (GiB)
+23,4800,27.623047,11,TabICLv2,Device memory (GiB)
+24,5000,27.623047,11,TabICLv2,Device memory (GiB)
+25,5200,27.726562,11,TabICLv2,Device memory (GiB)
+26,5400,27.726562,11,TabICLv2,Device memory (GiB)
+27,5600,27.726562,11,TabICLv2,Device memory (GiB)
+28,5800,27.726562,11,TabICLv2,Device memory (GiB)
+29,6000,27.726562,11,TabICLv2,Device memory (GiB)
+30,6200,27.726562,11,TabICLv2,Device memory (GiB)
+31,6400,27.6875,11,TabICLv2,Device memory (GiB)
+32,6600,27.726562,11,TabICLv2,Device memory (GiB)
+33,6800,27.726562,11,TabICLv2,Device memory (GiB)
+34,7000,27.726562,11,TabICLv2,Device memory (GiB)
+35,7200,27.726562,11,TabICLv2,Device memory (GiB)
+36,7400,27.75,11,TabICLv2,Device memory (GiB)
+37,7600,27.740234,11,TabICLv2,Device memory (GiB)
+38,7800,27.726562,11,TabICLv2,Device memory (GiB)
+39,8000,27.740234,11,TabICLv2,Device memory (GiB)
+40,8200,27.740234,11,TabICLv2,Device memory (GiB)
+41,8400,27.740234,11,TabICLv2,Device memory (GiB)
+42,8600,27.740234,11,TabICLv2,Device memory (GiB)
+43,8800,27.740234,11,TabICLv2,Device memory (GiB)
+44,9000,27.740234,11,TabICLv2,Device memory (GiB)
+45,9200,27.90625,11,TabICLv2,Device memory (GiB)
+46,9400,27.90625,11,TabICLv2,Device memory (GiB)
+47,9600,27.955078,11,TabICLv2,Device memory (GiB)
+48,9800,27.955078,11,TabICLv2,Device memory (GiB)
+49,10000,27.955078,11,TabICLv2,Device memory (GiB)
+50,200,169.50293,8,TabPFN v2,Device memory (GiB)
+51,400,169.50781,8,TabPFN v2,Device memory (GiB)
+52,600,169.50781,8,TabPFN v2,Device memory (GiB)
+53,800,169.71094,8,TabPFN v2,Device memory (GiB)
+54,1000,169.71191,8,TabPFN v2,Device memory (GiB)
+55,1200,169.53027,8,TabPFN v2,Device memory (GiB)
+56,1400,169.50391,8,TabPFN v2,Device memory (GiB)
+57,1600,169.50391,8,TabPFN v2,Device memory (GiB)
+58,1800,169.50391,7,TabPFN v2,Device memory (GiB)
+59,2000,169.51758,7,TabPFN v2,Device memory (GiB)
+60,2200,169.54297,7,TabPFN v2,Device memory (GiB)
+61,2400,169.54297,7,TabPFN v2,Device memory (GiB)
+62,2600,169.54297,7,TabPFN v2,Device memory (GiB)
+63,2800,169.5791,6,TabPFN v2,Device memory (GiB)
+64,3000,169.5791,6,TabPFN v2,Device memory (GiB)
+65,3200,169.5791,6,TabPFN v2,Device memory (GiB)
+66,3400,169.53027,6,TabPFN v2,Device memory (GiB)
+67,3600,169.53027,6,TabPFN v2,Device memory (GiB)
+68,3800,169.53027,6,TabPFN v2,Device memory (GiB)
+69,4000,169.74121,6,TabPFN v2,Device memory (GiB)
+70,4200,169.74219,6,TabPFN v2,Device memory (GiB)
+71,4400,169.74219,6,TabPFN v2,Device memory (GiB)
+72,4600,169.56934,6,TabPFN v2,Device memory (GiB)
+73,4800,169.56934,6,TabPFN v2,Device memory (GiB)
+74,5000,169.56934,6,TabPFN v2,Device memory (GiB)
+75,5200,169.56543,6,TabPFN v2,Device memory (GiB)
+76,5400,169.56641,6,TabPFN v2,Device memory (GiB)
+77,5600,169.56641,6,TabPFN v2,Device memory (GiB)
+78,5800,169.55762,6,TabPFN v2,Device memory (GiB)
+79,6000,169.52051,6,TabPFN v2,Device memory (GiB)
+80,6200,169.52051,6,TabPFN v2,Device memory (GiB)
+81,6400,169.51074,6,TabPFN v2,Device memory (GiB)
+82,6600,169.51074,6,TabPFN v2,Device memory (GiB)
+83,6800,169.51074,6,TabPFN v2,Device memory (GiB)
+84,7000,169.52051,6,TabPFN v2,Device memory (GiB)
+85,7200,169.52051,6,TabPFN v2,Device memory (GiB)
+86,7400,169.52051,6,TabPFN v2,Device memory (GiB)
+87,7600,169.51074,6,TabPFN v2,Device memory (GiB)
+88,7800,169.51074,6,TabPFN v2,Device memory (GiB)
+89,8000,169.51074,6,TabPFN v2,Device memory (GiB)
+90,8200,169.51074,6,TabPFN v2,Device memory (GiB)
+91,8400,169.74121,6,TabPFN v2,Device memory (GiB)
+92,8600,169.74219,6,TabPFN v2,Device memory (GiB)
+93,8800,169.74316,6,TabPFN v2,Device memory (GiB)
+94,9000,169.51074,6,TabPFN v2,Device memory (GiB)
+95,9200,169.51074,6,TabPFN v2,Device memory (GiB)
+96,9400,169.51074,6,TabPFN v2,Device memory (GiB)
+97,9600,169.69824,6,TabPFN v2,Device memory (GiB)
+98,9800,169.70215,6,TabPFN v2,Device memory (GiB)
+99,10000,169.70312,6,TabPFN v2,Device memory (GiB)
+100,200,121.23047,10,TabPFN v2.6,Device memory (GiB)
+101,400,121.23438,10,TabPFN v2.6,Device memory (GiB)
+102,600,121.23438,10,TabPFN v2.6,Device memory (GiB)
+103,800,121.23438,10,TabPFN v2.6,Device memory (GiB)
+104,1000,121.23438,10,TabPFN v2.6,Device memory (GiB)
+105,1200,121.23438,10,TabPFN v2.6,Device memory (GiB)
+106,1400,121.23438,10,TabPFN v2.6,Device memory (GiB)
+107,1600,121.23535,10,TabPFN v2.6,Device memory (GiB)
+108,1800,121.23828,10,TabPFN v2.6,Device memory (GiB)
+109,2000,121.23828,10,TabPFN v2.6,Device memory (GiB)
+110,2200,121.23828,10,TabPFN v2.6,Device memory (GiB)
+111,2400,121.23828,10,TabPFN v2.6,Device memory (GiB)
+112,2600,121.23633,10,TabPFN v2.6,Device memory (GiB)
+113,2800,121.23535,10,TabPFN v2.6,Device memory (GiB)
+114,3000,120.65039,9,TabPFN v2.6,Device memory (GiB)
+115,3200,120.65039,9,TabPFN v2.6,Device memory (GiB)
+116,3400,120.65039,9,TabPFN v2.6,Device memory (GiB)
+117,3600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+118,3800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+119,4000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+120,4200,120.65625,9,TabPFN v2.6,Device memory (GiB)
+121,4400,120.65625,9,TabPFN v2.6,Device memory (GiB)
+122,4600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+123,4800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+124,5000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+125,5200,120.65625,9,TabPFN v2.6,Device memory (GiB)
+126,5400,120.65625,9,TabPFN v2.6,Device memory (GiB)
+127,5600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+128,5800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+129,6000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+130,6200,120.65625,9,TabPFN v2.6,Device memory (GiB)
+131,6400,120.65625,9,TabPFN v2.6,Device memory (GiB)
+132,6600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+133,6800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+134,7000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+135,7200,120.65625,9,TabPFN v2.6,Device memory (GiB)
+136,7400,120.65625,9,TabPFN v2.6,Device memory (GiB)
+137,7600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+138,7800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+139,8000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+140,8200,120.65625,9,TabPFN v2.6,Device memory (GiB)
+141,8400,120.65625,9,TabPFN v2.6,Device memory (GiB)
+142,8600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+143,8800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+144,9000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+145,9200,120.65625,9,TabPFN v2.6,Device memory (GiB)
+146,9400,120.65625,9,TabPFN v2.6,Device memory (GiB)
+147,9600,120.65625,9,TabPFN v2.6,Device memory (GiB)
+148,9800,120.65625,9,TabPFN v2.6,Device memory (GiB)
+149,10000,120.65625,9,TabPFN v2.6,Device memory (GiB)
+150,200,113.12305,10,TabPFN v3,Device memory (GiB)
+151,400,113.12305,10,TabPFN v3,Device memory (GiB)
+152,600,113.06641,10,TabPFN v3,Device memory (GiB)
+153,800,113.06641,10,TabPFN v3,Device memory (GiB)
+154,1000,113.06641,10,TabPFN v3,Device memory (GiB)
+155,1200,113.11719,10,TabPFN v3,Device memory (GiB)
+156,1400,113.11133,10,TabPFN v3,Device memory (GiB)
+157,1600,113.0459,10,TabPFN v3,Device memory (GiB)
+158,1800,112.98926,10,TabPFN v3,Device memory (GiB)
+159,2000,112.98926,10,TabPFN v3,Device memory (GiB)
+160,2200,112.98926,10,TabPFN v3,Device memory (GiB)
+161,2400,112.98926,10,TabPFN v3,Device memory (GiB)
+162,2600,113.01025,10,TabPFN v3,Device memory (GiB)
+163,2800,113.09961,10,TabPFN v3,Device memory (GiB)
+164,3000,113.1543,9,TabPFN v3,Device memory (GiB)
+165,3200,113.04492,9,TabPFN v3,Device memory (GiB)
+166,3400,113.04492,9,TabPFN v3,Device memory (GiB)
+167,3600,113.0332,9,TabPFN v3,Device memory (GiB)
+168,3800,113.0332,9,TabPFN v3,Device memory (GiB)
+169,4000,113.0332,9,TabPFN v3,Device memory (GiB)
+170,4200,113.0332,9,TabPFN v3,Device memory (GiB)
+171,4400,113.0332,9,TabPFN v3,Device memory (GiB)
+172,4600,113.0332,9,TabPFN v3,Device memory (GiB)
+173,4800,113.0332,9,TabPFN v3,Device memory (GiB)
+174,5000,113.0332,9,TabPFN v3,Device memory (GiB)
+175,5200,113.15137,8,TabPFN v3,Device memory (GiB)
+176,5400,113.15137,8,TabPFN v3,Device memory (GiB)
+177,5600,113.15137,8,TabPFN v3,Device memory (GiB)
+178,5800,113.15137,8,TabPFN v3,Device memory (GiB)
+179,6000,113.09473,8,TabPFN v3,Device memory (GiB)
+180,6200,113.09473,8,TabPFN v3,Device memory (GiB)
+181,6400,113.09473,8,TabPFN v3,Device memory (GiB)
+182,6600,113.04102,8,TabPFN v3,Device memory (GiB)
+183,6800,113.04102,8,TabPFN v3,Device memory (GiB)
+184,7000,113.04102,8,TabPFN v3,Device memory (GiB)
+185,7200,113.04102,8,TabPFN v3,Device memory (GiB)
+186,7400,113.04102,8,TabPFN v3,Device memory (GiB)
+187,7600,113.04102,8,TabPFN v3,Device memory (GiB)
+188,7800,113.04102,8,TabPFN v3,Device memory (GiB)
+189,8000,113.04102,8,TabPFN v3,Device memory (GiB)
+190,8200,113.04102,8,TabPFN v3,Device memory (GiB)
+191,8400,113.04102,8,TabPFN v3,Device memory (GiB)
+192,8600,113.04102,8,TabPFN v3,Device memory (GiB)
+193,8800,113.04102,8,TabPFN v3,Device memory (GiB)
+194,9000,113.04102,8,TabPFN v3,Device memory (GiB)
+195,9200,113.04102,8,TabPFN v3,Device memory (GiB)
+196,9400,113.04102,8,TabPFN v3,Device memory (GiB)
+197,9600,113.03516,8,TabPFN v3,Device memory (GiB)
+198,9800,113.03516,8,TabPFN v3,Device memory (GiB)
+199,10000,113.03516,8,TabPFN v3,Device memory (GiB)
 
 Figure: pd_movement_pd_tabicl-v2
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
@@ -91086,519 +91002,519 @@ Figure: lgd_resource_dashboard_lgd_gpu_utilization_percent
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,97.25,10,TabICLv2
-1,400,95.75,10,TabICLv2
-2,600,92.5,10,TabICLv2
-3,800,93,10,TabICLv2
-4,1000,93.5,10,TabICLv2
-5,1200,97.5,10,TabICLv2
-6,1400,93.75,10,TabICLv2
-7,1600,95,10,TabICLv2
-8,1800,89.5,10,TabICLv2
-9,2000,94,10,TabICLv2
-10,2200,97.75,10,TabICLv2
-11,2400,95.75,10,TabICLv2
-12,2600,96,9,TabICLv2
-13,2800,95.5,10,TabICLv2
-14,3000,89.75,10,TabICLv2
-15,3200,89,10,TabICLv2
-16,3400,87,10,TabICLv2
-17,3600,93.75,10,TabICLv2
-18,3800,90.5,10,TabICLv2
-19,4000,93.5,10,TabICLv2
-20,4200,93,10,TabICLv2
-21,4400,97,10,TabICLv2
-22,4600,93,10,TabICLv2
-23,4800,95.5,9,TabICLv2
-24,5000,80,9,TabICLv2
-25,5200,93,9,TabICLv2
-26,5400,94,9,TabICLv2
-27,5600,93,9,TabICLv2
-28,5800,95,9,TabICLv2
-29,6000,94,9,TabICLv2
-30,6200,91.5,9,TabICLv2
-31,6400,92,9,TabICLv2
-32,6600,96,9,TabICLv2
-33,6800,97.5,9,TabICLv2
-34,7000,92,9,TabICLv2
-35,7200,93,9,TabICLv2
-36,7400,98,9,TabICLv2
-37,7600,84.5,9,TabICLv2
-38,7800,95,9,TabICLv2
-39,8000,92,9,TabICLv2
-40,8200,93,9,TabICLv2
-41,8400,87.5,9,TabICLv2
-42,8600,95,9,TabICLv2
-43,8800,93,9,TabICLv2
-44,9000,93,9,TabICLv2
-45,9200,94,9,TabICLv2
-46,9400,82.5,9,TabICLv2
-47,9600,98,9,TabICLv2
-48,9800,96.5,9,TabICLv2
-49,10000,88,9,TabICLv2
-50,200,98,7,TabPFN v2
-51,400,97,7,TabPFN v2
-52,600,97,7,TabPFN v2
-53,800,98.5,7,TabPFN v2
-54,1000,98,7,TabPFN v2
-55,1200,97,7,TabPFN v2
-56,1400,97.5,7,TabPFN v2
-57,1600,97.5,7,TabPFN v2
-58,1800,98,7,TabPFN v2
-59,2000,94,7,TabPFN v2
-60,2200,96,7,TabPFN v2
-61,2400,99.25,6,TabPFN v2
-62,2600,96.25,6,TabPFN v2
-63,2800,97.25,6,TabPFN v2
-64,3000,97.75,6,TabPFN v2
-65,3200,97,6,TabPFN v2
-66,3400,98.25,6,TabPFN v2
-67,3600,97.5,6,TabPFN v2
-68,3800,97.75,6,TabPFN v2
-69,4000,97.5,6,TabPFN v2
-70,4200,96.5,6,TabPFN v2
-71,4400,98.75,6,TabPFN v2
-72,4600,98,6,TabPFN v2
-73,4800,98.5,6,TabPFN v2
-74,5000,97.75,6,TabPFN v2
-75,5200,97,6,TabPFN v2
-76,5400,97,6,TabPFN v2
-77,5600,98.5,6,TabPFN v2
-78,5800,100,6,TabPFN v2
-79,6000,97,6,TabPFN v2
-80,6200,98.5,6,TabPFN v2
-81,6400,97,6,TabPFN v2
-82,6600,98.25,6,TabPFN v2
-83,6800,98.75,6,TabPFN v2
-84,7000,97,6,TabPFN v2
-85,7200,98.5,6,TabPFN v2
-86,7400,98.5,6,TabPFN v2
-87,7600,97,6,TabPFN v2
-88,7800,98.5,6,TabPFN v2
-89,8000,97,6,TabPFN v2
-90,8200,97.25,6,TabPFN v2
-91,8400,97.25,6,TabPFN v2
-92,8600,99.5,6,TabPFN v2
-93,8800,97.25,6,TabPFN v2
-94,9000,97,6,TabPFN v2
-95,9200,99,6,TabPFN v2
-96,9400,97.5,6,TabPFN v2
-97,9600,97,6,TabPFN v2
-98,9800,97,6,TabPFN v2
-99,10000,97.25,6,TabPFN v2
-100,200,98.5,9,TabPFN v2.6
-101,400,93.5,9,TabPFN v2.6
-102,600,96,9,TabPFN v2.6
-103,800,91.5,9,TabPFN v2.6
-104,1000,98.5,9,TabPFN v2.6
-105,1200,100,9,TabPFN v2.6
-106,1400,97,9,TabPFN v2.6
-107,1600,90,9,TabPFN v2.6
-108,1800,93,9,TabPFN v2.6
-109,2000,97.5,9,TabPFN v2.6
-110,2200,99,9,TabPFN v2.6
-111,2400,96,9,TabPFN v2.6
-112,2600,96,9,TabPFN v2.6
-113,2800,96.5,9,TabPFN v2.6
-114,3000,95,9,TabPFN v2.6
-115,3200,99,9,TabPFN v2.6
-116,3400,94,9,TabPFN v2.6
-117,3600,100,9,TabPFN v2.6
-118,3800,98,9,TabPFN v2.6
-119,4000,96,9,TabPFN v2.6
-120,4200,98,9,TabPFN v2.6
-121,4400,94,9,TabPFN v2.6
-122,4600,98.5,9,TabPFN v2.6
-123,4800,97,9,TabPFN v2.6
-124,5000,98,9,TabPFN v2.6
-125,5200,100,9,TabPFN v2.6
-126,5400,98,9,TabPFN v2.6
-127,5600,99.5,9,TabPFN v2.6
-128,5800,94,9,TabPFN v2.6
-129,6000,97,9,TabPFN v2.6
-130,6200,96.5,9,TabPFN v2.6
-131,6400,97,9,TabPFN v2.6
-132,6600,96,9,TabPFN v2.6
-133,6800,94,9,TabPFN v2.6
-134,7000,95.5,9,TabPFN v2.6
-135,7200,97,9,TabPFN v2.6
-136,7400,98,9,TabPFN v2.6
-137,7600,95,9,TabPFN v2.6
-138,7800,97,9,TabPFN v2.6
-139,8000,95,9,TabPFN v2.6
-140,8200,97,9,TabPFN v2.6
-141,8400,98,9,TabPFN v2.6
-142,8600,99,9,TabPFN v2.6
-143,8800,96,9,TabPFN v2.6
-144,9000,96.5,9,TabPFN v2.6
-145,9200,98,9,TabPFN v2.6
-146,9400,97,9,TabPFN v2.6
-147,9600,94,9,TabPFN v2.6
-148,9800,97,9,TabPFN v2.6
-149,10000,100,9,TabPFN v2.6
-150,200,83,7,TabPFN v3
-151,400,76.5,7,TabPFN v3
-152,600,89,7,TabPFN v3
-153,800,90.5,7,TabPFN v3
-154,1000,95,7,TabPFN v3
-155,1200,96,7,TabPFN v3
-156,1400,88.5,7,TabPFN v3
-157,1600,82,7,TabPFN v3
-158,1800,86,7,TabPFN v3
-159,2000,85,7,TabPFN v3
-160,2200,84,7,TabPFN v3
-161,2400,87,7,TabPFN v3
-162,2600,85,6,TabPFN v3
-163,2800,87,7,TabPFN v3
-164,3000,78,7,TabPFN v3
-165,3200,85,7,TabPFN v3
-166,3400,59,7,TabPFN v3
-167,3600,87.5,7,TabPFN v3
-168,3800,96,7,TabPFN v3
-169,4000,89.5,7,TabPFN v3
-170,4200,87,7,TabPFN v3
-171,4400,75,7,TabPFN v3
-172,4600,95.5,7,TabPFN v3
-173,4800,87.25,6,TabPFN v3
-174,5000,73,6,TabPFN v3
-175,5200,89,6,TabPFN v3
-176,5400,77.75,6,TabPFN v3
-177,5600,92.25,6,TabPFN v3
-178,5800,88.25,6,TabPFN v3
-179,6000,91.5,6,TabPFN v3
-180,6200,85,6,TabPFN v3
-181,6400,80.25,6,TabPFN v3
-182,6600,92,6,TabPFN v3
-183,6800,87,6,TabPFN v3
-184,7000,88,6,TabPFN v3
-185,7200,86,6,TabPFN v3
-186,7400,89.5,6,TabPFN v3
-187,7600,90.75,6,TabPFN v3
-188,7800,73,6,TabPFN v3
-189,8000,91,6,TabPFN v3
-190,8200,89,6,TabPFN v3
-191,8400,71.5,6,TabPFN v3
-192,8600,86,6,TabPFN v3
-193,8800,75.5,6,TabPFN v3
-194,9000,82.25,6,TabPFN v3
-195,9200,83.5,6,TabPFN v3
-196,9400,85,6,TabPFN v3
-197,9600,79.75,6,TabPFN v3
-198,9800,63,6,TabPFN v3
-199,10000,90.5,6,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,97.25,10,TabICLv2,GPU utilization (%)
+1,400,95.75,10,TabICLv2,GPU utilization (%)
+2,600,92.5,10,TabICLv2,GPU utilization (%)
+3,800,93,10,TabICLv2,GPU utilization (%)
+4,1000,93.5,10,TabICLv2,GPU utilization (%)
+5,1200,97.5,10,TabICLv2,GPU utilization (%)
+6,1400,93.75,10,TabICLv2,GPU utilization (%)
+7,1600,95,10,TabICLv2,GPU utilization (%)
+8,1800,89.5,10,TabICLv2,GPU utilization (%)
+9,2000,94,10,TabICLv2,GPU utilization (%)
+10,2200,97.75,10,TabICLv2,GPU utilization (%)
+11,2400,95.75,10,TabICLv2,GPU utilization (%)
+12,2600,96,9,TabICLv2,GPU utilization (%)
+13,2800,95.5,10,TabICLv2,GPU utilization (%)
+14,3000,89.75,10,TabICLv2,GPU utilization (%)
+15,3200,89,10,TabICLv2,GPU utilization (%)
+16,3400,87,10,TabICLv2,GPU utilization (%)
+17,3600,93.75,10,TabICLv2,GPU utilization (%)
+18,3800,90.5,10,TabICLv2,GPU utilization (%)
+19,4000,93.5,10,TabICLv2,GPU utilization (%)
+20,4200,93,10,TabICLv2,GPU utilization (%)
+21,4400,97,10,TabICLv2,GPU utilization (%)
+22,4600,93,10,TabICLv2,GPU utilization (%)
+23,4800,95.5,9,TabICLv2,GPU utilization (%)
+24,5000,80,9,TabICLv2,GPU utilization (%)
+25,5200,93,9,TabICLv2,GPU utilization (%)
+26,5400,94,9,TabICLv2,GPU utilization (%)
+27,5600,93,9,TabICLv2,GPU utilization (%)
+28,5800,95,9,TabICLv2,GPU utilization (%)
+29,6000,94,9,TabICLv2,GPU utilization (%)
+30,6200,91.5,9,TabICLv2,GPU utilization (%)
+31,6400,92,9,TabICLv2,GPU utilization (%)
+32,6600,96,9,TabICLv2,GPU utilization (%)
+33,6800,97.5,9,TabICLv2,GPU utilization (%)
+34,7000,92,9,TabICLv2,GPU utilization (%)
+35,7200,93,9,TabICLv2,GPU utilization (%)
+36,7400,98,9,TabICLv2,GPU utilization (%)
+37,7600,84.5,9,TabICLv2,GPU utilization (%)
+38,7800,95,9,TabICLv2,GPU utilization (%)
+39,8000,92,9,TabICLv2,GPU utilization (%)
+40,8200,93,9,TabICLv2,GPU utilization (%)
+41,8400,87.5,9,TabICLv2,GPU utilization (%)
+42,8600,95,9,TabICLv2,GPU utilization (%)
+43,8800,93,9,TabICLv2,GPU utilization (%)
+44,9000,93,9,TabICLv2,GPU utilization (%)
+45,9200,94,9,TabICLv2,GPU utilization (%)
+46,9400,82.5,9,TabICLv2,GPU utilization (%)
+47,9600,98,9,TabICLv2,GPU utilization (%)
+48,9800,96.5,9,TabICLv2,GPU utilization (%)
+49,10000,88,9,TabICLv2,GPU utilization (%)
+50,200,98,7,TabPFN v2,GPU utilization (%)
+51,400,97,7,TabPFN v2,GPU utilization (%)
+52,600,97,7,TabPFN v2,GPU utilization (%)
+53,800,98.5,7,TabPFN v2,GPU utilization (%)
+54,1000,98,7,TabPFN v2,GPU utilization (%)
+55,1200,97,7,TabPFN v2,GPU utilization (%)
+56,1400,97.5,7,TabPFN v2,GPU utilization (%)
+57,1600,97.5,7,TabPFN v2,GPU utilization (%)
+58,1800,98,7,TabPFN v2,GPU utilization (%)
+59,2000,94,7,TabPFN v2,GPU utilization (%)
+60,2200,96,7,TabPFN v2,GPU utilization (%)
+61,2400,99.25,6,TabPFN v2,GPU utilization (%)
+62,2600,96.25,6,TabPFN v2,GPU utilization (%)
+63,2800,97.25,6,TabPFN v2,GPU utilization (%)
+64,3000,97.75,6,TabPFN v2,GPU utilization (%)
+65,3200,97,6,TabPFN v2,GPU utilization (%)
+66,3400,98.25,6,TabPFN v2,GPU utilization (%)
+67,3600,97.5,6,TabPFN v2,GPU utilization (%)
+68,3800,97.75,6,TabPFN v2,GPU utilization (%)
+69,4000,97.5,6,TabPFN v2,GPU utilization (%)
+70,4200,96.5,6,TabPFN v2,GPU utilization (%)
+71,4400,98.75,6,TabPFN v2,GPU utilization (%)
+72,4600,98,6,TabPFN v2,GPU utilization (%)
+73,4800,98.5,6,TabPFN v2,GPU utilization (%)
+74,5000,97.75,6,TabPFN v2,GPU utilization (%)
+75,5200,97,6,TabPFN v2,GPU utilization (%)
+76,5400,97,6,TabPFN v2,GPU utilization (%)
+77,5600,98.5,6,TabPFN v2,GPU utilization (%)
+78,5800,100,6,TabPFN v2,GPU utilization (%)
+79,6000,97,6,TabPFN v2,GPU utilization (%)
+80,6200,98.5,6,TabPFN v2,GPU utilization (%)
+81,6400,97,6,TabPFN v2,GPU utilization (%)
+82,6600,98.25,6,TabPFN v2,GPU utilization (%)
+83,6800,98.75,6,TabPFN v2,GPU utilization (%)
+84,7000,97,6,TabPFN v2,GPU utilization (%)
+85,7200,98.5,6,TabPFN v2,GPU utilization (%)
+86,7400,98.5,6,TabPFN v2,GPU utilization (%)
+87,7600,97,6,TabPFN v2,GPU utilization (%)
+88,7800,98.5,6,TabPFN v2,GPU utilization (%)
+89,8000,97,6,TabPFN v2,GPU utilization (%)
+90,8200,97.25,6,TabPFN v2,GPU utilization (%)
+91,8400,97.25,6,TabPFN v2,GPU utilization (%)
+92,8600,99.5,6,TabPFN v2,GPU utilization (%)
+93,8800,97.25,6,TabPFN v2,GPU utilization (%)
+94,9000,97,6,TabPFN v2,GPU utilization (%)
+95,9200,99,6,TabPFN v2,GPU utilization (%)
+96,9400,97.5,6,TabPFN v2,GPU utilization (%)
+97,9600,97,6,TabPFN v2,GPU utilization (%)
+98,9800,97,6,TabPFN v2,GPU utilization (%)
+99,10000,97.25,6,TabPFN v2,GPU utilization (%)
+100,200,98.5,9,TabPFN v2.6,GPU utilization (%)
+101,400,93.5,9,TabPFN v2.6,GPU utilization (%)
+102,600,96,9,TabPFN v2.6,GPU utilization (%)
+103,800,91.5,9,TabPFN v2.6,GPU utilization (%)
+104,1000,98.5,9,TabPFN v2.6,GPU utilization (%)
+105,1200,100,9,TabPFN v2.6,GPU utilization (%)
+106,1400,97,9,TabPFN v2.6,GPU utilization (%)
+107,1600,90,9,TabPFN v2.6,GPU utilization (%)
+108,1800,93,9,TabPFN v2.6,GPU utilization (%)
+109,2000,97.5,9,TabPFN v2.6,GPU utilization (%)
+110,2200,99,9,TabPFN v2.6,GPU utilization (%)
+111,2400,96,9,TabPFN v2.6,GPU utilization (%)
+112,2600,96,9,TabPFN v2.6,GPU utilization (%)
+113,2800,96.5,9,TabPFN v2.6,GPU utilization (%)
+114,3000,95,9,TabPFN v2.6,GPU utilization (%)
+115,3200,99,9,TabPFN v2.6,GPU utilization (%)
+116,3400,94,9,TabPFN v2.6,GPU utilization (%)
+117,3600,100,9,TabPFN v2.6,GPU utilization (%)
+118,3800,98,9,TabPFN v2.6,GPU utilization (%)
+119,4000,96,9,TabPFN v2.6,GPU utilization (%)
+120,4200,98,9,TabPFN v2.6,GPU utilization (%)
+121,4400,94,9,TabPFN v2.6,GPU utilization (%)
+122,4600,98.5,9,TabPFN v2.6,GPU utilization (%)
+123,4800,97,9,TabPFN v2.6,GPU utilization (%)
+124,5000,98,9,TabPFN v2.6,GPU utilization (%)
+125,5200,100,9,TabPFN v2.6,GPU utilization (%)
+126,5400,98,9,TabPFN v2.6,GPU utilization (%)
+127,5600,99.5,9,TabPFN v2.6,GPU utilization (%)
+128,5800,94,9,TabPFN v2.6,GPU utilization (%)
+129,6000,97,9,TabPFN v2.6,GPU utilization (%)
+130,6200,96.5,9,TabPFN v2.6,GPU utilization (%)
+131,6400,97,9,TabPFN v2.6,GPU utilization (%)
+132,6600,96,9,TabPFN v2.6,GPU utilization (%)
+133,6800,94,9,TabPFN v2.6,GPU utilization (%)
+134,7000,95.5,9,TabPFN v2.6,GPU utilization (%)
+135,7200,97,9,TabPFN v2.6,GPU utilization (%)
+136,7400,98,9,TabPFN v2.6,GPU utilization (%)
+137,7600,95,9,TabPFN v2.6,GPU utilization (%)
+138,7800,97,9,TabPFN v2.6,GPU utilization (%)
+139,8000,95,9,TabPFN v2.6,GPU utilization (%)
+140,8200,97,9,TabPFN v2.6,GPU utilization (%)
+141,8400,98,9,TabPFN v2.6,GPU utilization (%)
+142,8600,99,9,TabPFN v2.6,GPU utilization (%)
+143,8800,96,9,TabPFN v2.6,GPU utilization (%)
+144,9000,96.5,9,TabPFN v2.6,GPU utilization (%)
+145,9200,98,9,TabPFN v2.6,GPU utilization (%)
+146,9400,97,9,TabPFN v2.6,GPU utilization (%)
+147,9600,94,9,TabPFN v2.6,GPU utilization (%)
+148,9800,97,9,TabPFN v2.6,GPU utilization (%)
+149,10000,100,9,TabPFN v2.6,GPU utilization (%)
+150,200,83,7,TabPFN v3,GPU utilization (%)
+151,400,76.5,7,TabPFN v3,GPU utilization (%)
+152,600,89,7,TabPFN v3,GPU utilization (%)
+153,800,90.5,7,TabPFN v3,GPU utilization (%)
+154,1000,95,7,TabPFN v3,GPU utilization (%)
+155,1200,96,7,TabPFN v3,GPU utilization (%)
+156,1400,88.5,7,TabPFN v3,GPU utilization (%)
+157,1600,82,7,TabPFN v3,GPU utilization (%)
+158,1800,86,7,TabPFN v3,GPU utilization (%)
+159,2000,85,7,TabPFN v3,GPU utilization (%)
+160,2200,84,7,TabPFN v3,GPU utilization (%)
+161,2400,87,7,TabPFN v3,GPU utilization (%)
+162,2600,85,6,TabPFN v3,GPU utilization (%)
+163,2800,87,7,TabPFN v3,GPU utilization (%)
+164,3000,78,7,TabPFN v3,GPU utilization (%)
+165,3200,85,7,TabPFN v3,GPU utilization (%)
+166,3400,59,7,TabPFN v3,GPU utilization (%)
+167,3600,87.5,7,TabPFN v3,GPU utilization (%)
+168,3800,96,7,TabPFN v3,GPU utilization (%)
+169,4000,89.5,7,TabPFN v3,GPU utilization (%)
+170,4200,87,7,TabPFN v3,GPU utilization (%)
+171,4400,75,7,TabPFN v3,GPU utilization (%)
+172,4600,95.5,7,TabPFN v3,GPU utilization (%)
+173,4800,87.25,6,TabPFN v3,GPU utilization (%)
+174,5000,73,6,TabPFN v3,GPU utilization (%)
+175,5200,89,6,TabPFN v3,GPU utilization (%)
+176,5400,77.75,6,TabPFN v3,GPU utilization (%)
+177,5600,92.25,6,TabPFN v3,GPU utilization (%)
+178,5800,88.25,6,TabPFN v3,GPU utilization (%)
+179,6000,91.5,6,TabPFN v3,GPU utilization (%)
+180,6200,85,6,TabPFN v3,GPU utilization (%)
+181,6400,80.25,6,TabPFN v3,GPU utilization (%)
+182,6600,92,6,TabPFN v3,GPU utilization (%)
+183,6800,87,6,TabPFN v3,GPU utilization (%)
+184,7000,88,6,TabPFN v3,GPU utilization (%)
+185,7200,86,6,TabPFN v3,GPU utilization (%)
+186,7400,89.5,6,TabPFN v3,GPU utilization (%)
+187,7600,90.75,6,TabPFN v3,GPU utilization (%)
+188,7800,73,6,TabPFN v3,GPU utilization (%)
+189,8000,91,6,TabPFN v3,GPU utilization (%)
+190,8200,89,6,TabPFN v3,GPU utilization (%)
+191,8400,71.5,6,TabPFN v3,GPU utilization (%)
+192,8600,86,6,TabPFN v3,GPU utilization (%)
+193,8800,75.5,6,TabPFN v3,GPU utilization (%)
+194,9000,82.25,6,TabPFN v3,GPU utilization (%)
+195,9200,83.5,6,TabPFN v3,GPU utilization (%)
+196,9400,85,6,TabPFN v3,GPU utilization (%)
+197,9600,79.75,6,TabPFN v3,GPU utilization (%)
+198,9800,63,6,TabPFN v3,GPU utilization (%)
+199,10000,90.5,6,TabPFN v3,GPU utilization (%)
 
 Figure: lgd_resource_dashboard_lgd_power_watts
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,558.265,1,TabICLv2
-1,400,580.67,1,TabICLv2
-2,600,575.86,1,TabICLv2
-3,800,533.91,1,TabICLv2
-4,1000,539.07,1,TabICLv2
-5,1200,523.51,1,TabICLv2
-6,1400,560.435,1,TabICLv2
-7,1600,566.2,1,TabICLv2
-8,1800,557.225,1,TabICLv2
-9,2000,570.64,1,TabICLv2
-10,2200,556.4,1,TabICLv2
-11,2400,527.88,1,TabICLv2
-12,2600,549.985,1,TabICLv2
-13,2800,585.81,1,TabICLv2
-14,3000,542.38,1,TabICLv2
-15,3200,567.73,1,TabICLv2
-16,3400,531.86,1,TabICLv2
-17,3600,557.29,1,TabICLv2
-18,3800,490.48,1,TabICLv2
-19,4000,557.87,1,TabICLv2
-20,4200,581.085,1,TabICLv2
-21,4400,607.95,1,TabICLv2
-22,4600,528.44,1,TabICLv2
-23,4800,unavailable,unavailable,TabICLv2
-24,5000,unavailable,unavailable,TabICLv2
-25,5200,unavailable,unavailable,TabICLv2
-26,5400,unavailable,unavailable,TabICLv2
-27,5600,unavailable,unavailable,TabICLv2
-28,5800,unavailable,unavailable,TabICLv2
-29,6000,unavailable,unavailable,TabICLv2
-30,6200,unavailable,unavailable,TabICLv2
-31,6400,unavailable,unavailable,TabICLv2
-32,6600,unavailable,unavailable,TabICLv2
-33,6800,unavailable,unavailable,TabICLv2
-34,7000,unavailable,unavailable,TabICLv2
-35,7200,unavailable,unavailable,TabICLv2
-36,7400,unavailable,unavailable,TabICLv2
-37,7600,unavailable,unavailable,TabICLv2
-38,7800,unavailable,unavailable,TabICLv2
-39,8000,unavailable,unavailable,TabICLv2
-40,8200,unavailable,unavailable,TabICLv2
-41,8400,unavailable,unavailable,TabICLv2
-42,8600,unavailable,unavailable,TabICLv2
-43,8800,unavailable,unavailable,TabICLv2
-44,9000,unavailable,unavailable,TabICLv2
-45,9200,unavailable,unavailable,TabICLv2
-46,9400,unavailable,unavailable,TabICLv2
-47,9600,unavailable,unavailable,TabICLv2
-48,9800,unavailable,unavailable,TabICLv2
-49,10000,unavailable,unavailable,TabICLv2
-50,200,537.41,1,TabPFN v3
-51,400,509.6,1,TabPFN v3
-52,600,535.29,1,TabPFN v3
-53,800,591.26,1,TabPFN v3
-54,1000,589.265,1,TabPFN v3
-55,1200,577.16,1,TabPFN v3
-56,1400,486.9,1,TabPFN v3
-57,1600,552.66,1,TabPFN v3
-58,1800,606.135,1,TabPFN v3
-59,2000,555.12,1,TabPFN v3
-60,2200,500.145,1,TabPFN v3
-61,2400,550.6,1,TabPFN v3
-62,2600,473.6,1,TabPFN v3
-63,2800,537.175,1,TabPFN v3
-64,3000,564.34,1,TabPFN v3
-65,3200,586.895,1,TabPFN v3
-66,3400,548.67,1,TabPFN v3
-67,3600,520.855,1,TabPFN v3
-68,3800,517.43,1,TabPFN v3
-69,4000,530.87,1,TabPFN v3
-70,4200,536.03,1,TabPFN v3
-71,4400,472.49,1,TabPFN v3
-72,4600,576.72,1,TabPFN v3
-73,4800,unavailable,unavailable,TabPFN v3
-74,5000,unavailable,unavailable,TabPFN v3
-75,5200,unavailable,unavailable,TabPFN v3
-76,5400,unavailable,unavailable,TabPFN v3
-77,5600,unavailable,unavailable,TabPFN v3
-78,5800,unavailable,unavailable,TabPFN v3
-79,6000,unavailable,unavailable,TabPFN v3
-80,6200,unavailable,unavailable,TabPFN v3
-81,6400,unavailable,unavailable,TabPFN v3
-82,6600,unavailable,unavailable,TabPFN v3
-83,6800,unavailable,unavailable,TabPFN v3
-84,7000,unavailable,unavailable,TabPFN v3
-85,7200,unavailable,unavailable,TabPFN v3
-86,7400,unavailable,unavailable,TabPFN v3
-87,7600,unavailable,unavailable,TabPFN v3
-88,7800,unavailable,unavailable,TabPFN v3
-89,8000,unavailable,unavailable,TabPFN v3
-90,8200,unavailable,unavailable,TabPFN v3
-91,8400,unavailable,unavailable,TabPFN v3
-92,8600,unavailable,unavailable,TabPFN v3
-93,8800,unavailable,unavailable,TabPFN v3
-94,9000,unavailable,unavailable,TabPFN v3
-95,9200,unavailable,unavailable,TabPFN v3
-96,9400,unavailable,unavailable,TabPFN v3
-97,9600,unavailable,unavailable,TabPFN v3
-98,9800,unavailable,unavailable,TabPFN v3
-99,10000,unavailable,unavailable,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,558.265,1,TabICLv2,Device power (W)
+1,400,580.67,1,TabICLv2,Device power (W)
+2,600,575.86,1,TabICLv2,Device power (W)
+3,800,533.91,1,TabICLv2,Device power (W)
+4,1000,539.07,1,TabICLv2,Device power (W)
+5,1200,523.51,1,TabICLv2,Device power (W)
+6,1400,560.435,1,TabICLv2,Device power (W)
+7,1600,566.2,1,TabICLv2,Device power (W)
+8,1800,557.225,1,TabICLv2,Device power (W)
+9,2000,570.64,1,TabICLv2,Device power (W)
+10,2200,556.4,1,TabICLv2,Device power (W)
+11,2400,527.88,1,TabICLv2,Device power (W)
+12,2600,549.985,1,TabICLv2,Device power (W)
+13,2800,585.81,1,TabICLv2,Device power (W)
+14,3000,542.38,1,TabICLv2,Device power (W)
+15,3200,567.73,1,TabICLv2,Device power (W)
+16,3400,531.86,1,TabICLv2,Device power (W)
+17,3600,557.29,1,TabICLv2,Device power (W)
+18,3800,490.48,1,TabICLv2,Device power (W)
+19,4000,557.87,1,TabICLv2,Device power (W)
+20,4200,581.085,1,TabICLv2,Device power (W)
+21,4400,607.95,1,TabICLv2,Device power (W)
+22,4600,528.44,1,TabICLv2,Device power (W)
+23,4800,unavailable,unavailable,TabICLv2,Device power (W)
+24,5000,unavailable,unavailable,TabICLv2,Device power (W)
+25,5200,unavailable,unavailable,TabICLv2,Device power (W)
+26,5400,unavailable,unavailable,TabICLv2,Device power (W)
+27,5600,unavailable,unavailable,TabICLv2,Device power (W)
+28,5800,unavailable,unavailable,TabICLv2,Device power (W)
+29,6000,unavailable,unavailable,TabICLv2,Device power (W)
+30,6200,unavailable,unavailable,TabICLv2,Device power (W)
+31,6400,unavailable,unavailable,TabICLv2,Device power (W)
+32,6600,unavailable,unavailable,TabICLv2,Device power (W)
+33,6800,unavailable,unavailable,TabICLv2,Device power (W)
+34,7000,unavailable,unavailable,TabICLv2,Device power (W)
+35,7200,unavailable,unavailable,TabICLv2,Device power (W)
+36,7400,unavailable,unavailable,TabICLv2,Device power (W)
+37,7600,unavailable,unavailable,TabICLv2,Device power (W)
+38,7800,unavailable,unavailable,TabICLv2,Device power (W)
+39,8000,unavailable,unavailable,TabICLv2,Device power (W)
+40,8200,unavailable,unavailable,TabICLv2,Device power (W)
+41,8400,unavailable,unavailable,TabICLv2,Device power (W)
+42,8600,unavailable,unavailable,TabICLv2,Device power (W)
+43,8800,unavailable,unavailable,TabICLv2,Device power (W)
+44,9000,unavailable,unavailable,TabICLv2,Device power (W)
+45,9200,unavailable,unavailable,TabICLv2,Device power (W)
+46,9400,unavailable,unavailable,TabICLv2,Device power (W)
+47,9600,unavailable,unavailable,TabICLv2,Device power (W)
+48,9800,unavailable,unavailable,TabICLv2,Device power (W)
+49,10000,unavailable,unavailable,TabICLv2,Device power (W)
+50,200,537.41,1,TabPFN v3,Device power (W)
+51,400,509.6,1,TabPFN v3,Device power (W)
+52,600,535.29,1,TabPFN v3,Device power (W)
+53,800,591.26,1,TabPFN v3,Device power (W)
+54,1000,589.265,1,TabPFN v3,Device power (W)
+55,1200,577.16,1,TabPFN v3,Device power (W)
+56,1400,486.9,1,TabPFN v3,Device power (W)
+57,1600,552.66,1,TabPFN v3,Device power (W)
+58,1800,606.135,1,TabPFN v3,Device power (W)
+59,2000,555.12,1,TabPFN v3,Device power (W)
+60,2200,500.145,1,TabPFN v3,Device power (W)
+61,2400,550.6,1,TabPFN v3,Device power (W)
+62,2600,473.6,1,TabPFN v3,Device power (W)
+63,2800,537.175,1,TabPFN v3,Device power (W)
+64,3000,564.34,1,TabPFN v3,Device power (W)
+65,3200,586.895,1,TabPFN v3,Device power (W)
+66,3400,548.67,1,TabPFN v3,Device power (W)
+67,3600,520.855,1,TabPFN v3,Device power (W)
+68,3800,517.43,1,TabPFN v3,Device power (W)
+69,4000,530.87,1,TabPFN v3,Device power (W)
+70,4200,536.03,1,TabPFN v3,Device power (W)
+71,4400,472.49,1,TabPFN v3,Device power (W)
+72,4600,576.72,1,TabPFN v3,Device power (W)
+73,4800,unavailable,unavailable,TabPFN v3,Device power (W)
+74,5000,unavailable,unavailable,TabPFN v3,Device power (W)
+75,5200,unavailable,unavailable,TabPFN v3,Device power (W)
+76,5400,unavailable,unavailable,TabPFN v3,Device power (W)
+77,5600,unavailable,unavailable,TabPFN v3,Device power (W)
+78,5800,unavailable,unavailable,TabPFN v3,Device power (W)
+79,6000,unavailable,unavailable,TabPFN v3,Device power (W)
+80,6200,unavailable,unavailable,TabPFN v3,Device power (W)
+81,6400,unavailable,unavailable,TabPFN v3,Device power (W)
+82,6600,unavailable,unavailable,TabPFN v3,Device power (W)
+83,6800,unavailable,unavailable,TabPFN v3,Device power (W)
+84,7000,unavailable,unavailable,TabPFN v3,Device power (W)
+85,7200,unavailable,unavailable,TabPFN v3,Device power (W)
+86,7400,unavailable,unavailable,TabPFN v3,Device power (W)
+87,7600,unavailable,unavailable,TabPFN v3,Device power (W)
+88,7800,unavailable,unavailable,TabPFN v3,Device power (W)
+89,8000,unavailable,unavailable,TabPFN v3,Device power (W)
+90,8200,unavailable,unavailable,TabPFN v3,Device power (W)
+91,8400,unavailable,unavailable,TabPFN v3,Device power (W)
+92,8600,unavailable,unavailable,TabPFN v3,Device power (W)
+93,8800,unavailable,unavailable,TabPFN v3,Device power (W)
+94,9000,unavailable,unavailable,TabPFN v3,Device power (W)
+95,9200,unavailable,unavailable,TabPFN v3,Device power (W)
+96,9400,unavailable,unavailable,TabPFN v3,Device power (W)
+97,9600,unavailable,unavailable,TabPFN v3,Device power (W)
+98,9800,unavailable,unavailable,TabPFN v3,Device power (W)
+99,10000,unavailable,unavailable,TabPFN v3,Device power (W)
 
 Figure: lgd_resource_dashboard_lgd_device_memory_used_mib
 LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 Displayed counters and trial support
 CSV (first column: row index)
-row,window_end,median,count,base
-0,200,9779,10,TabICLv2
-1,400,9780,10,TabICLv2
-2,600,9780,10,TabICLv2
-3,800,9780,10,TabICLv2
-4,1000,9780,10,TabICLv2
-5,1200,9780,10,TabICLv2
-6,1400,9780,10,TabICLv2
-7,1600,9780,10,TabICLv2
-8,1800,9780,10,TabICLv2
-9,2000,9780,10,TabICLv2
-10,2200,9780,10,TabICLv2
-11,2400,9780,10,TabICLv2
-12,2600,9972,9,TabICLv2
-13,2800,9882,10,TabICLv2
-14,3000,9882,10,TabICLv2
-15,3200,9882,10,TabICLv2
-16,3400,9882,10,TabICLv2
-17,3600,9786,10,TabICLv2
-18,3800,9786,10,TabICLv2
-19,4000,9786,10,TabICLv2
-20,4200,9786,10,TabICLv2
-21,4400,9786,10,TabICLv2
-22,4600,9786,10,TabICLv2
-23,4800,9792,9,TabICLv2
-24,5000,9792,9,TabICLv2
-25,5200,9792,9,TabICLv2
-26,5400,9792,9,TabICLv2
-27,5600,9792,9,TabICLv2
-28,5800,9792,9,TabICLv2
-29,6000,9792,9,TabICLv2
-30,6200,9792,9,TabICLv2
-31,6400,9792,9,TabICLv2
-32,6600,9792,9,TabICLv2
-33,6800,9792,9,TabICLv2
-34,7000,9792,9,TabICLv2
-35,7200,9792,9,TabICLv2
-36,7400,9792,9,TabICLv2
-37,7600,9792,9,TabICLv2
-38,7800,9792,9,TabICLv2
-39,8000,9792,9,TabICLv2
-40,8200,9792,9,TabICLv2
-41,8400,9792,9,TabICLv2
-42,8600,9792,9,TabICLv2
-43,8800,9792,9,TabICLv2
-44,9000,9792,9,TabICLv2
-45,9200,9792,9,TabICLv2
-46,9400,9792,9,TabICLv2
-47,9600,9792,9,TabICLv2
-48,9800,9792,9,TabICLv2
-49,10000,9734,9,TabICLv2
-50,200,77250,7,TabPFN v2
-51,400,77250,7,TabPFN v2
-52,600,77250,7,TabPFN v2
-53,800,77250,7,TabPFN v2
-54,1000,77250,7,TabPFN v2
-55,1200,77250,7,TabPFN v2
-56,1400,77250,7,TabPFN v2
-57,1600,77250,7,TabPFN v2
-58,1800,77250,7,TabPFN v2
-59,2000,77250,7,TabPFN v2
-60,2200,77250,7,TabPFN v2
-61,2400,77270,6,TabPFN v2
-62,2600,77270,6,TabPFN v2
-63,2800,77270,6,TabPFN v2
-64,3000,77270,6,TabPFN v2
-65,3200,77270,6,TabPFN v2
-66,3400,77270,6,TabPFN v2
-67,3600,77270,6,TabPFN v2
-68,3800,77270,6,TabPFN v2
-69,4000,77270,6,TabPFN v2
-70,4200,77270,6,TabPFN v2
-71,4400,77270,6,TabPFN v2
-72,4600,77270,6,TabPFN v2
-73,4800,77270,6,TabPFN v2
-74,5000,77270,6,TabPFN v2
-75,5200,77270,6,TabPFN v2
-76,5400,77270,6,TabPFN v2
-77,5600,77270,6,TabPFN v2
-78,5800,77270,6,TabPFN v2
-79,6000,77270,6,TabPFN v2
-80,6200,77270,6,TabPFN v2
-81,6400,77270,6,TabPFN v2
-82,6600,77270,6,TabPFN v2
-83,6800,77270,6,TabPFN v2
-84,7000,77270,6,TabPFN v2
-85,7200,77270,6,TabPFN v2
-86,7400,77270,6,TabPFN v2
-87,7600,77270,6,TabPFN v2
-88,7800,77270,6,TabPFN v2
-89,8000,77270,6,TabPFN v2
-90,8200,77270,6,TabPFN v2
-91,8400,77270,6,TabPFN v2
-92,8600,77270,6,TabPFN v2
-93,8800,77270,6,TabPFN v2
-94,9000,77270,6,TabPFN v2
-95,9200,77270,6,TabPFN v2
-96,9400,77270,6,TabPFN v2
-97,9600,77270,6,TabPFN v2
-98,9800,77270,6,TabPFN v2
-99,10000,77270,6,TabPFN v2
-100,200,70418,9,TabPFN v2.6
-101,400,70418,9,TabPFN v2.6
-102,600,70418,9,TabPFN v2.6
-103,800,70418,9,TabPFN v2.6
-104,1000,70418,9,TabPFN v2.6
-105,1200,70418,9,TabPFN v2.6
-106,1400,70418,9,TabPFN v2.6
-107,1600,70418,9,TabPFN v2.6
-108,1800,70418,9,TabPFN v2.6
-109,2000,70418,9,TabPFN v2.6
-110,2200,70418,9,TabPFN v2.6
-111,2400,70418,9,TabPFN v2.6
-112,2600,70418,9,TabPFN v2.6
-113,2800,70418,9,TabPFN v2.6
-114,3000,70418,9,TabPFN v2.6
-115,3200,70418,9,TabPFN v2.6
-116,3400,70418,9,TabPFN v2.6
-117,3600,70418,9,TabPFN v2.6
-118,3800,70418,9,TabPFN v2.6
-119,4000,70418,9,TabPFN v2.6
-120,4200,70418,9,TabPFN v2.6
-121,4400,70418,9,TabPFN v2.6
-122,4600,70418,9,TabPFN v2.6
-123,4800,70418,9,TabPFN v2.6
-124,5000,70418,9,TabPFN v2.6
-125,5200,70418,9,TabPFN v2.6
-126,5400,70418,9,TabPFN v2.6
-127,5600,70418,9,TabPFN v2.6
-128,5800,70418,9,TabPFN v2.6
-129,6000,70418,9,TabPFN v2.6
-130,6200,70418,9,TabPFN v2.6
-131,6400,70418,9,TabPFN v2.6
-132,6600,70418,9,TabPFN v2.6
-133,6800,70418,9,TabPFN v2.6
-134,7000,70418,9,TabPFN v2.6
-135,7200,70418,9,TabPFN v2.6
-136,7400,70418,9,TabPFN v2.6
-137,7600,70418,9,TabPFN v2.6
-138,7800,70418,9,TabPFN v2.6
-139,8000,70418,9,TabPFN v2.6
-140,8200,70418,9,TabPFN v2.6
-141,8400,70418,9,TabPFN v2.6
-142,8600,70418,9,TabPFN v2.6
-143,8800,70418,9,TabPFN v2.6
-144,9000,70418,9,TabPFN v2.6
-145,9200,70418,9,TabPFN v2.6
-146,9400,70418,9,TabPFN v2.6
-147,9600,70418,9,TabPFN v2.6
-148,9800,70418,9,TabPFN v2.6
-149,10000,70418,9,TabPFN v2.6
-150,200,40420,7,TabPFN v3
-151,400,40420,7,TabPFN v3
-152,600,40420,7,TabPFN v3
-153,800,40420,7,TabPFN v3
-154,1000,40420,7,TabPFN v3
-155,1200,40420,7,TabPFN v3
-156,1400,40420,7,TabPFN v3
-157,1600,40420,7,TabPFN v3
-158,1800,40420,7,TabPFN v3
-159,2000,40420,7,TabPFN v3
-160,2200,40420,7,TabPFN v3
-161,2400,40420,7,TabPFN v3
-162,2600,40423,6,TabPFN v3
-163,2800,40420,7,TabPFN v3
-164,3000,40420,7,TabPFN v3
-165,3200,40420,7,TabPFN v3
-166,3400,40420,7,TabPFN v3
-167,3600,40420,7,TabPFN v3
-168,3800,40420,7,TabPFN v3
-169,4000,40420,7,TabPFN v3
-170,4200,40420,7,TabPFN v3
-171,4400,40420,7,TabPFN v3
-172,4600,40420,7,TabPFN v3
-173,4800,40359,6,TabPFN v3
-174,5000,40359,6,TabPFN v3
-175,5200,40415,6,TabPFN v3
-176,5400,40415,6,TabPFN v3
-177,5600,40415,6,TabPFN v3
-178,5800,40415,6,TabPFN v3
-179,6000,40415,6,TabPFN v3
-180,6200,40415,6,TabPFN v3
-181,6400,40415,6,TabPFN v3
-182,6600,40415,6,TabPFN v3
-183,6800,40415,6,TabPFN v3
-184,7000,40415,6,TabPFN v3
-185,7200,40415,6,TabPFN v3
-186,7400,40415,6,TabPFN v3
-187,7600,40415,6,TabPFN v3
-188,7800,40415,6,TabPFN v3
-189,8000,40415,6,TabPFN v3
-190,8200,40415,6,TabPFN v3
-191,8400,40415,6,TabPFN v3
-192,8600,40415,6,TabPFN v3
-193,8800,40415,6,TabPFN v3
-194,9000,40415,6,TabPFN v3
-195,9200,40415,6,TabPFN v3
-196,9400,40416,6,TabPFN v3
-197,9600,40416,6,TabPFN v3
-198,9800,40416,6,TabPFN v3
-199,10000,40416,6,TabPFN v3
+row,window_end,median,count,base,measure
+0,200,9.5498047,10,TabICLv2,Device memory (GiB)
+1,400,9.5507812,10,TabICLv2,Device memory (GiB)
+2,600,9.5507812,10,TabICLv2,Device memory (GiB)
+3,800,9.5507812,10,TabICLv2,Device memory (GiB)
+4,1000,9.5507812,10,TabICLv2,Device memory (GiB)
+5,1200,9.5507812,10,TabICLv2,Device memory (GiB)
+6,1400,9.5507812,10,TabICLv2,Device memory (GiB)
+7,1600,9.5507812,10,TabICLv2,Device memory (GiB)
+8,1800,9.5507812,10,TabICLv2,Device memory (GiB)
+9,2000,9.5507812,10,TabICLv2,Device memory (GiB)
+10,2200,9.5507812,10,TabICLv2,Device memory (GiB)
+11,2400,9.5507812,10,TabICLv2,Device memory (GiB)
+12,2600,9.7382812,9,TabICLv2,Device memory (GiB)
+13,2800,9.6503906,10,TabICLv2,Device memory (GiB)
+14,3000,9.6503906,10,TabICLv2,Device memory (GiB)
+15,3200,9.6503906,10,TabICLv2,Device memory (GiB)
+16,3400,9.6503906,10,TabICLv2,Device memory (GiB)
+17,3600,9.5566406,10,TabICLv2,Device memory (GiB)
+18,3800,9.5566406,10,TabICLv2,Device memory (GiB)
+19,4000,9.5566406,10,TabICLv2,Device memory (GiB)
+20,4200,9.5566406,10,TabICLv2,Device memory (GiB)
+21,4400,9.5566406,10,TabICLv2,Device memory (GiB)
+22,4600,9.5566406,10,TabICLv2,Device memory (GiB)
+23,4800,9.5625,9,TabICLv2,Device memory (GiB)
+24,5000,9.5625,9,TabICLv2,Device memory (GiB)
+25,5200,9.5625,9,TabICLv2,Device memory (GiB)
+26,5400,9.5625,9,TabICLv2,Device memory (GiB)
+27,5600,9.5625,9,TabICLv2,Device memory (GiB)
+28,5800,9.5625,9,TabICLv2,Device memory (GiB)
+29,6000,9.5625,9,TabICLv2,Device memory (GiB)
+30,6200,9.5625,9,TabICLv2,Device memory (GiB)
+31,6400,9.5625,9,TabICLv2,Device memory (GiB)
+32,6600,9.5625,9,TabICLv2,Device memory (GiB)
+33,6800,9.5625,9,TabICLv2,Device memory (GiB)
+34,7000,9.5625,9,TabICLv2,Device memory (GiB)
+35,7200,9.5625,9,TabICLv2,Device memory (GiB)
+36,7400,9.5625,9,TabICLv2,Device memory (GiB)
+37,7600,9.5625,9,TabICLv2,Device memory (GiB)
+38,7800,9.5625,9,TabICLv2,Device memory (GiB)
+39,8000,9.5625,9,TabICLv2,Device memory (GiB)
+40,8200,9.5625,9,TabICLv2,Device memory (GiB)
+41,8400,9.5625,9,TabICLv2,Device memory (GiB)
+42,8600,9.5625,9,TabICLv2,Device memory (GiB)
+43,8800,9.5625,9,TabICLv2,Device memory (GiB)
+44,9000,9.5625,9,TabICLv2,Device memory (GiB)
+45,9200,9.5625,9,TabICLv2,Device memory (GiB)
+46,9400,9.5625,9,TabICLv2,Device memory (GiB)
+47,9600,9.5625,9,TabICLv2,Device memory (GiB)
+48,9800,9.5625,9,TabICLv2,Device memory (GiB)
+49,10000,9.5058594,9,TabICLv2,Device memory (GiB)
+50,200,75.439453,7,TabPFN v2,Device memory (GiB)
+51,400,75.439453,7,TabPFN v2,Device memory (GiB)
+52,600,75.439453,7,TabPFN v2,Device memory (GiB)
+53,800,75.439453,7,TabPFN v2,Device memory (GiB)
+54,1000,75.439453,7,TabPFN v2,Device memory (GiB)
+55,1200,75.439453,7,TabPFN v2,Device memory (GiB)
+56,1400,75.439453,7,TabPFN v2,Device memory (GiB)
+57,1600,75.439453,7,TabPFN v2,Device memory (GiB)
+58,1800,75.439453,7,TabPFN v2,Device memory (GiB)
+59,2000,75.439453,7,TabPFN v2,Device memory (GiB)
+60,2200,75.439453,7,TabPFN v2,Device memory (GiB)
+61,2400,75.458984,6,TabPFN v2,Device memory (GiB)
+62,2600,75.458984,6,TabPFN v2,Device memory (GiB)
+63,2800,75.458984,6,TabPFN v2,Device memory (GiB)
+64,3000,75.458984,6,TabPFN v2,Device memory (GiB)
+65,3200,75.458984,6,TabPFN v2,Device memory (GiB)
+66,3400,75.458984,6,TabPFN v2,Device memory (GiB)
+67,3600,75.458984,6,TabPFN v2,Device memory (GiB)
+68,3800,75.458984,6,TabPFN v2,Device memory (GiB)
+69,4000,75.458984,6,TabPFN v2,Device memory (GiB)
+70,4200,75.458984,6,TabPFN v2,Device memory (GiB)
+71,4400,75.458984,6,TabPFN v2,Device memory (GiB)
+72,4600,75.458984,6,TabPFN v2,Device memory (GiB)
+73,4800,75.458984,6,TabPFN v2,Device memory (GiB)
+74,5000,75.458984,6,TabPFN v2,Device memory (GiB)
+75,5200,75.458984,6,TabPFN v2,Device memory (GiB)
+76,5400,75.458984,6,TabPFN v2,Device memory (GiB)
+77,5600,75.458984,6,TabPFN v2,Device memory (GiB)
+78,5800,75.458984,6,TabPFN v2,Device memory (GiB)
+79,6000,75.458984,6,TabPFN v2,Device memory (GiB)
+80,6200,75.458984,6,TabPFN v2,Device memory (GiB)
+81,6400,75.458984,6,TabPFN v2,Device memory (GiB)
+82,6600,75.458984,6,TabPFN v2,Device memory (GiB)
+83,6800,75.458984,6,TabPFN v2,Device memory (GiB)
+84,7000,75.458984,6,TabPFN v2,Device memory (GiB)
+85,7200,75.458984,6,TabPFN v2,Device memory (GiB)
+86,7400,75.458984,6,TabPFN v2,Device memory (GiB)
+87,7600,75.458984,6,TabPFN v2,Device memory (GiB)
+88,7800,75.458984,6,TabPFN v2,Device memory (GiB)
+89,8000,75.458984,6,TabPFN v2,Device memory (GiB)
+90,8200,75.458984,6,TabPFN v2,Device memory (GiB)
+91,8400,75.458984,6,TabPFN v2,Device memory (GiB)
+92,8600,75.458984,6,TabPFN v2,Device memory (GiB)
+93,8800,75.458984,6,TabPFN v2,Device memory (GiB)
+94,9000,75.458984,6,TabPFN v2,Device memory (GiB)
+95,9200,75.458984,6,TabPFN v2,Device memory (GiB)
+96,9400,75.458984,6,TabPFN v2,Device memory (GiB)
+97,9600,75.458984,6,TabPFN v2,Device memory (GiB)
+98,9800,75.458984,6,TabPFN v2,Device memory (GiB)
+99,10000,75.458984,6,TabPFN v2,Device memory (GiB)
+100,200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+101,400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+102,600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+103,800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+104,1000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+105,1200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+106,1400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+107,1600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+108,1800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+109,2000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+110,2200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+111,2400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+112,2600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+113,2800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+114,3000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+115,3200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+116,3400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+117,3600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+118,3800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+119,4000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+120,4200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+121,4400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+122,4600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+123,4800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+124,5000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+125,5200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+126,5400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+127,5600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+128,5800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+129,6000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+130,6200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+131,6400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+132,6600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+133,6800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+134,7000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+135,7200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+136,7400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+137,7600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+138,7800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+139,8000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+140,8200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+141,8400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+142,8600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+143,8800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+144,9000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+145,9200,68.767578,9,TabPFN v2.6,Device memory (GiB)
+146,9400,68.767578,9,TabPFN v2.6,Device memory (GiB)
+147,9600,68.767578,9,TabPFN v2.6,Device memory (GiB)
+148,9800,68.767578,9,TabPFN v2.6,Device memory (GiB)
+149,10000,68.767578,9,TabPFN v2.6,Device memory (GiB)
+150,200,39.472656,7,TabPFN v3,Device memory (GiB)
+151,400,39.472656,7,TabPFN v3,Device memory (GiB)
+152,600,39.472656,7,TabPFN v3,Device memory (GiB)
+153,800,39.472656,7,TabPFN v3,Device memory (GiB)
+154,1000,39.472656,7,TabPFN v3,Device memory (GiB)
+155,1200,39.472656,7,TabPFN v3,Device memory (GiB)
+156,1400,39.472656,7,TabPFN v3,Device memory (GiB)
+157,1600,39.472656,7,TabPFN v3,Device memory (GiB)
+158,1800,39.472656,7,TabPFN v3,Device memory (GiB)
+159,2000,39.472656,7,TabPFN v3,Device memory (GiB)
+160,2200,39.472656,7,TabPFN v3,Device memory (GiB)
+161,2400,39.472656,7,TabPFN v3,Device memory (GiB)
+162,2600,39.475586,6,TabPFN v3,Device memory (GiB)
+163,2800,39.472656,7,TabPFN v3,Device memory (GiB)
+164,3000,39.472656,7,TabPFN v3,Device memory (GiB)
+165,3200,39.472656,7,TabPFN v3,Device memory (GiB)
+166,3400,39.472656,7,TabPFN v3,Device memory (GiB)
+167,3600,39.472656,7,TabPFN v3,Device memory (GiB)
+168,3800,39.472656,7,TabPFN v3,Device memory (GiB)
+169,4000,39.472656,7,TabPFN v3,Device memory (GiB)
+170,4200,39.472656,7,TabPFN v3,Device memory (GiB)
+171,4400,39.472656,7,TabPFN v3,Device memory (GiB)
+172,4600,39.472656,7,TabPFN v3,Device memory (GiB)
+173,4800,39.413086,6,TabPFN v3,Device memory (GiB)
+174,5000,39.413086,6,TabPFN v3,Device memory (GiB)
+175,5200,39.467773,6,TabPFN v3,Device memory (GiB)
+176,5400,39.467773,6,TabPFN v3,Device memory (GiB)
+177,5600,39.467773,6,TabPFN v3,Device memory (GiB)
+178,5800,39.467773,6,TabPFN v3,Device memory (GiB)
+179,6000,39.467773,6,TabPFN v3,Device memory (GiB)
+180,6200,39.467773,6,TabPFN v3,Device memory (GiB)
+181,6400,39.467773,6,TabPFN v3,Device memory (GiB)
+182,6600,39.467773,6,TabPFN v3,Device memory (GiB)
+183,6800,39.467773,6,TabPFN v3,Device memory (GiB)
+184,7000,39.467773,6,TabPFN v3,Device memory (GiB)
+185,7200,39.467773,6,TabPFN v3,Device memory (GiB)
+186,7400,39.467773,6,TabPFN v3,Device memory (GiB)
+187,7600,39.467773,6,TabPFN v3,Device memory (GiB)
+188,7800,39.467773,6,TabPFN v3,Device memory (GiB)
+189,8000,39.467773,6,TabPFN v3,Device memory (GiB)
+190,8200,39.467773,6,TabPFN v3,Device memory (GiB)
+191,8400,39.467773,6,TabPFN v3,Device memory (GiB)
+192,8600,39.467773,6,TabPFN v3,Device memory (GiB)
+193,8800,39.467773,6,TabPFN v3,Device memory (GiB)
+194,9000,39.467773,6,TabPFN v3,Device memory (GiB)
+195,9200,39.467773,6,TabPFN v3,Device memory (GiB)
+196,9400,39.46875,6,TabPFN v3,Device memory (GiB)
+197,9600,39.46875,6,TabPFN v3,Device memory (GiB)
+198,9800,39.46875,6,TabPFN v3,Device memory (GiB)
+199,10000,39.46875,6,TabPFN v3,Device memory (GiB)
 
 Figure: lgd_movement_lgd_tabicl-v2
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
@@ -91715,7 +91631,7 @@ Experiment 3: sampling and accumulation outcomes
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Checkpoint and final benchmark coverage
@@ -92185,7 +92101,7 @@ Experiment 4: labeled context and the value of CPT
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Fixed checkpoints and evaluation protocol
@@ -92275,7 +92191,7 @@ Experiment 5: DiagScale during continued pretraining
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Adapter recipe and training coverage
@@ -93666,7 +93582,7 @@ Experiment 5: DiagScale transfer and retention
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Checkpoint and benchmark coverage
@@ -93861,7 +93777,7 @@ Experiment 6: training-corpus eligibility — training
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T14:04:38+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 Compare all PD training tables with those above 10,000 rows. The episode cap is 8,192 in both arms. This policy changes table diversity and revisit frequency; small tables may supply fewer rows.
 
@@ -93923,7 +93839,7 @@ Experiment 6: training-corpus eligibility — results
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T14:04:38+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 Compare all PD training tables with those above 10,000 rows. The episode cap is 8,192 in both arms. This policy changes table diversity and revisit frequency; small tables may supply fewer rows.
 
@@ -93971,7 +93887,7 @@ Experiment 7: training episode size — training
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T14:04:38+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 Compare 2,048, 8,192 and 26,000 total training rows on one fixed large-table pool. The 8,192-row control is reused explicitly from experiment 6. Context and query size both increase; update budgets, not compute or row exposures, are matched.
 
@@ -94042,7 +93958,7 @@ Experiment 7: training episode size — results
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T14:04:38+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 Compare 2,048, 8,192 and 26,000 total training rows on one fixed large-table pool. The 8,192-row control is reused explicitly from experiment 6. Context and query size both increase; update budgets, not compute or row exposures, are matched.
 
@@ -94092,7 +94008,7 @@ The credit corpus: what was delivered
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Availability and inventory
@@ -94314,7 +94230,7 @@ From delivered tables to the adaptation corpus
 
 0. Evidence and scope
 DATA: output CreditPFN.zip; modified 2026-10-13T12:13:29+00:00; read only.
-Project: output CreditPFN; modified 2026-10-13T13:56:42+00:00; read only.
+Project: output CreditPFN; modified 2026-10-13T14:41:25+00:00; read only.
 Missing project records are unavailable evidence, not zero effects or failed training.
 
 1. Processed inventory

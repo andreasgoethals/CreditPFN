@@ -257,6 +257,22 @@ def test_split_corpus_explicit_train_id_alone(synthetic_processed) -> None:
     assert "0001.alpha" not in test_ids and "0002.bravo" not in test_ids
 
 
+@pytest.mark.parametrize("selector", [{"n_folds": 2}, {"n_test_datasets": 1}])
+@pytest.mark.parametrize("side", ["train", "test"])
+def test_explicit_corpus_side_stays_exact_with_split_defaults(synthetic_processed, selector, side):
+    """Inherited fold settings must not enlarge an explicit dataset list."""
+    split = split_corpus(track="pd", **selector,
+                         **{f"{side}_dataset_ids": ["0001.alpha"]})
+    assert {r.dataset_id for r in getattr(split, side)} == {"0001.alpha"}
+    assert {r.dataset_id for r in split.train}.isdisjoint(r.dataset_id for r in split.test)
+
+
+@pytest.mark.parametrize("side", ["train", "test"])
+def test_unknown_explicit_dataset_never_falls_back_to_another_population(synthetic_processed, side):
+    with pytest.raises(ValueError, match="Unknown explicit"):
+        split_corpus(track="pd", **{f"{side}_dataset_ids": ["misspelled_dataset"]})
+
+
 def test_split_corpus_both_explicit_lists(synthetic_processed) -> None:
     split = split_corpus(
         track="pd",

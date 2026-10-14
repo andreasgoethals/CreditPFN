@@ -267,3 +267,28 @@ def test_dashboard_labels_are_valid_unicode():
 
     assert dashboards.monitor_label(SimpleNamespace(track="pd")) == "AUC"
     assert dashboards.monitor_label(SimpleNamespace(track="lgd")) == "R\u00b2"
+
+
+@pytest.mark.parametrize("bases", [1, 2, 4])
+def test_resource_panels_keep_units_and_fit_available_models(monkeypatch, bases):
+    from src.visualize import dashboards as db
+
+    run = campaign()
+    records = pd.DataFrame([
+        dict(trial_name=f"trial-{base}", base=base, phase="training",
+             successful_updates=update, device_memory_used_mib=96 * 1024 + update)
+        for base in ("TabPFN v2", "TabPFN v2.6", "TabPFN v3", "TabICLv2")[:bases]
+        for update in (100, 200)
+    ])
+    monkeypatch.setattr(db.dg, "load", lambda *args: records.copy())
+    pages = db.plot_resources(run)
+    assert len(pages) == 1
+    page = pages[0]
+    table = page.tables["Displayed counters and trial support"]
+    assert set(table.measure) == {"Device memory (GiB)"}
+    assert table["median"].dropna().between(96, 97).all()
+    assert len(page.figure.axes) == bases
+    for axis in page.figure.axes:
+        assert not axis.yaxis.get_major_formatter().get_useOffset()
+        assert axis.get_subplotspec().get_gridspec().nrows == (2 if bases == 4 else 1)
+    page.figure.canvas.draw()
