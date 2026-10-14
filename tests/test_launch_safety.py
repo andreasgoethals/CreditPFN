@@ -216,6 +216,39 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     assert "UNEXPECTED_COMPUTE" not in log
 
 
+@pytest.mark.parametrize("experiment", ["experiment1", "experiment3", "experiment7"])
+@pytest.mark.parametrize("job", ["maintenance", "train_pd", "train_lgd", "eval_pd", "eval_lgd",
+                                "benchmark_foundation", "benchmark_classical"])
+def test_batch_entrypoints_route_setup_failures_to_the_selected_experiment(tmp_path, experiment, job):
+    """Exercise real shell routing before any Python, scheduler call or model load."""
+    from tests.test_benchmark_submission import bash_path
+    repo = Path(__file__).resolve().parents[1]
+    node = tmp_path / "node"
+    scripts = node / "CreditPFN/scripts/slurm"
+    scripts.mkdir(parents=True)
+    for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh",
+                 "_benchmark_dispatch.sh"):
+        shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    (scripts / "_activate_env.sh").write_text(
+        'echo "synthetic activation failure" >&2\nreturn 17\n', encoding="utf-8")
+    config = f"config/{experiment}/pd.yaml"
+    env = dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+               SLURM_RESTART_COUNT="0", SLURM_ARRAY_TASK_ID="0",
+               CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
+               CREDITPFN_EXPERIMENT=experiment if job.startswith("benchmark_") else "general",
+               CREDITPFN_CONFIG="" if job == "maintenance" else config,
+               CREDITPFN_BENCHMARK_SPLITS="4", EVAL_TASKS="16")
+    result = subprocess.run(
+        [bash_path(), "--noprofile", "--norc", (scripts / f"{job}.slurm").as_posix(),
+         "audit", "--config", config], env=env, capture_output=True, text=True, timeout=20)
+    assert result.returncode == 17, result.stderr
+    logs = list((node / "CreditPFN/output CreditPFN").rglob("*.log"))
+    assert len(logs) == 1
+    assert logs[0].parent == node / "CreditPFN/output CreditPFN" / experiment / "logs"
+    content = logs[0].read_text(encoding="utf-8")
+    assert "synthetic activation failure" in content and "END exit_code=17" in content
+
+
 @pytest.mark.parametrize("walltime,segment", [("00:03:00", 0), ("00:10:00", 0),
                                              ("00:15:00", 0), ("02:00:00", 0),
                                              ("00:10:00", 120)])

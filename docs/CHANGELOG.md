@@ -13,6 +13,8 @@ day is never rewritten.
 
 ## 14-10-2026
 
+- Clarify that completed checkpoints can be benchmarked with reviewed newer code; keep original training plans and freeze source during active jobs.
+- Fix experiment-7 batch/maintenance log routing; cover actual shell startup across old and new experiments and clarify follow-up launch order.
 - Record complete training/main-and-seed benchmark log coverage and the remaining sampling benchmark/project-artifact checks.
 
 ## 13-10-2026

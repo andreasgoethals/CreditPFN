@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "${VSC_DATA:?}/CreditPFN"
 for arg in "$@"; do
- case "$arg" in *config/experiment[0-6]/*) export CREDITPFN_EXPERIMENT="$(basename "$(dirname "$arg")")" ;; esac
+ case "$arg" in *config/experiment[0-7]/*) export CREDITPFN_EXPERIMENT="$(basename "$(dirname "$arg")")" ;; esac
 done
 source scripts/slurm/_job_log.sh
 start_job_log maintenance

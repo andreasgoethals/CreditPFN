@@ -191,8 +191,10 @@ Package ranges in `pyproject.toml` are compatibility declarations, not a reprodu
 PyTorch must expose `torch.amp.GradScaler` (2.3 or later); direct process/thread telemetry
 dependencies are declared as well. Keep the recorded environment throughout accepted jobs.
 Do not install upgrades or pull shared runtime changes into their checkout while training or
-benchmarks still need it. After those jobs finish, deploy the reviewed source and use the new
-isolated experiment-0 receipts to validate the actual VSC APIs and capacities.
+benchmark jobs are queued/running. A new benchmark phase can evaluate completed checkpoints
+under reviewed newer code: its evaluation identity is separate from the original training
+identity. Retain the original plans/provenance and expect incompatible evaluation caches to
+be recomputed. Use new isolated experiment-0 receipts before training new follow-up studies.
 
 The 28-09 TabPFN loss corrections change classification from full-head CE to active-class CE, and align regression query targets with each member's context-fitted target transform before NLL. The earlier reporting-only assessment does **not** cover them. Preserve accepted old experiment-0 artifacts with their original identities; short positive-LR/recovery validation of the affected TabPFN PD/LGD paths is required before research submission. Old TabICL results retain their objective interpretation, and its unchanged trajectories still motivate the 10k descriptive horizon. Do not rerun the bundled command over existing immutable plans or rewrite passing receipts to the new fingerprint; validation needs fresh control run names and plans. No repeat of every 20k pilot is implied solely to retain that horizon.
 
@@ -440,11 +442,33 @@ Record actual cluster outcomes in agent memory. Source review, synthetic CPU tra
 
 ## Follow-up validation and experiments 4–7
 
-Finish the accepted campaigns before deploying these shared runtime changes into the active
-checkout. Training identities and evaluation cache keys include shared numerical code; a
-pull during active/resumable jobs would make their immutable plans disagree. The existing
-experiment-1/2/3 YAMLs and saved outputs are preserved. Do not overwrite their prepared plans
-or restart old training under a changed implementation just to add the follow-ups.
+Keep the checkout fixed while jobs are queued/running or old training needs resuming.
+Completed experiment-1/2/3 checkpoints remain loadable by the reviewed follow-up code.
+`check_prepared(..., stage="eval")` validates the original plan, scientific settings and
+trial identities without requiring the current code to match the training implementation.
+Training resume still requires that match. Never overwrite an old plan to bypass this check.
+
+If source was updated after training finished but before experiment-3 benchmarking began,
+no rollback or retraining is needed. The experiment-3 YAMLs, native checkpoint loaders and
+five-fold evaluation protocol retain their existing behavior; new adapter/size-study paths
+are opt-in. Evaluation keys include current source and package versions, so incompatible
+old control caches are recomputed. This is a new evaluation of the saved weights, not a
+rewrite of how they were trained. Do not upgrade the environment as part of deployment.
+
+Deploy all reviewed fixes first, including experiment-7 shell routing, then freeze that
+checkout. Submit the entire experiment-3 benchmark with:
+
+```bash
+EVAL_WALLTIME=04:00:00 bash scripts/slurm/run_benchmark.sh experiment3
+```
+
+This submits both resource arrays (128 foundation tasks on Mindwell and 128 classical tasks
+on wICE). Do not repeat it if those benchmark jobs are already queued/running. The new
+experiment-0 checks can run alongside this benchmark on the same fixed code. If a check
+fails, preserve its output and finish active jobs before deploying a shared-code repair.
+The four direct smoke/capacity tasks are capped at two concurrent GPUs separately from the
+benchmark pool; their allocations are additional. A queue becoming empty is not a success
+receipt: inspect final logs and evidence before declaring either phase complete.
 
 After the user has committed/pushed and pulled the new version on VSC, launch the **new**
 experiment-0 correctness workflow from the repository:
@@ -532,6 +556,15 @@ Each benchmark action queues its foundation and classical arrays together. With 
 128. These are evaluation shards, not additional training trials. Experiment 6 benchmarks
 the shared control once; experiment 7's notebooks read those results from experiment 6.
 No launch action starts a different scientific experiment automatically.
+
+After all eight follow-up receipts and all preparation jobs pass, experiments 4–7 can be
+submitted in the same session: 250 context tasks and 80 new training trials (48/16/16).
+There is no scientific requirement to finish one of these training campaigns before starting
+another. The shared concurrency pool can still add capacity dependencies; keep accepted jobs
+in place and wait for every submitter to return before closing its terminal. Benchmark phases
+are submitted after their own training completes, with experiment 7 also requiring its
+experiment-6 control weights. Preserve the accepted workflow ID in
+`CREDITPFN_FOLLOWUP_GATE` for all preparation, training and benchmark submissions.
 
 The two size studies write separate DATA logs/plans and PROJECT diagnostics/results/weights.
 The eight shared controls remain owned by experiment 6. Download both groups for experiment-7

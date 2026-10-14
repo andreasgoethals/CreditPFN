@@ -12,6 +12,26 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
+## Benchmark compatibility after a source update — 14-10-2026
+
+- User already pulled the follow-up source after the completed sampling-training audits. The earlier instruction to finish every old benchmark before any deployment was too restrictive: `check_prepared(stage="eval")` deliberately accepts changed code/environment while preserving original plan/config/identity checks; training resume remains strict. Do not recreate experiment-3 plans or retrain its completed checkpoints.
+- Compared the follow-up changes with `72838a6` and the confirmed prior cluster commit `ac248ae`: experiment-3 and shared scientific YAMLs are unchanged; native full-weight inference paths retain their behavior. Adapter loaders, inference overrides and size-study gates are opt-in. Evaluation fingerprints change, so old cached controls may need recomputing; no claim of cross-version bitwise equality follows.
+- User confirms VSC pulled `ac248ae` to `717ee24` before audits 62311793/62311794, which therefore passed under the new source. The **09:44 Mindwell/wICE queues are empty**. No experiment-3 benchmark was submitted in the supplied transcript; no in-flight evaluation needs recovery.
+- Deploy the pending experiment-7 shell-routing fix before creating any new follow-up receipt. With one fixed checkout, experiment-3 benchmarking and the isolated experiment-0 follow-up checks can overlap. If jobs were already submitted, inspect the queue and finish them before another shared-code update. New experiments still require all eight smoke/capacity receipts and their own plans. This entry supersedes the blanket old-source launch restriction below; no cluster actions or Git publication were performed.
+- Verification: **173 focused tests passed (60.26 s)** across launch safety, evaluation/cache sharing, follow-ups and size studies, plus **5 combined-benchmark dispatch tests (5.24 s)**; diff checks passed. Only operational documentation changed this turn; the previous full-suite result remains 886 passed / one optional missing-manifest skip for the unchanged runtime patch.
+
+## Sampling audits and follow-up launch routing — 14-10-2026
+
+- Downloaded wICE logs **62311793 (PD)** and **62311794 (LGD)** both pass: each has 48 expected/completed checkpoints, 10,000 successful updates per trial, zero divergence/pending/problems, sampled GPU resources for every trial and `END exit_code=0`. These audit physical project checkpoints, prepared identities, trajectories and diagnostics. Experiment 3 is ready for its full benchmark under the existing cluster source.
+- Follow-up launch review reproduced the shell logger rejecting experiment 7 (or retaining the wrong inherited log group), while maintenance put its preparation log in `general`. Extend both shell routes through experiment 7. Real batch-entrypoint tests cover maintenance, PD/LGD training/evaluation and combined GPU/CPU benchmarks; experiment-1/3 controls preserve earlier behavior. No research YAML, model code, library pin or saved output changed.
+- Launch sequence remains old-source experiment-3 benchmarking, then the new checkout and isolated experiment-0 smoke/capacity gates. Once plans pass, all four new studies can be queued together: 250 context tasks plus 48 DiagScale, 16 corpus-policy and 16 episode-size training trials. Prepare experiment 6 before experiment 7 because the latter binds its shared reference plan; their training can overlap. Their final benchmarks follow completed training. No jobs were submitted here; the user owns commit/push/deployment.
+- Verification: full suite **886 passed / one optional missing-manifest skip (625.47 s)**, including all 21 real shell routing regressions. Both changed shell files pass Bash syntax checks and retain LF endings; diff checks pass. No notebook/visualization logic changed, so no notebook regeneration was needed. The local fix remains uncommitted/unpushed for deployment after the old benchmark.
+
+**Tried:** Exercise the real batch entrypoints for experiment 7 using a controlled environment-activation failure, without Python training or Slurm submission.
+**Result:** All seven experiment-7 cases failed the routing assertion; all 14 experiment-1/3 controls passed.
+**Why:** Shared shell log routing and maintenance config detection still matched only `experiment[0-6]`.
+**Instead:** Include experiment 7 in both shell routes and retain batch-entrypoint regression coverage.
+
 ## Training complete and main/seed benchmarks finished — 14-10-2026
 
 - Read Downloads `output CreditPFN (1).zip` in place (08:34 download, 68,359,395 bytes): 3,457 files, clean CRC, no duplicate members. All six prepared-plan hashes and 640 trial-identity hashes verify. Exact planned-roster joins give **512/512 main, 32/32 seed and 96/96 sampling OK**, every trial at 10,000 successful updates, with no unexpected identities. Earlier interrupted segments are superseded by successful final outcomes; no research training traceback/OOM is recorded.
@@ -744,6 +764,7 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 14-10-2026 | Sampling checkpoint audits · wICE 62311793/62311794 | **96/96 pass** | PD/LGD each 48 completed at 10k updates, no divergence/pending/problems; both logs exit 0. Ready for experiment-3 benchmarking on the existing cluster source. |
 | 14-10-2026 | Main/seed/sampling DATA snapshot, downloaded 08:34; queue 08:43 | **640/640 training OK; main/seed benchmarks complete in logs** | Main 512, seed 32, sampling 96 at 10k updates; main/seed each 256 successful benchmark shards and full logged five-fold coverage; both queues empty. Sampling checkpoint audit/benchmark and fresh project-artifact download remain. |
 | 13-10-2026 | Main/seed/sampling DATA snapshot, downloaded 14:13 | **512/512 main; 32/32 seed; 90/96 sampling** | 46 PD/44 LGD sampling completed; all main/seed classical shards logged successful; GPU partitions 0/3 and project results still unconfirmed; no new runs submitted. |
 | 12-10-2026 | Merged main/seed/sampling output + 14:47 queue | **512/512 main; 32/32 seed; 64/96 sampling** | Partial five-fold benchmarks; six train/four GPU eval/eleven CPU eval tasks running, no retrieval holds; no new runs submitted. |
