@@ -202,17 +202,9 @@ PD. Complementary summaries of parameter movement. Whole-model drift is norm wei
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment1__01_training_pd__26_pd_resource_dashboard_pd_gpu_utilization_percent](experiment1/experiment1__01_training_pd__26_pd_resource_dashboard_pd_gpu_utilization_percent.pdf)** — `pd_resource_dashboard_pd_gpu_utilization_percent`
+**[experiment1__01_training_pd__26_pd_resource_dashboard_pd](experiment1/experiment1__01_training_pd__26_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
 
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment1__01_training_pd__27_pd_resource_dashboard_pd_power_watts](experiment1/experiment1__01_training_pd__27_pd_resource_dashboard_pd_power_watts.pdf)** — `pd_resource_dashboard_pd_power_watts`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment1__01_training_pd__28_pd_resource_dashboard_pd_device_memory_used_mib](experiment1/experiment1__01_training_pd__28_pd_resource_dashboard_pd_device_memory_used_mib.pdf)** — `pd_resource_dashboard_pd_device_memory_used_mib`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
 ## experiment1/02_training_lgd
 
@@ -312,17 +304,9 @@ LGD. Complementary summaries of parameter movement. Whole-model drift is norm we
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment1__02_training_lgd__25_lgd_resource_dashboard_lgd_gpu_utilization_percent](experiment1/experiment1__02_training_lgd__25_lgd_resource_dashboard_lgd_gpu_utilization_percent.pdf)** — `lgd_resource_dashboard_lgd_gpu_utilization_percent`
+**[experiment1__02_training_lgd__25_lgd_resource_dashboard_lgd](experiment1/experiment1__02_training_lgd__25_lgd_resource_dashboard_lgd.pdf)** — `lgd_resource_dashboard_lgd`
 
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment1__02_training_lgd__26_lgd_resource_dashboard_lgd_power_watts](experiment1/experiment1__02_training_lgd__26_lgd_resource_dashboard_lgd_power_watts.pdf)** — `lgd_resource_dashboard_lgd_power_watts`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment1__02_training_lgd__27_lgd_resource_dashboard_lgd_device_memory_used_mib](experiment1/experiment1__02_training_lgd__27_lgd_resource_dashboard_lgd_device_memory_used_mib.pdf)** — `lgd_resource_dashboard_lgd_device_memory_used_mib`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
 ## experiment1/03_results_pd
 
@@ -336,7 +320,7 @@ PD. Initial and post-finetuning scores for each completed configuration. Each do
 
 **[experiment1__03_results_pd__03_pd_endpoint_dashboard_pd_partitions](experiment1/experiment1__03_results_pd__03_pd_endpoint_dashboard_pd_partitions.pdf)** — `pd_endpoint_dashboard_pd_partitions`
 
-PD. Initial and post-finetuning scores for each completed configuration. Numbers identify individual training-dataset partitions. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Initial and post-finetuning scores for each completed configuration. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 
 **[experiment1__03_results_pd__04_pd_endpoint_factors_pd_false](experiment1/experiment1__03_results_pd__04_pd_endpoint_factors_pd_false.pdf)** — `pd_endpoint_factors_pd_False`
 
@@ -352,27 +336,27 @@ PD. Conditional differences match dataset and every other configuration setting 
 
 **[experiment1__03_results_pd__07_pd_reference_roc_auc_1](experiment1/experiment1__03_results_pd__07_pd_reference_roc_auc_1.pdf)** — `pd_reference_roc_auc_1`
 
-PD. Dataset-level roc_auc changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
+PD. Dataset-level AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
 **[experiment1__03_results_pd__08_pd_reference_pr_auc_1](experiment1/experiment1__03_results_pd__08_pd_reference_pr_auc_1.pdf)** — `pd_reference_pr_auc_1`
 
-PD. Dataset-level pr_auc changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
+PD. Dataset-level PR-AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
 **[experiment1__03_results_pd__09_pd_reference_brier_score_1](experiment1/experiment1__03_results_pd__09_pd_reference_brier_score_1.pdf)** — `pd_reference_brier_score_1`
 
-PD. Dataset-level brier_score changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Brier scores assess probabilistic accuracy, combining calibration and discrimination.
+PD. Dataset-level Brier score changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Brier scores assess probabilistic accuracy, combining calibration and discrimination.
 
 **[experiment1__03_results_pd__10_pd_reference_log_loss_1](experiment1/experiment1__03_results_pd__10_pd_reference_log_loss_1.pdf)** — `pd_reference_log_loss_1`
 
-PD. Dataset-level log_loss changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Log loss assesses predicted probabilities and penalizes confidently incorrect predictions.
+PD. Dataset-level Log loss changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Log loss assesses predicted probabilities and penalizes confidently incorrect predictions.
 
 **[experiment1__03_results_pd__11_pd_reference_ece_1](experiment1/experiment1__03_results_pd__11_pd_reference_ece_1.pdf)** — `pd_reference_ece_1`
 
-PD. Dataset-level ece changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. ECE is a bin-dependent calibration diagnostic, not a complete measure of probabilistic accuracy.
+PD. Dataset-level ECE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. ECE is a bin-dependent calibration diagnostic, not a complete measure of probabilistic accuracy.
 
 **[experiment1__03_results_pd__12_pd_reference_f1_1](experiment1/experiment1__03_results_pd__12_pd_reference_f1_1.pdf)** — `pd_reference_f1_1`
 
-PD. Dataset-level f1 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. F1 uses thresholds chosen on inner validation rows.
+PD. Dataset-level F1 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. F1 uses thresholds chosen on inner validation rows.
 
 **[experiment1__03_results_pd__13_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__13_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
 
@@ -386,59 +370,159 @@ PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__16_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__16_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
+**[experiment1__03_results_pd__16_pd_reliability_tabicl-v2_4](experiment1/experiment1__03_results_pd__16_pd_reliability_tabicl-v2_4.pdf)** — `pd_reliability_tabicl-v2_4`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__17_pd_reliability_v2_2](experiment1/experiment1__03_results_pd__17_pd_reliability_v2_2.pdf)** — `pd_reliability_v2_2`
+**[experiment1__03_results_pd__17_pd_reliability_tabicl-v2_5](experiment1/experiment1__03_results_pd__17_pd_reliability_tabicl-v2_5.pdf)** — `pd_reliability_tabicl-v2_5`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__18_pd_reliability_v2_3](experiment1/experiment1__03_results_pd__18_pd_reliability_v2_3.pdf)** — `pd_reliability_v2_3`
+**[experiment1__03_results_pd__18_pd_reliability_tabicl-v2_6](experiment1/experiment1__03_results_pd__18_pd_reliability_tabicl-v2_6.pdf)** — `pd_reliability_tabicl-v2_6`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__19_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__19_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
+**[experiment1__03_results_pd__19_pd_reliability_tabicl-v2_7](experiment1/experiment1__03_results_pd__19_pd_reliability_tabicl-v2_7.pdf)** — `pd_reliability_tabicl-v2_7`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__20_pd_reliability_v2_6_2](experiment1/experiment1__03_results_pd__20_pd_reliability_v2_6_2.pdf)** — `pd_reliability_v2.6_2`
+**[experiment1__03_results_pd__20_pd_reliability_tabicl-v2_8](experiment1/experiment1__03_results_pd__20_pd_reliability_tabicl-v2_8.pdf)** — `pd_reliability_tabicl-v2_8`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__21_pd_reliability_v2_6_3](experiment1/experiment1__03_results_pd__21_pd_reliability_v2_6_3.pdf)** — `pd_reliability_v2.6_3`
+**[experiment1__03_results_pd__21_pd_reliability_tabicl-v2_9](experiment1/experiment1__03_results_pd__21_pd_reliability_tabicl-v2_9.pdf)** — `pd_reliability_tabicl-v2_9`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__22_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__22_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
+**[experiment1__03_results_pd__22_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__22_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__23_pd_reliability_v3_2](experiment1/experiment1__03_results_pd__23_pd_reliability_v3_2.pdf)** — `pd_reliability_v3_2`
+**[experiment1__03_results_pd__23_pd_reliability_v2_2](experiment1/experiment1__03_results_pd__23_pd_reliability_v2_2.pdf)** — `pd_reliability_v2_2`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__24_pd_reliability_v3_3](experiment1/experiment1__03_results_pd__24_pd_reliability_v3_3.pdf)** — `pd_reliability_v3_3`
+**[experiment1__03_results_pd__24_pd_reliability_v2_3](experiment1/experiment1__03_results_pd__24_pd_reliability_v2_3.pdf)** — `pd_reliability_v2_3`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
 
-**[experiment1__03_results_pd__25_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__25_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
+**[experiment1__03_results_pd__25_pd_reliability_v2_4](experiment1/experiment1__03_results_pd__25_pd_reliability_v2_4.pdf)** — `pd_reliability_v2_4`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__26_pd_reliability_v2_5](experiment1/experiment1__03_results_pd__26_pd_reliability_v2_5.pdf)** — `pd_reliability_v2_5`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__27_pd_reliability_v2_6](experiment1/experiment1__03_results_pd__27_pd_reliability_v2_6.pdf)** — `pd_reliability_v2_6`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__28_pd_reliability_v2_7](experiment1/experiment1__03_results_pd__28_pd_reliability_v2_7.pdf)** — `pd_reliability_v2_7`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__29_pd_reliability_v2_8](experiment1/experiment1__03_results_pd__29_pd_reliability_v2_8.pdf)** — `pd_reliability_v2_8`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__30_pd_reliability_v2_9](experiment1/experiment1__03_results_pd__30_pd_reliability_v2_9.pdf)** — `pd_reliability_v2_9`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__31_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__31_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__32_pd_reliability_v2_6_2](experiment1/experiment1__03_results_pd__32_pd_reliability_v2_6_2.pdf)** — `pd_reliability_v2.6_2`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__33_pd_reliability_v2_6_3](experiment1/experiment1__03_results_pd__33_pd_reliability_v2_6_3.pdf)** — `pd_reliability_v2.6_3`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__34_pd_reliability_v2_6_4](experiment1/experiment1__03_results_pd__34_pd_reliability_v2_6_4.pdf)** — `pd_reliability_v2.6_4`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__35_pd_reliability_v2_6_5](experiment1/experiment1__03_results_pd__35_pd_reliability_v2_6_5.pdf)** — `pd_reliability_v2.6_5`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__36_pd_reliability_v2_6_6](experiment1/experiment1__03_results_pd__36_pd_reliability_v2_6_6.pdf)** — `pd_reliability_v2.6_6`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__37_pd_reliability_v2_6_7](experiment1/experiment1__03_results_pd__37_pd_reliability_v2_6_7.pdf)** — `pd_reliability_v2.6_7`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__38_pd_reliability_v2_6_8](experiment1/experiment1__03_results_pd__38_pd_reliability_v2_6_8.pdf)** — `pd_reliability_v2.6_8`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__39_pd_reliability_v2_6_9](experiment1/experiment1__03_results_pd__39_pd_reliability_v2_6_9.pdf)** — `pd_reliability_v2.6_9`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__40_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__40_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__41_pd_reliability_v3_2](experiment1/experiment1__03_results_pd__41_pd_reliability_v3_2.pdf)** — `pd_reliability_v3_2`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__42_pd_reliability_v3_3](experiment1/experiment1__03_results_pd__42_pd_reliability_v3_3.pdf)** — `pd_reliability_v3_3`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__43_pd_reliability_v3_4](experiment1/experiment1__03_results_pd__43_pd_reliability_v3_4.pdf)** — `pd_reliability_v3_4`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__44_pd_reliability_v3_5](experiment1/experiment1__03_results_pd__44_pd_reliability_v3_5.pdf)** — `pd_reliability_v3_5`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__45_pd_reliability_v3_6](experiment1/experiment1__03_results_pd__45_pd_reliability_v3_6.pdf)** — `pd_reliability_v3_6`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__46_pd_reliability_v3_7](experiment1/experiment1__03_results_pd__46_pd_reliability_v3_7.pdf)** — `pd_reliability_v3_7`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__47_pd_reliability_v3_8](experiment1/experiment1__03_results_pd__47_pd_reliability_v3_8.pdf)** — `pd_reliability_v3_8`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__48_pd_reliability_v3_9](experiment1/experiment1__03_results_pd__48_pd_reliability_v3_9.pdf)** — `pd_reliability_v3_9`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+
+**[experiment1__03_results_pd__49_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__49_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__26_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__26_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
+**[experiment1__03_results_pd__50_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__50_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__27_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__27_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
+**[experiment1__03_results_pd__51_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__51_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__28_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__28_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
+**[experiment1__03_results_pd__52_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__52_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__29_pd_control_context_1](experiment1/experiment1__03_results_pd__29_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__53_pd_control_context_1](experiment1/experiment1__03_results_pd__53_pd_control_context_1.pdf)** — `pd_control_context_1`
+
+PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
+
+**[experiment1__03_results_pd__54_pd_control_context_2](experiment1/experiment1__03_results_pd__54_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -454,7 +538,7 @@ LGD. Initial and post-finetuning scores for each completed configuration. Each d
 
 **[experiment1__04_results_lgd__03_lgd_endpoint_dashboard_lgd_partitions](experiment1/experiment1__04_results_lgd__03_lgd_endpoint_dashboard_lgd_partitions.pdf)** — `lgd_endpoint_dashboard_lgd_partitions`
 
-LGD. Initial and post-finetuning scores for each completed configuration. Numbers identify individual training-dataset partitions. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Initial and post-finetuning scores for each completed configuration. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 
 **[experiment1__04_results_lgd__04_lgd_endpoint_factors_lgd_false](experiment1/experiment1__04_results_lgd__04_lgd_endpoint_factors_lgd_false.pdf)** — `lgd_endpoint_factors_lgd_False`
 
@@ -466,15 +550,15 @@ LGD. Conditional differences match dataset and every other configuration setting
 
 **[experiment1__04_results_lgd__06_lgd_reference_rmse_1](experiment1/experiment1__04_results_lgd__06_lgd_reference_rmse_1.pdf)** — `lgd_reference_rmse_1`
 
-LGD. Dataset-level rmse changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
+LGD. Dataset-level RMSE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
 **[experiment1__04_results_lgd__07_lgd_reference_mae_1](experiment1/experiment1__04_results_lgd__07_lgd_reference_mae_1.pdf)** — `lgd_reference_mae_1`
 
-LGD. Dataset-level mae changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
+LGD. Dataset-level MAE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
 **[experiment1__04_results_lgd__08_lgd_reference_r2_1](experiment1/experiment1__04_results_lgd__08_lgd_reference_r2_1.pdf)** — `lgd_reference_r2_1`
 
-LGD. Dataset-level r2 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
+LGD. Dataset-level R² changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
 **[experiment1__04_results_lgd__09_lgd_control_context_1](experiment1/experiment1__04_results_lgd__09_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
@@ -542,77 +626,77 @@ LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contr
 
 LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contrasts match the same table and partition before averaging and require all repeated non-credit partitions. Protocol curves require every planned trial and unchanged baseline table support. Missing milestones remain gaps; panels without any complete matched cohort are labeled explicitly. Row exposure includes repeated rows and does not establish equal compute. These monitors are separate from five-fold evaluation.
 
-**[experiment2__01_training__16_pd_resource_dashboard_pd_gpu_utilization_percent](experiment2/experiment2__01_training__16_pd_resource_dashboard_pd_gpu_utilization_percent.pdf)** — `pd_resource_dashboard_pd_gpu_utilization_percent`
+**[experiment2__01_training__16_pd_resource_dashboard_pd](experiment2/experiment2__01_training__16_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
 
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
-**[experiment2__01_training__17_pd_resource_dashboard_pd_power_watts](experiment2/experiment2__01_training__17_pd_resource_dashboard_pd_power_watts.pdf)** — `pd_resource_dashboard_pd_power_watts`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment2__01_training__18_pd_resource_dashboard_pd_device_memory_used_mib](experiment2/experiment2__01_training__18_pd_resource_dashboard_pd_device_memory_used_mib.pdf)** — `pd_resource_dashboard_pd_device_memory_used_mib`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment2__01_training__19_pd_movement_pd_tabicl-v2](experiment2/experiment2__01_training__19_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
+**[experiment2__01_training__17_pd_movement_pd_tabicl-v2](experiment2/experiment2__01_training__17_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__20_pd_movement_pd_v2](experiment2/experiment2__01_training__20_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
+**[experiment2__01_training__18_pd_movement_pd_v2](experiment2/experiment2__01_training__18_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__21_pd_movement_pd_v2_6](experiment2/experiment2__01_training__21_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
+**[experiment2__01_training__19_pd_movement_pd_v2_6](experiment2/experiment2__01_training__19_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__22_pd_movement_pd_v3](experiment2/experiment2__01_training__22_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
+**[experiment2__01_training__20_pd_movement_pd_v3](experiment2/experiment2__01_training__20_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__23_lgd_resource_dashboard_lgd_gpu_utilization_percent](experiment2/experiment2__01_training__23_lgd_resource_dashboard_lgd_gpu_utilization_percent.pdf)** — `lgd_resource_dashboard_lgd_gpu_utilization_percent`
+**[experiment2__01_training__21_lgd_resource_dashboard_lgd](experiment2/experiment2__01_training__21_lgd_resource_dashboard_lgd.pdf)** — `lgd_resource_dashboard_lgd`
 
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
-**[experiment2__01_training__24_lgd_resource_dashboard_lgd_power_watts](experiment2/experiment2__01_training__24_lgd_resource_dashboard_lgd_power_watts.pdf)** — `lgd_resource_dashboard_lgd_power_watts`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment2__01_training__25_lgd_resource_dashboard_lgd_device_memory_used_mib](experiment2/experiment2__01_training__25_lgd_resource_dashboard_lgd_device_memory_used_mib.pdf)** — `lgd_resource_dashboard_lgd_device_memory_used_mib`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment2__01_training__26_lgd_movement_lgd_tabicl-v2](experiment2/experiment2__01_training__26_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
+**[experiment2__01_training__22_lgd_movement_lgd_tabicl-v2](experiment2/experiment2__01_training__22_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__27_lgd_movement_lgd_v2](experiment2/experiment2__01_training__27_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
+**[experiment2__01_training__23_lgd_movement_lgd_v2](experiment2/experiment2__01_training__23_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__28_lgd_movement_lgd_v2_6](experiment2/experiment2__01_training__28_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
+**[experiment2__01_training__24_lgd_movement_lgd_v2_6](experiment2/experiment2__01_training__24_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment2__01_training__29_lgd_movement_lgd_v3](experiment2/experiment2__01_training__29_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
+**[experiment2__01_training__25_lgd_movement_lgd_v3](experiment2/experiment2__01_training__25_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
 ## experiment2/02_results
 
-**[experiment2__02_results__01_pd_seed_monitor_credit](experiment2/experiment2__02_results__01_pd_seed_monitor_credit.pdf)** — `pd_seed_monitor_credit`
+**[experiment2__02_results__01_pd_seed_benchmark_credit](experiment2/experiment2__02_results__01_pd_seed_benchmark_credit.pdf)** — `pd_seed_benchmark_credit`
+
+PD. Held-out credit: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+
+**[experiment2__02_results__02_pd_seed_benchmark_ood](experiment2/experiment2__02_results__02_pd_seed_benchmark_ood.pdf)** — `pd_seed_benchmark_ood`
+
+PD. Non-credit retention: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+
+**[experiment2__02_results__03_lgd_seed_benchmark_credit](experiment2/experiment2__02_results__03_lgd_seed_benchmark_credit.pdf)** — `lgd_seed_benchmark_credit`
+
+LGD. Held-out credit: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Fractional RMSE reduction (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+
+**[experiment2__02_results__04_lgd_seed_benchmark_ood](experiment2/experiment2__02_results__04_lgd_seed_benchmark_ood.pdf)** — `lgd_seed_benchmark_ood`
+
+LGD. Non-credit retention: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Fractional RMSE reduction (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+
+**[experiment2__02_results__05_pd_seed_monitor_credit](experiment2/experiment2__02_results__05_pd_seed_monitor_credit.pdf)** — `pd_seed_monitor_credit`
 
 PD. Held-out credit: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__02_pd_seed_monitor_ood](experiment2/experiment2__02_results__02_pd_seed_monitor_ood.pdf)** — `pd_seed_monitor_ood`
+**[experiment2__02_results__06_pd_seed_monitor_ood](experiment2/experiment2__02_results__06_pd_seed_monitor_ood.pdf)** — `pd_seed_monitor_ood`
 
 PD. Non-credit retention: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__03_lgd_seed_monitor_credit](experiment2/experiment2__02_results__03_lgd_seed_monitor_credit.pdf)** — `lgd_seed_monitor_credit`
+**[experiment2__02_results__07_lgd_seed_monitor_credit](experiment2/experiment2__02_results__07_lgd_seed_monitor_credit.pdf)** — `lgd_seed_monitor_credit`
 
 LGD. Held-out credit: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in R² (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__04_lgd_seed_monitor_ood](experiment2/experiment2__02_results__04_lgd_seed_monitor_ood.pdf)** — `lgd_seed_monitor_ood`
+**[experiment2__02_results__08_lgd_seed_monitor_ood](experiment2/experiment2__02_results__08_lgd_seed_monitor_ood.pdf)** — `lgd_seed_monitor_ood`
 
 LGD. Non-credit retention: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in R² (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
@@ -702,83 +786,121 @@ LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contr
 
 LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
-**[experiment3__01_training__22_pd_resource_dashboard_pd_gpu_utilization_percent](experiment3/experiment3__01_training__22_pd_resource_dashboard_pd_gpu_utilization_percent.pdf)** — `pd_resource_dashboard_pd_gpu_utilization_percent`
+**[experiment3__01_training__22_pd_resource_dashboard_pd](experiment3/experiment3__01_training__22_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
 
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
-**[experiment3__01_training__23_pd_resource_dashboard_pd_power_watts](experiment3/experiment3__01_training__23_pd_resource_dashboard_pd_power_watts.pdf)** — `pd_resource_dashboard_pd_power_watts`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment3__01_training__24_pd_resource_dashboard_pd_device_memory_used_mib](experiment3/experiment3__01_training__24_pd_resource_dashboard_pd_device_memory_used_mib.pdf)** — `pd_resource_dashboard_pd_device_memory_used_mib`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment3__01_training__25_pd_movement_pd_tabicl-v2](experiment3/experiment3__01_training__25_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
+**[experiment3__01_training__23_pd_movement_pd_tabicl-v2](experiment3/experiment3__01_training__23_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__26_pd_movement_pd_v2](experiment3/experiment3__01_training__26_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
+**[experiment3__01_training__24_pd_movement_pd_v2](experiment3/experiment3__01_training__24_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__27_pd_movement_pd_v2_6](experiment3/experiment3__01_training__27_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
+**[experiment3__01_training__25_pd_movement_pd_v2_6](experiment3/experiment3__01_training__25_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__28_pd_movement_pd_v3](experiment3/experiment3__01_training__28_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
+**[experiment3__01_training__26_pd_movement_pd_v3](experiment3/experiment3__01_training__26_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
 
 PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__29_lgd_resource_dashboard_lgd_gpu_utilization_percent](experiment3/experiment3__01_training__29_lgd_resource_dashboard_lgd_gpu_utilization_percent.pdf)** — `lgd_resource_dashboard_lgd_gpu_utilization_percent`
+**[experiment3__01_training__27_lgd_resource_dashboard_lgd](experiment3/experiment3__01_training__27_lgd_resource_dashboard_lgd.pdf)** — `lgd_resource_dashboard_lgd`
 
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
-**[experiment3__01_training__30_lgd_resource_dashboard_lgd_power_watts](experiment3/experiment3__01_training__30_lgd_resource_dashboard_lgd_power_watts.pdf)** — `lgd_resource_dashboard_lgd_power_watts`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment3__01_training__31_lgd_resource_dashboard_lgd_device_memory_used_mib](experiment3/experiment3__01_training__31_lgd_resource_dashboard_lgd_device_memory_used_mib.pdf)** — `lgd_resource_dashboard_lgd_device_memory_used_mib`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment3__01_training__32_lgd_movement_lgd_tabicl-v2](experiment3/experiment3__01_training__32_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
+**[experiment3__01_training__28_lgd_movement_lgd_tabicl-v2](experiment3/experiment3__01_training__28_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__33_lgd_movement_lgd_v2](experiment3/experiment3__01_training__33_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
+**[experiment3__01_training__29_lgd_movement_lgd_v2](experiment3/experiment3__01_training__29_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__34_lgd_movement_lgd_v2_6](experiment3/experiment3__01_training__34_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
+**[experiment3__01_training__30_lgd_movement_lgd_v2_6](experiment3/experiment3__01_training__30_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
-**[experiment3__01_training__35_lgd_movement_lgd_v3](experiment3/experiment3__01_training__35_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
+**[experiment3__01_training__31_lgd_movement_lgd_v3](experiment3/experiment3__01_training__31_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
 
 LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
 
 ## experiment3/02_results
 
-**[experiment3__02_results__01_pd_sampling_costs](experiment3/experiment3__02_results__01_pd_sampling_costs.pdf)** — `pd_sampling_costs`
+**[experiment3__02_results__01_pd_sampling_benchmark_credit](experiment3/experiment3__02_results__01_pd_sampling_benchmark_credit.pdf)** — `pd_sampling_benchmark_credit`
+
+PD. Held-out credit: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+
+**[experiment3__02_results__02_pd_sampling_benchmark_ood](experiment3/experiment3__02_results__02_pd_sampling_benchmark_ood.pdf)** — `pd_sampling_benchmark_ood`
+
+PD. Non-credit retention: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+
+**[experiment3__02_results__03_lgd_sampling_benchmark_credit](experiment3/experiment3__02_results__03_lgd_sampling_benchmark_credit.pdf)** — `lgd_sampling_benchmark_credit`
+
+LGD. Held-out credit: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Fractional RMSE reduction (+ better). Every arm preserves the same experiment-3 prevalence policy.
+
+**[experiment3__02_results__04_lgd_sampling_benchmark_ood](experiment3/experiment3__02_results__04_lgd_sampling_benchmark_ood.pdf)** — `lgd_sampling_benchmark_ood`
+
+LGD. Non-credit retention: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Fractional RMSE reduction (+ better). Every arm preserves the same experiment-3 prevalence policy.
+
+**[experiment3__02_results__05_pd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__05_pd_sampling_benchmark_quality_cost.pdf)** — `pd_sampling_benchmark_quality_cost`
+
+PD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
+
+**[experiment3__02_results__06_pd_sampling_costs](experiment3/experiment3__02_results__06_pd_sampling_costs.pdf)** — `pd_sampling_costs`
 
 PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
-**[experiment3__02_results__02_lgd_sampling_costs](experiment3/experiment3__02_results__02_lgd_sampling_costs.pdf)** — `lgd_sampling_costs`
+**[experiment3__02_results__07_lgd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__07_lgd_sampling_benchmark_quality_cost.pdf)** — `lgd_sampling_benchmark_quality_cost`
+
+LGD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
+
+**[experiment3__02_results__08_lgd_sampling_costs](experiment3/experiment3__02_results__08_lgd_sampling_costs.pdf)** — `lgd_sampling_costs`
 
 LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
-**[experiment3__02_results__03_pd_sampling_monitor_credit](experiment3/experiment3__02_results__03_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
+**[experiment3__02_results__09_pd_sampling_monitor_credit](experiment3/experiment3__02_results__09_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
 
 PD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__04_lgd_sampling_monitor_credit](experiment3/experiment3__02_results__04_lgd_sampling_monitor_credit.pdf)** — `lgd_sampling_monitor_credit`
+**[experiment3__02_results__10_pd_sampling_monitor_ood](experiment3/experiment3__02_results__10_pd_sampling_monitor_ood.pdf)** — `pd_sampling_monitor_ood`
+
+PD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+
+**[experiment3__02_results__11_lgd_sampling_monitor_credit](experiment3/experiment3__02_results__11_lgd_sampling_monitor_credit.pdf)** — `lgd_sampling_monitor_credit`
 
 LGD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
+**[experiment3__02_results__12_lgd_sampling_monitor_ood](experiment3/experiment3__02_results__12_lgd_sampling_monitor_ood.pdf)** — `lgd_sampling_monitor_ood`
+
+LGD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
+
 ## experiment4/01_context_curves
 
-_No figures produced._
+**[experiment4__01_context_curves__01_context_support](experiment4/experiment4__01_context_curves__01_context_support.pdf)** — `context_support`
+
+Number of tables with finite original/CPT measurements in all five folds at each nominal context size. Counts reflect both available table sizes and completed exports; they are not live scheduler status. Performance panels separately fix the cohort over their full displayed range.
+
+**[experiment4__01_context_curves__02_context_pd_through_128](experiment4/experiment4__01_context_curves__02_context_pd_through_128.pdf)** — `context_pd_through_128`
+
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+
+**[experiment4__01_context_curves__03_context_pd_through_2048](experiment4/experiment4__01_context_curves__03_context_pd_through_2048.pdf)** — `context_pd_through_2048`
+
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+
+**[experiment4__01_context_curves__04_context_pd_through_50000](experiment4/experiment4__01_context_curves__04_context_pd_through_50000.pdf)** — `context_pd_through_50000`
+
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+
+**[experiment4__01_context_curves__05_context_lgd_through_128](experiment4/experiment4__01_context_curves__05_context_lgd_through_128.pdf)** — `context_lgd_through_128`
+
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+
+**[experiment4__01_context_curves__06_context_lgd_through_2048](experiment4/experiment4__01_context_curves__06_context_lgd_through_2048.pdf)** — `context_lgd_through_2048`
+
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
 
 ## experiment5/01_training
 
@@ -790,9 +912,29 @@ PD. Recorded status of 24 planned PD trials by base model. PENDING denotes no ma
 
 LGD. Recorded status of 24 planned LGD trials by base model. PENDING denotes no manifest outcome and can include currently running or queued jobs. INTERRUPTED denotes saved progress, not a numerical failure. This figure does not query the scheduler.
 
-**[experiment5__01_training__03_shared_schedule_pd_lgd](experiment5/experiment5__01_training__03_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
+**[experiment5__01_training__03_adapter_optimization_pd_tabicl-v2](experiment5/experiment5__01_training__03_adapter_optimization_pd_tabicl-v2.pdf)** — `adapter_optimization_pd_tabicl-v2`
+
+PD. Mean diagnostics across all four dataset partitions at each adapter rate. Lines connect recorded summaries, with periodically spaced markers; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. Gradient diagnostics concern optimizer-selected query-scale deltas. Movement is RMS delta from the identity scaling, not a relative change from zero-valued adapter parameters.
+
+**[experiment5__01_training__04_adapter_optimization_pd_v3](experiment5/experiment5__01_training__04_adapter_optimization_pd_v3.pdf)** — `adapter_optimization_pd_v3`
+
+PD. Mean diagnostics across all four dataset partitions at each adapter rate. Lines connect recorded summaries, with periodically spaced markers; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. Gradient diagnostics concern optimizer-selected query-scale deltas. Movement is RMS delta from the identity scaling, not a relative change from zero-valued adapter parameters.
+
+**[experiment5__01_training__05_adapter_monitors_pd](experiment5/experiment5__01_training__05_adapter_monitors_pd.pdf)** — `adapter_monitors_pd`
+
+PD. Change in AUC from each table's update-zero score. Repeated non-credit partitions are averaged within table; tables receive equal weight. All planned partitions and the unchanged baseline table cohort are required at every milestone. These fixed-context training monitors are distinct from the final five-fold benchmark.
+
+**[experiment5__01_training__06_shared_schedule_pd_lgd](experiment5/experiment5__01_training__06_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
 
 Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
+
+**[experiment5__01_training__07_resource_dashboard_pd](experiment5/experiment5__01_training__07_resource_dashboard_pd.pdf)** — `resource_dashboard_pd`
+
+Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+
+**[experiment5__01_training__08_resource_dashboard_lgd](experiment5/experiment5__01_training__08_resource_dashboard_lgd.pdf)** — `resource_dashboard_lgd`
+
+Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
 ## experiment5/02_results
 
@@ -800,7 +942,9 @@ _No figures produced._
 
 ## experiment6/01_training
 
-_No figures produced._
+**[experiment6__01_training__01_size_monitors](experiment6/experiment6__01_training__01_size_monitors.pdf)** — `size_monitors`
+
+Fixed-context monitoring effects relative to update zero, with equal weight per table. All arms must be observed for the same table; non-credit tables additionally require all four partitions. The baseline table cohort is held fixed across milestones. These monitors are distinct from the final five-fold benchmark.
 
 ## experiment6/02_results
 

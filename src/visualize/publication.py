@@ -242,11 +242,12 @@ def plot_metric_profile(campaign):
             continue
         matrix = data.pivot(index="dataset", columns="base", values="effect").sort_index()
         extent = max(float(np.nanmax(abs(matrix.to_numpy()))), 1e-8)
-        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
+        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix), style.SIMPLE_PAGE_ROWS), 1):
             part = matrix.iloc[start:stop]
-            fig = cp._heatmap(part, f"Reference recipe: {metric}", limits=(-extent, extent), label=effect_label(metric))
+            label = style.METRIC_LABELS.get(metric, metric)
+            fig = cp._heatmap(part, f"Reference recipe: {label}", limits=(-extent, extent), label=effect_label(metric))
             pages.append(cp.Page(f"reference_{metric}_{page_no}", fig,
-                f"Dataset-level {metric} changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, "
+                f"Dataset-level {label} changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, "
                 "relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. "
                 "Positive values indicate improvement; only RMSE is expressed as a fractional reduction. "
                 + notes.get(metric, ""),
@@ -272,10 +273,12 @@ def plot_thresholds(campaign):
     pages = []
     for base, group in data.groupby("base_short"):
         matrix = group.pivot(index="test_dataset_id", columns="fold_idx", values=column).sort_index()
-        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix)), 1):
+        for page_no, (start, stop) in enumerate(style.page_slices(len(matrix), style.SIMPLE_PAGE_ROWS), 1):
             part = matrix.iloc[start:stop]
-            fig = cp._heatmap(part, f"{base}: validation-selected thresholds",
+            from src.visualize.training_viz import compact_base
+            fig = cp._heatmap(part, f"{style.model_label(compact_base(base))}: validation-selected thresholds",
                               diverging=False, limits=(0,1), label="F1 threshold")
+            fig.axes[0].set_xlabel("Outer cross-validation fold (0–4)")
             pages.append(cp.Page(f"thresholds_{base}_{page_no}", fig,
                 "F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. "
                 "The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, "

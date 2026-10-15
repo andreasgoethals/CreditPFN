@@ -186,3 +186,18 @@ def test_new_dense_figures_have_text_equivalents_and_publication_geometry(tmp_pa
         page.figure.savefig(tmp_path/f'{index:02d}_{page.name}.pdf')
         page.figure.canvas.draw()
         assert not any('Full /' in a.get_title() or 'Frozen /' in a.get_title() for a in page.figure.axes)
+
+
+def test_adapter_resource_comparison_uses_honest_scales_and_preserves_values():
+    run = adapter_fixture()
+    page, = ds.plot_resources(run)
+    utilization, memory = page.figure.axes
+    assert utilization.get_ylim() == (0, 100)
+    assert memory.get_ylim()[0] == 0 and 'GiB' in memory.get_ylabel()
+    table = page.tables['Displayed counters and trial support'].dropna(subset=['median'])
+    measured = table[table.measure.eq('Device memory (GiB)')]
+    # The first 2,000-update window contains samples at 250 and 1,000:
+    # its within-trial median is 20,625 MiB, not the value at the window edge.
+    expected_mib = {2000: 20625, 4000: 22500, 6000: 25000, 10000: 30000}
+    assert np.allclose(measured['median'], measured.window_end.map(expected_mib) / 1024)
+    assert measured.base.nunique() == 2

@@ -332,7 +332,7 @@ def plot_resources(run):
               "device_memory_used_mib": "Device memory (GiB)"}
     width = cp.optimization_window(run)
     data["window_end"] = np.minimum(np.ceil(data.successful_updates/width)*width, run.target)
-    pages = []
+    prepared = []
     for field, label in fields.items():
         if field not in data: continue
         data[field] = pd.to_numeric(data[field], errors="coerce")
@@ -340,21 +340,34 @@ def plot_resources(run):
             data[field] = data[field] / 1024
         values = data.dropna(subset=[field]).groupby(["trial_name", "base", "window_end"])[field].median().reset_index()
         if values.empty: continue
-        fig, axes = _grid(f"{run.track.upper()}: sampled {label}", values.base.nunique())
-        tables = []
-        for ax, (base, part) in zip(axes, values.groupby("base")):
+        prepared.append((field, label, values))
+    if not prepared: return []
+    fig, axes = plt.subplots(1, len(prepared), squeeze=False,
+                             figsize=style.figsize(style.WIDTH_FULL, style.SMALL_RATIO),
+                             layout="constrained")
+    fig.suptitle(f"{run.track.upper()}: sampled training resources")
+    tables, handles = [], {}
+    for ax, (field, label, values) in zip(axes.flat, prepared):
+        for index, (base, part) in enumerate(values.groupby("base")):
             curve = part.groupby("window_end")[field].agg(median="median", count="count").reindex(cp.optimization_grid(run, "grad_norm_mean"))
-            ax.plot(curve.index, curve["median"], color=style.color(base), linewidth=style.THIN_LINE)
-            ax.set_title(base); ax.set_ylabel(label); ax.set_xlabel("Successful updates")
-            ax.ticklabel_format(axis="y", style="plain", useOffset=False)
+            line, = ax.plot(curve.index, curve["median"], color=style.color(base), linewidth=style.THIN_LINE,
+                            marker=style.PANEL_MARKERS[index % len(style.PANEL_MARKERS)],
+                            markersize=style.CURVE_MARKER_SIZE, markevery=style.CURVE_MARKER_INTERVAL,
+                            label=style.model_label(base))
+            handles[base] = line
             tables.append(curve.reset_index().assign(base=base, measure=label))
-        for ax in axes[values.base.nunique():]: ax.remove()
-        pages.append(cp.Page(f"resource_dashboard_{run.track}_{field}", fig,
-            "Device counters during training, summarized first by a within-trial window median, then by the median "
-            "across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. "
-            "Changing support can change these descriptive curves. Device samples are neither process-specific utilization "
-            "nor integrated energy measurements. Missing counters remain gaps.", {"Displayed counters and trial support": pd.concat(tables, ignore_index=True)}))
-    return pages
+        ax.set_ylabel(label); ax.set_xlabel("Successful updates")
+        ax.ticklabel_format(axis="y", style="plain", useOffset=False)
+        ax.set_ylim(bottom=0)
+        if field == "gpu_utilization_percent": ax.set_ylim(0, 100)
+    fig.legend(handles=list(handles.values()), loc="outside lower center", ncol=min(4, len(handles)))
+    return [cp.Page(f"resource_dashboard_{run.track}", fig,
+        "Device counters during training, summarized first by a within-trial window median, then by the median "
+        "across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. "
+        "Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. "
+        "Changing support can change these descriptive curves. Device samples are neither process-specific utilization "
+        "nor integrated energy measurements. Missing counters remain gaps.",
+        {"Displayed counters and trial support": pd.concat(tables, ignore_index=True)})]
 
 
 def plot_endpoints(run, *, by_partition=False):
@@ -373,10 +386,21 @@ def plot_endpoints(run, *, by_partition=False):
             ax.scatter(arm.initial, arm.value, color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))),
                 marker=style.PANEL_MARKERS[int(lam > 0)], s=style.POINT_SIZE,
                 facecolors="none" if frozen else None, alpha=style.POINT_ALPHA)
-            if by_partition:
-                for row in arm.itertuples(): ax.annotate(str(row.partition+1), (row.initial, row.value), fontsize=style.ANNOTATION_SIZE)
         low, high = part[["initial", "value"]].min().min(), part[["initial", "value"]].max().max()
         ax.plot([low, high], [low, high], color=style.color("reference"), linestyle=":")
+        if by_partition:
+            span = max(high-low, 1e-6)
+            lanes = []
+            for partition, initial in part.groupby("partition").initial.mean().sort_values().items():
+                lane = next((i for i, previous in enumerate(lanes)
+                             if initial-previous > style.ENDPOINT_LABEL_SEPARATION*span), len(lanes))
+                if lane == len(lanes): lanes.append(initial)
+                else: lanes[lane] = initial
+                offset = style.ENDPOINT_LABEL_OFFSET + lane*style.ENDPOINT_LABEL_LANE_HEIGHT
+                ax.text(initial, high + offset*span, f"P{partition+1}",
+                        ha="center", va="bottom", fontsize=style.ANNOTATION_SIZE)
+            ax.set_ylim(top=high + (style.ENDPOINT_LABEL_HEADROOM
+                                   + (len(lanes)-1)*style.ENDPOINT_LABEL_LANE_HEIGHT)*span)
         ax.set_title(base); ax.set_xlabel("Initial " + monitor_label(run)); ax.set_ylabel("Post-finetuning " + monitor_label(run))
     for ax in axes[data.base.nunique():]: ax.remove()
     from matplotlib.lines import Line2D
@@ -385,7 +409,7 @@ def plot_endpoints(run, *, by_partition=False):
     fig.legend(handles=handles, loc="outside lower center", ncol=3)
     return [cp.Page(f"endpoint_dashboard_{run.track}_{'partitions' if by_partition else 'means'}", fig,
         "Initial and post-finetuning scores for each completed configuration. "
-        + ("Numbers identify individual training-dataset partitions. " if by_partition else "Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. ")
+        + ("Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. " if by_partition else "Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. ")
         + "Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. "
         "Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. "
         "These fixed-context monitors do not substitute for final five-fold benchmark scores.", {"Displayed endpoints": data})]

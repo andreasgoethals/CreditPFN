@@ -25,14 +25,17 @@ def future_campaign(experiment=2, track="pd", *, all_bases=False):
     return run
 
 
-def test_seed_pairing_retains_partition_before_noncredit_average():
+@pytest.mark.parametrize("stored_domain", ["noncredit", "ood"])
+def test_seed_pairing_retains_partition_before_noncredit_average(stored_domain):
     main, repeat = future_campaign(1), future_campaign(2)
+    for run in (main, repeat):
+        run.evaluation["domain"] = run.evaluation.domain.replace({"ood": stored_domain})
     pairs = cmp.seed_pairs(main, repeat, domain="ood", benchmark=True)
     assert len(pairs) == 16 and set(pairs.partition) == {0, 1, 2, 3}
     assert len(cmp.dataset_means(pairs, repeat, ["difference"])) == 4
     # A different missing partition in each seed cannot be averaged into a pair.
-    main.evaluation = main.evaluation[~(main.evaluation.domain.eq("ood") & main.evaluation.split.eq(0))]
-    repeat.evaluation = repeat.evaluation[~(repeat.evaluation.domain.eq("ood") & repeat.evaluation.split.eq(1))]
+    main.evaluation = main.evaluation[~(main.evaluation.domain.eq(stored_domain) & main.evaluation.split.eq(0))]
+    repeat.evaluation = repeat.evaluation[~(repeat.evaluation.domain.eq(stored_domain) & repeat.evaluation.split.eq(1))]
     pairs = cmp.seed_pairs(main, repeat, domain="ood", benchmark=True)
     assert set(pairs.partition) == {2, 3}
     assert cmp.dataset_means(pairs, repeat, ["difference"]).empty
@@ -57,9 +60,11 @@ def test_seed_reference_does_not_include_other_main_recipes():
     assert len(costs) == 4 and "gpu_hours_seed42" in costs and "gpu_hours_seed43" in costs
 
 
-def test_benchmark_missing_outer_fold_excludes_that_partition_only():
+@pytest.mark.parametrize("stored_domain", ["noncredit", "ood"])
+def test_benchmark_missing_outer_fold_excludes_that_partition_only(stored_domain):
     run = future_campaign(3)
-    mask = (run.evaluation.domain.eq("ood") & run.evaluation.test_dataset_id.eq("Panel 0") &
+    run.evaluation["domain"] = run.evaluation.domain.replace({"ood": stored_domain})
+    mask = (run.evaluation.domain.eq(stored_domain) & run.evaluation.test_dataset_id.eq("Panel 0") &
             run.evaluation.split.eq(2) & run.evaluation.fold_idx.eq(4) &
             run.evaluation.source.eq("tabpfn-untuned"))
     run.evaluation.loc[mask, "status"] = "FAIL"
@@ -67,6 +72,19 @@ def test_benchmark_missing_outer_fold_excludes_that_partition_only():
     assert len(pairs) == 45  # 3 protocols x (4 panels x 4 partitions - 1)
     means = cmp.dataset_means(pairs, run, ["effect"])
     assert len(means) == 9 and "Panel 0" not in set(means.dataset)
+
+
+def test_benchmark_domain_aliases_preserve_source_rows_and_credit_results():
+    run = future_campaign(2)
+    run.evaluation["domain"] = run.evaluation.domain.replace({"ood": "noncredit"})
+    original = run.evaluation.copy(deep=True)
+    pd.testing.assert_frame_equal(cp.benchmark_effects(run, domain="ood"),
+                                  cp.benchmark_effects(run, domain="noncredit"))
+    credit = cp.benchmark_effects(run, domain="credit")
+    assert set(credit.dataset) == set(original.loc[original.domain.eq("credit"), "test_dataset_id"])
+    pd.testing.assert_frame_equal(original, run.evaluation)
+    with pytest.raises(ValueError, match="domain"):
+        cp.benchmark_effects(run, domain="unknown")
 
 
 def test_sampling_never_compares_different_partitions():

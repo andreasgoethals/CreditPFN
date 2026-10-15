@@ -12,6 +12,61 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
+## Merged results and notebook audit — 15-10-2026
+
+| Downloaded evidence | Outcome | Headline |
+|---|---|---|
+| Experiment 1, DATA plus PROJECT | Complete | 512/512 trained; 20,235 successful benchmark fold records |
+| Experiment 2, DATA plus PROJECT | Complete | 32/32 trained; 3,135 successful benchmark fold records |
+| Experiment 3, DATA plus PROJECT | Complete | 96/96 trained; 5,415 successful benchmark fold records, including the previously missing classical comparison |
+| Experiment 4 | Complete | 250/250 verified task exports; 11,100 original/CPT context cells |
+| Experiment 5 | Partial | 32/48 trained (PD 23, LGD 9); completed trials reach 10,000 updates with finite endpoints |
+| Experiment 6 | Partial | 6/16 trained; completed trials reach 10,000 updates with finite endpoints |
+| Experiment 7 | Partial | 6/16 new trials trained: four 2,048-row and two 26,000-row trials; the 8,192-row control is reused from experiment 6 |
+
+- The user merged both storage downloads locally. Independent calculations from fold CSVs reproduce trained/original AUC, Brier, R² and relative-RMSE effects for experiments 1–3, including the non-credit panel. The prior DATA-only ZIP was insufficient for these conclusions. No source evidence, checkpoints, training configuration or Slurm code was changed.
+- At 11:26 the supplied queue shows six CreditPFN jobs running and 28 pending on resources/dependencies; no CreditPFN environment hold remains and wICE is empty. The separate CreditICL job is not counted. Completed LGD adapter trials take about 39–54 minutes, corpus trials 40–42 minutes, and 26k-row trials 2.1–2.4 hours. Remaining dependencies suggest roughly 4–6 hours with prompt allocation, allowing 6–12 hours for scheduling/requeues, measured from that queue snapshot; this excludes the unsubmitted experiments 5–7 benchmarks. Preserve accepted jobs; audit completed checkpoints before those benchmarks.
+- The fixed reference recipe improves PD AUC by 0.00477 for v2 (17/17 tables) and 0.00369 for TabICL (6/17; dominated by Vehicle Loan), but only 0.00043 for v3. LGD R² changes are +0.00410/−0.00477/−0.08321/−0.02843 for v2/TabICL/v2.6/v3. These are equal-table descriptive means, not selected winners or independent-trial inference. PD seed differences are small; LGD v3 is more seed-sensitive. PD accumulation costs about 7–17 times one-sample training without a consistent transfer advantage.
+- Final verification: **893 passed / 1 skipped** (optional local data manifests absent); all **21 notebooks** executed successfully. Reviewed the regenerated figure set and all changed layouts: **245 PDFs**, correct ICML widths, embedded text, central figure/caption ownership and exact final summaries in tracked `All_Results.md`. Resource scales and partition labels were corrected; absent follow-up benchmarks remain explicitly unavailable.
+- Reconfirmed the 30-09 local-input limitation: 23/25 processed tables match saved cluster hashes after CRLF-to-LF normalization; PropPD2 and PropLGD2 still differ. All available cluster plans agree on their input hashes and have disjoint training/test table membership. The general notebooks explicitly describe local inputs; synchronize canonical processed tables before using their corpus descriptors in the paper. Do not replace the active VSC corpus with local copies.
+
+**Tried:** Compare non-credit benchmarks through the shared follow-up notebook loader.
+**Result:** Training monitors were visible, but some completed non-credit benchmark panels were omitted.
+**Why:** Stored evaluation rows use `noncredit`; the caller requested `ood`, and an exact string filter dropped those rows.
+**Instead:** Normalize the two domain labels at the reporting boundary, test real/legacy labels and incomplete folds, and regenerate notebooks; stored metrics and trained weights require no rerun.
+
+## Overnight progress and one held benchmark task — 15-10-2026
+
+- Read the 09:20 Downloads `output CreditPFN.zip` in place: 74,572,935 bytes, 4,779 files, clean CRC, no duplicate members. This is still DATA logs/manifests; detailed PROJECT results, predictions and physical checkpoints are absent. All 12 research-plan checksums and 720 training-identity checksums verify. Main/seed/sampling remain 512/32/96 unique OK trials at 10,000 updates.
+- Experiment 3 has all 128 foundation and 127/128 classical task logs completed with exit 0 and zero failed cells: 1,081 model/dataset comparisons, 5,405 successful fold records. Resolved Slurm contexts identify the sole missing element as wICE `62312109_124` (LGD partition 3, shard 12). User's 09:22 queue/accounting confirms it is held for environment retrieval before startup, elapsed zero; recommend releasing only that existing task once, with no outcome yet supplied. No rerun of completed training or benchmark tasks is warranted.
+- Experiment 4 has 250/250 passing receipts bound to its verified plan and 250 successful context logs. Matching each log to its receipt gives 11,100 context-size/state cells, paired original/CPT states and constant test-row counts within every task, with no missing task. This certifies execution/receipt coverage, not a local review of the absent PROJECT CSVs/predictions. Those artifacts are needed before interpreting curves in the notebook.
+- New training: experiment 5 **30/48 OK** (21/24 PD, 9/24 LGD), experiment 6 **6/16 OK**, experiment 7 **5/16 OK** (four 2,048-row and one 26,000-row trials); every completed trial has 10,000 successful updates and finite final losses/monitored metrics. All new training logs have zero recorded AMP/data skips and no traceback/OOM. Nine adapter and two episode-size interruption records are recovery events. The open 26k trial explicitly resumes update 7,145; the three open adapter trials record update 1,000 and continue logging near download time.
+- User's 09:22 Mindwell queue has four running tasks (three adapters plus one 26k episode), three LGD adapter tasks waiting on priority, and remaining work held by expected shared-capacity dependencies. No Mindwell environment hold appears. All eight 26k trials are now accounted for by the completed trial and seven live queue elements, so the previous submission-headroom pause has cleared. Finish training, then audit checkpoints before submitting experiments 5–7's benchmarks; experiment 7 also needs experiment 6's shared weights. Keep active code/environment/output fixed. No runtime edits, extraction, notebook rerun or cluster action performed here.
+
+**Tried:** Execute the complete sampling benchmark as the accepted 128-task GPU and 128-task CPU arrays.
+**Result:** 255 tasks completed successfully; CPU element 62312109_124 has no application log and remains held at zero elapsed time.
+**Why:** Slurm reports `user env retrieval failed requeued held`; the underlying site/login-environment cause is not established by these files.
+**Instead:** Release that single existing task once, inspect its state, and request VSC investigation if the same hold returns; preserve completed results and unrelated queued work.
+
+## Follow-up training submissions reached queue headroom — 14-10-2026
+
+- User's 11:08 transcript confirms prepared-plan checks and accepted submissions for all 48 experiment-5 trials, all 16 experiment-6 trials and experiment 7's eight 2,048-row trials. Experiment 7's 26,000-row plan passes, but its first submission waits at 450 Mindwell tasks; no 26,000-row array ID appears in this snapshot. Experiment 4's submission is not shown in this excerpt.
+- This is the launcher's configured `MAX_QUEUED=450` headroom check, not a training failure or proof that the site's hard quota is 450. It counts all of the user's queued/running array elements and checks again every 60 seconds. Leave the submitter running so it can submit the eight remaining single-trial arrays as space becomes available. Already accepted jobs survive disconnection; the unsent portion does not. Do not restart the experiment-7 wrapper, which would submit the 2,048-row arm again; reconcile any later accepted IDs before recovering an interrupted submission. No executable changes or cluster actions performed.
+
+## Follow-up capacity passed; sampling benchmark progressing — 14-10-2026
+
+- Read the 10:52 Downloads `output CreditPFN.zip` in place: 70,151,085 bytes, 3,692 files, clean CRC and no duplicate members. It contains DATA logs/manifests, not current PROJECT predictions, detailed diagnostics or weights. No extraction, output cleanup or runtime edit was needed.
+- Workflow `b3197869c5974faf83713e3c9072be2c` now has all eight passing smoke/capacity receipts under `1908e9b`, with matching source/config fingerprint `3a2b8c6bbee6da1274b6fd188f1cd0b65c677e665e61a74bfd92f94374252c73` and environment versions. User's 10:51 cluster inspection passed, including the referenced PROJECT evidence hashes. Preserve this workflow and export its gate ID for every new preparation/submission.
+- Four capacity tasks finish successfully in 448/272/181/90 seconds for PD-v3/PD-TabICL/LGD-v3/LGD-TabICL. Twelve real-corpus 16-update probes cover adapters and the distinct corpus/episode policies; 24 original-model context probes cover six sizes through 50,000 rows at production view counts and 4,096-row queries. No error/OOM or nonzero logged AMP/data-skip counter appears. The context probes use 64 synthetic numeric features; they do not establish capacity for every categorical expansion or predict full benchmark duration.
+- Experiment-3 benchmark arrays are already accepted: Mindwell `11687925` and wICE `62312109`, each 128 tasks. The ZIP contains 28 completed classical PD tasks, reporting 37 model/dataset comparisons and 185 successful folds, zero failed cells; four GPU and three CPU logs are unfinished. No benchmark traceback/OOM appears. User's 10:58 queue confirms four GPU and four CPU tasks running, all other displayed tasks waiting on `JobArrayTaskLimit`, with no held jobs or dependency blocks. Keep both arrays; do not resubmit them.
+- Next prepare experiments 4/5/6; prepare experiment 7 only after experiment 6's reference plan succeeds. Then queue 250 context tasks and 48/16/16 training trials on the same fixed code/environment. New work can overlap experiment 3, but 330 new GPU tasks plus its 128 accepted tasks may reach the launcher's 450-task queue threshold. Wait for each submitter to finish; do not duplicate partially accepted submissions. No repeat of historical experiment 0 is required by this evidence.
+
+## Follow-up correctness checks passed — 14-10-2026
+
+- Read the five supplied Downloads logs in place: CPU preparation 62312115 and all four smoke tasks for workflow `b3197869c5974faf83713e3c9072be2c` succeeded under `1908e9b`. Tasks 0–3 each publish `passed=true` and exit 0, with the same source/config fingerprint and package versions. Current source reproduces that fingerprint using Linux LF bytes; the direct Windows byte hash differs because YAMLs use CRLF locally. No runtime fingerprint or receipt was changed.
+- PD/LGD × TabPFN v3/TabICLv2 each finish three reference/resumed pairs at rates 1e-4, 1e-3 and .03: 24 final six-update checkpoints, 12 intentional update-3 interruptions and 12 recoveries. All logged monitored trajectory scores are finite; no error marker or nonzero AMP/data-skip counter appears. Passing receipts cover zero/nonzero adapter loading, original-weight isolation, inference/cache/query-chunk checks, original/CPT five-fold context checks and recovery state/trajectory tolerances. Detailed project evidence is referenced by receipt hash but was not downloaded; the final cluster gate rechecks its integrity.
+- Smoke task wall times were 307/229/223/218 seconds for PD-v3/PD-TabICL/LGD-v3/LGD-TabICL. These 256-row checks do not establish production capacity. Next submit only the four capacity tasks with the same workflow/source/environment, then require the eight-receipt inspection before preparing experiments 4–7. Existing benchmark jobs may continue. No code change, training, submission, installation, cleanup or Git publication was performed here.
+
 ## Benchmark compatibility after a source update — 14-10-2026
 
 - User already pulled the follow-up source after the completed sampling-training audits. The earlier instruction to finish every old benchmark before any deployment was too restrictive: `check_prepared(stage="eval")` deliberately accepts changed code/environment while preserving original plan/config/identity checks; training resume remains strict. Do not recreate experiment-3 plans or retrain its completed checkpoints.
@@ -764,6 +819,26 @@ that configuration?"* is the question this table exists to answer.
 
 | Date | Run | Outcome | Notes |
 |---|---|---|---|
+| 15-10-2026 | Sampling benchmark · Mindwell 11687925 / wICE 62312109 | **255/256 done** | All 128 GPU and 127 CPU tasks exit 0, 5,405 folds OK; CPU 62312109_124 held before startup. Release recommendation pending user action. |
+| 15-10-2026 | Context curves · context_v1 | **250/250 done** | All receipts match plan/logs, 11,100 paired-state cells, constant test sizes within tasks, all exit 0. PROJECT artifacts not downloaded. |
+| 15-10-2026 | DiagScale · cpt_diagscale_v1 | **30/48 done** | 21 PD + 9 LGD at 10k updates; three PD tasks running, LGD pending on priority/capacity. No recorded numerical skips or errors. |
+| 15-10-2026 | Corpus policy · cpt_corpus_v1 | **6/16 done** | All completed trials at 10k updates; remaining jobs pending on capacity dependencies. |
+| 15-10-2026 | Episode size · cpt_episode_rows2048_v1 / rows26000 | **5/16 done** | Four small + one large complete at 10k; one large trial resumed update 7,145 and is running; ten other trials pending. |
+| 14-10-2026 | DiagScale PD · cpt_diagscale_v1 | **submitted** | All 24 trials; arrays 11688015/16/17/18/19/24/25/26, four partitions, 90-minute recovery segments. No execution outcome supplied yet. |
+| 14-10-2026 | DiagScale LGD · cpt_diagscale_v1 | **submitted** | All 24 trials; arrays 11688027–11688034, four partitions, prepared-plan check passed. |
+| 14-10-2026 | Corpus policy PD · cpt_corpus_v1 | **submitted** | All 16 trials; arrays 11688035/36/38/39/40/41/42/43; prepared-plan check passed. |
+| 14-10-2026 | Episode size PD · cpt_episode_rows2048_v1 / rows26000 | **partly submitted** | Eight 2,048-row trials accepted as 11688044–11688051; all eight 26,000-row trials still unsent at the 11:08 snapshot, waiting at 450 tasks. |
+| 14-10-2026 | Follow-up capacity PD/TabPFN v3 · Mindwell 11687975 (task 0) | **pass** | Five 16-update training probes and six context sizes through 50k; exit 0, 448 s. |
+| 14-10-2026 | Follow-up capacity PD/TabICLv2 · Mindwell 11687976 (task 1) | **pass** | Five 16-update training probes and six context sizes through 50k; exit 0, 272 s. |
+| 14-10-2026 | Follow-up capacity LGD/TabPFN v3 · Mindwell 11687977 (task 2) | **pass** | One 16-update adapter probe and six context sizes through 50k; exit 0, 181 s. |
+| 14-10-2026 | Follow-up capacity LGD/TabICLv2 · Mindwell 11687974 (task 3) | **pass** | One 16-update adapter probe and six context sizes through 50k; exit 0, 90 s. |
+| 14-10-2026 | Follow-up gate · b3197869c5974faf83713e3c9072be2c | **pass** | All eight receipts accepted by cluster inspection at 10:51; retain receipts and PROJECT evidence for experiments 4–7. |
+| 14-10-2026 | Sampling benchmark · Mindwell 11687925 / wICE 62312109 | **running** | 28 classical tasks/185 folds OK in 10:52 DATA ZIP; 10:58 queue has four running per controller, remaining jobs array-throttled, no holds. |
+| 14-10-2026 | Follow-up prepare · wICE 62312115 | **done** | Workflow b3197869c5974faf83713e3c9072be2c created; four smoke tasks submitted; exit 0, 71 s. |
+| 14-10-2026 | Follow-up smoke PD/TabPFN v3 · Mindwell 11687933 (task 0) | **pass** | Three learning-rate recovery pairs, six final six-update checkpoints, matching gate receipt; exit 0, 307 s. |
+| 14-10-2026 | Follow-up smoke PD/TabICLv2 · Mindwell 11687934 (task 1) | **pass** | Three learning-rate recovery pairs, six final six-update checkpoints, matching gate receipt; exit 0, 229 s. |
+| 14-10-2026 | Follow-up smoke LGD/TabPFN v3 · Mindwell 11687945 (task 2) | **pass** | Three learning-rate recovery pairs, six final six-update checkpoints, matching gate receipt; exit 0, 223 s. |
+| 14-10-2026 | Follow-up smoke LGD/TabICLv2 · Mindwell 11687932 (task 3) | **pass** | Three learning-rate recovery pairs, six final six-update checkpoints, matching gate receipt; exit 0, 218 s. |
 | 14-10-2026 | Sampling checkpoint audits · wICE 62311793/62311794 | **96/96 pass** | PD/LGD each 48 completed at 10k updates, no divergence/pending/problems; both logs exit 0. Ready for experiment-3 benchmarking on the existing cluster source. |
 | 14-10-2026 | Main/seed/sampling DATA snapshot, downloaded 08:34; queue 08:43 | **640/640 training OK; main/seed benchmarks complete in logs** | Main 512, seed 32, sampling 96 at 10k updates; main/seed each 256 successful benchmark shards and full logged five-fold coverage; both queues empty. Sampling checkpoint audit/benchmark and fresh project-artifact download remain. |
 | 13-10-2026 | Main/seed/sampling DATA snapshot, downloaded 14:13 | **512/512 main; 32/32 seed; 90/96 sampling** | 46 PD/44 LGD sampling completed; all main/seed classical shards logged successful; GPU partitions 0/3 and project results still unconfirmed; no new runs submitted. |

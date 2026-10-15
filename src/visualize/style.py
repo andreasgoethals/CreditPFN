@@ -213,6 +213,10 @@ CURVE_MARKER_INTERVAL = 5
 CLIP_LINEAR_THRESHOLD = 0.001  # Fraction: linear from zero to 0.1%, logarithmic above.
 CLIP_DISPLAY_CEILING = 1.1  # Leave visible headroom above a 100% curve.
 POINT_ALPHA = 0.65
+ENDPOINT_LABEL_HEADROOM = 0.18
+ENDPOINT_LABEL_OFFSET = 0.04
+ENDPOINT_LABEL_SEPARATION = 0.08
+ENDPOINT_LABEL_LANE_HEIGHT = 0.10
 THIN_LINE = 0.8
 BAR_HEIGHT = 0.72
 ANNOTATION_SIZE = 7
@@ -224,6 +228,9 @@ STATUS_COLORS = {"OK": "#009E73", "PENDING": "#CCCCCC", "FAIL": "#D55E00",
 SEED_MARKERS = ("o", "s", "^")
 
 MODEL_LABELS = {"v2": "TabPFN v2", "v2.6": "TabPFN v2.6", "v3": "TabPFN v3", "tabicl-v2": "TabICLv2"}
+METRIC_LABELS = {"roc_auc": "AUC", "pr_auc": "PR-AUC", "brier_score": "Brier score",
+                 "log_loss": "Log loss", "ece": "ECE", "f1": "F1", "rmse": "RMSE",
+                 "mae": "MAE", "r2": "R²"}
 ADAPTER_LR_COLORS = {1e-4: "#0072B2", 1e-3: "#E69F00", 3e-2: "#009E73"}
 SIZE_STUDY_COLORS = {"All tables": "#0072B2", "Large tables": "#E69F00",
                      "2,048 rows": "#0072B2", "8,192 rows": "#E69F00", "26,000 rows": "#009E73"}

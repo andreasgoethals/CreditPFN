@@ -424,8 +424,14 @@ def benchmark_effects(campaign: Campaign, metric: str | None = None, *, domain="
     """Paired outer-fold effects with a complete-fold requirement per dataset/recipe."""
     metric = metric or campaign.metric
     data = campaign.evaluation
+    # Benchmark exports use "noncredit"; training monitors and comparison
+    # notebooks use "ood". Match either spelling without changing source data.
+    domain = "noncredit" if domain == "ood" else domain
+    if domain not in ("credit", "noncredit"):
+        raise ValueError("Expected credit, noncredit or ood domain")
     if "domain" in data:
-        data = data[data.domain.fillna("credit").eq(domain)]
+        labels = data.domain.fillna("credit").replace({"ood": "noncredit"})
+        data = data[labels.eq(domain)]
     elif domain != "credit":
         return pd.DataFrame()
     if data.empty or metric not in data:

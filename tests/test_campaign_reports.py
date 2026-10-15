@@ -287,8 +287,44 @@ def test_resource_panels_keep_units_and_fit_available_models(monkeypatch, bases)
     table = page.tables["Displayed counters and trial support"]
     assert set(table.measure) == {"Device memory (GiB)"}
     assert table["median"].dropna().between(96, 97).all()
-    assert len(page.figure.axes) == bases
+    assert len(page.figure.axes) == 1
+    assert len(page.figure.axes[0].lines) == bases
     for axis in page.figure.axes:
         assert not axis.yaxis.get_major_formatter().get_useOffset()
-        assert axis.get_subplotspec().get_gridspec().nrows == (2 if bases == 4 else 1)
+        assert axis.get_ylim()[0] == 0
     page.figure.canvas.draw()
+
+
+def test_resource_dashboard_keeps_counters_separate_and_utilization_bounded(monkeypatch):
+    from src.visualize import dashboards as db
+
+    records = pd.DataFrame([
+        dict(trial_name=f"trial-{base}", base=base, phase="training", successful_updates=update,
+             gpu_utilization_percent=99 + index, power_watts=450 + index,
+             device_memory_used_mib=96 * 1024 + index)
+        for base in ("v2", "v3") for index, update in enumerate((100, 200))
+    ])
+    monkeypatch.setattr(db.dg, "load", lambda *args: records.copy())
+    pages = db.plot_resources(campaign())
+    assert len(pages) == 1 and len(pages[0].figure.axes) == 3
+    assert pages[0].figure.axes[0].get_ylim() == (0, 100)
+    table = pages[0].tables["Displayed counters and trial support"]
+    assert table.measure.nunique() == 3 and table.base.nunique() == 2
+    assert table.loc[table.measure.eq("GPU utilization (%)"), "median"].dropna().between(99, 100).all()
+    pages[0].figure.canvas.draw()
+
+
+def test_near_identical_partition_baselines_have_readable_labels(monkeypatch):
+    from src.visualize import dashboards as db
+
+    data = pd.DataFrame([dict(base='v3', partition=p, initial=.8+p*1e-5,
+        value=.76+p*.01, learning_rate=3e-7, l2sp_lambda=.003, frozen=False)
+        for p in range(4)])
+    monkeypatch.setattr(db, 'endpoint_levels', lambda run: data.copy())
+    page, = db.plot_endpoints(campaign(), by_partition=True)
+    style.finish_figure(page.figure)
+    page.figure.canvas.draw()
+    renderer = page.figure.canvas.get_renderer()
+    boxes = [label.get_window_extent(renderer) for label in page.figure.axes[0].texts]
+    assert len(boxes) == 4
+    assert not any(left.overlaps(right) for i, left in enumerate(boxes) for right in boxes[i+1:])

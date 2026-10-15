@@ -138,12 +138,13 @@ def plot_seed_endpoints(main, repeat, *, benchmark=False, metric=None):
         low = min(data.reference.min(), data.repeat.min(), 0)
         high = max(data.reference.max(), data.repeat.max(), 0)
         axes[0].plot([low, high], [low, high], linestyle=":", color=style.color("reference"))
-        axes[0].set_xlabel(f"Seed {int(main.cfg.seed)}: effect")
-        axes[0].set_ylabel(f"Seed {int(repeat.cfg.seed)}: effect")
+        score_label = effect_label(metric).replace(" (+ better)", "")
+        axes[0].set_xlabel(f"Seed {int(main.cfg.seed)}: {score_label}")
+        axes[0].set_ylabel(f"Seed {int(repeat.cfg.seed)}: {score_label}")
         axes[0].legend()
         axes[1].set_yticks(range(data.base.nunique()), [style.model_label(b) for b in sorted(data.base.unique())])
         axes[1].axvline(0, linestyle=":", color=style.color("reference"))
-        axes[1].set_xlabel("Seed 43 minus seed 42 effect")
+        axes[1].set_xlabel("Seed 43 minus seed 42 effect\n" + score_label)
         pages.append(cp.Page(f"seed_{stage}_{domain}", fig,
             f"{label}: {'five-fold benchmark' if benchmark else str(repeat.target)+ '-update monitor'} effects for the predefined full-update reference, "
             f"LR 3e-7 and L2-SP 0.003. Effects are {effect_label(metric)} relative to each model's original weights. "

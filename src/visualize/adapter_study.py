@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.visualize import campaign as cp, comparisons as cmp, dashboards as db, diagnostics as dg, style
+from src.visualize import campaign as cp, comparisons as cmp, dashboards as db, style
 from src.visualize.paper_figures import effect_label
 
 
@@ -68,6 +68,7 @@ def plot_optimization(run):
                 ax.plot(curve.index, curve.value, color=style.ADAPTER_LR_COLORS[lr],
                         linestyle=style.ADAPTER_LR_STYLES[lr],
                         marker="o", markersize=style.CURVE_MARKER_SIZE,
+                        markevery=style.CURVE_MARKER_INTERVAL,
                         linewidth=style.THIN_LINE, label=f"LR {lr:g}")
                 tables.append(curve.reset_index().assign(learning_rate=lr, metric=field))
             ax.set_ylabel(cp.loss_label(run.track, base) if field == "train_loss" else label)
@@ -80,7 +81,7 @@ def plot_optimization(run):
         _legend(fig)
         pages.append(cp.Page(f"adapter_optimization_{run.track}_{base}", fig,
             f"{run.track.upper()}. Mean diagnostics across all four dataset partitions at each adapter rate. "
-            "Dots mark recorded summaries; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. "
+            "Lines connect recorded summaries, with periodically spaced markers; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. "
             "Gradient diagnostics concern optimizer-selected query-scale deltas. "
             "Movement is RMS delta from the identity scaling, not a relative change from zero-valued adapter parameters.",
             {"Plotted windows and support": pd.concat(tables, ignore_index=True)}))
@@ -130,35 +131,7 @@ def costs(run):
 
 
 def plot_resources(run):
-    data = dg.load(run, "resources")
-    if data.empty:
-        return []
-    data = data[data.phase.eq("training") & data.successful_updates.gt(0)].copy()
-    fields = {"gpu_utilization_percent": "GPU utilization (%)", "device_memory_used_mib": "Device memory (MiB)"}
-    width = cp.optimization_window(run)
-    data["window_end"] = np.minimum(np.ceil(data.successful_updates / width)*width, run.target)
-    fig, axes = _grid(f"{run.track.upper()}: DiagScale sampled resources")
-    tables = []
-    bases = sorted(run.trials.base.unique())
-    for ax, (base, field) in zip(axes, [(b, f) for f in fields for b in bases]):
-        if field not in data:
-            ax.remove(); continue
-        part = data[data.base.eq(base)].dropna(subset=[field])
-        if part.empty:
-            ax.remove(); continue
-        trials = part.groupby(["trial_name", "window_end"])[field].median().reset_index()
-        curve = trials.groupby("window_end")[field].agg(median="median", trials="count").reindex(cp.optimization_grid(run, "grad_norm_mean"))
-        color = style.color("tabicl" if "tabicl" in base.lower() else "v3")
-        ax.plot(curve.index, curve["median"], color=color, linewidth=style.THIN_LINE,
-                marker="o", markersize=style.CURVE_MARKER_SIZE)
-        ax.set_title(base); ax.set_ylabel(fields[field]); ax.set_xlabel("Successful updates")
-        tables.append(curve.reset_index().assign(base=base, metric=field))
-    if not tables:
-        plt.close(fig); return []
-    return [cp.Page(f"adapter_resources_{run.track}", fig,
-        f"{run.track.upper()}. Median device counters within trial/update window, then median across observed trials. "
-        "Rates are pooled; changing trial counts are retained in the numerical table. These sampled counters "
-        "do not measure integrated energy or scheduler billing.", {"Plotted medians and support": pd.concat(tables, ignore_index=True)})]
+    return db.plot_resources(run)
 
 
 def benchmark_tables(run, metric=None, domain="credit"):

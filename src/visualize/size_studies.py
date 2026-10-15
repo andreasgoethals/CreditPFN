@@ -168,9 +168,13 @@ def plot_monitors(arms):
     data=matched_observations(arms)
     if data.empty or not data.updates.gt(0).any():
         return []
-    fig,axes=db._grid('PD: credit transfer and non-credit retention')
+    domains=[d for d in ('credit','ood') if data.domain.eq(d).any()]
+    title=('PD: credit transfer and non-credit retention' if len(domains)==2
+           else 'PD: '+cmp.DOMAINS[domains[0]].lower()+' monitoring')
+    panels=[(b,d) for d in domains for b in sorted(data.base.unique())
+            if (data.base.eq(b)&data.domain.eq(d)).any()]
+    fig,axes=(cp._subplots(title,len(panels)) if len(panels)<=2 else db._grid(title))
     tables=[]
-    panels=[(b,d) for d in ('credit','ood') for b in sorted(data.base.unique())]
     for ax in axes[len(panels):]:
         ax.remove()
     for ax,(base,domain) in zip(axes,panels):

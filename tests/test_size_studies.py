@@ -292,3 +292,17 @@ def test_new_size_notebooks_show_pending_without_inventing_evidence(tmp_path, mo
         assert ss.coverage(arms).planned.sum()==planned
         assert ss.coverage(arms).completed.sum()==0
         assert ss.plot_monitors(arms)==ss.plot_benchmark(arms)==ss.plot_optimization(arms)==[]
+
+
+def test_partial_size_monitors_do_not_reserve_empty_noncredit_panels():
+    from src.visualize import size_studies as ss, style
+    style.apply()
+    arms = size_report_fixture(6)
+    for run in arms.values():
+        run.trajectories = run.trajectories.drop(columns='metric__ood__Panel')
+    page, = ss.plot_monitors(arms)
+    assert len(page.figure.axes) == 2
+    assert 'non-credit' not in page.figure._suptitle.get_text()
+    for ax in page.figure.axes:
+        assert ax.get_subplotspec().get_gridspec().nrows == 1
+    assert set(page.tables['Matched table effects'].domain) == {'credit'}

@@ -11,8 +11,17 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 15-10-2026
+
+- Restore non-credit benchmark comparisons by recognizing both stored domain labels; retain complete-fold and matched-partition requirements.
+- Compact resource and dataset-summary figures, use honest resource scales, clarify endpoint labels and omit unavailable size-study panels; refresh all notebooks from merged storage downloads.
+- Record overnight benchmark/context completion, follow-up training progress and the single remaining Slurm environment hold.
+
 ## 14-10-2026
 
+- Record accepted follow-up training submissions and the remaining episode-size queue wait.
+- Record accepted follow-up capacity validation and the next preparation/submission sequence.
+- Record the accepted follow-up correctness workflow and its remaining production-capacity gate.
 - Clarify that completed checkpoints can be benchmarked with reviewed newer code; keep original training plans and freeze source during active jobs.
 - Fix experiment-7 batch/maintenance log routing; cover actual shell startup across old and new experiments and clarify follow-up launch order.
 - Record complete training/main-and-seed benchmark log coverage and the remaining sampling benchmark/project-artifact checks.
