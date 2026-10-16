@@ -518,11 +518,15 @@ PD. F1-maximizing thresholds selected separately on each inner validation split 
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__53_pd_control_context_1](experiment1/experiment1__03_results_pd__53_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__53_prediction_diagnostics](experiment1/experiment1__03_results_pd__53_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+
+Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+
+**[experiment1__03_results_pd__54_pd_control_context_1](experiment1/experiment1__03_results_pd__54_pd_control_context_1.pdf)** — `pd_control_context_1`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
-**[experiment1__03_results_pd__54_pd_control_context_2](experiment1/experiment1__03_results_pd__54_pd_control_context_2.pdf)** — `pd_control_context_2`
+**[experiment1__03_results_pd__55_pd_control_context_2](experiment1/experiment1__03_results_pd__55_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -560,7 +564,11 @@ LGD. Dataset-level MAE changes for the predefined full-update recipe, LR 3e-7 an
 
 LGD. Dataset-level R² changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__09_lgd_control_context_1](experiment1/experiment1__04_results_lgd__09_lgd_control_context_1.pdf)** — `lgd_control_context_1`
+**[experiment1__04_results_lgd__09_prediction_diagnostics](experiment1/experiment1__04_results_lgd__09_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+
+Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+
+**[experiment1__04_results_lgd__10_lgd_control_context_1](experiment1/experiment1__04_results_lgd__10_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
 LGD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -684,19 +692,27 @@ LGD. Held-out credit: five-fold benchmark effects for the predefined full-update
 
 LGD. Non-credit retention: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Fractional RMSE reduction (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__05_pd_seed_monitor_credit](experiment2/experiment2__02_results__05_pd_seed_monitor_credit.pdf)** — `pd_seed_monitor_credit`
+**[experiment2__02_results__05_seed_prediction_sensitivity](experiment2/experiment2__02_results__05_seed_prediction_sensitivity.pdf)** — `seed_prediction_sensitivity`
+
+Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+
+**[experiment2__02_results__06_seed_prediction_sensitivity](experiment2/experiment2__02_results__06_seed_prediction_sensitivity.pdf)** — `seed_prediction_sensitivity`
+
+Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+
+**[experiment2__02_results__07_pd_seed_monitor_credit](experiment2/experiment2__02_results__07_pd_seed_monitor_credit.pdf)** — `pd_seed_monitor_credit`
 
 PD. Held-out credit: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__06_pd_seed_monitor_ood](experiment2/experiment2__02_results__06_pd_seed_monitor_ood.pdf)** — `pd_seed_monitor_ood`
+**[experiment2__02_results__08_pd_seed_monitor_ood](experiment2/experiment2__02_results__08_pd_seed_monitor_ood.pdf)** — `pd_seed_monitor_ood`
 
 PD. Non-credit retention: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__07_lgd_seed_monitor_credit](experiment2/experiment2__02_results__07_lgd_seed_monitor_credit.pdf)** — `lgd_seed_monitor_credit`
+**[experiment2__02_results__09_lgd_seed_monitor_credit](experiment2/experiment2__02_results__09_lgd_seed_monitor_credit.pdf)** — `lgd_seed_monitor_credit`
 
 LGD. Held-out credit: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in R² (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__08_lgd_seed_monitor_ood](experiment2/experiment2__02_results__08_lgd_seed_monitor_ood.pdf)** — `lgd_seed_monitor_ood`
+**[experiment2__02_results__10_lgd_seed_monitor_ood](experiment2/experiment2__02_results__10_lgd_seed_monitor_ood.pdf)** — `lgd_seed_monitor_ood`
 
 LGD. Non-credit retention: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in R² (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
@@ -844,35 +860,43 @@ LGD. Held-out credit: five-fold benchmark effects and within-experiment protocol
 
 LGD. Non-credit retention: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Fractional RMSE reduction (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__05_pd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__05_pd_sampling_benchmark_quality_cost.pdf)** — `pd_sampling_benchmark_quality_cost`
+**[experiment3__02_results__05_prediction_diagnostics](experiment3/experiment3__02_results__05_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+
+Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+
+**[experiment3__02_results__06_prediction_diagnostics](experiment3/experiment3__02_results__06_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+
+Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+
+**[experiment3__02_results__07_pd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__07_pd_sampling_benchmark_quality_cost.pdf)** — `pd_sampling_benchmark_quality_cost`
 
 PD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
 
-**[experiment3__02_results__06_pd_sampling_costs](experiment3/experiment3__02_results__06_pd_sampling_costs.pdf)** — `pd_sampling_costs`
+**[experiment3__02_results__08_pd_sampling_costs](experiment3/experiment3__02_results__08_pd_sampling_costs.pdf)** — `pd_sampling_costs`
 
 PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
-**[experiment3__02_results__07_lgd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__07_lgd_sampling_benchmark_quality_cost.pdf)** — `lgd_sampling_benchmark_quality_cost`
+**[experiment3__02_results__09_lgd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__09_lgd_sampling_benchmark_quality_cost.pdf)** — `lgd_sampling_benchmark_quality_cost`
 
 LGD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
 
-**[experiment3__02_results__08_lgd_sampling_costs](experiment3/experiment3__02_results__08_lgd_sampling_costs.pdf)** — `lgd_sampling_costs`
+**[experiment3__02_results__10_lgd_sampling_costs](experiment3/experiment3__02_results__10_lgd_sampling_costs.pdf)** — `lgd_sampling_costs`
 
 LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
-**[experiment3__02_results__09_pd_sampling_monitor_credit](experiment3/experiment3__02_results__09_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
+**[experiment3__02_results__11_pd_sampling_monitor_credit](experiment3/experiment3__02_results__11_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
 
 PD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__10_pd_sampling_monitor_ood](experiment3/experiment3__02_results__10_pd_sampling_monitor_ood.pdf)** — `pd_sampling_monitor_ood`
+**[experiment3__02_results__12_pd_sampling_monitor_ood](experiment3/experiment3__02_results__12_pd_sampling_monitor_ood.pdf)** — `pd_sampling_monitor_ood`
 
 PD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__11_lgd_sampling_monitor_credit](experiment3/experiment3__02_results__11_lgd_sampling_monitor_credit.pdf)** — `lgd_sampling_monitor_credit`
+**[experiment3__02_results__13_lgd_sampling_monitor_credit](experiment3/experiment3__02_results__13_lgd_sampling_monitor_credit.pdf)** — `lgd_sampling_monitor_credit`
 
 LGD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__12_lgd_sampling_monitor_ood](experiment3/experiment3__02_results__12_lgd_sampling_monitor_ood.pdf)** — `lgd_sampling_monitor_ood`
+**[experiment3__02_results__14_lgd_sampling_monitor_ood](experiment3/experiment3__02_results__14_lgd_sampling_monitor_ood.pdf)** — `lgd_sampling_monitor_ood`
 
 LGD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
 

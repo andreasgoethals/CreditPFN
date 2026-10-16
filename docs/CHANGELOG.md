@@ -11,8 +11,16 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 16-10-2026
+
+- Ground the CPT framing in primary theory and add validated, paired prediction diagnostics to the existing notebook sections.
+- Record both passed experiment-7 audits and benchmark readiness; retire the research brief's obsolete unrun-follow-up status.
+- Record complete adapter/corpus benchmarks, successful episode-size recovery and the remaining experiment-7 audit/benchmark gates.
+
 ## 15-10-2026
 
+- Record passed experiment-5/6 checkpoint audits and the queued experiment-7 recovery jobs.
+- Record completed adapter/corpus training, the two episode-size timeouts and their scoped recovery/benchmark gates.
 - Restore non-credit benchmark comparisons by recognizing both stored domain labels; retain complete-fold and matched-partition requirements.
 - Compact resource and dataset-summary figures, use honest resource scales, clarify endpoint labels and omit unavailable size-study panels; refresh all notebooks from merged storage downloads.
 - Record overnight benchmark/context completion, follow-up training progress and the single remaining Slurm environment hold.

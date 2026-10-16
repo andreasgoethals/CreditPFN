@@ -10,6 +10,79 @@ The primary object is the response over the specified grid, not a winning model.
 
 Compare each adapted model with its exact starting checkpoint. The paper can establish behavior on this corpus and budget; it cannot establish a universal benefit/null effect, domain specificity versus generic real-data adaptation, or absence of forgetting without the corresponding controls.
 
+### From theory to the empirical questions
+
+The organizing question is **when credit-domain specialization helps or impairs the in-context
+learning procedure of a tabular foundation model**. Prior-data NLL learns predictions under a
+training-task distribution; credit CPT changes that distribution and can either specialize useful
+structure or narrow it excessively. A fixed model can also become less sensitive to random context
+draws without becoming less systematically wrong. These mechanisms motivate competing expectations,
+not a guarantee of positive transfer. Primary sources and their assumptions are in [LITERATURE.md](LITERATURE.md).
+
+| Question | Relevant evidence | Interpretation boundary |
+|---|---|---|
+| Does stronger credit adaptation improve excluded credit tables while preserving non-credit behavior? | Experiment 1: learning rates, L2-SP, update scope, credit/retention trajectories and paired final scores | Parameter displacement is not predictive bias; finite-panel retention is not universal absence of forgetting. |
+| Is the reference result sensitive to CPT training randomness? | Experiment 2: seed 42 versus 43, with fixed inference folds and context policy | Two seeds describe sensitivity at one recipe, not grid-wide variance. |
+| Does revisiting more rows or changing update weighting make CPT more useful per unit cost? | Experiment 3: paired sampling arms, row exposure and compute | Equal updates do not equal compute or joint all-row context. |
+| Does CPT change how much an unseen credit table needs labeled context? | Experiment 4: original/CPT curves on identical nested prefixes and test rows | Context size dependence is not repeated-context variance; validation labels remain an additional fixed budget. |
+| Does restricting adaptation to attention query scaling preserve useful behavior? | Experiment 5: all three adapter rates against their matched original | Cross-table CPT differs from target-table fine-tuning; comparisons with experiment 1 also change recipe details. |
+| Is a large-table-only training policy helpful, and does episode size help within that fixed pool? | Experiment 6: corpus eligibility; experiment 7: context-plus-query rows | The first changes corpus composition; the second changes context, query count and compute. Neither isolates all notions of “more data.” |
+
+The framing was sharpened after results were visible. Present these as theory-informed exploratory
+questions; do not retroactively claim preregistered directional hypotheses. The contribution is a
+bounded account of domain CPT and its failure/success conditions, not a generic TFM leaderboard.
+An empirical paper can be coherent without a positive mean gain or an additional numbered experiment.
+
+### Saved test predictions and post-hoc diagnostics
+
+`config/eval.yaml` enables `results.save_predictions`. Standard benchmarks write the metric CSV,
+its `.csv.evaluation.json` receipt and a sibling prediction file (`.parquet`, or `.csv.gz` when no
+Parquet engine is installed) under project `output CreditPFN/<experiment>/results/<TRACK>/<method>/`.
+The receipt records the prediction filename and byte size; it is not a prediction-content hash.
+Each prediction has `test_dataset_id`, `model_name`, `fold_idx`, processed-table `row_idx`, `y_true`
+and `y_pred`. PD stores raw positive-class probabilities; LGD stores point predictions and the
+configured nine quantiles when supported. Per-row recalibrated PD probabilities are not stored;
+validation-calibrated fold metrics and reliability bins are stored separately. A sparse quantile
+grid does not support exact CRPS or arbitrary quantiles. Experiment 4 instead stores compressed
+arrays in each task's SQLite `cells.predictions`, including exact context/validation/test indices,
+test targets/predictions and validation targets/predictions. Metric CSV exports alone omit those arrays.
+
+These artifacts support the following analysis **without additional GPU work**:
+
+- Within each held-out credit table, pair original and CPT by partition, outer fold and row;
+  require matching targets, all five successful folds, expected row counts and valid prediction
+  exports. Report mean prediction minus mean observed target, Brier/MSE, and RMS/mean absolute
+  prediction change. Positive signed error denotes overprediction. A lower absolute mean error
+  is not necessarily lower Brier/MSE, so show them together.
+- Use the predefined experiment-1 reference, all prescribed arms in experiments 3/5/6/7, and
+  matched seed-42/43 reference predictions in experiment 2. Do not select favorable recipes or
+  subgroups from test performance. Seed disagreement is descriptive training-seed sensitivity.
+- Pool out-of-fold rows **within a table** for these residual diagnostics; give tables equal
+  weight across the corpus. This can differ slightly from averaging five fold metrics when fold
+  sizes differ. Keep coverage and per-table values, not only an aggregate. Predictions from a
+  changing or incomplete arm cohort do not enter a shared comparison.
+
+The new reports read exports in place and expose aggregates only. They do not publish per-borrower
+targets or predictions. Missing project artifacts produce an explicit unavailable status, not
+zero bias or failure. Mismatched identities, invalid probabilities or corrupted exports stop the
+analysis. Completed scheduler tasks alone cannot establish prediction-level validity.
+
+**What is not identifiable from the existing design:** each test row has one out-of-fold prediction
+per checkpoint and context size. The five folds contain different test rows, and experiment 4 has
+one nested context sequence per fold. These do not provide repeated contexts at fixed size for the
+same query. Moreover, the true conditional default probability or conditional mean LGD is unknown.
+Thus neither variance across borrowers nor average signed residual is the theoretical model
+bias/context-variance term. Even a perfectly calibrated model need not be conditionally unbiased.
+
+If further explanation becomes necessary, an optional inference-only extension would retain the
+existing excluded credit tables, fixed CPT checkpoints, outer test rows and validation partitions;
+resample multiple contexts at a few fixed sizes; pair draws between original and CPT; and freeze
+inference-view randomness. This directly tests whether **credit CPT changes context sensitivity**.
+It would estimate finite-pool sensitivity, not prove true-bias reduction or deployment robustness.
+It needs its own saved context identities and fast correctness gate before any VSC submission.
+No such run is currently implemented or authorized by this analysis update. The broad synthetic
+mechanism and row-reservoir proposals remain unadopted; finish and interpret the existing study first.
+
 ## Corpus, partitions and evaluation population
 
 - **25 registered tables: 17 PD classification and 8 LGD regression.** Every registered processed file must exist before a corrected run starts. Keep the corpus fixed throughout the campaign.
@@ -215,7 +288,8 @@ A passing experiment 0 establishes the tested controls, not the capacity of ever
 ## Follow-up experiments 4–7
 
 These implementations require new experiment-0 validation receipts before research submission.
-No follow-up has yet been run on VSC. Experiments 1–3 retain their configurations and identities.
+Accepted validation receipts and subsequent VSC outcomes are recorded in `AGENTS_MEMORY.md`.
+Experiments 1–3 retain their configurations and identities.
 The earlier generic-data control and prevalence proposal are excluded. The remaining designs
 are renumbered consecutively as follows; historical dated records retain their original numbers.
 

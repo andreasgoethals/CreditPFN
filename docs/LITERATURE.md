@@ -5,8 +5,74 @@ Initial review against primary text at library pin **`e5ce01614eebe520af303f2b5b
 The training-objective check below additionally uses the updated pin **`81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`** (28-09-2026).
 
 The current follow-up-design and implementation review uses **`de324efcca55be392feb0c01830b3b6ce364587f`**
-(13-10-2026), including the Real-TabPFN, TabICLv2 and TTC primary text and code snapshots.
+(refreshed 16-10-2026), including the Real-TabPFN, TabICLv2 and TTC primary text and code snapshots.
 Older pins above identify the historical checks; no library content is changed here.
+
+## Theory-informed interpretation of domain CPT
+
+The object of this study is **how credit-corpus CPT changes a learned prediction procedure**,
+not a general benchmark of all tabular foundation models. Theory supplies competing expectations;
+it does not guarantee that a small domain corpus improves an unseen credit table. This framing was
+refined after inspecting results, so it is exploratory rather than a retroactive preregistration.
+
+| Primary source at the current pin | Verified argument | Question addressed here |
+|---|---|---|
+| [Müller et al., Transformers Can Do Bayesian Inference](../tfm-library/papers/text/2021/12_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.txt), Section 3, Insight 1 and Corollaries 1.1–1.2 | Expected prior-data NLL is cross-entropy to the prior's posterior predictive distribution, or KL plus a constant. Exact recovery additionally requires representability and optimization. | Reweighting training tasks toward credit can improve relevant predictive structure or discard useful structure. Experiment 1 measures transfer and retention over adaptation strength; a CPT checkpoint is not automatically an exact Bayesian posterior update. |
+| [Nagler, Statistical Foundations of Prior-Data Fitted Networks](../tfm-library/papers/text/2023/07_Nagler_Statistical_Foundations_of_Prior_Data_Fitted_Networks.txt), Sections 5–6 | A fixed PFN's repeated-context variation and its systematic deviation from the true conditional distribution are distinct. Theorem 5.2 assumes diminishing single-observation sensitivity; sufficient decay controls context variability. Vanishing variability does not itself imply vanishing bias. | Experiment 4 asks whether the *effect of CPT* changes with available labeled context. It does not directly measure context variance, because it uses one nested context sequence per outer fold. These asymptotic conditions have not been established for our modern checkpoints. |
+| [Garg et al., Real-TabPFN](../tfm-library/papers/text/2025/07_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.txt), Sections 3–5 and Appendix C | Real-table CPT improves the studied TabPFN-v2 setting; longer total context-plus-query episodes improve its ablation. Source comparisons change several corpus properties together. | Experiments 6 and 7 separate an eligibility-policy change from an episode-size change while retaining excluded target tables. They do not prove an independent causal effect of table size. |
+| [Shaheen et al., Understanding the Surprising Generalization Properties of Tabular Foundation Models](../tfm-library/papers/text/2026/08_Shaheen_et_al._Understanding_the_Surprising_Generalization_Properties_of_Tabular_Foundation_Models.txt), Sections 2–4 and limitations | In its row-based architecture and real-data pretraining setting, task/feature structure matters and domain similarity is not sufficient to predict transfer. Retrieval-and-aggregation is a supported interpretation with stated scope, not a universal representation theorem. | Credit-domain matching and more rows need not dominate task diversity. This motivates interpreting corpus-policy effects rather than assuming large-only credit training must win. It is not direct evidence about CPT of TabPFN v3 or TabICLv2. |
+| [Ning et al., Test-Time Compute for Tabular Foundation Models](../tfm-library/papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt), Sections 3–5 and adaptation appendix | Query-scaling adapters modify attention with few parameters; evaluated target-table adaptation uses validation-best selection and a base fallback. | Experiment 5 tests the mechanism in cross-table credit CPT with fixed endpoints. Its outcome is an extension of the question, not a reproduction of the target-table recipe. |
+
+Parameter anchoring, fewer updated parameters and smaller learning rates can restrict departure
+from initialization. This motivates testing preservation versus useful specialization, but there is
+no theorem here that less parameter movement lowers prediction variance or improves AUC. Experiment 2
+checks a second *training* seed; experiment 3 changes exposure/update weighting at fixed successful
+updates. Neither substitutes for independently resampled inference contexts.
+The prior-NLL identity concerns probabilistic PFN objectives; it is not an identity for TabICLv2's
+regression pinball loss. Native objectives and evaluation functionals remain distinct in this study.
+
+### Bias, context sensitivity and what saved predictions identify
+
+Here statistical bias means systematic prediction error relative to a known conditional
+probability or mean. It is distinct from an inductive bias (a preference for particular
+relationships) and from demographic fairness. Those questions need different evidence.
+
+Fix checkpoint weights, context size `n` and query features `x`. Let `p_C(x)` be the prediction
+obtained with a random labeled context `C`, and let `eta(x) = P(Y=1 | X=x)` be the true PD.
+Then `mu(x) = E_C[p_C(x)]`, bias is `mu(x) - eta(x)`, and context variance is
+`Var_C[p_C(x)]`. For an independent test label the expected Brier loss decomposes as
+
+`E_C,Y[(p_C(x)-Y)^2] = (mu(x)-eta(x))^2 + Var_C[p_C(x)] + eta(x)(1-eta(x))`.
+
+The regression analogue replaces `eta` by the conditional mean and the last term by conditional
+outcome variance. This is a squared-error identity, not an additive AUC or F1 decomposition.
+Repeated contexts require fixed query points and a stated context-sampling distribution; changing
+checkpoint seeds, model families, context sizes or inference-view seeds changes a different factor.
+Nagler's one-observation replacement sensitivity is related to, but not identical to, empirical
+variance over whole resampled contexts.
+
+Synthetic controlled tasks supply a known `eta` or regression function, allowing an estimate of
+both terms. Finite context repetitions still create Monte Carlo uncertainty: the squared difference
+between their mean and `eta` contains a sampling-variance contribution. On real credit data there
+is one observed outcome, not a known conditional probability, per row. Therefore:
+
+- Mean predicted PD minus observed default rate, reliability diagrams, proper scores and LGD mean
+  residuals are estimable from existing held-out predictions. They measure calibration or observed
+  error, not the squared bias term above. Aggregate zero error can conceal opposing subgroup errors.
+- Prediction spread across borrowers, variance of five CV scores, predictive quantile width and
+  disagreement between two CPT seeds are different quantities. None is context variance.
+- Repeated inference on the same test rows using several contexts of the same size could estimate
+  context sensitivity on real credit tables without retraining. It would still not identify true
+  conditional bias without further assumptions. Pair original and CPT on identical context draws
+  and keep inference randomness fixed to isolate this question.
+- A binned Brier reliability/resolution decomposition would describe calibration and stratification
+  at its chosen bins, not recover the repeated-context bias–variance decomposition.
+
+The broad synthetic-mechanism and fixed-row-reservoir studies discussed during review are **not
+adopted experiments or prerequisites**. Prioritize complete paired credit-domain analysis of
+experiments 1–7. A later, separately approved context-resampling extension would be justified only
+if an unresolved CPT-versus-original difference calls for it; no additional training is needed for
+that check. The research brief specifies the saved-artifact contract and current analysis limits.
 
 ## Closest evidence
 
