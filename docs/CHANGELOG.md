@@ -11,6 +11,13 @@ Entries above 11-08-2026 follow this rule. Below it they use an older, longer ho
 (`### <change> — <agent>` with What/Why/Verified bullets) and are left as written, because a past
 day is never rewritten.
 
+## 19-10-2026
+
+- Record the completed local prediction/context audit and the paired experiment 1–7 findings in the research brief.
+- Document a single-session SFTP download and recovery from invalid MFA challenges; clarify that two-source scp can require another login.
+- Compact main-PD calibration, clarify LGD error analysis and track-specific figure names, and align documentation with the unified benchmark launcher and completed campaign.
+- Record 255/256 episode-size benchmark completions and the single Slurm environment hold; preserve completed work for final analysis.
+
 ## 16-10-2026
 
 - Ground the CPT framing in primary theory and add validated, paired prediction diagnostics to the existing notebook sections.

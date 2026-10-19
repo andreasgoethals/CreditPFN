@@ -318,9 +318,15 @@ STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
 STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
 ```
 
-Repeat for LGD and completed experiments 2/3. GPU foundation scoring and CPU classical HPO are separate allocations. Start foundation evaluation only against a stable trained roster. Defaults are two GPU/four CPU hours; profile actual packed tasks. Successful cells survive resubmission. Predictions use parquet when available and gzip CSV otherwise; no installation is required for the fallback.
+These individual-stage commands remain available for compatibility and scoped recovery. For a new complete benchmark phase, prefer the unified launcher below: it queues both tasks, all dataset partitions and both resource kinds in one invocation after checking readiness. GPU foundation scoring and CPU classical HPO remain separate allocations. Successful cells survive resubmission. Predictions use parquet when available and gzip CSV otherwise; no installation is required for the fallback.
 
-For each completed follow-up, first run the existing checkpoint audit against its PD/LGD prepared plans. Then use the same two evaluation launches above with `config/experiment2/<track>.yaml` or `config/experiment3/<track>.yaml`. This scores all 32 seed checkpoints or all 96 sampling checkpoints; neither experiment selects a winning main-grid checkpoint. Reuse the measured production walltime with `EVAL_WALLTIME`: the two-hour default has already timed out on a main-PD shard containing multiple large-table comparisons. Completion of a small control does not certify that request.
+For each completed follow-up, first run the existing checkpoint audit against its PD/LGD prepared plans. Then submit its complete benchmark once, replacing `experiment2` with `experiment1` or `experiment3` as appropriate:
+
+```bash
+EVAL_WALLTIME=04:00:00 bash scripts/slurm/run_benchmark.sh experiment2
+```
+
+This scores all 32 seed checkpoints or all 96 sampling checkpoints; neither experiment selects a winning main-grid checkpoint. The unified launcher requests four hours by default for each packed task. Reuse measured production walltime with `EVAL_WALLTIME`: the older individual foundation wrapper's two-hour default has already timed out on a main-PD shard containing multiple large-table comparisons. Completion of a small control does not certify that request. Do not repeat a launch while its arrays are queued or running.
 
 Experiment 2 does not depend scientifically on experiment 3 finishing: audit its own 32 checkpoints, then queue its complete benchmark phase. Its eventual seed comparisons require matched experiment-1 reference results. Shared scheduler capacity can add a dependency even when the scientific experiment is independent. Keep pending capacity chains and recovery checkpoints intact; do not pull an unfinished analysis branch into the active cluster checkout, because evaluation fingerprints include utilities used by the notebook runner too.
 
@@ -356,7 +362,50 @@ Consolidation verifies input/readback checksums and atomically publishes one sna
 
 At final analysis, obtain **both** cluster `output CreditPFN/` trees. They can be combined locally or read in place: `CREDITPFN_ANALYSIS_ROOT` selects the DATA folder/ZIP and `CREDITPFN_ANALYSIS_PROJECT_ROOT` the complementary project folder/ZIP. The readers never extract or modify a supplied ZIP. Project storage can be downloaded through the same SFTP session, without an intermediate DATA copy. Analysis-only compact snapshots must include `LATEST.json` and its referenced directory; their hashes are checked. Keep datasets/private display mappings locally for corpus notebooks and final weights on project storage unless needed elsewhere.
 
-From local PowerShell, one `scp` invocation can merge both output directories into this checkout. The destination is the **repository directory**, not its existing output child, so the downloaded trees keep exactly one `output CreditPFN` layer:
+For interactive MFA, prefer one SFTP session for both storage locations. Open the
+[VSC firewall page](https://firewall.vscentrum.be/), sign in and keep it open, then start
+the connection from local PowerShell:
+
+```powershell
+sftp vsc38338@login.hpc.kuleuven.be
+```
+
+If prompted, open the newly printed authentication link while this command is still waiting.
+Copy it with the mouse; Ctrl+C cancels the waiting process. A `challenge not found` response
+means that challenge is no longer recognized; expiration or cancellation are possibilities,
+not a confirmed diagnosis. End that stale attempt and generate a fresh request. If a fresh
+request immediately fails too, retain the error and time for VSC support. Never record the
+challenge URL in tracked files. See the [official MFA instructions](https://docs.vscentrum.be/accounts/mfa_login_firewall.html).
+
+After the `sftp>` prompt appears, enter these SFTP commands one at a time. `lcd` selects the
+local repository; each `get -R` downloads the same remote folder name into it, merging both
+storage trees under one `output CreditPFN` layer:
+
+```text
+lcd "C:/Users/U0152019/PhD Documents/Projects/3. CreditPFN/CreditPFN"
+```
+
+```text
+get -R "/data/leuven/383/vsc38338/CreditPFN/output CreditPFN"
+```
+
+```text
+get -R "/lustre1/project/stg_00211/CreditPFN/output CreditPFN"
+```
+
+```text
+bye
+```
+
+Wait for each transfer to finish before entering the next command. Existing files are
+overwritten from the source; unmatched local files are preserved. Keep the ordinary `get`
+behavior when refreshing results: append-style resumption assumes existing bytes match the
+remote file, which need not hold for rewritten manifests/results. No input ZIP extraction,
+cluster-side staging copy or experiment rerun is needed.
+
+Alternatively, one `scp` invocation can merge both output directories into this checkout.
+It can open a separate SSH connection for each source, so one command does not guarantee one
+MFA challenge. The destination is the **repository directory**, not its existing output child:
 
 ```powershell
 scp -r "vsc38338@login.hpc.kuleuven.be:/data/leuven/383/vsc38338/CreditPFN/output CreditPFN" "vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/output CreditPFN" "C:\Users\U0152019\PhD Documents\Projects\3. CreditPFN\CreditPFN"

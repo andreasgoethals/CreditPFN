@@ -358,175 +358,51 @@ PD. Dataset-level ECE changes for the predefined full-update recipe, LR 3e-7 and
 
 PD. Dataset-level F1 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. F1 uses thresholds chosen on inner validation rows.
 
-**[experiment1__03_results_pd__13_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__13_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
+**[experiment1__03_results_pd__13_pd_calibration_overview](experiment1/experiment1__03_results_pd__13_pd_calibration_overview.pdf)** — `pd_calibration_overview`
 
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+PD. Changes in outer-test Brier score and expected calibration error (ECE) for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all six scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. ECE depends on the binning scheme.
 
-**[experiment1__03_results_pd__14_pd_reliability_tabicl-v2_2](experiment1/experiment1__03_results_pd__14_pd_reliability_tabicl-v2_2.pdf)** — `pd_reliability_tabicl-v2_2`
+**[experiment1__03_results_pd__14_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__14_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
 
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__15_pd_reliability_tabicl-v2_3](experiment1/experiment1__03_results_pd__15_pd_reliability_tabicl-v2_3.pdf)** — `pd_reliability_tabicl-v2_3`
+**[experiment1__03_results_pd__15_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__15_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
 
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__16_pd_reliability_tabicl-v2_4](experiment1/experiment1__03_results_pd__16_pd_reliability_tabicl-v2_4.pdf)** — `pd_reliability_tabicl-v2_4`
+**[experiment1__03_results_pd__16_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__16_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
 
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__17_pd_reliability_tabicl-v2_5](experiment1/experiment1__03_results_pd__17_pd_reliability_tabicl-v2_5.pdf)** — `pd_reliability_tabicl-v2_5`
+**[experiment1__03_results_pd__17_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__17_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
 
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__18_pd_reliability_tabicl-v2_6](experiment1/experiment1__03_results_pd__18_pd_reliability_tabicl-v2_6.pdf)** — `pd_reliability_tabicl-v2_6`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__19_pd_reliability_tabicl-v2_7](experiment1/experiment1__03_results_pd__19_pd_reliability_tabicl-v2_7.pdf)** — `pd_reliability_tabicl-v2_7`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__20_pd_reliability_tabicl-v2_8](experiment1/experiment1__03_results_pd__20_pd_reliability_tabicl-v2_8.pdf)** — `pd_reliability_tabicl-v2_8`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__21_pd_reliability_tabicl-v2_9](experiment1/experiment1__03_results_pd__21_pd_reliability_tabicl-v2_9.pdf)** — `pd_reliability_tabicl-v2_9`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__22_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__22_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__23_pd_reliability_v2_2](experiment1/experiment1__03_results_pd__23_pd_reliability_v2_2.pdf)** — `pd_reliability_v2_2`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__24_pd_reliability_v2_3](experiment1/experiment1__03_results_pd__24_pd_reliability_v2_3.pdf)** — `pd_reliability_v2_3`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__25_pd_reliability_v2_4](experiment1/experiment1__03_results_pd__25_pd_reliability_v2_4.pdf)** — `pd_reliability_v2_4`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__26_pd_reliability_v2_5](experiment1/experiment1__03_results_pd__26_pd_reliability_v2_5.pdf)** — `pd_reliability_v2_5`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__27_pd_reliability_v2_6](experiment1/experiment1__03_results_pd__27_pd_reliability_v2_6.pdf)** — `pd_reliability_v2_6`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__28_pd_reliability_v2_7](experiment1/experiment1__03_results_pd__28_pd_reliability_v2_7.pdf)** — `pd_reliability_v2_7`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__29_pd_reliability_v2_8](experiment1/experiment1__03_results_pd__29_pd_reliability_v2_8.pdf)** — `pd_reliability_v2_8`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__30_pd_reliability_v2_9](experiment1/experiment1__03_results_pd__30_pd_reliability_v2_9.pdf)** — `pd_reliability_v2_9`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__31_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__31_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__32_pd_reliability_v2_6_2](experiment1/experiment1__03_results_pd__32_pd_reliability_v2_6_2.pdf)** — `pd_reliability_v2.6_2`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__33_pd_reliability_v2_6_3](experiment1/experiment1__03_results_pd__33_pd_reliability_v2_6_3.pdf)** — `pd_reliability_v2.6_3`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__34_pd_reliability_v2_6_4](experiment1/experiment1__03_results_pd__34_pd_reliability_v2_6_4.pdf)** — `pd_reliability_v2.6_4`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__35_pd_reliability_v2_6_5](experiment1/experiment1__03_results_pd__35_pd_reliability_v2_6_5.pdf)** — `pd_reliability_v2.6_5`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__36_pd_reliability_v2_6_6](experiment1/experiment1__03_results_pd__36_pd_reliability_v2_6_6.pdf)** — `pd_reliability_v2.6_6`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__37_pd_reliability_v2_6_7](experiment1/experiment1__03_results_pd__37_pd_reliability_v2_6_7.pdf)** — `pd_reliability_v2.6_7`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__38_pd_reliability_v2_6_8](experiment1/experiment1__03_results_pd__38_pd_reliability_v2_6_8.pdf)** — `pd_reliability_v2.6_8`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__39_pd_reliability_v2_6_9](experiment1/experiment1__03_results_pd__39_pd_reliability_v2_6_9.pdf)** — `pd_reliability_v2.6_9`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__40_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__40_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__41_pd_reliability_v3_2](experiment1/experiment1__03_results_pd__41_pd_reliability_v3_2.pdf)** — `pd_reliability_v3_2`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__42_pd_reliability_v3_3](experiment1/experiment1__03_results_pd__42_pd_reliability_v3_3.pdf)** — `pd_reliability_v3_3`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__43_pd_reliability_v3_4](experiment1/experiment1__03_results_pd__43_pd_reliability_v3_4.pdf)** — `pd_reliability_v3_4`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__44_pd_reliability_v3_5](experiment1/experiment1__03_results_pd__44_pd_reliability_v3_5.pdf)** — `pd_reliability_v3_5`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__45_pd_reliability_v3_6](experiment1/experiment1__03_results_pd__45_pd_reliability_v3_6.pdf)** — `pd_reliability_v3_6`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__46_pd_reliability_v3_7](experiment1/experiment1__03_results_pd__46_pd_reliability_v3_7.pdf)** — `pd_reliability_v3_7`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__47_pd_reliability_v3_8](experiment1/experiment1__03_results_pd__47_pd_reliability_v3_8.pdf)** — `pd_reliability_v3_8`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__48_pd_reliability_v3_9](experiment1/experiment1__03_results_pd__48_pd_reliability_v3_9.pdf)** — `pd_reliability_v3_9`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.
-
-**[experiment1__03_results_pd__49_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__49_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
+**[experiment1__03_results_pd__18_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__18_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__50_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__50_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
+**[experiment1__03_results_pd__19_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__19_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__51_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__51_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
+**[experiment1__03_results_pd__20_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__20_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__52_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__52_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
+**[experiment1__03_results_pd__21_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__21_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__53_prediction_diagnostics](experiment1/experiment1__03_results_pd__53_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+**[experiment1__03_results_pd__22_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__22_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__03_results_pd__54_pd_control_context_1](experiment1/experiment1__03_results_pd__54_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__23_pd_control_context_1](experiment1/experiment1__03_results_pd__23_pd_control_context_1.pdf)** — `pd_control_context_1`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
-**[experiment1__03_results_pd__55_pd_control_context_2](experiment1/experiment1__03_results_pd__55_pd_control_context_2.pdf)** — `pd_control_context_2`
+**[experiment1__03_results_pd__24_pd_control_context_2](experiment1/experiment1__03_results_pd__24_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -564,9 +440,9 @@ LGD. Dataset-level MAE changes for the predefined full-update recipe, LR 3e-7 an
 
 LGD. Dataset-level R² changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__09_prediction_diagnostics](experiment1/experiment1__04_results_lgd__09_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+**[experiment1__04_results_lgd__09_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__09_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
-Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 **[experiment1__04_results_lgd__10_lgd_control_context_1](experiment1/experiment1__04_results_lgd__10_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
@@ -692,13 +568,13 @@ LGD. Held-out credit: five-fold benchmark effects for the predefined full-update
 
 LGD. Non-credit retention: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Fractional RMSE reduction (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 
-**[experiment2__02_results__05_seed_prediction_sensitivity](experiment2/experiment2__02_results__05_seed_prediction_sensitivity.pdf)** — `seed_prediction_sensitivity`
+**[experiment2__02_results__05_pd_seed_prediction_sensitivity](experiment2/experiment2__02_results__05_pd_seed_prediction_sensitivity.pdf)** — `pd_seed_prediction_sensitivity`
 
-Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
 
-**[experiment2__02_results__06_seed_prediction_sensitivity](experiment2/experiment2__02_results__06_seed_prediction_sensitivity.pdf)** — `seed_prediction_sensitivity`
+**[experiment2__02_results__06_lgd_seed_prediction_sensitivity](experiment2/experiment2__02_results__06_lgd_seed_prediction_sensitivity.pdf)** — `lgd_seed_prediction_sensitivity`
 
-Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
 
 **[experiment2__02_results__07_pd_seed_monitor_credit](experiment2/experiment2__02_results__07_pd_seed_monitor_credit.pdf)** — `pd_seed_monitor_credit`
 
@@ -860,13 +736,13 @@ LGD. Held-out credit: five-fold benchmark effects and within-experiment protocol
 
 LGD. Non-credit retention: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Fractional RMSE reduction (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__05_prediction_diagnostics](experiment3/experiment3__02_results__05_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+**[experiment3__02_results__05_pd_prediction_diagnostics](experiment3/experiment3__02_results__05_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment3__02_results__06_prediction_diagnostics](experiment3/experiment3__02_results__06_prediction_diagnostics.pdf)** — `prediction_diagnostics`
+**[experiment3__02_results__06_lgd_prediction_diagnostics](experiment3/experiment3__02_results__06_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
-Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 **[experiment3__02_results__07_pd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__07_pd_sampling_benchmark_quality_cost.pdf)** — `pd_sampling_benchmark_quality_cost`
 
@@ -944,43 +820,111 @@ PD. Mean diagnostics across all four dataset partitions at each adapter rate. Li
 
 PD. Mean diagnostics across all four dataset partitions at each adapter rate. Lines connect recorded summaries, with periodically spaced markers; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. Gradient diagnostics concern optimizer-selected query-scale deltas. Movement is RMS delta from the identity scaling, not a relative change from zero-valued adapter parameters.
 
-**[experiment5__01_training__05_adapter_monitors_pd](experiment5/experiment5__01_training__05_adapter_monitors_pd.pdf)** — `adapter_monitors_pd`
+**[experiment5__01_training__05_adapter_optimization_lgd_tabicl-v2](experiment5/experiment5__01_training__05_adapter_optimization_lgd_tabicl-v2.pdf)** — `adapter_optimization_lgd_tabicl-v2`
+
+LGD. Mean diagnostics across all four dataset partitions at each adapter rate. Lines connect recorded summaries, with periodically spaced markers; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. Gradient diagnostics concern optimizer-selected query-scale deltas. Movement is RMS delta from the identity scaling, not a relative change from zero-valued adapter parameters.
+
+**[experiment5__01_training__06_adapter_optimization_lgd_v3](experiment5/experiment5__01_training__06_adapter_optimization_lgd_v3.pdf)** — `adapter_optimization_lgd_v3`
+
+LGD. Mean diagnostics across all four dataset partitions at each adapter rate. Lines connect recorded summaries, with periodically spaced markers; a missing partition leaves a gap. Data loss is the native query objective; incomplete table-coverage epochs are excluded. Gradient diagnostics concern optimizer-selected query-scale deltas. Movement is RMS delta from the identity scaling, not a relative change from zero-valued adapter parameters.
+
+**[experiment5__01_training__07_adapter_monitors_pd](experiment5/experiment5__01_training__07_adapter_monitors_pd.pdf)** — `adapter_monitors_pd`
 
 PD. Change in AUC from each table's update-zero score. Repeated non-credit partitions are averaged within table; tables receive equal weight. All planned partitions and the unchanged baseline table cohort are required at every milestone. These fixed-context training monitors are distinct from the final five-fold benchmark.
 
-**[experiment5__01_training__06_shared_schedule_pd_lgd](experiment5/experiment5__01_training__06_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
+**[experiment5__01_training__08_adapter_monitors_lgd](experiment5/experiment5__01_training__08_adapter_monitors_lgd.pdf)** — `adapter_monitors_lgd`
+
+LGD. Change in R² from each table's update-zero score. Repeated non-credit partitions are averaged within table; tables receive equal weight. All planned partitions and the unchanged baseline table cohort are required at every milestone. These fixed-context training monitors are distinct from the final five-fold benchmark.
+
+**[experiment5__01_training__09_shared_schedule_pd_lgd](experiment5/experiment5__01_training__09_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
 
 Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
 
-**[experiment5__01_training__07_resource_dashboard_pd](experiment5/experiment5__01_training__07_resource_dashboard_pd.pdf)** — `resource_dashboard_pd`
+**[experiment5__01_training__10_resource_dashboard_pd](experiment5/experiment5__01_training__10_resource_dashboard_pd.pdf)** — `resource_dashboard_pd`
 
 Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
-**[experiment5__01_training__08_resource_dashboard_lgd](experiment5/experiment5__01_training__08_resource_dashboard_lgd.pdf)** — `resource_dashboard_lgd`
+**[experiment5__01_training__11_resource_dashboard_lgd](experiment5/experiment5__01_training__11_resource_dashboard_lgd.pdf)** — `resource_dashboard_lgd`
 
 Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
 
 ## experiment5/02_results
 
-_No figures produced._
+**[experiment5__02_results__01_adapter_benchmark_pd_roc_auc](experiment5/experiment5__02_results__01_adapter_benchmark_pd_roc_auc.pdf)** — `adapter_benchmark_pd_roc_auc`
+
+PD. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.
+
+**[experiment5__02_results__02_adapter_benchmark_lgd_r2](experiment5/experiment5__02_results__02_adapter_benchmark_lgd_r2.pdf)** — `adapter_benchmark_lgd_r2`
+
+LGD. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.
+
+**[experiment5__02_results__03_adapter_benchmark_pd_brier_score](experiment5/experiment5__02_results__03_adapter_benchmark_pd_brier_score.pdf)** — `adapter_benchmark_pd_brier_score`
+
+PD. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.
+
+**[experiment5__02_results__04_pd_prediction_diagnostics](experiment5/experiment5__02_results__04_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+
+**[experiment5__02_results__05_lgd_prediction_diagnostics](experiment5/experiment5__02_results__05_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
+
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 ## experiment6/01_training
 
-**[experiment6__01_training__01_size_monitors](experiment6/experiment6__01_training__01_size_monitors.pdf)** — `size_monitors`
+**[experiment6__01_training__01_size_optimization_tabicl-v2](experiment6/experiment6__01_training__01_size_optimization_tabicl-v2.pdf)** — `size_optimization_tabicl-v2`
+
+Native query cross-entropy excludes anchoring. Each line averages the four planned dataset partitions; missing partitions leave gaps. The corpus-policy comparison changes the loss population, so a lower training loss is not by itself evidence of better transfer. Other panels show optimization and movement, not final predictive quality.
+
+**[experiment6__01_training__02_size_optimization_v3](experiment6/experiment6__01_training__02_size_optimization_v3.pdf)** — `size_optimization_v3`
+
+Native query cross-entropy excludes anchoring. Each line averages the four planned dataset partitions; missing partitions leave gaps. The corpus-policy comparison changes the loss population, so a lower training loss is not by itself evidence of better transfer. Other panels show optimization and movement, not final predictive quality.
+
+**[experiment6__01_training__03_size_monitors](experiment6/experiment6__01_training__03_size_monitors.pdf)** — `size_monitors`
 
 Fixed-context monitoring effects relative to update zero, with equal weight per table. All arms must be observed for the same table; non-credit tables additionally require all four partitions. The baseline table cohort is held fixed across milestones. These monitors are distinct from the final five-fold benchmark.
 
 ## experiment6/02_results
 
-_No figures produced._
+**[experiment6__02_results__01_size_benchmark_roc_auc](experiment6/experiment6__02_results__01_size_benchmark_roc_auc.pdf)** — `size_benchmark_roc_auc`
+
+Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the All tables effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+
+**[experiment6__02_results__02_size_benchmark_brier_score](experiment6/experiment6__02_results__02_size_benchmark_brier_score.pdf)** — `size_benchmark_brier_score`
+
+Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the All tables effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+
+**[experiment6__02_results__03_pd_prediction_diagnostics](experiment6/experiment6__02_results__03_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 ## experiment7/01_training
 
-_No figures produced._
+**[experiment7__01_training__01_size_optimization_tabicl-v2](experiment7/experiment7__01_training__01_size_optimization_tabicl-v2.pdf)** — `size_optimization_tabicl-v2`
+
+Native query cross-entropy excludes anchoring. Each line averages the four planned dataset partitions; missing partitions leave gaps. All arms use the same large-table pool. Larger episodes change both context and query counts; training loss is not a held-out transfer score. Other panels show optimization and movement, not final predictive quality.
+
+**[experiment7__01_training__02_size_optimization_v3](experiment7/experiment7__01_training__02_size_optimization_v3.pdf)** — `size_optimization_v3`
+
+Native query cross-entropy excludes anchoring. Each line averages the four planned dataset partitions; missing partitions leave gaps. All arms use the same large-table pool. Larger episodes change both context and query counts; training loss is not a held-out transfer score. Other panels show optimization and movement, not final predictive quality.
+
+**[experiment7__01_training__03_size_monitors](experiment7/experiment7__01_training__03_size_monitors.pdf)** — `size_monitors`
+
+Fixed-context monitoring effects relative to update zero, with equal weight per table. All arms must be observed for the same table; non-credit tables additionally require all four partitions. The baseline table cohort is held fixed across milestones. These monitors are distinct from the final five-fold benchmark.
 
 ## experiment7/02_results
 
-_No figures produced._
+**[experiment7__02_results__01_size_benchmark_roc_auc](experiment7/experiment7__02_results__01_size_benchmark_roc_auc.pdf)** — `size_benchmark_roc_auc`
+
+Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the 8,192 rows effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+
+**[experiment7__02_results__02_size_benchmark_brier_score](experiment7/experiment7__02_results__02_size_benchmark_brier_score.pdf)** — `size_benchmark_brier_score`
+
+Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the 8,192 rows effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+
+**[experiment7__02_results__03_pd_prediction_diagnostics](experiment7/experiment7__02_results__03_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 ## general/01_raw_data
 

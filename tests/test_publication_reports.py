@@ -318,3 +318,83 @@ def test_partial_response_surface_keeps_counts_on_the_correct_cells():
         assert matrix.index.equals(counts.index) and matrix.columns.equals(counts.columns)
         assert len(page.figure.axes[0].texts)==7
         assert all(text.get_text().endswith("n=16") for text in page.figure.axes[0].texts)
+
+
+def calibrated_campaign():
+    run = research_campaign()
+    adapted = run.evaluation.source.str.endswith("-trained")
+    for metric, baseline in (("brier_score", .2), ("ece", .04)):
+        for index, suffix in enumerate(("", "_platt", "_isotonic")):
+            run.evaluation[metric + suffix] = baseline - index*.005 - adapted*.01
+    return run
+
+
+def test_calibration_overview_uses_equal_table_paired_effects_and_prints_every_value():
+    run = calibrated_campaign()
+    pages = dg.plot_calibration_overview(run)
+    assert len(pages) == 1
+    stats = pages[0].tables["Plotted means and dataset quartiles"]
+    values = pages[0].tables["Per-dataset probability-quality changes"]
+    assert len(stats) == 6 and len(values) == 16*6
+    assert stats.tables.eq(16).all()
+    np.testing.assert_allclose(stats[["mean", "q25", "q75"]], .01)
+    np.testing.assert_allclose(values.untuned - values.trained, values.effect)
+    assert "not confidence intervals" in pages[0].caption
+    assert "Per-dataset probability-quality changes" in reporting.page_text(pages[0])
+    assert pages[0].figure.get_size_inches()[0] == style.WIDTH_FULL
+
+
+def test_calibration_overview_keeps_one_common_cohort_for_all_six_scores():
+    run = calibrated_campaign()
+    selected = (run.evaluation.test_dataset_id.eq("Dataset 00")
+                & run.evaluation.source.str.endswith("-untuned") & run.evaluation.fold_idx.eq(1))
+    run.evaluation.loc[selected, "ece_isotonic"] = np.nan
+    values = dg.calibration_effects(run)
+    assert "Dataset 00" not in set(values.dataset)
+    assert values.groupby(["metric", "calibration"]).size().eq(15).all()
+    # The fixed recipe cannot borrow scores from other learning rates or OOD tables.
+    irrelevant = run.evaluation.source.str.endswith("-trained") & ~np.isclose(run.evaluation.lr, 3e-7, atol=0)
+    run.evaluation.loc[irrelevant, "brier_score"] = 0
+    run.evaluation = pd.concat([run.evaluation, run.evaluation.assign(domain="noncredit", test_dataset_id="OOD")])
+    pd.testing.assert_frame_equal(values, dg.calibration_effects(run))
+
+
+def test_calibration_overview_reports_missing_evidence_and_rejects_duplicate_folds():
+    run = research_campaign()
+    assert dg.plot_calibration_overview(run) == []
+    assert dg.plot_calibration_overview(research_campaign("lgd")) == []
+    run = calibrated_campaign()
+    run.evaluation = pd.concat([run.evaluation, run.evaluation.iloc[[0]]])
+    with pytest.raises(ValueError, match="Duplicate evaluation"):
+        dg.plot_calibration_overview(run)
+
+
+def test_reliability_examples_are_selected_by_size_not_performance():
+    run = research_campaign()
+    run.evaluation["n_test_rows"] = run.evaluation.test_dataset_id.str[-2:].astype(int) + 1
+    # Force a very different ranking by score; size-based selection must not change.
+    run.evaluation["roc_auc"] = 1 - run.evaluation.n_test_rows/100
+    pages = dg.plot_reliability(run, max_datasets=style.CALIBRATION_EXAMPLE_TABLES)
+    assert len(pages) == 1
+    roster = pages[0].tables["Example-selection roster"]
+    assert len(roster) == 16
+    assert roster.loc[roster.selected, "dataset"].tolist() == ["Dataset 00", "Dataset 15"]
+    assert roster.loc[roster.selected, "outer_test_rows"].tolist() == [5, 80]
+    assert set(pages[0].tables["Probability bins and counts"].dataset) == {"Dataset 00", "Dataset 15"}
+    assert "independently of model scores" in pages[0].caption
+
+
+def test_reliability_examples_do_not_guess_unknown_sizes_or_change_full_view():
+    run = research_campaign()
+    assert dg.plot_reliability(run, max_datasets=2) == []
+    assert len(dg.plot_reliability(run)) == 8
+    with pytest.raises(ValueError, match="positive integer"):
+        dg.plot_reliability(run, max_datasets=0)
+
+
+def test_lgd_results_do_not_offer_classification_only_calibration_panels():
+    root = Path(__file__).resolve().parents[1]
+    book = json.loads((root / "notebooks/experiment1/04_results_lgd.ipynb").read_text(encoding="utf-8"))
+    text = "\n".join("".join(cell.get("source", [])) for cell in book["cells"])
+    assert "5. Regression errors and prediction shifts" in text
+    assert "dg.plot_reliability" not in text and "pub.plot_thresholds" not in text

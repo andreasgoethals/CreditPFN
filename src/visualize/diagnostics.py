@@ -159,11 +159,74 @@ def plot_retention_benchmark(campaign):
     return pages
 
 
-def plot_reliability(campaign):
+def calibration_effects(campaign):
+    """Fixed-reference proper-score effects on a common, fully paired table cohort."""
+    from src.visualize.campaign import benchmark_effects, reference_rows
+    if campaign.track != "pd":
+        return pd.DataFrame()
+    parts = []
+    for metric in ("brier_score", "ece"):
+        for suffix, calibration in (("", "Raw"), ("_platt", "Platt"), ("_isotonic", "Isotonic")):
+            effects = reference_rows(benchmark_effects(campaign, metric + suffix))
+            if effects.empty:
+                continue
+            parts.append(effects.assign(metric=metric, calibration=calibration))
+    if not parts:
+        return pd.DataFrame()
+    values = pd.concat(parts, ignore_index=True)
+    keys = ["base", "dataset", "metric", "calibration"]
+    if values.duplicated(keys).any():
+        raise ValueError("Ambiguous calibration reference: multiple recipes or partitions per table")
+    complete = values.groupby(["base", "dataset"]).size().eq(6)
+    cohort = complete[complete].reset_index()[["base", "dataset"]]
+    return values.merge(cohort, on=["base", "dataset"], validate="many_to_one")
+
+
+def plot_calibration_overview(campaign):
+    """Show all-table calibration effects without hundreds of reliability curves."""
+    data = calibration_effects(campaign)
+    if data.empty:
+        return []
+    fig, axes = plt.subplots(1, 2, squeeze=False, layout="constrained",
+                             figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO))
+    fig.suptitle("PD: probability quality before and after calibration")
+    rows = [(base, calibration) for base in sorted(data.base.unique())
+            for calibration in ("Raw", "Platt", "Isotonic")]
+    statistics = []
+    for ax, (metric, label) in zip(axes.flat, (("brier_score", "Brier score reduction"), ("ece", "ECE reduction"))):
+        labels = []
+        for index, (base, calibration) in enumerate(rows):
+            effects = data.loc[data.base.eq(base) & data.calibration.eq(calibration) & data.metric.eq(metric), "effect"]
+            mean, q25, q75 = effects.mean(), effects.quantile(.25), effects.quantile(.75)
+            ax.plot([q25, q75], [index, index], color=style.color(base), linewidth=style.THIN_LINE)
+            ax.plot(mean, index, marker="D", color=style.color(base), markersize=style.CURVE_MARKER_SIZE)
+            labels.append(f"{base} / {calibration} (n={len(effects)})")
+            statistics.append(dict(base=base, calibration=calibration, metric=metric,
+                                   tables=len(effects), mean=mean, q25=q25, q75=q75))
+        ax.axvline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
+        ax.set_yticks(range(len(rows)), labels)
+        if metric != "brier_score":
+            ax.tick_params(axis="y", labelleft=False)
+        ax.invert_yaxis()
+        ax.set_xlabel(label + "\nPositive favors CPT")
+    return [Page("calibration_overview", fig,
+        "Changes in outer-test Brier score and expected calibration error (ECE) for the predefined "
+        "full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. "
+        "Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted "
+        "Platt and isotonic calibration use a common dataset cohort within each base: all six scores "
+        "require the same five completed, matched outer folds. Diamonds show equal-dataset means; "
+        "horizontal lines span dataset quartiles, not confidence intervals. ECE depends on the binning scheme.",
+        {"Per-dataset probability-quality changes": data.reset_index(drop=True),
+         "Plotted means and dataset quartiles": pd.DataFrame(statistics)})]
+
+
+def plot_reliability(campaign, *, max_datasets=None):
     """Compare calibration methods side by side, requiring bins from every fold."""
     from src.visualize.campaign import _complete_folds
     from src.visualize.training_viz import compact_base
     import matplotlib.pyplot as plt
+    if max_datasets is not None and (not isinstance(max_datasets, int) or max_datasets < 1):
+        raise ValueError("max_datasets must be a positive integer or None")
     data = campaign.evaluation
     if campaign.track != "pd" or data.empty or "calibration_bins" not in data:
         return []
@@ -215,6 +278,22 @@ def plot_reliability(campaign):
             continue
         binned = pd.concat(all_records, ignore_index=True)
         eligible = sorted(binned.dataset.unique())
+        roster = None
+        if max_datasets is not None:
+            if "n_test_rows" not in group:
+                continue
+            # Select by input size, never by the observed gain or calibration curve.
+            counts = group.assign(n_test_rows=pd.to_numeric(group.n_test_rows, errors="coerce"))
+            counts = counts[counts.n_test_rows.gt(0) & np.isfinite(counts.n_test_rows)]
+            counts = counts.groupby(["test_dataset_id", "method_dirname"]).n_test_rows.agg(["sum", "count"])
+            counts = counts[counts["count"].eq(5)].groupby(level=0)["sum"].max()
+            roster = counts.rename("outer_test_rows").rename_axis("dataset").reset_index()
+            roster = roster[roster.dataset.isin(eligible)].sort_values(["outer_test_rows", "dataset"])
+            if roster.empty:
+                continue
+            indices = np.linspace(0, len(roster)-1, min(max_datasets, len(roster)), dtype=int)
+            eligible = roster.iloc[indices].dataset.tolist()
+            roster["selected"] = roster.dataset.isin(eligible)
         for page_no, (start, stop) in enumerate(style.page_slices(len(eligible), style.RELIABILITY_ROWS), 1):
             datasets = eligible[start:stop]
             ratio = style.PANEL_RATIO if len(datasets) > 1 else style.SMALL_RATIO
@@ -243,6 +322,13 @@ def plot_reliability(campaign):
                 artists, labels = ax.get_legend_handles_labels()
                 handles.update(zip(labels, artists))
             fig.legend(handles.values(), handles.keys(), loc="outside lower center", ncol=2)
+            selection = (" Examples are chosen at evenly spaced dataset-size ranks (smallest and largest "
+                         "when two are shown), using total outer-test row counts independently of model scores. "
+                         "They illustrate calibration shapes rather than the typical treatment effect. "
+                         if max_datasets is not None else "")
+            tables = {"Probability bins and counts": binned[binned.dataset.isin(datasets)].reset_index(drop=True)}
+            if roster is not None:
+                tables["Example-selection roster"] = roster.reset_index(drop=True)
             pages.append(Page(f"reliability_{compact_base(base)}_{page_no}", fig,
                     "Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference "
                     "(LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. "
@@ -250,6 +336,6 @@ def plot_reliability(campaign):
                     "bin records from the same five completed outer folds for both models; missing panels are labeled. "
                     "Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts "
                     "are retained in the text summary. Calibrators are fitted only on inner validation rows. "
-                    "The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals.",
-                    {"Probability bins and counts": binned[binned.dataset.isin(datasets)].reset_index(drop=True)}))
+                    "The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals."
+                    + selection, tables))
     return pages

@@ -12,6 +12,70 @@ evidence.
 
 Method and research context live in `RESEARCH_BRIEF.md`; operational/storage details and measured caps live in `VSC.md`. The runs table below retains historical headline measurements.
 
+## Complete local evidence and interpretation audit — 19-10-2026
+
+| Local evidence | Verified outcome | Next step |
+|---|---|---|
+| Merged DATA + PROJECT, experiments 1/2/3/5/6/7 | 4,047/627/1,083/627/297/462 comparisons; all 35,715 outer folds successful | Preserve completed training and evaluation; no new submission indicated |
+| Standard prediction exports | 7,143/7,143 decoded; 403,139,023 saved row predictions checked against identities and independently reproduced primary metrics | Interpret equal-table paired effects; these rows are not independent replications |
+| Experiment 4 context journals | 250/250 SQLite tasks; all 11,100 cells validated; 294,987,528 saved query predictions | Context, validation and test indices are disjoint; nested contexts and fixed query cohorts agree across states/families |
+| User's complete local notebook execution | 21/21 passed; 239 PDFs match 239 inline figures and the complete ordered summaries/captions | Select a small paper figure set from the larger analysis collection |
+| Full local test suite | 916 passed, one optional corpus-manifest smoke test skipped; exit 0, 697.02 s | No runtime repair indicated by the tests |
+
+- Read the locally downloaded scientific artifacts in place. All standard metric/prediction receipts agree in filename and byte size; full gzip decoding, finite values, unique out-of-fold row identities, matching targets and complete folds pass. Recomputed AUC/F1, Brier/MSE, RMSE/MAE/R² agree at the recorded numerical precision. Secondary metric ranges pass; 12,000 fold records provide quantile scores, with no recorded quantile crossings. The previously reported inverse-transform warnings do not produce invalid saved primary predictions in these exports.
+- All 11 training-plan and 720 trial-identity checksums verify; all 25 credit-table hashes agree across plans and train/test memberships are disjoint. Every planned research trial has a unique successful 10,000-update record with finite loss, score, drift and cost. The 316 historical interruption rows are retained recovery history, not unfinished trials. The skipped optional test requires a data-pipeline corpus manifest absent from this download; general notebooks successfully reconstruct the corpus summary from local data using the existing fallback.
+- Experiment 4's prepared-plan checksum, SQLite integrity, exact context/test hashes, nested prefixes, paired original/CPT inputs, cross-family fold inputs and outer-test row coverage pass. Independent AUC/Brier and RMSE/R² checks reproduce the saved metrics. These checks validate the saved query cohorts; they do not establish independence between source populations.
+- Rechecked all 21 final summaries verbatim in `All_Results.md`, every metadata/caption/PDF/inline association, filesystem order, PDF widths/heights and absence of stale PDFs. Zero saved cell errors or notebook-defined functions/classes. Visually reviewed the 28 current experiment-5/6/7 PDFs, including the 19 newly populated figures; the preceding publication review covered the other figures. Both Markdown indexes remain tracked. No scientific input or executable source changed in this audit; the research brief now reflects completed local evidence and the paired findings. Read-only TFM-library pin remains `de324efcca55be392feb0c01830b3b6ce364587f`.
+- Interpretation: reference PD ΔAUC is +0.004773/+0.000430 for TabPFN v2/v3; TabICL's +0.003695 mean has a −0.000176 median and is concentrated in a few tables. LGD degradation, rate sensitivity, calibration differences and substantial accumulation cost remain genuine findings under the declared protocol. DiagScale's TabICL inference disables AMP/FA3 for both states; its changed original score is not an unmatched within-experiment control. Avoid raw cross-experiment rankings that ignore this precision difference.
+- A targeted interpretation concern remains: Vehicle Loan TabICL AUC is 0.583062 original / 0.654566 full CPT in experiment 1, versus 0.656382 for experiment 5's FP32/no-FA3 original; Myhom is 0.579923 / 0.594749 versus 0.594666. Both comparisons retain matching outer rows/targets. The coincident gain is evidence of numerical sensitivity, not proof that AMP/FA3 explains the entire CPT effect or that the main paired evaluation is invalid. Recommend a small original/full-CPT × precision inference check before a mechanistic TabICL claim; no retraining, full campaign resubmission or automatic new job. Recorded this in the research brief for independent review.
+
+**Tried:** Reproduce every stored R² using float64 arithmetic and tight relative-only tolerances near zero.
+**Result:** Flagged 35 standard comparisons and four context tasks despite matching predictions and other metrics.
+**Why:** The original sklearn calculations used float32; near-zero R² magnifies relative differences. Maximum float64 discrepancies were 3.03e-7 / 4.58e-7 respectively.
+**Instead:** Reproduced every flagged R² in the original float32 arithmetic (machine precision / exact); rechecked all affected folds, context cells and paired row identities. Preserve the scientific outputs; do not resubmit or rewrite them.
+
+## Download paused at a second authentication request — 19-10-2026
+
+**Tried:** The two-source PowerShell scp download for DATA and PROJECT output.
+**Result:** The pasted excerpt shows completed DATA manifests followed by another login request; its browser challenge is not recognized. PROJECT transfer completion is not established.
+**Why:** One scp invocation can open separate connections for its sources. The exact cause of the missing challenge is unconfirmed; reopening the same invalid URL cannot create a new request.
+**Instead:** Start a fresh interactive SFTP connection, complete its live MFA request and retrieve both trees in that session. Preserve copied files; do not append-resume potentially rewritten results or rerun experiments. Commands are checked against official VSC/OpenSSH documentation; provider authentication still requires the user. Updated the runbook; no executable source or scientific output changed.
+
+## Final episode benchmark and notebook publication audit — 19-10-2026
+
+| Run / evidence | Verified outcome | Next step |
+|---|---|---|
+| Experiment 7, Mindwell 11695432 / wICE 62339667 | 256/256 benchmark tasks successful; 462/462 expected comparisons, all five folds passed | Download both output trees for final prediction-level analysis |
+| Recovered wICE task 62339667_14, physical job 62340086 | Restart log ends at 09:18:51 CEST, exit 0; final three comparisons / 15 folds successful | No benchmark resubmission or retraining |
+| Local notebook runner, four kernels | 21/21 passed; 220 PDFs and 220 inline figures; complete summaries and captions agree | Refresh the complementary PROJECT input before final conclusions |
+
+- Read the 09:22 Downloads ZIP in place: 79,978,498 bytes, 6,172 unique files, clean CRC; all 3,069 JSON parse. The recovered task fills the preceding entry's three missing comparisons. All planned training and benchmark completion evidence is now present; this archive still contains DATA records, not the new PROJECT metrics, trajectories or prediction exports. Preserve completed work and download both trees; final prediction validation, including the previously noted LGD inverse-transform warnings, needs those exports.
+- Reran all 21 notebooks against this DATA ZIP and the existing local PROJECT tree. Main-PD results now use 24 figures instead of 55: a common-cohort Brier/ECE overview plus size-selected reliability examples replace 36 calibration pages. Selection uses input row counts independently of performance; complete per-table metric profiles and selection rosters remain printed. LGD results omit classification-only calls; prediction-figure filenames now identify PD/LGD. Missing PROJECT evidence remains unavailable rather than becoming an empty chart or a zero effect.
+- Inspected all 220 generated figures in contact sheets and the six changed main-PD panels at full resolution. Direct checks match every PDF to its inline image and caption, every final summary to `All_Results.md`, and both indexes to filesystem order. All PDFs use ICML widths, height at most 4.8 inches and embedded TrueType fonts; no stale PDFs or extra figure trees remain. Shared `general/manifests/scheduler/` is intentional queue-pool bookkeeping, not an obsolete notebook-output tree. Both Markdown indexes remain tracked. The pinned library, training/evaluation source, environments and downloaded inputs are unchanged.
+- Verification: **916 passed, one optional missing-manifest skip (692.86 s)**; all 24 publication-contract tests also pass separately. Six new regressions cover common calibration cohorts, exact paired effects, missing evidence, duplicate folds, size-based reliability selection and LGD section scope. Separately inspected 20 synthetic adapter/corpus/episode plotting panels outside the repository; they are layout checks, never research results. README, research brief and runbook now agree on reporting and unified benchmark submission. Final diff checks pass.
+
+**Tried:** Full 21-notebook execution with four parallel kernels.
+**Result:** All notebooks passed; one native Windows Jupyter transport message appeared during shutdown after the affected final cell.
+**Why:** The message came from libzmq 4.3.5 with pyzmq 27.1.0; its underlying cause is unconfirmed, and no saved cell/output failed.
+**Instead:** Repeated the four-kernel closing batch: 4/4 passed without recurrence; independently verified all saved summaries, inline figures, captions and PDFs. No installation or speculative runtime change.
+
+## Episode benchmark: one environment hold remains — 19-10-2026
+
+| Cluster run | Downloaded outcome | Next step |
+|---|---|---|
+| Experiment 7 foundation benchmark, Mindwell array 11695432 | 128/128 tasks exit 0; 264 model–table comparisons, all five folds successful | Preserve completed results |
+| Experiment 7 classical benchmark, wICE array 62339667 | 127/128 tasks exit 0; 195/198 comparisons complete; task 14 has no log/resolved manifest | Release existing task 62339667_14 once; require COMPLETED / 0:0 |
+
+- Read the 09:02 Downloads ZIP in place: 79,975,868 bytes, 6,170 files, clean CRC and unique members; all 3,068 JSON and 97 CSV files parse. Eleven prepared plans and 720 identity checksums verify. The 512/32/96/48/16/16 completed training records for experiments 1/2/3/5/6/7 each have 10k successful updates and finite endpoint loss, test metric and drift. All 25 credit-table hashes agree across plans, train/test/retention memberships are disjoint, and both episode studies retain their exact experiment-6 reference contracts.
+- Experiment 7 has 459/462 expected comparisons and no extra/duplicate scientific comparisons or incomplete folds. The missing shard is 2,048-row PD, partition 0: CatBoost on `openml_46952`, logistic regression on Thomas and HMEQ (15 outer-fold cells). All 255 executed tasks use CreditPFN, with zero failed cells, tracebacks, OOMs, timeout or overflow warnings; all 459 prediction exports are reported. Experiments 1/2/3/5/6 retain 4,047/627/1,083/627/297 successful comparisons; experiment 4 has 250 passed completion receipts and all eight follow-up controls remain passed.
+- User's 09:05 live queue confirms this is the only remaining job. `scontrol` maps array task 62339667_14 to physical job 62340086: PENDING, environment-retrieval hold, priority zero, no allocation/runtime, Restarts=1. This failed before application startup; the exact site cause is not established. Recommend one release of that existing task, then inspect accounting. Do not cancel/resubmit the whole benchmark or repeat training/experiment 0. If held again, retain the scheduler evidence and investigate with VSC support.
+- This is DATA output only: no new PROJECT metric/prediction exports or training trajectories are present. Download both complementary trees after completion, then regenerate notebooks for final interpretation. Only these operational records changed; runtime, environment, weights, library pin and scientific evidence remain unchanged. No cluster action or new test-suite execution was performed locally.
+
+**Tried:** Count benchmark evidence only from logs ending with exit zero.
+**Result:** Experiment 1 appeared to lack 13 comparisons.
+**Why:** Its historical timed-out attempt saved 13 complete five-fold cells; the successful resume correctly reused them.
+**Instead:** Join persisted cell-level successes across attempts and verify prediction receipts; count array-task completion separately. All 4,047 main comparisons remain evidenced.
+
 ## Saved predictions and CPT interpretation — 16-10-2026
 
 - Inspected local PROJECT artifacts: experiments 1/2/3 contain 4,047/627/1,083 prediction exports respectively, each with a matching receipt filename and byte size; these are model–table exports, not training-trial counts. Experiment 4 has 250 SQLite files with 11,100 populated prediction cells, including original and CPT states separately. The 09:14 DATA ZIP reports 627/297 prediction exports for experiments 5/6, but their new PROJECT files are not downloaded locally; scheduler success does not independently validate their contents.

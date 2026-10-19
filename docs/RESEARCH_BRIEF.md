@@ -263,9 +263,14 @@ observed dataset or trial spread, explicitly not confidence intervals over indep
 Aggregate trajectory points require every planned trial and the same baseline observations;
 missing milestones are gaps. Benchmark effects require complete matching outer folds. Reliability
 panels compare the fixed adapted reference and its base separately by dataset and calibration
-method; all five folds must contain valid bin records for the displayed pair. Raw, Platt and
+method; all five folds must contain valid bin records for the displayed pair. The main-PD
+overview reports Brier/ECE reductions on a common table cohort within each base, requiring
+complete paired folds for all six raw/Platt/isotonic scores. Means weight datasets equally;
+quartiles describe dataset spread. Reliability examples use the smallest and largest eligible
+tables by total outer-test rows, independently of observed performance; their selection roster
+is printed, and they illustrate shapes rather than an average treatment effect. Raw, Platt and
 isotonic panels share a figure; absent calibration folds are marked unavailable even if AUC
-is complete. F1 thresholds remain validation-selected. Cross-validation fold scores are
+is complete. The plotting helper retains an optional full per-table view. F1 thresholds remain validation-selected. Cross-validation fold scores are
 dependent; their standard deviation divided by the square root of five is not a justified
 standard error for this study. Primary methodological support is summarized in the literature notes.
 
@@ -275,6 +280,81 @@ by the notebook runner. Literature motivation and limits of these presentation c
 in LITERATURE.md.
 
 ## State of the evidence
+
+As of **19-10-2026**, both complementary storage trees have been downloaded locally. All planned
+research training is complete: experiments 1/2/3/5/6/7 contain 512/32/96/48/16/16 completed trials.
+Their final benchmarks contain 4,047/627/1,083/627/297/462 model–table–partition comparisons,
+respectively: **7,143 comparisons and 35,715 successful outer-fold records**. Experiment 4 has
+250 completed inference tasks and 11,100 original/CPT context cells. Experiment 7 also reuses
+eight experiment-6 controls; these are not additional training runs.
+
+The local audit decodes every standard prediction export, checks receipt sizes, row identities,
+targets and five-fold coverage, and independently reproduces AUC/F1 or RMSE/MAE/R². It also checks
+all context SQLite tasks for nested context identities, context/validation/test disjointness,
+unchanged original/CPT and cross-family query cohorts, complete outer-fold row coverage and
+reproduced primary scores. Small R² differences from float64 recomputation reproduce to machine
+precision under the original float32 calculation; they do not justify changing results. All
+21 executed notebooks have complete ordered summaries, 239 matching inline figures/PDFs and
+captions. The current indexes are tracked. Detailed evidence and historical recoveries remain
+in `AGENTS_MEMORY.md`; no further benchmark or training submission is indicated by this audit.
+
+### Current descriptive findings
+
+For the **predefined** full-update, LR `3e-7`, L2-SP `0.003`, seed-42 reference, equal-table
+five-fold mean effects against each exact starting checkpoint are:
+
+| Base | PD mean ΔAUC, 17 tables | LGD mean ΔR², 8 tables |
+|---|---:|---:|
+| TabPFN v2 | +0.004773 | +0.004101 |
+| TabPFN v2.6 | −0.000024 | −0.083212 |
+| TabPFN v3 | +0.000430 | −0.028429 |
+| TabICLv2 | +0.003695 | −0.004770 |
+
+These effects do not establish a universal CPT benefit. TabPFN v2's reference PD AUC improves
+on all 17 tables, while TabICL's median effect is −0.000176: its positive mean is driven by a
+few large gains. There is a material **inference-precision sensitivity** to investigate before
+attributing those gains to learned domain structure: on Vehicle Loan the main TabICL original
+scores 0.583062 AUC and CPT 0.654566, whereas experiment 5's original under FP32/no-FA3 scores
+0.656382; Myhom shows 0.579923/0.594749 versus 0.594666. These are cross-experiment observations,
+not a controlled estimate of AMP or FA3 separately. The existing main comparison applies the
+same declared inference options to both weight states and remains a valid practical comparison.
+A focused paired evaluation of those original and full-CPT weights under both precision policies,
+with identical contexts/test rows, would test whether the claimed benefit persists beyond the
+original numerical setting; no retraining is required. Such a follow-up is not yet implemented
+or submitted. Across the balanced grid, larger learning rates generally hurt and freezing
+or anchoring attenuates degradation; this is a response over the specified recipes, not a
+test-selected deployment recommendation. Calibration and discrimination need separate
+interpretation: for example, TabICL's mean raw Brier reduction is +0.006803, whereas the
+corresponding Platt-calibrated reduction is −0.000268.
+
+- **Experiment 2:** mean seed-43 minus seed-42 PD AUC changes range from −0.000251 to −0.000017
+  across bases. LGD is less uniformly stable: TabPFN v3's mean ΔR² is +0.019034, driven mainly
+  by one table (maximum +0.147777, median +0.000018). Two seeds cannot estimate general variance.
+- **Experiment 3:** revisiting/accumulating more rows has no consistent predictive advantage.
+  For PD, median recorded accumulation cost is approximately 7–17 times one-sample training
+  across bases at the same successful-update budget. More updates, more rows and more compute
+  must not be conflated.
+- **Experiment 4:** labeled context strongly affects performance; CPT is a much smaller,
+  family- and context-dependent change. On the fixed nine-table PD cohort, 50,000-row mean
+  ΔAUC is +0.006051 for TabICLv2 and +0.000004 for TabPFN v3. The latter has +0.002478 at eight
+  rows on that same cohort. Do not compare absolute levels across different horizon cohorts.
+- **Experiment 5:** the conservative adapter rate stays closest to the original; `0.03` hurts
+  mean credit AUC/R² for both families. Restricting trainable parameters alone does not prevent
+  deterioration. Its TabICL FP32/no-FA3 inference requires its own matched original controls.
+- **Experiment 6:** excluding small training tables has no consistent advantage: PD mean ΔAUC
+  changes from +0.003572 to +0.002057 for TabICLv2 and from −0.001003 to −0.000776 for TabPFN v3.
+- **Experiment 7:** larger episodes are not uniformly better. TabPFN v3 mean PD ΔAUC is
+  −0.004316/−0.000776/−0.000114 for 2,048/8,192/26,000 rows; TabICL changes less and nonmonotonically.
+  Episode size also changes query count and cost, and the 8,192-row reference is shared.
+
+The research retention panel contains **eight non-credit tables**, four per task; the two
+packaged smoke datasets are separate debugging controls. This is not broad evidence about
+all out-of-domain tasks. Dataset/population overlap, corpus-level transductive schema selection,
+IID row folds, two training seeds and exploratory hypotheses remain limitations; passing local
+checks does not eliminate them. Prioritize the focused precision check, synthesis and
+source-population audit before adding another expensive study merely to improve the mean result.
+
+The notes below distinguish the earlier, invalid pre-redesign evidence.
 
 On 22-09-2026 the user reported no running VSC jobs. The old experiment has an invalid swept L2-SP axis and defects in worker sampling/accumulation. Retagging 338 surviving checkpoints recovered their lambda-0.003 identity, not a corrected training history. The user reported 412 checkpoint files on project storage; that is not a verified completed-trial count.
 
