@@ -1,5 +1,9 @@
 # Changelog
 
+## 20-10-2026
+
+- Added the independent read-only VSC Library submodule and daily pin-update proposals; shared HPC guidance moved out of TFM Library, with project instructions retained in docs/VSC.md. No cluster workload was submitted.
+
 What changed in this repository, newest first. One chapter per date, `DD-MM-YYYY`; one bullet per
 change, as short as it can be — the *what*, plus the *why* only when it is not obvious. The detail
 belongs in the commit.

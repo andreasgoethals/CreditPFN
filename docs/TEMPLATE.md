@@ -4,7 +4,7 @@ The structure and rules every one of my research repositories starts from.
 
     Author   Andreas Goethals <andreas.goethals@kuleuven.be>
     Context  PhD research, KU Leuven — machine learning on tabular data
-    Cluster  KU Leuven VSC (Genius login, wICE and Mindwell compute)
+    Cluster  KU Leuven VSC (wICE login service, wICE and Mindwell compute)
     Source   https://github.com/andreasgoethals/0.-Template
 
 **A starting point, not a contract.** A project that grows past it is fine, and deviating where
@@ -49,7 +49,8 @@ project-specific belongs in `README.md` or another `docs/` file, not here.
 │   │   └── figures.py       FigureSaver
 │   └── ...                  more as the project needs (train/, eval/, models/)
 ├── tests/
-├── tfm-library/             submodule: literature + VSC docs. READ-ONLY.
+├── tfm-library/             submodule: TFM literature. READ-ONLY.
+├── vsc-library/             submodule: HPC/VSC guides and templates. READ-ONLY.
 ├── .vscode/settings.json
 ├── .gitattributes  .gitignore  .gitmodules
 ├── AGENTS.md                the rules for every agent
@@ -127,7 +128,7 @@ It ships empty. Filling it is the project's job.
 
 How **this** project runs on the KU Leuven VSC cluster: which partitions and walltime limits it
 uses, how to submit, how to resume a job that outlives the walltime, and how to get results back.
-Built from the VSC documentation in `tfm-library/`, but written about this project.
+Built from the VSC documentation in `vsc-library/`, but written about this project.
 
 **Storage — two tiers.** On both, everything lives inside a folder named after the project.
 
@@ -136,7 +137,7 @@ Built from the VSC documentation in `tfm-library/`, but written about this proje
 | **project storage** | `/lustre1/project/stg_00211/<Project>/` | big files: datasets, checkpoints, caches, **`output/results/`** |
 | **personal data** | `$VSC_DATA/<Project>/` | the repository, and the rest of `output/` |
 
-**Both are backed up.** They differ in size and in convenience: `$VSC_DATA` is only 75 GiB but you
+**Personal DATA is backed up; verify the allocation-specific project-storage protection policy.** They differ in size and in convenience: `$VSC_DATA` is only 75 GiB but you
 can browse it directly, while project storage is large but has to be pulled down locally first
 (PowerShell, `scp`/`rsync`) before you can look at anything in it. So the big, rarely-read things
 go to project storage and everything you actually want to open stays on `$VSC_DATA`. Project
@@ -342,13 +343,14 @@ anything under `src/visualize/`.
 
 ## `tfm-library/`
 
-The shared TFM literature, as a **pinned git submodule**. In every project.
+The shared TFM literature, as an optional **pinned git submodule**, installed in this project.
 
 **What it is.** One curated knowledge base: the papers as PDFs with full-text extractions,
 per-paper summaries, a cross-paper synthesis, flat-text snapshots of the upstream reference
-implementations, and the VSC documentation. Maintained in its own repository, consumed by all.
+implementations. VSC documentation is maintained separately in `vsc-library/`;
+project-specific infrastructure instructions belong in `docs/VSC.md`.
 
-**Why every project has it.** So a human *or an agent* can answer "what does the literature say?"
+**Why this project has it.** So a human *or an agent* can answer "what does the literature say?"
 and "how does the official code actually do this?" **from inside the repository, offline, by
 reading and grepping files** — no web search, no paywall, no recall from memory. It turns "I
 believe X" into "X, see `tfm-library/<path>`". That is the point.

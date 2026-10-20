@@ -1,8 +1,16 @@
 # CreditPFN on VSC
 
+Shared infrastructure reference: [VSC Library](../vsc-library/README.md). The parent Git commit pins its revision; inspect it with `git submodule status -- vsc-library`.
+Its [official repository snapshot](<../vsc-library/VSC Repository.txt>),
+[guides](../vsc-library/guides/) and [Slurm templates](<../vsc-library/slurm templates/README.md>)
+are read-only. Keep this project's actual paths, environment, resource choices,
+submission/resume steps and run evidence in this file or the project's own run logs.
+Check [upstream review flags](../vsc-library/UPSTREAM_CHANGES.md) and the
+[live Leuven status](https://status.vscentrum.be/tier2_leuven.html) before applying a changed policy.
+
 Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. Use the `CreditPFN` conda environment and `$VSC_DATA/CreditPFN` checkout. Local tests cannot certify the installed B200 runtime.
 
-Operational reference: [VSC documentation snapshot](<../tfm-library/repositories/VSC Documentation.txt>) at library pin `de324efcca55be392feb0c01830b3b6ce364587f`, especially embedded `source/leuven/slurm_specifics.rst`, `source/leuven/tier2_hardware/kuleuven_storage.rst`, `source/leuven/tier2_hardware/parallel_filesystems.rst`, `source/compute/jobs/job_submission.rst` and `source/compute/software/installing_software/python_package_management.rst`. Relative to the prior reviewed pin, the additions concern Sofia membership and its visualization partition; they do not change these Mindwell/wICE wrappers. The snapshot covers multiple universities and retired systems; apply KU Leuven/Mindwell rules to this deployment. Site rules can change; current account/QOS limits and project quota still require live inspection.
+Operational reference: the independent VSC Library linked above; apply current Leuven rules, and inspect account/QoS limits and storage quota live.
 
 The current KU Leuven Tier-2 systems are **wICE and Mindwell**, both on Rocky Linux 9.6. `login.hpc.kuleuven.be` selects one of four wICE login nodes; Mindwell has no dedicated login nodes. Genius documentation is historical. Our batch wrappers already select wICE for CPU maintenance/classical evaluation and Mindwell `gpu_b200` for production GPU work, with explicit clusters, account and `--gpus-per-node=1`. The older Genius activation anecdote and scratch alias do not route current submissions there. Do not change fingerprinted activation code merely to remove historical wording during a live campaign.
 
