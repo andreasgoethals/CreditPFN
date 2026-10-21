@@ -4053,6 +4053,24 @@ row,track,base,case,seed,sampling,context_sampling,trial,updates,processed_rows
 50,PD,TabICLv2,full_pass_resumed,42,full_pass,stratified,cpt_pilot_aux_cc862607c5a2_full_pass_resumed_s00_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_fullpass_l2sp0.003,6,1432
 51,PD,TabICLv2,accumulate_resumed,42,accumulate,stratified,cpt_pilot_aux_cc862607c5a2_accumulate_resumed_s00_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_accumulate_l2sp0.003,6,9303
 
+4. Final inference checks
+This inference-only diagnostic uses two tables with observed numerical sensitivity and one control, not a new representative benchmark. Original, unchanged-save and CPT checkpoints use identical contexts and all test rows of five outer folds. The boundary probes use a fixed 256-row query subset in one fold and are reported separately. A passing parity check validates saving/reloading; differences between precision policies are measurements, not automatic failures. FP32 denotes tensor dtype with FA3 disabled; the recorded TF32 setting is also relevant.
+
+Table: Numerical-review completion and parity
+CSV (first column: row index)
+row,status,expected_tasks
+0,not run,15
+
+Table: Native-context five-fold measurements
+CSV (first column: row index)
+row
+
+Table: Fixed-query boundary probes
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
 experiment0/04_auxiliary_experiments: no figures saved.
 ```
 
@@ -64128,6 +64146,8 @@ TabPFN v2.6      one_sample False     136 -0.00196 -0.00071 -0.03558  0.00958
 TabPFN v3        one_sample False     136 -0.01585 -0.00359 -0.11955  0.00319
                      True      136 -0.00397 -0.00065 -0.06127  0.00376
 LGD primary benchmark error remains RMSE; R² is also reported. Five outer folds are averaged within table before cross-table comparisons.
+The recipe is fixed: full updates, LR 3e-7, L2-SP 0.003, seed 42. Five paired outer folds are averaged within each table. The 95% percentile bootstrap interval resamples tables (10,000 draws, seed 20261020), not folds, rows, recipes or overlapping training corpora. It describes sensitivity to the observed table collection conditional on the fitted checkpoints, under a table-exchangeability assumption; it is not a deployment guarantee or a training-seed confidence interval. Unknown shared populations can invalidate that assumption. No significance-based recipe selection is performed.
+A source URL identifies a release or platform, not independent borrowers. The ledger records documented shared sources and unresolved provenance; it does not certify absence of overlap. LendingClub PD/LGD and SBA PD/LGD share sources, but the two tasks have separate CPT corpora and are never pooled as independent replications. The documented-public-source sensitivity excludes unverified/local and restricted sources; it changes the population being summarized and cannot repair contamination in already trained weights.
 
 Table: Complete primary benchmark dataset effects
 CSV (first column: row index)
@@ -67434,6 +67454,187 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 1086,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,Thomas,0.65158762,0.65320287,0.0016152489,0.0016152489,Thomas,TabPFN v3,3e-07,True,0,one_sample,0.0016152489,42
 1087,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,Vehicle Loan,0.65803164,0.6583894,0.00035775854,0.00035775854,Vehicle Loan,TabPFN v3,3e-07,True,0,one_sample,0.00035775854,42
 
+Figure: pd_reference_uncertainty
+PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
+Reference per-table effects
+CSV (first column: row index)
+row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,track,source_group,provenance,source_url,documented_public,independence,metric
+0,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89664654,-0.00056737364,-0.00056737364,Bondora Peer-to-Peer,TabICLv2,3e-07,False,0.003,one_sample,-0.00056737364,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,roc_auc
+1,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Cobranded,0.8427705,0.84274205,-2.8451999e-05,-2.8451999e-05,Cobranded,TabICLv2,3e-07,False,0.003,one_sample,-2.8451999e-05,42,pd,Cobranded,unverified release,,False,not established,roc_auc
+2,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Credit Risk,0.95514201,0.94897236,-0.0061696497,-0.0061696497,Credit Risk,TabICLv2,3e-07,False,0.003,one_sample,-0.0061696497,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,roc_auc
+3,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,GMSC,0.86718744,0.86661707,-0.00057036466,-0.00057036466,GMSC,TabICLv2,3e-07,False,0.003,one_sample,-0.00057036466,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,roc_auc
+4,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,German Credit,0.79014029,0.79255584,0.0024155533,0.0024155533,German Credit,TabICLv2,3e-07,False,0.003,one_sample,0.0024155533,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,roc_auc
+5,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,HMEQ,0.99633513,0.99626837,-6.6761782e-05,-6.6761782e-05,HMEQ,TabICLv2,3e-07,False,0.003,one_sample,-6.6761782e-05,42,pd,HMEQ,unverified release,,False,not established,roc_auc
+6,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Hackerearth,0.95676611,0.943047,-0.013719107,-0.013719107,Hackerearth,TabICLv2,3e-07,False,0.003,one_sample,-0.013719107,42,pd,Hackerearth,unverified release,,False,not established,roc_auc
+7,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Home Credit,0.74793913,0.74718881,-0.00075032379,-0.00075032379,Home Credit,TabICLv2,3e-07,False,0.003,one_sample,-0.00075032379,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,roc_auc
+8,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub,0.68913135,0.68935349,0.00022214889,0.00022214889,LendingClub,TabICLv2,3e-07,False,0.003,one_sample,0.00022214889,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,roc_auc
+9,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,MicroFinance,0.65764659,0.65600315,-0.0016434439,-0.0016434439,MicroFinance,TabICLv2,3e-07,False,0.003,one_sample,-0.0016434439,42,pd,MicroFinance,unverified release,,False,not established,roc_auc
+10,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Myhom,0.57992283,0.59474915,0.014826318,0.014826318,Myhom,TabICLv2,3e-07,False,0.003,one_sample,0.014826318,42,pd,Myhom,unverified release,,False,not established,roc_auc
+11,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD1,0.8116703,0.81290564,0.0012353369,0.0012353369,PropPD1,TabICLv2,3e-07,False,0.003,one_sample,0.0012353369,42,pd,PropPD1,restricted,,False,not established,roc_auc
+12,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD2,0.65622099,0.65604465,-0.00017633823,-0.00017633823,PropPD2,TabICLv2,3e-07,False,0.003,one_sample,-0.00017633823,42,pd,PropPD2,restricted,,False,not established,roc_auc
+13,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case,0.98980137,0.98987643,7.5056415e-05,7.5056415e-05,SBA Loans Case,TabICLv2,3e-07,False,0.003,one_sample,7.5056415e-05,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,roc_auc
+14,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Taiwan Credit Card,0.79015422,0.78837377,-0.0017804574,-0.0017804574,Taiwan Credit Card,TabICLv2,3e-07,False,0.003,one_sample,-0.0017804574,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,roc_auc
+15,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Thomas,0.6493295,0.6473317,-0.0019977983,-0.0019977983,Thomas,TabICLv2,3e-07,False,0.003,one_sample,-0.0019977983,42,pd,Thomas,unverified release,,False,not established,roc_auc
+16,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Vehicle Loan,0.58306229,0.65456635,0.071504064,0.071504064,Vehicle Loan,TabICLv2,3e-07,False,0.003,one_sample,0.071504064,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,roc_auc
+17,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Bondora Peer-to-Peer,0.86996803,0.87285813,0.0028900965,0.0028900965,Bondora Peer-to-Peer,TabPFN v2,3e-07,False,0.003,one_sample,0.0028900965,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,roc_auc
+18,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Cobranded,0.83269227,0.83569261,0.0030003482,0.0030003482,Cobranded,TabPFN v2,3e-07,False,0.003,one_sample,0.0030003482,42,pd,Cobranded,unverified release,,False,not established,roc_auc
+19,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Credit Risk,0.92815979,0.92996008,0.0018002893,0.0018002893,Credit Risk,TabPFN v2,3e-07,False,0.003,one_sample,0.0018002893,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,roc_auc
+20,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,GMSC,0.8581094,0.86063686,0.0025274617,0.0025274617,GMSC,TabPFN v2,3e-07,False,0.003,one_sample,0.0025274617,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,roc_auc
+21,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,German Credit,0.78522696,0.78924897,0.004022011,0.004022011,German Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.004022011,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,roc_auc
+22,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,HMEQ,0.98444363,0.99221332,0.0077696885,0.0077696885,HMEQ,TabPFN v2,3e-07,False,0.003,one_sample,0.0077696885,42,pd,HMEQ,unverified release,,False,not established,roc_auc
+23,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Hackerearth,0.91321057,0.9225594,0.0093488316,0.0093488316,Hackerearth,TabPFN v2,3e-07,False,0.003,one_sample,0.0093488316,42,pd,Hackerearth,unverified release,,False,not established,roc_auc
+24,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Home Credit,0.72516024,0.73016783,0.0050075943,0.0050075943,Home Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.0050075943,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,roc_auc
+25,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub,0.67540116,0.6825776,0.0071764372,0.0071764372,LendingClub,TabPFN v2,3e-07,False,0.003,one_sample,0.0071764372,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,roc_auc
+26,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,MicroFinance,0.63069908,0.63708303,0.0063839468,0.0063839468,MicroFinance,TabPFN v2,3e-07,False,0.003,one_sample,0.0063839468,42,pd,MicroFinance,unverified release,,False,not established,roc_auc
+27,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Myhom,0.59502827,0.59694303,0.0019147534,0.0019147534,Myhom,TabPFN v2,3e-07,False,0.003,one_sample,0.0019147534,42,pd,Myhom,unverified release,,False,not established,roc_auc
+28,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD1,0.75207598,0.75750032,0.0054243377,0.0054243377,PropPD1,TabPFN v2,3e-07,False,0.003,one_sample,0.0054243377,42,pd,PropPD1,restricted,,False,not established,roc_auc
+29,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD2,0.64411075,0.64918291,0.0050721524,0.0050721524,PropPD2,TabPFN v2,3e-07,False,0.003,one_sample,0.0050721524,42,pd,PropPD2,restricted,,False,not established,roc_auc
+30,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case,0.98938947,0.98942619,3.6711761e-05,3.6711761e-05,SBA Loans Case,TabPFN v2,3e-07,False,0.003,one_sample,3.6711761e-05,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,roc_auc
+31,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Taiwan Credit Card,0.77564376,0.78254924,0.0069054749,0.0069054749,Taiwan Credit Card,TabPFN v2,3e-07,False,0.003,one_sample,0.0069054749,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,roc_auc
+32,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Thomas,0.64821257,0.65409832,0.0058857575,0.0058857575,Thomas,TabPFN v2,3e-07,False,0.003,one_sample,0.0058857575,42,pd,Thomas,unverified release,,False,not established,roc_auc
+33,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Vehicle Loan,0.63401642,0.63998308,0.00596666,0.00596666,Vehicle Loan,TabPFN v2,3e-07,False,0.003,one_sample,0.00596666,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,roc_auc
+34,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Bondora Peer-to-Peer,0.88544504,0.88519198,-0.00025305583,-0.00025305583,Bondora Peer-to-Peer,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00025305583,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,roc_auc
+35,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Cobranded,0.84325414,0.8431605,-9.3632154e-05,-9.3632154e-05,Cobranded,TabPFN v2.6,3e-07,False,0.003,one_sample,-9.3632154e-05,42,pd,Cobranded,unverified release,,False,not established,roc_auc
+36,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Credit Risk,0.94123747,0.93915805,-0.002079411,-0.002079411,Credit Risk,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.002079411,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,roc_auc
+37,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,GMSC,0.86596215,0.86612653,0.00016438407,0.00016438407,GMSC,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00016438407,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,roc_auc
+38,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,German Credit,0.79173424,0.79165305,-8.1192189e-05,-8.1192189e-05,German Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-8.1192189e-05,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,roc_auc
+39,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,HMEQ,0.99827227,0.99732737,-0.00094489423,-0.00094489423,HMEQ,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00094489423,42,pd,HMEQ,unverified release,,False,not established,roc_auc
+40,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Hackerearth,0.94817984,0.94599461,-0.0021852261,-0.0021852261,Hackerearth,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0021852261,42,pd,Hackerearth,unverified release,,False,not established,roc_auc
+41,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Home Credit,0.74699146,0.74671726,-0.0002741992,-0.0002741992,Home Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0002741992,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,roc_auc
+42,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub,0.68373099,0.68514061,0.0014096204,0.0014096204,LendingClub,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0014096204,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,roc_auc
+43,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,MicroFinance,0.65905812,0.65811516,-0.00094296216,-0.00094296216,MicroFinance,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00094296216,42,pd,MicroFinance,unverified release,,False,not established,roc_auc
+44,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Myhom,0.59564264,0.5961622,0.00051955782,0.00051955782,Myhom,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00051955782,42,pd,Myhom,unverified release,,False,not established,roc_auc
+45,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD1,0.77315636,0.77252907,-0.00062729404,-0.00062729404,PropPD1,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00062729404,42,pd,PropPD1,restricted,,False,not established,roc_auc
+46,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD2,0.65921509,0.65858631,-0.00062878058,-0.00062878058,PropPD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00062878058,42,pd,PropPD2,restricted,,False,not established,roc_auc
+47,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case,0.98987642,0.98994808,7.1657957e-05,7.1657957e-05,SBA Loans Case,TabPFN v2.6,3e-07,False,0.003,one_sample,7.1657957e-05,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,roc_auc
+48,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Taiwan Credit Card,0.78947711,0.78959524,0.00011812934,0.00011812934,Taiwan Credit Card,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00011812934,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,roc_auc
+49,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Thomas,0.64565389,0.65033676,0.0046828664,0.0046828664,Thomas,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0046828664,42,pd,Thomas,unverified release,,False,not established,roc_auc
+50,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Vehicle Loan,0.65121872,0.65195683,0.00073811027,0.00073811027,Vehicle Loan,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00073811027,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,roc_auc
+51,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Bondora Peer-to-Peer,0.89785973,0.89784386,-1.5876365e-05,-1.5876365e-05,Bondora Peer-to-Peer,TabPFN v3,3e-07,False,0.003,one_sample,-1.5876365e-05,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,roc_auc
+52,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Cobranded,0.84234006,0.84308687,0.00074681185,0.00074681185,Cobranded,TabPFN v3,3e-07,False,0.003,one_sample,0.00074681185,42,pd,Cobranded,unverified release,,False,not established,roc_auc
+53,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Credit Risk,0.95168825,0.95147503,-0.0002132175,-0.0002132175,Credit Risk,TabPFN v3,3e-07,False,0.003,one_sample,-0.0002132175,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,roc_auc
+54,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,GMSC,0.86875853,0.86871743,-4.1099624e-05,-4.1099624e-05,GMSC,TabPFN v3,3e-07,False,0.003,one_sample,-4.1099624e-05,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,roc_auc
+55,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,German Credit,0.79130593,0.79430233,0.0029964029,0.0029964029,German Credit,TabPFN v3,3e-07,False,0.003,one_sample,0.0029964029,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,roc_auc
+56,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,HMEQ,0.99925852,0.99898149,-0.00027702393,-0.00027702393,HMEQ,TabPFN v3,3e-07,False,0.003,one_sample,-0.00027702393,42,pd,HMEQ,unverified release,,False,not established,roc_auc
+57,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Hackerearth,0.96319489,0.95959449,-0.0036003988,-0.0036003988,Hackerearth,TabPFN v3,3e-07,False,0.003,one_sample,-0.0036003988,42,pd,Hackerearth,unverified release,,False,not established,roc_auc
+58,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Home Credit,0.75328767,0.75329448,6.8168728e-06,6.8168728e-06,Home Credit,TabPFN v3,3e-07,False,0.003,one_sample,6.8168728e-06,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,roc_auc
+59,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub,0.68545173,0.68666792,0.0012161875,0.0012161875,LendingClub,TabPFN v3,3e-07,False,0.003,one_sample,0.0012161875,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,roc_auc
+60,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,MicroFinance,0.65973341,0.66189539,0.0021619782,0.0021619782,MicroFinance,TabPFN v3,3e-07,False,0.003,one_sample,0.0021619782,42,pd,MicroFinance,unverified release,,False,not established,roc_auc
+61,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Myhom,0.59735565,0.59679486,-0.00056079932,-0.00056079932,Myhom,TabPFN v3,3e-07,False,0.003,one_sample,-0.00056079932,42,pd,Myhom,unverified release,,False,not established,roc_auc
+62,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD1,0.812241,0.81297411,0.00073311379,0.00073311379,PropPD1,TabPFN v3,3e-07,False,0.003,one_sample,0.00073311379,42,pd,PropPD1,restricted,,False,not established,roc_auc
+63,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD2,0.65729602,0.65913336,0.0018373491,0.0018373491,PropPD2,TabPFN v3,3e-07,False,0.003,one_sample,0.0018373491,42,pd,PropPD2,restricted,,False,not established,roc_auc
+64,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case,0.98983277,0.99036774,0.00053497323,0.00053497323,SBA Loans Case,TabPFN v3,3e-07,False,0.003,one_sample,0.00053497323,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,roc_auc
+65,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Taiwan Credit Card,0.78966503,0.78973634,7.1306646e-05,7.1306646e-05,Taiwan Credit Card,TabPFN v3,3e-07,False,0.003,one_sample,7.1306646e-05,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,roc_auc
+66,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Thomas,0.65158762,0.6532326,0.0016449863,0.0016449863,Thomas,TabPFN v3,3e-07,False,0.003,one_sample,0.0016449863,42,pd,Thomas,unverified release,,False,not established,roc_auc
+67,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Vehicle Loan,0.65803164,0.65809574,6.4093912e-05,6.4093912e-05,Vehicle Loan,TabPFN v3,3e-07,False,0.003,one_sample,6.4093912e-05,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,roc_auc
+68,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Bondora Peer-to-Peer,0.08053555,0.080618758,-8.3207513e-05,-8.3207513e-05,Bondora Peer-to-Peer,TabICLv2,3e-07,False,0.003,one_sample,-8.3207513e-05,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,brier_score
+69,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Cobranded,0.13071025,0.13087808,-0.00016783457,-0.00016783457,Cobranded,TabICLv2,3e-07,False,0.003,one_sample,-0.00016783457,42,pd,Cobranded,unverified release,,False,not established,brier_score
+70,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Credit Risk,0.049364856,0.053799919,-0.0044350624,-0.0044350624,Credit Risk,TabICLv2,3e-07,False,0.003,one_sample,-0.0044350624,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,brier_score
+71,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,GMSC,0.049075658,0.049165962,-9.0303786e-05,-9.0303786e-05,GMSC,TabICLv2,3e-07,False,0.003,one_sample,-9.0303786e-05,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,brier_score
+72,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,German Credit,0.16238715,0.16174676,0.00064039211,0.00064039211,German Credit,TabICLv2,3e-07,False,0.003,one_sample,0.00064039211,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,brier_score
+73,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,HMEQ,0.017686181,0.018154402,-0.0004682214,-0.0004682214,HMEQ,TabICLv2,3e-07,False,0.003,one_sample,-0.0004682214,42,pd,HMEQ,unverified release,,False,not established,brier_score
+74,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Hackerearth,0.058127421,0.066776018,-0.0086485974,-0.0086485974,Hackerearth,TabICLv2,3e-07,False,0.003,one_sample,-0.0086485974,42,pd,Hackerearth,unverified release,,False,not established,brier_score
+75,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Home Credit,0.068564614,0.068760593,-0.00019597859,-0.00019597859,Home Credit,TabICLv2,3e-07,False,0.003,one_sample,-0.00019597859,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,brier_score
+76,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub,0.12609806,0.12601616,8.1896163e-05,8.1896163e-05,LendingClub,TabICLv2,3e-07,False,0.003,one_sample,8.1896163e-05,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,brier_score
+77,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,MicroFinance,0.21816395,0.21841258,-0.0002486283,-0.0002486283,MicroFinance,TabICLv2,3e-07,False,0.003,one_sample,-0.0002486283,42,pd,MicroFinance,unverified release,,False,not established,brier_score
+78,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Myhom,0.25080943,0.2342849,0.016524523,0.016524523,Myhom,TabICLv2,3e-07,False,0.003,one_sample,0.016524523,42,pd,Myhom,unverified release,,False,not established,brier_score
+79,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD1,0.12813814,0.12806364,7.4499661e-05,7.4499661e-05,PropPD1,TabICLv2,3e-07,False,0.003,one_sample,7.4499661e-05,42,pd,PropPD1,restricted,,False,not established,brier_score
+80,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD2,0.082312424,0.082308992,3.4320569e-06,3.4320569e-06,PropPD2,TabICLv2,3e-07,False,0.003,one_sample,3.4320569e-06,42,pd,PropPD2,restricted,,False,not established,brier_score
+81,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case,0.031811567,0.031663126,0.00014844082,0.00014844082,SBA Loans Case,TabICLv2,3e-07,False,0.003,one_sample,0.00014844082,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,brier_score
+82,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Taiwan Credit Card,0.13292592,0.13328217,-0.00035625278,-0.00035625278,Taiwan Credit Card,TabICLv2,3e-07,False,0.003,one_sample,-0.00035625278,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,brier_score
+83,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Thomas,0.18308296,0.18314589,-6.2926983e-05,-6.2926983e-05,Thomas,TabICLv2,3e-07,False,0.003,one_sample,-6.2926983e-05,42,pd,Thomas,unverified release,,False,not established,brier_score
+84,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Vehicle Loan,0.27476242,0.16183346,0.11292895,0.11292895,Vehicle Loan,TabICLv2,3e-07,False,0.003,one_sample,0.11292895,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,brier_score
+85,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Bondora Peer-to-Peer,0.087267613,0.086772639,0.00049497369,0.00049497369,Bondora Peer-to-Peer,TabPFN v2,3e-07,False,0.003,one_sample,0.00049497369,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,brier_score
+86,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Cobranded,0.13481406,0.13350365,0.0013104121,0.0013104121,Cobranded,TabPFN v2,3e-07,False,0.003,one_sample,0.0013104121,42,pd,Cobranded,unverified release,,False,not established,brier_score
+87,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Credit Risk,0.059860411,0.05945434,0.00040607126,0.00040607126,Credit Risk,TabPFN v2,3e-07,False,0.003,one_sample,0.00040607126,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,brier_score
+88,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,GMSC,0.04985517,0.049621391,0.00023377834,0.00023377834,GMSC,TabPFN v2,3e-07,False,0.003,one_sample,0.00023377834,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,brier_score
+89,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,German Credit,0.16394259,0.16254217,0.0014004252,0.0014004252,German Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.0014004252,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,brier_score
+90,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,HMEQ,0.035942663,0.026635716,0.0093069466,0.0093069466,HMEQ,TabPFN v2,3e-07,False,0.003,one_sample,0.0093069466,42,pd,HMEQ,unverified release,,False,not established,brier_score
+91,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Hackerearth,0.082631378,0.077374593,0.0052567851,0.0052567851,Hackerearth,TabPFN v2,3e-07,False,0.003,one_sample,0.0052567851,42,pd,Hackerearth,unverified release,,False,not established,brier_score
+92,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Home Credit,0.070289028,0.069804556,0.0004844712,0.0004844712,Home Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.0004844712,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,brier_score
+93,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub,0.12726963,0.12667494,0.00059468825,0.00059468825,LendingClub,TabPFN v2,3e-07,False,0.003,one_sample,0.00059468825,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,brier_score
+94,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,MicroFinance,0.22362317,0.22227431,0.0013488622,0.0013488622,MicroFinance,TabPFN v2,3e-07,False,0.003,one_sample,0.0013488622,42,pd,MicroFinance,unverified release,,False,not established,brier_score
+95,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Myhom,0.23434168,0.23401279,0.00032888629,0.00032888629,Myhom,TabPFN v2,3e-07,False,0.003,one_sample,0.00032888629,42,pd,Myhom,unverified release,,False,not established,brier_score
+96,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD1,0.13752979,0.13576697,0.0017628222,0.0017628222,PropPD1,TabPFN v2,3e-07,False,0.003,one_sample,0.0017628222,42,pd,PropPD1,restricted,,False,not established,brier_score
+97,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD2,0.083865093,0.082627185,0.0012379076,0.0012379076,PropPD2,TabPFN v2,3e-07,False,0.003,one_sample,0.0012379076,42,pd,PropPD2,restricted,,False,not established,brier_score
+98,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case,0.033285302,0.0327434,0.00054190213,0.00054190213,SBA Loans Case,TabPFN v2,3e-07,False,0.003,one_sample,0.00054190213,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,brier_score
+99,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Taiwan Credit Card,0.13571148,0.13429585,0.0014156285,0.0014156285,Taiwan Credit Card,TabPFN v2,3e-07,False,0.003,one_sample,0.0014156285,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,brier_score
+100,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Thomas,0.18353944,0.18295535,0.00058408269,0.00058408269,Thomas,TabPFN v2,3e-07,False,0.003,one_sample,0.00058408269,42,pd,Thomas,unverified release,,False,not established,brier_score
+101,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Vehicle Loan,0.16432601,0.16328996,0.0010360546,0.0010360546,Vehicle Loan,TabPFN v2,3e-07,False,0.003,one_sample,0.0010360546,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,brier_score
+102,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Bondora Peer-to-Peer,0.083792888,0.083878816,-8.5927801e-05,-8.5927801e-05,Bondora Peer-to-Peer,TabPFN v2.6,3e-07,False,0.003,one_sample,-8.5927801e-05,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,brier_score
+103,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Cobranded,0.13048481,0.13056595,-8.1139449e-05,-8.1139449e-05,Cobranded,TabPFN v2.6,3e-07,False,0.003,one_sample,-8.1139449e-05,42,pd,Cobranded,unverified release,,False,not established,brier_score
+104,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Credit Risk,0.053688559,0.054493084,-0.00080452469,-0.00080452469,Credit Risk,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00080452469,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,brier_score
+105,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,GMSC,0.049245344,0.049270476,-2.5132747e-05,-2.5132747e-05,GMSC,TabPFN v2.6,3e-07,False,0.003,one_sample,-2.5132747e-05,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,brier_score
+106,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,German Credit,0.16255509,0.16255039,4.7038162e-06,4.7038162e-06,German Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,4.7038162e-06,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,brier_score
+107,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,HMEQ,0.013749836,0.017818387,-0.0040685513,-0.0040685513,HMEQ,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0040685513,42,pd,HMEQ,unverified release,,False,not established,brier_score
+108,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Hackerearth,0.065047142,0.066705267,-0.0016581252,-0.0016581252,Hackerearth,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0016581252,42,pd,Hackerearth,unverified release,,False,not established,brier_score
+109,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Home Credit,0.068683681,0.068742133,-5.845218e-05,-5.845218e-05,Home Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-5.845218e-05,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,brier_score
+110,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub,0.12655794,0.1265506,7.337272e-06,7.337272e-06,LendingClub,TabPFN v2.6,3e-07,False,0.003,one_sample,7.337272e-06,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,brier_score
+111,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,MicroFinance,0.2176398,0.21785333,-0.00021352915,-0.00021352915,MicroFinance,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00021352915,42,pd,MicroFinance,unverified release,,False,not established,brier_score
+112,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Myhom,0.23405045,0.23408892,-3.8473353e-05,-3.8473353e-05,Myhom,TabPFN v2.6,3e-07,False,0.003,one_sample,-3.8473353e-05,42,pd,Myhom,unverified release,,False,not established,brier_score
+113,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD1,0.13357595,0.13374374,-0.00016778538,-0.00016778538,PropPD1,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00016778538,42,pd,PropPD1,restricted,,False,not established,brier_score
+114,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD2,0.082257536,0.082312007,-5.4470814e-05,-5.4470814e-05,PropPD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-5.4470814e-05,42,pd,PropPD2,restricted,,False,not established,brier_score
+115,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case,0.032730901,0.03264578,8.5121683e-05,8.5121683e-05,SBA Loans Case,TabPFN v2.6,3e-07,False,0.003,one_sample,8.5121683e-05,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,brier_score
+116,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Taiwan Credit Card,0.13310767,0.13305366,5.4012749e-05,5.4012749e-05,Taiwan Credit Card,TabPFN v2.6,3e-07,False,0.003,one_sample,5.4012749e-05,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,brier_score
+117,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Thomas,0.18359201,0.18321416,0.00037785768,0.00037785768,Thomas,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00037785768,42,pd,Thomas,unverified release,,False,not established,brier_score
+118,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Vehicle Loan,0.16205031,0.16207128,-2.0972621e-05,-2.0972621e-05,Vehicle Loan,TabPFN v2.6,3e-07,False,0.003,one_sample,-2.0972621e-05,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,brier_score
+119,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Bondora Peer-to-Peer,0.080273138,0.080240275,3.2862665e-05,3.2862665e-05,Bondora Peer-to-Peer,TabPFN v3,3e-07,False,0.003,one_sample,3.2862665e-05,42,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,brier_score
+120,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Cobranded,0.13093235,0.13059137,0.00034097952,0.00034097952,Cobranded,TabPFN v3,3e-07,False,0.003,one_sample,0.00034097952,42,pd,Cobranded,unverified release,,False,not established,brier_score
+121,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Credit Risk,0.050267574,0.050593246,-0.0003256719,-0.0003256719,Credit Risk,TabPFN v3,3e-07,False,0.003,one_sample,-0.0003256719,42,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,brier_score
+122,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,GMSC,0.048835831,0.048821073,1.4758558e-05,1.4758558e-05,GMSC,TabPFN v3,3e-07,False,0.003,one_sample,1.4758558e-05,42,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,brier_score
+123,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,German Credit,0.16258691,0.16229314,0.00029376844,0.00029376844,German Credit,TabPFN v3,3e-07,False,0.003,one_sample,0.00029376844,42,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,brier_score
+124,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,HMEQ,0.0057323372,0.0076835114,-0.0019511742,-0.0019511742,HMEQ,TabPFN v3,3e-07,False,0.003,one_sample,-0.0019511742,42,pd,HMEQ,unverified release,,False,not established,brier_score
+125,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Hackerearth,0.054771255,0.057269033,-0.0024977783,-0.0024977783,Hackerearth,TabPFN v3,3e-07,False,0.003,one_sample,-0.0024977783,42,pd,Hackerearth,unverified release,,False,not established,brier_score
+126,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Home Credit,0.068395375,0.068365553,2.9822764e-05,2.9822764e-05,Home Credit,TabPFN v3,3e-07,False,0.003,one_sample,2.9822764e-05,42,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,brier_score
+127,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub,0.12638848,0.12641224,-2.3756311e-05,-2.3756311e-05,LendingClub,TabPFN v3,3e-07,False,0.003,one_sample,-2.3756311e-05,42,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,brier_score
+128,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,MicroFinance,0.21751457,0.2169832,0.0005313714,0.0005313714,MicroFinance,TabPFN v3,3e-07,False,0.003,one_sample,0.0005313714,42,pd,MicroFinance,unverified release,,False,not established,brier_score
+129,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Myhom,0.23383466,0.23395088,-0.00011622541,-0.00011622541,Myhom,TabPFN v3,3e-07,False,0.003,one_sample,-0.00011622541,42,pd,Myhom,unverified release,,False,not established,brier_score
+130,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD1,0.12856333,0.12776033,0.00080299966,0.00080299966,PropPD1,TabPFN v3,3e-07,False,0.003,one_sample,0.00080299966,42,pd,PropPD1,restricted,,False,not established,brier_score
+131,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD2,0.082365259,0.082221538,0.00014372082,0.00014372082,PropPD2,TabPFN v3,3e-07,False,0.003,one_sample,0.00014372082,42,pd,PropPD2,restricted,,False,not established,brier_score
+132,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case,0.033251488,0.032238398,0.0010130895,0.0010130895,SBA Loans Case,TabPFN v3,3e-07,False,0.003,one_sample,0.0010130895,42,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,brier_score
+133,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Taiwan Credit Card,0.13305926,0.1328416,0.0002176593,0.0002176593,Taiwan Credit Card,TabPFN v3,3e-07,False,0.003,one_sample,0.0002176593,42,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,brier_score
+134,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Thomas,0.18350797,0.18320804,0.00029993868,0.00029993868,Thomas,TabPFN v3,3e-07,False,0.003,one_sample,0.00029993868,42,pd,Thomas,unverified release,,False,not established,brier_score
+135,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Vehicle Loan,0.16127828,0.16118568,9.2597959e-05,9.2597959e-05,Vehicle Loan,TabPFN v3,3e-07,False,0.003,one_sample,9.2597959e-05,42,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,brier_score
+Intervals and leave-one-table-out sensitivity
+CSV (first column: row index)
+row,base,metric,scenario,tables,mean,median,ci_low,ci_high,leave_one_out_low,leave_one_out_high,positive_tables
+0,TabICLv2,roc_auc,All credit tables,17,0.0036946122,-0.00017633823,-0.0024300297,0.013303279,-0.00054347855,0.0047829696,6
+1,TabICLv2,roc_auc,Documented public sources,9,0.0071531837,-0.00056737364,-0.0020779071,0.023765159,-0.00089067632,0.0088185379,4
+2,TabPFN v2,roc_auc,All credit tables,17,0.0047725031,0.0050721524,0.0036420218,0.0059049348,0.0044864826,0.0050684901,17
+3,TabPFN v2,roc_auc,Documented public sources,9,0.0040369707,0.004022011,0.0025008519,0.0054958357,0.0036445374,0.0045370031,9
+4,TabPFN v2.6,roc_auc,All credit tables,17,-2.3901248e-05,-9.3632154e-05,-0.00065724862,0.00074011337,-0.00031807423,0.00011118156,7
+5,TabPFN v2.6,roc_auc,Documented public sources,9,-2.0661798e-05,7.1657957e-05,-0.0006453808,0.0005038823,-0.00019944707,0.00023668185,5
+6,TabPFN v3,roc_auc,All credit tables,17,0.00042974146,7.1306646e-05,-0.00026258708,0.0010564739,0.00026932512,0.00068162522,11
+7,TabPFN v3,roc_auc,Documented public sources,9,0.00051328751,6.4093912e-05,1.046503e-05,0.0012137964,0.00020289809,0.00060410063,6
+8,TabICLv2,brier_score,All credit tables,17,0.0068026543,-8.3207513e-05,-0.0013836526,0.020999926,0.00016976066,0.0077683575,7
+9,TabICLv2,brier_score,Documented public sources,9,0.012070986,-8.3207513e-05,-0.001423527,0.037650796,-0.0005362595,0.014134242,4
+10,TabPFN v2,brier_score,All credit tables,17,0.001632041,0.0010360546,0.00078712728,0.0028324799,0.0011523595,0.0017194325,17
+11,TabPFN v2,brier_score,Documented public sources,9,0.00073422146,0.00054190213,0.0004833458,0.0010147029,0.00064904559,0.00079677685,9
+12,TabPFN v2.6,brier_score,All credit tables,17,-0.0003969442,-5.4470814e-05,-0.00094868608,-1.8863241e-05,-0.00044536932,-0.00016746876,5
+13,TabPFN v2.6,brier_score,Documented public sources,9,-9.3759391e-05,-2.0972621e-05,-0.00028150173,2.103617e-05,-0.00011611952,-4.9137286e-06,4
+14,TabPFN v3,brier_score,All credit tables,17,-6.4766877e-05,9.2597959e-05,-0.00050699754,0.00029328544,-0.0001321329,8.7296339e-05,12
+15,TabPFN v3,brier_score,Documented public sources,9,0.000149459,3.2862665e-05,-4.3411122e-05,0.00040040303,4.1505184e-05,0.00020885036,7
+Source-population ledger and partition audit
+CSV (first column: row index)
+row,dataset,track,source_group,provenance,source_url,documented_public,independence,holdout_partition,plan_check,known_shared_source_in_training,identical_file_in_training,processed_sha256
+0,Bondora Peer-to-Peer,pd,Bondora Peer-to-Peer,documented URL,https://www.bondora.com/marketing/media/LoanData.zip,True,not established,0,verified,0,0,c4c27c01f640bf1bc0f697bee01b98173db4625a0a83070c2ff2b84ac5af4473
+1,Cobranded,pd,Cobranded,unverified release,,False,not established,3,verified,0,0,4d46eb9161bfaffc673f25d965d5292e5386c49c05d5c4e43a24fe6da1ddcc38
+2,Credit Risk,pd,Credit Risk,documented URL,https://www.kaggle.com/datasets/laotse/credit-risk-dataset,True,not established,2,verified,0,0,f2c0ad73883a566282792d673abc961f79896d7cfc0deb5886486988b0aa8e65
+3,GMSC,pd,GMSC,documented URL,https://www.kaggle.com/c/GiveMeSomeCredit,True,not established,1,verified,0,0,c1701226b353a742e4e04c28cd826da864e14a5f5f94a21a6fb37d13babd6fd6
+4,German Credit,pd,German Credit,documented URL,https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data,True,not established,1,verified,0,0,f874277805c29f2b71bcc6ba261cf2f388c23140bb012c82c768f94655f8eeb9
+5,HMEQ,pd,HMEQ,unverified release,,False,not established,0,verified,0,0,d74056a6c6e93ce46876705587f19c6eb22cb2dbec5e1dc61cb123089d15272c
+6,Hackerearth,pd,Hackerearth,unverified release,,False,not established,2,verified,0,0,e3db3a15651830ddc134e287f4d448af5339dd04290e5b15c60418621986276c
+7,Home Credit,pd,Home Credit,documented URL,https://www.kaggle.com/c/home-credit-default-risk,True,not established,3,verified,0,0,ff4c16e337fbac8a70945484101d760ec3cdeeec3c9db410d8a6804196d51d6d
+8,LendingClub,pd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,3,verified,0,0,b82ed095e91fb068ab25ce6241a6ab9c2e610e67d3602b165ccc739e4d047f68
+9,MicroFinance,pd,MicroFinance,unverified release,,False,not established,0,verified,0,0,e2ec2a828f2091bd1984c31367f8605507b1ae16a8ed4a8946959f57560d590a
+10,Myhom,pd,Myhom,unverified release,,False,not established,2,verified,0,0,44bd18789170866d55ee5f673a913ab34e844219a09872b38ba296f146c3c9d6
+11,PropPD1,pd,PropPD1,restricted,,False,not established,2,verified,0,0,05d68d18b39e173553b407b4643aa999b54b00e6c705142a909aca308508f6e3
+12,PropPD2,pd,PropPD2,restricted,,False,not established,2,verified,0,0,96d0913b7e992be07db88690f2f606a6f6e9561af7499e181d898e0d69828054
+13,SBA Loans Case,pd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,3,verified,0,0,b1204ffd80a3a804fd8a6c7717919ec8e7c4752ce05798eab4d9130404e36a27
+14,Taiwan Credit Card,pd,Taiwan Credit Card,documented URL,https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients,True,not established,1,verified,0,0,ccc6f010ef7e96db5d4f3ca279f1d1c1e30263e1978176e48f402da48e5202ed
+15,Thomas,pd,Thomas,unverified release,,False,not established,0,verified,0,0,be289c37debf52f998cdddacc04172a956ba3de1667d9275967dcbe227158a8e
+16,Vehicle Loan,pd,Vehicle Loan,documented URL,https://www.kaggle.com/datasets/avikpaul4u/vehicle-loan-default-prediction,True,not established,1,verified,0,0,97bd0eed5558f3f06668096aca9c2c7c445410a707ee23afcb6cb86443b274cc
+
 5. Probability quality, calibration and thresholds
 Brier score combines discrimination and calibration; ECE depends on its bins. The calibration overview compares the same tables across raw, Platt and isotonic scores; reliability examples are selected by dataset size independently of performance.
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
@@ -69219,31 +69420,32 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,5222.861,4837.4361,5610.2462,32,0.5222861,0.48374361,0.56102462,32,121.0455,120.994,121.097,32,1.8578545e+08,168231937,195157151,32,53153136,53153136,53153136,32,0.0062993886,0.0014844263,0.052169715
 "('TabPFN v3', True)",32,4818.2725,4506.7621,5040.1654,32,0.48182725,0.45067621,0.50401654,32,109.999,109.999,109.999,32,1.8578545e+08,168231937,195157151,32,1795440,1795440,1795440,32,0.0064213491,0.0013048735,0.037843075
 
-experiment1/03_results_pd: 24 figures -> output CreditPFN/figures/experiment1
+experiment1/03_results_pd: 25 figures -> output CreditPFN/figures/experiment1
   01  pd_evaluation_coverage
   02  pd_endpoint_dashboard_pd_means
   03  pd_endpoint_dashboard_pd_partitions
   04  pd_endpoint_factors_pd_False
   05  pd_brier_dashboard
   06  pd_endpoint_factors_pd_True
-  07  pd_reference_roc_auc_1
-  08  pd_reference_pr_auc_1
-  09  pd_reference_brier_score_1
-  10  pd_reference_log_loss_1
-  11  pd_reference_ece_1
-  12  pd_reference_f1_1
-  13  pd_calibration_overview
-  14  pd_reliability_tabicl-v2_1
-  15  pd_reliability_v2_1
-  16  pd_reliability_v2.6_1
-  17  pd_reliability_v3_1
-  18  pd_thresholds_tabicl-v2_1
-  19  pd_thresholds_v2-default_1
-  20  pd_thresholds_v2.6-default_1
-  21  pd_thresholds_v3-default_1
-  22  pd_prediction_diagnostics
-  23  pd_control_context_1
-  24  pd_control_context_2
+  07  pd_reference_uncertainty
+  08  pd_reference_roc_auc_1
+  09  pd_reference_pr_auc_1
+  10  pd_reference_brier_score_1
+  11  pd_reference_log_loss_1
+  12  pd_reference_ece_1
+  13  pd_reference_f1_1
+  14  pd_calibration_overview
+  15  pd_reliability_tabicl-v2_1
+  16  pd_reliability_v2_1
+  17  pd_reliability_v2.6_1
+  18  pd_reliability_v3_1
+  19  pd_thresholds_tabicl-v2_1
+  20  pd_thresholds_v2-default_1
+  21  pd_thresholds_v2.6-default_1
+  22  pd_thresholds_v3-default_1
+  23  pd_prediction_diagnostics
+  24  pd_control_context_1
+  25  pd_control_context_2
 ```
 
 ---
@@ -70697,6 +70899,8 @@ TabPFN v2.6      one_sample False      64 -0.11341 -0.06226 -0.69171  0.00079
 TabPFN v3        one_sample False      64 -0.15275 -0.08267 -0.70081  0.00255
                      True       64 -0.09464 -0.03171 -0.74174  0.00168
 LGD primary benchmark error remains RMSE; R² is also reported. Five outer folds are averaged within table before cross-table comparisons.
+The recipe is fixed: full updates, LR 3e-7, L2-SP 0.003, seed 42. Five paired outer folds are averaged within each table. The 95% percentile bootstrap interval resamples tables (10,000 draws, seed 20261020), not folds, rows, recipes or overlapping training corpora. It describes sensitivity to the observed table collection conditional on the fitted checkpoints, under a table-exchangeability assumption; it is not a deployment guarantee or a training-seed confidence interval. Unknown shared populations can invalidate that assumption. No significance-based recipe selection is performed.
+A source URL identifies a release or platform, not independent borrowers. The ledger records documented shared sources and unresolved provenance; it does not certify absence of overlap. LendingClub PD/LGD and SBA PD/LGD share sources, but the two tasks have separate CPT corpora and are never pooled as independent replications. The documented-public-source sensitivity excludes unverified/local and restricted sources; it changes the population being summarized and cannot repair contamination in already trained weights.
 
 Table: Complete primary benchmark dataset effects
 CSV (first column: row index)
@@ -72275,9 +72479,110 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 510,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,PropLGD5,0.3766028,0.37561882,-0.00098398924,-0.00098398924,PropLGD5,TabPFN v3,3e-07,True,0,one_sample,-0.00098398924,42
 511,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,SBA Loans Case (LGD),0.7320177,0.72729809,-0.0047196031,-0.0047196031,SBA Loans Case (LGD),TabPFN v3,3e-07,True,0,one_sample,-0.0047196031,42
 
+Figure: lgd_reference_uncertainty
+LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
+Reference per-table effects
+CSV (first column: row index)
+row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,track,source_group,provenance,source_url,documented_public,independence,metric
+0,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Freddie Mac,0.3838949,0.37825165,-0.0056432486,-0.0056432486,Freddie Mac,TabICLv2,3e-07,False,0.003,one_sample,-0.0056432486,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,r2
+1,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub (LGD),0.76362401,0.76332742,-0.00029659271,-0.00029659271,LendingClub (LGD),TabICLv2,3e-07,False,0.003,one_sample,-0.00029659271,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,r2
+2,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD1,0.64222894,0.61218543,-0.030043507,-0.030043507,PropLGD1,TabICLv2,3e-07,False,0.003,one_sample,-0.030043507,42,lgd,PropLGD1,restricted,,False,not established,r2
+3,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD2,0.72727659,0.72410496,-0.0031716228,-0.0031716228,PropLGD2,TabICLv2,3e-07,False,0.003,one_sample,-0.0031716228,42,lgd,PropLGD2,restricted,,False,not established,r2
+4,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD3,0.21216327,0.21077893,-0.0013843417,-0.0013843417,PropLGD3,TabICLv2,3e-07,False,0.003,one_sample,-0.0013843417,42,lgd,PropLGD3,restricted,,False,not established,r2
+5,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD4,0.41803458,0.42387155,0.0058369756,0.0058369756,PropLGD4,TabICLv2,3e-07,False,0.003,one_sample,0.0058369756,42,lgd,PropLGD4,restricted,,False,not established,r2
+6,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD5,0.37389036,0.37042451,-0.0034658551,-0.0034658551,PropLGD5,TabICLv2,3e-07,False,0.003,one_sample,-0.0034658551,42,lgd,PropLGD5,restricted,,False,not established,r2
+7,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73404083,6.3300133e-06,6.3300133e-06,SBA Loans Case (LGD),TabICLv2,3e-07,False,0.003,one_sample,6.3300133e-06,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,r2
+8,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Freddie Mac,0.38327215,0.38002133,-0.0032508135,-0.0032508135,Freddie Mac,TabPFN v2,3e-07,False,0.003,one_sample,-0.0032508135,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,r2
+9,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub (LGD),0.75747193,0.75532848,-0.0021434546,-0.0021434546,LendingClub (LGD),TabPFN v2,3e-07,False,0.003,one_sample,-0.0021434546,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,r2
+10,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD1,0.2995842,0.31806769,0.018483496,0.018483496,PropLGD1,TabPFN v2,3e-07,False,0.003,one_sample,0.018483496,42,lgd,PropLGD1,restricted,,False,not established,r2
+11,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD2,0.71614927,0.71534382,-0.00080544949,-0.00080544949,PropLGD2,TabPFN v2,3e-07,False,0.003,one_sample,-0.00080544949,42,lgd,PropLGD2,restricted,,False,not established,r2
+12,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD3,0.21272258,0.21251168,-0.00021089315,-0.00021089315,PropLGD3,TabPFN v2,3e-07,False,0.003,one_sample,-0.00021089315,42,lgd,PropLGD3,restricted,,False,not established,r2
+13,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD4,0.33660059,0.34819264,0.011592054,0.011592054,PropLGD4,TabPFN v2,3e-07,False,0.003,one_sample,0.011592054,42,lgd,PropLGD4,restricted,,False,not established,r2
+14,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD5,0.37209316,0.37843477,0.0063416004,0.0063416004,PropLGD5,TabPFN v2,3e-07,False,0.003,one_sample,0.0063416004,42,lgd,PropLGD5,restricted,,False,not established,r2
+15,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case (LGD),0.71824844,0.7210507,0.0028022647,0.0028022647,SBA Loans Case (LGD),TabPFN v2,3e-07,False,0.003,one_sample,0.0028022647,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,r2
+16,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Freddie Mac,0.39476699,0.31919595,-0.075571036,-0.075571036,Freddie Mac,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.075571036,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,r2
+17,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub (LGD),0.76306273,0.68213707,-0.080925655,-0.080925655,LendingClub (LGD),TabPFN v2.6,3e-07,False,0.003,one_sample,-0.080925655,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,r2
+18,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD1,0.71840361,0.41957085,-0.29883276,-0.29883276,PropLGD1,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.29883276,42,lgd,PropLGD1,restricted,,False,not established,r2
+19,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD2,0.72027066,0.65681573,-0.063454926,-0.063454926,PropLGD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.063454926,42,lgd,PropLGD2,restricted,,False,not established,r2
+20,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD3,0.21145041,0.21288432,0.0014339089,0.0014339089,PropLGD3,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0014339089,42,lgd,PropLGD3,restricted,,False,not established,r2
+21,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD4,0.42508527,0.35907712,-0.066008151,-0.066008151,PropLGD4,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.066008151,42,lgd,PropLGD4,restricted,,False,not established,r2
+22,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD5,0.37783189,0.35005693,-0.027774954,-0.027774954,PropLGD5,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.027774954,42,lgd,PropLGD5,restricted,,False,not established,r2
+23,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case (LGD),0.70759012,0.65302472,-0.054565394,-0.054565394,SBA Loans Case (LGD),TabPFN v2.6,3e-07,False,0.003,one_sample,-0.054565394,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,r2
+24,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Freddie Mac,0.40350479,0.38538718,-0.018117607,-0.018117607,Freddie Mac,TabPFN v3,3e-07,False,0.003,one_sample,-0.018117607,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,r2
+25,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub (LGD),0.76377615,0.76179036,-0.0019857883,-0.0019857883,LendingClub (LGD),TabPFN v3,3e-07,False,0.003,one_sample,-0.0019857883,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,r2
+26,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD1,0.67163471,0.48180084,-0.18983387,-0.18983387,PropLGD1,TabPFN v3,3e-07,False,0.003,one_sample,-0.18983387,42,lgd,PropLGD1,restricted,,False,not established,r2
+27,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD2,0.73408319,0.72251776,-0.011565423,-0.011565423,PropLGD2,TabPFN v3,3e-07,False,0.003,one_sample,-0.011565423,42,lgd,PropLGD2,restricted,,False,not established,r2
+28,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD3,0.21129837,0.21349536,0.0021969914,0.0021969914,PropLGD3,TabPFN v3,3e-07,False,0.003,one_sample,0.0021969914,42,lgd,PropLGD3,restricted,,False,not established,r2
+29,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD4,0.4223755,0.41969149,-0.0026840091,-0.0026840091,PropLGD4,TabPFN v3,3e-07,False,0.003,one_sample,-0.0026840091,42,lgd,PropLGD4,restricted,,False,not established,r2
+30,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD5,0.3766028,0.37537196,-0.0012308478,-0.0012308478,PropLGD5,TabPFN v3,3e-07,False,0.003,one_sample,-0.0012308478,42,lgd,PropLGD5,restricted,,False,not established,r2
+31,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case (LGD),0.7320177,0.7278065,-0.0042111993,-0.0042111993,SBA Loans Case (LGD),TabPFN v3,3e-07,False,0.003,one_sample,-0.0042111993,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,r2
+32,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Freddie Mac,0.24976073,0.25090386,-0.0045870828,-0.001143131,Freddie Mac,TabICLv2,3e-07,False,0.003,one_sample,-0.0045870828,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,rmse
+33,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub (LGD),0.1253154,0.1253917,-0.00057614182,-7.629455e-05,LendingClub (LGD),TabICLv2,3e-07,False,0.003,one_sample,-0.00057614182,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,rmse
+34,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD1,0.2494203,0.25967837,-0.041121223,-0.010258077,PropLGD1,TabICLv2,3e-07,False,0.003,one_sample,-0.041121223,42,lgd,PropLGD1,restricted,,False,not established,rmse
+35,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD2,0.14158566,0.14242968,-0.0060590142,-0.00084401821,PropLGD2,TabICLv2,3e-07,False,0.003,one_sample,-0.0060590142,42,lgd,PropLGD2,restricted,,False,not established,rmse
+36,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD3,0.29181515,0.29206419,-0.00085675327,-0.00024904016,PropLGD3,TabICLv2,3e-07,False,0.003,one_sample,-0.00085675327,42,lgd,PropLGD3,restricted,,False,not established,rmse
+37,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD4,0.28715246,0.28569235,0.0051023239,0.0014601136,PropLGD4,TabICLv2,3e-07,False,0.003,one_sample,0.0051023239,42,lgd,PropLGD4,restricted,,False,not established,rmse
+38,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropLGD5,0.32223223,0.32320342,-0.0032210164,-0.00097119864,PropLGD5,TabICLv2,3e-07,False,0.003,one_sample,-0.0032210164,42,lgd,PropLGD5,restricted,,False,not established,rmse
+39,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case (LGD),0.13175695,0.13166667,0.00068254455,9.0274571e-05,SBA Loans Case (LGD),TabICLv2,3e-07,False,0.003,one_sample,0.00068254455,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,rmse
+40,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Freddie Mac,0.24988853,0.25054786,-0.0026499,-0.00065932979,Freddie Mac,TabPFN v2,3e-07,False,0.003,one_sample,-0.0026499,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,rmse
+41,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub (LGD),0.12694802,0.12750593,-0.0043914304,-0.00055790343,LendingClub (LGD),TabPFN v2,3e-07,False,0.003,one_sample,-0.0043914304,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,rmse
+42,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD1,0.34852414,0.3440528,0.012321215,0.0044713359,PropLGD1,TabPFN v2,3e-07,False,0.003,one_sample,0.012321215,42,lgd,PropLGD1,restricted,,False,not established,rmse
+43,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD2,0.14446369,0.14465732,-0.0013299069,-0.00019363298,PropLGD2,TabPFN v2,3e-07,False,0.003,one_sample,-0.0013299069,42,lgd,PropLGD2,restricted,,False,not established,rmse
+44,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD3,0.29169839,0.29173022,-0.00020625496,-3.1831883e-05,PropLGD3,TabPFN v2,3e-07,False,0.003,one_sample,-0.00020625496,42,lgd,PropLGD3,restricted,,False,not established,rmse
+45,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD4,0.30674414,0.30382672,0.0099735161,0.0029174239,PropLGD4,TabPFN v2,3e-07,False,0.003,one_sample,0.0099735161,42,lgd,PropLGD4,restricted,,False,not established,rmse
+46,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropLGD5,0.32285307,0.32140984,0.0036546003,0.0014432241,PropLGD5,TabPFN v2,3e-07,False,0.003,one_sample,0.0036546003,42,lgd,PropLGD5,restricted,,False,not established,rmse
+47,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case (LGD),0.13546815,0.13484706,0.004308833,0.00062109846,SBA Loans Case (LGD),TabPFN v2,3e-07,False,0.003,one_sample,0.004308833,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,rmse
+48,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Freddie Mac,0.24754957,0.26255314,-0.060645732,-0.015003577,Freddie Mac,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.060645732,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,rmse
+49,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub (LGD),0.12545947,0.14537823,-0.15968294,-0.01991876,LendingClub (LGD),TabPFN v2.6,3e-07,False,0.003,one_sample,-0.15968294,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,rmse
+50,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD1,0.22127578,0.3176906,-0.43576643,-0.096414821,PropLGD1,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.43576643,42,lgd,PropLGD1,restricted,,False,not established,rmse
+51,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD2,0.14338096,0.15891294,-0.10893901,-0.015531977,PropLGD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.10893901,42,lgd,PropLGD2,restricted,,False,not established,rmse
+52,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD3,0.29196563,0.29172462,0.0007860249,0.0002410099,PropLGD3,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0007860249,42,lgd,PropLGD3,restricted,,False,not established,rmse
+53,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD4,0.28526956,0.30170018,-0.059464061,-0.016430622,PropLGD4,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.059464061,42,lgd,PropLGD4,restricted,,False,not established,rmse
+54,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropLGD5,0.32125944,0.3292597,-0.028017648,-0.0080002584,PropLGD5,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.028017648,42,lgd,PropLGD5,restricted,,False,not established,rmse
+55,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case (LGD),0.13814446,0.15060653,-0.090323839,-0.012462069,SBA Loans Case (LGD),TabPFN v2.6,3e-07,False,0.003,one_sample,-0.090323839,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,rmse
+56,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Freddie Mac,0.24575561,0.24946151,-0.015100962,-0.0037059,Freddie Mac,TabPFN v3,3e-07,False,0.003,one_sample,-0.015100962,42,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,rmse
+57,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub (LGD),0.12526977,0.12580411,-0.0043559076,-0.0005343365,LendingClub (LGD),TabPFN v3,3e-07,False,0.003,one_sample,-0.0043559076,42,lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,rmse
+58,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD1,0.23893496,0.3001429,-0.25613898,-0.061207941,PropLGD1,TabPFN v3,3e-07,False,0.003,one_sample,-0.25613898,42,lgd,PropLGD1,restricted,,False,not established,rmse
+59,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD2,0.1398271,0.14286573,-0.021882611,-0.0030386318,PropLGD2,TabPFN v3,3e-07,False,0.003,one_sample,-0.021882611,42,lgd,PropLGD2,restricted,,False,not established,rmse
+60,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD3,0.29197441,0.29157481,0.0013209994,0.00039960286,PropLGD3,TabPFN v3,3e-07,False,0.003,one_sample,0.0013209994,42,lgd,PropLGD3,restricted,,False,not established,rmse
+61,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD4,0.28614841,0.2869733,-0.0034970583,-0.0008248899,PropLGD4,TabPFN v3,3e-07,False,0.003,one_sample,-0.0034970583,42,lgd,PropLGD4,restricted,,False,not established,rmse
+62,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropLGD5,0.32160436,0.32189483,-0.00081790406,-0.00029047363,PropLGD5,TabPFN v3,3e-07,False,0.003,one_sample,-0.00081790406,42,lgd,PropLGD5,restricted,,False,not established,rmse
+63,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case (LGD),0.13211565,0.13321317,-0.0094311628,-0.0010975203,SBA Loans Case (LGD),TabPFN v3,3e-07,False,0.003,one_sample,-0.0094311628,42,lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,rmse
+Intervals and leave-one-table-out sensitivity
+CSV (first column: row index)
+row,base,metric,scenario,tables,mean,median,ci_low,ci_high,leave_one_out_low,leave_one_out_high,positive_tables
+0,TabICLv2,r2,All credit tables,8,-0.0047702327,-0.0022779822,-0.012702569,0.0007049337,-0.0062855482,-0.001159765,2
+1,TabICLv2,r2,Documented public sources,3,-0.0019778371,-0.00029659271,-0.0056432486,6.3300133e-06,-0.0029699206,-0.00014513135,1
+2,TabPFN v2,r2,All credit tables,8,0.0041011006,0.0012956858,-0.00037853893,0.0094391279,0.0020464727,0.005151374,4
+3,TabPFN v2,r2,Documented public sources,3,-0.00086400112,-0.0021434546,-0.0032508135,0.0028022647,-0.002697134,0.00032940507,1
+4,TabPFN v2.6,r2,All credit tables,8,-0.083212371,-0.064731538,-0.15029065,-0.037483302,-0.095304697,-0.052409458,1
+5,TabPFN v2.6,r2,Documented public sources,3,-0.070354029,-0.075571036,-0.080925655,-0.054565394,-0.078248346,-0.065068215,0
+6,TabPFN v3,r2,All credit tables,8,-0.028428969,-0.0034476042,-0.075826558,-0.0020919986,-0.032804106,-0.0053711261,1
+7,TabPFN v3,r2,Documented public sources,3,-0.0081048648,-0.0042111993,-0.018117607,-0.0019857883,-0.011164403,-0.0030984938,0
+8,TabICLv2,rmse,All credit tables,8,-0.0063295453,-0.0020388848,-0.017004865,0.00049951267,-0.0079626695,-0.0013593057,2
+9,TabICLv2,rmse,Documented public sources,3,-0.00149356,-0.00057614182,-0.0045870828,0.00068254455,-0.0025816123,5.3201367e-05,1
+10,TabPFN v2,rmse,All credit tables,8,0.002710084,0.0017241727,-0.00096907579,0.0067723326,0.0013370653,0.0037245861,4
+11,TabPFN v2,rmse,Documented public sources,3,-0.00091083245,-0.0026499,-0.0043914304,0.004308833,-0.0035206652,0.00082946652,1
+12,TabPFN v2.6,rmse,All credit tables,8,-0.1177567,-0.075484785,-0.21809,-0.046802815,-0.13469138,-0.072326744,1
+13,TabPFN v2.6,rmse,Documented public sources,3,-0.10355084,-0.090323839,-0.15968294,-0.060645732,-0.12500339,-0.075484785,0
+14,TabPFN v3,rmse,All credit tables,8,-0.038737949,-0.0068935352,-0.10250069,-0.0036549996,-0.044460656,-0.0076806581,1
+15,TabPFN v3,rmse,Documented public sources,3,-0.0096293442,-0.0094311628,-0.015100962,-0.0043559076,-0.012266063,-0.0068935352,0
+Source-population ledger and partition audit
+CSV (first column: row index)
+row,dataset,track,source_group,provenance,source_url,documented_public,independence,holdout_partition,plan_check,known_shared_source_in_training,identical_file_in_training,processed_sha256
+0,Freddie Mac,lgd,Freddie Mac,documented URL,https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset,True,not established,1,verified,0,0,46ad00fdbf3cfda98897c2fbc304bb034c47da31404aa8a105c70ed6d2544639
+1,LendingClub (LGD),lgd,LendingClub PD/LGD,documented URL,https://www.lendingclub.com/info/download-data.action,True,not established,2,verified,0,0,d4366c6840dbbb52daefc38d779050eec0c47f31c7018b798b71223748ee95d4
+2,PropLGD1,lgd,PropLGD1,restricted,,False,not established,1,verified,0,0,70706aa05d4c71c2b3a4e7e05c9235165e809a7b492963c2d690ccf23e287e56
+3,PropLGD2,lgd,PropLGD2,restricted,,False,not established,0,verified,0,0,9c2b05928dbf6d7a6d1c593a8050761d8fb437d257d3a10e9f3e5a4dd16d4623
+4,PropLGD3,lgd,PropLGD3,restricted,,False,not established,0,verified,0,0,84c2c35e1f4b07d16d265ec6666dc0eeef6afd51867573bad282dbfae0abafb8
+5,PropLGD4,lgd,PropLGD4,restricted,,False,not established,3,verified,0,0,ce4293870694cb6e7e9eedcc690dbf9a7ddb1d88ad6fd6da856d23c554e1eb37
+6,PropLGD5,lgd,PropLGD5,restricted,,False,not established,2,verified,0,0,ae3779aa3faa2401f8e9ad07fea8c35a7f0d4c3c94c82553a29ae36205a8b487
+7,SBA Loans Case (LGD),lgd,SBA PD/LGD,documented URL,https://www.kaggle.com/datasets/larsen0966/sba-loans-case-data-set,True,not established,3,verified,0,0,456d581337b00cae89cca80dd50d8bde2936a453f757093f66d24ab8e67d1d5a
+
 5. Regression errors and prediction shifts
 RMSE and MAE summarize prediction errors, while R2 compares squared error with a constant predictor. Distributional calibration requires stored predictive distributions rather than point errors.
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
+The logged density score caps per-row NLL at +/-100 and replaces nonfinite values. Better logged density scores do not establish better uncapped likelihood. Endpoint errors describe observed labels, not theoretical bias.
 
 Figure: lgd_reference_rmse_1
 LGD. Dataset-level RMSE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
@@ -72441,6 +72746,124 @@ row,base,arm,metric,datasets,mean,q25,q75
 5,TabPFN v2.6,Reference CPT,mse_improvement,8,-0.010911243,-0.0081013504,-0.0044179479
 6,TabPFN v3,Reference CPT,absolute_mean_error_improvement,8,-0.013399104,-0.0065970843,0.0023443926
 7,TabPFN v3,Reference CPT,mse_improvement,8,-0.0045558969,-0.0010997254,-0.00019545162
+
+Figure: lgd_v26_distribution_tradeoff
+LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect each credit table's five-fold means; the colored line is their equal-table mean. The dotted coverage line marks the nominal 90% level. Log scores use the historical per-row NLL replacement/clipping at ±100 nats; they are not uncapped likelihood estimates.
+Point and distribution scores
+CSV (first column: row index)
+row,dataset,untuned,trained,metric,difference
+0,Freddie Mac,0.39476699,0.31919595,r2,-0.075571036
+1,LendingClub (LGD),0.76306273,0.68213707,r2,-0.080925655
+2,PropLGD1,0.71840361,0.41957085,r2,-0.29883276
+3,PropLGD2,0.72027066,0.65681573,r2,-0.063454926
+4,PropLGD3,0.21145041,0.21288432,r2,0.0014339089
+5,PropLGD4,0.42508527,0.35907712,r2,-0.066008151
+6,PropLGD5,0.37783189,0.35005693,r2,-0.027774954
+7,SBA Loans Case (LGD),0.70759012,0.65302472,r2,-0.054565394
+8,Freddie Mac,0.24754957,0.26255314,rmse,0.015003577
+9,LendingClub (LGD),0.12545947,0.14537823,rmse,0.01991876
+10,PropLGD1,0.22127578,0.3176906,rmse,0.096414821
+11,PropLGD2,0.14338096,0.15891294,rmse,0.015531977
+12,PropLGD3,0.29196563,0.29172462,rmse,-0.0002410099
+13,PropLGD4,0.28526956,0.30170018,rmse,0.016430622
+14,PropLGD5,0.32125944,0.3292597,rmse,0.0080002584
+15,SBA Loans Case (LGD),0.13814446,0.15060653,rmse,0.012462069
+16,Freddie Mac,0.061578001,0.067544334,mean_pinball_loss,0.0059663328
+17,LendingClub (LGD),0.022689816,0.028888693,mean_pinball_loss,0.0061988766
+18,PropLGD1,0.03284059,0.066510764,mean_pinball_loss,0.033670174
+19,PropLGD2,0.032577959,0.038015807,mean_pinball_loss,0.0054378477
+20,PropLGD3,0.06348877,0.0640531,mean_pinball_loss,0.00056432951
+21,PropLGD4,0.060388301,0.070121217,mean_pinball_loss,0.0097329156
+22,PropLGD5,0.066010015,0.07252553,mean_pinball_loss,0.0065155155
+23,SBA Loans Case (LGD),0.028527466,0.034661255,mean_pinball_loss,0.006133789
+24,Freddie Mac,0.89970054,0.98293953,interval_coverage_90,0.083238988
+25,LendingClub (LGD),0.87862199,0.95077261,interval_coverage_90,0.072150622
+26,PropLGD1,0.97735278,0.97892359,interval_coverage_90,0.0015708092
+27,PropLGD2,0.89561968,0.96527871,interval_coverage_90,0.069659032
+28,PropLGD3,0.94577603,0.95992141,interval_coverage_90,0.014145383
+29,PropLGD4,0.91607327,0.98295494,interval_coverage_90,0.066881665
+30,PropLGD5,0.93945307,0.98487395,interval_coverage_90,0.04542088
+31,SBA Loans Case (LGD),0.90528933,0.97520364,interval_coverage_90,0.069914313
+32,Freddie Mac,0.74568616,1.1026034,interval_width_90,0.35691723
+33,LendingClub (LGD),0.21271997,0.63930172,interval_width_90,0.42658175
+34,PropLGD1,0.53423229,1.0498163,interval_width_90,0.51558396
+35,PropLGD2,0.39750343,0.71219195,interval_width_90,0.31468852
+36,PropLGD3,0.82698559,0.94094614,interval_width_90,0.11396055
+37,PropLGD4,0.73012109,1.2030775,interval_width_90,0.47295637
+38,PropLGD5,0.86908033,1.3199171,interval_width_90,0.45083675
+39,SBA Loans Case (LGD),0.35286627,0.70378696,interval_width_90,0.35092068
+40,Freddie Mac,-1.4577954,-0.20461085,neg_nll,1.2531846
+41,LendingClub (LGD),-2.6034712,0.56595677,neg_nll,3.169428
+42,PropLGD1,-10.585192,-0.51384948,neg_nll,10.071343
+43,PropLGD2,-2.0900258,0.27926258,neg_nll,2.3692884
+44,PropLGD3,-3.4141526,-0.28020151,neg_nll,3.1339511
+45,PropLGD4,-2.8970041,0.069394203,neg_nll,2.9663983
+46,PropLGD5,-4.6067193,0.028041421,neg_nll,4.6347607
+47,SBA Loans Case (LGD),-2.3109646,0.39333999,neg_nll,2.7043046
+
+Table: TabPFN v2.6 target-boundary errors
+CSV (first column: row index)
+row,region,state,rows,mean_error,rmse,mae,dataset,partition
+0,Target = 0,original,1827,0.33113068,0.39197909,0.33113068,Freddie Mac,1
+1,Target = 0,CPT,1827,0.34738971,0.371583,0.34738971,Freddie Mac,1
+2,0 < target < 1,original,12884,-0.011435325,0.213945,0.16858331,Freddie Mac,1
+3,0 < target < 1,CPT,12884,-0.039587523,0.21966693,0.17959753,Freddie Mac,1
+4,Target = 1,original,1291,-0.25167238,0.29222648,0.25167238,Freddie Mac,1
+5,Target = 1,CPT,1291,-0.4113062,0.42132059,0.4113062,Freddie Mac,1
+6,Target = 0,original,83,0.59799243,0.64770177,0.59799243,LendingClub (LGD),2
+7,Target = 0,CPT,83,0.59412636,0.61615311,0.59412636,LendingClub (LGD),2
+8,0 < target < 1,original,5526,-0.0012939554,0.098678656,0.052112839,LendingClub (LGD),2
+9,0 < target < 1,CPT,5526,-0.0035421935,0.12527933,0.094565557,LendingClub (LGD),2
+10,Target = 1,original,18,-0.075155089,0.078223534,0.075155089,LendingClub (LGD),2
+11,Target = 1,CPT,18,-0.20401511,0.20665479,0.20401511,LendingClub (LGD),2
+12,Target = 0,original,12620,0.19564807,0.33072001,0.19566188,PropLGD1,1
+13,Target = 0,CPT,12620,0.4082833,0.46620955,0.4082833,PropLGD1,1
+14,0 < target < 1,original,15611,0.03892487,0.20459101,0.12555814,PropLGD1,1
+15,0 < target < 1,CPT,15611,0.033317998,0.27463744,0.21351438,PropLGD1,1
+16,Target = 1,original,29701,-0.10017272,0.1644155,0.10017619,PropLGD1,1
+17,Target = 1,CPT,29701,-0.22447529,0.25468404,0.22447529,PropLGD1,1
+18,Target = 0,original,168,0.16453615,0.23217433,0.16453615,PropLGD2,0
+19,Target = 0,CPT,168,0.26503176,0.28975401,0.26503176,PropLGD2,0
+20,0 < target < 1,original,4297,-0.00023440885,0.13467483,0.094092053,PropLGD2,0
+21,0 < target < 1,CPT,4297,0.021219287,0.1445829,0.1131036,PropLGD2,0
+22,Target = 1,original,172,-0.15920403,0.22122681,0.15934946,PropLGD2,0
+23,Target = 1,CPT,172,-0.23295578,0.27686957,0.23299239,PropLGD2,0
+24,Target = 0,original,0,unavailable,unavailable,unavailable,PropLGD3,0
+25,Target = 0,CPT,0,unavailable,unavailable,unavailable,PropLGD3,0
+26,0 < target < 1,original,2545,-0.015633769,0.29214046,0.21086661,PropLGD3,0
+27,0 < target < 1,CPT,2545,-0.0021965768,0.29188894,0.22185579,PropLGD3,0
+28,Target = 1,original,0,unavailable,unavailable,unavailable,PropLGD3,0
+29,Target = 1,CPT,0,unavailable,unavailable,unavailable,PropLGD3,0
+30,Target = 0,original,80,0.20382128,0.25481982,0.20382128,PropLGD4,3
+31,Target = 0,CPT,80,0.24741854,0.27010789,0.24741854,PropLGD4,3
+32,0 < target < 1,original,591,0.031990123,0.24699554,0.17420665,PropLGD4,3
+33,0 < target < 1,CPT,591,0.040429155,0.25206362,0.20761921,PropLGD4,3
+34,Target = 1,original,91,-0.39247693,0.4819868,0.39247693,PropLGD4,3
+35,Target = 1,CPT,91,-0.49956154,0.53663524,0.49956154,PropLGD4,3
+36,Target = 0,original,69,0.26378153,0.36623868,0.26378153,PropLGD5,2
+37,Target = 0,CPT,69,0.28393334,0.32909633,0.28393334,PropLGD5,2
+38,0 < target < 1,original,430,0.059888238,0.23051107,0.16277786,PropLGD5,2
+39,0 < target < 1,CPT,430,0.071596184,0.239766,0.20000203,PropLGD5,2
+40,Target = 1,original,95,-0.49175151,0.55912912,0.49175151,PropLGD5,2
+41,Target = 1,CPT,95,-0.55253682,0.58391235,0.55253682,PropLGD5,2
+42,Target = 0,original,0,unavailable,unavailable,unavailable,SBA Loans Case (LGD),3
+43,Target = 0,CPT,0,unavailable,unavailable,unavailable,SBA Loans Case (LGD),3
+44,0 < target < 1,original,646,0.0053041092,0.13957592,0.086485496,SBA Loans Case (LGD),3
+45,0 < target < 1,CPT,646,0.02001624,0.15084105,0.10201594,SBA Loans Case (LGD),3
+46,Target = 1,original,40,-0.082968904,0.11582282,0.082968904,SBA Loans Case (LGD),3
+47,Target = 1,CPT,40,-0.13617987,0.15105801,0.13617987,SBA Loans Case (LGD),3
+
+Table: Boundary-analysis prediction coverage
+CSV (first column: row index)
+row,dataset,status
+0,Freddie Mac,verified paired predictions
+1,LendingClub (LGD),verified paired predictions
+2,PropLGD1,verified paired predictions
+3,PropLGD2,verified paired predictions
+4,PropLGD3,verified paired predictions
+5,PropLGD4,verified paired predictions
+6,PropLGD5,verified paired predictions
+7,SBA Loans Case (LGD),verified paired predictions
 
 6. Classical controls, non-credit retention and cost
 One main training seed and overlapping adaptation corpora limit independence claims. The non-credit panel is finite and original pretraining overlap is unverified. No recipe winner is treated as an unbiased estimate of future generalization.
@@ -72731,17 +73154,19 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,2341.0625,1332.1128,3017.4633,32,0.23410625,0.13321128,0.30174633,32,46.569,21.432,46.801,32,83592599,24755261,92356996,32,58274936,58274936,58274936,32,0.015303205,0.0023242689,0.094541555
 "('TabPFN v3', True)",32,2029.0837,1133.9906,2403.9976,32,0.20290837,0.11339906,0.24039976,32,35.573,19.047,35.6,32,83592599,24755261,92356996,32,6917240,6917240,6917240,32,0.016063116,0.0020399834,0.19160081
 
-experiment1/04_results_lgd: 10 figures -> output CreditPFN/figures/experiment1
+experiment1/04_results_lgd: 12 figures -> output CreditPFN/figures/experiment1
   01  lgd_evaluation_coverage
   02  lgd_endpoint_dashboard_lgd_means
   03  lgd_endpoint_dashboard_lgd_partitions
   04  lgd_endpoint_factors_lgd_False
   05  lgd_endpoint_factors_lgd_True
-  06  lgd_reference_rmse_1
-  07  lgd_reference_mae_1
-  08  lgd_reference_r2_1
-  09  lgd_prediction_diagnostics
-  10  lgd_control_context_1
+  06  lgd_reference_uncertainty
+  07  lgd_reference_rmse_1
+  08  lgd_reference_mae_1
+  09  lgd_reference_r2_1
+  10  lgd_prediction_diagnostics
+  11  lgd_v26_distribution_tradeoff
+  12  lgd_control_context_1
 ```
 
 ---

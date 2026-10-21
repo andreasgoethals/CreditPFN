@@ -2,6 +2,12 @@
 
 ## 20-10-2026
 
+- Implement the approved four finishing tasks without adding a main experiment: checkpoint-only TabICL inference review, LGD endpoint/distribution analysis, source/partition sensitivity and conditional table-bootstrap summaries. Preserve all completed benchmarks and checkpoints; new numerical results belong only to experiment0/inference_review. No new cluster run, install or Git publication was performed. VSC numerical evidence remains pending.
+- Local validation: full suite 932 passed/1 optional-manifest skip; final focused checks 41 passed. All 21 notebooks executed, yielding 242 figures. The original-plan audit covers all 25 credit tables without same-table or identical-file train/holdout overlap; it does not establish borrower/population independence. All eight LGD tables have paired reference predictions for boundary-error analysis.
+- **Tried:** refresh only the PD results notebook after a layout adjustment.
+  **Result:** the result-loading cell exceeded its 1,800-second timeout after the full run had passed it in 128 seconds.
+  **Why:** the kernel stopped progressing; Windows recorded a thermal sleep/resume during this attempt, but the exact cause is unproven.
+  **Instead:** retry only that notebook with one kernel; it passed in 200 seconds. All 21 saved notebooks now validate with 242 embedded/saved figures and complete matching captions/summaries; scientific results were preserved.
 - Added the independent read-only VSC Library submodule and daily pin-update proposals; shared HPC guidance moved out of TFM Library, with project instructions retained in docs/VSC.md. No cluster workload was submitted.
 
 What is worth carrying between sessions: **the cluster runs that have been done**, and **the things

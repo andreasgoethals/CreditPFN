@@ -2,6 +2,7 @@
 
 ## 20-10-2026
 
+- Add isolated TabICL inference checks, reference uncertainty/source audits and LGD distribution diagnostics for paper preparation.
 - Added the independent read-only VSC Library submodule and daily pin-update proposals; shared HPC guidance moved out of TFM Library, with project instructions retained in docs/VSC.md. No cluster workload was submitted.
 
 What changed in this repository, newest first. One chapter per date, `DD-MM-YYYY`; one bullet per

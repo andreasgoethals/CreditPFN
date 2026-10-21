@@ -334,75 +334,79 @@ PD. Brier-score reductions from five-fold benchmark, averaged with equal weight 
 
 PD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
 
-**[experiment1__03_results_pd__07_pd_reference_roc_auc_1](experiment1/experiment1__03_results_pd__07_pd_reference_roc_auc_1.pdf)** — `pd_reference_roc_auc_1`
+**[experiment1__03_results_pd__07_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__07_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
+
+PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
+
+**[experiment1__03_results_pd__08_pd_reference_roc_auc_1](experiment1/experiment1__03_results_pd__08_pd_reference_roc_auc_1.pdf)** — `pd_reference_roc_auc_1`
 
 PD. Dataset-level AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__03_results_pd__08_pd_reference_pr_auc_1](experiment1/experiment1__03_results_pd__08_pd_reference_pr_auc_1.pdf)** — `pd_reference_pr_auc_1`
+**[experiment1__03_results_pd__09_pd_reference_pr_auc_1](experiment1/experiment1__03_results_pd__09_pd_reference_pr_auc_1.pdf)** — `pd_reference_pr_auc_1`
 
 PD. Dataset-level PR-AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__03_results_pd__09_pd_reference_brier_score_1](experiment1/experiment1__03_results_pd__09_pd_reference_brier_score_1.pdf)** — `pd_reference_brier_score_1`
+**[experiment1__03_results_pd__10_pd_reference_brier_score_1](experiment1/experiment1__03_results_pd__10_pd_reference_brier_score_1.pdf)** — `pd_reference_brier_score_1`
 
 PD. Dataset-level Brier score changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Brier scores assess probabilistic accuracy, combining calibration and discrimination.
 
-**[experiment1__03_results_pd__10_pd_reference_log_loss_1](experiment1/experiment1__03_results_pd__10_pd_reference_log_loss_1.pdf)** — `pd_reference_log_loss_1`
+**[experiment1__03_results_pd__11_pd_reference_log_loss_1](experiment1/experiment1__03_results_pd__11_pd_reference_log_loss_1.pdf)** — `pd_reference_log_loss_1`
 
 PD. Dataset-level Log loss changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Log loss assesses predicted probabilities and penalizes confidently incorrect predictions.
 
-**[experiment1__03_results_pd__11_pd_reference_ece_1](experiment1/experiment1__03_results_pd__11_pd_reference_ece_1.pdf)** — `pd_reference_ece_1`
+**[experiment1__03_results_pd__12_pd_reference_ece_1](experiment1/experiment1__03_results_pd__12_pd_reference_ece_1.pdf)** — `pd_reference_ece_1`
 
 PD. Dataset-level ECE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. ECE is a bin-dependent calibration diagnostic, not a complete measure of probabilistic accuracy.
 
-**[experiment1__03_results_pd__12_pd_reference_f1_1](experiment1/experiment1__03_results_pd__12_pd_reference_f1_1.pdf)** — `pd_reference_f1_1`
+**[experiment1__03_results_pd__13_pd_reference_f1_1](experiment1/experiment1__03_results_pd__13_pd_reference_f1_1.pdf)** — `pd_reference_f1_1`
 
 PD. Dataset-level F1 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. F1 uses thresholds chosen on inner validation rows.
 
-**[experiment1__03_results_pd__13_pd_calibration_overview](experiment1/experiment1__03_results_pd__13_pd_calibration_overview.pdf)** — `pd_calibration_overview`
+**[experiment1__03_results_pd__14_pd_calibration_overview](experiment1/experiment1__03_results_pd__14_pd_calibration_overview.pdf)** — `pd_calibration_overview`
 
 PD. Changes in outer-test Brier score and expected calibration error (ECE) for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all six scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. ECE depends on the binning scheme.
 
-**[experiment1__03_results_pd__14_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__14_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
+**[experiment1__03_results_pd__15_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__15_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__15_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__15_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
+**[experiment1__03_results_pd__16_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__16_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__16_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__16_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
+**[experiment1__03_results_pd__17_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__17_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__17_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__17_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
+**[experiment1__03_results_pd__18_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__18_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__18_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__18_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
+**[experiment1__03_results_pd__19_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__19_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__19_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__19_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
+**[experiment1__03_results_pd__20_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__20_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__20_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__20_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
+**[experiment1__03_results_pd__21_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__21_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__21_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__21_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
+**[experiment1__03_results_pd__22_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__22_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__22_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__22_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+**[experiment1__03_results_pd__23_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__23_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
 PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__03_results_pd__23_pd_control_context_1](experiment1/experiment1__03_results_pd__23_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__24_pd_control_context_1](experiment1/experiment1__03_results_pd__24_pd_control_context_1.pdf)** — `pd_control_context_1`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
-**[experiment1__03_results_pd__24_pd_control_context_2](experiment1/experiment1__03_results_pd__24_pd_control_context_2.pdf)** — `pd_control_context_2`
+**[experiment1__03_results_pd__25_pd_control_context_2](experiment1/experiment1__03_results_pd__25_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -428,23 +432,31 @@ LGD. Conditional differences match dataset and every other configuration setting
 
 LGD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
 
-**[experiment1__04_results_lgd__06_lgd_reference_rmse_1](experiment1/experiment1__04_results_lgd__06_lgd_reference_rmse_1.pdf)** — `lgd_reference_rmse_1`
+**[experiment1__04_results_lgd__06_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__06_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
+
+LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
+
+**[experiment1__04_results_lgd__07_lgd_reference_rmse_1](experiment1/experiment1__04_results_lgd__07_lgd_reference_rmse_1.pdf)** — `lgd_reference_rmse_1`
 
 LGD. Dataset-level RMSE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__07_lgd_reference_mae_1](experiment1/experiment1__04_results_lgd__07_lgd_reference_mae_1.pdf)** — `lgd_reference_mae_1`
+**[experiment1__04_results_lgd__08_lgd_reference_mae_1](experiment1/experiment1__04_results_lgd__08_lgd_reference_mae_1.pdf)** — `lgd_reference_mae_1`
 
 LGD. Dataset-level MAE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__08_lgd_reference_r2_1](experiment1/experiment1__04_results_lgd__08_lgd_reference_r2_1.pdf)** — `lgd_reference_r2_1`
+**[experiment1__04_results_lgd__09_lgd_reference_r2_1](experiment1/experiment1__04_results_lgd__09_lgd_reference_r2_1.pdf)** — `lgd_reference_r2_1`
 
 LGD. Dataset-level R² changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__09_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__09_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
+**[experiment1__04_results_lgd__10_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__10_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
 LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__04_results_lgd__10_lgd_control_context_1](experiment1/experiment1__04_results_lgd__10_lgd_control_context_1.pdf)** — `lgd_control_context_1`
+**[experiment1__04_results_lgd__11_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__11_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
+
+LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect each credit table's five-fold means; the colored line is their equal-table mean. The dotted coverage line marks the nominal 90% level. Log scores use the historical per-row NLL replacement/clipping at ±100 nats; they are not uncapped likelihood estimates.
+
+**[experiment1__04_results_lgd__12_lgd_control_context_1](experiment1/experiment1__04_results_lgd__12_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
 LGD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 

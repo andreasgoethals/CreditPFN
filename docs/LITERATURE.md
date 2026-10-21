@@ -8,6 +8,23 @@ The current follow-up-design and implementation review uses **`de324efcca55be392
 (refreshed 16-10-2026), including the Real-TabPFN, TabICLv2 and TTC primary text and code snapshots.
 Older pins above identify the historical checks; no library content is changed here.
 
+Numerical interpretation was checked on 20-10-2026 at the read-only pin
+**`dd5091482404278f429e6f4b272d0314808f64d4`**. In
+[`repositories/TabICL.txt`](../tfm-library/repositories/TabICL.txt),
+`_resolve_amp_fa3` changes automatic CUDA policies at 1,024 rows (also depending on
+feature count) and 10,240 rows. `sdpa_with_flattened_batch` can cast FP32 inputs to
+FP16 when FA3 actually executes. Disabling AMP alone is therefore insufficient to
+establish FP32 attention; the diagnostic records backend calls and dtypes. The installed
+campaign's TabICL 2.1.1 uses these size thresholds, while this newer snapshot additionally
+has device-aware overrides. Preserve the campaign package rather than installing the snapshot.
+
+In [`repositories/TabPFN .txt`](<../tfm-library/repositories/TabPFN .txt>),
+the regression-distribution example's `evaluate` function applies the returned raw-space
+`criterion` to original-unit targets and `logits`, matching our score-space convention.
+Our historical per-row NLL replacement/clipping is an additional numerical safeguard,
+not an uncapped proper log score. Existing exports establish point/quantile changes,
+not that the exact predictive density improved.
+
 ## Theory-informed interpretation of domain CPT
 
 The object of this study is **how credit-corpus CPT changes a learned prediction procedure**,

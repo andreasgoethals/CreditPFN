@@ -1,0 +1,21 @@
+# Inference only: two anomalous credit tables and one control.
+run_name: inference_review_v1
+source_run: cpt_main_v5
+datasets: [0003.vehicle_loan, 0005.myhom, 0002.taiwan_creditcard]
+source_recipe:
+  learning_rate: 3.0e-7
+  l2sp_lambda: 0.003
+  seed: 42
+  frozen_backbone: false
+  successful_updates: 10000
+outer_folds: 5
+split_seed: 99
+inner_validation_fraction: 0.20
+inference_views: 8
+max_context_rows: 1000000
+# Fixed-query mechanism probes only on the first table, fold zero.
+# These probes are not additional full-test benchmark estimates.
+boundary_rows: [1023, 1024, 10239, 10240]
+boundary_query_rows: 256
+parity_atol: 0.000001
+parity_rtol: 0.00001

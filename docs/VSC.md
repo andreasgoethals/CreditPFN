@@ -12,6 +12,85 @@ Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed clu
 
 Operational reference: the independent VSC Library linked above; apply current Leuven rules, and inspect account/QoS limits and storage quota live.
 
+## Final inference check before writing
+
+This is a finishing diagnostic inside experiment 0, **not a repeat of experiments 1–7**.
+Deploy the reviewed source after the previous campaign has finished; do not upgrade the
+CreditPFN conda environment. The local test suite checks the logic, while the B200 run
+checks the actual installed numerical backend. Infrastructure reference for these
+wrappers: read-only VSC Library pin `3a04134ab7786dc4158a389ac685acfe7b77b62b`.
+
+After committing/pushing the local changes yourself, on VSC:
+
+```bash
+cd "$VSC_DATA/CreditPFN"
+```
+
+```bash
+git pull --ff-only
+```
+
+Prepare on wICE; this verifies existing data/checkpoint provenance, checks the
+existing Mindwell input cache before GPU submission, and writes an
+unchanged-weight save control. It performs no optimization. `papercheck1` names an
+immutable diagnostic; choose a new ID only when intentionally changing its code,
+environment or configuration.
+
+```bash
+sbatch scripts/slurm/inference_review_cpu.slurm prepare papercheck1
+```
+
+Wait for its `PREPARED papercheck1: 15 inference tasks` message and exit 0 in
+`output CreditPFN/experiment0/logs/inference_review_prepare_papercheck1_*.log`.
+Then submit the entire diagnostic:
+
+```bash
+sbatch scripts/slurm/inference_review_gpu.slurm papercheck1
+```
+
+The array has 15 tasks, at most two GPUs at once, with a four-hour limit per allocation.
+This is a ceiling, not a runtime forecast. Three credit tables × five folds compare
+original, unchanged-save and fixed-reference CPT weights under automatic and FP32/no-FA3
+settings. Native-context cells predict every outer test row. Only Vehicle Loan fold zero
+adds 24 bounded threshold probes (four context sizes × three policies × two weight states)
+using a fixed, label-independent 256-row query subset. Backend instrumentation reports
+actual FA3/torch-SDPA calls and input dtypes; it does not identify PyTorch's internal SDPA
+kernel. TF32 settings are recorded separately.
+
+Each cell commits its predictions atomically in a per-task SQLite journal. If a task
+times out, first inspect accounting; resubmit **only that array index** with the same ID
+and unchanged source/environment. Already committed cells are verified and reused.
+An unchanged-save parity failure is not a timeout and must be investigated.
+Do not run overlapping copies of the same task; a process lock rejects a second writer.
+
+When the array finishes, audit all 15 journals on wICE:
+
+```bash
+sbatch scripts/slurm/inference_review_cpu.slurm inspect papercheck1
+```
+
+Require `"passed": true` and exit 0. This independently recomputes AUC/Brier, row pairing,
+checksums and save/reload parity. It **does not** mean precision has no effect: compare
+the policy-specific gains before finalizing the TabICL interpretation.
+
+Download both output trees as usual. New small plans/receipts live on DATA at
+`output CreditPFN/experiment0/manifests/inference_review/papercheck1/`;
+prediction journals live at the corresponding PROJECT `results/inference_review/` path.
+The save control is in PROJECT `checkpoints/trained/experiment0/inference_review/`.
+Repeated weight reads use node-local scratch; processed input uses the existing
+verified GPFS cache. Completed scientific output is never replaced.
+
+Locally, from the repository root:
+
+```powershell
+.\.venv\Scripts\python.exe -m src.utils.run_notebooks --workers 2
+```
+
+The existing auxiliary notebook shows the review receipts and a single comparison
+figure once all tasks pass. Main result notebooks already compute reference uncertainty,
+source/partition sensitivity and LGD score/boundary diagnostics from saved output.
+The shared `All_Results.md`, inline figures, PDFs and `figures/CAPTIONS.md` are rebuilt.
+
 The current KU Leuven Tier-2 systems are **wICE and Mindwell**, both on Rocky Linux 9.6. `login.hpc.kuleuven.be` selects one of four wICE login nodes; Mindwell has no dedicated login nodes. Genius documentation is historical. Our batch wrappers already select wICE for CPU maintenance/classical evaluation and Mindwell `gpu_b200` for production GPU work, with explicit clusters, account and `--gpus-per-node=1`. The older Genius activation anecdote and scratch alias do not route current submissions there. Do not change fingerprinted activation code merely to remove historical wording during a live campaign.
 
 Publications using these resources must acknowledge VSC using the wording in the snapshot's `source/how_do_i_acknowledge_the_vsc_in_publications.rst`; KU Leuven also requests adding the paper to the `KUL-HPC` collection in Lirias.

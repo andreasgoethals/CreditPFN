@@ -20,6 +20,12 @@ The study is descriptive: report the behavior of a specified grid, including unf
 5. Score trained weights against their own untuned bases and tuned classical baselines on held-out datasets.
 6. Consolidate small concurrent output files into compressed analysis tables; build notebooks and figures locally.
 
+The final paper checks preserve experiments 1–7: conditional table-level uncertainty,
+source/partition sensitivity and LGD point-versus-distribution diagnostics are in the
+main results notebooks. A separate, inference-only TabICL check lives in experiment 0;
+see [the finishing-check commands](docs/VSC.md#final-inference-check-before-writing).
+It does not retrain models or replace completed benchmark files.
+
 Each checkpoint carries the effective recipe, corpus membership, base/data/code fingerprints, environment versions and actual trainable modules. Resubmissions reject incompatible checkpoints. Recovery checkpoints additionally preserve optimizer, scheduler, random generators and the sampling cursor.
 
 ## Repository

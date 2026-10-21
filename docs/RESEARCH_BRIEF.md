@@ -534,6 +534,43 @@ sanitization limitation. None of the proposed extra experiments removes these li
 
 ### Manuscript and reproducible release
 
+#### Final scope and interpretation checks — 20-10-2026
+
+Keep experiments 1–7; no new main experiment is added. The final inference check uses
+Vehicle Loan, Myhom and Taiwan Credit Card, each with five outer folds and the fixed
+experiment-1 reference checkpoint. Original, unchanged-save and CPT weights are compared
+under automatic settings and FP32 tensors/no FA3 on identical native benchmark contexts
+and all test rows. One Vehicle Loan fold additionally probes 1,023/1,024/10,239/10,240
+context rows on a fixed 256-row query subset, with an AMP/no-FA3 arm. These small probes
+diagnose a numerical boundary; they are not a replacement context curve or prevalence estimate.
+Actual backend calls, dtypes, TF32 settings, data/weight hashes and per-row predictions are
+recorded. The VSC numerical result is pending until its isolated receipts and journals pass.
+
+The main results notebooks add 95% conditional percentile table-bootstrap intervals and
+leave-one-table-out mean ranges for the predefined reference. Five folds are averaged
+within a table, never counted as five independent replications. Shared CPT corpora and
+unresolved population dependence limit the inferential interpretation; these intervals
+do not include training-seed uncertainty. A documented-public-source sensitivity changes
+the population summarized and is not a contamination correction.
+
+The source ledger identifies the documented LendingClub and SBA PD/LGD source links,
+checks original plan memberships and exact file hashes, and leaves restricted/local
+source independence unresolved. Separate PD/LGD training prevents those cross-task twins
+from being same-track training/holdout overlap. Different byte hashes cannot rule out
+partially overlapping borrowers, transformed copies or base-pretraining contamination.
+
+For TabPFN v2.6 LGD, inspect R²/RMSE together with pinball loss, coverage, width and the
+historical **clipped** log score. Saved predictions support separate errors at targets
+zero, one and the interior. The log-score implementation replaces nonfinite per-row NLL
+and clips at ±100 nats, including finite extremes. Its improvement is not evidence that
+uncapped likelihood improved; the original logits needed to resolve that question were
+not exported. The paper can report the point/quantile deterioration without claiming a
+validated density-improvement mechanism.
+
+After this bounded check, write the paper around observed adaptation benefits, harms,
+context dependence and cost. Generic-data CPT, target-table fine-tuning, temporal
+evaluation, additional seeds and new hyperparameter grids remain outside this paper.
+
 The number of experiments is not a publication criterion. The contribution should be
 a supported account of when cross-table adaptation helps or harms, how this depends on labeled
 context and adaptation capacity, and whether corpus/episode size explains the behavior. A negative
