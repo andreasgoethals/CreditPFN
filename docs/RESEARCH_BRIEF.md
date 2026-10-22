@@ -294,7 +294,7 @@ all context SQLite tasks for nested context identities, context/validation/test 
 unchanged original/CPT and cross-family query cohorts, complete outer-fold row coverage and
 reproduced primary scores. Small R² differences from float64 recomputation reproduce to machine
 precision under the original float32 calculation; they do not justify changing results. All
-21 executed notebooks have complete ordered summaries, 239 matching inline figures/PDFs and
+21 executed notebooks have complete ordered summaries, 243 matching inline figures/PDFs and
 captions. The current indexes are tracked. Detailed evidence and historical recoveries remain
 in `AGENTS_MEMORY.md`; no further benchmark or training submission is indicated by this audit.
 
@@ -312,16 +312,34 @@ five-fold mean effects against each exact starting checkpoint are:
 
 These effects do not establish a universal CPT benefit. TabPFN v2's reference PD AUC improves
 on all 17 tables, while TabICL's median effect is −0.000176: its positive mean is driven by a
-few large gains. There is a material **inference-precision sensitivity** to investigate before
-attributing those gains to learned domain structure: on Vehicle Loan the main TabICL original
-scores 0.583062 AUC and CPT 0.654566, whereas experiment 5's original under FP32/no-FA3 scores
-0.656382; Myhom shows 0.579923/0.594749 versus 0.594666. These are cross-experiment observations,
-not a controlled estimate of AMP or FA3 separately. The existing main comparison applies the
-same declared inference options to both weight states and remains a valid practical comparison.
-A focused paired evaluation of those original and full-CPT weights under both precision policies,
-with identical contexts/test rows, would test whether the claimed benefit persists beyond the
-original numerical setting; no retraining is required. Such a follow-up is not yet implemented
-or submitted. Across the balanced grid, larger learning rates generally hurt and freezing
+few large gains. The completed **paired inference-precision diagnostic**, independently
+rechecked locally on 21-10-2026, changes the interpretation of those TabICL gains:
+
+| Diagnostic table | Original / CPT AUC, automatic | Original / CPT AUC, FP32 with FA3 disabled |
+|---|---:|---:|
+| Vehicle Loan | 0.583062 / 0.654566 | 0.656382 / 0.654633 |
+| Myhom | 0.579923 / 0.594749 | 0.594666 / 0.594730 |
+| Taiwan Credit Card | 0.790154 / 0.788374 | 0.790129 / 0.788372 |
+
+These are means of five matched outer folds, using identical contexts and complete test
+sets in every policy/state comparison. Vehicle Loan's ΔAUC changes from +0.071504 to
+−0.001748; Myhom's from +0.014826 to +0.000064. Unchanged-save predictions agree exactly
+with the original in all 30 policy/fold checks. The automatic path records FP16 attention
+on the native benchmark contexts; the FP32 path records FP32. Both dispatch through
+PyTorch SDPA, no direct FA3 call is observed, and TF32 is disabled. The bounded Vehicle Loan
+probes also show automatic-policy boundary sensitivity. These observations establish
+numerical-policy dependence; they do not identify a particular internal SDPA kernel or
+estimate the prevalence across other tables, recipes or models.
+
+The completed main benchmark remains a practical comparison under its recorded automatic
+policy. Its large gains on these two tables cannot be presented as evidence of improved
+FP32 credit transfer. As an exploratory influence check, the other 15 main-study TabICL
+tables have mean ΔAUC −0.001568 under that same automatic policy. This is neither a
+replacement benchmark nor an all-table FP32 estimate; retain every table in the main
+results and report the diagnostic beside them. Apply this interpretation boundary to
+TabICL automatic-policy context, corpus and episode comparisons as well.
+
+Across the balanced grid, larger learning rates generally hurt and freezing
 or anchoring attenuates degradation; this is a response over the specified recipes, not a
 test-selected deployment recommendation. Calibration and discrimination need separate
 interpretation: for example, TabICL's mean raw Brier reduction is +0.006803, whereas the
@@ -351,8 +369,10 @@ The research retention panel contains **eight non-credit tables**, four per task
 packaged smoke datasets are separate debugging controls. This is not broad evidence about
 all out-of-domain tasks. Dataset/population overlap, corpus-level transductive schema selection,
 IID row folds, two training seeds and exploratory hypotheses remain limitations; passing local
-checks does not eliminate them. Prioritize the focused precision check, synthesis and
-source-population audit before adding another expensive study merely to improve the mean result.
+checks does not eliminate them. The bounded precision, source/partition, LGD-distribution
+and table-uncertainty checks are complete. Draft the paper around the supported conditional
+findings; no additional run is required to begin writing. A claim of precision-independent
+TabICL gains across the full corpus would require a broader matched FP32 evaluation.
 
 The notes below distinguish the earlier, invalid pre-redesign evidence.
 
@@ -534,7 +554,7 @@ sanitization limitation. None of the proposed extra experiments removes these li
 
 ### Manuscript and reproducible release
 
-#### Final scope and interpretation checks — 20-10-2026
+#### Final scope and interpretation checks — 21-10-2026
 
 Keep experiments 1–7; no new main experiment is added. The final inference check uses
 Vehicle Loan, Myhom and Taiwan Credit Card, each with five outer folds and the fixed
@@ -544,7 +564,18 @@ and all test rows. One Vehicle Loan fold additionally probes 1,023/1,024/10,239/
 context rows on a fixed 256-row query subset, with an AMP/no-FA3 arm. These small probes
 diagnose a numerical boundary; they are not a replacement context curve or prevalence estimate.
 Actual backend calls, dtypes, TF32 settings, data/weight hashes and per-row predictions are
-recorded. The VSC numerical result is pending until its isolated receipts and journals pass.
+recorded. All 15 tasks and the independent wICE audit pass. The downloaded 15 journals
+match their receipts and independently reproduce all 114 cells (90 full-test comparisons
+plus 24 bounded probes), including 1,627,068 saved prediction rows. This count includes
+repeated evaluation of the same queries, not independent observations. The controlled
+results and their interpretation are reported above; no save/reload defect was found.
+
+The user fixed the publication scope on 21-10-2026: keep the detailed precision diagnostic
+in the appendix and defer a broader precision investigation to a potential future paper.
+The main results still need a brief cross-reference identifying the numerical-policy
+dependence of the large TabICL gains. No additional experiment is adopted for this paper.
+Ning et al.'s Appendix A.1 already documents related inference-setting differences in a
+frozen TabICL baseline; this is not an established first-of-kind precision discovery.
 
 The main results notebooks add 95% conditional percentile table-bootstrap intervals and
 leave-one-table-out mean ranges for the predefined reference. Five folds are averaged

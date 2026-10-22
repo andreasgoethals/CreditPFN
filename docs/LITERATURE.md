@@ -18,6 +18,33 @@ establish FP32 attention; the diagnostic records backend calls and dtypes. The i
 campaign's TabICL 2.1.1 uses these size thresholds, while this newer snapshot additionally
 has device-aware overrides. Preserve the campaign package rather than installing the snapshot.
 
+Project evidence, checked on 21-10-2026: the completed `papercheck1` diagnostic reproduces
+the large automatic-policy TabICL gains on Vehicle Loan and Myhom, but they disappear under
+matched FP32/no-FA3 inference. Unchanged-save predictions agree exactly. Actual traces use
+PyTorch SDPA with FP16 versus FP32 tensors and no observed direct FA3 call; the internal
+SDPA kernel is not identified. These are our measurements, not a claim made by the cited
+paper or source snapshot. The diagnostic records campaign packages TabICL 2.1.1 / PyTorch
+2.12.0 and the VSC TFM-library checkout `de324efcca55be392feb0c01830b3b6ce364587f`.
+See `RESEARCH_BRIEF.md` for the paired scores, selection limits and paper interpretation.
+
+Related preprint evidence checked on 21-10-2026 at library pin
+`cbaff2f5fa0a6e910d7e7d1cd148437a3e0c217a`: Ning et al., *Test-Time Compute for
+Tabular Foundation Models*, Appendix A.1, disables automatic mixed precision for
+TabICLv2 and reports a reproduced frozen baseline about 9 Elo above its published
+default, explicitly acknowledging an inference-setting contribution. Appendix B.2
+also disables FA3. Verified against the [primary text](https://arxiv.org/html/2610.12005v1),
+as well as `papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt`.
+This is related evidence, not a controlled attribution of all 9 Elo to precision,
+nor the same as our per-table AUC comparison. Do not claim the first discovery that
+inference settings affect TabICL scores.
+
+[PyTorch's numerical-accuracy documentation](https://docs.pytorch.org/docs/main/notes/numerical_accuracy.html)
+describes overflow, reduced-precision reduction error and backend-dependent numerical
+differences, including SDPA. These mechanisms make a large prediction change plausible;
+they do not identify the responsible operation in our diagnostic. The inspected TabICL
+`_logn` implementation already avoids naively casting a large row count to FP16, so a
+table exceeding the FP16 finite range is not itself evidence of that particular bug.
+
 In [`repositories/TabPFN .txt`](<../tfm-library/repositories/TabPFN .txt>),
 the regression-distribution example's `evaluate` function applies the returned raw-space
 `criterion` to original-unit targets and `logits`, matching our score-space convention.

@@ -98,7 +98,9 @@ Learning rates evaluated from the recorded campaign configuration using the trai
 
 ## experiment0/04_auxiliary_experiments
 
-_No figures produced._
+**[experiment0__04_auxiliary_experiments__01_pd_tabicl_numerical_policy](experiment0/experiment0__04_auxiliary_experiments__01_pd_tabicl_numerical_policy.pdf)** — `pd_tabicl_numerical_policy`
+
+PD. TabICL five-fold AUC under automatic numerical settings and FP32 tensors with Flash Attention 3 disabled. The saved control writes unchanged original weights through the CPT serialization path. Contexts, preprocessing, inference views and test rows match between states and policies. The three diagnostic tables were chosen to investigate observed numerical sensitivity and do not estimate its prevalence across credit tasks. Boundary probes are excluded from this figure.
 
 ## experiment1/01_training_pd
 

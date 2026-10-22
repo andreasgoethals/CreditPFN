@@ -1,5 +1,10 @@
 # Changelog
 
+## 21-10-2026
+
+- Update the research brief and literature interpretation with the completed TabICL precision diagnostic and paper-readiness checks.
+- Record related precision evidence and the decision to keep this diagnostic in the appendix, with broader study deferred.
+
 ## 20-10-2026
 
 - Add isolated TabICL inference checks, reference uncertainty/source audits and LGD distribution diagnostics for paper preparation.
