@@ -240,7 +240,7 @@ class FigureSaver:
         """Where the most recent `save` wrote, for the rare caller that needs it."""
         return self.folder / f"{self.entries[-1]['stem']}.pdf" if self.entries else None
 
-    def save(self, fig: plt.Figure, name: str, *, caption: str = "") -> None:
+    def save(self, fig: plt.Figure, name: str, *, caption: str = "", provenance: dict | None = None) -> None:
         """Write a notebook-prefixed, numbered PDF and record the caption.
 
         The figure is left open so it still displays in Jupyter — that inline render is the only
@@ -258,9 +258,10 @@ class FigureSaver:
         path = self.folder / f"{stem}.pdf"
         _guard(path, self.folder)
         fig.savefig(path, format="pdf", dpi=DPI)
-        self.entries.append(
-            {"index": index, "stem": stem, "name": name, "caption": caption.strip()}
-        )
+        entry = {"index": index, "stem": stem, "name": name, "caption": caption.strip()}
+        if provenance:
+            entry["provenance"] = provenance
+        self.entries.append(entry)
         # Rewritten after every figure, so a notebook that dies halfway still has a manifest
         # describing the figures it did produce.
         manifest_path(self.notebook).write_text(

@@ -1,5 +1,24 @@
 # Agents' memory — runs and dead ends
 
+## 23-10-2026
+
+- Implement the sibling paper's notebook recommendations using completed campaign evidence only. Factorial maps require the same table cohort across every planned recipe; retention first requires all four matched training partitions. Context effect curves retain individual tables, and numerical-policy contrasts pair the same table/fold before subtraction. Table IQRs are descriptive, not fold/seed confidence intervals. Existing outcomes, checkpoints and run identities are preserved.
+- Preserve the selected-table diagnostic and unchanged-save evidence; keep boundary probes as tables rather than adding another small-sample figure. Model-specific cost panels and complete partition-ratio tables describe recorded time/exposure, not equal-compute comparisons. Calibrated log loss joins Brier/ECE on a common complete cohort; older exports without calibrated log loss retain their measured panels.
+- Keep the existing shared PDF tree and native 6.75/3.25-inch widths. The current arXiv manuscript preserves these source widths. The paper's local figure copies remain version-owned; the new results guide identifies current notebook sources. User explicitly authorizes Git publication for this notebook revision; no new cluster work, package installation or submodule change is authorized or performed.
+- Final local validation: 944 tests passed, one existing optional corpus-manifest check skipped. All 21 notebooks executed successfully after repairing the affected visualization; 249 PDFs match 249 inline figures, captions and complete ordered summaries. Reviewed the full collection visually and inspected all 26 new/adjusted retained figures at larger resolution, iterating labels and legends. Removed two duplicate result cost panels; all 35 results-guide links resolve. Scientific inputs and training/evaluation behavior are unchanged.
+- **Tried:** pass the new optional provenance argument to every figure sink.
+  **Result:** the full suite caught one legacy sink-signature failure after 942 passing checks.
+  **Why:** a compatible sink can accept only the original figure/name/caption arguments.
+  **Instead:** forward provenance only when a page supplies it; retain the original interface for ordinary pages and rerun validation.
+- **Tried:** compact the sampling-cost panels using direct shared-style subplots.
+  **Result:** the full notebook run caught a missing pyplot import in that section; completed scientific measurements were unaffected.
+  **Why:** this module previously obtained its figures through the campaign wrapper and had no pyplot import of its own.
+  **Instead:** import pyplot explicitly, rerun the visualization regression checks and repair the affected notebook before the final publication audit.
+- **Tried:** always read per-table counts when labeling an endpoint dashboard.
+  **Result:** a regression fixture with only aggregate endpoints lacked the per-table columns.
+  **Why:** aggregate-only callers cannot supply an observed table denominator.
+  **Instead:** retain the plot, label table support unavailable and leave its metadata empty rather than inventing counts.
+
 ## 21-10-2026
 
 | Cluster run | Outcome | Next step |

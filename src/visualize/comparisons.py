@@ -1,6 +1,7 @@
 """Paired seed/protocol analyses, retaining dataset partitions until after matching."""
 from __future__ import annotations
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -309,16 +310,39 @@ def plot_sampling_costs(run):
     fields = [c for c in ("gpu_hours_ratio", "rows_seen_ratio") if c in data and np.isfinite(data[c]).any()]
     if not fields:
         return []
-    fig, axes = cp._subplots(f"{run.track.upper()}: sampling cost relative to one sample", len(fields))
+    fig, axes = plt.subplots(1, len(fields), squeeze=False,
+        figsize=style.figsize(style.WIDTH_FULL, style.SMALL_RATIO), layout="constrained")
+    axes = axes[0]
+    fig.suptitle(f"{run.track.upper()}: sampling cost relative to one sample")
+    statistics = []
+    bases = sorted(data.base.unique())
     for ax, field in zip(axes, fields):
-        _intervals(ax, data, value=field, factor="sampling", labels=style.SAMPLING_LABELS, colors=style.SAMPLING_COLORS)
+        for position, base in enumerate(bases):
+            for sign, mode in zip((-1, 1), ("full_pass", "accumulate")):
+                group = data.loc[data.base.eq(base) & data.sampling.eq(mode), ["partition", field]].dropna()
+                if group.empty:
+                    continue
+                values = group[field]
+                y = position + sign*style.PROTOCOL_POINT_OFFSET
+                color = style.SAMPLING_COLORS[mode]
+                q25, q75 = values.quantile([.25, .75])
+                ax.plot([q25, q75], [y, y], color=color, linewidth=style.THIN_LINE)
+                ax.plot(values.mean(), y, color=color, marker=style.PANEL_MARKERS[int(sign > 0)],
+                        linestyle="", markersize=style.CURVE_MARKER_SIZE,
+                        label=style.SAMPLING_LABELS[mode] if position == 0 else None)
+                statistics.append(dict(base=base, protocol=mode, metric=field, mean=values.mean(),
+                                       q25=q25, q75=q75, partitions=len(values)))
         ax.axvline(1, color=style.color("annotation"), linestyle=":")
+        ax.set_xscale("log")
+        ax.set_yticks(range(len(bases)), [style.model_label(base) for base in bases])
         ax.set_xlabel("Recorded trial-time ratio" if field.startswith("gpu") else "Processed row-exposure ratio")
+    axes[0].legend()
     return [cp.Page("sampling_costs", fig,
         "Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. "
-        "Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring "
+        "Within each model base, points average matched partition ratios and segments span their interquartile range, not uncertainty intervals. "
+        "Both axes are logarithmic and the dotted line is the one-sample reference. Trial time includes recorded monitoring "
         "and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.",
-        {"Matched partition costs and ratios": data})]
+        {"Matched partition costs and ratios": data, "Ratios by model and protocol": pd.DataFrame(statistics)})]
 
 
 def plot_sampling_quality_cost(run):

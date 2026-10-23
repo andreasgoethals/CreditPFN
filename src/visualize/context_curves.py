@@ -169,21 +169,36 @@ def plot_context_curves(study):
                 color = style.color("v3" if family == "tabpfn" else "tabicl")
                 for state, name, line in (("original", "Original", "--"), ("adapted", "CPT", "-")):
                     axes[0, col].plot(curve.index, curve[state], color=color, linestyle=line, linewidth=style.THIN_LINE, label=name)
-                axes[1, col].plot(curve.index, curve.gain, color=color, linewidth=style.THIN_LINE)
+                for _, table in part.groupby("dataset"):
+                    table = table.sort_values("context_rows")
+                    axes[1, col].plot(table.context_rows, table.gain, color=style.color("annotation"),
+                        alpha=style.TABLE_CURVE_ALPHA, linewidth=style.TABLE_CURVE_LINE)
+                axes[1, col].plot(curve.index, curve.gain, color=color, linewidth=style.MEAN_CURVE_LINE)
                 axes[1, col].axhline(0, color=style.color("reference"), linestyle=":")
                 axes[0, col].set_title(FAMILIES[family]); axes[0, col].set_ylabel(label)
                 axes[1, col].set_ylabel("CPT − original " + label)
                 for ax in axes[:, col]:
                     ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
                 curves.append(curve.reset_index().assign(family=family, datasets=n))
-            fig.legend(*axes[0, 0].get_legend_handles_labels(), loc="outside lower center", ncol=2)
+            from matplotlib.lines import Line2D
+            handles, labels = axes[0, 0].get_legend_handles_labels()
+            handles += [Line2D([], [], color=style.color("annotation"), linewidth=style.TABLE_CURVE_LINE),
+                        Line2D([], [], color=style.color("mean"), linewidth=style.MEAN_CURVE_LINE)]
+            labels += ["Individual table effect", "Equal-table mean effect"]
+            fig.legend(handles, labels, loc="outside lower center", ncol=2)
             pages.append(cp.Page(f"context_{track}_through_{horizon}", fig,
                 f"{track.upper()}. Original and fixed-recipe CPT {label}, with their paired difference below. "
                 f"The same {n} tables contribute at every displayed context size and to both model families. "
                 "Scores are averaged over five paired outer folds within table, then equally across tables. "
+                "In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. "
+                "These curves are not uncertainty bands or repeated-context variance estimates. "
                 "Validation labels have a fixed additional budget; all outer-test rows are unchanged. "
-                "The horizon identifies the table cohort, so levels across different horizon panels need not agree.",
-                {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": data}))
+                "The horizon identifies the table cohort, so levels across different horizon panels need not agree. "
+                "TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.",
+                {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": data},
+                {"measurement": "five_fold_context_benchmark", "metric": metric, "aggregation_unit": "table",
+                 "context_horizon": int(horizon), "fixed_tables": sorted(data.dataset.unique()),
+                 "additional_validation_fraction": float(study.config["inner_validation_fraction"])}))
     return pages
 
 

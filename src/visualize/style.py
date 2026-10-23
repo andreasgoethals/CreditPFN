@@ -13,8 +13,9 @@ import matplotlib as mpl
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# FIGURE SIZES — verified against ../CreditPFN Paper/styles/icml2026.sty.
-# ICML uses US Letter, a 6.75-inch text block and a 0.25-inch column gap.
+# FIGURE SIZES — the user chose the original ICML US Letter geometry:
+# a 6.75-inch text block and a 0.25-inch column gap. The current arXiv
+# manuscript preserves these source widths instead of shrinking their fonts.
 # This deliberately replaces the generic template's 160-mm A4 text block.
 #
 # DRAW AT FINAL WIDTH, and never rescale a figure in the document. Rescaling carries the text with
@@ -44,6 +45,11 @@ GRID_FONT = 7
 GRID_RATIO = 0.76
 DASHBOARD_RATIO = 0.76
 FACTOR_ARM_STYLES = ("--", "-")
+ANCHOR_STYLES = {False: "--", True: "-"}
+TABLE_CURVE_ALPHA = 0.28
+TABLE_CURVE_LINE = 0.55
+MEAN_CURVE_LINE = 1.6
+PROTOCOL_POINT_OFFSET = 0.12
 DIFFERENCE_STYLE = ":"
 GRID_TEXT_LIGHT = "white"
 GRID_TEXT_DARK = "black"

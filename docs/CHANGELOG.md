@@ -1,5 +1,11 @@
 # Changelog
 
+## 23-10-2026
+
+- Align notebook figures with the paper questions: factorial interactions, table-level context effects, direct precision contrasts, model-specific exposure ratios and calibrated log loss.
+- Distinguish monitor/final-benchmark captions and metadata; add a research-question results guide and regenerate notebook reports.
+- Keep raw cost-ratio panels in training and final quality-versus-cost panels in results, removing duplicate figures.
+
 ## 21-10-2026
 
 - Update the research brief and literature interpretation with the completed TabICL precision diagnostic and paper-readiness checks.

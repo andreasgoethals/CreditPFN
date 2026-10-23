@@ -8,6 +8,7 @@ The study is descriptive: report the behavior of a specified grid, including unf
 
 - [Research brief](docs/RESEARCH_BRIEF.md): question, design, implementation choices and remaining evidence; self-contained for sharing.
 - [Literature](docs/LITERATURE.md): the closest primary studies and what they support.
+- [Results guide](docs/RESULTS_GUIDE.md): research questions, exact figure identities, controls and interpretation limits.
 - [VSC runbook](docs/VSC.md): phases, storage, download, fresh-start and recovery commands.
 - [Agent memory](docs/AGENTS_MEMORY.md) and [changelog](docs/CHANGELOG.md): historical runs, failures and changes.
 
@@ -113,6 +114,13 @@ For supplied downloads, set `CREDITPFN_ANALYSIS_ROOT` to the **DATA output folde
 DATA manifests provide coverage and partition-level endpoint checks. Per-dataset trajectories, loss histories, tensor/resource diagnostics and final benchmark results require project-storage records. Missing sections report unavailable evidence explicitly. The short-pilot notebook uses the latest successful pilot receipt's exact generated configuration, keeping corrected objectives separate from earlier pilots.
 
 Notebooks are the full analysis record, not the proposed number of manuscript figures. Select the main paper's figures around the transfer/retention, context and compute questions; leave detailed per-table and engineering panels in the appendix or repository. Main-PD calibration first summarizes Brier/ECE changes over a common dataset cohort, then illustrates reliability on the smallest and largest eligible tables per base, selected by row count independently of performance. These examples require all five paired folds and place raw, Platt and isotonic results together; the complete per-table metric profiles and selection roster remain in the printed summary. LGD results show regression errors and paired prediction shifts instead of classification-only calibration panels.
+
+The results guide links the paper's three research questions to exact final-benchmark figures.
+Main-grid response maps keep the same complete table cohort across rates, anchoring and update
+scope; their bands are table IQRs. Context panels retain individual table effects beneath the
+equal-table mean. Precision diagnostics show policy-specific CPT contrasts directly. Cost ratios
+retain model/partition identities, and probability-quality summaries include calibrated log loss
+when exported. Monitor captions and structured figure metadata identify their measurement source.
 
 ## Environment and contribution rules
 

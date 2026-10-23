@@ -100,7 +100,7 @@ Learning rates evaluated from the recorded campaign configuration using the trai
 
 **[experiment0__04_auxiliary_experiments__01_pd_tabicl_numerical_policy](experiment0/experiment0__04_auxiliary_experiments__01_pd_tabicl_numerical_policy.pdf)** — `pd_tabicl_numerical_policy`
 
-PD. TabICL five-fold AUC under automatic numerical settings and FP32 tensors with Flash Attention 3 disabled. The saved control writes unchanged original weights through the CPT serialization path. Contexts, preprocessing, inference views and test rows match between states and policies. The three diagnostic tables were chosen to investigate observed numerical sensitivity and do not estimate its prevalence across credit tasks. Boundary probes are excluded from this figure.
+PD. TabICL five-fold AUC under automatic numerical settings and FP32 tensors with Flash Attention 3 disabled. The saved control writes unchanged original weights through the CPT serialization path. Contexts, preprocessing, inference views and test rows match between states and policies. The lower panel subtracts original from CPT AUC within policy and fold. Thin gray segments connect each of five paired fold effects; colored markers show their mean, not a confidence interval. The three post-hoc diagnostic tables were chosen to investigate observed numerical sensitivity and do not estimate its prevalence across credit tasks. Boundary probes are excluded from this figure.
 
 ## experiment1/01_training_pd
 
@@ -318,15 +318,15 @@ PD. Recorded outer-fold outcomes by model group. This counts records rather than
 
 **[experiment1__03_results_pd__02_pd_endpoint_dashboard_pd_means](experiment1/experiment1__03_results_pd__02_pd_endpoint_dashboard_pd_means.pdf)** — `pd_endpoint_dashboard_pd_means`
 
-PD. Initial and post-finetuning scores for each completed configuration. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning AUC for each completed configuration. Observed endpoint-table inventory: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 
 **[experiment1__03_results_pd__03_pd_endpoint_dashboard_pd_partitions](experiment1/experiment1__03_results_pd__03_pd_endpoint_dashboard_pd_partitions.pdf)** — `pd_endpoint_dashboard_pd_partitions`
 
-PD. Initial and post-finetuning scores for each completed configuration. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning AUC for each completed configuration. Observed endpoint-table inventory: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 
 **[experiment1__03_results_pd__04_pd_endpoint_factors_pd_false](experiment1/experiment1__03_results_pd__04_pd_endpoint_factors_pd_false.pdf)** — `pd_endpoint_factors_pd_False`
 
-PD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+PD. Fixed-context milestone monitoring at 10,000 successful updates, credit AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 
 **[experiment1__03_results_pd__05_pd_brier_dashboard](experiment1/experiment1__03_results_pd__05_pd_brier_dashboard.pdf)** — `pd_brier_dashboard`
 
@@ -334,81 +334,97 @@ PD. Brier-score reductions from five-fold benchmark, averaged with equal weight 
 
 **[experiment1__03_results_pd__06_pd_endpoint_factors_pd_true](experiment1/experiment1__03_results_pd__06_pd_endpoint_factors_pd_true.pdf)** — `pd_endpoint_factors_pd_True`
 
-PD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+PD. Completed five-fold final benchmark, credit AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Five paired outer folds are averaged within each table before cross-table aggregation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 
-**[experiment1__03_results_pd__07_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__07_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
+**[experiment1__03_results_pd__07_pd_factorial_credit_roc_auc](experiment1/experiment1__03_results_pd__07_pd_factorial_credit_roc_auc.pdf)** — `pd_factorial_credit_roc_auc`
+
+PD. Completed five-fold final benchmark, PD held-out credit. CPT minus original AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+
+**[experiment1__03_results_pd__08_pd_factorial_ood_roc_auc](experiment1/experiment1__03_results_pd__08_pd_factorial_ood_roc_auc.pdf)** — `pd_factorial_ood_roc_auc`
+
+PD. Completed five-fold final benchmark, PD non-credit retention. CPT minus original AUC. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+
+**[experiment1__03_results_pd__09_pd_factorial_credit_brier_score](experiment1/experiment1__03_results_pd__09_pd_factorial_credit_brier_score.pdf)** — `pd_factorial_credit_brier_score`
+
+PD. Completed five-fold final benchmark, PD held-out credit. Original minus CPT Brier score. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+
+**[experiment1__03_results_pd__10_pd_factorial_ood_brier_score](experiment1/experiment1__03_results_pd__10_pd_factorial_ood_brier_score.pdf)** — `pd_factorial_ood_brier_score`
+
+PD. Completed five-fold final benchmark, PD non-credit retention. Original minus CPT Brier score. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+
+**[experiment1__03_results_pd__11_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__11_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
 
 PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[experiment1__03_results_pd__08_pd_reference_roc_auc_1](experiment1/experiment1__03_results_pd__08_pd_reference_roc_auc_1.pdf)** — `pd_reference_roc_auc_1`
+**[experiment1__03_results_pd__12_pd_reference_roc_auc_1](experiment1/experiment1__03_results_pd__12_pd_reference_roc_auc_1.pdf)** — `pd_reference_roc_auc_1`
 
 PD. Dataset-level AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__03_results_pd__09_pd_reference_pr_auc_1](experiment1/experiment1__03_results_pd__09_pd_reference_pr_auc_1.pdf)** — `pd_reference_pr_auc_1`
+**[experiment1__03_results_pd__13_pd_reference_pr_auc_1](experiment1/experiment1__03_results_pd__13_pd_reference_pr_auc_1.pdf)** — `pd_reference_pr_auc_1`
 
 PD. Dataset-level PR-AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__03_results_pd__10_pd_reference_brier_score_1](experiment1/experiment1__03_results_pd__10_pd_reference_brier_score_1.pdf)** — `pd_reference_brier_score_1`
+**[experiment1__03_results_pd__14_pd_reference_brier_score_1](experiment1/experiment1__03_results_pd__14_pd_reference_brier_score_1.pdf)** — `pd_reference_brier_score_1`
 
 PD. Dataset-level Brier score changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Brier scores assess probabilistic accuracy, combining calibration and discrimination.
 
-**[experiment1__03_results_pd__11_pd_reference_log_loss_1](experiment1/experiment1__03_results_pd__11_pd_reference_log_loss_1.pdf)** — `pd_reference_log_loss_1`
+**[experiment1__03_results_pd__15_pd_reference_log_loss_1](experiment1/experiment1__03_results_pd__15_pd_reference_log_loss_1.pdf)** — `pd_reference_log_loss_1`
 
 PD. Dataset-level Log loss changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Log loss assesses predicted probabilities and penalizes confidently incorrect predictions.
 
-**[experiment1__03_results_pd__12_pd_reference_ece_1](experiment1/experiment1__03_results_pd__12_pd_reference_ece_1.pdf)** — `pd_reference_ece_1`
+**[experiment1__03_results_pd__16_pd_reference_ece_1](experiment1/experiment1__03_results_pd__16_pd_reference_ece_1.pdf)** — `pd_reference_ece_1`
 
 PD. Dataset-level ECE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. ECE is a bin-dependent calibration diagnostic, not a complete measure of probabilistic accuracy.
 
-**[experiment1__03_results_pd__13_pd_reference_f1_1](experiment1/experiment1__03_results_pd__13_pd_reference_f1_1.pdf)** — `pd_reference_f1_1`
+**[experiment1__03_results_pd__17_pd_reference_f1_1](experiment1/experiment1__03_results_pd__17_pd_reference_f1_1.pdf)** — `pd_reference_f1_1`
 
 PD. Dataset-level F1 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. F1 uses thresholds chosen on inner validation rows.
 
-**[experiment1__03_results_pd__14_pd_calibration_overview](experiment1/experiment1__03_results_pd__14_pd_calibration_overview.pdf)** — `pd_calibration_overview`
+**[experiment1__03_results_pd__18_pd_calibration_overview](experiment1/experiment1__03_results_pd__18_pd_calibration_overview.pdf)** — `pd_calibration_overview`
 
-PD. Changes in outer-test Brier score and expected calibration error (ECE) for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all six scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. ECE depends on the binning scheme.
+PD. Changes in the displayed outer-test probability-quality scores for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all 9 scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. Log loss, when exported, is in nats; ECE depends on the binning scheme.
 
-**[experiment1__03_results_pd__15_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__15_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
-
-**[experiment1__03_results_pd__16_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__16_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
+**[experiment1__03_results_pd__19_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__19_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__17_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__17_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
+**[experiment1__03_results_pd__20_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__20_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__18_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__18_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
+**[experiment1__03_results_pd__21_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__21_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
 
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
 
-**[experiment1__03_results_pd__19_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__19_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
+**[experiment1__03_results_pd__22_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__22_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
+
+PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
+
+**[experiment1__03_results_pd__23_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__23_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__20_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__20_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
+**[experiment1__03_results_pd__24_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__24_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__21_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__21_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
+**[experiment1__03_results_pd__25_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__25_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__22_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__22_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
+**[experiment1__03_results_pd__26_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__26_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
 
 PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
 
-**[experiment1__03_results_pd__23_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__23_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+**[experiment1__03_results_pd__27_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__27_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
 PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__03_results_pd__24_pd_control_context_1](experiment1/experiment1__03_results_pd__24_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__28_pd_control_context_1](experiment1/experiment1__03_results_pd__28_pd_control_context_1.pdf)** — `pd_control_context_1`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
-**[experiment1__03_results_pd__25_pd_control_context_2](experiment1/experiment1__03_results_pd__25_pd_control_context_2.pdf)** — `pd_control_context_2`
+**[experiment1__03_results_pd__29_pd_control_context_2](experiment1/experiment1__03_results_pd__29_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -420,45 +436,61 @@ LGD. Recorded outer-fold outcomes by model group. This counts records rather tha
 
 **[experiment1__04_results_lgd__02_lgd_endpoint_dashboard_lgd_means](experiment1/experiment1__04_results_lgd__02_lgd_endpoint_dashboard_lgd_means.pdf)** — `lgd_endpoint_dashboard_lgd_means`
 
-LGD. Initial and post-finetuning scores for each completed configuration. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning R² for each completed configuration. Observed endpoint-table inventory: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 
 **[experiment1__04_results_lgd__03_lgd_endpoint_dashboard_lgd_partitions](experiment1/experiment1__04_results_lgd__03_lgd_endpoint_dashboard_lgd_partitions.pdf)** — `lgd_endpoint_dashboard_lgd_partitions`
 
-LGD. Initial and post-finetuning scores for each completed configuration. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning R² for each completed configuration. Observed endpoint-table inventory: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 
 **[experiment1__04_results_lgd__04_lgd_endpoint_factors_lgd_false](experiment1/experiment1__04_results_lgd__04_lgd_endpoint_factors_lgd_false.pdf)** — `lgd_endpoint_factors_lgd_False`
 
-LGD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+LGD. Fixed-context milestone monitoring at 10,000 successful updates, credit R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 
 **[experiment1__04_results_lgd__05_lgd_endpoint_factors_lgd_true](experiment1/experiment1__04_results_lgd__05_lgd_endpoint_factors_lgd_true.pdf)** — `lgd_endpoint_factors_lgd_True`
 
-LGD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+LGD. Completed five-fold final benchmark, credit R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Five paired outer folds are averaged within each table before cross-table aggregation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 
-**[experiment1__04_results_lgd__06_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__06_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
+**[experiment1__04_results_lgd__06_lgd_factorial_credit_r2](experiment1/experiment1__04_results_lgd__06_lgd_factorial_credit_r2.pdf)** — `lgd_factorial_credit_r2`
+
+LGD. Completed five-fold final benchmark, LGD held-out credit. CPT minus original R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+
+**[experiment1__04_results_lgd__07_lgd_factorial_ood_r2](experiment1/experiment1__04_results_lgd__07_lgd_factorial_ood_r2.pdf)** — `lgd_factorial_ood_r2`
+
+LGD. Completed five-fold final benchmark, LGD non-credit retention. CPT minus original R². Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+
+**[experiment1__04_results_lgd__08_lgd_factorial_credit_rmse](experiment1/experiment1__04_results_lgd__08_lgd_factorial_credit_rmse.pdf)** — `lgd_factorial_credit_rmse`
+
+LGD. Completed five-fold final benchmark, LGD held-out credit. Fractional RMSE reduction: (original − CPT) / original. Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+
+**[experiment1__04_results_lgd__09_lgd_factorial_ood_rmse](experiment1/experiment1__04_results_lgd__09_lgd_factorial_ood_rmse.pdf)** — `lgd_factorial_ood_rmse`
+
+LGD. Completed five-fold final benchmark, LGD non-credit retention. Fractional RMSE reduction: (original − CPT) / original. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+
+**[experiment1__04_results_lgd__10_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__10_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
 
 LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[experiment1__04_results_lgd__07_lgd_reference_rmse_1](experiment1/experiment1__04_results_lgd__07_lgd_reference_rmse_1.pdf)** — `lgd_reference_rmse_1`
+**[experiment1__04_results_lgd__11_lgd_reference_rmse_1](experiment1/experiment1__04_results_lgd__11_lgd_reference_rmse_1.pdf)** — `lgd_reference_rmse_1`
 
 LGD. Dataset-level RMSE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__08_lgd_reference_mae_1](experiment1/experiment1__04_results_lgd__08_lgd_reference_mae_1.pdf)** — `lgd_reference_mae_1`
+**[experiment1__04_results_lgd__12_lgd_reference_mae_1](experiment1/experiment1__04_results_lgd__12_lgd_reference_mae_1.pdf)** — `lgd_reference_mae_1`
 
 LGD. Dataset-level MAE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__09_lgd_reference_r2_1](experiment1/experiment1__04_results_lgd__09_lgd_reference_r2_1.pdf)** — `lgd_reference_r2_1`
+**[experiment1__04_results_lgd__13_lgd_reference_r2_1](experiment1/experiment1__04_results_lgd__13_lgd_reference_r2_1.pdf)** — `lgd_reference_r2_1`
 
 LGD. Dataset-level R² changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
 
-**[experiment1__04_results_lgd__10_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__10_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
+**[experiment1__04_results_lgd__14_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__14_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
 LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__04_results_lgd__11_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__11_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
+**[experiment1__04_results_lgd__15_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__15_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
 
 LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect each credit table's five-fold means; the colored line is their equal-table mean. The dotted coverage line marks the nominal 90% level. Log scores use the historical per-row NLL replacement/clipping at ±100 nats; they are not uncapped likelihood estimates.
 
-**[experiment1__04_results_lgd__12_lgd_control_context_1](experiment1/experiment1__04_results_lgd__12_lgd_control_context_1.pdf)** — `lgd_control_context_1`
+**[experiment1__04_results_lgd__16_lgd_control_context_1](experiment1/experiment1__04_results_lgd__16_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
 LGD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -678,7 +710,7 @@ PD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contra
 
 **[experiment3__01_training__18_pd_sampling_costs](experiment3/experiment3__01_training__18_pd_sampling_costs.pdf)** — `pd_sampling_costs`
 
-PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
+PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Within each model base, points average matched partition ratios and segments span their interquartile range, not uncertainty intervals. Both axes are logarithmic and the dotted line is the one-sample reference. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
 **[experiment3__01_training__19_lgd_followup_curves_lgd_credit_rows](experiment3/experiment3__01_training__19_lgd_followup_curves_lgd_credit_rows.pdf)** — `lgd_followup_curves_lgd_credit_rows`
 
@@ -690,7 +722,7 @@ LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contr
 
 **[experiment3__01_training__21_lgd_sampling_costs](experiment3/experiment3__01_training__21_lgd_sampling_costs.pdf)** — `lgd_sampling_costs`
 
-LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
+LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Within each model base, points average matched partition ratios and segments span their interquartile range, not uncertainty intervals. Both axes are logarithmic and the dotted line is the one-sample reference. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
 **[experiment3__01_training__22_pd_resource_dashboard_pd](experiment3/experiment3__01_training__22_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
 
@@ -762,31 +794,23 @@ LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamon
 
 PD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
 
-**[experiment3__02_results__08_pd_sampling_costs](experiment3/experiment3__02_results__08_pd_sampling_costs.pdf)** — `pd_sampling_costs`
-
-PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
-
-**[experiment3__02_results__09_lgd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__09_lgd_sampling_benchmark_quality_cost.pdf)** — `lgd_sampling_benchmark_quality_cost`
+**[experiment3__02_results__08_lgd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__08_lgd_sampling_benchmark_quality_cost.pdf)** — `lgd_sampling_benchmark_quality_cost`
 
 LGD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
 
-**[experiment3__02_results__10_lgd_sampling_costs](experiment3/experiment3__02_results__10_lgd_sampling_costs.pdf)** — `lgd_sampling_costs`
-
-LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
-
-**[experiment3__02_results__11_pd_sampling_monitor_credit](experiment3/experiment3__02_results__11_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
+**[experiment3__02_results__09_pd_sampling_monitor_credit](experiment3/experiment3__02_results__09_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
 
 PD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__12_pd_sampling_monitor_ood](experiment3/experiment3__02_results__12_pd_sampling_monitor_ood.pdf)** — `pd_sampling_monitor_ood`
+**[experiment3__02_results__10_pd_sampling_monitor_ood](experiment3/experiment3__02_results__10_pd_sampling_monitor_ood.pdf)** — `pd_sampling_monitor_ood`
 
 PD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__13_lgd_sampling_monitor_credit](experiment3/experiment3__02_results__13_lgd_sampling_monitor_credit.pdf)** — `lgd_sampling_monitor_credit`
+**[experiment3__02_results__11_lgd_sampling_monitor_credit](experiment3/experiment3__02_results__11_lgd_sampling_monitor_credit.pdf)** — `lgd_sampling_monitor_credit`
 
 LGD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
-**[experiment3__02_results__14_lgd_sampling_monitor_ood](experiment3/experiment3__02_results__14_lgd_sampling_monitor_ood.pdf)** — `lgd_sampling_monitor_ood`
+**[experiment3__02_results__12_lgd_sampling_monitor_ood](experiment3/experiment3__02_results__12_lgd_sampling_monitor_ood.pdf)** — `lgd_sampling_monitor_ood`
 
 LGD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
 
@@ -798,23 +822,23 @@ Number of tables with finite original/CPT measurements in all five folds at each
 
 **[experiment4__01_context_curves__02_context_pd_through_128](experiment4/experiment4__01_context_curves__02_context_pd_through_128.pdf)** — `context_pd_through_128`
 
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 
 **[experiment4__01_context_curves__03_context_pd_through_2048](experiment4/experiment4__01_context_curves__03_context_pd_through_2048.pdf)** — `context_pd_through_2048`
 
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 
 **[experiment4__01_context_curves__04_context_pd_through_50000](experiment4/experiment4__01_context_curves__04_context_pd_through_50000.pdf)** — `context_pd_through_50000`
 
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 
 **[experiment4__01_context_curves__05_context_lgd_through_128](experiment4/experiment4__01_context_curves__05_context_lgd_through_128.pdf)** — `context_lgd_through_128`
 
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 
 **[experiment4__01_context_curves__06_context_lgd_through_2048](experiment4/experiment4__01_context_curves__06_context_lgd_through_2048.pdf)** — `context_lgd_through_2048`
 
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 
 ## experiment5/01_training
 

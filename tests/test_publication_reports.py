@@ -323,7 +323,7 @@ def test_partial_response_surface_keeps_counts_on_the_correct_cells():
 def calibrated_campaign():
     run = research_campaign()
     adapted = run.evaluation.source.str.endswith("-trained")
-    for metric, baseline in (("brier_score", .2), ("ece", .04)):
+    for metric, baseline in (("brier_score", .2), ("ece", .04), ("log_loss", .5)):
         for index, suffix in enumerate(("", "_platt", "_isotonic")):
             run.evaluation[metric + suffix] = baseline - index*.005 - adapted*.01
     return run
@@ -335,7 +335,7 @@ def test_calibration_overview_uses_equal_table_paired_effects_and_prints_every_v
     assert len(pages) == 1
     stats = pages[0].tables["Plotted means and dataset quartiles"]
     values = pages[0].tables["Per-dataset probability-quality changes"]
-    assert len(stats) == 6 and len(values) == 16*6
+    assert len(stats) == 9 and len(values) == 16*9
     assert stats.tables.eq(16).all()
     np.testing.assert_allclose(stats[["mean", "q25", "q75"]], .01)
     np.testing.assert_allclose(values.untuned - values.trained, values.effect)
@@ -344,7 +344,7 @@ def test_calibration_overview_uses_equal_table_paired_effects_and_prints_every_v
     assert pages[0].figure.get_size_inches()[0] == style.WIDTH_FULL
 
 
-def test_calibration_overview_keeps_one_common_cohort_for_all_six_scores():
+def test_calibration_overview_keeps_one_common_cohort_for_all_nine_scores():
     run = calibrated_campaign()
     selected = (run.evaluation.test_dataset_id.eq("Dataset 00")
                 & run.evaluation.source.str.endswith("-untuned") & run.evaluation.fold_idx.eq(1))

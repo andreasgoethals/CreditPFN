@@ -33,6 +33,14 @@ questions; do not retroactively claim preregistered directional hypotheses. The 
 bounded account of domain CPT and its failure/success conditions, not a generic TFM leaderboard.
 An empirical paper can be coherent without a positive mean gain or an additional numbered experiment.
 
+The [results guide](RESULTS_GUIDE.md) maps these questions to notebook sections and exact saved
+figures. Factorial final-benchmark response maps retain all planned recipes on a common table
+cohort within base and domain. Their bands are table interquartile ranges, not uncertainty over
+training seeds or independent folds. Context curves retain individual table effects without
+estimating repeated-context variability. Numerical-policy effects subtract original from CPT
+within the same diagnostic table, policy and outer fold. These are summaries of existing outputs,
+not additional experiments or test-based recipe selection.
+
 ### Saved test predictions and post-hoc diagnostics
 
 `config/eval.yaml` enables `results.save_predictions`. Standard benchmarks write the metric CSV,

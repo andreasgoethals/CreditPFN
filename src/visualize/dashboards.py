@@ -374,13 +374,18 @@ def plot_endpoints(run, *, by_partition=False):
     data = endpoint_levels(run)
     if data.empty:
         return []
+    observations = monitor_observations(run)
+    support = (observations[observations.updates.eq(run.target)].groupby("base").dataset.nunique()
+               if not observations.empty else pd.Series(dtype=int))
+    cohort = "; ".join(f"{style.model_label(base)}: {count} tables" for base, count in support.items())
+    cohort_note = f"Observed endpoint-table inventory: {cohort}. " if cohort else "Per-table monitor support is unavailable. "
     if not by_partition:
         data = data.groupby(cp.FACTORS).agg(initial=("initial", "mean"), value=("value", "mean"),
             partitions=("partition", "nunique")).reset_index()
         data = data[data.partitions.eq(int(run.cfg.corpus.n_splits))]
     if data.empty:
         return []
-    fig, axes = _grid(f"{run.track.upper()}: initial and post-finetuning {monitor_label(run)}" + (" by partition" if by_partition else " — partition means"))
+    fig, axes = _grid(f"{run.track.upper()}: fixed-context monitor {monitor_label(run)}" + (" by partition" if by_partition else " — partition means"))
     for ax, (base, part) in zip(axes, data.groupby("base")):
         for (lr, lam, frozen), arm in part.groupby(["learning_rate", "l2sp_lambda", "frozen"]):
             ax.scatter(arm.initial, arm.value, color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))),
@@ -406,13 +411,23 @@ def plot_endpoints(run, *, by_partition=False):
     from matplotlib.lines import Line2D
     handles = [Line2D([], [], color=style.TRAJECTORY_LR_COLORS.get(lr, style.color(str(lr))), marker="o", linestyle="", label=f"LR {lr:.0e}") for lr in sorted(data.learning_rate.unique())]
     handles += [Line2D([], [], color=style.color("reference"), marker=style.PANEL_MARKERS[i], linestyle="", label=f"L2-SP {lam:g}") for i, lam in enumerate(sorted(data.l2sp_lambda.unique()))]
+    handles += [Line2D([], [], color=style.color("reference"), marker="o", linestyle="",
+                       markerfacecolor="none" if frozen else style.color("reference"),
+                       label="Frozen backbone" if frozen else "All parameters") for frozen in (False, True)]
     fig.legend(handles=handles, loc="outside lower center", ncol=3)
     return [cp.Page(f"endpoint_dashboard_{run.track}_{'partitions' if by_partition else 'means'}", fig,
-        "Initial and post-finetuning scores for each completed configuration. "
+        f"Fixed-context milestone monitoring at zero and {run.target:,} successful updates: "
+        f"initial and post-finetuning {monitor_label(run)} for each completed configuration. "
+        f"{cohort_note}"
         + ("Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. " if by_partition else "Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. ")
         + "Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. "
         "Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. "
-        "These fixed-context monitors do not substitute for final five-fold benchmark scores.", {"Displayed endpoints": data})]
+        "These fixed-context monitors do not substitute for final five-fold benchmark scores.",
+        {"Displayed endpoints": data},
+        {"measurement": "fixed_context_monitor", "metric": monitor_metric(run),
+         "updates": int(run.target), "aggregation_unit": "training_partition",
+         "tables_by_base": {str(k): int(v) for k, v in support.items()},
+         "display": "partitions" if by_partition else "equal_partition_means"})]
 
 
 def plot_endpoint_factors(run, *, benchmark=False):
@@ -421,6 +436,12 @@ def plot_endpoint_factors(run, *, benchmark=False):
         return []
     if not benchmark:
         data = data[data.updates.eq(run.target)]
+    if data.empty:
+        return []
+    support = data.groupby("base").dataset.nunique()
+    cohort = "; ".join(f"{style.model_label(base)}: {count} tables" for base, count in support.items())
+    measurement = ("Completed five-fold final benchmark" if benchmark else
+                   f"Fixed-context milestone monitoring at {run.target:,} successful updates")
     fig, axes = _grid(f"{run.track.upper()}: {'Benchmark' if benchmark else 'Monitoring'} effects of adaptation settings")
     tables = []
     for ax, factor in zip(axes, ("l2sp_lambda", "frozen", "learning_rate", "base")):
@@ -442,11 +463,17 @@ def plot_endpoint_factors(run, *, benchmark=False):
         ax.set_title({"l2sp_lambda": "L2-SP", "frozen": "Backbone freezing", "learning_rate": "Peak learning rate", "base": "Base-model average"}[factor])
         ax.axvline(0, color=style.color("reference"), linestyle=":")
     return [cp.Page(f"endpoint_factors_{run.track}_{benchmark}", fig,
-        "Conditional differences match dataset and every other configuration setting before averaging within model. "
+        f"{measurement}, credit {monitor_label(run)}. Support: {cohort}. "
+        + ("Five paired outer folds are averaged within each table before cross-table aggregation. " if benchmark else
+           "Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. ")
+        + "Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. "
         "Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative "
         "to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor "
-        "the alternative setting. Dataset and configuration support are retained in the accompanying tables.",
-        {"Displayed model summaries": pd.concat(tables, ignore_index=True), "Source dataset effects": data})]
+        "the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.",
+        {"Displayed model summaries": pd.concat(tables, ignore_index=True), "Source dataset effects": data},
+        {"measurement": "five_fold_final_benchmark" if benchmark else "fixed_context_monitor",
+         "metric": monitor_metric(run), "domain": "credit", "updates": int(run.target),
+         "aggregation_unit": "table", "tables_by_base": {str(k): int(v) for k, v in support.items()}})]
 
 
 def plot_brier(run):

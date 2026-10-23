@@ -4198,7 +4198,7 @@ row,task,dataset,fold,roc_auc,brier_score,resolved_amp,resolved_fa3,actual_atten
 29,0,Vehicle Loan,0,0.65545002,0.16121285,False,False,{'torch_SDPA_dispatch/torch.float32/cuda': 84},2.323073,8923213312,False,highest,NVIDIA B200,13.0,b9794c477dba7d1c05da2c0235fc9de24e7b4ee16499e7ca3a9a7a1c3c8b883d,bfb83b89077186b3935769ba3e8fb371fcae0071e2ab5c192b79371ed6ced93f,256,10240,boundary,fp32_no_fa3,cpt
 
 Figure: pd_tabicl_numerical_policy
-PD. TabICL five-fold AUC under automatic numerical settings and FP32 tensors with Flash Attention 3 disabled. The saved control writes unchanged original weights through the CPT serialization path. Contexts, preprocessing, inference views and test rows match between states and policies. The three diagnostic tables were chosen to investigate observed numerical sensitivity and do not estimate its prevalence across credit tasks. Boundary probes are excluded from this figure.
+PD. TabICL five-fold AUC under automatic numerical settings and FP32 tensors with Flash Attention 3 disabled. The saved control writes unchanged original weights through the CPT serialization path. Contexts, preprocessing, inference views and test rows match between states and policies. The lower panel subtracts original from CPT AUC within policy and fold. Thin gray segments connect each of five paired fold effects; colored markers show their mean, not a confidence interval. The three post-hoc diagnostic tables were chosen to investigate observed numerical sensitivity and do not estimate its prevalence across credit tasks. Boundary probes are excluded from this figure.
 All native-context cells
 CSV (first column: row index)
 row,task,dataset,fold,roc_auc,brier_score,resolved_amp,resolved_fa3,actual_attention,seconds,peak_allocated_bytes,matmul_tf32,float32_matmul_precision,gpu,cuda_runtime,context_sha256,test_sha256,test_rows,context_rows,scope,policy,state
@@ -4331,6 +4331,48 @@ row,task,dataset,fold,status,project_journals_audited
 12,12,Taiwan Credit Card,2,passed,True
 13,13,Taiwan Credit Card,3,passed,True
 14,14,Taiwan Credit Card,4,passed,True
+Paired fold effects
+CSV (first column: row index)
+row,dataset,fold,policy,base,cpt,saved,effect,save_difference
+0,Myhom,0,auto,0.60521471,0.59753827,0.60521471,-0.0076764456,0
+1,Myhom,0,fp32_no_fa3,0.59534014,0.59748831,0.59534014,0.0021481718,0
+2,Myhom,1,auto,0.61585034,0.61952381,0.61585034,0.0036734694,0
+3,Myhom,1,fp32_no_fa3,0.61932292,0.61955463,0.61932292,0.00023171769,0
+4,Myhom,2,auto,0.56674957,0.59432611,0.56674957,0.027576531,0
+5,Myhom,2,fp32_no_fa3,0.59853529,0.59432185,0.59853529,-0.0042134354,0
+6,Myhom,3,auto,0.58845663,0.60956314,0.58845663,0.021106505,0
+7,Myhom,3,fp32_no_fa3,0.60789753,0.60942177,0.60789753,0.0015242347,0
+8,Myhom,4,auto,0.5233429,0.55279443,0.5233429,0.029451531,0
+9,Myhom,4,fp32_no_fa3,0.55223321,0.55286139,0.55223321,0.00062818878,0
+10,Taiwan Credit Card,0,auto,0.79142566,0.78894823,0.79142566,-0.002477429,0
+11,Taiwan Credit Card,0,fp32_no_fa3,0.79144661,0.78893985,0.79144661,-0.0025067629,0
+12,Taiwan Credit Card,1,auto,0.78187623,0.77962525,0.78187623,-0.0022509821,0
+13,Taiwan Credit Card,1,fp32_no_fa3,0.78186333,0.7796321,0.78186333,-0.0022312275,0
+14,Taiwan Credit Card,2,auto,0.79516683,0.79475634,0.79516683,-0.00041049361,0
+15,Taiwan Credit Card,2,fp32_no_fa3,0.7951424,0.79472675,0.7951424,-0.00041565401,0
+16,Taiwan Credit Card,3,auto,0.79936813,0.79691621,0.79936813,-0.0024519152,0
+17,Taiwan Credit Card,3,fp32_no_fa3,0.79945529,0.79694959,0.79945529,-0.0025056962,0
+18,Taiwan Credit Card,4,auto,0.78293427,0.7816228,0.78293427,-0.001311467,0
+19,Taiwan Credit Card,4,fp32_no_fa3,0.78273495,0.78160982,0.78273495,-0.0011251282,0
+20,Vehicle Loan,0,auto,0.57633495,0.65042415,0.57633495,0.074089193,0
+21,Vehicle Loan,0,fp32_no_fa3,0.65239751,0.65048939,0.65239751,-0.0019081241,0
+22,Vehicle Loan,1,auto,0.57116565,0.65145444,0.57116565,0.080288786,0
+23,Vehicle Loan,1,fp32_no_fa3,0.65367486,0.65163144,0.65367486,-0.0020434138,0
+24,Vehicle Loan,2,auto,0.59794701,0.65666353,0.59794701,0.05871652,0
+25,Vehicle Loan,2,fp32_no_fa3,0.65780029,0.65646791,0.65780029,-0.0013323728,0
+26,Vehicle Loan,3,auto,0.59702323,0.6562962,0.59702323,0.059272968,0
+27,Vehicle Loan,3,fp32_no_fa3,0.65836236,0.65647601,0.65836236,-0.0018863492,0
+28,Vehicle Loan,4,auto,0.5728406,0.65799345,0.5728406,0.085152852,0
+29,Vehicle Loan,4,fp32_no_fa3,0.65967275,0.65810114,0.65967275,-0.0015716119,0
+Mean policy effects
+CSV (first column: row index)
+row,dataset,policy,effect
+0,Myhom,auto,0.014826318
+1,Myhom,fp32_no_fa3,6.377551e-05
+2,Taiwan Credit Card,auto,-0.0017804574
+3,Taiwan Credit Card,fp32_no_fa3,-0.0017568938
+4,Vehicle Loan,auto,0.071504064
+5,Vehicle Loan,fp32_no_fa3,-0.0017483744
 
 experiment0/04_auxiliary_experiments: 1 figures -> output CreditPFN/figures/experiment0
   01  pd_tabicl_numerical_policy
@@ -60748,7 +60790,7 @@ row,category,bin_start,bin_end,value,stack_start
 Open marks freeze the backbone; filled marks update all normally trainable parameters. Colors denote learning rates and marker shapes denote L2-SP. These are fixed-context monitoring scores, not final five-fold estimates.
 
 Figure: pd_endpoint_dashboard_pd_means
-PD. Initial and post-finetuning scores for each completed configuration. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning AUC for each completed configuration. Observed endpoint-table inventory: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 Displayed endpoints
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,initial,value,partitions
@@ -60818,7 +60860,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,initial,value,partitions
 63,TabPFN v3,3e-05,0.003,True,one_sample,0.76708065,0.69636643,4
 
 Figure: pd_endpoint_dashboard_pd_partitions
-PD. Initial and post-finetuning scores for each completed configuration. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning AUC for each completed configuration. Observed endpoint-table inventory: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 Displayed endpoints
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,trial,initial,value,effect
@@ -62175,7 +62217,7 @@ row,trial,updates,processed_rows,dataset,value,initial,effect,base,learning_rate
 Match every other setting and dataset before averaging contrasts. Base averages are descriptive, not causal model comparisons. Probability accuracy is assessed by Brier score when paired measurements exist; missing measurements are not inferred.
 
 Figure: pd_endpoint_factors_pd_False
-PD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+PD. Fixed-context milestone monitoring at 10,000 successful updates, credit AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 Displayed model summaries
 CSV (first column: row index)
 row,base,contrast,factor,reference,alternative,effect
@@ -64407,7 +64449,7 @@ TabPFN v2.6      one_sample False     136 -0.00196 -0.00071 -0.03558  0.00958
                      True      136 -0.00008 -0.00004 -0.00101  0.00110
 TabPFN v3        one_sample False     136 -0.01585 -0.00359 -0.11955  0.00319
                      True      136 -0.00397 -0.00065 -0.06127  0.00376
-LGD primary benchmark error remains RMSE; R² is also reported. Five outer folds are averaged within table before cross-table comparisons.
+LGD primary benchmark error remains RMSE; R² is also reported. Five outer folds are averaged within table before cross-table comparisons. The response maps retain all planned recipes; they do not select a best test recipe. Non-credit outcomes require all four paired training partitions per table. Table IQRs do not quantify seed uncertainty.
 The recipe is fixed: full updates, LR 3e-7, L2-SP 0.003, seed 42. Five paired outer folds are averaged within each table. The 95% percentile bootstrap interval resamples tables (10,000 draws, seed 20261020), not folds, rows, recipes or overlapping training corpora. It describes sensitivity to the observed table collection conditional on the fitted checkpoints, under a table-exchangeability assumption; it is not a deployment guarantee or a training-seed confidence interval. Unknown shared populations can invalidate that assumption. No significance-based recipe selection is performed.
 A source URL identifies a release or platform, not independent borrowers. The ledger records documented shared sources and unresolved provenance; it does not certify absence of overlap. LendingClub PD/LGD and SBA PD/LGD share sources, but the two tasks have separate CPT corpora and are never pooled as independent replications. The documented-public-source sensitivity excludes unverified/local and restricted sources; it changes the population being summarized and cannot repair contamination in already trained weights.
 
@@ -66596,7 +66638,7 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 1087,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,Vehicle Loan,0.65803164,0.6583894,0.00035775854,0.00035775854,Vehicle Loan,TabPFN v3,3e-07,True,0,one_sample,0.00035775854,42
 
 Figure: pd_endpoint_factors_pd_True
-PD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+PD. Completed five-fold final benchmark, credit AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Five paired outer folds are averaged within each table before cross-table aggregation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 Displayed model summaries
 CSV (first column: row index)
 row,base,contrast,factor,reference,alternative,effect
@@ -67716,6 +67758,2986 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 1086,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,Thomas,0.65158762,0.65320287,0.0016152489,0.0016152489,Thomas,TabPFN v3,3e-07,True,0,one_sample,0.0016152489,42
 1087,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,Vehicle Loan,0.65803164,0.6583894,0.00035775854,0.00035775854,Vehicle Loan,TabPFN v3,3e-07,True,0,one_sample,0.00035775854,42
 
+Figure: pd_factorial_credit_roc_auc
+PD. Completed five-fold final benchmark, PD held-out credit. CPT minus original AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00084865788,1
+1,TabICLv2,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,-9.0267546e-05,1
+2,TabICLv2,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,-0.007256671,1
+3,TabICLv2,3e-07,0,False,one_sample,GMSC,credit,roc_auc,-0.00062394774,1
+4,TabICLv2,3e-07,0,False,one_sample,German Credit,credit,roc_auc,0.0023208291,1
+5,TabICLv2,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,-0.00016323778,1
+6,TabICLv2,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,-0.014835603,1
+7,TabICLv2,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,-0.00082315385,1
+8,TabICLv2,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.000146919,1
+9,TabICLv2,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0018223383,1
+10,TabICLv2,3e-07,0,False,one_sample,Myhom,credit,roc_auc,0.01480591,1
+11,TabICLv2,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,0.00078878451,1
+12,TabICLv2,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,-0.00038674043,1
+13,TabICLv2,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00011137358,1
+14,TabICLv2,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0019250541,1
+15,TabICLv2,3e-07,0,False,one_sample,Thomas,credit,roc_auc,-0.0023061753,1
+16,TabICLv2,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.071467701,1
+17,TabICLv2,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,9.6416591e-05,1
+18,TabICLv2,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,-0.00044892542,1
+19,TabICLv2,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0042125668,1
+20,TabICLv2,3e-07,0,True,one_sample,GMSC,credit,roc_auc,-0.00048367031,1
+21,TabICLv2,3e-07,0,True,one_sample,German Credit,credit,roc_auc,0.0017875985,1
+22,TabICLv2,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-0.00014952499,1
+23,TabICLv2,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-0.01058544,1
+24,TabICLv2,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,-0.00090965466,1
+25,TabICLv2,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,-0.00034470445,1
+26,TabICLv2,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00013862683,1
+27,TabICLv2,3e-07,0,True,one_sample,Myhom,credit,roc_auc,0.013587372,1
+28,TabICLv2,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,0.00080087024,1
+29,TabICLv2,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,-0.00062244924,1
+30,TabICLv2,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00013127916,1
+31,TabICLv2,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0012844085,1
+32,TabICLv2,3e-07,0,True,one_sample,Thomas,credit,roc_auc,-0.001554015,1
+33,TabICLv2,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.071715772,1
+34,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00056737364,1
+35,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,-2.8451999e-05,1
+36,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0061696497,1
+37,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00057036466,1
+38,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,0.0024155533,1
+39,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,-6.6761782e-05,1
+40,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.013719107,1
+41,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.00075032379,1
+42,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.00022214889,1
+43,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0016434439,1
+44,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,0.014826318,1
+45,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0012353369,1
+46,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.00017633823,1
+47,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,7.5056415e-05,1
+48,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0017804574,1
+49,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,-0.0019977983,1
+50,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.071504064,1
+51,TabICLv2,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00012213118,1
+52,TabICLv2,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.00045073344,1
+53,TabICLv2,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.0040369989,1
+54,TabICLv2,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00054914775,1
+55,TabICLv2,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,0.0019566632,1
+56,TabICLv2,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00014822045,1
+57,TabICLv2,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.010305058,1
+58,TabICLv2,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.00093561173,1
+59,TabICLv2,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,-0.00036035286,1
+60,TabICLv2,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.00010661623,1
+61,TabICLv2,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,0.012957058,1
+62,TabICLv2,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00063850393,1
+63,TabICLv2,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00055166594,1
+64,TabICLv2,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,7.2351074e-05,1
+65,TabICLv2,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0013628841,1
+66,TabICLv2,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0017071764,1
+67,TabICLv2,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.071598317,1
+68,TabICLv2,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0024234513,1
+69,TabICLv2,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,-0.00020290853,1
+70,TabICLv2,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0093411224,1
+71,TabICLv2,1e-06,0,False,one_sample,GMSC,credit,roc_auc,-0.0011626593,1
+72,TabICLv2,1e-06,0,False,one_sample,German Credit,credit,roc_auc,0.0038162042,1
+73,TabICLv2,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,0.00021759455,1
+74,TabICLv2,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0086823647,1
+75,TabICLv2,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,-0.0017553184,1
+76,TabICLv2,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,-0.00072035905,1
+77,TabICLv2,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0013987696,1
+78,TabICLv2,1e-06,0,False,one_sample,Myhom,credit,roc_auc,0.011079507,1
+79,TabICLv2,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,-0.00034193485,1
+80,TabICLv2,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,-0.0033871443,1
+81,TabICLv2,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00018763827,1
+82,TabICLv2,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0026100114,1
+83,TabICLv2,1e-06,0,False,one_sample,Thomas,credit,roc_auc,-0.0076019443,1
+84,TabICLv2,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.068894851,1
+85,TabICLv2,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00019097774,1
+86,TabICLv2,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,-0.00034289135,1
+87,TabICLv2,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0052557465,1
+88,TabICLv2,1e-06,0,True,one_sample,GMSC,credit,roc_auc,-0.00060877858,1
+89,TabICLv2,1e-06,0,True,one_sample,German Credit,credit,roc_auc,0.0010959233,1
+90,TabICLv2,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,3.5803468e-05,1
+91,TabICLv2,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.0066702244,1
+92,TabICLv2,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,-0.0013224896,1
+93,TabICLv2,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,0.00020255877,1
+94,TabICLv2,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00037872934,1
+95,TabICLv2,1e-06,0,True,one_sample,Myhom,credit,roc_auc,0.015460247,1
+96,TabICLv2,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,-0.0053109616,1
+97,TabICLv2,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,-0.00047817164,1
+98,TabICLv2,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,7.3801012e-05,1
+99,TabICLv2,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0011195847,1
+100,TabICLv2,1e-06,0,True,one_sample,Thomas,credit,roc_auc,-0.0026235775,1
+101,TabICLv2,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.070288281,1
+102,TabICLv2,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.001489034,1
+103,TabICLv2,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,-7.8101944e-05,1
+104,TabICLv2,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0084777605,1
+105,TabICLv2,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00082153089,1
+106,TabICLv2,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,0.0044573484,1
+107,TabICLv2,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,0.0003483988,1
+108,TabICLv2,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0077021681,1
+109,TabICLv2,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0012544842,1
+110,TabICLv2,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,-0.00064909204,1
+111,TabICLv2,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.00083537705,1
+112,TabICLv2,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,0.011420918,1
+113,TabICLv2,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0004846679,1
+114,TabICLv2,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.0023490707,1
+115,TabICLv2,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00024445055,1
+116,TabICLv2,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0018641114,1
+117,TabICLv2,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,-0.0057250024,1
+118,TabICLv2,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.069612038,1
+119,TabICLv2,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00015940321,1
+120,TabICLv2,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.00036467931,1
+121,TabICLv2,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.0047350647,1
+122,TabICLv2,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00050951989,1
+123,TabICLv2,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,0.00076156218,1
+124,TabICLv2,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00011888015,1
+125,TabICLv2,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0074188621,1
+126,TabICLv2,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.00149375,1
+127,TabICLv2,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00016632851,1
+128,TabICLv2,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,1.0844225e-05,1
+129,TabICLv2,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,0.01558801,1
+130,TabICLv2,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,-0.0055676469,1
+131,TabICLv2,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00056853212,1
+132,TabICLv2,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00018476841,1
+133,TabICLv2,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0010841174,1
+134,TabICLv2,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0022481938,1
+135,TabICLv2,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.070869013,1
+136,TabICLv2,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0087954925,1
+137,TabICLv2,1e-05,0,False,one_sample,Cobranded,credit,roc_auc,-0.0035238799,1
+138,TabICLv2,1e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.028874377,1
+139,TabICLv2,1e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.0065613275,1
+140,TabICLv2,1e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.10165982,1
+141,TabICLv2,1e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.0032579924,1
+142,TabICLv2,1e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.052355151,1
+143,TabICLv2,1e-05,0,False,one_sample,Home Credit,credit,roc_auc,-0.011579617,1
+144,TabICLv2,1e-05,0,False,one_sample,LendingClub,credit,roc_auc,-0.075795657,1
+145,TabICLv2,1e-05,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0074154844,1
+146,TabICLv2,1e-05,0,False,one_sample,Myhom,credit,roc_auc,0.003184949,1
+147,TabICLv2,1e-05,0,False,one_sample,PropPD1,credit,roc_auc,-0.019907131,1
+148,TabICLv2,1e-05,0,False,one_sample,PropPD2,credit,roc_auc,-0.027994679,1
+149,TabICLv2,1e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00037004461,1
+150,TabICLv2,1e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.01012442,1
+151,TabICLv2,1e-05,0,False,one_sample,Thomas,credit,roc_auc,-0.088234954,1
+152,TabICLv2,1e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.06246959,1
+153,TabICLv2,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00043318618,1
+154,TabICLv2,1e-05,0,True,one_sample,Cobranded,credit,roc_auc,-0.00074123184,1
+155,TabICLv2,1e-05,0,True,one_sample,Credit Risk,credit,roc_auc,-0.010964931,1
+156,TabICLv2,1e-05,0,True,one_sample,GMSC,credit,roc_auc,-0.002021733,1
+157,TabICLv2,1e-05,0,True,one_sample,German Credit,credit,roc_auc,-0.0018103803,1
+158,TabICLv2,1e-05,0,True,one_sample,HMEQ,credit,roc_auc,-0.0030696325,1
+159,TabICLv2,1e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.035055067,1
+160,TabICLv2,1e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.0042482679,1
+161,TabICLv2,1e-05,0,True,one_sample,LendingClub,credit,roc_auc,0.0011469039,1
+162,TabICLv2,1e-05,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00328867,1
+163,TabICLv2,1e-05,0,True,one_sample,Myhom,credit,roc_auc,0.015525935,1
+164,TabICLv2,1e-05,0,True,one_sample,PropPD1,credit,roc_auc,0.00067801677,1
+165,TabICLv2,1e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.0032669962,1
+166,TabICLv2,1e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00010051378,1
+167,TabICLv2,1e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0020486398,1
+168,TabICLv2,1e-05,0,True,one_sample,Thomas,credit,roc_auc,-0.0059839212,1
+169,TabICLv2,1e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.068600205,1
+170,TabICLv2,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0046013953,1
+171,TabICLv2,1e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,-0.0011070605,1
+172,TabICLv2,1e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.017922493,1
+173,TabICLv2,1e-05,0.003,False,one_sample,GMSC,credit,roc_auc,-0.0024285402,1
+174,TabICLv2,1e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-0.038750771,1
+175,TabICLv2,1e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0012730129,1
+176,TabICLv2,1e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.037490364,1
+177,TabICLv2,1e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.00546993,1
+178,TabICLv2,1e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,-0.018493122,1
+179,TabICLv2,1e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0032110126,1
+180,TabICLv2,1e-05,0.003,False,one_sample,Myhom,credit,roc_auc,0.014109694,1
+181,TabICLv2,1e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.0052758686,1
+182,TabICLv2,1e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.018773839,1
+183,TabICLv2,1e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00072176229,1
+184,TabICLv2,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0048848406,1
+185,TabICLv2,1e-05,0.003,False,one_sample,Thomas,credit,roc_auc,-0.022244841,1
+186,TabICLv2,1e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.065928073,1
+187,TabICLv2,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00056714576,1
+188,TabICLv2,1e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.00072021883,1
+189,TabICLv2,1e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.01434169,1
+190,TabICLv2,1e-05,0.003,True,one_sample,GMSC,credit,roc_auc,-0.0012695164,1
+191,TabICLv2,1e-05,0.003,True,one_sample,German Credit,credit,roc_auc,-0.0013221994,1
+192,TabICLv2,1e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.0015077962,1
+193,TabICLv2,1e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.025887778,1
+194,TabICLv2,1e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.0036078278,1
+195,TabICLv2,1e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00060180872,1
+196,TabICLv2,1e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,-0.0029755223,1
+197,TabICLv2,1e-05,0.003,True,one_sample,Myhom,credit,roc_auc,0.015988095,1
+198,TabICLv2,1e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00084963846,1
+199,TabICLv2,1e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.0024952932,1
+200,TabICLv2,1e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00030332863,1
+201,TabICLv2,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0018619886,1
+202,TabICLv2,1e-05,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0024278403,1
+203,TabICLv2,1e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.069408869,1
+204,TabICLv2,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.040005209,1
+205,TabICLv2,3e-05,0,False,one_sample,Cobranded,credit,roc_auc,-0.019602207,1
+206,TabICLv2,3e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.050499406,1
+207,TabICLv2,3e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.021471374,1
+208,TabICLv2,3e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.064810038,1
+209,TabICLv2,3e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.0059010499,1
+210,TabICLv2,3e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.10603678,1
+211,TabICLv2,3e-05,0,False,one_sample,Home Credit,credit,roc_auc,-0.04387471,1
+212,TabICLv2,3e-05,0,False,one_sample,LendingClub,credit,roc_auc,-0.1230825,1
+213,TabICLv2,3e-05,0,False,one_sample,MicroFinance,credit,roc_auc,-0.035213536,1
+214,TabICLv2,3e-05,0,False,one_sample,Myhom,credit,roc_auc,-0.008053784,1
+215,TabICLv2,3e-05,0,False,one_sample,PropPD1,credit,roc_auc,-0.037627181,1
+216,TabICLv2,3e-05,0,False,one_sample,PropPD2,credit,roc_auc,-0.078601584,1
+217,TabICLv2,3e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.004197688,1
+218,TabICLv2,3e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.016083084,1
+219,TabICLv2,3e-05,0,False,one_sample,Thomas,credit,roc_auc,-0.10388695,1
+220,TabICLv2,3e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.041864005,1
+221,TabICLv2,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00048377335,1
+222,TabICLv2,3e-05,0,True,one_sample,Cobranded,credit,roc_auc,-0.0012174951,1
+223,TabICLv2,3e-05,0,True,one_sample,Credit Risk,credit,roc_auc,-0.024100796,1
+224,TabICLv2,3e-05,0,True,one_sample,GMSC,credit,roc_auc,-0.0047129549,1
+225,TabICLv2,3e-05,0,True,one_sample,German Credit,credit,roc_auc,-0.0021764303,1
+226,TabICLv2,3e-05,0,True,one_sample,HMEQ,credit,roc_auc,-0.0031590891,1
+227,TabICLv2,3e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.053412592,1
+228,TabICLv2,3e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.0054988576,1
+229,TabICLv2,3e-05,0,True,one_sample,LendingClub,credit,roc_auc,-0.0032965847,1
+230,TabICLv2,3e-05,0,True,one_sample,MicroFinance,credit,roc_auc,-0.0073555285,1
+231,TabICLv2,3e-05,0,True,one_sample,Myhom,credit,roc_auc,0.0082721088,1
+232,TabICLv2,3e-05,0,True,one_sample,PropPD1,credit,roc_auc,-0.00089196379,1
+233,TabICLv2,3e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.0033375953,1
+234,TabICLv2,3e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00012627598,1
+235,TabICLv2,3e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.002500453,1
+236,TabICLv2,3e-05,0,True,one_sample,Thomas,credit,roc_auc,-0.0067366069,1
+237,TabICLv2,3e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.06688232,1
+238,TabICLv2,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0028723349,1
+239,TabICLv2,3e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,-0.0043584793,1
+240,TabICLv2,3e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.020177455,1
+241,TabICLv2,3e-05,0.003,False,one_sample,GMSC,credit,roc_auc,-0.004204554,1
+242,TabICLv2,3e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-0.052941932,1
+243,TabICLv2,3e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0013954797,1
+244,TabICLv2,3e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.052007096,1
+245,TabICLv2,3e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.011494973,1
+246,TabICLv2,3e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,-0.017794461,1
+247,TabICLv2,3e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0073179052,1
+248,TabICLv2,3e-05,0.003,False,one_sample,Myhom,credit,roc_auc,0.013626276,1
+249,TabICLv2,3e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.011096279,1
+250,TabICLv2,3e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.015123721,1
+251,TabICLv2,3e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00057473018,1
+252,TabICLv2,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0041340982,1
+253,TabICLv2,3e-05,0.003,False,one_sample,Thomas,credit,roc_auc,-0.01247054,1
+254,TabICLv2,3e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.063957556,1
+255,TabICLv2,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,9.8741098e-05,1
+256,TabICLv2,3e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.00068138215,1
+257,TabICLv2,3e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.013055284,1
+258,TabICLv2,3e-05,0.003,True,one_sample,GMSC,credit,roc_auc,-0.0025991529,1
+259,TabICLv2,3e-05,0.003,True,one_sample,German Credit,credit,roc_auc,-0.0043830079,1
+260,TabICLv2,3e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.0011335806,1
+261,TabICLv2,3e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.047786472,1
+262,TabICLv2,3e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.0046751009,1
+263,TabICLv2,3e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,-0.0015059634,1
+264,TabICLv2,3e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,-0.0033700646,1
+265,TabICLv2,3e-05,0.003,True,one_sample,Myhom,credit,roc_auc,0.013005952,1
+266,TabICLv2,3e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,-0.00015699003,1
+267,TabICLv2,3e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.0023639471,1
+268,TabICLv2,3e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-0.00037226374,1
+269,TabICLv2,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0013812026,1
+270,TabICLv2,3e-05,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0012153634,1
+271,TabICLv2,3e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.067793503,1
+272,TabPFN v2,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0028898558,1
+273,TabPFN v2,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,0.0030314077,1
+274,TabPFN v2,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,0.0018287657,1
+275,TabPFN v2,3e-07,0,False,one_sample,GMSC,credit,roc_auc,0.002564706,1
+276,TabPFN v2,3e-07,0,False,one_sample,German Credit,credit,roc_auc,0.0040695444,1
+277,TabPFN v2,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,0.0076586463,1
+278,TabPFN v2,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,0.0094951033,1
+279,TabPFN v2,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,0.005028279,1
+280,TabPFN v2,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.0071946889,1
+281,TabPFN v2,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,0.0064191092,1
+282,TabPFN v2,3e-07,0,False,one_sample,Myhom,credit,roc_auc,0.001900085,1
+283,TabPFN v2,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,0.0054768598,1
+284,TabPFN v2,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,0.0050223828,1
+285,TabPFN v2,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,8.4596839e-06,1
+286,TabPFN v2,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0069536724,1
+287,TabPFN v2,3e-07,0,False,one_sample,Thomas,credit,roc_auc,0.0059965263,1
+288,TabPFN v2,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.005984581,1
+289,TabPFN v2,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-9.8757617e-05,1
+290,TabPFN v2,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,2.8291316e-05,1
+291,TabPFN v2,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,1.5799852e-05,1
+292,TabPFN v2,3e-07,0,True,one_sample,GMSC,credit,roc_auc,1.1008617e-05,1
+293,TabPFN v2,3e-07,0,True,one_sample,German Credit,credit,roc_auc,5.9009935e-05,1
+294,TabPFN v2,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-2.1611654e-05,1
+295,TabPFN v2,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00012716542,1
+296,TabPFN v2,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,-3.0384229e-05,1
+297,TabPFN v2,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,0.00011492618,1
+298,TabPFN v2,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,-1.1479529e-05,1
+299,TabPFN v2,3e-07,0,True,one_sample,Myhom,credit,roc_auc,4.1666667e-05,1
+300,TabPFN v2,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,0.00047096918,1
+301,TabPFN v2,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,2.9886889e-05,1
+302,TabPFN v2,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,4.6277458e-05,1
+303,TabPFN v2,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,4.4790636e-05,1
+304,TabPFN v2,3e-07,0,True,one_sample,Thomas,credit,roc_auc,0.00011085435,1
+305,TabPFN v2,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,4.2863513e-05,1
+306,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0028900965,1
+307,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,0.0030003482,1
+308,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,0.0018002893,1
+309,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,0.0025274617,1
+310,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,0.004022011,1
+311,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,0.0077696885,1
+312,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,0.0093488316,1
+313,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,0.0050075943,1
+314,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0071764372,1
+315,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0063839468,1
+316,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,0.0019147534,1
+317,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0054243377,1
+318,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0050721524,1
+319,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,3.6711761e-05,1
+320,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0069054749,1
+321,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,0.0058857575,1
+322,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00596666,1
+323,TabPFN v2,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-9.7583164e-05,1
+324,TabPFN v2,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,3.1558223e-05,1
+325,TabPFN v2,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,1.8408156e-05,1
+326,TabPFN v2,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,8.5177319e-06,1
+327,TabPFN v2,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,0.00013069544,1
+328,TabPFN v2,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-1.4134149e-05,1
+329,TabPFN v2,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00011592307,1
+330,TabPFN v2,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,-3.037532e-05,1
+331,TabPFN v2,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,8.3073619e-05,1
+332,TabPFN v2,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,-1.5445918e-05,1
+333,TabPFN v2,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,2.5085034e-05,1
+334,TabPFN v2,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00043532871,1
+335,TabPFN v2,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,2.9984165e-05,1
+336,TabPFN v2,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,5.6557593e-05,1
+337,TabPFN v2,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,3.7082777e-05,1
+338,TabPFN v2,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,5.9144355e-05,1
+339,TabPFN v2,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,5.0834277e-05,1
+340,TabPFN v2,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0031632182,1
+341,TabPFN v2,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,0.003727348,1
+342,TabPFN v2,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,0.0015729906,1
+343,TabPFN v2,1e-06,0,False,one_sample,GMSC,credit,roc_auc,0.0037545474,1
+344,TabPFN v2,1e-06,0,False,one_sample,German Credit,credit,roc_auc,0.0052593354,1
+345,TabPFN v2,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,0.0066496129,1
+346,TabPFN v2,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,0.0098335041,1
+347,TabPFN v2,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,0.0070082689,1
+348,TabPFN v2,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,0.0086534967,1
+349,TabPFN v2,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,0.0067226719,1
+350,TabPFN v2,1e-06,0,False,one_sample,Myhom,credit,roc_auc,0.0021220238,1
+351,TabPFN v2,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,0.0052889754,1
+352,TabPFN v2,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,0.0054131591,1
+353,TabPFN v2,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00019140843,1
+354,TabPFN v2,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0078556221,1
+355,TabPFN v2,1e-06,0,False,one_sample,Thomas,credit,roc_auc,0.0086379917,1
+356,TabPFN v2,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.0065784465,1
+357,TabPFN v2,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00018254169,1
+358,TabPFN v2,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,0.00011100266,1
+359,TabPFN v2,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,8.983897e-05,1
+360,TabPFN v2,1e-06,0,True,one_sample,GMSC,credit,roc_auc,1.5917414e-05,1
+361,TabPFN v2,1e-06,0,True,one_sample,German Credit,credit,roc_auc,0.00036904762,1
+362,TabPFN v2,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,8.9812379e-05,1
+363,TabPFN v2,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00059700063,1
+364,TabPFN v2,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,-6.697708e-05,1
+365,TabPFN v2,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,0.00034255761,1
+366,TabPFN v2,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,1.9896427e-05,1
+367,TabPFN v2,1e-06,0,True,one_sample,Myhom,credit,roc_auc,0.00012585034,1
+368,TabPFN v2,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,0.00051051481,1
+369,TabPFN v2,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,3.5334256e-05,1
+370,TabPFN v2,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,2.5829328e-05,1
+371,TabPFN v2,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00014517319,1
+372,TabPFN v2,1e-06,0,True,one_sample,Thomas,credit,roc_auc,0.00019615326,1
+373,TabPFN v2,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.00016438705,1
+374,TabPFN v2,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0031956609,1
+375,TabPFN v2,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,0.003673046,1
+376,TabPFN v2,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,0.0017459048,1
+377,TabPFN v2,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,0.0036243503,1
+378,TabPFN v2,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,0.0050571257,1
+379,TabPFN v2,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,0.0069070627,1
+380,TabPFN v2,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,0.0099147636,1
+381,TabPFN v2,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,0.0067722216,1
+382,TabPFN v2,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0085702279,1
+383,TabPFN v2,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0067710415,1
+384,TabPFN v2,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,0.0021575255,1
+385,TabPFN v2,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0053168397,1
+386,TabPFN v2,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0053922159,1
+387,TabPFN v2,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00012451463,1
+388,TabPFN v2,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0077498141,1
+389,TabPFN v2,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,0.0086217536,1
+390,TabPFN v2,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.0064941523,1
+391,TabPFN v2,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00017365037,1
+392,TabPFN v2,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,9.6758053e-05,1
+393,TabPFN v2,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,6.7386604e-05,1
+394,TabPFN v2,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,1.2183787e-05,1
+395,TabPFN v2,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,0.00026199041,1
+396,TabPFN v2,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,5.4074947e-05,1
+397,TabPFN v2,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00051666838,1
+398,TabPFN v2,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,-7.1800658e-05,1
+399,TabPFN v2,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00027404079,1
+400,TabPFN v2,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,3.778459e-05,1
+401,TabPFN v2,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,0.00010565476,1
+402,TabPFN v2,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00048358425,1
+403,TabPFN v2,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,2.5904434e-05,1
+404,TabPFN v2,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,4.90057e-05,1
+405,TabPFN v2,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00012327962,1
+406,TabPFN v2,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,0.00030734996,1
+407,TabPFN v2,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.00015144854,1
+408,TabPFN v2,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.001841704,1
+409,TabPFN v2,1e-05,0,False,one_sample,Cobranded,credit,roc_auc,0.004542571,1
+410,TabPFN v2,1e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0040744098,1
+411,TabPFN v2,1e-05,0,False,one_sample,GMSC,credit,roc_auc,0.0034990042,1
+412,TabPFN v2,1e-05,0,False,one_sample,German Credit,credit,roc_auc,0.0084293422,1
+413,TabPFN v2,1e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.015358252,1
+414,TabPFN v2,1e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0018802319,1
+415,TabPFN v2,1e-05,0,False,one_sample,Home Credit,credit,roc_auc,0.0054803194,1
+416,TabPFN v2,1e-05,0,False,one_sample,LendingClub,credit,roc_auc,0.0094650728,1
+417,TabPFN v2,1e-05,0,False,one_sample,MicroFinance,credit,roc_auc,0.0059603824,1
+418,TabPFN v2,1e-05,0,False,one_sample,Myhom,credit,roc_auc,0.0013418367,1
+419,TabPFN v2,1e-05,0,False,one_sample,PropPD1,credit,roc_auc,0.0051335312,1
+420,TabPFN v2,1e-05,0,False,one_sample,PropPD2,credit,roc_auc,0.0055047056,1
+421,TabPFN v2,1e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,5.1449904e-05,1
+422,TabPFN v2,1e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0075120716,1
+423,TabPFN v2,1e-05,0,False,one_sample,Thomas,credit,roc_auc,0.011117563,1
+424,TabPFN v2,1e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.0039499288,1
+425,TabPFN v2,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0002177878,1
+426,TabPFN v2,1e-05,0,True,one_sample,Cobranded,credit,roc_auc,0.00060519956,1
+427,TabPFN v2,1e-05,0,True,one_sample,Credit Risk,credit,roc_auc,0.00012788311,1
+428,TabPFN v2,1e-05,0,True,one_sample,GMSC,credit,roc_auc,2.3321946e-05,1
+429,TabPFN v2,1e-05,0,True,one_sample,German Credit,credit,roc_auc,0.0014054471,1
+430,TabPFN v2,1e-05,0,True,one_sample,HMEQ,credit,roc_auc,0.00094341762,1
+431,TabPFN v2,1e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.0022813747,1
+432,TabPFN v2,1e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.00039456162,1
+433,TabPFN v2,1e-05,0,True,one_sample,LendingClub,credit,roc_auc,0.0013170709,1
+434,TabPFN v2,1e-05,0,True,one_sample,MicroFinance,credit,roc_auc,0.0011061513,1
+435,TabPFN v2,1e-05,0,True,one_sample,Myhom,credit,roc_auc,0.00033248299,1
+436,TabPFN v2,1e-05,0,True,one_sample,PropPD1,credit,roc_auc,0.00094559319,1
+437,TabPFN v2,1e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.00033024643,1
+438,TabPFN v2,1e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,1.059629e-05,1
+439,TabPFN v2,1e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00069818794,1
+440,TabPFN v2,1e-05,0,True,one_sample,Thomas,credit,roc_auc,0.0017253093,1
+441,TabPFN v2,1e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.00073250327,1
+442,TabPFN v2,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0025711058,1
+443,TabPFN v2,1e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,0.0044195975,1
+444,TabPFN v2,1e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0018868449,1
+445,TabPFN v2,1e-05,0.003,False,one_sample,GMSC,credit,roc_auc,0.0042127774,1
+446,TabPFN v2,1e-05,0.003,False,one_sample,German Credit,credit,roc_auc,0.008311665,1
+447,TabPFN v2,1e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0048721549,1
+448,TabPFN v2,1e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,0.0053825996,1
+449,TabPFN v2,1e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,0.0069500612,1
+450,TabPFN v2,1e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,0.00916205,1
+451,TabPFN v2,1e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0068171258,1
+452,TabPFN v2,1e-05,0.003,False,one_sample,Myhom,credit,roc_auc,0.0013414116,1
+453,TabPFN v2,1e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0055480172,1
+454,TabPFN v2,1e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,0.005397124,1
+455,TabPFN v2,1e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,1.8645579e-05,1
+456,TabPFN v2,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0079616331,1
+457,TabPFN v2,1e-05,0.003,False,one_sample,Thomas,credit,roc_auc,0.013720879,1
+458,TabPFN v2,1e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.0053724294,1
+459,TabPFN v2,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00022585666,1
+460,TabPFN v2,1e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,0.00040215781,1
+461,TabPFN v2,1e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,0.00015233423,1
+462,TabPFN v2,1e-05,0.003,True,one_sample,GMSC,credit,roc_auc,3.757185e-05,1
+463,TabPFN v2,1e-05,0.003,True,one_sample,German Credit,credit,roc_auc,0.00068996232,1
+464,TabPFN v2,1e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,0.00069847561,1
+465,TabPFN v2,1e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0010059903,1
+466,TabPFN v2,1e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.00018100133,1
+467,TabPFN v2,1e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00091979316,1
+468,TabPFN v2,1e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.00059008261,1
+469,TabPFN v2,1e-05,0.003,True,one_sample,Myhom,credit,roc_auc,0.00019961735,1
+470,TabPFN v2,1e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00058606623,1
+471,TabPFN v2,1e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00016338703,1
+472,TabPFN v2,1e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,5.3368414e-06,1
+473,TabPFN v2,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00045939788,1
+474,TabPFN v2,1e-05,0.003,True,one_sample,Thomas,credit,roc_auc,0.0015764155,1
+475,TabPFN v2,1e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.00049403695,1
+476,TabPFN v2,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00065192879,1
+477,TabPFN v2,3e-05,0,False,one_sample,Cobranded,credit,roc_auc,0.0036179503,1
+478,TabPFN v2,3e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0097034332,1
+479,TabPFN v2,3e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.00034612078,1
+480,TabPFN v2,3e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.033990236,1
+481,TabPFN v2,3e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.024390351,1
+482,TabPFN v2,3e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.022390783,1
+483,TabPFN v2,3e-05,0,False,one_sample,Home Credit,credit,roc_auc,0.0063342068,1
+484,TabPFN v2,3e-05,0,False,one_sample,LendingClub,credit,roc_auc,0.0036748909,1
+485,TabPFN v2,3e-05,0,False,one_sample,MicroFinance,credit,roc_auc,0.0027937859,1
+486,TabPFN v2,3e-05,0,False,one_sample,Myhom,credit,roc_auc,0.0014547194,1
+487,TabPFN v2,3e-05,0,False,one_sample,PropPD1,credit,roc_auc,0.0035343193,1
+488,TabPFN v2,3e-05,0,False,one_sample,PropPD2,credit,roc_auc,0.002961121,1
+489,TabPFN v2,3e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00042148372,1
+490,TabPFN v2,3e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0059388811,1
+491,TabPFN v2,3e-05,0,False,one_sample,Thomas,credit,roc_auc,-0.01280287,1
+492,TabPFN v2,3e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.003149936,1
+493,TabPFN v2,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00042016164,1
+494,TabPFN v2,3e-05,0,True,one_sample,Cobranded,credit,roc_auc,0.00084976132,1
+495,TabPFN v2,3e-05,0,True,one_sample,Credit Risk,credit,roc_auc,0.00013535162,1
+496,TabPFN v2,3e-05,0,True,one_sample,GMSC,credit,roc_auc,0.00012722744,1
+497,TabPFN v2,3e-05,0,True,one_sample,German Credit,credit,roc_auc,0.0031449126,1
+498,TabPFN v2,3e-05,0,True,one_sample,HMEQ,credit,roc_auc,0.0013161302,1
+499,TabPFN v2,3e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.0030057606,1
+500,TabPFN v2,3e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.000100045,1
+501,TabPFN v2,3e-05,0,True,one_sample,LendingClub,credit,roc_auc,0.0018223713,1
+502,TabPFN v2,3e-05,0,True,one_sample,MicroFinance,credit,roc_auc,0.0015315678,1
+503,TabPFN v2,3e-05,0,True,one_sample,Myhom,credit,roc_auc,0.00070897109,1
+504,TabPFN v2,3e-05,0,True,one_sample,PropPD1,credit,roc_auc,0.0013057361,1
+505,TabPFN v2,3e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.0014927873,1
+506,TabPFN v2,3e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,-9.2129253e-05,1
+507,TabPFN v2,3e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00062460198,1
+508,TabPFN v2,3e-05,0,True,one_sample,Thomas,credit,roc_auc,0.0029024974,1
+509,TabPFN v2,3e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.00096812211,1
+510,TabPFN v2,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0021966225,1
+511,TabPFN v2,3e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,0.0044364601,1
+512,TabPFN v2,3e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0044427068,1
+513,TabPFN v2,3e-05,0.003,False,one_sample,GMSC,credit,roc_auc,0.0033780385,1
+514,TabPFN v2,3e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-5.849606e-05,1
+515,TabPFN v2,3e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.013776286,1
+516,TabPFN v2,3e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,0.00078715553,1
+517,TabPFN v2,3e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,0.009114582,1
+518,TabPFN v2,3e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,0.010250981,1
+519,TabPFN v2,3e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0060541997,1
+520,TabPFN v2,3e-05,0.003,False,one_sample,Myhom,credit,roc_auc,0.0010448554,1
+521,TabPFN v2,3e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0054813681,1
+522,TabPFN v2,3e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,0.004768925,1
+523,TabPFN v2,3e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00010497416,1
+524,TabPFN v2,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0071377953,1
+525,TabPFN v2,3e-05,0.003,False,one_sample,Thomas,credit,roc_auc,0.006933014,1
+526,TabPFN v2,3e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.0044165258,1
+527,TabPFN v2,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00027246349,1
+528,TabPFN v2,3e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,0.00051830625,1
+529,TabPFN v2,3e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,0.00017047598,1
+530,TabPFN v2,3e-05,0.003,True,one_sample,GMSC,credit,roc_auc,0.00020638595,1
+531,TabPFN v2,3e-05,0.003,True,one_sample,German Credit,credit,roc_auc,0.0013695615,1
+532,TabPFN v2,3e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,0.00095383626,1
+533,TabPFN v2,3e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00027532531,1
+534,TabPFN v2,3e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-5.1369339e-05,1
+535,TabPFN v2,3e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,0.0011370133,1
+536,TabPFN v2,3e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.0007435592,1
+537,TabPFN v2,3e-05,0.003,True,one_sample,Myhom,credit,roc_auc,0.0003252551,1
+538,TabPFN v2,3e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00074617822,1
+539,TabPFN v2,3e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00059453938,1
+540,TabPFN v2,3e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-5.091368e-05,1
+541,TabPFN v2,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00064070459,1
+542,TabPFN v2,3e-05,0.003,True,one_sample,Thomas,credit,roc_auc,0.0016650523,1
+543,TabPFN v2,3e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.00087389553,1
+544,TabPFN v2.6,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00026921928,1
+545,TabPFN v2.6,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,-0.00010532061,1
+546,TabPFN v2.6,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0021054179,1
+547,TabPFN v2.6,3e-07,0,False,one_sample,GMSC,credit,roc_auc,0.00016144477,1
+548,TabPFN v2.6,3e-07,0,False,one_sample,German Credit,credit,roc_auc,-0.000105173,1
+549,TabPFN v2.6,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,-0.00096519716,1
+550,TabPFN v2.6,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0022401011,1
+551,TabPFN v2.6,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,-0.00028118901,1
+552,TabPFN v2.6,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.0013197133,1
+553,TabPFN v2.6,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,-0.00099921183,1
+554,TabPFN v2.6,3e-07,0,False,one_sample,Myhom,credit,roc_auc,0.00049213435,1
+555,TabPFN v2.6,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,-0.00066387218,1
+556,TabPFN v2.6,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,-0.00063258353,1
+557,TabPFN v2.6,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00010776689,1
+558,TabPFN v2.6,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.00010235316,1
+559,TabPFN v2.6,3e-07,0,False,one_sample,Thomas,credit,roc_auc,0.0042531195,1
+560,TabPFN v2.6,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.00074574431,1
+561,TabPFN v2.6,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-7.8231528e-06,1
+562,TabPFN v2.6,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,-1.0264214e-05,1
+563,TabPFN v2.6,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,-1.9369593e-05,1
+564,TabPFN v2.6,3e-07,0,True,one_sample,GMSC,credit,roc_auc,-9.6245445e-06,1
+565,TabPFN v2.6,3e-07,0,True,one_sample,German Credit,credit,roc_auc,-0.00027346694,1
+566,TabPFN v2.6,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-7.9402563e-06,1
+567,TabPFN v2.6,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-6.6936852e-05,1
+568,TabPFN v2.6,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,7.7791758e-06,1
+569,TabPFN v2.6,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,8.2468933e-05,1
+570,TabPFN v2.6,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,3.3072385e-06,1
+571,TabPFN v2.6,3e-07,0,True,one_sample,Myhom,credit,roc_auc,-1.7219388e-05,1
+572,TabPFN v2.6,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,-1.1908794e-05,1
+573,TabPFN v2.6,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,-6.5199554e-05,1
+574,TabPFN v2.6,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,-3.0914641e-05,1
+575,TabPFN v2.6,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,2.7177116e-05,1
+576,TabPFN v2.6,3e-07,0,True,one_sample,Thomas,credit,roc_auc,0.00017119694,1
+577,TabPFN v2.6,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,-3.6909862e-05,1
+578,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00025305583,1
+579,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,-9.3632154e-05,1
+580,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.002079411,1
+581,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,0.00016438407,1
+582,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,-8.1192189e-05,1
+583,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.00094489423,1
+584,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0021852261,1
+585,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0002741992,1
+586,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0014096204,1
+587,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.00094296216,1
+588,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,0.00051955782,1
+589,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.00062729404,1
+590,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.00062878058,1
+591,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,7.1657957e-05,1
+592,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.00011812934,1
+593,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,0.0046828664,1
+594,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00073811027,1
+595,TabPFN v2.6,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-7.9239917e-06,1
+596,TabPFN v2.6,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,-4.1898164e-06,1
+597,TabPFN v2.6,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,-5.5742657e-06,1
+598,TabPFN v2.6,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,-1.018256e-05,1
+599,TabPFN v2.6,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,-0.00035731415,1
+600,TabPFN v2.6,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-4.4196248e-06,1
+601,TabPFN v2.6,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-6.1310139e-05,1
+602,TabPFN v2.6,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,3.8392766e-06,1
+603,TabPFN v2.6,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00017633297,1
+604,TabPFN v2.6,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,6.6372474e-06,1
+605,TabPFN v2.6,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,2.997449e-05,1
+606,TabPFN v2.6,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,-2.6103688e-05,1
+607,TabPFN v2.6,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,-6.4246626e-05,1
+608,TabPFN v2.6,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-3.6109463e-05,1
+609,TabPFN v2.6,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,4.6582232e-05,1
+610,TabPFN v2.6,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,-0.00031077348,1
+611,TabPFN v2.6,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-3.6817797e-05,1
+612,TabPFN v2.6,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00055576972,1
+613,TabPFN v2.6,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,-9.1464314e-05,1
+614,TabPFN v2.6,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0028556899,1
+615,TabPFN v2.6,1e-06,0,False,one_sample,GMSC,credit,roc_auc,0.00024416693,1
+616,TabPFN v2.6,1e-06,0,False,one_sample,German Credit,credit,roc_auc,9.9263446e-05,1
+617,TabPFN v2.6,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,-0.001594834,1
+618,TabPFN v2.6,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,-0.003195226,1
+619,TabPFN v2.6,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,-0.0022244422,1
+620,TabPFN v2.6,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,0.0016094759,1
+621,TabPFN v2.6,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0018872743,1
+622,TabPFN v2.6,1e-06,0,False,one_sample,Myhom,credit,roc_auc,0.0006377551,1
+623,TabPFN v2.6,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,-0.00096052358,1
+624,TabPFN v2.6,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,-0.0011316433,1
+625,TabPFN v2.6,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,-7.2674599e-05,1
+626,TabPFN v2.6,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-2.1300211e-05,1
+627,TabPFN v2.6,1e-06,0,False,one_sample,Thomas,credit,roc_auc,0.0076451929,1
+628,TabPFN v2.6,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.00062013169,1
+629,TabPFN v2.6,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.6982952e-05,1
+630,TabPFN v2.6,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,-2.328076e-05,1
+631,TabPFN v2.6,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0001472749,1
+632,TabPFN v2.6,1e-06,0,True,one_sample,GMSC,credit,roc_auc,-1.47207e-05,1
+633,TabPFN v2.6,1e-06,0,True,one_sample,German Credit,credit,roc_auc,-0.00026181912,1
+634,TabPFN v2.6,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,-1.8523079e-05,1
+635,TabPFN v2.6,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00014999331,1
+636,TabPFN v2.6,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,-9.8063407e-06,1
+637,TabPFN v2.6,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,4.0500771e-05,1
+638,TabPFN v2.6,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,-2.8355922e-05,1
+639,TabPFN v2.6,1e-06,0,True,one_sample,Myhom,credit,roc_auc,2.7848639e-05,1
+640,TabPFN v2.6,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,-0.0001097473,1
+641,TabPFN v2.6,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,-2.479891e-05,1
+642,TabPFN v2.6,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,-7.2182599e-05,1
+643,TabPFN v2.6,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-4.0575543e-06,1
+644,TabPFN v2.6,1e-06,0,True,one_sample,Thomas,credit,roc_auc,0.00029393623,1
+645,TabPFN v2.6,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,-3.4330192e-05,1
+646,TabPFN v2.6,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00049254574,1
+647,TabPFN v2.6,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,-6.2913874e-05,1
+648,TabPFN v2.6,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0027137855,1
+649,TabPFN v2.6,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,0.0002427313,1
+650,TabPFN v2.6,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,-7.9222336e-05,1
+651,TabPFN v2.6,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0015053281,1
+652,TabPFN v2.6,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0029388615,1
+653,TabPFN v2.6,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0017641932,1
+654,TabPFN v2.6,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0013235869,1
+655,TabPFN v2.6,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0016927439,1
+656,TabPFN v2.6,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,0.00055102041,1
+657,TabPFN v2.6,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.00075773151,1
+658,TabPFN v2.6,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.001057438,1
+659,TabPFN v2.6,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-4.6916873e-05,1
+660,TabPFN v2.6,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-5.6914528e-05,1
+661,TabPFN v2.6,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,0.0065549299,1
+662,TabPFN v2.6,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00066656701,1
+663,TabPFN v2.6,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.3573515e-05,1
+664,TabPFN v2.6,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,-6.134061e-06,1
+665,TabPFN v2.6,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.00011910108,1
+666,TabPFN v2.6,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,-9.8293478e-06,1
+667,TabPFN v2.6,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,-9.5152449e-05,1
+668,TabPFN v2.6,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,-1.235151e-05,1
+669,TabPFN v2.6,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00013435684,1
+670,TabPFN v2.6,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,6.0154763e-06,1
+671,TabPFN v2.6,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00020305429,1
+672,TabPFN v2.6,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,-2.3174608e-05,1
+673,TabPFN v2.6,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,6.3562925e-05,1
+674,TabPFN v2.6,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,-7.7478347e-05,1
+675,TabPFN v2.6,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,-5.4711092e-06,1
+676,TabPFN v2.6,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-5.6781876e-05,1
+677,TabPFN v2.6,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-1.2476721e-07,1
+678,TabPFN v2.6,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,-8.435744e-05,1
+679,TabPFN v2.6,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-5.9038986e-05,1
+680,TabPFN v2.6,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0023264377,1
+681,TabPFN v2.6,1e-05,0,False,one_sample,Cobranded,credit,roc_auc,-0.00082391905,1
+682,TabPFN v2.6,1e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0061567328,1
+683,TabPFN v2.6,1e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.00015207219,1
+684,TabPFN v2.6,1e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.0042465742,1
+685,TabPFN v2.6,1e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.0053363425,1
+686,TabPFN v2.6,1e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.017535328,1
+687,TabPFN v2.6,1e-05,0,False,one_sample,Home Credit,credit,roc_auc,-0.022864556,1
+688,TabPFN v2.6,1e-05,0,False,one_sample,LendingClub,credit,roc_auc,0.0011276823,1
+689,TabPFN v2.6,1e-05,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0056367221,1
+690,TabPFN v2.6,1e-05,0,False,one_sample,Myhom,credit,roc_auc,0.00088180272,1
+691,TabPFN v2.6,1e-05,0,False,one_sample,PropPD1,credit,roc_auc,-0.0028280329,1
+692,TabPFN v2.6,1e-05,0,False,one_sample,PropPD2,credit,roc_auc,-0.0028035028,1
+693,TabPFN v2.6,1e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00068771848,1
+694,TabPFN v2.6,1e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00073326211,1
+695,TabPFN v2.6,1e-05,0,False,one_sample,Thomas,credit,roc_auc,0.0093368631,1
+696,TabPFN v2.6,1e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,-4.4624155e-05,1
+697,TabPFN v2.6,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00017052243,1
+698,TabPFN v2.6,1e-05,0,True,one_sample,Cobranded,credit,roc_auc,-8.3506215e-05,1
+699,TabPFN v2.6,1e-05,0,True,one_sample,Credit Risk,credit,roc_auc,-0.00053416378,1
+700,TabPFN v2.6,1e-05,0,True,one_sample,GMSC,credit,roc_auc,-9.2826934e-05,1
+701,TabPFN v2.6,1e-05,0,True,one_sample,German Credit,credit,roc_auc,-0.00070152449,1
+702,TabPFN v2.6,1e-05,0,True,one_sample,HMEQ,credit,roc_auc,-4.183645e-05,1
+703,TabPFN v2.6,1e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00049443016,1
+704,TabPFN v2.6,1e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.00011579652,1
+705,TabPFN v2.6,1e-05,0,True,one_sample,LendingClub,credit,roc_auc,0.00025125125,1
+706,TabPFN v2.6,1e-05,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00021919966,1
+707,TabPFN v2.6,1e-05,0,True,one_sample,Myhom,credit,roc_auc,0.00024255952,1
+708,TabPFN v2.6,1e-05,0,True,one_sample,PropPD1,credit,roc_auc,-0.000184858,1
+709,TabPFN v2.6,1e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.0003262642,1
+710,TabPFN v2.6,1e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,-3.3514158e-05,1
+711,TabPFN v2.6,1e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00012719583,1
+712,TabPFN v2.6,1e-05,0,True,one_sample,Thomas,credit,roc_auc,0.0011028327,1
+713,TabPFN v2.6,1e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,-0.00028179434,1
+714,TabPFN v2.6,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.001187456,1
+715,TabPFN v2.6,1e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,-0.00041677823,1
+716,TabPFN v2.6,1e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0044571434,1
+717,TabPFN v2.6,1e-05,0.003,False,one_sample,GMSC,credit,roc_auc,-1.3251659e-05,1
+718,TabPFN v2.6,1e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-0.0031277835,1
+719,TabPFN v2.6,1e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0026242675,1
+720,TabPFN v2.6,1e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.010496658,1
+721,TabPFN v2.6,1e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.018340133,1
+722,TabPFN v2.6,1e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,0.00098687037,1
+723,TabPFN v2.6,1e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0037473701,1
+724,TabPFN v2.6,1e-05,0.003,False,one_sample,Myhom,credit,roc_auc,0.00046088435,1
+725,TabPFN v2.6,1e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.0015974744,1
+726,TabPFN v2.6,1e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.0014126318,1
+727,TabPFN v2.6,1e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00054267728,1
+728,TabPFN v2.6,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00035643896,1
+729,TabPFN v2.6,1e-05,0.003,False,one_sample,Thomas,credit,roc_auc,0.0095766811,1
+730,TabPFN v2.6,1e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00065638216,1
+731,TabPFN v2.6,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-9.1939635e-05,1
+732,TabPFN v2.6,1e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,-5.0935071e-05,1
+733,TabPFN v2.6,1e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.00038067086,1
+734,TabPFN v2.6,1e-05,0.003,True,one_sample,GMSC,credit,roc_auc,-5.731755e-05,1
+735,TabPFN v2.6,1e-05,0.003,True,one_sample,German Credit,credit,roc_auc,-0.0010121617,1
+736,TabPFN v2.6,1e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,-2.0693128e-05,1
+737,TabPFN v2.6,1e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00042820983,1
+738,TabPFN v2.6,1e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-4.4559413e-05,1
+739,TabPFN v2.6,1e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00022924834,1
+740,TabPFN v2.6,1e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,-0.00012176912,1
+741,TabPFN v2.6,1e-05,0.003,True,one_sample,Myhom,credit,roc_auc,0.00013116497,1
+742,TabPFN v2.6,1e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,-8.3425158e-05,1
+743,TabPFN v2.6,1e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00031328189,1
+744,TabPFN v2.6,1e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-1.5477064e-05,1
+745,TabPFN v2.6,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-5.3350769e-05,1
+746,TabPFN v2.6,1e-05,0.003,True,one_sample,Thomas,credit,roc_auc,0.00040350675,1
+747,TabPFN v2.6,1e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-0.00022464171,1
+748,TabPFN v2.6,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0043025011,1
+749,TabPFN v2.6,3e-05,0,False,one_sample,Cobranded,credit,roc_auc,-0.0023130707,1
+750,TabPFN v2.6,3e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.010838746,1
+751,TabPFN v2.6,3e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.0010102592,1
+752,TabPFN v2.6,3e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.014970966,1
+753,TabPFN v2.6,3e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.012292998,1
+754,TabPFN v2.6,3e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.035582875,1
+755,TabPFN v2.6,3e-05,0,False,one_sample,Home Credit,credit,roc_auc,-0.0095141818,1
+756,TabPFN v2.6,3e-05,0,False,one_sample,LendingClub,credit,roc_auc,2.0960264e-05,1
+757,TabPFN v2.6,3e-05,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0095865893,1
+758,TabPFN v2.6,3e-05,0,False,one_sample,Myhom,credit,roc_auc,0.00066517857,1
+759,TabPFN v2.6,3e-05,0,False,one_sample,PropPD1,credit,roc_auc,-0.0063919619,1
+760,TabPFN v2.6,3e-05,0,False,one_sample,PropPD2,credit,roc_auc,-0.0044199799,1
+761,TabPFN v2.6,3e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.0014765207,1
+762,TabPFN v2.6,3e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0030865182,1
+763,TabPFN v2.6,3e-05,0,False,one_sample,Thomas,credit,roc_auc,-0.0013024508,1
+764,TabPFN v2.6,3e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,-0.0037358271,1
+765,TabPFN v2.6,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00033750976,1
+766,TabPFN v2.6,3e-05,0,True,one_sample,Cobranded,credit,roc_auc,-0.00015515504,1
+767,TabPFN v2.6,3e-05,0,True,one_sample,Credit Risk,credit,roc_auc,-0.00062240508,1
+768,TabPFN v2.6,3e-05,0,True,one_sample,GMSC,credit,roc_auc,-0.00020453235,1
+769,TabPFN v2.6,3e-05,0,True,one_sample,German Credit,credit,roc_auc,-0.00081911614,1
+770,TabPFN v2.6,3e-05,0,True,one_sample,HMEQ,credit,roc_auc,4.5033852e-05,1
+771,TabPFN v2.6,3e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00077499149,1
+772,TabPFN v2.6,3e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.0003226877,1
+773,TabPFN v2.6,3e-05,0,True,one_sample,LendingClub,credit,roc_auc,0.00040492634,1
+774,TabPFN v2.6,3e-05,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00041885116,1
+775,TabPFN v2.6,3e-05,0,True,one_sample,Myhom,credit,roc_auc,0.00027487245,1
+776,TabPFN v2.6,3e-05,0,True,one_sample,PropPD1,credit,roc_auc,1.2747422e-05,1
+777,TabPFN v2.6,3e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.00037850623,1
+778,TabPFN v2.6,3e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,-2.3518587e-05,1
+779,TabPFN v2.6,3e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00015557336,1
+780,TabPFN v2.6,3e-05,0,True,one_sample,Thomas,credit,roc_auc,0.0010680455,1
+781,TabPFN v2.6,3e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,-0.00045593585,1
+782,TabPFN v2.6,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0016948063,1
+783,TabPFN v2.6,3e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,-0.00059330957,1
+784,TabPFN v2.6,3e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0047979737,1
+785,TabPFN v2.6,3e-05,0.003,False,one_sample,GMSC,credit,roc_auc,-3.1548042e-05,1
+786,TabPFN v2.6,3e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-0.0041768585,1
+787,TabPFN v2.6,3e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0031883899,1
+788,TabPFN v2.6,3e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.015797902,1
+789,TabPFN v2.6,3e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0081055386,1
+790,TabPFN v2.6,3e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0015902047,1
+791,TabPFN v2.6,3e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0054868023,1
+792,TabPFN v2.6,3e-05,0.003,False,one_sample,Myhom,credit,roc_auc,0.00093962585,1
+793,TabPFN v2.6,3e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.0025016025,1
+794,TabPFN v2.6,3e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.0017872398,1
+795,TabPFN v2.6,3e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-0.00080778748,1
+796,TabPFN v2.6,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00085945361,1
+797,TabPFN v2.6,3e-05,0.003,False,one_sample,Thomas,credit,roc_auc,0.007151311,1
+798,TabPFN v2.6,3e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,4.7626809e-05,1
+799,TabPFN v2.6,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00012228236,1
+800,TabPFN v2.6,3e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,-5.4295069e-05,1
+801,TabPFN v2.6,3e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.00039532424,1
+802,TabPFN v2.6,3e-05,0.003,True,one_sample,GMSC,credit,roc_auc,-0.000103368,1
+803,TabPFN v2.6,3e-05,0.003,True,one_sample,German Credit,credit,roc_auc,-0.00067857143,1
+804,TabPFN v2.6,3e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,2.2426e-06,1
+805,TabPFN v2.6,3e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00055568849,1
+806,TabPFN v2.6,3e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-8.3354469e-05,1
+807,TabPFN v2.6,3e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,-0.00014672383,1
+808,TabPFN v2.6,3e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,-0.00018254548,1
+809,TabPFN v2.6,3e-05,0.003,True,one_sample,Myhom,credit,roc_auc,0.0002485119,1
+810,TabPFN v2.6,3e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00010302499,1
+811,TabPFN v2.6,3e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00025666194,1
+812,TabPFN v2.6,3e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-1.7974048e-05,1
+813,TabPFN v2.6,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-6.5625321e-05,1
+814,TabPFN v2.6,3e-05,0.003,True,one_sample,Thomas,credit,roc_auc,0.00066197112,1
+815,TabPFN v2.6,3e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-0.00033098967,1
+816,TabPFN v3,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.6919571e-05,1
+817,TabPFN v3,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,0.00072973693,1
+818,TabPFN v3,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,-0.00034117851,1
+819,TabPFN v3,3e-07,0,False,one_sample,GMSC,credit,roc_auc,-4.099238e-05,1
+820,TabPFN v3,3e-07,0,False,one_sample,German Credit,credit,roc_auc,0.0031863652,1
+821,TabPFN v3,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,-0.00031229722,1
+822,TabPFN v3,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0037231925,1
+823,TabPFN v3,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,-7.6042806e-05,1
+824,TabPFN v3,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.0011405541,1
+825,TabPFN v3,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,0.0021398901,1
+826,TabPFN v3,3e-07,0,False,one_sample,Myhom,credit,roc_auc,-0.0005837585,1
+827,TabPFN v3,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,0.0007052964,1
+828,TabPFN v3,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,0.0018460009,1
+829,TabPFN v3,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00061728487,1
+830,TabPFN v3,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,7.6432618e-05,1
+831,TabPFN v3,3e-07,0,False,one_sample,Thomas,credit,roc_auc,0.0013913149,1
+832,TabPFN v3,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,4.5886304e-05,1
+833,TabPFN v3,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-5.6451165e-05,1
+834,TabPFN v3,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,0.00034370703,1
+835,TabPFN v3,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,1.3554758e-05,1
+836,TabPFN v3,3e-07,0,True,one_sample,GMSC,credit,roc_auc,-0.00011484664,1
+837,TabPFN v3,3e-07,0,True,one_sample,German Credit,credit,roc_auc,0.0021646112,1
+838,TabPFN v3,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-0.00012959179,1
+839,TabPFN v3,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-0.0018670509,1
+840,TabPFN v3,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,0.00085166177,1
+841,TabPFN v3,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,0.00094901527,1
+842,TabPFN v3,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,0.001075057,1
+843,TabPFN v3,3e-07,0,True,one_sample,Myhom,credit,roc_auc,0.00041751701,1
+844,TabPFN v3,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,0.001399299,1
+845,TabPFN v3,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,0.0019074781,1
+846,TabPFN v3,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00050500047,1
+847,TabPFN v3,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00033762509,1
+848,TabPFN v3,3e-07,0,True,one_sample,Thomas,credit,roc_auc,0.0016152489,1
+849,TabPFN v3,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.00035775854,1
+850,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-1.5876365e-05,1
+851,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,0.00074681185,1
+852,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0002132175,1
+853,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,-4.1099624e-05,1
+854,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,0.0029964029,1
+855,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.00027702393,1
+856,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0036003988,1
+857,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,6.8168728e-06,1
+858,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0012161875,1
+859,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0021619782,1
+860,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,-0.00056079932,1
+861,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,0.00073311379,1
+862,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0018373491,1
+863,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00053497323,1
+864,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,7.1306646e-05,1
+865,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,0.0016449863,1
+866,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,6.4093912e-05,1
+867,TabPFN v3,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,3.3538653e-05,1
+868,TabPFN v3,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,0.00032734001,1
+869,TabPFN v3,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,0.00017055715,1
+870,TabPFN v3,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00013076192,1
+871,TabPFN v3,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,0.0020695444,1
+872,TabPFN v3,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.0001392812,1
+873,TabPFN v3,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0017455955,1
+874,TabPFN v3,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,0.00080004787,1
+875,TabPFN v3,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00094251192,1
+876,TabPFN v3,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.0011775906,1
+877,TabPFN v3,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,0.00040136054,1
+878,TabPFN v3,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,0.0013679996,1
+879,TabPFN v3,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,0.0019255793,1
+880,TabPFN v3,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00052051439,1
+881,TabPFN v3,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00033066627,1
+882,TabPFN v3,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,0.0017015748,1
+883,TabPFN v3,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.00049498713,1
+884,TabPFN v3,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0005871222,1
+885,TabPFN v3,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,0.00026578143,1
+886,TabPFN v3,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,-0.005777492,1
+887,TabPFN v3,1e-06,0,False,one_sample,GMSC,credit,roc_auc,-0.00029747631,1
+888,TabPFN v3,1e-06,0,False,one_sample,German Credit,credit,roc_auc,-0.0010387119,1
+889,TabPFN v3,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,-0.0006625354,1
+890,TabPFN v3,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0068468946,1
+891,TabPFN v3,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,-0.0013433223,1
+892,TabPFN v3,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,0.0001351984,1
+893,TabPFN v3,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,0.00040092235,1
+894,TabPFN v3,1e-06,0,False,one_sample,Myhom,credit,roc_auc,-0.0042776361,1
+895,TabPFN v3,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,0.0005361012,1
+896,TabPFN v3,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,0.0010104894,1
+897,TabPFN v3,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00042568585,1
+898,TabPFN v3,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00072036392,1
+899,TabPFN v3,1e-06,0,False,one_sample,Thomas,credit,roc_auc,-0.00098120603,1
+900,TabPFN v3,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,-0.00097500248,1
+901,TabPFN v3,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00025506882,1
+902,TabPFN v3,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,0.00037172068,1
+903,TabPFN v3,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,0.00093565686,1
+904,TabPFN v3,1e-06,0,True,one_sample,GMSC,credit,roc_auc,-0.00030778107,1
+905,TabPFN v3,1e-06,0,True,one_sample,German Credit,credit,roc_auc,0.0037627612,1
+906,TabPFN v3,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,-0.00032710154,1
+907,TabPFN v3,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.003286462,1
+908,TabPFN v3,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,0.00017963706,1
+909,TabPFN v3,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,0.0012215516,1
+910,TabPFN v3,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,-1.8894223e-05,1
+911,TabPFN v3,1e-06,0,True,one_sample,Myhom,credit,roc_auc,0.00071534864,1
+912,TabPFN v3,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,0.001328567,1
+913,TabPFN v3,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,0.0014865881,1
+914,TabPFN v3,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00033550591,1
+915,TabPFN v3,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0039051042,1
+916,TabPFN v3,1e-06,0,True,one_sample,Thomas,credit,roc_auc,-0.0023757024,1
+917,TabPFN v3,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,-0.0097668675,1
+918,TabPFN v3,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00058934237,1
+919,TabPFN v3,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,0.00041954278,1
+920,TabPFN v3,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0035809277,1
+921,TabPFN v3,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00029139688,1
+922,TabPFN v3,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,0.00030078794,1
+923,TabPFN v3,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.00059984677,1
+924,TabPFN v3,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0057670939,1
+925,TabPFN v3,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0011812517,1
+926,TabPFN v3,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,0.00031599043,1
+927,TabPFN v3,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.00074622144,1
+928,TabPFN v3,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,-0.0031681548,1
+929,TabPFN v3,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,0.00055395382,1
+930,TabPFN v3,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0012051436,1
+931,TabPFN v3,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00061623506,1
+932,TabPFN v3,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00060414201,1
+933,TabPFN v3,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,-0.0012565932,1
+934,TabPFN v3,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,-0.00089433502,1
+935,TabPFN v3,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.9082493e-05,1
+936,TabPFN v3,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,0.00037896302,1
+937,TabPFN v3,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,0.0012512061,1
+938,TabPFN v3,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00033060226,1
+939,TabPFN v3,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,0.0032141144,1
+940,TabPFN v3,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00028302528,1
+941,TabPFN v3,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0030229881,1
+942,TabPFN v3,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,4.8864432e-05,1
+943,TabPFN v3,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.0009507645,1
+944,TabPFN v3,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.00012715705,1
+945,TabPFN v3,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,0.00072151361,1
+946,TabPFN v3,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,0.0013945678,1
+947,TabPFN v3,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,0.0015640153,1
+948,TabPFN v3,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00029367303,1
+949,TabPFN v3,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0037107645,1
+950,TabPFN v3,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0021565614,1
+951,TabPFN v3,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-0.011037904,1
+952,TabPFN v3,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0091785699,1
+953,TabPFN v3,1e-05,0,False,one_sample,Cobranded,credit,roc_auc,-0.00466283,1
+954,TabPFN v3,1e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.04032058,1
+955,TabPFN v3,1e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.0063049102,1
+956,TabPFN v3,1e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.07352381,1
+957,TabPFN v3,1e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.053915738,1
+958,TabPFN v3,1e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.048337585,1
+959,TabPFN v3,1e-05,0,False,one_sample,Home Credit,credit,roc_auc,-0.016361401,1
+960,TabPFN v3,1e-05,0,False,one_sample,LendingClub,credit,roc_auc,-0.091831949,1
+961,TabPFN v3,1e-05,0,False,one_sample,MicroFinance,credit,roc_auc,-0.011288021,1
+962,TabPFN v3,1e-05,0,False,one_sample,Myhom,credit,roc_auc,-0.035520833,1
+963,TabPFN v3,1e-05,0,False,one_sample,PropPD1,credit,roc_auc,-0.029780957,1
+964,TabPFN v3,1e-05,0,False,one_sample,PropPD2,credit,roc_auc,-0.0059531846,1
+965,TabPFN v3,1e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.0093082026,1
+966,TabPFN v3,1e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.01002682,1
+967,TabPFN v3,1e-05,0,False,one_sample,Thomas,credit,roc_auc,-0.066454461,1
+968,TabPFN v3,1e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,-0.0080818693,1
+969,TabPFN v3,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.013389355,1
+970,TabPFN v3,1e-05,0,True,one_sample,Cobranded,credit,roc_auc,-0.001106661,1
+971,TabPFN v3,1e-05,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0094599078,1
+972,TabPFN v3,1e-05,0,True,one_sample,GMSC,credit,roc_auc,-0.00064766054,1
+973,TabPFN v3,1e-05,0,True,one_sample,German Credit,credit,roc_auc,-0.0079808153,1
+974,TabPFN v3,1e-05,0,True,one_sample,HMEQ,credit,roc_auc,-0.0006758087,1
+975,TabPFN v3,1e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.018535458,1
+976,TabPFN v3,1e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.0058546492,1
+977,TabPFN v3,1e-05,0,True,one_sample,LendingClub,credit,roc_auc,0.0022606751,1
+978,TabPFN v3,1e-05,0,True,one_sample,MicroFinance,credit,roc_auc,-0.003455339,1
+979,TabPFN v3,1e-05,0,True,one_sample,Myhom,credit,roc_auc,-0.00037627551,1
+980,TabPFN v3,1e-05,0,True,one_sample,PropPD1,credit,roc_auc,-0.0029621993,1
+981,TabPFN v3,1e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.00043907839,1
+982,TabPFN v3,1e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,-0.0011488341,1
+983,TabPFN v3,1e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0018071833,1
+984,TabPFN v3,1e-05,0,True,one_sample,Thomas,credit,roc_auc,-0.013696321,1
+985,TabPFN v3,1e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,-0.0034891639,1
+986,TabPFN v3,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0093026782,1
+987,TabPFN v3,1e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,-0.0023745573,1
+988,TabPFN v3,1e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.026048062,1
+989,TabPFN v3,1e-05,0.003,False,one_sample,GMSC,credit,roc_auc,-0.0021965002,1
+990,TabPFN v3,1e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-0.029074341,1
+991,TabPFN v3,1e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.01579107,1
+992,TabPFN v3,1e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.032414566,1
+993,TabPFN v3,1e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.010708957,1
+994,TabPFN v3,1e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,-0.048910795,1
+995,TabPFN v3,1e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0060928789,1
+996,TabPFN v3,1e-05,0.003,False,one_sample,Myhom,credit,roc_auc,-0.051384354,1
+997,TabPFN v3,1e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.0058876534,1
+998,TabPFN v3,1e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.0035472518,1
+999,TabPFN v3,1e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-0.004694911,1
+1000,TabPFN v3,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0052952888,1
+1001,TabPFN v3,1e-05,0.003,False,one_sample,Thomas,credit,roc_auc,-0.038759834,1
+1002,TabPFN v3,1e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,-0.0030438962,1
+1003,TabPFN v3,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0043212302,1
+1004,TabPFN v3,1e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.0011243168,1
+1005,TabPFN v3,1e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.010471806,1
+1006,TabPFN v3,1e-05,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00062794813,1
+1007,TabPFN v3,1e-05,0.003,True,one_sample,German Credit,credit,roc_auc,-0.012931141,1
+1008,TabPFN v3,1e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00058082699,1
+1009,TabPFN v3,1e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.016583804,1
+1010,TabPFN v3,1e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.0074468658,1
+1011,TabPFN v3,1e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,0.0020183063,1
+1012,TabPFN v3,1e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,-0.0035572711,1
+1013,TabPFN v3,1e-05,0.003,True,one_sample,Myhom,credit,roc_auc,-0.00061819728,1
+1014,TabPFN v3,1e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,-0.001801447,1
+1015,TabPFN v3,1e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00064876513,1
+1016,TabPFN v3,1e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-0.00078556062,1
+1017,TabPFN v3,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0010082999,1
+1018,TabPFN v3,1e-05,0.003,True,one_sample,Thomas,credit,roc_auc,-0.011573848,1
+1019,TabPFN v3,1e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-0.0014030765,1
+1020,TabPFN v3,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.041975897,1
+1021,TabPFN v3,3e-05,0,False,one_sample,Cobranded,credit,roc_auc,-0.010480923,1
+1022,TabPFN v3,3e-05,0,False,one_sample,Credit Risk,credit,roc_auc,-0.11955175,1
+1023,TabPFN v3,3e-05,0,False,one_sample,GMSC,credit,roc_auc,-0.035063096,1
+1024,TabPFN v3,3e-05,0,False,one_sample,German Credit,credit,roc_auc,-0.067517472,1
+1025,TabPFN v3,3e-05,0,False,one_sample,HMEQ,credit,roc_auc,-0.1083002,1
+1026,TabPFN v3,3e-05,0,False,one_sample,Hackerearth,credit,roc_auc,-0.10296921,1
+1027,TabPFN v3,3e-05,0,False,one_sample,Home Credit,credit,roc_auc,-0.024872981,1
+1028,TabPFN v3,3e-05,0,False,one_sample,LendingClub,credit,roc_auc,-0.10125614,1
+1029,TabPFN v3,3e-05,0,False,one_sample,MicroFinance,credit,roc_auc,-0.027335145,1
+1030,TabPFN v3,3e-05,0,False,one_sample,Myhom,credit,roc_auc,-0.050152211,1
+1031,TabPFN v3,3e-05,0,False,one_sample,PropPD1,credit,roc_auc,-0.07795235,1
+1032,TabPFN v3,3e-05,0,False,one_sample,PropPD2,credit,roc_auc,-0.025994957,1
+1033,TabPFN v3,3e-05,0,False,one_sample,SBA Loans Case,credit,roc_auc,-0.013473872,1
+1034,TabPFN v3,3e-05,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.049687435,1
+1035,TabPFN v3,3e-05,0,False,one_sample,Thomas,credit,roc_auc,-0.081342612,1
+1036,TabPFN v3,3e-05,0,False,one_sample,Vehicle Loan,credit,roc_auc,-0.029550256,1
+1037,TabPFN v3,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.002806646,1
+1038,TabPFN v3,3e-05,0,True,one_sample,Cobranded,credit,roc_auc,-0.0022508427,1
+1039,TabPFN v3,3e-05,0,True,one_sample,Credit Risk,credit,roc_auc,-0.016328272,1
+1040,TabPFN v3,3e-05,0,True,one_sample,GMSC,credit,roc_auc,-0.0074366875,1
+1041,TabPFN v3,3e-05,0,True,one_sample,German Credit,credit,roc_auc,-0.021918465,1
+1042,TabPFN v3,3e-05,0,True,one_sample,HMEQ,credit,roc_auc,-0.0016450762,1
+1043,TabPFN v3,3e-05,0,True,one_sample,Hackerearth,credit,roc_auc,-0.036720703,1
+1044,TabPFN v3,3e-05,0,True,one_sample,Home Credit,credit,roc_auc,-0.021560987,1
+1045,TabPFN v3,3e-05,0,True,one_sample,LendingClub,credit,roc_auc,-0.0035002476,1
+1046,TabPFN v3,3e-05,0,True,one_sample,MicroFinance,credit,roc_auc,-0.0064000643,1
+1047,TabPFN v3,3e-05,0,True,one_sample,Myhom,credit,roc_auc,-0.0025136054,1
+1048,TabPFN v3,3e-05,0,True,one_sample,PropPD1,credit,roc_auc,-0.0015082919,1
+1049,TabPFN v3,3e-05,0,True,one_sample,PropPD2,credit,roc_auc,-0.0072419014,1
+1050,TabPFN v3,3e-05,0,True,one_sample,SBA Loans Case,credit,roc_auc,-0.003084966,1
+1051,TabPFN v3,3e-05,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0034502705,1
+1052,TabPFN v3,3e-05,0,True,one_sample,Thomas,credit,roc_auc,-0.061270872,1
+1053,TabPFN v3,3e-05,0,True,one_sample,Vehicle Loan,credit,roc_auc,-0.0060019466,1
+1054,TabPFN v3,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.020506631,1
+1055,TabPFN v3,3e-05,0.003,False,one_sample,Cobranded,credit,roc_auc,-0.0033056471,1
+1056,TabPFN v3,3e-05,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.034510984,1
+1057,TabPFN v3,3e-05,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00507353,1
+1058,TabPFN v3,3e-05,0.003,False,one_sample,German Credit,credit,roc_auc,-0.044297362,1
+1059,TabPFN v3,3e-05,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.024306664,1
+1060,TabPFN v3,3e-05,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.053524444,1
+1061,TabPFN v3,3e-05,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.01387958,1
+1062,TabPFN v3,3e-05,0.003,False,one_sample,LendingClub,credit,roc_auc,-0.025769699,1
+1063,TabPFN v3,3e-05,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.010642747,1
+1064,TabPFN v3,3e-05,0.003,False,one_sample,Myhom,credit,roc_auc,-0.0082168367,1
+1065,TabPFN v3,3e-05,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.033507039,1
+1066,TabPFN v3,3e-05,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.0044125079,1
+1067,TabPFN v3,3e-05,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-0.0034726067,1
+1068,TabPFN v3,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0045768949,1
+1069,TabPFN v3,3e-05,0.003,False,one_sample,Thomas,credit,roc_auc,-0.055782612,1
+1070,TabPFN v3,3e-05,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,-0.0050269582,1
+1071,TabPFN v3,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.033531633,1
+1072,TabPFN v3,3e-05,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.0021266907,1
+1073,TabPFN v3,3e-05,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.014382241,1
+1074,TabPFN v3,3e-05,0.003,True,one_sample,GMSC,credit,roc_auc,-0.0043532009,1
+1075,TabPFN v3,3e-05,0.003,True,one_sample,German Credit,credit,roc_auc,-0.03088592,1
+1076,TabPFN v3,3e-05,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00084424185,1
+1077,TabPFN v3,3e-05,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.028613246,1
+1078,TabPFN v3,3e-05,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.0097675649,1
+1079,TabPFN v3,3e-05,0.003,True,one_sample,LendingClub,credit,roc_auc,-0.00016974228,1
+1080,TabPFN v3,3e-05,0.003,True,one_sample,MicroFinance,credit,roc_auc,-0.0038554484,1
+1081,TabPFN v3,3e-05,0.003,True,one_sample,Myhom,credit,roc_auc,-0.0004275085,1
+1082,TabPFN v3,3e-05,0.003,True,one_sample,PropPD1,credit,roc_auc,-0.0020392752,1
+1083,TabPFN v3,3e-05,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.0027606989,1
+1084,TabPFN v3,3e-05,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-0.0034800196,1
+1085,TabPFN v3,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.01172566,1
+1086,TabPFN v3,3e-05,0.003,True,one_sample,Thomas,credit,roc_auc,-0.026037659,1
+1087,TabPFN v3,3e-05,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-0.0026957852,1
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,0.0034446865,-0.0018223383,0.000146919,17
+1,TabICLv2,3e-07,0,True,one_sample,0.0039638425,-0.00090965466,0.00013127916,17
+2,TabICLv2,3e-07,0.003,False,one_sample,0.0036946122,-0.0016434439,0.00022214889,17
+3,TabICLv2,3e-07,0.003,True,one_sample,0.0039437524,-0.00093561173,0.00012213118,17
+4,TabICLv2,1e-06,0,False,one_sample,0.0026216357,-0.0026100114,0.00018763827,17
+5,TabICLv2,1e-06,0,True,one_sample,0.0037197904,-0.0013224896,0.00019097774,17
+6,TabICLv2,1e-06,0.003,False,one_sample,0.0032542405,-0.0018641114,0.0003483988,17
+7,TabICLv2,1e-06,0.003,True,one_sample,0.0037429814,-0.00149375,0.00016632851,17
+8,TabICLv2,1e-05,0,False,one_sample,-0.022399734,-0.028874377,-0.0035238799,17
+9,TabICLv2,1e-05,0,True,one_sample,0.0008226641,-0.00328867,0.00043318618,17
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.005951033,-0.018493122,-0.0012730129,17
+11,TabICLv2,1e-05,0.003,True,one_sample,0.0017236009,-0.0024952932,0.00056714576,17
+12,TabICLv2,3e-05,0,False,one_sample,-0.042181358,-0.064810038,-0.016083084,17
+13,TabICLv2,3e-05,0,True,one_sample,-0.0025077923,-0.0054988576,-0.00089196379,17
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.0082576592,-0.015123721,-0.0028723349,17
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.00022244584,-0.0033700646,-0.00037226374,17
+16,TabPFN v2,3e-07,0,False,one_sample,0.0047954514,0.0028898558,0.0064191092,17
+17,TabPFN v2,3e-07,0,True,one_sample,4.2761538e-05,-1.1479529e-05,4.6277458e-05,17
+18,TabPFN v2,3e-07,0.003,False,one_sample,0.0047725031,0.0028900965,0.0063839468,17
+19,TabPFN v2,3e-07,0.003,True,one_sample,4.0753439e-05,-1.4134149e-05,5.6557593e-05,17
+20,TabPFN v2,1e-06,0,False,one_sample,0.005437213,0.003727348,0.0070082689,17
+21,TabPFN v2,1e-06,0,True,one_sample,8.2046818e-05,1.9896427e-05,0.00016438705,17
+22,TabPFN v2,1e-06,0.003,False,one_sample,0.0054169542,0.0036243503,0.0069070627,17
+23,TabPFN v2,1e-06,0.003,True,one_sample,7.5783944e-05,2.5904434e-05,0.00015144854,17
+24,TabPFN v2,1e-05,0,False,one_sample,0.0030892111,0.0013418367,0.0059603824,17
+25,TabPFN v2,1e-05,0,True,one_sample,0.00039701141,1.059629e-05,0.00094559319,17
+26,TabPFN v2,1e-05,0.003,False,one_sample,0.004731066,0.0025711058,0.0069500612,17
+27,TabPFN v2,1e-05,0.003,True,one_sample,0.00030794194,5.3368414e-06,0.00059008261,17
+28,TabPFN v2,3e-05,0,False,one_sample,-0.0041904351,-0.0097034332,0.0035343193,17
+29,TabPFN v2,3e-05,0,True,one_sample,0.00060743336,-9.2129253e-05,0.0013161302,17
+30,TabPFN v2,3e-05,0.003,False,one_sample,0.0028010623,0.00078715553,0.0060541997,17
+31,TabPFN v2,3e-05,0.003,True,one_sample,0.00047680076,-5.091368e-05,0.00087389553,17
+32,TabPFN v2.6,3e-07,0,False,one_sample,-6.9706431e-05,-0.00066387218,0.00016144477,17
+33,TabPFN v2.6,3e-07,0,True,one_sample,-1.5626376e-05,-3.0914641e-05,3.3072385e-06,17
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,-2.3901248e-05,-0.00062878058,0.00016438407,17
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,-3.8917611e-05,-3.6817797e-05,3.8392766e-06,17
+36,TabPFN v2.6,1e-06,0,False,one_sample,-0.00021969742,-0.001594834,0.00024416693,17
+37,TabPFN v2.6,1e-06,0,True,one_sample,-3.3152236e-05,-7.2182599e-05,-9.8063407e-06,17
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00022527998,-0.0015053281,0.0002427313,17
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,-2.5546661e-05,-7.7478347e-05,-5.4711092e-06,17
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.0035782046,-0.0053363425,-0.00015207219,17
+41,TabPFN v2.6,1e-05,0,True,one_sample,-0.00010651704,-0.00028179434,-4.183645e-05,17
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0021552498,-0.0031277835,-1.3251659e-05,17
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.00012555958,-0.00022464171,-2.0693128e-05,17
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.007067018,-0.0095865893,-0.0014765207,17
+45,TabPFN v2.6,3e-05,0,True,one_sample,-0.00016842101,-0.00041885116,1.2747422e-05,17
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.0023588496,-0.0041768585,-3.1548042e-05,17
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.00011633257,-0.00025666194,-1.7974048e-05,17
+48,TabPFN v3,3e-07,0,False,one_sample,0.00039849298,-7.6042806e-05,0.0011405541,17
+49,TabPFN v3,3e-07,0,True,one_sample,0.00057468197,1.3554758e-05,0.001075057,17
+50,TabPFN v3,3e-07,0.003,False,one_sample,0.00042974146,-4.1099624e-05,0.0012161875,17
+51,TabPFN v3,3e-07,0.003,True,one_sample,0.00060283377,0.00017055715,0.0011775906,17
+52,TabPFN v3,1e-06,0,False,one_sample,-0.0012196226,-0.0010387119,0.00026578143,17
+53,TabPFN v3,1e-06,0,True,one_sample,-0.00055267688,-0.00032710154,0.00093565686,17
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.00081030642,-0.0011812517,0.00041954278,17
+55,TabPFN v3,1e-06,0.003,True,one_sample,-0.00062506406,-0.00033060226,0.0009507645,17
+56,TabPFN v3,1e-05,0,False,one_sample,-0.030638337,-0.048337585,-0.0091785699,17
+57,TabPFN v3,1e-05,0,True,one_sample,-0.0048684727,-0.0079808153,-0.0006758087,17
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.017383976,-0.029074341,-0.004694911,17
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.0043215352,-0.0074468658,-0.00064876513,17
+60,TabPFN v3,3e-05,0,False,one_sample,-0.056910382,-0.081342612,-0.027335145,17
+61,TabPFN v3,3e-05,0,True,one_sample,-0.012096461,-0.016328272,-0.002806646,17
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.020636044,-0.033507039,-0.0050269582,17
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.010452737,-0.014382241,-0.0021266907,17
+
+Figure: pd_factorial_ood_roc_auc
+PD. Completed five-fold final benchmark, PD non-credit retention. CPT minus original AUC. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,openml_46905,ood,roc_auc,-0.0022843624,4
+1,TabICLv2,3e-07,0,False,one_sample,openml_46947,ood,roc_auc,-0.001244076,4
+2,TabICLv2,3e-07,0,False,one_sample,openml_46952,ood,roc_auc,-0.00021311321,4
+3,TabICLv2,3e-07,0,False,one_sample,openml_46956,ood,roc_auc,0.01045891,4
+4,TabICLv2,3e-07,0,True,one_sample,openml_46905,ood,roc_auc,-0.0013877131,4
+5,TabICLv2,3e-07,0,True,one_sample,openml_46947,ood,roc_auc,-0.00069210348,4
+6,TabICLv2,3e-07,0,True,one_sample,openml_46952,ood,roc_auc,-0.00056128136,4
+7,TabICLv2,3e-07,0,True,one_sample,openml_46956,ood,roc_auc,0.0091096424,4
+8,TabICLv2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.0021522071,4
+9,TabICLv2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.0010880902,4
+10,TabICLv2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,-8.7575815e-05,4
+11,TabICLv2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,0.010385683,4
+12,TabICLv2,3e-07,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.001694493,4
+13,TabICLv2,3e-07,0.003,True,one_sample,openml_46947,ood,roc_auc,-0.00072819745,4
+14,TabICLv2,3e-07,0.003,True,one_sample,openml_46952,ood,roc_auc,-0.00047059334,4
+15,TabICLv2,3e-07,0.003,True,one_sample,openml_46956,ood,roc_auc,0.0089940545,4
+16,TabICLv2,1e-06,0,False,one_sample,openml_46905,ood,roc_auc,-0.0056984903,4
+17,TabICLv2,1e-06,0,False,one_sample,openml_46947,ood,roc_auc,-0.0023935671,4
+18,TabICLv2,1e-06,0,False,one_sample,openml_46952,ood,roc_auc,-0.0013365806,4
+19,TabICLv2,1e-06,0,False,one_sample,openml_46956,ood,roc_auc,0.007622201,4
+20,TabICLv2,1e-06,0,True,one_sample,openml_46905,ood,roc_auc,-0.0036608398,4
+21,TabICLv2,1e-06,0,True,one_sample,openml_46947,ood,roc_auc,-0.0010150802,4
+22,TabICLv2,1e-06,0,True,one_sample,openml_46952,ood,roc_auc,6.1592577e-05,4
+23,TabICLv2,1e-06,0,True,one_sample,openml_46956,ood,roc_auc,0.010124306,4
+24,TabICLv2,1e-06,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.0045294041,4
+25,TabICLv2,1e-06,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.0017325614,4
+26,TabICLv2,1e-06,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.00052118466,4
+27,TabICLv2,1e-06,0.003,False,one_sample,openml_46956,ood,roc_auc,0.0090755254,4
+28,TabICLv2,1e-06,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.0032079878,4
+29,TabICLv2,1e-06,0.003,True,one_sample,openml_46947,ood,roc_auc,-0.00098542716,4
+30,TabICLv2,1e-06,0.003,True,one_sample,openml_46952,ood,roc_auc,-7.4692761e-05,4
+31,TabICLv2,1e-06,0.003,True,one_sample,openml_46956,ood,roc_auc,0.010131624,4
+32,TabICLv2,1e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.045656675,4
+33,TabICLv2,1e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.015955348,4
+34,TabICLv2,1e-05,0,False,one_sample,openml_46952,ood,roc_auc,-0.03841296,4
+35,TabICLv2,1e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.11078717,4
+36,TabICLv2,1e-05,0,True,one_sample,openml_46905,ood,roc_auc,-0.0096148858,4
+37,TabICLv2,1e-05,0,True,one_sample,openml_46947,ood,roc_auc,-0.0019135186,4
+38,TabICLv2,1e-05,0,True,one_sample,openml_46952,ood,roc_auc,-0.0002159359,4
+39,TabICLv2,1e-05,0,True,one_sample,openml_46956,ood,roc_auc,0.0090734124,4
+40,TabICLv2,1e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.016613066,4
+41,TabICLv2,1e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.0050608451,4
+42,TabICLv2,1e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.0053471549,4
+43,TabICLv2,1e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.015967621,4
+44,TabICLv2,1e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.0090395255,4
+45,TabICLv2,1e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,-0.0017684403,4
+46,TabICLv2,1e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,-0.00020088155,4
+47,TabICLv2,1e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,0.008790022,4
+48,TabICLv2,3e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.13349321,4
+49,TabICLv2,3e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.025120452,4
+50,TabICLv2,3e-05,0,False,one_sample,openml_46952,ood,roc_auc,-0.019890928,4
+51,TabICLv2,3e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.10191613,4
+52,TabICLv2,3e-05,0,True,one_sample,openml_46905,ood,roc_auc,-0.013052831,4
+53,TabICLv2,3e-05,0,True,one_sample,openml_46947,ood,roc_auc,-0.0036562572,4
+54,TabICLv2,3e-05,0,True,one_sample,openml_46952,ood,roc_auc,-0.0017110939,4
+55,TabICLv2,3e-05,0,True,one_sample,openml_46956,ood,roc_auc,0.0061961367,4
+56,TabICLv2,3e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.023540164,4
+57,TabICLv2,3e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.0045378846,4
+58,TabICLv2,3e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.0046803483,4
+59,TabICLv2,3e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.0094846612,4
+60,TabICLv2,3e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.01017869,4
+61,TabICLv2,3e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,-0.0021551268,4
+62,TabICLv2,3e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,-0.00088567375,4
+63,TabICLv2,3e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,0.0076158589,4
+64,TabPFN v2,3e-07,0,False,one_sample,openml_46905,ood,roc_auc,0.019351589,4
+65,TabPFN v2,3e-07,0,False,one_sample,openml_46947,ood,roc_auc,0.0014494506,4
+66,TabPFN v2,3e-07,0,False,one_sample,openml_46952,ood,roc_auc,0.0020095573,4
+67,TabPFN v2,3e-07,0,False,one_sample,openml_46956,ood,roc_auc,0.0023329195,4
+68,TabPFN v2,3e-07,0,True,one_sample,openml_46905,ood,roc_auc,0.0001901475,4
+69,TabPFN v2,3e-07,0,True,one_sample,openml_46947,ood,roc_auc,1.4780276e-05,4
+70,TabPFN v2,3e-07,0,True,one_sample,openml_46952,ood,roc_auc,4.2611786e-05,4
+71,TabPFN v2,3e-07,0,True,one_sample,openml_46956,ood,roc_auc,0.00012948802,4
+72,TabPFN v2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,0.01934502,4
+73,TabPFN v2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,0.0014423099,4
+74,TabPFN v2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,0.0020220785,4
+75,TabPFN v2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,0.0021608467,4
+76,TabPFN v2,3e-07,0.003,True,one_sample,openml_46905,ood,roc_auc,0.00021439656,4
+77,TabPFN v2,3e-07,0.003,True,one_sample,openml_46947,ood,roc_auc,1.641629e-05,4
+78,TabPFN v2,3e-07,0.003,True,one_sample,openml_46952,ood,roc_auc,1.494579e-05,4
+79,TabPFN v2,3e-07,0.003,True,one_sample,openml_46956,ood,roc_auc,7.4670857e-05,4
+80,TabPFN v2,1e-06,0,False,one_sample,openml_46905,ood,roc_auc,0.014683353,4
+81,TabPFN v2,1e-06,0,False,one_sample,openml_46947,ood,roc_auc,0.0014537716,4
+82,TabPFN v2,1e-06,0,False,one_sample,openml_46952,ood,roc_auc,0.0023805603,4
+83,TabPFN v2,1e-06,0,False,one_sample,openml_46956,ood,roc_auc,0.0054677279,4
+84,TabPFN v2,1e-06,0,True,one_sample,openml_46905,ood,roc_auc,0.00045681522,4
+85,TabPFN v2,1e-06,0,True,one_sample,openml_46947,ood,roc_auc,3.9022247e-05,4
+86,TabPFN v2,1e-06,0,True,one_sample,openml_46952,ood,roc_auc,2.7267924e-05,4
+87,TabPFN v2,1e-06,0,True,one_sample,openml_46956,ood,roc_auc,0.00024075208,4
+88,TabPFN v2,1e-06,0.003,False,one_sample,openml_46905,ood,roc_auc,0.015610396,4
+89,TabPFN v2,1e-06,0.003,False,one_sample,openml_46947,ood,roc_auc,0.0014822152,4
+90,TabPFN v2,1e-06,0.003,False,one_sample,openml_46952,ood,roc_auc,0.0022394439,4
+91,TabPFN v2,1e-06,0.003,False,one_sample,openml_46956,ood,roc_auc,0.0051220696,4
+92,TabPFN v2,1e-06,0.003,True,one_sample,openml_46905,ood,roc_auc,0.00040884336,4
+93,TabPFN v2,1e-06,0.003,True,one_sample,openml_46947,ood,roc_auc,3.5096667e-05,4
+94,TabPFN v2,1e-06,0.003,True,one_sample,openml_46952,ood,roc_auc,1.9740747e-05,4
+95,TabPFN v2,1e-06,0.003,True,one_sample,openml_46956,ood,roc_auc,0.00023465322,4
+96,TabPFN v2,1e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.0081432525,4
+97,TabPFN v2,1e-05,0,False,one_sample,openml_46947,ood,roc_auc,-6.9161275e-05,4
+98,TabPFN v2,1e-05,0,False,one_sample,openml_46952,ood,roc_auc,0.0017154546,4
+99,TabPFN v2,1e-05,0,False,one_sample,openml_46956,ood,roc_auc,0.00016786256,4
+100,TabPFN v2,1e-05,0,True,one_sample,openml_46905,ood,roc_auc,0.0021679016,4
+101,TabPFN v2,1e-05,0,True,one_sample,openml_46947,ood,roc_auc,5.5957183e-05,4
+102,TabPFN v2,1e-05,0,True,one_sample,openml_46952,ood,roc_auc,0.00050267432,4
+103,TabPFN v2,1e-05,0,True,one_sample,openml_46956,ood,roc_auc,0.0014428859,4
+104,TabPFN v2,1e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,0.0037514383,4
+105,TabPFN v2,1e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,0.00057887894,4
+106,TabPFN v2,1e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,0.0023344202,4
+107,TabPFN v2,1e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,0.005130392,4
+108,TabPFN v2,1e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,0.0016311365,4
+109,TabPFN v2,1e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,6.9662938e-05,4
+110,TabPFN v2,1e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,0.00018322163,4
+111,TabPFN v2,1e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,0.00061409058,4
+112,TabPFN v2,3e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.047301547,4
+113,TabPFN v2,3e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.0022037964,4
+114,TabPFN v2,3e-05,0,False,one_sample,openml_46952,ood,roc_auc,-0.0065369375,4
+115,TabPFN v2,3e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.027858859,4
+116,TabPFN v2,3e-05,0,True,one_sample,openml_46905,ood,roc_auc,0.0033716219,4
+117,TabPFN v2,3e-05,0,True,one_sample,openml_46947,ood,roc_auc,4.5158262e-05,4
+118,TabPFN v2,3e-05,0,True,one_sample,openml_46952,ood,roc_auc,0.00088039026,4
+119,TabPFN v2,3e-05,0,True,one_sample,openml_46956,ood,roc_auc,0.0022058602,4
+120,TabPFN v2,3e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.0041509452,4
+121,TabPFN v2,3e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,0.00037898261,4
+122,TabPFN v2,3e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,0.00064013578,4
+123,TabPFN v2,3e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,0.0013298026,4
+124,TabPFN v2,3e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,0.0033593987,4
+125,TabPFN v2,3e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,8.6403124e-05,4
+126,TabPFN v2,3e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,0.0004272216,4
+127,TabPFN v2,3e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,0.00089295505,4
+128,TabPFN v2.6,3e-07,0,False,one_sample,openml_46905,ood,roc_auc,0.00071874395,4
+129,TabPFN v2.6,3e-07,0,False,one_sample,openml_46947,ood,roc_auc,-9.1080899e-05,4
+130,TabPFN v2.6,3e-07,0,False,one_sample,openml_46952,ood,roc_auc,0.0019875548,4
+131,TabPFN v2.6,3e-07,0,False,one_sample,openml_46956,ood,roc_auc,-0.00019005663,4
+132,TabPFN v2.6,3e-07,0,True,one_sample,openml_46905,ood,roc_auc,1.751235e-05,4
+133,TabPFN v2.6,3e-07,0,True,one_sample,openml_46947,ood,roc_auc,-7.821305e-06,4
+134,TabPFN v2.6,3e-07,0,True,one_sample,openml_46952,ood,roc_auc,-1.2593547e-05,4
+135,TabPFN v2.6,3e-07,0,True,one_sample,openml_46956,ood,roc_auc,3.0481704e-05,4
+136,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,0.00073037593,4
+137,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,-8.6108633e-05,4
+138,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,0.00197241,4
+139,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.00027081372,4
+140,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46905,ood,roc_auc,1.6868063e-05,4
+141,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46947,ood,roc_auc,-1.2791981e-06,4
+142,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46952,ood,roc_auc,7.4548007e-06,4
+143,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46956,ood,roc_auc,5.9463168e-05,4
+144,TabPFN v2.6,1e-06,0,False,one_sample,openml_46905,ood,roc_auc,-0.00014931967,4
+145,TabPFN v2.6,1e-06,0,False,one_sample,openml_46947,ood,roc_auc,-0.00016813747,4
+146,TabPFN v2.6,1e-06,0,False,one_sample,openml_46952,ood,roc_auc,0.002653511,4
+147,TabPFN v2.6,1e-06,0,False,one_sample,openml_46956,ood,roc_auc,-0.0001835756,4
+148,TabPFN v2.6,1e-06,0,True,one_sample,openml_46905,ood,roc_auc,-5.2422408e-05,4
+149,TabPFN v2.6,1e-06,0,True,one_sample,openml_46947,ood,roc_auc,1.9509257e-06,4
+150,TabPFN v2.6,1e-06,0,True,one_sample,openml_46952,ood,roc_auc,5.0247528e-05,4
+151,TabPFN v2.6,1e-06,0,True,one_sample,openml_46956,ood,roc_auc,0.00013406454,4
+152,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46905,ood,roc_auc,6.0750653e-05,4
+153,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.00014865561,4
+154,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46952,ood,roc_auc,0.0026205977,4
+155,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.00015018185,4
+156,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46905,ood,roc_auc,-4.8180527e-05,4
+157,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46947,ood,roc_auc,3.0170311e-06,4
+158,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46952,ood,roc_auc,4.2720351e-05,4
+159,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46956,ood,roc_auc,1.0637486e-05,4
+160,TabPFN v2.6,1e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.0062653077,4
+161,TabPFN v2.6,1e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.00071259007,4
+162,TabPFN v2.6,1e-05,0,False,one_sample,openml_46952,ood,roc_auc,0.0034161624,4
+163,TabPFN v2.6,1e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.0031165023,4
+164,TabPFN v2.6,1e-05,0,True,one_sample,openml_46905,ood,roc_auc,-0.00058562204,4
+165,TabPFN v2.6,1e-05,0,True,one_sample,openml_46947,ood,roc_auc,-4.2322216e-05,4
+166,TabPFN v2.6,1e-05,0,True,one_sample,openml_46952,ood,roc_auc,0.00019384291,4
+167,TabPFN v2.6,1e-05,0,True,one_sample,openml_46956,ood,roc_auc,0.00024058469,4
+168,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.0032203663,4
+169,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.00040679578,4
+170,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,0.0038289992,4
+171,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.00071369699,4
+172,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.00033375259,4
+173,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,-4.3119185e-05,4
+174,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,0.00013840236,4
+175,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,-5.6390047e-05,4
+176,TabPFN v2.6,3e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.013730693,4
+177,TabPFN v2.6,3e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.0014047665,4
+178,TabPFN v2.6,3e-05,0,False,one_sample,openml_46952,ood,roc_auc,-0.001057297,4
+179,TabPFN v2.6,3e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.020237508,4
+180,TabPFN v2.6,3e-05,0,True,one_sample,openml_46905,ood,roc_auc,-0.0010693211,4
+181,TabPFN v2.6,3e-05,0,True,one_sample,openml_46947,ood,roc_auc,-7.5980575e-05,4
+182,TabPFN v2.6,3e-05,0,True,one_sample,openml_46952,ood,roc_auc,0.00028029689,4
+183,TabPFN v2.6,3e-05,0,True,one_sample,openml_46956,ood,roc_auc,-6.2428904e-05,4
+184,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.004287743,4
+185,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.00039227572,4
+186,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,0.0038926726,4
+187,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.0039559478,4
+188,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.0004219223,4
+189,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,-4.378115e-05,4
+190,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,0.0001739936,4
+191,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,2.4360728e-05,4
+192,TabPFN v3,3e-07,0,False,one_sample,openml_46905,ood,roc_auc,0.0045081217,4
+193,TabPFN v3,3e-07,0,False,one_sample,openml_46947,ood,roc_auc,-0.00054160243,4
+194,TabPFN v3,3e-07,0,False,one_sample,openml_46952,ood,roc_auc,-0.00091020946,4
+195,TabPFN v3,3e-07,0,False,one_sample,openml_46956,ood,roc_auc,-0.00044474672,4
+196,TabPFN v3,3e-07,0,True,one_sample,openml_46905,ood,roc_auc,0.0050919042,4
+197,TabPFN v3,3e-07,0,True,one_sample,openml_46947,ood,roc_auc,6.4255399e-05,4
+198,TabPFN v3,3e-07,0,True,one_sample,openml_46952,ood,roc_auc,0.0006006181,4
+199,TabPFN v3,3e-07,0,True,one_sample,openml_46956,ood,roc_auc,0.000147832,4
+200,TabPFN v3,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,0.0044594765,4
+201,TabPFN v3,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.00050039519,4
+202,TabPFN v3,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.00079415341,4
+203,TabPFN v3,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.00037483873,4
+204,TabPFN v3,3e-07,0.003,True,one_sample,openml_46905,ood,roc_auc,0.0050771013,4
+205,TabPFN v3,3e-07,0.003,True,one_sample,openml_46947,ood,roc_auc,6.1743248e-05,4
+206,TabPFN v3,3e-07,0.003,True,one_sample,openml_46952,ood,roc_auc,0.000575431,4
+207,TabPFN v3,3e-07,0.003,True,one_sample,openml_46956,ood,roc_auc,0.00010519362,4
+208,TabPFN v3,1e-06,0,False,one_sample,openml_46905,ood,roc_auc,0.001274988,4
+209,TabPFN v3,1e-06,0,False,one_sample,openml_46947,ood,roc_auc,-0.0011184915,4
+210,TabPFN v3,1e-06,0,False,one_sample,openml_46952,ood,roc_auc,-0.003207229,4
+211,TabPFN v3,1e-06,0,False,one_sample,openml_46956,ood,roc_auc,-0.017530868,4
+212,TabPFN v3,1e-06,0,True,one_sample,openml_46905,ood,roc_auc,0.0048123026,4
+213,TabPFN v3,1e-06,0,True,one_sample,openml_46947,ood,roc_auc,-6.8227867e-05,4
+214,TabPFN v3,1e-06,0,True,one_sample,openml_46952,ood,roc_auc,0.0014409478,4
+215,TabPFN v3,1e-06,0,True,one_sample,openml_46956,ood,roc_auc,-0.00066392695,4
+216,TabPFN v3,1e-06,0.003,False,one_sample,openml_46905,ood,roc_auc,0.0013661493,4
+217,TabPFN v3,1e-06,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.00098793463,4
+218,TabPFN v3,1e-06,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.0030246587,4
+219,TabPFN v3,1e-06,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.013096925,4
+220,TabPFN v3,1e-06,0.003,True,one_sample,openml_46905,ood,roc_auc,0.0049567812,4
+221,TabPFN v3,1e-06,0.003,True,one_sample,openml_46947,ood,roc_auc,-9.462975e-05,4
+222,TabPFN v3,1e-06,0.003,True,one_sample,openml_46952,ood,roc_auc,0.0013100546,4
+223,TabPFN v3,1e-06,0.003,True,one_sample,openml_46956,ood,roc_auc,-0.00077980859,4
+224,TabPFN v3,1e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.094366205,4
+225,TabPFN v3,1e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.032039577,4
+226,TabPFN v3,1e-05,0,False,one_sample,openml_46952,ood,roc_auc,-0.033135359,4
+227,TabPFN v3,1e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.15457013,4
+228,TabPFN v3,1e-05,0,True,one_sample,openml_46905,ood,roc_auc,-0.0024698736,4
+229,TabPFN v3,1e-05,0,True,one_sample,openml_46947,ood,roc_auc,-0.00073575279,4
+230,TabPFN v3,1e-05,0,True,one_sample,openml_46952,ood,roc_auc,-0.0046646787,4
+231,TabPFN v3,1e-05,0,True,one_sample,openml_46956,ood,roc_auc,-0.031336638,4
+232,TabPFN v3,1e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.032781213,4
+233,TabPFN v3,1e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.0098058229,4
+234,TabPFN v3,1e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.019009959,4
+235,TabPFN v3,1e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.097651718,4
+236,TabPFN v3,1e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,0.00084825222,4
+237,TabPFN v3,1e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,-0.00061494916,4
+238,TabPFN v3,1e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,-0.0050551872,4
+239,TabPFN v3,1e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,-0.021518902,4
+240,TabPFN v3,3e-05,0,False,one_sample,openml_46905,ood,roc_auc,-0.28944874,4
+241,TabPFN v3,3e-05,0,False,one_sample,openml_46947,ood,roc_auc,-0.10629687,4
+242,TabPFN v3,3e-05,0,False,one_sample,openml_46952,ood,roc_auc,-0.042514132,4
+243,TabPFN v3,3e-05,0,False,one_sample,openml_46956,ood,roc_auc,-0.14653688,4
+244,TabPFN v3,3e-05,0,True,one_sample,openml_46905,ood,roc_auc,-0.075189786,4
+245,TabPFN v3,3e-05,0,True,one_sample,openml_46947,ood,roc_auc,-0.0020911228,4
+246,TabPFN v3,3e-05,0,True,one_sample,openml_46952,ood,roc_auc,-0.010338035,4
+247,TabPFN v3,3e-05,0,True,one_sample,openml_46956,ood,roc_auc,-0.12427259,4
+248,TabPFN v3,3e-05,0.003,False,one_sample,openml_46905,ood,roc_auc,-0.069368091,4
+249,TabPFN v3,3e-05,0.003,False,one_sample,openml_46947,ood,roc_auc,-0.011375656,4
+250,TabPFN v3,3e-05,0.003,False,one_sample,openml_46952,ood,roc_auc,-0.018572442,4
+251,TabPFN v3,3e-05,0.003,False,one_sample,openml_46956,ood,roc_auc,-0.062681033,4
+252,TabPFN v3,3e-05,0.003,True,one_sample,openml_46905,ood,roc_auc,-0.048373892,4
+253,TabPFN v3,3e-05,0.003,True,one_sample,openml_46947,ood,roc_auc,-0.001197879,4
+254,TabPFN v3,3e-05,0.003,True,one_sample,openml_46952,ood,roc_auc,-0.0079498574,4
+255,TabPFN v3,3e-05,0.003,True,one_sample,openml_46956,ood,roc_auc,-0.095287954,4
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,0.0016793397,-0.0015041476,0.0024548927,4
+1,TabICLv2,3e-07,0,True,one_sample,0.0016171361,-0.00086600587,0.0018564496,4
+2,TabICLv2,3e-07,0.003,False,one_sample,0.0017644524,-0.0013541195,0.0025307388,4
+3,TabICLv2,3e-07,0.003,True,one_sample,0.0015251927,-0.00096977135,0.0018955686,4
+4,TabICLv2,1e-06,0,False,one_sample,-0.00045160928,-0.0032197979,0.00090311476,4
+5,TabICLv2,1e-06,0,True,one_sample,0.0013774947,-0.0016765201,0.002577271,4
+6,TabICLv2,1e-06,0.003,False,one_sample,0.00057309381,-0.0024317721,0.0018779929,4
+7,TabICLv2,1e-06,0.003,True,one_sample,0.0014658791,-0.0015410673,0.0024768865,4
+8,TabICLv2,1e-05,0,False,one_sample,-0.052703039,-0.061939299,-0.032798557,4
+9,TabICLv2,1e-05,0,True,one_sample,-0.00066773195,-0.0038388604,0.0021064012,4
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.010747172,-0.016128983,-0.0052755774,4
+11,TabICLv2,1e-05,0.003,True,one_sample,-0.00055470634,-0.0035862116,0.0020468443,4
+12,TabICLv2,3e-05,0,False,one_sample,-0.070105181,-0.1098104,-0.023813071,4
+13,TabICLv2,3e-05,0,True,one_sample,-0.0030560113,-0.0060054006,0.00026571374,4
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.010560764,-0.012998537,-0.0046447324,4
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.001400908,-0.0041610176,0.0012397094,4
+16,TabPFN v2,3e-07,0,False,one_sample,0.0062858791,0.0018695307,0.0065875868,4
+17,TabPFN v2,3e-07,0,True,one_sample,9.4256896e-05,3.5653908e-05,0.00014465289,4
+18,TabPFN v2,3e-07,0.003,False,one_sample,0.0062425637,0.0018771364,0.00645689,4
+19,TabPFN v2,3e-07,0.003,True,one_sample,8.0107375e-05,1.6048665e-05,0.00010960228,4
+20,TabPFN v2,1e-06,0,False,one_sample,0.0059963531,0.0021488631,0.0077716341,4
+21,TabPFN v2,1e-06,0,True,one_sample,0.00019096437,3.6083666e-05,0.00029476787,4
+22,TabPFN v2,1e-06,0.003,False,one_sample,0.0061135312,0.0020501367,0.0077441512,4
+23,TabPFN v2,1e-06,0.003,True,one_sample,0.0001745835,3.1257687e-05,0.00027820075,4
+24,TabPFN v2,1e-05,0,False,one_sample,-0.0015822741,-0.0020876841,0.00055476057,4
+25,TabPFN v2,1e-05,0,True,one_sample,0.0010423547,0.00039099504,0.0016241398,4
+26,TabPFN v2,1e-05,0.003,False,one_sample,0.0029487823,0.0018955349,0.0040961767,4
+27,TabPFN v2,1e-05,0.003,True,one_sample,0.00062452792,0.00015483196,0.00086835206,4
+28,TabPFN v2,3e-05,0,False,one_sample,-0.020975285,-0.032719531,-0.0054536522,4
+29,TabPFN v2,3e-05,0,True,one_sample,0.0016257577,0.00067158226,0.0024973007,4
+30,TabPFN v2,3e-05,0.003,False,one_sample,-0.00045050605,-0.00075349934,0.00081255249,4
+31,TabPFN v2,3e-05,0.003,True,one_sample,0.0011914946,0.00034201698,0.001509566,4
+32,TabPFN v2.6,3e-07,0,False,one_sample,0.00060629031,-0.00011582483,0.0010359467,4
+33,TabPFN v2.6,3e-07,0,True,one_sample,6.8948006e-06,-9.0143655e-06,2.0754689e-05,4
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,0.00058646589,-0.0001322849,0.0010408844,4
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,2.0626708e-05,5.271301e-06,2.7516839e-05,4
+36,TabPFN v2.6,1e-06,0,False,one_sample,0.00053811956,-0.000171997,0.000551388,4
+37,TabPFN v2.6,1e-06,0,True,one_sample,3.3460147e-05,-1.1642408e-05,7.1201781e-05,4
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,0.00059562772,-0.00014903717,0.00070071241,4
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,2.0485852e-06,-9.7823585e-06,1.8658202e-05,4
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.0016695594,-0.0039037037,0.00031959805,4
+41,TabPFN v2.6,1e-05,0,True,one_sample,-4.8379163e-05,-0.00017814717,0.00020552836,4
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.00012796497,-0.0013403643,0.00065215296,4
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-7.3714867e-05,-0.00012573068,2.2612006e-06,4
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.009107566,-0.015357396,-0.0013178991,4
+45,TabPFN v2.6,3e-05,0,True,one_sample,-0.00023185842,-0.0003243157,2.3252544e-05,4
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.0011858235,-0.0040388966,0.00067896136,4
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-6.6837281e-05,-0.00013831644,6.1768946e-05,4
+48,TabPFN v3,3e-07,0,False,one_sample,0.00065289078,-0.00063375418,0.00079347039,4
+49,TabPFN v3,3e-07,0,True,one_sample,0.0014761524,0.00012693785,0.0017234396,4
+50,TabPFN v3,3e-07,0.003,False,one_sample,0.0006975223,-0.00057383475,0.00083374008,4
+51,TabPFN v3,3e-07,0.003,True,one_sample,0.0014548673,9.4331027e-05,0.0017008486,4
+52,TabPFN v3,1e-06,0,False,one_sample,-0.0051454,-0.0067881387,-0.00052012164,4
+53,TabPFN v3,1e-06,0,True,one_sample,0.0013802739,-0.00021715264,0.0022837865,4
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.0039358422,-0.0055427252,-0.00039941366,4
+55,TabPFN v3,1e-06,0.003,True,one_sample,0.0013480994,-0.00026592446,0.0022217362,4
+56,TabPFN v3,1e-05,0,False,one_sample,-0.078527817,-0.10941719,-0.032861413,4
+57,TabPFN v3,1e-05,0,True,one_sample,-0.0098017358,-0.011332669,-0.0020363434,4
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.039812178,-0.048998839,-0.016708925,4
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.0065851964,-0.0091711158,-0.00024914881,4
+60,TabPFN v3,3e-05,0,False,one_sample,-0.14619915,-0.18226484,-0.090351184,4
+61,TabPFN v3,3e-05,0,True,one_sample,-0.052972883,-0.087460487,-0.0082763073,4
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.040499306,-0.064352798,-0.016773245,4
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.038202395,-0.060102407,-0.0062618628,4
+
+Figure: pd_factorial_credit_brier_score
+PD. Completed five-fold final benchmark, PD held-out credit. Original minus CPT Brier score. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00017608449,1
+1,TabICLv2,3e-07,0,False,one_sample,Cobranded,credit,brier_score,-0.00020230893,1
+2,TabICLv2,3e-07,0,False,one_sample,Credit Risk,credit,brier_score,-0.0052461142,1
+3,TabICLv2,3e-07,0,False,one_sample,GMSC,credit,brier_score,-0.0001032746,1
+4,TabICLv2,3e-07,0,False,one_sample,German Credit,credit,brier_score,0.00063944412,1
+5,TabICLv2,3e-07,0,False,one_sample,HMEQ,credit,brier_score,-0.00079047952,1
+6,TabICLv2,3e-07,0,False,one_sample,Hackerearth,credit,brier_score,-0.0095078859,1
+7,TabICLv2,3e-07,0,False,one_sample,Home Credit,credit,brier_score,-0.00022430586,1
+8,TabICLv2,3e-07,0,False,one_sample,LendingClub,credit,brier_score,9.3206433e-05,1
+9,TabICLv2,3e-07,0,False,one_sample,MicroFinance,credit,brier_score,-0.00029993275,1
+10,TabICLv2,3e-07,0,False,one_sample,Myhom,credit,brier_score,0.016534096,1
+11,TabICLv2,3e-07,0,False,one_sample,PropPD1,credit,brier_score,-9.8865411e-05,1
+12,TabICLv2,3e-07,0,False,one_sample,PropPD2,credit,brier_score,1.2672067e-05,1
+13,TabICLv2,3e-07,0,False,one_sample,SBA Loans Case,credit,brier_score,0.00025878646,1
+14,TabICLv2,3e-07,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00038499015,1
+15,TabICLv2,3e-07,0,False,one_sample,Thomas,credit,brier_score,-0.00019237695,1
+16,TabICLv2,3e-07,0,False,one_sample,Vehicle Loan,credit,brier_score,0.11286802,1
+17,TabICLv2,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,8.7683962e-06,1
+18,TabICLv2,3e-07,0,True,one_sample,Cobranded,credit,brier_score,-0.00014339639,1
+19,TabICLv2,3e-07,0,True,one_sample,Credit Risk,credit,brier_score,-0.0019349641,1
+20,TabICLv2,3e-07,0,True,one_sample,GMSC,credit,brier_score,-9.4226223e-06,1
+21,TabICLv2,3e-07,0,True,one_sample,German Credit,credit,brier_score,0.00026682821,1
+22,TabICLv2,3e-07,0,True,one_sample,HMEQ,credit,brier_score,-0.00012181136,1
+23,TabICLv2,3e-07,0,True,one_sample,Hackerearth,credit,brier_score,-0.0063931465,1
+24,TabICLv2,3e-07,0,True,one_sample,Home Credit,credit,brier_score,-0.00010515524,1
+25,TabICLv2,3e-07,0,True,one_sample,LendingClub,credit,brier_score,1.1648746e-05,1
+26,TabICLv2,3e-07,0,True,one_sample,MicroFinance,credit,brier_score,0.00011372422,1
+27,TabICLv2,3e-07,0,True,one_sample,Myhom,credit,brier_score,0.016560851,1
+28,TabICLv2,3e-07,0,True,one_sample,PropPD1,credit,brier_score,2.8988231e-05,1
+29,TabICLv2,3e-07,0,True,one_sample,PropPD2,credit,brier_score,0.00011212722,1
+30,TabICLv2,3e-07,0,True,one_sample,SBA Loans Case,credit,brier_score,1.2803856e-05,1
+31,TabICLv2,3e-07,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00015944758,1
+32,TabICLv2,3e-07,0,True,one_sample,Thomas,credit,brier_score,0.00013751898,1
+33,TabICLv2,3e-07,0,True,one_sample,Vehicle Loan,credit,brier_score,0.11315397,1
+34,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-8.3207513e-05,1
+35,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,brier_score,-0.00016783457,1
+36,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0044350624,1
+37,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,brier_score,-9.0303786e-05,1
+38,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,brier_score,0.00064039211,1
+39,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0004682214,1
+40,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0086485974,1
+41,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,brier_score,-0.00019597859,1
+42,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,brier_score,8.1896163e-05,1
+43,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.0002486283,1
+44,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,brier_score,0.016524523,1
+45,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,brier_score,7.4499661e-05,1
+46,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,brier_score,3.4320569e-06,1
+47,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00014844082,1
+48,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00035625278,1
+49,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,brier_score,-6.2926983e-05,1
+50,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.11292895,1
+51,TabICLv2,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,6.6263893e-05,1
+52,TabICLv2,3e-07,0.003,True,one_sample,Cobranded,credit,brier_score,-0.00014996387,1
+53,TabICLv2,3e-07,0.003,True,one_sample,Credit Risk,credit,brier_score,-0.0018441157,1
+54,TabICLv2,3e-07,0.003,True,one_sample,GMSC,credit,brier_score,-1.6228291e-05,1
+55,TabICLv2,3e-07,0.003,True,one_sample,German Credit,credit,brier_score,0.00039460203,1
+56,TabICLv2,3e-07,0.003,True,one_sample,HMEQ,credit,brier_score,-9.6407035e-05,1
+57,TabICLv2,3e-07,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.006376356,1
+58,TabICLv2,3e-07,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00010820322,1
+59,TabICLv2,3e-07,0.003,True,one_sample,LendingClub,credit,brier_score,-2.0543265e-06,1
+60,TabICLv2,3e-07,0.003,True,one_sample,MicroFinance,credit,brier_score,0.00017689915,1
+61,TabICLv2,3e-07,0.003,True,one_sample,Myhom,credit,brier_score,0.016474908,1
+62,TabICLv2,3e-07,0.003,True,one_sample,PropPD1,credit,brier_score,-3.3100787e-05,1
+63,TabICLv2,3e-07,0.003,True,one_sample,PropPD2,credit,brier_score,0.00010299318,1
+64,TabICLv2,3e-07,0.003,True,one_sample,SBA Loans Case,credit,brier_score,9.1475159e-05,1
+65,TabICLv2,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00018205696,1
+66,TabICLv2,3e-07,0.003,True,one_sample,Thomas,credit,brier_score,0.00014753082,1
+67,TabICLv2,3e-07,0.003,True,one_sample,Vehicle Loan,credit,brier_score,0.11314212,1
+68,TabICLv2,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00071292476,1
+69,TabICLv2,1e-06,0,False,one_sample,Cobranded,credit,brier_score,-0.00029256392,1
+70,TabICLv2,1e-06,0,False,one_sample,Credit Risk,credit,brier_score,-0.0050726197,1
+71,TabICLv2,1e-06,0,False,one_sample,GMSC,credit,brier_score,-0.00039424087,1
+72,TabICLv2,1e-06,0,False,one_sample,German Credit,credit,brier_score,0.00034100307,1
+73,TabICLv2,1e-06,0,False,one_sample,HMEQ,credit,brier_score,0.00024232874,1
+74,TabICLv2,1e-06,0,False,one_sample,Hackerearth,credit,brier_score,-0.006403713,1
+75,TabICLv2,1e-06,0,False,one_sample,Home Credit,credit,brier_score,-0.00040345131,1
+76,TabICLv2,1e-06,0,False,one_sample,LendingClub,credit,brier_score,-0.00017327711,1
+77,TabICLv2,1e-06,0,False,one_sample,MicroFinance,credit,brier_score,-0.0004729009,1
+78,TabICLv2,1e-06,0,False,one_sample,Myhom,credit,brier_score,0.015819787,1
+79,TabICLv2,1e-06,0,False,one_sample,PropPD1,credit,brier_score,-0.0013384227,1
+80,TabICLv2,1e-06,0,False,one_sample,PropPD2,credit,brier_score,-0.00031333443,1
+81,TabICLv2,1e-06,0,False,one_sample,SBA Loans Case,credit,brier_score,0.00019961147,1
+82,TabICLv2,1e-06,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00044943337,1
+83,TabICLv2,1e-06,0,False,one_sample,Thomas,credit,brier_score,-0.0012437122,1
+84,TabICLv2,1e-06,0,False,one_sample,Vehicle Loan,credit,brier_score,0.11177511,1
+85,TabICLv2,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00016258476,1
+86,TabICLv2,1e-06,0,True,one_sample,Cobranded,credit,brier_score,-0.00010541895,1
+87,TabICLv2,1e-06,0,True,one_sample,Credit Risk,credit,brier_score,-0.0018679624,1
+88,TabICLv2,1e-06,0,True,one_sample,GMSC,credit,brier_score,-5.0568594e-05,1
+89,TabICLv2,1e-06,0,True,one_sample,German Credit,credit,brier_score,-0.00013327971,1
+90,TabICLv2,1e-06,0,True,one_sample,HMEQ,credit,brier_score,0.00045733641,1
+91,TabICLv2,1e-06,0,True,one_sample,Hackerearth,credit,brier_score,-0.0044580742,1
+92,TabICLv2,1e-06,0,True,one_sample,Home Credit,credit,brier_score,-0.00016468193,1
+93,TabICLv2,1e-06,0,True,one_sample,LendingClub,credit,brier_score,1.7083772e-05,1
+94,TabICLv2,1e-06,0,True,one_sample,MicroFinance,credit,brier_score,0.00012610508,1
+95,TabICLv2,1e-06,0,True,one_sample,Myhom,credit,brier_score,0.016681014,1
+96,TabICLv2,1e-06,0,True,one_sample,PropPD1,credit,brier_score,-0.0016462516,1
+97,TabICLv2,1e-06,0,True,one_sample,PropPD2,credit,brier_score,4.6960172e-05,1
+98,TabICLv2,1e-06,0,True,one_sample,SBA Loans Case,credit,brier_score,-0.00031866152,1
+99,TabICLv2,1e-06,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00014302726,1
+100,TabICLv2,1e-06,0,True,one_sample,Thomas,credit,brier_score,-0.00036702505,1
+101,TabICLv2,1e-06,0,True,one_sample,Vehicle Loan,credit,brier_score,0.11290468,1
+102,TabICLv2,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00040486468,1
+103,TabICLv2,1e-06,0.003,False,one_sample,Cobranded,credit,brier_score,-0.00017968143,1
+104,TabICLv2,1e-06,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0040100894,1
+105,TabICLv2,1e-06,0.003,False,one_sample,GMSC,credit,brier_score,-0.00029416552,1
+106,TabICLv2,1e-06,0.003,False,one_sample,German Credit,credit,brier_score,0.00087630823,1
+107,TabICLv2,1e-06,0.003,False,one_sample,HMEQ,credit,brier_score,0.00086528117,1
+108,TabICLv2,1e-06,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0055495369,1
+109,TabICLv2,1e-06,0.003,False,one_sample,Home Credit,credit,brier_score,-0.00026978583,1
+110,TabICLv2,1e-06,0.003,False,one_sample,LendingClub,credit,brier_score,-0.00015154172,1
+111,TabICLv2,1e-06,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.00015493922,1
+112,TabICLv2,1e-06,0.003,False,one_sample,Myhom,credit,brier_score,0.015941716,1
+113,TabICLv2,1e-06,0.003,False,one_sample,PropPD1,credit,brier_score,-0.0010746205,1
+114,TabICLv2,1e-06,0.003,False,one_sample,PropPD2,credit,brier_score,-0.00038091995,1
+115,TabICLv2,1e-06,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00025280796,1
+116,TabICLv2,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00028613456,1
+117,TabICLv2,1e-06,0.003,False,one_sample,Thomas,credit,brier_score,-0.00076860544,1
+118,TabICLv2,1e-06,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.11222112,1
+119,TabICLv2,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00013527033,1
+120,TabICLv2,1e-06,0.003,True,one_sample,Cobranded,credit,brier_score,-0.00010292589,1
+121,TabICLv2,1e-06,0.003,True,one_sample,Credit Risk,credit,brier_score,-0.0018408544,1
+122,TabICLv2,1e-06,0.003,True,one_sample,GMSC,credit,brier_score,-4.9965598e-05,1
+123,TabICLv2,1e-06,0.003,True,one_sample,German Credit,credit,brier_score,-0.00024355379,1
+124,TabICLv2,1e-06,0.003,True,one_sample,HMEQ,credit,brier_score,9.9565797e-05,1
+125,TabICLv2,1e-06,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.004969228,1
+126,TabICLv2,1e-06,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00017920178,1
+127,TabICLv2,1e-06,0.003,True,one_sample,LendingClub,credit,brier_score,1.8984312e-05,1
+128,TabICLv2,1e-06,0.003,True,one_sample,MicroFinance,credit,brier_score,0.00020650266,1
+129,TabICLv2,1e-06,0.003,True,one_sample,Myhom,credit,brier_score,0.016722898,1
+130,TabICLv2,1e-06,0.003,True,one_sample,PropPD1,credit,brier_score,-0.001690665,1
+131,TabICLv2,1e-06,0.003,True,one_sample,PropPD2,credit,brier_score,3.7774139e-05,1
+132,TabICLv2,1e-06,0.003,True,one_sample,SBA Loans Case,credit,brier_score,-0.00032728389,1
+133,TabICLv2,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00012555965,1
+134,TabICLv2,1e-06,0.003,True,one_sample,Thomas,credit,brier_score,-0.000222651,1
+135,TabICLv2,1e-06,0.003,True,one_sample,Vehicle Loan,credit,brier_score,0.11298709,1
+136,TabICLv2,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0030588563,1
+137,TabICLv2,1e-05,0,False,one_sample,Cobranded,credit,brier_score,-0.001779617,1
+138,TabICLv2,1e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.014527348,1
+139,TabICLv2,1e-05,0,False,one_sample,GMSC,credit,brier_score,-0.00139157,1
+140,TabICLv2,1e-05,0,False,one_sample,German Credit,credit,brier_score,-0.04479048,1
+141,TabICLv2,1e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.0076972167,1
+142,TabICLv2,1e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.032406135,1
+143,TabICLv2,1e-05,0,False,one_sample,Home Credit,credit,brier_score,-0.0011481349,1
+144,TabICLv2,1e-05,0,False,one_sample,LendingClub,credit,brier_score,-0.0098689658,1
+145,TabICLv2,1e-05,0,False,one_sample,MicroFinance,credit,brier_score,-0.0020803636,1
+146,TabICLv2,1e-05,0,False,one_sample,Myhom,credit,brier_score,0.014187296,1
+147,TabICLv2,1e-05,0,False,one_sample,PropPD1,credit,brier_score,-0.0057316612,1
+148,TabICLv2,1e-05,0,False,one_sample,PropPD2,credit,brier_score,-0.0022786903,1
+149,TabICLv2,1e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.0017523394,1
+150,TabICLv2,1e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.0017135817,1
+151,TabICLv2,1e-05,0,False,one_sample,Thomas,credit,brier_score,-0.025170172,1
+152,TabICLv2,1e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,0.11220263,1
+153,TabICLv2,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,7.9545933e-05,1
+154,TabICLv2,1e-05,0,True,one_sample,Cobranded,credit,brier_score,-0.00017962538,1
+155,TabICLv2,1e-05,0,True,one_sample,Credit Risk,credit,brier_score,-0.0050564094,1
+156,TabICLv2,1e-05,0,True,one_sample,GMSC,credit,brier_score,-0.00020838215,1
+157,TabICLv2,1e-05,0,True,one_sample,German Credit,credit,brier_score,-0.0017506083,1
+158,TabICLv2,1e-05,0,True,one_sample,HMEQ,credit,brier_score,-0.0068033373,1
+159,TabICLv2,1e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.023861724,1
+160,TabICLv2,1e-05,0,True,one_sample,Home Credit,credit,brier_score,-0.00031250159,1
+161,TabICLv2,1e-05,0,True,one_sample,LendingClub,credit,brier_score,0.00013508821,1
+162,TabICLv2,1e-05,0,True,one_sample,MicroFinance,credit,brier_score,-0.00048466784,1
+163,TabICLv2,1e-05,0,True,one_sample,Myhom,credit,brier_score,0.016817232,1
+164,TabICLv2,1e-05,0,True,one_sample,PropPD1,credit,brier_score,-1.7793919e-05,1
+165,TabICLv2,1e-05,0,True,one_sample,PropPD2,credit,brier_score,-0.00011487608,1
+166,TabICLv2,1e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,-0.00033733969,1
+167,TabICLv2,1e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00037888361,1
+168,TabICLv2,1e-05,0,True,one_sample,Thomas,credit,brier_score,-0.0013388845,1
+169,TabICLv2,1e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,0.11256692,1
+170,TabICLv2,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0016761255,1
+171,TabICLv2,1e-05,0.003,False,one_sample,Cobranded,credit,brier_score,-0.00059482763,1
+172,TabICLv2,1e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0087745679,1
+173,TabICLv2,1e-05,0.003,False,one_sample,GMSC,credit,brier_score,-0.00098840937,1
+174,TabICLv2,1e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.015025902,1
+175,TabICLv2,1e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0016947269,1
+176,TabICLv2,1e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.025346979,1
+177,TabICLv2,1e-05,0.003,False,one_sample,Home Credit,credit,brier_score,-0.00055968159,1
+178,TabICLv2,1e-05,0.003,False,one_sample,LendingClub,credit,brier_score,-0.0024323393,1
+179,TabICLv2,1e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.001215166,1
+180,TabICLv2,1e-05,0.003,False,one_sample,Myhom,credit,brier_score,0.016352836,1
+181,TabICLv2,1e-05,0.003,False,one_sample,PropPD1,credit,brier_score,-0.0030297101,1
+182,TabICLv2,1e-05,0.003,False,one_sample,PropPD2,credit,brier_score,-0.00076412619,1
+183,TabICLv2,1e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00070295903,1
+184,TabICLv2,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.0013007084,1
+185,TabICLv2,1e-05,0.003,False,one_sample,Thomas,credit,brier_score,-0.0031557812,1
+186,TabICLv2,1e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.11118288,1
+187,TabICLv2,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00025762541,1
+188,TabICLv2,1e-05,0.003,True,one_sample,Cobranded,credit,brier_score,-0.00019351029,1
+189,TabICLv2,1e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,-0.0058544113,1
+190,TabICLv2,1e-05,0.003,True,one_sample,GMSC,credit,brier_score,-0.00014139999,1
+191,TabICLv2,1e-05,0.003,True,one_sample,German Credit,credit,brier_score,-0.0015313576,1
+192,TabICLv2,1e-05,0.003,True,one_sample,HMEQ,credit,brier_score,-0.0030120388,1
+193,TabICLv2,1e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.018989946,1
+194,TabICLv2,1e-05,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00028883446,1
+195,TabICLv2,1e-05,0.003,True,one_sample,LendingClub,credit,brier_score,0.00013393444,1
+196,TabICLv2,1e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,-0.00052622559,1
+197,TabICLv2,1e-05,0.003,True,one_sample,Myhom,credit,brier_score,0.016640514,1
+198,TabICLv2,1e-05,0.003,True,one_sample,PropPD1,credit,brier_score,-0.00025030364,1
+199,TabICLv2,1e-05,0.003,True,one_sample,PropPD2,credit,brier_score,-0.00015265084,1
+200,TabICLv2,1e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,0.00029543246,1
+201,TabICLv2,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00032865547,1
+202,TabICLv2,1e-05,0.003,True,one_sample,Thomas,credit,brier_score,-0.00027948863,1
+203,TabICLv2,1e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,0.11265392,1
+204,TabICLv2,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.017562111,1
+205,TabICLv2,3e-05,0,False,one_sample,Cobranded,credit,brier_score,-0.0092698604,1
+206,TabICLv2,3e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.026922785,1
+207,TabICLv2,3e-05,0,False,one_sample,GMSC,credit,brier_score,-0.0045555392,1
+208,TabICLv2,3e-05,0,False,one_sample,German Credit,credit,brier_score,-0.042229941,1
+209,TabICLv2,3e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.013555001,1
+210,TabICLv2,3e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.060608676,1
+211,TabICLv2,3e-05,0,False,one_sample,Home Credit,credit,brier_score,-0.004230547,1
+212,TabICLv2,3e-05,0,False,one_sample,LendingClub,credit,brier_score,-0.021350505,1
+213,TabICLv2,3e-05,0,False,one_sample,MicroFinance,credit,brier_score,-0.0082186429,1
+214,TabICLv2,3e-05,0,False,one_sample,Myhom,credit,brier_score,0.01053843,1
+215,TabICLv2,3e-05,0,False,one_sample,PropPD1,credit,brier_score,-0.014248768,1
+216,TabICLv2,3e-05,0,False,one_sample,PropPD2,credit,brier_score,-0.0060509463,1
+217,TabICLv2,3e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.0073456046,1
+218,TabICLv2,3e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.004974691,1
+219,TabICLv2,3e-05,0,False,one_sample,Thomas,credit,brier_score,-0.040628063,1
+220,TabICLv2,3e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,0.10899258,1
+221,TabICLv2,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,9.6973738e-05,1
+222,TabICLv2,3e-05,0,True,one_sample,Cobranded,credit,brier_score,-0.00049145113,1
+223,TabICLv2,3e-05,0,True,one_sample,Credit Risk,credit,brier_score,-0.010592262,1
+224,TabICLv2,3e-05,0,True,one_sample,GMSC,credit,brier_score,-0.0007049816,1
+225,TabICLv2,3e-05,0,True,one_sample,German Credit,credit,brier_score,-0.0030079852,1
+226,TabICLv2,3e-05,0,True,one_sample,HMEQ,credit,brier_score,-0.0073149511,1
+227,TabICLv2,3e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.033598144,1
+228,TabICLv2,3e-05,0,True,one_sample,Home Credit,credit,brier_score,-0.00041861997,1
+229,TabICLv2,3e-05,0,True,one_sample,LendingClub,credit,brier_score,-0.00060559961,1
+230,TabICLv2,3e-05,0,True,one_sample,MicroFinance,credit,brier_score,-0.0013156053,1
+231,TabICLv2,3e-05,0,True,one_sample,Myhom,credit,brier_score,0.01586291,1
+232,TabICLv2,3e-05,0,True,one_sample,PropPD1,credit,brier_score,0.00028801905,1
+233,TabICLv2,3e-05,0,True,one_sample,PropPD2,credit,brier_score,-0.00024510409,1
+234,TabICLv2,3e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,-0.00059182631,1
+235,TabICLv2,3e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00051529573,1
+236,TabICLv2,3e-05,0,True,one_sample,Thomas,credit,brier_score,-0.0015622281,1
+237,TabICLv2,3e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,0.11236761,1
+238,TabICLv2,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00063755559,1
+239,TabICLv2,3e-05,0.003,False,one_sample,Cobranded,credit,brier_score,-0.0019423287,1
+240,TabICLv2,3e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.010838649,1
+241,TabICLv2,3e-05,0.003,False,one_sample,GMSC,credit,brier_score,-0.0010651808,1
+242,TabICLv2,3e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.018469074,1
+243,TabICLv2,3e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0026200091,1
+244,TabICLv2,3e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.035801963,1
+245,TabICLv2,3e-05,0.003,False,one_sample,Home Credit,credit,brier_score,-0.0017265635,1
+246,TabICLv2,3e-05,0.003,False,one_sample,LendingClub,credit,brier_score,-0.0022591839,1
+247,TabICLv2,3e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.0016475459,1
+248,TabICLv2,3e-05,0.003,False,one_sample,Myhom,credit,brier_score,0.016296427,1
+249,TabICLv2,3e-05,0.003,False,one_sample,PropPD1,credit,brier_score,-0.0044506262,1
+250,TabICLv2,3e-05,0.003,False,one_sample,PropPD2,credit,brier_score,-0.00095239743,1
+251,TabICLv2,3e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,-0.0017258112,1
+252,TabICLv2,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00081200784,1
+253,TabICLv2,3e-05,0.003,False,one_sample,Thomas,credit,brier_score,-0.0016417283,1
+254,TabICLv2,3e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.11150022,1
+255,TabICLv2,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00044690378,1
+256,TabICLv2,3e-05,0.003,True,one_sample,Cobranded,credit,brier_score,-0.00011236109,1
+257,TabICLv2,3e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,-0.0051122058,1
+258,TabICLv2,3e-05,0.003,True,one_sample,GMSC,credit,brier_score,-0.00021697479,1
+259,TabICLv2,3e-05,0.003,True,one_sample,German Credit,credit,brier_score,-0.00281166,1
+260,TabICLv2,3e-05,0.003,True,one_sample,HMEQ,credit,brier_score,-0.0026610424,1
+261,TabICLv2,3e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.031219164,1
+262,TabICLv2,3e-05,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00043438381,1
+263,TabICLv2,3e-05,0.003,True,one_sample,LendingClub,credit,brier_score,-0.0001854525,1
+264,TabICLv2,3e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,-0.00053152586,1
+265,TabICLv2,3e-05,0.003,True,one_sample,Myhom,credit,brier_score,0.016408223,1
+266,TabICLv2,3e-05,0.003,True,one_sample,PropPD1,credit,brier_score,-0.00089894361,1
+267,TabICLv2,3e-05,0.003,True,one_sample,PropPD2,credit,brier_score,-0.0002569952,1
+268,TabICLv2,3e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,-0.00077157401,1
+269,TabICLv2,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00031438766,1
+270,TabICLv2,3e-05,0.003,True,one_sample,Thomas,credit,brier_score,-0.0005429135,1
+271,TabICLv2,3e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,0.11244426,1
+272,TabPFN v2,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00049605308,1
+273,TabPFN v2,3e-07,0,False,one_sample,Cobranded,credit,brier_score,0.0013234768,1
+274,TabPFN v2,3e-07,0,False,one_sample,Credit Risk,credit,brier_score,0.00042096046,1
+275,TabPFN v2,3e-07,0,False,one_sample,GMSC,credit,brier_score,0.0002388673,1
+276,TabPFN v2,3e-07,0,False,one_sample,German Credit,credit,brier_score,0.0014070258,1
+277,TabPFN v2,3e-07,0,False,one_sample,HMEQ,credit,brier_score,0.0091354683,1
+278,TabPFN v2,3e-07,0,False,one_sample,Hackerearth,credit,brier_score,0.005311402,1
+279,TabPFN v2,3e-07,0,False,one_sample,Home Credit,credit,brier_score,0.00048781069,1
+280,TabPFN v2,3e-07,0,False,one_sample,LendingClub,credit,brier_score,0.0005983556,1
+281,TabPFN v2,3e-07,0,False,one_sample,MicroFinance,credit,brier_score,0.0013587848,1
+282,TabPFN v2,3e-07,0,False,one_sample,Myhom,credit,brier_score,0.00032946639,1
+283,TabPFN v2,3e-07,0,False,one_sample,PropPD1,credit,brier_score,0.0017712398,1
+284,TabPFN v2,3e-07,0,False,one_sample,PropPD2,credit,brier_score,0.0012343069,1
+285,TabPFN v2,3e-07,0,False,one_sample,SBA Loans Case,credit,brier_score,0.00058244589,1
+286,TabPFN v2,3e-07,0,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0014244158,1
+287,TabPFN v2,3e-07,0,False,one_sample,Thomas,credit,brier_score,0.00059820695,1
+288,TabPFN v2,3e-07,0,False,one_sample,Vehicle Loan,credit,brier_score,0.0010337741,1
+289,TabPFN v2,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-8.9974943e-05,1
+290,TabPFN v2,3e-07,0,True,one_sample,Cobranded,credit,brier_score,-9.3052753e-05,1
+291,TabPFN v2,3e-07,0,True,one_sample,Credit Risk,credit,brier_score,4.8193224e-05,1
+292,TabPFN v2,3e-07,0,True,one_sample,GMSC,credit,brier_score,-7.6711673e-05,1
+293,TabPFN v2,3e-07,0,True,one_sample,German Credit,credit,brier_score,2.8606445e-05,1
+294,TabPFN v2,3e-07,0,True,one_sample,HMEQ,credit,brier_score,5.0443609e-05,1
+295,TabPFN v2,3e-07,0,True,one_sample,Hackerearth,credit,brier_score,0.00021934253,1
+296,TabPFN v2,3e-07,0,True,one_sample,Home Credit,credit,brier_score,-0.00014763217,1
+297,TabPFN v2,3e-07,0,True,one_sample,LendingClub,credit,brier_score,-0.00015900548,1
+298,TabPFN v2,3e-07,0,True,one_sample,MicroFinance,credit,brier_score,3.7226908e-05,1
+299,TabPFN v2,3e-07,0,True,one_sample,Myhom,credit,brier_score,-4.2862187e-05,1
+300,TabPFN v2,3e-07,0,True,one_sample,PropPD1,credit,brier_score,-0.0001468741,1
+301,TabPFN v2,3e-07,0,True,one_sample,PropPD2,credit,brier_score,-0.00014734192,1
+302,TabPFN v2,3e-07,0,True,one_sample,SBA Loans Case,credit,brier_score,3.7248621e-05,1
+303,TabPFN v2,3e-07,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00019155765,1
+304,TabPFN v2,3e-07,0,True,one_sample,Thomas,credit,brier_score,-8.3256673e-05,1
+305,TabPFN v2,3e-07,0,True,one_sample,Vehicle Loan,credit,brier_score,-0.00024616036,1
+306,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00049497369,1
+307,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,brier_score,0.0013104121,1
+308,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,brier_score,0.00040607126,1
+309,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,brier_score,0.00023377834,1
+310,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,brier_score,0.0014004252,1
+311,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,brier_score,0.0093069466,1
+312,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,brier_score,0.0052567851,1
+313,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,brier_score,0.0004844712,1
+314,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,brier_score,0.00059468825,1
+315,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,brier_score,0.0013488622,1
+316,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,brier_score,0.00032888629,1
+317,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,brier_score,0.0017628222,1
+318,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,brier_score,0.0012379076,1
+319,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00054190213,1
+320,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0014156285,1
+321,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,brier_score,0.00058408269,1
+322,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.0010360546,1
+323,TabPFN v2,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-8.7932968e-05,1
+324,TabPFN v2,3e-07,0.003,True,one_sample,Cobranded,credit,brier_score,-8.8301257e-05,1
+325,TabPFN v2,3e-07,0.003,True,one_sample,Credit Risk,credit,brier_score,4.7788236e-05,1
+326,TabPFN v2,3e-07,0.003,True,one_sample,GMSC,credit,brier_score,-7.481716e-05,1
+327,TabPFN v2,3e-07,0.003,True,one_sample,German Credit,credit,brier_score,2.8846903e-05,1
+328,TabPFN v2,3e-07,0.003,True,one_sample,HMEQ,credit,brier_score,5.5061144e-05,1
+329,TabPFN v2,3e-07,0.003,True,one_sample,Hackerearth,credit,brier_score,0.00023341679,1
+330,TabPFN v2,3e-07,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00014442639,1
+331,TabPFN v2,3e-07,0.003,True,one_sample,LendingClub,credit,brier_score,-0.00015944509,1
+332,TabPFN v2,3e-07,0.003,True,one_sample,MicroFinance,credit,brier_score,3.565775e-05,1
+333,TabPFN v2,3e-07,0.003,True,one_sample,Myhom,credit,brier_score,-4.1901385e-05,1
+334,TabPFN v2,3e-07,0.003,True,one_sample,PropPD1,credit,brier_score,-0.00015244706,1
+335,TabPFN v2,3e-07,0.003,True,one_sample,PropPD2,credit,brier_score,-0.00014269371,1
+336,TabPFN v2,3e-07,0.003,True,one_sample,SBA Loans Case,credit,brier_score,3.7085315e-05,1
+337,TabPFN v2,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00018478891,1
+338,TabPFN v2,3e-07,0.003,True,one_sample,Thomas,credit,brier_score,-8.4367307e-05,1
+339,TabPFN v2,3e-07,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-0.00023710631,1
+340,TabPFN v2,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00056414689,1
+341,TabPFN v2,1e-06,0,False,one_sample,Cobranded,credit,brier_score,0.0017081801,1
+342,TabPFN v2,1e-06,0,False,one_sample,Credit Risk,credit,brier_score,0.00022756766,1
+343,TabPFN v2,1e-06,0,False,one_sample,GMSC,credit,brier_score,0.0003994897,1
+344,TabPFN v2,1e-06,0,False,one_sample,German Credit,credit,brier_score,0.0017541709,1
+345,TabPFN v2,1e-06,0,False,one_sample,HMEQ,credit,brier_score,0.0079719406,1
+346,TabPFN v2,1e-06,0,False,one_sample,Hackerearth,credit,brier_score,0.005181547,1
+347,TabPFN v2,1e-06,0,False,one_sample,Home Credit,credit,brier_score,0.00059469958,1
+348,TabPFN v2,1e-06,0,False,one_sample,LendingClub,credit,brier_score,0.00072759686,1
+349,TabPFN v2,1e-06,0,False,one_sample,MicroFinance,credit,brier_score,0.0014128068,1
+350,TabPFN v2,1e-06,0,False,one_sample,Myhom,credit,brier_score,0.00036519227,1
+351,TabPFN v2,1e-06,0,False,one_sample,PropPD1,credit,brier_score,0.0017604375,1
+352,TabPFN v2,1e-06,0,False,one_sample,PropPD2,credit,brier_score,0.0012586071,1
+353,TabPFN v2,1e-06,0,False,one_sample,SBA Loans Case,credit,brier_score,0.00093120167,1
+354,TabPFN v2,1e-06,0,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0015955966,1
+355,TabPFN v2,1e-06,0,False,one_sample,Thomas,credit,brier_score,0.0011018636,1
+356,TabPFN v2,1e-06,0,False,one_sample,Vehicle Loan,credit,brier_score,0.00096575729,1
+357,TabPFN v2,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00013483205,1
+358,TabPFN v2,1e-06,0,True,one_sample,Cobranded,credit,brier_score,-0.0001150475,1
+359,TabPFN v2,1e-06,0,True,one_sample,Credit Risk,credit,brier_score,0.00012768253,1
+360,TabPFN v2,1e-06,0,True,one_sample,GMSC,credit,brier_score,-0.00010432662,1
+361,TabPFN v2,1e-06,0,True,one_sample,German Credit,credit,brier_score,6.8464874e-05,1
+362,TabPFN v2,1e-06,0,True,one_sample,HMEQ,credit,brier_score,0.00022490073,1
+363,TabPFN v2,1e-06,0,True,one_sample,Hackerearth,credit,brier_score,-4.1037613e-05,1
+364,TabPFN v2,1e-06,0,True,one_sample,Home Credit,credit,brier_score,-0.00022377702,1
+365,TabPFN v2,1e-06,0,True,one_sample,LendingClub,credit,brier_score,-0.0002451829,1
+366,TabPFN v2,1e-06,0,True,one_sample,MicroFinance,credit,brier_score,4.4407668e-05,1
+367,TabPFN v2,1e-06,0,True,one_sample,Myhom,credit,brier_score,-7.0619343e-05,1
+368,TabPFN v2,1e-06,0,True,one_sample,PropPD1,credit,brier_score,-8.918244e-05,1
+369,TabPFN v2,1e-06,0,True,one_sample,PropPD2,credit,brier_score,-0.00019475957,1
+370,TabPFN v2,1e-06,0,True,one_sample,SBA Loans Case,credit,brier_score,0.00010356064,1
+371,TabPFN v2,1e-06,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.0002288036,1
+372,TabPFN v2,1e-06,0,True,one_sample,Thomas,credit,brier_score,-7.8690473e-05,1
+373,TabPFN v2,1e-06,0,True,one_sample,Vehicle Loan,credit,brier_score,-0.00027531839,1
+374,TabPFN v2,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00057043437,1
+375,TabPFN v2,1e-06,0.003,False,one_sample,Cobranded,credit,brier_score,0.001683607,1
+376,TabPFN v2,1e-06,0.003,False,one_sample,Credit Risk,credit,brier_score,0.0003335763,1
+377,TabPFN v2,1e-06,0.003,False,one_sample,GMSC,credit,brier_score,0.00038894379,1
+378,TabPFN v2,1e-06,0.003,False,one_sample,German Credit,credit,brier_score,0.0016983368,1
+379,TabPFN v2,1e-06,0.003,False,one_sample,HMEQ,credit,brier_score,0.0083669807,1
+380,TabPFN v2,1e-06,0.003,False,one_sample,Hackerearth,credit,brier_score,0.005209071,1
+381,TabPFN v2,1e-06,0.003,False,one_sample,Home Credit,credit,brier_score,0.0005837759,1
+382,TabPFN v2,1e-06,0.003,False,one_sample,LendingClub,credit,brier_score,0.00070300782,1
+383,TabPFN v2,1e-06,0.003,False,one_sample,MicroFinance,credit,brier_score,0.0014263915,1
+384,TabPFN v2,1e-06,0.003,False,one_sample,Myhom,credit,brier_score,0.00037131715,1
+385,TabPFN v2,1e-06,0.003,False,one_sample,PropPD1,credit,brier_score,0.0017584815,1
+386,TabPFN v2,1e-06,0.003,False,one_sample,PropPD2,credit,brier_score,0.0012530695,1
+387,TabPFN v2,1e-06,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00094441672,1
+388,TabPFN v2,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0016013393,1
+389,TabPFN v2,1e-06,0.003,False,one_sample,Thomas,credit,brier_score,0.0010483136,1
+390,TabPFN v2,1e-06,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.00097813201,1
+391,TabPFN v2,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00012629601,1
+392,TabPFN v2,1e-06,0.003,True,one_sample,Cobranded,credit,brier_score,-0.00011338559,1
+393,TabPFN v2,1e-06,0.003,True,one_sample,Credit Risk,credit,brier_score,0.00011504687,1
+394,TabPFN v2,1e-06,0.003,True,one_sample,GMSC,credit,brier_score,-0.00010045113,1
+395,TabPFN v2,1e-06,0.003,True,one_sample,German Credit,credit,brier_score,5.332572e-05,1
+396,TabPFN v2,1e-06,0.003,True,one_sample,HMEQ,credit,brier_score,0.00023134481,1
+397,TabPFN v2,1e-06,0.003,True,one_sample,Hackerearth,credit,brier_score,3.5173287e-05,1
+398,TabPFN v2,1e-06,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00021658511,1
+399,TabPFN v2,1e-06,0.003,True,one_sample,LendingClub,credit,brier_score,-0.0002407346,1
+400,TabPFN v2,1e-06,0.003,True,one_sample,MicroFinance,credit,brier_score,4.7486385e-05,1
+401,TabPFN v2,1e-06,0.003,True,one_sample,Myhom,credit,brier_score,-6.5294744e-05,1
+402,TabPFN v2,1e-06,0.003,True,one_sample,PropPD1,credit,brier_score,-0.00010238174,1
+403,TabPFN v2,1e-06,0.003,True,one_sample,PropPD2,credit,brier_score,-0.00019472961,1
+404,TabPFN v2,1e-06,0.003,True,one_sample,SBA Loans Case,credit,brier_score,8.400025e-05,1
+405,TabPFN v2,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00022620875,1
+406,TabPFN v2,1e-06,0.003,True,one_sample,Thomas,credit,brier_score,-7.8244823e-05,1
+407,TabPFN v2,1e-06,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-0.00027646295,1
+408,TabPFN v2,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00025333482,1
+409,TabPFN v2,1e-05,0,False,one_sample,Cobranded,credit,brier_score,0.0021172476,1
+410,TabPFN v2,1e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.0029244635,1
+411,TabPFN v2,1e-05,0,False,one_sample,GMSC,credit,brier_score,0.00041268831,1
+412,TabPFN v2,1e-05,0,False,one_sample,German Credit,credit,brier_score,0.0004818362,1
+413,TabPFN v2,1e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.014249239,1
+414,TabPFN v2,1e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.0044068126,1
+415,TabPFN v2,1e-05,0,False,one_sample,Home Credit,credit,brier_score,0.00067616412,1
+416,TabPFN v2,1e-05,0,False,one_sample,LendingClub,credit,brier_score,0.00096929187,1
+417,TabPFN v2,1e-05,0,False,one_sample,MicroFinance,credit,brier_score,0.0011815482,1
+418,TabPFN v2,1e-05,0,False,one_sample,Myhom,credit,brier_score,-0.0001700262,1
+419,TabPFN v2,1e-05,0,False,one_sample,PropPD1,credit,brier_score,0.0014255516,1
+420,TabPFN v2,1e-05,0,False,one_sample,PropPD2,credit,brier_score,0.0015649306,1
+421,TabPFN v2,1e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.0003443127,1
+422,TabPFN v2,1e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0017017879,1
+423,TabPFN v2,1e-05,0,False,one_sample,Thomas,credit,brier_score,0.0014448302,1
+424,TabPFN v2,1e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,0.00069542075,1
+425,TabPFN v2,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00026364516,1
+426,TabPFN v2,1e-05,0,True,one_sample,Cobranded,credit,brier_score,-8.1523828e-06,1
+427,TabPFN v2,1e-05,0,True,one_sample,Credit Risk,credit,brier_score,0.00033425163,1
+428,TabPFN v2,1e-05,0,True,one_sample,GMSC,credit,brier_score,-0.00014476224,1
+429,TabPFN v2,1e-05,0,True,one_sample,German Credit,credit,brier_score,0.00039874345,1
+430,TabPFN v2,1e-05,0,True,one_sample,HMEQ,credit,brier_score,0.0013952539,1
+431,TabPFN v2,1e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.0012494576,1
+432,TabPFN v2,1e-05,0,True,one_sample,Home Credit,credit,brier_score,-7.557149e-05,1
+433,TabPFN v2,1e-05,0,True,one_sample,LendingClub,credit,brier_score,-9.2792257e-05,1
+434,TabPFN v2,1e-05,0,True,one_sample,MicroFinance,credit,brier_score,0.00013039828,1
+435,TabPFN v2,1e-05,0,True,one_sample,Myhom,credit,brier_score,-0.00017705781,1
+436,TabPFN v2,1e-05,0,True,one_sample,PropPD1,credit,brier_score,-0.00028120129,1
+437,TabPFN v2,1e-05,0,True,one_sample,PropPD2,credit,brier_score,-0.00015898566,1
+438,TabPFN v2,1e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,0.00018689481,1
+439,TabPFN v2,1e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00015515577,1
+440,TabPFN v2,1e-05,0,True,one_sample,Thomas,credit,brier_score,0.00020361566,1
+441,TabPFN v2,1e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,0.00014298035,1
+442,TabPFN v2,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00046094214,1
+443,TabPFN v2,1e-05,0.003,False,one_sample,Cobranded,credit,brier_score,0.0020668721,1
+444,TabPFN v2,1e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0013223115,1
+445,TabPFN v2,1e-05,0.003,False,one_sample,GMSC,credit,brier_score,0.00049467483,1
+446,TabPFN v2,1e-05,0.003,False,one_sample,German Credit,credit,brier_score,0.0017378748,1
+447,TabPFN v2,1e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.006072933,1
+448,TabPFN v2,1e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,0.00068593266,1
+449,TabPFN v2,1e-05,0.003,False,one_sample,Home Credit,credit,brier_score,0.00075778569,1
+450,TabPFN v2,1e-05,0.003,False,one_sample,LendingClub,credit,brier_score,0.00092663057,1
+451,TabPFN v2,1e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,0.0014021123,1
+452,TabPFN v2,1e-05,0.003,False,one_sample,Myhom,credit,brier_score,-3.0505324e-05,1
+453,TabPFN v2,1e-05,0.003,False,one_sample,PropPD1,credit,brier_score,0.0016655995,1
+454,TabPFN v2,1e-05,0.003,False,one_sample,PropPD2,credit,brier_score,0.0014817033,1
+455,TabPFN v2,1e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00055778188,1
+456,TabPFN v2,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0016728102,1
+457,TabPFN v2,1e-05,0.003,False,one_sample,Thomas,credit,brier_score,0.00241739,1
+458,TabPFN v2,1e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.00096759364,1
+459,TabPFN v2,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00019160798,1
+460,TabPFN v2,1e-05,0.003,True,one_sample,Cobranded,credit,brier_score,4.1354644e-06,1
+461,TabPFN v2,1e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,0.0002953182,1
+462,TabPFN v2,1e-05,0.003,True,one_sample,GMSC,credit,brier_score,-0.0001191535,1
+463,TabPFN v2,1e-05,0.003,True,one_sample,German Credit,credit,brier_score,0.00022324598,1
+464,TabPFN v2,1e-05,0.003,True,one_sample,HMEQ,credit,brier_score,0.0011154938,1
+465,TabPFN v2,1e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.00044101232,1
+466,TabPFN v2,1e-05,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00018055785,1
+467,TabPFN v2,1e-05,0.003,True,one_sample,LendingClub,credit,brier_score,-0.00017102629,1
+468,TabPFN v2,1e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,0.0001102214,1
+469,TabPFN v2,1e-05,0.003,True,one_sample,Myhom,credit,brier_score,-0.00010247328,1
+470,TabPFN v2,1e-05,0.003,True,one_sample,PropPD1,credit,brier_score,-0.00012108098,1
+471,TabPFN v2,1e-05,0.003,True,one_sample,PropPD2,credit,brier_score,-0.0002059733,1
+472,TabPFN v2,1e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,0.00019331525,1
+473,TabPFN v2,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00014083691,1
+474,TabPFN v2,1e-05,0.003,True,one_sample,Thomas,credit,brier_score,5.8029928e-05,1
+475,TabPFN v2,1e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-3.8562079e-05,1
+476,TabPFN v2,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00048415067,1
+477,TabPFN v2,3e-05,0,False,one_sample,Cobranded,credit,brier_score,0.00088870566,1
+478,TabPFN v2,3e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.006612283,1
+479,TabPFN v2,3e-05,0,False,one_sample,GMSC,credit,brier_score,7.6042057e-05,1
+480,TabPFN v2,3e-05,0,False,one_sample,German Credit,credit,brier_score,-0.013154655,1
+481,TabPFN v2,3e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.02168555,1
+482,TabPFN v2,3e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.016181232,1
+483,TabPFN v2,3e-05,0,False,one_sample,Home Credit,credit,brier_score,0.0002795091,1
+484,TabPFN v2,3e-05,0,False,one_sample,LendingClub,credit,brier_score,-0.0013527411,1
+485,TabPFN v2,3e-05,0,False,one_sample,MicroFinance,credit,brier_score,0.00045662614,1
+486,TabPFN v2,3e-05,0,False,one_sample,Myhom,credit,brier_score,-0.00032174112,1
+487,TabPFN v2,3e-05,0,False,one_sample,PropPD1,credit,brier_score,0.0016570417,1
+488,TabPFN v2,3e-05,0,False,one_sample,PropPD2,credit,brier_score,0.0015548701,1
+489,TabPFN v2,3e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.00057009253,1
+490,TabPFN v2,3e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0012274968,1
+491,TabPFN v2,3e-05,0,False,one_sample,Thomas,credit,brier_score,-0.0028362829,1
+492,TabPFN v2,3e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,0.00091996574,1
+493,TabPFN v2,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00045062009,1
+494,TabPFN v2,3e-05,0,True,one_sample,Cobranded,credit,brier_score,-0.0002534179,1
+495,TabPFN v2,3e-05,0,True,one_sample,Credit Risk,credit,brier_score,0.00043125373,1
+496,TabPFN v2,3e-05,0,True,one_sample,GMSC,credit,brier_score,-0.00026827423,1
+497,TabPFN v2,3e-05,0,True,one_sample,German Credit,credit,brier_score,0.00067660632,1
+498,TabPFN v2,3e-05,0,True,one_sample,HMEQ,credit,brier_score,0.0014589431,1
+499,TabPFN v2,3e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.00065841203,1
+500,TabPFN v2,3e-05,0,True,one_sample,Home Credit,credit,brier_score,4.0047242e-05,1
+501,TabPFN v2,3e-05,0,True,one_sample,LendingClub,credit,brier_score,3.5285663e-05,1
+502,TabPFN v2,3e-05,0,True,one_sample,MicroFinance,credit,brier_score,0.00013265012,1
+503,TabPFN v2,3e-05,0,True,one_sample,Myhom,credit,brier_score,-0.00015468088,1
+504,TabPFN v2,3e-05,0,True,one_sample,PropPD1,credit,brier_score,-0.00085913308,1
+505,TabPFN v2,3e-05,0,True,one_sample,PropPD2,credit,brier_score,-0.00019351716,1
+506,TabPFN v2,3e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,1.0268948e-05,1
+507,TabPFN v2,3e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.0003825662,1
+508,TabPFN v2,3e-05,0,True,one_sample,Thomas,credit,brier_score,0.00043058097,1
+509,TabPFN v2,3e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,0.0001895175,1
+510,TabPFN v2,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,0.00035685887,1
+511,TabPFN v2,3e-05,0.003,False,one_sample,Cobranded,credit,brier_score,0.0020475714,1
+512,TabPFN v2,3e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0027570559,1
+513,TabPFN v2,3e-05,0.003,False,one_sample,GMSC,credit,brier_score,0.0004635588,1
+514,TabPFN v2,3e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.002590426,1
+515,TabPFN v2,3e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.015004843,1
+516,TabPFN v2,3e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0036212477,1
+517,TabPFN v2,3e-05,0.003,False,one_sample,Home Credit,credit,brier_score,0.00094708441,1
+518,TabPFN v2,3e-05,0.003,False,one_sample,LendingClub,credit,brier_score,0.0012205608,1
+519,TabPFN v2,3e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,0.0010660762,1
+520,TabPFN v2,3e-05,0.003,False,one_sample,Myhom,credit,brier_score,9.0197867e-05,1
+521,TabPFN v2,3e-05,0.003,False,one_sample,PropPD1,credit,brier_score,0.0015938257,1
+522,TabPFN v2,3e-05,0.003,False,one_sample,PropPD2,credit,brier_score,0.001437778,1
+523,TabPFN v2,3e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,-0.00014601075,1
+524,TabPFN v2,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0014594301,1
+525,TabPFN v2,3e-05,0.003,False,one_sample,Thomas,credit,brier_score,0.0012163566,1
+526,TabPFN v2,3e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,0.0010451703,1
+527,TabPFN v2,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00023686339,1
+528,TabPFN v2,3e-05,0.003,True,one_sample,Cobranded,credit,brier_score,3.1306704e-05,1
+529,TabPFN v2,3e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,0.00031075109,1
+530,TabPFN v2,3e-05,0.003,True,one_sample,GMSC,credit,brier_score,-0.00012311794,1
+531,TabPFN v2,3e-05,0.003,True,one_sample,German Credit,credit,brier_score,0.00038679744,1
+532,TabPFN v2,3e-05,0.003,True,one_sample,HMEQ,credit,brier_score,0.0014202831,1
+533,TabPFN v2,3e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,0.0001650567,1
+534,TabPFN v2,3e-05,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00010096757,1
+535,TabPFN v2,3e-05,0.003,True,one_sample,LendingClub,credit,brier_score,-9.3838866e-05,1
+536,TabPFN v2,3e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,8.5537001e-05,1
+537,TabPFN v2,3e-05,0.003,True,one_sample,Myhom,credit,brier_score,-0.00011055811,1
+538,TabPFN v2,3e-05,0.003,True,one_sample,PropPD1,credit,brier_score,-6.6291133e-05,1
+539,TabPFN v2,3e-05,0.003,True,one_sample,PropPD2,credit,brier_score,-0.00025733956,1
+540,TabPFN v2,3e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,0.00022027936,1
+541,TabPFN v2,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00010191347,1
+542,TabPFN v2,3e-05,0.003,True,one_sample,Thomas,credit,brier_score,0.00015758363,1
+543,TabPFN v2,3e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,7.9128552e-05,1
+544,TabPFN v2.6,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-9.0494467e-05,1
+545,TabPFN v2.6,3e-07,0,False,one_sample,Cobranded,credit,brier_score,-8.8933037e-05,1
+546,TabPFN v2.6,3e-07,0,False,one_sample,Credit Risk,credit,brier_score,-0.00081626526,1
+547,TabPFN v2.6,3e-07,0,False,one_sample,GMSC,credit,brier_score,-2.5639442e-05,1
+548,TabPFN v2.6,3e-07,0,False,one_sample,German Credit,credit,brier_score,-2.8097599e-05,1
+549,TabPFN v2.6,3e-07,0,False,one_sample,HMEQ,credit,brier_score,-0.0040576639,1
+550,TabPFN v2.6,3e-07,0,False,one_sample,Hackerearth,credit,brier_score,-0.0016904696,1
+551,TabPFN v2.6,3e-07,0,False,one_sample,Home Credit,credit,brier_score,-6.0838359e-05,1
+552,TabPFN v2.6,3e-07,0,False,one_sample,LendingClub,credit,brier_score,-3.948942e-06,1
+553,TabPFN v2.6,3e-07,0,False,one_sample,MicroFinance,credit,brier_score,-0.00022696536,1
+554,TabPFN v2.6,3e-07,0,False,one_sample,Myhom,credit,brier_score,-4.3956437e-05,1
+555,TabPFN v2.6,3e-07,0,False,one_sample,PropPD1,credit,brier_score,-0.00017228191,1
+556,TabPFN v2.6,3e-07,0,False,one_sample,PropPD2,credit,brier_score,-5.2962428e-05,1
+557,TabPFN v2.6,3e-07,0,False,one_sample,SBA Loans Case,credit,brier_score,0.00010357242,1
+558,TabPFN v2.6,3e-07,0,False,one_sample,Taiwan Credit Card,credit,brier_score,5.3005565e-05,1
+559,TabPFN v2.6,3e-07,0,False,one_sample,Thomas,credit,brier_score,0.00033650079,1
+560,TabPFN v2.6,3e-07,0,False,one_sample,Vehicle Loan,credit,brier_score,-2.2290726e-05,1
+561,TabPFN v2.6,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-5.9380834e-07,1
+562,TabPFN v2.6,3e-07,0,True,one_sample,Cobranded,credit,brier_score,-2.0880694e-06,1
+563,TabPFN v2.6,3e-07,0,True,one_sample,Credit Risk,credit,brier_score,1.668633e-05,1
+564,TabPFN v2.6,3e-07,0,True,one_sample,GMSC,credit,brier_score,3.3171309e-06,1
+565,TabPFN v2.6,3e-07,0,True,one_sample,German Credit,credit,brier_score,9.0305365e-06,1
+566,TabPFN v2.6,3e-07,0,True,one_sample,HMEQ,credit,brier_score,-5.927614e-05,1
+567,TabPFN v2.6,3e-07,0,True,one_sample,Hackerearth,credit,brier_score,-4.9098051e-05,1
+568,TabPFN v2.6,3e-07,0,True,one_sample,Home Credit,credit,brier_score,1.3964907e-05,1
+569,TabPFN v2.6,3e-07,0,True,one_sample,LendingClub,credit,brier_score,3.55479e-05,1
+570,TabPFN v2.6,3e-07,0,True,one_sample,MicroFinance,credit,brier_score,-6.7527734e-06,1
+571,TabPFN v2.6,3e-07,0,True,one_sample,Myhom,credit,brier_score,-5.6351645e-05,1
+572,TabPFN v2.6,3e-07,0,True,one_sample,PropPD1,credit,brier_score,8.1617645e-07,1
+573,TabPFN v2.6,3e-07,0,True,one_sample,PropPD2,credit,brier_score,7.5700512e-05,1
+574,TabPFN v2.6,3e-07,0,True,one_sample,SBA Loans Case,credit,brier_score,-2.5599673e-06,1
+575,TabPFN v2.6,3e-07,0,True,one_sample,Taiwan Credit Card,credit,brier_score,1.3556108e-05,1
+576,TabPFN v2.6,3e-07,0,True,one_sample,Thomas,credit,brier_score,1.0158993e-07,1
+577,TabPFN v2.6,3e-07,0,True,one_sample,Vehicle Loan,credit,brier_score,-1.4386514e-05,1
+578,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-8.5927801e-05,1
+579,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,brier_score,-8.1139449e-05,1
+580,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.00080452469,1
+581,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,brier_score,-2.5132747e-05,1
+582,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,brier_score,4.7038162e-06,1
+583,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0040685513,1
+584,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0016581252,1
+585,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,brier_score,-5.845218e-05,1
+586,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,brier_score,7.337272e-06,1
+587,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.00021352915,1
+588,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,brier_score,-3.8473353e-05,1
+589,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,brier_score,-0.00016778538,1
+590,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,brier_score,-5.4470814e-05,1
+591,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,brier_score,8.5121683e-05,1
+592,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,5.4012749e-05,1
+593,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,brier_score,0.00037785768,1
+594,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-2.0972621e-05,1
+595,TabPFN v2.6,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-9.4259301e-07,1
+596,TabPFN v2.6,3e-07,0.003,True,one_sample,Cobranded,credit,brier_score,3.2734118e-07,1
+597,TabPFN v2.6,3e-07,0.003,True,one_sample,Credit Risk,credit,brier_score,1.8069865e-05,1
+598,TabPFN v2.6,3e-07,0.003,True,one_sample,GMSC,credit,brier_score,2.8757965e-06,1
+599,TabPFN v2.6,3e-07,0.003,True,one_sample,German Credit,credit,brier_score,-1.4014761e-05,1
+600,TabPFN v2.6,3e-07,0.003,True,one_sample,HMEQ,credit,brier_score,-5.0468214e-05,1
+601,TabPFN v2.6,3e-07,0.003,True,one_sample,Hackerearth,credit,brier_score,-4.7458943e-05,1
+602,TabPFN v2.6,3e-07,0.003,True,one_sample,Home Credit,credit,brier_score,1.3910049e-05,1
+603,TabPFN v2.6,3e-07,0.003,True,one_sample,LendingClub,credit,brier_score,3.8127728e-05,1
+604,TabPFN v2.6,3e-07,0.003,True,one_sample,MicroFinance,credit,brier_score,-6.5955125e-06,1
+605,TabPFN v2.6,3e-07,0.003,True,one_sample,Myhom,credit,brier_score,-5.0085644e-05,1
+606,TabPFN v2.6,3e-07,0.003,True,one_sample,PropPD1,credit,brier_score,-1.9235378e-06,1
+607,TabPFN v2.6,3e-07,0.003,True,one_sample,PropPD2,credit,brier_score,7.432231e-05,1
+608,TabPFN v2.6,3e-07,0.003,True,one_sample,SBA Loans Case,credit,brier_score,-4.1399794e-06,1
+609,TabPFN v2.6,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,1.4805248e-05,1
+610,TabPFN v2.6,3e-07,0.003,True,one_sample,Thomas,credit,brier_score,-7.1482917e-05,1
+611,TabPFN v2.6,3e-07,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-1.5669545e-05,1
+612,TabPFN v2.6,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00019575407,1
+613,TabPFN v2.6,1e-06,0,False,one_sample,Cobranded,credit,brier_score,1.7080391e-06,1
+614,TabPFN v2.6,1e-06,0,False,one_sample,Credit Risk,credit,brier_score,-0.0012288235,1
+615,TabPFN v2.6,1e-06,0,False,one_sample,GMSC,credit,brier_score,-8.5529384e-05,1
+616,TabPFN v2.6,1e-06,0,False,one_sample,German Credit,credit,brier_score,-5.5771254e-05,1
+617,TabPFN v2.6,1e-06,0,False,one_sample,HMEQ,credit,brier_score,-0.0052371744,1
+618,TabPFN v2.6,1e-06,0,False,one_sample,Hackerearth,credit,brier_score,-0.0023779127,1
+619,TabPFN v2.6,1e-06,0,False,one_sample,Home Credit,credit,brier_score,1.4972566e-05,1
+620,TabPFN v2.6,1e-06,0,False,one_sample,LendingClub,credit,brier_score,-1.8932587e-06,1
+621,TabPFN v2.6,1e-06,0,False,one_sample,MicroFinance,credit,brier_score,-0.00045246941,1
+622,TabPFN v2.6,1e-06,0,False,one_sample,Myhom,credit,brier_score,-6.8589101e-05,1
+623,TabPFN v2.6,1e-06,0,False,one_sample,PropPD1,credit,brier_score,-0.00029247616,1
+624,TabPFN v2.6,1e-06,0,False,one_sample,PropPD2,credit,brier_score,-7.4399955e-05,1
+625,TabPFN v2.6,1e-06,0,False,one_sample,SBA Loans Case,credit,brier_score,1.0228751e-05,1
+626,TabPFN v2.6,1e-06,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-7.2786715e-06,1
+627,TabPFN v2.6,1e-06,0,False,one_sample,Thomas,credit,brier_score,0.00081146648,1
+628,TabPFN v2.6,1e-06,0,False,one_sample,Vehicle Loan,credit,brier_score,-0.00013808512,1
+629,TabPFN v2.6,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-1.3113469e-08,1
+630,TabPFN v2.6,1e-06,0,True,one_sample,Cobranded,credit,brier_score,-8.3825701e-07,1
+631,TabPFN v2.6,1e-06,0,True,one_sample,Credit Risk,credit,brier_score,2.6548364e-07,1
+632,TabPFN v2.6,1e-06,0,True,one_sample,GMSC,credit,brier_score,7.3301285e-06,1
+633,TabPFN v2.6,1e-06,0,True,one_sample,German Credit,credit,brier_score,-2.6357406e-05,1
+634,TabPFN v2.6,1e-06,0,True,one_sample,HMEQ,credit,brier_score,-0.00013226791,1
+635,TabPFN v2.6,1e-06,0,True,one_sample,Hackerearth,credit,brier_score,-0.00011763737,1
+636,TabPFN v2.6,1e-06,0,True,one_sample,Home Credit,credit,brier_score,2.7591274e-05,1
+637,TabPFN v2.6,1e-06,0,True,one_sample,LendingClub,credit,brier_score,7.1845727e-05,1
+638,TabPFN v2.6,1e-06,0,True,one_sample,MicroFinance,credit,brier_score,-1.179044e-05,1
+639,TabPFN v2.6,1e-06,0,True,one_sample,Myhom,credit,brier_score,-8.1705558e-05,1
+640,TabPFN v2.6,1e-06,0,True,one_sample,PropPD1,credit,brier_score,4.6708893e-06,1
+641,TabPFN v2.6,1e-06,0,True,one_sample,PropPD2,credit,brier_score,0.00011542343,1
+642,TabPFN v2.6,1e-06,0,True,one_sample,SBA Loans Case,credit,brier_score,-5.5108674e-06,1
+643,TabPFN v2.6,1e-06,0,True,one_sample,Taiwan Credit Card,credit,brier_score,2.7403839e-05,1
+644,TabPFN v2.6,1e-06,0,True,one_sample,Thomas,credit,brier_score,-1.9835759e-05,1
+645,TabPFN v2.6,1e-06,0,True,one_sample,Vehicle Loan,credit,brier_score,-5.2625371e-07,1
+646,TabPFN v2.6,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0001775755,1
+647,TabPFN v2.6,1e-06,0.003,False,one_sample,Cobranded,credit,brier_score,-1.620461e-07,1
+648,TabPFN v2.6,1e-06,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0011673419,1
+649,TabPFN v2.6,1e-06,0.003,False,one_sample,GMSC,credit,brier_score,-7.6551507e-05,1
+650,TabPFN v2.6,1e-06,0.003,False,one_sample,German Credit,credit,brier_score,-9.1784411e-05,1
+651,TabPFN v2.6,1e-06,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0050383934,1
+652,TabPFN v2.6,1e-06,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0022252826,1
+653,TabPFN v2.6,1e-06,0.003,False,one_sample,Home Credit,credit,brier_score,1.6018391e-05,1
+654,TabPFN v2.6,1e-06,0.003,False,one_sample,LendingClub,credit,brier_score,-1.0414982e-05,1
+655,TabPFN v2.6,1e-06,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.00040509835,1
+656,TabPFN v2.6,1e-06,0.003,False,one_sample,Myhom,credit,brier_score,-7.3025432e-05,1
+657,TabPFN v2.6,1e-06,0.003,False,one_sample,PropPD1,credit,brier_score,-0.00025915887,1
+658,TabPFN v2.6,1e-06,0.003,False,one_sample,PropPD2,credit,brier_score,-6.4460703e-05,1
+659,TabPFN v2.6,1e-06,0.003,False,one_sample,SBA Loans Case,credit,brier_score,5.4127383e-06,1
+660,TabPFN v2.6,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-2.4557143e-06,1
+661,TabPFN v2.6,1e-06,0.003,False,one_sample,Thomas,credit,brier_score,0.00074078551,1
+662,TabPFN v2.6,1e-06,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-0.00013199897,1
+663,TabPFN v2.6,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-1.9071743e-07,1
+664,TabPFN v2.6,1e-06,0.003,True,one_sample,Cobranded,credit,brier_score,3.4747125e-06,1
+665,TabPFN v2.6,1e-06,0.003,True,one_sample,Credit Risk,credit,brier_score,6.7486071e-06,1
+666,TabPFN v2.6,1e-06,0.003,True,one_sample,GMSC,credit,brier_score,6.8176361e-06,1
+667,TabPFN v2.6,1e-06,0.003,True,one_sample,German Credit,credit,brier_score,-1.4182832e-05,1
+668,TabPFN v2.6,1e-06,0.003,True,one_sample,HMEQ,credit,brier_score,-0.00011778758,1
+669,TabPFN v2.6,1e-06,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.00010853214,1
+670,TabPFN v2.6,1e-06,0.003,True,one_sample,Home Credit,credit,brier_score,2.7232387e-05,1
+671,TabPFN v2.6,1e-06,0.003,True,one_sample,LendingClub,credit,brier_score,7.4662015e-05,1
+672,TabPFN v2.6,1e-06,0.003,True,one_sample,MicroFinance,credit,brier_score,-1.2453081e-05,1
+673,TabPFN v2.6,1e-06,0.003,True,one_sample,Myhom,credit,brier_score,-7.4945673e-05,1
+674,TabPFN v2.6,1e-06,0.003,True,one_sample,PropPD1,credit,brier_score,5.7704144e-06,1
+675,TabPFN v2.6,1e-06,0.003,True,one_sample,PropPD2,credit,brier_score,0.00011126884,1
+676,TabPFN v2.6,1e-06,0.003,True,one_sample,SBA Loans Case,credit,brier_score,3.4101686e-09,1
+677,TabPFN v2.6,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,2.1935934e-05,1
+678,TabPFN v2.6,1e-06,0.003,True,one_sample,Thomas,credit,brier_score,-5.0003161e-05,1
+679,TabPFN v2.6,1e-06,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-7.6699252e-06,1
+680,TabPFN v2.6,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00047714201,1
+681,TabPFN v2.6,1e-05,0,False,one_sample,Cobranded,credit,brier_score,-0.00030174291,1
+682,TabPFN v2.6,1e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.002798381,1
+683,TabPFN v2.6,1e-05,0,False,one_sample,GMSC,credit,brier_score,-5.9975817e-05,1
+684,TabPFN v2.6,1e-05,0,False,one_sample,German Credit,credit,brier_score,-0.0019999125,1
+685,TabPFN v2.6,1e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.012123471,1
+686,TabPFN v2.6,1e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.01100483,1
+687,TabPFN v2.6,1e-05,0,False,one_sample,Home Credit,credit,brier_score,-0.0031442927,1
+688,TabPFN v2.6,1e-05,0,False,one_sample,LendingClub,credit,brier_score,0.00036792884,1
+689,TabPFN v2.6,1e-05,0,False,one_sample,MicroFinance,credit,brier_score,-0.0012973283,1
+690,TabPFN v2.6,1e-05,0,False,one_sample,Myhom,credit,brier_score,-0.00020273833,1
+691,TabPFN v2.6,1e-05,0,False,one_sample,PropPD1,credit,brier_score,-0.00039073567,1
+692,TabPFN v2.6,1e-05,0,False,one_sample,PropPD2,credit,brier_score,-5.2679738e-05,1
+693,TabPFN v2.6,1e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.0010082457,1
+694,TabPFN v2.6,1e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-5.8570055e-05,1
+695,TabPFN v2.6,1e-05,0,False,one_sample,Thomas,credit,brier_score,0.00073039718,1
+696,TabPFN v2.6,1e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,-0.00022737125,1
+697,TabPFN v2.6,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-4.1808795e-05,1
+698,TabPFN v2.6,1e-05,0,True,one_sample,Cobranded,credit,brier_score,-3.4760196e-05,1
+699,TabPFN v2.6,1e-05,0,True,one_sample,Credit Risk,credit,brier_score,-0.00010862056,1
+700,TabPFN v2.6,1e-05,0,True,one_sample,GMSC,credit,brier_score,1.5180099e-05,1
+701,TabPFN v2.6,1e-05,0,True,one_sample,German Credit,credit,brier_score,-0.00015749757,1
+702,TabPFN v2.6,1e-05,0,True,one_sample,HMEQ,credit,brier_score,-0.00044075962,1
+703,TabPFN v2.6,1e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.00031853135,1
+704,TabPFN v2.6,1e-05,0,True,one_sample,Home Credit,credit,brier_score,5.710125e-05,1
+705,TabPFN v2.6,1e-05,0,True,one_sample,LendingClub,credit,brier_score,0.0001931464,1
+706,TabPFN v2.6,1e-05,0,True,one_sample,MicroFinance,credit,brier_score,-5.9226616e-05,1
+707,TabPFN v2.6,1e-05,0,True,one_sample,Myhom,credit,brier_score,-6.9416156e-05,1
+708,TabPFN v2.6,1e-05,0,True,one_sample,PropPD1,credit,brier_score,4.3764191e-05,1
+709,TabPFN v2.6,1e-05,0,True,one_sample,PropPD2,credit,brier_score,0.00017461137,1
+710,TabPFN v2.6,1e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,-4.3924917e-06,1
+711,TabPFN v2.6,1e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,2.7079091e-05,1
+712,TabPFN v2.6,1e-05,0,True,one_sample,Thomas,credit,brier_score,6.6247272e-05,1
+713,TabPFN v2.6,1e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,-5.7110471e-05,1
+714,TabPFN v2.6,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00022945447,1
+715,TabPFN v2.6,1e-05,0.003,False,one_sample,Cobranded,credit,brier_score,-0.00012133214,1
+716,TabPFN v2.6,1e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0019782612,1
+717,TabPFN v2.6,1e-05,0.003,False,one_sample,GMSC,credit,brier_score,-7.3858881e-05,1
+718,TabPFN v2.6,1e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.0015607725,1
+719,TabPFN v2.6,1e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0072730527,1
+720,TabPFN v2.6,1e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0062738556,1
+721,TabPFN v2.6,1e-05,0.003,False,one_sample,Home Credit,credit,brier_score,-0.0035255293,1
+722,TabPFN v2.6,1e-05,0.003,False,one_sample,LendingClub,credit,brier_score,0.00020543958,1
+723,TabPFN v2.6,1e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.00081590526,1
+724,TabPFN v2.6,1e-05,0.003,False,one_sample,Myhom,credit,brier_score,-0.00017554451,1
+725,TabPFN v2.6,1e-05,0.003,False,one_sample,PropPD1,credit,brier_score,-0.00029475921,1
+726,TabPFN v2.6,1e-05,0.003,False,one_sample,PropPD2,credit,brier_score,6.0631407e-05,1
+727,TabPFN v2.6,1e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,-0.00050561273,1
+728,TabPFN v2.6,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-6.5850992e-05,1
+729,TabPFN v2.6,1e-05,0.003,False,one_sample,Thomas,credit,brier_score,0.0013837212,1
+730,TabPFN v2.6,1e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-0.00024197813,1
+731,TabPFN v2.6,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-1.8499254e-05,1
+732,TabPFN v2.6,1e-05,0.003,True,one_sample,Cobranded,credit,brier_score,-1.7274412e-05,1
+733,TabPFN v2.6,1e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,-8.1282405e-05,1
+734,TabPFN v2.6,1e-05,0.003,True,one_sample,GMSC,credit,brier_score,1.0632013e-05,1
+735,TabPFN v2.6,1e-05,0.003,True,one_sample,German Credit,credit,brier_score,-0.00016568331,1
+736,TabPFN v2.6,1e-05,0.003,True,one_sample,HMEQ,credit,brier_score,-0.00030251985,1
+737,TabPFN v2.6,1e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.00029933344,1
+738,TabPFN v2.6,1e-05,0.003,True,one_sample,Home Credit,credit,brier_score,4.356378e-05,1
+739,TabPFN v2.6,1e-05,0.003,True,one_sample,LendingClub,credit,brier_score,0.00014818184,1
+740,TabPFN v2.6,1e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,-3.198635e-05,1
+741,TabPFN v2.6,1e-05,0.003,True,one_sample,Myhom,credit,brier_score,-7.4498665e-05,1
+742,TabPFN v2.6,1e-05,0.003,True,one_sample,PropPD1,credit,brier_score,3.5779399e-05,1
+743,TabPFN v2.6,1e-05,0.003,True,one_sample,PropPD2,credit,brier_score,0.00015134085,1
+744,TabPFN v2.6,1e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,5.7705636e-06,1
+745,TabPFN v2.6,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,2.2258168e-05,1
+746,TabPFN v2.6,1e-05,0.003,True,one_sample,Thomas,credit,brier_score,-3.513297e-06,1
+747,TabPFN v2.6,1e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-4.4229872e-05,1
+748,TabPFN v2.6,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00092790741,1
+749,TabPFN v2.6,3e-05,0,False,one_sample,Cobranded,credit,brier_score,-0.0010961044,1
+750,TabPFN v2.6,3e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.0058103223,1
+751,TabPFN v2.6,3e-05,0,False,one_sample,GMSC,credit,brier_score,-0.00018066724,1
+752,TabPFN v2.6,3e-05,0,False,one_sample,German Credit,credit,brier_score,-0.0065478577,1
+753,TabPFN v2.6,3e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.022830304,1
+754,TabPFN v2.6,3e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.020837913,1
+755,TabPFN v2.6,3e-05,0,False,one_sample,Home Credit,credit,brier_score,-0.0024820644,1
+756,TabPFN v2.6,3e-05,0,False,one_sample,LendingClub,credit,brier_score,0.00040161557,1
+757,TabPFN v2.6,3e-05,0,False,one_sample,MicroFinance,credit,brier_score,-0.0022409923,1
+758,TabPFN v2.6,3e-05,0,False,one_sample,Myhom,credit,brier_score,-0.00060722967,1
+759,TabPFN v2.6,3e-05,0,False,one_sample,PropPD1,credit,brier_score,-0.00086997775,1
+760,TabPFN v2.6,3e-05,0,False,one_sample,PropPD2,credit,brier_score,7.3525279e-05,1
+761,TabPFN v2.6,3e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.003104623,1
+762,TabPFN v2.6,3e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00041199346,1
+763,TabPFN v2.6,3e-05,0,False,one_sample,Thomas,credit,brier_score,-0.0020443051,1
+764,TabPFN v2.6,3e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,-0.00090158738,1
+765,TabPFN v2.6,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-9.1541417e-05,1
+766,TabPFN v2.6,3e-05,0,True,one_sample,Cobranded,credit,brier_score,-7.9454757e-05,1
+767,TabPFN v2.6,3e-05,0,True,one_sample,Credit Risk,credit,brier_score,-0.00010184157,1
+768,TabPFN v2.6,3e-05,0,True,one_sample,GMSC,credit,brier_score,8.3213366e-06,1
+769,TabPFN v2.6,3e-05,0,True,one_sample,German Credit,credit,brier_score,-0.00026223154,1
+770,TabPFN v2.6,3e-05,0,True,one_sample,HMEQ,credit,brier_score,-0.00058169339,1
+771,TabPFN v2.6,3e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.00032108981,1
+772,TabPFN v2.6,3e-05,0,True,one_sample,Home Credit,credit,brier_score,5.7258704e-05,1
+773,TabPFN v2.6,3e-05,0,True,one_sample,LendingClub,credit,brier_score,0.00022665781,1
+774,TabPFN v2.6,3e-05,0,True,one_sample,MicroFinance,credit,brier_score,-0.0001152414,1
+775,TabPFN v2.6,3e-05,0,True,one_sample,Myhom,credit,brier_score,-1.3475774e-05,1
+776,TabPFN v2.6,3e-05,0,True,one_sample,PropPD1,credit,brier_score,7.4243421e-05,1
+777,TabPFN v2.6,3e-05,0,True,one_sample,PropPD2,credit,brier_score,0.00020653415,1
+778,TabPFN v2.6,3e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,-1.860761e-07,1
+779,TabPFN v2.6,3e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,1.908949e-06,1
+780,TabPFN v2.6,3e-05,0,True,one_sample,Thomas,credit,brier_score,2.8826089e-05,1
+781,TabPFN v2.6,3e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,-0.00016374854,1
+782,TabPFN v2.6,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00038212751,1
+783,TabPFN v2.6,3e-05,0.003,False,one_sample,Cobranded,credit,brier_score,-0.00020264645,1
+784,TabPFN v2.6,3e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0023733126,1
+785,TabPFN v2.6,3e-05,0.003,False,one_sample,GMSC,credit,brier_score,-0.0001191725,1
+786,TabPFN v2.6,3e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.0020677187,1
+787,TabPFN v2.6,3e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0096656979,1
+788,TabPFN v2.6,3e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0097025537,1
+789,TabPFN v2.6,3e-05,0.003,False,one_sample,Home Credit,credit,brier_score,-0.00094062454,1
+790,TabPFN v2.6,3e-05,0.003,False,one_sample,LendingClub,credit,brier_score,0.00032255623,1
+791,TabPFN v2.6,3e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.0012231073,1
+792,TabPFN v2.6,3e-05,0.003,False,one_sample,Myhom,credit,brier_score,-8.5978952e-05,1
+793,TabPFN v2.6,3e-05,0.003,False,one_sample,PropPD1,credit,brier_score,-0.00050760333,1
+794,TabPFN v2.6,3e-05,0.003,False,one_sample,PropPD2,credit,brier_score,4.9338848e-05,1
+795,TabPFN v2.6,3e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,-0.00069892405,1
+796,TabPFN v2.6,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-3.8991071e-05,1
+797,TabPFN v2.6,3e-05,0.003,False,one_sample,Thomas,credit,brier_score,0.0011254853,1
+798,TabPFN v2.6,3e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-0.00012764932,1
+799,TabPFN v2.6,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-2.4198075e-05,1
+800,TabPFN v2.6,3e-05,0.003,True,one_sample,Cobranded,credit,brier_score,-3.0817905e-05,1
+801,TabPFN v2.6,3e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,-9.3880508e-05,1
+802,TabPFN v2.6,3e-05,0.003,True,one_sample,GMSC,credit,brier_score,7.8015508e-06,1
+803,TabPFN v2.6,3e-05,0.003,True,one_sample,German Credit,credit,brier_score,-0.00020093055,1
+804,TabPFN v2.6,3e-05,0.003,True,one_sample,HMEQ,credit,brier_score,-0.00043109035,1
+805,TabPFN v2.6,3e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.00036530243,1
+806,TabPFN v2.6,3e-05,0.003,True,one_sample,Home Credit,credit,brier_score,4.1278087e-05,1
+807,TabPFN v2.6,3e-05,0.003,True,one_sample,LendingClub,credit,brier_score,0.00014173177,1
+808,TabPFN v2.6,3e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,-4.572248e-05,1
+809,TabPFN v2.6,3e-05,0.003,True,one_sample,Myhom,credit,brier_score,-5.5762208e-05,1
+810,TabPFN v2.6,3e-05,0.003,True,one_sample,PropPD1,credit,brier_score,4.8355057e-05,1
+811,TabPFN v2.6,3e-05,0.003,True,one_sample,PropPD2,credit,brier_score,0.00016860932,1
+812,TabPFN v2.6,3e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,1.6313303e-05,1
+813,TabPFN v2.6,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,3.186346e-05,1
+814,TabPFN v2.6,3e-05,0.003,True,one_sample,Thomas,credit,brier_score,1.036965e-05,1
+815,TabPFN v2.6,3e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-6.9581286e-05,1
+816,TabPFN v3,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,2.9225224e-05,1
+817,TabPFN v3,3e-07,0,False,one_sample,Cobranded,credit,brier_score,0.0003395435,1
+818,TabPFN v3,3e-07,0,False,one_sample,Credit Risk,credit,brier_score,-0.00038508104,1
+819,TabPFN v3,3e-07,0,False,one_sample,GMSC,credit,brier_score,1.6362559e-05,1
+820,TabPFN v3,3e-07,0,False,one_sample,German Credit,credit,brier_score,0.00027705869,1
+821,TabPFN v3,3e-07,0,False,one_sample,HMEQ,credit,brier_score,-0.0022367569,1
+822,TabPFN v3,3e-07,0,False,one_sample,Hackerearth,credit,brier_score,-0.0025957817,1
+823,TabPFN v3,3e-07,0,False,one_sample,Home Credit,credit,brier_score,2.9069783e-05,1
+824,TabPFN v3,3e-07,0,False,one_sample,LendingClub,credit,brier_score,-4.1681696e-05,1
+825,TabPFN v3,3e-07,0,False,one_sample,MicroFinance,credit,brier_score,0.00053026359,1
+826,TabPFN v3,3e-07,0,False,one_sample,Myhom,credit,brier_score,-0.00012075561,1
+827,TabPFN v3,3e-07,0,False,one_sample,PropPD1,credit,brier_score,0.00080280013,1
+828,TabPFN v3,3e-07,0,False,one_sample,PropPD2,credit,brier_score,0.00014939879,1
+829,TabPFN v3,3e-07,0,False,one_sample,SBA Loans Case,credit,brier_score,0.0010971664,1
+830,TabPFN v3,3e-07,0,False,one_sample,Taiwan Credit Card,credit,brier_score,0.00022049299,1
+831,TabPFN v3,3e-07,0,False,one_sample,Thomas,credit,brier_score,0.00025997792,1
+832,TabPFN v3,3e-07,0,False,one_sample,Vehicle Loan,credit,brier_score,8.1852335e-05,1
+833,TabPFN v3,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00011366778,1
+834,TabPFN v3,3e-07,0,True,one_sample,Cobranded,credit,brier_score,0.00014644514,1
+835,TabPFN v3,3e-07,0,True,one_sample,Credit Risk,credit,brier_score,3.3561499e-05,1
+836,TabPFN v3,3e-07,0,True,one_sample,GMSC,credit,brier_score,-5.3732635e-06,1
+837,TabPFN v3,3e-07,0,True,one_sample,German Credit,credit,brier_score,0.00046803122,1
+838,TabPFN v3,3e-07,0,True,one_sample,HMEQ,credit,brier_score,-0.0009695364,1
+839,TabPFN v3,3e-07,0,True,one_sample,Hackerearth,credit,brier_score,-0.0011650599,1
+840,TabPFN v3,3e-07,0,True,one_sample,Home Credit,credit,brier_score,5.0062815e-05,1
+841,TabPFN v3,3e-07,0,True,one_sample,LendingClub,credit,brier_score,0.00014023818,1
+842,TabPFN v3,3e-07,0,True,one_sample,MicroFinance,credit,brier_score,0.00027887207,1
+843,TabPFN v3,3e-07,0,True,one_sample,Myhom,credit,brier_score,0.0001055041,1
+844,TabPFN v3,3e-07,0,True,one_sample,PropPD1,credit,brier_score,0.00061063152,1
+845,TabPFN v3,3e-07,0,True,one_sample,PropPD2,credit,brier_score,4.8926478e-05,1
+846,TabPFN v3,3e-07,0,True,one_sample,SBA Loans Case,credit,brier_score,0.0012826186,1
+847,TabPFN v3,3e-07,0,True,one_sample,Taiwan Credit Card,credit,brier_score,0.00020716873,1
+848,TabPFN v3,3e-07,0,True,one_sample,Thomas,credit,brier_score,0.00020000516,1
+849,TabPFN v3,3e-07,0,True,one_sample,Vehicle Loan,credit,brier_score,0.00017422749,1
+850,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,3.2862665e-05,1
+851,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,brier_score,0.00034097952,1
+852,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0003256719,1
+853,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,brier_score,1.4758558e-05,1
+854,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,brier_score,0.00029376844,1
+855,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,brier_score,-0.0019511742,1
+856,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0024977783,1
+857,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,brier_score,2.9822764e-05,1
+858,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,brier_score,-2.3756311e-05,1
+859,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,brier_score,0.0005313714,1
+860,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,brier_score,-0.00011622541,1
+861,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,brier_score,0.00080299966,1
+862,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,brier_score,0.00014372082,1
+863,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.0010130895,1
+864,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0002176593,1
+865,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,brier_score,0.00029993868,1
+866,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,brier_score,9.2597959e-05,1
+867,TabPFN v3,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-7.0566834e-05,1
+868,TabPFN v3,3e-07,0.003,True,one_sample,Cobranded,credit,brier_score,0.00014167576,1
+869,TabPFN v3,3e-07,0.003,True,one_sample,Credit Risk,credit,brier_score,6.7304806e-05,1
+870,TabPFN v3,3e-07,0.003,True,one_sample,GMSC,credit,brier_score,-6.1649872e-06,1
+871,TabPFN v3,3e-07,0.003,True,one_sample,German Credit,credit,brier_score,0.00042050969,1
+872,TabPFN v3,3e-07,0.003,True,one_sample,HMEQ,credit,brier_score,-0.0010230668,1
+873,TabPFN v3,3e-07,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.0011390632,1
+874,TabPFN v3,3e-07,0.003,True,one_sample,Home Credit,credit,brier_score,3.9233755e-05,1
+875,TabPFN v3,3e-07,0.003,True,one_sample,LendingClub,credit,brier_score,0.00013845558,1
+876,TabPFN v3,3e-07,0.003,True,one_sample,MicroFinance,credit,brier_score,0.00029747249,1
+877,TabPFN v3,3e-07,0.003,True,one_sample,Myhom,credit,brier_score,0.00010590959,1
+878,TabPFN v3,3e-07,0.003,True,one_sample,PropPD1,credit,brier_score,0.00059219051,1
+879,TabPFN v3,3e-07,0.003,True,one_sample,PropPD2,credit,brier_score,5.0850311e-05,1
+880,TabPFN v3,3e-07,0.003,True,one_sample,SBA Loans Case,credit,brier_score,0.0013004966,1
+881,TabPFN v3,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,0.00020674472,1
+882,TabPFN v3,3e-07,0.003,True,one_sample,Thomas,credit,brier_score,0.00020544873,1
+883,TabPFN v3,3e-07,0.003,True,one_sample,Vehicle Loan,credit,brier_score,0.0001286437,1
+884,TabPFN v3,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00016358113,1
+885,TabPFN v3,1e-06,0,False,one_sample,Cobranded,credit,brier_score,0.00018418845,1
+886,TabPFN v3,1e-06,0,False,one_sample,Credit Risk,credit,brier_score,-0.0020459147,1
+887,TabPFN v3,1e-06,0,False,one_sample,GMSC,credit,brier_score,-3.1448771e-05,1
+888,TabPFN v3,1e-06,0,False,one_sample,German Credit,credit,brier_score,-0.0026409909,1
+889,TabPFN v3,1e-06,0,False,one_sample,HMEQ,credit,brier_score,-0.0057521968,1
+890,TabPFN v3,1e-06,0,False,one_sample,Hackerearth,credit,brier_score,-0.0053860403,1
+891,TabPFN v3,1e-06,0,False,one_sample,Home Credit,credit,brier_score,-0.00018573582,1
+892,TabPFN v3,1e-06,0,False,one_sample,LendingClub,credit,brier_score,-0.00019538325,1
+893,TabPFN v3,1e-06,0,False,one_sample,MicroFinance,credit,brier_score,0.00011319182,1
+894,TabPFN v3,1e-06,0,False,one_sample,Myhom,credit,brier_score,-0.00064704383,1
+895,TabPFN v3,1e-06,0,False,one_sample,PropPD1,credit,brier_score,0.00062063617,1
+896,TabPFN v3,1e-06,0,False,one_sample,PropPD2,credit,brier_score,7.8124858e-05,1
+897,TabPFN v3,1e-06,0,False,one_sample,SBA Loans Case,credit,brier_score,0.00060273455,1
+898,TabPFN v3,1e-06,0,False,one_sample,Taiwan Credit Card,credit,brier_score,0.0001612606,1
+899,TabPFN v3,1e-06,0,False,one_sample,Thomas,credit,brier_score,0.00015328246,1
+900,TabPFN v3,1e-06,0,False,one_sample,Vehicle Loan,credit,brier_score,-3.5864149e-05,1
+901,TabPFN v3,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-5.4659991e-05,1
+902,TabPFN v3,1e-06,0,True,one_sample,Cobranded,credit,brier_score,0.0001630762,1
+903,TabPFN v3,1e-06,0,True,one_sample,Credit Risk,credit,brier_score,5.5110764e-05,1
+904,TabPFN v3,1e-06,0,True,one_sample,GMSC,credit,brier_score,-2.8673602e-05,1
+905,TabPFN v3,1e-06,0,True,one_sample,German Credit,credit,brier_score,0.0014623734,1
+906,TabPFN v3,1e-06,0,True,one_sample,HMEQ,credit,brier_score,-0.0019500921,1
+907,TabPFN v3,1e-06,0,True,one_sample,Hackerearth,credit,brier_score,-0.0019420264,1
+908,TabPFN v3,1e-06,0,True,one_sample,Home Credit,credit,brier_score,2.466907e-05,1
+909,TabPFN v3,1e-06,0,True,one_sample,LendingClub,credit,brier_score,0.00011859269,1
+910,TabPFN v3,1e-06,0,True,one_sample,MicroFinance,credit,brier_score,6.5790051e-05,1
+911,TabPFN v3,1e-06,0,True,one_sample,Myhom,credit,brier_score,0.00017830816,1
+912,TabPFN v3,1e-06,0,True,one_sample,PropPD1,credit,brier_score,0.00054859585,1
+913,TabPFN v3,1e-06,0,True,one_sample,PropPD2,credit,brier_score,-9.8189827e-06,1
+914,TabPFN v3,1e-06,0,True,one_sample,SBA Loans Case,credit,brier_score,0.00096877416,1
+915,TabPFN v3,1e-06,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.0037553873,1
+916,TabPFN v3,1e-06,0,True,one_sample,Thomas,credit,brier_score,9.9763895e-05,1
+917,TabPFN v3,1e-06,0,True,one_sample,Vehicle Loan,credit,brier_score,-0.0013739107,1
+918,TabPFN v3,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00014754505,1
+919,TabPFN v3,1e-06,0.003,False,one_sample,Cobranded,credit,brier_score,0.00024255927,1
+920,TabPFN v3,1e-06,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0015081548,1
+921,TabPFN v3,1e-06,0.003,False,one_sample,GMSC,credit,brier_score,-2.9566785e-05,1
+922,TabPFN v3,1e-06,0.003,False,one_sample,German Credit,credit,brier_score,-0.0020364775,1
+923,TabPFN v3,1e-06,0.003,False,one_sample,HMEQ,credit,brier_score,-0.004562143,1
+924,TabPFN v3,1e-06,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.0046708584,1
+925,TabPFN v3,1e-06,0.003,False,one_sample,Home Credit,credit,brier_score,-0.00015603318,1
+926,TabPFN v3,1e-06,0.003,False,one_sample,LendingClub,credit,brier_score,-0.0001776185,1
+927,TabPFN v3,1e-06,0.003,False,one_sample,MicroFinance,credit,brier_score,0.00020101374,1
+928,TabPFN v3,1e-06,0.003,False,one_sample,Myhom,credit,brier_score,-0.00049811342,1
+929,TabPFN v3,1e-06,0.003,False,one_sample,PropPD1,credit,brier_score,0.0005736649,1
+930,TabPFN v3,1e-06,0.003,False,one_sample,PropPD2,credit,brier_score,8.6450515e-05,1
+931,TabPFN v3,1e-06,0.003,False,one_sample,SBA Loans Case,credit,brier_score,0.00082434877,1
+932,TabPFN v3,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,0.00016120037,1
+933,TabPFN v3,1e-06,0.003,False,one_sample,Thomas,credit,brier_score,0.0001704642,1
+934,TabPFN v3,1e-06,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-3.3320174e-05,1
+935,TabPFN v3,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00020571092,1
+936,TabPFN v3,1e-06,0.003,True,one_sample,Cobranded,credit,brier_score,0.00016404777,1
+937,TabPFN v3,1e-06,0.003,True,one_sample,Credit Risk,credit,brier_score,0.00015100827,1
+938,TabPFN v3,1e-06,0.003,True,one_sample,GMSC,credit,brier_score,-2.8540935e-05,1
+939,TabPFN v3,1e-06,0.003,True,one_sample,German Credit,credit,brier_score,0.0013187012,1
+940,TabPFN v3,1e-06,0.003,True,one_sample,HMEQ,credit,brier_score,-0.0016355636,1
+941,TabPFN v3,1e-06,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.001814702,1
+942,TabPFN v3,1e-06,0.003,True,one_sample,Home Credit,credit,brier_score,2.7647502e-05,1
+943,TabPFN v3,1e-06,0.003,True,one_sample,LendingClub,credit,brier_score,0.00010349494,1
+944,TabPFN v3,1e-06,0.003,True,one_sample,MicroFinance,credit,brier_score,9.8984285e-05,1
+945,TabPFN v3,1e-06,0.003,True,one_sample,Myhom,credit,brier_score,0.00018497485,1
+946,TabPFN v3,1e-06,0.003,True,one_sample,PropPD1,credit,brier_score,0.00058434522,1
+947,TabPFN v3,1e-06,0.003,True,one_sample,PropPD2,credit,brier_score,2.1497844e-06,1
+948,TabPFN v3,1e-06,0.003,True,one_sample,SBA Loans Case,credit,brier_score,0.00094421941,1
+949,TabPFN v3,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.0036280595,1
+950,TabPFN v3,1e-06,0.003,True,one_sample,Thomas,credit,brier_score,0.00011403866,1
+951,TabPFN v3,1e-06,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-0.0017310494,1
+952,TabPFN v3,1e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0024956536,1
+953,TabPFN v3,1e-05,0,False,one_sample,Cobranded,credit,brier_score,-0.0016879799,1
+954,TabPFN v3,1e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.017520207,1
+955,TabPFN v3,1e-05,0,False,one_sample,GMSC,credit,brier_score,-0.00073449392,1
+956,TabPFN v3,1e-05,0,False,one_sample,German Credit,credit,brier_score,-0.032217377,1
+957,TabPFN v3,1e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.066368527,1
+958,TabPFN v3,1e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.036555177,1
+959,TabPFN v3,1e-05,0,False,one_sample,Home Credit,credit,brier_score,-0.00085841566,1
+960,TabPFN v3,1e-05,0,False,one_sample,LendingClub,credit,brier_score,-0.018535759,1
+961,TabPFN v3,1e-05,0,False,one_sample,MicroFinance,credit,brier_score,-0.0022808092,1
+962,TabPFN v3,1e-05,0,False,one_sample,Myhom,credit,brier_score,-0.025947933,1
+963,TabPFN v3,1e-05,0,False,one_sample,PropPD1,credit,brier_score,-0.0039739453,1
+964,TabPFN v3,1e-05,0,False,one_sample,PropPD2,credit,brier_score,-0.00014128107,1
+965,TabPFN v3,1e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.017965693,1
+966,TabPFN v3,1e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.0020243788,1
+967,TabPFN v3,1e-05,0,False,one_sample,Thomas,credit,brier_score,-0.036210109,1
+968,TabPFN v3,1e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,-0.00088977666,1
+969,TabPFN v3,1e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.003350775,1
+970,TabPFN v3,1e-05,0,True,one_sample,Cobranded,credit,brier_score,-0.00034191443,1
+971,TabPFN v3,1e-05,0,True,one_sample,Credit Risk,credit,brier_score,-0.0029757688,1
+972,TabPFN v3,1e-05,0,True,one_sample,GMSC,credit,brier_score,-0.00014269832,1
+973,TabPFN v3,1e-05,0,True,one_sample,German Credit,credit,brier_score,-0.0038387764,1
+974,TabPFN v3,1e-05,0,True,one_sample,HMEQ,credit,brier_score,-0.005031786,1
+975,TabPFN v3,1e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.01562742,1
+976,TabPFN v3,1e-05,0,True,one_sample,Home Credit,credit,brier_score,-0.00037296596,1
+977,TabPFN v3,1e-05,0,True,one_sample,LendingClub,credit,brier_score,0.00033792932,1
+978,TabPFN v3,1e-05,0,True,one_sample,MicroFinance,credit,brier_score,-0.00066552422,1
+979,TabPFN v3,1e-05,0,True,one_sample,Myhom,credit,brier_score,-2.1500201e-05,1
+980,TabPFN v3,1e-05,0,True,one_sample,PropPD1,credit,brier_score,-0.0010498058,1
+981,TabPFN v3,1e-05,0,True,one_sample,PropPD2,credit,brier_score,-2.1291506e-05,1
+982,TabPFN v3,1e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,-0.0017562319,1
+983,TabPFN v3,1e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00048513435,1
+984,TabPFN v3,1e-05,0,True,one_sample,Thomas,credit,brier_score,-0.0019828949,1
+985,TabPFN v3,1e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,-0.00044641492,1
+986,TabPFN v3,1e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0038670341,1
+987,TabPFN v3,1e-05,0.003,False,one_sample,Cobranded,credit,brier_score,-0.00071644457,1
+988,TabPFN v3,1e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.0095523571,1
+989,TabPFN v3,1e-05,0.003,False,one_sample,GMSC,credit,brier_score,-0.00029391271,1
+990,TabPFN v3,1e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.010697678,1
+991,TabPFN v3,1e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.045623137,1
+992,TabPFN v3,1e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.026256265,1
+993,TabPFN v3,1e-05,0.003,False,one_sample,Home Credit,credit,brier_score,-0.00059423431,1
+994,TabPFN v3,1e-05,0.003,False,one_sample,LendingClub,credit,brier_score,-0.0061438069,1
+995,TabPFN v3,1e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.0013048645,1
+996,TabPFN v3,1e-05,0.003,False,one_sample,Myhom,credit,brier_score,-0.019765716,1
+997,TabPFN v3,1e-05,0.003,False,one_sample,PropPD1,credit,brier_score,-0.0010087748,1
+998,TabPFN v3,1e-05,0.003,False,one_sample,PropPD2,credit,brier_score,-3.5669161e-05,1
+999,TabPFN v3,1e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,-0.0081222452,1
+1000,TabPFN v3,1e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.00080508774,1
+1001,TabPFN v3,1e-05,0.003,False,one_sample,Thomas,credit,brier_score,-0.012292289,1
+1002,TabPFN v3,1e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-0.00018498934,1
+1003,TabPFN v3,1e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.00149762,1
+1004,TabPFN v3,1e-05,0.003,True,one_sample,Cobranded,credit,brier_score,-0.00025070662,1
+1005,TabPFN v3,1e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,-0.0026435885,1
+1006,TabPFN v3,1e-05,0.003,True,one_sample,GMSC,credit,brier_score,-0.00015101542,1
+1007,TabPFN v3,1e-05,0.003,True,one_sample,German Credit,credit,brier_score,-0.0044787873,1
+1008,TabPFN v3,1e-05,0.003,True,one_sample,HMEQ,credit,brier_score,-0.0034215217,1
+1009,TabPFN v3,1e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.014574671,1
+1010,TabPFN v3,1e-05,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00039970763,1
+1011,TabPFN v3,1e-05,0.003,True,one_sample,LendingClub,credit,brier_score,0.00029284597,1
+1012,TabPFN v3,1e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,-0.0006924164,1
+1013,TabPFN v3,1e-05,0.003,True,one_sample,Myhom,credit,brier_score,-7.0426809e-05,1
+1014,TabPFN v3,1e-05,0.003,True,one_sample,PropPD1,credit,brier_score,-0.000573262,1
+1015,TabPFN v3,1e-05,0.003,True,one_sample,PropPD2,credit,brier_score,1.2477337e-06,1
+1016,TabPFN v3,1e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,-0.001131876,1
+1017,TabPFN v3,1e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00050459865,1
+1018,TabPFN v3,1e-05,0.003,True,one_sample,Thomas,credit,brier_score,-0.0011007607,1
+1019,TabPFN v3,1e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-0.00021166594,1
+1020,TabPFN v3,3e-05,0,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0104763,1
+1021,TabPFN v3,3e-05,0,False,one_sample,Cobranded,credit,brier_score,-0.0038540685,1
+1022,TabPFN v3,3e-05,0,False,one_sample,Credit Risk,credit,brier_score,-0.065095574,1
+1023,TabPFN v3,3e-05,0,False,one_sample,GMSC,credit,brier_score,-0.0036566489,1
+1024,TabPFN v3,3e-05,0,False,one_sample,German Credit,credit,brier_score,-0.027395219,1
+1025,TabPFN v3,3e-05,0,False,one_sample,HMEQ,credit,brier_score,-0.08501503,1
+1026,TabPFN v3,3e-05,0,False,one_sample,Hackerearth,credit,brier_score,-0.058581859,1
+1027,TabPFN v3,3e-05,0,False,one_sample,Home Credit,credit,brier_score,-0.0015000233,1
+1028,TabPFN v3,3e-05,0,False,one_sample,LendingClub,credit,brier_score,-0.036267016,1
+1029,TabPFN v3,3e-05,0,False,one_sample,MicroFinance,credit,brier_score,-0.0056871736,1
+1030,TabPFN v3,3e-05,0,False,one_sample,Myhom,credit,brier_score,-0.026252297,1
+1031,TabPFN v3,3e-05,0,False,one_sample,PropPD1,credit,brier_score,-0.014742158,1
+1032,TabPFN v3,3e-05,0,False,one_sample,PropPD2,credit,brier_score,-0.0016333482,1
+1033,TabPFN v3,3e-05,0,False,one_sample,SBA Loans Case,credit,brier_score,-0.018818304,1
+1034,TabPFN v3,3e-05,0,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.013789318,1
+1035,TabPFN v3,3e-05,0,False,one_sample,Thomas,credit,brier_score,-0.05043116,1
+1036,TabPFN v3,3e-05,0,False,one_sample,Vehicle Loan,credit,brier_score,-0.0040963821,1
+1037,TabPFN v3,3e-05,0,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.0010705735,1
+1038,TabPFN v3,3e-05,0,True,one_sample,Cobranded,credit,brier_score,-0.00076149151,1
+1039,TabPFN v3,3e-05,0,True,one_sample,Credit Risk,credit,brier_score,-0.0066569865,1
+1040,TabPFN v3,3e-05,0,True,one_sample,GMSC,credit,brier_score,-0.00087915974,1
+1041,TabPFN v3,3e-05,0,True,one_sample,German Credit,credit,brier_score,-0.010438152,1
+1042,TabPFN v3,3e-05,0,True,one_sample,HMEQ,credit,brier_score,-0.0098595594,1
+1043,TabPFN v3,3e-05,0,True,one_sample,Hackerearth,credit,brier_score,-0.028664207,1
+1044,TabPFN v3,3e-05,0,True,one_sample,Home Credit,credit,brier_score,-0.0013998275,1
+1045,TabPFN v3,3e-05,0,True,one_sample,LendingClub,credit,brier_score,-0.00014948798,1
+1046,TabPFN v3,3e-05,0,True,one_sample,MicroFinance,credit,brier_score,-0.0012788001,1
+1047,TabPFN v3,3e-05,0,True,one_sample,Myhom,credit,brier_score,-0.00031600525,1
+1048,TabPFN v3,3e-05,0,True,one_sample,PropPD1,credit,brier_score,-0.00053012498,1
+1049,TabPFN v3,3e-05,0,True,one_sample,PropPD2,credit,brier_score,-0.0001561325,1
+1050,TabPFN v3,3e-05,0,True,one_sample,SBA Loans Case,credit,brier_score,-0.0059305149,1
+1051,TabPFN v3,3e-05,0,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.00093986593,1
+1052,TabPFN v3,3e-05,0,True,one_sample,Thomas,credit,brier_score,-0.012682984,1
+1053,TabPFN v3,3e-05,0,True,one_sample,Vehicle Loan,credit,brier_score,-0.00099621632,1
+1054,TabPFN v3,3e-05,0.003,False,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.012430275,1
+1055,TabPFN v3,3e-05,0.003,False,one_sample,Cobranded,credit,brier_score,-0.0011816509,1
+1056,TabPFN v3,3e-05,0.003,False,one_sample,Credit Risk,credit,brier_score,-0.014531674,1
+1057,TabPFN v3,3e-05,0.003,False,one_sample,GMSC,credit,brier_score,-0.00064496356,1
+1058,TabPFN v3,3e-05,0.003,False,one_sample,German Credit,credit,brier_score,-0.014333112,1
+1059,TabPFN v3,3e-05,0.003,False,one_sample,HMEQ,credit,brier_score,-0.05232726,1
+1060,TabPFN v3,3e-05,0.003,False,one_sample,Hackerearth,credit,brier_score,-0.039729056,1
+1061,TabPFN v3,3e-05,0.003,False,one_sample,Home Credit,credit,brier_score,-0.0009269584,1
+1062,TabPFN v3,3e-05,0.003,False,one_sample,LendingClub,credit,brier_score,-0.0034496378,1
+1063,TabPFN v3,3e-05,0.003,False,one_sample,MicroFinance,credit,brier_score,-0.0021321635,1
+1064,TabPFN v3,3e-05,0.003,False,one_sample,Myhom,credit,brier_score,-0.0014291225,1
+1065,TabPFN v3,3e-05,0.003,False,one_sample,PropPD1,credit,brier_score,-0.0043036536,1
+1066,TabPFN v3,3e-05,0.003,False,one_sample,PropPD2,credit,brier_score,-2.052926e-05,1
+1067,TabPFN v3,3e-05,0.003,False,one_sample,SBA Loans Case,credit,brier_score,-0.004921047,1
+1068,TabPFN v3,3e-05,0.003,False,one_sample,Taiwan Credit Card,credit,brier_score,-0.000754287,1
+1069,TabPFN v3,3e-05,0.003,False,one_sample,Thomas,credit,brier_score,-0.013322462,1
+1070,TabPFN v3,3e-05,0.003,False,one_sample,Vehicle Loan,credit,brier_score,-0.00051708502,1
+1071,TabPFN v3,3e-05,0.003,True,one_sample,Bondora Peer-to-Peer,credit,brier_score,-0.011392932,1
+1072,TabPFN v3,3e-05,0.003,True,one_sample,Cobranded,credit,brier_score,-0.0007532832,1
+1073,TabPFN v3,3e-05,0.003,True,one_sample,Credit Risk,credit,brier_score,-0.004619803,1
+1074,TabPFN v3,3e-05,0.003,True,one_sample,GMSC,credit,brier_score,-0.00094010091,1
+1075,TabPFN v3,3e-05,0.003,True,one_sample,German Credit,credit,brier_score,-0.011491517,1
+1076,TabPFN v3,3e-05,0.003,True,one_sample,HMEQ,credit,brier_score,-0.0050396373,1
+1077,TabPFN v3,3e-05,0.003,True,one_sample,Hackerearth,credit,brier_score,-0.023661141,1
+1078,TabPFN v3,3e-05,0.003,True,one_sample,Home Credit,credit,brier_score,-0.00062338119,1
+1079,TabPFN v3,3e-05,0.003,True,one_sample,LendingClub,credit,brier_score,6.8221812e-05,1
+1080,TabPFN v3,3e-05,0.003,True,one_sample,MicroFinance,credit,brier_score,-0.00070671556,1
+1081,TabPFN v3,3e-05,0.003,True,one_sample,Myhom,credit,brier_score,-5.4434524e-05,1
+1082,TabPFN v3,3e-05,0.003,True,one_sample,PropPD1,credit,brier_score,-0.00047937149,1
+1083,TabPFN v3,3e-05,0.003,True,one_sample,PropPD2,credit,brier_score,-6.516904e-06,1
+1084,TabPFN v3,3e-05,0.003,True,one_sample,SBA Loans Case,credit,brier_score,-0.0058288815,1
+1085,TabPFN v3,3e-05,0.003,True,one_sample,Taiwan Credit Card,credit,brier_score,-0.0053132428,1
+1086,TabPFN v3,3e-05,0.003,True,one_sample,Thomas,credit,brier_score,-0.0038788171,1
+1087,TabPFN v3,3e-05,0.003,True,one_sample,Vehicle Loan,credit,brier_score,-0.00037675012,1
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,0.0066576241,-0.00029993275,9.3206433e-05,17
+1,TabICLv2,3e-07,0,True,one_sample,0.0071494049,-0.00012181136,0.00011372422,17
+2,TabICLv2,3e-07,0.003,False,one_sample,0.0068026543,-0.0002486283,8.1896163e-05,17
+3,TabICLv2,3e-07,0.003,True,one_sample,0.007164018,-0.00010820322,0.00014753082,17
+4,TabICLv2,1e-06,0,False,one_sample,0.0065357201,-0.00071292476,0.00019961147,17
+5,TabICLv2,1e-06,0,True,one_sample,0.0071259302,-0.00031866152,0.00012610508,17
+6,TabICLv2,1e-06,0.003,False,one_sample,0.0068607261,-0.00040486468,0.00025280796,17
+7,TabICLv2,1e-06,0.003,True,one_sample,0.0070856587,-0.00024355379,9.9565797e-05,17
+8,TabICLv2,1e-05,0,False,one_sample,-0.0017061886,-0.0098689658,-0.0017135817,17
+9,TabICLv2,1e-05,0,True,one_sample,0.005220809,-0.0013388845,-1.7793919e-05,17
+10,TabICLv2,1e-05,0.003,False,one_sample,0.0036282134,-0.0030297101,-0.00059482763,17
+11,TabICLv2,1e-05,0.003,True,one_sample,0.0057901531,-0.00052622559,0.00013393444,17
+12,TabICLv2,3e-05,0,False,one_sample,-0.0095423923,-0.021350505,-0.004974691,17
+13,TabICLv2,3e-05,0,True,one_sample,0.0039794979,-0.0015622281,-0.00024510409,17
+14,TabICLv2,3e-05,0.003,False,one_sample,0.0024238837,-0.0026200091,-0.00095239743,17
+15,TabICLv2,3e-05,0.003,True,one_sample,0.0048432936,-0.00089894361,-0.00021697479,17
+16,TabPFN v2,3e-07,0,False,one_sample,0.0016324742,0.00049605308,0.0014070258,17
+17,TabPFN v2,3e-07,0,True,one_sample,-5.9021681e-05,-0.00014734192,3.7226908e-05,17
+18,TabPFN v2,3e-07,0.003,False,one_sample,0.001632041,0.00049497369,0.0014004252,17
+19,TabPFN v2,3e-07,0.003,True,one_sample,-5.6492436e-05,-0.00014442639,3.565775e-05,17
+20,TabPFN v2,1e-06,0,False,one_sample,0.0016776942,0.00059469958,0.0017081801,17
+21,TabPFN v2,1e-06,0,True,one_sample,-7.2503592e-05,-0.00019475957,4.4407668e-05,17
+22,TabPFN v2,1e-06,0.003,False,one_sample,0.0017011291,0.0005837759,0.001683607,17
+23,TabPFN v2,1e-06,0.003,True,one_sample,-6.9082219e-05,-0.00019472961,4.7486385e-05,17
+24,TabPFN v2,1e-05,0,False,one_sample,-0.00053942482,-0.0001700262,0.0014255516,17
+25,TabPFN v2,1e-05,0,True,one_sample,1.0903323e-05,-0.00015898566,0.00018689481,17
+26,TabPFN v2,1e-05,0.003,False,one_sample,0.00058058552,0.00049467483,0.0016655995,17
+27,TabPFN v2,1e-05,0.003,True,one_sample,1.6910323e-05,-0.00017102629,0.0001102214,17
+28,TabPFN v2,3e-05,0,False,one_sample,-0.003302263,-0.0028362829,0.00088870566,17
+29,TabPFN v2,3e-05,0,True,one_sample,1.0854823e-05,-0.00026827423,0.0001895175,17
+30,TabPFN v2,3e-05,0.003,False,one_sample,-0.00065735967,-0.00014601075,0.0012205608,17
+31,TabPFN v2,3e-05,0.003,True,one_sample,0.00010387256,-0.00010191347,0.0001650567,17
+32,TabPFN v2.6,3e-07,0,False,one_sample,-0.00040516051,-0.00017228191,-2.2290726e-05,17
+33,TabPFN v2.6,3e-07,0,True,one_sample,-1.3168104e-06,-6.7527734e-06,1.3556108e-05,17
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.0003969442,-0.00016778538,4.7038162e-06,17
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,-5.9025476e-06,-1.5669545e-05,1.3910049e-05,17
+36,TabPFN v2.6,1e-06,0,False,one_sample,-0.00055163419,-0.00029247616,-1.8932587e-06,17
+37,TabPFN v2.6,1e-06,0,True,one_sample,-8.3501268e-06,-1.9835759e-05,7.3301285e-06,17
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00052714634,-0.00025915887,-2.4557143e-06,17
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,-7.5206565e-06,-1.4182832e-05,6.8176361e-06,17
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.0020028877,-0.0019999125,-5.9975817e-05,17
+41,TabPFN v2.6,1e-05,0,True,one_sample,-4.205848e-05,-6.9416156e-05,4.3764191e-05,17
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0012638809,-0.0015607725,-7.3858881e-05,17
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-3.654672e-05,-7.4498665e-05,2.2258168e-05,17
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.004142277,-0.003104623,-0.00060722967,17
+45,TabPFN v2.6,3e-05,0,True,one_sample,-6.6279637e-05,-0.0001152414,2.8826089e-05,17
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.001566984,-0.0012231073,-8.5978952e-05,17
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-5.0056681e-05,-6.9581286e-05,3.186346e-05,17
+48,TabPFN v3,3e-07,0,False,one_sample,-9.099089e-05,-4.1681696e-05,0.00027705869,17
+49,TabPFN v3,3e-07,0,True,one_sample,8.7803278e-05,3.3561499e-05,0.00020716873,17
+50,TabPFN v3,3e-07,0.003,False,one_sample,-6.4766877e-05,-2.3756311e-05,0.00029993868,17
+51,TabPFN v3,3e-07,0.003,True,one_sample,8.5651436e-05,3.9233755e-05,0.00020674472,17
+52,TabPFN v3,1e-06,0,False,one_sample,-0.00089239887,-0.00064704383,0.00015328246,17
+53,TabPFN v3,1e-06,0,True,one_sample,-0.00031938323,-5.4659991e-05,0.0001630762,17
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.00068000759,-0.00049811342,0.0001704642,17
+55,TabPFN v3,1e-06,0.003,True,one_sample,-0.00031470673,-0.00020571092,0.00016404777,17
+56,TabPFN v3,1e-05,0,False,one_sample,-0.01567103,-0.025947933,-0.0016879799,17
+57,TabPFN v3,1e-05,0,True,one_sample,-0.0022219396,-0.0029757688,-0.00034191443,17
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.008662618,-0.010697678,-0.00071644457,17
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.0018475606,-0.00149762,-0.00021166594,17
+60,TabPFN v3,3e-05,0,False,one_sample,-0.025134816,-0.036267016,-0.0040963821,17
+61,TabPFN v3,3e-05,0,True,one_sample,-0.0048652994,-0.0066569865,-0.00076149151,17
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.0098208786,-0.013322462,-0.0009269584,17
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.0044175473,-0.0053132428,-0.00047937149,17
+
+Figure: pd_factorial_ood_brier_score
+PD. Completed five-fold final benchmark, PD non-credit retention. Original minus CPT Brier score. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,openml_46905,ood,brier_score,-0.0011966325,4
+1,TabICLv2,3e-07,0,False,one_sample,openml_46947,ood,brier_score,-0.0002168286,4
+2,TabICLv2,3e-07,0,False,one_sample,openml_46952,ood,brier_score,-0.00088537488,4
+3,TabICLv2,3e-07,0,False,one_sample,openml_46956,ood,brier_score,0.0003542598,4
+4,TabICLv2,3e-07,0,True,one_sample,openml_46905,ood,brier_score,-0.00033359292,4
+5,TabICLv2,3e-07,0,True,one_sample,openml_46947,ood,brier_score,-2.4277099e-05,4
+6,TabICLv2,3e-07,0,True,one_sample,openml_46952,ood,brier_score,-0.00030380945,4
+7,TabICLv2,3e-07,0,True,one_sample,openml_46956,ood,brier_score,0.00021505813,4
+8,TabICLv2,3e-07,0.003,False,one_sample,openml_46905,ood,brier_score,-0.0010147708,4
+9,TabICLv2,3e-07,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00016125197,4
+10,TabICLv2,3e-07,0.003,False,one_sample,openml_46952,ood,brier_score,-0.00077562873,4
+11,TabICLv2,3e-07,0.003,False,one_sample,openml_46956,ood,brier_score,0.00035751144,4
+12,TabICLv2,3e-07,0.003,True,one_sample,openml_46905,ood,brier_score,-0.00037766442,4
+13,TabICLv2,3e-07,0.003,True,one_sample,openml_46947,ood,brier_score,-3.8445504e-05,4
+14,TabICLv2,3e-07,0.003,True,one_sample,openml_46952,ood,brier_score,-0.00029892418,4
+15,TabICLv2,3e-07,0.003,True,one_sample,openml_46956,ood,brier_score,0.00020689991,4
+16,TabICLv2,1e-06,0,False,one_sample,openml_46905,ood,brier_score,-0.0021627894,4
+17,TabICLv2,1e-06,0,False,one_sample,openml_46947,ood,brier_score,-0.00053268306,4
+18,TabICLv2,1e-06,0,False,one_sample,openml_46952,ood,brier_score,-0.0024141305,4
+19,TabICLv2,1e-06,0,False,one_sample,openml_46956,ood,brier_score,0.00012690928,4
+20,TabICLv2,1e-06,0,True,one_sample,openml_46905,ood,brier_score,-0.00084807987,4
+21,TabICLv2,1e-06,0,True,one_sample,openml_46947,ood,brier_score,-0.00016156809,4
+22,TabICLv2,1e-06,0,True,one_sample,openml_46952,ood,brier_score,-9.6611886e-05,4
+23,TabICLv2,1e-06,0,True,one_sample,openml_46956,ood,brier_score,0.00030493813,4
+24,TabICLv2,1e-06,0.003,False,one_sample,openml_46905,ood,brier_score,-0.0016284969,4
+25,TabICLv2,1e-06,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00036881387,4
+26,TabICLv2,1e-06,0.003,False,one_sample,openml_46952,ood,brier_score,-0.0015056378,4
+27,TabICLv2,1e-06,0.003,False,one_sample,openml_46956,ood,brier_score,0.00025740402,4
+28,TabICLv2,1e-06,0.003,True,one_sample,openml_46905,ood,brier_score,-0.00074421614,4
+29,TabICLv2,1e-06,0.003,True,one_sample,openml_46947,ood,brier_score,-0.00013890244,4
+30,TabICLv2,1e-06,0.003,True,one_sample,openml_46952,ood,brier_score,-9.7977434e-05,4
+31,TabICLv2,1e-06,0.003,True,one_sample,openml_46956,ood,brier_score,0.00029992128,4
+32,TabICLv2,1e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.0070056487,4
+33,TabICLv2,1e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.0081280251,4
+34,TabICLv2,1e-05,0,False,one_sample,openml_46952,ood,brier_score,-0.031713369,4
+35,TabICLv2,1e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.0067438357,4
+36,TabICLv2,1e-05,0,True,one_sample,openml_46905,ood,brier_score,-0.0025388831,4
+37,TabICLv2,1e-05,0,True,one_sample,openml_46947,ood,brier_score,-0.00051445536,4
+38,TabICLv2,1e-05,0,True,one_sample,openml_46952,ood,brier_score,-0.0014330389,4
+39,TabICLv2,1e-05,0,True,one_sample,openml_46956,ood,brier_score,0.00026934028,4
+40,TabICLv2,1e-05,0.003,False,one_sample,openml_46905,ood,brier_score,-0.004136804,4
+41,TabICLv2,1e-05,0.003,False,one_sample,openml_46947,ood,brier_score,-0.0022870675,4
+42,TabICLv2,1e-05,0.003,False,one_sample,openml_46952,ood,brier_score,-0.0065535177,4
+43,TabICLv2,1e-05,0.003,False,one_sample,openml_46956,ood,brier_score,-0.0017860943,4
+44,TabICLv2,1e-05,0.003,True,one_sample,openml_46905,ood,brier_score,-0.0021009313,4
+45,TabICLv2,1e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-0.00043126461,4
+46,TabICLv2,1e-05,0.003,True,one_sample,openml_46952,ood,brier_score,-0.0012914702,4
+47,TabICLv2,1e-05,0.003,True,one_sample,openml_46956,ood,brier_score,0.00029499063,4
+48,TabICLv2,3e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.011875649,4
+49,TabICLv2,3e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.013237839,4
+50,TabICLv2,3e-05,0,False,one_sample,openml_46952,ood,brier_score,-0.020188176,4
+51,TabICLv2,3e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.0090296397,4
+52,TabICLv2,3e-05,0,True,one_sample,openml_46905,ood,brier_score,-0.0039279246,4
+53,TabICLv2,3e-05,0,True,one_sample,openml_46947,ood,brier_score,-0.00097973525,4
+54,TabICLv2,3e-05,0,True,one_sample,openml_46952,ood,brier_score,-0.0029629511,4
+55,TabICLv2,3e-05,0,True,one_sample,openml_46956,ood,brier_score,-4.9563314e-05,4
+56,TabICLv2,3e-05,0.003,False,one_sample,openml_46905,ood,brier_score,-0.0047665787,4
+57,TabICLv2,3e-05,0.003,False,one_sample,openml_46947,ood,brier_score,-0.0020816303,4
+58,TabICLv2,3e-05,0.003,False,one_sample,openml_46952,ood,brier_score,-0.0056350646,4
+59,TabICLv2,3e-05,0.003,False,one_sample,openml_46956,ood,brier_score,-0.0016859532,4
+60,TabICLv2,3e-05,0.003,True,one_sample,openml_46905,ood,brier_score,-0.002696474,4
+61,TabICLv2,3e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-0.00062724568,4
+62,TabICLv2,3e-05,0.003,True,one_sample,openml_46952,ood,brier_score,-0.0018923685,4
+63,TabICLv2,3e-05,0.003,True,one_sample,openml_46956,ood,brier_score,0.00025621788,4
+64,TabPFN v2,3e-07,0,False,one_sample,openml_46905,ood,brier_score,0.0028444587,4
+65,TabPFN v2,3e-07,0,False,one_sample,openml_46947,ood,brier_score,0.00067010672,4
+66,TabPFN v2,3e-07,0,False,one_sample,openml_46952,ood,brier_score,0.0013652057,4
+67,TabPFN v2,3e-07,0,False,one_sample,openml_46956,ood,brier_score,0.00038926753,4
+68,TabPFN v2,3e-07,0,True,one_sample,openml_46905,ood,brier_score,-8.1316369e-05,4
+69,TabPFN v2,3e-07,0,True,one_sample,openml_46947,ood,brier_score,-9.005358e-05,4
+70,TabPFN v2,3e-07,0,True,one_sample,openml_46952,ood,brier_score,7.4759207e-06,4
+71,TabPFN v2,3e-07,0,True,one_sample,openml_46956,ood,brier_score,-4.2882355e-05,4
+72,TabPFN v2,3e-07,0.003,False,one_sample,openml_46905,ood,brier_score,0.002840294,4
+73,TabPFN v2,3e-07,0.003,False,one_sample,openml_46947,ood,brier_score,0.00066672569,4
+74,TabPFN v2,3e-07,0.003,False,one_sample,openml_46952,ood,brier_score,0.001375737,4
+75,TabPFN v2,3e-07,0.003,False,one_sample,openml_46956,ood,brier_score,0.00038463342,4
+76,TabPFN v2,3e-07,0.003,True,one_sample,openml_46905,ood,brier_score,-8.2934353e-05,4
+77,TabPFN v2,3e-07,0.003,True,one_sample,openml_46947,ood,brier_score,-8.6639596e-05,4
+78,TabPFN v2,3e-07,0.003,True,one_sample,openml_46952,ood,brier_score,7.3469732e-06,4
+79,TabPFN v2,3e-07,0.003,True,one_sample,openml_46956,ood,brier_score,-4.0655219e-05,4
+80,TabPFN v2,1e-06,0,False,one_sample,openml_46905,ood,brier_score,0.002458247,4
+81,TabPFN v2,1e-06,0,False,one_sample,openml_46947,ood,brier_score,0.00064455768,4
+82,TabPFN v2,1e-06,0,False,one_sample,openml_46952,ood,brier_score,0.0014401079,4
+83,TabPFN v2,1e-06,0,False,one_sample,openml_46956,ood,brier_score,0.00036862715,4
+84,TabPFN v2,1e-06,0,True,one_sample,openml_46905,ood,brier_score,-8.2279208e-05,4
+85,TabPFN v2,1e-06,0,True,one_sample,openml_46947,ood,brier_score,-0.00010416599,4
+86,TabPFN v2,1e-06,0,True,one_sample,openml_46952,ood,brier_score,4.6761671e-05,4
+87,TabPFN v2,1e-06,0,True,one_sample,openml_46956,ood,brier_score,-5.8015731e-05,4
+88,TabPFN v2,1e-06,0.003,False,one_sample,openml_46905,ood,brier_score,0.002550718,4
+89,TabPFN v2,1e-06,0.003,False,one_sample,openml_46947,ood,brier_score,0.00066131725,4
+90,TabPFN v2,1e-06,0.003,False,one_sample,openml_46952,ood,brier_score,0.0014020351,4
+91,TabPFN v2,1e-06,0.003,False,one_sample,openml_46956,ood,brier_score,0.0003654251,4
+92,TabPFN v2,1e-06,0.003,True,one_sample,openml_46905,ood,brier_score,-8.8814305e-05,4
+93,TabPFN v2,1e-06,0.003,True,one_sample,openml_46947,ood,brier_score,-0.00010080259,4
+94,TabPFN v2,1e-06,0.003,True,one_sample,openml_46952,ood,brier_score,3.564197e-05,4
+95,TabPFN v2,1e-06,0.003,True,one_sample,openml_46956,ood,brier_score,-5.6589328e-05,4
+96,TabPFN v2,1e-05,0,False,one_sample,openml_46905,ood,brier_score,0.00035321997,4
+97,TabPFN v2,1e-05,0,False,one_sample,openml_46947,ood,brier_score,0.00019467031,4
+98,TabPFN v2,1e-05,0,False,one_sample,openml_46952,ood,brier_score,0.0004206242,4
+99,TabPFN v2,1e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.00031536947,4
+100,TabPFN v2,1e-05,0,True,one_sample,openml_46905,ood,brier_score,0.00019401087,4
+101,TabPFN v2,1e-05,0,True,one_sample,openml_46947,ood,brier_score,-8.2319571e-05,4
+102,TabPFN v2,1e-05,0,True,one_sample,openml_46952,ood,brier_score,0.00041832662,4
+103,TabPFN v2,1e-05,0,True,one_sample,openml_46956,ood,brier_score,-3.6885821e-06,4
+104,TabPFN v2,1e-05,0.003,False,one_sample,openml_46905,ood,brier_score,0.0011483061,4
+105,TabPFN v2,1e-05,0.003,False,one_sample,openml_46947,ood,brier_score,0.00039704887,4
+106,TabPFN v2,1e-05,0.003,False,one_sample,openml_46952,ood,brier_score,0.0015352963,4
+107,TabPFN v2,1e-05,0.003,False,one_sample,openml_46956,ood,brier_score,6.4403906e-05,4
+108,TabPFN v2,1e-05,0.003,True,one_sample,openml_46905,ood,brier_score,4.3539277e-05,4
+109,TabPFN v2,1e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-6.6887781e-05,4
+110,TabPFN v2,1e-05,0.003,True,one_sample,openml_46952,ood,brier_score,0.000232258,4
+111,TabPFN v2,1e-05,0.003,True,one_sample,openml_46956,ood,brier_score,-4.822511e-05,4
+112,TabPFN v2,3e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.0017459982,4
+113,TabPFN v2,3e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.00069056262,4
+114,TabPFN v2,3e-05,0,False,one_sample,openml_46952,ood,brier_score,-0.0061927992,4
+115,TabPFN v2,3e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.0037809132,4
+116,TabPFN v2,3e-05,0,True,one_sample,openml_46905,ood,brier_score,0.00035514727,4
+117,TabPFN v2,3e-05,0,True,one_sample,openml_46947,ood,brier_score,-9.9499042e-05,4
+118,TabPFN v2,3e-05,0,True,one_sample,openml_46952,ood,brier_score,0.00061635614,4
+119,TabPFN v2,3e-05,0,True,one_sample,openml_46956,ood,brier_score,4.6948074e-05,4
+120,TabPFN v2,3e-05,0.003,False,one_sample,openml_46905,ood,brier_score,0.0008873545,4
+121,TabPFN v2,3e-05,0.003,False,one_sample,openml_46947,ood,brier_score,0.00031043978,4
+122,TabPFN v2,3e-05,0.003,False,one_sample,openml_46952,ood,brier_score,-0.000135565,4
+123,TabPFN v2,3e-05,0.003,False,one_sample,openml_46956,ood,brier_score,-0.00052445757,4
+124,TabPFN v2,3e-05,0.003,True,one_sample,openml_46905,ood,brier_score,9.9517053e-05,4
+125,TabPFN v2,3e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-6.3976345e-05,4
+126,TabPFN v2,3e-05,0.003,True,one_sample,openml_46952,ood,brier_score,0.00036702455,4
+127,TabPFN v2,3e-05,0.003,True,one_sample,openml_46956,ood,brier_score,-2.2503732e-05,4
+128,TabPFN v2.6,3e-07,0,False,one_sample,openml_46905,ood,brier_score,0.0001747721,4
+129,TabPFN v2.6,3e-07,0,False,one_sample,openml_46947,ood,brier_score,-7.6562034e-05,4
+130,TabPFN v2.6,3e-07,0,False,one_sample,openml_46952,ood,brier_score,0.0016972765,4
+131,TabPFN v2.6,3e-07,0,False,one_sample,openml_46956,ood,brier_score,-7.796143e-07,4
+132,TabPFN v2.6,3e-07,0,True,one_sample,openml_46905,ood,brier_score,-6.4615504e-06,4
+133,TabPFN v2.6,3e-07,0,True,one_sample,openml_46947,ood,brier_score,-5.5629483e-08,4
+134,TabPFN v2.6,3e-07,0,True,one_sample,openml_46952,ood,brier_score,-1.6329278e-06,4
+135,TabPFN v2.6,3e-07,0,True,one_sample,openml_46956,ood,brier_score,1.6092623e-05,4
+136,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46905,ood,brier_score,0.00017447151,4
+137,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46947,ood,brier_score,-7.4910393e-05,4
+138,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46952,ood,brier_score,0.0016645484,4
+139,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46956,ood,brier_score,-8.8751442e-06,4
+140,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46905,ood,brier_score,-6.1780228e-06,4
+141,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46947,ood,brier_score,2.8105184e-06,4
+142,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46952,ood,brier_score,1.5145937e-06,4
+143,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46956,ood,brier_score,2.0465868e-05,4
+144,TabPFN v2.6,1e-06,0,False,one_sample,openml_46905,ood,brier_score,0.00019404859,4
+145,TabPFN v2.6,1e-06,0,False,one_sample,openml_46947,ood,brier_score,-0.00011356853,4
+146,TabPFN v2.6,1e-06,0,False,one_sample,openml_46952,ood,brier_score,0.0023036468,4
+147,TabPFN v2.6,1e-06,0,False,one_sample,openml_46956,ood,brier_score,1.0258883e-05,4
+148,TabPFN v2.6,1e-06,0,True,one_sample,openml_46905,ood,brier_score,-2.2573086e-05,4
+149,TabPFN v2.6,1e-06,0,True,one_sample,openml_46947,ood,brier_score,3.0702594e-06,4
+150,TabPFN v2.6,1e-06,0,True,one_sample,openml_46952,ood,brier_score,-1.4210368e-06,4
+151,TabPFN v2.6,1e-06,0,True,one_sample,openml_46956,ood,brier_score,3.4530632e-05,4
+152,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46905,ood,brier_score,0.00021030229,4
+153,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00010376157,4
+154,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46952,ood,brier_score,0.0022506491,4
+155,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46956,ood,brier_score,-1.7651274e-06,4
+156,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46905,ood,brier_score,-2.1768326e-05,4
+157,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46947,ood,brier_score,9.5870752e-07,4
+158,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46952,ood,brier_score,3.3255998e-06,4
+159,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46956,ood,brier_score,2.9013998e-05,4
+160,TabPFN v2.6,1e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.00045408202,4
+161,TabPFN v2.6,1e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.00020796288,4
+162,TabPFN v2.6,1e-05,0,False,one_sample,openml_46952,ood,brier_score,0.0026846232,4
+163,TabPFN v2.6,1e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.00014666671,4
+164,TabPFN v2.6,1e-05,0,True,one_sample,openml_46905,ood,brier_score,-9.5884145e-05,4
+165,TabPFN v2.6,1e-05,0,True,one_sample,openml_46947,ood,brier_score,-1.9630135e-05,4
+166,TabPFN v2.6,1e-05,0,True,one_sample,openml_46952,ood,brier_score,3.0451758e-05,4
+167,TabPFN v2.6,1e-05,0,True,one_sample,openml_46956,ood,brier_score,8.3183408e-05,4
+168,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46905,ood,brier_score,-0.00010033689,4
+169,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00012877311,4
+170,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46952,ood,brier_score,0.0027055865,4
+171,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46956,ood,brier_score,6.3293782e-07,4
+172,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46905,ood,brier_score,-6.8248035e-05,4
+173,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-1.4099918e-05,4
+174,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46952,ood,brier_score,9.7556677e-06,4
+175,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46956,ood,brier_score,5.3984954e-05,4
+176,TabPFN v2.6,3e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.0022597186,4
+177,TabPFN v2.6,3e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.00044187344,4
+178,TabPFN v2.6,3e-05,0,False,one_sample,openml_46952,ood,brier_score,-0.00075437438,4
+179,TabPFN v2.6,3e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.0014759406,4
+180,TabPFN v2.6,3e-05,0,True,one_sample,openml_46905,ood,brier_score,-4.9101003e-05,4
+181,TabPFN v2.6,3e-05,0,True,one_sample,openml_46947,ood,brier_score,-2.5481449e-05,4
+182,TabPFN v2.6,3e-05,0,True,one_sample,openml_46952,ood,brier_score,0.0001794885,4
+183,TabPFN v2.6,3e-05,0,True,one_sample,openml_46956,ood,brier_score,0.00011682625,4
+184,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46905,ood,brier_score,-0.00035782407,4
+185,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00010383826,4
+186,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46952,ood,brier_score,0.002988378,4
+187,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46956,ood,brier_score,-0.00018731149,4
+188,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46905,ood,brier_score,-6.3220806e-05,4
+189,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-1.4917168e-05,4
+190,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46952,ood,brier_score,4.5602729e-05,4
+191,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46956,ood,brier_score,5.9815157e-05,4
+192,TabPFN v3,3e-07,0,False,one_sample,openml_46905,ood,brier_score,0.00016215196,4
+193,TabPFN v3,3e-07,0,False,one_sample,openml_46947,ood,brier_score,-0.00026203379,4
+194,TabPFN v3,3e-07,0,False,one_sample,openml_46952,ood,brier_score,-0.0014195391,4
+195,TabPFN v3,3e-07,0,False,one_sample,openml_46956,ood,brier_score,5.4937022e-05,4
+196,TabPFN v3,3e-07,0,True,one_sample,openml_46905,ood,brier_score,0.00019496801,4
+197,TabPFN v3,3e-07,0,True,one_sample,openml_46947,ood,brier_score,4.2919635e-05,4
+198,TabPFN v3,3e-07,0,True,one_sample,openml_46952,ood,brier_score,0.00015660396,4
+199,TabPFN v3,3e-07,0,True,one_sample,openml_46956,ood,brier_score,-9.8271017e-06,4
+200,TabPFN v3,3e-07,0.003,False,one_sample,openml_46905,ood,brier_score,0.00016292105,4
+201,TabPFN v3,3e-07,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00025187371,4
+202,TabPFN v3,3e-07,0.003,False,one_sample,openml_46952,ood,brier_score,-0.0012915053,4
+203,TabPFN v3,3e-07,0.003,False,one_sample,openml_46956,ood,brier_score,5.7727956e-05,4
+204,TabPFN v3,3e-07,0.003,True,one_sample,openml_46905,ood,brier_score,0.00019914519,4
+205,TabPFN v3,3e-07,0.003,True,one_sample,openml_46947,ood,brier_score,4.34549e-05,4
+206,TabPFN v3,3e-07,0.003,True,one_sample,openml_46952,ood,brier_score,0.00014290965,4
+207,TabPFN v3,3e-07,0.003,True,one_sample,openml_46956,ood,brier_score,-1.2383993e-05,4
+208,TabPFN v3,1e-06,0,False,one_sample,openml_46905,ood,brier_score,-8.7096039e-05,4
+209,TabPFN v3,1e-06,0,False,one_sample,openml_46947,ood,brier_score,-0.00050612174,4
+210,TabPFN v3,1e-06,0,False,one_sample,openml_46952,ood,brier_score,-0.0038481551,4
+211,TabPFN v3,1e-06,0,False,one_sample,openml_46956,ood,brier_score,-0.00091505295,4
+212,TabPFN v3,1e-06,0,True,one_sample,openml_46905,ood,brier_score,9.3551601e-05,4
+213,TabPFN v3,1e-06,0,True,one_sample,openml_46947,ood,brier_score,-1.6880679e-05,4
+214,TabPFN v3,1e-06,0,True,one_sample,openml_46952,ood,brier_score,0.00026990455,4
+215,TabPFN v3,1e-06,0,True,one_sample,openml_46956,ood,brier_score,-5.3834199e-05,4
+216,TabPFN v3,1e-06,0.003,False,one_sample,openml_46905,ood,brier_score,-6.5101978e-05,4
+217,TabPFN v3,1e-06,0.003,False,one_sample,openml_46947,ood,brier_score,-0.00047113013,4
+218,TabPFN v3,1e-06,0.003,False,one_sample,openml_46952,ood,brier_score,-0.0034905408,4
+219,TabPFN v3,1e-06,0.003,False,one_sample,openml_46956,ood,brier_score,-0.00072034916,4
+220,TabPFN v3,1e-06,0.003,True,one_sample,openml_46905,ood,brier_score,0.00010537631,4
+221,TabPFN v3,1e-06,0.003,True,one_sample,openml_46947,ood,brier_score,-1.7833334e-05,4
+222,TabPFN v3,1e-06,0.003,True,one_sample,openml_46952,ood,brier_score,0.00021542942,4
+223,TabPFN v3,1e-06,0.003,True,one_sample,openml_46956,ood,brier_score,-5.5112268e-05,4
+224,TabPFN v3,1e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.0088513037,4
+225,TabPFN v3,1e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.010291248,4
+226,TabPFN v3,1e-05,0,False,one_sample,openml_46952,ood,brier_score,-0.029217129,4
+227,TabPFN v3,1e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.023474482,4
+228,TabPFN v3,1e-05,0,True,one_sample,openml_46905,ood,brier_score,-0.0012756386,4
+229,TabPFN v3,1e-05,0,True,one_sample,openml_46947,ood,brier_score,-0.00040409676,4
+230,TabPFN v3,1e-05,0,True,one_sample,openml_46952,ood,brier_score,-0.005975846,4
+231,TabPFN v3,1e-05,0,True,one_sample,openml_46956,ood,brier_score,-0.0027525198,4
+232,TabPFN v3,1e-05,0.003,False,one_sample,openml_46905,ood,brier_score,-0.0048988373,4
+233,TabPFN v3,1e-05,0.003,False,one_sample,openml_46947,ood,brier_score,-0.0033963775,4
+234,TabPFN v3,1e-05,0.003,False,one_sample,openml_46952,ood,brier_score,-0.017521531,4
+235,TabPFN v3,1e-05,0.003,False,one_sample,openml_46956,ood,brier_score,-0.010326633,4
+236,TabPFN v3,1e-05,0.003,True,one_sample,openml_46905,ood,brier_score,-0.00086645109,4
+237,TabPFN v3,1e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-0.00021908171,4
+238,TabPFN v3,1e-05,0.003,True,one_sample,openml_46952,ood,brier_score,-0.0062390733,4
+239,TabPFN v3,1e-05,0.003,True,one_sample,openml_46956,ood,brier_score,-0.0014683256,4
+240,TabPFN v3,3e-05,0,False,one_sample,openml_46905,ood,brier_score,-0.0213119,4
+241,TabPFN v3,3e-05,0,False,one_sample,openml_46947,ood,brier_score,-0.035215968,4
+242,TabPFN v3,3e-05,0,False,one_sample,openml_46952,ood,brier_score,-0.037157892,4
+243,TabPFN v3,3e-05,0,False,one_sample,openml_46956,ood,brier_score,-0.025430713,4
+244,TabPFN v3,3e-05,0,True,one_sample,openml_46905,ood,brier_score,-0.024581632,4
+245,TabPFN v3,3e-05,0,True,one_sample,openml_46947,ood,brier_score,-0.00070466893,4
+246,TabPFN v3,3e-05,0,True,one_sample,openml_46952,ood,brier_score,-0.0096451989,4
+247,TabPFN v3,3e-05,0,True,one_sample,openml_46956,ood,brier_score,-0.021426652,4
+248,TabPFN v3,3e-05,0.003,False,one_sample,openml_46905,ood,brier_score,-0.0068888403,4
+249,TabPFN v3,3e-05,0.003,False,one_sample,openml_46947,ood,brier_score,-0.0034721518,4
+250,TabPFN v3,3e-05,0.003,False,one_sample,openml_46952,ood,brier_score,-0.017100089,4
+251,TabPFN v3,3e-05,0.003,False,one_sample,openml_46956,ood,brier_score,-0.0048179945,4
+252,TabPFN v3,3e-05,0.003,True,one_sample,openml_46905,ood,brier_score,-0.0097056711,4
+253,TabPFN v3,3e-05,0.003,True,one_sample,openml_46947,ood,brier_score,-0.00047968934,4
+254,TabPFN v3,3e-05,0.003,True,one_sample,openml_46952,ood,brier_score,-0.0086752036,4
+255,TabPFN v3,3e-05,0.003,True,one_sample,openml_46956,ood,brier_score,-0.0085975825,4
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,-0.00048614405,-0.00096318929,-7.4056501e-05,4
+1,TabICLv2,3e-07,0,True,one_sample,-0.00011165533,-0.00031125532,3.5556708e-05,4
+2,TabICLv2,3e-07,0.003,False,one_sample,-0.00039853501,-0.00083541425,-3.1561117e-05,4
+3,TabICLv2,3e-07,0.003,True,one_sample,-0.00012703355,-0.00031860924,2.2890848e-05,4
+4,TabICLv2,1e-06,0,False,one_sample,-0.0012456734,-0.0022256246,-0.00036778497,4
+5,TabICLv2,1e-06,0,True,one_sample,-0.00020033043,-0.00033319604,3.7756173e-06,4
+6,TabICLv2,1e-06,0.003,False,one_sample,-0.00081138612,-0.0015363525,-0.0002122594,4
+7,TabICLv2,1e-06,0.003,True,one_sample,-0.00017029368,-0.00029023086,1.4972442e-06,4
+8,TabICLv2,1e-05,0,False,one_sample,-0.01339772,-0.014024361,-0.0069401955,4
+9,TabICLv2,1e-05,0,True,one_sample,-0.0010542593,-0.0017094999,-0.00031850645,4
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.0036908709,-0.0047409824,-0.0021618242,4
+11,TabICLv2,1e-05,0.003,True,one_sample,-0.00088216887,-0.0014938355,-0.0002497008,4
+12,TabICLv2,3e-05,0,False,one_sample,-0.013582826,-0.014975423,-0.011164147,4
+13,TabICLv2,3e-05,0,True,one_sample,-0.0019800436,-0.0032041944,-0.00074719227,4
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.0035423067,-0.0049837002,-0.001982711,4
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.0012399676,-0.0020933949,-0.00040637979,4
+16,TabPFN v2,3e-07,0,False,one_sample,0.0013172597,0.00059989692,0.0017350189,4
+17,TabPFN v2,3e-07,0,True,one_sample,-5.1694096e-05,-8.3500672e-05,-3.0292786e-05,4
+18,TabPFN v2,3e-07,0.003,False,one_sample,0.0013168475,0.00059620262,0.0017418762,4
+19,TabPFN v2,3e-07,0.003,True,one_sample,-5.0720549e-05,-8.3860664e-05,-2.8654671e-05,4
+20,TabPFN v2,1e-06,0,False,one_sample,0.0012278849,0.00057557505,0.0016946427,4
+21,TabPFN v2,1e-06,0,True,one_sample,-4.9424813e-05,-8.7750902e-05,-3.1821381e-05,4
+22,TabPFN v2,1e-06,0.003,False,one_sample,0.0012448739,0.00058734421,0.0016892058,4
+23,TabPFN v2,1e-06,0.003,True,one_sample,-5.2641064e-05,-9.1811377e-05,-3.3531503e-05,4
+24,TabPFN v2,1e-05,0,False,one_sample,0.00016328625,6.7160364e-05,0.00037007102,4
+25,TabPFN v2,1e-05,0,True,one_sample,0.00013158233,-2.3346329e-05,0.00025008981,4
+26,TabPFN v2,1e-05,0.003,False,one_sample,0.0007862638,0.00031388763,0.0012450537,4
+27,TabPFN v2,1e-05,0.003,True,one_sample,4.0171097e-05,-5.2890778e-05,9.0718958e-05,4
+28,TabPFN v2,3e-05,0,False,one_sample,-0.0031025683,-0.0043838847,-0.0014821393,4
+29,TabPFN v2,3e-05,0,True,one_sample,0.00022973811,1.0336295e-05,0.00042044949,4
+30,TabPFN v2,3e-05,0.003,False,one_sample,0.00013444293,-0.00023278814,0.00045466846,4
+31,TabPFN v2,3e-05,0.003,True,one_sample,9.5015382e-05,-3.2871885e-05,0.00016639393,4
+32,TabPFN v2.6,3e-07,0,False,one_sample,0.00044867674,-1.9725219e-05,0.0005553982,4
+33,TabPFN v2.6,3e-07,0,True,one_sample,1.9856288e-06,-2.8400834e-06,3.9814336e-06,4
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,0.0004388086,-2.5383956e-05,0.00054699074,4
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,4.6532392e-06,-4.0856042e-07,7.2243557e-06,4
+36,TabPFN v2.6,1e-06,0,False,one_sample,0.00059859644,-2.0697971e-05,0.00072144815,4
+37,TabPFN v2.6,1e-06,0,True,one_sample,3.4016922e-06,-6.7090492e-06,1.0935353e-05,4
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,0.00058885616,-2.7264239e-05,0.00072038898,4
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,2.8824948e-06,-4.7230509e-06,9.7476994e-06,4
+40,TabPFN v2.6,1e-05,0,False,one_sample,0.00046897789,-0.00026949267,0.00056115576,4
+41,TabPFN v2.6,1e-05,0,True,one_sample,-4.6977878e-07,-3.8693638e-05,4.363467e-05,4
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,0.00061927735,-0.00010744594,0.00067687132,4
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-4.651833e-06,-2.7636948e-05,2.0812989e-05,4
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.0012329767,-0.0016718851,-0.00067624915,4
+45,TabPFN v2.6,3e-05,0,True,one_sample,5.5433075e-05,-3.1386338e-05,0.00013249181,4
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,0.00058485105,-0.00022993964,0.00066921581,4
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,6.819978e-06,-2.6993078e-05,4.9155836e-05,4
+48,TabPFN v3,3e-07,0,False,one_sample,-0.00036612098,-0.00055141012,8.1740758e-05,4
+49,TabPFN v3,3e-07,0,True,one_sample,9.6166126e-05,2.9732951e-05,0.00016619497,4
+50,TabPFN v3,3e-07,0.003,False,one_sample,-0.00033068249,-0.00051178159,8.402623e-05,4
+51,TabPFN v3,3e-07,0.003,True,one_sample,9.3281439e-05,2.9495177e-05,0.00015696854,4
+52,TabPFN v3,1e-06,0,False,one_sample,-0.0013391064,-0.0016483285,-0.00040136532,4
+53,TabPFN v3,1e-06,0,True,one_sample,7.318532e-05,-2.6119059e-05,0.00013763984,4
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.0011867805,-0.0014128971,-0.00036962309,4
+55,TabPFN v3,1e-06,0.003,True,one_sample,6.1965032e-05,-2.7153067e-05,0.00013288959,4
+56,TabPFN v3,1e-05,0,False,one_sample,-0.017958541,-0.024910144,-0.009931262,4
+57,TabPFN v3,1e-05,0,True,one_sample,-0.0026020253,-0.0035583513,-0.0010577531,4
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.0090358449,-0.012125358,-0.0045232223,4
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.0021982329,-0.0026610125,-0.00070460875,4
+60,TabPFN v3,3e-05,0,False,one_sample,-0.029779118,-0.035701449,-0.02440101,4
+61,TabPFN v3,3e-05,0,True,one_sample,-0.014089538,-0.022215397,-0.0074100664,4
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.0080697688,-0.0094416523,-0.0044815339,4
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.0068645366,-0.0089328205,-0.0065681092,4
+
 Figure: pd_reference_uncertainty
 PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 Reference per-table effects
@@ -68040,7 +71062,7 @@ Thomas,-0.0061296805,0.0078907495,3.8951288e-05,0.0097108479
 Vehicle Loan,0.025936941,0.0037013911,0.00043222645,-0.00076082924
 
 Figure: pd_calibration_overview
-PD. Changes in outer-test Brier score and expected calibration error (ECE) for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all six scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. ECE depends on the binning scheme.
+PD. Changes in the displayed outer-test probability-quality scores for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all 9 scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. Log loss, when exported, is in nats; ECE depends on the binning scheme.
 Per-dataset probability-quality changes
 CSV (first column: row index)
 row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,metric,calibration
@@ -68452,6 +71474,210 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 405,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Taiwan Credit Card,0.014520438,0.016102839,-0.0015824016,-0.0015824016,Taiwan Credit Card,TabPFN v3,3e-07,False,0.003,one_sample,-0.0015824016,42,ece,Isotonic
 406,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Thomas,0.040986854,0.039057288,0.0019295666,0.0019295666,Thomas,TabPFN v3,3e-07,False,0.003,one_sample,0.0019295666,42,ece,Isotonic
 407,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Vehicle Loan,0.0038098621,0.003544989,0.00026487311,0.00026487311,Vehicle Loan,TabPFN v3,3e-07,False,0.003,one_sample,0.00026487311,42,ece,Isotonic
+408,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Bondora Peer-to-Peer,0.25628614,0.25670051,-0.0004143695,-0.0004143695,Bondora Peer-to-Peer,TabICLv2,3e-07,False,0.003,one_sample,-0.0004143695,42,log_loss,Raw
+409,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Cobranded,0.40488402,0.40541719,-0.00053317422,-0.00053317422,Cobranded,TabICLv2,3e-07,False,0.003,one_sample,-0.00053317422,42,log_loss,Raw
+410,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Credit Risk,0.17632041,0.19190059,-0.015580177,-0.015580177,Credit Risk,TabICLv2,3e-07,False,0.003,one_sample,-0.015580177,42,log_loss,Raw
+411,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,GMSC,0.17818768,0.17867151,-0.00048382505,-0.00048382505,GMSC,TabICLv2,3e-07,False,0.003,one_sample,-0.00048382505,42,log_loss,Raw
+412,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,German Credit,0.49648474,0.49297066,0.0035140787,0.0035140787,German Credit,TabICLv2,3e-07,False,0.003,one_sample,0.0035140787,42,log_loss,Raw
+413,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,HMEQ,0.062732799,0.064901041,-0.0021682421,-0.0021682421,HMEQ,TabICLv2,3e-07,False,0.003,one_sample,-0.0021682421,42,log_loss,Raw
+414,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Hackerearth,0.20680324,0.23434982,-0.027546587,-0.027546587,Hackerearth,TabICLv2,3e-07,False,0.003,one_sample,-0.027546587,42,log_loss,Raw
+415,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Home Credit,0.24990778,0.25069203,-0.00078424863,-0.00078424863,Home Credit,TabICLv2,3e-07,False,0.003,one_sample,-0.00078424863,42,log_loss,Raw
+416,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub,0.41014462,0.40988865,0.00025596935,0.00025596935,LendingClub,TabICLv2,3e-07,False,0.003,one_sample,0.00025596935,42,log_loss,Raw
+417,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,MicroFinance,0.62609729,0.62639862,-0.00030133054,-0.00030133054,MicroFinance,TabICLv2,3e-07,False,0.003,one_sample,-0.00030133054,42,log_loss,Raw
+418,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Myhom,0.72020282,0.66105509,0.059147731,0.059147731,Myhom,TabICLv2,3e-07,False,0.003,one_sample,0.059147731,42,log_loss,Raw
+419,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD1,0.38718502,0.38575235,0.0014326724,0.0014326724,PropPD1,TabICLv2,3e-07,False,0.003,one_sample,0.0014326724,42,log_loss,Raw
+420,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD2,0.29748362,0.29732096,0.00016266406,0.00016266406,PropPD2,TabICLv2,3e-07,False,0.003,one_sample,0.00016266406,42,log_loss,Raw
+421,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case,0.12020672,0.11643741,0.003769304,0.003769304,SBA Loans Case,TabICLv2,3e-07,False,0.003,one_sample,0.003769304,42,log_loss,Raw
+422,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Taiwan Credit Card,0.42433203,0.42560684,-0.001274811,-0.001274811,Taiwan Credit Card,TabICLv2,3e-07,False,0.003,one_sample,-0.001274811,42,log_loss,Raw
+423,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Thomas,0.5502115,0.55078913,-0.00057762894,-0.00057762894,Thomas,TabICLv2,3e-07,False,0.003,one_sample,-0.00057762894,42,log_loss,Raw
+424,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Vehicle Loan,0.84792702,0.49915233,0.34877468,0.34877468,Vehicle Loan,TabICLv2,3e-07,False,0.003,one_sample,0.34877468,42,log_loss,Raw
+425,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Bondora Peer-to-Peer,0.28128142,0.27898975,0.0022916724,0.0022916724,Bondora Peer-to-Peer,TabPFN v2,3e-07,False,0.003,one_sample,0.0022916724,42,log_loss,Raw
+426,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Cobranded,0.41579065,0.41272554,0.0030651155,0.0030651155,Cobranded,TabPFN v2,3e-07,False,0.003,one_sample,0.0030651155,42,log_loss,Raw
+427,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Credit Risk,0.21627251,0.21411103,0.0021614803,0.0021614803,Credit Risk,TabPFN v2,3e-07,False,0.003,one_sample,0.0021614803,42,log_loss,Raw
+428,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,GMSC,0.18246788,0.18075052,0.0017173589,0.0017173589,GMSC,TabPFN v2,3e-07,False,0.003,one_sample,0.0017173589,42,log_loss,Raw
+429,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,German Credit,0.50047191,0.49695783,0.0035140859,0.0035140859,German Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.0035140859,42,log_loss,Raw
+430,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,HMEQ,0.12741589,0.095435023,0.031980868,0.031980868,HMEQ,TabPFN v2,3e-07,False,0.003,one_sample,0.031980868,42,log_loss,Raw
+431,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Hackerearth,0.29321106,0.26938657,0.023824489,0.023824489,Hackerearth,TabPFN v2,3e-07,False,0.003,one_sample,0.023824489,42,log_loss,Raw
+432,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Home Credit,0.25921764,0.25639862,0.0028190212,0.0028190212,Home Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.0028190212,42,log_loss,Raw
+433,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub,0.41365978,0.41180263,0.0018571529,0.0018571529,LendingClub,TabPFN v2,3e-07,False,0.003,one_sample,0.0018571529,42,log_loss,Raw
+434,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,MicroFinance,0.63798975,0.63495027,0.0030394799,0.0030394799,MicroFinance,TabPFN v2,3e-07,False,0.003,one_sample,0.0030394799,42,log_loss,Raw
+435,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Myhom,0.66114431,0.66048466,0.00065965358,0.00065965358,Myhom,TabPFN v2,3e-07,False,0.003,one_sample,0.00065965358,42,log_loss,Raw
+436,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD1,0.42464959,0.41955223,0.0050973623,0.0050973623,PropPD1,TabPFN v2,3e-07,False,0.003,one_sample,0.0050973623,42,log_loss,Raw
+437,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD2,0.30842359,0.2995726,0.008850993,0.008850993,PropPD2,TabPFN v2,3e-07,False,0.003,one_sample,0.008850993,42,log_loss,Raw
+438,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case,0.12059301,0.11977084,0.00082217276,0.00082217276,SBA Loans Case,TabPFN v2,3e-07,False,0.003,one_sample,0.00082217276,42,log_loss,Raw
+439,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Taiwan Credit Card,0.43330777,0.42879584,0.0045119247,0.0045119247,Taiwan Credit Card,TabPFN v2,3e-07,False,0.003,one_sample,0.0045119247,42,log_loss,Raw
+440,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Thomas,0.55018524,0.54856501,0.0016202379,0.0016202379,Thomas,TabPFN v2,3e-07,False,0.003,one_sample,0.0016202379,42,log_loss,Raw
+441,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Vehicle Loan,0.50606448,0.50314484,0.0029196349,0.0029196349,Vehicle Loan,TabPFN v2,3e-07,False,0.003,one_sample,0.0029196349,42,log_loss,Raw
+442,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Bondora Peer-to-Peer,0.26773901,0.26804855,-0.00030954152,-0.00030954152,Bondora Peer-to-Peer,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00030954152,42,log_loss,Raw
+443,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Cobranded,0.40380801,0.40410511,-0.00029709723,-0.00029709723,Cobranded,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00029709723,42,log_loss,Raw
+444,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Credit Risk,0.19271043,0.19662841,-0.0039179872,-0.0039179872,Credit Risk,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0039179872,42,log_loss,Raw
+445,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,GMSC,0.1787196,0.17882551,-0.00010590919,-0.00010590919,GMSC,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00010590919,42,log_loss,Raw
+446,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,German Credit,0.49699135,0.49605409,0.00093726115,0.00093726115,German Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00093726115,42,log_loss,Raw
+447,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,HMEQ,0.052359269,0.064762162,-0.012402894,-0.012402894,HMEQ,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.012402894,42,log_loss,Raw
+448,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Hackerearth,0.2270281,0.23215133,-0.0051232324,-0.0051232324,Hackerearth,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0051232324,42,log_loss,Raw
+449,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Home Credit,0.25050838,0.25081001,-0.00030163035,-0.00030163035,Home Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00030163035,42,log_loss,Raw
+450,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub,0.41177637,0.4115653,0.00021107524,0.00021107524,LendingClub,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00021107524,42,log_loss,Raw
+451,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,MicroFinance,0.62457737,0.62507485,-0.00049748694,-0.00049748694,MicroFinance,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00049748694,42,log_loss,Raw
+452,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Myhom,0.66060556,0.66069898,-9.3421823e-05,-9.3421823e-05,Myhom,TabPFN v2.6,3e-07,False,0.003,one_sample,-9.3421823e-05,42,log_loss,Raw
+453,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD1,0.41321558,0.41376818,-0.00055260646,-0.00055260646,PropPD1,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00055260646,42,log_loss,Raw
+454,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD2,0.29676889,0.29729185,-0.00052296396,-0.00052296396,PropPD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00052296396,42,log_loss,Raw
+455,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case,0.11858314,0.11958678,-0.0010036345,-0.0010036345,SBA Loans Case,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0010036345,42,log_loss,Raw
+456,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Taiwan Credit Card,0.4248606,0.42473315,0.00012745251,0.00012745251,Taiwan Credit Card,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00012745251,42,log_loss,Raw
+457,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Thomas,0.55134825,0.55042234,0.0009259112,0.0009259112,Thomas,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0009259112,42,log_loss,Raw
+458,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Vehicle Loan,0.49973038,0.49968899,4.1388014e-05,4.1388014e-05,Vehicle Loan,TabPFN v2.6,3e-07,False,0.003,one_sample,4.1388014e-05,42,log_loss,Raw
+459,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Bondora Peer-to-Peer,0.25542825,0.25545959,-3.1340638e-05,-3.1340638e-05,Bondora Peer-to-Peer,TabPFN v3,3e-07,False,0.003,one_sample,-3.1340638e-05,42,log_loss,Raw
+460,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Cobranded,0.40510638,0.40399307,0.0011133082,0.0011133082,Cobranded,TabPFN v3,3e-07,False,0.003,one_sample,0.0011133082,42,log_loss,Raw
+461,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Credit Risk,0.17817027,0.18051819,-0.0023479224,-0.0023479224,Credit Risk,TabPFN v3,3e-07,False,0.003,one_sample,-0.0023479224,42,log_loss,Raw
+462,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,GMSC,0.17743652,0.17735633,8.019181e-05,8.019181e-05,GMSC,TabPFN v3,3e-07,False,0.003,one_sample,8.019181e-05,42,log_loss,Raw
+463,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,German Credit,0.49836388,0.49351825,0.0048456343,0.0048456343,German Credit,TabPFN v3,3e-07,False,0.003,one_sample,0.0048456343,42,log_loss,Raw
+464,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,HMEQ,0.024281046,0.033242472,-0.0089614258,-0.0089614258,HMEQ,TabPFN v3,3e-07,False,0.003,one_sample,-0.0089614258,42,log_loss,Raw
+465,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Hackerearth,0.19295738,0.20180076,-0.0088433822,-0.0088433822,Hackerearth,TabPFN v3,3e-07,False,0.003,one_sample,-0.0088433822,42,log_loss,Raw
+466,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Home Credit,0.24942712,0.24899543,0.00043168827,0.00043168827,Home Credit,TabPFN v3,3e-07,False,0.003,one_sample,0.00043168827,42,log_loss,Raw
+467,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub,0.41127657,0.41098492,0.00029164538,0.00029164538,LendingClub,TabPFN v3,3e-07,False,0.003,one_sample,0.00029164538,42,log_loss,Raw
+468,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,MicroFinance,0.62425927,0.62312019,0.0011390857,0.0011390857,MicroFinance,TabPFN v3,3e-07,False,0.003,one_sample,0.0011390857,42,log_loss,Raw
+469,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Myhom,0.66006229,0.6603507,-0.00028841014,-0.00028841014,Myhom,TabPFN v3,3e-07,False,0.003,one_sample,-0.00028841014,42,log_loss,Raw
+470,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD1,0.38711569,0.38468381,0.0024318826,0.0024318826,PropPD1,TabPFN v3,3e-07,False,0.003,one_sample,0.0024318826,42,log_loss,Raw
+471,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD2,0.29759333,0.29681488,0.00077845366,0.00077845366,PropPD2,TabPFN v3,3e-07,False,0.003,one_sample,0.00077845366,42,log_loss,Raw
+472,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case,0.11950791,0.11459194,0.0049159727,0.0049159727,SBA Loans Case,TabPFN v3,3e-07,False,0.003,one_sample,0.0049159727,42,log_loss,Raw
+473,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Taiwan Credit Card,0.42477493,0.42410188,0.00067304457,0.00067304457,Taiwan Credit Card,TabPFN v3,3e-07,False,0.003,one_sample,0.00067304457,42,log_loss,Raw
+474,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Thomas,0.55036925,0.54981818,0.00055107044,0.00055107044,Thomas,TabPFN v3,3e-07,False,0.003,one_sample,0.00055107044,42,log_loss,Raw
+475,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Vehicle Loan,0.49742568,0.49723255,0.00019312963,0.00019312963,Vehicle Loan,TabPFN v3,3e-07,False,0.003,one_sample,0.00019312963,42,log_loss,Raw
+476,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Bondora Peer-to-Peer,0.25563853,0.25612251,-0.00048398361,-0.00048398361,Bondora Peer-to-Peer,TabICLv2,3e-07,False,0.003,one_sample,-0.00048398361,42,log_loss,Platt
+477,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Cobranded,0.40370527,0.40368903,1.6240062e-05,1.6240062e-05,Cobranded,TabICLv2,3e-07,False,0.003,one_sample,1.6240062e-05,42,log_loss,Platt
+478,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Credit Risk,0.17472772,0.19067696,-0.015949238,-0.015949238,Credit Risk,TabICLv2,3e-07,False,0.003,one_sample,-0.015949238,42,log_loss,Platt
+479,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,GMSC,0.17696222,0.17716533,-0.00020310984,-0.00020310984,GMSC,TabICLv2,3e-07,False,0.003,one_sample,-0.00020310984,42,log_loss,Platt
+480,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,German Credit,0.49643304,0.49393138,0.0025016573,0.0025016573,German Credit,TabICLv2,3e-07,False,0.003,one_sample,0.0025016573,42,log_loss,Platt
+481,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,HMEQ,0.059969176,0.061612425,-0.001643249,-0.001643249,HMEQ,TabICLv2,3e-07,False,0.003,one_sample,-0.001643249,42,log_loss,Platt
+482,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Hackerearth,0.2054604,0.23378598,-0.028325576,-0.028325576,Hackerearth,TabICLv2,3e-07,False,0.003,one_sample,-0.028325576,42,log_loss,Platt
+483,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Home Credit,0.24907099,0.24928966,-0.00021867227,-0.00021867227,Home Credit,TabICLv2,3e-07,False,0.003,one_sample,-0.00021867227,42,log_loss,Platt
+484,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub,0.40848402,0.40846075,2.3264268e-05,2.3264268e-05,LendingClub,TabICLv2,3e-07,False,0.003,one_sample,2.3264268e-05,42,log_loss,Platt
+485,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,MicroFinance,0.62506453,0.62577534,-0.0007108103,-0.0007108103,MicroFinance,TabICLv2,3e-07,False,0.003,one_sample,-0.0007108103,42,log_loss,Platt
+486,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Myhom,0.66373816,0.66007152,0.0036666457,0.0036666457,Myhom,TabICLv2,3e-07,False,0.003,one_sample,0.0036666457,42,log_loss,Platt
+487,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD1,0.38419187,0.38229156,0.0019003102,0.0019003102,PropPD1,TabICLv2,3e-07,False,0.003,one_sample,0.0019003102,42,log_loss,Platt
+488,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD2,0.29566537,0.29569808,-3.2707487e-05,-3.2707487e-05,PropPD2,TabICLv2,3e-07,False,0.003,one_sample,-3.2707487e-05,42,log_loss,Platt
+489,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case,0.12040116,0.11924949,0.0011516632,0.0011516632,SBA Loans Case,TabICLv2,3e-07,False,0.003,one_sample,0.0011516632,42,log_loss,Platt
+490,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Taiwan Credit Card,0.42265632,0.42357073,-0.00091441092,-0.00091441092,Taiwan Credit Card,TabICLv2,3e-07,False,0.003,one_sample,-0.00091441092,42,log_loss,Platt
+491,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Thomas,0.54864445,0.54896772,-0.00032327095,-0.00032327095,Thomas,TabICLv2,3e-07,False,0.003,one_sample,-0.00032327095,42,log_loss,Platt
+492,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Vehicle Loan,0.51743456,0.49725963,0.020174929,0.020174929,Vehicle Loan,TabICLv2,3e-07,False,0.003,one_sample,0.020174929,42,log_loss,Platt
+493,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Bondora Peer-to-Peer,0.27988782,0.27767584,0.0022119895,0.0022119895,Bondora Peer-to-Peer,TabPFN v2,3e-07,False,0.003,one_sample,0.0022119895,42,log_loss,Platt
+494,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Cobranded,0.4144223,0.41145865,0.0029636544,0.0029636544,Cobranded,TabPFN v2,3e-07,False,0.003,one_sample,0.0029636544,42,log_loss,Platt
+495,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Credit Risk,0.21463336,0.21371882,0.00091453592,0.00091453592,Credit Risk,TabPFN v2,3e-07,False,0.003,one_sample,0.00091453592,42,log_loss,Platt
+496,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,GMSC,0.18142513,0.17997244,0.0014526857,0.0014526857,GMSC,TabPFN v2,3e-07,False,0.003,one_sample,0.0014526857,42,log_loss,Platt
+497,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,German Credit,0.50287714,0.49905329,0.0038238473,0.0038238473,German Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.0038238473,42,log_loss,Platt
+498,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,HMEQ,0.1199374,0.088069765,0.031867636,0.031867636,HMEQ,TabPFN v2,3e-07,False,0.003,one_sample,0.031867636,42,log_loss,Platt
+499,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Hackerearth,0.27535872,0.26784612,0.0075126077,0.0075126077,Hackerearth,TabPFN v2,3e-07,False,0.003,one_sample,0.0075126077,42,log_loss,Platt
+500,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Home Credit,0.25517699,0.25405754,0.001119453,0.001119453,Home Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.001119453,42,log_loss,Platt
+501,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub,0.41269686,0.41078626,0.0019106031,0.0019106031,LendingClub,TabPFN v2,3e-07,False,0.003,one_sample,0.0019106031,42,log_loss,Platt
+502,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,MicroFinance,0.63744401,0.63481883,0.0026251786,0.0026251786,MicroFinance,TabPFN v2,3e-07,False,0.003,one_sample,0.0026251786,42,log_loss,Platt
+503,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Myhom,0.65993437,0.65950194,0.00043242978,0.00043242978,Myhom,TabPFN v2,3e-07,False,0.003,one_sample,0.00043242978,42,log_loss,Platt
+504,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD1,0.42068397,0.41857826,0.0021057067,0.0021057067,PropPD1,TabPFN v2,3e-07,False,0.003,one_sample,0.0021057067,42,log_loss,Platt
+505,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD2,0.29811698,0.2971244,0.00099257807,0.00099257807,PropPD2,TabPFN v2,3e-07,False,0.003,one_sample,0.00099257807,42,log_loss,Platt
+506,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case,0.12673172,0.12388024,0.002851484,0.002851484,SBA Loans Case,TabPFN v2,3e-07,False,0.003,one_sample,0.002851484,42,log_loss,Platt
+507,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Taiwan Credit Card,0.43201129,0.42741681,0.0045944723,0.0045944723,Taiwan Credit Card,TabPFN v2,3e-07,False,0.003,one_sample,0.0045944723,42,log_loss,Platt
+508,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Thomas,0.55077189,0.54832976,0.0024421314,0.0024421314,Thomas,TabPFN v2,3e-07,False,0.003,one_sample,0.0024421314,42,log_loss,Platt
+509,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Vehicle Loan,0.50401624,0.50213222,0.0018840137,0.0018840137,Vehicle Loan,TabPFN v2,3e-07,False,0.003,one_sample,0.0018840137,42,log_loss,Platt
+510,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Bondora Peer-to-Peer,0.26682538,0.26706545,-0.00024007231,-0.00024007231,Bondora Peer-to-Peer,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00024007231,42,log_loss,Platt
+511,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Cobranded,0.40324373,0.40329419,-5.0463969e-05,-5.0463969e-05,Cobranded,TabPFN v2.6,3e-07,False,0.003,one_sample,-5.0463969e-05,42,log_loss,Platt
+512,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Credit Risk,0.19142161,0.19455717,-0.0031355635,-0.0031355635,Credit Risk,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0031355635,42,log_loss,Platt
+513,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,GMSC,0.17757292,0.17750658,6.6347978e-05,6.6347978e-05,GMSC,TabPFN v2.6,3e-07,False,0.003,one_sample,6.6347978e-05,42,log_loss,Platt
+514,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,German Credit,0.49743225,0.49749096,-5.8709573e-05,-5.8709573e-05,German Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-5.8709573e-05,42,log_loss,Platt
+515,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,HMEQ,0.039356956,0.050347412,-0.010990456,-0.010990456,HMEQ,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.010990456,42,log_loss,Platt
+516,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Hackerearth,0.22643105,0.23100772,-0.0045766768,-0.0045766768,Hackerearth,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0045766768,42,log_loss,Platt
+517,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Home Credit,0.24935929,0.24943298,-7.3685921e-05,-7.3685921e-05,Home Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-7.3685921e-05,42,log_loss,Platt
+518,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub,0.41004771,0.40967864,0.00036907448,0.00036907448,LendingClub,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00036907448,42,log_loss,Platt
+519,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,MicroFinance,0.62442883,0.62483149,-0.00040266381,-0.00040266381,MicroFinance,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00040266381,42,log_loss,Platt
+520,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Myhom,0.6597651,0.65980825,-4.3153794e-05,-4.3153794e-05,Myhom,TabPFN v2.6,3e-07,False,0.003,one_sample,-4.3153794e-05,42,log_loss,Platt
+521,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD1,0.41218196,0.41242233,-0.00024036685,-0.00024036685,PropPD1,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00024036685,42,log_loss,Platt
+522,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD2,0.29508256,0.29526999,-0.00018743008,-0.00018743008,PropPD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00018743008,42,log_loss,Platt
+523,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case,0.12323756,0.12322427,1.3293267e-05,1.3293267e-05,SBA Loans Case,TabPFN v2.6,3e-07,False,0.003,one_sample,1.3293267e-05,42,log_loss,Platt
+524,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Taiwan Credit Card,0.42311117,0.42292318,0.00018799175,0.00018799175,Taiwan Credit Card,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00018799175,42,log_loss,Platt
+525,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Thomas,0.55000829,0.54856686,0.001441428,0.001441428,Thomas,TabPFN v2.6,3e-07,False,0.003,one_sample,0.001441428,42,log_loss,Platt
+526,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Vehicle Loan,0.49849573,0.49820056,0.00029517248,0.00029517248,Vehicle Loan,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00029517248,42,log_loss,Platt
+527,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Bondora Peer-to-Peer,0.25486899,0.25485693,1.2052497e-05,1.2052497e-05,Bondora Peer-to-Peer,TabPFN v3,3e-07,False,0.003,one_sample,1.2052497e-05,42,log_loss,Platt
+528,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Cobranded,0.40413949,0.40324631,0.00089318629,0.00089318629,Cobranded,TabPFN v3,3e-07,False,0.003,one_sample,0.00089318629,42,log_loss,Platt
+529,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Credit Risk,0.17671069,0.17826879,-0.0015580969,-0.0015580969,Credit Risk,TabPFN v3,3e-07,False,0.003,one_sample,-0.0015580969,42,log_loss,Platt
+530,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,GMSC,0.17615527,0.17611129,4.3978759e-05,4.3978759e-05,GMSC,TabPFN v3,3e-07,False,0.003,one_sample,4.3978759e-05,42,log_loss,Platt
+531,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,German Credit,0.50006777,0.49790441,0.0021633565,0.0021633565,German Credit,TabPFN v3,3e-07,False,0.003,one_sample,0.0021633565,42,log_loss,Platt
+532,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,HMEQ,0.022888559,0.028150093,-0.0052615345,-0.0052615345,HMEQ,TabPFN v3,3e-07,False,0.003,one_sample,-0.0052615345,42,log_loss,Platt
+533,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Hackerearth,0.19236477,0.20138558,-0.0090208122,-0.0090208122,Hackerearth,TabPFN v3,3e-07,False,0.003,one_sample,-0.0090208122,42,log_loss,Platt
+534,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Home Credit,0.24758005,0.24760149,-2.1437332e-05,-2.1437332e-05,Home Credit,TabPFN v3,3e-07,False,0.003,one_sample,-2.1437332e-05,42,log_loss,Platt
+535,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub,0.40976362,0.40929456,0.00046906155,0.00046906155,LendingClub,TabPFN v3,3e-07,False,0.003,one_sample,0.00046906155,42,log_loss,Platt
+536,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,MicroFinance,0.62393308,0.62288037,0.0010527083,0.0010527083,MicroFinance,TabPFN v3,3e-07,False,0.003,one_sample,0.0010527083,42,log_loss,Platt
+537,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Myhom,0.65911643,0.65940539,-0.00028895727,-0.00028895727,Myhom,TabPFN v3,3e-07,False,0.003,one_sample,-0.00028895727,42,log_loss,Platt
+538,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD1,0.38140818,0.38086059,0.00054758948,0.00054758948,PropPD1,TabPFN v3,3e-07,False,0.003,one_sample,0.00054758948,42,log_loss,Platt
+539,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD2,0.29538653,0.29508269,0.00030384018,0.00030384018,PropPD2,TabPFN v3,3e-07,False,0.003,one_sample,0.00030384018,42,log_loss,Platt
+540,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case,0.12387397,0.11938961,0.0044843642,0.0044843642,SBA Loans Case,TabPFN v3,3e-07,False,0.003,one_sample,0.0044843642,42,log_loss,Platt
+541,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Taiwan Credit Card,0.42294718,0.42271102,0.00023616639,0.00023616639,Taiwan Credit Card,TabPFN v3,3e-07,False,0.003,one_sample,0.00023616639,42,log_loss,Platt
+542,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Thomas,0.55046226,0.54961794,0.00084431161,0.00084431161,Thomas,TabPFN v3,3e-07,False,0.003,one_sample,0.00084431161,42,log_loss,Platt
+543,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Vehicle Loan,0.49616571,0.49612399,4.1722696e-05,4.1722696e-05,Vehicle Loan,TabPFN v3,3e-07,False,0.003,one_sample,4.1722696e-05,42,log_loss,Platt
+544,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Bondora Peer-to-Peer,0.25592421,0.2564095,-0.00048529497,-0.00048529497,Bondora Peer-to-Peer,TabICLv2,3e-07,False,0.003,one_sample,-0.00048529497,42,log_loss,Isotonic
+545,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Cobranded,0.40692741,0.40609671,0.00083070023,0.00083070023,Cobranded,TabICLv2,3e-07,False,0.003,one_sample,0.00083070023,42,log_loss,Isotonic
+546,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Credit Risk,0.18108143,0.19529614,-0.014214713,-0.014214713,Credit Risk,TabICLv2,3e-07,False,0.003,one_sample,-0.014214713,42,log_loss,Isotonic
+547,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,GMSC,0.17803719,0.17829166,-0.00025447488,-0.00025447488,GMSC,TabICLv2,3e-07,False,0.003,one_sample,-0.00025447488,42,log_loss,Isotonic
+548,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,German Credit,0.76973553,0.75579486,0.013940673,0.013940673,German Credit,TabICLv2,3e-07,False,0.003,one_sample,0.013940673,42,log_loss,Isotonic
+549,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,HMEQ,0.087172292,0.085575296,0.0015969963,0.0015969963,HMEQ,TabICLv2,3e-07,False,0.003,one_sample,0.0015969963,42,log_loss,Isotonic
+550,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Hackerearth,0.2052692,0.23217576,-0.026906555,-0.026906555,Hackerearth,TabICLv2,3e-07,False,0.003,one_sample,-0.026906555,42,log_loss,Isotonic
+551,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Home Credit,0.24964256,0.24989628,-0.00025371953,-0.00025371953,Home Credit,TabICLv2,3e-07,False,0.003,one_sample,-0.00025371953,42,log_loss,Isotonic
+552,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,LendingClub,0.42482448,0.42191481,0.0029096752,0.0029096752,LendingClub,TabICLv2,3e-07,False,0.003,one_sample,0.0029096752,42,log_loss,Isotonic
+553,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,MicroFinance,0.62625253,0.62684408,-0.00059155417,-0.00059155417,MicroFinance,TabICLv2,3e-07,False,0.003,one_sample,-0.00059155417,42,log_loss,Isotonic
+554,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Myhom,0.67856195,0.69357192,-0.015009977,-0.015009977,Myhom,TabICLv2,3e-07,False,0.003,one_sample,-0.015009977,42,log_loss,Isotonic
+555,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD1,0.38415415,0.38264057,0.001513577,0.001513577,PropPD1,TabICLv2,3e-07,False,0.003,one_sample,0.001513577,42,log_loss,Isotonic
+556,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,PropPD2,0.296802,0.29616865,0.00063335162,0.00063335162,PropPD2,TabICLv2,3e-07,False,0.003,one_sample,0.00063335162,42,log_loss,Isotonic
+557,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,SBA Loans Case,0.1740459,0.16602574,0.0080201553,0.0080201553,SBA Loans Case,TabICLv2,3e-07,False,0.003,one_sample,0.0080201553,42,log_loss,Isotonic
+558,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Taiwan Credit Card,0.4284745,0.42928141,-0.00080691583,-0.00080691583,Taiwan Credit Card,TabICLv2,3e-07,False,0.003,one_sample,-0.00080691583,42,log_loss,Isotonic
+559,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Thomas,0.58817578,0.59218337,-0.0040075835,-0.0040075835,Thomas,TabICLv2,3e-07,False,0.003,one_sample,-0.0040075835,42,log_loss,Isotonic
+560,tabicl-trained__tabicl-v2__lr3e-07__l2sp0.003,TabICLv2,Vehicle Loan,0.51179666,0.49804113,0.013755534,0.013755534,Vehicle Loan,TabICLv2,3e-07,False,0.003,one_sample,0.013755534,42,log_loss,Isotonic
+561,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Bondora Peer-to-Peer,0.28257635,0.27994342,0.0026329338,0.0026329338,Bondora Peer-to-Peer,TabPFN v2,3e-07,False,0.003,one_sample,0.0026329338,42,log_loss,Isotonic
+562,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Cobranded,0.41729927,0.41371392,0.0035853496,0.0035853496,Cobranded,TabPFN v2,3e-07,False,0.003,one_sample,0.0035853496,42,log_loss,Isotonic
+563,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Credit Risk,0.21736429,0.21551507,0.0018492241,0.0018492241,Credit Risk,TabPFN v2,3e-07,False,0.003,one_sample,0.0018492241,42,log_loss,Isotonic
+564,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,GMSC,0.18199905,0.18127735,0.00072169813,0.00072169813,GMSC,TabPFN v2,3e-07,False,0.003,one_sample,0.00072169813,42,log_loss,Isotonic
+565,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,German Credit,0.70859397,0.71995443,-0.01136046,-0.01136046,German Credit,TabPFN v2,3e-07,False,0.003,one_sample,-0.01136046,42,log_loss,Isotonic
+566,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,HMEQ,0.14072272,0.10416861,0.036554112,0.036554112,HMEQ,TabPFN v2,3e-07,False,0.003,one_sample,0.036554112,42,log_loss,Isotonic
+567,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Hackerearth,0.27464331,0.26979085,0.0048524597,0.0048524597,Hackerearth,TabPFN v2,3e-07,False,0.003,one_sample,0.0048524597,42,log_loss,Isotonic
+568,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Home Credit,0.25849385,0.25760501,0.00088883475,0.00088883475,Home Credit,TabPFN v2,3e-07,False,0.003,one_sample,0.00088883475,42,log_loss,Isotonic
+569,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,LendingClub,0.43030919,0.43067423,-0.00036503764,-0.00036503764,LendingClub,TabPFN v2,3e-07,False,0.003,one_sample,-0.00036503764,42,log_loss,Isotonic
+570,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,MicroFinance,0.64044069,0.6386163,0.0018243923,0.0018243923,MicroFinance,TabPFN v2,3e-07,False,0.003,one_sample,0.0018243923,42,log_loss,Isotonic
+571,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Myhom,0.67124018,0.69002027,-0.018780095,-0.018780095,Myhom,TabPFN v2,3e-07,False,0.003,one_sample,-0.018780095,42,log_loss,Isotonic
+572,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD1,0.42212994,0.42020743,0.0019225069,0.0019225069,PropPD1,TabPFN v2,3e-07,False,0.003,one_sample,0.0019225069,42,log_loss,Isotonic
+573,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,PropPD2,0.30057651,0.298654,0.0019225014,0.0019225014,PropPD2,TabPFN v2,3e-07,False,0.003,one_sample,0.0019225014,42,log_loss,Isotonic
+574,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,SBA Loans Case,0.17204008,0.15905668,0.0129834,0.0129834,SBA Loans Case,TabPFN v2,3e-07,False,0.003,one_sample,0.0129834,42,log_loss,Isotonic
+575,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Taiwan Credit Card,0.43703342,0.43149599,0.0055374273,0.0055374273,Taiwan Credit Card,TabPFN v2,3e-07,False,0.003,one_sample,0.0055374273,42,log_loss,Isotonic
+576,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Thomas,0.59404324,0.59341376,0.00062948034,0.00062948034,Thomas,TabPFN v2,3e-07,False,0.003,one_sample,0.00062948034,42,log_loss,Isotonic
+577,tabpfn-trained__v2-default__lr3e-07__l2sp0.003,v2-default,Vehicle Loan,0.50576128,0.50450675,0.0012545301,0.0012545301,Vehicle Loan,TabPFN v2,3e-07,False,0.003,one_sample,0.0012545301,42,log_loss,Isotonic
+578,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Bondora Peer-to-Peer,0.26736333,0.26763105,-0.00026771336,-0.00026771336,Bondora Peer-to-Peer,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00026771336,42,log_loss,Isotonic
+579,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Cobranded,0.40592232,0.40596248,-4.0160459e-05,-4.0160459e-05,Cobranded,TabPFN v2.6,3e-07,False,0.003,one_sample,-4.0160459e-05,42,log_loss,Isotonic
+580,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Credit Risk,0.19823213,0.20162473,-0.0033925994,-0.0033925994,Credit Risk,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0033925994,42,log_loss,Isotonic
+581,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,GMSC,0.17890453,0.17888056,2.3971512e-05,2.3971512e-05,GMSC,TabPFN v2.6,3e-07,False,0.003,one_sample,2.3971512e-05,42,log_loss,Isotonic
+582,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,German Credit,0.67599646,0.68129092,-0.0052944576,-0.0052944576,German Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0052944576,42,log_loss,Isotonic
+583,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,HMEQ,0.053663231,0.062356116,-0.0086928842,-0.0086928842,HMEQ,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0086928842,42,log_loss,Isotonic
+584,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Hackerearth,0.22532853,0.22978832,-0.004459784,-0.004459784,Hackerearth,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.004459784,42,log_loss,Isotonic
+585,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Home Credit,0.24989226,0.25010178,-0.00020951816,-0.00020951816,Home Credit,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00020951816,42,log_loss,Isotonic
+586,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,LendingClub,0.42627312,0.4271029,-0.0008297794,-0.0008297794,LendingClub,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0008297794,42,log_loss,Isotonic
+587,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,MicroFinance,0.6256526,0.6260411,-0.00038849545,-0.00038849545,MicroFinance,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00038849545,42,log_loss,Isotonic
+588,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Myhom,0.69331301,0.68772826,0.0055847503,0.0055847503,Myhom,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0055847503,42,log_loss,Isotonic
+589,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD1,0.41462188,0.4143863,0.00023558565,0.00023558565,PropPD1,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00023558565,42,log_loss,Isotonic
+590,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,PropPD2,0.29678169,0.29729776,-0.00051607448,-0.00051607448,PropPD2,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.00051607448,42,log_loss,Isotonic
+591,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,SBA Loans Case,0.15394053,0.15635262,-0.0024120873,-0.0024120873,SBA Loans Case,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.0024120873,42,log_loss,Isotonic
+592,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Taiwan Credit Card,0.4299584,0.42915822,0.0008001808,0.0008001808,Taiwan Credit Card,TabPFN v2.6,3e-07,False,0.003,one_sample,0.0008001808,42,log_loss,Isotonic
+593,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Thomas,0.60614654,0.64057735,-0.034430814,-0.034430814,Thomas,TabPFN v2.6,3e-07,False,0.003,one_sample,-0.034430814,42,log_loss,Isotonic
+594,tabpfn-trained__v2.6-default__lr3e-07__l2sp0.003,v2.6-default,Vehicle Loan,0.4993271,0.49889682,0.00043027886,0.00043027886,Vehicle Loan,TabPFN v2.6,3e-07,False,0.003,one_sample,0.00043027886,42,log_loss,Isotonic
+595,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Bondora Peer-to-Peer,0.25513216,0.25505864,7.3526671e-05,7.3526671e-05,Bondora Peer-to-Peer,TabPFN v3,3e-07,False,0.003,one_sample,7.3526671e-05,42,log_loss,Isotonic
+596,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Cobranded,0.40678119,0.40691611,-0.00013491731,-0.00013491731,Cobranded,TabPFN v3,3e-07,False,0.003,one_sample,-0.00013491731,42,log_loss,Isotonic
+597,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Credit Risk,0.1791844,0.18203861,-0.0028542164,-0.0028542164,Credit Risk,TabPFN v3,3e-07,False,0.003,one_sample,-0.0028542164,42,log_loss,Isotonic
+598,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,GMSC,0.17768593,0.1772464,0.00043953501,0.00043953501,GMSC,TabPFN v3,3e-07,False,0.003,one_sample,0.00043953501,42,log_loss,Isotonic
+599,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,German Credit,0.67194574,0.67987889,-0.0079331558,-0.0079331558,German Credit,TabPFN v3,3e-07,False,0.003,one_sample,-0.0079331558,42,log_loss,Isotonic
+600,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,HMEQ,0.032836872,0.039192504,-0.0063556323,-0.0063556323,HMEQ,TabPFN v3,3e-07,False,0.003,one_sample,-0.0063556323,42,log_loss,Isotonic
+601,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Hackerearth,0.1919849,0.20069628,-0.0087113802,-0.0087113802,Hackerearth,TabPFN v3,3e-07,False,0.003,one_sample,-0.0087113802,42,log_loss,Isotonic
+602,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Home Credit,0.24826452,0.24821518,4.9341575e-05,4.9341575e-05,Home Credit,TabPFN v3,3e-07,False,0.003,one_sample,4.9341575e-05,42,log_loss,Isotonic
+603,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,LendingClub,0.430074,0.43201468,-0.0019406787,-0.0019406787,LendingClub,TabPFN v3,3e-07,False,0.003,one_sample,-0.0019406787,42,log_loss,Isotonic
+604,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,MicroFinance,0.62467766,0.62362318,0.0010544716,0.0010544716,MicroFinance,TabPFN v3,3e-07,False,0.003,one_sample,0.0010544716,42,log_loss,Isotonic
+605,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Myhom,0.67992346,0.69158546,-0.011661999,-0.011661999,Myhom,TabPFN v3,3e-07,False,0.003,one_sample,-0.011661999,42,log_loss,Isotonic
+606,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD1,0.38368838,0.3827567,0.00093168329,0.00093168329,PropPD1,TabPFN v3,3e-07,False,0.003,one_sample,0.00093168329,42,log_loss,Isotonic
+607,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,PropPD2,0.29668328,0.29708931,-0.0004060347,-0.0004060347,PropPD2,TabPFN v3,3e-07,False,0.003,one_sample,-0.0004060347,42,log_loss,Isotonic
+608,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,SBA Loans Case,0.18547205,0.18207534,0.0033967127,0.0033967127,SBA Loans Case,TabPFN v3,3e-07,False,0.003,one_sample,0.0033967127,42,log_loss,Isotonic
+609,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Taiwan Credit Card,0.43168077,0.43239735,-0.00071658035,-0.00071658035,Taiwan Credit Card,TabPFN v3,3e-07,False,0.003,one_sample,-0.00071658035,42,log_loss,Isotonic
+610,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Thomas,0.59315902,0.60962697,-0.016467951,-0.016467951,Thomas,TabPFN v3,3e-07,False,0.003,one_sample,-0.016467951,42,log_loss,Isotonic
+611,tabpfn-trained__v3-default__lr3e-07__l2sp0.003,v3-default,Vehicle Loan,0.49706543,0.49761762,-0.00055218745,-0.00055218745,Vehicle Loan,TabPFN v3,3e-07,False,0.003,one_sample,-0.00055218745,42,log_loss,Isotonic
 Plotted means and dataset quartiles
 CSV (first column: row index)
 row,base,calibration,metric,tables,mean,q25,q75
@@ -68479,6 +71705,18 @@ row,base,calibration,metric,tables,mean,q25,q75
 21,TabPFN v3,Raw,ece,17,-7.3906816e-05,-0.0017686507,0.0019015201
 22,TabPFN v3,Platt,ece,17,0.00096522529,-0.00056887466,0.00065141727
 23,TabPFN v3,Isotonic,ece,17,-0.00033908819,-0.0010759605,0.00026487311
+24,TabICLv2,Raw,log_loss,17,0.021611336,-0.00078424863,0.0014326724
+25,TabICLv2,Platt,log_loss,17,-0.0011394305,-0.0007108103,0.0011516632
+26,TabICLv2,Isotonic,log_loss,17,-0.0011370662,-0.00080691583,0.0015969963
+27,TabPFN v2,Raw,log_loss,17,0.0059266296,0.0018571529,0.0045119247
+28,TabPFN v2,Platt,log_loss,17,0.0042179416,0.0014526857,0.0029636544
+29,TabPFN v2,Isotonic,log_loss,17,0.0027443092,0.00072169813,0.0035853496
+30,TabPFN v2.6,Raw,log_loss,17,-0.0013461951,-0.00055260646,4.1388014e-05
+31,TabPFN v2.6,Platt,log_loss,17,-0.0010368197,-0.00024036685,6.6347978e-05
+32,TabPFN v2.6,Isotonic,log_loss,17,-0.0031682118,-0.0033925994,2.3971512e-05
+33,TabPFN v3,Raw,log_loss,17,-0.00017808082,-3.1340638e-05,0.0011133082
+34,TabPFN v3,Platt,log_loss,17,-0.0002975588,-2.1437332e-05,0.00084431161
+35,TabPFN v3,Isotonic,log_loss,17,-0.0030464389,-0.0063556323,7.3526671e-05
 
 Figure: pd_reliability_tabicl-v2_1
 PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
@@ -69682,32 +72920,36 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,5222.861,4837.4361,5610.2462,32,0.5222861,0.48374361,0.56102462,32,121.0455,120.994,121.097,32,1.8578545e+08,168231937,195157151,32,53153136,53153136,53153136,32,0.0062993886,0.0014844263,0.052169715
 "('TabPFN v3', True)",32,4818.2725,4506.7621,5040.1654,32,0.48182725,0.45067621,0.50401654,32,109.999,109.999,109.999,32,1.8578545e+08,168231937,195157151,32,1795440,1795440,1795440,32,0.0064213491,0.0013048735,0.037843075
 
-experiment1/03_results_pd: 25 figures -> output CreditPFN/figures/experiment1
+experiment1/03_results_pd: 29 figures -> output CreditPFN/figures/experiment1
   01  pd_evaluation_coverage
   02  pd_endpoint_dashboard_pd_means
   03  pd_endpoint_dashboard_pd_partitions
   04  pd_endpoint_factors_pd_False
   05  pd_brier_dashboard
   06  pd_endpoint_factors_pd_True
-  07  pd_reference_uncertainty
-  08  pd_reference_roc_auc_1
-  09  pd_reference_pr_auc_1
-  10  pd_reference_brier_score_1
-  11  pd_reference_log_loss_1
-  12  pd_reference_ece_1
-  13  pd_reference_f1_1
-  14  pd_calibration_overview
-  15  pd_reliability_tabicl-v2_1
-  16  pd_reliability_v2_1
-  17  pd_reliability_v2.6_1
-  18  pd_reliability_v3_1
-  19  pd_thresholds_tabicl-v2_1
-  20  pd_thresholds_v2-default_1
-  21  pd_thresholds_v2.6-default_1
-  22  pd_thresholds_v3-default_1
-  23  pd_prediction_diagnostics
-  24  pd_control_context_1
-  25  pd_control_context_2
+  07  pd_factorial_credit_roc_auc
+  08  pd_factorial_ood_roc_auc
+  09  pd_factorial_credit_brier_score
+  10  pd_factorial_ood_brier_score
+  11  pd_reference_uncertainty
+  12  pd_reference_roc_auc_1
+  13  pd_reference_pr_auc_1
+  14  pd_reference_brier_score_1
+  15  pd_reference_log_loss_1
+  16  pd_reference_ece_1
+  17  pd_reference_f1_1
+  18  pd_calibration_overview
+  19  pd_reliability_tabicl-v2_1
+  20  pd_reliability_v2_1
+  21  pd_reliability_v2.6_1
+  22  pd_reliability_v3_1
+  23  pd_thresholds_tabicl-v2_1
+  24  pd_thresholds_v2-default_1
+  25  pd_thresholds_v2.6-default_1
+  26  pd_thresholds_v3-default_1
+  27  pd_prediction_diagnostics
+  28  pd_control_context_1
+  29  pd_control_context_2
 ```
 
 ---
@@ -69754,7 +72996,7 @@ row,category,bin_start,bin_end,value,stack_start
 Open marks freeze the backbone; filled marks update all normally trainable parameters. Colors denote learning rates and marker shapes denote L2-SP. These are fixed-context monitoring scores, not final five-fold estimates.
 
 Figure: lgd_endpoint_dashboard_lgd_means
-LGD. Initial and post-finetuning scores for each completed configuration. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning R² for each completed configuration. Observed endpoint-table inventory: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 Displayed endpoints
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,initial,value,partitions
@@ -69824,7 +73066,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,initial,value,partitions
 63,TabPFN v3,3e-05,0.003,True,one_sample,0.49505169,0.40016498,4
 
 Figure: lgd_endpoint_dashboard_lgd_partitions
-LGD. Initial and post-finetuning scores for each completed configuration. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning R² for each completed configuration. Observed endpoint-table inventory: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
 Displayed endpoints
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,trial,initial,value,effect
@@ -70605,7 +73847,7 @@ row,trial,updates,processed_rows,dataset,value,initial,effect,base,learning_rate
 Match every other setting and dataset before averaging contrasts. Base averages are descriptive, not causal model comparisons. Probability accuracy is assessed by Brier score when paired measurements exist; missing measurements are not inferred.
 
 Figure: lgd_endpoint_factors_lgd_False
-LGD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+LGD. Fixed-context milestone monitoring at 10,000 successful updates, credit R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 Displayed model summaries
 CSV (first column: row index)
 row,base,contrast,factor,reference,alternative,effect
@@ -71160,7 +74402,7 @@ TabPFN v2.6      one_sample False      64 -0.11341 -0.06226 -0.69171  0.00079
                      True       64 -0.01667 -0.00930 -0.10360  0.00138
 TabPFN v3        one_sample False      64 -0.15275 -0.08267 -0.70081  0.00255
                      True       64 -0.09464 -0.03171 -0.74174  0.00168
-LGD primary benchmark error remains RMSE; R² is also reported. Five outer folds are averaged within table before cross-table comparisons.
+LGD primary benchmark error remains RMSE; R² is also reported. Five outer folds are averaged within table before cross-table comparisons. The response maps retain all planned recipes; they do not select a best test recipe. Non-credit outcomes require all four paired training partitions per table. Table IQRs do not quantify seed uncertainty.
 The recipe is fixed: full updates, LR 3e-7, L2-SP 0.003, seed 42. Five paired outer folds are averaged within each table. The 95% percentile bootstrap interval resamples tables (10,000 draws, seed 20261020), not folds, rows, recipes or overlapping training corpora. It describes sensitivity to the observed table collection conditional on the fitted checkpoints, under a table-exchangeability assumption; it is not a deployment guarantee or a training-seed confidence interval. Unknown shared populations can invalidate that assumption. No significance-based recipe selection is performed.
 A source URL identifies a release or platform, not independent borrowers. The ledger records documented shared sources and unresolved provenance; it does not certify absence of overlap. LendingClub PD/LGD and SBA PD/LGD share sources, but the two tasks have separate CPT corpora and are never pooled as independent replications. The documented-public-source sensitivity excludes unverified/local and restricted sources; it changes the population being summarized and cannot repair contamination in already trained weights.
 
@@ -72197,7 +75439,7 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 511,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,SBA Loans Case (LGD),0.7320177,0.72729809,-0.0047196031,-0.0047196031,SBA Loans Case (LGD),TabPFN v3,3e-07,True,0,one_sample,-0.0047196031,42
 
 Figure: lgd_endpoint_factors_lgd_True
-LGD. Conditional differences match dataset and every other configuration setting before averaging within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Dataset and configuration support are retained in the accompanying tables.
+LGD. Completed five-fold final benchmark, credit R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Five paired outer folds are averaged within each table before cross-table aggregation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
 Displayed model summaries
 CSV (first column: row index)
 row,base,contrast,factor,reference,alternative,effect
@@ -72740,6 +75982,1834 @@ row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_del
 509,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,PropLGD4,0.4223755,0.41229223,-0.01008327,-0.01008327,PropLGD4,TabPFN v3,3e-07,True,0,one_sample,-0.01008327,42
 510,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,PropLGD5,0.3766028,0.37561882,-0.00098398924,-0.00098398924,PropLGD5,TabPFN v3,3e-07,True,0,one_sample,-0.00098398924,42
 511,tabpfn-trained__v3-default__lr3e-07__l2sp0__frozen,v3-default,SBA Loans Case (LGD),0.7320177,0.72729809,-0.0047196031,-0.0047196031,SBA Loans Case (LGD),TabPFN v3,3e-07,True,0,one_sample,-0.0047196031,42
+
+Figure: lgd_factorial_credit_r2
+LGD. Completed five-fold final benchmark, LGD held-out credit. CPT minus original R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.0062779665,1
+1,TabICLv2,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0003557682,1
+2,TabICLv2,3e-07,0,False,one_sample,PropLGD1,credit,r2,-0.028720737,1
+3,TabICLv2,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.0034443021,1
+4,TabICLv2,3e-07,0,False,one_sample,PropLGD3,credit,r2,-0.0016329646,1
+5,TabICLv2,3e-07,0,False,one_sample,PropLGD4,credit,r2,0.0058594465,1
+6,TabICLv2,3e-07,0,False,one_sample,PropLGD5,credit,r2,-0.0043001533,1
+7,TabICLv2,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.00054645538,1
+8,TabICLv2,3e-07,0,True,one_sample,Freddie Mac,credit,r2,0.0018703699,1
+9,TabICLv2,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,9.9086761e-05,1
+10,TabICLv2,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.00026630163,1
+11,TabICLv2,3e-07,0,True,one_sample,PropLGD2,credit,r2,0.00032488108,1
+12,TabICLv2,3e-07,0,True,one_sample,PropLGD3,credit,r2,-0.0004360199,1
+13,TabICLv2,3e-07,0,True,one_sample,PropLGD4,credit,r2,0.0053270698,1
+14,TabICLv2,3e-07,0,True,one_sample,PropLGD5,credit,r2,-0.00091625452,1
+15,TabICLv2,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,0.0007679224,1
+16,TabICLv2,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.0056432486,1
+17,TabICLv2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.00029659271,1
+18,TabICLv2,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,-0.030043507,1
+19,TabICLv2,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.0031716228,1
+20,TabICLv2,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,-0.0013843417,1
+21,TabICLv2,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,0.0058369756,1
+22,TabICLv2,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,-0.0034658551,1
+23,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,6.3300133e-06,1
+24,TabICLv2,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,0.001791203,1
+25,TabICLv2,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,9.9527836e-05,1
+26,TabICLv2,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.0011702299,1
+27,TabICLv2,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,0.00036139488,1
+28,TabICLv2,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,-0.00048923492,1
+29,TabICLv2,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,0.0053941846,1
+30,TabICLv2,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,-0.00072492361,1
+31,TabICLv2,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,0.0011025786,1
+32,TabICLv2,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.031468868,1
+33,TabICLv2,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.00045790672,1
+34,TabICLv2,1e-06,0,False,one_sample,PropLGD1,credit,r2,-0.2673511,1
+35,TabICLv2,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.015031767,1
+36,TabICLv2,1e-06,0,False,one_sample,PropLGD3,credit,r2,-0.0054196596,1
+37,TabICLv2,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.0099618554,1
+38,TabICLv2,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.011110318,1
+39,TabICLv2,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.0086556911,1
+40,TabICLv2,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.0017269135,1
+41,TabICLv2,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,0.00033165216,1
+42,TabICLv2,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.056962609,1
+43,TabICLv2,1e-06,0,True,one_sample,PropLGD2,credit,r2,-0.00074406862,1
+44,TabICLv2,1e-06,0,True,one_sample,PropLGD3,credit,r2,-0.00067995787,1
+45,TabICLv2,1e-06,0,True,one_sample,PropLGD4,credit,r2,0.0092394471,1
+46,TabICLv2,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0036946893,1
+47,TabICLv2,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,0.0008590579,1
+48,TabICLv2,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.025908136,1
+49,TabICLv2,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.00032074451,1
+50,TabICLv2,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,-0.31356044,1
+51,TabICLv2,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.012290466,1
+52,TabICLv2,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,-0.0038322091,1
+53,TabICLv2,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.0042067289,1
+54,TabICLv2,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.0076200366,1
+55,TabICLv2,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.004163754,1
+56,TabICLv2,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0012158394,1
+57,TabICLv2,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00026028156,1
+58,TabICLv2,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.073823249,1
+59,TabICLv2,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.0011797905,1
+60,TabICLv2,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,-0.00015195608,1
+61,TabICLv2,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,0.0086188436,1
+62,TabICLv2,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0038709044,1
+63,TabICLv2,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,0.00080263615,1
+64,TabICLv2,1e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.17531581,1
+65,TabICLv2,1e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.041398156,1
+66,TabICLv2,1e-05,0,False,one_sample,PropLGD1,credit,r2,-0.32710534,1
+67,TabICLv2,1e-05,0,False,one_sample,PropLGD2,credit,r2,-0.060506105,1
+68,TabICLv2,1e-05,0,False,one_sample,PropLGD3,credit,r2,-0.038795364,1
+69,TabICLv2,1e-05,0,False,one_sample,PropLGD4,credit,r2,-0.094454837,1
+70,TabICLv2,1e-05,0,False,one_sample,PropLGD5,credit,r2,-0.2483488,1
+71,TabICLv2,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.09456836,1
+72,TabICLv2,1e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.011614168,1
+73,TabICLv2,1e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.021646845,1
+74,TabICLv2,1e-05,0,True,one_sample,PropLGD1,credit,r2,-0.027258682,1
+75,TabICLv2,1e-05,0,True,one_sample,PropLGD2,credit,r2,-0.011391783,1
+76,TabICLv2,1e-05,0,True,one_sample,PropLGD3,credit,r2,-0.0058598042,1
+77,TabICLv2,1e-05,0,True,one_sample,PropLGD4,credit,r2,-0.00057952404,1
+78,TabICLv2,1e-05,0,True,one_sample,PropLGD5,credit,r2,-0.015136635,1
+79,TabICLv2,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.010998344,1
+80,TabICLv2,1e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.14634408,1
+81,TabICLv2,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.030775595,1
+82,TabICLv2,1e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.17633053,1
+83,TabICLv2,1e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.02355653,1
+84,TabICLv2,1e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.0091856837,1
+85,TabICLv2,1e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.036343277,1
+86,TabICLv2,1e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.22341288,1
+87,TabICLv2,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.028800261,1
+88,TabICLv2,1e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.018532062,1
+89,TabICLv2,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.022999859,1
+90,TabICLv2,1e-05,0.003,True,one_sample,PropLGD1,credit,r2,-0.076606297,1
+91,TabICLv2,1e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.010959208,1
+92,TabICLv2,1e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.0047459483,1
+93,TabICLv2,1e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.00010713339,1
+94,TabICLv2,1e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.013847113,1
+95,TabICLv2,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.010184824,1
+96,TabICLv2,3e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.18366096,1
+97,TabICLv2,3e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.056901348,1
+98,TabICLv2,3e-05,0,False,one_sample,PropLGD1,credit,r2,-0.33802536,1
+99,TabICLv2,3e-05,0,False,one_sample,PropLGD2,credit,r2,-0.14036043,1
+100,TabICLv2,3e-05,0,False,one_sample,PropLGD3,credit,r2,-0.13316411,1
+101,TabICLv2,3e-05,0,False,one_sample,PropLGD4,credit,r2,-0.1368582,1
+102,TabICLv2,3e-05,0,False,one_sample,PropLGD5,credit,r2,-0.23142445,1
+103,TabICLv2,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.12494507,1
+104,TabICLv2,3e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.0352036,1
+105,TabICLv2,3e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.02780447,1
+106,TabICLv2,3e-05,0,True,one_sample,PropLGD1,credit,r2,-0.074540174,1
+107,TabICLv2,3e-05,0,True,one_sample,PropLGD2,credit,r2,-0.020395541,1
+108,TabICLv2,3e-05,0,True,one_sample,PropLGD3,credit,r2,-0.004166615,1
+109,TabICLv2,3e-05,0,True,one_sample,PropLGD4,credit,r2,-0.015155041,1
+110,TabICLv2,3e-05,0,True,one_sample,PropLGD5,credit,r2,-0.024212253,1
+111,TabICLv2,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.017205262,1
+112,TabICLv2,3e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.1333322,1
+113,TabICLv2,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.036660612,1
+114,TabICLv2,3e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.15062555,1
+115,TabICLv2,3e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.036110699,1
+116,TabICLv2,3e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.011537147,1
+117,TabICLv2,3e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.025871897,1
+118,TabICLv2,3e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.095768785,1
+119,TabICLv2,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.050903249,1
+120,TabICLv2,3e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.023489797,1
+121,TabICLv2,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.026805651,1
+122,TabICLv2,3e-05,0.003,True,one_sample,PropLGD1,credit,r2,-0.13264836,1
+123,TabICLv2,3e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.015035224,1
+124,TabICLv2,3e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.0051512122,1
+125,TabICLv2,3e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.0071557045,1
+126,TabICLv2,3e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.027439868,1
+127,TabICLv2,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.012514675,1
+128,TabPFN v2,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.0031929135,1
+129,TabPFN v2,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0021497488,1
+130,TabPFN v2,3e-07,0,False,one_sample,PropLGD1,credit,r2,0.019067729,1
+131,TabPFN v2,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.00070744753,1
+132,TabPFN v2,3e-07,0,False,one_sample,PropLGD3,credit,r2,0.0011690259,1
+133,TabPFN v2,3e-07,0,False,one_sample,PropLGD4,credit,r2,0.011688018,1
+134,TabPFN v2,3e-07,0,False,one_sample,PropLGD5,credit,r2,0.0064568043,1
+135,TabPFN v2,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,0.0027754903,1
+136,TabPFN v2,3e-07,0,True,one_sample,Freddie Mac,credit,r2,-0.00039176941,1
+137,TabPFN v2,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,-0.00018033981,1
+138,TabPFN v2,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.0069638371,1
+139,TabPFN v2,3e-07,0,True,one_sample,PropLGD2,credit,r2,-0.00023218393,1
+140,TabPFN v2,3e-07,0,True,one_sample,PropLGD3,credit,r2,-0.0034658194,1
+141,TabPFN v2,3e-07,0,True,one_sample,PropLGD4,credit,r2,1.0168552e-05,1
+142,TabPFN v2,3e-07,0,True,one_sample,PropLGD5,credit,r2,0.00053731203,1
+143,TabPFN v2,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00033006668,1
+144,TabPFN v2,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.0032508135,1
+145,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0021434546,1
+146,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,0.018483496,1
+147,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.00080544949,1
+148,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,-0.00021089315,1
+149,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,0.011592054,1
+150,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,0.0063416004,1
+151,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,0.0028022647,1
+152,TabPFN v2,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,-0.00038522482,1
+153,TabPFN v2,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.00018558502,1
+154,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.0071280241,1
+155,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,-0.00032587051,1
+156,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,-0.0046648145,1
+157,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,-5.8293343e-06,1
+158,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,0.00051351786,1
+159,TabPFN v2,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00037333965,1
+160,TabPFN v2,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.007098949,1
+161,TabPFN v2,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0041548014,1
+162,TabPFN v2,1e-06,0,False,one_sample,PropLGD1,credit,r2,0.041654229,1
+163,TabPFN v2,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.0008007288,1
+164,TabPFN v2,1e-06,0,False,one_sample,PropLGD3,credit,r2,-0.0046227455,1
+165,TabPFN v2,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.0027023673,1
+166,TabPFN v2,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.0027192593,1
+167,TabPFN v2,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,0.00069862604,1
+168,TabPFN v2,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.0010754347,1
+169,TabPFN v2,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,-0.00031875372,1
+170,TabPFN v2,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.0089998007,1
+171,TabPFN v2,1e-06,0,True,one_sample,PropLGD2,credit,r2,2.1195412e-05,1
+172,TabPFN v2,1e-06,0,True,one_sample,PropLGD3,credit,r2,-0.0039439797,1
+173,TabPFN v2,1e-06,0,True,one_sample,PropLGD4,credit,r2,-0.00089037418,1
+174,TabPFN v2,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0023263454,1
+175,TabPFN v2,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00069103241,1
+176,TabPFN v2,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.0071505547,1
+177,TabPFN v2,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0041552782,1
+178,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,0.042105663,1
+179,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.0012936831,1
+180,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,-0.012545788,1
+181,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.0011195421,1
+182,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.0035522342,1
+183,TabPFN v2,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,0.00091099739,1
+184,TabPFN v2,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0010495067,1
+185,TabPFN v2,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.00031479597,1
+186,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.0092791319,1
+187,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.0003678441,1
+188,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,-0.0087867379,1
+189,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,-0.00077403784,1
+190,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0023391247,1
+191,TabPFN v2,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00071592331,1
+192,TabPFN v2,1e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.049220717,1
+193,TabPFN v2,1e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.010161412,1
+194,TabPFN v2,1e-05,0,False,one_sample,PropLGD1,credit,r2,-0.15407141,1
+195,TabPFN v2,1e-05,0,False,one_sample,PropLGD2,credit,r2,-0.026645362,1
+196,TabPFN v2,1e-05,0,False,one_sample,PropLGD3,credit,r2,-0.0066147327,1
+197,TabPFN v2,1e-05,0,False,one_sample,PropLGD4,credit,r2,-0.17721788,1
+198,TabPFN v2,1e-05,0,False,one_sample,PropLGD5,credit,r2,-0.055765533,1
+199,TabPFN v2,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.047772694,1
+200,TabPFN v2,1e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.0027648687,1
+201,TabPFN v2,1e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.0004549861,1
+202,TabPFN v2,1e-05,0,True,one_sample,PropLGD1,credit,r2,0.0024587274,1
+203,TabPFN v2,1e-05,0,True,one_sample,PropLGD2,credit,r2,-0.0001886487,1
+204,TabPFN v2,1e-05,0,True,one_sample,PropLGD3,credit,r2,0.0020542383,1
+205,TabPFN v2,1e-05,0,True,one_sample,PropLGD4,credit,r2,-0.0039305449,1
+206,TabPFN v2,1e-05,0,True,one_sample,PropLGD5,credit,r2,-0.016597986,1
+207,TabPFN v2,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0012714267,1
+208,TabPFN v2,1e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.045350611,1
+209,TabPFN v2,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0093815923,1
+210,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.1450543,1
+211,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.032903695,1
+212,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.067190433,1
+213,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.16206375,1
+214,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.062775576,1
+215,TabPFN v2,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.03807869,1
+216,TabPFN v2,1e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0026356339,1
+217,TabPFN v2,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.00031863451,1
+218,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD1,credit,r2,0.014576924,1
+219,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.00067813396,1
+220,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.015006077,1
+221,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.0030622482,1
+222,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.016434467,1
+223,TabPFN v2,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0013815165,1
+224,TabPFN v2,3e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.20730122,1
+225,TabPFN v2,3e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.021481311,1
+226,TabPFN v2,3e-05,0,False,one_sample,PropLGD1,credit,r2,-0.23354058,1
+227,TabPFN v2,3e-05,0,False,one_sample,PropLGD2,credit,r2,-0.066015792,1
+228,TabPFN v2,3e-05,0,False,one_sample,PropLGD3,credit,r2,-0.037746119,1
+229,TabPFN v2,3e-05,0,False,one_sample,PropLGD4,credit,r2,-0.24104493,1
+230,TabPFN v2,3e-05,0,False,one_sample,PropLGD5,credit,r2,-0.081440258,1
+231,TabPFN v2,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.099664223,1
+232,TabPFN v2,3e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.0033700824,1
+233,TabPFN v2,3e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.0012657285,1
+234,TabPFN v2,3e-05,0,True,one_sample,PropLGD1,credit,r2,-0.1071712,1
+235,TabPFN v2,3e-05,0,True,one_sample,PropLGD2,credit,r2,-0.0031132936,1
+236,TabPFN v2,3e-05,0,True,one_sample,PropLGD3,credit,r2,-0.0059345484,1
+237,TabPFN v2,3e-05,0,True,one_sample,PropLGD4,credit,r2,-0.0079756021,1
+238,TabPFN v2,3e-05,0,True,one_sample,PropLGD5,credit,r2,-0.0090805411,1
+239,TabPFN v2,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0021223426,1
+240,TabPFN v2,3e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.20568827,1
+241,TabPFN v2,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.017306674,1
+242,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.29050606,1
+243,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.068750942,1
+244,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.11220001,1
+245,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.17552513,1
+246,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.1003857,1
+247,TabPFN v2,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.084855807,1
+248,TabPFN v2,3e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0026311517,1
+249,TabPFN v2,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.00039405823,1
+250,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD1,credit,r2,0.018867517,1
+251,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.00094249249,1
+252,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.0183496,1
+253,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.0068924904,1
+254,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.012464809,1
+255,TabPFN v2,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0020428061,1
+256,TabPFN v2.6,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.075496805,1
+257,TabPFN v2.6,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.081362092,1
+258,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD1,credit,r2,-0.29913464,1
+259,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.063528061,1
+260,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD3,credit,r2,0.0013708711,1
+261,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD4,credit,r2,-0.066328812,1
+262,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD5,credit,r2,-0.027583945,1
+263,TabPFN v2.6,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.054754686,1
+264,TabPFN v2.6,3e-07,0,True,one_sample,Freddie Mac,credit,r2,0.00098266602,1
+265,TabPFN v2.6,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,0.00065555573,1
+266,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.0044168472,1
+267,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD2,credit,r2,2.1886826e-05,1
+268,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD3,credit,r2,0.0010153294,1
+269,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD4,credit,r2,-0.0010034919,1
+270,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD5,credit,r2,0.0026229739,1
+271,TabPFN v2.6,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0008677125,1
+272,TabPFN v2.6,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.075571036,1
+273,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.080925655,1
+274,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,-0.29883276,1
+275,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.063454926,1
+276,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,0.0014339089,1
+277,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,-0.066008151,1
+278,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,-0.027774954,1
+279,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.054565394,1
+280,TabPFN v2.6,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,0.00098222494,1
+281,TabPFN v2.6,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00065973997,1
+282,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.0044159889,1
+283,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,2.5713444e-05,1
+284,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,0.0011408329,1
+285,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,-0.0010062695,1
+286,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,0.0026251674,1
+287,TabPFN v2.6,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0008570075,1
+288,TabPFN v2.6,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.046315289,1
+289,TabPFN v2.6,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.067448008,1
+290,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD1,credit,r2,-0.29806277,1
+291,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.057096684,1
+292,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD3,credit,r2,-7.4923038e-05,1
+293,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.079827631,1
+294,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.022560883,1
+295,TabPFN v2.6,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.054649734,1
+296,TabPFN v2.6,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.0043949485,1
+297,TabPFN v2.6,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,0.0003518343,1
+298,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.021265209,1
+299,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD2,credit,r2,-0.0034974575,1
+300,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD3,credit,r2,-0.012674868,1
+301,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD4,credit,r2,-0.010237837,1
+302,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0072713494,1
+303,TabPFN v2.6,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.005409348,1
+304,TabPFN v2.6,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.046599352,1
+305,TabPFN v2.6,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.066781271,1
+306,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,-0.29770719,1
+307,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.057162225,1
+308,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,0.00028730631,1
+309,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.079185843,1
+310,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.023315632,1
+311,TabPFN v2.6,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.053670382,1
+312,TabPFN v2.6,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0044354081,1
+313,TabPFN v2.6,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00032086372,1
+314,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.021278048,1
+315,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.0031033635,1
+316,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,-0.010462141,1
+317,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,-0.010212708,1
+318,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0073088288,1
+319,TabPFN v2.6,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0052041292,1
+320,TabPFN v2.6,1e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.034486461,1
+321,TabPFN v2.6,1e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.030312896,1
+322,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD1,credit,r2,-0.30640349,1
+323,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD2,credit,r2,-0.048942292,1
+324,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD3,credit,r2,-0.053279793,1
+325,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD4,credit,r2,-0.074768353,1
+326,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD5,credit,r2,-0.042799675,1
+327,TabPFN v2.6,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.016891122,1
+328,TabPFN v2.6,1e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.0031109571,1
+329,TabPFN v2.6,1e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.0086335778,1
+330,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD1,credit,r2,-0.032259786,1
+331,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD2,credit,r2,-0.036968088,1
+332,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD3,credit,r2,-0.10092623,1
+333,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD4,credit,r2,-0.028976095,1
+334,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD5,credit,r2,-0.019885087,1
+335,TabPFN v2.6,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.012096465,1
+336,TabPFN v2.6,1e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.034580648,1
+337,TabPFN v2.6,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.028565049,1
+338,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.30267892,1
+339,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.023911333,1
+340,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.017963684,1
+341,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.077041972,1
+342,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.035975087,1
+343,TabPFN v2.6,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.017068756,1
+344,TabPFN v2.6,1e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0029014111,1
+345,TabPFN v2.6,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.0079730988,1
+346,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD1,credit,r2,-0.030886889,1
+347,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.0053638458,1
+348,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.061803138,1
+349,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.024355233,1
+350,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.017324173,1
+351,TabPFN v2.6,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0099508762,1
+352,TabPFN v2.6,3e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.063636315,1
+353,TabPFN v2.6,3e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.022573102,1
+354,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD1,credit,r2,-0.52430831,1
+355,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD2,credit,r2,-0.045874536,1
+356,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD3,credit,r2,-0.13715578,1
+357,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD4,credit,r2,-0.11616719,1
+358,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD5,credit,r2,-0.14303712,1
+359,TabPFN v2.6,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.025004101,1
+360,TabPFN v2.6,3e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.0029868007,1
+361,TabPFN v2.6,3e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.0100945,1
+362,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD1,credit,r2,-0.03961513,1
+363,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD2,credit,r2,-0.042298245,1
+364,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD3,credit,r2,-0.074743664,1
+365,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD4,credit,r2,-0.015289903,1
+366,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD5,credit,r2,-0.011484087,1
+367,TabPFN v2.6,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0050304294,1
+368,TabPFN v2.6,3e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.043591285,1
+369,TabPFN v2.6,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.01909852,1
+370,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.3665728,1
+371,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.035611737,1
+372,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.15250652,1
+373,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.069619918,1
+374,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.11618133,1
+375,TabPFN v2.6,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.0092379689,1
+376,TabPFN v2.6,3e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0035786271,1
+377,TabPFN v2.6,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.0081244111,1
+378,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD1,credit,r2,-0.061349201,1
+379,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.0067058802,1
+380,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.052493513,1
+381,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.012567043,1
+382,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.011152744,1
+383,TabPFN v2.6,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0042733431,1
+384,TabPFN v3,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.018173933,1
+385,TabPFN v3,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.001977694,1
+386,TabPFN v3,3e-07,0,False,one_sample,PropLGD1,credit,r2,-0.25456707,1
+387,TabPFN v3,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.011113143,1
+388,TabPFN v3,3e-07,0,False,one_sample,PropLGD3,credit,r2,0.00228585,1
+389,TabPFN v3,3e-07,0,False,one_sample,PropLGD4,credit,r2,-0.0020178318,1
+390,TabPFN v3,3e-07,0,False,one_sample,PropLGD5,credit,r2,-0.0012529254,1
+391,TabPFN v3,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.004320395,1
+392,TabPFN v3,3e-07,0,True,one_sample,Freddie Mac,credit,r2,-0.0068457723,1
+393,TabPFN v3,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,0.00079799891,1
+394,TabPFN v3,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.044520736,1
+395,TabPFN v3,3e-07,0,True,one_sample,PropLGD2,credit,r2,-0.0034373641,1
+396,TabPFN v3,3e-07,0,True,one_sample,PropLGD3,credit,r2,0.00044136047,1
+397,TabPFN v3,3e-07,0,True,one_sample,PropLGD4,credit,r2,-0.01008327,1
+398,TabPFN v3,3e-07,0,True,one_sample,PropLGD5,credit,r2,-0.00098398924,1
+399,TabPFN v3,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0047196031,1
+400,TabPFN v3,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.018117607,1
+401,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0019857883,1
+402,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,-0.18983387,1
+403,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.011565423,1
+404,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,0.0021969914,1
+405,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,-0.0026840091,1
+406,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,-0.0012308478,1
+407,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.0042111993,1
+408,TabPFN v3,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0067509532,1
+409,TabPFN v3,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.000796628,1
+410,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.048800099,1
+411,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,-0.0035761714,1
+412,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,0.00053240061,1
+413,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,-0.010145855,1
+414,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,-0.0012985826,1
+415,TabPFN v3,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0045753717,1
+416,TabPFN v3,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.10142229,1
+417,TabPFN v3,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0042830586,1
+418,TabPFN v3,1e-06,0,False,one_sample,PropLGD1,credit,r2,-0.30643374,1
+419,TabPFN v3,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.027676904,1
+420,TabPFN v3,1e-06,0,False,one_sample,PropLGD3,credit,r2,0.0039400697,1
+421,TabPFN v3,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.035186315,1
+422,TabPFN v3,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.0064174891,1
+423,TabPFN v3,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.025368595,1
+424,TabPFN v3,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.026041281,1
+425,TabPFN v3,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,0.00060093403,1
+426,TabPFN v3,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.13690786,1
+427,TabPFN v3,1e-06,0,True,one_sample,PropLGD2,credit,r2,-0.011429489,1
+428,TabPFN v3,1e-06,0,True,one_sample,PropLGD3,credit,r2,0.00014686584,1
+429,TabPFN v3,1e-06,0,True,one_sample,PropLGD4,credit,r2,-0.044207764,1
+430,TabPFN v3,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0025859714,1
+431,TabPFN v3,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.016923726,1
+432,TabPFN v3,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.084577382,1
+433,TabPFN v3,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0038728476,1
+434,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,-0.2398862,1
+435,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.027920735,1
+436,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,0.0041180491,1
+437,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.031071138,1
+438,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.0065849543,1
+439,TabPFN v3,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.024562764,1
+440,TabPFN v3,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.026973045,1
+441,TabPFN v3,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00058431625,1
+442,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.092189217,1
+443,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.012104893,1
+444,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,0.00037690401,1
+445,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,-0.045097184,1
+446,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0032765388,1
+447,TabPFN v3,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.016709697,1
+448,TabPFN v3,1e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.4409722,1
+449,TabPFN v3,1e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.020953965,1
+450,TabPFN v3,1e-05,0,False,one_sample,PropLGD1,credit,r2,-0.40684208,1
+451,TabPFN v3,1e-05,0,False,one_sample,PropLGD2,credit,r2,-0.11926062,1
+452,TabPFN v3,1e-05,0,False,one_sample,PropLGD3,credit,r2,-0.098383307,1
+453,TabPFN v3,1e-05,0,False,one_sample,PropLGD4,credit,r2,-0.25795379,1
+454,TabPFN v3,1e-05,0,False,one_sample,PropLGD5,credit,r2,-0.20172141,1
+455,TabPFN v3,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.2645394,1
+456,TabPFN v3,1e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.1362087,1
+457,TabPFN v3,1e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.0050939322,1
+458,TabPFN v3,1e-05,0,True,one_sample,PropLGD1,credit,r2,-0.51055399,1
+459,TabPFN v3,1e-05,0,True,one_sample,PropLGD2,credit,r2,-0.11209557,1
+460,TabPFN v3,1e-05,0,True,one_sample,PropLGD3,credit,r2,-0.020944834,1
+461,TabPFN v3,1e-05,0,True,one_sample,PropLGD4,credit,r2,-0.090145552,1
+462,TabPFN v3,1e-05,0,True,one_sample,PropLGD5,credit,r2,-0.046624863,1
+463,TabPFN v3,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.08409816,1
+464,TabPFN v3,1e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.34236864,1
+465,TabPFN v3,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.015533566,1
+466,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.45767866,1
+467,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.12785058,1
+468,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.10902455,1
+469,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.18300145,1
+470,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.14248517,1
+471,TabPFN v3,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.22423427,1
+472,TabPFN v3,1e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.09719094,1
+473,TabPFN v3,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.0060908437,1
+474,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD1,credit,r2,-0.45800722,1
+475,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.069517851,1
+476,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.0027061224,1
+477,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.083381641,1
+478,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.022152913,1
+479,TabPFN v3,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.075847661,1
+480,TabPFN v3,3e-05,0,False,one_sample,Freddie Mac,credit,r2,-0.32345806,1
+481,TabPFN v3,3e-05,0,False,one_sample,LendingClub (LGD),credit,r2,-0.041435611,1
+482,TabPFN v3,3e-05,0,False,one_sample,PropLGD1,credit,r2,-0.62113434,1
+483,TabPFN v3,3e-05,0,False,one_sample,PropLGD2,credit,r2,-0.16300409,1
+484,TabPFN v3,3e-05,0,False,one_sample,PropLGD3,credit,r2,-0.15478368,1
+485,TabPFN v3,3e-05,0,False,one_sample,PropLGD4,credit,r2,-0.29412605,1
+486,TabPFN v3,3e-05,0,False,one_sample,PropLGD5,credit,r2,-0.15633914,1
+487,TabPFN v3,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.2748401,1
+488,TabPFN v3,3e-05,0,True,one_sample,Freddie Mac,credit,r2,-0.22009372,1
+489,TabPFN v3,3e-05,0,True,one_sample,LendingClub (LGD),credit,r2,-0.0087694049,1
+490,TabPFN v3,3e-05,0,True,one_sample,PropLGD1,credit,r2,-0.66740615,1
+491,TabPFN v3,3e-05,0,True,one_sample,PropLGD2,credit,r2,-0.083355021,1
+492,TabPFN v3,3e-05,0,True,one_sample,PropLGD3,credit,r2,-0.26071482,1
+493,TabPFN v3,3e-05,0,True,one_sample,PropLGD4,credit,r2,-0.052187121,1
+494,TabPFN v3,3e-05,0,True,one_sample,PropLGD5,credit,r2,-0.11709141,1
+495,TabPFN v3,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.18106976,1
+496,TabPFN v3,3e-05,0.003,False,one_sample,Freddie Mac,credit,r2,-0.27906747,1
+497,TabPFN v3,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.046640003,1
+498,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD1,credit,r2,-0.56277343,1
+499,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD2,credit,r2,-0.1912748,1
+500,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD3,credit,r2,-0.19587698,1
+501,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD4,credit,r2,-0.20570056,1
+502,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD5,credit,r2,-0.1534783,1
+503,TabPFN v3,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.31870445,1
+504,TabPFN v3,3e-05,0.003,True,one_sample,Freddie Mac,credit,r2,-0.21770446,1
+505,TabPFN v3,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.0076129436,1
+506,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD1,credit,r2,-0.4815578,1
+507,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD2,credit,r2,-0.072039402,1
+508,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD3,credit,r2,-0.072720814,1
+509,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD4,credit,r2,-0.17773213,1
+510,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD5,credit,r2,-0.046196365,1
+511,TabPFN v3,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.19594702,1
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,-0.0049273625,-0.0047946066,-0.00049878359,8
+1,TabICLv2,3e-07,0,True,one_sample,0.00084634423,-0.0003087312,0.0010435343,8
+2,TabICLv2,3e-07,0.003,False,one_sample,-0.0047702327,-0.0040102035,-0.00022086203,8
+3,TabICLv2,3e-07,0.003,True,one_sample,0.00079556257,-0.0005481571,0.0012747347,8
+4,TabICLv2,1e-06,0,False,one_sample,-0.043682146,-0.019141042,-0.0078466833,8
+5,TabICLv2,1e-06,0,True,one_sample,-0.0066722602,-0.0022188574,0.0004635036,8
+6,TabICLv2,1e-06,0.003,False,one_sample,-0.046487814,-0.015694883,-0.0040808678,8
+7,TabICLv2,1e-06,0.003,True,one_sample,-0.0088199973,-0.0018796057,0.00039587021,8
+8,TabICLv2,1e-05,0,False,one_sample,-0.1350616,-0.19357406,-0.055729118,8
+9,TabICLv2,1e-05,0,True,one_sample,-0.013060723,-0.016764188,-0.0097137094,8
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.084343605,-0.15384069,-0.027489328,8
+11,TabICLv2,1e-05,0.003,True,one_sample,-0.019747806,-0.019649011,-0.0088251054,8
+12,TabICLv2,3e-05,0,False,one_sample,-0.16816749,-0.19560183,-0.13110935,8
+13,TabICLv2,3e-05,0,True,one_sample,-0.02733537,-0.029654253,-0.016692707,8
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.067601268,-0.10515964,-0.033550999,8
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.031280062,-0.026964206,-0.011174932,8
+16,TabPFN v2,3e-07,0,False,one_sample,0.0043883696,-0.0010680228,0.0077646077,8
+17,TabPFN v2,3e-07,0,True,one_sample,-0.001377067,-0.0011602819,-0.00013271272,8
+18,TabPFN v2,3e-07,0.003,False,one_sample,0.0041011006,-0.0011399508,0.0076542139,8
+19,TabPFN v2,3e-07,0.003,True,one_sample,-0.0015693963,-0.0014551222,-0.0001406461,8
+20,TabPFN v2,1e-06,0,False,one_sample,0.0025317505,-0.0042717874,-0.00042589009,8
+21,TabPFN v2,1e-06,0,True,one_sample,-0.0022780657,-0.002730754,-0.00059796274,8
+22,TabPFN v2,1e-06,0.003,False,one_sample,0.0016499475,-0.0049040973,-0.00061190724,8
+23,TabPFN v2,1e-06,0.003,True,one_sample,-0.0029533878,-0.003951028,-0.00062890351,8
+24,TabPFN v2,1e-05,0,False,one_sample,-0.065933718,-0.080342004,-0.022524375,8
+25,TabPFN v2,1e-05,0,True,one_sample,-0.002586937,-0.0030562878,0.00037207305,8
+26,TabPFN v2,1e-05,0.003,False,one_sample,-0.070349832,-0.086656401,-0.036784941,8
+27,TabPFN v2,1e-05,0.003,True,one_sample,-0.0031174734,-0.0060482055,-0.0005882591,8
+28,TabPFN v2,3e-05,0,False,one_sample,-0.1235293,-0.21386106,-0.058948374,8
+29,TabPFN v2,3e-05,0,True,one_sample,-0.017504168,-0.0082518369,-0.0028655559,8
+30,TabPFN v2,3e-05,0.003,False,one_sample,-0.13190233,-0.18306592,-0.080829591,8
+31,TabPFN v2,3e-05,0.003,True,one_sample,-0.0031062365,-0.0082855701,-0.00080538392,8
+32,TabPFN v2.6,3e-07,0,False,one_sample,-0.083352271,-0.076963127,-0.047962001,8
+33,TabPFN v2.6,3e-07,0,True,one_sample,-0.00012370497,-0.00090165734,0.00099083185,8
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.083212371,-0.076909691,-0.047867784,8
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00010569841,-0.00089432299,0.0010218769,8
+36,TabPFN v2.6,1e-06,0,False,one_sample,-0.07825449,-0.070542914,-0.040376687,8
+37,TabPFN v2.6,1e-06,0,True,one_sample,-0.0080498978,-0.010847095,-0.0041705757,8
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.078016824,-0.069882414,-0.040778422,8
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.0077104703,-0.010275066,-0.004102397,8
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.075985511,-0.058651933,-0.033443069,8
+41,TabPFN v2.6,1e-05,0,True,one_sample,-0.030357036,-0.033436862,-0.011230743,8
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.067223181,-0.046241808,-0.022424421,8
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.020069833,-0.025988147,-0.0073207855,8
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.13471956,-0.13862612,-0.040656927,8
+45,TabPFN v2.6,3e-05,0,True,one_sample,-0.025192845,-0.040285909,-0.008828482,8
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.10155251,-0.12526262,-0.031483433,8
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.020030595,-0.022548661,-0.0060977459,8
+48,TabPFN v3,3e-07,0,False,one_sample,-0.036392143,-0.01287834,-0.0017965019,8
+49,TabPFN v3,3e-07,0,True,one_sample,-0.0086689219,-0.0076551467,-0.00062765181,8
+50,TabPFN v3,3e-07,0.003,False,one_sample,-0.028428969,-0.013203469,-0.0017970532,8
+51,TabPFN v3,3e-07,0.003,True,one_sample,-0.0092272505,-0.0075996786,-0.00084083676,8
+52,TabPFN v3,1e-06,0,False,one_sample,-0.062856039,-0.051745307,-0.0058838814,8
+53,TabPFN v3,1e-06,0,True,one_sample,-0.029668537,-0.030582902,-0.0019027621,8
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.051794747,-0.044447699,-0.0059069276,8
+55,TabPFN v3,1e-06,0.003,True,one_sample,-0.024423669,-0.03150408,-0.0023631781,8
+56,TabPFN v3,1e-05,0,False,one_sample,-0.22632834,-0.30011507,-0.11404129,8
+57,TabPFN v3,1e-05,0,True,one_sample,-0.1257207,-0.11812385,-0.040204856,8
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.20027211,-0.25376786,-0.12314407,8
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.1018619,-0.086833966,-0.018137395,8
+60,TabPFN v3,3e-05,0,False,one_sample,-0.25364013,-0.30145905,-0.15595028,8
+61,TabPFN v3,3e-05,0,True,one_sample,-0.19883592,-0.23024899,-0.075563046,8
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.2441895,-0.28897671,-0.18182567,8
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.15893887,-0.20138638,-0.065578642,8
+
+Figure: lgd_factorial_ood_r2
+LGD. Completed five-fold final benchmark, LGD non-credit retention. CPT minus original R². Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,openml_46904,ood,r2,-0.00071740349,4
+1,TabICLv2,3e-07,0,False,one_sample,openml_46917,ood,r2,-0.0005978839,4
+2,TabICLv2,3e-07,0,False,one_sample,openml_46949,ood,r2,-0.0061560057,4
+3,TabICLv2,3e-07,0,False,one_sample,openml_46961,ood,r2,-0.0011976989,4
+4,TabICLv2,3e-07,0,True,one_sample,openml_46904,ood,r2,0.00036732968,4
+5,TabICLv2,3e-07,0,True,one_sample,openml_46917,ood,r2,0.00064541103,4
+6,TabICLv2,3e-07,0,True,one_sample,openml_46949,ood,r2,-0.0014162541,4
+7,TabICLv2,3e-07,0,True,one_sample,openml_46961,ood,r2,-2.4149246e-05,4
+8,TabICLv2,3e-07,0.003,False,one_sample,openml_46904,ood,r2,-0.00054593098,4
+9,TabICLv2,3e-07,0.003,False,one_sample,openml_46917,ood,r2,-0.00046054597,4
+10,TabICLv2,3e-07,0.003,False,one_sample,openml_46949,ood,r2,-0.0053817439,4
+11,TabICLv2,3e-07,0.003,False,one_sample,openml_46961,ood,r2,-0.0010574899,4
+12,TabICLv2,3e-07,0.003,True,one_sample,openml_46904,ood,r2,0.00038992931,4
+13,TabICLv2,3e-07,0.003,True,one_sample,openml_46917,ood,r2,0.00063729876,4
+14,TabICLv2,3e-07,0.003,True,one_sample,openml_46949,ood,r2,-0.0013685747,4
+15,TabICLv2,3e-07,0.003,True,one_sample,openml_46961,ood,r2,2.0334501e-06,4
+16,TabICLv2,1e-06,0,False,one_sample,openml_46904,ood,r2,-0.0030672449,4
+17,TabICLv2,1e-06,0,False,one_sample,openml_46917,ood,r2,-0.0033308699,4
+18,TabICLv2,1e-06,0,False,one_sample,openml_46949,ood,r2,-0.018117554,4
+19,TabICLv2,1e-06,0,False,one_sample,openml_46961,ood,r2,-0.0069999597,4
+20,TabICLv2,1e-06,0,True,one_sample,openml_46904,ood,r2,0.00035082717,4
+21,TabICLv2,1e-06,0,True,one_sample,openml_46917,ood,r2,7.1392563e-05,4
+22,TabICLv2,1e-06,0,True,one_sample,openml_46949,ood,r2,-0.0023785881,4
+23,TabICLv2,1e-06,0,True,one_sample,openml_46961,ood,r2,-0.0010670956,4
+24,TabICLv2,1e-06,0.003,False,one_sample,openml_46904,ood,r2,-0.001998215,4
+25,TabICLv2,1e-06,0.003,False,one_sample,openml_46917,ood,r2,-0.0024859752,4
+26,TabICLv2,1e-06,0.003,False,one_sample,openml_46949,ood,r2,-0.012728521,4
+27,TabICLv2,1e-06,0.003,False,one_sample,openml_46961,ood,r2,-0.0058464719,4
+28,TabICLv2,1e-06,0.003,True,one_sample,openml_46904,ood,r2,0.0004549095,4
+29,TabICLv2,1e-06,0.003,True,one_sample,openml_46917,ood,r2,0.00034296304,4
+30,TabICLv2,1e-06,0.003,True,one_sample,openml_46949,ood,r2,-0.0022823944,4
+31,TabICLv2,1e-06,0.003,True,one_sample,openml_46961,ood,r2,-0.00089883505,4
+32,TabICLv2,1e-05,0,False,one_sample,openml_46904,ood,r2,-0.037991542,4
+33,TabICLv2,1e-05,0,False,one_sample,openml_46917,ood,r2,-0.036654635,4
+34,TabICLv2,1e-05,0,False,one_sample,openml_46949,ood,r2,-0.088077399,4
+35,TabICLv2,1e-05,0,False,one_sample,openml_46961,ood,r2,-0.043224632,4
+36,TabICLv2,1e-05,0,True,one_sample,openml_46904,ood,r2,-0.0021514354,4
+37,TabICLv2,1e-05,0,True,one_sample,openml_46917,ood,r2,-0.0023620001,4
+38,TabICLv2,1e-05,0,True,one_sample,openml_46949,ood,r2,-0.0094128398,4
+39,TabICLv2,1e-05,0,True,one_sample,openml_46961,ood,r2,-0.0080853955,4
+40,TabICLv2,1e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.0093685427,4
+41,TabICLv2,1e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.011673011,4
+42,TabICLv2,1e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.045732645,4
+43,TabICLv2,1e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.047844243,4
+44,TabICLv2,1e-05,0.003,True,one_sample,openml_46904,ood,r2,-0.0016364969,4
+45,TabICLv2,1e-05,0.003,True,one_sample,openml_46917,ood,r2,-0.001968354,4
+46,TabICLv2,1e-05,0.003,True,one_sample,openml_46949,ood,r2,-0.0082212238,4
+47,TabICLv2,1e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.013477355,4
+48,TabICLv2,3e-05,0,False,one_sample,openml_46904,ood,r2,-0.059581334,4
+49,TabICLv2,3e-05,0,False,one_sample,openml_46917,ood,r2,-0.047737884,4
+50,TabICLv2,3e-05,0,False,one_sample,openml_46949,ood,r2,-0.13216243,4
+51,TabICLv2,3e-05,0,False,one_sample,openml_46961,ood,r2,-0.040331681,4
+52,TabICLv2,3e-05,0,True,one_sample,openml_46904,ood,r2,-0.0026152997,4
+53,TabICLv2,3e-05,0,True,one_sample,openml_46917,ood,r2,-0.0051177381,4
+54,TabICLv2,3e-05,0,True,one_sample,openml_46949,ood,r2,-0.021141204,4
+55,TabICLv2,3e-05,0,True,one_sample,openml_46961,ood,r2,-0.034820962,4
+56,TabICLv2,3e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.013864085,4
+57,TabICLv2,3e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.014125959,4
+58,TabICLv2,3e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.057686948,4
+59,TabICLv2,3e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.051801519,4
+60,TabICLv2,3e-05,0.003,True,one_sample,openml_46904,ood,r2,-0.0016141952,4
+61,TabICLv2,3e-05,0.003,True,one_sample,openml_46917,ood,r2,-0.0034452083,4
+62,TabICLv2,3e-05,0.003,True,one_sample,openml_46949,ood,r2,-0.01518519,4
+63,TabICLv2,3e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.025061201,4
+64,TabPFN v2,3e-07,0,False,one_sample,openml_46904,ood,r2,-0.0024603559,4
+65,TabPFN v2,3e-07,0,False,one_sample,openml_46917,ood,r2,0.0025001181,4
+66,TabPFN v2,3e-07,0,False,one_sample,openml_46949,ood,r2,-0.0018497515,4
+67,TabPFN v2,3e-07,0,False,one_sample,openml_46961,ood,r2,0.00033774743,4
+68,TabPFN v2,3e-07,0,True,one_sample,openml_46904,ood,r2,-1.9950645e-05,4
+69,TabPFN v2,3e-07,0,True,one_sample,openml_46917,ood,r2,4.6252372e-05,4
+70,TabPFN v2,3e-07,0,True,one_sample,openml_46949,ood,r2,6.4853909e-05,4
+71,TabPFN v2,3e-07,0,True,one_sample,openml_46961,ood,r2,2.8770556e-05,4
+72,TabPFN v2,3e-07,0.003,False,one_sample,openml_46904,ood,r2,-0.0024443483,4
+73,TabPFN v2,3e-07,0.003,False,one_sample,openml_46917,ood,r2,0.0025019308,4
+74,TabPFN v2,3e-07,0.003,False,one_sample,openml_46949,ood,r2,-0.0018089304,4
+75,TabPFN v2,3e-07,0.003,False,one_sample,openml_46961,ood,r2,0.00033053435,4
+76,TabPFN v2,3e-07,0.003,True,one_sample,openml_46904,ood,r2,-1.6648051e-05,4
+77,TabPFN v2,3e-07,0.003,True,one_sample,openml_46917,ood,r2,5.8866521e-05,4
+78,TabPFN v2,3e-07,0.003,True,one_sample,openml_46949,ood,r2,7.6865523e-05,4
+79,TabPFN v2,3e-07,0.003,True,one_sample,openml_46961,ood,r2,2.2857841e-05,4
+80,TabPFN v2,1e-06,0,False,one_sample,openml_46904,ood,r2,-0.0058154684,4
+81,TabPFN v2,1e-06,0,False,one_sample,openml_46917,ood,r2,0.0020748056,4
+82,TabPFN v2,1e-06,0,False,one_sample,openml_46949,ood,r2,-0.012943341,4
+83,TabPFN v2,1e-06,0,False,one_sample,openml_46961,ood,r2,-0.0027689671,4
+84,TabPFN v2,1e-06,0,True,one_sample,openml_46904,ood,r2,-2.4719248e-05,4
+85,TabPFN v2,1e-06,0,True,one_sample,openml_46917,ood,r2,7.5203115e-05,4
+86,TabPFN v2,1e-06,0,True,one_sample,openml_46949,ood,r2,-1.960975e-05,4
+87,TabPFN v2,1e-06,0,True,one_sample,openml_46961,ood,r2,1.2919244e-05,4
+88,TabPFN v2,1e-06,0.003,False,one_sample,openml_46904,ood,r2,-0.0057491884,4
+89,TabPFN v2,1e-06,0.003,False,one_sample,openml_46917,ood,r2,0.0021294919,4
+90,TabPFN v2,1e-06,0.003,False,one_sample,openml_46949,ood,r2,-0.012622942,4
+91,TabPFN v2,1e-06,0.003,False,one_sample,openml_46961,ood,r2,-0.0026665388,4
+92,TabPFN v2,1e-06,0.003,True,one_sample,openml_46904,ood,r2,-9.5547436e-06,4
+93,TabPFN v2,1e-06,0.003,True,one_sample,openml_46917,ood,r2,7.7396806e-05,4
+94,TabPFN v2,1e-06,0.003,True,one_sample,openml_46949,ood,r2,-4.266458e-06,4
+95,TabPFN v2,1e-06,0.003,True,one_sample,openml_46961,ood,r2,8.8936177e-06,4
+96,TabPFN v2,1e-05,0,False,one_sample,openml_46904,ood,r2,-0.021515626,4
+97,TabPFN v2,1e-05,0,False,one_sample,openml_46917,ood,r2,-0.010144003,4
+98,TabPFN v2,1e-05,0,False,one_sample,openml_46949,ood,r2,-0.06722808,4
+99,TabPFN v2,1e-05,0,False,one_sample,openml_46961,ood,r2,-0.029651046,4
+100,TabPFN v2,1e-05,0,True,one_sample,openml_46904,ood,r2,1.7230389e-05,4
+101,TabPFN v2,1e-05,0,True,one_sample,openml_46917,ood,r2,0.00026902747,4
+102,TabPFN v2,1e-05,0,True,one_sample,openml_46949,ood,r2,5.130777e-05,4
+103,TabPFN v2,1e-05,0,True,one_sample,openml_46961,ood,r2,-0.0001481732,4
+104,TabPFN v2,1e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.019850595,4
+105,TabPFN v2,1e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.0085111474,4
+106,TabPFN v2,1e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.0647263,4
+107,TabPFN v2,1e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.026383644,4
+108,TabPFN v2,1e-05,0.003,True,one_sample,openml_46904,ood,r2,8.4570665e-05,4
+109,TabPFN v2,1e-05,0.003,True,one_sample,openml_46917,ood,r2,0.0003168718,4
+110,TabPFN v2,1e-05,0.003,True,one_sample,openml_46949,ood,r2,6.2629355e-05,4
+111,TabPFN v2,1e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.00010978048,4
+112,TabPFN v2,3e-05,0,False,one_sample,openml_46904,ood,r2,-0.048157657,4
+113,TabPFN v2,3e-05,0,False,one_sample,openml_46917,ood,r2,-0.058537805,4
+114,TabPFN v2,3e-05,0,False,one_sample,openml_46949,ood,r2,-0.14496931,4
+115,TabPFN v2,3e-05,0,False,one_sample,openml_46961,ood,r2,-0.084006574,4
+116,TabPFN v2,3e-05,0,True,one_sample,openml_46904,ood,r2,-2.9271427e-05,4
+117,TabPFN v2,3e-05,0,True,one_sample,openml_46917,ood,r2,0.00045161117,4
+118,TabPFN v2,3e-05,0,True,one_sample,openml_46949,ood,r2,-3.5704909e-05,4
+119,TabPFN v2,3e-05,0,True,one_sample,openml_46961,ood,r2,-0.00024811355,4
+120,TabPFN v2,3e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.041461133,4
+121,TabPFN v2,3e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.045539146,4
+122,TabPFN v2,3e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.12325949,4
+123,TabPFN v2,3e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.074060438,4
+124,TabPFN v2,3e-05,0.003,True,one_sample,openml_46904,ood,r2,0.00014165336,4
+125,TabPFN v2,3e-05,0.003,True,one_sample,openml_46917,ood,r2,0.00047532348,4
+126,TabPFN v2,3e-05,0.003,True,one_sample,openml_46949,ood,r2,-4.9511305e-05,4
+127,TabPFN v2,3e-05,0.003,True,one_sample,openml_46961,ood,r2,-9.8803778e-05,4
+128,TabPFN v2.6,3e-07,0,False,one_sample,openml_46904,ood,r2,-0.040551849,4
+129,TabPFN v2.6,3e-07,0,False,one_sample,openml_46917,ood,r2,-0.042457005,4
+130,TabPFN v2.6,3e-07,0,False,one_sample,openml_46949,ood,r2,-0.16796845,4
+131,TabPFN v2.6,3e-07,0,False,one_sample,openml_46961,ood,r2,-0.055429603,4
+132,TabPFN v2.6,3e-07,0,True,one_sample,openml_46904,ood,r2,-0.00013426166,4
+133,TabPFN v2.6,3e-07,0,True,one_sample,openml_46917,ood,r2,-0.00047046332,4
+134,TabPFN v2.6,3e-07,0,True,one_sample,openml_46949,ood,r2,-0.0020270806,4
+135,TabPFN v2.6,3e-07,0,True,one_sample,openml_46961,ood,r2,-2.5241619e-05,4
+136,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46904,ood,r2,-0.040388652,4
+137,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46917,ood,r2,-0.042303746,4
+138,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46949,ood,r2,-0.16785949,4
+139,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46961,ood,r2,-0.055495578,4
+140,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46904,ood,r2,-0.00013221631,4
+141,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46917,ood,r2,-0.00046329261,4
+142,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46949,ood,r2,-0.0020152918,4
+143,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46961,ood,r2,-4.0053804e-05,4
+144,TabPFN v2.6,1e-06,0,False,one_sample,openml_46904,ood,r2,-0.045068448,4
+145,TabPFN v2.6,1e-06,0,False,one_sample,openml_46917,ood,r2,-0.040263631,4
+146,TabPFN v2.6,1e-06,0,False,one_sample,openml_46949,ood,r2,-0.15311899,4
+147,TabPFN v2.6,1e-06,0,False,one_sample,openml_46961,ood,r2,-0.048616542,4
+148,TabPFN v2.6,1e-06,0,True,one_sample,openml_46904,ood,r2,-0.00076029578,4
+149,TabPFN v2.6,1e-06,0,True,one_sample,openml_46917,ood,r2,-0.0022011206,4
+150,TabPFN v2.6,1e-06,0,True,one_sample,openml_46949,ood,r2,-0.0098960067,4
+151,TabPFN v2.6,1e-06,0,True,one_sample,openml_46961,ood,r2,-0.001186388,4
+152,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46904,ood,r2,-0.044307455,4
+153,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46917,ood,r2,-0.03979312,4
+154,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46949,ood,r2,-0.1537275,4
+155,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46961,ood,r2,-0.048700918,4
+156,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46904,ood,r2,-0.00073023639,4
+157,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46917,ood,r2,-0.0021058513,4
+158,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46949,ood,r2,-0.0096754501,4
+159,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46961,ood,r2,-0.0012331252,4
+160,TabPFN v2.6,1e-05,0,False,one_sample,openml_46904,ood,r2,-0.043385867,4
+161,TabPFN v2.6,1e-05,0,False,one_sample,openml_46917,ood,r2,-0.024268353,4
+162,TabPFN v2.6,1e-05,0,False,one_sample,openml_46949,ood,r2,-0.07463959,4
+163,TabPFN v2.6,1e-05,0,False,one_sample,openml_46961,ood,r2,-0.029040336,4
+164,TabPFN v2.6,1e-05,0,True,one_sample,openml_46904,ood,r2,-0.0081631385,4
+165,TabPFN v2.6,1e-05,0,True,one_sample,openml_46917,ood,r2,-0.014081489,4
+166,TabPFN v2.6,1e-05,0,True,one_sample,openml_46949,ood,r2,-0.016914386,4
+167,TabPFN v2.6,1e-05,0,True,one_sample,openml_46961,ood,r2,-0.020597522,4
+168,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.030101948,4
+169,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.018475035,4
+170,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.068302002,4
+171,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.034903636,4
+172,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46904,ood,r2,-0.0063121881,4
+173,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46917,ood,r2,-0.0088131636,4
+174,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46949,ood,r2,-0.013165486,4
+175,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.010689818,4
+176,TabPFN v2.6,3e-05,0,False,one_sample,openml_46904,ood,r2,-0.050890572,4
+177,TabPFN v2.6,3e-05,0,False,one_sample,openml_46917,ood,r2,-0.053110822,4
+178,TabPFN v2.6,3e-05,0,False,one_sample,openml_46949,ood,r2,-0.099940105,4
+179,TabPFN v2.6,3e-05,0,False,one_sample,openml_46961,ood,r2,-0.03646438,4
+180,TabPFN v2.6,3e-05,0,True,one_sample,openml_46904,ood,r2,-0.0082175729,4
+181,TabPFN v2.6,3e-05,0,True,one_sample,openml_46917,ood,r2,-0.016181495,4
+182,TabPFN v2.6,3e-05,0,True,one_sample,openml_46949,ood,r2,-0.010579852,4
+183,TabPFN v2.6,3e-05,0,True,one_sample,openml_46961,ood,r2,-0.021013001,4
+184,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.037308179,4
+185,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.032981046,4
+186,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.080647725,4
+187,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.024469141,4
+188,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46904,ood,r2,-0.0044609213,4
+189,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46917,ood,r2,-0.006845171,4
+190,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46949,ood,r2,-0.011346313,4
+191,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.0091458827,4
+192,TabPFN v3,3e-07,0,False,one_sample,openml_46904,ood,r2,-0.0088515286,4
+193,TabPFN v3,3e-07,0,False,one_sample,openml_46917,ood,r2,-0.0031568882,4
+194,TabPFN v3,3e-07,0,False,one_sample,openml_46949,ood,r2,-0.017451157,4
+195,TabPFN v3,3e-07,0,False,one_sample,openml_46961,ood,r2,-0.011365335,4
+196,TabPFN v3,3e-07,0,True,one_sample,openml_46904,ood,r2,-0.0036247484,4
+197,TabPFN v3,3e-07,0,True,one_sample,openml_46917,ood,r2,-0.0004567604,4
+198,TabPFN v3,3e-07,0,True,one_sample,openml_46949,ood,r2,-0.0067895019,4
+199,TabPFN v3,3e-07,0,True,one_sample,openml_46961,ood,r2,-0.022785726,4
+200,TabPFN v3,3e-07,0.003,False,one_sample,openml_46904,ood,r2,-0.0087499841,4
+201,TabPFN v3,3e-07,0.003,False,one_sample,openml_46917,ood,r2,-0.0031478604,4
+202,TabPFN v3,3e-07,0.003,False,one_sample,openml_46949,ood,r2,-0.017034032,4
+203,TabPFN v3,3e-07,0.003,False,one_sample,openml_46961,ood,r2,-0.012108591,4
+204,TabPFN v3,3e-07,0.003,True,one_sample,openml_46904,ood,r2,-0.0036219523,4
+205,TabPFN v3,3e-07,0.003,True,one_sample,openml_46917,ood,r2,-0.00054124395,4
+206,TabPFN v3,3e-07,0.003,True,one_sample,openml_46949,ood,r2,-0.0068754598,4
+207,TabPFN v3,3e-07,0.003,True,one_sample,openml_46961,ood,r2,-0.020606997,4
+208,TabPFN v3,1e-06,0,False,one_sample,openml_46904,ood,r2,-0.023306928,4
+209,TabPFN v3,1e-06,0,False,one_sample,openml_46917,ood,r2,-0.01142617,4
+210,TabPFN v3,1e-06,0,False,one_sample,openml_46949,ood,r2,-0.10213202,4
+211,TabPFN v3,1e-06,0,False,one_sample,openml_46961,ood,r2,-0.033119776,4
+212,TabPFN v3,1e-06,0,True,one_sample,openml_46904,ood,r2,-0.0058376358,4
+213,TabPFN v3,1e-06,0,True,one_sample,openml_46917,ood,r2,-0.0023077203,4
+214,TabPFN v3,1e-06,0,True,one_sample,openml_46949,ood,r2,-0.016017914,4
+215,TabPFN v3,1e-06,0,True,one_sample,openml_46961,ood,r2,-0.037835239,4
+216,TabPFN v3,1e-06,0.003,False,one_sample,openml_46904,ood,r2,-0.022882666,4
+217,TabPFN v3,1e-06,0.003,False,one_sample,openml_46917,ood,r2,-0.011373492,4
+218,TabPFN v3,1e-06,0.003,False,one_sample,openml_46949,ood,r2,-0.10852259,4
+219,TabPFN v3,1e-06,0.003,False,one_sample,openml_46961,ood,r2,-0.030512185,4
+220,TabPFN v3,1e-06,0.003,True,one_sample,openml_46904,ood,r2,-0.0057417237,4
+221,TabPFN v3,1e-06,0.003,True,one_sample,openml_46917,ood,r2,-0.0022833924,4
+222,TabPFN v3,1e-06,0.003,True,one_sample,openml_46949,ood,r2,-0.016012414,4
+223,TabPFN v3,1e-06,0.003,True,one_sample,openml_46961,ood,r2,-0.042026469,4
+224,TabPFN v3,1e-05,0,False,one_sample,openml_46904,ood,r2,-0.090094349,4
+225,TabPFN v3,1e-05,0,False,one_sample,openml_46917,ood,r2,-0.066936675,4
+226,TabPFN v3,1e-05,0,False,one_sample,openml_46949,ood,r2,-0.30166634,4
+227,TabPFN v3,1e-05,0,False,one_sample,openml_46961,ood,r2,-0.1626275,4
+228,TabPFN v3,1e-05,0,True,one_sample,openml_46904,ood,r2,-0.021077204,4
+229,TabPFN v3,1e-05,0,True,one_sample,openml_46917,ood,r2,-0.013968328,4
+230,TabPFN v3,1e-05,0,True,one_sample,openml_46949,ood,r2,-0.1428696,4
+231,TabPFN v3,1e-05,0,True,one_sample,openml_46961,ood,r2,-0.093068536,4
+232,TabPFN v3,1e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.090894663,4
+233,TabPFN v3,1e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.06402826,4
+234,TabPFN v3,1e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.31113047,4
+235,TabPFN v3,1e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.12592227,4
+236,TabPFN v3,1e-05,0.003,True,one_sample,openml_46904,ood,r2,-0.021531485,4
+237,TabPFN v3,1e-05,0.003,True,one_sample,openml_46917,ood,r2,-0.014152155,4
+238,TabPFN v3,1e-05,0.003,True,one_sample,openml_46949,ood,r2,-0.14705854,4
+239,TabPFN v3,1e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.029811061,4
+240,TabPFN v3,3e-05,0,False,one_sample,openml_46904,ood,r2,-0.11154585,4
+241,TabPFN v3,3e-05,0,False,one_sample,openml_46917,ood,r2,-0.11850027,4
+242,TabPFN v3,3e-05,0,False,one_sample,openml_46949,ood,r2,-0.3492591,4
+243,TabPFN v3,3e-05,0,False,one_sample,openml_46961,ood,r2,-0.12544013,4
+244,TabPFN v3,3e-05,0,True,one_sample,openml_46904,ood,r2,-0.033468514,4
+245,TabPFN v3,3e-05,0,True,one_sample,openml_46917,ood,r2,-0.02760816,4
+246,TabPFN v3,3e-05,0,True,one_sample,openml_46949,ood,r2,-0.34270664,4
+247,TabPFN v3,3e-05,0,True,one_sample,openml_46961,ood,r2,-0.25012477,4
+248,TabPFN v3,3e-05,0.003,False,one_sample,openml_46904,ood,r2,-0.10059084,4
+249,TabPFN v3,3e-05,0.003,False,one_sample,openml_46917,ood,r2,-0.098737587,4
+250,TabPFN v3,3e-05,0.003,False,one_sample,openml_46949,ood,r2,-0.28644411,4
+251,TabPFN v3,3e-05,0.003,False,one_sample,openml_46961,ood,r2,-0.11042263,4
+252,TabPFN v3,3e-05,0.003,True,one_sample,openml_46904,ood,r2,-0.030310951,4
+253,TabPFN v3,3e-05,0.003,True,one_sample,openml_46917,ood,r2,-0.02567061,4
+254,TabPFN v3,3e-05,0.003,True,one_sample,openml_46949,ood,r2,-0.2756312,4
+255,TabPFN v3,3e-05,0.003,True,one_sample,openml_46961,ood,r2,-0.33166038,4
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,-0.002167248,-0.0024372756,-0.00068752359,4
+1,TabICLv2,3e-07,0,True,one_sample,-0.00010691565,-0.00037217545,0.00043685001,4
+2,TabICLv2,3e-07,0.003,False,one_sample,-0.0018614277,-0.0021385534,-0.00052458473,4
+3,TabICLv2,3e-07,0.003,True,one_sample,-8.4828286e-05,-0.00034061858,0.00045177167,4
+4,TabICLv2,1e-06,0,False,one_sample,-0.0078789071,-0.0097793583,-0.0032649637,4
+5,TabICLv2,1e-06,0,True,one_sample,-0.00075586599,-0.0013949687,0.00014125121,4
+6,TabICLv2,1e-06,0.003,False,one_sample,-0.0057647958,-0.0075669842,-0.0023640352,4
+7,TabICLv2,1e-06,0.003,True,one_sample,-0.00059583923,-0.0012447249,0.00037094966,4
+8,TabICLv2,1e-05,0,False,one_sample,-0.051487052,-0.054437823,-0.037657315,4
+9,TabICLv2,1e-05,0,True,one_sample,-0.0055029177,-0.0084172566,-0.0023093589,4
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.02865461,-0.046260544,-0.011096894,4
+11,TabICLv2,1e-05,0.003,True,one_sample,-0.0063258574,-0.0095352565,-0.0018853898,4
+12,TabICLv2,3e-05,0,False,one_sample,-0.069953334,-0.077726609,-0.045886334,4
+13,TabICLv2,3e-05,0,True,one_sample,-0.015923801,-0.024561143,-0.0044921285,4
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.034369628,-0.053272876,-0.01406049,4
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.011326449,-0.017654193,-0.0029874551,4
+16,TabPFN v2,3e-07,0,False,one_sample,-0.00036806048,-0.0020024026,0.00087834008,4
+17,TabPFN v2,3e-07,0,True,one_sample,2.9981548e-05,1.6590256e-05,5.0902757e-05,4
+18,TabPFN v2,3e-07,0.003,False,one_sample,-0.00035520337,-0.0019677848,0.00087338346,4
+19,TabPFN v2,3e-07,0.003,True,one_sample,3.5485458e-05,1.2981368e-05,6.3366271e-05,4
+20,TabPFN v2,1e-06,0,False,one_sample,-0.0048632426,-0.0075974365,-0.0015580239,4
+21,TabPFN v2,1e-06,0,True,one_sample,1.094834e-05,-2.0887124e-05,2.8490212e-05,4
+22,TabPFN v2,1e-06,0.003,False,one_sample,-0.0047272944,-0.0074676269,-0.0014675311,4
+23,TabPFN v2,1e-06,0.003,True,one_sample,1.8117306e-05,-5.5885294e-06,2.6019415e-05,4
+24,TabPFN v2,1e-05,0,False,one_sample,-0.032134689,-0.039045304,-0.01867272,4
+25,TabPFN v2,1e-05,0,True,one_sample,4.7348107e-05,-2.4120508e-05,0.00010573769,4
+26,TabPFN v2,1e-05,0.003,False,one_sample,-0.029867921,-0.035969308,-0.017015733,4
+27,TabPFN v2,1e-05,0.003,True,one_sample,8.8572836e-05,1.9526897e-05,0.00014264595,4
+28,TabPFN v2,3e-05,0,False,one_sample,-0.083917836,-0.099247257,-0.055942768,4
+29,TabPFN v2,3e-05,0,True,one_sample,3.463032e-05,-8.8807071e-05,9.0949223e-05,4
+30,TabPFN v2,3e-05,0.003,False,one_sample,-0.071080052,-0.086360201,-0.044519643,4
+31,TabPFN v2,3e-05,0.003,True,one_sample,0.00011716544,-6.1834424e-05,0.00022507089,4
+32,TabPFN v2.6,3e-07,0,False,one_sample,-0.076601727,-0.083564315,-0.041980716,4
+33,TabPFN v2.6,3e-07,0,True,one_sample,-0.00066426181,-0.00085961765,-0.00010700665,4
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.076511868,-0.083586557,-0.041824972,4
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00066271364,-0.00085129242,-0.00010917568,4
+36,TabPFN v2.6,1e-06,0,False,one_sample,-0.071766903,-0.074742154,-0.043867244,4
+37,TabPFN v2.6,1e-06,0,True,one_sample,-0.0035109528,-0.0041248421,-0.0010798649,4
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.071632248,-0.074957564,-0.043178871,4
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.0034361657,-0.003998251,-0.001107403,4
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.042833537,-0.051199298,-0.027847341,4
+41,TabPFN v2.6,1e-05,0,True,one_sample,-0.014939134,-0.01783517,-0.012601902,4
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.037945655,-0.043253227,-0.02719522,4
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.0097451639,-0.011308735,-0.0081879197,4
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.06010147,-0.064818143,-0.047284024,4
+45,TabPFN v2.6,3e-05,0,True,one_sample,-0.01399798,-0.017389371,-0.0099892824,4
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.043851523,-0.048143065,-0.03085307,4
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.0079495719,-0.0096959902,-0.0062491086,4
+48,TabPFN v3,3e-07,0,False,one_sample,-0.010206227,-0.01288679,-0.0074278685,4
+49,TabPFN v3,3e-07,0,True,one_sample,-0.0084141842,-0.010788558,-0.0028327514,4
+50,TabPFN v3,3e-07,0.003,False,one_sample,-0.010260117,-0.013339951,-0.0073494532,4
+51,TabPFN v3,3e-07,0.003,True,one_sample,-0.0079114133,-0.010308344,-0.0028517752,4
+52,TabPFN v3,1e-06,0,False,one_sample,-0.042496224,-0.050372838,-0.020336738,4
+53,TabPFN v3,1e-06,0,True,one_sample,-0.015499627,-0.021472245,-0.004955157,4
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.043322734,-0.050014787,-0.020005372,4
+55,TabPFN v3,1e-06,0.003,True,one_sample,-0.016516,-0.022515928,-0.0048771409,4
+56,TabPFN v3,1e-05,0,False,one_sample,-0.15533122,-0.19738721,-0.084304931,4
+57,TabPFN v3,1e-05,0,True,one_sample,-0.067745918,-0.1055188,-0.019299985,4
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.14799392,-0.17222432,-0.084178062,4
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.053138311,-0.059122931,-0.019686652,4
+60,TabPFN v3,3e-05,0,False,one_sample,-0.17618634,-0.18139487,-0.11676166,4
+61,TabPFN v3,3e-05,0,True,one_sample,-0.16347702,-0.27327023,-0.032003426,4
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.14904879,-0.154428,-0.10012753,4
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.16581829,-0.2896385,-0.029150866,4
+
+Figure: lgd_factorial_credit_rmse
+LGD. Completed five-fold final benchmark, LGD held-out credit. Fractional RMSE reduction: (original − CPT) / original. Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,Freddie Mac,credit,rmse,-0.005101431,1
+1,TabICLv2,3e-07,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.00070115788,1
+2,TabICLv2,3e-07,0,False,one_sample,PropLGD1,credit,rmse,-0.039367304,1
+3,TabICLv2,3e-07,0,False,one_sample,PropLGD2,credit,rmse,-0.0065781653,1
+4,TabICLv2,3e-07,0,False,one_sample,PropLGD3,credit,rmse,-0.0010159809,1
+5,TabICLv2,3e-07,0,False,one_sample,PropLGD4,credit,rmse,0.0050554505,1
+6,TabICLv2,3e-07,0,False,one_sample,PropLGD5,credit,rmse,-0.003901452,1
+7,TabICLv2,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.00032768783,1
+8,TabICLv2,3e-07,0,True,one_sample,Freddie Mac,credit,rmse,0.0015052407,1
+9,TabICLv2,3e-07,0,True,one_sample,LendingClub (LGD),credit,rmse,0.00022043035,1
+10,TabICLv2,3e-07,0,True,one_sample,PropLGD1,credit,rmse,-0.00037026674,1
+11,TabICLv2,3e-07,0,True,one_sample,PropLGD2,credit,rmse,0.00041614251,1
+12,TabICLv2,3e-07,0,True,one_sample,PropLGD3,credit,rmse,-0.00027903125,1
+13,TabICLv2,3e-07,0,True,one_sample,PropLGD4,credit,rmse,0.0048044459,1
+14,TabICLv2,3e-07,0,True,one_sample,PropLGD5,credit,rmse,-0.00088200704,1
+15,TabICLv2,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,0.001872374,1
+16,TabICLv2,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.0045870828,1
+17,TabICLv2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.00057614182,1
+18,TabICLv2,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,-0.041121223,1
+19,TabICLv2,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,-0.0060590142,1
+20,TabICLv2,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,-0.00085675327,1
+21,TabICLv2,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,0.0051023239,1
+22,TabICLv2,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,-0.0032210164,1
+23,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,0.00068254455,1
+24,TabICLv2,3e-07,0.003,True,one_sample,Freddie Mac,credit,rmse,0.0014410999,1
+25,TabICLv2,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,rmse,0.00022021179,1
+26,TabICLv2,3e-07,0.003,True,one_sample,PropLGD1,credit,rmse,-0.0016217183,1
+27,TabICLv2,3e-07,0.003,True,one_sample,PropLGD2,credit,rmse,0.00049771942,1
+28,TabICLv2,3e-07,0.003,True,one_sample,PropLGD3,credit,rmse,-0.00031382956,1
+29,TabICLv2,3e-07,0.003,True,one_sample,PropLGD4,credit,rmse,0.0047966569,1
+30,TabICLv2,3e-07,0.003,True,one_sample,PropLGD5,credit,rmse,-0.00074337675,1
+31,TabICLv2,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,0.0025481622,1
+32,TabICLv2,1e-06,0,False,one_sample,Freddie Mac,credit,rmse,-0.025279029,1
+33,TabICLv2,1e-06,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.00095498494,1
+34,TabICLv2,1e-06,0,False,one_sample,PropLGD1,credit,rmse,-0.32138539,1
+35,TabICLv2,1e-06,0,False,one_sample,PropLGD2,credit,rmse,-0.027478161,1
+36,TabICLv2,1e-06,0,False,one_sample,PropLGD3,credit,rmse,-0.0033879795,1
+37,TabICLv2,1e-06,0,False,one_sample,PropLGD4,credit,rmse,-0.0091712914,1
+38,TabICLv2,1e-06,0,False,one_sample,PropLGD5,credit,rmse,-0.010611836,1
+39,TabICLv2,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.015146141,1
+40,TabICLv2,1e-06,0,True,one_sample,Freddie Mac,credit,rmse,-0.0014303052,1
+41,TabICLv2,1e-06,0,True,one_sample,LendingClub (LGD),credit,rmse,0.00068428217,1
+42,TabICLv2,1e-06,0,True,one_sample,PropLGD1,credit,rmse,-0.076654965,1
+43,TabICLv2,1e-06,0,True,one_sample,PropLGD2,credit,rmse,-0.0015570441,1
+44,TabICLv2,1e-06,0,True,one_sample,PropLGD3,credit,rmse,-0.00043980782,1
+45,TabICLv2,1e-06,0,True,one_sample,PropLGD4,credit,rmse,0.0084694438,1
+46,TabICLv2,1e-06,0,True,one_sample,PropLGD5,credit,rmse,-0.0029319334,1
+47,TabICLv2,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,0.0025163749,1
+48,TabICLv2,1e-06,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.020867294,1
+49,TabICLv2,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.00066825224,1
+50,TabICLv2,1e-06,0.003,False,one_sample,PropLGD1,credit,rmse,-0.36971111,1
+51,TabICLv2,1e-06,0.003,False,one_sample,PropLGD2,credit,rmse,-0.022587639,1
+52,TabICLv2,1e-06,0.003,False,one_sample,PropLGD3,credit,rmse,-0.0023983759,1
+53,TabICLv2,1e-06,0.003,False,one_sample,PropLGD4,credit,rmse,-0.0042388474,1
+54,TabICLv2,1e-06,0.003,False,one_sample,PropLGD5,credit,rmse,-0.0072012811,1
+55,TabICLv2,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.006572217,1
+56,TabICLv2,1e-06,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0010140395,1
+57,TabICLv2,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,rmse,0.00049916268,1
+58,TabICLv2,1e-06,0.003,True,one_sample,PropLGD1,credit,rmse,-0.098298397,1
+59,TabICLv2,1e-06,0.003,True,one_sample,PropLGD2,credit,rmse,-0.0023654963,1
+60,TabICLv2,1e-06,0.003,True,one_sample,PropLGD3,credit,rmse,-9.9234029e-05,1
+61,TabICLv2,1e-06,0.003,True,one_sample,PropLGD4,credit,rmse,0.0078261714,1
+62,TabICLv2,1e-06,0.003,True,one_sample,PropLGD5,credit,rmse,-0.0031347787,1
+63,TabICLv2,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,0.0024056131,1
+64,TabICLv2,1e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.13344334,1
+65,TabICLv2,1e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.085300158,1
+66,TabICLv2,1e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.38360949,1
+67,TabICLv2,1e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.10528421,1
+68,TabICLv2,1e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.024368432,1
+69,TabICLv2,1e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.074861826,1
+70,TabICLv2,1e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.1938848,1
+71,TabICLv2,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.16553068,1
+72,TabICLv2,1e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.0094351875,1
+73,TabICLv2,1e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.045592463,1
+74,TabICLv2,1e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.037410478,1
+75,TabICLv2,1e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.020651419,1
+76,TabICLv2,1e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.0037067531,1
+77,TabICLv2,1e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.00086662921,1
+78,TabICLv2,1e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.013524094,1
+79,TabICLv2,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.020093923,1
+80,TabICLv2,1e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.11253965,1
+81,TabICLv2,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.064137233,1
+82,TabICLv2,1e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.22185059,1
+83,TabICLv2,1e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.042251708,1
+84,TabICLv2,1e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.0058579851,1
+85,TabICLv2,1e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.031159967,1
+86,TabICLv2,1e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.17785503,1
+87,TabICLv2,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.052194208,1
+88,TabICLv2,1e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.015008208,1
+89,TabICLv2,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.048373168,1
+90,TabICLv2,1e-05,0.003,True,one_sample,PropLGD1,credit,rmse,-0.10183345,1
+91,TabICLv2,1e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.019708111,1
+92,TabICLv2,1e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0030273286,1
+93,TabICLv2,1e-05,0.003,True,one_sample,PropLGD4,credit,rmse,0.00015221338,1
+94,TabICLv2,1e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.012035581,1
+95,TabICLv2,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.018473007,1
+96,TabICLv2,3e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.13936211,1
+97,TabICLv2,3e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.11525941,1
+98,TabICLv2,3e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.39456479,1
+99,TabICLv2,3e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.23113826,1
+100,TabICLv2,3e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.081164504,1
+101,TabICLv2,3e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.11309951,1
+102,TabICLv2,3e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.17830519,1
+103,TabICLv2,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.21533707,1
+104,TabICLv2,3e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.028204918,1
+105,TabICLv2,3e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.058250343,1
+106,TabICLv2,3e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.099256454,1
+107,TabICLv2,3e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.037077435,1
+108,TabICLv2,3e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.0026544612,1
+109,TabICLv2,3e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.014027197,1
+110,TabICLv2,3e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.020680797,1
+111,TabICLv2,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.031910663,1
+112,TabICLv2,3e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.10300636,1
+113,TabICLv2,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.075902184,1
+114,TabICLv2,3e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.19206854,1
+115,TabICLv2,3e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.064611012,1
+116,TabICLv2,3e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.0073603483,1
+117,TabICLv2,3e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.023759563,1
+118,TabICLv2,3e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.076777098,1
+119,TabICLv2,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.09358127,1
+120,TabICLv2,3e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.018957855,1
+121,TabICLv2,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.056170238,1
+122,TabICLv2,3e-05,0.003,True,one_sample,PropLGD1,credit,rmse,-0.17080377,1
+123,TabICLv2,3e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.027170292,1
+124,TabICLv2,3e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0032628181,1
+125,TabICLv2,3e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.0061545852,1
+126,TabICLv2,3e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.024046134,1
+127,TabICLv2,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.023123959,1
+128,TabPFN v2,3e-07,0,False,one_sample,Freddie Mac,credit,rmse,-0.0026030639,1
+129,TabPFN v2,3e-07,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.0044058907,1
+130,TabPFN v2,3e-07,0,False,one_sample,PropLGD1,credit,rmse,0.012710675,1
+131,TabPFN v2,3e-07,0,False,one_sample,PropLGD2,credit,rmse,-0.0011574451,1
+132,TabPFN v2,3e-07,0,False,one_sample,PropLGD3,credit,rmse,0.00067053111,1
+133,TabPFN v2,3e-07,0,False,one_sample,PropLGD4,credit,rmse,0.010047496,1
+134,TabPFN v2,3e-07,0,False,one_sample,PropLGD5,credit,rmse,0.0037140404,1
+135,TabPFN v2,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,0.0042784945,1
+136,TabPFN v2,3e-07,0,True,one_sample,Freddie Mac,credit,rmse,-0.00031463898,1
+137,TabPFN v2,3e-07,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.00035794348,1
+138,TabPFN v2,3e-07,0,True,one_sample,PropLGD1,credit,rmse,-0.0043600762,1
+139,TabPFN v2,3e-07,0,True,one_sample,PropLGD2,credit,rmse,-0.00041626075,1
+140,TabPFN v2,3e-07,0,True,one_sample,PropLGD3,credit,rmse,-0.0021965459,1
+141,TabPFN v2,3e-07,0,True,one_sample,PropLGD4,credit,rmse,7.3666114e-05,1
+142,TabPFN v2,3e-07,0,True,one_sample,PropLGD5,credit,rmse,0.00060628444,1
+143,TabPFN v2,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.00055061895,1
+144,TabPFN v2,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.0026499,1
+145,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.0043914304,1
+146,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,0.012321215,1
+147,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,-0.0013299069,1
+148,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,-0.00020625496,1
+149,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,0.0099735161,1
+150,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,0.0036546003,1
+151,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,0.004308833,1
+152,TabPFN v2,3e-07,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.00030926167,1
+153,TabPFN v2,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.00036958269,1
+154,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD1,credit,rmse,-0.0044671363,1
+155,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD2,credit,rmse,-0.00057842936,1
+156,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0029535149,1
+157,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD4,credit,rmse,4.4604475e-05,1
+158,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD5,credit,rmse,0.00059166161,1
+159,TabPFN v2,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.00061277846,1
+160,TabPFN v2,1e-06,0,False,one_sample,Freddie Mac,credit,rmse,-0.0057662453,1
+161,TabPFN v2,1e-06,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.0085708738,1
+162,TabPFN v2,1e-06,0,False,one_sample,PropLGD1,credit,rmse,0.026227355,1
+163,TabPFN v2,1e-06,0,False,one_sample,PropLGD2,credit,rmse,-0.0014212301,1
+164,TabPFN v2,1e-06,0,False,one_sample,PropLGD3,credit,rmse,-0.0030875442,1
+165,TabPFN v2,1e-06,0,False,one_sample,PropLGD4,credit,rmse,-0.0021090345,1
+166,TabPFN v2,1e-06,0,False,one_sample,PropLGD5,credit,rmse,-0.0031096276,1
+167,TabPFN v2,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.00044544407,1
+168,TabPFN v2,1e-06,0,True,one_sample,Freddie Mac,credit,rmse,-0.00086606715,1
+169,TabPFN v2,1e-06,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.0006343276,1
+170,TabPFN v2,1e-06,0,True,one_sample,PropLGD1,credit,rmse,-0.0055827857,1
+171,TabPFN v2,1e-06,0,True,one_sample,PropLGD2,credit,rmse,3.5262009e-05,1
+172,TabPFN v2,1e-06,0,True,one_sample,PropLGD3,credit,rmse,-0.0025034147,1
+173,TabPFN v2,1e-06,0,True,one_sample,PropLGD4,credit,rmse,-0.00055035011,1
+174,TabPFN v2,1e-06,0,True,one_sample,PropLGD5,credit,rmse,-0.0017130068,1
+175,TabPFN v2,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0011004316,1
+176,TabPFN v2,1e-06,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.0058096574,1
+177,TabPFN v2,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.0085727174,1
+178,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD1,credit,rmse,0.026601922,1
+179,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD2,credit,rmse,-0.0022761534,1
+180,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD3,credit,rmse,-0.0080989887,1
+181,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD4,credit,rmse,-0.00091423286,1
+182,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD5,credit,rmse,-0.0037997301,1
+183,TabPFN v2,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-6.7570481e-05,1
+184,TabPFN v2,1e-06,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.00084504946,1
+185,TabPFN v2,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.00062643225,1
+186,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD1,credit,rmse,-0.0057601739,1
+187,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD2,credit,rmse,-0.00064534143,1
+188,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0055582007,1
+189,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD4,credit,rmse,-0.00045261618,1
+190,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD5,credit,rmse,-0.0017228312,1
+191,TabPFN v2,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0011440848,1
+192,TabPFN v2,1e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.039188009,1
+193,TabPFN v2,1e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.020864882,1
+194,TabPFN v2,1e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.11030204,1
+195,TabPFN v2,1e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.045947782,1
+196,TabPFN v2,1e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.0044361062,1
+197,TabPFN v2,1e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.12691765,1
+198,TabPFN v2,1e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.045373124,1
+199,TabPFN v2,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.085486217,1
+200,TabPFN v2,1e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.0022291973,1
+201,TabPFN v2,1e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.00089280937,1
+202,TabPFN v2,1e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.0018921614,1
+203,TabPFN v2,1e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.00042633744,1
+204,TabPFN v2,1e-05,0,True,one_sample,PropLGD3,credit,rmse,0.0012118764,1
+205,TabPFN v2,1e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.0023918699,1
+206,TabPFN v2,1e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.013997163,1
+207,TabPFN v2,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0020027776,1
+208,TabPFN v2,1e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.036162755,1
+209,TabPFN v2,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.019274379,1
+210,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.10447285,1
+211,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.056064174,1
+212,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.042119221,1
+213,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.11723307,1
+214,TabPFN v2,1e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.049874862,1
+215,TabPFN v2,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.069603074,1
+216,TabPFN v2,1e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0021258528,1
+217,TabPFN v2,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.00061682171,1
+218,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD1,credit,rmse,0.0083362734,1
+219,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.0011966429,1
+220,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0094908821,1
+221,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.0017587493,1
+222,TabPFN v2,1e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.013845585,1
+223,TabPFN v2,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0021452851,1
+224,TabPFN v2,3e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.15591951,1
+225,TabPFN v2,3e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.04311054,1
+226,TabPFN v2,3e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.15991706,1
+227,TabPFN v2,3e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.11074931,1
+228,TabPFN v2,3e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.023835626,1
+229,TabPFN v2,3e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.16589845,1
+230,TabPFN v2,3e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.06582058,1
+231,TabPFN v2,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.16524661,1
+232,TabPFN v2,3e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.00271591,1
+233,TabPFN v2,3e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.0025592356,1
+234,TabPFN v2,3e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.079588817,1
+235,TabPFN v2,3e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.0056759059,1
+236,TabPFN v2,3e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.0039000818,1
+237,TabPFN v2,3e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.0052059474,1
+238,TabPFN v2,3e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.0079303606,1
+239,TabPFN v2,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0035431433,1
+240,TabPFN v2,3e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.15481414,1
+241,TabPFN v2,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.03492635,1
+242,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.19476313,1
+243,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.11473273,1
+244,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.068932447,1
+245,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.12365572,1
+246,TabPFN v2,3e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.081390799,1
+247,TabPFN v2,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.14285258,1
+248,TabPFN v2,3e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0021213773,1
+249,TabPFN v2,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.00076785645,1
+250,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD1,credit,rmse,0.0097630577,1
+251,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.0016509858,1
+252,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.011584263,1
+253,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.0044936053,1
+254,TabPFN v2,3e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.010757436,1
+255,TabPFN v2,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.003286222,1
+256,TabPFN v2.6,3e-07,0,False,one_sample,Freddie Mac,credit,rmse,-0.060587915,1
+257,TabPFN v2.6,3e-07,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.16048392,1
+258,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD1,credit,rmse,-0.43613979,1
+259,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD2,credit,rmse,-0.10905815,1
+260,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD3,credit,rmse,0.00074506664,1
+261,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD4,credit,rmse,-0.059733137,1
+262,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD5,credit,rmse,-0.027854457,1
+263,TabPFN v2.6,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.090614293,1
+264,TabPFN v2.6,3e-07,0,True,one_sample,Freddie Mac,credit,rmse,0.00080596559,1
+265,TabPFN v2.6,3e-07,0,True,one_sample,LendingClub (LGD),credit,rmse,0.0013764635,1
+266,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD1,credit,rmse,-0.007811226,1
+267,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD2,credit,rmse,-3.6346051e-05,1
+268,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD3,credit,rmse,0.00058578635,1
+269,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD4,credit,rmse,-0.001503196,1
+270,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD5,credit,rmse,0.0010702646,1
+271,TabPFN v2.6,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0017041773,1
+272,TabPFN v2.6,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.060645732,1
+273,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.15968294,1
+274,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,-0.43576643,1
+275,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,-0.10893901,1
+276,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,0.0007860249,1
+277,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,-0.059464061,1
+278,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,-0.028017648,1
+279,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.090323839,1
+280,TabPFN v2.6,3e-07,0.003,True,one_sample,Freddie Mac,credit,rmse,0.00080561034,1
+281,TabPFN v2.6,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,rmse,0.0013844254,1
+282,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD1,credit,rmse,-0.0078097029,1
+283,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD2,credit,rmse,-2.7163141e-05,1
+284,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD3,credit,rmse,0.00066716327,1
+285,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD4,credit,rmse,-0.0015071765,1
+286,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD5,credit,rmse,0.0010707253,1
+287,TabPFN v2.6,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0016850033,1
+288,TabPFN v2.6,1e-06,0,False,one_sample,Freddie Mac,credit,rmse,-0.03759203,1
+289,TabPFN v2.6,1e-06,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.13464096,1
+290,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD1,credit,rmse,-0.43481744,1
+291,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD2,credit,rmse,-0.098777191,1
+292,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD3,credit,rmse,-0.00014604274,1
+293,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD4,credit,rmse,-0.070610637,1
+294,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD5,credit,rmse,-0.023181701,1
+295,TabPFN v2.6,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.089544813,1
+296,TabPFN v2.6,1e-06,0,True,one_sample,Freddie Mac,credit,rmse,-0.0036431962,1
+297,TabPFN v2.6,1e-06,0,True,one_sample,LendingClub (LGD),credit,rmse,0.00064532556,1
+298,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD1,credit,rmse,-0.037069106,1
+299,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD2,credit,rmse,-0.0065019631,1
+300,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD3,credit,rmse,-0.0081709737,1
+301,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD4,credit,rmse,-0.010925185,1
+302,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD5,credit,rmse,-0.0093620095,1
+303,TabPFN v2.6,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0098504494,1
+304,TabPFN v2.6,1e-06,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.037818457,1
+305,TabPFN v2.6,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.13339556,1
+306,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD1,credit,rmse,-0.43437773,1
+307,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD2,credit,rmse,-0.098883634,1
+308,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD3,credit,rmse,9.0402824e-05,1
+309,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD4,credit,rmse,-0.070093423,1
+310,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD5,credit,rmse,-0.023859949,1
+311,TabPFN v2.6,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.088062194,1
+312,TabPFN v2.6,1e-06,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0036765654,1
+313,TabPFN v2.6,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,rmse,0.00056939158,1
+314,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD1,credit,rmse,-0.037091399,1
+315,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD2,credit,rmse,-0.0057768107,1
+316,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0067661283,1
+317,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD4,credit,rmse,-0.010912222,1
+318,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD5,credit,rmse,-0.0093995856,1
+319,TabPFN v2.6,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0095026678,1
+320,TabPFN v2.6,1e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.028121379,1
+321,TabPFN v2.6,1e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.062437323,1
+322,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.44513112,1
+323,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.085159472,1
+324,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.033203594,1
+325,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.063996938,1
+326,TabPFN v2.6,1e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.033109594,1
+327,TabPFN v2.6,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.028133739,1
+328,TabPFN v2.6,1e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.0025776747,1
+329,TabPFN v2.6,1e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.018326635,1
+330,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.055716477,1
+331,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.065394087,1
+332,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.062307452,1
+333,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.02619962,1
+334,TabPFN v2.6,1e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.018166618,1
+335,TabPFN v2.6,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.020133059,1
+336,TabPFN v2.6,1e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.028183386,1
+337,TabPFN v2.6,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.058946002,1
+338,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.44054899,1
+339,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.042502024,1
+340,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.011426497,1
+341,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.066223853,1
+342,TabPFN v2.6,1e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.027719133,1
+343,TabPFN v2.6,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.028657713,1
+344,TabPFN v2.6,1e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0024039737,1
+345,TabPFN v2.6,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.017026549,1
+346,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD1,credit,rmse,-0.053410936,1
+347,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.0098137255,1
+348,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.038527637,1
+349,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.022469668,1
+350,TabPFN v2.6,1e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.01614246,1
+351,TabPFN v2.6,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.016701859,1
+352,TabPFN v2.6,3e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.051296988,1
+353,TabPFN v2.6,3e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.046836942,1
+354,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.69171286,1
+355,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.079519751,1
+356,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.083594963,1
+357,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.097223233,1
+358,TabPFN v2.6,3e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.10762001,1
+359,TabPFN v2.6,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.042959212,1
+360,TabPFN v2.6,3e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.0024656981,1
+361,TabPFN v2.6,3e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.021289359,1
+362,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.068035594,1
+363,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.074321679,1
+364,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.046551392,1
+365,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.013218861,1
+366,TabPFN v2.6,3e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.0092340626,1
+367,TabPFN v2.6,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0083469795,1
+368,TabPFN v2.6,3e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.035427451,1
+369,TabPFN v2.6,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.039722499,1
+370,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.51723752,1
+371,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.062074334,1
+372,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.092600444,1
+373,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.060412843,1
+374,TabPFN v2.6,3e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.088024376,1
+375,TabPFN v2.6,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.016744362,1
+376,TabPFN v2.6,3e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0029515222,1
+377,TabPFN v2.6,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.017252423,1
+378,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD1,credit,rmse,-0.10359787,1
+379,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.012140509,1
+380,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.032871063,1
+381,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.011136146,1
+382,TabPFN v2.6,3e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.0091748063,1
+383,TabPFN v2.6,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0070703188,1
+384,TabPFN v3,3e-07,0,False,one_sample,Freddie Mac,credit,rmse,-0.015146592,1
+385,TabPFN v3,3e-07,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.0043402724,1
+386,TabPFN v3,3e-07,0,False,one_sample,PropLGD1,credit,rmse,-0.33211457,1
+387,TabPFN v3,3e-07,0,False,one_sample,PropLGD2,credit,rmse,-0.021046489,1
+388,TabPFN v3,3e-07,0,False,one_sample,PropLGD3,credit,rmse,0.0013755692,1
+389,TabPFN v3,3e-07,0,False,one_sample,PropLGD4,credit,rmse,-0.0029211071,1
+390,TabPFN v3,3e-07,0,False,one_sample,PropLGD5,credit,rmse,-0.00085412418,1
+391,TabPFN v3,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.009649942,1
+392,TabPFN v3,3e-07,0,True,one_sample,Freddie Mac,credit,rmse,-0.0057521207,1
+393,TabPFN v3,3e-07,0,True,one_sample,LendingClub (LGD),credit,rmse,0.0016816169,1
+394,TabPFN v3,3e-07,0,True,one_sample,PropLGD1,credit,rmse,-0.065823633,1
+395,TabPFN v3,3e-07,0,True,one_sample,PropLGD2,credit,rmse,-0.0066811407,1
+396,TabPFN v3,3e-07,0,True,one_sample,PropLGD3,credit,rmse,0.00025047121,1
+397,TabPFN v3,3e-07,0,True,one_sample,PropLGD4,credit,rmse,-0.0092096339,1
+398,TabPFN v3,3e-07,0,True,one_sample,PropLGD5,credit,rmse,-0.00097019725,1
+399,TabPFN v3,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0082370968,1
+400,TabPFN v3,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.015100962,1
+401,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.0043559076,1
+402,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,-0.25613898,1
+403,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,-0.021882611,1
+404,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,0.0013209994,1
+405,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,-0.0034970583,1
+406,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,-0.00081790406,1
+407,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0094311628,1
+408,TabPFN v3,3e-07,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.0056713189,1
+409,TabPFN v3,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,rmse,0.0016812596,1
+410,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD1,credit,rmse,-0.0718525,1
+411,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD2,credit,rmse,-0.0069404953,1
+412,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD3,credit,rmse,0.00030998207,1
+413,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD4,credit,rmse,-0.0092645782,1
+414,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD5,credit,rmse,-0.0011679665,1
+415,TabPFN v3,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.0078782934,1
+416,TabPFN v3,1e-06,0,False,one_sample,Freddie Mac,credit,rmse,-0.081746444,1
+417,TabPFN v3,1e-06,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.0090878574,1
+418,TabPFN v3,1e-06,0,False,one_sample,PropLGD1,credit,rmse,-0.39034862,1
+419,TabPFN v3,1e-06,0,False,one_sample,PropLGD2,credit,rmse,-0.051042761,1
+420,TabPFN v3,1e-06,0,False,one_sample,PropLGD3,credit,rmse,0.0024303177,1
+421,TabPFN v3,1e-06,0,False,one_sample,PropLGD4,credit,rmse,-0.032822908,1
+422,TabPFN v3,1e-06,0,False,one_sample,PropLGD5,credit,rmse,-0.0053359325,1
+423,TabPFN v3,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.048697584,1
+424,TabPFN v3,1e-06,0,True,one_sample,Freddie Mac,credit,rmse,-0.021651134,1
+425,TabPFN v3,1e-06,0,True,one_sample,LendingClub (LGD),credit,rmse,0.0011778164,1
+426,TabPFN v3,1e-06,0,True,one_sample,PropLGD1,credit,rmse,-0.1905059,1
+427,TabPFN v3,1e-06,0,True,one_sample,PropLGD2,credit,rmse,-0.021730176,1
+428,TabPFN v3,1e-06,0,True,one_sample,PropLGD3,credit,rmse,6.0355751e-05,1
+429,TabPFN v3,1e-06,0,True,one_sample,PropLGD4,credit,rmse,-0.039020502,1
+430,TabPFN v3,1e-06,0,True,one_sample,PropLGD5,credit,rmse,-0.0023221421,1
+431,TabPFN v3,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.031925129,1
+432,TabPFN v3,1e-06,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.068589775,1
+433,TabPFN v3,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.0082076303,1
+434,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD1,credit,rmse,-0.31554473,1
+435,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD2,credit,rmse,-0.051470408,1
+436,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD3,credit,rmse,0.0025454935,1
+437,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD4,credit,rmse,-0.02913444,1
+438,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD5,credit,rmse,-0.0053251026,1
+439,TabPFN v3,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.047078151,1
+440,TabPFN v3,1e-06,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.022411806,1
+441,TabPFN v3,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,rmse,0.0011276663,1
+442,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD1,credit,rmse,-0.131876,1
+443,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD2,credit,rmse,-0.022936216,1
+444,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD3,credit,rmse,0.00021492825,1
+445,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD4,credit,rmse,-0.040014465,1
+446,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD5,credit,rmse,-0.0028843472,1
+447,TabPFN v3,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.031499602,1
+448,TabPFN v3,1e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.31887381,1
+449,TabPFN v3,1e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.043681789,1
+450,TabPFN v3,1e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.49660579,1
+451,TabPFN v3,1e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.20362552,1
+452,TabPFN v3,1e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.060026296,1
+453,TabPFN v3,1e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.20420349,1
+454,TabPFN v3,1e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.15704086,1
+455,TabPFN v3,1e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.41667214,1
+456,TabPFN v3,1e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.10807154,1
+457,TabPFN v3,1e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.011147762,1
+458,TabPFN v3,1e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.59869204,1
+459,TabPFN v3,1e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.19364097,1
+460,TabPFN v3,1e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.013409073,1
+461,TabPFN v3,1e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.076849506,1
+462,TabPFN v3,1e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.038487772,1
+463,TabPFN v3,1e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.15116171,1
+464,TabPFN v3,1e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.25467092,1
+465,TabPFN v3,1e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.032466684,1
+466,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.54746097,1
+467,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.21623322,1
+468,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.066383669,1
+469,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.14503165,1
+470,TabPFN v3,1e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.11139661,1
+471,TabPFN v3,1e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.36062134,1
+472,TabPFN v3,1e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.078335931,1
+473,TabPFN v3,1e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.013458976,1
+474,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD1,credit,rmse,-0.54766512,1
+475,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.12448223,1
+476,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.0018661713,1
+477,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.072784735,1
+478,TabPFN v3,1e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.01824507,1
+479,TabPFN v3,1e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.13749875,1
+480,TabPFN v3,3e-05,0,False,one_sample,Freddie Mac,credit,rmse,-0.24195496,1
+481,TabPFN v3,3e-05,0,False,one_sample,LendingClub (LGD),credit,rmse,-0.083598282,1
+482,TabPFN v3,3e-05,0,False,one_sample,PropLGD1,credit,rmse,-0.70080534,1
+483,TabPFN v3,3e-05,0,False,one_sample,PropLGD2,credit,rmse,-0.26927476,1
+484,TabPFN v3,3e-05,0,False,one_sample,PropLGD3,credit,rmse,-0.093368184,1
+485,TabPFN v3,3e-05,0,False,one_sample,PropLGD4,credit,rmse,-0.22813781,1
+486,TabPFN v3,3e-05,0,False,one_sample,PropLGD5,credit,rmse,-0.11489066,1
+487,TabPFN v3,3e-05,0,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.42834031,1
+488,TabPFN v3,3e-05,0,True,one_sample,Freddie Mac,credit,rmse,-0.17002238,1
+489,TabPFN v3,3e-05,0,True,one_sample,LendingClub (LGD),credit,rmse,-0.018545363,1
+490,TabPFN v3,3e-05,0,True,one_sample,PropLGD1,credit,rmse,-0.74173844,1
+491,TabPFN v3,3e-05,0,True,one_sample,PropLGD2,credit,rmse,-0.1462377,1
+492,TabPFN v3,3e-05,0,True,one_sample,PropLGD3,credit,rmse,-0.15388817,1
+493,TabPFN v3,3e-05,0,True,one_sample,PropLGD4,credit,rmse,-0.047721139,1
+494,TabPFN v3,3e-05,0,True,one_sample,PropLGD5,credit,rmse,-0.097721708,1
+495,TabPFN v3,3e-05,0,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.30003022,1
+496,TabPFN v3,3e-05,0.003,False,one_sample,Freddie Mac,credit,rmse,-0.21154227,1
+497,TabPFN v3,3e-05,0.003,False,one_sample,LendingClub (LGD),credit,rmse,-0.092860467,1
+498,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD1,credit,rmse,-0.64768683,1
+499,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD2,credit,rmse,-0.31213611,1
+500,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD3,credit,rmse,-0.11655595,1
+501,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD4,credit,rmse,-0.16336988,1
+502,TabPFN v3,3e-05,0.003,False,one_sample,PropLGD5,credit,rmse,-0.11446044,1
+503,TabPFN v3,3e-05,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,-0.48783509,1
+504,TabPFN v3,3e-05,0.003,True,one_sample,Freddie Mac,credit,rmse,-0.16836328,1
+505,TabPFN v3,3e-05,0.003,True,one_sample,LendingClub (LGD),credit,rmse,-0.016427653,1
+506,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD1,credit,rmse,-0.57087692,1
+507,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD2,credit,rmse,-0.12852532,1
+508,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD3,credit,rmse,-0.045535528,1
+509,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD4,credit,rmse,-0.14954582,1
+510,TabPFN v3,3e-05,0.003,True,one_sample,PropLGD5,credit,rmse,-0.039706408,1
+511,TabPFN v3,3e-05,0.003,True,one_sample,SBA Loans Case (LGD),credit,rmse,-0.32460221,1
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,-0.006492216,-0.0054706146,-0.00060779037,8
+1,TabICLv2,3e-07,0,True,one_sample,0.00091091604,-0.00030184013,0.001597024,8
+2,TabICLv2,3e-07,0.003,False,one_sample,-0.0063295453,-0.0049550656,-0.00026147022,8
+3,TabICLv2,3e-07,0.003,True,one_sample,0.00085311569,-0.00042121636,0.0017178655,8
+4,TabICLv2,1e-06,0,False,one_sample,-0.051676851,-0.025828812,-0.0077254634,8
+5,TabICLv2,1e-06,0,True,one_sample,-0.0089179943,-0.0019007664,0.0011423054,8
+6,TabICLv2,1e-06,0.003,False,one_sample,-0.054280627,-0.02129738,-0.0037787295,8
+7,TabICLv2,1e-06,0.003,True,one_sample,-0.011772625,-0.0025578169,0.00097577529,8
+8,TabICLv2,1e-05,0,False,one_sample,-0.14578537,-0.17261921,-0.082690575,8
+9,TabICLv2,1e-05,0,True,one_sample,-0.018910118,-0.024841184,-0.0080030789,8
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.088480797,-0.1288685,-0.039478773,8
+11,TabICLv2,1e-05,0.003,True,one_sample,-0.02728833,-0.026874375,-0.0097835182,8
+12,TabICLv2,3e-05,0,False,one_sample,-0.18352886,-0.21928737,-0.11471943,8
+13,TabICLv2,3e-05,0,True,one_sample,-0.036507783,-0.042370662,-0.019017397,8
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.079633297,-0.095937543,-0.054398149,8
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.041211206,-0.034420278,-0.015757038,8
+16,TabPFN v2,3e-07,0,False,one_sample,0.0029068546,-0.0015188498,0.0057207449,8
+17,TabPFN v2,3e-07,0,True,one_sample,-0.00093951672,-0.00096210069,-0.00021756271,8
+18,TabPFN v2,3e-07,0.003,False,one_sample,0.002710084,-0.0016599051,0.0057250038,8
+19,TabPFN v2,3e-07,0.003,True,one_sample,-0.0010818047,-0.0011979626,-0.00022079513,8
+20,TabPFN v2,1e-06,0,False,one_sample,0.00021466942,-0.003773782,-0.0011772836,8
+21,TabPFN v2,1e-06,0,True,one_sample,-0.0016143902,-0.0019106088,-0.00061333323,8
+22,TabPFN v2,1e-06,0.003,False,one_sample,-0.00036714107,-0.0063819903,-0.00070256727,8
+23,TabPFN v2,1e-06,0.003,True,one_sample,-0.0020943413,-0.0026816736,-0.00064061414,8
+24,TabPFN v2,1e-05,0,False,one_sample,-0.059814476,-0.091690173,-0.034607228,8
+25,TabPFN v2,1e-05,0,True,one_sample,-0.002827555,-0.0022698654,-0.00077619139,8
+26,TabPFN v2,1e-05,0.003,False,one_sample,-0.061850548,-0.078320517,-0.040630104,8
+27,TabPFN v2,1e-05,0.003,True,one_sample,-0.0028554432,-0.0039816844,-0.0010516876,8
+28,TabPFN v2,3e-05,0,False,one_sample,-0.11131221,-0.16124945,-0.06014307,8
+29,TabPFN v2,3e-05,0,True,one_sample,-0.013889925,-0.0062395196,-0.0033363349,8
+30,TabPFN v2,3e-05,0.003,False,one_sample,-0.11450849,-0.14584297,-0.078276211,8
+31,TabPFN v2,3e-05,0.003,True,one_sample,-0.003112336,-0.006059563,-0.0014302034,8
+32,TabPFN v2.6,3e-07,0,False,one_sample,-0.11796582,-0.12191459,-0.051763467,8
+33,TabPFN v2.6,3e-07,0,True,one_sample,-0.00090205816,-0.0015534413,0.00087204034,8
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.1177567,-0.12162499,-0.051602458,8
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00088764019,-0.0015516332,0.00087188907,8
+36,TabPFN v2.6,1e-06,0,False,one_sample,-0.11116385,-0.10774313,-0.033989448,8
+37,TabPFN v2.6,1e-06,0,True,one_sample,-0.010609695,-0.010119133,-0.0057872714,8
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.11080007,-0.10751162,-0.03432883,8
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.010319498,-0.0098550564,-0.0052517494,8
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.097411645,-0.069287571,-0.03186563,8
+41,TabPFN v2.6,1e-05,0,True,one_sample,-0.033602703,-0.05736422,-0.018286631,8
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.08802595,-0.060765465,-0.028067323,8
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.022062101,-0.02648416,-0.014560276,8
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.15009549,-0.099822426,-0.050181976,8
+45,TabPFN v2.6,3e-05,0,True,one_sample,-0.030432953,-0.051922443,-0.0090122918,8
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.11403048,-0.089168393,-0.038648737,8
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.024524333,-0.021157083,-0.0086486844,8
+48,TabPFN v3,3e-07,0,False,one_sample,-0.04808719,-0.016621566,-0.0024043614,8
+49,TabPFN v3,3e-07,0,True,one_sample,-0.011842717,-0.0084802311,-0.00066503013,8
+50,TabPFN v3,3e-07,0.003,False,one_sample,-0.038737949,-0.016796374,-0.0028272697,8
+51,TabPFN v3,3e-07,0.003,True,one_sample,-0.012597989,-0.0082248646,-0.00079847936,8
+52,TabPFN v3,1e-06,0,False,one_sample,-0.077081473,-0.058718682,-0.0081498762,8
+53,TabPFN v3,1e-06,0,True,one_sample,-0.038239601,-0.033698972,-0.0017265177,8
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.065350593,-0.05575025,-0.0074869984,8
+55,TabPFN v3,1e-06,0.003,True,one_sample,-0.031284981,-0.033628318,-0.0021095283,8
+56,TabPFN v3,1e-05,0,False,one_sample,-0.23759121,-0.34332339,-0.13278722,8
+57,TabPFN v3,1e-05,0,True,one_sample,-0.14893255,-0.16178152,-0.032218097,8
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.21678313,-0.28115853,-0.10014338,8
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.12429212,-0.12773636,-0.017048547,8
+60,TabPFN v3,3e-05,0,False,one_sample,-0.27004629,-0.30904115,-0.10951004,8
+61,TabPFN v3,3e-05,0,True,one_sample,-0.20948814,-0.20252434,-0.085221566,8
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.26830588,-0.35606085,-0.11603207,8
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.18044789,-0.20742301,-0.044078248,8
+
+Figure: lgd_factorial_ood_rmse
+LGD. Completed five-fold final benchmark, LGD non-credit retention. Fractional RMSE reduction: (original − CPT) / original. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
+Recipe-complete table effects
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,openml_46904,ood,rmse,-0.013965454,4
+1,TabICLv2,3e-07,0,False,one_sample,openml_46917,ood,rmse,-0.0067767088,4
+2,TabICLv2,3e-07,0,False,one_sample,openml_46949,ood,rmse,-0.01302319,4
+3,TabICLv2,3e-07,0,False,one_sample,openml_46961,ood,rmse,-0.0086267686,4
+4,TabICLv2,3e-07,0,True,one_sample,openml_46904,ood,rmse,0.0065336289,4
+5,TabICLv2,3e-07,0,True,one_sample,openml_46917,ood,rmse,0.0059817103,4
+6,TabICLv2,3e-07,0,True,one_sample,openml_46949,ood,rmse,-0.0029980643,4
+7,TabICLv2,3e-07,0,True,one_sample,openml_46961,ood,rmse,-0.0002262047,4
+8,TabICLv2,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,-0.010669202,4
+9,TabICLv2,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,-0.0053681964,4
+10,TabICLv2,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,-0.011393844,4
+11,TabICLv2,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,-0.0076282387,4
+12,TabICLv2,3e-07,0.003,True,one_sample,openml_46904,ood,rmse,0.0069528344,4
+13,TabICLv2,3e-07,0.003,True,one_sample,openml_46917,ood,rmse,0.0058881134,4
+14,TabICLv2,3e-07,0.003,True,one_sample,openml_46949,ood,rmse,-0.00289811,4
+15,TabICLv2,3e-07,0.003,True,one_sample,openml_46961,ood,rmse,-3.2339767e-05,4
+16,TabICLv2,1e-06,0,False,one_sample,openml_46904,ood,rmse,-0.05831856,4
+17,TabICLv2,1e-06,0,False,one_sample,openml_46917,ood,rmse,-0.034278819,4
+18,TabICLv2,1e-06,0,False,one_sample,openml_46949,ood,rmse,-0.037659206,4
+19,TabICLv2,1e-06,0,False,one_sample,openml_46961,ood,rmse,-0.049092052,4
+20,TabICLv2,1e-06,0,True,one_sample,openml_46904,ood,rmse,0.0064396532,4
+21,TabICLv2,1e-06,0,True,one_sample,openml_46917,ood,rmse,-8.6203811e-05,4
+22,TabICLv2,1e-06,0,True,one_sample,openml_46949,ood,rmse,-0.0050397138,4
+23,TabICLv2,1e-06,0,True,one_sample,openml_46961,ood,rmse,-0.0077674023,4
+24,TabICLv2,1e-06,0.003,False,one_sample,openml_46904,ood,rmse,-0.038772543,4
+25,TabICLv2,1e-06,0.003,False,one_sample,openml_46917,ood,rmse,-0.026181537,4
+26,TabICLv2,1e-06,0.003,False,one_sample,openml_46949,ood,rmse,-0.026712168,4
+27,TabICLv2,1e-06,0.003,False,one_sample,openml_46961,ood,rmse,-0.041316635,4
+28,TabICLv2,1e-06,0.003,True,one_sample,openml_46904,ood,rmse,0.0085729136,4
+29,TabICLv2,1e-06,0.003,True,one_sample,openml_46917,ood,rmse,0.0026018811,4
+30,TabICLv2,1e-06,0.003,True,one_sample,openml_46949,ood,rmse,-0.00483633,4
+31,TabICLv2,1e-06,0.003,True,one_sample,openml_46961,ood,rmse,-0.0065582408,4
+32,TabICLv2,1e-05,0,False,one_sample,openml_46904,ood,rmse,-0.56260154,4
+33,TabICLv2,1e-05,0,False,one_sample,openml_46917,ood,rmse,-0.31588542,4
+34,TabICLv2,1e-05,0,False,one_sample,openml_46949,ood,rmse,-0.16534059,4
+35,TabICLv2,1e-05,0,False,one_sample,openml_46961,ood,rmse,-0.27118362,4
+36,TabICLv2,1e-05,0,True,one_sample,openml_46904,ood,rmse,-0.03955714,4
+37,TabICLv2,1e-05,0,True,one_sample,openml_46917,ood,rmse,-0.023849261,4
+38,TabICLv2,1e-05,0,True,one_sample,openml_46949,ood,rmse,-0.019859635,4
+39,TabICLv2,1e-05,0,True,one_sample,openml_46961,ood,rmse,-0.056566267,4
+40,TabICLv2,1e-05,0.003,False,one_sample,openml_46904,ood,rmse,-0.16493332,4
+41,TabICLv2,1e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.11227298,4
+42,TabICLv2,1e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.090253946,4
+43,TabICLv2,1e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.27629746,4
+44,TabICLv2,1e-05,0.003,True,one_sample,openml_46904,ood,rmse,-0.029407784,4
+45,TabICLv2,1e-05,0.003,True,one_sample,openml_46917,ood,rmse,-0.019278297,4
+46,TabICLv2,1e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.017359099,4
+47,TabICLv2,1e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.090998438,4
+48,TabICLv2,3e-05,0,False,one_sample,openml_46904,ood,rmse,-0.80963746,4
+49,TabICLv2,3e-05,0,False,one_sample,openml_46917,ood,rmse,-0.40294291,4
+50,TabICLv2,3e-05,0,False,one_sample,openml_46949,ood,rmse,-0.24659837,4
+51,TabICLv2,3e-05,0,False,one_sample,openml_46961,ood,rmse,-0.25788259,4
+52,TabICLv2,3e-05,0,True,one_sample,openml_46904,ood,rmse,-0.047639483,4
+53,TabICLv2,3e-05,0,True,one_sample,openml_46917,ood,rmse,-0.050609194,4
+54,TabICLv2,3e-05,0,True,one_sample,openml_46949,ood,rmse,-0.04401461,4
+55,TabICLv2,3e-05,0,True,one_sample,openml_46961,ood,rmse,-0.21633337,4
+56,TabICLv2,3e-05,0.003,False,one_sample,openml_46904,ood,rmse,-0.23148896,4
+57,TabICLv2,3e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.13529907,4
+58,TabICLv2,3e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.11124875,4
+59,TabICLv2,3e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.30469583,4
+60,TabICLv2,3e-05,0.003,True,one_sample,openml_46904,ood,rmse,-0.029223826,4
+61,TabICLv2,3e-05,0.003,True,one_sample,openml_46917,ood,rmse,-0.032156703,4
+62,TabICLv2,3e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.031763286,4
+63,TabICLv2,3e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.16544435,4
+64,TabPFN v2,3e-07,0,False,one_sample,openml_46904,ood,rmse,-0.039756529,4
+65,TabPFN v2,3e-07,0,False,one_sample,openml_46917,ood,rmse,0.022358492,4
+66,TabPFN v2,3e-07,0,False,one_sample,openml_46949,ood,rmse,-0.0028477638,4
+67,TabPFN v2,3e-07,0,False,one_sample,openml_46961,ood,rmse,0.002031149,4
+68,TabPFN v2,3e-07,0,True,one_sample,openml_46904,ood,rmse,-0.00036058601,4
+69,TabPFN v2,3e-07,0,True,one_sample,openml_46917,ood,rmse,0.00044687497,4
+70,TabPFN v2,3e-07,0,True,one_sample,openml_46949,ood,rmse,9.9795604e-05,4
+71,TabPFN v2,3e-07,0,True,one_sample,openml_46961,ood,rmse,0.00016849585,4
+72,TabPFN v2,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,-0.039503225,4
+73,TabPFN v2,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,0.022399194,4
+74,TabPFN v2,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,-0.0027855802,4
+75,TabPFN v2,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,0.0019878583,4
+76,TabPFN v2,3e-07,0.003,True,one_sample,openml_46904,ood,rmse,-0.00029741736,4
+77,TabPFN v2,3e-07,0.003,True,one_sample,openml_46917,ood,rmse,0.00056716425,4
+78,TabPFN v2,3e-07,0.003,True,one_sample,openml_46949,ood,rmse,0.00011835161,4
+79,TabPFN v2,3e-07,0.003,True,one_sample,openml_46961,ood,rmse,0.00013377874,4
+80,TabPFN v2,1e-06,0,False,one_sample,openml_46904,ood,rmse,-0.093140107,4
+81,TabPFN v2,1e-06,0,False,one_sample,openml_46917,ood,rmse,0.01776735,4
+82,TabPFN v2,1e-06,0,False,one_sample,openml_46949,ood,rmse,-0.019727119,4
+83,TabPFN v2,1e-06,0,False,one_sample,openml_46961,ood,rmse,-0.016634191,4
+84,TabPFN v2,1e-06,0,True,one_sample,openml_46904,ood,rmse,-0.00043374854,4
+85,TabPFN v2,1e-06,0,True,one_sample,openml_46917,ood,rmse,0.00067805418,4
+86,TabPFN v2,1e-06,0,True,one_sample,openml_46949,ood,rmse,-3.059336e-05,4
+87,TabPFN v2,1e-06,0,True,one_sample,openml_46961,ood,rmse,7.1807976e-05,4
+88,TabPFN v2,1e-06,0.003,False,one_sample,openml_46904,ood,rmse,-0.091969192,4
+89,TabPFN v2,1e-06,0.003,False,one_sample,openml_46917,ood,rmse,0.018305544,4
+90,TabPFN v2,1e-06,0.003,False,one_sample,openml_46949,ood,rmse,-0.019243708,4
+91,TabPFN v2,1e-06,0.003,False,one_sample,openml_46961,ood,rmse,-0.016023255,4
+92,TabPFN v2,1e-06,0.003,True,one_sample,openml_46904,ood,rmse,-0.00017584072,4
+93,TabPFN v2,1e-06,0.003,True,one_sample,openml_46917,ood,rmse,0.00069769848,4
+94,TabPFN v2,1e-06,0.003,True,one_sample,openml_46949,ood,rmse,-6.8796006e-06,4
+95,TabPFN v2,1e-06,0.003,True,one_sample,openml_46961,ood,rmse,4.9091155e-05,4
+96,TabPFN v2,1e-05,0,False,one_sample,openml_46904,ood,rmse,-0.30996015,4
+97,TabPFN v2,1e-05,0,False,one_sample,openml_46917,ood,rmse,-0.09092627,4
+98,TabPFN v2,1e-05,0,False,one_sample,openml_46949,ood,rmse,-0.098280252,4
+99,TabPFN v2,1e-05,0,False,one_sample,openml_46961,ood,rmse,-0.16453507,4
+100,TabPFN v2,1e-05,0,True,one_sample,openml_46904,ood,rmse,-6.7876508e-06,4
+101,TabPFN v2,1e-05,0,True,one_sample,openml_46917,ood,rmse,0.0021304282,4
+102,TabPFN v2,1e-05,0,True,one_sample,openml_46949,ood,rmse,7.6653163e-05,4
+103,TabPFN v2,1e-05,0,True,one_sample,openml_46961,ood,rmse,-0.00089848497,4
+104,TabPFN v2,1e-05,0.003,False,one_sample,openml_46904,ood,rmse,-0.2891398,4
+105,TabPFN v2,1e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.077462643,4
+106,TabPFN v2,1e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.094747317,4
+107,TabPFN v2,1e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.14748787,4
+108,TabPFN v2,1e-05,0.003,True,one_sample,openml_46904,ood,rmse,0.0010376949,4
+109,TabPFN v2,1e-05,0.003,True,one_sample,openml_46917,ood,rmse,0.0025545638,4
+110,TabPFN v2,1e-05,0.003,True,one_sample,openml_46949,ood,rmse,9.4023108e-05,4
+111,TabPFN v2,1e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.0006629891,4
+112,TabPFN v2,3e-05,0,False,one_sample,openml_46904,ood,rmse,-0.60712507,4
+113,TabPFN v2,3e-05,0,False,one_sample,openml_46917,ood,rmse,-0.43397375,4
+114,TabPFN v2,3e-05,0,False,one_sample,openml_46949,ood,rmse,-0.20069491,4
+115,TabPFN v2,3e-05,0,False,one_sample,openml_46961,ood,rmse,-0.4180139,4
+116,TabPFN v2,3e-05,0,True,one_sample,openml_46904,ood,rmse,-0.00095127353,4
+117,TabPFN v2,3e-05,0,True,one_sample,openml_46917,ood,rmse,0.0033208575,4
+118,TabPFN v2,3e-05,0,True,one_sample,openml_46949,ood,rmse,-6.1584387e-05,4
+119,TabPFN v2,3e-05,0,True,one_sample,openml_46961,ood,rmse,-0.0015038386,4
+120,TabPFN v2,3e-05,0.003,False,one_sample,openml_46904,ood,rmse,-0.53896749,4
+121,TabPFN v2,3e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.35049463,4
+122,TabPFN v2,3e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.1732144,4
+123,TabPFN v2,3e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.374277,4
+124,TabPFN v2,3e-05,0.003,True,one_sample,openml_46904,ood,rmse,0.0017635579,4
+125,TabPFN v2,3e-05,0.003,True,one_sample,openml_46917,ood,rmse,0.0037296116,4
+126,TabPFN v2,3e-05,0.003,True,one_sample,openml_46949,ood,rmse,-8.1526801e-05,4
+127,TabPFN v2,3e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.00059252919,4
+128,TabPFN v2.6,3e-07,0,False,one_sample,openml_46904,ood,rmse,-0.58486887,4
+129,TabPFN v2.6,3e-07,0,False,one_sample,openml_46917,ood,rmse,-0.3540659,4
+130,TabPFN v2.6,3e-07,0,False,one_sample,openml_46949,ood,rmse,-0.29835986,4
+131,TabPFN v2.6,3e-07,0,False,one_sample,openml_46961,ood,rmse,-0.32651124,4
+132,TabPFN v2.6,3e-07,0,True,one_sample,openml_46904,ood,rmse,-0.0028041433,4
+133,TabPFN v2.6,3e-07,0,True,one_sample,openml_46917,ood,rmse,-0.004066667,4
+134,TabPFN v2.6,3e-07,0,True,one_sample,openml_46949,ood,rmse,-0.0041529273,4
+135,TabPFN v2.6,3e-07,0,True,one_sample,openml_46961,ood,rmse,-0.00018116353,4
+136,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,-0.58293142,4
+137,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,-0.3529658,4
+138,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,-0.29818903,4
+139,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,-0.3268354,4
+140,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46904,ood,rmse,-0.0027711984,4
+141,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46917,ood,rmse,-0.0040131964,4
+142,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46949,ood,rmse,-0.0041288171,4
+143,TabPFN v2.6,3e-07,0.003,True,one_sample,openml_46961,ood,rmse,-0.00028078515,4
+144,TabPFN v2.6,1e-06,0,False,one_sample,openml_46904,ood,rmse,-0.63337873,4
+145,TabPFN v2.6,1e-06,0,False,one_sample,openml_46917,ood,rmse,-0.34166493,4
+146,TabPFN v2.6,1e-06,0,False,one_sample,openml_46949,ood,rmse,-0.27544497,4
+147,TabPFN v2.6,1e-06,0,False,one_sample,openml_46961,ood,rmse,-0.29157515,4
+148,TabPFN v2.6,1e-06,0,True,one_sample,openml_46904,ood,rmse,-0.015182734,4
+149,TabPFN v2.6,1e-06,0,True,one_sample,openml_46917,ood,rmse,-0.019662298,4
+150,TabPFN v2.6,1e-06,0,True,one_sample,openml_46949,ood,rmse,-0.020105105,4
+151,TabPFN v2.6,1e-06,0,True,one_sample,openml_46961,ood,rmse,-0.0081589353,4
+152,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46904,ood,rmse,-0.62464476,4
+153,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46917,ood,rmse,-0.33821513,4
+154,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46949,ood,rmse,-0.27642551,4
+155,TabPFN v2.6,1e-06,0.003,False,one_sample,openml_46961,ood,rmse,-0.29208869,4
+156,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46904,ood,rmse,-0.014636989,4
+157,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46917,ood,rmse,-0.018899987,4
+158,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46949,ood,rmse,-0.019661157,4
+159,TabPFN v2.6,1e-06,0.003,True,one_sample,openml_46961,ood,rmse,-0.0084692347,4
+160,TabPFN v2.6,1e-05,0,False,one_sample,openml_46904,ood,rmse,-0.60674711,4
+161,TabPFN v2.6,1e-05,0,False,one_sample,openml_46917,ood,rmse,-0.2219342,4
+162,TabPFN v2.6,1e-05,0,False,one_sample,openml_46949,ood,rmse,-0.14243744,4
+163,TabPFN v2.6,1e-05,0,False,one_sample,openml_46961,ood,rmse,-0.18117692,4
+164,TabPFN v2.6,1e-05,0,True,one_sample,openml_46904,ood,rmse,-0.14590397,4
+165,TabPFN v2.6,1e-05,0,True,one_sample,openml_46917,ood,rmse,-0.12840577,4
+166,TabPFN v2.6,1e-05,0,True,one_sample,openml_46949,ood,rmse,-0.03405322,4
+167,TabPFN v2.6,1e-05,0,True,one_sample,openml_46961,ood,rmse,-0.13301716,4
+168,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46904,ood,rmse,-0.44833649,4
+169,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.17224571,4
+170,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.13108244,4
+171,TabPFN v2.6,1e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.21240515,4
+172,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46904,ood,rmse,-0.11631713,4
+173,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46917,ood,rmse,-0.08193401,4
+174,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.026652463,4
+175,TabPFN v2.6,1e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.071146096,4
+176,TabPFN v2.6,3e-05,0,False,one_sample,openml_46904,ood,rmse,-0.69125425,4
+177,TabPFN v2.6,3e-05,0,False,one_sample,openml_46917,ood,rmse,-0.42719413,4
+178,TabPFN v2.6,3e-05,0,False,one_sample,openml_46949,ood,rmse,-0.18526954,4
+179,TabPFN v2.6,3e-05,0,False,one_sample,openml_46961,ood,rmse,-0.22314292,4
+180,TabPFN v2.6,3e-05,0,True,one_sample,openml_46904,ood,rmse,-0.14333071,4
+181,TabPFN v2.6,3e-05,0,True,one_sample,openml_46917,ood,rmse,-0.14758284,4
+182,TabPFN v2.6,3e-05,0,True,one_sample,openml_46949,ood,rmse,-0.021365131,4
+183,TabPFN v2.6,3e-05,0,True,one_sample,openml_46961,ood,rmse,-0.13301944,4
+184,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46904,ood,rmse,-0.53620799,4
+185,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.2850752,4
+186,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.15168729,4
+187,TabPFN v2.6,3e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.15525903,4
+188,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46904,ood,rmse,-0.083611048,4
+189,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46917,ood,rmse,-0.065134671,4
+190,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.022988655,4
+191,TabPFN v2.6,3e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.061043935,4
+192,TabPFN v3,3e-07,0,False,one_sample,openml_46904,ood,rmse,-0.19547016,4
+193,TabPFN v3,3e-07,0,False,one_sample,openml_46917,ood,rmse,-0.032294411,4
+194,TabPFN v3,3e-07,0,False,one_sample,openml_46949,ood,rmse,-0.038069519,4
+195,TabPFN v3,3e-07,0,False,one_sample,openml_46961,ood,rmse,-0.077143817,4
+196,TabPFN v3,3e-07,0,True,one_sample,openml_46904,ood,rmse,-0.084615535,4
+197,TabPFN v3,3e-07,0,True,one_sample,openml_46917,ood,rmse,-0.005973647,4
+198,TabPFN v3,3e-07,0,True,one_sample,openml_46949,ood,rmse,-0.015005803,4
+199,TabPFN v3,3e-07,0,True,one_sample,openml_46961,ood,rmse,-0.14724501,4
+200,TabPFN v3,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,-0.19336646,4
+201,TabPFN v3,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,-0.032430338,4
+202,TabPFN v3,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,-0.037177436,4
+203,TabPFN v3,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,-0.081562744,4
+204,TabPFN v3,3e-07,0.003,True,one_sample,openml_46904,ood,rmse,-0.084561282,4
+205,TabPFN v3,3e-07,0.003,True,one_sample,openml_46917,ood,rmse,-0.006818971,4
+206,TabPFN v3,3e-07,0.003,True,one_sample,openml_46949,ood,rmse,-0.015193318,4
+207,TabPFN v3,3e-07,0.003,True,one_sample,openml_46961,ood,rmse,-0.13466683,4
+208,TabPFN v3,1e-06,0,False,one_sample,openml_46904,ood,rmse,-0.45763844,4
+209,TabPFN v3,1e-06,0,False,one_sample,openml_46917,ood,rmse,-0.10808754,4
+210,TabPFN v3,1e-06,0,False,one_sample,openml_46949,ood,rmse,-0.19393626,4
+211,TabPFN v3,1e-06,0,False,one_sample,openml_46961,ood,rmse,-0.20706712,4
+212,TabPFN v3,1e-06,0,True,one_sample,openml_46904,ood,rmse,-0.13219256,4
+213,TabPFN v3,1e-06,0,True,one_sample,openml_46917,ood,rmse,-0.025289702,4
+214,TabPFN v3,1e-06,0,True,one_sample,openml_46949,ood,rmse,-0.035064784,4
+215,TabPFN v3,1e-06,0,True,one_sample,openml_46961,ood,rmse,-0.2357359,4
+216,TabPFN v3,1e-06,0.003,False,one_sample,openml_46904,ood,rmse,-0.45129205,4
+217,TabPFN v3,1e-06,0.003,False,one_sample,openml_46917,ood,rmse,-0.10753667,4
+218,TabPFN v3,1e-06,0.003,False,one_sample,openml_46949,ood,rmse,-0.20329753,4
+219,TabPFN v3,1e-06,0.003,False,one_sample,openml_46961,ood,rmse,-0.19313662,4
+220,TabPFN v3,1e-06,0.003,True,one_sample,openml_46904,ood,rmse,-0.12989811,4
+221,TabPFN v3,1e-06,0.003,True,one_sample,openml_46917,ood,rmse,-0.025389061,4
+222,TabPFN v3,1e-06,0.003,True,one_sample,openml_46949,ood,rmse,-0.035057799,4
+223,TabPFN v3,1e-06,0.003,True,one_sample,openml_46961,ood,rmse,-0.25778156,4
+224,TabPFN v3,1e-05,0,False,one_sample,openml_46904,ood,rmse,-1.3240757,4
+225,TabPFN v3,1e-05,0,False,one_sample,openml_46917,ood,rmse,-0.53672614,4
+226,TabPFN v3,1e-05,0,False,one_sample,openml_46949,ood,rmse,-0.51500652,4
+227,TabPFN v3,1e-05,0,False,one_sample,openml_46961,ood,rmse,-0.789546,4
+228,TabPFN v3,1e-05,0,True,one_sample,openml_46904,ood,rmse,-0.41698836,4
+229,TabPFN v3,1e-05,0,True,one_sample,openml_46917,ood,rmse,-0.12865814,4
+230,TabPFN v3,1e-05,0,True,one_sample,openml_46949,ood,rmse,-0.27698223,4
+231,TabPFN v3,1e-05,0,True,one_sample,openml_46961,ood,rmse,-0.49749539,4
+232,TabPFN v3,1e-05,0.003,False,one_sample,openml_46904,ood,rmse,-1.3325249,4
+233,TabPFN v3,1e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.51861545,4
+234,TabPFN v3,1e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.53327405,4
+235,TabPFN v3,1e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.65987221,4
+236,TabPFN v3,1e-05,0.003,True,one_sample,openml_46904,ood,rmse,-0.42562198,4
+237,TabPFN v3,1e-05,0.003,True,one_sample,openml_46917,ood,rmse,-0.13070716,4
+238,TabPFN v3,1e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.28264385,4
+239,TabPFN v3,1e-05,0.003,True,one_sample,openml_46961,ood,rmse,-0.18776282,4
+240,TabPFN v3,3e-05,0,False,one_sample,openml_46904,ood,rmse,-1.5438145,4
+241,TabPFN v3,3e-05,0,False,one_sample,openml_46917,ood,rmse,-0.8327135,4
+242,TabPFN v3,3e-05,0,False,one_sample,openml_46949,ood,rmse,-0.58737534,4
+243,TabPFN v3,3e-05,0,False,one_sample,openml_46961,ood,rmse,-0.67016582,4
+244,TabPFN v3,3e-05,0,True,one_sample,openml_46904,ood,rmse,-0.61760717,4
+245,TabPFN v3,3e-05,0,True,one_sample,openml_46917,ood,rmse,-0.24950565,4
+246,TabPFN v3,3e-05,0,True,one_sample,openml_46949,ood,rmse,-0.57321783,4
+247,TabPFN v3,3e-05,0,True,one_sample,openml_46961,ood,rmse,-1.1003553,4
+248,TabPFN v3,3e-05,0.003,False,one_sample,openml_46904,ood,rmse,-1.4309788,4
+249,TabPFN v3,3e-05,0.003,False,one_sample,openml_46917,ood,rmse,-0.72730147,4
+250,TabPFN v3,3e-05,0.003,False,one_sample,openml_46949,ood,rmse,-0.50203407,4
+251,TabPFN v3,3e-05,0.003,False,one_sample,openml_46961,ood,rmse,-0.6088199,4
+252,TabPFN v3,3e-05,0.003,True,one_sample,openml_46904,ood,rmse,-0.56510586,4
+253,TabPFN v3,3e-05,0.003,True,one_sample,openml_46917,ood,rmse,-0.23214722,4
+254,TabPFN v3,3e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.47129605,4
+255,TabPFN v3,3e-05,0.003,True,one_sample,openml_46961,ood,rmse,-1.3160134,4
+Means and table interquartile ranges
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,mean,q25,q75,tables
+0,TabICLv2,3e-07,0,False,one_sample,-0.01059803,-0.013258756,-0.0081642536,4
+1,TabICLv2,3e-07,0,True,one_sample,0.0023227676,-0.0009191696,0.00611969,4
+2,TabICLv2,3e-07,0.003,False,one_sample,-0.0087648701,-0.010850362,-0.0070632282,4
+3,TabICLv2,3e-07,0.003,True,one_sample,0.0024776245,-0.00074878233,0.0061542937,4
+4,TabICLv2,1e-06,0,False,one_sample,-0.044837159,-0.051398679,-0.036814109,4
+5,TabICLv2,1e-06,0,True,one_sample,-0.0016134167,-0.0057216359,0.0015452604,4
+6,TabICLv2,1e-06,0.003,False,one_sample,-0.033245721,-0.039408566,-0.02657951,4
+7,TabICLv2,1e-06,0.003,True,one_sample,-5.4944004e-05,-0.0052668077,0.0040946393,4
+8,TabICLv2,1e-05,0,False,one_sample,-0.32875279,-0.37756445,-0.24472286,4
+9,TabICLv2,1e-05,0,True,one_sample,-0.034958076,-0.043809422,-0.022851855,4
+10,TabICLv2,1e-05,0.003,False,one_sample,-0.16093943,-0.19277436,-0.10676822,4
+11,TabICLv2,1e-05,0.003,True,one_sample,-0.039260904,-0.044805447,-0.018798497,4
+12,TabICLv2,3e-05,0,False,one_sample,-0.42926533,-0.50461655,-0.25506153,4
+13,TabICLv2,3e-05,0,True,one_sample,-0.089649166,-0.092040239,-0.046733265,4
+14,TabICLv2,3e-05,0.003,False,one_sample,-0.19568315,-0.24979068,-0.12928649,4
+15,TabICLv2,3e-05,0.003,True,one_sample,-0.064647041,-0.065478615,-0.031128421,4
+16,TabPFN v2,3e-07,0,False,one_sample,-0.0045536628,-0.012074955,0.0071129848,4
+17,TabPFN v2,3e-07,0,True,one_sample,8.8645104e-05,-1.5299799e-05,0.00023809063,4
+18,TabPFN v2,3e-07,0.003,False,one_sample,-0.0044754383,-0.011964991,0.0070906921,4
+19,TabPFN v2,3e-07,0.003,True,one_sample,0.00013046931,1.4409366e-05,0.00024212512,4
+20,TabPFN v2,1e-06,0,False,one_sample,-0.027933517,-0.038080366,-0.0080338057,4
+21,TabPFN v2,1e-06,0,True,one_sample,7.1380064e-05,-0.00013138215,0.00022336953,4
+22,TabPFN v2,1e-06,0.003,False,one_sample,-0.027232653,-0.037425079,-0.007441055,4
+23,TabPFN v2,1e-06,0.003,True,one_sample,0.00014101733,-4.911988e-05,0.00021124299,4
+24,TabPFN v2,1e-05,0,False,one_sample,-0.16592543,-0.20089134,-0.096441756,4
+25,TabPFN v2,1e-05,0,True,one_sample,0.0003254522,-0.00022971198,0.00059009693,4
+26,TabPFN v2,1e-05,0.003,False,one_sample,-0.15220941,-0.18290085,-0.090426148,4
+27,TabPFN v2,1e-05,0.003,True,one_sample,0.00075582318,-9.5229944e-05,0.0014169121,4
+28,TabPFN v2,3e-05,0,False,one_sample,-0.41495191,-0.47726158,-0.36368415,4
+29,TabPFN v2,3e-05,0,True,one_sample,0.00020104025,-0.0010894148,0.00078402608,4
+30,TabPFN v2,3e-05,0.003,False,one_sample,-0.35923838,-0.41544963,-0.30617457,4
+31,TabPFN v2,3e-05,0.003,True,one_sample,0.0012047784,-0.0002092774,0.0022550714,4
+32,TabPFN v2.6,3e-07,0,False,one_sample,-0.39095147,-0.41176664,-0.3194734,4
+33,TabPFN v2.6,3e-07,0,True,one_sample,-0.0028012253,-0.0040882321,-0.0021483984,4
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.39023041,-0.4104572,-0.31967381,4
+35,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.0027984993,-0.0040421016,-0.0021485951,4
+36,TabPFN v2.6,1e-06,0,False,one_sample,-0.38551595,-0.41459338,-0.28754261,4
+37,TabPFN v2.6,1e-06,0,True,one_sample,-0.015777268,-0.019772999,-0.013426785,4
+38,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.38284352,-0.40982254,-0.2881729,4
+39,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.015416842,-0.01909028,-0.013095051,4
+40,TabPFN v2.6,1e-05,0,False,one_sample,-0.28807392,-0.31813743,-0.17149205,4
+41,TabPFN v2.6,1e-05,0,True,one_sample,-0.11034503,-0.13623886,-0.10481764,4
+42,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.24101744,-0.27138799,-0.16195489,4
+43,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.074012424,-0.09052979,-0.060022688,4
+44,TabPFN v2.6,3e-05,0,False,one_sample,-0.38171521,-0.49320916,-0.21367457,4
+45,TabPFN v2.6,3e-05,0,True,one_sample,-0.11132453,-0.14439374,-0.10510586,4
+46,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.28205738,-0.3478584,-0.15436609,4
+47,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.058194577,-0.069753765,-0.051530115,4
+48,TabPFN v3,3e-07,0,False,one_sample,-0.085744475,-0.1067254,-0.036625742,4
+49,TabPFN v3,3e-07,0,True,one_sample,-0.063209998,-0.1002729,-0.012747764,4
+50,TabPFN v3,3e-07,0.003,False,one_sample,-0.086134245,-0.10951367,-0.035990662,4
+51,TabPFN v3,3e-07,0.003,True,one_sample,-0.0603101,-0.097087668,-0.013099731,4
+52,TabPFN v3,1e-06,0,False,one_sample,-0.24168234,-0.26970995,-0.17247408,4
+53,TabPFN v3,1e-06,0,True,one_sample,-0.10707074,-0.15807839,-0.032621013,4
+54,TabPFN v3,1e-06,0.003,False,one_sample,-0.23881571,-0.26529616,-0.17173663,4
+55,TabPFN v3,1e-06,0.003,True,one_sample,-0.11203163,-0.16186897,-0.032640614,4
+56,TabPFN v3,1e-05,0,False,one_sample,-0.7913386,-0.92317843,-0.53129623,4
+57,TabPFN v3,1e-05,0,True,one_sample,-0.33003103,-0.43711512,-0.23990121,4
+58,TabPFN v3,1e-05,0.003,False,one_sample,-0.76107165,-0.82803537,-0.5296094,4
+59,TabPFN v3,1e-05,0.003,True,one_sample,-0.25668395,-0.31838838,-0.1734989,4
+60,TabPFN v3,3e-05,0,False,one_sample,-0.9085173,-1.0104888,-0.6494682,4
+61,TabPFN v3,3e-05,0,True,one_sample,-0.63517149,-0.7382942,-0.49228979,4
+62,TabPFN v3,3e-05,0.003,False,one_sample,-0.81728355,-0.90322079,-0.58212345,4
+63,TabPFN v3,3e-05,0.003,True,one_sample,-0.64614063,-0.75283274,-0.41150884,4
 
 Figure: lgd_reference_uncertainty
 LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
@@ -73416,19 +78486,23 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,2341.0625,1332.1128,3017.4633,32,0.23410625,0.13321128,0.30174633,32,46.569,21.432,46.801,32,83592599,24755261,92356996,32,58274936,58274936,58274936,32,0.015303205,0.0023242689,0.094541555
 "('TabPFN v3', True)",32,2029.0837,1133.9906,2403.9976,32,0.20290837,0.11339906,0.24039976,32,35.573,19.047,35.6,32,83592599,24755261,92356996,32,6917240,6917240,6917240,32,0.016063116,0.0020399834,0.19160081
 
-experiment1/04_results_lgd: 12 figures -> output CreditPFN/figures/experiment1
+experiment1/04_results_lgd: 16 figures -> output CreditPFN/figures/experiment1
   01  lgd_evaluation_coverage
   02  lgd_endpoint_dashboard_lgd_means
   03  lgd_endpoint_dashboard_lgd_partitions
   04  lgd_endpoint_factors_lgd_False
   05  lgd_endpoint_factors_lgd_True
-  06  lgd_reference_uncertainty
-  07  lgd_reference_rmse_1
-  08  lgd_reference_mae_1
-  09  lgd_reference_r2_1
-  10  lgd_prediction_diagnostics
-  11  lgd_v26_distribution_tradeoff
-  12  lgd_control_context_1
+  06  lgd_factorial_credit_r2
+  07  lgd_factorial_ood_r2
+  08  lgd_factorial_credit_rmse
+  09  lgd_factorial_ood_rmse
+  10  lgd_reference_uncertainty
+  11  lgd_reference_rmse_1
+  12  lgd_reference_mae_1
+  13  lgd_reference_r2_1
+  14  lgd_prediction_diagnostics
+  15  lgd_v26_distribution_tradeoff
+  16  lgd_control_context_1
 ```
 
 ---
@@ -101053,7 +106127,7 @@ row,trial,updates,processed_rows,dataset,value,initial,effect,base,learning_rate
 1151,cpt_sampling_v5_s03_pd_tabpfn-v3-classifier-v3_default_lr3e-07_seed42_qf40_acc1_l2sp0.003,10000,191675495,openml_46956,0.77391326,0.78088454,-0.0069712814,TabPFN v3,3e-07,0.003,False,one_sample,3,42
 
 Figure: pd_sampling_costs
-PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
+PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Within each model base, points average matched partition ratios and segments span their interquartile range, not uncertainty intervals. Both axes are logarithmic and the dotted line is the one-sample reference. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 Matched partition costs and ratios
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen,sec_per_step,peak_gpu_gb,gpu_hours_reference,rows_seen_reference,sec_per_step_reference,peak_gpu_gb_reference,gpu_hours_ratio,rows_seen_ratio,sec_per_step_ratio,peak_gpu_gb_ratio
@@ -101105,6 +106179,25 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen
 45,TabICLv2,3e-07,0.003,False,one_sample,3,1.6664284,191675495,0.59991421,27.121,1.6664284,191675495,0.59991421,27.121,1,1,1,1
 46,TabICLv2,3e-07,0.003,False,full_pass,3,1.9348136,234578275,0.6965329,23.729,1.6664284,191675495,0.59991421,27.121,1.1610542,1.2238303,1.1610542,0.87493087
 47,TabICLv2,3e-07,0.003,False,accumulate,3,13.08425,1605829539,4.71033,23.734,1.6664284,191675495,0.59991421,27.121,7.8516726,8.3778552,7.8516726,0.87511522
+Ratios by model and protocol
+CSV (first column: row index)
+row,base,protocol,metric,mean,q25,q75,partitions
+0,TabICLv2,full_pass,gpu_hours_ratio,1.2318268,1.2249569,1.2575999,4
+1,TabICLv2,accumulate,gpu_hours_ratio,7.6002173,7.3869542,7.9873044,4
+2,TabPFN v2,full_pass,gpu_hours_ratio,1.2062052,1.095016,1.2726144,4
+3,TabPFN v2,accumulate,gpu_hours_ratio,17.209086,16.788047,17.437006,4
+4,TabPFN v2.6,full_pass,gpu_hours_ratio,1.1962937,1.1806789,1.2147341,4
+5,TabPFN v2.6,accumulate,gpu_hours_ratio,16.105469,15.383704,17.049904,4
+6,TabPFN v3,full_pass,gpu_hours_ratio,1.1880433,1.1728703,1.2253793,4
+7,TabPFN v3,accumulate,gpu_hours_ratio,7.0919965,6.79797,7.3605135,4
+8,TabICLv2,full_pass,rows_seen_ratio,1.2682084,1.2132071,1.3142176,4
+9,TabICLv2,accumulate,rows_seen_ratio,7.9966271,7.8518924,8.5692531,4
+10,TabPFN v2,full_pass,rows_seen_ratio,1.2103907,1.1836601,1.2242411,4
+11,TabPFN v2,accumulate,rows_seen_ratio,18.242646,17.900539,19.647577,4
+12,TabPFN v2.6,full_pass,rows_seen_ratio,1.2202888,1.1934604,1.2368535,4
+13,TabPFN v2.6,accumulate,rows_seen_ratio,16.888598,16.593875,18.224611,4
+14,TabPFN v3,full_pass,rows_seen_ratio,1.2682084,1.2132071,1.3142176,4
+15,TabPFN v3,accumulate,rows_seen_ratio,7.9966271,7.8518924,8.5692531,4
 
 Figure: lgd_followup_curves_lgd_credit_rows
 LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contrasts match the same table and partition before averaging and require all repeated non-credit partitions. Protocol curves require every planned trial and unchanged baseline table support. Missing milestones remain gaps; panels without any complete matched cohort are labeled explicitly. Row exposure includes repeated rows and does not establish equal compute. These monitors are separate from five-fold evaluation.
@@ -102997,7 +108090,7 @@ row,trial,updates,processed_rows,dataset,value,initial,effect,base,learning_rate
 1151,cpt_sampling_v5_s03_lgd_tabpfn-v3-regressor-v3_default_lr3e-07_seed42_qf40_acc1_l2sp0.003,10000,92356996,openml_46961,0.86428744,0.87803626,-0.013748825,TabPFN v3,3e-07,0.003,False,one_sample,3,42
 
 Figure: lgd_sampling_costs
-LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
+LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Within each model base, points average matched partition ratios and segments span their interquartile range, not uncertainty intervals. Both axes are logarithmic and the dotted line is the one-sample reference. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 Matched partition costs and ratios
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen,sec_per_step,peak_gpu_gb,gpu_hours_reference,rows_seen_reference,sec_per_step_reference,peak_gpu_gb_reference,gpu_hours_ratio,rows_seen_ratio,sec_per_step_ratio,peak_gpu_gb_ratio
@@ -103049,6 +108142,25 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen
 45,TabICLv2,3e-07,0.003,False,one_sample,3,0.70835949,92356996,0.25500942,10.998,0.70835949,92356996,0.25500942,10.998,1,1,1,1
 46,TabICLv2,3e-07,0.003,False,full_pass,3,0.75781242,109171250,0.27281247,9,0.70835949,92356996,0.25500942,10.998,1.0698133,1.1820572,1.0698133,0.81833061
 47,TabICLv2,3e-07,0.003,False,accumulate,3,0.99757377,145587640,0.35912656,9,0.70835949,92356996,0.25500942,10.998,1.4082874,1.5763575,1.4082874,0.81833061
+Ratios by model and protocol
+CSV (first column: row index)
+row,base,protocol,metric,mean,q25,q75,partitions
+0,TabICLv2,full_pass,gpu_hours_ratio,1.0631453,1.0573515,1.0792032,4
+1,TabICLv2,accumulate,gpu_hours_ratio,1.2993214,1.2623529,1.4139259,4
+2,TabPFN v2,full_pass,gpu_hours_ratio,1.0960582,1.0337834,1.1547526,4
+3,TabPFN v2,accumulate,gpu_hours_ratio,1.8806352,1.7810641,2.1501283,4
+4,TabPFN v2.6,full_pass,gpu_hours_ratio,1.0844628,1.0332684,1.1450731,4
+5,TabPFN v2.6,accumulate,gpu_hours_ratio,1.8924091,1.8081936,2.2336135,4
+6,TabPFN v3,full_pass,gpu_hours_ratio,1.0108634,0.99600471,1.0236921,4
+7,TabPFN v3,accumulate,gpu_hours_ratio,1.2652583,1.2521484,1.3467542,4
+8,TabICLv2,full_pass,rows_seen_ratio,1.1592537,1.1365429,1.2251418,4
+9,TabICLv2,accumulate,rows_seen_ratio,1.4625124,1.4322681,1.6337695,4
+10,TabPFN v2,full_pass,rows_seen_ratio,1.3057928,1.2302937,1.4498629,4
+11,TabPFN v2,accumulate,rows_seen_ratio,2.3620675,2.2110523,2.9003628,4
+12,TabPFN v2.6,full_pass,rows_seen_ratio,1.2389504,1.1749116,1.3544109,4
+13,TabPFN v2.6,accumulate,rows_seen_ratio,2.2283522,2.1002619,2.7094168,4
+14,TabPFN v3,full_pass,rows_seen_ratio,1.1592537,1.1365429,1.2251418,4
+15,TabPFN v3,accumulate,rows_seen_ratio,1.4625124,1.4322681,1.6337695,4
 
 5. Resource utilization and parameter movement
 Recorded GPU/process counters and anchored displacement describe the execution. They do not establish energy consumption or causal effects of parameter movement.
@@ -112573,9 +117685,7 @@ row,base,sampling,learning_rate,l2sp_lambda,frozen,partition,gpu_hours,rows_seen
 46,TabPFN v3,one_sample,3e-07,0.003,False,2,1.4631878,168231937,0.5267476,121.097,1.4631878,168231937,0.5267476,121.097,1,1,1,1
 47,TabPFN v3,one_sample,3e-07,0.003,False,3,1.5168503,191675495,0.54606612,121.097,1.5168503,191675495,0.54606612,121.097,1,1,1,1
 
-Figure: pd_sampling_costs
-PD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
-Matched partition costs and ratios
+Table: PD matched partition time and exposure ratios
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen,sec_per_step,peak_gpu_gb,gpu_hours_reference,rows_seen_reference,sec_per_step_reference,peak_gpu_gb_reference,gpu_hours_ratio,rows_seen_ratio,sec_per_step_ratio,peak_gpu_gb_ratio
 0,TabPFN v2,3e-07,0.003,False,one_sample,0,1.4745639,84373151,0.53084299,181.083,1.4745639,84373151,0.53084299,181.083,1,1,1,1
@@ -112708,9 +117818,7 @@ row,base,sampling,learning_rate,l2sp_lambda,frozen,partition,gpu_hours,rows_seen
 46,TabPFN v3,one_sample,3e-07,0.003,False,2,0.72728807,84400237,0.2618237,46.801,0.72728807,84400237,0.2618237,46.801,1,1,1,1
 47,TabPFN v3,one_sample,3e-07,0.003,False,3,0.73433509,92356996,0.26436063,46.801,0.73433509,92356996,0.26436063,46.801,1,1,1,1
 
-Figure: lgd_sampling_costs
-LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Points are partition means and segments are partition interquartile ranges, not uncertainty intervals. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
-Matched partition costs and ratios
+Table: LGD matched partition time and exposure ratios
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen,sec_per_step,peak_gpu_gb,gpu_hours_reference,rows_seen_reference,sec_per_step_reference,peak_gpu_gb_reference,gpu_hours_ratio,rows_seen_ratio,sec_per_step_ratio,peak_gpu_gb_ratio
 0,TabPFN v2,3e-07,0.003,False,one_sample,0,0.6343386,46113629,0.2283619,71.895,0.6343386,46113629,0.2283619,71.895,1,1,1,1
@@ -114261,7 +119369,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 6,ood,r2,TabPFN v3,accumulate,4,0.00014451519,0.0001346916,-0.00051264465,0.0008213222
 7,ood,r2,TabPFN v3,full_pass,4,0.0014334619,0.0012672767,0.00050215423,0.00269714
 
-experiment3/02_results: 14 figures -> output CreditPFN/figures/experiment3
+experiment3/02_results: 12 figures -> output CreditPFN/figures/experiment3
   01  pd_sampling_benchmark_credit
   02  pd_sampling_benchmark_ood
   03  lgd_sampling_benchmark_credit
@@ -114269,13 +119377,11 @@ experiment3/02_results: 14 figures -> output CreditPFN/figures/experiment3
   05  pd_prediction_diagnostics
   06  lgd_prediction_diagnostics
   07  pd_sampling_benchmark_quality_cost
-  08  pd_sampling_costs
-  09  lgd_sampling_benchmark_quality_cost
-  10  lgd_sampling_costs
-  11  pd_sampling_monitor_credit
-  12  pd_sampling_monitor_ood
-  13  lgd_sampling_monitor_credit
-  14  lgd_sampling_monitor_ood
+  08  lgd_sampling_benchmark_quality_cost
+  09  pd_sampling_monitor_credit
+  10  pd_sampling_monitor_ood
+  11  lgd_sampling_monitor_credit
+  12  lgd_sampling_monitor_ood
 ```
 
 ---
@@ -114682,10 +119788,10 @@ row,track,family,context_rows,tables
 109,pd,tabpfn,50000,9
 
 3. Original and CPT context curves
-Primary scores are PD AUC and LGD R². Scores first average the five paired folds within each table, then weight tables equally. Positive differences favor CPT. No figure is generated for a horizon without a complete common cohort.
+Primary scores are PD AUC and LGD R². Scores first average the five paired folds within each table, then weight tables equally. Positive differences favor CPT. Individual table curves reveal opposing responses or influential tables that a mean can hide; the same table identities persist across each horizon. No figure is generated for a horizon without a complete common cohort.
 
 Figure: context_pd_through_128
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -115018,7 +120124,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 813,pd,tabpfn,3,SBA Loans Case,128,0.96989828,0.97029351,0.00039522952,roc_auc,5
 
 Figure: context_pd_through_2048
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -115537,7 +120643,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 802,pd,tabpfn,3,LendingClub,2048,0.67014606,0.67301436,0.0028683025,roc_auc,5
 
 Figure: context_pd_through_50000
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -116126,7 +121232,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 785,pd,tabpfn,3,Home Credit,50000,0.74702582,0.74638862,-0.00063720448,roc_auc,5
 
 Figure: context_lgd_through_128
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -116297,7 +121403,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 268,lgd,tabpfn,3,SBA Loans Case (LGD),128,0.65234742,0.64857864,-0.0037687778,r2,5
 
 Figure: context_lgd_through_2048
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets

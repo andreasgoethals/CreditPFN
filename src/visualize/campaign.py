@@ -53,6 +53,7 @@ class Page:
     figure: object
     caption: str
     tables: dict = field(default_factory=dict)
+    provenance: dict = field(default_factory=dict)
 
     def __post_init__(self):
         style.finish_figure(self.figure)
@@ -83,7 +84,8 @@ def show(sink, pages, *, track=None):
             raise ValueError(f"Figure {page.name} needs a manuscript caption")
         if getattr(sink, "report", None) is not None:
             sink.report._pending.append(page_text(page))
-        sink.save(page.figure, page.name, caption=page.caption)
+        metadata = {"provenance": page.provenance} if page.provenance else {}
+        sink.save(page.figure, page.name, caption=page.caption, **metadata)
         display(page.figure)
         display(Markdown(page.caption))
         plt.close(page.figure)

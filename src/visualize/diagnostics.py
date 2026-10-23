@@ -165,7 +165,11 @@ def calibration_effects(campaign):
     if campaign.track != "pd":
         return pd.DataFrame()
     parts = []
-    for metric in ("brier_score", "ece"):
+    # Older exports may have the original Brier/ECE panel but no calibrated
+    # log loss. Preserve those measured scores; never manufacture a third panel.
+    metrics = [metric for metric in ("brier_score", "ece", "log_loss")
+               if all(metric + suffix in campaign.evaluation for suffix in ("", "_platt", "_isotonic"))]
+    for metric in metrics:
         for suffix, calibration in (("", "Raw"), ("_platt", "Platt"), ("_isotonic", "Isotonic")):
             effects = reference_rows(benchmark_effects(campaign, metric + suffix))
             if effects.empty:
@@ -177,7 +181,7 @@ def calibration_effects(campaign):
     keys = ["base", "dataset", "metric", "calibration"]
     if values.duplicated(keys).any():
         raise ValueError("Ambiguous calibration reference: multiple recipes or partitions per table")
-    complete = values.groupby(["base", "dataset"]).size().eq(6)
+    complete = values.groupby(["base", "dataset"]).size().eq(3*len(metrics))
     cohort = complete[complete].reset_index()[["base", "dataset"]]
     return values.merge(cohort, on=["base", "dataset"], validate="many_to_one")
 
@@ -187,13 +191,15 @@ def plot_calibration_overview(campaign):
     data = calibration_effects(campaign)
     if data.empty:
         return []
-    fig, axes = plt.subplots(1, 2, squeeze=False, layout="constrained",
+    metrics = [(m, label) for m, label in (("brier_score", "Brier reduction"), ("ece", "ECE reduction"),
+                                          ("log_loss", "Log-loss reduction")) if m in set(data.metric)]
+    fig, axes = plt.subplots(1, len(metrics), squeeze=False, layout="constrained",
                              figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO))
     fig.suptitle("PD: probability quality before and after calibration")
     rows = [(base, calibration) for base in sorted(data.base.unique())
             for calibration in ("Raw", "Platt", "Isotonic")]
     statistics = []
-    for ax, (metric, label) in zip(axes.flat, (("brier_score", "Brier score reduction"), ("ece", "ECE reduction"))):
+    for ax, (metric, label) in zip(axes.flat, metrics):
         labels = []
         for index, (base, calibration) in enumerate(rows):
             effects = data.loc[data.base.eq(base) & data.calibration.eq(calibration) & data.metric.eq(metric), "effect"]
@@ -210,12 +216,12 @@ def plot_calibration_overview(campaign):
         ax.invert_yaxis()
         ax.set_xlabel(label + "\nPositive favors CPT")
     return [Page("calibration_overview", fig,
-        "Changes in outer-test Brier score and expected calibration error (ECE) for the predefined "
+        "Changes in the displayed outer-test probability-quality scores for the predefined "
         "full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. "
         "Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted "
-        "Platt and isotonic calibration use a common dataset cohort within each base: all six scores "
+        f"Platt and isotonic calibration use a common dataset cohort within each base: all {3*len(metrics)} scores "
         "require the same five completed, matched outer folds. Diamonds show equal-dataset means; "
-        "horizontal lines span dataset quartiles, not confidence intervals. ECE depends on the binning scheme.",
+        "horizontal lines span dataset quartiles, not confidence intervals. Log loss, when exported, is in nats; ECE depends on the binning scheme.",
         {"Per-dataset probability-quality changes": data.reset_index(drop=True),
          "Plotted means and dataset quartiles": pd.DataFrame(statistics)})]
 

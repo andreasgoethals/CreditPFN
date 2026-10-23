@@ -255,7 +255,7 @@ def plot_lgd_distribution(run):
         return []
     import matplotlib.pyplot as plt
     fig, axes = plt.subplots(2, 3, figsize=style.figsize(style.WIDTH_FULL), constrained_layout=True)
-    fig.suptitle("LGD / TabPFN v2.6: point and distribution scores")
+    fig.suptitle("LGD / TabPFN v2.6: point, quantile and clipped log scores")
     for ax, (metric, label) in zip(axes.flat, LGD_METRICS.items()):
         part = data[data.metric.eq(metric)]
         if part.empty:
