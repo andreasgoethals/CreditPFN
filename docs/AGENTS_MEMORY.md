@@ -2,6 +2,17 @@
 
 ## 26-10-2026
 
+- Experiment-8 progress audit: read `Downloads/experiment8.zip` (1,115,724 bytes, downloaded 14:10:54 CET) in place. CRC and member-path checks pass; both 24-trial plan checksums and all 48 embedded trial identities verify. The DATA snapshot contains 27 PD logs and 19 manifest events: 13 unique trials completed exactly 10,000 successful updates, six deliberate segment interruptions, five already superseded by successful resumed completions. Eight latest logs were still progressing at capture. All 12,717 recorded epoch losses are finite, with no nonzero AMP/data skips, crash traces or OOM messages. Completed trials use source `730cd20`; resolved adaptation mode is native LoRA despite the legacy `lora=False` banner. Trainable counts are 860,160 (TabPFN v3) and 466,944 (TabICLv2); peak allocations 83.683 and 25.476 GB respectively on B200. PROJECT trajectories, weights and benchmark results are absent from this DATA-only ZIP, so their contents were not audited locally.
+- Early PD monitor effects are descriptive and incomplete: five completed 1e-5 runs change held-out AUC by -0.003574 to +0.007825; all eight completed 1e-4/1e-3 runs decrease it (largest observed drop 0.073588). These fixed-context monitors do not replace the final five-fold benchmark and cannot rank a deployment recipe. Completed PD trial compute is approximately 83–101 minutes, excluding queue delays.
+
+| Experiment-8 production snapshot, source `730cd20` | Outcome | Evidence / next action |
+|---|---|---|
+| PD split 0, both models × three rates | 6/6 complete | All 10,000 updates; three TabICL trials recovered after planned segments |
+| PD split 1 | 5/6 complete in ZIP | TabICL 1e-3 recovery log reaches about 9,776 updates; no failure recorded |
+| PD split 2 | 2/6 complete in ZIP | Other four trial logs progressing |
+| PD split 3 | 0/6 complete in ZIP | Three TabICL trials progressing at capture; three TabPFN tasks start before the live queue check |
+| User's 14:15 Mindwell queue | 10 PD tasks running; 24 LGD tasks pending | LGD array 11739179 awaits priority; arrays 11739180–11739186 await normal dependency chains. No CreditPFN holds. One PD task left the queue after the ZIP; its success is not inferred from disappearance. Let existing jobs continue; do not duplicate submissions. Wice jobs belong to JEVPFN. |
+
 - Reporting-refinement validation: clean full-suite rerun passed 1,132 tests with one pre-existing missing-local-manifest skip (626.19 s). All 23 notebooks completed, producing 185 PDFs (two additional low-rate views); the three reports executed before the final label/marker adjustment were refreshed again. All 14 new/adjusted panels were rendered and visually reviewed; their text stays inside PDF page bounds. Independently verified 185 inline figures/PDFs/captions, all 23 verbatim final summaries in alphabetical order, and zero orphan PDFs. Production training/evaluation code, manifests and submodule pins remain unchanged.
 - **Tried:** run the complete local suite alongside the full notebook rebuild after the reporting refinements.
   **Result:** 1,131 tests passed, one skipped, one mocked LoRA-submission test failed at Windows `os.replace` with access denied on a temporary JSON file; its 18-test launcher/submitter group immediately passed independently.

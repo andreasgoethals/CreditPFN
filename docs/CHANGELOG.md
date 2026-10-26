@@ -2,6 +2,7 @@
 
 ## 26-10-2026
 
+- Record the first LoRA production snapshot: 13 completed PD trials, successful recovery, and normally queued LGD work.
 - Refresh processed-target summaries from data; show individual tables in prediction diagnostics and add low-rate detail views beside the full benchmark grids.
 - Verify all eight `lora2` receipts and the independent inspection; experiment 8 is ready for training.
 - Queue the complete LoRA safety sequence in one command; audit gradients and effective updates for every Q/V projection; clarify legacy labels and recipe comparisons.

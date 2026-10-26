@@ -28,8 +28,10 @@ see [the finishing-check commands](docs/VSC.md#final-inference-check-before-writ
 It does not retrain models or replace completed benchmark files.
 
 Experiment 8 has a separate LoRA safety gate. The `lora2` chain passed all eight GPU checks
-and independent inspection on 26-10-2026; production training has not yet been submitted in the reviewed evidence.
-Use `CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh train` on the validated VSC environment.
+and independent inspection on 26-10-2026. Production training is underway: the 14:10 DATA snapshot
+contains 13 completed PD trials; the 14:15 queue shows 10 PD tasks running and all 24 LGD tasks pending
+normally. No benchmark evidence is available yet. See the dated [run record](docs/AGENTS_MEMORY.md);
+do not duplicate the active submission.
 For a future changed implementation or environment, `bash scripts/slurm/run_experiment0_lora.sh all NEW_ID`
 queues preparation, both four-task GPU arrays and independent inspection together under a fresh ID.
 Successful dependencies advance automatically; production remains gated. A failed inference probe can be inspected
