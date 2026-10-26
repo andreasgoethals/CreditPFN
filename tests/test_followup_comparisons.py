@@ -124,6 +124,30 @@ def test_missing_recorded_time_cannot_be_shown_as_zero_cost():
     assert cmp.plot_sampling_quality_cost(run) == []
 
 
+def test_narrow_sampling_cost_axis_stays_legible_after_publication_formatting():
+    style.apply()
+    run = future_campaign(3, "lgd", all_bases=True)
+    for index, base in enumerate(sorted(run.trials.base.unique())):
+        for mode, factor in zip(style.SAMPLING_LABELS, (1., 1.1, 1.3)):
+            run.trials.loc[run.trials.base.eq(base) & run.trials.sampling.eq(mode), "gpu_hours"] = (.6 + index*.25)*factor
+    page = cmp.plot_sampling_quality_cost(run)[0]
+    offsets = [[collection.get_offsets().copy() for collection in ax.collections]
+               for ax in page.figure.axes]
+    style.finish_figure(page.figure)
+    page.figure.canvas.draw()
+    renderer = page.figure.canvas.get_renderer()
+    for ax, before in zip(page.figure.axes, offsets):
+        assert ax.get_xscale() == "log"
+        labels = [label for label in ax.get_xticklabels() if label.get_visible() and label.get_text()]
+        assert 2 <= len(labels) <= style.CONTINUOUS_TICKS + 1
+        assert all("10^" not in label.get_text() and "$" not in label.get_text() for label in labels)
+        boxes = sorted((label.get_window_extent(renderer) for label in labels), key=lambda box: box.x0)
+        assert all(left.x1 < right.x0 for left, right in zip(boxes, boxes[1:]))
+        for collection, values in zip(ax.collections, before):
+            np.testing.assert_array_equal(collection.get_offsets(), values)
+    plt.close(page.figure)
+
+
 def test_metric_directions_and_absolute_score_context():
     main, repeat = future_campaign(1), future_campaign(2)
     repeat.evaluation.loc[repeat.evaluation.source.eq("tabpfn-trained"), "brier_score"] += .05

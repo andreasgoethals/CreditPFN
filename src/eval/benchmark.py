@@ -523,6 +523,8 @@ def _method_dirname(handle: ModelHandle) -> str:
     # historical directory suffixes so archived evaluations remain discoverable.
     if extra.get("adaptation_mode") == "diagscale":
         lora_tag = "__diagscale"
+    elif extra.get("adaptation_mode") == "lora":
+        lora_tag = "__lora"
     elif extra.get("adaptation_mode") == "frozen_backbone":
         lora_tag = "__frozen"
     elif extra.get("use_lora"):

@@ -2,8 +2,8 @@
 # One benchmark phase: submit both resource arrays for both tasks and all partitions.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-EXPERIMENT="${1:?usage: run_benchmark.sh experiment1|experiment2|experiment3|experiment5|experiment6|experiment7}"
-case "$EXPERIMENT" in experiment[1-3]|experiment[5-7]) ;; *) echo 'Expected experiment1–3 or experiment5–7' >&2; exit 2 ;; esac
+EXPERIMENT="${1:?usage: run_benchmark.sh experiment1|experiment2|experiment3|experiment5|experiment6|experiment7|experiment8}"
+case "$EXPERIMENT" in experiment[1-3]|experiment[5-8]) ;; *) echo 'Expected experiment1–3 or experiment5–8' >&2; exit 2 ;; esac
 CONFIG_COUNT=2
 [[ "$EXPERIMENT" == experiment6 ]] && CONFIG_COUNT=1
 export CREDITPFN_EXPERIMENT="$EXPERIMENT"

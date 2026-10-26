@@ -30,7 +30,7 @@ from pathlib import Path
 PROJECT_NAME = "CreditPFN"
 OUTPUT_DIR_NAME = "output CreditPFN"
 EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3",
-               "experiment4", "experiment5", "experiment6", "experiment7")
+               "experiment4", "experiment5", "experiment6", "experiment7", "experiment8")
 
 
 def experiment_group(value: str | None = None) -> str:
@@ -41,7 +41,8 @@ def experiment_group(value: str | None = None) -> str:
 
 
 def group_for_run(run: str) -> str:
-    for prefix, group in (("cpt_diagscale_debug", "experiment0"), ("cpt_large_debug", "experiment0"),
+    for prefix, group in (("cpt_lora_debug", "experiment0"), ("cpt_lora", "experiment8"),
+                          ("cpt_diagscale_debug", "experiment0"), ("cpt_large_debug", "experiment0"),
                           ("cpt_context", "experiment4"), ("cpt_diagscale", "experiment5"),
                           ("cpt_large", "experiment6"), ("cpt_corpus", "experiment6"),
                           ("cpt_episode", "experiment7"),
@@ -168,27 +169,38 @@ def results_dir(*parts: str, experiment: str | None = None) -> Path:
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
     # project env vars, and falls back to the output root when staging is unavailable.
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "results", *parts))
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, _experiment_scope(experiment), "results", *parts))
+
+
+def _experiment_scope(experiment: str | None = None) -> Path:
+    """Keep each LoRA debugging workflow separate from all earlier experiment-0 output."""
+    group = experiment_group(experiment)
+    workflow = os.environ.get("CREDITPFN_LORA_WORKFLOW", "")
+    if group == "experiment0" and workflow:
+        if not workflow.isascii() or not workflow.isalnum():
+            raise ValueError("Invalid LoRA workflow ID")
+        return Path(group, "lora", workflow)
+    return Path(group)
 
 
 def logs_dir(experiment: str | None = None) -> Path:
     """Timestamped run logs. Small, many files -> `$VSC_DATA`, not the inode-poor tier."""
-    return outputs_dir() / experiment_group(experiment) / "logs"
+    return outputs_dir() / _experiment_scope(experiment) / "logs"
 
 
 def manifests_dir(experiment: str | None = None) -> Path:
     """Per-run manifests: the small CSV/JSON record of what a run did."""
-    return outputs_dir() / experiment_group(experiment) / "manifests"
+    return outputs_dir() / _experiment_scope(experiment) / "manifests"
 
 
 def consolidated_dir(experiment: str | None = None) -> Path:
     """Immutable analysis snapshots: a few compressed files on project storage."""
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "consolidated"))
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, _experiment_scope(experiment), "consolidated"))
 
 
 def training_dir(*parts: str, experiment: str | None = None) -> Path:
     """Per-trial numeric histories and resource measurements on project storage."""
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, experiment_group(experiment), "training", *parts))
+    return resolve_staging_path(Path(OUTPUT_DIR_NAME, _experiment_scope(experiment), "training", *parts))
 
 
 def training_work_dir() -> Path | None:
@@ -198,7 +210,7 @@ def training_work_dir() -> Path | None:
     scratch = _env_path("VSC_SCRATCH_GPFS1")
     if scratch is None:
         raise RuntimeError("Mindwell diagnostics require VSC_SCRATCH_GPFS1")
-    return scratch / PROJECT_NAME / OUTPUT_DIR_NAME / experiment_group() / "training_work"
+    return scratch / PROJECT_NAME / OUTPUT_DIR_NAME / _experiment_scope() / "training_work"
 
 
 def figures_dir(notebook: str | None = None) -> Path:

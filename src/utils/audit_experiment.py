@@ -94,7 +94,8 @@ def audit(config: Path, *, null=False) -> dict:
             name = descriptive_name(run_name=current.run_name, track=current.track, base_path=base,
                 learning_rate=lr, seed=current.seed, use_lora=frozen, query_fraction=query,
                 accumulate_grad_batches=accum, epoch_pass_mode=mode, min_train_rows=min_rows,
-                l2sp_lambda=l2sp, adaptation_mode="frozen_backbone" if frozen else "full").removesuffix(".ckpt")
+                l2sp_lambda=l2sp, adaptation_mode=(getattr(current.train, "adaptation_mode", None)
+                    or ("frozen_backbone" if frozen else "full"))).removesuffix(".ckpt")
             path, prov = resolve_checkpoint(str(resolve_staging_path(current.checkpoint.trained_dir) /
                                                current.track / (name + ".ckpt")), current.track)
             row = {"trial": name, "status": "PENDING"}

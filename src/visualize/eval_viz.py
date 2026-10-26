@@ -142,7 +142,7 @@ def human_method_name(row: pd.Series) -> str:
         lr = row.get("lr", np.nan)
         mode = row.get("adaptation_mode", "frozen_backbone" if row.get("use_lora") else "full")
         adapt = {"frozen_backbone": " ·frozen backbone", "legacy_adapter": " ·legacy adapter",
-                 "diagscale": " ·DiagScale"}.get(mode, "")
+                 "diagscale": " ·DiagScale", "lora": " ·LoRA"}.get(mode, "")
         sampling = row.get("epoch_pass_mode", "full_pass" if row.get("full_pass") else "one_sample")
         fp = "" if sampling == "one_sample" else f" ·{sampling}"
         mtr = row.get("min_train_rows", 0)
@@ -229,6 +229,8 @@ def load_eval_results(track: str, *, include_retention=False) -> pd.DataFrame:
         # into one point. Decoded explicitly since 2026-08-04.
         df["full_pass"] = meta["full_pass"]
         df["adaptation_mode"] = meta["adaptation_mode"]
+        if csv.name.startswith("cpt_lora_") and method_dir.endswith("__lora"):
+            df["adaptation_mode"] = "lora"
         df["epoch_pass_mode"] = meta["epoch_pass_mode"]
         # ``min_train_rows`` is the run-8 corpus arm. It was decoded but never copied onto
         # the frame, so `human_method_name` could not see it and the two arms of every swept

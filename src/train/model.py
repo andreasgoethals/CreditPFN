@@ -370,6 +370,9 @@ def save_finetuned(
         model.module.state_dict()
         if hasattr(model, "module") else model.state_dict()
     )
+    from src.model.lora import is_lora, merged_state_dict
+    if is_lora(model):
+        state_dict = merged_state_dict(model)
 
     # Regressor: merge bar-distribution criterion params into the state_dict
     # with the `criterion.` prefix the loader expects. We probe by attribute

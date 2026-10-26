@@ -219,18 +219,29 @@ def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeyp
         tree = ast.parse("\n".join(line for line in source.splitlines() if not line.startswith("%")))
         shown = [ast.unparse(node.args[1]) for node in ast.walk(tree)
                  if isinstance(node, ast.Call) and ast.unparse(node.func) == "cp.show" and len(node.args) >= 2]
-        assert "db.plot_endpoints(run)" in shown
-        assert "db.plot_endpoints(run, by_partition=True)" in shown
+        assert "ce.plot_choices(grid, TRACK)" in shown
+        assert "ce.plot_combinations(grid, TRACK, metric)" in shown
+        assert "ce.plot_transfer_retention(grid, TRACK)" in shown
+        assert "ce.plot_monitor_changes(run)" in shown
+        assert "finish.plot_uncertainty(run)" in shown
+        assert source.index("ce.plot_choices(grid, TRACK)") < source.index("ce.plot_monitor_changes(run)")
+        assert source.index("ce.plot_combinations(grid, TRACK, metric)") < source.index("ce.plot_monitor_changes(run)")
+        metric_loops = [ast.literal_eval(node.iter) for node in ast.walk(tree)
+                        if isinstance(node, ast.For) and isinstance(node.target, ast.Name)
+                        and node.target.id == "metric" and isinstance(node.iter, ast.Tuple)]
         if path.stem.endswith("_pd"):
-            assert "db.plot_brier(run)" in shown
-        assert "pub.plot_metric_profile(run)" in shown
+            assert ("roc_auc", "brier_score", "log_loss") in metric_loops
+            assert "dg.plot_calibration_overview(run)" in shown
+        else:
+            assert ("r2", "rmse") in metric_loops
+        assert "ce.reference_profiles(run)" in source
     # Metric selection lives in src, keeping the notebooks free of analysis logic.
-    from src.visualize import publication
+    from src.visualize import choice_effects
     requested = []
-    monkeypatch.setattr(publication.cp, "benchmark_effects",
+    monkeypatch.setattr(choice_effects.cp, "benchmark_effects",
                         lambda run, metric: requested.append(metric) or pd.DataFrame())
-    publication.plot_metric_profile(NS(track="pd"))
-    assert "brier_score" in requested and "brier" not in requested
+    choice_effects.reference_profiles(NS(track="pd"))
+    assert {"roc_auc", "brier_score", "log_loss"}.issubset(requested) and "brier" not in requested
 
     # The compact dashboard must retain the actual paired probability error,
     # including its improvement direction, rather than relabelling primary AUC.

@@ -93,7 +93,7 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
                  "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py",
                  "src/data/register.py", "src/data/sanitize.py", "src/data/retention.py", "config/retention.yaml", "src/model/__init__.py",
                  "src/__init__.py", "src/eval/__init__.py", "src/utils/__init__.py",
-                 "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabicl_models.py", "src/model/diagscale.py",
+                 "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabicl_models.py", "src/model/diagscale.py", "src/model/lora.py",
                  "src/utils/experiment.py", "src/utils/prepare_experiment.py", "src/utils/atomic.py",
                  "src/utils/checkpoint_inventory.py", "src/utils/paths.py", "src/utils/config.py",
                  "src/utils/logging_setup.py", "src/utils/stage_inputs.py", "src/utils/cpu.py",

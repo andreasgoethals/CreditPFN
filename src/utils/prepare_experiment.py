@@ -53,6 +53,9 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=str(config))
     activate_experiment(cfg)
+    if OmegaConf.select(cfg, 'experiment.lora_gate', default=False):
+        from src.utils.lora_checks import require_gate
+        require_gate()
     if OmegaConf.select(cfg, 'experiment.followup_gate', default=False):
         from src.utils.followup_checks import require_gate
         require_gate()
@@ -85,6 +88,9 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
 
 
 def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
+    if OmegaConf.select(cfg, 'experiment.lora_gate', default=False):
+        from src.utils.lora_checks import require_gate
+        require_gate()
     if OmegaConf.select(cfg, 'experiment.followup_gate', default=False):
         from src.utils.followup_checks import require_gate
         require_gate()

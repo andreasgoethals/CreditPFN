@@ -92,8 +92,8 @@ def show(sink, pages, *, track=None):
 
 
 def config_path(experiment: int, track: str, phase: str | None = None) -> Path:
-    if track not in ("pd", "lgd") or experiment not in (0, 1, 2, 3, 5):
-        raise ValueError("Expected experiment 0–3 or 5 and track pd/lgd; other protocols need their own loader")
+    if track not in ("pd", "lgd") or experiment not in (0, 1, 2, 3, 5, 8):
+        raise ValueError("Expected experiment 0–3, 5 or 8 and track pd/lgd; other protocols need their own loader")
     if experiment == 0:
         if phase not in ("null", "pilot", "budget"):
             raise ValueError("Experiment 0 requires null, pilot or budget")
@@ -116,8 +116,8 @@ def planned_trials(cfg) -> pd.DataFrame:
             name = descriptive_name(run_name=current.run_name, track=current.track, base_path=base,
                 learning_rate=lr, seed=current.seed, use_lora=frozen, query_fraction=query,
                 accumulate_grad_batches=accum, epoch_pass_mode=sampling, min_train_rows=min_rows,
-                l2sp_lambda=lam, adaptation_mode=("diagscale" if OmegaConf.select(current, "train.adaptation_mode") == "diagscale"
-                                                else "frozen_backbone" if frozen else "full")).removesuffix(".ckpt")
+                l2sp_lambda=lam, adaptation_mode=(OmegaConf.select(current, "train.adaptation_mode")
+                                                or ("frozen_backbone" if frozen else "full"))).removesuffix(".ckpt")
             parsed = training_viz.parse_trial_name(name)
             rows.append(dict(trial_name=name, base=training_viz.compact_base(parsed.base_short),
                 learning_rate=float(lr), l2sp_lambda=lam, frozen=bool(frozen), sampling=sampling,

@@ -159,7 +159,7 @@ def check_cluster_writers(experiment=None):
     consumers = {experiment}
     if experiment == "experiment0":
         # New jobs recheck these validation receipts, including on recovery.
-        consumers.update({"experiment4", "experiment5", "experiment6", "experiment7"})
+        consumers.update({"experiment4", "experiment5", "experiment6", "experiment7", "experiment8"})
     elif experiment == "experiment1":
         # Context curves load the fixed experiment-1 checkpoints at every cell.
         consumers.add("experiment4")
@@ -183,7 +183,7 @@ def check_cluster_writers(experiment=None):
             if experiment and owner is None:
                 details = subprocess.run(["scontrol", "-M", cluster, "show", "job", "-o", job],
                                          text=True, capture_output=True, timeout=45, check=True).stdout
-                groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-7])(?:/|,|\s|$)", details))
+                groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-8])(?:/|,|\s|$)", details))
                 if len(groups) == 1:
                     owner = groups.pop()
             if experiment is None or owner is None or owner in consumers:
@@ -203,6 +203,92 @@ def check_saved_consumers(experiment, scope):
         if json.loads(path.read_text(encoding="utf-8")).get("shared_reference"):
             raise RuntimeError("Experiment 7 still references experiment 6. Preserve the shared control, "
                                "or explicitly retire experiment 7 first; scoped cleanup deleted nothing.")
+
+
+def lora_workflow_roots(identifier):
+    """Exact isolated workflow ownership on both tiers; no token/glob matching."""
+    from src.utils.lora_checks import validate_id
+    validate_id(identifier)
+    selected = [root / "experiment0" / "lora" / identifier
+                for root in (outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME))]
+    selected += [root / "experiment0" / "lora" / identifier
+                 for root in (checkpoints_dir("trained"), resolve_output_path("checkpoints/trained"))]
+    return list(dict.fromkeys(selected))
+
+
+def check_lora_writers(identifier):
+    """Fail closed for an unknown owner or a job consuming this workflow's gate."""
+    if not os.environ.get("VSC_DATA"):
+        return
+    import re
+    import subprocess
+    own = os.environ.get("SLURM_JOB_ID", "")
+    active = []
+    for cluster in ("mindwell", "wice"):
+        queue = subprocess.run(["squeue", "-M", cluster, "-u", os.environ["USER"], "-h", "-o", "%i|%j"],
+                               text=True, capture_output=True, timeout=45, check=True)
+        seen = set()
+        for line in queue.stdout.splitlines():
+            if "creditpfn" not in line.lower():
+                continue
+            job = line.split("|", 1)[0].strip().split("_")[0]
+            if job == own or job in seen:
+                continue
+            seen.add(job)
+            details = subprocess.run(["scontrol", "-M", cluster, "show", "job", "-o", job],
+                                     text=True, capture_output=True, timeout=45, check=True).stdout
+            workflow = re.search(r"lora_(?:gpu|prepare)\.slurm\s+(?:(?:smoke|capacity)\s+)?([A-Za-z0-9]+)(?:\s|$)", details)
+            groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-8])(?:/|,|\s|$)", details))
+            if workflow:
+                if workflow.group(1) == identifier:
+                    active.append(job)
+            elif len(groups) != 1 or "experiment8" in groups or "experiment0" in groups:
+                # sbatch --export=ALL often hides the gate variable from SubmitLine.
+                # All production LoRA consumers must therefore finish first.
+                active.append(job)
+    if active:
+        raise RuntimeError("LoRA workflow writers/consumers or jobs of unknown ownership are active: "
+                           + ", ".join(active[:12]))
+
+
+def clean_lora_workflow(identifier, *, clean=False):
+    import json
+    targets = lora_workflow_roots(identifier)
+    # Inspect every tier before deleting the first file. Reject linked ancestors,
+    # unknown layouts and unknown IDs instead of searching similarly named runs.
+    for root in targets:
+        validate_tree(root)
+    marker = targets[0] / "workflow.json"
+    if not marker.is_file():
+        marker = targets[0] / ".scope.json"
+    if not marker.is_file():
+        raise ValueError("Unknown LoRA workflow: its preparation/scope marker is missing")
+    record = json.loads(marker.read_text(encoding="utf-8"))
+    if record.get("kind") not in {"creditpfn_lora", "creditpfn_lora_scope"} or record.get("id") != identifier:
+        raise ValueError("Unknown LoRA workflow: preparation marker does not match")
+    keep = frozenset()
+    if os.environ.get("CREDITPFN_ACTIVE_LOG"):
+        active = Path(os.environ["CREDITPFN_ACTIVE_LOG"]).resolve()
+        if active.suffix != ".log":
+            raise ValueError("Active cleanup log must be a .log")
+        # A maintenance log outside these exact roots is unaffected; an inside
+        # log is retained, together with the marker so a later cleanup is possible.
+        if any(active.is_relative_to(root.resolve()) for root in targets):
+            keep = frozenset({active, marker.resolve()})
+    if clean:
+        check_lora_writers(identifier)
+    total = 0
+    for root in targets:
+        count, size = measure(root, keep_paths=keep)
+        total += count
+        print(f"{count:>6} files {size / 1e6:>9.1f} MB  {root}")
+    if not clean:
+        print(f"LoRA workflow {identifier}: {total} files. Nothing deleted. Add --clean after inspection.")
+        return 0
+    for root in targets:
+        wipe(root, keep_paths=keep)
+    print(f"Deleted {total} files belonging only to LoRA workflow {identifier}.")
+    return 0
 
 
 def validate_tree(root: Path) -> None:
@@ -263,6 +349,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--experiment", help="only this experiment on both storage tiers")
     parser.add_argument("--scope", choices=["all", "training", "benchmark", "figures"], default="all")
     parser.add_argument("--workflow", help="only the named experiment-0 follow-up workflow")
+    parser.add_argument("--lora-workflow", help="only the named isolated experiment-0 LoRA workflow on both tiers")
     parser.add_argument("--all-experiments", action="store_true", help="explicitly permit a global clean")
     parser.add_argument("--processed", action="store_true",
                         help="also clear data/processed/, the preprocessing cache")
@@ -271,6 +358,11 @@ def main(argv: list[str] | None = None) -> int:
                              " — clear only what those stages produced, instead of the "
                              "whole output CreditPFN/ tree")
     args = parser.parse_args(argv)
+    if args.lora_workflow:
+        if (args.experiment not in (None, "experiment0") or args.workflow or args.processed
+                or args.stages or args.all_experiments or args.scope != "all"):
+            parser.error("--lora-workflow cannot be combined with another cleanup scope")
+        return clean_lora_workflow(args.lora_workflow, clean=args.clean)
     if args.experiment and (args.processed or args.stages or args.all_experiments):
         parser.error("Experiment cleanup cannot include shared data/stages/all-experiments")
     if args.workflow and (args.experiment != "experiment0" or not args.workflow.isalnum()):

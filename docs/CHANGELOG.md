@@ -1,7 +1,20 @@
 # Changelog
 
+## 25-10-2026
+
+- Recheck LoRA validation and numerical benchmark settings inside evaluation jobs before data/cache access.
+- Validate all 23 notebooks and regenerate their shared summaries and captions, including pending experiment-8 reports.
+
+## 24-10-2026
+
+- Add isolated Q/V LoRA experiment 8 for TabPFN v3 and TabICLv2, with native exports, recovery, gated VSC checks, scoped cleanup and reports.
+- Verify the compact 21-notebook collection and clarify logarithmic cost-axis captions.
+
 ## 23-10-2026
 
+- Compact training diagnostics and lead main results with paired CPT choice effects, full recipe maps and explicit held-out metrics.
+- Replace constant-baseline scatters with change-versus-rate plots; distinguish recipe improvements from reduced damage and correct the fixed-reference summary.
+- Shorten logarithmic cost-axis tick labels where narrow ranges caused overlap.
 - Align notebook figures with the paper questions: factorial interactions, table-level context effects, direct precision contrasts, model-specific exposure ratios and calibrated log loss.
 - Distinguish monitor/final-benchmark captions and metadata; add a research-question results guide and regenerate notebook reports.
 - Keep raw cost-ratio panels in training and final quality-versus-cost panels in results, removing duplicate figures.

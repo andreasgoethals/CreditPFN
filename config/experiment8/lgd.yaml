@@ -1,0 +1,82 @@
+# LoRA Q/V corpus adaptation; separate experiment-0 LoRA receipts required.
+# Rank and alpha are fixed; only the adapter learning rate is swept.
+track: lgd
+seed: 42
+experiment:
+  output_group: experiment8
+  fingerprint: true
+  require_plan: true
+  training_seeds:
+  - 42
+  lora_gate: true
+corpus:
+  require_complete_registry: true
+  min_train_rows: 0
+  n_test_datasets: null
+  n_folds: 4
+  fold: 0
+  split_seed: 1729
+  n_splits: 4
+  train_dataset_ids: null
+  test_dataset_ids: null
+train:
+  context_sampling: stratified
+  target_total_steps: 10000
+  epochs: 50
+  max_epochs_for_step_budget: 4000
+  numerical_stopping_only: true
+  monitor_seed: 31415
+  trajectory_steps:
+  - 0
+  - 250
+  - 1000
+  - 2500
+  - 5000
+  - 10000
+  epoch_eval_subsample_samples: 2000
+  epoch_eval_n_estimators: 4
+  epoch_eval_n_estimators_tabicl: 4
+  recovery_every_updates: 500
+  dataloader_workers: 4
+  prefetch_factor: 2
+  step_log_interval: 100
+  adaptation_mode: lora
+run_name: cpt_lora_v1
+tunable:
+  learning_rates:
+  - 1.0e-05
+  - 0.0001
+  - 0.001
+  l2sp_lambdas:
+  - 0.0
+  frozen_backbone:
+  - false
+  epoch_pass_modes:
+  - one_sample
+  query_fractions:
+  - 0.4
+  accumulate_grad_batches:
+  - 1
+  adapter_families: []
+  regressor_base_paths:
+  - checkpoints/tabpfn-v3-regressor-v3_default.ckpt
+  - checkpoints/tabicl-regressor-v2-20260212.ckpt
+evaluation:
+  cache_controls: true
+  results:
+    save_predictions: true
+  tabicl_inference_options:
+    use_amp: false
+    use_fa3: false
+checkpoint:
+  trained_dir: checkpoints/trained/experiment8
+optimizer:
+  weight_decay: 0.0
+  l2sp_lambda: 0.0
+lora:
+  enabled: false
+  r: 16
+  alpha: 32
+  dropout: 0.0
+  target_modules:
+  - attention_qv

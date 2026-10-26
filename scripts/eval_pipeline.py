@@ -115,6 +115,9 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     from src.model import build_baselines
     from src.eval.benchmark import load_trained_handles
 
+    if OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
+        from src.utils.lora_checks import validate_evaluation
+        validate_evaluation(train_cfg, eval_cfg)
     if OmegaConf.select(train_cfg, "experiment.followup_gate", default=False):
         from src.utils.followup_checks import require_gate
         require_gate()
@@ -393,6 +396,10 @@ def run(
     from src.utils.paths import activate_experiment
     activate_experiment(train_cfg)
     track = str(train_cfg.track)
+
+    if OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
+        from src.utils.lora_checks import validate_evaluation
+        validate_evaluation(train_cfg, eval_cfg)
 
     # Apply paths.data_source from config/data.yaml (single source of
     # truth) BEFORE any resolve_*_path calls below.

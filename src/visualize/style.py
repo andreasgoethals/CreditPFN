@@ -50,6 +50,8 @@ TABLE_CURVE_ALPHA = 0.28
 TABLE_CURVE_LINE = 0.55
 MEAN_CURVE_LINE = 1.6
 PROTOCOL_POINT_OFFSET = 0.12
+CHOICE_LEGEND_RATIO = 0.40
+CHOICE_POINT_OFFSETS = (-0.18, -0.06, 0.06, 0.18)
 DIFFERENCE_STYLE = ":"
 GRID_TEXT_LIGHT = "white"
 GRID_TEXT_DARK = "black"
@@ -244,6 +246,8 @@ SIZE_STUDY_COLORS = {"All tables": "#0072B2", "Large tables": "#E69F00",
 SIZE_STUDY_STYLES = {"All tables": "-", "Large tables": "--", "2,048 rows": "-",
                      "8,192 rows": "--", "26,000 rows": ":"}
 ADAPTER_LR_STYLES = {1e-4: "-", 1e-3: "--", 3e-2: ":"}
+LORA_LR_COLORS = {1e-5: "#0072B2", 1e-4: "#E69F00", 1e-3: "#009E73"}
+LORA_LR_STYLES = {1e-5: "-", 1e-4: "--", 1e-3: ":"}
 _MODEL_TOKEN = re.compile(r"(?<!TabPFN )(?<![\w.-])(?:tabicl-v2|v2\.6|v2|v3)(?![\w.-])")
 
 
@@ -459,7 +463,7 @@ def _legend_columns(fig, labels):
 def finish_figure(fig):
     """Reserve a separate legend band so legends never obscure data marks."""
     import textwrap
-    from matplotlib.ticker import AutoLocator, MaxNLocator, LogLocator, LogFormatterSciNotation, NullFormatter
+    from matplotlib.ticker import AutoLocator, FixedLocator, MaxNLocator, LogLocator, LogFormatterSciNotation, NullFormatter
     handles, labels = [], []
     if fig._suptitle is not None:
         budget = max(20, int(fig.get_figwidth() * _TITLE_CHARS_PER_INCH))
@@ -481,7 +485,7 @@ def finish_figure(fig):
                 fraction = any(word in label for word in ("fraction", "share", "percent", "%"))
                 integer = count and not fraction
                 axis.set_major_locator(MaxNLocator(nbins=CONTINUOUS_TICKS, integer=integer))
-            elif scale == "log":
+            elif scale == "log" and not isinstance(axis.get_major_locator(), FixedLocator):
                 low, high = sorted(limits)
                 subs = (1, 2, 5) if low > 0 and np.log10(high / low) < 2 else (1,)
                 axis.set_major_locator(LogLocator(base=10, subs=subs))

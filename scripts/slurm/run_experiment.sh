@@ -26,6 +26,8 @@ PYCFG
 for i in "${!META[@]}"; do META[$i]="${META[$i]%$'\r'}"; done
 TRACK="${META[0]}"; RUN="${META[1]}"; BUDGET="${META[3]}"
 case "$RUN" in
+ cpt_lora_debug_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
+ cpt_lora_*) export CREDITPFN_EXPERIMENT=experiment8 ;;
  cpt_diagscale_debug_*|cpt_large_debug_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
  cpt_diagscale_*) export CREDITPFN_EXPERIMENT=experiment5 ;;
  cpt_large_*|cpt_corpus_*) export CREDITPFN_EXPERIMENT=experiment6 ;;

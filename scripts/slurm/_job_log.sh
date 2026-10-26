@@ -5,13 +5,18 @@ start_job_log() {
     export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA:?}/CreditPFN}"
     local group="${CREDITPFN_EXPERIMENT:-general}"
     case "${CREDITPFN_CONFIG:-}" in
-        */config/experiment[0-7]/*|config/experiment[0-7]/*)
+        */config/experiment[0-8]/*|config/experiment[0-8]/*)
             group="$(basename "$(dirname "$CREDITPFN_CONFIG")")" ;;
     esac
     export CREDITPFN_EXPERIMENT="$group"
-    case "$group" in general|experiment[0-7]) ;; *) echo "Invalid output group: $group" >&2; return 2 ;; esac
-    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${group}/logs"
-    LOG="${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${group}/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
+    case "$group" in general|experiment[0-8]) ;; *) echo "Invalid output group: $group" >&2; return 2 ;; esac
+    local scope="$group"
+    if [[ "$group" == experiment0 && -n "${CREDITPFN_LORA_WORKFLOW:-}" ]]; then
+        [[ "$CREDITPFN_LORA_WORKFLOW" =~ ^[a-zA-Z0-9]+$ ]] || { echo 'Invalid LoRA workflow ID' >&2; return 2; }
+        scope="experiment0/lora/$CREDITPFN_LORA_WORKFLOW"
+    fi
+    mkdir -p "${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${scope}/logs"
+    LOG="${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${scope}/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
     export CREDITPFN_ACTIVE_LOG="$LOG"
     exec >> "$LOG" 2>&1
     trap 'rc=$?; echo "END exit_code=${rc} - $(date)"' EXIT

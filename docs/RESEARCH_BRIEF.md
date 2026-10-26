@@ -27,6 +27,7 @@ not a guarantee of positive transfer. Primary sources and their assumptions are 
 | Does CPT change how much an unseen credit table needs labeled context? | Experiment 4: original/CPT curves on identical nested prefixes and test rows | Context size dependence is not repeated-context variance; validation labels remain an additional fixed budget. |
 | Does restricting adaptation to attention query scaling preserve useful behavior? | Experiment 5: all three adapter rates against their matched original | Cross-table CPT differs from target-table fine-tuning; comparisons with experiment 1 also change recipe details. |
 | Is a large-table-only training policy helpful, and does episode size help within that fixed pool? | Experiment 6: corpus eligibility; experiment 7: context-plus-query rows | The first changes corpus composition; the second changes context, query count and compute. Neither isolates all notions of “more data.” |
+| Can low-rank changes inside attention transfer useful credit-domain structure? | Experiment 8: fixed query/value LoRA design at three adapter rates, paired with original weights | Added after earlier results; exploratory. No claim that its one rank/target policy represents all LoRA designs. |
 
 The framing was sharpened after results were visible. Present these as theory-informed exploratory
 questions; do not retroactively claim preregistered directional hypotheses. The contribution is a
@@ -263,24 +264,37 @@ monitors remain separate from per-dataset project trajectories and five-fold fin
 Corrected short pilots use their saved generated configuration; affected historical budget curves
 retain their objective-provenance limitation.
 
-Main figures use small factorial surfaces and matched factor contrasts, paired dataset distributions,
-credit/non-credit trajectories and cost diagnostics. Complete dataset matrices are paginated for
-the appendix. Dataset means carry equal weight; RMSE reductions are normalized against the paired
-base before aggregation, while AUC differences retain their native scale. Quartile bands describe
-observed dataset or trial spread, explicitly not confidence intervals over independent seeds.
-Aggregate trajectory points require every planned trial and the same baseline observations;
-missing milestones are gaps. Benchmark effects require complete matching outer folds. Reliability
-panels compare the fixed adapted reference and its base separately by dataset and calibration
-method; all five folds must contain valid bin records for the displayed pair. The main-PD
-overview reports Brier/ECE reductions on a common table cohort within each base, requiring
-complete paired folds for all six raw/Platt/isotonic scores. Means weight datasets equally;
-quartiles describe dataset spread. Reliability examples use the smallest and largest eligible
-tables by total outer-test rows, independently of observed performance; their selection roster
-is printed, and they illustrate shapes rather than an average treatment effect. Raw, Platt and
-isotonic panels share a figure; absent calibration folds are marked unavailable even if AUC
-is complete. The plotting helper retains an optional full per-table view. F1 thresholds remain validation-selected. Cross-validation fold scores are
-dependent; their standard deviation divided by the square root of five is not a justified
-standard error for this study. Primary methodological support is summarized in the literature notes.
+Main results lead with final five-fold effects of CPT choices: matched anchoring, update-scope
+and learning-rate contrasts, followed by complete rate × anchoring × scope maps for each metric.
+All recipes within a model use the same complete table cohort across the displayed metrics.
+Contrasts fix every other setting, average matched recipe differences within table, then weight
+tables equally. A favorable choice contrast can mean less deterioration; only a positive effect
+relative to original weights indicates an observed CPT gain. Models are never pooled to hide
+opposing responses. AUC/Brier axes may rescale changes by 100 for readability, with explicit units;
+RMSE gains divide the paired error reduction by original RMSE. Metrics are not averaged together.
+
+Credit/non-credit recipe comparisons, fixed-reference uncertainty/source checks, probability
+quality and prediction shifts complete the descriptive account. Table spread is not a confidence
+interval over independent seeds. Complete numeric tables retain every plotted value and per-table
+positive-effect counts. Test-grid maxima remain exploratory, rather than independently validated
+recipe selections. Fixed-context monitor changes appear separately against learning rate, with
+equal table weights and distinct legends for rate, anchoring and update scope. Initial-score
+scatterplots are omitted because their x-coordinate is constant within a starting model.
+
+Training notebooks retain architecture-specific native objectives and performance trajectories.
+Matched monitor-choice effects, combined parameter movement and completed-trial time/memory
+summaries replace repeated model-specific diagnostic figures. Detailed native loss/optimizer
+contrasts and device telemetry remain in tables. Aggregate trajectory points require every planned
+trial and unchanged baseline support; missing milestones remain gaps. Device capacity is not a
+predictive result, and recorded training time excludes queue wait.
+
+Calibration compares raw, Platt and isotonic Brier/ECE/log loss on the same complete table cohort
+within model; means weight tables equally and quartiles describe table spread. Calibrators and
+F1 thresholds are fitted on validation rows. Detailed reliability/threshold plotting helpers remain
+available, but the default main notebook favors the compact overview and complete reference
+metric tables. Absent calibrated metrics are unavailable rather than imputed. Cross-validation
+folds are dependent; their standard deviation divided by the square root of five is not a justified
+standard error. Primary methodological support remains in the literature notes.
 
 The final notebook text records every displayed table, plotted value and caption. Figures use the
 actual ICML dimensions rather than the generic A4 template; the adjacent manuscript is not rewritten
@@ -666,3 +680,68 @@ before preparing the anonymous submission copy. Keep proprietary rows and unlice
 out of the public release. Include a credit-risk-specific impact discussion (miscalibration,
 fairness, privacy and inappropriate deployment), rather than claiming these benchmarks validate
 automated lending decisions. Authors remain responsible for validating all analysis and text.
+
+
+## Experiment 8: low-rank query/value continued pretraining
+
+This follow-up asks whether structured additive changes inside the pretrained attention
+layers can produce useful cross-table credit adaptation. It was adopted after experiments
+1–7 were observed and is explicitly exploratory. It does not replace their grid or outputs.
+
+For each targeted weight, `W = W0 + (alpha/r) B A`. `W0` is fixed; A is randomly initialized
+and B starts at zero, so the initial effective weight equals the original. Rank `r=16`
+limits the update to at most sixteen independent directions per projection, not sixteen
+trainable parameters. `alpha=32` gives multiplier two. Dropout is zero, making the
+weight-parametrized and native merged computations equivalent. Only learning rate varies:
+`1e-5`, `1e-4`, `1e-3`; these are a prospective logarithmic sensitivity grid, not a
+literature-established optimum or rates selected using the held-out test results.
+
+Both TabPFN v3 and TabICLv2 adapt query and value projections in all three transformer
+stages. Keys, attention output projections, feed-forward weights, embeddings, biases and
+prediction heads stay fixed. TabPFN's label-valued retrieval decoder has no learned V
+projection and is excluded. This conventional Q/V restriction is not the all-linear LoRA
+recipe of Ning et al. The question is about this stated update family; a negative result
+would not rule out other ranks or target modules. The registered adapter inventory records
+every module, weight, shape and Q/V slice; unsupported layouts fail before training.
+
+There are two families × two tasks × four existing dataset partitions × three rates =
+**48 training trials**. They retain seed 42, 10,000 successful optimizer updates, the
+existing training losses, per-family measured row/cell caps, two training ensemble members,
+40% query rows, one-sample scheduling, warmup/cosine schedule and AMP policy. PD uses the
+main grid's balanced contexts; LGD uses its stratified policy. Neither heads nor base
+weights enter the optimizer. L2-SP and AdamW weight decay are zero: penalizing A/B is not
+an effective-weight-displacement penalty. Such a penalty is possible but is outside this
+experiment. Rank, scaling, dropout and target modules are fixed, not extra swept axes.
+
+The five-fold benchmark pairs original and adapted predictions on the same held-out table
+rows. Keep AUC/Brier/log loss for PD and R²/RMSE for LGD, equal table weighting, all three
+rates, non-credit monitoring, and measured cost. Do not select a best test recipe and label
+its score an unbiased generalization result. TabICL original and adapted inference both
+use FP32 and disable FA3 to avoid the already measured automatic-precision confound. This
+also applies to the fixed-context monitors. TabPFN stays explicitly pinned to v3 weights;
+no constructor may silently choose a newer default. Training AMP remains a distinct policy
+from inference precision. Experimental results stay separate from experiment 1 and from
+experiment 5, whose optimizer, sampling and precision settings differ. Cross-experiment
+comparisons need a verified common protocol and cohort, not just similar filenames.
+
+Training reports show native loss, optimization health, held-out/retention trajectories,
+cost and the norm of the effective Q/V update relative to its original targeted weights.
+This movement is invariant to reciprocal rescaling of A and B; factor-space distance is
+not described as backbone drift. Results reports show paired final changes and coverage,
+with complete numerical summaries. Empty research output produces an explicit pending
+report. No artificial measurements are supplied to publication notebooks.
+
+Implementation uses PyTorch weight parametrizations: TabICL reads packed QKV tensors
+functionally, so wrapping a Linear.forward call alone would miss its actual computation.
+Native exports merge the update into a new state dictionary without changing the live
+adapter, optimizer or random state. Recovery preserves unmerged factors and optimizer,
+scheduler, scaler, RNG and sampling progress. LoRA reduces optimizer state, but does not
+remove backbone activation/backpropagation costs; no speed or memory saving is assumed.
+
+The separate experiment-0 LoRA workflow checks each family/task at every production rate:
+identity insertion, frozen base weights, actual adapter gradients, nonzero predictions,
+fresh/cached attention, merged native loading, and uninterrupted/interrupted recovery.
+Production-shape probes visit all four dataset partitions with their actual feature widths.
+An independent inspection binds receipts to code, environment, configurations, bases and
+data before production launch. Local checks include real tiny TabICLv2 models; the local
+TabPFN installation lacks v3, so exact v3 execution is a required VSC gate, not a local claim.

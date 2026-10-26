@@ -203,9 +203,11 @@ def save_finetuned_tabicl(
 
     config_out = dict(model_config)
     config_out["recompute"] = False
+    from src.model.lora import is_lora, merged_state_dict
+    state = merged_state_dict(model) if is_lora(model) else model.state_dict()
     payload = {
         "config": config_out,
-        "state_dict": {k: v.detach().cpu() for k, v in model.state_dict().items()},
+        "state_dict": {k: v.detach().cpu() for k, v in state.items()},
     }
     if provenance is not None:
         payload["provenance"] = provenance

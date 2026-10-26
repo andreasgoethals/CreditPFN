@@ -378,6 +378,8 @@ def descriptive_name(
     # changes.
     if adaptation_mode == "diagscale" or run_name.startswith("cpt_diagscale"):
         lora_tag = "_diagscale"
+    elif adaptation_mode == "lora" or run_name.startswith("cpt_lora"):
+        lora_tag = "_lora"
     elif adaptation_mode == "frozen_backbone":
         lora_tag = "_frozen"
     elif use_lora and "tabicl" in base_stem.lower():
@@ -729,6 +731,9 @@ def _make_optimizer_and_scheduler(
 
     from src.model.diagscale import adapter_parameters
     params = adapter_parameters(model) if hasattr(model, '_creditpfn_adapter') else model.parameters()
+    from src.model.lora import is_lora, adapter_parameters as lora_parameters
+    if is_lora(model):
+        params = lora_parameters(model)
     optim = torch.optim.AdamW(
         params,
         lr=lr,
@@ -1355,6 +1360,9 @@ def _save_eval_snapshot(
             model.module.state_dict()
             if hasattr(model, "module") else model.state_dict()
         )
+    from src.model.lora import is_lora, merged_state_dict
+    if is_lora(model):
+        state_dict = merged_state_dict(model)
 
     # Regressor: merge bar-distribution criterion params into the state_dict
     # under the `criterion.` prefix the TabPFN loader expects.
@@ -1412,6 +1420,7 @@ def evaluate_ensemble_on_split(
     task_type: str,
     metric_names: tuple[str, ...],
     family: str = "tabpfn",
+    tabicl_inference_options: dict | None = None,
 ) -> dict[str, float]:
     """Evaluate one TabPFN or TabICLv2 checkpoint via its sklearn API with
     full ensemble inference (``n_estimators`` forward passes per
@@ -1490,6 +1499,7 @@ def evaluate_ensemble_on_split(
                         n_estimators=int(n_estimators),
                         allow_auto_download=False,
                         random_state=int(seed),
+                        **(tabicl_inference_options or {}),
                     )
             else:
                 tabpfn = _make_tabpfn(
@@ -1775,11 +1785,17 @@ def train_one_config(
     # the same operation in both families: freeze the repeated-block transformer stack that
     # holds the bulk of the parameters, train the embedders / label encoder / head around
     # it. One implementation, `src/train/freeze.py`. Set `cfg.lora.enabled: true` to get
-    # PEFT LoRA back for a deliberate comparison — that is a different scheme.
+    # Legacy PEFT is separate from experiment 8's explicit native LoRA mode.
     #
     # Tracks whether ADAPTERS were inserted, which is NOT the same question as whether the
-    # frozen arm was selected. Only adapters make L2-SP meaningless; see l2sp_applicable.
+    # frozen arm was selected. Adapter-factor anchoring is not effective-weight anchoring.
     lora_adapters_inserted = False
+    native_lora = str(getattr(cfg.train, "adaptation_mode", "")) == "lora"
+    if native_lora:
+        from src.train.config import validate_lora_config
+        validate_lora_config(cfg)
+        if use_lora or (l2sp_lambda is not None and float(l2sp_lambda) != 0):
+            raise ValueError("Native LoRA cannot combine the frozen axis or L2-SP")
     family = model_family(base_checkpoint_config)
     if family == "tabicl":
         from src.train.tabicl_model import load_tabicl_for_training
@@ -1810,6 +1826,15 @@ def train_one_config(
                 freeze_backbone=bool(use_lora) and lora_cfg_dict is None,
             )
         )
+
+    if native_lora:
+        from src.model.lora import inject
+        from src.utils.experiment import file_digest
+        inject(model, family=family, base_path=base_checkpoint_config,
+               base_sha256=file_digest(base_checkpoint_path), rank=int(cfg.lora.r),
+               alpha=float(cfg.lora.alpha), dropout=float(cfg.lora.dropout),
+               target_modules="attention_qv")
+        lora_adapters_inserted = True
 
     diagscale = str(getattr(cfg.train, "adaptation_mode", "")) == "diagscale"
     if diagscale:
@@ -1850,8 +1875,8 @@ def train_one_config(
     # every arm we run — including the frozen one, whose trainable parameters (input
     # embedders, label encoder, prediction head) all came out of w0.
     #
-    # Meaningless ONLY for real LoRA, whose adapters are randomly initialised and have no
-    # pretrained counterpart; anchoring those would penalise distance from noise.
+    # LoRA's factors have no pretrained counterpart. An effective-weight penalty
+    # on (alpha/r)BA is possible, but is a different experiment and not implemented.
     #
     # This read `(family == "tabicl") or (not use_lora)` until 25-08-2026 — correct while
     # `use_lora` meant LoRA, wrong the moment it came to mean frozen-backbone. Every frozen
@@ -2253,6 +2278,8 @@ def train_one_config(
                 task_type=track_task_type,
                 metric_names=track_metric_names,
                 family=family,
+                **({"tabicl_inference_options": dict(cfg.evaluation.tabicl_inference_options)}
+                   if native_lora and family == "tabicl" else {}),
             )
         result = evaluate_on_split(
             model, refs, criterion=criterion, device=device,
@@ -2346,6 +2373,9 @@ def train_one_config(
                 numerator = sum((p.detach().double() - drift_anchor[n].double()).square().sum()
                                 for n, p in model.named_parameters() if n in drift_anchor)
                 drift = float(torch.sqrt(numerator / denominator.clamp_min(1e-30)).item())
+            if native_lora:
+                from src.model.lora import weight_movement
+                drift = weight_movement(model)
             allocated_bytes, reserved_bytes = memory_peaks.capture()
             rec = EpochRecord(
                 epoch=epoch, train_loss=float("nan"), elapsed_sec=time.monotonic() - t0,
@@ -2949,6 +2979,9 @@ def train_one_config(
             _drift_fraction(float(np.mean(epoch_l2sp)), l2sp_lambda, l2sp_w0_norm)
             if epoch_l2sp else float("nan")
         )
+        if native_lora:
+            from src.model.lora import weight_movement
+            epoch_weight_drift = weight_movement(model)
         l2sp_str = (
             (f"  ctx_pos={100 * float(np.mean(epoch_ctx_pos_rate)):.2f}%"
              if epoch_ctx_pos_rate else "")
@@ -3151,7 +3184,9 @@ def train_one_config(
         ),
         "optimized_parameters": sum(p.numel() for g in optimizer.param_groups for p in g['params']),
         "gradient_enabled_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad),
-        "movement_definition": "RMS query-scale change" if diagscale else "relative weight norm change",
+        "movement_definition": ("RMS query-scale change" if diagscale else
+                                "relative effective Q/V weight displacement" if native_lora else "relative weight norm change"),
+        "lora_adapter": getattr(model, "_creditpfn_lora", None),
         "task_type":           "classification" if track == "pd" else "regression",
         "saved_at":            time.strftime("%Y-%m-%dT%H:%M:%S%z"),
         "hyperparameters": {

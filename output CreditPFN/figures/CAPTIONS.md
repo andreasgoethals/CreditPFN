@@ -132,81 +132,25 @@ PD. Each recipe first pairs each table's score with its update-zero value, avera
 
 PD. Each recipe first pairs each table's score with its update-zero value, averages repeated partitions within table, and gives tables equal weight. Lines then average remaining recipe settings at a peak learning rate or sampling protocol. The complete planned partition cohort and unchanged baseline table support are required at every milestone. Missing observations remain gaps. Positive changes indicate improvement. These fixed-context monitors are separate from five-fold evaluation.
 
-**[experiment1__01_training_pd__08_pd_factor_dashboard_pd_l2sp_lambda_tabicl-v2](experiment1/experiment1__01_training_pd__08_pd_factor_dashboard_pd_l2sp_lambda_tabicl-v2.pdf)** — `pd_factor_dashboard_pd_l2sp_lambda_tabicl-v2`
+**[experiment1__01_training_pd__08_pd_training_choice_summary_pd](experiment1/experiment1__01_training_pd__08_pd_training_choice_summary_pd.pdf)** — `pd_training_choice_summary_pd`
 
-PD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
+PD. Fixed-context monitor differences at 10,000 successful updates. Each cell compares a changed training choice with its matched reference: L2-SP 0.003 versus 0, transformer-backbone freezing versus all-parameter updates, or the stated peak learning rate versus 3e-7. Positive values favor the changed choice. Each pair fixes base model, training partition, seed and every other recipe setting. Within the displayed metric and domain, all planned pairs and their unchanged update-zero table support are required; repeated recipes and partitions are averaged within table before the equal-table mean. Models remain separate. Counts and full paired monitor trajectories accompany the values. Observed support: credit: TabICLv2 17 tables, TabPFN v2 17 tables, TabPFN v2.6 17 tables, TabPFN v3 17 tables; retention: TabICLv2 4 tables, TabPFN v2 4 tables, TabPFN v2.6 4 tables, TabPFN v3 4 tables. Native loss and optimizer contrasts are retained as tables. These held-out monitoring contexts are separate from the five-fold final benchmark; no recipe is selected here.
 
-**[experiment1__01_training_pd__09_pd_factor_dashboard_pd_l2sp_lambda_v2](experiment1/experiment1__01_training_pd__09_pd_factor_dashboard_pd_l2sp_lambda_v2.pdf)** — `pd_factor_dashboard_pd_l2sp_lambda_v2`
-
-PD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__10_pd_factor_dashboard_pd_l2sp_lambda_v2_6](experiment1/experiment1__01_training_pd__10_pd_factor_dashboard_pd_l2sp_lambda_v2_6.pdf)** — `pd_factor_dashboard_pd_l2sp_lambda_v2.6`
-
-PD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__11_pd_factor_dashboard_pd_l2sp_lambda_v3](experiment1/experiment1__01_training_pd__11_pd_factor_dashboard_pd_l2sp_lambda_v3.pdf)** — `pd_factor_dashboard_pd_l2sp_lambda_v3`
-
-PD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__12_pd_factor_dashboard_pd_frozen_tabicl-v2](experiment1/experiment1__01_training_pd__12_pd_factor_dashboard_pd_frozen_tabicl-v2.pdf)** — `pd_factor_dashboard_pd_frozen_tabicl-v2`
-
-PD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__13_pd_factor_dashboard_pd_frozen_v2](experiment1/experiment1__01_training_pd__13_pd_factor_dashboard_pd_frozen_v2.pdf)** — `pd_factor_dashboard_pd_frozen_v2`
-
-PD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__14_pd_factor_dashboard_pd_frozen_v2_6](experiment1/experiment1__01_training_pd__14_pd_factor_dashboard_pd_frozen_v2_6.pdf)** — `pd_factor_dashboard_pd_frozen_v2.6`
-
-PD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__15_pd_factor_dashboard_pd_frozen_v3](experiment1/experiment1__01_training_pd__15_pd_factor_dashboard_pd_frozen_v3.pdf)** — `pd_factor_dashboard_pd_frozen_v3`
-
-PD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__16_pd_factor_dashboard_pd_learning_rate_tabicl-v2](experiment1/experiment1__01_training_pd__16_pd_factor_dashboard_pd_learning_rate_tabicl-v2.pdf)** — `pd_factor_dashboard_pd_learning_rate_tabicl-v2`
-
-PD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__17_pd_factor_dashboard_pd_learning_rate_v2](experiment1/experiment1__01_training_pd__17_pd_factor_dashboard_pd_learning_rate_v2.pdf)** — `pd_factor_dashboard_pd_learning_rate_v2`
-
-PD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__18_pd_factor_dashboard_pd_learning_rate_v2_6](experiment1/experiment1__01_training_pd__18_pd_factor_dashboard_pd_learning_rate_v2_6.pdf)** — `pd_factor_dashboard_pd_learning_rate_v2.6`
-
-PD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__19_pd_factor_dashboard_pd_learning_rate_v3](experiment1/experiment1__01_training_pd__19_pd_factor_dashboard_pd_learning_rate_v3.pdf)** — `pd_factor_dashboard_pd_learning_rate_v3`
-
-PD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__01_training_pd__20_shared_schedule_pd_lgd](experiment1/experiment1__01_training_pd__20_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
+**[experiment1__01_training_pd__09_shared_schedule_pd_lgd](experiment1/experiment1__01_training_pd__09_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
 
 Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
 
-**[experiment1__01_training_pd__21_pd_trainable_fraction_pd](experiment1/experiment1__01_training_pd__21_pd_trainable_fraction_pd.pdf)** — `pd_trainable_fraction_pd`
+**[experiment1__01_training_pd__10_pd_trainable_fraction_pd](experiment1/experiment1__01_training_pd__10_pd_trainable_fraction_pd.pdf)** — `pd_trainable_fraction_pd`
 
 PD. Trainable parameters divided by total model parameters for each base and adaptation mode. Counts are taken from observed trial provenance; median counts are used where recipes repeat a model. The frozen condition leaves family-specific surrounding modules trainable; it is not the same parameter subset across architectures.
 
-**[experiment1__01_training_pd__22_pd_movement_pd_tabicl-v2](experiment1/experiment1__01_training_pd__22_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
+**[experiment1__01_training_pd__11_pd_movement_summary_pd](experiment1/experiment1__01_training_pd__11_pd_movement_summary_pd.pdf)** — `pd_movement_summary_pd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+PD. Training seed: 42. Parameter displacement at recorded milestones, shown together by model and update scope. Whole-model displacement is norm weighted; the tensor panel first takes the median across anchored tensors within a trial. Lines then take the median over the planned recipes and partitions within a model and scope. A milestone with an incomplete trial cohort remains a gap. Line color identifies the model and line style the update scope. The numerical values use different parameter sets across architectures and are descriptive movement diagnostics, not predictive-quality or causal comparisons.
 
-**[experiment1__01_training_pd__23_pd_movement_pd_v2](experiment1/experiment1__01_training_pd__23_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
+**[experiment1__01_training_pd__12_pd_training_cost_summary_pd](experiment1/experiment1__01_training_pd__12_pd_training_cost_summary_pd.pdf)** — `pd_training_cost_summary_pd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment1__01_training_pd__24_pd_movement_pd_v2_6](experiment1/experiment1__01_training_pd__24_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
-
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment1__01_training_pd__25_pd_movement_pd_v3](experiment1/experiment1__01_training_pd__25_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
-
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment1__01_training_pd__26_pd_resource_dashboard_pd](experiment1/experiment1__01_training_pd__26_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
-
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD. Training seed: 42. Completed-trial training cost by model and update scope. Points show medians and horizontal intervals show interquartile ranges across observed recipes and training partitions, not confidence intervals. Each trial contributes once. Counts and all trial measurements accompany the plot. Time is recorded training wall time, excluding queue wait; memory is the process's recorded peak allocated tensor memory, rather than total device capacity or device-wide use. Recipe pooling is descriptive and does not establish an equal-compute predictive comparison. Missing or unfinished measurements are not zeros.
 
 ## experiment1/02_training_lgd
 
@@ -238,259 +182,103 @@ LGD. Each recipe first pairs each table's score with its update-zero value, aver
 
 LGD. Each recipe first pairs each table's score with its update-zero value, averages repeated partitions within table, and gives tables equal weight. Lines then average remaining recipe settings at a peak learning rate or sampling protocol. The complete planned partition cohort and unchanged baseline table support are required at every milestone. Missing observations remain gaps. Positive changes indicate improvement. These fixed-context monitors are separate from five-fold evaluation.
 
-**[experiment1__02_training_lgd__08_lgd_factor_dashboard_lgd_l2sp_lambda_tabicl-v2](experiment1/experiment1__02_training_lgd__08_lgd_factor_dashboard_lgd_l2sp_lambda_tabicl-v2.pdf)** — `lgd_factor_dashboard_lgd_l2sp_lambda_tabicl-v2`
+**[experiment1__02_training_lgd__08_lgd_training_choice_summary_lgd](experiment1/experiment1__02_training_lgd__08_lgd_training_choice_summary_lgd.pdf)** — `lgd_training_choice_summary_lgd`
 
-LGD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
+LGD. Fixed-context monitor differences at 10,000 successful updates. Each cell compares a changed training choice with its matched reference: L2-SP 0.003 versus 0, transformer-backbone freezing versus all-parameter updates, or the stated peak learning rate versus 3e-7. Positive values favor the changed choice. Each pair fixes base model, training partition, seed and every other recipe setting. Within the displayed metric and domain, all planned pairs and their unchanged update-zero table support are required; repeated recipes and partitions are averaged within table before the equal-table mean. Models remain separate. Counts and full paired monitor trajectories accompany the values. Observed support: credit: TabICLv2 8 tables, TabPFN v2 8 tables, TabPFN v2.6 8 tables, TabPFN v3 8 tables; retention: TabICLv2 4 tables, TabPFN v2 4 tables, TabPFN v2.6 4 tables, TabPFN v3 4 tables. Native loss and optimizer contrasts are retained as tables. These held-out monitoring contexts are separate from the five-fold final benchmark; no recipe is selected here.
 
-**[experiment1__02_training_lgd__09_lgd_factor_dashboard_lgd_l2sp_lambda_v2](experiment1/experiment1__02_training_lgd__09_lgd_factor_dashboard_lgd_l2sp_lambda_v2.pdf)** — `lgd_factor_dashboard_lgd_l2sp_lambda_v2`
-
-LGD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__10_lgd_factor_dashboard_lgd_l2sp_lambda_v2_6](experiment1/experiment1__02_training_lgd__10_lgd_factor_dashboard_lgd_l2sp_lambda_v2_6.pdf)** — `lgd_factor_dashboard_lgd_l2sp_lambda_v2.6`
-
-LGD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__11_lgd_factor_dashboard_lgd_l2sp_lambda_v3](experiment1/experiment1__02_training_lgd__11_lgd_factor_dashboard_lgd_l2sp_lambda_v3.pdf)** — `lgd_factor_dashboard_lgd_l2sp_lambda_v3`
-
-LGD. Matched arm means and paired differences for l2-sp. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__12_lgd_factor_dashboard_lgd_frozen_tabicl-v2](experiment1/experiment1__02_training_lgd__12_lgd_factor_dashboard_lgd_frozen_tabicl-v2.pdf)** — `lgd_factor_dashboard_lgd_frozen_tabicl-v2`
-
-LGD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__13_lgd_factor_dashboard_lgd_frozen_v2](experiment1/experiment1__02_training_lgd__13_lgd_factor_dashboard_lgd_frozen_v2.pdf)** — `lgd_factor_dashboard_lgd_frozen_v2`
-
-LGD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__14_lgd_factor_dashboard_lgd_frozen_v2_6](experiment1/experiment1__02_training_lgd__14_lgd_factor_dashboard_lgd_frozen_v2_6.pdf)** — `lgd_factor_dashboard_lgd_frozen_v2.6`
-
-LGD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__15_lgd_factor_dashboard_lgd_frozen_v3](experiment1/experiment1__02_training_lgd__15_lgd_factor_dashboard_lgd_frozen_v3.pdf)** — `lgd_factor_dashboard_lgd_frozen_v3`
-
-LGD. Matched arm means and paired differences for backbone freezing. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__16_lgd_factor_dashboard_lgd_learning_rate_tabicl-v2](experiment1/experiment1__02_training_lgd__16_lgd_factor_dashboard_lgd_learning_rate_tabicl-v2.pdf)** — `lgd_factor_dashboard_lgd_learning_rate_tabicl-v2`
-
-LGD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__17_lgd_factor_dashboard_lgd_learning_rate_v2](experiment1/experiment1__02_training_lgd__17_lgd_factor_dashboard_lgd_learning_rate_v2.pdf)** — `lgd_factor_dashboard_lgd_learning_rate_v2`
-
-LGD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__18_lgd_factor_dashboard_lgd_learning_rate_v2_6](experiment1/experiment1__02_training_lgd__18_lgd_factor_dashboard_lgd_learning_rate_v2_6.pdf)** — `lgd_factor_dashboard_lgd_learning_rate_v2.6`
-
-LGD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__19_lgd_factor_dashboard_lgd_learning_rate_v3](experiment1/experiment1__02_training_lgd__19_lgd_factor_dashboard_lgd_learning_rate_v3.pdf)** — `lgd_factor_dashboard_lgd_learning_rate_v3`
-
-LGD. Matched arm means and paired differences for peak learning rate. Each pair fixes the dataset partition, seed and every other recipe setting. Lines average all planned pairs with equal weight and omit incomplete windows. References are no anchoring, full parameter updates, or LR 3e-7. Penalty, displacement and clipping contrasts are tabulated alongside the displayed loss and gradient curves. Native objectives remain separate by architecture; smaller training loss is not itself evidence of improved predictive performance.
-
-**[experiment1__02_training_lgd__20_lgd_trainable_fraction_lgd](experiment1/experiment1__02_training_lgd__20_lgd_trainable_fraction_lgd.pdf)** — `lgd_trainable_fraction_lgd`
+**[experiment1__02_training_lgd__09_lgd_trainable_fraction_lgd](experiment1/experiment1__02_training_lgd__09_lgd_trainable_fraction_lgd.pdf)** — `lgd_trainable_fraction_lgd`
 
 LGD. Trainable parameters divided by total model parameters for each base and adaptation mode. Counts are taken from observed trial provenance; median counts are used where recipes repeat a model. The frozen condition leaves family-specific surrounding modules trainable; it is not the same parameter subset across architectures.
 
-**[experiment1__02_training_lgd__21_lgd_movement_lgd_tabicl-v2](experiment1/experiment1__02_training_lgd__21_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
+**[experiment1__02_training_lgd__10_lgd_movement_summary_lgd](experiment1/experiment1__02_training_lgd__10_lgd_movement_summary_lgd.pdf)** — `lgd_movement_summary_lgd`
 
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+LGD. Training seed: 42. Parameter displacement at recorded milestones, shown together by model and update scope. Whole-model displacement is norm weighted; the tensor panel first takes the median across anchored tensors within a trial. Lines then take the median over the planned recipes and partitions within a model and scope. A milestone with an incomplete trial cohort remains a gap. Line color identifies the model and line style the update scope. The numerical values use different parameter sets across architectures and are descriptive movement diagnostics, not predictive-quality or causal comparisons.
 
-**[experiment1__02_training_lgd__22_lgd_movement_lgd_v2](experiment1/experiment1__02_training_lgd__22_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
+**[experiment1__02_training_lgd__11_lgd_training_cost_summary_lgd](experiment1/experiment1__02_training_lgd__11_lgd_training_cost_summary_lgd.pdf)** — `lgd_training_cost_summary_lgd`
 
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment1__02_training_lgd__23_lgd_movement_lgd_v2_6](experiment1/experiment1__02_training_lgd__23_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment1__02_training_lgd__24_lgd_movement_lgd_v3](experiment1/experiment1__02_training_lgd__24_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment1__02_training_lgd__25_lgd_resource_dashboard_lgd](experiment1/experiment1__02_training_lgd__25_lgd_resource_dashboard_lgd.pdf)** — `lgd_resource_dashboard_lgd`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+LGD. Training seed: 42. Completed-trial training cost by model and update scope. Points show medians and horizontal intervals show interquartile ranges across observed recipes and training partitions, not confidence intervals. Each trial contributes once. Counts and all trial measurements accompany the plot. Time is recorded training wall time, excluding queue wait; memory is the process's recorded peak allocated tensor memory, rather than total device capacity or device-wide use. Recipe pooling is descriptive and does not establish an equal-compute predictive comparison. Missing or unfinished measurements are not zeros.
 
 ## experiment1/03_results_pd
 
-**[experiment1__03_results_pd__01_pd_evaluation_coverage](experiment1/experiment1__03_results_pd__01_pd_evaluation_coverage.pdf)** — `pd_evaluation_coverage`
+**[experiment1__03_results_pd__01_pd_choice_contrasts_credit](experiment1/experiment1__03_results_pd__01_pd_choice_contrasts_credit.pdf)** — `pd_choice_contrasts_credit`
 
-PD. Recorded outer-fold outcomes by model group. This counts records rather than inferring completion from missing files. Subsequent effects require all configured outer folds for each model–dataset cell and its matching untuned control.
+PD. Final five-fold benchmark contrasts between CPT choices. 17 complete tables per model. Each cell first pairs the same table and all other recipe settings, averages those matched differences within table, then weights tables equally. Positive values favor the named alternative. A favorable choice contrast can mean less deterioration; it does not establish a gain over original weights. Anchoring and scope contrasts average all four rates; each rate contrast averages both anchoring and scope settings. Models and metrics remain separate. Each model uses the same recipe-complete table cohort across displayed metrics. AUC contrasts are percentage points; Brier contrasts are multiplied by 100. Brier and log-loss signs are reversed so reductions are positive. Colors are symmetric about zero within each metric panel. These are descriptive fixed-grid contrasts, not causal architecture comparisons. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__02_pd_endpoint_dashboard_pd_means](experiment1/experiment1__03_results_pd__02_pd_endpoint_dashboard_pd_means.pdf)** — `pd_endpoint_dashboard_pd_means`
+**[experiment1__03_results_pd__02_pd_recipe_grid_credit_roc_auc](experiment1/experiment1__03_results_pd__02_pd_recipe_grid_credit_roc_auc.pdf)** — `pd_recipe_grid_credit_roc_auc`
 
-PD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning AUC for each completed configuration. Observed endpoint-table inventory: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Final five-fold benchmark: AUC change (percentage points). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__03_pd_endpoint_dashboard_pd_partitions](experiment1/experiment1__03_results_pd__03_pd_endpoint_dashboard_pd_partitions.pdf)** — `pd_endpoint_dashboard_pd_partitions`
+**[experiment1__03_results_pd__03_pd_recipe_grid_credit_brier_score](experiment1/experiment1__03_results_pd__03_pd_recipe_grid_credit_brier_score.pdf)** — `pd_recipe_grid_credit_brier_score`
 
-PD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning AUC for each completed configuration. Observed endpoint-table inventory: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+PD. Final five-fold benchmark: Brier reduction (×100). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__04_pd_endpoint_factors_pd_false](experiment1/experiment1__03_results_pd__04_pd_endpoint_factors_pd_false.pdf)** — `pd_endpoint_factors_pd_False`
+**[experiment1__03_results_pd__04_pd_recipe_grid_credit_log_loss](experiment1/experiment1__03_results_pd__04_pd_recipe_grid_credit_log_loss.pdf)** — `pd_recipe_grid_credit_log_loss`
 
-PD. Fixed-context milestone monitoring at 10,000 successful updates, credit AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
+PD. Final five-fold benchmark: Log-loss reduction (nats). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__05_pd_brier_dashboard](experiment1/experiment1__03_results_pd__05_pd_brier_dashboard.pdf)** — `pd_brier_dashboard`
+**[experiment1__03_results_pd__05_pd_benchmark_transfer_retention](experiment1/experiment1__03_results_pd__05_pd_benchmark_transfer_retention.pdf)** — `pd_benchmark_transfer_retention`
 
-PD. Brier-score reductions from five-fold benchmark, averaged with equal weight over observed configuration–dataset pairs. Positive values indicate better probability accuracy. Brier score combines calibration and discrimination; it is not a pure calibration metric. Missing comparisons are omitted, with support counts reported.
+PD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 17 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__06_pd_endpoint_factors_pd_true](experiment1/experiment1__03_results_pd__06_pd_endpoint_factors_pd_true.pdf)** — `pd_endpoint_factors_pd_True`
-
-PD. Completed five-fold final benchmark, credit AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. Five paired outer folds are averaged within each table before cross-table aggregation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
-
-**[experiment1__03_results_pd__07_pd_factorial_credit_roc_auc](experiment1/experiment1__03_results_pd__07_pd_factorial_credit_roc_auc.pdf)** — `pd_factorial_credit_roc_auc`
-
-PD. Completed five-fold final benchmark, PD held-out credit. CPT minus original AUC. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
-
-**[experiment1__03_results_pd__08_pd_factorial_ood_roc_auc](experiment1/experiment1__03_results_pd__08_pd_factorial_ood_roc_auc.pdf)** — `pd_factorial_ood_roc_auc`
-
-PD. Completed five-fold final benchmark, PD non-credit retention. CPT minus original AUC. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
-
-**[experiment1__03_results_pd__09_pd_factorial_credit_brier_score](experiment1/experiment1__03_results_pd__09_pd_factorial_credit_brier_score.pdf)** — `pd_factorial_credit_brier_score`
-
-PD. Completed five-fold final benchmark, PD held-out credit. Original minus CPT Brier score. Support: TabICLv2: 17 tables; TabPFN v2: 17 tables; TabPFN v2.6: 17 tables; TabPFN v3: 17 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
-
-**[experiment1__03_results_pd__10_pd_factorial_ood_brier_score](experiment1/experiment1__03_results_pd__10_pd_factorial_ood_brier_score.pdf)** — `pd_factorial_ood_brier_score`
-
-PD. Completed five-fold final benchmark, PD non-credit retention. Original minus CPT Brier score. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains. Main-grid PD draws balance both context and query classes.
-
-**[experiment1__03_results_pd__11_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__11_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
+**[experiment1__03_results_pd__06_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__06_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
 
 PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[experiment1__03_results_pd__12_pd_reference_roc_auc_1](experiment1/experiment1__03_results_pd__12_pd_reference_roc_auc_1.pdf)** — `pd_reference_roc_auc_1`
-
-PD. Dataset-level AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
-
-**[experiment1__03_results_pd__13_pd_reference_pr_auc_1](experiment1/experiment1__03_results_pd__13_pd_reference_pr_auc_1.pdf)** — `pd_reference_pr_auc_1`
-
-PD. Dataset-level PR-AUC changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
-
-**[experiment1__03_results_pd__14_pd_reference_brier_score_1](experiment1/experiment1__03_results_pd__14_pd_reference_brier_score_1.pdf)** — `pd_reference_brier_score_1`
-
-PD. Dataset-level Brier score changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Brier scores assess probabilistic accuracy, combining calibration and discrimination.
-
-**[experiment1__03_results_pd__15_pd_reference_log_loss_1](experiment1/experiment1__03_results_pd__15_pd_reference_log_loss_1.pdf)** — `pd_reference_log_loss_1`
-
-PD. Dataset-level Log loss changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. Log loss assesses predicted probabilities and penalizes confidently incorrect predictions.
-
-**[experiment1__03_results_pd__16_pd_reference_ece_1](experiment1/experiment1__03_results_pd__16_pd_reference_ece_1.pdf)** — `pd_reference_ece_1`
-
-PD. Dataset-level ECE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. ECE is a bin-dependent calibration diagnostic, not a complete measure of probabilistic accuracy.
-
-**[experiment1__03_results_pd__17_pd_reference_f1_1](experiment1/experiment1__03_results_pd__17_pd_reference_f1_1.pdf)** — `pd_reference_f1_1`
-
-PD. Dataset-level F1 changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction. F1 uses thresholds chosen on inner validation rows.
-
-**[experiment1__03_results_pd__18_pd_calibration_overview](experiment1/experiment1__03_results_pd__18_pd_calibration_overview.pdf)** — `pd_calibration_overview`
+**[experiment1__03_results_pd__07_pd_calibration_overview](experiment1/experiment1__03_results_pd__07_pd_calibration_overview.pdf)** — `pd_calibration_overview`
 
 PD. Changes in the displayed outer-test probability-quality scores for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all 9 scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. Log loss, when exported, is in nats; ECE depends on the binning scheme.
 
-**[experiment1__03_results_pd__19_pd_reliability_tabicl-v2_1](experiment1/experiment1__03_results_pd__19_pd_reliability_tabicl-v2_1.pdf)** — `pd_reliability_tabicl-v2_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
-
-**[experiment1__03_results_pd__20_pd_reliability_v2_1](experiment1/experiment1__03_results_pd__20_pd_reliability_v2_1.pdf)** — `pd_reliability_v2_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
-
-**[experiment1__03_results_pd__21_pd_reliability_v2_6_1](experiment1/experiment1__03_results_pd__21_pd_reliability_v2_6_1.pdf)** — `pd_reliability_v2.6_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
-
-**[experiment1__03_results_pd__22_pd_reliability_v3_1](experiment1/experiment1__03_results_pd__22_pd_reliability_v3_1.pdf)** — `pd_reliability_v3_1`
-
-PD. Raw, Platt-scaled and isotonic positive-class reliability for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) and its untuned base. Rows identify datasets and columns identify calibration methods. Each populated panel requires bin records from the same five completed outer folds for both models; missing panels are labeled. Ten equal-width bins pool outer-test counts within the dataset; empty bins are omitted and bin counts are retained in the text summary. Calibrators are fitted only on inner validation rows. The diagonal denotes agreement of predicted and observed probabilities; these curves have no uncertainty intervals. Examples are chosen at evenly spaced dataset-size ranks (smallest and largest when two are shown), using total outer-test row counts independently of model scores. They illustrate calibration shapes rather than the typical treatment effect.
-
-**[experiment1__03_results_pd__23_pd_thresholds_tabicl-v2_1](experiment1/experiment1__03_results_pd__23_pd_thresholds_tabicl-v2_1.pdf)** — `pd_thresholds_tabicl-v2_1`
-
-PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
-
-**[experiment1__03_results_pd__24_pd_thresholds_v2-default_1](experiment1/experiment1__03_results_pd__24_pd_thresholds_v2-default_1.pdf)** — `pd_thresholds_v2-default_1`
-
-PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
-
-**[experiment1__03_results_pd__25_pd_thresholds_v2_6-default_1](experiment1/experiment1__03_results_pd__25_pd_thresholds_v2_6-default_1.pdf)** — `pd_thresholds_v2.6-default_1`
-
-PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
-
-**[experiment1__03_results_pd__26_pd_thresholds_v3-default_1](experiment1/experiment1__03_results_pd__26_pd_thresholds_v3-default_1.pdf)** — `pd_thresholds_v3-default_1`
-
-PD. F1-maximizing thresholds selected separately on each inner validation split for the predefined reference recipe. The displayed dataset rows have all five completed outer folds. Outer-test labels never choose thresholds, and threshold variation is not itself evidence of poor discrimination.
-
-**[experiment1__03_results_pd__27_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__27_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+**[experiment1__03_results_pd__08_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__08_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
 PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__03_results_pd__28_pd_control_context_1](experiment1/experiment1__03_results_pd__28_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__09_pd_monitor_recipe_changes](experiment1/experiment1__03_results_pd__09_pd_monitor_recipe_changes.pdf)** — `pd_monitor_recipe_changes`
+
+PD. Held-out credit fixed-context monitors at 10,000 successful updates, paired with update zero. 17 complete tables per model. Each mark is an equal-table mean for one rate, anchoring and update-scope combination on a recipe-complete cohort. Horizontal offsets separate the four combinations at each rate; they have no quantitative meaning. Colors encode rate, circle/square encodes L2-SP, and filled/open marks encode full/frozen-backbone updates. Zero means unchanged score. Vertical scales vary by base to expose small effects. These fixed-context monitoring measurements are separate from the final five-fold benchmark.
+
+**[experiment1__03_results_pd__10_pd_control_context_1](experiment1/experiment1__03_results_pd__10_pd_control_context_1.pdf)** — `pd_control_context_1`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
-**[experiment1__03_results_pd__29_pd_control_context_2](experiment1/experiment1__03_results_pd__29_pd_control_context_2.pdf)** — `pd_control_context_2`
+**[experiment1__03_results_pd__11_pd_control_context_2](experiment1/experiment1__03_results_pd__11_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
 ## experiment1/04_results_lgd
 
-**[experiment1__04_results_lgd__01_lgd_evaluation_coverage](experiment1/experiment1__04_results_lgd__01_lgd_evaluation_coverage.pdf)** — `lgd_evaluation_coverage`
+**[experiment1__04_results_lgd__01_lgd_choice_contrasts_credit](experiment1/experiment1__04_results_lgd__01_lgd_choice_contrasts_credit.pdf)** — `lgd_choice_contrasts_credit`
 
-LGD. Recorded outer-fold outcomes by model group. This counts records rather than inferring completion from missing files. Subsequent effects require all configured outer folds for each model–dataset cell and its matching untuned control.
+LGD. Final five-fold benchmark contrasts between CPT choices. 8 complete tables per model. Each cell first pairs the same table and all other recipe settings, averages those matched differences within table, then weights tables equally. Positive values favor the named alternative. A favorable choice contrast can mean less deterioration; it does not establish a gain over original weights. Anchoring and scope contrasts average all four rates; each rate contrast averages both anchoring and scope settings. Models and metrics remain separate. Each model uses the same recipe-complete table cohort across displayed metrics. R² contrasts use native units. RMSE contrasts divide the paired error difference by the original model's RMSE, not by the reference CPT arm; reductions are positive. Colors are symmetric about zero within each metric panel. These are descriptive fixed-grid contrasts, not causal architecture comparisons. Inference follows the recorded LGD policy.
 
-**[experiment1__04_results_lgd__02_lgd_endpoint_dashboard_lgd_means](experiment1/experiment1__04_results_lgd__02_lgd_endpoint_dashboard_lgd_means.pdf)** — `lgd_endpoint_dashboard_lgd_means`
+**[experiment1__04_results_lgd__02_lgd_recipe_grid_credit_r2](experiment1/experiment1__04_results_lgd__02_lgd_recipe_grid_credit_r2.pdf)** — `lgd_recipe_grid_credit_r2`
 
-LGD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning R² for each completed configuration. Observed endpoint-table inventory: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Each dot averages the four partition means with equal partition weight; incomplete configurations are omitted. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Final five-fold benchmark: R² change. 8 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. Inference follows the recorded LGD policy.
 
-**[experiment1__04_results_lgd__03_lgd_endpoint_dashboard_lgd_partitions](experiment1/experiment1__04_results_lgd__03_lgd_endpoint_dashboard_lgd_partitions.pdf)** — `lgd_endpoint_dashboard_lgd_partitions`
+**[experiment1__04_results_lgd__03_lgd_recipe_grid_credit_rmse](experiment1/experiment1__04_results_lgd__03_lgd_recipe_grid_credit_rmse.pdf)** — `lgd_recipe_grid_credit_rmse`
 
-LGD. Fixed-context milestone monitoring at zero and 10,000 successful updates: initial and post-finetuning R² for each completed configuration. Observed endpoint-table inventory: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Labels P1–P4 above the point columns identify training-dataset partitions; each configuration retains its own point. Scores first average available held-out tables within each partition. Colors distinguish learning rates and marker shapes distinguish anchoring. Open marks freeze the transformer backbone; filled marks update all parameters. The diagonal indicates unchanged score. These fixed-context monitors do not substitute for final five-fold benchmark scores.
+LGD. Final five-fold benchmark: Relative RMSE gain (%). 8 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. Inference follows the recorded LGD policy.
 
-**[experiment1__04_results_lgd__04_lgd_endpoint_factors_lgd_false](experiment1/experiment1__04_results_lgd__04_lgd_endpoint_factors_lgd_false.pdf)** — `lgd_endpoint_factors_lgd_False`
+**[experiment1__04_results_lgd__04_lgd_benchmark_transfer_retention](experiment1/experiment1__04_results_lgd__04_lgd_benchmark_transfer_retention.pdf)** — `lgd_benchmark_transfer_retention`
 
-LGD. Fixed-context milestone monitoring at 10,000 successful updates, credit R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Each held-out table contributes its recorded context/query monitor, not five-fold evaluation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
+LGD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 8 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. Inference follows the recorded LGD policy.
 
-**[experiment1__04_results_lgd__05_lgd_endpoint_factors_lgd_true](experiment1/experiment1__04_results_lgd__05_lgd_endpoint_factors_lgd_true.pdf)** — `lgd_endpoint_factors_lgd_True`
-
-LGD. Completed five-fold final benchmark, credit R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. Five paired outer folds are averaged within each table before cross-table aggregation. Conditional differences match table and every other configuration setting before averaging with equal table and recipe weight within model. Peak-learning-rate contrasts use LR 3e-7 as reference. The base-model panel averages configuration effects relative to each model's own initialization; it is descriptive rather than a causal architecture contrast. Positive values favor the alternative setting. Counts refer to distinct tables, not independent training replications; matched observations are retained in the accompanying tables.
-
-**[experiment1__04_results_lgd__06_lgd_factorial_credit_r2](experiment1/experiment1__04_results_lgd__06_lgd_factorial_credit_r2.pdf)** — `lgd_factorial_credit_r2`
-
-LGD. Completed five-fold final benchmark, LGD held-out credit. CPT minus original R². Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
-
-**[experiment1__04_results_lgd__07_lgd_factorial_ood_r2](experiment1/experiment1__04_results_lgd__07_lgd_factorial_ood_r2.pdf)** — `lgd_factorial_ood_r2`
-
-LGD. Completed five-fold final benchmark, LGD non-credit retention. CPT minus original R². Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
-
-**[experiment1__04_results_lgd__08_lgd_factorial_credit_rmse](experiment1/experiment1__04_results_lgd__08_lgd_factorial_credit_rmse.pdf)** — `lgd_factorial_credit_rmse`
-
-LGD. Completed five-fold final benchmark, LGD held-out credit. Fractional RMSE reduction: (original − CPT) / original. Support: TabICLv2: 8 tables; TabPFN v2: 8 tables; TabPFN v2.6: 8 tables; TabPFN v3: 8 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
-
-**[experiment1__04_results_lgd__09_lgd_factorial_ood_rmse](experiment1/experiment1__04_results_lgd__09_lgd_factorial_ood_rmse.pdf)** — `lgd_factorial_ood_rmse`
-
-LGD. Completed five-fold final benchmark, LGD non-credit retention. Fractional RMSE reduction: (original − CPT) / original. Support: TabICLv2: 4 tables; TabPFN v2: 4 tables; TabPFN v2.6: 4 tables; TabPFN v3: 4 tables. The same tables support every planned learning-rate, anchoring and update-scope combination within each base. Lines are equal-table means after pairing five outer folds; bands span the table interquartile range, not confidence intervals. The upper row updates all parameters; the lower freezes the dominant backbone while retaining the configured surrounding trainable components. Within each base, both rows share a vertical scale; scales can differ across bases. Positive values favor CPT. Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. Retention effects first average all four matched training partitions within table. These maps describe the fixed grid rather than a test-selected optimum. LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.
-
-**[experiment1__04_results_lgd__10_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__10_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
+**[experiment1__04_results_lgd__05_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__05_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
 
 LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[experiment1__04_results_lgd__11_lgd_reference_rmse_1](experiment1/experiment1__04_results_lgd__11_lgd_reference_rmse_1.pdf)** — `lgd_reference_rmse_1`
-
-LGD. Dataset-level RMSE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
-
-**[experiment1__04_results_lgd__12_lgd_reference_mae_1](experiment1/experiment1__04_results_lgd__12_lgd_reference_mae_1.pdf)** — `lgd_reference_mae_1`
-
-LGD. Dataset-level MAE changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
-
-**[experiment1__04_results_lgd__13_lgd_reference_r2_1](experiment1/experiment1__04_results_lgd__13_lgd_reference_r2_1.pdf)** — `lgd_reference_r2_1`
-
-LGD. Dataset-level R² changes for the predefined full-update recipe, LR 3e-7 and L2-SP 0.003, relative to each model's untuned weights. Pairing occurs within outer folds and requires all five folds. Positive values indicate improvement; only RMSE is expressed as a fractional reduction.
-
-**[experiment1__04_results_lgd__14_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__14_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
+**[experiment1__04_results_lgd__06_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__06_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
 LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__04_results_lgd__15_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__15_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
+**[experiment1__04_results_lgd__07_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__07_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
 
 LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect each credit table's five-fold means; the colored line is their equal-table mean. The dotted coverage line marks the nominal 90% level. Log scores use the historical per-row NLL replacement/clipping at ±100 nats; they are not uncapped likelihood estimates.
 
-**[experiment1__04_results_lgd__16_lgd_control_context_1](experiment1/experiment1__04_results_lgd__16_lgd_control_context_1.pdf)** — `lgd_control_context_1`
+**[experiment1__04_results_lgd__08_lgd_monitor_recipe_changes](experiment1/experiment1__04_results_lgd__08_lgd_monitor_recipe_changes.pdf)** — `lgd_monitor_recipe_changes`
+
+LGD. Held-out credit fixed-context monitors at 10,000 successful updates, paired with update zero. 8 complete tables per model. Each mark is an equal-table mean for one rate, anchoring and update-scope combination on a recipe-complete cohort. Horizontal offsets separate the four combinations at each rate; they have no quantitative meaning. Colors encode rate, circle/square encodes L2-SP, and filled/open marks encode full/frozen-backbone updates. Zero means unchanged score. Vertical scales vary by base to expose small effects. These fixed-context monitoring measurements are separate from the final five-fold benchmark.
+
+**[experiment1__04_results_lgd__09_lgd_control_context_1](experiment1/experiment1__04_results_lgd__09_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
 LGD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -556,45 +344,21 @@ LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contr
 
 LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contrasts match the same table and partition before averaging and require all repeated non-credit partitions. Protocol curves require every planned trial and unchanged baseline table support. Missing milestones remain gaps; panels without any complete matched cohort are labeled explicitly. Row exposure includes repeated rows and does not establish equal compute. These monitors are separate from five-fold evaluation.
 
-**[experiment2__01_training__16_pd_resource_dashboard_pd](experiment2/experiment2__01_training__16_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
+**[experiment2__01_training__16_pd_training_cost_summary_pd](experiment2/experiment2__01_training__16_pd_training_cost_summary_pd.pdf)** — `pd_training_cost_summary_pd`
 
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD. Training seed: 43. Completed-trial training cost by model and update scope. Points show medians and horizontal intervals show interquartile ranges across observed recipes and training partitions, not confidence intervals. Each trial contributes once. Counts and all trial measurements accompany the plot. Time is recorded training wall time, excluding queue wait; memory is the process's recorded peak allocated tensor memory, rather than total device capacity or device-wide use. Recipe pooling is descriptive and does not establish an equal-compute predictive comparison. Missing or unfinished measurements are not zeros.
 
-**[experiment2__01_training__17_pd_movement_pd_tabicl-v2](experiment2/experiment2__01_training__17_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
+**[experiment2__01_training__17_pd_movement_summary_pd](experiment2/experiment2__01_training__17_pd_movement_summary_pd.pdf)** — `pd_movement_summary_pd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+PD. Training seed: 43. Parameter displacement at recorded milestones, shown together by model and update scope. Whole-model displacement is norm weighted; the tensor panel first takes the median across anchored tensors within a trial. Lines then take the median over the planned recipes and partitions within a model and scope. A milestone with an incomplete trial cohort remains a gap. Line color identifies the model and line style the update scope. The numerical values use different parameter sets across architectures and are descriptive movement diagnostics, not predictive-quality or causal comparisons.
 
-**[experiment2__01_training__18_pd_movement_pd_v2](experiment2/experiment2__01_training__18_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
+**[experiment2__01_training__18_lgd_training_cost_summary_lgd](experiment2/experiment2__01_training__18_lgd_training_cost_summary_lgd.pdf)** — `lgd_training_cost_summary_lgd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+LGD. Training seed: 43. Completed-trial training cost by model and update scope. Points show medians and horizontal intervals show interquartile ranges across observed recipes and training partitions, not confidence intervals. Each trial contributes once. Counts and all trial measurements accompany the plot. Time is recorded training wall time, excluding queue wait; memory is the process's recorded peak allocated tensor memory, rather than total device capacity or device-wide use. Recipe pooling is descriptive and does not establish an equal-compute predictive comparison. Missing or unfinished measurements are not zeros.
 
-**[experiment2__01_training__19_pd_movement_pd_v2_6](experiment2/experiment2__01_training__19_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
+**[experiment2__01_training__19_lgd_movement_summary_lgd](experiment2/experiment2__01_training__19_lgd_movement_summary_lgd.pdf)** — `lgd_movement_summary_lgd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment2__01_training__20_pd_movement_pd_v3](experiment2/experiment2__01_training__20_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
-
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment2__01_training__21_lgd_resource_dashboard_lgd](experiment2/experiment2__01_training__21_lgd_resource_dashboard_lgd.pdf)** — `lgd_resource_dashboard_lgd`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment2__01_training__22_lgd_movement_lgd_tabicl-v2](experiment2/experiment2__01_training__22_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment2__01_training__23_lgd_movement_lgd_v2](experiment2/experiment2__01_training__23_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment2__01_training__24_lgd_movement_lgd_v2_6](experiment2/experiment2__01_training__24_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment2__01_training__25_lgd_movement_lgd_v3](experiment2/experiment2__01_training__25_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+LGD. Training seed: 43. Parameter displacement at recorded milestones, shown together by model and update scope. Whole-model displacement is norm weighted; the tensor panel first takes the median across anchored tensors within a trial. Lines then take the median over the planned recipes and partitions within a model and scope. A milestone with an incomplete trial cohort remains a gap. Line color identifies the model and line style the update scope. The numerical values use different parameter sets across architectures and are descriptive movement diagnostics, not predictive-quality or causal comparisons.
 
 ## experiment2/02_results
 
@@ -724,45 +488,21 @@ LGD. Fixed-context monitoring changes use AUC for PD and R² for LGD. Seed contr
 
 LGD. Ratios to the one-sample trial matched on base, recipe and dataset partition. Only partitions with all three completed protocols enter. Within each model base, points average matched partition ratios and segments span their interquartile range, not uncertainty intervals. Both axes are logarithmic and the dotted line is the one-sample reference. Trial time includes recorded monitoring and excludes queueing; it is not billed GPU allocation time. Row exposure counts repeated rows. Absolute costs and peak memory accompany the ratios.
 
-**[experiment3__01_training__22_pd_resource_dashboard_pd](experiment3/experiment3__01_training__22_pd_resource_dashboard_pd.pdf)** — `pd_resource_dashboard_pd`
+**[experiment3__01_training__22_pd_training_cost_summary_pd](experiment3/experiment3__01_training__22_pd_training_cost_summary_pd.pdf)** — `pd_training_cost_summary_pd`
 
-PD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD. Training seed: 42. Completed-trial training cost by model and update scope. Points show medians and horizontal intervals show interquartile ranges across observed recipes and training partitions, not confidence intervals. Each trial contributes once. Counts and all trial measurements accompany the plot. Time is recorded training wall time, excluding queue wait; memory is the process's recorded peak allocated tensor memory, rather than total device capacity or device-wide use. Recipe pooling is descriptive and does not establish an equal-compute predictive comparison. Missing or unfinished measurements are not zeros.
 
-**[experiment3__01_training__23_pd_movement_pd_tabicl-v2](experiment3/experiment3__01_training__23_pd_movement_pd_tabicl-v2.pdf)** — `pd_movement_pd_tabicl-v2`
+**[experiment3__01_training__23_pd_movement_summary_pd](experiment3/experiment3__01_training__23_pd_movement_summary_pd.pdf)** — `pd_movement_summary_pd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+PD. Training seed: 42. Parameter displacement at recorded milestones, shown together by model and update scope. Whole-model displacement is norm weighted; the tensor panel first takes the median across anchored tensors within a trial. Lines then take the median over the planned recipes and partitions within a model and scope. A milestone with an incomplete trial cohort remains a gap. Line color identifies the model and line style the update scope. The numerical values use different parameter sets across architectures and are descriptive movement diagnostics, not predictive-quality or causal comparisons.
 
-**[experiment3__01_training__24_pd_movement_pd_v2](experiment3/experiment3__01_training__24_pd_movement_pd_v2.pdf)** — `pd_movement_pd_v2`
+**[experiment3__01_training__24_lgd_training_cost_summary_lgd](experiment3/experiment3__01_training__24_lgd_training_cost_summary_lgd.pdf)** — `lgd_training_cost_summary_lgd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+LGD. Training seed: 42. Completed-trial training cost by model and update scope. Points show medians and horizontal intervals show interquartile ranges across observed recipes and training partitions, not confidence intervals. Each trial contributes once. Counts and all trial measurements accompany the plot. Time is recorded training wall time, excluding queue wait; memory is the process's recorded peak allocated tensor memory, rather than total device capacity or device-wide use. Recipe pooling is descriptive and does not establish an equal-compute predictive comparison. Missing or unfinished measurements are not zeros.
 
-**[experiment3__01_training__25_pd_movement_pd_v2_6](experiment3/experiment3__01_training__25_pd_movement_pd_v2_6.pdf)** — `pd_movement_pd_v2.6`
+**[experiment3__01_training__25_lgd_movement_summary_lgd](experiment3/experiment3__01_training__25_lgd_movement_summary_lgd.pdf)** — `lgd_movement_summary_lgd`
 
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment3__01_training__26_pd_movement_pd_v3](experiment3/experiment3__01_training__26_pd_movement_pd_v3.pdf)** — `pd_movement_pd_v3`
-
-PD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment3__01_training__27_lgd_resource_dashboard_lgd](experiment3/experiment3__01_training__27_lgd_resource_dashboard_lgd.pdf)** — `lgd_resource_dashboard_lgd`
-
-LGD. Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment3__01_training__28_lgd_movement_lgd_tabicl-v2](experiment3/experiment3__01_training__28_lgd_movement_lgd_tabicl-v2.pdf)** — `lgd_movement_lgd_tabicl-v2`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment3__01_training__29_lgd_movement_lgd_v2](experiment3/experiment3__01_training__29_lgd_movement_lgd_v2.pdf)** — `lgd_movement_lgd_v2`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment3__01_training__30_lgd_movement_lgd_v2_6](experiment3/experiment3__01_training__30_lgd_movement_lgd_v2_6.pdf)** — `lgd_movement_lgd_v2.6`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
-
-**[experiment3__01_training__31_lgd_movement_lgd_v3](experiment3/experiment3__01_training__31_lgd_movement_lgd_v3.pdf)** — `lgd_movement_lgd_v3`
-
-LGD. Complementary summaries of parameter movement. Whole-model drift is norm weighted; tensor movement first takes the median across anchored tensors within a trial. Curves then take medians across available recipes and partitions within each adaptation arm; counts are reported alongside values. Both quantities use their recorded milestones. Changing trial support can affect these descriptive curves.
+LGD. Training seed: 42. Parameter displacement at recorded milestones, shown together by model and update scope. Whole-model displacement is norm weighted; the tensor panel first takes the median across anchored tensors within a trial. Lines then take the median over the planned recipes and partitions within a model and scope. A milestone with an incomplete trial cohort remains a gap. Line color identifies the model and line style the update scope. The numerical values use different parameter sets across architectures and are descriptive movement diagnostics, not predictive-quality or causal comparisons.
 
 ## experiment3/02_results
 
@@ -792,11 +532,11 @@ LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamon
 
 **[experiment3__02_results__07_pd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__07_pd_sampling_benchmark_quality_cost.pdf)** — `pd_sampling_benchmark_quality_cost`
 
-PD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
+PD. Final benchmark effects versus recorded training time summed over four dataset partitions; the horizontal axis is logarithmic. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
 
 **[experiment3__02_results__08_lgd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__08_lgd_sampling_benchmark_quality_cost.pdf)** — `lgd_sampling_benchmark_quality_cost`
 
-LGD. Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
+LGD. Final benchmark effects versus recorded training time summed over four dataset partitions; the horizontal axis is logarithmic. Quality gives equally weighted datasets in the common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.
 
 **[experiment3__02_results__09_pd_sampling_monitor_credit](experiment3/experiment3__02_results__09_pd_sampling_monitor_credit.pdf)** — `pd_sampling_monitor_credit`
 
@@ -878,13 +618,9 @@ LGD. Change in R² from each table's update-zero score. Repeated non-credit part
 
 Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
 
-**[experiment5__01_training__10_resource_dashboard_pd](experiment5/experiment5__01_training__10_resource_dashboard_pd.pdf)** — `resource_dashboard_pd`
+**[experiment5__01_training__10_diagscale_training_cost_pd_lgd](experiment5/experiment5__01_training__10_diagscale_training_cost_pd_lgd.pdf)** — `diagscale_training_cost_pd_lgd`
 
-Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
-
-**[experiment5__01_training__11_resource_dashboard_lgd](experiment5/experiment5__01_training__11_resource_dashboard_lgd.pdf)** — `resource_dashboard_lgd`
-
-Device counters during training, summarized first by a within-trial window median, then by the median across observed trials. Recipes and adaptation modes are pooled; trial counts accompany every value. Axes start at zero, and utilization spans 0–100%, so small counter fluctuations are not magnified. Changing support can change these descriptive curves. Device samples are neither process-specific utilization nor integrated energy measurements. Missing counters remain gaps.
+PD and LGD DiagScale training cost. Only query-scale deltas are optimized; original backbone weights remain unchanged. PD: Training seed: 42. LGD: Training seed: 42. Points show medians and horizontal intervals show interquartile ranges across adapter learning rates and training partitions within each task and model, not confidence intervals. Each completed trial contributes once; counts and all trial measurements are retained in the accompanying tables. Time is recorded training wall time, excluding queue wait. Memory is recorded peak allocated tensor memory, not total device capacity. No PD/LGD losses or predictive scores are pooled, and this cost summary is not an equal-compute comparison with full-parameter adaptation.
 
 ## experiment5/02_results
 
@@ -963,6 +699,14 @@ Points are table-level paired effects and diamonds are equal-table means. Five f
 **[experiment7__02_results__03_pd_prediction_diagnostics](experiment7/experiment7__02_results__03_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
 PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+
+## experiment8/01_training
+
+_No figures produced._
+
+## experiment8/02_results
+
+_No figures produced._
 
 ## general/01_raw_data
 

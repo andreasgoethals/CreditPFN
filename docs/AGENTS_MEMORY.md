@@ -1,7 +1,46 @@
 # Agents' memory — runs and dead ends
 
+## 25-10-2026
+
+- Final local validation: full suite 1,067 passed / one optional missing-manifest skip (851 s); the final evaluation-entry safeguard and five additional regression cases passed in a separate 112-test focused run. All 23 notebooks executed successfully, producing 183 PDFs. Verified every inline figure, caption, PDF ownership/paper width and final summary against the rebuilt indexes; no notebook errors or broken README/literature/results-guide links. Experiment-8 notebooks correctly report pending evidence and draw no scientific figures; all 12 new plotting layouts were separately checked with synthetic fixtures. Actual released TabPFN v3 and production GPU capacity remain subject to the new VSC gate. No install, commit, push, VSC submission or submodule change.
+- Experiment-8 benchmark jobs now recheck the independent LoRA inspection and resolved evaluation settings before cache/model construction, including after queue delay. Inference precision, CV, ensemble and prediction-output overrides cannot silently change the validated benchmark; output relocation remains allowed. No VSC jobs were submitted.
+- **Tried:** complete the first 23-notebook rerun alongside full LoRA regression validation.
+  **Result:** the durable test log finished with 1,063 passes, one optional-manifest skip and one obsolete notebook-count assertion; notebook execution stopped after 13 completed notebooks during session interruption.
+  **Why:** the old contract still expected 21 notebooks, and the interrupted full notebook run had not rebuilt the aggregate indexes.
+  **Instead:** update the contract to 23, verify the focused LoRA checks, then rerun full validation and all notebooks from stable source; do not treat partial execution or deleted indexes as completion.
+
+## 24-10-2026
+
+- Add experiment 8 as 48 separate native Q/V LoRA trials (v3/v2, PD/LGD, four partitions, three rates), with rank 16/alpha 32/dropout zero and no factor anchoring/decay. TabICL original/adapted inference uses FP32/no-FA3. Native exports merge without mutating live adapters; recovery retains their full state. TFM pin `702d9ab0b66f6639ba8d443ff9c4a91231964465`; VSC pin `3bcdf55e576d10161d6189b40ac39380bbba9eca`, both read-only.
+- Add four smoke and four production-shape capacity tasks under `experiment0/lora/<ID>/`, independent inspection and `CREDITPFN_LORA_GATE`. Scoped cleanup covers that workflow or experiment 8 on both durable storage tiers and refuses active/unknown consumers or linked paths. A failed gate followed by a runtime change also needs an explicit reset of unused immutable experiment-8 plans before production; completed earlier experiments remain outside cleanup.
+- The local package lacks TabPFN v3: structural v3 fixtures and real tiny TabICLv2 models validate local mathematics/integration, but exact released v3/v2 GPU behavior is not certified until the new VSC receipts pass. Freezing TabICL alone changes CPU output by about 1e-7; zero-adapter exact checks match autograd flags, with declared tolerance against original/native inference. LoRA factors retain FP32 masters; movement reports effective Q/V displacement, not A/B-factor drift. Twelve synthetic report types were visually reviewed outside publication output; pending research reports contain no invented curves.
+- **Tried:** use OmegaConf.select unconditionally in the new grid validation branch.
+  **Result:** four established lightweight configuration tests failed despite unrelated legacy grids being unchanged.
+  **Why:** those supported callers supply SimpleNamespace configurations rather than OmegaConf objects.
+  **Instead:** detect the optional adaptation mode with ordinary attribute access and apply strict LoRA validation only to the explicit new mode.
+- Final full-suite validation: **959 passed, one existing optional-manifest check skipped**, exit 0 (617.07 seconds). The final sampling-results refresh also passed (12 figures); its compact hour ticks and logarithmic-axis caption are saved and indexed. Existing pandas concatenation FutureWarnings are non-fatal; there are no notebook error outputs.
+- Final compaction audit: all 21 notebooks executed successfully; 183 saved PDFs match 183 inline figures and ordered captions, with all 21 complete final summaries reproduced in `All_Results.md`. All PDFs retain native 6.75-inch widths and embedded fonts; no missing/orphan figures, broken guide links or error cells. Experiment 1 now has 12/11 training figures and 11/9 result figures for PD/LGD. Reviewed the complete collection visually, inspected revised/suspicious figures at larger resolution and repaired overlapping narrow-log cost ticks. Complete numerical evidence and scientific campaign outputs remain intact; no Git publication performed.
+- **Tried:** recover the final full-suite terminal result after the interrupted session.
+  **Result:** its process handle was unavailable; the last observed progress could not prove completion.
+  **Why:** terminal state did not survive the interruption.
+  **Instead:** repeat validation with a durable test log and XML report outside the repository; retain the completed notebook outputs.
+
 ## 23-10-2026
 
+- Follow-up notebook revision: main results now lead with final benchmark choice contrasts and complete rate/anchor/scope maps, with common recipe-complete cohorts across metrics and equal table weighting. Positive choice contrasts are explicitly distinct from CPT beating original weights. Fixed-context monitors use change versus learning rate, separate legend groups and equal table weights rather than equal partition means. The fixed-reference text now filters the same predefined recipe as its figure. No LoRA was used: the main grid uses full updates or dominant-transformer-stack freezing; DiagScale remains a separate experiment.
+- Compact training section 3 into a matched credit/retention monitor summary; retain native-scale paired optimizer trajectories as complete tables. Combine model movement and summarize observed time/process memory; retain device counters as tables. Preserve the existing template exceptions for output naming, shared figure tree and native ICML widths. Scientific source outputs and training/evaluation code remain unchanged.
+- **Tried:** collect the full suite while adding a seed-caption regression fixture.
+  **Result:** the run retained the initial fixture without movement observations and failed its single-page assertion; 956 other tests passed.
+  **Why:** tests collected before a source edit keep the old function, while traceback lines can display the newer file.
+  **Instead:** freeze source before full validation; the corrected fixture and its training/protocol predecessors pass together (101 tests).
+- **Tried:** initial full regression run during notebook redesign.
+  **Result:** 954 passed, one optional-manifest skip, an obsolete plot-call contract failed, and Windows denied one temporary atomic file replacement.
+  **Why:** the contract still mandated the retired constant-baseline figures; the transient Windows filesystem denial was not reproduced by the focused rerun.
+  **Instead:** update the notebook contract to the new saved comparisons, retain pairing/metric checks, and rerun both failures plus all new report tests (14 passed); repeat the complete suite after the repair.
+- **Tried:** a temporary real-data preview script used `Page.fig`.
+  **Result:** it loaded the real PD cohort but failed before saving preview images.
+  **Why:** the publication page stores its figure as `Page.figure`.
+  **Instead:** use the normal notebook/PDF pipeline for real-data inspection; synthetic layout checks remain outside the output tree.
 - Implement the sibling paper's notebook recommendations using completed campaign evidence only. Factorial maps require the same table cohort across every planned recipe; retention first requires all four matched training partitions. Context effect curves retain individual tables, and numerical-policy contrasts pair the same table/fold before subtraction. Table IQRs are descriptive, not fold/seed confidence intervals. Existing outcomes, checkpoints and run identities are preserved.
 - Preserve the selected-table diagnostic and unchanged-save evidence; keep boundary probes as tables rather than adding another small-sample figure. Model-specific cost panels and complete partition-ratio tables describe recorded time/exposure, not equal-compute comparisons. Calibrated log loss joins Brier/ECE on a common complete cohort; older exports without calibrated log loss retain their measured panels.
 - Keep the existing shared PDF tree and native 6.75/3.25-inch widths. The current arXiv manuscript preserves these source widths. The paper's local figure copies remain version-owned; the new results guide identifies current notebook sources. User explicitly authorizes Git publication for this notebook revision; no new cluster work, package installation or submodule change is authorized or performed.

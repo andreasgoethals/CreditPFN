@@ -93,6 +93,9 @@ def resolve_grid(cfg, *, single: bool) -> list[Trial]:
     families = getattr(cfg.tunable, "adapter_families", None)
     families = _axis(families, lambda item: str(item).lower(), "adapter_families") if families else []
 
+    if getattr(getattr(cfg, "train", None), "adaptation_mode", None) == "lora":
+        validate_lora_config(cfg)
+
     def allowed(base: str) -> bool:
         if not families:
             return True
@@ -105,3 +108,32 @@ def resolve_grid(cfg, *, single: bool) -> list[Trial]:
     if not grid:
         raise SystemExit("config error: no trials remain after filtering frozen-backbone families")
     return grid[:1] if single else grid
+
+
+def validate_lora_config(cfg) -> None:
+    """Reject ambiguous adaptation axes instead of silently duplicating inactive arms."""
+    import math
+    if bool(OmegaConf.select(cfg, "lora.enabled", default=False)):
+        raise ValueError("Native LoRA uses train.adaptation_mode=lora; legacy lora.enabled must be false")
+    if any(_axis(cfg.tunable.frozen_backbone, bool, "frozen_backbone")):
+        raise ValueError("LoRA requires frozen_backbone=[false]; adapters define the update scope")
+    lambdas = cfg.tunable.l2sp_lambdas
+    values = [cfg.optimizer.l2sp_lambda] if lambdas is None else _axis(lambdas, float, "l2sp_lambdas")
+    if any(float(value) != 0 for value in values) or float(cfg.optimizer.weight_decay) != 0:
+        raise ValueError("LoRA study requires L2-SP=0 and weight_decay=0; factor penalties are not weight-displacement penalties")
+    rank = OmegaConf.select(cfg, "lora.r")
+    alpha = OmegaConf.select(cfg, "lora.alpha")
+    if isinstance(rank, bool) or not isinstance(rank, int) or rank <= 0:
+        raise ValueError("LoRA rank must be a positive integer")
+    if alpha is None or not math.isfinite(float(alpha)) or float(alpha) <= 0:
+        raise ValueError("LoRA alpha must be finite and positive")
+    if float(OmegaConf.select(cfg, "lora.dropout", default=0)) != 0:
+        raise ValueError("Weight-parametrized LoRA requires dropout=0")
+    if list(OmegaConf.select(cfg, "lora.target_modules", default=[])) != ["attention_qv"]:
+        raise ValueError("LoRA study supports the explicit attention_qv target policy only")
+    kind = "classifier" if cfg.track == "pd" else "regressor"
+    expected = {f"tabpfn-v3-{kind}-v3_default.ckpt", f"tabicl-{kind}-v2-20260212.ckpt"}
+    from pathlib import Path
+    bases = getattr(cfg.tunable, "classifier_base_paths" if cfg.track == "pd" else "regressor_base_paths")
+    if any(Path(str(base)).name not in expected for base in bases):
+        raise ValueError("LoRA study requires explicit TabPFN v3 or TabICLv2 weights for its track")

@@ -714,3 +714,127 @@ this custom schema; CreditPFN reconstructs the exact original architecture and a
 before creating inference caches. Recovery files retain full model/optimizer/random state.
 Keep original base weights while any adapter checkpoint is needed. Neither file type belongs
 in DATA or Git. Experiments 6 and 7 write ordinary full-weight checkpoints under their own groups.
+
+## Experiment 8: LoRA workflow
+
+Experiment 8 adds 48 trials: TabPFN v3 / TabICLv2, PD / LGD, four existing dataset
+partitions and three adapter learning rates. It does not extend or overwrite experiment 1.
+The [research brief](RESEARCH_BRIEF.md) defines the fixed Q/V adapter and comparison limits.
+Native LoRA uses PyTorch parametrizations; no new PEFT installation is required. Local
+TabPFN installations without the v3 architecture cannot certify the released v3 checkpoint:
+the following Mindwell B200 checks are mandatory before production.
+
+Deploy the reviewed source and pinned submodules to VSC before starting. From the
+repository root, activate the existing CreditPFN environment:
+
+```bash
+CREDITPFN_USE_SCRATCH=0 source scripts/slurm/_activate_env.sh
+```
+
+Use a new alphanumeric workflow ID, here `lora1`. Preparation runs on a CPU node and
+writes experiment-8 plans plus isolated debugging plans. Wait for its successful exit
+before submitting the next stage:
+
+```bash
+bash scripts/slurm/run_experiment0_lora.sh prepare lora1
+```
+
+```bash
+bash scripts/slurm/run_experiment0_lora.sh smoke lora1
+```
+
+The smoke array has four tasks, one per family/task pair, with at most two concurrent.
+Each exercises all three rates, native exports and prediction paths, zero-update identity,
+frozen-base and packed-key integrity, updates in every transformer stage, and interruption/
+recovery comparisons within declared numerical tolerances. These are tiny training probes,
+not reported research results. All four successful receipts are required for capacity checks.
+
+```bash
+bash scripts/slurm/run_experiment0_lora.sh capacity lora1
+```
+
+The second four-task array tests each family/task on all four partitions with the existing
+production row/cell caps, monitors and 16 updates per partition. This checks launch and
+memory feasibility, not the entire 10,000-update trajectory or performance benefit.
+Default limits are one hour per smoke task and three hours per capacity task. These are
+allocation ceilings, not measured runtime predictions. Wait for every task to finish.
+
+```bash
+bash scripts/slurm/run_experiment0_lora.sh inspect lora1
+```
+
+Inspection runs on a CPU node, verifies all eight receipts, source/environment/input
+identity and checkpoint evidence, and writes the required inspection receipt. An empty
+queue is not proof of success: the inspection log must report success and exit zero.
+Logs and receipts use DATA `output CreditPFN/experiment0/lora/lora1/`; larger diagnostics
+use the matching PROJECT subtree. Debug weights use
+`checkpoints/trained/experiment0/lora/lora1/` on PROJECT. Older experiment-0 output stays
+outside this scope. After inspection passes:
+
+```bash
+export CREDITPFN_LORA_GATE=lora1
+```
+
+```bash
+bash scripts/slurm/run_experiment8.sh train
+```
+
+Keep the terminal until both track submitters return. Existing controller quotas and
+segmented recovery apply. Production launch and jobs require the accepted gate; changing
+bound source, configuration, environment or evidence requires fresh validation. Inspection
+performs full evidence hashing on a CPU node. Repeated gate checks verify receipt hashes
+and large-file identity metadata; training additionally verifies the actual trial inputs.
+A metadata check alone is not a new full-content audit.
+
+After all 48 trials finish and their checkpoint audits pass, submit the benchmark once:
+
+```bash
+bash scripts/slurm/run_experiment8.sh benchmark
+```
+
+This checks readiness and submits both resource arrays together: 128 GPU and 128 CPU
+shards by default (two tracks, four partitions, 16 shards). The existing five-fold protocol
+saves individual predictions. Original and adapted TabICL both use FP32 with FA3 disabled.
+Final LoRA exports are ordinary merged native checkpoints; recovery files retain unmerged
+factors, optimizer and random state. Scientific results use `output CreditPFN/experiment8/`,
+with small logs/plans on DATA, diagnostics/results on PROJECT, and weights under
+PROJECT `checkpoints/trained/experiment8/`.
+
+### Scoped cleanup and reruns
+
+Preview only the failed LoRA debugging workflow on both tiers:
+
+```bash
+python -m src.utils.clean_run --lora-workflow lora1
+```
+
+After checking the paths and ensuring its jobs and experiment-8 consumers have stopped,
+delete only that workflow:
+
+```bash
+python -m src.utils.clean_run --lora-workflow lora1 --clean
+```
+
+Use a fresh workflow ID for replacement checks. Other workflow IDs, original weights,
+shared datasets and experiments 1–7 remain outside the target. Preserve an accepted gate
+while experiment 8 needs it. A scope marker written before environment activation allows
+cleanup of setup-only failures. Ambiguous ownership, active writers and linked/escaped
+paths cause cleanup to refuse deletion. Production plans remain outside debug cleanup.
+
+Preview a complete reset of experiment 8, including its weights on both tiers:
+
+```bash
+python -m src.utils.clean_run --experiment experiment8
+```
+
+Add `--clean` only when intentionally discarding that experiment. To retain training and
+reset only its benchmark, use `--experiment experiment8 --scope benchmark` with the same
+preview-first convention. Production cleanup does not delete the separate experiment-0
+gate. No cleanup runs automatically after a failed job.
+
+If debugging fails and a code fix changes the runtime fingerprint before any production
+training has started, the old experiment-8 preparation plans are deliberately immutable.
+Preview and reset the unused experiment-8 scope as well as the failed debug workflow,
+then prepare a new workflow ID. Do not overwrite those plans or silently delete completed
+production work to make a new fingerprint fit. Once production results exist, preserve
+them and use an explicit new run identity for a changed method.

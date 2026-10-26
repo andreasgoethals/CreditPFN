@@ -382,10 +382,18 @@ def plot_sampling_quality_cost(run):
         for mode in MODES:
             ax.scatter([], [], color=style.SAMPLING_COLORS[mode], s=style.POINT_SIZE, label=style.SAMPLING_LABELS[mode])
         ax.axhline(0, linestyle=":", color=style.color("reference")); ax.set_xscale("log")
+        low, high = ax.get_xlim()
+        if 0 < low < high < 10 * low:
+            # A narrow log range needs compact hours, not repeated powers of ten.
+            from matplotlib.ticker import MaxNLocator, NullFormatter
+            ticks = MaxNLocator(nbins=style.CONTINUOUS_TICKS).tick_values(low, high)
+            ticks = ticks[(ticks >= low) & (ticks <= high)]
+            ax.set_xticks(ticks, [f"{value:g}" for value in ticks])
+            ax.xaxis.set_minor_formatter(NullFormatter())
         ax.set_title(DOMAINS[domain]); ax.set_xlabel("Sum of four recorded trial times (hours)")
         ax.set_ylabel(effect_label(run.metric)); ax.legend()
     return [cp.Page("sampling_benchmark_quality_cost", fig,
-        "Final benchmark effects versus recorded training time summed over four dataset partitions. Quality gives equally weighted datasets in the "
+        "Final benchmark effects versus recorded training time summed over four dataset partitions; the horizontal axis is logarithmic. Quality gives equally weighted datasets in the "
         "common three-protocol cohort; its size is recorded alongside every point. Non-credit effects first average four matched partitions per dataset. "
         "Colors identify protocols and marker shapes identify model bases. Evaluation and queueing costs are excluded. "
         "This is an observed cost comparison, not a matched-compute experiment or an estimated optimal frontier.",

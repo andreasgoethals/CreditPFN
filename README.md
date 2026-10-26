@@ -52,7 +52,7 @@ Reusable Python logic belongs in `src/`; it does not import experiment entry poi
 
 | Experiment | Configs | Purpose | Trials across PD + LGD |
 |---|---|---|---|
-| 0 | `config/experiment0/` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots; auxiliary: 52 tiny arms in 8 tasks; follow-ups: 4 correctness + 4 capacity tasks |
+| 0 | `config/experiment0/` | Debugging, zero-LR controls, timing and horizon decisions | Part 1: 16 null + 32 short + 8 recovery pairs; part 2: 8 budget pilots; auxiliary: 52 tiny arms in 8 tasks; follow-ups: 4 correctness + 4 capacity tasks; LoRA: 4 smoke + 4 capacity tasks |
 | 1 | `config/experiment1/{pd,lgd}.yaml` | Full learning-rate × L2-SP × adaptation sweep | 512 |
 | 2 | `config/experiment2/{pd,lgd}.yaml` | One additional training seed at a predefined reference | 32 additional; seed 42 is reused from experiment 1 |
 | 3 | `config/experiment3/{pd,lgd}.yaml` | One sample versus full pass versus accumulation | 96 |
@@ -60,6 +60,7 @@ Reusable Python logic belongs in `src/`; it does not import experiment entry poi
 | 5 | `config/experiment5/{pd,lgd}.yaml` | DiagScale cross-table adaptation at three learning rates | 48 |
 | 6 | `config/experiment6/pd.yaml` | All versus large PD training tables at a fixed 8,192-row episode cap | 16 PD |
 | 7 | `config/experiment7/pd_rows*.yaml` | 2,048 / 8,192 / 26,000-row episodes on the same large-table corpus | 16 new PD + 8 shared controls from experiment 6 |
+| 8 | `config/experiment8/{pd,lgd}.yaml` | Rank-16 query/value LoRA on TabPFN v3 and TabICLv2 at three learning rates | 48; new LoRA correctness/capacity gate required |
 
 `data.yaml`, `train.yaml`, `eval.yaml` and `retention.yaml` hold shared defaults and the fixed public monitoring panel. Named configs provide only experiment differences. Experiments 1–3 use `cpt_*_v5` identities; follow-ups use separate named plans and output groups.
 
@@ -95,7 +96,7 @@ The first command previews the design without training. A complete source corpus
 
 Historical output lives under the gitignored `archive/` directory. Its README describes the merged tables and original records. Active notebooks read `output CreditPFN/`; keeping these trees separate prevents historical trials from being mistaken for fresh results. This local archive is a deliberate extension to the repository template.
 
-The notebook reading order is `general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots, then auxiliary controls), `experiment1/` (training then results, each task separately), `experiment2/` (seed-check training then results), `experiment3/` (sampling/accumulation training then results), `experiment4/01_context_curves` (paired context-budget evaluation), `experiment5/` (DiagScale training then results), `experiment6/` (training-corpus policy) and `experiment7/` (episode size, including its shared control). Training notebooks follow losses, monitored performance, parameter movement and device counters over updates. Results notebooks distinguish fixed-context monitor endpoints from final five-fold evaluation. The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
+The notebook reading order is `general/` (raw inputs and processed corpus), `experiment0/` (null, short and budget pilots, then auxiliary controls), `experiment1/` (training then results, each task separately), `experiment2/` (seed-check training then results), `experiment3/` (sampling/accumulation training then results), `experiment4/01_context_curves` (paired context-budget evaluation), `experiment5/` (DiagScale training then results), `experiment6/` (training-corpus policy), `experiment7/` (episode size, including its shared control) and `experiment8/` (native LoRA training then results). Training notebooks follow losses and monitored performance, then compact matched-choice, parameter-movement and cost summaries. Detailed optimizer/device counters remain in tables. Main results notebooks lead with final five-fold choice contrasts and complete recipe maps; fixed-context monitors are a separate later section. The runner discovers these folders recursively; `--only experiment2` selects one study. Each notebook fixes its own run, so experiments cannot silently pool through a global run selector.
 
 Experiment 4 reads project `task_*.csv.gz` metric exports only when their DATA completion receipts match the immutable plan. Unexported SQLite cells remain recovery evidence rather than completed publication records. Its context curves require all five paired folds and keep the table cohort fixed over each displayed range. Experiment 5 labels query-scale movement separately from backbone drift and requires matched original/adapter evaluation within its own inference protocol. Notebooks explicitly report missing PROJECT measurements even when DATA logs establish campaign completion; synthetic plot tests never supply research results.
 
@@ -113,14 +114,40 @@ For supplied downloads, set `CREDITPFN_ANALYSIS_ROOT` to the **DATA output folde
 
 DATA manifests provide coverage and partition-level endpoint checks. Per-dataset trajectories, loss histories, tensor/resource diagnostics and final benchmark results require project-storage records. Missing sections report unavailable evidence explicitly. The short-pilot notebook uses the latest successful pilot receipt's exact generated configuration, keeping corrected objectives separate from earlier pilots.
 
-Notebooks are the full analysis record, not the proposed number of manuscript figures. Select the main paper's figures around the transfer/retention, context and compute questions; leave detailed per-table and engineering panels in the appendix or repository. Main-PD calibration first summarizes Brier/ECE changes over a common dataset cohort, then illustrates reliability on the smallest and largest eligible tables per base, selected by row count independently of performance. These examples require all five paired folds and place raw, Platt and isotonic results together; the complete per-table metric profiles and selection roster remain in the printed summary. LGD results show regression errors and paired prediction shifts instead of classification-only calibration panels.
+Notebooks are the full analysis record, not the proposed number of manuscript figures. Main-grid
+results first show matched effects of learning rate, L2-SP and update scope, then all recipe
+combinations on held-out credit tables. AUC, Brier score and log loss remain separate; LGD uses
+R² and relative RMSE. A favorable choice contrast can mean less damage, while a positive
+CPT-versus-original effect means an observed improvement. Maps retain small printed effects and
+positive-table counts in their full summaries. No test-selected winner is claimed.
 
-The results guide links the paper's three research questions to exact final-benchmark figures.
-Main-grid response maps keep the same complete table cohort across rates, anchoring and update
-scope; their bands are table IQRs. Context panels retain individual table effects beneath the
-equal-table mean. Precision diagnostics show policy-specific CPT contrasts directly. Cost ratios
-retain model/partition identities, and probability-quality summaries include calibrated log loss
-when exported. Monitor captions and structured figure metadata identify their measurement source.
+The results guide links the paper's questions to exact figures. Main-grid comparisons require the
+same recipe-complete table cohort across displayed metrics. Fixed-reference uncertainty,
+probability calibration, prediction shifts and classical controls provide context. Repeated
+reliability/threshold panels are no longer emitted by the main notebooks; the complete reference
+metric tables retain PR-AUC, F1 and other complementary scores. Calibration summarizes raw,
+Platt and isotonic Brier/ECE/log loss on one paired table cohort. LGD keeps point-error and
+historical distributional-score diagnostics separate.
+
+Context panels retain individual table effects beneath the equal-table mean. Precision diagnostics
+show policy-specific CPT contrasts directly. Cost ratios retain model/partition identities.
+Monitor captions and figure metadata distinguish fixed-context measurements from final evaluation;
+monitors show change against learning rate instead of repeating a constant initial-score axis.
+Main-grid update modes are all-parameter updates or a frozen transformer backbone, **not LoRA**;
+experiment 5 separately evaluates DiagScale.
+
+Experiment 8 is a separate, exploratory LoRA follow-up, preserving experiments 1–7.
+It freezes every original weight and learns rank-16 additive query/value updates
+in all three transformer stages, with alpha 32, zero adapter dropout and no L2-SP
+or factor weight decay. Only learning rate varies: `1e-5`, `1e-4`, `1e-3`.
+Both original and adapted TabICL benchmarks use FP32 without FA3; raw comparisons
+with experiment 1's automatic-policy TabICL results are therefore not isolated
+adapter comparisons. Native merged checkpoints use the original inference API;
+recovery retains the unmerged factors and optimizer state. No new PEFT package is needed.
+The [LoRA workflow](docs/VSC.md#experiment-8-lora-workflow) checks the exact VSC
+packages and weights before production; local tests alone do not release it.
+Its training/results notebooks follow the same PDF, caption and final-summary conventions.
+Before results exist they show the plan and missing-evidence tables, not synthetic curves.
 
 ## Environment and contribution rules
 

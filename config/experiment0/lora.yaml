@@ -1,0 +1,13 @@
+# Bounded correctness gates for experiment 8; separate from historical experiment 0.
+target_updates: 6
+interrupt_after: 3
+row_cap: 128
+monitor_rows: 96
+monitor_members: 2
+training_tables: 2
+held_out_tables: 1
+max_training_rows: 100000
+learning_rates: [1.0e-5, 1.0e-4, 1.0e-3]
+capacity_updates: 16
+prediction_atol: 1.0e-5
+prediction_rtol: 1.0e-4

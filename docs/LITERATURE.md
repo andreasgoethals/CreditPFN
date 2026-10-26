@@ -125,7 +125,7 @@ that check. The research brief specifies the saved-artifact contract and current
 | [Garg et al., Real-TabPFN](../tfm-library/papers/text/2025/07_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.txt) ([paper page](https://arxiv.org/abs/2507.03971)) | Continued pretraining of TabPFN v2 on 71 curated general-purpose classification tables; comparisons of real-data sources and context sizes, evaluated on separate benchmark tables | Direct precedent for real-table corpus adaptation. It supports a conservative reference recipe and corpus/context sensitivity, not an assertion that credit-domain CPT must help or that its settings transfer unchanged to LGD/new architectures |
 | [Rubachev et al., On Finetuning Tabular Foundation Models](../tfm-library/papers/text/2025/06_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.txt) ([paper page](https://arxiv.org/abs/2506.08982)) | Target-dataset fine-tuning of TabPFN v2, comparisons of full and partial updates, convergence and representation/retrieval changes; IID and temporal tasks | Directly relevant to adaptation behavior, but the task is different from transfer to an unseen table after corpus-level CPT. Full updates are an important reference; partial updating does not automatically save time or improve quality |
 | [Tanna et al., Exploring Fine-Tuning for Tabular Foundation Models](../tfm-library/papers/text/2026/04_Tanna_et_al._Exploring_Fine_Tuning_for_Tabular_Foundation_Models.txt) | Per-dataset adaptation experiments across tabular foundation models, including original TabICL; sensitivity to adaptation procedure | Motivation to report failures, architecture-specific mechanisms and stability. Its TabICL results do not establish collapse or the correct freeze scheme for **TabICLv2** |
-| [Qu et al., TabICLv2](../tfm-library/papers/text/2026/02_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.txt) | A newer model with classification/regression support, staged architecture and scalable inference | Use the actual v2 training/inference interfaces and distinguish front-end freezing from freezing its dominant ICL stack. Inference capacity demonstrations do not establish train-time memory capacity |
+| [Qu et al., TabICLv2](../tfm-library/papers/text/2026/09_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.txt) | A newer model with classification/regression support, staged architecture and scalable inference | Use the actual v2 training/inference interfaces and distinguish front-end freezing from freezing its dominant ICL stack. Inference capacity demonstrations do not establish train-time memory capacity |
 | [Tanna et al., Data Presentation Over Architecture](../tfm-library/papers/text/2026/05_Tanna_et_al._Data_Presentation_Over_Architecture_Resampling_Strategies_for_Credit_Risk_Prediction_with_Tabular_Foundation_Models.txt) | Context construction and imbalance on two credit datasets, without corpus-level continued pretraining; Lending Club uses a temporal split | Context and prevalence are substantive factors. It does not establish that balancing the **query training loss distribution** is equivalent to balancing only the inference context |
 | [Purucker et al., Beyond IID](../tfm-library/papers/text/2026/06_Purucker_et_al._Beyond_IID_How_General_Are_Tabular_Foundation_Models_Really.txt) | Tabular model evaluation under IID, temporal and grouped splits; finetuning/CPT is outside the evaluated adaptation scope | IID rankings should not be promoted into claims about future lending or new borrowers. Proper split keys and source grouping are prerequisites for those questions |
 | [Kolberg et al., TabPFN-Wide](../tfm-library/papers/text/2026/03_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.txt) | Continued pretraining toward extreme feature counts using an adapted synthetic training setting, with retention/generalization checks | CPT can target a data regime as well as a real-data domain. It motivates retention checks, but does not measure real credit-corpus specialization |
@@ -339,3 +339,48 @@ These experiments test a conservative reference on modern bases, not a literal r
 of Real-TabPFN's v2/20k-update/20k-row/cell-capped recipe. The matching 8,192-row control is
 shared by identity, reducing 48 previously proposed fresh trials to 32, at the deliberate
 cost of no longer estimating the full corpus-policy × episode-size interaction.
+
+
+## LoRA follow-up: evidence and implementation boundaries — 24-10-2026
+
+Reviewed at TFM Library pin `702d9ab0b66f6639ba8d443ff9c4a91231964465`.
+The library and its upstream snapshots were read only; no package upgrade or submodule
+change was made for this study.
+
+- Hu et al., *LoRA: Low-Rank Adaptation of Large Language Models*,
+  <https://arxiv.org/abs/2106.09685>, defines frozen W0 plus scaled low-rank BA,
+  zero-initialized B and native weight merging. The language-model results do not establish
+  a tabular cross-table transfer advantage. Q/V targets are a conventional restricted design.
+- [Rubachev et al.](../tfm-library/papers/text/2025/06_Rubachev_et_al._On_Finetuning_Tabular_Foundation_Models_1.txt),
+  adaptation comparison and timing tables: tested full/partial/LoRA tuning of TabPFNv2 had
+  similar quality; full tuning converged faster on the timed tasks. This is target-table
+  fine-tuning with validation, not domain CPT; it does not prove LoRA cannot help here.
+- [Ning et al.](../tfm-library/papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt),
+  Section 5/Table 1 and Appendix B.1: all-linear LoRA ranks 4/8/16 were tested on TabPFN-3.
+  Rank 16 reached +15 Elo versus +25 for full tuning; these are not AUC percentage points.
+  Its target-table protocol and all-linear coverage are different from experiment 8's
+  corpus training and Q/V-only intervention. Rank 16 motivates a bounded choice, not an
+  optimality claim. DiagScale is a separate multiplicative similarity restriction.
+- [Tanna et al., TabTune](../tfm-library/papers/text/2025/12_Tanna_et_al._TabTune_A_Unified_Library_for_Inference_and_Fine_Tuning_Tabular_Foundation_Models.txt),
+  Appendix 10.4/Table 13: PEFT support can fall back to base fine-tuning. Therefore a label
+  saying PEFT/LoRA is insufficient evidence of actual adapter insertion. Experiment 8
+  rejects missing targets and records exact optimized parameter names; no silent fallback.
+- [Garg et al., Real-TabPFN](../tfm-library/papers/text/2025/07_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.txt),
+  Section 4: real-data CPT uses full weights with L2-SP, LR 3e-7 and 20,000 steps; there is no
+  LoRA comparison. Reusing its tiny full-weight rate as the sole adapter rate would not be
+  a well-supported LoRA test. Our separate three-rate range remains an experimental choice.
+
+Code evidence: `tfm-library/repositories/TabPFN .txt`, symbols `TabPFNV3`, `Attention`,
+`CrossAttention`, `ICLAttention` and `RetrievalDecoder`; Q and V are separate learned
+projections in the transformer stages, while decoder values are labels. The v3.5 class
+is separate and is rejected. `tfm-library/repositories/TabICL.txt`, symbols
+`MultiheadAttention`, `multi_head_attention_forward`, `KVCacheEntry` and `TabICL`:
+packed QKV weights are consumed directly, including a Q-only projection on cached-KV
+calls. Parametrizing the packed weight with independent Q and V factors preserves the
+unmodified K slice and covers these functional paths. Local CPU tests exercise the real
+TabICLv2 implementation, both classification/regression and recomputation. The exact VSC
+v3 package and released checkpoints must still pass their own GPU tests.
+
+Parameter efficiency does not imply small effective displacement, guaranteed retention,
+or proportional activation-memory savings. Compare LoRA with its precision-matched original;
+full/frozen main-grid and DiagScale results remain separately qualified recipes.
