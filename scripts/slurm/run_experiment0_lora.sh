@@ -16,7 +16,11 @@ case "$action" in
    wall=01:00:00
    [[ "$action" == capacity ]] && wall=03:00:00
    sbatch --array=0-3%2 --time="${WALLTIME:-$wall}" scripts/slurm/lora_gpu.slurm "$action" "$workflow" ;;
+ diagnose)
+   task="${LORA_TASK:-2}"
+   [[ "$task" =~ ^[0-3]$ ]] || { echo 'LORA_TASK must be 0, 1, 2 or 3'; exit 2; }
+   sbatch --array="$task%1" --time="${WALLTIME:-00:15:00}" scripts/slurm/lora_gpu.slurm diagnose "$workflow" ;;
  inspect)
    sbatch scripts/slurm/lora_prepare.slurm "$workflow" inspect ;;
- *) echo 'Usage: run_experiment0_lora.sh prepare [ID] | smoke ID | capacity ID | inspect ID'; exit 2 ;;
+ *) echo 'Usage: run_experiment0_lora.sh prepare [ID] | smoke ID | capacity ID | inspect ID | diagnose ID'; exit 2 ;;
 esac

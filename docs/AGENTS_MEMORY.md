@@ -1,5 +1,24 @@
 # Agents' memory — runs and dead ends
 
+## 26-10-2026
+
+| Cluster run, source `b1d121e`, workflow `lora1` | Outcome | Evidence / next action |
+|---|---|---|
+| Prepare `62427349` | done, exit 0 | Both experiment-8 plans and 28 scoped debug configs created |
+| Smoke `11737731_0` / job `11737732`, PD TabPFN v3 | passed | All three rates and recovery checks; DATA receipt passed |
+| Smoke `11737731_1` / job `11737733`, PD TabICLv2 | passed | All three rates and recovery checks; DATA receipt passed |
+| Smoke `11737731_2` / job `11737734`, LGD TabPFN v3 | failed, exit 1 | Native prediction repeat/chunk/finite assertion, before training comparisons; exact failing checkpoint/check not logged |
+| Smoke `11737731_3` / job `11737731`, LGD TabICLv2 | passed | All three rates and recovery checks; DATA receipt passed |
+| Capacity array `11737736`, jobs `11737736–11737739` | blocked, exit 1 | Failed smoke receipt rejected before capacity training |
+| Inspect `62427400` | failed, exit 1 | No inspection receipt; production not authorized |
+
+- Read `Downloads/experiment0.zip` and `experiment8.zip` in place. These contain DATA evidence only: 18 successful tiny-training outcomes plus nine deliberate recovery interruptions, three passed smoke receipts and one failed receipt. All 58 bound config/plan file hashes, four receipt identities and both production-plan checksums agree. Experiment 8 contains two plans only. PROJECT evidence/checkpoints are referenced but not included, so their contents could not be independently rehashed locally. The user's 08:40 CET queue was empty on both controllers. The legacy `lora=False` debug-banner flag does not describe the native `train.adaptation_mode: lora` intervention; the separate optimizer/adapter diagnostics and receipts do. No completed experiment-1–7 evidence was changed.
+- **Tried:** require finite, repeat-call and query-chunk parity in the released TabPFN v3 LGD inference probe.
+  **Result:** one combined assertion failed; the other three model/task smoke cases passed and later gates refused execution.
+  **Why:** the old message omitted which checkpoint/comparison failed and its magnitude; numerical sensitivity versus an adapter/export defect cannot be distinguished from this DATA download.
+  **Instead:** keep the same tolerances and retain `lora1`; add detailed comparisons plus a single inference-only diagnostic of the saved probe exports under recorded precision/TF32 policies. Diagnostic output cannot replace validation receipts or authorize training. No model or production recipe was changed, and no remote cleanup, submission, install or push was performed.
+- Local validation: 82 focused checks passed; full suite 1,086 passed / one optional missing-manifest skip, exit 0 (796.64 s). Diagnostic tests cover separate repeat/chunk/nonfinite/shape failures, historical-checkpoint provenance, failed-arm evidence, policy restoration, no training/receipt replacement and active diagnostic cleanup guards. No notebook or visualization source changed; no notebook rerun was needed. Released-model diagnosis is still pending VSC execution.
+
 ## 25-10-2026
 
 - Final local validation: full suite 1,067 passed / one optional missing-manifest skip (851 s); the final evaluation-entry safeguard and five additional regression cases passed in a separate 112-test focused run. All 23 notebooks executed successfully, producing 183 PDFs. Verified every inline figure, caption, PDF ownership/paper width and final summary against the rebuilt indexes; no notebook errors or broken README/literature/results-guide links. Experiment-8 notebooks correctly report pending evidence and draw no scientific figures; all 12 new plotting layouts were separately checked with synthetic fixtures. Actual released TabPFN v3 and production GPU capacity remain subject to the new VSC gate. No install, commit, push, VSC submission or submodule change.

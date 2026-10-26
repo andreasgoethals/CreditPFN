@@ -23,7 +23,8 @@ def test_lora_shell_syntax(name):
 
 
 @pytest.mark.parametrize("stage,expected", [("prepare", "lora_prepare.slurm"), ("smoke", "--array=0-3%2 --time=01:00:00"),
-                                           ("capacity", "--array=0-3%2 --time=03:00:00")])
+                                           ("capacity", "--array=0-3%2 --time=03:00:00"),
+                                           ("diagnose", "--array=2%1 --time=00:15:00")])
 def test_debug_launcher_submits_only_requested_stage(stage, expected):
     result = subprocess.run([bash_path(), "--noprofile", "--norc", "-c", '''
 set -euo pipefail

@@ -237,7 +237,7 @@ def check_lora_writers(identifier):
             seen.add(job)
             details = subprocess.run(["scontrol", "-M", cluster, "show", "job", "-o", job],
                                      text=True, capture_output=True, timeout=45, check=True).stdout
-            workflow = re.search(r"lora_(?:gpu|prepare)\.slurm\s+(?:(?:smoke|capacity)\s+)?([A-Za-z0-9]+)(?:\s|$)", details)
+            workflow = re.search(r"lora_(?:gpu|prepare)\.slurm\s+(?:(?:smoke|capacity|diagnose)\s+)?([A-Za-z0-9]+)(?:\s|$)", details)
             groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-8])(?:/|,|\s|$)", details))
             if workflow:
                 if workflow.group(1) == identifier:

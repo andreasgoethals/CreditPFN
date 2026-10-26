@@ -802,6 +802,30 @@ PROJECT `checkpoints/trained/experiment8/`.
 
 ### Scoped cleanup and reruns
 
+If a smoke task fails, retain its output and probe checkpoints until the failure
+is understood. An accepted submission or an empty queue does not establish a pass;
+the receipt must say `passed: true`, and final inspection must exit zero.
+
+For a failed native prediction comparison, this inference-only command reuses the
+existing original, zero-update and changed probe checkpoints. It defaults to task
+2 (TabPFN v3 LGD), requests one GPU task with a 15-minute ceiling, and trains no
+weights. `LORA_TASK=0`, `1` or `3` selects PD TabPFN, PD TabICL or LGD TabICL.
+
+```bash
+bash scripts/slurm/run_experiment0_lora.sh diagnose lora1
+```
+
+The diagnostic records repeated-call and query-chunk differences separately for
+each checkpoint, including shapes, nonfinite counts, tolerances and error sizes.
+It compares FP32 with inherited TF32 settings, FP32 with TF32 disabled, and the
+TabPFN automatic policy. Different-precision outputs are not required to match.
+Original/zero-export identity is checked separately within each policy. Small
+reports go to DATA `output CreditPFN/experiment0/lora/lora1/diagnostics/`, and logs
+to that workflow's `logs/`. No existing receipt, plan or checkpoint is overwritten.
+This diagnostic intentionally allows a historical failed workflow after code
+instrumentation changes, records both identities, and **cannot authorize production**.
+Even exit zero means the diagnostic ran, not that the failed LoRA gate passed.
+
 Preview only the failed LoRA debugging workflow on both tiers:
 
 ```bash

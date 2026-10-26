@@ -27,6 +27,10 @@ main results notebooks. A separate, inference-only TabICL check lives in experim
 see [the finishing-check commands](docs/VSC.md#final-inference-check-before-writing).
 It does not retrain models or replace completed benchmark files.
 
+Experiment 8 has a separate LoRA safety gate. A failed inference probe can be inspected
+without retraining through `run_experiment0_lora.sh diagnose ID`; preserve the failed
+workflow until diagnosis, and follow the [LoRA runbook](docs/VSC.md#experiment-8-lora-workflow).
+
 Each checkpoint carries the effective recipe, corpus membership, base/data/code fingerprints, environment versions and actual trainable modules. Resubmissions reject incompatible checkpoints. Recovery checkpoints additionally preserve optimizer, scheduler, random generators and the sampling cursor.
 
 ## Repository

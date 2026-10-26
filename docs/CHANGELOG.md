@@ -1,5 +1,9 @@
 # Changelog
 
+## 26-10-2026
+
+- Add checkpoint-specific LoRA inference failure evidence and a single-task, inference-only diagnostic that preserves failed workflows and cannot grant a gate.
+
 ## 25-10-2026
 
 - Recheck LoRA validation and numerical benchmark settings inside evaluation jobs before data/cache access.

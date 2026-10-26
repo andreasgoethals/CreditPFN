@@ -357,10 +357,13 @@ def _estimator(path, track, family, *, precision="float32"):
                                           use_amp=False, use_fa3=False, **kwargs)
 
 
-def prediction_probe(paths, track, family, *, precision="float32", check_chunks=True):
-    """Native merged-checkpoint inference, repeated cached calls and query chunks."""
+def prediction_probe(paths, track, family, *, precision="float32", check_chunks=True,
+                     strict=True, diagnostics=None):
+    """Native inference, repeated calls and query chunks with exact failure evidence."""
     import numpy as np
+    import torch
     from src.model.tabpfn_models import _trust_local_checkpoints
+    from src.utils.lora_diagnostics import compare_predictions
     rng = np.random.default_rng(912)
     limits = policy()
     tolerance = dict(atol=float(limits.prediction_atol), rtol=float(limits.prediction_rtol))
@@ -376,9 +379,23 @@ def prediction_probe(paths, track, family, *, precision="float32", check_chunks=
             repeat = np.asarray(predict(X[96:]))
             chunks = (np.concatenate([np.asarray(predict(X[96:112])), np.asarray(predict(X[112:]))])
                       if check_chunks else first)
-        if (not np.isfinite(first).all() or not np.allclose(first, repeat, **tolerance)
-                or not np.allclose(first, chunks, **tolerance)):
-            raise AssertionError("LoRA native inference/cache/query-chunk parity failed")
+        record = dict(checkpoint=Path(path).name, track=track, family=family, precision=precision,
+                      fit_mode=str(getattr(est, "fit_mode", "unspecified")),
+                      resolved_autocast=(bool(est.use_autocast_) if hasattr(est, "use_autocast_") else None),
+                      forced_inference_dtype=str(getattr(est, "forced_inference_dtype_", None)),
+                      tf32=dict(matmul=bool(torch.backends.cuda.matmul.allow_tf32),
+                                cudnn=bool(torch.backends.cudnn.allow_tf32)),
+                      repeat=compare_predictions(first, repeat, **tolerance),
+                      query_chunks=compare_predictions(first, chunks, **tolerance) if check_chunks else None)
+        if diagnostics is not None:
+            diagnostics.append(record)
+        print("LoRA prediction comparison: " + json.dumps(record, allow_nan=False), flush=True)
+        failed = [name for name in ("repeat", "query_chunks")
+                  if record[name] is not None and not record[name]["passed"]]
+        if strict and failed:
+            raise AssertionError(f"LoRA native prediction parity failed: checkpoint={Path(path).name} "
+                                 f"track={track} precision={precision} checks={','.join(failed)}; "
+                                 "see preceding comparison for finite counts and error magnitudes")
         predictions.append(first)
         del est
     return predictions
@@ -563,7 +580,7 @@ def capacity(identifier, track, family):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["prepare", "smoke", "capacity", "inspect"])
+    parser.add_argument("action", choices=["prepare", "smoke", "capacity", "inspect", "diagnose"])
     parser.add_argument("--id")
     parser.add_argument("--task", type=int, choices=range(len(CASES)))
     args = parser.parse_args(argv)
@@ -578,6 +595,18 @@ def main(argv=None):
         return 0
     if args.task is None:
         parser.error("--task required")
+    # Diagnosis can inspect a failed historical workflow after instrumentation
+    # changes. It cannot write or replace any of its validation receipts.
+    if args.action == "diagnose":
+        import torch
+        if (not os.environ.get("SLURM_JOB_ID") or not torch.cuda.is_available()
+                or os.environ.get("SLURM_CLUSTER_NAME") != "mindwell"
+                or "B200" not in torch.cuda.get_device_name()):
+            raise RuntimeError("LoRA inference diagnosis requires a submitted Mindwell B200 allocation")
+        from src.utils.lora_diagnostics import diagnose
+        with workflow_scope(args.id):
+            diagnose(args.id, args.task)
+        return 0
     workflow = _workflow(args.id)
     if args.action == "capacity":
         for task in range(len(CASES)):
@@ -603,6 +632,9 @@ def main(argv=None):
         if _workflow(args.id) != workflow:
             raise RuntimeError("LoRA workflow changed during GPU checks")
         result.update(passed=True, evidence=str(evidence), evidence_sha256=file_digest(evidence))
+    except Exception as error:
+        result["error"] = {"type": type(error).__name__, "message": str(error)}
+        raise
     finally:
         write_json(receipt, result)
     print(json.dumps(result), flush=True)
