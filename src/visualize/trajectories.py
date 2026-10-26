@@ -61,7 +61,7 @@ def trajectory_effects(frame: pd.DataFrame, track: str, *, split="test") -> pd.D
                 effect = value - initial if track == "pd" else (initial - value) / initial
                 rows.append({"trial": name, "dataset": display_name(column.removeprefix(prefix)),
                     "base": compact_base(trial.base_short), "learning_rate": trial.lr,
-                    "frozen": trial.lora, "l2sp_lambda": trial.l2sp_lambda,
+                    "frozen": trial.lora, "adaptation_mode": trial.adaptation_mode, "l2sp_lambda": trial.l2sp_lambda,
                     "seed": trial.seed, "updates": int(row.successful_updates),
                     "processed_rows": row.processed_rows, "effect": effect,
                     "sampling": "accumulate" if "_accumulate" in name else "full_pass" if "_fullpass" in name else "one_sample"})
@@ -73,6 +73,8 @@ def plot_trajectories(track: str, *, cfg=None, sampling="one_sample") -> dict:
     effects = trajectory_effects(load_trajectories(track, cfg), track)
     if effects.empty:
         return {}
+    if effects.adaptation_mode.isin(["lora", "diagscale"]).any():
+        raise ValueError("Use the experiment's adapter report; this legacy plot compares full and frozen-backbone arms")
     effects = effects[effects.sampling.eq(sampling)]
     figures = {}
     for base, data in effects.groupby("base", sort=True):

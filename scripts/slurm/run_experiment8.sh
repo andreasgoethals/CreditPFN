@@ -3,6 +3,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 unset CREDITPFN_LORA_WORKFLOW
+export CREDITPFN_USE_SCRATCH=0
+source scripts/slurm/_activate_env.sh
 python -c 'from src.utils.lora_checks import require_gate; require_gate()'
 case "${1:?Choose train or benchmark}" in
  train)

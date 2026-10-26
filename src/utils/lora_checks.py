@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 from contextlib import contextmanager
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -61,8 +62,9 @@ def policy():
     limits = OmegaConf.load(REPO_ROOT / "config/experiment0/lora.yaml")
     if not 0 < limits.interrupt_after < limits.target_updates or limits.row_cap < 8:
         raise ValueError("Invalid LoRA smoke budget or row cap")
-    if min(float(limits.prediction_atol), float(limits.prediction_rtol)) <= 0:
-        raise ValueError("LoRA prediction tolerances must be positive")
+    tolerances = (limits.prediction_atol, limits.prediction_rtol, limits.regression_chunk_atol_std)
+    if any(not math.isfinite(float(value)) or float(value) <= 0 for value in tolerances):
+        raise ValueError("LoRA prediction tolerances must be finite and positive")
     return limits
 
 
@@ -266,7 +268,10 @@ def prepare(identifier=None):
 
 
 def _run_training(path, *, split=0, stop=None):
-    command = [sys.executable, "-u", "scripts/train_pipeline.py", "--config", str(path),
+    identifier = validate_id(os.environ.get("CREDITPFN_LORA_WORKFLOW", ""))
+    evidence = evidence_folder(identifier) / "diagnostics" / f"gradients_{Path(path).stem}_{split}_{uuid.uuid4().hex}.json"
+    command = [sys.executable, "-u", "-m", "src.utils.lora_training_probe", "--report", str(evidence),
+               "--", "--config", str(path),
                "--split-index", str(split), "--trial-index", "0"]
     if os.environ.get("CREDITPFN_ACTIVE_LOG"):
         command += ["--log-path", os.environ["CREDITPFN_ACTIVE_LOG"]]
@@ -279,6 +284,11 @@ def _run_training(path, *, split=0, stop=None):
     expected = 75 if stop is not None else 0
     if result.returncode != expected:
         raise RuntimeError(f"LoRA pipeline returned {result.returncode}, expected {expected}")
+    if stop is None:
+        report = json.loads(evidence.read_text(encoding="utf-8"))
+        if report.get("kind") != "lora_training_gradient_audit" or report.get("passed") is not True:
+            raise AssertionError("Missing or failed per-projection LoRA training gradient audit")
+    return evidence
 
 
 def _audited(path, *, split=0):
@@ -363,7 +373,7 @@ def prediction_probe(paths, track, family, *, precision="float32", check_chunks=
     import numpy as np
     import torch
     from src.model.tabpfn_models import _trust_local_checkpoints
-    from src.utils.lora_diagnostics import compare_predictions
+    from src.utils.lora_diagnostics import compare_predictions, compare_query_chunks
     rng = np.random.default_rng(912)
     limits = policy()
     tolerance = dict(atol=float(limits.prediction_atol), rtol=float(limits.prediction_rtol))
@@ -386,7 +396,11 @@ def prediction_probe(paths, track, family, *, precision="float32", check_chunks=
                       tf32=dict(matmul=bool(torch.backends.cuda.matmul.allow_tf32),
                                 cudnn=bool(torch.backends.cudnn.allow_tf32)),
                       repeat=compare_predictions(first, repeat, **tolerance),
-                      query_chunks=compare_predictions(first, chunks, **tolerance) if check_chunks else None)
+                      query_chunks=(compare_query_chunks(first, chunks, track=track, context_y=y[:96],
+                                    regression_atol_std=limits.regression_chunk_atol_std, **tolerance)
+                                    if check_chunks else None),
+                      query_chunks_pointwise=(compare_predictions(first, chunks, **tolerance)
+                                               if check_chunks else None))
         if diagnostics is not None:
             diagnostics.append(record)
         print("LoRA prediction comparison: " + json.dumps(record, allow_nan=False), flush=True)
@@ -539,12 +553,12 @@ def smoke(identifier, track, family):
             path = root / "configs" / f"{track}_{family}_lr{index}_{arm}.yaml"
             if arm == "resumed":
                 _run_training(path, stop=limits.interrupt_after)
-            _run_training(path)
+            gradient_evidence = _run_training(path)
             row = rows[arm] = _audited(path)
             if row.get("successful_updates") != limits.target_updates:
                 raise AssertionError("LoRA smoke did not execute its complete successful-update budget")
             curves[arm], curve_path = _curve(row, track)
-            artifacts += [_binding(row["path"]), _binding(curve_path)]
+            artifacts += [_binding(row["path"]), _binding(curve_path), _binding(gradient_evidence)]
         weights = compare(Path(rows["reference"]["path"]), Path(rows["resumed"]["path"]))
         monitors = compare_trajectories(curves["reference"], curves["resumed"],
                                        milestones=[0, limits.interrupt_after, limits.target_updates])
@@ -565,7 +579,7 @@ def capacity(identifier, track, family):
     cfg = load_train_config(config_path=str(path))
     artifacts, partitions = [], []
     for split in range(int(cfg.corpus.n_splits)):
-        _run_training(path, split=split)
+        gradient_evidence = _run_training(path, split=split)
         row = _audited(path, split=split)
         frame, curve_path = _curve(row, track)
         if row.get("successful_updates") != policy().capacity_updates:
@@ -573,7 +587,7 @@ def capacity(identifier, track, family):
         if "processed_rows" not in frame or int(frame.iloc[-1].processed_rows) <= 0:
             raise AssertionError("LoRA capacity check processed no rows")
         partitions.append({"split": split, "audit": row, "processed_rows": int(frame.iloc[-1].processed_rows)})
-        artifacts += [_binding(row["path"]), _binding(curve_path)]
+        artifacts += [_binding(row["path"]), _binding(curve_path), _binding(gradient_evidence)]
     return {"partitions": partitions, "production_row_cap": OmegaConf.select(cfg, "train.max_rows_per_step"),
             "production_precision": {"amp": cfg.train.amp}, "artifacts": artifacts}
 

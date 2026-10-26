@@ -38,6 +38,33 @@ def compare_predictions(reference, observed, *, atol, rtol):
     return record
 
 
+def compare_query_chunks(reference, observed, *, track, context_y, atol, rtol,
+                         regression_atol_std):
+    """Bound regression batch rounding in fixed context-target SD units.
+
+    A per-prediction relative tolerance shrinks near zero and depends on the
+    arbitrary target offset. Use one context-only scale for all LGD checkpoints;
+    it is never fitted to their errors or to query labels. PD stays pointwise.
+    """
+    if track == "pd":
+        return compare_predictions(reference, observed, atol=atol, rtol=rtol)
+    if track != "lgd":
+        raise ValueError("Unknown prediction-probe track")
+    targets = np.asarray(context_y, dtype=np.float64)
+    if targets.ndim != 1 or targets.size < 2 or not np.isfinite(targets).all():
+        raise ValueError("Regression chunk probe needs finite context targets")
+    scale = float(np.std(targets, ddof=0))
+    bound = float(regression_atol_std)
+    if not np.isfinite(scale) or scale <= 0 or not np.isfinite(bound) or bound <= 0:
+        raise ValueError("Regression chunk scale and tolerance must be finite and positive")
+    record = compare_predictions(reference, observed, atol=bound * scale, rtol=0)
+    record.update(tolerance_basis="context_target_std", context_target_std=scale,
+                  max_error_std=(record["max_abs_error"] / scale
+                                 if record["max_abs_error"] is not None else None),
+                  max_allowed_error_std=bound)
+    return record
+
+
 @contextmanager
 def tf32_disabled(disable):
     """One diagnostic arm only; restore both process-level policies on failure."""

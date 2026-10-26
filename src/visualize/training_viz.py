@@ -231,7 +231,8 @@ def parse_trial_name(name: str) -> TrialId | None:
             base=m.group("base"),
             lr=float(m.group("lr")),
             seed=int(m.group("seed")),
-            lora=m.group("adaptation") in ("_lora", "_iclhead", "_frozen"),
+            # Historical boolean denotes the frozen/legacy adapter arm, not native LoRA.
+            lora=not m.group("run").startswith("cpt_lora_") and m.group("adaptation") in ("_lora", "_iclhead", "_frozen"),
             adaptation_mode="lora" if m.group("run").startswith("cpt_lora_") else {"_diagscale": "diagscale", "_frozen": "frozen_backbone",
                              "_lora": "legacy_adapter", "_iclhead": "legacy_adapter"}.get(m.group("adaptation"), "full"),
             min_train_rows=int(m.group("min_rows") or 0),
@@ -628,13 +629,15 @@ def _style_for(trial: TrialId, base_palette: dict[str, tuple],
     what the reader reads off the curve, not off a label.
     """
     color = base_palette.get(trial.base, style.COLORS["annotation"])
-    linestyle = "-" if not trial.lora else "--"
-    key = (trial.base_short, trial.lora)
+    linestyle = "-" if trial.adaptation_mode == "full" else "--"
+    key = (trial.base_short, trial.adaptation_mode)
     label = None
     if seen is not None:
         if key not in seen:
             seen.add(key)
-            label = f"{trial.base_short}{' · adapter' if trial.lora else ''}"
+            suffix = {"lora": " · LoRA", "diagscale": " · DiagScale",
+                      "frozen_backbone": " · frozen backbone", "legacy_adapter": " · legacy adapter"}
+            label = trial.base_short + suffix.get(trial.adaptation_mode, "")
     else:
         label = trial.label
     return dict(color=color, linestyle=linestyle, linewidth=1.3,

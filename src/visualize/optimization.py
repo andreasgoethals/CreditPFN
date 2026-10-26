@@ -91,6 +91,9 @@ def plot_factor_effects(campaign):
 
 
 def plot_movement(campaign):
+    from omegaconf import OmegaConf
+    if OmegaConf.select(campaign.cfg, "train.adaptation_mode") in ("lora", "diagscale"):
+        raise ValueError("Use the adapter report's effective-weight movement; raw factor statistics are not backbone drift")
     whole = cp.optimization_curves(campaign, "weight_drift")
     tensors = dg.load(campaign, "parameters")
     frames = []

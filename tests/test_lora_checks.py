@@ -155,7 +155,8 @@ def test_smoke_changes_only_scoped_workload_capacity_keeps_all_partitions(track,
     assert smoke.lora == source.lora and smoke.optimizer == source.optimizer
 
 
-def test_pipeline_interrupt_must_return_75_and_cleans_inherited_flow(monkeypatch):
+def test_pipeline_interrupt_must_return_75_and_cleans_inherited_flow(monkeypatch, tmp_path):
+    monkeypatch.setattr(checks, "evidence_folder", lambda i: tmp_path)
     seen = []
     monkeypatch.setenv("CREDITPFN_FLOW_ID", "oldflow")
     monkeypatch.setenv("CREDITPFN_STOP_REQUESTED", "1")
@@ -179,7 +180,10 @@ def test_capacity_visits_four_partitions_not_only_first(monkeypatch, tmp_path):
     path = tmp_path / "configs/pd_tabpfn_capacity.yaml"
     path.parent.mkdir()
     path.write_text("corpus: {n_splits: 4}\ntrain: {amp: true, max_rows_per_step: 8192}\n")
-    monkeypatch.setattr(checks, "_run_training", lambda p, split=0: seen.append(split))
+    def train(p, split=0):
+        seen.append(split)
+        return path
+    monkeypatch.setattr(checks, "_run_training", train)
     monkeypatch.setattr(checks, "_audited", lambda p, split=0: {"successful_updates": 16, "path": str(path)})
     monkeypatch.setattr(checks, "_curve", lambda r, t: (pd.DataFrame({"processed_rows": [0, 8000]}), path))
     result = checks.capacity("abc", "pd", "tabpfn")

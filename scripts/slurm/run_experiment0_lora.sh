@@ -4,11 +4,15 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 action="${1:-prepare}"
 workflow="${2:-}"
-if [[ "$action" == prepare && -z "$workflow" ]]; then
+if [[ ( "$action" == prepare || "$action" == all ) && -z "$workflow" ]]; then
   workflow="$(date +%Y%m%d%H%M%S)${RANDOM}${RANDOM}"
 fi
 [[ "$workflow" =~ ^[a-zA-Z0-9]{1,80}$ ]] || { echo 'Provide a 1–80 character alphanumeric LoRA workflow ID'; exit 2; }
 case "$action" in
+ all)
+   export CREDITPFN_USE_SCRATCH=0
+   source scripts/slurm/_activate_env.sh
+   python -u -m src.utils.lora_submit --id "$workflow" ;;
  prepare)
    echo "LoRA workflow: $workflow"
    sbatch scripts/slurm/lora_prepare.slurm "$workflow" ;;
@@ -22,5 +26,5 @@ case "$action" in
    sbatch --array="$task%1" --time="${WALLTIME:-00:15:00}" scripts/slurm/lora_gpu.slurm diagnose "$workflow" ;;
  inspect)
    sbatch scripts/slurm/lora_prepare.slurm "$workflow" inspect ;;
- *) echo 'Usage: run_experiment0_lora.sh prepare [ID] | smoke ID | capacity ID | inspect ID | diagnose ID'; exit 2 ;;
+ *) echo 'Usage: run_experiment0_lora.sh all [ID] | prepare [ID] | smoke ID | capacity ID | inspect ID | diagnose ID'; exit 2 ;;
 esac

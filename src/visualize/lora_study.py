@@ -31,6 +31,8 @@ def protocol_table(run):
         "Rank": OmegaConf.select(run.cfg, "lora.r"),
         "Alpha": OmegaConf.select(run.cfg, "lora.alpha"),
         "Adapter dropout": OmegaConf.select(run.cfg, "lora.dropout"),
+        "Factor weight decay": OmegaConf.select(run.cfg, "optimizer.weight_decay"),
+        "Training precision": "AMP (BF16 on B200); LoRA factors and BA product FP32" if OmegaConf.select(run.cfg, "train.amp") else "FP32",
         "Learning rates": ", ".join(f"{v:g}" for v in sorted(run.trials.learning_rate.unique())),
         "L2-SP": ", ".join(f"{v:g}" for v in sorted(run.trials.l2sp_lambda.unique())),
         "Planned trials in this task": len(run.trials),
@@ -41,6 +43,8 @@ def protocol_table(run):
         "Context sampling": OmegaConf.select(run.cfg, "train.context_sampling"),
         "Evaluation": "Original/LoRA weights on the same outer folds; TabICL FP32 without FA3",
         "Movement": "Frobenius norm of effective Q/V weight change / initial targeted Q/V weight norm",
+        "Per-tensor diagnostics": "Raw parameter/factor statistics; not per-layer effective Q/V displacement",
+        "Comparison scope": "Original versus LoRA within this recipe; experiment 5 differs in precision, sampling and decay",
     }
     return pd.DataFrame(values.items(), columns=["Setting", "Value"])
 

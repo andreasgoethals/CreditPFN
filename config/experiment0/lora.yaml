@@ -11,3 +11,6 @@ learning_rates: [1.0e-5, 1.0e-4, 1.0e-3]
 capacity_updates: 16
 prediction_atol: 1.0e-5
 prediction_rtol: 1.0e-4
+# Query-batch rounding only: maximum LGD error in fixed context-target SD units.
+# Same-batch repeat, zero-export, native merge/cache checks retain the limits above.
+regression_chunk_atol_std: 1.0e-4

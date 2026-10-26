@@ -67,6 +67,82 @@ def test_comparison_rejects_broadcastable_shapes_and_reports_nonfinite():
     assert diagnostic.compare_predictions([1, 2], [1, 2], **kwargs)["passed"]
 
 
+def test_regression_chunk_bound_is_context_scaled_and_keeps_pointwise_evidence():
+    rng = np.random.default_rng(912)
+    X = rng.normal(size=(128, 8)).astype(np.float32)
+    context = (X[:, 0] + .1 * X[:, 1])[:96]
+    # The observed B200 error magnitude, including a near-zero prediction.
+    reference = np.array([0., .1, 1.])
+    observed = reference + 2.473592758178711e-5
+    kwargs = dict(atol=1e-5, rtol=1e-4)
+    assert not diagnostic.compare_predictions(reference, observed, **kwargs)["passed"]
+    result = diagnostic.compare_query_chunks(reference, observed, track="lgd", context_y=context,
+                                             regression_atol_std=1e-4, **kwargs)
+    assert result["passed"] and result["rtol"] == 0
+    assert result["max_error_std"] < result["max_allowed_error_std"] == 1e-4
+    # Both checkpoint predictions and context labels use the same unit/offset.
+    rescaled = diagnostic.compare_query_chunks(10 * reference + 5, 10 * observed + 5,
+        track="lgd", context_y=10 * context.astype(float) + 5, regression_atol_std=1e-4, **kwargs)
+    assert rescaled["passed"]
+    assert rescaled["max_error_std"] == pytest.approx(result["max_error_std"])
+    assert not diagnostic.compare_query_chunks(reference, reference + .001, track="lgd",
+        context_y=context, regression_atol_std=1e-4, **kwargs)["passed"]
+
+
+@pytest.mark.parametrize("context", [[1, 1], [np.nan, 1], [np.inf, 1], [1], [[1, 2]]])
+def test_regression_chunk_bound_rejects_missing_or_invalid_context_scale(context):
+    with pytest.raises(ValueError, match="Regression chunk"):
+        diagnostic.compare_query_chunks([0], [0], track="lgd", context_y=context,
+                                         atol=1e-5, rtol=1e-4, regression_atol_std=1e-4)
+
+
+@pytest.mark.parametrize("observed", [[np.nan, 0], [np.inf, 0], [[0], [0]], [.01, 0]])
+def test_regression_chunk_bound_still_rejects_corruption(observed):
+    assert not diagnostic.compare_query_chunks([0, 0], observed, track="lgd", context_y=[-1, 1],
+        atol=1e-5, rtol=1e-4, regression_atol_std=1e-4)["passed"]
+
+
+def test_classification_chunk_bound_keeps_original_pointwise_policy():
+    kwargs = dict(atol=1e-5, rtol=1e-4)
+    reference, observed = [0., 1.], [3e-5, 1. - 3e-5]
+    result = diagnostic.compare_query_chunks(reference, observed, track="pd", context_y=[0, 1],
+                                             regression_atol_std=1e-4, **kwargs)
+    assert result == diagnostic.compare_predictions(reference, observed, **kwargs)
+    assert not result["passed"]
+
+
+@pytest.mark.parametrize("change", ["repeat", "chunks"])
+def test_only_regression_chunk_check_uses_context_scale(monkeypatch, change):
+    class Estimator:
+        calls = 0
+        def fit(self, X, y):
+            return self
+        def predict(self, X):
+            self.calls += 1
+            altered = (change == "repeat" and self.calls == 2) or (change == "chunks" and len(X) == 16)
+            return np.full(len(X), 3e-5 if altered else 0.)
+    monkeypatch.setattr(checks, "_estimator", lambda *a, **k: Estimator())
+    records = []
+    if change == "repeat":
+        with pytest.raises(AssertionError, match="checks=repeat"):
+            checks.prediction_probe([Path("base.ckpt")], "lgd", "tabpfn", diagnostics=records)
+    else:
+        checks.prediction_probe([Path("base.ckpt")], "lgd", "tabpfn", diagnostics=records)
+        assert records[0]["query_chunks"]["passed"]
+        assert not records[0]["query_chunks_pointwise"]["passed"]
+    json.dumps(records, allow_nan=False)
+
+
+@pytest.mark.parametrize("name", ["prediction_atol", "prediction_rtol", "regression_chunk_atol_std"])
+@pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf")])
+def test_probe_policy_rejects_invalid_tolerances(monkeypatch, name, value):
+    limits = checks.policy()
+    limits[name] = value
+    monkeypatch.setattr(checks.OmegaConf, "load", lambda path: limits)
+    with pytest.raises(ValueError, match="finite and positive"):
+        checks.policy()
+
+
 def test_tf32_arm_restores_process_flags_after_exception():
     import torch
     original = torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32

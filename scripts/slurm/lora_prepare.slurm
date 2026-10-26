@@ -31,7 +31,7 @@ action="${2:-prepare}"
 [[ "$action" == prepare || "$action" == inspect ]] || { echo 'Invalid LoRA CPU action'; exit 2; }
 python -u -m src.utils.lora_checks "$action" --id "$CREDITPFN_LORA_WORKFLOW"
 if [[ "$action" == prepare ]]; then
-  echo "Next: bash scripts/slurm/run_experiment0_lora.sh smoke $CREDITPFN_LORA_WORKFLOW"
+  echo "Preparation complete. In an 'all' submission, the smoke array is already queued."
 else
   echo "Gate ready: export CREDITPFN_LORA_GATE=$CREDITPFN_LORA_WORKFLOW"
 fi

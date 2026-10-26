@@ -2,6 +2,8 @@
 
 ## 26-10-2026
 
+- Queue the complete LoRA safety sequence in one command; audit gradients and effective updates for every Q/V projection; clarify legacy labels and recipe comparisons.
+- Separate context-scaled LGD query-batch rounding checks from strict LoRA identity checks; preserve pointwise diagnostics and require a fresh gate.
 - Add checkpoint-specific LoRA inference failure evidence and a single-task, inference-only diagnostic that preserves failed workflows and cannot grant a gate.
 
 ## 25-10-2026

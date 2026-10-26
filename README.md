@@ -27,7 +27,9 @@ main results notebooks. A separate, inference-only TabICL check lives in experim
 see [the finishing-check commands](docs/VSC.md#final-inference-check-before-writing).
 It does not retrain models or replace completed benchmark files.
 
-Experiment 8 has a separate LoRA safety gate. A failed inference probe can be inspected
+Experiment 8 has a separate LoRA safety gate. On VSC, `bash scripts/slurm/run_experiment0_lora.sh all lora2`
+queues preparation, both four-task GPU arrays and independent inspection together under a fresh ID.
+Successful dependencies advance automatically; production remains gated. A failed inference probe can be inspected
 without retraining through `run_experiment0_lora.sh diagnose ID`; preserve the failed
 workflow until diagnosis, and follow the [LoRA runbook](docs/VSC.md#experiment-8-lora-workflow).
 
@@ -157,7 +159,7 @@ Before results exist they show the plan and missing-evidence tables, not synthet
 
 The project uses Python 3.11–3.13 and the dependencies in [pyproject.toml](pyproject.toml), including PyTorch 2.3 or later for its AMP API. Dependency ranges are not an environment lock. It depends on specific upstream training APIs; record and validate the working environment rather than upgrading it during a campaign. The cluster environment is named `CreditPFN`; the local environment is `.venv`. Local tests and notebook execution do not replace the GPU correctness/capacity gates for a new experimental protocol.
 
-Read [AGENTS.md](AGENTS.md), [the template](docs/TEMPLATE.md) and [agent memory](docs/AGENTS_MEMORY.md) before editing. Do not push, install packages or start cluster training on the user's behalf without authorization. Never modify the library submodule here. Record substantive changes in both logs and run the relevant validation before reporting completion.
+Read [AGENTS.md](AGENTS.md), [the template](docs/TEMPLATE.md) and [agent memory](docs/AGENTS_MEMORY.md) before editing. Agents may push reviewed, validated changes under the user's authorization of 26-10-2026. Package installations, cluster training and scientific recipe changes still require authorization. Never modify either library submodule here. Record substantive changes in both logs and run the relevant validation before reporting completion.
 
 This repository's code is MIT licensed. Dataset permissions and the individual foundation-model weight licenses are separate from the code license.
 

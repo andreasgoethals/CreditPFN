@@ -48,12 +48,29 @@ bash "$1" smoke ../other
 
 def test_failed_gate_stops_production_launcher_before_submitting():
     result = subprocess.run([bash_path(), "--noprofile", "--norc", "-c", '''
-python() { return 1; }
+source() { echo MOCK_ACTIVATION; }
+python() { echo MOCK_GATE; return 1; }
 sbatch() { echo UNEXPECTED; }
-export -f python sbatch
+export -f source python sbatch
 bash "$1" train
 ''', "test", (REPO / "scripts/slurm/run_experiment8.sh").as_posix()], capture_output=True, text=True, timeout=15)
     assert result.returncode == 1 and "UNEXPECTED" not in result.stdout
+    assert "MOCK_GATE" in result.stdout
+
+
+def test_all_launcher_activates_then_calls_single_chain_submitter():
+    result = subprocess.run([bash_path(), "--noprofile", "--norc", "-c", '''
+set -euo pipefail
+source() { echo MOCK_ACTIVATION; }
+python() { printf 'MOCK_PYTHON %s\\n' "$*"; }
+sbatch() { echo UNEXPECTED; }
+export -f source python sbatch
+bash "$1" all testworkflow
+''', "test", (REPO / "scripts/slurm/run_experiment0_lora.sh").as_posix()], capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.count("MOCK_PYTHON") == 1 and "UNEXPECTED" not in result.stdout
+    assert "-m src.utils.lora_submit --id testworkflow" in result.stdout
+    assert result.stdout.index("MOCK_ACTIVATION") < result.stdout.index("MOCK_PYTHON")
 
 
 def test_gpu_and_prepare_logs_are_scoped_before_log_creation():

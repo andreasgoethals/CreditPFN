@@ -149,6 +149,30 @@ def test_protocol_audit_exposes_precision_and_rate_mismatch():
     assert "Unavailable" in table.loc["Direct cross-experiment comparison", "experiment8"]
 
 
+def test_native_lora_cannot_be_mislabelled_by_legacy_reports(monkeypatch):
+    from src.visualize import training_viz as tv, trajectories, optimization
+    run = lora_fixture()
+    name = run.trials.trial_name.iloc[0]
+    trial = tv.parse_trial_name(name)
+    assert trial.adaptation_mode == "lora" and not trial.lora
+    assert "LoRA" in tv._style_for(trial, {}, set())["label"]
+    legacy = tv.parse_trial_name(name.replace("cpt_lora_v1", "cpt_main_v5"))
+    assert legacy.adaptation_mode == "legacy_adapter" and legacy.lora
+    recorded = pd.DataFrame({"trial_name": [name, name], "successful_updates": [0, 2],
+                             "processed_rows": [0, 100], "metric__test__example": [.7, .71]})
+    effects = trajectories.trajectory_effects(recorded, "pd")
+    assert effects.adaptation_mode.eq("lora").all() and not effects.frozen.any()
+    monkeypatch.setattr(trajectories, "load_trajectories", lambda *args: recorded)
+    with pytest.raises(ValueError, match="adapter report"):
+        trajectories.plot_trajectories("pd")
+    with pytest.raises(ValueError, match="raw factor statistics"):
+        optimization.plot_movement(run)
+    protocol = ls.protocol_table(run).set_index("Setting").Value
+    assert protocol["Factor weight decay"] == 0
+    assert "BF16" in protocol["Training precision"]
+    assert "not per-layer" in protocol["Per-tensor diagnostics"]
+
+
 def test_lora_figures_preserve_values_geometry_and_native_losses(tmp_path):
     style.apply()
     runs = [lora_fixture(track) for track in ("pd", "lgd")]

@@ -179,7 +179,7 @@ A missing legacy `output/` is expected after the rename. These totals exclude we
 
 ## One-command experiment 0
 
-Commit and push the reviewed changes locally yourself, then pull on VSC. The agent never pushes. With CreditPFN writers stopped, run each command separately:
+Push reviewed, validated changes locally, then pull on VSC. Agents may push under the user's standing authorization of 26-10-2026. With CreditPFN writers stopped, run each command separately:
 
 ```bash
 cd "$VSC_DATA/CreditPFN"
@@ -724,59 +724,74 @@ Native LoRA uses PyTorch parametrizations; no new PEFT installation is required.
 TabPFN installations without the v3 architecture cannot certify the released v3 checkpoint:
 the following Mindwell B200 checks are mandatory before production.
 
-Deploy the reviewed source and pinned submodules to VSC before starting. From the
-repository root, activate the existing CreditPFN environment:
+Deploy the reviewed source to VSC before starting, with no jobs using the checkout.
+The pinned libraries remain read-only. From the repository root:
 
 ```bash
-CREDITPFN_USE_SCRATCH=0 source scripts/slurm/_activate_env.sh
+git pull --ff-only
 ```
 
-Use a new alphanumeric workflow ID, here `lora1`. Preparation runs on a CPU node and
-writes experiment-8 plans plus isolated debugging plans. Wait for its successful exit
-before submitting the next stage:
-
-```bash
-bash scripts/slurm/run_experiment0_lora.sh prepare lora1
-```
+Use a new alphanumeric workflow ID, here `lora2`. One command activates the existing
+CreditPFN environment and submits the whole testing sequence:
 
 ```bash
-bash scripts/slurm/run_experiment0_lora.sh smoke lora1
+bash scripts/slurm/run_experiment0_lora.sh all lora2
 ```
+
+It queues CPU preparation → four GPU smoke tasks → four GPU capacity tasks → CPU
+inspection. All stages use the **Mindwell controller**, with CPU work on `batch_graniterapids`
+and GPU work on `gpu_b200`; this avoids relying on cross-controller dependencies.
+The partitions are documented in the [Mindwell guide](https://docs.vscentrum.be/leuven/mindwell_quick_start.html)
+and pinned VSC Library `3bcdf55e576d10161d6189b40ac39380bbba9eca`.
+Slurm `afterok` dependencies require every task in the preceding array to succeed;
+`--kill-on-invalid-dep=yes` cancels downstream stages when a prerequisite fails.
+After all four submission IDs are printed and the command returns, the terminal may close.
+The sequence never submits production training. Preparation writes experiment-8 plans
+and separate debugging plans. Individual `prepare`, `smoke`, `capacity` and `inspect`
+actions remain available for deliberate diagnostics, but do not submit them on top of an `all` chain.
+
+DATA `output CreditPFN/experiment0/lora/lora2/submission.json` records submitted IDs and
+dependencies. Reusing an existing ID is rejected before submission. If submission itself
+is interrupted or rejected, inspect this record and the queue before retrying: accepted jobs
+are preserved, and an uncertain submission is never automatically retried or cancelled.
 
 The smoke array has four tasks, one per family/task pair, with at most two concurrent.
 Each exercises all three rates, native exports and prediction paths, zero-update identity,
-frozen-base and packed-key integrity, updates in every transformer stage, and interruption/
+frozen-base and packed-key integrity, finite gradient paths and effective updates in **every Q/V projection**, and interruption/
 recovery comparisons within declared numerical tolerances. These are tiny training probes,
 not reported research results. All four successful receipts are required for capacity checks.
+The gradient audit wraps the real debug training entry point; it observes A/B gradients
+without modifying them, records per-projection BA norms, and binds these JSON records into
+the gate evidence on PROJECT. Both packed Q and V slices must pass. Zero dL/dA on the
+first step is expected; a missing B gradient or zero effective update cannot pass.
 
-```bash
-bash scripts/slurm/run_experiment0_lora.sh capacity lora1
-```
+Regression query-chunk checks use a maximum error of `1e-4` times the fixed synthetic
+context-target standard deviation (0.01% of that scale), identical for original,
+zero-export and changed checkpoints. The scale comes from the 96 context labels,
+never the query labels or observed prediction errors. The earlier pointwise comparison
+is still logged. Classification, same-batch repeat/zero-export identity, native attention
+merge/cache and recovery comparisons retain their existing tolerances. This is a
+debugging acceptance rule, not a change to production precision or model predictions.
+It addresses the near-zero false alarm diagnosed on 26-10-2026; changed query shapes
+can alter floating-point reduction results ([PyTorch numerical accuracy](https://docs.pytorch.org/docs/2.12/notes/numerical_accuracy.html#batched-computations-or-slice-computations)).
+The bound is our explicit engineering choice, not a tolerance prescribed by PyTorch.
 
 The second four-task array tests each family/task on all four partitions with the existing
 production row/cell caps, monitors and 16 updates per partition. This checks launch and
 memory feasibility, not the entire 10,000-update trajectory or performance benefit.
 Default limits are one hour per smoke task and three hours per capacity task. These are
-allocation ceilings, not measured runtime predictions. Wait for every task to finish.
-
-```bash
-bash scripts/slurm/run_experiment0_lora.sh inspect lora1
-```
+allocation ceilings, not measured runtime predictions. The final CPU audit starts automatically.
 
 Inspection runs on a CPU node, verifies all eight receipts, source/environment/input
 identity and checkpoint evidence, and writes the required inspection receipt. An empty
 queue is not proof of success: the inspection log must report success and exit zero.
-Logs and receipts use DATA `output CreditPFN/experiment0/lora/lora1/`; larger diagnostics
+Logs and receipts use DATA `output CreditPFN/experiment0/lora/lora2/`; larger diagnostics
 use the matching PROJECT subtree. Debug weights use
-`checkpoints/trained/experiment0/lora/lora1/` on PROJECT. Older experiment-0 output stays
+`checkpoints/trained/experiment0/lora/lora2/` on PROJECT. Older experiment-0 output stays
 outside this scope. After inspection passes:
 
 ```bash
-export CREDITPFN_LORA_GATE=lora1
-```
-
-```bash
-bash scripts/slurm/run_experiment8.sh train
+CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh train
 ```
 
 Keep the terminal until both track submitters return. Existing controller quotas and
@@ -789,7 +804,7 @@ A metadata check alone is not a new full-content audit.
 After all 48 trials finish and their checkpoint audits pass, submit the benchmark once:
 
 ```bash
-bash scripts/slurm/run_experiment8.sh benchmark
+CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh benchmark
 ```
 
 This checks readiness and submits both resource arrays together: 128 GPU and 128 CPU
@@ -825,6 +840,16 @@ to that workflow's `logs/`. No existing receipt, plan or checkpoint is overwritt
 This diagnostic intentionally allows a historical failed workflow after code
 instrumentation changes, records both identities, and **cannot authorize production**.
 Even exit zero means the diagnostic ran, not that the failed LoRA gate passed.
+
+The 26-10-2026 `lora1` diagnostic completed, but its original failed smoke receipt
+remains failed. Keep this record and use a fresh ID, e.g. `lora2`, for preparation,
+all four smoke tasks, all four capacity tasks and inspection after deploying the
+revised batch-comparison rule and per-projection gradient audit. The `all` command
+enforces the stage order automatically. These changes affect the gate: the training source identity still matches the
+downloaded preparation, so an experiment-8 plan reset is not needed for this fix.
+If a later change produces a plan mismatch, stop and investigate rather than
+deleting production output automatically. Only export `CREDITPFN_LORA_GATE=lora2`
+after its inspection passes. Retain that accepted workflow throughout experiment 8.
 
 Preview only the failed LoRA debugging workflow on both tiers:
 

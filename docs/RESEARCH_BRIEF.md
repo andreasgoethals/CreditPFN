@@ -712,6 +712,11 @@ main grid's balanced contexts; LGD uses its stratified policy. Neither heads nor
 weights enter the optimizer. L2-SP and AdamW weight decay are zero: penalizing A/B is not
 an effective-weight-displacement penalty. Such a penalty is possible but is outside this
 experiment. Rank, scaling, dropout and target modules are fixed, not extra swept axes.
+Zero factor decay is a design choice, not a claim that weight decay is invalid for LoRA:
+Ning et al.'s target-table LoRA recipe uses AdamW decay 0.01. Experiment 8 is not a
+controlled LoRA-versus-DiagScale comparison. BF16 forward operations can round small
+updates, but how long this affects a particular run is unmeasured; it cannot be inferred
+from the learning rate alone or dismissed because experiment 1 also uses AMP.
 
 The five-fold benchmark pairs original and adapted predictions on the same held-out table
 rows. Keep AUC/Brier/log loss for PD and R²/RMSE for LGD, equal table weighting, all three
@@ -727,7 +732,9 @@ comparisons need a verified common protocol and cohort, not just similar filenam
 Training reports show native loss, optimization health, held-out/retention trajectories,
 cost and the norm of the effective Q/V update relative to its original targeted weights.
 This movement is invariant to reciprocal rescaling of A and B; factor-space distance is
-not described as backbone drift. Results reports show paired final changes and coverage,
+not described as backbone drift. Raw per-tensor diagnostics remain parameter/factor statistics:
+zero-initialized B has undefined relative change/cosine to its initial value. These are not
+per-layer effective-weight measurements. Results reports show paired final changes and coverage
 with complete numerical summaries. Empty research output produces an explicit pending
 report. No artificial measurements are supplied to publication notebooks.
 
@@ -741,6 +748,16 @@ remove backbone activation/backpropagation costs; no speed or memory saving is a
 The separate experiment-0 LoRA workflow checks each family/task at every production rate:
 identity insertion, frozen base weights, actual adapter gradients, nonzero predictions,
 fresh/cached attention, merged native loading, and uninterrupted/interrupted recovery.
+Every Q and V projection is observed during the actual debug training pipeline. The audit
+requires finite gradient paths to A and B, a nonzero B gradient and nonzero effective BA
+movement for each projection. A's initially zero gradient is expected when B starts at zero.
+This catches a dead packed-QKV slice without confusing FP32 export rounding with an absent
+training gradient. Hooks only observe gradients and are never installed in production runs.
+After the `lora1` LGD batch-splitting failure, the query-chunk acceptance bound was changed
+to 1e-4 synthetic context-target standard deviations; same-batch identity, merge/cache and
+recovery criteria stayed unchanged. This is a post-diagnostic engineering tolerance,
+not a preregistered scientific result. `lora1` remains failed and a fresh gate is required;
+[VSC.md](VSC.md#experiment-8-lora-workflow) records the evidence and exact scope.
 Production-shape probes visit all four dataset partitions with their actual feature widths.
 An independent inspection binds receipts to code, environment, configurations, bases and
 data before production launch. Local checks include real tiny TabICLv2 models; the local

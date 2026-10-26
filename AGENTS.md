@@ -46,10 +46,11 @@ upstream source, or a primary reference, **say so** rather than filling the gap 
 Distinguish what a paper *evaluated* from what its code merely *supports*; what a mechanism *can*
 represent from how *often* it occurs; a library annotation from the primary source it summarises.
 
-## 4. Do not train, install, or push without asking
+## 4. Do not train or install without asking
 
-Cluster runs cost real VSC credits. Installs change a shared environment. Pushes are
-Andreas's action. Ask first.
+Cluster runs cost real VSC credits. Installs change a shared environment. Ask first.
+On 26-10-2026 Andreas authorized agents to push reviewed and validated changes themselves.
+Keep scientific recipe changes subject to explicit agreement; a push is not permission to submit cluster work.
 
 ## 5. Windows PowerShell 5.1 — no `&&`
 
@@ -111,9 +112,9 @@ anything is finished.
 
 ## 9. CreditPFN specifics
 
-- **Never `git push`.** Restated because it is this project's most expensive recurring failure: the
-  cluster pulls `origin/main`, so a fix that is committed but unpushed does not exist there. Commit
-  locally when asked, then tell Andreas to push *and* pull on VSC.
+- **Push validated changes when completing authorized implementation work.** The user granted this
+  permission on 26-10-2026. Verify the remote result and tell Andreas to pull on VSC before submission;
+  a local commit alone is not deployed there. Do not change cluster files used by active jobs.
 - **No secrets, credentials, private dataset contents or large log excerpts** in any document —
   both dated logs included, since both are tracked.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe`; on the cluster the

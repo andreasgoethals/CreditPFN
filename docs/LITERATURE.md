@@ -361,6 +361,12 @@ change was made for this study.
   Its target-table protocol and all-linear coverage are different from experiment 8's
   corpus training and Q/V-only intervention. Rank 16 motivates a bounded choice, not an
   optimality claim. DiagScale is a separate multiplicative similarity restriction.
+  Appendix B.1/B.2 uses AdamW weight decay 0.01, TabPFN BF16 and TabICL FP32.
+  The matching `tfm-library/repositories/Test-Time Compute for Tabular Foundation Models.txt`
+  snapshot (`LoRALinear`, `inject_lora`, and the training recipes) supports those implementation
+  choices. Thus zero decay is not a universal LoRA requirement. Our factor-decay-free,
+  balanced-PD, AMP corpus recipe is an explicitly different experiment; these differences
+  preclude attributing its difference from experiment 5 solely to adapter architecture.
 - [Tanna et al., TabTune](../tfm-library/papers/text/2025/12_Tanna_et_al._TabTune_A_Unified_Library_for_Inference_and_Fine_Tuning_Tabular_Foundation_Models.txt),
   Appendix 10.4/Table 13: PEFT support can fall back to base fine-tuning. Therefore a label
   saying PEFT/LoRA is insufficient evidence of actual adapter insertion. Experiment 8
