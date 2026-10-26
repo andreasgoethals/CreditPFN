@@ -10,6 +10,7 @@ import io
 import json
 from pathlib import PurePosixPath
 
+from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
@@ -205,27 +206,41 @@ def plot_diagnostics(data, track, *, seeds=False, coverage=None):
         return []
     fields = (["prediction_rms_change", "prediction_shift"] if seeds else
               ["absolute_mean_error_improvement", "mse_improvement"])
-    labels = (["RMS prediction difference", "Mean prediction shift (43 − 42)"] if seeds else
-              ["Reduction in absolute\nmean error", "Brier reduction" if track == "pd" else "MSE reduction"])
+    labels = (["RMS prediction\ndifference", "Mean prediction shift\n(43 − 42)"] if seeds else
+              ["Absolute mean error\nreduction", "Brier reduction" if track == "pd" else "MSE reduction"])
     title = "Training-seed prediction sensitivity" if seeds else "Systematic error and predictive accuracy"
     fig, axes = cp._subplots(f"{track.upper()}: {title}", 2, sharey=True)
-    summaries, ticks = [], []
+    summaries, ticks, plotted_tables = [], [], []
     for i, ((base, arm), group) in enumerate(data.groupby(["base", "arm"], sort=True)):
+        group = group.sort_values("dataset")
+        offsets = (np.linspace(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(group))
+                   if len(group) > 1 else np.zeros(1))
+        plotted_tables.append(group.assign(plot_row=i, table_offset=offsets))
         label = style.model_label(base) if data.arm.nunique() == 1 else f"{style.model_label(base)} / {arm}"
         ticks.append(f"{label} (n={len(group)})")
         for ax, field in zip(axes, fields):
             values = group[field]
             q1, q3 = values.quantile([.25, .75])
+            ax.scatter(values, i + offsets, color=style.color(base), marker="o",
+                       s=style.TABLE_POINT_SIZE, alpha=style.POINT_ALPHA,
+                       edgecolors=style.color("reference"), linewidths=style.TABLE_POINT_EDGE)
             ax.plot([q1, q3], [i, i], color=style.color(base), linewidth=style.THIN_LINE)
-            ax.scatter(values.mean(), i, color=style.color(base), marker="D", s=style.POINT_SIZE)
+            ax.scatter(values.mean(), i, color=style.color("reference"), marker="D", s=style.POINT_SIZE,
+                       label="Equal-table mean" if i == 0 else None, zorder=3)
             summaries.append(dict(base=base, arm=arm, metric=field, datasets=len(group),
                                   mean=values.mean(), q25=q1, q75=q3))
     for ax, label in zip(axes, labels):
         ax.axvline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
-        ax.set_xlabel(label + ("" if seeds else " (+ better)"))
+        ax.set_xlabel(label + ("" if seeds else " (+ better)" if "\n" in label else "\n(+ better)"))
         ax.set_yticks(range(len(ticks)), ticks)
+    handles = [Line2D([], [], linestyle="", marker=marker, color=style.color("reference"),
+                      markersize=np.sqrt(size), label=label)
+               for marker, size, label in (("o", style.TABLE_POINT_SIZE, "Individual table"),
+                                           ("D", style.POINT_SIZE, "Equal-table mean"))]
+    fig.legend(handles=handles, loc="outside lower center", ncol=2)
     caption = (
-        "Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; "
+        "Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; "
+        "their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; "
         "segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. "
         + ("Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). "
            "RMS disagreement and signed shifts describe two realizations, not context variance."
@@ -234,7 +249,8 @@ def plot_diagnostics(data, track, *, seeds=False, coverage=None):
            "These are empirical errors, not a theoretical bias–variance decomposition.")
     )
     return [cp.Page("seed_prediction_sensitivity" if seeds else "prediction_diagnostics", fig, caption,
-                    {"Paired table diagnostics": data, "Plotted means and quartiles": pd.DataFrame(summaries)})]
+                    {"Paired table diagnostics": pd.concat(plotted_tables, ignore_index=True),
+                     "Plotted means and quartiles": pd.DataFrame(summaries)})]
 
 
 def plot_arms(tables, coverage, track):

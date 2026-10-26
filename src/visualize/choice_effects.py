@@ -194,6 +194,63 @@ def plot_combinations(data, track, metric, domain="credit"):
         {"measurement": "five_fold_final_benchmark", "metric": metric, "domain": domain, "aggregation_unit": "table"})]
 
 
+def plot_conservative_recipes(data, track, metric):
+    """Detail the two fixed low rates, without selecting cells by outcome."""
+    rates = (3e-7, 1e-6)
+    values = (data[data.domain.eq("credit") & data.metric.eq(metric)
+                   & data.learning_rate.isin(rates)].copy() if not data.empty else data)
+    if values.empty:
+        return []
+    summary = recipe_summary(values)
+    if summary.sampling.nunique() != 1:
+        raise ValueError("Conservative recipe view needs a single sampling protocol")
+    scale, label = METRICS[metric]
+    summary["plotted_mean"] = summary["mean"] * scale
+    models = sorted(summary.base.unique())
+    fig = plt.figure(figsize=style.figsize(style.WIDTH_FULL, style.PANEL_RATIO), layout="constrained")
+    grid = fig.add_gridspec(2, 2, height_ratios=(1, style.CHOICE_LEGEND_RATIO))
+    axes = [fig.add_subplot(grid[0, i]) for i in range(2)]
+    settings = [(rate, anchor) for rate in rates for anchor in (0., .003)]
+    for ax, frozen in zip(axes, (False, True)):
+        for offset, (rate, anchor) in zip(style.CHOICE_POINT_OFFSETS, settings):
+            part = summary[summary.frozen.eq(frozen) & summary.learning_rate.eq(rate)
+                           & summary.l2sp_lambda.eq(anchor)]
+            ax.scatter(part.plotted_mean, part.base.map(models.index) + offset,
+                       marker=style.PANEL_MARKERS[int(anchor > 0)], s=style.POINT_SIZE,
+                       color=style.TRAJECTORY_LR_COLORS[rate])
+        ax.axvline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
+        ax.set_yticks(range(len(models)), [style.model_label(base) for base in models])
+        ax.set_ylim(len(models) - .5, -.5)
+        ax.set_title("Backbone frozen" if frozen else "All parameters updated")
+        ax.set_xlabel(label + " (+ better)")
+    # Common limits retain every displayed mean, including harmful low-rate cells.
+    limits = [ax.get_xlim() for ax in axes]
+    for ax in axes:
+        ax.set_xlim(min(x[0] for x in limits), max(x[1] for x in limits))
+    legends = [
+        ("Peak learning rate", [Line2D([], [], marker="o", linestyle="", color=style.TRAJECTORY_LR_COLORS[r], label=f"{r:.0e}") for r in rates]),
+        ("L2-SP strength", [Line2D([], [], marker=style.PANEL_MARKERS[i], linestyle="", color=style.color("reference"), label=f"{v:g}") for i, v in enumerate((0., .003))]),
+    ]
+    for i, (title, handles) in enumerate(legends):
+        ax = fig.add_subplot(grid[1, i]); ax.set_axis_off()
+        legend = Legend(ax, handles, [h.get_label() for h in handles], title=title,
+                        loc="center", ncol=2, frameon=True)
+        ax.add_artist(legend)
+    fig.suptitle(f"{track.upper()}: low-rate effects on held-out credit tables")
+    return [cp.Page(f"conservative_recipes_credit_{metric}", fig,
+        "Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates "
+        "(3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; "
+        "cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to "
+        "the same model's original weights, after averaging five folds within each table. "
+        + _cohort_note(values) + "Color denotes rate and marker shape denotes L2-SP strength. "
+        "Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale "
+        "that retains all displayed means and zero; positive values favor CPT. This focused mean view "
+        "does not show uncertainty or table spread, and does not imply every table improves. The full grid "
+        "retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. " + _policy_note(track),
+        {"Every low-rate paired table effect": values, "Low-rate equal-table means and spread": summary},
+        {"measurement": "five_fold_final_benchmark", "metric": metric, "domain": "credit", "aggregation_unit": "table"})]
+
+
 def _recipe_panels(title, rates):
     fig = plt.figure(figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
     grid = fig.add_gridspec(3, 2, height_ratios=(1, 1, style.CHOICE_LEGEND_RATIO))

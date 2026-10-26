@@ -56,8 +56,15 @@ def processed_inventory() -> pd.DataFrame:
             predictors = frame.drop(columns=[row.target_column], errors="ignore")
             extra.update(rows=len(frame), features=len(predictors.columns),
                          missing=float(predictors.isna().to_numpy().mean()) if predictors.size else np.nan)
+            target = pd.to_numeric(frame[row.target_column], errors="coerce").dropna()
+            if row.track == "lgd":
+                extra.update(target_mean=target.mean(), target_std=target.std())
+            else:
+                counts = target.value_counts(normalize=True)
+                extra["minority_class_ratio"] = counts.min() if len(counts) > 1 else 0. if len(counts) else np.nan
         except FileNotFoundError:
-            extra.update(rows=np.nan, features=np.nan, missing=np.nan)
+            extra.update(rows=np.nan, features=np.nan, missing=np.nan,
+                         target_mean=np.nan, target_std=np.nan, minority_class_ratio=np.nan)
         records.append(extra)
     result = pd.DataFrame(records).drop(columns="target_column", errors="ignore")
     result["dataset_id"] = result.dataset_id.map(display_name)
@@ -170,7 +177,7 @@ def plot_target_profiles(data: pd.DataFrame) -> list[Page]:
             axes[0].set_xlabel(label)
             axes[0].set_xlim(min(0,float(page[column].min())),max(.5 if track == "pd" else 1,float(page[column].max())))
             pages.append(Page(f"target_profiles_{track}_{number}", fig,
-                f"Registered {label.lower()} for each available {track.upper()} dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count."))
+                f"Processed-target {label.lower()} for each available {track.upper()} dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count. Statistics are recomputed from the same processed targets as the distribution panels."))
     return pages
 
 

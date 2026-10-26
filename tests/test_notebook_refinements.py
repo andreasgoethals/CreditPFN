@@ -78,6 +78,24 @@ def test_target_bars_and_single_pd_assignment_figure():
     assert len(pages) == 1 and pages[0].figure.axes[0].images[0].get_array().shape == (17,4)
 
 
+def test_processed_target_statistics_use_current_rows_not_stale_manifest(monkeypatch):
+    registered = pd.DataFrame([dict(track="lgd", dataset_id="Table", target_column="y",
+                                    target_mean=.7049, target_std=.4182),
+                               dict(track="lgd", dataset_id="Missing", target_column="y",
+                                    target_mean=.9, target_std=.2)])
+    frame = pd.DataFrame({"x": [1, 2, 3], "y": [.1, .7, 1.]})
+    monkeypatch.setattr(corpus.exploration, "corpus_summary_table", lambda: registered.copy())
+    def load(track, dataset):
+        if dataset == "Missing":
+            raise FileNotFoundError(dataset)
+        return frame
+    monkeypatch.setattr(corpus.exploration, "load_sanitized_dataset", load)
+    result = corpus.processed_inventory().set_index("dataset_id")
+    assert result.loc["Table", "target_mean"] == pytest.approx(frame.y.mean())
+    assert result.loc["Table", "target_std"] == pytest.approx(frame.y.std())
+    assert pd.isna(result.loc["Missing", "target_mean"])
+
+
 def test_delivery_checks_recognize_actual_sanitized_filenames(tmp_path, monkeypatch):
     monkeypatch.setattr(corpus.exploration, "_resolve_paths", lambda: {"processed": tmp_path})
     for track, name, target in [("pd", "0008.german", "target"), ("lgd", "0008.SBA_loans_case", "lgd")]:

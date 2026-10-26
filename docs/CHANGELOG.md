@@ -2,6 +2,8 @@
 
 ## 26-10-2026
 
+- Refresh processed-target summaries from data; show individual tables in prediction diagnostics and add low-rate detail views beside the full benchmark grids.
+- Verify all eight `lora2` receipts and the independent inspection; experiment 8 is ready for training.
 - Queue the complete LoRA safety sequence in one command; audit gradients and effective updates for every Q/V projection; clarify legacy labels and recipe comparisons.
 - Separate context-scaled LGD query-batch rounding checks from strict LoRA identity checks; preserve pointwise diagnostics and require a fresh gate.
 - Add checkpoint-specific LoRA inference failure evidence and a single-task, inference-only diagnostic that preserves failed workflows and cannot grant a gate.

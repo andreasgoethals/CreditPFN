@@ -145,3 +145,18 @@ def test_plot_is_compact_complete_and_has_no_unmeasured_variance(tmp_path, monke
     missing = coverage.assign(arm="Missing arm", status="unavailable")
     assert not pred.plot_diagnostics(result, "pd", coverage=pd.concat([coverage, missing]))
     assert not pred.plot_arms([result, pd.DataFrame()], [coverage], "pd")
+
+
+def test_diagnostic_circles_preserve_each_table_and_paired_panel_offsets():
+    data = pd.DataFrame({"base": ["v3"]*3, "arm": ["CPT"]*3,
+                         "dataset": ["C", "A", "B"],
+                         "absolute_mean_error_improvement": [-.2, .01, .03],
+                         "mse_improvement": [-.1, .02, .04]})
+    page, = pred.plot_diagnostics(data, "pd")
+    first, second = page.figure.axes
+    np.testing.assert_allclose(first.collections[0].get_offsets()[:, 0], [.01, .03, -.2])
+    np.testing.assert_allclose(second.collections[0].get_offsets()[:, 0], [.02, .04, -.1])
+    np.testing.assert_allclose(first.collections[0].get_offsets()[:, 1], second.collections[0].get_offsets()[:, 1])
+    assert len(page.tables["Paired table diagnostics"]) == 3
+    assert "Circles show individual tables" in page.caption
+    assert first.collections[1].get_offsets()[0, 0] == pytest.approx(data.absolute_mean_error_improvement.mean())

@@ -216,31 +216,35 @@ PD. Final five-fold benchmark: Brier reduction (×100). 17 complete tables per m
 
 PD. Final five-fold benchmark: Log-loss reduction (nats). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__05_pd_benchmark_transfer_retention](experiment1/experiment1__03_results_pd__05_pd_benchmark_transfer_retention.pdf)** — `pd_benchmark_transfer_retention`
+**[experiment1__03_results_pd__05_pd_conservative_recipes_credit_roc_auc](experiment1/experiment1__03_results_pd__05_pd_conservative_recipes_credit_roc_auc.pdf)** — `pd_conservative_recipes_credit_roc_auc`
+
+PD. Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates (3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to the same model's original weights, after averaging five folds within each table. 17 complete tables per model. Color denotes rate and marker shape denotes L2-SP strength. Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale that retains all displayed means and zero; positive values favor CPT. This focused mean view does not show uncertainty or table spread, and does not imply every table improves. The full grid retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+
+**[experiment1__03_results_pd__06_pd_benchmark_transfer_retention](experiment1/experiment1__03_results_pd__06_pd_benchmark_transfer_retention.pdf)** — `pd_benchmark_transfer_retention`
 
 PD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 17 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 
-**[experiment1__03_results_pd__06_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__06_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
+**[experiment1__03_results_pd__07_pd_reference_uncertainty](experiment1/experiment1__03_results_pd__07_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
 
 PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[experiment1__03_results_pd__07_pd_calibration_overview](experiment1/experiment1__03_results_pd__07_pd_calibration_overview.pdf)** — `pd_calibration_overview`
+**[experiment1__03_results_pd__08_pd_calibration_overview](experiment1/experiment1__03_results_pd__08_pd_calibration_overview.pdf)** — `pd_calibration_overview`
 
 PD. Changes in the displayed outer-test probability-quality scores for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all 9 scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. Log loss, when exported, is in nats; ECE depends on the binning scheme.
 
-**[experiment1__03_results_pd__08_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__08_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+**[experiment1__03_results_pd__09_pd_prediction_diagnostics](experiment1/experiment1__03_results_pd__09_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__03_results_pd__09_pd_monitor_recipe_changes](experiment1/experiment1__03_results_pd__09_pd_monitor_recipe_changes.pdf)** — `pd_monitor_recipe_changes`
+**[experiment1__03_results_pd__10_pd_monitor_recipe_changes](experiment1/experiment1__03_results_pd__10_pd_monitor_recipe_changes.pdf)** — `pd_monitor_recipe_changes`
 
 PD. Held-out credit fixed-context monitors at 10,000 successful updates, paired with update zero. 17 complete tables per model. Each mark is an equal-table mean for one rate, anchoring and update-scope combination on a recipe-complete cohort. Horizontal offsets separate the four combinations at each rate; they have no quantitative meaning. Colors encode rate, circle/square encodes L2-SP, and filled/open marks encode full/frozen-backbone updates. Zero means unchanged score. Vertical scales vary by base to expose small effects. These fixed-context monitoring measurements are separate from the final five-fold benchmark.
 
-**[experiment1__03_results_pd__10_pd_control_context_1](experiment1/experiment1__03_results_pd__10_pd_control_context_1.pdf)** — `pd_control_context_1`
+**[experiment1__03_results_pd__11_pd_control_context_1](experiment1/experiment1__03_results_pd__11_pd_control_context_1.pdf)** — `pd_control_context_1`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
-**[experiment1__03_results_pd__11_pd_control_context_2](experiment1/experiment1__03_results_pd__11_pd_control_context_2.pdf)** — `pd_control_context_2`
+**[experiment1__03_results_pd__12_pd_control_context_2](experiment1/experiment1__03_results_pd__12_pd_control_context_2.pdf)** — `pd_control_context_2`
 
 PD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -258,27 +262,31 @@ LGD. Final five-fold benchmark: R² change. 8 complete tables per model. Each ce
 
 LGD. Final five-fold benchmark: Relative RMSE gain (%). 8 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. Inference follows the recorded LGD policy.
 
-**[experiment1__04_results_lgd__04_lgd_benchmark_transfer_retention](experiment1/experiment1__04_results_lgd__04_lgd_benchmark_transfer_retention.pdf)** — `lgd_benchmark_transfer_retention`
+**[experiment1__04_results_lgd__04_lgd_conservative_recipes_credit_r2](experiment1/experiment1__04_results_lgd__04_lgd_conservative_recipes_credit_r2.pdf)** — `lgd_conservative_recipes_credit_r2`
+
+LGD. Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates (3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to the same model's original weights, after averaging five folds within each table. 8 complete tables per model. Color denotes rate and marker shape denotes L2-SP strength. Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale that retains all displayed means and zero; positive values favor CPT. This focused mean view does not show uncertainty or table spread, and does not imply every table improves. The full grid retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. Inference follows the recorded LGD policy.
+
+**[experiment1__04_results_lgd__05_lgd_benchmark_transfer_retention](experiment1/experiment1__04_results_lgd__05_lgd_benchmark_transfer_retention.pdf)** — `lgd_benchmark_transfer_retention`
 
 LGD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 8 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. Inference follows the recorded LGD policy.
 
-**[experiment1__04_results_lgd__05_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__05_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
+**[experiment1__04_results_lgd__06_lgd_reference_uncertainty](experiment1/experiment1__04_results_lgd__06_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
 
 LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[experiment1__04_results_lgd__06_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__06_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
+**[experiment1__04_results_lgd__07_lgd_prediction_diagnostics](experiment1/experiment1__04_results_lgd__07_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[experiment1__04_results_lgd__07_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__07_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
+**[experiment1__04_results_lgd__08_lgd_v26_distribution_tradeoff](experiment1/experiment1__04_results_lgd__08_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
 
 LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect each credit table's five-fold means; the colored line is their equal-table mean. The dotted coverage line marks the nominal 90% level. Log scores use the historical per-row NLL replacement/clipping at ±100 nats; they are not uncapped likelihood estimates.
 
-**[experiment1__04_results_lgd__08_lgd_monitor_recipe_changes](experiment1/experiment1__04_results_lgd__08_lgd_monitor_recipe_changes.pdf)** — `lgd_monitor_recipe_changes`
+**[experiment1__04_results_lgd__09_lgd_monitor_recipe_changes](experiment1/experiment1__04_results_lgd__09_lgd_monitor_recipe_changes.pdf)** — `lgd_monitor_recipe_changes`
 
 LGD. Held-out credit fixed-context monitors at 10,000 successful updates, paired with update zero. 8 complete tables per model. Each mark is an equal-table mean for one rate, anchoring and update-scope combination on a recipe-complete cohort. Horizontal offsets separate the four combinations at each rate; they have no quantitative meaning. Colors encode rate, circle/square encodes L2-SP, and filled/open marks encode full/frozen-backbone updates. Zero means unchanged score. Vertical scales vary by base to expose small effects. These fixed-context monitoring measurements are separate from the final five-fold benchmark.
 
-**[experiment1__04_results_lgd__09_lgd_control_context_1](experiment1/experiment1__04_results_lgd__09_lgd_control_context_1.pdf)** — `lgd_control_context_1`
+**[experiment1__04_results_lgd__10_lgd_control_context_1](experiment1/experiment1__04_results_lgd__10_lgd_control_context_1.pdf)** — `lgd_control_context_1`
 
 LGD. Within-dataset ranks of untuned foundation models and classical controls, using complete outer-fold mean scores. Only datasets with every displayed control are included. Ranks provide corpus context; they do not quantify the size of the continued-pretraining effect.
 
@@ -380,11 +388,11 @@ LGD. Non-credit retention: five-fold benchmark effects for the predefined full-u
 
 **[experiment2__02_results__05_pd_seed_prediction_sensitivity](experiment2/experiment2__02_results__05_pd_seed_prediction_sensitivity.pdf)** — `pd_seed_prediction_sensitivity`
 
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
 
 **[experiment2__02_results__06_lgd_seed_prediction_sensitivity](experiment2/experiment2__02_results__06_lgd_seed_prediction_sensitivity.pdf)** — `lgd_seed_prediction_sensitivity`
 
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
 
 **[experiment2__02_results__07_pd_seed_monitor_credit](experiment2/experiment2__02_results__07_pd_seed_monitor_credit.pdf)** — `pd_seed_monitor_credit`
 
@@ -524,11 +532,11 @@ LGD. Non-credit retention: five-fold benchmark effects and within-experiment pro
 
 **[experiment3__02_results__05_pd_prediction_diagnostics](experiment3/experiment3__02_results__05_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 **[experiment3__02_results__06_lgd_prediction_diagnostics](experiment3/experiment3__02_results__06_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 **[experiment3__02_results__07_pd_sampling_benchmark_quality_cost](experiment3/experiment3__02_results__07_pd_sampling_benchmark_quality_cost.pdf)** — `pd_sampling_benchmark_quality_cost`
 
@@ -638,11 +646,11 @@ PD. Five-fold paired DiagScale effects relative to the original checkpoint under
 
 **[experiment5__02_results__04_pd_prediction_diagnostics](experiment5/experiment5__02_results__04_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 **[experiment5__02_results__05_lgd_prediction_diagnostics](experiment5/experiment5__02_results__05_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 ## experiment6/01_training
 
@@ -670,7 +678,7 @@ Points are table-level paired effects and diamonds are equal-table means. Five f
 
 **[experiment6__02_results__03_pd_prediction_diagnostics](experiment6/experiment6__02_results__03_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 ## experiment7/01_training
 
@@ -698,7 +706,7 @@ Points are table-level paired effects and diamonds are equal-table means. Five f
 
 **[experiment7__02_results__03_pd_prediction_diagnostics](experiment7/experiment7__02_results__03_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
 ## experiment8/01_training
 
@@ -762,11 +770,11 @@ Row counts, predictor counts and missing-cell percentages for 8 PD datasets, sor
 
 **[general__02_processed_data__07_target_profiles_pd_1](general/general__02_processed_data__07_target_profiles_pd_1.pdf)** — `target_profiles_pd_1`
 
-Registered minority-class fraction for each available PD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count.
+Processed-target minority-class fraction for each available PD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count. Statistics are recomputed from the same processed targets as the distribution panels.
 
 **[general__02_processed_data__08_target_profiles_lgd_1](general/general__02_processed_data__08_target_profiles_lgd_1.pdf)** — `target_profiles_lgd_1`
 
-Registered mean lgd for each available LGD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count.
+Processed-target mean lgd for each available LGD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count. Statistics are recomputed from the same processed targets as the distribution panels.
 
 **[general__02_processed_data__09_lgd_distributions_1](general/general__02_processed_data__09_lgd_distributions_1.pdf)** — `lgd_distributions_1`
 

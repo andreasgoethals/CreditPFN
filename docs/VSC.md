@@ -717,6 +717,15 @@ in DATA or Git. Experiments 6 and 7 write ordinary full-weight checkpoints under
 
 ## Experiment 8: LoRA workflow
 
+Validated on 26-10-2026: workflow `lora2` at source `cfa9658` passed preparation
+(`11738977`), all four smoke tasks (`11738978`), all four capacity tasks (`11738979`),
+and independent inspection (`11738980`, exit 0 at 11:07:30 CEST). The downloaded
+DATA receipts and inspection hashes agree. These authorize experiment-8 training
+on that source/environment; do not resubmit or clean the accepted workflow.
+The subsequent notebook-only refinements do not change the gate fingerprint.
+The commands below also describe how to validate a future changed implementation;
+use a fresh ID in that case, not `lora2` again.
+
 Experiment 8 adds 48 trials: TabPFN v3 / TabICLv2, PD / LGD, four existing dataset
 partitions and three adapter learning rates. It does not extend or overwrite experiment 1.
 The [research brief](RESEARCH_BRIEF.md) defines the fixed Q/V adapter and comparison limits.

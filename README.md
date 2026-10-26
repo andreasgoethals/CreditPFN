@@ -27,7 +27,10 @@ main results notebooks. A separate, inference-only TabICL check lives in experim
 see [the finishing-check commands](docs/VSC.md#final-inference-check-before-writing).
 It does not retrain models or replace completed benchmark files.
 
-Experiment 8 has a separate LoRA safety gate. On VSC, `bash scripts/slurm/run_experiment0_lora.sh all lora2`
+Experiment 8 has a separate LoRA safety gate. The `lora2` chain passed all eight GPU checks
+and independent inspection on 26-10-2026; production training has not yet been submitted in the reviewed evidence.
+Use `CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh train` on the validated VSC environment.
+For a future changed implementation or environment, `bash scripts/slurm/run_experiment0_lora.sh all NEW_ID`
 queues preparation, both four-task GPU arrays and independent inspection together under a fresh ID.
 Successful dependencies advance automatically; production remains gated. A failed inference probe can be inspected
 without retraining through `run_experiment0_lora.sh diagnose ID`; preserve the failed

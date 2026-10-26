@@ -69776,6 +69776,591 @@ row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25
 63,credit,log_loss,TabPFN v3,3e-05,0.003,True,one_sample,-0.013039118,-0.003015719,-0.017193711,-0.0011896224,17,1,TabPFN v3 / frozen,"3e-05
 0.003"
 
+Figure: pd_conservative_recipes_credit_roc_auc
+PD. Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates (3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to the same model's original weights, after averaging five folds within each table. 17 complete tables per model. Color denotes rate and marker shape denotes L2-SP strength. Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale that retains all displayed means and zero; positive values favor CPT. This focused mean view does not show uncertainty or table spread, and does not imply every table improves. The full grid retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+Every low-rate paired table effect
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00084865788,1
+1,TabICLv2,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,-9.0267546e-05,1
+2,TabICLv2,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,-0.007256671,1
+3,TabICLv2,3e-07,0,False,one_sample,GMSC,credit,roc_auc,-0.00062394774,1
+4,TabICLv2,3e-07,0,False,one_sample,German Credit,credit,roc_auc,0.0023208291,1
+5,TabICLv2,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,-0.00016323778,1
+6,TabICLv2,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,-0.014835603,1
+7,TabICLv2,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,-0.00082315385,1
+8,TabICLv2,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.000146919,1
+9,TabICLv2,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0018223383,1
+10,TabICLv2,3e-07,0,False,one_sample,Myhom,credit,roc_auc,0.01480591,1
+11,TabICLv2,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,0.00078878451,1
+12,TabICLv2,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,-0.00038674043,1
+13,TabICLv2,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00011137358,1
+14,TabICLv2,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0019250541,1
+15,TabICLv2,3e-07,0,False,one_sample,Thomas,credit,roc_auc,-0.0023061753,1
+16,TabICLv2,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.071467701,1
+17,TabICLv2,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,9.6416591e-05,1
+18,TabICLv2,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,-0.00044892542,1
+19,TabICLv2,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0042125668,1
+20,TabICLv2,3e-07,0,True,one_sample,GMSC,credit,roc_auc,-0.00048367031,1
+21,TabICLv2,3e-07,0,True,one_sample,German Credit,credit,roc_auc,0.0017875985,1
+22,TabICLv2,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-0.00014952499,1
+23,TabICLv2,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-0.01058544,1
+24,TabICLv2,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,-0.00090965466,1
+25,TabICLv2,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,-0.00034470445,1
+26,TabICLv2,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00013862683,1
+27,TabICLv2,3e-07,0,True,one_sample,Myhom,credit,roc_auc,0.013587372,1
+28,TabICLv2,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,0.00080087024,1
+29,TabICLv2,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,-0.00062244924,1
+30,TabICLv2,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00013127916,1
+31,TabICLv2,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0012844085,1
+32,TabICLv2,3e-07,0,True,one_sample,Thomas,credit,roc_auc,-0.001554015,1
+33,TabICLv2,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.071715772,1
+34,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00056737364,1
+35,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,-2.8451999e-05,1
+36,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0061696497,1
+37,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00057036466,1
+38,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,0.0024155533,1
+39,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,-6.6761782e-05,1
+40,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.013719107,1
+41,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.00075032379,1
+42,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.00022214889,1
+43,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0016434439,1
+44,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,0.014826318,1
+45,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0012353369,1
+46,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.00017633823,1
+47,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,7.5056415e-05,1
+48,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0017804574,1
+49,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,-0.0019977983,1
+50,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.071504064,1
+51,TabICLv2,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00012213118,1
+52,TabICLv2,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.00045073344,1
+53,TabICLv2,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.0040369989,1
+54,TabICLv2,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00054914775,1
+55,TabICLv2,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,0.0019566632,1
+56,TabICLv2,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00014822045,1
+57,TabICLv2,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.010305058,1
+58,TabICLv2,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.00093561173,1
+59,TabICLv2,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,-0.00036035286,1
+60,TabICLv2,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.00010661623,1
+61,TabICLv2,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,0.012957058,1
+62,TabICLv2,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00063850393,1
+63,TabICLv2,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00055166594,1
+64,TabICLv2,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,7.2351074e-05,1
+65,TabICLv2,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0013628841,1
+66,TabICLv2,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0017071764,1
+67,TabICLv2,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.071598317,1
+68,TabICLv2,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0024234513,1
+69,TabICLv2,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,-0.00020290853,1
+70,TabICLv2,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0093411224,1
+71,TabICLv2,1e-06,0,False,one_sample,GMSC,credit,roc_auc,-0.0011626593,1
+72,TabICLv2,1e-06,0,False,one_sample,German Credit,credit,roc_auc,0.0038162042,1
+73,TabICLv2,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,0.00021759455,1
+74,TabICLv2,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0086823647,1
+75,TabICLv2,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,-0.0017553184,1
+76,TabICLv2,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,-0.00072035905,1
+77,TabICLv2,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0013987696,1
+78,TabICLv2,1e-06,0,False,one_sample,Myhom,credit,roc_auc,0.011079507,1
+79,TabICLv2,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,-0.00034193485,1
+80,TabICLv2,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,-0.0033871443,1
+81,TabICLv2,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00018763827,1
+82,TabICLv2,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0026100114,1
+83,TabICLv2,1e-06,0,False,one_sample,Thomas,credit,roc_auc,-0.0076019443,1
+84,TabICLv2,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.068894851,1
+85,TabICLv2,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00019097774,1
+86,TabICLv2,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,-0.00034289135,1
+87,TabICLv2,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0052557465,1
+88,TabICLv2,1e-06,0,True,one_sample,GMSC,credit,roc_auc,-0.00060877858,1
+89,TabICLv2,1e-06,0,True,one_sample,German Credit,credit,roc_auc,0.0010959233,1
+90,TabICLv2,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,3.5803468e-05,1
+91,TabICLv2,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.0066702244,1
+92,TabICLv2,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,-0.0013224896,1
+93,TabICLv2,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,0.00020255877,1
+94,TabICLv2,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,-0.00037872934,1
+95,TabICLv2,1e-06,0,True,one_sample,Myhom,credit,roc_auc,0.015460247,1
+96,TabICLv2,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,-0.0053109616,1
+97,TabICLv2,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,-0.00047817164,1
+98,TabICLv2,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,7.3801012e-05,1
+99,TabICLv2,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0011195847,1
+100,TabICLv2,1e-06,0,True,one_sample,Thomas,credit,roc_auc,-0.0026235775,1
+101,TabICLv2,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.070288281,1
+102,TabICLv2,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.001489034,1
+103,TabICLv2,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,-7.8101944e-05,1
+104,TabICLv2,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0084777605,1
+105,TabICLv2,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00082153089,1
+106,TabICLv2,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,0.0044573484,1
+107,TabICLv2,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,0.0003483988,1
+108,TabICLv2,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0077021681,1
+109,TabICLv2,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0012544842,1
+110,TabICLv2,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,-0.00064909204,1
+111,TabICLv2,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.00083537705,1
+112,TabICLv2,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,0.011420918,1
+113,TabICLv2,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0004846679,1
+114,TabICLv2,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.0023490707,1
+115,TabICLv2,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00024445055,1
+116,TabICLv2,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0018641114,1
+117,TabICLv2,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,-0.0057250024,1
+118,TabICLv2,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.069612038,1
+119,TabICLv2,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00015940321,1
+120,TabICLv2,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,-0.00036467931,1
+121,TabICLv2,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.0047350647,1
+122,TabICLv2,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00050951989,1
+123,TabICLv2,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,0.00076156218,1
+124,TabICLv2,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00011888015,1
+125,TabICLv2,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0074188621,1
+126,TabICLv2,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,-0.00149375,1
+127,TabICLv2,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00016632851,1
+128,TabICLv2,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,1.0844225e-05,1
+129,TabICLv2,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,0.01558801,1
+130,TabICLv2,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,-0.0055676469,1
+131,TabICLv2,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,-0.00056853212,1
+132,TabICLv2,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00018476841,1
+133,TabICLv2,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0010841174,1
+134,TabICLv2,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0022481938,1
+135,TabICLv2,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.070869013,1
+272,TabPFN v2,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0028898558,1
+273,TabPFN v2,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,0.0030314077,1
+274,TabPFN v2,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,0.0018287657,1
+275,TabPFN v2,3e-07,0,False,one_sample,GMSC,credit,roc_auc,0.002564706,1
+276,TabPFN v2,3e-07,0,False,one_sample,German Credit,credit,roc_auc,0.0040695444,1
+277,TabPFN v2,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,0.0076586463,1
+278,TabPFN v2,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,0.0094951033,1
+279,TabPFN v2,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,0.005028279,1
+280,TabPFN v2,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.0071946889,1
+281,TabPFN v2,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,0.0064191092,1
+282,TabPFN v2,3e-07,0,False,one_sample,Myhom,credit,roc_auc,0.001900085,1
+283,TabPFN v2,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,0.0054768598,1
+284,TabPFN v2,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,0.0050223828,1
+285,TabPFN v2,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,8.4596839e-06,1
+286,TabPFN v2,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0069536724,1
+287,TabPFN v2,3e-07,0,False,one_sample,Thomas,credit,roc_auc,0.0059965263,1
+288,TabPFN v2,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.005984581,1
+289,TabPFN v2,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-9.8757617e-05,1
+290,TabPFN v2,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,2.8291316e-05,1
+291,TabPFN v2,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,1.5799852e-05,1
+292,TabPFN v2,3e-07,0,True,one_sample,GMSC,credit,roc_auc,1.1008617e-05,1
+293,TabPFN v2,3e-07,0,True,one_sample,German Credit,credit,roc_auc,5.9009935e-05,1
+294,TabPFN v2,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-2.1611654e-05,1
+295,TabPFN v2,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00012716542,1
+296,TabPFN v2,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,-3.0384229e-05,1
+297,TabPFN v2,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,0.00011492618,1
+298,TabPFN v2,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,-1.1479529e-05,1
+299,TabPFN v2,3e-07,0,True,one_sample,Myhom,credit,roc_auc,4.1666667e-05,1
+300,TabPFN v2,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,0.00047096918,1
+301,TabPFN v2,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,2.9886889e-05,1
+302,TabPFN v2,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,4.6277458e-05,1
+303,TabPFN v2,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,4.4790636e-05,1
+304,TabPFN v2,3e-07,0,True,one_sample,Thomas,credit,roc_auc,0.00011085435,1
+305,TabPFN v2,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,4.2863513e-05,1
+306,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0028900965,1
+307,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,0.0030003482,1
+308,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,0.0018002893,1
+309,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,0.0025274617,1
+310,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,0.004022011,1
+311,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,0.0077696885,1
+312,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,0.0093488316,1
+313,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,0.0050075943,1
+314,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0071764372,1
+315,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0063839468,1
+316,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,0.0019147534,1
+317,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0054243377,1
+318,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0050721524,1
+319,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,3.6711761e-05,1
+320,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0069054749,1
+321,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,0.0058857575,1
+322,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00596666,1
+323,TabPFN v2,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-9.7583164e-05,1
+324,TabPFN v2,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,3.1558223e-05,1
+325,TabPFN v2,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,1.8408156e-05,1
+326,TabPFN v2,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,8.5177319e-06,1
+327,TabPFN v2,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,0.00013069544,1
+328,TabPFN v2,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-1.4134149e-05,1
+329,TabPFN v2,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00011592307,1
+330,TabPFN v2,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,-3.037532e-05,1
+331,TabPFN v2,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,8.3073619e-05,1
+332,TabPFN v2,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,-1.5445918e-05,1
+333,TabPFN v2,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,2.5085034e-05,1
+334,TabPFN v2,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00043532871,1
+335,TabPFN v2,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,2.9984165e-05,1
+336,TabPFN v2,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,5.6557593e-05,1
+337,TabPFN v2,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,3.7082777e-05,1
+338,TabPFN v2,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,5.9144355e-05,1
+339,TabPFN v2,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,5.0834277e-05,1
+340,TabPFN v2,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0031632182,1
+341,TabPFN v2,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,0.003727348,1
+342,TabPFN v2,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,0.0015729906,1
+343,TabPFN v2,1e-06,0,False,one_sample,GMSC,credit,roc_auc,0.0037545474,1
+344,TabPFN v2,1e-06,0,False,one_sample,German Credit,credit,roc_auc,0.0052593354,1
+345,TabPFN v2,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,0.0066496129,1
+346,TabPFN v2,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,0.0098335041,1
+347,TabPFN v2,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,0.0070082689,1
+348,TabPFN v2,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,0.0086534967,1
+349,TabPFN v2,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,0.0067226719,1
+350,TabPFN v2,1e-06,0,False,one_sample,Myhom,credit,roc_auc,0.0021220238,1
+351,TabPFN v2,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,0.0052889754,1
+352,TabPFN v2,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,0.0054131591,1
+353,TabPFN v2,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00019140843,1
+354,TabPFN v2,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0078556221,1
+355,TabPFN v2,1e-06,0,False,one_sample,Thomas,credit,roc_auc,0.0086379917,1
+356,TabPFN v2,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.0065784465,1
+357,TabPFN v2,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00018254169,1
+358,TabPFN v2,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,0.00011100266,1
+359,TabPFN v2,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,8.983897e-05,1
+360,TabPFN v2,1e-06,0,True,one_sample,GMSC,credit,roc_auc,1.5917414e-05,1
+361,TabPFN v2,1e-06,0,True,one_sample,German Credit,credit,roc_auc,0.00036904762,1
+362,TabPFN v2,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,8.9812379e-05,1
+363,TabPFN v2,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00059700063,1
+364,TabPFN v2,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,-6.697708e-05,1
+365,TabPFN v2,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,0.00034255761,1
+366,TabPFN v2,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,1.9896427e-05,1
+367,TabPFN v2,1e-06,0,True,one_sample,Myhom,credit,roc_auc,0.00012585034,1
+368,TabPFN v2,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,0.00051051481,1
+369,TabPFN v2,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,3.5334256e-05,1
+370,TabPFN v2,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,2.5829328e-05,1
+371,TabPFN v2,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00014517319,1
+372,TabPFN v2,1e-06,0,True,one_sample,Thomas,credit,roc_auc,0.00019615326,1
+373,TabPFN v2,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.00016438705,1
+374,TabPFN v2,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.0031956609,1
+375,TabPFN v2,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,0.003673046,1
+376,TabPFN v2,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,0.0017459048,1
+377,TabPFN v2,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,0.0036243503,1
+378,TabPFN v2,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,0.0050571257,1
+379,TabPFN v2,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,0.0069070627,1
+380,TabPFN v2,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,0.0099147636,1
+381,TabPFN v2,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,0.0067722216,1
+382,TabPFN v2,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0085702279,1
+383,TabPFN v2,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0067710415,1
+384,TabPFN v2,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,0.0021575255,1
+385,TabPFN v2,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,0.0053168397,1
+386,TabPFN v2,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0053922159,1
+387,TabPFN v2,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00012451463,1
+388,TabPFN v2,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.0077498141,1
+389,TabPFN v2,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,0.0086217536,1
+390,TabPFN v2,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.0064941523,1
+391,TabPFN v2,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00017365037,1
+392,TabPFN v2,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,9.6758053e-05,1
+393,TabPFN v2,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,6.7386604e-05,1
+394,TabPFN v2,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,1.2183787e-05,1
+395,TabPFN v2,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,0.00026199041,1
+396,TabPFN v2,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,5.4074947e-05,1
+397,TabPFN v2,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00051666838,1
+398,TabPFN v2,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,-7.1800658e-05,1
+399,TabPFN v2,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00027404079,1
+400,TabPFN v2,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,3.778459e-05,1
+401,TabPFN v2,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,0.00010565476,1
+402,TabPFN v2,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,0.00048358425,1
+403,TabPFN v2,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,2.5904434e-05,1
+404,TabPFN v2,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,4.90057e-05,1
+405,TabPFN v2,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00012327962,1
+406,TabPFN v2,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,0.00030734996,1
+407,TabPFN v2,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.00015144854,1
+544,TabPFN v2.6,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00026921928,1
+545,TabPFN v2.6,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,-0.00010532061,1
+546,TabPFN v2.6,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0021054179,1
+547,TabPFN v2.6,3e-07,0,False,one_sample,GMSC,credit,roc_auc,0.00016144477,1
+548,TabPFN v2.6,3e-07,0,False,one_sample,German Credit,credit,roc_auc,-0.000105173,1
+549,TabPFN v2.6,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,-0.00096519716,1
+550,TabPFN v2.6,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0022401011,1
+551,TabPFN v2.6,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,-0.00028118901,1
+552,TabPFN v2.6,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.0013197133,1
+553,TabPFN v2.6,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,-0.00099921183,1
+554,TabPFN v2.6,3e-07,0,False,one_sample,Myhom,credit,roc_auc,0.00049213435,1
+555,TabPFN v2.6,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,-0.00066387218,1
+556,TabPFN v2.6,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,-0.00063258353,1
+557,TabPFN v2.6,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00010776689,1
+558,TabPFN v2.6,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.00010235316,1
+559,TabPFN v2.6,3e-07,0,False,one_sample,Thomas,credit,roc_auc,0.0042531195,1
+560,TabPFN v2.6,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.00074574431,1
+561,TabPFN v2.6,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-7.8231528e-06,1
+562,TabPFN v2.6,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,-1.0264214e-05,1
+563,TabPFN v2.6,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,-1.9369593e-05,1
+564,TabPFN v2.6,3e-07,0,True,one_sample,GMSC,credit,roc_auc,-9.6245445e-06,1
+565,TabPFN v2.6,3e-07,0,True,one_sample,German Credit,credit,roc_auc,-0.00027346694,1
+566,TabPFN v2.6,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-7.9402563e-06,1
+567,TabPFN v2.6,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-6.6936852e-05,1
+568,TabPFN v2.6,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,7.7791758e-06,1
+569,TabPFN v2.6,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,8.2468933e-05,1
+570,TabPFN v2.6,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,3.3072385e-06,1
+571,TabPFN v2.6,3e-07,0,True,one_sample,Myhom,credit,roc_auc,-1.7219388e-05,1
+572,TabPFN v2.6,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,-1.1908794e-05,1
+573,TabPFN v2.6,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,-6.5199554e-05,1
+574,TabPFN v2.6,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,-3.0914641e-05,1
+575,TabPFN v2.6,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,2.7177116e-05,1
+576,TabPFN v2.6,3e-07,0,True,one_sample,Thomas,credit,roc_auc,0.00017119694,1
+577,TabPFN v2.6,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,-3.6909862e-05,1
+578,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00025305583,1
+579,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,-9.3632154e-05,1
+580,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.002079411,1
+581,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,0.00016438407,1
+582,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,-8.1192189e-05,1
+583,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.00094489423,1
+584,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0021852261,1
+585,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0002741992,1
+586,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0014096204,1
+587,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.00094296216,1
+588,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,0.00051955782,1
+589,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.00062729404,1
+590,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.00062878058,1
+591,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,7.1657957e-05,1
+592,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,0.00011812934,1
+593,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,0.0046828664,1
+594,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00073811027,1
+595,TabPFN v2.6,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-7.9239917e-06,1
+596,TabPFN v2.6,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,-4.1898164e-06,1
+597,TabPFN v2.6,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,-5.5742657e-06,1
+598,TabPFN v2.6,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,-1.018256e-05,1
+599,TabPFN v2.6,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,-0.00035731415,1
+600,TabPFN v2.6,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-4.4196248e-06,1
+601,TabPFN v2.6,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-6.1310139e-05,1
+602,TabPFN v2.6,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,3.8392766e-06,1
+603,TabPFN v2.6,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00017633297,1
+604,TabPFN v2.6,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,6.6372474e-06,1
+605,TabPFN v2.6,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,2.997449e-05,1
+606,TabPFN v2.6,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,-2.6103688e-05,1
+607,TabPFN v2.6,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,-6.4246626e-05,1
+608,TabPFN v2.6,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-3.6109463e-05,1
+609,TabPFN v2.6,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,4.6582232e-05,1
+610,TabPFN v2.6,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,-0.00031077348,1
+611,TabPFN v2.6,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-3.6817797e-05,1
+612,TabPFN v2.6,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00055576972,1
+613,TabPFN v2.6,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,-9.1464314e-05,1
+614,TabPFN v2.6,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,-0.0028556899,1
+615,TabPFN v2.6,1e-06,0,False,one_sample,GMSC,credit,roc_auc,0.00024416693,1
+616,TabPFN v2.6,1e-06,0,False,one_sample,German Credit,credit,roc_auc,9.9263446e-05,1
+617,TabPFN v2.6,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,-0.001594834,1
+618,TabPFN v2.6,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,-0.003195226,1
+619,TabPFN v2.6,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,-0.0022244422,1
+620,TabPFN v2.6,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,0.0016094759,1
+621,TabPFN v2.6,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,-0.0018872743,1
+622,TabPFN v2.6,1e-06,0,False,one_sample,Myhom,credit,roc_auc,0.0006377551,1
+623,TabPFN v2.6,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,-0.00096052358,1
+624,TabPFN v2.6,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,-0.0011316433,1
+625,TabPFN v2.6,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,-7.2674599e-05,1
+626,TabPFN v2.6,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-2.1300211e-05,1
+627,TabPFN v2.6,1e-06,0,False,one_sample,Thomas,credit,roc_auc,0.0076451929,1
+628,TabPFN v2.6,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,0.00062013169,1
+629,TabPFN v2.6,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.6982952e-05,1
+630,TabPFN v2.6,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,-2.328076e-05,1
+631,TabPFN v2.6,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,-0.0001472749,1
+632,TabPFN v2.6,1e-06,0,True,one_sample,GMSC,credit,roc_auc,-1.47207e-05,1
+633,TabPFN v2.6,1e-06,0,True,one_sample,German Credit,credit,roc_auc,-0.00026181912,1
+634,TabPFN v2.6,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,-1.8523079e-05,1
+635,TabPFN v2.6,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.00014999331,1
+636,TabPFN v2.6,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,-9.8063407e-06,1
+637,TabPFN v2.6,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,4.0500771e-05,1
+638,TabPFN v2.6,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,-2.8355922e-05,1
+639,TabPFN v2.6,1e-06,0,True,one_sample,Myhom,credit,roc_auc,2.7848639e-05,1
+640,TabPFN v2.6,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,-0.0001097473,1
+641,TabPFN v2.6,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,-2.479891e-05,1
+642,TabPFN v2.6,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,-7.2182599e-05,1
+643,TabPFN v2.6,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-4.0575543e-06,1
+644,TabPFN v2.6,1e-06,0,True,one_sample,Thomas,credit,roc_auc,0.00029393623,1
+645,TabPFN v2.6,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,-3.4330192e-05,1
+646,TabPFN v2.6,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00049254574,1
+647,TabPFN v2.6,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,-6.2913874e-05,1
+648,TabPFN v2.6,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0027137855,1
+649,TabPFN v2.6,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,0.0002427313,1
+650,TabPFN v2.6,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,-7.9222336e-05,1
+651,TabPFN v2.6,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.0015053281,1
+652,TabPFN v2.6,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0029388615,1
+653,TabPFN v2.6,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0017641932,1
+654,TabPFN v2.6,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0013235869,1
+655,TabPFN v2.6,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,-0.0016927439,1
+656,TabPFN v2.6,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,0.00055102041,1
+657,TabPFN v2.6,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,-0.00075773151,1
+658,TabPFN v2.6,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,-0.001057438,1
+659,TabPFN v2.6,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,-4.6916873e-05,1
+660,TabPFN v2.6,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-5.6914528e-05,1
+661,TabPFN v2.6,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,0.0065549299,1
+662,TabPFN v2.6,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,0.00066656701,1
+663,TabPFN v2.6,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.3573515e-05,1
+664,TabPFN v2.6,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,-6.134061e-06,1
+665,TabPFN v2.6,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,-0.00011910108,1
+666,TabPFN v2.6,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,-9.8293478e-06,1
+667,TabPFN v2.6,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,-9.5152449e-05,1
+668,TabPFN v2.6,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,-1.235151e-05,1
+669,TabPFN v2.6,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.00013435684,1
+670,TabPFN v2.6,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,6.0154763e-06,1
+671,TabPFN v2.6,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00020305429,1
+672,TabPFN v2.6,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,-2.3174608e-05,1
+673,TabPFN v2.6,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,6.3562925e-05,1
+674,TabPFN v2.6,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,-7.7478347e-05,1
+675,TabPFN v2.6,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,-5.4711092e-06,1
+676,TabPFN v2.6,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,-5.6781876e-05,1
+677,TabPFN v2.6,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-1.2476721e-07,1
+678,TabPFN v2.6,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,-8.435744e-05,1
+679,TabPFN v2.6,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-5.9038986e-05,1
+816,TabPFN v3,3e-07,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.6919571e-05,1
+817,TabPFN v3,3e-07,0,False,one_sample,Cobranded,credit,roc_auc,0.00072973693,1
+818,TabPFN v3,3e-07,0,False,one_sample,Credit Risk,credit,roc_auc,-0.00034117851,1
+819,TabPFN v3,3e-07,0,False,one_sample,GMSC,credit,roc_auc,-4.099238e-05,1
+820,TabPFN v3,3e-07,0,False,one_sample,German Credit,credit,roc_auc,0.0031863652,1
+821,TabPFN v3,3e-07,0,False,one_sample,HMEQ,credit,roc_auc,-0.00031229722,1
+822,TabPFN v3,3e-07,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0037231925,1
+823,TabPFN v3,3e-07,0,False,one_sample,Home Credit,credit,roc_auc,-7.6042806e-05,1
+824,TabPFN v3,3e-07,0,False,one_sample,LendingClub,credit,roc_auc,0.0011405541,1
+825,TabPFN v3,3e-07,0,False,one_sample,MicroFinance,credit,roc_auc,0.0021398901,1
+826,TabPFN v3,3e-07,0,False,one_sample,Myhom,credit,roc_auc,-0.0005837585,1
+827,TabPFN v3,3e-07,0,False,one_sample,PropPD1,credit,roc_auc,0.0007052964,1
+828,TabPFN v3,3e-07,0,False,one_sample,PropPD2,credit,roc_auc,0.0018460009,1
+829,TabPFN v3,3e-07,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00061728487,1
+830,TabPFN v3,3e-07,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,7.6432618e-05,1
+831,TabPFN v3,3e-07,0,False,one_sample,Thomas,credit,roc_auc,0.0013913149,1
+832,TabPFN v3,3e-07,0,False,one_sample,Vehicle Loan,credit,roc_auc,4.5886304e-05,1
+833,TabPFN v3,3e-07,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-5.6451165e-05,1
+834,TabPFN v3,3e-07,0,True,one_sample,Cobranded,credit,roc_auc,0.00034370703,1
+835,TabPFN v3,3e-07,0,True,one_sample,Credit Risk,credit,roc_auc,1.3554758e-05,1
+836,TabPFN v3,3e-07,0,True,one_sample,GMSC,credit,roc_auc,-0.00011484664,1
+837,TabPFN v3,3e-07,0,True,one_sample,German Credit,credit,roc_auc,0.0021646112,1
+838,TabPFN v3,3e-07,0,True,one_sample,HMEQ,credit,roc_auc,-0.00012959179,1
+839,TabPFN v3,3e-07,0,True,one_sample,Hackerearth,credit,roc_auc,-0.0018670509,1
+840,TabPFN v3,3e-07,0,True,one_sample,Home Credit,credit,roc_auc,0.00085166177,1
+841,TabPFN v3,3e-07,0,True,one_sample,LendingClub,credit,roc_auc,0.00094901527,1
+842,TabPFN v3,3e-07,0,True,one_sample,MicroFinance,credit,roc_auc,0.001075057,1
+843,TabPFN v3,3e-07,0,True,one_sample,Myhom,credit,roc_auc,0.00041751701,1
+844,TabPFN v3,3e-07,0,True,one_sample,PropPD1,credit,roc_auc,0.001399299,1
+845,TabPFN v3,3e-07,0,True,one_sample,PropPD2,credit,roc_auc,0.0019074781,1
+846,TabPFN v3,3e-07,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00050500047,1
+847,TabPFN v3,3e-07,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00033762509,1
+848,TabPFN v3,3e-07,0,True,one_sample,Thomas,credit,roc_auc,0.0016152489,1
+849,TabPFN v3,3e-07,0,True,one_sample,Vehicle Loan,credit,roc_auc,0.00035775854,1
+850,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-1.5876365e-05,1
+851,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,0.00074681185,1
+852,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0002132175,1
+853,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,-4.1099624e-05,1
+854,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,0.0029964029,1
+855,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.00027702393,1
+856,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0036003988,1
+857,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,6.8168728e-06,1
+858,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,0.0012161875,1
+859,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.0021619782,1
+860,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,-0.00056079932,1
+861,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,0.00073311379,1
+862,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0018373491,1
+863,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00053497323,1
+864,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,7.1306646e-05,1
+865,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,0.0016449863,1
+866,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,6.4093912e-05,1
+867,TabPFN v3,3e-07,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,3.3538653e-05,1
+868,TabPFN v3,3e-07,0.003,True,one_sample,Cobranded,credit,roc_auc,0.00032734001,1
+869,TabPFN v3,3e-07,0.003,True,one_sample,Credit Risk,credit,roc_auc,0.00017055715,1
+870,TabPFN v3,3e-07,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00013076192,1
+871,TabPFN v3,3e-07,0.003,True,one_sample,German Credit,credit,roc_auc,0.0020695444,1
+872,TabPFN v3,3e-07,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.0001392812,1
+873,TabPFN v3,3e-07,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0017455955,1
+874,TabPFN v3,3e-07,0.003,True,one_sample,Home Credit,credit,roc_auc,0.00080004787,1
+875,TabPFN v3,3e-07,0.003,True,one_sample,LendingClub,credit,roc_auc,0.00094251192,1
+876,TabPFN v3,3e-07,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.0011775906,1
+877,TabPFN v3,3e-07,0.003,True,one_sample,Myhom,credit,roc_auc,0.00040136054,1
+878,TabPFN v3,3e-07,0.003,True,one_sample,PropPD1,credit,roc_auc,0.0013679996,1
+879,TabPFN v3,3e-07,0.003,True,one_sample,PropPD2,credit,roc_auc,0.0019255793,1
+880,TabPFN v3,3e-07,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00052051439,1
+881,TabPFN v3,3e-07,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,0.00033066627,1
+882,TabPFN v3,3e-07,0.003,True,one_sample,Thomas,credit,roc_auc,0.0017015748,1
+883,TabPFN v3,3e-07,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,0.00049498713,1
+884,TabPFN v3,1e-06,0,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.0005871222,1
+885,TabPFN v3,1e-06,0,False,one_sample,Cobranded,credit,roc_auc,0.00026578143,1
+886,TabPFN v3,1e-06,0,False,one_sample,Credit Risk,credit,roc_auc,-0.005777492,1
+887,TabPFN v3,1e-06,0,False,one_sample,GMSC,credit,roc_auc,-0.00029747631,1
+888,TabPFN v3,1e-06,0,False,one_sample,German Credit,credit,roc_auc,-0.0010387119,1
+889,TabPFN v3,1e-06,0,False,one_sample,HMEQ,credit,roc_auc,-0.0006625354,1
+890,TabPFN v3,1e-06,0,False,one_sample,Hackerearth,credit,roc_auc,-0.0068468946,1
+891,TabPFN v3,1e-06,0,False,one_sample,Home Credit,credit,roc_auc,-0.0013433223,1
+892,TabPFN v3,1e-06,0,False,one_sample,LendingClub,credit,roc_auc,0.0001351984,1
+893,TabPFN v3,1e-06,0,False,one_sample,MicroFinance,credit,roc_auc,0.00040092235,1
+894,TabPFN v3,1e-06,0,False,one_sample,Myhom,credit,roc_auc,-0.0042776361,1
+895,TabPFN v3,1e-06,0,False,one_sample,PropPD1,credit,roc_auc,0.0005361012,1
+896,TabPFN v3,1e-06,0,False,one_sample,PropPD2,credit,roc_auc,0.0010104894,1
+897,TabPFN v3,1e-06,0,False,one_sample,SBA Loans Case,credit,roc_auc,0.00042568585,1
+898,TabPFN v3,1e-06,0,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00072036392,1
+899,TabPFN v3,1e-06,0,False,one_sample,Thomas,credit,roc_auc,-0.00098120603,1
+900,TabPFN v3,1e-06,0,False,one_sample,Vehicle Loan,credit,roc_auc,-0.00097500248,1
+901,TabPFN v3,1e-06,0,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,0.00025506882,1
+902,TabPFN v3,1e-06,0,True,one_sample,Cobranded,credit,roc_auc,0.00037172068,1
+903,TabPFN v3,1e-06,0,True,one_sample,Credit Risk,credit,roc_auc,0.00093565686,1
+904,TabPFN v3,1e-06,0,True,one_sample,GMSC,credit,roc_auc,-0.00030778107,1
+905,TabPFN v3,1e-06,0,True,one_sample,German Credit,credit,roc_auc,0.0037627612,1
+906,TabPFN v3,1e-06,0,True,one_sample,HMEQ,credit,roc_auc,-0.00032710154,1
+907,TabPFN v3,1e-06,0,True,one_sample,Hackerearth,credit,roc_auc,-0.003286462,1
+908,TabPFN v3,1e-06,0,True,one_sample,Home Credit,credit,roc_auc,0.00017963706,1
+909,TabPFN v3,1e-06,0,True,one_sample,LendingClub,credit,roc_auc,0.0012215516,1
+910,TabPFN v3,1e-06,0,True,one_sample,MicroFinance,credit,roc_auc,-1.8894223e-05,1
+911,TabPFN v3,1e-06,0,True,one_sample,Myhom,credit,roc_auc,0.00071534864,1
+912,TabPFN v3,1e-06,0,True,one_sample,PropPD1,credit,roc_auc,0.001328567,1
+913,TabPFN v3,1e-06,0,True,one_sample,PropPD2,credit,roc_auc,0.0014865881,1
+914,TabPFN v3,1e-06,0,True,one_sample,SBA Loans Case,credit,roc_auc,0.00033550591,1
+915,TabPFN v3,1e-06,0,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0039051042,1
+916,TabPFN v3,1e-06,0,True,one_sample,Thomas,credit,roc_auc,-0.0023757024,1
+917,TabPFN v3,1e-06,0,True,one_sample,Vehicle Loan,credit,roc_auc,-0.0097668675,1
+918,TabPFN v3,1e-06,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-0.00058934237,1
+919,TabPFN v3,1e-06,0.003,False,one_sample,Cobranded,credit,roc_auc,0.00041954278,1
+920,TabPFN v3,1e-06,0.003,False,one_sample,Credit Risk,credit,roc_auc,-0.0035809277,1
+921,TabPFN v3,1e-06,0.003,False,one_sample,GMSC,credit,roc_auc,-0.00029139688,1
+922,TabPFN v3,1e-06,0.003,False,one_sample,German Credit,credit,roc_auc,0.00030078794,1
+923,TabPFN v3,1e-06,0.003,False,one_sample,HMEQ,credit,roc_auc,-0.00059984677,1
+924,TabPFN v3,1e-06,0.003,False,one_sample,Hackerearth,credit,roc_auc,-0.0057670939,1
+925,TabPFN v3,1e-06,0.003,False,one_sample,Home Credit,credit,roc_auc,-0.0011812517,1
+926,TabPFN v3,1e-06,0.003,False,one_sample,LendingClub,credit,roc_auc,0.00031599043,1
+927,TabPFN v3,1e-06,0.003,False,one_sample,MicroFinance,credit,roc_auc,0.00074622144,1
+928,TabPFN v3,1e-06,0.003,False,one_sample,Myhom,credit,roc_auc,-0.0031681548,1
+929,TabPFN v3,1e-06,0.003,False,one_sample,PropPD1,credit,roc_auc,0.00055395382,1
+930,TabPFN v3,1e-06,0.003,False,one_sample,PropPD2,credit,roc_auc,0.0012051436,1
+931,TabPFN v3,1e-06,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,0.00061623506,1
+932,TabPFN v3,1e-06,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,-0.00060414201,1
+933,TabPFN v3,1e-06,0.003,False,one_sample,Thomas,credit,roc_auc,-0.0012565932,1
+934,TabPFN v3,1e-06,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,-0.00089433502,1
+935,TabPFN v3,1e-06,0.003,True,one_sample,Bondora Peer-to-Peer,credit,roc_auc,-2.9082493e-05,1
+936,TabPFN v3,1e-06,0.003,True,one_sample,Cobranded,credit,roc_auc,0.00037896302,1
+937,TabPFN v3,1e-06,0.003,True,one_sample,Credit Risk,credit,roc_auc,0.0012512061,1
+938,TabPFN v3,1e-06,0.003,True,one_sample,GMSC,credit,roc_auc,-0.00033060226,1
+939,TabPFN v3,1e-06,0.003,True,one_sample,German Credit,credit,roc_auc,0.0032141144,1
+940,TabPFN v3,1e-06,0.003,True,one_sample,HMEQ,credit,roc_auc,-0.00028302528,1
+941,TabPFN v3,1e-06,0.003,True,one_sample,Hackerearth,credit,roc_auc,-0.0030229881,1
+942,TabPFN v3,1e-06,0.003,True,one_sample,Home Credit,credit,roc_auc,4.8864432e-05,1
+943,TabPFN v3,1e-06,0.003,True,one_sample,LendingClub,credit,roc_auc,0.0009507645,1
+944,TabPFN v3,1e-06,0.003,True,one_sample,MicroFinance,credit,roc_auc,0.00012715705,1
+945,TabPFN v3,1e-06,0.003,True,one_sample,Myhom,credit,roc_auc,0.00072151361,1
+946,TabPFN v3,1e-06,0.003,True,one_sample,PropPD1,credit,roc_auc,0.0013945678,1
+947,TabPFN v3,1e-06,0.003,True,one_sample,PropPD2,credit,roc_auc,0.0015640153,1
+948,TabPFN v3,1e-06,0.003,True,one_sample,SBA Loans Case,credit,roc_auc,0.00029367303,1
+949,TabPFN v3,1e-06,0.003,True,one_sample,Taiwan Credit Card,credit,roc_auc,-0.0037107645,1
+950,TabPFN v3,1e-06,0.003,True,one_sample,Thomas,credit,roc_auc,-0.0021565614,1
+951,TabPFN v3,1e-06,0.003,True,one_sample,Vehicle Loan,credit,roc_auc,-0.011037904,1
+Low-rate equal-table means and spread
+CSV (first column: row index)
+row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,plotted_mean
+0,credit,roc_auc,TabICLv2,3e-07,0,False,one_sample,0.0034446865,-0.00038674043,-0.0018223383,0.000146919,17,6,0.34446865
+1,credit,roc_auc,TabICLv2,3e-07,0,True,one_sample,0.0039638425,-0.00034470445,-0.00090965466,0.00013127916,17,6,0.39638425
+2,credit,roc_auc,TabICLv2,3e-07,0.003,False,one_sample,0.0036946122,-0.00017633823,-0.0016434439,0.00022214889,17,6,0.36946122
+3,credit,roc_auc,TabICLv2,3e-07,0.003,True,one_sample,0.0039437524,-0.00036035286,-0.00093561173,0.00012213118,17,7,0.39437524
+4,credit,roc_auc,TabICLv2,1e-06,0,False,one_sample,0.0026216357,-0.0011626593,-0.0026100114,0.00018763827,17,5,0.26216357
+5,credit,roc_auc,TabICLv2,1e-06,0,True,one_sample,0.0037197904,-0.00037872934,-0.0013224896,0.00019097774,17,7,0.37197904
+6,credit,roc_auc,TabICLv2,1e-06,0.003,False,one_sample,0.0032542405,-0.00082153089,-0.0018641114,0.0003483988,17,6,0.32542405
+7,credit,roc_auc,TabICLv2,1e-06,0.003,True,one_sample,0.0037429814,-0.00036467931,-0.00149375,0.00016632851,17,7,0.37429814
+8,credit,roc_auc,TabPFN v2,3e-07,0,False,one_sample,0.0047954514,0.005028279,0.0028898558,0.0064191092,17,17,0.47954514
+9,credit,roc_auc,TabPFN v2,3e-07,0,True,one_sample,4.2761538e-05,2.9886889e-05,-1.1479529e-05,4.6277458e-05,17,12,0.0042761538
+10,credit,roc_auc,TabPFN v2,3e-07,0.003,False,one_sample,0.0047725031,0.0050721524,0.0028900965,0.0063839468,17,17,0.47725031
+11,credit,roc_auc,TabPFN v2,3e-07,0.003,True,one_sample,4.0753439e-05,2.9984165e-05,-1.4134149e-05,5.6557593e-05,17,12,0.0040753439
+12,credit,roc_auc,TabPFN v2,1e-06,0,False,one_sample,0.005437213,0.0054131591,0.003727348,0.0070082689,17,17,0.5437213
+13,credit,roc_auc,TabPFN v2,1e-06,0,True,one_sample,8.2046818e-05,8.983897e-05,1.9896427e-05,0.00016438705,17,14,0.0082046818
+14,credit,roc_auc,TabPFN v2,1e-06,0.003,False,one_sample,0.0054169542,0.0053922159,0.0036243503,0.0069070627,17,17,0.54169542
+15,credit,roc_auc,TabPFN v2,1e-06,0.003,True,one_sample,7.5783944e-05,6.7386604e-05,2.5904434e-05,0.00015144854,17,14,0.0075783944
+16,credit,roc_auc,TabPFN v2.6,3e-07,0,False,one_sample,-6.9706431e-05,-0.00010532061,-0.00066387218,0.00016144477,17,7,-0.0069706431
+17,credit,roc_auc,TabPFN v2.6,3e-07,0,True,one_sample,-1.5626376e-05,-1.0264214e-05,-3.0914641e-05,3.3072385e-06,17,5,-0.0015626376
+18,credit,roc_auc,TabPFN v2.6,3e-07,0.003,False,one_sample,-2.3901248e-05,-9.3632154e-05,-0.00062878058,0.00016438407,17,7,-0.0023901248
+19,credit,roc_auc,TabPFN v2.6,3e-07,0.003,True,one_sample,-3.8917611e-05,-7.9239917e-06,-3.6817797e-05,3.8392766e-06,17,5,-0.0038917611
+20,credit,roc_auc,TabPFN v2.6,1e-06,0,False,one_sample,-0.00021969742,-9.1464314e-05,-0.001594834,0.00024416693,17,6,-0.021969742
+21,credit,roc_auc,TabPFN v2.6,1e-06,0,True,one_sample,-3.3152236e-05,-2.479891e-05,-7.2182599e-05,-9.8063407e-06,17,3,-0.0033152236
+22,credit,roc_auc,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00022527998,-7.9222336e-05,-0.0015053281,0.0002427313,17,5,-0.022527998
+23,credit,roc_auc,TabPFN v2.6,1e-06,0.003,True,one_sample,-2.5546661e-05,-2.3174608e-05,-7.7478347e-05,-5.4711092e-06,17,3,-0.0025546661
+24,credit,roc_auc,TabPFN v3,3e-07,0,False,one_sample,0.00039849298,7.6432618e-05,-7.6042806e-05,0.0011405541,17,10,0.039849298
+25,credit,roc_auc,TabPFN v3,3e-07,0,True,one_sample,0.00057468197,0.00041751701,1.3554758e-05,0.001075057,17,13,0.057468197
+26,credit,roc_auc,TabPFN v3,3e-07,0.003,False,one_sample,0.00042974146,7.1306646e-05,-4.1099624e-05,0.0012161875,17,11,0.042974146
+27,credit,roc_auc,TabPFN v3,3e-07,0.003,True,one_sample,0.00060283377,0.00049498713,0.00017055715,0.0011775906,17,14,0.060283377
+28,credit,roc_auc,TabPFN v3,1e-06,0,False,one_sample,-0.0012196226,-0.0006625354,-0.0010387119,0.00026578143,17,6,-0.12196226
+29,credit,roc_auc,TabPFN v3,1e-06,0,True,one_sample,-0.00055267688,0.00025506882,-0.00032710154,0.00093565686,17,10,-0.055267688
+30,credit,roc_auc,TabPFN v3,1e-06,0.003,False,one_sample,-0.00081030642,-0.00058934237,-0.0011812517,0.00041954278,17,7,-0.081030642
+31,credit,roc_auc,TabPFN v3,1e-06,0.003,True,one_sample,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,17,10,-0.062506406
+
 Figure: pd_benchmark_transfer_retention
 PD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 17 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
 Matched credit and retention recipe means
@@ -72415,78 +73000,78 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 67,TabPFN v3,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32639496,0.32630219,3.9106569e-05,-5.3666108e-05,-1.4559539e-05,0.033249146,0.032236844,0.0010123011,-9.2772677e-05,0.02915868,0.010534051
 
 Figure: pd_prediction_diagnostics
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.13512286,0.13256894,-0.0029821967,-0.0055361236,-0.0025539269,0.080535551,0.080618759,-8.3207553e-05,-0.0025539269,0.019771589,0.0095581853
-1,TabICLv2,HMEQ,0,Reference CPT,5960,0.19949664,0.19071745,0.19219382,-0.0087791943,-0.0073028198,0.0014763745,0.017686181,0.018154402,-0.0004682214,0.0014763745,0.034720632,0.011352
-2,TabICLv2,MicroFinance,0,Reference CPT,158700,0.37809074,0.36495634,0.36426298,-0.013134396,-0.013827761,-0.00069336521,0.21816395,0.21841258,-0.0002486283,-0.00069336521,0.028268502,0.021000682
-3,TabICLv2,Thomas,0,Reference CPT,1225,0.26367347,0.24708993,0.24401196,-0.016583543,-0.019661508,-0.0030779649,0.18308296,0.18314589,-6.2926983e-05,-0.0030779649,0.014726732,0.010257175
-4,TabICLv2,GMSC,1,Reference CPT,150000,0.06684,0.057865039,0.056626289,-0.0089749608,-0.010213711,-0.0012387499,0.049075658,0.049165962,-9.0303786e-05,-0.0012387499,0.0073658232,0.0035484029
-5,TabICLv2,German Credit,1,Reference CPT,999,0.3003003,0.29274349,0.29129337,-0.007556812,-0.0090069302,-0.0014501182,0.16240025,0.16176108,0.00063917016,-0.0014501182,0.027867443,0.019690208
-6,TabICLv2,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20680082,0.20503104,-0.014399176,-0.016168957,-0.0017697809,0.13292592,0.13328217,-0.00035625278,-0.0017697809,0.015948263,0.01167633
-7,TabICLv2,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.38729445,0.19420985,0.17022333,-0.022861275,0.14736205,0.27476188,0.16183347,0.11292842,-0.1930846,0.34840057,0.21613537
-8,TabICLv2,Credit Risk,2,Reference CPT,32581,0.21816396,0.20703413,0.21661622,-0.011129831,-0.0015477404,0.0095820908,0.049364787,0.053799828,-0.0044350411,0.0095820908,0.056506917,0.02929804
-9,TabICLv2,Hackerearth,2,Reference CPT,532428,0.23632679,0.23112544,0.23305805,-0.0052013466,-0.003268741,0.0019326057,0.058127422,0.066776019,-0.0086485971,0.0019326057,0.08593721,0.045125505
-10,TabICLv2,Myhom,2,Reference CPT,7000,0.4,0.38581482,0.38771102,-0.01418518,-0.012288978,0.0018962015,0.25080943,0.2342849,0.016524523,0.0018962015,0.14819546,0.088813439
-11,TabICLv2,PropPD1,2,Reference CPT,100000,0.22639,0.19999356,0.19821084,-0.026396437,-0.028179163,-0.0017827264,0.12813814,0.12806364,7.4499661e-05,-0.0017827264,0.029452977,0.019537851
-12,TabICLv2,PropPD2,2,Reference CPT,105471,0.092755355,0.076905382,0.077439865,-0.015849972,-0.01531549,0.00053448233,0.082312426,0.082308995,3.4316054e-06,0.00053448233,0.0063662544,0.0048652435
-13,TabICLv2,Cobranded,3,Reference CPT,80000,0.2462125,0.23580183,0.23029025,-0.010410672,-0.015922253,-0.0055115802,0.13071025,0.13087808,-0.00016783457,-0.0055115802,0.024024812,0.014414411
-14,TabICLv2,Home Credit,3,Reference CPT,307511,0.080728819,0.071030346,0.067584069,-0.0096984731,-0.013144751,-0.0034462776,0.068564613,0.068760592,-0.00019597886,-0.0034462776,0.012645437,0.0073691102
-15,TabICLv2,LendingClub,3,Reference CPT,9578,0.16005429,0.14078684,0.14098095,-0.019267448,-0.019073341,0.00019410741,0.12609798,0.12601609,8.1893481e-05,0.00019410741,0.012660816,0.0081243885
-16,TabICLv2,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32631453,0.32584408,-4.1321021e-05,-0.00051177121,-0.00047045019,0.031810621,0.031662483,0.00014813793,-0.00047045019,0.022864193,0.0083660565
-17,TabPFN v2,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.12641753,0.12661734,-0.011687533,-0.011487721,0.00019981242,0.087267614,0.08677264,0.00049497384,0.00019981242,0.014237352,0.0080609204
-18,TabPFN v2,HMEQ,0,Reference CPT,5960,0.19949664,0.19633141,0.19519511,-0.0031652346,-0.0043015313,-0.0011362967,0.035942663,0.026635716,0.0093069466,-0.0011362967,0.043979919,0.022133908
-19,TabPFN v2,MicroFinance,0,Reference CPT,158700,0.37809074,0.37884399,0.37587016,0.00075325241,-0.0022205724,-0.00146732,0.22362317,0.22227431,0.0013488622,-0.0029738248,0.025359405,0.020718189
-20,TabPFN v2,Thomas,0,Reference CPT,1225,0.26367347,0.24865072,0.24610521,-0.015022749,-0.017568264,-0.0025455148,0.18353944,0.18295535,0.00058408269,-0.0025455148,0.013752966,0.0108229
-21,TabPFN v2,GMSC,1,Reference CPT,150000,0.06684,0.057721764,0.059390286,-0.0091182358,-0.0074497138,0.001668522,0.04985517,0.049621391,0.00023377834,0.001668522,0.010567556,0.0056836122
-22,TabPFN v2,German Credit,1,Reference CPT,999,0.3003003,0.29586794,0.29366074,-0.0044323601,-0.0066395614,-0.0022072013,0.16396183,0.16256123,0.0014006026,-0.0022072013,0.01852706,0.014134441
-23,TabPFN v2,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20466542,0.20608305,-0.016534576,-0.015116955,0.0014176212,0.13571148,0.13429585,0.0014156285,0.0014176212,0.028755829,0.021177193
-24,TabPFN v2,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.19305677,0.19955049,-0.024014352,-0.017520631,0.0064937204,0.16432601,0.16328996,0.0010360519,0.0064937204,0.02426932,0.017618119
-25,TabPFN v2,Credit Risk,2,Reference CPT,32581,0.21816396,0.21668034,0.21517351,-0.0014836216,-0.0029904485,-0.0015068269,0.059860316,0.059454241,0.00040607483,-0.0015068269,0.028305726,0.015943691
-26,TabPFN v2,Hackerearth,2,Reference CPT,532428,0.23632679,0.28182856,0.23401308,0.045501769,-0.0023137053,0.043188064,0.082631383,0.077374593,0.0052567897,-0.047815475,0.080352853,0.059607989
-27,TabPFN v2,Myhom,2,Reference CPT,7000,0.4,0.3907081,0.38846986,-0.0092918998,-0.011530144,-0.0022382438,0.23434168,0.23401279,0.00032888629,-0.0022382438,0.014574557,0.011905645
-28,TabPFN v2,PropPD1,2,Reference CPT,100000,0.22639,0.19685933,0.21098327,-0.029530667,-0.015406729,0.014123938,0.13752979,0.13576697,0.0017628222,0.014123938,0.028730439,0.019965837
-29,TabPFN v2,PropPD2,2,Reference CPT,105471,0.092755355,0.057077593,0.074332778,-0.035677761,-0.018422576,0.017255185,0.083865093,0.082627188,0.0012379052,0.017255185,0.022316396,0.017601642
-30,TabPFN v2,Cobranded,3,Reference CPT,80000,0.2462125,0.22881422,0.23407153,-0.01739828,-0.012140971,0.0052573095,0.13481406,0.13350365,0.0013104121,0.0052573095,0.026884353,0.018148201
-31,TabPFN v2,Home Credit,3,Reference CPT,307511,0.080728819,0.059871731,0.065019446,-0.020857089,-0.015709374,0.0051477151,0.070289028,0.069804556,0.00048447223,0.0051477151,0.015150938,0.0086830932
-32,TabPFN v2,LendingClub,3,Reference CPT,9578,0.16005429,0.14351572,0.14466422,-0.016538576,-0.015390072,0.0011485034,0.1272695,0.12667486,0.00059463768,0.0011485034,0.021641738,0.015368557
-33,TabPFN v2,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32581566,0.32567167,-0.00054019219,-0.00068417948,-0.00014398729,0.033283421,0.03274194,0.00054148126,-0.00014398729,0.024340414,0.0094094115
-34,TabPFN v2.6,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.12910445,0.1282386,-0.0090006125,-0.0098664564,-0.00086584391,0.083792889,0.083878817,-8.5927834e-05,-0.00086584391,0.0094770807,0.0051021939
-35,TabPFN v2.6,HMEQ,0,Reference CPT,5960,0.19949664,0.18592591,0.18128886,-0.013570737,-0.018207781,-0.0046370439,0.013749836,0.017818387,-0.0040685513,-0.0046370439,0.0279057,0.0095688434
-36,TabPFN v2.6,MicroFinance,0,Reference CPT,158700,0.37809074,0.36995232,0.36807734,-0.0081384136,-0.010013396,-0.0018749822,0.2176398,0.21785333,-0.00021352915,-0.0018749822,0.013385389,0.0098065524
-37,TabPFN v2.6,Thomas,0,Reference CPT,1225,0.26367347,0.24653708,0.24556162,-0.017136387,-0.01811185,-0.00097546345,0.18359201,0.18321416,0.00037785768,-0.00097546345,0.013391413,0.010218216
-38,TabPFN v2.6,GMSC,1,Reference CPT,150000,0.06684,0.058335607,0.05736453,-0.0085043929,-0.00947547,-0.00097107712,0.049245344,0.049270476,-2.5132747e-05,-0.00097107712,0.0036511643,0.0017869723
-39,TabPFN v2.6,German Credit,1,Reference CPT,999,0.3003003,0.29046397,0.29324612,-0.0098363313,-0.0070541804,0.0027821509,0.16257482,0.16256952,5.3092668e-06,0.0027821509,0.010632586,0.0082697972
-40,TabPFN v2.6,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20649021,0.20559168,-0.014709793,-0.015608317,-0.00089852384,0.13310767,0.13305366,5.4012749e-05,-0.00089852384,0.0077233471,0.0054492289
-41,TabPFN v2.6,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.19828218,0.19582059,-0.018788944,-0.021250527,-0.0024615839,0.16205031,0.16207128,-2.0972978e-05,-0.0024615839,0.011860731,0.0085701743
-42,TabPFN v2.6,Credit Risk,2,Reference CPT,32581,0.21816396,0.20729135,0.20396398,-0.010872613,-0.014199977,-0.0033273637,0.053688482,0.054492998,-0.00080451589,-0.0033273637,0.014072418,0.0073491705
-43,TabPFN v2.6,Hackerearth,2,Reference CPT,532428,0.23632679,0.23148557,0.22506218,-0.0048412211,-0.011264611,-0.0064233895,0.065047143,0.066705269,-0.0016581254,-0.0064233895,0.019939512,0.012288727
-44,TabPFN v2.6,Myhom,2,Reference CPT,7000,0.4,0.39089605,0.38772319,-0.0091039538,-0.01227681,-0.003172856,0.23405045,0.23408892,-3.8473353e-05,-0.003172856,0.008031056,0.0062243711
-45,TabPFN v2.6,PropPD1,2,Reference CPT,100000,0.22639,0.20999,0.20803792,-0.016399997,-0.018352084,-0.0019520864,0.13357595,0.13374374,-0.00016778538,-0.0019520864,0.0088112079,0.0062102906
-46,TabPFN v2.6,PropPD2,2,Reference CPT,105471,0.092755355,0.077113889,0.075782253,-0.015641466,-0.016973102,-0.0013316363,0.082257539,0.08231201,-5.4470675e-05,-0.0013316363,0.0038191024,0.0029712036
-47,TabPFN v2.6,Cobranded,3,Reference CPT,80000,0.2462125,0.23628205,0.23512341,-0.009930454,-0.011089086,-0.0011586318,0.13048481,0.13056595,-8.1139449e-05,-0.0011586318,0.0089112287,0.0061520146
-48,TabPFN v2.6,Home Credit,3,Reference CPT,307511,0.080728819,0.06920748,0.067992616,-0.01152134,-0.012736204,-0.0012148637,0.06868368,0.068742133,-5.8452197e-05,-0.0012148637,0.0047945255,0.0031115717
-49,TabPFN v2.6,LendingClub,3,Reference CPT,9578,0.16005429,0.14034329,0.13846513,-0.019711,-0.021589162,-0.001878162,0.12655783,0.12655051,7.3230748e-06,-0.001878162,0.0063649244,0.0044050162
-50,TabPFN v2.6,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32613927,0.32601375,-0.00021657747,-0.00034209994,-0.00012552246,0.032727747,0.03264297,8.4777106e-05,-0.00012552246,0.01019357,0.0037053896
-51,TabPFN v3,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.13157373,0.13107627,-0.0065313284,-0.0070287904,-0.00049746202,0.080273139,0.080240276,3.2862683e-05,-0.00049746202,0.01697683,0.008213193
-52,TabPFN v3,HMEQ,0,Reference CPT,5960,0.19949664,0.1956357,0.19637905,-0.0038609394,-0.0031175902,0.00074334917,0.0057323372,0.0076835114,-0.0019511742,0.00074334917,0.038580101,0.011338203
-53,TabPFN v3,MicroFinance,0,Reference CPT,158700,0.37809074,0.36603644,0.36890436,-0.012054296,-0.0091863784,0.0028679181,0.21751457,0.2169832,0.0005313714,0.0028679181,0.018829755,0.014333385
-54,TabPFN v3,Thomas,0,Reference CPT,1225,0.26367347,0.24733232,0.24650843,-0.016341154,-0.017165039,-0.00082388508,0.18350797,0.18320804,0.00029993868,-0.00082388508,0.016822874,0.012899717
-55,TabPFN v3,GMSC,1,Reference CPT,150000,0.06684,0.058648143,0.058312811,-0.0081918569,-0.0085271892,-0.00033533224,0.048835831,0.048821073,1.4758558e-05,-0.00033533224,0.0056372056,0.0029040431
-56,TabPFN v3,German Credit,1,Reference CPT,999,0.3003003,0.29032207,0.28636196,-0.0099782295,-0.013938342,-0.0039601122,0.16260483,0.16230722,0.00029761044,-0.0039601122,0.028182853,0.020494467
-57,TabPFN v3,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20652503,0.20878797,-0.014674968,-0.012412033,0.0022629356,0.13305926,0.1328416,0.0002176593,0.0022629356,0.01494558,0.010410765
-58,TabPFN v3,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.19829208,0.20051853,-0.018779038,-0.016552595,0.0022264425,0.16127828,0.16118568,9.2598114e-05,0.0022264425,0.011948686,0.0087045786
-59,TabPFN v3,Credit Risk,2,Reference CPT,32581,0.21816396,0.20759623,0.20477433,-0.010567735,-0.013389632,-0.0028218975,0.050267518,0.050593181,-0.00032566364,-0.0028218975,0.030853624,0.013043532
-60,TabPFN v3,Hackerearth,2,Reference CPT,532428,0.23632679,0.22884167,0.23293016,-0.0074851162,-0.0033966267,0.0040884895,0.054771256,0.057269034,-0.0024977784,0.0040884895,0.037478377,0.019472516
-61,TabPFN v3,Myhom,2,Reference CPT,7000,0.4,0.39120362,0.39037161,-0.0087963807,-0.0096283896,-0.0008320089,0.23383466,0.23395088,-0.00011622541,-0.0008320089,0.010560964,0.008128265
-62,TabPFN v3,PropPD1,2,Reference CPT,100000,0.22639,0.1925788,0.1997636,-0.0338112,-0.026626398,0.0071848021,0.12856333,0.12776033,0.00080299966,0.0071848021,0.019963385,0.011972248
-63,TabPFN v3,PropPD2,2,Reference CPT,105471,0.092755355,0.075082848,0.077348208,-0.017672507,-0.015407147,0.0022653602,0.082365262,0.082221541,0.000143721,0.0022653602,0.0075677201,0.0053666788
-64,TabPFN v3,Cobranded,3,Reference CPT,80000,0.2462125,0.23471619,0.23655315,-0.01149631,-0.0096593521,0.0018369575,0.13093235,0.13059137,0.00034097952,0.0018369575,0.017345126,0.0098912012
-65,TabPFN v3,Home Credit,3,Reference CPT,307511,0.080728819,0.06675003,0.068344587,-0.01397879,-0.012384232,0.0015945576,0.068395375,0.068365552,2.9822523e-05,0.0015945576,0.0094775862,0.0057422641
-66,TabPFN v3,LendingClub,3,Reference CPT,9578,0.16005429,0.14098134,0.13878513,-0.019072951,-0.021269159,-0.0021962084,0.12638842,0.12641217,-2.3749574e-05,-0.0021962084,0.01173935,0.0086094299
-67,TabPFN v3,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32639496,0.32630219,3.9106569e-05,-5.3666108e-05,-1.4559539e-05,0.033249146,0.032236844,0.0010123011,-9.2772677e-05,0.02915868,0.010534051
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.13512286,0.13256894,-0.0029821967,-0.0055361236,-0.0025539269,0.080535551,0.080618759,-8.3207553e-05,-0.0025539269,0.019771589,0.0095581853,0,-0.16
+1,TabICLv2,Cobranded,3,Reference CPT,80000,0.2462125,0.23580183,0.23029025,-0.010410672,-0.015922253,-0.0055115802,0.13071025,0.13087808,-0.00016783457,-0.0055115802,0.024024812,0.014414411,0,-0.14
+2,TabICLv2,Credit Risk,2,Reference CPT,32581,0.21816396,0.20703413,0.21661622,-0.011129831,-0.0015477404,0.0095820908,0.049364787,0.053799828,-0.0044350411,0.0095820908,0.056506917,0.02929804,0,-0.12
+3,TabICLv2,GMSC,1,Reference CPT,150000,0.06684,0.057865039,0.056626289,-0.0089749608,-0.010213711,-0.0012387499,0.049075658,0.049165962,-9.0303786e-05,-0.0012387499,0.0073658232,0.0035484029,0,-0.1
+4,TabICLv2,German Credit,1,Reference CPT,999,0.3003003,0.29274349,0.29129337,-0.007556812,-0.0090069302,-0.0014501182,0.16240025,0.16176108,0.00063917016,-0.0014501182,0.027867443,0.019690208,0,-0.08
+5,TabICLv2,HMEQ,0,Reference CPT,5960,0.19949664,0.19071745,0.19219382,-0.0087791943,-0.0073028198,0.0014763745,0.017686181,0.018154402,-0.0004682214,0.0014763745,0.034720632,0.011352,0,-0.06
+6,TabICLv2,Hackerearth,2,Reference CPT,532428,0.23632679,0.23112544,0.23305805,-0.0052013466,-0.003268741,0.0019326057,0.058127422,0.066776019,-0.0086485971,0.0019326057,0.08593721,0.045125505,0,-0.04
+7,TabICLv2,Home Credit,3,Reference CPT,307511,0.080728819,0.071030346,0.067584069,-0.0096984731,-0.013144751,-0.0034462776,0.068564613,0.068760592,-0.00019597886,-0.0034462776,0.012645437,0.0073691102,0,-0.02
+8,TabICLv2,LendingClub,3,Reference CPT,9578,0.16005429,0.14078684,0.14098095,-0.019267448,-0.019073341,0.00019410741,0.12609798,0.12601609,8.1893481e-05,0.00019410741,0.012660816,0.0081243885,0,0
+9,TabICLv2,MicroFinance,0,Reference CPT,158700,0.37809074,0.36495634,0.36426298,-0.013134396,-0.013827761,-0.00069336521,0.21816395,0.21841258,-0.0002486283,-0.00069336521,0.028268502,0.021000682,0,0.02
+10,TabICLv2,Myhom,2,Reference CPT,7000,0.4,0.38581482,0.38771102,-0.01418518,-0.012288978,0.0018962015,0.25080943,0.2342849,0.016524523,0.0018962015,0.14819546,0.088813439,0,0.04
+11,TabICLv2,PropPD1,2,Reference CPT,100000,0.22639,0.19999356,0.19821084,-0.026396437,-0.028179163,-0.0017827264,0.12813814,0.12806364,7.4499661e-05,-0.0017827264,0.029452977,0.019537851,0,0.06
+12,TabICLv2,PropPD2,2,Reference CPT,105471,0.092755355,0.076905382,0.077439865,-0.015849972,-0.01531549,0.00053448233,0.082312426,0.082308995,3.4316054e-06,0.00053448233,0.0063662544,0.0048652435,0,0.08
+13,TabICLv2,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32631453,0.32584408,-4.1321021e-05,-0.00051177121,-0.00047045019,0.031810621,0.031662483,0.00014813793,-0.00047045019,0.022864193,0.0083660565,0,0.1
+14,TabICLv2,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20680082,0.20503104,-0.014399176,-0.016168957,-0.0017697809,0.13292592,0.13328217,-0.00035625278,-0.0017697809,0.015948263,0.01167633,0,0.12
+15,TabICLv2,Thomas,0,Reference CPT,1225,0.26367347,0.24708993,0.24401196,-0.016583543,-0.019661508,-0.0030779649,0.18308296,0.18314589,-6.2926983e-05,-0.0030779649,0.014726732,0.010257175,0,0.14
+16,TabICLv2,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.38729445,0.19420985,0.17022333,-0.022861275,0.14736205,0.27476188,0.16183347,0.11292842,-0.1930846,0.34840057,0.21613537,0,0.16
+17,TabPFN v2,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.12641753,0.12661734,-0.011687533,-0.011487721,0.00019981242,0.087267614,0.08677264,0.00049497384,0.00019981242,0.014237352,0.0080609204,1,-0.16
+18,TabPFN v2,Cobranded,3,Reference CPT,80000,0.2462125,0.22881422,0.23407153,-0.01739828,-0.012140971,0.0052573095,0.13481406,0.13350365,0.0013104121,0.0052573095,0.026884353,0.018148201,1,-0.14
+19,TabPFN v2,Credit Risk,2,Reference CPT,32581,0.21816396,0.21668034,0.21517351,-0.0014836216,-0.0029904485,-0.0015068269,0.059860316,0.059454241,0.00040607483,-0.0015068269,0.028305726,0.015943691,1,-0.12
+20,TabPFN v2,GMSC,1,Reference CPT,150000,0.06684,0.057721764,0.059390286,-0.0091182358,-0.0074497138,0.001668522,0.04985517,0.049621391,0.00023377834,0.001668522,0.010567556,0.0056836122,1,-0.1
+21,TabPFN v2,German Credit,1,Reference CPT,999,0.3003003,0.29586794,0.29366074,-0.0044323601,-0.0066395614,-0.0022072013,0.16396183,0.16256123,0.0014006026,-0.0022072013,0.01852706,0.014134441,1,-0.08
+22,TabPFN v2,HMEQ,0,Reference CPT,5960,0.19949664,0.19633141,0.19519511,-0.0031652346,-0.0043015313,-0.0011362967,0.035942663,0.026635716,0.0093069466,-0.0011362967,0.043979919,0.022133908,1,-0.06
+23,TabPFN v2,Hackerearth,2,Reference CPT,532428,0.23632679,0.28182856,0.23401308,0.045501769,-0.0023137053,0.043188064,0.082631383,0.077374593,0.0052567897,-0.047815475,0.080352853,0.059607989,1,-0.04
+24,TabPFN v2,Home Credit,3,Reference CPT,307511,0.080728819,0.059871731,0.065019446,-0.020857089,-0.015709374,0.0051477151,0.070289028,0.069804556,0.00048447223,0.0051477151,0.015150938,0.0086830932,1,-0.02
+25,TabPFN v2,LendingClub,3,Reference CPT,9578,0.16005429,0.14351572,0.14466422,-0.016538576,-0.015390072,0.0011485034,0.1272695,0.12667486,0.00059463768,0.0011485034,0.021641738,0.015368557,1,0
+26,TabPFN v2,MicroFinance,0,Reference CPT,158700,0.37809074,0.37884399,0.37587016,0.00075325241,-0.0022205724,-0.00146732,0.22362317,0.22227431,0.0013488622,-0.0029738248,0.025359405,0.020718189,1,0.02
+27,TabPFN v2,Myhom,2,Reference CPT,7000,0.4,0.3907081,0.38846986,-0.0092918998,-0.011530144,-0.0022382438,0.23434168,0.23401279,0.00032888629,-0.0022382438,0.014574557,0.011905645,1,0.04
+28,TabPFN v2,PropPD1,2,Reference CPT,100000,0.22639,0.19685933,0.21098327,-0.029530667,-0.015406729,0.014123938,0.13752979,0.13576697,0.0017628222,0.014123938,0.028730439,0.019965837,1,0.06
+29,TabPFN v2,PropPD2,2,Reference CPT,105471,0.092755355,0.057077593,0.074332778,-0.035677761,-0.018422576,0.017255185,0.083865093,0.082627188,0.0012379052,0.017255185,0.022316396,0.017601642,1,0.08
+30,TabPFN v2,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32581566,0.32567167,-0.00054019219,-0.00068417948,-0.00014398729,0.033283421,0.03274194,0.00054148126,-0.00014398729,0.024340414,0.0094094115,1,0.1
+31,TabPFN v2,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20466542,0.20608305,-0.016534576,-0.015116955,0.0014176212,0.13571148,0.13429585,0.0014156285,0.0014176212,0.028755829,0.021177193,1,0.12
+32,TabPFN v2,Thomas,0,Reference CPT,1225,0.26367347,0.24865072,0.24610521,-0.015022749,-0.017568264,-0.0025455148,0.18353944,0.18295535,0.00058408269,-0.0025455148,0.013752966,0.0108229,1,0.14
+33,TabPFN v2,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.19305677,0.19955049,-0.024014352,-0.017520631,0.0064937204,0.16432601,0.16328996,0.0010360519,0.0064937204,0.02426932,0.017618119,1,0.16
+34,TabPFN v2.6,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.12910445,0.1282386,-0.0090006125,-0.0098664564,-0.00086584391,0.083792889,0.083878817,-8.5927834e-05,-0.00086584391,0.0094770807,0.0051021939,2,-0.16
+35,TabPFN v2.6,Cobranded,3,Reference CPT,80000,0.2462125,0.23628205,0.23512341,-0.009930454,-0.011089086,-0.0011586318,0.13048481,0.13056595,-8.1139449e-05,-0.0011586318,0.0089112287,0.0061520146,2,-0.14
+36,TabPFN v2.6,Credit Risk,2,Reference CPT,32581,0.21816396,0.20729135,0.20396398,-0.010872613,-0.014199977,-0.0033273637,0.053688482,0.054492998,-0.00080451589,-0.0033273637,0.014072418,0.0073491705,2,-0.12
+37,TabPFN v2.6,GMSC,1,Reference CPT,150000,0.06684,0.058335607,0.05736453,-0.0085043929,-0.00947547,-0.00097107712,0.049245344,0.049270476,-2.5132747e-05,-0.00097107712,0.0036511643,0.0017869723,2,-0.1
+38,TabPFN v2.6,German Credit,1,Reference CPT,999,0.3003003,0.29046397,0.29324612,-0.0098363313,-0.0070541804,0.0027821509,0.16257482,0.16256952,5.3092668e-06,0.0027821509,0.010632586,0.0082697972,2,-0.08
+39,TabPFN v2.6,HMEQ,0,Reference CPT,5960,0.19949664,0.18592591,0.18128886,-0.013570737,-0.018207781,-0.0046370439,0.013749836,0.017818387,-0.0040685513,-0.0046370439,0.0279057,0.0095688434,2,-0.06
+40,TabPFN v2.6,Hackerearth,2,Reference CPT,532428,0.23632679,0.23148557,0.22506218,-0.0048412211,-0.011264611,-0.0064233895,0.065047143,0.066705269,-0.0016581254,-0.0064233895,0.019939512,0.012288727,2,-0.04
+41,TabPFN v2.6,Home Credit,3,Reference CPT,307511,0.080728819,0.06920748,0.067992616,-0.01152134,-0.012736204,-0.0012148637,0.06868368,0.068742133,-5.8452197e-05,-0.0012148637,0.0047945255,0.0031115717,2,-0.02
+42,TabPFN v2.6,LendingClub,3,Reference CPT,9578,0.16005429,0.14034329,0.13846513,-0.019711,-0.021589162,-0.001878162,0.12655783,0.12655051,7.3230748e-06,-0.001878162,0.0063649244,0.0044050162,2,0
+43,TabPFN v2.6,MicroFinance,0,Reference CPT,158700,0.37809074,0.36995232,0.36807734,-0.0081384136,-0.010013396,-0.0018749822,0.2176398,0.21785333,-0.00021352915,-0.0018749822,0.013385389,0.0098065524,2,0.02
+44,TabPFN v2.6,Myhom,2,Reference CPT,7000,0.4,0.39089605,0.38772319,-0.0091039538,-0.01227681,-0.003172856,0.23405045,0.23408892,-3.8473353e-05,-0.003172856,0.008031056,0.0062243711,2,0.04
+45,TabPFN v2.6,PropPD1,2,Reference CPT,100000,0.22639,0.20999,0.20803792,-0.016399997,-0.018352084,-0.0019520864,0.13357595,0.13374374,-0.00016778538,-0.0019520864,0.0088112079,0.0062102906,2,0.06
+46,TabPFN v2.6,PropPD2,2,Reference CPT,105471,0.092755355,0.077113889,0.075782253,-0.015641466,-0.016973102,-0.0013316363,0.082257539,0.08231201,-5.4470675e-05,-0.0013316363,0.0038191024,0.0029712036,2,0.08
+47,TabPFN v2.6,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32613927,0.32601375,-0.00021657747,-0.00034209994,-0.00012552246,0.032727747,0.03264297,8.4777106e-05,-0.00012552246,0.01019357,0.0037053896,2,0.1
+48,TabPFN v2.6,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20649021,0.20559168,-0.014709793,-0.015608317,-0.00089852384,0.13310767,0.13305366,5.4012749e-05,-0.00089852384,0.0077233471,0.0054492289,2,0.12
+49,TabPFN v2.6,Thomas,0,Reference CPT,1225,0.26367347,0.24653708,0.24556162,-0.017136387,-0.01811185,-0.00097546345,0.18359201,0.18321416,0.00037785768,-0.00097546345,0.013391413,0.010218216,2,0.14
+50,TabPFN v2.6,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.19828218,0.19582059,-0.018788944,-0.021250527,-0.0024615839,0.16205031,0.16207128,-2.0972978e-05,-0.0024615839,0.011860731,0.0085701743,2,0.16
+51,TabPFN v3,Bondora Peer-to-Peer,0,Reference CPT,730176,0.13810506,0.13157373,0.13107627,-0.0065313284,-0.0070287904,-0.00049746202,0.080273139,0.080240276,3.2862683e-05,-0.00049746202,0.01697683,0.008213193,3,-0.16
+52,TabPFN v3,Cobranded,3,Reference CPT,80000,0.2462125,0.23471619,0.23655315,-0.01149631,-0.0096593521,0.0018369575,0.13093235,0.13059137,0.00034097952,0.0018369575,0.017345126,0.0098912012,3,-0.14
+53,TabPFN v3,Credit Risk,2,Reference CPT,32581,0.21816396,0.20759623,0.20477433,-0.010567735,-0.013389632,-0.0028218975,0.050267518,0.050593181,-0.00032566364,-0.0028218975,0.030853624,0.013043532,3,-0.12
+54,TabPFN v3,GMSC,1,Reference CPT,150000,0.06684,0.058648143,0.058312811,-0.0081918569,-0.0085271892,-0.00033533224,0.048835831,0.048821073,1.4758558e-05,-0.00033533224,0.0056372056,0.0029040431,3,-0.1
+55,TabPFN v3,German Credit,1,Reference CPT,999,0.3003003,0.29032207,0.28636196,-0.0099782295,-0.013938342,-0.0039601122,0.16260483,0.16230722,0.00029761044,-0.0039601122,0.028182853,0.020494467,3,-0.08
+56,TabPFN v3,HMEQ,0,Reference CPT,5960,0.19949664,0.1956357,0.19637905,-0.0038609394,-0.0031175902,0.00074334917,0.0057323372,0.0076835114,-0.0019511742,0.00074334917,0.038580101,0.011338203,3,-0.06
+57,TabPFN v3,Hackerearth,2,Reference CPT,532428,0.23632679,0.22884167,0.23293016,-0.0074851162,-0.0033966267,0.0040884895,0.054771256,0.057269034,-0.0024977784,0.0040884895,0.037478377,0.019472516,3,-0.04
+58,TabPFN v3,Home Credit,3,Reference CPT,307511,0.080728819,0.06675003,0.068344587,-0.01397879,-0.012384232,0.0015945576,0.068395375,0.068365552,2.9822523e-05,0.0015945576,0.0094775862,0.0057422641,3,-0.02
+59,TabPFN v3,LendingClub,3,Reference CPT,9578,0.16005429,0.14098134,0.13878513,-0.019072951,-0.021269159,-0.0021962084,0.12638842,0.12641217,-2.3749574e-05,-0.0021962084,0.01173935,0.0086094299,3,0
+60,TabPFN v3,MicroFinance,0,Reference CPT,158700,0.37809074,0.36603644,0.36890436,-0.012054296,-0.0091863784,0.0028679181,0.21751457,0.2169832,0.0005313714,0.0028679181,0.018829755,0.014333385,3,0.02
+61,TabPFN v3,Myhom,2,Reference CPT,7000,0.4,0.39120362,0.39037161,-0.0087963807,-0.0096283896,-0.0008320089,0.23383466,0.23395088,-0.00011622541,-0.0008320089,0.010560964,0.008128265,3,0.04
+62,TabPFN v3,PropPD1,2,Reference CPT,100000,0.22639,0.1925788,0.1997636,-0.0338112,-0.026626398,0.0071848021,0.12856333,0.12776033,0.00080299966,0.0071848021,0.019963385,0.011972248,3,0.06
+63,TabPFN v3,PropPD2,2,Reference CPT,105471,0.092755355,0.075082848,0.077348208,-0.017672507,-0.015407147,0.0022653602,0.082365262,0.082221541,0.000143721,0.0022653602,0.0075677201,0.0053666788,3,0.08
+64,TabPFN v3,SBA Loans Case,3,Reference CPT,2102,0.32635585,0.32639496,0.32630219,3.9106569e-05,-5.3666108e-05,-1.4559539e-05,0.033249146,0.032236844,0.0010123011,-9.2772677e-05,0.02915868,0.010534051,3,0.1
+65,TabPFN v3,Taiwan Credit Card,1,Reference CPT,30000,0.2212,0.20652503,0.20878797,-0.014674968,-0.012412033,0.0022629356,0.13305926,0.1328416,0.0002176593,0.0022629356,0.01494558,0.010410765,3,0.12
+66,TabPFN v3,Thomas,0,Reference CPT,1225,0.26367347,0.24733232,0.24650843,-0.016341154,-0.017165039,-0.00082388508,0.18350797,0.18320804,0.00029993868,-0.00082388508,0.016822874,0.012899717,3,0.14
+67,TabPFN v3,Vehicle Loan,1,Reference CPT,233154,0.21707112,0.19829208,0.20051853,-0.018779038,-0.016552595,0.0022264425,0.16127828,0.16118568,9.2598114e-05,0.0022264425,0.011948686,0.0087045786,3,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -74795,18 +75380,19 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,5222.861,4837.4361,5610.2462,32,0.5222861,0.48374361,0.56102462,32,121.0455,120.994,121.097,32,1.8578545e+08,168231937,195157151,32,53153136,53153136,53153136,32,0.0062993886,0.0014844263,0.052169715
 "('TabPFN v3', True)",32,4818.2725,4506.7621,5040.1654,32,0.48182725,0.45067621,0.50401654,32,109.999,109.999,109.999,32,1.8578545e+08,168231937,195157151,32,1795440,1795440,1795440,32,0.0064213491,0.0013048735,0.037843075
 
-experiment1/03_results_pd: 11 figures -> output CreditPFN/figures/experiment1
+experiment1/03_results_pd: 12 figures -> output CreditPFN/figures/experiment1
   01  pd_choice_contrasts_credit
   02  pd_recipe_grid_credit_roc_auc
   03  pd_recipe_grid_credit_brier_score
   04  pd_recipe_grid_credit_log_loss
-  05  pd_benchmark_transfer_retention
-  06  pd_reference_uncertainty
-  07  pd_calibration_overview
-  08  pd_prediction_diagnostics
-  09  pd_monitor_recipe_changes
-  10  pd_control_context_1
-  11  pd_control_context_2
+  05  pd_conservative_recipes_credit_roc_auc
+  06  pd_benchmark_transfer_retention
+  07  pd_reference_uncertainty
+  08  pd_calibration_overview
+  09  pd_prediction_diagnostics
+  10  pd_monitor_recipe_changes
+  11  pd_control_context_1
+  12  pd_control_context_2
 ```
 
 ---
@@ -77386,6 +77972,303 @@ row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25
 63,credit,rmse,TabPFN v3,3e-05,0.003,True,one_sample,-0.18044789,-0.13903557,-0.20742301,-0.044078248,8,0,TabPFN v3 / frozen,"3e-05
 0.003"
 
+Figure: lgd_conservative_recipes_credit_r2
+LGD. Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates (3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to the same model's original weights, after averaging five folds within each table. 8 complete tables per model. Color denotes rate and marker shape denotes L2-SP strength. Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale that retains all displayed means and zero; positive values favor CPT. This focused mean view does not show uncertainty or table spread, and does not imply every table improves. The full grid retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. Inference follows the recorded LGD policy.
+Every low-rate paired table effect
+CSV (first column: row index)
+row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
+0,TabICLv2,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.0062779665,1
+1,TabICLv2,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0003557682,1
+2,TabICLv2,3e-07,0,False,one_sample,PropLGD1,credit,r2,-0.028720737,1
+3,TabICLv2,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.0034443021,1
+4,TabICLv2,3e-07,0,False,one_sample,PropLGD3,credit,r2,-0.0016329646,1
+5,TabICLv2,3e-07,0,False,one_sample,PropLGD4,credit,r2,0.0058594465,1
+6,TabICLv2,3e-07,0,False,one_sample,PropLGD5,credit,r2,-0.0043001533,1
+7,TabICLv2,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.00054645538,1
+8,TabICLv2,3e-07,0,True,one_sample,Freddie Mac,credit,r2,0.0018703699,1
+9,TabICLv2,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,9.9086761e-05,1
+10,TabICLv2,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.00026630163,1
+11,TabICLv2,3e-07,0,True,one_sample,PropLGD2,credit,r2,0.00032488108,1
+12,TabICLv2,3e-07,0,True,one_sample,PropLGD3,credit,r2,-0.0004360199,1
+13,TabICLv2,3e-07,0,True,one_sample,PropLGD4,credit,r2,0.0053270698,1
+14,TabICLv2,3e-07,0,True,one_sample,PropLGD5,credit,r2,-0.00091625452,1
+15,TabICLv2,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,0.0007679224,1
+16,TabICLv2,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.0056432486,1
+17,TabICLv2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.00029659271,1
+18,TabICLv2,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,-0.030043507,1
+19,TabICLv2,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.0031716228,1
+20,TabICLv2,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,-0.0013843417,1
+21,TabICLv2,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,0.0058369756,1
+22,TabICLv2,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,-0.0034658551,1
+23,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,6.3300133e-06,1
+24,TabICLv2,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,0.001791203,1
+25,TabICLv2,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,9.9527836e-05,1
+26,TabICLv2,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.0011702299,1
+27,TabICLv2,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,0.00036139488,1
+28,TabICLv2,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,-0.00048923492,1
+29,TabICLv2,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,0.0053941846,1
+30,TabICLv2,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,-0.00072492361,1
+31,TabICLv2,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,0.0011025786,1
+32,TabICLv2,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.031468868,1
+33,TabICLv2,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.00045790672,1
+34,TabICLv2,1e-06,0,False,one_sample,PropLGD1,credit,r2,-0.2673511,1
+35,TabICLv2,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.015031767,1
+36,TabICLv2,1e-06,0,False,one_sample,PropLGD3,credit,r2,-0.0054196596,1
+37,TabICLv2,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.0099618554,1
+38,TabICLv2,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.011110318,1
+39,TabICLv2,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.0086556911,1
+40,TabICLv2,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.0017269135,1
+41,TabICLv2,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,0.00033165216,1
+42,TabICLv2,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.056962609,1
+43,TabICLv2,1e-06,0,True,one_sample,PropLGD2,credit,r2,-0.00074406862,1
+44,TabICLv2,1e-06,0,True,one_sample,PropLGD3,credit,r2,-0.00067995787,1
+45,TabICLv2,1e-06,0,True,one_sample,PropLGD4,credit,r2,0.0092394471,1
+46,TabICLv2,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0036946893,1
+47,TabICLv2,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,0.0008590579,1
+48,TabICLv2,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.025908136,1
+49,TabICLv2,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.00032074451,1
+50,TabICLv2,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,-0.31356044,1
+51,TabICLv2,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.012290466,1
+52,TabICLv2,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,-0.0038322091,1
+53,TabICLv2,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.0042067289,1
+54,TabICLv2,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.0076200366,1
+55,TabICLv2,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.004163754,1
+56,TabICLv2,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0012158394,1
+57,TabICLv2,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00026028156,1
+58,TabICLv2,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.073823249,1
+59,TabICLv2,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.0011797905,1
+60,TabICLv2,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,-0.00015195608,1
+61,TabICLv2,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,0.0086188436,1
+62,TabICLv2,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0038709044,1
+63,TabICLv2,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,0.00080263615,1
+128,TabPFN v2,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.0031929135,1
+129,TabPFN v2,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0021497488,1
+130,TabPFN v2,3e-07,0,False,one_sample,PropLGD1,credit,r2,0.019067729,1
+131,TabPFN v2,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.00070744753,1
+132,TabPFN v2,3e-07,0,False,one_sample,PropLGD3,credit,r2,0.0011690259,1
+133,TabPFN v2,3e-07,0,False,one_sample,PropLGD4,credit,r2,0.011688018,1
+134,TabPFN v2,3e-07,0,False,one_sample,PropLGD5,credit,r2,0.0064568043,1
+135,TabPFN v2,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,0.0027754903,1
+136,TabPFN v2,3e-07,0,True,one_sample,Freddie Mac,credit,r2,-0.00039176941,1
+137,TabPFN v2,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,-0.00018033981,1
+138,TabPFN v2,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.0069638371,1
+139,TabPFN v2,3e-07,0,True,one_sample,PropLGD2,credit,r2,-0.00023218393,1
+140,TabPFN v2,3e-07,0,True,one_sample,PropLGD3,credit,r2,-0.0034658194,1
+141,TabPFN v2,3e-07,0,True,one_sample,PropLGD4,credit,r2,1.0168552e-05,1
+142,TabPFN v2,3e-07,0,True,one_sample,PropLGD5,credit,r2,0.00053731203,1
+143,TabPFN v2,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00033006668,1
+144,TabPFN v2,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.0032508135,1
+145,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0021434546,1
+146,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,0.018483496,1
+147,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.00080544949,1
+148,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,-0.00021089315,1
+149,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,0.011592054,1
+150,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,0.0063416004,1
+151,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,0.0028022647,1
+152,TabPFN v2,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,-0.00038522482,1
+153,TabPFN v2,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.00018558502,1
+154,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.0071280241,1
+155,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,-0.00032587051,1
+156,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,-0.0046648145,1
+157,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,-5.8293343e-06,1
+158,TabPFN v2,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,0.00051351786,1
+159,TabPFN v2,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00037333965,1
+160,TabPFN v2,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.007098949,1
+161,TabPFN v2,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0041548014,1
+162,TabPFN v2,1e-06,0,False,one_sample,PropLGD1,credit,r2,0.041654229,1
+163,TabPFN v2,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.0008007288,1
+164,TabPFN v2,1e-06,0,False,one_sample,PropLGD3,credit,r2,-0.0046227455,1
+165,TabPFN v2,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.0027023673,1
+166,TabPFN v2,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.0027192593,1
+167,TabPFN v2,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,0.00069862604,1
+168,TabPFN v2,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.0010754347,1
+169,TabPFN v2,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,-0.00031875372,1
+170,TabPFN v2,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.0089998007,1
+171,TabPFN v2,1e-06,0,True,one_sample,PropLGD2,credit,r2,2.1195412e-05,1
+172,TabPFN v2,1e-06,0,True,one_sample,PropLGD3,credit,r2,-0.0039439797,1
+173,TabPFN v2,1e-06,0,True,one_sample,PropLGD4,credit,r2,-0.00089037418,1
+174,TabPFN v2,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0023263454,1
+175,TabPFN v2,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00069103241,1
+176,TabPFN v2,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.0071505547,1
+177,TabPFN v2,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0041552782,1
+178,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,0.042105663,1
+179,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.0012936831,1
+180,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,-0.012545788,1
+181,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.0011195421,1
+182,TabPFN v2,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.0035522342,1
+183,TabPFN v2,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,0.00091099739,1
+184,TabPFN v2,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0010495067,1
+185,TabPFN v2,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,-0.00031479597,1
+186,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.0092791319,1
+187,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.0003678441,1
+188,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,-0.0087867379,1
+189,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,-0.00077403784,1
+190,TabPFN v2,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0023391247,1
+191,TabPFN v2,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.00071592331,1
+256,TabPFN v2.6,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.075496805,1
+257,TabPFN v2.6,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.081362092,1
+258,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD1,credit,r2,-0.29913464,1
+259,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.063528061,1
+260,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD3,credit,r2,0.0013708711,1
+261,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD4,credit,r2,-0.066328812,1
+262,TabPFN v2.6,3e-07,0,False,one_sample,PropLGD5,credit,r2,-0.027583945,1
+263,TabPFN v2.6,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.054754686,1
+264,TabPFN v2.6,3e-07,0,True,one_sample,Freddie Mac,credit,r2,0.00098266602,1
+265,TabPFN v2.6,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,0.00065555573,1
+266,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.0044168472,1
+267,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD2,credit,r2,2.1886826e-05,1
+268,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD3,credit,r2,0.0010153294,1
+269,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD4,credit,r2,-0.0010034919,1
+270,TabPFN v2.6,3e-07,0,True,one_sample,PropLGD5,credit,r2,0.0026229739,1
+271,TabPFN v2.6,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0008677125,1
+272,TabPFN v2.6,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.075571036,1
+273,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.080925655,1
+274,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,-0.29883276,1
+275,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.063454926,1
+276,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,0.0014339089,1
+277,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,-0.066008151,1
+278,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,-0.027774954,1
+279,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.054565394,1
+280,TabPFN v2.6,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,0.00098222494,1
+281,TabPFN v2.6,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00065973997,1
+282,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.0044159889,1
+283,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,2.5713444e-05,1
+284,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,0.0011408329,1
+285,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,-0.0010062695,1
+286,TabPFN v2.6,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,0.0026251674,1
+287,TabPFN v2.6,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0008570075,1
+288,TabPFN v2.6,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.046315289,1
+289,TabPFN v2.6,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.067448008,1
+290,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD1,credit,r2,-0.29806277,1
+291,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.057096684,1
+292,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD3,credit,r2,-7.4923038e-05,1
+293,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.079827631,1
+294,TabPFN v2.6,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.022560883,1
+295,TabPFN v2.6,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.054649734,1
+296,TabPFN v2.6,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.0043949485,1
+297,TabPFN v2.6,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,0.0003518343,1
+298,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.021265209,1
+299,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD2,credit,r2,-0.0034974575,1
+300,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD3,credit,r2,-0.012674868,1
+301,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD4,credit,r2,-0.010237837,1
+302,TabPFN v2.6,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0072713494,1
+303,TabPFN v2.6,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.005409348,1
+304,TabPFN v2.6,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.046599352,1
+305,TabPFN v2.6,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.066781271,1
+306,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,-0.29770719,1
+307,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.057162225,1
+308,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,0.00028730631,1
+309,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.079185843,1
+310,TabPFN v2.6,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.023315632,1
+311,TabPFN v2.6,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.053670382,1
+312,TabPFN v2.6,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0044354081,1
+313,TabPFN v2.6,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00032086372,1
+314,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.021278048,1
+315,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.0031033635,1
+316,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,-0.010462141,1
+317,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,-0.010212708,1
+318,TabPFN v2.6,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0073088288,1
+319,TabPFN v2.6,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0052041292,1
+384,TabPFN v3,3e-07,0,False,one_sample,Freddie Mac,credit,r2,-0.018173933,1
+385,TabPFN v3,3e-07,0,False,one_sample,LendingClub (LGD),credit,r2,-0.001977694,1
+386,TabPFN v3,3e-07,0,False,one_sample,PropLGD1,credit,r2,-0.25456707,1
+387,TabPFN v3,3e-07,0,False,one_sample,PropLGD2,credit,r2,-0.011113143,1
+388,TabPFN v3,3e-07,0,False,one_sample,PropLGD3,credit,r2,0.00228585,1
+389,TabPFN v3,3e-07,0,False,one_sample,PropLGD4,credit,r2,-0.0020178318,1
+390,TabPFN v3,3e-07,0,False,one_sample,PropLGD5,credit,r2,-0.0012529254,1
+391,TabPFN v3,3e-07,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.004320395,1
+392,TabPFN v3,3e-07,0,True,one_sample,Freddie Mac,credit,r2,-0.0068457723,1
+393,TabPFN v3,3e-07,0,True,one_sample,LendingClub (LGD),credit,r2,0.00079799891,1
+394,TabPFN v3,3e-07,0,True,one_sample,PropLGD1,credit,r2,-0.044520736,1
+395,TabPFN v3,3e-07,0,True,one_sample,PropLGD2,credit,r2,-0.0034373641,1
+396,TabPFN v3,3e-07,0,True,one_sample,PropLGD3,credit,r2,0.00044136047,1
+397,TabPFN v3,3e-07,0,True,one_sample,PropLGD4,credit,r2,-0.01008327,1
+398,TabPFN v3,3e-07,0,True,one_sample,PropLGD5,credit,r2,-0.00098398924,1
+399,TabPFN v3,3e-07,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0047196031,1
+400,TabPFN v3,3e-07,0.003,False,one_sample,Freddie Mac,credit,r2,-0.018117607,1
+401,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0019857883,1
+402,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD1,credit,r2,-0.18983387,1
+403,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD2,credit,r2,-0.011565423,1
+404,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD3,credit,r2,0.0021969914,1
+405,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD4,credit,r2,-0.0026840091,1
+406,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD5,credit,r2,-0.0012308478,1
+407,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.0042111993,1
+408,TabPFN v3,3e-07,0.003,True,one_sample,Freddie Mac,credit,r2,-0.0067509532,1
+409,TabPFN v3,3e-07,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.000796628,1
+410,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD1,credit,r2,-0.048800099,1
+411,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD2,credit,r2,-0.0035761714,1
+412,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD3,credit,r2,0.00053240061,1
+413,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD4,credit,r2,-0.010145855,1
+414,TabPFN v3,3e-07,0.003,True,one_sample,PropLGD5,credit,r2,-0.0012985826,1
+415,TabPFN v3,3e-07,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.0045753717,1
+416,TabPFN v3,1e-06,0,False,one_sample,Freddie Mac,credit,r2,-0.10142229,1
+417,TabPFN v3,1e-06,0,False,one_sample,LendingClub (LGD),credit,r2,-0.0042830586,1
+418,TabPFN v3,1e-06,0,False,one_sample,PropLGD1,credit,r2,-0.30643374,1
+419,TabPFN v3,1e-06,0,False,one_sample,PropLGD2,credit,r2,-0.027676904,1
+420,TabPFN v3,1e-06,0,False,one_sample,PropLGD3,credit,r2,0.0039400697,1
+421,TabPFN v3,1e-06,0,False,one_sample,PropLGD4,credit,r2,-0.035186315,1
+422,TabPFN v3,1e-06,0,False,one_sample,PropLGD5,credit,r2,-0.0064174891,1
+423,TabPFN v3,1e-06,0,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.025368595,1
+424,TabPFN v3,1e-06,0,True,one_sample,Freddie Mac,credit,r2,-0.026041281,1
+425,TabPFN v3,1e-06,0,True,one_sample,LendingClub (LGD),credit,r2,0.00060093403,1
+426,TabPFN v3,1e-06,0,True,one_sample,PropLGD1,credit,r2,-0.13690786,1
+427,TabPFN v3,1e-06,0,True,one_sample,PropLGD2,credit,r2,-0.011429489,1
+428,TabPFN v3,1e-06,0,True,one_sample,PropLGD3,credit,r2,0.00014686584,1
+429,TabPFN v3,1e-06,0,True,one_sample,PropLGD4,credit,r2,-0.044207764,1
+430,TabPFN v3,1e-06,0,True,one_sample,PropLGD5,credit,r2,-0.0025859714,1
+431,TabPFN v3,1e-06,0,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.016923726,1
+432,TabPFN v3,1e-06,0.003,False,one_sample,Freddie Mac,credit,r2,-0.084577382,1
+433,TabPFN v3,1e-06,0.003,False,one_sample,LendingClub (LGD),credit,r2,-0.0038728476,1
+434,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD1,credit,r2,-0.2398862,1
+435,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD2,credit,r2,-0.027920735,1
+436,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD3,credit,r2,0.0041180491,1
+437,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD4,credit,r2,-0.031071138,1
+438,TabPFN v3,1e-06,0.003,False,one_sample,PropLGD5,credit,r2,-0.0065849543,1
+439,TabPFN v3,1e-06,0.003,False,one_sample,SBA Loans Case (LGD),credit,r2,-0.024562764,1
+440,TabPFN v3,1e-06,0.003,True,one_sample,Freddie Mac,credit,r2,-0.026973045,1
+441,TabPFN v3,1e-06,0.003,True,one_sample,LendingClub (LGD),credit,r2,0.00058431625,1
+442,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD1,credit,r2,-0.092189217,1
+443,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD2,credit,r2,-0.012104893,1
+444,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD3,credit,r2,0.00037690401,1
+445,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD4,credit,r2,-0.045097184,1
+446,TabPFN v3,1e-06,0.003,True,one_sample,PropLGD5,credit,r2,-0.0032765388,1
+447,TabPFN v3,1e-06,0.003,True,one_sample,SBA Loans Case (LGD),credit,r2,-0.016709697,1
+Low-rate equal-table means and spread
+CSV (first column: row index)
+row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,plotted_mean
+0,credit,r2,TabICLv2,3e-07,0,False,one_sample,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,8,1,-0.0049273625
+1,credit,r2,TabICLv2,3e-07,0,True,one_sample,0.00084634423,0.00021198392,-0.0003087312,0.0010435343,8,5,0.00084634423
+2,credit,r2,TabICLv2,3e-07,0.003,False,one_sample,-0.0047702327,-0.0022779822,-0.0040102035,-0.00022086203,8,2,-0.0047702327
+3,credit,r2,TabICLv2,3e-07,0.003,True,one_sample,0.00079556257,0.00023046136,-0.0005481571,0.0012747347,8,5,0.00079556257
+4,credit,r2,TabICLv2,1e-06,0,False,one_sample,-0.043682146,-0.010536087,-0.019141042,-0.0078466833,8,0,-0.043682146
+5,credit,r2,TabICLv2,1e-06,0,True,one_sample,-0.0066722602,-0.00071201324,-0.0022188574,0.0004635036,8,3,-0.0066722602
+6,credit,r2,TabICLv2,1e-06,0.003,False,one_sample,-0.046487814,-0.0059133828,-0.015694883,-0.0040808678,8,0,-0.046487814
+7,credit,r2,TabICLv2,1e-06,0.003,True,one_sample,-0.0088199973,-0.00066587329,-0.0018796057,0.00039587021,8,3,-0.0088199973
+8,credit,r2,TabPFN v2,3e-07,0,False,one_sample,0.0043883696,0.0019722581,-0.0010680228,0.0077646077,8,5,0.0043883696
+9,credit,r2,TabPFN v2,3e-07,0,True,one_sample,-0.001377067,-0.00028112531,-0.0011602819,-0.00013271272,8,2,-0.001377067
+10,credit,r2,TabPFN v2,3e-07,0.003,False,one_sample,0.0041011006,0.0012956858,-0.0011399508,0.0076542139,8,4,0.0041011006
+11,credit,r2,TabPFN v2,3e-07,0.003,True,one_sample,-0.0015693963,-0.00034960508,-0.0014551222,-0.0001406461,8,1,-0.0015693963
+12,credit,r2,TabPFN v2,1e-06,0,False,one_sample,0.0025317505,-0.0027108133,-0.0042717874,-0.00042589009,8,2,0.0025317505
+13,credit,r2,TabPFN v2,1e-06,0,True,one_sample,-0.0022780657,-0.00098290443,-0.002730754,-0.00059796274,8,1,-0.0022780657
+14,credit,r2,TabPFN v2,1e-06,0.003,False,one_sample,0.0016499475,-0.0024229586,-0.0049040973,-0.00061190724,8,2,0.0016499475
+15,credit,r2,TabPFN v2,1e-06,0.003,True,one_sample,-0.0029533878,-0.00091177225,-0.003951028,-0.00062890351,8,0,-0.0029533878
+16,credit,r2,TabPFN v2.6,3e-07,0,False,one_sample,-0.083352271,-0.064928436,-0.076963127,-0.047962001,8,1,-0.083352271
+17,credit,r2,TabPFN v2.6,3e-07,0,True,one_sample,-0.00012370497,0.00033872128,-0.00090165734,0.00099083185,8,5,-0.00012370497
+18,credit,r2,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.083212371,-0.064731538,-0.076909691,-0.047867784,8,1,-0.083212371
+19,credit,r2,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00010569841,0.00034272671,-0.00089432299,0.0010218769,8,5,-0.00010569841
+20,credit,r2,TabPFN v2.6,1e-06,0,False,one_sample,-0.07825449,-0.055873209,-0.070542914,-0.040376687,8,0,-0.07825449
+21,credit,r2,TabPFN v2.6,1e-06,0,True,one_sample,-0.0080498978,-0.0063403487,-0.010847095,-0.0041705757,8,1,-0.0080498978
+22,credit,r2,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.078016824,-0.055416304,-0.069882414,-0.040778422,8,1,-0.078016824
+23,credit,r2,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.0077104703,-0.006256479,-0.010275066,-0.004102397,8,1,-0.0077104703
+24,credit,r2,TabPFN v3,3e-07,0,False,one_sample,-0.036392143,-0.0031691134,-0.01287834,-0.0017965019,8,1,-0.036392143
+25,credit,r2,TabPFN v3,3e-07,0,True,one_sample,-0.0086689219,-0.0040784836,-0.0076551467,-0.00062765181,8,2,-0.0086689219
+26,credit,r2,TabPFN v3,3e-07,0.003,False,one_sample,-0.028428969,-0.0034476042,-0.013203469,-0.0017970532,8,1,-0.028428969
+27,credit,r2,TabPFN v3,3e-07,0.003,True,one_sample,-0.0092272505,-0.0040757716,-0.0075996786,-0.00084083676,8,2,-0.0092272505
+28,credit,r2,TabPFN v3,1e-06,0,False,one_sample,-0.062856039,-0.02652275,-0.051745307,-0.0058838814,8,1,-0.062856039
+29,credit,r2,TabPFN v3,1e-06,0,True,one_sample,-0.029668537,-0.014176607,-0.030582902,-0.0019027621,8,2,-0.029668537
+30,credit,r2,TabPFN v3,1e-06,0.003,False,one_sample,-0.051794747,-0.02624175,-0.044447699,-0.0059069276,8,1,-0.051794747
+31,credit,r2,TabPFN v3,1e-06,0.003,True,one_sample,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,8,2,-0.024423669
+
 Figure: lgd_benchmark_transfer_retention
 LGD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 8 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. Inference follows the recorded LGD policy.
 Matched credit and retention recipe means
@@ -78520,42 +79403,42 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 31,TabPFN v3,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.63257327,0.62277524,0.0045432477,-0.0052547921,-0.00071154445,0.017543234,0.017805978,-0.00026274445,-0.0097980398,0.027676832,0.021094958
 
 Figure: lgd_prediction_diagnostics
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,PropLGD2,0,Reference CPT,4637,0.39203237,0.38970801,0.39322,-0.0023243648,0.0011876247,0.0011367401,0.020061868,0.020298211,-0.00023634294,0.0035119895,0.01951277,0.012957658
-1,TabICLv2,PropLGD3,0,Reference CPT,2545,0.22813006,0.23317939,0.23156061,0.0050493211,0.0034305501,0.001618771,0.085243582,0.085388708,-0.00014512578,-0.001618771,0.0069929218,0.0054683042
-2,TabICLv2,Freddie Mac,1,Reference CPT,16002,0.45884258,0.46157656,0.45936099,0.0027339782,0.00051840842,0.0022155698,0.062386759,0.062958198,-0.00057143928,-0.0022155698,0.032053032,0.02386416
-3,TabICLv2,PropLGD1,1,Reference CPT,57932,0.70442018,0.69372095,0.66988249,-0.010699228,-0.034537697,-0.023838469,0.062212275,0.067436239,-0.0052239645,-0.023838469,0.061419234,0.038197825
-4,TabICLv2,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59171179,0.59515854,0.0012011311,0.0046478789,-0.0034467478,0.015732659,0.01575291,-2.0251668e-05,0.0034467478,0.0053016986,0.0041332561
-5,TabICLv2,PropLGD5,2,Reference CPT,594,0.33007533,0.32799445,0.33162405,-0.0020808774,0.0015487206,0.00053215683,0.10472141,0.10532492,-0.00060351351,0.0036295979,0.028178862,0.021394037
-6,TabICLv2,PropLGD4,3,Reference CPT,762,0.32338733,0.32386016,0.31870901,0.00047283541,-0.0046783158,-0.0042054804,0.082856849,0.082022153,0.00083469637,-0.0051511512,0.031502673,0.022841316
-7,TabICLv2,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.63062686,0.62688847,0.0025968363,-0.0011415528,0.0014552835,0.017411176,0.017390897,2.0279557e-05,-0.0037383892,0.014193935,0.0098052478
-8,TabPFN v2,PropLGD2,0,Reference CPT,4637,0.39203237,0.39471675,0.39828618,0.0026843758,0.0062538099,-0.0035694341,0.020879617,0.020936476,-5.6859182e-05,0.0035694341,0.015649296,0.010940424
-9,TabPFN v2,PropLGD3,0,Reference CPT,2545,0.22813006,0.23642755,0.25931226,0.0082974849,0.031182193,-0.022884709,0.085179152,0.085182357,-3.2047666e-06,0.022884709,0.029095629,0.025851794
-10,TabPFN v2,Freddie Mac,1,Reference CPT,16002,0.45884258,0.4575265,0.46352852,-0.0013160725,0.0046859455,-0.003369873,0.062450262,0.062779011,-0.00032874951,0.006002018,0.022111895,0.017688885
-11,TabPFN v2,PropLGD1,1,Reference CPT,57932,0.70442018,0.62375883,0.64475464,-0.080661354,-0.05966554,0.020995815,0.12182,0.11860274,0.0032172617,0.020995815,0.029343076,0.02255095
-12,TabPFN v2,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59871711,0.60227694,0.0082064548,0.011766285,-0.0035598299,0.016139367,0.016281731,-0.00014236378,0.0035598299,0.0057656311,0.0044756596
-13,TabPFN v2,PropLGD5,2,Reference CPT,594,0.33007533,0.29764003,0.30489271,-0.032435297,-0.025182616,0.0072526804,0.10501589,0.10393685,0.0010790349,0.0072526804,0.040351288,0.028114713
-14,TabPFN v2,PropLGD4,3,Reference CPT,762,0.32338733,0.3101937,0.3347422,-0.013193621,0.011354875,0.0018387465,0.094512135,0.092839001,0.0016731339,0.024548496,0.042153134,0.03049424
-15,TabPFN v2,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.62742552,0.62676277,-0.00060450706,-0.0012672583,-0.00066275126,0.018433305,0.018256072,0.00017723275,-0.00066275126,0.0095449664,0.006790387
-16,TabPFN v2.6,PropLGD2,0,Reference CPT,4637,0.39203237,0.391871,0.41265696,-0.00016137054,0.020624588,-0.020463218,0.020575792,0.025256677,-0.0046808852,0.020785959,0.067862081,0.056343892
-17,TabPFN v2.6,PropLGD3,0,Reference CPT,2545,0.22813006,0.2124963,0.22593349,-0.015633769,-0.0021965768,0.013437192,0.085346047,0.085199155,0.00014689189,0.013437192,0.030423133,0.02762741
-18,TabPFN v2.6,Freddie Mac,1,Reference CPT,16002,0.45884258,0.46713741,0.43344819,0.0082948373,-0.025394385,-0.017099548,0.061285667,0.068936801,-0.0076511337,-0.033689223,0.096266012,0.075507841
-19,TabPFN v2.6,PropLGD1,1,Reference CPT,57932,0.70442018,0.70617232,0.68725388,0.0017521345,-0.017166299,-0.015414164,0.048965162,0.10092815,-0.051962985,-0.018918433,0.20210924,0.15903196
-20,TabPFN v2.6,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59782009,0.59514298,0.0073094336,0.0046323182,0.0026771155,0.015770286,0.021149688,-0.005379402,-0.0026771155,0.081144748,0.066494894
-21,TabPFN v2.6,PropLGD5,2,Reference CPT,594,0.33007533,0.32542293,0.32651769,-0.004652401,-0.0035576396,0.0010947614,0.10404484,0.10872614,-0.0046812959,0.0010947614,0.093651761,0.081901535
-22,TabPFN v2.6,PropLGD4,3,Reference CPT,762,0.32338733,0.32272652,0.32106057,-0.00066080787,-0.0023267541,-0.0016659462,0.081876633,0.091328633,-0.0094520005,-0.0016659462,0.11558956,0.085461246
-23,TabPFN v2.6,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.62818702,0.63893862,0.0001569947,0.010908595,-0.0107516,0.019127705,0.022756841,-0.003629136,0.0107516,0.059229857,0.049964453
-24,TabPFN v3,PropLGD2,0,Reference CPT,4637,0.39203237,0.3922609,0.40771104,0.00022852393,0.015678664,-0.015450141,0.01956368,0.020418439,-0.00085475826,0.015450141,0.029356956,0.022021797
-25,TabPFN v3,PropLGD3,0,Reference CPT,2545,0.22813006,0.21756822,0.23279815,-0.010561848,0.0046680807,0.0058937674,0.085340519,0.085099213,0.00024130595,0.015229929,0.017399593,0.016288345
-26,TabPFN v3,Freddie Mac,1,Reference CPT,16002,0.45884258,0.46752453,0.45459938,0.0086819513,-0.0042431973,0.004438754,0.060400869,0.062235496,-0.0018346268,-0.012925149,0.05328237,0.041241703
-27,TabPFN v3,PropLGD1,1,Reference CPT,57932,0.70442018,0.71460663,0.59760031,0.010186443,-0.10681987,-0.096633431,0.057096487,0.090106373,-0.033009886,-0.11700632,0.20807963,0.14810153
-28,TabPFN v3,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59641638,0.5947701,0.0059057178,0.0042594457,0.0016462722,0.015722376,0.015854123,-0.00013174716,-0.0016462722,0.019241713,0.015806364
-29,TabPFN v3,PropLGD5,2,Reference CPT,594,0.33007533,0.32476265,0.33903408,-0.0053126851,0.0089587507,-0.0036460656,0.10424979,0.10446647,-0.00021668643,0.014271436,0.031126578,0.025704119
-30,TabPFN v3,PropLGD4,3,Reference CPT,762,0.32338733,0.32185608,0.32764902,-0.0015312449,0.0042616921,-0.0027304472,0.082258711,0.082636743,-0.00037803207,0.0057929371,0.040465774,0.032657412
-31,TabPFN v3,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.63257327,0.62277524,0.0045432477,-0.0052547921,-0.00071154445,0.017543234,0.017805978,-0.00026274445,-0.0097980398,0.027676832,0.021094958
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Freddie Mac,1,Reference CPT,16002,0.45884258,0.46157656,0.45936099,0.0027339782,0.00051840842,0.0022155698,0.062386759,0.062958198,-0.00057143928,-0.0022155698,0.032053032,0.02386416,0,-0.16
+1,TabICLv2,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59171179,0.59515854,0.0012011311,0.0046478789,-0.0034467478,0.015732659,0.01575291,-2.0251668e-05,0.0034467478,0.0053016986,0.0041332561,0,-0.11428571
+2,TabICLv2,PropLGD1,1,Reference CPT,57932,0.70442018,0.69372095,0.66988249,-0.010699228,-0.034537697,-0.023838469,0.062212275,0.067436239,-0.0052239645,-0.023838469,0.061419234,0.038197825,0,-0.068571429
+3,TabICLv2,PropLGD2,0,Reference CPT,4637,0.39203237,0.38970801,0.39322,-0.0023243648,0.0011876247,0.0011367401,0.020061868,0.020298211,-0.00023634294,0.0035119895,0.01951277,0.012957658,0,-0.022857143
+4,TabICLv2,PropLGD3,0,Reference CPT,2545,0.22813006,0.23317939,0.23156061,0.0050493211,0.0034305501,0.001618771,0.085243582,0.085388708,-0.00014512578,-0.001618771,0.0069929218,0.0054683042,0,0.022857143
+5,TabICLv2,PropLGD4,3,Reference CPT,762,0.32338733,0.32386016,0.31870901,0.00047283541,-0.0046783158,-0.0042054804,0.082856849,0.082022153,0.00083469637,-0.0051511512,0.031502673,0.022841316,0,0.068571429
+6,TabICLv2,PropLGD5,2,Reference CPT,594,0.33007533,0.32799445,0.33162405,-0.0020808774,0.0015487206,0.00053215683,0.10472141,0.10532492,-0.00060351351,0.0036295979,0.028178862,0.021394037,0,0.11428571
+7,TabICLv2,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.63062686,0.62688847,0.0025968363,-0.0011415528,0.0014552835,0.017411176,0.017390897,2.0279557e-05,-0.0037383892,0.014193935,0.0098052478,0,0.16
+8,TabPFN v2,Freddie Mac,1,Reference CPT,16002,0.45884258,0.4575265,0.46352852,-0.0013160725,0.0046859455,-0.003369873,0.062450262,0.062779011,-0.00032874951,0.006002018,0.022111895,0.017688885,1,-0.16
+9,TabPFN v2,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59871711,0.60227694,0.0082064548,0.011766285,-0.0035598299,0.016139367,0.016281731,-0.00014236378,0.0035598299,0.0057656311,0.0044756596,1,-0.11428571
+10,TabPFN v2,PropLGD1,1,Reference CPT,57932,0.70442018,0.62375883,0.64475464,-0.080661354,-0.05966554,0.020995815,0.12182,0.11860274,0.0032172617,0.020995815,0.029343076,0.02255095,1,-0.068571429
+11,TabPFN v2,PropLGD2,0,Reference CPT,4637,0.39203237,0.39471675,0.39828618,0.0026843758,0.0062538099,-0.0035694341,0.020879617,0.020936476,-5.6859182e-05,0.0035694341,0.015649296,0.010940424,1,-0.022857143
+12,TabPFN v2,PropLGD3,0,Reference CPT,2545,0.22813006,0.23642755,0.25931226,0.0082974849,0.031182193,-0.022884709,0.085179152,0.085182357,-3.2047666e-06,0.022884709,0.029095629,0.025851794,1,0.022857143
+13,TabPFN v2,PropLGD4,3,Reference CPT,762,0.32338733,0.3101937,0.3347422,-0.013193621,0.011354875,0.0018387465,0.094512135,0.092839001,0.0016731339,0.024548496,0.042153134,0.03049424,1,0.068571429
+14,TabPFN v2,PropLGD5,2,Reference CPT,594,0.33007533,0.29764003,0.30489271,-0.032435297,-0.025182616,0.0072526804,0.10501589,0.10393685,0.0010790349,0.0072526804,0.040351288,0.028114713,1,0.11428571
+15,TabPFN v2,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.62742552,0.62676277,-0.00060450706,-0.0012672583,-0.00066275126,0.018433305,0.018256072,0.00017723275,-0.00066275126,0.0095449664,0.006790387,1,0.16
+16,TabPFN v2.6,Freddie Mac,1,Reference CPT,16002,0.45884258,0.46713741,0.43344819,0.0082948373,-0.025394385,-0.017099548,0.061285667,0.068936801,-0.0076511337,-0.033689223,0.096266012,0.075507841,2,-0.16
+17,TabPFN v2.6,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59782009,0.59514298,0.0073094336,0.0046323182,0.0026771155,0.015770286,0.021149688,-0.005379402,-0.0026771155,0.081144748,0.066494894,2,-0.11428571
+18,TabPFN v2.6,PropLGD1,1,Reference CPT,57932,0.70442018,0.70617232,0.68725388,0.0017521345,-0.017166299,-0.015414164,0.048965162,0.10092815,-0.051962985,-0.018918433,0.20210924,0.15903196,2,-0.068571429
+19,TabPFN v2.6,PropLGD2,0,Reference CPT,4637,0.39203237,0.391871,0.41265696,-0.00016137054,0.020624588,-0.020463218,0.020575792,0.025256677,-0.0046808852,0.020785959,0.067862081,0.056343892,2,-0.022857143
+20,TabPFN v2.6,PropLGD3,0,Reference CPT,2545,0.22813006,0.2124963,0.22593349,-0.015633769,-0.0021965768,0.013437192,0.085346047,0.085199155,0.00014689189,0.013437192,0.030423133,0.02762741,2,0.022857143
+21,TabPFN v2.6,PropLGD4,3,Reference CPT,762,0.32338733,0.32272652,0.32106057,-0.00066080787,-0.0023267541,-0.0016659462,0.081876633,0.091328633,-0.0094520005,-0.0016659462,0.11558956,0.085461246,2,0.068571429
+22,TabPFN v2.6,PropLGD5,2,Reference CPT,594,0.33007533,0.32542293,0.32651769,-0.004652401,-0.0035576396,0.0010947614,0.10404484,0.10872614,-0.0046812959,0.0010947614,0.093651761,0.081901535,2,0.11428571
+23,TabPFN v2.6,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.62818702,0.63893862,0.0001569947,0.010908595,-0.0107516,0.019127705,0.022756841,-0.003629136,0.0107516,0.059229857,0.049964453,2,0.16
+24,TabPFN v3,Freddie Mac,1,Reference CPT,16002,0.45884258,0.46752453,0.45459938,0.0086819513,-0.0042431973,0.004438754,0.060400869,0.062235496,-0.0018346268,-0.012925149,0.05328237,0.041241703,3,-0.16
+25,TabPFN v3,LendingClub (LGD),2,Reference CPT,5627,0.59051066,0.59641638,0.5947701,0.0059057178,0.0042594457,0.0016462722,0.015722376,0.015854123,-0.00013174716,-0.0016462722,0.019241713,0.015806364,3,-0.11428571
+26,TabPFN v3,PropLGD1,1,Reference CPT,57932,0.70442018,0.71460663,0.59760031,0.010186443,-0.10681987,-0.096633431,0.057096487,0.090106373,-0.033009886,-0.11700632,0.20807963,0.14810153,3,-0.068571429
+27,TabPFN v3,PropLGD2,0,Reference CPT,4637,0.39203237,0.3922609,0.40771104,0.00022852393,0.015678664,-0.015450141,0.01956368,0.020418439,-0.00085475826,0.015450141,0.029356956,0.022021797,3,-0.022857143
+28,TabPFN v3,PropLGD3,0,Reference CPT,2545,0.22813006,0.21756822,0.23279815,-0.010561848,0.0046680807,0.0058937674,0.085340519,0.085099213,0.00024130595,0.015229929,0.017399593,0.016288345,3,0.022857143
+29,TabPFN v3,PropLGD4,3,Reference CPT,762,0.32338733,0.32185608,0.32764902,-0.0015312449,0.0042616921,-0.0027304472,0.082258711,0.082636743,-0.00037803207,0.0057929371,0.040465774,0.032657412,3,0.068571429
+30,TabPFN v3,PropLGD5,2,Reference CPT,594,0.33007533,0.32476265,0.33903408,-0.0053126851,0.0089587507,-0.0036460656,0.10424979,0.10446647,-0.00021668643,0.014271436,0.031126578,0.025704119,3,0.11428571
+31,TabPFN v3,SBA Loans Case (LGD),3,Reference CPT,686,0.62803003,0.63257327,0.62277524,0.0045432477,-0.0052547921,-0.00071154445,0.017543234,0.017805978,-0.00026274445,-0.0097980398,0.027676832,0.021094958,3,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -79815,16 +80698,17 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,2341.0625,1332.1128,3017.4633,32,0.23410625,0.13321128,0.30174633,32,46.569,21.432,46.801,32,83592599,24755261,92356996,32,58274936,58274936,58274936,32,0.015303205,0.0023242689,0.094541555
 "('TabPFN v3', True)",32,2029.0837,1133.9906,2403.9976,32,0.20290837,0.11339906,0.24039976,32,35.573,19.047,35.6,32,83592599,24755261,92356996,32,6917240,6917240,6917240,32,0.016063116,0.0020399834,0.19160081
 
-experiment1/04_results_lgd: 9 figures -> output CreditPFN/figures/experiment1
+experiment1/04_results_lgd: 10 figures -> output CreditPFN/figures/experiment1
   01  lgd_choice_contrasts_credit
   02  lgd_recipe_grid_credit_r2
   03  lgd_recipe_grid_credit_rmse
-  04  lgd_benchmark_transfer_retention
-  05  lgd_reference_uncertainty
-  06  lgd_prediction_diagnostics
-  07  lgd_v26_distribution_tradeoff
-  08  lgd_monitor_recipe_changes
-  09  lgd_control_context_1
+  04  lgd_conservative_recipes_credit_r2
+  05  lgd_benchmark_transfer_retention
+  06  lgd_reference_uncertainty
+  07  lgd_prediction_diagnostics
+  08  lgd_v26_distribution_tradeoff
+  09  lgd_monitor_recipe_changes
+  10  lgd_control_context_1
 ```
 
 ---
@@ -89422,78 +90306,78 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 67,TabPFN v3,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32630219,0.32613326,-5.3666108e-05,-0.00022258918,-0.00016892308,0.032236844,0.032352786,-0.00011594111,-0.00016892308,0.0036414746,0.0013412879
 
 Figure: pd_seed_prediction_sensitivity
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.13256894,0.12905343,-0.0055361236,-0.0090516335,-0.0035155098,0.080618759,0.080680515,-6.175635e-05,-0.0035155098,0.01107452,0.0060259983
-1,TabICLv2,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.19219382,0.19354278,-0.0073028198,-0.0059538622,0.0013489576,0.018154402,0.02160089,-0.0034464876,0.0013489576,0.028079786,0.0095615273
-2,TabICLv2,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.36426298,0.36288152,-0.013827761,-0.01520922,-0.001381459,0.21841258,0.21838647,2.6107672e-05,-0.001381459,0.019568394,0.015083201
-3,TabICLv2,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24401196,0.24435791,-0.019661508,-0.019315558,0.00034594983,0.18314589,0.18322751,-8.1618948e-05,0.00034594983,0.0081270566,0.0058365335
-4,TabICLv2,GMSC,1,Seed 43 versus 42,150000,0.06684,0.056626289,0.056667751,-0.010213711,-0.010172249,4.146125e-05,0.049165962,0.049245586,-7.9623838e-05,4.146125e-05,0.0062803394,0.003092067
-5,TabICLv2,German Credit,1,Seed 43 versus 42,999,0.3003003,0.29129337,0.29238889,-0.0090069302,-0.0079114078,0.0010955225,0.16176108,0.16239955,-0.0006384651,0.0010955225,0.020114892,0.013736323
-6,TabICLv2,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20503104,0.20405653,-0.016168957,-0.017143468,-0.00097451099,0.13328217,0.13329564,-1.3467946e-05,-0.00097451099,0.011572073,0.0081136038
-7,TabICLv2,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.19420985,0.19095115,-0.022861275,-0.026119972,-0.0032586965,0.16183347,0.16201864,-0.0001851756,-0.0032586965,0.012287107,0.008685699
-8,TabICLv2,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.21661622,0.20910051,-0.0015477404,-0.0090634514,-0.007515711,0.053799828,0.053857083,-5.7255681e-05,-0.007515711,0.025087796,0.013888796
-9,TabICLv2,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.23305805,0.23029383,-0.003268741,-0.0060329582,-0.0027642173,0.066776019,0.066707767,6.8251506e-05,-0.0027642173,0.030232758,0.015817946
-10,TabICLv2,Myhom,2,Seed 43 versus 42,7000,0.4,0.38771102,0.38703452,-0.012288978,-0.012965477,-0.00067649865,0.2342849,0.23456504,-0.00028013281,-0.00067649865,0.010334316,0.008206788
-11,TabICLv2,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.19821084,0.19603753,-0.028179163,-0.030352466,-0.0021733032,0.12806364,0.12808815,-2.4504043e-05,-0.0021733032,0.01108234,0.006574181
-12,TabICLv2,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.077439865,0.075814243,-0.01531549,-0.016941112,-0.0016256218,0.082308995,0.082374512,-6.5517616e-05,-0.0016256218,0.0045794223,0.0033785094
-13,TabICLv2,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23029025,0.2332206,-0.015922253,-0.012991898,0.0029303549,0.13087808,0.13084426,3.3822559e-05,0.0029303549,0.011825546,0.0075472416
-14,TabICLv2,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.067584069,0.06914907,-0.013144751,-0.011579749,0.0015650017,0.068760592,0.068698908,6.1683935e-05,0.0015650017,0.0072251947,0.0043882881
-15,TabICLv2,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.14098095,0.14182013,-0.019073341,-0.018234159,0.00083918235,0.12601609,0.12597853,3.7563632e-05,0.00083918235,0.008361687,0.0054016242
-16,TabICLv2,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32584408,0.32740149,-0.00051177121,0.0010456345,-0.00053386328,0.031662483,0.031397433,0.00026504982,0.0015574057,0.016095027,0.0056170559
-17,TabPFN v2,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.12661734,0.12648522,-0.011487721,-0.01161984,-0.00013211888,0.08677264,0.086755959,1.668029e-05,-0.00013211888,0.0011381956,0.00066227567
-18,TabPFN v2,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.19519511,0.19524107,-0.0043015313,-0.0042555744,4.5956848e-05,0.026635716,0.027419308,-0.00078359201,4.5956848e-05,0.0040910547,0.0016157949
-19,TabPFN v2,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.37587016,0.37637605,-0.0022205724,-0.0017146878,0.00050588464,0.22227431,0.2222699,4.4029881e-06,0.00050588464,0.0018200076,0.0013858589
-20,TabPFN v2,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24610521,0.24631092,-0.017568264,-0.017362549,0.00020571505,0.18295535,0.18287947,7.5882702e-05,0.00020571505,0.0010587037,0.0007708144
-21,TabPFN v2,GMSC,1,Seed 43 versus 42,150000,0.06684,0.059390286,0.059374264,-0.0074497138,-0.0074657363,-1.6022465e-05,0.049621391,0.049618799,2.5924373e-06,-1.6022465e-05,0.00050100598,0.00027154284
-22,TabPFN v2,German Credit,1,Seed 43 versus 42,999,0.3003003,0.29366074,0.29262638,-0.0066395614,-0.0076739251,-0.0010343636,0.16256123,0.16259101,-2.9780901e-05,-0.0010343636,0.0014558927,0.0011403983
-23,TabPFN v2,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20608305,0.20609182,-0.015116955,-0.015108179,8.7752651e-06,0.13429585,0.13426749,2.835762e-05,8.7752651e-06,0.0012848752,0.00091111957
-24,TabPFN v2,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.19955049,0.19946531,-0.017520631,-0.01760581,-8.5178207e-05,0.16328996,0.16328535,4.6108812e-06,-8.5178207e-05,0.0010117133,0.00075735603
-25,TabPFN v2,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.21517351,0.21546171,-0.0029904485,-0.002702254,0.00028819455,0.059454241,0.059480782,-2.6541297e-05,0.00028819455,0.0017655972,0.00085336164
-26,TabPFN v2,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.23401308,0.23421216,-0.0023137053,-0.0021146312,0.00019907414,0.077374593,0.077479508,-0.00010491492,0.00019907414,0.0025562554,0.0015691257
-27,TabPFN v2,Myhom,2,Seed 43 versus 42,7000,0.4,0.38846986,0.38850984,-0.011530144,-0.011490161,3.9982261e-05,0.23401279,0.23403381,-2.1017833e-05,3.9982261e-05,0.00085387591,0.00063486172
-28,TabPFN v2,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.21098327,0.21133098,-0.015406729,-0.015059017,0.00034771226,0.13576697,0.1357301,3.6869572e-05,0.00034771226,0.0014828838,0.0010141651
-29,TabPFN v2,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.074332778,0.074371118,-0.018422576,-0.018384237,3.8339154e-05,0.082627188,0.082632445,-5.2574355e-06,3.8339154e-05,0.00071962409,0.00054859629
-30,TabPFN v2,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23407153,0.23433561,-0.012140971,-0.011876889,0.00026408134,0.13350365,0.13350531,-1.6665865e-06,0.00026408134,0.0012282533,0.00081783709
-31,TabPFN v2,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.065019446,0.065003981,-0.015709374,-0.015724838,-1.5464482e-05,0.069804556,0.069813912,-9.3561385e-06,-1.5464482e-05,0.00071078781,0.00043646483
-32,TabPFN v2,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.14466422,0.14559915,-0.015390072,-0.014455138,0.00093493437,0.12667486,0.12663884,3.6020771e-05,0.00093493437,0.0013582685,0.0010897559
-33,TabPFN v2,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32567167,0.32562818,-0.00068417948,-0.0007276697,-4.349022e-05,0.03274194,0.032826576,-8.4636354e-05,-4.349022e-05,0.0017623439,0.00069589448
-34,TabPFN v2.6,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.1282386,0.12813295,-0.0098664564,-0.0099721053,-0.00010564893,0.083878817,0.08386966,9.1565065e-06,-0.00010564893,0.00098874825,0.00056985198
-35,TabPFN v2.6,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.18128886,0.18137932,-0.018207781,-0.018117328,9.0452331e-05,0.017818387,0.017705632,0.00011275521,9.0452331e-05,0.0019917079,0.00081782684
-36,TabPFN v2.6,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.36807734,0.36800715,-0.010013396,-0.010083591,-7.0195097e-05,0.21785333,0.21784071,1.2612479e-05,-7.0195097e-05,0.0017427619,0.0013945457
-37,TabPFN v2.6,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24556162,0.24641682,-0.01811185,-0.017256649,0.00085520075,0.18321416,0.18320581,8.3428049e-06,0.00085520075,0.0017799073,0.0013873768
-38,TabPFN v2.6,GMSC,1,Seed 43 versus 42,150000,0.06684,0.05736453,0.057160833,-0.00947547,-0.0096791669,-0.00020369688,0.049270476,0.04927753,-7.0537095e-06,-0.00020369688,0.00060769233,0.00030735701
-39,TabPFN v2.6,German Credit,1,Seed 43 versus 42,999,0.3003003,0.29324612,0.29261174,-0.0070541804,-0.0076885651,-0.00063438464,0.16256952,0.16259711,-2.7595132e-05,-0.00063438464,0.0013141344,0.0009901864
-40,TabPFN v2.6,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20559168,0.20519047,-0.015608317,-0.01600953,-0.00040121268,0.13305366,0.13306718,-1.3524562e-05,-0.00040121268,0.0012327618,0.00084172278
-41,TabPFN v2.6,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.19582059,0.19551047,-0.021250527,-0.02156065,-0.00031012266,0.16207128,0.16209172,-2.0441726e-05,-0.00031012266,0.0013536374,0.0010119244
-42,TabPFN v2.6,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.20396398,0.20386301,-0.014199977,-0.014300949,-0.00010097246,0.054492998,0.054518718,-2.5719467e-05,-0.00010097246,0.0012216364,0.00053047252
-43,TabPFN v2.6,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.22506218,0.22472947,-0.011264611,-0.011597316,-0.00033270512,0.066705269,0.066744252,-3.8983103e-05,-0.00033270512,0.0017087392,0.0009136306
-44,TabPFN v2.6,Myhom,2,Seed 43 versus 42,7000,0.4,0.38772319,0.38800412,-0.01227681,-0.011995882,0.00028092813,0.23408892,0.23410416,-1.5235248e-05,0.00028092813,0.00086455967,0.00067084559
-45,TabPFN v2.6,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.20803792,0.20804099,-0.018352084,-0.01834901,3.0739357e-06,0.13374374,0.13375193,-8.1926012e-06,3.0739357e-06,0.0014099907,0.00095873886
-46,TabPFN v2.6,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.075782253,0.076082459,-0.016973102,-0.016672895,0.00030020651,0.08231201,0.08230492,7.089507e-06,0.00030020651,0.0009126574,0.00058694624
-47,TabPFN v2.6,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23512341,0.23564542,-0.011089086,-0.010567075,0.0005220106,0.13056595,0.13054833,1.7619198e-05,0.0005220106,0.0015196317,0.0010100139
-48,TabPFN v2.6,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.067992616,0.068259625,-0.012736204,-0.012469195,0.00026700897,0.068742133,0.068732314,9.8187656e-06,0.00026700897,0.00089993453,0.00048327302
-49,TabPFN v2.6,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.13846513,0.13992312,-0.021589162,-0.020131175,0.0014579865,0.12655051,0.1264927,5.7804052e-05,0.0014579865,0.0019577646,0.0015660148
-50,TabPFN v2.6,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32601375,0.32591387,-0.00034209994,-0.00044198112,-9.9881177e-05,0.03264297,0.032570468,7.2501681e-05,-9.9881177e-05,0.0011166352,0.00039948794
-51,TabPFN v3,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.13107627,0.13071747,-0.0070287904,-0.0073875877,-0.0003587973,0.080240276,0.080223588,1.6687891e-05,-0.0003587973,0.0026595267,0.0013653071
-52,TabPFN v3,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.19637905,0.19581617,-0.0031175902,-0.0036804741,-0.00056288392,0.0076835114,0.0081102344,-0.00042672302,-0.00056288392,0.0072047084,0.0021223428
-53,TabPFN v3,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.36890436,0.3690496,-0.0091863784,-0.0090411384,0.00014523993,0.2169832,0.21700806,-2.4858546e-05,0.00014523993,0.0039655423,0.0030527739
-54,TabPFN v3,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24650843,0.24685169,-0.017165039,-0.016821784,0.00034325561,0.18320804,0.18317921,2.8824765e-05,0.00034325561,0.0023439239,0.0018121566
-55,TabPFN v3,GMSC,1,Seed 43 versus 42,150000,0.06684,0.058312811,0.058411326,-0.0085271892,-0.0084286739,9.8515296e-05,0.048821073,0.048821825,-7.5226454e-07,9.8515296e-05,0.001016022,0.00045924619
-56,TabPFN v3,German Credit,1,Seed 43 versus 42,999,0.3003003,0.28636196,0.2861867,-0.013938342,-0.014113605,-0.00017526306,0.16230722,0.16246898,-0.0001617642,-0.00017526306,0.0055044026,0.0038166484
-57,TabPFN v3,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20878797,0.20863911,-0.012412033,-0.012560889,-0.00014885649,0.1328416,0.13283859,3.0071969e-06,-0.00014885649,0.0018865895,0.0013204316
-58,TabPFN v3,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.20051853,0.20142267,-0.016552595,-0.015648453,0.0009041426,0.16118568,0.16116028,2.5399063e-05,0.0009041426,0.0028131263,0.0020312803
-59,TabPFN v3,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.20477433,0.20488603,-0.013389632,-0.013277932,0.00011169962,0.050593181,0.050630972,-3.7790677e-05,0.00011169962,0.0060804114,0.002649283
-60,TabPFN v3,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.23293016,0.23019618,-0.0033966267,-0.0061306125,-0.0027339858,0.057269034,0.057567678,-0.00029864403,-0.0027339858,0.011266784,0.0056168114
-61,TabPFN v3,Myhom,2,Seed 43 versus 42,7000,0.4,0.39037161,0.39056476,-0.0096283896,-0.0094352444,0.00019314524,0.23395088,0.23396708,-1.6191681e-05,0.00019314524,0.002364831,0.0018829395
-62,TabPFN v3,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.1997636,0.1996607,-0.026626398,-0.026729299,-0.00010290061,0.12776033,0.12776314,-2.8133914e-06,-0.00010290061,0.0027632388,0.0016101335
-63,TabPFN v3,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.077348208,0.077093868,-0.015407147,-0.015661486,-0.00025433939,0.082221541,0.08223005,-8.509265e-06,-0.00025433939,0.0010690449,0.00080589261
-64,TabPFN v3,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23655315,0.23559463,-0.0096593521,-0.010617875,-0.00095852252,0.13059137,0.13063855,-4.7175643e-05,-0.00095852252,0.0034968635,0.0022698627
-65,TabPFN v3,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.068344587,0.06731736,-0.012384232,-0.01341146,-0.0010272278,0.068365552,0.06839552,-2.9967696e-05,-0.0010272278,0.0030662203,0.0018108264
-66,TabPFN v3,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.13878513,0.13862906,-0.021269159,-0.021425235,-0.0001560758,0.12641217,0.12641735,-5.1809444e-06,-0.0001560758,0.0015651762,0.0010847314
-67,TabPFN v3,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32630219,0.32613326,-5.3666108e-05,-0.00022258918,-0.00016892308,0.032236844,0.032352786,-0.00011594111,-0.00016892308,0.0036414746,0.0013412879
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.13256894,0.12905343,-0.0055361236,-0.0090516335,-0.0035155098,0.080618759,0.080680515,-6.175635e-05,-0.0035155098,0.01107452,0.0060259983,0,-0.16
+1,TabICLv2,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23029025,0.2332206,-0.015922253,-0.012991898,0.0029303549,0.13087808,0.13084426,3.3822559e-05,0.0029303549,0.011825546,0.0075472416,0,-0.14
+2,TabICLv2,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.21661622,0.20910051,-0.0015477404,-0.0090634514,-0.007515711,0.053799828,0.053857083,-5.7255681e-05,-0.007515711,0.025087796,0.013888796,0,-0.12
+3,TabICLv2,GMSC,1,Seed 43 versus 42,150000,0.06684,0.056626289,0.056667751,-0.010213711,-0.010172249,4.146125e-05,0.049165962,0.049245586,-7.9623838e-05,4.146125e-05,0.0062803394,0.003092067,0,-0.1
+4,TabICLv2,German Credit,1,Seed 43 versus 42,999,0.3003003,0.29129337,0.29238889,-0.0090069302,-0.0079114078,0.0010955225,0.16176108,0.16239955,-0.0006384651,0.0010955225,0.020114892,0.013736323,0,-0.08
+5,TabICLv2,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.19219382,0.19354278,-0.0073028198,-0.0059538622,0.0013489576,0.018154402,0.02160089,-0.0034464876,0.0013489576,0.028079786,0.0095615273,0,-0.06
+6,TabICLv2,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.23305805,0.23029383,-0.003268741,-0.0060329582,-0.0027642173,0.066776019,0.066707767,6.8251506e-05,-0.0027642173,0.030232758,0.015817946,0,-0.04
+7,TabICLv2,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.067584069,0.06914907,-0.013144751,-0.011579749,0.0015650017,0.068760592,0.068698908,6.1683935e-05,0.0015650017,0.0072251947,0.0043882881,0,-0.02
+8,TabICLv2,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.14098095,0.14182013,-0.019073341,-0.018234159,0.00083918235,0.12601609,0.12597853,3.7563632e-05,0.00083918235,0.008361687,0.0054016242,0,0
+9,TabICLv2,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.36426298,0.36288152,-0.013827761,-0.01520922,-0.001381459,0.21841258,0.21838647,2.6107672e-05,-0.001381459,0.019568394,0.015083201,0,0.02
+10,TabICLv2,Myhom,2,Seed 43 versus 42,7000,0.4,0.38771102,0.38703452,-0.012288978,-0.012965477,-0.00067649865,0.2342849,0.23456504,-0.00028013281,-0.00067649865,0.010334316,0.008206788,0,0.04
+11,TabICLv2,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.19821084,0.19603753,-0.028179163,-0.030352466,-0.0021733032,0.12806364,0.12808815,-2.4504043e-05,-0.0021733032,0.01108234,0.006574181,0,0.06
+12,TabICLv2,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.077439865,0.075814243,-0.01531549,-0.016941112,-0.0016256218,0.082308995,0.082374512,-6.5517616e-05,-0.0016256218,0.0045794223,0.0033785094,0,0.08
+13,TabICLv2,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32584408,0.32740149,-0.00051177121,0.0010456345,-0.00053386328,0.031662483,0.031397433,0.00026504982,0.0015574057,0.016095027,0.0056170559,0,0.1
+14,TabICLv2,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20503104,0.20405653,-0.016168957,-0.017143468,-0.00097451099,0.13328217,0.13329564,-1.3467946e-05,-0.00097451099,0.011572073,0.0081136038,0,0.12
+15,TabICLv2,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24401196,0.24435791,-0.019661508,-0.019315558,0.00034594983,0.18314589,0.18322751,-8.1618948e-05,0.00034594983,0.0081270566,0.0058365335,0,0.14
+16,TabICLv2,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.19420985,0.19095115,-0.022861275,-0.026119972,-0.0032586965,0.16183347,0.16201864,-0.0001851756,-0.0032586965,0.012287107,0.008685699,0,0.16
+17,TabPFN v2,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.12661734,0.12648522,-0.011487721,-0.01161984,-0.00013211888,0.08677264,0.086755959,1.668029e-05,-0.00013211888,0.0011381956,0.00066227567,1,-0.16
+18,TabPFN v2,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23407153,0.23433561,-0.012140971,-0.011876889,0.00026408134,0.13350365,0.13350531,-1.6665865e-06,0.00026408134,0.0012282533,0.00081783709,1,-0.14
+19,TabPFN v2,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.21517351,0.21546171,-0.0029904485,-0.002702254,0.00028819455,0.059454241,0.059480782,-2.6541297e-05,0.00028819455,0.0017655972,0.00085336164,1,-0.12
+20,TabPFN v2,GMSC,1,Seed 43 versus 42,150000,0.06684,0.059390286,0.059374264,-0.0074497138,-0.0074657363,-1.6022465e-05,0.049621391,0.049618799,2.5924373e-06,-1.6022465e-05,0.00050100598,0.00027154284,1,-0.1
+21,TabPFN v2,German Credit,1,Seed 43 versus 42,999,0.3003003,0.29366074,0.29262638,-0.0066395614,-0.0076739251,-0.0010343636,0.16256123,0.16259101,-2.9780901e-05,-0.0010343636,0.0014558927,0.0011403983,1,-0.08
+22,TabPFN v2,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.19519511,0.19524107,-0.0043015313,-0.0042555744,4.5956848e-05,0.026635716,0.027419308,-0.00078359201,4.5956848e-05,0.0040910547,0.0016157949,1,-0.06
+23,TabPFN v2,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.23401308,0.23421216,-0.0023137053,-0.0021146312,0.00019907414,0.077374593,0.077479508,-0.00010491492,0.00019907414,0.0025562554,0.0015691257,1,-0.04
+24,TabPFN v2,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.065019446,0.065003981,-0.015709374,-0.015724838,-1.5464482e-05,0.069804556,0.069813912,-9.3561385e-06,-1.5464482e-05,0.00071078781,0.00043646483,1,-0.02
+25,TabPFN v2,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.14466422,0.14559915,-0.015390072,-0.014455138,0.00093493437,0.12667486,0.12663884,3.6020771e-05,0.00093493437,0.0013582685,0.0010897559,1,0
+26,TabPFN v2,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.37587016,0.37637605,-0.0022205724,-0.0017146878,0.00050588464,0.22227431,0.2222699,4.4029881e-06,0.00050588464,0.0018200076,0.0013858589,1,0.02
+27,TabPFN v2,Myhom,2,Seed 43 versus 42,7000,0.4,0.38846986,0.38850984,-0.011530144,-0.011490161,3.9982261e-05,0.23401279,0.23403381,-2.1017833e-05,3.9982261e-05,0.00085387591,0.00063486172,1,0.04
+28,TabPFN v2,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.21098327,0.21133098,-0.015406729,-0.015059017,0.00034771226,0.13576697,0.1357301,3.6869572e-05,0.00034771226,0.0014828838,0.0010141651,1,0.06
+29,TabPFN v2,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.074332778,0.074371118,-0.018422576,-0.018384237,3.8339154e-05,0.082627188,0.082632445,-5.2574355e-06,3.8339154e-05,0.00071962409,0.00054859629,1,0.08
+30,TabPFN v2,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32567167,0.32562818,-0.00068417948,-0.0007276697,-4.349022e-05,0.03274194,0.032826576,-8.4636354e-05,-4.349022e-05,0.0017623439,0.00069589448,1,0.1
+31,TabPFN v2,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20608305,0.20609182,-0.015116955,-0.015108179,8.7752651e-06,0.13429585,0.13426749,2.835762e-05,8.7752651e-06,0.0012848752,0.00091111957,1,0.12
+32,TabPFN v2,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24610521,0.24631092,-0.017568264,-0.017362549,0.00020571505,0.18295535,0.18287947,7.5882702e-05,0.00020571505,0.0010587037,0.0007708144,1,0.14
+33,TabPFN v2,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.19955049,0.19946531,-0.017520631,-0.01760581,-8.5178207e-05,0.16328996,0.16328535,4.6108812e-06,-8.5178207e-05,0.0010117133,0.00075735603,1,0.16
+34,TabPFN v2.6,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.1282386,0.12813295,-0.0098664564,-0.0099721053,-0.00010564893,0.083878817,0.08386966,9.1565065e-06,-0.00010564893,0.00098874825,0.00056985198,2,-0.16
+35,TabPFN v2.6,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23512341,0.23564542,-0.011089086,-0.010567075,0.0005220106,0.13056595,0.13054833,1.7619198e-05,0.0005220106,0.0015196317,0.0010100139,2,-0.14
+36,TabPFN v2.6,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.20396398,0.20386301,-0.014199977,-0.014300949,-0.00010097246,0.054492998,0.054518718,-2.5719467e-05,-0.00010097246,0.0012216364,0.00053047252,2,-0.12
+37,TabPFN v2.6,GMSC,1,Seed 43 versus 42,150000,0.06684,0.05736453,0.057160833,-0.00947547,-0.0096791669,-0.00020369688,0.049270476,0.04927753,-7.0537095e-06,-0.00020369688,0.00060769233,0.00030735701,2,-0.1
+38,TabPFN v2.6,German Credit,1,Seed 43 versus 42,999,0.3003003,0.29324612,0.29261174,-0.0070541804,-0.0076885651,-0.00063438464,0.16256952,0.16259711,-2.7595132e-05,-0.00063438464,0.0013141344,0.0009901864,2,-0.08
+39,TabPFN v2.6,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.18128886,0.18137932,-0.018207781,-0.018117328,9.0452331e-05,0.017818387,0.017705632,0.00011275521,9.0452331e-05,0.0019917079,0.00081782684,2,-0.06
+40,TabPFN v2.6,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.22506218,0.22472947,-0.011264611,-0.011597316,-0.00033270512,0.066705269,0.066744252,-3.8983103e-05,-0.00033270512,0.0017087392,0.0009136306,2,-0.04
+41,TabPFN v2.6,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.067992616,0.068259625,-0.012736204,-0.012469195,0.00026700897,0.068742133,0.068732314,9.8187656e-06,0.00026700897,0.00089993453,0.00048327302,2,-0.02
+42,TabPFN v2.6,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.13846513,0.13992312,-0.021589162,-0.020131175,0.0014579865,0.12655051,0.1264927,5.7804052e-05,0.0014579865,0.0019577646,0.0015660148,2,0
+43,TabPFN v2.6,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.36807734,0.36800715,-0.010013396,-0.010083591,-7.0195097e-05,0.21785333,0.21784071,1.2612479e-05,-7.0195097e-05,0.0017427619,0.0013945457,2,0.02
+44,TabPFN v2.6,Myhom,2,Seed 43 versus 42,7000,0.4,0.38772319,0.38800412,-0.01227681,-0.011995882,0.00028092813,0.23408892,0.23410416,-1.5235248e-05,0.00028092813,0.00086455967,0.00067084559,2,0.04
+45,TabPFN v2.6,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.20803792,0.20804099,-0.018352084,-0.01834901,3.0739357e-06,0.13374374,0.13375193,-8.1926012e-06,3.0739357e-06,0.0014099907,0.00095873886,2,0.06
+46,TabPFN v2.6,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.075782253,0.076082459,-0.016973102,-0.016672895,0.00030020651,0.08231201,0.08230492,7.089507e-06,0.00030020651,0.0009126574,0.00058694624,2,0.08
+47,TabPFN v2.6,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32601375,0.32591387,-0.00034209994,-0.00044198112,-9.9881177e-05,0.03264297,0.032570468,7.2501681e-05,-9.9881177e-05,0.0011166352,0.00039948794,2,0.1
+48,TabPFN v2.6,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20559168,0.20519047,-0.015608317,-0.01600953,-0.00040121268,0.13305366,0.13306718,-1.3524562e-05,-0.00040121268,0.0012327618,0.00084172278,2,0.12
+49,TabPFN v2.6,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24556162,0.24641682,-0.01811185,-0.017256649,0.00085520075,0.18321416,0.18320581,8.3428049e-06,0.00085520075,0.0017799073,0.0013873768,2,0.14
+50,TabPFN v2.6,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.19582059,0.19551047,-0.021250527,-0.02156065,-0.00031012266,0.16207128,0.16209172,-2.0441726e-05,-0.00031012266,0.0013536374,0.0010119244,2,0.16
+51,TabPFN v3,Bondora Peer-to-Peer,0,Seed 43 versus 42,730176,0.13810506,0.13107627,0.13071747,-0.0070287904,-0.0073875877,-0.0003587973,0.080240276,0.080223588,1.6687891e-05,-0.0003587973,0.0026595267,0.0013653071,3,-0.16
+52,TabPFN v3,Cobranded,3,Seed 43 versus 42,80000,0.2462125,0.23655315,0.23559463,-0.0096593521,-0.010617875,-0.00095852252,0.13059137,0.13063855,-4.7175643e-05,-0.00095852252,0.0034968635,0.0022698627,3,-0.14
+53,TabPFN v3,Credit Risk,2,Seed 43 versus 42,32581,0.21816396,0.20477433,0.20488603,-0.013389632,-0.013277932,0.00011169962,0.050593181,0.050630972,-3.7790677e-05,0.00011169962,0.0060804114,0.002649283,3,-0.12
+54,TabPFN v3,GMSC,1,Seed 43 versus 42,150000,0.06684,0.058312811,0.058411326,-0.0085271892,-0.0084286739,9.8515296e-05,0.048821073,0.048821825,-7.5226454e-07,9.8515296e-05,0.001016022,0.00045924619,3,-0.1
+55,TabPFN v3,German Credit,1,Seed 43 versus 42,999,0.3003003,0.28636196,0.2861867,-0.013938342,-0.014113605,-0.00017526306,0.16230722,0.16246898,-0.0001617642,-0.00017526306,0.0055044026,0.0038166484,3,-0.08
+56,TabPFN v3,HMEQ,0,Seed 43 versus 42,5960,0.19949664,0.19637905,0.19581617,-0.0031175902,-0.0036804741,-0.00056288392,0.0076835114,0.0081102344,-0.00042672302,-0.00056288392,0.0072047084,0.0021223428,3,-0.06
+57,TabPFN v3,Hackerearth,2,Seed 43 versus 42,532428,0.23632679,0.23293016,0.23019618,-0.0033966267,-0.0061306125,-0.0027339858,0.057269034,0.057567678,-0.00029864403,-0.0027339858,0.011266784,0.0056168114,3,-0.04
+58,TabPFN v3,Home Credit,3,Seed 43 versus 42,307511,0.080728819,0.068344587,0.06731736,-0.012384232,-0.01341146,-0.0010272278,0.068365552,0.06839552,-2.9967696e-05,-0.0010272278,0.0030662203,0.0018108264,3,-0.02
+59,TabPFN v3,LendingClub,3,Seed 43 versus 42,9578,0.16005429,0.13878513,0.13862906,-0.021269159,-0.021425235,-0.0001560758,0.12641217,0.12641735,-5.1809444e-06,-0.0001560758,0.0015651762,0.0010847314,3,0
+60,TabPFN v3,MicroFinance,0,Seed 43 versus 42,158700,0.37809074,0.36890436,0.3690496,-0.0091863784,-0.0090411384,0.00014523993,0.2169832,0.21700806,-2.4858546e-05,0.00014523993,0.0039655423,0.0030527739,3,0.02
+61,TabPFN v3,Myhom,2,Seed 43 versus 42,7000,0.4,0.39037161,0.39056476,-0.0096283896,-0.0094352444,0.00019314524,0.23395088,0.23396708,-1.6191681e-05,0.00019314524,0.002364831,0.0018829395,3,0.04
+62,TabPFN v3,PropPD1,2,Seed 43 versus 42,100000,0.22639,0.1997636,0.1996607,-0.026626398,-0.026729299,-0.00010290061,0.12776033,0.12776314,-2.8133914e-06,-0.00010290061,0.0027632388,0.0016101335,3,0.06
+63,TabPFN v3,PropPD2,2,Seed 43 versus 42,105471,0.092755355,0.077348208,0.077093868,-0.015407147,-0.015661486,-0.00025433939,0.082221541,0.08223005,-8.509265e-06,-0.00025433939,0.0010690449,0.00080589261,3,0.08
+64,TabPFN v3,SBA Loans Case,3,Seed 43 versus 42,2102,0.32635585,0.32630219,0.32613326,-5.3666108e-05,-0.00022258918,-0.00016892308,0.032236844,0.032352786,-0.00011594111,-0.00016892308,0.0036414746,0.0013412879,3,0.1
+65,TabPFN v3,Taiwan Credit Card,1,Seed 43 versus 42,30000,0.2212,0.20878797,0.20863911,-0.012412033,-0.012560889,-0.00014885649,0.1328416,0.13283859,3.0071969e-06,-0.00014885649,0.0018865895,0.0013204316,3,0.12
+66,TabPFN v3,Thomas,0,Seed 43 versus 42,1225,0.26367347,0.24650843,0.24685169,-0.017165039,-0.016821784,0.00034325561,0.18320804,0.18317921,2.8824765e-05,0.00034325561,0.0023439239,0.0018121566,3,0.14
+67,TabPFN v3,Vehicle Loan,1,Seed 43 versus 42,233154,0.21707112,0.20051853,0.20142267,-0.016552595,-0.015648453,0.0009041426,0.16118568,0.16116028,2.5399063e-05,0.0009041426,0.0028131263,0.0020312803,3,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -89579,42 +90463,42 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 31,TabPFN v3,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62277524,0.62211256,-0.0052547921,-0.0059174666,-0.00066267445,0.017805978,0.017803936,2.041853e-06,-0.00066267445,0.0022168229,0.0016257716
 
 Figure: lgd_seed_prediction_sensitivity
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Both checkpoints use the fixed reference recipe; only CPT training seed changes (42 versus 43). RMS disagreement and signed shifts describe two realizations, not context variance.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.39322,0.39444268,0.0011876247,0.0024103059,-0.0012226812,0.020298211,0.020383433,-8.522211e-05,0.0012226812,0.014266071,0.0096016166
-1,TabICLv2,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.23156061,0.22455714,0.0034305501,-0.0035729225,-0.00014237241,0.085388708,0.085275904,0.00011280433,-0.0070034726,0.0081325195,0.0070347241
-2,TabICLv2,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.45936099,0.45873156,0.00051840842,-0.00011101879,0.00040738963,0.062958198,0.063030934,-7.2736016e-05,-0.00062942721,0.0219694,0.016367256
-3,TabICLv2,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.66988249,0.65504188,-0.034537697,-0.049378301,-0.014840604,0.067436239,0.071965066,-0.0045288264,-0.014840604,0.050646254,0.030222321
-4,TabICLv2,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.59515854,0.59578577,0.0046478789,0.0052751125,-0.00062723361,0.01575291,0.015778211,-2.5300497e-05,0.00062723361,0.0050237752,0.0032636668
-5,TabICLv2,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.33162405,0.33989705,0.0015487206,0.0098217186,-0.008272998,0.10532492,0.10478545,0.00053946746,0.008272998,0.016444691,0.012547096
-6,TabICLv2,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.31870901,0.32465736,-0.0046783158,0.0012700359,0.0034082799,0.082022153,0.082116315,-9.4161911e-05,0.0059483517,0.021743249,0.015441911
-7,TabICLv2,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62688847,0.62667812,-0.0011415528,-0.0013519028,-0.00021034996,0.017390897,0.017351106,3.9790151e-05,-0.00021034996,0.0071575319,0.0048715421
-8,TabPFN v2,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.39828618,0.39850056,0.0062538099,0.0064681907,-0.00021438079,0.020936476,0.020959491,-2.3015162e-05,0.00021438079,0.0010778287,0.0006880325
-9,TabPFN v2,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.25931226,0.26054844,0.031182193,0.032418375,-0.0012361817,0.085182357,0.085238459,-5.6102167e-05,0.0012361817,0.0016523377,0.0013889245
-10,TabPFN v2,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.46352852,0.46342402,0.0046859455,0.0045814393,0.00010450614,0.062779011,0.062792483,-1.347147e-05,-0.00010450614,0.0014267019,0.0010592114
-11,TabPFN v2,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.64475464,0.64442432,-0.05966554,-0.059995866,-0.00033032625,0.11860274,0.11869035,-8.7611225e-05,-0.00033032625,0.0022865345,0.0016908668
-12,TabPFN v2,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.60227694,0.60230927,0.011766285,0.011798606,-3.2321637e-05,0.016281731,0.016281206,5.2492243e-07,3.2321637e-05,0.00025036728,0.00017797965
-13,TabPFN v2,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.30489271,0.30650598,-0.025182616,-0.023569354,0.0016132621,0.10393685,0.10370567,0.00023118492,0.0016132621,0.0033285111,0.002395024
-14,TabPFN v2,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.3347422,0.33333498,0.011354875,0.0099476594,0.0014072154,0.092839001,0.092709153,0.00012984816,-0.0014072154,0.0030439214,0.0023193409
-15,TabPFN v2,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62676277,0.62640986,-0.0012672583,-0.001620171,-0.00035291268,0.018256072,0.018262764,-6.6913672e-06,-0.00035291268,0.00074928477,0.00054750345
-16,TabPFN v2.6,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.41265696,0.4132696,0.020624588,0.021237229,-0.00061264045,0.025256677,0.025226966,2.9710263e-05,0.00061264045,0.0023227561,0.0015793301
-17,TabPFN v2.6,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.22593349,0.22507869,-0.0021965768,-0.0030513721,-0.00085479538,0.085199155,0.085254513,-5.5357741e-05,-0.00085479538,0.0019996222,0.001286958
-18,TabPFN v2.6,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.43344819,0.43677191,-0.025394385,-0.022070669,0.0033237167,0.068936801,0.068744365,0.00019243578,0.0033237167,0.0041166315,0.0035168857
-19,TabPFN v2.6,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.68725388,0.69406104,-0.017166299,-0.010359148,0.006807151,0.10092815,0.099910173,0.001017974,0.006807151,0.0092884723,0.0074924235
-20,TabPFN v2.6,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.59514298,0.59476237,0.0046323182,0.0042517161,0.00038060212,0.021149688,0.021113079,3.6608566e-05,-0.00038060212,0.00070916395,0.000582026
-21,TabPFN v2.6,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.32651769,0.3265375,-0.0035576396,-0.0035378274,1.981216e-05,0.10872614,0.10888162,-0.00015548485,1.981216e-05,0.002150726,0.0014642535
-22,TabPFN v2.6,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.32106057,0.32168115,-0.0023267541,-0.0017061759,0.00062057817,0.091328633,0.0909335,0.00039513363,0.00062057817,0.0031991776,0.002471492
-23,TabPFN v2.6,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.63893862,0.63954697,0.010908595,0.011516944,-0.00060834912,0.022756841,0.022856814,-9.9973108e-05,0.00060834912,0.001295534,0.001052516
-24,TabPFN v3,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.40771104,0.40842401,0.015678664,0.016391637,-0.00071297223,0.020418439,0.020418335,1.0333137e-07,0.00071297223,0.0032487863,0.0023707283
-25,TabPFN v3,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.23279815,0.23209459,0.0046680807,0.0039645285,0.00070355214,0.085099213,0.085093238,5.9755584e-06,-0.00070355214,0.0028312493,0.0014084536
-26,TabPFN v3,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.45459938,0.45109132,-0.0042431973,-0.0077512577,-0.0035080604,0.062235496,0.062023125,0.00021237083,-0.0035080604,0.014858911,0.010924768
-27,TabPFN v3,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.59760031,0.71084568,-0.10681987,0.006425501,0.10039437,0.090106373,0.0644093,0.025697073,0.11324538,0.1769497,0.12163982
-28,TabPFN v3,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.5947701,0.59444665,0.0042594457,0.0039359956,0.00032345006,0.015854123,0.015865441,-1.1317882e-05,-0.00032345006,0.00082126841,0.00064057406
-29,TabPFN v3,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.33903408,0.33751872,0.0089587507,0.0074433933,0.0015153574,0.10446647,0.10457543,-0.0001089546,-0.0015153574,0.0032048433,0.0023207926
-30,TabPFN v3,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.32764902,0.32753552,0.0042616921,0.0041481986,0.00011349352,0.082636743,0.082185586,0.00045115639,-0.00011349352,0.0054913435,0.0040153996
-31,TabPFN v3,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62277524,0.62211256,-0.0052547921,-0.0059174666,-0.00066267445,0.017805978,0.017803936,2.041853e-06,-0.00066267445,0.0022168229,0.0016257716
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.45936099,0.45873156,0.00051840842,-0.00011101879,0.00040738963,0.062958198,0.063030934,-7.2736016e-05,-0.00062942721,0.0219694,0.016367256,0,-0.16
+1,TabICLv2,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.59515854,0.59578577,0.0046478789,0.0052751125,-0.00062723361,0.01575291,0.015778211,-2.5300497e-05,0.00062723361,0.0050237752,0.0032636668,0,-0.11428571
+2,TabICLv2,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.66988249,0.65504188,-0.034537697,-0.049378301,-0.014840604,0.067436239,0.071965066,-0.0045288264,-0.014840604,0.050646254,0.030222321,0,-0.068571429
+3,TabICLv2,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.39322,0.39444268,0.0011876247,0.0024103059,-0.0012226812,0.020298211,0.020383433,-8.522211e-05,0.0012226812,0.014266071,0.0096016166,0,-0.022857143
+4,TabICLv2,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.23156061,0.22455714,0.0034305501,-0.0035729225,-0.00014237241,0.085388708,0.085275904,0.00011280433,-0.0070034726,0.0081325195,0.0070347241,0,0.022857143
+5,TabICLv2,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.31870901,0.32465736,-0.0046783158,0.0012700359,0.0034082799,0.082022153,0.082116315,-9.4161911e-05,0.0059483517,0.021743249,0.015441911,0,0.068571429
+6,TabICLv2,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.33162405,0.33989705,0.0015487206,0.0098217186,-0.008272998,0.10532492,0.10478545,0.00053946746,0.008272998,0.016444691,0.012547096,0,0.11428571
+7,TabICLv2,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62688847,0.62667812,-0.0011415528,-0.0013519028,-0.00021034996,0.017390897,0.017351106,3.9790151e-05,-0.00021034996,0.0071575319,0.0048715421,0,0.16
+8,TabPFN v2,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.46352852,0.46342402,0.0046859455,0.0045814393,0.00010450614,0.062779011,0.062792483,-1.347147e-05,-0.00010450614,0.0014267019,0.0010592114,1,-0.16
+9,TabPFN v2,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.60227694,0.60230927,0.011766285,0.011798606,-3.2321637e-05,0.016281731,0.016281206,5.2492243e-07,3.2321637e-05,0.00025036728,0.00017797965,1,-0.11428571
+10,TabPFN v2,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.64475464,0.64442432,-0.05966554,-0.059995866,-0.00033032625,0.11860274,0.11869035,-8.7611225e-05,-0.00033032625,0.0022865345,0.0016908668,1,-0.068571429
+11,TabPFN v2,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.39828618,0.39850056,0.0062538099,0.0064681907,-0.00021438079,0.020936476,0.020959491,-2.3015162e-05,0.00021438079,0.0010778287,0.0006880325,1,-0.022857143
+12,TabPFN v2,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.25931226,0.26054844,0.031182193,0.032418375,-0.0012361817,0.085182357,0.085238459,-5.6102167e-05,0.0012361817,0.0016523377,0.0013889245,1,0.022857143
+13,TabPFN v2,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.3347422,0.33333498,0.011354875,0.0099476594,0.0014072154,0.092839001,0.092709153,0.00012984816,-0.0014072154,0.0030439214,0.0023193409,1,0.068571429
+14,TabPFN v2,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.30489271,0.30650598,-0.025182616,-0.023569354,0.0016132621,0.10393685,0.10370567,0.00023118492,0.0016132621,0.0033285111,0.002395024,1,0.11428571
+15,TabPFN v2,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62676277,0.62640986,-0.0012672583,-0.001620171,-0.00035291268,0.018256072,0.018262764,-6.6913672e-06,-0.00035291268,0.00074928477,0.00054750345,1,0.16
+16,TabPFN v2.6,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.43344819,0.43677191,-0.025394385,-0.022070669,0.0033237167,0.068936801,0.068744365,0.00019243578,0.0033237167,0.0041166315,0.0035168857,2,-0.16
+17,TabPFN v2.6,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.59514298,0.59476237,0.0046323182,0.0042517161,0.00038060212,0.021149688,0.021113079,3.6608566e-05,-0.00038060212,0.00070916395,0.000582026,2,-0.11428571
+18,TabPFN v2.6,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.68725388,0.69406104,-0.017166299,-0.010359148,0.006807151,0.10092815,0.099910173,0.001017974,0.006807151,0.0092884723,0.0074924235,2,-0.068571429
+19,TabPFN v2.6,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.41265696,0.4132696,0.020624588,0.021237229,-0.00061264045,0.025256677,0.025226966,2.9710263e-05,0.00061264045,0.0023227561,0.0015793301,2,-0.022857143
+20,TabPFN v2.6,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.22593349,0.22507869,-0.0021965768,-0.0030513721,-0.00085479538,0.085199155,0.085254513,-5.5357741e-05,-0.00085479538,0.0019996222,0.001286958,2,0.022857143
+21,TabPFN v2.6,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.32106057,0.32168115,-0.0023267541,-0.0017061759,0.00062057817,0.091328633,0.0909335,0.00039513363,0.00062057817,0.0031991776,0.002471492,2,0.068571429
+22,TabPFN v2.6,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.32651769,0.3265375,-0.0035576396,-0.0035378274,1.981216e-05,0.10872614,0.10888162,-0.00015548485,1.981216e-05,0.002150726,0.0014642535,2,0.11428571
+23,TabPFN v2.6,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.63893862,0.63954697,0.010908595,0.011516944,-0.00060834912,0.022756841,0.022856814,-9.9973108e-05,0.00060834912,0.001295534,0.001052516,2,0.16
+24,TabPFN v3,Freddie Mac,1,Seed 43 versus 42,16002,0.45884258,0.45459938,0.45109132,-0.0042431973,-0.0077512577,-0.0035080604,0.062235496,0.062023125,0.00021237083,-0.0035080604,0.014858911,0.010924768,3,-0.16
+25,TabPFN v3,LendingClub (LGD),2,Seed 43 versus 42,5627,0.59051066,0.5947701,0.59444665,0.0042594457,0.0039359956,0.00032345006,0.015854123,0.015865441,-1.1317882e-05,-0.00032345006,0.00082126841,0.00064057406,3,-0.11428571
+26,TabPFN v3,PropLGD1,1,Seed 43 versus 42,57932,0.70442018,0.59760031,0.71084568,-0.10681987,0.006425501,0.10039437,0.090106373,0.0644093,0.025697073,0.11324538,0.1769497,0.12163982,3,-0.068571429
+27,TabPFN v3,PropLGD2,0,Seed 43 versus 42,4637,0.39203237,0.40771104,0.40842401,0.015678664,0.016391637,-0.00071297223,0.020418439,0.020418335,1.0333137e-07,0.00071297223,0.0032487863,0.0023707283,3,-0.022857143
+28,TabPFN v3,PropLGD3,0,Seed 43 versus 42,2545,0.22813006,0.23279815,0.23209459,0.0046680807,0.0039645285,0.00070355214,0.085099213,0.085093238,5.9755584e-06,-0.00070355214,0.0028312493,0.0014084536,3,0.022857143
+29,TabPFN v3,PropLGD4,3,Seed 43 versus 42,762,0.32338733,0.32764902,0.32753552,0.0042616921,0.0041481986,0.00011349352,0.082636743,0.082185586,0.00045115639,-0.00011349352,0.0054913435,0.0040153996,3,0.068571429
+30,TabPFN v3,PropLGD5,2,Seed 43 versus 42,594,0.33007533,0.33903408,0.33751872,0.0089587507,0.0074433933,0.0015153574,0.10446647,0.10457543,-0.0001089546,-0.0015153574,0.0032048433,0.0023207926,3,0.11428571
+31,TabPFN v3,SBA Loans Case (LGD),3,Seed 43 versus 42,686,0.62803003,0.62277524,0.62211256,-0.0052547921,-0.0059174666,-0.00066267445,0.017805978,0.017803936,2.041853e-06,-0.00066267445,0.0022168229,0.0016257716,3,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -116296,214 +117180,214 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 203,TabPFN v3,SBA Loans Case,3,One sample,2102,0.32635585,0.32639496,0.3273916,3.9106569e-05,0.0010357507,-0.00099664409,0.033249146,0.032946436,0.00030270936,0.00099664409,0.026406909,0.010093118
 
 Figure: pd_prediction_diagnostics
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.13512286,0.13204494,-0.0029821967,-0.0060601213,-0.0030779246,0.080535551,0.080652653,-0.00011710165,-0.0030779246,0.021884479,0.010561745
-1,TabICLv2,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.13512286,0.13318906,-0.0029821967,-0.004916004,-0.0019338073,0.080535551,0.0809159,-0.00038034925,-0.0019338073,0.022474827,0.011011631
-2,TabICLv2,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.13512286,0.13236526,-0.0029821967,-0.005739795,-0.0027575983,0.080535551,0.080573978,-3.8427494e-05,-0.0027575983,0.019842499,0.0094648311
-3,TabICLv2,HMEQ,0,Accumulate,5960,0.19949664,0.19071745,0.19417589,-0.0087791943,-0.0053207584,0.0034584359,0.017686181,0.018917732,-0.001231551,0.0034584359,0.039554834,0.013202215
-4,TabICLv2,HMEQ,0,Full pass,5960,0.19949664,0.19071745,0.19282538,-0.0087791943,-0.0066712603,0.0021079339,0.017686181,0.022321394,-0.0046352125,0.0021079339,0.050174233,0.018589171
-5,TabICLv2,HMEQ,0,One sample,5960,0.19949664,0.19071745,0.19381244,-0.0087791943,-0.0056842057,0.0030949885,0.017686181,0.018640296,-0.0009541154,0.0030949885,0.037170396,0.011850839
-6,TabICLv2,MicroFinance,0,Accumulate,158700,0.37809074,0.36495634,0.36807547,-0.013134396,-0.010015267,0.0031191289,0.21816395,0.21835205,-0.00018809937,0.0031191289,0.030608699,0.022994119
-7,TabICLv2,MicroFinance,0,Full pass,158700,0.37809074,0.36495634,0.36412394,-0.013134396,-0.013966801,-0.00083240559,0.21816395,0.21874291,-0.00057895177,-0.00083240559,0.034035999,0.025978672
-8,TabICLv2,MicroFinance,0,One sample,158700,0.37809074,0.36495634,0.36692325,-0.013134396,-0.011167489,0.0019669063,0.21816395,0.2183442,-0.00018024717,0.0019669063,0.028255737,0.021054304
-9,TabICLv2,Thomas,0,Accumulate,1225,0.26367347,0.24708993,0.24216163,-0.016583544,-0.021511837,-0.0049282933,0.18308296,0.18316856,-8.5600798e-05,-0.0049282933,0.016634818,0.011662752
-10,TabICLv2,Thomas,0,Full pass,1225,0.26367347,0.24708993,0.24339254,-0.016583544,-0.020280933,-0.0036973892,0.18308296,0.18334474,-0.00026178205,-0.0036973892,0.013331556,0.0098762703
-11,TabICLv2,Thomas,0,One sample,1225,0.26367347,0.24708993,0.24286541,-0.016583544,-0.020808064,-0.0042245202,0.18308296,0.1833318,-0.00024883448,-0.0042245202,0.01526161,0.010535717
-12,TabICLv2,GMSC,1,Accumulate,150000,0.06684,0.057865039,0.056381629,-0.0089749608,-0.010458371,-0.0014834098,0.049075658,0.049172063,-9.6404565e-05,-0.0014834098,0.0076058203,0.0037897224
-13,TabICLv2,GMSC,1,Full pass,150000,0.06684,0.057865039,0.056620359,-0.0089749608,-0.010219641,-0.0012446802,0.049075658,0.049116914,-4.1255164e-05,-0.0012446802,0.0066330347,0.0033459254
-14,TabICLv2,GMSC,1,One sample,150000,0.06684,0.057865039,0.056981315,-0.0089749608,-0.0098586847,-0.00088372389,0.049075658,0.049150666,-7.5007986e-05,-0.00088372389,0.0070797956,0.0034764357
-15,TabICLv2,German Credit,1,Accumulate,999,0.3003003,0.29274349,0.29076737,-0.0075568069,-0.0095329307,-0.0019761238,0.16240025,0.1621158,0.00028445405,-0.0019761238,0.029111655,0.020757056
-16,TabICLv2,German Credit,1,Full pass,999,0.3003003,0.29274349,0.29093496,-0.0075568069,-0.0093653364,-0.0018085294,0.16240025,0.16230298,9.7266652e-05,-0.0018085294,0.023462223,0.016161727
-17,TabICLv2,German Credit,1,One sample,999,0.3003003,0.29274349,0.29068226,-0.0075568069,-0.0096180369,-0.00206123,0.16240025,0.16190818,0.00049207406,-0.00206123,0.029222439,0.020772733
-18,TabICLv2,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20680082,0.20441451,-0.014399176,-0.016785488,-0.0023863117,0.13292592,0.13328981,-0.00036389226,-0.0023863117,0.016974604,0.012332244
-19,TabICLv2,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20680082,0.2032816,-0.014399176,-0.017918401,-0.0035192254,0.13292592,0.13324429,-0.00031837629,-0.0035192254,0.014227403,0.010445652
-20,TabICLv2,Taiwan Credit Card,1,One sample,30000,0.2212,0.20680082,0.20450323,-0.014399176,-0.016696775,-0.0022975989,0.13292592,0.13331299,-0.00038707172,-0.0022975989,0.017040956,0.012364361
-21,TabICLv2,Vehicle Loan,1,Accumulate,233154,0.21707112,0.38729445,0.19561628,0.17022333,-0.021454837,0.14876849,0.27476188,0.16184342,0.11291846,-0.19167816,0.34876416,0.21611884
-22,TabICLv2,Vehicle Loan,1,Full pass,233154,0.21707112,0.38729445,0.19295599,0.17022333,-0.024115126,0.1461082,0.27476188,0.16195014,0.11281174,-0.19433845,0.34907543,0.21717633
-23,TabICLv2,Vehicle Loan,1,One sample,233154,0.21707112,0.38729445,0.19418287,0.17022333,-0.022888247,0.14733508,0.27476188,0.16190357,0.11285831,-0.19311157,0.34917205,0.21668125
-24,TabICLv2,Credit Risk,2,Accumulate,32581,0.21816396,0.20703413,0.21134139,-0.011129831,-0.0068225682,0.004307263,0.049364787,0.055165131,-0.0058003449,0.004307263,0.062917705,0.031088534
-25,TabICLv2,Credit Risk,2,Full pass,32581,0.21816396,0.20703413,0.21012456,-0.011129831,-0.0080393975,0.0030904337,0.049364787,0.053736818,-0.0043720317,0.0030904337,0.053425943,0.026021365
-26,TabICLv2,Credit Risk,2,One sample,32581,0.21816396,0.20703413,0.21034581,-0.011129831,-0.0078181518,0.0033116795,0.049364787,0.053901483,-0.0045366964,0.0033116795,0.055031388,0.026029367
-27,TabICLv2,Hackerearth,2,Accumulate,532428,0.23632679,0.23112544,0.22923231,-0.0052013466,-0.0070944767,-0.00189313,0.058127422,0.068011672,-0.0098842506,-0.00189313,0.09233313,0.046220065
-28,TabICLv2,Hackerearth,2,Full pass,532428,0.23632679,0.23112544,0.2251874,-0.0052013466,-0.011139389,-0.0059380428,0.058127422,0.067734281,-0.0096068596,-0.0059380428,0.089124573,0.043022292
-29,TabICLv2,Hackerearth,2,One sample,532428,0.23632679,0.23112544,0.23027689,-0.0052013466,-0.0060498984,-0.00084855176,0.058127422,0.066404643,-0.0082772218,-0.00084855176,0.083606983,0.040703361
-30,TabICLv2,Myhom,2,Accumulate,7000,0.4,0.38581482,0.3859853,-0.01418518,-0.014014698,0.00017048139,0.25080943,0.23459547,0.01621396,0.00017048139,0.14919416,0.090188312
-31,TabICLv2,Myhom,2,Full pass,7000,0.4,0.38581482,0.38397376,-0.01418518,-0.016026237,-0.0018410577,0.25080943,0.2345216,0.016287828,-0.0018410577,0.14806927,0.088730772
-32,TabICLv2,Myhom,2,One sample,7000,0.4,0.38581482,0.38803542,-0.01418518,-0.011964585,0.002220595,0.25080943,0.23436909,0.016440335,0.002220595,0.14906121,0.089460548
-33,TabICLv2,PropPD1,2,Accumulate,100000,0.22639,0.19999356,0.1953783,-0.026396437,-0.031011704,-0.0046152672,0.12813814,0.12822153,-8.3388964e-05,-0.0046152672,0.032770111,0.021710337
-34,TabICLv2,PropPD1,2,Full pass,100000,0.22639,0.19999356,0.19259566,-0.026396437,-0.033794337,-0.0073979,0.12813814,0.1291666,-0.0010284571,-0.0073979,0.029799289,0.019103357
-35,TabICLv2,PropPD1,2,One sample,100000,0.22639,0.19999356,0.1947362,-0.026396437,-0.031653801,-0.0052573638,0.12813814,0.12834209,-0.00020394768,-0.0052573638,0.031190075,0.020385025
-36,TabICLv2,PropPD2,2,Accumulate,105471,0.092755355,0.076905382,0.0768534,-0.015849972,-0.015901954,-5.1981906e-05,0.082312426,0.082325081,-1.2654964e-05,-5.1981906e-05,0.0061548065,0.0047693371
-37,TabICLv2,PropPD2,2,Full pass,105471,0.092755355,0.076905382,0.078879232,-0.015849972,-0.013876122,0.0019738502,0.082312426,0.082268975,4.3451845e-05,0.0019738502,0.0063042781,0.0049071657
-38,TabICLv2,PropPD2,2,One sample,105471,0.092755355,0.076905382,0.076338465,-0.015849972,-0.016416889,-0.00056691708,0.082312426,0.082346305,-3.3878833e-05,-0.00056691708,0.0059903063,0.0046074363
-39,TabICLv2,Cobranded,3,Accumulate,80000,0.2462125,0.23580183,0.22866304,-0.010410672,-0.01754946,-0.0071387878,0.13071025,0.13102062,-0.00031037257,-0.0071387878,0.02475712,0.014923996
-40,TabICLv2,Cobranded,3,Full pass,80000,0.2462125,0.23580183,0.231627,-0.010410672,-0.014585504,-0.0041748314,0.13071025,0.13102486,-0.00031461703,-0.0041748314,0.021140337,0.013323739
-41,TabICLv2,Cobranded,3,One sample,80000,0.2462125,0.23580183,0.22924334,-0.010410672,-0.016969164,-0.0065584913,0.13071025,0.13095456,-0.00024430915,-0.0065584913,0.024865567,0.014648592
-42,TabICLv2,Home Credit,3,Accumulate,307511,0.080728819,0.071030346,0.066110234,-0.0096984731,-0.014618586,-0.0049201128,0.068564613,0.06887519,-0.00031057601,-0.0049201128,0.014426768,0.0083387296
-43,TabICLv2,Home Credit,3,Full pass,307511,0.080728819,0.071030346,0.066797132,-0.0096984731,-0.013931688,-0.0042332147,0.068564613,0.068823493,-0.00025887918,-0.0042332147,0.012878212,0.0074555856
-44,TabICLv2,Home Credit,3,One sample,307511,0.080728819,0.071030346,0.067364168,-0.0096984731,-0.013364651,-0.0036661782,0.068564613,0.06879861,-0.00023399658,-0.0036661782,0.013043337,0.0075053001
-45,TabICLv2,LendingClub,3,Accumulate,9578,0.16005429,0.14078684,0.13902015,-0.019267448,-0.021034138,-0.0017666898,0.12609798,0.12606848,2.9498209e-05,-0.0017666898,0.011787899,0.0078993701
-46,TabICLv2,LendingClub,3,Full pass,9578,0.16005429,0.14078684,0.13888501,-0.019267448,-0.021169278,-0.0019018296,0.12609798,0.12622075,-0.00012276594,-0.0019018296,0.0098732432,0.0066504024
-47,TabICLv2,LendingClub,3,One sample,9578,0.16005429,0.14078684,0.13959892,-0.019267448,-0.020455371,-0.0011879227,0.12609798,0.12604536,5.2624441e-05,-0.0011879227,0.011393724,0.0074281327
-48,TabICLv2,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32631453,0.32710532,-4.1321021e-05,0.00074946883,-0.00070814781,0.031810621,0.031458822,0.00035179907,0.00079078985,0.025083793,0.0093757745
-49,TabICLv2,SBA Loans Case,3,Full pass,2102,0.32635585,0.32631453,0.32712677,-4.1321021e-05,0.00077091698,-0.00072959596,0.031810621,0.030623223,0.0011873985,0.00081223801,0.022805857,0.0083385304
-50,TabICLv2,SBA Loans Case,3,One sample,2102,0.32635585,0.32631453,0.32656359,-4.1321021e-05,0.00020773358,-0.00016641256,0.031810621,0.03171457,9.6051321e-05,0.0002490546,0.024194093,0.0086319123
-51,TabPFN v2,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.12641753,0.12667831,-0.011687533,-0.011426753,0.00026078008,0.087267614,0.086831703,0.00043591034,0.00026078008,0.013873656,0.0079125449
-52,TabPFN v2,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.12641753,0.12582798,-0.011687533,-0.01227708,-0.00058954671,0.087267614,0.086877365,0.00039024886,-0.00058954671,0.013932688,0.0076896751
-53,TabPFN v2,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.12641753,0.12639188,-0.011687533,-0.01171318,-2.5646824e-05,0.087267614,0.086843431,0.00042418257,-2.5646824e-05,0.013456547,0.0077143725
-54,TabPFN v2,HMEQ,0,Accumulate,5960,0.19949664,0.19633141,0.19619009,-0.0031652346,-0.0033065587,-0.00014132415,0.035942663,0.027460763,0.0084818996,-0.00014132415,0.04243382,0.021351216
-55,TabPFN v2,HMEQ,0,Full pass,5960,0.19949664,0.19633141,0.19845104,-0.0031652346,-0.0010456069,0.0021196277,0.035942663,0.032134963,0.0038076994,0.0021196277,0.028438638,0.014287587
-56,TabPFN v2,HMEQ,0,One sample,5960,0.19949664,0.19633141,0.19473134,-0.0031652346,-0.0047653052,-0.0016000707,0.035942663,0.027132552,0.0088101102,-0.0016000707,0.041617456,0.021287518
-57,TabPFN v2,MicroFinance,0,Accumulate,158700,0.37809074,0.37884399,0.37469156,0.00075325241,-0.0033991752,-0.0026459227,0.22362317,0.22241238,0.001210793,-0.0041524276,0.025268278,0.020638771
-58,TabPFN v2,MicroFinance,0,Full pass,158700,0.37809074,0.37884399,0.37851545,0.00075325241,0.00042470964,0.00032854278,0.22362317,0.2224864,0.0011367679,-0.00032854278,0.021617541,0.017629665
-59,TabPFN v2,MicroFinance,0,One sample,158700,0.37809074,0.37884399,0.37489492,0.00075325241,-0.0031958147,-0.0024425623,0.22362317,0.22240451,0.0012186607,-0.0039490671,0.024155394,0.019676718
-60,TabPFN v2,Thomas,0,Accumulate,1225,0.26367347,0.24865072,0.24494068,-0.015022749,-0.018732785,-0.0037100353,0.18353944,0.18303343,0.00050600419,-0.0037100353,0.015220043,0.011992713
-61,TabPFN v2,Thomas,0,Full pass,1225,0.26367347,0.24865072,0.24288216,-0.015022749,-0.020791309,-0.0057685596,0.18353944,0.18354657,-7.1345237e-06,-0.0057685596,0.011020843,0.0085979299
-62,TabPFN v2,Thomas,0,One sample,1225,0.26367347,0.24865072,0.24523811,-0.015022749,-0.018435363,-0.0034126138,0.18353944,0.18311159,0.00042785032,-0.0034126138,0.0138267,0.01088427
-63,TabPFN v2,GMSC,1,Accumulate,150000,0.06684,0.057721764,0.060412125,-0.0091182358,-0.0064278751,0.0026903607,0.04985517,0.049586355,0.00026881476,0.0026903607,0.011350052,0.0062910617
-64,TabPFN v2,GMSC,1,Full pass,150000,0.06684,0.057721764,0.061534894,-0.0091182358,-0.0053051064,0.0038131295,0.04985517,0.049581767,0.00027340276,0.0038131295,0.013185898,0.0070382818
-65,TabPFN v2,GMSC,1,One sample,150000,0.06684,0.057721764,0.060191561,-0.0091182358,-0.006648439,0.0024697968,0.04985517,0.04960987,0.00024529978,0.0024697968,0.0106274,0.0059222922
-66,TabPFN v2,German Credit,1,Accumulate,999,0.3003003,0.29586794,0.29196097,-0.0044323601,-0.0083393297,-0.0039069696,0.16396183,0.16284354,0.0011182915,-0.0039069696,0.019257357,0.01480968
-67,TabPFN v2,German Credit,1,Full pass,999,0.3003003,0.29586794,0.29301714,-0.0044323601,-0.0072831625,-0.0028508024,0.16396183,0.16328267,0.00067916459,-0.0028508024,0.01705389,0.012844406
-68,TabPFN v2,German Credit,1,One sample,999,0.3003003,0.29586794,0.29267115,-0.0044323601,-0.0076291471,-0.003196787,0.16396183,0.16281593,0.001145907,-0.003196787,0.018450608,0.014143634
-69,TabPFN v2,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20466542,0.20419743,-0.016534576,-0.01700257,-0.00046799393,0.13571148,0.13433324,0.0013782366,-0.00046799393,0.027498601,0.020437601
-70,TabPFN v2,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20466542,0.20490025,-0.016534576,-0.016299745,0.0002348306,0.13571148,0.13442145,0.0012900347,0.0002348306,0.025170896,0.01871448
-71,TabPFN v2,Taiwan Credit Card,1,One sample,30000,0.2212,0.20466542,0.20465815,-0.016534576,-0.01654185,-7.2744666e-06,0.13571148,0.13435903,0.0013524508,-7.2744666e-06,0.02630946,0.019548714
-72,TabPFN v2,Vehicle Loan,1,Accumulate,233154,0.21707112,0.19305677,0.19692184,-0.024014352,-0.020149281,0.0038650711,0.16432601,0.16339216,0.00093384689,0.0038650711,0.025139187,0.018413376
-73,TabPFN v2,Vehicle Loan,1,Full pass,233154,0.21707112,0.19305677,0.19644917,-0.024014352,-0.020621949,0.0033924024,0.16432601,0.16341585,0.00091016382,0.0033924024,0.023402675,0.017330365
-74,TabPFN v2,Vehicle Loan,1,One sample,233154,0.21707112,0.19305677,0.19726182,-0.024014352,-0.019809302,0.0042050503,0.16432601,0.16339209,0.00093392417,0.0042050503,0.024002462,0.017666936
-75,TabPFN v2,Credit Risk,2,Accumulate,32581,0.21816396,0.21668034,0.21462546,-0.0014836216,-0.0035384991,-0.0020548775,0.059860316,0.059879954,-1.9638632e-05,-0.0020548775,0.028369673,0.01616876
-76,TabPFN v2,Credit Risk,2,Full pass,32581,0.21816396,0.21668034,0.21468169,-0.0014836216,-0.0034822681,-0.0019986465,0.059860316,0.059341747,0.00051856812,-0.0019986465,0.021376379,0.011474744
-77,TabPFN v2,Credit Risk,2,One sample,32581,0.21816396,0.21668034,0.21456203,-0.0014836216,-0.0036019269,-0.0021183053,0.059860316,0.059754577,0.00010573812,-0.0021183053,0.027883064,0.015869371
-78,TabPFN v2,Hackerearth,2,Accumulate,532428,0.23632679,0.28182856,0.23179525,0.045501769,-0.0045315365,0.040970233,0.082631383,0.078160596,0.0044707866,-0.050033306,0.08281179,0.061449395
-79,TabPFN v2,Hackerearth,2,Full pass,532428,0.23632679,0.28182856,0.23328353,0.045501769,-0.0030432637,0.042458506,0.082631383,0.078286481,0.004344902,-0.048545033,0.075647143,0.055510275
-80,TabPFN v2,Hackerearth,2,One sample,532428,0.23632679,0.28182856,0.23284959,0.045501769,-0.0034772014,0.042024568,0.082631383,0.077959633,0.0046717493,-0.048978971,0.081140404,0.060165621
-81,TabPFN v2,Myhom,2,Accumulate,7000,0.4,0.3907081,0.38814935,-0.0092918998,-0.011850653,-0.0025587527,0.23434168,0.23404325,0.00029842822,-0.0025587527,0.016181635,0.013298576
-82,TabPFN v2,Myhom,2,Full pass,7000,0.4,0.3907081,0.38836601,-0.0092918998,-0.011633985,-0.0023420853,0.23434168,0.23408589,0.00025578682,-0.0023420853,0.014429298,0.01174086
-83,TabPFN v2,Myhom,2,One sample,7000,0.4,0.3907081,0.38816923,-0.0092918998,-0.011830771,-0.0025388712,0.23434168,0.23404758,0.00029410153,-0.0025388712,0.01587354,0.013046147
-84,TabPFN v2,PropPD1,2,Accumulate,100000,0.22639,0.19685933,0.21062505,-0.029530667,-0.015764952,0.013765715,0.13752979,0.13580746,0.0017223275,0.013765715,0.028899215,0.020178278
-85,TabPFN v2,PropPD1,2,Full pass,100000,0.22639,0.19685933,0.2084432,-0.029530667,-0.017946802,0.011583865,0.13752979,0.13587683,0.0016529555,0.011583865,0.025973824,0.018074508
-86,TabPFN v2,PropPD1,2,One sample,100000,0.22639,0.19685933,0.20954491,-0.029530667,-0.016845089,0.012685578,0.13752979,0.13585432,0.0016754684,0.012685578,0.027558788,0.019236572
-87,TabPFN v2,PropPD2,2,Accumulate,105471,0.092755355,0.057077593,0.075451604,-0.035677761,-0.017303751,0.018374011,0.083865093,0.082556048,0.0013090453,0.018374011,0.024205297,0.019163493
-88,TabPFN v2,PropPD2,2,Full pass,105471,0.092755355,0.057077593,0.077197931,-0.035677761,-0.015557424,0.020120337,0.083865093,0.082489433,0.0013756599,0.020120337,0.026291055,0.020980706
-89,TabPFN v2,PropPD2,2,One sample,105471,0.092755355,0.057077593,0.075384679,-0.035677761,-0.017370675,0.018307086,0.083865093,0.082564696,0.0013003966,0.018307086,0.024057149,0.019002276
-90,TabPFN v2,Cobranded,3,Accumulate,80000,0.2462125,0.22881422,0.23060466,-0.01739828,-0.01560784,0.0017904401,0.13481406,0.13352347,0.0012905923,0.0017904401,0.024685644,0.016827368
-91,TabPFN v2,Cobranded,3,Full pass,80000,0.2462125,0.22881422,0.23402737,-0.01739828,-0.012185133,0.005213147,0.13481406,0.13362071,0.001193353,0.005213147,0.024586562,0.016620377
-92,TabPFN v2,Cobranded,3,One sample,80000,0.2462125,0.22881422,0.23048654,-0.01739828,-0.015725957,0.0016723232,0.13481406,0.1335735,0.0012405602,0.0016723232,0.024104104,0.016460776
-93,TabPFN v2,Home Credit,3,Accumulate,307511,0.080728819,0.059871731,0.063046097,-0.020857089,-0.017682723,0.003174366,0.070289028,0.069838232,0.00045079592,0.003174366,0.014081329,0.0089007133
-94,TabPFN v2,Home Credit,3,Full pass,307511,0.080728819,0.059871731,0.063745106,-0.020857089,-0.016983713,0.0038733752,0.070289028,0.069819693,0.00046933527,0.0038733752,0.014981392,0.0092669967
-95,TabPFN v2,Home Credit,3,One sample,307511,0.080728819,0.059871731,0.063375739,-0.020857089,-0.017353081,0.0035040077,0.070289028,0.069823501,0.00046552712,0.0035040077,0.014068244,0.0089203766
-96,TabPFN v2,LendingClub,3,Accumulate,9578,0.16005429,0.14351572,0.14201283,-0.016538576,-0.018041464,-0.0015028883,0.1272695,0.12673326,0.00053624124,-0.0015028883,0.019051429,0.014236927
-97,TabPFN v2,LendingClub,3,Full pass,9578,0.16005429,0.14351572,0.14004457,-0.016538576,-0.020009721,-0.0034711454,0.1272695,0.1268292,0.00044030157,-0.0034711454,0.019286426,0.014421986
-98,TabPFN v2,LendingClub,3,One sample,9578,0.16005429,0.14351572,0.14191139,-0.016538576,-0.018142899,-0.001604323,0.1272695,0.12673568,0.00053382123,-0.001604323,0.019010456,0.014193979
-99,TabPFN v2,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32581566,0.3258248,-0.00054019219,-0.00053105171,9.1404808e-06,0.033283421,0.033019778,0.00026364281,9.1404808e-06,0.024001066,0.0091956817
-100,TabPFN v2,SBA Loans Case,3,Full pass,2102,0.32635585,0.32581566,0.32656061,-0.00054019219,0.00020476266,0.00033542953,0.033283421,0.033142241,0.00014118003,0.00074495485,0.017589499,0.0068820874
-101,TabPFN v2,SBA Loans Case,3,One sample,2102,0.32635585,0.32581566,0.32598216,-0.00054019219,-0.0003736896,0.0001665026,0.033283421,0.03295783,0.00032559135,0.0001665026,0.023347213,0.0089968539
-102,TabPFN v2.6,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.12910445,0.12779077,-0.0090006125,-0.01031429,-0.0013136779,0.083792889,0.083916505,-0.00012361549,-0.0013136779,0.010184776,0.0055993308
-103,TabPFN v2.6,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.12910445,0.12831501,-0.0090006125,-0.0097900491,-0.00078943661,0.083792889,0.083886397,-9.3507632e-05,-0.00078943661,0.0094073941,0.0053384864
-104,TabPFN v2.6,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.12910445,0.12783589,-0.0090006125,-0.010269166,-0.0012685536,0.083792889,0.083903883,-0.00011099424,-0.0012685536,0.0092798445,0.0050929504
-105,TabPFN v2.6,HMEQ,0,Accumulate,5960,0.19949664,0.18592591,0.18391647,-0.013570737,-0.015580169,-0.0020094326,0.013749836,0.017168467,-0.0034186308,-0.0020094326,0.026412281,0.0090587394
-106,TabPFN v2.6,HMEQ,0,Full pass,5960,0.19949664,0.18592591,0.18460982,-0.013570737,-0.014886829,-0.0013160919,0.013749836,0.016442299,-0.0026924628,-0.0013160919,0.026604818,0.0095625531
-107,TabPFN v2.6,HMEQ,0,One sample,5960,0.19949664,0.18592591,0.18296814,-0.013570737,-0.0165285,-0.0029577629,0.013749836,0.01714769,-0.0033978538,-0.0029577629,0.025114747,0.0085811796
-108,TabPFN v2.6,MicroFinance,0,Accumulate,158700,0.37809074,0.36995232,0.36620827,-0.0081384136,-0.011882471,-0.0037440574,0.2176398,0.2179414,-0.00030160439,-0.0037440574,0.014055869,0.010881705
-109,TabPFN v2.6,MicroFinance,0,Full pass,158700,0.37809074,0.36995232,0.36666235,-0.0081384136,-0.011428389,-0.0032899759,0.2176398,0.21779138,-0.00015158013,-0.0032899759,0.013207338,0.01044839
-110,TabPFN v2.6,MicroFinance,0,One sample,158700,0.37809074,0.36995232,0.3666786,-0.0081384136,-0.011412137,-0.0032737234,0.2176398,0.21787727,-0.00023747421,-0.0032737234,0.012954497,0.010107919
-111,TabPFN v2.6,Thomas,0,Accumulate,1225,0.26367347,0.24653708,0.24611749,-0.017136387,-0.017555981,-0.0004195944,0.18359201,0.18313455,0.0004574614,-0.0004195944,0.015120503,0.011578233
-112,TabPFN v2.6,Thomas,0,Full pass,1225,0.26367347,0.24653708,0.24392757,-0.017136387,-0.019745902,-0.0026095158,0.18359201,0.18346918,0.00012283769,-0.0026095158,0.01070629,0.0082073301
-113,TabPFN v2.6,Thomas,0,One sample,1225,0.26367347,0.24653708,0.24563189,-0.017136387,-0.018041584,-0.00090519707,0.18359201,0.18322742,0.00036459622,-0.00090519707,0.013569341,0.01034345
-114,TabPFN v2.6,GMSC,1,Accumulate,150000,0.06684,0.058335607,0.057212261,-0.0085043929,-0.0096277393,-0.0011233465,0.049245344,0.049238097,7.2466916e-06,-0.0011233465,0.0043926063,0.0021520075
-115,TabPFN v2.6,GMSC,1,Full pass,150000,0.06684,0.058335607,0.057512382,-0.0085043929,-0.0093276183,-0.00082322544,0.049245344,0.049253518,-8.1747236e-06,-0.00082322544,0.0037456531,0.0017530984
-116,TabPFN v2.6,GMSC,1,One sample,150000,0.06684,0.058335607,0.057143091,-0.0085043929,-0.0096969086,-0.0011925158,0.049245344,0.049247894,-2.5502305e-06,-0.0011925158,0.0040560423,0.0020456806
-117,TabPFN v2.6,German Credit,1,Accumulate,999,0.3003003,0.29046397,0.29203026,-0.0098363313,-0.0082700371,0.0015662942,0.16257482,0.16256532,9.5011389e-06,0.0015662942,0.011840846,0.0092611889
-118,TabPFN v2.6,German Credit,1,Full pass,999,0.3003003,0.29046397,0.29114076,-0.0098363313,-0.009159542,0.00067678927,0.16257482,0.16302321,-0.00044839001,0.00067678927,0.012229708,0.0088402584
-119,TabPFN v2.6,German Credit,1,One sample,999,0.3003003,0.29046397,0.29305609,-0.0098363313,-0.0072442077,0.0025921236,0.16257482,0.1624721,0.00010272943,0.0025921236,0.011436201,0.0089519585
-120,TabPFN v2.6,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20649021,0.20512226,-0.014709793,-0.016077745,-0.0013679517,0.13310767,0.13303821,6.945859e-05,-0.0013679517,0.0089152578,0.006328359
-121,TabPFN v2.6,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20649021,0.20497295,-0.014709793,-0.016227055,-0.0015172617,0.13310767,0.13305437,5.3297011e-05,-0.0015172617,0.0085543255,0.0060028329
-122,TabPFN v2.6,Taiwan Credit Card,1,One sample,30000,0.2212,0.20649021,0.20520532,-0.014709793,-0.015994682,-0.0012848889,0.13310767,0.13303101,7.665812e-05,-0.0012848889,0.0085041128,0.006008158
-123,TabPFN v2.6,Vehicle Loan,1,Accumulate,233154,0.21707112,0.19828218,0.19538936,-0.018788944,-0.021681759,-0.0028928154,0.16205031,0.16212271,-7.2402204e-05,-0.0028928154,0.012162143,0.0089112292
-124,TabPFN v2.6,Vehicle Loan,1,Full pass,233154,0.21707112,0.19828218,0.19590275,-0.018788944,-0.021168375,-0.0023794318,0.16205031,0.16207621,-2.5901366e-05,-0.0023794318,0.0097169539,0.0072434008
-125,TabPFN v2.6,Vehicle Loan,1,One sample,233154,0.21707112,0.19828218,0.19541591,-0.018788944,-0.021655211,-0.0028662673,0.16205031,0.16211932,-6.9014257e-05,-0.0028662673,0.012026506,0.0087496729
-126,TabPFN v2.6,Credit Risk,2,Accumulate,32581,0.21816396,0.20729135,0.20361957,-0.010872613,-0.01454439,-0.003671777,0.053688482,0.054683205,-0.00099472262,-0.003671777,0.015202132,0.0079299313
-127,TabPFN v2.6,Credit Risk,2,Full pass,32581,0.21816396,0.20729135,0.20778408,-0.010872613,-0.010379877,0.00049273662,0.053688482,0.053807657,-0.00011917445,0.00049273662,0.0086199664,0.0043050259
-128,TabPFN v2.6,Credit Risk,2,One sample,32581,0.21816396,0.20729135,0.203852,-0.010872613,-0.014311963,-0.0034393502,0.053688482,0.054639678,-0.00095119605,-0.0034393502,0.014730899,0.0076431141
-129,TabPFN v2.6,Hackerearth,2,Accumulate,532428,0.23632679,0.23148557,0.22491041,-0.0048412211,-0.011416384,-0.0065751624,0.065047143,0.067074534,-0.0020273909,-0.0065751624,0.021625749,0.012901089
-130,TabPFN v2.6,Hackerearth,2,Full pass,532428,0.23632679,0.23148557,0.23143857,-0.0048412211,-0.0048882223,-4.7001144e-05,0.065047143,0.065681701,-0.00063455739,-4.7001144e-05,0.012109337,0.0066262444
-131,TabPFN v2.6,Hackerearth,2,One sample,532428,0.23632679,0.23148557,0.22506649,-0.0048412211,-0.011260298,-0.006419077,0.065047143,0.067009664,-0.0019625201,-0.006419077,0.021003316,0.012528405
-132,TabPFN v2.6,Myhom,2,Accumulate,7000,0.4,0.39089605,0.38826745,-0.0091039538,-0.011732549,-0.0026285947,0.23405045,0.2341355,-8.5052482e-05,-0.0026285947,0.0095735533,0.0072274659
-133,TabPFN v2.6,Myhom,2,Full pass,7000,0.4,0.39089605,0.3889229,-0.0091039538,-0.011077105,-0.0019731512,0.23405045,0.23410195,-5.1506805e-05,-0.0019731512,0.0078302696,0.0060180337
-134,TabPFN v2.6,Myhom,2,One sample,7000,0.4,0.39089605,0.38775212,-0.0091039538,-0.012247879,-0.0031439253,0.23405045,0.23411873,-6.8286927e-05,-0.0031439253,0.0092233181,0.0070553341
-135,TabPFN v2.6,PropPD1,2,Accumulate,100000,0.22639,0.20999,0.20778909,-0.016399997,-0.018600911,-0.0022009136,0.13357595,0.13375775,-0.00018179695,-0.0022009136,0.0091088948,0.0064323958
-136,TabPFN v2.6,PropPD1,2,Full pass,100000,0.22639,0.20999,0.21065979,-0.016399997,-0.015730214,0.00066978325,0.13357595,0.13373741,-0.00016146117,0.00066978325,0.0066824719,0.0045251157
-137,TabPFN v2.6,PropPD1,2,One sample,100000,0.22639,0.20999,0.20811496,-0.016399997,-0.01827504,-0.0018750429,0.13357595,0.13374078,-0.00016483211,-0.0018750429,0.0088044662,0.006199522
-138,TabPFN v2.6,PropPD2,2,Accumulate,105471,0.092755355,0.077113889,0.075050365,-0.015641466,-0.017704989,-0.0020635236,0.082257539,0.082332664,-7.5124967e-05,-0.0020635236,0.0047919144,0.0038301576
-139,TabPFN v2.6,PropPD2,2,Full pass,105471,0.092755355,0.077113889,0.076265392,-0.015641466,-0.016489962,-0.00084849659,0.082257539,0.082261327,-3.7877892e-06,-0.00084849659,0.0039465989,0.0028833444
-140,TabPFN v2.6,PropPD2,2,One sample,105471,0.092755355,0.077113889,0.075342524,-0.015641466,-0.01741283,-0.0017713649,0.082257539,0.082317895,-6.0356156e-05,-0.0017713649,0.0045677448,0.0036344969
-141,TabPFN v2.6,Cobranded,3,Accumulate,80000,0.2462125,0.23628205,0.23431668,-0.009930454,-0.01189582,-0.0019653656,0.13048481,0.13061968,-0.00013486818,-0.0019653656,0.010635436,0.0073605532
-142,TabPFN v2.6,Cobranded,3,Full pass,80000,0.2462125,0.23628205,0.23633456,-0.009930454,-0.0098779427,5.2511276e-05,0.13048481,0.13042889,5.5925877e-05,5.2511276e-05,0.0095825531,0.0064093306
-143,TabPFN v2.6,Cobranded,3,One sample,80000,0.2462125,0.23628205,0.23441795,-0.009930454,-0.011794547,-0.0018640926,0.13048481,0.13062675,-0.00014193823,-0.0018640926,0.0099947921,0.0069038523
-144,TabPFN v2.6,Home Credit,3,Accumulate,307511,0.080728819,0.06920748,0.066733484,-0.01152134,-0.013995335,-0.0024739951,0.06868368,0.068802498,-0.00011881735,-0.0024739951,0.005974598,0.0038679353
-145,TabPFN v2.6,Home Credit,3,Full pass,307511,0.080728819,0.06920748,0.068773908,-0.01152134,-0.011954912,-0.00043357166,0.06868368,0.068706219,-2.2538613e-05,-0.00043357166,0.0049452453,0.0031321961
-146,TabPFN v2.6,Home Credit,3,One sample,307511,0.080728819,0.06920748,0.067333714,-0.01152134,-0.013395106,-0.0018737657,0.06868368,0.068779359,-9.5678243e-05,-0.0018737657,0.0054640925,0.0035838266
-147,TabPFN v2.6,LendingClub,3,Accumulate,9578,0.16005429,0.14034329,0.138415,-0.019711,-0.021639296,-0.0019282961,0.12655783,0.12654724,1.0590146e-05,-0.0019282961,0.0065281653,0.0044939223
-148,TabPFN v2.6,LendingClub,3,Full pass,9578,0.16005429,0.14034329,0.13928299,-0.019711,-0.020771305,-0.0010603054,0.12655783,0.12651528,4.2546364e-05,-0.0010603054,0.0059202338,0.004117396
-149,TabPFN v2.6,LendingClub,3,One sample,9578,0.16005429,0.14034329,0.13878802,-0.019711,-0.021266276,-0.0015552764,0.12655783,0.12653748,2.0352709e-05,-0.0015552764,0.0061007139,0.0042130777
-150,TabPFN v2.6,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32613927,0.32574538,-0.00021657747,-0.00061047413,-0.00039389666,0.032727747,0.032705757,2.1989796e-05,-0.00039389666,0.010828712,0.0040252794
-151,TabPFN v2.6,SBA Loans Case,3,Full pass,2102,0.32635585,0.32613927,0.32617026,-0.00021657747,-0.00018559337,3.0984102e-05,0.032727747,0.032414049,0.00031369804,3.0984102e-05,0.012239607,0.0046151549
-152,TabPFN v2.6,SBA Loans Case,3,One sample,2102,0.32635585,0.32613927,0.32585096,-0.00021657747,-0.00050489325,-0.00028831578,0.032727747,0.032718052,9.6946498e-06,-0.00028831578,0.010063158,0.0036971563
-153,TabPFN v3,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.13157373,0.13056534,-0.0065313284,-0.0075397222,-0.0010083938,0.080273139,0.08045984,-0.00018670123,-0.0010083938,0.015489975,0.0075852428
-154,TabPFN v3,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.13157373,0.13050055,-0.0065313284,-0.0076045067,-0.0010731783,0.080273139,0.08048812,-0.00021498108,-0.0010731783,0.01506862,0.0070288241
-155,TabPFN v3,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.13157373,0.12954467,-0.0065313284,-0.0085603931,-0.0020290647,0.080273139,0.080368118,-9.4978969e-05,-0.0020290647,0.018161559,0.0092246503
-156,TabPFN v3,HMEQ,0,Accumulate,5960,0.19949664,0.1956357,0.19413253,-0.0038609394,-0.0053641137,-0.0015031743,0.0057323372,0.0084250442,-0.0026927071,-0.0015031743,0.042481683,0.013097479
-157,TabPFN v3,HMEQ,0,Full pass,5960,0.19949664,0.1956357,0.1943359,-0.0038609394,-0.0051607396,-0.0012998002,0.0057323372,0.0080673922,-0.002335055,-0.0012998002,0.038254527,0.010795284
-158,TabPFN v3,HMEQ,0,One sample,5960,0.19949664,0.1956357,0.19527311,-0.0038609394,-0.0042235353,-0.00036259592,0.0057323372,0.0080908827,-0.0023585455,-0.00036259592,0.039873851,0.01204996
-159,TabPFN v3,MicroFinance,0,Accumulate,158700,0.37809074,0.36600085,0.3673309,-0.012089888,-0.010759833,0.0013300551,0.21752139,0.21754719,-2.580793e-05,0.0013300551,0.019867119,0.015084278
-160,TabPFN v3,MicroFinance,0,Full pass,158700,0.37809074,0.36600085,0.36449946,-0.012089888,-0.013591277,-0.001501389,0.21752139,0.21811933,-0.00059794418,-0.001501389,0.025783798,0.019708307
-161,TabPFN v3,MicroFinance,0,One sample,158700,0.37809074,0.36600085,0.36879872,-0.012089888,-0.0092920144,0.0027978739,0.21752139,0.21727175,0.00024963884,0.0027978739,0.018476596,0.013987089
-162,TabPFN v3,Thomas,0,Accumulate,1225,0.26367347,0.24733232,0.24695176,-0.016341154,-0.016721706,-0.00038055155,0.18350797,0.18316681,0.00034116715,-0.00038055155,0.016715497,0.012885403
-163,TabPFN v3,Thomas,0,Full pass,1225,0.26367347,0.24733232,0.24721047,-0.016341154,-0.016463,-0.00012184568,0.18350797,0.1831189,0.00038907223,-0.00012184568,0.016400451,0.012680637
-164,TabPFN v3,Thomas,0,One sample,1225,0.26367347,0.24733232,0.24701412,-0.016341154,-0.016659345,-0.00031819084,0.18350797,0.18311962,0.00038835744,-0.00031819084,0.016230166,0.012506503
-165,TabPFN v3,GMSC,1,Accumulate,150000,0.06684,0.058648143,0.058542924,-0.0081918569,-0.0082970762,-0.00010521923,0.048835831,0.048830247,5.5845013e-06,-0.00010521923,0.0054955496,0.0028212578
-166,TabPFN v3,GMSC,1,Full pass,150000,0.06684,0.058648143,0.058856653,-0.0081918569,-0.0079833475,0.00020850944,0.048835831,0.048843295,-7.4640834e-06,0.00020850944,0.0049328309,0.0023760955
-167,TabPFN v3,GMSC,1,One sample,150000,0.06684,0.058648143,0.058134493,-0.0081918569,-0.0087055065,-0.00051364959,0.048835831,0.048830894,4.9375488e-06,-0.00051364959,0.0057845689,0.0029538876
-168,TabPFN v3,German Credit,1,Accumulate,999,0.3003003,0.29032207,0.28629419,-0.0099782295,-0.01400611,-0.0040278804,0.16260483,0.16234448,0.00026034916,-0.0040278804,0.029652088,0.021604009
-169,TabPFN v3,German Credit,1,Full pass,999,0.3003003,0.29032207,0.28849064,-0.0099782295,-0.011809663,-0.0018314337,0.16260483,0.1621604,0.00044443253,-0.0018314337,0.024034774,0.018072165
-170,TabPFN v3,German Credit,1,One sample,999,0.3003003,0.29032207,0.28525003,-0.0099782295,-0.015050274,-0.0050720448,0.16260483,0.16262971,-2.4878596e-05,-0.0050720448,0.030839736,0.021845138
-171,TabPFN v3,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20652503,0.20742094,-0.014674968,-0.01377906,0.0008959088,0.13305926,0.1329263,0.00013295424,0.0008959088,0.014893248,0.010685278
-172,TabPFN v3,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20652503,0.205972,-0.014674968,-0.015227998,-0.00055302991,0.13305926,0.13296806,9.1202641e-05,-0.00055302991,0.012604934,0.0087914422
-173,TabPFN v3,Taiwan Credit Card,1,One sample,30000,0.2212,0.20652503,0.20760075,-0.014674968,-0.013599246,0.0010757227,0.13305926,0.13291066,0.00014860026,0.0010757227,0.014540912,0.01055693
-174,TabPFN v3,Vehicle Loan,1,Accumulate,233154,0.21707112,0.19829208,0.19938118,-0.018779038,-0.017689936,0.0010891013,0.16127828,0.16126323,1.5043708e-05,0.0010891013,0.0095009018,0.0070074473
-175,TabPFN v3,Vehicle Loan,1,Full pass,233154,0.21707112,0.19829208,0.19827644,-0.018779038,-0.018794677,-1.5639195e-05,0.16127828,0.16130391,-2.5636772e-05,-1.5639195e-05,0.0087712736,0.0064877857
-176,TabPFN v3,Vehicle Loan,1,One sample,233154,0.21707112,0.19829208,0.1992624,-0.018779038,-0.017808717,0.0009703209,0.16127828,0.16122454,5.3733158e-05,0.0009703209,0.010249421,0.007488664
-177,TabPFN v3,Credit Risk,2,Accumulate,32581,0.21816396,0.20759623,0.20492096,-0.010567735,-0.013243005,-0.0026752706,0.050267518,0.0509087,-0.00064118239,-0.0026752706,0.033296697,0.013397297
-178,TabPFN v3,Credit Risk,2,Full pass,32581,0.21816396,0.20759623,0.20668635,-0.010567735,-0.011477614,-0.00090987964,0.050267518,0.050293118,-2.5600453e-05,-0.00090987964,0.028374356,0.010857994
-179,TabPFN v3,Credit Risk,2,One sample,32581,0.21816396,0.20759623,0.20458518,-0.010567735,-0.013578778,-0.0030110434,0.050267518,0.050616432,-0.00034891469,-0.0030110434,0.032626902,0.013465184
-180,TabPFN v3,Hackerearth,2,Accumulate,532428,0.23632679,0.22884167,0.22325481,-0.0074851162,-0.013071978,-0.0055868613,0.054771256,0.05902926,-0.0042580045,-0.0055868613,0.04526978,0.020511258
-181,TabPFN v3,Hackerearth,2,Full pass,532428,0.23632679,0.22884167,0.22661044,-0.0074851162,-0.0097163501,-0.0022312339,0.054771256,0.057543074,-0.0027718186,-0.0022312339,0.036023675,0.017463641
-182,TabPFN v3,Hackerearth,2,One sample,532428,0.23632679,0.22884167,0.22582664,-0.0074851162,-0.010500151,-0.0030150352,0.054771256,0.058391551,-0.0036202952,-0.0030150352,0.041825037,0.019939155
-183,TabPFN v3,Myhom,2,Accumulate,7000,0.4,0.39120362,0.39091083,-0.0087963807,-0.0090891688,-0.00029278805,0.23383466,0.23392663,-9.1971707e-05,-0.00029278805,0.011181442,0.0086728455
-184,TabPFN v3,Myhom,2,Full pass,7000,0.4,0.39120362,0.39186307,-0.0087963807,-0.0081369323,0.00065944846,0.23383466,0.23383135,3.3091376e-06,0.00065944846,0.0096072381,0.0070834389
-185,TabPFN v3,Myhom,2,One sample,7000,0.4,0.39120362,0.39062499,-0.0087963807,-0.0093750135,-0.00057863278,0.23383466,0.23394072,-0.0001060592,-0.00057863278,0.011045403,0.0085770939
-186,TabPFN v3,PropPD1,2,Accumulate,100000,0.22639,0.1925788,0.1991488,-0.0338112,-0.027241201,0.0065699991,0.12856333,0.12779333,0.00076999452,0.0065699991,0.01922409,0.011441281
-187,TabPFN v3,PropPD1,2,Full pass,100000,0.22639,0.1925788,0.19189277,-0.0338112,-0.034497227,-0.00068602685,0.12856333,0.12873398,-0.00017064962,-0.00068602685,0.013535746,0.0080951849
-188,TabPFN v3,PropPD1,2,One sample,100000,0.22639,0.1925788,0.1989894,-0.0338112,-0.027400595,0.0064106047,0.12856333,0.12768755,0.00087577694,0.0064106047,0.019199493,0.011427133
-189,TabPFN v3,PropPD2,2,Accumulate,105471,0.092755355,0.075070161,0.076257282,-0.017685193,-0.016498073,0.0011871209,0.082365418,0.082249597,0.00011582179,0.0011871209,0.0066865953,0.0047852881
-190,TabPFN v3,PropPD2,2,Full pass,105471,0.092755355,0.075070161,0.075634634,-0.017685193,-0.017120721,0.00056447251,0.082365418,0.082274411,9.1007321e-05,0.00056447251,0.0063508989,0.0046237284
-191,TabPFN v3,PropPD2,2,One sample,105471,0.092755355,0.075070161,0.076525814,-0.017685193,-0.01622954,0.0014556532,0.082365418,0.082237493,0.00012792499,0.0014556532,0.0068315993,0.0048704101
-192,TabPFN v3,Cobranded,3,Accumulate,80000,0.2462125,0.23469972,0.23627839,-0.011512781,-0.0099341136,0.0015786675,0.13094193,0.13072569,0.00021624541,0.0015786675,0.01811652,0.010339293
-193,TabPFN v3,Cobranded,3,Full pass,80000,0.2462125,0.23469972,0.23664017,-0.011512781,-0.0095723313,0.0019404498,0.13094193,0.13084065,0.00010128523,0.0019404498,0.015712663,0.0092656405
-194,TabPFN v3,Cobranded,3,One sample,80000,0.2462125,0.23469972,0.23659517,-0.011512781,-0.0096173331,0.001895448,0.13094193,0.13066027,0.00028166564,0.001895448,0.01757261,0.0099616437
-195,TabPFN v3,Home Credit,3,Accumulate,307511,0.080728819,0.066729049,0.066026024,-0.01399977,-0.014702796,-0.00070302531,0.068394809,0.068491163,-9.6354176e-05,-0.00070302531,0.01099576,0.0065549316
-196,TabPFN v3,Home Credit,3,Full pass,307511,0.080728819,0.066729049,0.066976395,-0.01399977,-0.013752424,0.00024734608,0.068394809,0.068462715,-6.7906179e-05,0.00024734608,0.0098845623,0.0060240793
-197,TabPFN v3,Home Credit,3,One sample,307511,0.080728819,0.066729049,0.067733862,-0.01399977,-0.012994957,0.0010048133,0.068394809,0.068397336,-2.5268897e-06,0.0010048133,0.009516832,0.0057835053
-198,TabPFN v3,LendingClub,3,Accumulate,9578,0.16005429,0.14098134,0.13846313,-0.019072951,-0.021591156,-0.0025182054,0.12638842,0.12647567,-8.7251958e-05,-0.0025182054,0.011386807,0.008051492
-199,TabPFN v3,LendingClub,3,Full pass,9578,0.16005429,0.14098134,0.13987078,-0.019072951,-0.020183513,-0.0011105621,0.12638842,0.12638944,-1.0177701e-06,-0.0011105621,0.0079433434,0.0057555315
-200,TabPFN v3,LendingClub,3,One sample,9578,0.16005429,0.14098134,0.1388532,-0.019072951,-0.021201093,-0.0021281418,0.12638842,0.1264136,-2.5183438e-05,-0.0021281418,0.010996671,0.007908076
-201,TabPFN v3,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32639496,0.32671786,3.9106569e-05,0.00036200345,-0.00032289688,0.033249146,0.032892137,0.00035700843,0.00032289688,0.027267672,0.010249128
-202,TabPFN v3,SBA Loans Case,3,Full pass,2102,0.32635585,0.32639496,0.3259771,3.9106569e-05,-0.00037874925,-0.00033964269,0.033249146,0.031581633,0.0016675128,-0.00041785582,0.027925901,0.0093783903
-203,TabPFN v3,SBA Loans Case,3,One sample,2102,0.32635585,0.32639496,0.3273916,3.9106569e-05,0.0010357507,-0.00099664409,0.033249146,0.032946436,0.00030270936,0.00099664409,0.026406909,0.010093118
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.13512286,0.13204494,-0.0029821967,-0.0060601213,-0.0030779246,0.080535551,0.080652653,-0.00011710165,-0.0030779246,0.021884479,0.010561745,0,-0.16
+1,TabICLv2,Cobranded,3,Accumulate,80000,0.2462125,0.23580183,0.22866304,-0.010410672,-0.01754946,-0.0071387878,0.13071025,0.13102062,-0.00031037257,-0.0071387878,0.02475712,0.014923996,0,-0.14
+2,TabICLv2,Credit Risk,2,Accumulate,32581,0.21816396,0.20703413,0.21134139,-0.011129831,-0.0068225682,0.004307263,0.049364787,0.055165131,-0.0058003449,0.004307263,0.062917705,0.031088534,0,-0.12
+3,TabICLv2,GMSC,1,Accumulate,150000,0.06684,0.057865039,0.056381629,-0.0089749608,-0.010458371,-0.0014834098,0.049075658,0.049172063,-9.6404565e-05,-0.0014834098,0.0076058203,0.0037897224,0,-0.1
+4,TabICLv2,German Credit,1,Accumulate,999,0.3003003,0.29274349,0.29076737,-0.0075568069,-0.0095329307,-0.0019761238,0.16240025,0.1621158,0.00028445405,-0.0019761238,0.029111655,0.020757056,0,-0.08
+5,TabICLv2,HMEQ,0,Accumulate,5960,0.19949664,0.19071745,0.19417589,-0.0087791943,-0.0053207584,0.0034584359,0.017686181,0.018917732,-0.001231551,0.0034584359,0.039554834,0.013202215,0,-0.06
+6,TabICLv2,Hackerearth,2,Accumulate,532428,0.23632679,0.23112544,0.22923231,-0.0052013466,-0.0070944767,-0.00189313,0.058127422,0.068011672,-0.0098842506,-0.00189313,0.09233313,0.046220065,0,-0.04
+7,TabICLv2,Home Credit,3,Accumulate,307511,0.080728819,0.071030346,0.066110234,-0.0096984731,-0.014618586,-0.0049201128,0.068564613,0.06887519,-0.00031057601,-0.0049201128,0.014426768,0.0083387296,0,-0.02
+8,TabICLv2,LendingClub,3,Accumulate,9578,0.16005429,0.14078684,0.13902015,-0.019267448,-0.021034138,-0.0017666898,0.12609798,0.12606848,2.9498209e-05,-0.0017666898,0.011787899,0.0078993701,0,0
+9,TabICLv2,MicroFinance,0,Accumulate,158700,0.37809074,0.36495634,0.36807547,-0.013134396,-0.010015267,0.0031191289,0.21816395,0.21835205,-0.00018809937,0.0031191289,0.030608699,0.022994119,0,0.02
+10,TabICLv2,Myhom,2,Accumulate,7000,0.4,0.38581482,0.3859853,-0.01418518,-0.014014698,0.00017048139,0.25080943,0.23459547,0.01621396,0.00017048139,0.14919416,0.090188312,0,0.04
+11,TabICLv2,PropPD1,2,Accumulate,100000,0.22639,0.19999356,0.1953783,-0.026396437,-0.031011704,-0.0046152672,0.12813814,0.12822153,-8.3388964e-05,-0.0046152672,0.032770111,0.021710337,0,0.06
+12,TabICLv2,PropPD2,2,Accumulate,105471,0.092755355,0.076905382,0.0768534,-0.015849972,-0.015901954,-5.1981906e-05,0.082312426,0.082325081,-1.2654964e-05,-5.1981906e-05,0.0061548065,0.0047693371,0,0.08
+13,TabICLv2,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32631453,0.32710532,-4.1321021e-05,0.00074946883,-0.00070814781,0.031810621,0.031458822,0.00035179907,0.00079078985,0.025083793,0.0093757745,0,0.1
+14,TabICLv2,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20680082,0.20441451,-0.014399176,-0.016785488,-0.0023863117,0.13292592,0.13328981,-0.00036389226,-0.0023863117,0.016974604,0.012332244,0,0.12
+15,TabICLv2,Thomas,0,Accumulate,1225,0.26367347,0.24708993,0.24216163,-0.016583544,-0.021511837,-0.0049282933,0.18308296,0.18316856,-8.5600798e-05,-0.0049282933,0.016634818,0.011662752,0,0.14
+16,TabICLv2,Vehicle Loan,1,Accumulate,233154,0.21707112,0.38729445,0.19561628,0.17022333,-0.021454837,0.14876849,0.27476188,0.16184342,0.11291846,-0.19167816,0.34876416,0.21611884,0,0.16
+17,TabICLv2,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.13512286,0.13318906,-0.0029821967,-0.004916004,-0.0019338073,0.080535551,0.0809159,-0.00038034925,-0.0019338073,0.022474827,0.011011631,1,-0.16
+18,TabICLv2,Cobranded,3,Full pass,80000,0.2462125,0.23580183,0.231627,-0.010410672,-0.014585504,-0.0041748314,0.13071025,0.13102486,-0.00031461703,-0.0041748314,0.021140337,0.013323739,1,-0.14
+19,TabICLv2,Credit Risk,2,Full pass,32581,0.21816396,0.20703413,0.21012456,-0.011129831,-0.0080393975,0.0030904337,0.049364787,0.053736818,-0.0043720317,0.0030904337,0.053425943,0.026021365,1,-0.12
+20,TabICLv2,GMSC,1,Full pass,150000,0.06684,0.057865039,0.056620359,-0.0089749608,-0.010219641,-0.0012446802,0.049075658,0.049116914,-4.1255164e-05,-0.0012446802,0.0066330347,0.0033459254,1,-0.1
+21,TabICLv2,German Credit,1,Full pass,999,0.3003003,0.29274349,0.29093496,-0.0075568069,-0.0093653364,-0.0018085294,0.16240025,0.16230298,9.7266652e-05,-0.0018085294,0.023462223,0.016161727,1,-0.08
+22,TabICLv2,HMEQ,0,Full pass,5960,0.19949664,0.19071745,0.19282538,-0.0087791943,-0.0066712603,0.0021079339,0.017686181,0.022321394,-0.0046352125,0.0021079339,0.050174233,0.018589171,1,-0.06
+23,TabICLv2,Hackerearth,2,Full pass,532428,0.23632679,0.23112544,0.2251874,-0.0052013466,-0.011139389,-0.0059380428,0.058127422,0.067734281,-0.0096068596,-0.0059380428,0.089124573,0.043022292,1,-0.04
+24,TabICLv2,Home Credit,3,Full pass,307511,0.080728819,0.071030346,0.066797132,-0.0096984731,-0.013931688,-0.0042332147,0.068564613,0.068823493,-0.00025887918,-0.0042332147,0.012878212,0.0074555856,1,-0.02
+25,TabICLv2,LendingClub,3,Full pass,9578,0.16005429,0.14078684,0.13888501,-0.019267448,-0.021169278,-0.0019018296,0.12609798,0.12622075,-0.00012276594,-0.0019018296,0.0098732432,0.0066504024,1,0
+26,TabICLv2,MicroFinance,0,Full pass,158700,0.37809074,0.36495634,0.36412394,-0.013134396,-0.013966801,-0.00083240559,0.21816395,0.21874291,-0.00057895177,-0.00083240559,0.034035999,0.025978672,1,0.02
+27,TabICLv2,Myhom,2,Full pass,7000,0.4,0.38581482,0.38397376,-0.01418518,-0.016026237,-0.0018410577,0.25080943,0.2345216,0.016287828,-0.0018410577,0.14806927,0.088730772,1,0.04
+28,TabICLv2,PropPD1,2,Full pass,100000,0.22639,0.19999356,0.19259566,-0.026396437,-0.033794337,-0.0073979,0.12813814,0.1291666,-0.0010284571,-0.0073979,0.029799289,0.019103357,1,0.06
+29,TabICLv2,PropPD2,2,Full pass,105471,0.092755355,0.076905382,0.078879232,-0.015849972,-0.013876122,0.0019738502,0.082312426,0.082268975,4.3451845e-05,0.0019738502,0.0063042781,0.0049071657,1,0.08
+30,TabICLv2,SBA Loans Case,3,Full pass,2102,0.32635585,0.32631453,0.32712677,-4.1321021e-05,0.00077091698,-0.00072959596,0.031810621,0.030623223,0.0011873985,0.00081223801,0.022805857,0.0083385304,1,0.1
+31,TabICLv2,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20680082,0.2032816,-0.014399176,-0.017918401,-0.0035192254,0.13292592,0.13324429,-0.00031837629,-0.0035192254,0.014227403,0.010445652,1,0.12
+32,TabICLv2,Thomas,0,Full pass,1225,0.26367347,0.24708993,0.24339254,-0.016583544,-0.020280933,-0.0036973892,0.18308296,0.18334474,-0.00026178205,-0.0036973892,0.013331556,0.0098762703,1,0.14
+33,TabICLv2,Vehicle Loan,1,Full pass,233154,0.21707112,0.38729445,0.19295599,0.17022333,-0.024115126,0.1461082,0.27476188,0.16195014,0.11281174,-0.19433845,0.34907543,0.21717633,1,0.16
+34,TabICLv2,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.13512286,0.13236526,-0.0029821967,-0.005739795,-0.0027575983,0.080535551,0.080573978,-3.8427494e-05,-0.0027575983,0.019842499,0.0094648311,2,-0.16
+35,TabICLv2,Cobranded,3,One sample,80000,0.2462125,0.23580183,0.22924334,-0.010410672,-0.016969164,-0.0065584913,0.13071025,0.13095456,-0.00024430915,-0.0065584913,0.024865567,0.014648592,2,-0.14
+36,TabICLv2,Credit Risk,2,One sample,32581,0.21816396,0.20703413,0.21034581,-0.011129831,-0.0078181518,0.0033116795,0.049364787,0.053901483,-0.0045366964,0.0033116795,0.055031388,0.026029367,2,-0.12
+37,TabICLv2,GMSC,1,One sample,150000,0.06684,0.057865039,0.056981315,-0.0089749608,-0.0098586847,-0.00088372389,0.049075658,0.049150666,-7.5007986e-05,-0.00088372389,0.0070797956,0.0034764357,2,-0.1
+38,TabICLv2,German Credit,1,One sample,999,0.3003003,0.29274349,0.29068226,-0.0075568069,-0.0096180369,-0.00206123,0.16240025,0.16190818,0.00049207406,-0.00206123,0.029222439,0.020772733,2,-0.08
+39,TabICLv2,HMEQ,0,One sample,5960,0.19949664,0.19071745,0.19381244,-0.0087791943,-0.0056842057,0.0030949885,0.017686181,0.018640296,-0.0009541154,0.0030949885,0.037170396,0.011850839,2,-0.06
+40,TabICLv2,Hackerearth,2,One sample,532428,0.23632679,0.23112544,0.23027689,-0.0052013466,-0.0060498984,-0.00084855176,0.058127422,0.066404643,-0.0082772218,-0.00084855176,0.083606983,0.040703361,2,-0.04
+41,TabICLv2,Home Credit,3,One sample,307511,0.080728819,0.071030346,0.067364168,-0.0096984731,-0.013364651,-0.0036661782,0.068564613,0.06879861,-0.00023399658,-0.0036661782,0.013043337,0.0075053001,2,-0.02
+42,TabICLv2,LendingClub,3,One sample,9578,0.16005429,0.14078684,0.13959892,-0.019267448,-0.020455371,-0.0011879227,0.12609798,0.12604536,5.2624441e-05,-0.0011879227,0.011393724,0.0074281327,2,0
+43,TabICLv2,MicroFinance,0,One sample,158700,0.37809074,0.36495634,0.36692325,-0.013134396,-0.011167489,0.0019669063,0.21816395,0.2183442,-0.00018024717,0.0019669063,0.028255737,0.021054304,2,0.02
+44,TabICLv2,Myhom,2,One sample,7000,0.4,0.38581482,0.38803542,-0.01418518,-0.011964585,0.002220595,0.25080943,0.23436909,0.016440335,0.002220595,0.14906121,0.089460548,2,0.04
+45,TabICLv2,PropPD1,2,One sample,100000,0.22639,0.19999356,0.1947362,-0.026396437,-0.031653801,-0.0052573638,0.12813814,0.12834209,-0.00020394768,-0.0052573638,0.031190075,0.020385025,2,0.06
+46,TabICLv2,PropPD2,2,One sample,105471,0.092755355,0.076905382,0.076338465,-0.015849972,-0.016416889,-0.00056691708,0.082312426,0.082346305,-3.3878833e-05,-0.00056691708,0.0059903063,0.0046074363,2,0.08
+47,TabICLv2,SBA Loans Case,3,One sample,2102,0.32635585,0.32631453,0.32656359,-4.1321021e-05,0.00020773358,-0.00016641256,0.031810621,0.03171457,9.6051321e-05,0.0002490546,0.024194093,0.0086319123,2,0.1
+48,TabICLv2,Taiwan Credit Card,1,One sample,30000,0.2212,0.20680082,0.20450323,-0.014399176,-0.016696775,-0.0022975989,0.13292592,0.13331299,-0.00038707172,-0.0022975989,0.017040956,0.012364361,2,0.12
+49,TabICLv2,Thomas,0,One sample,1225,0.26367347,0.24708993,0.24286541,-0.016583544,-0.020808064,-0.0042245202,0.18308296,0.1833318,-0.00024883448,-0.0042245202,0.01526161,0.010535717,2,0.14
+50,TabICLv2,Vehicle Loan,1,One sample,233154,0.21707112,0.38729445,0.19418287,0.17022333,-0.022888247,0.14733508,0.27476188,0.16190357,0.11285831,-0.19311157,0.34917205,0.21668125,2,0.16
+51,TabPFN v2,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.12641753,0.12667831,-0.011687533,-0.011426753,0.00026078008,0.087267614,0.086831703,0.00043591034,0.00026078008,0.013873656,0.0079125449,3,-0.16
+52,TabPFN v2,Cobranded,3,Accumulate,80000,0.2462125,0.22881422,0.23060466,-0.01739828,-0.01560784,0.0017904401,0.13481406,0.13352347,0.0012905923,0.0017904401,0.024685644,0.016827368,3,-0.14
+53,TabPFN v2,Credit Risk,2,Accumulate,32581,0.21816396,0.21668034,0.21462546,-0.0014836216,-0.0035384991,-0.0020548775,0.059860316,0.059879954,-1.9638632e-05,-0.0020548775,0.028369673,0.01616876,3,-0.12
+54,TabPFN v2,GMSC,1,Accumulate,150000,0.06684,0.057721764,0.060412125,-0.0091182358,-0.0064278751,0.0026903607,0.04985517,0.049586355,0.00026881476,0.0026903607,0.011350052,0.0062910617,3,-0.1
+55,TabPFN v2,German Credit,1,Accumulate,999,0.3003003,0.29586794,0.29196097,-0.0044323601,-0.0083393297,-0.0039069696,0.16396183,0.16284354,0.0011182915,-0.0039069696,0.019257357,0.01480968,3,-0.08
+56,TabPFN v2,HMEQ,0,Accumulate,5960,0.19949664,0.19633141,0.19619009,-0.0031652346,-0.0033065587,-0.00014132415,0.035942663,0.027460763,0.0084818996,-0.00014132415,0.04243382,0.021351216,3,-0.06
+57,TabPFN v2,Hackerearth,2,Accumulate,532428,0.23632679,0.28182856,0.23179525,0.045501769,-0.0045315365,0.040970233,0.082631383,0.078160596,0.0044707866,-0.050033306,0.08281179,0.061449395,3,-0.04
+58,TabPFN v2,Home Credit,3,Accumulate,307511,0.080728819,0.059871731,0.063046097,-0.020857089,-0.017682723,0.003174366,0.070289028,0.069838232,0.00045079592,0.003174366,0.014081329,0.0089007133,3,-0.02
+59,TabPFN v2,LendingClub,3,Accumulate,9578,0.16005429,0.14351572,0.14201283,-0.016538576,-0.018041464,-0.0015028883,0.1272695,0.12673326,0.00053624124,-0.0015028883,0.019051429,0.014236927,3,0
+60,TabPFN v2,MicroFinance,0,Accumulate,158700,0.37809074,0.37884399,0.37469156,0.00075325241,-0.0033991752,-0.0026459227,0.22362317,0.22241238,0.001210793,-0.0041524276,0.025268278,0.020638771,3,0.02
+61,TabPFN v2,Myhom,2,Accumulate,7000,0.4,0.3907081,0.38814935,-0.0092918998,-0.011850653,-0.0025587527,0.23434168,0.23404325,0.00029842822,-0.0025587527,0.016181635,0.013298576,3,0.04
+62,TabPFN v2,PropPD1,2,Accumulate,100000,0.22639,0.19685933,0.21062505,-0.029530667,-0.015764952,0.013765715,0.13752979,0.13580746,0.0017223275,0.013765715,0.028899215,0.020178278,3,0.06
+63,TabPFN v2,PropPD2,2,Accumulate,105471,0.092755355,0.057077593,0.075451604,-0.035677761,-0.017303751,0.018374011,0.083865093,0.082556048,0.0013090453,0.018374011,0.024205297,0.019163493,3,0.08
+64,TabPFN v2,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32581566,0.3258248,-0.00054019219,-0.00053105171,9.1404808e-06,0.033283421,0.033019778,0.00026364281,9.1404808e-06,0.024001066,0.0091956817,3,0.1
+65,TabPFN v2,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20466542,0.20419743,-0.016534576,-0.01700257,-0.00046799393,0.13571148,0.13433324,0.0013782366,-0.00046799393,0.027498601,0.020437601,3,0.12
+66,TabPFN v2,Thomas,0,Accumulate,1225,0.26367347,0.24865072,0.24494068,-0.015022749,-0.018732785,-0.0037100353,0.18353944,0.18303343,0.00050600419,-0.0037100353,0.015220043,0.011992713,3,0.14
+67,TabPFN v2,Vehicle Loan,1,Accumulate,233154,0.21707112,0.19305677,0.19692184,-0.024014352,-0.020149281,0.0038650711,0.16432601,0.16339216,0.00093384689,0.0038650711,0.025139187,0.018413376,3,0.16
+68,TabPFN v2,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.12641753,0.12582798,-0.011687533,-0.01227708,-0.00058954671,0.087267614,0.086877365,0.00039024886,-0.00058954671,0.013932688,0.0076896751,4,-0.16
+69,TabPFN v2,Cobranded,3,Full pass,80000,0.2462125,0.22881422,0.23402737,-0.01739828,-0.012185133,0.005213147,0.13481406,0.13362071,0.001193353,0.005213147,0.024586562,0.016620377,4,-0.14
+70,TabPFN v2,Credit Risk,2,Full pass,32581,0.21816396,0.21668034,0.21468169,-0.0014836216,-0.0034822681,-0.0019986465,0.059860316,0.059341747,0.00051856812,-0.0019986465,0.021376379,0.011474744,4,-0.12
+71,TabPFN v2,GMSC,1,Full pass,150000,0.06684,0.057721764,0.061534894,-0.0091182358,-0.0053051064,0.0038131295,0.04985517,0.049581767,0.00027340276,0.0038131295,0.013185898,0.0070382818,4,-0.1
+72,TabPFN v2,German Credit,1,Full pass,999,0.3003003,0.29586794,0.29301714,-0.0044323601,-0.0072831625,-0.0028508024,0.16396183,0.16328267,0.00067916459,-0.0028508024,0.01705389,0.012844406,4,-0.08
+73,TabPFN v2,HMEQ,0,Full pass,5960,0.19949664,0.19633141,0.19845104,-0.0031652346,-0.0010456069,0.0021196277,0.035942663,0.032134963,0.0038076994,0.0021196277,0.028438638,0.014287587,4,-0.06
+74,TabPFN v2,Hackerearth,2,Full pass,532428,0.23632679,0.28182856,0.23328353,0.045501769,-0.0030432637,0.042458506,0.082631383,0.078286481,0.004344902,-0.048545033,0.075647143,0.055510275,4,-0.04
+75,TabPFN v2,Home Credit,3,Full pass,307511,0.080728819,0.059871731,0.063745106,-0.020857089,-0.016983713,0.0038733752,0.070289028,0.069819693,0.00046933527,0.0038733752,0.014981392,0.0092669967,4,-0.02
+76,TabPFN v2,LendingClub,3,Full pass,9578,0.16005429,0.14351572,0.14004457,-0.016538576,-0.020009721,-0.0034711454,0.1272695,0.1268292,0.00044030157,-0.0034711454,0.019286426,0.014421986,4,0
+77,TabPFN v2,MicroFinance,0,Full pass,158700,0.37809074,0.37884399,0.37851545,0.00075325241,0.00042470964,0.00032854278,0.22362317,0.2224864,0.0011367679,-0.00032854278,0.021617541,0.017629665,4,0.02
+78,TabPFN v2,Myhom,2,Full pass,7000,0.4,0.3907081,0.38836601,-0.0092918998,-0.011633985,-0.0023420853,0.23434168,0.23408589,0.00025578682,-0.0023420853,0.014429298,0.01174086,4,0.04
+79,TabPFN v2,PropPD1,2,Full pass,100000,0.22639,0.19685933,0.2084432,-0.029530667,-0.017946802,0.011583865,0.13752979,0.13587683,0.0016529555,0.011583865,0.025973824,0.018074508,4,0.06
+80,TabPFN v2,PropPD2,2,Full pass,105471,0.092755355,0.057077593,0.077197931,-0.035677761,-0.015557424,0.020120337,0.083865093,0.082489433,0.0013756599,0.020120337,0.026291055,0.020980706,4,0.08
+81,TabPFN v2,SBA Loans Case,3,Full pass,2102,0.32635585,0.32581566,0.32656061,-0.00054019219,0.00020476266,0.00033542953,0.033283421,0.033142241,0.00014118003,0.00074495485,0.017589499,0.0068820874,4,0.1
+82,TabPFN v2,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20466542,0.20490025,-0.016534576,-0.016299745,0.0002348306,0.13571148,0.13442145,0.0012900347,0.0002348306,0.025170896,0.01871448,4,0.12
+83,TabPFN v2,Thomas,0,Full pass,1225,0.26367347,0.24865072,0.24288216,-0.015022749,-0.020791309,-0.0057685596,0.18353944,0.18354657,-7.1345237e-06,-0.0057685596,0.011020843,0.0085979299,4,0.14
+84,TabPFN v2,Vehicle Loan,1,Full pass,233154,0.21707112,0.19305677,0.19644917,-0.024014352,-0.020621949,0.0033924024,0.16432601,0.16341585,0.00091016382,0.0033924024,0.023402675,0.017330365,4,0.16
+85,TabPFN v2,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.12641753,0.12639188,-0.011687533,-0.01171318,-2.5646824e-05,0.087267614,0.086843431,0.00042418257,-2.5646824e-05,0.013456547,0.0077143725,5,-0.16
+86,TabPFN v2,Cobranded,3,One sample,80000,0.2462125,0.22881422,0.23048654,-0.01739828,-0.015725957,0.0016723232,0.13481406,0.1335735,0.0012405602,0.0016723232,0.024104104,0.016460776,5,-0.14
+87,TabPFN v2,Credit Risk,2,One sample,32581,0.21816396,0.21668034,0.21456203,-0.0014836216,-0.0036019269,-0.0021183053,0.059860316,0.059754577,0.00010573812,-0.0021183053,0.027883064,0.015869371,5,-0.12
+88,TabPFN v2,GMSC,1,One sample,150000,0.06684,0.057721764,0.060191561,-0.0091182358,-0.006648439,0.0024697968,0.04985517,0.04960987,0.00024529978,0.0024697968,0.0106274,0.0059222922,5,-0.1
+89,TabPFN v2,German Credit,1,One sample,999,0.3003003,0.29586794,0.29267115,-0.0044323601,-0.0076291471,-0.003196787,0.16396183,0.16281593,0.001145907,-0.003196787,0.018450608,0.014143634,5,-0.08
+90,TabPFN v2,HMEQ,0,One sample,5960,0.19949664,0.19633141,0.19473134,-0.0031652346,-0.0047653052,-0.0016000707,0.035942663,0.027132552,0.0088101102,-0.0016000707,0.041617456,0.021287518,5,-0.06
+91,TabPFN v2,Hackerearth,2,One sample,532428,0.23632679,0.28182856,0.23284959,0.045501769,-0.0034772014,0.042024568,0.082631383,0.077959633,0.0046717493,-0.048978971,0.081140404,0.060165621,5,-0.04
+92,TabPFN v2,Home Credit,3,One sample,307511,0.080728819,0.059871731,0.063375739,-0.020857089,-0.017353081,0.0035040077,0.070289028,0.069823501,0.00046552712,0.0035040077,0.014068244,0.0089203766,5,-0.02
+93,TabPFN v2,LendingClub,3,One sample,9578,0.16005429,0.14351572,0.14191139,-0.016538576,-0.018142899,-0.001604323,0.1272695,0.12673568,0.00053382123,-0.001604323,0.019010456,0.014193979,5,0
+94,TabPFN v2,MicroFinance,0,One sample,158700,0.37809074,0.37884399,0.37489492,0.00075325241,-0.0031958147,-0.0024425623,0.22362317,0.22240451,0.0012186607,-0.0039490671,0.024155394,0.019676718,5,0.02
+95,TabPFN v2,Myhom,2,One sample,7000,0.4,0.3907081,0.38816923,-0.0092918998,-0.011830771,-0.0025388712,0.23434168,0.23404758,0.00029410153,-0.0025388712,0.01587354,0.013046147,5,0.04
+96,TabPFN v2,PropPD1,2,One sample,100000,0.22639,0.19685933,0.20954491,-0.029530667,-0.016845089,0.012685578,0.13752979,0.13585432,0.0016754684,0.012685578,0.027558788,0.019236572,5,0.06
+97,TabPFN v2,PropPD2,2,One sample,105471,0.092755355,0.057077593,0.075384679,-0.035677761,-0.017370675,0.018307086,0.083865093,0.082564696,0.0013003966,0.018307086,0.024057149,0.019002276,5,0.08
+98,TabPFN v2,SBA Loans Case,3,One sample,2102,0.32635585,0.32581566,0.32598216,-0.00054019219,-0.0003736896,0.0001665026,0.033283421,0.03295783,0.00032559135,0.0001665026,0.023347213,0.0089968539,5,0.1
+99,TabPFN v2,Taiwan Credit Card,1,One sample,30000,0.2212,0.20466542,0.20465815,-0.016534576,-0.01654185,-7.2744666e-06,0.13571148,0.13435903,0.0013524508,-7.2744666e-06,0.02630946,0.019548714,5,0.12
+100,TabPFN v2,Thomas,0,One sample,1225,0.26367347,0.24865072,0.24523811,-0.015022749,-0.018435363,-0.0034126138,0.18353944,0.18311159,0.00042785032,-0.0034126138,0.0138267,0.01088427,5,0.14
+101,TabPFN v2,Vehicle Loan,1,One sample,233154,0.21707112,0.19305677,0.19726182,-0.024014352,-0.019809302,0.0042050503,0.16432601,0.16339209,0.00093392417,0.0042050503,0.024002462,0.017666936,5,0.16
+102,TabPFN v2.6,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.12910445,0.12779077,-0.0090006125,-0.01031429,-0.0013136779,0.083792889,0.083916505,-0.00012361549,-0.0013136779,0.010184776,0.0055993308,6,-0.16
+103,TabPFN v2.6,Cobranded,3,Accumulate,80000,0.2462125,0.23628205,0.23431668,-0.009930454,-0.01189582,-0.0019653656,0.13048481,0.13061968,-0.00013486818,-0.0019653656,0.010635436,0.0073605532,6,-0.14
+104,TabPFN v2.6,Credit Risk,2,Accumulate,32581,0.21816396,0.20729135,0.20361957,-0.010872613,-0.01454439,-0.003671777,0.053688482,0.054683205,-0.00099472262,-0.003671777,0.015202132,0.0079299313,6,-0.12
+105,TabPFN v2.6,GMSC,1,Accumulate,150000,0.06684,0.058335607,0.057212261,-0.0085043929,-0.0096277393,-0.0011233465,0.049245344,0.049238097,7.2466916e-06,-0.0011233465,0.0043926063,0.0021520075,6,-0.1
+106,TabPFN v2.6,German Credit,1,Accumulate,999,0.3003003,0.29046397,0.29203026,-0.0098363313,-0.0082700371,0.0015662942,0.16257482,0.16256532,9.5011389e-06,0.0015662942,0.011840846,0.0092611889,6,-0.08
+107,TabPFN v2.6,HMEQ,0,Accumulate,5960,0.19949664,0.18592591,0.18391647,-0.013570737,-0.015580169,-0.0020094326,0.013749836,0.017168467,-0.0034186308,-0.0020094326,0.026412281,0.0090587394,6,-0.06
+108,TabPFN v2.6,Hackerearth,2,Accumulate,532428,0.23632679,0.23148557,0.22491041,-0.0048412211,-0.011416384,-0.0065751624,0.065047143,0.067074534,-0.0020273909,-0.0065751624,0.021625749,0.012901089,6,-0.04
+109,TabPFN v2.6,Home Credit,3,Accumulate,307511,0.080728819,0.06920748,0.066733484,-0.01152134,-0.013995335,-0.0024739951,0.06868368,0.068802498,-0.00011881735,-0.0024739951,0.005974598,0.0038679353,6,-0.02
+110,TabPFN v2.6,LendingClub,3,Accumulate,9578,0.16005429,0.14034329,0.138415,-0.019711,-0.021639296,-0.0019282961,0.12655783,0.12654724,1.0590146e-05,-0.0019282961,0.0065281653,0.0044939223,6,0
+111,TabPFN v2.6,MicroFinance,0,Accumulate,158700,0.37809074,0.36995232,0.36620827,-0.0081384136,-0.011882471,-0.0037440574,0.2176398,0.2179414,-0.00030160439,-0.0037440574,0.014055869,0.010881705,6,0.02
+112,TabPFN v2.6,Myhom,2,Accumulate,7000,0.4,0.39089605,0.38826745,-0.0091039538,-0.011732549,-0.0026285947,0.23405045,0.2341355,-8.5052482e-05,-0.0026285947,0.0095735533,0.0072274659,6,0.04
+113,TabPFN v2.6,PropPD1,2,Accumulate,100000,0.22639,0.20999,0.20778909,-0.016399997,-0.018600911,-0.0022009136,0.13357595,0.13375775,-0.00018179695,-0.0022009136,0.0091088948,0.0064323958,6,0.06
+114,TabPFN v2.6,PropPD2,2,Accumulate,105471,0.092755355,0.077113889,0.075050365,-0.015641466,-0.017704989,-0.0020635236,0.082257539,0.082332664,-7.5124967e-05,-0.0020635236,0.0047919144,0.0038301576,6,0.08
+115,TabPFN v2.6,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32613927,0.32574538,-0.00021657747,-0.00061047413,-0.00039389666,0.032727747,0.032705757,2.1989796e-05,-0.00039389666,0.010828712,0.0040252794,6,0.1
+116,TabPFN v2.6,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20649021,0.20512226,-0.014709793,-0.016077745,-0.0013679517,0.13310767,0.13303821,6.945859e-05,-0.0013679517,0.0089152578,0.006328359,6,0.12
+117,TabPFN v2.6,Thomas,0,Accumulate,1225,0.26367347,0.24653708,0.24611749,-0.017136387,-0.017555981,-0.0004195944,0.18359201,0.18313455,0.0004574614,-0.0004195944,0.015120503,0.011578233,6,0.14
+118,TabPFN v2.6,Vehicle Loan,1,Accumulate,233154,0.21707112,0.19828218,0.19538936,-0.018788944,-0.021681759,-0.0028928154,0.16205031,0.16212271,-7.2402204e-05,-0.0028928154,0.012162143,0.0089112292,6,0.16
+119,TabPFN v2.6,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.12910445,0.12831501,-0.0090006125,-0.0097900491,-0.00078943661,0.083792889,0.083886397,-9.3507632e-05,-0.00078943661,0.0094073941,0.0053384864,7,-0.16
+120,TabPFN v2.6,Cobranded,3,Full pass,80000,0.2462125,0.23628205,0.23633456,-0.009930454,-0.0098779427,5.2511276e-05,0.13048481,0.13042889,5.5925877e-05,5.2511276e-05,0.0095825531,0.0064093306,7,-0.14
+121,TabPFN v2.6,Credit Risk,2,Full pass,32581,0.21816396,0.20729135,0.20778408,-0.010872613,-0.010379877,0.00049273662,0.053688482,0.053807657,-0.00011917445,0.00049273662,0.0086199664,0.0043050259,7,-0.12
+122,TabPFN v2.6,GMSC,1,Full pass,150000,0.06684,0.058335607,0.057512382,-0.0085043929,-0.0093276183,-0.00082322544,0.049245344,0.049253518,-8.1747236e-06,-0.00082322544,0.0037456531,0.0017530984,7,-0.1
+123,TabPFN v2.6,German Credit,1,Full pass,999,0.3003003,0.29046397,0.29114076,-0.0098363313,-0.009159542,0.00067678927,0.16257482,0.16302321,-0.00044839001,0.00067678927,0.012229708,0.0088402584,7,-0.08
+124,TabPFN v2.6,HMEQ,0,Full pass,5960,0.19949664,0.18592591,0.18460982,-0.013570737,-0.014886829,-0.0013160919,0.013749836,0.016442299,-0.0026924628,-0.0013160919,0.026604818,0.0095625531,7,-0.06
+125,TabPFN v2.6,Hackerearth,2,Full pass,532428,0.23632679,0.23148557,0.23143857,-0.0048412211,-0.0048882223,-4.7001144e-05,0.065047143,0.065681701,-0.00063455739,-4.7001144e-05,0.012109337,0.0066262444,7,-0.04
+126,TabPFN v2.6,Home Credit,3,Full pass,307511,0.080728819,0.06920748,0.068773908,-0.01152134,-0.011954912,-0.00043357166,0.06868368,0.068706219,-2.2538613e-05,-0.00043357166,0.0049452453,0.0031321961,7,-0.02
+127,TabPFN v2.6,LendingClub,3,Full pass,9578,0.16005429,0.14034329,0.13928299,-0.019711,-0.020771305,-0.0010603054,0.12655783,0.12651528,4.2546364e-05,-0.0010603054,0.0059202338,0.004117396,7,0
+128,TabPFN v2.6,MicroFinance,0,Full pass,158700,0.37809074,0.36995232,0.36666235,-0.0081384136,-0.011428389,-0.0032899759,0.2176398,0.21779138,-0.00015158013,-0.0032899759,0.013207338,0.01044839,7,0.02
+129,TabPFN v2.6,Myhom,2,Full pass,7000,0.4,0.39089605,0.3889229,-0.0091039538,-0.011077105,-0.0019731512,0.23405045,0.23410195,-5.1506805e-05,-0.0019731512,0.0078302696,0.0060180337,7,0.04
+130,TabPFN v2.6,PropPD1,2,Full pass,100000,0.22639,0.20999,0.21065979,-0.016399997,-0.015730214,0.00066978325,0.13357595,0.13373741,-0.00016146117,0.00066978325,0.0066824719,0.0045251157,7,0.06
+131,TabPFN v2.6,PropPD2,2,Full pass,105471,0.092755355,0.077113889,0.076265392,-0.015641466,-0.016489962,-0.00084849659,0.082257539,0.082261327,-3.7877892e-06,-0.00084849659,0.0039465989,0.0028833444,7,0.08
+132,TabPFN v2.6,SBA Loans Case,3,Full pass,2102,0.32635585,0.32613927,0.32617026,-0.00021657747,-0.00018559337,3.0984102e-05,0.032727747,0.032414049,0.00031369804,3.0984102e-05,0.012239607,0.0046151549,7,0.1
+133,TabPFN v2.6,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20649021,0.20497295,-0.014709793,-0.016227055,-0.0015172617,0.13310767,0.13305437,5.3297011e-05,-0.0015172617,0.0085543255,0.0060028329,7,0.12
+134,TabPFN v2.6,Thomas,0,Full pass,1225,0.26367347,0.24653708,0.24392757,-0.017136387,-0.019745902,-0.0026095158,0.18359201,0.18346918,0.00012283769,-0.0026095158,0.01070629,0.0082073301,7,0.14
+135,TabPFN v2.6,Vehicle Loan,1,Full pass,233154,0.21707112,0.19828218,0.19590275,-0.018788944,-0.021168375,-0.0023794318,0.16205031,0.16207621,-2.5901366e-05,-0.0023794318,0.0097169539,0.0072434008,7,0.16
+136,TabPFN v2.6,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.12910445,0.12783589,-0.0090006125,-0.010269166,-0.0012685536,0.083792889,0.083903883,-0.00011099424,-0.0012685536,0.0092798445,0.0050929504,8,-0.16
+137,TabPFN v2.6,Cobranded,3,One sample,80000,0.2462125,0.23628205,0.23441795,-0.009930454,-0.011794547,-0.0018640926,0.13048481,0.13062675,-0.00014193823,-0.0018640926,0.0099947921,0.0069038523,8,-0.14
+138,TabPFN v2.6,Credit Risk,2,One sample,32581,0.21816396,0.20729135,0.203852,-0.010872613,-0.014311963,-0.0034393502,0.053688482,0.054639678,-0.00095119605,-0.0034393502,0.014730899,0.0076431141,8,-0.12
+139,TabPFN v2.6,GMSC,1,One sample,150000,0.06684,0.058335607,0.057143091,-0.0085043929,-0.0096969086,-0.0011925158,0.049245344,0.049247894,-2.5502305e-06,-0.0011925158,0.0040560423,0.0020456806,8,-0.1
+140,TabPFN v2.6,German Credit,1,One sample,999,0.3003003,0.29046397,0.29305609,-0.0098363313,-0.0072442077,0.0025921236,0.16257482,0.1624721,0.00010272943,0.0025921236,0.011436201,0.0089519585,8,-0.08
+141,TabPFN v2.6,HMEQ,0,One sample,5960,0.19949664,0.18592591,0.18296814,-0.013570737,-0.0165285,-0.0029577629,0.013749836,0.01714769,-0.0033978538,-0.0029577629,0.025114747,0.0085811796,8,-0.06
+142,TabPFN v2.6,Hackerearth,2,One sample,532428,0.23632679,0.23148557,0.22506649,-0.0048412211,-0.011260298,-0.006419077,0.065047143,0.067009664,-0.0019625201,-0.006419077,0.021003316,0.012528405,8,-0.04
+143,TabPFN v2.6,Home Credit,3,One sample,307511,0.080728819,0.06920748,0.067333714,-0.01152134,-0.013395106,-0.0018737657,0.06868368,0.068779359,-9.5678243e-05,-0.0018737657,0.0054640925,0.0035838266,8,-0.02
+144,TabPFN v2.6,LendingClub,3,One sample,9578,0.16005429,0.14034329,0.13878802,-0.019711,-0.021266276,-0.0015552764,0.12655783,0.12653748,2.0352709e-05,-0.0015552764,0.0061007139,0.0042130777,8,0
+145,TabPFN v2.6,MicroFinance,0,One sample,158700,0.37809074,0.36995232,0.3666786,-0.0081384136,-0.011412137,-0.0032737234,0.2176398,0.21787727,-0.00023747421,-0.0032737234,0.012954497,0.010107919,8,0.02
+146,TabPFN v2.6,Myhom,2,One sample,7000,0.4,0.39089605,0.38775212,-0.0091039538,-0.012247879,-0.0031439253,0.23405045,0.23411873,-6.8286927e-05,-0.0031439253,0.0092233181,0.0070553341,8,0.04
+147,TabPFN v2.6,PropPD1,2,One sample,100000,0.22639,0.20999,0.20811496,-0.016399997,-0.01827504,-0.0018750429,0.13357595,0.13374078,-0.00016483211,-0.0018750429,0.0088044662,0.006199522,8,0.06
+148,TabPFN v2.6,PropPD2,2,One sample,105471,0.092755355,0.077113889,0.075342524,-0.015641466,-0.01741283,-0.0017713649,0.082257539,0.082317895,-6.0356156e-05,-0.0017713649,0.0045677448,0.0036344969,8,0.08
+149,TabPFN v2.6,SBA Loans Case,3,One sample,2102,0.32635585,0.32613927,0.32585096,-0.00021657747,-0.00050489325,-0.00028831578,0.032727747,0.032718052,9.6946498e-06,-0.00028831578,0.010063158,0.0036971563,8,0.1
+150,TabPFN v2.6,Taiwan Credit Card,1,One sample,30000,0.2212,0.20649021,0.20520532,-0.014709793,-0.015994682,-0.0012848889,0.13310767,0.13303101,7.665812e-05,-0.0012848889,0.0085041128,0.006008158,8,0.12
+151,TabPFN v2.6,Thomas,0,One sample,1225,0.26367347,0.24653708,0.24563189,-0.017136387,-0.018041584,-0.00090519707,0.18359201,0.18322742,0.00036459622,-0.00090519707,0.013569341,0.01034345,8,0.14
+152,TabPFN v2.6,Vehicle Loan,1,One sample,233154,0.21707112,0.19828218,0.19541591,-0.018788944,-0.021655211,-0.0028662673,0.16205031,0.16211932,-6.9014257e-05,-0.0028662673,0.012026506,0.0087496729,8,0.16
+153,TabPFN v3,Bondora Peer-to-Peer,0,Accumulate,730176,0.13810506,0.13157373,0.13056534,-0.0065313284,-0.0075397222,-0.0010083938,0.080273139,0.08045984,-0.00018670123,-0.0010083938,0.015489975,0.0075852428,9,-0.16
+154,TabPFN v3,Cobranded,3,Accumulate,80000,0.2462125,0.23469972,0.23627839,-0.011512781,-0.0099341136,0.0015786675,0.13094193,0.13072569,0.00021624541,0.0015786675,0.01811652,0.010339293,9,-0.14
+155,TabPFN v3,Credit Risk,2,Accumulate,32581,0.21816396,0.20759623,0.20492096,-0.010567735,-0.013243005,-0.0026752706,0.050267518,0.0509087,-0.00064118239,-0.0026752706,0.033296697,0.013397297,9,-0.12
+156,TabPFN v3,GMSC,1,Accumulate,150000,0.06684,0.058648143,0.058542924,-0.0081918569,-0.0082970762,-0.00010521923,0.048835831,0.048830247,5.5845013e-06,-0.00010521923,0.0054955496,0.0028212578,9,-0.1
+157,TabPFN v3,German Credit,1,Accumulate,999,0.3003003,0.29032207,0.28629419,-0.0099782295,-0.01400611,-0.0040278804,0.16260483,0.16234448,0.00026034916,-0.0040278804,0.029652088,0.021604009,9,-0.08
+158,TabPFN v3,HMEQ,0,Accumulate,5960,0.19949664,0.1956357,0.19413253,-0.0038609394,-0.0053641137,-0.0015031743,0.0057323372,0.0084250442,-0.0026927071,-0.0015031743,0.042481683,0.013097479,9,-0.06
+159,TabPFN v3,Hackerearth,2,Accumulate,532428,0.23632679,0.22884167,0.22325481,-0.0074851162,-0.013071978,-0.0055868613,0.054771256,0.05902926,-0.0042580045,-0.0055868613,0.04526978,0.020511258,9,-0.04
+160,TabPFN v3,Home Credit,3,Accumulate,307511,0.080728819,0.066729049,0.066026024,-0.01399977,-0.014702796,-0.00070302531,0.068394809,0.068491163,-9.6354176e-05,-0.00070302531,0.01099576,0.0065549316,9,-0.02
+161,TabPFN v3,LendingClub,3,Accumulate,9578,0.16005429,0.14098134,0.13846313,-0.019072951,-0.021591156,-0.0025182054,0.12638842,0.12647567,-8.7251958e-05,-0.0025182054,0.011386807,0.008051492,9,0
+162,TabPFN v3,MicroFinance,0,Accumulate,158700,0.37809074,0.36600085,0.3673309,-0.012089888,-0.010759833,0.0013300551,0.21752139,0.21754719,-2.580793e-05,0.0013300551,0.019867119,0.015084278,9,0.02
+163,TabPFN v3,Myhom,2,Accumulate,7000,0.4,0.39120362,0.39091083,-0.0087963807,-0.0090891688,-0.00029278805,0.23383466,0.23392663,-9.1971707e-05,-0.00029278805,0.011181442,0.0086728455,9,0.04
+164,TabPFN v3,PropPD1,2,Accumulate,100000,0.22639,0.1925788,0.1991488,-0.0338112,-0.027241201,0.0065699991,0.12856333,0.12779333,0.00076999452,0.0065699991,0.01922409,0.011441281,9,0.06
+165,TabPFN v3,PropPD2,2,Accumulate,105471,0.092755355,0.075070161,0.076257282,-0.017685193,-0.016498073,0.0011871209,0.082365418,0.082249597,0.00011582179,0.0011871209,0.0066865953,0.0047852881,9,0.08
+166,TabPFN v3,SBA Loans Case,3,Accumulate,2102,0.32635585,0.32639496,0.32671786,3.9106569e-05,0.00036200345,-0.00032289688,0.033249146,0.032892137,0.00035700843,0.00032289688,0.027267672,0.010249128,9,0.1
+167,TabPFN v3,Taiwan Credit Card,1,Accumulate,30000,0.2212,0.20652503,0.20742094,-0.014674968,-0.01377906,0.0008959088,0.13305926,0.1329263,0.00013295424,0.0008959088,0.014893248,0.010685278,9,0.12
+168,TabPFN v3,Thomas,0,Accumulate,1225,0.26367347,0.24733232,0.24695176,-0.016341154,-0.016721706,-0.00038055155,0.18350797,0.18316681,0.00034116715,-0.00038055155,0.016715497,0.012885403,9,0.14
+169,TabPFN v3,Vehicle Loan,1,Accumulate,233154,0.21707112,0.19829208,0.19938118,-0.018779038,-0.017689936,0.0010891013,0.16127828,0.16126323,1.5043708e-05,0.0010891013,0.0095009018,0.0070074473,9,0.16
+170,TabPFN v3,Bondora Peer-to-Peer,0,Full pass,730176,0.13810506,0.13157373,0.13050055,-0.0065313284,-0.0076045067,-0.0010731783,0.080273139,0.08048812,-0.00021498108,-0.0010731783,0.01506862,0.0070288241,10,-0.16
+171,TabPFN v3,Cobranded,3,Full pass,80000,0.2462125,0.23469972,0.23664017,-0.011512781,-0.0095723313,0.0019404498,0.13094193,0.13084065,0.00010128523,0.0019404498,0.015712663,0.0092656405,10,-0.14
+172,TabPFN v3,Credit Risk,2,Full pass,32581,0.21816396,0.20759623,0.20668635,-0.010567735,-0.011477614,-0.00090987964,0.050267518,0.050293118,-2.5600453e-05,-0.00090987964,0.028374356,0.010857994,10,-0.12
+173,TabPFN v3,GMSC,1,Full pass,150000,0.06684,0.058648143,0.058856653,-0.0081918569,-0.0079833475,0.00020850944,0.048835831,0.048843295,-7.4640834e-06,0.00020850944,0.0049328309,0.0023760955,10,-0.1
+174,TabPFN v3,German Credit,1,Full pass,999,0.3003003,0.29032207,0.28849064,-0.0099782295,-0.011809663,-0.0018314337,0.16260483,0.1621604,0.00044443253,-0.0018314337,0.024034774,0.018072165,10,-0.08
+175,TabPFN v3,HMEQ,0,Full pass,5960,0.19949664,0.1956357,0.1943359,-0.0038609394,-0.0051607396,-0.0012998002,0.0057323372,0.0080673922,-0.002335055,-0.0012998002,0.038254527,0.010795284,10,-0.06
+176,TabPFN v3,Hackerearth,2,Full pass,532428,0.23632679,0.22884167,0.22661044,-0.0074851162,-0.0097163501,-0.0022312339,0.054771256,0.057543074,-0.0027718186,-0.0022312339,0.036023675,0.017463641,10,-0.04
+177,TabPFN v3,Home Credit,3,Full pass,307511,0.080728819,0.066729049,0.066976395,-0.01399977,-0.013752424,0.00024734608,0.068394809,0.068462715,-6.7906179e-05,0.00024734608,0.0098845623,0.0060240793,10,-0.02
+178,TabPFN v3,LendingClub,3,Full pass,9578,0.16005429,0.14098134,0.13987078,-0.019072951,-0.020183513,-0.0011105621,0.12638842,0.12638944,-1.0177701e-06,-0.0011105621,0.0079433434,0.0057555315,10,0
+179,TabPFN v3,MicroFinance,0,Full pass,158700,0.37809074,0.36600085,0.36449946,-0.012089888,-0.013591277,-0.001501389,0.21752139,0.21811933,-0.00059794418,-0.001501389,0.025783798,0.019708307,10,0.02
+180,TabPFN v3,Myhom,2,Full pass,7000,0.4,0.39120362,0.39186307,-0.0087963807,-0.0081369323,0.00065944846,0.23383466,0.23383135,3.3091376e-06,0.00065944846,0.0096072381,0.0070834389,10,0.04
+181,TabPFN v3,PropPD1,2,Full pass,100000,0.22639,0.1925788,0.19189277,-0.0338112,-0.034497227,-0.00068602685,0.12856333,0.12873398,-0.00017064962,-0.00068602685,0.013535746,0.0080951849,10,0.06
+182,TabPFN v3,PropPD2,2,Full pass,105471,0.092755355,0.075070161,0.075634634,-0.017685193,-0.017120721,0.00056447251,0.082365418,0.082274411,9.1007321e-05,0.00056447251,0.0063508989,0.0046237284,10,0.08
+183,TabPFN v3,SBA Loans Case,3,Full pass,2102,0.32635585,0.32639496,0.3259771,3.9106569e-05,-0.00037874925,-0.00033964269,0.033249146,0.031581633,0.0016675128,-0.00041785582,0.027925901,0.0093783903,10,0.1
+184,TabPFN v3,Taiwan Credit Card,1,Full pass,30000,0.2212,0.20652503,0.205972,-0.014674968,-0.015227998,-0.00055302991,0.13305926,0.13296806,9.1202641e-05,-0.00055302991,0.012604934,0.0087914422,10,0.12
+185,TabPFN v3,Thomas,0,Full pass,1225,0.26367347,0.24733232,0.24721047,-0.016341154,-0.016463,-0.00012184568,0.18350797,0.1831189,0.00038907223,-0.00012184568,0.016400451,0.012680637,10,0.14
+186,TabPFN v3,Vehicle Loan,1,Full pass,233154,0.21707112,0.19829208,0.19827644,-0.018779038,-0.018794677,-1.5639195e-05,0.16127828,0.16130391,-2.5636772e-05,-1.5639195e-05,0.0087712736,0.0064877857,10,0.16
+187,TabPFN v3,Bondora Peer-to-Peer,0,One sample,730176,0.13810506,0.13157373,0.12954467,-0.0065313284,-0.0085603931,-0.0020290647,0.080273139,0.080368118,-9.4978969e-05,-0.0020290647,0.018161559,0.0092246503,11,-0.16
+188,TabPFN v3,Cobranded,3,One sample,80000,0.2462125,0.23469972,0.23659517,-0.011512781,-0.0096173331,0.001895448,0.13094193,0.13066027,0.00028166564,0.001895448,0.01757261,0.0099616437,11,-0.14
+189,TabPFN v3,Credit Risk,2,One sample,32581,0.21816396,0.20759623,0.20458518,-0.010567735,-0.013578778,-0.0030110434,0.050267518,0.050616432,-0.00034891469,-0.0030110434,0.032626902,0.013465184,11,-0.12
+190,TabPFN v3,GMSC,1,One sample,150000,0.06684,0.058648143,0.058134493,-0.0081918569,-0.0087055065,-0.00051364959,0.048835831,0.048830894,4.9375488e-06,-0.00051364959,0.0057845689,0.0029538876,11,-0.1
+191,TabPFN v3,German Credit,1,One sample,999,0.3003003,0.29032207,0.28525003,-0.0099782295,-0.015050274,-0.0050720448,0.16260483,0.16262971,-2.4878596e-05,-0.0050720448,0.030839736,0.021845138,11,-0.08
+192,TabPFN v3,HMEQ,0,One sample,5960,0.19949664,0.1956357,0.19527311,-0.0038609394,-0.0042235353,-0.00036259592,0.0057323372,0.0080908827,-0.0023585455,-0.00036259592,0.039873851,0.01204996,11,-0.06
+193,TabPFN v3,Hackerearth,2,One sample,532428,0.23632679,0.22884167,0.22582664,-0.0074851162,-0.010500151,-0.0030150352,0.054771256,0.058391551,-0.0036202952,-0.0030150352,0.041825037,0.019939155,11,-0.04
+194,TabPFN v3,Home Credit,3,One sample,307511,0.080728819,0.066729049,0.067733862,-0.01399977,-0.012994957,0.0010048133,0.068394809,0.068397336,-2.5268897e-06,0.0010048133,0.009516832,0.0057835053,11,-0.02
+195,TabPFN v3,LendingClub,3,One sample,9578,0.16005429,0.14098134,0.1388532,-0.019072951,-0.021201093,-0.0021281418,0.12638842,0.1264136,-2.5183438e-05,-0.0021281418,0.010996671,0.007908076,11,0
+196,TabPFN v3,MicroFinance,0,One sample,158700,0.37809074,0.36600085,0.36879872,-0.012089888,-0.0092920144,0.0027978739,0.21752139,0.21727175,0.00024963884,0.0027978739,0.018476596,0.013987089,11,0.02
+197,TabPFN v3,Myhom,2,One sample,7000,0.4,0.39120362,0.39062499,-0.0087963807,-0.0093750135,-0.00057863278,0.23383466,0.23394072,-0.0001060592,-0.00057863278,0.011045403,0.0085770939,11,0.04
+198,TabPFN v3,PropPD1,2,One sample,100000,0.22639,0.1925788,0.1989894,-0.0338112,-0.027400595,0.0064106047,0.12856333,0.12768755,0.00087577694,0.0064106047,0.019199493,0.011427133,11,0.06
+199,TabPFN v3,PropPD2,2,One sample,105471,0.092755355,0.075070161,0.076525814,-0.017685193,-0.01622954,0.0014556532,0.082365418,0.082237493,0.00012792499,0.0014556532,0.0068315993,0.0048704101,11,0.08
+200,TabPFN v3,SBA Loans Case,3,One sample,2102,0.32635585,0.32639496,0.3273916,3.9106569e-05,0.0010357507,-0.00099664409,0.033249146,0.032946436,0.00030270936,0.00099664409,0.026406909,0.010093118,11,0.1
+201,TabPFN v3,Taiwan Credit Card,1,One sample,30000,0.2212,0.20652503,0.20760075,-0.014674968,-0.013599246,0.0010757227,0.13305926,0.13291066,0.00014860026,0.0010757227,0.014540912,0.01055693,11,0.12
+202,TabPFN v3,Thomas,0,One sample,1225,0.26367347,0.24733232,0.24701412,-0.016341154,-0.016659345,-0.00031819084,0.18350797,0.18311962,0.00038835744,-0.00031819084,0.016230166,0.012506503,11,0.14
+203,TabPFN v3,Vehicle Loan,1,One sample,233154,0.21707112,0.19829208,0.1992624,-0.018779038,-0.017808717,0.0009703209,0.16127828,0.16122454,5.3733158e-05,0.0009703209,0.010249421,0.007488664,11,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -116733,106 +117617,106 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 95,TabPFN v3,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.63257327,0.62290852,0.0045432477,-0.0051215103,-0.00057826262,0.017543234,0.017805652,-0.00026241843,-0.0096647579,0.027574055,0.021037007
 
 Figure: lgd_prediction_diagnostics
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,PropLGD2,0,Accumulate,4637,0.39203237,0.38970801,0.39394852,-0.0023243643,0.0019161493,0.00040821501,0.020061868,0.020285251,-0.00022338321,0.0042405135,0.020118382,0.013339666
-1,TabICLv2,PropLGD2,0,Full pass,4637,0.39203237,0.38970801,0.39277862,-0.0023243643,0.00074624983,0.0015781144,0.020061868,0.020291632,-0.00022976422,0.0030706141,0.018022736,0.012172224
-2,TabICLv2,PropLGD2,0,One sample,4637,0.39203237,0.38970801,0.39331158,-0.0023243643,0.001279205,0.0010451593,0.020061868,0.020287942,-0.0002260737,0.0036035692,0.019601783,0.012996387
-3,TabICLv2,PropLGD3,0,Accumulate,2545,0.22813006,0.23317939,0.23050586,0.0050493211,0.0023757968,0.0026735243,0.085243582,0.085389752,-0.0001461695,-0.0026735243,0.0073541747,0.0059820305
-4,TabICLv2,PropLGD3,0,Full pass,2545,0.22813006,0.23317939,0.2330239,0.0050493211,0.0048938329,0.0001554882,0.085243582,0.085502092,-0.00025850942,-0.0001554882,0.0084349593,0.0059939309
-5,TabICLv2,PropLGD3,0,One sample,2545,0.22813006,0.23317939,0.23157866,0.0050493211,0.0034485915,0.0016007296,0.085243582,0.085387056,-0.0001434739,-0.0016007296,0.0069940951,0.0054731288
-6,TabICLv2,Freddie Mac,1,Accumulate,16002,0.45884258,0.46157656,0.46040826,0.0027339782,0.0015656852,0.001168293,0.062386759,0.062984214,-0.00059745543,-0.001168293,0.031959399,0.023783404
-7,TabICLv2,Freddie Mac,1,Full pass,16002,0.45884258,0.46157656,0.46043879,0.0027339782,0.0015962115,0.0011377667,0.062386759,0.063007721,-0.00062096257,-0.0011377667,0.03200798,0.023813765
-8,TabICLv2,Freddie Mac,1,One sample,16002,0.45884258,0.46157656,0.4592946,0.0027339782,0.00045202578,0.0022819524,0.062386759,0.062956106,-0.00056934704,-0.0022819524,0.031977755,0.023803013
-9,TabICLv2,PropLGD1,1,Accumulate,57932,0.70442018,0.69372096,0.67145986,-0.010699228,-0.032960324,-0.022261095,0.062212275,0.067628598,-0.0054163229,-0.022261095,0.061426363,0.037960121
-10,TabICLv2,PropLGD1,1,Full pass,57932,0.70442018,0.69372096,0.67339875,-0.010699228,-0.031021436,-0.020322208,0.062212275,0.067183585,-0.0049713106,-0.020322208,0.058724137,0.03638831
-11,TabICLv2,PropLGD1,1,One sample,57932,0.70442018,0.69372096,0.67053025,-0.010699228,-0.033889932,-0.023190704,0.062212275,0.067420707,-0.0052084322,-0.023190704,0.061864909,0.038112617
-12,TabICLv2,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59171179,0.59527923,0.0012011311,0.0047685723,-0.0035674412,0.015732659,0.015753834,-2.1174744e-05,0.0035674412,0.0053668744,0.0042117393
-13,TabICLv2,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59171179,0.59479512,0.0012011311,0.0042844648,-0.0030833337,0.015732659,0.015750485,-1.7826284e-05,0.0030833337,0.0052454781,0.0040387836
-14,TabICLv2,LendingClub (LGD),2,One sample,5627,0.59051066,0.59171179,0.59510732,0.0012011311,0.004596657,-0.0033955258,0.015732659,0.01575352,-2.0860785e-05,0.0033955258,0.0052492501,0.0040873959
-15,TabICLv2,PropLGD5,2,Accumulate,594,0.33007533,0.32799445,0.33237092,-0.0020808791,0.0022955844,-0.00021470527,0.10472141,0.10519986,-0.00047845563,0.0043764635,0.028323048,0.021568905
-16,TabICLv2,PropLGD5,2,Full pass,594,0.33007533,0.32799445,0.33359216,-0.0020808791,0.0035168311,-0.001435952,0.10472141,0.10501915,-0.00029774468,0.0055977102,0.025939203,0.019602483
-17,TabICLv2,PropLGD5,2,One sample,594,0.33007533,0.32799445,0.33134128,-0.0020808791,0.0012659467,0.00081493244,0.10472141,0.10533369,-0.00061228043,0.0033468257,0.028121567,0.021364497
-18,TabICLv2,PropLGD4,3,Accumulate,762,0.32338733,0.32386016,0.31953617,0.00047283541,-0.0038511556,-0.0033783202,0.082856849,0.08195269,0.00090415945,-0.004323991,0.030136381,0.021823794
-19,TabICLv2,PropLGD4,3,Full pass,762,0.32338733,0.32386016,0.32345138,0.00047283541,6.4052964e-05,0.00040878244,0.082856849,0.082113348,0.00074350134,-0.00040878244,0.029566946,0.021068045
-20,TabICLv2,PropLGD4,3,One sample,762,0.32338733,0.32386016,0.31861391,0.00047283541,-0.0047734112,-0.0043005758,0.082856849,0.082025669,0.00083117983,-0.0052462466,0.031706398,0.023028547
-21,TabICLv2,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.63062686,0.62704323,0.0025968363,-0.00098679351,0.0016100428,0.017411176,0.017441877,-3.0700939e-05,-0.0035836298,0.01413456,0.0097315883
-22,TabICLv2,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.63062686,0.627404,0.0025968363,-0.00062603052,0.0019708058,0.017411176,0.01737803,3.3146504e-05,-0.0032228668,0.014594331,0.0099433808
-23,TabICLv2,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.63062686,0.62691375,0.0025968363,-0.001116278,0.0014805583,0.017411176,0.017393324,1.785254e-05,-0.0037131144,0.014138533,0.0097701634
-24,TabPFN v2,PropLGD2,0,Accumulate,4637,0.39203237,0.39471675,0.39778879,0.0026843758,0.0057564212,-0.0030720454,0.020879617,0.020903322,-2.3704862e-05,0.0030720454,0.01563202,0.010969797
-25,TabPFN v2,PropLGD2,0,Full pass,4637,0.39203237,0.39471675,0.39858725,0.0026843758,0.0065548767,-0.0038705009,0.020879617,0.02096946,-8.9843191e-05,0.0038705009,0.015101702,0.010478797
-26,TabPFN v2,PropLGD2,0,One sample,4637,0.39203237,0.39471675,0.39837834,0.0026843758,0.0063459685,-0.0036615928,0.020879617,0.020941477,-6.1860383e-05,0.0036615928,0.015653121,0.010936015
-27,TabPFN v2,PropLGD3,0,Accumulate,2545,0.22813006,0.23642755,0.25900671,0.0082974849,0.03087665,-0.022579165,0.085179152,0.084736509,0.00044264268,0.022579165,0.034209505,0.0295466
-28,TabPFN v2,PropLGD3,0,Full pass,2545,0.22813006,0.23642755,0.25485116,0.0082974849,0.026721099,-0.018423614,0.085179152,0.08410341,0.0010757419,0.018423614,0.038389705,0.031196665
-29,TabPFN v2,PropLGD3,0,One sample,2545,0.22813006,0.23642755,0.25904943,0.0082974849,0.030919367,-0.022621882,0.085179152,0.085179021,1.3108898e-07,0.022621882,0.028836212,0.025611759
-30,TabPFN v2,Freddie Mac,1,Accumulate,16002,0.45884258,0.4575265,0.46421399,-0.0013160725,0.0053714132,-0.0040553408,0.062450262,0.062792002,-0.00034174041,0.0066874857,0.022493323,0.018009228
-31,TabPFN v2,Freddie Mac,1,Full pass,16002,0.45884258,0.4575265,0.46398011,-0.0013160725,0.0051375325,-0.00382146,0.062450262,0.062796395,-0.0003461329,0.006453605,0.022352711,0.017901137
-32,TabPFN v2,Freddie Mac,1,One sample,16002,0.45884258,0.4575265,0.4633454,-0.0013160725,0.0045028264,-0.0031867539,0.062450262,0.0627736,-0.00032333799,0.0058188989,0.021963655,0.017548885
-33,TabPFN v2,PropLGD1,1,Accumulate,57932,0.70442018,0.62375883,0.64597831,-0.080661354,-0.058441871,0.022219483,0.12182,0.11825179,0.003568213,0.022219483,0.03029666,0.023663403
-34,TabPFN v2,PropLGD1,1,Full pass,57932,0.70442018,0.62375883,0.64557885,-0.080661354,-0.058841333,0.021820022,0.12182,0.11829822,0.0035217796,0.021820022,0.029913999,0.023336691
-35,TabPFN v2,PropLGD1,1,One sample,57932,0.70442018,0.62375883,0.64484826,-0.080661354,-0.059571923,0.021089431,0.12182,0.11858773,0.0032322683,0.021089431,0.029452392,0.022628456
-36,TabPFN v2,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59871711,0.60235999,0.0082064548,0.011849334,-0.0036428789,0.016139367,0.016286123,-0.00014675559,0.0036428789,0.0059007886,0.0046110976
-37,TabPFN v2,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59871711,0.60186377,0.0082064548,0.011353108,-0.0031466527,0.016139367,0.016253746,-0.00011437898,0.0031466527,0.0051428521,0.0040144057
-38,TabPFN v2,LendingClub (LGD),2,One sample,5627,0.59051066,0.59871711,0.60227761,0.0082064548,0.011766948,-0.0035604934,0.016139367,0.016281084,-0.00014171707,0.0035604934,0.0057556475,0.0044698905
-39,TabPFN v2,PropLGD5,2,Accumulate,594,0.33007533,0.29764003,0.30694883,-0.032435297,-0.023126497,0.0093088,0.10501589,0.1038961,0.0011197909,0.0093088,0.042504659,0.029451065
-40,TabPFN v2,PropLGD5,2,Full pass,594,0.33007533,0.29764003,0.30981707,-0.032435297,-0.020258259,0.012177037,0.10501589,0.10441333,0.00060256095,0.012177037,0.043900217,0.029425485
-41,TabPFN v2,PropLGD5,2,One sample,594,0.33007533,0.29764003,0.30513713,-0.032435297,-0.024938198,0.0074970991,0.10501589,0.10388736,0.0011285273,0.0074970991,0.04033676,0.0280681
-42,TabPFN v2,PropLGD4,3,Accumulate,762,0.32338733,0.3101937,0.33475233,-0.013193621,0.011365009,0.0018286122,0.094512135,0.092475665,0.00203647,0.024558631,0.043528394,0.031504326
-43,TabPFN v2,PropLGD4,3,Full pass,762,0.32338733,0.3101937,0.33389507,-0.013193621,0.010507749,0.0026858723,0.094512135,0.092103785,0.00240835,0.02370137,0.04198275,0.030400994
-44,TabPFN v2,PropLGD4,3,One sample,762,0.32338733,0.3101937,0.3347853,-0.013193621,0.011397973,0.0017956489,0.094512135,0.092809757,0.0017023779,0.024591594,0.042258502,0.030593756
-45,TabPFN v2,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.62742552,0.62614089,-0.00060450706,-0.001889134,-0.001284627,0.018433305,0.018261085,0.00017222003,-0.001284627,0.0098252994,0.0069700143
-46,TabPFN v2,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.62742552,0.62550859,-0.00060450706,-0.002521437,-0.0019169299,0.018433305,0.01826646,0.00016684467,-0.0019169299,0.0086382862,0.006120302
-47,TabPFN v2,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.62742552,0.62676143,-0.00060450706,-0.0012685924,-0.00066408532,0.018433305,0.018252303,0.00018100189,-0.00066408532,0.0095576077,0.0068062792
-48,TabPFN v2.6,PropLGD2,0,Accumulate,4637,0.39203237,0.391871,0.41114592,-0.00016137054,0.019113544,-0.018952174,0.020575792,0.025246325,-0.0046705331,0.019274915,0.067731069,0.055800854
-49,TabPFN v2.6,PropLGD2,0,Full pass,4637,0.39203237,0.391871,0.41233537,-0.00016137054,0.020302995,-0.020141625,0.020575792,0.025480127,-0.0049043352,0.020464366,0.07045975,0.058761542
-50,TabPFN v2.6,PropLGD2,0,One sample,4637,0.39203237,0.391871,0.4126602,-0.00016137054,0.020627823,-0.020466453,0.020575792,0.025255691,-0.0046798992,0.020789194,0.067857694,0.056338527
-51,TabPFN v2.6,PropLGD3,0,Accumulate,2545,0.22813006,0.2124963,0.23562834,-0.015633769,0.0074982735,0.0081354953,0.085346047,0.085204128,0.00014191867,0.023132042,0.035553419,0.03292992
-52,TabPFN v2.6,PropLGD3,0,Full pass,2545,0.22813006,0.2124963,0.25651396,-0.015633769,0.028383893,-0.012750125,0.085346047,0.085029199,0.0003168486,0.044017662,0.057416231,0.052730761
-53,TabPFN v2.6,PropLGD3,0,One sample,2545,0.22813006,0.2124963,0.22590045,-0.015633769,-0.0022296142,0.013404155,0.085346047,0.085200228,0.00014581952,0.013404155,0.030410029,0.027613143
-54,TabPFN v2.6,Freddie Mac,1,Accumulate,16002,0.45884258,0.46713741,0.43625651,0.0082948373,-0.022586065,-0.014291228,0.061285667,0.068985023,-0.0076993558,-0.030880902,0.096496826,0.075750996
-55,TabPFN v2.6,Freddie Mac,1,Full pass,16002,0.45884258,0.46713741,0.43637338,0.0082948373,-0.022469194,-0.014174357,0.061285667,0.068980696,-0.0076950284,-0.030764031,0.096464219,0.075729495
-56,TabPFN v2.6,Freddie Mac,1,One sample,16002,0.45884258,0.46713741,0.43347172,0.0082948373,-0.025370853,-0.017076015,0.061285667,0.068939927,-0.0076542598,-0.03366569,0.096281814,0.075518611
-57,TabPFN v2.6,PropLGD1,1,Accumulate,57932,0.70442018,0.70617232,0.68801677,0.0017521345,-0.01640341,-0.014651276,0.048965162,0.1003431,-0.051377938,-0.018155545,0.200719,0.15777238
-58,TabPFN v2.6,PropLGD1,1,Full pass,57932,0.70442018,0.70617232,0.68793473,0.0017521345,-0.016485448,-0.014733314,0.048965162,0.10033321,-0.051368053,-0.018237583,0.20069563,0.15776458
-59,TabPFN v2.6,PropLGD1,1,One sample,57932,0.70442018,0.70617232,0.68735531,0.0017521345,-0.017064877,-0.015312743,0.048965162,0.10093037,-0.051965208,-0.018817012,0.20211397,0.15901809
-60,TabPFN v2.6,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59782009,0.59636682,0.0073094336,0.0058561626,0.0014532711,0.015770286,0.021531808,-0.0057615225,-0.0014532711,0.083635949,0.068357419
-61,TabPFN v2.6,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59782009,0.59221271,0.0073094336,0.0017020548,0.0056073788,0.015770286,0.020700377,-0.0049300907,-0.0056073788,0.078484683,0.066233415
-62,TabPFN v2.6,LendingClub (LGD),2,One sample,5627,0.59051066,0.59782009,0.59517253,0.0073094336,0.0046618696,0.0026475641,0.015770286,0.021152702,-0.0053824157,-0.0026475641,0.081161774,0.066503974
-63,TabPFN v2.6,PropLGD5,2,Accumulate,594,0.33007533,0.32542293,0.33145927,-0.004652401,0.0013839425,0.0032684585,0.10404484,0.10827659,-0.0042317458,0.0060363434,0.090946469,0.079679452
-64,TabPFN v2.6,PropLGD5,2,Full pass,594,0.33007533,0.32542293,0.32754084,-0.004652401,-0.0025344904,0.0021179106,0.10404484,0.11030593,-0.0062610925,0.0021179106,0.10828302,0.097816484
-65,TabPFN v2.6,PropLGD5,2,One sample,594,0.33007533,0.32542293,0.32653892,-0.004652401,-0.0035364107,0.0011159903,0.10404484,0.10872276,-0.0046779189,0.0011159903,0.093638991,0.081901027
-66,TabPFN v2.6,PropLGD4,3,Accumulate,762,0.32338733,0.32272652,0.32060787,-0.00066080787,-0.0027794511,-0.0021186432,0.081876633,0.090384028,-0.0085073946,-0.0021186432,0.1115777,0.081642403
-67,TabPFN v2.6,PropLGD4,3,Full pass,762,0.32338733,0.32272652,0.32915384,-0.00066080787,0.0057665162,-0.0051057084,0.081876633,0.096108024,-0.014231391,0.0064273241,0.13648748,0.10677243
-68,TabPFN v2.6,PropLGD4,3,One sample,762,0.32338733,0.32272652,0.32111349,-0.00066080787,-0.0022738325,-0.0016130247,0.081876633,0.091331802,-0.0094551688,-0.0016130247,0.11560323,0.085477423
-69,TabPFN v2.6,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.62818702,0.63975365,0.0001569947,0.011723619,-0.011566624,0.019127705,0.022711129,-0.0035834239,0.011566624,0.058892117,0.049383402
-70,TabPFN v2.6,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.62818702,0.62783191,0.0001569947,-0.00019811872,-4.1124027e-05,0.019127705,0.022570507,-0.0034428017,-0.00035511342,0.061308929,0.051723246
-71,TabPFN v2.6,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.62818702,0.63894771,0.0001569947,0.01091768,-0.010760685,0.019127705,0.022759511,-0.0036318056,0.010760685,0.059241076,0.049971786
-72,TabPFN v3,PropLGD2,0,Accumulate,4637,0.39203237,0.3922609,0.4076713,0.00022852393,0.01563893,-0.015410406,0.01956368,0.020381329,-0.0008176485,0.015410406,0.029289187,0.021943382
-73,TabPFN v3,PropLGD2,0,Full pass,4637,0.39203237,0.3922609,0.40671361,0.00022852393,0.014681234,-0.01445271,0.01956368,0.020275443,-0.00071176296,0.01445271,0.027777805,0.020725386
-74,TabPFN v3,PropLGD2,0,One sample,4637,0.39203237,0.3922609,0.40770393,0.00022852393,0.015671558,-0.015443034,0.01956368,0.020383154,-0.00081947329,0.015443034,0.029088891,0.021857516
-75,TabPFN v3,PropLGD3,0,Accumulate,2545,0.22813006,0.21756822,0.2330134,-0.010561848,0.0048833305,0.0056785176,0.085340519,0.085092215,0.00024830474,0.015445178,0.017606042,0.016445242
-76,TabPFN v3,PropLGD3,0,Full pass,2545,0.22813006,0.21756822,0.23279589,-0.010561848,0.004665829,0.0058960191,0.085340519,0.085090468,0.00025005126,0.015227677,0.01736366,0.016263611
-77,TabPFN v3,PropLGD3,0,One sample,2545,0.22813006,0.21756822,0.23267065,-0.010561848,0.0045405863,0.0060212617,0.085340519,0.085099496,0.0002410231,0.015102434,0.017380402,0.016237998
-78,TabPFN v3,Freddie Mac,1,Accumulate,16002,0.45884258,0.46752453,0.44724455,0.0086819513,-0.011598025,-0.0029160737,0.060400869,0.06233161,-0.0019307406,-0.020279976,0.055129773,0.042153535
-79,TabPFN v3,Freddie Mac,1,Full pass,16002,0.45884258,0.46752453,0.44888963,0.0086819513,-0.0099529508,-0.0012709995,0.060400869,0.062164683,-0.0017638139,-0.018634902,0.053292751,0.041027702
-80,TabPFN v3,Freddie Mac,1,One sample,16002,0.45884258,0.46752453,0.452453,0.0086819513,-0.0063895721,0.0022923792,0.060400869,0.062330027,-0.001929157,-0.015071523,0.054533213,0.042085393
-81,TabPFN v3,PropLGD1,1,Accumulate,57932,0.70442018,0.71460663,0.57167545,0.010186443,-0.13274473,-0.12255829,0.057096487,0.10341451,-0.046318023,-0.14293118,0.23736557,0.17369541
-82,TabPFN v3,PropLGD1,1,Full pass,57932,0.70442018,0.71460663,0.5911951,0.010186443,-0.11322508,-0.10303864,0.057096487,0.093104299,-0.036007812,-0.12341153,0.21385348,0.15459207
-83,TabPFN v3,PropLGD1,1,One sample,57932,0.70442018,0.71460663,0.56380657,0.010186443,-0.14061362,-0.13042717,0.057096487,0.10822273,-0.051126239,-0.15080006,0.24964969,0.17884034
-84,TabPFN v3,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59641638,0.59407974,0.0059057178,0.003569083,0.0023366349,0.015722376,0.015865925,-0.00014354839,-0.0023366349,0.01983642,0.016419468
-85,TabPFN v3,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59641638,0.59311616,0.0059057178,0.0026055005,0.0033002173,0.015722376,0.015853326,-0.00013094929,-0.0033002173,0.02024739,0.016873308
-86,TabPFN v3,LendingClub (LGD),2,One sample,5627,0.59051066,0.59641638,0.59465906,0.0059057178,0.0041484059,0.0017573119,0.015722376,0.015851371,-0.00012899456,-0.0017573119,0.019156014,0.015767411
-87,TabPFN v3,PropLGD5,2,Accumulate,594,0.33007533,0.32476265,0.33917603,-0.0053126851,0.0091006968,-0.0037880116,0.10424979,0.10470721,-0.00045741776,0.014413382,0.030517481,0.025338935
-88,TabPFN v3,PropLGD5,2,Full pass,594,0.33007533,0.32476265,0.33978862,-0.0053126851,0.0097132901,-0.0044006049,0.10424979,0.10458278,-0.00033299023,0.015025975,0.03044546,0.025490536
-89,TabPFN v3,PropLGD5,2,One sample,594,0.33007533,0.32476265,0.33890483,-0.0053126851,0.0088294984,-0.0035168133,0.10424979,0.10449309,-0.00024330225,0.014142184,0.030996434,0.025549224
-90,TabPFN v3,PropLGD4,3,Accumulate,762,0.32338733,0.32185608,0.32587602,-0.0015312449,0.0024886992,-0.00095745427,0.082258711,0.082387465,-0.00012875468,0.0040199442,0.03770815,0.02992984
-91,TabPFN v3,PropLGD4,3,Full pass,762,0.32338733,0.32185608,0.33276317,-0.0015312449,0.0093758471,-0.0078446022,0.082258711,0.082427567,-0.00016885627,0.010907092,0.03762786,0.031279141
-92,TabPFN v3,PropLGD4,3,One sample,762,0.32338733,0.32185608,0.32747559,-0.0015312449,0.004088262,-0.002557017,0.082258711,0.082618186,-0.00035947552,0.0056195069,0.040742819,0.032818269
-93,TabPFN v3,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.63257327,0.62252981,0.0045432477,-0.0055002156,-0.00095696799,0.017543234,0.017854408,-0.00031117429,-0.010043463,0.028393108,0.021615444
-94,TabPFN v3,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.63257327,0.62383013,0.0045432477,-0.0041998969,0.0003433508,0.017543234,0.017754788,-0.00021155483,-0.0087431445,0.026411677,0.020197557
-95,TabPFN v3,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.63257327,0.62290852,0.0045432477,-0.0051215103,-0.00057826262,0.017543234,0.017805652,-0.00026241843,-0.0096647579,0.027574055,0.021037007
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Freddie Mac,1,Accumulate,16002,0.45884258,0.46157656,0.46040826,0.0027339782,0.0015656852,0.001168293,0.062386759,0.062984214,-0.00059745543,-0.001168293,0.031959399,0.023783404,0,-0.16
+1,TabICLv2,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59171179,0.59527923,0.0012011311,0.0047685723,-0.0035674412,0.015732659,0.015753834,-2.1174744e-05,0.0035674412,0.0053668744,0.0042117393,0,-0.11428571
+2,TabICLv2,PropLGD1,1,Accumulate,57932,0.70442018,0.69372096,0.67145986,-0.010699228,-0.032960324,-0.022261095,0.062212275,0.067628598,-0.0054163229,-0.022261095,0.061426363,0.037960121,0,-0.068571429
+3,TabICLv2,PropLGD2,0,Accumulate,4637,0.39203237,0.38970801,0.39394852,-0.0023243643,0.0019161493,0.00040821501,0.020061868,0.020285251,-0.00022338321,0.0042405135,0.020118382,0.013339666,0,-0.022857143
+4,TabICLv2,PropLGD3,0,Accumulate,2545,0.22813006,0.23317939,0.23050586,0.0050493211,0.0023757968,0.0026735243,0.085243582,0.085389752,-0.0001461695,-0.0026735243,0.0073541747,0.0059820305,0,0.022857143
+5,TabICLv2,PropLGD4,3,Accumulate,762,0.32338733,0.32386016,0.31953617,0.00047283541,-0.0038511556,-0.0033783202,0.082856849,0.08195269,0.00090415945,-0.004323991,0.030136381,0.021823794,0,0.068571429
+6,TabICLv2,PropLGD5,2,Accumulate,594,0.33007533,0.32799445,0.33237092,-0.0020808791,0.0022955844,-0.00021470527,0.10472141,0.10519986,-0.00047845563,0.0043764635,0.028323048,0.021568905,0,0.11428571
+7,TabICLv2,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.63062686,0.62704323,0.0025968363,-0.00098679351,0.0016100428,0.017411176,0.017441877,-3.0700939e-05,-0.0035836298,0.01413456,0.0097315883,0,0.16
+8,TabICLv2,Freddie Mac,1,Full pass,16002,0.45884258,0.46157656,0.46043879,0.0027339782,0.0015962115,0.0011377667,0.062386759,0.063007721,-0.00062096257,-0.0011377667,0.03200798,0.023813765,1,-0.16
+9,TabICLv2,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59171179,0.59479512,0.0012011311,0.0042844648,-0.0030833337,0.015732659,0.015750485,-1.7826284e-05,0.0030833337,0.0052454781,0.0040387836,1,-0.11428571
+10,TabICLv2,PropLGD1,1,Full pass,57932,0.70442018,0.69372096,0.67339875,-0.010699228,-0.031021436,-0.020322208,0.062212275,0.067183585,-0.0049713106,-0.020322208,0.058724137,0.03638831,1,-0.068571429
+11,TabICLv2,PropLGD2,0,Full pass,4637,0.39203237,0.38970801,0.39277862,-0.0023243643,0.00074624983,0.0015781144,0.020061868,0.020291632,-0.00022976422,0.0030706141,0.018022736,0.012172224,1,-0.022857143
+12,TabICLv2,PropLGD3,0,Full pass,2545,0.22813006,0.23317939,0.2330239,0.0050493211,0.0048938329,0.0001554882,0.085243582,0.085502092,-0.00025850942,-0.0001554882,0.0084349593,0.0059939309,1,0.022857143
+13,TabICLv2,PropLGD4,3,Full pass,762,0.32338733,0.32386016,0.32345138,0.00047283541,6.4052964e-05,0.00040878244,0.082856849,0.082113348,0.00074350134,-0.00040878244,0.029566946,0.021068045,1,0.068571429
+14,TabICLv2,PropLGD5,2,Full pass,594,0.33007533,0.32799445,0.33359216,-0.0020808791,0.0035168311,-0.001435952,0.10472141,0.10501915,-0.00029774468,0.0055977102,0.025939203,0.019602483,1,0.11428571
+15,TabICLv2,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.63062686,0.627404,0.0025968363,-0.00062603052,0.0019708058,0.017411176,0.01737803,3.3146504e-05,-0.0032228668,0.014594331,0.0099433808,1,0.16
+16,TabICLv2,Freddie Mac,1,One sample,16002,0.45884258,0.46157656,0.4592946,0.0027339782,0.00045202578,0.0022819524,0.062386759,0.062956106,-0.00056934704,-0.0022819524,0.031977755,0.023803013,2,-0.16
+17,TabICLv2,LendingClub (LGD),2,One sample,5627,0.59051066,0.59171179,0.59510732,0.0012011311,0.004596657,-0.0033955258,0.015732659,0.01575352,-2.0860785e-05,0.0033955258,0.0052492501,0.0040873959,2,-0.11428571
+18,TabICLv2,PropLGD1,1,One sample,57932,0.70442018,0.69372096,0.67053025,-0.010699228,-0.033889932,-0.023190704,0.062212275,0.067420707,-0.0052084322,-0.023190704,0.061864909,0.038112617,2,-0.068571429
+19,TabICLv2,PropLGD2,0,One sample,4637,0.39203237,0.38970801,0.39331158,-0.0023243643,0.001279205,0.0010451593,0.020061868,0.020287942,-0.0002260737,0.0036035692,0.019601783,0.012996387,2,-0.022857143
+20,TabICLv2,PropLGD3,0,One sample,2545,0.22813006,0.23317939,0.23157866,0.0050493211,0.0034485915,0.0016007296,0.085243582,0.085387056,-0.0001434739,-0.0016007296,0.0069940951,0.0054731288,2,0.022857143
+21,TabICLv2,PropLGD4,3,One sample,762,0.32338733,0.32386016,0.31861391,0.00047283541,-0.0047734112,-0.0043005758,0.082856849,0.082025669,0.00083117983,-0.0052462466,0.031706398,0.023028547,2,0.068571429
+22,TabICLv2,PropLGD5,2,One sample,594,0.33007533,0.32799445,0.33134128,-0.0020808791,0.0012659467,0.00081493244,0.10472141,0.10533369,-0.00061228043,0.0033468257,0.028121567,0.021364497,2,0.11428571
+23,TabICLv2,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.63062686,0.62691375,0.0025968363,-0.001116278,0.0014805583,0.017411176,0.017393324,1.785254e-05,-0.0037131144,0.014138533,0.0097701634,2,0.16
+24,TabPFN v2,Freddie Mac,1,Accumulate,16002,0.45884258,0.4575265,0.46421399,-0.0013160725,0.0053714132,-0.0040553408,0.062450262,0.062792002,-0.00034174041,0.0066874857,0.022493323,0.018009228,3,-0.16
+25,TabPFN v2,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59871711,0.60235999,0.0082064548,0.011849334,-0.0036428789,0.016139367,0.016286123,-0.00014675559,0.0036428789,0.0059007886,0.0046110976,3,-0.11428571
+26,TabPFN v2,PropLGD1,1,Accumulate,57932,0.70442018,0.62375883,0.64597831,-0.080661354,-0.058441871,0.022219483,0.12182,0.11825179,0.003568213,0.022219483,0.03029666,0.023663403,3,-0.068571429
+27,TabPFN v2,PropLGD2,0,Accumulate,4637,0.39203237,0.39471675,0.39778879,0.0026843758,0.0057564212,-0.0030720454,0.020879617,0.020903322,-2.3704862e-05,0.0030720454,0.01563202,0.010969797,3,-0.022857143
+28,TabPFN v2,PropLGD3,0,Accumulate,2545,0.22813006,0.23642755,0.25900671,0.0082974849,0.03087665,-0.022579165,0.085179152,0.084736509,0.00044264268,0.022579165,0.034209505,0.0295466,3,0.022857143
+29,TabPFN v2,PropLGD4,3,Accumulate,762,0.32338733,0.3101937,0.33475233,-0.013193621,0.011365009,0.0018286122,0.094512135,0.092475665,0.00203647,0.024558631,0.043528394,0.031504326,3,0.068571429
+30,TabPFN v2,PropLGD5,2,Accumulate,594,0.33007533,0.29764003,0.30694883,-0.032435297,-0.023126497,0.0093088,0.10501589,0.1038961,0.0011197909,0.0093088,0.042504659,0.029451065,3,0.11428571
+31,TabPFN v2,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.62742552,0.62614089,-0.00060450706,-0.001889134,-0.001284627,0.018433305,0.018261085,0.00017222003,-0.001284627,0.0098252994,0.0069700143,3,0.16
+32,TabPFN v2,Freddie Mac,1,Full pass,16002,0.45884258,0.4575265,0.46398011,-0.0013160725,0.0051375325,-0.00382146,0.062450262,0.062796395,-0.0003461329,0.006453605,0.022352711,0.017901137,4,-0.16
+33,TabPFN v2,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59871711,0.60186377,0.0082064548,0.011353108,-0.0031466527,0.016139367,0.016253746,-0.00011437898,0.0031466527,0.0051428521,0.0040144057,4,-0.11428571
+34,TabPFN v2,PropLGD1,1,Full pass,57932,0.70442018,0.62375883,0.64557885,-0.080661354,-0.058841333,0.021820022,0.12182,0.11829822,0.0035217796,0.021820022,0.029913999,0.023336691,4,-0.068571429
+35,TabPFN v2,PropLGD2,0,Full pass,4637,0.39203237,0.39471675,0.39858725,0.0026843758,0.0065548767,-0.0038705009,0.020879617,0.02096946,-8.9843191e-05,0.0038705009,0.015101702,0.010478797,4,-0.022857143
+36,TabPFN v2,PropLGD3,0,Full pass,2545,0.22813006,0.23642755,0.25485116,0.0082974849,0.026721099,-0.018423614,0.085179152,0.08410341,0.0010757419,0.018423614,0.038389705,0.031196665,4,0.022857143
+37,TabPFN v2,PropLGD4,3,Full pass,762,0.32338733,0.3101937,0.33389507,-0.013193621,0.010507749,0.0026858723,0.094512135,0.092103785,0.00240835,0.02370137,0.04198275,0.030400994,4,0.068571429
+38,TabPFN v2,PropLGD5,2,Full pass,594,0.33007533,0.29764003,0.30981707,-0.032435297,-0.020258259,0.012177037,0.10501589,0.10441333,0.00060256095,0.012177037,0.043900217,0.029425485,4,0.11428571
+39,TabPFN v2,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.62742552,0.62550859,-0.00060450706,-0.002521437,-0.0019169299,0.018433305,0.01826646,0.00016684467,-0.0019169299,0.0086382862,0.006120302,4,0.16
+40,TabPFN v2,Freddie Mac,1,One sample,16002,0.45884258,0.4575265,0.4633454,-0.0013160725,0.0045028264,-0.0031867539,0.062450262,0.0627736,-0.00032333799,0.0058188989,0.021963655,0.017548885,5,-0.16
+41,TabPFN v2,LendingClub (LGD),2,One sample,5627,0.59051066,0.59871711,0.60227761,0.0082064548,0.011766948,-0.0035604934,0.016139367,0.016281084,-0.00014171707,0.0035604934,0.0057556475,0.0044698905,5,-0.11428571
+42,TabPFN v2,PropLGD1,1,One sample,57932,0.70442018,0.62375883,0.64484826,-0.080661354,-0.059571923,0.021089431,0.12182,0.11858773,0.0032322683,0.021089431,0.029452392,0.022628456,5,-0.068571429
+43,TabPFN v2,PropLGD2,0,One sample,4637,0.39203237,0.39471675,0.39837834,0.0026843758,0.0063459685,-0.0036615928,0.020879617,0.020941477,-6.1860383e-05,0.0036615928,0.015653121,0.010936015,5,-0.022857143
+44,TabPFN v2,PropLGD3,0,One sample,2545,0.22813006,0.23642755,0.25904943,0.0082974849,0.030919367,-0.022621882,0.085179152,0.085179021,1.3108898e-07,0.022621882,0.028836212,0.025611759,5,0.022857143
+45,TabPFN v2,PropLGD4,3,One sample,762,0.32338733,0.3101937,0.3347853,-0.013193621,0.011397973,0.0017956489,0.094512135,0.092809757,0.0017023779,0.024591594,0.042258502,0.030593756,5,0.068571429
+46,TabPFN v2,PropLGD5,2,One sample,594,0.33007533,0.29764003,0.30513713,-0.032435297,-0.024938198,0.0074970991,0.10501589,0.10388736,0.0011285273,0.0074970991,0.04033676,0.0280681,5,0.11428571
+47,TabPFN v2,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.62742552,0.62676143,-0.00060450706,-0.0012685924,-0.00066408532,0.018433305,0.018252303,0.00018100189,-0.00066408532,0.0095576077,0.0068062792,5,0.16
+48,TabPFN v2.6,Freddie Mac,1,Accumulate,16002,0.45884258,0.46713741,0.43625651,0.0082948373,-0.022586065,-0.014291228,0.061285667,0.068985023,-0.0076993558,-0.030880902,0.096496826,0.075750996,6,-0.16
+49,TabPFN v2.6,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59782009,0.59636682,0.0073094336,0.0058561626,0.0014532711,0.015770286,0.021531808,-0.0057615225,-0.0014532711,0.083635949,0.068357419,6,-0.11428571
+50,TabPFN v2.6,PropLGD1,1,Accumulate,57932,0.70442018,0.70617232,0.68801677,0.0017521345,-0.01640341,-0.014651276,0.048965162,0.1003431,-0.051377938,-0.018155545,0.200719,0.15777238,6,-0.068571429
+51,TabPFN v2.6,PropLGD2,0,Accumulate,4637,0.39203237,0.391871,0.41114592,-0.00016137054,0.019113544,-0.018952174,0.020575792,0.025246325,-0.0046705331,0.019274915,0.067731069,0.055800854,6,-0.022857143
+52,TabPFN v2.6,PropLGD3,0,Accumulate,2545,0.22813006,0.2124963,0.23562834,-0.015633769,0.0074982735,0.0081354953,0.085346047,0.085204128,0.00014191867,0.023132042,0.035553419,0.03292992,6,0.022857143
+53,TabPFN v2.6,PropLGD4,3,Accumulate,762,0.32338733,0.32272652,0.32060787,-0.00066080787,-0.0027794511,-0.0021186432,0.081876633,0.090384028,-0.0085073946,-0.0021186432,0.1115777,0.081642403,6,0.068571429
+54,TabPFN v2.6,PropLGD5,2,Accumulate,594,0.33007533,0.32542293,0.33145927,-0.004652401,0.0013839425,0.0032684585,0.10404484,0.10827659,-0.0042317458,0.0060363434,0.090946469,0.079679452,6,0.11428571
+55,TabPFN v2.6,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.62818702,0.63975365,0.0001569947,0.011723619,-0.011566624,0.019127705,0.022711129,-0.0035834239,0.011566624,0.058892117,0.049383402,6,0.16
+56,TabPFN v2.6,Freddie Mac,1,Full pass,16002,0.45884258,0.46713741,0.43637338,0.0082948373,-0.022469194,-0.014174357,0.061285667,0.068980696,-0.0076950284,-0.030764031,0.096464219,0.075729495,7,-0.16
+57,TabPFN v2.6,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59782009,0.59221271,0.0073094336,0.0017020548,0.0056073788,0.015770286,0.020700377,-0.0049300907,-0.0056073788,0.078484683,0.066233415,7,-0.11428571
+58,TabPFN v2.6,PropLGD1,1,Full pass,57932,0.70442018,0.70617232,0.68793473,0.0017521345,-0.016485448,-0.014733314,0.048965162,0.10033321,-0.051368053,-0.018237583,0.20069563,0.15776458,7,-0.068571429
+59,TabPFN v2.6,PropLGD2,0,Full pass,4637,0.39203237,0.391871,0.41233537,-0.00016137054,0.020302995,-0.020141625,0.020575792,0.025480127,-0.0049043352,0.020464366,0.07045975,0.058761542,7,-0.022857143
+60,TabPFN v2.6,PropLGD3,0,Full pass,2545,0.22813006,0.2124963,0.25651396,-0.015633769,0.028383893,-0.012750125,0.085346047,0.085029199,0.0003168486,0.044017662,0.057416231,0.052730761,7,0.022857143
+61,TabPFN v2.6,PropLGD4,3,Full pass,762,0.32338733,0.32272652,0.32915384,-0.00066080787,0.0057665162,-0.0051057084,0.081876633,0.096108024,-0.014231391,0.0064273241,0.13648748,0.10677243,7,0.068571429
+62,TabPFN v2.6,PropLGD5,2,Full pass,594,0.33007533,0.32542293,0.32754084,-0.004652401,-0.0025344904,0.0021179106,0.10404484,0.11030593,-0.0062610925,0.0021179106,0.10828302,0.097816484,7,0.11428571
+63,TabPFN v2.6,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.62818702,0.62783191,0.0001569947,-0.00019811872,-4.1124027e-05,0.019127705,0.022570507,-0.0034428017,-0.00035511342,0.061308929,0.051723246,7,0.16
+64,TabPFN v2.6,Freddie Mac,1,One sample,16002,0.45884258,0.46713741,0.43347172,0.0082948373,-0.025370853,-0.017076015,0.061285667,0.068939927,-0.0076542598,-0.03366569,0.096281814,0.075518611,8,-0.16
+65,TabPFN v2.6,LendingClub (LGD),2,One sample,5627,0.59051066,0.59782009,0.59517253,0.0073094336,0.0046618696,0.0026475641,0.015770286,0.021152702,-0.0053824157,-0.0026475641,0.081161774,0.066503974,8,-0.11428571
+66,TabPFN v2.6,PropLGD1,1,One sample,57932,0.70442018,0.70617232,0.68735531,0.0017521345,-0.017064877,-0.015312743,0.048965162,0.10093037,-0.051965208,-0.018817012,0.20211397,0.15901809,8,-0.068571429
+67,TabPFN v2.6,PropLGD2,0,One sample,4637,0.39203237,0.391871,0.4126602,-0.00016137054,0.020627823,-0.020466453,0.020575792,0.025255691,-0.0046798992,0.020789194,0.067857694,0.056338527,8,-0.022857143
+68,TabPFN v2.6,PropLGD3,0,One sample,2545,0.22813006,0.2124963,0.22590045,-0.015633769,-0.0022296142,0.013404155,0.085346047,0.085200228,0.00014581952,0.013404155,0.030410029,0.027613143,8,0.022857143
+69,TabPFN v2.6,PropLGD4,3,One sample,762,0.32338733,0.32272652,0.32111349,-0.00066080787,-0.0022738325,-0.0016130247,0.081876633,0.091331802,-0.0094551688,-0.0016130247,0.11560323,0.085477423,8,0.068571429
+70,TabPFN v2.6,PropLGD5,2,One sample,594,0.33007533,0.32542293,0.32653892,-0.004652401,-0.0035364107,0.0011159903,0.10404484,0.10872276,-0.0046779189,0.0011159903,0.093638991,0.081901027,8,0.11428571
+71,TabPFN v2.6,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.62818702,0.63894771,0.0001569947,0.01091768,-0.010760685,0.019127705,0.022759511,-0.0036318056,0.010760685,0.059241076,0.049971786,8,0.16
+72,TabPFN v3,Freddie Mac,1,Accumulate,16002,0.45884258,0.46752453,0.44724455,0.0086819513,-0.011598025,-0.0029160737,0.060400869,0.06233161,-0.0019307406,-0.020279976,0.055129773,0.042153535,9,-0.16
+73,TabPFN v3,LendingClub (LGD),2,Accumulate,5627,0.59051066,0.59641638,0.59407974,0.0059057178,0.003569083,0.0023366349,0.015722376,0.015865925,-0.00014354839,-0.0023366349,0.01983642,0.016419468,9,-0.11428571
+74,TabPFN v3,PropLGD1,1,Accumulate,57932,0.70442018,0.71460663,0.57167545,0.010186443,-0.13274473,-0.12255829,0.057096487,0.10341451,-0.046318023,-0.14293118,0.23736557,0.17369541,9,-0.068571429
+75,TabPFN v3,PropLGD2,0,Accumulate,4637,0.39203237,0.3922609,0.4076713,0.00022852393,0.01563893,-0.015410406,0.01956368,0.020381329,-0.0008176485,0.015410406,0.029289187,0.021943382,9,-0.022857143
+76,TabPFN v3,PropLGD3,0,Accumulate,2545,0.22813006,0.21756822,0.2330134,-0.010561848,0.0048833305,0.0056785176,0.085340519,0.085092215,0.00024830474,0.015445178,0.017606042,0.016445242,9,0.022857143
+77,TabPFN v3,PropLGD4,3,Accumulate,762,0.32338733,0.32185608,0.32587602,-0.0015312449,0.0024886992,-0.00095745427,0.082258711,0.082387465,-0.00012875468,0.0040199442,0.03770815,0.02992984,9,0.068571429
+78,TabPFN v3,PropLGD5,2,Accumulate,594,0.33007533,0.32476265,0.33917603,-0.0053126851,0.0091006968,-0.0037880116,0.10424979,0.10470721,-0.00045741776,0.014413382,0.030517481,0.025338935,9,0.11428571
+79,TabPFN v3,SBA Loans Case (LGD),3,Accumulate,686,0.62803003,0.63257327,0.62252981,0.0045432477,-0.0055002156,-0.00095696799,0.017543234,0.017854408,-0.00031117429,-0.010043463,0.028393108,0.021615444,9,0.16
+80,TabPFN v3,Freddie Mac,1,Full pass,16002,0.45884258,0.46752453,0.44888963,0.0086819513,-0.0099529508,-0.0012709995,0.060400869,0.062164683,-0.0017638139,-0.018634902,0.053292751,0.041027702,10,-0.16
+81,TabPFN v3,LendingClub (LGD),2,Full pass,5627,0.59051066,0.59641638,0.59311616,0.0059057178,0.0026055005,0.0033002173,0.015722376,0.015853326,-0.00013094929,-0.0033002173,0.02024739,0.016873308,10,-0.11428571
+82,TabPFN v3,PropLGD1,1,Full pass,57932,0.70442018,0.71460663,0.5911951,0.010186443,-0.11322508,-0.10303864,0.057096487,0.093104299,-0.036007812,-0.12341153,0.21385348,0.15459207,10,-0.068571429
+83,TabPFN v3,PropLGD2,0,Full pass,4637,0.39203237,0.3922609,0.40671361,0.00022852393,0.014681234,-0.01445271,0.01956368,0.020275443,-0.00071176296,0.01445271,0.027777805,0.020725386,10,-0.022857143
+84,TabPFN v3,PropLGD3,0,Full pass,2545,0.22813006,0.21756822,0.23279589,-0.010561848,0.004665829,0.0058960191,0.085340519,0.085090468,0.00025005126,0.015227677,0.01736366,0.016263611,10,0.022857143
+85,TabPFN v3,PropLGD4,3,Full pass,762,0.32338733,0.32185608,0.33276317,-0.0015312449,0.0093758471,-0.0078446022,0.082258711,0.082427567,-0.00016885627,0.010907092,0.03762786,0.031279141,10,0.068571429
+86,TabPFN v3,PropLGD5,2,Full pass,594,0.33007533,0.32476265,0.33978862,-0.0053126851,0.0097132901,-0.0044006049,0.10424979,0.10458278,-0.00033299023,0.015025975,0.03044546,0.025490536,10,0.11428571
+87,TabPFN v3,SBA Loans Case (LGD),3,Full pass,686,0.62803003,0.63257327,0.62383013,0.0045432477,-0.0041998969,0.0003433508,0.017543234,0.017754788,-0.00021155483,-0.0087431445,0.026411677,0.020197557,10,0.16
+88,TabPFN v3,Freddie Mac,1,One sample,16002,0.45884258,0.46752453,0.452453,0.0086819513,-0.0063895721,0.0022923792,0.060400869,0.062330027,-0.001929157,-0.015071523,0.054533213,0.042085393,11,-0.16
+89,TabPFN v3,LendingClub (LGD),2,One sample,5627,0.59051066,0.59641638,0.59465906,0.0059057178,0.0041484059,0.0017573119,0.015722376,0.015851371,-0.00012899456,-0.0017573119,0.019156014,0.015767411,11,-0.11428571
+90,TabPFN v3,PropLGD1,1,One sample,57932,0.70442018,0.71460663,0.56380657,0.010186443,-0.14061362,-0.13042717,0.057096487,0.10822273,-0.051126239,-0.15080006,0.24964969,0.17884034,11,-0.068571429
+91,TabPFN v3,PropLGD2,0,One sample,4637,0.39203237,0.3922609,0.40770393,0.00022852393,0.015671558,-0.015443034,0.01956368,0.020383154,-0.00081947329,0.015443034,0.029088891,0.021857516,11,-0.022857143
+92,TabPFN v3,PropLGD3,0,One sample,2545,0.22813006,0.21756822,0.23267065,-0.010561848,0.0045405863,0.0060212617,0.085340519,0.085099496,0.0002410231,0.015102434,0.017380402,0.016237998,11,0.022857143
+93,TabPFN v3,PropLGD4,3,One sample,762,0.32338733,0.32185608,0.32747559,-0.0015312449,0.004088262,-0.002557017,0.082258711,0.082618186,-0.00035947552,0.0056195069,0.040742819,0.032818269,11,0.068571429
+94,TabPFN v3,PropLGD5,2,One sample,594,0.33007533,0.32476265,0.33890483,-0.0053126851,0.0088294984,-0.0035168133,0.10424979,0.10449309,-0.00024330225,0.014142184,0.030996434,0.025549224,11,0.11428571
+95,TabPFN v3,SBA Loans Case (LGD),3,One sample,686,0.62803003,0.63257327,0.62290852,0.0045432477,-0.0051215103,-0.00057826262,0.017543234,0.017805652,-0.00026241843,-0.0096647579,0.027574055,0.021037007,11,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -136239,112 +137123,112 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 101,TabPFN v3,SBA Loans Case,3,Adapter LR 0.03,2102,0.32635585,0.32639496,0.32688117,3.9106569e-05,0.00052532291,-0.00048621634,0.033249146,0.032945052,0.00030409311,0.00048621634,0.035470552,0.012568512
 
 Figure: pd_prediction_diagnostics
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,Bondora Peer-to-Peer,0,Adapter LR 0.001,730176,0.13810506,0.1323814,0.12875731,-0.0057236558,-0.0093477489,-0.0036240931,0.08042706,0.081434183,-0.0010071231,-0.0036240931,0.0248497,0.012470546
-1,TabICLv2,Bondora Peer-to-Peer,0,Adapter LR 0.0001,730176,0.13810506,0.1323814,0.13107994,-0.0057236558,-0.0070251165,-0.0013014607,0.08042706,0.080752652,-0.00032559239,-0.0013014607,0.0093350888,0.0043648314
-2,TabICLv2,Bondora Peer-to-Peer,0,Adapter LR 0.03,730176,0.13810506,0.1323814,0.11619778,-0.0057236558,-0.021907284,-0.016183628,0.08042706,0.084557293,-0.0041302338,-0.016183628,0.057970815,0.03104737
-3,TabICLv2,HMEQ,0,Adapter LR 0.001,5960,0.19949664,0.19021689,0.18891436,-0.00927975,-0.010582284,-0.0013025344,0.017732038,0.022053791,-0.0043217538,-0.0013025344,0.055424437,0.016230379
-4,TabICLv2,HMEQ,0,Adapter LR 0.0001,5960,0.19949664,0.19021689,0.18976157,-0.00927975,-0.0097350717,-0.00045532165,0.017732038,0.018392201,-0.00066016369,-0.00045532165,0.016368914,0.0050076951
-5,TabICLv2,HMEQ,0,Adapter LR 0.03,5960,0.19949664,0.19021689,0.18319393,-0.00927975,-0.016302716,-0.0070229656,0.017732038,0.047020488,-0.029288451,-0.0070229656,0.14475522,0.055718028
-6,TabICLv2,MicroFinance,0,Adapter LR 0.001,158700,0.37809074,0.36445519,0.35988386,-0.013635547,-0.018206881,-0.004571334,0.21794347,0.21938683,-0.001443362,-0.004571334,0.030933492,0.023183453
-7,TabICLv2,MicroFinance,0,Adapter LR 0.0001,158700,0.37809074,0.36445519,0.36205172,-0.013635547,-0.016039022,-0.0024034746,0.21794347,0.21847837,-0.00053490533,-0.0024034746,0.013471188,0.010038435
-8,TabICLv2,MicroFinance,0,Adapter LR 0.03,158700,0.37809074,0.36445519,0.32424918,-0.013635547,-0.053841561,-0.040206014,0.21794347,0.22636717,-0.0084237083,-0.040206014,0.083481573,0.065236376
-9,TabICLv2,Thomas,0,Adapter LR 0.001,1225,0.26367347,0.24708993,0.24331616,-0.016583543,-0.02035731,-0.0037737673,0.18308296,0.1839082,-0.00082523597,-0.0037737673,0.015835627,0.011731106
-10,TabICLv2,Thomas,0,Adapter LR 0.0001,1225,0.26367347,0.24708993,0.24595038,-0.016583543,-0.017723086,-0.0011395433,0.18308296,0.18329024,-0.00020728486,-0.0011395433,0.0056822482,0.0042047822
-11,TabICLv2,Thomas,0,Adapter LR 0.03,1225,0.26367347,0.24708993,0.23972584,-0.016583543,-0.023947634,-0.0073640909,0.18308296,0.18346288,-0.00037991851,-0.0073640909,0.033626062,0.024593857
-12,TabICLv2,GMSC,1,Adapter LR 0.001,150000,0.06684,0.05778029,0.055079469,-0.0090597102,-0.011760531,-0.002700821,0.04908186,0.049219457,-0.00013759697,-0.002700821,0.0078821594,0.0044336237
-13,TabICLv2,GMSC,1,Adapter LR 0.0001,150000,0.06684,0.05778029,0.057345621,-0.0090597102,-0.0094943793,-0.00043466903,0.04908186,0.049137814,-5.5954056e-05,-0.00043466903,0.0042284936,0.0020477929
-14,TabICLv2,GMSC,1,Adapter LR 0.03,150000,0.06684,0.05778029,0.065006478,-0.0090597102,-0.0018335219,0.0072261884,0.04908186,0.0494749,-0.00039304065,0.0072261884,0.020930401,0.011805474
-15,TabICLv2,German Credit,1,Adapter LR 0.001,999,0.3003003,0.29274349,0.29158918,-0.0075568069,-0.0087111231,-0.0011543162,0.16240025,0.16210412,0.00029613255,-0.0011543162,0.024600748,0.017694523
-16,TabICLv2,German Credit,1,Adapter LR 0.0001,999,0.3003003,0.29274349,0.29318061,-0.0075568069,-0.0071196889,0.00043711799,0.16240025,0.16212214,0.00027811649,0.00043711799,0.012973986,0.0091630946
-17,TabICLv2,German Credit,1,Adapter LR 0.03,999,0.3003003,0.29274349,0.28477859,-0.0075568069,-0.015521714,-0.0079649069,0.16240025,0.16497375,-0.0025735019,-0.0079649069,0.06292039,0.045869664
-18,TabICLv2,Taiwan Credit Card,1,Adapter LR 0.001,30000,0.2212,0.20650418,0.20335693,-0.014695822,-0.01784307,-0.0031472473,0.1329433,0.1332128,-0.00026950534,-0.0031472473,0.014903933,0.010575932
-19,TabICLv2,Taiwan Credit Card,1,Adapter LR 0.0001,30000,0.2212,0.20650418,0.20640976,-0.014695822,-0.014790235,-9.4413193e-05,0.1329433,0.1329806,-3.730297e-05,-9.4413193e-05,0.0069155744,0.0048329815
-20,TabICLv2,Taiwan Credit Card,1,Adapter LR 0.03,30000,0.2212,0.20650418,0.18009837,-0.014695822,-0.041101631,-0.026405809,0.1329433,0.13641924,-0.0034759393,-0.026405809,0.05942697,0.041573139
-21,TabICLv2,Vehicle Loan,1,Adapter LR 0.001,233154,0.21707112,0.19631227,0.18903139,-0.020758847,-0.028039726,-0.007280879,0.16155385,0.16223451,-0.00068065406,-0.007280879,0.017929865,0.013531186
-22,TabICLv2,Vehicle Loan,1,Adapter LR 0.0001,233154,0.21707112,0.19631227,0.19245357,-0.020758847,-0.024617552,-0.0038587056,0.16155385,0.16188827,-0.0003344175,-0.0038587056,0.010924439,0.0081002764
-23,TabICLv2,Vehicle Loan,1,Adapter LR 0.03,233154,0.21707112,0.19631227,0.19787189,-0.020758847,-0.019199234,0.0015596126,0.16155385,0.16367281,-0.0021189563,0.0015596126,0.04167721,0.03219877
-24,TabICLv2,Credit Risk,2,Adapter LR 0.001,32581,0.21816396,0.20687839,0.21090805,-0.011285571,-0.0072559074,0.0040296633,0.049369046,0.052971048,-0.0036020016,0.0040296633,0.060195509,0.025763275
-25,TabICLv2,Credit Risk,2,Adapter LR 0.0001,32581,0.21816396,0.20687839,0.21127359,-0.011285571,-0.0068903671,0.0043952036,0.049369046,0.050090036,-0.00072098978,0.0043952036,0.027664491,0.012078112
-26,TabICLv2,Credit Risk,2,Adapter LR 0.03,32581,0.21816396,0.20687839,0.21543565,-0.011285571,-0.0027283111,0.0085572596,0.049369046,0.077524277,-0.028155231,0.0085572596,0.15999925,0.091849865
-27,TabICLv2,Hackerearth,2,Adapter LR 0.001,532428,0.23632679,0.23052285,0.21522074,-0.0058039405,-0.02110605,-0.015302109,0.05806795,0.077119807,-0.019051857,-0.015302109,0.1316929,0.06584195
-28,TabICLv2,Hackerearth,2,Adapter LR 0.0001,532428,0.23632679,0.23052285,0.23094644,-0.0058039405,-0.0053803539,0.00042358662,0.05806795,0.061034676,-0.0029667259,0.00042358662,0.040282591,0.018481413
-29,TabICLv2,Hackerearth,2,Adapter LR 0.03,532428,0.23632679,0.23052285,0.236009,-0.0058039405,-0.00031779169,0.0054861488,0.05806795,0.12615026,-0.068082306,0.0054861488,0.26696392,0.19028336
-30,TabICLv2,Myhom,2,Adapter LR 0.001,7000,0.4,0.39011113,0.39496304,-0.0098888705,-0.0050369585,0.004851912,0.23418841,0.23407246,0.00011595225,0.004851912,0.021355041,0.016558856
-31,TabICLv2,Myhom,2,Adapter LR 0.0001,7000,0.4,0.39011113,0.38859342,-0.0098888705,-0.01140658,-0.0015177093,0.23418841,0.23427372,-8.5305622e-05,-0.0015177093,0.016082566,0.012758353
-32,TabICLv2,Myhom,2,Adapter LR 0.03,7000,0.4,0.39011113,0.38196043,-0.0098888705,-0.018039573,-0.0081507021,0.23418841,0.23501233,-0.00082391415,-0.0081507021,0.037314982,0.030131225
-33,TabICLv2,PropPD1,2,Adapter LR 0.001,100000,0.22639,0.19701472,0.19726434,-0.029375283,-0.029125657,0.00024962571,0.12830299,0.12806936,0.00023362135,0.00024962571,0.024799317,0.016740752
-34,TabICLv2,PropPD1,2,Adapter LR 0.0001,100000,0.22639,0.19701472,0.20121855,-0.029375283,-0.025171449,0.0042038338,0.12830299,0.12730272,0.0010002703,0.0042038338,0.021451437,0.014393298
-35,TabICLv2,PropPD1,2,Adapter LR 0.03,100000,0.22639,0.19701472,0.22282871,-0.029375283,-0.0035612865,0.025813996,0.12830299,0.13532487,-0.007021886,0.025813996,0.080309747,0.053449595
-36,TabICLv2,PropPD2,2,Adapter LR 0.001,105471,0.092755355,0.076837465,0.075215767,-0.01591789,-0.017539588,-0.0016216979,0.082311351,0.082394785,-8.3434454e-05,-0.0016216979,0.0086324736,0.0065251778
-37,TabICLv2,PropPD2,2,Adapter LR 0.0001,105471,0.092755355,0.076837465,0.076884299,-0.01591789,-0.015871056,4.6833812e-05,0.082311351,0.08234294,-3.1589377e-05,4.6833812e-05,0.0034616306,0.0025813407
-38,TabICLv2,PropPD2,2,Adapter LR 0.03,105471,0.092755355,0.076837465,0.11199577,-0.01591789,0.019240417,-0.0033225269,0.082311351,0.083141323,-0.00082997196,0.035158307,0.044886042,0.035700139
-39,TabICLv2,Cobranded,3,Adapter LR 0.001,80000,0.2462125,0.23560494,0.23503516,-0.010607559,-0.011177338,-0.00056977944,0.13072396,0.13107424,-0.00035027481,-0.00056977944,0.023143816,0.014913384
-40,TabICLv2,Cobranded,3,Adapter LR 0.0001,80000,0.2462125,0.23560494,0.23586601,-0.010607559,-0.010346488,0.00026107122,0.13072396,0.13087057,-0.00014661111,0.00026107122,0.010916095,0.0071455462
-41,TabICLv2,Cobranded,3,Adapter LR 0.03,80000,0.2462125,0.23560494,0.24076594,-0.010607559,-0.0054465633,0.0051609957,0.13072396,0.13397782,-0.0032538561,0.0051609957,0.061931993,0.042632896
-42,TabICLv2,Home Credit,3,Adapter LR 0.001,307511,0.080728819,0.070867109,0.067306021,-0.00986171,-0.013422798,-0.0035610885,0.06856956,0.068875678,-0.00030611831,-0.0035610885,0.014352443,0.0094135215
-43,TabICLv2,Home Credit,3,Adapter LR 0.0001,307511,0.080728819,0.070867109,0.070104493,-0.00986171,-0.010624326,-0.00076261638,0.06856956,0.06866647,-9.6910076e-05,-0.00076261638,0.0056917305,0.0035900772
-44,TabICLv2,Home Credit,3,Adapter LR 0.03,307511,0.080728819,0.070867109,0.07781115,-0.00986171,-0.0029176698,0.0069440402,0.06856956,0.069375814,-0.00080625427,0.0069440402,0.026460251,0.018830603
-45,TabICLv2,LendingClub,3,Adapter LR 0.001,9578,0.16005429,0.14066122,0.14004639,-0.019393066,-0.020007899,-0.00061483288,0.12610317,0.12614866,-4.5489094e-05,-0.00061483288,0.012361002,0.008715039
-46,TabICLv2,LendingClub,3,Adapter LR 0.0001,9578,0.16005429,0.14066122,0.1393819,-0.019393066,-0.020672389,-0.001279323,0.12610317,0.1260965,6.66395e-06,-0.001279323,0.0069074804,0.0048040387
-47,TabICLv2,LendingClub,3,Adapter LR 0.03,9578,0.16005429,0.14066122,0.14309231,-0.019393066,-0.016961977,0.0024310888,0.12610317,0.12656519,-0.00046202421,0.0024310888,0.025555623,0.017444808
-48,TabICLv2,SBA Loans Case,3,Adapter LR 0.001,2102,0.32635585,0.32635934,0.3253992,3.4878927e-06,-0.00095665566,-0.00095316776,0.031746644,0.032322876,-0.00057623249,-0.00096014355,0.028685633,0.0091489405
-49,TabICLv2,SBA Loans Case,3,Adapter LR 0.0001,2102,0.32635585,0.32635934,0.32650698,3.4878927e-06,0.00015112491,-0.00014763702,0.031746644,0.031757265,-1.0621079e-05,0.00014763702,0.0094249516,0.0029633064
-50,TabICLv2,SBA Loans Case,3,Adapter LR 0.03,2102,0.32635585,0.32635934,0.32687028,3.4878927e-06,0.00051443319,-0.0005109453,0.031746644,0.035034407,-0.0032877635,0.0005109453,0.065985642,0.022347047
-51,TabPFN v3,Bondora Peer-to-Peer,0,Adapter LR 0.001,730176,0.13810506,0.13157373,0.13079053,-0.0065313284,-0.007314529,-0.0007832006,0.080273139,0.08057286,-0.00029972163,-0.0007832006,0.01362823,0.0065640778
-52,TabPFN v3,Bondora Peer-to-Peer,0,Adapter LR 0.0001,730176,0.13810506,0.13157373,0.13182097,-0.0065313284,-0.0062840911,0.00024723734,0.080273139,0.080241163,3.1975865e-05,0.00024723734,0.0053544446,0.0026719517
-53,TabPFN v3,Bondora Peer-to-Peer,0,Adapter LR 0.03,730176,0.13810506,0.13157373,0.1305496,-0.0065313284,-0.0075554579,-0.0010241295,0.080273139,0.081226957,-0.00095381816,-0.0010241295,0.027725325,0.013670474
-54,TabPFN v3,HMEQ,0,Adapter LR 0.001,5960,0.19949664,0.1956357,0.19471338,-0.0038609394,-0.0047832615,-0.00092232215,0.0057323372,0.0081400397,-0.0024077025,-0.00092232215,0.037364903,0.010316983
-55,TabPFN v3,HMEQ,0,Adapter LR 0.0001,5960,0.19949664,0.1956357,0.19572816,-0.0038609394,-0.0037684814,9.2457924e-05,0.0057323372,0.0061992432,-0.00046690599,9.2457924e-05,0.011128717,0.0026431024
-56,TabPFN v3,HMEQ,0,Adapter LR 0.03,5960,0.19949664,0.1956357,0.19372992,-0.0038609394,-0.0057667223,-0.001905783,0.0057323372,0.011173633,-0.0054412956,-0.001905783,0.06724275,0.021915103
-57,TabPFN v3,MicroFinance,0,Adapter LR 0.001,158700,0.37809074,0.36605582,0.36661343,-0.012034914,-0.011477304,0.00055760995,0.21751316,0.21759994,-8.6779805e-05,0.00055760995,0.015021387,0.011270766
-58,TabPFN v3,MicroFinance,0,Adapter LR 0.0001,158700,0.37809074,0.36605582,0.36696166,-0.012034914,-0.011129074,0.00090583956,0.21751316,0.2173829,0.00013025858,0.00090583956,0.0066958468,0.0050248806
-59,TabPFN v3,MicroFinance,0,Adapter LR 0.03,158700,0.37809074,0.36605582,0.36413152,-0.012034914,-0.013959212,-0.0019242989,0.21751316,0.21806739,-0.00055423268,-0.0019242989,0.036431271,0.027581977
-60,TabPFN v3,Thomas,0,Adapter LR 0.001,1225,0.26367347,0.24733232,0.24749848,-0.016341154,-0.01617499,0.00016616435,0.18350797,0.18332765,0.00018032483,0.00016616435,0.013067545,0.010062897
-61,TabPFN v3,Thomas,0,Adapter LR 0.0001,1225,0.26367347,0.24733232,0.24797486,-0.016341154,-0.015698613,0.0006425413,0.18350797,0.18336446,0.00014351535,0.0006425413,0.005996896,0.0045958605
-62,TabPFN v3,Thomas,0,Adapter LR 0.03,1225,0.26367347,0.24733232,0.24889902,-0.016341154,-0.014774449,0.0015667057,0.18350797,0.18272158,0.00078639924,0.0015667057,0.024646974,0.01907952
-63,TabPFN v3,GMSC,1,Adapter LR 0.001,150000,0.06684,0.058648143,0.058290483,-0.0081918569,-0.0085495171,-0.00035766018,0.048835831,0.048877162,-4.1331071e-05,-0.00035766018,0.0056234995,0.0027990715
-64,TabPFN v3,GMSC,1,Adapter LR 0.0001,150000,0.06684,0.058648143,0.059018361,-0.0081918569,-0.0078216386,0.00037021838,0.048835831,0.048832626,3.2048686e-06,0.00037021838,0.0022797844,0.0012187612
-65,TabPFN v3,GMSC,1,Adapter LR 0.03,150000,0.06684,0.058648143,0.055633308,-0.0081918569,-0.011206692,-0.003014835,0.048835831,0.049040485,-0.00020465388,-0.003014835,0.012426888,0.0060542127
-66,TabPFN v3,German Credit,1,Adapter LR 0.001,999,0.3003003,0.29032207,0.29164123,-0.0099782295,-0.0086590737,0.0013191558,0.16260483,0.16196327,0.00064155561,0.0013191558,0.021707941,0.016037
-67,TabPFN v3,German Credit,1,Adapter LR 0.0001,999,0.3003003,0.29032207,0.29140532,-0.0099782295,-0.0088949785,0.0010832511,0.16260483,0.16243666,0.00016816864,0.0010832511,0.0095951909,0.0073545057
-68,TabPFN v3,German Credit,1,Adapter LR 0.03,999,0.3003003,0.29032207,0.29215691,-0.0099782295,-0.0081433879,0.0018348416,0.16260483,0.16264422,-3.9393567e-05,0.0018348416,0.039367999,0.030882024
-69,TabPFN v3,Taiwan Credit Card,1,Adapter LR 0.001,30000,0.2212,0.20652503,0.20710528,-0.014674968,-0.014094722,0.00058024633,0.13305926,0.13301704,4.2220075e-05,0.00058024633,0.012598479,0.0083815953
-70,TabPFN v3,Taiwan Credit Card,1,Adapter LR 0.0001,30000,0.2212,0.20652503,0.20678253,-0.014674968,-0.014417471,0.00025749763,0.13305926,0.13298406,7.5194691e-05,0.00025749763,0.0049737509,0.003484131
-71,TabPFN v3,Taiwan Credit Card,1,Adapter LR 0.03,30000,0.2212,0.20652503,0.20645848,-0.014674968,-0.014741523,-6.6554744e-05,0.13305926,0.13308076,-2.1499174e-05,-6.6554744e-05,0.020496763,0.014490502
-72,TabPFN v3,Vehicle Loan,1,Adapter LR 0.001,233154,0.21707112,0.19829208,0.19906133,-0.018779038,-0.018009794,0.00076924342,0.16127828,0.16132993,-5.165176e-05,0.00076924342,0.0099903389,0.0073446523
-73,TabPFN v3,Vehicle Loan,1,Adapter LR 0.0001,233154,0.21707112,0.19829208,0.19834242,-0.018779038,-0.018728699,5.033863e-05,0.16127828,0.16128042,-2.1390902e-06,5.033863e-05,0.0037050666,0.002718903
-74,TabPFN v3,Vehicle Loan,1,Adapter LR 0.03,233154,0.21707112,0.19829208,0.19817986,-0.018779038,-0.018891259,-0.00011222117,0.16127828,0.16179204,-0.00051376377,-0.00011222117,0.025561664,0.018842831
-75,TabPFN v3,Credit Risk,2,Adapter LR 0.001,32581,0.21816396,0.20759623,0.20366489,-0.010567735,-0.014499071,-0.003931336,0.050267518,0.05126187,-0.00099435211,-0.003931336,0.028174195,0.011907175
-76,TabPFN v3,Credit Risk,2,Adapter LR 0.0001,32581,0.21816396,0.20759623,0.20842856,-0.010567735,-0.0097353959,0.00083233872,0.050267518,0.050386598,-0.00011908041,0.00083233872,0.0091253791,0.0039888657
-77,TabPFN v3,Credit Risk,2,Adapter LR 0.03,32581,0.21816396,0.20759623,0.20758678,-0.010567735,-0.010577177,-9.4423621e-06,0.050267518,0.055970726,-0.0057032082,-9.4423621e-06,0.065978443,0.031484294
-78,TabPFN v3,Hackerearth,2,Adapter LR 0.001,532428,0.23632679,0.22884167,0.23127782,-0.0074851162,-0.005048967,0.0024361492,0.054771256,0.058141583,-0.0033703272,0.0024361492,0.045743483,0.023054747
-79,TabPFN v3,Hackerearth,2,Adapter LR 0.0001,532428,0.23632679,0.22884167,0.23262665,-0.0074851162,-0.0037001413,0.0037849749,0.054771256,0.055294219,-0.00052296296,0.0037849749,0.016477456,0.0093249893
-80,TabPFN v3,Hackerearth,2,Adapter LR 0.03,532428,0.23632679,0.22884167,0.23985636,-0.0074851162,0.0035295744,0.0039555418,0.054771256,0.08111946,-0.026348204,0.011014691,0.14864387,0.093619484
-81,TabPFN v3,Myhom,2,Adapter LR 0.001,7000,0.4,0.39120362,0.39159377,-0.0087963807,-0.0084062337,0.00039014702,0.23383466,0.23384326,-8.604677e-06,0.00039014702,0.0079821899,0.0060401577
-82,TabPFN v3,Myhom,2,Adapter LR 0.0001,7000,0.4,0.39120362,0.39124577,-0.0087963807,-0.0087542299,4.2150847e-05,0.23383466,0.23379827,3.639139e-05,4.2150847e-05,0.0031902208,0.0024655445
-83,TabPFN v3,Myhom,2,Adapter LR 0.03,7000,0.4,0.39120362,0.39091396,-0.0087963807,-0.0090860366,-0.00028965587,0.23383466,0.23390336,-6.8704936e-05,-0.00028965587,0.011703853,0.0089701133
-84,TabPFN v3,PropPD1,2,Adapter LR 0.001,100000,0.22639,0.1925788,0.19890736,-0.0338112,-0.027482638,0.0063285616,0.12856333,0.12769761,0.00086571344,0.0063285616,0.018756248,0.011364478
-85,TabPFN v3,PropPD1,2,Adapter LR 0.0001,100000,0.22639,0.1925788,0.19577341,-0.0338112,-0.030616586,0.0031946143,0.12856333,0.12804933,0.00051399819,0.0031946143,0.0077848274,0.004750156
-86,TabPFN v3,PropPD1,2,Adapter LR 0.03,100000,0.22639,0.1925788,0.22026872,-0.0338112,-0.0061212837,0.027689916,0.12856333,0.1272458,0.0013175288,0.027689916,0.054138742,0.037272708
-87,TabPFN v3,PropPD2,2,Adapter LR 0.001,105471,0.092755355,0.075075104,0.074548131,-0.01768025,-0.018207223,-0.00052697326,0.082364207,0.082354572,9.6344125e-06,-0.00052697326,0.005225803,0.0039751126
-88,TabPFN v3,PropPD2,2,Adapter LR 0.0001,105471,0.092755355,0.075075104,0.074687131,-0.01768025,-0.018068223,-0.00038797319,0.082364207,0.082357892,6.3147591e-06,-0.00038797319,0.0024240396,0.0018536842
-89,TabPFN v3,PropPD2,2,Adapter LR 0.03,105471,0.092755355,0.075075104,0.074381447,-0.01768025,-0.018373908,-0.00069365762,0.082364207,0.082431375,-6.71682e-05,-0.00069365762,0.0086481352,0.0063869605
-90,TabPFN v3,Cobranded,3,Adapter LR 0.001,80000,0.2462125,0.23466293,0.23606492,-0.011549569,-0.010147575,0.0014019941,0.13093212,0.13061394,0.00031818256,0.0014019941,0.013922647,0.008529477
-91,TabPFN v3,Cobranded,3,Adapter LR 0.0001,80000,0.2462125,0.23466293,0.23530159,-0.011549569,-0.010910907,0.00063866195,0.13093212,0.13074559,0.0001865287,0.00063866195,0.0066910194,0.0037879855
-92,TabPFN v3,Cobranded,3,Adapter LR 0.03,80000,0.2462125,0.23466293,0.2503809,-0.011549569,0.0041684041,0.0073811652,0.13093212,0.13115873,-0.0002266091,0.015717973,0.042860729,0.026979484
-93,TabPFN v3,Home Credit,3,Adapter LR 0.001,307511,0.080728819,0.066740648,0.070463133,-0.013988171,-0.010265687,0.0037224845,0.068396342,0.068324896,7.1446343e-05,0.0037224845,0.0092604226,0.0061684885
-94,TabPFN v3,Home Credit,3,Adapter LR 0.0001,307511,0.080728819,0.066740648,0.067801446,-0.013988171,-0.012927373,0.0010607977,0.068396342,0.068371681,2.4661206e-05,0.0010607977,0.0036178953,0.0024746119
-95,TabPFN v3,Home Credit,3,Adapter LR 0.03,307511,0.080728819,0.066740648,0.074929245,-0.013988171,-0.0057995742,0.008188597,0.068396342,0.068647985,-0.00025164275,0.008188597,0.020726758,0.013861513
-96,TabPFN v3,LendingClub,3,Adapter LR 0.001,9578,0.16005429,0.14098134,0.14043456,-0.019072951,-0.019619736,-0.00054678487,0.12638842,0.12639284,-4.4228617e-06,-0.00054678487,0.007455647,0.0052639232
-97,TabPFN v3,LendingClub,3,Adapter LR 0.0001,9578,0.16005429,0.14098134,0.14148112,-0.019072951,-0.018573169,0.00049978202,0.12638842,0.12633001,5.8404655e-05,0.00049978202,0.0032436109,0.0024197413
-98,TabPFN v3,LendingClub,3,Adapter LR 0.03,9578,0.16005429,0.14098134,0.1377044,-0.019072951,-0.022349894,-0.0032769435,0.12638842,0.12656536,-0.00017694456,-0.0032769435,0.012577048,0.0082539155
-99,TabPFN v3,SBA Loans Case,3,Adapter LR 0.001,2102,0.32635585,0.32639496,0.32568491,3.9106569e-05,-0.00067094526,-0.00063183869,0.033249146,0.03262946,0.00061968588,-0.00071005183,0.017205844,0.0063238661
-100,TabPFN v3,SBA Loans Case,3,Adapter LR 0.0001,2102,0.32635585,0.32639496,0.32592951,3.9106569e-05,-0.00042633942,-0.00038723285,0.033249146,0.033034203,0.00021494244,-0.00046544599,0.0075264788,0.0031449072
-101,TabPFN v3,SBA Loans Case,3,Adapter LR 0.03,2102,0.32635585,0.32639496,0.32688117,3.9106569e-05,0.00052532291,-0.00048621634,0.033249146,0.032945052,0.00030409311,0.00048621634,0.035470552,0.012568512
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Bondora Peer-to-Peer,0,Adapter LR 0.0001,730176,0.13810506,0.1323814,0.13107994,-0.0057236558,-0.0070251165,-0.0013014607,0.08042706,0.080752652,-0.00032559239,-0.0013014607,0.0093350888,0.0043648314,0,-0.16
+1,TabICLv2,Cobranded,3,Adapter LR 0.0001,80000,0.2462125,0.23560494,0.23586601,-0.010607559,-0.010346488,0.00026107122,0.13072396,0.13087057,-0.00014661111,0.00026107122,0.010916095,0.0071455462,0,-0.14
+2,TabICLv2,Credit Risk,2,Adapter LR 0.0001,32581,0.21816396,0.20687839,0.21127359,-0.011285571,-0.0068903671,0.0043952036,0.049369046,0.050090036,-0.00072098978,0.0043952036,0.027664491,0.012078112,0,-0.12
+3,TabICLv2,GMSC,1,Adapter LR 0.0001,150000,0.06684,0.05778029,0.057345621,-0.0090597102,-0.0094943793,-0.00043466903,0.04908186,0.049137814,-5.5954056e-05,-0.00043466903,0.0042284936,0.0020477929,0,-0.1
+4,TabICLv2,German Credit,1,Adapter LR 0.0001,999,0.3003003,0.29274349,0.29318061,-0.0075568069,-0.0071196889,0.00043711799,0.16240025,0.16212214,0.00027811649,0.00043711799,0.012973986,0.0091630946,0,-0.08
+5,TabICLv2,HMEQ,0,Adapter LR 0.0001,5960,0.19949664,0.19021689,0.18976157,-0.00927975,-0.0097350717,-0.00045532165,0.017732038,0.018392201,-0.00066016369,-0.00045532165,0.016368914,0.0050076951,0,-0.06
+6,TabICLv2,Hackerearth,2,Adapter LR 0.0001,532428,0.23632679,0.23052285,0.23094644,-0.0058039405,-0.0053803539,0.00042358662,0.05806795,0.061034676,-0.0029667259,0.00042358662,0.040282591,0.018481413,0,-0.04
+7,TabICLv2,Home Credit,3,Adapter LR 0.0001,307511,0.080728819,0.070867109,0.070104493,-0.00986171,-0.010624326,-0.00076261638,0.06856956,0.06866647,-9.6910076e-05,-0.00076261638,0.0056917305,0.0035900772,0,-0.02
+8,TabICLv2,LendingClub,3,Adapter LR 0.0001,9578,0.16005429,0.14066122,0.1393819,-0.019393066,-0.020672389,-0.001279323,0.12610317,0.1260965,6.66395e-06,-0.001279323,0.0069074804,0.0048040387,0,0
+9,TabICLv2,MicroFinance,0,Adapter LR 0.0001,158700,0.37809074,0.36445519,0.36205172,-0.013635547,-0.016039022,-0.0024034746,0.21794347,0.21847837,-0.00053490533,-0.0024034746,0.013471188,0.010038435,0,0.02
+10,TabICLv2,Myhom,2,Adapter LR 0.0001,7000,0.4,0.39011113,0.38859342,-0.0098888705,-0.01140658,-0.0015177093,0.23418841,0.23427372,-8.5305622e-05,-0.0015177093,0.016082566,0.012758353,0,0.04
+11,TabICLv2,PropPD1,2,Adapter LR 0.0001,100000,0.22639,0.19701472,0.20121855,-0.029375283,-0.025171449,0.0042038338,0.12830299,0.12730272,0.0010002703,0.0042038338,0.021451437,0.014393298,0,0.06
+12,TabICLv2,PropPD2,2,Adapter LR 0.0001,105471,0.092755355,0.076837465,0.076884299,-0.01591789,-0.015871056,4.6833812e-05,0.082311351,0.08234294,-3.1589377e-05,4.6833812e-05,0.0034616306,0.0025813407,0,0.08
+13,TabICLv2,SBA Loans Case,3,Adapter LR 0.0001,2102,0.32635585,0.32635934,0.32650698,3.4878927e-06,0.00015112491,-0.00014763702,0.031746644,0.031757265,-1.0621079e-05,0.00014763702,0.0094249516,0.0029633064,0,0.1
+14,TabICLv2,Taiwan Credit Card,1,Adapter LR 0.0001,30000,0.2212,0.20650418,0.20640976,-0.014695822,-0.014790235,-9.4413193e-05,0.1329433,0.1329806,-3.730297e-05,-9.4413193e-05,0.0069155744,0.0048329815,0,0.12
+15,TabICLv2,Thomas,0,Adapter LR 0.0001,1225,0.26367347,0.24708993,0.24595038,-0.016583543,-0.017723086,-0.0011395433,0.18308296,0.18329024,-0.00020728486,-0.0011395433,0.0056822482,0.0042047822,0,0.14
+16,TabICLv2,Vehicle Loan,1,Adapter LR 0.0001,233154,0.21707112,0.19631227,0.19245357,-0.020758847,-0.024617552,-0.0038587056,0.16155385,0.16188827,-0.0003344175,-0.0038587056,0.010924439,0.0081002764,0,0.16
+17,TabICLv2,Bondora Peer-to-Peer,0,Adapter LR 0.001,730176,0.13810506,0.1323814,0.12875731,-0.0057236558,-0.0093477489,-0.0036240931,0.08042706,0.081434183,-0.0010071231,-0.0036240931,0.0248497,0.012470546,1,-0.16
+18,TabICLv2,Cobranded,3,Adapter LR 0.001,80000,0.2462125,0.23560494,0.23503516,-0.010607559,-0.011177338,-0.00056977944,0.13072396,0.13107424,-0.00035027481,-0.00056977944,0.023143816,0.014913384,1,-0.14
+19,TabICLv2,Credit Risk,2,Adapter LR 0.001,32581,0.21816396,0.20687839,0.21090805,-0.011285571,-0.0072559074,0.0040296633,0.049369046,0.052971048,-0.0036020016,0.0040296633,0.060195509,0.025763275,1,-0.12
+20,TabICLv2,GMSC,1,Adapter LR 0.001,150000,0.06684,0.05778029,0.055079469,-0.0090597102,-0.011760531,-0.002700821,0.04908186,0.049219457,-0.00013759697,-0.002700821,0.0078821594,0.0044336237,1,-0.1
+21,TabICLv2,German Credit,1,Adapter LR 0.001,999,0.3003003,0.29274349,0.29158918,-0.0075568069,-0.0087111231,-0.0011543162,0.16240025,0.16210412,0.00029613255,-0.0011543162,0.024600748,0.017694523,1,-0.08
+22,TabICLv2,HMEQ,0,Adapter LR 0.001,5960,0.19949664,0.19021689,0.18891436,-0.00927975,-0.010582284,-0.0013025344,0.017732038,0.022053791,-0.0043217538,-0.0013025344,0.055424437,0.016230379,1,-0.06
+23,TabICLv2,Hackerearth,2,Adapter LR 0.001,532428,0.23632679,0.23052285,0.21522074,-0.0058039405,-0.02110605,-0.015302109,0.05806795,0.077119807,-0.019051857,-0.015302109,0.1316929,0.06584195,1,-0.04
+24,TabICLv2,Home Credit,3,Adapter LR 0.001,307511,0.080728819,0.070867109,0.067306021,-0.00986171,-0.013422798,-0.0035610885,0.06856956,0.068875678,-0.00030611831,-0.0035610885,0.014352443,0.0094135215,1,-0.02
+25,TabICLv2,LendingClub,3,Adapter LR 0.001,9578,0.16005429,0.14066122,0.14004639,-0.019393066,-0.020007899,-0.00061483288,0.12610317,0.12614866,-4.5489094e-05,-0.00061483288,0.012361002,0.008715039,1,0
+26,TabICLv2,MicroFinance,0,Adapter LR 0.001,158700,0.37809074,0.36445519,0.35988386,-0.013635547,-0.018206881,-0.004571334,0.21794347,0.21938683,-0.001443362,-0.004571334,0.030933492,0.023183453,1,0.02
+27,TabICLv2,Myhom,2,Adapter LR 0.001,7000,0.4,0.39011113,0.39496304,-0.0098888705,-0.0050369585,0.004851912,0.23418841,0.23407246,0.00011595225,0.004851912,0.021355041,0.016558856,1,0.04
+28,TabICLv2,PropPD1,2,Adapter LR 0.001,100000,0.22639,0.19701472,0.19726434,-0.029375283,-0.029125657,0.00024962571,0.12830299,0.12806936,0.00023362135,0.00024962571,0.024799317,0.016740752,1,0.06
+29,TabICLv2,PropPD2,2,Adapter LR 0.001,105471,0.092755355,0.076837465,0.075215767,-0.01591789,-0.017539588,-0.0016216979,0.082311351,0.082394785,-8.3434454e-05,-0.0016216979,0.0086324736,0.0065251778,1,0.08
+30,TabICLv2,SBA Loans Case,3,Adapter LR 0.001,2102,0.32635585,0.32635934,0.3253992,3.4878927e-06,-0.00095665566,-0.00095316776,0.031746644,0.032322876,-0.00057623249,-0.00096014355,0.028685633,0.0091489405,1,0.1
+31,TabICLv2,Taiwan Credit Card,1,Adapter LR 0.001,30000,0.2212,0.20650418,0.20335693,-0.014695822,-0.01784307,-0.0031472473,0.1329433,0.1332128,-0.00026950534,-0.0031472473,0.014903933,0.010575932,1,0.12
+32,TabICLv2,Thomas,0,Adapter LR 0.001,1225,0.26367347,0.24708993,0.24331616,-0.016583543,-0.02035731,-0.0037737673,0.18308296,0.1839082,-0.00082523597,-0.0037737673,0.015835627,0.011731106,1,0.14
+33,TabICLv2,Vehicle Loan,1,Adapter LR 0.001,233154,0.21707112,0.19631227,0.18903139,-0.020758847,-0.028039726,-0.007280879,0.16155385,0.16223451,-0.00068065406,-0.007280879,0.017929865,0.013531186,1,0.16
+34,TabICLv2,Bondora Peer-to-Peer,0,Adapter LR 0.03,730176,0.13810506,0.1323814,0.11619778,-0.0057236558,-0.021907284,-0.016183628,0.08042706,0.084557293,-0.0041302338,-0.016183628,0.057970815,0.03104737,2,-0.16
+35,TabICLv2,Cobranded,3,Adapter LR 0.03,80000,0.2462125,0.23560494,0.24076594,-0.010607559,-0.0054465633,0.0051609957,0.13072396,0.13397782,-0.0032538561,0.0051609957,0.061931993,0.042632896,2,-0.14
+36,TabICLv2,Credit Risk,2,Adapter LR 0.03,32581,0.21816396,0.20687839,0.21543565,-0.011285571,-0.0027283111,0.0085572596,0.049369046,0.077524277,-0.028155231,0.0085572596,0.15999925,0.091849865,2,-0.12
+37,TabICLv2,GMSC,1,Adapter LR 0.03,150000,0.06684,0.05778029,0.065006478,-0.0090597102,-0.0018335219,0.0072261884,0.04908186,0.0494749,-0.00039304065,0.0072261884,0.020930401,0.011805474,2,-0.1
+38,TabICLv2,German Credit,1,Adapter LR 0.03,999,0.3003003,0.29274349,0.28477859,-0.0075568069,-0.015521714,-0.0079649069,0.16240025,0.16497375,-0.0025735019,-0.0079649069,0.06292039,0.045869664,2,-0.08
+39,TabICLv2,HMEQ,0,Adapter LR 0.03,5960,0.19949664,0.19021689,0.18319393,-0.00927975,-0.016302716,-0.0070229656,0.017732038,0.047020488,-0.029288451,-0.0070229656,0.14475522,0.055718028,2,-0.06
+40,TabICLv2,Hackerearth,2,Adapter LR 0.03,532428,0.23632679,0.23052285,0.236009,-0.0058039405,-0.00031779169,0.0054861488,0.05806795,0.12615026,-0.068082306,0.0054861488,0.26696392,0.19028336,2,-0.04
+41,TabICLv2,Home Credit,3,Adapter LR 0.03,307511,0.080728819,0.070867109,0.07781115,-0.00986171,-0.0029176698,0.0069440402,0.06856956,0.069375814,-0.00080625427,0.0069440402,0.026460251,0.018830603,2,-0.02
+42,TabICLv2,LendingClub,3,Adapter LR 0.03,9578,0.16005429,0.14066122,0.14309231,-0.019393066,-0.016961977,0.0024310888,0.12610317,0.12656519,-0.00046202421,0.0024310888,0.025555623,0.017444808,2,0
+43,TabICLv2,MicroFinance,0,Adapter LR 0.03,158700,0.37809074,0.36445519,0.32424918,-0.013635547,-0.053841561,-0.040206014,0.21794347,0.22636717,-0.0084237083,-0.040206014,0.083481573,0.065236376,2,0.02
+44,TabICLv2,Myhom,2,Adapter LR 0.03,7000,0.4,0.39011113,0.38196043,-0.0098888705,-0.018039573,-0.0081507021,0.23418841,0.23501233,-0.00082391415,-0.0081507021,0.037314982,0.030131225,2,0.04
+45,TabICLv2,PropPD1,2,Adapter LR 0.03,100000,0.22639,0.19701472,0.22282871,-0.029375283,-0.0035612865,0.025813996,0.12830299,0.13532487,-0.007021886,0.025813996,0.080309747,0.053449595,2,0.06
+46,TabICLv2,PropPD2,2,Adapter LR 0.03,105471,0.092755355,0.076837465,0.11199577,-0.01591789,0.019240417,-0.0033225269,0.082311351,0.083141323,-0.00082997196,0.035158307,0.044886042,0.035700139,2,0.08
+47,TabICLv2,SBA Loans Case,3,Adapter LR 0.03,2102,0.32635585,0.32635934,0.32687028,3.4878927e-06,0.00051443319,-0.0005109453,0.031746644,0.035034407,-0.0032877635,0.0005109453,0.065985642,0.022347047,2,0.1
+48,TabICLv2,Taiwan Credit Card,1,Adapter LR 0.03,30000,0.2212,0.20650418,0.18009837,-0.014695822,-0.041101631,-0.026405809,0.1329433,0.13641924,-0.0034759393,-0.026405809,0.05942697,0.041573139,2,0.12
+49,TabICLv2,Thomas,0,Adapter LR 0.03,1225,0.26367347,0.24708993,0.23972584,-0.016583543,-0.023947634,-0.0073640909,0.18308296,0.18346288,-0.00037991851,-0.0073640909,0.033626062,0.024593857,2,0.14
+50,TabICLv2,Vehicle Loan,1,Adapter LR 0.03,233154,0.21707112,0.19631227,0.19787189,-0.020758847,-0.019199234,0.0015596126,0.16155385,0.16367281,-0.0021189563,0.0015596126,0.04167721,0.03219877,2,0.16
+51,TabPFN v3,Bondora Peer-to-Peer,0,Adapter LR 0.0001,730176,0.13810506,0.13157373,0.13182097,-0.0065313284,-0.0062840911,0.00024723734,0.080273139,0.080241163,3.1975865e-05,0.00024723734,0.0053544446,0.0026719517,3,-0.16
+52,TabPFN v3,Cobranded,3,Adapter LR 0.0001,80000,0.2462125,0.23466293,0.23530159,-0.011549569,-0.010910907,0.00063866195,0.13093212,0.13074559,0.0001865287,0.00063866195,0.0066910194,0.0037879855,3,-0.14
+53,TabPFN v3,Credit Risk,2,Adapter LR 0.0001,32581,0.21816396,0.20759623,0.20842856,-0.010567735,-0.0097353959,0.00083233872,0.050267518,0.050386598,-0.00011908041,0.00083233872,0.0091253791,0.0039888657,3,-0.12
+54,TabPFN v3,GMSC,1,Adapter LR 0.0001,150000,0.06684,0.058648143,0.059018361,-0.0081918569,-0.0078216386,0.00037021838,0.048835831,0.048832626,3.2048686e-06,0.00037021838,0.0022797844,0.0012187612,3,-0.1
+55,TabPFN v3,German Credit,1,Adapter LR 0.0001,999,0.3003003,0.29032207,0.29140532,-0.0099782295,-0.0088949785,0.0010832511,0.16260483,0.16243666,0.00016816864,0.0010832511,0.0095951909,0.0073545057,3,-0.08
+56,TabPFN v3,HMEQ,0,Adapter LR 0.0001,5960,0.19949664,0.1956357,0.19572816,-0.0038609394,-0.0037684814,9.2457924e-05,0.0057323372,0.0061992432,-0.00046690599,9.2457924e-05,0.011128717,0.0026431024,3,-0.06
+57,TabPFN v3,Hackerearth,2,Adapter LR 0.0001,532428,0.23632679,0.22884167,0.23262665,-0.0074851162,-0.0037001413,0.0037849749,0.054771256,0.055294219,-0.00052296296,0.0037849749,0.016477456,0.0093249893,3,-0.04
+58,TabPFN v3,Home Credit,3,Adapter LR 0.0001,307511,0.080728819,0.066740648,0.067801446,-0.013988171,-0.012927373,0.0010607977,0.068396342,0.068371681,2.4661206e-05,0.0010607977,0.0036178953,0.0024746119,3,-0.02
+59,TabPFN v3,LendingClub,3,Adapter LR 0.0001,9578,0.16005429,0.14098134,0.14148112,-0.019072951,-0.018573169,0.00049978202,0.12638842,0.12633001,5.8404655e-05,0.00049978202,0.0032436109,0.0024197413,3,0
+60,TabPFN v3,MicroFinance,0,Adapter LR 0.0001,158700,0.37809074,0.36605582,0.36696166,-0.012034914,-0.011129074,0.00090583956,0.21751316,0.2173829,0.00013025858,0.00090583956,0.0066958468,0.0050248806,3,0.02
+61,TabPFN v3,Myhom,2,Adapter LR 0.0001,7000,0.4,0.39120362,0.39124577,-0.0087963807,-0.0087542299,4.2150847e-05,0.23383466,0.23379827,3.639139e-05,4.2150847e-05,0.0031902208,0.0024655445,3,0.04
+62,TabPFN v3,PropPD1,2,Adapter LR 0.0001,100000,0.22639,0.1925788,0.19577341,-0.0338112,-0.030616586,0.0031946143,0.12856333,0.12804933,0.00051399819,0.0031946143,0.0077848274,0.004750156,3,0.06
+63,TabPFN v3,PropPD2,2,Adapter LR 0.0001,105471,0.092755355,0.075075104,0.074687131,-0.01768025,-0.018068223,-0.00038797319,0.082364207,0.082357892,6.3147591e-06,-0.00038797319,0.0024240396,0.0018536842,3,0.08
+64,TabPFN v3,SBA Loans Case,3,Adapter LR 0.0001,2102,0.32635585,0.32639496,0.32592951,3.9106569e-05,-0.00042633942,-0.00038723285,0.033249146,0.033034203,0.00021494244,-0.00046544599,0.0075264788,0.0031449072,3,0.1
+65,TabPFN v3,Taiwan Credit Card,1,Adapter LR 0.0001,30000,0.2212,0.20652503,0.20678253,-0.014674968,-0.014417471,0.00025749763,0.13305926,0.13298406,7.5194691e-05,0.00025749763,0.0049737509,0.003484131,3,0.12
+66,TabPFN v3,Thomas,0,Adapter LR 0.0001,1225,0.26367347,0.24733232,0.24797486,-0.016341154,-0.015698613,0.0006425413,0.18350797,0.18336446,0.00014351535,0.0006425413,0.005996896,0.0045958605,3,0.14
+67,TabPFN v3,Vehicle Loan,1,Adapter LR 0.0001,233154,0.21707112,0.19829208,0.19834242,-0.018779038,-0.018728699,5.033863e-05,0.16127828,0.16128042,-2.1390902e-06,5.033863e-05,0.0037050666,0.002718903,3,0.16
+68,TabPFN v3,Bondora Peer-to-Peer,0,Adapter LR 0.001,730176,0.13810506,0.13157373,0.13079053,-0.0065313284,-0.007314529,-0.0007832006,0.080273139,0.08057286,-0.00029972163,-0.0007832006,0.01362823,0.0065640778,4,-0.16
+69,TabPFN v3,Cobranded,3,Adapter LR 0.001,80000,0.2462125,0.23466293,0.23606492,-0.011549569,-0.010147575,0.0014019941,0.13093212,0.13061394,0.00031818256,0.0014019941,0.013922647,0.008529477,4,-0.14
+70,TabPFN v3,Credit Risk,2,Adapter LR 0.001,32581,0.21816396,0.20759623,0.20366489,-0.010567735,-0.014499071,-0.003931336,0.050267518,0.05126187,-0.00099435211,-0.003931336,0.028174195,0.011907175,4,-0.12
+71,TabPFN v3,GMSC,1,Adapter LR 0.001,150000,0.06684,0.058648143,0.058290483,-0.0081918569,-0.0085495171,-0.00035766018,0.048835831,0.048877162,-4.1331071e-05,-0.00035766018,0.0056234995,0.0027990715,4,-0.1
+72,TabPFN v3,German Credit,1,Adapter LR 0.001,999,0.3003003,0.29032207,0.29164123,-0.0099782295,-0.0086590737,0.0013191558,0.16260483,0.16196327,0.00064155561,0.0013191558,0.021707941,0.016037,4,-0.08
+73,TabPFN v3,HMEQ,0,Adapter LR 0.001,5960,0.19949664,0.1956357,0.19471338,-0.0038609394,-0.0047832615,-0.00092232215,0.0057323372,0.0081400397,-0.0024077025,-0.00092232215,0.037364903,0.010316983,4,-0.06
+74,TabPFN v3,Hackerearth,2,Adapter LR 0.001,532428,0.23632679,0.22884167,0.23127782,-0.0074851162,-0.005048967,0.0024361492,0.054771256,0.058141583,-0.0033703272,0.0024361492,0.045743483,0.023054747,4,-0.04
+75,TabPFN v3,Home Credit,3,Adapter LR 0.001,307511,0.080728819,0.066740648,0.070463133,-0.013988171,-0.010265687,0.0037224845,0.068396342,0.068324896,7.1446343e-05,0.0037224845,0.0092604226,0.0061684885,4,-0.02
+76,TabPFN v3,LendingClub,3,Adapter LR 0.001,9578,0.16005429,0.14098134,0.14043456,-0.019072951,-0.019619736,-0.00054678487,0.12638842,0.12639284,-4.4228617e-06,-0.00054678487,0.007455647,0.0052639232,4,0
+77,TabPFN v3,MicroFinance,0,Adapter LR 0.001,158700,0.37809074,0.36605582,0.36661343,-0.012034914,-0.011477304,0.00055760995,0.21751316,0.21759994,-8.6779805e-05,0.00055760995,0.015021387,0.011270766,4,0.02
+78,TabPFN v3,Myhom,2,Adapter LR 0.001,7000,0.4,0.39120362,0.39159377,-0.0087963807,-0.0084062337,0.00039014702,0.23383466,0.23384326,-8.604677e-06,0.00039014702,0.0079821899,0.0060401577,4,0.04
+79,TabPFN v3,PropPD1,2,Adapter LR 0.001,100000,0.22639,0.1925788,0.19890736,-0.0338112,-0.027482638,0.0063285616,0.12856333,0.12769761,0.00086571344,0.0063285616,0.018756248,0.011364478,4,0.06
+80,TabPFN v3,PropPD2,2,Adapter LR 0.001,105471,0.092755355,0.075075104,0.074548131,-0.01768025,-0.018207223,-0.00052697326,0.082364207,0.082354572,9.6344125e-06,-0.00052697326,0.005225803,0.0039751126,4,0.08
+81,TabPFN v3,SBA Loans Case,3,Adapter LR 0.001,2102,0.32635585,0.32639496,0.32568491,3.9106569e-05,-0.00067094526,-0.00063183869,0.033249146,0.03262946,0.00061968588,-0.00071005183,0.017205844,0.0063238661,4,0.1
+82,TabPFN v3,Taiwan Credit Card,1,Adapter LR 0.001,30000,0.2212,0.20652503,0.20710528,-0.014674968,-0.014094722,0.00058024633,0.13305926,0.13301704,4.2220075e-05,0.00058024633,0.012598479,0.0083815953,4,0.12
+83,TabPFN v3,Thomas,0,Adapter LR 0.001,1225,0.26367347,0.24733232,0.24749848,-0.016341154,-0.01617499,0.00016616435,0.18350797,0.18332765,0.00018032483,0.00016616435,0.013067545,0.010062897,4,0.14
+84,TabPFN v3,Vehicle Loan,1,Adapter LR 0.001,233154,0.21707112,0.19829208,0.19906133,-0.018779038,-0.018009794,0.00076924342,0.16127828,0.16132993,-5.165176e-05,0.00076924342,0.0099903389,0.0073446523,4,0.16
+85,TabPFN v3,Bondora Peer-to-Peer,0,Adapter LR 0.03,730176,0.13810506,0.13157373,0.1305496,-0.0065313284,-0.0075554579,-0.0010241295,0.080273139,0.081226957,-0.00095381816,-0.0010241295,0.027725325,0.013670474,5,-0.16
+86,TabPFN v3,Cobranded,3,Adapter LR 0.03,80000,0.2462125,0.23466293,0.2503809,-0.011549569,0.0041684041,0.0073811652,0.13093212,0.13115873,-0.0002266091,0.015717973,0.042860729,0.026979484,5,-0.14
+87,TabPFN v3,Credit Risk,2,Adapter LR 0.03,32581,0.21816396,0.20759623,0.20758678,-0.010567735,-0.010577177,-9.4423621e-06,0.050267518,0.055970726,-0.0057032082,-9.4423621e-06,0.065978443,0.031484294,5,-0.12
+88,TabPFN v3,GMSC,1,Adapter LR 0.03,150000,0.06684,0.058648143,0.055633308,-0.0081918569,-0.011206692,-0.003014835,0.048835831,0.049040485,-0.00020465388,-0.003014835,0.012426888,0.0060542127,5,-0.1
+89,TabPFN v3,German Credit,1,Adapter LR 0.03,999,0.3003003,0.29032207,0.29215691,-0.0099782295,-0.0081433879,0.0018348416,0.16260483,0.16264422,-3.9393567e-05,0.0018348416,0.039367999,0.030882024,5,-0.08
+90,TabPFN v3,HMEQ,0,Adapter LR 0.03,5960,0.19949664,0.1956357,0.19372992,-0.0038609394,-0.0057667223,-0.001905783,0.0057323372,0.011173633,-0.0054412956,-0.001905783,0.06724275,0.021915103,5,-0.06
+91,TabPFN v3,Hackerearth,2,Adapter LR 0.03,532428,0.23632679,0.22884167,0.23985636,-0.0074851162,0.0035295744,0.0039555418,0.054771256,0.08111946,-0.026348204,0.011014691,0.14864387,0.093619484,5,-0.04
+92,TabPFN v3,Home Credit,3,Adapter LR 0.03,307511,0.080728819,0.066740648,0.074929245,-0.013988171,-0.0057995742,0.008188597,0.068396342,0.068647985,-0.00025164275,0.008188597,0.020726758,0.013861513,5,-0.02
+93,TabPFN v3,LendingClub,3,Adapter LR 0.03,9578,0.16005429,0.14098134,0.1377044,-0.019072951,-0.022349894,-0.0032769435,0.12638842,0.12656536,-0.00017694456,-0.0032769435,0.012577048,0.0082539155,5,0
+94,TabPFN v3,MicroFinance,0,Adapter LR 0.03,158700,0.37809074,0.36605582,0.36413152,-0.012034914,-0.013959212,-0.0019242989,0.21751316,0.21806739,-0.00055423268,-0.0019242989,0.036431271,0.027581977,5,0.02
+95,TabPFN v3,Myhom,2,Adapter LR 0.03,7000,0.4,0.39120362,0.39091396,-0.0087963807,-0.0090860366,-0.00028965587,0.23383466,0.23390336,-6.8704936e-05,-0.00028965587,0.011703853,0.0089701133,5,0.04
+96,TabPFN v3,PropPD1,2,Adapter LR 0.03,100000,0.22639,0.1925788,0.22026872,-0.0338112,-0.0061212837,0.027689916,0.12856333,0.1272458,0.0013175288,0.027689916,0.054138742,0.037272708,5,0.06
+97,TabPFN v3,PropPD2,2,Adapter LR 0.03,105471,0.092755355,0.075075104,0.074381447,-0.01768025,-0.018373908,-0.00069365762,0.082364207,0.082431375,-6.71682e-05,-0.00069365762,0.0086481352,0.0063869605,5,0.08
+98,TabPFN v3,SBA Loans Case,3,Adapter LR 0.03,2102,0.32635585,0.32639496,0.32688117,3.9106569e-05,0.00052532291,-0.00048621634,0.033249146,0.032945052,0.00030409311,0.00048621634,0.035470552,0.012568512,5,0.1
+99,TabPFN v3,Taiwan Credit Card,1,Adapter LR 0.03,30000,0.2212,0.20652503,0.20645848,-0.014674968,-0.014741523,-6.6554744e-05,0.13305926,0.13308076,-2.1499174e-05,-6.6554744e-05,0.020496763,0.014490502,5,0.12
+100,TabPFN v3,Thomas,0,Adapter LR 0.03,1225,0.26367347,0.24733232,0.24889902,-0.016341154,-0.014774449,0.0015667057,0.18350797,0.18272158,0.00078639924,0.0015667057,0.024646974,0.01907952,5,0.14
+101,TabPFN v3,Vehicle Loan,1,Adapter LR 0.03,233154,0.21707112,0.19829208,0.19817986,-0.018779038,-0.018891259,-0.00011222117,0.16127828,0.16179204,-0.00051376377,-0.00011222117,0.025561664,0.018842831,5,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -136466,58 +137350,58 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 47,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.03,686,0.62803003,0.63257327,0.62044258,0.0045432477,-0.0075874511,-0.0030442035,0.017543234,0.018984879,-0.0014416457,-0.012130699,0.04022655,0.029554279
 
 Figure: lgd_prediction_diagnostics
-LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,PropLGD2,0,Adapter LR 0.001,4637,0.39203237,0.38971208,0.393427,-0.0023202901,0.0013946318,0.00092565829,0.020062812,0.020652067,-0.00058925512,0.0037149219,0.026573001,0.017764842
-1,TabICLv2,PropLGD2,0,Adapter LR 0.0001,4637,0.39203237,0.38971208,0.39030098,-0.0023202901,-0.001731392,0.00058889807,0.020062812,0.020082505,-1.9693141e-05,0.00058889807,0.010490527,0.0070827425
-2,TabICLv2,PropLGD2,0,Adapter LR 0.03,4637,0.39203237,0.38971208,0.39414398,-0.0023202901,0.0021116046,0.0002086855,0.020062812,0.023213541,-0.0031507294,0.0044318947,0.053251442,0.038673855
-3,TabICLv2,PropLGD3,0,Adapter LR 0.001,2545,0.22813006,0.23312395,0.23351496,0.0049938873,0.0053848946,-0.0003910073,0.08524113,0.085240418,7.112293e-07,0.0003910073,0.01334627,0.010591776
-4,TabICLv2,PropLGD3,0,Adapter LR 0.0001,2545,0.22813006,0.23312395,0.235842,0.0049938873,0.0077119353,-0.002718048,0.08524113,0.085259482,-1.8352247e-05,0.002718048,0.0050579759,0.003272094
-5,TabICLv2,PropLGD3,0,Adapter LR 0.03,2545,0.22813006,0.23312395,0.23331669,0.0049938873,0.0051866275,-0.00019274015,0.08524113,0.085997366,-0.0007562364,0.00019274015,0.033315843,0.02561277
-6,TabICLv2,Freddie Mac,1,Adapter LR 0.001,16002,0.45884258,0.46158135,0.46319732,0.002738776,0.0043547399,-0.0016159639,0.062385052,0.064457056,-0.0020720039,0.0016159639,0.044497461,0.033762093
-7,TabICLv2,Freddie Mac,1,Adapter LR 0.0001,16002,0.45884258,0.46158135,0.46150794,0.002738776,0.0026653605,7.3415454e-05,0.062385052,0.062386192,-1.1401332e-06,-7.3415454e-05,0.022366527,0.016791741
-8,TabICLv2,Freddie Mac,1,Adapter LR 0.03,16002,0.45884258,0.46158135,0.46759626,0.002738776,0.0087536801,-0.0060149041,0.062385052,0.069586233,-0.0072011812,0.0060149041,0.084358436,0.065446815
-9,TabICLv2,PropLGD1,1,Adapter LR 0.001,57932,0.70442018,0.69558699,0.7167588,-0.008833197,0.012338621,-0.0035054238,0.062182458,0.078380405,-0.016197948,0.021171818,0.11544802,0.070153885
-10,TabICLv2,PropLGD1,1,Adapter LR 0.0001,57932,0.70442018,0.69558699,0.69939154,-0.008833197,-0.0050286461,0.003804551,0.062182458,0.066180407,-0.0039979494,0.003804551,0.055777157,0.032804963
-11,TabICLv2,PropLGD1,1,Adapter LR 0.03,57932,0.70442018,0.69558699,0.71539928,-0.008833197,0.010979099,-0.0021459018,0.062182458,0.10344306,-0.0412606,0.019812296,0.18700595,0.12237351
-12,TabICLv2,LendingClub (LGD),2,Adapter LR 0.001,5627,0.59051066,0.59169615,0.5921394,0.0011854951,0.0016287426,-0.00044324754,0.015732582,0.015782218,-4.9636239e-05,0.00044324754,0.00697376,0.0048993893
-13,TabICLv2,LendingClub (LGD),2,Adapter LR 0.0001,5627,0.59051066,0.59169615,0.59192424,0.0011854951,0.0014135862,-0.00022809111,0.015732582,0.015730987,1.5945672e-06,0.00022809111,0.0035816059,0.0026513608
-14,TabICLv2,LendingClub (LGD),2,Adapter LR 0.03,5627,0.59051066,0.59169615,0.59285295,0.0011854951,0.002342291,-0.0011567959,0.015732582,0.017806537,-0.0020739548,0.0011567959,0.045829349,0.01910008
-15,TabICLv2,PropLGD5,2,Adapter LR 0.001,594,0.33007533,0.32794442,0.33853513,-0.0021309116,0.0084598024,-0.0063288908,0.10472528,0.10601723,-0.0012919482,0.010590714,0.035460086,0.026224107
-16,TabICLv2,PropLGD5,2,Adapter LR 0.0001,594,0.33007533,0.32794442,0.33039403,-0.0021309116,0.00031869494,0.0018122167,0.10472528,0.10499169,-0.00026641367,0.0024496065,0.014457489,0.010523365
-17,TabICLv2,PropLGD5,2,Adapter LR 0.03,594,0.33007533,0.32794442,0.31334055,-0.0021309116,-0.01673478,-0.014603868,0.10472528,0.11189526,-0.0071699833,-0.014603868,0.065247655,0.050505818
-18,TabICLv2,PropLGD4,3,Adapter LR 0.001,762,0.32338733,0.32391305,0.30988861,0.00052572714,-0.013498712,-0.012972985,0.082862517,0.08199668,0.00086583703,-0.014024439,0.046118726,0.032619849
-19,TabICLv2,PropLGD4,3,Adapter LR 0.0001,762,0.32338733,0.32391305,0.32474728,0.00052572714,0.0013599578,-0.00083423071,0.082862517,0.08266043,0.00020208629,0.00083423071,0.014807895,0.010764759
-20,TabICLv2,PropLGD4,3,Adapter LR 0.03,762,0.32338733,0.32391305,0.3242857,0.00052572714,0.00089837922,-0.00037265209,0.082862517,0.082713921,0.00014859622,0.00037265209,0.060129727,0.04320962
-21,TabICLv2,SBA Loans Case (LGD),3,Adapter LR 0.001,686,0.62803003,0.63062686,0.62591837,0.0025968363,-0.00211166,0.00048517628,0.017411176,0.018066825,-0.00065564931,-0.0047084964,0.02155024,0.014939163
-22,TabICLv2,SBA Loans Case (LGD),3,Adapter LR 0.0001,686,0.62803003,0.63062686,0.63129931,0.0025968363,0.003269282,-0.00067244565,0.017411176,0.017468859,-5.7682403e-05,0.00067244565,0.0077987447,0.0051505649
-23,TabICLv2,SBA Loans Case (LGD),3,Adapter LR 0.03,686,0.62803003,0.63062686,0.63296409,0.0025968363,0.0049340642,-0.0023372279,0.017411176,0.019021362,-0.0016101854,0.0023372279,0.03583393,0.025887828
-24,TabPFN v3,PropLGD2,0,Adapter LR 0.001,4637,0.39203237,0.3922609,0.39908087,0.00022852393,0.0070484992,-0.0068199752,0.01956368,0.020318785,-0.00075510467,0.0068199752,0.024977794,0.017699131
-25,TabPFN v3,PropLGD2,0,Adapter LR 0.0001,4637,0.39203237,0.3922609,0.39366235,0.00022852393,0.0016299797,-0.0014014558,0.01956368,0.01975029,-0.00018660937,0.0014014558,0.0096229554,0.0062445079
-26,TabPFN v3,PropLGD2,0,Adapter LR 0.03,4637,0.39203237,0.3922609,0.38941825,0.00022852393,-0.0026141225,-0.0023855986,0.01956368,0.021707395,-0.0021437146,-0.0028426465,0.043778838,0.031478516
-27,TabPFN v3,PropLGD3,0,Adapter LR 0.001,2545,0.22813006,0.21756822,0.22565712,-0.010561848,-0.0024729474,0.0080889007,0.085340519,0.084999705,0.0003408145,0.0080889007,0.013883659,0.011448343
-28,TabPFN v3,PropLGD3,0,Adapter LR 0.0001,2545,0.22813006,0.21756822,0.2188555,-0.010561848,-0.0092745618,0.0012872862,0.085340519,0.085263382,7.7137546e-05,0.0012872862,0.0056442333,0.0045453187
-29,TabPFN v3,PropLGD3,0,Adapter LR 0.03,2545,0.22813006,0.21756822,0.24275924,-0.010561848,0.014629178,-0.0040673297,0.085340519,0.086547176,-0.0012066564,0.025191026,0.044406415,0.028957455
-30,TabPFN v3,Freddie Mac,1,Adapter LR 0.001,16002,0.45884258,0.46752453,0.47004994,0.0086819513,0.011207368,-0.0025254164,0.060400869,0.061356129,-0.00095525945,0.0025254164,0.036034543,0.027600605
-31,TabPFN v3,Freddie Mac,1,Adapter LR 0.0001,16002,0.45884258,0.46752453,0.47086423,0.0086819513,0.012021656,-0.003339705,0.060400869,0.060714282,-0.00031341299,0.003339705,0.01707416,0.013312159
-32,TabPFN v3,Freddie Mac,1,Adapter LR 0.03,16002,0.45884258,0.46752453,0.47474198,0.0086819513,0.015899405,-0.0072174532,0.060400869,0.06890247,-0.0085016001,0.0072174532,0.093702807,0.074144299
-33,TabPFN v3,PropLGD1,1,Adapter LR 0.001,57932,0.70442018,0.71460663,0.71226138,0.010186443,0.0078411978,0.0023452457,0.057096487,0.058696395,-0.0015999082,-0.0023452457,0.063861393,0.041597055
-34,TabPFN v3,PropLGD1,1,Adapter LR 0.0001,57932,0.70442018,0.71460663,0.71415253,0.010186443,0.0097323427,0.00045410075,0.057096487,0.060851453,-0.003754966,-0.00045410075,0.042537866,0.027035426
-35,TabPFN v3,PropLGD1,1,Adapter LR 0.03,57932,0.70442018,0.71460663,0.63893014,0.010186443,-0.065490047,-0.055303603,0.057096487,0.11315003,-0.056053542,-0.07567649,0.230303,0.19516574
-36,TabPFN v3,LendingClub (LGD),2,Adapter LR 0.001,5627,0.59051066,0.59641638,0.59584742,0.0059057178,0.0053367576,0.00056896023,0.015722376,0.015734925,-1.2548491e-05,-0.00056896023,0.012184297,0.01005642
-37,TabPFN v3,LendingClub (LGD),2,Adapter LR 0.0001,5627,0.59051066,0.59641638,0.59399425,0.0059057178,0.00348359,0.0024221278,0.015722376,0.01567964,4.2735923e-05,-0.0024221278,0.0045104037,0.003520305
-38,TabPFN v3,LendingClub (LGD),2,Adapter LR 0.03,5627,0.59051066,0.59641638,0.6050944,0.0059057178,0.014583743,-0.0086780249,0.015722376,0.016002941,-0.00028056514,0.0086780249,0.017965496,0.01369222
-39,TabPFN v3,PropLGD5,2,Adapter LR 0.001,594,0.33007533,0.32476265,0.34102952,-0.0053126851,0.010954188,-0.0056415033,0.10424979,0.10364733,0.00060245795,0.016266874,0.026547585,0.023036861
-40,TabPFN v3,PropLGD5,2,Adapter LR 0.0001,594,0.33007533,0.32476265,0.33080499,-0.0053126851,0.00072966001,0.0045830251,0.10424979,0.10385129,0.00039849651,0.0060423452,0.01290434,0.011156927
-41,TabPFN v3,PropLGD5,2,Adapter LR 0.03,594,0.33007533,0.32476265,0.322913,-0.0053126851,-0.0071623333,-0.0018496482,0.10424979,0.10411838,0.00013140487,-0.0018496482,0.042269857,0.032432776
-42,TabPFN v3,PropLGD4,3,Adapter LR 0.001,762,0.32338733,0.32185608,0.33930808,-0.0015312449,0.015920759,-0.014389514,0.082258711,0.084817016,-0.0025583053,0.017452004,0.042910471,0.034453096
-43,TabPFN v3,PropLGD4,3,Adapter LR 0.0001,762,0.32338733,0.32185608,0.32922917,-0.0015312449,0.0058418418,-0.0043105969,0.082258711,0.082726064,-0.00046735303,0.0073730867,0.018299113,0.015755907
-44,TabPFN v3,PropLGD4,3,Adapter LR 0.03,762,0.32338733,0.32185608,0.30176418,-0.0015312449,-0.021623146,-0.020091901,0.082258711,0.088215693,-0.0059569824,-0.020091901,0.078832867,0.056751538
-45,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.001,686,0.62803003,0.63257327,0.62466314,0.0045432477,-0.00336689,0.0011763576,0.017543234,0.018005041,-0.00046180719,-0.0079101377,0.022311117,0.01542254
-46,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.0001,686,0.62803003,0.63257327,0.63009378,0.0045432477,0.0020637563,0.0024794913,0.017543234,0.017533764,9.4696225e-06,-0.0024794913,0.0099703992,0.0069718007
-47,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.03,686,0.62803003,0.63257327,0.62044258,0.0045432477,-0.0075874511,-0.0030442035,0.017543234,0.018984879,-0.0014416457,-0.012130699,0.04022655,0.029554279
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Freddie Mac,1,Adapter LR 0.0001,16002,0.45884258,0.46158135,0.46150794,0.002738776,0.0026653605,7.3415454e-05,0.062385052,0.062386192,-1.1401332e-06,-7.3415454e-05,0.022366527,0.016791741,0,-0.16
+1,TabICLv2,LendingClub (LGD),2,Adapter LR 0.0001,5627,0.59051066,0.59169615,0.59192424,0.0011854951,0.0014135862,-0.00022809111,0.015732582,0.015730987,1.5945672e-06,0.00022809111,0.0035816059,0.0026513608,0,-0.11428571
+2,TabICLv2,PropLGD1,1,Adapter LR 0.0001,57932,0.70442018,0.69558699,0.69939154,-0.008833197,-0.0050286461,0.003804551,0.062182458,0.066180407,-0.0039979494,0.003804551,0.055777157,0.032804963,0,-0.068571429
+3,TabICLv2,PropLGD2,0,Adapter LR 0.0001,4637,0.39203237,0.38971208,0.39030098,-0.0023202901,-0.001731392,0.00058889807,0.020062812,0.020082505,-1.9693141e-05,0.00058889807,0.010490527,0.0070827425,0,-0.022857143
+4,TabICLv2,PropLGD3,0,Adapter LR 0.0001,2545,0.22813006,0.23312395,0.235842,0.0049938873,0.0077119353,-0.002718048,0.08524113,0.085259482,-1.8352247e-05,0.002718048,0.0050579759,0.003272094,0,0.022857143
+5,TabICLv2,PropLGD4,3,Adapter LR 0.0001,762,0.32338733,0.32391305,0.32474728,0.00052572714,0.0013599578,-0.00083423071,0.082862517,0.08266043,0.00020208629,0.00083423071,0.014807895,0.010764759,0,0.068571429
+6,TabICLv2,PropLGD5,2,Adapter LR 0.0001,594,0.33007533,0.32794442,0.33039403,-0.0021309116,0.00031869494,0.0018122167,0.10472528,0.10499169,-0.00026641367,0.0024496065,0.014457489,0.010523365,0,0.11428571
+7,TabICLv2,SBA Loans Case (LGD),3,Adapter LR 0.0001,686,0.62803003,0.63062686,0.63129931,0.0025968363,0.003269282,-0.00067244565,0.017411176,0.017468859,-5.7682403e-05,0.00067244565,0.0077987447,0.0051505649,0,0.16
+8,TabICLv2,Freddie Mac,1,Adapter LR 0.001,16002,0.45884258,0.46158135,0.46319732,0.002738776,0.0043547399,-0.0016159639,0.062385052,0.064457056,-0.0020720039,0.0016159639,0.044497461,0.033762093,1,-0.16
+9,TabICLv2,LendingClub (LGD),2,Adapter LR 0.001,5627,0.59051066,0.59169615,0.5921394,0.0011854951,0.0016287426,-0.00044324754,0.015732582,0.015782218,-4.9636239e-05,0.00044324754,0.00697376,0.0048993893,1,-0.11428571
+10,TabICLv2,PropLGD1,1,Adapter LR 0.001,57932,0.70442018,0.69558699,0.7167588,-0.008833197,0.012338621,-0.0035054238,0.062182458,0.078380405,-0.016197948,0.021171818,0.11544802,0.070153885,1,-0.068571429
+11,TabICLv2,PropLGD2,0,Adapter LR 0.001,4637,0.39203237,0.38971208,0.393427,-0.0023202901,0.0013946318,0.00092565829,0.020062812,0.020652067,-0.00058925512,0.0037149219,0.026573001,0.017764842,1,-0.022857143
+12,TabICLv2,PropLGD3,0,Adapter LR 0.001,2545,0.22813006,0.23312395,0.23351496,0.0049938873,0.0053848946,-0.0003910073,0.08524113,0.085240418,7.112293e-07,0.0003910073,0.01334627,0.010591776,1,0.022857143
+13,TabICLv2,PropLGD4,3,Adapter LR 0.001,762,0.32338733,0.32391305,0.30988861,0.00052572714,-0.013498712,-0.012972985,0.082862517,0.08199668,0.00086583703,-0.014024439,0.046118726,0.032619849,1,0.068571429
+14,TabICLv2,PropLGD5,2,Adapter LR 0.001,594,0.33007533,0.32794442,0.33853513,-0.0021309116,0.0084598024,-0.0063288908,0.10472528,0.10601723,-0.0012919482,0.010590714,0.035460086,0.026224107,1,0.11428571
+15,TabICLv2,SBA Loans Case (LGD),3,Adapter LR 0.001,686,0.62803003,0.63062686,0.62591837,0.0025968363,-0.00211166,0.00048517628,0.017411176,0.018066825,-0.00065564931,-0.0047084964,0.02155024,0.014939163,1,0.16
+16,TabICLv2,Freddie Mac,1,Adapter LR 0.03,16002,0.45884258,0.46158135,0.46759626,0.002738776,0.0087536801,-0.0060149041,0.062385052,0.069586233,-0.0072011812,0.0060149041,0.084358436,0.065446815,2,-0.16
+17,TabICLv2,LendingClub (LGD),2,Adapter LR 0.03,5627,0.59051066,0.59169615,0.59285295,0.0011854951,0.002342291,-0.0011567959,0.015732582,0.017806537,-0.0020739548,0.0011567959,0.045829349,0.01910008,2,-0.11428571
+18,TabICLv2,PropLGD1,1,Adapter LR 0.03,57932,0.70442018,0.69558699,0.71539928,-0.008833197,0.010979099,-0.0021459018,0.062182458,0.10344306,-0.0412606,0.019812296,0.18700595,0.12237351,2,-0.068571429
+19,TabICLv2,PropLGD2,0,Adapter LR 0.03,4637,0.39203237,0.38971208,0.39414398,-0.0023202901,0.0021116046,0.0002086855,0.020062812,0.023213541,-0.0031507294,0.0044318947,0.053251442,0.038673855,2,-0.022857143
+20,TabICLv2,PropLGD3,0,Adapter LR 0.03,2545,0.22813006,0.23312395,0.23331669,0.0049938873,0.0051866275,-0.00019274015,0.08524113,0.085997366,-0.0007562364,0.00019274015,0.033315843,0.02561277,2,0.022857143
+21,TabICLv2,PropLGD4,3,Adapter LR 0.03,762,0.32338733,0.32391305,0.3242857,0.00052572714,0.00089837922,-0.00037265209,0.082862517,0.082713921,0.00014859622,0.00037265209,0.060129727,0.04320962,2,0.068571429
+22,TabICLv2,PropLGD5,2,Adapter LR 0.03,594,0.33007533,0.32794442,0.31334055,-0.0021309116,-0.01673478,-0.014603868,0.10472528,0.11189526,-0.0071699833,-0.014603868,0.065247655,0.050505818,2,0.11428571
+23,TabICLv2,SBA Loans Case (LGD),3,Adapter LR 0.03,686,0.62803003,0.63062686,0.63296409,0.0025968363,0.0049340642,-0.0023372279,0.017411176,0.019021362,-0.0016101854,0.0023372279,0.03583393,0.025887828,2,0.16
+24,TabPFN v3,Freddie Mac,1,Adapter LR 0.0001,16002,0.45884258,0.46752453,0.47086423,0.0086819513,0.012021656,-0.003339705,0.060400869,0.060714282,-0.00031341299,0.003339705,0.01707416,0.013312159,3,-0.16
+25,TabPFN v3,LendingClub (LGD),2,Adapter LR 0.0001,5627,0.59051066,0.59641638,0.59399425,0.0059057178,0.00348359,0.0024221278,0.015722376,0.01567964,4.2735923e-05,-0.0024221278,0.0045104037,0.003520305,3,-0.11428571
+26,TabPFN v3,PropLGD1,1,Adapter LR 0.0001,57932,0.70442018,0.71460663,0.71415253,0.010186443,0.0097323427,0.00045410075,0.057096487,0.060851453,-0.003754966,-0.00045410075,0.042537866,0.027035426,3,-0.068571429
+27,TabPFN v3,PropLGD2,0,Adapter LR 0.0001,4637,0.39203237,0.3922609,0.39366235,0.00022852393,0.0016299797,-0.0014014558,0.01956368,0.01975029,-0.00018660937,0.0014014558,0.0096229554,0.0062445079,3,-0.022857143
+28,TabPFN v3,PropLGD3,0,Adapter LR 0.0001,2545,0.22813006,0.21756822,0.2188555,-0.010561848,-0.0092745618,0.0012872862,0.085340519,0.085263382,7.7137546e-05,0.0012872862,0.0056442333,0.0045453187,3,0.022857143
+29,TabPFN v3,PropLGD4,3,Adapter LR 0.0001,762,0.32338733,0.32185608,0.32922917,-0.0015312449,0.0058418418,-0.0043105969,0.082258711,0.082726064,-0.00046735303,0.0073730867,0.018299113,0.015755907,3,0.068571429
+30,TabPFN v3,PropLGD5,2,Adapter LR 0.0001,594,0.33007533,0.32476265,0.33080499,-0.0053126851,0.00072966001,0.0045830251,0.10424979,0.10385129,0.00039849651,0.0060423452,0.01290434,0.011156927,3,0.11428571
+31,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.0001,686,0.62803003,0.63257327,0.63009378,0.0045432477,0.0020637563,0.0024794913,0.017543234,0.017533764,9.4696225e-06,-0.0024794913,0.0099703992,0.0069718007,3,0.16
+32,TabPFN v3,Freddie Mac,1,Adapter LR 0.001,16002,0.45884258,0.46752453,0.47004994,0.0086819513,0.011207368,-0.0025254164,0.060400869,0.061356129,-0.00095525945,0.0025254164,0.036034543,0.027600605,4,-0.16
+33,TabPFN v3,LendingClub (LGD),2,Adapter LR 0.001,5627,0.59051066,0.59641638,0.59584742,0.0059057178,0.0053367576,0.00056896023,0.015722376,0.015734925,-1.2548491e-05,-0.00056896023,0.012184297,0.01005642,4,-0.11428571
+34,TabPFN v3,PropLGD1,1,Adapter LR 0.001,57932,0.70442018,0.71460663,0.71226138,0.010186443,0.0078411978,0.0023452457,0.057096487,0.058696395,-0.0015999082,-0.0023452457,0.063861393,0.041597055,4,-0.068571429
+35,TabPFN v3,PropLGD2,0,Adapter LR 0.001,4637,0.39203237,0.3922609,0.39908087,0.00022852393,0.0070484992,-0.0068199752,0.01956368,0.020318785,-0.00075510467,0.0068199752,0.024977794,0.017699131,4,-0.022857143
+36,TabPFN v3,PropLGD3,0,Adapter LR 0.001,2545,0.22813006,0.21756822,0.22565712,-0.010561848,-0.0024729474,0.0080889007,0.085340519,0.084999705,0.0003408145,0.0080889007,0.013883659,0.011448343,4,0.022857143
+37,TabPFN v3,PropLGD4,3,Adapter LR 0.001,762,0.32338733,0.32185608,0.33930808,-0.0015312449,0.015920759,-0.014389514,0.082258711,0.084817016,-0.0025583053,0.017452004,0.042910471,0.034453096,4,0.068571429
+38,TabPFN v3,PropLGD5,2,Adapter LR 0.001,594,0.33007533,0.32476265,0.34102952,-0.0053126851,0.010954188,-0.0056415033,0.10424979,0.10364733,0.00060245795,0.016266874,0.026547585,0.023036861,4,0.11428571
+39,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.001,686,0.62803003,0.63257327,0.62466314,0.0045432477,-0.00336689,0.0011763576,0.017543234,0.018005041,-0.00046180719,-0.0079101377,0.022311117,0.01542254,4,0.16
+40,TabPFN v3,Freddie Mac,1,Adapter LR 0.03,16002,0.45884258,0.46752453,0.47474198,0.0086819513,0.015899405,-0.0072174532,0.060400869,0.06890247,-0.0085016001,0.0072174532,0.093702807,0.074144299,5,-0.16
+41,TabPFN v3,LendingClub (LGD),2,Adapter LR 0.03,5627,0.59051066,0.59641638,0.6050944,0.0059057178,0.014583743,-0.0086780249,0.015722376,0.016002941,-0.00028056514,0.0086780249,0.017965496,0.01369222,5,-0.11428571
+42,TabPFN v3,PropLGD1,1,Adapter LR 0.03,57932,0.70442018,0.71460663,0.63893014,0.010186443,-0.065490047,-0.055303603,0.057096487,0.11315003,-0.056053542,-0.07567649,0.230303,0.19516574,5,-0.068571429
+43,TabPFN v3,PropLGD2,0,Adapter LR 0.03,4637,0.39203237,0.3922609,0.38941825,0.00022852393,-0.0026141225,-0.0023855986,0.01956368,0.021707395,-0.0021437146,-0.0028426465,0.043778838,0.031478516,5,-0.022857143
+44,TabPFN v3,PropLGD3,0,Adapter LR 0.03,2545,0.22813006,0.21756822,0.24275924,-0.010561848,0.014629178,-0.0040673297,0.085340519,0.086547176,-0.0012066564,0.025191026,0.044406415,0.028957455,5,0.022857143
+45,TabPFN v3,PropLGD4,3,Adapter LR 0.03,762,0.32338733,0.32185608,0.30176418,-0.0015312449,-0.021623146,-0.020091901,0.082258711,0.088215693,-0.0059569824,-0.020091901,0.078832867,0.056751538,5,0.068571429
+46,TabPFN v3,PropLGD5,2,Adapter LR 0.03,594,0.33007533,0.32476265,0.322913,-0.0053126851,-0.0071623333,-0.0018496482,0.10424979,0.10411838,0.00013140487,-0.0018496482,0.042269857,0.032432776,5,0.11428571
+47,TabPFN v3,SBA Loans Case (LGD),3,Adapter LR 0.03,686,0.62803003,0.63257327,0.62044258,0.0045432477,-0.0075874511,-0.0030442035,0.017543234,0.018984879,-0.0014416457,-0.012130699,0.04022655,0.029554279,5,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -138509,78 +139393,78 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 33,TabPFN v3,SBA Loans Case,3,Large tables,2102,0.32635585,0.32639496,0.32760694,3.9106569e-05,0.0012510841,-0.0012119776,0.033249146,0.031606285,0.0016428606,0.0012119776,0.030506395,0.01052931
 
 Figure: pd_prediction_diagnostics
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,Bondora Peer-to-Peer,0,All tables,730176,0.13810506,0.13512286,0.13339074,-0.0029821967,-0.0047143151,-0.0017321184,0.080535551,0.080793142,-0.00025759136,-0.0017321184,0.021813761,0.010710401
-1,TabICLv2,HMEQ,0,All tables,5960,0.19949664,0.19071745,0.18930012,-0.0087791943,-0.010196528,-0.0014173336,0.017686181,0.018718658,-0.0010324767,-0.0014173336,0.033626646,0.011053922
-2,TabICLv2,MicroFinance,0,All tables,158700,0.37809074,0.36495634,0.36481742,-0.013134396,-0.013273322,-0.00013892657,0.21816395,0.21883909,-0.00067513651,-0.00013892657,0.031016298,0.02332649
-3,TabICLv2,Thomas,0,All tables,1225,0.26367347,0.24708993,0.24176874,-0.016583543,-0.021904725,-0.0053211821,0.18308296,0.18363146,-0.00054850123,-0.0053211821,0.015753112,0.0109843
-4,TabICLv2,GMSC,1,All tables,150000,0.06684,0.057865039,0.056883702,-0.0089749608,-0.0099562984,-0.00098133762,0.049075658,0.049167847,-9.2188032e-05,-0.00098133762,0.0069002185,0.0033643578
-5,TabICLv2,German Credit,1,All tables,999,0.3003003,0.29274349,0.28958625,-0.007556812,-0.010714054,-0.0031572423,0.16240025,0.16177526,0.00062499229,-0.0031572423,0.027575322,0.019272963
-6,TabICLv2,Taiwan Credit Card,1,All tables,30000,0.2212,0.20680082,0.20475707,-0.014399176,-0.016442931,-0.0020437554,0.13292592,0.13332549,-0.00039957515,-0.0020437554,0.01732219,0.012554268
-7,TabICLv2,Vehicle Loan,1,All tables,233154,0.21707112,0.38729445,0.19361942,0.17022333,-0.023451701,0.14677162,0.27476188,0.16195286,0.11280902,-0.19367503,0.34991912,0.21706413
-8,TabICLv2,Credit Risk,2,All tables,32581,0.21816396,0.20703413,0.20886552,-0.011129831,-0.009298438,0.0018313932,0.049364787,0.053492835,-0.004128048,0.0018313932,0.052627797,0.024476404
-9,TabICLv2,Hackerearth,2,All tables,532428,0.23632679,0.23112544,0.22814306,-0.0052013466,-0.0081837254,-0.0029823787,0.058127422,0.064751972,-0.0066245505,-0.0029823787,0.072725354,0.032863774
-10,TabICLv2,Myhom,2,All tables,7000,0.4,0.38581482,0.3880445,-0.01418518,-0.011955505,0.0022296747,0.25080943,0.23424163,0.016567797,0.0022296747,0.14895008,0.089823261
-11,TabICLv2,PropPD1,2,All tables,100000,0.22639,0.19999356,0.19688126,-0.026396437,-0.029508739,-0.0031123021,0.12813814,0.12811637,2.1771476e-05,-0.0031123021,0.031088181,0.020437156
-12,TabICLv2,PropPD2,2,All tables,105471,0.092755355,0.076905382,0.0753736,-0.015849972,-0.017381754,-0.0015317819,0.082312426,0.082378043,-6.5616148e-05,-0.0015317819,0.0060228073,0.0046113987
-13,TabICLv2,Cobranded,3,All tables,80000,0.2462125,0.23580183,0.22899086,-0.010410672,-0.017221636,-0.0068109639,0.13071025,0.13107241,-0.00036216427,-0.0068109639,0.024785179,0.015252888
-14,TabICLv2,Home Credit,3,All tables,307511,0.080728819,0.071030346,0.067737899,-0.0096984731,-0.01299092,-0.003292447,0.068564613,0.068833165,-0.0002685519,-0.003292447,0.012966733,0.0074234278
-15,TabICLv2,LendingClub,3,All tables,9578,0.16005429,0.14078684,0.13665514,-0.019267448,-0.023399149,-0.0041317007,0.12609798,0.1262056,-0.00010761341,-0.0041317007,0.012055854,0.0081299822
-16,TabICLv2,SBA Loans Case,3,All tables,2102,0.32635585,0.32631453,0.32683395,-4.1321021e-05,0.00047810078,-0.00043677976,0.031810621,0.031566774,0.00024384727,0.0005194218,0.024517369,0.0086328307
-17,TabICLv2,Bondora Peer-to-Peer,0,Large tables,730176,0.13810506,0.13512286,0.13300593,-0.0029821967,-0.0050991268,-0.0021169301,0.080535551,0.080545228,-9.6771529e-06,-0.0021169301,0.019760277,0.0093112193
-18,TabICLv2,HMEQ,0,Large tables,5960,0.19949664,0.19071745,0.19328997,-0.0087791943,-0.0062066696,0.0025725247,0.017686181,0.022466811,-0.0047806297,0.0025725247,0.048579713,0.018182977
-19,TabICLv2,MicroFinance,0,Large tables,158700,0.37809074,0.36495634,0.36836708,-0.013134396,-0.0097236589,0.0034107366,0.21816395,0.2183782,-0.00021424681,0.0034107366,0.030210578,0.02270377
-20,TabICLv2,Thomas,0,Large tables,1225,0.26367347,0.24708993,0.24259239,-0.016583543,-0.021081082,-0.0044975393,0.18308296,0.18381166,-0.00072870029,-0.0044975393,0.0222823,0.014947802
-21,TabICLv2,GMSC,1,Large tables,150000,0.06684,0.057865039,0.05764009,-0.0089749608,-0.0091999095,-0.00022494871,0.049075658,0.049150668,-7.5009696e-05,-0.00022494871,0.0069548083,0.0032957084
-22,TabICLv2,German Credit,1,Large tables,999,0.3003003,0.29274349,0.28978867,-0.007556812,-0.010511635,-0.0029548229,0.16240025,0.1624474,-4.715003e-05,-0.0029548229,0.028201846,0.019910945
-23,TabICLv2,Taiwan Credit Card,1,Large tables,30000,0.2212,0.20680082,0.20648661,-0.014399176,-0.014713386,-0.00031421033,0.13292592,0.13325029,-0.00032437649,-0.00031421033,0.016720469,0.01169941
-24,TabICLv2,Vehicle Loan,1,Large tables,233154,0.21707112,0.38729445,0.19577634,0.17022333,-0.021294782,0.14892854,0.27476188,0.16180253,0.11295935,-0.19151811,0.34857336,0.21567071
-25,TabICLv2,Credit Risk,2,Large tables,32581,0.21816396,0.20703413,0.20700053,-0.011129831,-0.011163432,-3.3600715e-05,0.049364787,0.055204391,-0.0058396041,-3.3600715e-05,0.059807291,0.028837323
-26,TabICLv2,Hackerearth,2,Large tables,532428,0.23632679,0.23112544,0.21970735,-0.0052013466,-0.016619443,-0.011418097,0.058127422,0.07015465,-0.012027229,-0.011418097,0.10269879,0.04935639
-27,TabICLv2,Myhom,2,Large tables,7000,0.4,0.38581482,0.38576521,-0.01418518,-0.01423479,-4.9610675e-05,0.25080943,0.23434174,0.016467686,-4.9610675e-05,0.1485841,0.089213471
-28,TabICLv2,PropPD1,2,Large tables,100000,0.22639,0.19999356,0.19431439,-0.026396437,-0.032075606,-0.0056791691,0.12813814,0.1305455,-0.0024073629,-0.0056791691,0.04094149,0.025929896
-29,TabICLv2,PropPD2,2,Large tables,105471,0.092755355,0.076905382,0.07654246,-0.015849972,-0.016212894,-0.00036292213,0.082312426,0.082337646,-2.5219823e-05,-0.00036292213,0.0071562533,0.0053912848
-30,TabICLv2,Cobranded,3,Large tables,80000,0.2462125,0.23580183,0.23271055,-0.010410672,-0.013501947,-0.003091275,0.13071025,0.13105115,-0.00034090154,-0.003091275,0.02403603,0.015271976
-31,TabICLv2,Home Credit,3,Large tables,307511,0.080728819,0.071030346,0.070790944,-0.0096984731,-0.0099378755,-0.00023940243,0.068564613,0.068835059,-0.00027044536,-0.00023940243,0.012056165,0.0073681236
-32,TabICLv2,LendingClub,3,Large tables,9578,0.16005429,0.14078684,0.13988057,-0.019267448,-0.020173721,-0.00090627302,0.12609798,0.12614441,-4.6425752e-05,-0.00090627302,0.012052686,0.0084146437
-33,TabICLv2,SBA Loans Case,3,Large tables,2102,0.32635585,0.32631453,0.32485055,-4.1321021e-05,-0.0015052969,-0.0014639759,0.031810621,0.030903241,0.00090738055,-0.0014639759,0.030289411,0.011886388
-34,TabPFN v3,Bondora Peer-to-Peer,0,All tables,730176,0.13810506,0.13157373,0.13387144,-0.0065313284,-0.0042336224,0.002297706,0.080273139,0.08275293,-0.0024797912,0.002297706,0.051200069,0.025302302
-35,TabPFN v3,HMEQ,0,All tables,5960,0.19949664,0.1956357,0.19188457,-0.0038609394,-0.0076120723,-0.003751133,0.0057323372,0.010048462,-0.0043161245,-0.003751133,0.052134011,0.015709227
-36,TabPFN v3,MicroFinance,0,All tables,158700,0.37809074,0.36596762,0.36362117,-0.012123116,-0.014469564,-0.0023464484,0.21751651,0.21836578,-0.00084926948,-0.0023464484,0.026834226,0.020084791
-37,TabPFN v3,Thomas,0,All tables,1225,0.26367347,0.24733232,0.24777648,-0.016341154,-0.01589699,0.00044416459,0.18350797,0.18326647,0.00024150659,0.00044416459,0.018094086,0.013809381
-38,TabPFN v3,GMSC,1,All tables,150000,0.06684,0.058648143,0.058341494,-0.0081918569,-0.0084985057,-0.00030664877,0.048835831,0.0488602,-2.4368467e-05,-0.00030664877,0.0062847198,0.0032804975
-39,TabPFN v3,German Credit,1,All tables,999,0.3003003,0.29032207,0.28776601,-0.0099782295,-0.012534294,-0.0025560647,0.16260483,0.16260255,2.2839987e-06,-0.0025560647,0.029898236,0.02123779
-40,TabPFN v3,Taiwan Credit Card,1,All tables,30000,0.2212,0.20652503,0.2075927,-0.014674968,-0.013607297,0.001067671,0.13305926,0.13287515,0.00018410964,0.001067671,0.014554241,0.010650479
-41,TabPFN v3,Vehicle Loan,1,All tables,233154,0.21707112,0.19829208,0.2031329,-0.018779038,-0.013938221,0.0048408169,0.16127828,0.1612994,-2.1122041e-05,0.0048408169,0.014478683,0.010768522
-42,TabPFN v3,Credit Risk,2,All tables,32581,0.21816396,0.20759623,0.20539973,-0.010567735,-0.012764227,-0.0021964923,0.050267518,0.051060842,-0.00079332456,-0.0021964923,0.033614721,0.014406166
-43,TabPFN v3,Hackerearth,2,All tables,532428,0.23632679,0.22884167,0.22451029,-0.0074851162,-0.011816499,-0.0043313832,0.054771256,0.060391811,-0.0056205558,-0.0043313832,0.055351508,0.026728413
-44,TabPFN v3,Myhom,2,All tables,7000,0.4,0.39120362,0.3905819,-0.0087963807,-0.0094181032,-0.00062172252,0.23383466,0.23389011,-5.5455564e-05,-0.00062172252,0.010546461,0.0080269929
-45,TabPFN v3,PropPD1,2,All tables,100000,0.22639,0.1925788,0.19970778,-0.0338112,-0.026682218,0.0071289822,0.12856333,0.12769556,0.00086776564,0.0071289822,0.022230266,0.013609639
-46,TabPFN v3,PropPD2,2,All tables,105471,0.092755355,0.075077577,0.076643074,-0.017677777,-0.016112281,0.0015654963,0.082365034,0.0822482,0.00011683379,0.0015654963,0.0090842039,0.006527499
-47,TabPFN v3,Cobranded,3,All tables,80000,0.2462125,0.23474992,0.23567611,-0.011462584,-0.01053639,0.00092619402,0.13092879,0.13080668,0.00012210915,0.00092619402,0.017321973,0.010867026
-48,TabPFN v3,Home Credit,3,All tables,307511,0.080728819,0.066699616,0.068882173,-0.014029203,-0.011846647,0.0021825564,0.068392185,0.068421242,-2.905708e-05,0.0021825564,0.011578112,0.0073114094
-49,TabPFN v3,LendingClub,3,All tables,9578,0.16005429,0.14098134,0.13880759,-0.019072951,-0.021246701,-0.0021737506,0.12638842,0.12645981,-7.1393734e-05,-0.0021737506,0.011608013,0.0082454639
-50,TabPFN v3,SBA Loans Case,3,All tables,2102,0.32635585,0.32639496,0.32756698,3.9106569e-05,0.0012111261,-0.0011720195,0.033249146,0.032827338,0.00042180764,0.0011720195,0.024872977,0.0094347059
-51,TabPFN v3,Bondora Peer-to-Peer,0,Large tables,730176,0.13810506,0.13157373,0.12574178,-0.0065313284,-0.012363281,-0.0058319527,0.080273139,0.081228776,-0.00095563756,-0.0058319527,0.03029006,0.014753743
-52,TabPFN v3,HMEQ,0,Large tables,5960,0.19949664,0.1956357,0.19570478,-0.0038609394,-0.003791866,6.9073324e-05,0.0057323372,0.0083989102,-0.002666573,6.9073324e-05,0.039914038,0.010892688
-53,TabPFN v3,MicroFinance,0,Large tables,158700,0.37809074,0.36596762,0.36491122,-0.012123116,-0.01317952,-0.0010564044,0.21751651,0.21800288,-0.00048636671,-0.0010564044,0.019835983,0.015362526
-54,TabPFN v3,Thomas,0,Large tables,1225,0.26367347,0.24733232,0.24743914,-0.016341154,-0.016234329,0.0001068248,0.18350797,0.1832376,0.00027037427,0.0001068248,0.016408093,0.012599159
-55,TabPFN v3,GMSC,1,Large tables,150000,0.06684,0.058648143,0.057653591,-0.0081918569,-0.0091864089,-0.00099455194,0.048835831,0.04890877,-7.2938543e-05,-0.00099455194,0.0071666355,0.0034738085
-56,TabPFN v3,German Credit,1,Large tables,999,0.3003003,0.29032207,0.28852765,-0.0099782295,-0.011772649,-0.0017944196,0.16260483,0.16255541,4.9418329e-05,-0.0017944196,0.025532329,0.017914595
-57,TabPFN v3,Taiwan Credit Card,1,Large tables,30000,0.2212,0.20652503,0.20523478,-0.014674968,-0.015965222,-0.0012902534,0.13305926,0.13297331,8.594731e-05,-0.0012902534,0.014782403,0.010583395
-58,TabPFN v3,Vehicle Loan,1,Large tables,233154,0.21707112,0.19829208,0.19841735,-0.018779038,-0.01865377,0.00012526753,0.16127828,0.16149028,-0.00021200628,0.00012526753,0.012871663,0.0096904054
-59,TabPFN v3,Credit Risk,2,Large tables,32581,0.21816396,0.20759623,0.20403756,-0.010567735,-0.014126402,-0.0035586677,0.050267518,0.051340743,-0.0010732253,-0.0035586677,0.031965223,0.012638657
-60,TabPFN v3,Hackerearth,2,Large tables,532428,0.23632679,0.22884167,0.22172981,-0.0074851162,-0.014596981,-0.0071118652,0.054771256,0.061593233,-0.0068219775,-0.0071118652,0.06157427,0.030737567
-61,TabPFN v3,Myhom,2,Large tables,7000,0.4,0.39120362,0.39121638,-0.0087963807,-0.0087836159,1.2764833e-05,0.23383466,0.2337244,0.00011026005,1.2764833e-05,0.011064464,0.0083914026
-62,TabPFN v3,PropPD1,2,Large tables,100000,0.22639,0.1925788,0.18776157,-0.0338112,-0.038628434,-0.0048172342,0.12856333,0.12935391,-0.00079058498,-0.0048172342,0.020169225,0.012254531
-63,TabPFN v3,PropPD2,2,Large tables,105471,0.092755355,0.075077577,0.075215574,-0.017677777,-0.017539781,0.00013799637,0.082365034,0.082309926,5.5107693e-05,0.00013799637,0.0078135718,0.0057175243
-64,TabPFN v3,Cobranded,3,Large tables,80000,0.2462125,0.23474992,0.23398442,-0.011462584,-0.012228083,-0.00076549843,0.13092879,0.13113118,-0.00020238898,-0.00076549843,0.017176341,0.01111958
-65,TabPFN v3,Home Credit,3,Large tables,307511,0.080728819,0.066699616,0.064289471,-0.014029203,-0.016439349,-0.0024101453,0.068392185,0.068709675,-0.00031748994,-0.0024101453,0.01306898,0.0076332483
-66,TabPFN v3,LendingClub,3,Large tables,9578,0.16005429,0.14098134,0.14038101,-0.019072951,-0.019673279,-0.00060032812,0.12638842,0.12640274,-1.4324936e-05,-0.00060032812,0.010573869,0.007659152
-67,TabPFN v3,SBA Loans Case,3,Large tables,2102,0.32635585,0.32639496,0.32760694,3.9106569e-05,0.0012510841,-0.0012119776,0.033249146,0.031606285,0.0016428606,0.0012119776,0.030506395,0.01052931
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Bondora Peer-to-Peer,0,All tables,730176,0.13810506,0.13512286,0.13339074,-0.0029821967,-0.0047143151,-0.0017321184,0.080535551,0.080793142,-0.00025759136,-0.0017321184,0.021813761,0.010710401,0,-0.16
+1,TabICLv2,Cobranded,3,All tables,80000,0.2462125,0.23580183,0.22899086,-0.010410672,-0.017221636,-0.0068109639,0.13071025,0.13107241,-0.00036216427,-0.0068109639,0.024785179,0.015252888,0,-0.14
+2,TabICLv2,Credit Risk,2,All tables,32581,0.21816396,0.20703413,0.20886552,-0.011129831,-0.009298438,0.0018313932,0.049364787,0.053492835,-0.004128048,0.0018313932,0.052627797,0.024476404,0,-0.12
+3,TabICLv2,GMSC,1,All tables,150000,0.06684,0.057865039,0.056883702,-0.0089749608,-0.0099562984,-0.00098133762,0.049075658,0.049167847,-9.2188032e-05,-0.00098133762,0.0069002185,0.0033643578,0,-0.1
+4,TabICLv2,German Credit,1,All tables,999,0.3003003,0.29274349,0.28958625,-0.007556812,-0.010714054,-0.0031572423,0.16240025,0.16177526,0.00062499229,-0.0031572423,0.027575322,0.019272963,0,-0.08
+5,TabICLv2,HMEQ,0,All tables,5960,0.19949664,0.19071745,0.18930012,-0.0087791943,-0.010196528,-0.0014173336,0.017686181,0.018718658,-0.0010324767,-0.0014173336,0.033626646,0.011053922,0,-0.06
+6,TabICLv2,Hackerearth,2,All tables,532428,0.23632679,0.23112544,0.22814306,-0.0052013466,-0.0081837254,-0.0029823787,0.058127422,0.064751972,-0.0066245505,-0.0029823787,0.072725354,0.032863774,0,-0.04
+7,TabICLv2,Home Credit,3,All tables,307511,0.080728819,0.071030346,0.067737899,-0.0096984731,-0.01299092,-0.003292447,0.068564613,0.068833165,-0.0002685519,-0.003292447,0.012966733,0.0074234278,0,-0.02
+8,TabICLv2,LendingClub,3,All tables,9578,0.16005429,0.14078684,0.13665514,-0.019267448,-0.023399149,-0.0041317007,0.12609798,0.1262056,-0.00010761341,-0.0041317007,0.012055854,0.0081299822,0,0
+9,TabICLv2,MicroFinance,0,All tables,158700,0.37809074,0.36495634,0.36481742,-0.013134396,-0.013273322,-0.00013892657,0.21816395,0.21883909,-0.00067513651,-0.00013892657,0.031016298,0.02332649,0,0.02
+10,TabICLv2,Myhom,2,All tables,7000,0.4,0.38581482,0.3880445,-0.01418518,-0.011955505,0.0022296747,0.25080943,0.23424163,0.016567797,0.0022296747,0.14895008,0.089823261,0,0.04
+11,TabICLv2,PropPD1,2,All tables,100000,0.22639,0.19999356,0.19688126,-0.026396437,-0.029508739,-0.0031123021,0.12813814,0.12811637,2.1771476e-05,-0.0031123021,0.031088181,0.020437156,0,0.06
+12,TabICLv2,PropPD2,2,All tables,105471,0.092755355,0.076905382,0.0753736,-0.015849972,-0.017381754,-0.0015317819,0.082312426,0.082378043,-6.5616148e-05,-0.0015317819,0.0060228073,0.0046113987,0,0.08
+13,TabICLv2,SBA Loans Case,3,All tables,2102,0.32635585,0.32631453,0.32683395,-4.1321021e-05,0.00047810078,-0.00043677976,0.031810621,0.031566774,0.00024384727,0.0005194218,0.024517369,0.0086328307,0,0.1
+14,TabICLv2,Taiwan Credit Card,1,All tables,30000,0.2212,0.20680082,0.20475707,-0.014399176,-0.016442931,-0.0020437554,0.13292592,0.13332549,-0.00039957515,-0.0020437554,0.01732219,0.012554268,0,0.12
+15,TabICLv2,Thomas,0,All tables,1225,0.26367347,0.24708993,0.24176874,-0.016583543,-0.021904725,-0.0053211821,0.18308296,0.18363146,-0.00054850123,-0.0053211821,0.015753112,0.0109843,0,0.14
+16,TabICLv2,Vehicle Loan,1,All tables,233154,0.21707112,0.38729445,0.19361942,0.17022333,-0.023451701,0.14677162,0.27476188,0.16195286,0.11280902,-0.19367503,0.34991912,0.21706413,0,0.16
+17,TabICLv2,Bondora Peer-to-Peer,0,Large tables,730176,0.13810506,0.13512286,0.13300593,-0.0029821967,-0.0050991268,-0.0021169301,0.080535551,0.080545228,-9.6771529e-06,-0.0021169301,0.019760277,0.0093112193,1,-0.16
+18,TabICLv2,Cobranded,3,Large tables,80000,0.2462125,0.23580183,0.23271055,-0.010410672,-0.013501947,-0.003091275,0.13071025,0.13105115,-0.00034090154,-0.003091275,0.02403603,0.015271976,1,-0.14
+19,TabICLv2,Credit Risk,2,Large tables,32581,0.21816396,0.20703413,0.20700053,-0.011129831,-0.011163432,-3.3600715e-05,0.049364787,0.055204391,-0.0058396041,-3.3600715e-05,0.059807291,0.028837323,1,-0.12
+20,TabICLv2,GMSC,1,Large tables,150000,0.06684,0.057865039,0.05764009,-0.0089749608,-0.0091999095,-0.00022494871,0.049075658,0.049150668,-7.5009696e-05,-0.00022494871,0.0069548083,0.0032957084,1,-0.1
+21,TabICLv2,German Credit,1,Large tables,999,0.3003003,0.29274349,0.28978867,-0.007556812,-0.010511635,-0.0029548229,0.16240025,0.1624474,-4.715003e-05,-0.0029548229,0.028201846,0.019910945,1,-0.08
+22,TabICLv2,HMEQ,0,Large tables,5960,0.19949664,0.19071745,0.19328997,-0.0087791943,-0.0062066696,0.0025725247,0.017686181,0.022466811,-0.0047806297,0.0025725247,0.048579713,0.018182977,1,-0.06
+23,TabICLv2,Hackerearth,2,Large tables,532428,0.23632679,0.23112544,0.21970735,-0.0052013466,-0.016619443,-0.011418097,0.058127422,0.07015465,-0.012027229,-0.011418097,0.10269879,0.04935639,1,-0.04
+24,TabICLv2,Home Credit,3,Large tables,307511,0.080728819,0.071030346,0.070790944,-0.0096984731,-0.0099378755,-0.00023940243,0.068564613,0.068835059,-0.00027044536,-0.00023940243,0.012056165,0.0073681236,1,-0.02
+25,TabICLv2,LendingClub,3,Large tables,9578,0.16005429,0.14078684,0.13988057,-0.019267448,-0.020173721,-0.00090627302,0.12609798,0.12614441,-4.6425752e-05,-0.00090627302,0.012052686,0.0084146437,1,0
+26,TabICLv2,MicroFinance,0,Large tables,158700,0.37809074,0.36495634,0.36836708,-0.013134396,-0.0097236589,0.0034107366,0.21816395,0.2183782,-0.00021424681,0.0034107366,0.030210578,0.02270377,1,0.02
+27,TabICLv2,Myhom,2,Large tables,7000,0.4,0.38581482,0.38576521,-0.01418518,-0.01423479,-4.9610675e-05,0.25080943,0.23434174,0.016467686,-4.9610675e-05,0.1485841,0.089213471,1,0.04
+28,TabICLv2,PropPD1,2,Large tables,100000,0.22639,0.19999356,0.19431439,-0.026396437,-0.032075606,-0.0056791691,0.12813814,0.1305455,-0.0024073629,-0.0056791691,0.04094149,0.025929896,1,0.06
+29,TabICLv2,PropPD2,2,Large tables,105471,0.092755355,0.076905382,0.07654246,-0.015849972,-0.016212894,-0.00036292213,0.082312426,0.082337646,-2.5219823e-05,-0.00036292213,0.0071562533,0.0053912848,1,0.08
+30,TabICLv2,SBA Loans Case,3,Large tables,2102,0.32635585,0.32631453,0.32485055,-4.1321021e-05,-0.0015052969,-0.0014639759,0.031810621,0.030903241,0.00090738055,-0.0014639759,0.030289411,0.011886388,1,0.1
+31,TabICLv2,Taiwan Credit Card,1,Large tables,30000,0.2212,0.20680082,0.20648661,-0.014399176,-0.014713386,-0.00031421033,0.13292592,0.13325029,-0.00032437649,-0.00031421033,0.016720469,0.01169941,1,0.12
+32,TabICLv2,Thomas,0,Large tables,1225,0.26367347,0.24708993,0.24259239,-0.016583543,-0.021081082,-0.0044975393,0.18308296,0.18381166,-0.00072870029,-0.0044975393,0.0222823,0.014947802,1,0.14
+33,TabICLv2,Vehicle Loan,1,Large tables,233154,0.21707112,0.38729445,0.19577634,0.17022333,-0.021294782,0.14892854,0.27476188,0.16180253,0.11295935,-0.19151811,0.34857336,0.21567071,1,0.16
+34,TabPFN v3,Bondora Peer-to-Peer,0,All tables,730176,0.13810506,0.13157373,0.13387144,-0.0065313284,-0.0042336224,0.002297706,0.080273139,0.08275293,-0.0024797912,0.002297706,0.051200069,0.025302302,2,-0.16
+35,TabPFN v3,Cobranded,3,All tables,80000,0.2462125,0.23474992,0.23567611,-0.011462584,-0.01053639,0.00092619402,0.13092879,0.13080668,0.00012210915,0.00092619402,0.017321973,0.010867026,2,-0.14
+36,TabPFN v3,Credit Risk,2,All tables,32581,0.21816396,0.20759623,0.20539973,-0.010567735,-0.012764227,-0.0021964923,0.050267518,0.051060842,-0.00079332456,-0.0021964923,0.033614721,0.014406166,2,-0.12
+37,TabPFN v3,GMSC,1,All tables,150000,0.06684,0.058648143,0.058341494,-0.0081918569,-0.0084985057,-0.00030664877,0.048835831,0.0488602,-2.4368467e-05,-0.00030664877,0.0062847198,0.0032804975,2,-0.1
+38,TabPFN v3,German Credit,1,All tables,999,0.3003003,0.29032207,0.28776601,-0.0099782295,-0.012534294,-0.0025560647,0.16260483,0.16260255,2.2839987e-06,-0.0025560647,0.029898236,0.02123779,2,-0.08
+39,TabPFN v3,HMEQ,0,All tables,5960,0.19949664,0.1956357,0.19188457,-0.0038609394,-0.0076120723,-0.003751133,0.0057323372,0.010048462,-0.0043161245,-0.003751133,0.052134011,0.015709227,2,-0.06
+40,TabPFN v3,Hackerearth,2,All tables,532428,0.23632679,0.22884167,0.22451029,-0.0074851162,-0.011816499,-0.0043313832,0.054771256,0.060391811,-0.0056205558,-0.0043313832,0.055351508,0.026728413,2,-0.04
+41,TabPFN v3,Home Credit,3,All tables,307511,0.080728819,0.066699616,0.068882173,-0.014029203,-0.011846647,0.0021825564,0.068392185,0.068421242,-2.905708e-05,0.0021825564,0.011578112,0.0073114094,2,-0.02
+42,TabPFN v3,LendingClub,3,All tables,9578,0.16005429,0.14098134,0.13880759,-0.019072951,-0.021246701,-0.0021737506,0.12638842,0.12645981,-7.1393734e-05,-0.0021737506,0.011608013,0.0082454639,2,0
+43,TabPFN v3,MicroFinance,0,All tables,158700,0.37809074,0.36596762,0.36362117,-0.012123116,-0.014469564,-0.0023464484,0.21751651,0.21836578,-0.00084926948,-0.0023464484,0.026834226,0.020084791,2,0.02
+44,TabPFN v3,Myhom,2,All tables,7000,0.4,0.39120362,0.3905819,-0.0087963807,-0.0094181032,-0.00062172252,0.23383466,0.23389011,-5.5455564e-05,-0.00062172252,0.010546461,0.0080269929,2,0.04
+45,TabPFN v3,PropPD1,2,All tables,100000,0.22639,0.1925788,0.19970778,-0.0338112,-0.026682218,0.0071289822,0.12856333,0.12769556,0.00086776564,0.0071289822,0.022230266,0.013609639,2,0.06
+46,TabPFN v3,PropPD2,2,All tables,105471,0.092755355,0.075077577,0.076643074,-0.017677777,-0.016112281,0.0015654963,0.082365034,0.0822482,0.00011683379,0.0015654963,0.0090842039,0.006527499,2,0.08
+47,TabPFN v3,SBA Loans Case,3,All tables,2102,0.32635585,0.32639496,0.32756698,3.9106569e-05,0.0012111261,-0.0011720195,0.033249146,0.032827338,0.00042180764,0.0011720195,0.024872977,0.0094347059,2,0.1
+48,TabPFN v3,Taiwan Credit Card,1,All tables,30000,0.2212,0.20652503,0.2075927,-0.014674968,-0.013607297,0.001067671,0.13305926,0.13287515,0.00018410964,0.001067671,0.014554241,0.010650479,2,0.12
+49,TabPFN v3,Thomas,0,All tables,1225,0.26367347,0.24733232,0.24777648,-0.016341154,-0.01589699,0.00044416459,0.18350797,0.18326647,0.00024150659,0.00044416459,0.018094086,0.013809381,2,0.14
+50,TabPFN v3,Vehicle Loan,1,All tables,233154,0.21707112,0.19829208,0.2031329,-0.018779038,-0.013938221,0.0048408169,0.16127828,0.1612994,-2.1122041e-05,0.0048408169,0.014478683,0.010768522,2,0.16
+51,TabPFN v3,Bondora Peer-to-Peer,0,Large tables,730176,0.13810506,0.13157373,0.12574178,-0.0065313284,-0.012363281,-0.0058319527,0.080273139,0.081228776,-0.00095563756,-0.0058319527,0.03029006,0.014753743,3,-0.16
+52,TabPFN v3,Cobranded,3,Large tables,80000,0.2462125,0.23474992,0.23398442,-0.011462584,-0.012228083,-0.00076549843,0.13092879,0.13113118,-0.00020238898,-0.00076549843,0.017176341,0.01111958,3,-0.14
+53,TabPFN v3,Credit Risk,2,Large tables,32581,0.21816396,0.20759623,0.20403756,-0.010567735,-0.014126402,-0.0035586677,0.050267518,0.051340743,-0.0010732253,-0.0035586677,0.031965223,0.012638657,3,-0.12
+54,TabPFN v3,GMSC,1,Large tables,150000,0.06684,0.058648143,0.057653591,-0.0081918569,-0.0091864089,-0.00099455194,0.048835831,0.04890877,-7.2938543e-05,-0.00099455194,0.0071666355,0.0034738085,3,-0.1
+55,TabPFN v3,German Credit,1,Large tables,999,0.3003003,0.29032207,0.28852765,-0.0099782295,-0.011772649,-0.0017944196,0.16260483,0.16255541,4.9418329e-05,-0.0017944196,0.025532329,0.017914595,3,-0.08
+56,TabPFN v3,HMEQ,0,Large tables,5960,0.19949664,0.1956357,0.19570478,-0.0038609394,-0.003791866,6.9073324e-05,0.0057323372,0.0083989102,-0.002666573,6.9073324e-05,0.039914038,0.010892688,3,-0.06
+57,TabPFN v3,Hackerearth,2,Large tables,532428,0.23632679,0.22884167,0.22172981,-0.0074851162,-0.014596981,-0.0071118652,0.054771256,0.061593233,-0.0068219775,-0.0071118652,0.06157427,0.030737567,3,-0.04
+58,TabPFN v3,Home Credit,3,Large tables,307511,0.080728819,0.066699616,0.064289471,-0.014029203,-0.016439349,-0.0024101453,0.068392185,0.068709675,-0.00031748994,-0.0024101453,0.01306898,0.0076332483,3,-0.02
+59,TabPFN v3,LendingClub,3,Large tables,9578,0.16005429,0.14098134,0.14038101,-0.019072951,-0.019673279,-0.00060032812,0.12638842,0.12640274,-1.4324936e-05,-0.00060032812,0.010573869,0.007659152,3,0
+60,TabPFN v3,MicroFinance,0,Large tables,158700,0.37809074,0.36596762,0.36491122,-0.012123116,-0.01317952,-0.0010564044,0.21751651,0.21800288,-0.00048636671,-0.0010564044,0.019835983,0.015362526,3,0.02
+61,TabPFN v3,Myhom,2,Large tables,7000,0.4,0.39120362,0.39121638,-0.0087963807,-0.0087836159,1.2764833e-05,0.23383466,0.2337244,0.00011026005,1.2764833e-05,0.011064464,0.0083914026,3,0.04
+62,TabPFN v3,PropPD1,2,Large tables,100000,0.22639,0.1925788,0.18776157,-0.0338112,-0.038628434,-0.0048172342,0.12856333,0.12935391,-0.00079058498,-0.0048172342,0.020169225,0.012254531,3,0.06
+63,TabPFN v3,PropPD2,2,Large tables,105471,0.092755355,0.075077577,0.075215574,-0.017677777,-0.017539781,0.00013799637,0.082365034,0.082309926,5.5107693e-05,0.00013799637,0.0078135718,0.0057175243,3,0.08
+64,TabPFN v3,SBA Loans Case,3,Large tables,2102,0.32635585,0.32639496,0.32760694,3.9106569e-05,0.0012510841,-0.0012119776,0.033249146,0.031606285,0.0016428606,0.0012119776,0.030506395,0.01052931,3,0.1
+65,TabPFN v3,Taiwan Credit Card,1,Large tables,30000,0.2212,0.20652503,0.20523478,-0.014674968,-0.015965222,-0.0012902534,0.13305926,0.13297331,8.594731e-05,-0.0012902534,0.014782403,0.010583395,3,0.12
+66,TabPFN v3,Thomas,0,Large tables,1225,0.26367347,0.24733232,0.24743914,-0.016341154,-0.016234329,0.0001068248,0.18350797,0.1832376,0.00027037427,0.0001068248,0.016408093,0.012599159,3,0.14
+67,TabPFN v3,Vehicle Loan,1,Large tables,233154,0.21707112,0.19829208,0.19841735,-0.018779038,-0.01865377,0.00012526753,0.16127828,0.16149028,-0.00021200628,0.00012526753,0.012871663,0.0096904054,3,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -141402,112 +142286,112 @@ row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,
 33,TabPFN v3,SBA Loans Case,3,"26,000 rows",2102,0.32635585,0.32639496,0.32703833,3.9106569e-05,0.0006824779,-0.00064337133,0.033249146,0.031561492,0.0016876538,0.00064337133,0.031263392,0.010352142
 
 Figure: pd_prediction_diagnostics
-PD. Matched five-fold out-of-fold predictions on held-out credit tables. Diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
+PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 Paired table diagnostics
 CSV (first column: row index)
-row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change
-0,TabICLv2,Bondora Peer-to-Peer,0,"2,048 rows",730176,0.13810506,0.13512286,0.13464257,-0.0029821967,-0.0034624883,-0.00048029155,0.080535551,0.080861744,-0.00032619274,-0.00048029155,0.020933468,0.0097869573
-1,TabICLv2,HMEQ,0,"2,048 rows",5960,0.19949664,0.19071745,0.18894819,-0.0087791943,-0.010548459,-0.001769265,0.017686181,0.020940913,-0.0032547319,-0.001769265,0.038532632,0.013900827
-2,TabICLv2,MicroFinance,0,"2,048 rows",158700,0.37809074,0.36495634,0.36571491,-0.013134396,-0.012375824,0.00075857185,0.21816395,0.21825221,-8.8259218e-05,0.00075857185,0.031700093,0.024029455
-3,TabICLv2,Thomas,0,"2,048 rows",1225,0.26367347,0.24708993,0.24278432,-0.016583543,-0.020889147,-0.0043056036,0.18308296,0.1835651,-0.00048213644,-0.0043056036,0.020417581,0.014704464
-4,TabICLv2,GMSC,1,"2,048 rows",150000,0.06684,0.057865039,0.057801745,-0.0089749608,-0.0090382547,-6.3293901e-05,0.049075658,0.049143329,-6.7670907e-05,-6.3293901e-05,0.0064630534,0.0031574222
-5,TabICLv2,German Credit,1,"2,048 rows",999,0.3003003,0.29274349,0.29047085,-0.0075568069,-0.0098294538,-0.0022726469,0.16240025,0.16186192,0.00053833163,-0.0022726469,0.027552971,0.019483964
-6,TabICLv2,Taiwan Credit Card,1,"2,048 rows",30000,0.2212,0.20680082,0.20629941,-0.014399176,-0.014900592,-0.00050141614,0.13292592,0.13333716,-0.00041124144,-0.00050141614,0.018466678,0.012866054
-7,TabICLv2,Vehicle Loan,1,"2,048 rows",233154,0.21707112,0.38729445,0.2003989,0.17022333,-0.01667222,0.15355111,0.27476188,0.16256437,0.11219751,-0.18689555,0.34269233,0.21171226
-8,TabICLv2,Credit Risk,2,"2,048 rows",32581,0.21816396,0.20703413,0.20901285,-0.011129831,-0.00915111,0.0019787212,0.049364787,0.05615227,-0.0067874831,0.0019787212,0.066207467,0.033389084
-9,TabICLv2,Hackerearth,2,"2,048 rows",532428,0.23632679,0.23112544,0.21610821,-0.0052013466,-0.020218584,-0.015017238,0.058127422,0.067926131,-0.0097987093,-0.015017238,0.090890001,0.042310234
-10,TabICLv2,Myhom,2,"2,048 rows",7000,0.4,0.38581482,0.3852635,-0.01418518,-0.014736505,-0.00055132527,0.25080943,0.23424691,0.016562514,-0.00055132527,0.14926976,0.090244026
-11,TabICLv2,PropPD1,2,"2,048 rows",100000,0.22639,0.19999356,0.18980883,-0.026396437,-0.036581172,-0.010184735,0.12813814,0.13084102,-0.0027028807,-0.010184735,0.039573103,0.026729551
-12,TabICLv2,PropPD2,2,"2,048 rows",105471,0.092755355,0.076905382,0.07171641,-0.015849972,-0.021038944,-0.0051889719,0.082312426,0.082591882,-0.00027945564,-0.0051889719,0.010380346,0.0079100011
-13,TabICLv2,Cobranded,3,"2,048 rows",80000,0.2462125,0.23580183,0.23344793,-0.010410672,-0.012764571,-0.002353899,0.13071025,0.13133583,-0.00062558764,-0.002353899,0.023770472,0.015467477
-14,TabICLv2,Home Credit,3,"2,048 rows",307511,0.080728819,0.071030346,0.0709924,-0.0096984731,-0.0097364193,-3.7946241e-05,0.068564613,0.068897644,-0.00033303021,-3.7946241e-05,0.012480918,0.0079929051
-15,TabICLv2,LendingClub,3,"2,048 rows",9578,0.16005429,0.14078684,0.13624272,-0.019267448,-0.023811574,-0.0045441258,0.12609798,0.12640818,-0.00031019622,-0.0045441258,0.014455587,0.0096883942
-16,TabICLv2,SBA Loans Case,3,"2,048 rows",2102,0.32635585,0.32631453,0.32501463,-4.1321021e-05,-0.0013412208,-0.0012998998,0.031810621,0.031232131,0.00057849025,-0.0012998998,0.03082756,0.012146334
-17,TabICLv2,Bondora Peer-to-Peer,0,"8,192 rows",730176,0.13810506,0.13512286,0.13300593,-0.0029821967,-0.0050991268,-0.0021169301,0.080535551,0.080545228,-9.6771529e-06,-0.0021169301,0.019760277,0.0093112193
-18,TabICLv2,HMEQ,0,"8,192 rows",5960,0.19949664,0.19071745,0.19328997,-0.0087791943,-0.0062066696,0.0025725247,0.017686181,0.022466811,-0.0047806297,0.0025725247,0.048579713,0.018182977
-19,TabICLv2,MicroFinance,0,"8,192 rows",158700,0.37809074,0.36495634,0.36836708,-0.013134396,-0.0097236589,0.0034107366,0.21816395,0.2183782,-0.00021424681,0.0034107366,0.030210578,0.02270377
-20,TabICLv2,Thomas,0,"8,192 rows",1225,0.26367347,0.24708993,0.24259239,-0.016583543,-0.021081082,-0.0044975393,0.18308296,0.18381166,-0.00072870029,-0.0044975393,0.0222823,0.014947802
-21,TabICLv2,GMSC,1,"8,192 rows",150000,0.06684,0.057865039,0.05764009,-0.0089749608,-0.0091999095,-0.00022494871,0.049075658,0.049150668,-7.5009696e-05,-0.00022494871,0.0069548083,0.0032957084
-22,TabICLv2,German Credit,1,"8,192 rows",999,0.3003003,0.29274349,0.28978867,-0.007556812,-0.010511635,-0.0029548229,0.16240025,0.1624474,-4.715003e-05,-0.0029548229,0.028201846,0.019910945
-23,TabICLv2,Taiwan Credit Card,1,"8,192 rows",30000,0.2212,0.20680082,0.20648661,-0.014399176,-0.014713386,-0.00031421033,0.13292592,0.13325029,-0.00032437649,-0.00031421033,0.016720469,0.01169941
-24,TabICLv2,Vehicle Loan,1,"8,192 rows",233154,0.21707112,0.38729445,0.19577634,0.17022333,-0.021294782,0.14892854,0.27476188,0.16180253,0.11295935,-0.19151811,0.34857336,0.21567071
-25,TabICLv2,Credit Risk,2,"8,192 rows",32581,0.21816396,0.20703413,0.20700053,-0.011129831,-0.011163432,-3.3600715e-05,0.049364787,0.055204391,-0.0058396041,-3.3600715e-05,0.059807291,0.028837323
-26,TabICLv2,Hackerearth,2,"8,192 rows",532428,0.23632679,0.23112544,0.21970735,-0.0052013466,-0.016619443,-0.011418097,0.058127422,0.07015465,-0.012027229,-0.011418097,0.10269879,0.04935639
-27,TabICLv2,Myhom,2,"8,192 rows",7000,0.4,0.38581482,0.38576521,-0.01418518,-0.01423479,-4.9610675e-05,0.25080943,0.23434174,0.016467686,-4.9610675e-05,0.1485841,0.089213471
-28,TabICLv2,PropPD1,2,"8,192 rows",100000,0.22639,0.19999356,0.19431439,-0.026396437,-0.032075606,-0.0056791691,0.12813814,0.1305455,-0.0024073629,-0.0056791691,0.04094149,0.025929896
-29,TabICLv2,PropPD2,2,"8,192 rows",105471,0.092755355,0.076905382,0.07654246,-0.015849972,-0.016212894,-0.00036292213,0.082312426,0.082337646,-2.5219823e-05,-0.00036292213,0.0071562533,0.0053912848
-30,TabICLv2,Cobranded,3,"8,192 rows",80000,0.2462125,0.23580183,0.23271055,-0.010410672,-0.013501947,-0.003091275,0.13071025,0.13105115,-0.00034090154,-0.003091275,0.02403603,0.015271976
-31,TabICLv2,Home Credit,3,"8,192 rows",307511,0.080728819,0.071030346,0.070790944,-0.0096984731,-0.0099378755,-0.00023940243,0.068564613,0.068835059,-0.00027044536,-0.00023940243,0.012056165,0.0073681236
-32,TabICLv2,LendingClub,3,"8,192 rows",9578,0.16005429,0.14078684,0.13988057,-0.019267448,-0.020173721,-0.00090627302,0.12609798,0.12614441,-4.6425752e-05,-0.00090627302,0.012052686,0.0084146437
-33,TabICLv2,SBA Loans Case,3,"8,192 rows",2102,0.32635585,0.32631453,0.32485055,-4.1321021e-05,-0.0015052969,-0.0014639759,0.031810621,0.030903241,0.00090738055,-0.0014639759,0.030289411,0.011886388
-34,TabICLv2,Bondora Peer-to-Peer,0,"26,000 rows",730176,0.13810506,0.13512286,0.13321377,-0.0029821967,-0.0048912945,-0.0019090978,0.080535551,0.080608813,-7.3262322e-05,-0.0019090978,0.019923956,0.0096138743
-35,TabICLv2,HMEQ,0,"26,000 rows",5960,0.19949664,0.19071745,0.19446528,-0.0087791943,-0.0050313631,0.0037478312,0.017686181,0.021260012,-0.0035738311,0.0037478312,0.044607775,0.015359007
-36,TabICLv2,MicroFinance,0,"26,000 rows",158700,0.37809074,0.36495634,0.36330836,-0.013134396,-0.014782373,-0.001647977,0.21816395,0.21858541,-0.00042145152,-0.001647977,0.030118768,0.022414936
-37,TabICLv2,Thomas,0,"26,000 rows",1225,0.26367347,0.24708993,0.24361484,-0.016583543,-0.02005863,-0.0034750867,0.18308296,0.18362452,-0.00054156376,-0.0034750867,0.018190017,0.012580569
-38,TabICLv2,GMSC,1,"26,000 rows",150000,0.06684,0.057865039,0.056681569,-0.0089749608,-0.010158431,-0.0011834705,0.049075658,0.049140482,-6.4823278e-05,-0.0011834705,0.0068661999,0.0033063817
-39,TabICLv2,German Credit,1,"26,000 rows",999,0.3003003,0.29274349,0.29087697,-0.0075568069,-0.009423326,-0.0018665191,0.16240025,0.16281834,-0.00041808779,-0.0018665191,0.028216175,0.019579995
-40,TabICLv2,Taiwan Credit Card,1,"26,000 rows",30000,0.2212,0.20680082,0.20500349,-0.014399176,-0.016196505,-0.0017973292,0.13292592,0.13320312,-0.00027720331,-0.0017973292,0.014474977,0.010397367
-41,TabICLv2,Vehicle Loan,1,"26,000 rows",233154,0.21707112,0.38729445,0.19441409,0.17022333,-0.022657032,0.14756629,0.27476188,0.16172129,0.11304059,-0.19288036,0.34905343,0.21626248
-42,TabICLv2,Credit Risk,2,"26,000 rows",32581,0.21816396,0.20703413,0.2100418,-0.011129831,-0.0081221613,0.0030076699,0.049364787,0.053114378,-0.003749591,0.0030076699,0.047709476,0.022787888
-43,TabICLv2,Hackerearth,2,"26,000 rows",532428,0.23632679,0.23112544,0.22330051,-0.0052013466,-0.013026283,-0.0078249363,0.058127422,0.067628922,-0.0095014999,-0.0078249363,0.089664244,0.042675289
-44,TabICLv2,Myhom,2,"26,000 rows",7000,0.4,0.38581482,0.38738413,-0.01418518,-0.01261587,0.00156931,0.25080943,0.23436254,0.016446885,0.00156931,0.14827055,0.088126158
-45,TabICLv2,PropPD1,2,"26,000 rows",100000,0.22639,0.19999356,0.19513753,-0.026396437,-0.031252475,-0.0048560382,0.12813814,0.13057086,-0.0024327153,-0.0048560382,0.040633691,0.025360008
-46,TabICLv2,PropPD2,2,"26,000 rows",105471,0.092755355,0.076905382,0.076152063,-0.015849972,-0.016603292,-0.00075331948,0.082312426,0.082328799,-1.63723e-05,-0.00075331948,0.0061875741,0.0046521035
-47,TabICLv2,Cobranded,3,"26,000 rows",80000,0.2462125,0.23580183,0.23327025,-0.010410672,-0.012942248,-0.0025315753,0.13071025,0.13100768,-0.00029743685,-0.0025315753,0.022269198,0.014292534
-48,TabICLv2,Home Credit,3,"26,000 rows",307511,0.080728819,0.071030346,0.070265915,-0.0096984731,-0.010462905,-0.0007644316,0.068564613,0.068722424,-0.00015781017,-0.0007644316,0.010600449,0.0064100367
-49,TabICLv2,LendingClub,3,"26,000 rows",9578,0.16005429,0.14078684,0.14165206,-0.019267448,-0.018402236,0.00086521249,0.12609798,0.12605416,4.3820651e-05,0.00086521249,0.0092923568,0.0065685393
-50,TabICLv2,SBA Loans Case,3,"26,000 rows",2102,0.32635585,0.32631453,0.32533943,-4.1321021e-05,-0.0010164207,-0.00097509964,0.031810621,0.030781952,0.0010286689,-0.00097509964,0.025682067,0.0101173
-51,TabPFN v3,Bondora Peer-to-Peer,0,"2,048 rows",730176,0.13810506,0.13157373,0.18412117,-0.0065313284,0.046016111,-0.039484782,0.080273139,0.098494826,-0.018221687,0.052547439,0.13876468,0.061622102
-52,TabPFN v3,HMEQ,0,"2,048 rows",5960,0.19949664,0.1956357,0.20002134,-0.0038609394,0.00052469134,0.003336248,0.0057323372,0.0069721649,-0.0012398277,0.0043856307,0.035190279,0.010136378
-53,TabPFN v3,MicroFinance,0,"2,048 rows",158700,0.37809074,0.36598232,0.36280664,-0.012108418,-0.015284099,-0.0031756807,0.21751879,0.21879021,-0.001271422,-0.0031756807,0.029367705,0.022814397
-54,TabPFN v3,Thomas,0,"2,048 rows",1225,0.26367347,0.24733232,0.24555597,-0.016341154,-0.018117496,-0.0017763413,0.18350797,0.18328396,0.00022401621,-0.0017763413,0.016681669,0.013062475
-55,TabPFN v3,GMSC,1,"2,048 rows",150000,0.06684,0.058648143,0.05818893,-0.0081918569,-0.0086510696,-0.00045921266,0.048835831,0.048896261,-6.0429435e-05,-0.00045921266,0.0083078681,0.0040361495
-56,TabPFN v3,German Credit,1,"2,048 rows",999,0.3003003,0.29032207,0.28726054,-0.0099782295,-0.013039763,-0.0030615335,0.16260483,0.16328448,-0.00067965245,-0.0030615335,0.037686248,0.02782
-57,TabPFN v3,Taiwan Credit Card,1,"2,048 rows",30000,0.2212,0.20652503,0.20580868,-0.014674968,-0.015391322,-0.00071635332,0.13305926,0.13303791,2.1350478e-05,-0.00071635332,0.019492789,0.014518051
-58,TabPFN v3,Vehicle Loan,1,"2,048 rows",233154,0.21707112,0.19829208,0.19684511,-0.018779038,-0.020226007,-0.0014469696,0.16127828,0.16166436,-0.00038607839,-0.0014469696,0.015062176,0.011222626
-59,TabPFN v3,Credit Risk,2,"2,048 rows",32581,0.21816396,0.20759623,0.20716169,-0.010567735,-0.011002271,-0.00043453664,0.050267518,0.053493771,-0.0032262532,-0.00043453664,0.040845478,0.019296181
-60,TabPFN v3,Hackerearth,2,"2,048 rows",532428,0.23632679,0.22884167,0.22421525,-0.0074851162,-0.012111539,-0.0046264227,0.054771256,0.062752694,-0.0079814388,-0.0046264227,0.068432356,0.037451662
-61,TabPFN v3,Myhom,2,"2,048 rows",7000,0.4,0.39120362,0.38956044,-0.0087963807,-0.010439557,-0.0016431762,0.23383466,0.23378526,4.9394151e-05,-0.0016431762,0.014814357,0.011274466
-62,TabPFN v3,PropPD1,2,"2,048 rows",100000,0.22639,0.1925788,0.19065012,-0.0338112,-0.035739875,-0.001928675,0.12856333,0.12966507,-0.001101738,-0.001928675,0.028515543,0.018222189
-63,TabPFN v3,PropPD2,2,"2,048 rows",105471,0.092755355,0.075064739,0.077015874,-0.017690616,-0.015739481,0.0019511348,0.082366748,0.082279594,8.7154381e-05,0.0019511348,0.011932812,0.0086838414
-64,TabPFN v3,Cobranded,3,"2,048 rows",80000,0.2462125,0.23474343,0.23201514,-0.011469073,-0.014197361,-0.0027282889,0.13093323,0.13128941,-0.00035618776,-0.0027282889,0.019390145,0.013280065
-65,TabPFN v3,Home Credit,3,"2,048 rows",307511,0.080728819,0.06672795,0.06637014,-0.01400087,-0.014358679,-0.00035780956,0.06839356,0.068765177,-0.00037161709,-0.00035780956,0.013819708,0.0085668792
-66,TabPFN v3,LendingClub,3,"2,048 rows",9578,0.16005429,0.14098134,0.13745524,-0.019072951,-0.022599051,-0.0035261,0.12638842,0.12658676,-0.00019834461,-0.0035261,0.014092944,0.0096904946
-67,TabPFN v3,SBA Loans Case,3,"2,048 rows",2102,0.32635585,0.32639496,0.32823194,3.9106569e-05,0.0018760841,-0.0018369776,0.033249146,0.033178948,7.0197504e-05,0.0018369776,0.030451941,0.013052
-68,TabPFN v3,Bondora Peer-to-Peer,0,"8,192 rows",730176,0.13810506,0.13157373,0.12574178,-0.0065313284,-0.012363281,-0.0058319527,0.080273139,0.081228776,-0.00095563756,-0.0058319527,0.03029006,0.014753743
-69,TabPFN v3,HMEQ,0,"8,192 rows",5960,0.19949664,0.1956357,0.19570478,-0.0038609394,-0.003791866,6.9073324e-05,0.0057323372,0.0083989102,-0.002666573,6.9073324e-05,0.039914038,0.010892688
-70,TabPFN v3,MicroFinance,0,"8,192 rows",158700,0.37809074,0.36596762,0.36491122,-0.012123116,-0.01317952,-0.0010564044,0.21751651,0.21800288,-0.00048636671,-0.0010564044,0.019835983,0.015362526
-71,TabPFN v3,Thomas,0,"8,192 rows",1225,0.26367347,0.24733232,0.24743914,-0.016341154,-0.016234329,0.0001068248,0.18350797,0.1832376,0.00027037427,0.0001068248,0.016408093,0.012599159
-72,TabPFN v3,GMSC,1,"8,192 rows",150000,0.06684,0.058648143,0.057653591,-0.0081918569,-0.0091864089,-0.00099455194,0.048835831,0.04890877,-7.2938543e-05,-0.00099455194,0.0071666355,0.0034738085
-73,TabPFN v3,German Credit,1,"8,192 rows",999,0.3003003,0.29032207,0.28852765,-0.0099782295,-0.011772649,-0.0017944196,0.16260483,0.16255541,4.9418329e-05,-0.0017944196,0.025532329,0.017914595
-74,TabPFN v3,Taiwan Credit Card,1,"8,192 rows",30000,0.2212,0.20652503,0.20523478,-0.014674968,-0.015965222,-0.0012902534,0.13305926,0.13297331,8.594731e-05,-0.0012902534,0.014782403,0.010583395
-75,TabPFN v3,Vehicle Loan,1,"8,192 rows",233154,0.21707112,0.19829208,0.19841735,-0.018779038,-0.01865377,0.00012526753,0.16127828,0.16149028,-0.00021200628,0.00012526753,0.012871663,0.0096904054
-76,TabPFN v3,Credit Risk,2,"8,192 rows",32581,0.21816396,0.20759623,0.20403756,-0.010567735,-0.014126402,-0.0035586677,0.050267518,0.051340743,-0.0010732253,-0.0035586677,0.031965223,0.012638657
-77,TabPFN v3,Hackerearth,2,"8,192 rows",532428,0.23632679,0.22884167,0.22172981,-0.0074851162,-0.014596981,-0.0071118652,0.054771256,0.061593233,-0.0068219775,-0.0071118652,0.06157427,0.030737567
-78,TabPFN v3,Myhom,2,"8,192 rows",7000,0.4,0.39120362,0.39121638,-0.0087963807,-0.0087836159,1.2764833e-05,0.23383466,0.2337244,0.00011026005,1.2764833e-05,0.011064464,0.0083914026
-79,TabPFN v3,PropPD1,2,"8,192 rows",100000,0.22639,0.1925788,0.18776157,-0.0338112,-0.038628434,-0.0048172342,0.12856333,0.12935391,-0.00079058498,-0.0048172342,0.020169225,0.012254531
-80,TabPFN v3,PropPD2,2,"8,192 rows",105471,0.092755355,0.075077577,0.075215574,-0.017677777,-0.017539781,0.00013799637,0.082365034,0.082309926,5.5107693e-05,0.00013799637,0.0078135718,0.0057175243
-81,TabPFN v3,Cobranded,3,"8,192 rows",80000,0.2462125,0.23474992,0.23398442,-0.011462584,-0.012228083,-0.00076549843,0.13092879,0.13113118,-0.00020238898,-0.00076549843,0.017176341,0.01111958
-82,TabPFN v3,Home Credit,3,"8,192 rows",307511,0.080728819,0.066699616,0.064289471,-0.014029203,-0.016439349,-0.0024101453,0.068392185,0.068709675,-0.00031748994,-0.0024101453,0.01306898,0.0076332483
-83,TabPFN v3,LendingClub,3,"8,192 rows",9578,0.16005429,0.14098134,0.14038101,-0.019072951,-0.019673279,-0.00060032812,0.12638842,0.12640274,-1.4324936e-05,-0.00060032812,0.010573869,0.007659152
-84,TabPFN v3,SBA Loans Case,3,"8,192 rows",2102,0.32635585,0.32639496,0.32760694,3.9106569e-05,0.0012510841,-0.0012119776,0.033249146,0.031606285,0.0016428606,0.0012119776,0.030506395,0.01052931
-85,TabPFN v3,Bondora Peer-to-Peer,0,"26,000 rows",730176,0.13810506,0.13157373,0.12695775,-0.0065313284,-0.011147307,-0.0046159781,0.080273139,0.080539146,-0.00026600767,-0.0046159781,0.020868862,0.010210997
-86,TabPFN v3,HMEQ,0,"26,000 rows",5960,0.19949664,0.1956357,0.19503635,-0.0038609394,-0.0044602941,-0.0005993547,0.0057323372,0.0077198396,-0.0019875025,-0.0005993547,0.035287492,0.0089815479
-87,TabPFN v3,MicroFinance,0,"26,000 rows",158700,0.37809074,0.36598232,0.36715307,-0.012108418,-0.010937664,0.0011707545,0.21751879,0.21746392,5.4874108e-05,0.0011707545,0.016278491,0.012578552
-88,TabPFN v3,Thomas,0,"26,000 rows",1225,0.26367347,0.24733232,0.24786593,-0.016341154,-0.015807541,0.00053361303,0.18350797,0.18311682,0.00039115847,0.00053361303,0.016118779,0.012588718
-89,TabPFN v3,GMSC,1,"26,000 rows",150000,0.06684,0.058648143,0.05770038,-0.0081918569,-0.0091396204,-0.00094776348,0.048835831,0.048869772,-3.3941181e-05,-0.00094776348,0.0056250339,0.0026575718
-90,TabPFN v3,German Credit,1,"26,000 rows",999,0.3003003,0.29032207,0.28802834,-0.0099782295,-0.012271963,-0.0022937336,0.16260483,0.16250393,0.00010089925,-0.0022937336,0.021459221,0.0146679
-91,TabPFN v3,Taiwan Credit Card,1,"26,000 rows",30000,0.2212,0.20652503,0.20598338,-0.014674968,-0.015216624,-0.00054165517,0.13305926,0.13292316,0.00013609518,-0.00054165517,0.012400528,0.008811707
-92,TabPFN v3,Vehicle Loan,1,"26,000 rows",233154,0.21707112,0.19829208,0.19732839,-0.018779038,-0.019742735,-0.00096369731,0.16127828,0.16135104,-7.2758685e-05,-0.00096369731,0.0090538874,0.0067289687
-93,TabPFN v3,Credit Risk,2,"26,000 rows",32581,0.21816396,0.20759623,0.20380443,-0.010567735,-0.014359531,-0.003791796,0.050267518,0.050730586,-0.00046306821,-0.003791796,0.027968724,0.010470194
-94,TabPFN v3,Hackerearth,2,"26,000 rows",532428,0.23632679,0.22884167,0.22492232,-0.0074851162,-0.011404468,-0.0039193518,0.054771256,0.059574885,-0.004803629,-0.0039193518,0.048278183,0.024109952
-95,TabPFN v3,Myhom,2,"26,000 rows",7000,0.4,0.39120362,0.39117143,-0.0087963807,-0.0088285662,-3.2185454e-05,0.23383466,0.23380346,3.1196958e-05,-3.2185454e-05,0.011219192,0.0082228542
-96,TabPFN v3,PropPD1,2,"26,000 rows",100000,0.22639,0.1925788,0.18791163,-0.0338112,-0.038478375,-0.0046671747,0.12856333,0.13036749,-0.0018041636,-0.0046671747,0.035936814,0.017934252
-97,TabPFN v3,PropPD2,2,"26,000 rows",105471,0.092755355,0.075064739,0.075015242,-0.017690616,-0.017740113,-4.9496912e-05,0.082366748,0.082301147,6.5601857e-05,-4.9496912e-05,0.0066883386,0.004767921
-98,TabPFN v3,Cobranded,3,"26,000 rows",80000,0.2462125,0.23474343,0.23705139,-0.011469073,-0.0091611126,0.00230796,0.13093323,0.13080688,0.00012634694,0.00230796,0.016556487,0.0096856882
-99,TabPFN v3,Home Credit,3,"26,000 rows",307511,0.080728819,0.06672795,0.064735001,-0.01400087,-0.015993818,-0.0019929487,0.06839356,0.068582581,-0.00018902056,-0.0019929487,0.010833777,0.0061089356
-100,TabPFN v3,LendingClub,3,"26,000 rows",9578,0.16005429,0.14098134,0.14078805,-0.019072951,-0.019266243,-0.00019329256,0.12638842,0.12633654,5.1874775e-05,-0.00019329256,0.0081811853,0.0059777747
-101,TabPFN v3,SBA Loans Case,3,"26,000 rows",2102,0.32635585,0.32639496,0.32703833,3.9106569e-05,0.0006824779,-0.00064337133,0.033249146,0.031561492,0.0016876538,0.00064337133,0.031263392,0.010352142
+row,base,dataset,partition,arm,test_rows,target_mean,original_mean,adapted_mean,original_mean_error,adapted_mean_error,absolute_mean_error_improvement,original_mse,adapted_mse,mse_improvement,prediction_shift,prediction_rms_change,prediction_mean_absolute_change,plot_row,table_offset
+0,TabICLv2,Bondora Peer-to-Peer,0,"2,048 rows",730176,0.13810506,0.13512286,0.13464257,-0.0029821967,-0.0034624883,-0.00048029155,0.080535551,0.080861744,-0.00032619274,-0.00048029155,0.020933468,0.0097869573,0,-0.16
+1,TabICLv2,Cobranded,3,"2,048 rows",80000,0.2462125,0.23580183,0.23344793,-0.010410672,-0.012764571,-0.002353899,0.13071025,0.13133583,-0.00062558764,-0.002353899,0.023770472,0.015467477,0,-0.14
+2,TabICLv2,Credit Risk,2,"2,048 rows",32581,0.21816396,0.20703413,0.20901285,-0.011129831,-0.00915111,0.0019787212,0.049364787,0.05615227,-0.0067874831,0.0019787212,0.066207467,0.033389084,0,-0.12
+3,TabICLv2,GMSC,1,"2,048 rows",150000,0.06684,0.057865039,0.057801745,-0.0089749608,-0.0090382547,-6.3293901e-05,0.049075658,0.049143329,-6.7670907e-05,-6.3293901e-05,0.0064630534,0.0031574222,0,-0.1
+4,TabICLv2,German Credit,1,"2,048 rows",999,0.3003003,0.29274349,0.29047085,-0.0075568069,-0.0098294538,-0.0022726469,0.16240025,0.16186192,0.00053833163,-0.0022726469,0.027552971,0.019483964,0,-0.08
+5,TabICLv2,HMEQ,0,"2,048 rows",5960,0.19949664,0.19071745,0.18894819,-0.0087791943,-0.010548459,-0.001769265,0.017686181,0.020940913,-0.0032547319,-0.001769265,0.038532632,0.013900827,0,-0.06
+6,TabICLv2,Hackerearth,2,"2,048 rows",532428,0.23632679,0.23112544,0.21610821,-0.0052013466,-0.020218584,-0.015017238,0.058127422,0.067926131,-0.0097987093,-0.015017238,0.090890001,0.042310234,0,-0.04
+7,TabICLv2,Home Credit,3,"2,048 rows",307511,0.080728819,0.071030346,0.0709924,-0.0096984731,-0.0097364193,-3.7946241e-05,0.068564613,0.068897644,-0.00033303021,-3.7946241e-05,0.012480918,0.0079929051,0,-0.02
+8,TabICLv2,LendingClub,3,"2,048 rows",9578,0.16005429,0.14078684,0.13624272,-0.019267448,-0.023811574,-0.0045441258,0.12609798,0.12640818,-0.00031019622,-0.0045441258,0.014455587,0.0096883942,0,0
+9,TabICLv2,MicroFinance,0,"2,048 rows",158700,0.37809074,0.36495634,0.36571491,-0.013134396,-0.012375824,0.00075857185,0.21816395,0.21825221,-8.8259218e-05,0.00075857185,0.031700093,0.024029455,0,0.02
+10,TabICLv2,Myhom,2,"2,048 rows",7000,0.4,0.38581482,0.3852635,-0.01418518,-0.014736505,-0.00055132527,0.25080943,0.23424691,0.016562514,-0.00055132527,0.14926976,0.090244026,0,0.04
+11,TabICLv2,PropPD1,2,"2,048 rows",100000,0.22639,0.19999356,0.18980883,-0.026396437,-0.036581172,-0.010184735,0.12813814,0.13084102,-0.0027028807,-0.010184735,0.039573103,0.026729551,0,0.06
+12,TabICLv2,PropPD2,2,"2,048 rows",105471,0.092755355,0.076905382,0.07171641,-0.015849972,-0.021038944,-0.0051889719,0.082312426,0.082591882,-0.00027945564,-0.0051889719,0.010380346,0.0079100011,0,0.08
+13,TabICLv2,SBA Loans Case,3,"2,048 rows",2102,0.32635585,0.32631453,0.32501463,-4.1321021e-05,-0.0013412208,-0.0012998998,0.031810621,0.031232131,0.00057849025,-0.0012998998,0.03082756,0.012146334,0,0.1
+14,TabICLv2,Taiwan Credit Card,1,"2,048 rows",30000,0.2212,0.20680082,0.20629941,-0.014399176,-0.014900592,-0.00050141614,0.13292592,0.13333716,-0.00041124144,-0.00050141614,0.018466678,0.012866054,0,0.12
+15,TabICLv2,Thomas,0,"2,048 rows",1225,0.26367347,0.24708993,0.24278432,-0.016583543,-0.020889147,-0.0043056036,0.18308296,0.1835651,-0.00048213644,-0.0043056036,0.020417581,0.014704464,0,0.14
+16,TabICLv2,Vehicle Loan,1,"2,048 rows",233154,0.21707112,0.38729445,0.2003989,0.17022333,-0.01667222,0.15355111,0.27476188,0.16256437,0.11219751,-0.18689555,0.34269233,0.21171226,0,0.16
+17,TabICLv2,Bondora Peer-to-Peer,0,"26,000 rows",730176,0.13810506,0.13512286,0.13321377,-0.0029821967,-0.0048912945,-0.0019090978,0.080535551,0.080608813,-7.3262322e-05,-0.0019090978,0.019923956,0.0096138743,1,-0.16
+18,TabICLv2,Cobranded,3,"26,000 rows",80000,0.2462125,0.23580183,0.23327025,-0.010410672,-0.012942248,-0.0025315753,0.13071025,0.13100768,-0.00029743685,-0.0025315753,0.022269198,0.014292534,1,-0.14
+19,TabICLv2,Credit Risk,2,"26,000 rows",32581,0.21816396,0.20703413,0.2100418,-0.011129831,-0.0081221613,0.0030076699,0.049364787,0.053114378,-0.003749591,0.0030076699,0.047709476,0.022787888,1,-0.12
+20,TabICLv2,GMSC,1,"26,000 rows",150000,0.06684,0.057865039,0.056681569,-0.0089749608,-0.010158431,-0.0011834705,0.049075658,0.049140482,-6.4823278e-05,-0.0011834705,0.0068661999,0.0033063817,1,-0.1
+21,TabICLv2,German Credit,1,"26,000 rows",999,0.3003003,0.29274349,0.29087697,-0.0075568069,-0.009423326,-0.0018665191,0.16240025,0.16281834,-0.00041808779,-0.0018665191,0.028216175,0.019579995,1,-0.08
+22,TabICLv2,HMEQ,0,"26,000 rows",5960,0.19949664,0.19071745,0.19446528,-0.0087791943,-0.0050313631,0.0037478312,0.017686181,0.021260012,-0.0035738311,0.0037478312,0.044607775,0.015359007,1,-0.06
+23,TabICLv2,Hackerearth,2,"26,000 rows",532428,0.23632679,0.23112544,0.22330051,-0.0052013466,-0.013026283,-0.0078249363,0.058127422,0.067628922,-0.0095014999,-0.0078249363,0.089664244,0.042675289,1,-0.04
+24,TabICLv2,Home Credit,3,"26,000 rows",307511,0.080728819,0.071030346,0.070265915,-0.0096984731,-0.010462905,-0.0007644316,0.068564613,0.068722424,-0.00015781017,-0.0007644316,0.010600449,0.0064100367,1,-0.02
+25,TabICLv2,LendingClub,3,"26,000 rows",9578,0.16005429,0.14078684,0.14165206,-0.019267448,-0.018402236,0.00086521249,0.12609798,0.12605416,4.3820651e-05,0.00086521249,0.0092923568,0.0065685393,1,0
+26,TabICLv2,MicroFinance,0,"26,000 rows",158700,0.37809074,0.36495634,0.36330836,-0.013134396,-0.014782373,-0.001647977,0.21816395,0.21858541,-0.00042145152,-0.001647977,0.030118768,0.022414936,1,0.02
+27,TabICLv2,Myhom,2,"26,000 rows",7000,0.4,0.38581482,0.38738413,-0.01418518,-0.01261587,0.00156931,0.25080943,0.23436254,0.016446885,0.00156931,0.14827055,0.088126158,1,0.04
+28,TabICLv2,PropPD1,2,"26,000 rows",100000,0.22639,0.19999356,0.19513753,-0.026396437,-0.031252475,-0.0048560382,0.12813814,0.13057086,-0.0024327153,-0.0048560382,0.040633691,0.025360008,1,0.06
+29,TabICLv2,PropPD2,2,"26,000 rows",105471,0.092755355,0.076905382,0.076152063,-0.015849972,-0.016603292,-0.00075331948,0.082312426,0.082328799,-1.63723e-05,-0.00075331948,0.0061875741,0.0046521035,1,0.08
+30,TabICLv2,SBA Loans Case,3,"26,000 rows",2102,0.32635585,0.32631453,0.32533943,-4.1321021e-05,-0.0010164207,-0.00097509964,0.031810621,0.030781952,0.0010286689,-0.00097509964,0.025682067,0.0101173,1,0.1
+31,TabICLv2,Taiwan Credit Card,1,"26,000 rows",30000,0.2212,0.20680082,0.20500349,-0.014399176,-0.016196505,-0.0017973292,0.13292592,0.13320312,-0.00027720331,-0.0017973292,0.014474977,0.010397367,1,0.12
+32,TabICLv2,Thomas,0,"26,000 rows",1225,0.26367347,0.24708993,0.24361484,-0.016583543,-0.02005863,-0.0034750867,0.18308296,0.18362452,-0.00054156376,-0.0034750867,0.018190017,0.012580569,1,0.14
+33,TabICLv2,Vehicle Loan,1,"26,000 rows",233154,0.21707112,0.38729445,0.19441409,0.17022333,-0.022657032,0.14756629,0.27476188,0.16172129,0.11304059,-0.19288036,0.34905343,0.21626248,1,0.16
+34,TabICLv2,Bondora Peer-to-Peer,0,"8,192 rows",730176,0.13810506,0.13512286,0.13300593,-0.0029821967,-0.0050991268,-0.0021169301,0.080535551,0.080545228,-9.6771529e-06,-0.0021169301,0.019760277,0.0093112193,2,-0.16
+35,TabICLv2,Cobranded,3,"8,192 rows",80000,0.2462125,0.23580183,0.23271055,-0.010410672,-0.013501947,-0.003091275,0.13071025,0.13105115,-0.00034090154,-0.003091275,0.02403603,0.015271976,2,-0.14
+36,TabICLv2,Credit Risk,2,"8,192 rows",32581,0.21816396,0.20703413,0.20700053,-0.011129831,-0.011163432,-3.3600715e-05,0.049364787,0.055204391,-0.0058396041,-3.3600715e-05,0.059807291,0.028837323,2,-0.12
+37,TabICLv2,GMSC,1,"8,192 rows",150000,0.06684,0.057865039,0.05764009,-0.0089749608,-0.0091999095,-0.00022494871,0.049075658,0.049150668,-7.5009696e-05,-0.00022494871,0.0069548083,0.0032957084,2,-0.1
+38,TabICLv2,German Credit,1,"8,192 rows",999,0.3003003,0.29274349,0.28978867,-0.007556812,-0.010511635,-0.0029548229,0.16240025,0.1624474,-4.715003e-05,-0.0029548229,0.028201846,0.019910945,2,-0.08
+39,TabICLv2,HMEQ,0,"8,192 rows",5960,0.19949664,0.19071745,0.19328997,-0.0087791943,-0.0062066696,0.0025725247,0.017686181,0.022466811,-0.0047806297,0.0025725247,0.048579713,0.018182977,2,-0.06
+40,TabICLv2,Hackerearth,2,"8,192 rows",532428,0.23632679,0.23112544,0.21970735,-0.0052013466,-0.016619443,-0.011418097,0.058127422,0.07015465,-0.012027229,-0.011418097,0.10269879,0.04935639,2,-0.04
+41,TabICLv2,Home Credit,3,"8,192 rows",307511,0.080728819,0.071030346,0.070790944,-0.0096984731,-0.0099378755,-0.00023940243,0.068564613,0.068835059,-0.00027044536,-0.00023940243,0.012056165,0.0073681236,2,-0.02
+42,TabICLv2,LendingClub,3,"8,192 rows",9578,0.16005429,0.14078684,0.13988057,-0.019267448,-0.020173721,-0.00090627302,0.12609798,0.12614441,-4.6425752e-05,-0.00090627302,0.012052686,0.0084146437,2,0
+43,TabICLv2,MicroFinance,0,"8,192 rows",158700,0.37809074,0.36495634,0.36836708,-0.013134396,-0.0097236589,0.0034107366,0.21816395,0.2183782,-0.00021424681,0.0034107366,0.030210578,0.02270377,2,0.02
+44,TabICLv2,Myhom,2,"8,192 rows",7000,0.4,0.38581482,0.38576521,-0.01418518,-0.01423479,-4.9610675e-05,0.25080943,0.23434174,0.016467686,-4.9610675e-05,0.1485841,0.089213471,2,0.04
+45,TabICLv2,PropPD1,2,"8,192 rows",100000,0.22639,0.19999356,0.19431439,-0.026396437,-0.032075606,-0.0056791691,0.12813814,0.1305455,-0.0024073629,-0.0056791691,0.04094149,0.025929896,2,0.06
+46,TabICLv2,PropPD2,2,"8,192 rows",105471,0.092755355,0.076905382,0.07654246,-0.015849972,-0.016212894,-0.00036292213,0.082312426,0.082337646,-2.5219823e-05,-0.00036292213,0.0071562533,0.0053912848,2,0.08
+47,TabICLv2,SBA Loans Case,3,"8,192 rows",2102,0.32635585,0.32631453,0.32485055,-4.1321021e-05,-0.0015052969,-0.0014639759,0.031810621,0.030903241,0.00090738055,-0.0014639759,0.030289411,0.011886388,2,0.1
+48,TabICLv2,Taiwan Credit Card,1,"8,192 rows",30000,0.2212,0.20680082,0.20648661,-0.014399176,-0.014713386,-0.00031421033,0.13292592,0.13325029,-0.00032437649,-0.00031421033,0.016720469,0.01169941,2,0.12
+49,TabICLv2,Thomas,0,"8,192 rows",1225,0.26367347,0.24708993,0.24259239,-0.016583543,-0.021081082,-0.0044975393,0.18308296,0.18381166,-0.00072870029,-0.0044975393,0.0222823,0.014947802,2,0.14
+50,TabICLv2,Vehicle Loan,1,"8,192 rows",233154,0.21707112,0.38729445,0.19577634,0.17022333,-0.021294782,0.14892854,0.27476188,0.16180253,0.11295935,-0.19151811,0.34857336,0.21567071,2,0.16
+51,TabPFN v3,Bondora Peer-to-Peer,0,"2,048 rows",730176,0.13810506,0.13157373,0.18412117,-0.0065313284,0.046016111,-0.039484782,0.080273139,0.098494826,-0.018221687,0.052547439,0.13876468,0.061622102,3,-0.16
+52,TabPFN v3,Cobranded,3,"2,048 rows",80000,0.2462125,0.23474343,0.23201514,-0.011469073,-0.014197361,-0.0027282889,0.13093323,0.13128941,-0.00035618776,-0.0027282889,0.019390145,0.013280065,3,-0.14
+53,TabPFN v3,Credit Risk,2,"2,048 rows",32581,0.21816396,0.20759623,0.20716169,-0.010567735,-0.011002271,-0.00043453664,0.050267518,0.053493771,-0.0032262532,-0.00043453664,0.040845478,0.019296181,3,-0.12
+54,TabPFN v3,GMSC,1,"2,048 rows",150000,0.06684,0.058648143,0.05818893,-0.0081918569,-0.0086510696,-0.00045921266,0.048835831,0.048896261,-6.0429435e-05,-0.00045921266,0.0083078681,0.0040361495,3,-0.1
+55,TabPFN v3,German Credit,1,"2,048 rows",999,0.3003003,0.29032207,0.28726054,-0.0099782295,-0.013039763,-0.0030615335,0.16260483,0.16328448,-0.00067965245,-0.0030615335,0.037686248,0.02782,3,-0.08
+56,TabPFN v3,HMEQ,0,"2,048 rows",5960,0.19949664,0.1956357,0.20002134,-0.0038609394,0.00052469134,0.003336248,0.0057323372,0.0069721649,-0.0012398277,0.0043856307,0.035190279,0.010136378,3,-0.06
+57,TabPFN v3,Hackerearth,2,"2,048 rows",532428,0.23632679,0.22884167,0.22421525,-0.0074851162,-0.012111539,-0.0046264227,0.054771256,0.062752694,-0.0079814388,-0.0046264227,0.068432356,0.037451662,3,-0.04
+58,TabPFN v3,Home Credit,3,"2,048 rows",307511,0.080728819,0.06672795,0.06637014,-0.01400087,-0.014358679,-0.00035780956,0.06839356,0.068765177,-0.00037161709,-0.00035780956,0.013819708,0.0085668792,3,-0.02
+59,TabPFN v3,LendingClub,3,"2,048 rows",9578,0.16005429,0.14098134,0.13745524,-0.019072951,-0.022599051,-0.0035261,0.12638842,0.12658676,-0.00019834461,-0.0035261,0.014092944,0.0096904946,3,0
+60,TabPFN v3,MicroFinance,0,"2,048 rows",158700,0.37809074,0.36598232,0.36280664,-0.012108418,-0.015284099,-0.0031756807,0.21751879,0.21879021,-0.001271422,-0.0031756807,0.029367705,0.022814397,3,0.02
+61,TabPFN v3,Myhom,2,"2,048 rows",7000,0.4,0.39120362,0.38956044,-0.0087963807,-0.010439557,-0.0016431762,0.23383466,0.23378526,4.9394151e-05,-0.0016431762,0.014814357,0.011274466,3,0.04
+62,TabPFN v3,PropPD1,2,"2,048 rows",100000,0.22639,0.1925788,0.19065012,-0.0338112,-0.035739875,-0.001928675,0.12856333,0.12966507,-0.001101738,-0.001928675,0.028515543,0.018222189,3,0.06
+63,TabPFN v3,PropPD2,2,"2,048 rows",105471,0.092755355,0.075064739,0.077015874,-0.017690616,-0.015739481,0.0019511348,0.082366748,0.082279594,8.7154381e-05,0.0019511348,0.011932812,0.0086838414,3,0.08
+64,TabPFN v3,SBA Loans Case,3,"2,048 rows",2102,0.32635585,0.32639496,0.32823194,3.9106569e-05,0.0018760841,-0.0018369776,0.033249146,0.033178948,7.0197504e-05,0.0018369776,0.030451941,0.013052,3,0.1
+65,TabPFN v3,Taiwan Credit Card,1,"2,048 rows",30000,0.2212,0.20652503,0.20580868,-0.014674968,-0.015391322,-0.00071635332,0.13305926,0.13303791,2.1350478e-05,-0.00071635332,0.019492789,0.014518051,3,0.12
+66,TabPFN v3,Thomas,0,"2,048 rows",1225,0.26367347,0.24733232,0.24555597,-0.016341154,-0.018117496,-0.0017763413,0.18350797,0.18328396,0.00022401621,-0.0017763413,0.016681669,0.013062475,3,0.14
+67,TabPFN v3,Vehicle Loan,1,"2,048 rows",233154,0.21707112,0.19829208,0.19684511,-0.018779038,-0.020226007,-0.0014469696,0.16127828,0.16166436,-0.00038607839,-0.0014469696,0.015062176,0.011222626,3,0.16
+68,TabPFN v3,Bondora Peer-to-Peer,0,"26,000 rows",730176,0.13810506,0.13157373,0.12695775,-0.0065313284,-0.011147307,-0.0046159781,0.080273139,0.080539146,-0.00026600767,-0.0046159781,0.020868862,0.010210997,4,-0.16
+69,TabPFN v3,Cobranded,3,"26,000 rows",80000,0.2462125,0.23474343,0.23705139,-0.011469073,-0.0091611126,0.00230796,0.13093323,0.13080688,0.00012634694,0.00230796,0.016556487,0.0096856882,4,-0.14
+70,TabPFN v3,Credit Risk,2,"26,000 rows",32581,0.21816396,0.20759623,0.20380443,-0.010567735,-0.014359531,-0.003791796,0.050267518,0.050730586,-0.00046306821,-0.003791796,0.027968724,0.010470194,4,-0.12
+71,TabPFN v3,GMSC,1,"26,000 rows",150000,0.06684,0.058648143,0.05770038,-0.0081918569,-0.0091396204,-0.00094776348,0.048835831,0.048869772,-3.3941181e-05,-0.00094776348,0.0056250339,0.0026575718,4,-0.1
+72,TabPFN v3,German Credit,1,"26,000 rows",999,0.3003003,0.29032207,0.28802834,-0.0099782295,-0.012271963,-0.0022937336,0.16260483,0.16250393,0.00010089925,-0.0022937336,0.021459221,0.0146679,4,-0.08
+73,TabPFN v3,HMEQ,0,"26,000 rows",5960,0.19949664,0.1956357,0.19503635,-0.0038609394,-0.0044602941,-0.0005993547,0.0057323372,0.0077198396,-0.0019875025,-0.0005993547,0.035287492,0.0089815479,4,-0.06
+74,TabPFN v3,Hackerearth,2,"26,000 rows",532428,0.23632679,0.22884167,0.22492232,-0.0074851162,-0.011404468,-0.0039193518,0.054771256,0.059574885,-0.004803629,-0.0039193518,0.048278183,0.024109952,4,-0.04
+75,TabPFN v3,Home Credit,3,"26,000 rows",307511,0.080728819,0.06672795,0.064735001,-0.01400087,-0.015993818,-0.0019929487,0.06839356,0.068582581,-0.00018902056,-0.0019929487,0.010833777,0.0061089356,4,-0.02
+76,TabPFN v3,LendingClub,3,"26,000 rows",9578,0.16005429,0.14098134,0.14078805,-0.019072951,-0.019266243,-0.00019329256,0.12638842,0.12633654,5.1874775e-05,-0.00019329256,0.0081811853,0.0059777747,4,0
+77,TabPFN v3,MicroFinance,0,"26,000 rows",158700,0.37809074,0.36598232,0.36715307,-0.012108418,-0.010937664,0.0011707545,0.21751879,0.21746392,5.4874108e-05,0.0011707545,0.016278491,0.012578552,4,0.02
+78,TabPFN v3,Myhom,2,"26,000 rows",7000,0.4,0.39120362,0.39117143,-0.0087963807,-0.0088285662,-3.2185454e-05,0.23383466,0.23380346,3.1196958e-05,-3.2185454e-05,0.011219192,0.0082228542,4,0.04
+79,TabPFN v3,PropPD1,2,"26,000 rows",100000,0.22639,0.1925788,0.18791163,-0.0338112,-0.038478375,-0.0046671747,0.12856333,0.13036749,-0.0018041636,-0.0046671747,0.035936814,0.017934252,4,0.06
+80,TabPFN v3,PropPD2,2,"26,000 rows",105471,0.092755355,0.075064739,0.075015242,-0.017690616,-0.017740113,-4.9496912e-05,0.082366748,0.082301147,6.5601857e-05,-4.9496912e-05,0.0066883386,0.004767921,4,0.08
+81,TabPFN v3,SBA Loans Case,3,"26,000 rows",2102,0.32635585,0.32639496,0.32703833,3.9106569e-05,0.0006824779,-0.00064337133,0.033249146,0.031561492,0.0016876538,0.00064337133,0.031263392,0.010352142,4,0.1
+82,TabPFN v3,Taiwan Credit Card,1,"26,000 rows",30000,0.2212,0.20652503,0.20598338,-0.014674968,-0.015216624,-0.00054165517,0.13305926,0.13292316,0.00013609518,-0.00054165517,0.012400528,0.008811707,4,0.12
+83,TabPFN v3,Thomas,0,"26,000 rows",1225,0.26367347,0.24733232,0.24786593,-0.016341154,-0.015807541,0.00053361303,0.18350797,0.18311682,0.00039115847,0.00053361303,0.016118779,0.012588718,4,0.14
+84,TabPFN v3,Vehicle Loan,1,"26,000 rows",233154,0.21707112,0.19829208,0.19732839,-0.018779038,-0.019742735,-0.00096369731,0.16127828,0.16135104,-7.2758685e-05,-0.00096369731,0.0090538874,0.0067289687,4,0.16
+85,TabPFN v3,Bondora Peer-to-Peer,0,"8,192 rows",730176,0.13810506,0.13157373,0.12574178,-0.0065313284,-0.012363281,-0.0058319527,0.080273139,0.081228776,-0.00095563756,-0.0058319527,0.03029006,0.014753743,5,-0.16
+86,TabPFN v3,Cobranded,3,"8,192 rows",80000,0.2462125,0.23474992,0.23398442,-0.011462584,-0.012228083,-0.00076549843,0.13092879,0.13113118,-0.00020238898,-0.00076549843,0.017176341,0.01111958,5,-0.14
+87,TabPFN v3,Credit Risk,2,"8,192 rows",32581,0.21816396,0.20759623,0.20403756,-0.010567735,-0.014126402,-0.0035586677,0.050267518,0.051340743,-0.0010732253,-0.0035586677,0.031965223,0.012638657,5,-0.12
+88,TabPFN v3,GMSC,1,"8,192 rows",150000,0.06684,0.058648143,0.057653591,-0.0081918569,-0.0091864089,-0.00099455194,0.048835831,0.04890877,-7.2938543e-05,-0.00099455194,0.0071666355,0.0034738085,5,-0.1
+89,TabPFN v3,German Credit,1,"8,192 rows",999,0.3003003,0.29032207,0.28852765,-0.0099782295,-0.011772649,-0.0017944196,0.16260483,0.16255541,4.9418329e-05,-0.0017944196,0.025532329,0.017914595,5,-0.08
+90,TabPFN v3,HMEQ,0,"8,192 rows",5960,0.19949664,0.1956357,0.19570478,-0.0038609394,-0.003791866,6.9073324e-05,0.0057323372,0.0083989102,-0.002666573,6.9073324e-05,0.039914038,0.010892688,5,-0.06
+91,TabPFN v3,Hackerearth,2,"8,192 rows",532428,0.23632679,0.22884167,0.22172981,-0.0074851162,-0.014596981,-0.0071118652,0.054771256,0.061593233,-0.0068219775,-0.0071118652,0.06157427,0.030737567,5,-0.04
+92,TabPFN v3,Home Credit,3,"8,192 rows",307511,0.080728819,0.066699616,0.064289471,-0.014029203,-0.016439349,-0.0024101453,0.068392185,0.068709675,-0.00031748994,-0.0024101453,0.01306898,0.0076332483,5,-0.02
+93,TabPFN v3,LendingClub,3,"8,192 rows",9578,0.16005429,0.14098134,0.14038101,-0.019072951,-0.019673279,-0.00060032812,0.12638842,0.12640274,-1.4324936e-05,-0.00060032812,0.010573869,0.007659152,5,0
+94,TabPFN v3,MicroFinance,0,"8,192 rows",158700,0.37809074,0.36596762,0.36491122,-0.012123116,-0.01317952,-0.0010564044,0.21751651,0.21800288,-0.00048636671,-0.0010564044,0.019835983,0.015362526,5,0.02
+95,TabPFN v3,Myhom,2,"8,192 rows",7000,0.4,0.39120362,0.39121638,-0.0087963807,-0.0087836159,1.2764833e-05,0.23383466,0.2337244,0.00011026005,1.2764833e-05,0.011064464,0.0083914026,5,0.04
+96,TabPFN v3,PropPD1,2,"8,192 rows",100000,0.22639,0.1925788,0.18776157,-0.0338112,-0.038628434,-0.0048172342,0.12856333,0.12935391,-0.00079058498,-0.0048172342,0.020169225,0.012254531,5,0.06
+97,TabPFN v3,PropPD2,2,"8,192 rows",105471,0.092755355,0.075077577,0.075215574,-0.017677777,-0.017539781,0.00013799637,0.082365034,0.082309926,5.5107693e-05,0.00013799637,0.0078135718,0.0057175243,5,0.08
+98,TabPFN v3,SBA Loans Case,3,"8,192 rows",2102,0.32635585,0.32639496,0.32760694,3.9106569e-05,0.0012510841,-0.0012119776,0.033249146,0.031606285,0.0016428606,0.0012119776,0.030506395,0.01052931,5,0.1
+99,TabPFN v3,Taiwan Credit Card,1,"8,192 rows",30000,0.2212,0.20652503,0.20523478,-0.014674968,-0.015965222,-0.0012902534,0.13305926,0.13297331,8.594731e-05,-0.0012902534,0.014782403,0.010583395,5,0.12
+100,TabPFN v3,Thomas,0,"8,192 rows",1225,0.26367347,0.24733232,0.24743914,-0.016341154,-0.016234329,0.0001068248,0.18350797,0.1832376,0.00027037427,0.0001068248,0.016408093,0.012599159,5,0.14
+101,TabPFN v3,Vehicle Loan,1,"8,192 rows",233154,0.21707112,0.19829208,0.19841735,-0.018779038,-0.01865377,0.00012526753,0.16127828,0.16149028,-0.00021200628,0.00012526753,0.012871663,0.0096904054,5,0.16
 Plotted means and quartiles
 CSV (first column: row index)
 row,base,arm,metric,datasets,mean,q25,q75
@@ -142501,41 +143385,41 @@ row,dataset_id,rows,features,missing
 Histograms describe the processed targets; no additional clipping is applied by the plot.
 
 Figure: target_profiles_pd_1
-Registered minority-class fraction for each available PD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count.
+Processed-target minority-class fraction for each available PD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count. Statistics are recomputed from the same processed targets as the distribution panels.
 Panel 1 / bars 1: _container0
 CSV (first column: row index)
 row,category,bin_start,bin_end,value,stack_start
-0,GMSC,-0.36,0.36,0.0668,0
-1,Home Credit,0.64,1.36,0.0807,0
-2,PropPD2,1.64,2.36,0.0928,0
-3,Bondora Peer-to-Peer,2.64,3.36,0.1381,0
-4,LendingClub,3.64,4.36,0.1601,0
-5,HMEQ,4.64,5.36,0.1995,0
-6,Vehicle Loan,5.64,6.36,0.2171,0
-7,Credit Risk,6.64,7.36,0.2182,0
+0,GMSC,-0.36,0.36,0.06684,0
+1,Home Credit,0.64,1.36,0.080728819,0
+2,PropPD2,1.64,2.36,0.092755355,0
+3,Bondora Peer-to-Peer,2.64,3.36,0.13810506,0
+4,LendingClub,3.64,4.36,0.16005429,0
+5,HMEQ,4.64,5.36,0.19949664,0
+6,Vehicle Loan,5.64,6.36,0.21707112,0
+7,Credit Risk,6.64,7.36,0.21816396,0
 8,Taiwan Credit Card,7.64,8.36,0.2212,0
-9,PropPD1,8.64,9.36,0.2264,0
-10,Hackerearth,9.64,10.36,0.2363,0
-11,Cobranded,10.64,11.36,0.2462,0
-12,Thomas,11.64,12.36,0.2637,0
-13,German Credit,12.64,13.36,0.3003,0
-14,SBA Loans Case,13.64,14.36,0.3264,0
-15,MicroFinance,14.64,15.36,0.3781,0
+9,PropPD1,8.64,9.36,0.22639,0
+10,Hackerearth,9.64,10.36,0.23632679,0
+11,Cobranded,10.64,11.36,0.2462125,0
+12,Thomas,11.64,12.36,0.26367347,0
+13,German Credit,12.64,13.36,0.3003003,0
+14,SBA Loans Case,13.64,14.36,0.32635585,0
+15,MicroFinance,14.64,15.36,0.37809074,0
 16,Myhom,15.64,16.36,0.4,0
 
 Figure: target_profiles_lgd_1
-Registered mean lgd for each available LGD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count.
+Processed-target mean lgd for each available LGD dataset, ordered by value. Bars start at zero; each dataset has equal visual weight, regardless of its row count. Statistics are recomputed from the same processed targets as the distribution panels.
 Panel 1 / bars 1: _container0
 CSV (first column: row index)
 row,category,bin_start,bin_end,value,stack_start
-0,PropLGD3,-0.36,0.36,0.2281,0
-1,PropLGD4,0.64,1.36,0.3234,0
-2,PropLGD5,1.64,2.36,0.3301,0
-3,PropLGD2,2.64,3.36,0.392,0
-4,Freddie Mac,3.64,4.36,0.4588,0
-5,LendingClub (LGD),4.64,5.36,0.5905,0
-6,SBA Loans Case (LGD),5.64,6.36,0.628,0
-7,PropLGD1,6.64,7.36,0.7049,0
+0,PropLGD3,-0.36,0.36,0.22813007,0
+1,PropLGD4,0.64,1.36,0.32338733,0
+2,PropLGD5,1.64,2.36,0.33007533,0
+3,PropLGD2,2.64,3.36,0.39203237,0
+4,Freddie Mac,3.64,4.36,0.45884258,0
+5,LendingClub (LGD),4.64,5.36,0.59051066,0
+6,SBA Loans Case (LGD),5.64,6.36,0.62803003,0
+7,PropLGD1,6.64,7.36,0.70442018,0
 
 Figure: lgd_distributions_1
 Processed LGD target distributions, four datasets per page. Bars show fractions of rows within each dataset; dotted lines locate its mean and median. Values follow the registered preprocessing, including LGD target clipping; this plot applies no additional clipping and does not pool tables.
@@ -142560,31 +143444,31 @@ row,dataset,rows,mean,median
 Table: Target descriptors
 CSV (first column: row index)
 row,track,dataset_id,minority_class_ratio,target_mean,target_std
-0,pd,GMSC,0.0668,unavailable,unavailable
+0,pd,GMSC,0.06684,unavailable,unavailable
 1,pd,Taiwan Credit Card,0.2212,unavailable,unavailable
-2,pd,Vehicle Loan,0.2171,unavailable,unavailable
-3,pd,LendingClub,0.1601,unavailable,unavailable
+2,pd,Vehicle Loan,0.21707112,unavailable,unavailable
+3,pd,LendingClub,0.16005429,unavailable,unavailable
 4,pd,Myhom,0.4,unavailable,unavailable
-5,pd,Hackerearth,0.2363,unavailable,unavailable
-6,pd,Cobranded,0.2462,unavailable,unavailable
-7,pd,German Credit,0.3003,unavailable,unavailable
-8,pd,PropPD1,0.2264,unavailable,unavailable
-9,pd,Thomas,0.2637,unavailable,unavailable
-10,pd,PropPD2,0.0928,unavailable,unavailable
-11,pd,Home Credit,0.0807,unavailable,unavailable
-12,pd,HMEQ,0.1995,unavailable,unavailable
-13,pd,MicroFinance,0.3781,unavailable,unavailable
-14,pd,Credit Risk,0.2182,unavailable,unavailable
-15,pd,Bondora Peer-to-Peer,0.1381,unavailable,unavailable
-16,pd,SBA Loans Case,0.3264,unavailable,unavailable
-17,lgd,PropLGD1,unavailable,0.7049,0.4182
-18,lgd,PropLGD2,unavailable,0.392,0.2714
-19,lgd,PropLGD3,unavailable,0.2281,0.3291
-20,lgd,PropLGD4,unavailable,0.3234,0.3777
-21,lgd,PropLGD5,unavailable,0.3301,0.4098
-22,lgd,Freddie Mac,unavailable,0.4588,0.3182
-23,lgd,LendingClub (LGD),unavailable,0.5905,0.2579
-24,lgd,SBA Loans Case (LGD),unavailable,0.628,0.256
+5,pd,Hackerearth,0.23632679,unavailable,unavailable
+6,pd,Cobranded,0.2462125,unavailable,unavailable
+7,pd,German Credit,0.3003003,unavailable,unavailable
+8,pd,PropPD1,0.22639,unavailable,unavailable
+9,pd,Thomas,0.26367347,unavailable,unavailable
+10,pd,PropPD2,0.092755355,unavailable,unavailable
+11,pd,Home Credit,0.080728819,unavailable,unavailable
+12,pd,HMEQ,0.19949664,unavailable,unavailable
+13,pd,MicroFinance,0.37809074,unavailable,unavailable
+14,pd,Credit Risk,0.21816396,unavailable,unavailable
+15,pd,Bondora Peer-to-Peer,0.13810506,unavailable,unavailable
+16,pd,SBA Loans Case,0.32635585,unavailable,unavailable
+17,lgd,PropLGD1,unavailable,0.70442018,0.41700002
+18,lgd,PropLGD2,unavailable,0.39203237,0.27139694
+19,lgd,PropLGD3,unavailable,0.22813007,0.32910883
+20,lgd,PropLGD4,unavailable,0.32338733,0.37767673
+21,lgd,PropLGD5,unavailable,0.33007533,0.40975655
+22,lgd,Freddie Mac,unavailable,0.45884258,0.31821906
+23,lgd,LendingClub (LGD),unavailable,0.59051066,0.2579219
+24,lgd,SBA Loans Case (LGD),unavailable,0.62803003,0.25599031
 
 5. Exact held-out dataset assignments
 track  fold
