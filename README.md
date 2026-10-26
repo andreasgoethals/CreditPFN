@@ -28,10 +28,11 @@ see [the finishing-check commands](docs/VSC.md#final-inference-check-before-writ
 It does not retrain models or replace completed benchmark files.
 
 Experiment 8 has a separate LoRA safety gate. The `lora2` chain passed all eight GPU checks
-and independent inspection on 26-10-2026. Production training is underway: the 14:10 DATA snapshot
-contains 13 completed PD trials; the 14:15 queue shows 10 PD tasks running and all 24 LGD tasks pending
-normally. No benchmark evidence is available yet. See the dated [run record](docs/AGENTS_MEMORY.md);
-do not duplicate the active submission.
+and independent inspection on 26-10-2026. The 20:54 DATA download records all 48 production trials
+complete at 10,000 updates, with all eight segmented recoveries completed. No benchmark evidence
+is available yet. Run the final PROJECT checkpoint/trajectory audits before submitting the benchmark;
+the [LoRA runbook](docs/VSC.md#experiment-8-lora-workflow) provides one command that advances only
+when both audits pass. See the dated [run record](docs/AGENTS_MEMORY.md).
 For a future changed implementation or environment, `bash scripts/slurm/run_experiment0_lora.sh all NEW_ID`
 queues preparation, both four-task GPU arrays and independent inspection together under a fresh ID.
 Successful dependencies advance automatically; production remains gated. A failed inference probe can be inspected

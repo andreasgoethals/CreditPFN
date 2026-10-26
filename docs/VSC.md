@@ -810,7 +810,24 @@ performs full evidence hashing on a CPU node. Repeated gate checks verify receip
 and large-file identity metadata; training additionally verifies the actual trial inputs.
 A metadata check alone is not a new full-content audit.
 
-After all 48 trials finish and their checkpoint audits pass, submit the benchmark once:
+The 26-10-2026 20:54 DATA download records all 48 trials complete, including all eight
+segmented recoveries. PROJECT checkpoint/trajectory contents are not in that archive.
+From the VSC repository, this single command runs both CPU audits, waits for their outcomes,
+and submits the benchmark only if both exit successfully. Keep the terminal open until
+both benchmark array IDs have printed. Do not run it if that benchmark is already queued.
+
+```bash
+bash -c 'set -e
+for track in pd lgd; do
+  sbatch --wait --time=00:30:00 scripts/slurm/maintenance.slurm audit --config "config/experiment8/$track.yaml"
+done
+CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh benchmark
+'
+```
+
+Audit logs are saved under DATA `output CreditPFN/experiment8/logs/maintenance_*`.
+Failure stops the sequence; inspect that log rather than clearing or resubmitting training.
+If both audits have already passed, submit the benchmark once directly:
 
 ```bash
 CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh benchmark
