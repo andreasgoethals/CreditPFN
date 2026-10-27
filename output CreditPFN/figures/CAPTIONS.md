@@ -710,11 +710,55 @@ PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles
 
 ## experiment8/01_training
 
-_No figures produced._
+**[experiment8__01_training__01_lora_optimization_pd_tabicl-v2](experiment8/experiment8__01_training__01_lora_optimization_pd_tabicl-v2.pdf)** — `lora_optimization_pd_tabicl-v2`
+
+Training seed: 42. LoRA diagnostics averaged over every planned dataset partition at each learning rate. Missing partitions leave gaps. Data loss is the architecture's native query objective; epochs without complete training-table coverage are omitted. Gradient norms concern optimizer-selected LoRA factors. Effective displacement is the Frobenius norm of the induced query/value weight update divided by the initial targeted query/value weight norm, not relative displacement of zero-initialized adapter factors. Time is recorded training wall time and excludes queue wait. Losses are never pooled across architectures.
+
+**[experiment8__01_training__02_lora_optimization_pd_v3](experiment8/experiment8__01_training__02_lora_optimization_pd_v3.pdf)** — `lora_optimization_pd_v3`
+
+Training seed: 42. LoRA diagnostics averaged over every planned dataset partition at each learning rate. Missing partitions leave gaps. Data loss is the architecture's native query objective; epochs without complete training-table coverage are omitted. Gradient norms concern optimizer-selected LoRA factors. Effective displacement is the Frobenius norm of the induced query/value weight update divided by the initial targeted query/value weight norm, not relative displacement of zero-initialized adapter factors. Time is recorded training wall time and excludes queue wait. Losses are never pooled across architectures.
+
+**[experiment8__01_training__03_lora_optimization_lgd_tabicl-v2](experiment8/experiment8__01_training__03_lora_optimization_lgd_tabicl-v2.pdf)** — `lora_optimization_lgd_tabicl-v2`
+
+Training seed: 42. LoRA diagnostics averaged over every planned dataset partition at each learning rate. Missing partitions leave gaps. Data loss is the architecture's native query objective; epochs without complete training-table coverage are omitted. Gradient norms concern optimizer-selected LoRA factors. Effective displacement is the Frobenius norm of the induced query/value weight update divided by the initial targeted query/value weight norm, not relative displacement of zero-initialized adapter factors. Time is recorded training wall time and excludes queue wait. Losses are never pooled across architectures.
+
+**[experiment8__01_training__04_lora_optimization_lgd_v3](experiment8/experiment8__01_training__04_lora_optimization_lgd_v3.pdf)** — `lora_optimization_lgd_v3`
+
+Training seed: 42. LoRA diagnostics averaged over every planned dataset partition at each learning rate. Missing partitions leave gaps. Data loss is the architecture's native query objective; epochs without complete training-table coverage are omitted. Gradient norms concern optimizer-selected LoRA factors. Effective displacement is the Frobenius norm of the induced query/value weight update divided by the initial targeted query/value weight norm, not relative displacement of zero-initialized adapter factors. Time is recorded training wall time and excludes queue wait. Losses are never pooled across architectures.
+
+**[experiment8__01_training__05_lora_monitors_pd](experiment8/experiment8__01_training__05_lora_monitors_pd.pdf)** — `lora_monitors_pd`
+
+Training seed: 42. Change in AUC from each table's update-zero score during LoRA CPT. Repeated non-credit observations are averaged within table; tables receive equal weight. Every planned partition and the unchanged baseline cohort are required at each milestone. Rates can have different monitor cohorts if baseline measurements are absent; the support table identifies these omissions. These fixed-context training monitors are distinct from the final five-fold benchmark.
+
+**[experiment8__01_training__06_lora_monitors_lgd](experiment8/experiment8__01_training__06_lora_monitors_lgd.pdf)** — `lora_monitors_lgd`
+
+Training seed: 42. Change in R² from each table's update-zero score during LoRA CPT. Repeated non-credit observations are averaged within table; tables receive equal weight. Every planned partition and the unchanged baseline cohort are required at each milestone. Rates can have different monitor cohorts if baseline measurements are absent; the support table identifies these omissions. These fixed-context training monitors are distinct from the final five-fold benchmark.
+
+**[experiment8__01_training__07_lora_shared_schedule_pd_lgd](experiment8/experiment8__01_training__07_lora_shared_schedule_pd_lgd.pdf)** — `lora_shared_schedule_pd_lgd`
+
+Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
+
+**[experiment8__01_training__08_lora_training_cost](experiment8/experiment8__01_training__08_lora_training_cost.pdf)** — `lora_training_cost`
+
+LoRA training cost with only low-rank query/value factors optimized. PD: Training seed: 42. LGD: Training seed: 42. Points and horizontal intervals show medians and interquartile ranges over completed dataset partitions within each task, model and learning rate, not confidence intervals. Each completed trial contributes once; counts accompany the figure. Missing or unfinished costs are not zeros. Time excludes queue wait, and memory is peak allocated tensor memory rather than total device capacity.
 
 ## experiment8/02_results
 
-_No figures produced._
+**[experiment8__02_results__01_lora_primary_pd](experiment8/experiment8__02_results__01_lora_primary_pd.pdf)** — `lora_primary_pd`
+
+Five-fold AUC for original and LoRA checkpoints on excluded credit tables and the non-credit retention panel. Lines connect equal-table means across the three LoRA rates; they are not learning curves over training time. All rates share the same complete table cohort within each panel. Each trained/original pair requires five finite matched folds; non-credit tables additionally require all training partitions before within-table averaging. Original and LoRA inference settings match within this experiment, including FP32 without FA3 for TabICL. Both absolute scores and paired effects are retained in the accompanying tables. The best observed rate is not a validated selected recipe.
+
+**[experiment8__02_results__02_lora_primary_lgd](experiment8/experiment8__02_results__02_lora_primary_lgd.pdf)** — `lora_primary_lgd`
+
+Five-fold R² for original and LoRA checkpoints on excluded credit tables and the non-credit retention panel. Lines connect equal-table means across the three LoRA rates; they are not learning curves over training time. All rates share the same complete table cohort within each panel. Each trained/original pair requires five finite matched folds; non-credit tables additionally require all training partitions before within-table averaging. Original and LoRA inference settings match within this experiment, including FP32 without FA3 for TabICL. Both absolute scores and paired effects are retained in the accompanying tables. The best observed rate is not a validated selected recipe.
+
+**[experiment8__02_results__03_lora_secondary_pd](experiment8/experiment8__02_results__03_lora_secondary_pd.pdf)** — `lora_secondary_pd`
+
+LoRA prediction-quality effects on held-out credit tables, paired with the same model's original weights. Positive effects indicate improvement. Lines show equal-table mean effects and shading the table interquartile range, not confidence intervals. Each model uses a common table cohort across all three rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative to the original; Brier, log-loss and MAE effects are original minus adapted on their native metric scales. These summaries describe the declared grid without selecting a best rate on held-out scores.
+
+**[experiment8__02_results__04_lora_secondary_lgd](experiment8/experiment8__02_results__04_lora_secondary_lgd.pdf)** — `lora_secondary_lgd`
+
+LoRA prediction-quality effects on held-out credit tables, paired with the same model's original weights. Positive effects indicate improvement. Lines show equal-table mean effects and shading the table interquartile range, not confidence intervals. Each model uses a common table cohort across all three rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative to the original; Brier, log-loss and MAE effects are original minus adapted on their native metric scales. These summaries describe the declared grid without selecting a best rate on held-out scores.
 
 ## general/01_raw_data
 
