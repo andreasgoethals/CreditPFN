@@ -62295,7 +62295,7 @@ row,evidence,records,origin
 The figure shows alternative minus reference, with the sign oriented toward improvement. Complete marginal effects at each choice level and every matched table contrast accompany it. These descriptive comparisons concern the observed fixed grid; recipe cells and folds are not independent replications.
 
 Figure: pd_choice_contrasts_credit
-PD. Final five-fold benchmark contrasts between CPT choices. 17 complete tables per model. Each cell first pairs the same table and all other recipe settings, averages those matched differences within table, then weights tables equally. Positive values favor the named alternative. A favorable choice contrast can mean less deterioration; it does not establish a gain over original weights. Anchoring and scope contrasts average all four rates; each rate contrast averages both anchoring and scope settings. Models and metrics remain separate. Each model uses the same recipe-complete table cohort across displayed metrics. AUC contrasts are percentage points; Brier contrasts are multiplied by 100. Brier and log-loss signs are reversed so reductions are positive. Colors are symmetric about zero within each metric panel. These are descriptive fixed-grid contrasts, not causal architecture comparisons. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+PD. Experiment 1, final five-fold benchmark on held-out credit tables. 17 complete tables per model. Each column changes one CPT choice: L2-SP anchoring on (λ = 0.003) minus off (λ = 0), frozen transformer backbone minus all parameters updated, or a larger peak learning rate minus the lowest (3e-7). Each cell pairs the same table and all other recipe settings, averages those matched differences within table, then weights tables equally; positive values favour the named alternative. Anchoring and scope contrasts average over all four learning rates; each rate contrast averages over both anchoring and scope settings. A favourable contrast can mean less deterioration rather than a gain over the original weights (see the recipe grid). Column labels are coloured by the parameter varied (learning rate blue, L2-SP orange, update scope grey). AUC contrasts are in percentage points and Brier contrasts are multiplied by 100; Brier and log-loss signs are reversed so that reductions are positive. Colours are symmetric about zero within each metric panel. These are descriptive contrasts over the fixed grid.
 Matched choice differences within each table
 CSV (first column: row index)
 row,base,dataset,contrast,domain,metric,choice,factor,reference,alternative
@@ -66098,11 +66098,11 @@ row,base,dataset,level,effect,domain,metric,factor
 1630,TabPFN v3,Vehicle Loan,1e-05,-0.0040045015,credit,roc_auc,learning_rate
 1631,TabPFN v3,Vehicle Loan,3e-05,-0.010818737,credit,roc_auc,learning_rate
 
-3. Combinations, credit transfer and non-credit retention
-All parameters means all normally trainable weights are updated. Backbone frozen means the dominant transformer stack is frozen while surrounding configured components remain trainable. Neither mode uses LoRA. Five folds are averaged within each table; tables receive equal weight. Non-credit retention is measured on a finite panel, not all possible domains. A high observed cell does not identify an unbiased test-selected winner.
+3. Every recipe against its original model
+All weights means every normally trainable parameter is updated; frozen backbone means the dominant transformer stack is frozen while embeddings and prediction components remain trainable. Neither mode uses LoRA. Five folds are averaged within each table; tables receive equal weight. In the summary table, improved/negligible/worse use a ±0.001 band on the native metric scale, and folds_improved counts outer folds with a positive paired change. The leave-one-table-out column chooses the recipe with the highest mean on the other tables and records its effect on the held-out table. Non-credit retention is measured on a four-table panel.
 
 Figure: pd_recipe_grid_credit_roc_auc
-PD. Final five-fold benchmark: AUC change (percentage points). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+PD. Experiment 1, final five-fold benchmark on held-out credit tables: AUC change (percentage points), CPT minus the original model of the same base. 17 complete tables per model. Each cell is the equal-table mean effect of one recipe, with the number of tables whose effect exceeds 0 pp ("up") over the number of complete tables. Positive values favour CPT. Columns cross the four peak learning rates (top labels, blue) with L2-SP strength λ ∈ {0, 0.003} (bottom labels, orange); rows cross each base with the update scope (all trainable weights, or the dominant transformer stack frozen while embeddings and prediction components remain trainable). Every planned combination is shown on one common table cohort within each base. Colours share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table before tables are weighted equally. The predefined reference recipe is full updates at LR 3e-7 and λ 0.003; any other cell with a higher value is an observed grid maximum, not an independently validated choice.
 Every paired table and recipe effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -67197,137 +67197,137 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 Cell means and improvement counts
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,row,column
-0,credit,roc_auc,TabICLv2,3e-07,0,False,one_sample,0.0034446865,-0.00038674043,-0.0018223383,0.000146919,17,6,TabICLv2 / all,"3e-07
+0,credit,roc_auc,TabICLv2,3e-07,0,False,one_sample,0.0034446865,-0.00038674043,-0.0018223383,0.000146919,17,6,TabICLv2 · all weights,"3e-07
 0"
-1,credit,roc_auc,TabICLv2,3e-07,0,True,one_sample,0.0039638425,-0.00034470445,-0.00090965466,0.00013127916,17,6,TabICLv2 / frozen,"3e-07
+1,credit,roc_auc,TabICLv2,3e-07,0,True,one_sample,0.0039638425,-0.00034470445,-0.00090965466,0.00013127916,17,6,TabICLv2 · frozen backbone,"3e-07
 0"
-2,credit,roc_auc,TabICLv2,3e-07,0.003,False,one_sample,0.0036946122,-0.00017633823,-0.0016434439,0.00022214889,17,6,TabICLv2 / all,"3e-07
+2,credit,roc_auc,TabICLv2,3e-07,0.003,False,one_sample,0.0036946122,-0.00017633823,-0.0016434439,0.00022214889,17,6,TabICLv2 · all weights,"3e-07
 0.003"
-3,credit,roc_auc,TabICLv2,3e-07,0.003,True,one_sample,0.0039437524,-0.00036035286,-0.00093561173,0.00012213118,17,7,TabICLv2 / frozen,"3e-07
+3,credit,roc_auc,TabICLv2,3e-07,0.003,True,one_sample,0.0039437524,-0.00036035286,-0.00093561173,0.00012213118,17,7,TabICLv2 · frozen backbone,"3e-07
 0.003"
-4,credit,roc_auc,TabICLv2,1e-06,0,False,one_sample,0.0026216357,-0.0011626593,-0.0026100114,0.00018763827,17,5,TabICLv2 / all,"1e-06
+4,credit,roc_auc,TabICLv2,1e-06,0,False,one_sample,0.0026216357,-0.0011626593,-0.0026100114,0.00018763827,17,5,TabICLv2 · all weights,"1e-06
 0"
-5,credit,roc_auc,TabICLv2,1e-06,0,True,one_sample,0.0037197904,-0.00037872934,-0.0013224896,0.00019097774,17,7,TabICLv2 / frozen,"1e-06
+5,credit,roc_auc,TabICLv2,1e-06,0,True,one_sample,0.0037197904,-0.00037872934,-0.0013224896,0.00019097774,17,7,TabICLv2 · frozen backbone,"1e-06
 0"
-6,credit,roc_auc,TabICLv2,1e-06,0.003,False,one_sample,0.0032542405,-0.00082153089,-0.0018641114,0.0003483988,17,6,TabICLv2 / all,"1e-06
+6,credit,roc_auc,TabICLv2,1e-06,0.003,False,one_sample,0.0032542405,-0.00082153089,-0.0018641114,0.0003483988,17,6,TabICLv2 · all weights,"1e-06
 0.003"
-7,credit,roc_auc,TabICLv2,1e-06,0.003,True,one_sample,0.0037429814,-0.00036467931,-0.00149375,0.00016632851,17,7,TabICLv2 / frozen,"1e-06
+7,credit,roc_auc,TabICLv2,1e-06,0.003,True,one_sample,0.0037429814,-0.00036467931,-0.00149375,0.00016632851,17,7,TabICLv2 · frozen backbone,"1e-06
 0.003"
-8,credit,roc_auc,TabICLv2,1e-05,0,False,one_sample,-0.022399734,-0.01012442,-0.028874377,-0.0035238799,17,2,TabICLv2 / all,"1e-05
+8,credit,roc_auc,TabICLv2,1e-05,0,False,one_sample,-0.022399734,-0.01012442,-0.028874377,-0.0035238799,17,2,TabICLv2 · all weights,"1e-05
 0"
-9,credit,roc_auc,TabICLv2,1e-05,0,True,one_sample,0.0008226641,-0.002021733,-0.00328867,0.00043318618,17,6,TabICLv2 / frozen,"1e-05
+9,credit,roc_auc,TabICLv2,1e-05,0,True,one_sample,0.0008226641,-0.002021733,-0.00328867,0.00043318618,17,6,TabICLv2 · frozen backbone,"1e-05
 0"
-10,credit,roc_auc,TabICLv2,1e-05,0.003,False,one_sample,-0.005951033,-0.0048848406,-0.018493122,-0.0012730129,17,3,TabICLv2 / all,"1e-05
+10,credit,roc_auc,TabICLv2,1e-05,0.003,False,one_sample,-0.005951033,-0.0048848406,-0.018493122,-0.0012730129,17,3,TabICLv2 · all weights,"1e-05
 0.003"
-11,credit,roc_auc,TabICLv2,1e-05,0.003,True,one_sample,0.0017236009,-0.0013221994,-0.0024952932,0.00056714576,17,6,TabICLv2 / frozen,"1e-05
+11,credit,roc_auc,TabICLv2,1e-05,0.003,True,one_sample,0.0017236009,-0.0013221994,-0.0024952932,0.00056714576,17,6,TabICLv2 · frozen backbone,"1e-05
 0.003"
-12,credit,roc_auc,TabICLv2,3e-05,0,False,one_sample,-0.042181358,-0.037627181,-0.064810038,-0.016083084,17,1,TabICLv2 / all,"3e-05
+12,credit,roc_auc,TabICLv2,3e-05,0,False,one_sample,-0.042181358,-0.037627181,-0.064810038,-0.016083084,17,1,TabICLv2 · all weights,"3e-05
 0"
-13,credit,roc_auc,TabICLv2,3e-05,0,True,one_sample,-0.0025077923,-0.0031590891,-0.0054988576,-0.00089196379,17,4,TabICLv2 / frozen,"3e-05
+13,credit,roc_auc,TabICLv2,3e-05,0,True,one_sample,-0.0025077923,-0.0031590891,-0.0054988576,-0.00089196379,17,4,TabICLv2 · frozen backbone,"3e-05
 0"
-14,credit,roc_auc,TabICLv2,3e-05,0.003,False,one_sample,-0.0082576592,-0.0073179052,-0.015123721,-0.0028723349,17,2,TabICLv2 / all,"3e-05
+14,credit,roc_auc,TabICLv2,3e-05,0.003,False,one_sample,-0.0082576592,-0.0073179052,-0.015123721,-0.0028723349,17,2,TabICLv2 · all weights,"3e-05
 0.003"
-15,credit,roc_auc,TabICLv2,3e-05,0.003,True,one_sample,-0.00022244584,-0.0013812026,-0.0033700646,-0.00037226374,17,3,TabICLv2 / frozen,"3e-05
+15,credit,roc_auc,TabICLv2,3e-05,0.003,True,one_sample,-0.00022244584,-0.0013812026,-0.0033700646,-0.00037226374,17,3,TabICLv2 · frozen backbone,"3e-05
 0.003"
-16,credit,roc_auc,TabPFN v2,3e-07,0,False,one_sample,0.0047954514,0.005028279,0.0028898558,0.0064191092,17,17,TabPFN v2 / all,"3e-07
+16,credit,roc_auc,TabPFN v2,3e-07,0,False,one_sample,0.0047954514,0.005028279,0.0028898558,0.0064191092,17,17,TabPFN v2 · all weights,"3e-07
 0"
-17,credit,roc_auc,TabPFN v2,3e-07,0,True,one_sample,4.2761538e-05,2.9886889e-05,-1.1479529e-05,4.6277458e-05,17,12,TabPFN v2 / frozen,"3e-07
+17,credit,roc_auc,TabPFN v2,3e-07,0,True,one_sample,4.2761538e-05,2.9886889e-05,-1.1479529e-05,4.6277458e-05,17,12,TabPFN v2 · frozen backbone,"3e-07
 0"
-18,credit,roc_auc,TabPFN v2,3e-07,0.003,False,one_sample,0.0047725031,0.0050721524,0.0028900965,0.0063839468,17,17,TabPFN v2 / all,"3e-07
+18,credit,roc_auc,TabPFN v2,3e-07,0.003,False,one_sample,0.0047725031,0.0050721524,0.0028900965,0.0063839468,17,17,TabPFN v2 · all weights,"3e-07
 0.003"
-19,credit,roc_auc,TabPFN v2,3e-07,0.003,True,one_sample,4.0753439e-05,2.9984165e-05,-1.4134149e-05,5.6557593e-05,17,12,TabPFN v2 / frozen,"3e-07
+19,credit,roc_auc,TabPFN v2,3e-07,0.003,True,one_sample,4.0753439e-05,2.9984165e-05,-1.4134149e-05,5.6557593e-05,17,12,TabPFN v2 · frozen backbone,"3e-07
 0.003"
-20,credit,roc_auc,TabPFN v2,1e-06,0,False,one_sample,0.005437213,0.0054131591,0.003727348,0.0070082689,17,17,TabPFN v2 / all,"1e-06
+20,credit,roc_auc,TabPFN v2,1e-06,0,False,one_sample,0.005437213,0.0054131591,0.003727348,0.0070082689,17,17,TabPFN v2 · all weights,"1e-06
 0"
-21,credit,roc_auc,TabPFN v2,1e-06,0,True,one_sample,8.2046818e-05,8.983897e-05,1.9896427e-05,0.00016438705,17,14,TabPFN v2 / frozen,"1e-06
+21,credit,roc_auc,TabPFN v2,1e-06,0,True,one_sample,8.2046818e-05,8.983897e-05,1.9896427e-05,0.00016438705,17,14,TabPFN v2 · frozen backbone,"1e-06
 0"
-22,credit,roc_auc,TabPFN v2,1e-06,0.003,False,one_sample,0.0054169542,0.0053922159,0.0036243503,0.0069070627,17,17,TabPFN v2 / all,"1e-06
+22,credit,roc_auc,TabPFN v2,1e-06,0.003,False,one_sample,0.0054169542,0.0053922159,0.0036243503,0.0069070627,17,17,TabPFN v2 · all weights,"1e-06
 0.003"
-23,credit,roc_auc,TabPFN v2,1e-06,0.003,True,one_sample,7.5783944e-05,6.7386604e-05,2.5904434e-05,0.00015144854,17,14,TabPFN v2 / frozen,"1e-06
+23,credit,roc_auc,TabPFN v2,1e-06,0.003,True,one_sample,7.5783944e-05,6.7386604e-05,2.5904434e-05,0.00015144854,17,14,TabPFN v2 · frozen backbone,"1e-06
 0.003"
-24,credit,roc_auc,TabPFN v2,1e-05,0,False,one_sample,0.0030892111,0.004542571,0.0013418367,0.0059603824,17,14,TabPFN v2 / all,"1e-05
+24,credit,roc_auc,TabPFN v2,1e-05,0,False,one_sample,0.0030892111,0.004542571,0.0013418367,0.0059603824,17,14,TabPFN v2 · all weights,"1e-05
 0"
-25,credit,roc_auc,TabPFN v2,1e-05,0,True,one_sample,0.00039701141,0.00060519956,1.059629e-05,0.00094559319,17,13,TabPFN v2 / frozen,"1e-05
+25,credit,roc_auc,TabPFN v2,1e-05,0,True,one_sample,0.00039701141,0.00060519956,1.059629e-05,0.00094559319,17,13,TabPFN v2 · frozen backbone,"1e-05
 0"
-26,credit,roc_auc,TabPFN v2,1e-05,0.003,False,one_sample,0.004731066,0.0053825996,0.0025711058,0.0069500612,17,15,TabPFN v2 / all,"1e-05
+26,credit,roc_auc,TabPFN v2,1e-05,0.003,False,one_sample,0.004731066,0.0053825996,0.0025711058,0.0069500612,17,15,TabPFN v2 · all weights,"1e-05
 0.003"
-27,credit,roc_auc,TabPFN v2,1e-05,0.003,True,one_sample,0.00030794194,0.00040215781,5.3368414e-06,0.00059008261,17,13,TabPFN v2 / frozen,"1e-05
+27,credit,roc_auc,TabPFN v2,1e-05,0.003,True,one_sample,0.00030794194,0.00040215781,5.3368414e-06,0.00059008261,17,13,TabPFN v2 · frozen backbone,"1e-05
 0.003"
-28,credit,roc_auc,TabPFN v2,3e-05,0,False,one_sample,-0.0041904351,0.0014547194,-0.0097034332,0.0035343193,17,9,TabPFN v2 / all,"3e-05
+28,credit,roc_auc,TabPFN v2,3e-05,0,False,one_sample,-0.0041904351,0.0014547194,-0.0097034332,0.0035343193,17,9,TabPFN v2 · all weights,"3e-05
 0"
-29,credit,roc_auc,TabPFN v2,3e-05,0,True,one_sample,0.00060743336,0.00070897109,-9.2129253e-05,0.0013161302,17,12,TabPFN v2 / frozen,"3e-05
+29,credit,roc_auc,TabPFN v2,3e-05,0,True,one_sample,0.00060743336,0.00070897109,-9.2129253e-05,0.0013161302,17,12,TabPFN v2 · frozen backbone,"3e-05
 0"
-30,credit,roc_auc,TabPFN v2,3e-05,0.003,False,one_sample,0.0028010623,0.0044165258,0.00078715553,0.0060541997,17,13,TabPFN v2 / all,"3e-05
+30,credit,roc_auc,TabPFN v2,3e-05,0.003,False,one_sample,0.0028010623,0.0044165258,0.00078715553,0.0060541997,17,13,TabPFN v2 · all weights,"3e-05
 0.003"
-31,credit,roc_auc,TabPFN v2,3e-05,0.003,True,one_sample,0.00047680076,0.00051830625,-5.091368e-05,0.00087389553,17,12,TabPFN v2 / frozen,"3e-05
+31,credit,roc_auc,TabPFN v2,3e-05,0.003,True,one_sample,0.00047680076,0.00051830625,-5.091368e-05,0.00087389553,17,12,TabPFN v2 · frozen backbone,"3e-05
 0.003"
-32,credit,roc_auc,TabPFN v2.6,3e-07,0,False,one_sample,-6.9706431e-05,-0.00010532061,-0.00066387218,0.00016144477,17,7,TabPFN v2.6 / all,"3e-07
+32,credit,roc_auc,TabPFN v2.6,3e-07,0,False,one_sample,-6.9706431e-05,-0.00010532061,-0.00066387218,0.00016144477,17,7,TabPFN v2.6 · all weights,"3e-07
 0"
-33,credit,roc_auc,TabPFN v2.6,3e-07,0,True,one_sample,-1.5626376e-05,-1.0264214e-05,-3.0914641e-05,3.3072385e-06,17,5,TabPFN v2.6 / frozen,"3e-07
+33,credit,roc_auc,TabPFN v2.6,3e-07,0,True,one_sample,-1.5626376e-05,-1.0264214e-05,-3.0914641e-05,3.3072385e-06,17,5,TabPFN v2.6 · frozen backbone,"3e-07
 0"
-34,credit,roc_auc,TabPFN v2.6,3e-07,0.003,False,one_sample,-2.3901248e-05,-9.3632154e-05,-0.00062878058,0.00016438407,17,7,TabPFN v2.6 / all,"3e-07
+34,credit,roc_auc,TabPFN v2.6,3e-07,0.003,False,one_sample,-2.3901248e-05,-9.3632154e-05,-0.00062878058,0.00016438407,17,7,TabPFN v2.6 · all weights,"3e-07
 0.003"
-35,credit,roc_auc,TabPFN v2.6,3e-07,0.003,True,one_sample,-3.8917611e-05,-7.9239917e-06,-3.6817797e-05,3.8392766e-06,17,5,TabPFN v2.6 / frozen,"3e-07
+35,credit,roc_auc,TabPFN v2.6,3e-07,0.003,True,one_sample,-3.8917611e-05,-7.9239917e-06,-3.6817797e-05,3.8392766e-06,17,5,TabPFN v2.6 · frozen backbone,"3e-07
 0.003"
-36,credit,roc_auc,TabPFN v2.6,1e-06,0,False,one_sample,-0.00021969742,-9.1464314e-05,-0.001594834,0.00024416693,17,6,TabPFN v2.6 / all,"1e-06
+36,credit,roc_auc,TabPFN v2.6,1e-06,0,False,one_sample,-0.00021969742,-9.1464314e-05,-0.001594834,0.00024416693,17,6,TabPFN v2.6 · all weights,"1e-06
 0"
-37,credit,roc_auc,TabPFN v2.6,1e-06,0,True,one_sample,-3.3152236e-05,-2.479891e-05,-7.2182599e-05,-9.8063407e-06,17,3,TabPFN v2.6 / frozen,"1e-06
+37,credit,roc_auc,TabPFN v2.6,1e-06,0,True,one_sample,-3.3152236e-05,-2.479891e-05,-7.2182599e-05,-9.8063407e-06,17,3,TabPFN v2.6 · frozen backbone,"1e-06
 0"
-38,credit,roc_auc,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00022527998,-7.9222336e-05,-0.0015053281,0.0002427313,17,5,TabPFN v2.6 / all,"1e-06
+38,credit,roc_auc,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00022527998,-7.9222336e-05,-0.0015053281,0.0002427313,17,5,TabPFN v2.6 · all weights,"1e-06
 0.003"
-39,credit,roc_auc,TabPFN v2.6,1e-06,0.003,True,one_sample,-2.5546661e-05,-2.3174608e-05,-7.7478347e-05,-5.4711092e-06,17,3,TabPFN v2.6 / frozen,"1e-06
+39,credit,roc_auc,TabPFN v2.6,1e-06,0.003,True,one_sample,-2.5546661e-05,-2.3174608e-05,-7.7478347e-05,-5.4711092e-06,17,3,TabPFN v2.6 · frozen backbone,"1e-06
 0.003"
-40,credit,roc_auc,TabPFN v2.6,1e-05,0,False,one_sample,-0.0035782046,-0.0023264377,-0.0053363425,-0.00015207219,17,3,TabPFN v2.6 / all,"1e-05
+40,credit,roc_auc,TabPFN v2.6,1e-05,0,False,one_sample,-0.0035782046,-0.0023264377,-0.0053363425,-0.00015207219,17,3,TabPFN v2.6 · all weights,"1e-05
 0"
-41,credit,roc_auc,TabPFN v2.6,1e-05,0,True,one_sample,-0.00010651704,-0.00012719583,-0.00028179434,-4.183645e-05,17,3,TabPFN v2.6 / frozen,"1e-05
+41,credit,roc_auc,TabPFN v2.6,1e-05,0,True,one_sample,-0.00010651704,-0.00012719583,-0.00028179434,-4.183645e-05,17,3,TabPFN v2.6 · frozen backbone,"1e-05
 0"
-42,credit,roc_auc,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0021552498,-0.001187456,-0.0031277835,-1.3251659e-05,17,4,TabPFN v2.6 / all,"1e-05
+42,credit,roc_auc,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0021552498,-0.001187456,-0.0031277835,-1.3251659e-05,17,4,TabPFN v2.6 · all weights,"1e-05
 0.003"
-43,credit,roc_auc,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.00012555958,-5.731755e-05,-0.00022464171,-2.0693128e-05,17,3,TabPFN v2.6 / frozen,"1e-05
+43,credit,roc_auc,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.00012555958,-5.731755e-05,-0.00022464171,-2.0693128e-05,17,3,TabPFN v2.6 · frozen backbone,"1e-05
 0.003"
-44,credit,roc_auc,TabPFN v2.6,3e-05,0,False,one_sample,-0.007067018,-0.0043025011,-0.0095865893,-0.0014765207,17,2,TabPFN v2.6 / all,"3e-05
+44,credit,roc_auc,TabPFN v2.6,3e-05,0,False,one_sample,-0.007067018,-0.0043025011,-0.0095865893,-0.0014765207,17,2,TabPFN v2.6 · all weights,"3e-05
 0"
-45,credit,roc_auc,TabPFN v2.6,3e-05,0,True,one_sample,-0.00016842101,-0.00020453235,-0.00041885116,1.2747422e-05,17,5,TabPFN v2.6 / frozen,"3e-05
+45,credit,roc_auc,TabPFN v2.6,3e-05,0,True,one_sample,-0.00016842101,-0.00020453235,-0.00041885116,1.2747422e-05,17,5,TabPFN v2.6 · frozen backbone,"3e-05
 0"
-46,credit,roc_auc,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.0023588496,-0.0016948063,-0.0041768585,-3.1548042e-05,17,4,TabPFN v2.6 / all,"3e-05
+46,credit,roc_auc,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.0023588496,-0.0016948063,-0.0041768585,-3.1548042e-05,17,4,TabPFN v2.6 · all weights,"3e-05
 0.003"
-47,credit,roc_auc,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.00011633257,-0.000103368,-0.00025666194,-1.7974048e-05,17,4,TabPFN v2.6 / frozen,"3e-05
+47,credit,roc_auc,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.00011633257,-0.000103368,-0.00025666194,-1.7974048e-05,17,4,TabPFN v2.6 · frozen backbone,"3e-05
 0.003"
-48,credit,roc_auc,TabPFN v3,3e-07,0,False,one_sample,0.00039849298,7.6432618e-05,-7.6042806e-05,0.0011405541,17,10,TabPFN v3 / all,"3e-07
+48,credit,roc_auc,TabPFN v3,3e-07,0,False,one_sample,0.00039849298,7.6432618e-05,-7.6042806e-05,0.0011405541,17,10,TabPFN v3 · all weights,"3e-07
 0"
-49,credit,roc_auc,TabPFN v3,3e-07,0,True,one_sample,0.00057468197,0.00041751701,1.3554758e-05,0.001075057,17,13,TabPFN v3 / frozen,"3e-07
+49,credit,roc_auc,TabPFN v3,3e-07,0,True,one_sample,0.00057468197,0.00041751701,1.3554758e-05,0.001075057,17,13,TabPFN v3 · frozen backbone,"3e-07
 0"
-50,credit,roc_auc,TabPFN v3,3e-07,0.003,False,one_sample,0.00042974146,7.1306646e-05,-4.1099624e-05,0.0012161875,17,11,TabPFN v3 / all,"3e-07
+50,credit,roc_auc,TabPFN v3,3e-07,0.003,False,one_sample,0.00042974146,7.1306646e-05,-4.1099624e-05,0.0012161875,17,11,TabPFN v3 · all weights,"3e-07
 0.003"
-51,credit,roc_auc,TabPFN v3,3e-07,0.003,True,one_sample,0.00060283377,0.00049498713,0.00017055715,0.0011775906,17,14,TabPFN v3 / frozen,"3e-07
+51,credit,roc_auc,TabPFN v3,3e-07,0.003,True,one_sample,0.00060283377,0.00049498713,0.00017055715,0.0011775906,17,14,TabPFN v3 · frozen backbone,"3e-07
 0.003"
-52,credit,roc_auc,TabPFN v3,1e-06,0,False,one_sample,-0.0012196226,-0.0006625354,-0.0010387119,0.00026578143,17,6,TabPFN v3 / all,"1e-06
+52,credit,roc_auc,TabPFN v3,1e-06,0,False,one_sample,-0.0012196226,-0.0006625354,-0.0010387119,0.00026578143,17,6,TabPFN v3 · all weights,"1e-06
 0"
-53,credit,roc_auc,TabPFN v3,1e-06,0,True,one_sample,-0.00055267688,0.00025506882,-0.00032710154,0.00093565686,17,10,TabPFN v3 / frozen,"1e-06
+53,credit,roc_auc,TabPFN v3,1e-06,0,True,one_sample,-0.00055267688,0.00025506882,-0.00032710154,0.00093565686,17,10,TabPFN v3 · frozen backbone,"1e-06
 0"
-54,credit,roc_auc,TabPFN v3,1e-06,0.003,False,one_sample,-0.00081030642,-0.00058934237,-0.0011812517,0.00041954278,17,7,TabPFN v3 / all,"1e-06
+54,credit,roc_auc,TabPFN v3,1e-06,0.003,False,one_sample,-0.00081030642,-0.00058934237,-0.0011812517,0.00041954278,17,7,TabPFN v3 · all weights,"1e-06
 0.003"
-55,credit,roc_auc,TabPFN v3,1e-06,0.003,True,one_sample,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,17,10,TabPFN v3 / frozen,"1e-06
+55,credit,roc_auc,TabPFN v3,1e-06,0.003,True,one_sample,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,17,10,TabPFN v3 · frozen backbone,"1e-06
 0.003"
-56,credit,roc_auc,TabPFN v3,1e-05,0,False,one_sample,-0.030638337,-0.016361401,-0.048337585,-0.0091785699,17,0,TabPFN v3 / all,"1e-05
+56,credit,roc_auc,TabPFN v3,1e-05,0,False,one_sample,-0.030638337,-0.016361401,-0.048337585,-0.0091785699,17,0,TabPFN v3 · all weights,"1e-05
 0"
-57,credit,roc_auc,TabPFN v3,1e-05,0,True,one_sample,-0.0048684727,-0.0029621993,-0.0079808153,-0.0006758087,17,1,TabPFN v3 / frozen,"1e-05
+57,credit,roc_auc,TabPFN v3,1e-05,0,True,one_sample,-0.0048684727,-0.0029621993,-0.0079808153,-0.0006758087,17,1,TabPFN v3 · frozen backbone,"1e-05
 0"
-58,credit,roc_auc,TabPFN v3,1e-05,0.003,False,one_sample,-0.017383976,-0.0093026782,-0.029074341,-0.004694911,17,0,TabPFN v3 / all,"1e-05
+58,credit,roc_auc,TabPFN v3,1e-05,0.003,False,one_sample,-0.017383976,-0.0093026782,-0.029074341,-0.004694911,17,0,TabPFN v3 · all weights,"1e-05
 0.003"
-59,credit,roc_auc,TabPFN v3,1e-05,0.003,True,one_sample,-0.0043215352,-0.0014030765,-0.0074468658,-0.00064876513,17,1,TabPFN v3 / frozen,"1e-05
+59,credit,roc_auc,TabPFN v3,1e-05,0.003,True,one_sample,-0.0043215352,-0.0014030765,-0.0074468658,-0.00064876513,17,1,TabPFN v3 · frozen backbone,"1e-05
 0.003"
-60,credit,roc_auc,TabPFN v3,3e-05,0,False,one_sample,-0.056910382,-0.049687435,-0.081342612,-0.027335145,17,0,TabPFN v3 / all,"3e-05
+60,credit,roc_auc,TabPFN v3,3e-05,0,False,one_sample,-0.056910382,-0.049687435,-0.081342612,-0.027335145,17,0,TabPFN v3 · all weights,"3e-05
 0"
-61,credit,roc_auc,TabPFN v3,3e-05,0,True,one_sample,-0.012096461,-0.0060019466,-0.016328272,-0.002806646,17,0,TabPFN v3 / frozen,"3e-05
+61,credit,roc_auc,TabPFN v3,3e-05,0,True,one_sample,-0.012096461,-0.0060019466,-0.016328272,-0.002806646,17,0,TabPFN v3 · frozen backbone,"3e-05
 0"
-62,credit,roc_auc,TabPFN v3,3e-05,0.003,False,one_sample,-0.020636044,-0.01387958,-0.033507039,-0.0050269582,17,0,TabPFN v3 / all,"3e-05
+62,credit,roc_auc,TabPFN v3,3e-05,0.003,False,one_sample,-0.020636044,-0.01387958,-0.033507039,-0.0050269582,17,0,TabPFN v3 · all weights,"3e-05
 0.003"
-63,credit,roc_auc,TabPFN v3,3e-05,0.003,True,one_sample,-0.010452737,-0.0038554484,-0.014382241,-0.0021266907,17,0,TabPFN v3 / frozen,"3e-05
+63,credit,roc_auc,TabPFN v3,3e-05,0.003,True,one_sample,-0.010452737,-0.0038554484,-0.014382241,-0.0021266907,17,0,TabPFN v3 · frozen backbone,"3e-05
 0.003"
 
 Figure: pd_recipe_grid_credit_brier_score
-PD. Final five-fold benchmark: Brier reduction (×100). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+PD. Experiment 1, final five-fold benchmark on held-out credit tables: Brier reduction (×100), CPT minus the original model of the same base. 17 complete tables per model. Each cell is the equal-table mean effect of one recipe, with the number of tables whose effect exceeds 0 ("up") over the number of complete tables. Positive values favour CPT. Columns cross the four peak learning rates (top labels, blue) with L2-SP strength λ ∈ {0, 0.003} (bottom labels, orange); rows cross each base with the update scope (all trainable weights, or the dominant transformer stack frozen while embeddings and prediction components remain trainable). Every planned combination is shown on one common table cohort within each base. Colours share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table before tables are weighted equally. The predefined reference recipe is full updates at LR 3e-7 and λ 0.003; any other cell with a higher value is an observed grid maximum, not an independently validated choice.
 Every paired table and recipe effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -68422,137 +68422,137 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 Cell means and improvement counts
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,row,column
-0,credit,brier_score,TabICLv2,3e-07,0,False,one_sample,0.0066576241,-0.00017608449,-0.00029993275,9.3206433e-05,17,6,TabICLv2 / all,"3e-07
+0,credit,brier_score,TabICLv2,3e-07,0,False,one_sample,0.0066576241,-0.00017608449,-0.00029993275,9.3206433e-05,17,6,TabICLv2 · all weights,"3e-07
 0"
-1,credit,brier_score,TabICLv2,3e-07,0,True,one_sample,0.0071494049,1.1648746e-05,-0.00012181136,0.00011372422,17,10,TabICLv2 / frozen,"3e-07
+1,credit,brier_score,TabICLv2,3e-07,0,True,one_sample,0.0071494049,1.1648746e-05,-0.00012181136,0.00011372422,17,10,TabICLv2 · frozen backbone,"3e-07
 0"
-2,credit,brier_score,TabICLv2,3e-07,0.003,False,one_sample,0.0068026543,-8.3207513e-05,-0.0002486283,8.1896163e-05,17,7,TabICLv2 / all,"3e-07
+2,credit,brier_score,TabICLv2,3e-07,0.003,False,one_sample,0.0068026543,-8.3207513e-05,-0.0002486283,8.1896163e-05,17,7,TabICLv2 · all weights,"3e-07
 0.003"
-3,credit,brier_score,TabICLv2,3e-07,0.003,True,one_sample,0.007164018,-2.0543265e-06,-0.00010820322,0.00014753082,17,8,TabICLv2 / frozen,"3e-07
+3,credit,brier_score,TabICLv2,3e-07,0.003,True,one_sample,0.007164018,-2.0543265e-06,-0.00010820322,0.00014753082,17,8,TabICLv2 · frozen backbone,"3e-07
 0.003"
-4,credit,brier_score,TabICLv2,1e-06,0,False,one_sample,0.0065357201,-0.00039424087,-0.00071292476,0.00019961147,17,5,TabICLv2 / all,"1e-06
+4,credit,brier_score,TabICLv2,1e-06,0,False,one_sample,0.0065357201,-0.00039424087,-0.00071292476,0.00019961147,17,5,TabICLv2 · all weights,"1e-06
 0"
-5,credit,brier_score,TabICLv2,1e-06,0,True,one_sample,0.0071259302,-0.00010541895,-0.00031866152,0.00012610508,17,7,TabICLv2 / frozen,"1e-06
+5,credit,brier_score,TabICLv2,1e-06,0,True,one_sample,0.0071259302,-0.00010541895,-0.00031866152,0.00012610508,17,7,TabICLv2 · frozen backbone,"1e-06
 0"
-6,credit,brier_score,TabICLv2,1e-06,0.003,False,one_sample,0.0068607261,-0.00026978583,-0.00040486468,0.00025280796,17,5,TabICLv2 / all,"1e-06
+6,credit,brier_score,TabICLv2,1e-06,0.003,False,one_sample,0.0068607261,-0.00026978583,-0.00040486468,0.00025280796,17,5,TabICLv2 · all weights,"1e-06
 0.003"
-7,credit,brier_score,TabICLv2,1e-06,0.003,True,one_sample,0.0070856587,-0.00010292589,-0.00024355379,9.9565797e-05,17,7,TabICLv2 / frozen,"1e-06
+7,credit,brier_score,TabICLv2,1e-06,0.003,True,one_sample,0.0070856587,-0.00010292589,-0.00024355379,9.9565797e-05,17,7,TabICLv2 · frozen backbone,"1e-06
 0.003"
-8,credit,brier_score,TabICLv2,1e-05,0,False,one_sample,-0.0017061886,-0.0022786903,-0.0098689658,-0.0017135817,17,2,TabICLv2 / all,"1e-05
+8,credit,brier_score,TabICLv2,1e-05,0,False,one_sample,-0.0017061886,-0.0022786903,-0.0098689658,-0.0017135817,17,2,TabICLv2 · all weights,"1e-05
 0"
-9,credit,brier_score,TabICLv2,1e-05,0,True,one_sample,0.005220809,-0.00031250159,-0.0013388845,-1.7793919e-05,17,4,TabICLv2 / frozen,"1e-05
+9,credit,brier_score,TabICLv2,1e-05,0,True,one_sample,0.005220809,-0.00031250159,-0.0013388845,-1.7793919e-05,17,4,TabICLv2 · frozen backbone,"1e-05
 0"
-10,credit,brier_score,TabICLv2,1e-05,0.003,False,one_sample,0.0036282134,-0.0013007084,-0.0030297101,-0.00059482763,17,3,TabICLv2 / all,"1e-05
+10,credit,brier_score,TabICLv2,1e-05,0.003,False,one_sample,0.0036282134,-0.0013007084,-0.0030297101,-0.00059482763,17,3,TabICLv2 · all weights,"1e-05
 0.003"
-11,credit,brier_score,TabICLv2,1e-05,0.003,True,one_sample,0.0057901531,-0.00025030364,-0.00052622559,0.00013393444,17,5,TabICLv2 / frozen,"1e-05
+11,credit,brier_score,TabICLv2,1e-05,0.003,True,one_sample,0.0057901531,-0.00025030364,-0.00052622559,0.00013393444,17,5,TabICLv2 · frozen backbone,"1e-05
 0.003"
-12,credit,brier_score,TabICLv2,3e-05,0,False,one_sample,-0.0095423923,-0.0092698604,-0.021350505,-0.004974691,17,2,TabICLv2 / all,"3e-05
+12,credit,brier_score,TabICLv2,3e-05,0,False,one_sample,-0.0095423923,-0.0092698604,-0.021350505,-0.004974691,17,2,TabICLv2 · all weights,"3e-05
 0"
-13,credit,brier_score,TabICLv2,3e-05,0,True,one_sample,0.0039794979,-0.00059182631,-0.0015622281,-0.00024510409,17,4,TabICLv2 / frozen,"3e-05
+13,credit,brier_score,TabICLv2,3e-05,0,True,one_sample,0.0039794979,-0.00059182631,-0.0015622281,-0.00024510409,17,4,TabICLv2 · frozen backbone,"3e-05
 0"
-14,credit,brier_score,TabICLv2,3e-05,0.003,False,one_sample,0.0024238837,-0.0017258112,-0.0026200091,-0.00095239743,17,2,TabICLv2 / all,"3e-05
+14,credit,brier_score,TabICLv2,3e-05,0.003,False,one_sample,0.0024238837,-0.0017258112,-0.0026200091,-0.00095239743,17,2,TabICLv2 · all weights,"3e-05
 0.003"
-15,credit,brier_score,TabICLv2,3e-05,0.003,True,one_sample,0.0048432936,-0.00044690378,-0.00089894361,-0.00021697479,17,2,TabICLv2 / frozen,"3e-05
+15,credit,brier_score,TabICLv2,3e-05,0.003,True,one_sample,0.0048432936,-0.00044690378,-0.00089894361,-0.00021697479,17,2,TabICLv2 · frozen backbone,"3e-05
 0.003"
-16,credit,brier_score,TabPFN v2,3e-07,0,False,one_sample,0.0016324742,0.0010337741,0.00049605308,0.0014070258,17,17,TabPFN v2 / all,"3e-07
+16,credit,brier_score,TabPFN v2,3e-07,0,False,one_sample,0.0016324742,0.0010337741,0.00049605308,0.0014070258,17,17,TabPFN v2 · all weights,"3e-07
 0"
-17,credit,brier_score,TabPFN v2,3e-07,0,True,one_sample,-5.9021681e-05,-8.3256673e-05,-0.00014734192,3.7226908e-05,17,6,TabPFN v2 / frozen,"3e-07
+17,credit,brier_score,TabPFN v2,3e-07,0,True,one_sample,-5.9021681e-05,-8.3256673e-05,-0.00014734192,3.7226908e-05,17,6,TabPFN v2 · frozen backbone,"3e-07
 0"
-18,credit,brier_score,TabPFN v2,3e-07,0.003,False,one_sample,0.001632041,0.0010360546,0.00049497369,0.0014004252,17,17,TabPFN v2 / all,"3e-07
+18,credit,brier_score,TabPFN v2,3e-07,0.003,False,one_sample,0.001632041,0.0010360546,0.00049497369,0.0014004252,17,17,TabPFN v2 · all weights,"3e-07
 0.003"
-19,credit,brier_score,TabPFN v2,3e-07,0.003,True,one_sample,-5.6492436e-05,-8.4367307e-05,-0.00014442639,3.565775e-05,17,6,TabPFN v2 / frozen,"3e-07
+19,credit,brier_score,TabPFN v2,3e-07,0.003,True,one_sample,-5.6492436e-05,-8.4367307e-05,-0.00014442639,3.565775e-05,17,6,TabPFN v2 · frozen backbone,"3e-07
 0.003"
-20,credit,brier_score,TabPFN v2,1e-06,0,False,one_sample,0.0016776942,0.0011018636,0.00059469958,0.0017081801,17,17,TabPFN v2 / all,"1e-06
+20,credit,brier_score,TabPFN v2,1e-06,0,False,one_sample,0.0016776942,0.0011018636,0.00059469958,0.0017081801,17,17,TabPFN v2 · all weights,"1e-06
 0"
-21,credit,brier_score,TabPFN v2,1e-06,0,True,one_sample,-7.2503592e-05,-8.918244e-05,-0.00019475957,4.4407668e-05,17,5,TabPFN v2 / frozen,"1e-06
+21,credit,brier_score,TabPFN v2,1e-06,0,True,one_sample,-7.2503592e-05,-8.918244e-05,-0.00019475957,4.4407668e-05,17,5,TabPFN v2 · frozen backbone,"1e-06
 0"
-22,credit,brier_score,TabPFN v2,1e-06,0.003,False,one_sample,0.0017011291,0.0010483136,0.0005837759,0.001683607,17,17,TabPFN v2 / all,"1e-06
+22,credit,brier_score,TabPFN v2,1e-06,0.003,False,one_sample,0.0017011291,0.0010483136,0.0005837759,0.001683607,17,17,TabPFN v2 · all weights,"1e-06
 0.003"
-23,credit,brier_score,TabPFN v2,1e-06,0.003,True,one_sample,-6.9082219e-05,-0.00010045113,-0.00019472961,4.7486385e-05,17,6,TabPFN v2 / frozen,"1e-06
+23,credit,brier_score,TabPFN v2,1e-06,0.003,True,one_sample,-6.9082219e-05,-0.00010045113,-0.00019472961,4.7486385e-05,17,6,TabPFN v2 · frozen backbone,"1e-06
 0.003"
-24,credit,brier_score,TabPFN v2,1e-05,0,False,one_sample,-0.00053942482,0.00067616412,-0.0001700262,0.0014255516,17,12,TabPFN v2 / all,"1e-05
+24,credit,brier_score,TabPFN v2,1e-05,0,False,one_sample,-0.00053942482,0.00067616412,-0.0001700262,0.0014255516,17,12,TabPFN v2 · all weights,"1e-05
 0"
-25,credit,brier_score,TabPFN v2,1e-05,0,True,one_sample,1.0903323e-05,-7.557149e-05,-0.00015898566,0.00018689481,17,7,TabPFN v2 / frozen,"1e-05
+25,credit,brier_score,TabPFN v2,1e-05,0,True,one_sample,1.0903323e-05,-7.557149e-05,-0.00015898566,0.00018689481,17,7,TabPFN v2 · frozen backbone,"1e-05
 0"
-26,credit,brier_score,TabPFN v2,1e-05,0.003,False,one_sample,0.00058058552,0.00092663057,0.00049467483,0.0016655995,17,14,TabPFN v2 / all,"1e-05
+26,credit,brier_score,TabPFN v2,1e-05,0.003,False,one_sample,0.00058058552,0.00092663057,0.00049467483,0.0016655995,17,14,TabPFN v2 · all weights,"1e-05
 0.003"
-27,credit,brier_score,TabPFN v2,1e-05,0.003,True,one_sample,1.6910323e-05,-0.00010247328,-0.00017102629,0.0001102214,17,7,TabPFN v2 / frozen,"1e-05
+27,credit,brier_score,TabPFN v2,1e-05,0.003,True,one_sample,1.6910323e-05,-0.00010247328,-0.00017102629,0.0001102214,17,7,TabPFN v2 · frozen backbone,"1e-05
 0.003"
-28,credit,brier_score,TabPFN v2,3e-05,0,False,one_sample,-0.003302263,-0.00032174112,-0.0028362829,0.00088870566,17,8,TabPFN v2 / all,"3e-05
+28,credit,brier_score,TabPFN v2,3e-05,0,False,one_sample,-0.003302263,-0.00032174112,-0.0028362829,0.00088870566,17,8,TabPFN v2 · all weights,"3e-05
 0"
-29,credit,brier_score,TabPFN v2,3e-05,0,True,one_sample,1.0854823e-05,1.0268948e-05,-0.00026827423,0.0001895175,17,9,TabPFN v2 / frozen,"3e-05
+29,credit,brier_score,TabPFN v2,3e-05,0,True,one_sample,1.0854823e-05,1.0268948e-05,-0.00026827423,0.0001895175,17,9,TabPFN v2 · frozen backbone,"3e-05
 0"
-30,credit,brier_score,TabPFN v2,3e-05,0.003,False,one_sample,-0.00065735967,0.00094708441,-0.00014601075,0.0012205608,17,12,TabPFN v2 / all,"3e-05
+30,credit,brier_score,TabPFN v2,3e-05,0.003,False,one_sample,-0.00065735967,0.00094708441,-0.00014601075,0.0012205608,17,12,TabPFN v2 · all weights,"3e-05
 0.003"
-31,credit,brier_score,TabPFN v2,3e-05,0.003,True,one_sample,0.00010387256,3.1306704e-05,-0.00010191347,0.0001650567,17,9,TabPFN v2 / frozen,"3e-05
+31,credit,brier_score,TabPFN v2,3e-05,0.003,True,one_sample,0.00010387256,3.1306704e-05,-0.00010191347,0.0001650567,17,9,TabPFN v2 · frozen backbone,"3e-05
 0.003"
-32,credit,brier_score,TabPFN v2.6,3e-07,0,False,one_sample,-0.00040516051,-5.2962428e-05,-0.00017228191,-2.2290726e-05,17,3,TabPFN v2.6 / all,"3e-07
+32,credit,brier_score,TabPFN v2.6,3e-07,0,False,one_sample,-0.00040516051,-5.2962428e-05,-0.00017228191,-2.2290726e-05,17,3,TabPFN v2.6 · all weights,"3e-07
 0"
-33,credit,brier_score,TabPFN v2.6,3e-07,0,True,one_sample,-1.3168104e-06,1.0158993e-07,-6.7527734e-06,1.3556108e-05,17,9,TabPFN v2.6 / frozen,"3e-07
+33,credit,brier_score,TabPFN v2.6,3e-07,0,True,one_sample,-1.3168104e-06,1.0158993e-07,-6.7527734e-06,1.3556108e-05,17,9,TabPFN v2.6 · frozen backbone,"3e-07
 0"
-34,credit,brier_score,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.0003969442,-5.4470814e-05,-0.00016778538,4.7038162e-06,17,5,TabPFN v2.6 / all,"3e-07
+34,credit,brier_score,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.0003969442,-5.4470814e-05,-0.00016778538,4.7038162e-06,17,5,TabPFN v2.6 · all weights,"3e-07
 0.003"
-35,credit,brier_score,TabPFN v2.6,3e-07,0.003,True,one_sample,-5.9025476e-06,-1.9235378e-06,-1.5669545e-05,1.3910049e-05,17,7,TabPFN v2.6 / frozen,"3e-07
+35,credit,brier_score,TabPFN v2.6,3e-07,0.003,True,one_sample,-5.9025476e-06,-1.9235378e-06,-1.5669545e-05,1.3910049e-05,17,7,TabPFN v2.6 · frozen backbone,"3e-07
 0.003"
-36,credit,brier_score,TabPFN v2.6,1e-06,0,False,one_sample,-0.00055163419,-7.4399955e-05,-0.00029247616,-1.8932587e-06,17,4,TabPFN v2.6 / all,"1e-06
+36,credit,brier_score,TabPFN v2.6,1e-06,0,False,one_sample,-0.00055163419,-7.4399955e-05,-0.00029247616,-1.8932587e-06,17,4,TabPFN v2.6 · all weights,"1e-06
 0"
-37,credit,brier_score,TabPFN v2.6,1e-06,0,True,one_sample,-8.3501268e-06,-5.2625371e-07,-1.9835759e-05,7.3301285e-06,17,7,TabPFN v2.6 / frozen,"1e-06
+37,credit,brier_score,TabPFN v2.6,1e-06,0,True,one_sample,-8.3501268e-06,-5.2625371e-07,-1.9835759e-05,7.3301285e-06,17,7,TabPFN v2.6 · frozen backbone,"1e-06
 0"
-38,credit,brier_score,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00052714634,-7.6551507e-05,-0.00025915887,-2.4557143e-06,17,3,TabPFN v2.6 / all,"1e-06
+38,credit,brier_score,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.00052714634,-7.6551507e-05,-0.00025915887,-2.4557143e-06,17,3,TabPFN v2.6 · all weights,"1e-06
 0.003"
-39,credit,brier_score,TabPFN v2.6,1e-06,0.003,True,one_sample,-7.5206565e-06,3.4101686e-09,-1.4182832e-05,6.8176361e-06,17,9,TabPFN v2.6 / frozen,"1e-06
+39,credit,brier_score,TabPFN v2.6,1e-06,0.003,True,one_sample,-7.5206565e-06,3.4101686e-09,-1.4182832e-05,6.8176361e-06,17,9,TabPFN v2.6 · frozen backbone,"1e-06
 0.003"
-40,credit,brier_score,TabPFN v2.6,1e-05,0,False,one_sample,-0.0020028877,-0.00039073567,-0.0019999125,-5.9975817e-05,17,2,TabPFN v2.6 / all,"1e-05
+40,credit,brier_score,TabPFN v2.6,1e-05,0,False,one_sample,-0.0020028877,-0.00039073567,-0.0019999125,-5.9975817e-05,17,2,TabPFN v2.6 · all weights,"1e-05
 0"
-41,credit,brier_score,TabPFN v2.6,1e-05,0,True,one_sample,-4.205848e-05,-3.4760196e-05,-6.9416156e-05,4.3764191e-05,17,7,TabPFN v2.6 / frozen,"1e-05
+41,credit,brier_score,TabPFN v2.6,1e-05,0,True,one_sample,-4.205848e-05,-3.4760196e-05,-6.9416156e-05,4.3764191e-05,17,7,TabPFN v2.6 · frozen backbone,"1e-05
 0"
-42,credit,brier_score,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0012638809,-0.00024197813,-0.0015607725,-7.3858881e-05,17,3,TabPFN v2.6 / all,"1e-05
+42,credit,brier_score,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0012638809,-0.00024197813,-0.0015607725,-7.3858881e-05,17,3,TabPFN v2.6 · all weights,"1e-05
 0.003"
-43,credit,brier_score,TabPFN v2.6,1e-05,0.003,True,one_sample,-3.654672e-05,-1.7274412e-05,-7.4498665e-05,2.2258168e-05,17,7,TabPFN v2.6 / frozen,"1e-05
+43,credit,brier_score,TabPFN v2.6,1e-05,0.003,True,one_sample,-3.654672e-05,-1.7274412e-05,-7.4498665e-05,2.2258168e-05,17,7,TabPFN v2.6 · frozen backbone,"1e-05
 0.003"
-44,credit,brier_score,TabPFN v2.6,3e-05,0,False,one_sample,-0.004142277,-0.0010961044,-0.003104623,-0.00060722967,17,2,TabPFN v2.6 / all,"3e-05
+44,credit,brier_score,TabPFN v2.6,3e-05,0,False,one_sample,-0.004142277,-0.0010961044,-0.003104623,-0.00060722967,17,2,TabPFN v2.6 · all weights,"3e-05
 0"
-45,credit,brier_score,TabPFN v2.6,3e-05,0,True,one_sample,-6.6279637e-05,-1.3475774e-05,-0.0001152414,2.8826089e-05,17,7,TabPFN v2.6 / frozen,"3e-05
+45,credit,brier_score,TabPFN v2.6,3e-05,0,True,one_sample,-6.6279637e-05,-1.3475774e-05,-0.0001152414,2.8826089e-05,17,7,TabPFN v2.6 · frozen backbone,"3e-05
 0"
-46,credit,brier_score,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.001566984,-0.00038212751,-0.0012231073,-8.5978952e-05,17,3,TabPFN v2.6 / all,"3e-05
+46,credit,brier_score,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.001566984,-0.00038212751,-0.0012231073,-8.5978952e-05,17,3,TabPFN v2.6 · all weights,"3e-05
 0.003"
-47,credit,brier_score,TabPFN v2.6,3e-05,0.003,True,one_sample,-5.0056681e-05,-2.4198075e-05,-6.9581286e-05,3.186346e-05,17,8,TabPFN v2.6 / frozen,"3e-05
+47,credit,brier_score,TabPFN v2.6,3e-05,0.003,True,one_sample,-5.0056681e-05,-2.4198075e-05,-6.9581286e-05,3.186346e-05,17,8,TabPFN v2.6 · frozen backbone,"3e-05
 0.003"
-48,credit,brier_score,TabPFN v3,3e-07,0,False,one_sample,-9.099089e-05,8.1852335e-05,-4.1681696e-05,0.00027705869,17,12,TabPFN v3 / all,"3e-07
+48,credit,brier_score,TabPFN v3,3e-07,0,False,one_sample,-9.099089e-05,8.1852335e-05,-4.1681696e-05,0.00027705869,17,12,TabPFN v3 · all weights,"3e-07
 0"
-49,credit,brier_score,TabPFN v3,3e-07,0,True,one_sample,8.7803278e-05,0.00014023818,3.3561499e-05,0.00020716873,17,13,TabPFN v3 / frozen,"3e-07
+49,credit,brier_score,TabPFN v3,3e-07,0,True,one_sample,8.7803278e-05,0.00014023818,3.3561499e-05,0.00020716873,17,13,TabPFN v3 · frozen backbone,"3e-07
 0"
-50,credit,brier_score,TabPFN v3,3e-07,0.003,False,one_sample,-6.4766877e-05,9.2597959e-05,-2.3756311e-05,0.00029993868,17,12,TabPFN v3 / all,"3e-07
+50,credit,brier_score,TabPFN v3,3e-07,0.003,False,one_sample,-6.4766877e-05,9.2597959e-05,-2.3756311e-05,0.00029993868,17,12,TabPFN v3 · all weights,"3e-07
 0.003"
-51,credit,brier_score,TabPFN v3,3e-07,0.003,True,one_sample,8.5651436e-05,0.0001286437,3.9233755e-05,0.00020674472,17,13,TabPFN v3 / frozen,"3e-07
+51,credit,brier_score,TabPFN v3,3e-07,0.003,True,one_sample,8.5651436e-05,0.0001286437,3.9233755e-05,0.00020674472,17,13,TabPFN v3 · frozen backbone,"3e-07
 0.003"
-52,credit,brier_score,TabPFN v3,1e-06,0,False,one_sample,-0.00089239887,-3.5864149e-05,-0.00064704383,0.00015328246,17,7,TabPFN v3 / all,"1e-06
+52,credit,brier_score,TabPFN v3,1e-06,0,False,one_sample,-0.00089239887,-3.5864149e-05,-0.00064704383,0.00015328246,17,7,TabPFN v3 · all weights,"1e-06
 0"
-53,credit,brier_score,TabPFN v3,1e-06,0,True,one_sample,-0.00031938323,5.5110764e-05,-5.4659991e-05,0.0001630762,17,10,TabPFN v3 / frozen,"1e-06
+53,credit,brier_score,TabPFN v3,1e-06,0,True,one_sample,-0.00031938323,5.5110764e-05,-5.4659991e-05,0.0001630762,17,10,TabPFN v3 · frozen backbone,"1e-06
 0"
-54,credit,brier_score,TabPFN v3,1e-06,0.003,False,one_sample,-0.00068000759,-3.3320174e-05,-0.00049811342,0.0001704642,17,7,TabPFN v3 / all,"1e-06
+54,credit,brier_score,TabPFN v3,1e-06,0.003,False,one_sample,-0.00068000759,-3.3320174e-05,-0.00049811342,0.0001704642,17,7,TabPFN v3 · all weights,"1e-06
 0.003"
-55,credit,brier_score,TabPFN v3,1e-06,0.003,True,one_sample,-0.00031470673,9.8984285e-05,-0.00020571092,0.00016404777,17,11,TabPFN v3 / frozen,"1e-06
+55,credit,brier_score,TabPFN v3,1e-06,0.003,True,one_sample,-0.00031470673,9.8984285e-05,-0.00020571092,0.00016404777,17,11,TabPFN v3 · frozen backbone,"1e-06
 0.003"
-56,credit,brier_score,TabPFN v3,1e-05,0,False,one_sample,-0.01567103,-0.0039739453,-0.025947933,-0.0016879799,17,0,TabPFN v3 / all,"1e-05
+56,credit,brier_score,TabPFN v3,1e-05,0,False,one_sample,-0.01567103,-0.0039739453,-0.025947933,-0.0016879799,17,0,TabPFN v3 · all weights,"1e-05
 0"
-57,credit,brier_score,TabPFN v3,1e-05,0,True,one_sample,-0.0022219396,-0.00066552422,-0.0029757688,-0.00034191443,17,1,TabPFN v3 / frozen,"1e-05
+57,credit,brier_score,TabPFN v3,1e-05,0,True,one_sample,-0.0022219396,-0.00066552422,-0.0029757688,-0.00034191443,17,1,TabPFN v3 · frozen backbone,"1e-05
 0"
-58,credit,brier_score,TabPFN v3,1e-05,0.003,False,one_sample,-0.008662618,-0.0038670341,-0.010697678,-0.00071644457,17,0,TabPFN v3 / all,"1e-05
+58,credit,brier_score,TabPFN v3,1e-05,0.003,False,one_sample,-0.008662618,-0.0038670341,-0.010697678,-0.00071644457,17,0,TabPFN v3 · all weights,"1e-05
 0.003"
-59,credit,brier_score,TabPFN v3,1e-05,0.003,True,one_sample,-0.0018475606,-0.000573262,-0.00149762,-0.00021166594,17,2,TabPFN v3 / frozen,"1e-05
+59,credit,brier_score,TabPFN v3,1e-05,0.003,True,one_sample,-0.0018475606,-0.000573262,-0.00149762,-0.00021166594,17,2,TabPFN v3 · frozen backbone,"1e-05
 0.003"
-60,credit,brier_score,TabPFN v3,3e-05,0,False,one_sample,-0.025134816,-0.014742158,-0.036267016,-0.0040963821,17,0,TabPFN v3 / all,"3e-05
+60,credit,brier_score,TabPFN v3,3e-05,0,False,one_sample,-0.025134816,-0.014742158,-0.036267016,-0.0040963821,17,0,TabPFN v3 · all weights,"3e-05
 0"
-61,credit,brier_score,TabPFN v3,3e-05,0,True,one_sample,-0.0048652994,-0.0010705735,-0.0066569865,-0.00076149151,17,0,TabPFN v3 / frozen,"3e-05
+61,credit,brier_score,TabPFN v3,3e-05,0,True,one_sample,-0.0048652994,-0.0010705735,-0.0066569865,-0.00076149151,17,0,TabPFN v3 · frozen backbone,"3e-05
 0"
-62,credit,brier_score,TabPFN v3,3e-05,0.003,False,one_sample,-0.0098208786,-0.0034496378,-0.013322462,-0.0009269584,17,0,TabPFN v3 / all,"3e-05
+62,credit,brier_score,TabPFN v3,3e-05,0.003,False,one_sample,-0.0098208786,-0.0034496378,-0.013322462,-0.0009269584,17,0,TabPFN v3 · all weights,"3e-05
 0.003"
-63,credit,brier_score,TabPFN v3,3e-05,0.003,True,one_sample,-0.0044175473,-0.00094010091,-0.0053132428,-0.00047937149,17,1,TabPFN v3 / frozen,"3e-05
+63,credit,brier_score,TabPFN v3,3e-05,0.003,True,one_sample,-0.0044175473,-0.00094010091,-0.0053132428,-0.00047937149,17,1,TabPFN v3 · frozen backbone,"3e-05
 0.003"
 
 Figure: pd_recipe_grid_credit_log_loss
-PD. Final five-fold benchmark: Log-loss reduction (nats). 17 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+PD. Experiment 1, final five-fold benchmark on held-out credit tables: Log-loss reduction (nats), CPT minus the original model of the same base. 17 complete tables per model. Each cell is the equal-table mean effect of one recipe, with the number of tables whose effect exceeds 0 ("up") over the number of complete tables. Positive values favour CPT. Columns cross the four peak learning rates (top labels, blue) with L2-SP strength λ ∈ {0, 0.003} (bottom labels, orange); rows cross each base with the update scope (all trainable weights, or the dominant transformer stack frozen while embeddings and prediction components remain trainable). Every planned combination is shown on one common table cohort within each base. Colours share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table before tables are weighted equally. The predefined reference recipe is full updates at LR 3e-7 and λ 0.003; any other cell with a higher value is an observed grid maximum, not an independently validated choice.
 Every paired table and recipe effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -69647,137 +69647,1237 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 Cell means and improvement counts
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,row,column
-0,credit,log_loss,TabICLv2,3e-07,0,False,one_sample,0.021136351,-0.00054345302,-0.00096992592,0.00078654905,17,7,TabICLv2 / all,"3e-07
+0,credit,log_loss,TabICLv2,3e-07,0,False,one_sample,0.021136351,-0.00054345302,-0.00096992592,0.00078654905,17,7,TabICLv2 · all weights,"3e-07
 0"
-1,credit,log_loss,TabICLv2,3e-07,0,True,one_sample,0.022535543,0.00022716639,-0.0001832268,0.00053066374,17,10,TabICLv2 / frozen,"3e-07
+1,credit,log_loss,TabICLv2,3e-07,0,True,one_sample,0.022535543,0.00022716639,-0.0001832268,0.00053066374,17,10,TabICLv2 · frozen backbone,"3e-07
 0"
-2,credit,log_loss,TabICLv2,3e-07,0.003,False,one_sample,0.021611336,-0.0004143695,-0.00078424863,0.0014326724,17,7,TabICLv2 / all,"3e-07
+2,credit,log_loss,TabICLv2,3e-07,0.003,False,one_sample,0.021611336,-0.0004143695,-0.00078424863,0.0014326724,17,7,TabICLv2 · all weights,"3e-07
 0.003"
-3,credit,log_loss,TabICLv2,3e-07,0.003,True,one_sample,0.022575234,0.00022047677,-0.00020933437,0.00077935104,17,10,TabICLv2 / frozen,"3e-07
+3,credit,log_loss,TabICLv2,3e-07,0.003,True,one_sample,0.022575234,0.00022047677,-0.00020933437,0.00077935104,17,10,TabICLv2 · frozen backbone,"3e-07
 0.003"
-4,credit,log_loss,TabICLv2,1e-06,0,False,one_sample,0.020462109,-0.001996863,-0.0033510683,-0.00060576347,17,4,TabICLv2 / all,"1e-06
+4,credit,log_loss,TabICLv2,1e-06,0,False,one_sample,0.020462109,-0.001996863,-0.0033510683,-0.00060576347,17,4,TabICLv2 · all weights,"1e-06
 0"
-5,credit,log_loss,TabICLv2,1e-06,0,True,one_sample,0.02213776,-0.00026555046,-0.00057601896,0.00039754697,17,7,TabICLv2 / frozen,"1e-06
+5,credit,log_loss,TabICLv2,1e-06,0,True,one_sample,0.02213776,-0.00026555046,-0.00057601896,0.00039754697,17,7,TabICLv2 · frozen backbone,"1e-06
 0"
-6,credit,log_loss,TabICLv2,1e-06,0.003,False,one_sample,0.021517691,-0.0012812928,-0.0021966284,0.0010548442,17,5,TabICLv2 / all,"1e-06
+6,credit,log_loss,TabICLv2,1e-06,0.003,False,one_sample,0.021517691,-0.0012812928,-0.0021966284,0.0010548442,17,5,TabICLv2 · all weights,"1e-06
 0.003"
-7,credit,log_loss,TabICLv2,1e-06,0.003,True,one_sample,0.022065726,-0.00029814629,-0.00078321048,0.00041346777,17,7,TabICLv2 / frozen,"1e-06
+7,credit,log_loss,TabICLv2,1e-06,0.003,True,one_sample,0.022065726,-0.00029814629,-0.00078321048,0.00041346777,17,7,TabICLv2 · frozen backbone,"1e-06
 0.003"
-8,credit,log_loss,TabICLv2,1e-05,0,False,one_sample,-0.011160962,-0.013892098,-0.05236249,-0.0074166132,17,2,TabICLv2 / all,"1e-05
+8,credit,log_loss,TabICLv2,1e-05,0,False,one_sample,-0.011160962,-0.013892098,-0.05236249,-0.0074166132,17,2,TabICLv2 · all weights,"1e-05
 0"
-9,credit,log_loss,TabICLv2,1e-05,0,True,one_sample,0.016608783,-0.001224933,-0.0030337091,-0.00010961829,17,4,TabICLv2 / frozen,"1e-05
+9,credit,log_loss,TabICLv2,1e-05,0,True,one_sample,0.016608783,-0.001224933,-0.0030337091,-0.00010961829,17,4,TabICLv2 · frozen backbone,"1e-05
 0"
-10,credit,log_loss,TabICLv2,1e-05,0.003,False,one_sample,0.01112701,-0.006188384,-0.009308027,-0.0030587021,17,3,TabICLv2 / all,"1e-05
+10,credit,log_loss,TabICLv2,1e-05,0.003,False,one_sample,0.01112701,-0.006188384,-0.009308027,-0.0030587021,17,3,TabICLv2 · all weights,"1e-05
 0.003"
-11,credit,log_loss,TabICLv2,1e-05,0.003,True,one_sample,0.018230689,-0.00081409083,-0.0017095409,0.00057895105,17,6,TabICLv2 / frozen,"1e-05
+11,credit,log_loss,TabICLv2,1e-05,0.003,True,one_sample,0.018230689,-0.00081409083,-0.0017095409,0.00057895105,17,6,TabICLv2 · frozen backbone,"1e-05
 0.003"
-12,credit,log_loss,TabICLv2,3e-05,0,False,one_sample,-0.069893433,-0.06364722,-0.14358222,-0.037898244,17,2,TabICLv2 / all,"3e-05
+12,credit,log_loss,TabICLv2,3e-05,0,False,one_sample,-0.069893433,-0.06364722,-0.14358222,-0.037898244,17,2,TabICLv2 · all weights,"3e-05
 0"
-13,credit,log_loss,TabICLv2,3e-05,0,True,one_sample,0.01267821,-0.0020874428,-0.0047214045,-0.0010473152,17,3,TabICLv2 / frozen,"3e-05
+13,credit,log_loss,TabICLv2,3e-05,0,True,one_sample,0.01267821,-0.0020874428,-0.0047214045,-0.0010473152,17,3,TabICLv2 · frozen backbone,"3e-05
 0"
-14,credit,log_loss,TabICLv2,3e-05,0.003,False,one_sample,0.0067357312,-0.0075576063,-0.012610911,-0.0037122855,17,2,TabICLv2 / all,"3e-05
+14,credit,log_loss,TabICLv2,3e-05,0.003,False,one_sample,0.0067357312,-0.0075576063,-0.012610911,-0.0037122855,17,2,TabICLv2 · all weights,"3e-05
 0.003"
-15,credit,log_loss,TabICLv2,3e-05,0.003,True,one_sample,0.015434135,-0.001429936,-0.0027857325,-0.0007002091,17,2,TabICLv2 / frozen,"3e-05
+15,credit,log_loss,TabICLv2,3e-05,0.003,True,one_sample,0.015434135,-0.001429936,-0.0027857325,-0.0007002091,17,2,TabICLv2 · frozen backbone,"3e-05
 0.003"
-16,credit,log_loss,TabPFN v2,3e-07,0,False,one_sample,0.0059325164,0.0029111177,0.0018788156,0.004541266,17,17,TabPFN v2 / all,"3e-07
+16,credit,log_loss,TabPFN v2,3e-07,0,False,one_sample,0.0059325164,0.0029111177,0.0018788156,0.004541266,17,17,TabPFN v2 · all weights,"3e-07
 0"
-17,credit,log_loss,TabPFN v2,3e-07,0,True,one_sample,-0.0003436828,-0.00048924476,-0.00073304473,-3.5697982e-06,17,4,TabPFN v2 / frozen,"3e-07
+17,credit,log_loss,TabPFN v2,3e-07,0,True,one_sample,-0.0003436828,-0.00048924476,-0.00073304473,-3.5697982e-06,17,4,TabPFN v2 · frozen backbone,"3e-07
 0"
-18,credit,log_loss,TabPFN v2,3e-07,0.003,False,one_sample,0.0059266296,0.0029196349,0.0018571529,0.0045119247,17,17,TabPFN v2 / all,"3e-07
+18,credit,log_loss,TabPFN v2,3e-07,0.003,False,one_sample,0.0059266296,0.0029196349,0.0018571529,0.0045119247,17,17,TabPFN v2 · all weights,"3e-07
 0.003"
-19,credit,log_loss,TabPFN v2,3e-07,0.003,True,one_sample,-0.00033091799,-0.00047796507,-0.00070895668,4.8970257e-06,17,5,TabPFN v2 / frozen,"3e-07
+19,credit,log_loss,TabPFN v2,3e-07,0.003,True,one_sample,-0.00033091799,-0.00047796507,-0.00070895668,4.8970257e-06,17,5,TabPFN v2 · frozen backbone,"3e-07
 0.003"
-20,credit,log_loss,TabPFN v2,1e-06,0,False,one_sample,0.0061147026,0.0031714768,0.0026835427,0.0050460195,17,17,TabPFN v2 / all,"1e-06
+20,credit,log_loss,TabPFN v2,1e-06,0,False,one_sample,0.0061147026,0.0031714768,0.0026835427,0.0050460195,17,17,TabPFN v2 · all weights,"1e-06
 0"
-21,credit,log_loss,TabPFN v2,1e-06,0,True,one_sample,-0.00048142781,-0.00037709549,-0.00085457881,-3.1824617e-06,17,4,TabPFN v2 / frozen,"1e-06
+21,credit,log_loss,TabPFN v2,1e-06,0,True,one_sample,-0.00048142781,-0.00037709549,-0.00085457881,-3.1824617e-06,17,4,TabPFN v2 · frozen backbone,"1e-06
 0"
-22,credit,log_loss,TabPFN v2,1e-06,0.003,False,one_sample,0.0061799594,0.003207241,0.002631916,0.005064412,17,17,TabPFN v2 / all,"1e-06
+22,credit,log_loss,TabPFN v2,1e-06,0.003,False,one_sample,0.0061799594,0.003207241,0.002631916,0.005064412,17,17,TabPFN v2 · all weights,"1e-06
 0.003"
-23,credit,log_loss,TabPFN v2,1e-06,0.003,True,one_sample,-0.00046308077,-0.00041990666,-0.00085992641,-1.4087825e-05,17,4,TabPFN v2 / frozen,"1e-06
+23,credit,log_loss,TabPFN v2,1e-06,0.003,True,one_sample,-0.00046308077,-0.00041990666,-0.00085992641,-1.4087825e-05,17,4,TabPFN v2 · frozen backbone,"1e-06
 0.003"
-24,credit,log_loss,TabPFN v2,1e-05,0,False,one_sample,-0.00056413146,0.0029072452,-0.00042311563,0.0040778364,17,12,TabPFN v2 / all,"1e-05
+24,credit,log_loss,TabPFN v2,1e-05,0,False,one_sample,-0.00056413146,0.0029072452,-0.00042311563,0.0040778364,17,12,TabPFN v2 · all weights,"1e-05
 0"
-25,credit,log_loss,TabPFN v2,1e-05,0,True,one_sample,-0.00019477421,-0.00033789926,-0.00099960342,0.00043728737,17,6,TabPFN v2 / frozen,"1e-05
+25,credit,log_loss,TabPFN v2,1e-05,0,True,one_sample,-0.00019477421,-0.00033789926,-0.00099960342,0.00043728737,17,6,TabPFN v2 · frozen backbone,"1e-05
 0"
-26,credit,log_loss,TabPFN v2,1e-05,0.003,False,one_sample,0.0028176435,0.0031354576,0.0027899341,0.0055750037,17,14,TabPFN v2 / all,"1e-05
+26,credit,log_loss,TabPFN v2,1e-05,0.003,False,one_sample,0.0028176435,0.0031354576,0.0027899341,0.0055750037,17,14,TabPFN v2 · all weights,"1e-05
 0.003"
-27,credit,log_loss,TabPFN v2,1e-05,0.003,True,one_sample,-0.00022376291,-0.0002504306,-0.0008443569,7.7866232e-05,17,5,TabPFN v2 / frozen,"1e-05
+27,credit,log_loss,TabPFN v2,1e-05,0.003,True,one_sample,-0.00022376291,-0.0002504306,-0.0008443569,7.7866232e-05,17,5,TabPFN v2 · frozen backbone,"1e-05
 0.003"
-28,credit,log_loss,TabPFN v2,3e-05,0,False,one_sample,-0.0086958133,0.00037611819,-0.0096752931,0.0023505673,17,9,TabPFN v2 / all,"3e-05
+28,credit,log_loss,TabPFN v2,3e-05,0,False,one_sample,-0.0086958133,0.00037611819,-0.0096752931,0.0023505673,17,9,TabPFN v2 · all weights,"3e-05
 0"
-29,credit,log_loss,TabPFN v2,3e-05,0,True,one_sample,-0.0001628119,-0.0002859645,-0.0014815899,0.00062709888,17,8,TabPFN v2 / frozen,"3e-05
+29,credit,log_loss,TabPFN v2,3e-05,0,True,one_sample,-0.0001628119,-0.0002859645,-0.0014815899,0.00062709888,17,8,TabPFN v2 · frozen backbone,"3e-05
 0"
-30,credit,log_loss,TabPFN v2,3e-05,0.003,False,one_sample,-0.00070273984,0.0027598071,9.2873195e-05,0.0044855429,17,13,TabPFN v2 / all,"3e-05
+30,credit,log_loss,TabPFN v2,3e-05,0.003,False,one_sample,-0.00070273984,0.0027598071,9.2873195e-05,0.0044855429,17,13,TabPFN v2 · all weights,"3e-05
 0.003"
-31,credit,log_loss,TabPFN v2,3e-05,0.003,True,one_sample,3.0659639e-05,-0.0002237886,-0.00050802462,0.00033780243,17,7,TabPFN v2 / frozen,"3e-05
+31,credit,log_loss,TabPFN v2,3e-05,0.003,True,one_sample,3.0659639e-05,-0.0002237886,-0.00050802462,0.00033780243,17,7,TabPFN v2 · frozen backbone,"3e-05
 0.003"
-32,credit,log_loss,TabPFN v2.6,3e-07,0,False,one_sample,-0.0013807297,-0.00032165412,-0.00056637335,3.6323561e-05,17,5,TabPFN v2.6 / all,"3e-07
+32,credit,log_loss,TabPFN v2.6,3e-07,0,False,one_sample,-0.0013807297,-0.00032165412,-0.00056637335,3.6323561e-05,17,5,TabPFN v2.6 · all weights,"3e-07
 0"
-33,credit,log_loss,TabPFN v2.6,3e-07,0,True,one_sample,3.7515228e-05,7.1144159e-05,-1.9059986e-05,9.5777384e-05,17,12,TabPFN v2.6 / frozen,"3e-07
+33,credit,log_loss,TabPFN v2.6,3e-07,0,True,one_sample,3.7515228e-05,7.1144159e-05,-1.9059986e-05,9.5777384e-05,17,12,TabPFN v2.6 · frozen backbone,"3e-07
 0"
-34,credit,log_loss,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.0013461951,-0.00030163035,-0.00055260646,4.1388014e-05,17,5,TabPFN v2.6 / all,"3e-07
+34,credit,log_loss,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.0013461951,-0.00030163035,-0.00055260646,4.1388014e-05,17,5,TabPFN v2.6 · all weights,"3e-07
 0.003"
-35,credit,log_loss,TabPFN v2.6,3e-07,0.003,True,one_sample,2.1347439e-05,3.0459663e-05,-0.00011620205,9.2015018e-05,17,10,TabPFN v2.6 / frozen,"3e-07
+35,credit,log_loss,TabPFN v2.6,3e-07,0.003,True,one_sample,2.1347439e-05,3.0459663e-05,-0.00011620205,9.2015018e-05,17,10,TabPFN v2.6 · frozen backbone,"3e-07
 0.003"
-36,credit,log_loss,TabPFN v2.6,1e-06,0,False,one_sample,-0.0019823042,-0.00059525072,-0.0010497932,-7.5442816e-06,17,4,TabPFN v2.6 / all,"1e-06
+36,credit,log_loss,TabPFN v2.6,1e-06,0,False,one_sample,-0.0019823042,-0.00059525072,-0.0010497932,-7.5442816e-06,17,4,TabPFN v2.6 · all weights,"1e-06
 0"
-37,credit,log_loss,TabPFN v2.6,1e-06,0,True,one_sample,1.7428517e-05,6.5220463e-05,-7.219194e-05,0.00011621847,17,11,TabPFN v2.6 / frozen,"1e-06
+37,credit,log_loss,TabPFN v2.6,1e-06,0,True,one_sample,1.7428517e-05,6.5220463e-05,-7.219194e-05,0.00011621847,17,11,TabPFN v2.6 · frozen backbone,"1e-06
 0"
-38,credit,log_loss,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.0018731163,-0.00049369342,-0.00094079746,-9.9975304e-06,17,4,TabPFN v2.6 / all,"1e-06
+38,credit,log_loss,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.0018731163,-0.00049369342,-0.00094079746,-9.9975304e-06,17,4,TabPFN v2.6 · all weights,"1e-06
 0.003"
-39,credit,log_loss,TabPFN v2.6,1e-06,0.003,True,one_sample,2.1373423e-05,6.7389368e-05,-0.00017279772,0.00012493514,17,11,TabPFN v2.6 / frozen,"1e-06
+39,credit,log_loss,TabPFN v2.6,1e-06,0.003,True,one_sample,2.1373423e-05,6.7389368e-05,-0.00017279772,0.00012493514,17,11,TabPFN v2.6 · frozen backbone,"1e-06
 0.003"
-40,credit,log_loss,TabPFN v2.6,1e-05,0,False,one_sample,-0.0068146982,-0.0010828077,-0.0059773526,-0.00049377951,17,2,TabPFN v2.6 / all,"1e-05
+40,credit,log_loss,TabPFN v2.6,1e-05,0,False,one_sample,-0.0068146982,-0.0010828077,-0.0059773526,-0.00049377951,17,2,TabPFN v2.6 · all weights,"1e-05
 0"
-41,credit,log_loss,TabPFN v2.6,1e-05,0,True,one_sample,-8.57239e-05,-4.9701368e-05,-0.00022633047,0.00027313592,17,7,TabPFN v2.6 / frozen,"1e-05
+41,credit,log_loss,TabPFN v2.6,1e-05,0,True,one_sample,-8.57239e-05,-4.9701368e-05,-0.00022633047,0.00027313592,17,7,TabPFN v2.6 · frozen backbone,"1e-05
 0"
-42,credit,log_loss,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0044007749,-0.0008065796,-0.0042232796,-9.5199312e-05,17,4,TabPFN v2.6 / all,"1e-05
+42,credit,log_loss,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.0044007749,-0.0008065796,-0.0042232796,-9.5199312e-05,17,4,TabPFN v2.6 · all weights,"1e-05
 0.003"
-43,credit,log_loss,TabPFN v2.6,1e-05,0.003,True,one_sample,-7.5371269e-05,-1.0089997e-05,-0.00021854063,0.00020653729,17,8,TabPFN v2.6 / frozen,"1e-05
+43,credit,log_loss,TabPFN v2.6,1e-05,0.003,True,one_sample,-7.5371269e-05,-1.0089997e-05,-0.00021854063,0.00020653729,17,8,TabPFN v2.6 · frozen backbone,"1e-05
 0.003"
-44,credit,log_loss,TabPFN v2.6,3e-05,0,False,one_sample,-0.013519579,-0.0032261359,-0.01201708,-0.0015777149,17,2,TabPFN v2.6 / all,"3e-05
+44,credit,log_loss,TabPFN v2.6,3e-05,0,False,one_sample,-0.013519579,-0.0032261359,-0.01201708,-0.0015777149,17,2,TabPFN v2.6 · all weights,"3e-05
 0"
-45,credit,log_loss,TabPFN v2.6,3e-05,0,True,one_sample,-0.00016407248,-6.2777772e-05,-0.00031294147,0.00033619944,17,7,TabPFN v2.6 / frozen,"3e-05
+45,credit,log_loss,TabPFN v2.6,3e-05,0,True,one_sample,-0.00016407248,-6.2777772e-05,-0.00031294147,0.00033619944,17,7,TabPFN v2.6 · frozen backbone,"3e-05
 0"
-46,credit,log_loss,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.0051480829,-0.0013290447,-0.0044996978,-0.00018518604,17,3,TabPFN v2.6 / all,"3e-05
+46,credit,log_loss,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.0051480829,-0.0013290447,-0.0044996978,-0.00018518604,17,3,TabPFN v2.6 · all weights,"3e-05
 0.003"
-47,credit,log_loss,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.00010151306,-4.7084008e-05,-0.00022501736,0.00026619625,17,8,TabPFN v2.6 / frozen,"3e-05
+47,credit,log_loss,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.00010151306,-4.7084008e-05,-0.00022501736,0.00026619625,17,8,TabPFN v2.6 · frozen backbone,"3e-05
 0.003"
-48,credit,log_loss,TabPFN v3,3e-07,0,False,one_sample,-0.00026582191,0.0004372276,-4.3664503e-05,0.0011102676,17,12,TabPFN v3 / all,"3e-07
+48,credit,log_loss,TabPFN v3,3e-07,0,False,one_sample,-0.00026582191,0.0004372276,-4.3664503e-05,0.0011102676,17,12,TabPFN v3 · all weights,"3e-07
 0"
-49,credit,log_loss,TabPFN v3,3e-07,0,True,one_sample,0.00025291246,0.00039021711,0.00010086573,0.0006215069,17,13,TabPFN v3 / frozen,"3e-07
+49,credit,log_loss,TabPFN v3,3e-07,0,True,one_sample,0.00025291246,0.00039021711,0.00010086573,0.0006215069,17,13,TabPFN v3 · frozen backbone,"3e-07
 0"
-50,credit,log_loss,TabPFN v3,3e-07,0.003,False,one_sample,-0.00017808082,0.00043168827,-3.1340638e-05,0.0011133082,17,12,TabPFN v3 / all,"3e-07
+50,credit,log_loss,TabPFN v3,3e-07,0.003,False,one_sample,-0.00017808082,0.00043168827,-3.1340638e-05,0.0011133082,17,12,TabPFN v3 · all weights,"3e-07
 0.003"
-51,credit,log_loss,TabPFN v3,3e-07,0.003,True,one_sample,0.0002506131,0.00035000046,9.0907719e-05,0.00062920461,17,13,TabPFN v3 / frozen,"3e-07
+51,credit,log_loss,TabPFN v3,3e-07,0.003,True,one_sample,0.0002506131,0.00035000046,9.0907719e-05,0.00062920461,17,13,TabPFN v3 · frozen backbone,"3e-07
 0.003"
-52,credit,log_loss,TabPFN v3,1e-06,0,False,one_sample,-0.0028020711,-0.00020739193,-0.00074581051,0.0002930043,17,6,TabPFN v3 / all,"1e-06
+52,credit,log_loss,TabPFN v3,1e-06,0,False,one_sample,-0.0028020711,-0.00020739193,-0.00074581051,0.0002930043,17,6,TabPFN v3 · all weights,"1e-06
 0"
-53,credit,log_loss,TabPFN v3,1e-06,0,True,one_sample,-0.00076178406,-6.4648338e-05,-0.00033381097,0.00051039643,17,8,TabPFN v3 / frozen,"1e-06
+53,credit,log_loss,TabPFN v3,1e-06,0,True,one_sample,-0.00076178406,-6.4648338e-05,-0.00033381097,0.00051039643,17,8,TabPFN v3 · frozen backbone,"1e-06
 0"
-54,credit,log_loss,TabPFN v3,1e-06,0.003,False,one_sample,-0.0021179661,-0.00017004654,-0.00062592568,0.00054868669,17,7,TabPFN v3 / all,"1e-06
+54,credit,log_loss,TabPFN v3,1e-06,0.003,False,one_sample,-0.0021179661,-0.00017004654,-0.00062592568,0.00054868669,17,7,TabPFN v3 · all weights,"1e-06
 0.003"
-55,credit,log_loss,TabPFN v3,1e-06,0.003,True,one_sample,-0.00071855074,0.00017547576,-0.00050928966,0.00051938466,17,9,TabPFN v3 / frozen,"1e-06
+55,credit,log_loss,TabPFN v3,1e-06,0.003,True,one_sample,-0.00071855074,0.00017547576,-0.00050928966,0.00051938466,17,9,TabPFN v3 · frozen backbone,"1e-06
 0.003"
-56,credit,log_loss,TabPFN v3,1e-05,0,False,one_sample,-0.052123115,-0.021904041,-0.078008253,-0.004528201,17,0,TabPFN v3 / all,"1e-05
+56,credit,log_loss,TabPFN v3,1e-05,0,False,one_sample,-0.052123115,-0.021904041,-0.078008253,-0.004528201,17,0,TabPFN v3 · all weights,"1e-05
 0"
-57,credit,log_loss,TabPFN v3,1e-05,0,True,one_sample,-0.006904043,-0.0016358742,-0.0054878811,-0.00071136276,17,1,TabPFN v3 / frozen,"1e-05
+57,credit,log_loss,TabPFN v3,1e-05,0,True,one_sample,-0.006904043,-0.0016358742,-0.0054878811,-0.00071136276,17,1,TabPFN v3 · frozen backbone,"1e-05
 0"
-58,credit,log_loss,TabPFN v3,1e-05,0.003,False,one_sample,-0.026591829,-0.010853592,-0.036380099,-0.0022686824,17,0,TabPFN v3 / all,"1e-05
+58,credit,log_loss,TabPFN v3,1e-05,0.003,False,one_sample,-0.026591829,-0.010853592,-0.036380099,-0.0022686824,17,0,TabPFN v3 · all weights,"1e-05
 0.003"
-59,credit,log_loss,TabPFN v3,1e-05,0.003,True,one_sample,-0.0055927466,-0.0017851907,-0.0046937244,-0.00056445805,17,1,TabPFN v3 / frozen,"1e-05
+59,credit,log_loss,TabPFN v3,1e-05,0.003,True,one_sample,-0.0055927466,-0.0017851907,-0.0046937244,-0.00056445805,17,1,TabPFN v3 · frozen backbone,"1e-05
 0.003"
-60,credit,log_loss,TabPFN v3,3e-05,0,False,one_sample,-0.089788869,-0.059807169,-0.10459055,-0.013773426,17,0,TabPFN v3 / all,"3e-05
+60,credit,log_loss,TabPFN v3,3e-05,0,False,one_sample,-0.089788869,-0.059807169,-0.10459055,-0.013773426,17,0,TabPFN v3 · all weights,"3e-05
 0"
-61,credit,log_loss,TabPFN v3,3e-05,0,True,one_sample,-0.014586672,-0.0035716721,-0.020888672,-0.002000471,17,0,TabPFN v3 / frozen,"3e-05
+61,credit,log_loss,TabPFN v3,3e-05,0,True,one_sample,-0.014586672,-0.0035716721,-0.020888672,-0.002000471,17,0,TabPFN v3 · frozen backbone,"3e-05
 0"
-62,credit,log_loss,TabPFN v3,3e-05,0.003,False,one_sample,-0.030241863,-0.009417329,-0.034033725,-0.0032314706,17,0,TabPFN v3 / all,"3e-05
+62,credit,log_loss,TabPFN v3,3e-05,0.003,False,one_sample,-0.030241863,-0.009417329,-0.034033725,-0.0032314706,17,0,TabPFN v3 · all weights,"3e-05
 0.003"
-63,credit,log_loss,TabPFN v3,3e-05,0.003,True,one_sample,-0.013039118,-0.003015719,-0.017193711,-0.0011896224,17,1,TabPFN v3 / frozen,"3e-05
+63,credit,log_loss,TabPFN v3,3e-05,0.003,True,one_sample,-0.013039118,-0.003015719,-0.017193711,-0.0011896224,17,1,TabPFN v3 · frozen backbone,"3e-05
 0.003"
 
+Figure: pd_table_recipes_full_roc_auc
+PD. Experiment 1, final five-fold benchmark: auc change (percentage points) of every held-out credit table (rows) for each recipe with all trainable weights updated, CPT minus the original model of the same base. Columns cross peak learning rate (upper labels, blue) with L2-SP strength λ (lower labels, orange). Rows are ordered by the table's mean effect over all recipes and bases, so tables that improve under many recipes are at the top. Five outer folds are averaged within table. Colours are symmetric about zero and saturate at the 95th percentile of |effect| (3.88); exact values are in the notebook summary.
+Table × recipe effects
+CSV (first column: row index)
+row,base,dataset,learning_rate,l2sp_lambda,frozen,effect
+0,TabICLv2,Bondora Peer-to-Peer,3e-07,0,False,-0.00084865788
+1,TabICLv2,Cobranded,3e-07,0,False,-9.0267546e-05
+2,TabICLv2,Credit Risk,3e-07,0,False,-0.007256671
+3,TabICLv2,GMSC,3e-07,0,False,-0.00062394774
+4,TabICLv2,German Credit,3e-07,0,False,0.0023208291
+5,TabICLv2,HMEQ,3e-07,0,False,-0.00016323778
+6,TabICLv2,Hackerearth,3e-07,0,False,-0.014835603
+7,TabICLv2,Home Credit,3e-07,0,False,-0.00082315385
+8,TabICLv2,LendingClub,3e-07,0,False,0.000146919
+9,TabICLv2,MicroFinance,3e-07,0,False,-0.0018223383
+10,TabICLv2,Myhom,3e-07,0,False,0.01480591
+11,TabICLv2,PropPD1,3e-07,0,False,0.00078878451
+12,TabICLv2,PropPD2,3e-07,0,False,-0.00038674043
+13,TabICLv2,SBA Loans Case,3e-07,0,False,0.00011137358
+14,TabICLv2,Taiwan Credit Card,3e-07,0,False,-0.0019250541
+15,TabICLv2,Thomas,3e-07,0,False,-0.0023061753
+16,TabICLv2,Vehicle Loan,3e-07,0,False,0.071467701
+34,TabICLv2,Bondora Peer-to-Peer,3e-07,0.003,False,-0.00056737364
+35,TabICLv2,Cobranded,3e-07,0.003,False,-2.8451999e-05
+36,TabICLv2,Credit Risk,3e-07,0.003,False,-0.0061696497
+37,TabICLv2,GMSC,3e-07,0.003,False,-0.00057036466
+38,TabICLv2,German Credit,3e-07,0.003,False,0.0024155533
+39,TabICLv2,HMEQ,3e-07,0.003,False,-6.6761782e-05
+40,TabICLv2,Hackerearth,3e-07,0.003,False,-0.013719107
+41,TabICLv2,Home Credit,3e-07,0.003,False,-0.00075032379
+42,TabICLv2,LendingClub,3e-07,0.003,False,0.00022214889
+43,TabICLv2,MicroFinance,3e-07,0.003,False,-0.0016434439
+44,TabICLv2,Myhom,3e-07,0.003,False,0.014826318
+45,TabICLv2,PropPD1,3e-07,0.003,False,0.0012353369
+46,TabICLv2,PropPD2,3e-07,0.003,False,-0.00017633823
+47,TabICLv2,SBA Loans Case,3e-07,0.003,False,7.5056415e-05
+48,TabICLv2,Taiwan Credit Card,3e-07,0.003,False,-0.0017804574
+49,TabICLv2,Thomas,3e-07,0.003,False,-0.0019977983
+50,TabICLv2,Vehicle Loan,3e-07,0.003,False,0.071504064
+68,TabICLv2,Bondora Peer-to-Peer,1e-06,0,False,-0.0024234513
+69,TabICLv2,Cobranded,1e-06,0,False,-0.00020290853
+70,TabICLv2,Credit Risk,1e-06,0,False,-0.0093411224
+71,TabICLv2,GMSC,1e-06,0,False,-0.0011626593
+72,TabICLv2,German Credit,1e-06,0,False,0.0038162042
+73,TabICLv2,HMEQ,1e-06,0,False,0.00021759455
+74,TabICLv2,Hackerearth,1e-06,0,False,-0.0086823647
+75,TabICLv2,Home Credit,1e-06,0,False,-0.0017553184
+76,TabICLv2,LendingClub,1e-06,0,False,-0.00072035905
+77,TabICLv2,MicroFinance,1e-06,0,False,-0.0013987696
+78,TabICLv2,Myhom,1e-06,0,False,0.011079507
+79,TabICLv2,PropPD1,1e-06,0,False,-0.00034193485
+80,TabICLv2,PropPD2,1e-06,0,False,-0.0033871443
+81,TabICLv2,SBA Loans Case,1e-06,0,False,0.00018763827
+82,TabICLv2,Taiwan Credit Card,1e-06,0,False,-0.0026100114
+83,TabICLv2,Thomas,1e-06,0,False,-0.0076019443
+84,TabICLv2,Vehicle Loan,1e-06,0,False,0.068894851
+102,TabICLv2,Bondora Peer-to-Peer,1e-06,0.003,False,-0.001489034
+103,TabICLv2,Cobranded,1e-06,0.003,False,-7.8101944e-05
+104,TabICLv2,Credit Risk,1e-06,0.003,False,-0.0084777605
+105,TabICLv2,GMSC,1e-06,0.003,False,-0.00082153089
+106,TabICLv2,German Credit,1e-06,0.003,False,0.0044573484
+107,TabICLv2,HMEQ,1e-06,0.003,False,0.0003483988
+108,TabICLv2,Hackerearth,1e-06,0.003,False,-0.0077021681
+109,TabICLv2,Home Credit,1e-06,0.003,False,-0.0012544842
+110,TabICLv2,LendingClub,1e-06,0.003,False,-0.00064909204
+111,TabICLv2,MicroFinance,1e-06,0.003,False,-0.00083537705
+112,TabICLv2,Myhom,1e-06,0.003,False,0.011420918
+113,TabICLv2,PropPD1,1e-06,0.003,False,0.0004846679
+114,TabICLv2,PropPD2,1e-06,0.003,False,-0.0023490707
+115,TabICLv2,SBA Loans Case,1e-06,0.003,False,0.00024445055
+116,TabICLv2,Taiwan Credit Card,1e-06,0.003,False,-0.0018641114
+117,TabICLv2,Thomas,1e-06,0.003,False,-0.0057250024
+118,TabICLv2,Vehicle Loan,1e-06,0.003,False,0.069612038
+136,TabICLv2,Bondora Peer-to-Peer,1e-05,0,False,-0.0087954925
+137,TabICLv2,Cobranded,1e-05,0,False,-0.0035238799
+138,TabICLv2,Credit Risk,1e-05,0,False,-0.028874377
+139,TabICLv2,GMSC,1e-05,0,False,-0.0065613275
+140,TabICLv2,German Credit,1e-05,0,False,-0.10165982
+141,TabICLv2,HMEQ,1e-05,0,False,-0.0032579924
+142,TabICLv2,Hackerearth,1e-05,0,False,-0.052355151
+143,TabICLv2,Home Credit,1e-05,0,False,-0.011579617
+144,TabICLv2,LendingClub,1e-05,0,False,-0.075795657
+145,TabICLv2,MicroFinance,1e-05,0,False,-0.0074154844
+146,TabICLv2,Myhom,1e-05,0,False,0.003184949
+147,TabICLv2,PropPD1,1e-05,0,False,-0.019907131
+148,TabICLv2,PropPD2,1e-05,0,False,-0.027994679
+149,TabICLv2,SBA Loans Case,1e-05,0,False,-0.00037004461
+150,TabICLv2,Taiwan Credit Card,1e-05,0,False,-0.01012442
+151,TabICLv2,Thomas,1e-05,0,False,-0.088234954
+152,TabICLv2,Vehicle Loan,1e-05,0,False,0.06246959
+170,TabICLv2,Bondora Peer-to-Peer,1e-05,0.003,False,-0.0046013953
+171,TabICLv2,Cobranded,1e-05,0.003,False,-0.0011070605
+172,TabICLv2,Credit Risk,1e-05,0.003,False,-0.017922493
+173,TabICLv2,GMSC,1e-05,0.003,False,-0.0024285402
+174,TabICLv2,German Credit,1e-05,0.003,False,-0.038750771
+175,TabICLv2,HMEQ,1e-05,0.003,False,-0.0012730129
+176,TabICLv2,Hackerearth,1e-05,0.003,False,-0.037490364
+177,TabICLv2,Home Credit,1e-05,0.003,False,-0.00546993
+178,TabICLv2,LendingClub,1e-05,0.003,False,-0.018493122
+179,TabICLv2,MicroFinance,1e-05,0.003,False,-0.0032110126
+180,TabICLv2,Myhom,1e-05,0.003,False,0.014109694
+181,TabICLv2,PropPD1,1e-05,0.003,False,-0.0052758686
+182,TabICLv2,PropPD2,1e-05,0.003,False,-0.018773839
+183,TabICLv2,SBA Loans Case,1e-05,0.003,False,0.00072176229
+184,TabICLv2,Taiwan Credit Card,1e-05,0.003,False,-0.0048848406
+185,TabICLv2,Thomas,1e-05,0.003,False,-0.022244841
+186,TabICLv2,Vehicle Loan,1e-05,0.003,False,0.065928073
+204,TabICLv2,Bondora Peer-to-Peer,3e-05,0,False,-0.040005209
+205,TabICLv2,Cobranded,3e-05,0,False,-0.019602207
+206,TabICLv2,Credit Risk,3e-05,0,False,-0.050499406
+207,TabICLv2,GMSC,3e-05,0,False,-0.021471374
+208,TabICLv2,German Credit,3e-05,0,False,-0.064810038
+209,TabICLv2,HMEQ,3e-05,0,False,-0.0059010499
+210,TabICLv2,Hackerearth,3e-05,0,False,-0.10603678
+211,TabICLv2,Home Credit,3e-05,0,False,-0.04387471
+212,TabICLv2,LendingClub,3e-05,0,False,-0.1230825
+213,TabICLv2,MicroFinance,3e-05,0,False,-0.035213536
+214,TabICLv2,Myhom,3e-05,0,False,-0.008053784
+215,TabICLv2,PropPD1,3e-05,0,False,-0.037627181
+216,TabICLv2,PropPD2,3e-05,0,False,-0.078601584
+217,TabICLv2,SBA Loans Case,3e-05,0,False,-0.004197688
+218,TabICLv2,Taiwan Credit Card,3e-05,0,False,-0.016083084
+219,TabICLv2,Thomas,3e-05,0,False,-0.10388695
+220,TabICLv2,Vehicle Loan,3e-05,0,False,0.041864005
+238,TabICLv2,Bondora Peer-to-Peer,3e-05,0.003,False,-0.0028723349
+239,TabICLv2,Cobranded,3e-05,0.003,False,-0.0043584793
+240,TabICLv2,Credit Risk,3e-05,0.003,False,-0.020177455
+241,TabICLv2,GMSC,3e-05,0.003,False,-0.004204554
+242,TabICLv2,German Credit,3e-05,0.003,False,-0.052941932
+243,TabICLv2,HMEQ,3e-05,0.003,False,-0.0013954797
+244,TabICLv2,Hackerearth,3e-05,0.003,False,-0.052007096
+245,TabICLv2,Home Credit,3e-05,0.003,False,-0.011494973
+246,TabICLv2,LendingClub,3e-05,0.003,False,-0.017794461
+247,TabICLv2,MicroFinance,3e-05,0.003,False,-0.0073179052
+248,TabICLv2,Myhom,3e-05,0.003,False,0.013626276
+249,TabICLv2,PropPD1,3e-05,0.003,False,-0.011096279
+250,TabICLv2,PropPD2,3e-05,0.003,False,-0.015123721
+251,TabICLv2,SBA Loans Case,3e-05,0.003,False,-0.00057473018
+252,TabICLv2,Taiwan Credit Card,3e-05,0.003,False,-0.0041340982
+253,TabICLv2,Thomas,3e-05,0.003,False,-0.01247054
+254,TabICLv2,Vehicle Loan,3e-05,0.003,False,0.063957556
+272,TabPFN v2,Bondora Peer-to-Peer,3e-07,0,False,0.0028898558
+273,TabPFN v2,Cobranded,3e-07,0,False,0.0030314077
+274,TabPFN v2,Credit Risk,3e-07,0,False,0.0018287657
+275,TabPFN v2,GMSC,3e-07,0,False,0.002564706
+276,TabPFN v2,German Credit,3e-07,0,False,0.0040695444
+277,TabPFN v2,HMEQ,3e-07,0,False,0.0076586463
+278,TabPFN v2,Hackerearth,3e-07,0,False,0.0094951033
+279,TabPFN v2,Home Credit,3e-07,0,False,0.005028279
+280,TabPFN v2,LendingClub,3e-07,0,False,0.0071946889
+281,TabPFN v2,MicroFinance,3e-07,0,False,0.0064191092
+282,TabPFN v2,Myhom,3e-07,0,False,0.001900085
+283,TabPFN v2,PropPD1,3e-07,0,False,0.0054768598
+284,TabPFN v2,PropPD2,3e-07,0,False,0.0050223828
+285,TabPFN v2,SBA Loans Case,3e-07,0,False,8.4596839e-06
+286,TabPFN v2,Taiwan Credit Card,3e-07,0,False,0.0069536724
+287,TabPFN v2,Thomas,3e-07,0,False,0.0059965263
+288,TabPFN v2,Vehicle Loan,3e-07,0,False,0.005984581
+306,TabPFN v2,Bondora Peer-to-Peer,3e-07,0.003,False,0.0028900965
+307,TabPFN v2,Cobranded,3e-07,0.003,False,0.0030003482
+308,TabPFN v2,Credit Risk,3e-07,0.003,False,0.0018002893
+309,TabPFN v2,GMSC,3e-07,0.003,False,0.0025274617
+310,TabPFN v2,German Credit,3e-07,0.003,False,0.004022011
+311,TabPFN v2,HMEQ,3e-07,0.003,False,0.0077696885
+312,TabPFN v2,Hackerearth,3e-07,0.003,False,0.0093488316
+313,TabPFN v2,Home Credit,3e-07,0.003,False,0.0050075943
+314,TabPFN v2,LendingClub,3e-07,0.003,False,0.0071764372
+315,TabPFN v2,MicroFinance,3e-07,0.003,False,0.0063839468
+316,TabPFN v2,Myhom,3e-07,0.003,False,0.0019147534
+317,TabPFN v2,PropPD1,3e-07,0.003,False,0.0054243377
+318,TabPFN v2,PropPD2,3e-07,0.003,False,0.0050721524
+319,TabPFN v2,SBA Loans Case,3e-07,0.003,False,3.6711761e-05
+320,TabPFN v2,Taiwan Credit Card,3e-07,0.003,False,0.0069054749
+321,TabPFN v2,Thomas,3e-07,0.003,False,0.0058857575
+322,TabPFN v2,Vehicle Loan,3e-07,0.003,False,0.00596666
+340,TabPFN v2,Bondora Peer-to-Peer,1e-06,0,False,0.0031632182
+341,TabPFN v2,Cobranded,1e-06,0,False,0.003727348
+342,TabPFN v2,Credit Risk,1e-06,0,False,0.0015729906
+343,TabPFN v2,GMSC,1e-06,0,False,0.0037545474
+344,TabPFN v2,German Credit,1e-06,0,False,0.0052593354
+345,TabPFN v2,HMEQ,1e-06,0,False,0.0066496129
+346,TabPFN v2,Hackerearth,1e-06,0,False,0.0098335041
+347,TabPFN v2,Home Credit,1e-06,0,False,0.0070082689
+348,TabPFN v2,LendingClub,1e-06,0,False,0.0086534967
+349,TabPFN v2,MicroFinance,1e-06,0,False,0.0067226719
+350,TabPFN v2,Myhom,1e-06,0,False,0.0021220238
+351,TabPFN v2,PropPD1,1e-06,0,False,0.0052889754
+352,TabPFN v2,PropPD2,1e-06,0,False,0.0054131591
+353,TabPFN v2,SBA Loans Case,1e-06,0,False,0.00019140843
+354,TabPFN v2,Taiwan Credit Card,1e-06,0,False,0.0078556221
+355,TabPFN v2,Thomas,1e-06,0,False,0.0086379917
+356,TabPFN v2,Vehicle Loan,1e-06,0,False,0.0065784465
+374,TabPFN v2,Bondora Peer-to-Peer,1e-06,0.003,False,0.0031956609
+375,TabPFN v2,Cobranded,1e-06,0.003,False,0.003673046
+376,TabPFN v2,Credit Risk,1e-06,0.003,False,0.0017459048
+377,TabPFN v2,GMSC,1e-06,0.003,False,0.0036243503
+378,TabPFN v2,German Credit,1e-06,0.003,False,0.0050571257
+379,TabPFN v2,HMEQ,1e-06,0.003,False,0.0069070627
+380,TabPFN v2,Hackerearth,1e-06,0.003,False,0.0099147636
+381,TabPFN v2,Home Credit,1e-06,0.003,False,0.0067722216
+382,TabPFN v2,LendingClub,1e-06,0.003,False,0.0085702279
+383,TabPFN v2,MicroFinance,1e-06,0.003,False,0.0067710415
+384,TabPFN v2,Myhom,1e-06,0.003,False,0.0021575255
+385,TabPFN v2,PropPD1,1e-06,0.003,False,0.0053168397
+386,TabPFN v2,PropPD2,1e-06,0.003,False,0.0053922159
+387,TabPFN v2,SBA Loans Case,1e-06,0.003,False,0.00012451463
+388,TabPFN v2,Taiwan Credit Card,1e-06,0.003,False,0.0077498141
+389,TabPFN v2,Thomas,1e-06,0.003,False,0.0086217536
+390,TabPFN v2,Vehicle Loan,1e-06,0.003,False,0.0064941523
+408,TabPFN v2,Bondora Peer-to-Peer,1e-05,0,False,0.001841704
+409,TabPFN v2,Cobranded,1e-05,0,False,0.004542571
+410,TabPFN v2,Credit Risk,1e-05,0,False,-0.0040744098
+411,TabPFN v2,GMSC,1e-05,0,False,0.0034990042
+412,TabPFN v2,German Credit,1e-05,0,False,0.0084293422
+413,TabPFN v2,HMEQ,1e-05,0,False,-0.015358252
+414,TabPFN v2,Hackerearth,1e-05,0,False,-0.0018802319
+415,TabPFN v2,Home Credit,1e-05,0,False,0.0054803194
+416,TabPFN v2,LendingClub,1e-05,0,False,0.0094650728
+417,TabPFN v2,MicroFinance,1e-05,0,False,0.0059603824
+418,TabPFN v2,Myhom,1e-05,0,False,0.0013418367
+419,TabPFN v2,PropPD1,1e-05,0,False,0.0051335312
+420,TabPFN v2,PropPD2,1e-05,0,False,0.0055047056
+421,TabPFN v2,SBA Loans Case,1e-05,0,False,5.1449904e-05
+422,TabPFN v2,Taiwan Credit Card,1e-05,0,False,0.0075120716
+423,TabPFN v2,Thomas,1e-05,0,False,0.011117563
+424,TabPFN v2,Vehicle Loan,1e-05,0,False,0.0039499288
+442,TabPFN v2,Bondora Peer-to-Peer,1e-05,0.003,False,0.0025711058
+443,TabPFN v2,Cobranded,1e-05,0.003,False,0.0044195975
+444,TabPFN v2,Credit Risk,1e-05,0.003,False,-0.0018868449
+445,TabPFN v2,GMSC,1e-05,0.003,False,0.0042127774
+446,TabPFN v2,German Credit,1e-05,0.003,False,0.008311665
+447,TabPFN v2,HMEQ,1e-05,0.003,False,-0.0048721549
+448,TabPFN v2,Hackerearth,1e-05,0.003,False,0.0053825996
+449,TabPFN v2,Home Credit,1e-05,0.003,False,0.0069500612
+450,TabPFN v2,LendingClub,1e-05,0.003,False,0.00916205
+451,TabPFN v2,MicroFinance,1e-05,0.003,False,0.0068171258
+452,TabPFN v2,Myhom,1e-05,0.003,False,0.0013414116
+453,TabPFN v2,PropPD1,1e-05,0.003,False,0.0055480172
+454,TabPFN v2,PropPD2,1e-05,0.003,False,0.005397124
+455,TabPFN v2,SBA Loans Case,1e-05,0.003,False,1.8645579e-05
+456,TabPFN v2,Taiwan Credit Card,1e-05,0.003,False,0.0079616331
+457,TabPFN v2,Thomas,1e-05,0.003,False,0.013720879
+458,TabPFN v2,Vehicle Loan,1e-05,0.003,False,0.0053724294
+476,TabPFN v2,Bondora Peer-to-Peer,3e-05,0,False,-0.00065192879
+477,TabPFN v2,Cobranded,3e-05,0,False,0.0036179503
+478,TabPFN v2,Credit Risk,3e-05,0,False,-0.0097034332
+479,TabPFN v2,GMSC,3e-05,0,False,-0.00034612078
+480,TabPFN v2,German Credit,3e-05,0,False,-0.033990236
+481,TabPFN v2,HMEQ,3e-05,0,False,-0.024390351
+482,TabPFN v2,Hackerearth,3e-05,0,False,-0.022390783
+483,TabPFN v2,Home Credit,3e-05,0,False,0.0063342068
+484,TabPFN v2,LendingClub,3e-05,0,False,0.0036748909
+485,TabPFN v2,MicroFinance,3e-05,0,False,0.0027937859
+486,TabPFN v2,Myhom,3e-05,0,False,0.0014547194
+487,TabPFN v2,PropPD1,3e-05,0,False,0.0035343193
+488,TabPFN v2,PropPD2,3e-05,0,False,0.002961121
+489,TabPFN v2,SBA Loans Case,3e-05,0,False,-0.00042148372
+490,TabPFN v2,Taiwan Credit Card,3e-05,0,False,0.0059388811
+491,TabPFN v2,Thomas,3e-05,0,False,-0.01280287
+492,TabPFN v2,Vehicle Loan,3e-05,0,False,0.003149936
+510,TabPFN v2,Bondora Peer-to-Peer,3e-05,0.003,False,0.0021966225
+511,TabPFN v2,Cobranded,3e-05,0.003,False,0.0044364601
+512,TabPFN v2,Credit Risk,3e-05,0.003,False,-0.0044427068
+513,TabPFN v2,GMSC,3e-05,0.003,False,0.0033780385
+514,TabPFN v2,German Credit,3e-05,0.003,False,-5.849606e-05
+515,TabPFN v2,HMEQ,3e-05,0.003,False,-0.013776286
+516,TabPFN v2,Hackerearth,3e-05,0.003,False,0.00078715553
+517,TabPFN v2,Home Credit,3e-05,0.003,False,0.009114582
+518,TabPFN v2,LendingClub,3e-05,0.003,False,0.010250981
+519,TabPFN v2,MicroFinance,3e-05,0.003,False,0.0060541997
+520,TabPFN v2,Myhom,3e-05,0.003,False,0.0010448554
+521,TabPFN v2,PropPD1,3e-05,0.003,False,0.0054813681
+522,TabPFN v2,PropPD2,3e-05,0.003,False,0.004768925
+523,TabPFN v2,SBA Loans Case,3e-05,0.003,False,-0.00010497416
+524,TabPFN v2,Taiwan Credit Card,3e-05,0.003,False,0.0071377953
+525,TabPFN v2,Thomas,3e-05,0.003,False,0.006933014
+526,TabPFN v2,Vehicle Loan,3e-05,0.003,False,0.0044165258
+544,TabPFN v2.6,Bondora Peer-to-Peer,3e-07,0,False,-0.00026921928
+545,TabPFN v2.6,Cobranded,3e-07,0,False,-0.00010532061
+546,TabPFN v2.6,Credit Risk,3e-07,0,False,-0.0021054179
+547,TabPFN v2.6,GMSC,3e-07,0,False,0.00016144477
+548,TabPFN v2.6,German Credit,3e-07,0,False,-0.000105173
+549,TabPFN v2.6,HMEQ,3e-07,0,False,-0.00096519716
+550,TabPFN v2.6,Hackerearth,3e-07,0,False,-0.0022401011
+551,TabPFN v2.6,Home Credit,3e-07,0,False,-0.00028118901
+552,TabPFN v2.6,LendingClub,3e-07,0,False,0.0013197133
+553,TabPFN v2.6,MicroFinance,3e-07,0,False,-0.00099921183
+554,TabPFN v2.6,Myhom,3e-07,0,False,0.00049213435
+555,TabPFN v2.6,PropPD1,3e-07,0,False,-0.00066387218
+556,TabPFN v2.6,PropPD2,3e-07,0,False,-0.00063258353
+557,TabPFN v2.6,SBA Loans Case,3e-07,0,False,0.00010776689
+558,TabPFN v2.6,Taiwan Credit Card,3e-07,0,False,0.00010235316
+559,TabPFN v2.6,Thomas,3e-07,0,False,0.0042531195
+560,TabPFN v2.6,Vehicle Loan,3e-07,0,False,0.00074574431
+578,TabPFN v2.6,Bondora Peer-to-Peer,3e-07,0.003,False,-0.00025305583
+579,TabPFN v2.6,Cobranded,3e-07,0.003,False,-9.3632154e-05
+580,TabPFN v2.6,Credit Risk,3e-07,0.003,False,-0.002079411
+581,TabPFN v2.6,GMSC,3e-07,0.003,False,0.00016438407
+582,TabPFN v2.6,German Credit,3e-07,0.003,False,-8.1192189e-05
+583,TabPFN v2.6,HMEQ,3e-07,0.003,False,-0.00094489423
+584,TabPFN v2.6,Hackerearth,3e-07,0.003,False,-0.0021852261
+585,TabPFN v2.6,Home Credit,3e-07,0.003,False,-0.0002741992
+586,TabPFN v2.6,LendingClub,3e-07,0.003,False,0.0014096204
+587,TabPFN v2.6,MicroFinance,3e-07,0.003,False,-0.00094296216
+588,TabPFN v2.6,Myhom,3e-07,0.003,False,0.00051955782
+589,TabPFN v2.6,PropPD1,3e-07,0.003,False,-0.00062729404
+590,TabPFN v2.6,PropPD2,3e-07,0.003,False,-0.00062878058
+591,TabPFN v2.6,SBA Loans Case,3e-07,0.003,False,7.1657957e-05
+592,TabPFN v2.6,Taiwan Credit Card,3e-07,0.003,False,0.00011812934
+593,TabPFN v2.6,Thomas,3e-07,0.003,False,0.0046828664
+594,TabPFN v2.6,Vehicle Loan,3e-07,0.003,False,0.00073811027
+612,TabPFN v2.6,Bondora Peer-to-Peer,1e-06,0,False,-0.00055576972
+613,TabPFN v2.6,Cobranded,1e-06,0,False,-9.1464314e-05
+614,TabPFN v2.6,Credit Risk,1e-06,0,False,-0.0028556899
+615,TabPFN v2.6,GMSC,1e-06,0,False,0.00024416693
+616,TabPFN v2.6,German Credit,1e-06,0,False,9.9263446e-05
+617,TabPFN v2.6,HMEQ,1e-06,0,False,-0.001594834
+618,TabPFN v2.6,Hackerearth,1e-06,0,False,-0.003195226
+619,TabPFN v2.6,Home Credit,1e-06,0,False,-0.0022244422
+620,TabPFN v2.6,LendingClub,1e-06,0,False,0.0016094759
+621,TabPFN v2.6,MicroFinance,1e-06,0,False,-0.0018872743
+622,TabPFN v2.6,Myhom,1e-06,0,False,0.0006377551
+623,TabPFN v2.6,PropPD1,1e-06,0,False,-0.00096052358
+624,TabPFN v2.6,PropPD2,1e-06,0,False,-0.0011316433
+625,TabPFN v2.6,SBA Loans Case,1e-06,0,False,-7.2674599e-05
+626,TabPFN v2.6,Taiwan Credit Card,1e-06,0,False,-2.1300211e-05
+627,TabPFN v2.6,Thomas,1e-06,0,False,0.0076451929
+628,TabPFN v2.6,Vehicle Loan,1e-06,0,False,0.00062013169
+646,TabPFN v2.6,Bondora Peer-to-Peer,1e-06,0.003,False,-0.00049254574
+647,TabPFN v2.6,Cobranded,1e-06,0.003,False,-6.2913874e-05
+648,TabPFN v2.6,Credit Risk,1e-06,0.003,False,-0.0027137855
+649,TabPFN v2.6,GMSC,1e-06,0.003,False,0.0002427313
+650,TabPFN v2.6,German Credit,1e-06,0.003,False,-7.9222336e-05
+651,TabPFN v2.6,HMEQ,1e-06,0.003,False,-0.0015053281
+652,TabPFN v2.6,Hackerearth,1e-06,0.003,False,-0.0029388615
+653,TabPFN v2.6,Home Credit,1e-06,0.003,False,-0.0017641932
+654,TabPFN v2.6,LendingClub,1e-06,0.003,False,0.0013235869
+655,TabPFN v2.6,MicroFinance,1e-06,0.003,False,-0.0016927439
+656,TabPFN v2.6,Myhom,1e-06,0.003,False,0.00055102041
+657,TabPFN v2.6,PropPD1,1e-06,0.003,False,-0.00075773151
+658,TabPFN v2.6,PropPD2,1e-06,0.003,False,-0.001057438
+659,TabPFN v2.6,SBA Loans Case,1e-06,0.003,False,-4.6916873e-05
+660,TabPFN v2.6,Taiwan Credit Card,1e-06,0.003,False,-5.6914528e-05
+661,TabPFN v2.6,Thomas,1e-06,0.003,False,0.0065549299
+662,TabPFN v2.6,Vehicle Loan,1e-06,0.003,False,0.00066656701
+680,TabPFN v2.6,Bondora Peer-to-Peer,1e-05,0,False,-0.0023264377
+681,TabPFN v2.6,Cobranded,1e-05,0,False,-0.00082391905
+682,TabPFN v2.6,Credit Risk,1e-05,0,False,-0.0061567328
+683,TabPFN v2.6,GMSC,1e-05,0,False,-0.00015207219
+684,TabPFN v2.6,German Credit,1e-05,0,False,-0.0042465742
+685,TabPFN v2.6,HMEQ,1e-05,0,False,-0.0053363425
+686,TabPFN v2.6,Hackerearth,1e-05,0,False,-0.017535328
+687,TabPFN v2.6,Home Credit,1e-05,0,False,-0.022864556
+688,TabPFN v2.6,LendingClub,1e-05,0,False,0.0011276823
+689,TabPFN v2.6,MicroFinance,1e-05,0,False,-0.0056367221
+690,TabPFN v2.6,Myhom,1e-05,0,False,0.00088180272
+691,TabPFN v2.6,PropPD1,1e-05,0,False,-0.0028280329
+692,TabPFN v2.6,PropPD2,1e-05,0,False,-0.0028035028
+693,TabPFN v2.6,SBA Loans Case,1e-05,0,False,-0.00068771848
+694,TabPFN v2.6,Taiwan Credit Card,1e-05,0,False,-0.00073326211
+695,TabPFN v2.6,Thomas,1e-05,0,False,0.0093368631
+696,TabPFN v2.6,Vehicle Loan,1e-05,0,False,-4.4624155e-05
+714,TabPFN v2.6,Bondora Peer-to-Peer,1e-05,0.003,False,-0.001187456
+715,TabPFN v2.6,Cobranded,1e-05,0.003,False,-0.00041677823
+716,TabPFN v2.6,Credit Risk,1e-05,0.003,False,-0.0044571434
+717,TabPFN v2.6,GMSC,1e-05,0.003,False,-1.3251659e-05
+718,TabPFN v2.6,German Credit,1e-05,0.003,False,-0.0031277835
+719,TabPFN v2.6,HMEQ,1e-05,0.003,False,-0.0026242675
+720,TabPFN v2.6,Hackerearth,1e-05,0.003,False,-0.010496658
+721,TabPFN v2.6,Home Credit,1e-05,0.003,False,-0.018340133
+722,TabPFN v2.6,LendingClub,1e-05,0.003,False,0.00098687037
+723,TabPFN v2.6,MicroFinance,1e-05,0.003,False,-0.0037473701
+724,TabPFN v2.6,Myhom,1e-05,0.003,False,0.00046088435
+725,TabPFN v2.6,PropPD1,1e-05,0.003,False,-0.0015974744
+726,TabPFN v2.6,PropPD2,1e-05,0.003,False,-0.0014126318
+727,TabPFN v2.6,SBA Loans Case,1e-05,0.003,False,-0.00054267728
+728,TabPFN v2.6,Taiwan Credit Card,1e-05,0.003,False,-0.00035643896
+729,TabPFN v2.6,Thomas,1e-05,0.003,False,0.0095766811
+730,TabPFN v2.6,Vehicle Loan,1e-05,0.003,False,0.00065638216
+748,TabPFN v2.6,Bondora Peer-to-Peer,3e-05,0,False,-0.0043025011
+749,TabPFN v2.6,Cobranded,3e-05,0,False,-0.0023130707
+750,TabPFN v2.6,Credit Risk,3e-05,0,False,-0.010838746
+751,TabPFN v2.6,GMSC,3e-05,0,False,-0.0010102592
+752,TabPFN v2.6,German Credit,3e-05,0,False,-0.014970966
+753,TabPFN v2.6,HMEQ,3e-05,0,False,-0.012292998
+754,TabPFN v2.6,Hackerearth,3e-05,0,False,-0.035582875
+755,TabPFN v2.6,Home Credit,3e-05,0,False,-0.0095141818
+756,TabPFN v2.6,LendingClub,3e-05,0,False,2.0960264e-05
+757,TabPFN v2.6,MicroFinance,3e-05,0,False,-0.0095865893
+758,TabPFN v2.6,Myhom,3e-05,0,False,0.00066517857
+759,TabPFN v2.6,PropPD1,3e-05,0,False,-0.0063919619
+760,TabPFN v2.6,PropPD2,3e-05,0,False,-0.0044199799
+761,TabPFN v2.6,SBA Loans Case,3e-05,0,False,-0.0014765207
+762,TabPFN v2.6,Taiwan Credit Card,3e-05,0,False,-0.0030865182
+763,TabPFN v2.6,Thomas,3e-05,0,False,-0.0013024508
+764,TabPFN v2.6,Vehicle Loan,3e-05,0,False,-0.0037358271
+782,TabPFN v2.6,Bondora Peer-to-Peer,3e-05,0.003,False,-0.0016948063
+783,TabPFN v2.6,Cobranded,3e-05,0.003,False,-0.00059330957
+784,TabPFN v2.6,Credit Risk,3e-05,0.003,False,-0.0047979737
+785,TabPFN v2.6,GMSC,3e-05,0.003,False,-3.1548042e-05
+786,TabPFN v2.6,German Credit,3e-05,0.003,False,-0.0041768585
+787,TabPFN v2.6,HMEQ,3e-05,0.003,False,-0.0031883899
+788,TabPFN v2.6,Hackerearth,3e-05,0.003,False,-0.015797902
+789,TabPFN v2.6,Home Credit,3e-05,0.003,False,-0.0081055386
+790,TabPFN v2.6,LendingClub,3e-05,0.003,False,0.0015902047
+791,TabPFN v2.6,MicroFinance,3e-05,0.003,False,-0.0054868023
+792,TabPFN v2.6,Myhom,3e-05,0.003,False,0.00093962585
+793,TabPFN v2.6,PropPD1,3e-05,0.003,False,-0.0025016025
+794,TabPFN v2.6,PropPD2,3e-05,0.003,False,-0.0017872398
+795,TabPFN v2.6,SBA Loans Case,3e-05,0.003,False,-0.00080778748
+796,TabPFN v2.6,Taiwan Credit Card,3e-05,0.003,False,-0.00085945361
+797,TabPFN v2.6,Thomas,3e-05,0.003,False,0.007151311
+798,TabPFN v2.6,Vehicle Loan,3e-05,0.003,False,4.7626809e-05
+816,TabPFN v3,Bondora Peer-to-Peer,3e-07,0,False,-2.6919571e-05
+817,TabPFN v3,Cobranded,3e-07,0,False,0.00072973693
+818,TabPFN v3,Credit Risk,3e-07,0,False,-0.00034117851
+819,TabPFN v3,GMSC,3e-07,0,False,-4.099238e-05
+820,TabPFN v3,German Credit,3e-07,0,False,0.0031863652
+821,TabPFN v3,HMEQ,3e-07,0,False,-0.00031229722
+822,TabPFN v3,Hackerearth,3e-07,0,False,-0.0037231925
+823,TabPFN v3,Home Credit,3e-07,0,False,-7.6042806e-05
+824,TabPFN v3,LendingClub,3e-07,0,False,0.0011405541
+825,TabPFN v3,MicroFinance,3e-07,0,False,0.0021398901
+826,TabPFN v3,Myhom,3e-07,0,False,-0.0005837585
+827,TabPFN v3,PropPD1,3e-07,0,False,0.0007052964
+828,TabPFN v3,PropPD2,3e-07,0,False,0.0018460009
+829,TabPFN v3,SBA Loans Case,3e-07,0,False,0.00061728487
+830,TabPFN v3,Taiwan Credit Card,3e-07,0,False,7.6432618e-05
+831,TabPFN v3,Thomas,3e-07,0,False,0.0013913149
+832,TabPFN v3,Vehicle Loan,3e-07,0,False,4.5886304e-05
+850,TabPFN v3,Bondora Peer-to-Peer,3e-07,0.003,False,-1.5876365e-05
+851,TabPFN v3,Cobranded,3e-07,0.003,False,0.00074681185
+852,TabPFN v3,Credit Risk,3e-07,0.003,False,-0.0002132175
+853,TabPFN v3,GMSC,3e-07,0.003,False,-4.1099624e-05
+854,TabPFN v3,German Credit,3e-07,0.003,False,0.0029964029
+855,TabPFN v3,HMEQ,3e-07,0.003,False,-0.00027702393
+856,TabPFN v3,Hackerearth,3e-07,0.003,False,-0.0036003988
+857,TabPFN v3,Home Credit,3e-07,0.003,False,6.8168728e-06
+858,TabPFN v3,LendingClub,3e-07,0.003,False,0.0012161875
+859,TabPFN v3,MicroFinance,3e-07,0.003,False,0.0021619782
+860,TabPFN v3,Myhom,3e-07,0.003,False,-0.00056079932
+861,TabPFN v3,PropPD1,3e-07,0.003,False,0.00073311379
+862,TabPFN v3,PropPD2,3e-07,0.003,False,0.0018373491
+863,TabPFN v3,SBA Loans Case,3e-07,0.003,False,0.00053497323
+864,TabPFN v3,Taiwan Credit Card,3e-07,0.003,False,7.1306646e-05
+865,TabPFN v3,Thomas,3e-07,0.003,False,0.0016449863
+866,TabPFN v3,Vehicle Loan,3e-07,0.003,False,6.4093912e-05
+884,TabPFN v3,Bondora Peer-to-Peer,1e-06,0,False,-0.0005871222
+885,TabPFN v3,Cobranded,1e-06,0,False,0.00026578143
+886,TabPFN v3,Credit Risk,1e-06,0,False,-0.005777492
+887,TabPFN v3,GMSC,1e-06,0,False,-0.00029747631
+888,TabPFN v3,German Credit,1e-06,0,False,-0.0010387119
+889,TabPFN v3,HMEQ,1e-06,0,False,-0.0006625354
+890,TabPFN v3,Hackerearth,1e-06,0,False,-0.0068468946
+891,TabPFN v3,Home Credit,1e-06,0,False,-0.0013433223
+892,TabPFN v3,LendingClub,1e-06,0,False,0.0001351984
+893,TabPFN v3,MicroFinance,1e-06,0,False,0.00040092235
+894,TabPFN v3,Myhom,1e-06,0,False,-0.0042776361
+895,TabPFN v3,PropPD1,1e-06,0,False,0.0005361012
+896,TabPFN v3,PropPD2,1e-06,0,False,0.0010104894
+897,TabPFN v3,SBA Loans Case,1e-06,0,False,0.00042568585
+898,TabPFN v3,Taiwan Credit Card,1e-06,0,False,-0.00072036392
+899,TabPFN v3,Thomas,1e-06,0,False,-0.00098120603
+900,TabPFN v3,Vehicle Loan,1e-06,0,False,-0.00097500248
+918,TabPFN v3,Bondora Peer-to-Peer,1e-06,0.003,False,-0.00058934237
+919,TabPFN v3,Cobranded,1e-06,0.003,False,0.00041954278
+920,TabPFN v3,Credit Risk,1e-06,0.003,False,-0.0035809277
+921,TabPFN v3,GMSC,1e-06,0.003,False,-0.00029139688
+922,TabPFN v3,German Credit,1e-06,0.003,False,0.00030078794
+923,TabPFN v3,HMEQ,1e-06,0.003,False,-0.00059984677
+924,TabPFN v3,Hackerearth,1e-06,0.003,False,-0.0057670939
+925,TabPFN v3,Home Credit,1e-06,0.003,False,-0.0011812517
+926,TabPFN v3,LendingClub,1e-06,0.003,False,0.00031599043
+927,TabPFN v3,MicroFinance,1e-06,0.003,False,0.00074622144
+928,TabPFN v3,Myhom,1e-06,0.003,False,-0.0031681548
+929,TabPFN v3,PropPD1,1e-06,0.003,False,0.00055395382
+930,TabPFN v3,PropPD2,1e-06,0.003,False,0.0012051436
+931,TabPFN v3,SBA Loans Case,1e-06,0.003,False,0.00061623506
+932,TabPFN v3,Taiwan Credit Card,1e-06,0.003,False,-0.00060414201
+933,TabPFN v3,Thomas,1e-06,0.003,False,-0.0012565932
+934,TabPFN v3,Vehicle Loan,1e-06,0.003,False,-0.00089433502
+952,TabPFN v3,Bondora Peer-to-Peer,1e-05,0,False,-0.0091785699
+953,TabPFN v3,Cobranded,1e-05,0,False,-0.00466283
+954,TabPFN v3,Credit Risk,1e-05,0,False,-0.04032058
+955,TabPFN v3,GMSC,1e-05,0,False,-0.0063049102
+956,TabPFN v3,German Credit,1e-05,0,False,-0.07352381
+957,TabPFN v3,HMEQ,1e-05,0,False,-0.053915738
+958,TabPFN v3,Hackerearth,1e-05,0,False,-0.048337585
+959,TabPFN v3,Home Credit,1e-05,0,False,-0.016361401
+960,TabPFN v3,LendingClub,1e-05,0,False,-0.091831949
+961,TabPFN v3,MicroFinance,1e-05,0,False,-0.011288021
+962,TabPFN v3,Myhom,1e-05,0,False,-0.035520833
+963,TabPFN v3,PropPD1,1e-05,0,False,-0.029780957
+964,TabPFN v3,PropPD2,1e-05,0,False,-0.0059531846
+965,TabPFN v3,SBA Loans Case,1e-05,0,False,-0.0093082026
+966,TabPFN v3,Taiwan Credit Card,1e-05,0,False,-0.01002682
+967,TabPFN v3,Thomas,1e-05,0,False,-0.066454461
+968,TabPFN v3,Vehicle Loan,1e-05,0,False,-0.0080818693
+986,TabPFN v3,Bondora Peer-to-Peer,1e-05,0.003,False,-0.0093026782
+987,TabPFN v3,Cobranded,1e-05,0.003,False,-0.0023745573
+988,TabPFN v3,Credit Risk,1e-05,0.003,False,-0.026048062
+989,TabPFN v3,GMSC,1e-05,0.003,False,-0.0021965002
+990,TabPFN v3,German Credit,1e-05,0.003,False,-0.029074341
+991,TabPFN v3,HMEQ,1e-05,0.003,False,-0.01579107
+992,TabPFN v3,Hackerearth,1e-05,0.003,False,-0.032414566
+993,TabPFN v3,Home Credit,1e-05,0.003,False,-0.010708957
+994,TabPFN v3,LendingClub,1e-05,0.003,False,-0.048910795
+995,TabPFN v3,MicroFinance,1e-05,0.003,False,-0.0060928789
+996,TabPFN v3,Myhom,1e-05,0.003,False,-0.051384354
+997,TabPFN v3,PropPD1,1e-05,0.003,False,-0.0058876534
+998,TabPFN v3,PropPD2,1e-05,0.003,False,-0.0035472518
+999,TabPFN v3,SBA Loans Case,1e-05,0.003,False,-0.004694911
+1000,TabPFN v3,Taiwan Credit Card,1e-05,0.003,False,-0.0052952888
+1001,TabPFN v3,Thomas,1e-05,0.003,False,-0.038759834
+1002,TabPFN v3,Vehicle Loan,1e-05,0.003,False,-0.0030438962
+1020,TabPFN v3,Bondora Peer-to-Peer,3e-05,0,False,-0.041975897
+1021,TabPFN v3,Cobranded,3e-05,0,False,-0.010480923
+1022,TabPFN v3,Credit Risk,3e-05,0,False,-0.11955175
+1023,TabPFN v3,GMSC,3e-05,0,False,-0.035063096
+1024,TabPFN v3,German Credit,3e-05,0,False,-0.067517472
+1025,TabPFN v3,HMEQ,3e-05,0,False,-0.1083002
+1026,TabPFN v3,Hackerearth,3e-05,0,False,-0.10296921
+1027,TabPFN v3,Home Credit,3e-05,0,False,-0.024872981
+1028,TabPFN v3,LendingClub,3e-05,0,False,-0.10125614
+1029,TabPFN v3,MicroFinance,3e-05,0,False,-0.027335145
+1030,TabPFN v3,Myhom,3e-05,0,False,-0.050152211
+1031,TabPFN v3,PropPD1,3e-05,0,False,-0.07795235
+1032,TabPFN v3,PropPD2,3e-05,0,False,-0.025994957
+1033,TabPFN v3,SBA Loans Case,3e-05,0,False,-0.013473872
+1034,TabPFN v3,Taiwan Credit Card,3e-05,0,False,-0.049687435
+1035,TabPFN v3,Thomas,3e-05,0,False,-0.081342612
+1036,TabPFN v3,Vehicle Loan,3e-05,0,False,-0.029550256
+1054,TabPFN v3,Bondora Peer-to-Peer,3e-05,0.003,False,-0.020506631
+1055,TabPFN v3,Cobranded,3e-05,0.003,False,-0.0033056471
+1056,TabPFN v3,Credit Risk,3e-05,0.003,False,-0.034510984
+1057,TabPFN v3,GMSC,3e-05,0.003,False,-0.00507353
+1058,TabPFN v3,German Credit,3e-05,0.003,False,-0.044297362
+1059,TabPFN v3,HMEQ,3e-05,0.003,False,-0.024306664
+1060,TabPFN v3,Hackerearth,3e-05,0.003,False,-0.053524444
+1061,TabPFN v3,Home Credit,3e-05,0.003,False,-0.01387958
+1062,TabPFN v3,LendingClub,3e-05,0.003,False,-0.025769699
+1063,TabPFN v3,MicroFinance,3e-05,0.003,False,-0.010642747
+1064,TabPFN v3,Myhom,3e-05,0.003,False,-0.0082168367
+1065,TabPFN v3,PropPD1,3e-05,0.003,False,-0.033507039
+1066,TabPFN v3,PropPD2,3e-05,0.003,False,-0.0044125079
+1067,TabPFN v3,SBA Loans Case,3e-05,0.003,False,-0.0034726067
+1068,TabPFN v3,Taiwan Credit Card,3e-05,0.003,False,-0.0045768949
+1069,TabPFN v3,Thomas,3e-05,0.003,False,-0.055782612
+1070,TabPFN v3,Vehicle Loan,3e-05,0.003,False,-0.0050269582
+
+Figure: pd_table_recipes_frozen_roc_auc
+PD. Experiment 1, final five-fold benchmark: auc change (percentage points) of every held-out credit table (rows) for each recipe with the dominant transformer backbone frozen, CPT minus the original model of the same base. Columns cross peak learning rate (upper labels, blue) with L2-SP strength λ (lower labels, orange). Rows are ordered by the table's mean effect over all recipes and bases, so tables that improve under many recipes are at the top. Five outer folds are averaged within table. Colours are symmetric about zero and saturate at the 95th percentile of |effect| (3.88); exact values are in the notebook summary.
+Table × recipe effects
+CSV (first column: row index)
+row,base,dataset,learning_rate,l2sp_lambda,frozen,effect
+17,TabICLv2,Bondora Peer-to-Peer,3e-07,0,True,9.6416591e-05
+18,TabICLv2,Cobranded,3e-07,0,True,-0.00044892542
+19,TabICLv2,Credit Risk,3e-07,0,True,-0.0042125668
+20,TabICLv2,GMSC,3e-07,0,True,-0.00048367031
+21,TabICLv2,German Credit,3e-07,0,True,0.0017875985
+22,TabICLv2,HMEQ,3e-07,0,True,-0.00014952499
+23,TabICLv2,Hackerearth,3e-07,0,True,-0.01058544
+24,TabICLv2,Home Credit,3e-07,0,True,-0.00090965466
+25,TabICLv2,LendingClub,3e-07,0,True,-0.00034470445
+26,TabICLv2,MicroFinance,3e-07,0,True,-0.00013862683
+27,TabICLv2,Myhom,3e-07,0,True,0.013587372
+28,TabICLv2,PropPD1,3e-07,0,True,0.00080087024
+29,TabICLv2,PropPD2,3e-07,0,True,-0.00062244924
+30,TabICLv2,SBA Loans Case,3e-07,0,True,0.00013127916
+31,TabICLv2,Taiwan Credit Card,3e-07,0,True,-0.0012844085
+32,TabICLv2,Thomas,3e-07,0,True,-0.001554015
+33,TabICLv2,Vehicle Loan,3e-07,0,True,0.071715772
+51,TabICLv2,Bondora Peer-to-Peer,3e-07,0.003,True,0.00012213118
+52,TabICLv2,Cobranded,3e-07,0.003,True,-0.00045073344
+53,TabICLv2,Credit Risk,3e-07,0.003,True,-0.0040369989
+54,TabICLv2,GMSC,3e-07,0.003,True,-0.00054914775
+55,TabICLv2,German Credit,3e-07,0.003,True,0.0019566632
+56,TabICLv2,HMEQ,3e-07,0.003,True,-0.00014822045
+57,TabICLv2,Hackerearth,3e-07,0.003,True,-0.010305058
+58,TabICLv2,Home Credit,3e-07,0.003,True,-0.00093561173
+59,TabICLv2,LendingClub,3e-07,0.003,True,-0.00036035286
+60,TabICLv2,MicroFinance,3e-07,0.003,True,0.00010661623
+61,TabICLv2,Myhom,3e-07,0.003,True,0.012957058
+62,TabICLv2,PropPD1,3e-07,0.003,True,0.00063850393
+63,TabICLv2,PropPD2,3e-07,0.003,True,-0.00055166594
+64,TabICLv2,SBA Loans Case,3e-07,0.003,True,7.2351074e-05
+65,TabICLv2,Taiwan Credit Card,3e-07,0.003,True,-0.0013628841
+66,TabICLv2,Thomas,3e-07,0.003,True,-0.0017071764
+67,TabICLv2,Vehicle Loan,3e-07,0.003,True,0.071598317
+85,TabICLv2,Bondora Peer-to-Peer,1e-06,0,True,0.00019097774
+86,TabICLv2,Cobranded,1e-06,0,True,-0.00034289135
+87,TabICLv2,Credit Risk,1e-06,0,True,-0.0052557465
+88,TabICLv2,GMSC,1e-06,0,True,-0.00060877858
+89,TabICLv2,German Credit,1e-06,0,True,0.0010959233
+90,TabICLv2,HMEQ,1e-06,0,True,3.5803468e-05
+91,TabICLv2,Hackerearth,1e-06,0,True,-0.0066702244
+92,TabICLv2,Home Credit,1e-06,0,True,-0.0013224896
+93,TabICLv2,LendingClub,1e-06,0,True,0.00020255877
+94,TabICLv2,MicroFinance,1e-06,0,True,-0.00037872934
+95,TabICLv2,Myhom,1e-06,0,True,0.015460247
+96,TabICLv2,PropPD1,1e-06,0,True,-0.0053109616
+97,TabICLv2,PropPD2,1e-06,0,True,-0.00047817164
+98,TabICLv2,SBA Loans Case,1e-06,0,True,7.3801012e-05
+99,TabICLv2,Taiwan Credit Card,1e-06,0,True,-0.0011195847
+100,TabICLv2,Thomas,1e-06,0,True,-0.0026235775
+101,TabICLv2,Vehicle Loan,1e-06,0,True,0.070288281
+119,TabICLv2,Bondora Peer-to-Peer,1e-06,0.003,True,0.00015940321
+120,TabICLv2,Cobranded,1e-06,0.003,True,-0.00036467931
+121,TabICLv2,Credit Risk,1e-06,0.003,True,-0.0047350647
+122,TabICLv2,GMSC,1e-06,0.003,True,-0.00050951989
+123,TabICLv2,German Credit,1e-06,0.003,True,0.00076156218
+124,TabICLv2,HMEQ,1e-06,0.003,True,-0.00011888015
+125,TabICLv2,Hackerearth,1e-06,0.003,True,-0.0074188621
+126,TabICLv2,Home Credit,1e-06,0.003,True,-0.00149375
+127,TabICLv2,LendingClub,1e-06,0.003,True,0.00016632851
+128,TabICLv2,MicroFinance,1e-06,0.003,True,1.0844225e-05
+129,TabICLv2,Myhom,1e-06,0.003,True,0.01558801
+130,TabICLv2,PropPD1,1e-06,0.003,True,-0.0055676469
+131,TabICLv2,PropPD2,1e-06,0.003,True,-0.00056853212
+132,TabICLv2,SBA Loans Case,1e-06,0.003,True,0.00018476841
+133,TabICLv2,Taiwan Credit Card,1e-06,0.003,True,-0.0010841174
+134,TabICLv2,Thomas,1e-06,0.003,True,-0.0022481938
+135,TabICLv2,Vehicle Loan,1e-06,0.003,True,0.070869013
+153,TabICLv2,Bondora Peer-to-Peer,1e-05,0,True,0.00043318618
+154,TabICLv2,Cobranded,1e-05,0,True,-0.00074123184
+155,TabICLv2,Credit Risk,1e-05,0,True,-0.010964931
+156,TabICLv2,GMSC,1e-05,0,True,-0.002021733
+157,TabICLv2,German Credit,1e-05,0,True,-0.0018103803
+158,TabICLv2,HMEQ,1e-05,0,True,-0.0030696325
+159,TabICLv2,Hackerearth,1e-05,0,True,-0.035055067
+160,TabICLv2,Home Credit,1e-05,0,True,-0.0042482679
+161,TabICLv2,LendingClub,1e-05,0,True,0.0011469039
+162,TabICLv2,MicroFinance,1e-05,0,True,-0.00328867
+163,TabICLv2,Myhom,1e-05,0,True,0.015525935
+164,TabICLv2,PropPD1,1e-05,0,True,0.00067801677
+165,TabICLv2,PropPD2,1e-05,0,True,-0.0032669962
+166,TabICLv2,SBA Loans Case,1e-05,0,True,0.00010051378
+167,TabICLv2,Taiwan Credit Card,1e-05,0,True,-0.0020486398
+168,TabICLv2,Thomas,1e-05,0,True,-0.0059839212
+169,TabICLv2,Vehicle Loan,1e-05,0,True,0.068600205
+187,TabICLv2,Bondora Peer-to-Peer,1e-05,0.003,True,0.00056714576
+188,TabICLv2,Cobranded,1e-05,0.003,True,-0.00072021883
+189,TabICLv2,Credit Risk,1e-05,0.003,True,-0.01434169
+190,TabICLv2,GMSC,1e-05,0.003,True,-0.0012695164
+191,TabICLv2,German Credit,1e-05,0.003,True,-0.0013221994
+192,TabICLv2,HMEQ,1e-05,0.003,True,-0.0015077962
+193,TabICLv2,Hackerearth,1e-05,0.003,True,-0.025887778
+194,TabICLv2,Home Credit,1e-05,0.003,True,-0.0036078278
+195,TabICLv2,LendingClub,1e-05,0.003,True,0.00060180872
+196,TabICLv2,MicroFinance,1e-05,0.003,True,-0.0029755223
+197,TabICLv2,Myhom,1e-05,0.003,True,0.015988095
+198,TabICLv2,PropPD1,1e-05,0.003,True,0.00084963846
+199,TabICLv2,PropPD2,1e-05,0.003,True,-0.0024952932
+200,TabICLv2,SBA Loans Case,1e-05,0.003,True,0.00030332863
+201,TabICLv2,Taiwan Credit Card,1e-05,0.003,True,-0.0018619886
+202,TabICLv2,Thomas,1e-05,0.003,True,-0.0024278403
+203,TabICLv2,Vehicle Loan,1e-05,0.003,True,0.069408869
+221,TabICLv2,Bondora Peer-to-Peer,3e-05,0,True,0.00048377335
+222,TabICLv2,Cobranded,3e-05,0,True,-0.0012174951
+223,TabICLv2,Credit Risk,3e-05,0,True,-0.024100796
+224,TabICLv2,GMSC,3e-05,0,True,-0.0047129549
+225,TabICLv2,German Credit,3e-05,0,True,-0.0021764303
+226,TabICLv2,HMEQ,3e-05,0,True,-0.0031590891
+227,TabICLv2,Hackerearth,3e-05,0,True,-0.053412592
+228,TabICLv2,Home Credit,3e-05,0,True,-0.0054988576
+229,TabICLv2,LendingClub,3e-05,0,True,-0.0032965847
+230,TabICLv2,MicroFinance,3e-05,0,True,-0.0073555285
+231,TabICLv2,Myhom,3e-05,0,True,0.0082721088
+232,TabICLv2,PropPD1,3e-05,0,True,-0.00089196379
+233,TabICLv2,PropPD2,3e-05,0,True,-0.0033375953
+234,TabICLv2,SBA Loans Case,3e-05,0,True,0.00012627598
+235,TabICLv2,Taiwan Credit Card,3e-05,0,True,-0.002500453
+236,TabICLv2,Thomas,3e-05,0,True,-0.0067366069
+237,TabICLv2,Vehicle Loan,3e-05,0,True,0.06688232
+255,TabICLv2,Bondora Peer-to-Peer,3e-05,0.003,True,9.8741098e-05
+256,TabICLv2,Cobranded,3e-05,0.003,True,-0.00068138215
+257,TabICLv2,Credit Risk,3e-05,0.003,True,-0.013055284
+258,TabICLv2,GMSC,3e-05,0.003,True,-0.0025991529
+259,TabICLv2,German Credit,3e-05,0.003,True,-0.0043830079
+260,TabICLv2,HMEQ,3e-05,0.003,True,-0.0011335806
+261,TabICLv2,Hackerearth,3e-05,0.003,True,-0.047786472
+262,TabICLv2,Home Credit,3e-05,0.003,True,-0.0046751009
+263,TabICLv2,LendingClub,3e-05,0.003,True,-0.0015059634
+264,TabICLv2,MicroFinance,3e-05,0.003,True,-0.0033700646
+265,TabICLv2,Myhom,3e-05,0.003,True,0.013005952
+266,TabICLv2,PropPD1,3e-05,0.003,True,-0.00015699003
+267,TabICLv2,PropPD2,3e-05,0.003,True,-0.0023639471
+268,TabICLv2,SBA Loans Case,3e-05,0.003,True,-0.00037226374
+269,TabICLv2,Taiwan Credit Card,3e-05,0.003,True,-0.0013812026
+270,TabICLv2,Thomas,3e-05,0.003,True,-0.0012153634
+271,TabICLv2,Vehicle Loan,3e-05,0.003,True,0.067793503
+289,TabPFN v2,Bondora Peer-to-Peer,3e-07,0,True,-9.8757617e-05
+290,TabPFN v2,Cobranded,3e-07,0,True,2.8291316e-05
+291,TabPFN v2,Credit Risk,3e-07,0,True,1.5799852e-05
+292,TabPFN v2,GMSC,3e-07,0,True,1.1008617e-05
+293,TabPFN v2,German Credit,3e-07,0,True,5.9009935e-05
+294,TabPFN v2,HMEQ,3e-07,0,True,-2.1611654e-05
+295,TabPFN v2,Hackerearth,3e-07,0,True,-0.00012716542
+296,TabPFN v2,Home Credit,3e-07,0,True,-3.0384229e-05
+297,TabPFN v2,LendingClub,3e-07,0,True,0.00011492618
+298,TabPFN v2,MicroFinance,3e-07,0,True,-1.1479529e-05
+299,TabPFN v2,Myhom,3e-07,0,True,4.1666667e-05
+300,TabPFN v2,PropPD1,3e-07,0,True,0.00047096918
+301,TabPFN v2,PropPD2,3e-07,0,True,2.9886889e-05
+302,TabPFN v2,SBA Loans Case,3e-07,0,True,4.6277458e-05
+303,TabPFN v2,Taiwan Credit Card,3e-07,0,True,4.4790636e-05
+304,TabPFN v2,Thomas,3e-07,0,True,0.00011085435
+305,TabPFN v2,Vehicle Loan,3e-07,0,True,4.2863513e-05
+323,TabPFN v2,Bondora Peer-to-Peer,3e-07,0.003,True,-9.7583164e-05
+324,TabPFN v2,Cobranded,3e-07,0.003,True,3.1558223e-05
+325,TabPFN v2,Credit Risk,3e-07,0.003,True,1.8408156e-05
+326,TabPFN v2,GMSC,3e-07,0.003,True,8.5177319e-06
+327,TabPFN v2,German Credit,3e-07,0.003,True,0.00013069544
+328,TabPFN v2,HMEQ,3e-07,0.003,True,-1.4134149e-05
+329,TabPFN v2,Hackerearth,3e-07,0.003,True,-0.00011592307
+330,TabPFN v2,Home Credit,3e-07,0.003,True,-3.037532e-05
+331,TabPFN v2,LendingClub,3e-07,0.003,True,8.3073619e-05
+332,TabPFN v2,MicroFinance,3e-07,0.003,True,-1.5445918e-05
+333,TabPFN v2,Myhom,3e-07,0.003,True,2.5085034e-05
+334,TabPFN v2,PropPD1,3e-07,0.003,True,0.00043532871
+335,TabPFN v2,PropPD2,3e-07,0.003,True,2.9984165e-05
+336,TabPFN v2,SBA Loans Case,3e-07,0.003,True,5.6557593e-05
+337,TabPFN v2,Taiwan Credit Card,3e-07,0.003,True,3.7082777e-05
+338,TabPFN v2,Thomas,3e-07,0.003,True,5.9144355e-05
+339,TabPFN v2,Vehicle Loan,3e-07,0.003,True,5.0834277e-05
+357,TabPFN v2,Bondora Peer-to-Peer,1e-06,0,True,-0.00018254169
+358,TabPFN v2,Cobranded,1e-06,0,True,0.00011100266
+359,TabPFN v2,Credit Risk,1e-06,0,True,8.983897e-05
+360,TabPFN v2,GMSC,1e-06,0,True,1.5917414e-05
+361,TabPFN v2,German Credit,1e-06,0,True,0.00036904762
+362,TabPFN v2,HMEQ,1e-06,0,True,8.9812379e-05
+363,TabPFN v2,Hackerearth,1e-06,0,True,-0.00059700063
+364,TabPFN v2,Home Credit,1e-06,0,True,-6.697708e-05
+365,TabPFN v2,LendingClub,1e-06,0,True,0.00034255761
+366,TabPFN v2,MicroFinance,1e-06,0,True,1.9896427e-05
+367,TabPFN v2,Myhom,1e-06,0,True,0.00012585034
+368,TabPFN v2,PropPD1,1e-06,0,True,0.00051051481
+369,TabPFN v2,PropPD2,1e-06,0,True,3.5334256e-05
+370,TabPFN v2,SBA Loans Case,1e-06,0,True,2.5829328e-05
+371,TabPFN v2,Taiwan Credit Card,1e-06,0,True,0.00014517319
+372,TabPFN v2,Thomas,1e-06,0,True,0.00019615326
+373,TabPFN v2,Vehicle Loan,1e-06,0,True,0.00016438705
+391,TabPFN v2,Bondora Peer-to-Peer,1e-06,0.003,True,-0.00017365037
+392,TabPFN v2,Cobranded,1e-06,0.003,True,9.6758053e-05
+393,TabPFN v2,Credit Risk,1e-06,0.003,True,6.7386604e-05
+394,TabPFN v2,GMSC,1e-06,0.003,True,1.2183787e-05
+395,TabPFN v2,German Credit,1e-06,0.003,True,0.00026199041
+396,TabPFN v2,HMEQ,1e-06,0.003,True,5.4074947e-05
+397,TabPFN v2,Hackerearth,1e-06,0.003,True,-0.00051666838
+398,TabPFN v2,Home Credit,1e-06,0.003,True,-7.1800658e-05
+399,TabPFN v2,LendingClub,1e-06,0.003,True,0.00027404079
+400,TabPFN v2,MicroFinance,1e-06,0.003,True,3.778459e-05
+401,TabPFN v2,Myhom,1e-06,0.003,True,0.00010565476
+402,TabPFN v2,PropPD1,1e-06,0.003,True,0.00048358425
+403,TabPFN v2,PropPD2,1e-06,0.003,True,2.5904434e-05
+404,TabPFN v2,SBA Loans Case,1e-06,0.003,True,4.90057e-05
+405,TabPFN v2,Taiwan Credit Card,1e-06,0.003,True,0.00012327962
+406,TabPFN v2,Thomas,1e-06,0.003,True,0.00030734996
+407,TabPFN v2,Vehicle Loan,1e-06,0.003,True,0.00015144854
+425,TabPFN v2,Bondora Peer-to-Peer,1e-05,0,True,-0.0002177878
+426,TabPFN v2,Cobranded,1e-05,0,True,0.00060519956
+427,TabPFN v2,Credit Risk,1e-05,0,True,0.00012788311
+428,TabPFN v2,GMSC,1e-05,0,True,2.3321946e-05
+429,TabPFN v2,German Credit,1e-05,0,True,0.0014054471
+430,TabPFN v2,HMEQ,1e-05,0,True,0.00094341762
+431,TabPFN v2,Hackerearth,1e-05,0,True,-0.0022813747
+432,TabPFN v2,Home Credit,1e-05,0,True,-0.00039456162
+433,TabPFN v2,LendingClub,1e-05,0,True,0.0013170709
+434,TabPFN v2,MicroFinance,1e-05,0,True,0.0011061513
+435,TabPFN v2,Myhom,1e-05,0,True,0.00033248299
+436,TabPFN v2,PropPD1,1e-05,0,True,0.00094559319
+437,TabPFN v2,PropPD2,1e-05,0,True,-0.00033024643
+438,TabPFN v2,SBA Loans Case,1e-05,0,True,1.059629e-05
+439,TabPFN v2,Taiwan Credit Card,1e-05,0,True,0.00069818794
+440,TabPFN v2,Thomas,1e-05,0,True,0.0017253093
+441,TabPFN v2,Vehicle Loan,1e-05,0,True,0.00073250327
+459,TabPFN v2,Bondora Peer-to-Peer,1e-05,0.003,True,-0.00022585666
+460,TabPFN v2,Cobranded,1e-05,0.003,True,0.00040215781
+461,TabPFN v2,Credit Risk,1e-05,0.003,True,0.00015233423
+462,TabPFN v2,GMSC,1e-05,0.003,True,3.757185e-05
+463,TabPFN v2,German Credit,1e-05,0.003,True,0.00068996232
+464,TabPFN v2,HMEQ,1e-05,0.003,True,0.00069847561
+465,TabPFN v2,Hackerearth,1e-05,0.003,True,-0.0010059903
+466,TabPFN v2,Home Credit,1e-05,0.003,True,-0.00018100133
+467,TabPFN v2,LendingClub,1e-05,0.003,True,0.00091979316
+468,TabPFN v2,MicroFinance,1e-05,0.003,True,0.00059008261
+469,TabPFN v2,Myhom,1e-05,0.003,True,0.00019961735
+470,TabPFN v2,PropPD1,1e-05,0.003,True,0.00058606623
+471,TabPFN v2,PropPD2,1e-05,0.003,True,-0.00016338703
+472,TabPFN v2,SBA Loans Case,1e-05,0.003,True,5.3368414e-06
+473,TabPFN v2,Taiwan Credit Card,1e-05,0.003,True,0.00045939788
+474,TabPFN v2,Thomas,1e-05,0.003,True,0.0015764155
+475,TabPFN v2,Vehicle Loan,1e-05,0.003,True,0.00049403695
+493,TabPFN v2,Bondora Peer-to-Peer,3e-05,0,True,-0.00042016164
+494,TabPFN v2,Cobranded,3e-05,0,True,0.00084976132
+495,TabPFN v2,Credit Risk,3e-05,0,True,0.00013535162
+496,TabPFN v2,GMSC,3e-05,0,True,0.00012722744
+497,TabPFN v2,German Credit,3e-05,0,True,0.0031449126
+498,TabPFN v2,HMEQ,3e-05,0,True,0.0013161302
+499,TabPFN v2,Hackerearth,3e-05,0,True,-0.0030057606
+500,TabPFN v2,Home Credit,3e-05,0,True,-0.000100045
+501,TabPFN v2,LendingClub,3e-05,0,True,0.0018223713
+502,TabPFN v2,MicroFinance,3e-05,0,True,0.0015315678
+503,TabPFN v2,Myhom,3e-05,0,True,0.00070897109
+504,TabPFN v2,PropPD1,3e-05,0,True,0.0013057361
+505,TabPFN v2,PropPD2,3e-05,0,True,-0.0014927873
+506,TabPFN v2,SBA Loans Case,3e-05,0,True,-9.2129253e-05
+507,TabPFN v2,Taiwan Credit Card,3e-05,0,True,0.00062460198
+508,TabPFN v2,Thomas,3e-05,0,True,0.0029024974
+509,TabPFN v2,Vehicle Loan,3e-05,0,True,0.00096812211
+527,TabPFN v2,Bondora Peer-to-Peer,3e-05,0.003,True,-0.00027246349
+528,TabPFN v2,Cobranded,3e-05,0.003,True,0.00051830625
+529,TabPFN v2,Credit Risk,3e-05,0.003,True,0.00017047598
+530,TabPFN v2,GMSC,3e-05,0.003,True,0.00020638595
+531,TabPFN v2,German Credit,3e-05,0.003,True,0.0013695615
+532,TabPFN v2,HMEQ,3e-05,0.003,True,0.00095383626
+533,TabPFN v2,Hackerearth,3e-05,0.003,True,-0.00027532531
+534,TabPFN v2,Home Credit,3e-05,0.003,True,-5.1369339e-05
+535,TabPFN v2,LendingClub,3e-05,0.003,True,0.0011370133
+536,TabPFN v2,MicroFinance,3e-05,0.003,True,0.0007435592
+537,TabPFN v2,Myhom,3e-05,0.003,True,0.0003252551
+538,TabPFN v2,PropPD1,3e-05,0.003,True,0.00074617822
+539,TabPFN v2,PropPD2,3e-05,0.003,True,-0.00059453938
+540,TabPFN v2,SBA Loans Case,3e-05,0.003,True,-5.091368e-05
+541,TabPFN v2,Taiwan Credit Card,3e-05,0.003,True,0.00064070459
+542,TabPFN v2,Thomas,3e-05,0.003,True,0.0016650523
+543,TabPFN v2,Vehicle Loan,3e-05,0.003,True,0.00087389553
+561,TabPFN v2.6,Bondora Peer-to-Peer,3e-07,0,True,-7.8231528e-06
+562,TabPFN v2.6,Cobranded,3e-07,0,True,-1.0264214e-05
+563,TabPFN v2.6,Credit Risk,3e-07,0,True,-1.9369593e-05
+564,TabPFN v2.6,GMSC,3e-07,0,True,-9.6245445e-06
+565,TabPFN v2.6,German Credit,3e-07,0,True,-0.00027346694
+566,TabPFN v2.6,HMEQ,3e-07,0,True,-7.9402563e-06
+567,TabPFN v2.6,Hackerearth,3e-07,0,True,-6.6936852e-05
+568,TabPFN v2.6,Home Credit,3e-07,0,True,7.7791758e-06
+569,TabPFN v2.6,LendingClub,3e-07,0,True,8.2468933e-05
+570,TabPFN v2.6,MicroFinance,3e-07,0,True,3.3072385e-06
+571,TabPFN v2.6,Myhom,3e-07,0,True,-1.7219388e-05
+572,TabPFN v2.6,PropPD1,3e-07,0,True,-1.1908794e-05
+573,TabPFN v2.6,PropPD2,3e-07,0,True,-6.5199554e-05
+574,TabPFN v2.6,SBA Loans Case,3e-07,0,True,-3.0914641e-05
+575,TabPFN v2.6,Taiwan Credit Card,3e-07,0,True,2.7177116e-05
+576,TabPFN v2.6,Thomas,3e-07,0,True,0.00017119694
+577,TabPFN v2.6,Vehicle Loan,3e-07,0,True,-3.6909862e-05
+595,TabPFN v2.6,Bondora Peer-to-Peer,3e-07,0.003,True,-7.9239917e-06
+596,TabPFN v2.6,Cobranded,3e-07,0.003,True,-4.1898164e-06
+597,TabPFN v2.6,Credit Risk,3e-07,0.003,True,-5.5742657e-06
+598,TabPFN v2.6,GMSC,3e-07,0.003,True,-1.018256e-05
+599,TabPFN v2.6,German Credit,3e-07,0.003,True,-0.00035731415
+600,TabPFN v2.6,HMEQ,3e-07,0.003,True,-4.4196248e-06
+601,TabPFN v2.6,Hackerearth,3e-07,0.003,True,-6.1310139e-05
+602,TabPFN v2.6,Home Credit,3e-07,0.003,True,3.8392766e-06
+603,TabPFN v2.6,LendingClub,3e-07,0.003,True,0.00017633297
+604,TabPFN v2.6,MicroFinance,3e-07,0.003,True,6.6372474e-06
+605,TabPFN v2.6,Myhom,3e-07,0.003,True,2.997449e-05
+606,TabPFN v2.6,PropPD1,3e-07,0.003,True,-2.6103688e-05
+607,TabPFN v2.6,PropPD2,3e-07,0.003,True,-6.4246626e-05
+608,TabPFN v2.6,SBA Loans Case,3e-07,0.003,True,-3.6109463e-05
+609,TabPFN v2.6,Taiwan Credit Card,3e-07,0.003,True,4.6582232e-05
+610,TabPFN v2.6,Thomas,3e-07,0.003,True,-0.00031077348
+611,TabPFN v2.6,Vehicle Loan,3e-07,0.003,True,-3.6817797e-05
+629,TabPFN v2.6,Bondora Peer-to-Peer,1e-06,0,True,-2.6982952e-05
+630,TabPFN v2.6,Cobranded,1e-06,0,True,-2.328076e-05
+631,TabPFN v2.6,Credit Risk,1e-06,0,True,-0.0001472749
+632,TabPFN v2.6,GMSC,1e-06,0,True,-1.47207e-05
+633,TabPFN v2.6,German Credit,1e-06,0,True,-0.00026181912
+634,TabPFN v2.6,HMEQ,1e-06,0,True,-1.8523079e-05
+635,TabPFN v2.6,Hackerearth,1e-06,0,True,-0.00014999331
+636,TabPFN v2.6,Home Credit,1e-06,0,True,-9.8063407e-06
+637,TabPFN v2.6,LendingClub,1e-06,0,True,4.0500771e-05
+638,TabPFN v2.6,MicroFinance,1e-06,0,True,-2.8355922e-05
+639,TabPFN v2.6,Myhom,1e-06,0,True,2.7848639e-05
+640,TabPFN v2.6,PropPD1,1e-06,0,True,-0.0001097473
+641,TabPFN v2.6,PropPD2,1e-06,0,True,-2.479891e-05
+642,TabPFN v2.6,SBA Loans Case,1e-06,0,True,-7.2182599e-05
+643,TabPFN v2.6,Taiwan Credit Card,1e-06,0,True,-4.0575543e-06
+644,TabPFN v2.6,Thomas,1e-06,0,True,0.00029393623
+645,TabPFN v2.6,Vehicle Loan,1e-06,0,True,-3.4330192e-05
+663,TabPFN v2.6,Bondora Peer-to-Peer,1e-06,0.003,True,-2.3573515e-05
+664,TabPFN v2.6,Cobranded,1e-06,0.003,True,-6.134061e-06
+665,TabPFN v2.6,Credit Risk,1e-06,0.003,True,-0.00011910108
+666,TabPFN v2.6,GMSC,1e-06,0.003,True,-9.8293478e-06
+667,TabPFN v2.6,German Credit,1e-06,0.003,True,-9.5152449e-05
+668,TabPFN v2.6,HMEQ,1e-06,0.003,True,-1.235151e-05
+669,TabPFN v2.6,Hackerearth,1e-06,0.003,True,-0.00013435684
+670,TabPFN v2.6,Home Credit,1e-06,0.003,True,6.0154763e-06
+671,TabPFN v2.6,LendingClub,1e-06,0.003,True,0.00020305429
+672,TabPFN v2.6,MicroFinance,1e-06,0.003,True,-2.3174608e-05
+673,TabPFN v2.6,Myhom,1e-06,0.003,True,6.3562925e-05
+674,TabPFN v2.6,PropPD1,1e-06,0.003,True,-7.7478347e-05
+675,TabPFN v2.6,PropPD2,1e-06,0.003,True,-5.4711092e-06
+676,TabPFN v2.6,SBA Loans Case,1e-06,0.003,True,-5.6781876e-05
+677,TabPFN v2.6,Taiwan Credit Card,1e-06,0.003,True,-1.2476721e-07
+678,TabPFN v2.6,Thomas,1e-06,0.003,True,-8.435744e-05
+679,TabPFN v2.6,Vehicle Loan,1e-06,0.003,True,-5.9038986e-05
+697,TabPFN v2.6,Bondora Peer-to-Peer,1e-05,0,True,-0.00017052243
+698,TabPFN v2.6,Cobranded,1e-05,0,True,-8.3506215e-05
+699,TabPFN v2.6,Credit Risk,1e-05,0,True,-0.00053416378
+700,TabPFN v2.6,GMSC,1e-05,0,True,-9.2826934e-05
+701,TabPFN v2.6,German Credit,1e-05,0,True,-0.00070152449
+702,TabPFN v2.6,HMEQ,1e-05,0,True,-4.183645e-05
+703,TabPFN v2.6,Hackerearth,1e-05,0,True,-0.00049443016
+704,TabPFN v2.6,Home Credit,1e-05,0,True,-0.00011579652
+705,TabPFN v2.6,LendingClub,1e-05,0,True,0.00025125125
+706,TabPFN v2.6,MicroFinance,1e-05,0,True,-0.00021919966
+707,TabPFN v2.6,Myhom,1e-05,0,True,0.00024255952
+708,TabPFN v2.6,PropPD1,1e-05,0,True,-0.000184858
+709,TabPFN v2.6,PropPD2,1e-05,0,True,-0.0003262642
+710,TabPFN v2.6,SBA Loans Case,1e-05,0,True,-3.3514158e-05
+711,TabPFN v2.6,Taiwan Credit Card,1e-05,0,True,-0.00012719583
+712,TabPFN v2.6,Thomas,1e-05,0,True,0.0011028327
+713,TabPFN v2.6,Vehicle Loan,1e-05,0,True,-0.00028179434
+731,TabPFN v2.6,Bondora Peer-to-Peer,1e-05,0.003,True,-9.1939635e-05
+732,TabPFN v2.6,Cobranded,1e-05,0.003,True,-5.0935071e-05
+733,TabPFN v2.6,Credit Risk,1e-05,0.003,True,-0.00038067086
+734,TabPFN v2.6,GMSC,1e-05,0.003,True,-5.731755e-05
+735,TabPFN v2.6,German Credit,1e-05,0.003,True,-0.0010121617
+736,TabPFN v2.6,HMEQ,1e-05,0.003,True,-2.0693128e-05
+737,TabPFN v2.6,Hackerearth,1e-05,0.003,True,-0.00042820983
+738,TabPFN v2.6,Home Credit,1e-05,0.003,True,-4.4559413e-05
+739,TabPFN v2.6,LendingClub,1e-05,0.003,True,0.00022924834
+740,TabPFN v2.6,MicroFinance,1e-05,0.003,True,-0.00012176912
+741,TabPFN v2.6,Myhom,1e-05,0.003,True,0.00013116497
+742,TabPFN v2.6,PropPD1,1e-05,0.003,True,-8.3425158e-05
+743,TabPFN v2.6,PropPD2,1e-05,0.003,True,-0.00031328189
+744,TabPFN v2.6,SBA Loans Case,1e-05,0.003,True,-1.5477064e-05
+745,TabPFN v2.6,Taiwan Credit Card,1e-05,0.003,True,-5.3350769e-05
+746,TabPFN v2.6,Thomas,1e-05,0.003,True,0.00040350675
+747,TabPFN v2.6,Vehicle Loan,1e-05,0.003,True,-0.00022464171
+765,TabPFN v2.6,Bondora Peer-to-Peer,3e-05,0,True,-0.00033750976
+766,TabPFN v2.6,Cobranded,3e-05,0,True,-0.00015515504
+767,TabPFN v2.6,Credit Risk,3e-05,0,True,-0.00062240508
+768,TabPFN v2.6,GMSC,3e-05,0,True,-0.00020453235
+769,TabPFN v2.6,German Credit,3e-05,0,True,-0.00081911614
+770,TabPFN v2.6,HMEQ,3e-05,0,True,4.5033852e-05
+771,TabPFN v2.6,Hackerearth,3e-05,0,True,-0.00077499149
+772,TabPFN v2.6,Home Credit,3e-05,0,True,-0.0003226877
+773,TabPFN v2.6,LendingClub,3e-05,0,True,0.00040492634
+774,TabPFN v2.6,MicroFinance,3e-05,0,True,-0.00041885116
+775,TabPFN v2.6,Myhom,3e-05,0,True,0.00027487245
+776,TabPFN v2.6,PropPD1,3e-05,0,True,1.2747422e-05
+777,TabPFN v2.6,PropPD2,3e-05,0,True,-0.00037850623
+778,TabPFN v2.6,SBA Loans Case,3e-05,0,True,-2.3518587e-05
+779,TabPFN v2.6,Taiwan Credit Card,3e-05,0,True,-0.00015557336
+780,TabPFN v2.6,Thomas,3e-05,0,True,0.0010680455
+781,TabPFN v2.6,Vehicle Loan,3e-05,0,True,-0.00045593585
+799,TabPFN v2.6,Bondora Peer-to-Peer,3e-05,0.003,True,-0.00012228236
+800,TabPFN v2.6,Cobranded,3e-05,0.003,True,-5.4295069e-05
+801,TabPFN v2.6,Credit Risk,3e-05,0.003,True,-0.00039532424
+802,TabPFN v2.6,GMSC,3e-05,0.003,True,-0.000103368
+803,TabPFN v2.6,German Credit,3e-05,0.003,True,-0.00067857143
+804,TabPFN v2.6,HMEQ,3e-05,0.003,True,2.2426e-06
+805,TabPFN v2.6,Hackerearth,3e-05,0.003,True,-0.00055568849
+806,TabPFN v2.6,Home Credit,3e-05,0.003,True,-8.3354469e-05
+807,TabPFN v2.6,LendingClub,3e-05,0.003,True,-0.00014672383
+808,TabPFN v2.6,MicroFinance,3e-05,0.003,True,-0.00018254548
+809,TabPFN v2.6,Myhom,3e-05,0.003,True,0.0002485119
+810,TabPFN v2.6,PropPD1,3e-05,0.003,True,0.00010302499
+811,TabPFN v2.6,PropPD2,3e-05,0.003,True,-0.00025666194
+812,TabPFN v2.6,SBA Loans Case,3e-05,0.003,True,-1.7974048e-05
+813,TabPFN v2.6,Taiwan Credit Card,3e-05,0.003,True,-6.5625321e-05
+814,TabPFN v2.6,Thomas,3e-05,0.003,True,0.00066197112
+815,TabPFN v2.6,Vehicle Loan,3e-05,0.003,True,-0.00033098967
+833,TabPFN v3,Bondora Peer-to-Peer,3e-07,0,True,-5.6451165e-05
+834,TabPFN v3,Cobranded,3e-07,0,True,0.00034370703
+835,TabPFN v3,Credit Risk,3e-07,0,True,1.3554758e-05
+836,TabPFN v3,GMSC,3e-07,0,True,-0.00011484664
+837,TabPFN v3,German Credit,3e-07,0,True,0.0021646112
+838,TabPFN v3,HMEQ,3e-07,0,True,-0.00012959179
+839,TabPFN v3,Hackerearth,3e-07,0,True,-0.0018670509
+840,TabPFN v3,Home Credit,3e-07,0,True,0.00085166177
+841,TabPFN v3,LendingClub,3e-07,0,True,0.00094901527
+842,TabPFN v3,MicroFinance,3e-07,0,True,0.001075057
+843,TabPFN v3,Myhom,3e-07,0,True,0.00041751701
+844,TabPFN v3,PropPD1,3e-07,0,True,0.001399299
+845,TabPFN v3,PropPD2,3e-07,0,True,0.0019074781
+846,TabPFN v3,SBA Loans Case,3e-07,0,True,0.00050500047
+847,TabPFN v3,Taiwan Credit Card,3e-07,0,True,0.00033762509
+848,TabPFN v3,Thomas,3e-07,0,True,0.0016152489
+849,TabPFN v3,Vehicle Loan,3e-07,0,True,0.00035775854
+867,TabPFN v3,Bondora Peer-to-Peer,3e-07,0.003,True,3.3538653e-05
+868,TabPFN v3,Cobranded,3e-07,0.003,True,0.00032734001
+869,TabPFN v3,Credit Risk,3e-07,0.003,True,0.00017055715
+870,TabPFN v3,GMSC,3e-07,0.003,True,-0.00013076192
+871,TabPFN v3,German Credit,3e-07,0.003,True,0.0020695444
+872,TabPFN v3,HMEQ,3e-07,0.003,True,-0.0001392812
+873,TabPFN v3,Hackerearth,3e-07,0.003,True,-0.0017455955
+874,TabPFN v3,Home Credit,3e-07,0.003,True,0.00080004787
+875,TabPFN v3,LendingClub,3e-07,0.003,True,0.00094251192
+876,TabPFN v3,MicroFinance,3e-07,0.003,True,0.0011775906
+877,TabPFN v3,Myhom,3e-07,0.003,True,0.00040136054
+878,TabPFN v3,PropPD1,3e-07,0.003,True,0.0013679996
+879,TabPFN v3,PropPD2,3e-07,0.003,True,0.0019255793
+880,TabPFN v3,SBA Loans Case,3e-07,0.003,True,0.00052051439
+881,TabPFN v3,Taiwan Credit Card,3e-07,0.003,True,0.00033066627
+882,TabPFN v3,Thomas,3e-07,0.003,True,0.0017015748
+883,TabPFN v3,Vehicle Loan,3e-07,0.003,True,0.00049498713
+901,TabPFN v3,Bondora Peer-to-Peer,1e-06,0,True,0.00025506882
+902,TabPFN v3,Cobranded,1e-06,0,True,0.00037172068
+903,TabPFN v3,Credit Risk,1e-06,0,True,0.00093565686
+904,TabPFN v3,GMSC,1e-06,0,True,-0.00030778107
+905,TabPFN v3,German Credit,1e-06,0,True,0.0037627612
+906,TabPFN v3,HMEQ,1e-06,0,True,-0.00032710154
+907,TabPFN v3,Hackerearth,1e-06,0,True,-0.003286462
+908,TabPFN v3,Home Credit,1e-06,0,True,0.00017963706
+909,TabPFN v3,LendingClub,1e-06,0,True,0.0012215516
+910,TabPFN v3,MicroFinance,1e-06,0,True,-1.8894223e-05
+911,TabPFN v3,Myhom,1e-06,0,True,0.00071534864
+912,TabPFN v3,PropPD1,1e-06,0,True,0.001328567
+913,TabPFN v3,PropPD2,1e-06,0,True,0.0014865881
+914,TabPFN v3,SBA Loans Case,1e-06,0,True,0.00033550591
+915,TabPFN v3,Taiwan Credit Card,1e-06,0,True,-0.0039051042
+916,TabPFN v3,Thomas,1e-06,0,True,-0.0023757024
+917,TabPFN v3,Vehicle Loan,1e-06,0,True,-0.0097668675
+935,TabPFN v3,Bondora Peer-to-Peer,1e-06,0.003,True,-2.9082493e-05
+936,TabPFN v3,Cobranded,1e-06,0.003,True,0.00037896302
+937,TabPFN v3,Credit Risk,1e-06,0.003,True,0.0012512061
+938,TabPFN v3,GMSC,1e-06,0.003,True,-0.00033060226
+939,TabPFN v3,German Credit,1e-06,0.003,True,0.0032141144
+940,TabPFN v3,HMEQ,1e-06,0.003,True,-0.00028302528
+941,TabPFN v3,Hackerearth,1e-06,0.003,True,-0.0030229881
+942,TabPFN v3,Home Credit,1e-06,0.003,True,4.8864432e-05
+943,TabPFN v3,LendingClub,1e-06,0.003,True,0.0009507645
+944,TabPFN v3,MicroFinance,1e-06,0.003,True,0.00012715705
+945,TabPFN v3,Myhom,1e-06,0.003,True,0.00072151361
+946,TabPFN v3,PropPD1,1e-06,0.003,True,0.0013945678
+947,TabPFN v3,PropPD2,1e-06,0.003,True,0.0015640153
+948,TabPFN v3,SBA Loans Case,1e-06,0.003,True,0.00029367303
+949,TabPFN v3,Taiwan Credit Card,1e-06,0.003,True,-0.0037107645
+950,TabPFN v3,Thomas,1e-06,0.003,True,-0.0021565614
+951,TabPFN v3,Vehicle Loan,1e-06,0.003,True,-0.011037904
+969,TabPFN v3,Bondora Peer-to-Peer,1e-05,0,True,-0.013389355
+970,TabPFN v3,Cobranded,1e-05,0,True,-0.001106661
+971,TabPFN v3,Credit Risk,1e-05,0,True,-0.0094599078
+972,TabPFN v3,GMSC,1e-05,0,True,-0.00064766054
+973,TabPFN v3,German Credit,1e-05,0,True,-0.0079808153
+974,TabPFN v3,HMEQ,1e-05,0,True,-0.0006758087
+975,TabPFN v3,Hackerearth,1e-05,0,True,-0.018535458
+976,TabPFN v3,Home Credit,1e-05,0,True,-0.0058546492
+977,TabPFN v3,LendingClub,1e-05,0,True,0.0022606751
+978,TabPFN v3,MicroFinance,1e-05,0,True,-0.003455339
+979,TabPFN v3,Myhom,1e-05,0,True,-0.00037627551
+980,TabPFN v3,PropPD1,1e-05,0,True,-0.0029621993
+981,TabPFN v3,PropPD2,1e-05,0,True,-0.00043907839
+982,TabPFN v3,SBA Loans Case,1e-05,0,True,-0.0011488341
+983,TabPFN v3,Taiwan Credit Card,1e-05,0,True,-0.0018071833
+984,TabPFN v3,Thomas,1e-05,0,True,-0.013696321
+985,TabPFN v3,Vehicle Loan,1e-05,0,True,-0.0034891639
+1003,TabPFN v3,Bondora Peer-to-Peer,1e-05,0.003,True,-0.0043212302
+1004,TabPFN v3,Cobranded,1e-05,0.003,True,-0.0011243168
+1005,TabPFN v3,Credit Risk,1e-05,0.003,True,-0.010471806
+1006,TabPFN v3,GMSC,1e-05,0.003,True,-0.00062794813
+1007,TabPFN v3,German Credit,1e-05,0.003,True,-0.012931141
+1008,TabPFN v3,HMEQ,1e-05,0.003,True,-0.00058082699
+1009,TabPFN v3,Hackerearth,1e-05,0.003,True,-0.016583804
+1010,TabPFN v3,Home Credit,1e-05,0.003,True,-0.0074468658
+1011,TabPFN v3,LendingClub,1e-05,0.003,True,0.0020183063
+1012,TabPFN v3,MicroFinance,1e-05,0.003,True,-0.0035572711
+1013,TabPFN v3,Myhom,1e-05,0.003,True,-0.00061819728
+1014,TabPFN v3,PropPD1,1e-05,0.003,True,-0.001801447
+1015,TabPFN v3,PropPD2,1e-05,0.003,True,-0.00064876513
+1016,TabPFN v3,SBA Loans Case,1e-05,0.003,True,-0.00078556062
+1017,TabPFN v3,Taiwan Credit Card,1e-05,0.003,True,-0.0010082999
+1018,TabPFN v3,Thomas,1e-05,0.003,True,-0.011573848
+1019,TabPFN v3,Vehicle Loan,1e-05,0.003,True,-0.0014030765
+1037,TabPFN v3,Bondora Peer-to-Peer,3e-05,0,True,-0.002806646
+1038,TabPFN v3,Cobranded,3e-05,0,True,-0.0022508427
+1039,TabPFN v3,Credit Risk,3e-05,0,True,-0.016328272
+1040,TabPFN v3,GMSC,3e-05,0,True,-0.0074366875
+1041,TabPFN v3,German Credit,3e-05,0,True,-0.021918465
+1042,TabPFN v3,HMEQ,3e-05,0,True,-0.0016450762
+1043,TabPFN v3,Hackerearth,3e-05,0,True,-0.036720703
+1044,TabPFN v3,Home Credit,3e-05,0,True,-0.021560987
+1045,TabPFN v3,LendingClub,3e-05,0,True,-0.0035002476
+1046,TabPFN v3,MicroFinance,3e-05,0,True,-0.0064000643
+1047,TabPFN v3,Myhom,3e-05,0,True,-0.0025136054
+1048,TabPFN v3,PropPD1,3e-05,0,True,-0.0015082919
+1049,TabPFN v3,PropPD2,3e-05,0,True,-0.0072419014
+1050,TabPFN v3,SBA Loans Case,3e-05,0,True,-0.003084966
+1051,TabPFN v3,Taiwan Credit Card,3e-05,0,True,-0.0034502705
+1052,TabPFN v3,Thomas,3e-05,0,True,-0.061270872
+1053,TabPFN v3,Vehicle Loan,3e-05,0,True,-0.0060019466
+1071,TabPFN v3,Bondora Peer-to-Peer,3e-05,0.003,True,-0.033531633
+1072,TabPFN v3,Cobranded,3e-05,0.003,True,-0.0021266907
+1073,TabPFN v3,Credit Risk,3e-05,0.003,True,-0.014382241
+1074,TabPFN v3,GMSC,3e-05,0.003,True,-0.0043532009
+1075,TabPFN v3,German Credit,3e-05,0.003,True,-0.03088592
+1076,TabPFN v3,HMEQ,3e-05,0.003,True,-0.00084424185
+1077,TabPFN v3,Hackerearth,3e-05,0.003,True,-0.028613246
+1078,TabPFN v3,Home Credit,3e-05,0.003,True,-0.0097675649
+1079,TabPFN v3,LendingClub,3e-05,0.003,True,-0.00016974228
+1080,TabPFN v3,MicroFinance,3e-05,0.003,True,-0.0038554484
+1081,TabPFN v3,Myhom,3e-05,0.003,True,-0.0004275085
+1082,TabPFN v3,PropPD1,3e-05,0.003,True,-0.0020392752
+1083,TabPFN v3,PropPD2,3e-05,0.003,True,-0.0027606989
+1084,TabPFN v3,SBA Loans Case,3e-05,0.003,True,-0.0034800196
+1085,TabPFN v3,Taiwan Credit Card,3e-05,0.003,True,-0.01172566
+1086,TabPFN v3,Thomas,3e-05,0.003,True,-0.026037659
+1087,TabPFN v3,Vehicle Loan,3e-05,0.003,True,-0.0026957852
+
 Figure: pd_conservative_recipes_credit_roc_auc
-PD. Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates (3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to the same model's original weights, after averaging five folds within each table. 17 complete tables per model. Color denotes rate and marker shape denotes L2-SP strength. Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale that retains all displayed means and zero; positive values favor CPT. This focused mean view does not show uncertainty or table spread, and does not imply every table improves. The full grid retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+PD. Experiment 1, final five-fold benchmark on held-out credit tables, at the two lowest peak learning rates (3e-7 and 1e-6). All anchoring and update-scope combinations at these rates are shown; none is selected by its outcome. Values are auc change (percentage points), CPT minus the original model of the same base. Markers give the equal-table mean (colour: learning rate; circle λ = 0, square λ = 0.003), vertical ticks the median table and horizontal segments the table interquartile range (heterogeneity across tables, not a confidence interval). 17 complete tables per model. Five outer folds are averaged within table. Vertical offsets only separate settings. Both panels share one horizontal scale; positive values favour CPT. A mean far from its median indicates that a few tables drive the average.
 Every low-rate paired table effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -70362,7 +71462,7 @@ row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25
 31,credit,roc_auc,TabPFN v3,1e-06,0.003,True,one_sample,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,17,10,-0.062506406
 
 Figure: pd_benchmark_transfer_retention
-PD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 17 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. TabICLv2 PD effects retain the selected-table numerical-policy qualification.
+PD. Experiment 1, final five-fold benchmark: each mark is one of the 16 recipes, placed at its equal-table mean change on held-out credit tables (horizontal) and on the same-task non-credit retention panel (vertical), both relative to the original model of the same base. Credit: 17 complete tables per model. Non-credit: 4 complete tables per model. Colour encodes peak learning rate, circle/square L2-SP λ = 0/0.003, filled/open all-weights/frozen-backbone updates. The upper-right quadrant improves both domains; the lower-right gains on credit while losing on the retention panel. Non-credit effects first average all four CPT training partitions per table. Axis limits differ between models; coinciding recipes overlap. A four-table retention panel does not establish general retention.
 Matched credit and retention recipe means
 CSV (first column: row index)
 row,domain_credit,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean_credit,median_credit,q25_credit,q75_credit,tables_credit,improved_credit,domain_retention,mean_retention,median_retention,q25_retention,q75_retention,tables_retention,improved_retention
@@ -70430,6 +71530,82 @@ row,domain_credit,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean_cre
 61,credit,roc_auc,TabPFN v3,3e-05,0,True,one_sample,-0.012096461,-0.0060019466,-0.016328272,-0.002806646,17,0,ood,-0.052972883,-0.042763911,-0.087460487,-0.0082763073,4,0
 62,credit,roc_auc,TabPFN v3,3e-05,0.003,False,one_sample,-0.020636044,-0.01387958,-0.033507039,-0.0050269582,17,0,ood,-0.040499306,-0.040626737,-0.064352798,-0.016773245,4,0
 63,credit,roc_auc,TabPFN v3,3e-05,0.003,True,one_sample,-0.010452737,-0.0038554484,-0.014382241,-0.0021266907,17,0,ood,-0.038202395,-0.028161875,-0.060102407,-0.0062618628,4,0
+
+Table: Every recipe: original and adapted scores, paired change and table/fold consistency
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.7926129,0.0008226641,-0.002021733,-0.00328867,0.00043318618,-0.035055067,0.068600205,3,4,10,26,85,0.17647059
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77931162,0.00039701141,0.00060519956,1.059629e-05,0.00094559319,-0.0022813747,0.0017253093,4,12,1,55,85,0.23529412
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79213501,-0.00010651704,-0.00012719583,-0.00028179434,-4.183645e-05,-0.00070152449,0.0011028327,1,16,0,21,85,0.058823529
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79330144,-0.0048684727,-0.0029621993,-0.0079808153,-0.0006758087,-0.018535458,0.0022606751,1,4,12,11,85,0.058823529
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79351383,0.0017236009,-0.0013221994,-0.0024952932,0.00056714576,-0.025887778,0.069408869,2,5,10,30,85,0.11764706
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77922255,0.00030794194,0.00040215781,5.3368414e-06,0.00059008261,-0.0010059903,0.0015764155,1,15,1,54,85,0.058823529
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79211597,-0.00012555958,-5.731755e-05,-0.00022464171,-2.0693128e-05,-0.0010121617,0.00040350675,0,16,1,22,85,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79384837,-0.0043215352,-0.0014030765,-0.0074468658,-0.00064876513,-0.016583804,0.0020183063,1,5,11,10,85,0.058823529
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79551002,0.0037197904,-0.00037872934,-0.0013224896,0.00019097774,-0.0066702244,0.070288281,3,8,6,28,85,0.17647059
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77899666,8.2046818e-05,8.983897e-05,1.9896427e-05,0.00016438705,-0.00059700063,0.00051051481,0,17,0,57,85,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79220837,-3.3152236e-05,-2.479891e-05,-7.2182599e-05,-9.8063407e-06,-0.00026181912,0.00029393623,0,17,0,22,85,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79761723,-0.00055267688,0.00025506882,-0.00032710154,0.00093565686,-0.0097668675,0.0037627612,4,9,4,45,85,0.23529412
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79553321,0.0037429814,-0.00036467931,-0.00149375,0.00016632851,-0.0074188621,0.070869013,2,9,6,27,85,0.11764706
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77899039,7.5783944e-05,6.7386604e-05,2.5904434e-05,0.00015144854,-0.00051666838,0.00048358425,0,17,0,59,85,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79221598,-2.5546661e-05,-2.3174608e-05,-7.7478347e-05,-5.4711092e-06,-0.00013435684,0.00020305429,0,17,0,29,85,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79754484,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,-0.011037904,0.0032141144,4,9,4,43,85,0.23529412
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.78928244,-0.0025077923,-0.0031590891,-0.0054988576,-0.00089196379,-0.053412592,0.06688232,2,3,12,20,85,0.11764706
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77952204,0.00060743336,0.00070897109,-9.2129253e-05,0.0013161302,-0.0030057606,0.0031449126,6,9,2,57,85,0.35294118
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.7920731,-0.00016842101,-0.00020453235,-0.00041885116,1.2747422e-05,-0.00081911614,0.0010680455,1,16,0,27,85,0.058823529
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.78607345,-0.012096461,-0.0060019466,-0.016328272,-0.002806646,-0.061270872,-0.0015082919,0,0,17,5,85,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79156779,-0.00022244584,-0.0013812026,-0.0033700646,-0.00037226374,-0.047786472,0.067793503,2,4,11,21,85,0.11764706
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77939141,0.00047680076,0.00051830625,-5.091368e-05,0.00087389553,-0.00059453938,0.0016650523,3,14,0,58,85,0.17647059
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79212519,-0.00011633257,-0.000103368,-0.00025666194,-1.7974048e-05,-0.00067857143,0.00066197112,0,17,0,22,85,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.78771717,-0.010452737,-0.0038554484,-0.014382241,-0.0021266907,-0.033531633,-0.00016974228,0,3,14,4,85,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79575408,0.0039638425,-0.00034470445,-0.00090965466,0.00013127916,-0.01058544,0.071715772,3,10,4,32,85,0.17647059
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77895737,4.2761538e-05,2.9886889e-05,-1.1479529e-05,4.6277458e-05,-0.00012716542,0.00047096918,0,17,0,52,85,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.7922259,-1.5626376e-05,-1.0264214e-05,-3.0914641e-05,3.3072385e-06,-0.00027346694,0.00017119694,0,17,0,30,85,0
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79874459,0.00057468197,0.00041751701,1.3554758e-05,0.001075057,-0.0018670509,0.0021646112,5,11,1,58,85,0.29411765
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79573399,0.0039437524,-0.00036035286,-0.00093561173,0.00012213118,-0.010305058,0.071598317,3,10,4,30,85,0.17647059
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77895536,4.0753439e-05,2.9984165e-05,-1.4134149e-05,5.6557593e-05,-0.00011592307,0.00043532871,0,17,0,54,85,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79220261,-3.8917611e-05,-7.9239917e-06,-3.6817797e-05,3.8392766e-06,-0.00035731415,0.00017633297,0,17,0,27,85,0
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79877274,0.00060283377,0.00049498713,0.00017055715,0.0011775906,-0.0017455955,0.0020695444,5,11,1,59,85,0.29411765
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.7693905,-0.022399734,-0.01012442,-0.028874377,-0.0035238799,-0.10165982,0.06246959,2,1,14,11,85,0.11764706
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78200382,0.0030892111,0.004542571,0.0013418367,0.0059603824,-0.015358252,0.011117563,13,1,3,63,85,0.76470588
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.78866332,-0.0035782046,-0.0023264377,-0.0053363425,-0.00015207219,-0.022864556,0.0093368631,2,6,9,20,85,0.11764706
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.76753157,-0.030638337,-0.016361401,-0.048337585,-0.0091785699,-0.091831949,-0.00466283,0,0,17,0,85,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.7858392,-0.005951033,-0.0048848406,-0.018493122,-0.0012730129,-0.038750771,0.065928073,2,1,14,13,85,0.11764706
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78364568,0.004731066,0.0053825996,0.0025711058,0.0069500612,-0.0048721549,0.013720879,14,1,2,67,85,0.82352941
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79008628,-0.0021552498,-0.001187456,-0.0031277835,-1.3251659e-05,-0.018340133,0.0095766811,1,7,9,24,85,0.058823529
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.78078593,-0.017383976,-0.0093026782,-0.029074341,-0.004694911,-0.051384354,-0.0021965002,0,0,17,2,85,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79441187,0.0026216357,-0.0011626593,-0.0026100114,0.00018763827,-0.0093411224,0.068894851,3,5,9,24,85,0.17647059
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78435182,0.005437213,0.0054131591,0.003727348,0.0070082689,0.00019140843,0.0098335041,16,1,0,79,85,0.94117647
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79202183,-0.00021969742,-9.1464314e-05,-0.001594834,0.00024416693,-0.003195226,0.0076451929,2,9,6,30,85,0.11764706
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79695029,-0.0012196226,-0.0006625354,-0.0010387119,0.00026578143,-0.0068468946,0.0010104894,1,11,5,31,85,0.058823529
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79504447,0.0032542405,-0.00082153089,-0.0018641114,0.0003483988,-0.0084777605,0.069612038,3,7,7,25,85,0.17647059
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78433156,0.0054169542,0.0053922159,0.0036243503,0.0069070627,0.00012451463,0.0099147636,16,1,0,79,85,0.94117647
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79201625,-0.00022527998,-7.9222336e-05,-0.0015053281,0.0002427313,-0.0029388615,0.0065549299,2,9,6,29,85,0.11764706
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.7973596,-0.00081030642,-0.00058934237,-0.0011812517,0.00041954278,-0.0057670939,0.0012051436,1,11,5,36,85,0.058823529
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.74960888,-0.042181358,-0.037627181,-0.064810038,-0.016083084,-0.1230825,0.041864005,1,0,16,6,85,0.058823529
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77472417,-0.0041904351,0.0014547194,-0.0097034332,0.0035343193,-0.033990236,0.0063342068,9,3,5,46,85,0.52941176
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.78517451,-0.007067018,-0.0043025011,-0.0095865893,-0.0014765207,-0.035582875,0.00066517857,0,2,15,12,85,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.74125953,-0.056910382,-0.049687435,-0.081342612,-0.027335145,-0.11955175,-0.010480923,0,0,17,0,85,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.78353257,-0.0082576592,-0.0073179052,-0.015123721,-0.0028723349,-0.052941932,0.063957556,2,1,14,13,85,0.11764706
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78171567,0.0028010623,0.0044165258,0.00078715553,0.0060541997,-0.013776286,0.010250981,12,3,2,65,85,0.70588235
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.78988268,-0.0023588496,-0.0016948063,-0.0041768585,-3.1548042e-05,-0.015797902,0.007151311,2,6,9,21,85,0.11764706
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.77753386,-0.020636044,-0.01387958,-0.033507039,-0.0050269582,-0.055782612,-0.0033056471,0,0,17,2,85,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79523492,0.0034446865,-0.00038674043,-0.0018223383,0.000146919,-0.014835603,0.071467701,3,9,5,31,85,0.17647059
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78371006,0.0047954514,0.005028279,0.0028898558,0.0064191092,8.4596839e-06,0.0094951033,16,1,0,80,85,0.94117647
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79217182,-6.9706431e-05,-0.00010532061,-0.00066387218,0.00016144477,-0.0022401011,0.0042531195,2,13,2,29,85,0.11764706
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.7985684,0.00039849298,7.6432618e-05,-7.6042806e-05,0.0011405541,-0.0037231925,0.0031863652,5,11,1,52,85,0.29411765
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79548485,0.0036946122,-0.00017633823,-0.0016434439,0.00022214889,-0.013719107,0.071504064,4,8,5,34,85,0.23529412
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78368711,0.0047725031,0.0050721524,0.0028900965,0.0063839468,3.6711761e-05,0.0093488316,16,1,0,80,85,0.94117647
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79221762,-2.3901248e-05,-9.3632154e-05,-0.00062878058,0.00016438407,-0.0021852261,0.0046828664,2,13,2,30,85,0.11764706
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79859965,0.00042974146,7.1306646e-05,-4.1099624e-05,0.0012161875,-0.0036003988,0.0029964029,5,11,1,52,85,0.29411765
+
+Table: Predefined reference, observed best recipe and leave-one-table-out selection
+CSV (first column: row index)
+row,base,tables,recipes,reference_recipe,reference_mean,best_observed_recipe,best_observed_mean,leave_one_table_out_mean,leave_one_table_out_improved,recipes_chosen
+0,TabICLv2,17,16,E1 all · LR 3e-07 · λ 0.003,0.0036946122,E1 frozen · LR 3e-07 · λ 0,0.0039638425,0.0035521465,5,"E1 frozen · LR 3e-07 · λ 0 ×15, E1 frozen · LR 3e-07 · λ 0.003 ×1, E1 frozen · LR 1e-06 · λ 0.003 ×1"
+1,TabPFN v2,17,16,E1 all · LR 3e-07 · λ 0.003,0.0047725031,E1 all · LR 1e-06 · λ 0,0.005437213,0.005437213,17,E1 all · LR 1e-06 · λ 0 ×17
+2,TabPFN v2.6,17,16,E1 all · LR 3e-07 · λ 0.003,-2.3901248e-05,E1 frozen · LR 3e-07 · λ 0,-1.5626376e-05,-0.00048758436,2,"E1 all · LR 3e-07 · λ 0.003 ×8, E1 frozen · LR 3e-07 · λ 0 ×8, E1 frozen · LR 1e-06 · λ 0.003 ×1"
+3,TabPFN v3,17,16,E1 all · LR 3e-07 · λ 0.003,0.00042974146,E1 frozen · LR 3e-07 · λ 0.003,0.00060283377,0.00060283377,14,E1 frozen · LR 3e-07 · λ 0.003 ×17
 
 Table: Non-credit effects for every complete recipe and metric
 CSV (first column: row index)
@@ -71203,7 +72379,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 4030,TabPFN v3,3e-05,0.003,True,one_sample,openml_46952,ood,log_loss,-0.023381133,4
 4031,TabPFN v3,3e-05,0.003,True,one_sample,openml_46956,ood,log_loss,-0.033396226,4
 
-Table: Every recipe: mean, median, quartiles and positive table count
+Table: Every recipe and metric: mean, median, quartiles and positive table count
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved
 0,credit,brier_score,TabICLv2,3e-07,0,False,one_sample,0.0066576241,-0.00017608449,-0.00029993275,9.3206433e-05,17,6
@@ -71591,7 +72767,7 @@ row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25
 382,ood,roc_auc,TabPFN v3,3e-05,0.003,False,one_sample,-0.040499306,-0.040626737,-0.064352798,-0.016773245,4,0
 383,ood,roc_auc,TabPFN v3,3e-05,0.003,True,one_sample,-0.038202395,-0.028161875,-0.060102407,-0.0062618628,4,0
 
-4. Fixed reference and table heterogeneity
+4. The predefined reference, table by table
                              count     mean   median      min      max
 base      sampling   frozen
 TabICLv2 one_sample False      17  0.00369 -0.00018 -0.01372  0.07150
@@ -71600,6 +72776,80 @@ TabPFN v2.6      one_sample False      17 -0.00002 -0.00009 -0.00219  0.00468
 TabPFN v3        one_sample False      17  0.00043  0.00007 -0.00360  0.00300
 The recipe is fixed: full updates, LR 3e-7, L2-SP 0.003, seed 42. Five paired outer folds are averaged within each table. The 95% percentile bootstrap interval resamples tables (10,000 draws, seed 20261020), not folds, rows, recipes or overlapping training corpora. It describes sensitivity to the observed table collection conditional on the fitted checkpoints, under a table-exchangeability assumption; it is not a deployment guarantee or a training-seed confidence interval. Unknown shared populations can invalidate that assumption. No significance-based recipe selection is performed.
 A source URL identifies a release or platform, not independent borrowers. The ledger records documented shared sources and unresolved provenance; it does not certify absence of overlap. LendingClub PD/LGD and SBA PD/LGD share sources, but the two tasks have separate CPT corpora and are never pooled as independent replications. The documented-public-source sensitivity excludes unverified/local and restricted sources; it changes the population being summarized and cannot repair contamination in already trained weights.
+
+Figure: pd_reference_tables
+PD. Experiment 1, predefined reference recipe (all trainable weights updated, peak LR 3e-7, L2-SP λ 0.003, seed 42), final five-fold benchmark: paired change in AUC (percentage points) on every held-out credit table relative to the original model of the same base. Each axis label gives the equal-table mean and the number of tables improving by more than 0.1 pp. Filled markers: at least four of the five outer folds change in the direction of the table mean; open markers: the folds disagree. Tables are ordered by their mean effect across the four bases; horizontal axes differ between models. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
+Displayed table effects
+CSV (first column: row index)
+row,base,dataset,original,adapted,effect,folds_improved,folds
+221,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89664654,-0.00056737364,0,5
+222,TabICLv2,Cobranded,0.8427705,0.84274205,-2.8451999e-05,2,5
+223,TabICLv2,Credit Risk,0.95514201,0.94897236,-0.0061696497,0,5
+224,TabICLv2,GMSC,0.86718744,0.86661707,-0.00057036466,0,5
+225,TabICLv2,German Credit,0.79014029,0.79255584,0.0024155533,4,5
+226,TabICLv2,HMEQ,0.99633513,0.99626837,-6.6761782e-05,2,5
+227,TabICLv2,Hackerearth,0.95676611,0.943047,-0.013719107,0,5
+228,TabICLv2,Home Credit,0.74793913,0.74718881,-0.00075032379,1,5
+229,TabICLv2,LendingClub,0.68913135,0.68935349,0.00022214889,3,5
+230,TabICLv2,MicroFinance,0.65764659,0.65600315,-0.0016434439,1,5
+231,TabICLv2,Myhom,0.57992283,0.59474915,0.014826318,4,5
+232,TabICLv2,PropPD1,0.8116703,0.81290564,0.0012353369,5,5
+233,TabICLv2,PropPD2,0.65622099,0.65604465,-0.00017633823,3,5
+234,TabICLv2,SBA Loans Case,0.98980137,0.98987643,7.5056415e-05,2,5
+235,TabICLv2,Taiwan Credit Card,0.79015422,0.78837377,-0.0017804574,0,5
+236,TabICLv2,Thomas,0.6493295,0.6473317,-0.0019977983,2,5
+237,TabICLv2,Vehicle Loan,0.58306229,0.65456635,0.071504064,5,5
+493,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87285813,0.0028900965,5,5
+494,TabPFN v2,Cobranded,0.83269227,0.83569261,0.0030003482,5,5
+495,TabPFN v2,Credit Risk,0.92815979,0.92996008,0.0018002893,5,5
+496,TabPFN v2,GMSC,0.8581094,0.86063686,0.0025274617,5,5
+497,TabPFN v2,German Credit,0.78522696,0.78924897,0.004022011,4,5
+498,TabPFN v2,HMEQ,0.98444363,0.99221332,0.0077696885,5,5
+499,TabPFN v2,Hackerearth,0.91321057,0.9225594,0.0093488316,5,5
+500,TabPFN v2,Home Credit,0.72516024,0.73016783,0.0050075943,5,5
+501,TabPFN v2,LendingClub,0.67540116,0.6825776,0.0071764372,5,5
+502,TabPFN v2,MicroFinance,0.63069908,0.63708303,0.0063839468,5,5
+503,TabPFN v2,Myhom,0.59502827,0.59694303,0.0019147534,4,5
+504,TabPFN v2,PropPD1,0.75207598,0.75750032,0.0054243377,5,5
+505,TabPFN v2,PropPD2,0.64411075,0.64918291,0.0050721524,5,5
+506,TabPFN v2,SBA Loans Case,0.98938947,0.98942619,3.6711761e-05,3,5
+507,TabPFN v2,Taiwan Credit Card,0.77564376,0.78254924,0.0069054749,5,5
+508,TabPFN v2,Thomas,0.64821257,0.65409832,0.0058857575,4,5
+509,TabPFN v2,Vehicle Loan,0.63401642,0.63998308,0.00596666,5,5
+765,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88519198,-0.00025305583,0,5
+766,TabPFN v2.6,Cobranded,0.84325414,0.8431605,-9.3632154e-05,1,5
+767,TabPFN v2.6,Credit Risk,0.94123747,0.93915805,-0.002079411,0,5
+768,TabPFN v2.6,GMSC,0.86596215,0.86612653,0.00016438407,4,5
+769,TabPFN v2.6,German Credit,0.79173424,0.79165305,-8.1192189e-05,2,5
+770,TabPFN v2.6,HMEQ,0.99827227,0.99732737,-0.00094489423,0,5
+771,TabPFN v2.6,Hackerearth,0.94817984,0.94599461,-0.0021852261,0,5
+772,TabPFN v2.6,Home Credit,0.74699146,0.74671726,-0.0002741992,1,5
+773,TabPFN v2.6,LendingClub,0.68373099,0.68514061,0.0014096204,5,5
+774,TabPFN v2.6,MicroFinance,0.65905812,0.65811516,-0.00094296216,0,5
+775,TabPFN v2.6,Myhom,0.59564264,0.5961622,0.00051955782,3,5
+776,TabPFN v2.6,PropPD1,0.77315636,0.77252907,-0.00062729404,0,5
+777,TabPFN v2.6,PropPD2,0.65921509,0.65858631,-0.00062878058,0,5
+778,TabPFN v2.6,SBA Loans Case,0.98987642,0.98994808,7.1657957e-05,3,5
+779,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78959524,0.00011812934,3,5
+780,TabPFN v2.6,Thomas,0.64565389,0.65033676,0.0046828664,3,5
+781,TabPFN v2.6,Vehicle Loan,0.65121872,0.65195683,0.00073811027,5,5
+1037,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89784386,-1.5876365e-05,2,5
+1038,TabPFN v3,Cobranded,0.84234006,0.84308687,0.00074681185,5,5
+1039,TabPFN v3,Credit Risk,0.95168825,0.95147503,-0.0002132175,2,5
+1040,TabPFN v3,GMSC,0.86875853,0.86871743,-4.1099624e-05,3,5
+1041,TabPFN v3,German Credit,0.79130593,0.79430233,0.0029964029,3,5
+1042,TabPFN v3,HMEQ,0.99925852,0.99898149,-0.00027702393,0,5
+1043,TabPFN v3,Hackerearth,0.96319489,0.95959449,-0.0036003988,0,5
+1044,TabPFN v3,Home Credit,0.75328767,0.75329448,6.8168728e-06,3,5
+1045,TabPFN v3,LendingClub,0.68545173,0.68666792,0.0012161875,4,5
+1046,TabPFN v3,MicroFinance,0.65973341,0.66189539,0.0021619782,5,5
+1047,TabPFN v3,Myhom,0.59735565,0.59679486,-0.00056079932,2,5
+1048,TabPFN v3,PropPD1,0.812241,0.81297411,0.00073311379,5,5
+1049,TabPFN v3,PropPD2,0.65729602,0.65913336,0.0018373491,5,5
+1050,TabPFN v3,SBA Loans Case,0.98983277,0.99036774,0.00053497323,5,5
+1051,TabPFN v3,Taiwan Credit Card,0.78966503,0.78973634,7.1306646e-05,3,5
+1052,TabPFN v3,Thomas,0.65158762,0.6532326,0.0016449863,3,5
+1053,TabPFN v3,Vehicle Loan,0.65803164,0.65809574,6.4093912e-05,2,5
 
 Figure: pd_reference_uncertainty
 PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
@@ -75380,19 +76630,22 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,5222.861,4837.4361,5610.2462,32,0.5222861,0.48374361,0.56102462,32,121.0455,120.994,121.097,32,1.8578545e+08,168231937,195157151,32,53153136,53153136,53153136,32,0.0062993886,0.0014844263,0.052169715
 "('TabPFN v3', True)",32,4818.2725,4506.7621,5040.1654,32,0.48182725,0.45067621,0.50401654,32,109.999,109.999,109.999,32,1.8578545e+08,168231937,195157151,32,1795440,1795440,1795440,32,0.0064213491,0.0013048735,0.037843075
 
-experiment1/03_results_pd: 12 figures -> output CreditPFN/figures/experiment1
+experiment1/03_results_pd: 15 figures -> output CreditPFN/figures/experiment1
   01  pd_choice_contrasts_credit
   02  pd_recipe_grid_credit_roc_auc
   03  pd_recipe_grid_credit_brier_score
   04  pd_recipe_grid_credit_log_loss
-  05  pd_conservative_recipes_credit_roc_auc
-  06  pd_benchmark_transfer_retention
-  07  pd_reference_uncertainty
-  08  pd_calibration_overview
-  09  pd_prediction_diagnostics
-  10  pd_monitor_recipe_changes
-  11  pd_control_context_1
-  12  pd_control_context_2
+  05  pd_table_recipes_full_roc_auc
+  06  pd_table_recipes_frozen_roc_auc
+  07  pd_conservative_recipes_credit_roc_auc
+  08  pd_benchmark_transfer_retention
+  09  pd_reference_tables
+  10  pd_reference_uncertainty
+  11  pd_calibration_overview
+  12  pd_prediction_diagnostics
+  13  pd_monitor_recipe_changes
+  14  pd_control_context_1
+  15  pd_control_context_2
 ```
 
 ---
@@ -75428,7 +76681,7 @@ row,evidence,records,origin
 The figure shows alternative minus reference, with the sign oriented toward improvement. Complete marginal effects at each choice level and every matched table contrast accompany it. These descriptive comparisons concern the observed fixed grid; recipe cells and folds are not independent replications.
 
 Figure: lgd_choice_contrasts_credit
-LGD. Final five-fold benchmark contrasts between CPT choices. 8 complete tables per model. Each cell first pairs the same table and all other recipe settings, averages those matched differences within table, then weights tables equally. Positive values favor the named alternative. A favorable choice contrast can mean less deterioration; it does not establish a gain over original weights. Anchoring and scope contrasts average all four rates; each rate contrast averages both anchoring and scope settings. Models and metrics remain separate. Each model uses the same recipe-complete table cohort across displayed metrics. R² contrasts use native units. RMSE contrasts divide the paired error difference by the original model's RMSE, not by the reference CPT arm; reductions are positive. Colors are symmetric about zero within each metric panel. These are descriptive fixed-grid contrasts, not causal architecture comparisons. Inference follows the recorded LGD policy.
+LGD. Experiment 1, final five-fold benchmark on held-out credit tables. 8 complete tables per model. Each column changes one CPT choice: L2-SP anchoring on (λ = 0.003) minus off (λ = 0), frozen transformer backbone minus all parameters updated, or a larger peak learning rate minus the lowest (3e-7). Each cell pairs the same table and all other recipe settings, averages those matched differences within table, then weights tables equally; positive values favour the named alternative. Anchoring and scope contrasts average over all four learning rates; each rate contrast averages over both anchoring and scope settings. A favourable contrast can mean less deterioration rather than a gain over the original weights (see the recipe grid). Column labels are coloured by the parameter varied (learning rate blue, L2-SP orange, update scope grey). R² contrasts use native units. RMSE contrasts divide the paired error difference by the original model's RMSE; reductions are positive. Colours are symmetric about zero within each metric panel. These are descriptive contrasts over the fixed grid.
 Matched choice differences within each table
 CSV (first column: row index)
 row,base,dataset,contrast,domain,metric,choice,factor,reference,alternative
@@ -76671,11 +77924,11 @@ row,base,dataset,level,effect,domain,metric,factor
 510,TabPFN v3,SBA Loans Case (LGD),1e-05,-0.26648848,credit,rmse,learning_rate
 511,TabPFN v3,SBA Loans Case (LGD),3e-05,-0.38520196,credit,rmse,learning_rate
 
-3. Combinations, credit transfer and non-credit retention
-All parameters means all normally trainable weights are updated. Backbone frozen means the dominant transformer stack is frozen while surrounding configured components remain trainable. Neither mode uses LoRA. Five folds are averaged within each table; tables receive equal weight. Non-credit retention is measured on a finite panel, not all possible domains. A high observed cell does not identify an unbiased test-selected winner.
+3. Every recipe against its original model
+All weights means every normally trainable parameter is updated; frozen backbone means the dominant transformer stack is frozen while embeddings and prediction components remain trainable. Neither mode uses LoRA. Five folds are averaged within each table; tables receive equal weight. In the summary table, improved/negligible/worse use a ±0.001 band on the native metric scale, and folds_improved counts outer folds with a positive paired change. The leave-one-table-out column chooses the recipe with the highest mean on the other tables and records its effect on the held-out table. Non-credit retention is measured on a four-table panel.
 
 Figure: lgd_recipe_grid_credit_r2
-LGD. Final five-fold benchmark: R² change. 8 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. Inference follows the recorded LGD policy.
+LGD. Experiment 1, final five-fold benchmark on held-out credit tables: R² change, CPT minus the original model of the same base. 8 complete tables per model. Each cell is the equal-table mean effect of one recipe, with the number of tables whose effect exceeds 0 ("up") over the number of complete tables. Positive values favour CPT. Columns cross the four peak learning rates (top labels, blue) with L2-SP strength λ ∈ {0, 0.003} (bottom labels, orange); rows cross each base with the update scope (all trainable weights, or the dominant transformer stack frozen while embeddings and prediction components remain trainable). Every planned combination is shown on one common table cohort within each base. Colours share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table before tables are weighted equally. The predefined reference recipe is full updates at LR 3e-7 and λ 0.003; any other cell with a higher value is an observed grid maximum, not an independently validated choice.
 Every paired table and recipe effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -77194,137 +78447,137 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 Cell means and improvement counts
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,row,column
-0,credit,r2,TabICLv2,3e-07,0,False,one_sample,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,8,1,TabICLv2 / all,"3e-07
+0,credit,r2,TabICLv2,3e-07,0,False,one_sample,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,8,1,TabICLv2 · all weights,"3e-07
 0"
-1,credit,r2,TabICLv2,3e-07,0,True,one_sample,0.00084634423,0.00021198392,-0.0003087312,0.0010435343,8,5,TabICLv2 / frozen,"3e-07
+1,credit,r2,TabICLv2,3e-07,0,True,one_sample,0.00084634423,0.00021198392,-0.0003087312,0.0010435343,8,5,TabICLv2 · frozen backbone,"3e-07
 0"
-2,credit,r2,TabICLv2,3e-07,0.003,False,one_sample,-0.0047702327,-0.0022779822,-0.0040102035,-0.00022086203,8,2,TabICLv2 / all,"3e-07
+2,credit,r2,TabICLv2,3e-07,0.003,False,one_sample,-0.0047702327,-0.0022779822,-0.0040102035,-0.00022086203,8,2,TabICLv2 · all weights,"3e-07
 0.003"
-3,credit,r2,TabICLv2,3e-07,0.003,True,one_sample,0.00079556257,0.00023046136,-0.0005481571,0.0012747347,8,5,TabICLv2 / frozen,"3e-07
+3,credit,r2,TabICLv2,3e-07,0.003,True,one_sample,0.00079556257,0.00023046136,-0.0005481571,0.0012747347,8,5,TabICLv2 · frozen backbone,"3e-07
 0.003"
-4,credit,r2,TabICLv2,1e-06,0,False,one_sample,-0.043682146,-0.010536087,-0.019141042,-0.0078466833,8,0,TabICLv2 / all,"1e-06
+4,credit,r2,TabICLv2,1e-06,0,False,one_sample,-0.043682146,-0.010536087,-0.019141042,-0.0078466833,8,0,TabICLv2 · all weights,"1e-06
 0"
-5,credit,r2,TabICLv2,1e-06,0,True,one_sample,-0.0066722602,-0.00071201324,-0.0022188574,0.0004635036,8,3,TabICLv2 / frozen,"1e-06
+5,credit,r2,TabICLv2,1e-06,0,True,one_sample,-0.0066722602,-0.00071201324,-0.0022188574,0.0004635036,8,3,TabICLv2 · frozen backbone,"1e-06
 0"
-6,credit,r2,TabICLv2,1e-06,0.003,False,one_sample,-0.046487814,-0.0059133828,-0.015694883,-0.0040808678,8,0,TabICLv2 / all,"1e-06
+6,credit,r2,TabICLv2,1e-06,0.003,False,one_sample,-0.046487814,-0.0059133828,-0.015694883,-0.0040808678,8,0,TabICLv2 · all weights,"1e-06
 0.003"
-7,credit,r2,TabICLv2,1e-06,0.003,True,one_sample,-0.0088199973,-0.00066587329,-0.0018796057,0.00039587021,8,3,TabICLv2 / frozen,"1e-06
+7,credit,r2,TabICLv2,1e-06,0.003,True,one_sample,-0.0088199973,-0.00066587329,-0.0018796057,0.00039587021,8,3,TabICLv2 · frozen backbone,"1e-06
 0.003"
-8,credit,r2,TabICLv2,1e-05,0,False,one_sample,-0.1350616,-0.094511598,-0.19357406,-0.055729118,8,0,TabICLv2 / all,"1e-05
+8,credit,r2,TabICLv2,1e-05,0,False,one_sample,-0.1350616,-0.094511598,-0.19357406,-0.055729118,8,0,TabICLv2 · all weights,"1e-05
 0"
-9,credit,r2,TabICLv2,1e-05,0,True,one_sample,-0.013060723,-0.011502975,-0.016764188,-0.0097137094,8,0,TabICLv2 / frozen,"1e-05
+9,credit,r2,TabICLv2,1e-05,0,True,one_sample,-0.013060723,-0.011502975,-0.016764188,-0.0097137094,8,0,TabICLv2 · frozen backbone,"1e-05
 0"
-10,credit,r2,TabICLv2,1e-05,0.003,False,one_sample,-0.084343605,-0.033559436,-0.15384069,-0.027489328,8,0,TabICLv2 / all,"1e-05
+10,credit,r2,TabICLv2,1e-05,0.003,False,one_sample,-0.084343605,-0.033559436,-0.15384069,-0.027489328,8,0,TabICLv2 · all weights,"1e-05
 0.003"
-11,credit,r2,TabICLv2,1e-05,0.003,True,one_sample,-0.019747806,-0.01240316,-0.019649011,-0.0088251054,8,0,TabICLv2 / frozen,"1e-05
+11,credit,r2,TabICLv2,1e-05,0.003,True,one_sample,-0.019747806,-0.01240316,-0.019649011,-0.0088251054,8,0,TabICLv2 · frozen backbone,"1e-05
 0.003"
-12,credit,r2,TabICLv2,3e-05,0,False,one_sample,-0.16816749,-0.13860931,-0.19560183,-0.13110935,8,0,TabICLv2 / all,"3e-05
+12,credit,r2,TabICLv2,3e-05,0,False,one_sample,-0.16816749,-0.13860931,-0.19560183,-0.13110935,8,0,TabICLv2 · all weights,"3e-05
 0"
-13,credit,r2,TabICLv2,3e-05,0,True,one_sample,-0.02733537,-0.022303897,-0.029654253,-0.016692707,8,0,TabICLv2 / frozen,"3e-05
+13,credit,r2,TabICLv2,3e-05,0,True,one_sample,-0.02733537,-0.022303897,-0.029654253,-0.016692707,8,0,TabICLv2 · frozen backbone,"3e-05
 0"
-14,credit,r2,TabICLv2,3e-05,0.003,False,one_sample,-0.067601268,-0.04378193,-0.10515964,-0.033550999,8,0,TabICLv2 / all,"3e-05
+14,credit,r2,TabICLv2,3e-05,0.003,False,one_sample,-0.067601268,-0.04378193,-0.10515964,-0.033550999,8,0,TabICLv2 · all weights,"3e-05
 0.003"
-15,credit,r2,TabICLv2,3e-05,0.003,True,one_sample,-0.031280062,-0.019262511,-0.026964206,-0.011174932,8,0,TabICLv2 / frozen,"3e-05
+15,credit,r2,TabICLv2,3e-05,0.003,True,one_sample,-0.031280062,-0.019262511,-0.026964206,-0.011174932,8,0,TabICLv2 · frozen backbone,"3e-05
 0.003"
-16,credit,r2,TabPFN v2,3e-07,0,False,one_sample,0.0043883696,0.0019722581,-0.0010680228,0.0077646077,8,5,TabPFN v2 / all,"3e-07
+16,credit,r2,TabPFN v2,3e-07,0,False,one_sample,0.0043883696,0.0019722581,-0.0010680228,0.0077646077,8,5,TabPFN v2 · all weights,"3e-07
 0"
-17,credit,r2,TabPFN v2,3e-07,0,True,one_sample,-0.001377067,-0.00028112531,-0.0011602819,-0.00013271272,8,2,TabPFN v2 / frozen,"3e-07
+17,credit,r2,TabPFN v2,3e-07,0,True,one_sample,-0.001377067,-0.00028112531,-0.0011602819,-0.00013271272,8,2,TabPFN v2 · frozen backbone,"3e-07
 0"
-18,credit,r2,TabPFN v2,3e-07,0.003,False,one_sample,0.0041011006,0.0012956858,-0.0011399508,0.0076542139,8,4,TabPFN v2 / all,"3e-07
+18,credit,r2,TabPFN v2,3e-07,0.003,False,one_sample,0.0041011006,0.0012956858,-0.0011399508,0.0076542139,8,4,TabPFN v2 · all weights,"3e-07
 0.003"
-19,credit,r2,TabPFN v2,3e-07,0.003,True,one_sample,-0.0015693963,-0.00034960508,-0.0014551222,-0.0001406461,8,1,TabPFN v2 / frozen,"3e-07
+19,credit,r2,TabPFN v2,3e-07,0.003,True,one_sample,-0.0015693963,-0.00034960508,-0.0014551222,-0.0001406461,8,1,TabPFN v2 · frozen backbone,"3e-07
 0.003"
-20,credit,r2,TabPFN v2,1e-06,0,False,one_sample,0.0025317505,-0.0027108133,-0.0042717874,-0.00042589009,8,2,TabPFN v2 / all,"1e-06
+20,credit,r2,TabPFN v2,1e-06,0,False,one_sample,0.0025317505,-0.0027108133,-0.0042717874,-0.00042589009,8,2,TabPFN v2 · all weights,"1e-06
 0"
-21,credit,r2,TabPFN v2,1e-06,0,True,one_sample,-0.0022780657,-0.00098290443,-0.002730754,-0.00059796274,8,1,TabPFN v2 / frozen,"1e-06
+21,credit,r2,TabPFN v2,1e-06,0,True,one_sample,-0.0022780657,-0.00098290443,-0.002730754,-0.00059796274,8,1,TabPFN v2 · frozen backbone,"1e-06
 0"
-22,credit,r2,TabPFN v2,1e-06,0.003,False,one_sample,0.0016499475,-0.0024229586,-0.0049040973,-0.00061190724,8,2,TabPFN v2 / all,"1e-06
+22,credit,r2,TabPFN v2,1e-06,0.003,False,one_sample,0.0016499475,-0.0024229586,-0.0049040973,-0.00061190724,8,2,TabPFN v2 · all weights,"1e-06
 0.003"
-23,credit,r2,TabPFN v2,1e-06,0.003,True,one_sample,-0.0029533878,-0.00091177225,-0.003951028,-0.00062890351,8,0,TabPFN v2 / frozen,"1e-06
+23,credit,r2,TabPFN v2,1e-06,0.003,True,one_sample,-0.0029533878,-0.00091177225,-0.003951028,-0.00062890351,8,0,TabPFN v2 · frozen backbone,"1e-06
 0.003"
-24,credit,r2,TabPFN v2,1e-05,0,False,one_sample,-0.065933718,-0.048496705,-0.080342004,-0.022524375,8,0,TabPFN v2 / all,"1e-05
+24,credit,r2,TabPFN v2,1e-05,0,False,one_sample,-0.065933718,-0.048496705,-0.080342004,-0.022524375,8,0,TabPFN v2 · all weights,"1e-05
 0"
-25,credit,r2,TabPFN v2,1e-05,0,True,one_sample,-0.002586937,-0.00086320639,-0.0030562878,0.00037207305,8,2,TabPFN v2 / frozen,"1e-05
+25,credit,r2,TabPFN v2,1e-05,0,True,one_sample,-0.002586937,-0.00086320639,-0.0030562878,0.00037207305,8,2,TabPFN v2 · frozen backbone,"1e-05
 0"
-26,credit,r2,TabPFN v2,1e-05,0.003,False,one_sample,-0.070349832,-0.054063094,-0.086656401,-0.036784941,8,0,TabPFN v2 / all,"1e-05
+26,credit,r2,TabPFN v2,1e-05,0.003,False,one_sample,-0.070349832,-0.054063094,-0.086656401,-0.036784941,8,0,TabPFN v2 · all weights,"1e-05
 0.003"
-27,credit,r2,TabPFN v2,1e-05,0.003,True,one_sample,-0.0031174734,-0.0020085752,-0.0060482055,-0.0005882591,8,1,TabPFN v2 / frozen,"1e-05
+27,credit,r2,TabPFN v2,1e-05,0.003,True,one_sample,-0.0031174734,-0.0020085752,-0.0060482055,-0.0005882591,8,1,TabPFN v2 · frozen backbone,"1e-05
 0.003"
-28,credit,r2,TabPFN v2,3e-05,0,False,one_sample,-0.1235293,-0.090552241,-0.21386106,-0.058948374,8,0,TabPFN v2 / all,"3e-05
+28,credit,r2,TabPFN v2,3e-05,0,False,one_sample,-0.1235293,-0.090552241,-0.21386106,-0.058948374,8,0,TabPFN v2 · all weights,"3e-05
 0"
-29,credit,r2,TabPFN v2,3e-05,0,True,one_sample,-0.017504168,-0.0046523154,-0.0082518369,-0.0028655559,8,0,TabPFN v2 / frozen,"3e-05
+29,credit,r2,TabPFN v2,3e-05,0,True,one_sample,-0.017504168,-0.0046523154,-0.0082518369,-0.0028655559,8,0,TabPFN v2 · frozen backbone,"3e-05
 0"
-30,credit,r2,TabPFN v2,3e-05,0.003,False,one_sample,-0.13190233,-0.10629286,-0.18306592,-0.080829591,8,0,TabPFN v2 / all,"3e-05
+30,credit,r2,TabPFN v2,3e-05,0.003,False,one_sample,-0.13190233,-0.10629286,-0.18306592,-0.080829591,8,0,TabPFN v2 · all weights,"3e-05
 0.003"
-31,credit,r2,TabPFN v2,3e-05,0.003,True,one_sample,-0.0031062365,-0.0023369789,-0.0082855701,-0.00080538392,8,1,TabPFN v2 / frozen,"3e-05
+31,credit,r2,TabPFN v2,3e-05,0.003,True,one_sample,-0.0031062365,-0.0023369789,-0.0082855701,-0.00080538392,8,1,TabPFN v2 · frozen backbone,"3e-05
 0.003"
-32,credit,r2,TabPFN v2.6,3e-07,0,False,one_sample,-0.083352271,-0.064928436,-0.076963127,-0.047962001,8,1,TabPFN v2.6 / all,"3e-07
+32,credit,r2,TabPFN v2.6,3e-07,0,False,one_sample,-0.083352271,-0.064928436,-0.076963127,-0.047962001,8,1,TabPFN v2.6 · all weights,"3e-07
 0"
-33,credit,r2,TabPFN v2.6,3e-07,0,True,one_sample,-0.00012370497,0.00033872128,-0.00090165734,0.00099083185,8,5,TabPFN v2.6 / frozen,"3e-07
+33,credit,r2,TabPFN v2.6,3e-07,0,True,one_sample,-0.00012370497,0.00033872128,-0.00090165734,0.00099083185,8,5,TabPFN v2.6 · frozen backbone,"3e-07
 0"
-34,credit,r2,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.083212371,-0.064731538,-0.076909691,-0.047867784,8,1,TabPFN v2.6 / all,"3e-07
+34,credit,r2,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.083212371,-0.064731538,-0.076909691,-0.047867784,8,1,TabPFN v2.6 · all weights,"3e-07
 0.003"
-35,credit,r2,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00010569841,0.00034272671,-0.00089432299,0.0010218769,8,5,TabPFN v2.6 / frozen,"3e-07
+35,credit,r2,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00010569841,0.00034272671,-0.00089432299,0.0010218769,8,5,TabPFN v2.6 · frozen backbone,"3e-07
 0.003"
-36,credit,r2,TabPFN v2.6,1e-06,0,False,one_sample,-0.07825449,-0.055873209,-0.070542914,-0.040376687,8,0,TabPFN v2.6 / all,"1e-06
+36,credit,r2,TabPFN v2.6,1e-06,0,False,one_sample,-0.07825449,-0.055873209,-0.070542914,-0.040376687,8,0,TabPFN v2.6 · all weights,"1e-06
 0"
-37,credit,r2,TabPFN v2.6,1e-06,0,True,one_sample,-0.0080498978,-0.0063403487,-0.010847095,-0.0041705757,8,1,TabPFN v2.6 / frozen,"1e-06
+37,credit,r2,TabPFN v2.6,1e-06,0,True,one_sample,-0.0080498978,-0.0063403487,-0.010847095,-0.0041705757,8,1,TabPFN v2.6 · frozen backbone,"1e-06
 0"
-38,credit,r2,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.078016824,-0.055416304,-0.069882414,-0.040778422,8,1,TabPFN v2.6 / all,"1e-06
+38,credit,r2,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.078016824,-0.055416304,-0.069882414,-0.040778422,8,1,TabPFN v2.6 · all weights,"1e-06
 0.003"
-39,credit,r2,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.0077104703,-0.006256479,-0.010275066,-0.004102397,8,1,TabPFN v2.6 / frozen,"1e-06
+39,credit,r2,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.0077104703,-0.006256479,-0.010275066,-0.004102397,8,1,TabPFN v2.6 · frozen backbone,"1e-06
 0.003"
-40,credit,r2,TabPFN v2.6,1e-05,0,False,one_sample,-0.075985511,-0.045870984,-0.058651933,-0.033443069,8,0,TabPFN v2.6 / all,"1e-05
+40,credit,r2,TabPFN v2.6,1e-05,0,False,one_sample,-0.075985511,-0.045870984,-0.058651933,-0.033443069,8,0,TabPFN v2.6 · all weights,"1e-05
 0"
-41,credit,r2,TabPFN v2.6,1e-05,0,True,one_sample,-0.030357036,-0.024430591,-0.033436862,-0.011230743,8,0,TabPFN v2.6 / frozen,"1e-05
+41,credit,r2,TabPFN v2.6,1e-05,0,True,one_sample,-0.030357036,-0.024430591,-0.033436862,-0.011230743,8,0,TabPFN v2.6 · frozen backbone,"1e-05
 0"
-42,credit,r2,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.067223181,-0.031572849,-0.046241808,-0.022424421,8,0,TabPFN v2.6 / all,"1e-05
+42,credit,r2,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.067223181,-0.031572849,-0.046241808,-0.022424421,8,0,TabPFN v2.6 · all weights,"1e-05
 0.003"
-43,credit,r2,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.020069833,-0.013637525,-0.025988147,-0.0073207855,8,0,TabPFN v2.6 / frozen,"1e-05
+43,credit,r2,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.020069833,-0.013637525,-0.025988147,-0.0073207855,8,0,TabPFN v2.6 · frozen backbone,"1e-05
 0.003"
-44,credit,r2,TabPFN v2.6,3e-05,0,False,one_sample,-0.13471956,-0.089901751,-0.13862612,-0.040656927,8,0,TabPFN v2.6 / all,"3e-05
+44,credit,r2,TabPFN v2.6,3e-05,0,False,one_sample,-0.13471956,-0.089901751,-0.13862612,-0.040656927,8,0,TabPFN v2.6 · all weights,"3e-05
 0"
-45,credit,r2,TabPFN v2.6,3e-05,0,True,one_sample,-0.025192845,-0.013386995,-0.040285909,-0.008828482,8,0,TabPFN v2.6 / frozen,"3e-05
+45,credit,r2,TabPFN v2.6,3e-05,0,True,one_sample,-0.025192845,-0.013386995,-0.040285909,-0.008828482,8,0,TabPFN v2.6 · frozen backbone,"3e-05
 0"
-46,credit,r2,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.10155251,-0.056605601,-0.12526262,-0.031483433,8,0,TabPFN v2.6 / all,"3e-05
+46,credit,r2,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.10155251,-0.056605601,-0.12526262,-0.031483433,8,0,TabPFN v2.6 · all weights,"3e-05
 0.003"
-47,credit,r2,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.020030595,-0.0096385777,-0.022548661,-0.0060977459,8,0,TabPFN v2.6 / frozen,"3e-05
+47,credit,r2,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.020030595,-0.0096385777,-0.022548661,-0.0060977459,8,0,TabPFN v2.6 · frozen backbone,"3e-05
 0.003"
-48,credit,r2,TabPFN v3,3e-07,0,False,one_sample,-0.036392143,-0.0031691134,-0.01287834,-0.0017965019,8,1,TabPFN v3 / all,"3e-07
+48,credit,r2,TabPFN v3,3e-07,0,False,one_sample,-0.036392143,-0.0031691134,-0.01287834,-0.0017965019,8,1,TabPFN v3 · all weights,"3e-07
 0"
-49,credit,r2,TabPFN v3,3e-07,0,True,one_sample,-0.0086689219,-0.0040784836,-0.0076551467,-0.00062765181,8,2,TabPFN v3 / frozen,"3e-07
+49,credit,r2,TabPFN v3,3e-07,0,True,one_sample,-0.0086689219,-0.0040784836,-0.0076551467,-0.00062765181,8,2,TabPFN v3 · frozen backbone,"3e-07
 0"
-50,credit,r2,TabPFN v3,3e-07,0.003,False,one_sample,-0.028428969,-0.0034476042,-0.013203469,-0.0017970532,8,1,TabPFN v3 / all,"3e-07
+50,credit,r2,TabPFN v3,3e-07,0.003,False,one_sample,-0.028428969,-0.0034476042,-0.013203469,-0.0017970532,8,1,TabPFN v3 · all weights,"3e-07
 0.003"
-51,credit,r2,TabPFN v3,3e-07,0.003,True,one_sample,-0.0092272505,-0.0040757716,-0.0075996786,-0.00084083676,8,2,TabPFN v3 / frozen,"3e-07
+51,credit,r2,TabPFN v3,3e-07,0.003,True,one_sample,-0.0092272505,-0.0040757716,-0.0075996786,-0.00084083676,8,2,TabPFN v3 · frozen backbone,"3e-07
 0.003"
-52,credit,r2,TabPFN v3,1e-06,0,False,one_sample,-0.062856039,-0.02652275,-0.051745307,-0.0058838814,8,1,TabPFN v3 / all,"1e-06
+52,credit,r2,TabPFN v3,1e-06,0,False,one_sample,-0.062856039,-0.02652275,-0.051745307,-0.0058838814,8,1,TabPFN v3 · all weights,"1e-06
 0"
-53,credit,r2,TabPFN v3,1e-06,0,True,one_sample,-0.029668537,-0.014176607,-0.030582902,-0.0019027621,8,2,TabPFN v3 / frozen,"1e-06
+53,credit,r2,TabPFN v3,1e-06,0,True,one_sample,-0.029668537,-0.014176607,-0.030582902,-0.0019027621,8,2,TabPFN v3 · frozen backbone,"1e-06
 0"
-54,credit,r2,TabPFN v3,1e-06,0.003,False,one_sample,-0.051794747,-0.02624175,-0.044447699,-0.0059069276,8,1,TabPFN v3 / all,"1e-06
+54,credit,r2,TabPFN v3,1e-06,0.003,False,one_sample,-0.051794747,-0.02624175,-0.044447699,-0.0059069276,8,1,TabPFN v3 · all weights,"1e-06
 0.003"
-55,credit,r2,TabPFN v3,1e-06,0.003,True,one_sample,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,8,2,TabPFN v3 / frozen,"1e-06
+55,credit,r2,TabPFN v3,1e-06,0.003,True,one_sample,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,8,2,TabPFN v3 · frozen backbone,"1e-06
 0.003"
-56,credit,r2,TabPFN v3,1e-05,0,False,one_sample,-0.22632834,-0.2298376,-0.30011507,-0.11404129,8,0,TabPFN v3 / all,"1e-05
+56,credit,r2,TabPFN v3,1e-05,0,False,one_sample,-0.22632834,-0.2298376,-0.30011507,-0.11404129,8,0,TabPFN v3 · all weights,"1e-05
 0"
-57,credit,r2,TabPFN v3,1e-05,0,True,one_sample,-0.1257207,-0.087121856,-0.11812385,-0.040204856,8,0,TabPFN v3 / frozen,"1e-05
+57,credit,r2,TabPFN v3,1e-05,0,True,one_sample,-0.1257207,-0.087121856,-0.11812385,-0.040204856,8,0,TabPFN v3 · frozen backbone,"1e-05
 0"
-58,credit,r2,TabPFN v3,1e-05,0.003,False,one_sample,-0.20027211,-0.16274331,-0.25376786,-0.12314407,8,0,TabPFN v3 / all,"1e-05
+58,credit,r2,TabPFN v3,1e-05,0.003,False,one_sample,-0.20027211,-0.16274331,-0.25376786,-0.12314407,8,0,TabPFN v3 · all weights,"1e-05
 0.003"
-59,credit,r2,TabPFN v3,1e-05,0.003,True,one_sample,-0.1018619,-0.072682756,-0.086833966,-0.018137395,8,0,TabPFN v3 / frozen,"1e-05
+59,credit,r2,TabPFN v3,1e-05,0.003,True,one_sample,-0.1018619,-0.072682756,-0.086833966,-0.018137395,8,0,TabPFN v3 · frozen backbone,"1e-05
 0.003"
-60,credit,r2,TabPFN v3,3e-05,0,False,one_sample,-0.25364013,-0.2189221,-0.30145905,-0.15595028,8,0,TabPFN v3 / all,"3e-05
+60,credit,r2,TabPFN v3,3e-05,0,False,one_sample,-0.25364013,-0.2189221,-0.30145905,-0.15595028,8,0,TabPFN v3 · all weights,"3e-05
 0"
-61,credit,r2,TabPFN v3,3e-05,0,True,one_sample,-0.19883592,-0.14908058,-0.23024899,-0.075563046,8,0,TabPFN v3 / frozen,"3e-05
+61,credit,r2,TabPFN v3,3e-05,0,True,one_sample,-0.19883592,-0.14908058,-0.23024899,-0.075563046,8,0,TabPFN v3 · frozen backbone,"3e-05
 0"
-62,credit,r2,TabPFN v3,3e-05,0.003,False,one_sample,-0.2441895,-0.20078877,-0.28897671,-0.18182567,8,0,TabPFN v3 / all,"3e-05
+62,credit,r2,TabPFN v3,3e-05,0.003,False,one_sample,-0.2441895,-0.20078877,-0.28897671,-0.18182567,8,0,TabPFN v3 · all weights,"3e-05
 0.003"
-63,credit,r2,TabPFN v3,3e-05,0.003,True,one_sample,-0.15893887,-0.12522647,-0.20138638,-0.065578642,8,0,TabPFN v3 / frozen,"3e-05
+63,credit,r2,TabPFN v3,3e-05,0.003,True,one_sample,-0.15893887,-0.12522647,-0.20138638,-0.065578642,8,0,TabPFN v3 · frozen backbone,"3e-05
 0.003"
 
 Figure: lgd_recipe_grid_credit_rmse
-LGD. Final five-fold benchmark: Relative RMSE gain (%). 8 complete tables per model. Each cell is the equal-table mean CPT effect relative to its own original weights; positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table. Observed maxima are exploratory grid outcomes, not independently validated selected recipes. Inference follows the recorded LGD policy.
+LGD. Experiment 1, final five-fold benchmark on held-out credit tables: Relative RMSE gain (%), CPT minus the original model of the same base. 8 complete tables per model. Each cell is the equal-table mean effect of one recipe, with the number of tables whose effect exceeds 0% ("up") over the number of complete tables. Positive values favour CPT. Columns cross the four peak learning rates (top labels, blue) with L2-SP strength λ ∈ {0, 0.003} (bottom labels, orange); rows cross each base with the update scope (all trainable weights, or the dominant transformer stack frozen while embeddings and prediction components remain trainable). Every planned combination is shown on one common table cohort within each base. Colours share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table before tables are weighted equally. The predefined reference recipe is full updates at LR 3e-7 and λ 0.003; any other cell with a higher value is an observed grid maximum, not an independently validated choice.
 Every paired table and recipe effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -77843,137 +79096,661 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 Cell means and improvement counts
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved,row,column
-0,credit,rmse,TabICLv2,3e-07,0,False,one_sample,-0.006492216,-0.0024587164,-0.0054706146,-0.00060779037,8,1,TabICLv2 / all,"3e-07
+0,credit,rmse,TabICLv2,3e-07,0,False,one_sample,-0.006492216,-0.0024587164,-0.0054706146,-0.00060779037,8,1,TabICLv2 · all weights,"3e-07
 0"
-1,credit,rmse,TabICLv2,3e-07,0,True,one_sample,0.00091091604,0.00031828643,-0.00030184013,0.001597024,8,5,TabICLv2 / frozen,"3e-07
+1,credit,rmse,TabICLv2,3e-07,0,True,one_sample,0.00091091604,0.00031828643,-0.00030184013,0.001597024,8,5,TabICLv2 · frozen backbone,"3e-07
 0"
-2,credit,rmse,TabICLv2,3e-07,0.003,False,one_sample,-0.0063295453,-0.0020388848,-0.0049550656,-0.00026147022,8,2,TabICLv2 / all,"3e-07
+2,credit,rmse,TabICLv2,3e-07,0.003,False,one_sample,-0.0063295453,-0.0020388848,-0.0049550656,-0.00026147022,8,2,TabICLv2 · all weights,"3e-07
 0.003"
-3,credit,rmse,TabICLv2,3e-07,0.003,True,one_sample,0.00085311569,0.00035896561,-0.00042121636,0.0017178655,8,5,TabICLv2 / frozen,"3e-07
+3,credit,rmse,TabICLv2,3e-07,0.003,True,one_sample,0.00085311569,0.00035896561,-0.00042121636,0.0017178655,8,5,TabICLv2 · frozen backbone,"3e-07
 0.003"
-4,credit,rmse,TabICLv2,1e-06,0,False,one_sample,-0.051676851,-0.012878989,-0.025828812,-0.0077254634,8,0,TabICLv2 / all,"1e-06
+4,credit,rmse,TabICLv2,1e-06,0,False,one_sample,-0.051676851,-0.012878989,-0.025828812,-0.0077254634,8,0,TabICLv2 · all weights,"1e-06
 0"
-5,credit,rmse,TabICLv2,1e-06,0,True,one_sample,-0.0089179943,-0.00093505651,-0.0019007664,0.0011423054,8,3,TabICLv2 / frozen,"1e-06
+5,credit,rmse,TabICLv2,1e-06,0,True,one_sample,-0.0089179943,-0.00093505651,-0.0019007664,0.0011423054,8,3,TabICLv2 · frozen backbone,"1e-06
 0"
-6,credit,rmse,TabICLv2,1e-06,0.003,False,one_sample,-0.054280627,-0.0068867491,-0.02129738,-0.0037787295,8,0,TabICLv2 / all,"1e-06
+6,credit,rmse,TabICLv2,1e-06,0.003,False,one_sample,-0.054280627,-0.0068867491,-0.02129738,-0.0037787295,8,0,TabICLv2 · all weights,"1e-06
 0.003"
-7,credit,rmse,TabICLv2,1e-06,0.003,True,one_sample,-0.011772625,-0.00055663677,-0.0025578169,0.00097577529,8,3,TabICLv2 / frozen,"1e-06
+7,credit,rmse,TabICLv2,1e-06,0.003,True,one_sample,-0.011772625,-0.00055663677,-0.0025578169,0.00097577529,8,3,TabICLv2 · frozen backbone,"1e-06
 0.003"
-8,credit,rmse,TabICLv2,1e-05,0,False,one_sample,-0.14578537,-0.11936378,-0.17261921,-0.082690575,8,0,TabICLv2 / all,"1e-05
+8,credit,rmse,TabICLv2,1e-05,0,False,one_sample,-0.14578537,-0.11936378,-0.17261921,-0.082690575,8,0,TabICLv2 · all weights,"1e-05
 0"
-9,credit,rmse,TabICLv2,1e-05,0,True,one_sample,-0.018910118,-0.016809008,-0.024841184,-0.0080030789,8,0,TabICLv2 / frozen,"1e-05
+9,credit,rmse,TabICLv2,1e-05,0,True,one_sample,-0.018910118,-0.016809008,-0.024841184,-0.0080030789,8,0,TabICLv2 · frozen backbone,"1e-05
 0"
-10,credit,rmse,TabICLv2,1e-05,0.003,False,one_sample,-0.088480797,-0.058165721,-0.1288685,-0.039478773,8,0,TabICLv2 / all,"1e-05
+10,credit,rmse,TabICLv2,1e-05,0.003,False,one_sample,-0.088480797,-0.058165721,-0.1288685,-0.039478773,8,0,TabICLv2 · all weights,"1e-05
 0.003"
-11,credit,rmse,TabICLv2,1e-05,0.003,True,one_sample,-0.02728833,-0.016740608,-0.026874375,-0.0097835182,8,1,TabICLv2 / frozen,"1e-05
+11,credit,rmse,TabICLv2,1e-05,0.003,True,one_sample,-0.02728833,-0.016740608,-0.026874375,-0.0097835182,8,1,TabICLv2 · frozen backbone,"1e-05
 0.003"
-12,credit,rmse,TabICLv2,3e-05,0,False,one_sample,-0.18352886,-0.15883365,-0.21928737,-0.11471943,8,0,TabICLv2 / all,"3e-05
+12,credit,rmse,TabICLv2,3e-05,0,False,one_sample,-0.18352886,-0.15883365,-0.21928737,-0.11471943,8,0,TabICLv2 · all weights,"3e-05
 0"
-13,credit,rmse,TabICLv2,3e-05,0,True,one_sample,-0.036507783,-0.03005779,-0.042370662,-0.019017397,8,0,TabICLv2 / frozen,"3e-05
+13,credit,rmse,TabICLv2,3e-05,0,True,one_sample,-0.036507783,-0.03005779,-0.042370662,-0.019017397,8,0,TabICLv2 · frozen backbone,"3e-05
 0"
-14,credit,rmse,TabICLv2,3e-05,0.003,False,one_sample,-0.079633297,-0.076339641,-0.095937543,-0.054398149,8,0,TabICLv2 / all,"3e-05
+14,credit,rmse,TabICLv2,3e-05,0.003,False,one_sample,-0.079633297,-0.076339641,-0.095937543,-0.054398149,8,0,TabICLv2 · all weights,"3e-05
 0.003"
-15,credit,rmse,TabICLv2,3e-05,0.003,True,one_sample,-0.041211206,-0.023585047,-0.034420278,-0.015757038,8,0,TabICLv2 / frozen,"3e-05
+15,credit,rmse,TabICLv2,3e-05,0.003,True,one_sample,-0.041211206,-0.023585047,-0.034420278,-0.015757038,8,0,TabICLv2 · frozen backbone,"3e-05
 0.003"
-16,credit,rmse,TabPFN v2,3e-07,0,False,one_sample,0.0029068546,0.0021922858,-0.0015188498,0.0057207449,8,5,TabPFN v2 / all,"3e-07
+16,credit,rmse,TabPFN v2,3e-07,0,False,one_sample,0.0029068546,0.0021922858,-0.0015188498,0.0057207449,8,5,TabPFN v2 · all weights,"3e-07
 0"
-17,credit,rmse,TabPFN v2,3e-07,0,True,one_sample,-0.00093951672,-0.00038710212,-0.00096210069,-0.00021756271,8,2,TabPFN v2 / frozen,"3e-07
+17,credit,rmse,TabPFN v2,3e-07,0,True,one_sample,-0.00093951672,-0.00038710212,-0.00096210069,-0.00021756271,8,2,TabPFN v2 · frozen backbone,"3e-07
 0"
-18,credit,rmse,TabPFN v2,3e-07,0.003,False,one_sample,0.002710084,0.0017241727,-0.0016599051,0.0057250038,8,4,TabPFN v2 / all,"3e-07
+18,credit,rmse,TabPFN v2,3e-07,0.003,False,one_sample,0.002710084,0.0017241727,-0.0016599051,0.0057250038,8,4,TabPFN v2 · all weights,"3e-07
 0.003"
-19,credit,rmse,TabPFN v2,3e-07,0.003,True,one_sample,-0.0010818047,-0.00047400602,-0.0011979626,-0.00022079513,8,2,TabPFN v2 / frozen,"3e-07
+19,credit,rmse,TabPFN v2,3e-07,0.003,True,one_sample,-0.0010818047,-0.00047400602,-0.0011979626,-0.00022079513,8,2,TabPFN v2 · frozen backbone,"3e-07
 0.003"
-20,credit,rmse,TabPFN v2,1e-06,0,False,one_sample,0.00021466942,-0.0025982893,-0.003773782,-0.0011772836,8,1,TabPFN v2 / all,"1e-06
+20,credit,rmse,TabPFN v2,1e-06,0,False,one_sample,0.00021466942,-0.0025982893,-0.003773782,-0.0011772836,8,1,TabPFN v2 · all weights,"1e-06
 0"
-21,credit,rmse,TabPFN v2,1e-06,0,True,one_sample,-0.0016143902,-0.00098324936,-0.0019106088,-0.00061333323,8,1,TabPFN v2 / frozen,"1e-06
+21,credit,rmse,TabPFN v2,1e-06,0,True,one_sample,-0.0016143902,-0.00098324936,-0.0019106088,-0.00061333323,8,1,TabPFN v2 · frozen backbone,"1e-06
 0"
-22,credit,rmse,TabPFN v2,1e-06,0.003,False,one_sample,-0.00036714107,-0.0030379418,-0.0063819903,-0.00070256727,8,1,TabPFN v2 / all,"1e-06
+22,credit,rmse,TabPFN v2,1e-06,0.003,False,one_sample,-0.00036714107,-0.0030379418,-0.0063819903,-0.00070256727,8,1,TabPFN v2 · all weights,"1e-06
 0.003"
-23,credit,rmse,TabPFN v2,1e-06,0.003,True,one_sample,-0.0020943413,-0.00099456713,-0.0026816736,-0.00064061414,8,0,TabPFN v2 / frozen,"1e-06
+23,credit,rmse,TabPFN v2,1e-06,0.003,True,one_sample,-0.0020943413,-0.00099456713,-0.0026816736,-0.00064061414,8,0,TabPFN v2 · frozen backbone,"1e-06
 0.003"
-24,credit,rmse,TabPFN v2,1e-05,0,False,one_sample,-0.059814476,-0.045660453,-0.091690173,-0.034607228,8,0,TabPFN v2 / all,"1e-05
+24,credit,rmse,TabPFN v2,1e-05,0,False,one_sample,-0.059814476,-0.045660453,-0.091690173,-0.034607228,8,0,TabPFN v2 · all weights,"1e-05
 0"
-25,credit,rmse,TabPFN v2,1e-05,0,True,one_sample,-0.002827555,-0.0019474695,-0.0022698654,-0.00077619139,8,1,TabPFN v2 / frozen,"1e-05
+25,credit,rmse,TabPFN v2,1e-05,0,True,one_sample,-0.002827555,-0.0019474695,-0.0022698654,-0.00077619139,8,1,TabPFN v2 · frozen backbone,"1e-05
 0"
-26,credit,rmse,TabPFN v2,1e-05,0.003,False,one_sample,-0.061850548,-0.052969518,-0.078320517,-0.040630104,8,0,TabPFN v2 / all,"1e-05
+26,credit,rmse,TabPFN v2,1e-05,0.003,False,one_sample,-0.061850548,-0.052969518,-0.078320517,-0.040630104,8,0,TabPFN v2 · all weights,"1e-05
 0.003"
-27,credit,rmse,TabPFN v2,1e-05,0.003,True,one_sample,-0.0028554432,-0.001942301,-0.0039816844,-0.0010516876,8,1,TabPFN v2 / frozen,"1e-05
+27,credit,rmse,TabPFN v2,1e-05,0.003,True,one_sample,-0.0028554432,-0.001942301,-0.0039816844,-0.0010516876,8,1,TabPFN v2 · frozen backbone,"1e-05
 0.003"
-28,credit,rmse,TabPFN v2,3e-05,0,False,one_sample,-0.11131221,-0.13333441,-0.16124945,-0.06014307,8,0,TabPFN v2 / all,"3e-05
+28,credit,rmse,TabPFN v2,3e-05,0,False,one_sample,-0.11131221,-0.13333441,-0.16124945,-0.06014307,8,0,TabPFN v2 · all weights,"3e-05
 0"
-29,credit,rmse,TabPFN v2,3e-05,0,True,one_sample,-0.013889925,-0.0045530146,-0.0062395196,-0.0033363349,8,0,TabPFN v2 / frozen,"3e-05
+29,credit,rmse,TabPFN v2,3e-05,0,True,one_sample,-0.013889925,-0.0045530146,-0.0062395196,-0.0033363349,8,0,TabPFN v2 · frozen backbone,"3e-05
 0"
-30,credit,rmse,TabPFN v2,3e-05,0.003,False,one_sample,-0.11450849,-0.11919423,-0.14584297,-0.078276211,8,0,TabPFN v2 / all,"3e-05
+30,credit,rmse,TabPFN v2,3e-05,0.003,False,one_sample,-0.11450849,-0.11919423,-0.14584297,-0.078276211,8,0,TabPFN v2 · all weights,"3e-05
 0.003"
-31,credit,rmse,TabPFN v2,3e-05,0.003,True,one_sample,-0.003112336,-0.0027037996,-0.006059563,-0.0014302034,8,1,TabPFN v2 / frozen,"3e-05
+31,credit,rmse,TabPFN v2,3e-05,0.003,True,one_sample,-0.003112336,-0.0027037996,-0.006059563,-0.0014302034,8,1,TabPFN v2 · frozen backbone,"3e-05
 0.003"
-32,credit,rmse,TabPFN v2.6,3e-07,0,False,one_sample,-0.11796582,-0.075601104,-0.12191459,-0.051763467,8,1,TabPFN v2.6 / all,"3e-07
+32,credit,rmse,TabPFN v2.6,3e-07,0,False,one_sample,-0.11796582,-0.075601104,-0.12191459,-0.051763467,8,1,TabPFN v2.6 · all weights,"3e-07
 0"
-33,credit,rmse,TabPFN v2.6,3e-07,0,True,one_sample,-0.00090205816,0.00027472015,-0.0015534413,0.00087204034,8,4,TabPFN v2.6 / frozen,"3e-07
+33,credit,rmse,TabPFN v2.6,3e-07,0,True,one_sample,-0.00090205816,0.00027472015,-0.0015534413,0.00087204034,8,4,TabPFN v2.6 · frozen backbone,"3e-07
 0"
-34,credit,rmse,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.1177567,-0.075484785,-0.12162499,-0.051602458,8,1,TabPFN v2.6 / all,"3e-07
+34,credit,rmse,TabPFN v2.6,3e-07,0.003,False,one_sample,-0.1177567,-0.075484785,-0.12162499,-0.051602458,8,1,TabPFN v2.6 · all weights,"3e-07
 0.003"
-35,credit,rmse,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00088764019,0.00032000006,-0.0015516332,0.00087188907,8,4,TabPFN v2.6 / frozen,"3e-07
+35,credit,rmse,TabPFN v2.6,3e-07,0.003,True,one_sample,-0.00088764019,0.00032000006,-0.0015516332,0.00087188907,8,4,TabPFN v2.6 · frozen backbone,"3e-07
 0.003"
-36,credit,rmse,TabPFN v2.6,1e-06,0,False,one_sample,-0.11116385,-0.080077725,-0.10774313,-0.033989448,8,0,TabPFN v2.6 / all,"1e-06
+36,credit,rmse,TabPFN v2.6,1e-06,0,False,one_sample,-0.11116385,-0.080077725,-0.10774313,-0.033989448,8,0,TabPFN v2.6 · all weights,"1e-06
 0"
-37,credit,rmse,TabPFN v2.6,1e-06,0,True,one_sample,-0.010609695,-0.0087664916,-0.010119133,-0.0057872714,8,1,TabPFN v2.6 / frozen,"1e-06
+37,credit,rmse,TabPFN v2.6,1e-06,0,True,one_sample,-0.010609695,-0.0087664916,-0.010119133,-0.0057872714,8,1,TabPFN v2.6 · frozen backbone,"1e-06
 0"
-38,credit,rmse,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.11080007,-0.079077809,-0.10751162,-0.03432883,8,1,TabPFN v2.6 / all,"1e-06
+38,credit,rmse,TabPFN v2.6,1e-06,0.003,False,one_sample,-0.11080007,-0.079077809,-0.10751162,-0.03432883,8,1,TabPFN v2.6 · all weights,"1e-06
 0.003"
-39,credit,rmse,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.010319498,-0.0080828569,-0.0098550564,-0.0052517494,8,1,TabPFN v2.6 / frozen,"1e-06
+39,credit,rmse,TabPFN v2.6,1e-06,0.003,True,one_sample,-0.010319498,-0.0080828569,-0.0098550564,-0.0052517494,8,1,TabPFN v2.6 · frozen backbone,"1e-06
 0.003"
-40,credit,rmse,TabPFN v2.6,1e-05,0,False,one_sample,-0.097411645,-0.047820458,-0.069287571,-0.03186563,8,0,TabPFN v2.6 / all,"1e-05
+40,credit,rmse,TabPFN v2.6,1e-05,0,False,one_sample,-0.097411645,-0.047820458,-0.069287571,-0.03186563,8,0,TabPFN v2.6 · all weights,"1e-05
 0"
-41,credit,rmse,TabPFN v2.6,1e-05,0,True,one_sample,-0.033602703,-0.02316634,-0.05736422,-0.018286631,8,0,TabPFN v2.6 / frozen,"1e-05
+41,credit,rmse,TabPFN v2.6,1e-05,0,True,one_sample,-0.033602703,-0.02316634,-0.05736422,-0.018286631,8,0,TabPFN v2.6 · frozen backbone,"1e-05
 0"
-42,credit,rmse,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.08802595,-0.035579869,-0.060765465,-0.028067323,8,0,TabPFN v2.6 / all,"1e-05
+42,credit,rmse,TabPFN v2.6,1e-05,0.003,False,one_sample,-0.08802595,-0.035579869,-0.060765465,-0.028067323,8,0,TabPFN v2.6 · all weights,"1e-05
 0.003"
-43,credit,rmse,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.022062101,-0.016864204,-0.02648416,-0.014560276,8,0,TabPFN v2.6 / frozen,"1e-05
+43,credit,rmse,TabPFN v2.6,1e-05,0.003,True,one_sample,-0.022062101,-0.016864204,-0.02648416,-0.014560276,8,0,TabPFN v2.6 · frozen backbone,"1e-05
 0.003"
-44,credit,rmse,TabPFN v2.6,3e-05,0,False,one_sample,-0.15009549,-0.081557357,-0.099822426,-0.050181976,8,0,TabPFN v2.6 / all,"3e-05
+44,credit,rmse,TabPFN v2.6,3e-05,0,False,one_sample,-0.15009549,-0.081557357,-0.099822426,-0.050181976,8,0,TabPFN v2.6 · all weights,"3e-05
 0"
-45,credit,rmse,TabPFN v2.6,3e-05,0,True,one_sample,-0.030432953,-0.01725411,-0.051922443,-0.0090122918,8,0,TabPFN v2.6 / frozen,"3e-05
+45,credit,rmse,TabPFN v2.6,3e-05,0,True,one_sample,-0.030432953,-0.01725411,-0.051922443,-0.0090122918,8,0,TabPFN v2.6 · frozen backbone,"3e-05
 0"
-46,credit,rmse,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.11403048,-0.061243589,-0.089168393,-0.038648737,8,0,TabPFN v2.6 / all,"3e-05
+46,credit,rmse,TabPFN v2.6,3e-05,0.003,False,one_sample,-0.11403048,-0.061243589,-0.089168393,-0.038648737,8,0,TabPFN v2.6 · all weights,"3e-05
 0.003"
-47,credit,rmse,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.024524333,-0.011638328,-0.021157083,-0.0086486844,8,0,TabPFN v2.6 / frozen,"3e-05
+47,credit,rmse,TabPFN v2.6,3e-05,0.003,True,one_sample,-0.024524333,-0.011638328,-0.021157083,-0.0086486844,8,0,TabPFN v2.6 · frozen backbone,"3e-05
 0.003"
-48,credit,rmse,TabPFN v3,3e-07,0,False,one_sample,-0.04808719,-0.0069951072,-0.016621566,-0.0024043614,8,1,TabPFN v3 / all,"3e-07
+48,credit,rmse,TabPFN v3,3e-07,0,False,one_sample,-0.04808719,-0.0069951072,-0.016621566,-0.0024043614,8,1,TabPFN v3 · all weights,"3e-07
 0"
-49,credit,rmse,TabPFN v3,3e-07,0,True,one_sample,-0.011842717,-0.0062166307,-0.0084802311,-0.00066503013,8,2,TabPFN v3 / frozen,"3e-07
+49,credit,rmse,TabPFN v3,3e-07,0,True,one_sample,-0.011842717,-0.0062166307,-0.0084802311,-0.00066503013,8,2,TabPFN v3 · frozen backbone,"3e-07
 0"
-50,credit,rmse,TabPFN v3,3e-07,0.003,False,one_sample,-0.038737949,-0.0068935352,-0.016796374,-0.0028272697,8,1,TabPFN v3 / all,"3e-07
+50,credit,rmse,TabPFN v3,3e-07,0.003,False,one_sample,-0.038737949,-0.0068935352,-0.016796374,-0.0028272697,8,1,TabPFN v3 · all weights,"3e-07
 0.003"
-51,credit,rmse,TabPFN v3,3e-07,0.003,True,one_sample,-0.012597989,-0.0063059071,-0.0082248646,-0.00079847936,8,2,TabPFN v3 / frozen,"3e-07
+51,credit,rmse,TabPFN v3,3e-07,0.003,True,one_sample,-0.012597989,-0.0063059071,-0.0082248646,-0.00079847936,8,2,TabPFN v3 · frozen backbone,"3e-07
 0.003"
-52,credit,rmse,TabPFN v3,1e-06,0,False,one_sample,-0.077081473,-0.040760246,-0.058718682,-0.0081498762,8,1,TabPFN v3 / all,"1e-06
+52,credit,rmse,TabPFN v3,1e-06,0,False,one_sample,-0.077081473,-0.040760246,-0.058718682,-0.0081498762,8,1,TabPFN v3 · all weights,"1e-06
 0"
-53,credit,rmse,TabPFN v3,1e-06,0,True,one_sample,-0.038239601,-0.021690655,-0.033698972,-0.0017265177,8,2,TabPFN v3 / frozen,"1e-06
+53,credit,rmse,TabPFN v3,1e-06,0,True,one_sample,-0.038239601,-0.021690655,-0.033698972,-0.0017265177,8,2,TabPFN v3 · frozen backbone,"1e-06
 0"
-54,credit,rmse,TabPFN v3,1e-06,0.003,False,one_sample,-0.065350593,-0.038106296,-0.05575025,-0.0074869984,8,1,TabPFN v3 / all,"1e-06
+54,credit,rmse,TabPFN v3,1e-06,0.003,False,one_sample,-0.065350593,-0.038106296,-0.05575025,-0.0074869984,8,1,TabPFN v3 · all weights,"1e-06
 0.003"
-55,credit,rmse,TabPFN v3,1e-06,0.003,True,one_sample,-0.031284981,-0.022674011,-0.033628318,-0.0021095283,8,2,TabPFN v3 / frozen,"1e-06
+55,credit,rmse,TabPFN v3,1e-06,0.003,True,one_sample,-0.031284981,-0.022674011,-0.033628318,-0.0021095283,8,2,TabPFN v3 · frozen backbone,"1e-06
 0.003"
-56,credit,rmse,TabPFN v3,1e-05,0,False,one_sample,-0.23759121,-0.20391451,-0.34332339,-0.13278722,8,0,TabPFN v3 / all,"1e-05
+56,credit,rmse,TabPFN v3,1e-05,0,False,one_sample,-0.23759121,-0.20391451,-0.34332339,-0.13278722,8,0,TabPFN v3 · all weights,"1e-05
 0"
-57,credit,rmse,TabPFN v3,1e-05,0,True,one_sample,-0.14893255,-0.092460523,-0.16178152,-0.032218097,8,0,TabPFN v3 / frozen,"1e-05
+57,credit,rmse,TabPFN v3,1e-05,0,True,one_sample,-0.14893255,-0.092460523,-0.16178152,-0.032218097,8,0,TabPFN v3 · frozen backbone,"1e-05
 0"
-58,credit,rmse,TabPFN v3,1e-05,0.003,False,one_sample,-0.21678313,-0.18063244,-0.28115853,-0.10014338,8,0,TabPFN v3 / all,"1e-05
+58,credit,rmse,TabPFN v3,1e-05,0.003,False,one_sample,-0.21678313,-0.18063244,-0.28115853,-0.10014338,8,0,TabPFN v3 · all weights,"1e-05
 0.003"
-59,credit,rmse,TabPFN v3,1e-05,0.003,True,one_sample,-0.12429212,-0.075560333,-0.12773636,-0.017048547,8,0,TabPFN v3 / frozen,"1e-05
+59,credit,rmse,TabPFN v3,1e-05,0.003,True,one_sample,-0.12429212,-0.075560333,-0.12773636,-0.017048547,8,0,TabPFN v3 · frozen backbone,"1e-05
 0.003"
-60,credit,rmse,TabPFN v3,3e-05,0,False,one_sample,-0.27004629,-0.23504639,-0.30904115,-0.10951004,8,0,TabPFN v3 / all,"3e-05
+60,credit,rmse,TabPFN v3,3e-05,0,False,one_sample,-0.27004629,-0.23504639,-0.30904115,-0.10951004,8,0,TabPFN v3 · all weights,"3e-05
 0"
-61,credit,rmse,TabPFN v3,3e-05,0,True,one_sample,-0.20948814,-0.15006294,-0.20252434,-0.085221566,8,0,TabPFN v3 / frozen,"3e-05
+61,credit,rmse,TabPFN v3,3e-05,0,True,one_sample,-0.20948814,-0.15006294,-0.20252434,-0.085221566,8,0,TabPFN v3 · frozen backbone,"3e-05
 0"
-62,credit,rmse,TabPFN v3,3e-05,0.003,False,one_sample,-0.26830588,-0.18745608,-0.35606085,-0.11603207,8,0,TabPFN v3 / all,"3e-05
+62,credit,rmse,TabPFN v3,3e-05,0.003,False,one_sample,-0.26830588,-0.18745608,-0.35606085,-0.11603207,8,0,TabPFN v3 · all weights,"3e-05
 0.003"
-63,credit,rmse,TabPFN v3,3e-05,0.003,True,one_sample,-0.18044789,-0.13903557,-0.20742301,-0.044078248,8,0,TabPFN v3 / frozen,"3e-05
+63,credit,rmse,TabPFN v3,3e-05,0.003,True,one_sample,-0.18044789,-0.13903557,-0.20742301,-0.044078248,8,0,TabPFN v3 · frozen backbone,"3e-05
 0.003"
 
+Figure: lgd_table_recipes_full_r2
+LGD. Experiment 1, final five-fold benchmark: r² change of every held-out credit table (rows) for each recipe with all trainable weights updated, CPT minus the original model of the same base. Columns cross peak learning rate (upper labels, blue) with L2-SP strength λ (lower labels, orange). Rows are ordered by the table's mean effect over all recipes and bases, so tables that improve under many recipes are at the top. Five outer folds are averaged within table. Colours are symmetric about zero and saturate at the 95th percentile of |effect| (0.28); exact values are in the notebook summary.
+Table × recipe effects
+CSV (first column: row index)
+row,base,dataset,learning_rate,l2sp_lambda,frozen,effect
+0,TabICLv2,Freddie Mac,3e-07,0,False,-0.0062779665
+1,TabICLv2,LendingClub (LGD),3e-07,0,False,-0.0003557682
+2,TabICLv2,PropLGD1,3e-07,0,False,-0.028720737
+3,TabICLv2,PropLGD2,3e-07,0,False,-0.0034443021
+4,TabICLv2,PropLGD3,3e-07,0,False,-0.0016329646
+5,TabICLv2,PropLGD4,3e-07,0,False,0.0058594465
+6,TabICLv2,PropLGD5,3e-07,0,False,-0.0043001533
+7,TabICLv2,SBA Loans Case (LGD),3e-07,0,False,-0.00054645538
+16,TabICLv2,Freddie Mac,3e-07,0.003,False,-0.0056432486
+17,TabICLv2,LendingClub (LGD),3e-07,0.003,False,-0.00029659271
+18,TabICLv2,PropLGD1,3e-07,0.003,False,-0.030043507
+19,TabICLv2,PropLGD2,3e-07,0.003,False,-0.0031716228
+20,TabICLv2,PropLGD3,3e-07,0.003,False,-0.0013843417
+21,TabICLv2,PropLGD4,3e-07,0.003,False,0.0058369756
+22,TabICLv2,PropLGD5,3e-07,0.003,False,-0.0034658551
+23,TabICLv2,SBA Loans Case (LGD),3e-07,0.003,False,6.3300133e-06
+32,TabICLv2,Freddie Mac,1e-06,0,False,-0.031468868
+33,TabICLv2,LendingClub (LGD),1e-06,0,False,-0.00045790672
+34,TabICLv2,PropLGD1,1e-06,0,False,-0.2673511
+35,TabICLv2,PropLGD2,1e-06,0,False,-0.015031767
+36,TabICLv2,PropLGD3,1e-06,0,False,-0.0054196596
+37,TabICLv2,PropLGD4,1e-06,0,False,-0.0099618554
+38,TabICLv2,PropLGD5,1e-06,0,False,-0.011110318
+39,TabICLv2,SBA Loans Case (LGD),1e-06,0,False,-0.0086556911
+48,TabICLv2,Freddie Mac,1e-06,0.003,False,-0.025908136
+49,TabICLv2,LendingClub (LGD),1e-06,0.003,False,-0.00032074451
+50,TabICLv2,PropLGD1,1e-06,0.003,False,-0.31356044
+51,TabICLv2,PropLGD2,1e-06,0.003,False,-0.012290466
+52,TabICLv2,PropLGD3,1e-06,0.003,False,-0.0038322091
+53,TabICLv2,PropLGD4,1e-06,0.003,False,-0.0042067289
+54,TabICLv2,PropLGD5,1e-06,0.003,False,-0.0076200366
+55,TabICLv2,SBA Loans Case (LGD),1e-06,0.003,False,-0.004163754
+64,TabICLv2,Freddie Mac,1e-05,0,False,-0.17531581
+65,TabICLv2,LendingClub (LGD),1e-05,0,False,-0.041398156
+66,TabICLv2,PropLGD1,1e-05,0,False,-0.32710534
+67,TabICLv2,PropLGD2,1e-05,0,False,-0.060506105
+68,TabICLv2,PropLGD3,1e-05,0,False,-0.038795364
+69,TabICLv2,PropLGD4,1e-05,0,False,-0.094454837
+70,TabICLv2,PropLGD5,1e-05,0,False,-0.2483488
+71,TabICLv2,SBA Loans Case (LGD),1e-05,0,False,-0.09456836
+80,TabICLv2,Freddie Mac,1e-05,0.003,False,-0.14634408
+81,TabICLv2,LendingClub (LGD),1e-05,0.003,False,-0.030775595
+82,TabICLv2,PropLGD1,1e-05,0.003,False,-0.17633053
+83,TabICLv2,PropLGD2,1e-05,0.003,False,-0.02355653
+84,TabICLv2,PropLGD3,1e-05,0.003,False,-0.0091856837
+85,TabICLv2,PropLGD4,1e-05,0.003,False,-0.036343277
+86,TabICLv2,PropLGD5,1e-05,0.003,False,-0.22341288
+87,TabICLv2,SBA Loans Case (LGD),1e-05,0.003,False,-0.028800261
+96,TabICLv2,Freddie Mac,3e-05,0,False,-0.18366096
+97,TabICLv2,LendingClub (LGD),3e-05,0,False,-0.056901348
+98,TabICLv2,PropLGD1,3e-05,0,False,-0.33802536
+99,TabICLv2,PropLGD2,3e-05,0,False,-0.14036043
+100,TabICLv2,PropLGD3,3e-05,0,False,-0.13316411
+101,TabICLv2,PropLGD4,3e-05,0,False,-0.1368582
+102,TabICLv2,PropLGD5,3e-05,0,False,-0.23142445
+103,TabICLv2,SBA Loans Case (LGD),3e-05,0,False,-0.12494507
+112,TabICLv2,Freddie Mac,3e-05,0.003,False,-0.1333322
+113,TabICLv2,LendingClub (LGD),3e-05,0.003,False,-0.036660612
+114,TabICLv2,PropLGD1,3e-05,0.003,False,-0.15062555
+115,TabICLv2,PropLGD2,3e-05,0.003,False,-0.036110699
+116,TabICLv2,PropLGD3,3e-05,0.003,False,-0.011537147
+117,TabICLv2,PropLGD4,3e-05,0.003,False,-0.025871897
+118,TabICLv2,PropLGD5,3e-05,0.003,False,-0.095768785
+119,TabICLv2,SBA Loans Case (LGD),3e-05,0.003,False,-0.050903249
+128,TabPFN v2,Freddie Mac,3e-07,0,False,-0.0031929135
+129,TabPFN v2,LendingClub (LGD),3e-07,0,False,-0.0021497488
+130,TabPFN v2,PropLGD1,3e-07,0,False,0.019067729
+131,TabPFN v2,PropLGD2,3e-07,0,False,-0.00070744753
+132,TabPFN v2,PropLGD3,3e-07,0,False,0.0011690259
+133,TabPFN v2,PropLGD4,3e-07,0,False,0.011688018
+134,TabPFN v2,PropLGD5,3e-07,0,False,0.0064568043
+135,TabPFN v2,SBA Loans Case (LGD),3e-07,0,False,0.0027754903
+144,TabPFN v2,Freddie Mac,3e-07,0.003,False,-0.0032508135
+145,TabPFN v2,LendingClub (LGD),3e-07,0.003,False,-0.0021434546
+146,TabPFN v2,PropLGD1,3e-07,0.003,False,0.018483496
+147,TabPFN v2,PropLGD2,3e-07,0.003,False,-0.00080544949
+148,TabPFN v2,PropLGD3,3e-07,0.003,False,-0.00021089315
+149,TabPFN v2,PropLGD4,3e-07,0.003,False,0.011592054
+150,TabPFN v2,PropLGD5,3e-07,0.003,False,0.0063416004
+151,TabPFN v2,SBA Loans Case (LGD),3e-07,0.003,False,0.0028022647
+160,TabPFN v2,Freddie Mac,1e-06,0,False,-0.007098949
+161,TabPFN v2,LendingClub (LGD),1e-06,0,False,-0.0041548014
+162,TabPFN v2,PropLGD1,1e-06,0,False,0.041654229
+163,TabPFN v2,PropLGD2,1e-06,0,False,-0.0008007288
+164,TabPFN v2,PropLGD3,1e-06,0,False,-0.0046227455
+165,TabPFN v2,PropLGD4,1e-06,0,False,-0.0027023673
+166,TabPFN v2,PropLGD5,1e-06,0,False,-0.0027192593
+167,TabPFN v2,SBA Loans Case (LGD),1e-06,0,False,0.00069862604
+176,TabPFN v2,Freddie Mac,1e-06,0.003,False,-0.0071505547
+177,TabPFN v2,LendingClub (LGD),1e-06,0.003,False,-0.0041552782
+178,TabPFN v2,PropLGD1,1e-06,0.003,False,0.042105663
+179,TabPFN v2,PropLGD2,1e-06,0.003,False,-0.0012936831
+180,TabPFN v2,PropLGD3,1e-06,0.003,False,-0.012545788
+181,TabPFN v2,PropLGD4,1e-06,0.003,False,-0.0011195421
+182,TabPFN v2,PropLGD5,1e-06,0.003,False,-0.0035522342
+183,TabPFN v2,SBA Loans Case (LGD),1e-06,0.003,False,0.00091099739
+192,TabPFN v2,Freddie Mac,1e-05,0,False,-0.049220717
+193,TabPFN v2,LendingClub (LGD),1e-05,0,False,-0.010161412
+194,TabPFN v2,PropLGD1,1e-05,0,False,-0.15407141
+195,TabPFN v2,PropLGD2,1e-05,0,False,-0.026645362
+196,TabPFN v2,PropLGD3,1e-05,0,False,-0.0066147327
+197,TabPFN v2,PropLGD4,1e-05,0,False,-0.17721788
+198,TabPFN v2,PropLGD5,1e-05,0,False,-0.055765533
+199,TabPFN v2,SBA Loans Case (LGD),1e-05,0,False,-0.047772694
+208,TabPFN v2,Freddie Mac,1e-05,0.003,False,-0.045350611
+209,TabPFN v2,LendingClub (LGD),1e-05,0.003,False,-0.0093815923
+210,TabPFN v2,PropLGD1,1e-05,0.003,False,-0.1450543
+211,TabPFN v2,PropLGD2,1e-05,0.003,False,-0.032903695
+212,TabPFN v2,PropLGD3,1e-05,0.003,False,-0.067190433
+213,TabPFN v2,PropLGD4,1e-05,0.003,False,-0.16206375
+214,TabPFN v2,PropLGD5,1e-05,0.003,False,-0.062775576
+215,TabPFN v2,SBA Loans Case (LGD),1e-05,0.003,False,-0.03807869
+224,TabPFN v2,Freddie Mac,3e-05,0,False,-0.20730122
+225,TabPFN v2,LendingClub (LGD),3e-05,0,False,-0.021481311
+226,TabPFN v2,PropLGD1,3e-05,0,False,-0.23354058
+227,TabPFN v2,PropLGD2,3e-05,0,False,-0.066015792
+228,TabPFN v2,PropLGD3,3e-05,0,False,-0.037746119
+229,TabPFN v2,PropLGD4,3e-05,0,False,-0.24104493
+230,TabPFN v2,PropLGD5,3e-05,0,False,-0.081440258
+231,TabPFN v2,SBA Loans Case (LGD),3e-05,0,False,-0.099664223
+240,TabPFN v2,Freddie Mac,3e-05,0.003,False,-0.20568827
+241,TabPFN v2,LendingClub (LGD),3e-05,0.003,False,-0.017306674
+242,TabPFN v2,PropLGD1,3e-05,0.003,False,-0.29050606
+243,TabPFN v2,PropLGD2,3e-05,0.003,False,-0.068750942
+244,TabPFN v2,PropLGD3,3e-05,0.003,False,-0.11220001
+245,TabPFN v2,PropLGD4,3e-05,0.003,False,-0.17552513
+246,TabPFN v2,PropLGD5,3e-05,0.003,False,-0.1003857
+247,TabPFN v2,SBA Loans Case (LGD),3e-05,0.003,False,-0.084855807
+256,TabPFN v2.6,Freddie Mac,3e-07,0,False,-0.075496805
+257,TabPFN v2.6,LendingClub (LGD),3e-07,0,False,-0.081362092
+258,TabPFN v2.6,PropLGD1,3e-07,0,False,-0.29913464
+259,TabPFN v2.6,PropLGD2,3e-07,0,False,-0.063528061
+260,TabPFN v2.6,PropLGD3,3e-07,0,False,0.0013708711
+261,TabPFN v2.6,PropLGD4,3e-07,0,False,-0.066328812
+262,TabPFN v2.6,PropLGD5,3e-07,0,False,-0.027583945
+263,TabPFN v2.6,SBA Loans Case (LGD),3e-07,0,False,-0.054754686
+272,TabPFN v2.6,Freddie Mac,3e-07,0.003,False,-0.075571036
+273,TabPFN v2.6,LendingClub (LGD),3e-07,0.003,False,-0.080925655
+274,TabPFN v2.6,PropLGD1,3e-07,0.003,False,-0.29883276
+275,TabPFN v2.6,PropLGD2,3e-07,0.003,False,-0.063454926
+276,TabPFN v2.6,PropLGD3,3e-07,0.003,False,0.0014339089
+277,TabPFN v2.6,PropLGD4,3e-07,0.003,False,-0.066008151
+278,TabPFN v2.6,PropLGD5,3e-07,0.003,False,-0.027774954
+279,TabPFN v2.6,SBA Loans Case (LGD),3e-07,0.003,False,-0.054565394
+288,TabPFN v2.6,Freddie Mac,1e-06,0,False,-0.046315289
+289,TabPFN v2.6,LendingClub (LGD),1e-06,0,False,-0.067448008
+290,TabPFN v2.6,PropLGD1,1e-06,0,False,-0.29806277
+291,TabPFN v2.6,PropLGD2,1e-06,0,False,-0.057096684
+292,TabPFN v2.6,PropLGD3,1e-06,0,False,-7.4923038e-05
+293,TabPFN v2.6,PropLGD4,1e-06,0,False,-0.079827631
+294,TabPFN v2.6,PropLGD5,1e-06,0,False,-0.022560883
+295,TabPFN v2.6,SBA Loans Case (LGD),1e-06,0,False,-0.054649734
+304,TabPFN v2.6,Freddie Mac,1e-06,0.003,False,-0.046599352
+305,TabPFN v2.6,LendingClub (LGD),1e-06,0.003,False,-0.066781271
+306,TabPFN v2.6,PropLGD1,1e-06,0.003,False,-0.29770719
+307,TabPFN v2.6,PropLGD2,1e-06,0.003,False,-0.057162225
+308,TabPFN v2.6,PropLGD3,1e-06,0.003,False,0.00028730631
+309,TabPFN v2.6,PropLGD4,1e-06,0.003,False,-0.079185843
+310,TabPFN v2.6,PropLGD5,1e-06,0.003,False,-0.023315632
+311,TabPFN v2.6,SBA Loans Case (LGD),1e-06,0.003,False,-0.053670382
+320,TabPFN v2.6,Freddie Mac,1e-05,0,False,-0.034486461
+321,TabPFN v2.6,LendingClub (LGD),1e-05,0,False,-0.030312896
+322,TabPFN v2.6,PropLGD1,1e-05,0,False,-0.30640349
+323,TabPFN v2.6,PropLGD2,1e-05,0,False,-0.048942292
+324,TabPFN v2.6,PropLGD3,1e-05,0,False,-0.053279793
+325,TabPFN v2.6,PropLGD4,1e-05,0,False,-0.074768353
+326,TabPFN v2.6,PropLGD5,1e-05,0,False,-0.042799675
+327,TabPFN v2.6,SBA Loans Case (LGD),1e-05,0,False,-0.016891122
+336,TabPFN v2.6,Freddie Mac,1e-05,0.003,False,-0.034580648
+337,TabPFN v2.6,LendingClub (LGD),1e-05,0.003,False,-0.028565049
+338,TabPFN v2.6,PropLGD1,1e-05,0.003,False,-0.30267892
+339,TabPFN v2.6,PropLGD2,1e-05,0.003,False,-0.023911333
+340,TabPFN v2.6,PropLGD3,1e-05,0.003,False,-0.017963684
+341,TabPFN v2.6,PropLGD4,1e-05,0.003,False,-0.077041972
+342,TabPFN v2.6,PropLGD5,1e-05,0.003,False,-0.035975087
+343,TabPFN v2.6,SBA Loans Case (LGD),1e-05,0.003,False,-0.017068756
+352,TabPFN v2.6,Freddie Mac,3e-05,0,False,-0.063636315
+353,TabPFN v2.6,LendingClub (LGD),3e-05,0,False,-0.022573102
+354,TabPFN v2.6,PropLGD1,3e-05,0,False,-0.52430831
+355,TabPFN v2.6,PropLGD2,3e-05,0,False,-0.045874536
+356,TabPFN v2.6,PropLGD3,3e-05,0,False,-0.13715578
+357,TabPFN v2.6,PropLGD4,3e-05,0,False,-0.11616719
+358,TabPFN v2.6,PropLGD5,3e-05,0,False,-0.14303712
+359,TabPFN v2.6,SBA Loans Case (LGD),3e-05,0,False,-0.025004101
+368,TabPFN v2.6,Freddie Mac,3e-05,0.003,False,-0.043591285
+369,TabPFN v2.6,LendingClub (LGD),3e-05,0.003,False,-0.01909852
+370,TabPFN v2.6,PropLGD1,3e-05,0.003,False,-0.3665728
+371,TabPFN v2.6,PropLGD2,3e-05,0.003,False,-0.035611737
+372,TabPFN v2.6,PropLGD3,3e-05,0.003,False,-0.15250652
+373,TabPFN v2.6,PropLGD4,3e-05,0.003,False,-0.069619918
+374,TabPFN v2.6,PropLGD5,3e-05,0.003,False,-0.11618133
+375,TabPFN v2.6,SBA Loans Case (LGD),3e-05,0.003,False,-0.0092379689
+384,TabPFN v3,Freddie Mac,3e-07,0,False,-0.018173933
+385,TabPFN v3,LendingClub (LGD),3e-07,0,False,-0.001977694
+386,TabPFN v3,PropLGD1,3e-07,0,False,-0.25456707
+387,TabPFN v3,PropLGD2,3e-07,0,False,-0.011113143
+388,TabPFN v3,PropLGD3,3e-07,0,False,0.00228585
+389,TabPFN v3,PropLGD4,3e-07,0,False,-0.0020178318
+390,TabPFN v3,PropLGD5,3e-07,0,False,-0.0012529254
+391,TabPFN v3,SBA Loans Case (LGD),3e-07,0,False,-0.004320395
+400,TabPFN v3,Freddie Mac,3e-07,0.003,False,-0.018117607
+401,TabPFN v3,LendingClub (LGD),3e-07,0.003,False,-0.0019857883
+402,TabPFN v3,PropLGD1,3e-07,0.003,False,-0.18983387
+403,TabPFN v3,PropLGD2,3e-07,0.003,False,-0.011565423
+404,TabPFN v3,PropLGD3,3e-07,0.003,False,0.0021969914
+405,TabPFN v3,PropLGD4,3e-07,0.003,False,-0.0026840091
+406,TabPFN v3,PropLGD5,3e-07,0.003,False,-0.0012308478
+407,TabPFN v3,SBA Loans Case (LGD),3e-07,0.003,False,-0.0042111993
+416,TabPFN v3,Freddie Mac,1e-06,0,False,-0.10142229
+417,TabPFN v3,LendingClub (LGD),1e-06,0,False,-0.0042830586
+418,TabPFN v3,PropLGD1,1e-06,0,False,-0.30643374
+419,TabPFN v3,PropLGD2,1e-06,0,False,-0.027676904
+420,TabPFN v3,PropLGD3,1e-06,0,False,0.0039400697
+421,TabPFN v3,PropLGD4,1e-06,0,False,-0.035186315
+422,TabPFN v3,PropLGD5,1e-06,0,False,-0.0064174891
+423,TabPFN v3,SBA Loans Case (LGD),1e-06,0,False,-0.025368595
+432,TabPFN v3,Freddie Mac,1e-06,0.003,False,-0.084577382
+433,TabPFN v3,LendingClub (LGD),1e-06,0.003,False,-0.0038728476
+434,TabPFN v3,PropLGD1,1e-06,0.003,False,-0.2398862
+435,TabPFN v3,PropLGD2,1e-06,0.003,False,-0.027920735
+436,TabPFN v3,PropLGD3,1e-06,0.003,False,0.0041180491
+437,TabPFN v3,PropLGD4,1e-06,0.003,False,-0.031071138
+438,TabPFN v3,PropLGD5,1e-06,0.003,False,-0.0065849543
+439,TabPFN v3,SBA Loans Case (LGD),1e-06,0.003,False,-0.024562764
+448,TabPFN v3,Freddie Mac,1e-05,0,False,-0.4409722
+449,TabPFN v3,LendingClub (LGD),1e-05,0,False,-0.020953965
+450,TabPFN v3,PropLGD1,1e-05,0,False,-0.40684208
+451,TabPFN v3,PropLGD2,1e-05,0,False,-0.11926062
+452,TabPFN v3,PropLGD3,1e-05,0,False,-0.098383307
+453,TabPFN v3,PropLGD4,1e-05,0,False,-0.25795379
+454,TabPFN v3,PropLGD5,1e-05,0,False,-0.20172141
+455,TabPFN v3,SBA Loans Case (LGD),1e-05,0,False,-0.2645394
+464,TabPFN v3,Freddie Mac,1e-05,0.003,False,-0.34236864
+465,TabPFN v3,LendingClub (LGD),1e-05,0.003,False,-0.015533566
+466,TabPFN v3,PropLGD1,1e-05,0.003,False,-0.45767866
+467,TabPFN v3,PropLGD2,1e-05,0.003,False,-0.12785058
+468,TabPFN v3,PropLGD3,1e-05,0.003,False,-0.10902455
+469,TabPFN v3,PropLGD4,1e-05,0.003,False,-0.18300145
+470,TabPFN v3,PropLGD5,1e-05,0.003,False,-0.14248517
+471,TabPFN v3,SBA Loans Case (LGD),1e-05,0.003,False,-0.22423427
+480,TabPFN v3,Freddie Mac,3e-05,0,False,-0.32345806
+481,TabPFN v3,LendingClub (LGD),3e-05,0,False,-0.041435611
+482,TabPFN v3,PropLGD1,3e-05,0,False,-0.62113434
+483,TabPFN v3,PropLGD2,3e-05,0,False,-0.16300409
+484,TabPFN v3,PropLGD3,3e-05,0,False,-0.15478368
+485,TabPFN v3,PropLGD4,3e-05,0,False,-0.29412605
+486,TabPFN v3,PropLGD5,3e-05,0,False,-0.15633914
+487,TabPFN v3,SBA Loans Case (LGD),3e-05,0,False,-0.2748401
+496,TabPFN v3,Freddie Mac,3e-05,0.003,False,-0.27906747
+497,TabPFN v3,LendingClub (LGD),3e-05,0.003,False,-0.046640003
+498,TabPFN v3,PropLGD1,3e-05,0.003,False,-0.56277343
+499,TabPFN v3,PropLGD2,3e-05,0.003,False,-0.1912748
+500,TabPFN v3,PropLGD3,3e-05,0.003,False,-0.19587698
+501,TabPFN v3,PropLGD4,3e-05,0.003,False,-0.20570056
+502,TabPFN v3,PropLGD5,3e-05,0.003,False,-0.1534783
+503,TabPFN v3,SBA Loans Case (LGD),3e-05,0.003,False,-0.31870445
+
+Figure: lgd_table_recipes_frozen_r2
+LGD. Experiment 1, final five-fold benchmark: r² change of every held-out credit table (rows) for each recipe with the dominant transformer backbone frozen, CPT minus the original model of the same base. Columns cross peak learning rate (upper labels, blue) with L2-SP strength λ (lower labels, orange). Rows are ordered by the table's mean effect over all recipes and bases, so tables that improve under many recipes are at the top. Five outer folds are averaged within table. Colours are symmetric about zero and saturate at the 95th percentile of |effect| (0.28); exact values are in the notebook summary.
+Table × recipe effects
+CSV (first column: row index)
+row,base,dataset,learning_rate,l2sp_lambda,frozen,effect
+8,TabICLv2,Freddie Mac,3e-07,0,True,0.0018703699
+9,TabICLv2,LendingClub (LGD),3e-07,0,True,9.9086761e-05
+10,TabICLv2,PropLGD1,3e-07,0,True,-0.00026630163
+11,TabICLv2,PropLGD2,3e-07,0,True,0.00032488108
+12,TabICLv2,PropLGD3,3e-07,0,True,-0.0004360199
+13,TabICLv2,PropLGD4,3e-07,0,True,0.0053270698
+14,TabICLv2,PropLGD5,3e-07,0,True,-0.00091625452
+15,TabICLv2,SBA Loans Case (LGD),3e-07,0,True,0.0007679224
+24,TabICLv2,Freddie Mac,3e-07,0.003,True,0.001791203
+25,TabICLv2,LendingClub (LGD),3e-07,0.003,True,9.9527836e-05
+26,TabICLv2,PropLGD1,3e-07,0.003,True,-0.0011702299
+27,TabICLv2,PropLGD2,3e-07,0.003,True,0.00036139488
+28,TabICLv2,PropLGD3,3e-07,0.003,True,-0.00048923492
+29,TabICLv2,PropLGD4,3e-07,0.003,True,0.0053941846
+30,TabICLv2,PropLGD5,3e-07,0.003,True,-0.00072492361
+31,TabICLv2,SBA Loans Case (LGD),3e-07,0.003,True,0.0011025786
+40,TabICLv2,Freddie Mac,1e-06,0,True,-0.0017269135
+41,TabICLv2,LendingClub (LGD),1e-06,0,True,0.00033165216
+42,TabICLv2,PropLGD1,1e-06,0,True,-0.056962609
+43,TabICLv2,PropLGD2,1e-06,0,True,-0.00074406862
+44,TabICLv2,PropLGD3,1e-06,0,True,-0.00067995787
+45,TabICLv2,PropLGD4,1e-06,0,True,0.0092394471
+46,TabICLv2,PropLGD5,1e-06,0,True,-0.0036946893
+47,TabICLv2,SBA Loans Case (LGD),1e-06,0,True,0.0008590579
+56,TabICLv2,Freddie Mac,1e-06,0.003,True,-0.0012158394
+57,TabICLv2,LendingClub (LGD),1e-06,0.003,True,0.00026028156
+58,TabICLv2,PropLGD1,1e-06,0.003,True,-0.073823249
+59,TabICLv2,PropLGD2,1e-06,0.003,True,-0.0011797905
+60,TabICLv2,PropLGD3,1e-06,0.003,True,-0.00015195608
+61,TabICLv2,PropLGD4,1e-06,0.003,True,0.0086188436
+62,TabICLv2,PropLGD5,1e-06,0.003,True,-0.0038709044
+63,TabICLv2,SBA Loans Case (LGD),1e-06,0.003,True,0.00080263615
+72,TabICLv2,Freddie Mac,1e-05,0,True,-0.011614168
+73,TabICLv2,LendingClub (LGD),1e-05,0,True,-0.021646845
+74,TabICLv2,PropLGD1,1e-05,0,True,-0.027258682
+75,TabICLv2,PropLGD2,1e-05,0,True,-0.011391783
+76,TabICLv2,PropLGD3,1e-05,0,True,-0.0058598042
+77,TabICLv2,PropLGD4,1e-05,0,True,-0.00057952404
+78,TabICLv2,PropLGD5,1e-05,0,True,-0.015136635
+79,TabICLv2,SBA Loans Case (LGD),1e-05,0,True,-0.010998344
+88,TabICLv2,Freddie Mac,1e-05,0.003,True,-0.018532062
+89,TabICLv2,LendingClub (LGD),1e-05,0.003,True,-0.022999859
+90,TabICLv2,PropLGD1,1e-05,0.003,True,-0.076606297
+91,TabICLv2,PropLGD2,1e-05,0.003,True,-0.010959208
+92,TabICLv2,PropLGD3,1e-05,0.003,True,-0.0047459483
+93,TabICLv2,PropLGD4,1e-05,0.003,True,-0.00010713339
+94,TabICLv2,PropLGD5,1e-05,0.003,True,-0.013847113
+95,TabICLv2,SBA Loans Case (LGD),1e-05,0.003,True,-0.010184824
+104,TabICLv2,Freddie Mac,3e-05,0,True,-0.0352036
+105,TabICLv2,LendingClub (LGD),3e-05,0,True,-0.02780447
+106,TabICLv2,PropLGD1,3e-05,0,True,-0.074540174
+107,TabICLv2,PropLGD2,3e-05,0,True,-0.020395541
+108,TabICLv2,PropLGD3,3e-05,0,True,-0.004166615
+109,TabICLv2,PropLGD4,3e-05,0,True,-0.015155041
+110,TabICLv2,PropLGD5,3e-05,0,True,-0.024212253
+111,TabICLv2,SBA Loans Case (LGD),3e-05,0,True,-0.017205262
+120,TabICLv2,Freddie Mac,3e-05,0.003,True,-0.023489797
+121,TabICLv2,LendingClub (LGD),3e-05,0.003,True,-0.026805651
+122,TabICLv2,PropLGD1,3e-05,0.003,True,-0.13264836
+123,TabICLv2,PropLGD2,3e-05,0.003,True,-0.015035224
+124,TabICLv2,PropLGD3,3e-05,0.003,True,-0.0051512122
+125,TabICLv2,PropLGD4,3e-05,0.003,True,-0.0071557045
+126,TabICLv2,PropLGD5,3e-05,0.003,True,-0.027439868
+127,TabICLv2,SBA Loans Case (LGD),3e-05,0.003,True,-0.012514675
+136,TabPFN v2,Freddie Mac,3e-07,0,True,-0.00039176941
+137,TabPFN v2,LendingClub (LGD),3e-07,0,True,-0.00018033981
+138,TabPFN v2,PropLGD1,3e-07,0,True,-0.0069638371
+139,TabPFN v2,PropLGD2,3e-07,0,True,-0.00023218393
+140,TabPFN v2,PropLGD3,3e-07,0,True,-0.0034658194
+141,TabPFN v2,PropLGD4,3e-07,0,True,1.0168552e-05
+142,TabPFN v2,PropLGD5,3e-07,0,True,0.00053731203
+143,TabPFN v2,SBA Loans Case (LGD),3e-07,0,True,-0.00033006668
+152,TabPFN v2,Freddie Mac,3e-07,0.003,True,-0.00038522482
+153,TabPFN v2,LendingClub (LGD),3e-07,0.003,True,-0.00018558502
+154,TabPFN v2,PropLGD1,3e-07,0.003,True,-0.0071280241
+155,TabPFN v2,PropLGD2,3e-07,0.003,True,-0.00032587051
+156,TabPFN v2,PropLGD3,3e-07,0.003,True,-0.0046648145
+157,TabPFN v2,PropLGD4,3e-07,0.003,True,-5.8293343e-06
+158,TabPFN v2,PropLGD5,3e-07,0.003,True,0.00051351786
+159,TabPFN v2,SBA Loans Case (LGD),3e-07,0.003,True,-0.00037333965
+168,TabPFN v2,Freddie Mac,1e-06,0,True,-0.0010754347
+169,TabPFN v2,LendingClub (LGD),1e-06,0,True,-0.00031875372
+170,TabPFN v2,PropLGD1,1e-06,0,True,-0.0089998007
+171,TabPFN v2,PropLGD2,1e-06,0,True,2.1195412e-05
+172,TabPFN v2,PropLGD3,1e-06,0,True,-0.0039439797
+173,TabPFN v2,PropLGD4,1e-06,0,True,-0.00089037418
+174,TabPFN v2,PropLGD5,1e-06,0,True,-0.0023263454
+175,TabPFN v2,SBA Loans Case (LGD),1e-06,0,True,-0.00069103241
+184,TabPFN v2,Freddie Mac,1e-06,0.003,True,-0.0010495067
+185,TabPFN v2,LendingClub (LGD),1e-06,0.003,True,-0.00031479597
+186,TabPFN v2,PropLGD1,1e-06,0.003,True,-0.0092791319
+187,TabPFN v2,PropLGD2,1e-06,0.003,True,-0.0003678441
+188,TabPFN v2,PropLGD3,1e-06,0.003,True,-0.0087867379
+189,TabPFN v2,PropLGD4,1e-06,0.003,True,-0.00077403784
+190,TabPFN v2,PropLGD5,1e-06,0.003,True,-0.0023391247
+191,TabPFN v2,SBA Loans Case (LGD),1e-06,0.003,True,-0.00071592331
+200,TabPFN v2,Freddie Mac,1e-05,0,True,-0.0027648687
+201,TabPFN v2,LendingClub (LGD),1e-05,0,True,-0.0004549861
+202,TabPFN v2,PropLGD1,1e-05,0,True,0.0024587274
+203,TabPFN v2,PropLGD2,1e-05,0,True,-0.0001886487
+204,TabPFN v2,PropLGD3,1e-05,0,True,0.0020542383
+205,TabPFN v2,PropLGD4,1e-05,0,True,-0.0039305449
+206,TabPFN v2,PropLGD5,1e-05,0,True,-0.016597986
+207,TabPFN v2,SBA Loans Case (LGD),1e-05,0,True,-0.0012714267
+216,TabPFN v2,Freddie Mac,1e-05,0.003,True,-0.0026356339
+217,TabPFN v2,LendingClub (LGD),1e-05,0.003,True,-0.00031863451
+218,TabPFN v2,PropLGD1,1e-05,0.003,True,0.014576924
+219,TabPFN v2,PropLGD2,1e-05,0.003,True,-0.00067813396
+220,TabPFN v2,PropLGD3,1e-05,0.003,True,-0.015006077
+221,TabPFN v2,PropLGD4,1e-05,0.003,True,-0.0030622482
+222,TabPFN v2,PropLGD5,1e-05,0.003,True,-0.016434467
+223,TabPFN v2,SBA Loans Case (LGD),1e-05,0.003,True,-0.0013815165
+232,TabPFN v2,Freddie Mac,3e-05,0,True,-0.0033700824
+233,TabPFN v2,LendingClub (LGD),3e-05,0,True,-0.0012657285
+234,TabPFN v2,PropLGD1,3e-05,0,True,-0.1071712
+235,TabPFN v2,PropLGD2,3e-05,0,True,-0.0031132936
+236,TabPFN v2,PropLGD3,3e-05,0,True,-0.0059345484
+237,TabPFN v2,PropLGD4,3e-05,0,True,-0.0079756021
+238,TabPFN v2,PropLGD5,3e-05,0,True,-0.0090805411
+239,TabPFN v2,SBA Loans Case (LGD),3e-05,0,True,-0.0021223426
+248,TabPFN v2,Freddie Mac,3e-05,0.003,True,-0.0026311517
+249,TabPFN v2,LendingClub (LGD),3e-05,0.003,True,-0.00039405823
+250,TabPFN v2,PropLGD1,3e-05,0.003,True,0.018867517
+251,TabPFN v2,PropLGD2,3e-05,0.003,True,-0.00094249249
+252,TabPFN v2,PropLGD3,3e-05,0.003,True,-0.0183496
+253,TabPFN v2,PropLGD4,3e-05,0.003,True,-0.0068924904
+254,TabPFN v2,PropLGD5,3e-05,0.003,True,-0.012464809
+255,TabPFN v2,SBA Loans Case (LGD),3e-05,0.003,True,-0.0020428061
+264,TabPFN v2.6,Freddie Mac,3e-07,0,True,0.00098266602
+265,TabPFN v2.6,LendingClub (LGD),3e-07,0,True,0.00065555573
+266,TabPFN v2.6,PropLGD1,3e-07,0,True,-0.0044168472
+267,TabPFN v2.6,PropLGD2,3e-07,0,True,2.1886826e-05
+268,TabPFN v2.6,PropLGD3,3e-07,0,True,0.0010153294
+269,TabPFN v2.6,PropLGD4,3e-07,0,True,-0.0010034919
+270,TabPFN v2.6,PropLGD5,3e-07,0,True,0.0026229739
+271,TabPFN v2.6,SBA Loans Case (LGD),3e-07,0,True,-0.0008677125
+280,TabPFN v2.6,Freddie Mac,3e-07,0.003,True,0.00098222494
+281,TabPFN v2.6,LendingClub (LGD),3e-07,0.003,True,0.00065973997
+282,TabPFN v2.6,PropLGD1,3e-07,0.003,True,-0.0044159889
+283,TabPFN v2.6,PropLGD2,3e-07,0.003,True,2.5713444e-05
+284,TabPFN v2.6,PropLGD3,3e-07,0.003,True,0.0011408329
+285,TabPFN v2.6,PropLGD4,3e-07,0.003,True,-0.0010062695
+286,TabPFN v2.6,PropLGD5,3e-07,0.003,True,0.0026251674
+287,TabPFN v2.6,SBA Loans Case (LGD),3e-07,0.003,True,-0.0008570075
+296,TabPFN v2.6,Freddie Mac,1e-06,0,True,-0.0043949485
+297,TabPFN v2.6,LendingClub (LGD),1e-06,0,True,0.0003518343
+298,TabPFN v2.6,PropLGD1,1e-06,0,True,-0.021265209
+299,TabPFN v2.6,PropLGD2,1e-06,0,True,-0.0034974575
+300,TabPFN v2.6,PropLGD3,1e-06,0,True,-0.012674868
+301,TabPFN v2.6,PropLGD4,1e-06,0,True,-0.010237837
+302,TabPFN v2.6,PropLGD5,1e-06,0,True,-0.0072713494
+303,TabPFN v2.6,SBA Loans Case (LGD),1e-06,0,True,-0.005409348
+312,TabPFN v2.6,Freddie Mac,1e-06,0.003,True,-0.0044354081
+313,TabPFN v2.6,LendingClub (LGD),1e-06,0.003,True,0.00032086372
+314,TabPFN v2.6,PropLGD1,1e-06,0.003,True,-0.021278048
+315,TabPFN v2.6,PropLGD2,1e-06,0.003,True,-0.0031033635
+316,TabPFN v2.6,PropLGD3,1e-06,0.003,True,-0.010462141
+317,TabPFN v2.6,PropLGD4,1e-06,0.003,True,-0.010212708
+318,TabPFN v2.6,PropLGD5,1e-06,0.003,True,-0.0073088288
+319,TabPFN v2.6,SBA Loans Case (LGD),1e-06,0.003,True,-0.0052041292
+328,TabPFN v2.6,Freddie Mac,1e-05,0,True,-0.0031109571
+329,TabPFN v2.6,LendingClub (LGD),1e-05,0,True,-0.0086335778
+330,TabPFN v2.6,PropLGD1,1e-05,0,True,-0.032259786
+331,TabPFN v2.6,PropLGD2,1e-05,0,True,-0.036968088
+332,TabPFN v2.6,PropLGD3,1e-05,0,True,-0.10092623
+333,TabPFN v2.6,PropLGD4,1e-05,0,True,-0.028976095
+334,TabPFN v2.6,PropLGD5,1e-05,0,True,-0.019885087
+335,TabPFN v2.6,SBA Loans Case (LGD),1e-05,0,True,-0.012096465
+344,TabPFN v2.6,Freddie Mac,1e-05,0.003,True,-0.0029014111
+345,TabPFN v2.6,LendingClub (LGD),1e-05,0.003,True,-0.0079730988
+346,TabPFN v2.6,PropLGD1,1e-05,0.003,True,-0.030886889
+347,TabPFN v2.6,PropLGD2,1e-05,0.003,True,-0.0053638458
+348,TabPFN v2.6,PropLGD3,1e-05,0.003,True,-0.061803138
+349,TabPFN v2.6,PropLGD4,1e-05,0.003,True,-0.024355233
+350,TabPFN v2.6,PropLGD5,1e-05,0.003,True,-0.017324173
+351,TabPFN v2.6,SBA Loans Case (LGD),1e-05,0.003,True,-0.0099508762
+360,TabPFN v2.6,Freddie Mac,3e-05,0,True,-0.0029868007
+361,TabPFN v2.6,LendingClub (LGD),3e-05,0,True,-0.0100945
+362,TabPFN v2.6,PropLGD1,3e-05,0,True,-0.03961513
+363,TabPFN v2.6,PropLGD2,3e-05,0,True,-0.042298245
+364,TabPFN v2.6,PropLGD3,3e-05,0,True,-0.074743664
+365,TabPFN v2.6,PropLGD4,3e-05,0,True,-0.015289903
+366,TabPFN v2.6,PropLGD5,3e-05,0,True,-0.011484087
+367,TabPFN v2.6,SBA Loans Case (LGD),3e-05,0,True,-0.0050304294
+376,TabPFN v2.6,Freddie Mac,3e-05,0.003,True,-0.0035786271
+377,TabPFN v2.6,LendingClub (LGD),3e-05,0.003,True,-0.0081244111
+378,TabPFN v2.6,PropLGD1,3e-05,0.003,True,-0.061349201
+379,TabPFN v2.6,PropLGD2,3e-05,0.003,True,-0.0067058802
+380,TabPFN v2.6,PropLGD3,3e-05,0.003,True,-0.052493513
+381,TabPFN v2.6,PropLGD4,3e-05,0.003,True,-0.012567043
+382,TabPFN v2.6,PropLGD5,3e-05,0.003,True,-0.011152744
+383,TabPFN v2.6,SBA Loans Case (LGD),3e-05,0.003,True,-0.0042733431
+392,TabPFN v3,Freddie Mac,3e-07,0,True,-0.0068457723
+393,TabPFN v3,LendingClub (LGD),3e-07,0,True,0.00079799891
+394,TabPFN v3,PropLGD1,3e-07,0,True,-0.044520736
+395,TabPFN v3,PropLGD2,3e-07,0,True,-0.0034373641
+396,TabPFN v3,PropLGD3,3e-07,0,True,0.00044136047
+397,TabPFN v3,PropLGD4,3e-07,0,True,-0.01008327
+398,TabPFN v3,PropLGD5,3e-07,0,True,-0.00098398924
+399,TabPFN v3,SBA Loans Case (LGD),3e-07,0,True,-0.0047196031
+408,TabPFN v3,Freddie Mac,3e-07,0.003,True,-0.0067509532
+409,TabPFN v3,LendingClub (LGD),3e-07,0.003,True,0.000796628
+410,TabPFN v3,PropLGD1,3e-07,0.003,True,-0.048800099
+411,TabPFN v3,PropLGD2,3e-07,0.003,True,-0.0035761714
+412,TabPFN v3,PropLGD3,3e-07,0.003,True,0.00053240061
+413,TabPFN v3,PropLGD4,3e-07,0.003,True,-0.010145855
+414,TabPFN v3,PropLGD5,3e-07,0.003,True,-0.0012985826
+415,TabPFN v3,SBA Loans Case (LGD),3e-07,0.003,True,-0.0045753717
+424,TabPFN v3,Freddie Mac,1e-06,0,True,-0.026041281
+425,TabPFN v3,LendingClub (LGD),1e-06,0,True,0.00060093403
+426,TabPFN v3,PropLGD1,1e-06,0,True,-0.13690786
+427,TabPFN v3,PropLGD2,1e-06,0,True,-0.011429489
+428,TabPFN v3,PropLGD3,1e-06,0,True,0.00014686584
+429,TabPFN v3,PropLGD4,1e-06,0,True,-0.044207764
+430,TabPFN v3,PropLGD5,1e-06,0,True,-0.0025859714
+431,TabPFN v3,SBA Loans Case (LGD),1e-06,0,True,-0.016923726
+440,TabPFN v3,Freddie Mac,1e-06,0.003,True,-0.026973045
+441,TabPFN v3,LendingClub (LGD),1e-06,0.003,True,0.00058431625
+442,TabPFN v3,PropLGD1,1e-06,0.003,True,-0.092189217
+443,TabPFN v3,PropLGD2,1e-06,0.003,True,-0.012104893
+444,TabPFN v3,PropLGD3,1e-06,0.003,True,0.00037690401
+445,TabPFN v3,PropLGD4,1e-06,0.003,True,-0.045097184
+446,TabPFN v3,PropLGD5,1e-06,0.003,True,-0.0032765388
+447,TabPFN v3,SBA Loans Case (LGD),1e-06,0.003,True,-0.016709697
+456,TabPFN v3,Freddie Mac,1e-05,0,True,-0.1362087
+457,TabPFN v3,LendingClub (LGD),1e-05,0,True,-0.0050939322
+458,TabPFN v3,PropLGD1,1e-05,0,True,-0.51055399
+459,TabPFN v3,PropLGD2,1e-05,0,True,-0.11209557
+460,TabPFN v3,PropLGD3,1e-05,0,True,-0.020944834
+461,TabPFN v3,PropLGD4,1e-05,0,True,-0.090145552
+462,TabPFN v3,PropLGD5,1e-05,0,True,-0.046624863
+463,TabPFN v3,SBA Loans Case (LGD),1e-05,0,True,-0.08409816
+472,TabPFN v3,Freddie Mac,1e-05,0.003,True,-0.09719094
+473,TabPFN v3,LendingClub (LGD),1e-05,0.003,True,-0.0060908437
+474,TabPFN v3,PropLGD1,1e-05,0.003,True,-0.45800722
+475,TabPFN v3,PropLGD2,1e-05,0.003,True,-0.069517851
+476,TabPFN v3,PropLGD3,1e-05,0.003,True,-0.0027061224
+477,TabPFN v3,PropLGD4,1e-05,0.003,True,-0.083381641
+478,TabPFN v3,PropLGD5,1e-05,0.003,True,-0.022152913
+479,TabPFN v3,SBA Loans Case (LGD),1e-05,0.003,True,-0.075847661
+488,TabPFN v3,Freddie Mac,3e-05,0,True,-0.22009372
+489,TabPFN v3,LendingClub (LGD),3e-05,0,True,-0.0087694049
+490,TabPFN v3,PropLGD1,3e-05,0,True,-0.66740615
+491,TabPFN v3,PropLGD2,3e-05,0,True,-0.083355021
+492,TabPFN v3,PropLGD3,3e-05,0,True,-0.26071482
+493,TabPFN v3,PropLGD4,3e-05,0,True,-0.052187121
+494,TabPFN v3,PropLGD5,3e-05,0,True,-0.11709141
+495,TabPFN v3,SBA Loans Case (LGD),3e-05,0,True,-0.18106976
+504,TabPFN v3,Freddie Mac,3e-05,0.003,True,-0.21770446
+505,TabPFN v3,LendingClub (LGD),3e-05,0.003,True,-0.0076129436
+506,TabPFN v3,PropLGD1,3e-05,0.003,True,-0.4815578
+507,TabPFN v3,PropLGD2,3e-05,0.003,True,-0.072039402
+508,TabPFN v3,PropLGD3,3e-05,0.003,True,-0.072720814
+509,TabPFN v3,PropLGD4,3e-05,0.003,True,-0.17773213
+510,TabPFN v3,PropLGD5,3e-05,0.003,True,-0.046196365
+511,TabPFN v3,SBA Loans Case (LGD),3e-05,0.003,True,-0.19594702
+
 Figure: lgd_conservative_recipes_credit_r2
-LGD. Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates (3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to the same model's original weights, after averaging five folds within each table. 8 complete tables per model. Color denotes rate and marker shape denotes L2-SP strength. Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale that retains all displayed means and zero; positive values favor CPT. This focused mean view does not show uncertainty or table spread, and does not imply every table improves. The full grid retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. Inference follows the recorded LGD policy.
+LGD. Experiment 1, final five-fold benchmark on held-out credit tables, at the two lowest peak learning rates (3e-7 and 1e-6). All anchoring and update-scope combinations at these rates are shown; none is selected by its outcome. Values are r² change, CPT minus the original model of the same base. Markers give the equal-table mean (colour: learning rate; circle λ = 0, square λ = 0.003), vertical ticks the median table and horizontal segments the table interquartile range (heterogeneity across tables, not a confidence interval). 8 complete tables per model. Five outer folds are averaged within table. Vertical offsets only separate settings. Both panels share one horizontal scale; positive values favour CPT. A mean far from its median indicates that a few tables drive the average.
 Every low-rate paired table effect
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,partitions
@@ -78270,7 +80047,7 @@ row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25
 31,credit,r2,TabPFN v3,1e-06,0.003,True,one_sample,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,8,2,-0.024423669
 
 Figure: lgd_benchmark_transfer_retention
-LGD. Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. Credit: 8 complete tables per model. Non-credit: 4 complete tables per model. The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. Inference follows the recorded LGD policy.
+LGD. Experiment 1, final five-fold benchmark: each mark is one of the 16 recipes, placed at its equal-table mean change on held-out credit tables (horizontal) and on the same-task non-credit retention panel (vertical), both relative to the original model of the same base. Credit: 8 complete tables per model. Non-credit: 4 complete tables per model. Colour encodes peak learning rate, circle/square L2-SP λ = 0/0.003, filled/open all-weights/frozen-backbone updates. The upper-right quadrant improves both domains; the lower-right gains on credit while losing on the retention panel. Non-credit effects first average all four CPT training partitions per table. Axis limits differ between models; coinciding recipes overlap. A four-table retention panel does not establish general retention.
 Matched credit and retention recipe means
 CSV (first column: row index)
 row,domain_credit,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean_credit,median_credit,q25_credit,q75_credit,tables_credit,improved_credit,domain_retention,mean_retention,median_retention,q25_retention,q75_retention,tables_retention,improved_retention
@@ -78338,6 +80115,82 @@ row,domain_credit,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean_cre
 61,credit,r2,TabPFN v3,3e-05,0,True,one_sample,-0.19883592,-0.14908058,-0.23024899,-0.075563046,8,0,ood,-0.16347702,-0.14179664,-0.27327023,-0.032003426,4,0
 62,credit,r2,TabPFN v3,3e-05,0.003,False,one_sample,-0.2441895,-0.20078877,-0.28897671,-0.18182567,8,0,ood,-0.14904879,-0.10550674,-0.154428,-0.10012753,4,0
 63,credit,r2,TabPFN v3,3e-05,0.003,True,one_sample,-0.15893887,-0.12522647,-0.20138638,-0.065578642,8,0,ood,-0.16581829,-0.15297108,-0.2896385,-0.029150866,4,0
+
+Table: Every recipe: original and adapted scores, paired change and table/fold consistency
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.51883267,-0.013060723,-0.011502975,-0.016764188,-0.0097137094,-0.027258682,-0.00057952404,0,1,7,6,40,0
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.47193085,-0.002586937,-0.00086320639,-0.0030562878,0.00037207305,-0.016597986,0.0024587274,2,2,4,11,40,0.25
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.50945067,-0.030357036,-0.024430591,-0.033436862,-0.011230743,-0.10092623,-0.0031109571,0,0,8,4,40,0
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.41369095,-0.1257207,-0.087121856,-0.11812385,-0.040204856,-0.51055399,-0.0050939322,0,0,8,0,40,0
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.51214559,-0.019747806,-0.01240316,-0.019649011,-0.0088251054,-0.076606297,-0.00010713339,0,1,7,7,40,0
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47140032,-0.0031174734,-0.0020085752,-0.0060482055,-0.0005882591,-0.016434467,0.014576924,1,2,5,8,40,0.125
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.51973788,-0.020069833,-0.013637525,-0.025988147,-0.0073207855,-0.061803138,-0.0029014111,0,0,8,5,40,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.43754975,-0.1018619,-0.072682756,-0.086833966,-0.018137395,-0.45800722,-0.0027061224,0,0,8,4,40,0
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,r2,8,0.53189339,0.52522113,-0.0066722602,-0.00071201324,-0.0022188574,0.0004635036,-0.056962609,0.0092394471,1,4,3,19,40,0.125
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,r2,8,0.47451779,0.47223972,-0.0022780657,-0.00098290443,-0.002730754,-0.00059796274,-0.0089998007,2.1195412e-05,0,4,4,12,40,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.53175781,-0.0080498978,-0.0063403487,-0.010847095,-0.0041705757,-0.021265209,0.0003518343,0,1,7,6,40,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,r2,8,0.53941165,0.50974311,-0.029668537,-0.014176607,-0.030582902,-0.0019027621,-0.13690786,0.00060093403,0,2,6,8,40,0
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,r2,8,0.53189339,0.5230734,-0.0088199973,-0.00066587329,-0.0018796057,0.00039587021,-0.073823249,0.0086188436,1,3,4,17,40,0.125
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.4715644,-0.0029533878,-0.00091177225,-0.003951028,-0.00062890351,-0.0092791319,-0.00031479597,0,4,4,11,40,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.53209724,-0.0077104703,-0.006256479,-0.010275066,-0.004102397,-0.021278048,0.00032086372,0,1,7,6,40,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.51498798,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,-0.092189217,0.00058431625,0,2,6,8,40,0
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.50455802,-0.02733537,-0.022303897,-0.029654253,-0.016692707,-0.074540174,-0.004166615,0,0,8,2,40,0
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.45701362,-0.017504168,-0.0046523154,-0.0082518369,-0.0028655559,-0.1071712,-0.0012657285,0,0,8,8,40,0
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.51461486,-0.025192845,-0.013386995,-0.040285909,-0.008828482,-0.074743664,-0.0029868007,0,0,8,3,40,0
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.34057573,-0.19883592,-0.14908058,-0.23024899,-0.075563046,-0.66740615,-0.0087694049,0,0,8,2,40,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.50061333,-0.031280062,-0.019262511,-0.026964206,-0.011174932,-0.13264836,-0.0051512122,0,0,8,6,40,0
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47141155,-0.0031062365,-0.0023369789,-0.0082855701,-0.00080538392,-0.0183496,0.018867517,1,2,5,9,40,0.125
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.51977711,-0.020030595,-0.0096385777,-0.022548661,-0.0060977459,-0.061349201,-0.0035786271,0,0,8,4,40,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.38047278,-0.15893887,-0.12522647,-0.20138638,-0.065578642,-0.4815578,-0.0076129436,0,0,8,0,40,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,r2,8,0.53189339,0.53273974,0.00084634423,0.00021198392,-0.0003087312,0.0010435343,-0.00091625452,0.0053270698,2,6,0,24,40,0.25
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,r2,8,0.47451779,0.47314072,-0.001377067,-0.00028112531,-0.0011602819,-0.00013271272,-0.0069638371,0.00053731203,0,6,2,11,40,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.539684,-0.00012370497,0.00033872128,-0.00090165734,0.00099083185,-0.0044168472,0.0026229739,2,4,2,19,40,0.25
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,r2,8,0.53941165,0.53074273,-0.0086689219,-0.0040784836,-0.0076551467,-0.00062765181,-0.044520736,0.00079799891,0,3,5,14,40,0
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,r2,8,0.53189339,0.53268896,0.00079556257,0.00023046136,-0.0005481571,0.0012747347,-0.0011702299,0.0053941846,3,4,1,25,40,0.375
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47294839,-0.0015693963,-0.00034960508,-0.0014551222,-0.0001406461,-0.0071280241,0.00051351786,0,6,2,12,40,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.53970201,-0.00010569841,0.00034272671,-0.00089432299,0.0010218769,-0.0044159889,0.0026251674,2,4,2,19,40,0.25
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.5301844,-0.0092272505,-0.0040757716,-0.0075996786,-0.00084083676,-0.048800099,0.000796628,0,2,6,13,40,0
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.3968318,-0.1350616,-0.094511598,-0.19357406,-0.055729118,-0.32710534,-0.038795364,0,0,8,1,40,0
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.40858407,-0.065933718,-0.048496705,-0.080342004,-0.022524375,-0.17721788,-0.0066147327,0,0,8,4,40,0
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.4638222,-0.075985511,-0.045870984,-0.058651933,-0.033443069,-0.30640349,-0.016891122,0,0,8,2,40,0
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.31308331,-0.22632834,-0.2298376,-0.30011507,-0.11404129,-0.4409722,-0.020953965,0,0,8,0,40,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.44754979,-0.084343605,-0.033559436,-0.15384069,-0.027489328,-0.22341288,-0.0091856837,0,0,8,1,40,0
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.40416796,-0.070349832,-0.054063094,-0.086656401,-0.036784941,-0.16206375,-0.0093815923,0,0,8,3,40,0
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.47258453,-0.067223181,-0.031572849,-0.046241808,-0.022424421,-0.30267892,-0.017068756,0,0,8,2,40,0
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.33913954,-0.20027211,-0.16274331,-0.25376786,-0.12314407,-0.45767866,-0.015533566,0,0,8,1,40,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,r2,8,0.53189339,0.48821125,-0.043682146,-0.010536087,-0.019141042,-0.0078466833,-0.2673511,-0.00045790672,0,1,7,7,40,0
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,r2,8,0.47451779,0.47704954,0.0025317505,-0.0027108133,-0.0042717874,-0.00042589009,-0.007098949,0.041654229,1,2,5,13,40,0.125
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.46155322,-0.07825449,-0.055873209,-0.070542914,-0.040376687,-0.29806277,-7.4923038e-05,0,1,7,4,40,0
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,r2,8,0.53941165,0.47655561,-0.062856039,-0.02652275,-0.051745307,-0.0058838814,-0.30643374,0.0039400697,1,0,7,6,40,0.125
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,r2,8,0.53189339,0.48540558,-0.046487814,-0.0059133828,-0.015694883,-0.0040808678,-0.31356044,-0.00032074451,0,1,7,7,40,0
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47616774,0.0016499475,-0.0024229586,-0.0049040973,-0.00061190724,-0.012545788,0.042105663,1,1,6,10,40,0.125
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.46179089,-0.078016824,-0.055416304,-0.069882414,-0.040778422,-0.29770719,0.00028730631,0,1,7,4,40,0
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.4876169,-0.051794747,-0.02624175,-0.044447699,-0.0059069276,-0.2398862,0.0041180491,1,0,7,6,40,0.125
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.3637259,-0.16816749,-0.13860931,-0.19560183,-0.13110935,-0.33802536,-0.056901348,0,0,8,0,40,0
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.35098848,-0.1235293,-0.090552241,-0.21386106,-0.058948374,-0.24104493,-0.021481311,0,0,8,1,40,0
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.40508815,-0.13471956,-0.089901751,-0.13862612,-0.040656927,-0.52430831,-0.022573102,0,0,8,1,40,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.28577152,-0.25364013,-0.2189221,-0.30145905,-0.15595028,-0.62113434,-0.041435611,0,0,8,0,40,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.46429213,-0.067601268,-0.04378193,-0.10515964,-0.033550999,-0.15062555,-0.011537147,0,0,8,2,40,0
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.34261546,-0.13190233,-0.10629286,-0.18306592,-0.080829591,-0.29050606,-0.017306674,0,0,8,0,40,0
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.4382552,-0.10155251,-0.056605601,-0.12526262,-0.031483433,-0.3665728,-0.0092379689,0,0,8,1,40,0
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.29522215,-0.2441895,-0.20078877,-0.28897671,-0.18182567,-0.56277343,-0.046640003,0,0,8,0,40,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,r2,8,0.53189339,0.52696603,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,-0.028720737,0.0058594465,1,2,5,12,40,0.125
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,r2,8,0.47451779,0.47890616,0.0043883696,0.0019722581,-0.0010680228,0.0077646077,-0.0031929135,0.019067729,5,1,2,21,40,0.625
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.45645544,-0.083352271,-0.064928436,-0.076963127,-0.047962001,-0.29913464,0.0013708711,1,0,7,5,40,0.125
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,r2,8,0.53941165,0.50301951,-0.036392143,-0.0031691134,-0.01287834,-0.0017965019,-0.25456707,0.00228585,1,0,7,10,40,0.125
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,r2,8,0.53189339,0.52712316,-0.0047702327,-0.0022779822,-0.0040102035,-0.00022086203,-0.030043507,0.0058369756,1,2,5,13,40,0.125
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47861889,0.0041011006,0.0012956858,-0.0011399508,0.0076542139,-0.0032508135,0.018483496,4,2,2,20,40,0.5
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.45659534,-0.083212371,-0.064731538,-0.076909691,-0.047867784,-0.29883276,0.0014339089,1,0,7,5,40,0.125
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.51098268,-0.028428969,-0.0034476042,-0.013203469,-0.0017970532,-0.18983387,0.0021969914,1,0,7,10,40,0.125
+
+Table: Predefined reference, observed best recipe and leave-one-table-out selection
+CSV (first column: row index)
+row,base,tables,recipes,reference_recipe,reference_mean,best_observed_recipe,best_observed_mean,leave_one_table_out_mean,leave_one_table_out_improved,recipes_chosen
+0,TabICLv2,8,16,E1 all · LR 3e-07 · λ 0.003,-0.0047702327,E1 frozen · LR 3e-07 · λ 0,0.00084634423,0.0007333532,5,"E1 frozen · LR 3e-07 · λ 0 ×7, E1 frozen · LR 3e-07 · λ 0.003 ×1"
+1,TabPFN v2,8,16,E1 all · LR 3e-07 · λ 0.003,0.0041011006,E1 all · LR 3e-07 · λ 0,0.0043883696,0.0043883696,5,E1 all · LR 3e-07 · λ 0 ×8
+2,TabPFN v2.6,8,16,E1 all · LR 3e-07 · λ 0.003,-0.083212371,E1 frozen · LR 3e-07 · λ 0.003,-0.00010569841,-0.00010569841,5,E1 frozen · LR 3e-07 · λ 0.003 ×8
+3,TabPFN v3,8,16,E1 all · LR 3e-07 · λ 0.003,-0.028428969,E1 frozen · LR 3e-07 · λ 0,-0.0086689219,-0.0086689219,2,E1 frozen · LR 3e-07 · λ 0 ×8
 
 Table: Non-credit effects for every complete recipe and metric
 CSV (first column: row index)
@@ -78855,7 +80708,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 1534,TabPFN v3,3e-05,0.003,True,one_sample,openml_46949,ood,rmse,-0.47129605,4
 1535,TabPFN v3,3e-05,0.003,True,one_sample,openml_46961,ood,rmse,-1.3160134,4
 
-Table: Every recipe: mean, median, quartiles and positive table count
+Table: Every recipe and metric: mean, median, quartiles and positive table count
 CSV (first column: row index)
 row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25,q75,tables,improved
 0,credit,r2,TabICLv2,3e-07,0,False,one_sample,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,8,1
@@ -79115,7 +80968,7 @@ row,domain,metric,base,learning_rate,l2sp_lambda,frozen,sampling,mean,median,q25
 254,ood,rmse,TabPFN v3,3e-05,0.003,False,one_sample,-0.81728355,-0.66806069,-0.90322079,-0.58212345,4,0
 255,ood,rmse,TabPFN v3,3e-05,0.003,True,one_sample,-0.64614063,-0.51820096,-0.75283274,-0.41150884,4,0
 
-4. Fixed reference and table heterogeneity
+4. The predefined reference, table by table
                              count     mean   median      min      max
 base      sampling   frozen
 TabICLv2 one_sample False       8 -0.00633 -0.00204 -0.04112  0.00510
@@ -79124,6 +80977,44 @@ TabPFN v2.6      one_sample False       8 -0.11776 -0.07548 -0.43577  0.00079
 TabPFN v3        one_sample False       8 -0.03874 -0.00689 -0.25614  0.00132
 The recipe is fixed: full updates, LR 3e-7, L2-SP 0.003, seed 42. Five paired outer folds are averaged within each table. The 95% percentile bootstrap interval resamples tables (10,000 draws, seed 20261020), not folds, rows, recipes or overlapping training corpora. It describes sensitivity to the observed table collection conditional on the fitted checkpoints, under a table-exchangeability assumption; it is not a deployment guarantee or a training-seed confidence interval. Unknown shared populations can invalidate that assumption. No significance-based recipe selection is performed.
 A source URL identifies a release or platform, not independent borrowers. The ledger records documented shared sources and unresolved provenance; it does not certify absence of overlap. LendingClub PD/LGD and SBA PD/LGD share sources, but the two tasks have separate CPT corpora and are never pooled as independent replications. The documented-public-source sensitivity excludes unverified/local and restricted sources; it changes the population being summarized and cannot repair contamination in already trained weights.
+
+Figure: lgd_reference_tables
+LGD. Experiment 1, predefined reference recipe (all trainable weights updated, peak LR 3e-7, L2-SP λ 0.003, seed 42), final five-fold benchmark: paired change in R² on every held-out credit table relative to the original model of the same base. Each axis label gives the equal-table mean and the number of tables improving by more than 0.001 R². Filled markers: at least four of the five outer folds change in the direction of the table mean; open markers: the folds disagree. Tables are ordered by their mean effect across the four bases; horizontal axes differ between models. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
+Displayed table effects
+CSV (first column: row index)
+row,base,dataset,original,adapted,effect,folds_improved,folds
+104,TabICLv2,Freddie Mac,0.3838949,0.37825165,-0.0056432486,0,5
+105,TabICLv2,LendingClub (LGD),0.76362401,0.76332742,-0.00029659271,2,5
+106,TabICLv2,PropLGD1,0.64222894,0.61218543,-0.030043507,0,5
+107,TabICLv2,PropLGD2,0.72727659,0.72410496,-0.0031716228,1,5
+108,TabICLv2,PropLGD3,0.21216327,0.21077893,-0.0013843417,1,5
+109,TabICLv2,PropLGD4,0.41803458,0.42387155,0.0058369756,4,5
+110,TabICLv2,PropLGD5,0.37389036,0.37042451,-0.0034658551,3,5
+111,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73404083,6.3300133e-06,2,5
+232,TabPFN v2,Freddie Mac,0.38327215,0.38002133,-0.0032508135,0,5
+233,TabPFN v2,LendingClub (LGD),0.75747193,0.75532848,-0.0021434546,0,5
+234,TabPFN v2,PropLGD1,0.2995842,0.31806769,0.018483496,5,5
+235,TabPFN v2,PropLGD2,0.71614927,0.71534382,-0.00080544949,1,5
+236,TabPFN v2,PropLGD3,0.21272258,0.21251168,-0.00021089315,3,5
+237,TabPFN v2,PropLGD4,0.33660059,0.34819264,0.011592054,4,5
+238,TabPFN v2,PropLGD5,0.37209316,0.37843477,0.0063416004,4,5
+239,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.7210507,0.0028022647,3,5
+360,TabPFN v2.6,Freddie Mac,0.39476699,0.31919595,-0.075571036,0,5
+361,TabPFN v2.6,LendingClub (LGD),0.76306273,0.68213707,-0.080925655,0,5
+362,TabPFN v2.6,PropLGD1,0.71840361,0.41957085,-0.29883276,0,5
+363,TabPFN v2.6,PropLGD2,0.72027066,0.65681573,-0.063454926,0,5
+364,TabPFN v2.6,PropLGD3,0.21145041,0.21288432,0.0014339089,3,5
+365,TabPFN v2.6,PropLGD4,0.42508527,0.35907712,-0.066008151,1,5
+366,TabPFN v2.6,PropLGD5,0.37783189,0.35005693,-0.027774954,1,5
+367,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65302472,-0.054565394,0,5
+488,TabPFN v3,Freddie Mac,0.40350479,0.38538718,-0.018117607,0,5
+489,TabPFN v3,LendingClub (LGD),0.76377615,0.76179036,-0.0019857883,0,5
+490,TabPFN v3,PropLGD1,0.67163471,0.48180084,-0.18983387,0,5
+491,TabPFN v3,PropLGD2,0.73408319,0.72251776,-0.011565423,0,5
+492,TabPFN v3,PropLGD3,0.21129837,0.21349536,0.0021969914,4,5
+493,TabPFN v3,PropLGD4,0.4223755,0.41969149,-0.0026840091,2,5
+494,TabPFN v3,PropLGD5,0.3766028,0.37537196,-0.0012308478,2,5
+495,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.7278065,-0.0042111993,2,5
 
 Figure: lgd_reference_uncertainty
 LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
@@ -80698,17 +82589,20 @@ row,"('elapsed_sec', 'count')","('elapsed_sec', 'median')","('elapsed_sec', 'min
 "('TabPFN v3', False)",32,2341.0625,1332.1128,3017.4633,32,0.23410625,0.13321128,0.30174633,32,46.569,21.432,46.801,32,83592599,24755261,92356996,32,58274936,58274936,58274936,32,0.015303205,0.0023242689,0.094541555
 "('TabPFN v3', True)",32,2029.0837,1133.9906,2403.9976,32,0.20290837,0.11339906,0.24039976,32,35.573,19.047,35.6,32,83592599,24755261,92356996,32,6917240,6917240,6917240,32,0.016063116,0.0020399834,0.19160081
 
-experiment1/04_results_lgd: 10 figures -> output CreditPFN/figures/experiment1
+experiment1/04_results_lgd: 13 figures -> output CreditPFN/figures/experiment1
   01  lgd_choice_contrasts_credit
   02  lgd_recipe_grid_credit_r2
   03  lgd_recipe_grid_credit_rmse
-  04  lgd_conservative_recipes_credit_r2
-  05  lgd_benchmark_transfer_retention
-  06  lgd_reference_uncertainty
-  07  lgd_prediction_diagnostics
-  08  lgd_v26_distribution_tradeoff
-  09  lgd_monitor_recipe_changes
-  10  lgd_control_context_1
+  04  lgd_table_recipes_full_r2
+  05  lgd_table_recipes_frozen_r2
+  06  lgd_conservative_recipes_credit_r2
+  07  lgd_benchmark_transfer_retention
+  08  lgd_reference_tables
+  09  lgd_reference_uncertainty
+  10  lgd_prediction_diagnostics
+  11  lgd_v26_distribution_tradeoff
+  12  lgd_monitor_recipe_changes
+  13  lgd_control_context_1
 ```
 
 ---
@@ -86827,7 +88721,7 @@ row,domain,base,planned_checkpoints,completed_checkpoints,paired_five_fold_compa
 Pair partition/dataset observations before averaging. Non-credit datasets require all four paired training partitions; no incomplete counterpart is replaced by another fold.
 
 Figure: pd_seed_benchmark_credit
-PD. Held-out credit: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+PD. Experiment 2, held-out credit: final five-fold benchmark effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (ΔAUC (pp, + better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,reference,repeat,difference,seed_reference,seed_repeat
@@ -86902,84 +88796,84 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metr
 Dataset effects
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,seed_reference,seed_repeat,reference,repeat,difference,partitions
-0,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,-0.00056737364,-0.00063512448,-6.7750837e-05,1
-1,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,-2.8451999e-05,-9.3562031e-05,-6.5110032e-05,1
-2,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,-0.0061696497,-0.0056988406,0.00047080913,1
-3,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,-0.00057036466,-0.00094527239,-0.00037490773,1
-4,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,0.0024155533,0.002673347,0.00025779376,1
-5,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,-6.6761782e-05,-0.0013285728,-0.0012618111,1
-6,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,-0.013719107,-0.013647587,7.1520104e-05,1
-7,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,-0.00075032379,-0.0011235988,-0.00037327497,1
-8,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.00022214889,-8.7717268e-05,-0.00030986616,1
-9,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,-0.0016434439,-0.0012265017,0.00041694215,1
-10,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,0.014826318,0.012283801,-0.002542517,1
-11,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,0.0012353369,0.0017311042,0.00049576734,1
-12,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,-0.00017633823,-0.00052067183,-0.00034433361,1
-13,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,7.5056415e-05,0.00017245657,9.7400152e-05,1
-14,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,-0.0017804574,-0.0021571017,-0.00037664428,1
-15,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,-0.0019977983,-0.0022087465,-0.0002109482,1
-16,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,0.071504064,0.071354911,-0.00014915275,1
-17,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,0.0028900965,0.0029424592,5.2362754e-05,1
-18,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,0.0030003482,0.0029913894,-8.9588307e-06,1
-19,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,0.0018002893,0.0017243433,-7.5946011e-05,1
-20,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,0.0025274617,0.0025816922,5.4230432e-05,1
-21,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,0.004022011,0.003807297,-0.00021471394,1
-22,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,0.0077696885,0.0072444168,-0.0005252717,1
-23,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,0.0093488316,0.009229812,-0.00011901955,1
-24,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,0.0050075943,0.0048544985,-0.00015309581,1
-25,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.0071764372,0.0071839336,7.4963938e-06,1
-26,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,0.0063839468,0.0063798282,-4.1185618e-06,1
-27,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,0.0019147534,0.0017451105,-0.00016964286,1
-28,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,0.0054243377,0.0055593644,0.00013502669,1
-29,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,0.0050721524,0.0049303064,-0.00014184601,1
-30,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,3.6711761e-05,-2.0031681e-05,-5.6743442e-05,1
-31,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,0.0069054749,0.0070873725,0.00018189754,1
-32,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,0.0058857575,0.0064537972,0.00056803962,1
-33,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,0.00596666,0.0060301257,6.3465719e-05,1
-34,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,-0.00025305583,-0.0002290717,2.398413e-05,1
-35,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,-9.3632154e-05,-7.5083397e-05,1.8548757e-05,1
-36,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,-0.002079411,-0.0021151497,-3.5738679e-05,1
-37,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,0.00016438407,0.00014753569,-1.6848385e-05,1
-38,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,-8.1192189e-05,-0.0003794964,-0.00029830421,1
-39,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,-0.00094489423,-0.00093347799,1.1416241e-05,1
-40,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,-0.0021852261,-0.0021799658,5.2602994e-06,1
-41,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,-0.0002741992,-0.00033207037,-5.7871175e-05,1
-42,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.0014096204,0.0012864198,-0.0001232006,1
-43,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,-0.00094296216,-0.00087001946,7.29427e-05,1
-44,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,0.00051955782,0.00048044218,-3.9115646e-05,1
-45,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,-0.00062729404,-0.0006842539,-5.6959862e-05,1
-46,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,-0.00062878058,-0.00066371542,-3.4934843e-05,1
-47,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,7.1657957e-05,0.00010513316,3.3475198e-05,1
-48,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,0.00011812934,7.477418e-05,-4.3355157e-05,1
-49,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,0.0046828664,0.0039084148,-0.00077445165,1
-50,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,0.00073811027,0.00070803786,-3.0072411e-05,1
-51,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,-1.5876365e-05,5.1798591e-05,6.7674956e-05,1
-52,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,0.00074681185,0.00073991089,-6.9009574e-06,1
-53,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,-0.0002132175,7.4281458e-06,0.00022064565,1
-54,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,-4.1099624e-05,-8.4972055e-05,-4.3872431e-05,1
-55,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,0.0029964029,0.0026837958,-0.00031260706,1
-56,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,-0.00027702393,-0.00030608937,-2.9065441e-05,1
-57,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,-0.0036003988,-0.0038135447,-0.00021314591,1
-58,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,6.8168728e-06,0.00022355405,0.00021673718,1
-59,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.0012161875,0.0012816167,6.5429208e-05,1
-60,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,0.0021619782,0.0020533264,-0.00010865185,1
-61,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,-0.00056079932,-0.00060204082,-4.1241497e-05,1
-62,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,0.00073311379,0.00072809388,-5.0199133e-06,1
-63,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,0.0018373491,0.0018387236,1.3745477e-06,1
-64,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,0.00053497323,0.00043217293,-0.0001028003,1
-65,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,7.1306646e-05,7.6625055e-05,5.3184097e-06,1
-66,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,0.0016449863,0.0015967854,-4.8200878e-05,1
-67,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,6.4093912e-05,0.00010774934,4.3655432e-05,1
+0,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,-0.056737364,-0.063512448,-0.0067750837,1
+1,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,-0.0028451999,-0.0093562031,-0.0065110032,1
+2,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,-0.61696497,-0.56988406,0.047080913,1
+3,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,-0.057036466,-0.094527239,-0.037490773,1
+4,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,0.24155533,0.2673347,0.025779376,1
+5,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,-0.0066761782,-0.13285728,-0.12618111,1
+6,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,-1.3719107,-1.3647587,0.0071520104,1
+7,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,-0.075032379,-0.11235988,-0.037327497,1
+8,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.022214889,-0.0087717268,-0.030986616,1
+9,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,-0.16434439,-0.12265017,0.041694215,1
+10,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,1.4826318,1.2283801,-0.2542517,1
+11,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,0.12353369,0.17311042,0.049576734,1
+12,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,-0.017633823,-0.052067183,-0.034433361,1
+13,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,0.0075056415,0.017245657,0.0097400152,1
+14,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,-0.17804574,-0.21571017,-0.037664428,1
+15,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,-0.19977983,-0.22087465,-0.02109482,1
+16,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,7.1504064,7.1354911,-0.014915275,1
+17,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,0.28900965,0.29424592,0.0052362754,1
+18,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,0.30003482,0.29913894,-0.00089588307,1
+19,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,0.18002893,0.17243433,-0.0075946011,1
+20,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,0.25274617,0.25816922,0.0054230432,1
+21,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,0.4022011,0.3807297,-0.021471394,1
+22,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,0.77696885,0.72444168,-0.05252717,1
+23,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,0.93488316,0.9229812,-0.011901955,1
+24,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,0.50075943,0.48544985,-0.015309581,1
+25,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.71764372,0.71839336,0.00074963938,1
+26,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,0.63839468,0.63798282,-0.00041185618,1
+27,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,0.19147534,0.17451105,-0.016964286,1
+28,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,0.54243377,0.55593644,0.013502669,1
+29,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,0.50721524,0.49303064,-0.014184601,1
+30,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,0.0036711761,-0.0020031681,-0.0056743442,1
+31,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,0.69054749,0.70873725,0.018189754,1
+32,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,0.58857575,0.64537972,0.056803962,1
+33,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,0.596666,0.60301257,0.0063465719,1
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,-0.025305583,-0.02290717,0.002398413,1
+35,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,-0.0093632154,-0.0075083397,0.0018548757,1
+36,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,-0.2079411,-0.21151497,-0.0035738679,1
+37,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,0.016438407,0.014753569,-0.0016848385,1
+38,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,-0.0081192189,-0.03794964,-0.029830421,1
+39,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,-0.094489423,-0.093347799,0.0011416241,1
+40,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,-0.21852261,-0.21799658,0.00052602994,1
+41,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,-0.02741992,-0.033207037,-0.0057871175,1
+42,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.14096204,0.12864198,-0.01232006,1
+43,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,-0.094296216,-0.087001946,0.00729427,1
+44,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,0.051955782,0.048044218,-0.0039115646,1
+45,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,-0.062729404,-0.06842539,-0.0056959862,1
+46,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,-0.062878058,-0.066371542,-0.0034934843,1
+47,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,0.0071657957,0.010513316,0.0033475198,1
+48,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,0.011812934,0.007477418,-0.0043355157,1
+49,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,0.46828664,0.39084148,-0.077445165,1
+50,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,0.073811027,0.070803786,-0.0030072411,1
+51,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,42,43,-0.0015876365,0.0051798591,0.0067674956,1
+52,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,42,43,0.074681185,0.073991089,-0.00069009574,1
+53,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,42,43,-0.02132175,0.00074281458,0.022064565,1
+54,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,42,43,-0.0041099624,-0.0084972055,-0.0043872431,1
+55,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,42,43,0.29964029,0.26837958,-0.031260706,1
+56,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,42,43,-0.027702393,-0.030608937,-0.0029065441,1
+57,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,42,43,-0.36003988,-0.38135447,-0.021314591,1
+58,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,42,43,0.00068168728,0.022355405,0.021673718,1
+59,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,42,43,0.12161875,0.12816167,0.0065429208,1
+60,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,42,43,0.21619782,0.20533264,-0.010865185,1
+61,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,42,43,-0.056079932,-0.060204082,-0.0041241497,1
+62,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,42,43,0.073311379,0.072809388,-0.00050199133,1
+63,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,42,43,0.18373491,0.18387236,0.00013745477,1
+64,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,42,43,0.053497323,0.043217293,-0.01028003,1
+65,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,42,43,0.0071306646,0.0076625055,0.00053184097,1
+66,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,42,43,0.16449863,0.15967854,-0.0048200878,1
+67,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,42,43,0.0064093912,0.010774934,0.0043655432,1
 Descriptive seed differences
 CSV (first column: row index)
 row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
-0,credit,roc_auc,TabICLv2,one_sample,17,-0.00025094612,-0.00014915275,-0.002542517,0.00049576734
-1,credit,roc_auc,TabPFN v2,one_sample,17,-2.3931622e-05,-8.9588307e-06,-0.0005252717,0.00056803962
-2,credit,roc_auc,TabPFN v2.6,one_sample,17,-7.9130899e-05,-3.4934843e-05,-0.00077445165,7.29427e-05
-3,credit,roc_auc,TabPFN v3,one_sample,17,-1.7098286e-05,-6.9009574e-06,-0.00031260706,0.00022064565
+0,credit,roc_auc,TabICLv2,one_sample,17,-0.025094612,-0.014915275,-0.2542517,0.049576734
+1,credit,roc_auc,TabPFN v2,one_sample,17,-0.0023931622,-0.00089588307,-0.05252717,0.056803962
+2,credit,roc_auc,TabPFN v2.6,one_sample,17,-0.0079130899,-0.0034934843,-0.077445165,0.00729427
+3,credit,roc_auc,TabPFN v3,one_sample,17,-0.0017098286,-0.00069009574,-0.031260706,0.022064565
 
 Figure: pd_seed_benchmark_ood
-PD. Non-credit retention: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+PD. Experiment 2, non-credit retention: final five-fold benchmark effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (ΔAUC (pp, + better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,reference,repeat,difference,seed_reference,seed_repeat
@@ -87050,32 +88944,32 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metr
 Dataset effects
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,seed_reference,seed_repeat,reference,repeat,difference,partitions
-0,TabICLv2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,-0.0021522071,-0.0030627935,-0.00091058643,4
-1,TabICLv2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,-0.0010880902,-0.0010995258,-1.1435521e-05,4
-2,TabICLv2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,-8.7575815e-05,-0.0001025216,-1.494579e-05,4
-3,TabICLv2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,0.010385683,0.011121928,0.0007362448,4
-4,TabPFN v2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,0.01934502,0.019421063,7.6043101e-05,4
-5,TabPFN v2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,0.0014423099,0.0014758827,3.3572869e-05,4
-6,TabPFN v2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,0.0020220785,0.0019467525,-7.5326057e-05,4
-7,TabPFN v2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,0.0021608467,0.0021015226,-5.9324199e-05,4
-8,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,0.00073037593,0.00067096892,-5.9407003e-05,4
-9,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,-8.6108633e-05,-8.1739229e-05,4.369404e-06,4
-10,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,0.00197241,0.0019146896,-5.7720423e-05,4
-11,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,-0.00027081372,-0.00013083034,0.00013998338,4
-12,TabPFN v3,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,0.0044594765,0.0046469159,0.0001874394,4
-13,TabPFN v3,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,-0.00050039519,-0.00050031044,8.4754379e-08,4
-14,TabPFN v3,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,-0.00079415341,-0.00061849514,0.00017565827,4
-15,TabPFN v3,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,-0.00037483873,0.00014491364,0.00051975237,4
+0,TabICLv2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,-0.21522071,-0.30627935,-0.091058643,4
+1,TabICLv2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,-0.10880902,-0.10995258,-0.0011435521,4
+2,TabICLv2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,-0.0087575815,-0.01025216,-0.001494579,4
+3,TabICLv2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,1.0385683,1.1121928,0.07362448,4
+4,TabPFN v2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,1.934502,1.9421063,0.0076043101,4
+5,TabPFN v2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,0.14423099,0.14758827,0.0033572869,4
+6,TabPFN v2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,0.20220785,0.19467525,-0.0075326057,4
+7,TabPFN v2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,0.21608467,0.21015226,-0.0059324199,4
+8,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,0.073037593,0.067096892,-0.0059407003,4
+9,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,-0.0086108633,-0.0081739229,0.0004369404,4
+10,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,0.197241,0.19146896,-0.0057720423,4
+11,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,-0.027081372,-0.013083034,0.013998338,4
+12,TabPFN v3,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,42,43,0.44594765,0.46469159,0.01874394,4
+13,TabPFN v3,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,42,43,-0.050039519,-0.050031044,8.4754379e-06,4
+14,TabPFN v3,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,42,43,-0.079415341,-0.061849514,0.017565827,4
+15,TabPFN v3,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,42,43,-0.037483873,0.014491364,0.051975237,4
 Descriptive seed differences
 CSV (first column: row index)
 row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
-0,ood,roc_auc,TabICLv2,one_sample,4,-5.0180735e-05,-1.3190656e-05,-0.00091058643,0.0007362448
-1,ood,roc_auc,TabPFN v2,one_sample,4,-6.2585713e-06,-1.2875665e-05,-7.5326057e-05,7.6043101e-05
-2,ood,roc_auc,TabPFN v2.6,one_sample,4,6.8063391e-06,-2.667551e-05,-5.9407003e-05,0.00013998338
-3,ood,roc_auc,TabPFN v3,one_sample,4,0.0002207337,0.00018154883,8.4754379e-08,0.00051975237
+0,ood,roc_auc,TabICLv2,one_sample,4,-0.0050180735,-0.0013190656,-0.091058643,0.07362448
+1,ood,roc_auc,TabPFN v2,one_sample,4,-0.00062585713,-0.0012875665,-0.0075326057,0.0076043101
+2,ood,roc_auc,TabPFN v2.6,one_sample,4,0.00068063391,-0.002667551,-0.0059407003,0.013998338
+3,ood,roc_auc,TabPFN v3,one_sample,4,0.02207337,0.018154883,8.4754379e-06,0.051975237
 
 Figure: lgd_seed_benchmark_credit
-LGD. Held-out credit: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Fractional RMSE reduction (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+LGD. Experiment 2, held-out credit: final five-fold benchmark effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (RMSE reduction (%, + better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,reference,repeat,difference,seed_reference,seed_repeat
@@ -87114,48 +89008,48 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metr
 Dataset effects
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,seed_reference,seed_repeat,reference,repeat,difference,partitions
-0,TabICLv2,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-0.0045870828,-0.0051659533,-0.00057887051,1
-1,TabICLv2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.00057614182,-0.0014395965,-0.00086345466,1
-2,TabICLv2,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,-0.041121223,-0.075525006,-0.034403783,1
-3,TabICLv2,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-0.0060590142,-0.0079999097,-0.0019408954,1
-4,TabICLv2,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,-0.00085675327,-0.00014750117,0.00070925211,1
-5,TabICLv2,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,0.0051023239,0.0040384066,-0.0010639173,1
-6,TabICLv2,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,-0.0032210164,1.5004474e-05,0.0032360208,1
-7,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,0.00068254455,0.0014328005,0.00075025599,1
-8,TabPFN v2,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-0.0026499,-0.0027558132,-0.00010591316,1
-9,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.0043914304,-0.0043764274,1.5002995e-05,1
-10,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,0.012321215,0.012028182,-0.00029303252,1
-11,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-0.0013299069,-0.00187438,-0.00054447315,1
-12,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,-0.00020625496,-0.00056297265,-0.00035671769,1
-13,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,0.0099735161,0.010755052,0.00078153562,1
-14,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,0.0036546003,0.0049974687,0.0013428684,1
-15,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,0.004308833,0.0040759072,-0.00023292583,1
-16,TabPFN v2.6,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-0.060645732,-0.059163635,0.0014820972,1
-17,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.15968294,-0.15866455,0.0010183939,1
-18,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,-0.43576643,-0.42850405,0.0072623812,1
-19,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-0.10893901,-0.10828685,0.00065215519,1
-20,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,0.0007860249,0.0004614828,-0.0003245421,1
-21,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,-0.059464061,-0.057105954,0.0023581065,1
-22,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,-0.028017648,-0.028787973,-0.00077032475,1
-23,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,-0.090323839,-0.092684571,-0.0023607322,1
-24,TabPFN v3,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-0.015100962,-0.013375067,0.001725895,1
-25,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.0043559076,-0.0047249356,-0.00036902797,1
-26,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,-0.25613898,-0.062174673,0.19396431,1
-27,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-0.021882611,-0.021900454,-1.7842913e-05,1
-28,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,0.0013209994,0.0013440766,2.3077253e-05,1
-29,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,-0.0034970583,-0.00075751043,0.0027395479,1
-30,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,-0.00081790406,-0.001383991,-0.00056608689,1
-31,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,-0.0094311628,-0.0095558338,-0.00012467101,1
+0,TabICLv2,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-0.45870828,-0.51659533,-0.057887051,1
+1,TabICLv2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.057614182,-0.14395965,-0.086345466,1
+2,TabICLv2,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,-4.1121223,-7.5525006,-3.4403783,1
+3,TabICLv2,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-0.60590142,-0.79999097,-0.19408954,1
+4,TabICLv2,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,-0.085675327,-0.014750117,0.070925211,1
+5,TabICLv2,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,0.51023239,0.40384066,-0.10639173,1
+6,TabICLv2,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,-0.32210164,0.0015004474,0.32360208,1
+7,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,0.068254455,0.14328005,0.075025599,1
+8,TabPFN v2,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-0.26499,-0.27558132,-0.010591316,1
+9,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.43914304,-0.43764274,0.0015002995,1
+10,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,1.2321215,1.2028182,-0.029303252,1
+11,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-0.13299069,-0.187438,-0.054447315,1
+12,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,-0.020625496,-0.056297265,-0.035671769,1
+13,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,0.99735161,1.0755052,0.078153562,1
+14,TabPFN v2,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,0.36546003,0.49974687,0.13428684,1
+15,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,0.4308833,0.40759072,-0.023292583,1
+16,TabPFN v2.6,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-6.0645732,-5.9163635,0.14820972,1
+17,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-15.968294,-15.866455,0.10183939,1
+18,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,-43.576643,-42.850405,0.72623812,1
+19,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-10.893901,-10.828685,0.065215519,1
+20,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,0.07860249,0.04614828,-0.03245421,1
+21,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,-5.9464061,-5.7105954,0.23581065,1
+22,TabPFN v2.6,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,-2.8017648,-2.8787973,-0.077032475,1
+23,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,-9.0323839,-9.2684571,-0.23607322,1
+24,TabPFN v3,3e-07,0.003,False,one_sample,Freddie Mac,credit,rmse,42,43,-1.5100962,-1.3375067,0.1725895,1
+25,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub (LGD),credit,rmse,42,43,-0.43559076,-0.47249356,-0.036902797,1
+26,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD1,credit,rmse,42,43,-25.613898,-6.2174673,19.396431,1
+27,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD2,credit,rmse,42,43,-2.1882611,-2.1900454,-0.0017842913,1
+28,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD3,credit,rmse,42,43,0.13209994,0.13440766,0.0023077253,1
+29,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD4,credit,rmse,42,43,-0.34970583,-0.075751043,0.27395479,1
+30,TabPFN v3,3e-07,0.003,False,one_sample,PropLGD5,credit,rmse,42,43,-0.081790406,-0.1383991,-0.056608689,1
+31,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case (LGD),credit,rmse,42,43,-0.94311628,-0.95558338,-0.012467101,1
 Descriptive seed differences
 CSV (first column: row index)
 row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
-0,credit,rmse,TabICLv2,one_sample,8,-0.004269424,-0.00072116258,-0.034403783,0.0032360208
-1,credit,rmse,TabPFN v2,one_sample,8,7.5793087e-05,-0.00016941949,-0.00054447315,0.0013428684
-2,credit,rmse,TabPFN v2.6,one_sample,8,0.0011646919,0.00083527456,-0.0023607322,0.0072623812
-3,credit,rmse,TabPFN v3,one_sample,8,0.0246719,2.6171698e-06,-0.00056608689,0.19396431
+0,credit,rmse,TabICLv2,one_sample,8,-0.4269424,-0.072116258,-3.4403783,0.32360208
+1,credit,rmse,TabPFN v2,one_sample,8,0.0075793087,-0.016941949,-0.054447315,0.13428684
+2,credit,rmse,TabPFN v2.6,one_sample,8,0.11646919,0.083527456,-0.23607322,0.72623812
+3,credit,rmse,TabPFN v3,one_sample,8,2.46719,0.00026171698,-0.056608689,19.396431
 
 Figure: lgd_seed_benchmark_ood
-LGD. Non-credit retention: five-fold benchmark effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Fractional RMSE reduction (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+LGD. Experiment 2, non-credit retention: final five-fold benchmark effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (RMSE reduction (%, + better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,reference,repeat,difference,seed_reference,seed_repeat
@@ -87226,29 +89120,29 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metr
 Dataset effects
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,seed_reference,seed_repeat,reference,repeat,difference,partitions
-0,TabICLv2,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-0.010669202,-0.010855917,-0.00018671524,4
-1,TabICLv2,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,-0.0053681964,-0.0019221699,0.0034460265,4
-2,TabICLv2,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-0.011393844,-0.011037326,0.00035651789,4
-3,TabICLv2,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,-0.0076282387,-0.0087393405,-0.0011111017,4
-4,TabPFN v2,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-0.039503225,-0.039151941,0.00035128427,4
-5,TabPFN v2,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,0.022399194,0.022666723,0.00026752957,4
-6,TabPFN v2,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-0.0027855802,-0.0027457248,3.9855321e-05,4
-7,TabPFN v2,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,0.0019878583,0.0017904851,-0.00019737314,4
-8,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-0.58293142,-0.5674728,0.015458618,4
-9,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,-0.3529658,-0.34198016,0.010985637,4
-10,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-0.29818903,-0.29004857,0.0081404554,4
-11,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,-0.3268354,-0.31650216,0.010333243,4
-12,TabPFN v3,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-0.19336646,-0.18879814,0.0045683259,4
-13,TabPFN v3,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,-0.032430338,-0.032097863,0.00033247508,4
-14,TabPFN v3,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-0.037177436,-0.034246013,0.0029314231,4
-15,TabPFN v3,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,-0.081562744,-0.073723764,0.0078389805,4
+0,TabICLv2,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-1.0669202,-1.0855917,-0.018671524,4
+1,TabICLv2,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,-0.53681964,-0.19221699,0.34460265,4
+2,TabICLv2,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-1.1393844,-1.1037326,0.035651789,4
+3,TabICLv2,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,-0.76282387,-0.87393405,-0.11111017,4
+4,TabPFN v2,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-3.9503225,-3.9151941,0.035128427,4
+5,TabPFN v2,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,2.2399194,2.2666723,0.026752957,4
+6,TabPFN v2,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-0.27855802,-0.27457248,0.0039855321,4
+7,TabPFN v2,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,0.19878583,0.17904851,-0.019737314,4
+8,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-58.293142,-56.74728,1.5458618,4
+9,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,-35.29658,-34.198016,1.0985637,4
+10,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-29.818903,-29.004857,0.81404554,4
+11,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,-32.68354,-31.650216,1.0333243,4
+12,TabPFN v3,3e-07,0.003,False,one_sample,openml_46904,ood,rmse,42,43,-19.336646,-18.879814,0.45683259,4
+13,TabPFN v3,3e-07,0.003,False,one_sample,openml_46917,ood,rmse,42,43,-3.2430338,-3.2097863,0.033247508,4
+14,TabPFN v3,3e-07,0.003,False,one_sample,openml_46949,ood,rmse,42,43,-3.7177436,-3.4246013,0.29314231,4
+15,TabPFN v3,3e-07,0.003,False,one_sample,openml_46961,ood,rmse,42,43,-8.1562744,-7.3723764,0.78389805,4
 Descriptive seed differences
 CSV (first column: row index)
 row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
-0,ood,rmse,TabICLv2,one_sample,4,0.00062618185,8.4901324e-05,-0.0011111017,0.0034460265
-1,ood,rmse,TabPFN v2,one_sample,4,0.00011532401,0.00015369245,-0.00019737314,0.00035128427
-2,ood,rmse,TabPFN v2.6,one_sample,4,0.011229488,0.01065944,0.0081404554,0.015458618
-3,ood,rmse,TabPFN v3,one_sample,4,0.0039178012,0.0037498745,0.00033247508,0.0078389805
+0,ood,rmse,TabICLv2,one_sample,4,0.062618185,0.0084901324,-0.11111017,0.34460265
+1,ood,rmse,TabPFN v2,one_sample,4,0.011532401,0.015369245,-0.019737314,0.035128427
+2,ood,rmse,TabPFN v2.6,one_sample,4,1.1229488,1.065944,0.81404554,1.5458618
+3,ood,rmse,TabPFN v3,one_sample,4,0.39178012,0.37498745,0.033247508,0.78389805
 
 3. Probability quality, calibration and error metrics
 Brier score and log loss assess probability quality; ECE is a bin-dependent calibration diagnostic. F1 thresholds and Platt/isotonic calibration use validation rows only. Unsupported or incomplete metrics stay absent. Classical and untuned model scores provide context.
@@ -90515,7 +92409,7 @@ row,base,arm,metric,datasets,mean,q25,q75
 Monitor and benchmark figures have distinct identities, captions and data sources. Their score differences are not estimates of seed sensitivity.
 
 Figure: pd_seed_monitor_credit
-PD. Held-out credit: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+PD. Experiment 2, held-out credit: 10000-update fixed-context monitor effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (ΔAUC (pp, + better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,updates,reference,repeat,difference,seed_reference,seed_repeat
@@ -90590,84 +92484,84 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metr
 Dataset effects
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,updates,seed_reference,seed_repeat,reference,repeat,difference,partitions
-0,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.0063636364,0.0086956522,0.0023320158,1
-1,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,-0.00041669823,5.8927023e-05,0.00047562526,1
-2,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.0028092982,-0.004415923,-0.0016066248,1
-3,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.0048158078,-0.0012660113,-0.0060818191,1
-4,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,-0.0016964286,-0.0038095238,-0.0021130952,1
-5,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,0.013710937,0.017255859,0.0035449219,1
-6,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.007083539,-0.0092917327,-0.0022081937,1
-7,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,0.0081203295,0.010487432,0.0023671026,1
-8,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,-0.0065917969,-0.00089518229,0.0056966146,1
-9,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,0.010874624,0.0046078353,-0.006266789,1
-10,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,0.0019466146,-0.0010026042,-0.0029492188,1
-11,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-0.010648078,-0.0072921036,0.0033559743,1
-12,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,0.0091579182,0.0031922418,-0.0059656764,1
-13,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,0.0043574379,0.0039451517,-0.00041228613,1
-14,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.0028565987,0.0028656673,9.0685674e-06,1
-15,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,-0.0048315403,-0.0087826666,-0.0039511263,1
-16,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,0.021216628,0.014220925,-0.0069957034,1
-17,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.0012648221,0.00093544137,-0.00032938076,1
-18,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,0.00066924262,0.00046299804,-0.00020624458,1
-19,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.0010236495,-0.0017167934,-0.00069314384,1
-20,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.0014149538,0.0021348426,0.00071988879,1
-21,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,0.0037202381,0.00375,2.9761905e-05,1
-22,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,0.014516602,0.014316406,-0.00020019531,1
-23,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.0058192399,-0.0057499632,6.9276665e-05,1
-24,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,-0.017217221,-0.015571926,0.0016452955,1
-25,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,0.0058768136,0.0068301246,0.00095331101,1
-26,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,0.013763664,0.013873374,0.00010971036,1
-27,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,0.0026269531,0.0024023438,-0.00022460937,1
-28,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-0.00030346576,0.0021242603,0.0024277261,1
-29,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,-0.0028292756,-0.0014611719,0.0013681036,1
-30,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,0.000689513,0.00079969292,0.00011017991,1
-31,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.0036818384,0.0032556157,-0.00042622267,1
-32,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,0.0037041809,0.0040907041,0.00038652322,1
-33,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,-0.0040211524,-0.0044618266,-0.00044067423,1
-34,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.00065217391,0.00028985507,-0.00036231884,1
-35,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,-0.0013216489,-0.00073658779,0.00058506116,1
-36,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.0019784437,-0.0017351548,0.0002432889,1
-37,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.0012039519,0.0010550094,-0.00014894251,1
-38,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,0.0010565476,0.00053571429,-0.00052083333,1
-39,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,-0.0027099609,-0.0020898438,0.00062011719,1
-40,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.0028230241,-0.0034291949,-0.00060617082,1
-41,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,-0.00040336277,0.0014329993,0.0018363621,1
-42,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,0.0011625744,0.0017787388,0.00061616443,1
-43,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,0.014880715,0.014451847,-0.00042886779,1
-44,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,0.0011816406,0.0011816406,0,1
-45,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-0.0065334392,-0.0022759932,0.0042574461,1
-46,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,-0.00071662572,-0.0011819671,-0.00046534137,1
-47,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,-0.00015993858,-0.0001137341,4.620448e-05,1
-48,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.00097940528,0.00084337677,-0.00013602851,1
-49,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,-0.0035323928,-0.0045953317,-0.0010629389,1
-50,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,0.0068350409,0.0067570049,-7.8036062e-05,1
-51,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.0024637681,0.0015019763,-0.00096179183,1
-52,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,0.0013300671,0.0016752111,0.00034514399,1
-53,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.0087767618,-0.0074088355,0.0013679263,1
-54,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.011418926,0.011716811,0.00029788502,1
-55,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,-0.0031547619,-0.0010714286,0.0020833333,1
-56,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,-0.0032324219,-0.0052050781,-0.0019726562,1
-57,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.0170334,-0.018462231,-0.0014288312,1
-58,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,-0.010508662,-0.0099991508,0.00050951087,1
-59,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,0.0068359375,0.0066615513,-0.00017438616,1
-60,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,0.00047208702,0.00062501662,0.0001529296,1
-61,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,-0.0032942708,-0.0041536458,-0.000859375,1
-62,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-0.017779523,-0.018207945,-0.00042842225,1
-63,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,-0.0034807535,-0.0028106619,0.00067009158,1
-64,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,-0.00036963584,-0.00027722688,9.2408959e-05,1
-65,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.002221799,0.0036092898,0.0013874908,1
-66,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,0.0018896691,-0.0011810432,-0.0030707123,1
-67,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,0.012504131,0.0094377731,-0.0030663582,1
+0,TabICLv2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.63636364,0.86956522,0.23320158,1
+1,TabICLv2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,-0.041669823,0.0058927023,0.047562526,1
+2,TabICLv2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.28092982,-0.4415923,-0.16066248,1
+3,TabICLv2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.48158078,-0.12660113,-0.60818191,1
+4,TabICLv2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,-0.16964286,-0.38095238,-0.21130952,1
+5,TabICLv2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,1.3710937,1.7255859,0.35449219,1
+6,TabICLv2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.7083539,-0.92917327,-0.22081937,1
+7,TabICLv2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,0.81203295,1.0487432,0.23671026,1
+8,TabICLv2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,-0.65917969,-0.089518229,0.56966146,1
+9,TabICLv2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,1.0874624,0.46078353,-0.6266789,1
+10,TabICLv2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,0.19466146,-0.10026042,-0.29492188,1
+11,TabICLv2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-1.0648078,-0.72921036,0.33559743,1
+12,TabICLv2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,0.91579182,0.31922418,-0.59656764,1
+13,TabICLv2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,0.43574379,0.39451517,-0.041228613,1
+14,TabICLv2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.28565987,0.28656673,0.00090685674,1
+15,TabICLv2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,-0.48315403,-0.87826666,-0.39511263,1
+16,TabICLv2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,2.1216628,1.4220925,-0.69957034,1
+17,TabPFN v2,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.12648221,0.093544137,-0.032938076,1
+18,TabPFN v2,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,0.066924262,0.046299804,-0.020624458,1
+19,TabPFN v2,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.10236495,-0.17167934,-0.069314384,1
+20,TabPFN v2,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.14149538,0.21348426,0.071988879,1
+21,TabPFN v2,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,0.37202381,0.375,0.0029761905,1
+22,TabPFN v2,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,1.4516602,1.4316406,-0.020019531,1
+23,TabPFN v2,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.58192399,-0.57499632,0.0069276665,1
+24,TabPFN v2,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,-1.7217221,-1.5571926,0.16452955,1
+25,TabPFN v2,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,0.58768136,0.68301246,0.095331101,1
+26,TabPFN v2,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,1.3763664,1.3873374,0.010971036,1
+27,TabPFN v2,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,0.26269531,0.24023438,-0.022460937,1
+28,TabPFN v2,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-0.030346576,0.21242603,0.24277261,1
+29,TabPFN v2,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,-0.28292756,-0.14611719,0.13681036,1
+30,TabPFN v2,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,0.0689513,0.079969292,0.011017991,1
+31,TabPFN v2,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.36818384,0.32556157,-0.042622267,1
+32,TabPFN v2,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,0.37041809,0.40907041,0.038652322,1
+33,TabPFN v2,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,-0.40211524,-0.44618266,-0.044067423,1
+34,TabPFN v2.6,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.065217391,0.028985507,-0.036231884,1
+35,TabPFN v2.6,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,-0.13216489,-0.073658779,0.058506116,1
+36,TabPFN v2.6,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.19784437,-0.17351548,0.02432889,1
+37,TabPFN v2.6,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,0.12039519,0.10550094,-0.014894251,1
+38,TabPFN v2.6,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,0.10565476,0.053571429,-0.052083333,1
+39,TabPFN v2.6,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,-0.27099609,-0.20898438,0.062011719,1
+40,TabPFN v2.6,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-0.28230241,-0.34291949,-0.060617082,1
+41,TabPFN v2.6,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,-0.040336277,0.14329993,0.18363621,1
+42,TabPFN v2.6,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,0.11625744,0.17787388,0.061616443,1
+43,TabPFN v2.6,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,1.4880715,1.4451847,-0.042886779,1
+44,TabPFN v2.6,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,0.11816406,0.11816406,0,1
+45,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-0.65334392,-0.22759932,0.42574461,1
+46,TabPFN v2.6,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,-0.071662572,-0.11819671,-0.046534137,1
+47,TabPFN v2.6,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,-0.015993858,-0.01137341,0.004620448,1
+48,TabPFN v2.6,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.097940528,0.084337677,-0.013602851,1
+49,TabPFN v2.6,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,-0.35323928,-0.45953317,-0.10629389,1
+50,TabPFN v2.6,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,0.68350409,0.67570049,-0.0078036062,1
+51,TabPFN v3,3e-07,0.003,False,one_sample,Bondora Peer-to-Peer,credit,roc_auc,10000,42,43,0.24637681,0.15019763,-0.096179183,1
+52,TabPFN v3,3e-07,0.003,False,one_sample,Cobranded,credit,roc_auc,10000,42,43,0.13300671,0.16752111,0.034514399,1
+53,TabPFN v3,3e-07,0.003,False,one_sample,Credit Risk,credit,roc_auc,10000,42,43,-0.87767618,-0.74088355,0.13679263,1
+54,TabPFN v3,3e-07,0.003,False,one_sample,GMSC,credit,roc_auc,10000,42,43,1.1418926,1.1716811,0.029788502,1
+55,TabPFN v3,3e-07,0.003,False,one_sample,German Credit,credit,roc_auc,10000,42,43,-0.31547619,-0.10714286,0.20833333,1
+56,TabPFN v3,3e-07,0.003,False,one_sample,HMEQ,credit,roc_auc,10000,42,43,-0.32324219,-0.52050781,-0.19726562,1
+57,TabPFN v3,3e-07,0.003,False,one_sample,Hackerearth,credit,roc_auc,10000,42,43,-1.70334,-1.8462231,-0.14288312,1
+58,TabPFN v3,3e-07,0.003,False,one_sample,Home Credit,credit,roc_auc,10000,42,43,-1.0508662,-0.99991508,0.050951087,1
+59,TabPFN v3,3e-07,0.003,False,one_sample,LendingClub,credit,roc_auc,10000,42,43,0.68359375,0.66615513,-0.017438616,1
+60,TabPFN v3,3e-07,0.003,False,one_sample,MicroFinance,credit,roc_auc,10000,42,43,0.047208702,0.062501662,0.01529296,1
+61,TabPFN v3,3e-07,0.003,False,one_sample,Myhom,credit,roc_auc,10000,42,43,-0.32942708,-0.41536458,-0.0859375,1
+62,TabPFN v3,3e-07,0.003,False,one_sample,PropPD1,credit,roc_auc,10000,42,43,-1.7779523,-1.8207945,-0.042842225,1
+63,TabPFN v3,3e-07,0.003,False,one_sample,PropPD2,credit,roc_auc,10000,42,43,-0.34807535,-0.28106619,0.067009158,1
+64,TabPFN v3,3e-07,0.003,False,one_sample,SBA Loans Case,credit,roc_auc,10000,42,43,-0.036963584,-0.027722688,0.0092408959,1
+65,TabPFN v3,3e-07,0.003,False,one_sample,Taiwan Credit Card,credit,roc_auc,10000,42,43,0.2221799,0.36092898,0.13874908,1
+66,TabPFN v3,3e-07,0.003,False,one_sample,Thomas,credit,roc_auc,10000,42,43,0.18896691,-0.11810432,-0.30707123,1
+67,TabPFN v3,3e-07,0.003,False,one_sample,Vehicle Loan,credit,roc_auc,10000,42,43,1.2504131,0.94377731,-0.30663582,1
 Descriptive seed differences
 CSV (first column: row index)
 row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
-0,credit,roc_auc,TabICLv2,one_sample,17,-0.0012217182,-0.0016066248,-0.0069957034,0.0056966146
-1,credit,roc_auc,TabPFN v2,one_sample,17,0.0003117239,6.9276665e-05,-0.00069314384,0.0024277261
-2,credit,roc_auc,TabPFN v2.6,one_sample,17,0.00025853919,-7.8036062e-05,-0.0010629389,0.0042574461
-3,credit,roc_auc,TabPFN v3,one_sample,17,-0.00029740075,9.2408959e-05,-0.0030707123,0.0020833333
+0,credit,roc_auc,TabICLv2,one_sample,17,-0.12217182,-0.16066248,-0.69957034,0.56966146
+1,credit,roc_auc,TabPFN v2,one_sample,17,0.03117239,0.0069276665,-0.069314384,0.24277261
+2,credit,roc_auc,TabPFN v2.6,one_sample,17,0.025853919,-0.0078036062,-0.10629389,0.42574461
+3,credit,roc_auc,TabPFN v3,one_sample,17,-0.029740075,0.0092408959,-0.30707123,0.20833333
 
 Figure: pd_seed_monitor_ood
-PD. Non-credit retention: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in AUC (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+PD. Experiment 2, non-credit retention: 10000-update fixed-context monitor effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (ΔAUC (pp, + better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,updates,reference,repeat,difference,seed_reference,seed_repeat
@@ -90738,32 +92632,32 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metr
 Dataset effects
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,updates,seed_reference,seed_repeat,reference,repeat,difference,partitions
-0,TabICLv2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,0.013363511,0.017399954,0.0040364433,4
-1,TabICLv2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,0.0033552443,0.0075366244,0.00418138,4
-2,TabICLv2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,-0.0012764085,-0.00086770624,0.00040870221,4
-3,TabICLv2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,0.0034098659,-0.0052916067,-0.0087014726,4
-4,TabPFN v2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,-0.0078566486,-0.0073268654,0.00052978319,4
-5,TabPFN v2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,3.2806833e-05,-3.7280492e-05,-7.0087326e-05,4
-6,TabPFN v2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,0.0028986419,0.0029080734,9.4315895e-06,4
-7,TabPFN v2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,-0.028301887,-0.02850711,-0.00020522341,4
-8,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,0.00035679276,0.0012037251,0.0008469323,4
-9,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,0.00082911815,0.00086639864,3.7280492e-05,4
-10,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,0.0027383048,0.0026942907,-4.4014085e-05,4
-11,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,0.002396378,0.0015344396,-0.00086193832,4
-12,TabPFN v3,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,0.028709203,0.028871382,0.00016217853,4
-13,TabPFN v3,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,-0.0015061319,-0.0018342002,-0.00032806833,4
-14,TabPFN v3,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,0.00019491952,0.00015719316,-3.7726358e-05,4
-15,TabPFN v3,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,-0.0020964361,-0.0027215781,-0.00062514208,4
+0,TabICLv2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,1.3363511,1.7399954,0.40364433,4
+1,TabICLv2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,0.33552443,0.75366244,0.418138,4
+2,TabICLv2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,-0.12764085,-0.086770624,0.040870221,4
+3,TabICLv2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,0.34098659,-0.52916067,-0.87014726,4
+4,TabPFN v2,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,-0.78566486,-0.73268654,0.052978319,4
+5,TabPFN v2,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,0.0032806833,-0.0037280492,-0.0070087326,4
+6,TabPFN v2,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,0.28986419,0.29080734,0.00094315895,4
+7,TabPFN v2,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,-2.8301887,-2.850711,-0.020522341,4
+8,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,0.035679276,0.12037251,0.08469323,4
+9,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,0.082911815,0.086639864,0.0037280492,4
+10,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,0.27383048,0.26942907,-0.0044014085,4
+11,TabPFN v2.6,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,0.2396378,0.15344396,-0.086193832,4
+12,TabPFN v3,3e-07,0.003,False,one_sample,openml_46905,ood,roc_auc,10000,42,43,2.8709203,2.8871382,0.016217853,4
+13,TabPFN v3,3e-07,0.003,False,one_sample,openml_46947,ood,roc_auc,10000,42,43,-0.15061319,-0.18342002,-0.032806833,4
+14,TabPFN v3,3e-07,0.003,False,one_sample,openml_46952,ood,roc_auc,10000,42,43,0.019491952,0.015719316,-0.0037726358,4
+15,TabPFN v3,3e-07,0.003,False,one_sample,openml_46956,ood,roc_auc,10000,42,43,-0.20964361,-0.27215781,-0.062514208,4
 Descriptive seed differences
 CSV (first column: row index)
 row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
-0,ood,roc_auc,TabICLv2,one_sample,4,-1.8736748e-05,0.0022225728,-0.0087014726,0.00418138
-1,ood,roc_auc,TabPFN v2,one_sample,4,6.597601e-05,-3.0327868e-05,-0.00020522341,0.00052978319
-2,ood,roc_auc,TabPFN v2.6,one_sample,4,-5.4349021e-06,-3.366796e-06,-0.00086193832,0.0008469323
-3,ood,roc_auc,TabPFN v3,one_sample,4,-0.00020718956,-0.00018289735,-0.00062514208,0.00016217853
+0,ood,roc_auc,TabICLv2,one_sample,4,-0.0018736748,0.22225728,-0.87014726,0.418138
+1,ood,roc_auc,TabPFN v2,one_sample,4,0.006597601,-0.0030327868,-0.020522341,0.052978319
+2,ood,roc_auc,TabPFN v2.6,one_sample,4,-0.00054349021,-0.0003366796,-0.086193832,0.08469323
+3,ood,roc_auc,TabPFN v3,one_sample,4,-0.020718956,-0.018289735,-0.062514208,0.016217853
 
 Figure: lgd_seed_monitor_credit
-LGD. Held-out credit: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in R² (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+LGD. Experiment 2, held-out credit: 10000-update fixed-context monitor effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (ΔR² (+ better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,updates,reference,repeat,difference,seed_reference,seed_repeat
@@ -90843,7 +92737,7 @@ row,domain,metric,base,sampling,datasets,mean,median,minimum,maximum
 3,credit,r2,TabPFN v3,one_sample,8,-0.00064906478,-0.00039127469,-0.0056354403,0.0021065474
 
 Figure: lgd_seed_monitor_ood
-LGD. Non-credit retention: 10000-update monitor effects for the predefined full-update reference, LR 3e-7 and L2-SP 0.003. Effects are Increase in R² (+ better) relative to each model's original weights. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
+LGD. Experiment 2, non-credit retention: 10000-update fixed-context monitor effects of the predefined reference recipe (full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its paired change relative to the original model (ΔR² (+ better)) under seed 42 against seed 43; points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. Positive differences favor seed 43; two seeds do not estimate a general seed distribution.
 Matched partition observations
 CSV (first column: row index)
 row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,dataset,domain,metric,updates,reference,repeat,difference,seed_reference,seed_repeat
@@ -109653,7 +111547,7 @@ row,domain,base,planned_checkpoints,completed_checkpoints,paired_five_fold_compa
 Comparisons use the same dataset and training partition in all three arms. Non-credit datasets require all four partitions. Dataset interquartile ranges describe heterogeneity, not statistical confidence.
 
 Figure: pd_sampling_benchmark_credit
-PD. Held-out credit: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+PD. Experiment 3, held-out credit: final five-fold benchmark effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use ΔAUC (pp, + better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,partition,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,domain,metric
@@ -110235,7 +112129,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 7,credit,roc_auc,TabPFN v3,full_pass,17,-0.00030767719,-0.0003021079,-0.0034174523,0.0014775513
 
 Figure: pd_sampling_benchmark_ood
-PD. Non-credit retention: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+PD. Experiment 3, non-credit retention: final five-fold benchmark effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use ΔAUC (pp, + better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,partition,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,domain,metric
@@ -110545,7 +112439,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 7,ood,roc_auc,TabPFN v3,full_pass,4,4.3508005e-05,0.00016001091,-0.0010698214,0.00092383156
 
 Figure: lgd_sampling_benchmark_credit
-LGD. Held-out credit: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Fractional RMSE reduction (+ better). Every arm preserves the same experiment-3 prevalence policy.
+LGD. Experiment 3, held-out credit: final five-fold benchmark effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use RMSE reduction (%, + better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,partition,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,domain,metric
@@ -110839,7 +112733,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 7,credit,rmse,TabPFN v3,full_pass,8,0.013235128,0.0012861725,-0.00068695903,0.099679493
 
 Figure: lgd_sampling_benchmark_ood
-LGD. Non-credit retention: five-fold benchmark effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Fractional RMSE reduction (+ better). Every arm preserves the same experiment-3 prevalence policy.
+LGD. Experiment 3, non-credit retention: final five-fold benchmark effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use RMSE reduction (%, + better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,method_dirname,base_short,test_dataset_id,untuned,trained,delta,absolute_delta,partition,dataset,base,learning_rate,frozen,l2sp_lambda,sampling,effect,seed,domain,metric
@@ -118018,7 +119912,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,partition,gpu_hours,rows_seen
 All three experiment-3 arms share proportional PD sampling. Differences from the balanced-PD main reference cannot be attributed solely to pass mode. Table overlap and overlapping training folds limit independence claims.
 
 Figure: pd_sampling_monitor_credit
-PD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+PD. Experiment 3, held-out credit: 10000-update fixed-context monitor effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use ΔAUC (pp, + better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,trial,dataset,base,learning_rate,frozen,adaptation_mode,l2sp_lambda,seed,updates,processed_rows,effect,sampling,trial_name,partition,domain,metric
@@ -118600,7 +120494,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 7,credit,roc_auc,TabPFN v3,full_pass,17,-0.00069900937,-8.9285714e-05,-0.01787338,0.011870866
 
 Figure: pd_sampling_monitor_ood
-PD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in AUC (+ better). Every arm preserves the same experiment-3 prevalence policy.
+PD. Experiment 3, non-credit retention: 10000-update fixed-context monitor effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use ΔAUC (pp, + better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,trial,dataset,base,learning_rate,frozen,adaptation_mode,l2sp_lambda,seed,updates,processed_rows,effect,sampling,trial_name,partition,domain,metric
@@ -118910,7 +120804,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 7,ood,roc_auc,TabPFN v3,full_pass,4,-0.004813554,0.0014877998,-0.024016838,0.0017870223
 
 Figure: lgd_sampling_monitor_credit
-LGD. Held-out credit: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
+LGD. Experiment 3, held-out credit: 10000-update fixed-context monitor effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use ΔR² (+ better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,trial,updates,processed_rows,dataset,value,initial,effect,base,learning_rate,l2sp_lambda,frozen,sampling,trial_name,partition,domain,metric
@@ -119204,7 +121098,7 @@ row,domain,metric,base,comparison,datasets,mean,median,minimum,maximum
 7,credit,r2,TabPFN v3,full_pass,8,0.0015227795,0.00085228682,-0.00091743469,0.0074073672
 
 Figure: lgd_sampling_monitor_ood
-LGD. Non-credit retention: 10000-update monitor effects and within-experiment protocol contrasts. Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use Increase in R² (+ better). Every arm preserves the same experiment-3 prevalence policy.
+LGD. Experiment 3, non-credit retention: 10000-update fixed-context monitor effects of the reference recipe (full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change relative to the original model of the same base; right: each protocol minus one sample within table. Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. Effects use ΔR² (+ better). All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.
 Matched partition effects
 CSV (first column: row index)
 row,trial,updates,processed_rows,dataset,value,initial,effect,base,learning_rate,l2sp_lambda,frozen,sampling,trial_name,partition,domain,metric
@@ -119935,7 +121829,7 @@ row,track,family,context_rows,tables
 Primary scores are PD AUC and LGD R². Scores first average the five paired folds within each table, then weight tables equally. Positive differences favor CPT. Individual table curves reveal opposing responses or influential tables that a mean can hide; the same table identities persist across each horizon. No figure is generated for a horizon without a complete common cohort.
 
 Figure: context_pd_through_128
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -120268,7 +122162,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 813,pd,tabpfn,3,SBA Loans Case,128,0.96989828,0.97029351,0.00039522952,roc_auc,5
 
 Figure: context_pd_through_2048
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -120787,7 +122681,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 802,pd,tabpfn,3,LendingClub,2048,0.67014606,0.67301436,0.0028683025,roc_auc,5
 
 Figure: context_pd_through_50000
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -121376,7 +123270,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 785,pd,tabpfn,3,Home Credit,50000,0.74702582,0.74638862,-0.00063720448,roc_auc,5
 
 Figure: context_lgd_through_128
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -121547,7 +123441,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 268,lgd,tabpfn,3,SBA Loans Case (LGD),128,0.65234742,0.64857864,-0.0037687778,r2,5
 
 Figure: context_lgd_through_2048
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -134975,7 +136869,7 @@ row,domain,base,planned_checkpoints,completed_checkpoints,paired_five_fold_compa
 Positive effects favor DiagScale. Table spread is not a confidence interval. The highest observed rate is not a validated selected recipe. Classical models provide benchmark context rather than a checkpoint-paired causal contrast.
 
 Figure: adapter_benchmark_pd_roc_auc
-PD. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.
+Experiment 5, final five-fold benchmark: paired change in AUC (ΔAUC (pp, + better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
 Paired table values
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -135107,19 +137001,19 @@ row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,
 125,TabPFN v3,openml_46956,0.03,0,False,one_sample,ood,roc_auc,-0.0022449328,0.77605378,0.77380885,4
 Plotted summaries
 CSV (first column: row index)
-row,learning_rate,mean,q25,q75,datasets,base,domain
-0,0.0001,-0.00046681931,-0.0010137342,-7.2037289e-05,17,TabICLv2,credit
-1,0.001,-0.0032219149,-0.003143543,-0.00060826713,17,TabICLv2,credit
-2,0.03,-0.022570029,-0.018905268,-0.005141369,17,TabICLv2,credit
-3,0.0001,0.00021614596,3.4979271e-07,0.00055956505,17,TabPFN v3,credit
-4,0.001,-0.0002659142,-0.0006710477,0.00059737678,17,TabPFN v3,credit
-5,0.03,-0.0041242283,-0.0027525864,-9.247449e-05,17,TabPFN v3,credit
-6,0.0001,0.00018145944,-0.00034475327,0.00060967853,4,TabICLv2,ood
-7,0.001,-0.0013958011,-0.0024073928,3.2697564e-05,4,TabICLv2,ood
-8,0.03,-0.015185242,-0.016805015,-0.0042577199,4,TabICLv2,ood
-9,0.0001,0.00086798536,9.3549913e-05,0.001074721,4,TabPFN v3,ood
-10,0.001,0.0007075295,-0.00057490372,0.00099769916,4,TabPFN v3,ood
-11,0.03,0.00021562011,-0.0014866077,0.0012609878,4,TabPFN v3,ood
+row,learning_rate,mean,median,q25,q75,datasets,improved,base,domain,display_scale
+0,0.0001,-0.046681931,-0.024093887,-0.10137342,-0.0072037289,17,4,TabICLv2,credit,100
+1,0.001,-0.32219149,-0.12358101,-0.3143543,-0.060826713,17,3,TabICLv2,credit,100
+2,0.03,-2.2570029,-1.0417673,-1.8905268,-0.5141369,17,0,TabICLv2,credit,100
+3,0.0001,0.021614596,0.0087585034,3.4979271e-05,0.055956505,17,13,TabPFN v3,credit,100
+4,0.001,-0.02659142,-0.014562075,-0.06710477,0.059737678,17,7,TabPFN v3,credit,100
+5,0.03,-0.41242283,-0.12172181,-0.27525864,-0.009247449,17,4,TabPFN v3,credit,100
+6,0.0001,0.018145944,0.008346582,-0.034475327,0.060967853,4,2,TabICLv2,ood,100
+7,0.001,-0.13958011,-0.097889411,-0.24073928,0.0032697564,4,1,TabICLv2,ood,100
+8,0.03,-1.5185242,-0.58774923,-1.6805015,-0.42577199,4,0,TabICLv2,ood,100
+9,0.0001,0.086798536,0.030028552,0.0093549913,0.1074721,4,3,TabPFN v3,ood,100
+10,0.001,0.07075295,-0.028473406,-0.057490372,0.099769916,4,1,TabPFN v3,ood,100
+11,0.03,0.021562011,-0.044123997,-0.14866077,0.12609878,4,2,TabPFN v3,ood,100
 
 Table: PD credit paired primary scores
 CSV (first column: row index)
@@ -135623,7 +137517,7 @@ row,domain,method_name,test_dataset_id,split,mean,folds,metric
 362,noncredit,xgboost,openml_46956,3,0.75935787,5,roc_auc
 
 Figure: adapter_benchmark_lgd_r2
-LGD. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.
+Experiment 5, final five-fold benchmark: paired change in R² (ΔR² (+ better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
 Paired table values
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -135701,19 +137595,19 @@ row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,
 71,TabPFN v3,openml_46961,0.03,0,False,one_sample,ood,r2,-0.018695948,0.9305515,0.91185555,4
 Plotted summaries
 CSV (first column: row index)
-row,learning_rate,mean,q25,q75,datasets,base,domain
-0,0.0001,-0.0030863956,-0.0010667086,-8.3744526e-07,8,TabICLv2,credit
-1,0.001,-0.016804272,-0.012857324,-0.00054812133,8,TabICLv2,credit
-2,0.03,-0.056991605,-0.049895865,-0.020578602,8,TabICLv2,credit
-3,0.0001,-0.003330411,-0.0031513304,0.00066420436,8,TabPFN v3,credit
-4,0.001,-0.0059454918,-0.0096226901,0.00065376759,8,TabPFN v3,credit
-5,0.03,-0.064331025,-0.052366605,-0.0098132581,8,TabPFN v3,credit
-6,0.0001,-0.00066273592,-0.00081878823,4.6272187e-05,4,TabICLv2,ood
-7,0.001,-0.0054924861,-0.0057458203,-0.0025762599,4,TabICLv2,ood
-8,0.03,-0.03589762,-0.03751365,-0.016178752,4,TabICLv2,ood
-9,0.0001,-0.0012306979,-0.001384449,-0.00048246847,4,TabPFN v3,ood
-10,0.001,-0.0066344928,-0.0089835028,-0.0030829363,4,TabPFN v3,ood
-11,0.03,-0.038861121,-0.045053075,-0.017175551,4,TabPFN v3,ood
+row,learning_rate,mean,median,q25,q75,datasets,improved,base,domain,display_scale
+0,0.0001,-0.0030863956,-0.00024145842,-0.0010667086,-8.3744526e-07,8,2,TabICLv2,credit,1
+1,0.001,-0.016804272,-0.007842356,-0.012857324,-0.00054812133,8,2,TabICLv2,credit,1
+2,0.03,-0.056991605,-0.03702687,-0.049895865,-0.020578602,8,1,TabICLv2,credit,1
+3,0.0001,-0.003330411,-0.0011802614,-0.0031513304,0.00066420436,8,4,TabPFN v3,credit,1
+4,0.001,-0.0059454918,-0.008187139,-0.0096226901,0.00065376759,8,2,TabPFN v3,credit,1
+5,0.03,-0.064331025,-0.025844318,-0.052366605,-0.0098132581,8,1,TabPFN v3,credit,1
+6,0.0001,-0.00066273592,-0.00010978012,-0.00081878823,4.6272187e-05,4,1,TabICLv2,ood,1
+7,0.001,-0.0054924861,-0.0028295941,-0.0057458203,-0.0025762599,4,0,TabICLv2,ood,1
+8,0.03,-0.03589762,-0.017794782,-0.03751365,-0.016178752,4,0,TabICLv2,ood,1
+9,0.0001,-0.0012306979,-0.00063621956,-0.001384449,-0.00048246847,4,0,TabPFN v3,ood,1
+10,0.001,-0.0066344928,-0.0054319464,-0.0089835028,-0.0030829363,4,0,TabPFN v3,ood,1
+11,0.03,-0.038861121,-0.023367505,-0.045053075,-0.017175551,4,0,TabPFN v3,ood,1
 
 Table: LGD credit paired primary scores
 CSV (first column: row index)
@@ -136068,7 +137962,7 @@ Probabilities are evaluated at test prevalence. F1/calibration rules use inner v
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
 
 Figure: adapter_benchmark_pd_brier_score
-PD. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.
+Experiment 5, final five-fold benchmark: paired change in Brier score (Brier reduction ×100 (+ better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
 Paired table values
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -136200,19 +138094,19 @@ row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,
 125,TabPFN v3,openml_46956,0.03,0,False,one_sample,ood,brier_score,-0.00011361647,0.056571104,0.056684721,4
 Plotted summaries
 CSV (first column: row index)
-row,learning_rate,mean,q25,q75,datasets,base,domain
-0,0.0001,-0.00029004348,-0.00033441721,-3.1589463e-05,17,TabICLv2,credit
-1,0.001,-0.0018857081,-0.0010071231,-8.343379e-05,17,TabICLv2,credit
-2,0.03,-0.0096178286,-0.007021886,-0.00082391415,17,TabICLv2,credit
-3,0.0001,2.8360242e-05,3.2048686e-06,0.00014351535,17,TabPFN v3,credit
-4,0.001,-0.00026570831,-8.6779805e-05,0.00018032483,17,TabPFN v3,credit
-5,0.03,-0.0022450072,-0.00055423268,-4.1814368e-05,17,TabPFN v3,credit
-6,0.0001,-0.00017182716,-0.00021113856,-7.879991e-05,4,TabICLv2,ood
-7,0.001,-0.00082181283,-0.0012704922,-0.00038448911,4,TabICLv2,ood
-8,0.03,-0.0032853864,-0.0045852746,-0.0017422127,4,TabICLv2,ood
-9,0.0001,-1.2288309e-05,-3.5988062e-05,2.7030546e-05,4,TabPFN v3,ood
-10,0.001,-0.00024965834,-0.00035334739,5.7151153e-06,4,TabPFN v3,ood
-11,0.03,-0.00049313785,-0.00060688076,-0.00042741433,4,TabPFN v3,ood
+row,learning_rate,mean,median,q25,q75,datasets,improved,base,domain,display_scale
+0,0.0001,-0.029004348,-0.009691007,-0.033441721,-0.0031589463,17,3,TabICLv2,credit,100
+1,0.001,-0.18857081,-0.035027481,-0.10071231,-0.008343379,17,3,TabICLv2,credit,100
+2,0.03,-0.96178286,-0.32538561,-0.7021886,-0.082391415,17,0,TabICLv2,credit,100
+3,0.0001,0.0028360242,0.003639139,0.00032048686,0.014351535,17,13,TabPFN v3,credit,100
+4,0.001,-0.026570831,-0.00043979268,-0.0086779805,0.018032483,17,8,TabPFN v3,credit,100
+5,0.03,-0.22450072,-0.020465388,-0.055423268,-0.0041814368,17,3,TabPFN v3,credit,100
+6,0.0001,-0.017182716,-0.01181113,-0.021113856,-0.007879991,4,1,TabICLv2,ood,100
+7,0.001,-0.082181283,-0.083316847,-0.12704922,-0.038448911,4,1,TabICLv2,ood,100
+8,0.03,-0.32853864,-0.30421009,-0.45852746,-0.17422127,4,0,TabICLv2,ood,100
+9,0.0001,-0.0012288309,0.00033307931,-0.0035988062,0.0027030546,4,2,TabPFN v3,ood,100
+10,0.001,-0.024965834,-0.0097973926,-0.035334739,0.00057151153,4,1,TabPFN v3,ood,100
+11,0.03,-0.049313785,-0.054115724,-0.060688076,-0.042741433,4,0,TabPFN v3,ood,100
 
 Table: PD credit brier_score
 CSV (first column: row index)
@@ -138937,7 +140831,7 @@ row,arm,partition,id,available_rows,episode_rows,query_rows,visit_share,held_out
 Report all prescribed arms. Each table is paired across arms and its original-weight control, requiring complete five-fold evaluation. Partitions and CV folds are not independent replications.
 
 Figure: size_benchmark_roc_auc
-Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the All tables effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+Experiment 6, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. Left panels: paired change in AUC (ΔAUC (pp, + better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the All tables arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -139072,26 +140966,26 @@ row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,
 41,TabPFN v3,openml_46956,ood,roc_auc,3e-07,0.003,False,one_sample,0.00012419455,4,Large tables,-0.00075813566,0.0008823302
 Plotted summaries
 CSV (first column: row index)
-row,domain,base,arm,contrast,mean,datasets
-0,credit,TabICLv2,All tables,False,0.003572336,17
-1,credit,TabICLv2,Large tables,False,0.0020567533,17
-2,credit,TabPFN v3,All tables,False,-0.0010034685,17
-3,credit,TabPFN v3,Large tables,False,-0.00077560029,17
-4,credit,TabICLv2,Large tables,True,-0.0015155827,17
-5,credit,TabPFN v3,Large tables,True,0.0002278682,17
-6,ood,TabICLv2,All tables,False,0.0019015843,4
-7,ood,TabICLv2,Large tables,False,0.00087982017,4
-8,ood,TabPFN v3,All tables,False,0.00080424508,4
-9,ood,TabPFN v3,Large tables,False,0.0017694505,4
-10,ood,TabICLv2,Large tables,True,-0.0010217641,4
-11,ood,TabPFN v3,Large tables,True,0.00096520545,4
+row,domain,base,arm,contrast,mean,improved,datasets
+0,credit,TabICLv2,All tables,False,0.003572336,6,17
+1,credit,TabICLv2,Large tables,False,0.0020567533,4,17
+2,credit,TabPFN v3,All tables,False,-0.0010034685,8,17
+3,credit,TabPFN v3,Large tables,False,-0.00077560029,6,17
+4,credit,TabICLv2,Large tables,True,-0.0015155827,5,17
+5,credit,TabPFN v3,Large tables,True,0.0002278682,9,17
+6,ood,TabICLv2,All tables,False,0.0019015843,1,4
+7,ood,TabICLv2,Large tables,False,0.00087982017,1,4
+8,ood,TabPFN v3,All tables,False,0.00080424508,1,4
+9,ood,TabPFN v3,Large tables,False,0.0017694505,2,4
+10,ood,TabICLv2,Large tables,True,-0.0010217641,1,4
+11,ood,TabPFN v3,Large tables,True,0.00096520545,4,4
 
 3. Probability quality
 Positive Brier effects mean a reduction in error. These are secondary outcomes at natural test prevalence; do not select an arm with them.
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
 
 Figure: size_benchmark_brier_score
-Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the All tables effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+Experiment 6, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. Left panels: paired change in Brier score (Brier reduction ×100 (+ better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the All tables arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -139226,19 +141120,19 @@ row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,
 41,TabPFN v3,openml_46956,ood,brier_score,3e-07,0.003,False,one_sample,-0.00012648623,4,Large tables,-6.5996169e-05,-6.0490058e-05
 Plotted summaries
 CSV (first column: row index)
-row,domain,base,arm,contrast,mean,datasets
-0,credit,TabICLv2,All tables,False,0.006806344,17
-1,credit,TabICLv2,Large tables,False,0.0060706544,17
-2,credit,TabPFN v3,All tables,False,-0.000723974,17
-3,credit,TabPFN v3,Large tables,False,-0.00067071345,17
-4,credit,TabICLv2,Large tables,True,-0.00073568956,17
-5,credit,TabPFN v3,Large tables,True,5.3260555e-05,17
-6,ood,TabICLv2,All tables,False,-0.00035539233,4
-7,ood,TabICLv2,Large tables,False,-0.00051486257,4
-8,ood,TabPFN v3,All tables,False,-0.00030616062,4
-9,ood,TabPFN v3,Large tables,False,-0.00032359977,4
-10,ood,TabICLv2,Large tables,True,-0.00015947024,4
-11,ood,TabPFN v3,Large tables,True,-1.7439149e-05,4
+row,domain,base,arm,contrast,mean,improved,datasets
+0,credit,TabICLv2,All tables,False,0.006806344,5,17
+1,credit,TabICLv2,Large tables,False,0.0060706544,3,17
+2,credit,TabPFN v3,All tables,False,-0.000723974,6,17
+3,credit,TabPFN v3,Large tables,False,-0.00067071345,6,17
+4,credit,TabICLv2,Large tables,True,-0.00073568956,9,17
+5,credit,TabPFN v3,Large tables,True,5.3260555e-05,8,17
+6,ood,TabICLv2,All tables,False,-0.00035539233,1,4
+7,ood,TabICLv2,Large tables,False,-0.00051486257,2,4
+8,ood,TabPFN v3,All tables,False,-0.00030616062,1,4
+9,ood,TabPFN v3,Large tables,False,-0.00032359977,0,4
+10,ood,TabICLv2,Large tables,True,-0.00015947024,1,4
+11,ood,TabPFN v3,Large tables,True,-1.7439149e-05,2,4
 
 Table: All tables saved prediction coverage
 CSV (first column: row index)
@@ -141570,7 +143464,7 @@ row,arm,partition,id,available_rows,episode_rows,query_rows,visit_share,held_out
 Report all prescribed arms. Each table is paired across arms and its original-weight control, requiring complete five-fold evaluation. Partitions and CV folds are not independent replications.
 
 Figure: size_benchmark_roc_auc
-Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the 8,192 rows effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+Experiment 7, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: 2,048-, 8,192- and 26,000-row training episodes on the same large-table corpus; the 8,192-row arm is the experiment-6 large-table checkpoint, reused rather than retrained. Left panels: paired change in AUC (ΔAUC (pp, + better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the 8,192 rows arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -141789,34 +143683,34 @@ row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,
 83,TabPFN v3,openml_46956,ood,roc_auc,3e-07,0.003,False,one_sample,0.00030125436,4,"26,000 rows",0.00012419455,0.00017705982
 Plotted summaries
 CSV (first column: row index)
-row,domain,base,arm,contrast,mean,datasets
-0,credit,TabICLv2,"2,048 rows",False,0.0023976213,17
-1,credit,TabICLv2,"8,192 rows",False,0.0020567533,17
-2,credit,TabICLv2,"26,000 rows",False,0.002562356,17
-3,credit,TabPFN v3,"2,048 rows",False,-0.0043162011,17
-4,credit,TabPFN v3,"8,192 rows",False,-0.00077560029,17
-5,credit,TabPFN v3,"26,000 rows",False,-0.00011445211,17
-6,credit,TabICLv2,"2,048 rows",True,0.00034086801,17
-7,credit,TabICLv2,"26,000 rows",True,0.00050560269,17
-8,credit,TabPFN v3,"2,048 rows",True,-0.0035406008,17
-9,credit,TabPFN v3,"26,000 rows",True,0.00066114818,17
-10,ood,TabICLv2,"2,048 rows",False,0.00081226404,4
-11,ood,TabICLv2,"8,192 rows",False,0.00087982017,4
-12,ood,TabICLv2,"26,000 rows",False,0.0012424793,4
-13,ood,TabPFN v3,"2,048 rows",False,-0.00057840748,4
-14,ood,TabPFN v3,"8,192 rows",False,0.0017694505,4
-15,ood,TabPFN v3,"26,000 rows",False,0.0021740454,4
-16,ood,TabICLv2,"2,048 rows",True,-6.7556131e-05,4
-17,ood,TabICLv2,"26,000 rows",True,0.00036265917,4
-18,ood,TabPFN v3,"2,048 rows",True,-0.002347858,4
-19,ood,TabPFN v3,"26,000 rows",True,0.00040459485,4
+row,domain,base,arm,contrast,mean,improved,datasets
+0,credit,TabICLv2,"2,048 rows",False,0.0023976213,4,17
+1,credit,TabICLv2,"8,192 rows",False,0.0020567533,4,17
+2,credit,TabICLv2,"26,000 rows",False,0.002562356,5,17
+3,credit,TabPFN v3,"2,048 rows",False,-0.0043162011,5,17
+4,credit,TabPFN v3,"8,192 rows",False,-0.00077560029,6,17
+5,credit,TabPFN v3,"26,000 rows",False,-0.00011445211,9,17
+6,credit,TabICLv2,"2,048 rows",True,0.00034086801,8,17
+7,credit,TabICLv2,"26,000 rows",True,0.00050560269,10,17
+8,credit,TabPFN v3,"2,048 rows",True,-0.0035406008,3,17
+9,credit,TabPFN v3,"26,000 rows",True,0.00066114818,15,17
+10,ood,TabICLv2,"2,048 rows",False,0.00081226404,1,4
+11,ood,TabICLv2,"8,192 rows",False,0.00087982017,1,4
+12,ood,TabICLv2,"26,000 rows",False,0.0012424793,1,4
+13,ood,TabPFN v3,"2,048 rows",False,-0.00057840748,0,4
+14,ood,TabPFN v3,"8,192 rows",False,0.0017694505,2,4
+15,ood,TabPFN v3,"26,000 rows",False,0.0021740454,4,4
+16,ood,TabICLv2,"2,048 rows",True,-6.7556131e-05,1,4
+17,ood,TabICLv2,"26,000 rows",True,0.00036265917,4,4
+18,ood,TabPFN v3,"2,048 rows",True,-0.002347858,0,4
+19,ood,TabPFN v3,"26,000 rows",True,0.00040459485,4,4
 
 3. Probability quality
 Positive Brier effects mean a reduction in error. These are secondary outcomes at natural test prevalence; do not select an arm with them.
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
 
 Figure: size_benchmark_brier_score
-Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are required for both CPT and its original-weight control, and every displayed arm must be present for the same table. Non-credit effects first average the four matched training partitions. Right panels subtract the 8,192 rows effect within table. Positive values indicate improvement; points are not independent across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, not an independent replication.
+Experiment 7, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: 2,048-, 8,192- and 26,000-row training episodes on the same large-table corpus; the 8,192-row arm is the experiment-6 large-table checkpoint, reused rather than retrained. Left panels: paired change in Brier score (Brier reduction ×100 (+ better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the 8,192 rows arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -142035,27 +143929,27 @@ row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,
 83,TabPFN v3,openml_46956,ood,brier_score,3e-07,0.003,False,one_sample,-2.9179709e-05,4,"26,000 rows",-0.00012648623,9.7306518e-05
 Plotted summaries
 CSV (first column: row index)
-row,domain,base,arm,contrast,mean,datasets
-0,credit,TabICLv2,"2,048 rows",False,0.0061420121,17
-1,credit,TabICLv2,"8,192 rows",False,0.0060706544,17
-2,credit,TabICLv2,"26,000 rows",False,0.0064139653,17
-3,credit,TabPFN v3,"2,048 rows",False,-0.0020380614,17
-4,credit,TabPFN v3,"8,192 rows",False,-0.00067071345,17
-5,credit,TabPFN v3,"26,000 rows",False,-0.00041037229,17
-6,credit,TabICLv2,"2,048 rows",True,7.1357662e-05,17
-7,credit,TabICLv2,"26,000 rows",True,0.00034331092,17
-8,credit,TabPFN v3,"2,048 rows",True,-0.001367348,17
-9,credit,TabPFN v3,"26,000 rows",True,0.00026034115,17
-10,ood,TabICLv2,"2,048 rows",False,-0.00068620883,4
-11,ood,TabICLv2,"8,192 rows",False,-0.00051486257,4
-12,ood,TabICLv2,"26,000 rows",False,-0.0002841852,4
-13,ood,TabPFN v3,"2,048 rows",False,-0.00075140857,4
-14,ood,TabPFN v3,"8,192 rows",False,-0.00032359977,4
-15,ood,TabPFN v3,"26,000 rows",False,3.9259701e-05,4
-16,ood,TabICLv2,"2,048 rows",True,-0.00017134626,4
-17,ood,TabICLv2,"26,000 rows",True,0.00023067737,4
-18,ood,TabPFN v3,"2,048 rows",True,-0.0004278088,4
-19,ood,TabPFN v3,"26,000 rows",True,0.00036285947,4
+row,domain,base,arm,contrast,mean,improved,datasets
+0,credit,TabICLv2,"2,048 rows",False,0.0061420121,4,17
+1,credit,TabICLv2,"8,192 rows",False,0.0060706544,3,17
+2,credit,TabICLv2,"26,000 rows",False,0.0064139653,4,17
+3,credit,TabPFN v3,"2,048 rows",False,-0.0020380614,5,17
+4,credit,TabPFN v3,"8,192 rows",False,-0.00067071345,6,17
+5,credit,TabPFN v3,"26,000 rows",False,-0.00041037229,9,17
+6,credit,TabICLv2,"2,048 rows",True,7.1357662e-05,7,17
+7,credit,TabICLv2,"26,000 rows",True,0.00034331092,12,17
+8,credit,TabPFN v3,"2,048 rows",True,-0.001367348,3,17
+9,credit,TabPFN v3,"26,000 rows",True,0.00026034115,15,17
+10,ood,TabICLv2,"2,048 rows",False,-0.00068620883,1,4
+11,ood,TabICLv2,"8,192 rows",False,-0.00051486257,2,4
+12,ood,TabICLv2,"26,000 rows",False,-0.0002841852,2,4
+13,ood,TabPFN v3,"2,048 rows",False,-0.00075140857,0,4
+14,ood,TabPFN v3,"8,192 rows",False,-0.00032359977,0,4
+15,ood,TabPFN v3,"26,000 rows",False,3.9259701e-05,2,4
+16,ood,TabICLv2,"2,048 rows",True,-0.00017134626,1,4
+17,ood,TabICLv2,"26,000 rows",True,0.00023067737,4,4
+18,ood,TabPFN v3,"2,048 rows",True,-0.0004278088,0,4
+19,ood,TabPFN v3,"26,000 rows",True,0.00036285947,4,4
 
 Table: 2,048 rows saved prediction coverage
 CSV (first column: row index)
@@ -148628,7 +150522,7 @@ row,domain,base,planned_checkpoints,completed_checkpoints,paired_five_fold_compa
 The original checkpoint supplies a matched reference at every LoRA learning rate. The source tables retain both absolute scores and paired effects. The plots connect rate settings, not training time. Table means are descriptive; the best observed rate is not a validated selected recipe.
 
 Figure: lora_primary_pd
-Five-fold AUC for original and LoRA checkpoints on excluded credit tables and the non-credit retention panel. Lines connect equal-table means across the three LoRA rates; they are not learning curves over training time. All rates share the same complete table cohort within each panel. Each trained/original pair requires five finite matched folds; non-credit tables additionally require all training partitions before within-table averaging. Original and LoRA inference settings match within this experiment, including FP32 without FA3 for TabICL. Both absolute scores and paired effects are retained in the accompanying tables. The best observed rate is not a validated selected recipe.
+Experiment 8, final five-fold benchmark: paired change in AUC (ΔAUC (pp, + better)) of rank-16 query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates (logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five matched outer folds, and original and LoRA inference settings match (FP32 without FA3 for TabICLv2). Positive values favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.
 Complete matched table scores and effects
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -148909,7 +150803,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 23,TabPFN v3,0.001,0,True,one_sample,openml_46956,ood,roc_auc,-0.024377732,0.77605378,0.75167605,4
 
 Figure: lora_primary_lgd
-Five-fold R² for original and LoRA checkpoints on excluded credit tables and the non-credit retention panel. Lines connect equal-table means across the three LoRA rates; they are not learning curves over training time. All rates share the same complete table cohort within each panel. Each trained/original pair requires five finite matched folds; non-credit tables additionally require all training partitions before within-table averaging. Original and LoRA inference settings match within this experiment, including FP32 without FA3 for TabICL. Both absolute scores and paired effects are retained in the accompanying tables. The best observed rate is not a validated selected recipe.
+Experiment 8, final five-fold benchmark: paired change in R² (ΔR² (+ better)) of rank-16 query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates (logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five matched outer folds, and original and LoRA inference settings match (FP32 without FA3 for TabICLv2). Positive values favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.
 Complete matched table scores and effects
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -149085,7 +150979,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 Each secondary figure requires the same complete table cohort for every rate and both displayed metrics. Bands show table interquartile ranges, not confidence intervals. RMSE changes are fractional reductions; Brier, log-loss and MAE differences remain on their native scales. Missing or nonfinite values are never filled with zero.
 
 Figure: lora_secondary_pd
-LoRA prediction-quality effects on held-out credit tables, paired with the same model's original weights. Positive effects indicate improvement. Lines show equal-table mean effects and shading the table interquartile range, not confidence intervals. Each model uses a common table cohort across all three rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative to the original; Brier, log-loss and MAE effects are original minus adapted on their native metric scales. These summaries describe the declared grid without selecting a best rate on held-out scores.
+Experiment 8: LoRA prediction-quality effects on held-out credit tables, paired with the original checkpoint of the same base. Positive effects indicate improvement. Lines show equal-table mean effects and shading the table interquartile range, not confidence intervals. Each model uses a common table cohort across all three rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative to the original (in %); Brier reductions are multiplied by 100; log-loss and MAE effects are original minus adapted on their native scales. These summaries describe the declared grid without selecting a best rate on held-out scores.
 Complete matched secondary scores and effects
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -149846,7 +151740,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 23,TabPFN v3,0.001,0,True,one_sample,openml_46956,ood,f1,-0.021466983,0.28556845,0.26410147,4
 
 Figure: lora_secondary_lgd
-LoRA prediction-quality effects on held-out credit tables, paired with the same model's original weights. Positive effects indicate improvement. Lines show equal-table mean effects and shading the table interquartile range, not confidence intervals. Each model uses a common table cohort across all three rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative to the original; Brier, log-loss and MAE effects are original minus adapted on their native metric scales. These summaries describe the declared grid without selecting a best rate on held-out scores.
+Experiment 8: LoRA prediction-quality effects on held-out credit tables, paired with the original checkpoint of the same base. Positive effects indicate improvement. Lines show equal-table mean effects and shading the table interquartile range, not confidence intervals. Each model uses a common table cohort across all three rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative to the original (in %); Brier reductions are multiplied by 100; log-loss and MAE effects are original minus adapted on their native scales. These summaries describe the declared grid without selecting a best rate on held-out scores.
 Complete matched secondary scores and effects
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -150946,4 +152840,3156 @@ general/02_processed_data: 14 figures -> output CreditPFN/figures/general
   12  partitions_pd_1
   13  planned_exposure_lgd_1
   14  planned_exposure_pd_1
+```
+
+---
+
+## general/03_overview_pd
+
+```
+Overview: continued pretraining for PD
+
+0. Evidence and scope
+DATA: no external source selected.
+Project: no external source selected.
+Missing project records are unavailable evidence, not zero effects or failed training.
+Paired within-study comparisons of every completed CPT configuration with its original model; experiment 0 is excluded.
+
+1. Studies and what differs between them
+Experiment 0 (controls and pilots) is excluded. Each study pairs its adapted checkpoints with its own evaluation of the original model, under that study's inference settings, so every effect in this notebook is a within-study paired difference. Experiments 1–3 use TabPFN v2, TabPFN v2.6, TabPFN v3 and TabICLv2; experiments 5–8 use TabPFN v3 and TabICLv2. Experiment 4 reuses the experiment-1 reference checkpoints at varying context sizes. Experiments 6 and 7 are PD-only. Cross-study contrasts can involve several recipe differences at once (see the comparability table: PD sampling, training precision, TabICLv2 inference precision, episode cap and learning-rate parameterization).
+
+Table: What differs between studies
+CSV (first column: row index)
+row,experiment,study,arm,bases,learning_rates,l2sp,pd_sampling,training_amp,tabicl_inference,episode_rows,seed,trials
+0,1,Main grid,,"TabICLv2, TabPFN v2, TabPFN v2.6, TabPFN v3","3e-07, 1e-06, 1e-05, 3e-05","0, 0.003",balanced,True,automatic,measured cap,42,256
+1,2,Seed 43,,"TabICLv2, TabPFN v2, TabPFN v2.6, TabPFN v3",3e-07,0.003,balanced,True,automatic,measured cap,43,16
+2,3,Sampling,,"TabICLv2, TabPFN v2, TabPFN v2.6, TabPFN v3",3e-07,0.003,stratified,True,automatic,measured cap,42,48
+3,5,DiagScale,,"TabICLv2, TabPFN v3","0.0001, 0.001, 0.03",0,stratified,False,"FP32, no FA3",8192,42,24
+4,6,Corpus policy,All tables,"TabICLv2, TabPFN v3",3e-07,0.003,stratified,True,automatic,8192,42,8
+5,6,Corpus policy,Large tables,"TabICLv2, TabPFN v3",3e-07,0.003,stratified,True,automatic,8192,42,8
+6,7,Episode size,"2,048 rows","TabICLv2, TabPFN v3",3e-07,0.003,stratified,True,automatic,2048,42,8
+7,7,Episode size,"26,000 rows","TabICLv2, TabPFN v3",3e-07,0.003,stratified,True,automatic,26000,42,8
+8,8,LoRA,,"TabICLv2, TabPFN v3","1e-05, 0.0001, 0.001",0,balanced,True,"FP32, no FA3",measured cap,42,24
+
+2. Every configuration against its original model
+Reference recipe, TabICLv2: mean +0.369 pp AUC, median -0.018, 4/17 tables improved, 5 worse (original 0.7918 → adapted 0.7955).
+Reference recipe, TabPFN v2: mean +0.477 pp AUC, median +0.507, 16/17 tables improved, 0 worse (original 0.7789 → adapted 0.7837).
+Reference recipe, TabPFN v2.6: mean -0.002 pp AUC, median -0.009, 2/17 tables improved, 2 worse (original 0.7922 → adapted 0.7922).
+Reference recipe, TabPFN v3: mean +0.043 pp AUC, median +0.007, 5/17 tables improved, 1 worse (original 0.7982 → adapted 0.7986).
+TabICLv2: 17 of 30 configurations have a mean gain above 0.1 pp AUC; highest observed mean +0.396 (E1 frozen · LR 3e-07 · λ 0), lowest -4.218 (E1 all · LR 3e-05 · λ 0).
+TabPFN v2: 11 of 20 configurations have a mean gain above 0.1 pp AUC; highest observed mean +0.544 (E1 all · LR 1e-06 · λ 0), lowest -0.419 (E1 all · LR 3e-05 · λ 0).
+TabPFN v2.6: 0 of 20 configurations have a mean gain above 0.1 pp AUC; highest observed mean +0.005 (E3 Full pass), lowest -0.707 (E1 all · LR 3e-05 · λ 0).
+TabPFN v3: 0 of 30 configurations have a mean gain above 0.1 pp AUC; highest observed mean +0.060 (E1 frozen · LR 3e-07 · λ 0.003), lowest -5.691 (E1 all · LR 3e-05 · λ 0).
+TabICLv2, experiment 1 averaged over anchoring and scope: LR 3e-07 +0.376, LR 1e-06 +0.333, LR 1e-05 -0.645, LR 3e-05 -1.329 pp AUC.
+TabPFN v2, experiment 1 averaged over anchoring and scope: LR 3e-07 +0.241, LR 1e-06 +0.275, LR 1e-05 +0.213, LR 3e-05 -0.008 pp AUC.
+TabPFN v2.6, experiment 1 averaged over anchoring and scope: LR 3e-07 -0.004, LR 1e-06 -0.013, LR 1e-05 -0.149, LR 3e-05 -0.243 pp AUC.
+TabPFN v3, experiment 1 averaged over anchoring and scope: LR 3e-07 +0.050, LR 1e-06 -0.080, LR 1e-05 -1.430, LR 3e-05 -2.502 pp AUC.
+
+Figure: pd_overview_landscape
+PD. Held-out credit tables, final five-fold benchmark. Each cell is the equal-table mean change in AUC (percentage points) of an adapted model relative to the original checkpoint of the same base, followed by the number of tables that improved by more than 0.1 pp and the number of complete tables. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Rows are grouped by experiment (E1 main grid: four learning rates × L2-SP λ ∈ {0, 0.003} × all or frozen-backbone updates; E2 the reference recipe with a second training seed; E3 sampling protocols; E5 DiagScale query-scaling adapters; E6 all versus large training tables; E7 episode sizes on the large-table corpus; E8 rank-16 query/value LoRA). The bold row is the predefined reference recipe (full updates, LR 3e-7, λ 0.003); every other row is reported in full rather than selected. Label colours identify the adaptation approach. Colours are symmetric about zero and saturate at the 95th percentile of |cell value| (2.27); printed values are exact. 'Not run' marks base/approach combinations outside a study's design. Studies differ in more than their named factor (see the comparability table).
+Configuration summaries
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.7926129,0.0008226641,-0.002021733,-0.00328867,0.00043318618,-0.035055067,0.068600205,3,4,10,26,85,0.17647059
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77931162,0.00039701141,0.00060519956,1.059629e-05,0.00094559319,-0.0022813747,0.0017253093,4,12,1,55,85,0.23529412
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79213501,-0.00010651704,-0.00012719583,-0.00028179434,-4.183645e-05,-0.00070152449,0.0011028327,1,16,0,21,85,0.058823529
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79330144,-0.0048684727,-0.0029621993,-0.0079808153,-0.0006758087,-0.018535458,0.0022606751,1,4,12,11,85,0.058823529
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79351383,0.0017236009,-0.0013221994,-0.0024952932,0.00056714576,-0.025887778,0.069408869,2,5,10,30,85,0.11764706
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77922255,0.00030794194,0.00040215781,5.3368414e-06,0.00059008261,-0.0010059903,0.0015764155,1,15,1,54,85,0.058823529
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79211597,-0.00012555958,-5.731755e-05,-0.00022464171,-2.0693128e-05,-0.0010121617,0.00040350675,0,16,1,22,85,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79384837,-0.0043215352,-0.0014030765,-0.0074468658,-0.00064876513,-0.016583804,0.0020183063,1,5,11,10,85,0.058823529
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79551002,0.0037197904,-0.00037872934,-0.0013224896,0.00019097774,-0.0066702244,0.070288281,3,8,6,28,85,0.17647059
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77899666,8.2046818e-05,8.983897e-05,1.9896427e-05,0.00016438705,-0.00059700063,0.00051051481,0,17,0,57,85,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79220837,-3.3152236e-05,-2.479891e-05,-7.2182599e-05,-9.8063407e-06,-0.00026181912,0.00029393623,0,17,0,22,85,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79761723,-0.00055267688,0.00025506882,-0.00032710154,0.00093565686,-0.0097668675,0.0037627612,4,9,4,45,85,0.23529412
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79553321,0.0037429814,-0.00036467931,-0.00149375,0.00016632851,-0.0074188621,0.070869013,2,9,6,27,85,0.11764706
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77899039,7.5783944e-05,6.7386604e-05,2.5904434e-05,0.00015144854,-0.00051666838,0.00048358425,0,17,0,59,85,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79221598,-2.5546661e-05,-2.3174608e-05,-7.7478347e-05,-5.4711092e-06,-0.00013435684,0.00020305429,0,17,0,29,85,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79754484,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,-0.011037904,0.0032141144,4,9,4,43,85,0.23529412
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.78928244,-0.0025077923,-0.0031590891,-0.0054988576,-0.00089196379,-0.053412592,0.06688232,2,3,12,20,85,0.11764706
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77952204,0.00060743336,0.00070897109,-9.2129253e-05,0.0013161302,-0.0030057606,0.0031449126,6,9,2,57,85,0.35294118
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.7920731,-0.00016842101,-0.00020453235,-0.00041885116,1.2747422e-05,-0.00081911614,0.0010680455,1,16,0,27,85,0.058823529
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.78607345,-0.012096461,-0.0060019466,-0.016328272,-0.002806646,-0.061270872,-0.0015082919,0,0,17,5,85,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79156779,-0.00022244584,-0.0013812026,-0.0033700646,-0.00037226374,-0.047786472,0.067793503,2,4,11,21,85,0.11764706
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77939141,0.00047680076,0.00051830625,-5.091368e-05,0.00087389553,-0.00059453938,0.0016650523,3,14,0,58,85,0.17647059
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79212519,-0.00011633257,-0.000103368,-0.00025666194,-1.7974048e-05,-0.00067857143,0.00066197112,0,17,0,22,85,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.78771717,-0.010452737,-0.0038554484,-0.014382241,-0.0021266907,-0.033531633,-0.00016974228,0,3,14,4,85,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79575408,0.0039638425,-0.00034470445,-0.00090965466,0.00013127916,-0.01058544,0.071715772,3,10,4,32,85,0.17647059
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77895737,4.2761538e-05,2.9886889e-05,-1.1479529e-05,4.6277458e-05,-0.00012716542,0.00047096918,0,17,0,52,85,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.7922259,-1.5626376e-05,-1.0264214e-05,-3.0914641e-05,3.3072385e-06,-0.00027346694,0.00017119694,0,17,0,30,85,0
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79874459,0.00057468197,0.00041751701,1.3554758e-05,0.001075057,-0.0018670509,0.0021646112,5,11,1,58,85,0.29411765
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79573399,0.0039437524,-0.00036035286,-0.00093561173,0.00012213118,-0.010305058,0.071598317,3,10,4,30,85,0.17647059
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77895536,4.0753439e-05,2.9984165e-05,-1.4134149e-05,5.6557593e-05,-0.00011592307,0.00043532871,0,17,0,54,85,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79220261,-3.8917611e-05,-7.9239917e-06,-3.6817797e-05,3.8392766e-06,-0.00035731415,0.00017633297,0,17,0,27,85,0
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79877274,0.00060283377,0.00049498713,0.00017055715,0.0011775906,-0.0017455955,0.0020695444,5,11,1,59,85,0.29411765
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.7693905,-0.022399734,-0.01012442,-0.028874377,-0.0035238799,-0.10165982,0.06246959,2,1,14,11,85,0.11764706
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78200382,0.0030892111,0.004542571,0.0013418367,0.0059603824,-0.015358252,0.011117563,13,1,3,63,85,0.76470588
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.78866332,-0.0035782046,-0.0023264377,-0.0053363425,-0.00015207219,-0.022864556,0.0093368631,2,6,9,20,85,0.11764706
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.76753157,-0.030638337,-0.016361401,-0.048337585,-0.0091785699,-0.091831949,-0.00466283,0,0,17,0,85,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.7858392,-0.005951033,-0.0048848406,-0.018493122,-0.0012730129,-0.038750771,0.065928073,2,1,14,13,85,0.11764706
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78364568,0.004731066,0.0053825996,0.0025711058,0.0069500612,-0.0048721549,0.013720879,14,1,2,67,85,0.82352941
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79008628,-0.0021552498,-0.001187456,-0.0031277835,-1.3251659e-05,-0.018340133,0.0095766811,1,7,9,24,85,0.058823529
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.78078593,-0.017383976,-0.0093026782,-0.029074341,-0.004694911,-0.051384354,-0.0021965002,0,0,17,2,85,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79441187,0.0026216357,-0.0011626593,-0.0026100114,0.00018763827,-0.0093411224,0.068894851,3,5,9,24,85,0.17647059
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78435182,0.005437213,0.0054131591,0.003727348,0.0070082689,0.00019140843,0.0098335041,16,1,0,79,85,0.94117647
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79202183,-0.00021969742,-9.1464314e-05,-0.001594834,0.00024416693,-0.003195226,0.0076451929,2,9,6,30,85,0.11764706
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79695029,-0.0012196226,-0.0006625354,-0.0010387119,0.00026578143,-0.0068468946,0.0010104894,1,11,5,31,85,0.058823529
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79504447,0.0032542405,-0.00082153089,-0.0018641114,0.0003483988,-0.0084777605,0.069612038,3,7,7,25,85,0.17647059
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78433156,0.0054169542,0.0053922159,0.0036243503,0.0069070627,0.00012451463,0.0099147636,16,1,0,79,85,0.94117647
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79201625,-0.00022527998,-7.9222336e-05,-0.0015053281,0.0002427313,-0.0029388615,0.0065549299,2,9,6,29,85,0.11764706
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.7973596,-0.00081030642,-0.00058934237,-0.0011812517,0.00041954278,-0.0057670939,0.0012051436,1,11,5,36,85,0.058823529
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.74960888,-0.042181358,-0.037627181,-0.064810038,-0.016083084,-0.1230825,0.041864005,1,0,16,6,85,0.058823529
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77472417,-0.0041904351,0.0014547194,-0.0097034332,0.0035343193,-0.033990236,0.0063342068,9,3,5,46,85,0.52941176
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.78517451,-0.007067018,-0.0043025011,-0.0095865893,-0.0014765207,-0.035582875,0.00066517857,0,2,15,12,85,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.74125953,-0.056910382,-0.049687435,-0.081342612,-0.027335145,-0.11955175,-0.010480923,0,0,17,0,85,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.78353257,-0.0082576592,-0.0073179052,-0.015123721,-0.0028723349,-0.052941932,0.063957556,2,1,14,13,85,0.11764706
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78171567,0.0028010623,0.0044165258,0.00078715553,0.0060541997,-0.013776286,0.010250981,12,3,2,65,85,0.70588235
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.78988268,-0.0023588496,-0.0016948063,-0.0041768585,-3.1548042e-05,-0.015797902,0.007151311,2,6,9,21,85,0.11764706
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.77753386,-0.020636044,-0.01387958,-0.033507039,-0.0050269582,-0.055782612,-0.0033056471,0,0,17,2,85,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79523492,0.0034446865,-0.00038674043,-0.0018223383,0.000146919,-0.014835603,0.071467701,3,9,5,31,85,0.17647059
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78371006,0.0047954514,0.005028279,0.0028898558,0.0064191092,8.4596839e-06,0.0094951033,16,1,0,80,85,0.94117647
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79217182,-6.9706431e-05,-0.00010532061,-0.00066387218,0.00016144477,-0.0022401011,0.0042531195,2,13,2,29,85,0.11764706
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.7985684,0.00039849298,7.6432618e-05,-7.6042806e-05,0.0011405541,-0.0037231925,0.0031863652,5,11,1,52,85,0.29411765
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79548485,0.0036946122,-0.00017633823,-0.0016434439,0.00022214889,-0.013719107,0.071504064,4,8,5,34,85,0.23529412
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78368711,0.0047725031,0.0050721524,0.0028900965,0.0063839468,3.6711761e-05,0.0093488316,16,1,0,80,85,0.94117647
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79221762,-2.3901248e-05,-9.3632154e-05,-0.00062878058,0.00016438407,-0.0021852261,0.0046828664,2,13,2,30,85,0.11764706
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79859965,0.00042974146,7.1306646e-05,-4.1099624e-05,0.0012161875,-0.0036003988,0.0029964029,5,11,1,52,85,0.29411765
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,roc_auc,17,0.79179023,0.7952339,0.0034436661,-0.00063512448,-0.0013285728,0.00017245657,-0.013647587,0.071354911,4,6,7,27,85,0.23529412
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,roc_auc,17,0.77891461,0.78366318,0.0047485715,0.0049303064,0.0029424592,0.0064537972,-2.0031681e-05,0.009229812,16,1,0,80,85,0.94117647
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,roc_auc,17,0.79224153,0.79213849,-0.00010303215,-0.0002290717,-0.0006842539,0.00014753569,-0.0021799658,0.0039084148,2,13,2,29,85,0.11764706
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,roc_auc,17,0.7981693,0.79858194,0.00041264317,0.00022355405,7.4281458e-06,0.0012816167,-0.0038135447,0.0026837958,5,11,1,51,85,0.29411765
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,roc_auc,17,0.79179023,0.7949124,0.0031221717,-0.00040882252,-0.0017881795,0.00054985274,-0.015334946,0.070901915,4,7,6,29,85,0.23529412
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,roc_auc,17,0.77891461,0.78349095,0.0045763435,0.0053674736,0.0025842924,0.0059075534,-0.00012286673,0.0084758526,16,1,0,78,85,0.94117647
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,roc_auc,17,0.79224153,0.79216406,-7.746184e-05,-0.00012841562,-0.00071198554,0.00045601234,-0.0027748329,0.0051209036,2,12,3,31,85,0.11764706
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,roc_auc,17,0.798171,0.79819839,2.7389963e-05,-0.00014475562,-0.00034142126,0.0006119632,-0.0051102523,0.0028985954,3,13,1,35,85,0.17647059
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,roc_auc,17,0.79179023,0.79478158,0.0029913513,-0.0009881041,-0.0014521563,-0.00038215257,-0.01424291,0.070995411,3,6,8,29,85,0.17647059
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,roc_auc,17,0.77891461,0.78296269,0.0040480848,0.0041962755,0.0026775987,0.0055290588,6.6007989e-06,0.0070105199,16,1,0,79,85,0.94117647
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,roc_auc,17,0.79224153,0.79229081,4.9286858e-05,7.3040272e-05,-0.00054751912,0.00049037612,-0.0014915578,0.0028295232,1,14,2,38,85,0.058823529
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,roc_auc,17,0.798171,0.79812809,-4.2907602e-05,-0.00014227829,-0.00031279605,0.00066441075,-0.0030853052,0.0018833305,4,11,2,34,85,0.23529412
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,roc_auc,17,0.79179023,0.79539311,0.0036028809,-0.00031617504,-0.0016597994,0.00039065489,-0.013268169,0.070909355,4,7,6,36,85,0.23529412
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,roc_auc,17,0.77891461,0.78347719,0.0045625786,0.0051696849,0.0025686465,0.0057613627,-0.00010469986,0.0085913752,16,1,0,78,85,0.94117647
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,roc_auc,17,0.79224153,0.79216571,-7.5815198e-05,-0.00016717141,-0.00069240261,0.00045417026,-0.0027171337,0.0044593604,2,13,2,28,85,0.11764706
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,roc_auc,17,0.798171,0.79843576,0.00026476959,0.00014349597,-0.00017257145,0.00095678887,-0.0045628564,0.0026817403,4,12,1,45,85,0.23529412
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,roc_auc,17,0.79706698,0.79660016,-0.00046681931,-0.00024093887,-0.0010137342,-7.2037289e-05,-0.0046297712,0.002525354,2,10,5,20,85,0.11764706
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,roc_auc,17,0.79817654,0.79839269,0.00021614596,8.7585034e-05,3.4979271e-07,0.00055956505,-0.00075019643,0.0010295072,1,16,0,54,85,0.058823529
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,roc_auc,17,0.79706698,0.79384506,-0.0032219149,-0.0012358101,-0.003143543,-0.00060826713,-0.02731237,0.0014090442,1,7,9,16,85,0.058823529
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,roc_auc,17,0.79817654,0.79791063,-0.0002659142,-0.00014562075,-0.0006710477,0.00059737678,-0.0042412694,0.0019787598,3,12,2,35,85,0.17647059
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,roc_auc,17,0.79706698,0.77449695,-0.022570029,-0.010417673,-0.018905268,-0.005141369,-0.13648384,-0.0018096592,0,0,17,6,85,0
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,roc_auc,17,0.79817654,0.79405231,-0.0041242283,-0.0012172181,-0.0027525864,-9.247449e-05,-0.035535085,0.0027876942,2,6,9,20,85,0.11764706
+86,6,Corpus policy,Full CPT,E6 All tables,TabICLv2,roc_auc,17,0.79179023,0.79536257,0.003572336,-0.0004716626,-0.0018780196,0.00038264312,-0.010375271,0.070740606,4,6,7,26,85,0.23529412
+87,6,Corpus policy,Full CPT,E6 All tables,TabPFN v3,roc_auc,17,0.7981754,0.79717193,-0.0010034685,-0.00023426871,-0.0014122494,0.0004362752,-0.0068557227,0.0019965742,2,9,6,32,85,0.11764706
+88,6,Corpus policy,Full CPT,E6 Large tables,TabICLv2,roc_auc,17,0.79179023,0.79384699,0.0020567533,-0.0008063218,-0.0031673466,-0.00027139005,-0.016920117,0.071048251,3,6,8,21,85,0.17647059
+89,6,Corpus policy,Full CPT,E6 Large tables,TabPFN v3,roc_auc,17,0.7981754,0.7973998,-0.00077560029,-0.0004838337,-0.0019757164,0.00065497449,-0.0063595433,0.0020436793,2,8,7,26,85,0.11764706
+90,7,Episode size,Full CPT,"E7 2,048 rows",TabICLv2,roc_auc,17,0.79179023,0.79418785,0.0023976213,-0.0013601929,-0.0036463557,-0.00040902704,-0.012641879,0.068900974,3,4,10,17,85,0.17647059
+91,7,Episode size,Full CPT,"E7 2,048 rows",TabPFN v3,roc_auc,17,0.79817028,0.79385408,-0.0043162011,-0.00081165514,-0.0048728011,0.00012528598,-0.036803997,0.0010097789,1,8,8,21,85,0.058823529
+92,7,Episode size,Full CPT,"E7 26,000 rows",TabICLv2,roc_auc,17,0.79179023,0.79435259,0.002562356,-0.00072412792,-0.0023882651,0.00033866841,-0.013283516,0.072370872,2,7,8,23,85,0.11764706
+93,7,Episode size,Full CPT,"E7 26,000 rows",TabPFN v3,roc_auc,17,0.79817028,0.79805583,-0.00011445211,0.00010593469,-0.00028870735,0.00084444212,-0.0049373785,0.002352518,3,12,2,37,85,0.17647059
+94,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,roc_auc,17,0.79706698,0.78607305,-0.010993924,-0.0047696248,-0.011901202,-0.0027831591,-0.055464956,-0.0005869849,0,1,16,8,85,0
+95,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,roc_auc,17,0.79817678,0.78866589,-0.0095108955,-0.0052889033,-0.010383929,-0.0026818777,-0.040906334,-0.0011822669,0,0,17,8,85,0
+96,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,roc_auc,17,0.79706698,0.75741176,-0.039655218,-0.031497307,-0.0474625,-0.02012965,-0.15815135,-0.0018116807,0,0,17,3,85,0
+97,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,roc_auc,17,0.79817678,0.77325933,-0.024917448,-0.012233371,-0.029128545,-0.0057591238,-0.13568272,-0.00095960884,0,1,16,2,85,0
+98,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,roc_auc,17,0.79706698,0.79383012,-0.0032368565,-0.001378963,-0.0027923396,-0.00013302785,-0.025232152,0.0033252826,1,7,9,17,85,0.058823529
+99,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,roc_auc,17,0.79817678,0.79780625,-0.00037053679,-0.00019180854,-0.00090314763,0.0012223848,-0.0062181156,0.0021887425,5,8,4,39,85,0.29411765
+
+Table: Every configuration: original and adapted scores, change and consistency
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.7926129,0.0008226641,-0.002021733,-0.00328867,0.00043318618,-0.035055067,0.068600205,3,4,10,26,85,0.17647059
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77931162,0.00039701141,0.00060519956,1.059629e-05,0.00094559319,-0.0022813747,0.0017253093,4,12,1,55,85,0.23529412
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79213501,-0.00010651704,-0.00012719583,-0.00028179434,-4.183645e-05,-0.00070152449,0.0011028327,1,16,0,21,85,0.058823529
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79330144,-0.0048684727,-0.0029621993,-0.0079808153,-0.0006758087,-0.018535458,0.0022606751,1,4,12,11,85,0.058823529
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79351383,0.0017236009,-0.0013221994,-0.0024952932,0.00056714576,-0.025887778,0.069408869,2,5,10,30,85,0.11764706
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77922255,0.00030794194,0.00040215781,5.3368414e-06,0.00059008261,-0.0010059903,0.0015764155,1,15,1,54,85,0.058823529
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79211597,-0.00012555958,-5.731755e-05,-0.00022464171,-2.0693128e-05,-0.0010121617,0.00040350675,0,16,1,22,85,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79384837,-0.0043215352,-0.0014030765,-0.0074468658,-0.00064876513,-0.016583804,0.0020183063,1,5,11,10,85,0.058823529
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79551002,0.0037197904,-0.00037872934,-0.0013224896,0.00019097774,-0.0066702244,0.070288281,3,8,6,28,85,0.17647059
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77899666,8.2046818e-05,8.983897e-05,1.9896427e-05,0.00016438705,-0.00059700063,0.00051051481,0,17,0,57,85,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79220837,-3.3152236e-05,-2.479891e-05,-7.2182599e-05,-9.8063407e-06,-0.00026181912,0.00029393623,0,17,0,22,85,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79761723,-0.00055267688,0.00025506882,-0.00032710154,0.00093565686,-0.0097668675,0.0037627612,4,9,4,45,85,0.23529412
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79553321,0.0037429814,-0.00036467931,-0.00149375,0.00016632851,-0.0074188621,0.070869013,2,9,6,27,85,0.11764706
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77899039,7.5783944e-05,6.7386604e-05,2.5904434e-05,0.00015144854,-0.00051666838,0.00048358425,0,17,0,59,85,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79221598,-2.5546661e-05,-2.3174608e-05,-7.7478347e-05,-5.4711092e-06,-0.00013435684,0.00020305429,0,17,0,29,85,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79754484,-0.00062506406,0.00012715705,-0.00033060226,0.0009507645,-0.011037904,0.0032141144,4,9,4,43,85,0.23529412
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.78928244,-0.0025077923,-0.0031590891,-0.0054988576,-0.00089196379,-0.053412592,0.06688232,2,3,12,20,85,0.11764706
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77952204,0.00060743336,0.00070897109,-9.2129253e-05,0.0013161302,-0.0030057606,0.0031449126,6,9,2,57,85,0.35294118
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.7920731,-0.00016842101,-0.00020453235,-0.00041885116,1.2747422e-05,-0.00081911614,0.0010680455,1,16,0,27,85,0.058823529
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.78607345,-0.012096461,-0.0060019466,-0.016328272,-0.002806646,-0.061270872,-0.0015082919,0,0,17,5,85,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79156779,-0.00022244584,-0.0013812026,-0.0033700646,-0.00037226374,-0.047786472,0.067793503,2,4,11,21,85,0.11764706
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77939141,0.00047680076,0.00051830625,-5.091368e-05,0.00087389553,-0.00059453938,0.0016650523,3,14,0,58,85,0.17647059
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79212519,-0.00011633257,-0.000103368,-0.00025666194,-1.7974048e-05,-0.00067857143,0.00066197112,0,17,0,22,85,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.78771717,-0.010452737,-0.0038554484,-0.014382241,-0.0021266907,-0.033531633,-0.00016974228,0,3,14,4,85,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79575408,0.0039638425,-0.00034470445,-0.00090965466,0.00013127916,-0.01058544,0.071715772,3,10,4,32,85,0.17647059
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77895737,4.2761538e-05,2.9886889e-05,-1.1479529e-05,4.6277458e-05,-0.00012716542,0.00047096918,0,17,0,52,85,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.7922259,-1.5626376e-05,-1.0264214e-05,-3.0914641e-05,3.3072385e-06,-0.00027346694,0.00017119694,0,17,0,30,85,0
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79874459,0.00057468197,0.00041751701,1.3554758e-05,0.001075057,-0.0018670509,0.0021646112,5,11,1,58,85,0.29411765
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79573399,0.0039437524,-0.00036035286,-0.00093561173,0.00012213118,-0.010305058,0.071598317,3,10,4,30,85,0.17647059
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.77895536,4.0753439e-05,2.9984165e-05,-1.4134149e-05,5.6557593e-05,-0.00011592307,0.00043532871,0,17,0,54,85,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79220261,-3.8917611e-05,-7.9239917e-06,-3.6817797e-05,3.8392766e-06,-0.00035731415,0.00017633297,0,17,0,27,85,0
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79877274,0.00060283377,0.00049498713,0.00017055715,0.0011775906,-0.0017455955,0.0020695444,5,11,1,59,85,0.29411765
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.7693905,-0.022399734,-0.01012442,-0.028874377,-0.0035238799,-0.10165982,0.06246959,2,1,14,11,85,0.11764706
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78200382,0.0030892111,0.004542571,0.0013418367,0.0059603824,-0.015358252,0.011117563,13,1,3,63,85,0.76470588
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.78866332,-0.0035782046,-0.0023264377,-0.0053363425,-0.00015207219,-0.022864556,0.0093368631,2,6,9,20,85,0.11764706
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.76753157,-0.030638337,-0.016361401,-0.048337585,-0.0091785699,-0.091831949,-0.00466283,0,0,17,0,85,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.7858392,-0.005951033,-0.0048848406,-0.018493122,-0.0012730129,-0.038750771,0.065928073,2,1,14,13,85,0.11764706
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78364568,0.004731066,0.0053825996,0.0025711058,0.0069500612,-0.0048721549,0.013720879,14,1,2,67,85,0.82352941
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79008628,-0.0021552498,-0.001187456,-0.0031277835,-1.3251659e-05,-0.018340133,0.0095766811,1,7,9,24,85,0.058823529
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.78078593,-0.017383976,-0.0093026782,-0.029074341,-0.004694911,-0.051384354,-0.0021965002,0,0,17,2,85,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79441187,0.0026216357,-0.0011626593,-0.0026100114,0.00018763827,-0.0093411224,0.068894851,3,5,9,24,85,0.17647059
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78435182,0.005437213,0.0054131591,0.003727348,0.0070082689,0.00019140843,0.0098335041,16,1,0,79,85,0.94117647
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79202183,-0.00021969742,-9.1464314e-05,-0.001594834,0.00024416693,-0.003195226,0.0076451929,2,9,6,30,85,0.11764706
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.79695029,-0.0012196226,-0.0006625354,-0.0010387119,0.00026578143,-0.0068468946,0.0010104894,1,11,5,31,85,0.058823529
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79504447,0.0032542405,-0.00082153089,-0.0018641114,0.0003483988,-0.0084777605,0.069612038,3,7,7,25,85,0.17647059
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78433156,0.0054169542,0.0053922159,0.0036243503,0.0069070627,0.00012451463,0.0099147636,16,1,0,79,85,0.94117647
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79201625,-0.00022527998,-7.9222336e-05,-0.0015053281,0.0002427313,-0.0029388615,0.0065549299,2,9,6,29,85,0.11764706
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.7973596,-0.00081030642,-0.00058934237,-0.0011812517,0.00041954278,-0.0057670939,0.0012051436,1,11,5,36,85,0.058823529
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.74960888,-0.042181358,-0.037627181,-0.064810038,-0.016083084,-0.1230825,0.041864005,1,0,16,6,85,0.058823529
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.77472417,-0.0041904351,0.0014547194,-0.0097034332,0.0035343193,-0.033990236,0.0063342068,9,3,5,46,85,0.52941176
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.78517451,-0.007067018,-0.0043025011,-0.0095865893,-0.0014765207,-0.035582875,0.00066517857,0,2,15,12,85,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.74125953,-0.056910382,-0.049687435,-0.081342612,-0.027335145,-0.11955175,-0.010480923,0,0,17,0,85,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.78353257,-0.0082576592,-0.0073179052,-0.015123721,-0.0028723349,-0.052941932,0.063957556,2,1,14,13,85,0.11764706
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78171567,0.0028010623,0.0044165258,0.00078715553,0.0060541997,-0.013776286,0.010250981,12,3,2,65,85,0.70588235
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.78988268,-0.0023588496,-0.0016948063,-0.0041768585,-3.1548042e-05,-0.015797902,0.007151311,2,6,9,21,85,0.11764706
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.77753386,-0.020636044,-0.01387958,-0.033507039,-0.0050269582,-0.055782612,-0.0033056471,0,0,17,2,85,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,roc_auc,17,0.79179023,0.79523492,0.0034446865,-0.00038674043,-0.0018223383,0.000146919,-0.014835603,0.071467701,3,9,5,31,85,0.17647059
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,roc_auc,17,0.77891461,0.78371006,0.0047954514,0.005028279,0.0028898558,0.0064191092,8.4596839e-06,0.0094951033,16,1,0,80,85,0.94117647
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,17,0.79224153,0.79217182,-6.9706431e-05,-0.00010532061,-0.00066387218,0.00016144477,-0.0022401011,0.0042531195,2,13,2,29,85,0.11764706
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,roc_auc,17,0.79816991,0.7985684,0.00039849298,7.6432618e-05,-7.6042806e-05,0.0011405541,-0.0037231925,0.0031863652,5,11,1,52,85,0.29411765
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,17,0.79179023,0.79548485,0.0036946122,-0.00017633823,-0.0016434439,0.00022214889,-0.013719107,0.071504064,4,8,5,34,85,0.23529412
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,17,0.77891461,0.78368711,0.0047725031,0.0050721524,0.0028900965,0.0063839468,3.6711761e-05,0.0093488316,16,1,0,80,85,0.94117647
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,17,0.79224153,0.79221762,-2.3901248e-05,-9.3632154e-05,-0.00062878058,0.00016438407,-0.0021852261,0.0046828664,2,13,2,30,85,0.11764706
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,17,0.79816991,0.79859965,0.00042974146,7.1306646e-05,-4.1099624e-05,0.0012161875,-0.0036003988,0.0029964029,5,11,1,52,85,0.29411765
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,roc_auc,17,0.79179023,0.7952339,0.0034436661,-0.00063512448,-0.0013285728,0.00017245657,-0.013647587,0.071354911,4,6,7,27,85,0.23529412
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,roc_auc,17,0.77891461,0.78366318,0.0047485715,0.0049303064,0.0029424592,0.0064537972,-2.0031681e-05,0.009229812,16,1,0,80,85,0.94117647
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,roc_auc,17,0.79224153,0.79213849,-0.00010303215,-0.0002290717,-0.0006842539,0.00014753569,-0.0021799658,0.0039084148,2,13,2,29,85,0.11764706
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,roc_auc,17,0.7981693,0.79858194,0.00041264317,0.00022355405,7.4281458e-06,0.0012816167,-0.0038135447,0.0026837958,5,11,1,51,85,0.29411765
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,roc_auc,17,0.79179023,0.7949124,0.0031221717,-0.00040882252,-0.0017881795,0.00054985274,-0.015334946,0.070901915,4,7,6,29,85,0.23529412
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,roc_auc,17,0.77891461,0.78349095,0.0045763435,0.0053674736,0.0025842924,0.0059075534,-0.00012286673,0.0084758526,16,1,0,78,85,0.94117647
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,roc_auc,17,0.79224153,0.79216406,-7.746184e-05,-0.00012841562,-0.00071198554,0.00045601234,-0.0027748329,0.0051209036,2,12,3,31,85,0.11764706
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,roc_auc,17,0.798171,0.79819839,2.7389963e-05,-0.00014475562,-0.00034142126,0.0006119632,-0.0051102523,0.0028985954,3,13,1,35,85,0.17647059
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,roc_auc,17,0.79179023,0.79478158,0.0029913513,-0.0009881041,-0.0014521563,-0.00038215257,-0.01424291,0.070995411,3,6,8,29,85,0.17647059
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,roc_auc,17,0.77891461,0.78296269,0.0040480848,0.0041962755,0.0026775987,0.0055290588,6.6007989e-06,0.0070105199,16,1,0,79,85,0.94117647
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,roc_auc,17,0.79224153,0.79229081,4.9286858e-05,7.3040272e-05,-0.00054751912,0.00049037612,-0.0014915578,0.0028295232,1,14,2,38,85,0.058823529
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,roc_auc,17,0.798171,0.79812809,-4.2907602e-05,-0.00014227829,-0.00031279605,0.00066441075,-0.0030853052,0.0018833305,4,11,2,34,85,0.23529412
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,roc_auc,17,0.79179023,0.79539311,0.0036028809,-0.00031617504,-0.0016597994,0.00039065489,-0.013268169,0.070909355,4,7,6,36,85,0.23529412
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,roc_auc,17,0.77891461,0.78347719,0.0045625786,0.0051696849,0.0025686465,0.0057613627,-0.00010469986,0.0085913752,16,1,0,78,85,0.94117647
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,roc_auc,17,0.79224153,0.79216571,-7.5815198e-05,-0.00016717141,-0.00069240261,0.00045417026,-0.0027171337,0.0044593604,2,13,2,28,85,0.11764706
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,roc_auc,17,0.798171,0.79843576,0.00026476959,0.00014349597,-0.00017257145,0.00095678887,-0.0045628564,0.0026817403,4,12,1,45,85,0.23529412
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,roc_auc,17,0.79706698,0.79660016,-0.00046681931,-0.00024093887,-0.0010137342,-7.2037289e-05,-0.0046297712,0.002525354,2,10,5,20,85,0.11764706
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,roc_auc,17,0.79817654,0.79839269,0.00021614596,8.7585034e-05,3.4979271e-07,0.00055956505,-0.00075019643,0.0010295072,1,16,0,54,85,0.058823529
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,roc_auc,17,0.79706698,0.79384506,-0.0032219149,-0.0012358101,-0.003143543,-0.00060826713,-0.02731237,0.0014090442,1,7,9,16,85,0.058823529
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,roc_auc,17,0.79817654,0.79791063,-0.0002659142,-0.00014562075,-0.0006710477,0.00059737678,-0.0042412694,0.0019787598,3,12,2,35,85,0.17647059
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,roc_auc,17,0.79706698,0.77449695,-0.022570029,-0.010417673,-0.018905268,-0.005141369,-0.13648384,-0.0018096592,0,0,17,6,85,0
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,roc_auc,17,0.79817654,0.79405231,-0.0041242283,-0.0012172181,-0.0027525864,-9.247449e-05,-0.035535085,0.0027876942,2,6,9,20,85,0.11764706
+86,6,Corpus policy,Full CPT,E6 All tables,TabICLv2,roc_auc,17,0.79179023,0.79536257,0.003572336,-0.0004716626,-0.0018780196,0.00038264312,-0.010375271,0.070740606,4,6,7,26,85,0.23529412
+87,6,Corpus policy,Full CPT,E6 All tables,TabPFN v3,roc_auc,17,0.7981754,0.79717193,-0.0010034685,-0.00023426871,-0.0014122494,0.0004362752,-0.0068557227,0.0019965742,2,9,6,32,85,0.11764706
+88,6,Corpus policy,Full CPT,E6 Large tables,TabICLv2,roc_auc,17,0.79179023,0.79384699,0.0020567533,-0.0008063218,-0.0031673466,-0.00027139005,-0.016920117,0.071048251,3,6,8,21,85,0.17647059
+89,6,Corpus policy,Full CPT,E6 Large tables,TabPFN v3,roc_auc,17,0.7981754,0.7973998,-0.00077560029,-0.0004838337,-0.0019757164,0.00065497449,-0.0063595433,0.0020436793,2,8,7,26,85,0.11764706
+90,7,Episode size,Full CPT,"E7 2,048 rows",TabICLv2,roc_auc,17,0.79179023,0.79418785,0.0023976213,-0.0013601929,-0.0036463557,-0.00040902704,-0.012641879,0.068900974,3,4,10,17,85,0.17647059
+91,7,Episode size,Full CPT,"E7 2,048 rows",TabPFN v3,roc_auc,17,0.79817028,0.79385408,-0.0043162011,-0.00081165514,-0.0048728011,0.00012528598,-0.036803997,0.0010097789,1,8,8,21,85,0.058823529
+92,7,Episode size,Full CPT,"E7 26,000 rows",TabICLv2,roc_auc,17,0.79179023,0.79435259,0.002562356,-0.00072412792,-0.0023882651,0.00033866841,-0.013283516,0.072370872,2,7,8,23,85,0.11764706
+93,7,Episode size,Full CPT,"E7 26,000 rows",TabPFN v3,roc_auc,17,0.79817028,0.79805583,-0.00011445211,0.00010593469,-0.00028870735,0.00084444212,-0.0049373785,0.002352518,3,12,2,37,85,0.17647059
+94,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,roc_auc,17,0.79706698,0.78607305,-0.010993924,-0.0047696248,-0.011901202,-0.0027831591,-0.055464956,-0.0005869849,0,1,16,8,85,0
+95,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,roc_auc,17,0.79817678,0.78866589,-0.0095108955,-0.0052889033,-0.010383929,-0.0026818777,-0.040906334,-0.0011822669,0,0,17,8,85,0
+96,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,roc_auc,17,0.79706698,0.75741176,-0.039655218,-0.031497307,-0.0474625,-0.02012965,-0.15815135,-0.0018116807,0,0,17,3,85,0
+97,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,roc_auc,17,0.79817678,0.77325933,-0.024917448,-0.012233371,-0.029128545,-0.0057591238,-0.13568272,-0.00095960884,0,1,16,2,85,0
+98,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,roc_auc,17,0.79706698,0.79383012,-0.0032368565,-0.001378963,-0.0027923396,-0.00013302785,-0.025232152,0.0033252826,1,7,9,17,85,0.058823529
+99,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,roc_auc,17,0.79817678,0.79780625,-0.00037053679,-0.00019180854,-0.00090314763,0.0012223848,-0.0062181156,0.0021887425,5,8,4,39,85,0.29411765
+
+3. Variation across tables
+Improved, negligible and worse use a band of 0.001 on the native metric scale. Spread describes heterogeneity across tables, not statistical uncertainty.
+
+Figure: pd_overview_distributions
+PD. Distribution over held-out credit tables of the paired change in AUC (percentage points) relative to each base's original model. Boxes span the table interquartile range, the thick line is the median, whiskers reach the 10th and 90th percentiles, dots are individual tables and the white diamond is the equal-table mean. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Experiment 1 contributes only its predefined reference recipe (LR 3e-7, L2-SP λ 0.003) with all parameters updated and with the backbone frozen; every follow-up contributes all prescribed arms, so no row is chosen by its outcome. Horizontal axes differ between models and span each model's 2nd-98th percentile of table effects and zero; tables outside that range are drawn as triangles at the axis edge (TabPFN v2: 1, TabPFN v2.6: 1, TabPFN v3: 5, TabICLv2: 3 tables) and keep their exact values in the summary. Spread describes heterogeneity across tables, not statistical uncertainty.
+Table effects for the displayed arms
+CSV (first column: row index)
+row,config,base,dataset,original,adapted,effect,folds_improved,folds
+221,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89664654,-0.00056737364,0,5
+222,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Cobranded,0.8427705,0.84274205,-2.8451999e-05,2,5
+223,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Credit Risk,0.95514201,0.94897236,-0.0061696497,0,5
+224,E1 all · LR 3e-07 · λ 0.003,TabICLv2,GMSC,0.86718744,0.86661707,-0.00057036466,0,5
+225,E1 all · LR 3e-07 · λ 0.003,TabICLv2,German Credit,0.79014029,0.79255584,0.0024155533,4,5
+226,E1 all · LR 3e-07 · λ 0.003,TabICLv2,HMEQ,0.99633513,0.99626837,-6.6761782e-05,2,5
+227,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Hackerearth,0.95676611,0.943047,-0.013719107,0,5
+228,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Home Credit,0.74793913,0.74718881,-0.00075032379,1,5
+229,E1 all · LR 3e-07 · λ 0.003,TabICLv2,LendingClub,0.68913135,0.68935349,0.00022214889,3,5
+230,E1 all · LR 3e-07 · λ 0.003,TabICLv2,MicroFinance,0.65764659,0.65600315,-0.0016434439,1,5
+231,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Myhom,0.57992283,0.59474915,0.014826318,4,5
+232,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropPD1,0.8116703,0.81290564,0.0012353369,5,5
+233,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropPD2,0.65622099,0.65604465,-0.00017633823,3,5
+234,E1 all · LR 3e-07 · λ 0.003,TabICLv2,SBA Loans Case,0.98980137,0.98987643,7.5056415e-05,2,5
+235,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Taiwan Credit Card,0.79015422,0.78837377,-0.0017804574,0,5
+236,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Thomas,0.6493295,0.6473317,-0.0019977983,2,5
+237,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Vehicle Loan,0.58306229,0.65456635,0.071504064,5,5
+238,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89733605,0.00012213118,2,5
+239,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Cobranded,0.8427705,0.84231977,-0.00045073344,1,5
+240,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Credit Risk,0.95514201,0.95110501,-0.0040369989,0,5
+241,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,GMSC,0.86718744,0.86663829,-0.00054914775,0,5
+242,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,German Credit,0.79014029,0.79209695,0.0019566632,4,5
+243,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,HMEQ,0.99633513,0.99618691,-0.00014822045,2,5
+244,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Hackerearth,0.95676611,0.94646105,-0.010305058,0,5
+245,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Home Credit,0.74793913,0.74700352,-0.00093561173,1,5
+246,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,LendingClub,0.68913135,0.68877099,-0.00036035286,2,5
+247,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,MicroFinance,0.65764659,0.65775321,0.00010661623,2,5
+248,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Myhom,0.57992283,0.59287989,0.012957058,3,5
+249,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropPD1,0.8116703,0.8123088,0.00063850393,4,5
+250,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropPD2,0.65622099,0.65566933,-0.00055166594,1,5
+251,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,SBA Loans Case,0.98980137,0.98987372,7.2351074e-05,2,5
+252,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Taiwan Credit Card,0.79015422,0.78879134,-0.0013628841,0,5
+253,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Thomas,0.6493295,0.64762232,-0.0017071764,1,5
+254,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Vehicle Loan,0.58306229,0.65466061,0.071598317,5,5
+493,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87285813,0.0028900965,5,5
+494,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Cobranded,0.83269227,0.83569261,0.0030003482,5,5
+495,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Credit Risk,0.92815979,0.92996008,0.0018002893,5,5
+496,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,GMSC,0.8581094,0.86063686,0.0025274617,5,5
+497,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,German Credit,0.78522696,0.78924897,0.004022011,4,5
+498,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,HMEQ,0.98444363,0.99221332,0.0077696885,5,5
+499,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Hackerearth,0.91321057,0.9225594,0.0093488316,5,5
+500,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Home Credit,0.72516024,0.73016783,0.0050075943,5,5
+501,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,LendingClub,0.67540116,0.6825776,0.0071764372,5,5
+502,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,MicroFinance,0.63069908,0.63708303,0.0063839468,5,5
+503,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Myhom,0.59502827,0.59694303,0.0019147534,4,5
+504,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropPD1,0.75207598,0.75750032,0.0054243377,5,5
+505,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropPD2,0.64411075,0.64918291,0.0050721524,5,5
+506,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,SBA Loans Case,0.98938947,0.98942619,3.6711761e-05,3,5
+507,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Taiwan Credit Card,0.77564376,0.78254924,0.0069054749,5,5
+508,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Thomas,0.64821257,0.65409832,0.0058857575,4,5
+509,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Vehicle Loan,0.63401642,0.63998308,0.00596666,5,5
+510,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.86987045,-9.7583164e-05,0,5
+511,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Cobranded,0.83269227,0.83272382,3.1558223e-05,5,5
+512,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Credit Risk,0.92815979,0.9281782,1.8408156e-05,4,5
+513,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,GMSC,0.8581094,0.85811792,8.5177319e-06,3,5
+514,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,German Credit,0.78522696,0.78535766,0.00013069544,4,5
+515,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,HMEQ,0.98444363,0.98442949,-1.4134149e-05,3,5
+516,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Hackerearth,0.91321057,0.91309465,-0.00011592307,1,5
+517,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Home Credit,0.72516024,0.72512986,-3.037532e-05,0,5
+518,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,LendingClub,0.67540116,0.67548424,8.3073619e-05,5,5
+519,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,MicroFinance,0.63069908,0.63068363,-1.5445918e-05,2,5
+520,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Myhom,0.59502827,0.59505336,2.5085034e-05,3,5
+521,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropPD1,0.75207598,0.75251131,0.00043532871,5,5
+522,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropPD2,0.64411075,0.64414074,2.9984165e-05,3,5
+523,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,SBA Loans Case,0.98938947,0.98944603,5.6557593e-05,4,5
+524,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Taiwan Credit Card,0.77564376,0.77568085,3.7082777e-05,5,5
+525,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Thomas,0.64821257,0.64827171,5.9144355e-05,2,5
+526,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Vehicle Loan,0.63401642,0.63406726,5.0834277e-05,5,5
+765,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88519198,-0.00025305583,0,5
+766,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Cobranded,0.84325414,0.8431605,-9.3632154e-05,1,5
+767,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Credit Risk,0.94123747,0.93915805,-0.002079411,0,5
+768,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,GMSC,0.86596215,0.86612653,0.00016438407,4,5
+769,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,German Credit,0.79173424,0.79165305,-8.1192189e-05,2,5
+770,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,HMEQ,0.99827227,0.99732737,-0.00094489423,0,5
+771,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Hackerearth,0.94817984,0.94599461,-0.0021852261,0,5
+772,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Home Credit,0.74699146,0.74671726,-0.0002741992,1,5
+773,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,LendingClub,0.68373099,0.68514061,0.0014096204,5,5
+774,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,MicroFinance,0.65905812,0.65811516,-0.00094296216,0,5
+775,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Myhom,0.59564264,0.5961622,0.00051955782,3,5
+776,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropPD1,0.77315636,0.77252907,-0.00062729404,0,5
+777,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropPD2,0.65921509,0.65858631,-0.00062878058,0,5
+778,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,SBA Loans Case,0.98987642,0.98994808,7.1657957e-05,3,5
+779,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78959524,0.00011812934,3,5
+780,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Thomas,0.64565389,0.65033676,0.0046828664,3,5
+781,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Vehicle Loan,0.65121872,0.65195683,0.00073811027,5,5
+782,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88543712,-7.9239917e-06,0,5
+783,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Cobranded,0.84325414,0.84324995,-4.1898164e-06,2,5
+784,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Credit Risk,0.94123747,0.94123189,-5.5742657e-06,3,5
+785,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,GMSC,0.86596215,0.86595197,-1.018256e-05,1,5
+786,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,German Credit,0.79173424,0.79137693,-0.00035731415,0,5
+787,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,HMEQ,0.99827227,0.99826785,-4.4196248e-06,2,5
+788,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Hackerearth,0.94817984,0.94811852,-6.1310139e-05,0,5
+789,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Home Credit,0.74699146,0.7469953,3.8392766e-06,2,5
+790,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,LendingClub,0.68373099,0.68390732,0.00017633297,3,5
+791,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,MicroFinance,0.65905812,0.65906475,6.6372474e-06,2,5
+792,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Myhom,0.59564264,0.59567262,2.997449e-05,3,5
+793,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropPD1,0.77315636,0.77313026,-2.6103688e-05,1,5
+794,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropPD2,0.65921509,0.65915084,-6.4246626e-05,1,5
+795,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,SBA Loans Case,0.98987642,0.98984031,-3.6109463e-05,0,5
+796,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78952369,4.6582232e-05,4,5
+797,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Thomas,0.64565389,0.64534312,-0.00031077348,2,5
+798,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Vehicle Loan,0.65121872,0.6511819,-3.6817797e-05,1,5
+1037,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89784386,-1.5876365e-05,2,5
+1038,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Cobranded,0.84234006,0.84308687,0.00074681185,5,5
+1039,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Credit Risk,0.95168825,0.95147503,-0.0002132175,2,5
+1040,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,GMSC,0.86875853,0.86871743,-4.1099624e-05,3,5
+1041,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,German Credit,0.79130593,0.79430233,0.0029964029,3,5
+1042,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,HMEQ,0.99925852,0.99898149,-0.00027702393,0,5
+1043,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Hackerearth,0.96319489,0.95959449,-0.0036003988,0,5
+1044,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Home Credit,0.75328767,0.75329448,6.8168728e-06,3,5
+1045,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,LendingClub,0.68545173,0.68666792,0.0012161875,4,5
+1046,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,MicroFinance,0.65973341,0.66189539,0.0021619782,5,5
+1047,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Myhom,0.59735565,0.59679486,-0.00056079932,2,5
+1048,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropPD1,0.812241,0.81297411,0.00073311379,5,5
+1049,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropPD2,0.65729602,0.65913336,0.0018373491,5,5
+1050,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,SBA Loans Case,0.98983277,0.99036774,0.00053497323,5,5
+1051,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Taiwan Credit Card,0.78966503,0.78973634,7.1306646e-05,3,5
+1052,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Thomas,0.65158762,0.6532326,0.0016449863,3,5
+1053,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Vehicle Loan,0.65803164,0.65809574,6.4093912e-05,2,5
+1054,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89789327,3.3538653e-05,3,5
+1055,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Cobranded,0.84234006,0.8426674,0.00032734001,5,5
+1056,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Credit Risk,0.95168825,0.9518588,0.00017055715,3,5
+1057,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,GMSC,0.86875853,0.86862777,-0.00013076192,1,5
+1058,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,German Credit,0.79130593,0.79337547,0.0020695444,4,5
+1059,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,HMEQ,0.99925852,0.99911924,-0.0001392812,0,5
+1060,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Hackerearth,0.96319489,0.96144929,-0.0017455955,0,5
+1061,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Home Credit,0.75328767,0.75408771,0.00080004787,5,5
+1062,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,LendingClub,0.68545173,0.68639424,0.00094251192,3,5
+1063,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,MicroFinance,0.65973341,0.660911,0.0011775906,5,5
+1064,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Myhom,0.59735565,0.59775702,0.00040136054,3,5
+1065,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropPD1,0.812241,0.813609,0.0013679996,5,5
+1066,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropPD2,0.65729602,0.65922159,0.0019255793,5,5
+1067,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,SBA Loans Case,0.98983277,0.99035328,0.00052051439,5,5
+1068,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Taiwan Credit Card,0.78966503,0.7899957,0.00033066627,5,5
+1069,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Thomas,0.65158762,0.65328919,0.0017015748,3,5
+1070,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Vehicle Loan,0.65803164,0.65852663,0.00049498713,4,5
+1088,E2 Reference · seed 43,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89657879,-0.00063512448,0,5
+1089,E2 Reference · seed 43,TabICLv2,Cobranded,0.8427705,0.84267694,-9.3562031e-05,1,5
+1090,E2 Reference · seed 43,TabICLv2,Credit Risk,0.95514201,0.94944317,-0.0056988406,0,5
+1091,E2 Reference · seed 43,TabICLv2,GMSC,0.86718744,0.86624216,-0.00094527239,0,5
+1092,E2 Reference · seed 43,TabICLv2,German Credit,0.79014029,0.79281363,0.002673347,4,5
+1093,E2 Reference · seed 43,TabICLv2,HMEQ,0.99633513,0.99500656,-0.0013285728,0,5
+1094,E2 Reference · seed 43,TabICLv2,Hackerearth,0.95676611,0.94311852,-0.013647587,0,5
+1095,E2 Reference · seed 43,TabICLv2,Home Credit,0.74793913,0.74681553,-0.0011235988,0,5
+1096,E2 Reference · seed 43,TabICLv2,LendingClub,0.68913135,0.68904363,-8.7717268e-05,2,5
+1097,E2 Reference · seed 43,TabICLv2,MicroFinance,0.65764659,0.65642009,-0.0012265017,1,5
+1098,E2 Reference · seed 43,TabICLv2,Myhom,0.57992283,0.59220663,0.012283801,4,5
+1099,E2 Reference · seed 43,TabICLv2,PropPD1,0.8116703,0.8134014,0.0017311042,5,5
+1100,E2 Reference · seed 43,TabICLv2,PropPD2,0.65622099,0.65570032,-0.00052067183,1,5
+1101,E2 Reference · seed 43,TabICLv2,SBA Loans Case,0.98980137,0.98997383,0.00017245657,1,5
+1102,E2 Reference · seed 43,TabICLv2,Taiwan Credit Card,0.79015422,0.78799712,-0.0021571017,0,5
+1103,E2 Reference · seed 43,TabICLv2,Thomas,0.6493295,0.64712075,-0.0022087465,3,5
+1104,E2 Reference · seed 43,TabICLv2,Vehicle Loan,0.58306229,0.6544172,0.071354911,5,5
+1105,E2 Reference · seed 43,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87291049,0.0029424592,5,5
+1106,E2 Reference · seed 43,TabPFN v2,Cobranded,0.83269227,0.83568366,0.0029913894,5,5
+1107,E2 Reference · seed 43,TabPFN v2,Credit Risk,0.92815979,0.92988413,0.0017243433,5,5
+1108,E2 Reference · seed 43,TabPFN v2,GMSC,0.8581094,0.86069109,0.0025816922,5,5
+1109,E2 Reference · seed 43,TabPFN v2,German Credit,0.78522696,0.78903426,0.003807297,4,5
+1110,E2 Reference · seed 43,TabPFN v2,HMEQ,0.98444363,0.99168804,0.0072444168,5,5
+1111,E2 Reference · seed 43,TabPFN v2,Hackerearth,0.91321057,0.92244039,0.009229812,5,5
+1112,E2 Reference · seed 43,TabPFN v2,Home Credit,0.72516024,0.73001474,0.0048544985,5,5
+1113,E2 Reference · seed 43,TabPFN v2,LendingClub,0.67540116,0.6825851,0.0071839336,5,5
+1114,E2 Reference · seed 43,TabPFN v2,MicroFinance,0.63069908,0.63707891,0.0063798282,5,5
+1115,E2 Reference · seed 43,TabPFN v2,Myhom,0.59502827,0.59677338,0.0017451105,4,5
+1116,E2 Reference · seed 43,TabPFN v2,PropPD1,0.75207598,0.75763534,0.0055593644,5,5
+1117,E2 Reference · seed 43,TabPFN v2,PropPD2,0.64411075,0.64904106,0.0049303064,5,5
+1118,E2 Reference · seed 43,TabPFN v2,SBA Loans Case,0.98938947,0.98936944,-2.0031681e-05,3,5
+1119,E2 Reference · seed 43,TabPFN v2,Taiwan Credit Card,0.77564376,0.78273114,0.0070873725,5,5
+1120,E2 Reference · seed 43,TabPFN v2,Thomas,0.64821257,0.65466636,0.0064537972,4,5
+1121,E2 Reference · seed 43,TabPFN v2,Vehicle Loan,0.63401642,0.64004655,0.0060301257,5,5
+1122,E2 Reference · seed 43,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88521597,-0.0002290717,0,5
+1123,E2 Reference · seed 43,TabPFN v2.6,Cobranded,0.84325414,0.84317905,-7.5083397e-05,0,5
+1124,E2 Reference · seed 43,TabPFN v2.6,Credit Risk,0.94123747,0.93912232,-0.0021151497,0,5
+1125,E2 Reference · seed 43,TabPFN v2.6,GMSC,0.86596215,0.86610968,0.00014753569,4,5
+1126,E2 Reference · seed 43,TabPFN v2.6,German Credit,0.79173424,0.79135474,-0.0003794964,2,5
+1127,E2 Reference · seed 43,TabPFN v2.6,HMEQ,0.99827227,0.99733879,-0.00093347799,0,5
+1128,E2 Reference · seed 43,TabPFN v2.6,Hackerearth,0.94817984,0.94599987,-0.0021799658,0,5
+1129,E2 Reference · seed 43,TabPFN v2.6,Home Credit,0.74699146,0.74665939,-0.00033207037,1,5
+1130,E2 Reference · seed 43,TabPFN v2.6,LendingClub,0.68373099,0.68501741,0.0012864198,5,5
+1131,E2 Reference · seed 43,TabPFN v2.6,MicroFinance,0.65905812,0.6581881,-0.00087001946,0,5
+1132,E2 Reference · seed 43,TabPFN v2.6,Myhom,0.59564264,0.59612309,0.00048044218,3,5
+1133,E2 Reference · seed 43,TabPFN v2.6,PropPD1,0.77315636,0.77247211,-0.0006842539,0,5
+1134,E2 Reference · seed 43,TabPFN v2.6,PropPD2,0.65921509,0.65855137,-0.00066371542,0,5
+1135,E2 Reference · seed 43,TabPFN v2.6,SBA Loans Case,0.98987642,0.98998155,0.00010513316,3,5
+1136,E2 Reference · seed 43,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78955188,7.477418e-05,3,5
+1137,E2 Reference · seed 43,TabPFN v2.6,Thomas,0.64565389,0.64956231,0.0039084148,3,5
+1138,E2 Reference · seed 43,TabPFN v2.6,Vehicle Loan,0.65121872,0.65192676,0.00070803786,5,5
+1139,E2 Reference · seed 43,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89791153,5.1798591e-05,4,5
+1140,E2 Reference · seed 43,TabPFN v3,Cobranded,0.84233437,0.84307428,0.00073991089,5,5
+1141,E2 Reference · seed 43,TabPFN v3,Credit Risk,0.95168825,0.95169568,7.4281458e-06,2,5
+1142,E2 Reference · seed 43,TabPFN v3,GMSC,0.86875853,0.86867356,-8.4972055e-05,2,5
+1143,E2 Reference · seed 43,TabPFN v3,German Credit,0.79130593,0.79398972,0.0026837958,3,5
+1144,E2 Reference · seed 43,TabPFN v3,HMEQ,0.99925852,0.99895243,-0.00030608937,0,5
+1145,E2 Reference · seed 43,TabPFN v3,Hackerearth,0.96319489,0.95938134,-0.0038135447,0,5
+1146,E2 Reference · seed 43,TabPFN v3,Home Credit,0.75332018,0.75354374,0.00022355405,3,5
+1147,E2 Reference · seed 43,TabPFN v3,LendingClub,0.68545173,0.68673335,0.0012816167,4,5
+1148,E2 Reference · seed 43,TabPFN v3,MicroFinance,0.65969571,0.66174904,0.0020533264,5,5
+1149,E2 Reference · seed 43,TabPFN v3,Myhom,0.59735565,0.59675361,-0.00060204082,2,5
+1150,E2 Reference · seed 43,TabPFN v3,PropPD1,0.812241,0.81296909,0.00072809388,5,5
+1151,E2 Reference · seed 43,TabPFN v3,PropPD2,0.65729647,0.65913519,0.0018387236,5,5
+1152,E2 Reference · seed 43,TabPFN v3,SBA Loans Case,0.98983277,0.99026494,0.00043217293,3,5
+1153,E2 Reference · seed 43,TabPFN v3,Taiwan Credit Card,0.78966503,0.78974166,7.6625055e-05,3,5
+1154,E2 Reference · seed 43,TabPFN v3,Thomas,0.65158762,0.6531844,0.0015967854,3,5
+1155,E2 Reference · seed 43,TabPFN v3,Vehicle Loan,0.65803164,0.65813939,0.00010774934,2,5
+1156,E3 Accumulate,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89659997,-0.00061395094,0,5
+1157,E3 Accumulate,TabICLv2,Cobranded,0.8427705,0.84258684,-0.00018366754,2,5
+1158,E3 Accumulate,TabICLv2,Credit Risk,0.95514201,0.94564983,-0.0094921751,0,5
+1159,E3 Accumulate,TabICLv2,GMSC,0.86718744,0.86649369,-0.00069374684,1,5
+1160,E3 Accumulate,TabICLv2,German Credit,0.79014029,0.79215279,0.0020125043,3,5
+1161,E3 Accumulate,TabICLv2,HMEQ,0.99633513,0.99592631,-0.00040882252,1,5
+1162,E3 Accumulate,TabICLv2,Hackerearth,0.95676611,0.94143116,-0.015334946,0,5
+1163,E3 Accumulate,TabICLv2,Home Credit,0.74793913,0.74639414,-0.0015449881,0,5
+1164,E3 Accumulate,TabICLv2,LendingClub,0.68913135,0.68951812,0.00038677648,2,5
+1165,E3 Accumulate,TabICLv2,MicroFinance,0.65764659,0.655811,-0.0018355911,1,5
+1166,E3 Accumulate,TabICLv2,Myhom,0.57992283,0.59304613,0.013123299,4,5
+1167,E3 Accumulate,TabICLv2,PropPD1,0.8116703,0.81294745,0.001277153,4,5
+1168,E3 Accumulate,TabICLv2,PropPD2,0.65622099,0.65615295,-6.8044821e-05,2,5
+1169,E3 Accumulate,TabICLv2,SBA Loans Case,0.98980137,0.99035122,0.00054985274,2,5
+1170,E3 Accumulate,TabICLv2,Taiwan Credit Card,0.79015422,0.78836604,-0.0017881795,0,5
+1171,E3 Accumulate,TabICLv2,Thomas,0.6493295,0.64611903,-0.0032104701,2,5
+1172,E3 Accumulate,TabICLv2,Vehicle Loan,0.58306229,0.6539642,0.070901915,5,5
+1173,E3 Full pass,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89587326,-0.0013406609,0,5
+1174,E3 Full pass,TabICLv2,Cobranded,0.8427705,0.84238835,-0.00038215257,1,5
+1175,E3 Full pass,TabICLv2,Credit Risk,0.95514201,0.94845844,-0.0066835622,0,5
+1176,E3 Full pass,TabICLv2,GMSC,0.86718744,0.8667397,-0.00044773067,1,5
+1177,E3 Full pass,TabICLv2,German Credit,0.79014029,0.79179788,0.0016575882,3,5
+1178,E3 Full pass,TabICLv2,HMEQ,0.99633513,0.99488298,-0.0014521563,0,5
+1179,E3 Full pass,TabICLv2,Hackerearth,0.95676611,0.9425232,-0.01424291,0,5
+1180,E3 Full pass,TabICLv2,Home Credit,0.74793913,0.74679408,-0.0011450491,1,5
+1181,E3 Full pass,TabICLv2,LendingClub,0.68913135,0.68870112,-0.00043022394,3,5
+1182,E3 Full pass,TabICLv2,MicroFinance,0.65764659,0.65443578,-0.0032108136,1,5
+1183,E3 Full pass,TabICLv2,Myhom,0.57992283,0.59367687,0.013754039,4,5
+1184,E3 Full pass,TabICLv2,PropPD1,0.8116703,0.8106822,-0.0009881041,1,5
+1185,E3 Full pass,TabICLv2,PropPD2,0.65622099,0.65582064,-0.00040035694,3,5
+1186,E3 Full pass,TabICLv2,SBA Loans Case,0.98980137,0.99047316,0.00067179233,4,5
+1187,E3 Full pass,TabICLv2,Taiwan Credit Card,0.79015422,0.78887181,-0.0012824138,0,5
+1188,E3 Full pass,TabICLv2,Thomas,0.6493295,0.64510977,-0.0042197254,2,5
+1189,E3 Full pass,TabICLv2,Vehicle Loan,0.58306229,0.6540577,0.070995411,5,5
+1190,E3 One sample,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89682064,-0.00039327379,0,5
+1191,E3 One sample,TabICLv2,Cobranded,0.8427705,0.84261789,-0.00015261304,2,5
+1192,E3 One sample,TabICLv2,Credit Risk,0.95514201,0.94889033,-0.0062516727,0,5
+1193,E3 One sample,TabICLv2,GMSC,0.86718744,0.86656732,-0.00062011956,0,5
+1194,E3 One sample,TabICLv2,German Credit,0.79014029,0.79307999,0.0029397054,4,5
+1195,E3 One sample,TabICLv2,HMEQ,0.99633513,0.99601896,-0.00031617504,2,5
+1196,E3 One sample,TabICLv2,Hackerearth,0.95676611,0.94349794,-0.013268169,0,5
+1197,E3 One sample,TabICLv2,Home Credit,0.74793913,0.74663327,-0.0013058621,1,5
+1198,E3 One sample,TabICLv2,LendingClub,0.68913135,0.68946371,0.00033236394,4,5
+1199,E3 One sample,TabICLv2,MicroFinance,0.65764659,0.65598679,-0.0016597994,1,5
+1200,E3 One sample,TabICLv2,Myhom,0.57992283,0.5942432,0.014320366,4,5
+1201,E3 One sample,TabICLv2,PropPD1,0.8116703,0.81301789,0.0013475942,5,5
+1202,E3 One sample,TabICLv2,PropPD2,0.65622099,0.65608023,-0.00014076046,2,5
+1203,E3 One sample,TabICLv2,SBA Loans Case,0.98980137,0.99019202,0.00039065489,3,5
+1204,E3 One sample,TabICLv2,Taiwan Credit Card,0.79015422,0.7881913,-0.0019629179,0,5
+1205,E3 One sample,TabICLv2,Thomas,0.6493295,0.6464098,-0.0029197006,3,5
+1206,E3 One sample,TabICLv2,Vehicle Loan,0.58306229,0.65397164,0.070909355,5,5
+1207,E3 Accumulate,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87243043,0.0024624016,5,5
+1208,E3 Accumulate,TabPFN v2,Cobranded,0.83269227,0.83584605,0.0031537847,5,5
+1209,E3 Accumulate,TabPFN v2,Credit Risk,0.92815979,0.92935929,0.0011995061,4,5
+1210,E3 Accumulate,TabPFN v2,GMSC,0.8581094,0.86069369,0.0025842924,5,5
+1211,E3 Accumulate,TabPFN v2,German Credit,0.78522696,0.78864003,0.0034130695,4,5
+1212,E3 Accumulate,TabPFN v2,HMEQ,0.98444363,0.99154897,0.0071053393,5,5
+1213,E3 Accumulate,TabPFN v2,Hackerearth,0.91321057,0.92168643,0.0084758526,5,5
+1214,E3 Accumulate,TabPFN v2,Home Credit,0.72516024,0.73079455,0.0056343127,5,5
+1215,E3 Accumulate,TabPFN v2,LendingClub,0.67540116,0.68270359,0.0073024257,5,5
+1216,E3 Accumulate,TabPFN v2,MicroFinance,0.63069908,0.63641283,0.0057137514,5,5
+1217,E3 Accumulate,TabPFN v2,Myhom,0.59502827,0.59698384,0.0019555697,3,5
+1218,E3 Accumulate,TabPFN v2,PropPD1,0.75207598,0.75712858,0.0050526016,5,5
+1219,E3 Accumulate,TabPFN v2,PropPD2,0.64411075,0.64947823,0.0053674736,5,5
+1220,E3 Accumulate,TabPFN v2,SBA Loans Case,0.98938947,0.98926661,-0.00012286673,3,5
+1221,E3 Accumulate,TabPFN v2,Taiwan Credit Card,0.77564376,0.78270556,0.0070617953,5,5
+1222,E3 Accumulate,TabPFN v2,Thomas,0.64821257,0.65374354,0.005530977,4,5
+1223,E3 Accumulate,TabPFN v2,Vehicle Loan,0.63401642,0.63992398,0.0059075534,5,5
+1224,E3 Full pass,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87264576,0.0026777313,5,5
+1225,E3 Full pass,TabPFN v2,Cobranded,0.83269227,0.83536986,0.0026775987,5,5
+1226,E3 Full pass,TabPFN v2,Credit Risk,0.92815979,0.92944145,0.0012816569,5,5
+1227,E3 Full pass,TabPFN v2,GMSC,0.8581094,0.86064802,0.0025386255,5,5
+1228,E3 Full pass,TabPFN v2,German Credit,0.78522696,0.78829753,0.0030705721,4,5
+1229,E3 Full pass,TabPFN v2,HMEQ,0.98444363,0.9886399,0.0041962755,5,5
+1230,E3 Full pass,TabPFN v2,Hackerearth,0.91321057,0.92022109,0.0070105199,5,5
+1231,E3 Full pass,TabPFN v2,Home Credit,0.72516024,0.7306893,0.0055290588,5,5
+1232,E3 Full pass,TabPFN v2,LendingClub,0.67540116,0.68204971,0.0066485478,5,5
+1233,E3 Full pass,TabPFN v2,MicroFinance,0.63069908,0.63602677,0.0053276945,5,5
+1234,E3 Full pass,TabPFN v2,Myhom,0.59502827,0.59643686,0.0014085884,3,5
+1235,E3 Full pass,TabPFN v2,PropPD1,0.75207598,0.75752244,0.005446455,5,5
+1236,E3 Full pass,TabPFN v2,PropPD2,0.64411075,0.64958448,0.005473726,5,5
+1237,E3 Full pass,TabPFN v2,SBA Loans Case,0.98938947,0.98939607,6.6007989e-06,3,5
+1238,E3 Full pass,TabPFN v2,Taiwan Credit Card,0.77564376,0.78223484,0.006591081,5,5
+1239,E3 Full pass,TabPFN v2,Thomas,0.64821257,0.65094575,0.0027331834,4,5
+1240,E3 Full pass,TabPFN v2,Vehicle Loan,0.63401642,0.64021595,0.0061995253,5,5
+1241,E3 One sample,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87253668,0.0025686465,5,5
+1242,E3 One sample,TabPFN v2,Cobranded,0.83269227,0.83575039,0.0030581235,5,5
+1243,E3 One sample,TabPFN v2,Credit Risk,0.92815979,0.92949576,0.001335971,4,5
+1244,E3 One sample,TabPFN v2,GMSC,0.8581094,0.8605556,0.002446206,5,5
+1245,E3 One sample,TabPFN v2,German Credit,0.78522696,0.78865296,0.0034260021,4,5
+1246,E3 One sample,TabPFN v2,HMEQ,0.98444363,0.99192919,0.0074855638,5,5
+1247,E3 One sample,TabPFN v2,Hackerearth,0.91321057,0.92180195,0.0085913752,5,5
+1248,E3 One sample,TabPFN v2,Home Credit,0.72516024,0.7309216,0.0057613627,5,5
+1249,E3 One sample,TabPFN v2,LendingClub,0.67540116,0.68275425,0.0073530804,5,5
+1250,E3 One sample,TabPFN v2,MicroFinance,0.63069908,0.63644149,0.0057424118,5,5
+1251,E3 One sample,TabPFN v2,Myhom,0.59502827,0.59700425,0.0019759779,3,5
+1252,E3 One sample,TabPFN v2,PropPD1,0.75207598,0.75724567,0.0051696849,5,5
+1253,E3 One sample,TabPFN v2,PropPD2,0.64411075,0.64937446,0.0052637051,5,5
+1254,E3 One sample,TabPFN v2,SBA Loans Case,0.98938947,0.98928477,-0.00010469986,3,5
+1255,E3 One sample,TabPFN v2,Taiwan Credit Card,0.77564376,0.78256678,0.006923013,5,5
+1256,E3 One sample,TabPFN v2,Thomas,0.64821257,0.65302789,0.0048153274,4,5
+1257,E3 One sample,TabPFN v2,Vehicle Loan,0.63401642,0.63976851,0.0057520855,5,5
+1258,E3 Accumulate,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88506752,-0.00037751633,0,5
+1259,E3 Accumulate,TabPFN v2.6,Cobranded,0.84325414,0.84312572,-0.00012841562,1,5
+1260,E3 Accumulate,TabPFN v2.6,Credit Risk,0.94123747,0.93863105,-0.0026064191,0,5
+1261,E3 Accumulate,TabPFN v2.6,GMSC,0.86596215,0.86616431,0.00020216028,5,5
+1262,E3 Accumulate,TabPFN v2.6,German Credit,0.79173424,0.79231029,0.00057605344,3,5
+1263,E3 Accumulate,TabPFN v2.6,HMEQ,0.99827227,0.99736012,-0.00091214771,0,5
+1264,E3 Accumulate,TabPFN v2.6,Hackerearth,0.94817984,0.945405,-0.0027748329,0,5
+1265,E3 Accumulate,TabPFN v2.6,Home Credit,0.74699146,0.74651355,-0.0004779085,0,5
+1266,E3 Accumulate,TabPFN v2.6,LendingClub,0.68373099,0.68509488,0.0013638931,4,5
+1267,E3 Accumulate,TabPFN v2.6,MicroFinance,0.65905812,0.65784577,-0.001212347,0,5
+1268,E3 Accumulate,TabPFN v2.6,Myhom,0.59564264,0.59613053,0.00048788265,4,5
+1269,E3 Accumulate,TabPFN v2.6,PropPD1,0.77315636,0.77246618,-0.00069017625,0,5
+1270,E3 Accumulate,TabPFN v2.6,PropPD2,0.65921509,0.6585031,-0.00071198554,0,5
+1271,E3 Accumulate,TabPFN v2.6,SBA Loans Case,0.98987642,0.98996074,8.4318592e-05,3,5
+1272,E3 Accumulate,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78976078,0.00028367363,3,5
+1273,E3 Accumulate,TabPFN v2.6,Thomas,0.64565389,0.6507748,0.0051209036,3,5
+1274,E3 Accumulate,TabPFN v2.6,Vehicle Loan,0.65121872,0.65167473,0.00045601234,5,5
+1275,E3 Full pass,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88516585,-0.00027918842,0,5
+1276,E3 Full pass,TabPFN v2.6,Cobranded,0.84325414,0.84346328,0.00020914,5,5
+1277,E3 Full pass,TabPFN v2.6,Credit Risk,0.94123747,0.94060052,-0.00063694707,0,5
+1278,E3 Full pass,TabPFN v2.6,GMSC,0.86596215,0.86619398,0.00023183522,4,5
+1279,E3 Full pass,TabPFN v2.6,German Credit,0.79173424,0.790926,-0.00080823912,3,5
+1280,E3 Full pass,TabPFN v2.6,HMEQ,0.99827227,0.99772475,-0.00054751912,0,5
+1281,E3 Full pass,TabPFN v2.6,Hackerearth,0.94817984,0.9468956,-0.0012842358,0,5
+1282,E3 Full pass,TabPFN v2.6,Home Credit,0.74699146,0.7470645,7.3040272e-05,3,5
+1283,E3 Full pass,TabPFN v2.6,LendingClub,0.68373099,0.68466232,0.00093133778,4,5
+1284,E3 Full pass,TabPFN v2.6,MicroFinance,0.65905812,0.65855771,-0.00050041135,0,5
+1285,E3 Full pass,TabPFN v2.6,Myhom,0.59564264,0.59625361,0.00061096939,3,5
+1286,E3 Full pass,TabPFN v2.6,PropPD1,0.77315636,0.7716648,-0.0014915578,0,5
+1287,E3 Full pass,TabPFN v2.6,PropPD2,0.65921509,0.65970547,0.00049037612,4,5
+1288,E3 Full pass,TabPFN v2.6,SBA Loans Case,0.98987642,0.98985935,-1.7069942e-05,2,5
+1289,E3 Full pass,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78990956,0.00043245308,3,5
+1290,E3 Full pass,TabPFN v2.6,Thomas,0.64565389,0.64848342,0.0028295232,2,5
+1291,E3 Full pass,TabPFN v2.6,Vehicle Loan,0.65121872,0.65181309,0.00059437023,5,5
+1292,E3 One sample,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88512711,-0.00031793109,0,5
+1293,E3 One sample,TabPFN v2.6,Cobranded,0.84325414,0.84308696,-0.00016717141,0,5
+1294,E3 One sample,TabPFN v2.6,Credit Risk,0.94123747,0.93872754,-0.0025099226,0,5
+1295,E3 One sample,TabPFN v2.6,GMSC,0.86596215,0.86612252,0.00016037553,3,5
+1296,E3 One sample,TabPFN v2.6,German Credit,0.79173424,0.79238172,0.00064748201,3,5
+1297,E3 One sample,TabPFN v2.6,HMEQ,0.99827227,0.9974549,-0.00081736226,0,5
+1298,E3 One sample,TabPFN v2.6,Hackerearth,0.94817984,0.9454627,-0.0027171337,0,5
+1299,E3 One sample,TabPFN v2.6,Home Credit,0.74699146,0.7464658,-0.00052566662,0,5
+1300,E3 One sample,TabPFN v2.6,LendingClub,0.68373099,0.68506488,0.0013338943,5,5
+1301,E3 One sample,TabPFN v2.6,MicroFinance,0.65905812,0.65813508,-0.000923038,0,5
+1302,E3 One sample,TabPFN v2.6,Myhom,0.59564264,0.59620663,0.0005639881,4,5
+1303,E3 One sample,TabPFN v2.6,PropPD1,0.77315636,0.77246396,-0.00069240261,0,5
+1304,E3 One sample,TabPFN v2.6,PropPD2,0.65921509,0.65862293,-0.00059216383,0,5
+1305,E3 One sample,TabPFN v2.6,SBA Loans Case,0.98987642,0.98997113,9.4708237e-05,3,5
+1306,E3 One sample,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78973706,0.00025995484,3,5
+1307,E3 One sample,TabPFN v2.6,Thomas,0.64565389,0.65011325,0.0044593604,3,5
+1308,E3 One sample,TabPFN v2.6,Vehicle Loan,0.65121872,0.65167289,0.00045417026,4,5
+1309,E3 Accumulate,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89717592,-0.0006838093,0,5
+1310,E3 Accumulate,TabPFN v3,Cobranded,0.84232668,0.8427205,0.00039382231,4,5
+1311,E3 Accumulate,TabPFN v3,Credit Risk,0.95168825,0.95129041,-0.00039783577,1,5
+1312,E3 Accumulate,TabPFN v3,GMSC,0.86875853,0.86861378,-0.00014475562,2,5
+1313,E3 Accumulate,TabPFN v3,German Credit,0.79130593,0.79420452,0.0028985954,4,5
+1314,E3 Accumulate,TabPFN v3,HMEQ,0.99925852,0.9989171,-0.00034142126,0,5
+1315,E3 Accumulate,TabPFN v3,Hackerearth,0.96319489,0.95808464,-0.0051102523,0,5
+1316,E3 Accumulate,TabPFN v3,Home Credit,0.75332379,0.75277141,-0.00055238065,0,5
+1317,E3 Accumulate,TabPFN v3,LendingClub,0.68545173,0.68607457,0.00062284176,4,5
+1318,E3 Accumulate,TabPFN v3,MicroFinance,0.65971744,0.65941325,-0.00030419281,2,5
+1319,E3 Accumulate,TabPFN v3,Myhom,0.59735565,0.59711586,-0.00023979592,2,5
+1320,E3 Accumulate,TabPFN v3,PropPD1,0.812241,0.81285296,0.0006119632,4,5
+1321,E3 Accumulate,TabPFN v3,PropPD2,0.65730771,0.65934933,0.0020416233,5,5
+1322,E3 Accumulate,TabPFN v3,SBA Loans Case,0.98983277,0.99000769,0.00017491893,2,5
+1323,E3 Accumulate,TabPFN v3,Taiwan Credit Card,0.78966503,0.78952914,-0.00013588866,2,5
+1324,E3 Accumulate,TabPFN v3,Thomas,0.65158762,0.65355654,0.0019689167,3,5
+1325,E3 Accumulate,TabPFN v3,Vehicle Loan,0.65803164,0.65769492,-0.00033671997,0,5
+1326,E3 Full pass,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.8971578,-0.00070193849,0,5
+1327,E3 Full pass,TabPFN v3,Cobranded,0.84232668,0.84235042,2.3737544e-05,3,5
+1328,E3 Full pass,TabPFN v3,Credit Risk,0.95168825,0.95137545,-0.00031279605,2,5
+1329,E3 Full pass,TabPFN v3,GMSC,0.86875853,0.86861626,-0.00014227829,2,5
+1330,E3 Full pass,TabPFN v3,German Credit,0.79130593,0.7929517,0.0016457691,4,5
+1331,E3 Full pass,TabPFN v3,HMEQ,0.99925852,0.99905133,-0.00020719358,0,5
+1332,E3 Full pass,TabPFN v3,Hackerearth,0.96319489,0.96010958,-0.0030853052,0,5
+1333,E3 Full pass,TabPFN v3,Home Credit,0.75332379,0.75271146,-0.00061233165,0,5
+1334,E3 Full pass,TabPFN v3,LendingClub,0.68545173,0.68666522,0.0012134909,5,5
+1335,E3 Full pass,TabPFN v3,MicroFinance,0.65971744,0.65716188,-0.0025555676,0,5
+1336,E3 Full pass,TabPFN v3,Myhom,0.59735565,0.59752105,0.00016539116,2,5
+1337,E3 Full pass,TabPFN v3,PropPD1,0.812241,0.8120235,-0.00021749609,1,5
+1338,E3 Full pass,TabPFN v3,PropPD2,0.65730771,0.65919104,0.0018833305,5,5
+1339,E3 Full pass,TabPFN v3,SBA Loans Case,0.98983277,0.99049718,0.00066441075,5,5
+1340,E3 Full pass,TabPFN v3,Taiwan Credit Card,0.78966503,0.7896636,-1.430215e-06,2,5
+1341,E3 Full pass,TabPFN v3,Thomas,0.65158762,0.6533661,0.0017784861,3,5
+1342,E3 Full pass,TabPFN v3,Vehicle Loan,0.65803164,0.65776394,-0.00026770815,0,5
+1343,E3 One sample,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89759333,-0.00026640135,0,5
+1344,E3 One sample,TabPFN v3,Cobranded,0.84232668,0.84287994,0.00055325976,5,5
+1345,E3 One sample,TabPFN v3,Credit Risk,0.95168825,0.95191977,0.000231526,3,5
+1346,E3 One sample,TabPFN v3,GMSC,0.86875853,0.86866619,-9.2348255e-05,2,5
+1347,E3 One sample,TabPFN v3,German Credit,0.79130593,0.79398767,0.0026817403,3,5
+1348,E3 One sample,TabPFN v3,HMEQ,0.99925852,0.99895589,-0.00030262455,0,5
+1349,E3 One sample,TabPFN v3,Hackerearth,0.96319489,0.95863203,-0.0045628564,0,5
+1350,E3 One sample,TabPFN v3,Home Credit,0.75332379,0.75315122,-0.00017257145,2,5
+1351,E3 One sample,TabPFN v3,LendingClub,0.68545173,0.68640852,0.00095678887,4,5
+1352,E3 One sample,TabPFN v3,MicroFinance,0.65971744,0.66057933,0.00086188478,4,5
+1353,E3 One sample,TabPFN v3,Myhom,0.59735565,0.59689711,-0.00045854592,2,5
+1354,E3 One sample,TabPFN v3,PropPD1,0.812241,0.81329013,0.0010491348,5,5
+1355,E3 One sample,TabPFN v3,PropPD2,0.65730771,0.65949314,0.0021854384,5,5
+1356,E3 One sample,TabPFN v3,SBA Loans Case,0.98983277,0.98997626,0.00014349597,2,5
+1357,E3 One sample,TabPFN v3,Taiwan Credit Card,0.78966503,0.78961419,-5.0842084e-05,3,5
+1358,E3 One sample,TabPFN v3,Thomas,0.65158762,0.65328577,0.0016981513,3,5
+1359,E3 One sample,TabPFN v3,Vehicle Loan,0.65803164,0.6580775,4.5852943e-05,2,5
+1360,E5 LR 0.001,TabICLv2,Bondora Peer-to-Peer,0.89721903,0.89407549,-0.003143543,0,5
+1361,E5 LR 0.001,TabICLv2,Cobranded,0.84271234,0.84175355,-0.00095879236,0,5
+1362,E5 LR 0.001,TabICLv2,Credit Risk,0.9552569,0.95105888,-0.0041980151,0,5
+1363,E5 LR 0.001,TabICLv2,GMSC,0.86720997,0.8666017,-0.00060826713,1,5
+1364,E5 LR 0.001,TabICLv2,German Credit,0.79014029,0.79154933,0.0014090442,4,5
+1365,E5 LR 0.001,TabICLv2,HMEQ,0.99637221,0.99491204,-0.0014601691,0,5
+1366,E5 LR 0.001,TabICLv2,Hackerearth,0.9571788,0.92986643,-0.02731237,0,5
+1367,E5 LR 0.001,TabICLv2,Home Credit,0.74797136,0.74419812,-0.0037732403,0,5
+1368,E5 LR 0.001,TabICLv2,LendingClub,0.68909689,0.68786108,-0.0012358101,2,5
+1369,E5 LR 0.001,TabICLv2,MicroFinance,0.6580906,0.65202333,-0.0060672667,0,5
+1370,E5 LR 0.001,TabICLv2,Myhom,0.59466603,0.59469154,2.5510204e-05,3,5
+1371,E5 LR 0.001,TabICLv2,PropPD1,0.81216756,0.81223677,6.9210135e-05,3,5
+1372,E5 LR 0.001,TabICLv2,PropPD2,0.65634383,0.65542276,-0.00092107414,0,5
+1373,E5 LR 0.001,TabICLv2,SBA Loans Case,0.98987327,0.98956972,-0.0003035512,1,5
+1374,E5 LR 0.001,TabICLv2,Taiwan Credit Card,0.79012847,0.78926706,-0.00086140656,0,5
+1375,E5 LR 0.001,TabICLv2,Thomas,0.6493295,0.64668863,-0.0026408663,2,5
+1376,E5 LR 0.001,TabICLv2,Vehicle Loan,0.65638155,0.6535896,-0.0027919447,0,5
+1377,E5 LR 0.0001,TabICLv2,Bondora Peer-to-Peer,0.89721903,0.89624573,-0.00097329748,0,5
+1378,E5 LR 0.0001,TabICLv2,Cobranded,0.84271234,0.84231271,-0.00039962913,0,5
+1379,E5 LR 0.0001,TabICLv2,Credit Risk,0.9552569,0.95514741,-0.00010948804,2,5
+1380,E5 LR 0.0001,TabICLv2,GMSC,0.86720997,0.86703749,-0.00017247779,0,5
+1381,E5 LR 0.0001,TabICLv2,German Credit,0.79014029,0.7919976,0.0018573141,5,5
+1382,E5 LR 0.0001,TabICLv2,HMEQ,0.99637221,0.9962497,-0.00012250867,1,5
+1383,E5 LR 0.0001,TabICLv2,Hackerearth,0.9571788,0.95254903,-0.0046297712,0,5
+1384,E5 LR 0.0001,TabICLv2,Home Credit,0.74797136,0.74695763,-0.0010137342,0,5
+1385,E5 LR 0.0001,TabICLv2,LendingClub,0.68909689,0.68934306,0.00024616831,3,5
+1386,E5 LR 0.0001,TabICLv2,MicroFinance,0.6580906,0.65601121,-0.0020793892,0,5
+1387,E5 LR 0.0001,TabICLv2,Myhom,0.59466603,0.59493027,0.0002642432,2,5
+1388,E5 LR 0.0001,TabICLv2,PropPD1,0.81216756,0.81469291,0.002525354,5,5
+1389,E5 LR 0.0001,TabICLv2,PropPD2,0.65634383,0.65514553,-0.0011982969,0,5
+1390,E5 LR 0.0001,TabICLv2,SBA Loans Case,0.98987327,0.98980123,-7.2037289e-05,1,5
+1391,E5 LR 0.0001,TabICLv2,Taiwan Credit Card,0.79012847,0.78988753,-0.00024093887,0,5
+1392,E5 LR 0.0001,TabICLv2,Thomas,0.6493295,0.64877427,-0.00055522501,1,5
+1393,E5 LR 0.0001,TabICLv2,Vehicle Loan,0.65638155,0.65511933,-0.0012622141,0,5
+1394,E5 LR 0.03,TabICLv2,Bondora Peer-to-Peer,0.89721903,0.88481376,-0.012405275,0,5
+1395,E5 LR 0.03,TabICLv2,Cobranded,0.84271234,0.83391785,-0.0087944903,0,5
+1396,E5 LR 0.03,TabICLv2,Credit Risk,0.9552569,0.90924238,-0.046014519,0,5
+1397,E5 LR 0.03,TabICLv2,GMSC,0.86720997,0.86330526,-0.0039047084,0,5
+1398,E5 LR 0.03,TabICLv2,German Credit,0.79014029,0.7867912,-0.0033490922,2,5
+1399,E5 LR 0.03,TabICLv2,HMEQ,0.99637221,0.97813307,-0.018239142,0,5
+1400,E5 LR 0.03,TabICLv2,Hackerearth,0.9571788,0.82069496,-0.13648384,0,5
+1401,E5 LR 0.03,TabICLv2,Home Credit,0.74797136,0.72943171,-0.01853965,0,5
+1402,E5 LR 0.03,TabICLv2,LendingClub,0.68909689,0.68337552,-0.0057213733,0,5
+1403,E5 LR 0.03,TabICLv2,MicroFinance,0.6580906,0.63193683,-0.026153771,0,5
+1404,E5 LR 0.03,TabICLv2,Myhom,0.59466603,0.58952466,-0.005141369,1,5
+1405,E5 LR 0.03,TabICLv2,PropPD1,0.81216756,0.75817544,-0.053992112,0,5
+1406,E5 LR 0.03,TabICLv2,PropPD2,0.65634383,0.64624257,-0.010101256,0,5
+1407,E5 LR 0.03,TabICLv2,SBA Loans Case,0.98987327,0.98806361,-0.0018096592,1,5
+1408,E5 LR 0.03,TabICLv2,Taiwan Credit Card,0.79012847,0.77971079,-0.010417673,0,5
+1409,E5 LR 0.03,TabICLv2,Thomas,0.6493295,0.6456122,-0.0037172994,2,5
+1410,E5 LR 0.03,TabICLv2,Vehicle Loan,0.65638155,0.63747628,-0.018905268,0,5
+1411,E5 LR 0.001,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89692541,-0.00093432802,0,5
+1412,E5 LR 0.001,TabPFN v3,Cobranded,0.8423441,0.84294148,0.00059737678,5,5
+1413,E5 LR 0.001,TabPFN v3,Credit Risk,0.95168825,0.94896871,-0.0027195363,0,5
+1414,E5 LR 0.001,TabPFN v3,GMSC,0.86875853,0.86854345,-0.00021508664,2,5
+1415,E5 LR 0.001,TabPFN v3,German Credit,0.79130593,0.79328469,0.0019787598,4,5
+1416,E5 LR 0.001,TabPFN v3,HMEQ,0.99925852,0.99887333,-0.00038519336,0,5
+1417,E5 LR 0.001,TabPFN v3,Hackerearth,0.96319489,0.95895362,-0.0042412694,0,5
+1418,E5 LR 0.001,TabPFN v3,Home Credit,0.7533335,0.75259196,-0.00074154306,0,5
+1419,E5 LR 0.001,TabPFN v3,LendingClub,0.68545173,0.68651895,0.0010672203,4,5
+1420,E5 LR 0.001,TabPFN v3,MicroFinance,0.65975198,0.65924184,-0.00051014518,1,5
+1421,E5 LR 0.001,TabPFN v3,Myhom,0.59735565,0.59721003,-0.00014562075,3,5
+1422,E5 LR 0.001,TabPFN v3,PropPD1,0.812241,0.81316529,0.00092429263,5,5
+1423,E5 LR 0.001,TabPFN v3,PropPD2,0.65734033,0.65843066,0.0010903297,4,5
+1424,E5 LR 0.001,TabPFN v3,SBA Loans Case,0.98983277,0.99000863,0.00017585766,4,5
+1425,E5 LR 0.001,TabPFN v3,Taiwan Credit Card,0.78966503,0.78963902,-2.6010619e-05,1,5
+1426,E5 LR 0.001,TabPFN v3,Thomas,0.65158762,0.65182302,0.0002354028,2,5
+1427,E5 LR 0.001,TabPFN v3,Vehicle Loan,0.65803164,0.6573606,-0.0006710477,0,5
+1428,E5 LR 0.0001,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89789009,3.0355623e-05,4,5
+1429,E5 LR 0.0001,TabPFN v3,Cobranded,0.8423441,0.84269839,0.00035428329,5,5
+1430,E5 LR 0.0001,TabPFN v3,Credit Risk,0.95168825,0.95093805,-0.00075019643,0,5
+1431,E5 LR 0.0001,TabPFN v3,GMSC,0.86875853,0.86872291,-3.5622047e-05,3,5
+1432,E5 LR 0.0001,TabPFN v3,German Credit,0.79130593,0.79171137,0.00040544707,3,5
+1433,E5 LR 0.0001,TabPFN v3,HMEQ,0.99925852,0.99914516,-0.00011335596,0,5
+1434,E5 LR 0.0001,TabPFN v3,Hackerearth,0.96319489,0.96268817,-0.00050671665,0,5
+1435,E5 LR 0.0001,TabPFN v3,Home Credit,0.7533335,0.75337674,4.3242468e-05,4,5
+1436,E5 LR 0.0001,TabPFN v3,LendingClub,0.68545173,0.68615986,0.00070812639,4,5
+1437,E5 LR 0.0001,TabPFN v3,MicroFinance,0.65975198,0.66031155,0.00055956505,5,5
+1438,E5 LR 0.0001,TabPFN v3,Myhom,0.59735565,0.59744324,8.7585034e-05,4,5
+1439,E5 LR 0.0001,TabPFN v3,PropPD1,0.812241,0.8132705,0.0010295072,5,5
+1440,E5 LR 0.0001,TabPFN v3,PropPD2,0.65734033,0.65828138,0.00094104852,5,5
+1441,E5 LR 0.0001,TabPFN v3,SBA Loans Case,0.98983277,0.98987923,4.646278e-05,2,5
+1442,E5 LR 0.0001,TabPFN v3,Taiwan Credit Card,0.78966503,0.78991634,0.00025131169,4,5
+1443,E5 LR 0.0001,TabPFN v3,Thomas,0.65158762,0.65221071,0.00062308755,3,5
+1444,E5 LR 0.0001,TabPFN v3,Vehicle Loan,0.65803164,0.65803199,3.4979271e-07,3,5
+1445,E5 LR 0.03,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89519069,-0.0026690401,0,5
+1446,E5 LR 0.03,TabPFN v3,Cobranded,0.8423441,0.84141822,-0.00092587986,2,5
+1447,E5 LR 0.03,TabPFN v3,Credit Risk,0.95168825,0.93768655,-0.0140017,0,5
+1448,E5 LR 0.03,TabPFN v3,GMSC,0.86875853,0.86754132,-0.0012172181,0,5
+1449,E5 LR 0.03,TabPFN v3,German Credit,0.79130593,0.79245632,0.001150394,4,5
+1450,E5 LR 0.03,TabPFN v3,HMEQ,0.99925852,0.99856266,-0.00069585443,0,5
+1451,E5 LR 0.03,TabPFN v3,Hackerearth,0.96319489,0.9276598,-0.035535085,0,5
+1452,E5 LR 0.03,TabPFN v3,Home Credit,0.7533335,0.74509405,-0.0082394547,0,5
+1453,E5 LR 0.03,TabPFN v3,LendingClub,0.68545173,0.68634666,0.00089492692,3,5
+1454,E5 LR 0.03,TabPFN v3,MicroFinance,0.65975198,0.65754734,-0.0022046354,0,5
+1455,E5 LR 0.03,TabPFN v3,Myhom,0.59735565,0.59726318,-9.247449e-05,3,5
+1456,E5 LR 0.03,TabPFN v3,PropPD1,0.812241,0.80948841,-0.0027525864,0,5
+1457,E5 LR 0.03,TabPFN v3,PropPD2,0.65734033,0.65545867,-0.001881657,1,5
+1458,E5 LR 0.03,TabPFN v3,SBA Loans Case,0.98983277,0.98983357,7.9762396e-07,2,5
+1459,E5 LR 0.03,TabPFN v3,Taiwan Credit Card,0.78966503,0.78887798,-0.00078704949,2,5
+1460,E5 LR 0.03,TabPFN v3,Thomas,0.65158762,0.65437531,0.0027876942,3,5
+1461,E5 LR 0.03,TabPFN v3,Vehicle Loan,0.65803164,0.65408858,-0.0039430596,0,5
+1462,E6 All tables,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89614945,-0.0010644686,0,5
+1463,E6 All tables,TabICLv2,Cobranded,0.8427705,0.84229884,-0.0004716626,1,5
+1464,E6 All tables,TabICLv2,Credit Risk,0.95514201,0.94905746,-0.0060845436,0,5
+1465,E6 All tables,TabICLv2,GMSC,0.86718744,0.86656088,-0.00062655793,0,5
+1466,E6 All tables,TabICLv2,German Credit,0.79014029,0.79286725,0.0027269613,3,5
+1467,E6 All tables,TabICLv2,HMEQ,0.99633513,0.99623612,-9.9009278e-05,1,5
+1468,E6 All tables,TabICLv2,Hackerearth,0.95676611,0.94639083,-0.010375271,0,5
+1469,E6 All tables,TabICLv2,Home Credit,0.74793913,0.74614286,-0.0017962771,0,5
+1470,E6 All tables,TabICLv2,LendingClub,0.68913135,0.68941381,0.00028245943,2,5
+1471,E6 All tables,TabICLv2,MicroFinance,0.65764659,0.65385901,-0.0037875761,0,5
+1472,E6 All tables,TabICLv2,Myhom,0.57992283,0.5954003,0.015477466,4,5
+1473,E6 All tables,TabICLv2,PropPD1,0.8116703,0.8131525,0.0014821946,5,5
+1474,E6 All tables,TabICLv2,PropPD2,0.65622099,0.65588916,-0.00033183277,2,5
+1475,E6 All tables,TabICLv2,SBA Loans Case,0.98980137,0.99018401,0.00038264312,1,5
+1476,E6 All tables,TabICLv2,Taiwan Credit Card,0.79015422,0.7882762,-0.0018780196,0,5
+1477,E6 All tables,TabICLv2,Thomas,0.6493295,0.6454821,-0.0038473993,2,5
+1478,E6 All tables,TabICLv2,Vehicle Loan,0.58306229,0.65380289,0.070740606,5,5
+1479,E6 All tables,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89100401,-0.0068557227,0,5
+1480,E6 All tables,TabPFN v3,Cobranded,0.84233768,0.84254663,0.00020895037,4,5
+1481,E6 All tables,TabPFN v3,Credit Risk,0.95168825,0.95038808,-0.0013001693,0,5
+1482,E6 All tables,TabPFN v3,GMSC,0.86875853,0.86845717,-0.0003013609,1,5
+1483,E6 All tables,TabPFN v3,German Credit,0.79130593,0.7933025,0.0019965742,3,5
+1484,E6 All tables,TabPFN v3,HMEQ,0.99925852,0.99865277,-0.00060575324,0,5
+1485,E6 All tables,TabPFN v3,Hackerearth,0.96319489,0.95647655,-0.0067183383,0,5
+1486,E6 All tables,TabPFN v3,Home Credit,0.75337848,0.75135531,-0.0020231783,0,5
+1487,E6 All tables,TabPFN v3,LendingClub,0.68545173,0.68608782,0.00063609326,4,5
+1488,E6 All tables,TabPFN v3,MicroFinance,0.6597275,0.65601458,-0.0037129194,0,5
+1489,E6 All tables,TabPFN v3,Myhom,0.59735565,0.59712139,-0.00023426871,2,5
+1490,E6 All tables,TabPFN v3,PropPD1,0.812241,0.81304635,0.00080535114,4,5
+1491,E6 All tables,TabPFN v3,PropPD2,0.65730685,0.65897166,0.0016648119,4,5
+1492,E6 All tables,TabPFN v3,SBA Loans Case,0.98983277,0.99000842,0.00017565154,4,5
+1493,E6 All tables,TabPFN v3,Taiwan Credit Card,0.78966503,0.78984632,0.00018128838,3,5
+1494,E6 All tables,TabPFN v3,Thomas,0.65158762,0.65202389,0.0004362752,3,5
+1495,E6 All tables,TabPFN v3,Vehicle Loan,0.65803164,0.65661939,-0.0014122494,0,5
+1496,E6 Large tables,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89694253,-0.00027139005,1,5
+1497,E6 Large tables,TabICLv2,Cobranded,0.8427705,0.84201695,-0.00075355865,0,5
+1498,E6 Large tables,TabICLv2,Credit Risk,0.95514201,0.94460712,-0.010534882,0,5
+1499,E6 Large tables,TabICLv2,GMSC,0.86718744,0.86650648,-0.00068095692,0,5
+1500,E6 Large tables,TabICLv2,German Credit,0.79014029,0.79161083,0.0014705379,2,5
+1501,E6 Large tables,TabICLv2,HMEQ,0.99633513,0.9947833,-0.0015518357,0,5
+1502,E6 Large tables,TabICLv2,Hackerearth,0.95676611,0.93984599,-0.016920117,0,5
+1503,E6 Large tables,TabICLv2,Home Credit,0.74793913,0.74477179,-0.0031673466,0,5
+1504,E6 Large tables,TabICLv2,LendingClub,0.68913135,0.68832502,-0.0008063218,2,5
+1505,E6 Large tables,TabICLv2,MicroFinance,0.65764659,0.65580246,-0.0018441286,1,5
+1506,E6 Large tables,TabICLv2,Myhom,0.57992283,0.59487798,0.014955145,4,5
+1507,E6 Large tables,TabICLv2,PropPD1,0.8116703,0.80317733,-0.0084929729,0,5
+1508,E6 Large tables,TabICLv2,PropPD2,0.65622099,0.65580538,-0.00041561279,1,5
+1509,E6 Large tables,TabICLv2,SBA Loans Case,0.98980137,0.99043089,0.00062952247,2,5
+1510,E6 Large tables,TabICLv2,Taiwan Credit Card,0.79015422,0.7885283,-0.0016259208,0,5
+1511,E6 Large tables,TabICLv2,Thomas,0.6493295,0.64325589,-0.0060736058,3,5
+1512,E6 Large tables,TabICLv2,Vehicle Loan,0.58306229,0.65411054,0.071048251,5,5
+1513,E6 Large tables,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89577442,-0.0020853176,0,5
+1514,E6 Large tables,TabPFN v3,Cobranded,0.84233768,0.84179624,-0.00054144022,0,5
+1515,E6 Large tables,TabPFN v3,Credit Risk,0.95168825,0.95051879,-0.0011694579,1,5
+1516,E6 Large tables,TabPFN v3,GMSC,0.86875853,0.8682747,-0.0004838337,0,5
+1517,E6 Large tables,TabPFN v3,German Credit,0.79130593,0.79334961,0.0020436793,4,5
+1518,E6 Large tables,TabPFN v3,HMEQ,0.99925852,0.99880014,-0.0004583825,0,5
+1519,E6 Large tables,TabPFN v3,Hackerearth,0.96319489,0.95683535,-0.0063595433,0,5
+1520,E6 Large tables,TabPFN v3,Home Credit,0.75337848,0.75083675,-0.0025417318,0,5
+1521,E6 Large tables,TabPFN v3,LendingClub,0.68545173,0.68618466,0.0007329278,2,5
+1522,E6 Large tables,TabPFN v3,MicroFinance,0.6597275,0.65754828,-0.002179215,0,5
+1523,E6 Large tables,TabPFN v3,Myhom,0.59735565,0.59801063,0.00065497449,3,5
+1524,E6 Large tables,TabPFN v3,PropPD1,0.812241,0.81096455,-0.0012764508,1,5
+1525,E6 Large tables,TabPFN v3,PropPD2,0.65730685,0.65863072,0.0013238657,4,5
+1526,E6 Large tables,TabPFN v3,SBA Loans Case,0.98983277,0.9906466,0.00081383178,5,5
+1527,E6 Large tables,TabPFN v3,Taiwan Credit Card,0.78966503,0.78966416,-8.6789898e-07,3,5
+1528,E6 Large tables,TabPFN v3,Thomas,0.65158762,0.65190509,0.00031747297,3,5
+1529,E6 Large tables,TabPFN v3,Vehicle Loan,0.65803164,0.65605593,-0.0019757164,0,5
+1530,"E7 2,048 rows",TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89619431,-0.0010196043,0,5
+1531,"E7 2,048 rows",TabICLv2,Cobranded,0.8427705,0.84136886,-0.0014016449,0,5
+1532,"E7 2,048 rows",TabICLv2,Credit Risk,0.95514201,0.94392708,-0.011214926,0,5
+1533,"E7 2,048 rows",TabICLv2,GMSC,0.86718744,0.86677841,-0.00040902704,1,5
+1534,"E7 2,048 rows",TabICLv2,German Credit,0.79014029,0.79295409,0.0028138061,2,5
+1535,"E7 2,048 rows",TabICLv2,HMEQ,0.99633513,0.99548902,-0.00084610959,0,5
+1536,"E7 2,048 rows",TabICLv2,Hackerearth,0.95676611,0.94412423,-0.012641879,0,5
+1537,"E7 2,048 rows",TabICLv2,Home Credit,0.74793913,0.74393695,-0.0040021834,0,5
+1538,"E7 2,048 rows",TabICLv2,LendingClub,0.68913135,0.68777115,-0.0013601929,0,5
+1539,"E7 2,048 rows",TabICLv2,MicroFinance,0.65764659,0.65696106,-0.00068553026,2,5
+1540,"E7 2,048 rows",TabICLv2,Myhom,0.57992283,0.59691922,0.016996386,4,5
+1541,"E7 2,048 rows",TabICLv2,PropPD1,0.8116703,0.80407107,-0.007599232,0,5
+1542,"E7 2,048 rows",TabICLv2,PropPD2,0.65622099,0.65447386,-0.0017471326,0,5
+1543,"E7 2,048 rows",TabICLv2,SBA Loans Case,0.98980137,0.99019998,0.00039861192,2,5
+1544,"E7 2,048 rows",TabICLv2,Taiwan Credit Card,0.79015422,0.78837783,-0.0017763977,0,5
+1545,"E7 2,048 rows",TabICLv2,Thomas,0.6493295,0.64568314,-0.0036463557,1,5
+1546,"E7 2,048 rows",TabICLv2,Vehicle Loan,0.58306229,0.65196326,0.068900974,5,5
+1547,"E7 2,048 rows",TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.86105574,-0.036803997,0,5
+1548,"E7 2,048 rows",TabPFN v3,Cobranded,0.84233197,0.84152032,-0.00081165514,0,5
+1549,"E7 2,048 rows",TabPFN v3,Credit Risk,0.95168825,0.94200393,-0.0096843145,0,5
+1550,"E7 2,048 rows",TabPFN v3,GMSC,0.86875853,0.8684943,-0.00026423519,1,5
+1551,"E7 2,048 rows",TabPFN v3,German Credit,0.79130593,0.79149469,0.00018876328,3,5
+1552,"E7 2,048 rows",TabPFN v3,HMEQ,0.99925852,0.99894817,-0.00031034855,0,5
+1553,"E7 2,048 rows",TabPFN v3,Hackerearth,0.96319489,0.95544375,-0.0077511353,0,5
+1554,"E7 2,048 rows",TabPFN v3,Home Credit,0.75332606,0.74845326,-0.0048728011,0,5
+1555,"E7 2,048 rows",TabPFN v3,LendingClub,0.68545173,0.68565264,0.00020091076,3,5
+1556,"E7 2,048 rows",TabPFN v3,MicroFinance,0.65973672,0.65403416,-0.0057025602,0,5
+1557,"E7 2,048 rows",TabPFN v3,Myhom,0.59735565,0.59836543,0.0010097789,4,5
+1558,"E7 2,048 rows",TabPFN v3,PropPD1,0.812241,0.80852631,-0.0037146903,0,5
+1559,"E7 2,048 rows",TabPFN v3,PropPD2,0.65726867,0.65739396,0.00012528598,3,5
+1560,"E7 2,048 rows",TabPFN v3,SBA Loans Case,0.98983277,0.99004756,0.00021478671,2,5
+1561,"E7 2,048 rows",TabPFN v3,Taiwan Credit Card,0.78966503,0.7889903,-0.00067473368,2,5
+1562,"E7 2,048 rows",TabPFN v3,Thomas,0.65158762,0.64980167,-0.001785947,3,5
+1563,"E7 2,048 rows",TabPFN v3,Vehicle Loan,0.65803164,0.65529312,-0.002738526,0,5
+1564,"E7 26,000 rows",TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89680495,-0.00040896496,1,5
+1565,"E7 26,000 rows",TabICLv2,Cobranded,0.8427705,0.84204638,-0.00072412792,0,5
+1566,"E7 26,000 rows",TabICLv2,Credit Risk,0.95514201,0.94911987,-0.0060221328,0,5
+1567,"E7 26,000 rows",TabICLv2,GMSC,0.86718744,0.86663375,-0.0005536807,0,5
+1568,"E7 26,000 rows",TabICLv2,German Credit,0.79014029,0.79055413,0.00041384036,2,5
+1569,"E7 26,000 rows",TabICLv2,HMEQ,0.99633513,0.99513527,-0.001199861,0,5
+1570,"E7 26,000 rows",TabICLv2,Hackerearth,0.95676611,0.94348259,-0.013283516,0,5
+1571,"E7 26,000 rows",TabICLv2,Home Credit,0.74793913,0.74637127,-0.0015678675,0,5
+1572,"E7 26,000 rows",TabICLv2,LendingClub,0.68913135,0.68867463,-0.00045671503,2,5
+1573,"E7 26,000 rows",TabICLv2,MicroFinance,0.65764659,0.65525832,-0.0023882651,1,5
+1574,"E7 26,000 rows",TabICLv2,Myhom,0.57992283,0.59416879,0.014245961,3,5
+1575,"E7 26,000 rows",TabICLv2,PropPD1,0.8116703,0.80223697,-0.0094333266,0,5
+1576,"E7 26,000 rows",TabICLv2,PropPD2,0.65622099,0.65655966,0.00033866841,4,5
+1577,"E7 26,000 rows",TabICLv2,SBA Loans Case,0.98980137,0.99040369,0.00060231876,3,5
+1578,"E7 26,000 rows",TabICLv2,Taiwan Credit Card,0.79015422,0.78886014,-0.0012940794,0,5
+1579,"E7 26,000 rows",TabICLv2,Thomas,0.6493295,0.64225042,-0.0070790716,2,5
+1580,"E7 26,000 rows",TabICLv2,Vehicle Loan,0.58306229,0.65543316,0.072370872,5,5
+1581,"E7 26,000 rows",TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.8976124,-0.00024733024,0,5
+1582,"E7 26,000 rows",TabPFN v3,Cobranded,0.84233197,0.84244512,0.00011315128,3,5
+1583,"E7 26,000 rows",TabPFN v3,Credit Risk,0.95168825,0.95118475,-0.00050349355,2,5
+1584,"E7 26,000 rows",TabPFN v3,GMSC,0.86875853,0.86858828,-0.00017024867,1,5
+1585,"E7 26,000 rows",TabPFN v3,German Credit,0.79130593,0.79365844,0.002352518,4,5
+1586,"E7 26,000 rows",TabPFN v3,HMEQ,0.99925852,0.99902585,-0.00023267142,0,5
+1587,"E7 26,000 rows",TabPFN v3,Hackerearth,0.96319489,0.95825751,-0.0049373785,0,5
+1588,"E7 26,000 rows",TabPFN v3,Home Credit,0.75332606,0.75303736,-0.00028870735,1,5
+1589,"E7 26,000 rows",TabPFN v3,LendingClub,0.68545173,0.68662471,0.0011729822,5,5
+1590,"E7 26,000 rows",TabPFN v3,MicroFinance,0.65973672,0.65988306,0.00014633959,2,5
+1591,"E7 26,000 rows",TabPFN v3,Myhom,0.59735565,0.59748831,0.00013265306,3,5
+1592,"E7 26,000 rows",TabPFN v3,PropPD1,0.812241,0.80938781,-0.0028531825,0,5
+1593,"E7 26,000 rows",TabPFN v3,PropPD2,0.65726867,0.65911254,0.0018438637,5,5
+1594,"E7 26,000 rows",TabPFN v3,SBA Loans Case,0.98983277,0.99067721,0.00084444212,5,5
+1595,"E7 26,000 rows",TabPFN v3,Taiwan Credit Card,0.78966503,0.78977097,0.00010593469,3,5
+1596,"E7 26,000 rows",TabPFN v3,Thomas,0.65158762,0.6525408,0.00095318034,3,5
+1597,"E7 26,000 rows",TabPFN v3,Vehicle Loan,0.65803164,0.6576539,-0.00037773862,0,5
+1598,E8 LR 0.001,TabICLv2,Bondora Peer-to-Peer,0.89721903,0.86572172,-0.031497307,0,5
+1599,E8 LR 0.001,TabICLv2,Cobranded,0.84271235,0.83105271,-0.011659639,0,5
+1600,E8 LR 0.001,TabICLv2,Credit Risk,0.95525688,0.91452525,-0.040731637,0,5
+1601,E8 LR 0.001,TabICLv2,GMSC,0.86720998,0.8402548,-0.026955183,0,5
+1602,E8 LR 0.001,TabICLv2,German Credit,0.79014029,0.77041418,-0.019726105,1,5
+1603,E8 LR 0.001,TabICLv2,HMEQ,0.99637221,0.9767734,-0.019598809,0,5
+1604,E8 LR 0.001,TabICLv2,Hackerearth,0.9571788,0.79902745,-0.15815135,0,5
+1605,E8 LR 0.001,TabICLv2,Home Credit,0.74797136,0.72187487,-0.026096489,0,5
+1606,E8 LR 0.001,TabICLv2,LendingClub,0.68909689,0.65746438,-0.031632517,0,5
+1607,E8 LR 0.001,TabICLv2,MicroFinance,0.6580906,0.62633388,-0.031756711,0,5
+1608,E8 LR 0.001,TabICLv2,Myhom,0.59466603,0.57425489,-0.020411139,1,5
+1609,E8 LR 0.001,TabICLv2,PropPD1,0.81216753,0.75198876,-0.060178767,0,5
+1610,E8 LR 0.001,TabICLv2,PropPD2,0.65634383,0.60888134,-0.0474625,0,5
+1611,E8 LR 0.001,TabICLv2,SBA Loans Case,0.98987327,0.98806159,-0.0018116807,1,5
+1612,E8 LR 0.001,TabICLv2,Taiwan Credit Card,0.79012847,0.76999882,-0.02012965,0,5
+1613,E8 LR 0.001,TabICLv2,Thomas,0.6493295,0.57514744,-0.074182055,0,5
+1614,E8 LR 0.001,TabICLv2,Vehicle Loan,0.65638155,0.60422437,-0.052157176,0,5
+1615,E8 LR 0.0001,TabICLv2,Bondora Peer-to-Peer,0.89721903,0.8925176,-0.0047014302,0,5
+1616,E8 LR 0.0001,TabICLv2,Cobranded,0.84271235,0.83992919,-0.0027831591,0,5
+1617,E8 LR 0.0001,TabICLv2,Credit Risk,0.95525688,0.93142459,-0.023832293,0,5
+1618,E8 LR 0.0001,TabICLv2,GMSC,0.86720998,0.85682046,-0.010389522,0,5
+1619,E8 LR 0.0001,TabICLv2,German Credit,0.79014029,0.78737838,-0.0027619048,2,5
+1620,E8 LR 0.0001,TabICLv2,HMEQ,0.99637221,0.99420272,-0.0021694894,0,5
+1621,E8 LR 0.0001,TabICLv2,Hackerearth,0.9571788,0.90171384,-0.055464956,0,5
+1622,E8 LR 0.0001,TabICLv2,Home Credit,0.74797136,0.73615952,-0.011811841,0,5
+1623,E8 LR 0.0001,TabICLv2,LendingClub,0.68909689,0.68128755,-0.0078093443,0,5
+1624,E8 LR 0.0001,TabICLv2,MicroFinance,0.6580906,0.64371904,-0.014371556,0,5
+1625,E8 LR 0.0001,TabICLv2,Myhom,0.59466603,0.59117049,-0.0034955357,2,5
+1626,E8 LR 0.0001,TabICLv2,PropPD1,0.81216753,0.80974322,-0.0024243107,0,5
+1627,E8 LR 0.0001,TabICLv2,PropPD2,0.65634383,0.65157421,-0.0047696248,0,5
+1628,E8 LR 0.0001,TabICLv2,SBA Loans Case,0.98987327,0.98928629,-0.0005869849,2,5
+1629,E8 LR 0.0001,TabICLv2,Taiwan Credit Card,0.79012847,0.78555094,-0.0045775245,0,5
+1630,E8 LR 0.0001,TabICLv2,Thomas,0.6493295,0.63742829,-0.011901202,2,5
+1631,E8 LR 0.0001,TabICLv2,Vehicle Loan,0.65638155,0.63333551,-0.023046036,0,5
+1632,E8 LR 1e-05,TabICLv2,Bondora Peer-to-Peer,0.89721903,0.89549417,-0.0017248621,0,5
+1633,E8 LR 1e-05,TabICLv2,Cobranded,0.84271235,0.84232522,-0.00038713677,0,5
+1634,E8 LR 1e-05,TabICLv2,Credit Risk,0.95525688,0.94293242,-0.012324462,0,5
+1635,E8 LR 1e-05,TabICLv2,GMSC,0.86720998,0.86640934,-0.00080064462,1,5
+1636,E8 LR 1e-05,TabICLv2,German Credit,0.79014029,0.79346557,0.0033252826,4,5
+1637,E8 LR 1e-05,TabICLv2,HMEQ,0.99637221,0.99499325,-0.001378963,0,5
+1638,E8 LR 1e-05,TabICLv2,Hackerearth,0.9571788,0.93194665,-0.025232152,0,5
+1639,E8 LR 1e-05,TabICLv2,Home Credit,0.74797136,0.74615816,-0.0018132015,0,5
+1640,E8 LR 1e-05,TabICLv2,LendingClub,0.68909689,0.68834511,-0.0007517882,2,5
+1641,E8 LR 1e-05,TabICLv2,MicroFinance,0.6580906,0.65242276,-0.0056678351,0,5
+1642,E8 LR 1e-05,TabICLv2,Myhom,0.59466603,0.59454379,-0.00012223639,3,5
+1643,E8 LR 1e-05,TabICLv2,PropPD1,0.81216753,0.8120345,-0.00013302785,2,5
+1644,E8 LR 1e-05,TabICLv2,PropPD2,0.65634383,0.65660084,0.00025700549,2,5
+1645,E8 LR 1e-05,TabICLv2,SBA Loans Case,0.98987327,0.98996868,9.5403723e-05,2,5
+1646,E8 LR 1e-05,TabICLv2,Taiwan Credit Card,0.79012847,0.78851543,-0.001613039,0,5
+1647,E8 LR 1e-05,TabICLv2,Thomas,0.6493295,0.64653716,-0.0027923396,1,5
+1648,E8 LR 1e-05,TabICLv2,Vehicle Loan,0.65638155,0.65241898,-0.0039625646,0,5
+1649,E8 LR 0.001,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.88908709,-0.0087726455,0,5
+1650,E8 LR 0.001,TabPFN v3,Cobranded,0.84235195,0.83785111,-0.0045008443,0,5
+1651,E8 LR 0.001,TabPFN v3,Credit Risk,0.95168825,0.91205625,-0.039632001,0,5
+1652,E8 LR 0.001,TabPFN v3,GMSC,0.86875853,0.86517854,-0.0035799942,0,5
+1653,E8 LR 0.001,TabPFN v3,German Credit,0.79130593,0.72939757,-0.061908359,0,5
+1654,E8 LR 0.001,TabPFN v3,HMEQ,0.99925852,0.97012997,-0.029128545,0,5
+1655,E8 LR 0.001,TabPFN v3,Hackerearth,0.96319489,0.82751217,-0.13568272,0,5
+1656,E8 LR 0.001,TabPFN v3,Home Credit,0.75334752,0.73501134,-0.018336177,0,5
+1657,E8 LR 0.001,TabPFN v3,LendingClub,0.68545173,0.67244445,-0.013007282,0,5
+1658,E8 LR 0.001,TabPFN v3,MicroFinance,0.65974326,0.64750989,-0.012233371,0,5
+1659,E8 LR 0.001,TabPFN v3,Myhom,0.59735565,0.59639605,-0.00095960884,2,5
+1660,E8 LR 0.001,TabPFN v3,PropPD1,0.812241,0.77020885,-0.042032147,0,5
+1661,E8 LR 0.001,TabPFN v3,PropPD2,0.65733128,0.65222228,-0.0051089942,0,5
+1662,E8 LR 0.001,TabPFN v3,SBA Loans Case,0.98983277,0.98407365,-0.0057591238,0,5
+1663,E8 LR 0.001,TabPFN v3,Taiwan Credit Card,0.78966503,0.7812334,-0.0084316307,0,5
+1664,E8 LR 0.001,TabPFN v3,Thomas,0.65158762,0.62507747,-0.026510153,0,5
+1665,E8 LR 0.001,TabPFN v3,Vehicle Loan,0.65803164,0.65001862,-0.0080130283,0,5
+1666,E8 LR 0.0001,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89412007,-0.0037396687,0,5
+1667,E8 LR 0.0001,TabPFN v3,Cobranded,0.84235195,0.84057773,-0.0017742237,0,5
+1668,E8 LR 0.0001,TabPFN v3,Credit Risk,0.95168825,0.94209296,-0.0095952913,0,5
+1669,E8 LR 0.0001,TabPFN v3,GMSC,0.86875853,0.86752262,-0.0012359145,0,5
+1670,E8 LR 0.0001,TabPFN v3,German Credit,0.79130593,0.75784567,-0.03346026,0,5
+1671,E8 LR 0.0001,TabPFN v3,HMEQ,0.99925852,0.99421835,-0.0050401732,0,5
+1672,E8 LR 0.0001,TabPFN v3,Hackerearth,0.96319489,0.92228855,-0.040906334,0,5
+1673,E8 LR 0.0001,TabPFN v3,Home Credit,0.75334752,0.74126203,-0.012085489,0,5
+1674,E8 LR 0.0001,TabPFN v3,LendingClub,0.68545173,0.68276985,-0.0026818777,3,5
+1675,E8 LR 0.0001,TabPFN v3,MicroFinance,0.65974326,0.65344482,-0.0062984341,0,5
+1676,E8 LR 0.0001,TabPFN v3,Myhom,0.59735565,0.58697173,-0.010383929,1,5
+1677,E8 LR 0.0001,TabPFN v3,PropPD1,0.812241,0.80440828,-0.0078327141,0,5
+1678,E8 LR 0.0001,TabPFN v3,PropPD2,0.65733128,0.65479206,-0.0025392199,0,5
+1679,E8 LR 0.0001,TabPFN v3,SBA Loans Case,0.98983277,0.9886505,-0.0011822669,2,5
+1680,E8 LR 0.0001,TabPFN v3,Taiwan Credit Card,0.78966503,0.78557087,-0.0040941651,0,5
+1681,E8 LR 0.0001,TabPFN v3,Thomas,0.65158762,0.63804126,-0.013546359,2,5
+1682,E8 LR 0.0001,TabPFN v3,Vehicle Loan,0.65803164,0.65274274,-0.0052889033,0,5
+1683,E8 LR 1e-05,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89796221,0.00010247748,5,5
+1684,E8 LR 1e-05,TabPFN v3,Cobranded,0.84235195,0.84276099,0.00040903792,4,5
+1685,E8 LR 1e-05,TabPFN v3,Credit Risk,0.95168825,0.9507851,-0.00090314763,1,5
+1686,E8 LR 1e-05,TabPFN v3,GMSC,0.86875853,0.86827198,-0.00048655414,1,5
+1687,E8 LR 1e-05,TabPFN v3,German Credit,0.79130593,0.79255892,0.0012529976,3,5
+1688,E8 LR 1e-05,TabPFN v3,HMEQ,0.99925852,0.99886875,-0.00038976506,0,5
+1689,E8 LR 1e-05,TabPFN v3,Hackerearth,0.96319489,0.95697677,-0.0062181156,0,5
+1690,E8 LR 1e-05,TabPFN v3,Home Credit,0.75334752,0.75122444,-0.0021230767,0,5
+1691,E8 LR 1e-05,TabPFN v3,LendingClub,0.68545173,0.68673065,0.0012789148,3,5
+1692,E8 LR 1e-05,TabPFN v3,MicroFinance,0.65974326,0.66096564,0.0012223848,5,5
+1693,E8 LR 1e-05,TabPFN v3,Myhom,0.59735565,0.59635459,-0.0010010629,1,5
+1694,E8 LR 1e-05,TabPFN v3,PropPD1,0.812241,0.8136274,0.0013864075,5,5
+1695,E8 LR 1e-05,TabPFN v3,PropPD2,0.65733128,0.65671689,-0.00061438957,2,5
+1696,E8 LR 1e-05,TabPFN v3,SBA Loans Case,0.98983277,0.99020246,0.00036969318,4,5
+1697,E8 LR 1e-05,TabPFN v3,Taiwan Credit Card,0.78966503,0.78947322,-0.00019180854,2,5
+1698,E8 LR 1e-05,TabPFN v3,Thomas,0.65158762,0.65377636,0.0021887425,3,5
+1699,E8 LR 1e-05,TabPFN v3,Vehicle Loan,0.65803164,0.65544978,-0.0025818612,0,5
+
+Figure: pd_overview_outcomes
+PD. For the same arms as the distribution figure, the share of held-out credit tables whose paired AUC change relative to the original model exceeds +0.1 percentage points (improved), lies within ±0.1 (negligible) or falls below −0.1 (worse); numbers give improved/total tables. The ±0.1 band is a reporting convention for this study, not a statistical equivalence margin. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. The dotted line marks half of the tables.
+Outcome counts
+CSV (first column: row index)
+row,base,config,Improved,Negligible,Worse
+0,TabICLv2,E1 all · LR 3e-07 · λ 0.003,4,8,5
+1,TabICLv2,E1 frozen · LR 3e-07 · λ 0.003,3,10,4
+2,TabICLv2,E2 Reference · seed 43,4,6,7
+3,TabICLv2,E3 Accumulate,4,7,6
+4,TabICLv2,E3 Full pass,3,6,8
+5,TabICLv2,E3 One sample,4,7,6
+6,TabICLv2,E5 LR 0.0001,2,10,5
+7,TabICLv2,E5 LR 0.001,1,7,9
+8,TabICLv2,E5 LR 0.03,0,0,17
+9,TabICLv2,E6 All tables,4,6,7
+10,TabICLv2,E6 Large tables,3,6,8
+11,TabICLv2,"E7 2,048 rows",3,4,10
+12,TabICLv2,"E7 26,000 rows",2,7,8
+13,TabICLv2,E8 LR 0.0001,0,1,16
+14,TabICLv2,E8 LR 0.001,0,0,17
+15,TabICLv2,E8 LR 1e-05,1,7,9
+16,TabPFN v2,E1 all · LR 3e-07 · λ 0.003,16,1,0
+17,TabPFN v2,E1 frozen · LR 3e-07 · λ 0.003,0,17,0
+18,TabPFN v2,E2 Reference · seed 43,16,1,0
+19,TabPFN v2,E3 Accumulate,16,1,0
+20,TabPFN v2,E3 Full pass,16,1,0
+21,TabPFN v2,E3 One sample,16,1,0
+22,TabPFN v2.6,E1 all · LR 3e-07 · λ 0.003,2,13,2
+23,TabPFN v2.6,E1 frozen · LR 3e-07 · λ 0.003,0,17,0
+24,TabPFN v2.6,E2 Reference · seed 43,2,13,2
+25,TabPFN v2.6,E3 Accumulate,2,12,3
+26,TabPFN v2.6,E3 Full pass,1,14,2
+27,TabPFN v2.6,E3 One sample,2,13,2
+28,TabPFN v3,E1 all · LR 3e-07 · λ 0.003,5,11,1
+29,TabPFN v3,E1 frozen · LR 3e-07 · λ 0.003,5,11,1
+30,TabPFN v3,E2 Reference · seed 43,5,11,1
+31,TabPFN v3,E3 Accumulate,3,13,1
+32,TabPFN v3,E3 Full pass,4,11,2
+33,TabPFN v3,E3 One sample,4,12,1
+34,TabPFN v3,E5 LR 0.0001,1,16,0
+35,TabPFN v3,E5 LR 0.001,3,12,2
+36,TabPFN v3,E5 LR 0.03,2,6,9
+37,TabPFN v3,E6 All tables,2,9,6
+38,TabPFN v3,E6 Large tables,2,8,7
+39,TabPFN v3,"E7 2,048 rows",1,8,8
+40,TabPFN v3,"E7 26,000 rows",3,12,2
+41,TabPFN v3,E8 LR 0.0001,0,0,17
+42,TabPFN v3,E8 LR 0.001,0,1,16
+43,TabPFN v3,E8 LR 1e-05,5,8,4
+
+4. Learning rate and adaptation approach
+Learning-rate scales differ in meaning between approaches; compare the shape of each curve rather than rates across approaches.
+
+Figure: pd_overview_rate_response
+PD. Equal-table mean paired change in AUC (percentage points) relative to the original model, against peak learning rate, for full-parameter and frozen-backbone CPT (experiment 1; solid λ = 0.003, dashed λ = 0), DiagScale query-scaling adapters (experiment 5) and query/value LoRA (experiment 8). Shaded bands span the table interquartile range, not confidence intervals. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. The rate scales are not interchangeable across approaches: DiagScale updates multiplicative query scales and LoRA updates low-rank factors, so their rates are shown on a common axis only to display each approach's own sensitivity. The studies also differ in PD sampling, training precision and TabICLv2 inference settings.
+Rate response
+CSV (first column: row index)
+row,base,approach,l2sp_lambda,learning_rate,mean,q25,q75,tables
+0,TabICLv2,DiagScale,0,0.0001,-0.00046681931,-0.0010137342,-7.2037289e-05,17
+1,TabICLv2,DiagScale,0,0.001,-0.0032219149,-0.003143543,-0.00060826713,17
+2,TabICLv2,DiagScale,0,0.03,-0.022570029,-0.018905268,-0.005141369,17
+3,TabICLv2,Frozen backbone,0,3e-07,0.0039638425,-0.00090965466,0.00013127916,17
+4,TabICLv2,Frozen backbone,0,1e-06,0.0037197904,-0.0013224896,0.00019097774,17
+5,TabICLv2,Frozen backbone,0,1e-05,0.0008226641,-0.00328867,0.00043318618,17
+6,TabICLv2,Frozen backbone,0,3e-05,-0.0025077923,-0.0054988576,-0.00089196379,17
+7,TabICLv2,Frozen backbone,0.003,3e-07,0.0039437524,-0.00093561173,0.00012213118,17
+8,TabICLv2,Frozen backbone,0.003,1e-06,0.0037429814,-0.00149375,0.00016632851,17
+9,TabICLv2,Frozen backbone,0.003,1e-05,0.0017236009,-0.0024952932,0.00056714576,17
+10,TabICLv2,Frozen backbone,0.003,3e-05,-0.00022244584,-0.0033700646,-0.00037226374,17
+11,TabICLv2,Full CPT,0,3e-07,0.0034446865,-0.0018223383,0.000146919,17
+12,TabICLv2,Full CPT,0,1e-06,0.0026216357,-0.0026100114,0.00018763827,17
+13,TabICLv2,Full CPT,0,1e-05,-0.022399734,-0.028874377,-0.0035238799,17
+14,TabICLv2,Full CPT,0,3e-05,-0.042181358,-0.064810038,-0.016083084,17
+15,TabICLv2,Full CPT,0.003,3e-07,0.0036946122,-0.0016434439,0.00022214889,17
+16,TabICLv2,Full CPT,0.003,1e-06,0.0032542405,-0.0018641114,0.0003483988,17
+17,TabICLv2,Full CPT,0.003,1e-05,-0.005951033,-0.018493122,-0.0012730129,17
+18,TabICLv2,Full CPT,0.003,3e-05,-0.0082576592,-0.015123721,-0.0028723349,17
+19,TabICLv2,LoRA,0,1e-05,-0.0032368565,-0.0027923396,-0.00013302785,17
+20,TabICLv2,LoRA,0,0.0001,-0.010993924,-0.011901202,-0.0027831591,17
+21,TabICLv2,LoRA,0,0.001,-0.039655218,-0.0474625,-0.02012965,17
+22,TabPFN v2,Frozen backbone,0,3e-07,4.2761538e-05,-1.1479529e-05,4.6277458e-05,17
+23,TabPFN v2,Frozen backbone,0,1e-06,8.2046818e-05,1.9896427e-05,0.00016438705,17
+24,TabPFN v2,Frozen backbone,0,1e-05,0.00039701141,1.059629e-05,0.00094559319,17
+25,TabPFN v2,Frozen backbone,0,3e-05,0.00060743336,-9.2129253e-05,0.0013161302,17
+26,TabPFN v2,Frozen backbone,0.003,3e-07,4.0753439e-05,-1.4134149e-05,5.6557593e-05,17
+27,TabPFN v2,Frozen backbone,0.003,1e-06,7.5783944e-05,2.5904434e-05,0.00015144854,17
+28,TabPFN v2,Frozen backbone,0.003,1e-05,0.00030794194,5.3368414e-06,0.00059008261,17
+29,TabPFN v2,Frozen backbone,0.003,3e-05,0.00047680076,-5.091368e-05,0.00087389553,17
+30,TabPFN v2,Full CPT,0,3e-07,0.0047954514,0.0028898558,0.0064191092,17
+31,TabPFN v2,Full CPT,0,1e-06,0.005437213,0.003727348,0.0070082689,17
+32,TabPFN v2,Full CPT,0,1e-05,0.0030892111,0.0013418367,0.0059603824,17
+33,TabPFN v2,Full CPT,0,3e-05,-0.0041904351,-0.0097034332,0.0035343193,17
+34,TabPFN v2,Full CPT,0.003,3e-07,0.0047725031,0.0028900965,0.0063839468,17
+35,TabPFN v2,Full CPT,0.003,1e-06,0.0054169542,0.0036243503,0.0069070627,17
+36,TabPFN v2,Full CPT,0.003,1e-05,0.004731066,0.0025711058,0.0069500612,17
+37,TabPFN v2,Full CPT,0.003,3e-05,0.0028010623,0.00078715553,0.0060541997,17
+38,TabPFN v2.6,Frozen backbone,0,3e-07,-1.5626376e-05,-3.0914641e-05,3.3072385e-06,17
+39,TabPFN v2.6,Frozen backbone,0,1e-06,-3.3152236e-05,-7.2182599e-05,-9.8063407e-06,17
+40,TabPFN v2.6,Frozen backbone,0,1e-05,-0.00010651704,-0.00028179434,-4.183645e-05,17
+41,TabPFN v2.6,Frozen backbone,0,3e-05,-0.00016842101,-0.00041885116,1.2747422e-05,17
+42,TabPFN v2.6,Frozen backbone,0.003,3e-07,-3.8917611e-05,-3.6817797e-05,3.8392766e-06,17
+43,TabPFN v2.6,Frozen backbone,0.003,1e-06,-2.5546661e-05,-7.7478347e-05,-5.4711092e-06,17
+44,TabPFN v2.6,Frozen backbone,0.003,1e-05,-0.00012555958,-0.00022464171,-2.0693128e-05,17
+45,TabPFN v2.6,Frozen backbone,0.003,3e-05,-0.00011633257,-0.00025666194,-1.7974048e-05,17
+46,TabPFN v2.6,Full CPT,0,3e-07,-6.9706431e-05,-0.00066387218,0.00016144477,17
+47,TabPFN v2.6,Full CPT,0,1e-06,-0.00021969742,-0.001594834,0.00024416693,17
+48,TabPFN v2.6,Full CPT,0,1e-05,-0.0035782046,-0.0053363425,-0.00015207219,17
+49,TabPFN v2.6,Full CPT,0,3e-05,-0.007067018,-0.0095865893,-0.0014765207,17
+50,TabPFN v2.6,Full CPT,0.003,3e-07,-2.3901248e-05,-0.00062878058,0.00016438407,17
+51,TabPFN v2.6,Full CPT,0.003,1e-06,-0.00022527998,-0.0015053281,0.0002427313,17
+52,TabPFN v2.6,Full CPT,0.003,1e-05,-0.0021552498,-0.0031277835,-1.3251659e-05,17
+53,TabPFN v2.6,Full CPT,0.003,3e-05,-0.0023588496,-0.0041768585,-3.1548042e-05,17
+54,TabPFN v3,DiagScale,0,0.0001,0.00021614596,3.4979271e-07,0.00055956505,17
+55,TabPFN v3,DiagScale,0,0.001,-0.0002659142,-0.0006710477,0.00059737678,17
+56,TabPFN v3,DiagScale,0,0.03,-0.0041242283,-0.0027525864,-9.247449e-05,17
+57,TabPFN v3,Frozen backbone,0,3e-07,0.00057468197,1.3554758e-05,0.001075057,17
+58,TabPFN v3,Frozen backbone,0,1e-06,-0.00055267688,-0.00032710154,0.00093565686,17
+59,TabPFN v3,Frozen backbone,0,1e-05,-0.0048684727,-0.0079808153,-0.0006758087,17
+60,TabPFN v3,Frozen backbone,0,3e-05,-0.012096461,-0.016328272,-0.002806646,17
+61,TabPFN v3,Frozen backbone,0.003,3e-07,0.00060283377,0.00017055715,0.0011775906,17
+62,TabPFN v3,Frozen backbone,0.003,1e-06,-0.00062506406,-0.00033060226,0.0009507645,17
+63,TabPFN v3,Frozen backbone,0.003,1e-05,-0.0043215352,-0.0074468658,-0.00064876513,17
+64,TabPFN v3,Frozen backbone,0.003,3e-05,-0.010452737,-0.014382241,-0.0021266907,17
+65,TabPFN v3,Full CPT,0,3e-07,0.00039849298,-7.6042806e-05,0.0011405541,17
+66,TabPFN v3,Full CPT,0,1e-06,-0.0012196226,-0.0010387119,0.00026578143,17
+67,TabPFN v3,Full CPT,0,1e-05,-0.030638337,-0.048337585,-0.0091785699,17
+68,TabPFN v3,Full CPT,0,3e-05,-0.056910382,-0.081342612,-0.027335145,17
+69,TabPFN v3,Full CPT,0.003,3e-07,0.00042974146,-4.1099624e-05,0.0012161875,17
+70,TabPFN v3,Full CPT,0.003,1e-06,-0.00081030642,-0.0011812517,0.00041954278,17
+71,TabPFN v3,Full CPT,0.003,1e-05,-0.017383976,-0.029074341,-0.004694911,17
+72,TabPFN v3,Full CPT,0.003,3e-05,-0.020636044,-0.033507039,-0.0050269582,17
+73,TabPFN v3,LoRA,0,1e-05,-0.00037053679,-0.00090314763,0.0012223848,17
+74,TabPFN v3,LoRA,0,0.0001,-0.0095108955,-0.010383929,-0.0026818777,17
+75,TabPFN v3,LoRA,0,0.001,-0.024917448,-0.029128545,-0.0057591238,17
+
+5. Credit transfer against non-credit retention
+Non-credit tables average all four CPT partitions. The retention panel contains four tables per task.
+
+Figure: pd_overview_transfer_retention
+PD. Each point is one configuration: its equal-table mean paired change on held-out credit tables (horizontal) and on the four non-credit retention tables of the same task (vertical), both relative to the original model of the same base. Non-credit tables first average all four CPT training partitions. The upper-right quadrant improves both; the lower-right gains on credit while losing on the retention panel. Points outlined in black are the experiment-1 reference recipes (full and frozen). Axis limits differ between models. A four-table retention panel does not establish general retention. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
+Credit and retention means
+CSV (first column: row index)
+row,config,base,approach,experiment,mean_credit,tables_credit,mean_retention,tables_retention
+0,E1 frozen · LR 1e-05 · λ 0,TabICLv2,Frozen backbone,1,0.0008226641,17,-0.00066773195,4
+1,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,Frozen backbone,1,0.00039701141,17,0.0010423547,4
+2,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,Frozen backbone,1,-0.00010651704,17,-4.8379163e-05,4
+3,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,Frozen backbone,1,-0.0048684727,17,-0.0098017358,4
+4,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,Frozen backbone,1,0.0017236009,17,-0.00055470634,4
+5,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,Frozen backbone,1,0.00030794194,17,0.00062452792,4
+6,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-0.00012555958,17,-7.3714867e-05,4
+7,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.0043215352,17,-0.0065851964,4
+8,E1 frozen · LR 1e-06 · λ 0,TabICLv2,Frozen backbone,1,0.0037197904,17,0.0013774947,4
+9,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,Frozen backbone,1,8.2046818e-05,17,0.00019096437,4
+10,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,Frozen backbone,1,-3.3152236e-05,17,3.3460147e-05,4
+11,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,Frozen backbone,1,-0.00055267688,17,0.0013802739,4
+12,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,Frozen backbone,1,0.0037429814,17,0.0014658791,4
+13,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,Frozen backbone,1,7.5783944e-05,17,0.0001745835,4
+14,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-2.5546661e-05,17,2.0485852e-06,4
+15,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.00062506406,17,0.0013480994,4
+16,E1 frozen · LR 3e-05 · λ 0,TabICLv2,Frozen backbone,1,-0.0025077923,17,-0.0030560113,4
+17,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,Frozen backbone,1,0.00060743336,17,0.0016257577,4
+18,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,Frozen backbone,1,-0.00016842101,17,-0.00023185842,4
+19,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,Frozen backbone,1,-0.012096461,17,-0.052972883,4
+20,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,Frozen backbone,1,-0.00022244584,17,-0.001400908,4
+21,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,Frozen backbone,1,0.00047680076,17,0.0011914946,4
+22,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-0.00011633257,17,-6.6837281e-05,4
+23,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.010452737,17,-0.038202395,4
+24,E1 frozen · LR 3e-07 · λ 0,TabICLv2,Frozen backbone,1,0.0039638425,17,0.0016171361,4
+25,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,Frozen backbone,1,4.2761538e-05,17,9.4256896e-05,4
+26,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,Frozen backbone,1,-1.5626376e-05,17,6.8948006e-06,4
+27,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,Frozen backbone,1,0.00057468197,17,0.0014761524,4
+28,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Frozen backbone,1,0.0039437524,17,0.0015251927,4
+29,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Frozen backbone,1,4.0753439e-05,17,8.0107375e-05,4
+30,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-3.8917611e-05,17,2.0626708e-05,4
+31,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Frozen backbone,1,0.00060283377,17,0.0014548673,4
+32,E1 all · LR 1e-05 · λ 0,TabICLv2,Full CPT,1,-0.022399734,17,-0.052703039,4
+33,E1 all · LR 1e-05 · λ 0,TabPFN v2,Full CPT,1,0.0030892111,17,-0.0015822741,4
+34,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,Full CPT,1,-0.0035782046,17,-0.0016695594,4
+35,E1 all · LR 1e-05 · λ 0,TabPFN v3,Full CPT,1,-0.030638337,17,-0.078527817,4
+36,E1 all · LR 1e-05 · λ 0.003,TabICLv2,Full CPT,1,-0.005951033,17,-0.010747172,4
+37,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,Full CPT,1,0.004731066,17,0.0029487823,4
+38,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.0021552498,17,-0.00012796497,4
+39,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,Full CPT,1,-0.017383976,17,-0.039812178,4
+40,E1 all · LR 1e-06 · λ 0,TabICLv2,Full CPT,1,0.0026216357,17,-0.00045160928,4
+41,E1 all · LR 1e-06 · λ 0,TabPFN v2,Full CPT,1,0.005437213,17,0.0059963531,4
+42,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,Full CPT,1,-0.00021969742,17,0.00053811956,4
+43,E1 all · LR 1e-06 · λ 0,TabPFN v3,Full CPT,1,-0.0012196226,17,-0.0051454,4
+44,E1 all · LR 1e-06 · λ 0.003,TabICLv2,Full CPT,1,0.0032542405,17,0.00057309381,4
+45,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,Full CPT,1,0.0054169542,17,0.0061135312,4
+46,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.00022527998,17,0.00059562772,4
+47,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,Full CPT,1,-0.00081030642,17,-0.0039358422,4
+48,E1 all · LR 3e-05 · λ 0,TabICLv2,Full CPT,1,-0.042181358,17,-0.070105181,4
+49,E1 all · LR 3e-05 · λ 0,TabPFN v2,Full CPT,1,-0.0041904351,17,-0.020975285,4
+50,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,Full CPT,1,-0.007067018,17,-0.009107566,4
+51,E1 all · LR 3e-05 · λ 0,TabPFN v3,Full CPT,1,-0.056910382,17,-0.14619915,4
+52,E1 all · LR 3e-05 · λ 0.003,TabICLv2,Full CPT,1,-0.0082576592,17,-0.010560764,4
+53,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,Full CPT,1,0.0028010623,17,-0.00045050605,4
+54,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.0023588496,17,-0.0011858235,4
+55,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,Full CPT,1,-0.020636044,17,-0.040499306,4
+56,E1 all · LR 3e-07 · λ 0,TabICLv2,Full CPT,1,0.0034446865,17,0.0016793397,4
+57,E1 all · LR 3e-07 · λ 0,TabPFN v2,Full CPT,1,0.0047954514,17,0.0062858791,4
+58,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,Full CPT,1,-6.9706431e-05,17,0.00060629031,4
+59,E1 all · LR 3e-07 · λ 0,TabPFN v3,Full CPT,1,0.00039849298,17,0.00065289078,4
+60,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Full CPT,1,0.0036946122,17,0.0017644524,4
+61,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Full CPT,1,0.0047725031,17,0.0062425637,4
+62,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Full CPT,1,-2.3901248e-05,17,0.00058646589,4
+63,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Full CPT,1,0.00042974146,17,0.0006975223,4
+64,E2 Reference · seed 43,TabICLv2,Full CPT,2,0.0034436661,17,0.0017142717,4
+65,E2 Reference · seed 43,TabPFN v2,Full CPT,2,0.0047485715,17,0.0062363051,4
+66,E2 Reference · seed 43,TabPFN v2.6,Full CPT,2,-0.00010303215,17,0.00059327223,4
+67,E2 Reference · seed 43,TabPFN v3,Full CPT,2,0.00041264317,17,0.000918256,4
+68,E3 Accumulate,TabICLv2,Full CPT,3,0.0031221717,17,0.0016493547,4
+69,E3 Accumulate,TabPFN v2,Full CPT,3,0.0045763435,17,0.0054631791,4
+70,E3 Accumulate,TabPFN v2.6,Full CPT,3,-7.746184e-05,17,0.00034271192,4
+71,E3 Accumulate,TabPFN v3,Full CPT,3,2.7389963e-05,17,0.00099176515,4
+72,E3 Full pass,TabICLv2,Full CPT,3,0.0029913513,17,0.0016479979,4
+73,E3 Full pass,TabPFN v2,Full CPT,3,0.0040480848,17,0.0048454158,4
+74,E3 Full pass,TabPFN v2.6,Full CPT,3,4.9286858e-05,17,5.633707e-05,4
+75,E3 Full pass,TabPFN v3,Full CPT,3,-4.2907602e-05,17,0.0012318487,4
+76,E3 One sample,TabICLv2,Full CPT,3,0.0036028809,17,0.0018603355,4
+77,E3 One sample,TabPFN v2,Full CPT,3,0.0045625786,17,0.0058631385,4
+78,E3 One sample,TabPFN v2.6,Full CPT,3,-7.5815198e-05,17,0.00046258813,4
+79,E3 One sample,TabPFN v3,Full CPT,3,0.00026476959,17,0.0011883407,4
+80,E5 LR 0.0001,TabICLv2,DiagScale,5,-0.00046681931,17,0.00018145944,4
+81,E5 LR 0.0001,TabPFN v3,DiagScale,5,0.00021614596,17,0.00086798536,4
+82,E5 LR 0.001,TabICLv2,DiagScale,5,-0.0032219149,17,-0.0013958011,4
+83,E5 LR 0.001,TabPFN v3,DiagScale,5,-0.0002659142,17,0.0007075295,4
+84,E5 LR 0.03,TabICLv2,DiagScale,5,-0.022570029,17,-0.015185242,4
+85,E5 LR 0.03,TabPFN v3,DiagScale,5,-0.0041242283,17,0.00021562011,4
+86,E6 All tables,TabICLv2,Full CPT,6,0.003572336,17,0.0019015843,4
+87,E6 All tables,TabPFN v3,Full CPT,6,-0.0010034685,17,0.00080424508,4
+88,E6 Large tables,TabICLv2,Full CPT,6,0.0020567533,17,0.00087982017,4
+89,E6 Large tables,TabPFN v3,Full CPT,6,-0.00077560029,17,0.0017694505,4
+90,"E7 2,048 rows",TabICLv2,Full CPT,7,0.0023976213,17,0.00081226404,4
+91,"E7 2,048 rows",TabPFN v3,Full CPT,7,-0.0043162011,17,-0.00057840748,4
+92,"E7 26,000 rows",TabICLv2,Full CPT,7,0.002562356,17,0.0012424793,4
+93,"E7 26,000 rows",TabPFN v3,Full CPT,7,-0.00011445211,17,0.0021740454,4
+94,E8 LR 0.0001,TabICLv2,LoRA,8,-0.010993924,17,-0.012756029,4
+95,E8 LR 0.0001,TabPFN v3,LoRA,8,-0.0095108955,17,-0.024566499,4
+96,E8 LR 0.001,TabICLv2,LoRA,8,-0.039655218,17,-0.05711473,4
+97,E8 LR 0.001,TabPFN v3,LoRA,8,-0.024917448,17,-0.027317814,4
+98,E8 LR 1e-05,TabICLv2,LoRA,8,-0.0032368565,17,-0.0006314391,4
+99,E8 LR 1e-05,TabPFN v3,LoRA,8,-0.00037053679,17,1.1044255e-05,4
+
+Table: Non-credit retention per configuration
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.87184233,-0.00066773195,-0.0010647272,-0.0038388604,0.0021064012,-0.0096148858,0.0090734124,1,1,2,25,80,0.25
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.84966992,0.0010423547,0.00097278012,0.00039099504,0.0016241398,5.5957183e-05,0.0021679016,2,2,0,62,80,0.5
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.87192688,-4.8379163e-05,7.5760349e-05,-0.00017814717,0.00020552836,-0.00058562204,0.00024058469,0,4,0,34,80,0
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.86317813,-0.0098017358,-0.0035672761,-0.011332669,-0.0020363434,-0.031336638,-0.00073575279,0,1,3,14,80,0
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.87195536,-0.00055470634,-0.00098466093,-0.0035862116,0.0020468443,-0.0090395255,0.008790022,1,1,2,27,80,0.25
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.84925209,0.00062452792,0.0003986561,0.00015483196,0.00086835206,6.9662938e-05,0.0016311365,1,3,0,62,80,0.25
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87190155,-7.3714867e-05,-4.9754616e-05,-0.00012573068,2.2612006e-06,-0.00033375259,0.00013840236,0,4,0,33,80,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.86639467,-0.0065851964,-0.0028350682,-0.0091711158,-0.00024914881,-0.021518902,0.00084825222,0,2,2,25,80,0
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.87388756,0.0013774947,-0.00047674383,-0.0016765201,0.002577271,-0.0036608398,0.010124306,1,1,2,29,80,0.25
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.84881853,0.00019096437,0.00013988716,3.6083666e-05,0.00029476787,2.7267924e-05,0.00045681522,0,4,0,55,80,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.87200872,3.3460147e-05,2.6099227e-05,-1.1642408e-05,7.1201781e-05,-5.2422408e-05,0.00013406454,0,4,0,44,80,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.87436014,0.0013802739,0.00068635999,-0.00021715264,0.0022837865,-0.00066392695,0.0048123026,2,2,0,51,80,0.5
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.87397594,0.0014658791,-0.00053005996,-0.0015410673,0.0024768865,-0.0032079878,0.010131624,1,2,1,31,80,0.25
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.84880215,0.0001745835,0.00013487494,3.1257687e-05,0.00027820075,1.9740747e-05,0.00040884336,0,4,0,57,80,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87197731,2.0485852e-06,6.8272586e-06,-9.7823585e-06,1.8658202e-05,-4.8180527e-05,4.2720351e-05,0,4,0,36,80,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.87432796,0.0013480994,0.00060771241,-0.00026592446,0.0022217362,-0.00077980859,0.0049567812,2,2,0,50,80,0.5
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.86945405,-0.0030560113,-0.0026836756,-0.0060054006,0.00026571374,-0.013052831,0.0061961367,1,0,3,20,80,0.25
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.85025332,0.0016257577,0.0015431252,0.00067158226,0.0024973007,4.5158262e-05,0.0033716219,2,2,0,57,80,0.5
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.8717434,-0.00023185842,-6.920474e-05,-0.0003243157,2.3252544e-05,-0.0010693211,0.00028029689,0,3,1,34,80,0
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.82000698,-0.052972883,-0.042763911,-0.087460487,-0.0082763073,-0.12427259,-0.0020911228,0,0,4,4,80,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.87110915,-0.001400908,-0.0015204003,-0.0041610176,0.0012397094,-0.01017869,0.0076158589,1,1,2,23,80,0.25
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.84981906,0.0011914946,0.00066008833,0.00034201698,0.001509566,8.6403124e-05,0.0033593987,1,3,0,68,80,0.25
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87190842,-6.6837281e-05,-9.7102115e-06,-0.00013831644,6.1768946e-05,-0.0004219223,0.0001739936,0,4,0,38,80,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.83477747,-0.038202395,-0.028161875,-0.060102407,-0.0062618628,-0.095287954,-0.001197879,0,0,4,6,80,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.8741272,0.0016171361,-0.00062669242,-0.00086600587,0.0018564496,-0.0013877131,0.0091096424,1,2,1,29,80,0.25
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.84872182,9.4256896e-05,8.6049903e-05,3.5653908e-05,0.00014465289,1.4780276e-05,0.0001901475,0,4,0,50,80,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.87198216,6.8948006e-06,4.8455227e-06,-9.0143655e-06,2.0754689e-05,-1.2593547e-05,3.0481704e-05,0,4,0,41,80,0
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.87445601,0.0014761524,0.00037422505,0.00012693785,0.0017234396,6.4255399e-05,0.0050919042,1,3,0,54,80,0.25
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.87403525,0.0015251927,-0.0005993954,-0.00096977135,0.0018955686,-0.001694493,0.0089940545,1,2,1,31,80,0.25
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.84870767,8.0107375e-05,4.5543574e-05,1.6048665e-05,0.00010960228,1.494579e-05,0.00021439656,0,4,0,53,80,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87199589,2.0626708e-05,1.2161432e-05,5.271301e-06,2.7516839e-05,-1.2791981e-06,5.9463168e-05,0,4,0,34,80,0
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.87443473,0.0014548673,0.00034031231,9.4331027e-05,0.0017008486,6.1743248e-05,0.0050771013,1,3,0,53,80,0.25
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.81980702,-0.052703039,-0.042034817,-0.061939299,-0.032798557,-0.11078717,-0.015955348,0,0,4,0,80,0
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.84704529,-0.0015822741,4.9350644e-05,-0.0020876841,0.00055476057,-0.0081432525,0.0017154546,1,2,1,38,80,0.25
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.8703057,-0.0016695594,-0.0019145462,-0.0039037037,0.00031959805,-0.0062653077,0.0034161624,1,1,2,27,80,0.25
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.79445204,-0.078527817,-0.063750782,-0.10941719,-0.032861413,-0.15457013,-0.032039577,0,0,4,1,80,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.86176289,-0.010747172,-0.010657388,-0.016128983,-0.0052755774,-0.016613066,-0.0050608451,0,0,4,12,80,0
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.85157634,0.0029487823,0.0030429292,0.0018955349,0.0040961767,0.00057887894,0.005130392,3,1,0,49,80,0.75
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.8718473,-0.00012796497,-0.00056024639,-0.0013403643,0.00065215296,-0.0032203663,0.0038289992,1,2,1,34,80,0.25
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.83316768,-0.039812178,-0.025895586,-0.048998839,-0.016708925,-0.097651718,-0.0098058229,0,0,4,1,80,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.87205845,-0.00045160928,-0.0018650739,-0.0032197979,0.00090311476,-0.0056984903,0.007622201,1,0,3,30,80,0.25
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.85462391,0.0059963531,0.0039241441,0.0021488631,0.0077716341,0.0014537716,0.014683353,4,0,0,71,80,1
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.87251338,0.00053811956,-0.00015872857,-0.000171997,0.000551388,-0.0001835756,0.002653511,1,3,0,48,80,0.25
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.86783446,-0.0051454,-0.0021628602,-0.0067881387,-0.00052012164,-0.017530868,0.001274988,1,0,3,22,80,0.25
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.87308316,0.00057309381,-0.001126873,-0.0024317721,0.0018779929,-0.0045294041,0.0090755254,1,1,2,34,80,0.25
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.85474109,0.0061135312,0.0036807567,0.0020501367,0.0077441512,0.0014822152,0.015610396,4,0,0,71,80,1
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87257089,0.00059562772,-4.395248e-05,-0.00014903717,0.00070071241,-0.00015018185,0.0026205977,1,3,0,47,80,0.25
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.86904402,-0.0039358422,-0.0020062967,-0.0055427252,-0.00039941366,-0.013096925,0.0013661493,1,1,2,26,80,0.25
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.80240488,-0.070105181,-0.063518291,-0.1098104,-0.023813071,-0.13349321,-0.019890928,0,0,4,1,80,0
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.82765228,-0.020975285,-0.017197898,-0.032719531,-0.0054536522,-0.047301547,-0.0022037964,0,0,4,16,80,0
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.8628677,-0.009107566,-0.0075677296,-0.015357396,-0.0013178991,-0.020237508,-0.001057297,0,0,4,13,80,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.72678071,-0.14619915,-0.12641687,-0.18226484,-0.090351184,-0.28944874,-0.042514132,0,0,4,0,80,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.8619493,-0.010560764,-0.0070825047,-0.012998537,-0.0046447324,-0.023540164,-0.0045378846,0,0,4,17,80,0
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.84817706,-0.00045050605,0.0005095592,-0.00075349934,0.00081255249,-0.0041509452,0.0013298026,1,2,1,42,80,0.25
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87078944,-0.0011858235,-0.0021741118,-0.0040388966,0.00067896136,-0.004287743,0.0038926726,1,1,2,27,80,0.25
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.83248056,-0.040499306,-0.040626737,-0.064352798,-0.016773245,-0.069368091,-0.011375656,0,0,4,1,80,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,roc_auc,4,0.87251006,0.8741894,0.0016793397,-0.00072859462,-0.0015041476,0.0024548927,-0.0022843624,0.01045891,1,1,2,40,80,0.25
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,roc_auc,4,0.84862756,0.85491344,0.0062858791,0.0021712384,0.0018695307,0.0065875868,0.0014494506,0.019351589,4,0,0,72,80,1
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,roc_auc,4,0.87197526,0.87258155,0.00060629031,0.00031383153,-0.00011582483,0.0010359467,-0.00019005663,0.0019875548,1,3,0,49,80,0.25
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,roc_auc,4,0.87297986,0.87363275,0.00065289078,-0.00049317458,-0.00063375418,0.00079347039,-0.00091020946,0.0045081217,1,3,0,40,80,0.25
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,roc_auc,4,0.87251006,0.87427451,0.0017644524,-0.00058783303,-0.0013541195,0.0025307388,-0.0021522071,0.010385683,1,1,2,40,80,0.25
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,roc_auc,4,0.84862756,0.85487013,0.0062425637,0.0020914626,0.0018771364,0.00645689,0.0014423099,0.01934502,4,0,0,71,80,1
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,roc_auc,4,0.87197526,0.87256173,0.00058646589,0.00032213365,-0.0001322849,0.0010408844,-0.00027081372,0.00197241,1,3,0,50,80,0.25
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,roc_auc,4,0.87297986,0.87367738,0.0006975223,-0.00043761696,-0.00057383475,0.00083374008,-0.00079415341,0.0044594765,1,3,0,38,80,0.25
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,roc_auc,4,0.87251006,0.87422433,0.0017142717,-0.00060102369,-0.0015903427,0.0027035907,-0.0030627935,0.011121928,1,1,2,41,80,0.25
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,roc_auc,4,0.84862756,0.85486387,0.0062363051,0.0020241375,0.001829035,0.0064314076,0.0014758827,0.019421063,4,0,0,73,80,1
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,roc_auc,4,0.87197526,0.87256853,0.00059327223,0.00029461485,-9.4012007e-05,0.00098189909,-0.00013083034,0.0019146896,1,3,0,50,80,0.25
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,roc_auc,4,0.87297986,0.87389812,0.000918256,-0.0001776984,-0.00052985661,0.0012704142,-0.00061849514,0.0046469159,1,3,0,40,80,0.25
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,roc_auc,4,0.87251006,0.87415942,0.0016493547,-0.00068155691,-0.0015661049,0.0025339027,-0.0031038521,0.011064385,1,1,2,37,80,0.25
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,roc_auc,4,0.84862756,0.85409074,0.0054631791,0.0018510093,0.0016775912,0.0056365972,0.0012178412,0.016932857,4,0,0,69,80,1
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,roc_auc,4,0.87197526,0.87231797,0.00034271192,-0.00018599465,-0.00027893691,0.00043565417,-0.00051636573,0.0022592027,1,3,0,47,80,0.25
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,roc_auc,4,0.87297986,0.87397163,0.00099176515,-0.00028353162,-0.0005410803,0.0012493138,-0.0008305227,0.0053646466,1,3,0,41,80,0.25
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,roc_auc,4,0.87251006,0.87415806,0.0016479979,-0.00023781318,-0.0010870577,0.0024972425,-0.002834934,0.009902552,1,2,1,39,80,0.25
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,roc_auc,4,0.84862756,0.85347298,0.0048454158,0.0014807043,0.0011446489,0.0051814711,0.00032765542,0.016092599,3,1,0,64,80,0.75
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,roc_auc,4,0.87197526,0.8720316,5.633707e-05,4.6693324e-06,-0.00024284463,0.00030385104,-0.00062204026,0.00083804988,0,4,0,39,80,0
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,roc_auc,4,0.87297986,0.87421171,0.0012318487,0.00019852863,-0.00016920505,0.0015995824,-0.00036894026,0.0048992778,1,3,0,42,80,0.25
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,roc_auc,4,0.87251006,0.8743704,0.0018603355,-0.00067331142,-0.0013411511,0.0025281752,-0.0020406138,0.010828579,1,1,2,39,80,0.25
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,roc_auc,4,0.84862756,0.8544907,0.0058631385,0.0019406668,0.0016778418,0.0061259635,0.0012112442,0.018359976,4,0,0,72,80,1
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,roc_auc,4,0.87197526,0.87243785,0.00046258813,-9.8980109e-05,-0.0001656444,0.00052925242,-0.00018803701,0.0022363498,1,3,0,47,80,0.25
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,roc_auc,4,0.87297986,0.8741682,0.0011883407,-0.00033507804,-0.00045450581,0.0013077685,-0.00054558031,0.0059690992,1,3,0,40,80,0.25
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,roc_auc,4,0.87468282,0.87486428,0.00018145944,8.346582e-05,-0.00034475327,0.00060967853,-0.00047824878,0.0010371549,1,3,0,31,80,0.25
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,roc_auc,4,0.87297986,0.87384785,0.00086798536,0.00030028552,9.3549913e-05,0.001074721,-6.462032e-05,0.0029359907,1,3,0,52,80,0.25
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,roc_auc,4,0.87468282,0.87328702,-0.0013958011,-0.00097889411,-0.0024073928,3.2697564e-05,-0.005154416,0.0015289997,1,1,2,27,80,0.25
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,roc_auc,4,0.87297986,0.87368739,0.0007075295,-0.00028473406,-0.00057490372,0.00099769916,-0.0012905027,0.0046900888,1,2,1,42,80,0.25
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,roc_auc,4,0.87468282,0.85949758,-0.015185242,-0.0058774923,-0.016805015,-0.0042577199,-0.045997888,-0.0029880976,0,0,4,12,80,0
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,roc_auc,4,0.87297986,0.87319548,0.00021562011,-0.00044123997,-0.0014866077,0.0012609878,-0.0022449328,0.0039898932,1,1,2,30,80,0.25
+86,6,Corpus policy,Full CPT,E6 All tables,TabICLv2,roc_auc,4,0.87251006,0.87441165,0.0019015843,-0.00054574889,-0.0012842927,0.0026401281,-0.0020650428,0.010762878,1,1,2,36,80,0.25
+87,6,Corpus policy,Full CPT,E6 All tables,TabPFN v3,roc_auc,4,0.87297986,0.87378411,0.00080424508,-0.00065787747,-0.00076056286,0.00090693047,-0.00076784448,0.0053005797,1,3,0,41,80,0.25
+88,6,Corpus policy,Full CPT,E6 Large tables,TabICLv2,roc_auc,4,0.87251006,0.87338988,0.00087982017,-0.0005522279,-0.0015179976,0.0018455899,-0.0036527267,0.0082764632,1,2,1,31,80,0.25
+89,6,Corpus policy,Full CPT,E6 Large tables,TabPFN v3,roc_auc,4,0.87297986,0.87474931,0.0017694505,1.391248e-05,-0.00010476173,0.0018881247,-0.00012993815,0.0071799153,1,3,0,49,80,0.25
+90,7,Episode size,Full CPT,"E7 2,048 rows",TabICLv2,roc_auc,4,0.87251006,0.87332233,0.00081226404,-0.00061752973,-0.0014901822,0.0016849165,-0.0036590411,0.0081431567,1,2,1,30,80,0.25
+91,7,Episode size,Full CPT,"E7 2,048 rows",TabPFN v3,roc_auc,4,0.87297986,0.87240145,-0.00057840748,-0.00053097943,-0.00078157903,-0.00032780788,-0.0010726111,-0.00017905997,0,3,1,33,80,0
+92,7,Episode size,Full CPT,"E7 26,000 rows",TabICLv2,roc_auc,4,0.87251006,0.87375254,0.0012424793,-0.00039750873,-0.001051477,0.0018964476,-0.0026174927,0.0083824275,1,2,1,35,80,0.25
+93,7,Episode size,Full CPT,"E7 26,000 rows",TabPFN v3,roc_auc,4,0.87297986,0.87515391,0.0021740454,0.00054498976,0.00025017925,0.0024688559,9.6953924e-05,0.0075092481,1,3,0,52,80,0.25
+94,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,roc_auc,4,0.87468282,0.86192679,-0.012756029,-0.013131967,-0.018233688,-0.0076543083,-0.018691895,-0.0060682849,0,0,4,9,80,0
+95,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,roc_auc,4,0.87297986,0.84841336,-0.024566499,-0.015467042,-0.0378249,-0.0022086407,-0.066926527,-0.00040538273,0,1,3,10,80,0
+96,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,roc_auc,4,0.87468282,0.81756809,-0.05711473,-0.038391563,-0.078950155,-0.016556139,-0.14319654,-0.0084792568,0,0,4,5,80,0
+97,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,roc_auc,4,0.87297986,0.84566205,-0.027317814,-0.024222308,-0.031722424,-0.019817698,-0.053756501,-0.0070701408,0,0,4,2,80,0
+98,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,roc_auc,4,0.87468282,0.87405138,-0.0006314391,-0.00046932197,-0.0018977911,0.00079703007,-0.0031901829,0.0016030704,1,1,2,34,80,0.25
+99,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,roc_auc,4,0.87297986,0.87299091,1.1044255e-05,-0.00060832594,-0.00090034914,0.00030306746,-0.0015504957,0.0028113246,1,2,1,38,80,0.25
+
+6. Labelled context at prediction time (experiment 4)
+Each cohort contains the tables that support every context size up to its horizon; validation labels are a fixed additional budget.
+
+Figure: pd_overview_context
+PD. Experiment 4: paired change in AUC (percentage points) of the fixed reference CPT checkpoint (experiment 1: full updates, LR 3e-7, L2-SP λ 0.003) relative to its original model, as a function of the number of labelled context rows supplied at prediction time. Contexts are nested prefixes and test rows are identical for both weight states. Each line is a fixed table cohort that contributes at every size up to its horizon; the band spans the table interquartile range for the longest-horizon cohort. Five outer folds are averaged within table before tables are weighted equally. The curves do not estimate variation over independently resampled contexts.
+Context gain curves
+CSV (first column: row index)
+row,context_rows,mean,q25,q75,tables,family,horizon,datasets
+0,8,0.0028815856,-0.0012625467,0.0056966107,17,tabpfn,128,17
+1,12,0.0028946049,-6.8664966e-05,0.0054579792,17,tabpfn,128,17
+2,16,0.0017568615,-0.0016976142,0.004794351,17,tabpfn,128,17
+3,24,0.004064188,0.00067900682,0.0062809181,17,tabpfn,128,17
+4,32,0.0047413767,0.0019145408,0.0079658757,17,tabpfn,128,17
+5,48,0.0030964909,-0.00093559438,0.0060369347,17,tabpfn,128,17
+6,64,0.0041909791,5.1313322e-05,0.0078096166,17,tabpfn,128,17
+7,96,0.0035738955,0.00040409596,0.0063422619,17,tabpfn,128,17
+8,128,0.00379296,0.00083864796,0.0069424437,17,tabpfn,128,17
+9,8,0.0023586746,-0.001026866,0.0052424851,14,tabpfn,2048,14
+10,12,0.002574799,-0.00054346069,0.0064488355,14,tabpfn,2048,14
+11,16,0.0014870519,-0.0028186705,0.003806418,14,tabpfn,2048,14
+12,24,0.0044882536,0.00068106411,0.0061421173,14,tabpfn,2048,14
+13,32,0.0049742639,0.0015042499,0.0085333652,14,tabpfn,2048,14
+14,48,0.0036773514,-0.00090513053,0.0064034311,14,tabpfn,2048,14
+15,64,0.0040321313,-0.00032692733,0.0091855887,14,tabpfn,2048,14
+16,96,0.0032170406,-0.0013772476,0.0062000364,14,tabpfn,2048,14
+17,128,0.0034742079,0.00095732071,0.0062772071,14,tabpfn,2048,14
+18,192,0.001358308,-0.00097341202,0.0039712086,14,tabpfn,2048,14
+19,256,-0.00025284436,-0.001711372,0.0037769047,14,tabpfn,2048,14
+20,384,-0.00036784331,-0.0012996827,0.0035254693,14,tabpfn,2048,14
+21,512,-0.0004134054,-0.0017283881,0.0028735417,14,tabpfn,2048,14
+22,768,-0.00027452808,-0.0019871924,0.001863367,14,tabpfn,2048,14
+23,1024,-0.00067085973,-0.00097110756,0.0010322379,14,tabpfn,2048,14
+24,1536,-0.00018264568,-0.0012224803,0.0030463655,14,tabpfn,2048,14
+25,2048,-0.00052621192,-0.0015714852,0.0025296664,14,tabpfn,2048,14
+26,8,0.0024781156,0.00021653743,0.0042846019,9,tabpfn,50000,9
+27,12,0.0042997254,0.00085436047,0.0069096215,9,tabpfn,50000,9
+28,16,0.0032242591,-0.00054029758,0.0038970342,9,tabpfn,50000,9
+29,24,0.0067501886,0.00068723597,0.0050504425,9,tabpfn,50000,9
+30,32,0.0063961705,0.0020415232,0.0079658757,9,tabpfn,50000,9
+31,48,0.0031880889,-0.0010629732,0.0060369347,9,tabpfn,50000,9
+32,64,0.0027390348,-0.00045300755,0.0072184996,9,tabpfn,50000,9
+33,96,0.0014897519,-0.0020869848,0.0057220409,9,tabpfn,50000,9
+34,128,0.0024112642,-0.0008337132,0.0042814973,9,tabpfn,50000,9
+35,192,0.00060421117,-0.001077057,0.0016538578,9,tabpfn,50000,9
+36,256,-0.0019473183,-0.0018715402,0.0022707904,9,tabpfn,50000,9
+37,384,-0.00090507508,-0.00091614767,0.0032687919,9,tabpfn,50000,9
+38,512,-0.00092654225,-0.00047439534,0.0016792863,9,tabpfn,50000,9
+39,768,-0.00029357177,-0.0016209637,0.001721641,9,tabpfn,50000,9
+40,1024,-0.00067660962,-0.00080176904,0.0010218089,9,tabpfn,50000,9
+41,1536,-0.00019077998,-0.00088677397,0.0028174585,9,tabpfn,50000,9
+42,2048,-0.00063460624,-0.00093125945,0.001513758,9,tabpfn,50000,9
+43,3072,-0.00033814863,9.809089e-06,0.00098709442,9,tabpfn,50000,9
+44,4096,-0.00062959025,-0.00030499563,0.001193466,9,tabpfn,50000,9
+45,6144,-0.00034841119,-0.00034768481,0.00083837416,9,tabpfn,50000,9
+46,8192,-0.00036449485,-0.0002956823,0.00081199054,9,tabpfn,50000,9
+47,12288,-0.00026909602,0.00016064849,0.00079748116,9,tabpfn,50000,9
+48,16384,-0.00028662014,-0.00027135133,0.00097969135,9,tabpfn,50000,9
+49,20480,-0.00026035416,-0.00031504193,0.0007706325,9,tabpfn,50000,9
+50,24576,-0.00017027903,-0.00024680613,0.00070014303,9,tabpfn,50000,9
+51,32768,-5.3616821e-05,-0.00020724692,0.00077013771,9,tabpfn,50000,9
+52,40960,-7.5591024e-05,-0.00025423635,0.00084218367,9,tabpfn,50000,9
+53,49152,-9.0055199e-06,-0.00016486484,0.00085297899,9,tabpfn,50000,9
+54,50000,4.0886832e-06,-0.00019022562,0.0008626489,9,tabpfn,50000,9
+55,8,-0.00028434675,-0.0027163018,0.0026079952,17,tabicl,128,17
+56,12,-0.0011371326,-0.0033485783,0.00063605082,17,tabicl,128,17
+57,16,0.00021894185,-0.0014377046,0.0023409871,17,tabicl,128,17
+58,24,0.00075927168,-0.0025662898,0.0022924676,17,tabicl,128,17
+59,32,0.0011006431,-0.0015609266,0.0044119092,17,tabicl,128,17
+60,48,0.0012207467,-0.0018280233,0.0042016358,17,tabicl,128,17
+61,64,0.001655786,-0.00093159845,0.004047502,17,tabicl,128,17
+62,96,0.00057196548,-0.0031949269,0.0036287345,17,tabicl,128,17
+63,128,0.0010071866,-0.0014798962,0.0032219938,17,tabicl,128,17
+64,8,-0.00010815924,-0.0023641226,0.0021954689,14,tabicl,2048,14
+65,12,-0.00093758978,-0.0029141219,0.00061907014,14,tabicl,2048,14
+66,16,0.00029512463,-0.0013459435,0.002155335,14,tabicl,2048,14
+67,24,0.0012170958,-0.0021657758,0.0045195921,14,tabicl,2048,14
+68,32,0.0011476998,-0.0035811675,0.0054853733,14,tabicl,2048,14
+69,48,0.0019739969,-0.00029317988,0.0042831989,14,tabicl,2048,14
+70,64,0.0021023682,-0.00066558872,0.0052604185,14,tabicl,2048,14
+71,96,4.7162213e-05,-0.0032836553,0.0033697937,14,tabicl,2048,14
+72,128,0.00076230011,-0.0020175818,0.0030676983,14,tabicl,2048,14
+73,192,0.00055636364,-0.0015459808,0.002133414,14,tabicl,2048,14
+74,256,-2.2142823e-06,-0.0013842773,0.0012423665,14,tabicl,2048,14
+75,384,-0.0023089091,-0.0014695157,0.0013541115,14,tabicl,2048,14
+76,512,-0.0031557385,-0.0003643696,0.0014689825,14,tabicl,2048,14
+77,768,-0.0023092543,-0.00095156588,0.0018297402,14,tabicl,2048,14
+78,1024,-0.00028062204,-0.0020450395,0.00029597312,14,tabicl,2048,14
+79,1536,0.0015912951,-0.0014179226,0.0015029399,14,tabicl,2048,14
+80,2048,0.0028638087,-0.0017866328,-0.0001174269,14,tabicl,2048,14
+81,8,-0.00054210487,-0.0025905315,0.0026079952,9,tabicl,50000,9
+82,12,-0.0020327766,-0.0039866148,0.00063605082,9,tabicl,50000,9
+83,16,-0.0017861104,-0.0014377046,0.00051643688,9,tabicl,50000,9
+84,24,-0.0011056639,-0.0044048822,0.0015770841,9,tabicl,50000,9
+85,32,-2.3129378e-05,-0.0042545812,0.0044119092,9,tabicl,50000,9
+86,48,0.001200622,-0.0004393759,0.0040126488,9,tabicl,50000,9
+87,64,0.001841768,0.00039943312,0.004047502,9,tabicl,50000,9
+88,96,-0.00049589929,-0.0033132314,0.0025291617,9,tabicl,50000,9
+89,128,0.00018938001,-0.0021968103,0.0024575672,9,tabicl,50000,9
+90,192,0.00035589851,-0.003031815,0.0021611967,9,tabicl,50000,9
+91,256,-0.00012835858,-0.0015477297,0.00094633862,9,tabicl,50000,9
+92,384,-0.0029175518,-0.0015721147,0.0014849103,9,tabicl,50000,9
+93,512,-0.0046932285,-0.00021981432,0.00129217,9,tabicl,50000,9
+94,768,-0.0033005798,-0.001010159,0.0027095157,9,tabicl,50000,9
+95,1024,-7.9242742e-05,-0.0019116702,0.00030631197,9,tabicl,50000,9
+96,1536,0.001835081,-0.00049407004,0.0019738804,9,tabicl,50000,9
+97,2048,0.0039493042,-0.0018994824,-0.00012391801,9,tabicl,50000,9
+98,3072,0.0022582306,-0.00083864689,-0.0001006198,9,tabicl,50000,9
+99,4096,0.0042136914,-0.0010649969,-3.77982e-05,9,tabicl,50000,9
+100,6144,0.0040293527,-0.0020810682,0.00024054093,9,tabicl,50000,9
+101,8192,0.0022343325,-0.002261601,0.00016564059,9,tabicl,50000,9
+102,12288,0.0067749141,-0.0016268685,0.00012233093,9,tabicl,50000,9
+103,16384,0.0039858894,-0.0015466897,-0.00021608088,9,tabicl,50000,9
+104,20480,0.0044889448,-0.0015743758,-0.0002249281,9,tabicl,50000,9
+105,24576,0.0045210961,-0.00081393124,-0.00027552183,9,tabicl,50000,9
+106,32768,0.0054300311,-0.00083121364,-2.0849881e-05,9,tabicl,50000,9
+107,40960,0.0045490629,-0.0011468192,-1.368251e-05,9,tabicl,50000,9
+108,49152,0.0049504914,-0.00052744296,2.2095502e-05,9,tabicl,50000,9
+109,50000,0.0060508968,-0.00052667849,8.4122259e-05,9,tabicl,50000,9
+
+7. Which tables move?
+Table identities persist across arms within a base. The original score also enters the change, so trends against it are descriptive.
+
+Figure: pd_overview_tables_v2
+PD. TabPFN v2, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.75); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
+0,Myhom,0.19147534,0.0025085034,0.17451105,0.19759779,0.14085884,0.19555697
+1,MicroFinance,0.63839468,-0.0015445918,0.63798282,0.57424118,0.53276945,0.57137514
+2,Vehicle Loan,0.596666,0.0050834277,0.60301257,0.57520855,0.61995253,0.59075534
+3,PropPD2,0.50721524,0.0029984165,0.49303064,0.52637051,0.5473726,0.53674736
+4,Thomas,0.58857575,0.0059144355,0.64537972,0.48153274,0.27331834,0.5530977
+5,LendingClub,0.71764372,0.0083073619,0.71839336,0.73530804,0.66485478,0.73024257
+6,Home Credit,0.50075943,-0.003037532,0.48544985,0.57613627,0.55290588,0.56343127
+7,PropPD1,0.54243377,0.043532871,0.55593644,0.51696849,0.5446455,0.50526016
+8,Taiwan Credit Card,0.69054749,0.0037082777,0.70873725,0.6923013,0.6591081,0.70617953
+9,German Credit,0.4022011,0.013069544,0.3807297,0.34260021,0.30705721,0.34130695
+10,Cobranded,0.30003482,0.0031558223,0.29913894,0.30581235,0.26775987,0.31537847
+11,GMSC,0.25274617,0.00085177319,0.25816922,0.2446206,0.25386255,0.25842924
+12,Bondora Peer-to-Peer,0.28900965,-0.0097583164,0.29424592,0.25686465,0.26777313,0.24624016
+13,Hackerearth,0.93488316,-0.011592307,0.9229812,0.85913752,0.70105199,0.84758526
+14,Credit Risk,0.18002893,0.0018408156,0.17243433,0.1335971,0.12816569,0.11995061
+15,HMEQ,0.77696885,-0.0014134149,0.72444168,0.74855638,0.41962755,0.71053393
+16,SBA Loans Case,0.0036711761,0.0056557593,-0.0020031681,-0.010469986,0.00066007989,-0.012286673
+
+Figure: pd_overview_tables_v2.6
+PD. TabPFN v2.6, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.28); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
+0,Myhom,0.051955782,0.002997449,0.048044218,0.05639881,0.061096939,0.048788265
+1,Thomas,0.46828664,-0.031077348,0.39084148,0.44593604,0.28295232,0.51209036
+2,Vehicle Loan,0.073811027,-0.0036817797,0.070803786,0.045417026,0.059437023,0.045601234
+3,MicroFinance,-0.094296216,0.00066372474,-0.087001946,-0.0923038,-0.050041135,-0.1212347
+4,PropPD2,-0.062878058,-0.0064246626,-0.066371542,-0.059216383,0.049037612,-0.071198554
+5,LendingClub,0.14096204,0.017633297,0.12864198,0.13338943,0.093133778,0.13638931
+6,Home Credit,-0.02741992,0.00038392766,-0.033207037,-0.052566662,0.0073040272,-0.04779085
+7,PropPD1,-0.062729404,-0.0026103688,-0.06842539,-0.069240261,-0.14915578,-0.069017625
+8,Taiwan Credit Card,0.011812934,0.0046582232,0.007477418,0.025995484,0.043245308,0.028367363
+9,German Credit,-0.0081192189,-0.035731415,-0.03794964,0.064748201,-0.080823912,0.057605344
+10,Cobranded,-0.0093632154,-0.00041898164,-0.0075083397,-0.016717141,0.020914,-0.012841562
+11,GMSC,0.016438407,-0.001018256,0.014753569,0.016037553,0.023183522,0.020216028
+12,Bondora Peer-to-Peer,-0.025305583,-0.00079239917,-0.02290717,-0.031793109,-0.027918842,-0.037751633
+13,Credit Risk,-0.2079411,-0.00055742657,-0.21151497,-0.25099226,-0.063694707,-0.26064191
+14,Hackerearth,-0.21852261,-0.0061310139,-0.21799658,-0.27171337,-0.12842358,-0.27748329
+15,SBA Loans Case,0.0071657957,-0.0036109463,0.010513316,0.0094708237,-0.0017069942,0.0084318592
+16,HMEQ,-0.094489423,-0.00044196248,-0.093347799,-0.081736226,-0.054751912,-0.091214771
+
+Figure: pd_overview_tables_v3
+PD. TabPFN v3, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (1.26); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E6 All tables,E6 Large tables,"E7 2,048 rows","E7 26,000 rows",E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
+0,Myhom,-0.056079932,0.040136054,-0.060204082,-0.045854592,0.016539116,-0.023979592,0.0087585034,-0.014562075,-0.009247449,-0.023426871,0.065497449,0.10097789,0.013265306,-0.10010629,-1.0383929,-0.095960884
+1,Thomas,0.16449863,0.17015748,0.15967854,0.16981513,0.17784861,0.19689167,0.062308755,0.02354028,0.27876942,0.04362752,0.031747297,-0.1785947,0.095318034,0.21887425,-1.3546359,-2.6510153
+2,PropPD2,0.18373491,0.19255793,0.18387236,0.21854384,0.18833305,0.20416233,0.094104852,0.10903297,-0.1881657,0.16648119,0.13238657,0.012528598,0.18438637,-0.061438957,-0.25392199,-0.51089942
+3,Vehicle Loan,0.0064093912,0.049498713,0.010774934,0.0045852943,-0.026770815,-0.033671997,3.4979271e-05,-0.06710477,-0.39430596,-0.14122494,-0.19757164,-0.2738526,-0.037773862,-0.25818612,-0.52889033,-0.80130283
+4,MicroFinance,0.21619782,0.11775906,0.20533264,0.086188478,-0.25555676,-0.030419281,0.055956505,-0.051014518,-0.22046354,-0.37129194,-0.2179215,-0.57025602,0.014633959,0.12223848,-0.62984341,-1.2233371
+5,LendingClub,0.12161875,0.094251192,0.12816167,0.095678887,0.12134909,0.062284176,0.070812639,0.10672203,0.089492692,0.063609326,0.07329278,0.020091076,0.11729822,0.12789148,-0.26818777,-1.3007282
+6,Home Credit,0.00068168728,0.080004787,0.022355405,-0.017257145,-0.061233165,-0.055238065,0.0043242468,-0.074154306,-0.82394547,-0.20231783,-0.25417318,-0.48728011,-0.028870735,-0.21230767,-1.2085489,-1.8336177
+7,Taiwan Credit Card,0.0071306646,0.033066627,0.0076625055,-0.0050842084,-0.0001430215,-0.013588866,0.025131169,-0.0026010619,-0.078704949,0.018128838,-8.6789898e-05,-0.067473368,0.010593469,-0.019180854,-0.40941651,-0.84316307
+8,German Credit,0.29964029,0.20695444,0.26837958,0.26817403,0.16457691,0.28985954,0.040544707,0.19787598,0.1150394,0.19965742,0.20436793,0.018876328,0.2352518,0.12529976,-3.346026,-6.1908359
+9,PropPD1,0.073311379,0.13679996,0.072809388,0.10491348,-0.021749609,0.06119632,0.10295072,0.092429263,-0.27525864,0.080535114,-0.12764508,-0.37146903,-0.28531825,0.13864075,-0.78327141,-4.2032147
+10,Cobranded,0.074681185,0.032734001,0.073991089,0.055325976,0.0023737544,0.039382231,0.035428329,0.059737678,-0.092587986,0.020895037,-0.054144022,-0.081165514,0.011315128,0.040903792,-0.17742237,-0.45008443
+11,GMSC,-0.0041099624,-0.013076192,-0.0084972055,-0.0092348255,-0.014227829,-0.014475562,-0.0035622047,-0.021508664,-0.12172181,-0.03013609,-0.04838337,-0.026423519,-0.017024867,-0.048655414,-0.12359145,-0.35799942
+12,Bondora Peer-to-Peer,-0.0015876365,0.0033538653,0.0051798591,-0.026640135,-0.070193849,-0.06838093,0.0030355623,-0.093432802,-0.26690401,-0.68557227,-0.20853176,-3.6803997,-0.024733024,0.010247748,-0.37396687,-0.87726455
+13,Credit Risk,-0.02132175,0.017055715,0.00074281458,0.0231526,-0.031279605,-0.039783577,-0.075019643,-0.27195363,-1.40017,-0.13001693,-0.11694579,-0.96843145,-0.050349355,-0.090314763,-0.95952913,-3.9632001
+14,Hackerearth,-0.36003988,-0.17455955,-0.38135447,-0.45628564,-0.30853052,-0.51102523,-0.050671665,-0.42412694,-3.5535085,-0.67183383,-0.63595433,-0.77511353,-0.49373785,-0.62181156,-4.0906334,-13.568272
+15,SBA Loans Case,0.053497323,0.052051439,0.043217293,0.014349597,0.066441075,0.017491893,0.004646278,0.017585766,7.9762396e-05,0.017565154,0.081383178,0.021478671,0.084444212,0.036969318,-0.11822669,-0.57591238
+16,HMEQ,-0.027702393,-0.01392812,-0.030608937,-0.030262455,-0.020719358,-0.034142126,-0.011335596,-0.038519336,-0.069585443,-0.060575324,-0.04583825,-0.031034855,-0.023267142,-0.038976506,-0.50401732,-2.9128545
+
+Figure: pd_overview_tables_tabicl-v2
+PD. TabICLv2, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (5.76); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E6 All tables,E6 Large tables,"E7 2,048 rows","E7 26,000 rows",E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
+0,Myhom,1.4826318,1.2957058,1.2283801,1.4320366,1.3754039,1.3123299,0.02642432,0.0025510204,-0.5141369,1.5477466,1.4955145,1.6996386,1.4245961,-0.012223639,-0.34955357,-2.0411139
+1,Vehicle Loan,7.1504064,7.1598317,7.1354911,7.0909355,7.0995411,7.0901915,-0.12622141,-0.27919447,-1.8905268,7.0740606,7.1048251,6.8900974,7.2370872,-0.39625646,-2.3046036,-5.2157176
+2,Thomas,-0.19977983,-0.17071764,-0.22087465,-0.29197006,-0.42197254,-0.32104701,-0.055522501,-0.26408663,-0.37172994,-0.38473993,-0.60736058,-0.36463557,-0.70790716,-0.27923396,-1.1901202,-7.4182055
+3,PropPD2,-0.017633823,-0.055166594,-0.052067183,-0.014076046,-0.040035694,-0.0068044821,-0.11982969,-0.092107414,-1.0101256,-0.033183277,-0.041561279,-0.17471326,0.033866841,0.025700549,-0.47696248,-4.74625
+4,MicroFinance,-0.16434439,0.010661623,-0.12265017,-0.16597994,-0.32108136,-0.18355911,-0.20793892,-0.60672667,-2.6153771,-0.37875761,-0.18441286,-0.068553026,-0.23882651,-0.56678351,-1.4371556,-3.1756711
+5,LendingClub,0.022214889,-0.036035286,-0.0087717268,0.033236394,-0.043022394,0.038677648,0.024616831,-0.12358101,-0.57213733,0.028245943,-0.08063218,-0.13601929,-0.045671503,-0.07517882,-0.78093443,-3.1632517
+6,Home Credit,-0.075032379,-0.093561173,-0.11235988,-0.13058621,-0.11450491,-0.15449881,-0.10137342,-0.37732403,-1.853965,-0.17962771,-0.31673466,-0.40021834,-0.15678675,-0.18132015,-1.1811841,-2.6096489
+7,German Credit,0.24155533,0.19566632,0.2673347,0.29397054,0.16575882,0.20125043,0.18573141,0.14090442,-0.33490922,0.27269613,0.14705379,0.28138061,0.041384036,0.33252826,-0.27619048,-1.9726105
+8,Taiwan Credit Card,-0.17804574,-0.13628841,-0.21571017,-0.19629179,-0.12824138,-0.17881795,-0.024093887,-0.086140656,-1.0417673,-0.18780196,-0.16259208,-0.17763977,-0.12940794,-0.1613039,-0.45775245,-2.012965
+9,PropPD1,0.12353369,0.063850393,0.17311042,0.13475942,-0.09881041,0.1277153,0.2525354,0.0069210135,-5.3992112,0.14821946,-0.84929729,-0.7599232,-0.94333266,-0.013302785,-0.24243107,-6.0178767
+10,Cobranded,-0.0028451999,-0.045073344,-0.0093562031,-0.015261304,-0.038215257,-0.018366754,-0.039962913,-0.095879236,-0.87944903,-0.04716626,-0.075355865,-0.14016449,-0.072412792,-0.038713677,-0.27831591,-1.1659639
+11,GMSC,-0.057036466,-0.054914775,-0.094527239,-0.062011956,-0.044773067,-0.069374684,-0.017247779,-0.060826713,-0.39047084,-0.062655793,-0.068095692,-0.040902704,-0.05536807,-0.080064462,-1.0389522,-2.6955183
+12,Bondora Peer-to-Peer,-0.056737364,0.012213118,-0.063512448,-0.039327379,-0.13406609,-0.061395094,-0.097329748,-0.3143543,-1.2405275,-0.10644686,-0.027139005,-0.10196043,-0.040896496,-0.17248621,-0.47014302,-3.1497307
+13,Credit Risk,-0.61696497,-0.40369989,-0.56988406,-0.62516727,-0.66835622,-0.94921751,-0.010948804,-0.41980151,-4.6014519,-0.60845436,-1.0534882,-1.1214926,-0.60221328,-1.2324462,-2.3832293,-4.0731637
+14,Hackerearth,-1.3719107,-1.0305058,-1.3647587,-1.3268169,-1.424291,-1.5334946,-0.46297712,-2.731237,-13.648384,-1.0375271,-1.6920117,-1.2641879,-1.3283516,-2.5232152,-5.5464956,-15.815135
+15,SBA Loans Case,0.0075056415,0.0072351074,0.017245657,0.039065489,0.067179233,0.054985274,-0.0072037289,-0.03035512,-0.18096592,0.038264312,0.062952247,0.039861192,0.060231876,0.0095403723,-0.05869849,-0.18116807
+16,HMEQ,-0.0066761782,-0.014822045,-0.13285728,-0.031617504,-0.14521563,-0.040882252,-0.012250867,-0.14601691,-1.8239142,-0.0099009278,-0.15518357,-0.084610959,-0.1199861,-0.1378963,-0.21694894,-1.9598809
+
+Figure: pd_overview_headroom
+PD. Predefined reference recipe (experiment 1: full updates, LR 3e-7, L2-SP λ 0.003): each point is one held-out credit table and base, plotting the paired change in AUC (percentage points) against the original model's mean score on that table. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. The horizontal score appears in both quantities (the change is computed from it), so a trend can arise from ceiling effects or noise and is descriptive, not a mechanism.
+Reference table effects
+CSV (first column: row index)
+row,base,dataset,original,adapted,effect,folds_improved,folds
+221,TabICLv2,Bondora Peer-to-Peer,0.89721392,0.89664654,-0.00056737364,0,5
+222,TabICLv2,Cobranded,0.8427705,0.84274205,-2.8451999e-05,2,5
+223,TabICLv2,Credit Risk,0.95514201,0.94897236,-0.0061696497,0,5
+224,TabICLv2,GMSC,0.86718744,0.86661707,-0.00057036466,0,5
+225,TabICLv2,German Credit,0.79014029,0.79255584,0.0024155533,4,5
+226,TabICLv2,HMEQ,0.99633513,0.99626837,-6.6761782e-05,2,5
+227,TabICLv2,Hackerearth,0.95676611,0.943047,-0.013719107,0,5
+228,TabICLv2,Home Credit,0.74793913,0.74718881,-0.00075032379,1,5
+229,TabICLv2,LendingClub,0.68913135,0.68935349,0.00022214889,3,5
+230,TabICLv2,MicroFinance,0.65764659,0.65600315,-0.0016434439,1,5
+231,TabICLv2,Myhom,0.57992283,0.59474915,0.014826318,4,5
+232,TabICLv2,PropPD1,0.8116703,0.81290564,0.0012353369,5,5
+233,TabICLv2,PropPD2,0.65622099,0.65604465,-0.00017633823,3,5
+234,TabICLv2,SBA Loans Case,0.98980137,0.98987643,7.5056415e-05,2,5
+235,TabICLv2,Taiwan Credit Card,0.79015422,0.78837377,-0.0017804574,0,5
+236,TabICLv2,Thomas,0.6493295,0.6473317,-0.0019977983,2,5
+237,TabICLv2,Vehicle Loan,0.58306229,0.65456635,0.071504064,5,5
+493,TabPFN v2,Bondora Peer-to-Peer,0.86996803,0.87285813,0.0028900965,5,5
+494,TabPFN v2,Cobranded,0.83269227,0.83569261,0.0030003482,5,5
+495,TabPFN v2,Credit Risk,0.92815979,0.92996008,0.0018002893,5,5
+496,TabPFN v2,GMSC,0.8581094,0.86063686,0.0025274617,5,5
+497,TabPFN v2,German Credit,0.78522696,0.78924897,0.004022011,4,5
+498,TabPFN v2,HMEQ,0.98444363,0.99221332,0.0077696885,5,5
+499,TabPFN v2,Hackerearth,0.91321057,0.9225594,0.0093488316,5,5
+500,TabPFN v2,Home Credit,0.72516024,0.73016783,0.0050075943,5,5
+501,TabPFN v2,LendingClub,0.67540116,0.6825776,0.0071764372,5,5
+502,TabPFN v2,MicroFinance,0.63069908,0.63708303,0.0063839468,5,5
+503,TabPFN v2,Myhom,0.59502827,0.59694303,0.0019147534,4,5
+504,TabPFN v2,PropPD1,0.75207598,0.75750032,0.0054243377,5,5
+505,TabPFN v2,PropPD2,0.64411075,0.64918291,0.0050721524,5,5
+506,TabPFN v2,SBA Loans Case,0.98938947,0.98942619,3.6711761e-05,3,5
+507,TabPFN v2,Taiwan Credit Card,0.77564376,0.78254924,0.0069054749,5,5
+508,TabPFN v2,Thomas,0.64821257,0.65409832,0.0058857575,4,5
+509,TabPFN v2,Vehicle Loan,0.63401642,0.63998308,0.00596666,5,5
+765,TabPFN v2.6,Bondora Peer-to-Peer,0.88544504,0.88519198,-0.00025305583,0,5
+766,TabPFN v2.6,Cobranded,0.84325414,0.8431605,-9.3632154e-05,1,5
+767,TabPFN v2.6,Credit Risk,0.94123747,0.93915805,-0.002079411,0,5
+768,TabPFN v2.6,GMSC,0.86596215,0.86612653,0.00016438407,4,5
+769,TabPFN v2.6,German Credit,0.79173424,0.79165305,-8.1192189e-05,2,5
+770,TabPFN v2.6,HMEQ,0.99827227,0.99732737,-0.00094489423,0,5
+771,TabPFN v2.6,Hackerearth,0.94817984,0.94599461,-0.0021852261,0,5
+772,TabPFN v2.6,Home Credit,0.74699146,0.74671726,-0.0002741992,1,5
+773,TabPFN v2.6,LendingClub,0.68373099,0.68514061,0.0014096204,5,5
+774,TabPFN v2.6,MicroFinance,0.65905812,0.65811516,-0.00094296216,0,5
+775,TabPFN v2.6,Myhom,0.59564264,0.5961622,0.00051955782,3,5
+776,TabPFN v2.6,PropPD1,0.77315636,0.77252907,-0.00062729404,0,5
+777,TabPFN v2.6,PropPD2,0.65921509,0.65858631,-0.00062878058,0,5
+778,TabPFN v2.6,SBA Loans Case,0.98987642,0.98994808,7.1657957e-05,3,5
+779,TabPFN v2.6,Taiwan Credit Card,0.78947711,0.78959524,0.00011812934,3,5
+780,TabPFN v2.6,Thomas,0.64565389,0.65033676,0.0046828664,3,5
+781,TabPFN v2.6,Vehicle Loan,0.65121872,0.65195683,0.00073811027,5,5
+1037,TabPFN v3,Bondora Peer-to-Peer,0.89785973,0.89784386,-1.5876365e-05,2,5
+1038,TabPFN v3,Cobranded,0.84234006,0.84308687,0.00074681185,5,5
+1039,TabPFN v3,Credit Risk,0.95168825,0.95147503,-0.0002132175,2,5
+1040,TabPFN v3,GMSC,0.86875853,0.86871743,-4.1099624e-05,3,5
+1041,TabPFN v3,German Credit,0.79130593,0.79430233,0.0029964029,3,5
+1042,TabPFN v3,HMEQ,0.99925852,0.99898149,-0.00027702393,0,5
+1043,TabPFN v3,Hackerearth,0.96319489,0.95959449,-0.0036003988,0,5
+1044,TabPFN v3,Home Credit,0.75328767,0.75329448,6.8168728e-06,3,5
+1045,TabPFN v3,LendingClub,0.68545173,0.68666792,0.0012161875,4,5
+1046,TabPFN v3,MicroFinance,0.65973341,0.66189539,0.0021619782,5,5
+1047,TabPFN v3,Myhom,0.59735565,0.59679486,-0.00056079932,2,5
+1048,TabPFN v3,PropPD1,0.812241,0.81297411,0.00073311379,5,5
+1049,TabPFN v3,PropPD2,0.65729602,0.65913336,0.0018373491,5,5
+1050,TabPFN v3,SBA Loans Case,0.98983277,0.99036774,0.00053497323,5,5
+1051,TabPFN v3,Taiwan Credit Card,0.78966503,0.78973634,7.1306646e-05,3,5
+1052,TabPFN v3,Thomas,0.65158762,0.6532326,0.0016449863,3,5
+1053,TabPFN v3,Vehicle Loan,0.65803164,0.65809574,6.4093912e-05,2,5
+
+8. Training cost
+Recorded training time excludes evaluation and queueing and was measured on the hardware of each study; it is not a matched-compute comparison.
+
+Figure: pd_overview_cost
+PD. Each point is one configuration: its equal-table mean paired change in AUC (percentage points) on held-out credit tables against recorded training time summed over the four CPT partitions (logarithmic axis). Training time excludes evaluation and queueing and was recorded on the GPUs used for each study, so it is an observed cost, not a matched-compute comparison. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
+Cost and effect
+CSV (first column: row index)
+row,config,arm,base,learning_rate,l2sp_lambda,frozen,sampling,experiment,arm_cost,gpu_hours,partitions,approach,mean
+0,E1 all · LR 1e-05 · λ 0,unavailable,TabICLv2,1e-05,0,False,one_sample,1,unavailable,6.3997541,4,Full CPT,-0.022399734
+1,E1 all · LR 1e-05 · λ 0.003,unavailable,TabICLv2,1e-05,0.003,False,one_sample,1,unavailable,6.5869956,4,Full CPT,-0.005951033
+2,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabICLv2,1e-05,0.003,True,one_sample,1,unavailable,6.24854,4,Frozen backbone,0.0017236009
+3,E1 frozen · LR 1e-05 · λ 0,unavailable,TabICLv2,1e-05,0,True,one_sample,1,unavailable,6.1840572,4,Frozen backbone,0.0008226641
+4,E1 all · LR 1e-06 · λ 0,unavailable,TabICLv2,1e-06,0,False,one_sample,1,unavailable,6.4190761,4,Full CPT,0.0026216357
+5,E1 all · LR 1e-06 · λ 0.003,unavailable,TabICLv2,1e-06,0.003,False,one_sample,1,unavailable,6.5846954,4,Full CPT,0.0032542405
+6,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabICLv2,1e-06,0.003,True,one_sample,1,unavailable,6.2473211,4,Frozen backbone,0.0037429814
+7,E1 frozen · LR 1e-06 · λ 0,unavailable,TabICLv2,1e-06,0,True,one_sample,1,unavailable,6.190927,4,Frozen backbone,0.0037197904
+8,E1 all · LR 3e-05 · λ 0,unavailable,TabICLv2,3e-05,0,False,one_sample,1,unavailable,6.4024352,4,Full CPT,-0.042181358
+9,E1 all · LR 3e-05 · λ 0.003,unavailable,TabICLv2,3e-05,0.003,False,one_sample,1,unavailable,6.5883247,4,Full CPT,-0.0082576592
+10,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabICLv2,3e-05,0.003,True,one_sample,1,unavailable,6.2490776,4,Frozen backbone,-0.00022244584
+11,E1 frozen · LR 3e-05 · λ 0,unavailable,TabICLv2,3e-05,0,True,one_sample,1,unavailable,6.1909762,4,Frozen backbone,-0.0025077923
+12,E1 all · LR 3e-07 · λ 0,unavailable,TabICLv2,3e-07,0,False,one_sample,1,unavailable,6.4236404,4,Full CPT,0.0034446865
+13,E1 all · LR 3e-07 · λ 0.003,unavailable,TabICLv2,3e-07,0.003,False,one_sample,1,unavailable,6.5928516,4,Full CPT,0.0036946122
+14,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabICLv2,3e-07,0.003,True,one_sample,1,unavailable,6.2412416,4,Frozen backbone,0.0039437524
+15,E1 frozen · LR 3e-07 · λ 0,unavailable,TabICLv2,3e-07,0,True,one_sample,1,unavailable,6.194608,4,Frozen backbone,0.0039638425
+16,E1 all · LR 1e-05 · λ 0,unavailable,TabPFN v2,1e-05,0,False,one_sample,1,unavailable,5.5561846,4,Full CPT,0.0030892111
+17,E1 all · LR 1e-05 · λ 0.003,unavailable,TabPFN v2,1e-05,0.003,False,one_sample,1,unavailable,5.5944633,4,Full CPT,0.004731066
+18,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabPFN v2,1e-05,0.003,True,one_sample,1,unavailable,5.358337,4,Frozen backbone,0.00030794194
+19,E1 frozen · LR 1e-05 · λ 0,unavailable,TabPFN v2,1e-05,0,True,one_sample,1,unavailable,5.395939,4,Frozen backbone,0.00039701141
+20,E1 all · LR 1e-06 · λ 0,unavailable,TabPFN v2,1e-06,0,False,one_sample,1,unavailable,5.4990665,4,Full CPT,0.005437213
+21,E1 all · LR 1e-06 · λ 0.003,unavailable,TabPFN v2,1e-06,0.003,False,one_sample,1,unavailable,5.5627811,4,Full CPT,0.0054169542
+22,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabPFN v2,1e-06,0.003,True,one_sample,1,unavailable,5.3527119,4,Frozen backbone,7.5783944e-05
+23,E1 frozen · LR 1e-06 · λ 0,unavailable,TabPFN v2,1e-06,0,True,one_sample,1,unavailable,5.3363725,4,Frozen backbone,8.2046818e-05
+24,E1 all · LR 3e-05 · λ 0,unavailable,TabPFN v2,3e-05,0,False,one_sample,1,unavailable,5.5165404,4,Full CPT,-0.0041904351
+25,E1 all · LR 3e-05 · λ 0.003,unavailable,TabPFN v2,3e-05,0.003,False,one_sample,1,unavailable,5.5790026,4,Full CPT,0.0028010623
+26,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabPFN v2,3e-05,0.003,True,one_sample,1,unavailable,5.3635393,4,Frozen backbone,0.00047680076
+27,E1 frozen · LR 3e-05 · λ 0,unavailable,TabPFN v2,3e-05,0,True,one_sample,1,unavailable,5.3259914,4,Frozen backbone,0.00060743336
+28,E1 all · LR 3e-07 · λ 0,unavailable,TabPFN v2,3e-07,0,False,one_sample,1,unavailable,5.4967766,4,Full CPT,0.0047954514
+29,E1 all · LR 3e-07 · λ 0.003,unavailable,TabPFN v2,3e-07,0.003,False,one_sample,1,unavailable,5.5709194,4,Full CPT,0.0047725031
+30,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabPFN v2,3e-07,0.003,True,one_sample,1,unavailable,5.3575929,4,Frozen backbone,4.0753439e-05
+31,E1 frozen · LR 3e-07 · λ 0,unavailable,TabPFN v2,3e-07,0,True,one_sample,1,unavailable,5.3266439,4,Frozen backbone,4.2761538e-05
+32,E1 all · LR 1e-05 · λ 0,unavailable,TabPFN v2.6,1e-05,0,False,one_sample,1,unavailable,4.6505135,4,Full CPT,-0.0035782046
+33,E1 all · LR 1e-05 · λ 0.003,unavailable,TabPFN v2.6,1e-05,0.003,False,one_sample,1,unavailable,4.8170792,4,Full CPT,-0.0021552498
+34,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabPFN v2.6,1e-05,0.003,True,one_sample,1,unavailable,4.223651,4,Frozen backbone,-0.00012555958
+35,E1 frozen · LR 1e-05 · λ 0,unavailable,TabPFN v2.6,1e-05,0,True,one_sample,1,unavailable,4.2176282,4,Frozen backbone,-0.00010651704
+36,E1 all · LR 1e-06 · λ 0,unavailable,TabPFN v2.6,1e-06,0,False,one_sample,1,unavailable,4.679912,4,Full CPT,-0.00021969742
+37,E1 all · LR 1e-06 · λ 0.003,unavailable,TabPFN v2.6,1e-06,0.003,False,one_sample,1,unavailable,4.8113884,4,Full CPT,-0.00022527998
+38,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabPFN v2.6,1e-06,0.003,True,one_sample,1,unavailable,4.2240597,4,Frozen backbone,-2.5546661e-05
+39,E1 frozen · LR 1e-06 · λ 0,unavailable,TabPFN v2.6,1e-06,0,True,one_sample,1,unavailable,4.2108205,4,Frozen backbone,-3.3152236e-05
+40,E1 all · LR 3e-05 · λ 0,unavailable,TabPFN v2.6,3e-05,0,False,one_sample,1,unavailable,4.6585013,4,Full CPT,-0.007067018
+41,E1 all · LR 3e-05 · λ 0.003,unavailable,TabPFN v2.6,3e-05,0.003,False,one_sample,1,unavailable,4.7966841,4,Full CPT,-0.0023588496
+42,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabPFN v2.6,3e-05,0.003,True,one_sample,1,unavailable,4.2255766,4,Frozen backbone,-0.00011633257
+43,E1 frozen · LR 3e-05 · λ 0,unavailable,TabPFN v2.6,3e-05,0,True,one_sample,1,unavailable,4.2156709,4,Frozen backbone,-0.00016842101
+44,E1 all · LR 3e-07 · λ 0,unavailable,TabPFN v2.6,3e-07,0,False,one_sample,1,unavailable,4.6622583,4,Full CPT,-6.9706431e-05
+45,E1 all · LR 3e-07 · λ 0.003,unavailable,TabPFN v2.6,3e-07,0.003,False,one_sample,1,unavailable,4.8040729,4,Full CPT,-2.3901248e-05
+46,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabPFN v2.6,3e-07,0.003,True,one_sample,1,unavailable,4.2267768,4,Frozen backbone,-3.8917611e-05
+47,E1 frozen · LR 3e-07 · λ 0,unavailable,TabPFN v2.6,3e-07,0,True,one_sample,1,unavailable,4.2440754,4,Frozen backbone,-1.5626376e-05
+48,E1 all · LR 1e-05 · λ 0,unavailable,TabPFN v3,1e-05,0,False,one_sample,1,unavailable,5.6734436,4,Full CPT,-0.030638337
+49,E1 all · LR 1e-05 · λ 0.003,unavailable,TabPFN v3,1e-05,0.003,False,one_sample,1,unavailable,5.9483233,4,Full CPT,-0.017383976
+50,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabPFN v3,1e-05,0.003,True,one_sample,1,unavailable,5.3545475,4,Frozen backbone,-0.0043215352
+51,E1 frozen · LR 1e-05 · λ 0,unavailable,TabPFN v3,1e-05,0,True,one_sample,1,unavailable,5.3009768,4,Frozen backbone,-0.0048684727
+52,E1 all · LR 1e-06 · λ 0,unavailable,TabPFN v3,1e-06,0,False,one_sample,1,unavailable,5.6821788,4,Full CPT,-0.0012196226
+53,E1 all · LR 1e-06 · λ 0.003,unavailable,TabPFN v3,1e-06,0.003,False,one_sample,1,unavailable,5.9435313,4,Full CPT,-0.00081030642
+54,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabPFN v3,1e-06,0.003,True,one_sample,1,unavailable,5.3669961,4,Frozen backbone,-0.00062506406
+55,E1 frozen · LR 1e-06 · λ 0,unavailable,TabPFN v3,1e-06,0,True,one_sample,1,unavailable,5.3267257,4,Frozen backbone,-0.00055267688
+56,E1 all · LR 3e-05 · λ 0,unavailable,TabPFN v3,3e-05,0,False,one_sample,1,unavailable,5.6681373,4,Full CPT,-0.056910382
+57,E1 all · LR 3e-05 · λ 0.003,unavailable,TabPFN v3,3e-05,0.003,False,one_sample,1,unavailable,5.9498077,4,Full CPT,-0.020636044
+58,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabPFN v3,3e-05,0.003,True,one_sample,1,unavailable,5.3596923,4,Frozen backbone,-0.010452737
+59,E1 frozen · LR 3e-05 · λ 0,unavailable,TabPFN v3,3e-05,0,True,one_sample,1,unavailable,5.3225287,4,Frozen backbone,-0.012096461
+60,E1 all · LR 3e-07 · λ 0,unavailable,TabPFN v3,3e-07,0,False,one_sample,1,unavailable,5.6878607,4,Full CPT,0.00039849298
+61,E1 all · LR 3e-07 · λ 0.003,unavailable,TabPFN v3,3e-07,0.003,False,one_sample,1,unavailable,5.9535763,4,Full CPT,0.00042974146
+62,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabPFN v3,3e-07,0.003,True,one_sample,1,unavailable,5.359629,4,Frozen backbone,0.00060283377
+63,E1 frozen · LR 3e-07 · λ 0,unavailable,TabPFN v3,3e-07,0,True,one_sample,1,unavailable,5.323153,4,Frozen backbone,0.00057468197
+64,E2 Reference · seed 43,unavailable,TabICLv2,3e-07,0.003,False,one_sample,2,unavailable,6.6011002,4,Full CPT,0.0034436661
+65,E2 Reference · seed 43,unavailable,TabPFN v2,3e-07,0.003,False,one_sample,2,unavailable,5.5856702,4,Full CPT,0.0047485715
+66,E2 Reference · seed 43,unavailable,TabPFN v2.6,3e-07,0.003,False,one_sample,2,unavailable,4.8215303,4,Full CPT,-0.00010303215
+67,E2 Reference · seed 43,unavailable,TabPFN v3,3e-07,0.003,False,one_sample,2,unavailable,5.9127787,4,Full CPT,0.00041264317
+68,E3 Accumulate,unavailable,TabICLv2,3e-07,0.003,False,accumulate,3,unavailable,50.807535,4,Full CPT,0.0031221717
+69,E3 Full pass,unavailable,TabICLv2,3e-07,0.003,False,full_pass,3,unavailable,8.2627334,4,Full CPT,0.0029913513
+70,E3 One sample,unavailable,TabICLv2,3e-07,0.003,False,one_sample,3,unavailable,6.7059278,4,Full CPT,0.0036028809
+71,E3 Accumulate,unavailable,TabPFN v2,3e-07,0.003,False,accumulate,3,unavailable,101.31171,4,Full CPT,0.0045763435
+72,E3 Full pass,unavailable,TabPFN v2,3e-07,0.003,False,full_pass,3,unavailable,7.0953974,4,Full CPT,0.0040480848
+73,E3 One sample,unavailable,TabPFN v2,3e-07,0.003,False,one_sample,3,unavailable,5.8998968,4,Full CPT,0.0045625786
+74,E3 Accumulate,unavailable,TabPFN v2.6,3e-07,0.003,False,accumulate,3,unavailable,79.024809,4,Full CPT,-7.746184e-05
+75,E3 Full pass,unavailable,TabPFN v2.6,3e-07,0.003,False,full_pass,3,unavailable,5.8991659,4,Full CPT,4.9286858e-05
+76,E3 One sample,unavailable,TabPFN v2.6,3e-07,0.003,False,one_sample,3,unavailable,4.9219629,4,Full CPT,-7.5815198e-05
+77,E3 Accumulate,unavailable,TabPFN v3,3e-07,0.003,False,accumulate,3,unavailable,42.804149,4,Full CPT,2.7389963e-05
+78,E3 Full pass,unavailable,TabPFN v3,3e-07,0.003,False,full_pass,3,unavailable,7.1753613,4,Full CPT,-4.2907602e-05
+79,E3 One sample,unavailable,TabPFN v3,3e-07,0.003,False,one_sample,3,unavailable,6.0391358,4,Full CPT,0.00026476959
+80,E5 LR 0.001,unavailable,TabICLv2,0.001,0,False,one_sample,5,unavailable,5.068914,4,DiagScale,-0.0032219149
+81,E5 LR 0.0001,unavailable,TabICLv2,0.0001,0,False,one_sample,5,unavailable,5.0851028,4,DiagScale,-0.00046681931
+82,E5 LR 0.03,unavailable,TabICLv2,0.03,0,False,one_sample,5,unavailable,5.0719512,4,DiagScale,-0.022570029
+83,E5 LR 0.001,unavailable,TabPFN v3,0.001,0,False,one_sample,5,unavailable,6.528636,4,DiagScale,-0.0002659142
+84,E5 LR 0.0001,unavailable,TabPFN v3,0.0001,0,False,one_sample,5,unavailable,6.5427406,4,DiagScale,0.00021614596
+85,E5 LR 0.03,unavailable,TabPFN v3,0.03,0,False,one_sample,5,unavailable,6.5451859,4,DiagScale,-0.0041242283
+86,E6 All tables,All tables,TabICLv2,3e-07,0.003,False,one_sample,6,All tables,2.2980851,4,Full CPT,0.003572336
+87,E6 All tables,All tables,TabPFN v3,3e-07,0.003,False,one_sample,6,All tables,2.505723,4,Full CPT,-0.0010034685
+88,E6 Large tables,Large tables,TabICLv2,3e-07,0.003,False,one_sample,6,Large tables,2.8372173,4,Full CPT,0.0020567533
+89,E6 Large tables,Large tables,TabPFN v3,3e-07,0.003,False,one_sample,6,Large tables,2.8892031,4,Full CPT,-0.00077560029
+90,"E7 2,048 rows","2,048 rows",TabICLv2,3e-07,0.003,False,one_sample,7,"2,048 rows",1.2080051,4,Full CPT,0.0023976213
+91,"E7 2,048 rows","2,048 rows",TabPFN v3,3e-07,0.003,False,one_sample,7,"2,048 rows",1.7478941,4,Full CPT,-0.0043162011
+92,"E7 26,000 rows","26,000 rows",TabICLv2,3e-07,0.003,False,one_sample,7,"26,000 rows",10.597317,4,Full CPT,0.002562356
+93,"E7 26,000 rows","26,000 rows",TabPFN v3,3e-07,0.003,False,one_sample,7,"26,000 rows",9.1723844,4,Full CPT,-0.00011445211
+94,E8 LR 0.001,unavailable,TabICLv2,0.001,0,False,one_sample,8,unavailable,6.1076034,4,LoRA,-0.039655218
+95,E8 LR 0.0001,unavailable,TabICLv2,0.0001,0,False,one_sample,8,unavailable,6.1502853,4,LoRA,-0.010993924
+96,E8 LR 1e-05,unavailable,TabICLv2,1e-05,0,False,one_sample,8,unavailable,6.20859,4,LoRA,-0.0032368565
+97,E8 LR 0.001,unavailable,TabPFN v3,0.001,0,False,one_sample,8,unavailable,5.3269876,4,LoRA,-0.024917448
+98,E8 LR 0.0001,unavailable,TabPFN v3,0.0001,0,False,one_sample,8,unavailable,5.3176355,4,LoRA,-0.0095108955
+99,E8 LR 1e-05,unavailable,TabPFN v3,1e-05,0,False,one_sample,8,unavailable,5.3504663,4,LoRA,-0.00037053679
+
+9. Strongest, weakest and most consistent configurations
+Most consistent means the largest share of tables improved beyond the negligible band, ties broken by the median. Highest and lowest means are observed extremes, not validated recipes.
+
+Table: Highest, lowest and most consistent configuration per base
+CSV (first column: row index)
+row,base,role,configuration,mean,median,improved,negligible,worse,tables
+0,TabICLv2,Highest observed mean,E1 frozen · LR 3e-07 · λ 0,0.0039638425,-0.00034470445,3,10,4,17
+1,TabICLv2,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.042181358,-0.037627181,1,0,16,17
+2,TabICLv2,Most tables improved,E1 all · LR 3e-07 · λ 0.003,0.0036946122,-0.00017633823,4,8,5,17
+3,TabPFN v2,Highest observed mean,E1 all · LR 1e-06 · λ 0,0.005437213,0.0054131591,16,1,0,17
+4,TabPFN v2,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.0041904351,0.0014547194,9,3,5,17
+5,TabPFN v2,Most tables improved,E1 all · LR 1e-06 · λ 0,0.005437213,0.0054131591,16,1,0,17
+6,TabPFN v2.6,Highest observed mean,E3 Full pass,4.9286858e-05,7.3040272e-05,1,14,2,17
+7,TabPFN v2.6,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.007067018,-0.0043025011,0,2,15,17
+8,TabPFN v2.6,Most tables improved,E1 all · LR 1e-06 · λ 0.003,-0.00022527998,-7.9222336e-05,2,9,6,17
+9,TabPFN v3,Highest observed mean,E1 frozen · LR 3e-07 · λ 0.003,0.00060283377,0.00049498713,5,11,1,17
+10,TabPFN v3,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.056910382,-0.049687435,0,0,17,17
+11,TabPFN v3,Most tables improved,E1 frozen · LR 3e-07 · λ 0.003,0.00060283377,0.00049498713,5,11,1,17
+
+Table: Experiment 1: predefined reference, observed best and leave-one-table-out selection
+CSV (first column: row index)
+row,base,tables,recipes,reference_recipe,reference_mean,best_observed_recipe,best_observed_mean,leave_one_table_out_mean,leave_one_table_out_improved,recipes_chosen
+0,TabICLv2,17,16,E1 all · LR 3e-07 · λ 0.003,0.0036946122,E1 frozen · LR 3e-07 · λ 0,0.0039638425,0.0035521465,5,"E1 frozen · LR 3e-07 · λ 0 ×15, E1 frozen · LR 3e-07 · λ 0.003 ×1, E1 frozen · LR 1e-06 · λ 0.003 ×1"
+1,TabPFN v2,17,16,E1 all · LR 3e-07 · λ 0.003,0.0047725031,E1 all · LR 1e-06 · λ 0,0.005437213,0.005437213,17,E1 all · LR 1e-06 · λ 0 ×17
+2,TabPFN v2.6,17,16,E1 all · LR 3e-07 · λ 0.003,-2.3901248e-05,E1 frozen · LR 3e-07 · λ 0,-1.5626376e-05,-0.00048758436,2,"E1 all · LR 3e-07 · λ 0.003 ×8, E1 frozen · LR 3e-07 · λ 0 ×8, E1 frozen · LR 1e-06 · λ 0.003 ×1"
+3,TabPFN v3,17,16,E1 all · LR 3e-07 · λ 0.003,0.00042974146,E1 frozen · LR 3e-07 · λ 0.003,0.00060283377,0.00060283377,14,E1 frozen · LR 3e-07 · λ 0.003 ×17
+
+Table: Secondary metric (Brier-score reduction) per configuration
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,brier_score,17,0.12026803,0.11504722,0.005220809,-0.00031250159,-0.0013388845,-1.7793919e-05,-0.023861724,0.11256692,3,2,12,24,85,0.17647059
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.1181123,1.0903323e-05,-7.557149e-05,-0.00015898566,0.00018689481,-0.0012494576,0.0013952539,7,3,7,35,85,0.41176471
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11373676,-4.205848e-05,-3.4760196e-05,-6.9416156e-05,4.3764191e-05,-0.00044075962,0.0001931464,2,11,4,36,85,0.11764706
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.1140783,-0.0022219396,-0.00066552422,-0.0029757688,-0.00034191443,-0.01562742,0.00033792932,1,2,14,12,85,0.058823529
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11447788,0.0057901531,-0.00025030364,-0.00052622559,0.00013393444,-0.018989946,0.11265392,5,0,12,27,85,0.29411765
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.1181063,1.6910323e-05,-0.00010247328,-0.00017102629,0.0001102214,-0.00044101232,0.0011154938,5,3,9,29,85,0.29411765
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11373125,-3.654672e-05,-1.7274412e-05,-7.4498665e-05,2.2258168e-05,-0.00030251985,0.00015134085,2,12,3,37,85,0.11764706
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.11370392,-0.0018475606,-0.000573262,-0.00149762,-0.00021166594,-0.014574671,0.00029284597,1,2,14,16,85,0.058823529
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,brier_score,17,0.12026803,0.1131421,0.0071259302,-0.00010541895,-0.00031866152,0.00012610508,-0.0044580742,0.11290468,5,3,9,33,85,0.29411765
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.11819571,-7.2503592e-05,-8.918244e-05,-0.00019475957,4.4407668e-05,-0.00027531839,0.00022490073,3,6,8,25,85,0.17647059
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11370305,-8.3501268e-06,-5.2625371e-07,-1.9835759e-05,7.3301285e-06,-0.00013226791,0.00011542343,1,14,2,50,85,0.058823529
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.11217574,-0.00031938323,5.5110764e-05,-5.4659991e-05,0.0001630762,-0.0037553873,0.0014623734,6,7,4,37,85,0.35294118
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11318237,0.0070856587,-0.00010292589,-0.00024355379,9.9565797e-05,-0.004969228,0.11298709,4,4,9,31,85,0.23529412
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.11819229,-6.9082219e-05,-0.00010045113,-0.00019472961,4.7486385e-05,-0.00027646295,0.00023134481,2,6,9,26,85,0.11764706
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11370222,-7.5206565e-06,3.4101686e-09,-1.4182832e-05,6.8176361e-06,-0.00011778758,0.00011126884,1,14,2,46,85,0.058823529
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.11217106,-0.00031470673,9.8984285e-05,-0.00020571092,0.00016404777,-0.0036280595,0.0013187012,8,4,5,40,85,0.47058824
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,brier_score,17,0.12026803,0.11628853,0.0039794979,-0.00059182631,-0.0015622281,-0.00024510409,-0.033598144,0.11236761,3,1,13,18,85,0.17647059
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.11811235,1.0854823e-05,1.0268948e-05,-0.00026827423,0.0001895175,-0.00085913308,0.0014589431,6,3,8,41,85,0.35294118
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11376098,-6.6279637e-05,-1.3475774e-05,-0.0001152414,2.8826089e-05,-0.00058169339,0.00022665781,2,9,6,36,85,0.11764706
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.11672166,-0.0048652994,-0.0010705735,-0.0066569865,-0.00076149151,-0.028664207,-0.00014948798,0,0,17,4,85,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11542474,0.0048432936,-0.00044690378,-0.00089894361,-0.00021697479,-0.031219164,0.11244426,2,0,15,17,85,0.11764706
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.11801933,0.00010387256,3.1306704e-05,-0.00010191347,0.0001650567,-0.00025733956,0.0014202831,6,5,6,39,85,0.35294118
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11374476,-5.0056681e-05,-2.4198075e-05,-6.9581286e-05,3.186346e-05,-0.00043109035,0.00016860932,2,12,3,39,85,0.11764706
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.1162739,-0.0044175473,-0.00094010091,-0.0053132428,-0.00047937149,-0.023661141,6.8221812e-05,0,3,14,10,85,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,brier_score,17,0.12026803,0.11311863,0.0071494049,1.1648746e-05,-0.00012181136,0.00011372422,-0.0063931465,0.11315397,6,5,6,37,85,0.35294118
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.11818223,-5.9021681e-05,-8.3256673e-05,-0.00014734192,3.7226908e-05,-0.00024616036,0.00021934253,1,10,6,28,85,0.058823529
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11369602,-1.3168104e-06,1.0158993e-07,-6.7527734e-06,1.3556108e-05,-5.927614e-05,7.5700512e-05,0,17,0,43,85,0
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.11176855,8.7803278e-05,0.00014023818,3.3561499e-05,0.00020716873,-0.0011650599,0.0012826186,10,4,3,57,85,0.58823529
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11310401,0.007164018,-2.0543265e-06,-0.00010820322,0.00014753082,-0.006376356,0.11314212,6,6,5,39,85,0.35294118
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.1181797,-5.6492436e-05,-8.4367307e-05,-0.00014442639,3.565775e-05,-0.00023710631,0.00023341679,1,10,6,28,85,0.058823529
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.1137006,-5.9025476e-06,-1.9235378e-06,-1.5669545e-05,1.3910049e-05,-7.1482917e-05,7.432231e-05,0,17,0,42,85,0
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.11177071,8.5651436e-05,0.0001286437,3.9233755e-05,0.00020674472,-0.0011390632,0.0013004966,10,5,2,56,85,0.58823529
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,brier_score,17,0.12026803,0.12197422,-0.0017061886,-0.0022786903,-0.0098689658,-0.0017135817,-0.04479048,0.11220263,2,0,15,11,85,0.11764706
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.11866263,-0.00053942482,0.00067616412,-0.0001700262,0.0014255516,-0.014249239,0.0021172476,12,0,5,59,85,0.70588235
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11569759,-0.0020028877,-0.00039073567,-0.0019999125,-5.9975817e-05,-0.012123471,0.00073039718,2,3,12,14,85,0.11764706
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.12752739,-0.01567103,-0.0039739453,-0.025947933,-0.0016879799,-0.066368527,-0.00014128107,0,0,17,0,85,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11663982,0.0036282134,-0.0013007084,-0.0030297101,-0.00059482763,-0.025346979,0.11118288,3,0,14,14,85,0.17647059
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.11754262,0.00058058552,0.00092663057,0.00049467483,0.0016655995,-0.006072933,0.00241739,14,1,2,66,85,0.82352941
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11495858,-0.0012638809,-0.00024197813,-0.0015607725,-7.3858881e-05,-0.0072730527,0.0013837212,2,3,12,22,85,0.11764706
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.12051897,-0.008662618,-0.0038670341,-0.010697678,-0.00071644457,-0.045623137,-3.5669161e-05,0,1,16,1,85,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,brier_score,17,0.12026803,0.11373231,0.0065357201,-0.00039424087,-0.00071292476,0.00019961147,-0.006403713,0.11177511,5,0,12,18,85,0.29411765
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.11644551,0.0016776942,0.0011018636,0.00059469958,0.0017081801,0.00022756766,0.0079719406,17,0,0,80,85,1
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11424634,-0.00055163419,-7.4399955e-05,-0.00029247616,-1.8932587e-06,-0.0052371744,0.00081146648,1,9,7,23,85,0.058823529
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.11274876,-0.00089239887,-3.5864149e-05,-0.00064704383,0.00015328246,-0.0057521968,0.00062063617,6,3,8,36,85,0.35294118
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11340731,0.0068607261,-0.00026978583,-0.00040486468,0.00025280796,-0.0055495369,0.11222112,5,0,12,22,85,0.29411765
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.11642208,0.0017011291,0.0010483136,0.0005837759,0.001683607,0.0003335763,0.0083669807,17,0,0,81,85,1
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11422185,-0.00052714634,-7.6551507e-05,-0.00025915887,-2.4557143e-06,-0.0050383934,0.00074078551,1,9,7,20,85,0.058823529
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.11253636,-0.00068000759,-3.3320174e-05,-0.00049811342,0.0001704642,-0.0046708584,0.00082434877,6,3,8,39,85,0.35294118
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,brier_score,17,0.12026803,0.12981042,-0.0095423923,-0.0092698604,-0.021350505,-0.004974691,-0.060608676,0.10899258,2,0,15,8,85,0.11764706
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.12142547,-0.003302263,-0.00032174112,-0.0028362829,0.00088870566,-0.02168555,0.0016570417,7,1,9,41,85,0.41176471
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11783698,-0.004142277,-0.0010961044,-0.003104623,-0.00060722967,-0.022830304,0.00040161557,1,1,15,12,85,0.058823529
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.13699117,-0.025134816,-0.014742158,-0.036267016,-0.0040963821,-0.08501503,-0.0015000233,0,0,17,0,85,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11784415,0.0024238837,-0.0017258112,-0.0026200091,-0.00095239743,-0.035801963,0.11150022,2,0,15,14,85,0.11764706
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.11878057,-0.00065735967,0.00094708441,-0.00014601075,0.0012205608,-0.015004843,0.0020475714,11,1,5,60,85,0.64705882
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11526168,-0.001566984,-0.00038212751,-0.0012231073,-8.5978952e-05,-0.0097025537,0.0011254853,2,3,12,20,85,0.11764706
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.12167724,-0.0098208786,-0.0034496378,-0.013322462,-0.0009269584,-0.05232726,-2.052926e-05,0,1,16,5,85,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,brier_score,17,0.12026803,0.11361041,0.0066576241,-0.00017608449,-0.00029993275,9.3206433e-05,-0.0095078859,0.11286802,4,3,10,35,85,0.23529412
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,brier_score,17,0.11812321,0.11649073,0.0016324742,0.0010337741,0.00049605308,0.0014070258,0.0002388673,0.0091354683,17,0,0,79,85,1
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,brier_score,17,0.1136947,0.11409986,-0.00040516051,-5.2962428e-05,-0.00017228191,-2.2290726e-05,-0.0040576639,0.00033650079,2,10,5,20,85,0.11764706
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,brier_score,17,0.11185636,0.11194735,-9.099089e-05,8.1852335e-05,-4.1681696e-05,0.00027705869,-0.0025957817,0.0010971664,8,5,4,61,85,0.47058824
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,brier_score,17,0.12026803,0.11346538,0.0068026543,-8.3207513e-05,-0.0002486283,8.1896163e-05,-0.0086485974,0.11292895,4,6,7,36,85,0.23529412
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,brier_score,17,0.11812321,0.11649116,0.001632041,0.0010360546,0.00049497369,0.0014004252,0.00023377834,0.0093069466,17,0,0,79,85,1
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,brier_score,17,0.1136947,0.11409165,-0.0003969442,-5.4470814e-05,-0.00016778538,4.7038162e-06,-0.0040685513,0.00037785768,1,11,5,20,85,0.058823529
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,brier_score,17,0.11185636,0.11192112,-6.4766877e-05,9.2597959e-05,-2.3756311e-05,0.00029993868,-0.0024977783,0.0010130895,8,5,4,61,85,0.47058824
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,brier_score,17,0.12026803,0.11372677,0.0065412587,-0.00013429479,-0.00022252063,4.9995618e-05,-0.0085803457,0.11274378,4,3,10,28,85,0.23529412
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,brier_score,17,0.11812321,0.11654184,0.0015813677,0.0010406655,0.00047511505,0.0013705712,0.00023637078,0.0085233545,17,0,0,78,85,1
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,brier_score,17,0.1136947,0.11408277,-0.00038806915,-4.8633435e-05,-0.00017597799,-2.2932217e-05,-0.0039557961,0.00038620049,2,10,5,20,85,0.11764706
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,brier_score,17,0.11185749,0.11198599,-0.00012850579,0.00011799707,-2.8932769e-05,0.00030040452,-0.0027964224,0.00089718166,9,4,4,59,85,0.52941176
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,brier_score,17,0.12026803,0.11372001,0.0065480259,-9.6404565e-05,-0.0003105758,2.9483555e-05,-0.0098842507,0.11291899,4,5,8,28,85,0.23529412
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,brier_score,17,0.11812321,0.11667287,0.0014503338,0.00093384979,0.00043591018,0.0013090479,-1.9644593e-05,0.0084818996,16,1,0,75,85,0.94117647
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,brier_score,17,0.1136947,0.114104,-0.00040929863,-8.5052482e-05,-0.00018179695,8.945598e-06,-0.0034186308,0.0004574614,1,8,8,18,85,0.058823529
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,brier_score,17,0.1118573,0.11220261,-0.0003453086,5.5845013e-06,-9.6353853e-05,0.00021624541,-0.0042580043,0.00076999452,7,6,4,45,85,0.41176471
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,brier_score,17,0.12026803,0.11388496,0.0063830715,-0.00026178205,-0.00057895177,4.3452216e-05,-0.0096068594,0.11281228,4,2,11,26,85,0.23529412
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,brier_score,17,0.11812321,0.11701306,0.0011101424,0.00067891004,0.00039024869,0.0012900347,-7.1345237e-06,0.0043448976,16,1,0,76,85,0.94117647
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,brier_score,17,0.1136947,0.11391966,-0.00022496184,-2.5901092e-05,-0.00015158013,4.2558479e-05,-0.0026924628,0.00031411669,2,9,6,28,85,0.11764706
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,brier_score,17,0.1118573,0.11205911,-0.00020181731,-7.4640834e-06,-0.00017064962,9.1202641e-05,-0.0027718184,0.0016680446,4,8,5,33,85,0.23529412
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,brier_score,17,0.12026803,0.11353111,0.006736921,-0.00018024717,-0.00024883448,5.261847e-05,-0.0082772218,0.11285885,3,5,9,30,85,0.17647059
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,brier_score,17,0.11812321,0.11664255,0.0014806558,0.00093392695,0.00042418241,0.0013003992,0.00010573366,0.0088101102,17,0,0,76,85,1
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,brier_score,17,0.1136947,0.11408816,-0.00039345899,-6.9013819e-05,-0.00016483211,1.003124e-05,-0.0033978538,0.00036459622,2,8,7,18,85,0.11764706
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,brier_score,17,0.1118573,0.11210157,-0.00024427055,4.9375488e-06,-9.4978898e-05,0.00024963884,-0.003620295,0.00087577694,7,6,4,53,85,0.41176471
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,brier_score,17,0.11261975,0.1129098,-0.00029004348,-9.691007e-05,-0.00033441721,-3.1589463e-05,-0.0029667257,0.0010002703,2,7,8,18,85,0.11764706
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,brier_score,17,0.11185625,0.11182789,2.8360242e-05,3.639139e-05,3.2048686e-06,0.00014351535,-0.0005229628,0.00051399819,6,8,3,58,85,0.35294118
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,brier_score,17,0.11261975,0.11450546,-0.0018857081,-0.00035027481,-0.0010071231,-8.343379e-05,-0.019051856,0.00029459901,3,2,12,17,85,0.17647059
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,brier_score,17,0.11185625,0.11212196,-0.00026570831,-4.3979268e-06,-8.6779805e-05,0.00018032483,-0.0033703269,0.00086571344,5,8,4,39,85,0.29411765
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,brier_score,17,0.11261975,0.12223758,-0.0096178286,-0.0032538561,-0.007021886,-0.00082391415,-0.068082307,-0.00037991851,0,0,17,7,85,0
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,brier_score,17,0.11185625,0.11410126,-0.0022450072,-0.00020465388,-0.00055423268,-4.1814368e-05,-0.026348204,0.0013175288,3,4,10,22,85,0.17647059
+86,6,Corpus policy,Full CPT,E6 All tables,TabICLv2,brier_score,17,0.12026803,0.11346169,0.006806344,-0.00025759133,-0.00054850123,2.1771476e-05,-0.0066245505,0.11280956,4,3,10,25,85,0.23529412
+87,6,Corpus policy,Full CPT,E6 All tables,TabPFN v3,brier_score,17,0.11185606,0.11258003,-0.000723974,-2.4368467e-05,-0.00079333435,0.00012210915,-0.0056205556,0.00086776564,6,6,5,36,85,0.35294118
+88,6,Corpus policy,Full CPT,E6 Large tables,TabICLv2,brier_score,17,0.12026803,0.11419738,0.0060706544,-0.00021424681,-0.00072870029,-2.5219152e-05,-0.012027228,0.11295989,3,5,9,26,85,0.17647059
+89,6,Corpus policy,Full CPT,E6 Large tables,TabPFN v3,brier_score,17,0.11185606,0.11252677,-0.00067071345,-0.00020238898,-0.00079058498,5.5107761e-05,-0.0068219769,0.0016432076,3,5,9,25,85,0.17647059
+90,7,Episode size,Full CPT,"E7 2,048 rows",TabICLv2,brier_score,17,0.12026803,0.11412602,0.0061420121,-0.00032619281,-0.00062558764,-6.7670907e-05,-0.0097987092,0.11219805,4,2,11,20,85,0.23529412
+91,7,Episode size,Full CPT,"E7 2,048 rows",TabPFN v3,brier_score,17,0.11185664,0.1138947,-0.0020380614,-0.00037161702,-0.0012398277,2.1350478e-05,-0.018221687,0.00022401621,1,5,11,19,85,0.058823529
+92,7,Episode size,Full CPT,"E7 26,000 rows",TabICLv2,brier_score,17,0.12026803,0.11385407,0.0064139653,-0.00027720331,-0.00054156376,-1.6371765e-05,-0.0095014996,0.11304113,3,4,10,29,85,0.17647059
+93,7,Episode size,Full CPT,"E7 26,000 rows",TabPFN v3,brier_score,17,0.11185664,0.11226701,-0.00041037229,3.1196958e-05,-0.00026600758,9.8536507e-05,-0.0048036289,0.0016880581,4,7,6,34,85,0.23529412
+94,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,brier_score,17,0.11261975,0.11738868,-0.0047689249,-0.0018861485,-0.0043809442,-0.0010703956,-0.035566859,-0.0001152238,0,0,17,8,85,0
+95,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,brier_score,17,0.11185601,0.11690514,-0.0050491251,-0.0012902974,-0.0044311242,-0.00060431936,-0.030414714,8.5129265e-05,0,1,16,9,85,0
+96,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,brier_score,17,0.11261975,0.12693392,-0.014314169,-0.0067506252,-0.018514901,-0.0047566834,-0.073267641,-0.0013417176,0,0,17,1,85,0
+97,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,brier_score,17,0.11185601,0.1234704,-0.011614386,-0.0025901793,-0.0095426176,-0.0011370504,-0.069154512,-0.00021544293,0,0,17,1,85,0
+98,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,brier_score,17,0.11261975,0.11466183,-0.0020420762,-0.00031827309,-0.00062648147,-7.2411595e-05,-0.019691214,0.00023832321,1,4,12,14,85,0.058823529
+99,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,brier_score,17,0.11185601,0.11224376,-0.00038774162,7.2262103e-06,-0.00017510726,0.00019510677,-0.004441335,0.0010091652,6,5,6,47,85,0.35294118
+
+general/03_overview_pd: 12 figures -> output CreditPFN/figures/general
+  01  pd_overview_landscape
+  02  pd_overview_distributions
+  03  pd_overview_outcomes
+  04  pd_overview_rate_response
+  05  pd_overview_transfer_retention
+  06  pd_overview_context
+  07  pd_overview_tables_v2
+  08  pd_overview_tables_v2.6
+  09  pd_overview_tables_v3
+  10  pd_overview_tables_tabicl-v2
+  11  pd_overview_headroom
+  12  pd_overview_cost
+```
+
+---
+
+## general/04_overview_lgd
+
+```
+Overview: continued pretraining for LGD
+
+0. Evidence and scope
+DATA: no external source selected.
+Project: no external source selected.
+Missing project records are unavailable evidence, not zero effects or failed training.
+Paired within-study comparisons of every completed CPT configuration with its original model; experiment 0 is excluded.
+
+1. Studies and what differs between them
+Experiment 0 (controls and pilots) is excluded. Each study pairs its adapted checkpoints with its own evaluation of the original model, under that study's inference settings, so every effect in this notebook is a within-study paired difference. Experiments 1–3 use TabPFN v2, TabPFN v2.6, TabPFN v3 and TabICLv2; experiments 5–8 use TabPFN v3 and TabICLv2. Experiment 4 reuses the experiment-1 reference checkpoints at varying context sizes. Experiments 6 and 7 are PD-only. Cross-study contrasts can involve several recipe differences at once (see the comparability table: PD sampling, training precision, TabICLv2 inference precision, episode cap and learning-rate parameterization).
+
+Table: What differs between studies
+CSV (first column: row index)
+row,experiment,study,arm,bases,learning_rates,l2sp,pd_sampling,training_amp,tabicl_inference,episode_rows,seed,trials
+0,1,Main grid,,"TabICLv2, TabPFN v2, TabPFN v2.6, TabPFN v3","3e-07, 1e-06, 1e-05, 3e-05","0, 0.003",uniform rows,True,automatic,measured cap,42,256
+1,2,Seed 43,,"TabICLv2, TabPFN v2, TabPFN v2.6, TabPFN v3",3e-07,0.003,uniform rows,True,automatic,measured cap,43,16
+2,3,Sampling,,"TabICLv2, TabPFN v2, TabPFN v2.6, TabPFN v3",3e-07,0.003,uniform rows,True,automatic,measured cap,42,48
+3,5,DiagScale,,"TabICLv2, TabPFN v3","0.0001, 0.001, 0.03",0,uniform rows,False,"FP32, no FA3",8192,42,24
+4,8,LoRA,,"TabICLv2, TabPFN v3","1e-05, 0.0001, 0.001",0,uniform rows,True,"FP32, no FA3",measured cap,42,24
+
+2. Every configuration against its original model
+Reference recipe, TabICLv2: mean -0.0048 R², median -0.0023, 1/8 tables improved, 5 worse (original 0.5319 → adapted 0.5271).
+Reference recipe, TabPFN v2: mean +0.0041 R², median +0.0013, 4/8 tables improved, 2 worse (original 0.4745 → adapted 0.4786).
+Reference recipe, TabPFN v2.6: mean -0.0832 R², median -0.0647, 1/8 tables improved, 7 worse (original 0.5398 → adapted 0.4566).
+Reference recipe, TabPFN v3: mean -0.0284 R², median -0.0034, 1/8 tables improved, 7 worse (original 0.5394 → adapted 0.5110).
+TabICLv2: 0 of 26 configurations have a mean gain above 0.001 R²; highest observed mean +0.0008 (E1 frozen · LR 3e-07 · λ 0), lowest -0.1682 (E1 all · LR 3e-05 · λ 0).
+TabPFN v2: 8 of 20 configurations have a mean gain above 0.001 R²; highest observed mean +0.0058 (E3 Full pass), lowest -0.1319 (E1 all · LR 3e-05 · λ 0.003).
+TabPFN v2.6: 0 of 20 configurations have a mean gain above 0.001 R²; highest observed mean -0.0001 (E1 frozen · LR 3e-07 · λ 0.003), lowest -0.1347 (E1 all · LR 3e-05 · λ 0).
+TabPFN v3: 0 of 26 configurations have a mean gain above 0.001 R²; highest observed mean -0.0033 (E5 LR 0.0001), lowest -0.2536 (E1 all · LR 3e-05 · λ 0).
+TabICLv2, experiment 1 averaged over anchoring and scope: LR 3e-07 -0.0020, LR 1e-06 -0.0264, LR 1e-05 -0.0631, LR 3e-05 -0.0736 R².
+TabPFN v2, experiment 1 averaged over anchoring and scope: LR 3e-07 +0.0014, LR 1e-06 -0.0003, LR 1e-05 -0.0355, LR 3e-05 -0.0690 R².
+TabPFN v2.6, experiment 1 averaged over anchoring and scope: LR 3e-07 -0.0417, LR 1e-06 -0.0430, LR 1e-05 -0.0484, LR 3e-05 -0.0704 R².
+TabPFN v3, experiment 1 averaged over anchoring and scope: LR 3e-07 -0.0207, LR 1e-06 -0.0422, LR 1e-05 -0.1635, LR 3e-05 -0.2139 R².
+
+Figure: lgd_overview_landscape
+LGD. Held-out credit tables, final five-fold benchmark. Each cell is the equal-table mean change in R² of an adapted model relative to the original checkpoint of the same base, followed by the number of tables that improved by more than 0.001 R² and the number of complete tables. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Rows are grouped by experiment (E1 main grid: four learning rates × L2-SP λ ∈ {0, 0.003} × all or frozen-backbone updates; E2 the reference recipe with a second training seed; E3 sampling protocols; E5 DiagScale query-scaling adapters; E6 all versus large training tables; E7 episode sizes on the large-table corpus; E8 rank-16 query/value LoRA). The bold row is the predefined reference recipe (full updates, LR 3e-7, λ 0.003); every other row is reported in full rather than selected. Label colours identify the adaptation approach. Colours are symmetric about zero and saturate at the 95th percentile of |cell value| (0.20); printed values are exact. 'Not run' marks base/approach combinations outside a study's design. Studies differ in more than their named factor (see the comparability table).
+Configuration summaries
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.51883267,-0.013060723,-0.011502975,-0.016764188,-0.0097137094,-0.027258682,-0.00057952404,0,1,7,6,40,0
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.47193085,-0.002586937,-0.00086320639,-0.0030562878,0.00037207305,-0.016597986,0.0024587274,2,2,4,11,40,0.25
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.50945067,-0.030357036,-0.024430591,-0.033436862,-0.011230743,-0.10092623,-0.0031109571,0,0,8,4,40,0
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.41369095,-0.1257207,-0.087121856,-0.11812385,-0.040204856,-0.51055399,-0.0050939322,0,0,8,0,40,0
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.51214559,-0.019747806,-0.01240316,-0.019649011,-0.0088251054,-0.076606297,-0.00010713339,0,1,7,7,40,0
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47140032,-0.0031174734,-0.0020085752,-0.0060482055,-0.0005882591,-0.016434467,0.014576924,1,2,5,8,40,0.125
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.51973788,-0.020069833,-0.013637525,-0.025988147,-0.0073207855,-0.061803138,-0.0029014111,0,0,8,5,40,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.43754975,-0.1018619,-0.072682756,-0.086833966,-0.018137395,-0.45800722,-0.0027061224,0,0,8,4,40,0
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,r2,8,0.53189339,0.52522113,-0.0066722602,-0.00071201324,-0.0022188574,0.0004635036,-0.056962609,0.0092394471,1,4,3,19,40,0.125
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,r2,8,0.47451779,0.47223972,-0.0022780657,-0.00098290443,-0.002730754,-0.00059796274,-0.0089998007,2.1195412e-05,0,4,4,12,40,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.53175781,-0.0080498978,-0.0063403487,-0.010847095,-0.0041705757,-0.021265209,0.0003518343,0,1,7,6,40,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,r2,8,0.53941165,0.50974311,-0.029668537,-0.014176607,-0.030582902,-0.0019027621,-0.13690786,0.00060093403,0,2,6,8,40,0
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,r2,8,0.53189339,0.5230734,-0.0088199973,-0.00066587329,-0.0018796057,0.00039587021,-0.073823249,0.0086188436,1,3,4,17,40,0.125
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.4715644,-0.0029533878,-0.00091177225,-0.003951028,-0.00062890351,-0.0092791319,-0.00031479597,0,4,4,11,40,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.53209724,-0.0077104703,-0.006256479,-0.010275066,-0.004102397,-0.021278048,0.00032086372,0,1,7,6,40,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.51498798,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,-0.092189217,0.00058431625,0,2,6,8,40,0
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.50455802,-0.02733537,-0.022303897,-0.029654253,-0.016692707,-0.074540174,-0.004166615,0,0,8,2,40,0
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.45701362,-0.017504168,-0.0046523154,-0.0082518369,-0.0028655559,-0.1071712,-0.0012657285,0,0,8,8,40,0
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.51461486,-0.025192845,-0.013386995,-0.040285909,-0.008828482,-0.074743664,-0.0029868007,0,0,8,3,40,0
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.34057573,-0.19883592,-0.14908058,-0.23024899,-0.075563046,-0.66740615,-0.0087694049,0,0,8,2,40,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.50061333,-0.031280062,-0.019262511,-0.026964206,-0.011174932,-0.13264836,-0.0051512122,0,0,8,6,40,0
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47141155,-0.0031062365,-0.0023369789,-0.0082855701,-0.00080538392,-0.0183496,0.018867517,1,2,5,9,40,0.125
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.51977711,-0.020030595,-0.0096385777,-0.022548661,-0.0060977459,-0.061349201,-0.0035786271,0,0,8,4,40,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.38047278,-0.15893887,-0.12522647,-0.20138638,-0.065578642,-0.4815578,-0.0076129436,0,0,8,0,40,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,r2,8,0.53189339,0.53273974,0.00084634423,0.00021198392,-0.0003087312,0.0010435343,-0.00091625452,0.0053270698,2,6,0,24,40,0.25
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,r2,8,0.47451779,0.47314072,-0.001377067,-0.00028112531,-0.0011602819,-0.00013271272,-0.0069638371,0.00053731203,0,6,2,11,40,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.539684,-0.00012370497,0.00033872128,-0.00090165734,0.00099083185,-0.0044168472,0.0026229739,2,4,2,19,40,0.25
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,r2,8,0.53941165,0.53074273,-0.0086689219,-0.0040784836,-0.0076551467,-0.00062765181,-0.044520736,0.00079799891,0,3,5,14,40,0
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,r2,8,0.53189339,0.53268896,0.00079556257,0.00023046136,-0.0005481571,0.0012747347,-0.0011702299,0.0053941846,3,4,1,25,40,0.375
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47294839,-0.0015693963,-0.00034960508,-0.0014551222,-0.0001406461,-0.0071280241,0.00051351786,0,6,2,12,40,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.53970201,-0.00010569841,0.00034272671,-0.00089432299,0.0010218769,-0.0044159889,0.0026251674,2,4,2,19,40,0.25
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.5301844,-0.0092272505,-0.0040757716,-0.0075996786,-0.00084083676,-0.048800099,0.000796628,0,2,6,13,40,0
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.3968318,-0.1350616,-0.094511598,-0.19357406,-0.055729118,-0.32710534,-0.038795364,0,0,8,1,40,0
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.40858407,-0.065933718,-0.048496705,-0.080342004,-0.022524375,-0.17721788,-0.0066147327,0,0,8,4,40,0
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.4638222,-0.075985511,-0.045870984,-0.058651933,-0.033443069,-0.30640349,-0.016891122,0,0,8,2,40,0
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.31308331,-0.22632834,-0.2298376,-0.30011507,-0.11404129,-0.4409722,-0.020953965,0,0,8,0,40,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.44754979,-0.084343605,-0.033559436,-0.15384069,-0.027489328,-0.22341288,-0.0091856837,0,0,8,1,40,0
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.40416796,-0.070349832,-0.054063094,-0.086656401,-0.036784941,-0.16206375,-0.0093815923,0,0,8,3,40,0
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.47258453,-0.067223181,-0.031572849,-0.046241808,-0.022424421,-0.30267892,-0.017068756,0,0,8,2,40,0
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.33913954,-0.20027211,-0.16274331,-0.25376786,-0.12314407,-0.45767866,-0.015533566,0,0,8,1,40,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,r2,8,0.53189339,0.48821125,-0.043682146,-0.010536087,-0.019141042,-0.0078466833,-0.2673511,-0.00045790672,0,1,7,7,40,0
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,r2,8,0.47451779,0.47704954,0.0025317505,-0.0027108133,-0.0042717874,-0.00042589009,-0.007098949,0.041654229,1,2,5,13,40,0.125
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.46155322,-0.07825449,-0.055873209,-0.070542914,-0.040376687,-0.29806277,-7.4923038e-05,0,1,7,4,40,0
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,r2,8,0.53941165,0.47655561,-0.062856039,-0.02652275,-0.051745307,-0.0058838814,-0.30643374,0.0039400697,1,0,7,6,40,0.125
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,r2,8,0.53189339,0.48540558,-0.046487814,-0.0059133828,-0.015694883,-0.0040808678,-0.31356044,-0.00032074451,0,1,7,7,40,0
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47616774,0.0016499475,-0.0024229586,-0.0049040973,-0.00061190724,-0.012545788,0.042105663,1,1,6,10,40,0.125
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.46179089,-0.078016824,-0.055416304,-0.069882414,-0.040778422,-0.29770719,0.00028730631,0,1,7,4,40,0
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.4876169,-0.051794747,-0.02624175,-0.044447699,-0.0059069276,-0.2398862,0.0041180491,1,0,7,6,40,0.125
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.3637259,-0.16816749,-0.13860931,-0.19560183,-0.13110935,-0.33802536,-0.056901348,0,0,8,0,40,0
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.35098848,-0.1235293,-0.090552241,-0.21386106,-0.058948374,-0.24104493,-0.021481311,0,0,8,1,40,0
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.40508815,-0.13471956,-0.089901751,-0.13862612,-0.040656927,-0.52430831,-0.022573102,0,0,8,1,40,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.28577152,-0.25364013,-0.2189221,-0.30145905,-0.15595028,-0.62113434,-0.041435611,0,0,8,0,40,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.46429213,-0.067601268,-0.04378193,-0.10515964,-0.033550999,-0.15062555,-0.011537147,0,0,8,2,40,0
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.34261546,-0.13190233,-0.10629286,-0.18306592,-0.080829591,-0.29050606,-0.017306674,0,0,8,0,40,0
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.4382552,-0.10155251,-0.056605601,-0.12526262,-0.031483433,-0.3665728,-0.0092379689,0,0,8,1,40,0
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.29522215,-0.2441895,-0.20078877,-0.28897671,-0.18182567,-0.56277343,-0.046640003,0,0,8,0,40,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,r2,8,0.53189339,0.52696603,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,-0.028720737,0.0058594465,1,2,5,12,40,0.125
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,r2,8,0.47451779,0.47890616,0.0043883696,0.0019722581,-0.0010680228,0.0077646077,-0.0031929135,0.019067729,5,1,2,21,40,0.625
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.45645544,-0.083352271,-0.064928436,-0.076963127,-0.047962001,-0.29913464,0.0013708711,1,0,7,5,40,0.125
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,r2,8,0.53941165,0.50301951,-0.036392143,-0.0031691134,-0.01287834,-0.0017965019,-0.25456707,0.00228585,1,0,7,10,40,0.125
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,r2,8,0.53189339,0.52712316,-0.0047702327,-0.0022779822,-0.0040102035,-0.00022086203,-0.030043507,0.0058369756,1,2,5,13,40,0.125
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47861889,0.0041011006,0.0012956858,-0.0011399508,0.0076542139,-0.0032508135,0.018483496,4,2,2,20,40,0.5
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.45659534,-0.083212371,-0.064731538,-0.076909691,-0.047867784,-0.29883276,0.0014339089,1,0,7,5,40,0.125
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.51098268,-0.028428969,-0.0034476042,-0.013203469,-0.0017970532,-0.18983387,0.0021969914,1,0,7,10,40,0.125
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,r2,8,0.53189339,0.52409757,-0.0077958211,-0.00052065849,-0.0048593313,-1.5902519e-05,-0.056091094,0.0050950527,1,4,3,11,40,0.125
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,r2,8,0.47451779,0.47870549,0.0041876957,0.00096101165,-0.0013737738,0.0089154243,-0.0033835411,0.017983603,4,1,3,20,40,0.5
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,r2,8,0.53980771,0.45765999,-0.082147714,-0.063147157,-0.075346023,-0.049237338,-0.29297761,0.00093084574,0,1,7,5,40,0
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,r2,8,0.53941165,0.53001623,-0.0093954206,-0.0031857491,-0.01267975,-0.0012765169,-0.042056417,0.0022327185,1,1,6,9,40,0.125
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,r2,8,0.53189339,0.52702959,-0.0048638046,-0.0020657063,-0.0037165195,-0.00063458979,-0.031153631,0.0063179255,1,2,5,13,40,0.125
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,r2,8,0.47451779,0.47973913,0.0052213416,0.00325284,-0.00081406534,0.0084643364,-0.0033791423,0.020500529,5,1,2,20,40,0.625
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,r2,8,0.53980771,0.45751009,-0.082297623,-0.061323172,-0.078703922,-0.046612418,-0.29546745,0.0013621926,1,0,7,5,40,0.125
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,r2,8,0.53941165,0.50129292,-0.038118732,-0.0038018703,-0.013063103,-0.0018592924,-0.26636069,0.0022574782,1,1,6,10,40,0.125
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,r2,8,0.53189339,0.52729575,-0.0045976415,-0.0021000326,-0.0038524806,-0.00013200641,-0.028587568,0.0052321076,1,2,5,12,40,0.125
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,r2,8,0.47451779,0.48028302,0.005765228,0.0029636323,-0.00135701,0.011377439,-0.0034224987,0.020232344,5,0,3,22,40,0.625
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,r2,8,0.53980771,0.45256013,-0.087247577,-0.0703026,-0.081965524,-0.048159978,-0.29541059,0.0027761936,1,0,7,5,40,0.125
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,r2,8,0.53941165,0.50936067,-0.030050986,-0.0026727676,-0.011570141,-0.0017810613,-0.20707268,0.0022903204,1,0,7,11,40,0.125
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,r2,8,0.53189339,0.52714098,-0.0047524139,-0.0021984935,-0.0040427834,-0.00023741424,-0.029958057,0.0058127522,1,2,5,13,40,0.125
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,r2,8,0.47451779,0.47870277,0.0041849822,0.0013407171,-0.0011882693,0.0079265893,-0.0031974196,0.01857003,4,2,2,21,40,0.5
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,r2,8,0.53980771,0.45657929,-0.083228423,-0.064736652,-0.076944166,-0.047892842,-0.29884548,0.0014240742,1,0,7,5,40,0.125
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,r2,8,0.53941165,0.49790295,-0.041508697,-0.0033853233,-0.013081938,-0.0018054247,-0.29402781,0.0022050142,1,0,7,10,40,0.125
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,r2,8,0.53191103,0.52882463,-0.0030863956,-0.00024145842,-0.0010667086,-8.3744526e-07,-0.022994757,0.0012807846,1,5,2,17,40,0.125
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,r2,8,0.53941165,0.53608124,-0.003330411,-0.0011802614,-0.0031513304,0.00066420436,-0.021595657,0.0023545742,1,3,4,16,40,0.125
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,r2,8,0.53191103,0.51510676,-0.016804272,-0.007842356,-0.012857324,-0.00054812133,-0.093165243,0.0059058547,1,2,5,9,40,0.125
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,r2,8,0.53941165,0.53346616,-0.0059454918,-0.008187139,-0.0096226901,0.00065376759,-0.018097067,0.0035565495,2,1,5,13,40,0.25
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,r2,8,0.53191103,0.47491942,-0.056991605,-0.03702687,-0.049895865,-0.020578602,-0.23728884,0.001237762,1,0,7,4,40,0.125
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,r2,8,0.53941165,0.47508063,-0.064331025,-0.025844318,-0.052366605,-0.0098132581,-0.32234859,0.0010969043,1,0,7,3,40,0.125
+86,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,r2,8,0.53191103,0.40458414,-0.12732689,-0.097158664,-0.15483392,-0.04527351,-0.396981,-0.030503917,0,0,8,0,40,0
+87,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,r2,8,0.53941165,0.35460799,-0.18480366,-0.10822706,-0.23855406,-0.070468,-0.53119321,-0.019110322,0,0,8,2,40,0
+88,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,r2,8,0.53191103,0.38276762,-0.14914341,-0.13653445,-0.16546816,-0.095843869,-0.34729686,-0.051982009,0,0,8,0,40,0
+89,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,r2,8,0.53941165,0.34668742,-0.19272424,-0.19921984,-0.24210903,-0.075387132,-0.46683137,-0.039393771,0,0,8,0,40,0
+90,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,r2,8,0.53191103,0.49894201,-0.03296902,-0.006423676,-0.031164518,-0.0035108447,-0.1628454,0.0018438578,1,1,6,6,40,0.125
+91,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,r2,8,0.53941165,0.51520214,-0.024209514,-0.0094617784,-0.017695081,-0.001445815,-0.13894597,0.001476872,2,0,6,7,40,0.25
+
+Table: Every configuration: original and adapted scores, change and consistency
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.51883267,-0.013060723,-0.011502975,-0.016764188,-0.0097137094,-0.027258682,-0.00057952404,0,1,7,6,40,0
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.47193085,-0.002586937,-0.00086320639,-0.0030562878,0.00037207305,-0.016597986,0.0024587274,2,2,4,11,40,0.25
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.50945067,-0.030357036,-0.024430591,-0.033436862,-0.011230743,-0.10092623,-0.0031109571,0,0,8,4,40,0
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.41369095,-0.1257207,-0.087121856,-0.11812385,-0.040204856,-0.51055399,-0.0050939322,0,0,8,0,40,0
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.51214559,-0.019747806,-0.01240316,-0.019649011,-0.0088251054,-0.076606297,-0.00010713339,0,1,7,7,40,0
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47140032,-0.0031174734,-0.0020085752,-0.0060482055,-0.0005882591,-0.016434467,0.014576924,1,2,5,8,40,0.125
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.51973788,-0.020069833,-0.013637525,-0.025988147,-0.0073207855,-0.061803138,-0.0029014111,0,0,8,5,40,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.43754975,-0.1018619,-0.072682756,-0.086833966,-0.018137395,-0.45800722,-0.0027061224,0,0,8,4,40,0
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,r2,8,0.53189339,0.52522113,-0.0066722602,-0.00071201324,-0.0022188574,0.0004635036,-0.056962609,0.0092394471,1,4,3,19,40,0.125
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,r2,8,0.47451779,0.47223972,-0.0022780657,-0.00098290443,-0.002730754,-0.00059796274,-0.0089998007,2.1195412e-05,0,4,4,12,40,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.53175781,-0.0080498978,-0.0063403487,-0.010847095,-0.0041705757,-0.021265209,0.0003518343,0,1,7,6,40,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,r2,8,0.53941165,0.50974311,-0.029668537,-0.014176607,-0.030582902,-0.0019027621,-0.13690786,0.00060093403,0,2,6,8,40,0
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,r2,8,0.53189339,0.5230734,-0.0088199973,-0.00066587329,-0.0018796057,0.00039587021,-0.073823249,0.0086188436,1,3,4,17,40,0.125
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.4715644,-0.0029533878,-0.00091177225,-0.003951028,-0.00062890351,-0.0092791319,-0.00031479597,0,4,4,11,40,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.53209724,-0.0077104703,-0.006256479,-0.010275066,-0.004102397,-0.021278048,0.00032086372,0,1,7,6,40,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.51498798,-0.024423669,-0.014407295,-0.03150408,-0.0023631781,-0.092189217,0.00058431625,0,2,6,8,40,0
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.50455802,-0.02733537,-0.022303897,-0.029654253,-0.016692707,-0.074540174,-0.004166615,0,0,8,2,40,0
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.45701362,-0.017504168,-0.0046523154,-0.0082518369,-0.0028655559,-0.1071712,-0.0012657285,0,0,8,8,40,0
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.51461486,-0.025192845,-0.013386995,-0.040285909,-0.008828482,-0.074743664,-0.0029868007,0,0,8,3,40,0
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.34057573,-0.19883592,-0.14908058,-0.23024899,-0.075563046,-0.66740615,-0.0087694049,0,0,8,2,40,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.50061333,-0.031280062,-0.019262511,-0.026964206,-0.011174932,-0.13264836,-0.0051512122,0,0,8,6,40,0
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47141155,-0.0031062365,-0.0023369789,-0.0082855701,-0.00080538392,-0.0183496,0.018867517,1,2,5,9,40,0.125
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.51977711,-0.020030595,-0.0096385777,-0.022548661,-0.0060977459,-0.061349201,-0.0035786271,0,0,8,4,40,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.38047278,-0.15893887,-0.12522647,-0.20138638,-0.065578642,-0.4815578,-0.0076129436,0,0,8,0,40,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,r2,8,0.53189339,0.53273974,0.00084634423,0.00021198392,-0.0003087312,0.0010435343,-0.00091625452,0.0053270698,2,6,0,24,40,0.25
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,r2,8,0.47451779,0.47314072,-0.001377067,-0.00028112531,-0.0011602819,-0.00013271272,-0.0069638371,0.00053731203,0,6,2,11,40,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.539684,-0.00012370497,0.00033872128,-0.00090165734,0.00099083185,-0.0044168472,0.0026229739,2,4,2,19,40,0.25
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,r2,8,0.53941165,0.53074273,-0.0086689219,-0.0040784836,-0.0076551467,-0.00062765181,-0.044520736,0.00079799891,0,3,5,14,40,0
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,r2,8,0.53189339,0.53268896,0.00079556257,0.00023046136,-0.0005481571,0.0012747347,-0.0011702299,0.0053941846,3,4,1,25,40,0.375
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47294839,-0.0015693963,-0.00034960508,-0.0014551222,-0.0001406461,-0.0071280241,0.00051351786,0,6,2,12,40,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.53970201,-0.00010569841,0.00034272671,-0.00089432299,0.0010218769,-0.0044159889,0.0026251674,2,4,2,19,40,0.25
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.5301844,-0.0092272505,-0.0040757716,-0.0075996786,-0.00084083676,-0.048800099,0.000796628,0,2,6,13,40,0
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.3968318,-0.1350616,-0.094511598,-0.19357406,-0.055729118,-0.32710534,-0.038795364,0,0,8,1,40,0
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.40858407,-0.065933718,-0.048496705,-0.080342004,-0.022524375,-0.17721788,-0.0066147327,0,0,8,4,40,0
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.4638222,-0.075985511,-0.045870984,-0.058651933,-0.033443069,-0.30640349,-0.016891122,0,0,8,2,40,0
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.31308331,-0.22632834,-0.2298376,-0.30011507,-0.11404129,-0.4409722,-0.020953965,0,0,8,0,40,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.44754979,-0.084343605,-0.033559436,-0.15384069,-0.027489328,-0.22341288,-0.0091856837,0,0,8,1,40,0
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.40416796,-0.070349832,-0.054063094,-0.086656401,-0.036784941,-0.16206375,-0.0093815923,0,0,8,3,40,0
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.47258453,-0.067223181,-0.031572849,-0.046241808,-0.022424421,-0.30267892,-0.017068756,0,0,8,2,40,0
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.33913954,-0.20027211,-0.16274331,-0.25376786,-0.12314407,-0.45767866,-0.015533566,0,0,8,1,40,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,r2,8,0.53189339,0.48821125,-0.043682146,-0.010536087,-0.019141042,-0.0078466833,-0.2673511,-0.00045790672,0,1,7,7,40,0
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,r2,8,0.47451779,0.47704954,0.0025317505,-0.0027108133,-0.0042717874,-0.00042589009,-0.007098949,0.041654229,1,2,5,13,40,0.125
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.46155322,-0.07825449,-0.055873209,-0.070542914,-0.040376687,-0.29806277,-7.4923038e-05,0,1,7,4,40,0
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,r2,8,0.53941165,0.47655561,-0.062856039,-0.02652275,-0.051745307,-0.0058838814,-0.30643374,0.0039400697,1,0,7,6,40,0.125
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,r2,8,0.53189339,0.48540558,-0.046487814,-0.0059133828,-0.015694883,-0.0040808678,-0.31356044,-0.00032074451,0,1,7,7,40,0
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47616774,0.0016499475,-0.0024229586,-0.0049040973,-0.00061190724,-0.012545788,0.042105663,1,1,6,10,40,0.125
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.46179089,-0.078016824,-0.055416304,-0.069882414,-0.040778422,-0.29770719,0.00028730631,0,1,7,4,40,0
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.4876169,-0.051794747,-0.02624175,-0.044447699,-0.0059069276,-0.2398862,0.0041180491,1,0,7,6,40,0.125
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,r2,8,0.53189339,0.3637259,-0.16816749,-0.13860931,-0.19560183,-0.13110935,-0.33802536,-0.056901348,0,0,8,0,40,0
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,r2,8,0.47451779,0.35098848,-0.1235293,-0.090552241,-0.21386106,-0.058948374,-0.24104493,-0.021481311,0,0,8,1,40,0
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.40508815,-0.13471956,-0.089901751,-0.13862612,-0.040656927,-0.52430831,-0.022573102,0,0,8,1,40,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,r2,8,0.53941165,0.28577152,-0.25364013,-0.2189221,-0.30145905,-0.15595028,-0.62113434,-0.041435611,0,0,8,0,40,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,r2,8,0.53189339,0.46429213,-0.067601268,-0.04378193,-0.10515964,-0.033550999,-0.15062555,-0.011537147,0,0,8,2,40,0
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.34261546,-0.13190233,-0.10629286,-0.18306592,-0.080829591,-0.29050606,-0.017306674,0,0,8,0,40,0
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.4382552,-0.10155251,-0.056605601,-0.12526262,-0.031483433,-0.3665728,-0.0092379689,0,0,8,1,40,0
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.29522215,-0.2441895,-0.20078877,-0.28897671,-0.18182567,-0.56277343,-0.046640003,0,0,8,0,40,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,r2,8,0.53189339,0.52696603,-0.0049273625,-0.0025386333,-0.0047946066,-0.00049878359,-0.028720737,0.0058594465,1,2,5,12,40,0.125
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,r2,8,0.47451779,0.47890616,0.0043883696,0.0019722581,-0.0010680228,0.0077646077,-0.0031929135,0.019067729,5,1,2,21,40,0.625
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,r2,8,0.53980771,0.45645544,-0.083352271,-0.064928436,-0.076963127,-0.047962001,-0.29913464,0.0013708711,1,0,7,5,40,0.125
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,r2,8,0.53941165,0.50301951,-0.036392143,-0.0031691134,-0.01287834,-0.0017965019,-0.25456707,0.00228585,1,0,7,10,40,0.125
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,r2,8,0.53189339,0.52712316,-0.0047702327,-0.0022779822,-0.0040102035,-0.00022086203,-0.030043507,0.0058369756,1,2,5,13,40,0.125
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,r2,8,0.47451779,0.47861889,0.0041011006,0.0012956858,-0.0011399508,0.0076542139,-0.0032508135,0.018483496,4,2,2,20,40,0.5
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,8,0.53980771,0.45659534,-0.083212371,-0.064731538,-0.076909691,-0.047867784,-0.29883276,0.0014339089,1,0,7,5,40,0.125
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,r2,8,0.53941165,0.51098268,-0.028428969,-0.0034476042,-0.013203469,-0.0017970532,-0.18983387,0.0021969914,1,0,7,10,40,0.125
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,r2,8,0.53189339,0.52409757,-0.0077958211,-0.00052065849,-0.0048593313,-1.5902519e-05,-0.056091094,0.0050950527,1,4,3,11,40,0.125
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,r2,8,0.47451779,0.47870549,0.0041876957,0.00096101165,-0.0013737738,0.0089154243,-0.0033835411,0.017983603,4,1,3,20,40,0.5
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,r2,8,0.53980771,0.45765999,-0.082147714,-0.063147157,-0.075346023,-0.049237338,-0.29297761,0.00093084574,0,1,7,5,40,0
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,r2,8,0.53941165,0.53001623,-0.0093954206,-0.0031857491,-0.01267975,-0.0012765169,-0.042056417,0.0022327185,1,1,6,9,40,0.125
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,r2,8,0.53189339,0.52702959,-0.0048638046,-0.0020657063,-0.0037165195,-0.00063458979,-0.031153631,0.0063179255,1,2,5,13,40,0.125
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,r2,8,0.47451779,0.47973913,0.0052213416,0.00325284,-0.00081406534,0.0084643364,-0.0033791423,0.020500529,5,1,2,20,40,0.625
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,r2,8,0.53980771,0.45751009,-0.082297623,-0.061323172,-0.078703922,-0.046612418,-0.29546745,0.0013621926,1,0,7,5,40,0.125
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,r2,8,0.53941165,0.50129292,-0.038118732,-0.0038018703,-0.013063103,-0.0018592924,-0.26636069,0.0022574782,1,1,6,10,40,0.125
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,r2,8,0.53189339,0.52729575,-0.0045976415,-0.0021000326,-0.0038524806,-0.00013200641,-0.028587568,0.0052321076,1,2,5,12,40,0.125
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,r2,8,0.47451779,0.48028302,0.005765228,0.0029636323,-0.00135701,0.011377439,-0.0034224987,0.020232344,5,0,3,22,40,0.625
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,r2,8,0.53980771,0.45256013,-0.087247577,-0.0703026,-0.081965524,-0.048159978,-0.29541059,0.0027761936,1,0,7,5,40,0.125
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,r2,8,0.53941165,0.50936067,-0.030050986,-0.0026727676,-0.011570141,-0.0017810613,-0.20707268,0.0022903204,1,0,7,11,40,0.125
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,r2,8,0.53189339,0.52714098,-0.0047524139,-0.0021984935,-0.0040427834,-0.00023741424,-0.029958057,0.0058127522,1,2,5,13,40,0.125
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,r2,8,0.47451779,0.47870277,0.0041849822,0.0013407171,-0.0011882693,0.0079265893,-0.0031974196,0.01857003,4,2,2,21,40,0.5
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,r2,8,0.53980771,0.45657929,-0.083228423,-0.064736652,-0.076944166,-0.047892842,-0.29884548,0.0014240742,1,0,7,5,40,0.125
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,r2,8,0.53941165,0.49790295,-0.041508697,-0.0033853233,-0.013081938,-0.0018054247,-0.29402781,0.0022050142,1,0,7,10,40,0.125
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,r2,8,0.53191103,0.52882463,-0.0030863956,-0.00024145842,-0.0010667086,-8.3744526e-07,-0.022994757,0.0012807846,1,5,2,17,40,0.125
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,r2,8,0.53941165,0.53608124,-0.003330411,-0.0011802614,-0.0031513304,0.00066420436,-0.021595657,0.0023545742,1,3,4,16,40,0.125
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,r2,8,0.53191103,0.51510676,-0.016804272,-0.007842356,-0.012857324,-0.00054812133,-0.093165243,0.0059058547,1,2,5,9,40,0.125
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,r2,8,0.53941165,0.53346616,-0.0059454918,-0.008187139,-0.0096226901,0.00065376759,-0.018097067,0.0035565495,2,1,5,13,40,0.25
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,r2,8,0.53191103,0.47491942,-0.056991605,-0.03702687,-0.049895865,-0.020578602,-0.23728884,0.001237762,1,0,7,4,40,0.125
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,r2,8,0.53941165,0.47508063,-0.064331025,-0.025844318,-0.052366605,-0.0098132581,-0.32234859,0.0010969043,1,0,7,3,40,0.125
+86,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,r2,8,0.53191103,0.40458414,-0.12732689,-0.097158664,-0.15483392,-0.04527351,-0.396981,-0.030503917,0,0,8,0,40,0
+87,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,r2,8,0.53941165,0.35460799,-0.18480366,-0.10822706,-0.23855406,-0.070468,-0.53119321,-0.019110322,0,0,8,2,40,0
+88,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,r2,8,0.53191103,0.38276762,-0.14914341,-0.13653445,-0.16546816,-0.095843869,-0.34729686,-0.051982009,0,0,8,0,40,0
+89,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,r2,8,0.53941165,0.34668742,-0.19272424,-0.19921984,-0.24210903,-0.075387132,-0.46683137,-0.039393771,0,0,8,0,40,0
+90,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,r2,8,0.53191103,0.49894201,-0.03296902,-0.006423676,-0.031164518,-0.0035108447,-0.1628454,0.0018438578,1,1,6,6,40,0.125
+91,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,r2,8,0.53941165,0.51520214,-0.024209514,-0.0094617784,-0.017695081,-0.001445815,-0.13894597,0.001476872,2,0,6,7,40,0.25
+
+3. Variation across tables
+Improved, negligible and worse use a band of 0.001 on the native metric scale. Spread describes heterogeneity across tables, not statistical uncertainty.
+
+Figure: lgd_overview_distributions
+LGD. Distribution over held-out credit tables of the paired change in R² relative to each base's original model. Boxes span the table interquartile range, the thick line is the median, whiskers reach the 10th and 90th percentiles, dots are individual tables and the white diamond is the equal-table mean. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Experiment 1 contributes only its predefined reference recipe (LR 3e-7, L2-SP λ 0.003) with all parameters updated and with the backbone frozen; every follow-up contributes all prescribed arms, so no row is chosen by its outcome. Horizontal axes differ between models and span each model's 2nd-98th percentile of table effects and zero; tables outside that range are drawn as triangles at the axis edge (TabPFN v2: 1, TabPFN v2.6: 0, TabPFN v3: 2, TabICLv2: 2 tables) and keep their exact values in the summary. Spread describes heterogeneity across tables, not statistical uncertainty.
+Table effects for the displayed arms
+CSV (first column: row index)
+row,config,base,dataset,original,adapted,effect,folds_improved,folds
+104,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Freddie Mac,0.3838949,0.37825165,-0.0056432486,0,5
+105,E1 all · LR 3e-07 · λ 0.003,TabICLv2,LendingClub (LGD),0.76362401,0.76332742,-0.00029659271,2,5
+106,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropLGD1,0.64222894,0.61218543,-0.030043507,0,5
+107,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropLGD2,0.72727659,0.72410496,-0.0031716228,1,5
+108,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropLGD3,0.21216327,0.21077893,-0.0013843417,1,5
+109,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropLGD4,0.41803458,0.42387155,0.0058369756,4,5
+110,E1 all · LR 3e-07 · λ 0.003,TabICLv2,PropLGD5,0.37389036,0.37042451,-0.0034658551,3,5
+111,E1 all · LR 3e-07 · λ 0.003,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73404083,6.3300133e-06,2,5
+112,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Freddie Mac,0.3838949,0.3856861,0.001791203,4,5
+113,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,LendingClub (LGD),0.76362401,0.76372354,9.9527836e-05,4,5
+114,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropLGD1,0.64222894,0.64105871,-0.0011702299,2,5
+115,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropLGD2,0.72727659,0.72763798,0.00036139488,2,5
+116,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropLGD3,0.21216327,0.21167403,-0.00048923492,3,5
+117,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropLGD4,0.41803458,0.42342876,0.0053941846,4,5
+118,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,PropLGD5,0.37389036,0.37316544,-0.00072492361,3,5
+119,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73513708,0.0011025786,3,5
+232,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Freddie Mac,0.38327215,0.38002133,-0.0032508135,0,5
+233,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,LendingClub (LGD),0.75747193,0.75532848,-0.0021434546,0,5
+234,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD1,0.2995842,0.31806769,0.018483496,5,5
+235,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD2,0.71614927,0.71534382,-0.00080544949,1,5
+236,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD3,0.21272258,0.21251168,-0.00021089315,3,5
+237,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD4,0.33660059,0.34819264,0.011592054,4,5
+238,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD5,0.37209316,0.37843477,0.0063416004,4,5
+239,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.7210507,0.0028022647,3,5
+240,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Freddie Mac,0.38327215,0.38288692,-0.00038522482,1,5
+241,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,LendingClub (LGD),0.75747193,0.75728635,-0.00018558502,0,5
+242,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD1,0.2995842,0.29245617,-0.0071280241,2,5
+243,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD2,0.71614927,0.7158234,-0.00032587051,0,5
+244,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD3,0.21272258,0.20805776,-0.0046648145,0,5
+245,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD4,0.33660059,0.33659476,-5.8293343e-06,3,5
+246,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,PropLGD5,0.37209316,0.37260668,0.00051351786,3,5
+247,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.7178751,-0.00037333965,3,5
+360,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Freddie Mac,0.39476699,0.31919595,-0.075571036,0,5
+361,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,LendingClub (LGD),0.76306273,0.68213707,-0.080925655,0,5
+362,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD1,0.71840361,0.41957085,-0.29883276,0,5
+363,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD2,0.72027066,0.65681573,-0.063454926,0,5
+364,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD3,0.21145041,0.21288432,0.0014339089,3,5
+365,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD4,0.42508527,0.35907712,-0.066008151,1,5
+366,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD5,0.37783189,0.35005693,-0.027774954,1,5
+367,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65302472,-0.054565394,0,5
+368,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Freddie Mac,0.39476699,0.39574921,0.00098222494,4,5
+369,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,LendingClub (LGD),0.76306273,0.76372247,0.00065973997,5,5
+370,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD1,0.71840361,0.71398762,-0.0044159889,0,5
+371,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD2,0.72027066,0.72029637,2.5713444e-05,2,5
+372,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD3,0.21145041,0.21259124,0.0011408329,3,5
+373,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD4,0.42508527,0.424079,-0.0010062695,1,5
+374,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,PropLGD5,0.37783189,0.38045706,0.0026251674,2,5
+375,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.70673311,-0.0008570075,2,5
+488,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Freddie Mac,0.40350479,0.38538718,-0.018117607,0,5
+489,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,LendingClub (LGD),0.76377615,0.76179036,-0.0019857883,0,5
+490,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD1,0.67163471,0.48180084,-0.18983387,0,5
+491,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD2,0.73408319,0.72251776,-0.011565423,0,5
+492,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD3,0.21129837,0.21349536,0.0021969914,4,5
+493,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD4,0.4223755,0.41969149,-0.0026840091,2,5
+494,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD5,0.3766028,0.37537196,-0.0012308478,2,5
+495,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.7278065,-0.0042111993,2,5
+496,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Freddie Mac,0.40350479,0.39675384,-0.0067509532,0,5
+497,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,LendingClub (LGD),0.76377615,0.76457278,0.000796628,5,5
+498,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD1,0.67163471,0.62283461,-0.048800099,0,5
+499,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD2,0.73408319,0.73050702,-0.0035761714,1,5
+500,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD3,0.21129837,0.21183077,0.00053240061,3,5
+501,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD4,0.4223755,0.41222965,-0.010145855,1,5
+502,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,PropLGD5,0.3766028,0.37530422,-0.0012985826,2,5
+503,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.72744232,-0.0045753717,1,5
+512,E2 Reference · seed 43,TabICLv2,Freddie Mac,0.3838949,0.37753291,-0.0063619852,0,5
+513,E2 Reference · seed 43,TabICLv2,LendingClub (LGD),0.76362401,0.7629458,-0.00067821741,2,5
+514,E2 Reference · seed 43,TabICLv2,PropLGD1,0.64222894,0.58613784,-0.056091094,0,5
+515,E2 Reference · seed 43,TabICLv2,PropLGD2,0.72727659,0.72291814,-0.0043584466,0,5
+516,E2 Reference · seed 43,TabICLv2,PropLGD3,0.21216327,0.21193585,-0.00022741556,2,5
+517,E2 Reference · seed 43,TabICLv2,PropLGD4,0.41803458,0.42312963,0.0050950527,3,5
+518,E2 Reference · seed 43,TabICLv2,PropLGD5,0.37389036,0.37352726,-0.00036309958,2,5
+519,E2 Reference · seed 43,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73465314,0.00061863661,2,5
+520,E2 Reference · seed 43,TabPFN v2,Freddie Mac,0.38327215,0.37988861,-0.0033835411,0,5
+521,E2 Reference · seed 43,TabPFN v2,LendingClub (LGD),0.75747193,0.75533679,-0.0021351457,0,5
+522,E2 Reference · seed 43,TabPFN v2,PropLGD1,0.2995842,0.3175678,0.017983603,5,5
+523,E2 Reference · seed 43,TabPFN v2,PropLGD2,0.71614927,0.71502929,-0.0011199832,1,5
+524,E2 Reference · seed 43,TabPFN v2,PropLGD3,0.21272258,0.21196325,-0.00075932741,3,5
+525,E2 Reference · seed 43,TabPFN v2,PropLGD4,0.33660059,0.34912165,0.012521064,4,5
+526,E2 Reference · seed 43,TabPFN v2,PropLGD5,0.37209316,0.37980671,0.0077135444,4,5
+527,E2 Reference · seed 43,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.72092979,0.0026813507,3,5
+528,E2 Reference · seed 43,TabPFN v2.6,Freddie Mac,0.39476699,0.32109686,-0.073670125,0,5
+529,E2 Reference · seed 43,TabPFN v2.6,LendingClub (LGD),0.76306273,0.68268901,-0.080373716,0,5
+530,E2 Reference · seed 43,TabPFN v2.6,PropLGD1,0.71840361,0.42542601,-0.29297761,0,5
+531,E2 Reference · seed 43,TabPFN v2.6,PropLGD2,0.72027066,0.6572153,-0.06305536,0,5
+532,E2 Reference · seed 43,TabPFN v2.6,PropLGD3,0.21145041,0.21238126,0.00093084574,3,5
+533,E2 Reference · seed 43,TabPFN v2.6,PropLGD4,0.42508527,0.36184632,-0.063238955,1,5
+534,E2 Reference · seed 43,TabPFN v2.6,PropLGD5,0.37783189,0.34911137,-0.028720522,1,5
+535,E2 Reference · seed 43,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65151384,-0.056076276,0,5
+536,E2 Reference · seed 43,TabPFN v3,Freddie Mac,0.40350479,0.38748106,-0.016023731,0,5
+537,E2 Reference · seed 43,TabPFN v3,LendingClub (LGD),0.76377615,0.76161999,-0.0021561623,0,5
+538,E2 Reference · seed 43,TabPFN v3,PropLGD1,0.67163471,0.62957829,-0.042056417,0,5
+539,E2 Reference · seed 43,TabPFN v3,PropLGD2,0.73408319,0.7225181,-0.011565089,0,5
+540,E2 Reference · seed 43,TabPFN v3,PropLGD3,0.21129837,0.21353109,0.0022327185,3,5
+541,E2 Reference · seed 43,TabPFN v3,PropLGD4,0.4223755,0.42285951,0.00048401356,2,5
+542,E2 Reference · seed 43,TabPFN v3,PropLGD5,0.3766028,0.37473944,-0.0018633604,2,5
+543,E2 Reference · seed 43,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.72780236,-0.0042153358,2,5
+544,E3 Accumulate,TabICLv2,Freddie Mac,0.3838949,0.3779938,-0.0059010983,0,5
+545,E3 Accumulate,TabICLv2,LendingClub (LGD),0.76362401,0.76331235,-0.00031166077,2,5
+546,E3 Accumulate,TabICLv2,PropLGD1,0.64222894,0.61107531,-0.031153631,0,5
+547,E3 Accumulate,TabICLv2,PropLGD2,0.72727659,0.72428826,-0.0029883265,1,5
+548,E3 Accumulate,TabICLv2,PropLGD3,0.21216327,0.21077142,-0.0013918519,1,5
+549,E3 Accumulate,TabICLv2,PropLGD4,0.41803458,0.4243525,0.0063179255,4,5
+550,E3 Accumulate,TabICLv2,PropLGD5,0.37389036,0.3711508,-0.0027395606,3,5
+551,E3 Accumulate,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73329227,-0.0007422328,2,5
+552,E3 Full pass,TabICLv2,Freddie Mac,0.3838949,0.37776166,-0.0061332345,0,5
+553,E3 Full pass,TabICLv2,LendingClub (LGD),0.76362401,0.76336007,-0.00026394129,2,5
+554,E3 Full pass,TabICLv2,PropLGD1,0.64222894,0.61364137,-0.028587568,0,5
+555,E3 Full pass,TabICLv2,PropLGD2,0.72727659,0.72418436,-0.0030922294,1,5
+556,E3 Full pass,TabICLv2,PropLGD3,0.21216327,0.2096826,-0.0024806738,0,5
+557,E3 Full pass,TabICLv2,PropLGD4,0.41803458,0.42326669,0.0052321076,4,5
+558,E3 Full pass,TabICLv2,PropLGD5,0.37389036,0.37217097,-0.0017193913,3,5
+559,E3 Full pass,TabICLv2,SBA Loans Case (LGD),0.7340345,0.7342983,0.00026379824,2,5
+560,E3 One sample,TabICLv2,Freddie Mac,0.3838949,0.37827221,-0.005622685,0,5
+561,E3 One sample,TabICLv2,LendingClub (LGD),0.76362401,0.76331828,-0.00030573606,2,5
+562,E3 One sample,TabICLv2,PropLGD1,0.64222894,0.61227088,-0.029958057,0,5
+563,E3 One sample,TabICLv2,PropLGD2,0.72727659,0.72424359,-0.0030329943,1,5
+564,E3 One sample,TabICLv2,PropLGD3,0.21216327,0.21079928,-0.0013639927,1,5
+565,E3 One sample,TabICLv2,PropLGD4,0.41803458,0.42384733,0.0058127522,4,5
+566,E3 One sample,TabICLv2,PropLGD5,0.37389036,0.37037421,-0.0035161495,3,5
+567,E3 One sample,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73400205,-3.2448769e-05,2,5
+568,E3 Accumulate,TabPFN v2,Freddie Mac,0.38327215,0.379893,-0.0033791423,0,5
+569,E3 Accumulate,TabPFN v2,LendingClub (LGD),0.75747193,0.75526245,-0.0022094846,0,5
+570,E3 Accumulate,TabPFN v2,PropLGD1,0.2995842,0.32008473,0.020500529,5,5
+571,E3 Accumulate,TabPFN v2,PropLGD2,0.71614927,0.71580034,-0.00034892559,1,5
+572,E3 Accumulate,TabPFN v2,PropLGD3,0.21272258,0.21655632,0.0038337469,3,5
+573,E3 Accumulate,TabPFN v2,PropLGD4,0.33660059,0.35072503,0.014124441,4,5
+574,E3 Accumulate,TabPFN v2,PropLGD5,0.37209316,0.3786708,0.0065776348,4,5
+575,E3 Accumulate,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.72092037,0.0026719332,3,5
+576,E3 Full pass,TabPFN v2,Freddie Mac,0.38327215,0.37984965,-0.0034224987,0,5
+577,E3 Full pass,TabPFN v2,LendingClub (LGD),0.75747193,0.75575099,-0.0017209411,0,5
+578,E3 Full pass,TabPFN v2,PropLGD1,0.2995842,0.31981654,0.020232344,5,5
+579,E3 Full pass,TabPFN v2,PropLGD2,0.71614927,0.71491357,-0.0012356997,1,5
+580,E3 Full pass,TabPFN v2,PropLGD3,0.21272258,0.22230678,0.0095842004,4,5
+581,E3 Full pass,TabPFN v2,PropLGD4,0.33660059,0.35335774,0.016757154,4,5
+582,E3 Full pass,TabPFN v2,PropLGD5,0.37209316,0.37551808,0.0034249187,4,5
+583,E3 Full pass,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.72075078,0.002502346,4,5
+584,E3 One sample,TabPFN v2,Freddie Mac,0.38327215,0.38007473,-0.0031974196,0,5
+585,E3 One sample,TabPFN v2,LendingClub (LGD),0.75747193,0.75533826,-0.0021336675,0,5
+586,E3 One sample,TabPFN v2,PropLGD1,0.2995842,0.31815423,0.01857003,5,5
+587,E3 One sample,TabPFN v2,PropLGD2,0.71614927,0.71527613,-0.00087313652,1,5
+588,E3 One sample,TabPFN v2,PropLGD3,0.21272258,0.21254132,-0.00018125772,3,5
+589,E3 One sample,TabPFN v2,PropLGD4,0.33660059,0.34839634,0.011795747,4,5
+590,E3 One sample,TabPFN v2,PropLGD5,0.37209316,0.37873003,0.0066368699,4,5
+591,E3 One sample,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.72111113,0.0028626919,4,5
+592,E3 Accumulate,TabPFN v2.6,Freddie Mac,0.39476699,0.31871865,-0.076048338,0,5
+593,E3 Accumulate,TabPFN v2.6,LendingClub (LGD),0.76306273,0.67639205,-0.086670673,0,5
+594,E3 Accumulate,TabPFN v2.6,PropLGD1,0.71840361,0.42293617,-0.29546745,0,5
+595,E3 Accumulate,TabPFN v2.6,PropLGD2,0.72027066,0.65694877,-0.063321888,0,5
+596,E3 Accumulate,TabPFN v2.6,PropLGD3,0.21145041,0.2128126,0.0013621926,3,5
+597,E3 Accumulate,TabPFN v2.6,PropLGD4,0.42508527,0.36576082,-0.059324455,1,5
+598,E3 Accumulate,TabPFN v2.6,PropLGD5,0.37783189,0.35269116,-0.025140727,1,5
+599,E3 Accumulate,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65382047,-0.053769648,0,5
+600,E3 Full pass,TabPFN v2.6,Freddie Mac,0.39476699,0.3187614,-0.07600559,0,5
+601,E3 Full pass,TabPFN v2.6,LendingClub (LGD),0.76306273,0.68895569,-0.074107039,0,5
+602,E3 Full pass,TabPFN v2.6,PropLGD1,0.71840361,0.42299303,-0.29541059,0,5
+603,E3 Full pass,TabPFN v2.6,PropLGD2,0.72027066,0.6537725,-0.06649816,0,5
+604,E3 Full pass,TabPFN v2.6,PropLGD3,0.21145041,0.2142266,0.0027761936,3,5
+605,E3 Full pass,TabPFN v2.6,PropLGD4,0.42508527,0.32523994,-0.099845326,0,5
+606,E3 Full pass,TabPFN v2.6,PropLGD5,0.37783189,0.34081668,-0.037015212,1,5
+607,E3 Full pass,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65571522,-0.0518749,1,5
+608,E3 One sample,TabPFN v2.6,Freddie Mac,0.39476699,0.31916509,-0.0756019,0,5
+609,E3 One sample,TabPFN v2.6,LendingClub (LGD),0.76306273,0.68209176,-0.080970967,0,5
+610,E3 One sample,TabPFN v2.6,PropLGD1,0.71840361,0.41955813,-0.29884548,0,5
+611,E3 One sample,TabPFN v2.6,PropLGD2,0.72027066,0.65682912,-0.063441539,0,5
+612,E3 One sample,TabPFN v2.6,PropLGD3,0.21145041,0.21287448,0.0014240742,3,5
+613,E3 One sample,TabPFN v2.6,PropLGD4,0.42508527,0.3590535,-0.066031766,1,5
+614,E3 One sample,TabPFN v2.6,PropLGD5,0.37783189,0.35007787,-0.027754021,1,5
+615,E3 One sample,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65298433,-0.054605782,0,5
+616,E3 Accumulate,TabPFN v3,Freddie Mac,0.40350479,0.38443731,-0.019067478,0,5
+617,E3 Accumulate,TabPFN v3,LendingClub (LGD),0.76377615,0.76161445,-0.0021616936,0,5
+618,E3 Accumulate,TabPFN v3,PropLGD1,0.67163471,0.40527402,-0.26636069,0,5
+619,E3 Accumulate,TabPFN v3,PropLGD2,0.73408319,0.72302154,-0.011061645,0,5
+620,E3 Accumulate,TabPFN v3,PropLGD3,0.21129837,0.21355585,0.0022574782,4,5
+621,E3 Accumulate,TabPFN v3,PropLGD4,0.4223755,0.42142341,-0.00095208883,2,5
+622,E3 Accumulate,TabPFN v3,PropLGD5,0.3766028,0.37395029,-0.002652514,2,5
+623,E3 Accumulate,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.72706647,-0.0049512267,2,5
+624,E3 Full pass,TabPFN v3,Freddie Mac,0.40350479,0.38608572,-0.017419064,0,5
+625,E3 Full pass,TabPFN v3,LendingClub (LGD),0.76377615,0.76180334,-0.0019728065,0,5
+626,E3 Full pass,TabPFN v3,PropLGD1,0.67163471,0.46456203,-0.20707268,0,5
+627,E3 Full pass,TabPFN v3,PropLGD2,0.73408319,0.72446269,-0.0096204996,0,5
+628,E3 Full pass,TabPFN v3,PropLGD3,0.21129837,0.21358869,0.0022903204,4,5
+629,E3 Full pass,TabPFN v3,PropLGD4,0.4223755,0.42107698,-0.0012985229,3,5
+630,E3 Full pass,TabPFN v3,PropLGD5,0.3766028,0.3746609,-0.0019419074,2,5
+631,E3 Full pass,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.72864497,-0.0033727288,2,5
+632,E3 One sample,TabPFN v3,Freddie Mac,0.40350479,0.38445374,-0.019051051,0,5
+633,E3 One sample,TabPFN v3,LendingClub (LGD),0.76377615,0.76183172,-0.0019444227,0,5
+634,E3 One sample,TabPFN v3,PropLGD1,0.67163471,0.3776069,-0.29402781,0,5
+635,E3 One sample,TabPFN v3,PropLGD2,0.73408319,0.72299095,-0.011092234,0,5
+636,E3 One sample,TabPFN v3,PropLGD3,0.21129837,0.21350338,0.0022050142,4,5
+637,E3 One sample,TabPFN v3,PropLGD4,0.4223755,0.41981933,-0.002556169,2,5
+638,E3 One sample,TabPFN v3,PropLGD5,0.3766028,0.37521437,-0.0013884306,2,5
+639,E3 One sample,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.72780322,-0.0042144775,2,5
+640,E5 LR 0.001,TabICLv2,Freddie Mac,0.38391182,0.36343694,-0.020474887,0,5
+641,E5 LR 0.001,TabICLv2,LendingClub (LGD),0.76362517,0.76287745,-0.00074771643,0,5
+642,E5 LR 0.001,TabICLv2,PropLGD1,0.64239978,0.54923453,-0.093165243,0,5
+643,E5 LR 0.001,TabICLv2,PropLGD2,0.72726431,0.71930685,-0.0079574585,0,5
+644,E5 LR 0.001,TabICLv2,PropLGD3,0.21218807,0.21223873,5.0663948e-05,3,5
+645,E5 LR 0.001,TabICLv2,PropLGD4,0.41799546,0.42390132,0.0059058547,3,5
+646,E5 LR 0.001,TabICLv2,PropLGD5,0.37386911,0.36614186,-0.0077272534,2,5
+647,E5 LR 0.001,TabICLv2,SBA Loans Case (LGD),0.7340345,0.72371637,-0.010318136,1,5
+648,E5 LR 0.0001,TabICLv2,Freddie Mac,0.38391182,0.38390108,-1.0740757e-05,3,5
+649,E5 LR 0.0001,TabICLv2,LendingClub (LGD),0.76362517,0.76365404,2.887249e-05,2,5
+650,E5 LR 0.0001,TabICLv2,PropLGD1,0.64239978,0.61940502,-0.022994757,0,5
+651,E5 LR 0.0001,TabICLv2,PropLGD2,0.72726431,0.72701535,-0.00024895668,2,5
+652,E5 LR 0.0001,TabICLv2,PropLGD3,0.21218807,0.2119541,-0.00023396015,2,5
+653,E5 LR 0.0001,TabICLv2,PropLGD4,0.41799546,0.41927625,0.0012807846,3,5
+654,E5 LR 0.0001,TabICLv2,PropLGD5,0.37386911,0.37223392,-0.0016351938,3,5
+655,E5 LR 0.0001,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73315729,-0.00087721348,2,5
+656,E5 LR 0.03,TabICLv2,Freddie Mac,0.38391182,0.3127776,-0.071134222,0,5
+657,E5 LR 0.03,TabICLv2,LendingClub (LGD),0.76362517,0.73233234,-0.031292832,0,5
+658,E5 LR 0.03,TabICLv2,PropLGD1,0.64239978,0.40511093,-0.23728884,0,5
+659,E5 LR 0.03,TabICLv2,PropLGD2,0.72726431,0.6845034,-0.042760909,0,5
+660,E5 LR 0.03,TabICLv2,PropLGD3,0.21218807,0.20552919,-0.0066588759,1,5
+661,E5 LR 0.03,TabICLv2,PropLGD4,0.41799546,0.41923323,0.001237762,3,5
+662,E5 LR 0.03,TabICLv2,PropLGD5,0.37386911,0.3310527,-0.042816412,0,5
+663,E5 LR 0.03,TabICLv2,SBA Loans Case (LGD),0.7340345,0.70881599,-0.025218511,0,5
+664,E5 LR 0.001,TabPFN v3,Freddie Mac,0.40350479,0.39407462,-0.0094301701,0,5
+665,E5 LR 0.001,TabPFN v3,LendingClub (LGD),0.76377615,0.76359304,-0.00018310547,2,5
+666,E5 LR 0.001,TabPFN v3,PropLGD1,0.67163471,0.66243377,-0.0092009425,0,5
+667,E5 LR 0.001,TabPFN v3,PropLGD2,0.73408319,0.72388294,-0.01020025,0,5
+668,E5 LR 0.001,TabPFN v3,PropLGD3,0.21129837,0.21446276,0.0031643867,4,5
+669,E5 LR 0.001,TabPFN v3,PropLGD4,0.4223755,0.40427843,-0.018097067,0,5
+670,E5 LR 0.001,TabPFN v3,PropLGD5,0.3766028,0.38015935,0.0035565495,5,5
+671,E5 LR 0.001,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.72484436,-0.0071733356,2,5
+672,E5 LR 0.0001,TabPFN v3,Freddie Mac,0.40350479,0.40041051,-0.0030942798,0,5
+673,E5 LR 0.0001,TabPFN v3,LendingClub (LGD),0.76377615,0.76441702,0.00064086914,5,5
+674,E5 LR 0.0001,TabPFN v3,PropLGD1,0.67163471,0.65003905,-0.021595657,0,5
+675,E5 LR 0.0001,TabPFN v3,PropLGD2,0.73408319,0.73157363,-0.0025095582,1,5
+676,E5 LR 0.0001,TabPFN v3,PropLGD3,0.21129837,0.21203258,0.00073421001,3,5
+677,E5 LR 0.0001,TabPFN v3,PropLGD4,0.4223755,0.41905302,-0.0033224821,1,5
+678,E5 LR 0.0001,TabPFN v3,PropLGD5,0.3766028,0.37895738,0.0023545742,4,5
+679,E5 LR 0.0001,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.73216673,0.00014903545,2,5
+680,E5 LR 0.03,TabPFN v3,Freddie Mac,0.40350479,0.31953596,-0.08396883,0,5
+681,E5 LR 0.03,TabPFN v3,LendingClub (LGD),0.76377615,0.75954289,-0.004233253,0,5
+682,E5 LR 0.03,TabPFN v3,PropLGD1,0.67163471,0.34928612,-0.32234859,0,5
+683,E5 LR 0.03,TabPFN v3,PropLGD2,0.73408319,0.70498108,-0.029102111,0,5
+684,E5 LR 0.03,TabPFN v3,PropLGD3,0.21129837,0.19962511,-0.01167326,0,5
+685,E5 LR 0.03,TabPFN v3,PropLGD4,0.4223755,0.38054297,-0.04183253,0,5
+686,E5 LR 0.03,TabPFN v3,PropLGD5,0.3766028,0.37769971,0.0010969043,2,5
+687,E5 LR 0.03,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.70943117,-0.022586524,1,5
+688,E8 LR 0.001,TabICLv2,Freddie Mac,0.38391182,0.19765091,-0.18626091,0,5
+689,E8 LR 0.001,TabICLv2,LendingClub (LGD),0.76362518,0.69131085,-0.072314334,0,5
+690,E8 LR 0.001,TabICLv2,PropLGD1,0.64239978,0.29510292,-0.34729686,0,5
+691,E8 LR 0.001,TabICLv2,PropLGD2,0.72726431,0.56872706,-0.15853724,0,5
+692,E8 LR 0.001,TabICLv2,PropLGD3,0.21218807,0.16020606,-0.051982009,0,5
+693,E8 LR 0.001,TabICLv2,PropLGD4,0.41799546,0.31430842,-0.10368705,0,5
+694,E8 LR 0.001,TabICLv2,PropLGD5,0.37386912,0.23011703,-0.14375209,0,5
+695,E8 LR 0.001,TabICLv2,SBA Loans Case (LGD),0.7340345,0.6047177,-0.12931681,0,5
+696,E8 LR 0.0001,TabICLv2,Freddie Mac,0.38391182,0.22615519,-0.15775664,0,5
+697,E8 LR 0.0001,TabICLv2,LendingClub (LGD),0.76362518,0.73312126,-0.030503917,0,5
+698,E8 LR 0.0001,TabICLv2,PropLGD1,0.64239978,0.24541878,-0.396981,0,5
+699,E8 LR 0.0001,TabICLv2,PropLGD2,0.72726431,0.69001653,-0.037247777,0,5
+700,E8 LR 0.0001,TabICLv2,PropLGD3,0.21218807,0.072591615,-0.13959645,0,5
+701,E8 LR 0.0001,TabICLv2,PropLGD4,0.41799546,0.37004671,-0.047948754,0,5
+702,E8 LR 0.0001,TabICLv2,PropLGD5,0.37386912,0.22000943,-0.15385969,0,5
+703,E8 LR 0.0001,TabICLv2,SBA Loans Case (LGD),0.7340345,0.67931362,-0.054720879,0,5
+704,E8 LR 1e-05,TabICLv2,Freddie Mac,0.38391182,0.31913636,-0.064775467,0,5
+705,E8 LR 1e-05,TabICLv2,LendingClub (LGD),0.76362518,0.76289647,-0.00072871447,0,5
+706,E8 LR 1e-05,TabICLv2,PropLGD1,0.64239978,0.47955438,-0.1628454,0,5
+707,E8 LR 1e-05,TabICLv2,PropLGD2,0.72726431,0.70730344,-0.019960868,0,5
+708,E8 LR 1e-05,TabICLv2,PropLGD3,0.21218807,0.20774984,-0.0044382215,0,5
+709,E8 LR 1e-05,TabICLv2,PropLGD4,0.41799546,0.41983932,0.0018438578,3,5
+710,E8 LR 1e-05,TabICLv2,PropLGD5,0.37386912,0.36609671,-0.0077724099,1,5
+711,E8 LR 1e-05,TabICLv2,SBA Loans Case (LGD),0.7340345,0.72895956,-0.0050749421,2,5
+712,E8 LR 0.001,TabPFN v3,Freddie Mac,0.40350479,0.16568247,-0.23782232,0,5
+713,E8 LR 0.001,TabPFN v3,LendingClub (LGD),0.76377615,0.72438238,-0.039393771,0,5
+714,E8 LR 0.001,TabPFN v3,PropLGD1,0.67163471,0.20480334,-0.46683137,0,5
+715,E8 LR 0.001,TabPFN v3,PropLGD2,0.73408319,0.57346582,-0.16061736,0,5
+716,E8 LR 0.001,TabPFN v3,PropLGD3,0.21129837,0.13974794,-0.071550429,0,5
+717,E8 LR 0.001,TabPFN v3,PropLGD4,0.4223755,0.18261373,-0.23976177,0,5
+718,E8 LR 0.001,TabPFN v3,PropLGD5,0.3766028,0.29993677,-0.076666033,0,5
+719,E8 LR 0.001,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.48286687,-0.24915082,0,5
+720,E8 LR 0.0001,TabPFN v3,Freddie Mac,0.40350479,-0.010501218,-0.41400601,0,5
+721,E8 LR 0.0001,TabPFN v3,LendingClub (LGD),0.76377615,0.74466583,-0.019110322,0,5
+722,E8 LR 0.0001,TabPFN v3,PropLGD1,0.67163471,0.1404415,-0.53119321,0,5
+723,E8 LR 0.0001,TabPFN v3,PropLGD2,0.73408319,0.64015362,-0.093929565,0,5
+724,E8 LR 0.0001,TabPFN v3,PropLGD3,0.21129837,0.031228292,-0.18007008,0,5
+725,E8 LR 0.0001,TabPFN v3,PropLGD4,0.4223755,0.34023728,-0.082138216,1,5
+726,E8 LR 0.0001,TabPFN v3,PropLGD5,0.3766028,0.34114546,-0.035457349,1,5
+727,E8 LR 0.0001,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.60949314,-0.12252456,0,5
+728,E8 LR 1e-05,TabPFN v3,Freddie Mac,0.40350479,0.38448913,-0.019015658,0,5
+729,E8 LR 1e-05,TabPFN v3,LendingClub (LGD),0.76377615,0.76139097,-0.0023851752,1,5
+730,E8 LR 1e-05,TabPFN v3,PropLGD1,0.67163471,0.53268874,-0.13894597,0,5
+731,E8 LR 1e-05,TabPFN v3,PropLGD2,0.73408319,0.7168283,-0.017254889,0,5
+732,E8 LR 1e-05,TabPFN v3,PropLGD3,0.21129837,0.21277524,0.001476872,2,5
+733,E8 LR 1e-05,TabPFN v3,PropLGD4,0.4223755,0.42374777,0.0013722658,2,5
+734,E8 LR 1e-05,TabPFN v3,PropLGD5,0.3766028,0.36992908,-0.0066737294,2,5
+735,E8 LR 1e-05,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.71976787,-0.012249827,0,5
+
+Figure: lgd_overview_outcomes
+LGD. For the same arms as the distribution figure, the share of held-out credit tables whose paired R² change relative to the original model exceeds +0.001  (improved), lies within ±0.001 (negligible) or falls below −0.001 (worse); numbers give improved/total tables. The ±0.001 band is a reporting convention for this study, not a statistical equivalence margin. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. The dotted line marks half of the tables.
+Outcome counts
+CSV (first column: row index)
+row,base,config,Improved,Negligible,Worse
+0,TabICLv2,E1 all · LR 3e-07 · λ 0.003,1,2,5
+1,TabICLv2,E1 frozen · LR 3e-07 · λ 0.003,3,4,1
+2,TabICLv2,E2 Reference · seed 43,1,4,3
+3,TabICLv2,E3 Accumulate,1,2,5
+4,TabICLv2,E3 Full pass,1,2,5
+5,TabICLv2,E3 One sample,1,2,5
+6,TabICLv2,E5 LR 0.0001,1,5,2
+7,TabICLv2,E5 LR 0.001,1,2,5
+8,TabICLv2,E5 LR 0.03,1,0,7
+9,TabICLv2,E8 LR 0.0001,0,0,8
+10,TabICLv2,E8 LR 0.001,0,0,8
+11,TabICLv2,E8 LR 1e-05,1,1,6
+12,TabPFN v2,E1 all · LR 3e-07 · λ 0.003,4,2,2
+13,TabPFN v2,E1 frozen · LR 3e-07 · λ 0.003,0,6,2
+14,TabPFN v2,E2 Reference · seed 43,4,1,3
+15,TabPFN v2,E3 Accumulate,5,1,2
+16,TabPFN v2,E3 Full pass,5,0,3
+17,TabPFN v2,E3 One sample,4,2,2
+18,TabPFN v2.6,E1 all · LR 3e-07 · λ 0.003,1,0,7
+19,TabPFN v2.6,E1 frozen · LR 3e-07 · λ 0.003,2,4,2
+20,TabPFN v2.6,E2 Reference · seed 43,0,1,7
+21,TabPFN v2.6,E3 Accumulate,1,0,7
+22,TabPFN v2.6,E3 Full pass,1,0,7
+23,TabPFN v2.6,E3 One sample,1,0,7
+24,TabPFN v3,E1 all · LR 3e-07 · λ 0.003,1,0,7
+25,TabPFN v3,E1 frozen · LR 3e-07 · λ 0.003,0,2,6
+26,TabPFN v3,E2 Reference · seed 43,1,1,6
+27,TabPFN v3,E3 Accumulate,1,1,6
+28,TabPFN v3,E3 Full pass,1,0,7
+29,TabPFN v3,E3 One sample,1,0,7
+30,TabPFN v3,E5 LR 0.0001,1,3,4
+31,TabPFN v3,E5 LR 0.001,2,1,5
+32,TabPFN v3,E5 LR 0.03,1,0,7
+33,TabPFN v3,E8 LR 0.0001,0,0,8
+34,TabPFN v3,E8 LR 0.001,0,0,8
+35,TabPFN v3,E8 LR 1e-05,2,0,6
+
+4. Learning rate and adaptation approach
+Learning-rate scales differ in meaning between approaches; compare the shape of each curve rather than rates across approaches.
+
+Figure: lgd_overview_rate_response
+LGD. Equal-table mean paired change in R² relative to the original model, against peak learning rate, for full-parameter and frozen-backbone CPT (experiment 1; solid λ = 0.003, dashed λ = 0), DiagScale query-scaling adapters (experiment 5) and query/value LoRA (experiment 8). Shaded bands span the table interquartile range, not confidence intervals. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. The rate scales are not interchangeable across approaches: DiagScale updates multiplicative query scales and LoRA updates low-rank factors, so their rates are shown on a common axis only to display each approach's own sensitivity. The studies also differ in PD sampling, training precision and TabICLv2 inference settings.
+Rate response
+CSV (first column: row index)
+row,base,approach,l2sp_lambda,learning_rate,mean,q25,q75,tables
+0,TabICLv2,DiagScale,0,0.0001,-0.0030863956,-0.0010667086,-8.3744526e-07,8
+1,TabICLv2,DiagScale,0,0.001,-0.016804272,-0.012857324,-0.00054812133,8
+2,TabICLv2,DiagScale,0,0.03,-0.056991605,-0.049895865,-0.020578602,8
+3,TabICLv2,Frozen backbone,0,3e-07,0.00084634423,-0.0003087312,0.0010435343,8
+4,TabICLv2,Frozen backbone,0,1e-06,-0.0066722602,-0.0022188574,0.0004635036,8
+5,TabICLv2,Frozen backbone,0,1e-05,-0.013060723,-0.016764188,-0.0097137094,8
+6,TabICLv2,Frozen backbone,0,3e-05,-0.02733537,-0.029654253,-0.016692707,8
+7,TabICLv2,Frozen backbone,0.003,3e-07,0.00079556257,-0.0005481571,0.0012747347,8
+8,TabICLv2,Frozen backbone,0.003,1e-06,-0.0088199973,-0.0018796057,0.00039587021,8
+9,TabICLv2,Frozen backbone,0.003,1e-05,-0.019747806,-0.019649011,-0.0088251054,8
+10,TabICLv2,Frozen backbone,0.003,3e-05,-0.031280062,-0.026964206,-0.011174932,8
+11,TabICLv2,Full CPT,0,3e-07,-0.0049273625,-0.0047946066,-0.00049878359,8
+12,TabICLv2,Full CPT,0,1e-06,-0.043682146,-0.019141042,-0.0078466833,8
+13,TabICLv2,Full CPT,0,1e-05,-0.1350616,-0.19357406,-0.055729118,8
+14,TabICLv2,Full CPT,0,3e-05,-0.16816749,-0.19560183,-0.13110935,8
+15,TabICLv2,Full CPT,0.003,3e-07,-0.0047702327,-0.0040102035,-0.00022086203,8
+16,TabICLv2,Full CPT,0.003,1e-06,-0.046487814,-0.015694883,-0.0040808678,8
+17,TabICLv2,Full CPT,0.003,1e-05,-0.084343605,-0.15384069,-0.027489328,8
+18,TabICLv2,Full CPT,0.003,3e-05,-0.067601268,-0.10515964,-0.033550999,8
+19,TabICLv2,LoRA,0,1e-05,-0.03296902,-0.031164518,-0.0035108447,8
+20,TabICLv2,LoRA,0,0.0001,-0.12732689,-0.15483392,-0.04527351,8
+21,TabICLv2,LoRA,0,0.001,-0.14914341,-0.16546816,-0.095843869,8
+22,TabPFN v2,Frozen backbone,0,3e-07,-0.001377067,-0.0011602819,-0.00013271272,8
+23,TabPFN v2,Frozen backbone,0,1e-06,-0.0022780657,-0.002730754,-0.00059796274,8
+24,TabPFN v2,Frozen backbone,0,1e-05,-0.002586937,-0.0030562878,0.00037207305,8
+25,TabPFN v2,Frozen backbone,0,3e-05,-0.017504168,-0.0082518369,-0.0028655559,8
+26,TabPFN v2,Frozen backbone,0.003,3e-07,-0.0015693963,-0.0014551222,-0.0001406461,8
+27,TabPFN v2,Frozen backbone,0.003,1e-06,-0.0029533878,-0.003951028,-0.00062890351,8
+28,TabPFN v2,Frozen backbone,0.003,1e-05,-0.0031174734,-0.0060482055,-0.0005882591,8
+29,TabPFN v2,Frozen backbone,0.003,3e-05,-0.0031062365,-0.0082855701,-0.00080538392,8
+30,TabPFN v2,Full CPT,0,3e-07,0.0043883696,-0.0010680228,0.0077646077,8
+31,TabPFN v2,Full CPT,0,1e-06,0.0025317505,-0.0042717874,-0.00042589009,8
+32,TabPFN v2,Full CPT,0,1e-05,-0.065933718,-0.080342004,-0.022524375,8
+33,TabPFN v2,Full CPT,0,3e-05,-0.1235293,-0.21386106,-0.058948374,8
+34,TabPFN v2,Full CPT,0.003,3e-07,0.0041011006,-0.0011399508,0.0076542139,8
+35,TabPFN v2,Full CPT,0.003,1e-06,0.0016499475,-0.0049040973,-0.00061190724,8
+36,TabPFN v2,Full CPT,0.003,1e-05,-0.070349832,-0.086656401,-0.036784941,8
+37,TabPFN v2,Full CPT,0.003,3e-05,-0.13190233,-0.18306592,-0.080829591,8
+38,TabPFN v2.6,Frozen backbone,0,3e-07,-0.00012370497,-0.00090165734,0.00099083185,8
+39,TabPFN v2.6,Frozen backbone,0,1e-06,-0.0080498978,-0.010847095,-0.0041705757,8
+40,TabPFN v2.6,Frozen backbone,0,1e-05,-0.030357036,-0.033436862,-0.011230743,8
+41,TabPFN v2.6,Frozen backbone,0,3e-05,-0.025192845,-0.040285909,-0.008828482,8
+42,TabPFN v2.6,Frozen backbone,0.003,3e-07,-0.00010569841,-0.00089432299,0.0010218769,8
+43,TabPFN v2.6,Frozen backbone,0.003,1e-06,-0.0077104703,-0.010275066,-0.004102397,8
+44,TabPFN v2.6,Frozen backbone,0.003,1e-05,-0.020069833,-0.025988147,-0.0073207855,8
+45,TabPFN v2.6,Frozen backbone,0.003,3e-05,-0.020030595,-0.022548661,-0.0060977459,8
+46,TabPFN v2.6,Full CPT,0,3e-07,-0.083352271,-0.076963127,-0.047962001,8
+47,TabPFN v2.6,Full CPT,0,1e-06,-0.07825449,-0.070542914,-0.040376687,8
+48,TabPFN v2.6,Full CPT,0,1e-05,-0.075985511,-0.058651933,-0.033443069,8
+49,TabPFN v2.6,Full CPT,0,3e-05,-0.13471956,-0.13862612,-0.040656927,8
+50,TabPFN v2.6,Full CPT,0.003,3e-07,-0.083212371,-0.076909691,-0.047867784,8
+51,TabPFN v2.6,Full CPT,0.003,1e-06,-0.078016824,-0.069882414,-0.040778422,8
+52,TabPFN v2.6,Full CPT,0.003,1e-05,-0.067223181,-0.046241808,-0.022424421,8
+53,TabPFN v2.6,Full CPT,0.003,3e-05,-0.10155251,-0.12526262,-0.031483433,8
+54,TabPFN v3,DiagScale,0,0.0001,-0.003330411,-0.0031513304,0.00066420436,8
+55,TabPFN v3,DiagScale,0,0.001,-0.0059454918,-0.0096226901,0.00065376759,8
+56,TabPFN v3,DiagScale,0,0.03,-0.064331025,-0.052366605,-0.0098132581,8
+57,TabPFN v3,Frozen backbone,0,3e-07,-0.0086689219,-0.0076551467,-0.00062765181,8
+58,TabPFN v3,Frozen backbone,0,1e-06,-0.029668537,-0.030582902,-0.0019027621,8
+59,TabPFN v3,Frozen backbone,0,1e-05,-0.1257207,-0.11812385,-0.040204856,8
+60,TabPFN v3,Frozen backbone,0,3e-05,-0.19883592,-0.23024899,-0.075563046,8
+61,TabPFN v3,Frozen backbone,0.003,3e-07,-0.0092272505,-0.0075996786,-0.00084083676,8
+62,TabPFN v3,Frozen backbone,0.003,1e-06,-0.024423669,-0.03150408,-0.0023631781,8
+63,TabPFN v3,Frozen backbone,0.003,1e-05,-0.1018619,-0.086833966,-0.018137395,8
+64,TabPFN v3,Frozen backbone,0.003,3e-05,-0.15893887,-0.20138638,-0.065578642,8
+65,TabPFN v3,Full CPT,0,3e-07,-0.036392143,-0.01287834,-0.0017965019,8
+66,TabPFN v3,Full CPT,0,1e-06,-0.062856039,-0.051745307,-0.0058838814,8
+67,TabPFN v3,Full CPT,0,1e-05,-0.22632834,-0.30011507,-0.11404129,8
+68,TabPFN v3,Full CPT,0,3e-05,-0.25364013,-0.30145905,-0.15595028,8
+69,TabPFN v3,Full CPT,0.003,3e-07,-0.028428969,-0.013203469,-0.0017970532,8
+70,TabPFN v3,Full CPT,0.003,1e-06,-0.051794747,-0.044447699,-0.0059069276,8
+71,TabPFN v3,Full CPT,0.003,1e-05,-0.20027211,-0.25376786,-0.12314407,8
+72,TabPFN v3,Full CPT,0.003,3e-05,-0.2441895,-0.28897671,-0.18182567,8
+73,TabPFN v3,LoRA,0,1e-05,-0.024209514,-0.017695081,-0.001445815,8
+74,TabPFN v3,LoRA,0,0.0001,-0.18480366,-0.23855406,-0.070468,8
+75,TabPFN v3,LoRA,0,0.001,-0.19272424,-0.24210903,-0.075387132,8
+
+5. Credit transfer against non-credit retention
+Non-credit tables average all four CPT partitions. The retention panel contains four tables per task.
+
+Figure: lgd_overview_transfer_retention
+LGD. Each point is one configuration: its equal-table mean paired change on held-out credit tables (horizontal) and on the four non-credit retention tables of the same task (vertical), both relative to the original model of the same base. Non-credit tables first average all four CPT training partitions. The upper-right quadrant improves both; the lower-right gains on credit while losing on the retention panel. Points outlined in black are the experiment-1 reference recipes (full and frozen). Axis limits differ between models. A four-table retention panel does not establish general retention. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
+Credit and retention means
+CSV (first column: row index)
+row,config,base,approach,experiment,mean_credit,tables_credit,mean_retention,tables_retention
+0,E1 frozen · LR 1e-05 · λ 0,TabICLv2,Frozen backbone,1,-0.013060723,8,-0.0055029177,4
+1,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,Frozen backbone,1,-0.002586937,8,4.7348107e-05,4
+2,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,Frozen backbone,1,-0.030357036,8,-0.014939134,4
+3,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,Frozen backbone,1,-0.1257207,8,-0.067745918,4
+4,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,Frozen backbone,1,-0.019747806,8,-0.0063258574,4
+5,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,Frozen backbone,1,-0.0031174734,8,8.8572836e-05,4
+6,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-0.020069833,8,-0.0097451639,4
+7,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.1018619,8,-0.053138311,4
+8,E1 frozen · LR 1e-06 · λ 0,TabICLv2,Frozen backbone,1,-0.0066722602,8,-0.00075586599,4
+9,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,Frozen backbone,1,-0.0022780657,8,1.094834e-05,4
+10,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,Frozen backbone,1,-0.0080498978,8,-0.0035109528,4
+11,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,Frozen backbone,1,-0.029668537,8,-0.015499627,4
+12,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,Frozen backbone,1,-0.0088199973,8,-0.00059583923,4
+13,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,Frozen backbone,1,-0.0029533878,8,1.8117306e-05,4
+14,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-0.0077104703,8,-0.0034361657,4
+15,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.024423669,8,-0.016516,4
+16,E1 frozen · LR 3e-05 · λ 0,TabICLv2,Frozen backbone,1,-0.02733537,8,-0.015923801,4
+17,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,Frozen backbone,1,-0.017504168,8,3.463032e-05,4
+18,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,Frozen backbone,1,-0.025192845,8,-0.01399798,4
+19,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,Frozen backbone,1,-0.19883592,8,-0.16347702,4
+20,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,Frozen backbone,1,-0.031280062,8,-0.011326449,4
+21,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,Frozen backbone,1,-0.0031062365,8,0.00011716544,4
+22,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-0.020030595,8,-0.0079495719,4
+23,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.15893887,8,-0.16581829,4
+24,E1 frozen · LR 3e-07 · λ 0,TabICLv2,Frozen backbone,1,0.00084634423,8,-0.00010691565,4
+25,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,Frozen backbone,1,-0.001377067,8,2.9981548e-05,4
+26,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,Frozen backbone,1,-0.00012370497,8,-0.00066426181,4
+27,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,Frozen backbone,1,-0.0086689219,8,-0.0084141842,4
+28,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,Frozen backbone,1,0.00079556257,8,-8.4828286e-05,4
+29,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,Frozen backbone,1,-0.0015693963,8,3.5485458e-05,4
+30,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,Frozen backbone,1,-0.00010569841,8,-0.00066271364,4
+31,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,Frozen backbone,1,-0.0092272505,8,-0.0079114133,4
+32,E1 all · LR 1e-05 · λ 0,TabICLv2,Full CPT,1,-0.1350616,8,-0.051487052,4
+33,E1 all · LR 1e-05 · λ 0,TabPFN v2,Full CPT,1,-0.065933718,8,-0.032134689,4
+34,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,Full CPT,1,-0.075985511,8,-0.042833537,4
+35,E1 all · LR 1e-05 · λ 0,TabPFN v3,Full CPT,1,-0.22632834,8,-0.15533122,4
+36,E1 all · LR 1e-05 · λ 0.003,TabICLv2,Full CPT,1,-0.084343605,8,-0.02865461,4
+37,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,Full CPT,1,-0.070349832,8,-0.029867921,4
+38,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.067223181,8,-0.037945655,4
+39,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,Full CPT,1,-0.20027211,8,-0.14799392,4
+40,E1 all · LR 1e-06 · λ 0,TabICLv2,Full CPT,1,-0.043682146,8,-0.0078789071,4
+41,E1 all · LR 1e-06 · λ 0,TabPFN v2,Full CPT,1,0.0025317505,8,-0.0048632426,4
+42,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,Full CPT,1,-0.07825449,8,-0.071766903,4
+43,E1 all · LR 1e-06 · λ 0,TabPFN v3,Full CPT,1,-0.062856039,8,-0.042496224,4
+44,E1 all · LR 1e-06 · λ 0.003,TabICLv2,Full CPT,1,-0.046487814,8,-0.0057647958,4
+45,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,Full CPT,1,0.0016499475,8,-0.0047272944,4
+46,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.078016824,8,-0.071632248,4
+47,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,Full CPT,1,-0.051794747,8,-0.043322734,4
+48,E1 all · LR 3e-05 · λ 0,TabICLv2,Full CPT,1,-0.16816749,8,-0.069953334,4
+49,E1 all · LR 3e-05 · λ 0,TabPFN v2,Full CPT,1,-0.1235293,8,-0.083917836,4
+50,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,Full CPT,1,-0.13471956,8,-0.06010147,4
+51,E1 all · LR 3e-05 · λ 0,TabPFN v3,Full CPT,1,-0.25364013,8,-0.17618634,4
+52,E1 all · LR 3e-05 · λ 0.003,TabICLv2,Full CPT,1,-0.067601268,8,-0.034369628,4
+53,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,Full CPT,1,-0.13190233,8,-0.071080052,4
+54,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.10155251,8,-0.043851523,4
+55,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,Full CPT,1,-0.2441895,8,-0.14904879,4
+56,E1 all · LR 3e-07 · λ 0,TabICLv2,Full CPT,1,-0.0049273625,8,-0.002167248,4
+57,E1 all · LR 3e-07 · λ 0,TabPFN v2,Full CPT,1,0.0043883696,8,-0.00036806048,4
+58,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,Full CPT,1,-0.083352271,8,-0.076601727,4
+59,E1 all · LR 3e-07 · λ 0,TabPFN v3,Full CPT,1,-0.036392143,8,-0.010206227,4
+60,E1 all · LR 3e-07 · λ 0.003,TabICLv2,Full CPT,1,-0.0047702327,8,-0.0018614277,4
+61,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,Full CPT,1,0.0041011006,8,-0.00035520337,4
+62,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,Full CPT,1,-0.083212371,8,-0.076511868,4
+63,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,Full CPT,1,-0.028428969,8,-0.010260117,4
+64,E2 Reference · seed 43,TabICLv2,Full CPT,2,-0.0077958211,8,-0.0017652513,4
+65,E2 Reference · seed 43,TabPFN v2,Full CPT,2,0.0041876957,8,-0.00034305667,4
+66,E2 Reference · seed 43,TabPFN v2.6,Full CPT,2,-0.082147714,8,-0.074008919,4
+67,E2 Reference · seed 43,TabPFN v3,Full CPT,2,-0.0093954206,8,-0.0095290333,4
+68,E3 Accumulate,TabICLv2,Full CPT,3,-0.0048638046,8,-0.0019234499,4
+69,E3 Accumulate,TabPFN v2,Full CPT,3,0.0052213416,8,-0.00049824814,4
+70,E3 Accumulate,TabPFN v2.6,Full CPT,3,-0.082297623,8,-0.077413366,4
+71,E3 Accumulate,TabPFN v3,Full CPT,3,-0.038118732,8,-0.0095492563,4
+72,E3 Full pass,TabICLv2,Full CPT,3,-0.0045976415,8,-0.0022869997,4
+73,E3 Full pass,TabPFN v2,Full CPT,3,0.005765228,8,-0.00023075596,4
+74,E3 Full pass,TabPFN v2.6,Full CPT,3,-0.087247577,8,-0.087362189,4
+75,E3 Full pass,TabPFN v3,Full CPT,3,-0.030050986,8,-0.0085416075,4
+76,E3 One sample,TabICLv2,Full CPT,3,-0.0047524139,8,-0.0018469496,4
+77,E3 One sample,TabPFN v2,Full CPT,3,0.0041849822,8,-0.00033507307,4
+78,E3 One sample,TabPFN v2.6,Full CPT,3,-0.083228423,8,-0.076498975,4
+79,E3 One sample,TabPFN v3,Full CPT,3,-0.041508697,8,-0.010336749,4
+80,E5 LR 0.0001,TabICLv2,DiagScale,5,-0.0030863956,8,-0.00066273592,4
+81,E5 LR 0.0001,TabPFN v3,DiagScale,5,-0.003330411,8,-0.0012306979,4
+82,E5 LR 0.001,TabICLv2,DiagScale,5,-0.016804272,8,-0.0054924861,4
+83,E5 LR 0.001,TabPFN v3,DiagScale,5,-0.0059454918,8,-0.0066344928,4
+84,E5 LR 0.03,TabICLv2,DiagScale,5,-0.056991605,8,-0.03589762,4
+85,E5 LR 0.03,TabPFN v3,DiagScale,5,-0.064331025,8,-0.038861121,4
+86,E8 LR 0.0001,TabICLv2,LoRA,8,-0.12732689,8,-0.14160663,4
+87,E8 LR 0.0001,TabPFN v3,LoRA,8,-0.18480366,8,-0.09721937,4
+88,E8 LR 0.001,TabICLv2,LoRA,8,-0.14914341,8,-0.090429655,4
+89,E8 LR 0.001,TabPFN v3,LoRA,8,-0.19272424,8,-0.17209592,4
+90,E8 LR 1e-05,TabICLv2,LoRA,8,-0.03296902,8,-0.039505576,4
+91,E8 LR 1e-05,TabPFN v3,LoRA,8,-0.024209514,8,-0.026005659,4
+
+Table: Non-credit retention per configuration
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,r2,4,0.9046122,0.89910928,-0.0055029177,-0.0052236978,-0.0084172566,-0.0023093589,-0.0094128398,-0.0021514354,0,0,4,5,80,0
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,r2,4,0.87637663,0.87642398,4.7348107e-05,3.426908e-05,-2.4120508e-05,0.00010573769,-0.0001481732,0.00026902747,0,4,0,37,80,0
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.88554332,-0.014939134,-0.015497937,-0.01783517,-0.012601902,-0.020597522,-0.0081631385,0,0,4,0,80,0
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,r2,4,0.9081127,0.84036679,-0.067745918,-0.05707287,-0.1055188,-0.019299985,-0.1428696,-0.013968328,0,0,4,1,80,0
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,r2,4,0.9046122,0.89828634,-0.0063258574,-0.0050947889,-0.0095352565,-0.0018853898,-0.013477355,-0.0016364969,0,0,4,8,80,0
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.87646521,8.8572836e-05,7.360001e-05,1.9526897e-05,0.00014264595,-0.00010978048,0.0003168718,0,4,0,38,80,0
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.89073729,-0.0097451639,-0.0097514907,-0.011308735,-0.0081879197,-0.013165486,-0.0063121881,0,0,4,0,80,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.85497439,-0.053138311,-0.025671273,-0.059122931,-0.019686652,-0.14705854,-0.014152155,0,0,4,0,80,0
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,r2,4,0.9046122,0.90385633,-0.00075586599,-0.0004978515,-0.0013949687,0.00014125121,-0.0023785881,0.00035082717,0,2,2,26,80,0
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,r2,4,0.87637663,0.87638758,1.094834e-05,-3.345253e-06,-2.0887124e-05,2.8490212e-05,-2.4719248e-05,7.5203115e-05,0,4,0,47,80,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.8969715,-0.0035109528,-0.0016937543,-0.0041248421,-0.0010798649,-0.0098960067,-0.00076029578,0,1,3,12,80,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,r2,4,0.9081127,0.89261308,-0.015499627,-0.010927775,-0.021472245,-0.004955157,-0.037835239,-0.0023077203,0,0,4,3,80,0
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,r2,4,0.9046122,0.90401636,-0.00059583923,-0.000277936,-0.0012447249,0.00037094966,-0.0022823944,0.0004549095,0,3,1,28,80,0
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.87639475,1.8117306e-05,2.3135798e-06,-5.5885294e-06,2.6019415e-05,-9.5547436e-06,7.7396806e-05,0,4,0,48,80,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.89704629,-0.0034361657,-0.0016694883,-0.003998251,-0.001107403,-0.0096754501,-0.00073023639,0,1,3,12,80,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.8915967,-0.016516,-0.010877069,-0.022515928,-0.0048771409,-0.042026469,-0.0022833924,0,0,4,4,80,0
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,r2,4,0.9046122,0.8886884,-0.015923801,-0.013129471,-0.024561143,-0.0044921285,-0.034820962,-0.0026152997,0,0,4,3,80,0
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,r2,4,0.87637663,0.87641126,3.463032e-05,-3.2488168e-05,-8.8807071e-05,9.0949223e-05,-0.00024811355,0.00045161117,0,4,0,33,80,0
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.88648448,-0.01399798,-0.013380673,-0.017389371,-0.0099892824,-0.021013001,-0.0082175729,0,0,4,0,80,0
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,r2,4,0.9081127,0.74463568,-0.16347702,-0.14179664,-0.27327023,-0.032003426,-0.34270664,-0.02760816,0,0,4,0,80,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,r2,4,0.9046122,0.89328575,-0.011326449,-0.0093151993,-0.017654193,-0.0029874551,-0.025061201,-0.0016141952,0,0,4,3,80,0
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.8764938,0.00011716544,4.6071025e-05,-6.1834424e-05,0.00022507089,-9.8803778e-05,0.00047532348,0,4,0,38,80,0
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.89253288,-0.0079495719,-0.0079955268,-0.0096959902,-0.0062491086,-0.011346313,-0.0044609213,0,0,4,0,80,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.74229442,-0.16581829,-0.15297108,-0.2896385,-0.029150866,-0.33166038,-0.02567061,0,0,4,0,80,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,r2,4,0.9046122,0.90450528,-0.00010691565,0.00017159021,-0.00037217545,0.00043685001,-0.0014162541,0.00064541103,0,3,1,37,80,0
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,r2,4,0.87637663,0.87640662,2.9981548e-05,3.7511464e-05,1.6590256e-05,5.0902757e-05,-1.9950645e-05,6.4853909e-05,0,4,0,47,80,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.89981819,-0.00066426181,-0.00030236249,-0.00085961765,-0.00010700665,-0.0020270806,-2.5241619e-05,0,3,1,12,80,0
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,r2,4,0.9081127,0.89969852,-0.0084141842,-0.0052071252,-0.010788558,-0.0028327514,-0.022785726,-0.0004567604,0,1,3,5,80,0
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,r2,4,0.9046122,0.90452737,-8.4828286e-05,0.00019598138,-0.00034061858,0.00045177167,-0.0013685747,0.00063729876,0,3,1,37,80,0
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.87641212,3.5485458e-05,4.0862181e-05,1.2981368e-05,6.3366271e-05,-1.6648051e-05,7.6865523e-05,0,4,0,51,80,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.89981974,-0.00066271364,-0.00029775446,-0.00085129242,-0.00010917568,-0.0020152918,-4.0053804e-05,0,3,1,12,80,0
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.90020129,-0.0079114133,-0.0052487061,-0.010308344,-0.0028517752,-0.020606997,-0.00054124395,0,1,3,5,80,0
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,r2,4,0.9046122,0.85312515,-0.051487052,-0.040608087,-0.054437823,-0.037657315,-0.088077399,-0.036654635,0,0,4,0,80,0
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,r2,4,0.87637663,0.84424195,-0.032134689,-0.025583336,-0.039045304,-0.01867272,-0.06722808,-0.010144003,0,0,4,4,80,0
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.85764892,-0.042833537,-0.036213102,-0.051199298,-0.027847341,-0.07463959,-0.024268353,0,0,4,0,80,0
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,r2,4,0.9081127,0.75278149,-0.15533122,-0.12636093,-0.19738721,-0.084304931,-0.30166634,-0.066936675,0,0,4,0,80,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,r2,4,0.9046122,0.87595759,-0.02865461,-0.028702828,-0.046260544,-0.011096894,-0.047844243,-0.0093685427,0,0,4,0,80,0
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.84650871,-0.029867921,-0.023117119,-0.035969308,-0.017015733,-0.0647263,-0.0085111474,0,0,4,4,80,0
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.8625368,-0.037945655,-0.032502792,-0.043253227,-0.02719522,-0.068302002,-0.018475035,0,0,4,0,80,0
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.76011879,-0.14799392,-0.10840847,-0.17222432,-0.084178062,-0.31113047,-0.06402826,0,0,4,0,80,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,r2,4,0.9046122,0.89673329,-0.0078789071,-0.0051654148,-0.0097793583,-0.0032649637,-0.018117554,-0.0030672449,0,0,4,4,80,0
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,r2,4,0.87637663,0.87151339,-0.0048632426,-0.0042922177,-0.0075974365,-0.0015580239,-0.012943341,0.0020748056,1,0,3,15,80,0.25
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.82871555,-0.071766903,-0.046842495,-0.074742154,-0.043867244,-0.15311899,-0.040263631,0,0,4,0,80,0
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,r2,4,0.9081127,0.86561648,-0.042496224,-0.028213352,-0.050372838,-0.020336738,-0.10213202,-0.01142617,0,0,4,0,80,0
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,r2,4,0.9046122,0.8988474,-0.0057647958,-0.0041662236,-0.0075669842,-0.0023640352,-0.012728521,-0.001998215,0,0,4,9,80,0
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.87164934,-0.0047272944,-0.0042078636,-0.0074676269,-0.0014675311,-0.012622942,0.0021294919,1,0,3,15,80,0.25
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.82885021,-0.071632248,-0.046504186,-0.074957564,-0.043178871,-0.1537275,-0.03979312,0,0,4,0,80,0
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.86478997,-0.043322734,-0.026697425,-0.050014787,-0.020005372,-0.10852259,-0.011373492,0,0,4,0,80,0
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,r2,4,0.9046122,0.83465886,-0.069953334,-0.053659609,-0.077726609,-0.045886334,-0.13216243,-0.040331681,0,0,4,0,80,0
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,r2,4,0.87637663,0.7924588,-0.083917836,-0.07127219,-0.099247257,-0.055942768,-0.14496931,-0.048157657,0,0,4,0,80,0
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.84038099,-0.06010147,-0.052000697,-0.064818143,-0.047284024,-0.099940105,-0.03646438,0,0,4,0,80,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,r2,4,0.9081127,0.73192637,-0.17618634,-0.1219702,-0.18139487,-0.11676166,-0.3492591,-0.11154585,0,0,4,0,80,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,r2,4,0.9046122,0.87024257,-0.034369628,-0.032963739,-0.053272876,-0.01406049,-0.057686948,-0.013864085,0,0,4,1,80,0
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.80529658,-0.071080052,-0.059799792,-0.086360201,-0.044519643,-0.12325949,-0.041461133,0,0,4,0,80,0
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.85663093,-0.043851523,-0.035144613,-0.048143065,-0.03085307,-0.080647725,-0.024469141,0,0,4,0,80,0
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.75906391,-0.14904879,-0.10550674,-0.154428,-0.10012753,-0.28644411,-0.098737587,0,0,4,0,80,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,r2,4,0.9046122,0.90244495,-0.002167248,-0.00095755117,-0.0024372756,-0.00068752359,-0.0061560057,-0.0005978839,0,2,2,14,80,0
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,r2,4,0.87637663,0.87600857,-0.00036806048,-0.00075600205,-0.0020024026,0.00087834008,-0.0024603559,0.0025001181,1,1,2,34,80,0.25
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,r2,4,0.90048246,0.82388073,-0.076601727,-0.048943304,-0.083564315,-0.041980716,-0.16796845,-0.040551849,0,0,4,0,80,0
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,r2,4,0.9081127,0.89790648,-0.010206227,-0.010108432,-0.01288679,-0.0074278685,-0.017451157,-0.0031568882,0,0,4,0,80,0
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,r2,4,0.9046122,0.90275077,-0.0018614277,-0.00080171047,-0.0021385534,-0.00052458473,-0.0053817439,-0.00046054597,0,2,2,14,80,0
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,r2,4,0.87637663,0.87602143,-0.00035520337,-0.00073919801,-0.0019677848,0.00087338346,-0.0024443483,0.0025019308,1,1,2,34,80,0.25
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,r2,4,0.90048246,0.82397059,-0.076511868,-0.048899662,-0.083586557,-0.041824972,-0.16785949,-0.040388652,0,0,4,0,80,0
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,r2,4,0.9081127,0.89785259,-0.010260117,-0.010429288,-0.013339951,-0.0073494532,-0.017034032,-0.0031478604,0,0,4,0,80,0
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,r2,4,0.9046122,0.90284695,-0.0017652513,-0.00088636113,-0.0022163496,-0.0004352629,-0.0052127092,-7.5573867e-05,0,2,2,16,80,0
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,r2,4,0.87637663,0.87603358,-0.00034305667,-0.00074286583,-0.0019410898,0.0008551673,-0.0024134176,0.0025269226,1,1,2,33,80,0.25
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,r2,4,0.90048246,0.82647354,-0.074008919,-0.047151781,-0.080815039,-0.040345662,-0.16265536,-0.039076758,0,0,4,0,80,0
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,r2,4,0.9081114,0.89858237,-0.0095290333,-0.0096679616,-0.0120205,-0.0071764946,-0.015641013,-0.003139197,0,0,4,0,80,0
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,r2,4,0.9046122,0.90268875,-0.0019234499,-0.00078521016,-0.0021510952,-0.00055756489,-0.0055989201,-0.0005244593,0,2,2,13,80,0
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,r2,4,0.87637663,0.87587839,-0.00049824814,-0.00099115907,-0.0023227581,0.00083335088,-0.0023925846,0.0023819101,1,1,2,35,80,0.25
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,r2,4,0.90048246,0.82306909,-0.077413366,-0.047786623,-0.084186649,-0.041013339,-0.17382097,-0.040259244,0,0,4,0,80,0
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,r2,4,0.90810887,0.89855962,-0.0095492563,-0.0089275094,-0.011394525,-0.0070822409,-0.017117935,-0.0032240717,0,0,4,0,80,0
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,r2,4,0.9046122,0.9023252,-0.0022869997,-0.0010544992,-0.0024939412,-0.00084755773,-0.0066378466,-0.00040115392,0,2,2,12,80,0
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,r2,4,0.87637663,0.87614588,-0.00023075596,-0.00051498785,-0.0018441016,0.0010983578,-0.0020551507,0.0021621026,1,1,2,38,80,0.25
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,r2,4,0.90048246,0.81312027,-0.087362189,-0.073992788,-0.11500415,-0.046350822,-0.15821804,-0.043245137,0,0,4,0,80,0
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,r2,4,0.90810887,0.89956726,-0.0085416075,-0.0075413838,-0.0099697384,-0.0061132529,-0.016412309,-0.0026713533,0,0,4,0,80,0
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,r2,4,0.9046122,0.90276525,-0.0018469496,-0.00078671904,-0.0021197569,-0.00051391182,-0.0053708217,-0.00044353875,0,2,2,14,80,0
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,r2,4,0.87637663,0.87604156,-0.00033507307,-0.00071060922,-0.001933979,0.00088829666,-0.0024395525,0.0025204786,1,1,2,34,80,0.25
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,r2,4,0.90048246,0.82398348,-0.076498975,-0.048887785,-0.083560105,-0.041826655,-0.16782966,-0.040390664,0,0,4,0,80,0
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,r2,4,0.90810887,0.89777212,-0.010336749,-0.010365002,-0.01330548,-0.0073962717,-0.017514229,-0.0031027638,0,0,4,0,80,0
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,r2,4,0.90462107,0.90395834,-0.00066273592,-0.00010978012,-0.00081878823,4.6272187e-05,-0.0027591409,0.00032775741,0,3,1,31,80,0
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,r2,4,0.90811475,0.90688406,-0.0012306979,-0.00063621956,-0.001384449,-0.00048246847,-0.0033775907,-0.00027276173,0,3,1,15,80,0
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,r2,4,0.90462107,0.89912858,-0.0054924861,-0.0028295941,-0.0057458203,-0.0025762599,-0.014266554,-0.0020442024,0,0,4,4,80,0
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,r2,4,0.90811475,0.90148026,-0.0066344928,-0.0054319464,-0.0089835028,-0.0030829363,-0.014497788,-0.0011762904,0,0,4,5,80,0
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,r2,4,0.90462107,0.86872345,-0.03589762,-0.017794782,-0.03751365,-0.016178752,-0.095066029,-0.012934889,0,0,4,0,80,0
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,r2,4,0.90811475,0.86925363,-0.038861121,-0.023367505,-0.045053075,-0.017175551,-0.096095111,-0.012614363,0,0,4,0,80,0
+86,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,r2,4,0.90462107,0.76301444,-0.14160663,-0.11553121,-0.22912247,-0.028015373,-0.31926489,-0.016099219,0,0,4,0,80,0
+87,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,r2,4,0.90811066,0.81089129,-0.09721937,-0.059841931,-0.10348848,-0.053572822,-0.2172611,-0.051932517,0,0,4,0,80,0
+88,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,r2,4,0.90462107,0.81419142,-0.090429655,-0.056208238,-0.098282019,-0.048355875,-0.20794545,-0.041356692,0,0,4,0,80,0
+89,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,r2,4,0.90811066,0.73601474,-0.17209592,-0.13140821,-0.18129439,-0.12220975,-0.30993289,-0.11563438,0,0,4,0,80,0
+90,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,r2,4,0.90462107,0.8651155,-0.039505576,-0.023964487,-0.060498279,-0.0029717843,-0.1073222,-0.0027711258,0,0,4,4,80,0
+91,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,r2,4,0.90811066,0.882105,-0.026005659,-0.010646152,-0.028318442,-0.0083333692,-0.077527673,-0.0052026603,0,0,4,1,80,0
+
+6. Labelled context at prediction time (experiment 4)
+Each cohort contains the tables that support every context size up to its horizon; validation labels are a fixed additional budget.
+
+Figure: lgd_overview_context
+LGD. Experiment 4: paired change in R² of the fixed reference CPT checkpoint (experiment 1: full updates, LR 3e-7, L2-SP λ 0.003) relative to its original model, as a function of the number of labelled context rows supplied at prediction time. Contexts are nested prefixes and test rows are identical for both weight states. Each line is a fixed table cohort that contributes at every size up to its horizon; the band spans the table interquartile range for the longest-horizon cohort. Five outer folds are averaged within table before tables are weighted equally. The curves do not estimate variation over independently resampled contexts.
+Context gain curves
+CSV (first column: row index)
+row,context_rows,mean,q25,q75,tables,family,horizon,datasets
+0,8,-0.037007904,-0.061726874,0.010786688,8,tabpfn,128,8
+1,12,-0.0052184954,-0.016917944,0.0056527734,8,tabpfn,128,8
+2,16,0.001916337,-0.018176225,0.017792088,8,tabpfn,128,8
+3,24,-0.00042726249,-0.011960611,0.018502554,8,tabpfn,128,8
+4,32,-0.0037250146,-0.041885701,0.022051501,8,tabpfn,128,8
+5,48,0.00024725795,-0.012774476,0.016536063,8,tabpfn,128,8
+6,64,-0.003454189,-0.0077422798,0.0084255099,8,tabpfn,128,8
+7,96,-0.00024186969,-0.0087321728,0.008905223,8,tabpfn,128,8
+8,128,0.00085768849,-0.0011691183,0.0025484979,8,tabpfn,128,8
+9,8,-0.068129075,-0.1128487,-0.03158339,4,tabpfn,2048,4
+10,12,-0.012928346,-0.029039192,-0.0040945083,4,tabpfn,2048,4
+11,16,-0.0032948881,-0.021260339,0.017268822,4,tabpfn,2048,4
+12,24,-0.0020996422,-0.011960611,0.010921228,4,tabpfn,2048,4
+13,32,-0.006661582,-0.041885701,0.027043405,4,tabpfn,2048,4
+14,48,-0.0082011819,-0.023463762,0.0096051097,4,tabpfn,2048,4
+15,64,-0.009309873,-0.019624829,0.0064569384,4,tabpfn,2048,4
+16,96,0.002306205,-0.0022360772,0.008905223,4,tabpfn,2048,4
+17,128,0.0017227083,-0.0018537313,0.0052162886,4,tabpfn,2048,4
+18,192,-0.0018328249,-0.0050209284,-0.00074592233,4,tabpfn,2048,4
+19,256,-0.00521909,-0.010499975,-0.0004370898,4,tabpfn,2048,4
+20,384,-0.0049728066,-0.0086600363,-0.0016766876,4,tabpfn,2048,4
+21,512,-0.0050592989,-0.0053236932,-0.0047691166,4,tabpfn,2048,4
+22,768,-0.0050334245,-0.0054300994,-0.0043762982,4,tabpfn,2048,4
+23,1024,-0.0052661985,-0.0066128939,-0.0035011709,4,tabpfn,2048,4
+24,1536,-0.0068040967,-0.0098175436,-0.0042415291,4,tabpfn,2048,4
+25,2048,-0.0076533765,-0.0095104039,-0.0067369908,4,tabpfn,2048,4
+26,8,0.017175038,0.0047172755,0.037394172,8,tabicl,128,8
+27,12,-0.00023574382,-0.0081518173,0.011248913,8,tabicl,128,8
+28,16,0.0027665988,-0.0068505347,0.0195871,8,tabicl,128,8
+29,24,0.0062148094,-0.0024615526,0.015176591,8,tabicl,128,8
+30,32,0.00038851351,-0.0036264032,0.010701314,8,tabicl,128,8
+31,48,0.005444482,-0.0015611947,0.0074146628,8,tabicl,128,8
+32,64,0.0075972632,-0.0056493491,0.010106328,8,tabicl,128,8
+33,96,-6.0947239e-05,-0.0051973522,0.0023507953,8,tabicl,128,8
+34,128,-0.0012883574,-0.0027851164,0.0040093511,8,tabicl,128,8
+35,8,0.018930581,0.0028913409,0.037518555,4,tabicl,2048,4
+36,12,-0.0063289613,-0.037235409,0.025957295,4,tabicl,2048,4
+37,16,-0.0030798644,-0.010691413,0.01291641,4,tabicl,2048,4
+38,24,0.011113179,-0.0018990904,0.030897567,4,tabicl,2048,4
+39,32,-0.0028355926,-0.018424419,0.019755584,4,tabicl,2048,4
+40,48,0.0043425143,-0.018070132,0.016863966,4,tabicl,2048,4
+41,64,0.014148471,-0.017229936,0.034807408,4,tabicl,2048,4
+42,96,-0.00032987297,-0.010882139,0.008037433,4,tabicl,2048,4
+43,128,-0.0021112144,-0.0063104033,0.0059946477,4,tabicl,2048,4
+44,192,-0.0051099986,-0.010099006,-0.00071313083,4,tabicl,2048,4
+45,256,-0.0044047713,-0.010232362,-0.000339064,4,tabicl,2048,4
+46,384,-0.0046615034,-0.0078540921,-0.0021359652,4,tabicl,2048,4
+47,512,-0.0039865166,-0.0054939985,-0.0014989227,4,tabicl,2048,4
+48,768,-0.003163597,-0.0047322094,-0.0014886826,4,tabicl,2048,4
+49,1024,-0.0020434886,-0.0042084426,2.7263165e-05,4,tabicl,2048,4
+50,1536,-0.0027084589,-0.0041343629,-0.00038861632,4,tabicl,2048,4
+51,2048,-0.0033604056,-0.0046815783,-0.001042825,4,tabicl,2048,4
+
+7. Which tables move?
+Table identities persist across arms within a base. The original score also enters the change, so trends against it are descriptive.
+
+Figure: lgd_overview_tables_v2
+LGD. TabPFN v2, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.02); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
+0,PropLGD3,-0.00021089315,-0.0046648145,-0.00075932741,-0.00018125772,0.0095842004,0.0038337469
+1,PropLGD1,0.018483496,-0.0071280241,0.017983603,0.01857003,0.020232344,0.020500529
+2,PropLGD4,0.011592054,-5.8293343e-06,0.012521064,0.011795747,0.016757154,0.014124441
+3,PropLGD5,0.0063416004,0.00051351786,0.0077135444,0.0066368699,0.0034249187,0.0065776348
+4,Freddie Mac,-0.0032508135,-0.00038522482,-0.0033835411,-0.0031974196,-0.0034224987,-0.0033791423
+5,PropLGD2,-0.00080544949,-0.00032587051,-0.0011199832,-0.00087313652,-0.0012356997,-0.00034892559
+6,SBA Loans Case (LGD),0.0028022647,-0.00037333965,0.0026813507,0.0028626919,0.002502346,0.0026719332
+7,LendingClub (LGD),-0.0021434546,-0.00018558502,-0.0021351457,-0.0021336675,-0.0017209411,-0.0022094846
+
+Figure: lgd_overview_tables_v2.6
+LGD. TabPFN v2.6, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.30); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
+0,PropLGD3,0.0014339089,0.0011408329,0.00093084574,0.0014240742,0.0027761936,0.0013621926
+1,PropLGD5,-0.027774954,0.0026251674,-0.028720522,-0.027754021,-0.037015212,-0.025140727
+2,Freddie Mac,-0.075571036,0.00098222494,-0.073670125,-0.0756019,-0.07600559,-0.076048338
+3,PropLGD4,-0.066008151,-0.0010062695,-0.063238955,-0.066031766,-0.099845326,-0.059324455
+4,SBA Loans Case (LGD),-0.054565394,-0.0008570075,-0.056076276,-0.054605782,-0.0518749,-0.053769648
+5,PropLGD1,-0.29883276,-0.0044159889,-0.29297761,-0.29884548,-0.29541059,-0.29546745
+6,PropLGD2,-0.063454926,2.5713444e-05,-0.06305536,-0.063441539,-0.06649816,-0.063321888
+7,LendingClub (LGD),-0.080925655,0.00065973997,-0.080373716,-0.080970967,-0.074107039,-0.086670673
+
+Figure: lgd_overview_tables_v3
+LGD. TabPFN v3, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.27); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
+0,PropLGD3,0.0021969914,0.00053240061,0.0022327185,0.0022050142,0.0022903204,0.0022574782,0.00073421001,0.0031643867,-0.01167326,0.001476872,-0.18007008,-0.071550429
+1,PropLGD5,-0.0012308478,-0.0012985826,-0.0018633604,-0.0013884306,-0.0019419074,-0.002652514,0.0023545742,0.0035565495,0.0010969043,-0.0066737294,-0.035457349,-0.076666033
+2,Freddie Mac,-0.018117607,-0.0067509532,-0.016023731,-0.019051051,-0.017419064,-0.019067478,-0.0030942798,-0.0094301701,-0.08396883,-0.019015658,-0.41400601,-0.23782232
+3,PropLGD4,-0.0026840091,-0.010145855,0.00048401356,-0.002556169,-0.0012985229,-0.00095208883,-0.0033224821,-0.018097067,-0.04183253,0.0013722658,-0.082138216,-0.23976177
+4,PropLGD1,-0.18983387,-0.048800099,-0.042056417,-0.29402781,-0.20707268,-0.26636069,-0.021595657,-0.0092009425,-0.32234859,-0.13894597,-0.53119321,-0.46683137
+5,SBA Loans Case (LGD),-0.0042111993,-0.0045753717,-0.0042153358,-0.0042144775,-0.0033727288,-0.0049512267,0.00014903545,-0.0071733356,-0.022586524,-0.012249827,-0.12252456,-0.24915082
+6,PropLGD2,-0.011565423,-0.0035761714,-0.011565089,-0.011092234,-0.0096204996,-0.011061645,-0.0025095582,-0.01020025,-0.029102111,-0.017254889,-0.093929565,-0.16061736
+7,LendingClub (LGD),-0.0019857883,0.000796628,-0.0021561623,-0.0019444227,-0.0019728065,-0.0021616936,0.00064086914,-0.00018310547,-0.004233253,-0.0023851752,-0.019110322,-0.039393771
+
+Figure: lgd_overview_tables_tabicl-v2
+LGD. TabICLv2, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.16); printed values are exact. '—' marks a missing complete comparison.
+Table × arm effects
+CSV (first column: row index)
+row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
+0,PropLGD3,-0.0013843417,-0.00048923492,-0.00022741556,-0.0013639927,-0.0024806738,-0.0013918519,-0.00023396015,5.0663948e-05,-0.0066588759,-0.0044382215,-0.13959645,-0.051982009
+1,PropLGD5,-0.0034658551,-0.00072492361,-0.00036309958,-0.0035161495,-0.0017193913,-0.0027395606,-0.0016351938,-0.0077272534,-0.042816412,-0.0077724099,-0.15385969,-0.14375209
+2,Freddie Mac,-0.0056432486,0.001791203,-0.0063619852,-0.005622685,-0.0061332345,-0.0059010983,-1.0740757e-05,-0.020474887,-0.071134222,-0.064775467,-0.15775664,-0.18626091
+3,PropLGD4,0.0058369756,0.0053941846,0.0050950527,0.0058127522,0.0052321076,0.0063179255,0.0012807846,0.0059058547,0.001237762,0.0018438578,-0.047948754,-0.10368705
+4,PropLGD1,-0.030043507,-0.0011702299,-0.056091094,-0.029958057,-0.028587568,-0.031153631,-0.022994757,-0.093165243,-0.23728884,-0.1628454,-0.396981,-0.34729686
+5,PropLGD2,-0.0031716228,0.00036139488,-0.0043584466,-0.0030329943,-0.0030922294,-0.0029883265,-0.00024895668,-0.0079574585,-0.042760909,-0.019960868,-0.037247777,-0.15853724
+6,SBA Loans Case (LGD),6.3300133e-06,0.0011025786,0.00061863661,-3.2448769e-05,0.00026379824,-0.0007422328,-0.00087721348,-0.010318136,-0.025218511,-0.0050749421,-0.054720879,-0.12931681
+7,LendingClub (LGD),-0.00029659271,9.9527836e-05,-0.00067821741,-0.00030573606,-0.00026394129,-0.00031166077,2.887249e-05,-0.00074771643,-0.031292832,-0.00072871447,-0.030503917,-0.072314334
+
+Figure: lgd_overview_headroom
+LGD. Predefined reference recipe (experiment 1: full updates, LR 3e-7, L2-SP λ 0.003): each point is one held-out credit table and base, plotting the paired change in R² against the original model's mean score on that table. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. The horizontal score appears in both quantities (the change is computed from it), so a trend can arise from ceiling effects or noise and is descriptive, not a mechanism.
+Reference table effects
+CSV (first column: row index)
+row,base,dataset,original,adapted,effect,folds_improved,folds
+104,TabICLv2,Freddie Mac,0.3838949,0.37825165,-0.0056432486,0,5
+105,TabICLv2,LendingClub (LGD),0.76362401,0.76332742,-0.00029659271,2,5
+106,TabICLv2,PropLGD1,0.64222894,0.61218543,-0.030043507,0,5
+107,TabICLv2,PropLGD2,0.72727659,0.72410496,-0.0031716228,1,5
+108,TabICLv2,PropLGD3,0.21216327,0.21077893,-0.0013843417,1,5
+109,TabICLv2,PropLGD4,0.41803458,0.42387155,0.0058369756,4,5
+110,TabICLv2,PropLGD5,0.37389036,0.37042451,-0.0034658551,3,5
+111,TabICLv2,SBA Loans Case (LGD),0.7340345,0.73404083,6.3300133e-06,2,5
+232,TabPFN v2,Freddie Mac,0.38327215,0.38002133,-0.0032508135,0,5
+233,TabPFN v2,LendingClub (LGD),0.75747193,0.75532848,-0.0021434546,0,5
+234,TabPFN v2,PropLGD1,0.2995842,0.31806769,0.018483496,5,5
+235,TabPFN v2,PropLGD2,0.71614927,0.71534382,-0.00080544949,1,5
+236,TabPFN v2,PropLGD3,0.21272258,0.21251168,-0.00021089315,3,5
+237,TabPFN v2,PropLGD4,0.33660059,0.34819264,0.011592054,4,5
+238,TabPFN v2,PropLGD5,0.37209316,0.37843477,0.0063416004,4,5
+239,TabPFN v2,SBA Loans Case (LGD),0.71824844,0.7210507,0.0028022647,3,5
+360,TabPFN v2.6,Freddie Mac,0.39476699,0.31919595,-0.075571036,0,5
+361,TabPFN v2.6,LendingClub (LGD),0.76306273,0.68213707,-0.080925655,0,5
+362,TabPFN v2.6,PropLGD1,0.71840361,0.41957085,-0.29883276,0,5
+363,TabPFN v2.6,PropLGD2,0.72027066,0.65681573,-0.063454926,0,5
+364,TabPFN v2.6,PropLGD3,0.21145041,0.21288432,0.0014339089,3,5
+365,TabPFN v2.6,PropLGD4,0.42508527,0.35907712,-0.066008151,1,5
+366,TabPFN v2.6,PropLGD5,0.37783189,0.35005693,-0.027774954,1,5
+367,TabPFN v2.6,SBA Loans Case (LGD),0.70759012,0.65302472,-0.054565394,0,5
+488,TabPFN v3,Freddie Mac,0.40350479,0.38538718,-0.018117607,0,5
+489,TabPFN v3,LendingClub (LGD),0.76377615,0.76179036,-0.0019857883,0,5
+490,TabPFN v3,PropLGD1,0.67163471,0.48180084,-0.18983387,0,5
+491,TabPFN v3,PropLGD2,0.73408319,0.72251776,-0.011565423,0,5
+492,TabPFN v3,PropLGD3,0.21129837,0.21349536,0.0021969914,4,5
+493,TabPFN v3,PropLGD4,0.4223755,0.41969149,-0.0026840091,2,5
+494,TabPFN v3,PropLGD5,0.3766028,0.37537196,-0.0012308478,2,5
+495,TabPFN v3,SBA Loans Case (LGD),0.7320177,0.7278065,-0.0042111993,2,5
+
+8. Training cost
+Recorded training time excludes evaluation and queueing and was measured on the hardware of each study; it is not a matched-compute comparison.
+
+Figure: lgd_overview_cost
+LGD. Each point is one configuration: its equal-table mean paired change in R² on held-out credit tables against recorded training time summed over the four CPT partitions (logarithmic axis). Training time excludes evaluation and queueing and was recorded on the GPUs used for each study, so it is an observed cost, not a matched-compute comparison. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
+Cost and effect
+CSV (first column: row index)
+row,config,arm,base,learning_rate,l2sp_lambda,frozen,sampling,experiment,arm_cost,gpu_hours,partitions,approach,mean
+0,E1 all · LR 1e-05 · λ 0,unavailable,TabICLv2,1e-05,0,False,one_sample,1,unavailable,2.1556476,4,Full CPT,-0.1350616
+1,E1 all · LR 1e-05 · λ 0.003,unavailable,TabICLv2,1e-05,0.003,False,one_sample,1,unavailable,2.3246454,4,Full CPT,-0.084343605
+2,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabICLv2,1e-05,0.003,True,one_sample,1,unavailable,2.0874124,4,Frozen backbone,-0.019747806
+3,E1 frozen · LR 1e-05 · λ 0,unavailable,TabICLv2,1e-05,0,True,one_sample,1,unavailable,2.015872,4,Frozen backbone,-0.013060723
+4,E1 all · LR 1e-06 · λ 0,unavailable,TabICLv2,1e-06,0,False,one_sample,1,unavailable,2.1546005,4,Full CPT,-0.043682146
+5,E1 all · LR 1e-06 · λ 0.003,unavailable,TabICLv2,1e-06,0.003,False,one_sample,1,unavailable,2.2935171,4,Full CPT,-0.046487814
+6,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabICLv2,1e-06,0.003,True,one_sample,1,unavailable,2.0884991,4,Frozen backbone,-0.0088199973
+7,E1 frozen · LR 1e-06 · λ 0,unavailable,TabICLv2,1e-06,0,True,one_sample,1,unavailable,2.03343,4,Frozen backbone,-0.0066722602
+8,E1 all · LR 3e-05 · λ 0,unavailable,TabICLv2,3e-05,0,False,one_sample,1,unavailable,2.3132009,4,Full CPT,-0.16816749
+9,E1 all · LR 3e-05 · λ 0.003,unavailable,TabICLv2,3e-05,0.003,False,one_sample,1,unavailable,2.5694379,4,Full CPT,-0.067601268
+10,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabICLv2,3e-05,0.003,True,one_sample,1,unavailable,2.2599089,4,Frozen backbone,-0.031280062
+11,E1 frozen · LR 3e-05 · λ 0,unavailable,TabICLv2,3e-05,0,True,one_sample,1,unavailable,2.3512389,4,Frozen backbone,-0.02733537
+12,E1 all · LR 3e-07 · λ 0,unavailable,TabICLv2,3e-07,0,False,one_sample,1,unavailable,2.1533758,4,Full CPT,-0.0049273625
+13,E1 all · LR 3e-07 · λ 0.003,unavailable,TabICLv2,3e-07,0.003,False,one_sample,1,unavailable,2.3061316,4,Full CPT,-0.0047702327
+14,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabICLv2,3e-07,0.003,True,one_sample,1,unavailable,2.0786214,4,Frozen backbone,0.00079556257
+15,E1 frozen · LR 3e-07 · λ 0,unavailable,TabICLv2,3e-07,0,True,one_sample,1,unavailable,2.0227351,4,Frozen backbone,0.00084634423
+16,E1 all · LR 1e-05 · λ 0,unavailable,TabPFN v2,1e-05,0,False,one_sample,1,unavailable,2.4926725,4,Full CPT,-0.065933718
+17,E1 all · LR 1e-05 · λ 0.003,unavailable,TabPFN v2,1e-05,0.003,False,one_sample,1,unavailable,2.5431334,4,Full CPT,-0.070349832
+18,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabPFN v2,1e-05,0.003,True,one_sample,1,unavailable,2.3961207,4,Frozen backbone,-0.0031174734
+19,E1 frozen · LR 1e-05 · λ 0,unavailable,TabPFN v2,1e-05,0,True,one_sample,1,unavailable,2.3897967,4,Frozen backbone,-0.002586937
+20,E1 all · LR 1e-06 · λ 0,unavailable,TabPFN v2,1e-06,0,False,one_sample,1,unavailable,2.4926726,4,Full CPT,0.0025317505
+21,E1 all · LR 1e-06 · λ 0.003,unavailable,TabPFN v2,1e-06,0.003,False,one_sample,1,unavailable,2.5453736,4,Full CPT,0.0016499475
+22,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabPFN v2,1e-06,0.003,True,one_sample,1,unavailable,2.3926882,4,Frozen backbone,-0.0029533878
+23,E1 frozen · LR 1e-06 · λ 0,unavailable,TabPFN v2,1e-06,0,True,one_sample,1,unavailable,2.3936423,4,Frozen backbone,-0.0022780657
+24,E1 all · LR 3e-05 · λ 0,unavailable,TabPFN v2,3e-05,0,False,one_sample,1,unavailable,2.4957668,4,Full CPT,-0.1235293
+25,E1 all · LR 3e-05 · λ 0.003,unavailable,TabPFN v2,3e-05,0.003,False,one_sample,1,unavailable,2.5366341,4,Full CPT,-0.13190233
+26,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabPFN v2,3e-05,0.003,True,one_sample,1,unavailable,2.3984821,4,Frozen backbone,-0.0031062365
+27,E1 frozen · LR 3e-05 · λ 0,unavailable,TabPFN v2,3e-05,0,True,one_sample,1,unavailable,2.3961987,4,Frozen backbone,-0.017504168
+28,E1 all · LR 3e-07 · λ 0,unavailable,TabPFN v2,3e-07,0,False,one_sample,1,unavailable,2.4928432,4,Full CPT,0.0043883696
+29,E1 all · LR 3e-07 · λ 0.003,unavailable,TabPFN v2,3e-07,0.003,False,one_sample,1,unavailable,2.5419619,4,Full CPT,0.0041011006
+30,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabPFN v2,3e-07,0.003,True,one_sample,1,unavailable,2.3969502,4,Frozen backbone,-0.0015693963
+31,E1 frozen · LR 3e-07 · λ 0,unavailable,TabPFN v2,3e-07,0,True,one_sample,1,unavailable,2.3902992,4,Frozen backbone,-0.001377067
+32,E1 all · LR 1e-05 · λ 0,unavailable,TabPFN v2.6,1e-05,0,False,one_sample,1,unavailable,3.1970225,4,Full CPT,-0.075985511
+33,E1 all · LR 1e-05 · λ 0.003,unavailable,TabPFN v2.6,1e-05,0.003,False,one_sample,1,unavailable,3.3215489,4,Full CPT,-0.067223181
+34,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabPFN v2.6,1e-05,0.003,True,one_sample,1,unavailable,2.8373396,4,Frozen backbone,-0.020069833
+35,E1 frozen · LR 1e-05 · λ 0,unavailable,TabPFN v2.6,1e-05,0,True,one_sample,1,unavailable,2.8053782,4,Frozen backbone,-0.030357036
+36,E1 all · LR 1e-06 · λ 0,unavailable,TabPFN v2.6,1e-06,0,False,one_sample,1,unavailable,3.1896016,4,Full CPT,-0.07825449
+37,E1 all · LR 1e-06 · λ 0.003,unavailable,TabPFN v2.6,1e-06,0.003,False,one_sample,1,unavailable,3.3328889,4,Full CPT,-0.078016824
+38,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabPFN v2.6,1e-06,0.003,True,one_sample,1,unavailable,2.8136406,4,Frozen backbone,-0.0077104703
+39,E1 frozen · LR 1e-06 · λ 0,unavailable,TabPFN v2.6,1e-06,0,True,one_sample,1,unavailable,2.8224937,4,Frozen backbone,-0.0080498978
+40,E1 all · LR 3e-05 · λ 0,unavailable,TabPFN v2.6,3e-05,0,False,one_sample,1,unavailable,3.1661071,4,Full CPT,-0.13471956
+41,E1 all · LR 3e-05 · λ 0.003,unavailable,TabPFN v2.6,3e-05,0.003,False,one_sample,1,unavailable,3.3295583,4,Full CPT,-0.10155251
+42,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabPFN v2.6,3e-05,0.003,True,one_sample,1,unavailable,2.8199941,4,Frozen backbone,-0.020030595
+43,E1 frozen · LR 3e-05 · λ 0,unavailable,TabPFN v2.6,3e-05,0,True,one_sample,1,unavailable,2.8198485,4,Frozen backbone,-0.025192845
+44,E1 all · LR 3e-07 · λ 0,unavailable,TabPFN v2.6,3e-07,0,False,one_sample,1,unavailable,3.1858856,4,Full CPT,-0.083352271
+45,E1 all · LR 3e-07 · λ 0.003,unavailable,TabPFN v2.6,3e-07,0.003,False,one_sample,1,unavailable,3.3166682,4,Full CPT,-0.083212371
+46,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabPFN v2.6,3e-07,0.003,True,one_sample,1,unavailable,2.8173211,4,Frozen backbone,-0.00010569841
+47,E1 frozen · LR 3e-07 · λ 0,unavailable,TabPFN v2.6,3e-07,0,True,one_sample,1,unavailable,2.8152267,4,Frozen backbone,-0.00012370497
+48,E1 all · LR 1e-05 · λ 0,unavailable,TabPFN v3,1e-05,0,False,one_sample,1,unavailable,2.3036293,4,Full CPT,-0.22632834
+49,E1 all · LR 1e-05 · λ 0.003,unavailable,TabPFN v3,1e-05,0.003,False,one_sample,1,unavailable,2.5242172,4,Full CPT,-0.20027211
+50,E1 frozen · LR 1e-05 · λ 0.003,unavailable,TabPFN v3,1e-05,0.003,True,one_sample,1,unavailable,2.0731961,4,Frozen backbone,-0.1018619
+51,E1 frozen · LR 1e-05 · λ 0,unavailable,TabPFN v3,1e-05,0,True,one_sample,1,unavailable,2.002202,4,Frozen backbone,-0.1257207
+52,E1 all · LR 1e-06 · λ 0,unavailable,TabPFN v3,1e-06,0,False,one_sample,1,unavailable,2.2966368,4,Full CPT,-0.062856039
+53,E1 all · LR 1e-06 · λ 0.003,unavailable,TabPFN v3,1e-06,0.003,False,one_sample,1,unavailable,2.542581,4,Full CPT,-0.051794747
+54,E1 frozen · LR 1e-06 · λ 0.003,unavailable,TabPFN v3,1e-06,0.003,True,one_sample,1,unavailable,2.0663403,4,Frozen backbone,-0.024423669
+55,E1 frozen · LR 1e-06 · λ 0,unavailable,TabPFN v3,1e-06,0,True,one_sample,1,unavailable,2.0040841,4,Frozen backbone,-0.029668537
+56,E1 all · LR 3e-05 · λ 0,unavailable,TabPFN v3,3e-05,0,False,one_sample,1,unavailable,2.2905676,4,Full CPT,-0.25364013
+57,E1 all · LR 3e-05 · λ 0.003,unavailable,TabPFN v3,3e-05,0.003,False,one_sample,1,unavailable,2.6820111,4,Full CPT,-0.2441895
+58,E1 frozen · LR 3e-05 · λ 0.003,unavailable,TabPFN v3,3e-05,0.003,True,one_sample,1,unavailable,2.1325614,4,Frozen backbone,-0.15893887
+59,E1 frozen · LR 3e-05 · λ 0,unavailable,TabPFN v3,3e-05,0,True,one_sample,1,unavailable,2.0768423,4,Frozen backbone,-0.19883592
+60,E1 all · LR 3e-07 · λ 0,unavailable,TabPFN v3,3e-07,0,False,one_sample,1,unavailable,2.3599095,4,Full CPT,-0.036392143
+61,E1 all · LR 3e-07 · λ 0.003,unavailable,TabPFN v3,3e-07,0.003,False,one_sample,1,unavailable,2.5502676,4,Full CPT,-0.028428969
+62,E1 frozen · LR 3e-07 · λ 0.003,unavailable,TabPFN v3,3e-07,0.003,True,one_sample,1,unavailable,2.1311235,4,Frozen backbone,-0.0092272505
+63,E1 frozen · LR 3e-07 · λ 0,unavailable,TabPFN v3,3e-07,0,True,one_sample,1,unavailable,2.0985988,4,Frozen backbone,-0.0086689219
+64,E2 Reference · seed 43,unavailable,TabICLv2,3e-07,0.003,False,one_sample,2,unavailable,2.3044175,4,Full CPT,-0.0077958211
+65,E2 Reference · seed 43,unavailable,TabPFN v2,3e-07,0.003,False,one_sample,2,unavailable,2.5540244,4,Full CPT,0.0041876957
+66,E2 Reference · seed 43,unavailable,TabPFN v2.6,3e-07,0.003,False,one_sample,2,unavailable,3.3362877,4,Full CPT,-0.082147714
+67,E2 Reference · seed 43,unavailable,TabPFN v3,3e-07,0.003,False,one_sample,2,unavailable,2.5369063,4,Full CPT,-0.0093954206
+68,E3 Accumulate,unavailable,TabICLv2,3e-07,0.003,False,accumulate,3,unavailable,3.2222488,4,Full CPT,-0.0048638046
+69,E3 Full pass,unavailable,TabICLv2,3e-07,0.003,False,full_pass,3,unavailable,2.5390713,4,Full CPT,-0.0045976415
+70,E3 One sample,unavailable,TabICLv2,3e-07,0.003,False,one_sample,3,unavailable,2.3964653,4,Full CPT,-0.0047524139
+71,E3 Accumulate,unavailable,TabPFN v2,3e-07,0.003,False,accumulate,3,unavailable,5.2351015,4,Full CPT,0.0052213416
+72,E3 Full pass,unavailable,TabPFN v2,3e-07,0.003,False,full_pass,3,unavailable,2.901042,4,Full CPT,0.005765228
+73,E3 One sample,unavailable,TabPFN v2,3e-07,0.003,False,one_sample,3,unavailable,2.6735752,4,Full CPT,0.0041849822
+74,E3 Accumulate,unavailable,TabPFN v2.6,3e-07,0.003,False,accumulate,3,unavailable,6.7287032,4,Full CPT,-0.082297623
+75,E3 Full pass,unavailable,TabPFN v2.6,3e-07,0.003,False,full_pass,3,unavailable,3.6924917,4,Full CPT,-0.087247577
+76,E3 One sample,unavailable,TabPFN v2.6,3e-07,0.003,False,one_sample,3,unavailable,3.3844308,4,Full CPT,-0.083228423
+77,E3 Accumulate,unavailable,TabPFN v3,3e-07,0.003,False,accumulate,3,unavailable,3.3403988,4,Full CPT,-0.038118732
+78,E3 Full pass,unavailable,TabPFN v3,3e-07,0.003,False,full_pass,3,unavailable,2.6217334,4,Full CPT,-0.030050986
+79,E3 One sample,unavailable,TabPFN v3,3e-07,0.003,False,one_sample,3,unavailable,2.5910398,4,Full CPT,-0.041508697
+80,E5 LR 0.001,unavailable,TabICLv2,0.001,0,False,one_sample,5,unavailable,2.5023391,4,DiagScale,-0.016804272
+81,E5 LR 0.0001,unavailable,TabICLv2,0.0001,0,False,one_sample,5,unavailable,2.5015898,4,DiagScale,-0.0030863956
+82,E5 LR 0.03,unavailable,TabICLv2,0.03,0,False,one_sample,5,unavailable,2.5014601,4,DiagScale,-0.056991605
+83,E5 LR 0.001,unavailable,TabPFN v3,0.001,0,False,one_sample,5,unavailable,3.329313,4,DiagScale,-0.0059454918
+84,E5 LR 0.0001,unavailable,TabPFN v3,0.0001,0,False,one_sample,5,unavailable,3.3254984,4,DiagScale,-0.003330411
+85,E5 LR 0.03,unavailable,TabPFN v3,0.03,0,False,one_sample,5,unavailable,3.3255844,4,DiagScale,-0.064331025
+86,E8 LR 0.001,unavailable,TabICLv2,0.001,0,False,one_sample,8,unavailable,1.9850716,4,LoRA,-0.14914341
+87,E8 LR 0.0001,unavailable,TabICLv2,0.0001,0,False,one_sample,8,unavailable,1.9709893,4,LoRA,-0.12732689
+88,E8 LR 1e-05,unavailable,TabICLv2,1e-05,0,False,one_sample,8,unavailable,1.9825206,4,LoRA,-0.03296902
+89,E8 LR 0.001,unavailable,TabPFN v3,0.001,0,False,one_sample,8,unavailable,2.111809,4,LoRA,-0.19272424
+90,E8 LR 0.0001,unavailable,TabPFN v3,0.0001,0,False,one_sample,8,unavailable,2.1202483,4,LoRA,-0.18480366
+91,E8 LR 1e-05,unavailable,TabPFN v3,1e-05,0,False,one_sample,8,unavailable,2.1326498,4,LoRA,-0.024209514
+
+9. Strongest, weakest and most consistent configurations
+Most consistent means the largest share of tables improved beyond the negligible band, ties broken by the median. Highest and lowest means are observed extremes, not validated recipes.
+
+Table: Highest, lowest and most consistent configuration per base
+CSV (first column: row index)
+row,base,role,configuration,mean,median,improved,negligible,worse,tables
+0,TabICLv2,Highest observed mean,E1 frozen · LR 3e-07 · λ 0,0.00084634423,0.00021198392,2,6,0,8
+1,TabICLv2,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.16816749,-0.13860931,0,0,8,8
+2,TabICLv2,Most tables improved,E1 frozen · LR 3e-07 · λ 0.003,0.00079556257,0.00023046136,3,4,1,8
+3,TabPFN v2,Highest observed mean,E3 Full pass,0.005765228,0.0029636323,5,0,3,8
+4,TabPFN v2,Lowest observed mean,E1 all · LR 3e-05 · λ 0.003,-0.13190233,-0.10629286,0,0,8,8
+5,TabPFN v2,Most tables improved,E3 Accumulate,0.0052213416,0.00325284,5,1,2,8
+6,TabPFN v2.6,Highest observed mean,E1 frozen · LR 3e-07 · λ 0.003,-0.00010569841,0.00034272671,2,4,2,8
+7,TabPFN v2.6,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.13471956,-0.089901751,0,0,8,8
+8,TabPFN v2.6,Most tables improved,E1 frozen · LR 3e-07 · λ 0.003,-0.00010569841,0.00034272671,2,4,2,8
+9,TabPFN v3,Highest observed mean,E5 LR 0.0001,-0.003330411,-0.0011802614,1,3,4,8
+10,TabPFN v3,Lowest observed mean,E1 all · LR 3e-05 · λ 0,-0.25364013,-0.2189221,0,0,8,8
+11,TabPFN v3,Most tables improved,E5 LR 0.001,-0.0059454918,-0.008187139,2,1,5,8
+
+Table: Experiment 1: predefined reference, observed best and leave-one-table-out selection
+CSV (first column: row index)
+row,base,tables,recipes,reference_recipe,reference_mean,best_observed_recipe,best_observed_mean,leave_one_table_out_mean,leave_one_table_out_improved,recipes_chosen
+0,TabICLv2,8,16,E1 all · LR 3e-07 · λ 0.003,-0.0047702327,E1 frozen · LR 3e-07 · λ 0,0.00084634423,0.0007333532,5,"E1 frozen · LR 3e-07 · λ 0 ×7, E1 frozen · LR 3e-07 · λ 0.003 ×1"
+1,TabPFN v2,8,16,E1 all · LR 3e-07 · λ 0.003,0.0041011006,E1 all · LR 3e-07 · λ 0,0.0043883696,0.0043883696,5,E1 all · LR 3e-07 · λ 0 ×8
+2,TabPFN v2.6,8,16,E1 all · LR 3e-07 · λ 0.003,-0.083212371,E1 frozen · LR 3e-07 · λ 0.003,-0.00010569841,-0.00010569841,5,E1 frozen · LR 3e-07 · λ 0.003 ×8
+3,TabPFN v3,8,16,E1 all · LR 3e-07 · λ 0.003,-0.028428969,E1 frozen · LR 3e-07 · λ 0,-0.0086689219,-0.0086689219,2,E1 frozen · LR 3e-07 · λ 0 ×8
+
+Table: Secondary metric (fractional RMSE reduction) per configuration
+CSV (first column: row index)
+row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,median,q25,q75,minimum,maximum,improved,negligible,worse,folds_improved,folds,share_improved
+0,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabICLv2,rmse,8,0.22487986,0.22840422,-0.018910118,-0.016809008,-0.024841184,-0.0080030789,-0.045592463,-0.00086662921,0,1,7,6,40,0
+1,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2,rmse,8,0.24082352,0.24153375,-0.002827555,-0.0019474695,-0.0022698654,-0.00077619139,-0.013997163,0.0012118764,1,2,5,11,40,0.125
+2,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.229092,-0.033602703,-0.02316634,-0.05736422,-0.018286631,-0.065394087,-0.0025776747,0,0,8,4,40,0
+3,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0,TabPFN v3,rmse,8,0.22270379,0.25459887,-0.14893255,-0.092460523,-0.16178152,-0.032218097,-0.59869204,-0.011147762,0,0,8,0,40,0
+4,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.23049186,-0.02728833,-0.016740608,-0.026874375,-0.0097835182,-0.10183345,0.00015221338,0,1,7,7,40,0
+5,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.24150217,-0.0028554432,-0.001942301,-0.0039816844,-0.0010516876,-0.013845585,0.0083362734,1,1,6,8,40,0.125
+6,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.22686889,-0.022062101,-0.016864204,-0.02648416,-0.014560276,-0.053410936,-0.0024039737,0,0,8,5,40,0
+7,1,Main grid,Frozen backbone,E1 frozen · LR 1e-05 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.24935357,-0.12429212,-0.075560333,-0.12773636,-0.017048547,-0.54766512,-0.0018661713,0,0,8,4,40,0
+8,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabICLv2,rmse,8,0.22487986,0.22712597,-0.0089179943,-0.00093505651,-0.0019007664,0.0011423054,-0.076654965,0.0084694438,2,2,4,19,40,0.25
+9,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2,rmse,8,0.24082352,0.24132441,-0.0016143902,-0.00098324936,-0.0019106088,-0.00061333323,-0.0055827857,3.5262009e-05,0,4,4,12,40,0
+10,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.22415367,-0.010609695,-0.0087664916,-0.010119133,-0.0057872714,-0.037069106,0.00064532556,0,1,7,6,40,0
+11,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0,TabPFN v3,rmse,8,0.22270379,0.23138241,-0.038239601,-0.021690655,-0.033698972,-0.0017265177,-0.1905059,0.0011778164,1,1,6,8,40,0.125
+12,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.22782313,-0.011772625,-0.00055663677,-0.0025578169,0.00097577529,-0.098298397,0.0078261714,2,2,4,17,40,0.25
+13,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.24145197,-0.0020943413,-0.00099456713,-0.0026816736,-0.00064061414,-0.0057601739,-0.00045261618,0,4,4,11,40,0
+14,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.22408649,-0.010319498,-0.0080828569,-0.0098550564,-0.0052517494,-0.037091399,0.00056939158,0,1,7,6,40,0
+15,1,Main grid,Frozen backbone,E1 frozen · LR 1e-06 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.22971771,-0.031284981,-0.022674011,-0.033628318,-0.0021095283,-0.131876,0.0011276663,1,1,6,8,40,0.125
+16,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabICLv2,rmse,8,0.22487986,0.23231128,-0.036507783,-0.03005779,-0.042370662,-0.019017397,-0.099256454,-0.0026544612,0,0,8,2,40,0
+17,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2,rmse,8,0.24082352,0.24496998,-0.013889925,-0.0045530146,-0.0062395196,-0.0033363349,-0.079588817,-0.0025592356,0,0,8,8,40,0
+18,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.22810015,-0.030432953,-0.01725411,-0.051922443,-0.0090122918,-0.074321679,-0.0024656981,0,0,8,3,40,0
+19,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0,TabPFN v3,rmse,8,0.22270379,0.26876935,-0.20948814,-0.15006294,-0.20252434,-0.085221566,-0.74173844,-0.018545363,0,0,8,2,40,0
+20,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.23378059,-0.041211206,-0.023585047,-0.034420278,-0.015757038,-0.17080377,-0.0032628181,0,0,8,6,40,0
+21,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.2414686,-0.003112336,-0.0027037996,-0.006059563,-0.0014302034,-0.011584263,0.0097630577,1,1,6,9,40,0.125
+22,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.2273217,-0.024524333,-0.011638328,-0.021157083,-0.0086486844,-0.10359787,-0.0029515222,0,0,8,4,40,0
+23,1,Main grid,Frozen backbone,E1 frozen · LR 3e-05 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.26101966,-0.18044789,-0.13903557,-0.20742301,-0.044078248,-0.57087692,-0.016427653,0,0,8,0,40,0
+24,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabICLv2,rmse,8,0.22487986,0.22467449,0.00091091604,0.00031828643,-0.00030184013,0.001597024,-0.00088200704,0.0048044459,3,5,0,24,40,0.375
+25,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2,rmse,8,0.24082352,0.24111468,-0.00093951672,-0.00038710212,-0.00096210069,-0.00021756271,-0.0043600762,0.00060628444,0,6,2,11,40,0
+26,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.22194487,-0.00090205816,0.00027472015,-0.0015534413,0.00087204034,-0.007811226,0.0013764635,2,3,3,19,40,0.25
+27,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0,TabPFN v3,rmse,8,0.22270379,0.22541755,-0.011842717,-0.0062166307,-0.0084802311,-0.00066503013,-0.065823633,0.0016816169,1,2,5,14,40,0.125
+28,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.22469815,0.00085311569,0.00035896561,-0.00042121636,0.0017178655,-0.0016217183,0.0047966569,3,4,1,25,40,0.375
+29,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.24115236,-0.0010818047,-0.00047400602,-0.0011979626,-0.00022079513,-0.0044671363,0.00059166161,0,6,2,12,40,0
+30,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.22194126,-0.00088764019,0.00032000006,-0.0015516332,0.00087188907,-0.0078097029,0.0013844254,2,3,3,19,40,0.25
+31,1,Main grid,Frozen backbone,E1 frozen · LR 3e-07 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.22560489,-0.012597989,-0.0063059071,-0.0082248646,-0.00079847936,-0.0718525,0.0016812596,1,1,6,13,40,0.125
+32,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabICLv2,rmse,8,0.22487986,0.2580418,-0.14578537,-0.11936378,-0.17261921,-0.082690575,-0.38360949,-0.024368432,0,0,8,1,40,0
+33,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2,rmse,8,0.24082352,0.25585594,-0.059814476,-0.045660453,-0.091690173,-0.034607228,-0.12691765,-0.0044361062,0,0,8,4,40,0
+34,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.24274366,-0.097411645,-0.047820458,-0.069287571,-0.03186563,-0.44513112,-0.028121379,0,0,8,2,40,0
+35,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0,TabPFN v3,rmse,8,0.22270379,0.27390784,-0.23759121,-0.20391451,-0.34332339,-0.13278722,-0.49660579,-0.043681789,0,0,8,0,40,0
+36,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.24608045,-0.088480797,-0.058165721,-0.1288685,-0.039478773,-0.22185059,-0.0058579851,0,0,8,1,40,0
+37,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.25657642,-0.061850548,-0.052969518,-0.078320517,-0.040630104,-0.11723307,-0.019274379,0,0,8,3,40,0
+38,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.24088866,-0.08802595,-0.035579869,-0.060765465,-0.028067323,-0.44054899,-0.011426497,0,0,8,2,40,0
+39,1,Main grid,Full CPT,E1 all · LR 1e-05 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.26903415,-0.21678313,-0.18063244,-0.28115853,-0.10014338,-0.54746097,-0.032466684,0,0,8,1,40,0
+40,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabICLv2,rmse,8,0.22487986,0.23726624,-0.051676851,-0.012878989,-0.025828812,-0.0077254634,-0.32138539,-0.00095498494,0,1,7,7,40,0
+41,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2,rmse,8,0.24082352,0.24017921,0.00021466942,-0.0025982893,-0.003773782,-0.0011772836,-0.0085708738,0.026227355,1,1,6,13,40,0.125
+42,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.24367199,-0.11116385,-0.080077725,-0.10774313,-0.033989448,-0.43481744,-0.00014604274,0,1,7,4,40,0
+43,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0,TabPFN v3,rmse,8,0.22270379,0.2399156,-0.077081473,-0.040760246,-0.058718682,-0.0081498762,-0.39034862,0.0024303177,1,0,7,6,40,0.125
+44,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.23806913,-0.054280627,-0.0068867491,-0.02129738,-0.0037787295,-0.36971111,-0.00066825224,0,1,7,7,40,0
+45,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.24033778,-0.00036714107,-0.0030379418,-0.0063819903,-0.00070256727,-0.0085727174,0.026601922,1,2,5,10,40,0.125
+46,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.24362121,-0.11080007,-0.079077809,-0.10751162,-0.03432883,-0.43437773,9.0402824e-05,0,1,7,4,40,0
+47,1,Main grid,Full CPT,E1 all · LR 1e-06 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.23711756,-0.065350593,-0.038106296,-0.05575025,-0.0074869984,-0.31554473,0.0025454935,1,0,7,6,40,0.125
+48,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabICLv2,rmse,8,0.22487986,0.2648687,-0.18352886,-0.15883365,-0.21928737,-0.11471943,-0.39456479,-0.081164504,0,0,8,0,40,0
+49,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2,rmse,8,0.24082352,0.26761627,-0.11131221,-0.13333441,-0.16124945,-0.06014307,-0.16589845,-0.023835626,0,0,8,1,40,0
+50,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.25621528,-0.15009549,-0.081557357,-0.099822426,-0.050181976,-0.69171286,-0.042959212,0,0,8,1,40,0
+51,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0,TabPFN v3,rmse,8,0.22270379,0.28029066,-0.27004629,-0.23504639,-0.30904115,-0.10951004,-0.70080534,-0.083598282,0,0,8,0,40,0
+52,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.24201043,-0.079633297,-0.076339641,-0.095937543,-0.054398149,-0.19206854,-0.0073603483,0,0,8,2,40,0
+53,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.26931799,-0.11450849,-0.11919423,-0.14584297,-0.078276211,-0.19476313,-0.03492635,0,0,8,0,40,0
+54,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.24824931,-0.11403048,-0.061243589,-0.089168393,-0.038648737,-0.51723752,-0.016744362,0,0,8,1,40,0
+55,1,Main grid,Full CPT,E1 all · LR 3e-05 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.27809929,-0.26830588,-0.18745608,-0.35606085,-0.11603207,-0.64768683,-0.092860467,0,0,8,0,40,0
+56,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabICLv2,rmse,8,0.22487986,0.2264003,-0.006492216,-0.0024587164,-0.0054706146,-0.00060779037,-0.039367304,0.0050554505,1,2,5,12,40,0.125
+57,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2,rmse,8,0.24082352,0.23976318,0.0029068546,0.0021922858,-0.0015188498,0.0057207449,-0.0044058907,0.012710675,4,1,3,21,40,0.5
+58,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v2.6,rmse,8,0.22178811,0.24476123,-0.11796582,-0.075601104,-0.12191459,-0.051763467,-0.43613979,0.00074506664,0,1,7,5,40,0
+59,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0,TabPFN v3,rmse,8,0.22270379,0.23373032,-0.04808719,-0.0069951072,-0.016621566,-0.0024043614,-0.33211457,0.0013755692,1,1,6,10,40,0.125
+60,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabICLv2,rmse,8,0.22487986,0.22637878,-0.0063295453,-0.0020388848,-0.0049550656,-0.00026147022,-0.041121223,0.0051023239,1,3,4,13,40,0.125
+61,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2,rmse,8,0.24082352,0.23982222,0.002710084,0.0017241727,-0.0016599051,0.0057250038,-0.0043914304,0.012321215,4,1,3,20,40,0.5
+62,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v2.6,rmse,8,0.22178811,0.24472824,-0.1177567,-0.075484785,-0.12162499,-0.051602458,-0.43576643,0.0007860249,0,1,7,5,40,0
+63,1,Main grid,Full CPT,E1 all · LR 3e-07 · λ 0.003,TabPFN v3,rmse,8,0.22270379,0.2314913,-0.038737949,-0.0068935352,-0.016796374,-0.0028272697,-0.25613898,0.0013209994,1,1,6,10,40,0.125
+64,2,Seed 43,Full CPT,E2 Reference · seed 43,TabICLv2,rmse,8,0.22487986,0.2273898,-0.010598969,-0.00079354882,-0.0058744424,0.00036945349,-0.075525006,0.0040384066,2,2,4,11,40,0.25
+65,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2,rmse,8,0.24082352,0.23978795,0.0027858771,0.0017564673,-0.0020947383,0.0064368645,-0.0043764274,0.012028182,4,1,3,20,40,0.5
+66,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v2.6,rmse,8,0.22178811,0.24445403,-0.11659201,-0.075924103,-0.12088128,-0.050026459,-0.42850405,0.0004614828,0,1,7,5,40,0
+67,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,rmse,8,0.22270379,0.22557189,-0.014066049,-0.0071403847,-0.015506414,-0.0012273708,-0.062174673,0.0013440766,1,1,6,9,40,0.125
+68,3,Sampling,Full CPT,E3 Accumulate,TabICLv2,rmse,8,0.22487986,0.22641441,-0.0065839959,-0.0017125028,-0.0050488638,-0.00070926889,-0.042567577,0.0052794838,1,3,4,13,40,0.125
+69,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2,rmse,8,0.24082352,0.23957994,0.0034816581,0.0030674425,-0.001077004,0.005922105,-0.0045266276,0.013665945,5,1,2,20,40,0.625
+70,3,Sampling,Full CPT,E3 Accumulate,TabPFN v2.6,rmse,8,0.22178811,0.24447062,-0.11733741,-0.074948477,-0.12406238,-0.046545123,-0.43159516,0.0007380259,0,1,7,5,40,0
+71,3,Sampling,Full CPT,E3 Accumulate,TabPFN v3,rmse,8,0.22270379,0.23419536,-0.050106086,-0.0078012118,-0.017160323,-0.0020633393,-0.34564189,0.0013584633,1,0,7,10,40,0.125
+72,3,Sampling,Full CPT,E3 Full pass,TabICLv2,rmse,8,0.22487986,0.22630211,-0.0060071275,-0.0015675281,-0.0052211306,-0.00013385748,-0.039197955,0.0046666728,2,1,5,12,40,0.25
+73,3,Sampling,Full CPT,E3 Full pass,TabPFN v2,rmse,8,0.24082352,0.23948868,0.0037930472,0.0025736816,-0.0022603559,0.0078486455,-0.0035119061,0.014130433,5,0,3,22,40,0.625
+74,3,Sampling,Full CPT,E3 Full pass,TabPFN v2.6,rmse,8,0.22178811,0.24571993,-0.12042318,-0.087667278,-0.12206828,-0.054877601,-0.43152457,0.0016091262,1,0,7,5,40,0.125
+75,3,Sampling,Full CPT,E3 Full pass,TabPFN v3,rmse,8,0.22270379,0.23198509,-0.040538881,-0.0060573622,-0.015480237,-0.002047706,-0.27686973,0.0013787258,1,0,7,11,40,0.125
+76,3,Sampling,Full CPT,E3 One sample,TabICLv2,rmse,8,0.22487986,0.22637323,-0.0062990305,-0.0020560446,-0.0048812332,-0.0002883419,-0.041019197,0.0050856551,1,3,4,13,40,0.125
+77,3,Sampling,Full CPT,E3 One sample,TabPFN v2,rmse,8,0.24082352,0.23980212,0.0027737258,0.001850381,-0.0017393575,0.0058415618,-0.0043720604,0.012374195,4,1,3,21,40,0.5
+78,3,Sampling,Full CPT,E3 One sample,TabPFN v2.6,rmse,8,0.22178811,0.24473179,-0.11777927,-0.075528471,-0.12162938,-0.051617566,-0.43578213,0.00077969326,0,1,7,5,40,0
+79,3,Sampling,Full CPT,E3 One sample,TabPFN v3,rmse,8,0.22270379,0.23509739,-0.053774009,-0.0068596014,-0.017154444,-0.0027954002,-0.37654923,0.0013245856,1,1,6,10,40,0.125
+80,5,DiagScale,DiagScale,E5 LR 0.0001,TabICLv2,rmse,8,0.22487373,0.22591866,-0.0043359158,-0.00034477601,-0.0016769654,6.7888813e-07,-0.031660266,0.0010395615,1,4,3,17,40,0.125
+81,5,DiagScale,DiagScale,E5 LR 0.0001,TabPFN v3,rmse,8,0.22270379,0.22383597,-0.0050348303,-0.001591903,-0.0035977812,0.00066099695,-0.032379673,0.0016080391,2,2,4,16,40,0.25
+82,5,DiagScale,DiagScale,E5 LR 0.001,TabICLv2,rmse,8,0.22487373,0.22989743,-0.022156226,-0.010916934,-0.017057396,-0.0011655874,-0.12276302,0.0039623413,1,1,6,9,40,0.125
+83,5,DiagScale,DiagScale,E5 LR 0.001,TabPFN v3,rmse,8,0.22270379,0.2243087,-0.0085169349,-0.01087549,-0.015486307,0.0001618687,-0.019419638,0.0029313908,2,1,5,13,40,0.25
+84,5,DiagScale,DiagScale,E5 LR 0.03,TabICLv2,rmse,8,0.22487373,0.24026629,-0.071498743,-0.051313831,-0.067989646,-0.026903309,-0.28981226,0.00051385194,0,1,7,4,40,0
+85,5,DiagScale,DiagScale,E5 LR 0.03,TabPFN v3,rmse,8,0.22270379,0.24030323,-0.078551562,-0.040991786,-0.057170024,-0.0087273864,-0.4079767,-0.00030663465,0,1,7,3,40,0
+86,8,LoRA,LoRA,E8 LR 0.0001,TabICLv2,rmse,8,0.22487373,0.2559136,-0.13189508,-0.092565989,-0.12191269,-0.065948838,-0.45265148,-0.040991668,0,0,8,0,40,0
+87,8,LoRA,LoRA,E8 LR 0.0001,TabPFN v3,rmse,8,0.22270379,0.26494734,-0.19314665,-0.13606884,-0.23426086,-0.065049587,-0.6182015,-0.028453884,0,0,8,2,40,0
+88,8,LoRA,LoRA,E8 LR 0.001,TabICLv2,rmse,8,0.22487373,0.26085665,-0.17455931,-0.14282942,-0.23050131,-0.10374476,-0.40400525,-0.032567879,0,0,8,0,40,0
+89,8,LoRA,LoRA,E8 LR 0.001,TabPFN v3,rmse,8,0.22270379,0.26803384,-0.22270996,-0.18676464,-0.29952947,-0.076233074,-0.55641093,-0.044404053,0,0,8,0,40,0
+90,8,LoRA,LoRA,E8 LR 1e-05,TabICLv2,rmse,8,0.22487373,0.2339913,-0.038842469,-0.0072739168,-0.039890987,-0.0024869573,-0.20642749,0.0019765977,1,0,7,6,40,0.125
+91,8,LoRA,LoRA,E8 LR 1e-05,TabPFN v3,rmse,8,0.22270379,0.23014336,-0.034388546,-0.010956934,-0.026120048,-0.003715623,-0.19303021,0.00086028149,0,2,6,7,40,0
+
+general/04_overview_lgd: 12 figures -> output CreditPFN/figures/general
+  01  lgd_overview_landscape
+  02  lgd_overview_distributions
+  03  lgd_overview_outcomes
+  04  lgd_overview_rate_response
+  05  lgd_overview_transfer_retention
+  06  lgd_overview_context
+  07  lgd_overview_tables_v2
+  08  lgd_overview_tables_v2.6
+  09  lgd_overview_tables_v3
+  10  lgd_overview_tables_tabicl-v2
+  11  lgd_overview_headroom
+  12  lgd_overview_cost
 ```

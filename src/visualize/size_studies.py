@@ -208,7 +208,9 @@ def plot_benchmark(arms, metric='roc_auc'):
         return []
     reference='All tables' if 'All tables' in arms else '8,192 rows'
     differences=contrasts(data,reference)
-    fig,axes=db._grid(f'PD: five-fold {"AUC" if metric=="roc_auc" else "Brier score"} effects')
+    scale=style.EFFECT_SCALE.get(metric,1.)
+    study=6 if 'All tables' in arms else 7
+    fig,axes=db._grid(f'PD: experiment {study}, CPT − original {"AUC" if metric=="roc_auc" else "Brier score"}')
     stats=[]
     for ax,(domain,diff) in zip(axes,[(d,c) for d in ('credit','ood') for c in (False,True)]):
         part=(differences if diff else data)
@@ -222,22 +224,29 @@ def plot_benchmark(arms, metric='roc_auc'):
                 group=part[part.base.eq(base)&part.arm.eq(arm)]
                 if group.empty:continue
                 x=i+(j-(len(labels)-1)/2)*style.JITTER_WIDTH
-                ax.scatter(np.full(len(group),x),group[value],s=style.POINT_SIZE/2,
+                ax.scatter(np.full(len(group),x),group[value]*scale,s=style.POINT_SIZE/2,
                            color=style.SIZE_STUDY_COLORS[arm],alpha=style.POINT_ALPHA)
-                ax.scatter([x],[group[value].mean()],marker='D',s=style.POINT_SIZE,
+                ax.scatter([x],[group[value].mean()*scale],marker='D',s=style.POINT_SIZE,
                            color=style.SIZE_STUDY_COLORS[arm],label=arm if i==0 else None)
-                stats.append(dict(domain=domain,base=base,arm=arm,contrast=diff,mean=group[value].mean(),datasets=len(group)))
+                stats.append(dict(domain=domain,base=base,arm=arm,contrast=diff,mean=group[value].mean(),
+                                  improved=int(group[value].gt(0).sum()),datasets=len(group)))
         ax.set_xticks(range(part.base.nunique()),sorted(part.base.unique()))
         ax.set_title(cmp.DOMAINS[domain]+'\n'+('Contrast with '+reference if diff else 'Effect versus original weights'))
-        ax.set_ylabel(effect_label(metric));ax.axhline(0,linestyle=':',color=style.color('reference'))
+        ax.set_ylabel(style.EFFECT_LABELS.get(metric,effect_label(metric)) if not diff else 'Difference in effect (+ favours arm)');ax.axhline(0,linestyle=':',color=style.color('reference'))
     db._legend(fig,next(ax for ax in axes if ax in fig.axes))
     return [cp.Page(f'size_benchmark_{metric}',fig,
-        'Points are table-level paired effects and diamonds are equal-table means. Five finite outer folds are '
-        'required for both CPT and its original-weight control, and every displayed arm must be present for the '
-        'same table. Non-credit effects first average the four matched training partitions. Right panels subtract '
-        f'the {reference} effect within table. Positive values indicate improvement; points are not independent '
-        'across related data sources. The 8,192-row large-table checkpoint is shared across experiments 6 and 7, '
-        'not an independent replication.', {'Paired effects':data,'Within-table contrasts':differences,
+        (f'Experiment {study}, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, '
+         'proportional class sampling). '
+         + ('Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. '
+            if study == 6 else
+            'Arms: 2,048-, 8,192- and 26,000-row training episodes on the same large-table corpus; the 8,192-row arm is the '
+            'experiment-6 large-table checkpoint, reused rather than retrained. ')
+         + f'Left panels: paired change in {style.METRIC_LABELS.get(metric, metric)} ({style.EFFECT_LABELS.get(metric, effect_label(metric))}) '
+         'relative to the original checkpoint of the same base; right panels: difference between each arm and the '
+         f'{reference} arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit '
+         'tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. '
+         'Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer '
+         'folds on the same table. Tables from related sources are not independent.'), {'Paired effects':data,'Within-table contrasts':differences,
                                             'Plotted summaries':pd.DataFrame(stats)})]
 
 

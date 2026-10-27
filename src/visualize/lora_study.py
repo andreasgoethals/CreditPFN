@@ -304,6 +304,7 @@ def _rate_axis(ax, rates):
 
 
 def plot_primary(run):
+    """LoRA − original paired effects per rate, with every table visible."""
     metric = db.monitor_metric(run)
     parts = [matched_tables(run, [metric], domain) for domain in ("credit", "ood")]
     parts = [part for part in parts if not part.empty]
@@ -311,32 +312,43 @@ def plot_primary(run):
         return []
     data = pd.concat(parts, ignore_index=True)
     summary = score_summary(data)
-    fig, axes = _grid(f"{run.track.upper()}: original and LoRA five-fold {db.monitor_label(run)}")
+    scale = style.EFFECT_SCALE.get(metric, 1.)
+    label = style.EFFECT_LABELS.get(metric, effect_label(metric))
+    rates = sorted(run.trials.learning_rate.unique())
+    fig, axes = _grid(f"{run.track.upper()}: LoRA − original, final benchmark")
     for ax, (base, domain) in zip(axes, [(base, domain) for domain in ("credit", "ood")
                                         for base in sorted(run.trials.base.unique())]):
-        group = summary[summary.base.eq(base) & summary.domain.eq(domain)].sort_values("learning_rate")
+        group = data[data.base.eq(base) & data.domain.eq(domain)]
+        means = summary[summary.base.eq(base) & summary.domain.eq(domain)].sort_values("learning_rate")
         if group.empty:
             ax.remove()
             continue
-        ax.plot(group.learning_rate, group.original, label="Original weights", linestyle="--",
-                color=style.color("reference"), linewidth=style.THIN_LINE)
-        ax.plot(group.learning_rate, group.lora, label="LoRA CPT", color=style.color(base),
-                marker=style.PANEL_MARKERS[0], markersize=style.CURVE_MARKER_SIZE, linewidth=style.THIN_LINE)
-        _rate_axis(ax, sorted(run.trials.learning_rate.unique()))
+        color = style.color(base)
+        for rate, values in group.groupby("learning_rate").effect:
+            # Multiplicative jitter keeps table points beside their rate on the log axis.
+            spread = np.exp(np.linspace(-.12, .12, len(values))) if len(values) > 1 else np.ones(1)
+            ax.scatter(rate * spread, values.sort_values() * scale, s=style.POINT_SIZE / 2, color=color,
+                       alpha=style.POINT_ALPHA, linewidths=0)
+        ax.fill_between(means.learning_rate, means.q25 * scale, means.q75 * scale, color=color,
+                        alpha=style.INTERVAL_ALPHA, linewidth=0)
+        ax.plot(means.learning_rate, means.effect * scale, color=color, marker="D",
+                markersize=style.CURVE_MARKER_SIZE + 1, linewidth=style.THIN_LINE)
+        ax.axhline(0, color=style.color("reference"), linestyle=":")
+        _rate_axis(ax, rates)
         ax.set_title(style.model_label(base) + "\n" + cmp.DOMAINS[domain])
-        ax.set_ylabel(db.monitor_label(run))
-    # Use neutral handles: model identity is specified by the panel title, not this legend.
-    fig.legend(handles=[Line2D([], [], color=style.color("reference"), linestyle="--", label="Original weights"),
-        Line2D([], [], color=style.color("reference"), marker=style.PANEL_MARKERS[0], label="LoRA CPT")],
+        ax.set_ylabel(label)
+    fig.legend(handles=[Line2D([], [], color=style.color("reference"), marker="o", linestyle="", label="Table"),
+        Line2D([], [], color=style.color("reference"), marker="D", label="Equal-table mean")],
         loc="outside lower center", ncol=2)
     return [cp.Page(f"lora_primary_{run.track}", fig,
-        f"Five-fold {db.monitor_label(run)} for original and LoRA checkpoints on excluded credit tables and the "
-        "non-credit retention panel. Lines connect equal-table means across the three LoRA rates; they are not "
-        "learning curves over training time. All rates share the same complete table cohort within each panel. "
-        "Each trained/original pair requires five finite matched folds; non-credit tables additionally require all "
-        "training partitions before within-table averaging. Original and LoRA inference settings match within this "
-        "experiment, including FP32 without FA3 for TabICL. Both absolute scores and paired effects are retained "
-        "in the accompanying tables. The best observed rate is not a validated selected recipe.",
+        f"Experiment 8, final five-fold benchmark: paired change in {db.monitor_label(run)} ({label}) of rank-16 "
+        "query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates "
+        "(logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention "
+        "tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means "
+        "across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a "
+        "confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five "
+        "matched outer folds, and original and LoRA inference settings match (FP32 without FA3 for TabICLv2). Positive values "
+        "favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.",
         {"Complete matched table scores and effects": data, "Displayed equal-table means": summary})]
 
 
@@ -353,19 +365,20 @@ def plot_secondary(run):
         if group.empty:
             ax.remove()
             continue
-        ax.plot(group.learning_rate, group.effect, color=style.color(base), marker=style.PANEL_MARKERS[0],
+        scale = style.EFFECT_SCALE.get(metric, 1.)
+        ax.plot(group.learning_rate, group.effect * scale, color=style.color(base), marker=style.PANEL_MARKERS[0],
                 markersize=style.CURVE_MARKER_SIZE, linewidth=style.THIN_LINE)
-        ax.fill_between(group.learning_rate, group.q25, group.q75, color=style.color(base), alpha=style.INTERVAL_ALPHA)
+        ax.fill_between(group.learning_rate, group.q25 * scale, group.q75 * scale, color=style.color(base), alpha=style.INTERVAL_ALPHA)
         ax.axhline(0, color=style.color("reference"), linestyle=":")
         _rate_axis(ax, sorted(run.trials.learning_rate.unique()))
         ax.set_title(style.model_label(base))
-        ax.set_ylabel(effect_label(metric))
+        ax.set_ylabel(style.EFFECT_LABELS.get(metric, effect_label(metric)))
     return [cp.Page(f"lora_secondary_{run.track}", fig,
-        "LoRA prediction-quality effects on held-out credit tables, paired with the same model's original weights. "
+        "Experiment 8: LoRA prediction-quality effects on held-out credit tables, paired with the original checkpoint of the same base. "
         "Positive effects indicate improvement. Lines show equal-table mean effects and shading the table "
         "interquartile range, not confidence intervals. Each model uses a common table cohort across all three "
         "rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative "
-        "to the original; Brier, log-loss and MAE effects are original minus adapted on their native metric scales. "
+        "to the original (in %); Brier reductions are multiplied by 100; log-loss and MAE effects are original minus adapted on their native scales. "
         "These summaries describe the declared grid without selecting a best rate on held-out scores.",
         {"Complete matched secondary scores and effects": data, "Displayed effect summaries": summary})]
 

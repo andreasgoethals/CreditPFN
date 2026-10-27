@@ -157,15 +157,17 @@ def plot_benchmark(run, metric=None):
     if not parts:
         return []
     data = pd.concat(parts, ignore_index=True)
-    fig, axes = _grid(f"{run.track.upper()}: DiagScale five-fold benchmark")
+    fig, axes = _grid(f"{run.track.upper()}: DiagScale − original, final benchmark")
     tables = []
     bases = sorted(run.trials.base.unique())
+    scale = style.EFFECT_SCALE.get(metric, 1.)
     for ax, (base, domain) in zip(axes, [(b, d) for d in ("credit", "ood") for b in bases]):
-        group = data[data.base.eq(base) & data.domain.eq(domain)]
+        group = data[data.base.eq(base) & data.domain.eq(domain)].copy()
         if group.empty:
             ax.remove(); continue
-        summary = group.groupby("learning_rate").effect.agg(mean="mean", q25=lambda v: v.quantile(.25),
-            q75=lambda v: v.quantile(.75), datasets="size").reset_index()
+        group["effect"] = group.effect * scale
+        summary = group.groupby("learning_rate").effect.agg(mean="mean", median="median", q25=lambda v: v.quantile(.25),
+            q75=lambda v: v.quantile(.75), datasets="size", improved=lambda v: int(v.gt(0).sum())).reset_index()
         for pos, row in enumerate(summary.itertuples()):
             values = group.loc[group.learning_rate.eq(row.learning_rate), "effect"].sort_values()
             color = style.ADAPTER_LR_COLORS[row.learning_rate]
@@ -175,14 +177,18 @@ def plot_benchmark(run, metric=None):
             ax.plot([pos, pos], [row.q25, row.q75], color=style.color("reference"), linewidth=style.THIN_LINE)
             ax.scatter([pos], [row.mean], color=style.color("reference"), marker="D", s=style.POINT_SIZE)
         ax.axhline(0, color=style.color("reference"), linestyle=":")
-        ax.set_xticks(range(len(summary)), [f"{v:g}" for v in summary.learning_rate]); ax.set_xlabel("Adapter learning rate")
-        ax.set_title(base + "\n" + cmp.DOMAINS[domain]); ax.set_ylabel(effect_label(metric))
-        tables.append(summary.assign(base=base, domain=domain))
+        ax.set_xticks(range(len(summary)), [f"{v:g}" for v in summary.learning_rate]); ax.set_xlabel("DiagScale peak learning rate")
+        ax.set_title(base + "\n" + cmp.DOMAINS[domain]); ax.set_ylabel(style.EFFECT_LABELS.get(metric, effect_label(metric)))
+        tables.append(summary.assign(base=base, domain=domain, display_scale=scale))
     return [cp.Page(f"adapter_benchmark_{run.track}_{metric}", fig,
-        f"{run.track.upper()}. Five-fold paired DiagScale effects relative to the original checkpoint under matched inference precision. "
-        "Points are tables, diamonds are equal-table means and vertical bars span the table interquartile range, not confidence intervals. "
-        "Only tables measured at all three rates enter each model/domain panel; non-credit tables require all four training partitions. "
-        "Every trained/control pair requires all five finite outer folds. Positive effects favor DiagScale.",
+        f"Experiment 5, final five-fold benchmark: paired change in {style.METRIC_LABELS.get(metric, metric)} "
+        f"({style.EFFECT_LABELS.get(metric, effect_label(metric))}) of DiagScale CPT, which learns only multiplicative "
+        "attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. "
+        "Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over "
+        "all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range "
+        "(heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original "
+        "pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour "
+        "DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.",
         {"Paired table values": data, "Plotted summaries": pd.concat(tables, ignore_index=True)})]
 
 

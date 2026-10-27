@@ -194,7 +194,8 @@ def plot_context_curves(study):
                 "These curves are not uncertainty bands or repeated-context variance estimates. "
                 "Validation labels have a fixed additional budget; all outer-test rows are unchanged. "
                 "The horizon identifies the table cohort, so levels across different horizon panels need not agree. "
-                "TabICLv2 uses the recorded automatic numerical policy; the selected-table precision diagnostic qualifies transfer attribution.",
+                "The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training "
+                "partition excluded the table; positive differences favour CPT.",
                 {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": data},
                 {"measurement": "five_fold_context_benchmark", "metric": metric, "aggregation_unit": "table",
                  "context_horizon": int(horizon), "fixed_tables": sorted(data.dataset.unique()),

@@ -109,8 +109,7 @@ def plot_factorial(run, metric, *, domain="credit"):
         "Peak learning rates are 3e-7, 1e-6, 1e-5 and 3e-5. "
         + ("Retention effects first average all four matched training partitions within table. " if domain == "ood" else "")
         + "These maps describe the fixed grid rather than a test-selected optimum. "
-        + ("TabICLv2 uses its recorded automatic numerical policy; selected-table FP32 checks qualify attribution of its large gains."
-           if run.track == "pd" else "LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.")
+        + ("" if run.track == "pd" else "LGD RMSE reductions and R² changes retain distinct scales and are not native training losses.")
     )
     if run.track == "pd":
         caption += " Main-grid PD draws balance both context and query classes."

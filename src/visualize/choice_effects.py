@@ -23,10 +23,8 @@ METRICS = {
 }
 
 
-def _policy_note(track):
-    return ("TabICLv2 PD effects retain the selected-table numerical-policy qualification."
-            if track == "pd" else
-            "Inference follows the recorded LGD policy.")
+#: Which tested hyperparameter a choice contrast varies; drives label colours.
+_CHOICE_PARAMETER = {"l2sp_lambda": "l2sp_lambda", "frozen": "scope", "learning_rate": "learning_rate"}
 
 
 def _cohort_note(values):
@@ -99,7 +97,8 @@ def choice_tables(data):
     return paired, summary, marginal
 
 
-def _heatmap(ax, matrix, label, *, compact=False):
+def _heatmap(ax, matrix, label, *, compact=False, counts=None):
+    """Diverging effect map; ``counts`` adds an "improved/total tables" line per cell."""
     array = matrix.to_numpy(float)
     limit = max(float(np.nanmax(np.abs(array))), np.finfo(float).eps)
     im = ax.imshow(array, aspect="auto", cmap=style.CMAP_DIVERGING, vmin=-limit, vmax=limit)
@@ -113,8 +112,12 @@ def _heatmap(ax, matrix, label, *, compact=False):
         text = "—" if not np.isfinite(value) else f"{value:+.{precision}f}"
         if np.isfinite(value) and 1e-12 < abs(value) < .5 * 10**(-precision):
             text = f"{value:+.2g}"  # Keep small effects visible rather than printing signed zero.
+        if counts is not None and np.isfinite(value):
+            improved, total = counts[0].iat[row, col], counts[1].iat[row, col]
+            text += f"\n{int(improved)}/{int(total)} up"
         color = style.GRID_TEXT_LIGHT if np.isfinite(value) and abs(value) > limit*.7 else style.GRID_TEXT_DARK
-        ax.text(col, row, text, ha="center", va="center", fontsize=style.GRID_FONT, color=color)
+        ax.text(col, row, text, ha="center", va="center", fontsize=style.GRID_FONT - (1 if counts is not None else 0),
+                color=color, linespacing=1.0)
     colorbar_label = label
     if compact:
         colorbar_label = {"AUC change (percentage points)": "AUC (pp)",
@@ -134,26 +137,33 @@ def plot_choices(data, track, domain="credit"):
         return []
     fig, axes = plt.subplots(len(metrics), 1, squeeze=False, layout="constrained",
                              figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO))
-    fig.suptitle(f"{track.upper()}: which CPT choices help held-out credit?" if domain == "credit"
-                 else f"{track.upper()}: choices and non-credit retention")
+    fig.suptitle(f"{track.upper()}: effect of each CPT choice (matched contrasts)" if domain == "credit"
+                 else f"{track.upper()}: effect of each CPT choice on non-credit retention")
+    factor_of = paired.drop_duplicates("choice").set_index("choice").factor
     for ax, metric in zip(axes.flat, metrics):
         part = selected[selected.metric.eq(metric)]
         choices = list(dict.fromkeys(part.choice))
         matrix = part.pivot(index="base", columns="choice", values="mean").reindex(columns=choices)
         scale, label = METRICS[metric]
         _heatmap(ax, matrix*scale, label, compact=True)
+        for tick, choice in zip(ax.get_xticklabels(), choices):
+            tick.set_color(style.PARAMETER_COLORS[_CHOICE_PARAMETER[factor_of[choice]]])
     return [cp.Page(f"choice_contrasts_{domain}", fig,
-        "Final five-fold benchmark contrasts between CPT choices. "
-        + _cohort_note(data[data.domain.eq(domain)]) + "Each cell first pairs the same table and all other recipe settings, "
-        "averages those matched differences within table, then weights tables equally. Positive values favor the named alternative. "
-        "A favorable choice contrast can mean less deterioration; it does not establish a gain over original weights. "
-        "Anchoring and scope contrasts average all four rates; each rate contrast averages both anchoring and scope settings. "
-        "Models and metrics remain separate. Each model uses the same recipe-complete table cohort across displayed metrics. "
-        + ("AUC contrasts are percentage points; Brier contrasts are multiplied by 100. Brier and log-loss signs are reversed so reductions are positive. "
+        "Experiment 1, final five-fold benchmark on "
+        + ("held-out credit tables. " if domain == "credit" else "the non-credit retention panel. ")
+        + _cohort_note(data[data.domain.eq(domain)]) + "Each column changes one CPT choice: L2-SP anchoring on (λ = 0.003) "
+        "minus off (λ = 0), frozen transformer backbone minus all parameters updated, or a larger peak learning rate minus "
+        "the lowest (3e-7). Each cell pairs the same table and all other recipe settings, averages those matched differences "
+        "within table, then weights tables equally; positive values favour the named alternative. Anchoring and scope "
+        "contrasts average over all four learning rates; each rate contrast averages over both anchoring and scope settings. "
+        "A favourable contrast can mean less deterioration rather than a gain over the original weights (see the recipe grid). "
+        "Column labels are coloured by the parameter varied (learning rate blue, L2-SP orange, update scope grey). "
+        + ("AUC contrasts are in percentage points and Brier contrasts are multiplied by 100; Brier and log-loss signs are "
+           "reversed so that reductions are positive. "
            if track == "pd" else
-           "R² contrasts use native units. RMSE contrasts divide the paired error difference by the original model's RMSE, not by the reference CPT arm; reductions are positive. ") +
-        "Colors are symmetric about zero within each metric panel. These are descriptive fixed-grid contrasts, not causal architecture comparisons. "
-        + _policy_note(track),
+           "R² contrasts use native units. RMSE contrasts divide the paired error difference by the original model's RMSE; "
+           "reductions are positive. ") +
+        "Colours are symmetric about zero within each metric panel. These are descriptive contrasts over the fixed grid.",
         {"Matched choice differences within each table": paired[paired.domain.eq(domain)],
          "Choice means and table spread": selected,
          "Marginal CPT-versus-original effects by choice level and table": marginal[marginal.domain.eq(domain)]},
@@ -168,28 +178,49 @@ def plot_combinations(data, track, metric, domain="credit"):
     if summary.sampling.nunique() != 1:
         raise ValueError("Combination map needs a single sampling protocol")
     summary = summary.assign(row=summary.base.map(style.model_label) + summary.frozen.map(
-        {False: " / all", True: " / frozen"}), column=summary.learning_rate.map(lambda x: f"{x:.0e}")
+        {False: " · all weights", True: " · frozen backbone"}), column=summary.learning_rate.map(lambda x: f"{x:.0e}")
         + "\n" + summary.l2sp_lambda.map(lambda x: f"{x:g}"))
     matrix = summary.pivot(index="row", columns="column", values="mean")
-    row_order = [style.model_label(b)+" / "+scope for b in sorted(summary.base.unique()) for scope in ("all", "frozen")]
-    columns = [f"{lr:.0e}\n{lam:g}" for lr in sorted(summary.learning_rate.unique()) for lam in sorted(summary.l2sp_lambda.unique())]
+    row_order = [style.model_label(b)+scope for b in sorted(summary.base.unique()) for scope in (" · all weights", " · frozen backbone")]
+    rates = sorted(summary.learning_rate.unique())
+    anchors = sorted(summary.l2sp_lambda.unique())
+    columns = [f"{lr:.0e}\n{lam:g}" for lr in rates for lam in anchors]
     matrix = matrix.reindex(index=row_order, columns=columns)
+    improved = summary.pivot(index="row", columns="column", values="improved").reindex(index=row_order, columns=columns)
+    tables = summary.pivot(index="row", columns="column", values="tables").reindex(index=row_order, columns=columns)
     scale, label = METRICS[metric]
-    fig, ax = plt.subplots(layout="constrained", figsize=style.figsize(style.WIDTH_FULL, style.GOLDEN))
-    fig.suptitle(f"{track.upper()}: held-out credit CPT effects" if domain == "credit" else f"{track.upper()}: non-credit CPT effects")
-    _heatmap(ax, matrix*scale, label)
-    ax.set_xlabel("Peak learning rate (upper label) / L2-SP strength (lower label)")
+    fig, ax = plt.subplots(layout="constrained", figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO))
+    fig.suptitle(f"{track.upper()}: CPT − original, every recipe (held-out credit)" if domain == "credit"
+                 else f"{track.upper()}: CPT − original, every recipe (non-credit retention)")
+    _heatmap(ax, matrix*scale, label, counts=(improved, tables))
+    # Two tick rows, one per hyperparameter, each in that parameter's colour: learning rate
+    # on top, L2-SP strength below, so a reader can match a column to both settings at once.
+    lr_color, anchor_color = style.PARAMETER_COLORS["learning_rate"], style.PARAMETER_COLORS["l2sp_lambda"]
+    ax.set_xticks(range(len(columns)), [f"{lam:g}" for lr in rates for lam in anchors], color=anchor_color)
+    ax.set_xlabel("L2-SP strength λ", color=anchor_color)
+    top = ax.secondary_xaxis("top")
+    top.set_xticks([i * len(anchors) + (len(anchors) - 1) / 2 for i in range(len(rates))], [f"{lr:.0e}" for lr in rates],
+                   color=lr_color)
+    top.set_xlabel("Peak learning rate", color=lr_color)
+    top.tick_params(length=0, labelsize=style.ANNOTATION_SIZE)
+    for boundary in range(len(anchors), len(columns), len(anchors)):
+        ax.axvline(boundary-.5, color=lr_color, linewidth=style.THIN_LINE)
     for boundary in range(2, len(matrix), 2):
-        ax.axhline(boundary-.5, color=style.GRID_TEXT_LIGHT, linewidth=style.THIN_LINE)
+        ax.axhline(boundary-.5, color=style.GRID_TEXT_LIGHT, linewidth=style.MEAN_CURVE_LINE)
+    band = {"roc_auc": "0 pp", "brier_score": "0", "log_loss": "0", "r2": "0", "rmse": "0%"}[metric]
     return [cp.Page(f"recipe_grid_{domain}_{metric}", fig,
-        f"Final five-fold benchmark: {label}. " + _cohort_note(values)
-        + "Each cell is the equal-table mean CPT effect relative to its own original weights; "
-        "positive values favor CPT. All planned rate × anchoring × scope combinations are shown on one common table cohort within each model. "
-        "Rows marked all update normally trainable parameters; frozen rows freeze the dominant transformer stack while retaining configured surrounding components. "
-        "Neither mode uses LoRA. Colors share one symmetric scale; printed values retain small effects. "
-        "Five outer folds are averaged within table. "
-        + ("Retention additionally requires all four CPT partitions. " if domain == "ood" else "") +
-        "Observed maxima are exploratory grid outcomes, not independently validated selected recipes. " + _policy_note(track),
+        f"Experiment 1, final five-fold benchmark on {'held-out credit tables' if domain == 'credit' else 'the non-credit retention panel'}: "
+        f"{label}, CPT minus the original model of the same base. " + _cohort_note(values)
+        + "Each cell is the equal-table mean effect of one recipe, with the number of tables whose effect exceeds "
+        f"{band} (\"up\") over the number of complete tables. Positive values favour CPT. Columns cross the four peak learning "
+        "rates (top labels, blue) with L2-SP strength λ ∈ {0, 0.003} (bottom labels, orange); rows cross each base with the "
+        "update scope (all trainable weights, or the dominant transformer stack frozen while embeddings and prediction "
+        "components remain trainable). Every planned combination is shown on one common table cohort within each base. "
+        "Colours share one symmetric scale; printed values retain small effects. Five outer folds are averaged within table "
+        "before tables are weighted equally. "
+        + ("Retention tables additionally average all four CPT partitions. " if domain == "ood" else "") +
+        "The predefined reference recipe is full updates at LR 3e-7 and λ 0.003; any other cell with a higher value is an "
+        "observed grid maximum, not an independently validated choice.",
         {"Every paired table and recipe effect": values, "Cell means and improvement counts": summary},
         {"measurement": "five_fold_final_benchmark", "metric": metric, "domain": domain, "aggregation_unit": "table"})]
 
@@ -215,9 +246,14 @@ def plot_conservative_recipes(data, track, metric):
         for offset, (rate, anchor) in zip(style.CHOICE_POINT_OFFSETS, settings):
             part = summary[summary.frozen.eq(frozen) & summary.learning_rate.eq(rate)
                            & summary.l2sp_lambda.eq(anchor)]
-            ax.scatter(part.plotted_mean, part.base.map(models.index) + offset,
+            ys = part.base.map(models.index) + offset
+            color = style.TRAJECTORY_LR_COLORS[rate]
+            # Table interquartile range and median, so a mean driven by one or two tables is visible.
+            ax.hlines(ys, part.q25 * scale, part.q75 * scale, color=color, linewidth=style.THIN_LINE)
+            ax.scatter(part["median"] * scale, ys, marker="|", s=style.POINT_SIZE, color=color)
+            ax.scatter(part.plotted_mean, ys,
                        marker=style.PANEL_MARKERS[int(anchor > 0)], s=style.POINT_SIZE,
-                       color=style.TRAJECTORY_LR_COLORS[rate])
+                       color=color, edgecolors="black", linewidths=.3, zorder=3)
         ax.axvline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
         ax.set_yticks(range(len(models)), [style.model_label(base) for base in models])
         ax.set_ylim(len(models) - .5, -.5)
@@ -236,17 +272,16 @@ def plot_conservative_recipes(data, track, metric):
         legend = Legend(ax, handles, [h.get_label() for h in handles], title=title,
                         loc="center", ncol=2, frameon=True)
         ax.add_artist(legend)
-    fig.suptitle(f"{track.upper()}: low-rate effects on held-out credit tables")
+    fig.suptitle(f"{track.upper()}: low-rate recipes, mean and table spread")
     return [cp.Page(f"conservative_recipes_credit_{metric}", fig,
-        "Detail of the full five-fold benchmark grid at the two fixed lowest peak learning rates "
-        "(3e-7 and 1e-6). All anchoring and parameter-scope combinations at these rates are included; "
-        "cells are not selected by their outcomes. Each point is an equal-table mean CPT change relative to "
-        "the same model's original weights, after averaging five folds within each table. "
-        + _cohort_note(values) + "Color denotes rate and marker shape denotes L2-SP strength. "
-        "Vertical offsets separate settings and have no quantitative meaning. Both panels share a scale "
-        "that retains all displayed means and zero; positive values favor CPT. This focused mean view "
-        "does not show uncertainty or table spread, and does not imply every table improves. The full grid "
-        "retains the higher-rate outcomes. Neither parameter-scope mode uses LoRA. " + _policy_note(track),
+        "Experiment 1, final five-fold benchmark on held-out credit tables, at the two lowest peak learning rates "
+        "(3e-7 and 1e-6). All anchoring and update-scope combinations at these rates are shown; none is selected by its "
+        f"outcome. Values are {label.lower()}, CPT minus the original model of the same base. Markers give the equal-table "
+        "mean (colour: learning rate; circle λ = 0, square λ = 0.003), vertical ticks the median table and horizontal "
+        "segments the table interquartile range (heterogeneity across tables, not a confidence interval). "
+        + _cohort_note(values) + "Five outer folds are averaged within table. Vertical offsets only separate settings. "
+        "Both panels share one horizontal scale; positive values favour CPT. A mean far from its median indicates that a "
+        "few tables drive the average.",
         {"Every low-rate paired table effect": values, "Low-rate equal-table means and spread": summary},
         {"measurement": "five_fold_final_benchmark", "metric": metric, "domain": "credit", "aggregation_unit": "table"})]
 
@@ -327,25 +362,83 @@ def plot_transfer_retention(data, track):
     paired = a.merge(b, on=["metric", *cp.FACTORS], suffixes=("_credit", "_retention"), validate="one_to_one")
     if paired.empty:
         return []
-    fig, axes = _recipe_panels(f"{track.upper()}: credit gains and non-credit retention", sorted(paired.learning_rate.unique()))
+    fig, axes = _recipe_panels(f"{track.upper()}: credit transfer against non-credit retention", sorted(paired.learning_rate.unique()))
     scale, label = METRICS[metric]
     for ax, (base, group) in zip(axes, paired.groupby("base")):
         for row in group.itertuples(): _mark(ax, row, row.mean_credit*scale, row.mean_retention*scale)
         ax.axhline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
         ax.axvline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
         short = "ΔAUC (pp)" if track == "pd" else "ΔR²"
-        ax.set_title(style.model_label(base)); ax.set_xlabel("Credit "+short); ax.set_ylabel("Non-credit "+short)
+        ax.set_title(style.model_label(base)); ax.set_xlabel("Held-out credit "+short); ax.set_ylabel("Non-credit "+short)
     for ax in axes[paired.base.nunique():]: ax.set_visible(False)
     return [cp.Page("benchmark_transfer_retention", fig,
-        "Final five-fold benchmark effects relative to original weights, matched by CPT recipe across the two domains. "
+        "Experiment 1, final five-fold benchmark: each mark is one of the 16 recipes, placed at its equal-table mean change "
+        "on held-out credit tables (horizontal) and on the same-task non-credit retention panel (vertical), both relative to "
+        "the original model of the same base. "
         + "Credit: " + _cohort_note(data[data.metric.eq(metric) & data.domain.eq("credit")])
         + "Non-credit: " + _cohort_note(data[data.metric.eq(metric) & data.domain.eq("ood")]) +
-        "The upper-right quadrant improves both credit and non-credit means; the lower-right improves credit while reducing retention. "
-        "Each domain weights its recipe-complete tables equally; non-credit effects first average all four matched CPT partitions. "
-        "Axis limits vary across base models. Each of the 16 fixed-grid recipes remains visible through rate, anchoring and scope encodings; "
-        "overlapping outcomes may coincide. The finite non-credit panel does not establish general retention. " + _policy_note(track),
+        "Colour encodes peak learning rate, circle/square L2-SP λ = 0/0.003, filled/open all-weights/frozen-backbone updates. "
+        "The upper-right quadrant improves both domains; the lower-right gains on credit while losing on the retention panel. "
+        "Non-credit effects first average all four CPT training partitions per table. Axis limits differ between models; "
+        "coinciding recipes overlap. A four-table retention panel does not establish general retention.",
         {"Matched credit and retention recipe means": paired},
         {"measurement": "five_fold_final_benchmark", "metric": metric, "aggregation_unit": "table"})]
+
+
+def plot_table_recipes(data, track, metric):
+    """Tables × recipes for each base and scope: which tables carry a recipe's mean."""
+    values = data[data.metric.eq(metric) & data.domain.eq("credit")] if not data.empty else data
+    if values.empty:
+        return []
+    scale, label = METRICS[metric]
+    bases = sorted(values.base.unique())
+    rates = sorted(values.learning_rate.unique())
+    anchors = sorted(values.l2sp_lambda.unique())
+    order = values.groupby("dataset").effect.mean().sort_values(ascending=False).index.tolist()
+    finite = np.abs(values.effect.to_numpy(float) * scale)
+    limit = max(float(np.quantile(finite, style.HEATMAP_COLOR_QUANTILE)), np.finfo(float).eps)
+    pages = []
+    lr_color, anchor_color = style.PARAMETER_COLORS["learning_rate"], style.PARAMETER_COLORS["l2sp_lambda"]
+    for frozen in (False, True):
+        part = values[values.frozen.eq(frozen)]
+        if part.empty:
+            continue
+        fig, axes = plt.subplots(1, len(bases), sharey=True, layout="constrained",
+                                 figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO))
+        axes = np.atleast_1d(axes)
+        for ax, base in zip(axes, bases):
+            matrix = (part[part.base.eq(base)].pivot_table(index="dataset", columns=["learning_rate", "l2sp_lambda"],
+                      values="effect").reindex(index=order, columns=[(r, a) for r in rates for a in anchors])) * scale
+            image = ax.imshow(np.clip(matrix.to_numpy(float), -limit, limit), aspect="auto",
+                              cmap=style.CMAP_DIVERGING, vmin=-limit, vmax=limit)
+            ax.grid(False)
+            ax.set_xticks(range(len(matrix.columns)), [f"{a:g}" for _, a in matrix.columns], color=anchor_color,
+                          rotation=90, fontsize=style.GRID_FONT - 1)
+            top = ax.secondary_xaxis("top")
+            top.set_xticks([i * len(anchors) + (len(anchors) - 1) / 2 for i in range(len(rates))],
+                           [f"{r:.0e}" for r in rates], color=lr_color, rotation=90, fontsize=style.GRID_FONT - 1)
+            top.tick_params(length=0)
+            for boundary in range(len(anchors), len(matrix.columns), len(anchors)):
+                ax.axvline(boundary - .5, color=lr_color, linewidth=style.THIN_LINE)
+            ax.set_title(style.model_label(base), pad=22)
+            ax.set_xlabel("λ", color=anchor_color)
+        axes[0].set_yticks(range(len(order)), order)
+        for tick in axes[0].get_yticklabels():
+            tick.set_fontsize(style.GRID_FONT)
+        bar = fig.colorbar(image, ax=list(axes), extend="both", shrink=.8)
+        bar.set_label(label)
+        fig.suptitle(f"{track.upper()}: table-level CPT − original, {'frozen backbone' if frozen else 'all weights updated'}")
+        pages.append(cp.Page(f"table_recipes_{'frozen' if frozen else 'full'}_{metric}", fig,
+            f"Experiment 1, final five-fold benchmark: {label.lower()} of every held-out credit table (rows) for each "
+            f"recipe with {'the dominant transformer backbone frozen' if frozen else 'all trainable weights updated'}, "
+            "CPT minus the original model of the same base. Columns cross peak learning rate (upper labels, blue) with "
+            "L2-SP strength λ (lower labels, orange). Rows are ordered by the table's mean effect over all recipes and bases, "
+            "so tables that improve under many recipes are at the top. Five outer folds are averaged within table. Colours "
+            f"are symmetric about zero and saturate at the 95th percentile of |effect| ({limit:.2f}); exact values are in the "
+            "notebook summary.",
+            {"Table × recipe effects": part[["base", "dataset", "learning_rate", "l2sp_lambda", "frozen", "effect"]]},
+            {"measurement": "five_fold_final_benchmark", "metric": metric, "domain": "credit", "aggregation_unit": "table"}))
+    return pages
 
 
 def reference_profiles(run):

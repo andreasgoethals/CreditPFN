@@ -128,7 +128,9 @@ def plot_seed_endpoints(main, repeat, *, benchmark=False, metric=None):
         data = dataset_means(raw, repeat, ["reference", "repeat", "difference"])
         if data.empty:
             continue
-        fig, axes = cp._subplots(f"{repeat.track.upper()}: seed effects / {label.lower()}", 2)
+        scale = style.EFFECT_SCALE.get(metric, 1.)
+        data = data.assign(**{c: data[c] * scale for c in ("reference", "repeat", "difference")})
+        fig, axes = cp._subplots(f"{repeat.track.upper()}: seed 43 vs. 42 / {label.lower()}", 2)
         for i, (base, group) in enumerate(data.groupby("base")):
             axes[0].scatter(group.reference, group.repeat, label=style.model_label(base),
                             color=style.color(base), marker=style.PANEL_MARKERS[i % len(style.PANEL_MARKERS)], s=style.POINT_SIZE)
@@ -139,7 +141,7 @@ def plot_seed_endpoints(main, repeat, *, benchmark=False, metric=None):
         low = min(data.reference.min(), data.repeat.min(), 0)
         high = max(data.reference.max(), data.repeat.max(), 0)
         axes[0].plot([low, high], [low, high], linestyle=":", color=style.color("reference"))
-        score_label = effect_label(metric).replace(" (+ better)", "")
+        score_label = style.EFFECT_LABELS.get(metric, effect_label(metric)).replace(" (+ better)", "").replace(", + better", "")
         axes[0].set_xlabel(f"Seed {int(main.cfg.seed)}: {score_label}")
         axes[0].set_ylabel(f"Seed {int(repeat.cfg.seed)}: {score_label}")
         axes[0].legend()
@@ -147,8 +149,10 @@ def plot_seed_endpoints(main, repeat, *, benchmark=False, metric=None):
         axes[1].axvline(0, linestyle=":", color=style.color("reference"))
         axes[1].set_xlabel("Seed 43 minus seed 42 effect\n" + score_label)
         pages.append(cp.Page(f"seed_{stage}_{domain}", fig,
-            f"{label}: {'five-fold benchmark' if benchmark else str(repeat.target)+ '-update monitor'} effects for the predefined full-update reference, "
-            f"LR 3e-7 and L2-SP 0.003. Effects are {effect_label(metric)} relative to each model's original weights. "
+            f"Experiment 2, {label.lower()}: {'final five-fold benchmark' if benchmark else str(repeat.target)+ '-update fixed-context monitor'} effects of the predefined reference recipe "
+            f"(full updates, LR 3e-7, L2-SP 0.003) trained with seed 42 (experiment 1) and seed 43. Left: each point is one table, plotting its "
+            f"paired change relative to the original model ({style.EFFECT_LABELS.get(metric, effect_label(metric))}) under seed 42 against seed 43; "
+            "points on the dotted diagonal are unaffected by the training seed. Right: seed 43 minus seed 42 per table, with the equal-table mean as a vertical mark. "
             "Observations match on dataset and training partition before averaging. Each non-credit dataset requires all four matched partitions; "
             "credit datasets have one held-out partition. Points are datasets and vertical marks in the difference panel are dataset means. "
             "Positive differences favor seed 43; two seeds do not estimate a general seed distribution.",
@@ -241,17 +245,22 @@ def plot_sampling_endpoints(run, *, benchmark=False, metric=None):
         contrasts = dataset_means(sampling_contrasts(raw), run, ["difference"])
         if effects.empty or contrasts.empty:
             continue
-        fig, axes = cp._subplots(f"{run.track.upper()}: sampling / {label.lower()}", 2)
-        _intervals(axes[0], effects, value="effect", factor="sampling", labels=style.SAMPLING_LABELS, colors=style.SAMPLING_COLORS)
-        _intervals(axes[1], contrasts, value="difference", factor="comparison",
+        scale = style.EFFECT_SCALE.get(metric, 1.)
+        fig, axes = cp._subplots(f"{run.track.upper()}: sampling protocols / {label.lower()}", 2)
+        _intervals(axes[0], effects.assign(effect=effects.effect * scale), value="effect", factor="sampling",
+                   labels=style.SAMPLING_LABELS, colors=style.SAMPLING_COLORS)
+        _intervals(axes[1], contrasts.assign(difference=contrasts.difference * scale), value="difference", factor="comparison",
                    labels={m: style.SAMPLING_LABELS[m] for m in MODES if m != "one_sample"}, colors=style.SAMPLING_COLORS)
-        axes[0].set_title("Effect relative to original weights"); axes[0].set_xlabel(effect_label(metric))
-        axes[1].set_title("Difference relative to one sample"); axes[1].set_xlabel("Difference in paired effect (+ better)")
+        axes[0].set_title("CPT − original"); axes[0].set_xlabel(style.EFFECT_LABELS.get(metric, effect_label(metric)))
+        axes[1].set_title("Protocol − one sample"); axes[1].set_xlabel("Difference in paired effect (same units, + better)")
         pages.append(cp.Page(f"sampling_{stage}_{domain}", fig,
-            f"{label}: {'five-fold benchmark' if benchmark else str(run.target)+'-update monitor'} effects and within-experiment protocol contrasts. "
-            "Points give equal-weight dataset means; horizontal segments give dataset interquartile ranges, not confidence intervals. "
+            f"Experiment 3, {label.lower()}: {'final five-fold benchmark' if benchmark else str(run.target)+'-update fixed-context monitor'} effects of the reference recipe "
+            "(full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass "
+            "over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change "
+            "relative to the original model of the same base; right: each protocol minus one sample within table. "
+            "Points give equal-table means; horizontal segments give table interquartile ranges, not confidence intervals. "
             "All three protocols must be available on the same dataset/partition before comparison; non-credit datasets also require all four partitions. "
-            f"Effects use {effect_label(metric)}. Every arm preserves the same experiment-3 prevalence policy.",
+            f"Effects use {style.EFFECT_LABELS.get(metric, effect_label(metric))}. All three arms use proportional PD class sampling, unlike experiment 1's balanced sampling.",
             {"Matched partition effects": raw, "Dataset effects": effects, "Dataset protocol contrasts": contrasts,
              "Descriptive effects": descriptive_summary(effects), "Descriptive contrasts": descriptive_summary(contrasts, "difference")}))
     return pages

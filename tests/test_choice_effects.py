@@ -138,7 +138,7 @@ def test_combination_plot_reports_all_recipes_and_counts_table_improvements():
     assert len(summary) == 8 and summary.tables.eq(2).all()
     assert summary.improved.eq(1).all()
     assert page.figure.axes[0].images[0].get_array().shape == (2, 4)
-    assert "not independently validated" in page.caption
+    assert "not an independently validated choice" in page.caption
     assert "Every paired table and recipe effect" in page_text(page)
 
 
@@ -159,9 +159,10 @@ def test_low_rate_detail_preserves_all_settings_harms_units_and_equal_table_mean
     for ax in page.figure.axes[:2]:
         lo, hi = ax.get_xlim()
         assert lo < summary.plotted_mean.min() and hi > 0
-        assert sum(len(c.get_offsets()) for c in ax.collections) == 4
+        # Means are the zorder-3 markers; medians and table IQRs are drawn beneath them.
+        assert sum(len(c.get_offsets()) for c in ax.collections if c.get_zorder() == 3) == 4
     assert page.figure.axes[0].get_xlim() == page.figure.axes[1].get_xlim()
-    assert "not selected by their outcomes" in page.caption
+    assert "none is selected by its outcome" in page.caption
     style.finish_figure(page.figure)
     legends = [artist for ax in page.figure.axes for artist in ax.artists if isinstance(artist, Legend)]
     assert {legend.get_title().get_text() for legend in legends} == {"Peak learning rate", "L2-SP strength"}

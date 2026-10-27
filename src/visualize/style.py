@@ -326,6 +326,36 @@ _EXTRAS = ("#CC79A7", "#56B4E9", "#F0E442", "#D55E00")
 SEED_COLORS = {42: "#0072B2", 43: "#D55E00"}
 SEED_STYLES = {42: "-", 43: "--"}
 
+#: One colour per CPT *hyperparameter*, repeated wherever that parameter is named (axis
+#: rows, column headers, annotations), so a reader links a label to its parameter by
+#: colour as well as by text. Distinct from the per-value learning-rate colours above.
+PARAMETER_COLORS = {"learning_rate": "#0072B2", "l2sp_lambda": "#D55E00", "scope": "#4D4D4D"}
+PARAMETER_LABELS = {"learning_rate": "Peak LR", "l2sp_lambda": "L2-SP λ", "scope": "Update scope"}
+
+#: Adaptation strategies compared across experiments. Okabe-Ito, colour-blind safe;
+#: marker shapes repeat the distinction for greyscale print.
+APPROACH_COLORS = {"Full CPT": "#0072B2", "Frozen backbone": "#E69F00",
+                   "DiagScale": "#009E73", "LoRA": "#CC79A7"}
+APPROACH_MARKERS = {"Full CPT": "o", "Frozen backbone": "s", "DiagScale": "^", "LoRA": "D"}
+#: Display scale and axis label for paired CPT − original effects, shared by every results
+#: notebook so the same quantity reads the same everywhere (AUC in percentage points, etc.).
+#: Tables keep native units unless a column name says otherwise.
+EFFECT_SCALE = {"roc_auc": 100., "pr_auc": 100., "brier_score": 100., "rmse": 100., "f1": 100.,
+                "ece": 100., "r2": 1., "log_loss": 1., "mae": 1.}
+EFFECT_LABELS = {"roc_auc": "ΔAUC (pp, + better)", "pr_auc": "ΔPR-AUC (pp, + better)",
+                 "brier_score": "Brier reduction ×100 (+ better)", "rmse": "RMSE reduction (%, + better)",
+                 "r2": "ΔR² (+ better)", "log_loss": "Log-loss reduction (nats, + better)",
+                 "mae": "MAE reduction (+ better)", "f1": "ΔF1 (pp, + better)", "ece": "ECE reduction ×100 (+ better)"}
+#: Win/tie/loss bars: improvement, negligible change, deterioration.
+OUTCOME_COLORS = {"Improved": "#1A9850", "Negligible": "#BDBDBD", "Worse": "#D73027"}
+#: Effects inside +/- this band count as negligible ("ties") in win/tie/loss summaries.
+#: A reporting convention for this study, stated in every caption that uses it.
+TIE_BAND = {"roc_auc": 0.001, "r2": 0.001, "rmse": 0.001, "brier_score": 0.0001}
+#: Very large single-table effects would compress every other heatmap cell into one
+#: colour. Colour limits use this quantile of |effect|; printed values stay exact.
+HEATMAP_COLOR_QUANTILE = 0.95
+OVERVIEW_ROW_HEIGHT = 0.15   # inches per configuration row in the cross-study map
+
 
 def apply() -> None:
     """Install the style. Call once, at the top of every notebook and plotting script."""
