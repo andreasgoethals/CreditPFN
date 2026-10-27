@@ -143,7 +143,8 @@ def test_protocol_audit_exposes_precision_and_rate_mismatch():
     cfg = load_train_config(config_path="config/experiment1/pd.yaml")
     reference = cp.Campaign(cfg, cp.planned_trials(cfg), pd.DataFrame(), pd.DataFrame(), pd.DataFrame())
     table = ls.reference_protocol_audit(run, reference).set_index("check")
-    assert not table.loc["evaluation.tabicl_inference_options", "matches"]
+    # Experiment 1 re-scores TabICLv2 in FP32 without FA3, as experiment 8 does.
+    assert table.loc["evaluation.tabicl_inference_options", "matches"]
     assert not table.loc["Candidate shared rates with L2-SP zero", "matches"]
     assert table.loc["Candidate shared rates with L2-SP zero", "experiment1"] == "1e-05"
     assert "Unavailable" in table.loc["Direct cross-experiment comparison", "experiment8"]

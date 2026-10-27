@@ -4,6 +4,7 @@ from __future__ import annotations
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from omegaconf import OmegaConf
 
 from src.utils.experiment import scientific_config
 from src.visualize import campaign as cp, style
@@ -58,6 +59,12 @@ def seed_pairs(main, repeat, *, domain="credit", benchmark=False, metric=None, e
         spec.pop("seed", None)
     if specs[0] != specs[1] or main.track != repeat.track or main.cfg.seed == repeat.cfg.seed:
         raise ValueError("Seed comparisons require distinct seeds and otherwise identical reference settings")
+    # Inference settings are outside the training identity but change TabICLv2 scores; a seed
+    # difference must never mix precision policies.
+    options = [OmegaConf.to_container(run.cfg, resolve=True).get("evaluation", {}).get("tabicl_inference_options")
+               for run in (main, repeat)]
+    if options[0] != options[1]:
+        raise ValueError("Seed comparisons require identical TabICLv2 inference settings in both experiments")
     left, right = [cp.reference_rows(observations(run, domain=domain, benchmark=benchmark,
                     metric=metric, endpoint=endpoint)) for run in (main, repeat)]
     if left.empty or right.empty:

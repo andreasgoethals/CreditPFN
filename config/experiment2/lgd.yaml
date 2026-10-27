@@ -47,6 +47,11 @@ evaluation:
   cache_controls: true
   results:
     save_predictions: true  # compressed per-row predictions on project storage
+  # TabICLv2 original and adapted models are scored in FP32 without FlashAttention 3,
+  # as in experiments 5 and 8. The automatic (FP16/FA3) policy mis-scored the original
+  # checkpoint on some PD tables (experiment-0 numerical review, 27-10-2026 decision).
+  # Inference only: training identities and checkpoints are unchanged.
+  tabicl_inference_options: {use_amp: false, use_fa3: false}
 
 checkpoint:
   trained_dir: checkpoints/trained/experiment2

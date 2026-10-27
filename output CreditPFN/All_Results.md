@@ -152017,7 +152017,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 23,TabPFN v3,0.001,0,True,one_sample,openml_46961,ood,mae,-5.4913837,4.8223702,10.313754,4
 
 4. Cost and comparison with earlier adaptation recipes
-Only learning rate 1e-5 overlaps the earlier L2-SP-zero full/frozen grid. In particular, TabICL benchmark precision differs from experiment 1. Earlier scores are therefore not silently pooled into a parameter-count ablation. A direct comparison requires matching base/data hashes, row folds, inference settings and remaining training protocol. Rank and alpha are fixed, so these results do not estimate the best achievable LoRA performance. Overlapping training corpora, related sources and the small non-credit panel limit independence and generality.
+Only learning rate 1e-5 overlaps the earlier L2-SP-zero full/frozen grid. The protocol table lists which benchmark settings match experiment 1. Earlier scores are therefore not silently pooled into a parameter-count ablation. A direct comparison requires matching base/data hashes, row folds, inference settings and remaining training protocol. Rank and alpha are fixed, so these results do not estimate the best achievable LoRA performance. Overlapping training corpora, related sources and the small non-credit panel limit independence and generality.
 
 Table: PD training resources
 CSV (first column: row index)
@@ -152059,7 +152059,7 @@ row,check,experiment1,experiment8,matches
 6,scheduler,"{'warmup_fraction': 0.1, 'min_lr_fraction': 0.05}","{'warmup_fraction': 0.1, 'min_lr_fraction': 0.05}",True
 7,corpus.n_folds,4,4,True
 8,corpus.split_seed,1729,1729,True
-9,evaluation.tabicl_inference_options,None,"{'use_amp': False, 'use_fa3': False}",False
+9,evaluation.tabicl_inference_options,"{'use_amp': False, 'use_fa3': False}","{'use_amp': False, 'use_fa3': False}",True
 10,Candidate shared rates with L2-SP zero,1e-05,"1e-05, 0.0001, 0.001",False
 11,Direct cross-experiment comparison,Full/frozen grid remains separate,"Unavailable: requires matching artifact provenance, base/data hashes, folds and inference protocol",False
 
@@ -152103,7 +152103,7 @@ row,check,experiment1,experiment8,matches
 6,scheduler,"{'warmup_fraction': 0.1, 'min_lr_fraction': 0.05}","{'warmup_fraction': 0.1, 'min_lr_fraction': 0.05}",True
 7,corpus.n_folds,4,4,True
 8,corpus.split_seed,1729,1729,True
-9,evaluation.tabicl_inference_options,None,"{'use_amp': False, 'use_fa3': False}",False
+9,evaluation.tabicl_inference_options,"{'use_amp': False, 'use_fa3': False}","{'use_amp': False, 'use_fa3': False}",True
 10,Candidate shared rates with L2-SP zero,1e-05,"1e-05, 0.0001, 0.001",False
 11,Direct cross-experiment comparison,Full/frozen grid remains separate,"Unavailable: requires matching artifact provenance, base/data hashes, folds and inference protocol",False
 

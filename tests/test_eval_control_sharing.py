@@ -95,6 +95,10 @@ def test_research_phase_configs_share_only_identical_evaluation_controls(monkeyp
                for experiment in (1, 2, 3)]
     keys = [cache.evaluation_key(handle, "test", track=track, config=OmegaConf.to_container(cfg, resolve=True))
             for cfg in configs]
+    if source == "tabicl-untuned":
+        # Experiments 1-2 score TabICLv2 in FP32 without FA3; experiment 3 keeps the automatic policy.
+        assert keys[0] == keys[1] != keys[2]
+        keys = keys[:2]
     assert len(set(keys)) == 1
     configs[-1].seed += 1
     changed = cache.evaluation_key(handle, "test", track=track,

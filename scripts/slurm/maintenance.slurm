@@ -22,7 +22,7 @@ source scripts/slurm/_job_log.sh
 start_job_log maintenance
 export CREDITPFN_USE_SCRATCH=0
 source scripts/slurm/_activate_env.sh
-action="${1:?Choose stage, prepare, preflight, consolidate, experiment0, inspect-recovery, probe-repeatability, clean or audit}"; shift
+action="${1:?Choose stage, prepare, preflight, consolidate, experiment0, inspect-recovery, probe-repeatability, clean, reset-family or audit}"; shift
 case "$action" in
     experiment0) python -u -m src.utils.experiment0 "$@" ;;
     inspect-recovery) python -u -m src.utils.recovery_check --inspect "$@" ;;
@@ -33,6 +33,7 @@ case "$action" in
     preflight) python -m src.utils.preflight "$@" ;;
     consolidate) python -m src.utils.consolidate_output "$@" ;;
     clean) python -m src.utils.clean_run "$@" ;;
+    reset-family) python -m src.utils.reset_family_benchmark "$@" ;;
     audit) python -m src.utils.audit_experiment "$@" ;;
     *) echo "Unknown maintenance action: $action" >&2; exit 2 ;;
 esac

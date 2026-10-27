@@ -212,7 +212,23 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         roster = [(h, m) for h, m in roster if h.source != "baseline"]
     elif kind != "all":
         raise ValueError("CREDITPFN_EVAL_KIND must be all, foundation or classical")
+    roster = filter_family(roster, os.environ.get("CREDITPFN_EVAL_FAMILY", ""))
     return sorted(roster, key=lambda pair: _handle_key(pair[0])), cfg_test_ids, manifest_csv
+
+
+def filter_family(roster, family: str):
+    """Restrict a re-evaluation to one foundation-model family, original and adapted.
+
+    Used to re-score one family under changed inference settings (e.g. TabICLv2 in FP32)
+    without re-scoring every other model. An unknown family fails rather than silently
+    evaluating nothing.
+    """
+    family = (family or "").strip().lower()
+    if not family:
+        return roster
+    if family not in {"tabicl", "tabpfn"}:
+        raise ValueError("CREDITPFN_EVAL_FAMILY must be tabicl or tabpfn")
+    return [(h, m) for h, m in roster if str(h.source).startswith(family + "-")]
 
 
 def _handle_key(handle) -> tuple[str, str, str]:

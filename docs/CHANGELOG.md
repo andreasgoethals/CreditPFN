@@ -2,6 +2,7 @@
 
 ## 27-10-2026
 
+- Score TabICLv2 in FP32 without FA3 in experiments 1 and 2 (inference only); add `FAMILY=tabicl` benchmark mode, `reset-family` maintenance action and a seed-comparison guard against mixed TabICLv2 inference settings.
 - Add PD/LGD overview notebooks (`general/03_overview_pd`, `04_overview_lgd`) synthesizing experiments 1–8 through shared paired table effects (`src/visualize/synthesis.py`).
 - Experiment 1 results: recipe grids with per-cell improved/total tables and parameter-coloured labels, table × recipe maps, per-table reference effects with fold consistency, and a predefined/observed-best/leave-one-table-out selection table; drop the TabICLv2 numerical-policy caption note at the user's request.
 - Follow-up result figures (experiments 2, 3, 5–8) plot paired effects in shared display units (AUC in pp, Brier ×100, RMSE %); LoRA's main figure now shows LoRA − original per table; captions name experiment, baseline and aggregation.

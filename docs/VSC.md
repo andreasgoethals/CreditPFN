@@ -514,6 +514,89 @@ A DATA-only download supports progress and partition-level endpoint checks, not 
 
 Verify the project path through the actual transfer connection before downloading. A path recorded in compute/OnDemand logs is historical evidence, not proof of its current visibility through SFTP. If scp reports `remote readdir ... No such file or directory`, first locate the requested files through an authenticated SSH shell on the same endpoint. A silent one-shot search is insufficient: inspect the directory tree and symlinks in an established VSC shell and check the exit status. Distinguish a changed path from unavailable storage before changing hosts, copying archives between tiers or rerunning jobs.
 
+### Re-scoring TabICLv2 in FP32 (experiments 1 and 2)
+
+Decided 27-10-2026. Experiments 1 and 2 originally scored TabICLv2 (original and adapted) under the
+automatic FP16/FlashAttention-3 policy, which mis-scored the original checkpoint on some PD tables
+(experiment-0 numerical review). Their configs now set `evaluation.tabicl_inference_options:
+{use_amp: false, use_fa3: false}`, as experiments 5 and 8 already do. This is inference only:
+training plans, checkpoints and every other model's results stay as they are. Experiment 2 is
+included because its seed comparison pairs with experiment 1's reference; the seed notebook refuses
+to compare runs with different TabICLv2 inference settings.
+
+Do not rerun the complete benchmark for this: the evaluation-code fingerprint changed after the
+campaign, so a full rerun would re-score every model and baseline. `FAMILY=tabicl` re-scores only
+TabICLv2. Run one command per step, from `$VSC_DATA/CreditPFN`, after `git pull`, and wait for each
+job to finish before the next step.
+
+1. Confirm that no CreditPFN job is queued or running (`reset-family --apply` also refuses then):
+
+```bash
+squeue --me -M mindwell,wice
+```
+
+2. Preview the folders that will be deleted. The log is
+   `output CreditPFN/experiment1/logs/maintenance_<JOBID>_r0.log`; expect 34 folders
+   (16 recipes + original × PD/LGD):
+
+```bash
+CREDITPFN_EXPERIMENT=experiment1 sbatch --time=00:15:00 scripts/slurm/maintenance.slurm reset-family --experiment experiment1 --family tabicl
+```
+
+   The preview also warns if any other source of the current consolidated snapshot is already
+   missing (for example archived raw shards); `--apply` then refuses and deletes nothing.
+
+3. Delete them (also supersedes the consolidated snapshot pointer, keeping the old snapshot folder):
+
+```bash
+CREDITPFN_EXPERIMENT=experiment1 sbatch --time=00:30:00 scripts/slurm/maintenance.slurm reset-family --experiment experiment1 --family tabicl --apply
+```
+
+4. Repeat steps 2 and 3 for experiment 2 (expect 4 folders):
+
+```bash
+CREDITPFN_EXPERIMENT=experiment2 sbatch --time=00:30:00 scripts/slurm/maintenance.slurm reset-family --experiment experiment2 --family tabicl --apply
+```
+
+5. Preview the submission (prints the sbatch command; submits nothing):
+
+```bash
+DRY=1 FAMILY=tabicl bash scripts/slurm/run_benchmark.sh experiment1
+```
+
+6. Submit the TabICLv2-only GPU arrays. FP32 inference measured 5–10× slower than the automatic
+   policy in the experiment-0 review (the original TabICLv2 benchmark used about 10 GPU-hours), so
+   allow a longer walltime:
+
+```bash
+FAMILY=tabicl EVAL_WALLTIME=08:00:00 bash scripts/slurm/run_benchmark.sh experiment1
+```
+
+```bash
+FAMILY=tabicl EVAL_WALLTIME=08:00:00 bash scripts/slurm/run_benchmark.sh experiment2
+```
+
+   The launcher refuses while TabICLv2 result files older than the last reset exist. If tasks time
+   out, submit the same command again: completed five-fold cells are kept and skipped, and files
+   written after the reset do not block the resubmission.
+
+7. When all tasks have finished, re-consolidate both runs:
+
+```bash
+sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_main_v5 --apply
+```
+
+```bash
+sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_seeds_v5 --apply
+```
+
+8. Download the experiment 1 and 2 output trees as usual and rerun the notebooks. The experiment
+   notebooks and the overviews pick up the FP32 results without code changes.
+
+Experiments 3, 6 and 7 and the experiment-4 context curves still use the automatic TabICLv2 policy.
+Experiments 6 and 7 bind their evaluation protocol into immutable plans, so changing them needs new
+plans rather than a config edit.
+
 ## Cleanup and failure inspection
 
 Check the [live Leuven status page](https://status.vscentrum.be/tier2_leuven.html) first when storage disappears or scheduling stalls. The detailed site page may show an active incident while the overview still lists it as planned maintenance. Wait for confirmed restoration of required storage before retrying; an announced end time is not a completion notice. CreditPFN reads/writes Lustre project storage even when computation uses GPFS, so a reservation explicitly restricted to jobs without Lustre access is unsuitable. Storage downtime is not evidence that output was deleted, and it does not justify retraining completed models.

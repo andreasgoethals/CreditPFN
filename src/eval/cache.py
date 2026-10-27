@@ -24,6 +24,11 @@ def evaluation_key(handle, dataset_id: str, *, track: str, config: dict) -> str:
     clean = dict(config)
     clean.pop("train_cfg_path", None)
     clean["results"] = {"save_predictions": bool(clean.get("results", {}).get("save_predictions", False))}
+    # TabICLv2 inference settings cannot change any other model's scores; keeping them out of
+    # TabPFN/classical keys lets those controls be shared across experiments that differ only
+    # in TabICLv2 precision, while TabICLv2's own key still separates the policies.
+    if not str(getattr(handle, "source", "")).startswith("tabicl"):
+        clean.pop("tabicl_inference_options", None)
     return digest_json({"schema": 1, "source": handle.source, "name": handle.name,
         "base_sha256": base_hash, "track": track, "dataset_id": dataset_id,
         "dataset_sha256": file_digest(data), "config": clean,

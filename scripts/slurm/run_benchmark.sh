@@ -7,13 +7,18 @@ case "$EXPERIMENT" in experiment[1-3]|experiment[5-8]) ;; *) echo 'Expected expe
 CONFIG_COUNT=2
 [[ "$EXPERIMENT" == experiment6 ]] && CONFIG_COUNT=1
 export CREDITPFN_EXPERIMENT="$EXPERIMENT"
+# FAMILY=tabicl re-scores only that foundation-model family (original + adapted), e.g. after
+# changing its inference precision. Classical baselines and other families are not resubmitted.
+FAMILY="${FAMILY:-}"
+case "$FAMILY" in ''|tabicl|tabpfn) ;; *) echo 'FAMILY must be empty, tabicl or tabpfn' >&2; exit 2 ;; esac
+export CREDITPFN_EVAL_FAMILY="$FAMILY"
 export EVAL_TASKS="${EVAL_TASKS:-16}"
 export CREDITPFN_USE_SCRATCH="${CREDITPFN_USE_SCRATCH:-1}"
 GLOBAL_CONCURRENCY="${GLOBAL_CONCURRENCY:-16}"
 EVAL_CONCURRENCY="${EVAL_CONCURRENCY:-4}"
 MAX_QUEUED="${MAX_QUEUED:-450}"
 (( EVAL_TASKS > 0 && EVAL_CONCURRENCY > 0 && EVAL_CONCURRENCY <= GLOBAL_CONCURRENCY )) || exit 2
-mapfile -t META < <(python - "$EXPERIMENT" "${DRY:-}" <<'PY'
+mapfile -t META < <(python - "$EXPERIMENT" "${DRY:-}" "$FAMILY" <<'PY'
 import sys
 from pathlib import Path
 import pandas as pd
@@ -22,7 +27,14 @@ from src.utils.prepare_experiment import check_prepared
 from src.utils.consolidate_output import latest_trials
 from src.utils.paths import manifests_dir, checkpoints_dir
 from src.visualize.campaign import planned_trials
-experiment, dry = sys.argv[1:]
+experiment, dry, family = sys.argv[1:]
+if family and not dry:
+    # Stale results of this family would sit beside the re-scored ones as duplicate folds.
+    from src.utils.reset_family_benchmark import stale_results
+    stale = stale_results(experiment, family)
+    if stale:
+        raise RuntimeError(f'{len(stale)} {family} result files predate the last reset; remove them first with '
+                           f'maintenance.slurm reset-family --experiment {experiment} --family {family} --apply')
 splits = []
 names = (['pd.yaml'] if experiment == 'experiment6' else ['pd_rows2048.yaml', 'pd_rows26000.yaml']
          if experiment == 'experiment7' else ['pd.yaml', 'lgd.yaml'])
@@ -72,17 +84,19 @@ if [[ -z "${DRY:-}" ]]; then
         (( queued + needed <= MAX_QUEUED )) || { echo "$cluster lacks queue room for the complete phase. No jobs submitted; retry later." >&2; exit 1; }
     done
 fi
-for kind in foundation classical; do
+KINDS=(foundation classical)
+[[ -n "$FAMILY" ]] && KINDS=(foundation)
+for kind in "${KINDS[@]}"; do
     cluster=$GPU_CLUSTER; partition="${BENCHMARK_GPU_PARTITION:-gpu_b200}"
     [[ "$kind" == classical ]] && { cluster=$CPU_CLUSTER; partition="${BENCHMARK_CPU_PARTITION:-batch}"; }
     cmd=(sbatch --parsable --clusters="$cluster" --partition="$partition"
          --account="${CREDITPFN_ACCOUNT:-lp_verbekelab}" --array="0-$((N-1))%$EVAL_CONCURRENCY"
          --time="${EVAL_WALLTIME:-04:00:00}"
-         --export="ALL,CREDITPFN_EXPERIMENT=$EXPERIMENT,CREDITPFN_BENCHMARK_SPLITS=$CREDITPFN_BENCHMARK_SPLITS,EVAL_TASKS=$EVAL_TASKS"
+         --export="ALL,CREDITPFN_EXPERIMENT=$EXPERIMENT,CREDITPFN_BENCHMARK_SPLITS=$CREDITPFN_BENCHMARK_SPLITS,EVAL_TASKS=$EVAL_TASKS,CREDITPFN_EVAL_FAMILY=$FAMILY"
          "scripts/slurm/benchmark_${kind}.slurm")
     if [[ -n "${DRY:-}" ]]; then printf 'DRY:'; printf ' %q' "${cmd[@]}"; printf '\n';
     else
         out=$(python -m src.utils.submit_bounded --slots "$GLOBAL_CONCURRENCY" --limit "$EVAL_CONCURRENCY" --cluster "$cluster" -- "${cmd[@]}")
-        echo "Submitted $kind benchmark array $out ($N tasks: $CONFIG_COUNT configurations, all partitions)."
+        echo "Submitted $kind benchmark array $out ($N tasks: $CONFIG_COUNT configurations, all partitions${FAMILY:+, family $FAMILY only})."
     fi
 done
