@@ -2,6 +2,23 @@
 
 ## 27-10-2026
 
+| TabICLv2 FP32 re-score (source `7988e7a`) | Outcome | Next step |
+|---|---|---|
+| Reset exp2 `62444529`, wICE | done, exit 0 | Deleted 4 TabICL result folders (342 files) |
+| Reset exp1 `62444528`, wICE | refused, exit 1 | Exp2 reset was running; writer guard blocked it (intended) |
+| Reset exp1 `62444623`, wICE | done, exit 0 | Deleted 34 folders (2,907 files); no consolidated pointer existed |
+| Exp1 `FAMILY=tabicl` array `11742938`, Mindwell | submitted 14:28, 128 tasks | After both arrays finish: consolidate `cpt_main_v5`, `cpt_seeds_v5`; download; rerun notebooks |
+| Exp2 `FAMILY=tabicl` array `11742963`, Mindwell | submitted 14:29, 128 tasks | Shares the bounded pool, so it may wait on exp1 lanes |
+
+- **Tried:** submit the exp1 and exp2 `reset-family --apply` jobs within one minute of each other (and of the exp1 preview).
+  **Result:** exp1's apply refused because exp2's maintenance job was running; exp2's succeeded.
+  **Why:** the writer guard treats any queued/running CreditPFN job as a possible consumer.
+  **Instead:** submit one reset at a time and wait for `END exit_code=0` before the next.
+- **Tried:** launch `FAMILY=tabicl run_benchmark.sh` from a login shell with the old TabPFNCredit venv / VSC `Python` module active, then after `deactivate`.
+  **Result:** the first launch scanned the not-yet-deleted results on project Lustre for over ten minutes; after `deactivate` the module Python lacked pandas.
+  **Why:** the readiness check stats every family file when old results exist; `deactivate` left the VSC `Python/3.12.3` module ahead of conda.
+  **Instead:** delete first, then `module purge` and `conda activate CreditPFN`, check `which python`, and launch.
+
 - Local experiment-8 artifact audit: all 627 metric CSVs, matching prediction gzip files and evaluation receipts are present; receipt filenames/byte counts pass, and all 33,535,942 stored prediction rows decode with finite targets and point predictions. Each comparison has five successful folds with unique row identities and expected row counts; SHA-256 comparisons of sorted row/target pairs match across models, rates and partitions for every track/table/fold. Recomputed PD AUC/Brier/log loss and LGD RMSE/MAE/R² match all 3,135 fold records within numerical tolerance. Saved quantiles are finite and have no crossings beyond 1e-7. On the warning-affected retention table, all 16 files (12 LoRA plus four cached copies of the original), 340,208 prediction rows and 480 fold-level quantile/interval checks pass; the uncapped likelihood cannot be recovered without distribution outputs. Finite saved values do not establish the counterfactual without overflow. No scientific files or notebooks were modified by this audit.
 - Experiment-8 five-fold interpretation: equal-table mean credit ΔAUC for TabPFN v3 / TabICLv2 is -0.000371 / -0.003237 at 1e-5, -0.009511 / -0.010994 at 1e-4, and -0.024917 / -0.039655 at 1e-3 (17 tables). Mean credit ΔR² is -0.024210 / -0.032969, -0.184804 / -0.127327 and -0.192724 / -0.149143, respectively (eight tables). Higher rates decrease AUC on all 17 PD tables and R² on all eight LGD tables for both models. Non-credit primary outcomes also worsen at higher rates; these are descriptive, single-training-seed results of one rank/target recipe. TabICL uses matched FP32 inference in this experiment. All 23 user-rerun notebooks have no saved errors or unexecuted code cells; both experiment-8 final summaries occur in `All_Results.md`, and all 12 inline figures have matching PDF names in `CAPTIONS.md`. No local suite or notebook rerun was performed during this read-only analysis.
 
