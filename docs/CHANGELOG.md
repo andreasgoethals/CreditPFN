@@ -1,5 +1,9 @@
 # Changelog
 
+## 27-10-2026
+
+- Record experiment-8 checkpoint-audit and benchmark progress, including an LGD numerical warning.
+
 ## 26-10-2026
 
 - Verify all 48 LoRA training completions and document audit-then-benchmark submission in one command.

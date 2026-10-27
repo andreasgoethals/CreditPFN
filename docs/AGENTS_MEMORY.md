@@ -1,5 +1,15 @@
 # Agents' memory — runs and dead ends
 
+## 27-10-2026
+
+- Read `Downloads/experiment8.zip` (4,887,500 bytes, downloaded 07:52:46 CEST) in place; archive CRC/path checks pass. The final PROJECT checkpoint/trajectory audits `62435028` (PD) and `62435029` (LGD) each report 24/24 complete, zero pending/diverged/problems, passed true and exit 0. Benchmark arrays are Mindwell `11740933` and wICE `62435037`. All 128 wICE tasks and 76/128 Mindwell tasks have completed logs with `status=OK`, exit 0 and zero failed folds; 2,315 successful folds across 463 logged comparisons. Four further Mindwell tasks had partial logs at the snapshot; the remainder had not appeared. No crash or OOM appears. The remaining live scheduler state is not known from the ZIP.
+- Four completed TabPFN v3 LGD retention comparisons on `openml_46961` (original and all three LoRA rates) each emit 64 `safe_power_transformer` cast-overflow warnings; all report five successful folds and finite displayed RMSE/R². One high-rate LoRA comparison clamps one non-finite negative log-likelihood observation among 4,252 rows to 100 nats. Preserve this secondary-metric caveat and check the PROJECT predictions/metrics after the complete download; this DATA-only snapshot does not establish prediction-level validity or a scientific result.
+
+| Experiment-8 benchmark snapshot | Outcome | Next step |
+|---|---|---|
+| wICE `62435037` | 128/128 task logs report OK | Preserve output; inspect result files after download |
+| Mindwell `11740933` | 76/128 task logs report OK; four partial logs | Let queued work continue; inspect final scheduler state and results before analysis |
+
 ## 26-10-2026
 
 - Completed-training audit: read `Downloads/experiment8.zip` (4,373,159 bytes, downloaded 20:54:56 CET) in place. CRC/member checks, both plan checksums, all 48 identity hashes and exact planned checkpoint-name coverage pass. All 56 resolved configurations retain native rank-16 Q/V LoRA, alpha 32, zero dropout/decay/L2-SP and the intended evaluation precision. The eight manifest files contain 48 successful completions plus eight planned interruptions, all superseded by successful recovery; every completed trial records exactly 10,000 updates, finite final loss/primary metrics/drift and a unique PROJECT checkpoint path. All 56 job logs end with exit 0; 58,344 epoch records have finite losses and zero recorded AMP/data skips, with no traceback/OOM/divergence error. Train/holdout dataset memberships remain disjoint and cover all 17 PD / eight LGD holdouts. This DATA-only ZIP contains no PROJECT checkpoint bytes, trajectories or benchmark results; final on-cluster audits remain required. No training rerun or cleanup is indicated.
