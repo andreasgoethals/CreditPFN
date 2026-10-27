@@ -2,6 +2,7 @@
 
 ## 27-10-2026
 
+- Verify experiment-8 prediction artifacts and document matched LoRA results and the bounded numerical caveat.
 - Record all completed experiment-8 benchmark tasks and the final scope of the retention warning.
 - Record experiment-8 checkpoint-audit and benchmark progress, including an LGD numerical warning.
 

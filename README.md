@@ -30,8 +30,9 @@ It does not retrain models or replace completed benchmark files.
 Experiment 8 has a separate LoRA safety gate. The `lora2` chain passed all eight GPU checks
 and independent inspection on 26-10-2026. All 48 production trials completed at 10,000 updates,
 both PROJECT checkpoint/trajectory audits passed, and all 256 benchmark task logs report success.
-The 27-10-2026 DATA snapshot does not contain detailed PROJECT results; download both tiers and
-check the numerical warning before scientific interpretation. See the dated [run record](docs/AGENTS_MEMORY.md).
+The 27-10-2026 local audit decoded all 627 benchmark prediction files and reproduced the primary
+metrics. A non-credit LGD numerical warning has a bounded interpretation; see the dated
+[run record](docs/AGENTS_MEMORY.md) and [research brief](docs/RESEARCH_BRIEF.md#experiment-8-low-rank-queryvalue-continued-pretraining).
 For a future changed implementation or environment, `bash scripts/slurm/run_experiment0_lora.sh all NEW_ID`
 queues preparation, both four-task GPU arrays and independent inspection together under a fresh ID.
 Successful dependencies advance automatically; production remains gated. A failed inference probe can be inspected

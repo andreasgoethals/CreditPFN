@@ -684,6 +684,22 @@ automated lending decisions. Authors remain responsible for validating all analy
 
 ## Experiment 8: low-rank query/value continued pretraining
 
+The completed five-fold benchmark compares original and LoRA weights on the same test rows.
+Equal-table credit mean ΔAUC (LoRA minus original, 17 PD tables) for TabPFN v3 / TabICLv2 is
+-0.000371 / -0.003237 at 1e-5, -0.009511 / -0.010994 at 1e-4 and -0.024917 / -0.039655 at
+1e-3. Equal-table credit mean ΔR² (eight LGD tables) is -0.024210 / -0.032969, -0.184804 /
+-0.127327 and -0.192724 / -0.149143, respectively. At both higher rates every credit table
+loses primary-metric performance for both models; low-rate outcomes vary by table. The four
+non-credit tables per task also show lower mean primary scores at both higher rates. These are
+descriptive, single-training-seed results for this Q/V rank-16 recipe, not a universal claim
+about LoRA or an independently validated rate selection.
+
+All 627 result/prediction/receipt triplets were read locally, with matched row/target identities
+and reproduced primary metrics across 3,135 folds. One non-credit LGD table generated inverse
+power-transform overflow warnings for original and LoRA TabPFN. Its saved point predictions and
+quantiles are finite, ordered and reproduce the recorded scores; its one capped likelihood value
+remains a reported numerical limitation, and an overflow-free counterfactual was not measured.
+
 This follow-up asks whether structured additive changes inside the pretrained attention
 layers can produce useful cross-table credit adaptation. It was adopted after experiments
 1–7 were observed and is explicitly exploratory. It does not replace their grid or outputs.
