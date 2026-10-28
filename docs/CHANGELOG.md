@@ -2,6 +2,7 @@
 
 ## 28-10-2026
 
+- Sync TEMPLATE.md: speed-first VSC CPU sharding/parallel submission and explicit library setup; no experiment code or run settings changed.
 - Record FP32 TabICL re-score progress and expected empty shards.
 
 ## 27-10-2026
