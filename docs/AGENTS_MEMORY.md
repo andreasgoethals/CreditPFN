@@ -1,5 +1,14 @@
 # Agents' memory — runs and dead ends
 
+## 28-10-2026
+
+- Read `Downloads/output CreditPFN.zip` (87,148,105 bytes, downloaded 09:13) in place; archive CRC and safe-member checks pass. FP32 TabICL re-score of experiment 2, Mindwell `11742963`, has 128/128 task logs ending exit 0: 112 report completed work and 16 are expected empty LGD shards (four per partition, indices 12–15 of each 16-task grid). The 112 nonempty tasks report 114 comparisons and 570 successful folds with no failed folds. Experiment 1 array `11742938` has 35 completed task logs reporting 302 comparisons and 1,510 successful folds, four partial logs and 89 task indices without a resolved-config record at capture. All 167 captured resolved configs specify TabICL AMP/FA3 disabled; no traceback, OOM or failed-fold message appears in these runs. Some five-fold large-table comparisons take about three hours; the four partial tasks request eight hours. DATA logs are a snapshot, not proof of current scheduler state, and this archive contains no PROJECT metric/prediction CSVs; do not interpret the re-score or resubmit from the ZIP alone. Preserve running work, verify queue, and consolidate only after both arrays finish.
+
+| Cluster run | Outcome at 09:13 download | Next step |
+|---|---|---|
+| TabICLv2 FP32 experiment 2 `11742963` | 112 completed-work tasks + 16 expected empty shards, all exit 0 | Preserve results; verify PROJECT files after the full run |
+| TabICLv2 FP32 experiment 1 `11742938` | 35 completed-work tasks, four partial logs, 89 not yet visible | Let existing array run; inspect live scheduler state and final task outcomes |
+
 ## 27-10-2026
 
 | TabICLv2 FP32 re-score (source `7988e7a`) | Outcome | Next step |

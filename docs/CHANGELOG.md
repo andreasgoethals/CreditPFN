@@ -1,5 +1,9 @@
 # Changelog
 
+## 28-10-2026
+
+- Record FP32 TabICL re-score progress and expected empty shards.
+
 ## 27-10-2026
 
 - Score TabICLv2 in FP32 without FA3 in experiments 1 and 2 (inference only); add `FAMILY=tabicl` benchmark mode, `reset-family` maintenance action and a seed-comparison guard against mixed TabICLv2 inference settings.
