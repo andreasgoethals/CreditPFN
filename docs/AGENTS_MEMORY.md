@@ -2,6 +2,11 @@
 
 ## 29-10-2026
 
+- **Tried:** local `reset_family_benchmark --experiment experiment1 --family tabicl --apply` before downloading the FP32 replacements.
+  **Result:** Windows `WinError 5` stopped the first directory removal after its files were deleted; experiment 2 was not attempted.
+  **Why:** the downloaded directory had the Windows read-only attribute; bare `shutil.rmtree` did not clear it.
+  **Instead:** retry Windows unlink/rmdir once after clearing a verified read-only attribute; keep link, real permission and file-lock errors fatal. A real Windows regression covers nested read-only files/directories and an idempotent rerun. Ten focused tests and the full suite (1,147 passed, one skipped) pass; rerun the scoped local cleanup before downloading.
+
 - Read `Downloads/output CreditPFN.zip` (87,421,150 bytes, downloaded 08:51) in place; CRC and member-path checks pass. All 256 resolved task identities for the TabICLv2 FP32 re-score have matching terminal logs. Experiment 1 array `11742938` completed 128/128 tasks, reporting 969 model–table comparisons and 4,845 successful folds, zero failed folds; its last task ended 28-10 at 19:10:17 CET. Experiment 2 array `11742963` completed 112 nonempty tasks plus 16 expected empty LGD shards, all exit 0, reporting 114 comparisons and 570 successful folds. All task configs retain five-fold evaluation, prediction saving, and TabICL AMP/FA3 disabled. No new crash, OOM, non-finite/numerical warning or failed-fold message appears; the old virtualenv warning is followed by activation of the correct CreditPFN conda environment.
 - The logs record 1,083 distinct prediction output paths on PROJECT storage. This DATA-only ZIP contains no result or prediction files, so it establishes logged completion, not independent metric/prediction validity. No post-re-score consolidation is present. Re-consolidate `cpt_main_v5` and `cpt_seeds_v5`, obtain fresh DATA plus PROJECT output without mixing superseded local automatic-precision files, then rerun notebooks and audit the updated results. No benchmark resubmission or new training is indicated.
 
@@ -9,6 +14,8 @@
 |---|---|---|
 | Experiment 1 · Mindwell `11742938` | 128/128 successful tasks; 4,845 folds OK | Consolidate and verify PROJECT artifacts |
 | Experiment 2 · Mindwell `11742963` | 112 successful-work tasks + 16 expected empty tasks; 570 folds OK | Consolidate and verify PROJECT artifacts |
+| Main consolidation · wICE `62463049` | User reports successful log after submitting at 08:56 on 29-10; not independently read | Download refreshed DATA + PROJECT output |
+| Seed consolidation · wICE `62463050` | User reports successful log after submitting at 08:56 on 29-10; not independently read | Download refreshed DATA + PROJECT output |
 
 ## 28-10-2026
 

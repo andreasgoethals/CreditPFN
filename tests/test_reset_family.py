@@ -4,6 +4,8 @@ Re-scoring TabICLv2 in FP32 must delete exactly its own result folders (original
 adapted, both tasks, both tiers), keep every other model, and never be able to leave
 old and new folds side by side.
 """
+import os
+import stat
 from types import SimpleNamespace
 
 import pytest
@@ -98,3 +100,56 @@ def test_reset_refuses_when_other_snapshot_sources_are_already_missing(isolated_
     with pytest.raises(RuntimeError):
         reset.reset("experiment1", "tabicl", apply=True)
     assert (project / "experiment1" / "results" / "PD" / "tabicl-untuned__tabicl-v2").exists()
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows read-only deletion semantics")
+def test_reset_removes_readonly_files_and_directories_and_can_resume(isolated_output, monkeypatch):
+    monkeypatch.setattr("src.utils.clean_run.check_cluster_writers", lambda experiment=None: None)
+    project = resolve_staging_path(OUTPUT_DIR_NAME)
+    _folders(project, [("PD", "tabicl-untuned__tabicl-v2"), ("PD", "catboost")])
+    folder = project / "experiment1/results/PD/tabicl-untuned__tabicl-v2"
+    nested = folder / "nested"
+    nested.mkdir()
+    (nested / "predictions.csv").write_text("test\n", encoding="utf-8")
+    for path in (folder / "fold.csv", nested / "predictions.csv", nested, folder):
+        path.chmod(stat.S_IREAD)
+    try:
+        assert reset.reset("experiment1", "tabicl", apply=True)["applied"]
+        assert not folder.exists()
+        assert (folder.parent / "catboost/fold.csv").read_text(encoding="utf-8") == "x\n1\n"
+        assert reset.reset("experiment1", "tabicl", apply=True)["applied"]
+    finally:
+        # Keep pytest's own temp cleanup functional even when the regression fails.
+        for path in (folder / "fold.csv", nested / "predictions.csv", nested, folder):
+            if path.exists():
+                path.chmod(stat.S_IREAD | stat.S_IWRITE)
+
+
+@pytest.mark.parametrize("attributes", [0, stat.FILE_ATTRIBUTE_READONLY | stat.FILE_ATTRIBUTE_REPARSE_POINT])
+def test_readonly_retry_preserves_real_permission_and_link_errors(monkeypatch, attributes):
+    from unittest.mock import Mock
+    remove = Mock()
+    chmod = Mock()
+    monkeypatch.setattr(reset, "os", SimpleNamespace(name="nt", unlink=remove, rmdir=remove,
+        lstat=lambda path: SimpleNamespace(st_file_attributes=attributes, st_mode=stat.S_IREAD), chmod=chmod))
+    error = PermissionError("permission denied")
+    with pytest.raises(PermissionError) as caught:
+        reset._retry_readonly(remove, "selected", (PermissionError, error, None))
+    assert caught.value is error
+    chmod.assert_not_called()
+    remove.assert_not_called()
+
+
+def test_readonly_retry_does_not_hide_a_file_lock(monkeypatch):
+    from unittest.mock import Mock
+    locked = PermissionError("file is in use")
+    remove = Mock(side_effect=locked)
+    chmod = Mock()
+    monkeypatch.setattr(reset, "os", SimpleNamespace(name="nt", unlink=remove, rmdir=remove,
+        lstat=lambda path: SimpleNamespace(st_file_attributes=stat.FILE_ATTRIBUTE_READONLY,
+                                           st_mode=stat.S_IREAD), chmod=chmod))
+    with pytest.raises(PermissionError) as caught:
+        reset._retry_readonly(remove, "selected", (PermissionError, PermissionError("readonly"), None))
+    assert caught.value is locked
+    chmod.assert_called_once_with("selected", stat.S_IREAD | stat.S_IWRITE)
+    remove.assert_called_once_with("selected")

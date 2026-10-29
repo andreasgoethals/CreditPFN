@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import os
 import shutil
+import stat
 from pathlib import Path
 
 from src.utils.paths import OUTPUT_DIR_NAME, consolidated_dir, experiment_group, outputs_dir, resolve_staging_path
@@ -103,6 +105,21 @@ def _refuse_links(paths):
             raise RuntimeError(f"Refusing to follow a link: {path}")
 
 
+def _retry_readonly(function, path, exc_info):
+    """Retry Windows removal once after clearing only a read-only attribute."""
+    error = exc_info[1]
+    if (os.name != "nt" or not isinstance(error, PermissionError)
+            or function not in (os.unlink, os.rmdir)):
+        raise error
+    info = os.lstat(path)
+    attributes = getattr(info, "st_file_attributes", 0)
+    if (not attributes & stat.FILE_ATTRIBUTE_READONLY
+            or attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT):
+        raise error
+    os.chmod(path, info.st_mode | stat.S_IWRITE)
+    function(path)
+
+
 def reset(experiment: str, family: str, *, apply: bool = False) -> dict:
     folders, pointers = family_dirs(experiment, family), snapshot_pointers(experiment)
     _refuse_links(folders + pointers)
@@ -121,7 +138,8 @@ def reset(experiment: str, family: str, *, apply: bool = False) -> dict:
     for pointer in pointers:
         pointer.rename(pointer.with_name(f"LATEST.superseded-{family}-{stamp}.json"))
     for folder in folders:
-        shutil.rmtree(folder)
+        # onerror keeps compatibility with the project's Python 3.11 minimum.
+        shutil.rmtree(folder, onerror=_retry_readonly)
     import json
     import time
     group = experiment_group(experiment)

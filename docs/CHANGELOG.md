@@ -2,6 +2,7 @@
 
 ## 29-10-2026
 
+- Handle Windows read-only files/directories in family-result cleanup; retain failures for locks, links and other permission errors.
 - Record successful completion of both TabICLv2 FP32 benchmark arrays and remaining artifact collection/analysis.
 
 ## 28-10-2026
