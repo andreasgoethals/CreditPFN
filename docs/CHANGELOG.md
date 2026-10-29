@@ -1,5 +1,9 @@
 # Changelog
 
+## 29-10-2026
+
+- Record successful completion of both TabICLv2 FP32 benchmark arrays and remaining artifact collection/analysis.
+
 ## 28-10-2026
 
 - Sync TEMPLATE.md: flexible experiment folders and staged experiment-0 VSC validation; preserve this project's code, layout and run evidence.

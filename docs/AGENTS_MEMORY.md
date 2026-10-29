@@ -1,5 +1,15 @@
 # Agents' memory — runs and dead ends
 
+## 29-10-2026
+
+- Read `Downloads/output CreditPFN.zip` (87,421,150 bytes, downloaded 08:51) in place; CRC and member-path checks pass. All 256 resolved task identities for the TabICLv2 FP32 re-score have matching terminal logs. Experiment 1 array `11742938` completed 128/128 tasks, reporting 969 model–table comparisons and 4,845 successful folds, zero failed folds; its last task ended 28-10 at 19:10:17 CET. Experiment 2 array `11742963` completed 112 nonempty tasks plus 16 expected empty LGD shards, all exit 0, reporting 114 comparisons and 570 successful folds. All task configs retain five-fold evaluation, prediction saving, and TabICL AMP/FA3 disabled. No new crash, OOM, non-finite/numerical warning or failed-fold message appears; the old virtualenv warning is followed by activation of the correct CreditPFN conda environment.
+- The logs record 1,083 distinct prediction output paths on PROJECT storage. This DATA-only ZIP contains no result or prediction files, so it establishes logged completion, not independent metric/prediction validity. No post-re-score consolidation is present. Re-consolidate `cpt_main_v5` and `cpt_seeds_v5`, obtain fresh DATA plus PROJECT output without mixing superseded local automatic-precision files, then rerun notebooks and audit the updated results. No benchmark resubmission or new training is indicated.
+
+| FP32 benchmark array | Final downloaded evidence | Remaining work |
+|---|---|---|
+| Experiment 1 · Mindwell `11742938` | 128/128 successful tasks; 4,845 folds OK | Consolidate and verify PROJECT artifacts |
+| Experiment 2 · Mindwell `11742963` | 112 successful-work tasks + 16 expected empty tasks; 570 folds OK | Consolidate and verify PROJECT artifacts |
+
 ## 28-10-2026
 
 - Read `Downloads/output CreditPFN.zip` (87,148,105 bytes, downloaded 09:13) in place; archive CRC and safe-member checks pass. FP32 TabICL re-score of experiment 2, Mindwell `11742963`, has 128/128 task logs ending exit 0: 112 report completed work and 16 are expected empty LGD shards (four per partition, indices 12–15 of each 16-task grid). The 112 nonempty tasks report 114 comparisons and 570 successful folds with no failed folds. Experiment 1 array `11742938` has 35 completed task logs reporting 302 comparisons and 1,510 successful folds, four partial logs and 89 task indices without a resolved-config record at capture. All 167 captured resolved configs specify TabICL AMP/FA3 disabled; no traceback, OOM or failed-fold message appears in these runs. Some five-fold large-table comparisons take about three hours; the four partial tasks request eight hours. DATA logs are a snapshot, not proof of current scheduler state, and this archive contains no PROJECT metric/prediction CSVs; do not interpret the re-score or resubmit from the ZIP alone. Preserve running work, verify queue, and consolidate only after both arrays finish.
