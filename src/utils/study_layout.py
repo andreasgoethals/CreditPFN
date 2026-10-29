@@ -42,6 +42,9 @@ def manifest():
 def payload(group, root):
     marker = root / MARKER
     if not marker.is_file():
+        if any((root / name).exists() for name in (
+                ".study-v2-migration.lock", ".study-v2-migration.json", ".study-v2-staging")):
+            raise RuntimeError("Output migration is unfinished; resume it before reading research results")
         return group
     record = json.loads(marker.read_text(encoding="utf-8"))
     if record != manifest():

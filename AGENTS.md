@@ -83,7 +83,9 @@ the required working set, publish recovery state durably, and never blanket-dele
 
 The old Conda-on-DATA runtime is retained as a comparator/rollback; the accepted PROJECT container
 `env20261029f` now serves the approved migration campaign. The old environment and throttled launchers
-are not defaults for a new campaign. Read the migration status before deployment. Preserve source, runtime,
+are not defaults for a new campaign. Computational activation requires `CREDITPFN_RUNTIME_VERSION`;
+only the explicit compatibility-comparison arm may select the old environment. Read the migration
+status before deployment. Preserve source, runtime,
 inputs, receipts and recovery state used by active, queued or resumable jobs. Explain and obtain
 agreement for migration, installations, cleanup or new workloads before executing them. Future
 launchers submit independent work without artificial running caps; real validation and data

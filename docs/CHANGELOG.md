@@ -1,7 +1,13 @@
 # Changelog
 
+## 30-10-2026
+
+- Keep sealed-runtime manifests immutable: revalidate unchanged images without rewriting, and reject same-version image, wrapper or environment drift.
+
 ## 29-10-2026
 
+- Refuse implicit DATA-Conda activation; retain explicit compatibility checks and allow the submission controller to bootstrap inside Slurm using the sealed runtime.
+- Refuse result reads while a layout migration is unfinished, preventing ambiguous old/new experiment paths.
 - Make completed layout migrations leave publication metadata untouched and retire their empty staging folder.
 - Retire six verified obsolete VSC build workspaces and three empty failed-runtime folders after preserving compact reproducibility records.
 - Keep runtime acceptance independent of experiment scopes and retain separate receipts for each source identity; preserve the active campaign's deployed source until it finishes.

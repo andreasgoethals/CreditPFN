@@ -112,6 +112,7 @@ source "$1"
 printf '%s\\n' "$OMP_NUM_THREADS" "$MKL_NUM_THREADS" "$OPENBLAS_NUM_THREADS" "$CREDITPFN_DATA_ROOT"
 '''
     env = dict(os.environ, FAKE_PREFIX=fake.as_posix(), CONDA_EXE="", VIRTUAL_ENV="",
+        CREDITPFN_LEGACY_RUNTIME_COMPARISON="1", CREDITPFN_RUNTIME_VERSION="",
         VSC_DATA=tmp_path.as_posix(), CREDITPFN_CACHE_ROOT=(tmp_path / "cache").as_posix(),
         CREDITPFN_USE_SCRATCH="1", SLURM_CPUS_PER_TASK="2", SLURM_CLUSTER_NAME=cluster,
         OMP_NUM_THREADS="96", MKL_NUM_THREADS="96", OPENBLAS_NUM_THREADS="96",
@@ -129,6 +130,76 @@ printf '%s\\n' "$OMP_NUM_THREADS" "$MKL_NUM_THREADS" "$OPENBLAS_NUM_THREADS" "$C
     assert result.returncode == 0, result.stderr
     assert result.stdout.splitlines()[-4:] == ["2", "2", "2",
         (tmp_path / site / "CreditPFN/ACTIVE_INPUTS.json").as_posix()]
+
+
+@pytest.mark.parametrize("version,comparison,message", [
+    ("", "", "refusing implicit Conda fallback"),
+    ("", "yes", "refusing implicit Conda fallback"),
+    ("recorded1", "1", "Cannot select both"),
+])
+def test_runtime_activation_fails_before_creating_caches_for_ambiguous_selection(
+        tmp_path, version, comparison, message):
+    from tests.test_benchmark_submission import bash_path
+    activator = Path("scripts/slurm/_activate_env.sh").resolve()
+    cache = tmp_path / "cache"
+    env = dict(os.environ, CREDITPFN_RUNTIME_VERSION=version,
+               CREDITPFN_LEGACY_RUNTIME_COMPARISON=comparison,
+               CREDITPFN_CACHE_ROOT=cache.as_posix())
+    result = subprocess.run([bash_path(), "--noprofile", "--norc", "-c", 'source "$1"',
+                             "test", activator.as_posix()], env=env,
+                            capture_output=True, text=True, timeout=20)
+    assert result.returncode == 2
+    assert message in result.stderr
+    assert not cache.exists()
+
+
+def test_explicit_runtime_uses_container_branch_without_conda(tmp_path):
+    from tests.test_benchmark_submission import bash_path
+    activator = Path("scripts/slurm/_activate_env.sh").resolve()
+    scripts = tmp_path / "scripts/slurm"
+    scripts.mkdir(parents=True)
+    (scripts / "_activate_runtime.sh").write_text(
+        "printf 'SEALED_BRANCH\\n'\npython() { :; }\n", encoding="utf-8", newline="\n")
+    env = dict(os.environ, CREDITPFN_RUNTIME_VERSION="recorded1",
+               CREDITPFN_LEGACY_RUNTIME_COMPARISON="", CREDITPFN_USE_SCRATCH="0",
+               SLURM_JOB_ID="123", SLURM_CLUSTER_NAME="mindwell", SLURM_CPUS_PER_TASK="2",
+               CREDITPFN_CACHE_ROOT=(tmp_path / "cache").as_posix(),
+               VSC_SCRATCH_GPFS1=(tmp_path / "scratch").as_posix(), VIRTUAL_ENV="")
+    result = subprocess.run([bash_path(), "--noprofile", "--norc", "-c",
+        'conda() { echo UNEXPECTED_CONDA >&2; return 77; }; source "$1"',
+        "test", activator.as_posix()], cwd=tmp_path, env=env,
+        capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    assert "SEALED_BRANCH" in result.stdout
+    assert "UNEXPECTED_CONDA" not in result.stderr
+
+
+@pytest.mark.parametrize("action,acceptance", [("submit", "1"), ("finish", "unset")])
+def test_study_controller_bootstrap_only_bypasses_acceptance_to_submit_its_gates(
+        tmp_path, action, acceptance):
+    from tests.test_benchmark_submission import bash_path
+    repo = Path.cwd()
+    scripts = tmp_path / "scripts/slurm"
+    scripts.mkdir(parents=True)
+    for name in ("study_cpu.slurm", "_job_log.sh"):
+        shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    (scripts / "_activate_env.sh").write_text(
+        'printf "MODE:%s\\n" "${CREDITPFN_RUNTIME_ACCEPTANCE-unset}"\n'
+        'printf "INPUT_STAGE:%s\\n" "$CREDITPFN_USE_SCRATCH"\n'
+        'python() { printf "ARG:%s\\n" "$@"; }\n', encoding="utf-8", newline="\n")
+    extra = ["--runtime-version", "recorded1", "--specification", "recorded environment.json"]
+    env = dict(os.environ, SLURM_SUBMIT_DIR=tmp_path.as_posix(),
+               VSC_DATA=tmp_path.as_posix(), CREDITPFN_OUTPUT_ROOT=tmp_path.as_posix(),
+               SLURM_JOB_ID="123", SLURM_RESTART_COUNT="0", CREDITPFN_RUNTIME_ACCEPTANCE="1")
+    result = subprocess.run([bash_path(), (scripts / "study_cpu.slurm").as_posix(),
+                             action, "fixture", *extra], env=env,
+                            capture_output=True, text=True, timeout=20)
+    assert result.returncode == 0, result.stderr
+    log = next((tmp_path / "output CreditPFN/experiment0/logs").glob("*.log")).read_text()
+    assert f"MODE:{acceptance}\n" in log
+    assert f"INPUT_STAGE:{'0' if action == 'submit' else '1'}\n" in log
+    assert [line.removeprefix("ARG:") for line in log.splitlines() if line.startswith("ARG:")] == [
+        "-m", "src.utils.study_workflow", action, "fixture", *extra]
 
 
 def test_diagnostics_use_gpfs_and_publish_even_on_graceful_interruption(tmp_path, monkeypatch):

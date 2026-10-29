@@ -83,3 +83,29 @@ def test_sealing_rejects_unpacked_dependencies(tmp_path):
     (tmp_path / "site-packages").mkdir()
     with pytest.raises(RuntimeError, match="Unpacked"):
         rc.seal(tmp_path, specification)
+
+
+@pytest.mark.parametrize("changed", [None, "image", "wrapper", "specification"])
+def test_sealed_runtime_is_immutable_and_repeat_sealing_never_rewrites_it(tmp_path, monkeypatch, changed):
+    from src.utils import atomic
+    root = tmp_path / "runtime"
+    (root / "bin").mkdir(parents=True)
+    wrapper = root / "bin/python"
+    wrapper.write_text("wrapper", encoding="utf-8")
+    image = root / "environment.sqfs"
+    image.write_bytes(b"original image")
+    specification = tmp_path / "environment.json"
+    specification.write_text("{}", encoding="utf-8")
+    rc.seal(root, specification)
+    marker = root / "runtime.json"
+    before = marker.read_bytes(), marker.stat().st_mtime_ns
+    def unexpected_write(*args, **kwargs):
+        raise AssertionError("Existing runtime manifests must never be rewritten")
+    monkeypatch.setattr(atomic, "write_json", unexpected_write)
+    if changed is None:
+        rc.seal(root, specification)
+    else:
+        {"image": image, "wrapper": wrapper, "specification": specification}[changed].write_bytes(b"different")
+        with pytest.raises(RuntimeError, match="already sealed"):
+            rc.seal(root, specification)
+    assert (marker.read_bytes(), marker.stat().st_mtime_ns) == before

@@ -146,7 +146,15 @@ def seal(directory, specification):
     links = {str(p.relative_to(root)): os.readlink(p) for p in sorted(root.rglob("*")) if p.is_symlink()}
     receipt = dict(schema=1, files=files, environment_sha256=sha256(specification),
                    images=[str(p.relative_to(root)) for p in images], symlinks=links, validated=False)
-    (root / "runtime.json").write_text(json.dumps(receipt, indent=2), encoding="utf-8")
+    marker = root / "runtime.json"
+    if not marker.exists():
+        from src.utils.atomic import write_json
+        try:
+            write_json(marker, receipt, exclusive=True)
+        except FileExistsError:
+            pass  # Another sealer published complete bytes; verify them below.
+    if marker.is_symlink() or json.loads(marker.read_text(encoding="utf-8")) != receipt:
+        raise RuntimeError("Runtime already sealed with different contents; create a new version")
     print(json.dumps(dict(images=receipt["images"], files=len(files), directory=str(root))), flush=True)
 
 

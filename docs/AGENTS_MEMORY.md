@@ -1,6 +1,16 @@
 # Agents' memory — runs and dead ends
 
+## 30-10-2026
+
+- Final local validation of the migration read guard and runtime-selection/bootstrap changes: **1,211 passed, one existing absent-manifest skip**, with the final full rerun taking 12m30s. The final immutable-runtime seal and bootstrap input-staging checks also passed their focused 40-test run. The default activation now refuses implicit DATA Conda use; the explicit same-GPU comparator remains available, and the sealed Slurm submission bootstrap preserves its acceptance dependencies. These changes are not deployed into active VSC source `4bf4535`.
+
 ## 29-10-2026
+
+- Preserved the temporary checkout's three pre-Git build helpers in a **5,051-byte** archive under canonical DATA `experiment0/manifests/runtime_builds/study20261029/pre-git-build-helpers.tar.gz`. Verified every extracted byte against its original Git stash blob; the adjacent JSON records stash/tree IDs and SHA-256 digests. This is historical evidence, not a source deployment. The original stash and active checkout remain intact until their consumers finish.
+- The post-migration local rerun passed **29/29 notebooks, 261 figures**. Every complete summary and all 261 inline PNG byte sequences are identical to the reviewed pre-migration revision; PDFs, inline figures and captions have one-to-one ownership, no orphan PDFs, and all 29 summaries appear verbatim (trailing padding normalized) in the ordered combined report. The new VSC results are still pending and are not included. All 47 shell scripts pass Bash syntax checks; two local CRLF copies were restored to their exact already-published LF bytes.
+- The extension research controller **11753901** was accepted after inspector **11753862**; the persistent submission helper completed its work. At 23:37 CET, refresh **11753618** had **29 completed / 8 running / 408 pending** tasks, without an exceptional state; all 80 extension GPU checks were still queued behind normal priority/dependencies. No new results have been promoted.
+- Migrated the local merged output with the same journaled layout tool: **35,599 files / 19,113,502,239 bytes** passed before/after SHA-256 verification, and `STUDY_LAYOUT.json` now routes historical campaign identities to the public layout. The empty local staging directory was retired. A fresh 29-notebook run is checking the actual migrated readers; this does not include still-running VSC additions.
+- Verified both VSC layout markers and removed only the two empty migration staging directories with nonrecursive `rmdir`; the canonical DATA cleanup receipt records their exact paths. Migration journals, scientific files and active runtime caches remain intact. Extension-test admission now includes all **12 smoke cases, 68 capacity cases and inspector 11753862**; queued tests are not passing tests.
 
 - Post-correction validation: full local suite **1,202 passed, one existing absent-manifest skip** in **11m51s**. Runtime receipt isolation, preservation of earlier source receipts, migration byte preservation/recovery and a publication-write-free idempotent rerun all pass. Current VSC consumers remain on `4bf4535`; these local fixes are not yet deployed into their checkout.
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-#  Shared conda-env activator for every CreditPFN slurm script.
+#  Shared sealed-runtime activator; Conda is an explicit acceptance comparator.
 # =============================================================================
 #
 #  Why this file exists
@@ -22,9 +22,20 @@
 #
 #      source scripts/slurm/_activate_env.sh
 #
-#  Optional: set `CONDA_ENV=<name>` before sourcing to use a different env name
-#  (default: CreditPFN).
+#  Set CREDITPFN_RUNTIME_VERSION to the accepted immutable PROJECT runtime.
+#  CONDA_ENV is used only for the explicit legacy comparison arm (default: CreditPFN).
 # =============================================================================
+
+# New computational work must name an independently accepted PROJECT runtime.
+# Only the same-GPU acceptance job may explicitly use the preserved Conda arm.
+if [[ "${CREDITPFN_LEGACY_RUNTIME_COMPARISON:-0}" == 1 ]]; then
+    [[ -z "${CREDITPFN_RUNTIME_VERSION:-}" ]] || {
+        echo 'Cannot select both a sealed runtime and the legacy comparison arm.' >&2; return 2;
+    }
+elif [[ -z "${CREDITPFN_RUNTIME_VERSION:-}" ]]; then
+    echo 'CREDITPFN_RUNTIME_VERSION must name an accepted PROJECT container; refusing implicit Conda fallback.' >&2
+    return 2
+fi
 
 CONDA_ENV="${CONDA_ENV:-CreditPFN}"
 

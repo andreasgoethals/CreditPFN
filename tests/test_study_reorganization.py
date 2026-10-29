@@ -76,6 +76,14 @@ def test_migration_refuses_overlap_existing_lock_and_unknown_marker(tmp_path):
         layout.payload("experiment1", root)
 
 
+@pytest.mark.parametrize("progress", [".study-v2-migration.lock", ".study-v2-migration.json", ".study-v2-staging"])
+def test_readers_refuse_unfinished_layout_changes(tmp_path, progress):
+    assert layout.payload("experiment3", tmp_path) == "experiment3"
+    (tmp_path / progress).touch()
+    with pytest.raises(RuntimeError, match="unfinished"):
+        layout.payload("experiment3", tmp_path)
+
+
 def factorial():
     rows=[]
     # Anchoring: +2 full, +5 frozen. Freezing: -1 unanchored, +2 anchored.
