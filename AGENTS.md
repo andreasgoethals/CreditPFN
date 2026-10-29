@@ -70,6 +70,11 @@ retain error output; verify both test markers through the combined stream. Keep 
 reads on login nodes and authorized computational debugging in Slurm allocations. Distinguish
 local validation from real CPU/GPU acceptance.
 
+Deploy through Git: edit and validate locally, commit and push, then update a clean DATA
+checkout with `git pull --ff-only` and verify its commit before submission. Use a separate
+DATA checkout if existing jobs need the old revision. Do not copy uncommitted source files
+or patch VSC source directly; a cluster-discovered fix repeats the same local/Git loop.
+
 The actual checkout and `.git` belong on DATA. Large persistent assets, model caches and immutable,
 versioned SIF runtime images belong on approved PROJECT storage; temporary work belongs on native
 scratch. Do not move an installed environment: recreate it from recorded specifications in a
